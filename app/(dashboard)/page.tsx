@@ -362,6 +362,20 @@ export default function DashboardPage() {
           </span>
         ) : null}
         <Link
+          href="/demo"
+          style={{ color: "rgba(90, 75, 120, 0.92)", textDecoration: "none" }}
+        >
+          Copilot · Demo (mock)
+        </Link>
+        {" · "}
+        <Link
+          href="/copilot"
+          style={{ color: "rgba(90, 75, 120, 0.92)", textDecoration: "none" }}
+        >
+          Copilot · Prototipo
+        </Link>
+        {" · "}
+        <Link
           href="/copilot-history"
           style={{ color: "rgba(90, 75, 120, 0.92)", textDecoration: "none" }}
         >
