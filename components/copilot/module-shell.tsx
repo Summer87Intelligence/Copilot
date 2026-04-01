@@ -6,8 +6,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { usePathname } from "next/navigation";
-
 import { EnvironmentBanner } from "@/components/copilot/environment-banner";
 import { CopilotModuleSidebar } from "@/components/copilot/module-sidebar";
 import type { CopilotNavItem } from "@/components/copilot/copilot-nav-config";
@@ -45,29 +43,25 @@ export function CopilotModuleShell({
   /** Barra opcional bajo el banner de entorno (p. ej. salud global). */
   topBar?: ReactNode;
   /**
-   * Si el usuario nunca guardó preferencia en localStorage, colapsar al entrar
-   * a rutas que contengan este substring (p. ej. atención prioritaria).
+   * Reservado por compatibilidad con llamadas existentes. Sin clave en
+   * localStorage el sidebar arranca colapsado en todas las rutas.
    */
   autoCollapseWhenPathIncludes?: string;
 }) {
-  const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  void autoCollapseWhenPathIncludes;
+
+  const [collapsed, setCollapsed] = useState(true);
   const [hydrated, setHydrated] = useState(false);
 
   useLayoutEffect(() => {
     const pref = readSidebarPreference(storageKey);
     if (pref !== null) {
       setCollapsed(pref);
-    } else if (
-      autoCollapseWhenPathIncludes &&
-      pathname.includes(autoCollapseWhenPathIncludes)
-    ) {
-      setCollapsed(true);
     } else {
-      setCollapsed(false);
+      setCollapsed(true);
     }
     setHydrated(true);
-  }, [storageKey, pathname, autoCollapseWhenPathIncludes]);
+  }, [storageKey]);
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
@@ -95,7 +89,7 @@ export function CopilotModuleShell({
       }}
     >
       <CopilotModuleSidebar
-        collapsed={hydrated ? collapsed : false}
+        collapsed={hydrated ? collapsed : true}
         onToggleCollapsed={toggleCollapsed}
         groups={navItemGroups}
         basePath={basePath}
