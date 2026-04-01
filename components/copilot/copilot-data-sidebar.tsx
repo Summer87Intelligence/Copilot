@@ -1,0 +1,416 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+import { CopilotDataTrainingBlock } from "@/components/copilot/copilot-data-training-block";
+import { CopilotGhostButton } from "@/components/copilot/copilot-ui";
+import type { CopilotSeverity } from "@/lib/copilot-alerts-evidence-mock";
+import type { DataEntity, DataRow } from "@/lib/copilot-data";
+import { DATA_TRAINING } from "@/lib/copilot-data-integrity";
+import {
+  formatCopilotDataCell,
+  sharedObligationPaymentStatusPillClass,
+} from "@/lib/copilot-format";
+import {
+  getProtoCompanyById,
+  getProtoContactsByCompany,
+  getProtoInvoiceById,
+  getProtoInvoicesByCompany,
+  getProtoPaymentsByCompany,
+  getProtoReceiptsByCompany,
+  getProtoReceiptsByInvoice,
+} from "@/lib/copilot-data";
+
+function rowTitle(row: DataRow): string {
+  return String(
+    row.name ??
+      row.full_name ??
+      row.invoice_number ??
+      row.payment_number ??
+      row.receipt_number ??
+      row.file_name ??
+      row.id ??
+      "Registro"
+  );
+}
+
+function compactDate(row: DataRow): string {
+  const raw =
+    row.created_at ?? row.issue_date ?? row.due_date ?? row.receipt_date ?? row.payment_date;
+  if (!raw) return "—";
+  const d = new Date(String(raw));
+  return Number.isNaN(d.getTime()) ? String(raw) : d.toLocaleDateString("es-UY");
+}
+
+function compactAmount(row: DataRow): string {
+  const amount = row.amount ?? row.total_amount ?? row.balance_amount;
+  if (amount == null) return "—";
+  const n = Number(amount);
+  return Number.isFinite(n) ? `$ ${n.toLocaleString("es-UY")}` : String(amount);
+}
+
+function CompactList({
+  title,
+  rows,
+  rowEntity,
+}: {
+  title: string;
+  rows: DataRow[];
+  rowEntity: DataEntity;
+}) {
+  return (
+    <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+        {title} ({rows.length})
+      </h4>
+      {rows.length === 0 ? (
+        <p className="text-sm text-[var(--copilot-ink-muted)]">Sin registros relacionados.</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {rows.slice(0, 10).map((r, i) => (
+            <li
+              key={String(r.id ?? i)}
+              className="space-y-1 rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-2 text-sm text-[var(--copilot-ink)]"
+            >
+              <p className="font-medium">{rowTitle(r)}</p>
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--copilot-ink-muted)]">
+                <span className="inline-flex flex-wrap items-center gap-1">
+                  Estado:{" "}
+                  {rowEntity === "payments" ||
+                  rowEntity === "receipts" ||
+                  rowEntity === "tax_obligations" ? (
+                    typeof r.status === "string" && r.status.trim() !== "" ? (
+                      <span
+                        className={sharedObligationPaymentStatusPillClass(r.status)}
+                      >
+                        {formatCopilotDataCell(rowEntity, "status", r.status)}
+                      </span>
+                    ) : (
+                      formatCopilotDataCell(rowEntity, "status", r.status)
+                    )
+                  ) : (
+                    formatCopilotDataCell(rowEntity, "status", r.status)
+                  )}
+                </span>
+                <span>Monto: {compactAmount(r)}</span>
+                <span>Fecha: {compactDate(r)}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+const CRUD_ENTITIES: DataEntity[] = [
+  "companies",
+  "invoices",
+  "receipts",
+  "payments",
+  "tax_obligations",
+];
+
+function sidebarCrudTraining(
+  entity: DataEntity
+): { severity: CopilotSeverity; paragraphs: readonly string[] } | null {
+  switch (entity) {
+    case "companies":
+      return DATA_TRAINING.companies;
+    case "invoices":
+      return DATA_TRAINING.invoices;
+    case "receipts":
+      return DATA_TRAINING.receipts;
+    case "payments":
+      return DATA_TRAINING.payments;
+    case "tax_obligations":
+      return DATA_TRAINING.tax_obligations;
+    default:
+      return null;
+  }
+}
+
+export function CopilotDataSidebar({
+  entity,
+  row,
+  isOpen,
+  onClose,
+  onEdit,
+  onDelete,
+  onRestore,
+  restoreBusy,
+}: {
+  entity: DataEntity;
+  row: DataRow | null;
+  isOpen: boolean;
+  onClose: () => void;
+  /** Solo entidades con CRUD en Datos. */
+  onEdit?: () => void;
+  /** Archivar (registro activo). */
+  onDelete?: () => void;
+  /** Reactivar (registro inactivo). */
+  onRestore?: () => void;
+  /** Deshabilita el botón Reactivar mientras corre la petición. */
+  restoreBusy?: boolean;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [company, setCompany] = useState<DataRow | null>(null);
+  const [contacts, setContacts] = useState<DataRow[]>([]);
+  const [invoices, setInvoices] = useState<DataRow[]>([]);
+  const [receipts, setReceipts] = useState<DataRow[]>([]);
+  const [payments, setPayments] = useState<DataRow[]>([]);
+  const [invoice, setInvoice] = useState<DataRow | null>(null);
+
+  const baseFields = useMemo(() => {
+    if (!row) return [] as Array<[string, unknown]>;
+    const keys = Object.keys(row).slice(0, 8);
+    return keys.map((k) => [k, row[k]] as [string, unknown]);
+  }, [row]);
+
+  useEffect(() => {
+    if (!isOpen || !row) return;
+
+    let cancelled = false;
+    const run = async () => {
+      setLoading(true);
+      setError(null);
+      setCompany(null);
+      setContacts([]);
+      setInvoices([]);
+      setReceipts([]);
+      setPayments([]);
+      setInvoice(null);
+      try {
+        if (entity === "companies") {
+          const companyId = String(row.id ?? "");
+          const [cts, inv, rec, pay] = await Promise.all([
+            getProtoContactsByCompany(companyId),
+            getProtoInvoicesByCompany(companyId),
+            getProtoReceiptsByCompany(companyId),
+            getProtoPaymentsByCompany(companyId),
+          ]);
+          if (cancelled) return;
+          setContacts(cts);
+          setInvoices(inv);
+          setReceipts(rec);
+          setPayments(pay);
+        } else if (entity === "invoices") {
+          const companyId = String(row.company_id ?? "");
+          const invoiceId = String(row.id ?? "");
+          const [comp, rec] = await Promise.all([
+            companyId ? getProtoCompanyById(companyId) : Promise.resolve(null),
+            getProtoReceiptsByInvoice(invoiceId),
+          ]);
+          if (cancelled) return;
+          setCompany(comp);
+          setReceipts(rec);
+        } else if (entity === "contacts") {
+          const companyId = String(row.company_id ?? "");
+          if (companyId) {
+            const comp = await getProtoCompanyById(companyId);
+            if (cancelled) return;
+            setCompany(comp);
+          }
+        } else if (entity === "receipts") {
+          const companyId = String(row.company_id ?? "");
+          const invoiceId = String(row.invoice_id ?? "");
+          const [comp, inv] = await Promise.all([
+            companyId ? getProtoCompanyById(companyId) : Promise.resolve(null),
+            invoiceId ? getProtoInvoiceById(invoiceId) : Promise.resolve(null),
+          ]);
+          if (cancelled) return;
+          setCompany(comp);
+          setInvoice(inv);
+        } else if (entity === "payments") {
+          const companyId = String(row.company_id ?? "");
+          if (companyId) {
+            const comp = await getProtoCompanyById(companyId);
+            if (cancelled) return;
+            setCompany(comp);
+          }
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "No se pudieron cargar relaciones.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [entity, isOpen, row]);
+
+  if (!isOpen || !row) return null;
+
+  const rowInactive = row.is_active === false;
+  const crudTip = CRUD_ENTITIES.includes(entity) ? sidebarCrudTraining(entity) : null;
+
+  return (
+    <>
+      <button
+        type="button"
+        className="fixed inset-0 z-30 bg-[rgba(19,23,22,0.24)]"
+        onClick={onClose}
+        aria-label="Cerrar panel de datos"
+      />
+      <aside className="fixed inset-y-0 right-0 z-40 flex w-full max-w-xl flex-col border-l border-[var(--copilot-border)] bg-[var(--copilot-card)] shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-[var(--copilot-border)] px-5 py-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+              Detalle {entity}
+            </p>
+            <h3 className="mt-1 text-lg font-semibold text-[var(--copilot-ink)]">{rowTitle(row)}</h3>
+          </div>
+          <CopilotGhostButton onClick={onClose} className="px-3 py-1.5">
+            Cerrar
+          </CopilotGhostButton>
+        </div>
+
+        <div className="flex-1 space-y-4 overflow-auto px-5 py-4">
+          {error ? (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
+              {error}
+            </div>
+          ) : null}
+
+          {crudTip ? (
+            <CopilotDataTrainingBlock
+              title="Capacitación · impacto de este registro"
+              severity={crudTip.severity}
+              paragraphs={crudTip.paragraphs}
+            />
+          ) : null}
+
+          <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+              Datos básicos
+            </h4>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {baseFields.map(([k, v]) => (
+                <div key={k} className="rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                    {k}
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--copilot-ink)]">
+                    {formatCopilotDataCell(entity, k, v)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {loading ? (
+            <p className="text-sm text-[var(--copilot-ink-muted)]">Cargando relaciones…</p>
+          ) : null}
+
+          {entity === "companies" ? (
+            <>
+              <CompactList title="Contactos relacionados" rows={contacts} rowEntity="contacts" />
+              <CompactList title="Facturas relacionadas" rows={invoices} rowEntity="invoices" />
+              <CompactList title="Recibos relacionados" rows={receipts} rowEntity="receipts" />
+              <CompactList title="Pagos relacionados" rows={payments} rowEntity="payments" />
+            </>
+          ) : null}
+
+          {entity === "invoices" ? (
+            <>
+              <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                  Empresa
+                </h4>
+                <p className="text-sm text-[var(--copilot-ink)]">
+                  {company ? rowTitle(company) : "Sin empresa asociada."}
+                </p>
+              </section>
+              <CompactList title="Recibos asociados" rows={receipts} rowEntity="receipts" />
+            </>
+          ) : null}
+
+          {entity === "payments" ? (
+            <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                Empresa
+              </h4>
+              <p className="text-sm text-[var(--copilot-ink)]">
+                {company ? rowTitle(company) : "Sin empresa asociada."}
+              </p>
+            </section>
+          ) : null}
+
+          {entity === "contacts" ? (
+            <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                Empresa
+              </h4>
+              <p className="text-sm text-[var(--copilot-ink)]">
+                {company ? rowTitle(company) : "Sin empresa asociada."}
+              </p>
+            </section>
+          ) : null}
+
+          {entity === "receipts" ? (
+            <>
+              <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                  Empresa
+                </h4>
+                <p className="text-sm text-[var(--copilot-ink)]">
+                  {company ? rowTitle(company) : "Sin empresa asociada."}
+                </p>
+              </section>
+              <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                  Factura
+                </h4>
+                <p className="text-sm text-[var(--copilot-ink)]">
+                  {invoice ? rowTitle(invoice) : "Sin factura relacionada."}
+                </p>
+              </section>
+            </>
+          ) : null}
+
+          {entity === "tax_obligations" ? (
+            <p className="text-xs text-[var(--copilot-ink-muted)]">
+              Obligación fiscal del prototipo. Los pagos asociados viven en{" "}
+              <code className="rounded bg-[rgba(44,40,37,0.06)] px-1">proto_tax_payments</code>.
+            </p>
+          ) : null}
+
+          {CRUD_ENTITIES.includes(entity) && onEdit && (onDelete || onRestore) ? (
+            <div className="flex flex-wrap gap-2 border-t border-[var(--copilot-border)] pt-4">
+              <CopilotGhostButton type="button" className="px-3 py-2" onClick={onEdit}>
+                Editar
+              </CopilotGhostButton>
+              {rowInactive && onRestore ? (
+                <button
+                  type="button"
+                  disabled={restoreBusy}
+                  onClick={onRestore}
+                  className="rounded-xl border border-[rgba(31,107,74,0.35)] bg-[var(--copilot-accent-soft)] px-3 py-2 text-sm font-semibold text-[var(--copilot-accent)] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {restoreBusy ? "Reactivando…" : "Reactivar"}
+                </button>
+              ) : null}
+              {!rowInactive && onDelete ? (
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  className="rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--copilot-ink)] transition hover:bg-white/80"
+                >
+                  Archivar
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </aside>
+    </>
+  );
+}

@@ -9,4 +9,6 @@ export type InitiativeRow = {
   created_at: string;
   /** Pipeline: `new` → `decision_made` (u otros estados futuros). */
   processing_stage?: string | null;
+  /** Día civil Montevideo; clave de deduplicación con company/source/trigger. */
+  dedupe_local_date?: string | null;
 };

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
+import { CopilotActionsEvidenceDrawer } from "@/components/copilot/copilot-actions-evidence-drawer";
+import { CopilotInteractiveText } from "@/components/copilot/copilot-interactive-text";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { CopilotReadingKey } from "@/components/copilot/copilot-reading-key";
 import {
@@ -13,6 +15,11 @@ import {
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
 import type { ActionListItem } from "@/lib/ai/action-types";
+import {
+  mapActionChannel,
+  mapActionTypeLabel,
+  mapExecutionStatus,
+} from "@/lib/copilot-format";
 import type { OutcomeTypeValue } from "@/lib/ai/outcome-types";
 
 function statusTone(
@@ -50,6 +57,10 @@ export default function CopilotAccionesPage() {
   );
   const [saleExpandId, setSaleExpandId] = useState<string | null>(null);
   const [saleAmount, setSaleAmount] = useState("");
+  const [evidenceAction, setEvidenceAction] = useState<ActionListItem | null>(
+    null
+  );
+  const [isEvidenceOpen, setIsEvidenceOpen] = useState(false);
 
   const fetchActions = useCallback(async () => {
     setError(null);
@@ -111,6 +122,9 @@ export default function CopilotAccionesPage() {
       prev.map((x) =>
         x.id === actionId ? { ...x, execution_status: status } : x
       )
+    );
+    setEvidenceAction((prev) =>
+      prev?.id === actionId ? { ...prev, execution_status: status } : prev
     );
   };
 
@@ -234,28 +248,60 @@ export default function CopilotAccionesPage() {
               {actions.map((a) => {
                 const pending = a.execution_status.toLowerCase() === "pending";
                 const busy = submittingActionId === a.id;
+                const evidenceActive =
+                  isEvidenceOpen && evidenceAction?.id === a.id;
                 return (
                   <li
                     key={a.id}
-                    className="rounded-2xl border border-[var(--copilot-border)] bg-white/85 px-4 py-4 shadow-sm"
+                    className={`rounded-2xl border border-[var(--copilot-border)] bg-white/85 px-4 py-4 shadow-sm ${
+                      evidenceActive
+                        ? "ring-2 ring-[rgba(31,107,74,0.22)]"
+                        : ""
+                    }`}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-[var(--copilot-ink)]">
+                        <CopilotInteractiveText
+                          icon="panel"
+                          layout="block"
+                          className="font-semibold"
+                          onClick={() => {
+                            setEvidenceAction(a);
+                            setIsEvidenceOpen(true);
+                          }}
+                        >
                           {a.company_name ?? "Empresa (sin dato)"}
-                        </p>
+                        </CopilotInteractiveText>
                         <p className="mt-1 text-xs uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                          {a.action_type} · {a.channel}
+                          {mapActionTypeLabel(a.action_type)} ·{" "}
+                          {mapActionChannel(a.channel)}
                         </p>
+                        {evidenceActive ? (
+                          <span className="mt-2 inline-block rounded-full bg-[var(--copilot-accent-soft)] px-2 py-0.5 text-[11px] font-semibold text-[var(--copilot-accent)]">
+                            Respaldo abierto
+                          </span>
+                        ) : null}
                         <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
                           {a.action_payload?.suggested_message ?? "—"}
                         </p>
                         <p className="mt-2 text-xs text-[var(--copilot-ink-muted)]">
                           {formatDate(a.created_at)}
                         </p>
+                        <div className="mt-3">
+                          <CopilotGhostButton
+                            type="button"
+                            className="text-xs"
+                            onClick={() => {
+                              setEvidenceAction(a);
+                              setIsEvidenceOpen(true);
+                            }}
+                          >
+                            Ver respaldo
+                          </CopilotGhostButton>
+                        </div>
                       </div>
                       <CopilotBadge tone={statusTone(a.execution_status)}>
-                        {a.execution_status}
+                        {mapExecutionStatus(a.execution_status)}
                       </CopilotBadge>
                     </div>
 
@@ -368,6 +414,12 @@ export default function CopilotAccionesPage() {
           )}
         </CopilotCard>
       </div>
+
+      <CopilotActionsEvidenceDrawer
+        action={evidenceAction}
+        isOpen={isEvidenceOpen && evidenceAction != null}
+        onClose={() => setIsEvidenceOpen(false)}
+      />
     </div>
   );
 }

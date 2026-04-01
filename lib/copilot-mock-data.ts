@@ -234,15 +234,15 @@ export const MOCK_SCENARIOS = [
 export const MOCK_INSIGHTS = [
   {
     id: "i1",
-    title: "La cobranza vencida explica gran parte del riesgo de caja",
+    title: "Concentración alta en pocos clientes",
     priority: "Alta",
     date: "31 mar 2026",
-    category: "Liquidez",
+    category: "Riesgo",
     status: "Activo",
   },
   {
     id: "i2",
-    title: "Gastos administrativos fuera de banda histórica",
+    title: "Crecimiento de gastos indirectos fuera de tendencia",
     priority: "Media",
     date: "28 mar 2026",
     category: "Costos",
@@ -250,11 +250,19 @@ export const MOCK_INSIGHTS = [
   },
   {
     id: "i3",
-    title: "Oportunidad: renegociar plazo con proveedor clave",
+    title: "Mejora de margen en un segmento clave",
     priority: "Media",
     date: "25 mar 2026",
-    category: "Proveedores",
-    status: "Cerrado",
+    category: "Rentabilidad",
+    status: "Activo",
+  },
+  {
+    id: "i4",
+    title: "Caída de ventas en un canal",
+    priority: "Alta",
+    date: "22 mar 2026",
+    category: "Ventas",
+    status: "Activo",
   },
 ];
 

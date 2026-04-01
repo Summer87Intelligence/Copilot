@@ -20,6 +20,11 @@ export function isNavActiveForBase(pathname: string, href: string, basePath: str
   return p === h || p.startsWith(`${h}/`);
 }
 
+const toggleBtnClass = (variant: "demo" | "prototype") =>
+  variant === "demo"
+    ? "rounded-lg p-2 text-amber-900/70 transition hover:bg-white/80 hover:text-amber-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+    : "rounded-lg p-2 text-[var(--copilot-ink-muted)] transition hover:bg-white/70 hover:text-[var(--copilot-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]";
+
 export function CopilotModuleSidebar({
   collapsed,
   onToggleCollapsed,
@@ -51,18 +56,22 @@ export function CopilotModuleSidebar({
 
   return (
     <aside
-      className={`flex h-full shrink-0 flex-col border-r transition-[width] duration-200 ease-out ${
+      className={`flex h-full shrink-0 flex-col overflow-hidden border-r transition-[width] duration-200 ease-out ${
         variant === "demo"
           ? "border-amber-200/80 bg-[var(--demo-sidebar)]"
           : "border-[var(--copilot-border)] bg-[var(--copilot-sidebar)]"
-      } ${collapsed ? "w-[72px]" : "w-[260px]"}`}
+      } ${collapsed ? "w-16" : "w-[260px]"}`}
     >
       <div
-        className={`flex items-center gap-2 border-b px-3 py-4 ${
+        className={`flex border-b ${
           variant === "demo"
             ? "border-amber-200/80 bg-amber-50/50"
             : "border-[var(--copilot-border)] bg-[rgba(255,255,255,0.35)]"
-        } ${collapsed ? "justify-center" : ""}`}
+        } ${
+          collapsed
+            ? "flex-col items-center gap-2 px-2 py-3"
+            : "items-center gap-2 px-3 py-4"
+        }`}
       >
         <div
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconWrapClass}`}
@@ -70,26 +79,47 @@ export function CopilotModuleSidebar({
           <Sparkles className="h-5 w-5" aria-hidden />
         </div>
         {!collapsed ? (
-          <div className="min-w-0">
-            <p
-              className={`truncate text-sm font-semibold ${
-                variant === "demo" ? "text-amber-950" : "text-[var(--copilot-ink)]"
-              }`}
+          <>
+            <div className="min-w-0 flex-1">
+              <p
+                className={`truncate text-sm font-semibold ${
+                  variant === "demo" ? "text-amber-950" : "text-[var(--copilot-ink)]"
+                }`}
+              >
+                {brandTitle}
+              </p>
+              <p
+                className={`truncate text-xs ${
+                  variant === "demo" ? "text-amber-800/85" : "text-[var(--copilot-ink-muted)]"
+                }`}
+              >
+                {brandSubtitle}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onToggleCollapsed}
+              aria-expanded={true}
+              aria-label="Colapsar menú lateral"
+              className={toggleBtnClass(variant)}
             >
-              {brandTitle}
-            </p>
-            <p
-              className={`truncate text-xs ${
-                variant === "demo" ? "text-amber-800/85" : "text-[var(--copilot-ink-muted)]"
-              }`}
-            >
-              {brandSubtitle}
-            </p>
-          </div>
-        ) : null}
+              <ChevronLeft className="h-5 w-5 shrink-0" aria-hidden />
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            aria-expanded={false}
+            aria-label="Expandir menú lateral"
+            className={toggleBtnClass(variant)}
+          >
+            <ChevronRight className="h-5 w-5 shrink-0" aria-hidden />
+          </button>
+        )}
       </div>
 
-      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
+      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden p-2">
         {groups.map((items, groupIndex) => (
           <Fragment key={groupIndex}>
             {groupIndex > 0 ? (
@@ -129,7 +159,7 @@ export function CopilotModuleSidebar({
                       : variant === "demo"
                         ? "text-amber-900/70 hover:bg-white/70 hover:text-amber-950"
                         : "text-[var(--copilot-ink-muted)] hover:bg-white/60 hover:text-[var(--copilot-ink)]"
-                  } ${collapsed ? "justify-center px-2" : ""}`}
+                  } ${collapsed ? "justify-center px-0" : ""}`}
                 >
                   <Icon
                     className={`h-5 w-5 shrink-0 ${active ? accentActive : ""}`}
@@ -146,33 +176,6 @@ export function CopilotModuleSidebar({
           </Fragment>
         ))}
       </nav>
-
-      <div
-        className={`border-t p-2 ${
-          variant === "demo" ? "border-amber-200/80" : "border-[var(--copilot-border)]"
-        }`}
-      >
-        <button
-          type="button"
-          onClick={onToggleCollapsed}
-          aria-expanded={!collapsed}
-          aria-label={collapsed ? "Expandir menú lateral" : "Colapsar menú lateral"}
-          className={`flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-            variant === "demo"
-              ? "text-amber-900/70 hover:bg-white/80 hover:text-amber-950"
-              : "text-[var(--copilot-ink-muted)] hover:bg-white/70 hover:text-[var(--copilot-ink)]"
-          }`}
-        >
-          {collapsed ? (
-            <ChevronRight className="h-5 w-5" aria-hidden />
-          ) : (
-            <>
-              <ChevronLeft className="h-5 w-5 shrink-0" aria-hidden />
-              <span className="flex-1 text-left">Ocultar menú</span>
-            </>
-          )}
-        </button>
-      </div>
     </aside>
   );
 }

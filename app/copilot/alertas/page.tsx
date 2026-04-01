@@ -1,18 +1,37 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { useCopilotAlerts } from "@/components/copilot/copilot-alerts-context";
+import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
+import { CopilotTaxEvidenceDrawer } from "@/components/copilot/copilot-tax-evidence-drawer";
+import { copilotInteractiveTextGroupAffordance } from "@/components/copilot/copilot-interactive-text";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { CopilotReadingKey } from "@/components/copilot/copilot-reading-key";
 import {
   CopilotBadge,
   CopilotCard,
+  CopilotGhostButton,
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
-import { MOCK_ALERTS, MOCK_ALERTS_SUMMARY } from "@/lib/copilot-mock-data";
+import { mapAlertCategory } from "@/lib/copilot-format";
+import { COPILOT_EMPTY_COPY } from "@/lib/copilot-empty-state";
 
 type PriorityFilter = "all" | "critical" | "high" | "medium";
-type TypeFilter = "all" | (typeof MOCK_ALERTS)[number]["type"];
+type TypeFilter =
+  | "all"
+  | "fiscalidad"
+  | "liquidez"
+  | "cobertura"
+  | "conciliacion";
 
 const priorityLabel: Record<Exclude<PriorityFilter, "all">, string> = {
   critical: "Crítica",
@@ -20,20 +39,61 @@ const priorityLabel: Record<Exclude<PriorityFilter, "all">, string> = {
   medium: "Media",
 };
 
-export default function CopilotAlertasPage() {
+function CopilotAlertasPageContent() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [priority, setPriority] = useState<PriorityFilter>("all");
   const [type, setType] = useState<TypeFilter>("all");
-  const [selectedId, setSelectedId] = useState(MOCK_ALERTS[0]?.id ?? "");
+  const {
+    items: allAlerts,
+    fiscalError: fiscalLoadError,
+    predictiveError: predictiveLoadError,
+  } = useCopilotAlerts();
+  const [selectedId, setSelectedId] = useState("");
+  const [isEvidenceOpen, setIsEvidenceOpen] = useState(false);
+
+  useLayoutEffect(() => {
+    const raw = searchParams.get("priority");
+    if (raw === "critical" || raw === "high" || raw === "medium") {
+      setPriority(raw);
+    } else {
+      setPriority("all");
+    }
+  }, [searchParams]);
+
+  const setPriorityFilter = useCallback(
+    (id: PriorityFilter) => {
+      setPriority(id);
+      const next = new URLSearchParams(searchParams.toString());
+      if (id === "all") {
+        next.delete("priority");
+      } else {
+        next.set("priority", id);
+      }
+      const q = next.toString();
+      router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
+
+  const summaryCounts = useMemo(() => {
+    const fc = { critical: 0, high: 0, medium: 0 };
+    for (const a of allAlerts) {
+      fc[a.priority] += 1;
+    }
+    return fc;
+  }, [allAlerts]);
 
   const filtered = useMemo(() => {
-    return MOCK_ALERTS.filter((a) => {
+    return allAlerts.filter((a) => {
       if (priority !== "all" && a.priority !== priority) return false;
       if (type !== "all" && a.type !== type) return false;
       return true;
     });
-  }, [priority, type]);
+  }, [allAlerts, priority, type]);
 
-  /** ID efectivo en la lista filtrada: selección del usuario si sigue visible; si no, la primera fila. */
   const effectiveSelectedId = useMemo(() => {
     if (filtered.length === 0) return null;
     if (filtered.some((a) => a.id === selectedId)) return selectedId;
@@ -44,6 +104,28 @@ export default function CopilotAlertasPage() {
     if (effectiveSelectedId == null) return null;
     return filtered.find((a) => a.id === effectiveSelectedId) ?? null;
   }, [filtered, effectiveSelectedId]);
+
+  useEffect(() => {
+    if (filtered.length === 0) {
+      setIsEvidenceOpen(false);
+      return;
+    }
+    if (filtered.some((a) => a.id === selectedId)) return;
+    setIsEvidenceOpen(false);
+    setSelectedId(filtered[0].id);
+  }, [filtered, selectedId]);
+
+  useEffect(() => {
+    const qp = searchParams.get("priority");
+    if (qp !== "critical" && qp !== "high" && qp !== "medium") return;
+    if (!effectiveSelectedId || filtered.length === 0) return;
+    const t = window.setTimeout(() => {
+      document
+        .getElementById(`copilot-alert-card-${effectiveSelectedId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [searchParams, effectiveSelectedId, filtered.length]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -68,7 +150,7 @@ export default function CopilotAlertasPage() {
               Críticas
             </p>
             <p className="mt-2 text-3xl font-semibold text-rose-950">
-              {MOCK_ALERTS_SUMMARY.critical}
+              {summaryCounts.critical}
             </p>
             <p className="mt-1 text-sm text-rose-900/70">Requieren acción inmediata</p>
           </CopilotCard>
@@ -77,7 +159,7 @@ export default function CopilotAlertasPage() {
               Altas
             </p>
             <p className="mt-2 text-3xl font-semibold text-amber-950">
-              {MOCK_ALERTS_SUMMARY.high}
+              {summaryCounts.high}
             </p>
             <p className="mt-1 text-sm text-amber-900/70">Seguimiento esta semana</p>
           </CopilotCard>
@@ -86,7 +168,7 @@ export default function CopilotAlertasPage() {
               Medias
             </p>
             <p className="mt-2 text-3xl font-semibold text-[var(--copilot-ink)]">
-              {MOCK_ALERTS_SUMMARY.medium}
+              {summaryCounts.medium}
             </p>
             <p className="mt-1 text-sm text-[var(--copilot-ink-muted)]">
               Monitoreo habitual
@@ -100,6 +182,16 @@ export default function CopilotAlertasPage() {
             subtitle="Refiná la lista sin perder el contexto."
           />
           <div className="flex flex-wrap gap-3">
+            {fiscalLoadError ? (
+              <p className="w-full text-xs text-amber-800/90">
+                Alertas fiscales no disponibles: {fiscalLoadError}
+              </p>
+            ) : null}
+            {predictiveLoadError ? (
+              <p className="w-full text-xs text-amber-800/90">
+                Alertas predictivas no disponibles: {predictiveLoadError}
+              </p>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               <span className="self-center text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Prioridad
@@ -115,7 +207,7 @@ export default function CopilotAlertasPage() {
                 <button
                   key={id}
                   type="button"
-                  onClick={() => setPriority(id)}
+                  onClick={() => setPriorityFilter(id)}
                   className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
                     priority === id
                       ? "bg-[var(--copilot-ink)] text-white"
@@ -134,11 +226,10 @@ export default function CopilotAlertasPage() {
               {(
                 [
                   ["all", "Todos"],
+                  ["fiscalidad", "Fiscalidad"],
                   ["liquidez", "Liquidez"],
-                  ["cobranza", "Cobranza"],
-                  ["gastos", "Gastos"],
-                  ["riesgo", "Riesgo"],
-                  ["ventas", "Ventas"],
+                  ["cobertura", "Cobertura"],
+                  ["conciliacion", "Conciliación"],
                 ] as const
               ).map(([id, label]) => (
                 <button
@@ -162,46 +253,95 @@ export default function CopilotAlertasPage() {
           <div className="space-y-3 lg:col-span-2">
             {filtered.map((a) => {
               const active = a.id === effectiveSelectedId;
+              const evidenceOpenForCard = isEvidenceOpen && a.id === effectiveSelectedId;
               return (
-                <button
+                <div
                   key={a.id}
-                  type="button"
-                  onClick={() => setSelectedId(a.id)}
-                  className={`w-full rounded-2xl border p-4 text-left transition ${
+                  id={`copilot-alert-card-${a.id}`}
+                  className={`w-full scroll-mt-24 rounded-2xl border p-4 text-left transition ${
                     active
                       ? "border-[rgba(31,107,74,0.35)] bg-white shadow-[var(--copilot-shadow)] ring-1 ring-[rgba(31,107,74,0.12)]"
                       : "border-[var(--copilot-border)] bg-[var(--copilot-card)] hover:bg-white"
-                  }`}
+                  } ${evidenceOpenForCard ? "ring-2 ring-[rgba(31,107,74,0.22)]" : ""}`}
                 >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <CopilotBadge
-                      tone={
-                        a.priority === "critical"
-                          ? "danger"
-                          : a.priority === "high"
-                            ? "warning"
-                            : "neutral"
-                      }
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(a.id)}
+                    className="group w-full text-left"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CopilotBadge
+                        tone={
+                          a.priority === "critical"
+                            ? "danger"
+                            : a.priority === "high"
+                              ? "warning"
+                              : "neutral"
+                        }
+                      >
+                        {priorityLabel[a.priority]}
+                      </CopilotBadge>
+                      <span className="text-xs font-medium text-[var(--copilot-ink-muted)]">
+                        {mapAlertCategory(a.type)}
+                      </span>
+                      {evidenceOpenForCard ? (
+                        <span className="rounded-full bg-[var(--copilot-accent-soft)] px-2 py-0.5 text-[11px] font-semibold text-[var(--copilot-accent)]">
+                          Respaldo abierto
+                        </span>
+                      ) : null}
+                    </div>
+                    <p
+                      className={`mt-2 text-sm font-semibold text-[var(--copilot-ink)] ${copilotInteractiveTextGroupAffordance}`}
                     >
-                      {priorityLabel[a.priority]}
-                    </CopilotBadge>
-                    <span className="text-xs font-medium capitalize text-[var(--copilot-ink-muted)]">
-                      {a.type}
-                    </span>
+                      {a.title}
+                    </p>
+                    <p className="mt-1 text-sm text-[var(--copilot-ink-muted)]">
+                      {a.summary}
+                    </p>
+                  </button>
+                  <div className="mt-3">
+                    {a.obligationId ? (
+                      <CopilotGhostButton
+                        onClick={() => {
+                          setSelectedId(a.id);
+                          setIsEvidenceOpen(true);
+                        }}
+                        className="w-full justify-center py-2"
+                      >
+                        Ver respaldo fiscal
+                      </CopilotGhostButton>
+                    ) : (
+                      <p className="rounded-xl bg-[rgba(44,40,37,0.04)] px-3 py-2 text-center text-xs text-[var(--copilot-ink-muted)]">
+                        Sin obligación asociada: revisá el detalle a la derecha o en
+                        Finanzas / Datos.
+                      </p>
+                    )}
                   </div>
-                  <p className="mt-2 text-sm font-semibold text-[var(--copilot-ink)]">
-                    {a.title}
-                  </p>
-                  <p className="mt-1 text-sm text-[var(--copilot-ink-muted)]">
-                    {a.summary}
-                  </p>
-                </button>
+                </div>
               );
             })}
-            {filtered.length === 0 ? (
-              <p className="text-sm text-[var(--copilot-ink-muted)]">
-                No hay alertas con estos filtros.
-              </p>
+            {allAlerts.length === 0 && (fiscalLoadError || predictiveLoadError) ? (
+              <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
+                {fiscalLoadError ? (
+                  <p>No se pudieron cargar alertas fiscales: {fiscalLoadError}</p>
+                ) : null}
+                {predictiveLoadError ? (
+                  <p>No se pudieron cargar alertas predictivas: {predictiveLoadError}</p>
+                ) : null}
+              </div>
+            ) : filtered.length === 0 ? (
+              allAlerts.length === 0 ? (
+                <CopilotEmptyPanel
+                  title={COPILOT_EMPTY_COPY.alertasPage.title}
+                  paragraphs={COPILOT_EMPTY_COPY.alertasPage.paragraphs}
+                  example={COPILOT_EMPTY_COPY.alertasPage.example}
+                  importance="Las alertas no son decorativas: si no hay filas en la base, la pantalla vacía es la lectura correcta."
+                />
+              ) : (
+                <p className="text-sm text-[var(--copilot-ink-muted)]">
+                  No hay alertas con estos filtros.
+                </p>
+              )
             ) : null}
           </div>
 
@@ -224,12 +364,14 @@ export default function CopilotAlertasPage() {
                   >
                     {priorityLabel[selectedAlert.priority]}
                   </CopilotBadge>
-                  <CopilotBadge tone="neutral">{selectedAlert.type}</CopilotBadge>
+                  <CopilotBadge tone="neutral">
+                    {mapAlertCategory(selectedAlert.type)}
+                  </CopilotBadge>
                 </div>
                 <h3 className="text-lg font-semibold text-[var(--copilot-ink)]">
                   {selectedAlert.title}
                 </h3>
-                <p className="text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
+                <p className="whitespace-pre-line text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
                   {selectedAlert.detail}
                 </p>
                 <div className="rounded-xl border border-dashed border-[var(--copilot-border)] bg-white/60 p-4 text-sm text-[var(--copilot-ink)]">
@@ -238,6 +380,25 @@ export default function CopilotAlertasPage() {
                     Asignar responsable y fecha de seguimiento en la vista Acciones.
                   </p>
                 </div>
+                {selectedAlert.obligationId ? (
+                  <div className="flex items-center justify-between rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--copilot-ink)]">
+                        Ver respaldo y evidencia
+                      </p>
+                      <p className="mt-1 text-sm text-[var(--copilot-ink-muted)]">
+                        Abrí trazabilidad completa: origen, registros, movimientos y
+                        documentos.
+                      </p>
+                    </div>
+                    <CopilotGhostButton
+                      onClick={() => setIsEvidenceOpen(true)}
+                      className="shrink-0 whitespace-nowrap"
+                    >
+                      Ver respaldo fiscal
+                    </CopilotGhostButton>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <div className="rounded-xl border border-dashed border-[var(--copilot-border)] bg-white/50 px-4 py-8 text-center">
@@ -253,6 +414,29 @@ export default function CopilotAlertasPage() {
           </CopilotCard>
         </div>
       </div>
+      <CopilotTaxEvidenceDrawer
+        obligationId={
+          isEvidenceOpen && selectedAlert?.obligationId
+            ? selectedAlert.obligationId
+            : null
+        }
+        isOpen={isEvidenceOpen && Boolean(selectedAlert?.obligationId)}
+        onClose={() => setIsEvidenceOpen(false)}
+      />
     </div>
+  );
+}
+
+export default function CopilotAlertasPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-20 text-sm text-[var(--copilot-ink-muted)] transition-opacity duration-200">
+          Cargando vista de alertas…
+        </div>
+      }
+    >
+      <CopilotAlertasPageContent />
+    </Suspense>
   );
 }

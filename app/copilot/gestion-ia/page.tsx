@@ -2,186 +2,94 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Activity,
-  Bot,
-  Brain,
-  Clock,
-  Cpu,
-  Gavel,
-  History,
-  Layers,
   Loader2,
-  Radio,
-  Sliders,
   Sparkles,
-  Target,
-  TrendingUp,
-  Zap,
+  Workflow,
 } from "lucide-react";
 
-import { OpportunitiesList } from "@/components/copilot/opportunities-list";
+import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
+import { CopilotInitiativeFlowCard } from "@/components/copilot/copilot-initiative-flow-card";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { CopilotReadingKey } from "@/components/copilot/copilot-reading-key";
 import {
-  CopilotBadge,
   CopilotCard,
   CopilotGhostButton,
+  CopilotPrimaryButton,
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
-import type { DecisionRow } from "@/lib/ai/decision-types";
-import type { InitiativeRow } from "@/lib/ai/initiative-types";
-import {
-  MOCK_IA_ACTIVE_AGENTS,
-  MOCK_IA_AUTOMATION_DEFAULTS,
-  MOCK_IA_EXECUTION_HISTORY,
-  MOCK_IA_INTERVENTION_OPTIONS,
-  MOCK_IA_RULES,
-  MOCK_IA_SYSTEM_SUMMARY,
-  type MockIaInterventionLevel,
-} from "@/lib/copilot-ai-mock";
-
-function isSameLocalDay(iso: string): boolean {
-  const a = new Date(iso);
-  const b = new Date();
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
-const summaryCards = [
-  {
-    key: "status",
-    label: "Estado del Copiloto",
-    value: MOCK_IA_SYSTEM_SUMMARY.copilotStatus,
-    icon: Activity,
-    hint: "Operación nominal",
-  },
-  {
-    key: "last",
-    label: "Último análisis",
-    value: MOCK_IA_SYSTEM_SUMMARY.lastAnalysis,
-    icon: Clock,
-    hint: "Pipeline sincronizado",
-  },
-  {
-    key: "agents",
-    label: "Agentes activos",
-    value: String(MOCK_IA_SYSTEM_SUMMARY.activeAgents),
-    icon: Bot,
-    hint: "En ventana actual",
-  },
-  {
-    key: "ritmo",
-    label: "Ritmo de revisiones (demo)",
-    value: String(MOCK_IA_SYSTEM_SUMMARY.decisionsToday),
-    icon: Cpu,
-    hint: "Referencia visual del módulo",
-  },
-] as const;
+import type {
+  InitiativeFlowItem,
+  InitiativeFlowStatus,
+} from "@/lib/ai/initiative-flow-types";
+import { COPILOT_EMPTY_COPY } from "@/lib/copilot-empty-state";
 
 export default function CopilotGestionIaPage() {
-  const [autoDaily, setAutoDaily] = useState<boolean>(
-    MOCK_IA_AUTOMATION_DEFAULTS.dailyAnalysis
-  );
-  const [autoDecisions, setAutoDecisions] = useState<boolean>(
-    MOCK_IA_AUTOMATION_DEFAULTS.autoDecisions
-  );
-  const [prioritizeImpact, setPrioritizeImpact] = useState<boolean>(
-    MOCK_IA_AUTOMATION_DEFAULTS.prioritizeByImpact
-  );
-  const [intervention, setIntervention] = useState<MockIaInterventionLevel>(
-    "recomendaciones_activas"
-  );
-
-  const [initiatives, setInitiatives] = useState<InitiativeRow[]>([]);
+  const [items, setItems] = useState<InitiativeFlowItem[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [loadingList, setLoadingList] = useState(true);
+  const [loadingFlow, setLoadingFlow] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
-  const [decisions, setDecisions] = useState<DecisionRow[]>([]);
-  const [loadingDecisions, setLoadingDecisions] = useState(true);
   const [decisionError, setDecisionError] = useState<string | null>(null);
   const [processingDecisions, setProcessingDecisions] = useState(false);
   const [lastDecisionResult, setLastDecisionResult] = useState<string | null>(
     null
   );
 
-  const fetchDecisions = useCallback(async () => {
-    setDecisionError(null);
-    setLoadingDecisions(true);
-    try {
-      const res = await fetch("/api/copilot/decisions?limit=300");
-      const json = (await res.json()) as {
-        decisions?: DecisionRow[];
-        error?: string;
-      };
-      if (!res.ok) {
-        setDecisionError(json.error ?? "No se pudieron cargar las decisiones.");
-        setDecisions([]);
-        return;
-      }
-      setDecisions(json.decisions ?? []);
-    } catch {
-      setDecisionError("Error de red al cargar decisiones.");
-      setDecisions([]);
-    } finally {
-      setLoadingDecisions(false);
-    }
-  }, []);
-
-  const fetchInitiatives = useCallback(async () => {
+  const fetchFlow = useCallback(async () => {
     setLoadError(null);
-    setLoadingList(true);
+    setLoadingFlow(true);
     try {
-      const res = await fetch("/api/copilot/initiatives?limit=120");
+      const res = await fetch("/api/copilot/initiatives/flow?limit=120");
       const json = (await res.json()) as {
-        initiatives?: InitiativeRow[];
+        items?: InitiativeFlowItem[];
         error?: string;
       };
       if (!res.ok) {
-        setLoadError(json.error ?? "No se pudieron cargar las iniciativas.");
-        setInitiatives([]);
+        setLoadError(json.error ?? "No se pudo cargar el flujo operativo.");
+        setItems([]);
         return;
       }
-      setInitiatives(json.initiatives ?? []);
+      setItems(json.items ?? []);
     } catch {
-      setLoadError("Error de red al cargar iniciativas.");
-      setInitiatives([]);
+      setLoadError("Error de red al cargar trazabilidad operativa.");
+      setItems([]);
     } finally {
-      setLoadingList(false);
+      setLoadingFlow(false);
     }
   }, []);
 
   useEffect(() => {
-    void Promise.all([fetchInitiatives(), fetchDecisions()]);
-  }, [fetchInitiatives, fetchDecisions]);
+    void fetchFlow();
+  }, [fetchFlow]);
 
-  const todayStats = useMemo(() => {
-    const today = initiatives.filter((i) => isSameLocalDay(i.created_at));
-    const count = today.length;
-    const avg =
-      count > 0
-        ? today.reduce((s, i) => s + Number(i.score), 0) / count
-        : null;
-    const sources = new Set(today.map((i) => i.source)).size;
+  const counters = useMemo(() => {
+    const byStatus = items.reduce<Record<InitiativeFlowStatus, number>>(
+      (acc, item) => {
+        acc[item.flow_status] += 1;
+        return acc;
+      },
+      {
+        new: 0,
+        decision_generated: 0,
+        action_pending: 0,
+        executed: 0,
+        with_outcome: 0,
+        closed_no_response: 0,
+      }
+    );
     return {
-      count,
-      avg,
-      sources,
+      newOpportunities: byStatus.new,
+      decisionsGenerated:
+        byStatus.decision_generated +
+        byStatus.action_pending +
+        byStatus.executed +
+        byStatus.with_outcome +
+        byStatus.closed_no_response,
+      pendingAction: byStatus.action_pending,
+      withOutcome: byStatus.with_outcome + byStatus.closed_no_response,
     };
-  }, [initiatives]);
-
-  const topOpportunities = useMemo(
-    () => initiatives.slice(0, 10),
-    [initiatives]
-  );
-
-  const decisionsTodayCount = useMemo(() => {
-    return decisions.filter((d) => isSameLocalDay(d.created_at)).length;
-  }, [decisions]);
+  }, [items]);
 
   const handleGenerate = async () => {
     setActionError(null);
@@ -195,6 +103,8 @@ export default function CopilotGestionIaPage() {
         inserted?: number;
         omitted?: number;
         error?: string;
+        dedupe_date?: string;
+        timezone?: string;
       };
       if (!res.ok) {
         setActionError(json.error ?? "No se pudo generar el lote.");
@@ -202,10 +112,23 @@ export default function CopilotGestionIaPage() {
       }
       const ins = json.inserted ?? 0;
       const om = json.omitted ?? 0;
-      setLastResult(
-        `Insertadas: ${ins}. Omitidas (duplicado hoy): ${om}.`
-      );
-      await fetchInitiatives();
+      const day = json.dedupe_date ?? "hoy";
+      if (ins === 0 && om > 0) {
+        setLastResult(
+          `No se insertó ninguna fila nueva: las ${om} oportunidades candidatas ya existían para el ${day} (misma empresa, fuente y disparador).`
+        );
+      } else if (ins > 0 && om > 0) {
+        setLastResult(
+          `Insertadas: ${ins}. Omitidas (ya existían hoy, ${day}): ${om}.`
+        );
+      } else if (ins > 0) {
+        setLastResult(`Insertadas: ${ins} oportunidades nuevas (día ${day}).`);
+      } else {
+        setLastResult(
+          `Sin cambios: no había candidatas en el lote (insertadas: 0, omitidas: 0).`
+        );
+      }
+      await fetchFlow();
     } catch {
       setActionError("Error de red al generar oportunidades.");
     } finally {
@@ -240,7 +163,7 @@ export default function CopilotGestionIaPage() {
       if (json.warning) {
         setDecisionError(json.warning);
       }
-      await Promise.all([fetchInitiatives(), fetchDecisions()]);
+      await fetchFlow();
     } catch {
       setDecisionError("Error de red al procesar decisiones.");
     } finally {
@@ -252,13 +175,13 @@ export default function CopilotGestionIaPage() {
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
         title="Gestión IA"
-        description="Prototipo operativo — Supabase, Opportunity Engine y Decision Engine. La demo aislada está en /demo/gestion-ia."
+        description="Centro operativo del copiloto: trazabilidad completa initiative → decision → action → outcome."
         readingKey={
           <CopilotReadingKey
             lines={[
-              "No estoy viendo datos sueltos.",
-              "El sistema detecta prioridades.",
-              "Esto me ayuda a enfocar.",
+              "Veo el pipeline completo.",
+              "Detecto cuellos de botella rápido.",
+              "Ejecuto con contexto, no a ciegas.",
             ]}
           />
         }
@@ -270,7 +193,7 @@ export default function CopilotGestionIaPage() {
         }
       />
 
-      <div className="flex-1 space-y-12 overflow-auto px-6 py-8">
+      <div className="flex-1 space-y-8 overflow-auto px-6 py-8">
         {(loadError || actionError || decisionError) && (
           <div
             role="alert"
@@ -280,19 +203,16 @@ export default function CopilotGestionIaPage() {
           </div>
         )}
 
-        {/* Opportunity Engine */}
         <section>
           <CopilotSectionTitle
-            title="Opportunity Engine"
-            subtitle="Primer flujo vivo: generación mock persistida en Supabase — base para evolucionar el motor."
+            title="Centro operativo IA"
+            subtitle="Seguimiento vivo de cada iniciativa desde su origen hasta el resultado."
             action={
               <div className="flex flex-wrap items-center gap-2">
                 <CopilotGhostButton
                   type="button"
                   onClick={() => void handleProcessDecisions()}
-                  disabled={
-                    processingDecisions || loadingList || loadingDecisions
-                  }
+                  disabled={processingDecisions || loadingFlow}
                   className="inline-flex items-center gap-2"
                 >
                   {processingDecisions ? (
@@ -300,17 +220,30 @@ export default function CopilotGestionIaPage() {
                   ) : null}
                   Procesar decisiones IA
                 </CopilotGhostButton>
-                <button
+                <CopilotGhostButton
+                  type="button"
+                  onClick={() => void fetchFlow()}
+                  disabled={loadingFlow}
+                  className="inline-flex items-center gap-2"
+                >
+                  {loadingFlow ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Workflow className="h-4 w-4" aria-hidden />
+                  )}
+                  Actualizar flujo
+                </CopilotGhostButton>
+                <CopilotPrimaryButton
                   type="button"
                   onClick={() => void handleGenerate()}
-                  disabled={generating || loadingList}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)] disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={generating || loadingFlow}
+                  className="inline-flex items-center gap-2"
                 >
                   {generating ? (
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                   ) : null}
                   Generar oportunidades
-                </button>
+                </CopilotPrimaryButton>
               </div>
             }
           />
@@ -329,385 +262,85 @@ export default function CopilotGestionIaPage() {
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <CopilotCard className="flex flex-col gap-2 border-[rgba(31,107,74,0.12)] bg-gradient-to-br from-[var(--copilot-card)] to-white/95">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                  Oportunidades generadas hoy
-                </p>
-                <TrendingUp className="h-4 w-4 text-[var(--copilot-accent)]" aria-hidden />
-              </div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                Oportunidades nuevas
+              </p>
               <p className="text-3xl font-semibold tabular-nums text-[var(--copilot-ink)]">
-                {loadingList ? "…" : todayStats.count}
+                {loadingFlow ? "…" : counters.newOpportunities}
               </p>
               <p className="text-xs text-[var(--copilot-ink-muted)]">
-                Conteo local del día (según hora de tu navegador)
+                Iniciativas aún sin decisión asociada
               </p>
             </CopilotCard>
             <CopilotCard className="flex flex-col gap-2 border-[rgba(31,107,74,0.12)] bg-gradient-to-br from-[var(--copilot-card)] to-white/95">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                  Prioridad promedio
-                </p>
-                <Target className="h-4 w-4 text-[var(--copilot-accent)]" aria-hidden />
-              </div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                Decisiones generadas
+              </p>
               <p className="text-3xl font-semibold tabular-nums text-[var(--copilot-ink)]">
-                {loadingList
-                  ? "…"
-                  : todayStats.avg != null
-                    ? todayStats.avg.toLocaleString("es-AR", {
-                        minimumFractionDigits: 1,
-                        maximumFractionDigits: 1,
-                      })
-                    : "—"}
+                {loadingFlow ? "…" : counters.decisionsGenerated}
               </p>
               <p className="text-xs text-[var(--copilot-ink-muted)]">
-                Promedio de score (hoy)
+                Iniciativas que ya avanzaron a decisión o más
               </p>
             </CopilotCard>
             <CopilotCard className="flex flex-col gap-2 border-[rgba(31,107,74,0.12)] bg-gradient-to-br from-[var(--copilot-card)] to-white/95">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                  Fuentes activas
-                </p>
-                <Layers className="h-4 w-4 text-[var(--copilot-accent)]" aria-hidden />
-              </div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                Pendientes de acción
+              </p>
               <p className="text-3xl font-semibold tabular-nums text-[var(--copilot-ink)]">
-                {loadingList ? "…" : todayStats.sources}
+                {loadingFlow ? "…" : counters.pendingAction}
               </p>
               <p className="text-xs text-[var(--copilot-ink-muted)]">
-                Fuentes distintas (oportunidades de hoy)
+                Ya decididas, esperando ejecución
               </p>
             </CopilotCard>
             <CopilotCard className="flex flex-col gap-2 border-[rgba(31,107,74,0.12)] bg-gradient-to-br from-[var(--copilot-card)] to-white/95">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                  Decisiones generadas hoy
-                </p>
-                <Cpu className="h-4 w-4 text-[var(--copilot-accent)]" aria-hidden />
-              </div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                Con resultado
+              </p>
               <p className="text-3xl font-semibold tabular-nums text-[var(--copilot-ink)]">
-                {loadingDecisions ? "…" : decisionsTodayCount}
+                {loadingFlow ? "…" : counters.withOutcome}
               </p>
               <p className="text-xs text-[var(--copilot-ink-muted)]">
-                Desde tabla decisions (día local)
+                Incluye outcomes positivos y sin respuesta
               </p>
             </CopilotCard>
           </div>
+          {!loadingFlow && items.length === 0 ? (
+            <p className="mt-4 rounded-xl border border-dashed border-[var(--copilot-border)] bg-white/50 px-4 py-3 text-sm text-[var(--copilot-ink-muted)]">
+              Los contadores reflejan solo filas reales en el flujo. Con cero iniciativas
+              no hay pipeline “en marcha”: es el estado esperado hasta que generés
+              oportunidades o cargues datos que alimenten al motor.
+            </p>
+          ) : null}
+        </section>
 
-          <div className="mt-8">
-            <CopilotSectionTitle
-              title="Top oportunidades detectadas"
-              subtitle="Orden: score descendente, luego más recientes (desde Supabase)."
+        <section>
+          <CopilotSectionTitle
+            title="Trazabilidad por iniciativa"
+            subtitle="Vista ejecutiva del flujo completo: iniciativa, decisión, acción y outcome."
+          />
+          {loadingFlow ? (
+            <div className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--copilot-border)] py-14 text-sm text-[var(--copilot-ink-muted)]">
+              <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+              Cargando pipeline…
+            </div>
+          ) : items.length === 0 ? (
+            <CopilotEmptyPanel
+              title={COPILOT_EMPTY_COPY.gestionIa.title}
+              paragraphs={COPILOT_EMPTY_COPY.gestionIa.paragraphs}
+              example={COPILOT_EMPTY_COPY.gestionIa.example}
+              importance="Los botones de arriba siguen disponibles, pero no simulan progreso: sin filas nuevas, el flujo permanece vacío."
             />
-            {loadingList ? (
-              <div className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--copilot-border)] py-14 text-sm text-[var(--copilot-ink-muted)]">
-                <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-                Cargando…
-              </div>
-            ) : (
-              <OpportunitiesList items={topOpportunities} />
-            )}
-          </div>
-        </section>
-
-        {/* Resumen sistema (mock UI) */}
-        <section>
-          <CopilotSectionTitle
-            title="Resumen del sistema IA"
-            subtitle="Indicadores de referencia del módulo (no ligados al motor de oportunidades)."
-          />
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {summaryCards.map((c) => {
-              const Icon = c.icon;
-              return (
-                <CopilotCard
-                  key={c.key}
-                  className="flex flex-col gap-3 border-[rgba(31,107,74,0.12)] bg-gradient-to-br from-[var(--copilot-card)] to-white/90"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                      {c.label}
-                    </p>
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)]">
-                      <Icon className="h-4 w-4" aria-hidden />
-                    </span>
-                  </div>
-                  <p className="text-2xl font-semibold tracking-tight text-[var(--copilot-ink)]">
-                    {c.value}
-                  </p>
-                  <p className="text-xs text-[var(--copilot-ink-muted)]">{c.hint}</p>
-                </CopilotCard>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Agentes activos */}
-        <section>
-          <CopilotSectionTitle
-            title="Agentes activos"
-            subtitle="Especialistas que ejecutan análisis y alimentan decisiones."
-          />
-          <div className="grid gap-4 lg:grid-cols-2">
-            {MOCK_IA_ACTIVE_AGENTS.map((agent) => (
-              <CopilotCard
-                key={agent.id}
-                className="flex flex-col gap-4 border-[var(--copilot-border)] bg-[var(--copilot-card)]"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[rgba(90,75,120,0.1)] text-[rgba(90,75,120,0.95)]">
-                      <Brain className="h-5 w-5" aria-hidden />
-                    </span>
-                    <div>
-                      <h3 className="text-base font-semibold text-[var(--copilot-ink)]">
-                        {agent.name}
-                      </h3>
-                      <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <CopilotBadge tone="success">{agent.status}</CopilotBadge>
-                        <span className="text-xs text-[var(--copilot-ink-muted)]">
-                          {agent.frequency}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 px-4 py-3 text-sm leading-relaxed text-[var(--copilot-ink)]">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                    Último insight
-                  </span>
-                  <p className="mt-2">{agent.lastInsight}</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <CopilotGhostButton type="button">Ver análisis</CopilotGhostButton>
-                  <CopilotGhostButton type="button">Configurar</CopilotGhostButton>
-                </div>
-              </CopilotCard>
-            ))}
-          </div>
-        </section>
-
-        {/* Reglas */}
-        <section>
-          <CopilotSectionTitle
-            title="Reglas inteligentes"
-            subtitle="Condiciones que disparan alertas, insights y acciones — gobierno del copiloto."
-          />
-          <div className="space-y-3">
-            {MOCK_IA_RULES.map((rule) => (
-              <CopilotCard
-                key={rule.id}
-                className="flex flex-col gap-3 border-[var(--copilot-border)] bg-white/80 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
-              >
-                <div className="flex min-w-0 flex-1 gap-3">
-                  <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(44,40,37,0.06)] text-[var(--copilot-ink)]">
-                    <Gavel className="h-5 w-5" aria-hidden />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-[var(--copilot-ink)]">{rule.name}</p>
-                    <p className="mt-1 text-sm text-[var(--copilot-ink-muted)]">
-                      <span className="font-medium text-[var(--copilot-ink)]/80">
-                        Condición:{" "}
-                      </span>
-                      {rule.condition}
-                    </p>
-                    <p className="mt-1 text-sm text-[var(--copilot-ink-muted)]">
-                      <span className="font-medium text-[var(--copilot-ink)]/80">
-                        Acción:{" "}
-                      </span>
-                      {rule.action}
-                    </p>
-                  </div>
-                </div>
-                <div className="shrink-0 sm:pl-2">
-                  <CopilotGhostButton type="button" className="w-full sm:w-auto">
-                    Editar
-                  </CopilotGhostButton>
-                </div>
-              </CopilotCard>
-            ))}
-          </div>
-        </section>
-
-        {/* Automatizaciones */}
-        <section>
-          <CopilotCard className="border-[rgba(31,107,74,0.12)] bg-gradient-to-br from-white/90 to-[#e8f2ec]/35">
-            <CopilotSectionTitle
-              title="Automatizaciones"
-              subtitle="Preferencias de ejecución — mock; sin persistencia aún."
-              action={
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-[rgba(44,40,37,0.06)] px-2.5 py-1 text-xs font-semibold text-[var(--copilot-ink-muted)]">
-                  <Zap className="h-3.5 w-3.5" aria-hidden />
-                  Simulado
-                </span>
-              }
-            />
-            <ul className="divide-y divide-[var(--copilot-border)] rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)]">
-              <AutomationRow
-                label="Ejecutar análisis automático diario"
-                description="Snapshot financiero y lectura ejecutiva al inicio del día."
-                checked={autoDaily}
-                onChange={setAutoDaily}
-              />
-              <AutomationRow
-                label="Generar decisiones automáticamente"
-                description="Propone decisiones en cola; revisión humana recomendada."
-                checked={autoDecisions}
-                onChange={setAutoDecisions}
-              />
-              <AutomationRow
-                label="Priorizar acciones por impacto"
-                description="Ordena Acciones por efecto en caja y riesgo."
-                checked={prioritizeImpact}
-                onChange={setPrioritizeImpact}
-              />
-            </ul>
-          </CopilotCard>
-        </section>
-
-        {/* Historial mock */}
-        <section>
-          <CopilotSectionTitle
-            title="Historial de ejecución IA"
-            subtitle="Actividad reciente del pipeline — sensación de sistema vivo."
-          />
-          <CopilotCard className="border-[var(--copilot-border)] bg-[var(--copilot-card)] p-0">
-            <div className="flex items-center gap-2 border-b border-[var(--copilot-border)] px-5 py-4">
-              <History className="h-4 w-4 text-[var(--copilot-accent)]" aria-hidden />
-              <span className="text-sm font-semibold text-[var(--copilot-ink)]">
-                Últimas ejecuciones
-              </span>
+          ) : (
+            <div className="space-y-3">
+              {items.map((item) => (
+                <CopilotInitiativeFlowCard key={item.initiative.id} item={item} />
+              ))}
             </div>
-            <div className="relative px-5 py-2">
-              <div
-                className="absolute bottom-6 left-[2.125rem] top-6 w-px bg-[var(--copilot-border)]"
-                aria-hidden
-              />
-              <ul className="relative space-y-0">
-                {MOCK_IA_EXECUTION_HISTORY.map((entry, index) => (
-                  <li
-                    key={`${entry.time}-${index}`}
-                    className="flex gap-4 py-4 pl-1"
-                  >
-                    <div className="relative z-[1] flex w-16 shrink-0 justify-center pt-0.5">
-                      <span className="rounded-full bg-white px-2 py-0.5 font-mono text-xs font-semibold text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)]">
-                        {entry.time}
-                      </span>
-                    </div>
-                    <div className="relative z-[1] flex min-h-[2.5rem] flex-1 items-center">
-                      <span className="absolute -left-3 top-1/2 z-[2] h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2 border-white bg-[var(--copilot-accent)] shadow-sm" />
-                      <p className="pl-4 text-sm leading-relaxed text-[var(--copilot-ink)]">
-                        {entry.message}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </CopilotCard>
-        </section>
-
-        {/* Nivel de intervención — botón principal verde es solo “Generar oportunidades” arriba */}
-        <section>
-          <CopilotCard className="border-[rgba(31,107,74,0.15)] bg-white/85">
-            <CopilotSectionTitle
-              title="Nivel de intervención"
-              subtitle="Cuánta autonomía tiene el copiloto al proponer y ordenar trabajo."
-              action={
-                <span className="inline-flex items-center gap-1.5 text-[var(--copilot-ink-muted)]">
-                  <Radio className="h-4 w-4" aria-hidden />
-                  <span className="text-xs font-semibold uppercase tracking-wide">
-                    Política
-                  </span>
-                </span>
-              }
-            />
-            <div className="grid gap-3 sm:grid-cols-2">
-              {MOCK_IA_INTERVENTION_OPTIONS.map((opt) => {
-                const selected = intervention === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setIntervention(opt.id)}
-                    className={`flex flex-col rounded-2xl border p-4 text-left transition ${
-                      selected
-                        ? "border-[rgba(31,107,74,0.45)] bg-[var(--copilot-accent-soft)] ring-1 ring-[rgba(31,107,74,0.2)]"
-                        : "border-[var(--copilot-border)] bg-[var(--copilot-card)] hover:bg-white"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <span
-                        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
-                          selected
-                            ? "border-[var(--copilot-accent)] bg-[var(--copilot-accent)]"
-                            : "border-[var(--copilot-border)] bg-white"
-                        }`}
-                      >
-                        {selected ? (
-                          <span className="h-2 w-2 rounded-full bg-white" />
-                        ) : null}
-                      </span>
-                      <div>
-                        <p className="text-sm font-semibold text-[var(--copilot-ink)]">
-                          {opt.label}
-                        </p>
-                        <p className="mt-1 text-sm text-[var(--copilot-ink-muted)]">
-                          {opt.description}
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--copilot-border)] pt-6">
-              <CopilotGhostButton type="button" className="inline-flex items-center gap-2">
-                <Sliders className="h-4 w-4" aria-hidden />
-                Aplicar nivel de intervención
-              </CopilotGhostButton>
-              <p className="text-xs text-[var(--copilot-ink-muted)]">
-                El botón verde principal de esta pantalla es “Generar oportunidades”.
-              </p>
-            </div>
-          </CopilotCard>
+          )}
         </section>
       </div>
     </div>
-  );
-}
-
-function AutomationRow({
-  label,
-  description,
-  checked,
-  onChange,
-}: {
-  label: string;
-  description: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <li className="flex flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-5">
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-[var(--copilot-ink)]">{label}</p>
-        <p className="mt-1 text-sm text-[var(--copilot-ink-muted)]">{description}</p>
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={`relative h-9 w-16 shrink-0 rounded-full transition ${
-          checked ? "bg-[var(--copilot-accent)]" : "bg-[rgba(44,40,37,0.15)]"
-        }`}
-      >
-        <span
-          className={`absolute top-1 h-7 w-7 rounded-full bg-white shadow transition ${
-            checked ? "left-8" : "left-1"
-          }`}
-        />
-      </button>
-    </li>
   );
 }
