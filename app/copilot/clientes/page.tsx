@@ -6,7 +6,6 @@ import { Loader2 } from "lucide-react";
 import { CopilotInteractiveText } from "@/components/copilot/copilot-interactive-text";
 import { CopilotClientEvidenceDrawer } from "@/components/copilot/copilot-client-evidence-drawer";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import { CopilotReadingKey } from "@/components/copilot/copilot-reading-key";
 import {
   CopilotCard,
   CopilotGhostButton,
@@ -77,11 +76,6 @@ export default function CopilotClientesPage() {
       <CopilotPageHeader
         title="Clientes"
         description="Cartera comercial desde proto_companies, proto_invoices y proto_recibos — facturación, deuda y riesgo en lenguaje de negocio."
-        readingKey={
-          <CopilotReadingKey
-            lines={["Esto es claro.", "Lo entiendo.", "Lo usaría."]}
-          />
-        }
       />
 
       <div className="flex-1 space-y-8 overflow-auto px-6 py-8">

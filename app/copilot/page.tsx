@@ -5,11 +5,8 @@ import Link from "next/link";
 import { Loader2 } from "lucide-react";
 
 import { CopilotTaxEvidenceDrawer } from "@/components/copilot/copilot-tax-evidence-drawer";
-import { CopilotHomeQuickLinks } from "@/components/copilot/copilot-home-quick-links";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import { CopilotReadingKey } from "@/components/copilot/copilot-reading-key";
 import { PeriodSelect } from "@/components/copilot/period-select";
-import { CopilotDifferentiatorStrip } from "@/components/copilot/copilot-differentiator-strip";
 import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
 import {
   CopilotCard,
@@ -245,16 +242,8 @@ export default function CopilotHomePage() {
       <CopilotPageHeader
         eyebrow="Summer87 Copilot"
         title="Inicio"
-        description="Punto de entrada del módulo: lectura sobre datos reales (`proto_*`), alertas fiscales y acceso al motor de oportunidades — sin cifras de demostración cuando la base está vacía."
-        readingKey={
-          <CopilotReadingKey
-            lines={[
-              "Acá empieza todo.",
-              "Entiendo el sistema.",
-              "Sé por dónde avanzar.",
-            ]}
-          />
-        }
+        description={`Gestioná tus clientes y tomá decisiones con información clara.
+La prospección y generación de leads la realizás en Summer87 Leads.`}
         right={
           <CopilotPrimaryLink href="/copilot/gestion-ia" className="gap-2 whitespace-nowrap">
             Ir a Gestión IA
@@ -269,8 +258,6 @@ export default function CopilotHomePage() {
           </p>
           <PeriodSelect value={period} onChange={setPeriod} />
         </div>
-
-        <CopilotHomeQuickLinks />
 
         {executiveEmpty ? (
           <CopilotEmptyPanel
@@ -534,8 +521,6 @@ export default function CopilotHomePage() {
             ) : null}
           </CopilotCard>
         </section>
-
-        <CopilotDifferentiatorStrip />
 
         <section>
           <CopilotSectionTitle

@@ -6,12 +6,11 @@ import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 import { CopilotTaxEvidenceDrawer } from "@/components/copilot/copilot-tax-evidence-drawer";
+import { CopilotCollapsiblePanel } from "@/components/copilot/copilot-collapsible-panel";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import { CopilotReadingKey } from "@/components/copilot/copilot-reading-key";
 import {
   CopilotBadge,
   CopilotCard,
-  CopilotGhostButton,
   CopilotGhostLink,
   CopilotPrimaryLink,
   CopilotSectionTitle,
@@ -172,7 +171,7 @@ function pickPrimaryCta(
     };
   }
   return {
-    label: "Resolver situación ahora",
+    label: "Resolver ahora",
     href: "/copilot/finanzas#copilot-finanzas-fiscal",
   };
 }
@@ -389,15 +388,6 @@ function CopilotAtencionPrioritariaPageContent() {
       <CopilotPageHeader
         title="Atención prioritaria"
         description="Diagnóstico, decisión y primer movimiento: un solo foco con plan ordenado y un camino claro a Finanzas y Datos."
-        readingKey={
-          <CopilotReadingKey
-            lines={[
-              "Entiendo qué está en juego.",
-              "Sé qué hacer primero y qué posponer.",
-              "Tengo una acción principal y accesos rápidos.",
-            ]}
-          />
-        }
       />
 
       <div className="flex-1 space-y-8 overflow-auto px-6 py-8">
@@ -445,143 +435,140 @@ function CopilotAtencionPrioritariaPageContent() {
                     >
                       {priorityLabel[primary.priority]}
                     </CopilotBadge>
-                    <CopilotBadge tone="neutral">
-                      {mapAlertCategory(primary.type)}
-                    </CopilotBadge>
                   </div>
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                    {mapAlertCategory(primary.type)}
+                  </p>
                   <h2 className="text-xl font-semibold tracking-tight text-[var(--copilot-ink)] sm:text-2xl">
                     {primary.title}
                   </h2>
                   <p className="max-w-3xl text-sm font-medium leading-relaxed text-[var(--copilot-ink-muted)]">
-                    Por qué importa ahora: {primary.summary}
+                    Impacto: {primary.summary}
+                  </p>
+                  <p className="text-sm text-[var(--copilot-ink)]">
+                    <span className="font-semibold">Plazo: </span>
+                    <span className="capitalize">{fechaLimite}</span>
+                    {" · "}
+                    <span className="font-semibold">Monto en foco: </span>
+                    {montoComprometido}
                   </p>
                 </div>
               </div>
             </CopilotCard>
 
-            <CopilotCard className="border-[rgba(31,107,74,0.22)] bg-[rgba(31,107,74,0.05)]">
+            <div className="scroll-mt-32 pt-1">
+              <CopilotPrimaryLink
+                href={primaryCta.href}
+                className="w-full justify-center shadow-sm sm:inline-flex sm:w-auto"
+              >
+                {primaryCta.label}
+              </CopilotPrimaryLink>
+            </div>
+
+            <CopilotCard className="border-[var(--copilot-border)] bg-white/90">
               <CopilotSectionTitle
-                title="Plan recomendado"
-                subtitle="Tres movimientos en orden: primero desbloquear, después validar, evitar errores caros mientras tanto."
+                title="Contexto mínimo"
+                subtitle="Atajos para informar la decisión — no sustituyen el paso principal de arriba."
               />
-              <ol className="mt-2 space-y-4">
-                <li className="flex gap-3 text-sm leading-relaxed text-[var(--copilot-ink)]">
+              <nav
+                className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-x-6 sm:gap-y-2"
+                aria-label="Accesos secundarios"
+              >
+                <Link
+                  href="/copilot/finanzas#copilot-finanzas-cobranza"
+                  className={secondaryLinkClass}
+                >
+                  Ver cobranzas pendientes
+                </Link>
+                <Link
+                  href="/copilot/finanzas#copilot-finanzas-fiscal"
+                  className={secondaryLinkClass}
+                >
+                  Ver pagos próximos
+                </Link>
+                <Link href="/copilot/finanzas" className={secondaryLinkClass}>
+                  Ir a Finanzas
+                </Link>
+                {primary.obligationId ? (
+                  <button
+                    type="button"
+                    onClick={() => setDrawerOpen(true)}
+                    className={`${secondaryLinkClass} cursor-pointer text-left`}
+                  >
+                    Ver respaldo / documentos
+                  </button>
+                ) : (
+                  <Link href="/copilot/datos" className={secondaryLinkClass}>
+                    Ver respaldo / documentos
+                  </Link>
+                )}
+              </nav>
+            </CopilotCard>
+
+            <CopilotCollapsiblePanel
+              title="Plan recomendado (paso a paso)"
+              defaultOpen={false}
+            >
+              <ol className="space-y-4 text-sm leading-relaxed text-[var(--copilot-ink)]">
+                <li className="flex gap-3">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--copilot-accent)] text-xs font-bold text-white">
                     1
                   </span>
                   <div>
-                    <p className="font-semibold text-[var(--copilot-ink)]">
-                      Resolver primero
-                    </p>
+                    <p className="font-semibold text-[var(--copilot-ink)]">Resolver primero</p>
                     <p className="mt-1 text-[var(--copilot-ink-muted)]">
                       {planRecomendado.primero}
                     </p>
                   </div>
                 </li>
-                <li className="flex gap-3 text-sm leading-relaxed text-[var(--copilot-ink)]">
+                <li className="flex gap-3">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[var(--copilot-border)] bg-white/90 text-xs font-bold text-[var(--copilot-ink)]">
                     2
                   </span>
                   <div>
-                    <p className="font-semibold text-[var(--copilot-ink)]">
-                      Revisar después
-                    </p>
+                    <p className="font-semibold text-[var(--copilot-ink)]">Revisar después</p>
                     <p className="mt-1 text-[var(--copilot-ink-muted)]">
                       {planRecomendado.despues}
                     </p>
                   </div>
                 </li>
-                <li className="flex gap-3 text-sm leading-relaxed text-[var(--copilot-ink)]">
+                <li className="flex gap-3">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-amber-200/90 bg-amber-50/80 text-xs font-bold text-amber-950">
                     3
                   </span>
                   <div>
-                    <p className="font-semibold text-[var(--copilot-ink)]">
-                      Evitar mientras tanto
-                    </p>
+                    <p className="font-semibold text-[var(--copilot-ink)]">Evitar mientras tanto</p>
                     <p className="mt-1 text-[var(--copilot-ink-muted)]">
                       {planRecomendado.evitar}
                     </p>
                   </div>
                 </li>
               </ol>
-            </CopilotCard>
+            </CopilotCollapsiblePanel>
 
-            <CopilotCard className="border-[var(--copilot-border)] bg-white/90">
-              <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0 flex-1">
+            <CopilotCollapsiblePanel title="Qué está pasando y riesgo si no actuás" defaultOpen={false}>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-xl border border-[var(--copilot-border)] bg-white/80 p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                    Acción principal
+                    Qué está pasando
                   </p>
-                  <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
-                    Un solo siguiente paso ejecutivo. El resto son atajos para profundizar sin
-                    dispersar la decisión.
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink)]">
+                    {content.queEstaPasando}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-rose-200/80 bg-rose-50/30 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-rose-900/80">
+                    Si no se actúa
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-rose-950/90">
+                    {consecuenciasOperativas}
                   </p>
                 </div>
               </div>
-              <div className="mt-5 flex flex-col gap-4">
-                <CopilotPrimaryLink href={primaryCta.href} className="w-full justify-center sm:w-auto">
-                  {primaryCta.label}
-                </CopilotPrimaryLink>
-                <nav
-                  className="flex flex-col gap-2 border-t border-[var(--copilot-border)] pt-4 sm:flex-row sm:flex-wrap sm:gap-x-6 sm:gap-y-2"
-                  aria-label="Accesos secundarios"
-                >
-                  <Link
-                    href="/copilot/finanzas#copilot-finanzas-cobranza"
-                    className={secondaryLinkClass}
-                  >
-                    Ver cobranzas pendientes
-                  </Link>
-                  <Link
-                    href="/copilot/finanzas#copilot-finanzas-fiscal"
-                    className={secondaryLinkClass}
-                  >
-                    Ver pagos próximos
-                  </Link>
-                  <Link href="/copilot/finanzas" className={secondaryLinkClass}>
-                    Ir a Finanzas
-                  </Link>
-                  {primary.obligationId ? (
-                    <button
-                      type="button"
-                      onClick={() => setDrawerOpen(true)}
-                      className={`${secondaryLinkClass} cursor-pointer text-left`}
-                    >
-                      Ver respaldo / documentos
-                    </button>
-                  ) : (
-                    <Link href="/copilot/datos" className={secondaryLinkClass}>
-                      Ver respaldo / documentos
-                    </Link>
-                  )}
-                </nav>
-              </div>
-            </CopilotCard>
+            </CopilotCollapsiblePanel>
 
-            <div className="grid gap-6 lg:grid-cols-2">
-              <CopilotCard>
-                <CopilotSectionTitle
-                  title="Qué está pasando"
-                  subtitle="Lectura directa, sin tecnicismos innecesarios."
-                />
-                <p className="mt-3 text-sm leading-relaxed text-[var(--copilot-ink)]">
-                  {content.queEstaPasando}
-                </p>
-              </CopilotCard>
-
-              <CopilotCard className="border-rose-100/80 bg-rose-50/25">
-                <CopilotSectionTitle
-                  title="Si no se actúa"
-                  subtitle="Consecuencias concretas en tiempo de negocio, no advertencias genéricas."
-                />
-                <p className="mt-3 text-sm leading-relaxed text-rose-950/90">
-                  {consecuenciasOperativas}
-                </p>
-              </CopilotCard>
-            </div>
-
-            <CopilotCard>
+            <CopilotCollapsiblePanel title="Datos clave y tablero" defaultOpen={false}>
+            <CopilotCard className="border-0 bg-transparent p-0 shadow-none ring-0">
               <CopilotSectionTitle
                 title="Datos clave"
                 subtitle="Misma base numérica que Finanzas y alertas (proto_* + motor)."
@@ -659,7 +646,9 @@ function CopilotAtencionPrioritariaPageContent() {
                 </p>
               ) : null}
             </CopilotCard>
+            </CopilotCollapsiblePanel>
 
+            <CopilotCollapsiblePanel title="Cómo se resuelve (detalle)" defaultOpen={false}>
             <CopilotCard className="border-slate-200/80 bg-slate-50/40">
               <CopilotSectionTitle
                 title="Cómo se resuelve"
@@ -679,7 +668,9 @@ function CopilotAtencionPrioritariaPageContent() {
                 ))}
               </ul>
             </CopilotCard>
+            </CopilotCollapsiblePanel>
 
+            <CopilotCollapsiblePanel title="Oportunidades y enlaces" defaultOpen={false}>
             <CopilotCard>
               <CopilotSectionTitle
                 title="Oportunidades"
@@ -715,7 +706,9 @@ function CopilotAtencionPrioritariaPageContent() {
                 </CopilotGhostLink>
               </p>
             </CopilotCard>
+            </CopilotCollapsiblePanel>
 
+            <CopilotCollapsiblePanel title="Cómo usar esta pantalla (capacitación)" defaultOpen={false}>
             <CopilotCard className="border-dashed border-[var(--copilot-border)] bg-white/50">
               <CopilotSectionTitle
                 title="Cómo usar esta pantalla"
@@ -737,6 +730,7 @@ function CopilotAtencionPrioritariaPageContent() {
                 </li>
               </ul>
             </CopilotCard>
+            </CopilotCollapsiblePanel>
           </>
         )}
       </div>

@@ -24,7 +24,6 @@ import {
 } from "@/components/copilot/copilot-proto-crud-drawer";
 import { CopilotProtoDeleteDialog } from "@/components/copilot/copilot-proto-delete-dialog";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import { CopilotReadingKey } from "@/components/copilot/copilot-reading-key";
 import {
   CopilotCard,
   CopilotGhostButton,
@@ -572,17 +571,6 @@ function CopilotDatosPageContent() {
       <CopilotPageHeader
         title={pageTitle}
         description={pageDescription}
-        readingKey={
-          isQuickAddForm ? undefined : (
-            <CopilotReadingKey
-              lines={[
-                "Acá están los datos reales.",
-                "Puedo validar cada decisión.",
-                "Puedo bajar al detalle cuando quiero.",
-              ]}
-            />
-          )
-        }
         right={
           isQuickAddForm ? undefined : (
             <CopilotGhostButton className="inline-flex items-center gap-2" type="button">

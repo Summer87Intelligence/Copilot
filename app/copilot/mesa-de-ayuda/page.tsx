@@ -3,7 +3,6 @@
 import { useState } from "react";
 
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import { CopilotReadingKey } from "@/components/copilot/copilot-reading-key";
 import {
   CopilotCard,
   CopilotGhostButton,
@@ -24,15 +23,6 @@ export default function CopilotMesaDeAyudaPage() {
       <CopilotPageHeader
         title="Mesa de ayuda"
         description="Sugerencias, problemas o ideas — te respondemos con foco en claridad, no en jargon."
-        readingKey={
-          <CopilotReadingKey
-            lines={[
-              "Tengo un canal directo.",
-              "Pido ayuda sin fricción.",
-              "Mi voz cuenta para mejorar el producto.",
-            ]}
-          />
-        }
       />
 
       <div className="flex-1 space-y-8 overflow-auto px-6 py-8">

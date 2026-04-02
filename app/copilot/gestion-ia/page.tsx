@@ -10,7 +10,6 @@ import {
 import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
 import { CopilotInitiativeFlowCard } from "@/components/copilot/copilot-initiative-flow-card";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import { CopilotReadingKey } from "@/components/copilot/copilot-reading-key";
 import {
   CopilotCard,
   CopilotGhostButton,
@@ -176,15 +175,6 @@ export default function CopilotGestionIaPage() {
       <CopilotPageHeader
         title="Gestión IA"
         description="Centro operativo del copiloto: trazabilidad completa initiative → decision → action → outcome."
-        readingKey={
-          <CopilotReadingKey
-            lines={[
-              "Veo el pipeline completo.",
-              "Detecto cuellos de botella rápido.",
-              "Ejecuto con contexto, no a ciegas.",
-            ]}
-          />
-        }
         right={
           <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(31,107,74,0.2)] bg-[var(--copilot-accent-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--copilot-accent)]">
             <Sparkles className="h-3.5 w-3.5" aria-hidden />

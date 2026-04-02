@@ -5,7 +5,6 @@ import { useMemo, useState } from "react";
 import { CopilotInteractiveText } from "@/components/copilot/copilot-interactive-text";
 import { CopilotInsightsEvidenceDrawer } from "@/components/copilot/copilot-insights-evidence-drawer";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import { CopilotReadingKey } from "@/components/copilot/copilot-reading-key";
 import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
 import {
   CopilotCard,
@@ -34,15 +33,6 @@ export function CopilotInsightsClient({ insights }: { insights: CopilotInsightIt
       <CopilotPageHeader
         title="Insights"
         description="Historial del razonamiento del copiloto — transparente, trazable y priorizado."
-        readingKey={
-          <CopilotReadingKey
-            lines={[
-              "Acá están las lecturas que importan.",
-              "Conecto causa y efecto.",
-              "Me ayuda a decidir con criterio.",
-            ]}
-          />
-        }
       />
 
       <div className="flex-1 overflow-auto px-6 py-8">

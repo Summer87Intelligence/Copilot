@@ -4,7 +4,6 @@ import Link from "next/link";
 
 import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import { CopilotReadingKey } from "@/components/copilot/copilot-reading-key";
 import { CopilotCard, CopilotSectionTitle } from "@/components/copilot/copilot-ui";
 import { COPILOT_EMPTY_COPY } from "@/lib/copilot-empty-state";
 
@@ -14,15 +13,6 @@ export default function CopilotEscenariosPage() {
       <CopilotPageHeader
         title="Escenarios"
         description="Compará lecturas de riesgo, estabilidad y crecimiento cuando el motor esté alimentado por tus datos — sin simulaciones de relleno."
-        readingKey={
-          <CopilotReadingKey
-            lines={[
-              "No decido solo con el presente.",
-              "Puedo comparar contextos.",
-              "Esto me ayuda a pensar estratégicamente.",
-            ]}
-          />
-        }
       />
 
       <div className="flex-1 space-y-8 overflow-auto px-6 py-8">

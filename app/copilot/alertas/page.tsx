@@ -15,7 +15,6 @@ import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
 import { CopilotTaxEvidenceDrawer } from "@/components/copilot/copilot-tax-evidence-drawer";
 import { copilotInteractiveTextGroupAffordance } from "@/components/copilot/copilot-interactive-text";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import { CopilotReadingKey } from "@/components/copilot/copilot-reading-key";
 import {
   CopilotBadge,
   CopilotCard,
@@ -132,15 +131,6 @@ function CopilotAlertasPageContent() {
       <CopilotPageHeader
         title="Alertas"
         description="Riesgos y desvíos detectados — priorizados para que sepas dónde mirar primero."
-        readingKey={
-          <CopilotReadingKey
-            lines={[
-              "Veo qué requiere atención ya.",
-              "Entiendo el nivel de riesgo.",
-              "Sé qué conviene revisar primero.",
-            ]}
-          />
-        }
       />
 
       <div className="flex-1 space-y-8 overflow-auto px-6 py-8">

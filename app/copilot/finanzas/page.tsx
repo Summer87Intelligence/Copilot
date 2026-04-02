@@ -6,14 +6,16 @@ import {
   useEffect,
   useMemo,
   useState,
+  type ReactNode,
 } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 import { CopilotTaxEvidenceDrawer } from "@/components/copilot/copilot-tax-evidence-drawer";
+import { CopilotCollapsiblePanel } from "@/components/copilot/copilot-collapsible-panel";
+import { CopilotObligationPrimaryBadge } from "@/components/copilot/copilot-obligation-primary-badge";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import { CopilotReadingKey } from "@/components/copilot/copilot-reading-key";
 import {
   CopilotCard,
   CopilotGhostButton,
@@ -27,8 +29,12 @@ import {
   mapTaxObligationStatus,
   mapTaxTypeLabel,
   sharedObligationPaymentStatusPillClass,
-  taxPriorityToSeverity,
 } from "@/lib/copilot-format";
+import {
+  getObligationSecondaryHint,
+  getPrimaryObligationState,
+  sortObligationsForCashImpact,
+} from "@/lib/copilot-obligation-primary-state";
 import { getFinancialPredictiveAlerts } from "@/lib/copilot-financial-alerts";
 import {
   financialEngineLocalTodayYmd,
@@ -184,6 +190,52 @@ function formatDueFull(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+/** Modo normal: panorama en panel colapsado; modo guiado: siempre visible. */
+function FinanzasPanoramaSection({
+  coberturaGuided,
+  children,
+}: {
+  coberturaGuided: boolean;
+  children: ReactNode;
+}) {
+  if (coberturaGuided) {
+    return (
+      <div id="copilot-finanzas-panorama" className="scroll-mt-28">
+        {children}
+      </div>
+    );
+  }
+  return (
+    <CopilotCollapsiblePanel
+      title="Panorama de liquidez (detalle)"
+      defaultOpen={false}
+      className="scroll-mt-28"
+    >
+      <div id="copilot-finanzas-panorama" className="scroll-mt-28">
+        {children}
+      </div>
+    </CopilotCollapsiblePanel>
+  );
+}
+
+function FinanzasFiscalCalendarCollapsible({
+  coberturaGuided,
+  children,
+}: {
+  coberturaGuided: boolean;
+  children: ReactNode;
+}) {
+  if (coberturaGuided) return <>{children}</>;
+  return (
+    <CopilotCollapsiblePanel
+      title="Calendario fiscal completo y resumen"
+      defaultOpen={false}
+    >
+      {children}
+    </CopilotCollapsiblePanel>
+  );
 }
 
 function CopilotFinanzasPageContent() {
@@ -530,6 +582,99 @@ function CopilotFinanzasPageContent() {
     [taxObligations]
   );
 
+  const cashImpactObligations = useMemo(() => {
+    const open = taxObligations.filter(
+      (o) => String(o.status ?? "").toLowerCase() !== "paid"
+    );
+    return sortObligationsForCashImpact(open, todayYmd).slice(0, 8);
+  }, [taxObligations, todayYmd]);
+
+  const finanzasHero = useMemo(() => {
+    if (snapshotLoading) {
+      return {
+        title: "Sincronizando tu posición de caja",
+        impact: "Cargando cifras del motor financiero…",
+        urgency: "En segundos vas a ver el foco y la acción sugerida.",
+      };
+    }
+    if (snapshotError) {
+      return {
+        title: "No pudimos leer el panorama financiero",
+        impact: snapshotError,
+        urgency: "Sin snapshot no podemos priorizar obligaciones frente a caja.",
+      };
+    }
+    if (!snapshot) {
+      return {
+        title: "Panorama financiero no disponible",
+        impact: "Todavía no hay datos suficientes para calcular caja y cobertura.",
+        urgency: "Cargá movimientos en Datos para habilitar la lectura.",
+      };
+    }
+    if (snapshot.projected_balance < 0) {
+      return {
+        title: "Tenés un déficit de caja proyectado",
+        impact: `Hueco estimado: ${formatMoneyCompact(snapshot.projected_balance)} en la ventana del motor.`,
+        urgency: nextOpen
+          ? `Urgencia: el próximo vencimiento relevante es ${dueLabel(nextOpen.due_date)} (${mapTaxTypeLabel(nextOpen.tax_type)}).`
+          : "Conviene cerrar el hueco antes de asumir nuevos egresos.",
+      };
+    }
+    if (snapshot.coverage_ratio < 1 && Number.isFinite(snapshot.coverage_ratio)) {
+      return {
+        title: "La cobertura de caja es insuficiente",
+        impact: `Ratio ${formatCoverageRatio(snapshot.coverage_ratio)}: caja más cobranza esperada no cubre egresos modelados.`,
+        urgency: nextOpen
+          ? `Próximo hito fiscal: ${dueLabel(nextOpen.due_date)} · ${mapTaxTypeLabel(nextOpen.tax_type)}.`
+          : "Sin alinear cobros y pagos, el riesgo es de liquidez en días.",
+      };
+    }
+    if (overdueCount > 0) {
+      return {
+        title: "Hay obligaciones vencidas o a regularizar",
+        impact: `${overdueCount} obligación${overdueCount === 1 ? "" : "es"} en calendario que requieren foco.`,
+        urgency: "Priorizá regularizar antes de desplazar caja a otros rubros.",
+      };
+    }
+    return {
+      title: "Tu liquidez está bajo control",
+      impact: `Balance proyectado ${formatMoneyCompact(snapshot.projected_balance)} · cobertura ${formatCoverageRatio(snapshot.coverage_ratio)}.`,
+      urgency: nextOpen
+        ? `Próximo vencimiento: ${dueLabel(nextOpen.due_date)} (${mapTaxTypeLabel(nextOpen.tax_type)}).`
+        : "Mantené facturas y pagos actualizados en Datos para conservar esta lectura.",
+    };
+  }, [
+    snapshot,
+    snapshotLoading,
+    snapshotError,
+    nextOpen,
+    overdueCount,
+  ]);
+
+  const finanzasMainCta = useMemo(() => {
+    if (!snapshot || snapshotLoading) {
+      return {
+        href: "/copilot/finanzas#copilot-finanzas-panorama",
+        label: "Ver panorama de liquidez",
+      };
+    }
+    const stress =
+      snapshot.projected_balance < 0 ||
+      (snapshot.coverage_ratio < 1 && Number.isFinite(snapshot.coverage_ratio)) ||
+      snapshot.risk_level === "high" ||
+      snapshot.risk_level === "critical";
+    if (stress) {
+      return {
+        href: "/copilot/finanzas?mode=cobertura&from=atencion-prioritaria#copilot-finanzas-cobertura",
+        label: "Ver plan de cobertura",
+      };
+    }
+    return {
+      href: "/copilot/finanzas#copilot-finanzas-fiscal",
+      label: "Resolver ahora",
+    };
+  }, [snapshot, snapshotLoading]);
+
   type RecommendedCoberturaAction =
     | {
         kind: "fiscal_priority";
@@ -682,23 +827,6 @@ function CopilotFinanzasPageContent() {
             ? "Modo cobertura: foco en caja, ingresos esperados y egresos modelados."
             : "Caja, ingresos y gastos en una lectura clara — sin overload de términos contables."
         }
-        readingKey={
-          <CopilotReadingKey
-            lines={
-              coberturaGuided
-                ? [
-                    "Sé cuánto falta cubrir.",
-                    "Tengo un primer paso claro.",
-                    "Puedo bajar a cobranzas, pagos u obligaciones.",
-                  ]
-                : [
-                    "Entiendo si el negocio está sano.",
-                    "Veo ingresos, egresos y margen.",
-                    "Puedo anticiparme.",
-                  ]
-            }
-          />
-        }
       />
 
       <div className="flex-1 space-y-8 overflow-auto px-6 py-8">
@@ -826,12 +954,12 @@ function CopilotFinanzasPageContent() {
                     </div>
 
                     <div className="mt-6">
-                      <CopilotPrimaryLink
+                      <CopilotGhostLink
                         href="/copilot/clientes"
-                        className="w-full justify-center sm:inline-flex sm:w-auto"
+                        className="inline-flex w-full justify-center rounded-xl border border-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--copilot-accent)] sm:w-auto"
                       >
                         Generar ingreso urgente
-                      </CopilotPrimaryLink>
+                      </CopilotGhostLink>
                     </div>
 
                     <nav
@@ -998,20 +1126,20 @@ function CopilotFinanzasPageContent() {
                           </button>
                         </p>
                       ) : recommendedCoberturaAction.kind === "fiscal_priority" ? (
-                        <CopilotPrimaryButton
+                        <CopilotGhostButton
                           type="button"
                           onClick={openFiscalPriorityGuide}
-                          className="w-full justify-center sm:w-auto"
+                          className="w-full justify-center rounded-xl border border-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--copilot-accent)] sm:w-auto"
                         >
                           {recommendedCoberturaAction.label}
-                        </CopilotPrimaryButton>
+                        </CopilotGhostButton>
                       ) : (
-                        <CopilotPrimaryLink
+                        <CopilotGhostLink
                           href={recommendedCoberturaAction.href}
-                          className="w-full justify-center sm:inline-flex sm:w-auto"
+                          className="inline-flex w-full justify-center rounded-xl border border-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--copilot-accent)] sm:w-auto"
                         >
                           {recommendedCoberturaAction.label}
-                        </CopilotPrimaryLink>
+                        </CopilotGhostLink>
                       )}
                     </div>
 
@@ -1049,32 +1177,156 @@ function CopilotFinanzasPageContent() {
           </div>
         ) : null}
 
-        {!coberturaGuided && predictiveHint && predictiveHint.total > 0 ? (
-          <CopilotCard className="border-sky-200/70 bg-sky-50/35">
-            <p className="text-xs font-semibold uppercase tracking-wide text-sky-950/85">
-              Señales predictivas
-            </p>
-            <p className="mt-2 text-sm font-semibold text-sky-950">
-              {predictiveHint.total} alerta{predictiveHint.total === 1 ? "" : "s"} desde
-              caja y calendario fiscal
-              {predictiveHint.critical > 0
-                ? ` · ${predictiveHint.critical} crítica${predictiveHint.critical === 1 ? "" : "s"}`
-                : ""}
-            </p>
-            <p className="mt-1 text-xs leading-relaxed text-sky-900/80">
-              Incluye liquidez proyectada, colchón de cobertura, vencidas sin acreditación
-              fiscal y pagos de impuestos sin obligación vinculada.
-            </p>
-            <CopilotGhostLink
-              href="/copilot/alertas"
-              className="mt-3 inline-flex text-sm font-semibold text-sky-950"
-            >
-              Abrir en Alertas →
-            </CopilotGhostLink>
-          </CopilotCard>
+        {!coberturaGuided ? (
+          <>
+            <div id="copilot-finanzas-decision-hero" className="scroll-mt-28">
+              <CopilotCard className="border-[rgba(31,107,74,0.22)] bg-[rgba(31,107,74,0.06)] ring-1 ring-[rgba(31,107,74,0.1)]">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-accent)]">
+                  Situación principal
+                </p>
+                <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--copilot-ink)] sm:text-2xl">
+                  {finanzasHero.title}
+                </h2>
+                <p className="mt-3 text-sm font-medium leading-relaxed text-[var(--copilot-ink)]">
+                  {finanzasHero.impact}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
+                  {finanzasHero.urgency}
+                </p>
+              </CopilotCard>
+            </div>
+
+            <div id="copilot-finanzas-main-cta" className="scroll-mt-28 pt-2">
+              <CopilotPrimaryLink
+                href={finanzasMainCta.href}
+                className="w-full justify-center shadow-sm sm:inline-flex sm:w-auto"
+              >
+                {finanzasMainCta.label}
+              </CopilotPrimaryLink>
+            </div>
+
+            <CopilotCard className="mt-2 border-[var(--copilot-border)]">
+              <CopilotSectionTitle
+                title="Lo que impacta tu caja ahora"
+                subtitle="Críticos y vencidos primero; un solo estado por obligación."
+              />
+              {taxLoading ? (
+                <div className="mt-4 flex items-center gap-2 text-sm text-[var(--copilot-ink-muted)]">
+                  <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                  Cargando obligaciones…
+                </div>
+              ) : taxError ? (
+                <p className="mt-4 text-sm text-amber-900">{taxError}</p>
+              ) : cashImpactObligations.length === 0 ? (
+                <p className="mt-4 text-sm text-[var(--copilot-ink-muted)]">
+                  No hay obligaciones abiertas que impacten la caja en el calendario cargado.
+                </p>
+              ) : (
+                <ul className="mt-4 space-y-3">
+                  {cashImpactObligations.map((o) => {
+                    const ps = getPrimaryObligationState(o, todayYmd);
+                    const hint = getObligationSecondaryHint(o, ps);
+                    const activeDrawer =
+                      isTaxDrawerOpen && taxObligationId === o.id;
+                    return (
+                      <li
+                        key={o.id}
+                        className={`flex flex-wrap items-end justify-between gap-3 rounded-xl border border-[var(--copilot-border)] bg-white/90 px-4 py-3 ${
+                          activeDrawer
+                            ? "ring-2 ring-[rgba(31,107,74,0.22)]"
+                            : ""
+                        }`}
+                      >
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-[var(--copilot-ink)]">
+                              {mapTaxTypeLabel(o.tax_type)}
+                            </span>
+                            <CopilotObligationPrimaryBadge state={ps} />
+                          </div>
+                          <p className="text-xs text-[var(--copilot-ink-muted)]">
+                            {o.period_label} · Vence {dueLabel(o.due_date)}
+                          </p>
+                          {hint ? (
+                            <p className="text-[11px] leading-snug text-[var(--copilot-ink-muted)]">
+                              {hint}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center">
+                          <span className="text-sm font-semibold tabular-nums text-[var(--copilot-ink)]">
+                            {formatMoneyCompact(obligationPrincipal(o))}
+                          </span>
+                          <CopilotGhostButton
+                            type="button"
+                            className="whitespace-nowrap px-3 py-1.5 text-xs"
+                            onClick={() => openTaxEvidence(o.id)}
+                          >
+                            Ver respaldo
+                          </CopilotGhostButton>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </CopilotCard>
+          </>
         ) : null}
 
-        <div id="copilot-finanzas-panorama" className="scroll-mt-28">
+        {predictiveHint && predictiveHint.total > 0 ? (
+          coberturaGuided ? (
+            <CopilotCard className="border-sky-200/70 bg-sky-50/35">
+              <p className="text-xs font-semibold uppercase tracking-wide text-sky-950/85">
+                Señales predictivas
+              </p>
+              <p className="mt-2 text-sm font-semibold text-sky-950">
+                {predictiveHint.total} alerta{predictiveHint.total === 1 ? "" : "s"} desde
+                caja y calendario fiscal
+                {predictiveHint.critical > 0
+                  ? ` · ${predictiveHint.critical} crítica${predictiveHint.critical === 1 ? "" : "s"}`
+                  : ""}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-sky-900/80">
+                Incluye liquidez proyectada, colchón de cobertura, vencidas sin acreditación
+                fiscal y pagos de impuestos sin obligación vinculada.
+              </p>
+              <CopilotGhostLink
+                href="/copilot/alertas"
+                className="mt-3 inline-flex text-sm font-semibold text-sky-950"
+              >
+                Abrir en Alertas →
+              </CopilotGhostLink>
+            </CopilotCard>
+          ) : (
+            <CopilotCollapsiblePanel
+              title="Señales predictivas (alertas del motor)"
+              defaultOpen={false}
+            >
+              <div className="rounded-xl border border-sky-200/70 bg-sky-50/35 p-4">
+                <p className="text-sm font-semibold text-sky-950">
+                  {predictiveHint.total} alerta{predictiveHint.total === 1 ? "" : "s"} desde
+                  caja y calendario fiscal
+                  {predictiveHint.critical > 0
+                    ? ` · ${predictiveHint.critical} crítica${predictiveHint.critical === 1 ? "" : "s"}`
+                    : ""}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-sky-900/80">
+                  Incluye liquidez proyectada, colchón de cobertura, vencidas sin acreditación
+                  fiscal y pagos de impuestos sin obligación vinculada.
+                </p>
+                <CopilotGhostLink
+                  href="/copilot/alertas"
+                  className="mt-3 inline-flex text-sm font-semibold text-sky-950"
+                >
+                  Abrir en Alertas →
+                </CopilotGhostLink>
+              </div>
+            </CopilotCollapsiblePanel>
+          )
+        ) : null}
+
+        <FinanzasPanoramaSection coberturaGuided={coberturaGuided}>
           <CopilotCard className="border-[rgba(31,107,74,0.16)] bg-[rgba(31,107,74,0.03)]">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <CopilotSectionTitle
@@ -1179,7 +1431,7 @@ function CopilotFinanzasPageContent() {
               </div>
             ) : null}
           </CopilotCard>
-        </div>
+        </FinanzasPanoramaSection>
 
         <div id="copilot-finanzas-fiscal" className="scroll-mt-28 space-y-4">
           {coberturaGuided && fiscalPriorityGuideOpen ? (
@@ -1327,10 +1579,11 @@ function CopilotFinanzasPageContent() {
             )
           ) : null}
 
+            <FinanzasFiscalCalendarCollapsible coberturaGuided={coberturaGuided}>
             <CopilotCard className="border-[rgba(31,107,74,0.18)] bg-[rgba(31,107,74,0.04)]">
               <CopilotSectionTitle
                 title="Obligaciones fiscales"
-                subtitle="Vencimientos, montos y prioridad — lectura ejecutiva conectada a caja."
+                subtitle="Vencimientos y montos — mismo criterio de un solo estado que arriba."
               />
               {taxLoading ? (
                 <div className="flex items-center gap-2 py-8 text-sm text-[var(--copilot-ink-muted)]">
@@ -1383,7 +1636,7 @@ function CopilotFinanzasPageContent() {
 
                   <div className="mt-6 space-y-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                      Próximas en agenda
+                      Listado completo (orden de agenda)
                     </p>
                     {fiscalListObligations.length === 0 ? (
                       <p className="text-sm text-[var(--copilot-ink-muted)]">
@@ -1394,10 +1647,12 @@ function CopilotFinanzasPageContent() {
                         {fiscalListObligations.map((o) => {
                           const activeDrawer =
                             isTaxDrawerOpen && taxObligationId === o.id;
+                          const ps = getPrimaryObligationState(o, todayYmd);
+                          const hint = getObligationSecondaryHint(o, ps);
                           return (
                             <li
                               key={o.id}
-                              className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--copilot-border)] bg-white/90 px-4 py-3 text-sm ${
+                              className={`flex flex-wrap items-end justify-between gap-3 rounded-xl border border-[var(--copilot-border)] bg-white/90 px-4 py-3 text-sm ${
                                 activeDrawer
                                   ? "ring-2 ring-[rgba(31,107,74,0.22)]"
                                   : ""
@@ -1408,24 +1663,20 @@ function CopilotFinanzasPageContent() {
                                   <span className="font-semibold text-[var(--copilot-ink)]">
                                     {mapTaxTypeLabel(o.tax_type)}
                                   </span>
-                                  <CopilotSeverityBadge
-                                    severity={taxPriorityToSeverity(o.priority)}
-                                  />
+                                  <CopilotObligationPrimaryBadge state={ps} />
                                 </div>
                                 <p className="text-xs text-[var(--copilot-ink-muted)]">
-                                  {o.period_label} · Vence {dueLabel(o.due_date)} ·{" "}
-                                  <span
-                                    className={sharedObligationPaymentStatusPillClass(
-                                      o.status
-                                    )}
-                                  >
-                                    {mapTaxObligationStatus(o.status)}
-                                  </span>
+                                  {o.period_label} · Vence {dueLabel(o.due_date)}
                                 </p>
+                                {hint ? (
+                                  <p className="text-[11px] leading-snug text-[var(--copilot-ink-muted)]">
+                                    {hint}
+                                  </p>
+                                ) : null}
                               </div>
                               <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center">
                                 <span className="text-sm font-semibold tabular-nums text-[var(--copilot-ink)]">
-                                  {formatMoneyCompact(o.estimated_amount)}
+                                  {formatMoneyCompact(obligationPrincipal(o))}
                                 </span>
                                 <CopilotGhostButton
                                   type="button"
@@ -1444,6 +1695,7 @@ function CopilotFinanzasPageContent() {
                 </>
               ) : null}
             </CopilotCard>
+            </FinanzasFiscalCalendarCollapsible>
         </div>
       </div>
       <CopilotTaxEvidenceDrawer

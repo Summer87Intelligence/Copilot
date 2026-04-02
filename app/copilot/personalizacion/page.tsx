@@ -3,7 +3,6 @@
 import { useState } from "react";
 
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import { CopilotReadingKey } from "@/components/copilot/copilot-reading-key";
 import {
   CopilotCard,
   CopilotPrimaryButton,
@@ -58,15 +57,6 @@ export default function CopilotPersonalizacionPage() {
       <CopilotPageHeader
         title="Personalización"
         description="Adaptá alertas, umbrales y qué ver en tu panel — sin complejidad técnica."
-        readingKey={
-          <CopilotReadingKey
-            lines={[
-              "El copiloto se adapta a mí.",
-              "Elijo qué ver y qué silenciar.",
-              "Menos ruido, más señal.",
-            ]}
-          />
-        }
       />
 
       <div className="flex-1 space-y-8 overflow-auto px-6 py-8">

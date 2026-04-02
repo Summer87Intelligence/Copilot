@@ -4,14 +4,11 @@ export function CopilotPageHeader({
   eyebrow = "Summer87 Copilot",
   title,
   description,
-  readingKey,
   right,
 }: {
   eyebrow?: string;
   title: string;
   description?: string;
-  /** Bloque opcional de guía cognitiva (p. ej. `CopilotReadingKey`). */
-  readingKey?: ReactNode;
   right?: ReactNode;
 }) {
   return (
@@ -25,21 +22,18 @@ export function CopilotPageHeader({
             {title}
           </h1>
           {description ? (
-            <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
+            <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
               {description}
             </p>
           ) : null}
         </div>
-        {(readingKey != null || right != null) && (
+        {right != null ? (
           <div className="flex w-full shrink-0 flex-col gap-4 sm:max-w-md lg:w-auto lg:max-w-[min(100%,20rem)]">
-            {readingKey}
-            {right ? (
-              <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                {right}
-              </div>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+              {right}
+            </div>
           </div>
-        )}
+        ) : null}
       </div>
     </header>
   );

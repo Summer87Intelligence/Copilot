@@ -4,7 +4,6 @@ import { useCallback, useId, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import { CopilotReadingKey } from "@/components/copilot/copilot-reading-key";
 import { CopilotCard, CopilotSectionTitle } from "@/components/copilot/copilot-ui";
 import {
   DOCUMENT_INVENTORY,
@@ -119,15 +118,6 @@ export default function CopilotConfiguracionPage() {
       <CopilotPageHeader
         title="Configuración"
         description="Mapa documental, contable y fiscal: tablas activas, reglas de registro, relaciones entre entidades y roadmap senior — sin cambiar tu base todavía."
-        readingKey={
-          <CopilotReadingKey
-            lines={[
-              "Entiendo qué documentos alimentan al sistema.",
-              "Sé cómo se relacionan las tablas.",
-              "Puedo planificar el salto a contabilidad y bancos.",
-            ]}
-          />
-        }
       />
 
       <div className="flex-1 space-y-8 overflow-auto px-6 py-8">

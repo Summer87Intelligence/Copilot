@@ -6,7 +6,6 @@ import { Loader2 } from "lucide-react";
 import { CopilotActionsEvidenceDrawer } from "@/components/copilot/copilot-actions-evidence-drawer";
 import { CopilotInteractiveText } from "@/components/copilot/copilot-interactive-text";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import { CopilotReadingKey } from "@/components/copilot/copilot-reading-key";
 import {
   CopilotBadge,
   CopilotCard,
@@ -191,15 +190,6 @@ export default function CopilotAccionesPage() {
       <CopilotPageHeader
         title="Acciones"
         description="Acciones generadas desde decisiones — registrá el resultado con un clic."
-        readingKey={
-          <CopilotReadingKey
-            lines={[
-              "Estas son mis siguientes jugadas.",
-              "Puedo registrar qué pasó.",
-              "Cierro el ciclo con resultados.",
-            ]}
-          />
-        }
         right={
           <CopilotPrimaryButton
             type="button"

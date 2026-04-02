@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import { CopilotReadingKey } from "@/components/copilot/copilot-reading-key";
 import {
   CopilotCard,
   CopilotGhostLink,
@@ -66,15 +65,6 @@ export default function CopilotAgentesPage() {
       <CopilotPageHeader
         title="Agentes de IA"
         description="No es “más gráficos”: son especialistas que leen tus datos, priorizan y proponen el siguiente movimiento — como un equipo, disponible 24/7."
-        readingKey={
-          <CopilotReadingKey
-            lines={[
-              "No son gráficos sueltos: son roles.",
-              "Cada agente cubre un frente.",
-              "Armo el equipo que necesito.",
-            ]}
-          />
-        }
         right={
           <span className="inline-flex items-center gap-2 rounded-full bg-[var(--copilot-accent-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--copilot-accent)]">
             <Sparkles className="h-3.5 w-3.5" aria-hidden />
