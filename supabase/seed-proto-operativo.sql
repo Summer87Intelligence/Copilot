@@ -2,7 +2,7 @@
 -- seed-proto-operativo.sql — Dataset proto_* para validar Copilot (clientes, AR, caja, fiscal, documentos)
 -- =============================================================================
 -- EJECUCIÓN MANUAL: pegar en el SQL Editor de Supabase y ejecutar (Run).
--- No se ejecuta desde la app ni desde /demo.
+-- No se ejecuta desde la app.
 --
 -- Requisitos:
 --   - Tablas public.proto_companies, proto_contacts, proto_invoices, proto_receipts,

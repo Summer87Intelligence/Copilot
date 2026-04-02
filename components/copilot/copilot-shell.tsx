@@ -31,7 +31,6 @@ export function CopilotShell({ children }: { children: React.ReactNode }) {
   return (
     <CopilotAlertsProvider>
       <CopilotModuleShell
-        variant="prototype"
         navItemGroups={COPILOT_NAV_GROUPS}
         basePath="/copilot"
         storageKey={COPILOT_SIDEBAR_COLLAPSED_STORAGE_KEY}

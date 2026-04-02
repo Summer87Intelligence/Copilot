@@ -23,7 +23,6 @@ function readSidebarPreference(storageKey: string): boolean | null {
 
 export function CopilotModuleShell({
   children,
-  variant,
   navItemGroups,
   basePath,
   storageKey,
@@ -33,7 +32,6 @@ export function CopilotModuleShell({
   autoCollapseWhenPathIncludes,
 }: {
   children: React.ReactNode;
-  variant: "demo" | "prototype";
   /** Una o más secciones; entre grupos se muestra separador en el sidebar. */
   navItemGroups: CopilotNavItem[][];
   basePath: string;
@@ -75,14 +73,9 @@ export function CopilotModuleShell({
     });
   }, [storageKey]);
 
-  const rootClass =
-    variant === "demo"
-      ? "demo-module flex min-h-screen text-[var(--copilot-ink)] antialiased"
-      : "flex min-h-screen bg-[var(--copilot-canvas)] text-[var(--copilot-ink)] antialiased";
-
   return (
     <div
-      className={rootClass}
+      className="flex min-h-screen bg-[var(--copilot-canvas)] text-[var(--copilot-ink)] antialiased"
       style={{
         fontFamily:
           'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
@@ -93,12 +86,11 @@ export function CopilotModuleShell({
         onToggleCollapsed={toggleCollapsed}
         groups={navItemGroups}
         basePath={basePath}
-        variant={variant}
         brandTitle={brandTitle}
         brandSubtitle={brandSubtitle}
       />
       <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-visible">
-        <EnvironmentBanner variant={variant === "demo" ? "demo" : "prototype"} />
+        <EnvironmentBanner />
         {topBar != null ? (
           <div className="overflow-visible border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.45)] px-6 py-2 backdrop-blur-sm">
             {topBar}

@@ -20,17 +20,14 @@ export function isNavActiveForBase(pathname: string, href: string, basePath: str
   return p === h || p.startsWith(`${h}/`);
 }
 
-const toggleBtnClass = (variant: "demo" | "prototype") =>
-  variant === "demo"
-    ? "rounded-lg p-2 text-amber-900/70 transition hover:bg-white/80 hover:text-amber-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
-    : "rounded-lg p-2 text-[var(--copilot-ink-muted)] transition hover:bg-white/70 hover:text-[var(--copilot-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]";
+const toggleBtnClass =
+  "rounded-lg p-2 text-[var(--copilot-ink-muted)] transition hover:bg-white/70 hover:text-[var(--copilot-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]";
 
 export function CopilotModuleSidebar({
   collapsed,
   onToggleCollapsed,
   groups,
   basePath,
-  variant,
   brandTitle,
   brandSubtitle,
 }: {
@@ -38,36 +35,25 @@ export function CopilotModuleSidebar({
   onToggleCollapsed: () => void;
   groups: CopilotNavItem[][];
   basePath: string;
-  variant: "demo" | "prototype";
   brandTitle: string;
   brandSubtitle: string;
 }) {
   const pathname = usePathname();
   const iconWrapClass =
-    variant === "demo"
-      ? "bg-amber-100/90 text-amber-800 ring-1 ring-amber-300/50"
-      : "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)]";
+    "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)]";
 
-  const dividerLineClass =
-    variant === "demo" ? "bg-amber-200/90" : "bg-[var(--copilot-border)]";
+  const dividerLineClass = "bg-[var(--copilot-border)]";
 
-  const sectionLabelClass =
-    variant === "demo" ? "text-amber-800/70" : "text-[var(--copilot-ink-muted)]";
+  const sectionLabelClass = "text-[var(--copilot-ink-muted)]";
 
   return (
     <aside
-      className={`flex h-full shrink-0 flex-col overflow-hidden border-r transition-[width] duration-200 ease-out ${
-        variant === "demo"
-          ? "border-amber-200/80 bg-[var(--demo-sidebar)]"
-          : "border-[var(--copilot-border)] bg-[var(--copilot-sidebar)]"
-      } ${collapsed ? "w-16" : "w-[260px]"}`}
+      className={`flex h-full shrink-0 flex-col overflow-hidden border-r border-[var(--copilot-border)] bg-[var(--copilot-sidebar)] transition-[width] duration-200 ease-out ${
+        collapsed ? "w-16" : "w-[260px]"
+      }`}
     >
       <div
-        className={`flex border-b ${
-          variant === "demo"
-            ? "border-amber-200/80 bg-amber-50/50"
-            : "border-[var(--copilot-border)] bg-[rgba(255,255,255,0.35)]"
-        } ${
+        className={`flex border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.35)] ${
           collapsed
             ? "flex-col items-center gap-2 px-2 py-3"
             : "items-center gap-2 px-3 py-4"
@@ -81,18 +67,10 @@ export function CopilotModuleSidebar({
         {!collapsed ? (
           <>
             <div className="min-w-0 flex-1">
-              <p
-                className={`truncate text-sm font-semibold ${
-                  variant === "demo" ? "text-amber-950" : "text-[var(--copilot-ink)]"
-                }`}
-              >
+              <p className="truncate text-sm font-semibold text-[var(--copilot-ink)]">
                 {brandTitle}
               </p>
-              <p
-                className={`truncate text-xs ${
-                  variant === "demo" ? "text-amber-800/85" : "text-[var(--copilot-ink-muted)]"
-                }`}
-              >
+              <p className="truncate text-xs text-[var(--copilot-ink-muted)]">
                 {brandSubtitle}
               </p>
             </div>
@@ -101,7 +79,7 @@ export function CopilotModuleSidebar({
               onClick={onToggleCollapsed}
               aria-expanded={true}
               aria-label="Colapsar menú lateral"
-              className={toggleBtnClass(variant)}
+              className={toggleBtnClass}
             >
               <ChevronLeft className="h-5 w-5 shrink-0" aria-hidden />
             </button>
@@ -112,7 +90,7 @@ export function CopilotModuleSidebar({
             onClick={onToggleCollapsed}
             aria-expanded={false}
             aria-label="Expandir menú lateral"
-            className={toggleBtnClass(variant)}
+            className={toggleBtnClass}
           >
             <ChevronRight className="h-5 w-5 shrink-0" aria-hidden />
           </button>
@@ -142,12 +120,8 @@ export function CopilotModuleSidebar({
               const Icon = item.icon;
               const active = isNavActiveForBase(pathname, item.href, basePath);
               const label = item.shortLabel ?? item.label;
-              const activeRing =
-                variant === "demo"
-                  ? "ring-amber-300/60 bg-white shadow-sm"
-                  : "ring-[rgba(44,40,37,0.08)] bg-white shadow-sm";
-              const accentActive =
-                variant === "demo" ? "text-amber-800" : "text-[var(--copilot-accent)]";
+              const activeRing = "ring-[rgba(44,40,37,0.08)] bg-white shadow-sm";
+              const accentActive = "text-[var(--copilot-accent)]";
               return (
                 <Link
                   key={item.href}
@@ -156,9 +130,7 @@ export function CopilotModuleSidebar({
                   className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
                     active
                       ? `text-[var(--copilot-ink)] ring-1 ${activeRing}`
-                      : variant === "demo"
-                        ? "text-amber-900/70 hover:bg-white/70 hover:text-amber-950"
-                        : "text-[var(--copilot-ink-muted)] hover:bg-white/60 hover:text-[var(--copilot-ink)]"
+                      : "text-[var(--copilot-ink-muted)] hover:bg-white/60 hover:text-[var(--copilot-ink)]"
                   } ${collapsed ? "justify-center px-0" : ""}`}
                 >
                   <Icon
