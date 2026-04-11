@@ -67,39 +67,37 @@ export function HealthIndicator({
   const counterLine = `${counts.critical} crítica${counts.critical === 1 ? "" : "s"} · ${counts.high} alta${counts.high === 1 ? "" : "s"}`;
 
   return (
-    <div className="flex justify-end overflow-visible">
-      <Link
-        href={href}
-        scroll={false}
-        className="flex max-w-full items-center gap-2.5 rounded-xl border border-[var(--copilot-border)] bg-white/80 px-3 py-2 text-left shadow-sm ring-1 ring-[rgba(44,40,37,0.04)] transition-colors duration-200 hover:bg-white hover:ring-[rgba(31,107,74,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]"
-        aria-label={
-          counts.critical >= 1 || counts.high >= 1
-            ? `Ir a atención prioritaria. Salud: ${health.label}. ${counterLine}`
-            : `Ir a alertas. Salud: ${health.label}. ${counterLine}`
-        }
-      >
-        <span
-          className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-            loading ? "animate-pulse bg-slate-300 shadow-none" : health.dotClass
-          }`}
-          aria-hidden
-        />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold text-[var(--copilot-ink)]">
-            Salud:{" "}
-            <span
-              className={
-                loading ? "text-[var(--copilot-ink-muted)]" : health.labelClass
-              }
-            >
-              {loading ? "…" : health.label}
-            </span>
-          </span>
-          <span className="mt-0.5 block truncate text-[11px] font-medium text-[var(--copilot-ink-muted)]">
-            {counterLine}
+    <Link
+      href={href}
+      scroll={false}
+      className="flex max-w-full items-center gap-2.5 rounded-full border border-[var(--copilot-border)] bg-white/90 px-3 py-1.5 text-left shadow-sm ring-1 ring-[rgba(44,40,37,0.06)] transition-colors duration-200 hover:bg-white hover:ring-[rgba(31,107,74,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]"
+      aria-label={
+        counts.critical >= 1 || counts.high >= 1
+          ? `Ir a atención prioritaria. Salud: ${health.label}. ${counterLine}`
+          : `Ir a alertas. Salud: ${health.label}. ${counterLine}`
+      }
+    >
+      <span
+        className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+          loading ? "animate-pulse bg-slate-300 shadow-none" : health.dotClass
+        }`}
+        aria-hidden
+      />
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-semibold text-[var(--copilot-ink)]">
+          Salud:{" "}
+          <span
+            className={
+              loading ? "text-[var(--copilot-ink-muted)]" : health.labelClass
+            }
+          >
+            {loading ? "…" : health.label}
           </span>
         </span>
-      </Link>
-    </div>
+        <span className="mt-0.5 block truncate text-[11px] font-medium text-[var(--copilot-ink-muted)]">
+          {counterLine}
+        </span>
+      </span>
+    </Link>
   );
 }

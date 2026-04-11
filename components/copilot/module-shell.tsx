@@ -6,7 +6,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { EnvironmentBanner } from "@/components/copilot/environment-banner";
 import { CopilotModuleSidebar } from "@/components/copilot/module-sidebar";
 import type { CopilotNavItem } from "@/components/copilot/copilot-nav-config";
 
@@ -28,7 +27,7 @@ export function CopilotModuleShell({
   storageKey,
   brandTitle,
   brandSubtitle,
-  topBar,
+  headerStrip,
   autoCollapseWhenPathIncludes,
 }: {
   children: React.ReactNode;
@@ -38,8 +37,8 @@ export function CopilotModuleShell({
   storageKey: string;
   brandTitle: string;
   brandSubtitle: string;
-  /** Barra opcional bajo el banner de entorno (p. ej. salud global). */
-  topBar?: ReactNode;
+  /** Franja superior (entorno + salud, etc.). */
+  headerStrip?: ReactNode;
   /**
    * Reservado por compatibilidad con llamadas existentes. Sin clave en
    * localStorage el sidebar arranca colapsado en todas las rutas.
@@ -90,11 +89,8 @@ export function CopilotModuleShell({
         brandSubtitle={brandSubtitle}
       />
       <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-visible">
-        <EnvironmentBanner />
-        {topBar != null ? (
-          <div className="overflow-visible border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.45)] px-6 py-2 backdrop-blur-sm">
-            {topBar}
-          </div>
+        {headerStrip != null ? (
+          <div className="overflow-visible">{headerStrip}</div>
         ) : null}
         {children}
       </div>

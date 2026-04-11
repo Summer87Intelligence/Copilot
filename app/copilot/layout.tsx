@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { CopilotMainWithReadingPanel } from "@/components/copilot/copilot-main-with-reading-panel";
 import { CopilotShell } from "@/components/copilot/copilot-shell";
 
 export const metadata: Metadata = {
@@ -13,5 +14,9 @@ export default function CopilotModuleLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <CopilotShell>{children}</CopilotShell>;
+  return (
+    <CopilotShell>
+      <CopilotMainWithReadingPanel>{children}</CopilotMainWithReadingPanel>
+    </CopilotShell>
+  );
 }

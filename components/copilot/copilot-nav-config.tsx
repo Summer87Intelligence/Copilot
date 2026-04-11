@@ -8,6 +8,7 @@ import {
   Database,
   LayoutDashboard,
   Lightbulb,
+  ListTodo,
   MessageSquareMore,
   Settings,
   Siren,
@@ -26,6 +27,12 @@ export type CopilotNavItem = {
 
 /** Flujo principal: narrativa operativa del producto. */
 const COPILOT_NAV_MAIN: CopilotNavItem[] = [
+  {
+    href: "/copilot/rutas",
+    label: "Qué hacer hoy",
+    shortLabel: "Hoy",
+    icon: ListTodo,
+  },
   { href: "/copilot", label: "Inicio", icon: LayoutDashboard },
   {
     href: "/copilot/datos",

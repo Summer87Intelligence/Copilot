@@ -4,6 +4,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -12,6 +13,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
+import { useCopilotReadingKeyOverride } from "@/components/copilot/copilot-reading-key-context";
 import { CopilotTaxEvidenceDrawer } from "@/components/copilot/copilot-tax-evidence-drawer";
 import { CopilotCollapsiblePanel } from "@/components/copilot/copilot-collapsible-panel";
 import { CopilotObligationPrimaryBadge } from "@/components/copilot/copilot-obligation-primary-badge";
@@ -25,6 +27,10 @@ import {
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
 import { CopilotSeverityBadge } from "@/components/copilot/copilot-severity-badge";
+import {
+  COPILOT_READING_KEY_FINANZAS_COBERTURA,
+  COPILOT_READING_KEY_FINANZAS_DEFAULT,
+} from "@/lib/copilot-reading-keys";
 import {
   mapTaxObligationStatus,
   mapTaxTypeLabel,
@@ -240,12 +246,22 @@ function FinanzasFiscalCalendarCollapsible({
 
 function CopilotFinanzasPageContent() {
   const searchParams = useSearchParams();
+  const { setReadingKeyOverride } = useCopilotReadingKeyOverride();
   const coberturaGuided = useMemo(() => {
     return (
       searchParams.get("mode") === "cobertura" &&
       searchParams.get("from") === "atencion-prioritaria"
     );
   }, [searchParams]);
+
+  useLayoutEffect(() => {
+    setReadingKeyOverride({
+      kind: "custom",
+      entry: coberturaGuided
+        ? COPILOT_READING_KEY_FINANZAS_COBERTURA
+        : COPILOT_READING_KEY_FINANZAS_DEFAULT,
+    });
+  }, [coberturaGuided, setReadingKeyOverride]);
 
   const [taxObligations, setTaxObligations] = useState<ProtoTaxObligation[]>([]);
   const [taxLoading, setTaxLoading] = useState(true);

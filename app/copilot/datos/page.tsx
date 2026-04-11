@@ -4,6 +4,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -11,6 +12,7 @@ import {
 import { useSearchParams } from "next/navigation";
 import { Loader2, Plus, Search } from "lucide-react";
 
+import { useCopilotReadingKeyOverride } from "@/components/copilot/copilot-reading-key-context";
 import { CopilotDataSidebar } from "@/components/copilot/copilot-data-sidebar";
 import {
   CopilotDataTable,
@@ -176,6 +178,7 @@ const URL_ENTITIES: readonly DataEntity[] = [
 
 function CopilotDatosPageContent() {
   const searchParams = useSearchParams();
+  const { setReadingKeyOverride } = useCopilotReadingKeyOverride();
   const [entity, setEntity] = useState<DataEntity>("companies");
   const [rows, setRows] = useState<DataRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -221,6 +224,12 @@ function CopilotDatosPageContent() {
       (e === "payments" || e === "invoices")
     );
   }, [searchParams]);
+
+  useLayoutEffect(() => {
+    setReadingKeyOverride(
+      isQuickAddForm ? { kind: "hidden" } : { kind: "auto" }
+    );
+  }, [isQuickAddForm, setReadingKeyOverride]);
 
   const quickAddEntityParam = searchParams.get("entity");
 
