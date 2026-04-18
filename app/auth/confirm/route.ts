@@ -9,9 +9,9 @@ type CookieToSet = {
 
 /** Solo rutas relativas internas (evita open redirect). */
 function safeNextPath(raw: string | null): string {
-  if (raw == null || typeof raw !== "string") return "/copilot/rutas";
+  if (raw == null || typeof raw !== "string") return "/login";
   const t = raw.trim();
-  if (!t.startsWith("/") || t.startsWith("//")) return "/copilot/rutas";
+  if (!t.startsWith("/") || t.startsWith("//")) return "/login";
   return t;
 }
 
@@ -65,7 +65,17 @@ export async function GET(request: NextRequest) {
     const supabase = applyCookiesTo(redirectSuccess);
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[auth/confirm] exchangeCodeForSession failed", error.message);
+      }
       return redirectLogin;
+    }
+    if (process.env.NODE_ENV === "development") {
+      const { data: u } = await supabase.auth.getUser();
+      console.log("[auth/confirm] session OK (code)", {
+        next: nextPath,
+        authEmail: u.user?.email ?? null,
+      });
     }
     return redirectSuccess;
   }
@@ -85,7 +95,17 @@ export async function GET(request: NextRequest) {
       token_hash,
     });
     if (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[auth/confirm] verifyOtp failed", error.message);
+      }
       return redirectLogin;
+    }
+    if (process.env.NODE_ENV === "development") {
+      const { data: u } = await supabase.auth.getUser();
+      console.log("[auth/confirm] session OK (otp)", {
+        next: nextPath,
+        authEmail: u.user?.email ?? null,
+      });
     }
     return redirectSuccess;
   }

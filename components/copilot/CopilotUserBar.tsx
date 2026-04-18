@@ -3,6 +3,7 @@
 import { createBrowserClient } from "@supabase/ssr";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import type { CopilotSessionPreview } from "@/components/copilot/copilot-session-preview";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 
 type AppUserMe = {
@@ -13,7 +14,12 @@ type AppUserMe = {
   company_id: string;
 };
 
-export function CopilotUserBar() {
+export function CopilotUserBar({
+  sessionPreview = null,
+}: {
+  /** Sesión cookie Copilot: mostrar este perfil sin depender de Supabase ni `/me`. */
+  sessionPreview?: CopilotSessionPreview | null;
+}) {
   const supabase = useMemo(
     () =>
       createBrowserClient(
@@ -23,27 +29,58 @@ export function CopilotUserBar() {
     []
   );
 
-  const [loading, setLoading] = useState(true);
+  const [authPending, setAuthPending] = useState(true);
+  /** Hay fila de usuario (sesión Supabase o preview desde layout por cookie). */
+  const [showUserRow, setShowUserRow] = useState(false);
+
+  const [mePending, setMePending] = useState(false);
   const [appUser, setAppUser] = useState<AppUserMe | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+
     (async () => {
-      const res = await copilotApiFetch("/api/copilot/me");
-      if (cancelled) return;
-      if (!res.ok) {
+      if (sessionPreview) {
+        setAuthPending(false);
+        setShowUserRow(true);
+        setMePending(false);
         setAppUser(null);
-        setLoading(false);
         return;
       }
+
+      setAuthPending(true);
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (cancelled) return;
+
+      if (authError || !authData.user) {
+        setShowUserRow(false);
+        setAuthPending(false);
+        setMePending(false);
+        setAppUser(null);
+        return;
+      }
+
+      setShowUserRow(true);
+      setAuthPending(false);
+
+      setMePending(true);
+      const res = await copilotApiFetch("/api/copilot/me");
+      if (cancelled) return;
+
+      setMePending(false);
+      if (!res.ok) {
+        setAppUser(null);
+        return;
+      }
+
       let json: unknown;
       try {
         json = await res.json();
       } catch {
         setAppUser(null);
-        setLoading(false);
         return;
       }
+
       const u =
         json &&
         typeof json === "object" &&
@@ -54,39 +91,55 @@ export function CopilotUserBar() {
           : null;
       if (!cancelled) {
         setAppUser(u);
-        setLoading(false);
       }
     })();
+
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [sessionPreview, supabase]);
+
+  const displayEmail =
+    appUser?.email ?? sessionPreview?.displayEmail ?? null;
+  const displayRole =
+    appUser?.role?.trim() ?? sessionPreview?.displayRole ?? null;
 
   const handleSignOut = useCallback(async () => {
+    if (sessionPreview) {
+      await fetch("/api/copilot/logout", { method: "POST" });
+      window.location.href = "/login";
+      return;
+    }
     await supabase.auth.signOut();
     window.location.href = "/login";
-  }, [supabase]);
+  }, [sessionPreview, supabase]);
 
-  if (loading) {
+  if (authPending) {
     return (
       <span className="text-xs text-[var(--copilot-ink-muted)]">Cargando...</span>
     );
   }
 
-  if (!appUser) {
+  if (!showUserRow) {
     return null;
   }
 
   return (
     <div className="flex max-w-full flex-wrap items-center justify-end gap-2 sm:gap-3">
       <div className="min-w-0 max-w-[220px] text-right text-xs sm:max-w-[280px]">
-        <p className="truncate font-medium text-[var(--copilot-ink)]">
-          {appUser.email}
-        </p>
-        {appUser.role?.trim() ? (
-          <p className="truncate text-[var(--copilot-ink-muted)]">
-            Rol: {appUser.role}
-          </p>
+        {mePending && !sessionPreview ? (
+          <span className="text-[var(--copilot-ink-muted)]">Cargando perfil…</span>
+        ) : displayEmail ? (
+          <>
+            <p className="truncate font-medium text-[var(--copilot-ink)]">
+              {displayEmail}
+            </p>
+            {displayRole ? (
+              <p className="truncate text-[var(--copilot-ink-muted)]">
+                Rol: {displayRole}
+              </p>
+            ) : null}
+          </>
         ) : null}
       </div>
       <button

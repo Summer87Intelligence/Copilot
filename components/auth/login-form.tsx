@@ -1,59 +1,54 @@
 "use client";
 
-import { createBrowserClient } from "@supabase/ssr";
-import { useCallback, useMemo, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useState, type FormEvent } from "react";
 
 export function LoginForm() {
-  const supabase = useMemo(
-    () =>
-      createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      ),
-    []
-  );
-
-  const [email, setEmail] = useState("");
+  const router = useRouter();
+  const [user, setUser] = useState("");
+  const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       setError(null);
-      setSent(false);
-      const trimmed = email.trim();
-      if (!trimmed) {
-        setError("Ingresá un email válido.");
-        return;
-      }
-
       setLoading(true);
       try {
-        const origin =
-          typeof window !== "undefined" ? window.location.origin : "";
-        const { error: otpError } = await supabase.auth.signInWithOtp({
-          email: trimmed,
-          options: {
-            emailRedirectTo: origin
-              ? `${origin}/auth/confirm?next=${encodeURIComponent("/copilot/rutas")}`
-              : undefined,
-          },
+        const res = await fetch("/api/copilot/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user: user.trim(), pin }),
         });
-        if (otpError) {
-          setError(otpError.message);
+        const json = (await res.json().catch(() => null)) as {
+          ok?: boolean;
+          error?: string;
+          message?: string;
+        } | null;
+        if (!res.ok) {
+          setError(
+            typeof json?.error === "string"
+              ? json.error
+              : typeof json?.message === "string"
+                ? json.message
+                : "No se pudo ingresar."
+          );
           return;
         }
-        setSent(true);
-        setEmail("");
+        if (json?.ok) {
+          router.replace("/copilot");
+          router.refresh();
+          return;
+        }
+        setError("No se pudo ingresar.");
       } catch {
-        setError("No se pudo enviar el enlace. Probá de nuevo.");
+        setError("Error de red.");
       } finally {
         setLoading(false);
       }
     },
-    [email, supabase]
+    [pin, router, user]
   );
 
   return (
@@ -61,21 +56,39 @@ export function LoginForm() {
       <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-4">
         <div>
           <label
-            htmlFor="login-email"
+            htmlFor="login-user"
             className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]"
           >
-            Email
+            Usuario
           </label>
           <input
-            id="login-email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            id="login-user"
+            name="user"
+            type="text"
+            autoComplete="username"
+            value={user}
+            onChange={(e) => setUser(e.target.value)}
             disabled={loading}
-            placeholder="tu@empresa.com"
+            className="w-full rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2.5 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)] disabled:opacity-60 dark:bg-neutral-900"
+          />
+        </div>
+
+        <div>
+          <label
+            htmlFor="login-pin"
+            className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]"
+          >
+            PIN
+          </label>
+          <input
+            id="login-pin"
+            name="pin"
+            type="password"
+            inputMode="numeric"
+            autoComplete="current-password"
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+            disabled={loading}
             className="w-full rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2.5 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)] disabled:opacity-60 dark:bg-neutral-900"
           />
         </div>
@@ -85,19 +98,9 @@ export function LoginForm() {
           disabled={loading}
           className="rounded-lg bg-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-wait disabled:opacity-60"
         >
-          {loading ? "Enviando…" : "Enviar enlace"}
+          {loading ? "Entrando…" : "Entrar"}
         </button>
       </form>
-
-      {sent ? (
-        <p
-          className="mt-4 rounded-lg border border-[rgba(31,107,74,0.35)] bg-[var(--copilot-accent-soft)] px-3 py-2.5 text-sm text-[var(--copilot-ink)]"
-          role="status"
-        >
-          Revisá tu email. Abrí el enlace en este mismo navegador para entrar a
-          Copilot.
-        </p>
-      ) : null}
 
       {error ? (
         <p

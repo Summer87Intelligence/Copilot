@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import { useCopilotAlerts } from "@/components/copilot/copilot-alerts-context";
+import type { CopilotSessionPreview } from "@/components/copilot/copilot-session-preview";
 import { CopilotUserBar } from "@/components/copilot/CopilotUserBar";
 import { EnvironmentBannerLeft } from "@/components/copilot/environment-banner";
 import { HealthIndicator } from "@/components/copilot/HealthIndicator";
@@ -10,7 +11,11 @@ import { HealthIndicator } from "@/components/copilot/HealthIndicator";
 /**
  * Primera fila del módulo: badge PROTOTIPO + copy (izq.); sesión + Salud (der.), misma franja.
  */
-export function CopilotEnvironmentHealthStrip() {
+export function CopilotEnvironmentHealthStrip({
+  sessionPreview = null,
+}: {
+  sessionPreview?: CopilotSessionPreview | null;
+}) {
   const { items, loading } = useCopilotAlerts();
   const alerts = useMemo(
     () =>
@@ -31,7 +36,7 @@ export function CopilotEnvironmentHealthStrip() {
         <EnvironmentBannerLeft />
       </div>
       <div className="flex max-w-full shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-2 sm:gap-x-4">
-        <CopilotUserBar />
+        <CopilotUserBar sessionPreview={sessionPreview} />
         <HealthIndicator alerts={alerts} loading={loading} />
       </div>
     </div>

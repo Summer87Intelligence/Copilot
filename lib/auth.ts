@@ -18,7 +18,7 @@ export async function signInWithMagicLink(email: string): Promise<{
     email: trimmed,
     options: {
       emailRedirectTo: origin
-        ? `${origin}/auth/confirm?next=${encodeURIComponent("/copilot/rutas")}`
+        ? `${origin}/auth/confirm?next=${encodeURIComponent("/login")}`
         : undefined,
     },
   });

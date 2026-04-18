@@ -3,9 +3,11 @@
 import { createBrowserClient } from "@supabase/ssr";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { LoginForm } from "@/components/auth/login-form";
+
+type LoginPhase = "checking" | "redirecting" | "guest";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,18 +20,33 @@ export default function LoginPage() {
     []
   );
 
+  const [phase, setPhase] = useState<LoginPhase>("checking");
+
   useEffect(() => {
     let cancelled = false;
-    void supabase.auth.getUser().then(({ data }) => {
+    void supabase.auth.getUser().then(({ data, error }) => {
       if (cancelled) return;
-      if (data.user) {
-        router.replace("/copilot");
+      if (error && process.env.NODE_ENV === "development") {
+        console.warn("[login] getUser", error.message);
       }
+      if (data.user) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[login] sesión activa, redirigiendo a /copilot/rutas", {
+            email: data.user.email,
+          });
+        }
+        setPhase("redirecting");
+        router.replace("/copilot/rutas");
+        return;
+      }
+      setPhase("guest");
     });
     return () => {
       cancelled = true;
     };
   }, [router, supabase]);
+
+  const showForm = phase === "guest";
 
   return (
     <main className="min-h-screen bg-[var(--copilot-canvas)] px-4 py-10 text-[var(--copilot-ink)] antialiased">
@@ -47,10 +64,23 @@ export default function LoginPage() {
           Iniciar sesión · Copilot
         </h1>
         <p className="mb-8 text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
-          Te enviamos un enlace mágico a tu correo. No hace falta contraseña.
+          Accedé con tu usuario y PIN. Si no tenés credenciales, pedilas a quien
+          administra tu espacio de trabajo.
         </p>
 
-        <LoginForm />
+        {phase === "checking" || phase === "redirecting" ? (
+          <p
+            className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card)] px-3 py-2.5 text-sm text-[var(--copilot-ink-muted)]"
+            role="status"
+            aria-live="polite"
+          >
+            {phase === "redirecting"
+              ? "Entrando al Copilot…"
+              : "Comprobando…"}
+          </p>
+        ) : null}
+
+        {showForm ? <LoginForm /> : null}
 
         <p className="mt-8 text-center text-sm text-[var(--copilot-ink-muted)]">
           <Link

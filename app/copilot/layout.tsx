@@ -1,11 +1,28 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import { createClient } from "@supabase/supabase-js";
 
 import { CopilotMainWithReadingPanel } from "@/components/copilot/copilot-main-with-reading-panel";
 import { CopilotShell } from "@/components/copilot/copilot-shell";
-import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
-import { getAppUserByEmail } from "@/services/app-user-source";
+import type { CopilotSessionPreview } from "@/components/copilot/copilot-session-preview";
+import {
+  COPILOT_SESSION_COOKIE,
+  parseCopilotSessionValue,
+} from "@/lib/copilot-session-cookie";
 
-/** Sesión + rol superadmin deben resolverse siempre en request; evita RSC del layout servido desde caché con `isSuperadmin` viejo. */
+function createServiceRoleClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!url || !key) return null;
+  return createClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+}
+
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
@@ -19,29 +36,57 @@ export default async function CopilotModuleLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const supabase = await createRouteSupabaseClient();
-  const { data: userData } = await supabase.auth.getUser();
-  const email = userData.user?.email?.trim();
+  const cookieStore = await cookies();
+  const raw = cookieStore.get(COPILOT_SESSION_COOKIE)?.value;
+  const parsed = parseCopilotSessionValue(raw);
 
-  let appUser = null as Awaited<ReturnType<typeof getAppUserByEmail>>;
   let isSuperadmin = false;
-  if (email) {
-    appUser = await getAppUserByEmail(email, supabase);
-    isSuperadmin =
-      appUser?.role?.trim().toLowerCase() === "superadmin";
+  let sessionPreview: CopilotSessionPreview | null = null;
+
+  if (parsed) {
+    const admin = createServiceRoleClient();
+    if (admin) {
+      const { data: row, error } = await admin
+        .from("app_users")
+        .select("id, username, email, role")
+        .eq("id", parsed.userId)
+        .maybeSingle();
+
+      if (!error && row && (row as { id: string }).id) {
+        const r = row as {
+          id: string;
+          username: string | null;
+          email: string | null;
+          role: string | null;
+        };
+        const role = String(r.role ?? "").trim();
+        isSuperadmin = role.toLowerCase() === "superadmin";
+        const displayLogin =
+          (r.username && r.username.trim()) ||
+          (r.email && r.email.trim()) ||
+          parsed.userId;
+        sessionPreview = {
+          displayEmail: displayLogin,
+          displayRole: role || "user",
+        };
+      }
+    }
   }
 
   if (process.env.NODE_ENV === "development") {
     console.log("[copilot/layout]", {
+      hasCookie: Boolean(parsed),
       isSuperadmin,
-      appUserRole: appUser?.role ?? null,
-      hasEmail: Boolean(email),
+      sessionPreview,
     });
   }
 
   return (
     <div className="flex h-dvh min-h-0 w-full flex-col">
-      <CopilotShell isSuperadmin={isSuperadmin}>
+      <CopilotShell
+        isSuperadmin={isSuperadmin}
+        sessionPreview={sessionPreview}
+      >
         <CopilotMainWithReadingPanel>{children}</CopilotMainWithReadingPanel>
       </CopilotShell>
     </div>
