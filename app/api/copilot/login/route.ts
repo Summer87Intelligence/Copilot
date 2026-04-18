@@ -21,6 +21,7 @@ function createServiceRoleClient() {
 
 type AppUserRow = {
   id: string;
+  company_id: string;
   username: string | null;
   pin: string | null;
   role: string;
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
     const p = ilikeExactPattern(user);
     const { data: row, error } = await admin
       .from("app_users")
-      .select("id, username, pin, role")
+      .select("id, company_id, username, pin, role")
       .or(`username.ilike.${p},email.ilike.${p}`)
       .limit(1)
       .maybeSingle();
@@ -94,7 +95,13 @@ export async function POST(request: Request) {
     }
 
     const u = row as AppUserRow | null;
-    if (!u || u.pin == null || u.pin !== pin) {
+    if (
+      !u ||
+      u.pin == null ||
+      u.pin !== pin ||
+      typeof u.company_id !== "string" ||
+      !u.company_id.trim()
+    ) {
       return NextResponse.json(
         { error: "Credenciales inválidas" },
         { status: 401 }
@@ -102,13 +109,15 @@ export async function POST(request: Request) {
     }
 
     const role = String(u.role ?? "").trim() || "user";
-    const cookieValue = serializeCopilotSessionValue(u.id, role);
+    const companyId = u.company_id.trim();
+    const cookieValue = serializeCopilotSessionValue(u.id, role, companyId);
 
     const res = NextResponse.json({ ok: true });
     res.cookies.set(COPILOT_SESSION_COOKIE, cookieValue, {
       httpOnly: true,
-      path: "/",
       sameSite: "lax",
+      secure: true,
+      path: "/",
     });
     return res;
   } catch {
