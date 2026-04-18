@@ -1,6 +1,5 @@
+import { loadCashflowEngineDatasetRows } from "@/lib/data/proto-analytics-read-repository";
 import { supabase } from "@/lib/supabase-client";
-
-const ROW_CAP = 5000;
 
 export type CashflowObligationInput = {
   id: string;
@@ -324,37 +323,11 @@ function projectOne(
 
 /** Una lectura de tablas proto para motor de cobertura (performance). */
 export async function loadCashflowEngineDataset(): Promise<CashflowEngineDataset> {
-  const [recRes, payRes, invRes] = await Promise.all([
-    supabase
-      .from("proto_receipts")
-      .select("amount,invoice_id,receipt_date,company_id")
-      .eq("is_active", true)
-      .order("receipt_date", { ascending: false })
-      .limit(ROW_CAP),
-    supabase
-      .from("proto_payments")
-      .select("amount,payment_date")
-      .eq("is_active", true)
-      .order("payment_date", { ascending: false })
-      .limit(ROW_CAP),
-    supabase
-      .from("proto_invoices")
-      .select(
-        "id,company_id,issue_date,due_date,balance_amount,collection_probability"
-      )
-      .eq("is_active", true)
-      .order("issue_date", { ascending: false })
-      .limit(ROW_CAP),
-  ]);
-
-  if (recRes.error) throw new Error(recRes.error.message);
-  if (payRes.error) throw new Error(payRes.error.message);
-  if (invRes.error) throw new Error(invRes.error.message);
-
+  const raw = await loadCashflowEngineDatasetRows(supabase);
   return {
-    receipts: (recRes.data ?? []) as ReceiptRow[],
-    payments: (payRes.data ?? []) as PaymentRow[],
-    invoices: (invRes.data ?? []) as InvoiceRow[],
+    receipts: raw.receipts as ReceiptRow[],
+    payments: raw.payments as PaymentRow[],
+    invoices: raw.invoices as InvoiceRow[],
   };
 }
 

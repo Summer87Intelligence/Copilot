@@ -3,6 +3,11 @@ import {
   type DashboardScenarioName,
   type DashboardSnapshot,
 } from "@/lib/dashboard-data";
+import {
+  selectLatestDashboardSnapshotByCompany,
+  selectLatestDashboardSnapshotByCompanyAndScenario,
+  selectTwoLatestDashboardSnapshotsByCompanyAndScenario,
+} from "@/lib/data/dashboard-snapshot-repository";
 import { getCurrentAppUserContext } from "@/lib/current-user-context";
 import { supabase } from "@/lib/supabase-client";
 import { getDemoCompany } from "@/services/company-source";
@@ -167,14 +172,11 @@ export async function getDashboardSnapshotRecordByScenario(
     return fallbackRecord(key);
   }
 
-  const { data, error } = await supabase
-    .from("dashboard_snapshots")
-    .select("*")
-    .eq("company_id", companyId)
-    .eq("scenario", key)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data, error } = await selectLatestDashboardSnapshotByCompanyAndScenario(
+    supabase,
+    companyId,
+    key
+  );
 
   if (error || !data) {
     return fallbackRecord(key);
@@ -213,13 +215,11 @@ export async function getPreviousDashboardSnapshotFromDB(
     return null;
   }
 
-  const { data, error } = await supabase
-    .from("dashboard_snapshots")
-    .select("*")
-    .eq("company_id", companyId)
-    .eq("scenario", key)
-    .order("created_at", { ascending: false })
-    .limit(2);
+  const { data, error } = await selectTwoLatestDashboardSnapshotsByCompanyAndScenario(
+    supabase,
+    companyId,
+    key
+  );
 
   if (error || !data || data.length < 2) {
     return null;
@@ -242,13 +242,10 @@ export async function getDashboardSnapshotByScenario(
 export async function getLatestSnapshot(
   companyId: string
 ): Promise<DashboardSnapshotRecord | null> {
-  const { data, error } = await supabase
-    .from("dashboard_snapshots")
-    .select("*")
-    .eq("company_id", companyId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data, error } = await selectLatestDashboardSnapshotByCompany(
+    supabase,
+    companyId
+  );
 
   if (error || !data) {
     return null;

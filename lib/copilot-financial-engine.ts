@@ -1,7 +1,8 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import { loadFinancialSnapshotRows as loadFinancialSnapshotRowsFromRepo } from "@/lib/data/proto-analytics-read-repository";
 import { supabase } from "@/lib/supabase-client";
 import { normalizedCollectionProbability } from "@/lib/copilot-cashflow-engine";
-
-const ROW_CAP = 5000;
 
 export type FinancialRiskLevel = "low" | "medium" | "high" | "critical";
 
@@ -27,6 +28,15 @@ type TaxPaymentRow = {
   obligation_id: unknown;
   amount: unknown;
   status: unknown;
+};
+
+/** Filas mínimas para el cálculo puro del snapshot (tests y composición). */
+export type FinancialEngineSnapshotRows = {
+  receipts: ReadonlyArray<ReceiptRow>;
+  payments: ReadonlyArray<PaymentRow>;
+  invoices: ReadonlyArray<InvoiceRow>;
+  taxObligations: ReadonlyArray<TaxObligationRow>;
+  taxPayments: ReadonlyArray<TaxPaymentRow>;
 };
 
 function num(v: unknown): number {
@@ -69,7 +79,7 @@ function addDaysToYmd(ymd: string, days: number): string {
   return `${yy}-${mm}-${dd}`;
 }
 
-function sumReceiptAmounts(rows: ReceiptRow[]): number {
+function sumReceiptAmounts(rows: readonly ReceiptRow[]): number {
   let t = 0;
   for (const r of rows) {
     const n = num(r.amount);
@@ -78,7 +88,7 @@ function sumReceiptAmounts(rows: ReceiptRow[]): number {
   return t;
 }
 
-function sumPaymentAmountsAll(rows: PaymentRow[]): number {
+function sumPaymentAmountsAll(rows: readonly PaymentRow[]): number {
   let t = 0;
   for (const r of rows) {
     const n = num(r.amount);
@@ -89,7 +99,7 @@ function sumPaymentAmountsAll(rows: PaymentRow[]): number {
 
 /** Pagos operativos con fecha estrictamente posterior a hoy (compromisos futuros). */
 function sumFutureOperationalPayments(
-  rows: PaymentRow[],
+  rows: readonly PaymentRow[],
   todayYmd: string
 ): number {
   let t = 0;
@@ -103,7 +113,7 @@ function sumFutureOperationalPayments(
 }
 
 /** Facturas abiertas: cobranza esperada = balance × collection_probability */
-function sumExpectedInflowsOpenInvoices(rows: InvoiceRow[]): number {
+function sumExpectedInflowsOpenInvoices(rows: readonly InvoiceRow[]): number {
   let t = 0;
   for (const inv of rows) {
     const bal = num(inv.balance_amount);
@@ -116,7 +126,7 @@ function sumExpectedInflowsOpenInvoices(rows: InvoiceRow[]): number {
 
 function sumPaidForObligation(
   obligationId: string,
-  payments: TaxPaymentRow[]
+  payments: readonly TaxPaymentRow[]
 ): number {
   return payments.reduce((acc, p) => {
     if (String(p.obligation_id ?? "") !== obligationId) return acc;
@@ -130,8 +140,8 @@ function sumPaidForObligation(
  * con vencimiento en o antes de hoy+30 días (incluye vencidas abiertas).
  */
 function sumPendingTaxOutflowsWithinDays(
-  obligations: TaxObligationRow[],
-  taxPayments: TaxPaymentRow[],
+  obligations: readonly TaxObligationRow[],
+  taxPayments: readonly TaxPaymentRow[],
   todayYmd: string,
   horizonDays: number
 ): number {
@@ -167,53 +177,22 @@ function riskFromCoverage(
 /**
  * Carga paralela mínima para el snapshot financiero consolidado.
  */
-async function loadFinancialSnapshotRows(): Promise<{
+async function loadFinancialSnapshotRows(
+  client: SupabaseClient
+): Promise<{
   receipts: ReceiptRow[];
   payments: PaymentRow[];
   invoices: InvoiceRow[];
   taxObligations: TaxObligationRow[];
   taxPayments: TaxPaymentRow[];
 }> {
-  const [recRes, payRes, invRes, taxObRes, taxPayRes] = await Promise.all([
-    supabase
-      .from("proto_receipts")
-      .select("amount")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-    supabase
-      .from("proto_payments")
-      .select("amount,payment_date")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-    supabase
-      .from("proto_invoices")
-      .select("balance_amount,collection_probability")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-    supabase
-      .from("proto_tax_obligations")
-      .select("*")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-    supabase
-      .from("proto_tax_payments")
-      .select("*")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-  ]);
-
-  if (recRes.error) throw new Error(recRes.error.message);
-  if (payRes.error) throw new Error(payRes.error.message);
-  if (invRes.error) throw new Error(invRes.error.message);
-  if (taxObRes.error) throw new Error(taxObRes.error.message);
-  if (taxPayRes.error) throw new Error(taxPayRes.error.message);
-
+  const raw = await loadFinancialSnapshotRowsFromRepo(client);
   return {
-    receipts: (recRes.data ?? []) as ReceiptRow[],
-    payments: (payRes.data ?? []) as PaymentRow[],
-    invoices: (invRes.data ?? []) as InvoiceRow[],
-    taxObligations: (taxObRes.data ?? []) as TaxObligationRow[],
-    taxPayments: (taxPayRes.data ?? []) as TaxPaymentRow[],
+    receipts: raw.receipts as ReceiptRow[],
+    payments: raw.payments as PaymentRow[],
+    invoices: raw.invoices as InvoiceRow[],
+    taxObligations: raw.taxObligations as TaxObligationRow[],
+    taxPayments: raw.taxPayments as TaxPaymentRow[],
   };
 }
 
@@ -221,11 +200,13 @@ async function loadFinancialSnapshotRows(): Promise<{
  * Snapshot único: caja histórica, cobranza esperada (facturas abiertas × probabilidad),
  * egresos futuros operativos + obligaciones fiscales pendientes a 30 días,
  * balance y ratio de cobertura.
+ *
+ * `todayYmd` fijo permite tests deterministas (YYYY-MM-DD).
  */
-export async function getFinancialSnapshot(): Promise<FinancialSnapshot> {
-  const todayYmd = financialEngineLocalTodayYmd();
-  const rows = await loadFinancialSnapshotRows();
-
+export function buildFinancialSnapshotFromRows(
+  rows: FinancialEngineSnapshotRows,
+  todayYmd: string
+): FinancialSnapshot {
   const available_cash =
     sumReceiptAmounts(rows.receipts) - sumPaymentAmountsAll(rows.payments);
 
@@ -257,6 +238,17 @@ export async function getFinancialSnapshot(): Promise<FinancialSnapshot> {
     coverage_ratio,
     risk_level,
   };
+}
+
+/**
+ * Snapshot único: carga desde repositorio y fecha calendario local de hoy.
+ */
+export async function getFinancialSnapshot(
+  client: SupabaseClient = supabase
+): Promise<FinancialSnapshot> {
+  const todayYmd = financialEngineLocalTodayYmd();
+  const rows = await loadFinancialSnapshotRows(client);
+  return buildFinancialSnapshotFromRows(rows, todayYmd);
 }
 
 /** Señales textuales derivadas del snapshot (para alertas / narrativa). */

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { CopilotActionsEvidenceDrawer } from "@/components/copilot/copilot-actions-evidence-drawer";
+import { CopilotTraceMeta } from "@/components/copilot/copilot-trace-meta";
 import { CopilotInteractiveText } from "@/components/copilot/copilot-interactive-text";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import {
@@ -18,7 +19,10 @@ import {
   mapActionChannel,
   mapActionTypeLabel,
   mapExecutionStatus,
+  mapOutcomeTypeLabelEs,
 } from "@/lib/copilot-format";
+import { copilotApiFetch } from "@/lib/copilot-fetch";
+import { traceFromActionRow } from "@/lib/copilot-trace-meta";
 import type { OutcomeTypeValue } from "@/lib/ai/outcome-types";
 
 function statusTone(
@@ -60,12 +64,19 @@ export default function CopilotAccionesPage() {
     null
   );
   const [isEvidenceOpen, setIsEvidenceOpen] = useState(false);
+  const [loopDrafts, setLoopDrafts] = useState<
+    Record<string, { assignee: string; expected: string; before: string }>
+  >({});
+  const [outcomeDrafts, setOutcomeDrafts] = useState<
+    Record<string, { notes: string; after: string }>
+  >({});
+  const [savingLoopId, setSavingLoopId] = useState<string | null>(null);
 
-  const fetchActions = useCallback(async () => {
+  const fetchActions = useCallback(async (opts?: { soft?: boolean }) => {
     setError(null);
-    setLoading(true);
+    if (!opts?.soft) setLoading(true);
     try {
-      const res = await fetch("/api/copilot/actions?limit=120");
+      const res = await copilotApiFetch("/api/copilot/actions?limit=120");
       const json = (await res.json()) as {
         actions?: ActionListItem[];
         error?: string;
@@ -80,7 +91,7 @@ export default function CopilotAccionesPage() {
       setError("Error de red al cargar acciones.");
       setActions([]);
     } finally {
-      setLoading(false);
+      if (!opts?.soft) setLoading(false);
     }
   }, []);
 
@@ -88,12 +99,44 @@ export default function CopilotAccionesPage() {
     void fetchActions();
   }, [fetchActions]);
 
+  useEffect(() => {
+    setLoopDrafts((prev) => {
+      const next = { ...prev };
+      for (const a of actions) {
+        next[a.id] = {
+          assignee: a.assignee_name ?? "",
+          expected: a.expected_result ?? "",
+          before: a.before_note ?? "",
+        };
+      }
+      return next;
+    });
+    setOutcomeDrafts((prev) => {
+      const next = { ...prev };
+      for (const a of actions) {
+        if (!next[a.id]) next[a.id] = { notes: "", after: "" };
+      }
+      for (const k of Object.keys(next)) {
+        if (!actions.some((a) => a.id === k)) delete next[k];
+      }
+      return next;
+    });
+  }, [actions]);
+
+  useEffect(() => {
+    setEvidenceAction((prev) => {
+      if (!prev) return prev;
+      const next = actions.find((x) => x.id === prev.id);
+      return next ?? prev;
+    });
+  }, [actions]);
+
   const handleGenerate = async () => {
     setError(null);
     setLastResult(null);
     setGenerating(true);
     try {
-      const res = await fetch("/api/copilot/actions/generate", {
+      const res = await copilotApiFetch("/api/copilot/actions/generate", {
         method: "POST",
       });
       const json = (await res.json()) as {
@@ -116,15 +159,32 @@ export default function CopilotAccionesPage() {
     }
   };
 
-  const patchActionStatus = (actionId: string, status: string) => {
-    setActions((prev) =>
-      prev.map((x) =>
-        x.id === actionId ? { ...x, execution_status: status } : x
-      )
-    );
-    setEvidenceAction((prev) =>
-      prev?.id === actionId ? { ...prev, execution_status: status } : prev
-    );
+  const saveActionLoop = async (a: ActionListItem) => {
+    const d = loopDrafts[a.id];
+    if (!d) return;
+    setError(null);
+    setSavingLoopId(a.id);
+    try {
+      const res = await copilotApiFetch(`/api/copilot/actions/${a.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assignee_name: d.assignee.trim() === "" ? null : d.assignee.trim(),
+          expected_result: d.expected.trim() === "" ? null : d.expected.trim(),
+          before_note: d.before.trim() === "" ? null : d.before.trim(),
+        }),
+      });
+      const json = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setError(json.error ?? "No se pudo guardar el seguimiento.");
+        return;
+      }
+      await fetchActions({ soft: true });
+    } catch {
+      setError("Error de red al guardar seguimiento.");
+    } finally {
+      setSavingLoopId(null);
+    }
   };
 
   const submitOutcome = async (
@@ -134,8 +194,9 @@ export default function CopilotAccionesPage() {
   ) => {
     setError(null);
     setSubmittingActionId(a.id);
+    const draft = outcomeDrafts[a.id] ?? { notes: "", after: "" };
     try {
-      const res = await fetch("/api/copilot/outcomes", {
+      const res = await copilotApiFetch("/api/copilot/outcomes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -146,6 +207,8 @@ export default function CopilotAccionesPage() {
             outcomeType === "sale"
               ? revenueAmount ?? 0
               : null,
+          notes: draft.notes.trim() === "" ? null : draft.notes.trim(),
+          after_note: draft.after.trim() === "" ? null : draft.after.trim(),
         }),
       });
       const json = (await res.json()) as { error?: string; outcome?: unknown };
@@ -153,10 +216,10 @@ export default function CopilotAccionesPage() {
         setError(json.error ?? "No se pudo registrar el resultado.");
         return;
       }
-      const nextStatus = outcomeType === "no_response" ? "failed" : "executed";
-      patchActionStatus(a.id, nextStatus);
       setSaleExpandId(null);
       setSaleAmount("");
+      setOutcomeDrafts((p) => ({ ...p, [a.id]: { notes: "", after: "" } }));
+      await fetchActions({ soft: true });
     } catch {
       setError("Error de red al registrar resultado.");
     } finally {
@@ -188,8 +251,9 @@ export default function CopilotAccionesPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
+        surfaceId="copilot.acciones"
         title="Acciones"
-        description="Acciones generadas desde decisiones — registrá el resultado con un clic."
+        description="Acciones desde decisiones: seguimiento (responsable, esperado, antes) y cierre con resultado real."
         right={
           <CopilotPrimaryButton
             type="button"
@@ -277,6 +341,12 @@ export default function CopilotAccionesPage() {
                         <p className="mt-2 text-xs text-[var(--copilot-ink-muted)]">
                           {formatDate(a.created_at)}
                         </p>
+                        <CopilotTraceMeta
+                          trace={traceFromActionRow(a)}
+                          variant="embed"
+                          dense
+                          className="!pt-2"
+                        />
                         <div className="mt-3">
                           <CopilotGhostButton
                             type="button"
@@ -295,10 +365,91 @@ export default function CopilotAccionesPage() {
                       </CopilotBadge>
                     </div>
 
+                    {(() => {
+                      const ld = loopDrafts[a.id] ?? {
+                        assignee: "",
+                        expected: "",
+                        before: "",
+                      };
+                      return (
+                    <div className="mt-4 rounded-xl border border-[var(--copilot-border)]/90 bg-[rgba(255,255,255,0.7)] px-3 py-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                        Seguimiento
+                      </p>
+                      <div className="mt-3 space-y-3">
+                        <label className="block">
+                          <span className="text-xs font-medium text-[var(--copilot-ink-muted)]">
+                            Responsable
+                          </span>
+                          <input
+                            type="text"
+                            className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
+                            placeholder="Nombre o rol"
+                            value={ld.assignee}
+                            onChange={(e) =>
+                              setLoopDrafts((p) => ({
+                                ...p,
+                                [a.id]: { ...ld, assignee: e.target.value },
+                              }))
+                            }
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="text-xs font-medium text-[var(--copilot-ink-muted)]">
+                            Resultado esperado
+                          </span>
+                          <textarea
+                            rows={2}
+                            className="mt-1 w-full resize-y rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
+                            placeholder="Qué debería pasar si la acción sale bien"
+                            value={ld.expected}
+                            onChange={(e) =>
+                              setLoopDrafts((p) => ({
+                                ...p,
+                                [a.id]: { ...ld, expected: e.target.value },
+                              }))
+                            }
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="text-xs font-medium text-[var(--copilot-ink-muted)]">
+                            Antes (contexto o lectura)
+                          </span>
+                          <textarea
+                            rows={2}
+                            className="mt-1 w-full resize-y rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
+                            placeholder="Situación o métrica antes de ejecutar"
+                            value={ld.before}
+                            onChange={(e) =>
+                              setLoopDrafts((p) => ({
+                                ...p,
+                                [a.id]: { ...ld, before: e.target.value },
+                              }))
+                            }
+                          />
+                        </label>
+                      </div>
+                      <div className="mt-3 flex justify-end">
+                        <CopilotGhostButton
+                          type="button"
+                          disabled={savingLoopId === a.id}
+                          onClick={() => void saveActionLoop(a)}
+                          className="inline-flex items-center gap-2 text-xs"
+                        >
+                          {savingLoopId === a.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                          ) : null}
+                          Guardar seguimiento
+                        </CopilotGhostButton>
+                      </div>
+                    </div>
+                      );
+                    })()}
+
                     {pending ? (
                       <div className="mt-4 border-t border-[var(--copilot-border)] pt-4">
                         <p className="mb-2 flex flex-wrap items-center gap-2 text-xs font-medium text-[var(--copilot-ink-muted)]">
-                          Resultado
+                          Registrar resultado
                           {busy ? (
                             <span className="inline-flex items-center gap-1.5 font-normal text-[var(--copilot-ink)]">
                               <Loader2
@@ -309,6 +460,48 @@ export default function CopilotAccionesPage() {
                             </span>
                           ) : null}
                         </p>
+                        <div className="mb-3 space-y-2">
+                          <label className="block">
+                            <span className="text-xs font-medium text-[var(--copilot-ink-muted)]">
+                              Notas del resultado (opcional)
+                            </span>
+                            <textarea
+                              rows={2}
+                              className="mt-1 w-full resize-y rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2 text-sm"
+                              placeholder="Qué pasó en la práctica"
+                              value={(outcomeDrafts[a.id] ?? { notes: "", after: "" }).notes}
+                              onChange={(e) =>
+                                setOutcomeDrafts((p) => ({
+                                  ...p,
+                                  [a.id]: {
+                                    ...(p[a.id] ?? { notes: "", after: "" }),
+                                    notes: e.target.value,
+                                  },
+                                }))
+                              }
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="text-xs font-medium text-[var(--copilot-ink-muted)]">
+                              Después / impacto (opcional)
+                            </span>
+                            <textarea
+                              rows={2}
+                              className="mt-1 w-full resize-y rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2 text-sm"
+                              placeholder="Lectura breve después de la interacción"
+                              value={(outcomeDrafts[a.id] ?? { notes: "", after: "" }).after}
+                              onChange={(e) =>
+                                setOutcomeDrafts((p) => ({
+                                  ...p,
+                                  [a.id]: {
+                                    ...(p[a.id] ?? { notes: "", after: "" }),
+                                    after: e.target.value,
+                                  },
+                                }))
+                              }
+                            />
+                          </label>
+                        </div>
                         <div className="flex flex-wrap gap-2">
                           <CopilotGhostButton
                             type="button"
@@ -396,7 +589,78 @@ export default function CopilotAccionesPage() {
                           </div>
                         ) : null}
                       </div>
-                    ) : null}
+                    ) : (
+                      <div className="mt-4 space-y-3 border-t border-[var(--copilot-border)] pt-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                          Cierre del loop
+                        </p>
+                        {a.outcome ? (
+                          <div className="space-y-2 text-sm text-[var(--copilot-ink)]">
+                            <p>
+                              <span className="font-medium text-[var(--copilot-ink-muted)]">
+                                Tipo registrado:{" "}
+                              </span>
+                              {mapOutcomeTypeLabelEs(a.outcome.outcome_type)}
+                            </p>
+                            <p>
+                              <span className="font-medium text-[var(--copilot-ink-muted)]">
+                                Esperado:{" "}
+                              </span>
+                              {a.expected_result?.trim()
+                                ? a.expected_result
+                                : "Sin texto de esperado cargado."}
+                            </p>
+                            <p>
+                              <span className="font-medium text-[var(--copilot-ink-muted)]">
+                                Real / notas:{" "}
+                              </span>
+                              {a.outcome.notes?.trim()
+                                ? a.outcome.notes
+                                : "Sin notas en el outcome."}
+                            </p>
+                            {a.outcome.outcome_type === "sale" &&
+                            a.outcome.revenue_amount != null ? (
+                              <p>
+                                <span className="font-medium text-[var(--copilot-ink-muted)]">
+                                  Monto venta:{" "}
+                                </span>
+                                {a.outcome.revenue_amount.toLocaleString("es-AR", {
+                                  minimumFractionDigits: 0,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </p>
+                            ) : null}
+                            {a.outcome.after_note?.trim() ? (
+                              <p>
+                                <span className="font-medium text-[var(--copilot-ink-muted)]">
+                                  Después (registrado):{" "}
+                                </span>
+                                {a.outcome.after_note}
+                              </p>
+                            ) : null}
+                            {a.before_note?.trim() || a.outcome.after_note?.trim() ? (
+                              <p className="rounded-lg bg-[rgba(31,107,74,0.06)] px-3 py-2 text-xs leading-relaxed text-[var(--copilot-ink)]">
+                                <span className="font-semibold">Antes: </span>
+                                {a.before_note?.trim() || "—"}
+                                <span className="mx-1.5 text-[var(--copilot-ink-muted)]">·</span>
+                                <span className="font-semibold">Después: </span>
+                                {a.outcome.after_note?.trim() ||
+                                  a.outcome.notes?.trim() ||
+                                  "—"}
+                              </p>
+                            ) : null}
+                            <p className="text-xs text-[var(--copilot-ink-muted)]">
+                              Outcome registrado: {formatDate(a.outcome.created_at)}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-amber-900/90">
+                            Estado {mapExecutionStatus(a.execution_status)} sin fila de
+                            outcome en esta carga. Volvé a listar o revisá permisos.
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </li>
                 );
               })}

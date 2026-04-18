@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 
-import type { CopilotNavItem } from "@/components/copilot/copilot-nav-config";
+import type { CopilotNavGroup } from "@/components/copilot/copilot-nav-config";
 
 export function normalizePath(path: string) {
   if (path.length > 1 && path.endsWith("/")) return path.slice(0, -1);
@@ -33,7 +33,7 @@ export function CopilotModuleSidebar({
 }: {
   collapsed: boolean;
   onToggleCollapsed: () => void;
-  groups: CopilotNavItem[][];
+  groups: CopilotNavGroup[];
   basePath: string;
   brandTitle: string;
   brandSubtitle: string;
@@ -48,12 +48,12 @@ export function CopilotModuleSidebar({
 
   return (
     <aside
-      className={`flex h-full shrink-0 flex-col overflow-hidden border-r border-[var(--copilot-border)] bg-[var(--copilot-sidebar)] transition-[width] duration-200 ease-out ${
+      className={`flex h-full min-h-0 shrink-0 flex-col overflow-x-hidden overflow-y-hidden border-r border-[var(--copilot-border)] bg-[var(--copilot-sidebar)] transition-[width] duration-200 ease-out ${
         collapsed ? "w-16" : "w-[260px]"
       }`}
     >
       <div
-        className={`flex border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.35)] ${
+        className={`flex shrink-0 border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.35)] ${
           collapsed
             ? "flex-col items-center gap-2 px-2 py-3"
             : "items-center gap-2 px-3 py-4"
@@ -97,18 +97,23 @@ export function CopilotModuleSidebar({
         )}
       </div>
 
-      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden p-2">
-        {groups.map((items, groupIndex) => (
+      <nav
+        className="flex min-h-0 flex-1 flex-col gap-px overflow-y-auto overflow-x-hidden p-1.5"
+        aria-label="Navegación del módulo Copilot"
+      >
+        {groups.map((group, groupIndex) => (
           <Fragment key={groupIndex}>
             {groupIndex > 0 ? (
-              <div className="my-2 mx-1">
+              <div className="my-1.5 mx-1">
                 {!collapsed ? (
                   <>
-                    <p
-                      className={`px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${sectionLabelClass}`}
-                    >
-                      Sistema
-                    </p>
+                    {group.sectionTitle ? (
+                      <p
+                        className={`px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${sectionLabelClass}`}
+                      >
+                        {group.sectionTitle}
+                      </p>
+                    ) : null}
                     <div className={`h-px ${dividerLineClass}`} />
                   </>
                 ) : (
@@ -116,7 +121,7 @@ export function CopilotModuleSidebar({
                 )}
               </div>
             ) : null}
-            {items.map((item) => {
+            {group.items.map((item) => {
               const Icon = item.icon;
               const active = isNavActiveForBase(pathname, item.href, basePath);
               const label = item.shortLabel ?? item.label;
@@ -127,14 +132,14 @@ export function CopilotModuleSidebar({
                   key={item.href}
                   href={item.href}
                   title={collapsed ? item.label : undefined}
-                  className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                  className={`group flex min-h-8 items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium leading-tight transition-colors ${
                     active
                       ? `text-[var(--copilot-ink)] ring-1 ${activeRing}`
                       : "text-[var(--copilot-ink-muted)] hover:bg-white/60 hover:text-[var(--copilot-ink)]"
                   } ${collapsed ? "justify-center px-0" : ""}`}
                 >
                   <Icon
-                    className={`h-5 w-5 shrink-0 ${active ? accentActive : ""}`}
+                    className={`h-4 w-4 shrink-0 ${active ? accentActive : ""}`}
                     aria-hidden
                   />
                   {!collapsed ? (

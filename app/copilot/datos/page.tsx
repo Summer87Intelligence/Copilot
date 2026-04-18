@@ -43,6 +43,7 @@ import {
   type DataRow,
   type ProtoActiveListMode,
 } from "@/lib/copilot-data";
+import { copilotApiFetch } from "@/lib/copilot-fetch";
 import { buildDatosFilterOptions } from "@/lib/copilot-format";
 import { DATA_TRAINING } from "@/lib/copilot-data-integrity";
 import {
@@ -429,7 +430,7 @@ function CopilotDatosPageContent() {
     setRestoreLoading(true);
     setBanner(null);
     try {
-      const res = await fetch(ep.restore, {
+      const res = await copilotApiFetch(ep.restore, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
@@ -478,7 +479,7 @@ function CopilotDatosPageContent() {
     setDeleteLoading(true);
     setDeleteError(null);
     try {
-      const res = await fetch(
+      const res = await copilotApiFetch(
         `${ep.delete}?id=${encodeURIComponent(id)}`,
         { method: "DELETE" }
       );
@@ -578,6 +579,7 @@ function CopilotDatosPageContent() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
+        surfaceId="copilot.datos"
         title={pageTitle}
         description={pageDescription}
         right={

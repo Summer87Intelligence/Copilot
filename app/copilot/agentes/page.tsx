@@ -9,7 +9,6 @@ import {
   CircleDot,
   Database,
   Play,
-  Sparkles,
 } from "lucide-react";
 
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
@@ -63,14 +62,9 @@ export default function CopilotAgentesPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
+        surfaceId="copilot.agentes"
         title="Agentes de IA"
         description="No es “más gráficos”: son especialistas que leen tus datos, priorizan y proponen el siguiente movimiento — como un equipo, disponible 24/7."
-        right={
-          <span className="inline-flex items-center gap-2 rounded-full bg-[var(--copilot-accent-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--copilot-accent)]">
-            <Sparkles className="h-3.5 w-3.5" aria-hidden />
-            Modo demo · sin backend aún
-          </span>
-        }
       />
 
       <div className="flex-1 space-y-10 overflow-auto px-6 py-8">

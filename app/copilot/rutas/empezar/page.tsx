@@ -15,6 +15,7 @@ export default function RutaEmpezarPage() {
     <div className="flex min-h-0 flex-1 flex-col">
       <RutasFlowBackLink />
       <CopilotPageHeader
+        surfaceId="copilot.rutas"
         title="Empezar el día"
         description="Orden de atención antes de entrar al detalle."
       />

@@ -837,6 +837,7 @@ function CopilotFinanzasPageContent() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
+        surfaceId="copilot.finanzas"
         title="Finanzas"
         description={
           coberturaGuided

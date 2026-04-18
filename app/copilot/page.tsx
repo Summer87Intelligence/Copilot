@@ -241,12 +241,13 @@ export default function CopilotHomePage() {
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
         eyebrow="Summer87 Copilot"
+        surfaceId="copilot.home"
         title="Inicio"
         description={`Gestioná tus clientes y tomá decisiones con información clara.
 La prospección y generación de leads la realizás en Summer87 Leads.`}
         right={
           <CopilotPrimaryLink href="/copilot/gestion-ia" className="gap-2 whitespace-nowrap">
-            Ir a Gestión IA
+            Ver acciones recomendadas
           </CopilotPrimaryLink>
         }
       />
@@ -615,12 +616,12 @@ La prospección y generación de leads la realizás en Summer87 Leads.`}
               <li className="flex gap-2">
                 <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--copilot-accent)]" />
                 <span>
-                  Iniciativas y decisiones en{" "}
+                  Acciones sugeridas por el copiloto en{" "}
                   <Link
                     href="/copilot/gestion-ia"
                     className="font-semibold text-[var(--copilot-accent)] hover:underline"
                   >
-                    Gestión IA
+                    Acciones recomendadas
                   </Link>
                   .
                 </span>

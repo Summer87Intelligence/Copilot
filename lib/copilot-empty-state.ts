@@ -73,13 +73,13 @@ export const COPILOT_EMPTY_COPY = {
       "Ejemplo: una obligación IVA con vencimiento en los próximos días y saldo pendiente suele generar una alerta de prioridad alta o crítica.",
   },
   gestionIa: {
-    title: "Pipeline sin iniciativas todavía",
+    title: "Todavía no hay acciones sugeridas para hoy",
     paragraphs: [
-      "Gestión IA muestra el recorrido real initiative → decisión → acción → outcome. Si la tabla de iniciativas está vacía, no hay nada que trazar: el contador en cero es correcto.",
-      "Podés pulsar «Generar oportunidades» cuando el motor tenga señales (insights, reglas, datos). Sin candidatas, el lote quedará vacío.",
+      "Esta pantalla se alimenta de señales reales sobre clientes, cobros y caja. Si aún no hay datos cargados o el motor no encontró candidatos, la lista queda en blanco: es lo esperado, no un error.",
+      "Cuando haya movimiento en facturación, cobranzas o finanzas, vas a ver acá prioridades claras con un próximo paso para cada cuenta.",
     ],
     example:
-      "Ejemplo: tras cargar clientes y facturas con riesgo, una corrida de generación puede crear iniciativas nuevas listas para decidir.",
+      "Ejemplo: con facturas vencidas y saldo pendiente, suele aparecer primero un cliente en riesgo de cobro con un contacto sugerido para hoy.",
   },
   insights: {
     title: "Aún no hay insights que mostrar",

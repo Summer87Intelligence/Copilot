@@ -1,4 +1,5 @@
 import type { DashboardSnapshot } from "@/lib/dashboard-data";
+import { insertDashboardSnapshotRow } from "@/lib/data/dashboard-snapshot-repository";
 import { supabase } from "@/lib/supabase-client";
 
 type DashboardSnapshotInsertRow = {
@@ -44,11 +45,7 @@ export async function saveDashboardSnapshot(
     created_at: new Date().toISOString(),
   };
 
-  const { data, error } = await supabase
-    .from("dashboard_snapshots")
-    .insert(row)
-    .select("id")
-    .single();
+  const { data, error } = await insertDashboardSnapshotRow(supabase, row);
 
   if (error) {
     return { success: false, id: null, error: new Error(error.message) };

@@ -1,6 +1,5 @@
+import { loadCashStatusAmountRows } from "@/lib/data/proto-analytics-read-repository";
 import { supabase } from "@/lib/supabase-client";
-
-const ROW_CAP = 5000;
 
 function sumAmountColumn(rows: { amount: unknown }[] | null): number {
   let t = 0;
@@ -16,27 +15,13 @@ function sumAmountColumn(rows: { amount: unknown }[] | null): number {
  * Usa suma de `amount` en proto_receipts y proto_payments.
  */
 export async function getCashStatus(): Promise<{ available_cash: number }> {
-  const [inRes, outRes] = await Promise.all([
-    supabase
-      .from("proto_receipts")
-      .select("amount")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-    supabase
-      .from("proto_payments")
-      .select("amount")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-  ]);
-
-  if (inRes.error) throw new Error(inRes.error.message);
-  if (outRes.error) throw new Error(outRes.error.message);
+  const { inflows, outflows } = await loadCashStatusAmountRows(supabase);
 
   const totalInflows = sumAmountColumn(
-    inRes.data as { amount: unknown }[] | null
+    inflows as { amount: unknown }[] | null
   );
   const totalOutflows = sumAmountColumn(
-    outRes.data as { amount: unknown }[] | null
+    outflows as { amount: unknown }[] | null
   );
 
   const available_cash = totalInflows - totalOutflows;

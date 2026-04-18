@@ -15,6 +15,7 @@ export default function RutaDecisionesPage() {
     <div className="flex min-h-0 flex-1 flex-col">
       <RutasFlowBackLink />
       <CopilotPageHeader
+        surfaceId="copilot.rutas"
         title="Decisiones pendientes"
         description="Del disparador a la acción, sin perder el hilo."
       />
@@ -23,11 +24,11 @@ export default function RutaDecisionesPage() {
           <DecisionStep
             stepIndex={1}
             totalSteps={totalSteps}
-            title="Iniciativa → decisión → acción"
-            description="El flujo operativo muestra dónde quedó cada caso y qué falta cerrar."
+            title="De la señal a la acción"
+            description="El copiloto ordena por impacto y te propone un siguiente paso claro por cliente."
             durationHint="~1 min"
             impact="Un caso abierto demasiado tiempo suele significar caja o relación en riesgo."
-            ctaLabel="Ver pipeline completo"
+            ctaLabel="Ver acciones sugeridas"
             onNext={() => setStep(2)}
           />
         ) : null}
@@ -38,7 +39,7 @@ export default function RutaDecisionesPage() {
             title="Priorizá por impacto"
             description="Ordená por severidad y canal: primero lo que mueve caja o cumplimiento."
             durationHint="~2 min"
-            ctaLabel="Seguir en Gestión IA"
+            ctaLabel="Seguir en acciones recomendadas"
             onNext={() => setStep(3)}
           />
         ) : null}
@@ -49,7 +50,7 @@ export default function RutaDecisionesPage() {
             title="Ejecutá y registrá resultado"
             description="Las acciones generadas necesitan un cierre para alimentar el aprendizaje del copiloto."
             durationHint="~1 min"
-            ctaLabel="Ir a Gestión IA"
+            ctaLabel="Ir a acciones recomendadas"
             nextHref="/copilot/gestion-ia"
           />
         ) : null}

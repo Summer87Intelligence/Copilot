@@ -7,6 +7,7 @@ export type OutcomeRow = {
   outcome_category: string;
   revenue_amount: number | null;
   notes: string | null;
+  after_note: string | null;
   created_at: string;
 };
 

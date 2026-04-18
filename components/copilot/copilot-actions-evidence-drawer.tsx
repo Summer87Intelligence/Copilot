@@ -13,7 +13,11 @@ import { getActionEvidenceCase } from "@/lib/copilot-actions-evidence-mock";
 import { CopilotGhostButton, CopilotGhostLink } from "@/components/copilot/copilot-ui";
 import { CopilotSeverityBadge } from "@/components/copilot/copilot-severity-badge";
 import type { CopilotSeverity } from "@/lib/copilot-alerts-evidence-mock";
-import { mapActionChannel, mapExecutionStatus } from "@/lib/copilot-format";
+import {
+  mapActionChannel,
+  mapExecutionStatus,
+  mapOutcomeTypeLabelEs,
+} from "@/lib/copilot-format";
 
 type DrawerTab = "resumen" | "origen" | "contexto" | "ejecucion" | "lectura";
 
@@ -263,6 +267,86 @@ export function CopilotActionsEvidenceDrawer({
                   <CopilotSeverityBadge severity={execSev} compact />
                 </div>
               </div>
+              {action.assignee_name?.trim() ||
+              action.expected_result?.trim() ||
+              action.before_note?.trim() ? (
+                <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
+                  <h4 className="text-sm font-semibold text-[var(--copilot-ink)]">
+                    Seguimiento (persistido)
+                  </h4>
+                  <dl className="mt-2 space-y-2 text-sm text-[var(--copilot-ink-muted)]">
+                    {action.assignee_name?.trim() ? (
+                      <div>
+                        <dt className="text-xs font-semibold uppercase">Responsable</dt>
+                        <dd className="mt-0.5 text-[var(--copilot-ink)]">{action.assignee_name}</dd>
+                      </div>
+                    ) : null}
+                    {action.expected_result?.trim() ? (
+                      <div>
+                        <dt className="text-xs font-semibold uppercase">Esperado</dt>
+                        <dd className="mt-0.5 whitespace-pre-wrap text-[var(--copilot-ink)]">
+                          {action.expected_result}
+                        </dd>
+                      </div>
+                    ) : null}
+                    {action.before_note?.trim() ? (
+                      <div>
+                        <dt className="text-xs font-semibold uppercase">Antes</dt>
+                        <dd className="mt-0.5 whitespace-pre-wrap text-[var(--copilot-ink)]">
+                          {action.before_note}
+                        </dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                </div>
+              ) : null}
+              {action.outcome ? (
+                <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
+                  <h4 className="text-sm font-semibold text-[var(--copilot-ink)]">
+                    Resultado registrado
+                  </h4>
+                  <p className="mt-2 text-sm text-[var(--copilot-ink-muted)]">
+                    <span className="font-medium text-[var(--copilot-ink)]">Tipo: </span>
+                    {mapOutcomeTypeLabelEs(action.outcome.outcome_type)}
+                  </p>
+                  {action.outcome.notes?.trim() ? (
+                    <p className="mt-2 text-sm whitespace-pre-wrap text-[var(--copilot-ink)]">
+                      {action.outcome.notes}
+                    </p>
+                  ) : null}
+                  {action.outcome.after_note?.trim() ? (
+                    <p className="mt-2 text-sm text-[var(--copilot-ink)]">
+                      <span className="font-medium text-[var(--copilot-ink-muted)]">
+                        Después:{" "}
+                      </span>
+                      {action.outcome.after_note}
+                    </p>
+                  ) : null}
+                  {action.outcome.outcome_type === "sale" &&
+                  action.outcome.revenue_amount != null ? (
+                    <p className="mt-2 text-sm text-[var(--copilot-ink)]">
+                      <span className="font-medium text-[var(--copilot-ink-muted)]">
+                        Monto:{" "}
+                      </span>
+                      {action.outcome.revenue_amount.toLocaleString("es-AR", {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2,
+                      })}
+                    </p>
+                  ) : null}
+                  <p className="mt-2 text-xs text-[var(--copilot-ink-muted)]">
+                    Registrado: {formatDateShort(action.outcome.created_at)}
+                  </p>
+                </div>
+              ) : isExecuted ? (
+                <p className="text-xs text-[var(--copilot-ink-muted)]">
+                  Estado cerrado sin outcome en esta vista (revisá listado o permisos).
+                </p>
+              ) : (
+                <p className="text-xs text-[var(--copilot-ink-muted)]">
+                  Outcome pendiente: registrá el resultado desde la tarjeta principal.
+                </p>
+              )}
               {isExecuted && data.executionTemplate.outcomeWhenExecuted ? (
                 <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">

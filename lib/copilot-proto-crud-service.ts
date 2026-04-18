@@ -405,15 +405,18 @@ export async function protoRestoreCompany(
 async function getInvoiceTotals(
   supabase: SupabaseClient,
   invoiceId: string
-): Promise<{ total_amount: number } | null> {
+): Promise<{ total_amount: number; company_id: string } | null> {
   const { data, error } = await supabase
     .from(PROTO_CRUD_TABLES.invoices)
-    .select("total_amount")
+    .select("total_amount, company_id")
     .eq("id", invoiceId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
-  return { total_amount: num(data.total_amount) };
+  return {
+    total_amount: num(data.total_amount),
+    company_id: str(data.company_id),
+  };
 }
 
 /**
@@ -614,11 +617,18 @@ async function assertReceiptFitsInvoice(
   supabase: SupabaseClient,
   invoiceId: string,
   amount: number,
+  receiptCompanyId: string,
   excludeReceiptId?: string
 ): Promise<ProtoCrudFailure | null> {
   const inv = await getInvoiceTotals(supabase, invoiceId);
   const missing = validateLinkedInvoiceExists(inv != null);
   if (missing) return missing;
+  if (str(receiptCompanyId) !== str(inv!.company_id)) {
+    return protoCrudResult.fail(
+      "VALIDATION",
+      "La factura vinculada no corresponde a la empresa (cliente) elegida para el recibo. Revisá empresa y factura."
+    );
+  }
   const others = await sumReceiptAmountsForInvoice(
     supabase,
     invoiceId,
@@ -636,7 +646,12 @@ export async function protoCreateReceipt(
 
   const invoiceId = input.invoice_id != null && str(input.invoice_id) ? str(input.invoice_id) : null;
   if (invoiceId) {
-    const fit = await assertReceiptFitsInvoice(supabase, invoiceId, input.amount);
+    const fit = await assertReceiptFitsInvoice(
+      supabase,
+      invoiceId,
+      input.amount,
+      str(input.company_id)
+    );
     if (fit) return fit;
   }
 
@@ -730,6 +745,7 @@ export async function protoUpdateReceipt(
       supabase,
       merged.invoice_id,
       merged.amount,
+      merged.company_id,
       id
     );
     if (fit) return fit;
@@ -827,6 +843,7 @@ export async function protoRestoreReceipt(
       supabase,
       invoiceId,
       num(existing.amount),
+      str(existing.company_id),
       id
     );
     if (fit) {

@@ -1,12 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import type { OutcomeRow, OutcomeTypeValue } from "@/lib/ai/outcome-types";
-import { OUTCOME_TYPES } from "@/lib/ai/outcome-types";
-import { supabase } from "@/lib/supabase-client";
-
-function isOutcomeType(v: string): v is OutcomeTypeValue {
-  return (OUTCOME_TYPES as readonly string[]).includes(v);
-}
+import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
+import { copilotOutcomePostBodySchema } from "@/lib/api/schemas/copilot-api-bodies";
+import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import {
+  deleteOutcomeById,
+  insertOutcome,
+  selectActionIdAndInitiative,
+  selectOutcomeIdByActionId,
+  updateActionExecutionStatus,
+} from "@/lib/data/engine-repository";
+import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 
 function categoryForOutcomeType(t: OutcomeTypeValue): string {
   switch (t) {
@@ -42,70 +47,73 @@ function mapOutcomeRow(row: Record<string, unknown>): OutcomeRow {
           ? rev
           : Number(rev),
     notes: row.notes != null ? String(row.notes) : null,
+    after_note: row.after_note != null ? String(row.after_note) : null,
     created_at: String(row.created_at),
   };
 }
 
-type Body = {
-  action_id?: string;
-  initiative_id?: string;
-  outcome_type?: string;
-  revenue_amount?: number | null;
-  notes?: string | null;
-};
+export async function POST(request: NextRequest) {
+  let log = copilotRequestLogger(request);
 
-export async function POST(request: Request) {
+  const validated = await parseAndValidateJsonBody(
+    request,
+    copilotOutcomePostBodySchema
+  );
+  if (!validated.ok) {
+    return validated.response;
+  }
+  const body = validated.data;
+
   try {
-    const body = (await request.json()) as Body;
-    const actionId = body.action_id?.trim();
-    const initiativeId = body.initiative_id?.trim();
-    const outcomeTypeRaw = body.outcome_type?.trim();
-
-    if (!actionId || !initiativeId || !outcomeTypeRaw) {
-      return NextResponse.json(
-        { error: "Faltan action_id, initiative_id u outcome_type." },
-        { status: 400 }
-      );
+    const auth = await requireCopilotTenantContext(request, body);
+    if (!auth.ok) {
+      log.warn("copilot_auth_failed", { phase: "require_copilot_tenant" });
+      return auth.response;
     }
+    log = log.withTenant(auth.ctx.tenantCompanyId);
 
-    if (!isOutcomeType(outcomeTypeRaw)) {
-      return NextResponse.json(
-        { error: "outcome_type no válido." },
-        { status: 400 }
-      );
-    }
+    const actionId = body.action_id;
+    const initiativeId = body.initiative_id;
+    const outcomeType = body.outcome_type;
 
-    const outcomeType = outcomeTypeRaw;
-
-    const { data: existing, error: exErr } = await supabase
-      .from("outcomes")
-      .select("id")
-      .eq("action_id", actionId)
-      .maybeSingle();
+    const { data: existing, error: exErr } = await selectOutcomeIdByActionId(
+      auth.ctx.supabase,
+      actionId
+    );
 
     if (exErr) {
+      log.error("copilot_engine_query_failed", exErr, {
+        operation: "selectOutcomeIdByActionId",
+      });
       return NextResponse.json({ error: exErr.message }, { status: 500 });
     }
     if (existing) {
+      log.warn("copilot_outcome_conflict", { reason: "outcome_exists_for_action" });
       return NextResponse.json(
         { error: "Ya existe un resultado para esta acción." },
         { status: 409 }
       );
     }
 
-    const { data: actionRow, error: actErr } = await supabase
-      .from("actions")
-      .select("id, initiative_id")
-      .eq("id", actionId)
-      .maybeSingle();
+    const { data: actionRow, error: actErr } = await selectActionIdAndInitiative(
+      auth.ctx.supabase,
+      actionId
+    );
 
     if (actErr) {
+      log.error("copilot_engine_query_failed", actErr, {
+        operation: "selectActionIdAndInitiative",
+      });
       return NextResponse.json({ error: actErr.message }, { status: 500 });
     }
     if (!actionRow) {
+      log.warn("copilot_outcome_not_found", { reason: "action_not_found" });
       return NextResponse.json({ error: "Acción no encontrada." }, { status: 404 });
     }
     if (String(actionRow.initiative_id) !== initiativeId) {
+      log.warn("copilot_outcome_validation_failed", {
+        reason: "initiative_mismatch",
+      });
       return NextResponse.json(
         { error: "initiative_id no coincide con la acción." },
         { status: 400 }
@@ -128,6 +136,11 @@ export async function POST(request: Request) {
         ? body.notes.trim()
         : null;
 
+    const afterNote =
+      typeof body.after_note === "string" && body.after_note.trim() !== ""
+        ? body.after_note.trim()
+        : null;
+
     const insertPayload = {
       action_id: actionId,
       initiative_id: initiativeId,
@@ -135,45 +148,59 @@ export async function POST(request: Request) {
       outcome_category: categoryForOutcomeType(outcomeType),
       revenue_amount: revenue,
       notes,
+      after_note: afterNote,
     };
 
-    const { data: inserted, error: insErr } = await supabase
-      .from("outcomes")
-      .insert(insertPayload)
-      .select(
-        "id, action_id, initiative_id, outcome_type, outcome_category, revenue_amount, notes, created_at"
-      )
-      .single();
+    const { data: inserted, error: insErr } = await insertOutcome(
+      auth.ctx.supabase,
+      insertPayload
+    );
 
     if (insErr) {
       if (
         insErr.code === "23505" ||
         insErr.message?.toLowerCase().includes("unique")
       ) {
+        log.warn("copilot_outcome_conflict", { reason: "unique_violation" });
         return NextResponse.json(
           { error: "Ya existe un resultado para esta acción." },
           { status: 409 }
         );
       }
+      log.error("copilot_outcome_insert_failed", insErr, {
+        operation: "insertOutcome",
+      });
       return NextResponse.json({ error: insErr.message }, { status: 500 });
     }
 
     const newStatus = executionStatusForOutcome(outcomeType);
     const insertedId = String((inserted as Record<string, unknown>).id);
 
-    const { error: updErr } = await supabase
-      .from("actions")
-      .update({ execution_status: newStatus })
-      .eq("id", actionId);
+    const { error: updErr } = await updateActionExecutionStatus(
+      auth.ctx.supabase,
+      actionId,
+      newStatus
+    );
 
     if (updErr) {
-      await supabase.from("outcomes").delete().eq("id", insertedId);
+      await deleteOutcomeById(auth.ctx.supabase, insertedId);
+      log.error("copilot_outcome_action_update_failed", updErr, {
+        operation: "updateActionExecutionStatus",
+        outcome_id: insertedId,
+      });
       return NextResponse.json({ error: updErr.message }, { status: 500 });
     }
 
     const outcome = mapOutcomeRow(inserted as Record<string, unknown>);
+    log.info("copilot_outcome_created", {
+      outcome_id: outcome.id,
+      outcome_type: outcome.outcome_type,
+      action_id: actionId,
+      initiative_id: initiativeId,
+    });
     return NextResponse.json({ outcome });
   } catch (e) {
+    log.error("copilot_request_unhandled", e, { route: "POST /api/copilot/outcomes" });
     const message = e instanceof Error ? e.message : "Error desconocido";
     return NextResponse.json({ error: message }, { status: 500 });
   }

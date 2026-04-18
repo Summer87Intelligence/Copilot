@@ -22,6 +22,7 @@ import {
   mapTaxObligationStatus,
   mapTaxTypeLabel,
 } from "@/lib/copilot-format";
+import { copilotApiFetch } from "@/lib/copilot-fetch";
 import type { ProtoCrudResult } from "@/lib/copilot-proto-crud-types";
 import {
   COPILOT_DATA_API,
@@ -454,12 +455,12 @@ export function CopilotProtoCrudDrawer({
     const ep = COPILOT_DATA_API.companies;
     const res =
       mode === "create"
-        ? await fetch(ep.create, {
+        ? await copilotApiFetch(ep.create, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           })
-        : await fetch(ep.update, {
+        : await copilotApiFetch(ep.update, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -489,12 +490,12 @@ export function CopilotProtoCrudDrawer({
     const ep = COPILOT_DATA_API.invoices;
     const res =
       mode === "create"
-        ? await fetch(ep.create, {
+        ? await copilotApiFetch(ep.create, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           })
-        : await fetch(ep.update, {
+        : await copilotApiFetch(ep.update, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -520,12 +521,12 @@ export function CopilotProtoCrudDrawer({
     const ep = COPILOT_DATA_API.receipts;
     const res =
       mode === "create"
-        ? await fetch(ep.create, {
+        ? await copilotApiFetch(ep.create, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           })
-        : await fetch(ep.update, {
+        : await copilotApiFetch(ep.update, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -552,12 +553,12 @@ export function CopilotProtoCrudDrawer({
     const ep = COPILOT_DATA_API.payments;
     const res =
       mode === "create"
-        ? await fetch(ep.create, {
+        ? await copilotApiFetch(ep.create, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           })
-        : await fetch(ep.update, {
+        : await copilotApiFetch(ep.update, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -584,12 +585,12 @@ export function CopilotProtoCrudDrawer({
     const ep = COPILOT_DATA_API.tax_obligations;
     const res =
       mode === "create"
-        ? await fetch(ep.create, {
+        ? await copilotApiFetch(ep.create, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           })
-        : await fetch(ep.update, {
+        : await copilotApiFetch(ep.update, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

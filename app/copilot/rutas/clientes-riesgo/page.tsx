@@ -15,6 +15,7 @@ export default function RutaClientesRiesgoPage() {
     <div className="flex min-h-0 flex-1 flex-col">
       <RutasFlowBackLink />
       <CopilotPageHeader
+        surfaceId="copilot.rutas"
         title="Clientes en riesgo"
         description="Concentración, saldos y comportamiento de pago."
       />

@@ -12,6 +12,10 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
 
 # next.js
 /.next/
@@ -23,6 +27,11 @@
 # misc
 .DS_Store
 *.pem
+.npm-cache/
+
+# export accidental de página (no versionar)
+/Proto Table Row Counts _ SQL Editor _ Summer87 Copilot _ Summer87 Intelligence _ Supabase.html
+/Proto Table Row Counts _ SQL Editor _ Summer87 Copilot _ Summer87 Intelligence _ Supabase_files/
 
 # debug
 npm-debug.log*

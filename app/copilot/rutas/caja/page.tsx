@@ -280,6 +280,7 @@ export default function RutaCajaPage() {
     <div className="flex min-h-0 flex-1 flex-col">
       <RutasFlowBackLink />
       <CopilotPageHeader
+        surfaceId="copilot.rutas"
         title="¿Estoy bien de caja?"
         description="Cuatro pasos. Una lectura por pantalla. Un solo botón verde para avanzar."
       />

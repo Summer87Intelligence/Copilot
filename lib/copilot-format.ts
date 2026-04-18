@@ -213,9 +213,24 @@ export function mapExecutionStatus(status: string): string {
     case "executed":
       return "Ejecutada";
     case "failed":
-      return "Fallida";
+      return "Intento sin respuesta";
     default:
       return status;
+  }
+}
+
+export function mapOutcomeTypeLabelEs(t: string): string {
+  switch (t.toLowerCase()) {
+    case "no_response":
+      return "Sin respuesta";
+    case "response":
+      return "Respondió";
+    case "meeting":
+      return "Reunión";
+    case "sale":
+      return "Venta";
+    default:
+      return t;
   }
 }
 
@@ -321,6 +336,7 @@ const ACTION_CHANNEL_LABELS: Record<string, string> = {
   email: "Correo",
   mail: "Correo",
   whatsapp: "WhatsApp",
+  linkedin: "Perfil profesional (LinkedIn)",
   phone: "Teléfono",
   call: "Llamada",
   sms: "SMS",
@@ -343,6 +359,10 @@ const ACTION_TYPE_LABELS: Record<string, string> = {
   call: "Llamada",
   email: "Correo",
   task: "Tarea",
+  high_priority_outreach: "Cliente prioritario para contactar",
+  send_whatsapp: "Contactar por WhatsApp",
+  linkedin_contact: "Contacto comercial planificado",
+  low_priority_nurture: "Seguimiento de relacionamiento",
 };
 
 export function mapActionTypeLabel(actionType: string): string {

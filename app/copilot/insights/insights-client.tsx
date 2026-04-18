@@ -11,8 +11,10 @@ import {
   CopilotBadge,
   CopilotGhostButton,
 } from "@/components/copilot/copilot-ui";
+import { CopilotTraceMeta } from "@/components/copilot/copilot-trace-meta";
 import { COPILOT_EMPTY_COPY } from "@/lib/copilot-empty-state";
 import type { CopilotInsightItem } from "@/lib/copilot-insight-engine";
+import { traceFromInsightEngineItem } from "@/lib/copilot-trace-meta";
 
 export function CopilotInsightsClient({ insights }: { insights: CopilotInsightItem[] }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -31,6 +33,7 @@ export function CopilotInsightsClient({ insights }: { insights: CopilotInsightIt
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
+        surfaceId="copilot.insights"
         title="Insights"
         description="Historial del razonamiento del copiloto — transparente, trazable y priorizado."
       />
@@ -47,6 +50,12 @@ export function CopilotInsightsClient({ insights }: { insights: CopilotInsightIt
           </div>
         ) : (
           <div className="relative mx-auto max-w-3xl">
+            <CopilotTraceMeta
+              trace={traceFromInsightEngineItem(insights[0])}
+              variant="embed"
+              dense
+              className="mb-6"
+            />
             <div
               className="absolute bottom-0 left-[15px] top-8 w-px bg-[var(--copilot-border)]"
               aria-hidden

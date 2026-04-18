@@ -2,9 +2,9 @@ import { normalizedCollectionProbability } from "@/lib/copilot-cashflow-engine";
 import { mapTaxTypeLabel } from "@/lib/copilot-format";
 import { financialEngineLocalTodayYmd, type FinancialSnapshot } from "@/lib/copilot-financial-engine";
 import type { FiscalAlertItem, FiscalAlertPriority } from "@/lib/copilot-tax-alerts";
+import { loadPredictiveFinancialAlertsDatasetRows } from "@/lib/data/proto-analytics-read-repository";
 import { supabase } from "@/lib/supabase-client";
 
-const ROW_CAP = 5000;
 const TAX_HORIZON_DAYS = 30;
 
 /** Reservado para extender el motor (p. ej. filtros por empresa) sin romper la firma. */
@@ -145,46 +145,14 @@ async function loadPredictiveDataset(): Promise<{
   receipts: ReceiptRow[];
   invoices: InvoiceRow[];
 }> {
-  const [payRes, taxObRes, taxPayRes, recRes, invRes] = await Promise.all([
-    supabase
-      .from("proto_payments")
-      .select("id,amount,payment_date,category,obligation_id")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-    supabase
-      .from("proto_tax_obligations")
-      .select("*")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-    supabase
-      .from("proto_tax_payments")
-      .select("*")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-    supabase
-      .from("proto_receipts")
-      .select("amount")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-    supabase
-      .from("proto_invoices")
-      .select("balance_amount,collection_probability")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-  ]);
-
-  if (payRes.error) throw new Error(payRes.error.message);
-  if (taxObRes.error) throw new Error(taxObRes.error.message);
-  if (taxPayRes.error) throw new Error(taxPayRes.error.message);
-  if (recRes.error) throw new Error(recRes.error.message);
-  if (invRes.error) throw new Error(invRes.error.message);
+  const raw = await loadPredictiveFinancialAlertsDatasetRows(supabase);
 
   return {
-    payments: (payRes.data ?? []) as PaymentRow[],
-    obligations: (taxObRes.data ?? []) as TaxObligationRow[],
-    taxPayments: (taxPayRes.data ?? []) as TaxPaymentRow[],
-    receipts: (recRes.data ?? []) as ReceiptRow[],
-    invoices: (invRes.data ?? []) as InvoiceRow[],
+    payments: raw.payments as PaymentRow[],
+    obligations: raw.obligations as TaxObligationRow[],
+    taxPayments: raw.taxPayments as TaxPaymentRow[],
+    receipts: raw.receipts as ReceiptRow[],
+    invoices: raw.invoices as InvoiceRow[],
   };
 }
 

@@ -1,37 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
+import { copilotDataIdBodySchema } from "@/lib/api/schemas/copilot-api-bodies";
+import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import { nextResponseFromProtoCrud } from "@/lib/copilot-proto-crud-http";
 import { protoRestorePayment } from "@/lib/copilot-proto-crud-service";
-import { supabase } from "@/lib/supabase-client";
 
 export async function POST(request: NextRequest) {
   try {
-    let body: { id?: string };
-    try {
-      body = (await request.json()) as { id?: string };
-    } catch {
-      return NextResponse.json(
-        {
-          ok: false as const,
-          code: "VALIDATION" as const,
-          message: "Cuerpo JSON inválido.",
-        },
-        { status: 400 }
-      );
-    }
-    const id = body.id?.trim() ?? "";
-    if (!id) {
-      return NextResponse.json(
-        {
-          ok: false as const,
-          code: "VALIDATION" as const,
-          message: "Falta el identificador del pago.",
-        },
-        { status: 400 }
-      );
-    }
-    const result = await protoRestorePayment(supabase, id);
+    const pv = await parseAndValidateJsonBody(request, copilotDataIdBodySchema);
+    if (!pv.ok) return pv.response;
+
+    const body = pv.data;
+    const auth = await requireCopilotTenantContext(
+      request,
+      body as Record<string, unknown>
+    );
+    if (!auth.ok) return auth.response;
+
+    const result = await protoRestorePayment(auth.ctx.supabase, body.id);
     return nextResponseFromProtoCrud(result);
   } catch {
     return NextResponse.json(

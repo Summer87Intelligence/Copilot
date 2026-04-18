@@ -1,3 +1,4 @@
+import { upsertCopilotInsightRows } from "@/lib/data/copilot-insights-repository";
 import { computeCopilotInsightHash } from "@/lib/copilot-insight-hash";
 import type { CopilotInsight } from "@/lib/copilot-engine";
 import { supabase } from "@/lib/supabase-client";
@@ -43,10 +44,7 @@ export async function saveCopilotInsights(
     }))
   );
 
-  const { error } = await supabase.from("copilot_insights").upsert(rows, {
-    onConflict: "insight_hash",
-    ignoreDuplicates: true,
-  });
+  const { error } = await upsertCopilotInsightRows(supabase, rows);
 
   if (error) {
     return { error: new Error(error.message) };

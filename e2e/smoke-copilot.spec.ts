@@ -1,0 +1,65 @@
+import { expect, test } from "@playwright/test";
+
+import { createSevereCollector } from "./severity-console";
+
+/**
+ * Smoke QA-02: rutas críticas de Copilot sin depender de datos poblados.
+ * Requiere app en PLAYWRIGHT_BASE_URL (por defecto levanta `next dev` vía playwright.config).
+ */
+test.describe("Copilot smoke", () => {
+  test("carga /copilot, región principal y títulos estables (tolerante a empty state)", async ({
+    page,
+  }) => {
+    const severe = createSevereCollector();
+    severe.attach(page);
+
+    await page.goto("/copilot");
+
+    await expect(page.getByRole("main")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Inicio" })
+    ).toBeVisible();
+
+    await expect(
+      page.getByRole("navigation", { name: "Navegación del módulo Copilot" })
+    ).toBeVisible();
+
+    await expect(page.locator("body")).not.toContainText("Unhandled Runtime Error");
+    await expect(page.locator("body")).not.toContainText("Application error");
+
+    severe.assertClean();
+  });
+
+  test("navegación lateral a Datos, Gestión IA y Rutas (sin asserts de negocio)", async ({
+    page,
+  }) => {
+    const severe = createSevereCollector();
+    severe.attach(page);
+
+    await page.goto("/copilot");
+    await expect(page.getByRole("main")).toBeVisible();
+
+    await page.locator('aside nav a[href="/copilot/datos"]').click();
+    await expect(page).toHaveURL(/\/copilot\/datos$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Datos" })).toBeVisible();
+
+    await page.locator('aside nav a[href="/copilot/gestion-ia"]').click();
+    await expect(page).toHaveURL(/\/copilot\/gestion-ia$/);
+    await expect(
+      page.getByRole("heading", {
+        level: 1,
+        name: "Acciones recomendadas hoy",
+      })
+    ).toBeVisible();
+
+    await page.locator('aside nav a[href="/copilot/rutas"]').click();
+    await expect(page).toHaveURL(/\/copilot\/rutas$/);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Qué hacer hoy" })
+    ).toBeVisible();
+
+    await expect(page.locator("body")).not.toContainText("Unhandled Runtime Error");
+
+    severe.assertClean();
+  });
+});

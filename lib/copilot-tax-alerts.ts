@@ -1,7 +1,7 @@
 import { mapTaxObligationStatus, mapTaxTypeLabel } from "@/lib/copilot-format";
 import {
   DOCUMENT_RELATED_TABLE,
-  getDocumentsByRelatedTable,
+  getDocumentsByRelatedTableForClient,
   type ProtoDocument,
 } from "@/lib/copilot-documents-data";
 import {
@@ -16,6 +16,9 @@ import {
   type ProtoTaxObligation,
   type ProtoTaxPayment,
 } from "@/lib/copilot-tax-data";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import { supabase } from "@/lib/supabase-client";
 
 export type FiscalAlertPriority = "critical" | "high" | "medium";
 
@@ -174,15 +177,19 @@ const PRIORITY_RANK: Record<FiscalAlertPriority, number> = {
 /**
  * Genera alertas fiscales automáticas a partir de obligaciones y pagos reales,
  * con cruce contra caja del motor financiero (`getFinancialSnapshot`).
+ * @param client Cliente Supabase del espacio de trabajo (API / briefing); por defecto el de app.
  */
-export async function getFiscalAlerts(): Promise<FiscalAlertItem[]> {
+export async function getFiscalAlerts(
+  client: SupabaseClient = supabase
+): Promise<FiscalAlertItem[]> {
   const [obligations, payments, snapshot, fiscalDocs] = await Promise.all([
-    getProtoTaxObligations(),
-    getProtoTaxPayments(),
-    getFinancialSnapshot(),
-    getDocumentsByRelatedTable(DOCUMENT_RELATED_TABLE.taxObligation).catch(
-      (): ProtoDocument[] => []
-    ),
+    getProtoTaxObligations(client),
+    getProtoTaxPayments(client),
+    getFinancialSnapshot(client),
+    getDocumentsByRelatedTableForClient(
+      client,
+      DOCUMENT_RELATED_TABLE.taxObligation
+    ).catch((): ProtoDocument[] => []),
   ]);
   const availableCash = snapshot.available_cash;
 

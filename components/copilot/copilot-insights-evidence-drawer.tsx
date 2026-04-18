@@ -6,7 +6,9 @@ import {
   COPILOT_INSIGHTS_EVIDENCE_MOCK,
   type CopilotInsightEvidenceCase,
 } from "@/lib/copilot-insights-evidence-mock";
+import { CopilotTraceMeta } from "@/components/copilot/copilot-trace-meta";
 import { CopilotGhostButton, CopilotGhostLink } from "@/components/copilot/copilot-ui";
+import { traceFromInsightEvidenceContext } from "@/lib/copilot-trace-meta";
 import { CopilotSeverityBadge } from "@/components/copilot/copilot-severity-badge";
 
 type DrawerTab = "resumen" | "patron" | "indicadores" | "senales" | "lectura";
@@ -53,6 +55,11 @@ export function CopilotInsightsEvidenceDrawer({
 
   if (!isOpen || !data) return null;
 
+  const traceVm = traceFromInsightEvidenceContext({
+    fromEngine: Boolean(evidenceOverride),
+    evidenceUpdatedAtLabel: data.updatedAt,
+  });
+
   return (
     <>
       <button
@@ -73,9 +80,7 @@ export function CopilotInsightsEvidenceDrawer({
               </div>
               <h3 className="text-lg font-semibold text-[var(--copilot-ink)]">{data.title}</h3>
               <p className="text-sm text-[var(--copilot-ink-muted)]">{data.subtitle}</p>
-              <p className="text-xs text-[var(--copilot-ink-muted)]">
-                Actualizado: {data.updatedAt}
-              </p>
+              <CopilotTraceMeta trace={traceVm} variant="embed" dense className="!pt-2" />
             </div>
             <CopilotGhostButton onClick={onClose} className="px-3 py-1.5">
               Cerrar

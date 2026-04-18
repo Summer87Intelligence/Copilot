@@ -21,6 +21,7 @@ export default function CopilotMesaDeAyudaPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
+        surfaceId="copilot.mesa-ayuda"
         title="Mesa de ayuda"
         description="Sugerencias, problemas o ideas — te respondemos con foco en claridad, no en jargon."
       />

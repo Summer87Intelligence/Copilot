@@ -4,7 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
-  useLayoutEffect,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -30,7 +30,12 @@ export function CopilotReadingKeyProvider({ children }: { children: ReactNode })
   const pathname = usePathname();
   const [override, setOverride] = useState<CopilotReadingKeyOverride>({ kind: "auto" });
 
-  useLayoutEffect(() => {
+  /**
+   * Al cambiar la ruta, volver a modo automático para no arrastrar overrides de otras pantallas.
+   * Debe ejecutarse después del commit (useEffect), no en layout: actualizar estado del padre
+   * en useLayoutEffect puede disparar avisos de React 19 si el subárbol aún no terminó de montar.
+   */
+  useEffect(() => {
     setOverride({ kind: "auto" });
   }, [pathname]);
 

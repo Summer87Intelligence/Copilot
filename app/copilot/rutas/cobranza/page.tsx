@@ -15,6 +15,7 @@ export default function RutaCobranzaPage() {
     <div className="flex min-h-0 flex-1 flex-col">
       <RutasFlowBackLink />
       <CopilotPageHeader
+        surfaceId="copilot.rutas"
         title="¿Voy a cobrar lo que necesito?"
         description="Enfocate en saldos vencidos y en quién te debe."
       />

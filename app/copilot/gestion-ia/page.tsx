@@ -1,331 +1,294 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Loader2,
-  Sparkles,
-  Workflow,
-} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Loader2, Sparkles } from "lucide-react";
 
 import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
-import { CopilotInitiativeFlowCard } from "@/components/copilot/copilot-initiative-flow-card";
+import { CopilotRealInsightCard } from "@/components/copilot/copilot-real-insight-card";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
+import { CopilotTraceMeta } from "@/components/copilot/copilot-trace-meta";
 import {
   CopilotCard,
   CopilotGhostButton,
-  CopilotPrimaryButton,
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
-import type {
-  InitiativeFlowItem,
-  InitiativeFlowStatus,
-} from "@/lib/ai/initiative-flow-types";
 import { COPILOT_EMPTY_COPY } from "@/lib/copilot-empty-state";
+import { copilotApiFetch } from "@/lib/copilot-fetch";
+import {
+  countInsightsByKind,
+  type CopilotRealInsight,
+} from "@/lib/copilot-real-insights";
+import { traceFromRealInsightsBatch } from "@/lib/copilot-trace-meta";
+import type { CopilotLlmBriefingOutput } from "@/lib/ai/briefing/types";
 
 export default function CopilotGestionIaPage() {
-  const [items, setItems] = useState<InitiativeFlowItem[]>([]);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [loadingFlow, setLoadingFlow] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [lastResult, setLastResult] = useState<string | null>(null);
-  const [decisionError, setDecisionError] = useState<string | null>(null);
-  const [processingDecisions, setProcessingDecisions] = useState(false);
-  const [lastDecisionResult, setLastDecisionResult] = useState<string | null>(
+  const [insights, setInsights] = useState<CopilotRealInsight[]>([]);
+  const [insightsComputedAt, setInsightsComputedAt] = useState<string | null>(
     null
   );
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [briefing, setBriefing] = useState<CopilotLlmBriefingOutput | null>(null);
+  const [briefingLoading, setBriefingLoading] = useState(false);
+  const [briefingError, setBriefingError] = useState<string | null>(null);
 
-  const fetchFlow = useCallback(async () => {
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const fetchInsights = useCallback(async () => {
     setLoadError(null);
-    setLoadingFlow(true);
+    setLoading(true);
     try {
-      const res = await fetch("/api/copilot/initiatives/flow?limit=120");
+      const res = await copilotApiFetch("/api/copilot/real-insights");
       const json = (await res.json()) as {
-        items?: InitiativeFlowItem[];
+        insights?: CopilotRealInsight[];
+        computedAt?: string;
         error?: string;
       };
+      if (!mountedRef.current) return;
       if (!res.ok) {
-        setLoadError(json.error ?? "No se pudo cargar el flujo operativo.");
-        setItems([]);
+        setLoadError(json.error ?? "No se pudieron calcular los insights.");
+        setInsights([]);
+        setInsightsComputedAt(null);
         return;
       }
-      setItems(json.items ?? []);
+      setInsights(json.insights ?? []);
+      setInsightsComputedAt(json.computedAt ?? null);
     } catch {
-      setLoadError("Error de red al cargar trazabilidad operativa.");
-      setItems([]);
+      if (!mountedRef.current) return;
+      setLoadError("Error de red al cargar insights.");
+      setInsights([]);
+      setInsightsComputedAt(null);
     } finally {
-      setLoadingFlow(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    void fetchFlow();
-  }, [fetchFlow]);
+    void fetchInsights();
+  }, [fetchInsights]);
 
-  const counters = useMemo(() => {
-    const byStatus = items.reduce<Record<InitiativeFlowStatus, number>>(
-      (acc, item) => {
-        acc[item.flow_status] += 1;
-        return acc;
-      },
-      {
-        new: 0,
-        decision_generated: 0,
-        action_pending: 0,
-        executed: 0,
-        with_outcome: 0,
-        closed_no_response: 0,
-      }
-    );
-    return {
-      newOpportunities: byStatus.new,
-      decisionsGenerated:
-        byStatus.decision_generated +
-        byStatus.action_pending +
-        byStatus.executed +
-        byStatus.with_outcome +
-        byStatus.closed_no_response,
-      pendingAction: byStatus.action_pending,
-      withOutcome: byStatus.with_outcome + byStatus.closed_no_response,
-    };
-  }, [items]);
+  const kpi = useMemo(() => countInsightsByKind(insights), [insights]);
 
-  const handleGenerate = async () => {
-    setActionError(null);
-    setLastResult(null);
-    setGenerating(true);
+  const fetchLlmBriefing = useCallback(async () => {
+    setBriefingError(null);
+    setBriefingLoading(true);
     try {
-      const res = await fetch("/api/copilot/initiatives/generate", {
-        method: "POST",
-      });
+      const res = await copilotApiFetch("/api/copilot/llm-briefing");
       const json = (await res.json()) as {
-        inserted?: number;
-        omitted?: number;
+        briefing?: CopilotLlmBriefingOutput;
         error?: string;
-        dedupe_date?: string;
-        timezone?: string;
       };
+      if (!mountedRef.current) return;
       if (!res.ok) {
-        setActionError(json.error ?? "No se pudo generar el lote.");
+        setBriefing(null);
+        setBriefingError(json.error ?? "No se pudo armar el briefing.");
         return;
       }
-      const ins = json.inserted ?? 0;
-      const om = json.omitted ?? 0;
-      const day = json.dedupe_date ?? "hoy";
-      if (ins === 0 && om > 0) {
-        setLastResult(
-          `No se insertó ninguna fila nueva: las ${om} oportunidades candidatas ya existían para el ${day} (misma empresa, fuente y disparador).`
-        );
-      } else if (ins > 0 && om > 0) {
-        setLastResult(
-          `Insertadas: ${ins}. Omitidas (ya existían hoy, ${day}): ${om}.`
-        );
-      } else if (ins > 0) {
-        setLastResult(`Insertadas: ${ins} oportunidades nuevas (día ${day}).`);
-      } else {
-        setLastResult(
-          `Sin cambios: no había candidatas en el lote (insertadas: 0, omitidas: 0).`
-        );
-      }
-      await fetchFlow();
+      setBriefing(json.briefing ?? null);
     } catch {
-      setActionError("Error de red al generar oportunidades.");
+      if (!mountedRef.current) return;
+      setBriefing(null);
+      setBriefingError("Error de red al solicitar el briefing.");
     } finally {
-      setGenerating(false);
+      if (mountedRef.current) setBriefingLoading(false);
     }
-  };
-
-  const handleProcessDecisions = async () => {
-    setActionError(null);
-    setDecisionError(null);
-    setLastDecisionResult(null);
-    setProcessingDecisions(true);
-    try {
-      const res = await fetch("/api/copilot/decisions/generate", {
-        method: "POST",
-      });
-      const json = (await res.json()) as {
-        processed?: number;
-        decisionsCreated?: number;
-        error?: string;
-        warning?: string;
-      };
-      if (!res.ok) {
-        setDecisionError(json.error ?? "No se pudieron generar decisiones.");
-        return;
-      }
-      const p = json.processed ?? 0;
-      const c = json.decisionsCreated ?? 0;
-      setLastDecisionResult(
-        `Iniciativas procesadas: ${p}. Decisiones creadas: ${c}.`
-      );
-      if (json.warning) {
-        setDecisionError(json.warning);
-      }
-      await fetchFlow();
-    } catch {
-      setDecisionError("Error de red al procesar decisiones.");
-    } finally {
-      setProcessingDecisions(false);
-    }
-  };
+  }, []);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
-        title="Gestión IA"
-        description="Centro operativo del copiloto: trazabilidad completa initiative → decision → action → outcome."
+        surfaceId="copilot.gestion-ia"
+        title="Acciones recomendadas hoy"
+        description="Solo lecturas respaldadas por facturas, obligaciones fiscales y caja real del prototipo. Sin textos generados ni puntuaciones mock."
         right={
           <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(31,107,74,0.2)] bg-[var(--copilot-accent-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--copilot-accent)]">
             <Sparkles className="h-3.5 w-3.5" aria-hidden />
-            Cerebro operativo
+            Copiloto activo
           </span>
         }
       />
 
       <div className="flex-1 space-y-8 overflow-auto px-6 py-8">
-        {(loadError || actionError || decisionError) && (
+        {loadError ? (
           <div
             role="alert"
             className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900"
           >
-            {loadError ?? actionError ?? decisionError}
+            {loadError}
           </div>
-        )}
+        ) : null}
 
         <section>
           <CopilotSectionTitle
-            title="Centro operativo IA"
-            subtitle="Seguimiento vivo de cada iniciativa desde su origen hasta el resultado."
+            title="Resumen"
+            subtitle="Cada número sale del mismo cálculo que ves en Clientes y Finanzas."
             action={
-              <div className="flex flex-wrap items-center gap-2">
-                <CopilotGhostButton
-                  type="button"
-                  onClick={() => void handleProcessDecisions()}
-                  disabled={processingDecisions || loadingFlow}
-                  className="inline-flex items-center gap-2"
-                >
-                  {processingDecisions ? (
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  ) : null}
-                  Procesar decisiones IA
-                </CopilotGhostButton>
-                <CopilotGhostButton
-                  type="button"
-                  onClick={() => void fetchFlow()}
-                  disabled={loadingFlow}
-                  className="inline-flex items-center gap-2"
-                >
-                  {loadingFlow ? (
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  ) : (
-                    <Workflow className="h-4 w-4" aria-hidden />
-                  )}
-                  Actualizar flujo
-                </CopilotGhostButton>
-                <CopilotPrimaryButton
-                  type="button"
-                  onClick={() => void handleGenerate()}
-                  disabled={generating || loadingFlow}
-                  className="inline-flex items-center gap-2"
-                >
-                  {generating ? (
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  ) : null}
-                  Generar oportunidades
-                </CopilotPrimaryButton>
-              </div>
+              <CopilotGhostButton
+                type="button"
+                onClick={() => void fetchInsights()}
+                disabled={loading}
+                className="inline-flex items-center gap-2"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+                Actualizar
+              </CopilotGhostButton>
             }
           />
-          {(lastResult || lastDecisionResult) ? (
-            <div className="mb-4 space-y-1">
-              {lastResult ? (
-                <p className="text-sm text-[var(--copilot-ink-muted)]">{lastResult}</p>
-              ) : null}
-              {lastDecisionResult ? (
-                <p className="text-sm text-[var(--copilot-ink-muted)]">
-                  {lastDecisionResult}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <CopilotCard className="flex flex-col gap-2 border-[rgba(31,107,74,0.12)] bg-gradient-to-br from-[var(--copilot-card)] to-white/95">
               <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                Oportunidades nuevas
+                Insights activos
               </p>
               <p className="text-3xl font-semibold tabular-nums text-[var(--copilot-ink)]">
-                {loadingFlow ? "…" : counters.newOpportunities}
+                {loading ? "…" : kpi.total}
               </p>
               <p className="text-xs text-[var(--copilot-ink-muted)]">
-                Iniciativas aún sin decisión asociada
+                Lecturas que cumplen reglas estrictas sobre datos cargados.
               </p>
             </CopilotCard>
             <CopilotCard className="flex flex-col gap-2 border-[rgba(31,107,74,0.12)] bg-gradient-to-br from-[var(--copilot-card)] to-white/95">
               <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                Decisiones generadas
+                Clientes con deuda vencida
               </p>
               <p className="text-3xl font-semibold tabular-nums text-[var(--copilot-ink)]">
-                {loadingFlow ? "…" : counters.decisionsGenerated}
+                {loading ? "…" : kpi.deudaVencida}
               </p>
               <p className="text-xs text-[var(--copilot-ink-muted)]">
-                Iniciativas que ya avanzaron a decisión o más
+                Cuentas con facturas vencidas y saldo en proto_invoices.
               </p>
             </CopilotCard>
             <CopilotCard className="flex flex-col gap-2 border-[rgba(31,107,74,0.12)] bg-gradient-to-br from-[var(--copilot-card)] to-white/95">
               <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                Pendientes de acción
+                Obligaciones fiscales vencidas
               </p>
               <p className="text-3xl font-semibold tabular-nums text-[var(--copilot-ink)]">
-                {loadingFlow ? "…" : counters.pendingAction}
+                {loading ? "…" : kpi.fiscalVencida}
               </p>
               <p className="text-xs text-[var(--copilot-ink-muted)]">
-                Ya decididas, esperando ejecución
+                Filas abiertas en proto_tax_obligations con vencimiento pasado.
               </p>
             </CopilotCard>
             <CopilotCard className="flex flex-col gap-2 border-[rgba(31,107,74,0.12)] bg-gradient-to-br from-[var(--copilot-card)] to-white/95">
               <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                Con resultado
+                Alerta de caja
               </p>
               <p className="text-3xl font-semibold tabular-nums text-[var(--copilot-ink)]">
-                {loadingFlow ? "…" : counters.withOutcome}
+                {loading ? "…" : kpi.desbalanceCaja}
               </p>
               <p className="text-xs text-[var(--copilot-ink-muted)]">
-                Incluye outcomes positivos y sin respuesta
+                1 si el snapshot financiero muestra desbalance; 0 si no.
               </p>
             </CopilotCard>
           </div>
-          {!loadingFlow && items.length === 0 ? (
-            <p className="mt-4 rounded-xl border border-dashed border-[var(--copilot-border)] bg-white/50 px-4 py-3 text-sm text-[var(--copilot-ink-muted)]">
-              Los contadores reflejan solo filas reales en el flujo. Con cero iniciativas
-              no hay pipeline “en marcha”: es el estado esperado hasta que generés
-              oportunidades o cargues datos que alimenten al motor.
-            </p>
-          ) : null}
         </section>
 
         <section>
           <CopilotSectionTitle
-            title="Trazabilidad por iniciativa"
-            subtitle="Vista ejecutiva del flujo completo: iniciativa, decisión, acción y outcome."
+            title="Briefing para LLM"
+            subtitle="Contexto interno normalizado (sin datos crudos de proveedor). Sirve para copilotos o exportación controlada."
+            action={
+              <CopilotGhostButton
+                type="button"
+                onClick={() => void fetchLlmBriefing()}
+                disabled={briefingLoading}
+                className="inline-flex items-center gap-2"
+              >
+                {briefingLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                ) : null}
+                Generar briefing
+              </CopilotGhostButton>
+            }
           />
-          {loadingFlow ? (
+          {briefingError ? (
+            <div
+              role="alert"
+              className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900"
+            >
+              {briefingError}
+            </div>
+          ) : null}
+          {briefing ? (
+            <div className="mt-4 space-y-3 rounded-2xl border border-[var(--copilot-border)] bg-white/80 px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                Cobertura:{" "}
+                <span className="text-[var(--copilot-ink)]">
+                  {briefing.coverage === "insufficient"
+                    ? "Insuficiente"
+                    : "Parcial"}
+                </span>
+              </p>
+              <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">{briefing.summary}</p>
+              {briefing.missingData.length > 0 ? (
+                <div>
+                  <p className="text-xs font-semibold text-[var(--copilot-ink-muted)]">Datos faltantes</p>
+                  <ul className="mt-1 list-inside list-disc text-sm text-[var(--copilot-ink-muted)]">
+                    {briefing.missingData.map((m) => (
+                      <li key={m}>{m}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              <details className="text-sm">
+                <summary className="cursor-pointer font-medium text-[var(--copilot-accent)]">
+                  Ver JSON completo
+                </summary>
+                <pre className="mt-2 max-h-80 overflow-auto rounded-lg bg-[rgba(19,23,22,0.04)] p-3 text-xs leading-snug text-[var(--copilot-ink)]">
+                  {JSON.stringify(briefing, null, 2)}
+                </pre>
+              </details>
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-[var(--copilot-ink-muted)]">
+              Tocá «Generar briefing» para obtener el paquete estructurado listo para un LLM (solo después
+              de autenticación y tenant resueltos en servidor).
+            </p>
+          )}
+        </section>
+
+        <section>
+          <CopilotSectionTitle
+            title="Insights"
+            subtitle="Orden sugerido: caja global, deudas por monto, obligaciones vencidas, concentración y atraso histórico."
+          />
+          {!loading && insights.length > 0 ? (
+            <div className="mb-3">
+              <CopilotTraceMeta
+                trace={traceFromRealInsightsBatch(insightsComputedAt)}
+                variant="embed"
+                dense
+              />
+            </div>
+          ) : null}
+          {loading ? (
             <div className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--copilot-border)] py-14 text-sm text-[var(--copilot-ink-muted)]">
               <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-              Cargando pipeline…
+              Calculando insights desde tus datos…
             </div>
-          ) : items.length === 0 ? (
+          ) : insights.length === 0 ? (
             <CopilotEmptyPanel
               title={COPILOT_EMPTY_COPY.gestionIa.title}
-              paragraphs={COPILOT_EMPTY_COPY.gestionIa.paragraphs}
+              paragraphs={[
+                "No hay condiciones que disparen los cinco tipos de insight con los datos actuales.",
+                "Cargá facturas con vencimiento y saldo, obligaciones fiscales o movimientos de caja para ver alertas aquí.",
+              ]}
               example={COPILOT_EMPTY_COPY.gestionIa.example}
-              importance="Los botones de arriba siguen disponibles, pero no simulan progreso: sin filas nuevas, el flujo permanece vacío."
+              importance="Los umbrales son conservadores: si no hay evidencia suficiente, no mostramos tarjetas."
             />
           ) : (
             <div className="space-y-3">
-              {items.map((item) => (
-                <CopilotInitiativeFlowCard key={item.initiative.id} item={item} />
+              {insights.map((insight) => (
+                <CopilotRealInsightCard key={insight.id} insight={insight} />
               ))}
             </div>
           )}

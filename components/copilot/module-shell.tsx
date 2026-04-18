@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { CopilotModuleSidebar } from "@/components/copilot/module-sidebar";
-import type { CopilotNavItem } from "@/components/copilot/copilot-nav-config";
+import type { CopilotNavGroup } from "@/components/copilot/copilot-nav-config";
 
 function readSidebarPreference(storageKey: string): boolean | null {
   try {
@@ -31,8 +31,8 @@ export function CopilotModuleShell({
   autoCollapseWhenPathIncludes,
 }: {
   children: React.ReactNode;
-  /** Una o más secciones; entre grupos se muestra separador en el sidebar. */
-  navItemGroups: CopilotNavItem[][];
+  /** Una o más secciones; entre grupos se muestra separador + título en el sidebar. */
+  navItemGroups: CopilotNavGroup[];
   basePath: string;
   storageKey: string;
   brandTitle: string;
@@ -74,7 +74,7 @@ export function CopilotModuleShell({
 
   return (
     <div
-      className="flex min-h-screen bg-[var(--copilot-canvas)] text-[var(--copilot-ink)] antialiased"
+      className="flex min-h-0 w-full flex-1 bg-[var(--copilot-canvas)] text-[var(--copilot-ink)] antialiased"
       style={{
         fontFamily:
           'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
@@ -88,11 +88,13 @@ export function CopilotModuleShell({
         brandTitle={brandTitle}
         brandSubtitle={brandSubtitle}
       />
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-visible">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {headerStrip != null ? (
-          <div className="overflow-visible">{headerStrip}</div>
+          <div className="shrink-0">{headerStrip}</div>
         ) : null}
-        {children}
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+          {children}
+        </div>
       </div>
     </div>
   );

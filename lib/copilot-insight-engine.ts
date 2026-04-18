@@ -1,8 +1,16 @@
+import {
+  loadInsightEngineProtoRows,
+  selectProtoCompaniesInsightWindow,
+  selectProtoInvoicesInsightWindow,
+  selectProtoPaymentsInsightWindow,
+} from "@/lib/data/proto-analytics-read-repository";
 import { supabase } from "@/lib/supabase-client";
 import type { CopilotInsightEvidenceCase } from "@/lib/copilot-insights-evidence-mock";
 import type { CopilotSeverity } from "@/lib/copilot-alerts-evidence-mock";
 
-const ROW_LIMIT = 100;
+/** Límite por tabla en el motor de insights (Bloque 13: cobertura explícita). */
+export const INSIGHT_ENGINE_ROW_LIMIT = 100;
+const ROW_LIMIT = INSIGHT_ENGINE_ROW_LIMIT;
 
 const DEBT_CRITICAL_THRESHOLD = 500_000;
 const REVENUE_SHARE_DOMINANCE = 0.4;
@@ -21,6 +29,8 @@ export type CopilotInsightItem = {
   status: InsightStatus;
   date: string;
   evidence: CopilotInsightEvidenceCase;
+  /** Instantáneo del cálculo server-side (trazabilidad Bloque 13). */
+  computedAtIso?: string;
 };
 
 export type DebtByCompanyRow = {
@@ -82,37 +92,19 @@ function formatPct(n: number): string {
 }
 
 async function fetchProtoInvoices(): Promise<Record<string, unknown>[]> {
-  const { data, error } = await supabase
-    .from("proto_invoices")
-    .select("*")
-    .eq("is_active", true)
-    .order("created_at", { ascending: false })
-    .limit(ROW_LIMIT);
-
+  const { data, error } = await selectProtoInvoicesInsightWindow(supabase);
   if (error) throw new Error(error.message);
   return (data ?? []) as Record<string, unknown>[];
 }
 
 async function fetchProtoPayments(): Promise<Record<string, unknown>[]> {
-  const { data, error } = await supabase
-    .from("proto_payments")
-    .select("*")
-    .eq("is_active", true)
-    .order("created_at", { ascending: false })
-    .limit(ROW_LIMIT);
-
+  const { data, error } = await selectProtoPaymentsInsightWindow(supabase);
   if (error) throw new Error(error.message);
   return (data ?? []) as Record<string, unknown>[];
 }
 
 async function fetchProtoCompanies(): Promise<Record<string, unknown>[]> {
-  const { data, error } = await supabase
-    .from("proto_companies")
-    .select("*")
-    .eq("is_active", true)
-    .order("created_at", { ascending: false })
-    .limit(ROW_LIMIT);
-
+  const { data, error } = await selectProtoCompaniesInsightWindow(supabase);
   if (error) throw new Error(error.message);
   return (data ?? []) as Record<string, unknown>[];
 }
@@ -286,6 +278,11 @@ function buildEvidence(params: {
   };
 }
 
+function stampComputedAt(items: CopilotInsightItem[]): CopilotInsightItem[] {
+  const computedAtIso = new Date().toISOString();
+  return items.map((i) => ({ ...i, computedAtIso }));
+}
+
 function emptyInsight(date: string): CopilotInsightItem[] {
   return [
     {
@@ -326,17 +323,16 @@ export async function generateInsights(): Promise<CopilotInsightItem[]> {
   let companies: Record<string, unknown>[];
 
   try {
-    [invoices, payments, companies] = await Promise.all([
-      fetchProtoInvoices(),
-      fetchProtoPayments(),
-      fetchProtoCompanies(),
-    ]);
+    const batch = await loadInsightEngineProtoRows(supabase);
+    invoices = batch.invoices;
+    payments = batch.payments as PaymentRow[];
+    companies = batch.companies;
   } catch {
-    return emptyInsight(date);
+    return stampComputedAt(emptyInsight(date));
   }
 
   if (invoices.length === 0 && payments.length === 0 && companies.length === 0) {
-    return emptyInsight(date);
+    return stampComputedAt(emptyInsight(date));
   }
 
   const names = buildCompanyNameMap(companies);
@@ -616,10 +612,10 @@ export async function generateInsights(): Promise<CopilotInsightItem[]> {
 
   if (insights.length === 0) {
     if (invoices.length === 0 && payments.length === 0 && companies.length === 0) {
-      return emptyInsight(date);
+      return stampComputedAt(emptyInsight(date));
     }
     const id = "eng-no-rules";
-    return [
+    return stampComputedAt([
       {
         id,
         title:
@@ -665,10 +661,10 @@ export async function generateInsights(): Promise<CopilotInsightItem[]> {
           recommend: "Mantener monitoreo y revisar umbrales si el negocio cambia de escala.",
         }),
       },
-    ];
+    ]);
   }
 
-  return insights;
+  return stampComputedAt(insights);
 }
 
 /**

@@ -1,3 +1,5 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { supabase } from "@/lib/supabase-client";
 import type { AppUser } from "@/types/app-user";
 
@@ -20,25 +22,43 @@ function mapRowToAppUser(row: {
 }
 
 /**
- * Busca un usuario de negocio en `app_users` por email (coincidencia exacta).
+ * Busca un usuario de negocio en `app_users` por email.
+ * Primero intenta coincidencia exacta con el email normalizado (minúsculas + trim);
+ * si no hay fila, intenta coincidencia sin distinguir mayúsculas (RLS sigue aplicando).
  */
 export async function getAppUserByEmail(
-  email: string
+  email: string,
+  client: SupabaseClient = supabase
 ): Promise<AppUser | null> {
   const normalized = email.trim().toLowerCase();
   if (!normalized) {
     return null;
   }
 
-  const { data, error } = await supabase
+  const columns = "id, company_id, full_name, email, role, created_at";
+
+  const exact = await client
     .from("app_users")
-    .select("id, company_id, full_name, email, role, created_at")
+    .select(columns)
     .eq("email", normalized)
     .maybeSingle();
 
-  if (error || !data) {
+  if (exact.error) {
+    return null;
+  }
+  if (exact.data) {
+    return mapRowToAppUser(exact.data);
+  }
+
+  const ci = await client
+    .from("app_users")
+    .select(columns)
+    .ilike("email", normalized)
+    .maybeSingle();
+
+  if (ci.error || !ci.data) {
     return null;
   }
 
-  return mapRowToAppUser(data);
+  return mapRowToAppUser(ci.data);
 }

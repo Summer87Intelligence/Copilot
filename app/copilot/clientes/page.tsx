@@ -61,6 +61,17 @@ export default function CopilotClientesPage() {
     void refresh();
   }, [refresh]);
 
+  /** Deep link desde Copilot (`/copilot/clientes?c=<company_id>`). */
+  useEffect(() => {
+    if (!load || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const c = params.get("c");
+    if (c && load.rows.some((r) => r.company_id === c)) {
+      setSelectedId(c);
+      setIsEvidenceOpen(true);
+    }
+  }, [load]);
+
   const activeDetail: ClientCompanyDetail | null = useMemo(() => {
     if (!load || !selectedId) return null;
     return load.details[selectedId] ?? null;
@@ -74,6 +85,7 @@ export default function CopilotClientesPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
+        surfaceId="copilot.clientes"
         title="Clientes"
         description="Cartera comercial desde proto_companies, proto_invoices y proto_recibos — facturación, deuda y riesgo en lenguaje de negocio."
       />

@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import { nextResponseFromProtoCrud } from "@/lib/copilot-proto-crud-http";
 import { protoDeleteCompany } from "@/lib/copilot-proto-crud-service";
-import { supabase } from "@/lib/supabase-client";
 
 export async function DELETE(request: NextRequest) {
   try {
+    const auth = await requireCopilotTenantContext(request);
+    if (!auth.ok) return auth.response;
+
     const id = request.nextUrl.searchParams.get("id")?.trim() ?? "";
     if (!id) {
       return NextResponse.json(
@@ -18,7 +21,7 @@ export async function DELETE(request: NextRequest) {
         { status: 400 }
       );
     }
-    const result = await protoDeleteCompany(supabase, id);
+    const result = await protoDeleteCompany(auth.ctx.supabase, id);
     return nextResponseFromProtoCrud(result);
   } catch {
     return NextResponse.json(

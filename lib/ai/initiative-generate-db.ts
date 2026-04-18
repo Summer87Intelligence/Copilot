@@ -1,11 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  DEDUPE_PAGE_SIZE,
+  selectInitiativeDedupeFieldsForLocalDatePage,
+} from "@/lib/data/engine-repository";
+import {
   initiativeDedupeKey,
   normalizeInitiativeDedupeFields,
 } from "@/lib/ai/initiative-dedupe";
-
-const PAGE_SIZE = 1000;
 
 /**
  * Paso B: claves ya presentes para `dedupe_local_date = ymd` (YYYY-MM-DD, Montevideo).
@@ -19,12 +21,12 @@ export async function fetchExistingDedupeKeysForLocalDate(
   let from = 0;
 
   for (;;) {
-    const { data, error } = await client
-      .from("initiatives")
-      .select("company_name, source, trigger")
-      .eq("dedupe_local_date", ymd)
-      .order("created_at", { ascending: true })
-      .range(from, from + PAGE_SIZE - 1);
+    const { data, error } = await selectInitiativeDedupeFieldsForLocalDatePage(
+      client,
+      ymd,
+      from,
+      DEDUPE_PAGE_SIZE
+    );
 
     if (error) throw new Error(error.message);
 
@@ -43,8 +45,8 @@ export async function fetchExistingDedupeKeysForLocalDate(
       );
     }
 
-    if (rows.length < PAGE_SIZE) break;
-    from += PAGE_SIZE;
+    if (rows.length < DEDUPE_PAGE_SIZE) break;
+    from += DEDUPE_PAGE_SIZE;
   }
 
   return keys;

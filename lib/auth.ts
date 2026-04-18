@@ -17,7 +17,9 @@ export async function signInWithMagicLink(email: string): Promise<{
   const { error } = await supabase.auth.signInWithOtp({
     email: trimmed,
     options: {
-      emailRedirectTo: origin ? `${origin}/` : undefined,
+      emailRedirectTo: origin
+        ? `${origin}/auth/confirm?next=${encodeURIComponent("/copilot/rutas")}`
+        : undefined,
     },
   });
 

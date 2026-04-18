@@ -15,6 +15,7 @@ export default function RutaPagosImpuestosPage() {
     <div className="flex min-h-0 flex-1 flex-col">
       <RutasFlowBackLink />
       <CopilotPageHeader
+        surfaceId="copilot.rutas"
         title="¿Puedo cumplir con pagos e impuestos?"
         description="Obligaciones, caja y coherencia en tres pasos."
       />

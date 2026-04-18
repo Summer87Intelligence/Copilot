@@ -1,6 +1,7 @@
-import { supabase } from "@/lib/supabase-client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-const ROW_CAP = 5000;
+import { loadClientPortfolioSourceRows } from "@/lib/data/proto-analytics-read-repository";
+import { supabase } from "@/lib/supabase-client";
 
 export type PaymentBehaviorLabel = "bueno" | "medio" | "lento";
 
@@ -137,8 +138,15 @@ function industryOf(c: CompanyRow): string {
   return s || "—";
 }
 
-function paymentBehaviorForInvoices(
-  invoices: InvoiceRow[],
+/** Facturas mínimas para clasificar comportamiento de pago (sin I/O). */
+export type PortfolioInvoiceBehaviorInput = {
+  balance_amount?: unknown;
+  status?: unknown;
+  due_date?: unknown;
+};
+
+export function paymentBehaviorForInvoices(
+  invoices: readonly PortfolioInvoiceBehaviorInput[],
   todayYmd: string
 ): PaymentBehaviorLabel {
   if (invoices.length === 0) return "medio";
@@ -167,7 +175,7 @@ function paymentBehaviorForInvoices(
   return "medio";
 }
 
-function riskForCompany(
+export function riskForCompany(
   sharePct: number,
   totalDebt: number,
   overdueDebt: number
@@ -188,7 +196,9 @@ function formatPctEs(ratio: number): string {
   return `${(ratio * 100).toLocaleString("es-AR", { maximumFractionDigits: 1 })}%`;
 }
 
-function buildSummary(rows: ClientPortfolioRow[]): ClientPortfolioSummary {
+export function buildClientPortfolioSummary(
+  rows: ClientPortfolioRow[]
+): ClientPortfolioSummary {
   const sorted = [...rows].sort((a, b) => b.total_billing - a.total_billing);
   const top2 = sorted.filter((r) => r.total_billing > 0).slice(0, 2);
   const topShare = top2.reduce((s, r) => s + r.share_pct, 0);
@@ -245,29 +255,10 @@ function pushMapArray<K, V>(m: Map<K, V[]>, key: K, item: V): void {
   else m.set(key, [item]);
 }
 
-export async function getClientPortfolio(): Promise<ClientPortfolioLoad> {
-  const [cRes, iRes, rRes, ctRes] = await Promise.all([
-    supabase
-      .from("proto_companies")
-      .select("*")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-    supabase
-      .from("proto_invoices")
-      .select("*")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-    supabase
-      .from("proto_receipts")
-      .select("*")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-    supabase
-      .from("proto_contacts")
-      .select("*")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-  ]);
+export async function getClientPortfolio(
+  client: SupabaseClient = supabase
+): Promise<ClientPortfolioLoad> {
+  const { cRes, iRes, rRes, ctRes } = await loadClientPortfolioSourceRows(client);
 
   if (cRes.error) throw new Error(cRes.error.message);
   if (iRes.error) throw new Error(iRes.error.message);
@@ -404,7 +395,7 @@ export async function getClientPortfolio(): Promise<ClientPortfolioLoad> {
 
   return {
     rows,
-    summary: buildSummary(rows),
+    summary: buildClientPortfolioSummary(rows),
     details,
   };
 }

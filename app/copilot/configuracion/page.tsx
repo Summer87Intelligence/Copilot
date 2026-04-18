@@ -116,6 +116,7 @@ export default function CopilotConfiguracionPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
+        surfaceId="copilot.configuracion"
         title="Configuración"
         description="Mapa documental, contable y fiscal: tablas activas, reglas de registro, relaciones entre entidades y roadmap senior — sin cambiar tu base todavía."
       />

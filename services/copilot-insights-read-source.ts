@@ -1,3 +1,4 @@
+import { selectRecentCopilotInsightsByCompany } from "@/lib/data/copilot-insights-repository";
 import { supabase } from "@/lib/supabase-client";
 import type { CopilotInsight } from "@/lib/copilot-engine";
 import type { CopilotInsightRecord } from "@/types/copilot-insight-record";
@@ -48,14 +49,11 @@ export async function getRecentCopilotInsights(
 ): Promise<CopilotInsightRecord[]> {
   const cap = Math.min(Math.max(1, limit), 50);
 
-  const { data, error } = await supabase
-    .from("copilot_insights")
-    .select(
-      "id, company_id, snapshot_id, type, title, description, priority, created_at"
-    )
-    .eq("company_id", companyId)
-    .order("created_at", { ascending: false })
-    .limit(cap);
+  const { data, error } = await selectRecentCopilotInsightsByCompany(
+    supabase,
+    companyId,
+    cap
+  );
 
   if (error || !data) {
     if (error) {

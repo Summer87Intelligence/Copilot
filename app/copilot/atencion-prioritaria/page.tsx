@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import { CopilotTaxEvidenceDrawer } from "@/components/copilot/copilot-tax-evidence-drawer";
 import { CopilotCollapsiblePanel } from "@/components/copilot/copilot-collapsible-panel";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
+import { CopilotTraceMeta } from "@/components/copilot/copilot-trace-meta";
 import {
   CopilotBadge,
   CopilotCard,
@@ -31,6 +32,7 @@ import {
   getProtoTaxObligationById,
   type ProtoTaxObligation,
 } from "@/lib/copilot-tax-data";
+import { traceFromAttentionPrimary } from "@/lib/copilot-trace-meta";
 
 function formatMoney(n: number): string {
   return `$ ${n.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
@@ -191,6 +193,9 @@ function CopilotAtencionPrioritariaPageContent() {
   const [obligation, setObligation] = useState<ProtoTaxObligation | null>(null);
   const [obligationLoading, setObligationLoading] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [attentionAssembledAt, setAttentionAssembledAt] = useState<string | null>(
+    null
+  );
 
   const primary = useMemo(
     () => pickPrimaryCaseForLevel(allAlerts, attentionLevel),
@@ -250,6 +255,22 @@ function CopilotAtencionPrioritariaPageContent() {
       cancelled = true;
     };
   }, [primary?.obligationId]);
+
+  useEffect(() => {
+    if (!primary) {
+      setAttentionAssembledAt(null);
+      return;
+    }
+    if (alertsLoading || snapshotLoading) return;
+    if (primary.obligationId && obligationLoading) return;
+    setAttentionAssembledAt(new Date().toISOString());
+  }, [
+    primary,
+    alertsLoading,
+    snapshotLoading,
+    obligationLoading,
+    primary?.obligationId,
+  ]);
 
   const alertasHref =
     primary?.priority === "critical"
@@ -386,6 +407,7 @@ function CopilotAtencionPrioritariaPageContent() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
+        surfaceId="copilot.atencion-prioritaria"
         title="Atención prioritaria"
         description="Diagnóstico, decisión y primer movimiento: un solo foco con plan ordenado y un camino claro a Finanzas y Datos."
       />
@@ -452,6 +474,18 @@ function CopilotAtencionPrioritariaPageContent() {
                     <span className="font-semibold">Monto en foco: </span>
                     {montoComprometido}
                   </p>
+                  {attentionAssembledAt ? (
+                    <CopilotTraceMeta
+                      trace={traceFromAttentionPrimary({
+                        assembledAtIso: attentionAssembledAt,
+                        hasSnapshot: snapshot != null,
+                        hasObligationRow: obligation != null,
+                        alertType: primary.type,
+                      })}
+                      variant="embed"
+                      dense
+                    />
+                  ) : null}
                 </div>
               </div>
             </CopilotCard>

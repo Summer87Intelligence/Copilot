@@ -12,6 +12,16 @@ import {
   getDocumentsByRelatedTable,
   type ProtoDocument,
 } from "@/lib/copilot-documents-data";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import {
+  selectProtoTaxObligationById as repoSelectProtoTaxObligationById,
+  selectProtoTaxObligationsActiveOrdered,
+  selectProtoTaxPaymentsActiveOrdered,
+  selectProtoTaxPaymentsByObligationId,
+  selectTaxAgendaForwardWindow,
+  selectTaxAgendaOverdueOpen,
+} from "@/lib/data/proto-analytics-read-repository";
 import { supabase } from "@/lib/supabase-client";
 
 export type ProtoTaxObligation = {
@@ -112,12 +122,10 @@ function parsePayment(row: Record<string, unknown>): ProtoTaxPayment {
   };
 }
 
-export async function getProtoTaxObligations(): Promise<ProtoTaxObligation[]> {
-  const { data, error } = await supabase
-    .from("proto_tax_obligations")
-    .select("*")
-    .eq("is_active", true)
-    .order("due_date", { ascending: true });
+export async function getProtoTaxObligations(
+  client: SupabaseClient = supabase
+): Promise<ProtoTaxObligation[]> {
+  const { data, error } = await selectProtoTaxObligationsActiveOrdered(client);
 
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => parseObligation(row as Record<string, unknown>));
@@ -128,12 +136,10 @@ export function isTaxObligationOpenForLink(o: ProtoTaxObligation): boolean {
   return String(o.status ?? "").toLowerCase() !== "paid";
 }
 
-export async function getProtoTaxPayments(): Promise<ProtoTaxPayment[]> {
-  const { data, error } = await supabase
-    .from("proto_tax_payments")
-    .select("*")
-    .eq("is_active", true)
-    .order("payment_date", { ascending: false });
+export async function getProtoTaxPayments(
+  client: SupabaseClient = supabase
+): Promise<ProtoTaxPayment[]> {
+  const { data, error } = await selectProtoTaxPaymentsActiveOrdered(client);
 
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => parsePayment(row as Record<string, unknown>));
@@ -164,8 +170,10 @@ export async function getUpcomingTaxObligations(
 }
 
 /** Obligaciones vencidas o marcadas como overdue (excluye pagadas). */
-export async function getOverdueTaxObligations(): Promise<ProtoTaxObligation[]> {
-  const all = await getProtoTaxObligations();
+export async function getOverdueTaxObligations(
+  client: SupabaseClient = supabase
+): Promise<ProtoTaxObligation[]> {
+  const all = await getProtoTaxObligations(client);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayStr = toYmd(today);
@@ -181,12 +189,10 @@ export async function getOverdueTaxObligations(): Promise<ProtoTaxObligation[]> 
 export async function getTaxPaymentsByObligation(
   obligationId: string
 ): Promise<ProtoTaxPayment[]> {
-  const { data, error } = await supabase
-    .from("proto_tax_payments")
-    .select("*")
-    .eq("obligation_id", obligationId)
-    .eq("is_active", true)
-    .order("payment_date", { ascending: false });
+  const { data, error } = await selectProtoTaxPaymentsByObligationId(
+    supabase,
+    obligationId
+  );
 
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => parsePayment(row as Record<string, unknown>));
@@ -195,11 +201,7 @@ export async function getTaxPaymentsByObligation(
 export async function getProtoTaxObligationById(
   id: string
 ): Promise<ProtoTaxObligation | null> {
-  const { data, error } = await supabase
-    .from("proto_tax_obligations")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
+  const { data, error } = await repoSelectProtoTaxObligationById(supabase, id);
 
   if (error) throw new Error(error.message);
   if (!data) return null;
@@ -226,20 +228,8 @@ export async function getUpcomingTaxAgenda(): Promise<TaxAgendaItem[]> {
 
   const [dataset, forwardRes, overdueRes, fiscalDocs] = await Promise.all([
     loadCashflowEngineDataset(),
-    supabase
-      .from("proto_tax_obligations")
-      .select(selectCols)
-      .eq("is_active", true)
-      .gte("due_date", todayYmd)
-      .lte("due_date", endYmd)
-      .order("due_date", { ascending: true }),
-    supabase
-      .from("proto_tax_obligations")
-      .select(selectCols)
-      .eq("is_active", true)
-      .lt("due_date", todayYmd)
-      .neq("status", "paid")
-      .order("due_date", { ascending: true }),
+    selectTaxAgendaForwardWindow(supabase, selectCols, todayYmd, endYmd),
+    selectTaxAgendaOverdueOpen(supabase, selectCols, todayYmd),
     getDocumentsByRelatedTable(DOCUMENT_RELATED_TABLE.taxObligation).catch(
       (): ProtoDocument[] => []
     ),
@@ -248,9 +238,9 @@ export async function getUpcomingTaxAgenda(): Promise<TaxAgendaItem[]> {
   if (forwardRes.error) throw new Error(forwardRes.error.message);
   if (overdueRes.error) throw new Error(overdueRes.error.message);
 
-  const mergedRows: Record<string, unknown>[] = [];
-  for (const row of overdueRes.data ?? []) mergedRows.push(row as Record<string, unknown>);
-  for (const row of forwardRes.data ?? []) mergedRows.push(row as Record<string, unknown>);
+  const overdueRows = (overdueRes.data ?? []) as unknown as Record<string, unknown>[];
+  const forwardRows = (forwardRes.data ?? []) as unknown as Record<string, unknown>[];
+  const mergedRows: Record<string, unknown>[] = [...overdueRows, ...forwardRows];
 
   const obligationInputs = mergedRows.map((row) => ({
     id: String(row.id),

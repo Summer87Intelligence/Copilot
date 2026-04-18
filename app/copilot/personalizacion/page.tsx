@@ -55,6 +55,7 @@ export default function CopilotPersonalizacionPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
+        surfaceId="copilot.personalizacion"
         title="Personalización"
         description="Adaptá alertas, umbrales y qué ver en tu panel — sin complejidad técnica."
       />

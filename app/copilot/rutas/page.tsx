@@ -5,9 +5,9 @@ import Link from "next/link";
 import { Loader2 } from "lucide-react";
 
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
+import { CopilotTraceMeta } from "@/components/copilot/copilot-trace-meta";
 import { DecisionRouteCard } from "@/components/copilot/decision-route-card";
 import { CopilotCard, CopilotPrimaryLink } from "@/components/copilot/copilot-ui";
-import type { InitiativeFlowItem } from "@/lib/ai/initiative-flow-types";
 import { getClientPortfolio } from "@/lib/copilot-clients-portfolio";
 import { getProtoInvoices, type DataRow } from "@/lib/copilot-data";
 import {
@@ -23,8 +23,10 @@ import {
   type RutasHubData,
 } from "@/lib/copilot-rutas-hub";
 import { getFinancialSnapshot } from "@/lib/copilot-financial-engine";
+import { copilotApiFetch } from "@/lib/copilot-fetch";
 import { getUpcomingTaxAgenda } from "@/lib/copilot-tax-data";
 import { getFiscalAlerts } from "@/lib/copilot-tax-alerts";
+import { traceFromRutasHub } from "@/lib/copilot-trace-meta";
 
 function avgCollectionFromInvoices(rows: DataRow[]): number | null {
   let s = 0;
@@ -40,15 +42,6 @@ function avgCollectionFromInvoices(rows: DataRow[]): number | null {
   }
   if (n === 0) return null;
   return s / n;
-}
-
-function countPendingFlow(items: InitiativeFlowItem[]): number {
-  const open: InitiativeFlowItem["flow_status"][] = [
-    "new",
-    "decision_generated",
-    "action_pending",
-  ];
-  return items.filter((i) => open.includes(i.flow_status)).length;
 }
 
 function KpiPill({
@@ -85,23 +78,23 @@ function KpiPill({
 export default function CopilotRutasPage() {
   const [loading, setLoading] = useState(true);
   const [hub, setHub] = useState<RutasHubData | null>(null);
+  const [hubLoadedAt, setHubLoadedAt] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [snapshot, fiscalAlerts, taxAgenda, portfolio, invoices, flowRes] =
+      const [snapshot, fiscalAlerts, taxAgenda, portfolio, invoices, insightsRes] =
         await Promise.all([
           getFinancialSnapshot().catch(() => null),
           getFiscalAlerts().catch(() => []),
           getUpcomingTaxAgenda().catch(() => []),
           getClientPortfolio().catch(() => null),
           getProtoInvoices("active").catch(() => []),
-          fetch("/api/copilot/initiatives/flow?limit=120").then((r) => r.json()),
+          copilotApiFetch("/api/copilot/real-insights").then((r) => r.json()),
         ]);
 
-      const flowJson = flowRes as { items?: InitiativeFlowItem[] };
-      const items = flowJson.items ?? [];
-      const pendingDecisions = countPendingFlow(items);
+      const insightsJson = insightsRes as { insights?: unknown[] };
+      const pendingDecisions = insightsJson.insights?.length ?? 0;
 
       setHub({
         snapshot,
@@ -121,6 +114,7 @@ export default function CopilotRutasPage() {
         pendingDecisions: 0,
       });
     } finally {
+      setHubLoadedAt(new Date().toISOString());
       setLoading(false);
     }
   }, []);
@@ -164,6 +158,7 @@ export default function CopilotRutasPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
+        surfaceId="copilot.rutas"
         title="Qué hacer hoy"
         description="Elegí un camino y avanzá paso a paso. Un solo botón verde por pantalla hasta llegar a tu próxima decisión."
       />
@@ -222,6 +217,18 @@ export default function CopilotRutasPage() {
               />
             </div>
           )}
+          {!loading && hubLoadedAt ? (
+            <div className="mt-4 max-w-3xl">
+              <CopilotTraceMeta
+                trace={traceFromRutasHub({
+                  loadedAtIso: hubLoadedAt,
+                  hasSignals: Boolean(hasAnySignal),
+                })}
+                variant="embed"
+                dense
+              />
+            </div>
+          ) : null}
         </section>
 
         {!loading && !hasAnySignal ? (

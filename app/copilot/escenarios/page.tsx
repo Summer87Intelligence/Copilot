@@ -11,6 +11,7 @@ export default function CopilotEscenariosPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
+        surfaceId="copilot.escenarios"
         title="Escenarios"
         description="Compará lecturas de riesgo, estabilidad y crecimiento cuando el motor esté alimentado por tus datos — sin simulaciones de relleno."
       />

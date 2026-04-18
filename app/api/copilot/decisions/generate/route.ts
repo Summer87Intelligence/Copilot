@@ -1,23 +1,37 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import {
   generateDecisionsForInitiatives,
   type InitiativeForDecision,
 } from "@/lib/ai/decisionEngine";
-import { supabase } from "@/lib/supabase-client";
+import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import {
+  insertDecisions,
+  selectDecisionInitiativeIdsForInitiatives,
+  selectInitiativesForDecisionBatch,
+  updateInitiativesProcessingStage,
+} from "@/lib/data/engine-repository";
+import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 
 const BATCH_LIMIT = 20;
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  let log = copilotRequestLogger(request);
   try {
-    const { data: candidates, error: fetchError } = await supabase
-      .from("initiatives")
-      .select("id, company_name, trigger, score")
-      .eq("processing_stage", "new")
-      .order("score", { ascending: false })
-      .limit(BATCH_LIMIT);
+    const auth = await requireCopilotTenantContext(request);
+    if (!auth.ok) {
+      log.warn("copilot_auth_failed", { phase: "require_copilot_tenant" });
+      return auth.response;
+    }
+    log = log.withTenant(auth.ctx.tenantCompanyId);
+
+    const { data: candidates, error: fetchError } =
+      await selectInitiativesForDecisionBatch(auth.ctx.supabase, BATCH_LIMIT);
 
     if (fetchError) {
+      log.error("copilot_decisions_generate_failed", fetchError, {
+        operation: "selectInitiativesForDecisionBatch",
+      });
       return NextResponse.json(
         { error: fetchError.message, processed: 0, decisionsCreated: 0 },
         { status: 500 }
@@ -34,12 +48,13 @@ export async function POST() {
 
     const ids = rows.map((r) => r.id);
 
-    const { data: existingDecisions, error: decErr } = await supabase
-      .from("decisions")
-      .select("initiative_id")
-      .in("initiative_id", ids);
+    const { data: existingDecisions, error: decErr } =
+      await selectDecisionInitiativeIdsForInitiatives(auth.ctx.supabase, ids);
 
     if (decErr) {
+      log.error("copilot_decisions_generate_failed", decErr, {
+        operation: "selectDecisionInitiativeIdsForInitiatives",
+      });
       return NextResponse.json(
         { error: decErr.message, processed: 0, decisionsCreated: 0 },
         { status: 500 }
@@ -69,12 +84,15 @@ export async function POST() {
       suggested_message: p.suggested_message,
     }));
 
-    const { data: inserted, error: insertError } = await supabase
-      .from("decisions")
-      .insert(insertRows)
-      .select("id, initiative_id");
+    const { data: inserted, error: insertError } = await insertDecisions(
+      auth.ctx.supabase,
+      insertRows
+    );
 
     if (insertError) {
+      log.error("copilot_decisions_generate_failed", insertError, {
+        operation: "insertDecisions",
+      });
       return NextResponse.json(
         { error: insertError.message, processed: 0, decisionsCreated: 0 },
         { status: 500 }
@@ -84,12 +102,19 @@ export async function POST() {
     const created = inserted?.length ?? 0;
     const processedIds = eligible.map((e) => e.id);
 
-    const { error: updateError } = await supabase
-      .from("initiatives")
-      .update({ processing_stage: "decision_made" })
-      .in("id", processedIds);
+    const { error: updateError } = await updateInitiativesProcessingStage(
+      auth.ctx.supabase,
+      processedIds,
+      "decision_made"
+    );
 
     if (updateError) {
+      log.warn("copilot_decisions_generate_stage_update_failed", {
+        decisions_created: created,
+      });
+      log.error("copilot_decisions_generate_failed", updateError, {
+        operation: "updateInitiativesProcessingStage",
+      });
       return NextResponse.json(
         {
           error: updateError.message,
@@ -102,11 +127,18 @@ export async function POST() {
       );
     }
 
+    log.info("copilot_decisions_generated", {
+      processed: processedIds.length,
+      decisions_created: created,
+    });
     return NextResponse.json({
       processed: processedIds.length,
       decisionsCreated: created,
     });
   } catch (e) {
+    log.error("copilot_request_unhandled", e, {
+      route: "POST /api/copilot/decisions/generate",
+    });
     const message = e instanceof Error ? e.message : "Error desconocido";
     return NextResponse.json(
       { error: message, processed: 0, decisionsCreated: 0 },

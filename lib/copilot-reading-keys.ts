@@ -51,9 +51,9 @@ export const COPILOT_READING_KEYS: Record<string, CopilotReadingKeyEntry> = {
   "/copilot/gestion-ia": {
     title: "Clave de lectura",
     lines: [
-      "Veo el pipeline completo.",
-      "Detecto cuellos de botella rápido.",
-      "Ejecuto con contexto, no a ciegas.",
+      "Acá ves primero las acciones que más pueden impactar en tu caja.",
+      "Entrá en una por vez y seguí la recomendación.",
+      "Cada alerta se traduce en una próxima acción concreta.",
     ],
   },
   "/copilot/atencion-prioritaria": {
