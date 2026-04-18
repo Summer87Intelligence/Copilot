@@ -39,7 +39,7 @@ function hasValidCopilotSession(request: NextRequest): boolean {
 
 /**
  * Protege `/copilot` y `/api/copilot/*` con cookie HttpOnly `copilot_session`
- * (valor `{uuid}:{role}`; sin Supabase Auth en Edge).
+ * (valor `{uuid}:{role}:{companyId}` o legado `{uuid}:{role}`; sin Supabase Auth en Edge).
  */
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;

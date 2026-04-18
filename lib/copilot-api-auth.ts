@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { User } from "@supabase/supabase-js";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  getParsedCopilotSessionFromRequest,
+} from "@/lib/copilot-session-cookie";
 import { getAppUserByEmail } from "@/services/app-user-source";
 import type { AppUser } from "@/types/app-user";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
@@ -37,6 +40,57 @@ function jsonError(
   message: string
 ): NextResponse {
   return NextResponse.json({ ok: false as const, code, message }, { status });
+}
+
+function createServiceRoleSupabaseClient(): SupabaseClient | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!url || !key) return null;
+  return createClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+}
+
+function mapRowToAppUser(row: {
+  id: string;
+  company_id: string;
+  full_name: string;
+  email: string;
+  role: string;
+  created_at: string;
+}): AppUser {
+  return {
+    id: row.id,
+    company_id: row.company_id,
+    full_name: row.full_name,
+    email: row.email,
+    role: row.role,
+    created_at: row.created_at,
+  };
+}
+
+/** Mínimo compatible con `User` para rutas que solo exponen `appUser` (sesión cookie). */
+function syntheticAuthUserFromAppUser(appUser: AppUser, sessionUserId: string): User {
+  return {
+    id: sessionUserId,
+    aud: "authenticated",
+    role: "authenticated",
+    email: appUser.email,
+    email_confirmed_at: undefined,
+    phone: undefined,
+    confirmed_at: undefined,
+    last_sign_in_at: undefined,
+    app_metadata: {},
+    user_metadata: {},
+    identities: [],
+    created_at: appUser.created_at,
+    updated_at: appUser.created_at,
+    is_anonymous: false,
+  } as User;
 }
 
 function readOverrideTenantFromQuery(request: NextRequest): string | null {
@@ -116,8 +170,13 @@ export function assertProtoBodyCompanyIdNotWorkspaceUuid(
 
 /**
  * Resuelve sesión + membresía. El tenant es siempre `app_users.company_id` (referencia a public.companies).
- * - 401 sin sesión
- * - 403 sin fila en app_users (sin empresa asignada)
+ *
+ * Orden:
+ * 1) Supabase Auth (JWT) + `app_users` por email (comportamiento histórico).
+ * 2) Cookie `copilot_session` + `app_users` por id (login usuario/PIN); tenant solo desde DB.
+ *
+ * - 401 sin sesión reconocida
+ * - 403 sin fila en app_users o sin `company_id`
  */
 export async function requireCopilotTenantContext(
   request: NextRequest,
@@ -126,21 +185,103 @@ export async function requireCopilotTenantContext(
   const supabase = await createRouteSupabaseClient();
 
   const { data: userData, error: userErr } = await supabase.auth.getUser();
-  if (userErr || !userData.user) {
-    return { ok: false, response: jsonError(401, "UNAUTHENTICATED", "Tenés que iniciar sesión.") };
-  }
+  if (!userErr && userData.user) {
+    const authUser = userData.user;
+    const email = authUser.email?.trim();
+    if (!email) {
+      return {
+        ok: false,
+        response: jsonError(
+          403,
+          "FORBIDDEN_MEMBERSHIP",
+          "Tu cuenta no tiene email verificado."
+        ),
+      };
+    }
 
-  const authUser = userData.user;
-  const email = authUser.email?.trim();
-  if (!email) {
+    const appUser = await getAppUserByEmail(email, supabase);
+    if (!appUser) {
+      return {
+        ok: false,
+        response: jsonError(
+          403,
+          "FORBIDDEN_MEMBERSHIP",
+          "Tu usuario no está asociado a una empresa en el sistema."
+        ),
+      };
+    }
+
+    const tenantCompanyId = appUser.company_id;
+    if (!tenantCompanyId?.trim()) {
+      return {
+        ok: false,
+        response: jsonError(
+          403,
+          "FORBIDDEN_MEMBERSHIP",
+          "Tu usuario no tiene empresa asignada."
+        ),
+      };
+    }
+
+    const overrideErr = assertNoTenantOverrideMismatch(
+      request,
+      body ?? null,
+      tenantCompanyId
+    );
+    if (overrideErr) {
+      return { ok: false, response: overrideErr };
+    }
+
+    const protoErr = assertProtoBodyCompanyIdNotWorkspaceUuid(
+      body ?? null,
+      tenantCompanyId
+    );
+    if (protoErr) {
+      return { ok: false, response: protoErr };
+    }
+
     return {
-      ok: false,
-      response: jsonError(403, "FORBIDDEN_MEMBERSHIP", "Tu cuenta no tiene email verificado."),
+      ok: true,
+      ctx: { supabase, authUser, appUser, tenantCompanyId },
     };
   }
 
-  const appUser = await getAppUserByEmail(email, supabase);
-  if (!appUser) {
+  const parsed = getParsedCopilotSessionFromRequest(request);
+  if (!parsed) {
+    return {
+      ok: false,
+      response: jsonError(401, "UNAUTHENTICATED", "Tenés que iniciar sesión."),
+    };
+  }
+
+  const admin = createServiceRoleSupabaseClient();
+  if (!admin) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { ok: false as const, message: "Error interno del servidor." },
+        { status: 500 }
+      ),
+    };
+  }
+
+  const { data: row, error: rowErr } = await admin
+    .from("app_users")
+    .select("id, company_id, full_name, email, role, created_at")
+    .eq("id", parsed.userId)
+    .maybeSingle();
+
+  if (rowErr) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { ok: false as const, message: "Error interno del servidor." },
+        { status: 500 }
+      ),
+    };
+  }
+
+  if (!row) {
     return {
       ok: false,
       response: jsonError(
@@ -151,20 +292,77 @@ export async function requireCopilotTenantContext(
     };
   }
 
-  const tenantCompanyId = appUser.company_id;
+  const r = row as {
+    id: string;
+    company_id: string | null;
+    full_name: string;
+    email: string;
+    role: string;
+    created_at: string;
+  };
 
-  const overrideErr = assertNoTenantOverrideMismatch(request, body ?? null, tenantCompanyId);
+  const tenantCompanyId = String(r.company_id ?? "").trim();
+  if (!tenantCompanyId) {
+    return {
+      ok: false,
+      response: jsonError(
+        403,
+        "FORBIDDEN_MEMBERSHIP",
+        "Tu usuario no tiene empresa asignada."
+      ),
+    };
+  }
+
+  if (
+    parsed.companyId != null &&
+    parsed.companyId.trim() !== "" &&
+    parsed.companyId.trim() !== tenantCompanyId
+  ) {
+    return {
+      ok: false,
+      response: jsonError(
+        403,
+        "FORBIDDEN_TENANT",
+        "La sesión no coincide con tu espacio de trabajo."
+      ),
+    };
+  }
+
+  const appUser = mapRowToAppUser({
+    id: r.id,
+    company_id: tenantCompanyId,
+    full_name: r.full_name,
+    email: r.email,
+    role: r.role,
+    created_at: r.created_at,
+  });
+
+  const overrideErr = assertNoTenantOverrideMismatch(
+    request,
+    body ?? null,
+    tenantCompanyId
+  );
   if (overrideErr) {
     return { ok: false, response: overrideErr };
   }
 
-  const protoErr = assertProtoBodyCompanyIdNotWorkspaceUuid(body ?? null, tenantCompanyId);
+  const protoErr = assertProtoBodyCompanyIdNotWorkspaceUuid(
+    body ?? null,
+    tenantCompanyId
+  );
   if (protoErr) {
     return { ok: false, response: protoErr };
   }
 
+  const authUser = syntheticAuthUserFromAppUser(appUser, parsed.userId);
+
   return {
     ok: true,
-    ctx: { supabase, authUser, appUser, tenantCompanyId },
+    ctx: {
+      supabase,
+      authUser,
+      appUser,
+      tenantCompanyId,
+    },
   };
 }

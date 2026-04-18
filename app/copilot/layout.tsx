@@ -37,8 +37,9 @@ export default async function CopilotModuleLayout({
   children: React.ReactNode;
 }>) {
   const cookieStore = await cookies();
-  const raw = cookieStore.get(COPILOT_SESSION_COOKIE)?.value;
-  const parsed = parseCopilotSessionValue(raw);
+  const parsed = parseCopilotSessionValue(
+    cookieStore.get(COPILOT_SESSION_COOKIE)?.value
+  );
 
   let isSuperadmin = false;
   let sessionPreview: CopilotSessionPreview | null = null;
@@ -48,27 +49,38 @@ export default async function CopilotModuleLayout({
     if (admin) {
       const { data: row, error } = await admin
         .from("app_users")
-        .select("id, username, email, role")
+        .select("id, company_id, username, email, role")
         .eq("id", parsed.userId)
         .maybeSingle();
 
       if (!error && row && (row as { id: string }).id) {
         const r = row as {
           id: string;
+          company_id: string | null;
           username: string | null;
           email: string | null;
           role: string | null;
         };
         const role = String(r.role ?? "").trim();
-        isSuperadmin = role.toLowerCase() === "superadmin";
-        const displayLogin =
-          (r.username && r.username.trim()) ||
-          (r.email && r.email.trim()) ||
-          parsed.userId;
-        sessionPreview = {
-          displayEmail: displayLogin,
-          displayRole: role || "user",
-        };
+        const tenantCompanyId = String(r.company_id ?? "").trim();
+
+        if (!tenantCompanyId) {
+          if (process.env.NODE_ENV === "development") {
+            console.warn("[copilot/layout] app_users sin company_id", r.id);
+          }
+        } else {
+          isSuperadmin = role.toLowerCase() === "superadmin";
+          const displayLogin =
+            (r.username && r.username.trim()) ||
+            (r.email && r.email.trim()) ||
+            parsed.userId;
+
+          sessionPreview = {
+            displayEmail: displayLogin,
+            displayRole: role || "user",
+            tenantCompanyId,
+          };
+        }
       }
     }
   }
@@ -77,6 +89,7 @@ export default async function CopilotModuleLayout({
     console.log("[copilot/layout]", {
       hasCookie: Boolean(parsed),
       isSuperadmin,
+      tenantCompanyId: sessionPreview?.tenantCompanyId ?? null,
       sessionPreview,
     });
   }
