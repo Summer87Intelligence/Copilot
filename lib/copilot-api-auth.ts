@@ -18,6 +18,13 @@ const TENANT_OVERRIDE_KEYS = [
 ] as const;
 
 export type CopilotTenantContext = {
+  /**
+   * Cliente para consultas a Postgres.
+   * - Con **Supabase Auth** (JWT en cookies): cliente SSR con anon key → aplica RLS.
+   * - Con solo **`copilot_session`** (PIN): no hay JWT; se usa service role tras validar
+   *   `app_users` en servidor. El aislamiento por tenant depende de los filtros de aplicación
+   *   (`workspace_company_id`, etc.), no de RLS como `anon`.
+   */
   supabase: SupabaseClient;
   authUser: User;
   appUser: AppUser;
@@ -356,10 +363,21 @@ export async function requireCopilotTenantContext(
 
   const authUser = syntheticAuthUserFromAppUser(appUser, parsed.userId);
 
+  const operational = createServiceRoleSupabaseClient();
+  if (!operational) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { ok: false as const, message: "Error interno del servidor." },
+        { status: 500 }
+      ),
+    };
+  }
+
   return {
     ok: true,
     ctx: {
-      supabase,
+      supabase: operational,
       authUser,
       appUser,
       tenantCompanyId,

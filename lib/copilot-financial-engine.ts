@@ -178,7 +178,8 @@ function riskFromCoverage(
  * Carga paralela mínima para el snapshot financiero consolidado.
  */
 async function loadFinancialSnapshotRows(
-  client: SupabaseClient
+  client: SupabaseClient,
+  workspaceCompanyId?: string
 ): Promise<{
   receipts: ReceiptRow[];
   payments: PaymentRow[];
@@ -186,7 +187,7 @@ async function loadFinancialSnapshotRows(
   taxObligations: TaxObligationRow[];
   taxPayments: TaxPaymentRow[];
 }> {
-  const raw = await loadFinancialSnapshotRowsFromRepo(client);
+  const raw = await loadFinancialSnapshotRowsFromRepo(client, workspaceCompanyId);
   return {
     receipts: raw.receipts as ReceiptRow[],
     payments: raw.payments as PaymentRow[],
@@ -244,10 +245,11 @@ export function buildFinancialSnapshotFromRows(
  * Snapshot único: carga desde repositorio y fecha calendario local de hoy.
  */
 export async function getFinancialSnapshot(
-  client: SupabaseClient = supabase
+  client: SupabaseClient = supabase,
+  workspaceCompanyId?: string
 ): Promise<FinancialSnapshot> {
   const todayYmd = financialEngineLocalTodayYmd();
-  const rows = await loadFinancialSnapshotRows(client);
+  const rows = await loadFinancialSnapshotRows(client, workspaceCompanyId);
   return buildFinancialSnapshotFromRows(rows, todayYmd);
 }
 

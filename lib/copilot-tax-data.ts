@@ -123,9 +123,13 @@ function parsePayment(row: Record<string, unknown>): ProtoTaxPayment {
 }
 
 export async function getProtoTaxObligations(
-  client: SupabaseClient = supabase
+  client: SupabaseClient = supabase,
+  workspaceCompanyId?: string
 ): Promise<ProtoTaxObligation[]> {
-  const { data, error } = await selectProtoTaxObligationsActiveOrdered(client);
+  const { data, error } = await selectProtoTaxObligationsActiveOrdered(
+    client,
+    workspaceCompanyId
+  );
 
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => parseObligation(row as Record<string, unknown>));
@@ -171,9 +175,10 @@ export async function getUpcomingTaxObligations(
 
 /** Obligaciones vencidas o marcadas como overdue (excluye pagadas). */
 export async function getOverdueTaxObligations(
-  client: SupabaseClient = supabase
+  client: SupabaseClient = supabase,
+  workspaceCompanyId?: string
 ): Promise<ProtoTaxObligation[]> {
-  const all = await getProtoTaxObligations(client);
+  const all = await getProtoTaxObligations(client, workspaceCompanyId);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayStr = toYmd(today);

@@ -75,10 +75,21 @@ export default async function CopilotModuleLayout({
             (r.email && r.email.trim()) ||
             parsed.userId;
 
+          let activeCompanyName: string | null = null;
+          const { data: compRow } = await admin
+            .from("companies")
+            .select("name")
+            .eq("id", tenantCompanyId)
+            .maybeSingle();
+          if (compRow && typeof (compRow as { name?: unknown }).name === "string") {
+            activeCompanyName = String((compRow as { name: string }).name).trim() || null;
+          }
+
           sessionPreview = {
             displayEmail: displayLogin,
             displayRole: role || "user",
             tenantCompanyId,
+            activeCompanyName,
           };
         }
       }

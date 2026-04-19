@@ -9,7 +9,6 @@ import type { ClientCompanyDetail, ClientPortfolioLoad } from "@/lib/copilot-cli
 import { getClientPortfolio } from "@/lib/copilot-clients-portfolio";
 import { getFinancialSnapshot, type FinancialSnapshot } from "@/lib/copilot-financial-engine";
 import { getOverdueTaxObligations, type ProtoTaxObligation } from "@/lib/copilot-tax-data";
-import { supabase } from "@/lib/supabase-client";
 
 export type CopilotRealInsightType =
   | "deuda_vencida"
@@ -225,9 +224,10 @@ function obligationRemaining(o: ProtoTaxObligation): number {
  */
 async function detectOblFiscalVencidas(
   today: string,
-  client: SupabaseClient
+  client: SupabaseClient,
+  workspaceCompanyId?: string
 ): Promise<CopilotRealInsightOblFiscalVencida[]> {
-  const overdue = await getOverdueTaxObligations(client);
+  const overdue = await getOverdueTaxObligations(client, workspaceCompanyId);
   const out: CopilotRealInsightOblFiscalVencida[] = [];
   for (const o of overdue) {
     const rem = obligationRemaining(o);
@@ -326,15 +326,23 @@ function detectAtrasoHistorico(load: ClientPortfolioLoad, today: string): Copilo
  * Orden de presentación: caja global, deudas por monto, fiscal, concentración, atraso histórico.
  */
 export async function computeCopilotRealInsights(
-  client: SupabaseClient = supabase
+  /** Cliente del request (SSR con cookies o service role vía `requireCopilotTenantContext`). */
+  client: SupabaseClient,
+  /** `public.companies.id` del workspace; si se omite, lecturas sin filtro explícito (compat. callers viejos). */
+  workspaceCompanyId?: string
 ): Promise<CopilotRealInsight[]> {
+  if (process.env.NODE_ENV === "development") {
+    console.log("=== SERVICE INPUT ===");
+    console.log("tenantCompanyId:", workspaceCompanyId ?? null);
+  }
+
   const today = todayYmd();
   const [load, snapshot] = await Promise.all([
-    getClientPortfolio(client),
-    getFinancialSnapshot(client),
+    getClientPortfolio(client, workspaceCompanyId),
+    getFinancialSnapshot(client, workspaceCompanyId),
   ]);
 
-  const fiscal = await detectOblFiscalVencidas(today, client);
+  const fiscal = await detectOblFiscalVencidas(today, client, workspaceCompanyId);
 
   const caja = detectDesbalanceCaja(snapshot);
   const deudas = detectDeudaVencida(load, today);

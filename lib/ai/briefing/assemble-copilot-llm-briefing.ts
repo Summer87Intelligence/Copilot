@@ -73,7 +73,7 @@ export async function assembleCopilotLlmBriefing(
 
   let snapshot: FinancialSnapshot | null = null;
   try {
-    snapshot = await getFinancialSnapshot(supabase);
+    snapshot = await getFinancialSnapshot(supabase, input.tenantCompanyId);
     sources.push({
       id: "financial_snapshot",
       label: "Motor financiero (proto normalizado)",
@@ -87,7 +87,7 @@ export async function assembleCopilotLlmBriefing(
 
   let portfolioRows = 0;
   try {
-    const load = await getClientPortfolio(supabase);
+    const load = await getClientPortfolio(supabase, input.tenantCompanyId);
     portfolioRows = load.rows?.length ?? 0;
     sources.push({
       id: "client_portfolio",
@@ -105,7 +105,7 @@ export async function assembleCopilotLlmBriefing(
 
   let insights: CopilotRealInsight[] = [];
   try {
-    insights = await computeCopilotRealInsights(supabase);
+    insights = await computeCopilotRealInsights(supabase, input.tenantCompanyId);
     sources.push({
       id: "real_insights",
       label: "Insights reales (reglas motor)",

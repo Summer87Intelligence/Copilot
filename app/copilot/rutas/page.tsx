@@ -8,7 +8,7 @@ import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { CopilotTraceMeta } from "@/components/copilot/copilot-trace-meta";
 import { DecisionRouteCard } from "@/components/copilot/decision-route-card";
 import { CopilotCard, CopilotPrimaryLink } from "@/components/copilot/copilot-ui";
-import { getClientPortfolio } from "@/lib/copilot-clients-portfolio";
+import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import { getProtoInvoices, type DataRow } from "@/lib/copilot-data";
 import {
   buildRutasVisibility,
@@ -22,7 +22,7 @@ import {
   totalFiscalAlertsCount,
   type RutasHubData,
 } from "@/lib/copilot-rutas-hub";
-import { getFinancialSnapshot } from "@/lib/copilot-financial-engine";
+import type { FinancialSnapshot } from "@/lib/copilot-financial-engine";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import { getUpcomingTaxAgenda } from "@/lib/copilot-tax-data";
 import { getFiscalAlerts } from "@/lib/copilot-tax-alerts";
@@ -83,15 +83,29 @@ export default function CopilotRutasPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [snapshot, fiscalAlerts, taxAgenda, portfolio, invoices, insightsRes] =
+      const [hubCore, fiscalAlerts, taxAgenda, invoices, insightsRes] =
         await Promise.all([
-          getFinancialSnapshot().catch(() => null),
+          copilotApiFetch("/api/copilot/rutas-hub").then(async (r) => {
+            const json = (await r.json()) as {
+              ok?: boolean;
+              snapshot?: FinancialSnapshot | null;
+              portfolio?: ClientPortfolioLoad | null;
+            };
+            if (!r.ok || json.ok === false) {
+              return { snapshot: null, portfolio: null };
+            }
+            return {
+              snapshot: json.snapshot ?? null,
+              portfolio: json.portfolio ?? null,
+            };
+          }),
           getFiscalAlerts().catch(() => []),
           getUpcomingTaxAgenda().catch(() => []),
-          getClientPortfolio().catch(() => null),
           getProtoInvoices("active").catch(() => []),
           copilotApiFetch("/api/copilot/real-insights").then((r) => r.json()),
         ]);
+
+      const { snapshot, portfolio } = hubCore;
 
       const insightsJson = insightsRes as { insights?: unknown[] };
       const pendingDecisions = insightsJson.insights?.length ?? 0;

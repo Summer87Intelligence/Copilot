@@ -6,4 +6,6 @@ export type CopilotSessionPreview = {
   displayEmail: string;
   displayRole: string;
   tenantCompanyId: string;
+  /** `public.companies.name` (solo diagnóstico UI en dev, desde el layout). */
+  activeCompanyName?: string | null;
 };
