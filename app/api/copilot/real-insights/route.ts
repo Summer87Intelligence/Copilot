@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
-import { computeCopilotRealInsights } from "@/lib/copilot-real-insights";
+import { runFinancialDatasetValidation } from "@/lib/copilot-financial-context-validation";
+import {
+  computeCopilotRealInsights,
+  type CopilotRealInsight,
+} from "@/lib/copilot-real-insights";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
 
@@ -41,6 +45,11 @@ export async function GET(request: NextRequest) {
           code: "FORBIDDEN_TENANT",
           error: "Espacio de trabajo sin identificador válido.",
           insights: [],
+          validation_report: null,
+          confidence: "low" as const,
+          coverage: "insufficient" as const,
+          blocked_reasons: ["FORBIDDEN_TENANT"],
+          recommendations_enabled: false,
           computedAt: computedAt(),
         },
         { status: 403 }
@@ -68,12 +77,16 @@ export async function GET(request: NextRequest) {
         ? supabaseFromCookies
         : auth.ctx.supabase;
 
-    let insights;
+    const gate = await runFinancialDatasetValidation(supabaseForInsights, tenantCompanyId);
+
+    let insights: CopilotRealInsight[] = [];
     try {
-      insights = await computeCopilotRealInsights(
-        supabaseForInsights,
-        tenantCompanyId
-      );
+      if (gate.recommendations_enabled) {
+        insights = await computeCopilotRealInsights(
+          supabaseForInsights,
+          tenantCompanyId
+        );
+      }
     } catch (e) {
       const { message, code } = realInsightsErrorPayload(e);
       log.error("copilot_real_insights_compute_failed", e, {
@@ -87,6 +100,11 @@ export async function GET(request: NextRequest) {
           code,
           error: message,
           insights: [],
+          validation_report: gate.validation_report,
+          confidence: gate.confidence,
+          coverage: gate.coverage,
+          blocked_reasons: gate.blocked_reasons,
+          recommendations_enabled: gate.recommendations_enabled,
           computedAt: computedAt(),
         },
         { status: 500 }
@@ -96,6 +114,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       ok: true as const,
       insights,
+      data: { insights },
+      validation_report: gate.validation_report,
+      confidence: gate.confidence,
+      coverage: gate.coverage,
+      blocked_reasons: gate.blocked_reasons,
+      recommendations_enabled: gate.recommendations_enabled,
       computedAt: computedAt(),
     });
   } catch (e) {

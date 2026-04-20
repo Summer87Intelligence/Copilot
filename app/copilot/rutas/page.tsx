@@ -9,39 +9,51 @@ import { CopilotTraceMeta } from "@/components/copilot/copilot-trace-meta";
 import { DecisionRouteCard } from "@/components/copilot/decision-route-card";
 import { CopilotCard, CopilotPrimaryLink } from "@/components/copilot/copilot-ui";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
-import { getProtoInvoices, type DataRow } from "@/lib/copilot-data";
 import {
-  buildRutasVisibility,
-  countTaxAgendaUpcoming,
-  formatCoverageRutas,
   formatMoneyRutas,
   formatRutasPeriodLabel,
-  fiscalCriticalHighCounts,
-  simplifiedSaludLabel,
   sumPortfolioOverdueDebt,
-  totalFiscalAlertsCount,
-  type RutasHubData,
 } from "@/lib/copilot-rutas-hub";
 import type { FinancialSnapshot } from "@/lib/copilot-financial-engine";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
-import { getUpcomingTaxAgenda } from "@/lib/copilot-tax-data";
-import { getFiscalAlerts } from "@/lib/copilot-tax-alerts";
 import { traceFromRutasHub } from "@/lib/copilot-trace-meta";
 
-function avgCollectionFromInvoices(rows: DataRow[]): number | null {
-  let s = 0;
-  let n = 0;
-  for (const r of rows) {
-    const v = r.collection_probability;
-    if (v == null || v === "") continue;
-    const num = typeof v === "number" ? v : Number(String(v).replace(",", "."));
-    if (Number.isFinite(num)) {
-      s += num;
-      n += 1;
-    }
-  }
-  if (n === 0) return null;
-  return s / n;
+type GateMeta = {
+  validation_report: unknown;
+  confidence: "high" | "medium" | "low";
+  coverage: "full" | "partial" | "insufficient";
+  blocked_reasons: string[];
+  recommendations_enabled: boolean;
+};
+
+type RutasHubValidated = {
+  snapshot: FinancialSnapshot | null;
+  portfolio: ClientPortfolioLoad | null;
+  gate: GateMeta;
+  pendingDecisions: number;
+};
+
+function toGateMeta(input: unknown): GateMeta {
+  const o = (input ?? {}) as Record<string, unknown>;
+  const confidence =
+    o.confidence === "high" || o.confidence === "medium" || o.confidence === "low"
+      ? o.confidence
+      : "low";
+  const coverage =
+    o.coverage === "full" || o.coverage === "partial" || o.coverage === "insufficient"
+      ? o.coverage
+      : "insufficient";
+  const blocked_reasons = Array.isArray(o.blocked_reasons)
+    ? o.blocked_reasons.filter((x): x is string => typeof x === "string")
+    : [];
+  const recommendations_enabled = o.recommendations_enabled === true;
+  return {
+    validation_report: o.validation_report ?? null,
+    confidence,
+    coverage,
+    blocked_reasons,
+    recommendations_enabled,
+  };
 }
 
 function KpiPill({
@@ -77,54 +89,50 @@ function KpiPill({
 
 export default function CopilotRutasPage() {
   const [loading, setLoading] = useState(true);
-  const [hub, setHub] = useState<RutasHubData | null>(null);
+  const [hub, setHub] = useState<RutasHubValidated | null>(null);
   const [hubLoadedAt, setHubLoadedAt] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [hubCore, fiscalAlerts, taxAgenda, invoices, insightsRes] =
+      const [hubRes, insightsRes] =
         await Promise.all([
-          copilotApiFetch("/api/copilot/rutas-hub").then(async (r) => {
-            const json = (await r.json()) as {
-              ok?: boolean;
-              snapshot?: FinancialSnapshot | null;
-              portfolio?: ClientPortfolioLoad | null;
-            };
-            if (!r.ok || json.ok === false) {
-              return { snapshot: null, portfolio: null };
-            }
-            return {
-              snapshot: json.snapshot ?? null,
-              portfolio: json.portfolio ?? null,
-            };
-          }),
-          getFiscalAlerts().catch(() => []),
-          getUpcomingTaxAgenda().catch(() => []),
-          getProtoInvoices("active").catch(() => []),
+          copilotApiFetch("/api/copilot/rutas-hub").then((r) => r.json()),
           copilotApiFetch("/api/copilot/real-insights").then((r) => r.json()),
         ]);
 
-      const { snapshot, portfolio } = hubCore;
+      const hubJson = (hubRes ?? {}) as Record<string, unknown>;
+      const snapshot = (hubJson.snapshot as FinancialSnapshot | null) ?? null;
+      const portfolio = (hubJson.portfolio as ClientPortfolioLoad | null) ?? null;
+      const gate = toGateMeta(hubJson);
 
-      const insightsJson = insightsRes as { insights?: unknown[] };
-      const pendingDecisions = insightsJson.insights?.length ?? 0;
+      const insightsJson = (insightsRes ?? {}) as Record<string, unknown>;
+      const insightsGate = toGateMeta(insightsJson);
+      const insightsList = Array.isArray(insightsJson.insights)
+        ? insightsJson.insights
+        : [];
+      const pendingDecisions =
+        gate.recommendations_enabled && insightsGate.recommendations_enabled
+          ? insightsList.length
+          : 0;
 
       setHub({
         snapshot,
-        fiscalAlerts,
-        taxAgenda,
         portfolio,
-        avgCollectionPct: avgCollectionFromInvoices(invoices),
+        gate,
         pendingDecisions,
       });
     } catch {
       setHub({
         snapshot: null,
-        fiscalAlerts: [],
-        taxAgenda: [],
         portfolio: null,
-        avgCollectionPct: null,
+        gate: {
+          validation_report: null,
+          confidence: "low",
+          coverage: "insufficient",
+          blocked_reasons: ["No se pudo cargar contexto financiero validado."],
+          recommendations_enabled: false,
+        },
         pendingDecisions: 0,
       });
     } finally {
@@ -138,36 +146,38 @@ export default function CopilotRutasPage() {
   }, [load]);
 
   const visibility = useMemo(() => {
-    if (!hub) {
-      return {
-        empezar: true,
-        caja: true,
-        cobranza: false,
-        pagosImpuestos: true,
-        clientesRiesgo: false,
-        decisiones: false,
-      };
-    }
-    return buildRutasVisibility(hub);
+    const blocked = !hub?.gate.recommendations_enabled;
+    return {
+      empezar: true,
+      caja: !blocked,
+      cobranza: !blocked && sumPortfolioOverdueDebt(hub?.portfolio ?? null) > 0,
+      pagosImpuestos: false,
+      clientesRiesgo: false,
+      decisiones: !blocked && (hub?.pendingDecisions ?? 0) > 0,
+    };
   }, [hub]);
 
-  const { critical, high } = hub
-    ? fiscalCriticalHighCounts(hub.fiscalAlerts)
-    : { critical: 0, high: 0 };
-  const salud = hub
-    ? simplifiedSaludLabel(hub.fiscalAlerts, hub.snapshot)
-    : { label: "…", tone: "neutral" as const };
+  const salud = useMemo(() => {
+    if (!hub) return { label: "…", tone: "neutral" as const };
+    if (!hub.gate.recommendations_enabled) {
+      return { label: "No apto", tone: "critical" as const };
+    }
+    if (hub.gate.coverage === "partial" || hub.gate.confidence === "medium") {
+      return { label: "Parcial", tone: "warning" as const };
+    }
+    return { label: "Validado", tone: "ok" as const };
+  }, [hub]);
 
   const overdueDebt = hub ? sumPortfolioOverdueDebt(hub.portfolio) : 0;
-  const upcoming30 = hub ? countTaxAgendaUpcoming(hub.taxAgenda, 30) : 0;
-  const alertTotal = hub ? totalFiscalAlertsCount(hub.fiscalAlerts) : 0;
+  const blockedReasonsCount = hub?.gate.blocked_reasons.length ?? 0;
+  const confidenceLabel = hub?.gate.confidence ?? "low";
+  const coverageLabel = hub?.gate.coverage ?? "insufficient";
+  const recommendationsLabel = hub?.gate.recommendations_enabled ? "Sí" : "No";
 
   const hasAnySignal =
     hub &&
     (hub.snapshot != null ||
-      hub.fiscalAlerts.length > 0 ||
-      (hub.portfolio?.rows?.length ?? 0) > 0 ||
-      hub.taxAgenda.length > 0);
+      (hub.portfolio?.rows?.length ?? 0) > 0);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -214,23 +224,34 @@ export default function CopilotRutasPage() {
                 tone={overdueDebt > 0 ? "danger" : "success"}
               />
               <KpiPill
-                label="Venc. 30 días"
-                value={String(upcoming30)}
-                tone={upcoming30 > 0 ? "warning" : "neutral"}
+                label="Cobertura datos"
+                value={coverageLabel}
+                tone={coverageLabel === "full" ? "success" : "warning"}
               />
-              <KpiPill label="Alertas" value={String(alertTotal)} />
+              <KpiPill label="Confianza" value={confidenceLabel} />
               <KpiPill
-                label="Cobrabilidad est."
-                value={
-                  hub?.avgCollectionPct != null
-                    ? `${Math.round(hub.avgCollectionPct * 100)}%`
-                    : hub?.snapshot != null
-                      ? formatCoverageRutas(hub.snapshot.coverage_ratio)
-                      : "—"
-                }
+                label="Bloqueos"
+                value={String(blockedReasonsCount)}
+                tone={blockedReasonsCount > 0 ? "danger" : "success"}
               />
+              <KpiPill label="Recomendar" value={recommendationsLabel} />
             </div>
           )}
+          {!loading && hub && !hub.gate.recommendations_enabled ? (
+            <div className="mt-4 rounded-xl border border-amber-200/90 bg-amber-50/70 p-3 text-xs text-amber-950">
+              <p className="font-semibold">Modo conservador: recomendaciones deshabilitadas</p>
+              <p className="mt-1 text-amber-900/90">
+                Se muestra solo diagnóstico validado. Motivos de bloqueo:
+              </p>
+              <ul className="mt-1 list-disc pl-5">
+                {(hub.gate.blocked_reasons.length > 0
+                  ? hub.gate.blocked_reasons
+                  : ["Sin detalle adicional."]).map((r) => (
+                  <li key={r}>{r}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {!loading && hubLoadedAt ? (
             <div className="mt-4 max-w-3xl">
               <CopilotTraceMeta
@@ -248,10 +269,10 @@ export default function CopilotRutasPage() {
         {!loading && !hasAnySignal ? (
           <CopilotCard className="border-amber-200/80 bg-amber-50/50">
             <p className="text-sm font-semibold text-amber-950">
-              Todavía no hay señales para guiarte
+              No hay contexto financiero validado suficiente
             </p>
             <p className="mt-2 text-sm text-amber-900/90">
-              Cargá facturas, cobros y obligaciones para que estas rutas muestren números reales.
+              Cargá datos completos y consistentes para habilitar recomendaciones con confianza.
             </p>
             <CopilotPrimaryLink href="/copilot/datos" className="mt-4 inline-flex">
               Ir a datos
@@ -278,16 +299,10 @@ export default function CopilotRutasPage() {
             {!loading && visibility.empezar ? (
               <DecisionRouteCard
                 title="Empezar el día"
-                description="Prioridades claras antes de abrir el resto del negocio."
+                description="Entrá al flujo guiado y verificá el estado de validación antes de decidir."
                 ctaLabel="Ver prioridades del día"
                 href="/copilot/rutas/empezar"
-                badge={
-                  critical > 0
-                    ? `${critical} crítica${critical === 1 ? "" : "s"}`
-                    : high > 0
-                      ? `${high} alta${high === 1 ? "" : "s"}`
-                      : undefined
-                }
+                badge={!hub?.gate.recommendations_enabled ? "Diagnóstico" : undefined}
               />
             ) : null}
             {!loading && visibility.caja ? (
@@ -313,7 +328,6 @@ export default function CopilotRutasPage() {
                 description="Obligaciones próximas y coherencia con tu caja."
                 ctaLabel="Ver obligaciones y caja"
                 href="/copilot/rutas/pagos-impuestos"
-                badge={upcoming30 > 0 ? `${upcoming30} en 30 días` : undefined}
               />
             ) : null}
             {!loading && visibility.clientesRiesgo ? (

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import { getClientPortfolio } from "@/lib/copilot-clients-portfolio";
+import { runFinancialDatasetValidation } from "@/lib/copilot-financial-context-validation";
 import { getFinancialSnapshot, type FinancialSnapshot } from "@/lib/copilot-financial-engine";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
@@ -46,6 +47,8 @@ export async function GET(request: NextRequest) {
         ? supabaseFromCookies
         : auth.ctx.supabase;
 
+    const gate = await runFinancialDatasetValidation(supabaseForData, tenantCompanyId);
+
     let snapshot: FinancialSnapshot | null = null;
     let portfolio: ClientPortfolioLoad | null = null;
     try {
@@ -59,11 +62,19 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const computedAt = new Date().toISOString();
+
     return NextResponse.json({
       ok: true as const,
+      data: { snapshot, portfolio },
       snapshot,
       portfolio,
-      computedAt: new Date().toISOString(),
+      validation_report: gate.validation_report,
+      confidence: gate.confidence,
+      coverage: gate.coverage,
+      blocked_reasons: gate.blocked_reasons,
+      recommendations_enabled: gate.recommendations_enabled,
+      computedAt,
     });
   } catch (e) {
     log.error("copilot_rutas_hub_failed", e, { route: "GET /api/copilot/rutas-hub" });

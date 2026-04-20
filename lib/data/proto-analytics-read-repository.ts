@@ -44,7 +44,8 @@ function invoiceFinancialBalance(row: InvoiceFinancialRow): number {
  * Mapa invoice_id → saldo desde `invoice_financials`.
  * Si la vista no responde o no hay filas, devuelve mapa vacío (se sigue usando `proto_invoices.balance_amount`).
  */
-async function fetchInvoiceFinancialBalanceMap(
+/** Expuesto para validación financiera (ETAPA 1) sin duplicar lógica de lectura de `invoice_financials`. */
+export async function fetchInvoiceFinancialBalanceMap(
   client: OperationalSupabase,
   workspaceCompanyId: string | undefined,
   invoiceIds: readonly string[]
