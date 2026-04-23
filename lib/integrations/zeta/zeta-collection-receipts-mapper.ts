@@ -1,0 +1,171 @@
+/**
+ * Fila Zeta (`QueryComprobantes` recibos de cobranza) → modelo interno y `ProtoReceiptInput`.
+ * Solo nombres de campo documentados u opcionales explícitos (lista cerrada); sin matching por nombre de cliente.
+ */
+
+import type { ZetaCollectionReceiptRecord } from "@/lib/integrations/zeta/contracts/zeta-collection-receipts.contract";
+import type { ProtoReceiptInput } from "@/lib/copilot-proto-crud-types";
+import { cleanZetaString, mapRutField } from "@/lib/integrations/zeta/zeta-client-mapper";
+
+export type CopilotCollectionReceiptV1 = {
+  schema_version: 1;
+  zeta_registro_id: string;
+  zeta_cliente_codigo: string | null;
+  /** Solo si la fila trae claves documentadas u homónimas API (`ClienteDocumento`, `RUT`, …). */
+  cliente_documento: string | null;
+  receipt_date_ymd: string | null;
+  moneda_codigo: string | null;
+  importe: number | null;
+  medio_pago: string | null;
+  referencia_documento: string | null;
+  estado_emitido: string | null;
+  comprobante_codigo: string | null;
+  raw_payload: Record<string, unknown>;
+};
+
+function readOwn(row: ZetaCollectionReceiptRecord, names: readonly string[]): unknown {
+  for (const n of names) {
+    if (Object.prototype.hasOwnProperty.call(row, n)) return row[n];
+    const want = n.toLowerCase();
+    for (const k of Object.keys(row)) {
+      if (k.toLowerCase() === want) return row[k];
+    }
+  }
+  return undefined;
+}
+
+function parseNumber(v: unknown): number | null {
+  if (v === null || v === undefined) return null;
+  const n = typeof v === "number" ? v : Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * `Total` con signo según `TotalSigno` cuando es numérico 1 o -1 (documentación Zeta: Total + TotalSigno).
+ */
+function parseSignedTotal(row: ZetaCollectionReceiptRecord): number | null {
+  const total = parseNumber(readOwn(row, ["Total", "total"]));
+  if (total === null) return null;
+  const signo = readOwn(row, ["TotalSigno", "totalSigno"]);
+  if (signo === -1 || signo === "-1" || signo === -1.0) return -Math.abs(total);
+  if (signo === 1 || signo === "1" || signo === 1.0) return Math.abs(total);
+  return Math.abs(total);
+}
+
+function sliceYmd(fecha: string | null): string | null {
+  if (!fecha) return null;
+  const s = fecha.trim();
+  if (s.length >= 10) return s.slice(0, 10);
+  return null;
+}
+
+function mapEmitidoToReceiptStatus(emitido: string | null): string {
+  if (!emitido) return "pending";
+  const e = emitido.trim().toUpperCase();
+  if (e === "S") return "paid";
+  if (e === "N") return "pending";
+  return "pending";
+}
+
+export function buildZetaCollectionReceiptNumber(registroId: string): string {
+  return `ZETA:COB:${String(registroId).trim()}`;
+}
+
+function buildReference(row: ZetaCollectionReceiptRecord, registroId: string): string | null {
+  const serie = cleanZetaString(readOwn(row, ["Serie", "serie"]));
+  const numRaw = readOwn(row, ["Numero", "numero", "Número", "número"]);
+  const numero = numRaw !== undefined && numRaw !== null ? String(numRaw).trim() : "";
+  if (serie && numero) return `${serie}-${numero}`;
+  if (serie) return serie;
+  if (numero) return numero;
+  const cc = cleanZetaString(readOwn(row, ["ComprobanteCodigo", "comprobanteCodigo"]));
+  if (cc) return cc;
+  return registroId ? `RID:${registroId}` : null;
+}
+
+function pickMedioPago(row: ZetaCollectionReceiptRecord): string | null {
+  const caja = cleanZetaString(readOwn(row, ["CajaNombre", "cajaNombre"]));
+  if (caja) return caja;
+  const cob = cleanZetaString(readOwn(row, ["CobradorNombre", "cobradorNombre"]));
+  if (cob) return cob;
+  return null;
+}
+
+export function mapZetaCollectionReceiptToCopilot(row: ZetaCollectionReceiptRecord): CopilotCollectionReceiptV1 | null {
+  const raw_payload: Record<string, unknown> = {};
+  for (const k of Object.keys(row)) {
+    raw_payload[k] = row[k];
+  }
+
+  const regRaw = readOwn(row, ["RegistroId", "registroId"]);
+  const registroId = regRaw !== undefined && regRaw !== null ? String(regRaw).trim() : "";
+  if (!registroId) return null;
+
+  const fecha = cleanZetaString(readOwn(row, ["Fecha", "fecha"]));
+  const ymd = sliceYmd(fecha);
+  const importe = parseSignedTotal(row);
+  const clienteCodigo = cleanZetaString(readOwn(row, ["ClienteCodigo", "clienteCodigo"]));
+  const doc = mapRutField(
+    readOwn(row, ["ClienteDocumento", "clienteDocumento", "ClienteRUT", "clienteRut", "RUT", "rut"])
+  );
+
+  return {
+    schema_version: 1,
+    zeta_registro_id: registroId,
+    zeta_cliente_codigo: clienteCodigo,
+    cliente_documento: doc,
+    receipt_date_ymd: ymd,
+    moneda_codigo: cleanZetaString(readOwn(row, ["MonedaCodigo", "monedaCodigo"])),
+    importe,
+    medio_pago: pickMedioPago(row),
+    referencia_documento: buildReference(row, registroId),
+    estado_emitido: cleanZetaString(readOwn(row, ["Emitido", "emitido"])),
+    comprobante_codigo: cleanZetaString(readOwn(row, ["ComprobanteCodigo", "comprobanteCodigo"])),
+    raw_payload,
+  };
+}
+
+export function buildZetaCollectionReceiptNotes(m: CopilotCollectionReceiptV1, syncRunId: string): string {
+  const payload = {
+    zeta_collection_receipt_v1: {
+      sync_run_id: syncRunId,
+      moneda_codigo: m.moneda_codigo,
+      comprobante_codigo: m.comprobante_codigo,
+      raw_payload: m.raw_payload,
+    },
+  };
+  try {
+    return JSON.stringify(payload);
+  } catch {
+    return JSON.stringify({
+      zeta_collection_receipt_v1: {
+        sync_run_id: syncRunId,
+        zeta_registro_id: m.zeta_registro_id,
+        error: "raw_payload_no_serializable",
+      },
+    });
+  }
+}
+
+export function mapCopilotCollectionReceiptToProtoReceiptInput(
+  companyId: string,
+  m: CopilotCollectionReceiptV1,
+  syncRunId: string
+): ProtoReceiptInput | null {
+  const amount = m.importe ?? 0;
+  if (!(amount > 0)) return null;
+  const ymd = m.receipt_date_ymd;
+  if (!ymd) return null;
+
+  return {
+    company_id: companyId,
+    invoice_id: null,
+    receipt_number: buildZetaCollectionReceiptNumber(m.zeta_registro_id),
+    receipt_date: ymd,
+    amount,
+    payment_method: m.medio_pago,
+    status: mapEmitidoToReceiptStatus(m.estado_emitido),
+    reference: m.referencia_documento,
+    notes: buildZetaCollectionReceiptNotes(m, syncRunId),
+  };
+}

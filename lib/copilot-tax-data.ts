@@ -14,15 +14,11 @@ import {
 } from "@/lib/copilot-documents-data";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { getCopilotDataset } from "@/lib/copilot-dataset-client";
 import {
-  selectProtoTaxObligationById as repoSelectProtoTaxObligationById,
   selectProtoTaxObligationsActiveOrdered,
   selectProtoTaxPaymentsActiveOrdered,
-  selectProtoTaxPaymentsByObligationId,
-  selectTaxAgendaForwardWindow,
-  selectTaxAgendaOverdueOpen,
 } from "@/lib/data/proto-analytics-read-repository";
-import { supabase } from "@/lib/supabase-client";
 
 export type ProtoTaxObligation = {
   id: string;
@@ -122,10 +118,19 @@ function parsePayment(row: Record<string, unknown>): ProtoTaxPayment {
   };
 }
 
+export async function getProtoTaxObligations(): Promise<ProtoTaxObligation[]>;
 export async function getProtoTaxObligations(
-  client: SupabaseClient = supabase,
+  client: SupabaseClient,
+  workspaceCompanyId?: string
+): Promise<ProtoTaxObligation[]>;
+export async function getProtoTaxObligations(
+  client?: SupabaseClient,
   workspaceCompanyId?: string
 ): Promise<ProtoTaxObligation[]> {
+  if (!client) {
+    const { obligations } = await getCopilotDataset("active");
+    return (obligations as Record<string, unknown>[]).map(parseObligation);
+  }
   const { data, error } = await selectProtoTaxObligationsActiveOrdered(
     client,
     workspaceCompanyId
@@ -140,10 +145,23 @@ export function isTaxObligationOpenForLink(o: ProtoTaxObligation): boolean {
   return String(o.status ?? "").toLowerCase() !== "paid";
 }
 
+export async function getProtoTaxPayments(): Promise<ProtoTaxPayment[]>;
 export async function getProtoTaxPayments(
-  client: SupabaseClient = supabase
+  client: SupabaseClient,
+  workspaceCompanyId?: string
+): Promise<ProtoTaxPayment[]>;
+export async function getProtoTaxPayments(
+  client?: SupabaseClient,
+  workspaceCompanyId?: string
 ): Promise<ProtoTaxPayment[]> {
-  const { data, error } = await selectProtoTaxPaymentsActiveOrdered(client);
+  if (!client) {
+    const { taxPayments } = await getCopilotDataset("active");
+    return (taxPayments as Record<string, unknown>[]).map(parsePayment);
+  }
+  const { data, error } = await selectProtoTaxPaymentsActiveOrdered(
+    client,
+    workspaceCompanyId
+  );
 
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => parsePayment(row as Record<string, unknown>));
@@ -174,11 +192,18 @@ export async function getUpcomingTaxObligations(
 }
 
 /** Obligaciones vencidas o marcadas como overdue (excluye pagadas). */
+export async function getOverdueTaxObligations(): Promise<ProtoTaxObligation[]>;
 export async function getOverdueTaxObligations(
-  client: SupabaseClient = supabase,
+  client: SupabaseClient,
+  workspaceCompanyId?: string
+): Promise<ProtoTaxObligation[]>;
+export async function getOverdueTaxObligations(
+  client?: SupabaseClient,
   workspaceCompanyId?: string
 ): Promise<ProtoTaxObligation[]> {
-  const all = await getProtoTaxObligations(client, workspaceCompanyId);
+  const all = client
+    ? await getProtoTaxObligations(client, workspaceCompanyId)
+    : await getProtoTaxObligations();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayStr = toYmd(today);
@@ -194,23 +219,25 @@ export async function getOverdueTaxObligations(
 export async function getTaxPaymentsByObligation(
   obligationId: string
 ): Promise<ProtoTaxPayment[]> {
-  const { data, error } = await selectProtoTaxPaymentsByObligationId(
-    supabase,
-    obligationId
-  );
-
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => parsePayment(row as Record<string, unknown>));
+  const oid = obligationId.trim();
+  if (!oid) return [];
+  const { taxPayments } = await getCopilotDataset("active");
+  return (taxPayments as Record<string, unknown>[])
+    .filter((row) => String(row.obligation_id ?? "") === oid)
+    .map(parsePayment);
 }
 
 export async function getProtoTaxObligationById(
   id: string
 ): Promise<ProtoTaxObligation | null> {
-  const { data, error } = await repoSelectProtoTaxObligationById(supabase, id);
-
-  if (error) throw new Error(error.message);
-  if (!data) return null;
-  return parseObligation(data as Record<string, unknown>);
+  const wid = id.trim();
+  if (!wid) return null;
+  const { obligations } = await getCopilotDataset("all");
+  const row = (obligations as Record<string, unknown>[]).find(
+    (r) => String(r.id ?? "") === wid
+  );
+  if (!row) return null;
+  return parseObligation(row);
 }
 
 /**
@@ -228,23 +255,25 @@ export async function getUpcomingTaxAgenda(): Promise<TaxAgendaItem[]> {
   const endWindow = new Date(y, m + 1, 15);
   const endYmd = toYmd(endWindow);
 
-  const selectCols =
-    "id, tax_type, period_label, due_date, estimated_amount, confirmed_amount, status, priority";
-
-  const [dataset, forwardRes, overdueRes, fiscalDocs] = await Promise.all([
+  const [dataset, { obligations }, fiscalDocs] = await Promise.all([
     loadCashflowEngineDataset(),
-    selectTaxAgendaForwardWindow(supabase, selectCols, todayYmd, endYmd),
-    selectTaxAgendaOverdueOpen(supabase, selectCols, todayYmd),
+    getCopilotDataset("active"),
     getDocumentsByRelatedTable(DOCUMENT_RELATED_TABLE.taxObligation).catch(
       (): ProtoDocument[] => []
     ),
   ]);
 
-  if (forwardRes.error) throw new Error(forwardRes.error.message);
-  if (overdueRes.error) throw new Error(overdueRes.error.message);
-
-  const overdueRows = (overdueRes.data ?? []) as unknown as Record<string, unknown>[];
-  const forwardRows = (forwardRes.data ?? []) as unknown as Record<string, unknown>[];
+  const obl = obligations as Record<string, unknown>[];
+  const overdueRows = obl.filter((row) => {
+    const due = String(row.due_date ?? "").slice(0, 10);
+    if (!due || due >= todayYmd) return false;
+    const st = String(row.status ?? "").toLowerCase();
+    return st !== "paid";
+  });
+  const forwardRows = obl.filter((row) => {
+    const due = String(row.due_date ?? "").slice(0, 10);
+    return due >= todayYmd && due <= endYmd;
+  });
   const mergedRows: Record<string, unknown>[] = [...overdueRows, ...forwardRows];
 
   const obligationInputs = mergedRows.map((row) => ({

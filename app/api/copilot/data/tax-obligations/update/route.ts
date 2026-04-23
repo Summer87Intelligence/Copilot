@@ -22,7 +22,12 @@ export async function PATCH(request: NextRequest) {
     );
     if (!auth.ok) return auth.response;
 
-    const result = await protoUpdateTaxObligation(auth.ctx.supabase, id, patch);
+    const result = await protoUpdateTaxObligation(
+      auth.ctx.supabase,
+      id,
+      patch,
+      auth.ctx.tenantCompanyId
+    );
     return nextResponseFromProtoCrud(result);
   } catch {
     return NextResponse.json(

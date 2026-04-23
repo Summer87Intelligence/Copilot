@@ -12,13 +12,14 @@ function assertNoError(label: string, error: { message: string } | null) {
 }
 
 /**
- * Crea una corrida; `company_id` la fija el trigger (JWT workspace).
+ * Crea una corrida. Con JWT `authenticated`, el trigger puede fijar `company_id`; con `service_role`
+ * hay que enviar `input.company_id` (tenant = `public.companies.id`).
  */
 export async function insertZetaSyncRun(
   client: OperationalSupabase,
   input: CreateZetaSyncRunInput
 ) {
-  const row = {
+  const row: Record<string, unknown> = {
     resource_flow: input.resource_flow,
     sync_mode: input.sync_mode,
     status: input.status ?? "pending",
@@ -26,6 +27,8 @@ export async function insertZetaSyncRun(
     overlap_to: input.overlap_to ?? null,
     idempotency_key: input.idempotency_key ?? null,
   };
+  const cid = typeof input.company_id === "string" ? input.company_id.trim() : "";
+  if (cid) row.company_id = cid;
   const res = await client.from("zeta_sync_runs").insert(row).select("id").single();
   assertNoError("insertZetaSyncRun", res.error);
   return res.data as { id: string };
@@ -70,7 +73,17 @@ export async function upsertZetaSyncState(
 ) {
   const existing = await selectZetaSyncStateByResource(client, input.resource_flow);
   const now = new Date().toISOString();
+  const fromInput = typeof input.company_id === "string" ? input.company_id.trim() : "";
+  const fromExisting =
+    existing && typeof existing.company_id === "string" ? existing.company_id.trim() : "";
+  const companyId = fromInput || fromExisting;
+  if (!companyId) {
+    throw new Error(
+      "upsertZetaSyncState: falta company_id del tenant (public.companies.id). Pasalo en el input cuando el cliente es service_role o no hay fila previa."
+    );
+  }
   const row: Record<string, unknown> = {
+    company_id: companyId,
     resource_flow: input.resource_flow,
     watermark: input.preserve_watermark
       ? (existing?.watermark ?? "")

@@ -1,7 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import { DataFreshnessBanner } from "@/components/copilot/data-freshness-banner";
+import { FinancialStatusBadge } from "@/components/copilot/financial-status-badge";
+import { FinancialWarningBanner } from "@/components/copilot/financial-warning-banner";
 import { CopilotInteractiveText } from "@/components/copilot/copilot-interactive-text";
 import { CopilotInsightsEvidenceDrawer } from "@/components/copilot/copilot-insights-evidence-drawer";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
@@ -13,12 +16,50 @@ import {
 } from "@/components/copilot/copilot-ui";
 import { CopilotTraceMeta } from "@/components/copilot/copilot-trace-meta";
 import { COPILOT_EMPTY_COPY } from "@/lib/copilot-empty-state";
+import { getProtoInvoices, type DataRow } from "@/lib/copilot-data";
+import { deriveFinancialFlags } from "@/lib/derive-financial-flags";
+import { FINANCIAL_UX_COPY } from "@/lib/copilot-financial-ux-copy";
+import { getFinancialSnapshot } from "@/lib/copilot-financial-engine";
 import type { CopilotInsightItem } from "@/lib/copilot-insight-engine";
 import { traceFromInsightEngineItem } from "@/lib/copilot-trace-meta";
 
 export function CopilotInsightsClient({ insights }: { insights: CopilotInsightItem[] }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isEvidenceOpen, setIsEvidenceOpen] = useState(false);
+  const [invoiceRows, setInvoiceRows] = useState<DataRow[]>([]);
+  const [financialAsOfDate, setFinancialAsOfDate] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([getProtoInvoices("active"), getFinancialSnapshot()])
+      .then(([inv, snap]) => {
+        if (!cancelled) {
+          setInvoiceRows(inv);
+          setFinancialAsOfDate(snap?.as_of_date ?? null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setInvoiceRows([]);
+          setFinancialAsOfDate(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const externalValidated = false;
+
+  const insightFinancialFlags = useMemo(
+    () =>
+      deriveFinancialFlags({
+        invoices: invoiceRows,
+        asOfDate: financialAsOfDate,
+        externalFinancialValidation: externalValidated,
+      }),
+    [invoiceRows, financialAsOfDate, externalValidated]
+  );
 
   const selectedEvidence = useMemo(() => {
     if (!selectedId) return null;
@@ -39,6 +80,18 @@ export function CopilotInsightsClient({ insights }: { insights: CopilotInsightIt
       />
 
       <div className="flex-1 overflow-auto px-6 py-8">
+        <div className="mx-auto mb-8 max-w-3xl space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <FinancialStatusBadge flags={insightFinancialFlags} />
+            <span className="text-xs text-[var(--copilot-ink-muted)]">
+              {insightFinancialFlags.open_invoices_count > 0
+                ? `${insightFinancialFlags.open_invoices_count} factura(s) con saldo operativo abierto.`
+                : FINANCIAL_UX_COPY.noOpenBalanceNotValidated}
+            </span>
+          </div>
+          <FinancialWarningBanner body={FINANCIAL_UX_COPY.reportWarningBody} />
+          <DataFreshnessBanner freshness={insightFinancialFlags} />
+        </div>
         {insights.length === 0 ? (
           <div className="mx-auto max-w-3xl">
             <CopilotEmptyPanel

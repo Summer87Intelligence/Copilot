@@ -7,7 +7,18 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { ClientCompanyDetail, ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import { getClientPortfolio } from "@/lib/copilot-clients-portfolio";
-import { getFinancialSnapshot, type FinancialSnapshot } from "@/lib/copilot-financial-engine";
+import {
+  getFinancialSnapshotForApi,
+  type FinancialSnapshotApiV1,
+} from "@/lib/copilot-financial-engine";
+import {
+  snapshotCashNet,
+  snapshotCoverageRatio,
+  snapshotExpectedOutflowsTotal,
+  snapshotLiquidityBalance,
+  snapshotReceivablesRiskWeighted,
+  snapshotRiskBand,
+} from "@/lib/copilot-financial-snapshot-selectors";
 import { getOverdueTaxObligations, type ProtoTaxObligation } from "@/lib/copilot-tax-data";
 
 export type CopilotRealInsightType =
@@ -258,15 +269,16 @@ async function detectOblFiscalVencidas(
 }
 
 /**
- * Tablas: proto_receipts, proto_payments, proto_invoices, proto_tax_* (mismo pipeline que getFinancialSnapshot).
+ * Tablas: proto_receipts, proto_payments, proto_invoices, proto_tax_* (mismo pipeline que getFinancialSnapshotForApi).
  * Condición: egresos esperados > 0 y cobertura < 1, o balance proyectado < 0, o riesgo high/critical.
  */
-function detectDesbalanceCaja(snapshot: FinancialSnapshot): CopilotRealInsightDesbalanceCaja | null {
+function detectDesbalanceCaja(snapshot: FinancialSnapshotApiV1): CopilotRealInsightDesbalanceCaja | null {
+  const expectedOutflows = snapshotExpectedOutflowsTotal(snapshot);
   const tight =
-    (snapshot.expected_outflows > EPS && snapshot.coverage_ratio < 1) ||
-    snapshot.projected_balance < -EPS ||
-    snapshot.risk_level === "high" ||
-    snapshot.risk_level === "critical";
+    (expectedOutflows > EPS && snapshotCoverageRatio(snapshot) < 1) ||
+    snapshotLiquidityBalance(snapshot) < -EPS ||
+    snapshotRiskBand(snapshot) === "high" ||
+    snapshotRiskBand(snapshot) === "critical";
   if (!tight) return null;
   return {
     id: "desbalance_caja:global",
@@ -274,14 +286,14 @@ function detectDesbalanceCaja(snapshot: FinancialSnapshot): CopilotRealInsightDe
     company_id: null,
     company_name: "Caja",
     evidence: {
-      available_cash: snapshot.available_cash,
-      expected_inflows: snapshot.expected_inflows,
-      expected_outflows: snapshot.expected_outflows,
-      projected_balance: snapshot.projected_balance,
-      coverage_ratio: snapshot.coverage_ratio,
-      risk_level: snapshot.risk_level,
+      available_cash: snapshotCashNet(snapshot),
+      expected_inflows: snapshotReceivablesRiskWeighted(snapshot),
+      expected_outflows: expectedOutflows,
+      projected_balance: snapshotLiquidityBalance(snapshot),
+      coverage_ratio: snapshotCoverageRatio(snapshot),
+      risk_level: snapshotRiskBand(snapshot),
     },
-    message: `Desbalance de caja: cobertura ${formatPct(snapshot.coverage_ratio)} y balance proyectado ${formatMoney(snapshot.projected_balance)}`,
+    message: `Desbalance de caja: cobertura ${formatPct(snapshotCoverageRatio(snapshot))} y balance proyectado ${formatMoney(snapshotLiquidityBalance(snapshot))}`,
     action: "Ver finanzas",
     href: "/copilot/finanzas#copilot-finanzas-panorama",
     basedOnLine:
@@ -339,7 +351,7 @@ export async function computeCopilotRealInsights(
   const today = todayYmd();
   const [load, snapshot] = await Promise.all([
     getClientPortfolio(client, workspaceCompanyId),
-    getFinancialSnapshot(client, workspaceCompanyId),
+    getFinancialSnapshotForApi(client, workspaceCompanyId),
   ]);
 
   const fiscal = await detectOblFiscalVencidas(today, client, workspaceCompanyId);

@@ -11,6 +11,7 @@ import {
   getProtoInvoicesByCompany,
   type DataRow,
 } from "@/lib/copilot-data";
+import { companyPrimaryLabel } from "@/lib/copilot-datos-company-display";
 import {
   DATA_TRAINING,
   operationalPaymentObligationAmountHint,
@@ -915,7 +916,7 @@ export function CopilotProtoCrudDrawer({
 function entityLabel(e: ProtoCrudEntity): string {
   switch (e) {
     case "companies":
-      return "Empresa";
+      return "Cliente";
     case "invoices":
       return "Factura";
     case "receipts":
@@ -1076,7 +1077,7 @@ function InvoiceFields({
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <label className="sm:col-span-2">
-        <span className={labelClass()}>Empresa</span>
+        <span className={labelClass()}>Cliente</span>
         <select
           value={invCompany}
           onChange={(e) => setInvCompany(e.target.value)}
@@ -1085,7 +1086,7 @@ function InvoiceFields({
           <option value="">Seleccionar…</option>
           {companies.map((c) => (
             <option key={String(c.id)} value={String(c.id)}>
-              {String(c.name ?? c.id)}
+              {companyPrimaryLabel(c)}
             </option>
           ))}
         </select>
@@ -1226,7 +1227,7 @@ function ReceiptFields({
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <label className="sm:col-span-2">
-        <span className={labelClass()}>Empresa</span>
+        <span className={labelClass()}>Cliente</span>
         <select
           value={recCompany}
           onChange={(e) => setRecCompany(e.target.value)}
@@ -1235,7 +1236,7 @@ function ReceiptFields({
           <option value="">Seleccionar…</option>
           {companies.map((c) => (
             <option key={String(c.id)} value={String(c.id)}>
-              {String(c.name ?? c.id)}
+              {companyPrimaryLabel(c)}
             </option>
           ))}
         </select>
@@ -1423,7 +1424,7 @@ function PaymentFields({
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <label className="sm:col-span-2">
-        <span className={labelClass()}>Empresa</span>
+        <span className={labelClass()}>Cliente</span>
         <select
           value={payCompany}
           onChange={(e) => setPayCompany(e.target.value)}
@@ -1432,7 +1433,7 @@ function PaymentFields({
           <option value="">Seleccionar…</option>
           {companies.map((c) => (
             <option key={String(c.id)} value={String(c.id)}>
-              {String(c.name ?? c.id)}
+              {companyPrimaryLabel(c)}
             </option>
           ))}
         </select>

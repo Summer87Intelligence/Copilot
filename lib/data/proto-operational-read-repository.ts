@@ -4,7 +4,10 @@ import {
 } from "@/lib/copilot-proto-active";
 import type { OperationalSupabase } from "@/lib/data/supabase-operational-data";
 
-/** Tablas proto listadas en TEN-02 + importaciones crudas usadas por listados Copilot. */
+/**
+ * Tablas proto operativas con listado genérico (`is_active` / modos active|inactive|all).
+ * `proto_raw_imports` no entra: no comparte ese esquema de activación (ver `listProtoRawImports`).
+ */
 export type ProtoOperationalListTable =
   | "proto_companies"
   | "proto_contacts"
@@ -12,7 +15,7 @@ export type ProtoOperationalListTable =
   | "proto_receipts"
   | "proto_payments"
   | "proto_tax_obligations"
-  | "proto_raw_imports";
+  | "proto_tax_payments";
 
 export type DataRow = Record<string, unknown> & {
   id?: string | number;
@@ -21,16 +24,32 @@ export type DataRow = Record<string, unknown> & {
 
 const DEFAULT_LIMIT = 100;
 
+/** Tablas proto_* con columna `workspace_company_id` (SEC-02). */
+const PROTO_TABLES_WITH_WORKSPACE = new Set<ProtoOperationalListTable>([
+  "proto_companies",
+  "proto_contacts",
+  "proto_invoices",
+  "proto_receipts",
+  "proto_payments",
+  "proto_tax_obligations",
+  "proto_tax_payments",
+]);
+
 type OrderCandidate = { column: string; ascending?: boolean };
 
 async function fetchWithBestOrder(
   client: OperationalSupabase,
   table: ProtoOperationalListTable,
   orders: readonly OrderCandidate[],
-  activeMode: ProtoActiveListMode = "active"
+  activeMode: ProtoActiveListMode = "active",
+  workspaceCompanyId?: string | null
 ): Promise<DataRow[]> {
+  const wid = workspaceCompanyId?.trim();
+  const scopeWs = Boolean(wid && PROTO_TABLES_WITH_WORKSPACE.has(table));
   for (const order of orders) {
-    const q = applyProtoActiveListFilter(client.from(table).select("*"), activeMode);
+    let base = client.from(table).select("*");
+    if (scopeWs) base = base.eq("workspace_company_id", wid!);
+    const q = applyProtoActiveListFilter(base, activeMode);
     const { data, error } = await q
       .order(order.column, { ascending: order.ascending ?? false })
       .limit(DEFAULT_LIMIT);
@@ -38,7 +57,9 @@ async function fetchWithBestOrder(
     if (!error) return (data ?? []) as DataRow[];
   }
 
-  const fb = applyProtoActiveListFilter(client.from(table).select("*"), activeMode);
+  let fbBase = client.from(table).select("*");
+  if (scopeWs) fbBase = fbBase.eq("workspace_company_id", wid!);
+  const fb = applyProtoActiveListFilter(fbBase, activeMode);
   const fallback = await fb.limit(DEFAULT_LIMIT);
   if (fallback.error) throw new Error(fallback.error.message);
   return (fallback.data ?? []) as DataRow[];
@@ -50,23 +71,24 @@ async function fetchByEqWithOrder(
   field: string,
   value: string,
   orders: readonly OrderCandidate[],
-  activeMode: ProtoActiveListMode = "active"
+  activeMode: ProtoActiveListMode = "active",
+  workspaceCompanyId?: string | null
 ): Promise<DataRow[]> {
+  const wid = workspaceCompanyId?.trim();
+  const scopeWs = Boolean(wid && PROTO_TABLES_WITH_WORKSPACE.has(table));
   for (const order of orders) {
-    const q = applyProtoActiveListFilter(
-      client.from(table).select("*").eq(field, value),
-      activeMode
-    );
+    let b = client.from(table).select("*").eq(field, value);
+    if (scopeWs) b = b.eq("workspace_company_id", wid!);
+    const q = applyProtoActiveListFilter(b, activeMode);
     const { data, error } = await q
       .order(order.column, { ascending: order.ascending ?? false })
       .limit(DEFAULT_LIMIT);
     if (!error) return (data ?? []) as DataRow[];
   }
 
-  const fb = applyProtoActiveListFilter(
-    client.from(table).select("*").eq(field, value),
-    activeMode
-  );
+  let fbB = client.from(table).select("*").eq(field, value);
+  if (scopeWs) fbB = fbB.eq("workspace_company_id", wid!);
+  const fb = applyProtoActiveListFilter(fbB, activeMode);
   const fallback = await fb.limit(DEFAULT_LIMIT);
   if (fallback.error) throw new Error(fallback.error.message);
   return (fallback.data ?? []) as DataRow[];
@@ -83,61 +105,173 @@ const ORDERS = {
     { column: "due_date", ascending: true },
     { column: "created_at", ascending: false },
   ],
+  tax_payments: [
+    { column: "payment_date", ascending: false },
+    { column: "created_at", ascending: false },
+  ],
 } as const;
 
+/**
+ * Lista todas las filas del tenant (sin `.limit`): pantalla Datos / dataset deben ver el catálogo completo.
+ * Orden: `created_at` desc, con fallback a `updated_at` si la columna de orden no existe en el esquema.
+ */
 export async function listProtoCompanies(
   client: OperationalSupabase,
-  activeMode: ProtoActiveListMode = "active"
+  activeMode: ProtoActiveListMode = "active",
+  workspaceCompanyId?: string | null
 ): Promise<DataRow[]> {
-  return fetchWithBestOrder(client, "proto_companies", ORDERS.companies, activeMode);
+  const wid = workspaceCompanyId?.trim();
+  const scopeWs = Boolean(wid);
+  for (const order of ORDERS.companies as readonly OrderCandidate[]) {
+    let base = client.from("proto_companies").select("*");
+    if (scopeWs) base = base.eq("workspace_company_id", wid!);
+    const q = applyProtoActiveListFilter(base, activeMode);
+    const { data, error } = await q.order(order.column, {
+      ascending: order.ascending ?? false,
+    });
+    if (!error) return (data ?? []) as DataRow[];
+  }
+
+  let fbBase = client.from("proto_companies").select("*");
+  if (scopeWs) fbBase = fbBase.eq("workspace_company_id", wid!);
+  const fb = applyProtoActiveListFilter(fbBase, activeMode);
+  const fallback = await fb;
+  if (fallback.error) throw new Error(fallback.error.message);
+  return (fallback.data ?? []) as DataRow[];
 }
 
 export async function listProtoContacts(
   client: OperationalSupabase,
-  activeMode: ProtoActiveListMode = "active"
+  activeMode: ProtoActiveListMode = "active",
+  workspaceCompanyId?: string | null
 ): Promise<DataRow[]> {
-  return fetchWithBestOrder(client, "proto_contacts", ORDERS.contacts, activeMode);
+  return fetchWithBestOrder(
+    client,
+    "proto_contacts",
+    ORDERS.contacts,
+    activeMode,
+    workspaceCompanyId
+  );
 }
 
+/**
+ * Catálogo completo de facturas del tenant (sin `.limit`): el dataset Copilot y filtros por mes
+ * necesitan todas las filas; `fetchWithBestOrder` trunca en DEFAULT_LIMIT.
+ */
 export async function listProtoInvoices(
   client: OperationalSupabase,
-  activeMode: ProtoActiveListMode = "active"
+  activeMode: ProtoActiveListMode = "active",
+  workspaceCompanyId?: string | null
 ): Promise<DataRow[]> {
-  return fetchWithBestOrder(client, "proto_invoices", ORDERS.invoices, activeMode);
+  const wid = workspaceCompanyId?.trim();
+  const scopeWs = Boolean(wid);
+  for (const order of ORDERS.invoices as readonly OrderCandidate[]) {
+    let base = client.from("proto_invoices").select("*");
+    if (scopeWs) base = base.eq("workspace_company_id", wid!);
+    const q = applyProtoActiveListFilter(base, activeMode);
+    const { data, error } = await q.order(order.column, {
+      ascending: order.ascending ?? false,
+    });
+    if (!error) return (data ?? []) as DataRow[];
+  }
+
+  let fbBase = client.from("proto_invoices").select("*");
+  if (scopeWs) fbBase = fbBase.eq("workspace_company_id", wid!);
+  const fb = applyProtoActiveListFilter(fbBase, activeMode);
+  const fallback = await fb;
+  if (fallback.error) throw new Error(fallback.error.message);
+  return (fallback.data ?? []) as DataRow[];
 }
 
 export async function listProtoReceipts(
   client: OperationalSupabase,
-  activeMode: ProtoActiveListMode = "active"
+  activeMode: ProtoActiveListMode = "active",
+  workspaceCompanyId?: string | null
 ): Promise<DataRow[]> {
-  return fetchWithBestOrder(client, "proto_receipts", ORDERS.receipts, activeMode);
+  return fetchWithBestOrder(
+    client,
+    "proto_receipts",
+    ORDERS.receipts,
+    activeMode,
+    workspaceCompanyId
+  );
 }
 
 export async function listProtoPayments(
   client: OperationalSupabase,
-  activeMode: ProtoActiveListMode = "active"
+  activeMode: ProtoActiveListMode = "active",
+  workspaceCompanyId?: string | null
 ): Promise<DataRow[]> {
-  return fetchWithBestOrder(client, "proto_payments", ORDERS.payments, activeMode);
+  return fetchWithBestOrder(
+    client,
+    "proto_payments",
+    ORDERS.payments,
+    activeMode,
+    workspaceCompanyId
+  );
 }
 
 export async function listProtoTaxObligations(
   client: OperationalSupabase,
-  activeMode: ProtoActiveListMode = "active"
+  activeMode: ProtoActiveListMode = "active",
+  workspaceCompanyId?: string | null
 ): Promise<DataRow[]> {
-  return fetchWithBestOrder(client, "proto_tax_obligations", ORDERS.tax_obligations, activeMode);
+  return fetchWithBestOrder(
+    client,
+    "proto_tax_obligations",
+    ORDERS.tax_obligations,
+    activeMode,
+    workspaceCompanyId
+  );
 }
 
+export async function listProtoTaxPayments(
+  client: OperationalSupabase,
+  activeMode: ProtoActiveListMode = "active",
+  workspaceCompanyId?: string | null
+): Promise<DataRow[]> {
+  return fetchWithBestOrder(
+    client,
+    "proto_tax_payments",
+    ORDERS.tax_payments,
+    activeMode,
+    workspaceCompanyId
+  );
+}
+
+/**
+ * Importaciones crudas: la tabla no expone `is_active` (ni el filtro genérico de archivo).
+ * No se aplica `workspace_company_id` aquí: no está en `PROTO_TABLES_WITH_WORKSPACE` hasta
+ * confirmar columna en esquema; el aislamiento queda en RLS / políticas si existen.
+ *
+ * `activeMode` se ignora de forma conservadora (no hay columnas equivalentes documentadas).
+ */
 export async function listProtoRawImports(
   client: OperationalSupabase,
-  activeMode: ProtoActiveListMode = "active"
+  _activeMode: ProtoActiveListMode = "active",
+  _workspaceCompanyId?: string | null
 ): Promise<DataRow[]> {
-  return fetchWithBestOrder(client, "proto_raw_imports", ORDERS.raw_imports, activeMode);
+  void _activeMode;
+  void _workspaceCompanyId;
+  for (const order of ORDERS.raw_imports as readonly OrderCandidate[]) {
+    const base = client.from("proto_raw_imports").select("*");
+    const { data, error } = await base
+      .order(order.column, { ascending: order.ascending ?? false })
+      .limit(DEFAULT_LIMIT);
+
+    if (!error) return (data ?? []) as DataRow[];
+  }
+
+  const fallback = await client.from("proto_raw_imports").select("*").limit(DEFAULT_LIMIT);
+  if (fallback.error) throw new Error(fallback.error.message);
+  return (fallback.data ?? []) as DataRow[];
 }
 
 export async function listProtoContactsByCompanyId(
   client: OperationalSupabase,
   companyId: string,
-  activeMode: ProtoActiveListMode = "active"
+  activeMode: ProtoActiveListMode = "active",
+  workspaceCompanyId?: string | null
 ): Promise<DataRow[]> {
   return fetchByEqWithOrder(
     client,
@@ -145,14 +279,16 @@ export async function listProtoContactsByCompanyId(
     "company_id",
     companyId,
     ORDERS.contacts,
-    activeMode
+    activeMode,
+    workspaceCompanyId
   );
 }
 
 export async function listProtoInvoicesByCompanyId(
   client: OperationalSupabase,
   companyId: string,
-  activeMode: ProtoActiveListMode = "active"
+  activeMode: ProtoActiveListMode = "active",
+  workspaceCompanyId?: string | null
 ): Promise<DataRow[]> {
   return fetchByEqWithOrder(
     client,
@@ -160,14 +296,16 @@ export async function listProtoInvoicesByCompanyId(
     "company_id",
     companyId,
     ORDERS.invoices,
-    activeMode
+    activeMode,
+    workspaceCompanyId
   );
 }
 
 export async function listProtoReceiptsByCompanyId(
   client: OperationalSupabase,
   companyId: string,
-  activeMode: ProtoActiveListMode = "active"
+  activeMode: ProtoActiveListMode = "active",
+  workspaceCompanyId?: string | null
 ): Promise<DataRow[]> {
   return fetchByEqWithOrder(
     client,
@@ -175,14 +313,16 @@ export async function listProtoReceiptsByCompanyId(
     "company_id",
     companyId,
     ORDERS.receipts,
-    activeMode
+    activeMode,
+    workspaceCompanyId
   );
 }
 
 export async function listProtoPaymentsByCompanyId(
   client: OperationalSupabase,
   companyId: string,
-  activeMode: ProtoActiveListMode = "active"
+  activeMode: ProtoActiveListMode = "active",
+  workspaceCompanyId?: string | null
 ): Promise<DataRow[]> {
   return fetchByEqWithOrder(
     client,
@@ -190,32 +330,33 @@ export async function listProtoPaymentsByCompanyId(
     "company_id",
     companyId,
     ORDERS.payments,
-    activeMode
+    activeMode,
+    workspaceCompanyId
   );
 }
 
 export async function getProtoCompanyById(
   client: OperationalSupabase,
-  companyId: string
+  companyId: string,
+  workspaceCompanyId?: string | null
 ): Promise<DataRow | null> {
-  const { data, error } = await client
-    .from("proto_companies")
-    .select("*")
-    .eq("id", companyId)
-    .maybeSingle();
+  let q = client.from("proto_companies").select("*").eq("id", companyId);
+  const wid = workspaceCompanyId?.trim();
+  if (wid) q = q.eq("workspace_company_id", wid);
+  const { data, error } = await q.maybeSingle();
   if (error) throw new Error(error.message);
   return (data as DataRow | null) ?? null;
 }
 
 export async function getProtoInvoiceById(
   client: OperationalSupabase,
-  invoiceId: string
+  invoiceId: string,
+  workspaceCompanyId?: string | null
 ): Promise<DataRow | null> {
-  const { data, error } = await client
-    .from("proto_invoices")
-    .select("*")
-    .eq("id", invoiceId)
-    .maybeSingle();
+  let q = client.from("proto_invoices").select("*").eq("id", invoiceId);
+  const wid = workspaceCompanyId?.trim();
+  if (wid) q = q.eq("workspace_company_id", wid);
+  const { data, error } = await q.maybeSingle();
   if (error) throw new Error(error.message);
   return (data as DataRow | null) ?? null;
 }
@@ -223,7 +364,8 @@ export async function getProtoInvoiceById(
 export async function listProtoReceiptsByInvoiceId(
   client: OperationalSupabase,
   invoiceId: string,
-  activeMode: ProtoActiveListMode = "active"
+  activeMode: ProtoActiveListMode = "active",
+  workspaceCompanyId?: string | null
 ): Promise<DataRow[]> {
   return fetchByEqWithOrder(
     client,
@@ -231,6 +373,7 @@ export async function listProtoReceiptsByInvoiceId(
     "invoice_id",
     invoiceId,
     ORDERS.receipts,
-    activeMode
+    activeMode,
+    workspaceCompanyId
   );
 }

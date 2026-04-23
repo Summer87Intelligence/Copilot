@@ -3,10 +3,7 @@
 import { useMemo } from "react";
 
 import { useCopilotAlerts } from "@/components/copilot/copilot-alerts-context";
-import { CopilotDevFinancialTrace } from "@/components/copilot/copilot-dev-financial-trace";
 import type { CopilotSessionPreview } from "@/components/copilot/copilot-session-preview";
-import { CopilotDevDatasetSummary } from "@/components/copilot/copilot-dev-dataset-summary";
-import { CopilotDevTenantDiagnostics } from "@/components/copilot/copilot-dev-tenant-diagnostics";
 import { CopilotUserBar } from "@/components/copilot/CopilotUserBar";
 import { EnvironmentBannerLeft } from "@/components/copilot/environment-banner";
 import { HealthIndicator } from "@/components/copilot/HealthIndicator";
@@ -44,9 +41,6 @@ export function CopilotEnvironmentHealthStrip({
           <HealthIndicator alerts={alerts} loading={loading} />
         </div>
       </div>
-      <CopilotDevTenantDiagnostics sessionPreview={sessionPreview ?? null} />
-      <CopilotDevDatasetSummary />
-      <CopilotDevFinancialTrace />
     </>
   );
 }

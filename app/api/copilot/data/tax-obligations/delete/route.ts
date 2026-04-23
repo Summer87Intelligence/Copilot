@@ -21,7 +21,11 @@ export async function DELETE(request: NextRequest) {
         { status: 400 }
       );
     }
-    const result = await protoDeleteTaxObligation(auth.ctx.supabase, id);
+    const result = await protoDeleteTaxObligation(
+      auth.ctx.supabase,
+      id,
+      auth.ctx.tenantCompanyId
+    );
     return nextResponseFromProtoCrud(result);
   } catch {
     return NextResponse.json(

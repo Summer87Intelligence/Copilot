@@ -1,0 +1,338 @@
+{
+  "catalog_version": "1.0.0",
+  "catalog_name": "Summer87 Copilot — Catálogo de capacidades ZetaSoftware",
+  "notes": "Origen: ayuda markdown local (docs/zeta/markdown) + rutas de integración en lib/integrations/zeta y app/api/zeta. REST no repetido en cada página de ayuda: donde falta, se indica en notes. Campos evolutivos previstos por ítem (opcionales, no requeridos aún): last_tested_at, owner, risk_level, sync_strategy, parse_strategy.",
+  "extensible_item_fields": [
+    "last_tested_at",
+    "owner",
+    "risk_level",
+    "sync_strategy",
+    "parse_strategy"
+  ],
+  "capabilities": [
+    {
+      "id": "transversal_connection",
+      "domain": "transversal",
+      "name": "Datos de conexión (credenciales desarrollador + empresa)",
+      "protocol_preferred": "rest",
+      "method_rest": null,
+      "method_soap": null,
+      "description": "Modelo de autenticación: DesarrolladorCodigo/Clave, EmpresaCodigo/Clave, RolCodigo; campos usuario reservados sin uso.",
+      "business_value": "Prerrequisito de toda llamada API; reduce errores de configuración.",
+      "status_in_copilot": "integrated",
+      "priority": "high",
+      "notes": "Implementado vía buildZetaConnectionBlock y payloads REST (Connection). No es un método con nombre propio.",
+      "source_docs": [
+        "docs/zeta/markdown/0082-ayuda-apis-datos-de-conexion-d56f74a1.md"
+      ],
+      "known_limits": null
+    },
+    {
+      "id": "transversal_protocols",
+      "domain": "transversal",
+      "name": "Protocolos SOAP y REST",
+      "protocol_preferred": "rest",
+      "method_rest": null,
+      "method_soap": null,
+      "description": "Política de producto: REST+JSON oficial para integraciones nuevas; SOAP en mantenimiento/descontinuación. Ejemplo REST de saldos pendientes. Colección Postman enlazada.",
+      "business_value": "Define stack y expectativas de soporte a largo plazo.",
+      "status_in_copilot": "documented",
+      "priority": "high",
+      "notes": "Copilot ya usa REST; alinear documentación interna con este documento.",
+      "source_docs": [
+        "docs/zeta/markdown/0135-ayuda-apis-soap-y-rest-4f8f8fd9.md"
+      ],
+      "known_limits": "Ayuda: endpoints agrupados bajo Finanzas en Postman no disponibles para integraciones externas (según mismo doc)."
+    },
+    {
+      "id": "transversal_api_methods",
+      "domain": "transversal",
+      "name": "Métodos generales (Query, Load, Save, Delete)",
+      "protocol_preferred": "rest",
+      "method_rest": null,
+      "method_soap": null,
+      "description": "Contratos genéricos Search, Filters, paginación (500 por página), Load/Save/Delete.",
+      "business_value": "Base para interpretar cualquier API de entidad Zeta.",
+      "status_in_copilot": "documented",
+      "priority": "high",
+      "notes": "Patrón REST reflejado en código (QueryIn + Connection + Data) sin duplicar este doc como código.",
+      "source_docs": [
+        "docs/zeta/markdown/0134-ayuda-apis-metodos-generales-b5ca3a44.md"
+      ],
+      "known_limits": null
+    },
+    {
+      "id": "master_contacts",
+      "domain": "master",
+      "name": "API Contactos (clientes, proveedores, contactos)",
+      "protocol_preferred": "rest",
+      "method_rest": "RESTContactosV3Query",
+      "method_soap": "asoapcontactosv3",
+      "description": "SOAP: Query/Load/Save/Delete; filtros Search, EsCliente, EsProveedor, etc. Buenas prácticas: sync incremental por fechas.",
+      "business_value": "Maestro de terceros; base CRM y enlaces a facturación/cobranzas.",
+      "status_in_copilot": "integrated",
+      "priority": "high",
+      "notes": "REST: nombre y uso confirmados en código (lib/integrations/zeta/zeta-clients.ts, app/api/zeta/clients/route.ts, import-contacts-initial). La página de ayuda lista principalmente SOAP; alineación REST vía colección Postman citada en código.",
+      "source_docs": [
+        "docs/zeta/markdown/0185-ayuda-apis-indice-de-apis-configuracion-contactos-45110885.md"
+      ],
+      "known_limits": "Extracción de filas JSON en cliente usa heurística documentada en zeta-clients (fragilidad ante cambios de envelope)."
+    },
+    {
+      "id": "master_contact_branches",
+      "domain": "master",
+      "name": "API Sucursales de contactos",
+      "protocol_preferred": "rest",
+      "method_rest": null,
+      "method_soap": "asoapcontactossucursalesv1",
+      "description": "Gestión de sucursales por contacto; Query paginado por ContactoCodigo, Sucursal, Page.",
+      "business_value": "Direcciones y operación multi-sucursal por cliente/proveedor.",
+      "status_in_copilot": "pending",
+      "priority": "medium",
+      "notes": "method_rest no aparece en el markdown revisado; inferir desde Postman cuando se integre.",
+      "source_docs": [
+        "docs/zeta/markdown/0102-ayuda-apis-indice-de-apis-configuracion-sucursales-de-contactos-1e5beec6.md"
+      ],
+      "known_limits": null
+    },
+    {
+      "id": "master_commercial_data_client",
+      "domain": "master",
+      "name": "API Datos comerciales de cliente",
+      "protocol_preferred": "rest",
+      "method_rest": null,
+      "method_soap": "asoapclientev4",
+      "description": "Condiciones de venta, categorías, límites de crédito, listas de precios; Query de listado.",
+      "business_value": "Enriquece 360° comercial del cliente más allá del contacto base.",
+      "status_in_copilot": "pending",
+      "priority": "high",
+      "notes": "No hay uso en lib/integrations/zeta hoy. REST por confirmar en Postman.",
+      "source_docs": [
+        "docs/zeta/markdown/0188-ayuda-apis-indice-de-apis-configuracion-datos-comerciales-cliente-d985dc50.md"
+      ],
+      "known_limits": null
+    },
+    {
+      "id": "master_commercial_data_supplier",
+      "domain": "master",
+      "name": "API Datos comerciales de proveedor",
+      "protocol_preferred": "rest",
+      "method_rest": null,
+      "method_soap": "asoapproveedorv3",
+      "description": "Categorías, condiciones de pago, IVA y parámetros comerciales de compra; Query.",
+      "business_value": "Compras y relación proveedor coherente con facturación.",
+      "status_in_copilot": "pending",
+      "priority": "medium",
+      "notes": "REST por confirmar en Postman.",
+      "source_docs": [
+        "docs/zeta/markdown/0189-ayuda-apis-indice-de-apis-configuracion-datos-comerciales-proveedor-fc11b1cf.md"
+      ],
+      "known_limits": null
+    },
+    {
+      "id": "transactional_customer_invoices",
+      "domain": "transactional",
+      "name": "API Facturas de clientes",
+      "protocol_preferred": "rest",
+      "method_rest": null,
+      "method_soap": "asoapfacturaclientev4",
+      "description": "Generación y consulta de comprobantes de clientes; no actualiza comprobantes existentes; emisión electrónica posterior en Zeta.",
+      "business_value": "Ventas, NC, stock, recibos de cobranza y consultas asociadas.",
+      "status_in_copilot": "documented",
+      "priority": "high",
+      "notes": "Solo la operación REST de saldos pendientes está integrada (ver capacidad transactional_customer_pending_balances). Agregar/otros REST no en código aún.",
+      "source_docs": [
+        "docs/zeta/markdown/0159-ayuda-apis-indice-de-apis-gestion-y-contabilidad-facturas-de-clientes-c92a871f.md"
+      ],
+      "known_limits": "Emisión CFE fuera del alcance inmediato de una simple API call."
+    },
+    {
+      "id": "transactional_customer_pending_balances",
+      "domain": "transactional",
+      "name": "Consulta saldos pendientes (facturas cliente)",
+      "protocol_preferred": "rest",
+      "method_rest": "RESTFacturaClienteV4QuerySaldosPendientes",
+      "method_soap": "asoapfacturaclientev4",
+      "description": "REST: ejemplo oficial con QuerySaldosPendientesIn, filtros ClienteCodigo, paginación IsLastPage.",
+      "business_value": "Cobranzas, riesgo, aging; núcleo financiero Copilot.",
+      "status_in_copilot": "integrated",
+      "priority": "high",
+      "notes": "Integrado: lib/integrations/zeta/zeta-factura-cliente.ts, zeta-saldos-pipeline.ts, test-connection. SOAP es el servicio hermano documentado en página facturas.",
+      "source_docs": [
+        "docs/zeta/markdown/0135-ayuda-apis-soap-y-rest-4f8f8fd9.md",
+        "docs/zeta/markdown/0159-ayuda-apis-indice-de-apis-gestion-y-contabilidad-facturas-de-clientes-c92a871f.md"
+      ],
+      "known_limits": null
+    },
+    {
+      "id": "transactional_invoices_per_customer",
+      "domain": "transactional",
+      "name": "API Comprobantes por cliente",
+      "protocol_preferred": "rest",
+      "method_rest": null,
+      "method_soap": "asoapcomprobantesclientev1",
+      "description": "Consulta de comprobantes asociados a clientes según ayuda API.",
+      "business_value": "Detalle documental de ventas por cuenta.",
+      "status_in_copilot": "pending",
+      "priority": "medium",
+      "notes": "REST no citado en markdown analizado.",
+      "source_docs": [
+        "docs/zeta/markdown/0156-ayuda-apis-indice-de-apis-gestion-y-contabilidad-comprobantes-por-cliente-ee99ca82.md"
+      ],
+      "known_limits": null
+    },
+    {
+      "id": "transactional_installments",
+      "domain": "transactional",
+      "name": "API Cuotas de cliente y proveedor",
+      "protocol_preferred": "rest",
+      "method_rest": null,
+      "method_soap": "asoapcuotasv1",
+      "description": "Gestión/consulta de cuotas según documentación de índice API.",
+      "business_value": "Plan de pagos y cartera.",
+      "status_in_copilot": "pending",
+      "priority": "medium",
+      "notes": "REST por Postman cuando se aborde integración.",
+      "source_docs": [
+        "docs/zeta/markdown/0158-ayuda-apis-indice-de-apis-gestion-y-contabilidad-cuotas-de-cliente-y-proveedor-e050b125.md"
+      ],
+      "known_limits": null
+    },
+    {
+      "id": "transactional_collection_receipts",
+      "domain": "transactional",
+      "name": "API Recibo de cobro",
+      "protocol_preferred": "rest",
+      "method_rest": null,
+      "method_soap": "asoapreciboscobranzav2",
+      "description": "Recibos de cobranza v2 según endpoint documentado.",
+      "business_value": "Tesorería cobranzas.",
+      "status_in_copilot": "pending",
+      "priority": "medium",
+      "notes": null,
+      "source_docs": [
+        "docs/zeta/markdown/0165-ayuda-apis-indice-de-apis-gestion-y-contabilidad-recibo-de-cobro-58a116e7.md"
+      ],
+      "known_limits": null
+    },
+    {
+      "id": "transactional_payment_receipts",
+      "domain": "transactional",
+      "name": "API Recibo de pago",
+      "protocol_preferred": "rest",
+      "method_rest": null,
+      "method_soap": "asoaprecibospagosv1",
+      "description": "Recibos de pagos a proveedores según ayuda API.",
+      "business_value": "Tesorería pagos.",
+      "status_in_copilot": "pending",
+      "priority": "medium",
+      "notes": null,
+      "source_docs": [
+        "docs/zeta/markdown/0166-ayuda-apis-indice-de-apis-gestion-y-contabilidad-recibo-de-pago-1632149f.md"
+      ],
+      "known_limits": null
+    },
+    {
+      "id": "transactional_cash_movements",
+      "domain": "transactional",
+      "name": "API Movimientos de caja",
+      "protocol_preferred": "rest",
+      "method_rest": null,
+      "method_soap": "asoapmovimientoscajav1",
+      "description": "Movimientos de caja según documentación API.",
+      "business_value": "Flujo de efectivo y conciliación operativa.",
+      "status_in_copilot": "pending",
+      "priority": "medium",
+      "notes": null,
+      "source_docs": [
+        "docs/zeta/markdown/0163-ayuda-apis-indice-de-apis-gestion-y-contabilidad-movimientos-de-caja-2ab591eb.md"
+      ],
+      "known_limits": null
+    },
+    {
+      "id": "transactional_bank_movements",
+      "domain": "transactional",
+      "name": "API Movimientos bancarios",
+      "protocol_preferred": "rest",
+      "method_rest": null,
+      "method_soap": "asoapmovimientosbancariosv1",
+      "description": "Movimientos bancarios según documentación API.",
+      "business_value": "Conciliación bancaria.",
+      "status_in_copilot": "pending",
+      "priority": "medium",
+      "notes": null,
+      "source_docs": [
+        "docs/zeta/markdown/0161-ayuda-apis-indice-de-apis-gestion-y-contabilidad-movimientos-bancarios-a375629c.md"
+      ],
+      "known_limits": null
+    },
+    {
+      "id": "accounting_balance",
+      "domain": "accounting",
+      "name": "API Balance contable",
+      "protocol_preferred": "rest",
+      "method_rest": null,
+      "method_soap": "asoapbalancev1",
+      "description": "Consulta de balance ya generado en Zeta; paginación; no genera cierres.",
+      "business_value": "Reporting contable y cuadre de masas.",
+      "status_in_copilot": "pending",
+      "priority": "medium",
+      "notes": "REST no en markdown del archivo revisado.",
+      "source_docs": [
+        "docs/zeta/markdown/0152-ayuda-apis-indice-de-apis-gestion-y-contabilidad-balance-contable-8da7726c.md"
+      ],
+      "known_limits": "Requiere balance pregenerado en Zeta."
+    },
+    {
+      "id": "accounting_entries_query",
+      "domain": "accounting",
+      "name": "API Consulta de asientos",
+      "protocol_preferred": "rest",
+      "method_rest": null,
+      "method_soap": "asoapasientov1",
+      "description": "Consulta de asientos contables.",
+      "business_value": "Detalle contable y auditoría.",
+      "status_in_copilot": "pending",
+      "priority": "medium",
+      "notes": null,
+      "source_docs": [
+        "docs/zeta/markdown/0157-ayuda-apis-indice-de-apis-gestion-y-contabilidad-consulta-de-asientos-95083d11.md"
+      ],
+      "known_limits": null
+    },
+    {
+      "id": "accounting_entries_inbox",
+      "domain": "accounting",
+      "name": "API Bandeja de entrada de asientos",
+      "protocol_preferred": "rest",
+      "method_rest": null,
+      "method_soap": "asoapbandejaentradaasientosv1",
+      "description": "Bandeja de asientos pendientes de revisión/importación.",
+      "business_value": "Control de calidad contable antes de libro mayor.",
+      "status_in_copilot": "pending",
+      "priority": "low",
+      "notes": null,
+      "source_docs": [
+        "docs/zeta/markdown/0153-ayuda-apis-indice-de-apis-gestion-y-contabilidad-bandeja-entrada-de-asientos-a74ec7cc.md"
+      ],
+      "known_limits": null
+    },
+    {
+      "id": "accounting_chart_of_accounts",
+      "domain": "accounting",
+      "name": "API Plan de cuentas",
+      "protocol_preferred": "rest",
+      "method_rest": null,
+      "method_soap": "asoapplancuentasv2",
+      "description": "Plan de cuentas v2 según documentación API.",
+      "business_value": "Dimensiones contables y mapeo a reporting.",
+      "status_in_copilot": "pending",
+      "priority": "medium",
+      "notes": null,
+      "source_docs": [
+        "docs/zeta/markdown/0212-ayuda-apis-indice-de-apis-configuracion-plan-de-cuentas-cae9de14.md"
+      ],
+      "known_limits": null
+    }
+  ]
+}

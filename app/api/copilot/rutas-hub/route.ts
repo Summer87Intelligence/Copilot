@@ -4,7 +4,10 @@ import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import { getClientPortfolio } from "@/lib/copilot-clients-portfolio";
 import { runFinancialDatasetValidation } from "@/lib/copilot-financial-context-validation";
-import { getFinancialSnapshot, type FinancialSnapshot } from "@/lib/copilot-financial-engine";
+import {
+  getFinancialSnapshotForApi,
+  type FinancialSnapshotApiV1,
+} from "@/lib/copilot-financial-engine";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
 
@@ -49,11 +52,11 @@ export async function GET(request: NextRequest) {
 
     const gate = await runFinancialDatasetValidation(supabaseForData, tenantCompanyId);
 
-    let snapshot: FinancialSnapshot | null = null;
+    let snapshot: FinancialSnapshotApiV1 | null = null;
     let portfolio: ClientPortfolioLoad | null = null;
     try {
       [snapshot, portfolio] = await Promise.all([
-        getFinancialSnapshot(supabaseForData, tenantCompanyId),
+        getFinancialSnapshotForApi(supabaseForData, tenantCompanyId),
         getClientPortfolio(supabaseForData, tenantCompanyId),
       ]);
     } catch (e) {

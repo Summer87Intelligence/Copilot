@@ -1,9 +1,19 @@
-import { normalizedCollectionProbability } from "@/lib/copilot-cashflow-engine";
+import { normalizedCollectionProbability } from "@/lib/copilot-financial-primitives";
 import { mapTaxTypeLabel } from "@/lib/copilot-format";
-import { financialEngineLocalTodayYmd, type FinancialSnapshot } from "@/lib/copilot-financial-engine";
+import {
+  financialEngineLocalTodayYmd,
+  type FinancialSnapshot,
+  type FinancialSnapshotApiV1,
+} from "@/lib/copilot-financial-engine";
+import {
+  snapshotCashNet,
+  snapshotCoverageRatio,
+  snapshotExpectedOutflowsTotal,
+  snapshotLiquidityBalance,
+  snapshotReceivablesRiskWeighted,
+} from "@/lib/copilot-financial-snapshot-selectors";
 import type { FiscalAlertItem, FiscalAlertPriority } from "@/lib/copilot-tax-alerts";
-import { loadPredictiveFinancialAlertsDatasetRows } from "@/lib/data/proto-analytics-read-repository";
-import { supabase } from "@/lib/supabase-client";
+import { copilotApiFetch } from "@/lib/copilot-fetch";
 
 const TAX_HORIZON_DAYS = 30;
 
@@ -145,7 +155,22 @@ async function loadPredictiveDataset(): Promise<{
   receipts: ReceiptRow[];
   invoices: InvoiceRow[];
 }> {
-  const raw = await loadPredictiveFinancialAlertsDatasetRows(supabase);
+  const res = await copilotApiFetch("/api/copilot/predictive-financial-dataset");
+  const json = (await res.json()) as {
+    ok?: boolean;
+    error?: string;
+    data?: {
+      payments: unknown[];
+      obligations: unknown[];
+      taxPayments: unknown[];
+      receipts: unknown[];
+      invoices: unknown[];
+    };
+  };
+  if (!res.ok || !json.ok || !json.data) {
+    throw new Error(json.error ?? "No se pudo cargar el dataset predictivo.");
+  }
+  const raw = json.data;
 
   return {
     payments: raw.payments as PaymentRow[],
@@ -279,8 +304,9 @@ function alertDeficitBeforeDue(
   taxPayments: TaxPaymentRow[],
   todayYmd: string
 ): FiscalAlertItem | null {
+  const api = snapshot as FinancialSnapshotApiV1;
   const liquidity =
-    snapshot.available_cash + snapshot.expected_inflows;
+    snapshotCashNet(api) + snapshotReceivablesRiskWeighted(api);
   const events = buildTimelineEvents(payments, obligations, taxPayments, todayYmd);
   if (events.length === 0) {
     if (liquidity < 0) {
@@ -327,10 +353,11 @@ function alertDeficitBeforeDue(
 }
 
 function alertAdjustedCoverage(snapshot: FinancialSnapshot): FiscalAlertItem | null {
-  if (snapshot.expected_outflows <= 0) return null;
-  if (snapshot.projected_balance < 0) return null;
+  const api = snapshot as FinancialSnapshotApiV1;
+  if (snapshotExpectedOutflowsTotal(api) <= 0) return null;
+  if (snapshotLiquidityBalance(api) < 0) return null;
 
-  const r = snapshot.coverage_ratio;
+  const r = snapshotCoverageRatio(api);
   if (r >= 1 && r < 1.2) {
     const priority: FiscalAlertPriority = r < 1.08 ? "high" : "medium";
     return {
@@ -338,7 +365,7 @@ function alertAdjustedCoverage(snapshot: FinancialSnapshot): FiscalAlertItem | n
       title: "Cobertura de tesorería ajustada",
       priority,
       type: "cobertura",
-      summary: `El balance proyectado es positivo (${formatMoney(snapshot.projected_balance)}), pero el colchón frente a egresos esperados es estrecho (cobertura ${r.toFixed(2)}×).`,
+      summary: `El balance proyectado es positivo (${formatMoney(snapshotLiquidityBalance(api))}), pero el colchón frente a egresos esperados es estrecho (cobertura ${r.toFixed(2)}×).`,
       detail: detailBlock(
         "Los ingresos esperados alcanzan a cubrir salidas, pero sin margen holgado frente a desvíos de cobro o gastos imprevistos.",
         "Pequeños retrasos en cobranza o un egreso extra pueden volver a poner la caja en tensión.",

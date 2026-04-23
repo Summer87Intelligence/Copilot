@@ -136,6 +136,12 @@ export function CopilotClientEvidenceDrawer({
               <p className="text-sm text-[var(--copilot-ink-muted)]">
                 {detail.industry !== "—" ? detail.industry : "Industria no informada"}
               </p>
+              <CopilotGhostLink
+                href={`/copilot/clientes/${encodeURIComponent(detail.company_id)}`}
+                className="mt-2 inline-flex px-3 py-1.5 text-xs"
+              >
+                Abrir ficha 360
+              </CopilotGhostLink>
             </div>
             <CopilotGhostButton onClick={onClose} className="px-3 py-1.5">
               Cerrar

@@ -17,6 +17,9 @@ import { useCopilotReadingKeyOverride } from "@/components/copilot/copilot-readi
 import { CopilotTaxEvidenceDrawer } from "@/components/copilot/copilot-tax-evidence-drawer";
 import { CopilotCollapsiblePanel } from "@/components/copilot/copilot-collapsible-panel";
 import { CopilotObligationPrimaryBadge } from "@/components/copilot/copilot-obligation-primary-badge";
+import { FinancialWarningBanner } from "@/components/copilot/financial-warning-banner";
+import { FinancialStatusBadge } from "@/components/copilot/financial-status-badge";
+import { DataFreshnessBanner } from "@/components/copilot/data-freshness-banner";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import {
   CopilotCard,
@@ -45,14 +48,24 @@ import { getFinancialPredictiveAlerts } from "@/lib/copilot-financial-alerts";
 import {
   financialEngineLocalTodayYmd,
   getFinancialSnapshot,
-  type FinancialSnapshot,
+  type FinancialSnapshotApiV1,
 } from "@/lib/copilot-financial-engine";
-import { normalizedCollectionProbability } from "@/lib/copilot-cashflow-engine";
+import {
+  snapshotCashNet,
+  snapshotCoverageRatio,
+  snapshotExpectedOutflowsTotal,
+  snapshotLiquidityBalance,
+  snapshotReceivablesRiskWeighted,
+  snapshotRiskBand,
+} from "@/lib/copilot-financial-snapshot-selectors";
+import { normalizedCollectionProbability } from "@/lib/copilot-financial-primitives";
 import {
   getProtoInvoices,
   getProtoPayments,
   type DataRow,
 } from "@/lib/copilot-data";
+import { deriveFinancialFlags } from "@/lib/derive-financial-flags";
+import { FINANCIAL_UX_COPY } from "@/lib/copilot-financial-ux-copy";
 import {
   getProtoTaxObligations,
   type ProtoTaxObligation,
@@ -139,17 +152,19 @@ function formatCoverageRatio(r: number): string {
 }
 
 function buildDeficitGuidedCopy(
-  snapshot: FinancialSnapshot | null,
+  snapshot: FinancialSnapshotApiV1 | null,
   snapshotLoading: boolean
 ): string {
   if (snapshotLoading || !snapshot) {
     return "Estamos cargando el panorama de caja para aterrizar el déficit con cifras del motor.";
   }
-  if (snapshot.projected_balance < 0) {
-    return `Hay un déficit proyectado de ${formatMoneyCompact(snapshot.projected_balance)}: caja más cobranza esperada no cubre los egresos modelados en la ventana del motor.`;
+  const balance = snapshotLiquidityBalance(snapshot);
+  const ratio = snapshotCoverageRatio(snapshot);
+  if (balance < 0) {
+    return `Hay un déficit proyectado de ${formatMoneyCompact(balance)}: caja más cobranza esperada no cubre los egresos modelados en la ventana del motor.`;
   }
-  if (snapshot.coverage_ratio < 1 && Number.isFinite(snapshot.coverage_ratio)) {
-    return `La cobertura está por debajo de 1,00× (${formatCoverageRatio(snapshot.coverage_ratio)}): el colchón es insuficiente frente a salidas ya comprometidas.`;
+  if (ratio < 1 && Number.isFinite(ratio)) {
+    return `La cobertura está por debajo de 1,00× (${formatCoverageRatio(ratio)}): el colchón es insuficiente frente a salidas ya comprometidas.`;
   }
   return "La posición de caja está tensa frente a egresos esperados: conviene actuar antes de que se concreten más salidas.";
 }
@@ -269,7 +284,7 @@ function CopilotFinanzasPageContent() {
   const [taxObligationId, setTaxObligationId] = useState<string | null>(null);
   const [isTaxDrawerOpen, setIsTaxDrawerOpen] = useState(false);
 
-  const [snapshot, setSnapshot] = useState<FinancialSnapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<FinancialSnapshotApiV1 | null>(null);
   const [snapshotLoading, setSnapshotLoading] = useState(true);
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
   const [predictiveHint, setPredictiveHint] = useState<{
@@ -280,6 +295,7 @@ function CopilotFinanzasPageContent() {
   const [coberturaPasosOpen, setCoberturaPasosOpen] = useState(false);
   const [fiscalPriorityGuideOpen, setFiscalPriorityGuideOpen] = useState(false);
   const [invoiceRows, setInvoiceRows] = useState<DataRow[]>([]);
+  const [operationalInvoices, setOperationalInvoices] = useState<DataRow[]>([]);
   const [paymentRows, setPaymentRows] = useState<DataRow[]>([]);
   const [coberturaDetailLoading, setCoberturaDetailLoading] = useState(false);
   const [coberturaDetailError, setCoberturaDetailError] = useState<string | null>(
@@ -351,6 +367,20 @@ function CopilotFinanzasPageContent() {
       cancelled = true;
     };
   }, [coberturaGuided]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getProtoInvoices("active")
+      .then((inv) => {
+        if (!cancelled) setOperationalInvoices(inv);
+      })
+      .catch(() => {
+        if (!cancelled) setOperationalInvoices([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!coberturaGuided) return;
@@ -553,7 +583,7 @@ function CopilotFinanzasPageContent() {
   const coberturaSinPalancasInternas = useMemo(() => {
     if (snapshotLoading || snapshotError != null || !snapshot) return false;
     if (coberturaDetailLoading || coberturaDetailError != null) return false;
-    if (snapshot.expected_inflows > 0) return false;
+    if (snapshotReceivablesRiskWeighted(snapshot) > 0) return false;
     if (coberturaInvoiceStats.count > 0) return false;
     if (futurePayments.count > 0) return false;
     return true;
@@ -568,8 +598,8 @@ function CopilotFinanzasPageContent() {
   ]);
 
   const deficitGap = useMemo(() => {
-    if (!snapshot || snapshot.projected_balance >= 0) return 0;
-    return Math.abs(snapshot.projected_balance);
+    if (!snapshot || snapshotLiquidityBalance(snapshot) >= 0) return 0;
+    return Math.abs(snapshotLiquidityBalance(snapshot));
   }, [snapshot]);
 
   const prioritaryObligation = useMemo(
@@ -627,19 +657,22 @@ function CopilotFinanzasPageContent() {
         urgency: "Cargá movimientos en Datos para habilitar la lectura.",
       };
     }
-    if (snapshot.projected_balance < 0) {
+    if (snapshotLiquidityBalance(snapshot) < 0) {
       return {
         title: "Tenés un déficit de caja proyectado",
-        impact: `Hueco estimado: ${formatMoneyCompact(snapshot.projected_balance)} en la ventana del motor.`,
+        impact: `Hueco estimado: ${formatMoneyCompact(snapshotLiquidityBalance(snapshot))} en la ventana del motor.`,
         urgency: nextOpen
           ? `Urgencia: el próximo vencimiento relevante es ${dueLabel(nextOpen.due_date)} (${mapTaxTypeLabel(nextOpen.tax_type)}).`
           : "Conviene cerrar el hueco antes de asumir nuevos egresos.",
       };
     }
-    if (snapshot.coverage_ratio < 1 && Number.isFinite(snapshot.coverage_ratio)) {
+    if (
+      snapshotCoverageRatio(snapshot) < 1 &&
+      Number.isFinite(snapshotCoverageRatio(snapshot))
+    ) {
       return {
         title: "La cobertura de caja es insuficiente",
-        impact: `Ratio ${formatCoverageRatio(snapshot.coverage_ratio)}: caja más cobranza esperada no cubre egresos modelados.`,
+        impact: `Ratio ${formatCoverageRatio(snapshotCoverageRatio(snapshot))}: caja más cobranza esperada no cubre egresos modelados.`,
         urgency: nextOpen
           ? `Próximo hito fiscal: ${dueLabel(nextOpen.due_date)} · ${mapTaxTypeLabel(nextOpen.tax_type)}.`
           : "Sin alinear cobros y pagos, el riesgo es de liquidez en días.",
@@ -654,7 +687,7 @@ function CopilotFinanzasPageContent() {
     }
     return {
       title: "Tu liquidez está bajo control",
-      impact: `Balance proyectado ${formatMoneyCompact(snapshot.projected_balance)} · cobertura ${formatCoverageRatio(snapshot.coverage_ratio)}.`,
+      impact: `Balance proyectado ${formatMoneyCompact(snapshotLiquidityBalance(snapshot))} · cobertura ${formatCoverageRatio(snapshotCoverageRatio(snapshot))}.`,
       urgency: nextOpen
         ? `Próximo vencimiento: ${dueLabel(nextOpen.due_date)} (${mapTaxTypeLabel(nextOpen.tax_type)}).`
         : "Mantené facturas y pagos actualizados en Datos para conservar esta lectura.",
@@ -674,11 +707,13 @@ function CopilotFinanzasPageContent() {
         label: "Ver panorama de liquidez",
       };
     }
+    const band = snapshotRiskBand(snapshot);
     const stress =
-      snapshot.projected_balance < 0 ||
-      (snapshot.coverage_ratio < 1 && Number.isFinite(snapshot.coverage_ratio)) ||
-      snapshot.risk_level === "high" ||
-      snapshot.risk_level === "critical";
+      snapshotLiquidityBalance(snapshot) < 0 ||
+      (snapshotCoverageRatio(snapshot) < 1 &&
+        Number.isFinite(snapshotCoverageRatio(snapshot))) ||
+      band === "high" ||
+      band === "critical";
     if (stress) {
       return {
         href: "/copilot/finanzas?mode=cobertura&from=atencion-prioritaria#copilot-finanzas-cobertura",
@@ -690,6 +725,17 @@ function CopilotFinanzasPageContent() {
       label: "Resolver ahora",
     };
   }, [snapshot, snapshotLoading]);
+
+  const externalValidated = false;
+  const financialFlags = useMemo(
+    () =>
+      deriveFinancialFlags({
+        invoices: operationalInvoices,
+        asOfDate: snapshot?.as_of_date ?? null,
+        externalFinancialValidation: externalValidated,
+      }),
+    [operationalInvoices, snapshot, externalValidated]
+  );
 
   type RecommendedCoberturaAction =
     | {
@@ -703,8 +749,8 @@ function CopilotFinanzasPageContent() {
     const tense =
       deficitGap > 0 ||
       (snapshot != null &&
-        snapshot.coverage_ratio < 1 &&
-        Number.isFinite(snapshot.coverage_ratio));
+        snapshotCoverageRatio(snapshot) < 1 &&
+        Number.isFinite(snapshotCoverageRatio(snapshot)));
     if (openOblCount > 0 && tense && prioritaryObligation) {
       return {
         kind: "fiscal_priority",
@@ -828,7 +874,11 @@ function CopilotFinanzasPageContent() {
   };
 
   const flowMax = snapshot
-    ? Math.max(snapshot.expected_inflows, snapshot.expected_outflows, 1)
+    ? Math.max(
+        snapshotReceivablesRiskWeighted(snapshot),
+        snapshotExpectedOutflowsTotal(snapshot),
+        1
+      )
     : 1;
 
   const guidedLinkClass =
@@ -847,6 +897,18 @@ function CopilotFinanzasPageContent() {
       />
 
       <div className="flex-1 space-y-8 overflow-auto px-6 py-8">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <FinancialStatusBadge flags={financialFlags} />
+            <span className="text-xs text-[var(--copilot-ink-muted)]">
+              {financialFlags.open_invoices_count > 0
+                ? `${financialFlags.open_invoices_count} factura(s) con saldo operativo abierto.`
+                : FINANCIAL_UX_COPY.noOpenBalanceInActiveInvoices}
+            </span>
+          </div>
+          <FinancialWarningBanner body={FINANCIAL_UX_COPY.reportWarningBody} />
+          <DataFreshnessBanner freshness={financialFlags} />
+        </div>
         {coberturaGuided ? (
           <div
             id="copilot-finanzas-cobertura"
@@ -1075,7 +1137,7 @@ function CopilotFinanzasPageContent() {
                               sobre caja sin tocar obligaciones fiscales ya vencidas. El motor ya
                               suma egresos modelados en{" "}
                               {snapshot
-                                ? formatMoneyCompact(snapshot.expected_outflows)
+                                ? formatMoneyCompact(snapshotExpectedOutflowsTotal(snapshot))
                                 : "el panorama"}
                               .
                             </li>
@@ -1351,7 +1413,7 @@ function CopilotFinanzasPageContent() {
                 subtitle="Misma base que Inicio y Alertas: recibos, pagos, facturas abiertas y obligaciones fiscales."
               />
               {snapshot && !snapshotLoading ? (
-                <CopilotSeverityBadge severity={snapshot.risk_level} />
+                <CopilotSeverityBadge severity={snapshotRiskBand(snapshot)} />
               ) : null}
             </div>
             <p className="mt-2 text-xs text-[var(--copilot-ink-muted)]">
@@ -1379,7 +1441,7 @@ function CopilotFinanzasPageContent() {
                       Caja disponible
                     </p>
                     <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-ink)]">
-                      {formatMoneyCompact(snapshot.available_cash)}
+                      {formatMoneyCompact(snapshotCashNet(snapshot))}
                     </p>
                   </div>
                   <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
@@ -1387,7 +1449,7 @@ function CopilotFinanzasPageContent() {
                       Ingresos esperados
                     </p>
                     <p className="mt-2 text-xl font-semibold tabular-nums text-emerald-700">
-                      {formatMoneyCompact(snapshot.expected_inflows)}
+                      {formatMoneyCompact(snapshotReceivablesRiskWeighted(snapshot))}
                     </p>
                     <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
                       Facturas abiertas × probabilidad de cobro
@@ -1398,7 +1460,7 @@ function CopilotFinanzasPageContent() {
                       Egresos esperados
                     </p>
                     <p className="mt-2 text-xl font-semibold tabular-nums text-red-600">
-                      {formatMoneyCompact(snapshot.expected_outflows)}
+                      {formatMoneyCompact(snapshotExpectedOutflowsTotal(snapshot))}
                     </p>
                     <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
                       Pagos futuros + fiscal pendiente (30 días)
@@ -1409,7 +1471,7 @@ function CopilotFinanzasPageContent() {
                       Balance proyectado
                     </p>
                     <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-ink)]">
-                      {formatMoneyCompact(snapshot.projected_balance)}
+                      {formatMoneyCompact(snapshotLiquidityBalance(snapshot))}
                     </p>
                   </div>
                   <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm sm:col-span-2 lg:col-span-2">
@@ -1417,7 +1479,7 @@ function CopilotFinanzasPageContent() {
                       Ratio de cobertura
                     </p>
                     <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-ink)]">
-                      {formatCoverageRatio(snapshot.coverage_ratio)}
+                      {formatCoverageRatio(snapshotCoverageRatio(snapshot))}
                     </p>
                     <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
                       (caja + ingresos esperados) / egresos esperados
@@ -1434,13 +1496,13 @@ function CopilotFinanzasPageContent() {
                   </p>
                   <FlowBar
                     label="Cobranza ponderada"
-                    value={snapshot.expected_inflows}
+                    value={snapshotReceivablesRiskWeighted(snapshot)}
                     max={flowMax}
                     flow="in"
                   />
                   <FlowBar
                     label="Salidas modeladas"
-                    value={snapshot.expected_outflows}
+                    value={snapshotExpectedOutflowsTotal(snapshot)}
                     max={flowMax}
                     flow="out"
                   />

@@ -2,6 +2,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
+  BookOpen,
   Bot,
   Brain,
   Building2,
@@ -103,6 +104,12 @@ export const COPILOT_NAV_ADMIN_GROUP: CopilotNavGroup = {
       href: "/admin/companies",
       label: "Empresas",
       icon: Building2,
+    },
+    {
+      href: "/copilot/knowledge/zeta",
+      label: "Biblioteca Zeta",
+      shortLabel: "Zeta KB",
+      icon: BookOpen,
     },
   ],
 };

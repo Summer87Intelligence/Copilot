@@ -19,7 +19,11 @@ export async function POST(request: NextRequest) {
     );
     if (!auth.ok) return auth.response;
 
-    const result = await protoArchiveDocument(auth.ctx.supabase, body.id);
+    const result = await protoArchiveDocument(
+      auth.ctx.supabase,
+      body.id,
+      auth.ctx.tenantCompanyId
+    );
     return nextResponseFromProtoCrud(result);
   } catch {
     return NextResponse.json(

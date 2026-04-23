@@ -255,6 +255,11 @@ function pushMapArray<K, V>(m: Map<K, V[]>, key: K, item: V): void {
   else m.set(key, [item]);
 }
 
+/**
+ * @param client Cliente con sesión válida (`authenticated` + JWT en PostgREST) o service role
+ *   acotado por `workspaceCompanyId`. No usar el default en el navegador sin Supabase Auth:
+ *   el rol `anon` no tiene GRANT en `proto_*` (sec02-05).
+ */
 export async function getClientPortfolio(
   client: SupabaseClient = supabase,
   workspaceCompanyId?: string

@@ -1,0 +1,42 @@
+-- zeta-03-02: diagnóstico / reparación LOCAL de facturas importadas desde Zeta (comprobantes por cliente).
+-- NO ejecuta cambios destructivos por defecto: revisar resultados y descomentar updates bajo tu criterio.
+--
+-- Contexto: syncs antiguos usaban `invoice_number = ZETA:CC:{hash}` con fecha en el hash, lo que podía
+-- duplicar la misma factura de negocio; además importes tipo `56.852,00` podían parsearse mal.
+--
+-- 1) Listar facturas Zeta legacy (solo hash) activas
+-- select id, workspace_company_id, company_id, invoice_number, issue_date, total_amount, balance_amount, notes
+-- from public.proto_invoices
+-- where is_active = true
+--   and invoice_number like 'ZETA:CC:%'
+--   and invoice_number not like 'ZETA:CCV1:%'
+--   and notes like 'zeta_vouchers:%';
+--
+-- 2) Detectar duplicados por cliente + sufijo Serie-Numero en `notes` (último segmento tras |)
+-- with parsed as (
+--   select
+--     id,
+--     workspace_company_id,
+--     company_id,
+--     invoice_number,
+--     total_amount,
+--     balance_amount,
+--     split_part(notes, '|', 3) as serie_numero
+--   from public.proto_invoices
+--   where is_active = true
+--     and notes like 'zeta_vouchers:%'
+-- )
+-- select workspace_company_id, company_id, serie_numero, count(*) as n, array_agg(id) as ids
+-- from parsed
+-- where serie_numero is not null and serie_numero <> '' and serie_numero <> '-'
+-- group by 1, 2, 3
+-- having count(*) > 1;
+--
+-- 3) Archivar manualmente duplicados (ejemplo): dejar una fila por grupo y archivar el resto.
+--    Ajustar lista de ids según auditoría.
+-- update public.proto_invoices
+-- set is_active = false, archived_at = now()
+-- where id in ('<uuid-duplicado-1>', '<uuid-duplicado-2>');
+--
+-- 4) Tras desplegar código nuevo, volver a correr sync por mes; el pipeline fusiona por clave semántica
+--    o por hash legacy / serie+numero en metadata y actualiza montos.

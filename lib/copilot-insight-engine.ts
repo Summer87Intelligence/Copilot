@@ -1,10 +1,4 @@
-import {
-  loadInsightEngineProtoRows,
-  selectProtoCompaniesInsightWindow,
-  selectProtoInvoicesInsightWindow,
-  selectProtoPaymentsInsightWindow,
-} from "@/lib/data/proto-analytics-read-repository";
-import { supabase } from "@/lib/supabase-client";
+import { copilotApiFetch } from "@/lib/copilot-fetch";
 import type { CopilotInsightEvidenceCase } from "@/lib/copilot-insights-evidence-mock";
 import type { CopilotSeverity } from "@/lib/copilot-alerts-evidence-mock";
 
@@ -55,6 +49,13 @@ export type RevenueByCompanyRow = {
 
 export type PaymentRow = Record<string, unknown>;
 
+/** Lote devuelto por `GET /api/copilot/insight-engine-dataset` para `generateInsightsFromBatch`. */
+export type InsightEngineProtoBatch = {
+  invoices: Record<string, unknown>[];
+  payments: PaymentRow[];
+  companies: Record<string, unknown>[];
+};
+
 function todayEsUy(): string {
   return new Date().toLocaleDateString("es-UY");
 }
@@ -91,22 +92,23 @@ function formatPct(n: number): string {
   return `${(n * 100).toLocaleString("es-UY", { maximumFractionDigits: 1 })}%`;
 }
 
-async function fetchProtoInvoices(): Promise<Record<string, unknown>[]> {
-  const { data, error } = await selectProtoInvoicesInsightWindow(supabase);
-  if (error) throw new Error(error.message);
-  return (data ?? []) as Record<string, unknown>[];
-}
-
-async function fetchProtoPayments(): Promise<Record<string, unknown>[]> {
-  const { data, error } = await selectProtoPaymentsInsightWindow(supabase);
-  if (error) throw new Error(error.message);
-  return (data ?? []) as Record<string, unknown>[];
-}
-
-async function fetchProtoCompanies(): Promise<Record<string, unknown>[]> {
-  const { data, error } = await selectProtoCompaniesInsightWindow(supabase);
-  if (error) throw new Error(error.message);
-  return (data ?? []) as Record<string, unknown>[];
+/**
+ * Dataset con tenant vía `GET /api/copilot/insight-engine-dataset` (cookies / sesión).
+ * No usa cliente Supabase global.
+ */
+async function fetchInsightEngineDatasetFromApi(): Promise<InsightEngineProtoBatch> {
+  const res = await copilotApiFetch("/api/copilot/insight-engine-dataset");
+  let json: unknown;
+  try {
+    json = await res.json();
+  } catch {
+    return { invoices: [], payments: [], companies: [] };
+  }
+  const body = json as { ok?: boolean; data?: InsightEngineProtoBatch };
+  if (!res.ok || !body.ok || !body.data) {
+    return { invoices: [], payments: [], companies: [] };
+  }
+  return body.data;
 }
 
 function buildCompanyNameMap(companies: Record<string, unknown>[]): Map<string, string> {
@@ -119,11 +121,12 @@ function buildCompanyNameMap(companies: Record<string, unknown>[]): Map<string, 
   return m;
 }
 
+/**
+ * @deprecated Usar `generateInsightsFromBatch` con el lote de `GET /api/copilot/insight-engine-dataset`.
+ * Una petición HTTP al dataset por invocación; mismo alcance tenant que la API.
+ */
 export async function getDebtByCompany(): Promise<DebtByCompanyRow[]> {
-  const [invoices, companies] = await Promise.all([
-    fetchProtoInvoices(),
-    fetchProtoCompanies(),
-  ]);
+  const { invoices, companies } = await fetchInsightEngineDatasetFromApi();
   const names = buildCompanyNameMap(companies);
   const byCompany = new Map<string, number>();
 
@@ -143,8 +146,12 @@ export async function getDebtByCompany(): Promise<DebtByCompanyRow[]> {
   }));
 }
 
+/**
+ * @deprecated Usar `generateInsightsFromBatch` con el lote de `GET /api/copilot/insight-engine-dataset`.
+ * Una petición HTTP al dataset por invocación; mismo alcance tenant que la API.
+ */
 export async function getOverdueInvoices(): Promise<OverdueInvoiceRow[]> {
-  const invoices = await fetchProtoInvoices();
+  const { invoices } = await fetchInsightEngineDatasetFromApi();
   const today = startOfTodayUtc();
   const out: OverdueInvoiceRow[] = [];
 
@@ -160,11 +167,12 @@ export async function getOverdueInvoices(): Promise<OverdueInvoiceRow[]> {
   return out;
 }
 
+/**
+ * @deprecated Usar `generateInsightsFromBatch` con el lote de `GET /api/copilot/insight-engine-dataset`.
+ * Una petición HTTP al dataset por invocación; mismo alcance tenant que la API.
+ */
 export async function getRevenueByCompany(): Promise<RevenueByCompanyRow[]> {
-  const [invoices, companies] = await Promise.all([
-    fetchProtoInvoices(),
-    fetchProtoCompanies(),
-  ]);
+  const { invoices, companies } = await fetchInsightEngineDatasetFromApi();
   const names = buildCompanyNameMap(companies);
   const byCompany = new Map<string, number>();
 
@@ -182,8 +190,12 @@ export async function getRevenueByCompany(): Promise<RevenueByCompanyRow[]> {
   }));
 }
 
+/**
+ * @deprecated Usar `generateInsightsFromBatch` con el lote de `GET /api/copilot/insight-engine-dataset`.
+ * Una petición HTTP al dataset por invocación; mismo alcance tenant que la API.
+ */
 export async function getPaymentsLast30Days(): Promise<PaymentRow[]> {
-  const payments = await fetchProtoPayments();
+  const { payments } = await fetchInsightEngineDatasetFromApi();
   const now = new Date();
   const cutoff = new Date(now);
   cutoff.setUTCDate(cutoff.getUTCDate() - 30);
@@ -315,21 +327,17 @@ function emptyInsight(date: string): CopilotInsightItem[] {
   ];
 }
 
-export async function generateInsights(): Promise<CopilotInsightItem[]> {
+/**
+ * Construye insights a partir de un lote ya resuelto con tenant (p. ej. vía `/api/copilot/insight-engine-dataset`).
+ * No ejecuta lecturas Supabase.
+ */
+export async function generateInsightsFromBatch(
+  batch: InsightEngineProtoBatch
+): Promise<CopilotInsightItem[]> {
   const date = todayEsUy();
-
-  let invoices: Record<string, unknown>[];
-  let payments: PaymentRow[];
-  let companies: Record<string, unknown>[];
-
-  try {
-    const batch = await loadInsightEngineProtoRows(supabase);
-    invoices = batch.invoices;
-    payments = batch.payments as PaymentRow[];
-    companies = batch.companies;
-  } catch {
-    return stampComputedAt(emptyInsight(date));
-  }
+  const invoices = batch.invoices;
+  const payments = batch.payments;
+  const companies = batch.companies;
 
   if (invoices.length === 0 && payments.length === 0 && companies.length === 0) {
     return stampComputedAt(emptyInsight(date));

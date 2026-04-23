@@ -79,19 +79,34 @@ function isProtoDocumentsUnavailable(message: string): boolean {
   );
 }
 
+function applyWorkspaceCompanyIdEq(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  qb: any,
+  workspaceCompanyId?: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): any {
+  const wid = workspaceCompanyId?.trim();
+  if (!wid) return qb;
+  return qb.eq("workspace_company_id", wid);
+}
+
 export async function getDocumentsByRelation(
   client: OperationalSupabase,
   relatedTable: string,
-  relatedId: string
+  relatedId: string,
+  workspaceCompanyId?: string
 ): Promise<ProtoDocument[]> {
   if (!relatedTable.trim() || !relatedId.trim()) return [];
 
   const q = applyProtoActiveListFilter(
-    client
-      .from("proto_documents")
-      .select("*")
-      .eq("related_table", relatedTable)
-      .eq("related_id", relatedId),
+    applyWorkspaceCompanyIdEq(
+      client
+        .from("proto_documents")
+        .select("*")
+        .eq("related_table", relatedTable)
+        .eq("related_id", relatedId),
+      workspaceCompanyId
+    ),
     "active"
   );
   const { data, error } = await q
@@ -109,12 +124,16 @@ export async function getDocumentsByRelation(
 
 export async function getDocumentsByRelatedTable(
   client: OperationalSupabase,
-  relatedTable: string
+  relatedTable: string,
+  workspaceCompanyId?: string
 ): Promise<ProtoDocument[]> {
   if (!relatedTable.trim()) return [];
 
   const q = applyProtoActiveListFilter(
-    client.from("proto_documents").select("*").eq("related_table", relatedTable),
+    applyWorkspaceCompanyIdEq(
+      client.from("proto_documents").select("*").eq("related_table", relatedTable),
+      workspaceCompanyId
+    ),
     "active"
   );
   const { data, error } = await q
@@ -132,12 +151,16 @@ export async function getDocumentsByRelatedTable(
 
 export async function getDocumentsByType(
   client: OperationalSupabase,
-  documentType: string
+  documentType: string,
+  workspaceCompanyId?: string
 ): Promise<ProtoDocument[]> {
   if (!documentType.trim()) return [];
 
   const q = applyProtoActiveListFilter(
-    client.from("proto_documents").select("*").eq("document_type", documentType),
+    applyWorkspaceCompanyIdEq(
+      client.from("proto_documents").select("*").eq("document_type", documentType),
+      workspaceCompanyId
+    ),
     "active"
   );
   const { data, error } = await q.order("created_at", { ascending: false }).limit(ROW_LIMIT);
@@ -151,10 +174,11 @@ export async function getDocumentsByType(
 }
 
 export async function listActiveProtoDocuments(
-  client: OperationalSupabase
+  client: OperationalSupabase,
+  workspaceCompanyId?: string
 ): Promise<ProtoDocument[]> {
   const q = applyProtoActiveListFilter(
-    client.from("proto_documents").select("*"),
+    applyWorkspaceCompanyIdEq(client.from("proto_documents").select("*"), workspaceCompanyId),
     "active"
   );
   const { data, error } = await q
@@ -172,15 +196,15 @@ export async function listActiveProtoDocuments(
 
 export async function getDocumentById(
   client: OperationalSupabase,
-  id: string
+  id: string,
+  workspaceCompanyId?: string
 ): Promise<ProtoDocument | null> {
   if (!id.trim()) return null;
 
-  const { data, error } = await client
-    .from("proto_documents")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
+  const { data, error } = await applyWorkspaceCompanyIdEq(
+    client.from("proto_documents").select("*").eq("id", id),
+    workspaceCompanyId
+  ).maybeSingle();
 
   if (error) {
     if (isProtoDocumentsUnavailable(error.message)) return null;

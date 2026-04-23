@@ -26,8 +26,16 @@ import { mapAlertCategory, mapTaxObligationStatus, mapTaxTypeLabel } from "@/lib
 import type { FiscalAlertItem } from "@/lib/copilot-tax-alerts";
 import {
   getFinancialSnapshot,
-  type FinancialSnapshot,
+  type FinancialSnapshotApiV1,
 } from "@/lib/copilot-financial-engine";
+import {
+  snapshotCashNet,
+  snapshotCoverageRatio,
+  snapshotExpectedOutflowsTotal,
+  snapshotLiquidityBalance,
+  snapshotReceivablesRiskWeighted,
+  snapshotRiskBand,
+} from "@/lib/copilot-financial-snapshot-selectors";
 import {
   getProtoTaxObligationById,
   type ProtoTaxObligation,
@@ -58,7 +66,7 @@ function obligationAmount(o: ProtoTaxObligation): number {
 function buildPlanRecomendado(
   primary: FiscalAlertItem,
   content: AttentionCaseContent,
-  snapshot: FinancialSnapshot | null,
+  snapshot: FinancialSnapshotApiV1 | null,
   obligation: ProtoTaxObligation | null
 ): { primero: string; despues: string; evitar: string } {
   const steps = content.planSteps;
@@ -77,7 +85,7 @@ function buildPlanRecomendado(
       "Abrir respaldo documental y dejar evidencia alineada con lo informado a organismos.";
   } else if (primary.type === "liquidez" || primary.type === "cobertura") {
     if (snapshot) {
-      primero = `Cerrar el hueco de caja: priorizar cobros con mayor probabilidad de ingreso (cobranza esperada del motor: ${formatMoney(snapshot.expected_inflows)}) frente a egresos modelados (${formatMoney(snapshot.expected_outflows)}).`;
+      primero = `Cerrar el hueco de caja: priorizar cobros con mayor probabilidad de ingreso (cobranza esperada del motor: ${formatMoney(snapshotReceivablesRiskWeighted(snapshot))}) frente a egresos modelados (${formatMoney(snapshotExpectedOutflowsTotal(snapshot))}).`;
       despues =
         steps[1] ??
         "En Finanzas, validar qué pagos fiscales u operativos pueden moverse sin romper compromisos ya comunicados.";
@@ -104,10 +112,14 @@ function buildPlanRecomendado(
   }
 
   let evitar = "";
-  if (snapshot && snapshot.projected_balance < 0) {
-    evitar = `Evitar asumir gastos discrecionales o nuevos compromisos de pago hasta tener cobro concreto o acuerdo por escrito; el déficit proyectado es ${formatMoney(snapshot.projected_balance)}.`;
-  } else if (snapshot && snapshot.coverage_ratio < 1 && Number.isFinite(snapshot.coverage_ratio)) {
-    evitar = `Evitar posponer seguimiento de cobranza “para más adelante”: con cobertura ${formatRatio(snapshot.coverage_ratio)}, un solo desvío de ingreso vuelve a poner en riesgo el cumplimiento.`;
+  if (snapshot && snapshotLiquidityBalance(snapshot) < 0) {
+    evitar = `Evitar asumir gastos discrecionales o nuevos compromisos de pago hasta tener cobro concreto o acuerdo por escrito; el déficit proyectado es ${formatMoney(snapshotLiquidityBalance(snapshot))}.`;
+  } else if (
+    snapshot &&
+    snapshotCoverageRatio(snapshot) < 1 &&
+    Number.isFinite(snapshotCoverageRatio(snapshot))
+  ) {
+    evitar = `Evitar posponer seguimiento de cobranza “para más adelante”: con cobertura ${formatRatio(snapshotCoverageRatio(snapshot))}, un solo desvío de ingreso vuelve a poner en riesgo el cumplimiento.`;
   } else if (primary.priority === "critical") {
     evitar =
       "Evitar cerrar el caso solo “de palabra”: sin registro en Datos el semáforo seguirá en rojo y podés duplicar esfuerzo con el equipo.";
@@ -122,7 +134,7 @@ function buildPlanRecomendado(
 function buildConsecuenciasOperativas(
   base: string,
   primary: FiscalAlertItem,
-  snapshot: FinancialSnapshot | null,
+  snapshot: FinancialSnapshotApiV1 | null,
   obligation: ProtoTaxObligation | null
 ): string {
   const parts = [base.trim()].filter(Boolean);
@@ -133,14 +145,17 @@ function buildConsecuenciasOperativas(
     );
   }
   if (snapshot) {
-    if (snapshot.projected_balance < 0) {
+    if (snapshotLiquidityBalance(snapshot) < 0) {
       parts.push(
-        `En cifras: el balance proyectado negativo (${formatMoney(snapshot.projected_balance)}) implica que, sin ingreso adicional, un pago imprevisto puede dejarte sin margen operativo esta ventana.`
+        `En cifras: el balance proyectado negativo (${formatMoney(snapshotLiquidityBalance(snapshot))}) implica que, sin ingreso adicional, un pago imprevisto puede dejarte sin margen operativo esta ventana.`
       );
     }
-    if (snapshot.coverage_ratio < 1 && Number.isFinite(snapshot.coverage_ratio)) {
+    if (
+      snapshotCoverageRatio(snapshot) < 1 &&
+      Number.isFinite(snapshotCoverageRatio(snapshot))
+    ) {
       parts.push(
-        `La cobertura ${formatRatio(snapshot.coverage_ratio)} indica que caja más cobranza esperada no cubre egresos modelados: el riesgo no es abstracto, es de liquidez en días, no en meses.`
+        `La cobertura ${formatRatio(snapshotCoverageRatio(snapshot))} indica que caja más cobranza esperada no cubre egresos modelados: el riesgo no es abstracto, es de liquidez en días, no en meses.`
       );
     }
   }
@@ -154,14 +169,14 @@ function buildConsecuenciasOperativas(
 
 function pickPrimaryCta(
   primary: FiscalAlertItem,
-  snapshot: FinancialSnapshot | null
+  snapshot: FinancialSnapshotApiV1 | null
 ): { label: string; href: string } {
   const coverageStress =
     snapshot != null &&
-    (snapshot.coverage_ratio < 1 ||
-      snapshot.projected_balance < 0 ||
-      snapshot.risk_level === "high" ||
-      snapshot.risk_level === "critical");
+    (snapshotCoverageRatio(snapshot) < 1 ||
+      snapshotLiquidityBalance(snapshot) < 0 ||
+      snapshotRiskBand(snapshot) === "high" ||
+      snapshotRiskBand(snapshot) === "critical");
   if (
     primary.type === "cobertura" ||
     primary.type === "liquidez" ||
@@ -187,7 +202,7 @@ function CopilotAtencionPrioritariaPageContent() {
   }, [searchParams]);
 
   const { items: allAlerts, loading: alertsLoading } = useCopilotAlerts();
-  const [snapshot, setSnapshot] = useState<FinancialSnapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<FinancialSnapshotApiV1 | null>(null);
   const [snapshotLoading, setSnapshotLoading] = useState(true);
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
   const [obligation, setObligation] = useState<ProtoTaxObligation | null>(null);
@@ -311,18 +326,18 @@ function CopilotAtencionPrioritariaPageContent() {
         "Enlazar la operación real (pago, DDJJ o plan de facilidades) con la obligación correcta en Datos: sin ese vínculo, el motor sigue leyendo riesgo."
       );
     }
-    if (snapshot && snapshot.expected_inflows > 0) {
+    if (snapshot && snapshotReceivablesRiskWeighted(snapshot) > 0) {
       lines.push(
-        `Cobros que alivian la situación: acelerar ingresos ya ponderados en el motor (${formatMoney(snapshot.expected_inflows)} de cobranza esperada) reduce presión sobre caja sin depender de ventas nuevas.`
+        `Cobros que alivian la situación: acelerar ingresos ya ponderados en el motor (${formatMoney(snapshotReceivablesRiskWeighted(snapshot))} de cobranza esperada) reduce presión sobre caja sin depender de ventas nuevas.`
       );
     } else if (snapshot) {
       lines.push(
         "No hay cobranza esperada modelada en facturas abiertas: conviene cargar o actualizar probabilidades de cobro en Datos para que el asistente pueda sugerir palancas concretas."
       );
     }
-    if (snapshot && snapshot.expected_outflows > 0) {
+    if (snapshot && snapshotExpectedOutflowsTotal(snapshot) > 0) {
       lines.push(
-        `Pagos que suelen postergarse sin romper compliance: operativos discrecionales y proveedores con contrato flexible — no impuestos ya vencidos ni salarios, salvo acuerdo formal. Egresos modelados: ${formatMoney(snapshot.expected_outflows)}.`
+        `Pagos que suelen postergarse sin romper compliance: operativos discrecionales y proveedores con contrato flexible — no impuestos ya vencidos ni salarios, salvo acuerdo formal. Egresos modelados: ${formatMoney(snapshotExpectedOutflowsTotal(snapshot))}.`
       );
     }
     lines.push(
@@ -339,19 +354,23 @@ function CopilotAtencionPrioritariaPageContent() {
     if (!snapshot && !obligation) {
       return { items: [] as Opp[], tieneBase: false };
     }
-    if (snapshot && snapshot.expected_inflows > 0) {
+    if (snapshot && snapshotReceivablesRiskWeighted(snapshot) > 0) {
       items.push({
         titulo: "Cobros",
-        texto: `Perseguir facturas con saldo y probabilidad de cobro ya cargada puede ingresar hasta ${formatMoney(snapshot.expected_inflows)} según el modelo actual.`,
+        texto: `Perseguir facturas con saldo y probabilidad de cobro ya cargada puede ingresar hasta ${formatMoney(snapshotReceivablesRiskWeighted(snapshot))} según el modelo actual.`,
       });
     }
-    if (snapshot && snapshot.expected_outflows > 0) {
+    if (snapshot && snapshotExpectedOutflowsTotal(snapshot) > 0) {
       items.push({
         titulo: "Pagos",
-        texto: `Reordenar la cola de egresos (${formatMoney(snapshot.expected_outflows)} modelados) negociando plazos no fiscales suele liberar caja para lo que no admite demora.`,
+        texto: `Reordenar la cola de egresos (${formatMoney(snapshotExpectedOutflowsTotal(snapshot))} modelados) negociando plazos no fiscales suele liberar caja para lo que no admite demora.`,
       });
     }
-    if (snapshot && snapshot.coverage_ratio >= 1 && snapshot.coverage_ratio < 1.15) {
+    if (
+      snapshot &&
+      snapshotCoverageRatio(snapshot) >= 1 &&
+      snapshotCoverageRatio(snapshot) < 1.15
+    ) {
       items.push({
         titulo: "Riesgo",
         texto:
@@ -390,13 +409,13 @@ function CopilotAtencionPrioritariaPageContent() {
     obligation != null
       ? formatMoney(obligationAmount(obligation))
       : snapshot
-        ? formatMoney(snapshot.expected_outflows)
+        ? formatMoney(snapshotExpectedOutflowsTotal(snapshot))
         : "—";
 
   const deficitOMargen = snapshot
-    ? snapshot.projected_balance < 0
-      ? `Déficit proyectado: ${formatMoney(snapshot.projected_balance)}`
-      : `Margen proyectado: ${formatMoney(snapshot.projected_balance)}`
+    ? snapshotLiquidityBalance(snapshot) < 0
+      ? `Déficit proyectado: ${formatMoney(snapshotLiquidityBalance(snapshot))}`
+      : `Margen proyectado: ${formatMoney(snapshotLiquidityBalance(snapshot))}`
     : "—";
 
   const pageLoading = alertsLoading;
@@ -621,7 +640,7 @@ function CopilotAtencionPrioritariaPageContent() {
                       Caja disponible (referencia)
                     </dt>
                     <dd className="mt-1 text-lg font-semibold tabular-nums text-[var(--copilot-ink)]">
-                      {formatMoney(snapshot.available_cash)}
+                      {formatMoney(snapshotCashNet(snapshot))}
                     </dd>
                   </div>
                   <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 px-4 py-3">
@@ -629,7 +648,7 @@ function CopilotAtencionPrioritariaPageContent() {
                       Egresos esperados (motor)
                     </dt>
                     <dd className="mt-1 text-lg font-semibold tabular-nums text-[var(--copilot-ink)]">
-                      {formatMoney(snapshot.expected_outflows)}
+                      {formatMoney(snapshotExpectedOutflowsTotal(snapshot))}
                     </dd>
                   </div>
                   <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 px-4 py-3">
@@ -667,7 +686,7 @@ function CopilotAtencionPrioritariaPageContent() {
                       Cobertura (caja + cobranza / egresos)
                     </dt>
                     <dd className="mt-1 text-lg font-semibold tabular-nums text-[var(--copilot-ink)]">
-                      {formatRatio(snapshot.coverage_ratio)}
+                      {formatRatio(snapshotCoverageRatio(snapshot))}
                     </dd>
                   </div>
                 </dl>

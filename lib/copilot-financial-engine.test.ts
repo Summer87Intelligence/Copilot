@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildFinancialSnapshotApiV1FromRows,
   buildFinancialSnapshotFromRows,
   getFinancialRisks,
   type FinancialEngineSnapshotRows,
 } from "@/lib/copilot-financial-engine";
+import type { FinancialSnapshotLoadDiagnostics } from "@/lib/data/proto-analytics-read-repository";
 
 const TODAY = "2025-06-15";
 
@@ -133,6 +135,38 @@ describe("buildFinancialSnapshotFromRows", () => {
     expect(s.projected_balance).toBe(100 - 1000);
     expect(s.risk_level).toBe("critical");
     expect(s.coverage_ratio).toBeLessThan(0.5);
+  });
+});
+
+describe("buildFinancialSnapshotApiV1FromRows (contrato canónico, mismas fórmulas)", () => {
+  it("alinea realized/expected/projected con los campos legacy", () => {
+    const rows: FinancialEngineSnapshotRows = {
+      ...emptyRows(),
+      receipts: [{ amount: 10_000 }],
+      payments: [{ amount: 3_000, payment_date: "2025-01-01" }],
+      invoices: [{ balance_amount: 1000, collection_probability: 50 }],
+    };
+    const legacy = buildFinancialSnapshotFromRows(rows, TODAY);
+    const diag: FinancialSnapshotLoadDiagnostics = {
+      active_invoice_count: 1,
+      invoice_financials_distinct_keys: 1,
+      invoice_financials_matched_invoice_ids: 1,
+      invoice_financials_coverage: "full",
+    };
+    const v1 = buildFinancialSnapshotApiV1FromRows(rows, TODAY, diag);
+
+    expect(v1.realized.cash_net).toBe(legacy.available_cash);
+    expect(v1.expected.receivables_risk_weighted).toBe(legacy.expected_inflows);
+    expect(v1.expected.outflows_operational_scheduled + v1.expected.outflows_fiscal_due).toBe(
+      legacy.expected_outflows
+    );
+    expect(v1.projected.liquidity_balance).toBe(legacy.projected_balance);
+    expect(v1.projected.coverage_ratio).toBe(legacy.coverage_ratio);
+    expect(v1.projected.risk_band).toBe(legacy.risk_level);
+    expect(v1.expected.receivables_open_balance).toBe(1000);
+    expect(v1.metrics_schema_version).toBe("1.0.0");
+    expect(v1.as_of_date).toBe(TODAY);
+    expect(v1.diagnostics.snapshot_load).toEqual(diag);
   });
 });
 

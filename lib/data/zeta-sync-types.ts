@@ -36,6 +36,11 @@ export type CreateZetaSyncRunInput = {
   overlap_from?: string | null;
   overlap_to?: string | null;
   idempotency_key?: string | null;
+  /**
+   * `public.companies.id` del tenant (workspace). Obligatorio cuando el cliente Supabase
+   * usa `service_role` (p. ej. sesión PIN): el trigger `zeta_sync_runs` no asigna `company_id` en ese rol.
+   */
+  company_id?: string | null;
 };
 
 export type UpdateZetaSyncRunInput = {
@@ -51,6 +56,10 @@ export type UpdateZetaSyncRunInput = {
 
 export type UpsertZetaSyncStateInput = {
   resource_flow: string;
+  /**
+   * Mismo criterio que `CreateZetaSyncRunInput.company_id`. Requerido en primera fila o con service_role.
+   */
+  company_id?: string | null;
   watermark?: string;
   /**
    * Si es true, no altera `watermark` aunque venga `watermark` en el input

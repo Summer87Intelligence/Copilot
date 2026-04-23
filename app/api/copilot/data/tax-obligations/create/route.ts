@@ -22,7 +22,11 @@ export async function POST(request: NextRequest) {
     );
     if (!auth.ok) return auth.response;
 
-    const result = await protoCreateTaxObligation(auth.ctx.supabase, body);
+    const result = await protoCreateTaxObligation(
+      auth.ctx.supabase,
+      body,
+      auth.ctx.tenantCompanyId
+    );
     return nextResponseFromProtoCrud(result);
   } catch {
     return NextResponse.json(

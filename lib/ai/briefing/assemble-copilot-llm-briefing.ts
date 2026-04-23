@@ -15,7 +15,18 @@ import {
   type CopilotLlmBriefingTrace,
 } from "@/lib/ai/briefing/types";
 import { getClientPortfolio } from "@/lib/copilot-clients-portfolio";
-import { getFinancialSnapshot, type FinancialSnapshot } from "@/lib/copilot-financial-engine";
+import {
+  getFinancialSnapshotForApi,
+  type FinancialSnapshotApiV1,
+} from "@/lib/copilot-financial-engine";
+import {
+  snapshotCashNet,
+  snapshotCoverageRatio,
+  snapshotExpectedOutflowsTotal,
+  snapshotLiquidityBalance,
+  snapshotReceivablesRiskWeighted,
+  snapshotRiskBand,
+} from "@/lib/copilot-financial-snapshot-selectors";
 import { computeCopilotRealInsights, type CopilotRealInsight } from "@/lib/copilot-real-insights";
 import { getFiscalAlerts, type FiscalAlertItem } from "@/lib/copilot-tax-alerts";
 import {
@@ -32,14 +43,14 @@ function clip(s: string, max: number): string {
   return `${t.slice(0, max - 1)}…`;
 }
 
-function snapshotFacts(s: FinancialSnapshot): CopilotBriefingFact[] {
+function snapshotFacts(s: FinancialSnapshotApiV1): CopilotBriefingFact[] {
   return [
-    { key: "caja_disponible", value: String(s.available_cash) },
-    { key: "cobranza_esperada", value: String(s.expected_inflows) },
-    { key: "egresos_esperados", value: String(s.expected_outflows) },
-    { key: "balance_proyectado", value: String(s.projected_balance) },
-    { key: "ratio_cobertura", value: String(s.coverage_ratio) },
-    { key: "riesgo", value: s.risk_level },
+    { key: "caja_disponible", value: String(snapshotCashNet(s)) },
+    { key: "cobranza_esperada", value: String(snapshotReceivablesRiskWeighted(s)) },
+    { key: "egresos_esperados", value: String(snapshotExpectedOutflowsTotal(s)) },
+    { key: "balance_proyectado", value: String(snapshotLiquidityBalance(s)) },
+    { key: "ratio_cobertura", value: String(snapshotCoverageRatio(s)) },
+    { key: "riesgo", value: snapshotRiskBand(s) },
   ];
 }
 
@@ -71,9 +82,9 @@ export async function assembleCopilotLlmBriefing(
     "Las alertas fiscales pueden no reflejar documentación aún no cargada en proto_documents.",
   ];
 
-  let snapshot: FinancialSnapshot | null = null;
+  let snapshot: FinancialSnapshotApiV1 | null = null;
   try {
-    snapshot = await getFinancialSnapshot(supabase, input.tenantCompanyId);
+    snapshot = await getFinancialSnapshotForApi(supabase, input.tenantCompanyId);
     sources.push({
       id: "financial_snapshot",
       label: "Motor financiero (proto normalizado)",
@@ -119,7 +130,7 @@ export async function assembleCopilotLlmBriefing(
 
   let alerts: FiscalAlertItem[] = [];
   try {
-    alerts = await getFiscalAlerts(supabase);
+    alerts = await getFiscalAlerts(supabase, input.tenantCompanyId);
     sources.push({
       id: "fiscal_alerts",
       label: "Alertas fiscales / liquidez (motor interno)",

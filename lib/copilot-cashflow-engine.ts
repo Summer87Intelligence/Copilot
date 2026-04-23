@@ -1,5 +1,29 @@
-import { loadCashflowEngineDatasetRows } from "@/lib/data/proto-analytics-read-repository";
-import { supabase } from "@/lib/supabase-client";
+import { copilotApiFetch } from "@/lib/copilot-fetch";
+import {
+  addCalendarDaysLocalRoundDays,
+  historicalCashNet,
+  localCalendarTodayYmd,
+  normalizedCollectionProbability as normalizedCollectionProbabilityFromPrimitives,
+  num,
+  ymdFromIsoUtcDate,
+} from "@/lib/copilot-financial-primitives";
+
+/*
+ * Motor de cobertura de caja frente a una obligación fiscal puntual.
+ *
+ * Pregunta de negocio: dado el dataset de cashflow y una obligación (due_date + estimated_amount),
+ * estimar si la caja histórica más cobros ponderados esperados hasta el vencimiento, menos
+ * pagos operativos en (as_of, due], cubre el monto de la obligación.
+ *
+ * Horizonte: por obligación — ventana de pagos operativos (today, obligationDue]; inflows
+ * solo si la fecha esperada de cobro (emisión + comportamiento del cliente) cae a más tardar
+ * el vencimiento de esa obligación.
+ *
+ * Fechas operativas: ymdFromIsoUtcDate y addCalendarDaysLocalRoundDays (ver primitivas).
+ *
+ * No comparar 1:1 expected_inflows / expected_outflows con el snapshot global en
+ * copilot-financial-engine. Ver lib/copilot-liquidity-motors.md.
+ */
 
 export type CashflowObligationInput = {
   id: string;
@@ -12,9 +36,17 @@ export type ClientPaymentBehavior = {
   on_time_rate: number;
 };
 
+/**
+ * Resultado de **cobertura por obligación** (no es un KPI de snapshot global).
+ * Los campos `expected_*` están acotados al vencimiento de la obligación y a reglas de timing
+ * por cliente; no deben igualarse numéricamente a `FinancialSnapshot.expected_*`.
+ */
 export type ProjectedCoverageResult = {
+  /** Igual definición de “caja histórica” que en snapshot: Σ recibos(+) − Σ pagos(+) del dataset. */
   available_cash: number;
+  /** Cobranza ponderada solo para facturas cuya fecha esperada de cobro ≤ vencimiento de la obligación. */
   expected_inflows: number;
+  /** Pagos operativos con fecha en (as_of, vencimiento de la obligación] (regla distinta al snapshot). */
   expected_outflows: number;
   projected_balance: number;
   coverage_status: "covered" | "risk" | "critical";
@@ -48,63 +80,17 @@ export type CashflowEngineDataset = {
   invoices: InvoiceRow[];
 };
 
-function num(v: unknown): number {
-  if (v === null || v === undefined) return 0;
-  const n = typeof v === "number" ? v : Number(String(v).replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
-}
-
-function ymd(iso: string): string {
-  const s = String(iso ?? "").trim();
-  if (s.length >= 10) return s.slice(0, 10);
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toISOString().slice(0, 10);
-}
-
-/** Hoy en calendario local (YYYY-MM-DD), alineado con lectura operativa. */
-function localTodayYmd(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
 /**
- * Probabilidad de cobro en factura: 0–1; si viene como 0–100 se normaliza.
- * Sin dato útil → 0,6 (neutro, mismo orden que el factor medio histórico).
+ * Re-export temporal: la implementación vive en `copilot-financial-primitives`.
+ * @deprecated Importar desde `@/lib/copilot-financial-primitives` en código nuevo.
  */
 export function normalizedCollectionProbability(raw: unknown): number {
-  if (raw === null || raw === undefined || raw === "") return 0.6;
-  let p = num(raw);
-  if (!Number.isFinite(p) || p < 0) return 0.6;
-  if (p > 1) p = p / 100;
-  if (p > 1) p = 1;
-  return p;
-}
-
-function sumReceiptAmounts(rows: ReceiptRow[]): number {
-  let t = 0;
-  for (const r of rows) {
-    const n = num(r.amount);
-    if (n > 0) t += n;
-  }
-  return t;
-}
-
-function sumPaymentAmounts(rows: PaymentRow[]): number {
-  let t = 0;
-  for (const r of rows) {
-    const n = num(r.amount);
-    if (n > 0) t += n;
-  }
-  return t;
+  return normalizedCollectionProbabilityFromPrimitives(raw);
 }
 
 /** Caja actual: recibos − pagos históricos (todo el dataset cargado). */
 export function availableCashFromDataset(ds: CashflowEngineDataset): number {
-  return sumReceiptAmounts(ds.receipts) - sumPaymentAmounts(ds.payments);
+  return historicalCashNet(ds.receipts, ds.payments);
 }
 
 /**
@@ -131,9 +117,9 @@ export function getClientPaymentBehavior(
     const cid = inv.company_id == null ? "" : String(inv.company_id);
     if (cid !== companyId) continue;
 
-    const issueY = ymd(String(inv.issue_date ?? ""));
-    const dueY = ymd(String(inv.due_date ?? ""));
-    const recY = ymd(String(rec.receipt_date ?? ""));
+    const issueY = ymdFromIsoUtcDate(String(inv.issue_date ?? ""));
+    const dueY = ymdFromIsoUtcDate(String(inv.due_date ?? ""));
+    const recY = ymdFromIsoUtcDate(String(rec.receipt_date ?? ""));
     if (!issueY || !recY) continue;
 
     const t0 = new Date(`${issueY}T12:00:00`).getTime();
@@ -160,32 +146,19 @@ export function getClientPaymentBehavior(
   return { avg_days_to_pay, on_time_rate };
 }
 
-function addDaysFromYmd(issueYmd: string, days: number): string {
-  const base = issueYmd.slice(0, 10);
-  const parts = base.split("-").map((x) => Number(x));
-  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return base;
-  const [y, m, d] = parts;
-  const dt = new Date(y, m - 1, d);
-  if (Number.isNaN(dt.getTime())) return base;
-  dt.setDate(dt.getDate() + Math.round(days));
-  const yy = dt.getFullYear();
-  const mm = String(dt.getMonth() + 1).padStart(2, "0");
-  const dd = String(dt.getDate()).padStart(2, "0");
-  return `${yy}-${mm}-${dd}`;
-}
-
 /**
- * Egresos **futuros** (después de hoy) hasta el vencimiento fiscal inclusive.
- * No incluye pagos ya reflejados en `available_cash`, evita doble descuento.
+ * Cobertura por obligación: pagos operativos con fecha en (as_of, vencimiento].
+ * No incluye pagos ya reflejados en `available_cash`; regla distinta a
+ * `sumSnapshotOperationalPaymentsStrictlyAfterAsOf` del snapshot global.
  */
-function expectedFutureOutflowsThroughDue(
+function sumObligationCoveragePaymentsBetweenAsOfAndDue(
   payments: PaymentRow[],
   todayYmdStr: string,
   obligationDueYmd: string
 ): number {
   let t = 0;
   for (const p of payments) {
-    const py = ymd(String(p.payment_date ?? ""));
+    const py = ymdFromIsoUtcDate(String(p.payment_date ?? ""));
     if (!py || py <= todayYmdStr || py > obligationDueYmd) continue;
     t += num(p.amount);
   }
@@ -193,10 +166,10 @@ function expectedFutureOutflowsThroughDue(
 }
 
 /**
- * Cobranza esperada: `balance_amount * collection_probability` solo si la fecha
- * esperada de cobro (emisión + días promedio del cliente) cae a más tardar el vencimiento fiscal.
+ * Cobertura por obligación: Σ balance×prob solo si la fecha esperada de cobro
+ * (emisión + días promedio del cliente) ≤ vencimiento de **esta** obligación.
  */
-function expectedInflowsBeforeDue(
+function sumObligationCoverageRiskWeightedInflowsBeforeDue(
   obligationDueYmd: string,
   dataset: CashflowEngineDataset,
   behaviorCache: Map<string, ClientPaymentBehavior>
@@ -216,10 +189,10 @@ function expectedInflowsBeforeDue(
 
     const prob = normalizedCollectionProbability(inv.collection_probability);
 
-    const issueY = ymd(String(inv.issue_date ?? ""));
-    const dueInv = ymd(String(inv.due_date ?? ""));
+    const issueY = ymdFromIsoUtcDate(String(inv.issue_date ?? ""));
+    const dueInv = ymdFromIsoUtcDate(String(inv.due_date ?? ""));
     const expectedPayY = issueY
-      ? addDaysFromYmd(issueY, Math.round(b.avg_days_to_pay))
+      ? addCalendarDaysLocalRoundDays(issueY, Math.round(b.avg_days_to_pay))
       : dueInv
         ? dueInv
         : "";
@@ -242,22 +215,24 @@ function classifyCoverage(
 function buildExplanation(
   status: "covered" | "risk" | "critical",
   availableCash: number,
-  expectedInflows: number,
-  expectedOutflows: number,
+  /** Cobranza ponderada acotada a la obligación (no snapshot global). */
+  obligationExpectedInflows: number,
+  /** Pagos operativos en (as_of, due] (no outflows fiscales del snapshot). */
+  obligationExpectedOutflows: number,
   projectedBalance: number,
   estimatedAmount: number
 ): string {
-  const inflowHelps = expectedInflows >= estimatedAmount * 0.2;
-  const outflowPressure = expectedOutflows >= estimatedAmount * 0.25;
+  const inflowHelps = obligationExpectedInflows >= estimatedAmount * 0.2;
+  const outflowPressure = obligationExpectedOutflows >= estimatedAmount * 0.25;
 
   if (status === "critical") {
     if (outflowPressure && projectedBalance < 0) {
       return "No alcanza la caja proyectada por egresos previstos";
     }
-    if (projectedBalance < 0 && expectedInflows < estimatedAmount * 0.1) {
+    if (projectedBalance < 0 && obligationExpectedInflows < estimatedAmount * 0.1) {
       return "No alcanza la caja proyectada";
     }
-    if (expectedInflows >= estimatedAmount * 0.15) {
+    if (obligationExpectedInflows >= estimatedAmount * 0.15) {
       return "Falta cobertura pese a cobranzas esperadas (probabilidad en facturas)";
     }
     return "No alcanza la caja proyectada";
@@ -274,7 +249,10 @@ function buildExplanation(
   }
 
   /* covered */
-  if (availableCash >= estimatedAmount * 0.85 && expectedInflows < estimatedAmount * 0.15) {
+  if (
+    availableCash >= estimatedAmount * 0.85 &&
+    obligationExpectedInflows < estimatedAmount * 0.15
+  ) {
     return "Cubierto con caja actual";
   }
   if (inflowHelps) {
@@ -289,11 +267,15 @@ function projectOne(
   behaviorCache: Map<string, ClientPaymentBehavior>,
   todayYmdStr: string
 ): ProjectedCoverageResult {
-  const dueY = ymd(obligation.due_date);
+  const dueY = ymdFromIsoUtcDate(obligation.due_date);
   const est = Math.max(0, obligation.estimated_amount);
   const available_cash = availableCashFromDataset(dataset);
-  const expected_inflows = expectedInflowsBeforeDue(dueY, dataset, behaviorCache);
-  const expected_outflows = expectedFutureOutflowsThroughDue(
+  const expected_inflows = sumObligationCoverageRiskWeightedInflowsBeforeDue(
+    dueY,
+    dataset,
+    behaviorCache
+  );
+  const expected_outflows = sumObligationCoveragePaymentsBetweenAsOfAndDue(
     dataset.payments,
     todayYmdStr,
     dueY
@@ -323,7 +305,20 @@ function projectOne(
 
 /** Una lectura de tablas proto para motor de cobertura (performance). */
 export async function loadCashflowEngineDataset(): Promise<CashflowEngineDataset> {
-  const raw = await loadCashflowEngineDatasetRows(supabase);
+  const res = await copilotApiFetch("/api/copilot/cashflow-dataset");
+  const json = (await res.json()) as {
+    ok?: boolean;
+    data?: {
+      receipts: unknown[];
+      payments: unknown[];
+      invoices: unknown[];
+    };
+    error?: string;
+  };
+  if (!res.ok || !json.ok || !json.data) {
+    throw new Error(json.error ?? "No se pudo cargar el dataset de flujo de caja.");
+  }
+  const raw = json.data;
   return {
     receipts: raw.receipts as ReceiptRow[],
     payments: raw.payments as PaymentRow[],
@@ -339,7 +334,7 @@ export async function loadCashflowEngineDataset(): Promise<CashflowEngineDataset
 export function computeProjectedCoverageForAgenda(
   obligations: readonly CashflowObligationInput[],
   dataset: CashflowEngineDataset,
-  todayYmdStr: string = localTodayYmd()
+  todayYmdStr: string = localCalendarTodayYmd()
 ): Map<string, ProjectedCoverageResult> {
   const behaviorCache = new Map<string, ClientPaymentBehavior>();
   const out = new Map<string, ProjectedCoverageResult>();
@@ -357,7 +352,7 @@ export async function getProjectedCoverageForObligation(
   obligation: CashflowObligationInput
 ): Promise<ProjectedCoverageResult> {
   const ds = await loadCashflowEngineDataset();
-  const todayYmdStr = localTodayYmd();
+  const todayYmdStr = localCalendarTodayYmd();
   const m = computeProjectedCoverageForAgenda([obligation], ds, todayYmdStr);
   return (
     m.get(obligation.id) ?? {

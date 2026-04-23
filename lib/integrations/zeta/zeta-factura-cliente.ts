@@ -5,6 +5,8 @@
  * https://zetasoftware.info/ayuda/apis/soap-y-rest/
  */
 
+import type { ZetaCustomerVoucherRecord } from "@/lib/integrations/zeta/contracts/zeta-customer-vouchers.contract";
+import { resolveCcV1InvoiceNumberFromZetaSaldoOrVoucherRow } from "@/lib/integrations/zeta/zeta-customer-vouchers-mapper";
 import type { CompanyId } from "@/types/zeta";
 import type { ZetaInvoice } from "@/types/zeta";
 import { loadZetaServerConfig } from "@/lib/integrations/zeta/zeta-config";
@@ -30,6 +32,11 @@ export type QuerySaldosPendientesResult = {
   isLastPage?: boolean;
   rows: ZetaSaldoPendienteRow[];
   raw: unknown;
+  /**
+   * `true` si `QuerySaldosPendientesOut.Response` existía en JSON y era un **array** (puede ser `[]`).
+   * Si `Response` falta o no es array, `rows` queda `[]` pero **no** es evidencia contractual de “cero pendientes”.
+   */
+  responseExplicitArray: boolean;
 };
 
 function asRecord(v: unknown): Record<string, unknown> | null {
@@ -43,7 +50,7 @@ function asRecord(v: unknown): Record<string, unknown> | null {
 export function parseQuerySaldosPendientesOut(json: unknown): QuerySaldosPendientesResult {
   const rootRaw = asRecord(json)?.QuerySaldosPendientesOut;
   if (!rootRaw) {
-    return { succeed: false, rows: [], raw: json };
+    return { succeed: false, rows: [], raw: json, responseExplicitArray: false };
   }
   const root = rootRaw as Record<string, unknown>;
   const succeed =
@@ -55,10 +62,11 @@ export function parseQuerySaldosPendientesOut(json: unknown): QuerySaldosPendien
   const isLastPage =
     typeof root.IsLastPage === "boolean" ? root.IsLastPage : undefined;
   const response = root.Response;
-  const rows = Array.isArray(response)
+  const responseExplicitArray = Array.isArray(response);
+  const rows = responseExplicitArray
     ? (response as ZetaSaldoPendienteRow[])
     : [];
-  return { succeed, isLastPage, rows, raw: json };
+  return { succeed, isLastPage, rows, raw: json, responseExplicitArray };
 }
 
 /**
@@ -96,17 +104,27 @@ export function mapSaldoRowsToZetaInvoicesBestEffort(
   for (const r of rows) {
     const zetaId = String(r.RegistroId ?? "").trim();
     if (!zetaId) continue;
-    const saldo = parseAmount(r.Saldo ?? r.Total);
-    const total = parseAmount(r.Total ?? r.Saldo);
+    const saldoRaw = r.Saldo;
+    const saldo =
+      saldoRaw === undefined || saldoRaw === null || saldoRaw === ""
+        ? 0
+        : parseAmount(saldoRaw);
+    const total = parseAmount(r.Total);
+    const ccv1 = resolveCcV1InvoiceNumberFromZetaSaldoOrVoucherRow(r as ZetaCustomerVoucherRecord);
+    const totalAmount =
+      Number.isFinite(total) && total > 0 ? total : Number.isFinite(saldo) && saldo > 0 ? saldo : 0;
+    const status: ZetaInvoice["status"] = saldo <= 1e-6 ? "paid" : "issued";
     out.push({
       zetaId,
       companyId,
       issueDate: String(r.Fecha ?? "").slice(0, 10) || new Date().toISOString().slice(0, 10),
       clientZetaId: r.ClienteCodigo ? String(r.ClienteCodigo) : undefined,
       currency: "ARS",
-      totalAmount: Number.isFinite(total) && total > 0 ? total : saldo,
+      totalAmount,
       outstandingAmount: saldo,
-      status: "issued",
+      ccv1InvoiceNumber: ccv1,
+      saldoSourceRow: { ...(r as Record<string, unknown>) },
+      status,
     });
   }
   return out;

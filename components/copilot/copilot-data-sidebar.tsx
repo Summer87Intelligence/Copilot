@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { CopilotDataTrainingBlock } from "@/components/copilot/copilot-data-training-block";
 import { CopilotGhostButton } from "@/components/copilot/copilot-ui";
+import { InvoiceOperationalCallout } from "@/components/copilot/invoice-operational-callout";
 import type { CopilotSeverity } from "@/lib/copilot-alerts-evidence-mock";
 import type { DataEntity, DataRow } from "@/lib/copilot-data";
 import { DATA_TRAINING } from "@/lib/copilot-data-integrity";
@@ -11,6 +12,8 @@ import {
   formatCopilotDataCell,
   sharedObligationPaymentStatusPillClass,
 } from "@/lib/copilot-format";
+import { companyPrimaryLabel } from "@/lib/copilot-datos-company-display";
+import { formatInvoiceFacturaPrimary } from "@/lib/copilot-datos-invoice-display";
 import {
   getProtoCompanyById,
   getProtoContactsByCompany,
@@ -21,10 +24,17 @@ import {
   getProtoReceiptsByInvoice,
 } from "@/lib/copilot-data";
 
-function rowTitle(row: DataRow): string {
+function rowTitle(row: DataRow, entity?: DataEntity): string {
+  if (entity === "companies") {
+    return companyPrimaryLabel(row);
+  }
+  if (entity === "invoices") {
+    const label = formatInvoiceFacturaPrimary(row);
+    if (label && label !== "—") return label;
+  }
   return String(
-    row.name ??
-      row.full_name ??
+    row.full_name ??
+      row.name ??
       row.invoice_number ??
       row.payment_number ??
       row.receipt_number ??
@@ -72,7 +82,7 @@ function CompactList({
               key={String(r.id ?? i)}
               className="space-y-1 rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-2 text-sm text-[var(--copilot-ink)]"
             >
-              <p className="font-medium">{rowTitle(r)}</p>
+              <p className="font-medium">{rowTitle(r, rowEntity)}</p>
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--copilot-ink-muted)]">
                 <span className="inline-flex flex-wrap items-center gap-1">
                   Estado:{" "}
@@ -110,6 +120,16 @@ const CRUD_ENTITIES: DataEntity[] = [
   "payments",
   "tax_obligations",
 ];
+
+/** Etiqueta visible en el encabezado del panel (no confundir con `DataEntity` técnico). */
+const DETAIL_ENTITY_LABEL: Record<DataEntity, string> = {
+  companies: "Cliente",
+  contacts: "Contacto",
+  invoices: "Factura",
+  receipts: "Recibo",
+  payments: "Pago",
+  tax_obligations: "Obligación fiscal",
+};
 
 function sidebarCrudTraining(
   entity: DataEntity
@@ -164,9 +184,40 @@ export function CopilotDataSidebar({
 
   const baseFields = useMemo(() => {
     if (!row) return [] as Array<[string, unknown]>;
+    if (entity === "companies") {
+      const priority = [
+        "Codigo",
+        "RazonSocial",
+        "Nombre",
+        "Documento",
+        "DocumentoTipo",
+        "DocumentoSigla",
+        "Email1",
+        "Telefono",
+        "Celular",
+        "DireccionCompleta",
+        "Direccion",
+        "Localidad",
+        "RUT",
+        "GiroNombre",
+        "ContactoActivo",
+        "status",
+        "risk_level",
+        "is_active",
+        "workspace_company_id",
+      ] as const;
+      const ordered: string[] = [];
+      for (const k of priority) {
+        if (k in row) ordered.push(k);
+      }
+      for (const k of Object.keys(row)) {
+        if (!ordered.includes(k)) ordered.push(k);
+      }
+      return ordered.slice(0, 24).map((k) => [k, row[k]] as [string, unknown]);
+    }
     const keys = Object.keys(row).slice(0, 8);
     return keys.map((k) => [k, row[k]] as [string, unknown]);
-  }, [row]);
+  }, [row, entity]);
 
   useEffect(() => {
     if (!isOpen || !row) return;
@@ -264,9 +315,9 @@ export function CopilotDataSidebar({
         <div className="flex items-start justify-between gap-4 border-b border-[var(--copilot-border)] px-5 py-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-              Detalle {entity}
+              Detalle · {DETAIL_ENTITY_LABEL[entity]}
             </p>
-            <h3 className="mt-1 text-lg font-semibold text-[var(--copilot-ink)]">{rowTitle(row)}</h3>
+            <h3 className="mt-1 text-lg font-semibold text-[var(--copilot-ink)]">{rowTitle(row, entity)}</h3>
           </div>
           <CopilotGhostButton onClick={onClose} className="px-3 py-1.5">
             Cerrar
@@ -321,12 +372,13 @@ export function CopilotDataSidebar({
 
           {entity === "invoices" ? (
             <>
+              <InvoiceOperationalCallout row={row} />
               <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
                 <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                  Empresa
+                  Cliente
                 </h4>
                 <p className="text-sm text-[var(--copilot-ink)]">
-                  {company ? rowTitle(company) : "Sin empresa asociada."}
+                  {company ? rowTitle(company, "companies") : "Sin cliente asociado."}
                 </p>
               </section>
               <CompactList title="Recibos asociados" rows={receipts} rowEntity="receipts" />
@@ -336,10 +388,10 @@ export function CopilotDataSidebar({
           {entity === "payments" ? (
             <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
               <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                Empresa
+                Cliente
               </h4>
               <p className="text-sm text-[var(--copilot-ink)]">
-                {company ? rowTitle(company) : "Sin empresa asociada."}
+                {company ? rowTitle(company, "companies") : "Sin cliente asociado."}
               </p>
             </section>
           ) : null}
@@ -347,10 +399,10 @@ export function CopilotDataSidebar({
           {entity === "contacts" ? (
             <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
               <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                Empresa
+                Cliente
               </h4>
               <p className="text-sm text-[var(--copilot-ink)]">
-                {company ? rowTitle(company) : "Sin empresa asociada."}
+                {company ? rowTitle(company, "companies") : "Sin cliente asociado."}
               </p>
             </section>
           ) : null}
@@ -359,10 +411,10 @@ export function CopilotDataSidebar({
             <>
               <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
                 <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                  Empresa
+                  Cliente
                 </h4>
                 <p className="text-sm text-[var(--copilot-ink)]">
-                  {company ? rowTitle(company) : "Sin empresa asociada."}
+                  {company ? rowTitle(company, "companies") : "Sin cliente asociado."}
                 </p>
               </section>
               <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">

@@ -27,8 +27,20 @@ import {
 import { getUpcomingTaxAgenda, type TaxAgendaItem } from "@/lib/copilot-tax-data";
 import {
   getFinancialSnapshot,
-  type FinancialSnapshot,
+  type FinancialSnapshotApiV1,
 } from "@/lib/copilot-financial-engine";
+import { getProtoInvoices, type DataRow } from "@/lib/copilot-data";
+import { deriveFinancialFlags } from "@/lib/derive-financial-flags";
+import { FinancialWarningBanner } from "@/components/copilot/financial-warning-banner";
+import { FinancialStatusBadge } from "@/components/copilot/financial-status-badge";
+import { DataFreshnessBanner } from "@/components/copilot/data-freshness-banner";
+import {
+  snapshotCashNet,
+  snapshotCoverageRatio,
+  snapshotExpectedOutflowsTotal,
+  snapshotLiquidityBalance,
+  snapshotRiskBand,
+} from "@/lib/copilot-financial-snapshot-selectors";
 import {
   COPILOT_EMPTY_COPY,
   isCopilotHomeExecutiveEmpty,
@@ -87,13 +99,14 @@ export default function CopilotHomePage() {
   const [taxDrawerObligationId, setTaxDrawerObligationId] = useState<string | null>(
     null
   );
-  const [financialSnapshot, setFinancialSnapshot] = useState<FinancialSnapshot | null>(
+  const [financialSnapshot, setFinancialSnapshot] = useState<FinancialSnapshotApiV1 | null>(
     null
   );
   const [financialLoading, setFinancialLoading] = useState(true);
   const [financialError, setFinancialError] = useState<string | null>(null);
   const [fiscalAlerts, setFiscalAlerts] = useState<FiscalAlertItem[]>([]);
   const [fiscalLoading, setFiscalLoading] = useState(true);
+  const [invoiceRows, setInvoiceRows] = useState<DataRow[]>([]);
 
   const fiscalCounts = useMemo(() => {
     const c = { critical: 0, high: 0, medium: 0 };
@@ -118,6 +131,16 @@ export default function CopilotHomePage() {
     [fiscalAlerts]
   );
   const featuredFiscal = fiscalSorted[0];
+  const externalValidated = false;
+  const financialFlags = useMemo(
+    () =>
+      deriveFinancialFlags({
+        invoices: invoiceRows,
+        asOfDate: financialSnapshot?.as_of_date ?? null,
+        externalFinancialValidation: externalValidated,
+      }),
+    [invoiceRows, financialSnapshot, externalValidated]
+  );
 
   const executiveEmpty = useMemo(
     () =>
@@ -180,6 +203,20 @@ export default function CopilotHomePage() {
       }
     };
     void run();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getProtoInvoices("active")
+      .then((rows) => {
+        if (!cancelled) setInvoiceRows(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setInvoiceRows([]);
+      });
     return () => {
       cancelled = true;
     };
@@ -257,8 +294,13 @@ La prospección y generación de leads la realizás en Summer87 Leads.`}
           <p className="text-sm text-[var(--copilot-ink-muted)]">
             Vista del panel ejecutivo · período analizado
           </p>
-          <PeriodSelect value={period} onChange={setPeriod} />
+          <div className="flex items-center gap-2">
+            <FinancialStatusBadge flags={financialFlags} />
+            <PeriodSelect value={period} onChange={setPeriod} />
+          </div>
         </div>
+        <FinancialWarningBanner />
+        <DataFreshnessBanner freshness={financialFlags} />
 
         {executiveEmpty ? (
           <CopilotEmptyPanel
@@ -285,7 +327,7 @@ La prospección y generación de leads la realizás en Summer87 Leads.`}
                 }
               />
               {financialSnapshot && !financialLoading ? (
-                <CopilotSeverityBadge severity={financialSnapshot.risk_level} />
+                <CopilotSeverityBadge severity={snapshotRiskBand(financialSnapshot)} />
               ) : null}
             </div>
             <p className="mt-2 text-xs text-[var(--copilot-ink-muted)]">
@@ -309,7 +351,7 @@ La prospección y generación de leads la realizás en Summer87 Leads.`}
                     Caja disponible
                   </p>
                   <p className="mt-2 text-lg font-semibold tabular-nums text-[var(--copilot-ink)]">
-                    {formatMoneyHome(financialSnapshot.available_cash)}
+                    {formatMoneyHome(snapshotCashNet(financialSnapshot))}
                   </p>
                 </div>
                 <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
@@ -317,7 +359,7 @@ La prospección y generación de leads la realizás en Summer87 Leads.`}
                     Cobertura
                   </p>
                   <p className="mt-2 text-lg font-semibold tabular-nums text-[var(--copilot-ink)]">
-                    {formatCoverageHome(financialSnapshot.coverage_ratio)}
+                    {formatCoverageHome(snapshotCoverageRatio(financialSnapshot))}
                   </p>
                 </div>
                 <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
@@ -325,7 +367,7 @@ La prospección y generación de leads la realizás en Summer87 Leads.`}
                     Balance proyectado
                   </p>
                   <p className="mt-2 text-lg font-semibold tabular-nums text-[var(--copilot-ink)]">
-                    {formatMoneyHome(financialSnapshot.projected_balance)}
+                    {formatMoneyHome(snapshotLiquidityBalance(financialSnapshot))}
                   </p>
                 </div>
                 <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
@@ -333,7 +375,7 @@ La prospección y generación de leads la realizás en Summer87 Leads.`}
                     Egresos esperados
                   </p>
                   <p className="mt-2 text-lg font-semibold tabular-nums text-red-600">
-                    {formatMoneyHome(financialSnapshot.expected_outflows)}
+                    {formatMoneyHome(snapshotExpectedOutflowsTotal(financialSnapshot))}
                   </p>
                 </div>
               </div>

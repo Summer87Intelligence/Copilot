@@ -1,0 +1,2036 @@
+[
+  {
+    "source_html": "docs/zeta/raw/0001-ayuda-configuracion-empresa-apis-9dd186f2.html",
+    "output_md": "docs/zeta/markdown/0001-ayuda-configuracion-empresa-apis-9dd186f2.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/empresa/apis/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/empresa/apis/",
+    "title": "APIs - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.134Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0002-ayuda-6b3959b3.html",
+    "output_md": "docs/zeta/markdown/0002-ayuda-6b3959b3.md",
+    "url_original": "https://zetasoftware.info/ayuda/",
+    "url_final": "https://zetasoftware.info/ayuda/",
+    "title": "Ayuda Zetasoftware - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.215Z",
+    "ayuda_branch": null
+  },
+  {
+    "source_html": "docs/zeta/raw/0003-ayuda-configuracion-06e33986.html",
+    "output_md": "docs/zeta/markdown/0003-ayuda-configuracion-06e33986.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/",
+    "title": "Configuración - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.253Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0004-ayuda-configuracion-empresa-bd6cefa6.html",
+    "output_md": "docs/zeta/markdown/0004-ayuda-configuracion-empresa-bd6cefa6.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/empresa/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/empresa/",
+    "title": "Empresa - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.289Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0005-ayuda-configuracion-usuario-zetasoftware-3d4e4867.html",
+    "output_md": "docs/zeta/markdown/0005-ayuda-configuracion-usuario-zetasoftware-3d4e4867.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/usuario-zetasoftware/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/usuario-zetasoftware/",
+    "title": "Usuario ZetaSoftware - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.325Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0006-ayuda-configuracion-usuario-zetasoftware-registrarse-9a529d1b.html",
+    "output_md": "docs/zeta/markdown/0006-ayuda-configuracion-usuario-zetasoftware-registrarse-9a529d1b.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/usuario-zetasoftware/registrarse/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/usuario-zetasoftware/registrarse/",
+    "title": "Registrarse - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.379Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0007-ayuda-configuracion-usuario-zetasoftware-cambiar-contrasena-f9b36ba0.html",
+    "output_md": "docs/zeta/markdown/0007-ayuda-configuracion-usuario-zetasoftware-cambiar-contrasena-f9b36ba0.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/usuario-zetasoftware/cambiar-contrasena/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/usuario-zetasoftware/cambiar-contrasena/",
+    "title": "Cambiar Contraseña - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.401Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0008-ayuda-configuracion-usuario-zetasoftware-modificar-datos-y-preferencias-d0453e61.html",
+    "output_md": "docs/zeta/markdown/0008-ayuda-configuracion-usuario-zetasoftware-modificar-datos-y-preferencias-d0453e61.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/usuario-zetasoftware/modificar-datos-y-preferencias/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/usuario-zetasoftware/modificar-datos-y-preferencias/",
+    "title": "Modificar Datos y Preferencias - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.425Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0009-ayuda-configuracion-comprobantes-98213338.html",
+    "output_md": "docs/zeta/markdown/0009-ayuda-configuracion-comprobantes-98213338.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/comprobantes/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/comprobantes/",
+    "title": "Comprobantes - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.451Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0010-ayuda-configuracion-comprobantes-comprobantes-91f3ec70.html",
+    "output_md": "docs/zeta/markdown/0010-ayuda-configuracion-comprobantes-comprobantes-91f3ec70.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/comprobantes/comprobantes/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/comprobantes/comprobantes/",
+    "title": "Comprobantes - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.473Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0011-ayuda-configuracion-comprobantes-condiciones-de-pago-8c322d46.html",
+    "output_md": "docs/zeta/markdown/0011-ayuda-configuracion-comprobantes-condiciones-de-pago-8c322d46.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/comprobantes/condiciones-de-pago/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/comprobantes/condiciones-de-pago/",
+    "title": "Condiciones de Pago - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.513Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0012-ayuda-configuracion-comprobantes-formas-de-pago-fd07ac88.html",
+    "output_md": "docs/zeta/markdown/0012-ayuda-configuracion-comprobantes-formas-de-pago-fd07ac88.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/comprobantes/formas-de-pago/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/comprobantes/formas-de-pago/",
+    "title": "Formas de Pago - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.534Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0013-ayuda-configuracion-comprobantes-formatos-de-impresion-6e8e3336.html",
+    "output_md": "docs/zeta/markdown/0013-ayuda-configuracion-comprobantes-formatos-de-impresion-6e8e3336.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/comprobantes/formatos-de-impresion/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/comprobantes/formatos-de-impresion/",
+    "title": "Formatos de Impresión - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.565Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0014-ayuda-configuracion-comprobantes-numeradores-de-comprobantes-cd3b40f6.html",
+    "output_md": "docs/zeta/markdown/0014-ayuda-configuracion-comprobantes-numeradores-de-comprobantes-cd3b40f6.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/comprobantes/numeradores-de-comprobantes/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/comprobantes/numeradores-de-comprobantes/",
+    "title": "Numeradores de Comprobantes - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.599Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0015-ayuda-configuracion-comprobantes-parametros-generales-de-facturacion-c8d54504.html",
+    "output_md": "docs/zeta/markdown/0015-ayuda-configuracion-comprobantes-parametros-generales-de-facturacion-c8d54504.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/comprobantes/parametros-generales-de-facturacion/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/comprobantes/parametros-generales-de-facturacion/",
+    "title": "Datos Adicionales en Facturación - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.625Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0016-ayuda-configuracion-comprobantes-numeradores-de-impresion-51427d3b.html",
+    "output_md": "docs/zeta/markdown/0016-ayuda-configuracion-comprobantes-numeradores-de-impresion-51427d3b.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/comprobantes/numeradores-de-impresion/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/comprobantes/numeradores-de-impresion/",
+    "title": "Numeradores de Impresión - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.654Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0017-ayuda-configuracion-contactos-5e3231a4.html",
+    "output_md": "docs/zeta/markdown/0017-ayuda-configuracion-contactos-5e3231a4.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contactos/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contactos/",
+    "title": "Contactos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.678Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0018-ayuda-configuracion-contactos-contactos-clientes-y-proveedores-005befb0.html",
+    "output_md": "docs/zeta/markdown/0018-ayuda-configuracion-contactos-contactos-clientes-y-proveedores-005befb0.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contactos/contactos-clientes-y-proveedores/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contactos/contactos-clientes-y-proveedores/",
+    "title": "Contactos, Clientes y Proveedores - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.700Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0019-ayuda-configuracion-contactos-contactos-clientes-y-proveedores-exportar-e-importar-contactos-con-excel-bf89b5f9.html",
+    "output_md": "docs/zeta/markdown/0019-ayuda-configuracion-contactos-contactos-clientes-y-proveedores-exportar-e-importar-contactos-con-excel-bf89b5f9.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contactos/contactos-clientes-y-proveedores/exportar-e-importar-contactos-con-excel/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contactos/contactos-clientes-y-proveedores/exportar-e-importar-contactos-con-excel/",
+    "title": "Exportar e Importar Contactos con Excel - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.762Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0020-ayuda-configuracion-contactos-contactos-clientes-y-proveedores-historial-del-contacto-5642dd49.html",
+    "output_md": "docs/zeta/markdown/0020-ayuda-configuracion-contactos-contactos-clientes-y-proveedores-historial-del-contacto-5642dd49.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contactos/contactos-clientes-y-proveedores/historial-del-contacto/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contactos/contactos-clientes-y-proveedores/historial-del-contacto/",
+    "title": "Anotaciones del Contacto - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.802Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0021-ayuda-configuracion-contactos-contactos-clientes-y-proveedores-clientes-en-modulo-contabilidad-f547d055.html",
+    "output_md": "docs/zeta/markdown/0021-ayuda-configuracion-contactos-contactos-clientes-y-proveedores-clientes-en-modulo-contabilidad-f547d055.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contactos/contactos-clientes-y-proveedores/clientes-en-modulo-contabilidad/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contactos/contactos-clientes-y-proveedores/clientes-en-modulo-contabilidad/",
+    "title": "Clientes y Proveedores en Módulo Contabilidad - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.821Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0022-ayuda-configuracion-contactos-categorias-de-clientes-398afcd7.html",
+    "output_md": "docs/zeta/markdown/0022-ayuda-configuracion-contactos-categorias-de-clientes-398afcd7.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contactos/categorias-de-clientes/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contactos/categorias-de-clientes/",
+    "title": "Categorías de Clientes - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.850Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0023-ayuda-configuracion-contactos-categorias-de-proveedores-96ff8949.html",
+    "output_md": "docs/zeta/markdown/0023-ayuda-configuracion-contactos-categorias-de-proveedores-96ff8949.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contactos/categorias-de-proveedores/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contactos/categorias-de-proveedores/",
+    "title": "Categorías de Proveedores - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.869Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0024-ayuda-configuracion-contactos-giros-comerciales-a2209cec.html",
+    "output_md": "docs/zeta/markdown/0024-ayuda-configuracion-contactos-giros-comerciales-a2209cec.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contactos/giros-comerciales/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contactos/giros-comerciales/",
+    "title": "Giros Comerciales - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.892Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0025-ayuda-configuracion-contactos-grupos-6a539760.html",
+    "output_md": "docs/zeta/markdown/0025-ayuda-configuracion-contactos-grupos-6a539760.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contactos/grupos/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contactos/grupos/",
+    "title": "Grupos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.911Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0026-ayuda-configuracion-contactos-origenes-51315ad5.html",
+    "output_md": "docs/zeta/markdown/0026-ayuda-configuracion-contactos-origenes-51315ad5.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contactos/origenes/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contactos/origenes/",
+    "title": "Orígenes - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.937Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0027-ayuda-configuracion-contactos-tipos-de-descuentos-d10b8998.html",
+    "output_md": "docs/zeta/markdown/0027-ayuda-configuracion-contactos-tipos-de-descuentos-d10b8998.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contactos/tipos-de-descuentos/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contactos/tipos-de-descuentos/",
+    "title": "Tipos de Descuentos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:49:59.970Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0028-ayuda-configuracion-contactos-tipos-de-descuentos-importar-descuentos-de-clientes-0f66ace1.html",
+    "output_md": "docs/zeta/markdown/0028-ayuda-configuracion-contactos-tipos-de-descuentos-importar-descuentos-de-clientes-0f66ace1.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contactos/tipos-de-descuentos/importar-descuentos-de-clientes/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contactos/tipos-de-descuentos/importar-descuentos-de-clientes/",
+    "title": "Importar Descuentos de Clientes - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.003Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0029-ayuda-configuracion-contactos-zonas-96f02614.html",
+    "output_md": "docs/zeta/markdown/0029-ayuda-configuracion-contactos-zonas-96f02614.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contactos/zonas/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contactos/zonas/",
+    "title": "Zonas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.036Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0030-ayuda-configuracion-caja-y-bancos-f14ef278.html",
+    "output_md": "docs/zeta/markdown/0030-ayuda-configuracion-caja-y-bancos-f14ef278.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/caja-y-bancos/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/caja-y-bancos/",
+    "title": "Caja y Bancos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.066Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0031-ayuda-configuracion-caja-y-bancos-conceptos-0e4ec22c.html",
+    "output_md": "docs/zeta/markdown/0031-ayuda-configuracion-caja-y-bancos-conceptos-0e4ec22c.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/caja-y-bancos/conceptos/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/caja-y-bancos/conceptos/",
+    "title": "Conceptos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.089Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0032-ayuda-configuracion-caja-y-bancos-grupos-de-conceptos-645d3398.html",
+    "output_md": "docs/zeta/markdown/0032-ayuda-configuracion-caja-y-bancos-grupos-de-conceptos-645d3398.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/caja-y-bancos/grupos-de-conceptos/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/caja-y-bancos/grupos-de-conceptos/",
+    "title": "Grupos de Conceptos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.128Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0033-ayuda-configuracion-caja-y-bancos-bancos-y-financieras-83e5ba70.html",
+    "output_md": "docs/zeta/markdown/0033-ayuda-configuracion-caja-y-bancos-bancos-y-financieras-83e5ba70.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/caja-y-bancos/bancos-y-financieras/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/caja-y-bancos/bancos-y-financieras/",
+    "title": "Bancos y Financieras - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.157Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0034-ayuda-configuracion-caja-y-bancos-cuentas-bancarias-cd00debf.html",
+    "output_md": "docs/zeta/markdown/0034-ayuda-configuracion-caja-y-bancos-cuentas-bancarias-cd00debf.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/caja-y-bancos/cuentas-bancarias/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/caja-y-bancos/cuentas-bancarias/",
+    "title": "Cuentas Bancarias - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.180Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0035-ayuda-configuracion-stock-4b77829e.html",
+    "output_md": "docs/zeta/markdown/0035-ayuda-configuracion-stock-4b77829e.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/stock/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/stock/",
+    "title": "Stock - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.229Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0036-ayuda-configuracion-stock-articulos-f7346cc5.html",
+    "output_md": "docs/zeta/markdown/0036-ayuda-configuracion-stock-articulos-f7346cc5.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/stock/articulos/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/stock/articulos/",
+    "title": "Artículos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.291Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0037-ayuda-configuracion-stock-articulos-exportar-e-importar-articulos-con-excel-45000db9.html",
+    "output_md": "docs/zeta/markdown/0037-ayuda-configuracion-stock-articulos-exportar-e-importar-articulos-con-excel-45000db9.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/stock/articulos/exportar-e-importar-articulos-con-excel/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/stock/articulos/exportar-e-importar-articulos-con-excel/",
+    "title": "Exportar e Importar Artículos con Excel - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.319Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0038-ayuda-configuracion-stock-articulos-articulos-en-modulo-facturacion-profesional-c3d5dc44.html",
+    "output_md": "docs/zeta/markdown/0038-ayuda-configuracion-stock-articulos-articulos-en-modulo-facturacion-profesional-c3d5dc44.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/stock/articulos/articulos-en-modulo-facturacion-profesional/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/stock/articulos/articulos-en-modulo-facturacion-profesional/",
+    "title": "Artículos en Módulo Facturación Profesional - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.348Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0039-ayuda-configuracion-stock-categorias-de-articulos-2834b2b9.html",
+    "output_md": "docs/zeta/markdown/0039-ayuda-configuracion-stock-categorias-de-articulos-2834b2b9.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/stock/categorias-de-articulos/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/stock/categorias-de-articulos/",
+    "title": "Categorías de Artículos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.373Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0040-ayuda-configuracion-stock-depositos-de-stock-b926b9d7.html",
+    "output_md": "docs/zeta/markdown/0040-ayuda-configuracion-stock-depositos-de-stock-b926b9d7.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/stock/depositos-de-stock/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/stock/depositos-de-stock/",
+    "title": "Depósitos de Stock - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.400Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0041-ayuda-configuracion-stock-familias-de-articulos-8f6fe9cb.html",
+    "output_md": "docs/zeta/markdown/0041-ayuda-configuracion-stock-familias-de-articulos-8f6fe9cb.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/stock/familias-de-articulos/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/stock/familias-de-articulos/",
+    "title": "Familias de Artículos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.420Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0042-ayuda-configuracion-stock-listas-de-precios-caa1bb9b.html",
+    "output_md": "docs/zeta/markdown/0042-ayuda-configuracion-stock-listas-de-precios-caa1bb9b.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/stock/listas-de-precios/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/stock/listas-de-precios/",
+    "title": "Listas de Precios - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.450Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0043-ayuda-configuracion-stock-marcas-58f14072.html",
+    "output_md": "docs/zeta/markdown/0043-ayuda-configuracion-stock-marcas-58f14072.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/stock/marcas/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/stock/marcas/",
+    "title": "Marcas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.474Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0044-ayuda-configuracion-stock-precios-de-venta-0cf78fec.html",
+    "output_md": "docs/zeta/markdown/0044-ayuda-configuracion-stock-precios-de-venta-0cf78fec.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/stock/precios-de-venta/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/stock/precios-de-venta/",
+    "title": "Precios de Venta y Precios Base - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.499Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0045-ayuda-configuracion-stock-unidades-de-stock-7ed1235a.html",
+    "output_md": "docs/zeta/markdown/0045-ayuda-configuracion-stock-unidades-de-stock-7ed1235a.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/stock/unidades-de-stock/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/stock/unidades-de-stock/",
+    "title": "Unidades de Stock - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.527Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0046-ayuda-configuracion-oportunidades-y-contratos-31885efd.html",
+    "output_md": "docs/zeta/markdown/0046-ayuda-configuracion-oportunidades-y-contratos-31885efd.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/oportunidades-y-contratos/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/oportunidades-y-contratos/",
+    "title": "Oportunidades y Contratos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.551Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0047-ayuda-configuracion-oportunidades-y-contratos-campanas-13196865.html",
+    "output_md": "docs/zeta/markdown/0047-ayuda-configuracion-oportunidades-y-contratos-campanas-13196865.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/oportunidades-y-contratos/campanas/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/oportunidades-y-contratos/campanas/",
+    "title": "Campañas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.577Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0048-ayuda-configuracion-oportunidades-y-contratos-categorias-de-oportunidades-51c34d78.html",
+    "output_md": "docs/zeta/markdown/0048-ayuda-configuracion-oportunidades-y-contratos-categorias-de-oportunidades-51c34d78.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/oportunidades-y-contratos/categorias-de-oportunidades/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/oportunidades-y-contratos/categorias-de-oportunidades/",
+    "title": "Categorías de Oportunidades - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.602Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0049-ayuda-configuracion-oportunidades-y-contratos-estados-de-oportunidades-124a6ab1.html",
+    "output_md": "docs/zeta/markdown/0049-ayuda-configuracion-oportunidades-y-contratos-estados-de-oportunidades-124a6ab1.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/oportunidades-y-contratos/estados-de-oportunidades/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/oportunidades-y-contratos/estados-de-oportunidades/",
+    "title": "Estados de Oportunidades - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.624Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0050-ayuda-configuracion-oportunidades-y-contratos-motivos-de-perdida-de-ventas-bcdf4d91.html",
+    "output_md": "docs/zeta/markdown/0050-ayuda-configuracion-oportunidades-y-contratos-motivos-de-perdida-de-ventas-bcdf4d91.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/oportunidades-y-contratos/motivos-de-perdida-de-ventas/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/oportunidades-y-contratos/motivos-de-perdida-de-ventas/",
+    "title": "Motivos de Pérdida de Ventas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.675Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0051-ayuda-configuracion-oportunidades-y-contratos-ventajas-competitivas-cd69485f.html",
+    "output_md": "docs/zeta/markdown/0051-ayuda-configuracion-oportunidades-y-contratos-ventajas-competitivas-cd69485f.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/oportunidades-y-contratos/ventajas-competitivas/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/oportunidades-y-contratos/ventajas-competitivas/",
+    "title": "Ventajas Competitivas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.701Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0052-ayuda-configuracion-oportunidades-y-contratos-categorias-de-contratos-704c8d72.html",
+    "output_md": "docs/zeta/markdown/0052-ayuda-configuracion-oportunidades-y-contratos-categorias-de-contratos-704c8d72.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/oportunidades-y-contratos/categorias-de-contratos/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/oportunidades-y-contratos/categorias-de-contratos/",
+    "title": "Categorías de Contratos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.734Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0053-ayuda-configuracion-cfes-eac4a4d4.html",
+    "output_md": "docs/zeta/markdown/0053-ayuda-configuracion-cfes-eac4a4d4.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/cfes/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/cfes/",
+    "title": "CFEs - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.764Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0054-ayuda-configuracion-cfes-tipos-de-cfe-fdd8df7b.html",
+    "output_md": "docs/zeta/markdown/0054-ayuda-configuracion-cfes-tipos-de-cfe-fdd8df7b.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/cfes/tipos-de-cfe/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/cfes/tipos-de-cfe/",
+    "title": "Tipos de CFE - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.788Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0055-ayuda-configuracion-cfes-parametros-y-preferencias-de-cfes-2ecfe173.html",
+    "output_md": "docs/zeta/markdown/0055-ayuda-configuracion-cfes-parametros-y-preferencias-de-cfes-2ecfe173.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/cfes/parametros-y-preferencias-de-cfes/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/cfes/parametros-y-preferencias-de-cfes/",
+    "title": "Parámetros y Preferencias de CFEs - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.822Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0056-ayuda-configuracion-contabilidad-9299073c.html",
+    "output_md": "docs/zeta/markdown/0056-ayuda-configuracion-contabilidad-9299073c.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contabilidad/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contabilidad/",
+    "title": "Contabilidad - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.858Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0057-ayuda-configuracion-contabilidad-plan-de-cuentas-fe0818b3.html",
+    "output_md": "docs/zeta/markdown/0057-ayuda-configuracion-contabilidad-plan-de-cuentas-fe0818b3.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contabilidad/plan-de-cuentas/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contabilidad/plan-de-cuentas/",
+    "title": "Plan de Cuentas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.903Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0058-ayuda-configuracion-contabilidad-grupos-de-cuentas-4cd50e86.html",
+    "output_md": "docs/zeta/markdown/0058-ayuda-configuracion-contabilidad-grupos-de-cuentas-4cd50e86.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contabilidad/grupos-de-cuentas/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contabilidad/grupos-de-cuentas/",
+    "title": "Grupos de Cuentas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.942Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0059-ayuda-configuracion-contabilidad-ejercicios-contables-20956901.html",
+    "output_md": "docs/zeta/markdown/0059-ayuda-configuracion-contabilidad-ejercicios-contables-20956901.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contabilidad/ejercicios-contables/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contabilidad/ejercicios-contables/",
+    "title": "Ejercicios Contables - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:00.977Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0060-ayuda-configuracion-contabilidad-auxiliares-40c3386f.html",
+    "output_md": "docs/zeta/markdown/0060-ayuda-configuracion-contabilidad-auxiliares-40c3386f.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contabilidad/auxiliares/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contabilidad/auxiliares/",
+    "title": "Auxiliares - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.031Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0061-ayuda-configuracion-contabilidad-tipos-de-asientos-4a0e7c8e.html",
+    "output_md": "docs/zeta/markdown/0061-ayuda-configuracion-contabilidad-tipos-de-asientos-4a0e7c8e.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contabilidad/tipos-de-asientos/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contabilidad/tipos-de-asientos/",
+    "title": "Tipos de Asientos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.050Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0062-ayuda-configuracion-contabilidad-numeros-de-rut-3ef9243d.html",
+    "output_md": "docs/zeta/markdown/0062-ayuda-configuracion-contabilidad-numeros-de-rut-3ef9243d.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contabilidad/numeros-de-rut/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contabilidad/numeros-de-rut/",
+    "title": "Números de RUT - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.109Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0063-ayuda-configuracion-contabilidad-parametros-generales-de-contabilidad-3c6da976.html",
+    "output_md": "docs/zeta/markdown/0063-ayuda-configuracion-contabilidad-parametros-generales-de-contabilidad-3c6da976.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contabilidad/parametros-generales-de-contabilidad/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/contabilidad/parametros-generales-de-contabilidad/",
+    "title": "Parámetros Generales de Contabilidad - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.138Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0064-ayuda-configuracion-empresa-identificacion-de-la-empresa-24fac6eb.html",
+    "output_md": "docs/zeta/markdown/0064-ayuda-configuracion-empresa-identificacion-de-la-empresa-24fac6eb.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/empresa/identificacion-de-la-empresa/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/empresa/identificacion-de-la-empresa/",
+    "title": "Identificación de la Empresa - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.179Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0065-ayuda-configuracion-empresa-roles-de-usuarios-826c3907.html",
+    "output_md": "docs/zeta/markdown/0065-ayuda-configuracion-empresa-roles-de-usuarios-826c3907.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/empresa/roles-de-usuarios/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/empresa/roles-de-usuarios/",
+    "title": "Roles de Usuarios - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.206Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0066-ayuda-configuracion-empresa-permisos-de-acceso-df0f97a6.html",
+    "output_md": "docs/zeta/markdown/0066-ayuda-configuracion-empresa-permisos-de-acceso-df0f97a6.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/empresa/permisos-de-acceso/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/empresa/permisos-de-acceso/",
+    "title": "Permisos de Acceso - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.249Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0067-ayuda-configuracion-empresa-campos-adicionales-f234d1a9.html",
+    "output_md": "docs/zeta/markdown/0067-ayuda-configuracion-empresa-campos-adicionales-f234d1a9.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/empresa/campos-adicionales/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/empresa/campos-adicionales/",
+    "title": "Campos Adicionales - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.300Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0068-ayuda-configuracion-empresa-centros-de-costo-14a1a18d.html",
+    "output_md": "docs/zeta/markdown/0068-ayuda-configuracion-empresa-centros-de-costo-14a1a18d.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/empresa/centros-de-costo/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/empresa/centros-de-costo/",
+    "title": "Centros de Costos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.338Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0069-ayuda-configuracion-empresa-locales-acf77f11.html",
+    "output_md": "docs/zeta/markdown/0069-ayuda-configuracion-empresa-locales-acf77f11.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/empresa/locales/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/empresa/locales/",
+    "title": "Locales y Sucursales - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.376Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0070-ayuda-configuracion-empresa-cajas-67a25e72.html",
+    "output_md": "docs/zeta/markdown/0070-ayuda-configuracion-empresa-cajas-67a25e72.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/empresa/cajas/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/empresa/cajas/",
+    "title": "Cajas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.409Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0071-ayuda-configuracion-empresa-monedas-a485f61a.html",
+    "output_md": "docs/zeta/markdown/0071-ayuda-configuracion-empresa-monedas-a485f61a.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/empresa/monedas/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/empresa/monedas/",
+    "title": "Monedas y Cotizaciones - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.434Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0072-ayuda-configuracion-empresa-paises-165ee2e9.html",
+    "output_md": "docs/zeta/markdown/0072-ayuda-configuracion-empresa-paises-165ee2e9.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/empresa/paises/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/empresa/paises/",
+    "title": "Países y Departamentos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.464Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0073-ayuda-configuracion-empresa-parametros-del-local-02cc27c0.html",
+    "output_md": "docs/zeta/markdown/0073-ayuda-configuracion-empresa-parametros-del-local-02cc27c0.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/empresa/parametros-del-local/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/empresa/parametros-del-local/",
+    "title": "Parámetros del Local - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.484Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0074-ayuda-configuracion-empresa-parametros-generales-de-la-empresa-8054036b.html",
+    "output_md": "docs/zeta/markdown/0074-ayuda-configuracion-empresa-parametros-generales-de-la-empresa-8054036b.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/empresa/parametros-generales-de-la-empresa/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/empresa/parametros-generales-de-la-empresa/",
+    "title": "Parámetros Generales - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.505Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0075-ayuda-configuracion-empresa-referencias-fb0bb695.html",
+    "output_md": "docs/zeta/markdown/0075-ayuda-configuracion-empresa-referencias-fb0bb695.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/empresa/referencias/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/empresa/referencias/",
+    "title": "Referencias - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.533Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0076-ayuda-configuracion-empresa-retenciones-6927fe78.html",
+    "output_md": "docs/zeta/markdown/0076-ayuda-configuracion-empresa-retenciones-6927fe78.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/empresa/retenciones/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/empresa/retenciones/",
+    "title": "Retenciones y Percepciones - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.576Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0077-ayuda-configuracion-empresa-tasas-de-iva-c8661d7b.html",
+    "output_md": "docs/zeta/markdown/0077-ayuda-configuracion-empresa-tasas-de-iva-c8661d7b.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/empresa/tasas-de-iva/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/empresa/tasas-de-iva/",
+    "title": "Tasas de IVA - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.602Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0078-ayuda-configuracion-empresa-textos-predefinidos-e776c7c3.html",
+    "output_md": "docs/zeta/markdown/0078-ayuda-configuracion-empresa-textos-predefinidos-e776c7c3.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/empresa/textos-predefinidos/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/empresa/textos-predefinidos/",
+    "title": "Textos Predefinidos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.625Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0079-ayuda-configuracion-empresa-terminales-pos-bf8b0dbc.html",
+    "output_md": "docs/zeta/markdown/0079-ayuda-configuracion-empresa-terminales-pos-bf8b0dbc.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/empresa/terminales-pos/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/empresa/terminales-pos/",
+    "title": "Terminales POS - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.649Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0080-ayuda-configuracion-empresa-vendedores-fac5cf64.html",
+    "output_md": "docs/zeta/markdown/0080-ayuda-configuracion-empresa-vendedores-fac5cf64.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/empresa/vendedores/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/empresa/vendedores/",
+    "title": "Vendedores - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.676Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0081-ayuda-configuracion-auditar-cambios-en-la-configuracion-bceb77a5.html",
+    "output_md": "docs/zeta/markdown/0081-ayuda-configuracion-auditar-cambios-en-la-configuracion-bceb77a5.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/auditar-cambios-en-la-configuracion/",
+    "url_final": "https://zetasoftware.info/ayuda/configuracion/auditar-cambios-en-la-configuracion/",
+    "title": "Auditar cambios en la Configuración - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.707Z",
+    "ayuda_branch": "configuracion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0082-ayuda-apis-datos-de-conexion-d56f74a1.html",
+    "output_md": "docs/zeta/markdown/0082-ayuda-apis-datos-de-conexion-d56f74a1.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/datos-de-conexion/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/datos-de-conexion/",
+    "title": "Datos de Conexión - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.734Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0083-ayuda-apis-f34dc2fa.html",
+    "output_md": "docs/zeta/markdown/0083-ayuda-apis-f34dc2fa.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/",
+    "title": "APIs - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.759Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0084-ayuda-apis-indice-de-apis-8feafa4b.html",
+    "output_md": "docs/zeta/markdown/0084-ayuda-apis-indice-de-apis-8feafa4b.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/",
+    "title": "Índice de APIs - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.796Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0085-ayuda-gestion-69b6ff63.html",
+    "output_md": "docs/zeta/markdown/0085-ayuda-gestion-69b6ff63.md",
+    "url_original": "https://zetasoftware.info/ayuda/gestion/",
+    "url_final": "https://zetasoftware.info/ayuda/gestion/",
+    "title": "Gestión PyME - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.816Z",
+    "ayuda_branch": "gestion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0086-ayuda-facturacion-3ac15720.html",
+    "output_md": "docs/zeta/markdown/0086-ayuda-facturacion-3ac15720.md",
+    "url_original": "https://zetasoftware.info/ayuda/facturacion/",
+    "url_final": "https://zetasoftware.info/ayuda/facturacion/",
+    "title": "Facturación Profesional - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.843Z",
+    "ayuda_branch": "facturacion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0087-ayuda-contabilidad-41863aee.html",
+    "output_md": "docs/zeta/markdown/0087-ayuda-contabilidad-41863aee.md",
+    "url_original": "https://zetasoftware.info/ayuda/contabilidad/",
+    "url_final": "https://zetasoftware.info/ayuda/contabilidad/",
+    "title": "Contabilidad - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.890Z",
+    "ayuda_branch": "contabilidad"
+  },
+  {
+    "source_html": "docs/zeta/raw/0088-ayuda-finanzas-personales-57ab5d40.html",
+    "output_md": "docs/zeta/markdown/0088-ayuda-finanzas-personales-57ab5d40.md",
+    "url_original": "https://zetasoftware.info/ayuda/finanzas-personales/",
+    "url_final": "https://zetasoftware.info/ayuda/finanzas-personales/",
+    "title": "Finanzas Personales - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.956Z",
+    "ayuda_branch": "finanzas-personales"
+  },
+  {
+    "source_html": "docs/zeta/raw/0089-ayuda-preguntas-frecuentes-a139fced.html",
+    "output_md": "docs/zeta/markdown/0089-ayuda-preguntas-frecuentes-a139fced.md",
+    "url_original": "https://zetasoftware.info/ayuda/preguntas-frecuentes/",
+    "url_final": "https://zetasoftware.info/ayuda/preguntas-frecuentes/",
+    "title": "Preguntas Frecuentes y Anexos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:01.988Z",
+    "ayuda_branch": "preguntas-frecuentes"
+  },
+  {
+    "source_html": "docs/zeta/raw/0090-ayuda-preguntas-frecuentes-cfes-4490d943.html",
+    "output_md": "docs/zeta/markdown/0090-ayuda-preguntas-frecuentes-cfes-4490d943.md",
+    "url_original": "https://zetasoftware.info/ayuda/preguntas-frecuentes/cfes/",
+    "url_final": "https://zetasoftware.info/ayuda/preguntas-frecuentes/cfes/",
+    "title": "CFEs - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.045Z",
+    "ayuda_branch": "preguntas-frecuentes"
+  },
+  {
+    "source_html": "docs/zeta/raw/0091-ayuda-preguntas-frecuentes-cfes-rechazos-y-anulaciones-de-cfes-d1241ca0.html",
+    "output_md": "docs/zeta/markdown/0091-ayuda-preguntas-frecuentes-cfes-rechazos-y-anulaciones-de-cfes-d1241ca0.md",
+    "url_original": "https://zetasoftware.info/ayuda/preguntas-frecuentes/cfes/rechazos-y-anulaciones-de-cfes/",
+    "url_final": "https://zetasoftware.info/ayuda/preguntas-frecuentes/cfes/rechazos-y-anulaciones-de-cfes/",
+    "title": "Rechazos y anulaciones de CFEs - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.095Z",
+    "ayuda_branch": "preguntas-frecuentes"
+  },
+  {
+    "source_html": "docs/zeta/raw/0092-ayuda-preguntas-frecuentes-contabilidad-ad980608.html",
+    "output_md": "docs/zeta/markdown/0092-ayuda-preguntas-frecuentes-contabilidad-ad980608.md",
+    "url_original": "https://zetasoftware.info/ayuda/preguntas-frecuentes/contabilidad/",
+    "url_final": "https://zetasoftware.info/ayuda/preguntas-frecuentes/contabilidad/",
+    "title": "Contabilidad - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.129Z",
+    "ayuda_branch": "preguntas-frecuentes"
+  },
+  {
+    "source_html": "docs/zeta/raw/0093-ayuda-preguntas-frecuentes-contabilidad-proceso-de-cierre-de-ejercicio-contable-0c0182c0.html",
+    "output_md": "docs/zeta/markdown/0093-ayuda-preguntas-frecuentes-contabilidad-proceso-de-cierre-de-ejercicio-contable-0c0182c0.md",
+    "url_original": "https://zetasoftware.info/ayuda/preguntas-frecuentes/contabilidad/proceso-de-cierre-de-ejercicio-contable/",
+    "url_final": "https://zetasoftware.info/ayuda/preguntas-frecuentes/contabilidad/proceso-de-cierre-de-ejercicio-contable/",
+    "title": "Proceso de Cierre de Ejercicio Contable - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.180Z",
+    "ayuda_branch": "preguntas-frecuentes"
+  },
+  {
+    "source_html": "docs/zeta/raw/0094-ayuda-actualizaciones-ae6d57b4.html",
+    "output_md": "docs/zeta/markdown/0094-ayuda-actualizaciones-ae6d57b4.md",
+    "url_original": "https://zetasoftware.info/ayuda/actualizaciones/",
+    "url_final": "https://zetasoftware.info/ayuda/actualizaciones/",
+    "title": "Actualizaciones - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.203Z",
+    "ayuda_branch": "actualizaciones"
+  },
+  {
+    "source_html": "docs/zeta/raw/0095-ayuda-actualizaciones-2026-2-61db8814.html",
+    "output_md": "docs/zeta/markdown/0095-ayuda-actualizaciones-2026-2-61db8814.md",
+    "url_original": "https://zetasoftware.info/ayuda/actualizaciones/2026-2/",
+    "url_final": "https://zetasoftware.info/ayuda/actualizaciones/2026-2/",
+    "title": "2026 - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.228Z",
+    "ayuda_branch": "actualizaciones"
+  },
+  {
+    "source_html": "docs/zeta/raw/0096-ayuda-actualizaciones-2026-2-01-enero-7805a038.html",
+    "output_md": "docs/zeta/markdown/0096-ayuda-actualizaciones-2026-2-01-enero-7805a038.md",
+    "url_original": "https://zetasoftware.info/ayuda/actualizaciones/2026-2/01-enero/",
+    "url_final": "https://zetasoftware.info/ayuda/actualizaciones/2026-2/01-enero/",
+    "title": "01 - Enero - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.260Z",
+    "ayuda_branch": "actualizaciones"
+  },
+  {
+    "source_html": "docs/zeta/raw/0097-ayuda-preguntas-frecuentes-gestion-pyme-8194cfd2.html",
+    "output_md": "docs/zeta/markdown/0097-ayuda-preguntas-frecuentes-gestion-pyme-8194cfd2.md",
+    "url_original": "https://zetasoftware.info/ayuda/preguntas-frecuentes/gestion-pyme/",
+    "url_final": "https://zetasoftware.info/ayuda/preguntas-frecuentes/gestion-pyme/",
+    "title": "Gestión PyME - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.312Z",
+    "ayuda_branch": "preguntas-frecuentes"
+  },
+  {
+    "source_html": "docs/zeta/raw/0098-ayuda-preguntas-frecuentes-gestion-pyme-como-configurar-un-nuevo-local-comercial-97aba3c9.html",
+    "output_md": "docs/zeta/markdown/0098-ayuda-preguntas-frecuentes-gestion-pyme-como-configurar-un-nuevo-local-comercial-97aba3c9.md",
+    "url_original": "https://zetasoftware.info/ayuda/preguntas-frecuentes/gestion-pyme/como-configurar-un-nuevo-local-comercial/",
+    "url_final": "https://zetasoftware.info/ayuda/preguntas-frecuentes/gestion-pyme/como-configurar-un-nuevo-local-comercial/",
+    "title": "¿Cómo configurar un nuevo Local Comercial? - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.327Z",
+    "ayuda_branch": "preguntas-frecuentes"
+  },
+  {
+    "source_html": "docs/zeta/raw/0099-ayuda-actualizaciones-2025-2-789e222c.html",
+    "output_md": "docs/zeta/markdown/0099-ayuda-actualizaciones-2025-2-789e222c.md",
+    "url_original": "https://zetasoftware.info/ayuda/actualizaciones/2025-2/",
+    "url_final": "https://zetasoftware.info/ayuda/actualizaciones/2025-2/",
+    "title": "2025 - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.364Z",
+    "ayuda_branch": "actualizaciones"
+  },
+  {
+    "source_html": "docs/zeta/raw/0100-ayuda-actualizaciones-2025-2-11-noviembre-df73a935.html",
+    "output_md": "docs/zeta/markdown/0100-ayuda-actualizaciones-2025-2-11-noviembre-df73a935.md",
+    "url_original": "https://zetasoftware.info/ayuda/actualizaciones/2025-2/11-noviembre/",
+    "url_final": "https://zetasoftware.info/ayuda/actualizaciones/2025-2/11-noviembre/",
+    "title": "11 - Noviembre - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.410Z",
+    "ayuda_branch": "actualizaciones"
+  },
+  {
+    "source_html": "docs/zeta/raw/0101-ayuda-apis-indice-de-apis-configuracion-399cd3c2.html",
+    "output_md": "docs/zeta/markdown/0101-ayuda-apis-indice-de-apis-configuracion-399cd3c2.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/",
+    "title": "Configuración - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.434Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0102-ayuda-apis-indice-de-apis-configuracion-sucursales-de-contactos-1e5beec6.html",
+    "output_md": "docs/zeta/markdown/0102-ayuda-apis-indice-de-apis-configuracion-sucursales-de-contactos-1e5beec6.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/sucursales-de-contactos/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/sucursales-de-contactos/",
+    "title": "API Sucursales de Contactos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.456Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0103-ayuda-actualizaciones-2025-2-10-octubre-1bd7990c.html",
+    "output_md": "docs/zeta/markdown/0103-ayuda-actualizaciones-2025-2-10-octubre-1bd7990c.md",
+    "url_original": "https://zetasoftware.info/ayuda/actualizaciones/2025-2/10-octubre/",
+    "url_final": "https://zetasoftware.info/ayuda/actualizaciones/2025-2/10-octubre/",
+    "title": "10 - Octubre - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.488Z",
+    "ayuda_branch": "actualizaciones"
+  },
+  {
+    "source_html": "docs/zeta/raw/0104-ayuda-actualizaciones-2025-2-09-setiembre-8b1e3731.html",
+    "output_md": "docs/zeta/markdown/0104-ayuda-actualizaciones-2025-2-09-setiembre-8b1e3731.md",
+    "url_original": "https://zetasoftware.info/ayuda/actualizaciones/2025-2/09-setiembre/",
+    "url_final": "https://zetasoftware.info/ayuda/actualizaciones/2025-2/09-setiembre/",
+    "title": "09 - Setiembre - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.513Z",
+    "ayuda_branch": "actualizaciones"
+  },
+  {
+    "source_html": "docs/zeta/raw/0105-ayuda-actualizaciones-2025-2-08-agosto-016222b5.html",
+    "output_md": "docs/zeta/markdown/0105-ayuda-actualizaciones-2025-2-08-agosto-016222b5.md",
+    "url_original": "https://zetasoftware.info/ayuda/actualizaciones/2025-2/08-agosto/",
+    "url_final": "https://zetasoftware.info/ayuda/actualizaciones/2025-2/08-agosto/",
+    "title": "08 - Agosto - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.535Z",
+    "ayuda_branch": "actualizaciones"
+  },
+  {
+    "source_html": "docs/zeta/raw/0106-ayuda-actualizaciones-2025-2-07-julio-5e8b0a61.html",
+    "output_md": "docs/zeta/markdown/0106-ayuda-actualizaciones-2025-2-07-julio-5e8b0a61.md",
+    "url_original": "https://zetasoftware.info/ayuda/actualizaciones/2025-2/07-julio/",
+    "url_final": "https://zetasoftware.info/ayuda/actualizaciones/2025-2/07-julio/",
+    "title": "07 - Julio - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.565Z",
+    "ayuda_branch": "actualizaciones"
+  },
+  {
+    "source_html": "docs/zeta/raw/0107-ayuda-facturacion-comprobantes-por-cliente-5e819f3c.html",
+    "output_md": "docs/zeta/markdown/0107-ayuda-facturacion-comprobantes-por-cliente-5e819f3c.md",
+    "url_original": "https://zetasoftware.info/ayuda/facturacion/comprobantes-por-cliente/",
+    "url_final": "https://zetasoftware.info/ayuda/facturacion/comprobantes-por-cliente/",
+    "title": "Comprobantes por Cliente - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.591Z",
+    "ayuda_branch": "facturacion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0108-ayuda-facturacion-comprobantes-por-cliente-ver-todos-los-recibos-77a133fa.html",
+    "output_md": "docs/zeta/markdown/0108-ayuda-facturacion-comprobantes-por-cliente-ver-todos-los-recibos-77a133fa.md",
+    "url_original": "https://zetasoftware.info/ayuda/facturacion/comprobantes-por-cliente/ver-todos-los-recibos/",
+    "url_final": "https://zetasoftware.info/ayuda/facturacion/comprobantes-por-cliente/ver-todos-los-recibos/",
+    "title": "Ver Todos los Recibos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.612Z",
+    "ayuda_branch": "facturacion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0109-ayuda-gestion-comprobantes-96c5c9b6.html",
+    "output_md": "docs/zeta/markdown/0109-ayuda-gestion-comprobantes-96c5c9b6.md",
+    "url_original": "https://zetasoftware.info/ayuda/gestion/comprobantes/",
+    "url_final": "https://zetasoftware.info/ayuda/gestion/comprobantes/",
+    "title": "Comprobantes - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.638Z",
+    "ayuda_branch": "gestion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0110-ayuda-gestion-informes-78884459.html",
+    "output_md": "docs/zeta/markdown/0110-ayuda-gestion-informes-78884459.md",
+    "url_original": "https://zetasoftware.info/ayuda/gestion/informes/",
+    "url_final": "https://zetasoftware.info/ayuda/gestion/informes/",
+    "title": "Informes - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.696Z",
+    "ayuda_branch": "gestion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0111-ayuda-gestion-herramientas-cb5fcc3c.html",
+    "output_md": "docs/zeta/markdown/0111-ayuda-gestion-herramientas-cb5fcc3c.md",
+    "url_original": "https://zetasoftware.info/ayuda/gestion/herramientas/",
+    "url_final": "https://zetasoftware.info/ayuda/gestion/herramientas/",
+    "title": "Herramientas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.726Z",
+    "ayuda_branch": "gestion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0112-ayuda-gestion-oportunidades-de-venta-9691cb06.html",
+    "output_md": "docs/zeta/markdown/0112-ayuda-gestion-oportunidades-de-venta-9691cb06.md",
+    "url_original": "https://zetasoftware.info/ayuda/gestion/oportunidades-de-venta/",
+    "url_final": "https://zetasoftware.info/ayuda/gestion/oportunidades-de-venta/",
+    "title": "Oportunidades de Venta - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.757Z",
+    "ayuda_branch": "gestion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0113-ayuda-gestion-contratos-52914692.html",
+    "output_md": "docs/zeta/markdown/0113-ayuda-gestion-contratos-52914692.md",
+    "url_original": "https://zetasoftware.info/ayuda/gestion/contratos/",
+    "url_final": "https://zetasoftware.info/ayuda/gestion/contratos/",
+    "title": "Contratos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.786Z",
+    "ayuda_branch": "gestion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0114-ayuda-facturacion-facturas-bb4fd864.html",
+    "output_md": "docs/zeta/markdown/0114-ayuda-facturacion-facturas-bb4fd864.md",
+    "url_original": "https://zetasoftware.info/ayuda/facturacion/facturas/",
+    "url_final": "https://zetasoftware.info/ayuda/facturacion/facturas/",
+    "title": "Facturas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.806Z",
+    "ayuda_branch": "facturacion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0115-ayuda-facturacion-recibos-e71c1206.html",
+    "output_md": "docs/zeta/markdown/0115-ayuda-facturacion-recibos-e71c1206.md",
+    "url_original": "https://zetasoftware.info/ayuda/facturacion/recibos/",
+    "url_final": "https://zetasoftware.info/ayuda/facturacion/recibos/",
+    "title": "Recibos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.845Z",
+    "ayuda_branch": "facturacion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0116-ayuda-facturacion-informes-5d85bf29.html",
+    "output_md": "docs/zeta/markdown/0116-ayuda-facturacion-informes-5d85bf29.md",
+    "url_original": "https://zetasoftware.info/ayuda/facturacion/informes/",
+    "url_final": "https://zetasoftware.info/ayuda/facturacion/informes/",
+    "title": "Informes - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.866Z",
+    "ayuda_branch": "facturacion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0117-ayuda-facturacion-analisis-0f6d9bf7.html",
+    "output_md": "docs/zeta/markdown/0117-ayuda-facturacion-analisis-0f6d9bf7.md",
+    "url_original": "https://zetasoftware.info/ayuda/facturacion/analisis/",
+    "url_final": "https://zetasoftware.info/ayuda/facturacion/analisis/",
+    "title": "Análisis - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.895Z",
+    "ayuda_branch": "facturacion"
+  },
+  {
+    "source_html": "docs/zeta/raw/0118-ayuda-contabilidad-asientos-6cecb121.html",
+    "output_md": "docs/zeta/markdown/0118-ayuda-contabilidad-asientos-6cecb121.md",
+    "url_original": "https://zetasoftware.info/ayuda/contabilidad/asientos/",
+    "url_final": "https://zetasoftware.info/ayuda/contabilidad/asientos/",
+    "title": "Asientos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.924Z",
+    "ayuda_branch": "contabilidad"
+  },
+  {
+    "source_html": "docs/zeta/raw/0119-ayuda-contabilidad-comprobantes-contables-7dbab7db.html",
+    "output_md": "docs/zeta/markdown/0119-ayuda-contabilidad-comprobantes-contables-7dbab7db.md",
+    "url_original": "https://zetasoftware.info/ayuda/contabilidad/comprobantes-contables/",
+    "url_final": "https://zetasoftware.info/ayuda/contabilidad/comprobantes-contables/",
+    "title": "Comprobantes Contables - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.968Z",
+    "ayuda_branch": "contabilidad"
+  },
+  {
+    "source_html": "docs/zeta/raw/0120-ayuda-contabilidad-informes-3dfd30a2.html",
+    "output_md": "docs/zeta/markdown/0120-ayuda-contabilidad-informes-3dfd30a2.md",
+    "url_original": "https://zetasoftware.info/ayuda/contabilidad/informes/",
+    "url_final": "https://zetasoftware.info/ayuda/contabilidad/informes/",
+    "title": "Informes - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:02.993Z",
+    "ayuda_branch": "contabilidad"
+  },
+  {
+    "source_html": "docs/zeta/raw/0121-ayuda-contabilidad-herramientas-b0e1dfaa.html",
+    "output_md": "docs/zeta/markdown/0121-ayuda-contabilidad-herramientas-b0e1dfaa.md",
+    "url_original": "https://zetasoftware.info/ayuda/contabilidad/herramientas/",
+    "url_final": "https://zetasoftware.info/ayuda/contabilidad/herramientas/",
+    "title": "Herramientas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.030Z",
+    "ayuda_branch": "contabilidad"
+  },
+  {
+    "source_html": "docs/zeta/raw/0122-ayuda-contabilidad-videos-9e50689f.html",
+    "output_md": "docs/zeta/markdown/0122-ayuda-contabilidad-videos-9e50689f.md",
+    "url_original": "https://zetasoftware.info/ayuda/contabilidad/videos/",
+    "url_final": "https://zetasoftware.info/ayuda/contabilidad/videos/",
+    "title": "Videos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.058Z",
+    "ayuda_branch": "contabilidad"
+  },
+  {
+    "source_html": "docs/zeta/raw/0123-ayuda-finanzas-personales-comprobantes-e0e9a460.html",
+    "output_md": "docs/zeta/markdown/0123-ayuda-finanzas-personales-comprobantes-e0e9a460.md",
+    "url_original": "https://zetasoftware.info/ayuda/finanzas-personales/comprobantes/",
+    "url_final": "https://zetasoftware.info/ayuda/finanzas-personales/comprobantes/",
+    "title": "Comprobantes - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.093Z",
+    "ayuda_branch": "finanzas-personales"
+  },
+  {
+    "source_html": "docs/zeta/raw/0124-ayuda-finanzas-personales-presupuesto-aecfe0e8.html",
+    "output_md": "docs/zeta/markdown/0124-ayuda-finanzas-personales-presupuesto-aecfe0e8.md",
+    "url_original": "https://zetasoftware.info/ayuda/finanzas-personales/presupuesto/",
+    "url_final": "https://zetasoftware.info/ayuda/finanzas-personales/presupuesto/",
+    "title": "Resumen y Presupuesto - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.161Z",
+    "ayuda_branch": "finanzas-personales"
+  },
+  {
+    "source_html": "docs/zeta/raw/0125-ayuda-finanzas-personales-analisis-f5029533.html",
+    "output_md": "docs/zeta/markdown/0125-ayuda-finanzas-personales-analisis-f5029533.md",
+    "url_original": "https://zetasoftware.info/ayuda/finanzas-personales/analisis/",
+    "url_final": "https://zetasoftware.info/ayuda/finanzas-personales/analisis/",
+    "title": "Análisis - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.206Z",
+    "ayuda_branch": "finanzas-personales"
+  },
+  {
+    "source_html": "docs/zeta/raw/0126-ayuda-finanzas-personales-configuracion-29542f65.html",
+    "output_md": "docs/zeta/markdown/0126-ayuda-finanzas-personales-configuracion-29542f65.md",
+    "url_original": "https://zetasoftware.info/ayuda/finanzas-personales/configuracion/",
+    "url_final": "https://zetasoftware.info/ayuda/finanzas-personales/configuracion/",
+    "title": "Configuración - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.225Z",
+    "ayuda_branch": "finanzas-personales"
+  },
+  {
+    "source_html": "docs/zeta/raw/0127-ayuda-finanzas-personales-videos-421e88c7.html",
+    "output_md": "docs/zeta/markdown/0127-ayuda-finanzas-personales-videos-421e88c7.md",
+    "url_original": "https://zetasoftware.info/ayuda/finanzas-personales/videos/",
+    "url_final": "https://zetasoftware.info/ayuda/finanzas-personales/videos/",
+    "title": "Videos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.253Z",
+    "ayuda_branch": "finanzas-personales"
+  },
+  {
+    "source_html": "docs/zeta/raw/0128-ayuda-cfes-eb7e718a.html",
+    "output_md": "docs/zeta/markdown/0128-ayuda-cfes-eb7e718a.md",
+    "url_original": "https://zetasoftware.info/ayuda/cfes/",
+    "url_final": "https://zetasoftware.info/ayuda/cfes/",
+    "title": "CFEs - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.274Z",
+    "ayuda_branch": "cfes"
+  },
+  {
+    "source_html": "docs/zeta/raw/0129-ayuda-cfes-introduccion-general-a-la-facturacion-electronica-d6a74737.html",
+    "output_md": "docs/zeta/markdown/0129-ayuda-cfes-introduccion-general-a-la-facturacion-electronica-d6a74737.md",
+    "url_original": "https://zetasoftware.info/ayuda/cfes/introduccion-general-a-la-facturacion-electronica/",
+    "url_final": "https://zetasoftware.info/ayuda/cfes/introduccion-general-a-la-facturacion-electronica/",
+    "title": "Introducción General - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.300Z",
+    "ayuda_branch": "cfes"
+  },
+  {
+    "source_html": "docs/zeta/raw/0130-ayuda-cfes-cfes-emitidos-356f3055.html",
+    "output_md": "docs/zeta/markdown/0130-ayuda-cfes-cfes-emitidos-356f3055.md",
+    "url_original": "https://zetasoftware.info/ayuda/cfes/cfes-emitidos/",
+    "url_final": "https://zetasoftware.info/ayuda/cfes/cfes-emitidos/",
+    "title": "CFEs Emitidos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.328Z",
+    "ayuda_branch": "cfes"
+  },
+  {
+    "source_html": "docs/zeta/raw/0131-ayuda-cfes-cfes-recibidos-789603a4.html",
+    "output_md": "docs/zeta/markdown/0131-ayuda-cfes-cfes-recibidos-789603a4.md",
+    "url_original": "https://zetasoftware.info/ayuda/cfes/cfes-recibidos/",
+    "url_final": "https://zetasoftware.info/ayuda/cfes/cfes-recibidos/",
+    "title": "CFEs Recibidos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.345Z",
+    "ayuda_branch": "cfes"
+  },
+  {
+    "source_html": "docs/zeta/raw/0132-ayuda-cfes-reportes-diarios-2572b90b.html",
+    "output_md": "docs/zeta/markdown/0132-ayuda-cfes-reportes-diarios-2572b90b.md",
+    "url_original": "https://zetasoftware.info/ayuda/cfes/reportes-diarios/",
+    "url_final": "https://zetasoftware.info/ayuda/cfes/reportes-diarios/",
+    "title": "Reportes Diarios - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.370Z",
+    "ayuda_branch": "cfes"
+  },
+  {
+    "source_html": "docs/zeta/raw/0133-ayuda-cfes-anular-cfes-31c338e9.html",
+    "output_md": "docs/zeta/markdown/0133-ayuda-cfes-anular-cfes-31c338e9.md",
+    "url_original": "https://zetasoftware.info/ayuda/cfes/anular-cfes/",
+    "url_final": "https://zetasoftware.info/ayuda/cfes/anular-cfes/",
+    "title": "Anular CFEs - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.420Z",
+    "ayuda_branch": "cfes"
+  },
+  {
+    "source_html": "docs/zeta/raw/0134-ayuda-apis-metodos-generales-b5ca3a44.html",
+    "output_md": "docs/zeta/markdown/0134-ayuda-apis-metodos-generales-b5ca3a44.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/metodos-generales/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/metodos-generales/",
+    "title": "Métodos de la API - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.436Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0135-ayuda-apis-soap-y-rest-4f8f8fd9.html",
+    "output_md": "docs/zeta/markdown/0135-ayuda-apis-soap-y-rest-4f8f8fd9.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/soap-y-rest/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/soap-y-rest/",
+    "title": "Protocolos soportados: SOAP y REST - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.470Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0136-ayuda-preguntas-frecuentes-generales-160c010e.html",
+    "output_md": "docs/zeta/markdown/0136-ayuda-preguntas-frecuentes-generales-160c010e.md",
+    "url_original": "https://zetasoftware.info/ayuda/preguntas-frecuentes/generales/",
+    "url_final": "https://zetasoftware.info/ayuda/preguntas-frecuentes/generales/",
+    "title": "Generales - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.496Z",
+    "ayuda_branch": "preguntas-frecuentes"
+  },
+  {
+    "source_html": "docs/zeta/raw/0137-ayuda-preguntas-frecuentes-facturacion-profesional-1b887d5d.html",
+    "output_md": "docs/zeta/markdown/0137-ayuda-preguntas-frecuentes-facturacion-profesional-1b887d5d.md",
+    "url_original": "https://zetasoftware.info/ayuda/preguntas-frecuentes/facturacion-profesional/",
+    "url_final": "https://zetasoftware.info/ayuda/preguntas-frecuentes/facturacion-profesional/",
+    "title": "Facturación Profesional - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.525Z",
+    "ayuda_branch": "preguntas-frecuentes"
+  },
+  {
+    "source_html": "docs/zeta/raw/0138-ayuda-preguntas-frecuentes-finanzas-personales-f4246cab.html",
+    "output_md": "docs/zeta/markdown/0138-ayuda-preguntas-frecuentes-finanzas-personales-f4246cab.md",
+    "url_original": "https://zetasoftware.info/ayuda/preguntas-frecuentes/finanzas-personales/",
+    "url_final": "https://zetasoftware.info/ayuda/preguntas-frecuentes/finanzas-personales/",
+    "title": "Finanzas Personales - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.550Z",
+    "ayuda_branch": "preguntas-frecuentes"
+  },
+  {
+    "source_html": "docs/zeta/raw/0139-ayuda-actualizaciones-2022-2-45df6384.html",
+    "output_md": "docs/zeta/markdown/0139-ayuda-actualizaciones-2022-2-45df6384.md",
+    "url_original": "https://zetasoftware.info/ayuda/actualizaciones/2022-2/",
+    "url_final": "https://zetasoftware.info/ayuda/actualizaciones/2022-2/",
+    "title": "2022 - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.573Z",
+    "ayuda_branch": "actualizaciones"
+  },
+  {
+    "source_html": "docs/zeta/raw/0140-ayuda-actualizaciones-2023-2-4827ebac.html",
+    "output_md": "docs/zeta/markdown/0140-ayuda-actualizaciones-2023-2-4827ebac.md",
+    "url_original": "https://zetasoftware.info/ayuda/actualizaciones/2023-2/",
+    "url_final": "https://zetasoftware.info/ayuda/actualizaciones/2023-2/",
+    "title": "2023 - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.593Z",
+    "ayuda_branch": "actualizaciones"
+  },
+  {
+    "source_html": "docs/zeta/raw/0141-ayuda-actualizaciones-2024-2-d98ccd3b.html",
+    "output_md": "docs/zeta/markdown/0141-ayuda-actualizaciones-2024-2-d98ccd3b.md",
+    "url_original": "https://zetasoftware.info/ayuda/actualizaciones/2024-2/",
+    "url_final": "https://zetasoftware.info/ayuda/actualizaciones/2024-2/",
+    "title": "2024 - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.617Z",
+    "ayuda_branch": "actualizaciones"
+  },
+  {
+    "source_html": "docs/zeta/raw/0142-ayuda-preguntas-frecuentes-generales-como-configurar-y-utilizar-la-verificacion-de-correo-electronico-en-zetasoftware-9dfc3ed8.html",
+    "output_md": "docs/zeta/markdown/0142-ayuda-preguntas-frecuentes-generales-como-configurar-y-utilizar-la-verificacion-de-correo-electronico-en-zetasoftware-9dfc3ed8.md",
+    "url_original": "https://zetasoftware.info/ayuda/preguntas-frecuentes/generales/como-configurar-y-utilizar-la-verificacion-de-correo-electronico-en-zetasoftware/",
+    "url_final": "https://zetasoftware.info/ayuda/preguntas-frecuentes/generales/como-configurar-y-utilizar-la-verificacion-de-correo-electronico-en-zetasoftware/",
+    "title": "¿Cómo configurar y utilizar la Verificación de Correo Electrónico en ZetaSoftware? - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.639Z",
+    "ayuda_branch": "preguntas-frecuentes"
+  },
+  {
+    "source_html": "docs/zeta/raw/0143-ayuda-configuracion-comprobantes-datos-adicionales-en-facturacion-db6ba0f0.html",
+    "output_md": "docs/zeta/markdown/0143-ayuda-configuracion-comprobantes-datos-adicionales-en-facturacion-db6ba0f0.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/comprobantes/datos-adicionales-en-facturacion/",
+    "url_final": "https://zetasoftware.info/",
+    "title": "Gestión PyME, Facturación Electrónica y Contabilidad Online - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.668Z",
+    "ayuda_branch": null
+  },
+  {
+    "source_html": "docs/zeta/raw/0144-ayuda-preguntas-frecuentes-generales-como-funcionan-y-cuales-son-las-ventajas-de-las-grillas-en-zetasoftware-707b82c7.html",
+    "output_md": "docs/zeta/markdown/0144-ayuda-preguntas-frecuentes-generales-como-funcionan-y-cuales-son-las-ventajas-de-las-grillas-en-zetasoftware-707b82c7.md",
+    "url_original": "https://zetasoftware.info/ayuda/preguntas-frecuentes/generales/como-funcionan-y-cuales-son-las-ventajas-de-las-grillas-en-zetasoftware/",
+    "url_final": "https://zetasoftware.info/ayuda/preguntas-frecuentes/generales/como-funcionan-y-cuales-son-las-ventajas-de-las-grillas-en-zetasoftware/",
+    "title": "Utilizando las Grillas en ZetaSoftware: ¿Qué necesitas saber? - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.688Z",
+    "ayuda_branch": "preguntas-frecuentes"
+  },
+  {
+    "source_html": "docs/zeta/raw/0145-ayuda-contabilidad-herramientas-asientos-automaticos-28e9f96c.html",
+    "output_md": "docs/zeta/markdown/0145-ayuda-contabilidad-herramientas-asientos-automaticos-28e9f96c.md",
+    "url_original": "https://zetasoftware.info/ayuda/contabilidad/herramientas/asientos-automaticos/",
+    "url_final": "https://zetasoftware.info/ayuda/contabilidad/herramientas/asientos-automaticos/",
+    "title": "Asientos Automáticos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.716Z",
+    "ayuda_branch": "contabilidad"
+  },
+  {
+    "source_html": "docs/zeta/raw/0146-ayuda-configuracion-contactos-exportar-e-importar-contactos-con-excel-f2aedfe3.html",
+    "output_md": "docs/zeta/markdown/0146-ayuda-configuracion-contactos-exportar-e-importar-contactos-con-excel-f2aedfe3.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contactos/exportar-e-importar-contactos-con-excel/",
+    "url_final": "https://zetasoftware.info/",
+    "title": "Gestión PyME, Facturación Electrónica y Contabilidad Online - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.765Z",
+    "ayuda_branch": null
+  },
+  {
+    "source_html": "docs/zeta/raw/0147-ayuda-configuracion-contactos-anotaciones-del-contacto-b29bf89c.html",
+    "output_md": "docs/zeta/markdown/0147-ayuda-configuracion-contactos-anotaciones-del-contacto-b29bf89c.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contactos/anotaciones-del-contacto/",
+    "url_final": "https://zetasoftware.info/",
+    "title": "Gestión PyME, Facturación Electrónica y Contabilidad Online - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.791Z",
+    "ayuda_branch": null
+  },
+  {
+    "source_html": "docs/zeta/raw/0148-ayuda-configuracion-contactos-clientes-y-proveedores-en-modulo-contabilidad-8ae3a971.html",
+    "output_md": "docs/zeta/markdown/0148-ayuda-configuracion-contactos-clientes-y-proveedores-en-modulo-contabilidad-8ae3a971.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contactos/clientes-y-proveedores-en-modulo-contabilidad/",
+    "url_final": "https://zetasoftware.info/",
+    "title": "Gestión PyME, Facturación Electrónica y Contabilidad Online - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.815Z",
+    "ayuda_branch": null
+  },
+  {
+    "source_html": "docs/zeta/raw/0149-ayuda-configuracion-contactos-importar-descuentos-de-clientes-47dbd481.html",
+    "output_md": "docs/zeta/markdown/0149-ayuda-configuracion-contactos-importar-descuentos-de-clientes-47dbd481.md",
+    "url_original": "https://zetasoftware.info/ayuda/configuracion/contactos/importar-descuentos-de-clientes/",
+    "url_final": "https://zetasoftware.info/",
+    "title": "Gestión PyME, Facturación Electrónica y Contabilidad Online - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.836Z",
+    "ayuda_branch": null
+  },
+  {
+    "source_html": "docs/zeta/raw/0150-ayuda-preguntas-frecuentes-generales-extranet-36e0132c.html",
+    "output_md": "docs/zeta/markdown/0150-ayuda-preguntas-frecuentes-generales-extranet-36e0132c.md",
+    "url_original": "https://zetasoftware.info/ayuda/preguntas-frecuentes/generales/extranet/",
+    "url_final": "https://zetasoftware.info/ayuda/preguntas-frecuentes/generales/extranet/",
+    "title": "¿Qué es y para que sirve la Extranet? - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.858Z",
+    "ayuda_branch": "preguntas-frecuentes"
+  },
+  {
+    "source_html": "docs/zeta/raw/0151-ayuda-apis-indice-de-apis-gestion-y-contabilidad-6ff6e113.html",
+    "output_md": "docs/zeta/markdown/0151-ayuda-apis-indice-de-apis-gestion-y-contabilidad-6ff6e113.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/",
+    "title": "Gestión PyME y Contabilidad - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.887Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0152-ayuda-apis-indice-de-apis-gestion-y-contabilidad-balance-contable-8da7726c.html",
+    "output_md": "docs/zeta/markdown/0152-ayuda-apis-indice-de-apis-gestion-y-contabilidad-balance-contable-8da7726c.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/balance-contable/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/balance-contable/",
+    "title": "API Balance Contable - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.906Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0153-ayuda-apis-indice-de-apis-gestion-y-contabilidad-bandeja-entrada-de-asientos-a74ec7cc.html",
+    "output_md": "docs/zeta/markdown/0153-ayuda-apis-indice-de-apis-gestion-y-contabilidad-bandeja-entrada-de-asientos-a74ec7cc.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/bandeja-entrada-de-asientos/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/bandeja-entrada-de-asientos/",
+    "title": "API Bandeja de Entrada de Asientos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.938Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0154-ayuda-apis-indice-de-apis-gestion-y-contabilidad-cfes-recibidos-391c5f2c.html",
+    "output_md": "docs/zeta/markdown/0154-ayuda-apis-indice-de-apis-gestion-y-contabilidad-cfes-recibidos-391c5f2c.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/cfes-recibidos/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/cfes-recibidos/",
+    "title": "API CFEs Recibidos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.968Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0155-ayuda-apis-indice-de-apis-gestion-y-contabilidad-cheques-recibidos-1bf9e4fc.html",
+    "output_md": "docs/zeta/markdown/0155-ayuda-apis-indice-de-apis-gestion-y-contabilidad-cheques-recibidos-1bf9e4fc.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/cheques-recibidos/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/cheques-recibidos/",
+    "title": "API Cheques Recibidos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:03.993Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0156-ayuda-apis-indice-de-apis-gestion-y-contabilidad-comprobantes-por-cliente-ee99ca82.html",
+    "output_md": "docs/zeta/markdown/0156-ayuda-apis-indice-de-apis-gestion-y-contabilidad-comprobantes-por-cliente-ee99ca82.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/comprobantes-por-cliente/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/comprobantes-por-cliente/",
+    "title": "API Comprobantes por Cliente - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.024Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0157-ayuda-apis-indice-de-apis-gestion-y-contabilidad-consulta-de-asientos-95083d11.html",
+    "output_md": "docs/zeta/markdown/0157-ayuda-apis-indice-de-apis-gestion-y-contabilidad-consulta-de-asientos-95083d11.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/consulta-de-asientos/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/consulta-de-asientos/",
+    "title": "API Consulta de Asientos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.053Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0158-ayuda-apis-indice-de-apis-gestion-y-contabilidad-cuotas-de-cliente-y-proveedor-e050b125.html",
+    "output_md": "docs/zeta/markdown/0158-ayuda-apis-indice-de-apis-gestion-y-contabilidad-cuotas-de-cliente-y-proveedor-e050b125.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/cuotas-de-cliente-y-proveedor/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/cuotas-de-cliente-y-proveedor/",
+    "title": "API Cuotas Pendientes - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.080Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0159-ayuda-apis-indice-de-apis-gestion-y-contabilidad-facturas-de-clientes-c92a871f.html",
+    "output_md": "docs/zeta/markdown/0159-ayuda-apis-indice-de-apis-gestion-y-contabilidad-facturas-de-clientes-c92a871f.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/facturas-de-clientes/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/facturas-de-clientes/",
+    "title": "API Facturas de Clientes - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.129Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0160-ayuda-apis-indice-de-apis-gestion-y-contabilidad-facturas-de-proveedores-9880fff7.html",
+    "output_md": "docs/zeta/markdown/0160-ayuda-apis-indice-de-apis-gestion-y-contabilidad-facturas-de-proveedores-9880fff7.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/facturas-de-proveedores/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/facturas-de-proveedores/",
+    "title": "API Facturas de Proveedores - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.174Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0161-ayuda-apis-indice-de-apis-gestion-y-contabilidad-movimientos-bancarios-a375629c.html",
+    "output_md": "docs/zeta/markdown/0161-ayuda-apis-indice-de-apis-gestion-y-contabilidad-movimientos-bancarios-a375629c.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/movimientos-bancarios/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/movimientos-bancarios/",
+    "title": "API Movimientos Bancarios - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.209Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0162-ayuda-apis-indice-de-apis-gestion-y-contabilidad-movimientos-de-articulos-d9b27fba.html",
+    "output_md": "docs/zeta/markdown/0162-ayuda-apis-indice-de-apis-gestion-y-contabilidad-movimientos-de-articulos-d9b27fba.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/movimientos-de-articulos/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/movimientos-de-articulos/",
+    "title": "API Movimientos de Artículos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.233Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0163-ayuda-apis-indice-de-apis-gestion-y-contabilidad-movimientos-de-caja-2ab591eb.html",
+    "output_md": "docs/zeta/markdown/0163-ayuda-apis-indice-de-apis-gestion-y-contabilidad-movimientos-de-caja-2ab591eb.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/movimientos-de-caja/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/movimientos-de-caja/",
+    "title": "API Movimientos de Caja - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.266Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0164-ayuda-apis-indice-de-apis-gestion-y-contabilidad-precio-base-y-precio-de-venta-cbb324bc.html",
+    "output_md": "docs/zeta/markdown/0164-ayuda-apis-indice-de-apis-gestion-y-contabilidad-precio-base-y-precio-de-venta-cbb324bc.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/precio-base-y-precio-de-venta/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/precio-base-y-precio-de-venta/",
+    "title": "API Precio Base y Precio de Venta - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.302Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0165-ayuda-apis-indice-de-apis-gestion-y-contabilidad-recibo-de-cobro-58a116e7.html",
+    "output_md": "docs/zeta/markdown/0165-ayuda-apis-indice-de-apis-gestion-y-contabilidad-recibo-de-cobro-58a116e7.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/recibo-de-cobro/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/recibo-de-cobro/",
+    "title": "API Recibo de Cobro - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.322Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0166-ayuda-apis-indice-de-apis-gestion-y-contabilidad-recibo-de-pago-1632149f.html",
+    "output_md": "docs/zeta/markdown/0166-ayuda-apis-indice-de-apis-gestion-y-contabilidad-recibo-de-pago-1632149f.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/recibo-de-pago/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/recibo-de-pago/",
+    "title": "API Recibo de Pago - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.347Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0167-ayuda-apis-indice-de-apis-gestion-y-contabilidad-stock-actual-d3a87100.html",
+    "output_md": "docs/zeta/markdown/0167-ayuda-apis-indice-de-apis-gestion-y-contabilidad-stock-actual-d3a87100.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/stock-actual/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/stock-actual/",
+    "title": "API Stock Actual - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.372Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0168-ayuda-apis-indice-de-apis-gestion-y-contabilidad-tarjetas-recibidas-6cacb4dd.html",
+    "output_md": "docs/zeta/markdown/0168-ayuda-apis-indice-de-apis-gestion-y-contabilidad-tarjetas-recibidas-6cacb4dd.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/tarjetas-recibidas/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/tarjetas-recibidas/",
+    "title": "API Tarjetas Recibidas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.394Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0169-ayuda-apis-indice-de-apis-gestion-y-contabilidad-eliminar-remitos-23ef8c34.html",
+    "output_md": "docs/zeta/markdown/0169-ayuda-apis-indice-de-apis-gestion-y-contabilidad-eliminar-remitos-23ef8c34.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/eliminar-remitos/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/gestion-y-contabilidad/eliminar-remitos/",
+    "title": "API Eliminar Remitos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.421Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0170-ayuda-apis-indice-de-apis-configuracion-articulos-8b21cf20.html",
+    "output_md": "docs/zeta/markdown/0170-ayuda-apis-indice-de-apis-configuracion-articulos-8b21cf20.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/articulos/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/articulos/",
+    "title": "API Artículos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.444Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0171-ayuda-apis-indice-de-apis-configuracion-auxiliares-d4eade38.html",
+    "output_md": "docs/zeta/markdown/0171-ayuda-apis-indice-de-apis-configuracion-auxiliares-d4eade38.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/auxiliares/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/auxiliares/",
+    "title": "API Auxiliares - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.467Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0172-ayuda-apis-indice-de-apis-configuracion-bancos-y-financieras-72accf95.html",
+    "output_md": "docs/zeta/markdown/0172-ayuda-apis-indice-de-apis-configuracion-bancos-y-financieras-72accf95.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/bancos-y-financieras/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/bancos-y-financieras/",
+    "title": "API Bancos y Financieras - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.518Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0173-ayuda-apis-indice-de-apis-configuracion-cajas-6ceaddab.html",
+    "output_md": "docs/zeta/markdown/0173-ayuda-apis-indice-de-apis-configuracion-cajas-6ceaddab.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/cajas/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/cajas/",
+    "title": "API Cajas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.539Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0174-ayuda-apis-indice-de-apis-configuracion-campanas-71001896.html",
+    "output_md": "docs/zeta/markdown/0174-ayuda-apis-indice-de-apis-configuracion-campanas-71001896.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/campanas/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/campanas/",
+    "title": "API Campañas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.561Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0175-ayuda-apis-indice-de-apis-configuracion-campos-adicionales-f165d91b.html",
+    "output_md": "docs/zeta/markdown/0175-ayuda-apis-indice-de-apis-configuracion-campos-adicionales-f165d91b.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/campos-adicionales/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/campos-adicionales/",
+    "title": "API Campos Adicionales - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.586Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0176-ayuda-apis-indice-de-apis-configuracion-categoria-de-contratos-de6b1f7b.html",
+    "output_md": "docs/zeta/markdown/0176-ayuda-apis-indice-de-apis-configuracion-categoria-de-contratos-de6b1f7b.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/categoria-de-contratos/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/categoria-de-contratos/",
+    "title": "API Categoría de Contratos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.605Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0177-ayuda-apis-indice-de-apis-configuracion-categorias-de-articulos-edb62702.html",
+    "output_md": "docs/zeta/markdown/0177-ayuda-apis-indice-de-apis-configuracion-categorias-de-articulos-edb62702.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/categorias-de-articulos/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/categorias-de-articulos/",
+    "title": "API Categorías de Artículos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.632Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0178-ayuda-apis-indice-de-apis-configuracion-categorias-de-clientes-905f16a4.html",
+    "output_md": "docs/zeta/markdown/0178-ayuda-apis-indice-de-apis-configuracion-categorias-de-clientes-905f16a4.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/categorias-de-clientes/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/categorias-de-clientes/",
+    "title": "API Categorías de Clientes - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.659Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0179-ayuda-apis-indice-de-apis-configuracion-categorias-de-oportunidades-803a6f2c.html",
+    "output_md": "docs/zeta/markdown/0179-ayuda-apis-indice-de-apis-configuracion-categorias-de-oportunidades-803a6f2c.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/categorias-de-oportunidades/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/categorias-de-oportunidades/",
+    "title": "API Categorías de Oportunidades - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.696Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0180-ayuda-apis-indice-de-apis-configuracion-categorias-de-proveedores-9696c0d6.html",
+    "output_md": "docs/zeta/markdown/0180-ayuda-apis-indice-de-apis-configuracion-categorias-de-proveedores-9696c0d6.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/categorias-de-proveedores/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/categorias-de-proveedores/",
+    "title": "API Categorías de Proveedores - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.715Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0181-ayuda-apis-indice-de-apis-configuracion-centros-de-costo-c04f0355.html",
+    "output_md": "docs/zeta/markdown/0181-ayuda-apis-indice-de-apis-configuracion-centros-de-costo-c04f0355.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/centros-de-costo/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/centros-de-costo/",
+    "title": "API Centros de Costo - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.736Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0182-ayuda-apis-indice-de-apis-configuracion-comprobantes-7bcd86c6.html",
+    "output_md": "docs/zeta/markdown/0182-ayuda-apis-indice-de-apis-configuracion-comprobantes-7bcd86c6.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/comprobantes/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/comprobantes/",
+    "title": "API Comprobantes - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.756Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0183-ayuda-apis-indice-de-apis-configuracion-conceptos-d491304d.html",
+    "output_md": "docs/zeta/markdown/0183-ayuda-apis-indice-de-apis-configuracion-conceptos-d491304d.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/conceptos/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/conceptos/",
+    "title": "API Conceptos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.788Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0184-ayuda-apis-indice-de-apis-configuracion-condiciones-de-pago-26767617.html",
+    "output_md": "docs/zeta/markdown/0184-ayuda-apis-indice-de-apis-configuracion-condiciones-de-pago-26767617.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/condiciones-de-pago/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/condiciones-de-pago/",
+    "title": "API Condiciones de Pago - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.814Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0185-ayuda-apis-indice-de-apis-configuracion-contactos-45110885.html",
+    "output_md": "docs/zeta/markdown/0185-ayuda-apis-indice-de-apis-configuracion-contactos-45110885.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/contactos/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/contactos/",
+    "title": "API Contactos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.875Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0186-ayuda-apis-indice-de-apis-configuracion-cotizacion-de-monedas-8afaa48f.html",
+    "output_md": "docs/zeta/markdown/0186-ayuda-apis-indice-de-apis-configuracion-cotizacion-de-monedas-8afaa48f.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/cotizacion-de-monedas/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/cotizacion-de-monedas/",
+    "title": "API Cotización de Monedas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.901Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0187-ayuda-apis-indice-de-apis-configuracion-cuentas-bancarias-39ec61e4.html",
+    "output_md": "docs/zeta/markdown/0187-ayuda-apis-indice-de-apis-configuracion-cuentas-bancarias-39ec61e4.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/cuentas-bancarias/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/cuentas-bancarias/",
+    "title": "API Cuentas Bancarias - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.924Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0188-ayuda-apis-indice-de-apis-configuracion-datos-comerciales-cliente-d985dc50.html",
+    "output_md": "docs/zeta/markdown/0188-ayuda-apis-indice-de-apis-configuracion-datos-comerciales-cliente-d985dc50.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/datos-comerciales-cliente/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/datos-comerciales-cliente/",
+    "title": "API Datos Comerciales de Cliente - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.951Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0189-ayuda-apis-indice-de-apis-configuracion-datos-comerciales-proveedor-fc11b1cf.html",
+    "output_md": "docs/zeta/markdown/0189-ayuda-apis-indice-de-apis-configuracion-datos-comerciales-proveedor-fc11b1cf.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/datos-comerciales-proveedor/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/datos-comerciales-proveedor/",
+    "title": "API Datos Comerciales de Proveedor - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:04.981Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0190-ayuda-apis-indice-de-apis-configuracion-departamentos-5695934c.html",
+    "output_md": "docs/zeta/markdown/0190-ayuda-apis-indice-de-apis-configuracion-departamentos-5695934c.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/departamentos/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/departamentos/",
+    "title": "API Departamentos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.006Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0191-ayuda-apis-indice-de-apis-configuracion-depositos-de-stock-76ff8d2e.html",
+    "output_md": "docs/zeta/markdown/0191-ayuda-apis-indice-de-apis-configuracion-depositos-de-stock-76ff8d2e.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/depositos-de-stock/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/depositos-de-stock/",
+    "title": "API Depósitos de Stock - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.037Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0192-ayuda-apis-indice-de-apis-configuracion-ejercicios-contables-af836996.html",
+    "output_md": "docs/zeta/markdown/0192-ayuda-apis-indice-de-apis-configuracion-ejercicios-contables-af836996.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/ejercicios-contables/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/ejercicios-contables/",
+    "title": "API Ejercicios Contables - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.061Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0193-ayuda-apis-indice-de-apis-configuracion-estados-de-oportunidades-8c2bba1e.html",
+    "output_md": "docs/zeta/markdown/0193-ayuda-apis-indice-de-apis-configuracion-estados-de-oportunidades-8c2bba1e.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/estados-de-oportunidades/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/estados-de-oportunidades/",
+    "title": "API Estados de Oportunidades - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.091Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0194-ayuda-apis-indice-de-apis-configuracion-familias-de-articulos-2ceaa697.html",
+    "output_md": "docs/zeta/markdown/0194-ayuda-apis-indice-de-apis-configuracion-familias-de-articulos-2ceaa697.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/familias-de-articulos/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/familias-de-articulos/",
+    "title": "API Familias de Artículos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.112Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0195-ayuda-apis-indice-de-apis-configuracion-formas-de-pago-38093535.html",
+    "output_md": "docs/zeta/markdown/0195-ayuda-apis-indice-de-apis-configuracion-formas-de-pago-38093535.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/formas-de-pago/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/formas-de-pago/",
+    "title": "API Formas de Pago - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.138Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0196-ayuda-apis-indice-de-apis-configuracion-formatos-de-impresion-361a5da4.html",
+    "output_md": "docs/zeta/markdown/0196-ayuda-apis-indice-de-apis-configuracion-formatos-de-impresion-361a5da4.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/formatos-de-impresion/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/formatos-de-impresion/",
+    "title": "API Formatos de Impresión - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.160Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0197-ayuda-apis-indice-de-apis-configuracion-foto-de-articulo-3c3bda89.html",
+    "output_md": "docs/zeta/markdown/0197-ayuda-apis-indice-de-apis-configuracion-foto-de-articulo-3c3bda89.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/foto-de-articulo/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/foto-de-articulo/",
+    "title": "API Foto de Artículo - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.188Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0198-ayuda-apis-indice-de-apis-configuracion-giros-comerciales-0f345b38.html",
+    "output_md": "docs/zeta/markdown/0198-ayuda-apis-indice-de-apis-configuracion-giros-comerciales-0f345b38.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/giros-comerciales/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/giros-comerciales/",
+    "title": "API Giros Comerciales - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.214Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0199-ayuda-apis-indice-de-apis-configuracion-grupos-de-conceptos-47387478.html",
+    "output_md": "docs/zeta/markdown/0199-ayuda-apis-indice-de-apis-configuracion-grupos-de-conceptos-47387478.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/grupos-de-conceptos/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/grupos-de-conceptos/",
+    "title": "API Grupos de Conceptos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.262Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0200-ayuda-apis-indice-de-apis-configuracion-grupos-de-contactos-4ef3e521.html",
+    "output_md": "docs/zeta/markdown/0200-ayuda-apis-indice-de-apis-configuracion-grupos-de-contactos-4ef3e521.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/grupos-de-contactos/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/grupos-de-contactos/",
+    "title": "API Grupos de Contactos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.286Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0201-ayuda-apis-indice-de-apis-configuracion-grupos-de-cuentas-d5288d9d.html",
+    "output_md": "docs/zeta/markdown/0201-ayuda-apis-indice-de-apis-configuracion-grupos-de-cuentas-d5288d9d.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/grupos-de-cuentas/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/grupos-de-cuentas/",
+    "title": "API Grupos de Cuentas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.309Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0202-ayuda-apis-indice-de-apis-configuracion-listas-de-precios-ca91dd00.html",
+    "output_md": "docs/zeta/markdown/0202-ayuda-apis-indice-de-apis-configuracion-listas-de-precios-ca91dd00.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/listas-de-precios/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/listas-de-precios/",
+    "title": "API Listas de Precios - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.336Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0203-ayuda-apis-indice-de-apis-configuracion-locales-comerciales-5af3b0f0.html",
+    "output_md": "docs/zeta/markdown/0203-ayuda-apis-indice-de-apis-configuracion-locales-comerciales-5af3b0f0.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/locales-comerciales/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/locales-comerciales/",
+    "title": "API Locales Comerciales - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.375Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0204-ayuda-apis-indice-de-apis-configuracion-marcas-c12a97f9.html",
+    "output_md": "docs/zeta/markdown/0204-ayuda-apis-indice-de-apis-configuracion-marcas-c12a97f9.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/marcas/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/marcas/",
+    "title": "API Marcas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.400Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0205-ayuda-apis-indice-de-apis-configuracion-monedas-d4f83b6a.html",
+    "output_md": "docs/zeta/markdown/0205-ayuda-apis-indice-de-apis-configuracion-monedas-d4f83b6a.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/monedas/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/monedas/",
+    "title": "API Monedas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.422Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0206-ayuda-apis-indice-de-apis-configuracion-motivos-de-perdidas-d6cc0983.html",
+    "output_md": "docs/zeta/markdown/0206-ayuda-apis-indice-de-apis-configuracion-motivos-de-perdidas-d6cc0983.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/motivos-de-perdidas/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/motivos-de-perdidas/",
+    "title": "API Motivos de Pérdidas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.446Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0207-ayuda-apis-indice-de-apis-configuracion-numeradores-de-comprobantes-adf2efde.html",
+    "output_md": "docs/zeta/markdown/0207-ayuda-apis-indice-de-apis-configuracion-numeradores-de-comprobantes-adf2efde.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/numeradores-de-comprobantes/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/numeradores-de-comprobantes/",
+    "title": "API Numeradores de Comprobantes - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.468Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0208-ayuda-apis-indice-de-apis-configuracion-numeradores-de-impresion-79fce845.html",
+    "output_md": "docs/zeta/markdown/0208-ayuda-apis-indice-de-apis-configuracion-numeradores-de-impresion-79fce845.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/numeradores-de-impresion/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/numeradores-de-impresion/",
+    "title": "API Numeradores de Impresión - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.506Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0209-ayuda-apis-indice-de-apis-configuracion-numeros-de-rut-a86fda97.html",
+    "output_md": "docs/zeta/markdown/0209-ayuda-apis-indice-de-apis-configuracion-numeros-de-rut-a86fda97.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/numeros-de-rut/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/numeros-de-rut/",
+    "title": "API Números de RUT - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.531Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0210-ayuda-apis-indice-de-apis-configuracion-origen-de-los-contactos-4ca81ae2.html",
+    "output_md": "docs/zeta/markdown/0210-ayuda-apis-indice-de-apis-configuracion-origen-de-los-contactos-4ca81ae2.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/origen-de-los-contactos/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/origen-de-los-contactos/",
+    "title": "Origen de los Contactos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.559Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0211-ayuda-apis-indice-de-apis-configuracion-paises-b9488585.html",
+    "output_md": "docs/zeta/markdown/0211-ayuda-apis-indice-de-apis-configuracion-paises-b9488585.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/paises/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/paises/",
+    "title": "Países - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.585Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0212-ayuda-apis-indice-de-apis-configuracion-plan-de-cuentas-cae9de14.html",
+    "output_md": "docs/zeta/markdown/0212-ayuda-apis-indice-de-apis-configuracion-plan-de-cuentas-cae9de14.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/plan-de-cuentas/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/plan-de-cuentas/",
+    "title": "Plan de Cuentas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.609Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0213-ayuda-apis-indice-de-apis-configuracion-precios-base-6bd6934d.html",
+    "output_md": "docs/zeta/markdown/0213-ayuda-apis-indice-de-apis-configuracion-precios-base-6bd6934d.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/precios-base/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/precios-base/",
+    "title": "Precios Base - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.659Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0214-ayuda-apis-indice-de-apis-configuracion-precios-de-venta-6bf76593.html",
+    "output_md": "docs/zeta/markdown/0214-ayuda-apis-indice-de-apis-configuracion-precios-de-venta-6bf76593.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/precios-de-venta/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/precios-de-venta/",
+    "title": "Precios de Venta - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.678Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0215-ayuda-apis-indice-de-apis-configuracion-referencias-9d728663.html",
+    "output_md": "docs/zeta/markdown/0215-ayuda-apis-indice-de-apis-configuracion-referencias-9d728663.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/referencias/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/referencias/",
+    "title": "Referencias - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.695Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0216-ayuda-apis-indice-de-apis-configuracion-retenciones-568a37ee.html",
+    "output_md": "docs/zeta/markdown/0216-ayuda-apis-indice-de-apis-configuracion-retenciones-568a37ee.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/retenciones/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/retenciones/",
+    "title": "Retenciones y Percepciones - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.720Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0217-ayuda-apis-indice-de-apis-configuracion-roles-de-usuarios-149e033c.html",
+    "output_md": "docs/zeta/markdown/0217-ayuda-apis-indice-de-apis-configuracion-roles-de-usuarios-149e033c.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/roles-de-usuarios/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/roles-de-usuarios/",
+    "title": "Roles de Usuarios - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.740Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0218-ayuda-apis-indice-de-apis-configuracion-tasas-de-iva-6e55c6aa.html",
+    "output_md": "docs/zeta/markdown/0218-ayuda-apis-indice-de-apis-configuracion-tasas-de-iva-6e55c6aa.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/tasas-de-iva/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/tasas-de-iva/",
+    "title": "Tasas de IVA - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.761Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0219-ayuda-apis-indice-de-apis-configuracion-textos-predefinidos-f736ea79.html",
+    "output_md": "docs/zeta/markdown/0219-ayuda-apis-indice-de-apis-configuracion-textos-predefinidos-f736ea79.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/textos-predefinidos/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/textos-predefinidos/",
+    "title": "Textos Predefinidos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.786Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0220-ayuda-apis-indice-de-apis-configuracion-tipos-de-asientos-31217ba3.html",
+    "output_md": "docs/zeta/markdown/0220-ayuda-apis-indice-de-apis-configuracion-tipos-de-asientos-31217ba3.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/tipos-de-asientos/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/tipos-de-asientos/",
+    "title": "Tipos de Asientos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.803Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0221-ayuda-apis-indice-de-apis-configuracion-tipos-de-cfe-a2d33e41.html",
+    "output_md": "docs/zeta/markdown/0221-ayuda-apis-indice-de-apis-configuracion-tipos-de-cfe-a2d33e41.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/tipos-de-cfe/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/tipos-de-cfe/",
+    "title": "Tipos de CFE - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.825Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0222-ayuda-apis-indice-de-apis-configuracion-tipos-de-descuentos-6fadcc25.html",
+    "output_md": "docs/zeta/markdown/0222-ayuda-apis-indice-de-apis-configuracion-tipos-de-descuentos-6fadcc25.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/tipos-de-descuentos/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/tipos-de-descuentos/",
+    "title": "Tipos de Descuentos - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.843Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0223-ayuda-apis-indice-de-apis-configuracion-unidades-de-stock-5f79e617.html",
+    "output_md": "docs/zeta/markdown/0223-ayuda-apis-indice-de-apis-configuracion-unidades-de-stock-5f79e617.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/unidades-de-stock/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/unidades-de-stock/",
+    "title": "Unidades de Stock - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.868Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0224-ayuda-apis-indice-de-apis-configuracion-vendedores-12bade89.html",
+    "output_md": "docs/zeta/markdown/0224-ayuda-apis-indice-de-apis-configuracion-vendedores-12bade89.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/vendedores/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/vendedores/",
+    "title": "Vendedores y Cobradores - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.897Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0225-ayuda-apis-indice-de-apis-configuracion-ventajas-competitivas-680e2d77.html",
+    "output_md": "docs/zeta/markdown/0225-ayuda-apis-indice-de-apis-configuracion-ventajas-competitivas-680e2d77.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/ventajas-competitivas/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/ventajas-competitivas/",
+    "title": "Ventajas Competitivas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.947Z",
+    "ayuda_branch": "apis"
+  },
+  {
+    "source_html": "docs/zeta/raw/0226-ayuda-apis-indice-de-apis-configuracion-zonas-a5ed3537.html",
+    "output_md": "docs/zeta/markdown/0226-ayuda-apis-indice-de-apis-configuracion-zonas-a5ed3537.md",
+    "url_original": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/zonas/",
+    "url_final": "https://zetasoftware.info/ayuda/apis/indice-de-apis/configuracion/zonas/",
+    "title": "Zonas - ZetaSoftware",
+    "processed_at": "2026-04-21T20:50:05.967Z",
+    "ayuda_branch": "apis"
+  }
+]

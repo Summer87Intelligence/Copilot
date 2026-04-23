@@ -46,11 +46,11 @@ export const MSG_SUCCESS = {
   taxUpdated: "La obligación fiscal se actualizó correctamente.",
   taxDeleted: "La obligación fiscal se archivó correctamente.",
   taxRestored: "La obligación fiscal se reactivó correctamente.",
-  companyCreated: "La empresa se guardó correctamente.",
-  companyUpdated: "Los datos de la empresa se actualizaron correctamente.",
-  companyDeleted: "La empresa se archivó correctamente.",
-  companyArchived: "La empresa se archivó correctamente.",
-  companyRestored: "La empresa se reactivó correctamente.",
+  companyCreated: "El cliente se guardó correctamente.",
+  companyUpdated: "Los datos del cliente se actualizaron correctamente.",
+  companyDeleted: "El cliente se archivó correctamente.",
+  companyArchived: "El cliente se archivó correctamente.",
+  companyRestored: "El cliente se reactivó correctamente.",
   documentArchived: "El documento se archivó correctamente.",
   documentRestored: "El documento se reactivó correctamente.",
 } as const;
@@ -69,9 +69,9 @@ export const MSG_INTEGRITY = {
   taxHasDocuments:
     "No podemos borrar esta obligación porque tiene documentos fiscales vinculados.",
   companyHasRelations:
-    "No podemos eliminar la empresa mientras tenga contactos, facturas, recibos, pagos u otros registros vinculados. Revisá esas relaciones antes de borrar.",
+    "No podemos eliminar el cliente mientras tenga contactos, facturas, recibos, pagos u otros registros vinculados. Revisá esas relaciones antes de borrar.",
   companyHasDocuments:
-    "No podemos eliminar la empresa porque tiene documentos vinculados en el respaldo documental.",
+    "No podemos eliminar el cliente porque tiene documentos vinculados en el respaldo documental.",
 } as const;
 
 export const MSG_DUPLICATE_TAX = {
@@ -149,15 +149,15 @@ export const DATA_TRAINING = {
   datosOverview: {
     severity: "low" as const,
     paragraphs: [
-      "Estás viendo datos reales del prototipo: empresas, facturas, cobros, pagos y obligaciones al Estado. Lo que cargues aquí impacta lecturas de cartera, caja y fiscalidad en el resto del Copilot.",
+      "Estás viendo datos reales del prototipo: clientes, facturas, cobros, pagos y obligaciones al Estado. Lo que cargues aquí impacta lecturas de cartera, caja y fiscalidad en el resto del Copilot.",
       "Usá el botón “+ Nueva …” arriba a la derecha en Navegación de entidades para altas controladas; “Editar” y “Archivar” desde el panel lateral, o “Reactivar” si el registro está inactivo.",
     ],
   },
   companies: {
     severity: "low" as const,
     paragraphs: [
-      "La empresa es el ancla de cartera: facturas, recibos y muchos pagos referencian su identificador. Un nombre claro y el riesgo bien marcado ayudan al resto del Copilot a priorizar.",
-      "Ejemplo: cargás “ACME SRL” con ciudad e industria; después, al emitir facturas, elegís esa empresa en el desplegable. Si archivás una empresa, dejará de listarse como activa pero los vínculos históricos se conservan.",
+      "El cliente es el ancla de cartera: facturas, recibos y muchos pagos referencian su identificador. Un nombre claro y el riesgo bien marcado ayudan al resto del Copilot a priorizar.",
+      "Ejemplo: cargás “ACME SRL” con ciudad e industria; después, al emitir facturas, elegís ese cliente en el desplegable. Si archivás un cliente, dejará de listarse como activo pero los vínculos históricos se conservan.",
     ],
   },
 } as const;
@@ -166,7 +166,7 @@ export function validateCompanyIntegrity(input: ProtoCompanyInput): ProtoCrudFai
   if (!str(input.name)) {
     return protoCrudResult.fail(
       "VALIDATION",
-      "Indicá el nombre o razón social de la empresa para poder identificarla en facturas y reportes."
+      "Indicá el nombre o razón social del cliente para poder identificarlo en facturas y reportes."
     );
   }
   return null;
@@ -174,7 +174,7 @@ export function validateCompanyIntegrity(input: ProtoCompanyInput): ProtoCrudFai
 
 export function validateInvoiceIntegrity(input: ProtoInvoiceInput): ProtoCrudFailure | null {
   if (!str(input.company_id)) {
-    return protoCrudResult.fail("VALIDATION", "Elegí la empresa a la que pertenece esta factura.", [
+    return protoCrudResult.fail("VALIDATION", "Elegí el cliente al que pertenece esta factura.", [
       { field: "company_id", reason: "Vacío" },
     ]);
   }
@@ -223,7 +223,7 @@ export function validateInvoiceIntegrity(input: ProtoInvoiceInput): ProtoCrudFai
 
 export function validateReceiptIntegrity(input: ProtoReceiptInput): ProtoCrudFailure | null {
   if (!str(input.company_id)) {
-    return protoCrudResult.fail("VALIDATION", "Elegí la empresa a la que pertenece este recibo.");
+    return protoCrudResult.fail("VALIDATION", "Elegí el cliente al que pertenece este recibo.");
   }
   if (!str(input.receipt_number)) {
     return protoCrudResult.fail(
@@ -246,6 +246,7 @@ export function validateReceiptIntegrity(input: ProtoReceiptInput): ProtoCrudFai
   return null;
 }
 
+/** Cobros ya imputados a la factura + nuevo importe no pueden superar el total (PR3: no implica ajuste automático de saldo). */
 export function receiptExceedsInvoiceCap(
   alreadyApplied: number,
   invoiceTotal: number,
@@ -301,7 +302,7 @@ export function operationalPaymentObligationAmountHint(
 
 export function validatePaymentIntegrity(input: ProtoPaymentInput): ProtoCrudFailure | null {
   if (!str(input.company_id)) {
-    return protoCrudResult.fail("VALIDATION", "Elegí la empresa asociada a este pago.");
+    return protoCrudResult.fail("VALIDATION", "Elegí el cliente asociado a este pago.");
   }
   if (!str(input.payment_number)) {
     return protoCrudResult.fail(

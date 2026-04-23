@@ -9,12 +9,13 @@ import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import {
   CopilotCard,
   CopilotGhostButton,
+  CopilotGhostLink,
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
 import type { ClientPortfolioRow } from "@/lib/copilot-clients-portfolio";
+import { fetchClientPortfolioLoad } from "@/lib/copilot-client-portfolio-fetch";
 import {
   formatMoneyPortfolio,
-  getClientPortfolio,
   type ClientCompanyDetail,
   type ClientPortfolioLoad,
 } from "@/lib/copilot-clients-portfolio";
@@ -40,7 +41,7 @@ export default function CopilotClientesPage() {
     setError(null);
     setLoading(true);
     try {
-      const data = await getClientPortfolio();
+      const data = await fetchClientPortfolioLoad();
       setLoad(data);
       setSelectedId((prev) => {
         if (prev && data.rows.some((r) => r.company_id === prev)) return prev;
@@ -87,14 +88,14 @@ export default function CopilotClientesPage() {
       <CopilotPageHeader
         surfaceId="copilot.clientes"
         title="Clientes"
-        description="Cartera comercial desde proto_companies, proto_invoices y proto_recibos — facturación, deuda y riesgo en lenguaje de negocio."
+        description="Cartera comercial desde empresas (proto_companies), facturas y recibos — facturación, deuda y riesgo en lenguaje de negocio."
       />
 
       <div className="flex-1 space-y-8 overflow-auto px-6 py-8">
         {loading ? (
           <div className="flex items-center gap-2 text-sm text-[var(--copilot-ink-muted)]">
             <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-            Cargando cartera desde Supabase…
+            Cargando cartera de empresas desde Supabase…
           </div>
         ) : null}
 
@@ -109,7 +110,7 @@ export default function CopilotClientesPage() {
             <div className="grid gap-4 lg:grid-cols-3">
               <CopilotCard>
                 <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                  Top clientes
+                  Principales empresas
                 </p>
                 <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink)]">
                   {load.summary.top_clients_line}
@@ -117,7 +118,7 @@ export default function CopilotClientesPage() {
               </CopilotCard>
               <CopilotCard>
                 <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                  Clientes con deuda
+                  Empresas con deuda
                 </p>
                 <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink)]">
                   {load.summary.debt_clients_line}
@@ -142,21 +143,21 @@ export default function CopilotClientesPage() {
               </div>
               {load.rows.length === 0 ? (
                 <p className="px-5 py-8 text-sm text-[var(--copilot-ink-muted)]">
-                  No hay empresas en proto_companies. Cargá clientes en Supabase para ver la
-                  cartera.
+                  No hay empresas en proto_companies. Importá o cargá empresas en Supabase para ver
+                  la cartera.
                 </p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[860px] border-collapse text-left text-sm">
                     <thead>
                       <tr className="bg-[rgba(255,255,255,0.65)] text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        <th className="px-5 py-3">Cliente</th>
+                        <th className="px-5 py-3">Empresa</th>
                         <th className="px-5 py-3">Industria</th>
                         <th className="px-5 py-3">Facturación</th>
                         <th className="px-5 py-3">Deuda</th>
                         <th className="px-5 py-3">Riesgo</th>
                         <th className="px-5 py-3">Participación</th>
-                        <th className="px-5 py-3 text-right">Respaldo</th>
+                        <th className="px-5 py-3 text-right">Vista</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -213,12 +214,20 @@ export default function CopilotClientesPage() {
                               {shareLabel(row.share_pct)}
                             </td>
                             <td className="px-5 py-3.5 text-right">
-                              <CopilotGhostButton
-                                onClick={() => openClient(row.company_id)}
-                                className="whitespace-nowrap px-3 py-1.5 text-xs"
-                              >
-                                Ver respaldo
-                              </CopilotGhostButton>
+                              <div className="flex flex-wrap items-center justify-end gap-2">
+                                <CopilotGhostLink
+                                  href={`/copilot/clientes/${encodeURIComponent(row.company_id)}`}
+                                  className="whitespace-nowrap px-3 py-1.5 text-xs"
+                                >
+                                  Ficha 360
+                                </CopilotGhostLink>
+                                <CopilotGhostButton
+                                  onClick={() => openClient(row.company_id)}
+                                  className="whitespace-nowrap px-3 py-1.5 text-xs"
+                                >
+                                  Ver respaldo
+                                </CopilotGhostButton>
+                              </div>
                             </td>
                           </tr>
                         );

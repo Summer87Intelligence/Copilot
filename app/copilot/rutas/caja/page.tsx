@@ -6,10 +6,15 @@ import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { DecisionStep } from "@/components/copilot/decision-step";
 import { RutasFlowBackLink } from "@/components/copilot/rutas-flow-back-link";
 import { formatMoneyRutas } from "@/lib/copilot-rutas-hub";
-import { normalizedCollectionProbability } from "@/lib/copilot-cashflow-engine";
+import { normalizedCollectionProbability } from "@/lib/copilot-financial-primitives";
 import { getProtoInvoices, type DataRow } from "@/lib/copilot-data";
-import { getClientPortfolio, type ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
-import { getFinancialSnapshot, type FinancialSnapshot } from "@/lib/copilot-financial-engine";
+import { fetchClientPortfolioLoad } from "@/lib/copilot-client-portfolio-fetch";
+import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
+import {
+  getFinancialSnapshot,
+  type FinancialSnapshotApiV1,
+} from "@/lib/copilot-financial-engine";
+import { snapshotCashNet } from "@/lib/copilot-financial-snapshot-selectors";
 import { getUpcomingTaxAgenda, type TaxAgendaItem } from "@/lib/copilot-tax-data";
 import { getFiscalAlerts, type FiscalAlertItem } from "@/lib/copilot-tax-alerts";
 import {
@@ -133,7 +138,7 @@ function buildClientCollectable(
 
 export default function RutaCajaPage() {
   const [step, setStep] = useState(1);
-  const [snapshot, setSnapshot] = useState<FinancialSnapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<FinancialSnapshotApiV1 | null>(null);
   const [agenda, setAgenda] = useState<TaxAgendaItem[]>([]);
   const [fiscalAlerts, setFiscalAlerts] = useState<FiscalAlertItem[]>([]);
   const [portfolio, setPortfolio] = useState<ClientPortfolioLoad | null>(null);
@@ -147,7 +152,7 @@ export default function RutaCajaPage() {
         getFinancialSnapshot(),
         getUpcomingTaxAgenda(),
         getFiscalAlerts(),
-        getClientPortfolio().catch(() => null),
+        fetchClientPortfolioLoad().catch(() => null),
         getProtoInvoices("active").catch(() => []),
       ]);
       setSnapshot(s);
@@ -182,7 +187,7 @@ export default function RutaCajaPage() {
 
   const windowObs = useMemo(() => obligationsInWindow(agenda), [agenda]);
   const dueAmount = useMemo(() => sumDueAmount(windowObs), [windowObs]);
-  const cash = snapshot?.available_cash ?? 0;
+  const cash = snapshot != null ? snapshotCashNet(snapshot) : 0;
   const gap = dueAmount - cash;
   const hasGap = gap > 0;
   const sortedList = useMemo(() => {

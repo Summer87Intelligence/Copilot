@@ -1,6 +1,8 @@
+import { readInvoiceFinancial } from "@/lib/copilot-invoice-financial-read";
 import type { OperationalSupabase } from "@/lib/data/supabase-operational-data";
 
-const ROW_CAP = 5000;
+export const FINANCIAL_SNAPSHOT_ROW_CAP = 5000;
+const ROW_CAP = FINANCIAL_SNAPSHOT_ROW_CAP;
 const INSIGHT_ROW_LIMIT = 100;
 
 type ProtoFinanceTable = "proto_invoices" | "proto_receipts" | "proto_payments";
@@ -19,6 +21,52 @@ function copilotProtoQueryDebugLog(
 }
 
 type InvoiceFinancialRow = Record<string, unknown>;
+
+/** Metadatos de la carga de facturas + `invoice_financials` para `diagnostics` del snapshot API (sin cambiar KPIs). */
+export type FinancialSnapshotLoadDiagnostics = {
+  active_invoice_count: number;
+  invoice_financials_distinct_keys: number;
+  invoice_financials_matched_invoice_ids: number;
+  invoice_financials_coverage: "full" | "partial" | "unavailable";
+};
+
+/** Orden SQL compartido: recibos por `receipt_date DESC`. */
+export const FINANCIAL_FACTS_ORDER_RECEIPTS = "receipt_date_desc" as const;
+/** Orden SQL compartido: pagos por `payment_date DESC`. */
+export const FINANCIAL_FACTS_ORDER_PAYMENTS = "payment_date_desc" as const;
+/** Orden SQL compartido: facturas por `issue_date DESC`. */
+export const FINANCIAL_FACTS_ORDER_INVOICES = "issue_date_desc" as const;
+
+export type FinancialFactsBundleMeta = {
+  row_cap: number;
+  order_receipts: typeof FINANCIAL_FACTS_ORDER_RECEIPTS;
+  order_payments: typeof FINANCIAL_FACTS_ORDER_PAYMENTS;
+  order_invoices: typeof FINANCIAL_FACTS_ORDER_INVOICES;
+  invoice_merge_applied: true;
+  balance_authoritative_source: "proto_invoices";
+  snapshotLoadDiagnostics: FinancialSnapshotLoadDiagnostics;
+};
+
+/**
+ * Hechos mínimos compartidos por `financial-snapshot` y `cashflow-dataset` (una sola lectura / mismas reglas).
+ * Filas vienen de PostgREST como `Record<string, unknown>`; columnas garantizadas según `select` del loader.
+ */
+export type FinancialFactsBundle = {
+  receipts: Record<string, unknown>[];
+  payments: Record<string, unknown>[];
+  invoices: Record<string, unknown>[];
+  tax_obligations: Record<string, unknown>[];
+  tax_payments: Record<string, unknown>[];
+  meta: FinancialFactsBundleMeta;
+};
+
+export type LoadCashflowEngineDatasetRowsResult = {
+  receipts: Record<string, unknown>[];
+  payments: Record<string, unknown>[];
+  invoices: Record<string, unknown>[];
+  /** Aditivo: misma carga que snapshot; compatible con clientes que ignoran claves extra. */
+  meta: FinancialFactsBundleMeta;
+};
 
 function numFromUnknown(v: unknown): number {
   if (v === null || v === undefined) return 0;
@@ -80,76 +128,26 @@ export async function fetchInvoiceFinancialBalanceMap(
   return map;
 }
 
-function applyInvoiceFinancialBalancesToRows(
-  invoices: Record<string, unknown>[],
-  balances: Map<string, number>
-): void {
-  for (const inv of invoices) {
-    const id = String(inv.id ?? "").trim();
-    if (!id || !balances.has(id)) continue;
-    inv.balance_amount = balances.get(id);
-  }
-}
-
 /**
- * Dataset del motor de flujo de caja (columnas mínimas).
+ * Carga única de hechos proto_* + fiscal, compartida por snapshot y cashflow.
+ * — Mismo `ROW_CAP`, mismo `ORDER BY` en recibos/pagos/facturas.
+ * — Mismo merge de facturas que el snapshot histórico (`readInvoiceFinancial` + IF opcional).
  */
-export async function loadCashflowEngineDatasetRows(client: OperationalSupabase) {
-  copilotProtoQueryDebugLog("proto_receipts", undefined, false);
-  copilotProtoQueryDebugLog("proto_payments", undefined, false);
-  copilotProtoQueryDebugLog("proto_invoices", undefined, false);
-  const [recRes, payRes, invRes] = await Promise.all([
-    client
-      .from("proto_receipts")
-      .select("amount,invoice_id,receipt_date,company_id")
-      .eq("is_active", true)
-      .order("receipt_date", { ascending: false })
-      .limit(ROW_CAP),
-    client
-      .from("proto_payments")
-      .select("amount,payment_date")
-      .eq("is_active", true)
-      .order("payment_date", { ascending: false })
-      .limit(ROW_CAP),
-    client
-      .from("proto_invoices")
-      .select(
-        "id,company_id,issue_date,due_date,balance_amount,collection_probability"
-      )
-      .eq("is_active", true)
-      .order("issue_date", { ascending: false })
-      .limit(ROW_CAP),
-  ]);
-
-  if (recRes.error) throw new Error(recRes.error.message);
-  if (payRes.error) throw new Error(payRes.error.message);
-  if (invRes.error) throw new Error(invRes.error.message);
-
-  return {
-    receipts: recRes.data ?? [],
-    payments: payRes.data ?? [],
-    invoices: invRes.data ?? [],
-  };
-}
-
-/**
- * Filas para snapshot financiero consolidado (`copilot-financial-engine`).
- * @param workspaceCompanyId Si se informa, filtra por `workspace_company_id` (= `public.companies.id` del tenant).
- */
-export async function loadFinancialSnapshotRows(
+export async function loadFinancialFactsBundle(
   client: OperationalSupabase,
   workspaceCompanyId?: string
-) {
+): Promise<FinancialFactsBundle> {
   const wid = workspaceCompanyId?.trim();
+
   const [recRes, payRes, invRes, taxObRes, taxPayRes] = await Promise.all([
     (() => {
       copilotProtoQueryDebugLog("proto_receipts", wid, Boolean(wid));
       let q = client
         .from("proto_receipts")
-        .select("amount")
+        .select("amount,invoice_id,receipt_date,company_id")
         .eq("is_active", true);
       if (wid) q = q.eq("workspace_company_id", wid);
-      return q.limit(ROW_CAP);
+      return q.order("receipt_date", { ascending: false }).limit(ROW_CAP);
     })(),
     (() => {
       copilotProtoQueryDebugLog("proto_payments", wid, Boolean(wid));
@@ -158,30 +156,54 @@ export async function loadFinancialSnapshotRows(
         .select("amount,payment_date")
         .eq("is_active", true);
       if (wid) q = q.eq("workspace_company_id", wid);
-      return q.limit(ROW_CAP);
+      return q.order("payment_date", { ascending: false }).limit(ROW_CAP);
     })(),
     (async () => {
       copilotProtoQueryDebugLog("proto_invoices", wid, Boolean(wid));
       let qMeta = client
         .from("proto_invoices")
-        .select("id,collection_probability,balance_amount")
+        .select(
+          "id,company_id,issue_date,due_date,balance_amount,collection_probability"
+        )
         .eq("is_active", true);
       if (wid) qMeta = qMeta.eq("workspace_company_id", wid);
-      const invMeta = await qMeta.limit(ROW_CAP);
+      const invMeta = await qMeta.order("issue_date", { ascending: false }).limit(ROW_CAP);
       if (invMeta.error) return invMeta;
       const rows = (invMeta.data ?? []) as Record<string, unknown>[];
       const ids = rows.map((r) => String(r.id ?? "").trim()).filter(Boolean);
       const balMap = await fetchInvoiceFinancialBalanceMap(client, wid, ids);
       const merged = rows.map((row) => {
         const id = String(row.id ?? "").trim();
-        const fallback = numFromUnknown(row.balance_amount);
-        const bal = balMap.has(id) ? (balMap.get(id) ?? fallback) : fallback;
+        const r = readInvoiceFinancial({
+          invoiceId: id,
+          balancePersisted: row.balance_amount,
+          balanceFromFinancialsMap: balMap,
+        });
         return {
-          balance_amount: bal,
+          id: row.id,
+          company_id: row.company_id,
+          issue_date: row.issue_date,
+          due_date: row.due_date,
+          balance_amount: r.balance_authoritative,
           collection_probability: row.collection_probability,
         };
       });
-      return { data: merged, error: null };
+      const matchedIfCount = ids.filter((id) => balMap.has(id)).length;
+      const coverage: FinancialSnapshotLoadDiagnostics["invoice_financials_coverage"] =
+        ids.length === 0
+          ? "full"
+          : matchedIfCount === 0
+            ? "unavailable"
+            : matchedIfCount >= ids.length
+              ? "full"
+              : "partial";
+      const snapshotDiagnostics: FinancialSnapshotLoadDiagnostics = {
+        active_invoice_count: ids.length,
+        invoice_financials_distinct_keys: balMap.size,
+        invoice_financials_matched_invoice_ids: matchedIfCount,
+        invoice_financials_coverage: coverage,
+      };
+      return { data: merged, error: null, snapshotDiagnostics };
     })(),
     (() => {
       let q = client
@@ -207,30 +229,106 @@ export async function loadFinancialSnapshotRows(
   if (taxObRes.error) throw new Error(taxObRes.error.message);
   if (taxPayRes.error) throw new Error(taxPayRes.error.message);
 
+  const invPayload = invRes as {
+    data: unknown[] | null;
+    error: { message: string } | null;
+    snapshotDiagnostics?: FinancialSnapshotLoadDiagnostics;
+  };
+  const snapshotLoadDiagnostics: FinancialSnapshotLoadDiagnostics =
+    invPayload.snapshotDiagnostics ?? {
+      active_invoice_count: 0,
+      invoice_financials_distinct_keys: 0,
+      invoice_financials_matched_invoice_ids: 0,
+      invoice_financials_coverage: "unavailable",
+    };
+
+  const meta: FinancialFactsBundleMeta = {
+    row_cap: FINANCIAL_SNAPSHOT_ROW_CAP,
+    order_receipts: FINANCIAL_FACTS_ORDER_RECEIPTS,
+    order_payments: FINANCIAL_FACTS_ORDER_PAYMENTS,
+    order_invoices: FINANCIAL_FACTS_ORDER_INVOICES,
+    invoice_merge_applied: true,
+    balance_authoritative_source: "proto_invoices",
+    snapshotLoadDiagnostics,
+  };
+
   return {
-    receipts: recRes.data ?? [],
-    payments: payRes.data ?? [],
-    invoices: invRes.data ?? [],
-    taxObligations: taxObRes.data ?? [],
-    taxPayments: taxPayRes.data ?? [],
+    receipts: (recRes.data ?? []) as Record<string, unknown>[],
+    payments: (payRes.data ?? []) as Record<string, unknown>[],
+    invoices: (invPayload.data ?? []) as Record<string, unknown>[],
+    tax_obligations: (taxObRes.data ?? []) as Record<string, unknown>[],
+    tax_payments: (taxPayRes.data ?? []) as Record<string, unknown>[],
+    meta,
+  };
+}
+
+/**
+ * Dataset del motor de flujo de caja (columnas mínimas).
+ * Delega en `loadFinancialFactsBundle` (misma carga que snapshot + meta aditiva).
+ */
+export async function loadCashflowEngineDatasetRows(
+  client: OperationalSupabase,
+  workspaceCompanyId?: string
+): Promise<LoadCashflowEngineDatasetRowsResult> {
+  const bundle = await loadFinancialFactsBundle(client, workspaceCompanyId);
+  return {
+    receipts: bundle.receipts,
+    payments: bundle.payments,
+    invoices: bundle.invoices,
+    meta: bundle.meta,
+  };
+}
+
+/**
+ * Filas para snapshot financiero consolidado (`copilot-financial-engine`).
+ * @param workspaceCompanyId Si se informa, filtra por `workspace_company_id` (= `public.companies.id` del tenant).
+ */
+export async function loadFinancialSnapshotRows(
+  client: OperationalSupabase,
+  workspaceCompanyId?: string
+) {
+  const bundle = await loadFinancialFactsBundle(client, workspaceCompanyId);
+  return {
+    receipts: bundle.receipts.map((r) => ({ amount: r.amount })),
+    payments: bundle.payments.map((p) => ({
+      amount: p.amount,
+      payment_date: p.payment_date,
+    })),
+    invoices: bundle.invoices.map((inv) => ({
+      balance_amount: inv.balance_amount,
+      collection_probability: inv.collection_probability,
+    })),
+    taxObligations: bundle.tax_obligations,
+    taxPayments: bundle.tax_payments,
+    snapshotLoadDiagnostics: bundle.meta.snapshotLoadDiagnostics,
   };
 }
 
 /** Columnas `amount` para caja simplificada (`copilot-financial-intelligence`). */
-export async function loadCashStatusAmountRows(client: OperationalSupabase) {
-  copilotProtoQueryDebugLog("proto_receipts", undefined, false);
-  copilotProtoQueryDebugLog("proto_payments", undefined, false);
+export async function loadCashStatusAmountRows(
+  client: OperationalSupabase,
+  workspaceCompanyId?: string
+) {
+  const wid = workspaceCompanyId?.trim();
+  copilotProtoQueryDebugLog("proto_receipts", wid, Boolean(wid));
+  copilotProtoQueryDebugLog("proto_payments", wid, Boolean(wid));
   const [inRes, outRes] = await Promise.all([
-    client
-      .from("proto_receipts")
-      .select("amount")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-    client
-      .from("proto_payments")
-      .select("amount")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
+    (() => {
+      let q = client
+        .from("proto_receipts")
+        .select("amount")
+        .eq("is_active", true);
+      if (wid) q = q.eq("workspace_company_id", wid);
+      return q.limit(ROW_CAP);
+    })(),
+    (() => {
+      let q = client
+        .from("proto_payments")
+        .select("amount")
+        .eq("is_active", true);
+      if (wid) q = q.eq("workspace_company_id", wid);
+      return q.limit(ROW_CAP);
+    })(),
   ]);
 
   if (inRes.error) throw new Error(inRes.error.message);
@@ -239,41 +337,56 @@ export async function loadCashStatusAmountRows(client: OperationalSupabase) {
   return { inflows: inRes.data ?? [], outflows: outRes.data ?? [] };
 }
 
-export async function selectProtoInvoicesInsightWindow(client: OperationalSupabase) {
-  copilotProtoQueryDebugLog("proto_invoices", undefined, false);
-  return client
+export async function selectProtoInvoicesInsightWindow(
+  client: OperationalSupabase,
+  workspaceCompanyId?: string
+) {
+  const wid = workspaceCompanyId?.trim();
+  copilotProtoQueryDebugLog("proto_invoices", wid, Boolean(wid));
+  let q = client
     .from("proto_invoices")
     .select("*")
-    .eq("is_active", true)
-    .order("created_at", { ascending: false })
-    .limit(INSIGHT_ROW_LIMIT);
+    .eq("is_active", true);
+  if (wid) q = q.eq("workspace_company_id", wid);
+  return q.order("created_at", { ascending: false }).limit(INSIGHT_ROW_LIMIT);
 }
 
-export async function selectProtoPaymentsInsightWindow(client: OperationalSupabase) {
-  copilotProtoQueryDebugLog("proto_payments", undefined, false);
-  return client
+export async function selectProtoPaymentsInsightWindow(
+  client: OperationalSupabase,
+  workspaceCompanyId?: string
+) {
+  const wid = workspaceCompanyId?.trim();
+  copilotProtoQueryDebugLog("proto_payments", wid, Boolean(wid));
+  let q = client
     .from("proto_payments")
     .select("*")
-    .eq("is_active", true)
-    .order("created_at", { ascending: false })
-    .limit(INSIGHT_ROW_LIMIT);
+    .eq("is_active", true);
+  if (wid) q = q.eq("workspace_company_id", wid);
+  return q.order("created_at", { ascending: false }).limit(INSIGHT_ROW_LIMIT);
 }
 
-export async function selectProtoCompaniesInsightWindow(client: OperationalSupabase) {
-  return client
+export async function selectProtoCompaniesInsightWindow(
+  client: OperationalSupabase,
+  workspaceCompanyId?: string
+) {
+  const wid = workspaceCompanyId?.trim();
+  let q = client
     .from("proto_companies")
     .select("*")
-    .eq("is_active", true)
-    .order("created_at", { ascending: false })
-    .limit(INSIGHT_ROW_LIMIT);
+    .eq("is_active", true);
+  if (wid) q = q.eq("workspace_company_id", wid);
+  return q.order("created_at", { ascending: false }).limit(INSIGHT_ROW_LIMIT);
 }
 
 /** Lecturas acotadas en un solo round-trip cuando hacen falta las tres tablas. */
-export async function loadInsightEngineProtoRows(client: OperationalSupabase) {
+export async function loadInsightEngineProtoRows(
+  client: OperationalSupabase,
+  workspaceCompanyId?: string
+) {
   const [invRes, payRes, compRes] = await Promise.all([
-    selectProtoInvoicesInsightWindow(client),
-    selectProtoPaymentsInsightWindow(client),
-    selectProtoCompaniesInsightWindow(client),
+    selectProtoInvoicesInsightWindow(client, workspaceCompanyId),
+    selectProtoPaymentsInsightWindow(client, workspaceCompanyId),
+    selectProtoCompaniesInsightWindow(client, workspaceCompanyId),
   ]);
 
   if (invRes.error) throw new Error(invRes.error.message);
@@ -322,7 +435,17 @@ export async function loadClientPortfolioSourceRows(
     const invRows = iRes.data as Record<string, unknown>[];
     const ids = invRows.map((r) => String(r.id ?? "").trim()).filter(Boolean);
     const balMap = await fetchInvoiceFinancialBalanceMap(client, wid, ids);
-    applyInvoiceFinancialBalancesToRows(invRows, balMap);
+    for (const inv of invRows) {
+      const id = String(inv.id ?? "").trim();
+      if (!id) continue;
+      const r = readInvoiceFinancial({
+        invoiceId: id,
+        balancePersisted: inv.balance_amount,
+        totalAmount: inv.total_amount,
+        balanceFromFinancialsMap: balMap,
+      });
+      inv.balance_amount = r.balance_authoritative;
+    }
   }
 
   return { cRes, iRes, rRes, ctRes };
@@ -342,96 +465,126 @@ export async function selectProtoTaxObligationsActiveOrdered(
 }
 
 export async function selectProtoTaxPaymentsActiveOrdered(
-  client: OperationalSupabase
+  client: OperationalSupabase,
+  workspaceCompanyId?: string
 ) {
-  return client
-    .from("proto_tax_payments")
-    .select("*")
-    .eq("is_active", true)
-    .order("payment_date", { ascending: false });
+  const wid = workspaceCompanyId?.trim();
+  let q = client.from("proto_tax_payments").select("*").eq("is_active", true);
+  if (wid) q = q.eq("workspace_company_id", wid);
+  return q.order("payment_date", { ascending: false });
 }
 
 export async function selectProtoTaxPaymentsByObligationId(
   client: OperationalSupabase,
-  obligationId: string
+  obligationId: string,
+  workspaceCompanyId?: string
 ) {
-  return client
+  const wid = workspaceCompanyId?.trim();
+  let q = client
     .from("proto_tax_payments")
     .select("*")
     .eq("obligation_id", obligationId)
-    .eq("is_active", true)
-    .order("payment_date", { ascending: false });
+    .eq("is_active", true);
+  if (wid) q = q.eq("workspace_company_id", wid);
+  return q.order("payment_date", { ascending: false });
 }
 
 export async function selectProtoTaxObligationById(
   client: OperationalSupabase,
-  id: string
+  id: string,
+  workspaceCompanyId?: string
 ) {
-  return client.from("proto_tax_obligations").select("*").eq("id", id).maybeSingle();
+  const wid = workspaceCompanyId?.trim();
+  let q = client.from("proto_tax_obligations").select("*").eq("id", id);
+  if (wid) q = q.eq("workspace_company_id", wid);
+  return q.maybeSingle();
 }
 
 export async function selectTaxAgendaForwardWindow(
   client: OperationalSupabase,
   selectCols: string,
   todayYmd: string,
-  endYmd: string
+  endYmd: string,
+  workspaceCompanyId?: string
 ) {
-  return client
+  const wid = workspaceCompanyId?.trim();
+  let q = client
     .from("proto_tax_obligations")
     .select(selectCols)
     .eq("is_active", true)
     .gte("due_date", todayYmd)
-    .lte("due_date", endYmd)
-    .order("due_date", { ascending: true });
+    .lte("due_date", endYmd);
+  if (wid) q = q.eq("workspace_company_id", wid);
+  return q.order("due_date", { ascending: true });
 }
 
 export async function selectTaxAgendaOverdueOpen(
   client: OperationalSupabase,
   selectCols: string,
-  todayYmd: string
+  todayYmd: string,
+  workspaceCompanyId?: string
 ) {
-  return client
+  const wid = workspaceCompanyId?.trim();
+  let q = client
     .from("proto_tax_obligations")
     .select(selectCols)
     .eq("is_active", true)
     .lt("due_date", todayYmd)
-    .neq("status", "paid")
-    .order("due_date", { ascending: true });
+    .neq("status", "paid");
+  if (wid) q = q.eq("workspace_company_id", wid);
+  return q.order("due_date", { ascending: true });
 }
 
 /** Paralelo de lecturas para `copilot-financial-alerts` (dataset predictivo). */
 export async function loadPredictiveFinancialAlertsDatasetRows(
-  client: OperationalSupabase
+  client: OperationalSupabase,
+  workspaceCompanyId?: string
 ) {
+  const wid = workspaceCompanyId?.trim();
   copilotProtoQueryDebugLog("proto_payments", undefined, false);
   copilotProtoQueryDebugLog("proto_receipts", undefined, false);
   copilotProtoQueryDebugLog("proto_invoices", undefined, false);
   const [payRes, taxObRes, taxPayRes, recRes, invRes] = await Promise.all([
-    client
-      .from("proto_payments")
-      .select("id,amount,payment_date,category,obligation_id")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-    client
-      .from("proto_tax_obligations")
-      .select("*")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-    client
-      .from("proto_tax_payments")
-      .select("*")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-    client
-      .from("proto_receipts")
-      .select("amount")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
-    client
-      .from("proto_invoices")
-      .select("balance_amount,collection_probability")
-      .eq("is_active", true)
-      .limit(ROW_CAP),
+    (() => {
+      let q = client
+        .from("proto_payments")
+        .select("id,amount,payment_date,category,obligation_id")
+        .eq("is_active", true);
+      if (wid) q = q.eq("workspace_company_id", wid);
+      return q.limit(ROW_CAP);
+    })(),
+    (() => {
+      let q = client
+        .from("proto_tax_obligations")
+        .select("*")
+        .eq("is_active", true);
+      if (wid) q = q.eq("workspace_company_id", wid);
+      return q.limit(ROW_CAP);
+    })(),
+    (() => {
+      let q = client
+        .from("proto_tax_payments")
+        .select("*")
+        .eq("is_active", true);
+      if (wid) q = q.eq("workspace_company_id", wid);
+      return q.limit(ROW_CAP);
+    })(),
+    (() => {
+      let q = client
+        .from("proto_receipts")
+        .select("amount")
+        .eq("is_active", true);
+      if (wid) q = q.eq("workspace_company_id", wid);
+      return q.limit(ROW_CAP);
+    })(),
+    (() => {
+      let q = client
+        .from("proto_invoices")
+        .select("balance_amount,collection_probability")
+        .eq("is_active", true);
+      if (wid) q = q.eq("workspace_company_id", wid);
+      return q.limit(ROW_CAP);
+    })(),
   ]);
 
   if (payRes.error) throw new Error(payRes.error.message);

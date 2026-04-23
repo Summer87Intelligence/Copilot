@@ -88,7 +88,7 @@ export const COPILOT_SURFACE_INDEX: Record<CopilotSurfaceId, CopilotSurfaceMeta>
     id: "copilot.insights",
     kind: "partial",
     rationale:
-      "`generateInsights` lee proto desde Supabase; cada insight adjunta evidencia tipo mock (`copilot-insights-evidence-mock`).",
+      "`generateInsightsFromBatch` consume datos vía `GET /api/copilot/insight-engine-dataset` (tenant); cada insight adjunta evidencia tipo mock (`copilot-insights-evidence-mock`).",
   },
   "copilot.clientes": {
     id: "copilot.clientes",

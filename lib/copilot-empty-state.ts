@@ -1,13 +1,19 @@
-import type { FinancialSnapshot } from "@/lib/copilot-financial-engine";
+import type { FinancialSnapshot, FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
+import {
+  snapshotCashNet,
+  snapshotExpectedOutflowsTotal,
+  snapshotReceivablesRiskWeighted,
+} from "@/lib/copilot-financial-snapshot-selectors";
 
 /** ¿El snapshot financiero no aporta señal útil (caja y flujos ~0)? */
 export function isFinancialSnapshotQuiet(s: FinancialSnapshot | null): boolean {
   if (!s) return true;
+  const api = s as FinancialSnapshotApiV1;
   const q = (n: number) => Math.abs(Number(n)) < 0.01;
   return (
-    q(s.available_cash) &&
-    q(s.expected_inflows) &&
-    q(s.expected_outflows)
+    q(snapshotCashNet(api)) &&
+    q(snapshotReceivablesRiskWeighted(api)) &&
+    q(snapshotExpectedOutflowsTotal(api))
   );
 }
 

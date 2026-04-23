@@ -1,4 +1,5 @@
-import type { FinancialSnapshot } from "@/lib/copilot-financial-engine";
+import type { FinancialSnapshot, FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
+import { snapshotRiskBand } from "@/lib/copilot-financial-snapshot-selectors";
 import type { FiscalAlertItem } from "@/lib/copilot-tax-alerts";
 import type { TaxAgendaItem } from "@/lib/copilot-tax-data";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
@@ -40,8 +41,11 @@ export function simplifiedSaludLabel(
   const { critical, high } = fiscalCriticalHighCounts(alerts);
   if (critical >= 1) return { label: "Crítica", tone: "critical" };
   if (high >= 1) return { label: "Atención", tone: "warning" };
-  if (snapshot?.risk_level === "high" || snapshot?.risk_level === "critical") {
-    return { label: "Atención", tone: "warning" };
+  if (snapshot != null) {
+    const band = snapshotRiskBand(snapshot as FinancialSnapshotApiV1);
+    if (band === "high" || band === "critical") {
+      return { label: "Atención", tone: "warning" };
+    }
   }
   return { label: "Estable", tone: "ok" };
 }

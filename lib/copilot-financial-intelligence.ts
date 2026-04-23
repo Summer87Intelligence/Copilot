@@ -1,5 +1,4 @@
-import { loadCashStatusAmountRows } from "@/lib/data/proto-analytics-read-repository";
-import { supabase } from "@/lib/supabase-client";
+import { copilotApiFetch } from "@/lib/copilot-fetch";
 
 function sumAmountColumn(rows: { amount: unknown }[] | null): number {
   let t = 0;
@@ -15,7 +14,21 @@ function sumAmountColumn(rows: { amount: unknown }[] | null): number {
  * Usa suma de `amount` en proto_receipts y proto_payments.
  */
 export async function getCashStatus(): Promise<{ available_cash: number }> {
-  const { inflows, outflows } = await loadCashStatusAmountRows(supabase);
+  const res = await copilotApiFetch("/api/copilot/cash-status-amounts");
+  let json: unknown;
+  try {
+    json = await res.json();
+  } catch {
+    return { available_cash: 0 };
+  }
+  const body = json as {
+    ok?: boolean;
+    data?: { inflows: { amount: unknown }[]; outflows: { amount: unknown }[] };
+  };
+  if (!res.ok || !body.ok || !body.data) {
+    return { available_cash: 0 };
+  }
+  const { inflows, outflows } = body.data;
 
   const totalInflows = sumAmountColumn(
     inflows as { amount: unknown }[] | null

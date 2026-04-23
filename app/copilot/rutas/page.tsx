@@ -14,7 +14,8 @@ import {
   formatRutasPeriodLabel,
   sumPortfolioOverdueDebt,
 } from "@/lib/copilot-rutas-hub";
-import type { FinancialSnapshot } from "@/lib/copilot-financial-engine";
+import type { FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
+import { snapshotCashNet } from "@/lib/copilot-financial-snapshot-selectors";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import { traceFromRutasHub } from "@/lib/copilot-trace-meta";
 
@@ -27,7 +28,7 @@ type GateMeta = {
 };
 
 type RutasHubValidated = {
-  snapshot: FinancialSnapshot | null;
+  snapshot: FinancialSnapshotApiV1 | null;
   portfolio: ClientPortfolioLoad | null;
   gate: GateMeta;
   pendingDecisions: number;
@@ -102,7 +103,7 @@ export default function CopilotRutasPage() {
         ]);
 
       const hubJson = (hubRes ?? {}) as Record<string, unknown>;
-      const snapshot = (hubJson.snapshot as FinancialSnapshot | null) ?? null;
+      const snapshot = (hubJson.snapshot as FinancialSnapshotApiV1 | null) ?? null;
       const portfolio = (hubJson.portfolio as ClientPortfolioLoad | null) ?? null;
       const gate = toGateMeta(hubJson);
 
@@ -214,7 +215,7 @@ export default function CopilotRutasPage() {
                 label="Caja disponible"
                 value={
                   hub?.snapshot != null
-                    ? formatMoneyRutas(hub.snapshot.available_cash)
+                    ? formatMoneyRutas(snapshotCashNet(hub.snapshot))
                     : "—"
                 }
               />

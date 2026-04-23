@@ -38,6 +38,16 @@ export type ZetaInvoice = {
   totalAmount: number;
   /** Importe pendiente de cobro (si Zeta lo expone). */
   outstandingAmount?: number;
+  /**
+   * Si se puede derivar de la fila de saldos con la misma regla que los comprobantes por cliente,
+   * coincide con `proto_invoices.invoice_number` de `syncZetaCustomerVouchers` (`ZETA:CCV1:…`).
+   */
+  ccv1InvoiceNumber?: string | null;
+  /**
+   * Fila REST original de `QuerySaldosPendientes` (solo en pipeline de saldos); no se persiste.
+   * Permite matching heurístico por Serie/Numero cuando metadata del voucher no trae `RegistroId`.
+   */
+  saldoSourceRow?: Record<string, unknown>;
   status: ZetaInvoiceStatus;
 };
 

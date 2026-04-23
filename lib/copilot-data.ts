@@ -1,26 +1,12 @@
-import { supabase } from "@/lib/supabase-client";
-import {
-  getProtoCompanyById as repoGetProtoCompanyById,
-  getProtoInvoiceById as repoGetProtoInvoiceById,
-  listProtoCompanies,
-  listProtoContacts,
-  listProtoContactsByCompanyId,
-  listProtoInvoices,
-  listProtoInvoicesByCompanyId,
-  listProtoPayments,
-  listProtoPaymentsByCompanyId,
-  listProtoRawImports,
-  listProtoReceipts,
-  listProtoReceiptsByCompanyId,
-  listProtoReceiptsByInvoiceId,
-  listProtoTaxObligations,
-  type DataRow,
-} from "@/lib/data/proto-operational-read-repository";
+import { getCopilotDataset, invalidateCopilotDatasetCache } from "@/lib/copilot-dataset-client";
 import type { ProtoActiveListMode } from "@/lib/copilot-proto-active";
+import type { DataRow } from "@/lib/data/proto-operational-read-repository";
 
 export type { CopilotDataEntityKey as DataEntity } from "@/lib/copilot-format";
 export type { ProtoActiveListMode } from "@/lib/copilot-proto-active";
 export type { DataRow } from "@/lib/data/proto-operational-read-repository";
+
+export { invalidateCopilotDatasetCache };
 
 export {
   mapGenericStatus,
@@ -29,87 +15,117 @@ export {
   mapReceiptStatus,
 } from "@/lib/copilot-format";
 
+function filterByCompanyId(rows: DataRow[], companyId: string): DataRow[] {
+  const cid = companyId.trim();
+  if (!cid) return [];
+  return rows.filter((r) => String(r.company_id ?? "") === cid);
+}
+
+function filterByInvoiceId(rows: DataRow[], invoiceId: string): DataRow[] {
+  const iid = invoiceId.trim();
+  if (!iid) return [];
+  return rows.filter((r) => String(r.invoice_id ?? "") === iid);
+}
+
 export async function getProtoCompanies(
   activeMode: ProtoActiveListMode = "active"
 ): Promise<DataRow[]> {
-  return listProtoCompanies(supabase, activeMode);
+  const d = await getCopilotDataset(activeMode);
+  return d.companies;
 }
 
 export async function getProtoContacts(
   activeMode: ProtoActiveListMode = "active"
 ): Promise<DataRow[]> {
-  return listProtoContacts(supabase, activeMode);
+  const d = await getCopilotDataset(activeMode);
+  return d.contacts;
 }
 
 export async function getProtoInvoices(
   activeMode: ProtoActiveListMode = "active"
 ): Promise<DataRow[]> {
-  return listProtoInvoices(supabase, activeMode);
+  const d = await getCopilotDataset(activeMode);
+  return d.invoices;
 }
 
 export async function getProtoReceipts(
   activeMode: ProtoActiveListMode = "active"
 ): Promise<DataRow[]> {
-  return listProtoReceipts(supabase, activeMode);
+  const d = await getCopilotDataset(activeMode);
+  return d.receipts;
 }
 
 export async function getProtoPayments(
   activeMode: ProtoActiveListMode = "active"
 ): Promise<DataRow[]> {
-  return listProtoPayments(supabase, activeMode);
+  const d = await getCopilotDataset(activeMode);
+  return d.payments;
 }
 
 export async function getProtoTaxObligationsRows(
   activeMode: ProtoActiveListMode = "active"
 ): Promise<DataRow[]> {
-  return listProtoTaxObligations(supabase, activeMode);
+  const d = await getCopilotDataset(activeMode);
+  return d.obligations;
 }
 
 export async function getProtoRawImports(): Promise<DataRow[]> {
-  return listProtoRawImports(supabase, "active");
+  const d = await getCopilotDataset("active");
+  return d.rawImports;
 }
 
 export async function getProtoContactsByCompany(
   companyId: string,
   activeMode: ProtoActiveListMode = "active"
 ): Promise<DataRow[]> {
-  return listProtoContactsByCompanyId(supabase, companyId, activeMode);
+  const d = await getCopilotDataset(activeMode);
+  return filterByCompanyId(d.contacts, companyId);
 }
 
 export async function getProtoInvoicesByCompany(
   companyId: string,
   activeMode: ProtoActiveListMode = "active"
 ): Promise<DataRow[]> {
-  return listProtoInvoicesByCompanyId(supabase, companyId, activeMode);
+  const d = await getCopilotDataset(activeMode);
+  return filterByCompanyId(d.invoices, companyId);
 }
 
 export async function getProtoReceiptsByCompany(
   companyId: string,
   activeMode: ProtoActiveListMode = "active"
 ): Promise<DataRow[]> {
-  return listProtoReceiptsByCompanyId(supabase, companyId, activeMode);
+  const d = await getCopilotDataset(activeMode);
+  return filterByCompanyId(d.receipts, companyId);
 }
 
 export async function getProtoPaymentsByCompany(
   companyId: string,
   activeMode: ProtoActiveListMode = "active"
 ): Promise<DataRow[]> {
-  return listProtoPaymentsByCompanyId(supabase, companyId, activeMode);
+  const d = await getCopilotDataset(activeMode);
+  return filterByCompanyId(d.payments, companyId);
 }
 
 export async function getProtoCompanyById(companyId: string): Promise<DataRow | null> {
-  return repoGetProtoCompanyById(supabase, companyId);
+  const id = companyId.trim();
+  if (!id) return null;
+  const d = await getCopilotDataset("all");
+  return d.companies.find((r) => String(r.id ?? "") === id) ?? null;
 }
 
 export async function getProtoInvoiceById(invoiceId: string): Promise<DataRow | null> {
-  return repoGetProtoInvoiceById(supabase, invoiceId);
+  const id = invoiceId.trim();
+  if (!id) return null;
+  const d = await getCopilotDataset("all");
+  return d.invoices.find((r) => String(r.id ?? "") === id) ?? null;
 }
 
 export async function getProtoReceiptsByInvoice(
   invoiceId: string,
   activeMode: ProtoActiveListMode = "active"
 ): Promise<DataRow[]> {
-  return listProtoReceiptsByInvoiceId(supabase, invoiceId, activeMode);
+  const d = await getCopilotDataset(activeMode);
+  return filterByInvoiceId(d.receipts, invoiceId);
 }
 
 export const getCompanies = getProtoCompanies;

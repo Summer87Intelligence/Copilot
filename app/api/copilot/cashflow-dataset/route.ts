@@ -1,0 +1,53 @@
+import { NextRequest, NextResponse } from "next/server";
+
+import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
+import { loadCashflowEngineDatasetRows } from "@/lib/data/proto-analytics-read-repository";
+import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
+
+/**
+ * GET /api/copilot/cashflow-dataset
+ * Filas mínimas para el motor de flujo de caja (tenant-scoped).
+ * `data` incluye `receipts`, `payments`, `invoices` (mismas claves que antes) y `meta` aditiva
+ * (orden, row_cap, merge de facturas alineado con financial-snapshot).
+ */
+export async function GET(request: NextRequest) {
+  let log = copilotRequestLogger(request);
+
+  try {
+    const auth = await requireCopilotTenantContext(request);
+    if (!auth.ok) {
+      log.warn("copilot_auth_failed", { phase: "require_copilot_tenant_cashflow_dataset" });
+      return auth.response;
+    }
+    log = log.withTenant(auth.ctx.tenantCompanyId);
+
+    const tenantCompanyId = auth.ctx.tenantCompanyId.trim();
+    if (!tenantCompanyId) {
+      return NextResponse.json(
+        { ok: false as const, code: "FORBIDDEN_TENANT", error: "Sin workspace válido." },
+        { status: 403 }
+      );
+    }
+
+    const supabaseFromCookies = await createRouteSupabaseClient();
+    const { data: supabaseUserData, error: supabaseUserErr } =
+      await supabaseFromCookies.auth.getUser();
+    const supabase =
+      !supabaseUserErr && supabaseUserData.user
+        ? supabaseFromCookies
+        : auth.ctx.supabase;
+
+    const data = await loadCashflowEngineDatasetRows(supabase, tenantCompanyId);
+    return NextResponse.json({ ok: true as const, data });
+  } catch (e) {
+    log.error("copilot_cashflow_dataset_failed", e, {
+      route: "GET /api/copilot/cashflow-dataset",
+    });
+    const message = e instanceof Error ? e.message : "Error desconocido";
+    return NextResponse.json(
+      { ok: false as const, code: "UNEXPECTED", error: message },
+      { status: 500 }
+    );
+  }
+}

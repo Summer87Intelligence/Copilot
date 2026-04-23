@@ -224,7 +224,7 @@ export function CopilotActionsEvidenceDrawer({
             <div className="space-y-4">
               <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                  Cliente / empresa
+                  Empresa
                 </p>
                 <p className="mt-2 text-sm font-semibold text-[var(--copilot-ink)]">{company}</p>
               </div>

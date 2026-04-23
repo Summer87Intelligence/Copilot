@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowDownUp, ChevronDown, ChevronUp } from "lucide-react";
 
 import { CopilotInteractiveText } from "@/components/copilot/copilot-interactive-text";
@@ -9,9 +9,124 @@ import {
   sharedObligationPaymentStatusPillClass,
 } from "@/lib/copilot-format";
 import type { DataEntity, DataRow } from "@/lib/copilot-data";
+import { companyCellValue, companyPrimaryLabel } from "@/lib/copilot-datos-company-display";
+import {
+  formatInvoiceFacturaPrimary,
+  formatInvoiceFacturaTechnicalSubtitle,
+} from "@/lib/copilot-datos-invoice-display";
+import { INVOICE_CLIENT_CODIGO_KEY, INVOICE_CLIENT_RAZON_KEY } from "@/lib/copilot-datos-invoices-ui";
+
+function sortableCellValue(entity: DataEntity, row: DataRow, colKey: string): unknown {
+  if (entity === "invoices" && colKey === "invoice_number") {
+    return formatInvoiceFacturaPrimary(row);
+  }
+  if (entity === "invoices" && colKey === "collection_probability") {
+    const n = normalizeCollectionProbabilityToScale10(row[colKey]);
+    return n ?? -1;
+  }
+  if (entity === "companies") {
+    return companyCellValue(row, colKey);
+  }
+  return row[colKey];
+}
 
 function statusPillEntities(entity: DataEntity): boolean {
   return entity === "payments" || entity === "receipts" || entity === "tax_obligations";
+}
+
+function parseAmount(v: unknown): number | null {
+  if (v == null || v === "") return null;
+  const n = typeof v === "number" ? v : Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
+function readInvoiceCurrency(row: DataRow): "$" | "U$S" {
+  const rawMeta =
+    row.zeta_metadata &&
+    typeof row.zeta_metadata === "object" &&
+    !Array.isArray(row.zeta_metadata) &&
+    (row.zeta_metadata as Record<string, unknown>).zeta_customer_voucher_v1 &&
+    typeof (row.zeta_metadata as Record<string, unknown>).zeta_customer_voucher_v1 === "object"
+      ? ((row.zeta_metadata as Record<string, unknown>).zeta_customer_voucher_v1 as Record<string, unknown>)
+          .moneda_codigo
+      : null;
+  const raw = rawMeta ?? row.moneda_codigo ?? row.currency ?? row.moneda;
+  const s = String(raw ?? "").trim().toUpperCase();
+  if (s.includes("U$S") || s.includes("USD") || s.includes("US$") || s.includes("DOLAR")) return "U$S";
+  return "$";
+}
+
+function formatInvoiceAmountWithCurrency(row: DataRow, v: unknown): string {
+  const n = parseAmount(v);
+  if (n == null) return "—";
+  return `${readInvoiceCurrency(row)} ${n.toLocaleString("es-UY", { maximumFractionDigits: 2 })}`;
+}
+
+function normalizeCollectionProbabilityToScale10(v: unknown): number | null {
+  const n = parseAmount(v);
+  if (n == null || !Number.isFinite(n)) return null;
+  if (n <= 0) return 1;
+  if (n <= 1) {
+    return Math.min(10, Math.max(1, Math.round(n * 10)));
+  }
+  return Math.min(10, Math.max(1, Math.round(n)));
+}
+
+function collectionProbabilityTone(score: number): "red" | "yellow" | "green" {
+  if (score <= 3) return "red";
+  if (score <= 7) return "yellow";
+  return "green";
+}
+
+function renderCollectionProbabilityCell(v: unknown) {
+  const score = normalizeCollectionProbabilityToScale10(v);
+  if (score == null) {
+    return <span className="text-[var(--copilot-ink-muted)]">—</span>;
+  }
+  const tone = collectionProbabilityTone(score);
+  const palette =
+    tone === "red"
+      ? "bg-rose-100 text-rose-800 ring-rose-200"
+      : tone === "yellow"
+        ? "bg-amber-100 text-amber-800 ring-amber-200"
+        : "bg-emerald-100 text-emerald-800 ring-emerald-200";
+  const dot =
+    tone === "red"
+      ? "bg-rose-500"
+      : tone === "yellow"
+        ? "bg-amber-500"
+        : "bg-emerald-500";
+  return (
+    <span
+      className={`inline-flex items-center justify-end gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums ring-1 ${palette}`}
+      title={`Probabilidad de cobro: ${score}/10`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+      {score}
+    </span>
+  );
+}
+
+function invoiceHeaderClass(colKey: string): string {
+  const base =
+    "border-b border-[var(--copilot-border)] px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]";
+  if (colKey === "invoice_number") return `${base} w-[150px]`;
+  if (colKey === INVOICE_CLIENT_CODIGO_KEY) return `${base} w-[60px]`;
+  if (colKey === INVOICE_CLIENT_RAZON_KEY) return `${base} min-w-[260px]`;
+  if (colKey === "issue_date") return `${base} w-[96px]`;
+  if (colKey === "total_amount" || colKey === "balance_amount") return `${base} w-[130px] text-right`;
+  if (colKey === "collection_probability") return `${base} w-[70px] text-right`;
+  return base;
+}
+
+function invoiceCellClass(colKey: string): string {
+  const base = "max-w-[280px] truncate px-3 py-2 text-sm text-[var(--copilot-ink)]";
+  if (colKey === INVOICE_CLIENT_RAZON_KEY) return `${base} max-w-[420px]`;
+  if (colKey === INVOICE_CLIENT_CODIGO_KEY) return `${base} w-[60px] text-center tabular-nums`;
+  if (colKey === "issue_date") return `${base} w-[96px]`;
+  if (colKey === "total_amount" || colKey === "balance_amount") return `${base} w-[130px] text-right tabular-nums`;
+  if (colKey === "collection_probability") return `${base} w-[70px] text-right tabular-nums`;
+  return base;
 }
 
 export type DataColumn = {
@@ -40,15 +155,21 @@ export function CopilotDataTable({
   /** Muestra badge “Inactivo” cuando `is_active === false` (vista con archivados). */
   inactiveBadge?: boolean;
 }) {
+  const columnKeySig = columns.map((c) => c.key).join("|");
   const [sortKey, setSortKey] = useState<string>(columns[0]?.key ?? "");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
+  useEffect(() => {
+    setSortKey(columns[0]?.key ?? "");
+    setSortDirection("desc");
+  }, [entity, columnKeySig, columns]);
 
   const sortedData = useMemo(() => {
     if (!sortKey) return data;
     const list = [...data];
     list.sort((a, b) => {
-      const av = a[sortKey];
-      const bv = b[sortKey];
+      const av = sortableCellValue(entity, a, sortKey);
+      const bv = sortableCellValue(entity, b, sortKey);
       const left = av == null ? "" : String(av).toLowerCase().trim();
       const right = bv == null ? "" : String(bv).toLowerCase().trim();
       if (left < right) return sortDirection === "asc" ? -1 : 1;
@@ -56,7 +177,7 @@ export function CopilotDataTable({
       return 0;
     });
     return list;
-  }, [data, sortDirection, sortKey]);
+  }, [data, entity, sortDirection, sortKey]);
 
   const handleSort = (key: string) => {
     if (key === sortKey) {
@@ -73,7 +194,7 @@ export function CopilotDataTable({
         <table className="min-w-full border-collapse">
           <thead className="sticky top-0 z-10 bg-[var(--copilot-card)]">
             <tr>
-              {inactiveBadge ? (
+              {inactiveBadge && entity !== "invoices" ? (
                 <th className="w-24 border-b border-[var(--copilot-border)] px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                   Activo
                 </th>
@@ -83,7 +204,11 @@ export function CopilotDataTable({
                 return (
                   <th
                     key={col.key}
-                    className="border-b border-[var(--copilot-border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]"
+                    className={
+                      entity === "invoices"
+                        ? invoiceHeaderClass(col.key)
+                        : "border-b border-[var(--copilot-border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]"
+                    }
                   >
                     <button
                       type="button"
@@ -111,7 +236,7 @@ export function CopilotDataTable({
               <tr>
                 <td
                   className="px-4 py-10 text-center text-sm text-[var(--copilot-ink-muted)]"
-                  colSpan={(inactiveBadge ? 1 : 0) + (columns.length || 1)}
+                  colSpan={((inactiveBadge && entity !== "invoices") ? 1 : 0) + (columns.length || 1)}
                 >
                   No hay registros para esta vista.
                 </td>
@@ -129,7 +254,7 @@ export function CopilotDataTable({
                     selected ? "bg-[var(--copilot-accent-soft)] ring-1 ring-inset ring-[rgba(31,107,74,0.22)]" : ""
                   }`}
                 >
-                  {inactiveBadge ? (
+                  {inactiveBadge && entity !== "invoices" ? (
                     <td className="px-3 py-3 align-middle">
                       {isInactive ? (
                         <span className="inline-flex rounded-full bg-[rgba(44,40,37,0.12)] px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
@@ -141,14 +266,30 @@ export function CopilotDataTable({
                     </td>
                   ) : null}
                   {columns.map((col) => {
-                    const value = row[col.key];
-                    const raw = formatCopilotDataCell(entity, col.key, value);
+                    const value =
+                      entity === "companies"
+                        ? companyCellValue(row, col.key)
+                        : row[col.key];
+                    const isInvoiceFacturaCol = entity === "invoices" && col.key === "invoice_number";
+                    const facturaPrimary = isInvoiceFacturaCol ? formatInvoiceFacturaPrimary(row) : null;
+                    const raw =
+                      entity === "companies" && col.key === "RazonSocial"
+                        ? companyPrimaryLabel(row)
+                        : entity === "invoices" && col.key === "collection_probability"
+                          ? String(normalizeCollectionProbabilityToScale10(value) ?? "—")
+                        : entity === "invoices" &&
+                            (col.key === "total_amount" || col.key === "balance_amount")
+                          ? formatInvoiceAmountWithCurrency(row, value)
+                        : isInvoiceFacturaCol && facturaPrimary && facturaPrimary !== "—"
+                          ? facturaPrimary
+                          : formatCopilotDataCell(entity, col.key, value);
                     const interactive = interactiveColumnKeys.includes(col.key);
                     const statusPill =
                       col.key === "status" &&
                       statusPillEntities(entity) &&
                       typeof value === "string" &&
                       value.trim() !== "";
+                    const collectionProbPill = entity === "invoices" && col.key === "collection_probability";
                     const cellInner = statusPill ? (
                       <span
                         className={sharedObligationPaymentStatusPillClass(value)}
@@ -156,6 +297,8 @@ export function CopilotDataTable({
                       >
                         {raw}
                       </span>
+                    ) : collectionProbPill ? (
+                      renderCollectionProbabilityCell(value)
                     ) : interactive ? (
                       <CopilotInteractiveText
                         layout="block"
@@ -166,16 +309,34 @@ export function CopilotDataTable({
                           onRowClick(row);
                         }}
                       >
-                        {raw}
+                        {isInvoiceFacturaCol && facturaPrimary && facturaPrimary !== "—" ? (
+                          <span className="font-medium">{facturaPrimary}</span>
+                        ) : (
+                          raw
+                        )}
                       </CopilotInteractiveText>
+                    ) : isInvoiceFacturaCol && facturaPrimary && facturaPrimary !== "—" ? (
+                      <span className="font-medium">{facturaPrimary}</span>
                     ) : (
                       raw
                     );
+                    const techSub =
+                      isInvoiceFacturaCol && facturaPrimary && facturaPrimary !== "—"
+                        ? formatInvoiceFacturaTechnicalSubtitle(row, facturaPrimary)
+                        : null;
+                    const cellTitle =
+                      techSub != null
+                        ? `${facturaPrimary} · ref. interna: ${techSub}`
+                        : raw;
                     return (
                       <td
                         key={`${rowId}-${col.key}`}
-                        className="max-w-[280px] truncate px-4 py-3 text-sm text-[var(--copilot-ink)]"
-                        title={raw}
+                        className={
+                          entity === "invoices"
+                            ? invoiceCellClass(col.key)
+                            : "max-w-[280px] truncate px-4 py-3 text-sm text-[var(--copilot-ink)]"
+                        }
+                        title={cellTitle}
                       >
                         {cellInner}
                       </td>

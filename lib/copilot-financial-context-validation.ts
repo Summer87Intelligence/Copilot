@@ -1,3 +1,7 @@
+import {
+  countInvoiceBalanceOutOfRange,
+  countReceiptsBalanceIncompatible,
+} from "@/lib/financial-invoice-dataset-guards";
 import type { OperationalSupabase } from "@/lib/data/supabase-operational-data";
 import { fetchInvoiceFinancialBalanceMap } from "@/lib/data/proto-analytics-read-repository";
 
@@ -26,6 +30,8 @@ export type FinancialValidationChecks = {
   invoices_missing_total_amount: number;
   invoices_missing_due_date: number;
   invoice_balance_divergence_count: number;
+  invoice_balance_out_of_range_count: number;
+  receipts_incompatible_with_balance_count: number;
   receipts_missing_company_id: number;
   receipts_missing_invoice_id: number;
   payments_missing_company_id: number;
@@ -99,7 +105,7 @@ export async function runFinancialDatasetValidation(
 
   const recQ = client
     .from("proto_receipts")
-    .select("id,workspace_company_id,company_id,invoice_id,is_active")
+    .select("id,workspace_company_id,company_id,invoice_id,amount,is_active")
     .eq("is_active", true)
     .eq("workspace_company_id", wid)
     .limit(ROW_CAP);
@@ -132,6 +138,8 @@ export async function runFinancialDatasetValidation(
     invoices_missing_total_amount: 0,
     invoices_missing_due_date: 0,
     invoice_balance_divergence_count: 0,
+    invoice_balance_out_of_range_count: 0,
+    receipts_incompatible_with_balance_count: 0,
     receipts_missing_company_id: 0,
     receipts_missing_invoice_id: 0,
     payments_missing_company_id: 0,
@@ -224,6 +232,7 @@ export async function runFinancialDatasetValidation(
   }
   checks.invoices_missing_in_financials_view = missingInView;
 
+  // Persistido en `proto_invoices` vs saldo en `invoice_financials` (solo control; lectura unificada usa persistido).
   if (derivedMap.size > 0) {
     for (const inv of invoices) {
       const id = String(inv.id ?? "").trim();
@@ -239,6 +248,16 @@ export async function runFinancialDatasetValidation(
       }
     }
   }
+
+  checks.invoice_balance_out_of_range_count = countInvoiceBalanceOutOfRange(
+    invoices,
+    BALANCE_DIVERGENCE_EPS
+  );
+  checks.receipts_incompatible_with_balance_count = countReceiptsBalanceIncompatible(
+    invoices,
+    receipts,
+    BALANCE_DIVERGENCE_EPS
+  );
 
   if (checks.tenant_row_mismatch_invoices > 0) {
     issues.push({
@@ -295,6 +314,24 @@ export async function runFinancialDatasetValidation(
       count: checks.invoice_balance_divergence_count,
     });
   }
+  if (checks.invoice_balance_out_of_range_count > 0) {
+    issues.push({
+      code: "invoice_balance_out_of_range",
+      severity: "blocking",
+      message:
+        "Hay facturas con saldo fuera de rango respecto al total (negativo o mayor al total facturado, tolerancia 1).",
+      count: checks.invoice_balance_out_of_range_count,
+    });
+  }
+  if (checks.receipts_incompatible_with_balance_count > 0) {
+    issues.push({
+      code: "receipts_incompatible_with_balance",
+      severity: "blocking",
+      message:
+        "Hay facturas donde la suma de recibos vinculados no cuadra con balance_amount (modelo total − cobros, tolerancia 1) o los cobros superan el total.",
+      count: checks.receipts_incompatible_with_balance_count,
+    });
+  }
   if (checks.receipts_missing_company_id > 0) {
     issues.push({
       code: "receipts_missing_company_id",
@@ -336,7 +373,7 @@ export async function runFinancialDatasetValidation(
     issues.push({
       code: "insufficient_companies",
       severity: "blocking",
-      message: "No hay empresas cliente (proto_companies) activas en el workspace.",
+      message: "No hay empresas activas en proto_companies para este workspace.",
       count: checks.active_companies,
     });
   }
