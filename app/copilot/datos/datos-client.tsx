@@ -69,6 +69,11 @@ import {
   invoiceIssueInCalendarMonth,
   invoiceIssueInClosedRange,
 } from "@/lib/copilot-datos-invoices-ui";
+import {
+  filterRowsByPeriod,
+  PERIOD_MONTH_OPTIONS,
+  type PeriodSelector,
+} from "@/lib/copilot-datos-period-filter";
 import { deriveFinancialFlags } from "@/lib/derive-financial-flags";
 import { FINANCIAL_UX_COPY } from "@/lib/copilot-financial-ux-copy";
 import { getFinancialSnapshot } from "@/lib/copilot-financial-engine";
@@ -196,6 +201,7 @@ const filterKeyByEntity: Partial<Record<DataEntity, string>> = {
 /** Columna de orden inicial por entidad. Omitir entidad = usar primera columna (comportamiento previo). */
 const defaultSortKeyByEntity: Partial<Record<DataEntity, string>> = {
   invoices: "issue_date",
+  receipts: "receipt_date",
 };
 
 const interactiveColumnKeysByEntity: Record<DataEntity, string[]> = {
@@ -305,6 +311,12 @@ function CopilotDatosPageContent() {
   const [invoiceYear, setInvoiceYear] = useState(() => new Date().getFullYear());
   const [invoiceRangeFrom, setInvoiceRangeFrom] = useState("");
   const [invoiceRangeTo, setInvoiceRangeTo] = useState("");
+  /**
+   * Filtro de período para pestaña Recibos. Defaults: año actual, mes "Todos".
+   * Mantiene independencia del filtro de Facturas para no inducir efectos cruzados.
+   */
+  const [receiptYear, setReceiptYear] = useState<PeriodSelector>(() => new Date().getFullYear());
+  const [receiptMonth, setReceiptMonth] = useState<PeriodSelector>("all");
   const [paymentPrefillRow, setPaymentPrefillRow] = useState<DataRow | null>(
     null
   );
@@ -609,16 +621,21 @@ function CopilotDatosPageContent() {
   }, [expandedEntity, rows, companies]);
 
   const periodFilteredRows = useMemo(() => {
-    if (expandedEntity !== "invoices") return baseRows;
-    if (invoicePeriodMode === "all") return baseRows;
-    if (invoicePeriodMode === "month") {
+    if (expandedEntity === "invoices") {
+      if (invoicePeriodMode === "all") return baseRows;
+      if (invoicePeriodMode === "month") {
+        return baseRows.filter((row) =>
+          invoiceIssueInCalendarMonth(row, invoiceYear, invoiceMonth)
+        );
+      }
       return baseRows.filter((row) =>
-        invoiceIssueInCalendarMonth(row, invoiceYear, invoiceMonth)
+        invoiceIssueInClosedRange(row, invoiceRangeFrom, invoiceRangeTo)
       );
     }
-    return baseRows.filter((row) =>
-      invoiceIssueInClosedRange(row, invoiceRangeFrom, invoiceRangeTo)
-    );
+    if (expandedEntity === "receipts") {
+      return filterRowsByPeriod(baseRows, "receipt_date", receiptYear, receiptMonth);
+    }
+    return baseRows;
   }, [
     expandedEntity,
     baseRows,
@@ -627,6 +644,8 @@ function CopilotDatosPageContent() {
     invoiceMonth,
     invoiceRangeFrom,
     invoiceRangeTo,
+    receiptYear,
+    receiptMonth,
   ]);
 
   const filteredRows = useMemo(() => {
@@ -1175,6 +1194,60 @@ function CopilotDatosPageContent() {
                               </span>
                             </div>
                           </div>
+
+                          {tab.id === "receipts" ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                                Período:
+                              </span>
+                              <label className="flex items-center gap-1.5 text-xs text-[var(--copilot-ink-muted)]">
+                                Año
+                                <select
+                                  value={String(receiptYear)}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    setReceiptYear(v === "all" ? "all" : Number(v));
+                                  }}
+                                  className="rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                >
+                                  <option value="all">Todos</option>
+                                  {invoiceYearOptions.map((y) => (
+                                    <option key={y} value={y}>
+                                      {y}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label className="flex items-center gap-1.5 text-xs text-[var(--copilot-ink-muted)]">
+                                Mes
+                                <select
+                                  value={String(receiptMonth)}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    setReceiptMonth(v === "all" ? "all" : Number(v));
+                                  }}
+                                  className="rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                >
+                                  <option value="all">Todos</option>
+                                  {PERIOD_MONTH_OPTIONS.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                      {opt.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <CopilotGhostButton
+                                type="button"
+                                className="px-3 py-1.5 text-xs"
+                                onClick={() => {
+                                  setReceiptYear("all");
+                                  setReceiptMonth("all");
+                                }}
+                              >
+                                Limpiar
+                              </CopilotGhostButton>
+                            </div>
+                          ) : null}
 
                           {filterOptions.length > 0 ? (
                             <div className="flex items-center gap-2">

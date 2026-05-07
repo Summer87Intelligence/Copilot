@@ -15,6 +15,7 @@ import {
   formatInvoiceFacturaTechnicalSubtitle,
   readInvoiceCurrency,
 } from "@/lib/copilot-datos-invoice-display";
+import { formatReceiptAmountWithCurrency } from "@/lib/copilot-datos-receipt-display";
 import { INVOICE_CLIENT_CODIGO_KEY, INVOICE_CLIENT_RAZON_KEY } from "@/lib/copilot-datos-invoices-ui";
 
 function sortableCellValue(entity: DataEntity, row: DataRow, colKey: string): unknown {
@@ -121,6 +122,23 @@ function invoiceCellClass(colKey: string): string {
   return base;
 }
 
+/**
+ * Alineación coherente con invoices para la única columna numérica con moneda en recibos (`amount`).
+ * Resto de columnas (Recibo, Fecha, Método, Estado) conservan los estilos genéricos previos.
+ */
+function receiptHeaderClass(colKey: string): string {
+  const base =
+    "border-b border-[var(--copilot-border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]";
+  if (colKey === "amount") return `${base} text-right`;
+  return base;
+}
+
+function receiptCellClass(colKey: string): string {
+  const base = "max-w-[280px] truncate px-4 py-3 text-sm text-[var(--copilot-ink)]";
+  if (colKey === "amount") return `${base} text-right tabular-nums`;
+  return base;
+}
+
 export type DataColumn = {
   key: string;
   label: string;
@@ -206,7 +224,9 @@ export function CopilotDataTable({
                     className={
                       entity === "invoices"
                         ? invoiceHeaderClass(col.key)
-                        : "border-b border-[var(--copilot-border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]"
+                        : entity === "receipts"
+                          ? receiptHeaderClass(col.key)
+                          : "border-b border-[var(--copilot-border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]"
                     }
                   >
                     <button
@@ -281,6 +301,8 @@ export function CopilotDataTable({
                         : entity === "invoices" &&
                             (col.key === "total_amount" || col.key === "balance_amount")
                           ? formatInvoiceAmountWithCurrency(row, value)
+                        : entity === "receipts" && col.key === "amount"
+                          ? formatReceiptAmountWithCurrency(row, value)
                         : isInvoiceFacturaCol && facturaPrimary && facturaPrimary !== "—"
                           ? facturaPrimary
                           : formatCopilotDataCell(entity, col.key, value);
@@ -335,7 +357,9 @@ export function CopilotDataTable({
                         className={
                           entity === "invoices"
                             ? invoiceCellClass(col.key)
-                            : "max-w-[280px] truncate px-4 py-3 text-sm text-[var(--copilot-ink)]"
+                            : entity === "receipts"
+                              ? receiptCellClass(col.key)
+                              : "max-w-[280px] truncate px-4 py-3 text-sm text-[var(--copilot-ink)]"
                         }
                         title={cellTitle}
                       >

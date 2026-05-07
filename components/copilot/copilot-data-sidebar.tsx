@@ -18,6 +18,11 @@ import {
   readInvoiceCurrency,
 } from "@/lib/copilot-datos-invoice-display";
 import {
+  formatReceiptAmountWithCurrency,
+  readReceiptCurrency,
+  readReceiptCurrencyIso,
+} from "@/lib/copilot-datos-receipt-display";
+import {
   getProtoCompanyById,
   getProtoContactsByCompany,
   getProtoInvoiceById,
@@ -55,12 +60,21 @@ function compactDate(row: DataRow): string {
   return Number.isNaN(d.getTime()) ? String(raw) : d.toLocaleDateString("es-UY");
 }
 
-function compactAmount(row: DataRow): string {
+function compactAmount(row: DataRow, rowEntity: DataEntity): string {
   const amount = row.amount ?? row.total_amount ?? row.balance_amount;
   if (amount == null) return "—";
   const n = Number(amount);
   if (!Number.isFinite(n)) return String(amount);
-  const cur = readInvoiceCurrency(row);
+  /**
+   * Para receipts/payments la fuente de verdad es `readReceiptCurrency` (lee
+   * `currency_code` + fallbacks a `notes.zeta_collection_receipt_v1`); para el resto
+   * (invoices, etc.) sigue valiendo `readInvoiceCurrency` (lee `zeta_metadata`).
+   * Mezclar helpers entre entidades es lo que producía el mismatch grilla↔sidebar.
+   */
+  const cur =
+    rowEntity === "receipts" || rowEntity === "payments"
+      ? readReceiptCurrency(row)
+      : readInvoiceCurrency(row);
   const formatted = n.toLocaleString("es-UY");
   return cur ? `${cur} ${formatted}` : formatted;
 }
@@ -129,6 +143,70 @@ function formatInvoiceSidebarCellValue(row: DataRow, k: string, v: unknown): str
   return formatCopilotDataCell("invoices", k, v);
 }
 
+const RECEIPT_SIDEBAR_LABELS: Record<string, string> = {
+  receipt_number: "Recibo",
+  receipt_date: "Fecha",
+  amount: "Monto",
+  currency_code: "Moneda",
+  payment_method: "Método",
+  status: "Estado",
+  reference: "Referencia",
+  notes: "Notas",
+};
+
+/** Campos a mostrar (en orden) en el panel de detalle de recibos. */
+const RECEIPT_SIDEBAR_PRIORITY = [
+  "receipt_number",
+  "receipt_date",
+  "amount",
+  "currency_code",
+  "payment_method",
+  "status",
+  "reference",
+] as const;
+
+/**
+ * Campos técnicos / legacy que NO se muestran en el detalle de recibos.
+ *  - `notes` queda fuera porque es el JSON `zeta_collection_receipt_v1` (gigante, ya lo
+ *    consume `readReceiptCurrency` internamente).
+ *  - Las claves legacy de moneda se omiten para evitar valores divergentes con la grilla.
+ */
+const RECEIPT_SIDEBAR_SKIP = new Set([
+  "id",
+  "workspace_company_id",
+  "company_id",
+  "invoice_id",
+  "is_active",
+  "created_at",
+  "updated_at",
+  "notes",
+  "currency",
+  "moneda",
+  "moneda_codigo",
+  "moneda_simbolo",
+]);
+
+/**
+ * Renderiza un campo del sidebar de recibos. Reutiliza EXACTAMENTE los mismos helpers que
+ * la grilla (`readReceiptCurrency` / `formatReceiptAmountWithCurrency`) para garantizar
+ * consistencia tabla↔sidebar (USD↔U$S, UYU↔$, "—" cuando no hay info).
+ */
+function formatReceiptSidebarCellValue(row: DataRow, k: string, v: unknown): string {
+  if (
+    k === "currency_code" ||
+    k === "currency" ||
+    k === "moneda" ||
+    k === "moneda_codigo" ||
+    k === "moneda_simbolo"
+  ) {
+    return readReceiptCurrencyIso(row) ?? "—";
+  }
+  if (k === "amount") {
+    return formatReceiptAmountWithCurrency(row, v);
+  }
+  return formatCopilotDataCell("receipts", k, v);
+}
+
 function CompactList({
   title,
   rows,
@@ -172,7 +250,7 @@ function CompactList({
                     formatCopilotDataCell(rowEntity, "status", r.status)
                   )}
                 </span>
-                <span>Monto: {compactAmount(r)}</span>
+                <span>Monto: {compactAmount(r, rowEntity)}</span>
                 <span>Fecha: {compactDate(r)}</span>
               </div>
             </li>
@@ -294,6 +372,21 @@ export function CopilotDataSidebar({
         if (!ordered.includes(k) && !INVOICE_SIDEBAR_SKIP.has(k)) ordered.push(k);
       }
       return ordered.slice(0, 12).map((k) => [k, row[k]] as [string, unknown]);
+    }
+    if (entity === "receipts") {
+      const ordered: string[] = [];
+      for (const k of RECEIPT_SIDEBAR_PRIORITY) {
+        if (k in row) ordered.push(k);
+      }
+      for (const k of Object.keys(row)) {
+        if (!ordered.includes(k) && !RECEIPT_SIDEBAR_SKIP.has(k)) ordered.push(k);
+      }
+      // Garantizamos que `currency_code` aparezca aunque sea NULL en DB: la moneda real
+      // se deriva por `readReceiptCurrencyIso` desde la cadena de fallbacks de la grilla.
+      if (!ordered.includes("currency_code")) {
+        ordered.splice(ordered.indexOf("amount") + 1 || ordered.length, 0, "currency_code");
+      }
+      return ordered.slice(0, 10).map((k) => [k, row[k]] as [string, unknown]);
     }
     const keys = Object.keys(row).slice(0, 8);
     return keys.map((k) => [k, row[k]] as [string, unknown]);
@@ -427,12 +520,18 @@ export function CopilotDataSidebar({
               {baseFields.map(([k, v]) => (
                 <div key={k} className="rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-2">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                    {entity === "invoices" ? (INVOICE_SIDEBAR_LABELS[k] ?? k) : k}
+                    {entity === "invoices"
+                      ? (INVOICE_SIDEBAR_LABELS[k] ?? k)
+                      : entity === "receipts"
+                        ? (RECEIPT_SIDEBAR_LABELS[k] ?? k)
+                        : k}
                   </p>
                   <p className="mt-1 text-sm text-[var(--copilot-ink)]">
                     {entity === "invoices"
                       ? formatInvoiceSidebarCellValue(row, k, v)
-                      : formatCopilotDataCell(entity, k, v)}
+                      : entity === "receipts"
+                        ? formatReceiptSidebarCellValue(row, k, v)
+                        : formatCopilotDataCell(entity, k, v)}
                   </p>
                 </div>
               ))}

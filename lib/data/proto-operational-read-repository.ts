@@ -198,18 +198,49 @@ export async function listProtoInvoices(
   return (fallback.data ?? []) as DataRow[];
 }
 
+/**
+ * Catálogo completo de recibos del tenant.
+ *
+ * Orden de negocio: `receipt_date DESC` (más reciente primero) + `created_at DESC`
+ * como tie-breaker para mismas fechas (sync masivos quedan en orden de inserción).
+ * Nunca usar `created_at` como orden principal: la inserción en DB no refleja la
+ * fecha real del recibo (todos los recibos importados en un sync comparten timestamp).
+ */
 export async function listProtoReceipts(
   client: OperationalSupabase,
   activeMode: ProtoActiveListMode = "active",
   workspaceCompanyId?: string | null
 ): Promise<DataRow[]> {
-  return fetchWithBestOrder(
-    client,
-    "proto_receipts",
-    ORDERS.receipts,
-    activeMode,
-    workspaceCompanyId
-  );
+  const wid = workspaceCompanyId?.trim();
+  const scopeWs = Boolean(wid);
+
+  // Principal: receipt_date DESC + created_at DESC (orden de negocio)
+  {
+    let base = client.from("proto_receipts").select("*");
+    if (scopeWs) base = base.eq("workspace_company_id", wid!);
+    const q = applyProtoActiveListFilter(base, activeMode);
+    const { data, error } = await q
+      .order("receipt_date", { ascending: false })
+      .order("created_at", { ascending: false });
+    if (!error) return (data ?? []) as DataRow[];
+  }
+
+  // Fallback: receipt_date DESC solo (si created_at no responde por alguna razón de esquema)
+  {
+    let base = client.from("proto_receipts").select("*");
+    if (scopeWs) base = base.eq("workspace_company_id", wid!);
+    const q = applyProtoActiveListFilter(base, activeMode);
+    const { data, error } = await q.order("receipt_date", { ascending: false });
+    if (!error) return (data ?? []) as DataRow[];
+  }
+
+  // Fallback final sin orden garantizado
+  let fbBase = client.from("proto_receipts").select("*");
+  if (scopeWs) fbBase = fbBase.eq("workspace_company_id", wid!);
+  const fb = applyProtoActiveListFilter(fbBase, activeMode);
+  const fallback = await fb;
+  if (fallback.error) throw new Error(fallback.error.message);
+  return (fallback.data ?? []) as DataRow[];
 }
 
 export async function listProtoPayments(
