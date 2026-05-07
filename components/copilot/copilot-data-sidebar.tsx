@@ -13,7 +13,10 @@ import {
   sharedObligationPaymentStatusPillClass,
 } from "@/lib/copilot-format";
 import { companyPrimaryLabel } from "@/lib/copilot-datos-company-display";
-import { formatInvoiceFacturaPrimary } from "@/lib/copilot-datos-invoice-display";
+import {
+  formatInvoiceFacturaPrimary,
+  readInvoiceCurrency,
+} from "@/lib/copilot-datos-invoice-display";
 import {
   getProtoCompanyById,
   getProtoContactsByCompany,
@@ -56,7 +59,74 @@ function compactAmount(row: DataRow): string {
   const amount = row.amount ?? row.total_amount ?? row.balance_amount;
   if (amount == null) return "—";
   const n = Number(amount);
-  return Number.isFinite(n) ? `$ ${n.toLocaleString("es-UY")}` : String(amount);
+  if (!Number.isFinite(n)) return String(amount);
+  const cur = readInvoiceCurrency(row);
+  const formatted = n.toLocaleString("es-UY");
+  return cur ? `${cur} ${formatted}` : formatted;
+}
+
+const INVOICE_SIDEBAR_LABELS: Record<string, string> = {
+  issue_date: "Emisión",
+  due_date: "Vencimiento",
+  total_amount: "Importe total",
+  balance_amount: "Saldo",
+  currency_code: "Moneda",
+  status: "Estado",
+  category: "Categoría",
+  notes: "Notas",
+  collection_probability: "Prob. cobro",
+};
+
+/** Campos a mostrar (en orden) en el panel de detalle de facturas. */
+const INVOICE_SIDEBAR_PRIORITY = [
+  "issue_date",
+  "due_date",
+  "total_amount",
+  "balance_amount",
+  "currency_code",
+  "status",
+  "category",
+  "notes",
+  "collection_probability",
+] as const;
+
+/** Campos técnicos o legacy que NO se muestran en el panel de detalle de facturas. */
+const INVOICE_SIDEBAR_SKIP = new Set([
+  "id",
+  "workspace_company_id",
+  "company_id",
+  "invoice_number",
+  "zeta_metadata",
+  "is_active",
+  "created_at",
+  "updated_at",
+  // campos legacy de moneda — sustituidos por currency_code vía readInvoiceCurrency
+  "currency",
+  "moneda",
+  "moneda_codigo",
+  // columnas virtuales de enriquecimiento de cliente
+  "client_codigo_display",
+  "client_razon_display",
+]);
+
+/** Renderiza el valor de un campo de factura en el sidebar usando readInvoiceCurrency para moneda. */
+function formatInvoiceSidebarCellValue(row: DataRow, k: string, v: unknown): string {
+  if (
+    k === "currency_code" ||
+    k === "currency" ||
+    k === "moneda" ||
+    k === "moneda_codigo"
+  ) {
+    return readInvoiceCurrency(row) ?? "—";
+  }
+  if (k === "total_amount" || k === "balance_amount") {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return "—";
+    const cur = readInvoiceCurrency(row);
+    const formatted = n.toLocaleString("es-UY", { maximumFractionDigits: 2 });
+    return cur ? `${cur} ${formatted}` : formatted;
+  }
+  return formatCopilotDataCell("invoices", k, v);
 }
 
 function CompactList({
@@ -215,6 +285,16 @@ export function CopilotDataSidebar({
       }
       return ordered.slice(0, 24).map((k) => [k, row[k]] as [string, unknown]);
     }
+    if (entity === "invoices") {
+      const ordered: string[] = [];
+      for (const k of INVOICE_SIDEBAR_PRIORITY) {
+        if (k in row) ordered.push(k);
+      }
+      for (const k of Object.keys(row)) {
+        if (!ordered.includes(k) && !INVOICE_SIDEBAR_SKIP.has(k)) ordered.push(k);
+      }
+      return ordered.slice(0, 12).map((k) => [k, row[k]] as [string, unknown]);
+    }
     const keys = Object.keys(row).slice(0, 8);
     return keys.map((k) => [k, row[k]] as [string, unknown]);
   }, [row, entity]);
@@ -347,10 +427,12 @@ export function CopilotDataSidebar({
               {baseFields.map(([k, v]) => (
                 <div key={k} className="rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-2">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                    {k}
+                    {entity === "invoices" ? (INVOICE_SIDEBAR_LABELS[k] ?? k) : k}
                   </p>
                   <p className="mt-1 text-sm text-[var(--copilot-ink)]">
-                    {formatCopilotDataCell(entity, k, v)}
+                    {entity === "invoices"
+                      ? formatInvoiceSidebarCellValue(row, k, v)
+                      : formatCopilotDataCell(entity, k, v)}
                   </p>
                 </div>
               ))}

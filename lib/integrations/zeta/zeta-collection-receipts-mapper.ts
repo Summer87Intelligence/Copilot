@@ -15,6 +15,8 @@ export type CopilotCollectionReceiptV1 = {
   cliente_documento: string | null;
   receipt_date_ymd: string | null;
   moneda_codigo: string | null;
+  moneda_simbolo: string | null;
+  currency_code: "USD" | "UYU" | null;
   importe: number | null;
   medio_pago: string | null;
   referencia_documento: string | null;
@@ -52,10 +54,13 @@ function parseSignedTotal(row: ZetaCollectionReceiptRecord): number | null {
   return Math.abs(total);
 }
 
-function sliceYmd(fecha: string | null): string | null {
+function normalizeZetaReceiptDateYmd(fecha: string | null): string | null {
   if (!fecha) return null;
   const s = fecha.trim();
-  if (s.length >= 10) return s.slice(0, 10);
+  const compact = s.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (compact) return `${compact[1]}-${compact[2]}-${compact[3]}`;
+  const ymd = s.match(/^(\d{4})[-/](\d{2})[-/](\d{2})/);
+  if (ymd) return `${ymd[1]}-${ymd[2]}-${ymd[3]}`;
   return null;
 }
 
@@ -84,10 +89,26 @@ function buildReference(row: ZetaCollectionReceiptRecord, registroId: string): s
 }
 
 function pickMedioPago(row: ZetaCollectionReceiptRecord): string | null {
+  const descripcion = cleanZetaString(readOwn(row, ["Descripcion", "descripcion", "Descripción", "descripción"]));
+  if (descripcion) return descripcion;
   const caja = cleanZetaString(readOwn(row, ["CajaNombre", "cajaNombre"]));
   if (caja) return caja;
   const cob = cleanZetaString(readOwn(row, ["CobradorNombre", "cobradorNombre"]));
   if (cob) return cob;
+  return null;
+}
+
+export function normalizeZetaReceiptCurrency(
+  monedaCodigo: string | null,
+  monedaSimbolo: string | null
+): "USD" | "UYU" | null {
+  const codigo = (monedaCodigo ?? "").trim();
+  if (codigo === "1") return "UYU";
+  if (codigo === "2") return "USD";
+
+  const simbolo = (monedaSimbolo ?? "").trim().toUpperCase();
+  if (simbolo.startsWith("U$S") || simbolo.startsWith("USD")) return "USD";
+  if (simbolo.startsWith("$") || simbolo.startsWith("UYU")) return "UYU";
   return null;
 }
 
@@ -102,9 +123,11 @@ export function mapZetaCollectionReceiptToCopilot(row: ZetaCollectionReceiptReco
   if (!registroId) return null;
 
   const fecha = cleanZetaString(readOwn(row, ["Fecha", "fecha"]));
-  const ymd = sliceYmd(fecha);
+  const ymd = normalizeZetaReceiptDateYmd(fecha);
   const importe = parseSignedTotal(row);
   const clienteCodigo = cleanZetaString(readOwn(row, ["ClienteCodigo", "clienteCodigo"]));
+  const monedaCodigo = cleanZetaString(readOwn(row, ["MonedaCodigo", "monedaCodigo"]));
+  const monedaSimbolo = cleanZetaString(readOwn(row, ["MonedaSimbolo", "monedaSimbolo"]));
   const doc = mapRutField(
     readOwn(row, ["ClienteDocumento", "clienteDocumento", "ClienteRUT", "clienteRut", "RUT", "rut"])
   );
@@ -115,7 +138,9 @@ export function mapZetaCollectionReceiptToCopilot(row: ZetaCollectionReceiptReco
     zeta_cliente_codigo: clienteCodigo,
     cliente_documento: doc,
     receipt_date_ymd: ymd,
-    moneda_codigo: cleanZetaString(readOwn(row, ["MonedaCodigo", "monedaCodigo"])),
+    moneda_codigo: monedaCodigo,
+    moneda_simbolo: monedaSimbolo,
+    currency_code: normalizeZetaReceiptCurrency(monedaCodigo, monedaSimbolo),
     importe,
     medio_pago: pickMedioPago(row),
     referencia_documento: buildReference(row, registroId),
@@ -130,6 +155,8 @@ export function buildZetaCollectionReceiptNotes(m: CopilotCollectionReceiptV1, s
     zeta_collection_receipt_v1: {
       sync_run_id: syncRunId,
       moneda_codigo: m.moneda_codigo,
+      moneda_simbolo: m.moneda_simbolo,
+      currency_code: m.currency_code,
       comprobante_codigo: m.comprobante_codigo,
       raw_payload: m.raw_payload,
     },
@@ -148,24 +175,46 @@ export function buildZetaCollectionReceiptNotes(m: CopilotCollectionReceiptV1, s
 }
 
 export function mapCopilotCollectionReceiptToProtoReceiptInput(
-  companyId: string,
+  companyId: string | null,
   m: CopilotCollectionReceiptV1,
   syncRunId: string
-): ProtoReceiptInput | null {
+): MapCollectionReceiptToProtoReceiptResult {
   const amount = m.importe ?? 0;
-  if (!(amount > 0)) return null;
+  if (amount < 0) {
+    return { ok: false, reason: "negative_amount", amount };
+  }
+  if (!(amount > 0)) {
+    return { ok: false, reason: "invalid_amount", amount };
+  }
   const ymd = m.receipt_date_ymd;
-  if (!ymd) return null;
+  if (!ymd) {
+    const rawFecha = m.raw_payload.Fecha ?? m.raw_payload.fecha;
+    return {
+      ok: false,
+      reason: "invalid_fecha",
+      raw_fecha: rawFecha == null ? null : String(rawFecha),
+    };
+  }
 
   return {
-    company_id: companyId,
-    invoice_id: null,
-    receipt_number: buildZetaCollectionReceiptNumber(m.zeta_registro_id),
-    receipt_date: ymd,
-    amount,
-    payment_method: m.medio_pago,
-    status: mapEmitidoToReceiptStatus(m.estado_emitido),
-    reference: m.referencia_documento,
-    notes: buildZetaCollectionReceiptNotes(m, syncRunId),
+    ok: true,
+    input: {
+      company_id: companyId,
+      invoice_id: null,
+      receipt_number: buildZetaCollectionReceiptNumber(m.zeta_registro_id),
+      receipt_date: ymd,
+      amount,
+      currency_code: m.currency_code,
+      payment_method: m.medio_pago,
+      status: mapEmitidoToReceiptStatus(m.estado_emitido),
+      reference: m.referencia_documento,
+      notes: buildZetaCollectionReceiptNotes(m, syncRunId),
+    },
   };
 }
+
+export type MapCollectionReceiptToProtoReceiptResult =
+  | { ok: true; input: ProtoReceiptInput }
+  | { ok: false; reason: "invalid_fecha"; raw_fecha: string | null }
+  | { ok: false; reason: "invalid_amount"; amount: number }
+  | { ok: false; reason: "negative_amount"; amount: number };

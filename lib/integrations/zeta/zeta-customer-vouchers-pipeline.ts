@@ -46,6 +46,10 @@ import {
 } from "@/lib/integrations/zeta/zeta-customer-vouchers-invoice-classifier";
 import type { ZetaCallContext } from "@/lib/integrations/zeta/zeta-http-client";
 import { cleanZetaString, mapRutField } from "@/lib/integrations/zeta/zeta-client-mapper";
+import {
+  runCurrencyEnrichmentPipeline,
+  type CurrencyEnrichmentResult,
+} from "@/lib/integrations/zeta/zeta-currency-enrichment-pipeline";
 import { normalizeRutForMatch } from "@/lib/integrations/zeta/zeta-client-import-preview";
 
 console.log("🔥 PIPELINE FILE LOADED");
@@ -416,6 +420,8 @@ export type SyncZetaCustomerVouchersResult = {
   error_code?: string;
   details?: Record<string, unknown>;
   message?: string;
+  /** Resultado del pipeline de currency enrichment ejecutado post-sync. Ausente si no corrió. */
+  currency_enrichment?: CurrencyEnrichmentResult;
 };
 
 export async function syncZetaCustomerVouchers(
@@ -740,7 +746,36 @@ export async function syncZetaCustomerVouchers(
           continue;
         }
 
-        const input = mapCopilotCustomerVoucherToProtoInvoiceInput(companyId, mapped, runId ?? "");
+        const mapResult = mapCopilotCustomerVoucherToProtoInvoiceInput(companyId, mapped, runId ?? "");
+        if (!mapResult.ok) {
+          // H1 fix: anti-fallback `new Date()`.
+          // Si `fecha_emision` no parsea, NO persistimos: no usamos fecha actual,
+          // no movemos la factura de mes y no rompemos enrichment / reconciliación.
+          // Se cuenta como error del sync para que aparezca en `summary.errors` y en
+          // `zeta_sync_runs.errors`. Trazabilidad obligatoria: serie/numero/raw fecha
+          // /comprobante/tenant/sync_run_id.
+          errors += 1;
+          console.log(
+            "ROW SKIP: invalid fecha_emision",
+            JSON.stringify({
+              timestamp: new Date().toISOString(),
+              source: "zeta_customer_vouchers_sync",
+              kind: "row_skip_invalid_fecha_emision",
+              reason: mapResult.reason,
+              raw_fecha_emision: mapResult.raw_fecha_emision,
+              serie: mapped.serie ?? null,
+              numero: mapped.numero ?? null,
+              zeta_comprobante_codigo: mapped.zeta_comprobante_codigo ?? null,
+              zeta_cliente_codigo: mapped.zeta_cliente_codigo ?? null,
+              zeta_empresa_codigo: mapped.zeta_empresa_codigo ?? null,
+              workspace_company_id: wid,
+              company_id: companyId,
+              sync_run_id: runId ?? null,
+            })
+          );
+          continue;
+        }
+        const input = mapResult.input;
         const invNum = buildZetaCustomerVoucherInvoiceNumber(mapped);
         const legacyInvNum = buildZetaCustomerVoucherInvoiceNumberLegacyHash(mapped);
         const persistIdentityLog = {
@@ -895,6 +930,26 @@ export async function syncZetaCustomerVouchers(
       `processed=${processed} inserted=${inserted} updated=${updated} skipped=${skipped} skipped_classifier=${skippedClassifier} errors=${errors} rows_received=${rowsReceived} duration_ms=${durationMs}`
     );
 
+    // Post-sync: currency enrichment (non-blocking — errors never break main sync)
+    let currencyEnrichment: CurrencyEnrichmentResult | undefined;
+    try {
+      currencyEnrichment = await runCurrencyEnrichmentPipeline(
+        params.supabase,
+        wid,
+        zetaCtx,
+        { mes, anio }
+      );
+    } catch (enrichErr) {
+      console.warn(
+        JSON.stringify({
+          timestamp: new Date().toISOString(),
+          source: "zeta_customer_vouchers_sync",
+          kind: "currency_enrichment_warning",
+          message: enrichErr instanceof Error ? enrichErr.message : String(enrichErr),
+        })
+      );
+    }
+
     return {
       success: true,
       processed,
@@ -907,6 +962,7 @@ export async function syncZetaCustomerVouchers(
       duration_ms: durationMs,
       zeta_method,
       root_in_key: lastRootInKey,
+      currency_enrichment: currencyEnrichment,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

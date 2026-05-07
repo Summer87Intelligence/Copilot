@@ -1,0 +1,52 @@
+# Project Context
+
+## Resumen del proyecto
+- Pendiente de completar.
+
+## Estado actual
+- Proyecto inicializado con Claude Skills.
+- Convención de archivos temporales establecida (`temp-audits/`).
+- **Pipeline Recibos Zeta operativo** (enero–mayo 2026 sincronizado, reconciliación 100 %).
+
+## Últimos cambios
+- 2026-05-07: creada carpeta `temp-audits/` aislada para artefactos de auditoría/importación/validación. Ignorada en `.gitignore` (sólo se versiona `temp-audits/README.md`). También se ignora `/tmp/`.
+- 2026-05-07: auditoría reconciliación enero–abril 2026 (read-only):
+  - **63 facturas faltantes en abril 2026** → causa raíz priorizada en `temp-audits/audit-abril-2026-report.md`. Hipótesis principal: `issue_date` mal parseado (fallback `new Date()` en `mapCopilotCustomerVoucherToProtoInvoiceInput`). Pendiente confirmar con queries SQL §A.2/§B.3/§E.1.
+  - **1 fila Excel Nº=0 (Prestis S.A.S. 04-mar UYU 9.760)** confirmada como **borrador CFE no emitido** (`Emitida="N"`, `Estado DGI=""`). NO requiere sync. Detalle en `temp-audits/audit-prestis-numero-0.md`. Reduce el universo "Excel emitido" a **281** filas.
+  - Discrepancia residual real: 62 facturas de abril, no 63.
+- 2026-05-07: **fix H1 aplicado** en `lib/integrations/zeta/zeta-customer-vouchers-mapper.ts`: el mapper voucher→`ProtoInvoiceInput` ya **NO** cae a `new Date()` cuando `fecha_emision` no parsea. Ahora retorna `MapVoucherToProtoInvoiceResult`; el pipeline rechaza la fila, incrementa `errors` y emite log estructurado `kind: "row_skip_invalid_fecha_emision"`. `tsc --noEmit` y `vitest run` pasan. Idempotencia, balances, enrichment, dedupe y upsert intactos.
+- 2026-05-07: **Fase 1/2 sync recibos Zeta implementada**: migración `supabase/zeta-05-01-proto-receipts-zeta-sync.sql` (currency_code, company_id nullable), `ProtoReceiptInput` extendido, mapper con normalización de moneda y rechazo de anulaciones, pipeline con métricas extra y `allowUnlinkedCompany`. Validado con `tsc --noEmit` y `vitest` 144/144.
+- 2026-05-07: **DIV-001 (RESTRecibosCobranzaV2QueryComprobantes — request shape)** corregido sin tocar persistence: `buildQueryInData` en `lib/integrations/zeta/zeta-collection-receipts-fetch.ts` ahora omite filtros opcionales vacíos (causaban HTTP 400 al castear `int.Parse("")` en binder ASP.NET de Zeta) y envía `Mes` sin `padStart`. Log estructurado `kind: "zeta_receipts_payload_shape"` agregado. Tests de regresión (`zeta-collection-receipts-fetch.test.ts`, 6 casos) garantizan que no se reintroduzca la causa raíz. Documentado en `temp-audits/audit-receipts-payload-shape.md`.
+- 2026-05-07: **DIV-002 (RESTRecibosCobranzaV2QueryComprobantes — response shape)** corregido: el contract `lib/integrations/zeta/contracts/zeta-collection-receipts.contract.ts` ahora soporta `QueryComprobantesOut.Response[]` (Postman oficial / forma real del tenant) además de `QueryOut.Response[]` (legacy `0134`), array raíz, y fallback defensivo (`*Out` con primer array bajo claves prioritarias `Recibos / Items / Data / Result / etc.`). Nuevo helper `summarizeZetaCollectionReceiptsResponseShape(raw)` y log estructurado `kind: "zeta_receipts_raw_response"` en cada fetch. Tests (16 casos) cubren todos los shapes. Documentado en `docs/vendors/z/KNOWN-DIVERGENCES.md` (DIV-002).
+- 2026-05-07: **Sync Recibos Zeta enero–mayo 2026 ejecutada exitosamente**:
+  - Endpoint real validado: `POST /APIs/RESTRecibosCobranzaV2QueryComprobantes` con envelope `QueryComprobantesIn → { Connection, Data: { Page, Filters: { Anio, Mes } } }`.
+  - Shape real respuesta: `QueryComprobantesOut.Response[]` (DIV-002 documentado).
+  - Resultados por mes: enero=58, febrero=55, marzo=48, abril=67, mayo=6 → **234 recibos** persistidos, 0 errores, 0 unlinked, 0 invalid date, 0 invalid amount, 0 negative.
+  - Tenant: `040321ff-10fd-4da3-aeca-f1865f879986` (EASY DIGITAL AGENCY).
+- 2026-05-07: **Reconciliación Recibos 2026 vs Excel maestro: paridad 100 %**:
+  - Excel `temp-audits/RecibosCobranzaWWExport-67.xlsx`: **234 filas**.
+  - DB `proto_receipts`: **234 filas**.
+  - Coincidencias plenas: **234** (100 %).
+  - 0 ghost rows · 0 missing · 0 currency mismatches · 0 amount mismatches · 0 date mismatches · 0 cliente mismatches · 0 duplicados reales.
+  - Distribución por mes y por moneda (USD=111 / UYU=123): idéntica entre Excel y DB.
+  - 2 recibos legítimos con `Numero=0` (sin emitir / borradores Zeta) presentes en ambos lados; el reconciliador desempata por tupla `(Numero, Fecha, Cliente normalizado, Total, Currency)`.
+  - Outputs: `temp-audits/receipts-reconciliation-2026.md`, `temp-audits/receipts-reconciliation-diff.csv` (vacío, solo header), `scripts/audit-receipts-reconciliation-2026.ts` reusable.
+
+## Decisiones técnicas
+- **Archivos temporales fuera de carpetas estructurales.** CSVs, Excels, diffs, reportes de auditoría y exports de validación viven exclusivamente en `temp-audits/` (o `tmp/`). Prohibido ubicarlos en `app/`, `lib/`, `services/`, `supabase/`, `scripts/`, `public/`, `mocks/` o `components/`.
+- **No acoplar lógica productiva a `temp-audits/`.** El código en producción no importa nada desde esa ruta. Lógica reutilizable (parsers, normalizadores, comparadores) vive en `lib/`, `services/` o `scripts/` según corresponda.
+- **Reconciliador Excel↔Copilot debe filtrar borradores CFE** antes de comparar (`Numero <= 0` o `Emitida = "N"`). Zeta `VentasExport.xlsx` incluye borradores; la API `RESTComprobantesClienteV1Query` correctamente no los devuelve. Documentado en `temp-audits/audit-prestis-numero-0.md` §6.3 (propuesta NOTE-001 para `KNOWN-DIVERGENCES.md`).
+- **Recibos Zeta unlinked se persisten sin cliente sintético.** Si `ClienteCodigo`/RUT del recibo no resuelve a `proto_companies`, el sync guarda el recibo con `company_id = NULL` y `workspace_company_id` poblado. No se crea `Consumidor Final` ni otro cliente artificial. No se vinculan facturas por heurística en esta iteración.
+- **`Filters` Zeta sólo lleva claves con valor real.** Convención del proyecto: las claves `<integer>` opcionales (`ComprobanteCodigo`, `MonedaCodigo`, `LocalCodigo`, etc.) se omiten cuando no hay filtro; nunca se envían como `""`. Aplica a todos los métodos REST V2 con shape `Data → Page + Filters`.
+- **Recibos Zeta con `Numero=0` son válidos.** Convención Zeta: recibos sin emitir / borradores comparten `Numero=0`. El identificador único es `RegistroId` (→ `receipt_number = "ZETA:COB:<RegistroId>"`). Reconciliadores deben desempatar por tupla completa `(Numero, Fecha, Cliente, Total, Currency)`, no solo por `Numero`.
+
+## Pendientes
+- Re-sync seguro de abril 2026 (62 facturas faltantes) con el mapper ya endurecido. Estrategia propuesta en respuesta del agente (12:55 UTC-3).
+- Confirmar con queries §A.2 / §B.3 / §E.1 del `audit-abril-2026-queries.sql` cuántas filas de las 62 traen `fecha_emision` no parseable; cuáles se persistieron con `issue_date` "fecha del re-sync" anterior.
+- Documentar `NOTE-001` (filtro de borradores CFE en reconciliador Excel) en `docs/vendors/z/KNOWN-DIVERGENCES.md`.
+- **UI Recibos refinements** (no bloqueante): orden visual por `receipt_date` DESC (hoy ordena por `created_at` DESC con `receipt_date` como secundario), agregar columna de moneda al lado del importe (similar a invoices), exponer cliente (lookup `company_id → proto_companies.name` o `notes.raw_payload.ClienteNombre` cuando `company_id` es NULL).
+- **Linking factura↔recibo** (opcional, no implementado): hoy todos los recibos quedan registrados como recibos puros sin `invoice_id`. Si se decide vincular, hace falta heurística confiable o reglas explícitas (ej.: matching por `Serie+Numero` con `proto_invoices`); requiere análisis aparte para no afectar `balance_amount`.
+- **Automatizar sync mensual de recibos** (cron / scheduler) tras el cierre actual.
+
+## Próximo paso recomendado
+- Validar visualmente la sección "Recibos" en `/copilot/datos` con el tenant EASY DIGITAL AGENCY: confirmar que se ven los 234 recibos, agregar columnas faltantes (cliente, moneda) si se decide priorizar UI refinements antes de avanzar a otros módulos.

@@ -10,9 +10,11 @@ import {
   isZetaCollectionReceiptsQueryResponse,
   readIsLastPageFromReceiptRows,
   readZetaCollectionReceiptsQueryOutFlags,
+  summarizeZetaCollectionReceiptsResponseShape,
   type ZetaCollectionReceiptRecord,
 } from "@/lib/integrations/zeta/contracts/zeta-collection-receipts.contract";
 import { buildZetaConnectionBlock } from "@/lib/integrations/zeta/zeta-connection";
+import type { ZetaConnectionBlock } from "@/lib/integrations/zeta/zeta-connection-types";
 import {
   resolveZetaCollectionReceiptsRestMethod,
   resolveZetaCollectionReceiptsRootInKey,
@@ -66,19 +68,64 @@ export type FetchZetaCollectionReceiptsErr = {
 
 export type FetchZetaCollectionReceiptsResult = FetchZetaCollectionReceiptsOk | FetchZetaCollectionReceiptsErr;
 
-function buildQueryInData(page: string, filters: ZetaCollectionReceiptsQueryFilters): Record<string, unknown> {
-  const f: Record<string, string> = {
+/**
+ * Construye el bloque `Data = { Page, Filters }` para `RESTRecibosCobranzaV2QueryComprobantes`.
+ *
+ * Reglas (alineadas a Postman oficial + analogía con `RESTFacturaClienteV4QuerySaldosPendientes`
+ * en `zeta-factura-cliente.ts`, que sí responde HTTP 200):
+ *
+ * 1. Solo se envían las claves de `Filters` con valor real.
+ *    Los opcionales nunca van como `""` porque el binder ASP.NET de Zeta intenta
+ *    castear los `<integer>` (`ComprobanteCodigo`, `MonedaCodigo`, `LocalCodigo`)
+ *    y rechaza el body con HTTP 400 (`int.Parse("") → FormatException`).
+ *    Ver `temp-audits/audit-receipts-payload-shape.md`.
+ *
+ * 2. `Mes` se envía sin `padStart` (ej.: `"1"` en vez de `"01"`). Algunos binders
+ *    `<integer>` rechazan strings con ceros a la izquierda al castear a `int`.
+ *
+ * 3. `Anio`, `Mes`, `Page` se mantienen como **string numérico** por consistencia
+ *    con el resto del proyecto (customer vouchers, saldos pendientes); si el tenant
+ *    sigue devolviendo 400, el siguiente intento sería enviarlos como `number` JSON.
+ */
+export function buildQueryInData(
+  page: string,
+  filters: ZetaCollectionReceiptsQueryFilters
+): { Page: string; Filters: Record<string, string> } {
+  const filtersOut: Record<string, string> = {
     Anio: filters.anio.trim(),
-    Mes: filters.mes.trim().padStart(2, "0").slice(-2),
-    ClienteCodigo: filters.clienteCodigo?.trim() ?? "",
-    ComprobanteCodigo: filters.comprobanteCodigo?.trim() ?? "",
-    MonedaCodigo: filters.monedaCodigo?.trim() ?? "",
-    LocalCodigo: filters.localCodigo?.trim() ?? "",
-    CobradorCodigo: filters.cobradorCodigo?.trim() ?? "",
+    Mes: stripLeadingZeros(filters.mes.trim()),
   };
+
+  const cliente = filters.clienteCodigo?.trim();
+  if (cliente) filtersOut.ClienteCodigo = cliente;
+  const comprobante = filters.comprobanteCodigo?.trim();
+  if (comprobante) filtersOut.ComprobanteCodigo = comprobante;
+  const moneda = filters.monedaCodigo?.trim();
+  if (moneda) filtersOut.MonedaCodigo = moneda;
+  const local = filters.localCodigo?.trim();
+  if (local) filtersOut.LocalCodigo = local;
+  const cobrador = filters.cobradorCodigo?.trim();
+  if (cobrador) filtersOut.CobradorCodigo = cobrador;
+
   return {
     Page: page,
-    Filters: f,
+    Filters: filtersOut,
+  };
+}
+
+function stripLeadingZeros(value: string): string {
+  if (value === "") return value;
+  const replaced = value.replace(/^0+(?=\d)/, "");
+  return replaced === "" ? value : replaced;
+}
+
+function redactConnectionForLog(block: ZetaConnectionBlock): Record<string, string> {
+  return {
+    DesarrolladorCodigo: block.DesarrolladorCodigo,
+    DesarrolladorClave: "[REDACTED]",
+    EmpresaCodigo: block.EmpresaCodigo,
+    EmpresaClave: "[REDACTED]",
+    RolCodigo: block.RolCodigo,
   };
 }
 
@@ -147,26 +194,25 @@ export async function fetchZetaCollectionReceipts(
   const { credentials, config } = resolved.pack;
   const empresaCodigo = credentials.empresaCodigo;
   const data = buildQueryInData(page, params.filters);
-
-  const bodyBytes = Buffer.byteLength(
-    JSON.stringify({
-      [rootInKey]: {
-        Connection: buildZetaConnectionBlock(
-          {
-            desarrolladorCodigo: credentials.desarrolladorCodigo,
-            desarrolladorClave: credentials.desarrolladorClave,
-          },
-          {
-            empresaCodigo: credentials.empresaCodigo,
-            empresaClave: credentials.empresaClave,
-            rolCodigo: credentials.rolCodigo,
-          }
-        ),
-        Data: data,
-      },
-    }),
-    "utf8"
+  const connection = buildZetaConnectionBlock(
+    {
+      desarrolladorCodigo: credentials.desarrolladorCodigo,
+      desarrolladorClave: credentials.desarrolladorClave,
+    },
+    {
+      empresaCodigo: credentials.empresaCodigo,
+      empresaClave: credentials.empresaClave,
+      rolCodigo: credentials.rolCodigo,
+    }
   );
+
+  const payloadForLog: Record<string, unknown> = {
+    [rootInKey]: {
+      Connection: connection,
+      Data: data,
+    },
+  };
+  const bodyBytes = Buffer.byteLength(JSON.stringify(payloadForLog), "utf8");
 
   logZetaRequest({
     request_id: params.ctx.requestId,
@@ -176,6 +222,30 @@ export async function fetchZetaCollectionReceipts(
     sync_run_id: params.ctx.syncRunId,
     payload_size_bytes: bodyBytes,
   });
+
+  console.log(
+    "ZETA RECEIPTS PAYLOAD SHAPE:",
+    JSON.stringify({
+      timestamp: new Date().toISOString(),
+      source: "zeta_collection_receipts_fetch",
+      kind: "zeta_receipts_payload_shape",
+      request_id: params.ctx.requestId,
+      sync_run_id: params.ctx.syncRunId ?? null,
+      tenant_id: params.ctx.tenantId ?? null,
+      zeta_method,
+      root_in_key: rootInKey,
+      top_level_keys: Object.keys(payloadForLog),
+      request_keys: Object.keys((payloadForLog[rootInKey] as Record<string, unknown>) ?? {}),
+      data_keys: Object.keys(data),
+      filters_keys: Object.keys(data.Filters),
+      payload_preview: {
+        [rootInKey]: {
+          Connection: redactConnectionForLog(connection),
+          Data: data,
+        },
+      },
+    })
+  );
 
   const started = Date.now();
   try {
@@ -200,6 +270,23 @@ export async function fetchZetaCollectionReceipts(
       duration_ms: duration,
       payload_size_bytes: responseBytes,
     });
+
+    const responseShape = summarizeZetaCollectionReceiptsResponseShape(raw);
+    console.log(
+      "ZETA RECEIPTS RAW RESPONSE:",
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        source: "zeta_collection_receipts_fetch",
+        kind: "zeta_receipts_raw_response",
+        request_id: params.ctx.requestId,
+        sync_run_id: params.ctx.syncRunId ?? null,
+        tenant_id: params.ctx.tenantId ?? null,
+        zeta_method,
+        http_status: res.status,
+        payload_size_bytes: responseBytes,
+        ...responseShape,
+      })
+    );
 
     if (!res.status || res.status < 200 || res.status >= 300) {
       return {

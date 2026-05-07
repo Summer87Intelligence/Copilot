@@ -704,9 +704,10 @@ async function assertReceiptFitsInvoice(
 export async function protoCreateReceipt(
   supabase: SupabaseClient,
   input: ProtoReceiptInput,
-  workspaceCompanyId?: string
+  workspaceCompanyId?: string,
+  options: { allowUnlinkedCompany?: boolean } = {}
 ): Promise<ProtoCrudResult<Record<string, unknown>>> {
-  const err = validateReceiptIntegrity(input);
+  const err = validateReceiptIntegrity(input, options);
   if (err) return err;
 
   const invoiceId = input.invoice_id != null && str(input.invoice_id) ? str(input.invoice_id) : null;
@@ -725,11 +726,12 @@ export async function protoCreateReceipt(
   const wid = str(workspaceCompanyId);
   const row = {
     ...(wid ? { workspace_company_id: wid } : {}),
-    company_id: str(input.company_id),
+    company_id: str(input.company_id) || null,
     invoice_id: invoiceId,
     receipt_number: str(input.receipt_number),
     receipt_date: input.receipt_date.slice(0, 10),
     amount: input.amount,
+    currency_code: input.currency_code != null ? str(input.currency_code).toUpperCase() || null : null,
     payment_method: input.payment_method != null ? str(input.payment_method) || null : null,
     status: allowedStatus(
       str(input.status) || "paid",
@@ -760,7 +762,8 @@ export async function protoUpdateReceipt(
   supabase: SupabaseClient,
   id: string,
   patch: ProtoReceiptPatch,
-  workspaceCompanyId?: string
+  workspaceCompanyId?: string,
+  options: { allowUnlinkedCompany?: boolean } = {}
 ): Promise<ProtoCrudResult<Record<string, unknown>>> {
   if (!str(id)) {
     return protoCrudResult.fail("VALIDATION", "Falta el identificador del recibo.");
@@ -779,7 +782,10 @@ export async function protoUpdateReceipt(
     existing.invoice_id != null ? str(existing.invoice_id) : null;
 
   const merged: ProtoReceiptInput = {
-    company_id: str(patch.company_id ?? existing.company_id),
+    company_id:
+      patch.company_id !== undefined
+        ? str(patch.company_id) || null
+        : str(existing.company_id) || null,
     invoice_id:
       patch.invoice_id !== undefined
         ? patch.invoice_id != null && str(patch.invoice_id)
@@ -789,6 +795,10 @@ export async function protoUpdateReceipt(
     receipt_number: str(patch.receipt_number ?? existing.receipt_number),
     receipt_date: str(patch.receipt_date ?? existing.receipt_date),
     amount: num(patch.amount, num(existing.amount)),
+    currency_code:
+      patch.currency_code !== undefined
+        ? patch.currency_code
+        : (existing.currency_code as string | null) ?? null,
     payment_method:
       patch.payment_method !== undefined
         ? patch.payment_method
@@ -802,7 +812,7 @@ export async function protoUpdateReceipt(
       patch.notes !== undefined ? patch.notes : (existing.notes as string | null) ?? null,
   };
 
-  const verr = validateReceiptIntegrity(merged);
+  const verr = validateReceiptIntegrity(merged, options);
   if (verr) return verr;
 
   if (merged.invoice_id) {
@@ -810,7 +820,7 @@ export async function protoUpdateReceipt(
       supabase,
       merged.invoice_id,
       merged.amount,
-      merged.company_id,
+      str(merged.company_id),
       id,
       workspaceCompanyId
     );
@@ -818,11 +828,12 @@ export async function protoUpdateReceipt(
   }
 
   const row = {
-    company_id: merged.company_id,
+    company_id: str(merged.company_id) || null,
     invoice_id: merged.invoice_id,
     receipt_number: merged.receipt_number,
     receipt_date: merged.receipt_date.slice(0, 10),
     amount: merged.amount,
+    currency_code: merged.currency_code != null ? str(merged.currency_code).toUpperCase() || null : null,
     payment_method:
       merged.payment_method != null ? str(merged.payment_method) || null : null,
     status: allowedStatus(

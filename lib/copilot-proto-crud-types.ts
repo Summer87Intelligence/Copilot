@@ -175,11 +175,12 @@ export type ProtoInvoiceInput = {
 export type ProtoInvoicePatch = Partial<ProtoInvoiceInput>;
 
 export type ProtoReceiptInput = {
-  company_id: string;
+  company_id: string | null;
   invoice_id: string | null;
   receipt_number: string;
   receipt_date: string;
   amount: number;
+  currency_code?: string | null;
   payment_method?: string | null;
   status?: string;
   reference?: string | null;

@@ -13,12 +13,16 @@ import { companyCellValue, companyPrimaryLabel } from "@/lib/copilot-datos-compa
 import {
   formatInvoiceFacturaPrimary,
   formatInvoiceFacturaTechnicalSubtitle,
+  readInvoiceCurrency,
 } from "@/lib/copilot-datos-invoice-display";
 import { INVOICE_CLIENT_CODIGO_KEY, INVOICE_CLIENT_RAZON_KEY } from "@/lib/copilot-datos-invoices-ui";
 
 function sortableCellValue(entity: DataEntity, row: DataRow, colKey: string): unknown {
   if (entity === "invoices" && colKey === "invoice_number") {
     return formatInvoiceFacturaPrimary(row);
+  }
+  if (entity === "invoices" && colKey === "currency_code") {
+    return readInvoiceCurrency(row) ?? "";
   }
   if (entity === "invoices" && colKey === "collection_probability") {
     const n = normalizeCollectionProbabilityToScale10(row[colKey]);
@@ -40,26 +44,12 @@ function parseAmount(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function readInvoiceCurrency(row: DataRow): "$" | "U$S" {
-  const rawMeta =
-    row.zeta_metadata &&
-    typeof row.zeta_metadata === "object" &&
-    !Array.isArray(row.zeta_metadata) &&
-    (row.zeta_metadata as Record<string, unknown>).zeta_customer_voucher_v1 &&
-    typeof (row.zeta_metadata as Record<string, unknown>).zeta_customer_voucher_v1 === "object"
-      ? ((row.zeta_metadata as Record<string, unknown>).zeta_customer_voucher_v1 as Record<string, unknown>)
-          .moneda_codigo
-      : null;
-  const raw = rawMeta ?? row.moneda_codigo ?? row.currency ?? row.moneda;
-  const s = String(raw ?? "").trim().toUpperCase();
-  if (s.includes("U$S") || s.includes("USD") || s.includes("US$") || s.includes("DOLAR")) return "U$S";
-  return "$";
-}
-
 function formatInvoiceAmountWithCurrency(row: DataRow, v: unknown): string {
   const n = parseAmount(v);
   if (n == null) return "—";
-  return `${readInvoiceCurrency(row)} ${n.toLocaleString("es-UY", { maximumFractionDigits: 2 })}`;
+  const cur = readInvoiceCurrency(row);
+  const formatted = n.toLocaleString("es-UY", { maximumFractionDigits: 2 });
+  return cur ? `${cur} ${formatted}` : formatted;
 }
 
 function normalizeCollectionProbabilityToScale10(v: unknown): number | null {
@@ -114,6 +104,7 @@ function invoiceHeaderClass(colKey: string): string {
   if (colKey === INVOICE_CLIENT_CODIGO_KEY) return `${base} w-[60px]`;
   if (colKey === INVOICE_CLIENT_RAZON_KEY) return `${base} min-w-[260px]`;
   if (colKey === "issue_date") return `${base} w-[96px]`;
+  if (colKey === "currency_code") return `${base} w-[56px] text-center`;
   if (colKey === "total_amount" || colKey === "balance_amount") return `${base} w-[130px] text-right`;
   if (colKey === "collection_probability") return `${base} w-[70px] text-right`;
   return base;
@@ -124,6 +115,7 @@ function invoiceCellClass(colKey: string): string {
   if (colKey === INVOICE_CLIENT_RAZON_KEY) return `${base} max-w-[420px]`;
   if (colKey === INVOICE_CLIENT_CODIGO_KEY) return `${base} w-[60px] text-center tabular-nums`;
   if (colKey === "issue_date") return `${base} w-[96px]`;
+  if (colKey === "currency_code") return `${base} w-[56px] text-center font-mono font-semibold`;
   if (colKey === "total_amount" || colKey === "balance_amount") return `${base} w-[130px] text-right tabular-nums`;
   if (colKey === "collection_probability") return `${base} w-[70px] text-right tabular-nums`;
   return base;
@@ -144,6 +136,8 @@ export function CopilotDataTable({
   onRowClick,
   interactiveColumnKeys = [],
   inactiveBadge = false,
+  defaultSortKey,
+  defaultSortDir = "desc",
 }: {
   data: DataRow[];
   columns: DataColumn[];
@@ -152,17 +146,22 @@ export function CopilotDataTable({
   onRowClick: (row: DataRow) => void;
   /** Columnas cuyo valor se muestra como texto interactivo (abre detalle; no propaga al `tr`). */
   interactiveColumnKeys?: string[];
-  /** Muestra badge “Inactivo” cuando `is_active === false` (vista con archivados). */
+  /** Muestra badge "Inactivo" cuando `is_active === false` (vista con archivados). */
   inactiveBadge?: boolean;
+  /** Columna de orden inicial. Omitir para usar la primera columna. */
+  defaultSortKey?: string;
+  /** Dirección de orden inicial. Default: "desc". */
+  defaultSortDir?: SortDirection;
 }) {
   const columnKeySig = columns.map((c) => c.key).join("|");
-  const [sortKey, setSortKey] = useState<string>(columns[0]?.key ?? "");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const resolvedDefaultKey = defaultSortKey ?? columns[0]?.key ?? "";
+  const [sortKey, setSortKey] = useState<string>(resolvedDefaultKey);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(defaultSortDir);
 
   useEffect(() => {
-    setSortKey(columns[0]?.key ?? "");
-    setSortDirection("desc");
-  }, [entity, columnKeySig, columns]);
+    setSortKey(defaultSortKey ?? columns[0]?.key ?? "");
+    setSortDirection(defaultSortDir);
+  }, [entity, columnKeySig, columns, defaultSortKey, defaultSortDir]);
 
   const sortedData = useMemo(() => {
     if (!sortKey) return data;
@@ -277,6 +276,8 @@ export function CopilotDataTable({
                         ? companyPrimaryLabel(row)
                         : entity === "invoices" && col.key === "collection_probability"
                           ? String(normalizeCollectionProbabilityToScale10(value) ?? "—")
+                        : entity === "invoices" && col.key === "currency_code"
+                          ? (readInvoiceCurrency(row) ?? "—")
                         : entity === "invoices" &&
                             (col.key === "total_amount" || col.key === "balance_amount")
                           ? formatInvoiceAmountWithCurrency(row, value)

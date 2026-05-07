@@ -435,18 +435,49 @@ export function mapZetaCustomerVoucherToCopilot(row: ZetaCustomerVoucherRecord):
 }
 
 /**
+ * Resultado del mapeo voucher Zeta → `ProtoInvoiceInput`.
+ *
+ * Si la fila Zeta no permite construir un `ProtoInvoiceInput` válido (típicamente:
+ * `fecha_emision` con formato no soportado por `normalizeZetaIssueDateYmd`), el
+ * resultado es `{ ok: false, reason }` y el pipeline DEBE saltear la fila + loggear
+ * estructuradamente. Nunca hay que persistir con un fallback "fecha de hoy"
+ * porque eso desplaza la factura del mes correcto y rompe enrichment / reconciliación.
+ *
+ * Razones posibles:
+ * - `invalid_fecha_emision`: `fecha_emision` ausente o no parseable como YYYYMMDD /
+ *   YYYY-MM-DD / YYYY/MM/DD. Anti-fallback `new Date()` (causa raíz documentada en
+ *   `temp-audits/audit-abril-2026-report.md` H1).
+ */
+export type MapVoucherToProtoInvoiceResult =
+  | { ok: true; input: ProtoInvoiceInput }
+  | { ok: false; reason: "invalid_fecha_emision"; raw_fecha_emision: string | null };
+
+/**
  * Arma `ProtoInvoiceInput`:
  * - `total_amount`: total CFE (`resolveZetaInvoiceTotalAmount` → `total_recibo`).
  * - `balance_amount`: **siempre 0** en ingesta por comprobantes; el saldo real lo aplica exclusivamente
  *   `RESTFacturaClienteV4QuerySaldosPendientes` (`runZetaSaldosPendientesPipeline` / `sync-saldos-pendientes`),
  *   cruzando por `resolveCcV1InvoiceNumberFromZetaSaldoOrVoucherRow` → misma `invoice_number` `ZETA:CCV1:…`.
+ *
+ * Validación crítica de `fecha_emision`:
+ * - Si `normalizeZetaIssueDateYmd` retorna null, el resultado es `{ ok: false, ... }`.
+ * - Esto reemplaza el viejo fallback `?? new Date().toISOString().slice(0,10)` que
+ *   movía la factura al día del re-sync (mes equivocado) — ver `KNOWN-DIVERGENCES.md`
+ *   y auditoría `temp-audits/audit-abril-2026-report.md` H1.
  */
 export function mapCopilotCustomerVoucherToProtoInvoiceInput(
   companyId: string,
   mapped: CopilotCustomerVoucherV1,
   syncRunId: string
-): ProtoInvoiceInput {
-  const issue = normalizeZetaIssueDateYmd(mapped.fecha_emision) ?? new Date().toISOString().slice(0, 10);
+): MapVoucherToProtoInvoiceResult {
+  const issue = normalizeZetaIssueDateYmd(mapped.fecha_emision);
+  if (!issue) {
+    return {
+      ok: false,
+      reason: "invalid_fecha_emision",
+      raw_fecha_emision: mapped.fecha_emision ?? null,
+    };
+  }
   const due = addDaysIso(issue, 30);
   const total = mapped.total_recibo ?? 0;
   const status = mapCfeEstadoToProtoStatus(mapped.cfe_estado);
@@ -454,15 +485,18 @@ export function mapCopilotCustomerVoucherToProtoInvoiceInput(
   const invNum = buildZetaCustomerVoucherInvoiceNumber(mapped);
   const notes = `zeta_vouchers:${syncRunId}|${mapped.zeta_comprobante_codigo ?? "?"}|${mapped.serie ?? ""}-${mapped.numero ?? ""}`.slice(0, 500);
   return {
-    company_id: companyId,
-    invoice_number: invNum,
-    issue_date: issue,
-    due_date: due,
-    total_amount: total,
-    balance_amount,
-    status,
-    category: "Zeta / comprobantes por cliente",
-    notes,
+    ok: true,
+    input: {
+      company_id: companyId,
+      invoice_number: invNum,
+      issue_date: issue,
+      due_date: due,
+      total_amount: total,
+      balance_amount,
+      status,
+      category: "Zeta / comprobantes por cliente",
+      notes,
+    },
   };
 }
 

@@ -97,7 +97,7 @@ async function fetchByEqWithOrder(
 const ORDERS = {
   companies: [{ column: "created_at" }, { column: "updated_at" }],
   contacts: [{ column: "created_at" }, { column: "updated_at" }],
-  invoices: [{ column: "created_at" }, { column: "issue_date" }, { column: "due_date" }],
+  invoices: [{ column: "issue_date" }, { column: "invoice_number" }],
   receipts: [{ column: "created_at" }, { column: "receipt_date" }],
   payments: [{ column: "created_at" }, { column: "payment_date" }],
   raw_imports: [{ column: "created_at" }, { column: "imported_at" }],
@@ -157,6 +157,9 @@ export async function listProtoContacts(
 /**
  * Catálogo completo de facturas del tenant (sin `.limit`): el dataset Copilot y filtros por mes
  * necesitan todas las filas; `fetchWithBestOrder` trunca en DEFAULT_LIMIT.
+ *
+ * Orden de negocio: `issue_date DESC` (más reciente primero) + `invoice_number DESC` (mismo día → Nº mayor primero).
+ * Nunca usar `created_at` como orden principal (inserción en DB ≠ fecha de emisión).
  */
 export async function listProtoInvoices(
   client: OperationalSupabase,
@@ -165,16 +168,28 @@ export async function listProtoInvoices(
 ): Promise<DataRow[]> {
   const wid = workspaceCompanyId?.trim();
   const scopeWs = Boolean(wid);
-  for (const order of ORDERS.invoices as readonly OrderCandidate[]) {
+
+  // Principal: issue_date DESC + invoice_number DESC (orden negocio Zeta)
+  {
     let base = client.from("proto_invoices").select("*");
     if (scopeWs) base = base.eq("workspace_company_id", wid!);
     const q = applyProtoActiveListFilter(base, activeMode);
-    const { data, error } = await q.order(order.column, {
-      ascending: order.ascending ?? false,
-    });
+    const { data, error } = await q
+      .order("issue_date", { ascending: false })
+      .order("invoice_number", { ascending: false });
     if (!error) return (data ?? []) as DataRow[];
   }
 
+  // Fallback: issue_date DESC solo (si invoice_number no existe en el esquema)
+  {
+    let base = client.from("proto_invoices").select("*");
+    if (scopeWs) base = base.eq("workspace_company_id", wid!);
+    const q = applyProtoActiveListFilter(base, activeMode);
+    const { data, error } = await q.order("issue_date", { ascending: false });
+    if (!error) return (data ?? []) as DataRow[];
+  }
+
+  // Fallback final sin orden garantizado
   let fbBase = client.from("proto_invoices").select("*");
   if (scopeWs) fbBase = fbBase.eq("workspace_company_id", wid!);
   const fb = applyProtoActiveListFilter(fbBase, activeMode);

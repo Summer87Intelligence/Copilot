@@ -33,6 +33,12 @@
 /Proto Table Row Counts _ SQL Editor _ Summer87 Copilot _ Summer87 Intelligence _ Supabase.html
 /Proto Table Row Counts _ SQL Editor _ Summer87 Copilot _ Summer87 Intelligence _ Supabase_files/
 
+# archivos temporales de auditoría / importación / validación
+# (CSV, Excels, diffs, reportes ad-hoc — NUNCA importar desde código productivo)
+/temp-audits/*
+!/temp-audits/README.md
+/tmp/
+
 # debug
 npm-debug.log*
 yarn-debug.log*
@@ -41,6 +47,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+
+# Claude Code — machine-specific settings (paths y permisos locales)
+.claude/settings.local.json
 
 # vercel
 .vercel

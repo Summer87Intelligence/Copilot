@@ -77,7 +77,6 @@ async function fetchPageWithRetry(
 async function findActiveReceiptIdByNumber(
   client: OperationalSupabase,
   workspaceCompanyId: string,
-  protoCompanyId: string,
   receiptNumber: string
 ): Promise<string | null> {
   const q = applyProtoActiveListFilter(
@@ -85,7 +84,6 @@ async function findActiveReceiptIdByNumber(
       .from("proto_receipts")
       .select("id")
       .eq("workspace_company_id", workspaceCompanyId.trim())
-      .eq("company_id", protoCompanyId)
       .eq("receipt_number", receiptNumber),
     "active"
   );
@@ -111,6 +109,11 @@ export type SyncZetaCollectionReceiptsResult = {
   errors: number;
   duration_ms: number;
   zeta_method: string;
+  persisted_total?: number;
+  unlinked_client_rows?: number;
+  invalid_date_rows?: number;
+  invalid_amount_rows?: number;
+  negative_amount_rows?: number;
   message?: string;
 };
 
@@ -191,6 +194,9 @@ export async function syncZetaCollectionReceipts(
     let rowsReceived = 0;
     let persisted = 0;
     let unlinked = 0;
+    let invalidDateRows = 0;
+    let invalidAmountRows = 0;
+    let negativeAmountRows = 0;
 
     while (hasMore && page <= MAX_PAGES) {
       const res = await fetchPageWithRetry(params.ctx, String(page), params.filters);
@@ -252,20 +258,47 @@ export async function syncZetaCollectionReceipts(
           (codigoCliente && byCodigo.get(codigoCliente)) ?? (rutNorm ? byRut.get(rutNorm) ?? undefined : undefined);
         if (!companyId) {
           unlinked += 1;
-          skipped += 1;
-          continue;
         }
 
-        const input = mapCopilotCollectionReceiptToProtoReceiptInput(companyId, mapped, runId ?? "");
-        if (!input) {
+        const mapResult = mapCopilotCollectionReceiptToProtoReceiptInput(companyId ?? null, mapped, runId ?? "");
+        if (!mapResult.ok) {
           skipped += 1;
+          if (mapResult.reason === "invalid_fecha") {
+            invalidDateRows += 1;
+            errors += 1;
+          } else if (mapResult.reason === "negative_amount") {
+            negativeAmountRows += 1;
+          } else {
+            invalidAmountRows += 1;
+          }
+          console.log(
+            "ROW SKIP: collection receipt mapper rejected row",
+            JSON.stringify({
+              timestamp: new Date().toISOString(),
+              source: "zeta_collection_receipts_sync",
+              kind: "row_skip_mapper_rejected",
+              reason: mapResult.reason,
+              registro_id: mapped.zeta_registro_id,
+              raw_fecha: mapResult.reason === "invalid_fecha" ? mapResult.raw_fecha : null,
+              amount:
+                mapResult.reason === "invalid_amount" || mapResult.reason === "negative_amount"
+                  ? mapResult.amount
+                  : mapped.importe,
+              serie: mapped.raw_payload.Serie ?? mapped.raw_payload.serie ?? null,
+              numero: mapped.raw_payload.Numero ?? mapped.raw_payload.numero ?? null,
+              zeta_comprobante_codigo: mapped.comprobante_codigo,
+              zeta_cliente_codigo: mapped.zeta_cliente_codigo,
+              workspace_company_id: wid,
+              sync_run_id: runId ?? null,
+            })
+          );
           continue;
         }
+        const input = mapResult.input;
 
         const existingId = await findActiveReceiptIdByNumber(
           params.supabase,
           wid,
-          companyId,
           input.receipt_number
         );
 
@@ -274,14 +307,17 @@ export async function syncZetaCollectionReceipts(
             params.supabase,
             existingId,
             {
+              company_id: input.company_id,
               receipt_date: input.receipt_date,
               amount: input.amount,
+              currency_code: input.currency_code,
               payment_method: input.payment_method,
               status: input.status,
               reference: input.reference,
               notes: input.notes,
             },
-            wid
+            wid,
+            { allowUnlinkedCompany: true }
           );
           if (!up.ok) errors += 1;
           else {
@@ -289,7 +325,7 @@ export async function syncZetaCollectionReceipts(
             persisted += 1;
           }
         } else {
-          const cr = await protoCreateReceipt(params.supabase, input, wid);
+          const cr = await protoCreateReceipt(params.supabase, input, wid, { allowUnlinkedCompany: true });
           if (!cr.ok) errors += 1;
           else {
             inserted += 1;
@@ -337,6 +373,9 @@ export async function syncZetaCollectionReceipts(
         rows_received_total: rowsReceived,
         persisted_total: persisted,
         unlinked_client_rows: unlinked,
+        invalid_date_rows: invalidDateRows,
+        invalid_amount_rows: invalidAmountRows,
+        negative_amount_rows: negativeAmountRows,
         duration_ms: Date.now() - started,
       })
     );
@@ -350,6 +389,11 @@ export async function syncZetaCollectionReceipts(
       errors,
       duration_ms: Date.now() - started,
       zeta_method,
+      persisted_total: persisted,
+      unlinked_client_rows: unlinked,
+      invalid_date_rows: invalidDateRows,
+      invalid_amount_rows: invalidAmountRows,
+      negative_amount_rows: negativeAmountRows,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

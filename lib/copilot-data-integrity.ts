@@ -221,8 +221,11 @@ export function validateInvoiceIntegrity(input: ProtoInvoiceInput): ProtoCrudFai
   return null;
 }
 
-export function validateReceiptIntegrity(input: ProtoReceiptInput): ProtoCrudFailure | null {
-  if (!str(input.company_id)) {
+export function validateReceiptIntegrity(
+  input: ProtoReceiptInput,
+  options: { allowUnlinkedCompany?: boolean } = {}
+): ProtoCrudFailure | null {
+  if (!options.allowUnlinkedCompany && !str(input.company_id)) {
     return protoCrudResult.fail("VALIDATION", "Elegí el cliente al que pertenece este recibo.");
   }
   if (!str(input.receipt_number)) {

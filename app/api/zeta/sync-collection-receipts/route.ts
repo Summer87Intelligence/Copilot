@@ -72,6 +72,11 @@ export async function POST(request: NextRequest) {
       updated: outcome.updated,
       skipped: outcome.skipped,
       errors: outcome.errors,
+      persisted_total: outcome.persisted_total ?? 0,
+      unlinked_client_rows: outcome.unlinked_client_rows ?? 0,
+      invalid_date_rows: outcome.invalid_date_rows ?? 0,
+      invalid_amount_rows: outcome.invalid_amount_rows ?? 0,
+      negative_amount_rows: outcome.negative_amount_rows ?? 0,
       duration_ms: outcome.duration_ms,
     },
     { status }

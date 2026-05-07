@@ -93,8 +93,12 @@ describe("buildZetaCustomerVoucherInvoiceNumber (identidad)", () => {
 });
 
 describe("mapCopilotCustomerVoucherToProtoInvoiceInput (montos)", () => {
+  // Todas las filas usan `Fecha` válida (YYYYMMDD) porque el mapper rechaza
+  // filas con `fecha_emision` no parseable (anti-fallback `new Date()`, ver
+  // bloque "rechazo por fecha_emision inválida" más abajo).
   it("balance_amount siempre 0 en ingesta vouchers (saldo lo aplica pipeline saldos pendientes)", () => {
     const rowConSaldo = {
+      Fecha: "20260107",
       Serie: "A",
       Numero: 1,
       ClienteCodigo: "C1",
@@ -103,11 +107,13 @@ describe("mapCopilotCustomerVoucherToProtoInvoiceInput (montos)", () => {
       CFEEstado: "EMITIDO",
     };
     const m1 = mapZetaCustomerVoucherToCopilot(rowConSaldo);
-    const p1 = mapCopilotCustomerVoucherToProtoInvoiceInput("cc1", m1, "run-1");
-    expect(p1.total_amount).toBe(1000);
-    expect(p1.balance_amount).toBe(0);
+    const r1 = mapCopilotCustomerVoucherToProtoInvoiceInput("cc1", m1, "run-1");
+    if (!r1.ok) throw new Error(`expected ok, got ${r1.reason}`);
+    expect(r1.input.total_amount).toBe(1000);
+    expect(r1.input.balance_amount).toBe(0);
 
     const rowPagadoSinSaldo = {
+      Fecha: "20260107",
       Serie: "A",
       Numero: 2,
       ClienteCodigo: "C1",
@@ -115,13 +121,15 @@ describe("mapCopilotCustomerVoucherToProtoInvoiceInput (montos)", () => {
       CFEEstado: "PAGADO",
     };
     const m2 = mapZetaCustomerVoucherToCopilot(rowPagadoSinSaldo);
-    const p2 = mapCopilotCustomerVoucherToProtoInvoiceInput("cc1", m2, "run-1");
-    expect(p2.total_amount).toBe(800);
-    expect(p2.balance_amount).toBe(0);
+    const r2 = mapCopilotCustomerVoucherToProtoInvoiceInput("cc1", m2, "run-1");
+    if (!r2.ok) throw new Error(`expected ok, got ${r2.reason}`);
+    expect(r2.input.total_amount).toBe(800);
+    expect(r2.input.balance_amount).toBe(0);
   });
 
   it("Saldo explícito 0 en fila Zeta no cambia balance en proto (sigue 0 hasta saldos)", () => {
     const row = {
+      Fecha: "20260107",
       Serie: "A",
       Numero: 9,
       ClienteCodigo: "C1",
@@ -131,13 +139,15 @@ describe("mapCopilotCustomerVoucherToProtoInvoiceInput (montos)", () => {
     };
     expect(extractZetaSaldoFromCustomerVoucherRow(row)).toBe(0);
     const m = mapZetaCustomerVoucherToCopilot(row);
-    const p = mapCopilotCustomerVoucherToProtoInvoiceInput("cc1", m, "run-1");
-    expect(p.total_amount).toBe(62_000);
-    expect(p.balance_amount).toBe(0);
+    const r = mapCopilotCustomerVoucherToProtoInvoiceInput("cc1", m, "run-1");
+    if (!r.ok) throw new Error(`expected ok, got ${r.reason}`);
+    expect(r.input.total_amount).toBe(62_000);
+    expect(r.input.balance_amount).toBe(0);
   });
 
   it("con Pagos en fila: balance en proto sigue 0 (no inferir cobrado desde vouchers)", () => {
     const row = {
+      Fecha: "20260107",
       Serie: "A",
       Numero: 3,
       ClienteCodigo: "C1",
@@ -147,12 +157,14 @@ describe("mapCopilotCustomerVoucherToProtoInvoiceInput (montos)", () => {
     };
     expect(sumZetaPagosAppliedMonto(row)).toBe(10_000);
     const m = mapZetaCustomerVoucherToCopilot(row);
-    const p = mapCopilotCustomerVoucherToProtoInvoiceInput("cc1", m, "run-1");
-    expect(p.balance_amount).toBe(0);
+    const r = mapCopilotCustomerVoucherToProtoInvoiceInput("cc1", m, "run-1");
+    if (!r.ok) throw new Error(`expected ok, got ${r.reason}`);
+    expect(r.input.balance_amount).toBe(0);
   });
 
   it("sin Saldo ni Pagos y emitido: balance 0 (no usar total como saldo por defecto)", () => {
     const row = {
+      Fecha: "20260107",
       Serie: "A",
       Numero: 4,
       ClienteCodigo: "C1",
@@ -160,9 +172,64 @@ describe("mapCopilotCustomerVoucherToProtoInvoiceInput (montos)", () => {
       CFEEstado: "EMITIDO",
     };
     const m = mapZetaCustomerVoucherToCopilot(row);
-    const p = mapCopilotCustomerVoucherToProtoInvoiceInput("cc1", m, "run-1");
-    expect(p.total_amount).toBe(5000);
-    expect(p.balance_amount).toBe(0);
+    const r = mapCopilotCustomerVoucherToProtoInvoiceInput("cc1", m, "run-1");
+    if (!r.ok) throw new Error(`expected ok, got ${r.reason}`);
+    expect(r.input.total_amount).toBe(5000);
+    expect(r.input.balance_amount).toBe(0);
+  });
+});
+
+describe("mapCopilotCustomerVoucherToProtoInvoiceInput (rechazo por fecha_emision inválida)", () => {
+  // H1 fix: el mapper NO debe caer a `new Date()` cuando la fecha no parsea.
+  // Filas con fecha vacía / null / formato no soportado deben devolver
+  // `{ ok: false, reason: "invalid_fecha_emision" }` para que el pipeline
+  // las saltee + cuente como error.
+
+  it("sin Fecha → rechaza fila (no fallback a hoy)", () => {
+    const row = {
+      Serie: "A",
+      Numero: 100,
+      ClienteCodigo: "C1",
+      Total: 1234,
+      CFEEstado: "EMITIDO",
+    };
+    const m = mapZetaCustomerVoucherToCopilot(row);
+    const r = mapCopilotCustomerVoucherToProtoInvoiceInput("cc1", m, "run-1");
+    expect(r.ok).toBe(false);
+    if (r.ok) throw new Error("expected ok=false");
+    expect(r.reason).toBe("invalid_fecha_emision");
+    expect(r.raw_fecha_emision).toBeNull();
+  });
+
+  it("Fecha vacía → rechaza fila", () => {
+    const row = {
+      Fecha: "",
+      Serie: "A",
+      Numero: 101,
+      ClienteCodigo: "C1",
+      Total: 1234,
+    };
+    const m = mapZetaCustomerVoucherToCopilot(row);
+    const r = mapCopilotCustomerVoucherToProtoInvoiceInput("cc1", m, "run-1");
+    expect(r.ok).toBe(false);
+    if (r.ok) throw new Error("expected ok=false");
+    expect(r.reason).toBe("invalid_fecha_emision");
+  });
+
+  it("Fecha con formato no soportado (DD/MM/YYYY) → rechaza fila y expone raw_fecha_emision", () => {
+    const row = {
+      Fecha: "07/01/2026",
+      Serie: "A",
+      Numero: 102,
+      ClienteCodigo: "C1",
+      Total: 1234,
+    };
+    const m = mapZetaCustomerVoucherToCopilot(row);
+    const r = mapCopilotCustomerVoucherToProtoInvoiceInput("cc1", m, "run-1");
+    expect(r.ok).toBe(false);
+    if (r.ok) throw new Error("expected ok=false");
+    expect(r.reason).toBe("invalid_fecha_emision");
+    expect(r.raw_fecha_emision).toBe("07/01/2026");
   });
 });
 
@@ -185,9 +252,10 @@ describe("normalizeZetaIssueDateYmd / issue_date mapping", () => {
       ClienteCodigo: "C1",
       Total: 100,
     });
-    const p = mapCopilotCustomerVoucherToProtoInvoiceInput("cc1", m, "run-1");
-    expect(p.issue_date).toBe("2026-01-07");
-    expect(p.due_date).toBe("2026-02-06");
+    const r = mapCopilotCustomerVoucherToProtoInvoiceInput("cc1", m, "run-1");
+    if (!r.ok) throw new Error(`expected ok, got ${r.reason}`);
+    expect(r.input.issue_date).toBe("2026-01-07");
+    expect(r.input.due_date).toBe("2026-02-06");
   });
 });
 

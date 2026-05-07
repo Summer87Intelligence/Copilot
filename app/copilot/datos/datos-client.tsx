@@ -193,6 +193,11 @@ const filterKeyByEntity: Partial<Record<DataEntity, string>> = {
   tax_obligations: "status",
 };
 
+/** Columna de orden inicial por entidad. Omitir entidad = usar primera columna (comportamiento previo). */
+const defaultSortKeyByEntity: Partial<Record<DataEntity, string>> = {
+  invoices: "issue_date",
+};
+
 const interactiveColumnKeysByEntity: Record<DataEntity, string[]> = {
   companies: ["RazonSocial", "Codigo"],
   contacts: ["full_name"],
@@ -1213,6 +1218,7 @@ function CopilotDatosPageContent() {
                                 interactiveColumnKeysByEntity[tab.id]
                               }
                               inactiveBadge={listActiveFilter !== "active"}
+                              defaultSortKey={defaultSortKeyByEntity[tab.id]}
                               onRowClick={(row) => {
                                 setSelectedRow(row);
                                 setSidebarOpen(true);
