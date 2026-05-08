@@ -29,7 +29,16 @@ import {
   getFinancialSnapshot,
   type FinancialSnapshotApiV1,
 } from "@/lib/copilot-financial-engine";
-import { getProtoInvoices, type DataRow } from "@/lib/copilot-data";
+import {
+  getProtoCompanies,
+  getProtoInvoices,
+  type DataRow,
+} from "@/lib/copilot-data";
+import {
+  buildFinancialDashboardMetrics,
+  type FinancialDashboardMetrics,
+} from "@/lib/copilot-financial-dashboard-metrics";
+import { CopilotFinancialDashboard } from "@/components/copilot/copilot-financial-dashboard";
 import { deriveFinancialFlags } from "@/lib/derive-financial-flags";
 import { FinancialWarningBanner } from "@/components/copilot/financial-warning-banner";
 import { FinancialStatusBadge } from "@/components/copilot/financial-status-badge";
@@ -107,6 +116,15 @@ export default function CopilotHomePage() {
   const [fiscalAlerts, setFiscalAlerts] = useState<FiscalAlertItem[]>([]);
   const [fiscalLoading, setFiscalLoading] = useState(true);
   const [invoiceRows, setInvoiceRows] = useState<DataRow[]>([]);
+  // Dashboard "Salud financiera" — métricas globales del tenant calculadas
+  // sobre el ledger COMPLETO (`active + inactive`) y compañías para resolver
+  // top deudores. Independiente del filtro de período de la home.
+  const [
+    financialHealthMetrics,
+    setFinancialHealthMetrics,
+  ] = useState<FinancialDashboardMetrics | null>(null);
+  const [financialHealthLoading, setFinancialHealthLoading] = useState(true);
+  const [financialHealthError, setFinancialHealthError] = useState<string | null>(null);
 
   const fiscalCounts = useMemo(() => {
     const c = { critical: 0, high: 0, medium: 0 };
@@ -217,6 +235,38 @@ export default function CopilotHomePage() {
       .catch(() => {
         if (!cancelled) setInvoiceRows([]);
       });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setFinancialHealthLoading(true);
+    setFinancialHealthError(null);
+    const run = async () => {
+      try {
+        // `all` = ledger financiero (activos + archivados válidos). Las reglas
+        // de exclusión (anuladas/canceladas/total<=0/moneda desconocida) las
+        // aplica `buildFinancialDashboardMetrics` en memoria.
+        const [invoices, companies] = await Promise.all([
+          getProtoInvoices("all"),
+          getProtoCompanies("all"),
+        ]);
+        if (cancelled) return;
+        setFinancialHealthMetrics(buildFinancialDashboardMetrics({ invoices, companies }));
+      } catch (e) {
+        if (!cancelled) {
+          setFinancialHealthMetrics(null);
+          setFinancialHealthError(
+            e instanceof Error ? e.message : "No se cargó la salud financiera."
+          );
+        }
+      } finally {
+        if (!cancelled) setFinancialHealthLoading(false);
+      }
+    };
+    void run();
     return () => {
       cancelled = true;
     };
@@ -379,6 +429,37 @@ La prospección y generación de leads la realizás en Summer87 Leads.`}
                   </p>
                 </div>
               </div>
+            ) : null}
+          </CopilotCard>
+        </section>
+
+        <section>
+          <CopilotCard>
+            <CopilotSectionTitle
+              title="Salud financiera"
+              subtitle="Facturación, cobranza, deuda y aging derivados del ledger financiero (proto_invoices.balance_amount). No depende de filtros visuales ni de imputaciones inferidas."
+              action={
+                <Link
+                  href="/copilot/datos"
+                  className="text-sm font-semibold text-[var(--copilot-accent)] hover:underline"
+                >
+                  Ver datos sincronizados
+                </Link>
+              }
+            />
+            {financialHealthLoading ? (
+              <div className="flex items-center gap-2 py-2 text-sm text-[var(--copilot-ink-muted)]">
+                <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                Cargando salud financiera…
+              </div>
+            ) : null}
+            {financialHealthError ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
+                {financialHealthError}
+              </div>
+            ) : null}
+            {!financialHealthLoading && !financialHealthError && financialHealthMetrics ? (
+              <CopilotFinancialDashboard metrics={financialHealthMetrics} />
             ) : null}
           </CopilotCard>
         </section>

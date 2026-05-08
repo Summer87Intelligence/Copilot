@@ -88,3 +88,98 @@ export const PERIOD_MONTH_OPTIONS: ReadonlyArray<{ value: number; label: string 
   { value: 11, label: "Noviembre" },
   { value: 12, label: "Diciembre" },
 ];
+
+// ---------------------------------------------------------------------------
+// Modo "rango libre de fechas" (extensión usada por el sidebar de cliente para
+// reproducir reportes Zeta tipo "01/12/25 al 17/04/26").
+//
+// Convención: las fechas se manejan como YYYY-MM-DD agnósticas de zona horaria
+// (igual que `parseRowYmd`); es responsabilidad del caller normalizar inputs.
+// ---------------------------------------------------------------------------
+
+export type PeriodMode = "all" | "month_year" | "range";
+
+/**
+ * Filtra filas por rango cerrado [fromYmd, toYmd] (inclusivo en ambos extremos)
+ * sobre `dateField`. Cualquiera de los extremos puede ser `null`/vacío para
+ * dejar el rango abierto por ese lado. Si ambos están vacíos se devuelve un
+ * `slice()` (sin filtrar).
+ */
+export function filterRowsByDateRange(
+  rows: readonly DataRow[],
+  dateField: string,
+  fromYmd: string | null | undefined,
+  toYmd: string | null | undefined
+): DataRow[] {
+  const from = normalizeYmdInput(fromYmd);
+  const to = normalizeYmdInput(toYmd);
+  if (!from && !to) return rows.slice();
+  return rows.filter((row) => {
+    const p = parseRowYmd(row, dateField);
+    if (!p) return false;
+    const ymd = `${pad4(p.y)}-${pad2(p.m)}-${pad2(p.d)}`;
+    if (from && ymd < from) return false;
+    if (to && ymd > to) return false;
+    return true;
+  });
+}
+
+/** Normaliza una entrada `<input type="date">` a YYYY-MM-DD o `null`. */
+export function normalizeYmdInput(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const s = String(value).trim().slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+}
+
+/** Formato visible es-UY DD/MM/YYYY a partir de YYYY-MM-DD; fallback `—`. */
+export function formatYmdDisplay(value: string | null | undefined): string {
+  const norm = normalizeYmdInput(value);
+  if (!norm) return "—";
+  return `${norm.slice(8, 10)}/${norm.slice(5, 7)}/${norm.slice(0, 4)}`;
+}
+
+/**
+ * Etiqueta humana del período activo del panel:
+ *  - mode = "all"          → "Histórico completo"
+ *  - mode = "month_year"   → "Mayo 2026" | "Año 2026" | "Mes Mayo"
+ *  - mode = "range"        → "Del 01/12/2025 al 17/04/2026"
+ *                          → "Hasta 17/04/2026" | "Desde 01/12/2025"
+ *
+ * No retorna texto vacío: si el modo es "range" sin extremos, se reporta como
+ * histórico completo (= equivalente funcional a "all").
+ */
+export function describePeriodLabel(args: {
+  mode: PeriodMode;
+  year?: PeriodSelector;
+  month?: PeriodSelector;
+  from?: string | null;
+  to?: string | null;
+}): string {
+  if (args.mode === "all") return "Histórico completo";
+  if (args.mode === "month_year") {
+    const y = args.year;
+    const m = args.month;
+    const monthLabel =
+      m && m !== "all"
+        ? PERIOD_MONTH_OPTIONS.find((o) => o.value === m)?.label
+        : null;
+    if (monthLabel && y && y !== "all") return `${monthLabel} ${y}`;
+    if (monthLabel) return `Mes ${monthLabel}`;
+    if (y && y !== "all") return `Año ${y}`;
+    return "Histórico completo";
+  }
+  // range
+  const from = normalizeYmdInput(args.from ?? null);
+  const to = normalizeYmdInput(args.to ?? null);
+  if (from && to) return `Del ${formatYmdDisplay(from)} al ${formatYmdDisplay(to)}`;
+  if (from) return `Desde ${formatYmdDisplay(from)}`;
+  if (to) return `Hasta ${formatYmdDisplay(to)}`;
+  return "Histórico completo";
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+function pad4(n: number): string {
+  return String(n).padStart(4, "0");
+}

@@ -128,6 +128,42 @@ export async function getProtoReceiptsByInvoice(
   return filterByInvoiceId(d.receipts, invoiceId);
 }
 
+// ---------------------------------------------------------------------------
+// CAPA FINANCIERA / LEDGER
+//
+// Los getters `*ForLedger` están pensados para consumidores contables que NO
+// deben perder histórico cuando una factura/recibo queda marcado `is_active=false`
+// (ejemplo: factura cobrada que el flujo posterior archiva). Devuelven activos
+// + inactivos respetando el resto de invariantes (workspace, RLS, schema).
+//
+// REGLAS:
+//  - Sólo deben usarse para reportes financieros (estado de cuenta, ledger,
+//    exports contables, conciliaciones históricas).
+//  - NO usar en tablas operacionales del CRUD (`/copilot/datos`), aging, alertas
+//    o cualquier vista que represente "lo que está vigente hoy".
+//  - El filtrado por `is_active` queda en la capa de presentación operacional
+//    (`getProto*ByCompany` con `activeMode = "active"` por default).
+//
+// Estos getters NO crean nuevas queries: reutilizan `getCopilotDataset("all")`
+// y filtran en memoria por `company_id`, igual que sus pares operacionales.
+// ---------------------------------------------------------------------------
+
+/** Facturas activas + inactivas del cliente para reportes financieros. */
+export async function getProtoInvoicesByCompanyForLedger(
+  companyId: string
+): Promise<DataRow[]> {
+  const d = await getCopilotDataset("all");
+  return filterByCompanyId(d.invoices, companyId);
+}
+
+/** Recibos activos + inactivos del cliente para reportes financieros. */
+export async function getProtoReceiptsByCompanyForLedger(
+  companyId: string
+): Promise<DataRow[]> {
+  const d = await getCopilotDataset("all");
+  return filterByCompanyId(d.receipts, companyId);
+}
+
 export const getCompanies = getProtoCompanies;
 export const getContacts = getProtoContacts;
 export const getInvoices = getProtoInvoices;

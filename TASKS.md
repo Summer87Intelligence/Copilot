@@ -18,6 +18,9 @@
 - Evaluar cierre de período en facturas: una vez resuelto re-sync abril, revisar si conviene ampliar el alcance reconciliador a mayo–junio.
 
 ## Done
+- 2026-05-08 — **Salud financiera como centro de decisiones**: nuevo motor `lib/copilot-financial-priority-engine.ts`, componentes `FinancialPriorityAlerts`, `FinancialActionPriorities`, `FinancialRiskSummary` y dashboard reordenado para empezar por atención/acción/riesgo antes de KPIs. Priority score determinístico 0-100 y semáforos auditables.
+- 2026-05-08 — **Salud financiera en Hoy**: dashboard ejecutivo movido del sidebar de cliente a `app/copilot/page.tsx` (home), entre "Liquidez y cobertura" y "Próximos vencimientos". Sidebar revertido al alcance client-specific. Datos reales del tenant validados (USD efectividad 93.61%, UYU 95.75%).
+- 2026-05-08 — **Executive Financial Dashboard Fase 1**: helper puro `lib/copilot-financial-dashboard-metrics.ts`, tests dedicados, UI `components/copilot/copilot-financial-dashboard.tsx`. Métricas reales por moneda: facturado, cobrado, pendiente, efectividad, counts, top deudores y aging. Reutiliza reglas de deuda actual; no usa recibos ni linking inferido.
 - 2026-05-07 — `temp-audits/` creada, ignorada en `.gitignore` (excepto `README.md`); convención de archivos temporales documentada.
 - 2026-05-07 — Auditoría reconciliación enero–abril 2026 (read-only): identificada hipótesis H1 (`issue_date` fallback `new Date()`); confirmada fila Excel `Prestis Nº=0` como borrador CFE válidamente excluido del sync.
 - 2026-05-07 — **Fix H1**: `mapCopilotCustomerVoucherToProtoInvoiceInput` y pipeline customer-vouchers rechazan fechas no parseables sin caer a fecha actual; tests verdes.

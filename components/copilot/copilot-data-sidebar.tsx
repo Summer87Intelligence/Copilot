@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { CopilotClientAccountStatement } from "@/components/copilot/copilot-client-account-statement";
+import { ClientCurrentDebtSummary } from "@/components/copilot/copilot-client-current-debt-summary";
+import { buildClientCurrentDebtSummary } from "@/lib/copilot-client-current-debt-summary";
 import { CopilotDataTrainingBlock } from "@/components/copilot/copilot-data-training-block";
 import { CopilotGhostButton } from "@/components/copilot/copilot-ui";
 import { InvoiceOperationalCallout } from "@/components/copilot/invoice-operational-callout";
@@ -27,10 +30,24 @@ import {
   getProtoContactsByCompany,
   getProtoInvoiceById,
   getProtoInvoicesByCompany,
+  getProtoInvoicesByCompanyForLedger,
   getProtoPaymentsByCompany,
   getProtoReceiptsByCompany,
+  getProtoReceiptsByCompanyForLedger,
   getProtoReceiptsByInvoice,
 } from "@/lib/copilot-data";
+import {
+  describePeriodLabel,
+  filterRowsByDateRange,
+  filterRowsByPeriod,
+  formatYmdDisplay,
+  normalizeYmdInput,
+  parseRowYmd,
+  PERIOD_MONTH_OPTIONS,
+  type PeriodMode,
+  type PeriodSelector,
+} from "@/lib/copilot-datos-period-filter";
+import { buildClientAfterCutoffMovements } from "@/lib/copilot-client-account-statement-after-cutoff";
 
 function rowTitle(row: DataRow, entity?: DataEntity): string {
   if (entity === "companies") {
@@ -211,15 +228,35 @@ function CompactList({
   title,
   rows,
   rowEntity,
+  totalCount,
+  periodSuffix,
 }: {
   title: string;
   rows: DataRow[];
   rowEntity: DataEntity;
+  /**
+   * Total de filas disponibles antes de aplicar filtros del panel. Cuando se provee,
+   * el contador muestra "X de N" para señalar que hay un subconjunto activo.
+   */
+  totalCount?: number;
+  /**
+   * Etiqueta humana del período activo del panel (ej. "Mayo 2026" o
+   * "Del 01/12/2025 al 17/04/2026"). Se concatena al título cuando hay filtro
+   * activo: "Facturas relacionadas (1 de 3) · Mayo 2026".
+   */
+  periodSuffix?: string;
 }) {
+  const showRange =
+    typeof totalCount === "number" && totalCount > rows.length;
   return (
     <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
       <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-        {title} ({rows.length})
+        {title} ({showRange ? `${rows.length} de ${totalCount}` : rows.length})
+        {periodSuffix ? (
+          <span className="ml-1 font-normal normal-case text-[var(--copilot-ink-muted)]">
+            · {periodSuffix}
+          </span>
+        ) : null}
       </h4>
       {rows.length === 0 ? (
         <p className="text-sm text-[var(--copilot-ink-muted)]">Sin registros relacionados.</p>
@@ -325,10 +362,33 @@ export function CopilotDataSidebar({
   const [error, setError] = useState<string | null>(null);
   const [company, setCompany] = useState<DataRow | null>(null);
   const [contacts, setContacts] = useState<DataRow[]>([]);
+  // Datos OPERACIONALES (sólo `is_active = true`). Alimentan las CompactList
+  // y otras vistas que representan "lo vigente hoy".
   const [invoices, setInvoices] = useState<DataRow[]>([]);
   const [receipts, setReceipts] = useState<DataRow[]>([]);
+  // Datos LEDGER / FINANCIEROS (activos + inactivos). Alimentan el Estado de
+  // cuenta para reproducir el histórico contable: una factura archivada que
+  // ya fue cobrada DEBE seguir apareciendo aunque `is_active = false`.
+  const [ledgerInvoices, setLedgerInvoices] = useState<DataRow[]>([]);
+  const [ledgerReceipts, setLedgerReceipts] = useState<DataRow[]>([]);
   const [payments, setPayments] = useState<DataRow[]>([]);
   const [invoice, setInvoice] = useState<DataRow | null>(null);
+
+  // Filtros internos del panel (solo aplican al detalle del cliente, no a la tabla principal).
+  // Default: modo "all" → muestra el histórico completo del cliente seleccionado.
+  // Modos disponibles:
+  //  - "all"        → sin filtro
+  //  - "month_year" → mes y/o año (selector clásico)
+  //  - "range"      → rango libre desde/hasta para reproducir reportes Zeta
+  const [panelMode, setPanelMode] = useState<PeriodMode>("all");
+  const [panelMonth, setPanelMonth] = useState<PeriodSelector>("all");
+  const [panelYear, setPanelYear] = useState<PeriodSelector>("all");
+  const [panelFrom, setPanelFrom] = useState<string>("");
+  const [panelTo, setPanelTo] = useState<string>("");
+
+  // Ref al input "Desde" para enfocarlo cuando el usuario activa
+  // "Comparar contra PDF Zeta" en el estado de cuenta.
+  const panelFromInputRef = useRef<HTMLInputElement | null>(null);
 
   const baseFields = useMemo(() => {
     if (!row) return [] as Array<[string, unknown]>;
@@ -403,22 +463,39 @@ export function CopilotDataSidebar({
       setContacts([]);
       setInvoices([]);
       setReceipts([]);
+      setLedgerInvoices([]);
+      setLedgerReceipts([]);
       setPayments([]);
       setInvoice(null);
+      // Reset filtros del panel: cada cliente arranca con histórico completo.
+      setPanelMode("all");
+      setPanelMonth("all");
+      setPanelYear("all");
+      setPanelFrom("");
+      setPanelTo("");
       try {
         if (entity === "companies") {
           const companyId = String(row.id ?? "");
-          const [cts, inv, rec, pay] = await Promise.all([
+          // Cargas en paralelo:
+          //  - Operacional (is_active=true): contactos + facturas/recibos/pagos
+          //    para las CompactList y datos del cliente vigente.
+          //  - Ledger (activos + inactivos): facturas/recibos completos para el
+          //    Estado de cuenta histórico.
+          const [cts, inv, rec, pay, ledgerInv, ledgerRec] = await Promise.all([
             getProtoContactsByCompany(companyId),
             getProtoInvoicesByCompany(companyId),
             getProtoReceiptsByCompany(companyId),
             getProtoPaymentsByCompany(companyId),
+            getProtoInvoicesByCompanyForLedger(companyId),
+            getProtoReceiptsByCompanyForLedger(companyId),
           ]);
           if (cancelled) return;
           setContacts(cts);
           setInvoices(inv);
           setReceipts(rec);
           setPayments(pay);
+          setLedgerInvoices(ledgerInv);
+          setLedgerReceipts(ledgerRec);
         } else if (entity === "invoices") {
           const companyId = String(row.company_id ?? "");
           const invoiceId = String(row.id ?? "");
@@ -470,6 +547,179 @@ export function CopilotDataSidebar({
       cancelled = true;
     };
   }, [entity, isOpen, row]);
+
+  // ---------------------------------------------------------------------------
+  // Filtros internos del panel (solo cliente seleccionado).
+  //
+  // Las dos capas conviven:
+  //  - OPERACIONAL (`invoices` / `receipts`): solo `is_active = true`. Alimenta
+  //    las CompactList "Facturas relacionadas" / "Recibos relacionados".
+  //  - LEDGER (`ledgerInvoices` / `ledgerReceipts`): activos + inactivos.
+  //    Alimenta el Estado de cuenta para reproducir el histórico contable.
+  //
+  // `availableYears` se deriva del LEDGER porque queremos que el filtro de año
+  // pueda ofrecer años que sólo aparecen en facturas archivadas (cobradas).
+  // ---------------------------------------------------------------------------
+  const availableYears = useMemo<number[]>(() => {
+    if (entity !== "companies") return [];
+    const set = new Set<number>();
+    for (const inv of ledgerInvoices) {
+      const p = parseRowYmd(inv, "issue_date");
+      if (p) set.add(p.y);
+    }
+    for (const rec of ledgerReceipts) {
+      const p = parseRowYmd(rec, "receipt_date");
+      if (p) set.add(p.y);
+    }
+    return Array.from(set).sort((a, b) => b - a);
+  }, [entity, ledgerInvoices, ledgerReceipts]);
+
+  const normalizedFrom = useMemo(() => normalizeYmdInput(panelFrom), [panelFrom]);
+  const normalizedTo = useMemo(() => normalizeYmdInput(panelTo), [panelTo]);
+
+  const isPanelFiltered =
+    (panelMode === "month_year" && (panelMonth !== "all" || panelYear !== "all")) ||
+    (panelMode === "range" && (normalizedFrom !== null || normalizedTo !== null));
+
+  const filteredInvoices = useMemo<DataRow[]>(() => {
+    if (!isPanelFiltered) return invoices;
+    if (panelMode === "range") {
+      return filterRowsByDateRange(invoices, "issue_date", normalizedFrom, normalizedTo);
+    }
+    return filterRowsByPeriod(invoices, "issue_date", panelYear, panelMonth);
+  }, [
+    invoices,
+    isPanelFiltered,
+    panelMode,
+    panelMonth,
+    panelYear,
+    normalizedFrom,
+    normalizedTo,
+  ]);
+
+  const filteredReceipts = useMemo<DataRow[]>(() => {
+    if (!isPanelFiltered) return receipts;
+    if (panelMode === "range") {
+      return filterRowsByDateRange(receipts, "receipt_date", normalizedFrom, normalizedTo);
+    }
+    return filterRowsByPeriod(receipts, "receipt_date", panelYear, panelMonth);
+  }, [
+    receipts,
+    isPanelFiltered,
+    panelMode,
+    panelMonth,
+    panelYear,
+    normalizedFrom,
+    normalizedTo,
+  ]);
+
+  // Mismas operaciones de filtrado, pero sobre el dataset LEDGER (activos + inactivos).
+  const filteredLedgerInvoices = useMemo<DataRow[]>(() => {
+    if (!isPanelFiltered) return ledgerInvoices;
+    if (panelMode === "range") {
+      return filterRowsByDateRange(ledgerInvoices, "issue_date", normalizedFrom, normalizedTo);
+    }
+    return filterRowsByPeriod(ledgerInvoices, "issue_date", panelYear, panelMonth);
+  }, [
+    ledgerInvoices,
+    isPanelFiltered,
+    panelMode,
+    panelMonth,
+    panelYear,
+    normalizedFrom,
+    normalizedTo,
+  ]);
+
+  const filteredLedgerReceipts = useMemo<DataRow[]>(() => {
+    if (!isPanelFiltered) return ledgerReceipts;
+    if (panelMode === "range") {
+      return filterRowsByDateRange(ledgerReceipts, "receipt_date", normalizedFrom, normalizedTo);
+    }
+    return filterRowsByPeriod(ledgerReceipts, "receipt_date", panelYear, panelMonth);
+  }, [
+    ledgerReceipts,
+    isPanelFiltered,
+    panelMode,
+    panelMonth,
+    panelYear,
+    normalizedFrom,
+    normalizedTo,
+  ]);
+
+  // Tipping point para mostrar un aviso al usuario cuando la vista financiera
+  // diverge del operacional (= hay filas archivadas dentro del período activo).
+  const ledgerArchivedCount = useMemo<number>(() => {
+    if (entity !== "companies") return 0;
+    let count = 0;
+    for (const inv of filteredLedgerInvoices) {
+      if (inv.is_active === false) count += 1;
+    }
+    for (const rec of filteredLedgerReceipts) {
+      if (rec.is_active === false) count += 1;
+    }
+    return count;
+  }, [entity, filteredLedgerInvoices, filteredLedgerReceipts]);
+
+  // Etiqueta visible del período activo (microcopy y headers del estado de cuenta).
+  const periodLabel = useMemo(
+    () =>
+      describePeriodLabel({
+        mode: panelMode,
+        year: panelYear,
+        month: panelMonth,
+        from: normalizedFrom,
+        to: normalizedTo,
+      }),
+    [panelMode, panelYear, panelMonth, normalizedFrom, normalizedTo]
+  );
+
+  // Cierre del período (para el footer del estado de cuenta tipo Zeta:
+  // "SALDO U$S al 17/04/2026 ..."). Sólo se publica cuando el modo "range"
+  // tiene un `to` real; en otros modos se omite el sufijo.
+  const periodEndLabel = useMemo<string | undefined>(() => {
+    if (panelMode === "range" && normalizedTo) {
+      return formatYmdDisplay(normalizedTo);
+    }
+    return undefined;
+  }, [panelMode, normalizedTo]);
+
+  // Resumen de DEUDA ACTUAL del cliente — se calcula UNA SOLA VEZ con el
+  // dataset ledger COMPLETO (`ledgerInvoices`). NO depende de los filtros del
+  // panel: aunque el usuario filtre por mes/año o cargue un rango histórico,
+  // este bloque sigue mostrando lo que el cliente debe HOY según
+  // `proto_invoices.balance_amount`. Es la respuesta directa a "¿cuánto debe
+  // ahora?" — independiente del relato contable del estado de cuenta.
+  const currentDebtSummary = useMemo(() => {
+    if (entity !== "companies") return null;
+    return buildClientCurrentDebtSummary({ invoices: ledgerInvoices });
+  }, [entity, ledgerInvoices]);
+
+  // Movimientos sincronizados DESPUÉS del corte histórico (sólo cuando hay
+  // rango con `to`). Se calcula sobre el dataset ledger COMPLETO (sin filtrar
+  // por período) para no perder filas posteriores. Si no hay corte → null.
+  const afterCutoff = useMemo(() => {
+    if (panelMode !== "range" || !normalizedTo) return undefined;
+    return buildClientAfterCutoffMovements({
+      invoices: ledgerInvoices,
+      receipts: ledgerReceipts,
+      toDate: normalizedTo,
+      ledgerMode: true,
+    });
+  }, [panelMode, normalizedTo, ledgerInvoices, ledgerReceipts]);
+
+  // Acción rápida desde el estado de cuenta: "Comparar contra PDF Zeta".
+  // Cambia el panel a modo rango con campos vacíos y pone foco en "Desde"
+  // para que el usuario tipee inmediatamente las fechas del PDF.
+  const handleCompareWithPdf = useCallback(() => {
+    setPanelMode("range");
+    setPanelMonth("all");
+    setPanelYear("all");
+    setPanelFrom("");
+    setPanelTo("");
+    requestAnimationFrame(() => {
+      panelFromInputRef.current?.focus();
+    });
+  }, []);
 
   if (!isOpen || !row) return null;
 
@@ -544,10 +794,129 @@ export function CopilotDataSidebar({
 
           {entity === "companies" ? (
             <>
-              <CompactList title="Contactos relacionados" rows={contacts} rowEntity="contacts" />
-              <CompactList title="Facturas relacionadas" rows={invoices} rowEntity="invoices" />
-              <CompactList title="Recibos relacionados" rows={receipts} rowEntity="receipts" />
-              <CompactList title="Pagos relacionados" rows={payments} rowEntity="payments" />
+              {currentDebtSummary ? (
+                <ClientCurrentDebtSummary summary={currentDebtSummary} />
+              ) : null}
+              <ClientPanelFilters
+                mode={panelMode}
+                month={panelMonth}
+                year={panelYear}
+                from={panelFrom}
+                to={panelTo}
+                fromInputRef={panelFromInputRef}
+                availableYears={availableYears}
+                isFiltered={isPanelFiltered}
+                totalInvoices={invoices.length}
+                filteredCount={filteredInvoices.length}
+                periodLabel={periodLabel}
+                onModeChange={(m) => {
+                  setPanelMode(m);
+                  // Al cambiar de modo, limpiamos los inputs del modo opuesto para
+                  // evitar estados inconsistentes (ej. mes seleccionado y rango con
+                  // fechas viejas al volver a "month_year").
+                  if (m === "all") {
+                    setPanelMonth("all");
+                    setPanelYear("all");
+                    setPanelFrom("");
+                    setPanelTo("");
+                  } else if (m === "month_year") {
+                    setPanelFrom("");
+                    setPanelTo("");
+                  } else if (m === "range") {
+                    setPanelMonth("all");
+                    setPanelYear("all");
+                  }
+                }}
+                onMonthChange={setPanelMonth}
+                onYearChange={setPanelYear}
+                onFromChange={setPanelFrom}
+                onToChange={setPanelTo}
+                onClear={() => {
+                  setPanelMode("all");
+                  setPanelMonth("all");
+                  setPanelYear("all");
+                  setPanelFrom("");
+                  setPanelTo("");
+                }}
+              />
+              {isPanelFiltered ? (
+                <p
+                  role="note"
+                  className="rounded-md border border-[var(--copilot-border)] bg-[rgba(44,40,37,0.04)] px-2.5 py-1.5 text-[11px] leading-snug text-[var(--copilot-ink-muted)]"
+                >
+                  Vista filtrada por período del panel ·{" "}
+                  <span className="font-semibold text-[var(--copilot-ink)]">{periodLabel}</span>
+                </p>
+              ) : null}
+              {ledgerArchivedCount > 0 ? (
+                <p
+                  role="note"
+                  className="rounded-md border border-[var(--copilot-border)] bg-[rgba(44,40,37,0.04)] px-2.5 py-1.5 text-[11px] leading-snug text-[var(--copilot-ink-muted)]"
+                >
+                  El estado de cuenta incluye{" "}
+                  <span className="font-semibold text-[var(--copilot-ink)]">
+                    {ledgerArchivedCount} comprobante(s) archivado(s)
+                  </span>{" "}
+                  para reproducir el histórico contable. Las listas operacionales
+                  (facturas/recibos relacionados) muestran únicamente registros
+                  vigentes.
+                </p>
+              ) : null}
+              <CopilotClientAccountStatement
+                invoices={filteredLedgerInvoices}
+                receipts={filteredLedgerReceipts}
+                ledgerMode
+                isFullHistory={!isPanelFiltered}
+                clientName={String(row.name ?? "")}
+                clientCode={(() => {
+                  const code = String(row.Codigo ?? "").trim();
+                  return code || undefined;
+                })()}
+                periodLabel={periodLabel}
+                periodEndLabel={periodEndLabel}
+                cutoffFromYmd={normalizedFrom ?? undefined}
+                cutoffToYmd={normalizedTo ?? undefined}
+                afterCutoff={afterCutoff}
+                onCompareWithPdf={handleCompareWithPdf}
+              />
+              <CompactList
+                title="Contactos relacionados"
+                rows={contacts}
+                rowEntity="contacts"
+              />
+              {isPanelFiltered && filteredInvoices.length === 0 ? (
+                <section className="space-y-2 rounded-xl border border-dashed border-[var(--copilot-border)] bg-white/70 p-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                    Facturas relacionadas (0 de {invoices.length}){" "}
+                    <span className="font-normal normal-case text-[var(--copilot-ink-muted)]">
+                      · {periodLabel}
+                    </span>
+                  </h4>
+                  <p className="text-sm text-[var(--copilot-ink-muted)]">
+                    No hay facturas del cliente para el período seleccionado.
+                  </p>
+                </section>
+              ) : (
+                <CompactList
+                  title="Facturas relacionadas"
+                  rows={filteredInvoices}
+                  rowEntity="invoices"
+                  totalCount={isPanelFiltered ? invoices.length : undefined}
+                  periodSuffix={isPanelFiltered ? periodLabel : undefined}
+                />
+              )}
+              <CompactList
+                title="Recibos relacionados"
+                rows={filteredReceipts}
+                rowEntity="receipts"
+                totalCount={isPanelFiltered ? receipts.length : undefined}
+                periodSuffix={isPanelFiltered ? periodLabel : undefined}
+              />
+              <CompactList
+                title="Pagos relacionados"
+                rows={payments}
+                rowEntity="payments"
+              />
             </>
           ) : null}
 
@@ -645,5 +1014,212 @@ export function CopilotDataSidebar({
         </div>
       </aside>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Filtros internos del panel de cliente
+//
+// Modos:
+//  - "all"        → sin filtro (default): histórico completo del cliente.
+//  - "month_year" → selector tradicional Año + Mes ("Todos" en cualquiera).
+//  - "range"      → rango libre desde / hasta. Diseñado para reproducir reportes
+//    Zeta tipo "01/12/25 al 17/04/26".
+//
+// Reglas de UX:
+//  - El botón "Limpiar filtros" sólo aparece cuando hay filtro activo y vuelve
+//    al modo "all".
+//  - El selector "Año" solo lista los años que aparecen en facturas/recibos del
+//    cliente (derivado en el componente padre vía `availableYears`).
+//  - Al cambiar de modo, el padre limpia el estado del modo opuesto (ver
+//    `onModeChange` en el bloque companies del sidebar).
+//  - NO afecta la tabla principal: opera exclusivamente sobre el detalle del
+//    cliente seleccionado en el sidebar.
+// ---------------------------------------------------------------------------
+function ClientPanelFilters({
+  mode,
+  month,
+  year,
+  from,
+  to,
+  fromInputRef,
+  availableYears,
+  isFiltered,
+  totalInvoices,
+  filteredCount,
+  periodLabel,
+  onModeChange,
+  onMonthChange,
+  onYearChange,
+  onFromChange,
+  onToChange,
+  onClear,
+}: {
+  mode: PeriodMode;
+  month: PeriodSelector;
+  year: PeriodSelector;
+  from: string;
+  to: string;
+  /**
+   * Ref expuesto al input "Desde". El estado de cuenta lo usa para enfocar el
+   * campo cuando el usuario presiona "Comparar contra PDF Zeta".
+   */
+  fromInputRef?: React.RefObject<HTMLInputElement | null>;
+  availableYears: readonly number[];
+  isFiltered: boolean;
+  totalInvoices: number;
+  filteredCount: number;
+  periodLabel: string;
+  onModeChange: (m: PeriodMode) => void;
+  onMonthChange: (v: PeriodSelector) => void;
+  onYearChange: (v: PeriodSelector) => void;
+  onFromChange: (v: string) => void;
+  onToChange: (v: string) => void;
+  onClear: () => void;
+}) {
+  const microcopy = !isFiltered
+    ? "Mostrando todas las facturas sincronizadas del cliente."
+    : `Mostrando facturas del cliente · ${periodLabel}`;
+
+  return (
+    <section
+      aria-label="Filtros del detalle del cliente"
+      className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3"
+    >
+      <ModeTabs mode={mode} onChange={onModeChange} />
+
+      {mode === "month_year" ? (
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="flex flex-col gap-1 text-[11px] font-medium text-[var(--copilot-ink-muted)]">
+            Año
+            <select
+              value={year === "all" ? "all" : String(year)}
+              onChange={(e) => {
+                const v = e.target.value;
+                onYearChange(v === "all" ? "all" : Number(v));
+              }}
+              className="rounded-md border border-[var(--copilot-border)] bg-white px-2 py-1 text-xs text-[var(--copilot-ink)]"
+            >
+              <option value="all">Todos</option>
+              {availableYears.map((y) => (
+                <option key={y} value={String(y)}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-[11px] font-medium text-[var(--copilot-ink-muted)]">
+            Mes
+            <select
+              value={month === "all" ? "all" : String(month)}
+              onChange={(e) => {
+                const v = e.target.value;
+                onMonthChange(v === "all" ? "all" : Number(v));
+              }}
+              className="rounded-md border border-[var(--copilot-border)] bg-white px-2 py-1 text-xs text-[var(--copilot-ink)]"
+            >
+              <option value="all">Todos</option>
+              {PERIOD_MONTH_OPTIONS.map((opt) => (
+                <option key={opt.value} value={String(opt.value)}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      ) : null}
+
+      {mode === "range" ? (
+        <div className="space-y-2">
+          {/*
+            Microcopy específica para el caso "comparar contra PDF Zeta": el
+            usuario llega acá típicamente desde el botón del estado de cuenta.
+          */}
+          <p className="text-[11px] text-[var(--copilot-ink-muted)]">
+            Ingresá el período exacto que figura en el PDF de Zeta.
+          </p>
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="flex flex-col gap-1 text-[11px] font-medium text-[var(--copilot-ink-muted)]">
+              Desde
+              <input
+                ref={fromInputRef}
+                type="date"
+                value={from}
+                onChange={(e) => onFromChange(e.target.value)}
+                className="rounded-md border border-[var(--copilot-border)] bg-white px-2 py-1 text-xs text-[var(--copilot-ink)]"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-[11px] font-medium text-[var(--copilot-ink-muted)]">
+              Hasta
+              <input
+                type="date"
+                value={to}
+                onChange={(e) => onToChange(e.target.value)}
+                className="rounded-md border border-[var(--copilot-border)] bg-white px-2 py-1 text-xs text-[var(--copilot-ink)]"
+              />
+            </label>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap items-center gap-2">
+        {isFiltered ? (
+          <button
+            type="button"
+            onClick={onClear}
+            className="rounded-md border border-[var(--copilot-border)] bg-white px-2 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] transition hover:text-[var(--copilot-ink)]"
+          >
+            Limpiar filtros
+          </button>
+        ) : null}
+        <p className="ml-auto text-[11px] tabular-nums text-[var(--copilot-ink-muted)]">
+          {isFiltered
+            ? `${filteredCount} de ${totalInvoices} factura(s)`
+            : `${totalInvoices} factura(s)`}
+        </p>
+      </div>
+      <p className="text-[11px] text-[var(--copilot-ink-muted)]">{microcopy}</p>
+    </section>
+  );
+}
+
+function ModeTabs({
+  mode,
+  onChange,
+}: {
+  mode: PeriodMode;
+  onChange: (m: PeriodMode) => void;
+}) {
+  const tabs: Array<{ id: PeriodMode; label: string }> = [
+    { id: "all", label: "Todos" },
+    { id: "month_year", label: "Mes y año" },
+    { id: "range", label: "Rango de fechas" },
+  ];
+  return (
+    <div
+      role="tablist"
+      aria-label="Modo de filtro del panel"
+      className="inline-flex rounded-lg border border-[var(--copilot-border)] bg-white p-0.5 text-[11px]"
+    >
+      {tabs.map((t) => {
+        const active = t.id === mode;
+        return (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(t.id)}
+            className={
+              active
+                ? "rounded-md bg-[var(--copilot-accent-soft)] px-2.5 py-1 font-semibold text-[var(--copilot-accent)]"
+                : "rounded-md px-2.5 py-1 font-medium text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]"
+            }
+          >
+            {t.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
