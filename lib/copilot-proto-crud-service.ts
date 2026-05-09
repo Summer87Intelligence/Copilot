@@ -493,14 +493,25 @@ export async function syncInvoiceBalanceFromReceipts(
 export async function protoCreateInvoice(
   supabase: SupabaseClient,
   input: ProtoInvoiceInput,
-  workspaceCompanyId?: string
+  workspaceCompanyId?: string,
+  options?: { allowBalanceGtTotal?: boolean }
 ): Promise<ProtoCrudResult<Record<string, unknown>>> {
-  const err = validateInvoiceIntegrity(input);
+  const err = validateInvoiceIntegrity(input, options ?? {});
   if (err) return err;
 
   const total = input.total_amount;
   const balance =
     input.balance_amount !== undefined ? input.balance_amount : total;
+  if (options?.allowBalanceGtTotal && balance > total + 1e-6) {
+    console.warn(JSON.stringify({
+      type: "balance_gt_total",
+      source: "protoCreateInvoice",
+      invoice_number: String(input.invoice_number ?? "").trim(),
+      total_amount: total,
+      balance_amount: balance,
+      delta: balance - total,
+    }));
+  }
   const wid = str(workspaceCompanyId);
   const row = {
     ...(wid ? { workspace_company_id: wid } : {}),
@@ -518,6 +529,7 @@ export async function protoCreateInvoice(
     ),
     category: input.category != null ? str(input.category) || null : null,
     notes: input.notes != null ? str(input.notes) || null : null,
+    currency_code: input.currency_code != null ? str(input.currency_code).toUpperCase() || null : null,
     is_active: true,
     archived_at: null as string | null,
   };
@@ -541,7 +553,8 @@ export async function protoUpdateInvoice(
   supabase: SupabaseClient,
   id: string,
   patch: ProtoInvoicePatch,
-  workspaceCompanyId?: string
+  workspaceCompanyId?: string,
+  options?: { allowBalanceGtTotal?: boolean }
 ): Promise<ProtoCrudResult<Record<string, unknown>>> {
   if (!str(id)) {
     return protoCrudResult.fail("VALIDATION", "Falta el identificador de la factura.");
@@ -577,10 +590,24 @@ export async function protoUpdateInvoice(
         : (existing.category as string | null) ?? null,
     notes:
       patch.notes !== undefined ? patch.notes : (existing.notes as string | null) ?? null,
+    currency_code:
+      patch.currency_code !== undefined
+        ? patch.currency_code
+        : (existing.currency_code as string | null) ?? null,
   };
 
-  const err = validateInvoiceIntegrity(merged);
+  const err = validateInvoiceIntegrity(merged, options ?? {});
   if (err) return err;
+  if (options?.allowBalanceGtTotal && (merged.balance_amount ?? merged.total_amount) > merged.total_amount + 1e-6) {
+    console.warn(JSON.stringify({
+      type: "balance_gt_total",
+      source: "protoUpdateInvoice",
+      invoice_id: id,
+      total_amount: merged.total_amount,
+      balance_amount: merged.balance_amount,
+      delta: (merged.balance_amount ?? merged.total_amount) - merged.total_amount,
+    }));
+  }
 
   const appliedBefore = await sumReceiptAmountsForInvoice(
     supabase,
@@ -607,6 +634,7 @@ export async function protoUpdateInvoice(
     ),
     category: merged.category != null ? str(merged.category) || null : null,
     notes: merged.notes != null ? str(merged.notes) || null : null,
+    currency_code: merged.currency_code != null ? str(merged.currency_code).toUpperCase() || null : null,
     updated_at: new Date().toISOString(),
   };
 

@@ -172,7 +172,10 @@ export function validateCompanyIntegrity(input: ProtoCompanyInput): ProtoCrudFai
   return null;
 }
 
-export function validateInvoiceIntegrity(input: ProtoInvoiceInput): ProtoCrudFailure | null {
+export function validateInvoiceIntegrity(
+  input: ProtoInvoiceInput,
+  options: { allowBalanceGtTotal?: boolean } = {}
+): ProtoCrudFailure | null {
   if (!str(input.company_id)) {
     return protoCrudResult.fail("VALIDATION", "Elegí el cliente al que pertenece esta factura.", [
       { field: "company_id", reason: "Vacío" },
@@ -211,7 +214,7 @@ export function validateInvoiceIntegrity(input: ProtoInvoiceInput): ProtoCrudFai
       [{ field: "balance_amount", reason: "Negativo" }]
     );
   }
-  if (bal > input.total_amount + 1e-6) {
+  if (!options.allowBalanceGtTotal && bal > input.total_amount + 1e-6) {
     return protoCrudResult.fail(
       "VALIDATION",
       "El saldo no puede ser mayor que el importe total: revisá montos para evitar inconsistencias de cartera.",

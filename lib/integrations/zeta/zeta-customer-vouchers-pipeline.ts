@@ -748,21 +748,24 @@ export async function syncZetaCustomerVouchers(
 
         const mapResult = mapCopilotCustomerVoucherToProtoInvoiceInput(companyId, mapped, runId ?? "");
         if (!mapResult.ok) {
-          // H1 fix: anti-fallback `new Date()`.
-          // Si `fecha_emision` no parsea, NO persistimos: no usamos fecha actual,
-          // no movemos la factura de mes y no rompemos enrichment / reconciliación.
-          // Se cuenta como error del sync para que aparezca en `summary.errors` y en
-          // `zeta_sync_runs.errors`. Trazabilidad obligatoria: serie/numero/raw fecha
-          // /comprobante/tenant/sync_run_id.
+          // H1 fix: anti-fallback `new Date()`. Pre-operational guard.
+          // Si `fecha_emision` no parsea o es pre-2026, NO persistimos.
+          // Se cuenta como error del sync para trazabilidad.
           errors += 1;
+          const logExtra =
+            mapResult.reason === "invalid_fecha_emision"
+              ? { raw_fecha_emision: mapResult.raw_fecha_emision }
+              : { issue_date: mapResult.issue_date };
           console.log(
-            "ROW SKIP: invalid fecha_emision",
+            `ROW SKIP: ${mapResult.reason}`,
             JSON.stringify({
               timestamp: new Date().toISOString(),
               source: "zeta_customer_vouchers_sync",
-              kind: "row_skip_invalid_fecha_emision",
+              kind: mapResult.reason === "pre_operational_date"
+                ? "row_skip_pre_operational_fecha_emision"
+                : "row_skip_invalid_fecha_emision",
               reason: mapResult.reason,
-              raw_fecha_emision: mapResult.raw_fecha_emision,
+              ...logExtra,
               serie: mapped.serie ?? null,
               numero: mapped.numero ?? null,
               zeta_comprobante_codigo: mapped.zeta_comprobante_codigo ?? null,
@@ -812,7 +815,8 @@ export async function syncZetaCustomerVouchers(
               category: input.category,
               notes: input.notes,
             },
-            wid
+            wid,
+            { allowBalanceGtTotal: true }
           );
           if (!up.ok) {
             errors += 1;
@@ -837,7 +841,7 @@ export async function syncZetaCustomerVouchers(
         } else {
           logZetaVoucherPersistIdentity("protoCreateInvoice", persistIdentityLog);
           const inputForCreate = { ...input, invoice_number: invNum };
-          const cr = await protoCreateInvoice(params.supabase, inputForCreate, wid);
+          const cr = await protoCreateInvoice(params.supabase, inputForCreate, wid, { allowBalanceGtTotal: true });
           if (!cr.ok) {
             errors += 1;
             console.log(

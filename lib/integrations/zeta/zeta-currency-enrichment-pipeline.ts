@@ -8,6 +8,7 @@
 
 import type { OperationalSupabase } from "@/lib/data/supabase-operational-data";
 import { fetchZetaVentasDetalladas } from "@/lib/integrations/zeta/zeta-ventas-detalladas-fetch";
+import { normalizeZetaCurrency } from "@/lib/integrations/zeta/zeta-currency-normalize";
 import type { ZetaCallContext } from "@/lib/integrations/zeta/zeta-http-client";
 
 const MONEDA_SOURCE = "zeta_ventas_detalladas_v1" as const;
@@ -53,6 +54,7 @@ type ProtoInvoiceRow = {
   id: string;
   invoice_number: string;
   zeta_metadata: unknown;
+  currency_code: string | null;
 };
 
 type RowOutcome = "updated" | "skipped" | "not_matched" | "error";
@@ -73,18 +75,7 @@ function readStr(row: Record<string, unknown>, ...keys: string[]): string | null
 }
 
 function normalizeToIso(simbolo: string | null, codigoRaw: string | null): "USD" | "UYU" | null {
-  const s = (simbolo ?? "").toUpperCase();
-  if (s.includes("U$S") || s.includes("USD") || s.includes("US$") || s.includes("DOLAR")) return "USD";
-  if (s.includes("$") || s.includes("UYU") || s.includes("PES")) return "UYU";
-
-  const c = (codigoRaw ?? "").toUpperCase();
-  if (c.includes("U$S") || c.includes("USD") || c.includes("US$") || c.includes("DOLAR")) return "USD";
-  if (c.includes("$") || c.includes("UYU") || c.includes("PES")) return "UYU";
-
-  if (codigoRaw === "2") return "USD";
-  if (codigoRaw === "1") return "UYU";
-
-  return null;
+  return normalizeZetaCurrency(null, simbolo, codigoRaw);
 }
 
 function sleep(ms: number): Promise<void> {
@@ -131,7 +122,7 @@ async function loadInvoicesForPeriod(
 
   const { data, error } = await client
     .from("proto_invoices")
-    .select("id, invoice_number, zeta_metadata")
+    .select("id, invoice_number, zeta_metadata, currency_code")
     .eq("workspace_company_id", workspaceCompanyId)
     .gte("issue_date", dateFrom)
     .lte("issue_date", dateTo);
@@ -141,18 +132,52 @@ async function loadInvoicesForPeriod(
 }
 
 /**
- * Extrae {clienteCodigo, serie, numero} del invoice_number semantico.
- * Formato: ZETA:CCV1:{empresa}:{cliente}:{serie}:{numero}
+ * Extrae {clienteCodigo, serie, numero} del invoice_number semántico.
+ * Soporta dos formatos:
+ *   - ZETA:CCV1:{empresa}:{cliente}:{serie}:{numero}   — formato vouchers pipeline
+ *   - ZETA:{RegistroId}                                — formato fallback saldos pipeline
+ *     Para el segundo caso lee zeta_metadata para extraer serie/numero si están disponibles.
  */
 function parseInvoiceNumberParts(
-  invNum: string
+  invNum: string,
+  zetaMetadata?: unknown
 ): { clienteCodigo: string; serie: string; numero: string } | null {
-  if (!invNum.startsWith("ZETA:CCV1:")) return null;
-  const parts = invNum.slice("ZETA:CCV1:".length).split(":");
-  if (parts.length < 4) return null;
-  const [, cliente, serie, numero] = parts;
-  if (!serie || !numero) return null;
-  return { clienteCodigo: cliente ?? "", serie, numero };
+  // Formato principal CCV1
+  if (invNum.startsWith("ZETA:CCV1:")) {
+    const parts = invNum.slice("ZETA:CCV1:".length).split(":");
+    if (parts.length < 4) return null;
+    const [, cliente, serie, numero] = parts;
+    if (!serie || !numero) return null;
+    return { clienteCodigo: cliente ?? "", serie, numero };
+  }
+
+  // Formato fallback ZETA:{RegistroId} — intentar extraer desde zeta_metadata
+  if (invNum.startsWith("ZETA:") && !invNum.startsWith("ZETA:CCV1:")) {
+    if (zetaMetadata == null || typeof zetaMetadata !== "object" || Array.isArray(zetaMetadata)) {
+      return null;
+    }
+    const meta = zetaMetadata as Record<string, unknown>;
+    // Intentar desde zeta_comprobante_identity_v1
+    const identity = meta.zeta_comprobante_identity_v1;
+    if (identity && typeof identity === "object" && !Array.isArray(identity)) {
+      const id = identity as Record<string, unknown>;
+      const serie = readStr(id, "FacturaSerie", "Serie", "serie");
+      const numero = readStr(id, "FacturaNumero", "Numero", "numero");
+      const cliente = readStr(id, "ClienteCodigo", "clienteCodigo");
+      if (serie && numero) return { clienteCodigo: cliente ?? "", serie, numero };
+    }
+    // Intentar desde zeta_customer_voucher_v1
+    const voucherV1 = meta.zeta_customer_voucher_v1;
+    if (voucherV1 && typeof voucherV1 === "object" && !Array.isArray(voucherV1)) {
+      const v = voucherV1 as Record<string, unknown>;
+      const serie = readStr(v, "FacturaSerie", "Serie", "serie");
+      const numero = readStr(v, "FacturaNumero", "Numero", "numero");
+      const cliente = readStr(v, "ClienteCodigo", "clienteCodigo");
+      if (serie && numero) return { clienteCodigo: cliente ?? "", serie, numero };
+    }
+  }
+
+  return null;
 }
 
 function lookupCurrencyInfo(
@@ -378,7 +403,7 @@ export async function runCurrencyEnrichmentPipeline(
   let errors = 0;
 
   for (const row of dbInvoices) {
-    const parts = parseInvoiceNumberParts(row.invoice_number);
+    const parts = parseInvoiceNumberParts(row.invoice_number, row.zeta_metadata);
     if (!parts) {
       notMatched++;
       continue;

@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import type { ZetaCustomerVoucherRecord } from "@/lib/integrations/zeta/contracts/zeta-customer-vouchers.contract";
 import { cleanZetaString, mapRutField } from "@/lib/integrations/zeta/zeta-client-mapper";
 import type { ProtoInvoiceInput } from "@/lib/copilot-proto-crud-types";
+import { COPILOT_OPERATIONAL_START_DATE } from "@/lib/copilot-operational-period";
 
 export type CopilotCustomerVoucherV1 = {
   schema_version: 1;
@@ -437,20 +438,19 @@ export function mapZetaCustomerVoucherToCopilot(row: ZetaCustomerVoucherRecord):
 /**
  * Resultado del mapeo voucher Zeta → `ProtoInvoiceInput`.
  *
- * Si la fila Zeta no permite construir un `ProtoInvoiceInput` válido (típicamente:
- * `fecha_emision` con formato no soportado por `normalizeZetaIssueDateYmd`), el
+ * Si la fila Zeta no permite construir un `ProtoInvoiceInput` válido, el
  * resultado es `{ ok: false, reason }` y el pipeline DEBE saltear la fila + loggear
- * estructuradamente. Nunca hay que persistir con un fallback "fecha de hoy"
- * porque eso desplaza la factura del mes correcto y rompe enrichment / reconciliación.
+ * estructuradamente.
  *
  * Razones posibles:
- * - `invalid_fecha_emision`: `fecha_emision` ausente o no parseable como YYYYMMDD /
- *   YYYY-MM-DD / YYYY/MM/DD. Anti-fallback `new Date()` (causa raíz documentada en
- *   `temp-audits/audit-abril-2026-report.md` H1).
+ * - `invalid_fecha_emision`: `fecha_emision` ausente o no parseable.
+ * - `pre_operational_date`: fecha válida pero anterior a COPILOT_OPERATIONAL_START_DATE.
+ *   No se persiste: el período operativo de Copilot arranca en 2026-01-01.
  */
 export type MapVoucherToProtoInvoiceResult =
   | { ok: true; input: ProtoInvoiceInput }
-  | { ok: false; reason: "invalid_fecha_emision"; raw_fecha_emision: string | null };
+  | { ok: false; reason: "invalid_fecha_emision"; raw_fecha_emision: string | null }
+  | { ok: false; reason: "pre_operational_date"; issue_date: string };
 
 /**
  * Arma `ProtoInvoiceInput`:
@@ -476,6 +476,13 @@ export function mapCopilotCustomerVoucherToProtoInvoiceInput(
       ok: false,
       reason: "invalid_fecha_emision",
       raw_fecha_emision: mapped.fecha_emision ?? null,
+    };
+  }
+  if (issue < COPILOT_OPERATIONAL_START_DATE) {
+    return {
+      ok: false,
+      reason: "pre_operational_date",
+      issue_date: issue,
     };
   }
   const due = addDaysIso(issue, 30);

@@ -6,6 +6,7 @@
 import type { ZetaCollectionReceiptRecord } from "@/lib/integrations/zeta/contracts/zeta-collection-receipts.contract";
 import type { ProtoReceiptInput } from "@/lib/copilot-proto-crud-types";
 import { cleanZetaString, mapRutField } from "@/lib/integrations/zeta/zeta-client-mapper";
+import { COPILOT_OPERATIONAL_START_DATE } from "@/lib/copilot-operational-period";
 
 export type CopilotCollectionReceiptV1 = {
   schema_version: 1;
@@ -195,6 +196,13 @@ export function mapCopilotCollectionReceiptToProtoReceiptInput(
       raw_fecha: rawFecha == null ? null : String(rawFecha),
     };
   }
+  if (ymd < COPILOT_OPERATIONAL_START_DATE) {
+    return {
+      ok: false,
+      reason: "pre_operational_date",
+      receipt_date: ymd,
+    };
+  }
 
   return {
     ok: true,
@@ -217,4 +225,5 @@ export type MapCollectionReceiptToProtoReceiptResult =
   | { ok: true; input: ProtoReceiptInput }
   | { ok: false; reason: "invalid_fecha"; raw_fecha: string | null }
   | { ok: false; reason: "invalid_amount"; amount: number }
-  | { ok: false; reason: "negative_amount"; amount: number };
+  | { ok: false; reason: "negative_amount"; amount: number }
+  | { ok: false; reason: "pre_operational_date"; receipt_date: string };

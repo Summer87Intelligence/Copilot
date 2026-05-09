@@ -105,4 +105,38 @@ describe("zeta-collection-receipts-mapper", () => {
     if (result.reason !== "invalid_fecha") throw new Error(`expected invalid_fecha, got ${result.reason}`);
     expect(result.raw_fecha).toBe("15/01/2026");
   });
+
+  it("rechaza fecha pre-operacional (2025-12-31) con reason pre_operational_date", () => {
+    const mapped = mapZetaCollectionReceiptToCopilot({
+      RegistroId: 9005,
+      Fecha: "2025-12-31",
+      Total: 100,
+      TotalSigno: 1,
+      MonedaCodigo: "1",
+    });
+    expect(mapped).not.toBeNull();
+    if (!mapped) throw new Error("expected mapped receipt");
+
+    const result = mapCopilotCollectionReceiptToProtoReceiptInput("company-1", mapped, "run-1");
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("expected ok=false");
+    expect(result.reason).toBe("pre_operational_date");
+    if (result.reason !== "pre_operational_date") throw new Error("wrong reason");
+    expect(result.receipt_date).toBe("2025-12-31");
+  });
+
+  it("acepta fecha 2026-01-01 (boundary operativo)", () => {
+    const mapped = mapZetaCollectionReceiptToCopilot({
+      RegistroId: 9006,
+      Fecha: "2026-01-01",
+      Total: 500,
+      TotalSigno: 1,
+      MonedaCodigo: "1",
+    });
+    expect(mapped).not.toBeNull();
+    if (!mapped) throw new Error("expected mapped receipt");
+
+    const result = mapCopilotCollectionReceiptToProtoReceiptInput("company-1", mapped, "run-1");
+    expect(result.ok).toBe(true);
+  });
 });

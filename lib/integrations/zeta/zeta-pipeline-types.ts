@@ -3,6 +3,14 @@ export const ZETA_PIPELINE_FLOW_SALDOS_PENDIENTES = "factura_cliente_saldos_pend
 
 export type ZetaSaldosPipelineMode = "bootstrap" | "incremental";
 
+/**
+ * syncMode controls the reconciliation behavior after a successful full fetch:
+ * - "incremental": normal run, no orphan reconciliation (default)
+ * - "reconciliation_cleanup": forces bootstrap mode + runs orphan reconciliation
+ *   to detect and safe-zero pending invoices no longer returned by Zeta
+ */
+export type ZetaSaldosSyncMode = "incremental" | "reconciliation_cleanup";
+
 export type ZetaSaldosPipelineOptions = {
   /** Cliente Zeta (`Filters.ClienteCodigo`). */
   clienteCodigo: string;
@@ -17,6 +25,11 @@ export type ZetaSaldosPipelineOptions = {
   overlapSeconds?: number;
   /** Opcional: dedupe de creación de corrida (ZETA-02). */
   idempotencyKey?: string | null;
+  /**
+   * "reconciliation_cleanup" forces bootstrap + orphan detection.
+   * Defaults to "incremental" (no orphan reconciliation).
+   */
+  syncMode?: ZetaSaldosSyncMode;
 };
 
 export type ZetaSaldosPipelineResult = {
@@ -29,4 +42,12 @@ export type ZetaSaldosPipelineResult = {
   error_summary?: string;
   last_page_processed: string;
   bootstrap_completed: boolean;
+  /** Orphan reconciliation metrics (only populated when syncMode=reconciliation_cleanup or bootstrap+completed). */
+  reconciliation?: {
+    pending_invoices_checked: number;
+    orphans_detected: number;
+    warnings: number;
+    auto_closed: number;
+    db_errors: number;
+  };
 };

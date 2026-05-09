@@ -1,5 +1,6 @@
 import { readInvoiceFinancial } from "@/lib/copilot-invoice-financial-read";
 import type { OperationalSupabase } from "@/lib/data/supabase-operational-data";
+import { COPILOT_OPERATIONAL_START_DATE } from "@/lib/copilot-operational-period";
 
 export const FINANCIAL_SNAPSHOT_ROW_CAP = 5000;
 const ROW_CAP = FINANCIAL_SNAPSHOT_ROW_CAP;
@@ -145,7 +146,8 @@ export async function loadFinancialFactsBundle(
       let q = client
         .from("proto_receipts")
         .select("amount,invoice_id,receipt_date,company_id")
-        .eq("is_active", true);
+        .eq("is_active", true)
+        .gte("receipt_date", COPILOT_OPERATIONAL_START_DATE);
       if (wid) q = q.eq("workspace_company_id", wid);
       return q.order("receipt_date", { ascending: false }).limit(ROW_CAP);
     })(),
@@ -165,7 +167,8 @@ export async function loadFinancialFactsBundle(
         .select(
           "id,company_id,issue_date,due_date,balance_amount,collection_probability"
         )
-        .eq("is_active", true);
+        .eq("is_active", true)
+        .gte("issue_date", COPILOT_OPERATIONAL_START_DATE);
       if (wid) qMeta = qMeta.eq("workspace_company_id", wid);
       const invMeta = await qMeta.order("issue_date", { ascending: false }).limit(ROW_CAP);
       if (invMeta.error) return invMeta;

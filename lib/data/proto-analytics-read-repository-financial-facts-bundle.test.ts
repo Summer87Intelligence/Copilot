@@ -27,6 +27,7 @@ function createOperationalMock(): OperationalSupabase {
     const chain = () => self;
     self.select = chain;
     self.eq = chain;
+    self.gte = chain;
     self.order = chain;
     self.in = chain;
     self.limit = () => {
@@ -36,7 +37,7 @@ function createOperationalMock(): OperationalSupabase {
             {
               amount: 100,
               invoice_id: "inv1",
-              receipt_date: "2025-01-15",
+              receipt_date: "2026-01-15",
               company_id: "c1",
             },
           ],
@@ -45,7 +46,7 @@ function createOperationalMock(): OperationalSupabase {
       }
       if (table === "proto_payments") {
         return Promise.resolve({
-          data: [{ amount: 40, payment_date: "2025-01-12" }],
+          data: [{ amount: 40, payment_date: "2026-01-12" }],
           error: null,
         });
       }
@@ -55,8 +56,8 @@ function createOperationalMock(): OperationalSupabase {
             {
               id: "inv1",
               company_id: "c1",
-              issue_date: "2025-01-01",
-              due_date: "2025-02-01",
+              issue_date: "2026-01-01",
+              due_date: "2026-02-01",
               balance_amount: 500,
               collection_probability: 0.5,
             },
@@ -85,7 +86,7 @@ describe("loadFinancialFactsBundle", () => {
     expect(bundle.receipts).toHaveLength(1);
     expect(bundle.invoices[0]?.["balance_amount"]).toBe(500);
     expect(bundle.invoices[0]?.["company_id"]).toBe("c1");
-    expect(bundle.invoices[0]?.["issue_date"]).toBe("2025-01-01");
+    expect(bundle.invoices[0]?.["issue_date"]).toBe("2026-01-01");
     expect(bundle.meta.snapshotLoadDiagnostics.active_invoice_count).toBe(1);
     expect(bundle.meta.snapshotLoadDiagnostics.invoice_financials_coverage).toBe(
       "unavailable"

@@ -8,6 +8,7 @@ import {
   Building2,
   CheckSquare,
   Database,
+  Landmark,
   LayoutDashboard,
   Lightbulb,
   ListTodo,
@@ -70,6 +71,7 @@ const COPILOT_NAV_MAIN: CopilotNavItem[] = [
   { href: "/copilot/acciones", label: "Acciones", icon: CheckSquare },
   { href: "/copilot/clientes", label: "Clientes", icon: Users },
   { href: "/copilot/finanzas", label: "Finanzas", icon: Wallet },
+  { href: "/copilot/cartera", label: "Cartera", icon: Landmark },
   { href: "/copilot/escenarios", label: "Escenarios", icon: BarChart3 },
   { href: "/copilot/insights", label: "Insights", icon: Lightbulb },
 ];

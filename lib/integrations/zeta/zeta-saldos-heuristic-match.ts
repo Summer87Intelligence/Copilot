@@ -174,11 +174,13 @@ function protoHasRegistroContradiction(zeta_metadata: unknown, expectedRegistroI
   return !invoiceZetaMetadataRegistroConsistentWithExpected(zeta_metadata, expectedRegistroId);
 }
 
+export type HeuristicConfidence = "high" | "medium" | "low";
+
 export type HeuristicMatchOutcome =
   | { kind: "none" }
-  | { kind: "applied"; invoice_id: string; invoice_number: string; score: number; breakdown: HeuristicScoreBreakdown }
+  | { kind: "applied"; confidence: "high"; invoice_id: string; invoice_number: string; score: number; breakdown: HeuristicScoreBreakdown }
   | { kind: "ambiguous"; top: Array<{ invoice_id: string; invoice_number: string; score: number }> }
-  | { kind: "rejected_low_score"; best_score: number; best_invoice_id: string | null; band: "below_60" | "60_79_doubt" };
+  | { kind: "rejected_low_score"; confidence: HeuristicConfidence; best_score: number; best_invoice_id: string | null; band: "below_60" | "60_79_doubt" };
 
 /**
  * Busca a lo sumo una factura CCV1 del cliente Zeta con score ≥ umbral y sin ambigüedad.
@@ -280,6 +282,7 @@ export async function findBestHeuristicProtoInvoiceForSaldoRow(
   if (!best || best.score < HEURISTIC_THRESHOLD_MIN_LOG) {
     return {
       kind: "rejected_low_score",
+      confidence: "low" as const,
       best_score: best?.score ?? 0,
       best_invoice_id: best?.invoice_id ?? null,
       band: "below_60",
@@ -289,6 +292,7 @@ export async function findBestHeuristicProtoInvoiceForSaldoRow(
   if (best.score < HEURISTIC_THRESHOLD_ACCEPT) {
     return {
       kind: "rejected_low_score",
+      confidence: "medium" as const,
       best_score: best.score,
       best_invoice_id: best.invoice_id,
       band: "60_79_doubt",
@@ -310,6 +314,7 @@ export async function findBestHeuristicProtoInvoiceForSaldoRow(
   const winner = strong[0]!;
   return {
     kind: "applied",
+    confidence: "high" as const,
     invoice_id: winner.invoice_id,
     invoice_number: winner.invoice_number,
     score: winner.score,

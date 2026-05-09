@@ -258,3 +258,48 @@ describe("buildFinancialDashboardMetrics", () => {
     expect(JSON.stringify(comp)).toBe(beforeComp);
   });
 });
+
+describe("buildFinancialDashboardMetrics — hard cutoff pre-2026", () => {
+  it("excluye invoices con issue_date pre-2026 aunque vengan en el input", () => {
+    const inv2025 = invoice({ id: "pre1", companyId: "c1", total: 50000, balance: 50000, currency: "UYU", issueDate: "2025-12-31" });
+    const inv2026 = invoice({ id: "op1", companyId: "c1", total: 1000, balance: 1000, currency: "UYU", issueDate: "2026-01-15" });
+    const out = buildFinancialDashboardMetrics({
+      today: "2026-05-09",
+      invoices: [inv2025, inv2026],
+    });
+    const uyu = out.currencies.find((c) => c.currencyCode === "UYU");
+    expect(uyu).toBeDefined();
+    expect(uyu!.invoiceCount).toBe(1);
+    expect(uyu!.totalPending).toBe(1000);
+  });
+
+  it("acepta invoice con issue_date exactamente 2026-01-01 (boundary)", () => {
+    const inv = invoice({ id: "b1", companyId: "c1", total: 500, balance: 500, currency: "USD", issueDate: "2026-01-01" });
+    const out = buildFinancialDashboardMetrics({ today: "2026-05-09", invoices: [inv] });
+    const usd = out.currencies.find((c) => c.currencyCode === "USD");
+    expect(usd).toBeDefined();
+    expect(usd!.invoiceCount).toBe(1);
+  });
+
+  it("devuelve currencies vacías si todos los invoices son pre-2026", () => {
+    const invoices = [
+      invoice({ id: "p1", companyId: "c1", total: 10000, balance: 10000, currency: "UYU", issueDate: "2025-06-01" }),
+      invoice({ id: "p2", companyId: "c1", total: 5000, balance: 5000, currency: "USD", issueDate: "2024-12-31" }),
+    ];
+    const out = buildFinancialDashboardMetrics({ today: "2026-05-09", invoices });
+    expect(out.currencies).toHaveLength(0);
+  });
+
+  it("filtra pre-2026 mixed con 2026+ y solo cuenta los operacionales", () => {
+    const invoices = [
+      invoice({ id: "old1", companyId: "c1", total: 99999, balance: 99999, currency: "UYU", issueDate: "2025-01-01" }),
+      invoice({ id: "new1", companyId: "c1", total: 2000, balance: 2000, currency: "UYU", issueDate: "2026-02-01" }),
+      invoice({ id: "new2", companyId: "c1", total: 3000, balance: 1500, currency: "UYU", issueDate: "2026-03-01" }),
+    ];
+    const out = buildFinancialDashboardMetrics({ today: "2026-05-09", invoices });
+    const uyu = out.currencies.find((c) => c.currencyCode === "UYU");
+    expect(uyu!.invoiceCount).toBe(2);
+    expect(uyu!.totalInvoiced).toBe(5000);
+    expect(uyu!.totalPending).toBe(3500);
+  });
+});

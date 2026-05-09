@@ -26,6 +26,7 @@ import {
   type CurrentDebtCurrencyCode,
 } from "@/lib/copilot-client-current-debt-summary";
 import { parseRowYmd } from "@/lib/copilot-datos-period-filter";
+import { isWithinCopilotOperationalPeriod } from "@/lib/copilot-operational-period";
 
 export type AgingBucketLabel = "0-30" | "31-60" | "61-90" | "90+";
 
@@ -233,10 +234,15 @@ export function buildFinancialDashboardMetrics(
   const todayUtc = toUtcDay(input.today);
   const companiesById = buildCompanyMap(input.companies);
 
+  // Defensa en profundidad: filtrar pre-2026 aunque el caller ya lo haga a nivel de BD
+  const operationalInvoices = input.invoices.filter((inv) =>
+    isWithinCopilotOperationalPeriod(String(inv.issue_date ?? ""))
+  );
+
   // Reutilizamos la métrica autoritativa de deuda actual para totales y counts
   // globales por moneda. Así evitamos reimplementar clasificación, exclusión de
   // anuladas/canceladas, moneda y cálculo de `balance_amount`.
-  const debtSummary = buildClientCurrentDebtSummary({ invoices: input.invoices });
+  const debtSummary = buildClientCurrentDebtSummary({ invoices: operationalInvoices });
   const baseByCurrency = new Map<CurrentDebtCurrencyCode, CurrencyMetrics>();
   for (const code of CURRENCY_ORDER) baseByCurrency.set(code, emptyCurrencyMetrics(code));
   for (const c of debtSummary.currencies) {
@@ -260,7 +266,7 @@ export function buildFinancialDashboardMetrics(
     UYU: new Map(),
   };
 
-  for (const inv of input.invoices) {
+  for (const inv of operationalInvoices) {
     if (isVoidedFinancialInvoice(inv)) continue;
     const currency = readFinancialInvoiceCurrency(inv);
     if (!currency) continue;

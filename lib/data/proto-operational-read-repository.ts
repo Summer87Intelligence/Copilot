@@ -3,6 +3,7 @@ import {
   type ProtoActiveListMode,
 } from "@/lib/copilot-proto-active";
 import type { OperationalSupabase } from "@/lib/data/supabase-operational-data";
+import { COPILOT_OPERATIONAL_START_DATE } from "@/lib/copilot-operational-period";
 
 /**
  * Tablas proto operativas con listado genérico (`is_active` / modos active|inactive|all).
@@ -173,6 +174,7 @@ export async function listProtoInvoices(
   {
     let base = client.from("proto_invoices").select("*");
     if (scopeWs) base = base.eq("workspace_company_id", wid!);
+    base = base.gte("issue_date", COPILOT_OPERATIONAL_START_DATE);
     const q = applyProtoActiveListFilter(base, activeMode);
     const { data, error } = await q
       .order("issue_date", { ascending: false })
@@ -184,6 +186,7 @@ export async function listProtoInvoices(
   {
     let base = client.from("proto_invoices").select("*");
     if (scopeWs) base = base.eq("workspace_company_id", wid!);
+    base = base.gte("issue_date", COPILOT_OPERATIONAL_START_DATE);
     const q = applyProtoActiveListFilter(base, activeMode);
     const { data, error } = await q.order("issue_date", { ascending: false });
     if (!error) return (data ?? []) as DataRow[];
@@ -192,6 +195,7 @@ export async function listProtoInvoices(
   // Fallback final sin orden garantizado
   let fbBase = client.from("proto_invoices").select("*");
   if (scopeWs) fbBase = fbBase.eq("workspace_company_id", wid!);
+  fbBase = fbBase.gte("issue_date", COPILOT_OPERATIONAL_START_DATE);
   const fb = applyProtoActiveListFilter(fbBase, activeMode);
   const fallback = await fb;
   if (fallback.error) throw new Error(fallback.error.message);
@@ -218,6 +222,7 @@ export async function listProtoReceipts(
   {
     let base = client.from("proto_receipts").select("*");
     if (scopeWs) base = base.eq("workspace_company_id", wid!);
+    base = base.gte("receipt_date", COPILOT_OPERATIONAL_START_DATE);
     const q = applyProtoActiveListFilter(base, activeMode);
     const { data, error } = await q
       .order("receipt_date", { ascending: false })
@@ -229,6 +234,7 @@ export async function listProtoReceipts(
   {
     let base = client.from("proto_receipts").select("*");
     if (scopeWs) base = base.eq("workspace_company_id", wid!);
+    base = base.gte("receipt_date", COPILOT_OPERATIONAL_START_DATE);
     const q = applyProtoActiveListFilter(base, activeMode);
     const { data, error } = await q.order("receipt_date", { ascending: false });
     if (!error) return (data ?? []) as DataRow[];
@@ -237,6 +243,7 @@ export async function listProtoReceipts(
   // Fallback final sin orden garantizado
   let fbBase = client.from("proto_receipts").select("*");
   if (scopeWs) fbBase = fbBase.eq("workspace_company_id", wid!);
+  fbBase = fbBase.gte("receipt_date", COPILOT_OPERATIONAL_START_DATE);
   const fb = applyProtoActiveListFilter(fbBase, activeMode);
   const fallback = await fb;
   if (fallback.error) throw new Error(fallback.error.message);

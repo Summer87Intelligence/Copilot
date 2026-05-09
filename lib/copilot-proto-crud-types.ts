@@ -170,6 +170,8 @@ export type ProtoInvoiceInput = {
   status?: string;
   category?: string | null;
   notes?: string | null;
+  /** Código ISO 4217 de moneda (USD | UYU). Null si se desconoce. */
+  currency_code?: string | null;
 };
 
 export type ProtoInvoicePatch = Partial<ProtoInvoiceInput>;

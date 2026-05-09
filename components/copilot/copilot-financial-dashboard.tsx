@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import { FinancialActionPriorities } from "@/components/copilot/financial-action-priorities";
+import { DataProvenanceBadge } from "@/components/copilot/financial-data-provenance";
 import { FinancialPriorityAlerts } from "@/components/copilot/financial-priority-alerts";
 import { FinancialRiskSummary } from "@/components/copilot/financial-risk-summary";
 import type {
@@ -10,17 +11,12 @@ import type {
   CurrencyMetrics,
   FinancialDashboardMetrics,
 } from "@/lib/copilot-financial-dashboard-metrics";
+import {
+  CURRENCY_SHORT_LABELS,
+  currencySymbolFor,
+  PROVENANCE_HOME_DASHBOARD,
+} from "@/lib/copilot-financial-terminology";
 import { buildFinancialPriorityModel } from "@/lib/copilot-financial-priority-engine";
-
-const CURRENCY_SYMBOL: Record<string, string> = {
-  UYU: "$",
-  USD: "U$S",
-};
-
-const CURRENCY_LABEL: Record<string, string> = {
-  UYU: "Pesos",
-  USD: "Dólares",
-};
 
 /**
  * Bloque ejecutivo "Salud financiera" — métricas globales del tenant.
@@ -55,6 +51,9 @@ export function CopilotFinancialDashboard({
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-end">
+        <DataProvenanceBadge provenance={PROVENANCE_HOME_DASHBOARD} />
+      </div>
       <FinancialPriorityAlerts alerts={priorityModel.alerts} />
       <FinancialActionPriorities priorities={priorityModel.actionPriorities} />
       <FinancialRiskSummary risks={priorityModel.risks} />
@@ -81,7 +80,7 @@ function KpiSection({ currencies }: { currencies: CurrencyMetrics[] }) {
             <CurrencyHeader metrics={currency} />
             <KpiStrip
               metrics={currency}
-              symbol={CURRENCY_SYMBOL[currency.currencyCode] ?? currency.currencyCode}
+              symbol={currencySymbolFor(currency.currencyCode) ?? currency.currencyCode}
             />
           </article>
         ))}
@@ -100,7 +99,7 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle: string })
 }
 
 function CurrencyHeader({ metrics }: { metrics: CurrencyMetrics }) {
-  const label = CURRENCY_LABEL[metrics.currencyCode] ?? metrics.currencyCode;
+  const label = CURRENCY_SHORT_LABELS[metrics.currencyCode] ?? metrics.currencyCode;
   return (
     <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[var(--copilot-border)] pb-3">
       <div>
@@ -171,7 +170,7 @@ function AgingSection({ currencies }: { currencies: CurrencyMetrics[] }) {
             metrics={currency}
             aging={currency.aging}
             totalPending={currency.totalPending}
-            symbol={CURRENCY_SYMBOL[currency.currencyCode] ?? currency.currencyCode}
+            symbol={currencySymbolFor(currency.currencyCode) ?? currency.currencyCode}
           />
         ))}
       </div>
@@ -194,7 +193,7 @@ function AgingView({
     <article className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
       <header className="flex items-baseline justify-between gap-2">
         <h5 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-          {CURRENCY_LABEL[metrics.currencyCode]} · {metrics.currencyCode}
+          {CURRENCY_SHORT_LABELS[metrics.currencyCode] ?? metrics.currencyCode} · {metrics.currencyCode}
         </h5>
         <span className="text-[10px] text-[var(--copilot-ink-muted)]">
           calculado sobre fecha de emisión
@@ -236,7 +235,7 @@ function DetailedDebtorsSection({ currencies }: { currencies: CurrencyMetrics[] 
           <TopDebtorsTable
             key={currency.currencyCode}
             metrics={currency}
-            symbol={CURRENCY_SYMBOL[currency.currencyCode] ?? currency.currencyCode}
+            symbol={currencySymbolFor(currency.currencyCode) ?? currency.currencyCode}
           />
         ))}
       </div>
@@ -249,7 +248,7 @@ function TopDebtorsTable({ metrics, symbol }: { metrics: CurrencyMetrics; symbol
     <article className="space-y-2">
       <header className="flex items-baseline justify-between gap-2">
         <h5 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-          {CURRENCY_LABEL[metrics.currencyCode]} · {metrics.currencyCode}
+          {CURRENCY_SHORT_LABELS[metrics.currencyCode] ?? metrics.currencyCode} · {metrics.currencyCode}
         </h5>
         <span className="text-[10px] text-[var(--copilot-ink-muted)]">
           {metrics.debtorClientsCount} cliente(s) con deuda

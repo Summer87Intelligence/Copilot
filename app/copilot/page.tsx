@@ -92,7 +92,7 @@ function urgentBadgeLabel(o: TaxAgendaItem): string {
 }
 
 function formatMoneyHome(n: number): string {
-  return `$ ${n.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
+  return `$ ${n.toLocaleString("es-UY", { maximumFractionDigits: 0 })}`;
 }
 
 function formatCoverageHome(r: number): string {

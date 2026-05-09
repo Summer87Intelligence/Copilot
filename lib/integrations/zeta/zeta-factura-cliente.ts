@@ -7,6 +7,11 @@
 
 import type { ZetaCustomerVoucherRecord } from "@/lib/integrations/zeta/contracts/zeta-customer-vouchers.contract";
 import { resolveCcV1InvoiceNumberFromZetaSaldoOrVoucherRow } from "@/lib/integrations/zeta/zeta-customer-vouchers-mapper";
+import { normalizeZetaCurrency } from "@/lib/integrations/zeta/zeta-currency-normalize";
+import {
+  COPILOT_OPERATIONAL_START_DATE,
+  isPreOperationalPeriod,
+} from "@/lib/copilot-operational-period";
 import type { CompanyId } from "@/types/zeta";
 import type { ZetaInvoice } from "@/types/zeta";
 import { loadZetaServerConfig } from "@/lib/integrations/zeta/zeta-config";
@@ -104,6 +109,35 @@ export function mapSaldoRowsToZetaInvoicesBestEffort(
   for (const r of rows) {
     const zetaId = String(r.RegistroId ?? "").trim();
     if (!zetaId) continue;
+
+    // Hard cutoff: fecha vacía → skip (no caer a new Date())
+    const rawFecha = String(r.Fecha ?? "").slice(0, 10);
+    if (!rawFecha || rawFecha.length < 8) {
+      console.log(
+        JSON.stringify({
+          kind: "saldo_row_skip_invalid_fecha",
+          reason: "missing_fecha",
+          zeta_registro_id: zetaId,
+          operational_cutoff: COPILOT_OPERATIONAL_START_DATE,
+        })
+      );
+      continue;
+    }
+
+    // Hard cutoff: pre-operacional → skip
+    if (isPreOperationalPeriod(rawFecha)) {
+      console.log(
+        JSON.stringify({
+          kind: "saldo_row_skip_pre_operational",
+          reason: "pre_operational_cutoff",
+          zeta_registro_id: zetaId,
+          fecha: rawFecha,
+          operational_cutoff: COPILOT_OPERATIONAL_START_DATE,
+        })
+      );
+      continue;
+    }
+
     const saldoRaw = r.Saldo;
     const saldo =
       saldoRaw === undefined || saldoRaw === null || saldoRaw === ""
@@ -114,12 +148,14 @@ export function mapSaldoRowsToZetaInvoicesBestEffort(
     const totalAmount =
       Number.isFinite(total) && total > 0 ? total : Number.isFinite(saldo) && saldo > 0 ? saldo : 0;
     const status: ZetaInvoice["status"] = saldo <= 1e-6 ? "paid" : "issued";
+    const monedaNombre = r.MonedaNombre != null ? String(r.MonedaNombre) : null;
+    const currency = normalizeZetaCurrency(monedaNombre) ?? monedaNombre ?? "";
     out.push({
       zetaId,
       companyId,
-      issueDate: String(r.Fecha ?? "").slice(0, 10) || new Date().toISOString().slice(0, 10),
+      issueDate: rawFecha,
       clientZetaId: r.ClienteCodigo ? String(r.ClienteCodigo) : undefined,
-      currency: "ARS",
+      currency,
       totalAmount,
       outstandingAmount: saldo,
       ccv1InvoiceNumber: ccv1,

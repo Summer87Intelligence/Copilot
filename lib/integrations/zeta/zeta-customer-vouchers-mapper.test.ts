@@ -198,6 +198,7 @@ describe("mapCopilotCustomerVoucherToProtoInvoiceInput (rechazo por fecha_emisio
     expect(r.ok).toBe(false);
     if (r.ok) throw new Error("expected ok=false");
     expect(r.reason).toBe("invalid_fecha_emision");
+    if (r.reason !== "invalid_fecha_emision") throw new Error("wrong reason");
     expect(r.raw_fecha_emision).toBeNull();
   });
 
@@ -229,6 +230,7 @@ describe("mapCopilotCustomerVoucherToProtoInvoiceInput (rechazo por fecha_emisio
     expect(r.ok).toBe(false);
     if (r.ok) throw new Error("expected ok=false");
     expect(r.reason).toBe("invalid_fecha_emision");
+    if (r.reason !== "invalid_fecha_emision") throw new Error("wrong reason");
     expect(r.raw_fecha_emision).toBe("07/01/2026");
   });
 });
@@ -286,5 +288,57 @@ describe("resolveCcV1InvoiceNumberFromZetaSaldoOrVoucherRow (cruce saldos ↔ vo
     expect(resolveCcV1InvoiceNumberFromZetaSaldoOrVoucherRow(saldoLike)).toBe(
       "ZETA:CCV1:250218923:CLI1:A:2828"
     );
+  });
+});
+
+describe("mapCopilotCustomerVoucherToProtoInvoiceInput — período operativo", () => {
+  function makeRow(fecha: string) {
+    return {
+      Serie: "A",
+      Numero: 100,
+      ClienteCodigo: "C1",
+      EmpresaCodigo: "EMP",
+      Total: 5000,
+      Fecha: fecha,
+      MonedaCodigo: "1",
+    };
+  }
+
+  it("acepta fecha 2026-01-01 (boundary operativo)", () => {
+    const m = mapZetaCustomerVoucherToCopilot(makeRow("20260101"));
+    const result = mapCopilotCustomerVoucherToProtoInvoiceInput("company-1", m, "run-1");
+    expect(result.ok).toBe(true);
+  });
+
+  it("acepta fechas dentro del período operativo", () => {
+    const m = mapZetaCustomerVoucherToCopilot(makeRow("20260509"));
+    const result = mapCopilotCustomerVoucherToProtoInvoiceInput("company-1", m, "run-1");
+    expect(result.ok).toBe(true);
+  });
+
+  it("rechaza fecha 2025-12-31 (pre-operacional) con reason pre_operational_date", () => {
+    const m = mapZetaCustomerVoucherToCopilot(makeRow("20251231"));
+    const result = mapCopilotCustomerVoucherToProtoInvoiceInput("company-1", m, "run-1");
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("expected ok=false");
+    expect(result.reason).toBe("pre_operational_date");
+    if (result.reason !== "pre_operational_date") throw new Error("wrong reason");
+    expect(result.issue_date).toBe("2025-12-31");
+  });
+
+  it("rechaza fechas pre-2025 con pre_operational_date", () => {
+    const m = mapZetaCustomerVoucherToCopilot(makeRow("20240101"));
+    const result = mapCopilotCustomerVoucherToProtoInvoiceInput("company-1", m, "run-1");
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("expected ok=false");
+    expect(result.reason).toBe("pre_operational_date");
+  });
+
+  it("reason invalid_fecha_emision toma precedencia sobre pre_operational_date", () => {
+    const m = mapZetaCustomerVoucherToCopilot({ ...makeRow("bad-fecha"), Fecha: "bad" });
+    const result = mapCopilotCustomerVoucherToProtoInvoiceInput("company-1", m, "run-1");
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("expected ok=false");
+    expect(result.reason).toBe("invalid_fecha_emision");
   });
 });

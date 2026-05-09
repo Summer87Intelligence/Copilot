@@ -8,6 +8,7 @@ import {
   protoCreateInvoice,
   protoUpdateInvoice,
 } from "@/lib/copilot-proto-crud-service";
+import { reconcileMissingPendingInvoices, type ReconciliationRunResult } from "@/lib/integrations/zeta/zeta-saldos-reconciliation";
 import type { ProtoInvoiceInput } from "@/lib/copilot-proto-crud-types";
 import {
   insertZetaSyncRawPayload,
@@ -37,9 +38,15 @@ import {
 } from "@/lib/integrations/zeta/zeta-saldos-heuristic-match";
 import {
   ZETA_PIPELINE_FLOW_SALDOS_PENDIENTES,
+  type ZetaSaldosPipelineMode,
   type ZetaSaldosPipelineOptions,
   type ZetaSaldosPipelineResult,
 } from "@/lib/integrations/zeta/zeta-pipeline-types";
+import { normalizeZetaCurrency } from "@/lib/integrations/zeta/zeta-currency-normalize";
+import {
+  COPILOT_OPERATIONAL_START_DATE,
+  isPreOperationalPeriod,
+} from "@/lib/copilot-operational-period";
 import type { ZetaInvoice } from "@/types/zeta";
 
 const DEFAULT_MAX_PAGES = 5;
@@ -177,10 +184,18 @@ function addDaysIso(issueYmd: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+function resolveInvoiceCurrencyCode(inv: ZetaInvoice): string | null {
+  const iso = normalizeZetaCurrency(inv.currency);
+  if (iso) return iso;
+  // currency puede traer el nombre original si normalize no pudo convertirlo
+  return null;
+}
+
 function zetaInvoiceToProtoInput(inv: ZetaInvoice, syncRunId: string): ProtoInvoiceInput {
   const issue = inv.issueDate.slice(0, 10);
   const bal = inv.outstandingAmount ?? 0;
   const status = bal <= 1e-6 ? "paid" : "issued";
+  const currencyCode = resolveInvoiceCurrencyCode(inv);
   return {
     company_id: inv.companyId,
     invoice_number: `ZETA:${inv.zetaId}`,
@@ -191,6 +206,7 @@ function zetaInvoiceToProtoInput(inv: ZetaInvoice, syncRunId: string): ProtoInvo
     status,
     category: "Zeta / saldos pendientes",
     notes: `sync_run:${syncRunId}`.slice(0, 500),
+    ...(currencyCode ? { currency_code: currencyCode } : {}),
   };
 }
 
@@ -279,7 +295,8 @@ async function zeroCcV1BalancesWithoutSaldoRow(
         balance_amount: 0,
         status: "paid",
       },
-      wid
+      wid,
+      { allowBalanceGtTotal: true }
     );
     if (!up.ok) throw new Error(up.message);
     if (zetaSaldosDiagEnabled()) {
@@ -341,10 +358,26 @@ async function persistZetaInvoice(
   if (!key || seenInRun.has(key)) return "skip";
   seenInRun.add(key);
 
+  // Hard cutoff: no persistir ni actualizar datos pre-operacionales
+  const issueYmd = inv.issueDate.slice(0, 10);
+  if (isPreOperationalPeriod(issueYmd)) {
+    pipelineEmit("info", "zeta_saldos_skip_pre_operational", {
+      request_id: requestId,
+      sync_run_id: syncRunId,
+      tenant_id: workspaceCompanyId,
+      zeta_registro_id: key,
+      issue_date: issueYmd,
+      operational_cutoff: COPILOT_OPERATIONAL_START_DATE,
+      reason: "pre_operational_cutoff",
+    });
+    return "skip";
+  }
+
   const wid = workspaceCompanyId.trim();
   const bal = inv.outstandingAmount ?? 0;
   const status = bal <= 1e-6 ? "paid" : "issued";
   const diagOn = zetaSaldosDiagEnabled();
+  const currencyCode = resolveInvoiceCurrencyCode(inv);
 
   const ccv1 = inv.ccv1InvoiceNumber?.trim() ?? null;
 
@@ -392,8 +425,10 @@ async function persistZetaInvoice(
       {
         balance_amount: bal,
         status,
+        ...(currencyCode ? { currency_code: currencyCode } : {}),
       },
-      wid
+      wid,
+      { allowBalanceGtTotal: true }
     );
     if (!up.ok) throw new Error(up.message);
     if (diagOn) {
@@ -442,8 +477,10 @@ async function persistZetaInvoice(
         {
           balance_amount: bal,
           status,
+          ...(currencyCode ? { currency_code: currencyCode } : {}),
         },
-        wid
+        wid,
+        { allowBalanceGtTotal: true }
       );
       if (!up.ok) throw new Error(up.message);
       if (diagOn) {
@@ -495,6 +532,7 @@ async function persistZetaInvoice(
         invoice_id: heuristicOutcome.invoice_id,
         invoice_number: heuristicOutcome.invoice_number,
         score: heuristicOutcome.score,
+        confidence: heuristicOutcome.confidence,
         breakdown: heuristicOutcome.breakdown,
         saldo_serie: logSaldoSerie,
         saldo_numero: logSaldoNumero,
@@ -520,8 +558,10 @@ async function persistZetaInvoice(
         {
           balance_amount: bal,
           status,
+          ...(currencyCode ? { currency_code: currencyCode } : {}),
         },
-        wid
+        wid,
+        { allowBalanceGtTotal: true }
       );
       if (!upHeur.ok) throw new Error(upHeur.message);
       if (diagOn) {
@@ -556,6 +596,7 @@ async function persistZetaInvoice(
       best_score: heuristicOutcome.best_score,
       best_invoice_id: heuristicOutcome.best_invoice_id,
       score_band: heuristicOutcome.band,
+      confidence: heuristicOutcome.confidence,
       saldo_serie: logSaldoSerie,
       saldo_numero: logSaldoNumero,
       ccv1_computed: ccv1,
@@ -597,8 +638,10 @@ async function persistZetaInvoice(
         status: input.status,
         category: input.category,
         notes: input.notes,
+        ...(input.currency_code ? { currency_code: input.currency_code } : {}),
       },
-      wid
+      wid,
+      { allowBalanceGtTotal: true }
     );
     if (!up.ok) throw new Error(up.message);
     if (diagOn) {
@@ -611,7 +654,7 @@ async function persistZetaInvoice(
     touchedInvoiceIds.add(existingLegacy);
     return "update";
   }
-  const cr = await protoCreateInvoice(supabase, input, wid);
+  const cr = await protoCreateInvoice(supabase, input, wid, { allowBalanceGtTotal: true });
   if (cr.ok) {
     const created = cr.data as { id?: string } | undefined;
     if (created && typeof created.id === "string") touchedInvoiceIds.add(created.id);
@@ -651,8 +694,10 @@ async function persistZetaInvoice(
           status: input.status,
           category: input.category,
           notes: input.notes,
+          ...(input.currency_code ? { currency_code: input.currency_code } : {}),
         },
-        wid
+        wid,
+        { allowBalanceGtTotal: true }
       );
       if (!up2.ok) throw new Error(up2.message);
       if (diagOn) {
@@ -717,10 +762,14 @@ export async function runZetaSaldosPendientesPipeline(
     throw new Error("tenantCompanyId es obligatorio para el pipeline Zeta (service_role / workspace).");
   }
 
+  const syncMode = opts.syncMode ?? "incremental";
+  // reconciliation_cleanup forces a full bootstrap to get the complete picture
+  const effectiveMode: ZetaSaldosPipelineMode = syncMode === "reconciliation_cleanup" ? "bootstrap" : opts.mode;
   const maxPages = opts.maxPagesPerRun ?? DEFAULT_MAX_PAGES;
   const pageDelayMs = opts.pageDelayMs ?? DEFAULT_PAGE_DELAY_MS;
   const overlapSec = opts.overlapSeconds ?? DEFAULT_OVERLAP_SECONDS;
   const flow = ZETA_PIPELINE_FLOW_SALDOS_PENDIENTES;
+  let reconciliationResult: ReconciliationRunResult | null = null;
 
   const { data: clientRow, error: clientErr } = await supabase
     .from("proto_companies")
@@ -736,7 +785,7 @@ export async function runZetaSaldosPendientesPipeline(
   const stateRow = await selectZetaSyncStateByResource(supabase, flow);
   const bootstrapCompleted = stateRow?.bootstrap_completed ?? false;
   const previousWatermark = (stateRow?.watermark?.trim() || "1") || "1";
-  const startPage = resolveStartPage(stateRow?.watermark, opts.mode, bootstrapCompleted);
+  const startPage = resolveStartPage(stateRow?.watermark, effectiveMode, bootstrapCompleted);
 
   const t1 = new Date();
   const t0 = new Date(t1.getTime() - overlapSec * 1000);
@@ -772,7 +821,7 @@ export async function runZetaSaldosPendientesPipeline(
 
     const { id } = await insertZetaSyncRun(supabase, {
       resource_flow: flow,
-      sync_mode: opts.mode,
+      sync_mode: effectiveMode,
       status: "running",
       overlap_from: t0.toISOString(),
       overlap_to: t1.toISOString(),
@@ -802,7 +851,8 @@ export async function runZetaSaldosPendientesPipeline(
       sync_run_id: syncRunId,
       tenant_id: tenantCompanyId,
       resource_flow: flow,
-      mode: opts.mode,
+      mode: effectiveMode,
+      sync_mode: syncMode,
       start_page: startPage,
       max_pages_per_run: maxPages,
       previous_watermark: previousWatermark,
@@ -1008,6 +1058,28 @@ export async function runZetaSaldosPendientesPipeline(
           skip_reason: skipReason,
         });
       }
+
+      // Orphan reconciliation — only when full bootstrap completed (all pages seen)
+      const shouldReconcile =
+        syncMode === "reconciliation_cleanup" ||
+        (effectiveMode === "bootstrap" && pagesFetched >= 1);
+      if (shouldReconcile && runId) {
+        try {
+          reconciliationResult = await reconcileMissingPendingInvoices(
+            supabase,
+            wid,
+            opts.protoCompanyId,
+            touchedInvoiceIds,
+            { syncRunId: runId, requestId }
+          );
+        } catch (recErr) {
+          pipelineEmit("warn", "zeta_reconcile_unexpected_error", {
+            request_id: requestId,
+            sync_run_id: runId,
+            tenant_id: tenantCompanyId,
+          }, recErr);
+        }
+      }
     }
   } catch (e) {
     if (!errorSummary) {
@@ -1058,7 +1130,7 @@ export async function runZetaSaldosPendientesPipeline(
   }
 
   const newBootstrapCompleted =
-    bootstrapCompleted || (opts.mode === "bootstrap" && stopped === "completed");
+    bootstrapCompleted || (effectiveMode === "bootstrap" && stopped === "completed");
 
   const runStatusFinal: ZetaSyncRunStatus =
     stopped === "completed"
@@ -1122,5 +1194,16 @@ export async function runZetaSaldosPendientesPipeline(
     error_summary: errorSummary,
     last_page_processed: effectiveWatermark,
     bootstrap_completed: newBootstrapCompleted,
+    ...(reconciliationResult !== null
+      ? {
+          reconciliation: {
+            pending_invoices_checked: reconciliationResult.pending_invoices_checked,
+            orphans_detected: reconciliationResult.orphans_detected,
+            warnings: reconciliationResult.warnings.length,
+            auto_closed: reconciliationResult.auto_closed.length,
+            db_errors: reconciliationResult.db_errors,
+          },
+        }
+      : {}),
   };
 }
