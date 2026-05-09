@@ -40,18 +40,41 @@ function firstExistingColumn(columnSet: Set<string>, candidates: string[]): stri
   return undefined;
 }
 
+/**
+ * Esquema mínimo conocido de proto_contacts.
+ * Usado como fallback cuando la tabla está vacía (primer sync):
+ * select("*").limit(1) no devuelve filas → no hay keys → sin fallback lanzaría
+ * "proto_contacts sin company_id / workspace_company_id" antes de cualquier INSERT.
+ */
+const PROTO_CONTACTS_KNOWN_COLUMNS = [
+  "id",
+  "company_id",
+  "workspace_company_id",
+  "full_name",
+  "job_title",
+  "email",
+  "status",
+  "is_active",
+  "created_at",
+  "updated_at",
+] as const;
+
 async function loadProtoContactsColumns(
   supabase: OperationalSupabase
-): Promise<{ columns: string[]; warnings: string[] }> {
+): Promise<{ columns: string[]; warnings: string[]; fallback: boolean }> {
   const warnings: string[] = [];
   const { data: sample, error: selErr } = await supabase.from("proto_contacts").select("*").limit(1);
   if (selErr) {
     warnings.push(`No se pudo leer muestra de proto_contacts: ${selErr.message}`);
-    return { columns: [], warnings };
+    return { columns: [], warnings, fallback: false };
   }
   const row = (sample ?? [])[0] as Record<string, unknown> | undefined;
-  if (!row) return { columns: [], warnings };
-  return { columns: Object.keys(row), warnings };
+  if (!row) {
+    // Tabla vacía: primer sync. Usar esquema conocido para que el INSERT pueda proceder.
+    warnings.push("proto_contacts vacía: usando esquema conocido (primer sync).");
+    return { columns: [...PROTO_CONTACTS_KNOWN_COLUMNS], warnings, fallback: true };
+  }
+  return { columns: Object.keys(row), warnings, fallback: false };
 }
 
 type WatermarkV1 = {
@@ -186,6 +209,8 @@ export async function syncZetaContactsIncremental(
     const wm = parseWatermark(prior?.watermark ?? "");
     const syncMode: ZetaSyncMode = prior?.bootstrap_completed ? "incremental" : "bootstrap";
 
+    console.info("[zeta-contacts-pipeline] start", { wid, syncMode, requestId: params.ctx.requestId });
+
     const run = await insertZetaSyncRun(params.supabase, {
       resource_flow: ZETA_CONTACTS_RESOURCE_FLOW,
       sync_mode: syncMode,
@@ -194,11 +219,25 @@ export async function syncZetaContactsIncremental(
     });
     runId = run.id;
 
-    const { columns, warnings: colWarn } = await loadProtoContactsColumns(params.supabase);
+    // ── Columnas disponibles ────────────────────────────────────────────────
+    const { columns, warnings: colWarn, fallback } = await loadProtoContactsColumns(params.supabase);
     warnings.push(...colWarn);
     const columnSet = new Set(columns);
+
+    console.info("[zeta-contacts-pipeline] columns-loaded", {
+      wid,
+      count: columns.length,
+      fallback,
+      has_company_id: columnSet.has("company_id"),
+      has_workspace_id: columnSet.has("workspace_company_id"),
+    });
+
     if (!columnSet.has("company_id") || !columnSet.has("workspace_company_id")) {
-      throw new Error("proto_contacts sin company_id / workspace_company_id.");
+      throw new Error(
+        `proto_contacts: columnas requeridas ausentes. ` +
+        `columns_detected=${columns.length > 0 ? columns.join(",") : "(ninguna)"}. ` +
+        `Verificar que la tabla proto_contacts existe y tiene permisos de lectura.`
+      );
     }
 
     const extCol = firstExistingColumn(columnSet, ["external_id", "external_id_zeta", "zeta_codigo", "erp_external_id"]);
@@ -209,8 +248,23 @@ export async function syncZetaContactsIncremental(
     const rawCol = firstExistingColumn(columnSet, ["raw_payload", "zeta_raw", "metadata"]);
     const esClienteCol = firstExistingColumn(columnSet, ["es_cliente", "is_client"]);
 
+    console.info("[zeta-contacts-pipeline] column-map", {
+      wid, extCol, docCol, nameCol, emailCol, phoneCol, rawCol,
+    });
+
+    // ── Vínculos empresas ───────────────────────────────────────────────────
     const { byCodigo, byRutNorm, warnings: linkWarn } = await loadCompanyLinksForTenant(params.supabase, wid);
     warnings.push(...linkWarn);
+
+    console.info("[zeta-contacts-pipeline] company-links", {
+      wid,
+      byCodigo_count: byCodigo.size,
+      byRutNorm_count: byRutNorm.size,
+    });
+
+    if (byCodigo.size === 0 && byRutNorm.size === 0) {
+      warnings.push("Sin empresas proto_companies para el tenant: todos los contactos Zeta serán omitidos por falta de FK.");
+    }
 
     const extraFilters: Record<string, string> = {};
     if (wm.fecha_registro_desde) extraFilters.FechaRegistroDesde = wm.fecha_registro_desde;
@@ -220,14 +274,26 @@ export async function syncZetaContactsIncremental(
     let synced = 0;
     let errors = 0;
     let fetched = 0;
+    let skippedNoCompany = 0;
 
     while (hasMore && page <= MAX_PAGES) {
       const res = await fetchPageWithSimpleRetry(params.ctx, String(page), {
         esCliente,
         extraStringFilters: Object.keys(extraFilters).length ? extraFilters : undefined,
       });
+
+      console.info("[zeta-contacts-pipeline] page-fetch", {
+        wid, page, ok: res.ok,
+        contacts: res.ok ? res.contacts.length : 0,
+        hasMore: res.ok ? res.hasMore : null,
+        error_code: !res.ok ? res.error_code : null,
+        errors: !res.ok ? res.errors : [],
+        httpStatus: res.httpStatus,
+      });
+
       if (!res.ok) {
         errors += 1;
+        const errMsg = res.errors[0] ?? `Zeta error_code=${res.error_code} http=${res.httpStatus ?? "n/a"}`;
         await updateZetaSyncRunById(params.supabase, runId, {
           status: "failed",
           finished_at: new Date().toISOString(),
@@ -248,7 +314,7 @@ export async function syncZetaContactsIncremental(
           errors,
           duration_ms: Date.now() - started,
           run_id: runId,
-          message: res.errors[0] ?? "Error Zeta",
+          message: errMsg,
         };
       }
 
@@ -260,6 +326,7 @@ export async function syncZetaContactsIncremental(
         const preview = mapZetaClientToProtoCompanyPreview(c);
         const company_id = resolveCompanyId(raw, preview, byCodigo, byRutNorm);
         if (!company_id) {
+          skippedNoCompany += 1;
           errors += 1;
           continue;
         }
@@ -276,14 +343,14 @@ export async function syncZetaContactsIncremental(
         if (phoneCol && mapped.telefono) insertRow[phoneCol] = mapped.telefono;
         if (docCol && mapped.document) insertRow[docCol] = mapped.document;
         if (esClienteCol && mapped.es_cliente !== null) {
-          const col = esClienteCol;
-          insertRow[col] = mapped.es_cliente;
+          insertRow[esClienteCol] = mapped.es_cliente;
         }
         if (rawCol) insertRow[rawCol] = mapped.raw_payload;
         if (columnSet.has("status")) insertRow.status = "active";
         if (columnSet.has("is_active")) insertRow.is_active = true;
 
-        const existingId = await findExistingRowId(
+        // Buscar fila existente: identity columns primero, email como fallback
+        let existingId = await findExistingRowId(
           params.supabase,
           wid,
           company_id,
@@ -293,14 +360,38 @@ export async function syncZetaContactsIncremental(
           mapped.document
         );
 
+        // Bug #3 fix: cuando el schema no tiene external_id ni document,
+        // deduplicar por email para evitar duplicados en re-sync.
+        if (!existingId && !extCol && !docCol && emailCol && mapped.email) {
+          const q = await params.supabase
+            .from("proto_contacts")
+            .select("id")
+            .eq("workspace_company_id", wid)
+            .eq("company_id", company_id)
+            .eq(emailCol, mapped.email)
+            .maybeSingle();
+          const qid = q.data && typeof (q.data as { id?: unknown }).id === "string"
+            ? (q.data as { id: string }).id
+            : null;
+          if (qid) existingId = qid;
+        }
+
         if (existingId) {
           const { error: upErr } = await params.supabase.from("proto_contacts").update(insertRow).eq("id", existingId);
-          if (upErr) errors += 1;
-          else synced += 1;
+          if (upErr) {
+            console.error("[zeta-contacts-pipeline] update-error", { wid, existingId, error: upErr.message });
+            errors += 1;
+          } else {
+            synced += 1;
+          }
         } else {
           const { error: insErr } = await params.supabase.from("proto_contacts").insert(insertRow).select("id").single();
-          if (insErr) errors += 1;
-          else synced += 1;
+          if (insErr) {
+            console.error("[zeta-contacts-pipeline] insert-error", { wid, error: insErr.message, code: insErr.code });
+            errors += 1;
+          } else {
+            synced += 1;
+          }
         }
       }
 
@@ -319,7 +410,7 @@ export async function syncZetaContactsIncremental(
       finished_at: nowIso,
       records_fetched: fetched,
       records_processed: synced,
-      error_summary: errors > 0 ? `${errors} filas con error` : null,
+      error_summary: errors > 0 ? `${errors} errores (${skippedNoCompany} sin empresa)` : null,
     });
 
     await upsertZetaSyncState(params.supabase, {
@@ -333,9 +424,25 @@ export async function syncZetaContactsIncremental(
       last_run_id: runId,
     });
 
+    console.info("[zeta-contacts-pipeline] done", {
+      wid,
+      fetched,
+      synced,
+      errors,
+      skippedNoCompany,
+      warnings: warnings.length,
+      duration_ms: Date.now() - started,
+    });
+
     if (warnings.length) {
-      console.info("[syncZetaContactsIncremental] warnings", { count: warnings.length });
+      console.info("[zeta-contacts-pipeline] warnings", warnings);
     }
+
+    const finalMessage = skippedNoCompany > 0 && synced === 0
+      ? `Zeta devolvió ${fetched} filas pero ninguna pudo vincularse a una empresa en proto_companies. Verificar que los Codigos Zeta coincidan.`
+      : errors > 0 && synced > 0
+        ? `${synced} sincronizados, ${errors} con error (${skippedNoCompany} sin empresa vinculable).`
+        : undefined;
 
     return {
       success: true,
@@ -343,9 +450,12 @@ export async function syncZetaContactsIncremental(
       errors,
       duration_ms: Date.now() - started,
       run_id: runId,
+      message: finalMessage,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    const stack = e instanceof Error ? e.stack : undefined;
+    console.error("[zeta-contacts-pipeline] exception", { wid, error: msg, stack });
     if (runId) {
       await updateZetaSyncRunById(params.supabase, runId, {
         status: "failed",
