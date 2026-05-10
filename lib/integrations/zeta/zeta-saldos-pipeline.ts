@@ -782,7 +782,7 @@ export async function runZetaSaldosPendientesPipeline(
     throw new Error("Cliente proto inexistente o fuera del workspace.");
   }
 
-  const stateRow = await selectZetaSyncStateByResource(supabase, flow);
+  const stateRow = await selectZetaSyncStateByResource(supabase, flow, wid);
   const bootstrapCompleted = stateRow?.bootstrap_completed ?? false;
   const previousWatermark = (stateRow?.watermark?.trim() || "1") || "1";
   const startPage = resolveStartPage(stateRow?.watermark, effectiveMode, bootstrapCompleted);
