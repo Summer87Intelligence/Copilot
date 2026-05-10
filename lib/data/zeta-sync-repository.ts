@@ -49,16 +49,26 @@ export async function updateZetaSyncRunById(
 
 /**
  * Estado actual por recurso (una fila por workspace + resource_flow).
+ *
+ * @param companyId — Requerido cuando el cliente es `service_role` (sin RLS).
+ *   Con JWT `authenticated`, RLS filtra por tenant automáticamente y puede omitirse.
+ *   Sin este filtro y con múltiples workspaces, `.maybeSingle()` lanzaría un error
+ *   porque encontraría N filas (una por workspace).
  */
 export async function selectZetaSyncStateByResource(
   client: OperationalSupabase,
-  resourceFlow: string
+  resourceFlow: string,
+  companyId?: string | null
 ) {
-  const res = await client
+  let query = client
     .from("zeta_sync_state")
     .select("*")
-    .eq("resource_flow", resourceFlow)
-    .maybeSingle();
+    .eq("resource_flow", resourceFlow);
+
+  const cid = companyId?.trim();
+  if (cid) query = query.eq("company_id", cid);
+
+  const res = await query.maybeSingle();
   assertNoError("selectZetaSyncStateByResource", res.error);
   return res.data as ZetaSyncStateRow | null;
 }
@@ -71,7 +81,7 @@ export async function upsertZetaSyncState(
   client: OperationalSupabase,
   input: UpsertZetaSyncStateInput
 ) {
-  const existing = await selectZetaSyncStateByResource(client, input.resource_flow);
+  const existing = await selectZetaSyncStateByResource(client, input.resource_flow, input.company_id);
   const now = new Date().toISOString();
   const fromInput = typeof input.company_id === "string" ? input.company_id.trim() : "";
   const fromExisting =

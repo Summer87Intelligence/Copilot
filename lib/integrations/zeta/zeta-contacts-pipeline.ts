@@ -205,7 +205,7 @@ export async function syncZetaContactsIncremental(
 
   let runId: string | null = null;
   try {
-    const prior = await selectZetaSyncStateByResource(params.supabase, ZETA_CONTACTS_RESOURCE_FLOW);
+    const prior = await selectZetaSyncStateByResource(params.supabase, ZETA_CONTACTS_RESOURCE_FLOW, wid);
     const wm = parseWatermark(prior?.watermark ?? "");
     const syncMode: ZetaSyncMode = prior?.bootstrap_completed ? "incremental" : "bootstrap";
 
