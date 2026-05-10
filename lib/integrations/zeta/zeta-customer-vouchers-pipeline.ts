@@ -484,7 +484,7 @@ export async function syncZetaCustomerVouchers(
   let lastRootInKey = root_in_key;
   try {
     console.log("🔥 LAYER:", "zeta-customer-vouchers-pipeline.ts → try (main sync body)");
-    const prior = await selectZetaSyncStateByResource(params.supabase, ZETA_CUSTOMER_VOUCHERS_RESOURCE_FLOW);
+    const prior = await selectZetaSyncStateByResource(params.supabase, ZETA_CUSTOMER_VOUCHERS_RESOURCE_FLOW, wid);
     const syncMode: ZetaSyncMode = prior?.bootstrap_completed ? "incremental" : "bootstrap";
     console.log("🔥 BEFORE insertZetaSyncRun");
     const run = await insertZetaSyncRun(params.supabase, {
