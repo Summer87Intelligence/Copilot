@@ -46,3 +46,13 @@ export function snapshotCoverageRatio(s: FinancialSnapshotApiV1): number {
 export function snapshotRiskBand(s: FinancialSnapshotApiV1): FinancialSnapshot["risk_level"] {
   return (s.projected?.risk_band ?? s.risk_level) as FinancialSnapshot["risk_level"];
 }
+
+/** true si alguna tabla fuente alcanzó el límite de filas; los KPIs pueden estar subestimados. */
+export function snapshotIsTruncated(s: FinancialSnapshotApiV1): boolean {
+  return s.diagnostics?.dataset_caps?.isTruncated ?? false;
+}
+
+/** Tablas que devolvieron exactamente row_cap filas; vacío si no hay truncamiento. */
+export function snapshotTablesAtCap(s: FinancialSnapshotApiV1): string[] {
+  return s.diagnostics?.dataset_caps?.tables_at_cap ?? [];
+}

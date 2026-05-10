@@ -236,7 +236,7 @@ function obligationRemaining(o: ProtoTaxObligation): number {
 async function detectOblFiscalVencidas(
   today: string,
   client: SupabaseClient,
-  workspaceCompanyId?: string
+  workspaceCompanyId: string
 ): Promise<CopilotRealInsightOblFiscalVencida[]> {
   const overdue = await getOverdueTaxObligations(client, workspaceCompanyId);
   const out: CopilotRealInsightOblFiscalVencida[] = [];
@@ -340,8 +340,8 @@ function detectAtrasoHistorico(load: ClientPortfolioLoad, today: string): Copilo
 export async function computeCopilotRealInsights(
   /** Cliente del request (SSR con cookies o service role vía `requireCopilotTenantContext`). */
   client: SupabaseClient,
-  /** `public.companies.id` del workspace; si se omite, lecturas sin filtro explícito (compat. callers viejos). */
-  workspaceCompanyId?: string
+  /** `public.companies.id` del workspace; derivado server-side desde auth context. */
+  workspaceCompanyId: string
 ): Promise<CopilotRealInsight[]> {
   if (process.env.NODE_ENV === "development") {
     console.log("=== SERVICE INPUT ===");

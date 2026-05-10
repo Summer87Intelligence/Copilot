@@ -40,6 +40,10 @@ export const FINANCIAL_FACTS_ORDER_INVOICES = "issue_date_desc" as const;
 
 export type FinancialFactsBundleMeta = {
   row_cap: number;
+  /** true si cualquier tabla alcanzó el límite de filas; los KPIs pueden ser parciales. */
+  isTruncated: boolean;
+  /** Nombres de tablas que devolvieron exactamente row_cap filas. */
+  tables_at_cap: string[];
   order_receipts: typeof FINANCIAL_FACTS_ORDER_RECEIPTS;
   order_payments: typeof FINANCIAL_FACTS_ORDER_PAYMENTS;
   order_invoices: typeof FINANCIAL_FACTS_ORDER_INVOICES;
@@ -136,9 +140,10 @@ export async function fetchInvoiceFinancialBalanceMap(
  */
 export async function loadFinancialFactsBundle(
   client: OperationalSupabase,
-  workspaceCompanyId?: string
+  workspaceCompanyId: string
 ): Promise<FinancialFactsBundle> {
-  const wid = workspaceCompanyId?.trim();
+  const wid = workspaceCompanyId.trim();
+  if (!wid) throw new Error("[copilot-analytics] workspaceCompanyId requerido para queries de analytics");
 
   const [recRes, payRes, invRes, taxObRes, taxPayRes] = await Promise.all([
     (() => {
@@ -245,8 +250,23 @@ export async function loadFinancialFactsBundle(
       invoice_financials_coverage: "unavailable",
     };
 
+  const receipts = (recRes.data ?? []) as Record<string, unknown>[];
+  const payments = (payRes.data ?? []) as Record<string, unknown>[];
+  const invoices = (invPayload.data ?? []) as Record<string, unknown>[];
+  const tax_obligations = (taxObRes.data ?? []) as Record<string, unknown>[];
+  const tax_payments = (taxPayRes.data ?? []) as Record<string, unknown>[];
+
+  const tables_at_cap: string[] = [];
+  if (receipts.length >= ROW_CAP) tables_at_cap.push("proto_receipts");
+  if (payments.length >= ROW_CAP) tables_at_cap.push("proto_payments");
+  if (invoices.length >= ROW_CAP) tables_at_cap.push("proto_invoices");
+  if (tax_obligations.length >= ROW_CAP) tables_at_cap.push("proto_tax_obligations");
+  if (tax_payments.length >= ROW_CAP) tables_at_cap.push("proto_tax_payments");
+
   const meta: FinancialFactsBundleMeta = {
     row_cap: FINANCIAL_SNAPSHOT_ROW_CAP,
+    isTruncated: tables_at_cap.length > 0,
+    tables_at_cap,
     order_receipts: FINANCIAL_FACTS_ORDER_RECEIPTS,
     order_payments: FINANCIAL_FACTS_ORDER_PAYMENTS,
     order_invoices: FINANCIAL_FACTS_ORDER_INVOICES,
@@ -255,14 +275,7 @@ export async function loadFinancialFactsBundle(
     snapshotLoadDiagnostics,
   };
 
-  return {
-    receipts: (recRes.data ?? []) as Record<string, unknown>[],
-    payments: (payRes.data ?? []) as Record<string, unknown>[],
-    invoices: (invPayload.data ?? []) as Record<string, unknown>[],
-    tax_obligations: (taxObRes.data ?? []) as Record<string, unknown>[],
-    tax_payments: (taxPayRes.data ?? []) as Record<string, unknown>[],
-    meta,
-  };
+  return { receipts, payments, invoices, tax_obligations, tax_payments, meta };
 }
 
 /**
@@ -271,7 +284,7 @@ export async function loadFinancialFactsBundle(
  */
 export async function loadCashflowEngineDatasetRows(
   client: OperationalSupabase,
-  workspaceCompanyId?: string
+  workspaceCompanyId: string
 ): Promise<LoadCashflowEngineDatasetRowsResult> {
   const bundle = await loadFinancialFactsBundle(client, workspaceCompanyId);
   return {
@@ -284,11 +297,11 @@ export async function loadCashflowEngineDatasetRows(
 
 /**
  * Filas para snapshot financiero consolidado (`copilot-financial-engine`).
- * @param workspaceCompanyId Si se informa, filtra por `workspace_company_id` (= `public.companies.id` del tenant).
+ * @param workspaceCompanyId Filtra por `workspace_company_id` (= `public.companies.id` del tenant). Obligatorio.
  */
 export async function loadFinancialSnapshotRows(
   client: OperationalSupabase,
-  workspaceCompanyId?: string
+  workspaceCompanyId: string
 ) {
   const bundle = await loadFinancialFactsBundle(client, workspaceCompanyId);
   return {
@@ -304,15 +317,18 @@ export async function loadFinancialSnapshotRows(
     taxObligations: bundle.tax_obligations,
     taxPayments: bundle.tax_payments,
     snapshotLoadDiagnostics: bundle.meta.snapshotLoadDiagnostics,
+    isTruncated: bundle.meta.isTruncated,
+    tablesAtCap: bundle.meta.tables_at_cap,
   };
 }
 
 /** Columnas `amount` para caja simplificada (`copilot-financial-intelligence`). */
 export async function loadCashStatusAmountRows(
   client: OperationalSupabase,
-  workspaceCompanyId?: string
+  workspaceCompanyId: string
 ) {
-  const wid = workspaceCompanyId?.trim();
+  const wid = workspaceCompanyId.trim();
+  if (!wid) throw new Error("[copilot-analytics] workspaceCompanyId requerido para queries de analytics");
   copilotProtoQueryDebugLog("proto_receipts", wid, Boolean(wid));
   copilotProtoQueryDebugLog("proto_payments", wid, Boolean(wid));
   const [inRes, outRes] = await Promise.all([
@@ -384,7 +400,7 @@ export async function selectProtoCompaniesInsightWindow(
 /** Lecturas acotadas en un solo round-trip cuando hacen falta las tres tablas. */
 export async function loadInsightEngineProtoRows(
   client: OperationalSupabase,
-  workspaceCompanyId?: string
+  workspaceCompanyId: string
 ) {
   const [invRes, payRes, compRes] = await Promise.all([
     selectProtoInvoicesInsightWindow(client, workspaceCompanyId),
@@ -406,9 +422,10 @@ export async function loadInsightEngineProtoRows(
 /** Paralelo de lecturas para `copilot-clients-portfolio`. */
 export async function loadClientPortfolioSourceRows(
   client: OperationalSupabase,
-  workspaceCompanyId?: string
+  workspaceCompanyId: string
 ) {
-  const wid = workspaceCompanyId?.trim();
+  const wid = workspaceCompanyId.trim();
+  if (!wid) throw new Error("[copilot-analytics] workspaceCompanyId requerido para queries de analytics");
   const [cRes, iRes, rRes, ctRes] = await Promise.all([
     (() => {
       let q = client.from("proto_companies").select("*").eq("is_active", true);
@@ -541,9 +558,10 @@ export async function selectTaxAgendaOverdueOpen(
 /** Paralelo de lecturas para `copilot-financial-alerts` (dataset predictivo). */
 export async function loadPredictiveFinancialAlertsDatasetRows(
   client: OperationalSupabase,
-  workspaceCompanyId?: string
+  workspaceCompanyId: string
 ) {
-  const wid = workspaceCompanyId?.trim();
+  const wid = workspaceCompanyId.trim();
+  if (!wid) throw new Error("[copilot-analytics] workspaceCompanyId requerido para queries de analytics");
   copilotProtoQueryDebugLog("proto_payments", undefined, false);
   copilotProtoQueryDebugLog("proto_receipts", undefined, false);
   copilotProtoQueryDebugLog("proto_invoices", undefined, false);

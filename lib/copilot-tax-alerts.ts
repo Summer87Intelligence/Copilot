@@ -206,7 +206,7 @@ export async function getFiscalAlerts(
       : [
           getProtoTaxObligations(client),
           getProtoTaxPayments(client),
-          getFinancialSnapshotForApi(client),
+          getFinancialSnapshotForApi(client, wid),
           wid
             ? getDocumentsByRelatedTableForClient(
                 client,

@@ -262,7 +262,7 @@ function pushMapArray<K, V>(m: Map<K, V[]>, key: K, item: V): void {
  */
 export async function getClientPortfolio(
   client: SupabaseClient = supabase,
-  workspaceCompanyId?: string
+  workspaceCompanyId: string
 ): Promise<ClientPortfolioLoad> {
   const { cRes, iRes, rRes, ctRes } = await loadClientPortfolioSourceRows(
     client,

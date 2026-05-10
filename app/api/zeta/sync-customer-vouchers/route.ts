@@ -20,7 +20,6 @@ const bodySchema = z
  * Solo lectura en Zeta (Query); persiste en `proto_invoices` en Copilot.
  */
 export async function POST(request: NextRequest) {
-  console.log("🔥 ROUTE HIT");
   const pv = await parseAndValidateJsonBody(request, bodySchema);
   if (!pv.ok) return pv.response;
 
@@ -46,7 +45,6 @@ export async function POST(request: NextRequest) {
   const d = pv.data;
   const requestId = globalThis.crypto?.randomUUID?.() ?? `sync-vouchers-${Date.now()}`;
 
-  console.log("🔥 LAYER:", "app/api/zeta/sync-customer-vouchers/route.ts → syncZetaCustomerVouchers()");
   const outcome = await syncZetaCustomerVouchers({
     supabase: auth.ctx.supabase,
     workspaceCompanyId: tenantId,

@@ -135,7 +135,11 @@ export type FinancialSnapshotApiDiagnostics = {
   divergences: readonly Record<string, unknown>[];
   dataset_caps: {
     row_cap: number;
-    truncation_unknown: true;
+    /** true si alguna tabla alcanzó el límite; los KPIs pueden ser parciales. */
+    isTruncated: boolean;
+    /** Tablas que devolvieron exactamente row_cap filas. */
+    tables_at_cap: string[];
+    truncation_unknown: boolean;
     note: string;
   };
   engine_notes: readonly string[];
@@ -298,6 +302,8 @@ function riskFromCoverage(
 type FinancialSnapshotRowsBundle = {
   rows: FinancialEngineSnapshotRows;
   snapshotLoadDiagnostics: FinancialSnapshotLoadDiagnostics;
+  isTruncated: boolean;
+  tablesAtCap: string[];
 };
 
 /**
@@ -307,7 +313,9 @@ async function loadFinancialSnapshotData(
   client: SupabaseClient,
   workspaceCompanyId?: string
 ): Promise<FinancialSnapshotRowsBundle> {
-  const raw = await loadFinancialSnapshotRowsFromRepo(client, workspaceCompanyId);
+  const wid = workspaceCompanyId?.trim();
+  if (!wid) throw new Error("[copilot-engine] workspaceCompanyId requerido para snapshot financiero");
+  const raw = await loadFinancialSnapshotRowsFromRepo(client, wid);
   return {
     rows: {
       receipts: raw.receipts as ReceiptRow[],
@@ -317,6 +325,8 @@ async function loadFinancialSnapshotData(
       taxPayments: raw.taxPayments as TaxPaymentRow[],
     },
     snapshotLoadDiagnostics: raw.snapshotLoadDiagnostics,
+    isTruncated: raw.isTruncated,
+    tablesAtCap: raw.tablesAtCap,
   };
 }
 
@@ -374,7 +384,8 @@ export function buildFinancialSnapshotFromRows(
 export function buildFinancialSnapshotApiV1FromRows(
   rows: FinancialEngineSnapshotRows,
   todayYmd: string,
-  snapshotLoadDiagnostics: FinancialSnapshotLoadDiagnostics
+  snapshotLoadDiagnostics: FinancialSnapshotLoadDiagnostics,
+  truncation?: { isTruncated: boolean; tablesAtCap: string[] }
 ): FinancialSnapshotCanonicalV1 {
   const legacy = buildFinancialSnapshotFromRows(rows, todayYmd);
 
@@ -401,15 +412,21 @@ export function buildFinancialSnapshotApiV1FromRows(
     row_cap: FINANCIAL_SNAPSHOT_ROW_CAP,
   };
 
+  const isTruncated = truncation?.isTruncated ?? false;
+  const tablesAtCap = truncation?.tablesAtCap ?? [];
+
   const diagnostics: FinancialSnapshotApiDiagnostics = {
     invoice_financials_coverage: snapshotLoadDiagnostics.invoice_financials_coverage,
     balance_source: "proto_invoices",
     divergences: [],
     dataset_caps: {
       row_cap: FINANCIAL_SNAPSHOT_ROW_CAP,
-      truncation_unknown: true,
-      note:
-        "Las lecturas proto_* del snapshot usan límite fijo; no se reporta fila a fila si hubo truncamiento.",
+      isTruncated,
+      tables_at_cap: tablesAtCap,
+      truncation_unknown: !truncation,
+      note: isTruncated
+        ? `Dataset parcial: ${tablesAtCap.join(", ")} alcanzaron el límite de ${FINANCIAL_SNAPSHOT_ROW_CAP} filas. Los KPIs pueden estar subestimados.`
+        : "Las lecturas proto_* del snapshot usan límite fijo; no se reporta fila a fila si hubo truncamiento.",
     },
     engine_notes: [
       "Snapshot global (no cobertura por obligación): receivables_risk_weighted = Σ(balance>0 × prob) sobre el load; outflows = pagos operativos post-as_of + fiscal pendiente a 30 días.",
@@ -459,18 +476,17 @@ export function mergeFinancialSnapshotApiV1(
  */
 export async function getFinancialSnapshotForApi(
   client: SupabaseClient,
-  workspaceCompanyId?: string
+  workspaceCompanyId: string
 ): Promise<FinancialSnapshotApiV1> {
   const todayYmd = financialEngineLocalTodayYmd();
-  const { rows, snapshotLoadDiagnostics } = await loadFinancialSnapshotData(
-    client,
-    workspaceCompanyId
-  );
+  const { rows, snapshotLoadDiagnostics, isTruncated, tablesAtCap } =
+    await loadFinancialSnapshotData(client, workspaceCompanyId);
   const legacy = buildFinancialSnapshotFromRows(rows, todayYmd);
   const canonical = buildFinancialSnapshotApiV1FromRows(
     rows,
     todayYmd,
-    snapshotLoadDiagnostics
+    snapshotLoadDiagnostics,
+    { isTruncated, tablesAtCap }
   );
   return mergeFinancialSnapshotApiV1(legacy, canonical);
 }

@@ -19,6 +19,11 @@ export type PipelineHealthSummary = {
   last_error_summary: string | null;
   expected_interval_ms: number;
   is_overdue: boolean;
+  /** Métricas del run más reciente (null si no hay runs). */
+  last_run_duration_ms: number | null;
+  last_run_rows_processed: number | null;
+  last_run_rows_updated: number | null;
+  last_run_rows_failed: number | null;
 };
 
 /** Intervalos esperados por pipeline (ms). */
@@ -54,6 +59,10 @@ export function derivePipelineHealth(
     last_error_summary: null,
     expected_interval_ms: expectedIntervalMs,
     is_overdue: false,
+    last_run_duration_ms: null,
+    last_run_rows_processed: null,
+    last_run_rows_updated: null,
+    last_run_rows_failed: null,
   };
 
   if (runs.length === 0) return base;
@@ -63,8 +72,13 @@ export function derivePipelineHealth(
     (a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
   );
 
-  base.last_run_at = sorted[0]!.started_at;
-  base.last_error_summary = sorted[0]!.error_summary ?? null;
+  const mostRecent = sorted[0]!;
+  base.last_run_at = mostRecent.started_at;
+  base.last_error_summary = mostRecent.error_summary ?? null;
+  base.last_run_duration_ms = mostRecent.duration_ms ?? null;
+  base.last_run_rows_processed = mostRecent.rows_processed ?? null;
+  base.last_run_rows_updated = mostRecent.rows_updated ?? null;
+  base.last_run_rows_failed = mostRecent.rows_failed ?? null;
 
   // Último éxito
   const lastSuccess = sorted.find((r) => r.status === "succeeded");

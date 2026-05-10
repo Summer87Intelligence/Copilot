@@ -22,6 +22,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { protoUpdateInvoice } from "@/lib/copilot-proto-crud-service";
+import { createLogger } from "@/lib/observability/logger";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -338,19 +339,12 @@ function buildEntry(
   };
 }
 
+const _reconcileLogger = createLogger({ source: "zeta_reconciliation" });
+
 function pipelineReconcileLog(
   level: "info" | "warn" | "error",
   message: string,
   fields: Record<string, unknown>
 ) {
-  const line = JSON.stringify({
-    timestamp: new Date().toISOString(),
-    level,
-    message,
-    source: "zeta_reconciliation",
-    ...fields,
-  });
-  if (level === "error") console.error(line);
-  else if (level === "warn") console.warn(line);
-  else console.log(line);
+  _reconcileLogger[level](message, undefined, fields);
 }

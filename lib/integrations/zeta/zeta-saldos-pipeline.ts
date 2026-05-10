@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { serializeError } from "@/lib/copilot-structured-logger";
+import { createLogger } from "@/lib/observability/logger";
+import { sanitizeError, sanitizeLogPayload } from "@/lib/observability/sanitize";
 import { applyProtoActiveListFilter } from "@/lib/copilot-proto-active";
 import {
   protoCreateInvoice,
@@ -28,13 +30,20 @@ import {
 import { sanitizeZetaInvoiceKeyPart } from "@/lib/integrations/zeta/zeta-customer-vouchers-mapper";
 import { zetaLog } from "@/lib/integrations/zeta/zeta-log";
 import {
+  extractRegistroIdsFromInvoiceZetaMetadata,
   fetchProtoInvoiceZetaMetadata,
   findActiveProtoInvoiceIdByZetaRegistroMetadata,
   invoiceZetaMetadataRegistroConsistentWithExpected,
 } from "@/lib/integrations/zeta/zeta-proto-invoice-registro-match";
 import {
+  computeHeuristicSaldoProtoScore,
   extractSerieNumeroFromSaldoSourceRow,
   findBestHeuristicProtoInvoiceForSaldoRow,
+  HEURISTIC_THRESHOLD_ACCEPT,
+  HEURISTIC_THRESHOLD_MIN_LOG,
+  parseCcV1ClienteSegmentFromInvoiceNumber,
+  type HeuristicMatchOutcome,
+  type ProtoInvoiceHeuristicRow,
 } from "@/lib/integrations/zeta/zeta-saldos-heuristic-match";
 import {
   ZETA_PIPELINE_FLOW_SALDOS_PENDIENTES,
@@ -52,6 +61,10 @@ import type { ZetaInvoice } from "@/types/zeta";
 const DEFAULT_MAX_PAGES = 5;
 const DEFAULT_PAGE_DELAY_MS = 400;
 const DEFAULT_OVERLAP_SECONDS = 7 * 24 * 3600;
+
+/** Límite de filas en el cache CCV1 por cliente. Por encima de este valor el cache carga parcial
+ *  (las más recientes) y emite warn. En producción un cliente con >5k CCV1 es anómalo. */
+const CACHE_MAX_ROWS = 5_000;
 
 /** Tamaño máx. del JSON stringificado en staging (caracteres). Evita filas enormes; mantiene preview + hash. */
 const ZETA_RAW_STAGING_MAX_JSON_CHARS = 48_000;
@@ -88,24 +101,18 @@ function buildStagingPayloadJson(raw: unknown): Record<string, unknown> {
   };
 }
 
+const _pipelineLogger = createLogger({ source: "zeta_pipeline" });
+
 function pipelineEmit(
   level: "info" | "warn" | "error",
   message: string,
   fields: Record<string, unknown>,
   err?: unknown
 ) {
-  const base: Record<string, unknown> = {
-    timestamp: new Date().toISOString(),
-    level,
-    message,
-    source: "zeta_pipeline",
-    ...fields,
-  };
-  if (err !== undefined) base.error = serializeError(err);
-  const line = JSON.stringify(base);
-  if (level === "error") console.error(line);
-  else if (level === "warn") console.warn(line);
-  else console.log(line);
+  const payload = err !== undefined
+    ? { ...fields, error: sanitizeError(err) }
+    : fields;
+  _pipelineLogger[level](message, undefined, payload);
 }
 
 function sleep(ms: number) {
@@ -117,14 +124,189 @@ function zetaSaldosDiagEnabled(): boolean {
   return v === "1" || v === "true" || v === "yes";
 }
 
-function diagLog(message: string, payload: any) {
+function diagLog(message: string, payload: unknown) {
   if (!zetaSaldosDiagEnabled()) return;
-  const extra =
+  const extra: Record<string, unknown> =
     payload != null && typeof payload === "object" && !Array.isArray(payload)
-      ? (payload as Record<string, unknown>)
-      : { payload };
-  console.log(JSON.stringify({ tag: "zeta_saldos_diag", message, ...extra }));
+      ? sanitizeLogPayload(payload as Record<string, unknown>)
+      : { diag_value: payload };
+  console.log(
+    JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: "debug",
+      message,
+      source: "zeta_saldos_diag",
+      tag: "zeta_saldos_diag",
+      ...extra,
+    })
+  );
 }
+
+// ─── Client invoice cache (Q-02) ─────────────────────────────────────────────
+
+type CachedCcv1Invoice = {
+  id: string;
+  invoice_number: string;
+  issue_date: string;
+  total_amount: number;
+  zeta_metadata: unknown;
+};
+
+type ClientInvoiceCache = {
+  rows: CachedCcv1Invoice[];
+  /** invoice_number → id */
+  byNumber: Map<string, string>;
+  /** RegistroId → id (extraído de zeta_metadata) */
+  byRegistroId: Map<string, string>;
+  /** id → zeta_metadata */
+  metadataById: Map<string, unknown>;
+  /** true si la carga se detuvo al alcanzar CACHE_MAX_ROWS */
+  capped: boolean;
+};
+
+async function preloadClientZetaInvoiceCache(
+  supabase: SupabaseClient,
+  workspaceCompanyId: string,
+  protoCompanyId: string
+): Promise<ClientInvoiceCache> {
+  const wid = workspaceCompanyId.trim();
+  const pageSize = 800;
+  const allRows: CachedCcv1Invoice[] = [];
+  let from = 0;
+  for (;;) {
+    const q = applyProtoActiveListFilter(
+      supabase
+        .from("proto_invoices")
+        .select("id, invoice_number, issue_date, total_amount, zeta_metadata")
+        .eq("workspace_company_id", wid)
+        .eq("company_id", protoCompanyId)
+        .like("invoice_number", "ZETA:CCV1:%")
+        .order("issue_date", { ascending: false })
+        .range(from, from + pageSize - 1),
+      "active"
+    );
+    const { data, error } = await q;
+    if (error) throw new Error(`preloadClientZetaInvoiceCache: ${error.message}`);
+    const rows = (data ?? []) as Array<{
+      id?: unknown;
+      invoice_number?: unknown;
+      issue_date?: unknown;
+      total_amount?: unknown;
+      zeta_metadata?: unknown;
+    }>;
+    for (const r of rows) {
+      const id = typeof r.id === "string" ? r.id : null;
+      const num = typeof r.invoice_number === "string" ? r.invoice_number : null;
+      if (!id || !num) continue;
+      const totalRaw = r.total_amount;
+      const total =
+        typeof totalRaw === "number"
+          ? totalRaw
+          : Number.isFinite(Number(String(totalRaw ?? "").replace(",", ".")))
+            ? Number(String(totalRaw).replace(",", "."))
+            : 0;
+      allRows.push({
+        id,
+        invoice_number: num,
+        issue_date: typeof r.issue_date === "string" ? r.issue_date.slice(0, 10) : "",
+        total_amount: total,
+        zeta_metadata: r.zeta_metadata ?? null,
+      });
+    }
+    if (rows.length < pageSize) break;
+    if (allRows.length >= CACHE_MAX_ROWS) break;
+    from += pageSize;
+  }
+
+  const capped = allRows.length >= CACHE_MAX_ROWS;
+
+  const byNumber = new Map<string, string>();
+  const byRegistroId = new Map<string, string>();
+  const metadataById = new Map<string, unknown>();
+  for (const inv of allRows) {
+    byNumber.set(inv.invoice_number, inv.id);
+    metadataById.set(inv.id, inv.zeta_metadata);
+    for (const rid of extractRegistroIdsFromInvoiceZetaMetadata(inv.zeta_metadata)) {
+      if (!byRegistroId.has(rid)) byRegistroId.set(rid, inv.id);
+    }
+  }
+  return { rows: allRows, byNumber, byRegistroId, metadataById, capped };
+}
+
+function findBestHeuristicProtoInvoiceFromCache(
+  cache: ClientInvoiceCache,
+  inv: ZetaInvoice,
+  zetaClienteCodigo: string
+): HeuristicMatchOutcome {
+  const expectedCli = sanitizeZetaInvoiceKeyPart(zetaClienteCodigo.trim(), 24) || "NCLI";
+  const { serie: saldoSerie, numero: saldoNumero } = extractSerieNumeroFromSaldoSourceRow(
+    inv.saldoSourceRow ?? null
+  );
+  if (!saldoNumero && !saldoSerie) return { kind: "none" };
+
+  const saldoIssue = inv.issueDate.slice(0, 10);
+  const saldoTotal = inv.totalAmount;
+
+  const candidates: ProtoInvoiceHeuristicRow[] = [];
+  for (const r of cache.rows) {
+    const cliSegRaw = parseCcV1ClienteSegmentFromInvoiceNumber(r.invoice_number);
+    const cliSegNorm = cliSegRaw ? sanitizeZetaInvoiceKeyPart(cliSegRaw, 24) || "NCLI" : null;
+    if (!cliSegNorm || cliSegNorm !== expectedCli) continue;
+    if (!invoiceZetaMetadataRegistroConsistentWithExpected(r.zeta_metadata, inv.zetaId)) continue;
+    candidates.push(r);
+  }
+
+  const scored = candidates.map((p) => {
+    const { score, breakdown } = computeHeuristicSaldoProtoScore(
+      { serie: saldoSerie, numero: saldoNumero, issueYmd: saldoIssue, totalAmount: saldoTotal },
+      p
+    );
+    return { invoice_id: p.id, invoice_number: p.invoice_number, score, breakdown };
+  });
+  scored.sort((a, b) => b.score - a.score);
+
+  const best = scored[0];
+  if (!best || best.score < HEURISTIC_THRESHOLD_MIN_LOG) {
+    return {
+      kind: "rejected_low_score",
+      confidence: "low" as const,
+      best_score: best?.score ?? 0,
+      best_invoice_id: best?.invoice_id ?? null,
+      band: "below_60",
+    };
+  }
+  if (best.score < HEURISTIC_THRESHOLD_ACCEPT) {
+    return {
+      kind: "rejected_low_score",
+      confidence: "medium" as const,
+      best_score: best.score,
+      best_invoice_id: best.invoice_id,
+      band: "60_79_doubt",
+    };
+  }
+  const strong = scored.filter((s) => s.score >= HEURISTIC_THRESHOLD_ACCEPT);
+  if (strong.length >= 2) {
+    return {
+      kind: "ambiguous",
+      top: strong.slice(0, 4).map((s) => ({
+        invoice_id: s.invoice_id,
+        invoice_number: s.invoice_number,
+        score: s.score,
+      })),
+    };
+  }
+  const winner = strong[0]!;
+  return {
+    kind: "applied",
+    confidence: "high" as const,
+    invoice_id: winner.invoice_id,
+    invoice_number: winner.invoice_number,
+    score: winner.score,
+    breakdown: winner.breakdown,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function readProtoInvoiceSaldoSnapshot(
   supabase: SupabaseClient,
@@ -352,7 +534,8 @@ async function persistZetaInvoice(
   seenInRun: Set<string>,
   workspaceCompanyId: string,
   touchedInvoiceIds: Set<string>,
-  zetaClienteCodigo: string
+  zetaClienteCodigo: string,
+  invoiceCache?: ClientInvoiceCache
 ): Promise<"insert" | "update" | "skip"> {
   const key = inv.zetaId;
   if (!key || seenInRun.has(key)) return "skip";
@@ -392,17 +575,23 @@ async function persistZetaInvoice(
     });
   }
 
-  const regHit = await findActiveProtoInvoiceIdByZetaRegistroMetadata(
-    supabase,
-    wid,
-    inv.companyId,
-    inv.zetaId,
-    {
-      onFilterError(path, message) {
-        pipelineEmit("warn", "zeta_saldos_registro_metadata_lookup", { path, message });
-      },
-    }
-  );
+  let regHit: { id: string; matched_path: string } | null = null;
+  if (invoiceCache) {
+    const cachedId = invoiceCache.byRegistroId.get(inv.zetaId);
+    if (cachedId) regHit = { id: cachedId, matched_path: "cache:byRegistroId" };
+  } else {
+    regHit = await findActiveProtoInvoiceIdByZetaRegistroMetadata(
+      supabase,
+      wid,
+      inv.companyId,
+      inv.zetaId,
+      {
+        onFilterError(path, message) {
+          pipelineEmit("warn", "zeta_saldos_registro_metadata_lookup", { path, message });
+        },
+      }
+    );
+  }
   if (diagOn) {
     diagLog("lookup_by_registro_id", {
       found: Boolean(regHit?.id),
@@ -443,7 +632,9 @@ async function persistZetaInvoice(
   }
 
   if (ccv1) {
-    const ccv1Id = await findActiveInvoiceIdByZetaNumber(supabase, inv.companyId, ccv1, wid);
+    const ccv1Id = invoiceCache
+      ? (invoiceCache.byNumber.get(ccv1) ?? null)
+      : await findActiveInvoiceIdByZetaNumber(supabase, inv.companyId, ccv1, wid);
     if (diagOn) {
       diagLog("lookup_by_invoice_number", {
         found: Boolean(ccv1Id),
@@ -452,7 +643,9 @@ async function persistZetaInvoice(
     }
     let ccv1Target = ccv1Id;
     if (ccv1Target) {
-      const meta = await fetchProtoInvoiceZetaMetadata(supabase, wid, ccv1Target);
+      const meta = invoiceCache
+        ? invoiceCache.metadataById.get(ccv1Target)
+        : await fetchProtoInvoiceZetaMetadata(supabase, wid, ccv1Target);
       if (!invoiceZetaMetadataRegistroConsistentWithExpected(meta, inv.zetaId)) {
         pipelineEmit("warn", "zeta_saldos_ccv1_match_rejected_registro_mismatch", {
           zeta_registro_id_expected: inv.zetaId,
@@ -495,19 +688,17 @@ async function persistZetaInvoice(
     }
   }
 
-  const heuristicOutcome = await findBestHeuristicProtoInvoiceForSaldoRow(
-    supabase,
-    wid,
-    inv.companyId,
-    inv,
-    zetaClienteCodigo.trim()
-  );
+  const heuristicOutcome = invoiceCache
+    ? findBestHeuristicProtoInvoiceFromCache(invoiceCache, inv, zetaClienteCodigo)
+    : await findBestHeuristicProtoInvoiceForSaldoRow(supabase, wid, inv.companyId, inv, zetaClienteCodigo.trim());
   const { serie: logSaldoSerie, numero: logSaldoNumero } = extractSerieNumeroFromSaldoSourceRow(
     inv.saldoSourceRow ?? null
   );
 
   if (heuristicOutcome.kind === "applied") {
-    const metaHeur = await fetchProtoInvoiceZetaMetadata(supabase, wid, heuristicOutcome.invoice_id);
+    const metaHeur = invoiceCache
+      ? invoiceCache.metadataById.get(heuristicOutcome.invoice_id)
+      : await fetchProtoInvoiceZetaMetadata(supabase, wid, heuristicOutcome.invoice_id);
     if (!invoiceZetaMetadataRegistroConsistentWithExpected(metaHeur, inv.zetaId)) {
       pipelineEmit("warn", "zeta_heuristic_match_rejected_low_score", {
         request_id: requestId,
@@ -606,11 +797,15 @@ async function persistZetaInvoice(
   }
 
   const input = zetaInvoiceToProtoInput(inv, syncRunId);
-  if (diagOn) {
-    diagLog("fallback_legacy", {
-      zeta_registro_id: inv.zetaId,
-    });
-  }
+  pipelineEmit("info", "zeta_saldos_legacy_path", {
+    request_id: requestId,
+    sync_run_id: syncRunId,
+    tenant_id: wid,
+    zeta_registro_id: inv.zetaId,
+    legacy_invoice_number: input.invoice_number,
+    ccv1_computed: ccv1 ?? null,
+    cache_active: invoiceCache != null,
+  });
 
   const existingLegacy = await findActiveInvoiceIdByZetaNumber(
     supabase,
@@ -858,6 +1053,31 @@ export async function runZetaSaldosPendientesPipeline(
       previous_watermark: previousWatermark,
     });
 
+    let invoiceCache: ClientInvoiceCache | undefined;
+    try {
+      invoiceCache = await preloadClientZetaInvoiceCache(supabase, wid, opts.protoCompanyId);
+      pipelineEmit(
+        invoiceCache.capped ? "warn" : "info",
+        invoiceCache.capped ? "zeta_saldos_cache_capped" : "zeta_saldos_cache_loaded",
+        {
+          request_id: requestId,
+          sync_run_id: syncRunId,
+          proto_company_id: opts.protoCompanyId,
+          ccv1_invoices_cached: invoiceCache.rows.length,
+          registro_ids_indexed: invoiceCache.byRegistroId.size,
+          cache_max_rows: CACHE_MAX_ROWS,
+          capped: invoiceCache.capped,
+        }
+      );
+    } catch (cacheErr) {
+      pipelineEmit("warn", "zeta_saldos_cache_load_failed", {
+        request_id: requestId,
+        sync_run_id: syncRunId,
+        proto_company_id: opts.protoCompanyId,
+      }, cacheErr);
+      invoiceCache = undefined;
+    }
+
     for (let i = 0; i < pageIterations; i++) {
       if (i > 0) await sleep(pageDelayMs);
 
@@ -953,7 +1173,8 @@ export async function runZetaSaldosPendientesPipeline(
             seenInRun,
             wid,
             touchedInvoiceIds,
-            opts.clienteCodigo
+            opts.clienteCodigo,
+            invoiceCache
           );
           if (r !== "skip") rowsUpserted += 1;
         } catch (pe) {

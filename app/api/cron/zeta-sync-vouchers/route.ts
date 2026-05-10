@@ -18,6 +18,7 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createCronLogger } from "@/lib/observability/cron-logger";
 
 import { syncZetaCustomerVouchers } from "@/lib/integrations/zeta/zeta-customer-vouchers-pipeline";
 import { withZetaRetry } from "@/lib/integrations/zeta/zeta-retry";
@@ -107,17 +108,7 @@ export async function GET(request: NextRequest) {
   const cronRunId = randomUUID();
   const started = Date.now();
   const syncMonths = getSyncMonths();
-
-  const log = (kind: string, extra?: Record<string, unknown>) =>
-    console.info(
-      JSON.stringify({
-        timestamp: new Date().toISOString(),
-        source: PIPELINE,
-        kind,
-        cron_run_id: cronRunId,
-        ...extra,
-      })
-    );
+  const log = createCronLogger(PIPELINE, cronRunId);
 
   log("cron_start", { months: syncMonths });
 

@@ -29,4 +29,7 @@ export const FINANCIAL_UX_COPY = {
     "Entiendo que este reporte no certifica cierre financiero.",
   exportModalCancel: "Cancelar",
   exportModalConfirm: "Exportar reporte operativo",
+  rowCapWarningTitle: "Datos potencialmente incompletos",
+  rowCapWarningBody:
+    "Los datos pueden estar incompletos porque se alcanzó el límite máximo de filas procesadas. Los KPIs financieros pueden estar subestimados. Contactá soporte para ampliar la ventana de datos.",
 } as const;

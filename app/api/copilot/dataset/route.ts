@@ -104,20 +104,12 @@ export async function GET(request: NextRequest) {
       is_active: r.is_active ?? null,
       issue_date: String(r.issue_date ?? ""),
     }));
-    console.log(
-      "DATASET INVOICES DEBUG",
-      JSON.stringify({
-        tenant_company_id: tenantCompanyId,
-        table: "proto_invoices",
-        filters: {
-          workspace_company_id: tenantCompanyId,
-          active_mode: active,
-          active_filter: activeModeToFilterLabel(active),
-        },
-        invoices_count: invoices.length,
-        invoice_sample: invoiceSample,
-      })
-    );
+    log.debug("copilot_dataset_invoices_loaded", {
+      table: "proto_invoices",
+      active_mode: active,
+      active_filter: activeModeToFilterLabel(active),
+      invoices_count: invoices.length,
+    });
 
     return NextResponse.json({ ok: true as const, data });
   } catch (e) {

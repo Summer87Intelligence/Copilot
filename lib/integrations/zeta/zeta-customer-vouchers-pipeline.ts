@@ -52,8 +52,6 @@ import {
 } from "@/lib/integrations/zeta/zeta-currency-enrichment-pipeline";
 import { normalizeRutForMatch } from "@/lib/integrations/zeta/zeta-client-import-preview";
 
-console.log("🔥 PIPELINE FILE LOADED");
-
 export const ZETA_CUSTOMER_VOUCHERS_RESOURCE_FLOW = "zeta_customer_vouchers_v1";
 
 /** Valor de `zeta_sync_raw_payloads.resource_flow` para auditoría RAW (KB / producto). */
@@ -97,7 +95,6 @@ async function persistCustomerVouchersZetaRawPayload(
   }
 ): Promise<void> {
   try {
-    console.log("RAW INSERT → executing");
     await insertZetaSyncRawPayload(client, {
       sync_run_id: input.syncRunId,
       resource_flow: ZETA_CUSTOMER_VOUCHERS_RAW_RESOURCE_FLOW,
@@ -246,19 +243,6 @@ function logZetaVoucherPersistIdentity(
       })
     );
   }
-  console.log(
-    "ZETA_VOUCHER_PERSIST",
-    JSON.stringify({
-      op,
-      source: "zeta-customer-vouchers-pipeline.ts",
-      builder_fn: ZETA_VOUCHER_INVOICE_NUMBER_BUILDER,
-      invoice_number_final: ctx.invoice_number_final,
-      serie: ctx.serie,
-      numero: ctx.numero,
-      clienteCodigo: ctx.clienteCodigo,
-      empresaCodigo: ctx.empresaCodigo,
-    })
-  );
 }
 
 async function findActiveInvoiceIdByNumber(
@@ -483,10 +467,8 @@ export async function syncZetaCustomerVouchers(
   let runId: string | null = null;
   let lastRootInKey = root_in_key;
   try {
-    console.log("🔥 LAYER:", "zeta-customer-vouchers-pipeline.ts → try (main sync body)");
     const prior = await selectZetaSyncStateByResource(params.supabase, ZETA_CUSTOMER_VOUCHERS_RESOURCE_FLOW, wid);
     const syncMode: ZetaSyncMode = prior?.bootstrap_completed ? "incremental" : "bootstrap";
-    console.log("🔥 BEFORE insertZetaSyncRun");
     const run = await insertZetaSyncRun(params.supabase, {
       resource_flow: ZETA_CUSTOMER_VOUCHERS_RESOURCE_FLOW,
       sync_mode: syncMode,
@@ -494,7 +476,6 @@ export async function syncZetaCustomerVouchers(
       company_id: wid,
     });
     runId = run.id;
-    console.log("🔥 AFTER insertZetaSyncRun", runId);
     const zetaCtx: ZetaCallContext = { ...params.ctx, syncRunId: runId };
 
     const { data: companies, error: compErr } = await params.supabase
@@ -538,9 +519,7 @@ export async function syncZetaCustomerVouchers(
       looksLikeReciboCobranza: boolean;
     }> = [];
 
-    console.log("🔥 BEFORE while loop");
     while (hasMore && page <= MAX_PAGES) {
-      console.log("🔥 PAGE LOOP START", { page });
       console.info(
         JSON.stringify({
           timestamp: new Date().toISOString(),
@@ -553,12 +532,6 @@ export async function syncZetaCustomerVouchers(
         })
       );
       const res = await fetchPageWithRetry(zetaCtx, String(page), params.filters);
-      console.log("🔥 AFTER fetchPageWithRetry", {
-        ok: res.ok,
-        hasRaw: !!res.raw,
-        rows: res.rows?.length ?? null,
-        rootInKey: res.root_in_key ?? null,
-      });
       if (!res.ok) {
         if (runId && res.raw != null) {
           try {
@@ -637,14 +610,7 @@ export async function syncZetaCustomerVouchers(
         };
       }
 
-      console.log("🔥 BEFORE RAW PERSIST BLOCK", {
-        runId,
-        hasRaw: !!res.raw,
-      });
       lastRootInKey = res.root_in_key;
-      console.log("RAW DEBUG → runId:", runId);
-      console.log("RAW DEBUG → res.raw exists:", !!res.raw);
-      console.log("RAW DEBUG → entering insert block");
       if (runId) {
         await persistCustomerVouchersZetaRawPayload(params.supabase, {
           syncRunId: runId,
@@ -656,7 +622,6 @@ export async function syncZetaCustomerVouchers(
         });
       }
       rowsReceived += res.rows.length;
-      console.log("ZETA ROWS TOTAL:", res.rows.length);
       console.info(
         JSON.stringify({
           timestamp: new Date().toISOString(),
@@ -669,8 +634,6 @@ export async function syncZetaCustomerVouchers(
           http_status: res.httpStatus,
         })
       );
-
-      console.log("ROWS BEFORE INSERT:", res.rows.length);
 
       const syncedAt = new Date().toISOString();
       for (const row of res.rows) {
@@ -695,28 +658,11 @@ export async function syncZetaCustomerVouchers(
               looksLikeReciboCobranza: zetaCustomerVoucherRowLooksLikeReciboCobranza(zRow),
             });
           }
-          console.log(
-            "ROW SKIP: no es factura/CFE para proto_invoices (recibo de cobranza u otro no CFE DGI)",
-            JSON.stringify({
-              motivo: "classifier_voucher_pipeline_invoices_only",
-              reject,
-              cfe_tipo: z.CFETipo ?? z.cfeTipo,
-            })
-          );
           continue;
         }
         const mapped = mapZetaCustomerVoucherToCopilot(zRow);
         if (!copilotCustomerVoucherHasPersistableIdentity(mapped)) {
           skipped += 1;
-          console.log(
-            "ROW SKIP: mapper rejected row",
-            JSON.stringify({
-              zeta_comprobante_codigo: mapped.zeta_comprobante_codigo,
-              serie: mapped.serie,
-              numero: mapped.numero,
-              motivo: "sin ComprobanteCodigo y sin Serie+Numero válidos (encabezado Zeta)",
-            })
-          );
           continue;
         }
 
@@ -732,15 +678,14 @@ export async function syncZetaCustomerVouchers(
           if (!mapped.cliente_documento?.trim()) reasons.push("fila_sin_ClienteDocumento_mapeable");
           else if (!rutNorm) reasons.push("documento_no_normalizable_a_RUT");
           else if (!byRut.has(rutNorm)) reasons.push("RUT_normalizado_no_coincide_con_ningun_proto_companies.RUT");
-          console.log(
-            "ROW SKIP: no company match",
+          console.info(
             JSON.stringify({
-              zeta_cliente_codigo_received: codigoCliente ?? null,
-              cliente_documento_mapped: mapped.cliente_documento,
+              timestamp: new Date().toISOString(),
+              source: "zeta_customer_vouchers_sync",
+              kind: "row_skip_no_company_match",
+              zeta_cliente_codigo: codigoCliente ?? null,
               rut_normalized: rutNorm,
-              match_rules: "solo_Codigo_o_RUT_documento_nunca_nombre",
               reasons,
-              proto_companies_codigo_sample: [...byCodigo.keys()].slice(0, 12),
             })
           );
           continue;
@@ -756,8 +701,7 @@ export async function syncZetaCustomerVouchers(
             mapResult.reason === "invalid_fecha_emision"
               ? { raw_fecha_emision: mapResult.raw_fecha_emision }
               : { issue_date: mapResult.issue_date };
-          console.log(
-            `ROW SKIP: ${mapResult.reason}`,
+          console.info(
             JSON.stringify({
               timestamp: new Date().toISOString(),
               source: "zeta_customer_vouchers_sync",
@@ -820,9 +764,11 @@ export async function syncZetaCustomerVouchers(
           );
           if (!up.ok) {
             errors += 1;
-            console.log(
-              "ROW SKIP: proto persist failed",
+            console.error(
               JSON.stringify({
+                timestamp: new Date().toISOString(),
+                source: "zeta_customer_vouchers_sync",
+                kind: "row_persist_failed",
                 op: "protoUpdateInvoice",
                 code: up.code,
                 message: up.message,
@@ -844,9 +790,11 @@ export async function syncZetaCustomerVouchers(
           const cr = await protoCreateInvoice(params.supabase, inputForCreate, wid, { allowBalanceGtTotal: true });
           if (!cr.ok) {
             errors += 1;
-            console.log(
-              "ROW SKIP: proto persist failed",
+            console.error(
               JSON.stringify({
+                timestamp: new Date().toISOString(),
+                source: "zeta_customer_vouchers_sync",
+                kind: "row_persist_failed",
                 op: "protoCreateInvoice",
                 code: cr.code,
                 message: cr.message,
@@ -864,30 +812,20 @@ export async function syncZetaCustomerVouchers(
       }
 
       hasMore = res.hasMore;
-      console.log("ZETA ROWS SKIPPED (classifier, cumulative):", skippedClassifier);
       page += 1;
     }
 
-    console.log("ZETA ROWS SKIPPED:", skippedClassifier);
     if (classifierSkipSamples.length > 0) {
-      console.log("ZETA CLASSIFIER SKIP EXAMPLES (max 3):", JSON.stringify(classifierSkipSamples, null, 2));
+      console.info(
+        JSON.stringify({
+          timestamp: new Date().toISOString(),
+          source: "zeta_customer_vouchers_sync",
+          kind: "classifier_skip_samples",
+          skipped_classifier: skippedClassifier,
+          samples: classifierSkipSamples,
+        })
+      );
     }
-    const allSkipsDueToReciboTextHeuristic =
-      skippedClassifier > 0 &&
-      skippedClassifierCfeNotDgi === 0 &&
-      skippedClassifierReciboText === skippedClassifier;
-    console.log(
-      "ZETA CLASSIFIER ALL SKIPS DUE TO zetaCustomerVoucherRowLooksLikeReciboCobranza:",
-      skippedClassifier === 0 ? "n/a (no hubo skips por clasificador)" : String(allSkipsDueToReciboTextHeuristic)
-    );
-    console.log(
-      JSON.stringify({
-        total: rowsReceived,
-        skipped: skippedClassifier,
-        inserted,
-        updated,
-      })
-    );
 
     const nowIso = new Date().toISOString();
     if (runId) {
@@ -929,11 +867,6 @@ export async function syncZetaCustomerVouchers(
         duration_ms: durationMs,
       })
     );
-    console.log(
-      "FINAL SUMMARY customer_vouchers:",
-      `processed=${processed} inserted=${inserted} updated=${updated} skipped=${skipped} skipped_classifier=${skippedClassifier} errors=${errors} rows_received=${rowsReceived} duration_ms=${durationMs}`
-    );
-
     // Post-sync: currency enrichment (non-blocking — errors never break main sync)
     let currencyEnrichment: CurrencyEnrichmentResult | undefined;
     try {

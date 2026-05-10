@@ -234,7 +234,6 @@ const CUSTOMER_VOUCHERS_BODY_SHAPE = "queryIn" as const;
 export async function fetchZetaCustomerVouchers(
   params: FetchZetaCustomerVouchersParams
 ): Promise<FetchZetaCustomerVouchersResult> {
-  console.log("🔥 LAYER:", "zeta-customer-vouchers-fetch.ts → fetchZetaCustomerVouchers()");
   const zeta_method = resolveZetaCustomerVouchersRestMethod();
   const root_in_key = CUSTOMER_VOUCHERS_ROOT_IN_KEY;
   const page = (params.page ?? "1").trim() || "1";
@@ -348,8 +347,6 @@ export async function fetchZetaCustomerVouchers(
       },
     },
   });
-
-  console.log("ZETA FINAL PAYLOAD:", JSON.stringify(payload, null, 2));
 
   const started = Date.now();
   try {
@@ -518,37 +515,8 @@ export async function fetchZetaCustomerVouchers(
       };
     }
 
-    let rawResponseJson = "";
-    try {
-      rawResponseJson = JSON.stringify(raw, null, 2);
-    } catch (e) {
-      rawResponseJson = `[JSON.stringify falló: ${e instanceof Error ? e.message : String(e)}]`;
-    }
-    console.log("ZETA RAW RESPONSE:", rawResponseJson);
-
     const diag = diagnoseZetaCustomerVouchersExtraction(raw);
-    console.log("PATH USED:", diag.path_used);
-    console.log("PARSED MovimientoItem count:", diag.movimiento_item_count);
-    console.log("WOULD EXTRACT ROW COUNT:", diag.would_extract_row_count);
-    console.log(
-      "PARSED identity breakdown: ComprobanteCodigo=",
-      diag.rows_with_comprobante_codigo,
-      "serie+numero_only=",
-      diag.rows_with_serie_numero_only,
-      "persistable=",
-      diag.rows_with_persistable_identity
-    );
-    if (diag.movimiento_item_count === 0) {
-      console.log(
-        "ZETA RAW RESPONSE (movimiento_item_count=0, árbol completo):",
-        rawResponseJson.length > 500_000
-          ? `${rawResponseJson.slice(0, 500_000)}\n… (truncado a 500k chars, total ${rawResponseJson.length})`
-          : rawResponseJson
-      );
-    }
-
     const rows = extractZetaCustomerVouchers(raw);
-    console.log("EXTRACT rows.length (después de extractZetaCustomerVouchers):", rows.length);
     if (rows.length !== diag.would_extract_row_count) {
       console.warn(
         "EXTRACT length distinto a would_extract_row_count:",

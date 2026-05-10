@@ -69,6 +69,12 @@ function createSupabaseStub(opts: {
             opts.protoInvoicesEqPairs.push(["filter", `${c}=${String(v)}`]);
             return this;
           },
+          order() {
+            return this;
+          },
+          range() {
+            return this;
+          },
           limit() {
             return this;
           },
@@ -169,7 +175,8 @@ describe("Zeta saldos pipeline — filtro workspace_company_id", () => {
     expect(invoiceCols).toEqual(
       expect.arrayContaining(["company_id", "invoice_number", "workspace_company_id", "is_active"])
     );
-    expect(invoiceCols.some((c) => c === "like" || c === "filter")).toBe(true);
+    // Cache pre-load issues a ZETA:CCV1:% LIKE query — verify workspace is scoped
+    expect(invoiceEq.some(([c, v]) => c === "invoice_number" && String(v).startsWith("ZETA:"))).toBe(true);
     const wsInv = invoiceEq.find(([c]) => c === "workspace_company_id");
     expect(wsInv?.[1]).toBe(tenantId);
 
@@ -247,7 +254,8 @@ describe("Zeta saldos pipeline — zero pass safe guard", () => {
     });
 
     expect(result.stopped_reason).toBe("completed");
-    expect(ccv1SweepLikeCount()).toBe(0);
+    // 1 = cache pre-load; zero pass must NOT add another
+    expect(ccv1SweepLikeCount()).toBe(1);
     const anySkipLog = warnSpy.mock.calls.some((c) =>
       String(c[0]).includes("zeta_saldos_zero_pass_skipped_safe_guard")
     );
@@ -300,6 +308,7 @@ describe("Zeta saldos pipeline — zero pass safe guard", () => {
     });
 
     expect(result.stopped_reason).toBe("zeta_error");
-    expect(ccv1SweepLikeCount()).toBe(0);
+    // 1 = cache pre-load; zero pass must NOT run on error
+    expect(ccv1SweepLikeCount()).toBe(1);
   });
 });

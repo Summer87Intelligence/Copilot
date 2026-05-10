@@ -47,9 +47,11 @@ import {
   snapshotCashNet,
   snapshotCoverageRatio,
   snapshotExpectedOutflowsTotal,
+  snapshotIsTruncated,
   snapshotLiquidityBalance,
   snapshotRiskBand,
 } from "@/lib/copilot-financial-snapshot-selectors";
+import { FINANCIAL_UX_COPY } from "@/lib/copilot-financial-ux-copy";
 import {
   COPILOT_EMPTY_COPY,
   isCopilotHomeExecutiveEmpty,
@@ -59,6 +61,8 @@ import {
   getFiscalAlerts,
   type FiscalAlertItem,
 } from "@/lib/copilot-tax-alerts";
+import { PipelineHealthPanel } from "@/components/copilot/pipeline-health-panel";
+import { usePipelineHealthRealtime } from "@/lib/copilot-pipeline-health-realtime";
 
 function daysFromToday(ymd: string): number {
   const t = new Date();
@@ -125,6 +129,14 @@ export default function CopilotHomePage() {
   ] = useState<FinancialDashboardMetrics | null>(null);
   const [financialHealthLoading, setFinancialHealthLoading] = useState(true);
   const [financialHealthError, setFinancialHealthError] = useState<string | null>(null);
+  const {
+    summaries: pipelineHealth,
+    loading: pipelineHealthLoading,
+    error: pipelineHealthError,
+    realtimeStatus: pipelineRealtimeStatus,
+    lastUpdatedAt: pipelineLastUpdatedAt,
+    isRefreshing: pipelineIsRefreshing,
+  } = usePipelineHealthRealtime();
 
   const fiscalCounts = useMemo(() => {
     const c = { critical: 0, high: 0, medium: 0 };
@@ -324,6 +336,7 @@ export default function CopilotHomePage() {
     };
   }, []);
 
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
@@ -392,6 +405,12 @@ La prospección y generación de leads la realizás en Summer87 Leads.`}
             {financialError ? (
               <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
                 {financialError}
+              </div>
+            ) : null}
+            {!financialLoading && !financialError && financialSnapshot && snapshotIsTruncated(financialSnapshot) ? (
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
+                <p className="font-semibold">{FINANCIAL_UX_COPY.rowCapWarningTitle}</p>
+                <p className="mt-1">{FINANCIAL_UX_COPY.rowCapWarningBody}</p>
               </div>
             ) : null}
             {!financialLoading && !financialError && financialSnapshot ? (
@@ -706,6 +725,25 @@ La prospección y generación de leads la realizás en Summer87 Leads.`}
               example={COPILOT_EMPTY_COPY.homeAlertsWhenEmpty.example}
             />
           )}
+        </section>
+
+        <section>
+          <CopilotCard>
+            <CopilotSectionTitle
+              title="Estado de pipelines Zeta"
+              subtitle="Sincronización automática de saldos, facturas y contactos desde Zeta."
+            />
+            <div className="mt-4">
+              <PipelineHealthPanel
+                summaries={pipelineHealth}
+                loading={pipelineHealthLoading}
+                error={pipelineHealthError}
+                realtimeStatus={pipelineRealtimeStatus}
+                lastUpdatedAt={pipelineLastUpdatedAt}
+                isRefreshing={pipelineIsRefreshing}
+              />
+            </div>
+          </CopilotCard>
         </section>
 
         <section className="grid gap-6 lg:grid-cols-2">
