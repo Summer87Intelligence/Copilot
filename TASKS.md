@@ -1,12 +1,27 @@
 # Tasks
 
 ## Now
-- **Pipeline Health Dashboard UI** (Fase 5): construir UI sobre `getAllPipelineHealth()` y `zeta-pipeline-run-repository.ts`. Datos en `zeta_pipeline_runs`, derivación en `lib/data/zeta-pipeline-health.ts`.
 - **Fix data workspace secundario (`5e4de8f3`)**: contacts devuelve 195 filas Zeta sin match en `proto_companies`. Verificar que los `Codigo` Zeta del segundo workspace estén cargados en `proto_companies.Codigo`.
 
-## Next
-- Evaluar cierre de período: revisar si conviene ampliar el alcance reconciliador a mayo–junio 2026.
-- **Pipeline Health Dashboard** (Fase 5 UI): construir UI sobre `getAllPipelineHealth()` y el repository `zeta-pipeline-run-repository.ts` ya disponibles.
+## Next — Pipeline Health Dashboard UI
+
+**Objetivo:** visualizar estado de los 3 pipelines Zeta automatizados en producción.
+
+**Fuentes de datos (ya disponibles, no tocar):**
+- `zeta_pipeline_runs` — tabla Supabase con una fila por corrida
+- `lib/data/zeta-pipeline-health.ts` — `getAllPipelineHealth()` + `derivePipelineHealth()` (función pura)
+- `lib/data/zeta-pipeline-run-repository.ts` — `getLatestRunPerPipeline()`, `getRecentPipelineRuns()`
+
+**Mostrar por pipeline:**
+- Estado: `healthy` / `degraded` / `stalled` / `unknown` (con color/icono)
+- Última corrida: timestamp relativo + duración (`duration_ms`)
+- Métricas: `rows_processed`, `rows_updated`, `rows_failed`
+- `consecutive_failures` y `error_summary` cuando `status ≠ succeeded`
+- `is_overdue` si superó el intervalo esperado (3h/6h/24h)
+
+**Restricciones:**
+- No modificar pipelines, cron routes, reconciliación ni `zeta_pipeline_runs` schema
+- Solo lectura: API route GET que llame `getAllPipelineHealth()` + componente UI
 
 ## Later
 - **UI Recibos refinements** (no bloqueante; pipeline ya funcional):
