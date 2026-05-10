@@ -14,7 +14,7 @@ import {
   useState,
 } from "react";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle2, ChevronDown, Loader2, Plus, RefreshCw, Search } from "lucide-react";
+import { ChevronDown, Loader2, Plus, Search } from "lucide-react";
 
 import { useCopilotReadingKeyOverride } from "@/components/copilot/copilot-reading-key-context";
 import { CopilotDataSidebar } from "@/components/copilot/copilot-data-sidebar";
@@ -340,9 +340,6 @@ function CopilotDatosPageContent() {
   >(undefined);
   const [exportDisclaimerOpen, setExportDisclaimerOpen] = useState(false);
   const [financialAsOfDate, setFinancialAsOfDate] = useState<string | null>(null);
-  const [contactSyncState, setContactSyncState] = useState<"idle" | "loading" | "ok" | "error">("idle");
-  const [contactSyncCount, setContactSyncCount] = useState<number | null>(null);
-  const [contactSyncError, setContactSyncError] = useState<string | null>(null);
 
   const rows = useMemo(
     () => (expandedEntity != null ? rowsByEntity[expandedEntity] : []),
@@ -700,34 +697,6 @@ function CopilotDatosPageContent() {
     invalidateCopilotDatasetCache();
     const reqId = ++listFetchIdRef.current;
     await fetchEntityBlock(e, listActiveFilter, reqId);
-  }, [expandedEntity, listActiveFilter, fetchEntityBlock]);
-
-  const handleContactSync = useCallback(async () => {
-    setContactSyncState("loading");
-    setContactSyncError(null);
-    setContactSyncCount(null);
-    try {
-      const res = await copilotApiFetch("/api/zeta/sync-contacts", { method: "POST" });
-      const j = (await res.json()) as { success: boolean; synced: number; errors: number; message?: string };
-      if (!mountedRef.current) return;
-      if (j.success) {
-        setContactSyncState("ok");
-        setContactSyncCount(j.synced);
-        if (expandedEntity === "contacts") {
-          delete lastLoadedKeyRef.current.contacts;
-          invalidateCopilotDatasetCache();
-          const reqId = ++listFetchIdRef.current;
-          await fetchEntityBlock("contacts", listActiveFilter, reqId);
-        }
-      } else {
-        setContactSyncState("error");
-        setContactSyncError(j.message ?? "Error al sincronizar contactos.");
-      }
-    } catch (e) {
-      if (!mountedRef.current) return;
-      setContactSyncState("error");
-      setContactSyncError(e instanceof Error ? e.message : "Error al sincronizar.");
-    }
   }, [expandedEntity, listActiveFilter, fetchEntityBlock]);
 
   const openCreate = () => {
@@ -1153,44 +1122,6 @@ function CopilotDatosPageContent() {
                             pantalla sin nueva llamada.
                           </p>
                         </div>
-                      ) : tab.id === "contacts" && !isOpen ? (
-                        <div className="border-t border-[var(--copilot-border)] bg-[rgba(44,40,37,0.02)] px-4 py-3 space-y-2">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <p className="max-w-xl text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
-                              {DATOS_EXPAND_HINT.contacts}
-                            </p>
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => void handleContactSync()}
-                                disabled={contactSyncState === "loading"}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 py-1.5 text-xs font-semibold text-[var(--copilot-ink)] shadow-sm transition hover:bg-white disabled:opacity-60"
-                              >
-                                {contactSyncState === "loading" ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                                ) : (
-                                  <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-                                )}
-                                {contactSyncState === "loading" ? "Sincronizando…" : "Sincronizar Zeta"}
-                              </button>
-                              <CopilotGhostButton
-                                type="button"
-                                onClick={() => expandEntityBlock("contacts")}
-                                className="shrink-0 whitespace-nowrap border-[var(--copilot-accent)] font-semibold text-[var(--copilot-accent)] shadow-none hover:bg-[var(--copilot-accent-soft)]"
-                              >
-                                {DATOS_EXPAND_CTA.contacts}
-                              </CopilotGhostButton>
-                            </div>
-                          </div>
-                          {contactSyncState === "ok" && contactSyncCount !== null ? (
-                            <p className="flex items-center gap-1 text-xs text-emerald-700">
-                              <CheckCircle2 className="h-3 w-3" aria-hidden />
-                              Sync completado: {contactSyncCount} contacto{contactSyncCount === 1 ? "" : "s"} sincronizado{contactSyncCount === 1 ? "" : "s"}.
-                            </p>
-                          ) : contactSyncState === "error" ? (
-                            <p className="text-xs text-rose-700">{contactSyncError}</p>
-                          ) : null}
-                        </div>
                       ) : !isOpen ? (
                         <div className="border-t border-[var(--copilot-border)] bg-[rgba(44,40,37,0.02)] px-4 py-3">
                           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1231,35 +1162,6 @@ function CopilotDatosPageContent() {
                               title="Capacitación · módulo Datos"
                               paragraphs={DATA_TRAINING.datosOverview.paragraphs}
                             />
-                          ) : null}
-
-                          {tab.id === "contacts" ? (
-                            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--copilot-border)] bg-white/70 px-3 py-2">
-                              <span className="text-xs text-[var(--copilot-ink-muted)]">Origen: Zeta Software</span>
-                              <div className="flex items-center gap-2">
-                                {contactSyncState === "ok" && contactSyncCount !== null ? (
-                                  <span className="flex items-center gap-1 text-xs text-emerald-700">
-                                    <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-                                    {contactSyncCount} sincronizado{contactSyncCount === 1 ? "" : "s"}
-                                  </span>
-                                ) : contactSyncState === "error" ? (
-                                  <span className="text-xs text-rose-700">{contactSyncError}</span>
-                                ) : null}
-                                <button
-                                  type="button"
-                                  onClick={() => void handleContactSync()}
-                                  disabled={contactSyncState === "loading"}
-                                  className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 py-1.5 text-xs font-semibold text-[var(--copilot-ink)] shadow-sm transition hover:bg-white disabled:opacity-60"
-                                >
-                                  {contactSyncState === "loading" ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                                  ) : (
-                                    <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-                                  )}
-                                  {contactSyncState === "loading" ? "Sincronizando…" : "Sincronizar Zeta"}
-                                </button>
-                              </div>
-                            </div>
                           ) : null}
 
                           <div className="flex flex-wrap items-center justify-between gap-3">
