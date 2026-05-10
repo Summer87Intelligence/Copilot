@@ -1,12 +1,13 @@
 # Tasks
 
 ## Now
-- (vacío) — Período operativo 2026 implementado el 2026-05-09.
+- **Ejecutar migración SQL** `supabase/zeta-06-01-pipeline-runs-schema.sql` para crear la tabla `zeta_pipeline_runs` (requerida por los nuevos cron routes y el health layer).
+- **Ejecutar saldos pipeline** para abril 2026: las 44 facturas pagadas quedaron con `status=issued` tras el re-sync de vouchers. El próximo run del cron `/api/cron/zeta-sync-saldos` las corregirá automáticamente.
+- **Configurar `CRON_SECRET`** en Vercel Project Settings → Environment Variables (requerido para que los 3 crons se autentiquen).
 
 ## Next
-- Re-sync seguro de **abril 2026 — 62 facturas faltantes** con `mapCopilotCustomerVoucherToProtoInvoiceInput` ya endurecido (rechaza fechas inválidas en vez de fallback `new Date()`).
-- Confirmar con queries §A.2 / §B.3 / §E.1 de `temp-audits/audit-abril-2026-queries.sql` cuántas de las 62 traen `fecha_emision` no parseable y cuáles se persistieron con fecha del re-sync anterior.
-- Documentar **`NOTE-001`** (filtro de borradores CFE en reconciliador Excel: `Numero <= 0 OR Emitida = "N"`) en `docs/vendors/z/KNOWN-DIVERGENCES.md`.
+- Evaluar cierre de período: revisar si conviene ampliar el alcance reconciliador a mayo–junio 2026.
+- **Pipeline Health Dashboard** (Fase 5 UI): construir UI sobre `getAllPipelineHealth()` y el repository `zeta-pipeline-run-repository.ts` ya disponibles.
 
 ## Later
 - **UI Recibos refinements** (no bloqueante; pipeline ya funcional):
@@ -18,6 +19,7 @@
 - Evaluar cierre de período en facturas: una vez resuelto re-sync abril, revisar si conviene ampliar el alcance reconciliador a mayo–junio.
 
 ## Done
+- 2026-05-09 — **Pipeline Contactos Zeta (DIV-003 + incremental sync)**: `contracts/zeta-contacts.contract.ts` soporta shape primario `QueryOut.Response[]` (Postman + tenant real) con retrocompat para `QueryOut.Contactos.Contacto[]` y variantes defensivas. `zeta-contact-mapper.ts` mapea a `ZetaContactProtoShape` (external_id, name, document, email/email2, telefono/celular, es_cliente, es_proveedor, raw_payload). `zeta-contacts-fetch.ts` con log estructurado de shape. `zeta-contacts-pipeline.ts`: sync incremental paginado con upsert (por Codigo/Documento/email), resolución de FK a proto_companies, trazabilidad en zeta_sync_*, retry simple 3 intentos, fallback de esquema en primer sync. API route `POST /api/zeta/sync-contacts`. Documentado en `KNOWN-DIVERGENCES.md` (DIV-003) y `NOTE-001`. 521 tests, tsc limpio.
 - 2026-05-09 — **Hard Cutoff Pre-2026 (Fases 1–6)**: 2026-01-01 convertido en límite mínimo absoluto del sistema. Fase 2: `zeta-factura-cliente.ts` elimina fallback `new Date()` + rechaza fechas pre-2026 con log `pre_operational_cutoff`; `zeta-saldos-pipeline.ts` skip hard en `persistZetaInvoice`. Fase 3: script `scripts/remove-pre-2026-financial-data.ts` con dry-run/execute, cuenta+montos, respeta FKs. Fase 4: `proto-operational-read-repository.ts` y `proto-analytics-read-repository.ts` tienen `.gte("issue_date"/"receipt_date", COPILOT_OPERATIONAL_START_DATE)` en todas las queries; `buildFinancialDashboardMetrics` filtro in-memory defense-in-depth. Fase 5: `assertOperationalDate()` en `copilot-operational-period.ts`. Fase 6: 8 nuevos tests assertOperationalDate, 8 tests saldos-mapper hard cutoff, 4 tests dashboard-metrics pre-2026. `PROVENANCE_HOME_DASHBOARD` → `operational_2026`. 495 tests, 38 archivos, tsc limpio.
 - 2026-05-09 — **Financial Semantic Unification (Fases 2–4+7)**: `lib/copilot-financial-terminology.ts` (vocabulario canónico: FT, AGING_DISPLAY_LABELS, DATA_SOURCES, PERIOD_SCOPES, RECORD_SCOPES, DataProvenanceConfig, 3 provenance presets). `components/copilot/financial-data-provenance.tsx` (`<DataProvenanceBadge>` Fuente · Período · Alcance + tooltip expandible). `copilot-financial-dashboard.tsx`: eliminados `CURRENCY_SYMBOL`/`CURRENCY_LABEL` locales, usa `currencySymbolFor` + `CURRENCY_SHORT_LABELS` del sistema central, badge `PROVENANCE_HOME_DASHBOARD` visible. `app/copilot/page.tsx`: locale `es-AR` → `es-UY`. 23 tests terminología, 475 total, tsc limpio.
 - 2026-05-09 — **Período operativo 2026**: constante central `COPILOT_OPERATIONAL_START_DATE = "2026-01-01"` en `lib/copilot-operational-period.ts`. Reconciliación y cartera default a `period_only` 2026-01-01→hoy. Mappers Zeta (vouchers + recibos) rechazan fechas pre-2026 con `reason: "pre_operational_date"`. Reporte agrega `operationalPeriod` y `excludedHistorical`. UI: ControlBar renombrado a "Período operativo" con badge "2026", ExplainabilityPanel diferencia modo operativo vs historial. 452 tests, tsc limpio.

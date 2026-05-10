@@ -202,7 +202,28 @@ export function ClientDebtExplorer({ report }: { report: FinancialConsistencyRep
   const [page, setPage] = useState(0);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [drawerCompany, setDrawerCompany] = useState<{ id: string; name: string } | null>(null);
+  const [showWithoutDebt, setShowWithoutDebt] = useState(false);
   const reduce = useReducedMotion();
+
+  // Pre-filter: only clients with at least one positive pending balance (operational cartera).
+  // Clients with all-zero balances are hidden by default to avoid ambiguous "—" rows.
+  const baseClients = useMemo(
+    () =>
+      showWithoutDebt
+        ? report.staleClients
+        : report.staleClients.filter((c) =>
+            Object.values(c.pendingByCurrency).some((v) => (v ?? 0) > 0)
+          ),
+    [report.staleClients, showWithoutDebt]
+  );
+
+  const withoutDebtCount = useMemo(
+    () =>
+      report.staleClients.filter(
+        (c) => !Object.values(c.pendingByCurrency).some((v) => (v ?? 0) > 0)
+      ).length,
+    [report.staleClients]
+  );
 
   const handleSort = useCallback((field: SortField) => {
     setSort((prev) =>
@@ -234,12 +255,12 @@ export function ClientDebtExplorer({ report }: { report: FinancialConsistencyRep
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return report.staleClients.filter((c) => {
+    return baseClients.filter((c) => {
       const nameMatch = !term || (c.companyName ?? "").toLowerCase().includes(term);
       const chipMatch = matchesFilter(c, filterChip);
       return nameMatch && chipMatch;
     });
-  }, [report.staleClients, search, filterChip]);
+  }, [baseClients, search, filterChip]);
 
   const sorted = useMemo(
     () => sortClients(filtered, sort.field, sort.dir),
@@ -269,7 +290,7 @@ export function ClientDebtExplorer({ report }: { report: FinancialConsistencyRep
               Explorador de deuda
             </h3>
             <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-              {formatCarteraInteger(report.staleClients.length)} clientes ·
+              {formatCarteraInteger(baseClients.length)} cliente{baseClients.length === 1 ? "" : "s"} con deuda activa ·
               sin recálculos en frontend
             </p>
           </div>
@@ -310,7 +331,24 @@ export function ClientDebtExplorer({ report }: { report: FinancialConsistencyRep
             {chip.label}
           </button>
         ))}
-        {filtered.length !== report.staleClients.length && (
+        {withoutDebtCount > 0 && (
+          <>
+            <span className="mx-1 h-4 w-px self-center bg-[var(--copilot-border)]" aria-hidden />
+            <button
+              type="button"
+              onClick={() => { setShowWithoutDebt((v) => !v); setPage(0); }}
+              className={[
+                "inline-flex h-7 items-center rounded-lg border px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] transition",
+                showWithoutDebt
+                  ? "border-[var(--copilot-ink)] bg-[var(--copilot-ink)] text-white"
+                  : "border-[var(--copilot-border)] bg-white/70 text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]",
+              ].join(" ")}
+            >
+              {showWithoutDebt ? "Ocultar sin deuda" : `Sin deuda (${withoutDebtCount})`}
+            </button>
+          </>
+        )}
+        {filtered.length !== baseClients.length && (
           <span className="ml-1 text-[11px] text-[var(--copilot-ink-muted)] tabular-nums">
             {formatCarteraInteger(filtered.length)} resultado{filtered.length === 1 ? "" : "s"}
           </span>

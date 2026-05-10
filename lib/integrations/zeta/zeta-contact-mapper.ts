@@ -34,7 +34,9 @@ export type ZetaContactProtoShape = {
   name: string | null;
   document: string | null;
   email: string | null;
+  email2: string | null;
   telefono: string | null;
+  celular: string | null;
   es_cliente: boolean | null;
   es_proveedor: boolean | null;
   /** Copia JSON-serializable del contacto Zeta (auditoría / reprocesos). */
@@ -56,8 +58,12 @@ export function mapZetaContactToProto(contact: ZetaContact): ZetaContactProtoSha
   const name = nombre ?? razon ?? null;
   const document = cleanZetaString(readOwn(contact, ["Documento", "documento", "RUT", "rut"]));
   const email = mapFreeText(readOwn(contact, ["Email1", "email1", "Email", "email"]));
+  const email2 = mapFreeText(readOwn(contact, ["Email2", "email2"]));
   const telefono = cleanZetaString(
-    readOwn(contact, ["Telefono", "telefono", "Telefono1", "telefono1", "Movil", "movil"])
+    readOwn(contact, ["Telefono", "telefono", "Telefono1", "telefono1"])
+  );
+  const celular = cleanZetaString(
+    readOwn(contact, ["Celular", "celular", "Movil", "movil"])
   );
 
   return {
@@ -65,7 +71,9 @@ export function mapZetaContactToProto(contact: ZetaContact): ZetaContactProtoSha
     name,
     document,
     email: email ? email.toLowerCase() : null,
+    email2: email2 ? email2.toLowerCase() : null,
     telefono,
+    celular,
     es_cliente: ynFlag(readOwn(contact, ["EsCliente", "esCliente"])),
     es_proveedor: ynFlag(readOwn(contact, ["EsProveedor", "esProveedor"])),
     raw_payload,

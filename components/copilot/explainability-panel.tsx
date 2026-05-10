@@ -12,11 +12,12 @@
  * Sin cálculos financieros — solo lee subtotales del backend.
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   AlertTriangle,
   CalendarX,
+  ChevronDown,
   CircleHelp,
   Clock,
   FileX2,
@@ -254,15 +255,29 @@ function buildItems(report: FinancialConsistencyReport): ExplainItem[] {
 export function ExplainabilityPanel({ report }: { report: FinancialConsistencyReport }) {
   const items = useMemo(() => buildItems(report), [report]);
   const reduce = useReducedMotion();
+  const [open, setOpen] = useState(false);
 
   const hasWarnings = items.some((i) => i.status === "warn" || i.status === "critical");
+  const nonOkCount = items.filter((i) => i.status !== "ok").length;
 
   return (
     <section
       aria-label="Panel de explicabilidad"
       className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] shadow-[var(--copilot-shadow)]"
     >
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--copilot-border)] px-5 py-4">
+      <header
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen((v) => !v); }
+        }}
+        className={[
+          "flex flex-wrap items-center justify-between gap-3 px-5 py-4 cursor-pointer select-none transition-colors hover:bg-[rgba(44,40,37,0.02)]",
+          open ? "border-b border-[var(--copilot-border)] rounded-t-2xl" : "rounded-2xl",
+        ].join(" ")}
+      >
         <div className="flex items-center gap-2.5">
           <span
             className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${
@@ -286,25 +301,38 @@ export function ExplainabilityPanel({ report }: { report: FinancialConsistencyRe
             </p>
           </div>
         </div>
-        <span className="text-[11px] uppercase tracking-[0.1em] text-[var(--copilot-ink-muted)]">
-          {formatCarteraInteger(items.filter((i) => i.status !== "ok").length)} aviso
-          {items.filter((i) => i.status !== "ok").length === 1 ? "" : "s"}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] uppercase tracking-[0.1em]">
+            {nonOkCount > 0 ? (
+              <span className={hasWarnings ? "font-semibold text-amber-700" : "text-[var(--copilot-ink-muted)]"}>
+                {nonOkCount} aviso{nonOkCount === 1 ? "" : "s"}
+              </span>
+            ) : (
+              <span className="text-emerald-700">✓ sin avisos</span>
+            )}
+          </span>
+          <ChevronDown
+            className={`h-3.5 w-3.5 text-[var(--copilot-ink-muted)] transition-transform duration-200 ${open ? "rotate-0" : "-rotate-90"}`}
+            aria-hidden
+          />
+        </div>
       </header>
 
-      <motion.ul
-        className="divide-y divide-[var(--copilot-border)] p-2"
-        initial={reduce ? false : "hidden"}
-        animate="visible"
-        variants={{
-          hidden: {},
-          visible: { transition: { staggerChildren: 0.04 } },
-        }}
-      >
-        {items.map((item) => (
-          <ExplainItemRow key={item.id} item={item} reduce={!!reduce} />
-        ))}
-      </motion.ul>
+      {open && (
+        <motion.ul
+          className="divide-y divide-[var(--copilot-border)] p-2"
+          initial={reduce ? false : "hidden"}
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.04 } },
+          }}
+        >
+          {items.map((item) => (
+            <ExplainItemRow key={item.id} item={item} reduce={!!reduce} />
+          ))}
+        </motion.ul>
+      )}
     </section>
   );
 }

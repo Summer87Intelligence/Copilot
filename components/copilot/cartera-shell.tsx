@@ -88,7 +88,7 @@ export function CarteraShell() {
         lastFetchedAt={lastFetchedAt}
       />
 
-      <div className="space-y-6">
+      <div className="space-y-4">
         {initialLoading ? (
           <>
             <ExecutiveSummaryCardsSkeleton />

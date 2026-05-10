@@ -244,12 +244,14 @@ export async function syncZetaContactsIncremental(
     const docCol = firstExistingColumn(columnSet, ["document", "tax_id", "rut", "national_id"]);
     const nameCol = firstExistingColumn(columnSet, ["full_name", "name"]);
     const emailCol = firstExistingColumn(columnSet, ["email"]);
-    const phoneCol = firstExistingColumn(columnSet, ["phone", "telefono", "primary_phone", "mobile", "celular"]);
+    const email2Col = firstExistingColumn(columnSet, ["email2", "email_secundario", "secondary_email"]);
+    const phoneCol = firstExistingColumn(columnSet, ["phone", "telefono", "primary_phone"]);
+    const mobileCol = firstExistingColumn(columnSet, ["mobile", "celular", "celular_phone"]);
     const rawCol = firstExistingColumn(columnSet, ["raw_payload", "zeta_raw", "metadata"]);
     const esClienteCol = firstExistingColumn(columnSet, ["es_cliente", "is_client"]);
 
     console.info("[zeta-contacts-pipeline] column-map", {
-      wid, extCol, docCol, nameCol, emailCol, phoneCol, rawCol,
+      wid, extCol, docCol, nameCol, emailCol, email2Col, phoneCol, mobileCol, rawCol,
     });
 
     // ── Vínculos empresas ───────────────────────────────────────────────────
@@ -340,7 +342,9 @@ export async function syncZetaContactsIncremental(
         if (extCol && mapped.external_id) insertRow[extCol] = mapped.external_id;
         if (nameCol && mapped.name) insertRow[nameCol] = mapped.name;
         if (emailCol && mapped.email) insertRow[emailCol] = mapped.email;
+        if (email2Col && mapped.email2) insertRow[email2Col] = mapped.email2;
         if (phoneCol && mapped.telefono) insertRow[phoneCol] = mapped.telefono;
+        if (mobileCol && mapped.celular) insertRow[mobileCol] = mapped.celular;
         if (docCol && mapped.document) insertRow[docCol] = mapped.document;
         if (esClienteCol && mapped.es_cliente !== null) {
           insertRow[esClienteCol] = mapped.es_cliente;

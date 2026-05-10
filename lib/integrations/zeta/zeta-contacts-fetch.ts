@@ -6,6 +6,7 @@ import {
   extractZetaContacts,
   isZetaContactsResponse,
   readZetaContactsQueryOutFlags,
+  summarizeZetaContactsResponseShape,
   type ZetaContact,
 } from "@/lib/integrations/zeta/contracts/zeta-contacts.contract";
 import { buildZetaConnectionBlock } from "@/lib/integrations/zeta/zeta-connection";
@@ -200,6 +201,17 @@ export async function fetchZetaContactsTyped(
     }
 
     const warnings: string[] = [];
+
+    // Log raw shape SIEMPRE — antes del parser, para trazar divergencias sin tocar código.
+    const shapeSummary = summarizeZetaContactsResponseShape(raw);
+    console.info("[zeta-contacts-fetch] raw-shape", {
+      request_id: params.ctx.requestId,
+      tenant_id: params.ctx.tenantId,
+      http_status: res.status,
+      duration_ms: duration,
+      ...shapeSummary,
+    });
+
     if (!isZetaContactsResponse(raw)) {
       logZetaError({
         request_id: params.ctx.requestId,
@@ -208,14 +220,19 @@ export async function fetchZetaContactsTyped(
         tenant_id: params.ctx.tenantId,
         sync_run_id: params.ctx.syncRunId,
         code: "zeta_shape",
-        message: "La respuesta HTTP OK no coincide con QueryOut.Contactos.Contacto.",
+        message: `Estructura inesperada. shape_summary=${shapeSummary.shape_summary}`,
         http_status: res.status,
         duration_ms: duration,
+        extra: shapeSummary,
       });
       return {
         ok: false,
         contacts: [],
-        errors: ["Estructura inesperada: se esperaba QueryOut.Contactos.Contacto."],
+        errors: [
+          `Estructura inesperada: ${shapeSummary.shape_summary}. ` +
+          `QueryOut keys: [${shapeSummary.query_out_keys.join(",")}]. ` +
+          `Ver DIV-003 en KNOWN-DIVERGENCES.md.`
+        ],
         warnings,
         error_code: "zeta_shape",
         requestUrl: url,

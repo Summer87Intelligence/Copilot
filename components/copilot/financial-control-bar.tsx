@@ -160,6 +160,18 @@ function LiveIndicator({ status }: { status: StalenessStatus }) {
 const inputClass =
   "h-9 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 text-sm text-[var(--copilot-ink)] shadow-sm transition focus:border-[var(--copilot-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/20 disabled:opacity-50";
 
+const OPERATIONAL_YEARS = [2026, 2027, 2028, 2029, 2030] as const;
+type SelectedYear = (typeof OPERATIONAL_YEARS)[number] | "custom";
+
+function deriveSelectedYear(start: string | null, end: string | null): SelectedYear {
+  if (!start || !end) return "custom";
+  if (!/^\d{4}-01-01$/.test(start)) return "custom";
+  const year = parseInt(start.slice(0, 4), 10);
+  if (!(OPERATIONAL_YEARS as readonly number[]).includes(year)) return "custom";
+  if (!end.startsWith(`${year}-`)) return "custom";
+  return year as (typeof OPERATIONAL_YEARS)[number];
+}
+
 export function FinancialControlBar({
   mode,
   onModeChange,
@@ -183,6 +195,16 @@ export function FinancialControlBar({
 
   const tone = statusTone(syncStatus);
   const periodDisabled = mode !== "period_only";
+  const selectedYear = deriveSelectedYear(periodStart, periodEnd);
+
+  function handleYearChange(yearStr: string) {
+    const year = parseInt(yearStr, 10);
+    if (isNaN(year)) return;
+    const start = `${year}-01-01`;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const end = year === new Date().getFullYear() ? todayStr : `${year}-12-31`;
+    onPeriodChange({ start, end });
+  }
 
   return (
     <div className="sticky top-0 z-30 -mx-6 mb-6 border-b border-[var(--copilot-border)] bg-white/70 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/55">
@@ -257,27 +279,25 @@ export function FinancialControlBar({
 
         {/* Period range */}
         <div className="flex flex-wrap items-center gap-2">
-          {periodDisabled ? null : (
-            <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-emerald-700">
-              Período operativo:&nbsp;
-              <span className="font-bold">
-                {periodStart
-                  ? new Date(`${periodStart}T12:00:00Z`).toLocaleDateString("es-UY", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                    })
-                  : "—"}
-                {" → "}
-                {periodEnd
-                  ? new Date(`${periodEnd}T12:00:00Z`).toLocaleDateString("es-UY", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                    })
-                  : "hoy"}
-              </span>
-            </span>
+          {!periodDisabled && (
+            <label className="flex items-center gap-1.5 text-xs font-medium text-[var(--copilot-ink-muted)]">
+              Año
+              <select
+                value={selectedYear}
+                onChange={(e) => handleYearChange(e.target.value)}
+                className={`${inputClass} cursor-pointer`}
+                aria-label="Año operativo"
+              >
+                {OPERATIONAL_YEARS.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+                {selectedYear === "custom" && (
+                  <option value="custom">Personalizado</option>
+                )}
+              </select>
+            </label>
           )}
           <label className="flex items-center gap-1.5 text-xs font-medium text-[var(--copilot-ink-muted)]">
             Desde

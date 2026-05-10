@@ -14,12 +14,13 @@
  *  3. Checks: lista de validaciones binarias (✓/⚠) con count y descripción.
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Activity,
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
   CircleHelp,
   Clock,
   Hourglass,
@@ -68,6 +69,10 @@ export function ReconciliationCenter({
 }) {
   const checks = useMemo<ReconCheck[]>(() => buildChecks(report), [report]);
   const reduce = useReducedMotion();
+  const [open, setOpen] = useState(false);
+
+  const criticalCount = checks.filter((c) => c.status === "critical").length;
+  const warnCount = checks.filter((c) => c.status === "warn").length;
 
   return (
     <motion.section
@@ -77,34 +82,69 @@ export function ReconciliationCenter({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.22, ease: "easeOut", delay: reduce ? 0 : 0.08 }}
     >
-      <header className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--copilot-border)] px-5 py-4">
+      <header
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen((v) => !v); }
+        }}
+        className={[
+          "flex flex-wrap items-center justify-between gap-3 px-5 py-4 cursor-pointer select-none transition-colors hover:bg-[rgba(44,40,37,0.02)]",
+          open ? "border-b border-[var(--copilot-border)] rounded-t-2xl" : "rounded-2xl",
+        ].join(" ")}
+      >
         <div>
           <h3 className="text-base font-semibold tracking-tight text-[var(--copilot-ink)]">
             Centro de reconciliación
           </h3>
           <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-            Salud del pipeline financiero · ratios derivados de subtotales del
-            backend.
+            Salud del pipeline financiero · ratios derivados de subtotales del backend.
           </p>
         </div>
-        <p className="text-[11px] uppercase tracking-[0.08em] text-[var(--copilot-ink-muted)]">
-          generado {formatGeneratedAt(generatedAt ?? report.generatedAt)}
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-[11px] uppercase tracking-[0.08em]">
+            {criticalCount > 0 ? (
+              <span className="font-semibold text-rose-700">
+                {criticalCount} crítico{criticalCount === 1 ? "" : "s"}
+              </span>
+            ) : warnCount > 0 ? (
+              <span className="text-amber-700">{warnCount} warn</span>
+            ) : (
+              <span className="text-[var(--copilot-ink-muted)]">
+                generado {formatGeneratedAt(generatedAt ?? report.generatedAt)}
+              </span>
+            )}
+          </p>
+          <ChevronDown
+            className={`h-3.5 w-3.5 text-[var(--copilot-ink-muted)] transition-transform duration-200 ${open ? "rotate-0" : "-rotate-90"}`}
+            aria-hidden
+          />
+        </div>
       </header>
 
-      <div className="grid gap-px bg-[var(--copilot-border)]/70 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-        <div className="space-y-5 bg-[var(--copilot-card)] p-5">
-          <MetricsTiles report={report} />
-          <SyncHealth syncStates={report.syncStates} />
-        </div>
-        <div className="space-y-3 bg-[var(--copilot-card)] p-5">
-          <SubsectionHeader
-            title="Checks"
-            subtitle="Validaciones determinísticas sobre el reporte actual."
-          />
-          <ChecksList checks={checks} />
-        </div>
-      </div>
+      {open && (
+        <motion.div
+          initial={reduce ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
+        >
+          <div className="grid gap-px bg-[var(--copilot-border)]/70 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+            <div className="space-y-5 bg-[var(--copilot-card)] p-5">
+              <MetricsTiles report={report} />
+              <SyncHealth syncStates={report.syncStates} />
+            </div>
+            <div className="space-y-3 bg-[var(--copilot-card)] p-5">
+              <SubsectionHeader
+                title="Checks"
+                subtitle="Validaciones determinísticas sobre el reporte actual."
+              />
+              <ChecksList checks={checks} />
+            </div>
+          </div>
+        </motion.div>
+      )}
     </motion.section>
   );
 }

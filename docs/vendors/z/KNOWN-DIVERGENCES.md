@@ -189,6 +189,120 @@ Piloto enero 2026 → response `QueryComprobantesOut.Response[]` se reconoce com
 
 ---
 
+## DIV-003 · RESTContactosV3Query — response shape
+
+**Fecha observada:** 2026-05-09
+**Endpoint:** `RESTContactosV3Query`
+**Estado:** CONFIRMADO — parser adaptado con retrocompat y tests
+
+### Shape asumido originalmente
+
+```json
+{
+  "QueryOut": {
+    "Contactos": {
+      "Contacto": [ { "Codigo": "C-100", "Nombre": "...", ... } ]
+    }
+  }
+}
+```
+
+### Shape real (Postman oficial + tenant real)
+
+```json
+{
+  "QueryOut": {
+    "Succeed": true,
+    "IsLastPage": true,
+    "Response": [
+      { "Codigo": "C-100", "Nombre": "...", "RazonSocial": "...", "Celular": "...", ... }
+    ]
+  }
+}
+```
+
+Wrapper exterior: `QueryOut` (igual). Diferencia: el array de contactos viene en `QueryOut.Response[]`, no en `QueryOut.Contactos.Contacto[]`.
+
+### Campos confirmados en filas (Response[])
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| Codigo | string | Código único del contacto |
+| Nombre | string | Nombre personal |
+| RazonSocial | string | Razón social / empresa |
+| RUT | string | Documento de identidad |
+| Documento | string | Documento (idem RUT) |
+| Email1 | string | Email primario |
+| Email2 | string | Email secundario |
+| Telefono | string | Teléfono fijo |
+| Celular | string | Teléfono celular |
+| EsCliente | "S"/"N" | Flag cliente |
+| EsProveedor | "S"/"N" | Flag proveedor |
+
+### Impacto del mismatch
+
+- El fetch original asumía `QueryOut.Contactos.Contacto[]`; con el shape real devolvía `[]` (extracción vacía).
+- El pipeline de contactos podría no haber insertado ningún contacto en un tenant real antes de este fix.
+
+### Parser aplicado
+
+Archivo: `lib/integrations/zeta/contracts/zeta-contacts.contract.ts`
+
+Prioridad de extracción implementada:
+1. `QueryOut.Response[]` — Postman oficial + tenant real **(primario)**
+2. `QueryOut.Contactos[]` — array directo (variante defensiva)
+3. `QueryOut.Contactos.Contacto[]` — shape asumido original (retrocompat)
+4. `QueryOut.Contactos.Contacto` (objeto único) — normalizado a array de 1
+
+Funciones exportadas: `isZetaContactsResponse`, `extractZetaContacts`, `readZetaContactsQueryOutFlags`, `summarizeZetaContactsResponseShape`.
+
+### Compatibilidad mantenida
+
+| Shape | Estado |
+|---|---|
+| `QueryOut.Response[]` (Postman + tenant real) | Soportado (primario) |
+| `QueryOut.Contactos[]` (array directo) | Soportado (defensivo) |
+| `QueryOut.Contactos.Contacto[]` (shape original asumido) | Soportado (retrocompat) |
+| `QueryOut.Contactos.Contacto` (objeto único) | Soportado (normalizado) |
+| `QueryOut.Response[]` vacío | Válido (0 contactos) |
+
+### Resultado post-fix
+
+- 8 casos de test en `zeta-contacts.contract.test.ts` cubren todos los shapes.
+- `tsc --noEmit`: 0 errores.
+- Pipeline `syncZetaContactsIncremental` usa el contrato para paginar y upsert.
+
+---
+
+## NOTE-001 · Borradores CFE en exports Zeta (no es divergencia de API)
+
+**Fecha observada:** 2026-05-07
+**Endpoint:** No aplica — aplica a exports Excel `VentasExport.xlsx` / reconciliadores
+**Estado:** DOCUMENTADO — filtro implementado en reconciliadores
+
+### Descripción
+
+Los exports Excel de Zeta (ej. `RecibosCobranzaWWExport-*.xlsx`, `VentasExport-*.xlsx`) incluyen filas con `Numero = 0` que corresponden a **borradores CFE no emitidos** (campo `Emitida = "N"`, `Estado DGI = ""`). La API `RESTComprobantesClienteV1Query` y otros endpoints de sync **no devuelven** estos borradores, por lo que la reconciliación Excel↔DB arrojaría falsos positivos si no se filtran.
+
+### Regla de filtro
+
+```
+Excluir fila si: Numero <= 0 OR Emitida = "N"
+```
+
+Aplica en todo reconciliador que compara datos Zeta (API/DB) contra exports Excel del tenant.
+
+### Caso concreto validado
+
+- `Prestis S.A.S.`, 04-mar-2026, UYU 9.760, `Numero=0`, `Emitida="N"`, `Estado DGI=""` → borrador CFE.
+- Excluir del universo "Excel emitido" reduce el universo de facturas de 282 → 281 (o similar según período).
+
+### Detalle
+
+Documentado originalmente en `temp-audits/audit-prestis-numero-0.md` §6.3.
+
+---
+
 ## Plantilla para nuevas divergencias
 
 Copiar y completar al detectar una nueva divergencia.
