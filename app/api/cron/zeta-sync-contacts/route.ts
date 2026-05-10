@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
   const { data: workspaces, error: wsErr } = await supabase
     .from("companies")
     .select("id")
-    .eq("is_active", true)
+    .eq("status", "active")
     .limit(20);
 
   if (wsErr) {
