@@ -128,8 +128,10 @@ export function CopilotClientAccountStatement({
   const block = currency === "USD" ? statement.usd : statement.uyu;
   const invoiceBlock = currency === "USD" ? byInvoice.usd : byInvoice.uyu;
 
-  // Saldo final mostrado en header. Sin importar la vista, se pinta el cierre
-  // de cuenta corriente: es el dato comparable contra el "SALDO" del PDF Zeta.
+  // Saldo contable acumulado mostrado en header. Sin importar la vista, se
+  // pinta el cierre de cuenta corriente: es el dato comparable contra el
+  // "SALDO" del PDF Zeta. NO es la deuda operativa actual (esa la calcula la
+  // vista "Por factura" usando `balance_amount` informado por Zeta).
   const headerFinalBalance = block.summary.finalBalance;
 
   // Modo de presentación del header:
@@ -238,7 +240,7 @@ export function CopilotClientAccountStatement({
  *   Cliente: [código] [razón social]
  *   Período: Estado actual acumulado | Estado histórico al DD/MM/YYYY | Mes/Año
  *   Moneda:  Pesos / Dólares
- *   Saldo final: $ 12.300 / U$S 732,00 (al DD/MM/YYYY si hay corte)
+ *   Saldo contable acumulado: $ 12.300 / U$S 732,00 (al DD/MM/YYYY si hay corte)
  *
  * El badge desambigua de un vistazo si el saldo se está midiendo "ahora" o
  * "a fecha de corte", evitando la confusión histórica con el PDF Zeta.
@@ -281,7 +283,9 @@ function ReportHeader({
         <dd className="text-[var(--copilot-ink)]">{presentationLabel}</dd>
         <dt className="font-semibold text-[var(--copilot-ink-muted)]">Moneda</dt>
         <dd className="text-[var(--copilot-ink)]">{CURRENCY_LABEL[currency]}</dd>
-        <dt className="font-semibold text-[var(--copilot-ink-muted)]">Saldo final</dt>
+        <dt className="font-semibold text-[var(--copilot-ink-muted)]">
+          Saldo contable acumulado
+        </dt>
         <dd className="font-semibold tabular-nums text-[var(--copilot-accent)]">
           {balanceText}
           {periodEndLabel ? (
@@ -319,20 +323,53 @@ function ModeBadge({ cutoffMode }: { cutoffMode: "current" | "cutoff" }) {
 }
 
 /**
- * Microcopy contextual: explica EN UNA LÍNEA cómo se calcula la vista activa
- * (Cuenta corriente vs Por factura) y qué incluye según el período.
+ * Badge discreto que clasifica la naturaleza de la vista activa:
  *
- * Reglas:
- *  - Cuenta corriente: "Lectura global: suma todo lo facturado y todo lo cobrado…"
- *  - Por factura:      "Lectura por factura: usa el saldo pendiente informado por Zeta…"
- *  - Cola según contexto:
- *    - corte histórico (`cutoffMode === "cutoff"`):
- *      "Calculado únicamente con movimientos entre DD/MM/YYYY y DD/MM/YYYY."
- *      (o "hasta DD/MM/YYYY" si no hay `from`)
- *    - estado actual sin filtro:
- *      "Incluye todos los movimientos sincronizados del cliente."
- *    - filtro mes/año (sin `to` claro):
- *      "Incluye únicamente los movimientos del período seleccionado."
+ *  - "Lectura contable histórica" (slate) → vista Cuenta corriente.
+ *    Calcula debe/haber con los movimientos sincronizados; puede diferir de
+ *    la deuda operativa real si Zeta no expone cobranzas/notas/imputaciones
+ *    completas en esta lectura.
+ *  - "Deuda operativa actual" (emerald soft) → vista Por factura.
+ *    Usa `proto_invoices.balance_amount` como fuente autoritativa de Zeta;
+ *    es la lectura recomendada para analizar deuda real al día.
+ *
+ * Paleta sobria y consistente con el resto del componente. NO indica
+ * bueno/malo, sólo desambigua de un vistazo qué representa cada lectura.
+ */
+function ViewModeBadge({ view }: { view: ViewMode }) {
+  const isCurrent = view === "current_account";
+  const cls = isCurrent
+    ? "border-slate-200 bg-slate-50 text-slate-700"
+    : "border-emerald-200 bg-emerald-50 text-emerald-900";
+  const label = isCurrent ? "Lectura contable histórica" : "Deuda operativa actual";
+  return (
+    <span
+      aria-label={`Naturaleza de la vista: ${label}`}
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${cls}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+/**
+ * Microcopy contextual: clarifica de un vistazo qué representa cada vista y
+ * cómo afecta el período activo. Diferencia explícitamente:
+ *
+ *  - Cuenta corriente → lectura contable histórica/acumulada (debe/haber).
+ *    Puede diferir de la deuda real por factura si Zeta no expone
+ *    cobranzas, notas de crédito o imputaciones completas en esta lectura.
+ *  - Por factura → deuda operativa actual según `balance_amount` Zeta.
+ *    Es la lectura recomendada para analizar deuda real actual.
+ *
+ * Cola según contexto:
+ *  - corte histórico (`cutoffMode === "cutoff"`):
+ *    "Calculado únicamente con movimientos entre DD/MM/YYYY y DD/MM/YYYY."
+ *    (o "hasta DD/MM/YYYY" si no hay `from`)
+ *  - estado actual sin filtro:
+ *    "Incluye todos los movimientos sincronizados del cliente."
+ *  - filtro mes/año (sin `to` claro):
+ *    "Incluye únicamente los movimientos del período seleccionado."
  */
 function ContextHint({
   view,
@@ -347,10 +384,10 @@ function ContextHint({
   cutoffToYmd?: string;
   isFullHistory: boolean;
 }) {
-  const head =
+  const description =
     view === "current_account"
-      ? "Lectura global: suma todo lo facturado y todo lo cobrado del cliente en el período seleccionado."
-      : "Lectura por factura: usa el saldo pendiente informado por Zeta para cada factura.";
+      ? "Calcula debe/haber con los movimientos sincronizados disponibles. Puede diferir del saldo pendiente por factura si Zeta no expone cobranzas, notas de crédito o imputaciones completas en esta lectura."
+      : "Usa el saldo pendiente informado por Zeta en cada factura. Esta es la lectura recomendada para analizar deuda real actual.";
   const tail = (() => {
     if (cutoffMode === "cutoff") {
       if (cutoffFromYmd && cutoffToYmd) {
@@ -367,13 +404,16 @@ function ContextHint({
       : "Incluye únicamente los movimientos del período seleccionado.";
   })();
   return (
-    <p
+    <div
       role="note"
-      className="rounded-md border border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-[11px] leading-snug text-[var(--copilot-ink-muted)]"
+      className="space-y-1 rounded-md border border-[var(--copilot-border)] bg-white px-2.5 py-1.5"
     >
-      <span className="font-semibold text-[var(--copilot-ink)]">{head}</span>{" "}
-      {tail}
-    </p>
+      <ViewModeBadge view={view} />
+      <p className="text-[11px] leading-snug text-[var(--copilot-ink-muted)]">
+        <span className="text-[var(--copilot-ink)]">{description}</span>{" "}
+        <span className="italic">{tail}</span>
+      </p>
+    </div>
   );
 }
 
@@ -695,10 +735,11 @@ function CurrentAccountView({
 }
 
 /**
- * Pie de reporte (parecido al PDF):
- *   SALDO U$S al 17/04/2026 ........ 732,00
- *   SALDO $ ........................ 12.300
- * Si no se conoce el cierre, se omite el "al ...".
+ * Pie de reporte (parecido al PDF), exclusivo de la vista "Cuenta corriente":
+ *   SALDO CONTABLE U$S al 17/04/2026 ........ 732,00
+ *   SALDO CONTABLE $ ........................ 12.300
+ * Si no se conoce el cierre, se omite el "al ...". El "CONTABLE" refuerza que
+ * el cierre es la lectura debe-haber acumulada y NO la deuda operativa actual.
  */
 function ReportFooter({
   block,
@@ -713,7 +754,7 @@ function ReportFooter({
   return (
     <div className="flex flex-wrap items-baseline justify-end gap-2 rounded-md border border-dashed border-[var(--copilot-border)] bg-white px-3 py-2 text-[11px]">
       <span className="font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-        SALDO {sym}
+        SALDO CONTABLE {sym}
         {periodEndLabel ? (
           <span className="ml-1 font-normal normal-case text-[var(--copilot-ink-muted)]">
             al {periodEndLabel}
@@ -732,7 +773,7 @@ function Summary({ block }: { block: AccountStatementByCurrency }) {
     { label: "Total debe", value: formatStatementAmount(summary.totalDebit, currency) },
     { label: "Total haber", value: formatStatementAmount(summary.totalCredit, currency) },
     {
-      label: "Saldo final",
+      label: "Saldo contable acumulado",
       value: formatStatementAmount(summary.finalBalance, currency),
       tone: "accent",
     },
@@ -761,7 +802,7 @@ function Summary({ block }: { block: AccountStatementByCurrency }) {
         </div>
       ))}
       <p className="sm:col-span-3 text-[11px] italic text-[var(--copilot-ink-muted)]">
-        Saldo global = Total debe − Total haber.
+        Saldo contable acumulado = Total debe − Total haber.
       </p>
       {!summary.hasCreditNoteSupport ? (
         <p className="sm:col-span-3 rounded-lg border border-dashed border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-[11px] italic text-[var(--copilot-ink-muted)]">
