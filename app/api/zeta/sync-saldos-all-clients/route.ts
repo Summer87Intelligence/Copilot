@@ -22,10 +22,16 @@ import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { runZetaSaldosPendientesPipeline } from "@/lib/integrations/zeta/zeta-saldos-pipeline";
 
+// `max_clients` define cuántos clientes activos con `Codigo` se sincronizan en
+// una sola invocación. Para tenants con muchos clientes (Summer87 = 183 al
+// 2026-05-11), el techo previo de 50 dejaba la mayoría sin sync y producía
+// `balance_amount=0` en facturas con saldo pendiente real. Subimos el techo a
+// 500 y el default a 100. Los clientes se procesan secuencialmente respetando
+// `client_delay_ms` para no romper el rate limit de Zeta.
 const bodySchema = z
   .object({
     mode: z.enum(["bootstrap", "incremental"]).default("incremental"),
-    max_clients: z.number().int().min(1).max(50).default(20),
+    max_clients: z.number().int().min(1).max(500).default(100),
     max_pages_per_client: z.number().int().min(1).max(20).default(5),
     page_delay_ms: z.number().int().min(100).max(2000).default(400),
     client_delay_ms: z.number().int().min(200).max(5000).default(600),
@@ -61,15 +67,19 @@ export async function POST(request: NextRequest) {
   const batchId = randomUUID();
   const started = Date.now();
 
-  // 1. Cargar todos los clientes con código Zeta en este workspace
+  // 1. Cargar todos los clientes con código Zeta en este workspace.
   // La columna en proto_companies es "Codigo" (case-sensitive) — no "external_id".
+  // Orden determinístico por `id` para reproducibilidad y para que dos corridas
+  // sucesivas seleccionen el mismo subconjunto cuando `max_clients` esté por
+  // debajo del universo total (idéntico criterio que el cron).
   const { data: companies, error: compErr } = await supabase
     .from("proto_companies")
     .select("id, Codigo, name")
     .eq("workspace_company_id", wid)
     .eq("is_active", true)
     .not("Codigo", "is", null)
-    .limit(body.max_clients ?? 20);
+    .order("id", { ascending: true })
+    .limit(body.max_clients ?? 100);
 
   if (compErr) {
     return NextResponse.json(

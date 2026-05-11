@@ -29,8 +29,27 @@ import { ZETA_PIPELINE_NAMES } from "@/lib/data/zeta-pipeline-run-types";
 
 const PIPELINE = ZETA_PIPELINE_NAMES.SALDOS;
 
-// Rate limiting conservador (respeta límites de Zeta)
-const MAX_CLIENTS_PER_WORKSPACE = 10;
+// Rate limiting conservador (respeta límites de Zeta).
+//
+// Política de cobertura (causa raíz de balance_amount=0 en facturas USD de mayo
+// 2026): el cron debe llegar a TODOS los clientes activos con `Codigo` del
+// workspace, no a un subconjunto no determinístico. El sync de saldos solo
+// actualiza `proto_invoices.balance_amount` para los clientes que efectivamente
+// procesa; el mapper de vouchers escribe balance=0 por diseño y la única
+// fuente de verdad para saldos es `RESTFacturaClienteV4QuerySaldosPendientes`.
+//
+// El default (200) cubre tenants tipo Summer87 (183 clientes activos al
+// 2026-05-11) con margen. Para tenants más grandes, configurar
+// `ZETA_SALDOS_CRON_MAX_CLIENTS_PER_WORKSPACE` (entero positivo) sin tocar
+// código. La selección es determinística (`.order("id")`) para que sea
+// reproducible y testeable.
+const DEFAULT_MAX_CLIENTS_PER_WORKSPACE = 200;
+const MAX_CLIENTS_PER_WORKSPACE = (() => {
+  const raw = process.env.ZETA_SALDOS_CRON_MAX_CLIENTS_PER_WORKSPACE;
+  if (!raw) return DEFAULT_MAX_CLIENTS_PER_WORKSPACE;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_MAX_CLIENTS_PER_WORKSPACE;
+})();
 const PAGE_DELAY_MS = 400;
 const CLIENT_DELAY_MS = 600;
 const MAX_PAGES_PER_CLIENT = 5;
@@ -142,12 +161,18 @@ export async function GET(request: NextRequest) {
 
   // ── Procesar cada workspace ───────────────────────────────────────────────
   for (const workspaceId of workspaceIds) {
+    // Orden determinístico por `id` para que la selección sea reproducible:
+    // sin `.order()`, PostgREST devuelve filas en orden indefinido y el
+    // antiguo cap de 10 dejaba a la mayoría de clientes fuera de la sync de
+    // saldos (causa raíz balance=0 en clientes Codigo altos, p.ej. Vilcabamba
+    // Codigo=137, Weik House Codigo=192, Suprasur Codigo=129…).
     const { data: companies, error: compErr } = await supabase
       .from("proto_companies")
       .select("id, Codigo")
       .eq("workspace_company_id", workspaceId)
       .eq("is_active", true)
       .not("Codigo", "is", null)
+      .order("id", { ascending: true })
       .limit(MAX_CLIENTS_PER_WORKSPACE);
 
     if (compErr) {
@@ -159,6 +184,28 @@ export async function GET(request: NextRequest) {
     const eligible = ((companies ?? []) as { id: string; Codigo: string | null }[]).filter(
       (c) => c.Codigo?.trim()
     );
+
+    // Detección de cobertura insuficiente: si llenamos el batch hasta el
+    // tope, podría haber clientes fuera del sync que terminen con
+    // balance_amount=0 incorrectamente. Sirve para alertar antes de un bug
+    // de saldos como el de mayo 2026 (USD), no para bloquear la corrida.
+    if (eligible.length >= MAX_CLIENTS_PER_WORKSPACE) {
+      const { count: totalEligible } = await supabase
+        .from("proto_companies")
+        .select("id", { count: "exact", head: true })
+        .eq("workspace_company_id", workspaceId)
+        .eq("is_active", true)
+        .not("Codigo", "is", null);
+      if ((totalEligible ?? 0) > MAX_CLIENTS_PER_WORKSPACE) {
+        log("clients_cap_reached", {
+          workspace_id: workspaceId,
+          processed_clients: eligible.length,
+          total_eligible_clients: totalEligible,
+          cap: MAX_CLIENTS_PER_WORKSPACE,
+          env_hint: "ZETA_SALDOS_CRON_MAX_CLIENTS_PER_WORKSPACE",
+        });
+      }
+    }
 
     let wsUpserted = 0;
     let wsErrors = 0;

@@ -57,10 +57,76 @@ export function CopilotFinancialDashboard({
       <FinancialPriorityAlerts alerts={priorityModel.alerts} />
       <FinancialActionPriorities priorities={priorityModel.actionPriorities} />
       <FinancialRiskSummary risks={priorityModel.risks} />
+      <CashConversionSection currencies={metrics.currencies} />
       <KpiSection currencies={metrics.currencies} />
       <AgingSection currencies={metrics.currencies} />
       <DetailedDebtorsSection currencies={metrics.currencies} />
     </div>
+  );
+}
+
+/**
+ * Cash conversion — frase ejecutiva por moneda.
+ *
+ * Lee directamente las mismas métricas que `KpiSection` (sin recalcular):
+ *  - `totalInvoiced`  → "Emitido"
+ *  - `totalCollected` → "Cobrado"
+ *  - `totalPending`   → "Pendiente de cobro"
+ *
+ * Microcopy explícita arriba del bloque para que la lectura sea autosuficiente
+ * sin tooltips. Cero mezcla de monedas.
+ */
+function CashConversionSection({ currencies }: { currencies: CurrencyMetrics[] }) {
+  return (
+    <section className="space-y-3" aria-label="Cash conversion ejecutivo">
+      <SectionHeader
+        title="Conversión de caja"
+        subtitle="Lectura ejecutiva por moneda: emitido, cobrado y pendiente de cobro."
+      />
+      <div className="grid gap-3 lg:grid-cols-2">
+        {currencies.map((currency) => (
+          <CashConversionCard
+            key={currency.currencyCode}
+            metrics={currency}
+            symbol={currencySymbolFor(currency.currencyCode) ?? currency.currencyCode}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CashConversionCard({ metrics, symbol }: { metrics: CurrencyMetrics; symbol: string }) {
+  const label = CURRENCY_SHORT_LABELS[metrics.currencyCode] ?? metrics.currencyCode;
+  return (
+    <article
+      aria-label={`Conversión de caja · ${label}`}
+      className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm"
+    >
+      <header className="flex items-baseline justify-between gap-2">
+        <h5 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+          {label} · {metrics.currencyCode}
+        </h5>
+        <span className="text-[10px] text-[var(--copilot-ink-muted)]">
+          {metrics.invoiceCount} factura(s) · {metrics.debtorClientsCount} con deuda
+        </span>
+      </header>
+      <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
+        Emitiste{" "}
+        <span className="font-semibold tabular-nums">
+          {money(symbol, metrics.totalInvoiced)}
+        </span>
+        , cobraste{" "}
+        <span className="font-semibold tabular-nums text-emerald-800">
+          {money(symbol, metrics.totalCollected)}
+        </span>{" "}
+        y queda pendiente{" "}
+        <span className="font-semibold tabular-nums text-amber-900">
+          {money(symbol, metrics.totalPending)}
+        </span>
+        .
+      </p>
+    </article>
   );
 }
 
@@ -69,7 +135,7 @@ function KpiSection({ currencies }: { currencies: CurrencyMetrics[] }) {
     <section className="space-y-3" aria-label="KPIs financieros">
       <SectionHeader
         title="KPIs financieros"
-        subtitle="Soporte cuantitativo: facturación, cobranza, pendiente y efectividad."
+        subtitle="Soporte cuantitativo: actividad emitida, cobranza y deuda abierta."
       />
       <div className="space-y-3">
         {currencies.map((currency) => (
@@ -82,10 +148,34 @@ function KpiSection({ currencies }: { currencies: CurrencyMetrics[] }) {
               metrics={currency}
               symbol={currencySymbolFor(currency.currencyCode) ?? currency.currencyCode}
             />
+            <KpiGlossary />
           </article>
         ))}
       </div>
     </section>
+  );
+}
+
+function KpiGlossary() {
+  return (
+    <dl className="grid gap-1 border-t border-[var(--copilot-border)] pt-2 text-[10px] leading-relaxed text-[var(--copilot-ink-muted)] sm:grid-cols-2">
+      <div>
+        <dt className="inline font-semibold text-[var(--copilot-ink)]">Emitido</dt>
+        <dd className="inline"> = total facturado en el período.</dd>
+      </div>
+      <div>
+        <dt className="inline font-semibold text-[var(--copilot-ink)]">Pendiente de cobro</dt>
+        <dd className="inline"> = saldo abierto informado por Zeta.</dd>
+      </div>
+      <div>
+        <dt className="inline font-semibold text-[var(--copilot-ink)]">Cobrado</dt>
+        <dd className="inline"> = emitido − pendiente de cobro.</dd>
+      </div>
+      <div>
+        <dt className="inline font-semibold text-[var(--copilot-ink)]">Cobranza efectiva</dt>
+        <dd className="inline"> = cobrado / emitido.</dd>
+      </div>
+    </dl>
   );
 }
 
@@ -119,11 +209,15 @@ function CurrencyHeader({ metrics }: { metrics: CurrencyMetrics }) {
 
 function KpiStrip({ metrics, symbol }: { metrics: CurrencyMetrics; symbol: string }) {
   const items = [
-    { label: "Facturado", value: money(symbol, metrics.totalInvoiced), tone: "neutral" },
+    { label: "Emitido", value: money(symbol, metrics.totalInvoiced), tone: "neutral" },
     { label: "Cobrado", value: money(symbol, metrics.totalCollected), tone: "paid" },
-    { label: "Pendiente", value: money(symbol, metrics.totalPending), tone: "pending" },
     {
-      label: "Efectividad",
+      label: "Pendiente de cobro",
+      value: money(symbol, metrics.totalPending),
+      tone: "pending",
+    },
+    {
+      label: "Cobranza efectiva",
       value: `${metrics.collectionEffectiveness.toFixed(2)}%`,
       tone: "neutral",
     },
@@ -264,10 +358,10 @@ function TopDebtorsTable({ metrics, symbol }: { metrics: CurrencyMetrics; symbol
             <thead className="bg-[rgba(44,40,37,0.035)] text-[var(--copilot-ink-muted)]">
               <tr>
                 <th className="px-2.5 py-1.5 font-semibold">Cliente</th>
-                <th className="px-2.5 py-1.5 text-right font-semibold">Pendiente</th>
+                <th className="px-2.5 py-1.5 text-right font-semibold">Pendiente de cobro</th>
                 <th className="px-2.5 py-1.5 text-right font-semibold">Fact.</th>
                 <th className="px-2.5 py-1.5 text-right font-semibold">Aging</th>
-                <th className="px-2.5 py-1.5 text-right font-semibold">Efect.</th>
+                <th className="px-2.5 py-1.5 text-right font-semibold">Cobranza ef.</th>
               </tr>
             </thead>
             <tbody>
