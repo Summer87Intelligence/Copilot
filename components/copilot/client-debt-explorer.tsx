@@ -15,6 +15,7 @@
 import {
   useCallback,
   useDeferredValue,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -34,10 +35,9 @@ import { CollectionActionDrawer } from "@/components/copilot/collection-action-d
 import {
   COLLECTION_STATUS_LABELS,
   COLLECTION_ACTION_TYPE_LABELS,
-  COLLECTION_PRIORITY_LABELS,
   type CollectionAction,
+  COLLECTION_API,
 } from "@/lib/copilot-collection-types";
-import { useCollectionActions } from "@/hooks/use-collection-actions";
 
 import {
   formatCarteraMoney,
@@ -51,6 +51,7 @@ import type {
   ReconciliationCurrencyCode,
   StalenessStatus,
 } from "@/lib/copilot-financial-reconciliation";
+import type { CurrencyFilter } from "@/components/copilot/financial-control-bar";
 
 // ---------------------------------------------------------------------------
 // Tipos internos
@@ -68,6 +69,11 @@ type SortDir = "asc" | "desc";
 type FilterChip = "all" | "stale" | "0_30" | "31_60" | "61_90" | "90_plus" | "no_aging";
 type PageSize = 25 | 50 | 100;
 type RiskLevel = "high" | "medium" | "low" | "ok" | "none";
+type CollectionActionsByCompany = Map<string, CollectionAction[]>;
+type CollectionActionsCacheEntry = {
+  actions: CollectionAction[];
+  expiresAt: number;
+};
 
 // ---------------------------------------------------------------------------
 // Config visual
@@ -112,6 +118,8 @@ const FILTER_CHIPS: Array<{ id: FilterChip; label: string }> = [
   { id: "no_aging", label: "Sin aging" },
 ];
 
+const COLLECTION_ACTIONS_CACHE_TTL_MS = 60_000;
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -133,10 +141,6 @@ const RISK_SORT_ORDER: Record<RiskLevel, number> = {
 const AGING_SORT_ORDER: Record<AgingRange, number> = {
   "90_plus": 0, "61_90": 1, "31_60": 2, "0_30": 3,
 };
-
-function pendingTotal(client: ClientStaleness): number {
-  return (client.pendingByCurrency.UYU ?? 0) + (client.pendingByCurrency.USD ?? 0);
-}
 
 function matchesFilter(client: ClientStaleness, chip: FilterChip): boolean {
   if (chip === "all") return true;
@@ -186,11 +190,30 @@ function sortClients(
   });
 }
 
+function collectionActionsCacheKey(
+  companyId: string,
+  periodStart: string | null,
+  periodEnd: string | null
+): string {
+  return `${companyId}|${periodStart ?? ""}|${periodEnd ?? ""}`;
+}
+
+function isLikelyMobile(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(max-width: 767px)").matches;
+}
+
 // ---------------------------------------------------------------------------
 // Componente principal
 // ---------------------------------------------------------------------------
 
-export function ClientDebtExplorer({ report }: { report: FinancialConsistencyReport }) {
+export function ClientDebtExplorer({
+  report,
+  selectedCurrency = "all",
+}: {
+  report: FinancialConsistencyReport;
+  selectedCurrency?: CurrencyFilter;
+}) {
   const [rawSearch, setRawSearch] = useState("");
   const search = useDeferredValue(rawSearch);
   const [filterChip, setFilterChip] = useState<FilterChip>("all");
@@ -203,27 +226,67 @@ export function ClientDebtExplorer({ report }: { report: FinancialConsistencyRep
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [drawerCompany, setDrawerCompany] = useState<{ id: string; name: string } | null>(null);
   const [showWithoutDebt, setShowWithoutDebt] = useState(false);
+  const [actionsByCompany, setActionsByCompany] = useState<CollectionActionsByCompany>(
+    () => new Map()
+  );
+  const [loadingActionIds, setLoadingActionIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const loadingActionIdsRef = useRef<Set<string>>(new Set());
+  const actionsCacheRef = useRef<Map<string, CollectionActionsCacheEntry>>(new Map());
+  const actionsAbortControllersRef = useRef<Set<AbortController>>(new Set());
+  const actionsStatsRef = useRef({ completed: 0, aborted: 0 });
   const reduce = useReducedMotion();
+
+  const currencyFilter: ReconciliationCurrencyCode | null =
+    selectedCurrency === "USD" || selectedCurrency === "UYU"
+      ? selectedCurrency
+      : null;
+
+  // Sort efectivo: si la columna de saldo está oculta porque hay filtro de
+  // moneda, derivamos un sort alternativo (no se persiste, sólo afecta la
+  // vista actual). Cuando el filtro vuelve a "all", el sort original se
+  // restaura automáticamente.
+  const effectiveSort = useMemo<{ field: SortField; dir: SortDir }>(() => {
+    if (currencyFilter) {
+      const opposite: SortField =
+        currencyFilter === "USD" ? "pendingUYU" : "pendingUSD";
+      if (sort.field === opposite) {
+        return { field: "risk", dir: "asc" };
+      }
+    }
+    return sort;
+  }, [sort, currencyFilter]);
 
   // Pre-filter: only clients with at least one positive pending balance (operational cartera).
   // Clients with all-zero balances are hidden by default to avoid ambiguous "—" rows.
-  const baseClients = useMemo(
-    () =>
-      showWithoutDebt
-        ? report.staleClients
-        : report.staleClients.filter((c) =>
-            Object.values(c.pendingByCurrency).some((v) => (v ?? 0) > 0)
-          ),
-    [report.staleClients, showWithoutDebt]
-  );
+  // Cuando hay filtro de moneda, se exige saldo > 0 EN ESA moneda específica.
+  const baseClients = useMemo(() => {
+    if (currencyFilter) {
+      return report.staleClients.filter((c) => {
+        const balance = c.pendingByCurrency[currencyFilter] ?? 0;
+        if (showWithoutDebt) {
+          // En moneda específica, "sin deuda" ya no aplica como concepto útil
+          // (filtraríamos también a quienes tienen saldo en la otra moneda).
+          // Mantenemos el flag para no romper el toggle, pero la moneda manda.
+          return balance > 0;
+        }
+        return balance > 0;
+      });
+    }
+    return showWithoutDebt
+      ? report.staleClients
+      : report.staleClients.filter((c) =>
+          Object.values(c.pendingByCurrency).some((v) => (v ?? 0) > 0)
+        );
+  }, [report.staleClients, showWithoutDebt, currencyFilter]);
 
-  const withoutDebtCount = useMemo(
-    () =>
-      report.staleClients.filter(
-        (c) => !Object.values(c.pendingByCurrency).some((v) => (v ?? 0) > 0)
-      ).length,
-    [report.staleClients]
-  );
+  const withoutDebtCount = useMemo(() => {
+    if (currencyFilter) return 0;
+    return report.staleClients.filter(
+      (c) => !Object.values(c.pendingByCurrency).some((v) => (v ?? 0) > 0)
+    ).length;
+  }, [report.staleClients, currencyFilter]);
 
   const handleSort = useCallback((field: SortField) => {
     setSort((prev) =>
@@ -263,8 +326,8 @@ export function ClientDebtExplorer({ report }: { report: FinancialConsistencyRep
   }, [baseClients, search, filterChip]);
 
   const sorted = useMemo(
-    () => sortClients(filtered, sort.field, sort.dir),
-    [filtered, sort]
+    () => sortClients(filtered, effectiveSort.field, effectiveSort.dir),
+    [filtered, effectiveSort]
   );
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
@@ -273,6 +336,174 @@ export function ClientDebtExplorer({ report }: { report: FinancialConsistencyRep
   const pageRows = sorted.slice(pageStart, pageStart + pageSize);
 
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const loadCollectionActions = useCallback(
+    async (companyIds: readonly string[], reason: "expand" | "hover" | "drawer") => {
+      const started = performance.now();
+      const concurrentLimit = isLikelyMobile() ? 2 : 4;
+      const uniqueIds = Array.from(
+        new Set(companyIds.map((id) => id.trim()).filter(Boolean))
+      );
+      if (uniqueIds.length === 0) return;
+
+      const now = Date.now();
+      const cacheHits: Array<[string, CollectionAction[]]> = [];
+      const misses: string[] = [];
+      for (const id of uniqueIds) {
+        const key = collectionActionsCacheKey(id, report.periodStart, report.periodEnd);
+        const cached = actionsCacheRef.current.get(key);
+        if (cached && cached.expiresAt > now) {
+          cacheHits.push([id, cached.actions]);
+        } else if (!loadingActionIdsRef.current.has(id)) {
+          misses.push(id);
+        }
+      }
+
+      if (cacheHits.length > 0) {
+        setActionsByCompany((prev) => {
+          const next = new Map(prev);
+          for (const [id, actions] of cacheHits) next.set(id, actions);
+          return next;
+        });
+      }
+      if (misses.length === 0) return;
+
+      if (actionsAbortControllersRef.current.size >= concurrentLimit) {
+        console.info(
+          JSON.stringify({
+            source: "collection_actions",
+            kind: "collection_actions_load",
+            reason,
+            total_companies: uniqueIds.length,
+            fetched_companies: 0,
+            cache_hits: cacheHits.length,
+            concurrent_limit: concurrentLimit,
+            requests_completed: actionsStatsRef.current.completed,
+            requests_aborted: actionsStatsRef.current.aborted,
+            skipped_due_to_limit: true,
+            duration_ms: Math.round((performance.now() - started) * 100) / 100,
+          })
+        );
+        return;
+      }
+
+      const controller = new AbortController();
+      actionsAbortControllersRef.current.add(controller);
+
+      setLoadingActionIds((prev) => {
+        const next = new Set(prev);
+        for (const id of misses) next.add(id);
+        loadingActionIdsRef.current = next;
+        return next;
+      });
+
+      try {
+        const res = await fetch(COLLECTION_API.batch, {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          credentials: "same-origin",
+          cache: "no-store",
+          signal: controller.signal,
+          body: JSON.stringify({ company_ids: misses }),
+        });
+        const json = (await res.json().catch(() => null)) as
+          | {
+              ok?: boolean;
+              actionsByCompany?: Record<string, CollectionAction[]>;
+            }
+          | null;
+        if (controller.signal.aborted) return;
+        if (!res.ok || !json?.ok || !json.actionsByCompany) return;
+
+        const expiresAt = Date.now() + COLLECTION_ACTIONS_CACHE_TTL_MS;
+        setActionsByCompany((prev) => {
+          const next = new Map(prev);
+          for (const id of misses) {
+            const actions = json.actionsByCompany?.[id] ?? [];
+            next.set(id, actions);
+            actionsCacheRef.current.set(
+              collectionActionsCacheKey(id, report.periodStart, report.periodEnd),
+              { actions, expiresAt }
+            );
+          }
+          return next;
+        });
+        actionsStatsRef.current.completed += misses.length;
+      } catch (err) {
+        if (
+          controller.signal.aborted ||
+          (err instanceof DOMException && err.name === "AbortError")
+        ) {
+          actionsStatsRef.current.aborted += misses.length;
+          return;
+        }
+        // No bloquea cartera: collection-actions es metadata operativa.
+        console.warn("[collection_actions_load_failed]", err);
+      } finally {
+        actionsAbortControllersRef.current.delete(controller);
+        if (!controller.signal.aborted) {
+          setLoadingActionIds((prev) => {
+            const next = new Set(prev);
+            for (const id of misses) next.delete(id);
+            loadingActionIdsRef.current = next;
+            return next;
+          });
+        }
+        console.info(
+          JSON.stringify({
+            source: "collection_actions",
+            kind: "collection_actions_load",
+            reason,
+            total_companies: uniqueIds.length,
+            fetched_companies: misses.length,
+            cache_hits: cacheHits.length,
+            concurrent_limit: concurrentLimit,
+            requests_completed: actionsStatsRef.current.completed,
+            requests_aborted: actionsStatsRef.current.aborted,
+            duration_ms: Math.round((performance.now() - started) * 100) / 100,
+          })
+        );
+      }
+    },
+    [report.periodEnd, report.periodStart]
+  );
+
+  useEffect(() => {
+    const ids = Array.from(expandedIds);
+    if (ids.length > 0) void loadCollectionActions(ids, "expand");
+  }, [expandedIds, loadCollectionActions]);
+
+  useEffect(() => {
+    const aborted = actionsAbortControllersRef.current.size;
+    for (const controller of actionsAbortControllersRef.current) {
+      controller.abort();
+    }
+    actionsAbortControllersRef.current.clear();
+    actionsStatsRef.current.aborted += aborted;
+    loadingActionIdsRef.current = new Set();
+    setLoadingActionIds(new Set());
+  }, [
+    currencyFilter,
+    filterChip,
+    search,
+    page,
+    pageSize,
+    report.periodStart,
+    report.periodEnd,
+  ]);
+
+  useEffect(() => {
+    const controllers = actionsAbortControllersRef.current;
+    return () => {
+      for (const controller of controllers) {
+        controller.abort();
+      }
+      controllers.clear();
+    };
+  }, []);
 
   return (
     <section
@@ -288,10 +519,15 @@ export function ClientDebtExplorer({ report }: { report: FinancialConsistencyRep
           <div>
             <h3 className="text-base font-semibold tracking-tight text-[var(--copilot-ink)]">
               Explorador de deuda
+              {currencyFilter ? (
+                <span className="ml-2 inline-flex items-center rounded-md border border-[var(--copilot-border)] bg-white/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-ink)] align-middle">
+                  {currencyFilter}
+                </span>
+              ) : null}
             </h3>
             <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-              {formatCarteraInteger(baseClients.length)} cliente{baseClients.length === 1 ? "" : "s"} con deuda activa ·
-              sin recálculos en frontend
+              {formatCarteraInteger(baseClients.length)} cliente{baseClients.length === 1 ? "" : "s"} con deuda{" "}
+              {currencyFilter ? `${currencyFilter} ` : ""}activa · sin recálculos en frontend
             </p>
           </div>
         </div>
@@ -331,7 +567,7 @@ export function ClientDebtExplorer({ report }: { report: FinancialConsistencyRep
             {chip.label}
           </button>
         ))}
-        {withoutDebtCount > 0 && (
+        {!currencyFilter && withoutDebtCount > 0 && (
           <>
             <span className="mx-1 h-4 w-px self-center bg-[var(--copilot-border)]" aria-hidden />
             <button
@@ -360,25 +596,29 @@ export function ClientDebtExplorer({ report }: { report: FinancialConsistencyRep
         <table className="w-full min-w-[860px] border-collapse text-sm">
           <thead>
             <tr className="sticky top-0 z-10 border-b border-[var(--copilot-border)] bg-[var(--copilot-card)]/95 backdrop-blur">
-              <Th field="name" sort={sort} onSort={handleSort} className="w-[200px]">
+              <Th field="name" sort={effectiveSort} onSort={handleSort} className="w-[200px]">
                 Cliente
               </Th>
-              <Th field="pendingUYU" sort={sort} onSort={handleSort} align="right">
-                Saldo UYU
-              </Th>
-              <Th field="pendingUSD" sort={sort} onSort={handleSort} align="right">
-                Saldo USD
-              </Th>
-              <Th field="aging" sort={sort} onSort={handleSort}>
+              {(currencyFilter === null || currencyFilter === "UYU") && (
+                <Th field="pendingUYU" sort={effectiveSort} onSort={handleSort} align="right">
+                  Saldo UYU
+                </Th>
+              )}
+              {(currencyFilter === null || currencyFilter === "USD") && (
+                <Th field="pendingUSD" sort={effectiveSort} onSort={handleSort} align="right">
+                  Saldo USD
+                </Th>
+              )}
+              <Th field="aging" sort={effectiveSort} onSort={handleSort}>
                 Aging
               </Th>
-              <Th field="risk" sort={sort} onSort={handleSort}>
+              <Th field="risk" sort={effectiveSort} onSort={handleSort}>
                 Riesgo
               </Th>
-              <Th field="invoices" sort={sort} onSort={handleSort} align="right">
+              <Th field="invoices" sort={effectiveSort} onSort={handleSort} align="right">
                 Fact.
               </Th>
-              <Th field="lastSync" sort={sort} onSort={handleSort}>
+              <Th field="lastSync" sort={effectiveSort} onSort={handleSort}>
                 Último sync
               </Th>
               {/* Cobranza (sin sort — columna operativa) */}
@@ -395,10 +635,12 @@ export function ClientDebtExplorer({ report }: { report: FinancialConsistencyRep
             {pageRows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={9}
+                  colSpan={currencyFilter ? 8 : 9}
                   className="py-8 text-center text-sm text-[var(--copilot-ink-muted)]"
                 >
-                  Sin clientes para los filtros aplicados.
+                  {currencyFilter
+                    ? `Sin clientes con saldo ${currencyFilter} para los filtros aplicados.`
+                    : "Sin clientes para los filtros aplicados."}
                 </td>
               </tr>
             ) : (
@@ -406,13 +648,23 @@ export function ClientDebtExplorer({ report }: { report: FinancialConsistencyRep
                 <ClientRow
                   key={client.companyId}
                   client={client}
+                  currencyFilter={currencyFilter}
                   expanded={expandedIds.has(client.companyId)}
+                  actions={actionsByCompany.get(client.companyId) ?? []}
+                  actionsLoaded={actionsByCompany.has(client.companyId)}
+                  loadingActions={loadingActionIds.has(client.companyId)}
                   onToggle={() => toggleExpand(client.companyId)}
+                  onPrefetch={() =>
+                    void loadCollectionActions([client.companyId], "hover")
+                  }
                   onOpenDrawer={() =>
-                    setDrawerCompany({
-                      id: client.companyId,
-                      name: client.companyName ?? client.companyId,
-                    })
+                    {
+                      void loadCollectionActions([client.companyId], "drawer");
+                      setDrawerCompany({
+                        id: client.companyId,
+                        name: client.companyName ?? client.companyId,
+                      });
+                    }
                   }
                   reduce={!!reduce}
                 />
@@ -535,28 +787,37 @@ function Th({
 
 function ClientRow({
   client,
+  currencyFilter,
   expanded,
+  actions,
+  actionsLoaded,
+  loadingActions,
   onToggle,
+  onPrefetch,
   onOpenDrawer,
   reduce,
 }: {
   client: ClientStaleness;
+  currencyFilter: ReconciliationCurrencyCode | null;
   expanded: boolean;
+  actions: CollectionAction[];
+  actionsLoaded: boolean;
+  loadingActions: boolean;
   onToggle: () => void;
+  onPrefetch: () => void;
   onOpenDrawer: () => void;
   reduce: boolean;
 }) {
   const risk = deriveRiskLevel(client);
   const riskCfg = RISK_BADGE[risk];
   const staleCfg = STALE_BADGE[client.status];
-
-  // Carga las acciones de cobranza para esta fila
-  const { actions, loading: loadingActions } = useCollectionActions(client.companyId);
   const latestAction = actions[0] ?? null;
 
   return (
     <>
       <tr
+        onMouseEnter={onPrefetch}
+        onFocus={onPrefetch}
         className={[
           "transition-colors",
           expanded ? "bg-[rgba(44,40,37,0.03)]" : "hover:bg-[rgba(44,40,37,0.02)]",
@@ -570,26 +831,30 @@ function ClientRow({
         </td>
 
         {/* Saldo UYU */}
-        <td className="px-3 py-2.5 text-right tabular-nums">
-          {(client.pendingByCurrency.UYU ?? 0) > 0 ? (
-            <span className="text-sm font-medium text-[var(--copilot-ink)]">
-              {formatCarteraMoney("UYU", client.pendingByCurrency.UYU ?? 0, { fractionDigits: 0 })}
-            </span>
-          ) : (
-            <span className="text-[12px] text-[var(--copilot-ink-muted)]">—</span>
-          )}
-        </td>
+        {(currencyFilter === null || currencyFilter === "UYU") && (
+          <td className="px-3 py-2.5 text-right tabular-nums">
+            {(client.pendingByCurrency.UYU ?? 0) > 0 ? (
+              <span className="text-sm font-medium text-[var(--copilot-ink)]">
+                {formatCarteraMoney("UYU", client.pendingByCurrency.UYU ?? 0, { fractionDigits: 0 })}
+              </span>
+            ) : (
+              <span className="text-[12px] text-[var(--copilot-ink-muted)]">—</span>
+            )}
+          </td>
+        )}
 
         {/* Saldo USD */}
-        <td className="px-3 py-2.5 text-right tabular-nums">
-          {(client.pendingByCurrency.USD ?? 0) > 0 ? (
-            <span className="text-sm font-medium text-[var(--copilot-ink)]">
-              {formatCarteraMoney("USD", client.pendingByCurrency.USD ?? 0)}
-            </span>
-          ) : (
-            <span className="text-[12px] text-[var(--copilot-ink-muted)]">—</span>
-          )}
-        </td>
+        {(currencyFilter === null || currencyFilter === "USD") && (
+          <td className="px-3 py-2.5 text-right tabular-nums">
+            {(client.pendingByCurrency.USD ?? 0) > 0 ? (
+              <span className="text-sm font-medium text-[var(--copilot-ink)]">
+                {formatCarteraMoney("USD", client.pendingByCurrency.USD ?? 0)}
+              </span>
+            ) : (
+              <span className="text-[12px] text-[var(--copilot-ink-muted)]">—</span>
+            )}
+          </td>
+        )}
 
         {/* Aging dominante */}
         <td className="px-3 py-2.5">
@@ -651,6 +916,8 @@ function ClientRow({
               <span className="text-[11px] text-[var(--copilot-ink-muted)]">…</span>
             ) : latestAction ? (
               <CollectionStatusBadge action={latestAction} />
+            ) : !actionsLoaded ? (
+              <span className="text-[11px] text-[var(--copilot-ink-muted)]">Ver acción</span>
             ) : (
               <span className="text-[11px] text-[var(--copilot-ink-muted)]">Sin acción</span>
             )}
@@ -685,8 +952,13 @@ function ClientRow({
 
       {expanded && (
         <tr>
-          <td colSpan={9} className="px-3 pb-3 pt-0">
-            <ExpandedRow client={client} actions={actions} reduce={reduce} />
+          <td colSpan={currencyFilter ? 8 : 9} className="px-3 pb-3 pt-0">
+            <ExpandedRow
+              client={client}
+              currencyFilter={currencyFilter}
+              actions={actions}
+              reduce={reduce}
+            />
           </td>
         </tr>
       )}
@@ -696,14 +968,18 @@ function ClientRow({
 
 function ExpandedRow({
   client,
+  currencyFilter,
   actions,
   reduce,
 }: {
   client: ClientStaleness;
+  currencyFilter: ReconciliationCurrencyCode | null;
   actions: CollectionAction[];
   reduce: boolean;
 }) {
-  const currencies: ReconciliationCurrencyCode[] = ["UYU", "USD"];
+  const currencies: ReconciliationCurrencyCode[] = currencyFilter
+    ? [currencyFilter]
+    : ["UYU", "USD"];
   const pendingCurrencies = currencies.filter(
     (c) => (client.pendingByCurrency[c] ?? 0) > 0
   );

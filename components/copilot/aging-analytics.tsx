@@ -26,6 +26,7 @@ import type {
   FinancialConsistencyReport,
   ReconciliationCurrencyCode,
 } from "@/lib/copilot-financial-reconciliation";
+import type { CurrencyFilter } from "@/components/copilot/financial-control-bar";
 
 // ---------------------------------------------------------------------------
 // Config de buckets
@@ -71,16 +72,34 @@ const CURRENCY_ORDER: ReconciliationCurrencyCode[] = ["UYU", "USD"];
 // Componente principal
 // ---------------------------------------------------------------------------
 
-export function AgingAnalytics({ report }: { report: FinancialConsistencyReport }) {
+export function AgingAnalytics({
+  report,
+  selectedCurrency = "all",
+}: {
+  report: FinancialConsistencyReport;
+  selectedCurrency?: CurrencyFilter;
+}) {
   const availableCurrencies = CURRENCY_ORDER.filter(
     (c) => report.agingByCurrency[c] !== undefined
   );
-  const [activeCurrency, setActiveCurrency] = useState<ReconciliationCurrencyCode>(
-    availableCurrencies[0] ?? "UYU"
+
+  // Si hay filtro global de moneda, se fuerza esa moneda y se ocultan los tabs.
+  const forcedCurrency: ReconciliationCurrencyCode | null =
+    selectedCurrency === "USD" || selectedCurrency === "UYU"
+      ? selectedCurrency
+      : null;
+
+  const [internalCurrency, setInternalCurrency] = useState<ReconciliationCurrencyCode>(
+    forcedCurrency ?? availableCurrencies[0] ?? "UYU"
   );
 
+  // `forcedCurrency` siempre manda sobre el estado interno. El estado interno
+  // sólo se usa para recordar la tab seleccionada cuando el filtro global es
+  // "all" — no necesita sincronizarse en render.
+  const activeCurrency = forcedCurrency ?? internalCurrency;
   const buckets = report.agingByCurrency[activeCurrency] ?? [];
   const hasData = buckets.some((b) => b.amount > 0);
+  const showTabs = !forcedCurrency && availableCurrencies.length > 1;
 
   return (
     <section
@@ -102,7 +121,7 @@ export function AgingAnalytics({ report }: { report: FinancialConsistencyReport 
           </div>
         </div>
 
-        {availableCurrencies.length > 1 && (
+        {showTabs ? (
           <div
             role="tablist"
             aria-label="Moneda"
@@ -116,7 +135,7 @@ export function AgingAnalytics({ report }: { report: FinancialConsistencyReport 
                   type="button"
                   role="tab"
                   aria-selected={active}
-                  onClick={() => setActiveCurrency(c)}
+                  onClick={() => setInternalCurrency(c)}
                   className={[
                     "h-8 rounded-lg px-3 text-xs font-semibold transition",
                     active
@@ -129,7 +148,14 @@ export function AgingAnalytics({ report }: { report: FinancialConsistencyReport 
               );
             })}
           </div>
-        )}
+        ) : forcedCurrency ? (
+          <span
+            className="inline-flex h-8 items-center rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 text-xs font-semibold text-[var(--copilot-ink)] shadow-sm"
+            aria-label={`Moneda activa ${forcedCurrency}`}
+          >
+            {forcedCurrency}
+          </span>
+        ) : null}
       </header>
 
       <div className="p-5">

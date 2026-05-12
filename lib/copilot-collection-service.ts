@@ -277,6 +277,53 @@ export async function collectionGetByCompany(
   return ((data ?? []) as Record<string, unknown>[]).map(mapRow);
 }
 
+export async function collectionGetByCompanies(
+  supabase: SupabaseClient,
+  companyIds: readonly string[],
+  workspaceCompanyId: string,
+  options: { includeArchived?: boolean } = {}
+): Promise<Map<string, CollectionAction[]>> {
+  const wid = str(workspaceCompanyId);
+  const ids = Array.from(
+    new Set(companyIds.map((id) => str(id)).filter(Boolean))
+  );
+  const out = new Map<string, CollectionAction[]>();
+  for (const id of ids) out.set(id, []);
+  if (!wid || ids.length === 0) return out;
+
+  let q = eqWorkspace(
+    supabase
+      .from(TABLE)
+      .select("*")
+      .in("company_id", ids),
+    wid
+  ).order("created_at", { ascending: false });
+
+  if (!options.includeArchived) {
+    q = q.eq("is_active", true);
+  }
+
+  const { data, error } = await q;
+  if (error) {
+    console.error(JSON.stringify({
+      source: "collection_service",
+      kind: "batch_query_error",
+      error: error.message,
+      workspace_id: wid,
+      company_count: ids.length,
+    }));
+    return out;
+  }
+
+  for (const row of (data ?? []) as Record<string, unknown>[]) {
+    const action = mapRow(row);
+    const list = out.get(action.companyId) ?? [];
+    list.push(action);
+    out.set(action.companyId, list);
+  }
+  return out;
+}
+
 export async function collectionGetByWorkspace(
   supabase: SupabaseClient,
   workspaceCompanyId: string,

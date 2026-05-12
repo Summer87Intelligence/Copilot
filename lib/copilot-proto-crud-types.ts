@@ -172,6 +172,18 @@ export type ProtoInvoiceInput = {
   notes?: string | null;
   /** Código ISO 4217 de moneda (USD | UYU). Null si se desconoce. */
   currency_code?: string | null;
+  /**
+   * Procedencia de `due_date`:
+   *   - `'synthetic_30d'` — mapper (voucher / saldos) calcula `issue_date + 30`
+   *     (DIV-CONT-001; documentado en `docs/vendors/z/KNOWN-DIVERGENCES.md`).
+   *   - `'zeta_cuotas_v1'` — pipeline de cuotas migró el sintético al
+   *     vencimiento REAL desde `RESTCuotasV1QueryCliente`.
+   *
+   * Si se omite, no se modifica la columna existente (PATCH-safe). Para mantener
+   * compat con tests/callers que no rellenan el flag, la migración SQL
+   * `zeta-08-02` deja backfilleados los inserts históricos como `synthetic_30d`.
+   */
+  due_date_source?: "synthetic_30d" | "zeta_cuotas_v1" | null;
 };
 
 export type ProtoInvoicePatch = Partial<ProtoInvoiceInput>;

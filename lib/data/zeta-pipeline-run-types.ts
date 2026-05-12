@@ -14,6 +14,12 @@ export const ZETA_PIPELINE_NAMES = {
   SALDOS: "zeta-sync-saldos",
   VOUCHERS: "zeta-sync-vouchers",
   CONTACTS: "zeta-sync-contacts",
+  /**
+   * ZETA-08 — cuotas pendientes desde `RESTCuotasV1QueryCliente`.
+   * Cron separado del de saldos para no acoplar fallos y permitir frecuencias
+   * distintas (cuotas no cambian tan seguido como saldos).
+   */
+  CUOTAS: "zeta-sync-cuotas",
 } as const;
 
 export type ZetaPipelineName =

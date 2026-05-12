@@ -43,28 +43,28 @@ export function CarteraCountUp({
 
   const mv = useMotionValue<number>(reduce ? safeValue : 0);
   const ref = useRef<HTMLSpanElement>(null);
-  const lastValueRef = useRef<number>(safeValue);
 
   useMotionValueEvent(mv, "change", (latest) => {
     if (ref.current) ref.current.textContent = format(latest);
   });
 
+  // Importante: NO usar un `lastValueRef` inicializado con `safeValue`. El bug
+  // histórico era: arrancaba `lastValueRef.current = safeValue`, después del
+  // `animate(...)` chequeaba `if (from === safeValue) controls.stop()` y
+  // cortaba la animación en el frame 0; el motion value quedaba en 0 y el
+  // span renderizaba `format(0)` para siempre (cards "$ 0,00" / "0,0%"
+  // aunque el bucket trajera valores reales). Apoyarse SÓLO en `mv.get()`
+  // es suficiente para idempotencia.
   useEffect(() => {
     if (reduce) {
       mv.set(safeValue);
-      lastValueRef.current = safeValue;
       return;
     }
-    if (lastValueRef.current === safeValue && mv.get() === safeValue) {
-      return;
-    }
-    const from = lastValueRef.current;
+    if (mv.get() === safeValue) return;
     const controls = animate(mv, safeValue, {
       duration,
       ease: [0.16, 1, 0.3, 1],
     });
-    lastValueRef.current = safeValue;
-    if (from === safeValue) controls.stop();
     return () => controls.stop();
   }, [safeValue, duration, reduce, mv]);
 

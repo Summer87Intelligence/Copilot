@@ -498,6 +498,7 @@ export function mapCopilotCustomerVoucherToProtoInvoiceInput(
       invoice_number: invNum,
       issue_date: issue,
       due_date: due,
+      due_date_source: "synthetic_30d",
       total_amount: total,
       balance_amount,
       status,

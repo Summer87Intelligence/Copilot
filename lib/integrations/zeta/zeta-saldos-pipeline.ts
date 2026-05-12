@@ -308,6 +308,40 @@ function findBestHeuristicProtoInvoiceFromCache(
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Lee `due_date_source` para decidir si el saldos pipeline puede actualizar
+ * `due_date`. ZETA-08 introduce `due_date_source = 'zeta_cuotas_v1'` cuando
+ * el pipeline de cuotas migra el sintético al vencimiento REAL — el saldos
+ * pipeline NUNCA debe pisarlo con `issue_date + 30`.
+ *
+ * Devuelve un patch que el caller debe spreadear en el `protoUpdateInvoice`.
+ * Si la factura ya tiene `due_date_source = 'zeta_cuotas_v1'`, devuelve `{}`.
+ * En cualquier otro caso (null o `synthetic_30d`), devuelve el patch sintético.
+ */
+async function buildSaldosDueDatePatch(
+  supabase: SupabaseClient,
+  workspaceCompanyId: string,
+  invoiceId: string,
+  syntheticDueDate: string
+): Promise<{ due_date?: string; due_date_source?: "synthetic_30d" }> {
+  const { data, error } = await supabase
+    .from("proto_invoices")
+    .select("due_date_source")
+    .eq("id", invoiceId)
+    .eq("workspace_company_id", workspaceCompanyId)
+    .maybeSingle();
+  if (error) {
+    // Defensivo: si no podemos leer, mantenemos el comportamiento legacy
+    // (sintético) — preferible que un campo viejo a una factura sin due_date.
+    return { due_date: syntheticDueDate, due_date_source: "synthetic_30d" };
+  }
+  const row = data as { due_date_source?: string | null } | null;
+  if (row?.due_date_source === "zeta_cuotas_v1") {
+    return {};
+  }
+  return { due_date: syntheticDueDate, due_date_source: "synthetic_30d" };
+}
+
 async function readProtoInvoiceSaldoSnapshot(
   supabase: SupabaseClient,
   workspaceCompanyId: string,
@@ -383,6 +417,10 @@ function zetaInvoiceToProtoInput(inv: ZetaInvoice, syncRunId: string): ProtoInvo
     invoice_number: `ZETA:${inv.zetaId}`,
     issue_date: issue,
     due_date: addDaysIso(issue, 30),
+    // El saldos pipeline crea facturas con due_date sintético (DIV-CONT-001).
+    // El pipeline de cuotas (ZETA-08) lo migrará a 'zeta_cuotas_v1' cuando
+    // exista cuota real; mientras tanto, marcamos explícito el origen.
+    due_date_source: "synthetic_30d",
     total_amount: inv.totalAmount,
     balance_amount: bal,
     status,
@@ -822,12 +860,18 @@ async function persistZetaInvoice(
         prev_status: prev?.status ?? null,
       });
     }
+    const dueDatePatch = await buildSaldosDueDatePatch(
+      supabase,
+      wid,
+      existingLegacy,
+      input.due_date
+    );
     const up = await protoUpdateInvoice(
       supabase,
       existingLegacy,
       {
         issue_date: input.issue_date,
-        due_date: input.due_date,
+        ...dueDatePatch,
         total_amount: input.total_amount,
         balance_amount: input.balance_amount,
         status: input.status,
@@ -878,12 +922,18 @@ async function persistZetaInvoice(
           prev_status: prev?.status ?? null,
         });
       }
+      const dueDatePatch = await buildSaldosDueDatePatch(
+        supabase,
+        wid,
+        again,
+        input.due_date
+      );
       const up2 = await protoUpdateInvoice(
         supabase,
         again,
         {
           issue_date: input.issue_date,
-          due_date: input.due_date,
+          ...dueDatePatch,
           total_amount: input.total_amount,
           balance_amount: input.balance_amount,
           status: input.status,

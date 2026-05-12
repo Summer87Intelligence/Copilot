@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/zeta-sync-contacts",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/zeta-sync-cuotas",
+      "schedule": "0 */6 * * *"
     }
   ]
 }

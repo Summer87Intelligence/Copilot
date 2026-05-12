@@ -28,7 +28,6 @@ import type { LucideIcon } from "lucide-react";
 import { CarteraCountUp } from "@/components/copilot/cartera-count-up";
 import {
   currencyShortLabelFor,
-  deriveCollectionEffectiveness,
   formatCarteraInteger,
   formatCarteraMoney,
   formatCarteraPercent,
@@ -36,10 +35,14 @@ import {
   pickMostRecentSync,
 } from "@/lib/copilot-cartera-format";
 import type {
-  CurrencyReconciliation,
   FinancialConsistencyReport,
   ReconciliationCurrencyCode,
 } from "@/lib/copilot-financial-reconciliation";
+import type { CurrencyFilter } from "@/components/copilot/financial-control-bar";
+import {
+  buildCurrencyIndex,
+  type NormalizedCurrencyMetrics,
+} from "@/lib/copilot-cartera-cards-source";
 
 // ---------------------------------------------------------------------------
 // Tipos de card y badges
@@ -69,78 +72,161 @@ type SummaryCard = {
 // Builders pure → cards
 // ---------------------------------------------------------------------------
 
-function findCurrency(
-  report: FinancialConsistencyReport,
+// ---------------------------------------------------------------------------
+// Métricas por moneda para cards — fuente canónica única: report.currencies
+// ---------------------------------------------------------------------------
+//
+// Contrato contable (replica de Zeta):
+//   - issuedInPeriod   → ventas emitidas dentro de [Desde, Hasta]
+//                       (Zeta: Ventas Detalladas)
+//   - pendingAtCutoff  → saldo pendiente AL CORTE = pendingAtCutoff del motor
+//                       (Zeta: Comprobantes Pendientes con fecha de corte)
+//                       INCLUYE facturas pre-Desde con balance > 0
+//   - collectedInPeriod→ recibos sincronizados con receipt_date en [Desde, Hasta]
+//                       (Zeta: columna Haber del Estado de Cuenta)
+//   - openingBalance   → saldo anterior al Desde (ledger pre-período)
+//                       (Zeta: Saldo anterior del Estado de Cuenta)
+//
+// Reglas:
+//   - Las cards leen EXCLUSIVAMENTE `report.currencies[code]` (vía
+//     `buildCurrencyIndex`). No hay rederivación desde `agingByCurrency` ni
+//     `staleClients`: cualquier drift entre el valor principal y el microcopy
+//     siempre fue un fallback que mezclaba fuentes. Si el bucket no existe,
+//     todo queda en 0 y el banner dev de inconsistencia (más abajo) flagea
+//     el motor mal poblado.
+//   - Cobranza efectiva = collectedInPeriod / issuedInPeriod (no mezcla saldo
+//     anterior con cobros del período).
+//   - Si el motor no recibió receipts, `collectedReceiptCount=0` y la card
+//     "Cobrado en período" muestra "—".
+type CurrencyCardMetrics = {
+  issuedInPeriod: number;
+  pendingAtCutoff: number;
+  pendingInvoiceCount: number;
+  collectedInPeriod: number;
+  collectedReceiptCount: number;
+  openingBalance: number;
+  collectionEffectiveness: number | null;
+  invoiceCount: number;
+  /** true cuando el motor no recibió receipts (cobrado período no se puede mostrar). */
+  collectedDataMissing: boolean;
+};
+
+function getCurrencyCardMetrics(
+  index: Map<ReconciliationCurrencyCode, NormalizedCurrencyMetrics>,
   code: ReconciliationCurrencyCode
-): CurrencyReconciliation | undefined {
-  return report.currencies.find((c) => c.currencyCode === code);
+): CurrencyCardMetrics {
+  const direct = index.get(code);
+
+  if (direct) {
+    return {
+      issuedInPeriod: direct.issuedInPeriod,
+      pendingAtCutoff: direct.pendingAtCutoff,
+      pendingInvoiceCount: direct.pendingInvoiceCount,
+      collectedInPeriod: direct.collectedInPeriod,
+      collectedReceiptCount: direct.collectedReceiptCount,
+      openingBalance: direct.openingBalance,
+      collectionEffectiveness: direct.collectionEffectiveness,
+      invoiceCount: direct.invoiceCount,
+      collectedDataMissing: direct.collectedReceiptCount === 0,
+    };
+  }
+
+  // Bucket ausente en `report.currencies`: las cards muestran 0 / "—".
+  // NO derivamos desde aging/stale para evitar drift entre el valor
+  // principal y el microcopy. El banner dev arriba flagea este caso.
+  return {
+    issuedInPeriod: 0,
+    pendingAtCutoff: 0,
+    pendingInvoiceCount: 0,
+    collectedInPeriod: 0,
+    collectedReceiptCount: 0,
+    openingBalance: 0,
+    collectionEffectiveness: null,
+    invoiceCount: 0,
+    collectedDataMissing: true,
+  };
 }
 
-function carteraCard(
+function pendingCollectionCard(
   code: ReconciliationCurrencyCode,
-  report: FinancialConsistencyReport,
+  index: Map<ReconciliationCurrencyCode, NormalizedCurrencyMetrics>,
   zetaAge: string
 ): SummaryCard {
-  const currency = findCurrency(report, code);
-  const pendingAmount = currency?.totalPending ?? 0;
-  const pendingCount = currency?.pendingInvoiceCount ?? 0;
+  const m = getCurrencyCardMetrics(index, code);
   return {
     id: `cartera-${code}`,
-    title: `Cartera ${code}`,
+    title: `Pendiente de cobro al corte ${code}`,
     source: "zeta",
-    tone: pendingCount > 0 ? "warning" : "positive",
+    tone: m.pendingInvoiceCount > 0 ? "warning" : "positive",
     icon: CircleDollarSign,
-    value: pendingAmount,
+    value: m.pendingAtCutoff,
     format: (n) => formatCarteraMoney(code, n),
     subtitle:
-      pendingCount === 0
-        ? "Sin facturas con saldo abierto"
-        : `${formatCarteraInteger(pendingCount)} factura${pendingCount === 1 ? "" : "s"} pendiente${pendingCount === 1 ? "" : "s"}`,
+      m.pendingInvoiceCount === 0
+        ? "Sin facturas con saldo abierto al Hasta"
+        : `${formatCarteraInteger(m.pendingInvoiceCount)} factura${m.pendingInvoiceCount === 1 ? "" : "s"} con saldo al corte`,
     meta: zetaAge,
   };
 }
 
-function facturadoCard(
+function issuedCard(
   code: ReconciliationCurrencyCode,
-  report: FinancialConsistencyReport,
+  index: Map<ReconciliationCurrencyCode, NormalizedCurrencyMetrics>,
   zetaAge: string
 ): SummaryCard {
-  const currency = findCurrency(report, code);
-  const totalInvoiced = currency?.totalInvoiced ?? 0;
-  const invoiceCount = currency?.invoiceCount ?? 0;
+  const m = getCurrencyCardMetrics(index, code);
   return {
     id: `facturado-${code}`,
-    title: `Facturado ${code}`,
+    title: `Emitido en período ${code}`,
     source: "zeta",
     tone: "neutral",
     icon: FileText,
-    value: totalInvoiced,
+    value: m.issuedInPeriod,
     format: (n) => formatCarteraMoney(code, n),
     subtitle:
-      invoiceCount === 0
-        ? "Sin facturas en período"
-        : `${formatCarteraInteger(invoiceCount)} factura${invoiceCount === 1 ? "" : "s"} ${currencyShortLabelFor(code).toLowerCase()}`,
+      m.invoiceCount === 0
+        ? "Sin facturas emitidas en período"
+        : `${formatCarteraInteger(m.invoiceCount)} factura${m.invoiceCount === 1 ? "" : "s"} ${currencyShortLabelFor(code).toLowerCase()} emitida${m.invoiceCount === 1 ? "" : "s"}`,
+    meta: zetaAge,
+  };
+}
+
+/**
+ * Cobrado en período (receipts in-period). Si el motor no recibió receipts
+ * la card muestra "—" en lugar de "$ 0" para no mentir.
+ */
+function collectedCard(
+  code: ReconciliationCurrencyCode,
+  index: Map<ReconciliationCurrencyCode, NormalizedCurrencyMetrics>,
+  zetaAge: string
+): SummaryCard {
+  const m = getCurrencyCardMetrics(index, code);
+  const dataMissing = m.collectedReceiptCount === 0 && m.collectedInPeriod === 0;
+  return {
+    id: `collected-${code}`,
+    title: `Cobrado en período ${code}`,
+    source: "zeta",
+    tone: m.collectedInPeriod > 0 ? "positive" : "neutral",
+    icon: CircleCheckBig,
+    value: m.collectedInPeriod,
+    format: (n) => (dataMissing ? "—" : formatCarteraMoney(code, n)),
+    subtitle: dataMissing
+      ? "Sin recibos registrados en período"
+      : `${formatCarteraInteger(m.collectedReceiptCount)} recibo${m.collectedReceiptCount === 1 ? "" : "s"} ${currencyShortLabelFor(code).toLowerCase()}`,
     meta: zetaAge,
   };
 }
 
 function effectivenessCard(
   code: ReconciliationCurrencyCode,
-  report: FinancialConsistencyReport
+  index: Map<ReconciliationCurrencyCode, NormalizedCurrencyMetrics>
 ): SummaryCard {
-  const currency = findCurrency(report, code);
-  const ratio = currency
-    ? deriveCollectionEffectiveness({
-        totalInvoiced: currency.totalInvoiced,
-        totalPending: currency.totalPending,
-      })
-    : null;
-
-  const invoiceCount = currency?.invoiceCount ?? 0;
+  const m = getCurrencyCardMetrics(index, code);
+  const ratio = m.collectionEffectiveness;
 
   return {
     id: `effectiveness-${code}`,
-    title: `Efectividad ${code}`,
+    title: `Cobranza efectiva ${code}`,
     source: "analytics",
     tone: ratio !== null && ratio < 0.8 ? "warning" : "info",
     icon: TrendingUp,
@@ -153,14 +239,40 @@ function effectivenessCard(
             maximumFractionDigits: 1,
           })}%`,
     subtitle:
-      invoiceCount === 0
+      m.invoiceCount === 0
         ? `Sin facturas ${code} en período`
-        : `${formatCarteraInteger(invoiceCount)} factura${invoiceCount === 1 ? "" : "s"} ${code}`,
-    meta: ratio !== null ? "Cobrado / facturado (sin mezcla de monedas)" : undefined,
+        : `${formatCarteraInteger(m.invoiceCount)} factura${m.invoiceCount === 1 ? "" : "s"} ${code}`,
+    meta:
+      ratio !== null
+        ? `Cobrado ${formatCarteraMoney(code, m.collectedInPeriod)} / Emitido ${formatCarteraMoney(code, m.issuedInPeriod)}`
+        : undefined,
   };
 }
 
-function staleCard(report: FinancialConsistencyReport): SummaryCard {
+/**
+ * Saldo anterior al `Desde` (ledger reconstruido). Solo se muestra cuando el
+ * motor lo calculó (modo period_only) y es > 0. Permite separar visualmente
+ * "deuda heredada" de "movimientos del período".
+ */
+function openingBalanceCard(
+  code: ReconciliationCurrencyCode,
+  index: Map<ReconciliationCurrencyCode, NormalizedCurrencyMetrics>
+): SummaryCard {
+  const m = getCurrencyCardMetrics(index, code);
+  return {
+    id: `opening-${code}`,
+    title: `Saldo anterior ${code}`,
+    source: "analytics",
+    tone: "info",
+    icon: FileText,
+    value: m.openingBalance,
+    format: (n) => formatCarteraMoney(code, n),
+    subtitle: "Deuda anterior al Desde",
+    meta: "Ledger: Σ facturas pre-Desde − Σ recibos pre-Desde",
+  };
+}
+
+function staleCardAll(report: FinancialConsistencyReport): SummaryCard {
   const s = report.staleSummary;
   const total = s.warning + s.critical + s.never_synced;
   const breakdown: string[] = [];
@@ -186,7 +298,64 @@ function staleCard(report: FinancialConsistencyReport): SummaryCard {
   };
 }
 
-function orphanCard(report: FinancialConsistencyReport): SummaryCard {
+/**
+ * Variante por moneda: cuenta clientes con saldo > 0 en `code` cuyo `status`
+ * no es "ok". El total de clientes con deuda en la moneda se usa para mostrar
+ * "X al día" cuando no hay riesgo.
+ */
+function staleCardForCurrency(
+  code: ReconciliationCurrencyCode,
+  report: FinancialConsistencyReport
+): SummaryCard {
+  const clientsWithDebt = report.staleClients.filter(
+    (c) => (c.pendingByCurrency[code] ?? 0) > 0
+  );
+  const atRisk = clientsWithDebt.filter((c) => c.status !== "ok");
+
+  const breakdown: string[] = [];
+  let warning = 0;
+  let critical = 0;
+  let neverSynced = 0;
+  for (const c of atRisk) {
+    if (c.status === "warning") warning++;
+    else if (c.status === "critical") critical++;
+    else if (c.status === "never_synced") neverSynced++;
+  }
+  if (warning > 0) breakdown.push(`${warning} warning`);
+  if (critical > 0) breakdown.push(`${critical} critical`);
+  if (neverSynced > 0) breakdown.push(`${neverSynced} sin sync`);
+
+  const total = atRisk.length;
+  const ratio =
+    clientsWithDebt.length > 0 ? total / clientsWithDebt.length : null;
+
+  return {
+    id: `stale-${code}`,
+    title: `Clientes en riesgo ${code}`,
+    source: "recon",
+    tone:
+      total === 0
+        ? "positive"
+        : critical > 0 || neverSynced > 0
+          ? "warning"
+          : "info",
+    icon: ShieldAlert,
+    value: total,
+    format: (n) => formatCarteraInteger(n),
+    subtitle:
+      total === 0
+        ? clientsWithDebt.length === 0
+          ? `Sin clientes con saldo ${code}`
+          : `${formatCarteraInteger(clientsWithDebt.length)} cliente${clientsWithDebt.length === 1 ? "" : "s"} con saldo ${code} al día`
+        : breakdown.join(" · "),
+    meta:
+      ratio !== null
+        ? `${formatCarteraPercent(ratio)} de la cartera ${code}`
+        : undefined,
+  };
+}
+
+function orphanCardAll(report: FinancialConsistencyReport): SummaryCard {
   const o = report.orphanSummary;
   return {
     id: "orphans",
@@ -213,25 +382,129 @@ function orphanCard(report: FinancialConsistencyReport): SummaryCard {
 
 export function ExecutiveSummaryCards({
   report,
+  selectedCurrency = "all",
 }: {
   report: FinancialConsistencyReport;
+  selectedCurrency?: CurrencyFilter;
 }) {
   const reduce = useReducedMotion();
+
+  // Normaliza `report.currencies` (array | objeto | snake_case | strings) a un
+  // índice por moneda. Esto es lo ÚNICO que las cards consultan para emitido /
+  // pendiente / cobrado / efectividad: una sola fuente, una sola lectura.
+  const currencyIndex = useMemo(
+    () => buildCurrencyIndex(report.currencies),
+    [report.currencies]
+  );
+
+  // TEMP[2026-05-12]: log de auditoría con los 5 campos contables canónicos
+  // que alimentan TANTO el valor principal de cada card COMO su microcopy.
+  // Confirma visualmente que `report.currencies` es la única fuente. Remover
+  // cuando la verdad financiera quede estable en producción.
+  if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
+    try {
+      const pick = (m: NormalizedCurrencyMetrics | undefined) =>
+        m
+          ? {
+              issuedInPeriod: m.issuedInPeriod,
+              collectedInPeriod: m.collectedInPeriod,
+              pendingAtCutoff: m.pendingAtCutoff,
+              collectionEffectiveness: m.collectionEffectiveness,
+              openingBalance: m.openingBalance,
+              invoiceCount: m.invoiceCount,
+              pendingInvoiceCount: m.pendingInvoiceCount,
+              collectedReceiptCount: m.collectedReceiptCount,
+            }
+          : null;
+      console.log(
+        "[cards currencyMetrics]",
+        JSON.stringify(
+          {
+            currenciesShape: Array.isArray(report.currencies)
+              ? `array(${report.currencies.length})`
+              : typeof report.currencies,
+            USD: pick(currencyIndex.get("USD")),
+            UYU: pick(currencyIndex.get("UYU")),
+          },
+          null,
+          2
+        )
+      );
+    } catch {
+      /* noop */
+    }
+  }
+
+  // Detección de inconsistencia: aging muestra deuda en una moneda pero el
+  // índice normalizado no la encuentra. Es síntoma de motor mal poblado.
+  // Solo log dev — las cards muestran 0 en esa moneda (sin rederivar), el
+  // warn aquí indica que hay que arreglar el motor, no la UI.
+  if (process.env.NODE_ENV !== "production") {
+    for (const code of ["USD", "UYU"] as const) {
+      const inIndex = currencyIndex.has(code);
+      const inAging = (report.agingByCurrency?.[code] ?? []).some(
+        (b) => b.amount > 0
+      );
+      if (!inIndex && inAging) {
+        console.warn(
+          "[ExecutiveSummaryCards] inconsistencia detectada: aging muestra " +
+            code +
+            " con saldo > 0 pero `report.currencies` no expone esa moneda. " +
+            "Las cards mostrarán 0 en " +
+            code +
+            ". Revisar generateFinancialConsistencyReport()."
+        );
+      }
+    }
+  }
 
   const cards = useMemo<SummaryCard[]>(() => {
     const recent = pickMostRecentSync(report.syncStates);
     const zetaAge = recent ? formatRelativeAgeHours(recent.ageHours) : "sin sync";
-    return [
-      carteraCard("UYU", report, zetaAge),
-      carteraCard("USD", report, zetaAge),
-      facturadoCard("UYU", report, zetaAge),
-      facturadoCard("USD", report, zetaAge),
-      effectivenessCard("UYU", report),
-      effectivenessCard("USD", report),
-      staleCard(report),
-      orphanCard(report),
+
+    // Helper local: agregar "Saldo anterior" sólo cuando aplica (modo
+    // period_only + opening > 0). Evita poblar la grilla con cards vacías.
+    function appendOpeningIfRelevant(
+      list: SummaryCard[],
+      code: ReconciliationCurrencyCode
+    ): SummaryCard[] {
+      const m = currencyIndex.get(code);
+      if (!m || m.openingBalance <= 0) return list;
+      return [...list, openingBalanceCard(code, currencyIndex)];
+    }
+
+    if (selectedCurrency === "USD" || selectedCurrency === "UYU") {
+      const code = selectedCurrency;
+      let list: SummaryCard[] = [
+        issuedCard(code, currencyIndex, zetaAge),
+        collectedCard(code, currencyIndex, zetaAge),
+        pendingCollectionCard(code, currencyIndex, zetaAge),
+        effectivenessCard(code, currencyIndex),
+        staleCardForCurrency(code, report),
+      ];
+      list = appendOpeningIfRelevant(list, code);
+      return list;
+    }
+
+    let list: SummaryCard[] = [
+      // Bloque UYU
+      issuedCard("UYU", currencyIndex, zetaAge),
+      collectedCard("UYU", currencyIndex, zetaAge),
+      pendingCollectionCard("UYU", currencyIndex, zetaAge),
+      effectivenessCard("UYU", currencyIndex),
+      // Bloque USD
+      issuedCard("USD", currencyIndex, zetaAge),
+      collectedCard("USD", currencyIndex, zetaAge),
+      pendingCollectionCard("USD", currencyIndex, zetaAge),
+      effectivenessCard("USD", currencyIndex),
+      // Salud
+      staleCardAll(report),
+      orphanCardAll(report),
     ];
-  }, [report]);
+    list = appendOpeningIfRelevant(list, "UYU");
+    list = appendOpeningIfRelevant(list, "USD");
+    return list;
+  }, [report, selectedCurrency, currencyIndex]);
 
   return (
     <motion.section

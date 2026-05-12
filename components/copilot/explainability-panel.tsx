@@ -35,6 +35,7 @@ import type {
   FinancialConsistencyReport,
   ReconciliationCurrencyCode,
 } from "@/lib/copilot-financial-reconciliation";
+import type { CurrencyFilter } from "@/components/copilot/financial-control-bar";
 
 // ---------------------------------------------------------------------------
 // Tipos internos
@@ -55,9 +56,16 @@ type ExplainItem = {
 // Builders
 // ---------------------------------------------------------------------------
 
-function buildItems(report: FinancialConsistencyReport): ExplainItem[] {
+function buildItems(
+  report: FinancialConsistencyReport,
+  selectedCurrency: CurrencyFilter
+): ExplainItem[] {
   const items: ExplainItem[] = [];
   const { gaps, totalInvoicesWithoutCurrency, orphanSummary, voidedInvoices } = report;
+  const currencyList: ReconciliationCurrencyCode[] =
+    selectedCurrency === "USD" || selectedCurrency === "UYU"
+      ? [selectedCurrency]
+      : ["USD", "UYU"];
 
   // 1. Facturas excluidas por período
   if (report.mode === "period_only" && gaps.invoicesExcludedByPeriodFilter > 0) {
@@ -98,9 +106,9 @@ function buildItems(report: FinancialConsistencyReport): ExplainItem[] {
 
   // 3. Clientes con datos stale (saldo pendiente en riesgo)
   const stalePending = gaps.stalePendingByCurrency;
-  const stalePendingEntries = (
-    ["USD", "UYU"] as ReconciliationCurrencyCode[]
-  ).filter((c) => (stalePending[c] ?? 0) > 0);
+  const stalePendingEntries = currencyList.filter(
+    (c) => (stalePending[c] ?? 0) > 0
+  );
 
   if (gaps.clientsWithStaleData > 0 && stalePendingEntries.length > 0) {
     const stalePendingStr = stalePendingEntries
@@ -140,7 +148,7 @@ function buildItems(report: FinancialConsistencyReport): ExplainItem[] {
 
   // 4. Deuda histórica (pre-2026)
   const historical: ExcludedHistoricalSummary = report.excludedHistorical;
-  const historicalPendingEntries = (["USD", "UYU"] as ReconciliationCurrencyCode[]).filter(
+  const historicalPendingEntries = currencyList.filter(
     (c) => (historical.pendingByCurrency[c] ?? 0) > 0
   );
 
@@ -203,7 +211,7 @@ function buildItems(report: FinancialConsistencyReport): ExplainItem[] {
       orphanSummary.pending_auto_close > 0
         ? ` · ${formatCarteraInteger(orphanSummary.pending_auto_close)} pendiente${orphanSummary.pending_auto_close === 1 ? "" : "s"} de cierre automático.`
         : "";
-    const pendingEntries = (["USD", "UYU"] as ReconciliationCurrencyCode[]).filter(
+    const pendingEntries = currencyList.filter(
       (c) => (orphanSummary.warnedPendingByCurrency[c] ?? 0) > 0
     );
     const pendingStr =
@@ -252,8 +260,17 @@ function buildItems(report: FinancialConsistencyReport): ExplainItem[] {
 // Componente principal
 // ---------------------------------------------------------------------------
 
-export function ExplainabilityPanel({ report }: { report: FinancialConsistencyReport }) {
-  const items = useMemo(() => buildItems(report), [report]);
+export function ExplainabilityPanel({
+  report,
+  selectedCurrency = "all",
+}: {
+  report: FinancialConsistencyReport;
+  selectedCurrency?: CurrencyFilter;
+}) {
+  const items = useMemo(
+    () => buildItems(report, selectedCurrency),
+    [report, selectedCurrency]
+  );
   const reduce = useReducedMotion();
   const [open, setOpen] = useState(false);
 

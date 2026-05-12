@@ -20,6 +20,7 @@ import {
   type CompanyInput,
   type SyncStateInput,
 } from "../lib/copilot-financial-reconciliation";
+import { toSafeNumber } from "../lib/copilot-numeric-parse";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -157,8 +158,9 @@ async function loadData() {
     id: String(r.id ?? ""),
     company_id: r.company_id != null ? String(r.company_id) : null,
     currency_code: r.currency_code != null ? String(r.currency_code) : null,
-    total_amount: typeof r.total_amount === "number" ? r.total_amount : null,
-    balance_amount: typeof r.balance_amount === "number" ? r.balance_amount : null,
+    // Supabase serializa `numeric` como string; toSafeNumber acepta ambos.
+    total_amount: toSafeNumber(r.total_amount),
+    balance_amount: toSafeNumber(r.balance_amount),
     status: r.status != null ? String(r.status) : null,
     updated_at: r.updated_at != null ? String(r.updated_at) : null,
     issue_date: r.issue_date != null ? String(r.issue_date) : null,

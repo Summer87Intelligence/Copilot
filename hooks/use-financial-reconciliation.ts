@@ -20,7 +20,7 @@
  *    para evitar requests inútiles que devolverían 400).
  */
 
-import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 
 import type {
   FinancialConsistencyReport,
@@ -80,7 +80,8 @@ type FetchAction =
       fetchedAt: string;
     }
   | { type: "error"; message: string; code: string }
-  | { type: "refetch" };
+  | { type: "refetch" }
+  | { type: "params_changed" };
 
 const INITIAL_STATE: FetchState = {
   report: null,
@@ -117,6 +118,11 @@ function reducer(state: FetchState, action: FetchAction): FetchState {
       };
     case "refetch":
       return { ...state, refreshTick: state.refreshTick + 1 };
+    case "params_changed":
+      // Al cambiar el rango/mode el reporte previo queda obsoleto: pertenecía
+      // a OTRO período. Limpiamos para que la UI muestre skeleton/empty en
+      // lugar de mezclar montos del rango anterior con counts del nuevo.
+      return { ...INITIAL_STATE, refreshTick: state.refreshTick };
     default:
       return state;
   }
@@ -156,10 +162,30 @@ export function useFinancialReconciliation(
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const refetch = useCallback(() => dispatch({ type: "refetch" }), []);
   const abortRef = useRef<AbortController | null>(null);
+  const lastParamsKeyRef = useRef<string | null>(null);
+
+  // Clave única por combinación efectiva de parámetros. Cuando cambia,
+  // descartamos el reporte previo para no mezclar rangos.
+  const paramsKey = useMemo(
+    () => `${mode}|${periodStart ?? ""}|${periodEnd ?? ""}`,
+    [mode, periodStart, periodEnd]
+  );
 
   useEffect(() => {
     if (!enabled) return;
     if (!isPeriodReady({ mode, periodStart, periodEnd })) return;
+
+    // Si los parámetros efectivos cambiaron respecto al último fetch en vuelo,
+    // limpiamos el reporte anterior antes de iniciar el nuevo. Esto evita el
+    // estado "counts del rango nuevo + montos del rango viejo" que ocurría
+    // mientras la respuesta del nuevo rango está en vuelo.
+    if (
+      lastParamsKeyRef.current !== null &&
+      lastParamsKeyRef.current !== paramsKey
+    ) {
+      dispatch({ type: "params_changed" });
+    }
+    lastParamsKeyRef.current = paramsKey;
 
     const ac = new AbortController();
     abortRef.current?.abort();
@@ -216,7 +242,7 @@ export function useFinancialReconciliation(
     return () => {
       ac.abort();
     };
-  }, [mode, periodStart, periodEnd, enabled, state.refreshTick]);
+  }, [mode, periodStart, periodEnd, enabled, state.refreshTick, paramsKey]);
 
   return {
     report: state.report,

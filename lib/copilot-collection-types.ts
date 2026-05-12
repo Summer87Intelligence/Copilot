@@ -121,6 +121,7 @@ export const COLLECTION_API = {
   listByCompany: (companyId: string) =>
     `/api/copilot/collection-actions?company_id=${encodeURIComponent(companyId)}`,
   list: "/api/copilot/collection-actions",
+  batch: "/api/copilot/collection-actions/batch",
 } as const;
 
 // ---------------------------------------------------------------------------

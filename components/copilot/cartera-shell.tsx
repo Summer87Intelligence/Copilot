@@ -10,62 +10,75 @@
  *  - Placeholder temporal para Bloque 5+ (aging / explorer / explainability).
  *
  * No realiza ningún recálculo financiero. Solo:
- *  - Mantiene estado UI (modo, rango, refresh tick).
+ *  - Mantiene estado UI (rango confirmado, refresh tick).
  *  - Pasa el reporte intacto a los componentes hijos.
  *  - Muestra skeletons reales mientras `loading && !report`.
  *  - Si hay un reporte previo y se está re-fetcheando, mantiene el contenido y
  *    deja al control bar mostrar el spinner (evita flicker entre estados).
+ *
+ * Decisiones de UX (mayo 2026):
+ *  - `mode` queda fijo en `period_only`. El selector visible "Todo el historial"
+ *    fue removido porque año + rango de fechas cubren todos los casos operativos
+ *    y la opción histórica generaba confusión.
+ *  - La pantalla no hace fetch al montar. El usuario debe confirmar un rango
+ *    Desde/Hasta para habilitar el hook y cargar el reporte.
+ *  - No hay selector de año ni defaults visuales; toda la cartera depende del
+ *    rango confirmado.
  */
 
 import { useCallback, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { AlertOctagon } from "lucide-react";
-
-import {
-  COPILOT_OPERATIONAL_START_DATE,
-  getCopilotOperationalEndDate,
-} from "@/lib/copilot-operational-period";
+import { AlertOctagon, CalendarRange } from "lucide-react";
 
 import { useFinancialReconciliation } from "@/hooks/use-financial-reconciliation";
 import { FinancialControlBar } from "@/components/copilot/financial-control-bar";
 import {
   ExecutiveSummaryCards,
-  ExecutiveSummaryCardsSkeleton,
 } from "@/components/copilot/executive-summary-cards";
 import {
   ReconciliationCenter,
-  ReconciliationCenterSkeleton,
 } from "@/components/copilot/reconciliation-center";
 import {
   AgingAnalytics,
-  AgingAnalyticsSkeleton,
 } from "@/components/copilot/aging-analytics";
 import { ClientDebtExplorer } from "@/components/copilot/client-debt-explorer";
 import { ExplainabilityPanel } from "@/components/copilot/explainability-panel";
-import type { ReconciliationMode } from "@/lib/copilot-financial-reconciliation";
+
+function normalizeDateInput(value: string | null | undefined): string {
+  return (value ?? "").slice(0, 10);
+}
 
 export function CarteraShell() {
-  const [mode, setMode] = useState<ReconciliationMode>("period_only");
-  const [periodStart, setPeriodStart] = useState<string | null>(COPILOT_OPERATIONAL_START_DATE);
-  const [periodEnd, setPeriodEnd] = useState<string | null>(getCopilotOperationalEndDate());
+  const [periodStart, setPeriodStart] = useState<string | null>(null);
+  const [periodEnd, setPeriodEnd] = useState<string | null>(null);
+  const [draftStart, setDraftStart] = useState<string>("");
+  const [draftEnd, setDraftEnd] = useState<string>("");
+  const [confirmedDraftStart, setConfirmedDraftStart] = useState<string>("");
+  const [confirmedDraftEnd, setConfirmedDraftEnd] = useState<string>("");
+  const [hasConfirmedRange, setHasConfirmedRange] = useState(false);
 
   const { report, loading, error, lastFetchedAt, refetch } = useFinancialReconciliation({
-    mode,
+    mode: "period_only",
     periodStart,
     periodEnd,
+    enabled: hasConfirmedRange,
   });
 
-  const handlePeriodChange = useCallback(
-    ({ start, end }: { start: string | null; end: string | null }) => {
-      setPeriodStart(start);
-      setPeriodEnd(end);
-    },
-    []
-  );
+  const hasPendingChanges =
+    normalizeDateInput(draftStart) !== normalizeDateInput(confirmedDraftStart) ||
+    normalizeDateInput(draftEnd) !== normalizeDateInput(confirmedDraftEnd);
 
-  const handleModeChange = useCallback((next: ReconciliationMode) => {
-    setMode(next);
-  }, []);
+  const handleConfirmDraft = useCallback(() => {
+    const nextStart = normalizeDateInput(draftStart);
+    const nextEnd = normalizeDateInput(draftEnd);
+    if (!nextStart || !nextEnd || nextStart > nextEnd) return;
+
+    setPeriodStart(nextStart);
+    setPeriodEnd(nextEnd);
+    setConfirmedDraftStart(nextStart);
+    setConfirmedDraftEnd(nextEnd);
+    setHasConfirmedRange(true);
+  }, [draftStart, draftEnd]);
 
   // Estado: primer fetch sin reporte previo → skeletons reales.
   // Estado: error sin reporte previo → bloque de error.
@@ -76,33 +89,42 @@ export function CarteraShell() {
   return (
     <>
       <FinancialControlBar
-        mode={mode}
-        onModeChange={handleModeChange}
-        periodStart={periodStart}
-        periodEnd={periodEnd}
-        onPeriodChange={handlePeriodChange}
+        draftStart={draftStart}
+        draftEnd={draftEnd}
+        onDraftStartChange={setDraftStart}
+        onDraftEndChange={setDraftEnd}
+        hasPendingChanges={hasPendingChanges}
+        onConfirmDraft={handleConfirmDraft}
         onRefresh={refetch}
         loading={loading}
-        error={error}
-        report={report}
-        lastFetchedAt={lastFetchedAt}
+        canRefresh={hasConfirmedRange}
+        syncStates={report?.syncStates}
       />
 
       <div className="space-y-4">
-        {initialLoading ? (
+        {!hasConfirmedRange ? (
           <>
-            <ExecutiveSummaryCardsSkeleton />
-            <AgingAnalyticsSkeleton />
-            <ReconciliationCenterSkeleton />
+            <EmptyPeriodState />
+            <EmptySummaryPlaceholders />
+            <EmptyAgingPlaceholder />
+            <EmptyDebtExplorerPlaceholder />
+            <EmptyReconciliationPlaceholder />
+          </>
+        ) : initialLoading ? (
+          <>
+            <EmptySummaryPlaceholders shimmer />
+            <EmptyAgingPlaceholder shimmer />
+            <EmptyDebtExplorerPlaceholder shimmer />
+            <EmptyReconciliationPlaceholder shimmer />
           </>
         ) : showError ? (
           <ErrorBlock message={error ?? "Error desconocido"} onRetry={refetch} />
         ) : report ? (
           <>
-            <ExecutiveSummaryCards report={report} />
-            <AgingAnalytics report={report} />
-            <ClientDebtExplorer report={report} />
-            <ExplainabilityPanel report={report} />
+            <ExecutiveSummaryCards report={report} selectedCurrency="all" />
+            <AgingAnalytics report={report} selectedCurrency="all" />
+            <ClientDebtExplorer report={report} selectedCurrency="all" />
+            <ExplainabilityPanel report={report} selectedCurrency="all" />
             <ReconciliationCenter
               report={report}
               generatedAt={lastFetchedAt ?? report.generatedAt}
@@ -111,6 +133,168 @@ export function CarteraShell() {
         ) : null}
       </div>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Empty state
+// ---------------------------------------------------------------------------
+
+function EmptyPeriodState() {
+  const reduce = useReducedMotion();
+  return (
+    <motion.section
+      aria-label="Seleccione un período"
+      initial={reduce ? false : { opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.22, ease: "easeOut" }}
+      className="rounded-2xl border border-dashed border-[var(--copilot-border)] bg-white/55 px-6 py-10 text-center shadow-[var(--copilot-shadow)]"
+    >
+      <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-[rgba(44,40,37,0.06)] text-[var(--copilot-ink)]">
+        <CalendarRange className="h-5 w-5" aria-hidden />
+      </div>
+      <h2 className="mt-4 text-lg font-semibold tracking-tight text-[var(--copilot-ink)]">
+        Seleccione un período
+      </h2>
+      <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
+        Defina un rango de fechas para cargar métricas, cartera, aging y análisis financieros.
+      </p>
+    </motion.section>
+  );
+}
+
+function EmptySummaryPlaceholders({ shimmer = false }: { shimmer?: boolean }) {
+  const cards = [
+    "Pendiente de cobro UYU",
+    "Pendiente de cobro USD",
+    "Emitido UYU",
+    "Emitido USD",
+    "Cobranza efectiva UYU",
+    "Cobranza efectiva USD",
+    "Clientes en riesgo",
+    "Orphan warnings",
+  ];
+
+  return (
+    <section
+      aria-label="Resumen ejecutivo sin datos"
+      className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4"
+    >
+      {cards.map((title) => (
+        <article
+          key={title}
+          className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-5 shadow-[var(--copilot-shadow)]"
+        >
+          <div className="mb-4 flex items-center gap-2.5">
+            <PlaceholderBlock className="h-8 w-8 rounded-lg" shimmer={shimmer} />
+            <p className="truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--copilot-ink-muted)]">
+              {title}
+            </p>
+          </div>
+          <p className="text-2xl font-semibold leading-tight tabular-nums text-[var(--copilot-ink-muted)]">
+            —
+          </p>
+          <p className="mt-1.5 text-sm text-[var(--copilot-ink-muted)]">
+            Sin período confirmado
+          </p>
+        </article>
+      ))}
+    </section>
+  );
+}
+
+function EmptyAgingPlaceholder({ shimmer = false }: { shimmer?: boolean }) {
+  return (
+    <section className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] shadow-[var(--copilot-shadow)]">
+      <header className="border-b border-[var(--copilot-border)] px-5 py-4">
+        <h3 className="text-base font-semibold tracking-tight text-[var(--copilot-ink)]">
+          Aging de cartera
+        </h3>
+        <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
+          Sin período confirmado · montos y porcentajes pendientes
+        </p>
+      </header>
+      <div className="space-y-3 p-5">
+        {["0-30 días", "31-60 días", "61-90 días", "+90 días"].map((label) => (
+          <div
+            key={label}
+            className="rounded-xl border border-[var(--copilot-border)] bg-white/55 p-3.5"
+          >
+            <div className="mb-2.5 flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-ink-muted)]">
+                {label}
+              </span>
+              <span className="text-[10px] font-semibold text-[var(--copilot-ink-muted)]">—</span>
+            </div>
+            <PlaceholderBlock className="mb-3 h-2.5 w-full rounded-full" shimmer={shimmer} />
+            <div className="flex gap-4 text-[12px] text-[var(--copilot-ink-muted)]">
+              <span>—</span>
+              <span>— fact.</span>
+              <span>— clientes</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function EmptyDebtExplorerPlaceholder({ shimmer = false }: { shimmer?: boolean }) {
+  return (
+    <section className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] shadow-[var(--copilot-shadow)]">
+      <header className="border-b border-[var(--copilot-border)] px-5 py-4">
+        <h3 className="text-base font-semibold tracking-tight text-[var(--copilot-ink)]">
+          Explorador de deuda
+        </h3>
+        <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
+          La tabla se cargará después de confirmar un rango.
+        </p>
+      </header>
+      <div className="space-y-2 p-5">
+        {[0, 1, 2].map((i) => (
+          <PlaceholderBlock key={i} className="h-10 w-full rounded-lg" shimmer={shimmer} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function EmptyReconciliationPlaceholder({ shimmer = false }: { shimmer?: boolean }) {
+  return (
+    <section className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-5 shadow-[var(--copilot-shadow)]">
+      <h3 className="text-base font-semibold tracking-tight text-[var(--copilot-ink)]">
+        Centro de reconciliación
+      </h3>
+      <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
+        Los checks se calculan después de confirmar un período.
+      </p>
+      <div className="mt-4 grid gap-2 sm:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <PlaceholderBlock key={i} className="h-16 rounded-xl" shimmer={shimmer} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PlaceholderBlock({
+  className = "",
+  shimmer,
+}: {
+  className?: string;
+  shimmer: boolean;
+}) {
+  const reduce = useReducedMotion();
+  return (
+    <div className={`relative overflow-hidden bg-[rgba(44,40,37,0.06)] ${className}`}>
+      {shimmer && !reduce ? (
+        <motion.div
+          className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/55 to-transparent"
+          animate={{ x: ["-100%", "100%"] }}
+          transition={{ duration: 1.4, ease: "linear", repeat: Infinity }}
+        />
+      ) : null}
+    </div>
   );
 }
 
@@ -149,4 +333,3 @@ function ErrorBlock({ message, onRetry }: { message: string; onRetry: () => void
     </motion.div>
   );
 }
-
