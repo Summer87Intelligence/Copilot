@@ -1,10 +1,27 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
+import { getCopilotSessionCookieSetOptions } from "@/lib/copilot-cookie-options";
 import {
   COPILOT_SESSION_COOKIE,
   serializeCopilotSessionValue,
 } from "@/lib/copilot-session-cookie";
+import {
+  insertAuthLoginEvent,
+  logAuthStructured,
+} from "@/lib/security/auth-login-events";
+import {
+  checkLoginRateLimit,
+  resolveLoginRateLimitMaxIp,
+  resolveLoginRateLimitMaxUser,
+  resolveLoginRateLimitWindowMs,
+} from "@/lib/security/login-rate-limit";
+import {
+  hashPin,
+  safeEqualPlaintextPin,
+  verifyPinAgainstHash,
+} from "@/lib/security/pin-hash";
+import { getRequestClientMeta } from "@/lib/security/request-client-meta";
 
 function createServiceRoleClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -19,12 +36,16 @@ function createServiceRoleClient() {
   });
 }
 
-type AppUserRow = {
+type AppUserLoginRow = {
   id: string;
   company_id: string;
   username: string | null;
   pin: string | null;
+  pin_hash: string | null;
   role: string;
+  credential_version: number | null;
+  failed_login_count: number | null;
+  locked_until: string | null;
 };
 
 /** Valor literal para `ilike` (sin %): igualdad insensible a mayúsculas; escapa comodines LIKE. */
@@ -37,27 +58,73 @@ function ilikeExactPattern(value: string): string {
   return `"${escaped}"`;
 }
 
+let cachedDummyPinHash: string | null = null;
+
+async function getDummyPinHash(): Promise<string> {
+  if (cachedDummyPinHash) return cachedDummyPinHash;
+  cachedDummyPinHash = await hashPin("__COPILOT_LOGIN_TIMING_DUMMY_V1__");
+  return cachedDummyPinHash;
+}
+
+async function burnArgon2Compare(pin: string): Promise<void> {
+  const dummy = await getDummyPinHash();
+  await verifyPinAgainstHash(pin, dummy);
+}
+
+function resolveLoginMaxFailures(): number {
+  const raw = process.env.LOGIN_MAX_FAILURES?.trim();
+  const n = raw ? Number.parseInt(raw, 10) : Number.NaN;
+  return Number.isFinite(n) && n >= 3 ? n : 8;
+}
+
+function resolveLoginLockMinutes(): number {
+  const raw = process.env.LOGIN_LOCK_MINUTES?.trim();
+  const n = raw ? Number.parseInt(raw, 10) : Number.NaN;
+  return Number.isFinite(n) && n >= 1 ? n : 15;
+}
+
+function generic401(): NextResponse {
+  return NextResponse.json(
+    { ok: false as const, error: "Credenciales inválidas." },
+    { status: 401 }
+  );
+}
+
+function generic429(): NextResponse {
+  return NextResponse.json(
+    { ok: false as const, error: "Demasiados intentos. Probá más tarde." },
+    { status: 429 }
+  );
+}
+
+function generic500(): NextResponse {
+  return NextResponse.json(
+    { ok: false as const, error: "Error interno del servidor" },
+    { status: 500 }
+  );
+}
+
 /**
  * POST /api/copilot/login
- * Valida `user` (username o email) + `pin` en `public.app_users` (service role; sin Supabase Auth).
+ * SECURITY-02: hash Argon2id dual-read, rate limit, lockout, auditoría, cookie TTL + secure condicional.
  */
 export async function POST(request: Request) {
+  const { ip, userAgent } = getRequestClientMeta(request);
+  const nowMs = Date.now();
+  const windowMs = resolveLoginRateLimitWindowMs();
+  const maxIp = resolveLoginRateLimitMaxIp();
+  const maxUser = resolveLoginRateLimitMaxUser();
+
   try {
     let body: unknown;
     try {
       body = await request.json();
     } catch {
-      return NextResponse.json(
-        { error: "Error interno del servidor" },
-        { status: 500 }
-      );
+      return generic500();
     }
 
     if (body == null || typeof body !== "object") {
-      return NextResponse.json(
-        { error: "Credenciales inválidas" },
-        { status: 401 }
-      );
+      return generic401();
     }
 
     const o = body as Record<string, unknown>;
@@ -65,65 +132,198 @@ export async function POST(request: Request) {
     const pin = String(o.pin ?? "");
 
     if (!user || !pin) {
-      return NextResponse.json(
-        { error: "Credenciales inválidas" },
-        { status: 401 }
-      );
+      return generic401();
+    }
+
+    const ipKey = `ip:${ip ?? "unknown"}`;
+    const userKey = `user:${user.toLowerCase()}`;
+    const rlIp = checkLoginRateLimit(ipKey, nowMs, { windowMs, maxAttempts: maxIp });
+    const rlUser = checkLoginRateLimit(userKey, nowMs, { windowMs, maxAttempts: maxUser });
+    if (!rlIp.allowed || !rlUser.allowed) {
+      logAuthStructured("login_rate_limited", {
+        ip: ip ?? null,
+        user_key: userKey,
+        ip_allowed: rlIp.allowed,
+        user_allowed: rlUser.allowed,
+      });
+      const adminRl = createServiceRoleClient();
+      if (adminRl) {
+        void insertAuthLoginEvent(adminRl, {
+          userId: null,
+          companyId: null,
+          success: false,
+          failureReason: "rate_limited",
+          ip,
+          userAgent,
+        });
+      }
+      return generic429();
     }
 
     const admin = createServiceRoleClient();
     if (!admin) {
-      return NextResponse.json(
-        { error: "Error interno del servidor" },
-        { status: 500 }
-      );
+      return generic500();
     }
 
     const p = ilikeExactPattern(user);
     const { data: row, error } = await admin
       .from("app_users")
-      .select("id, company_id, username, pin, role")
+      .select(
+        "id, company_id, username, pin, pin_hash, role, credential_version, failed_login_count, locked_until"
+      )
       .or(`username.ilike.${p},email.ilike.${p}`)
       .limit(1)
       .maybeSingle();
 
     if (error) {
+      logAuthStructured("login_db_error", { message: error.message });
+      return generic500();
+    }
+
+    const u = row as AppUserLoginRow | null;
+
+    if (!u || typeof u.company_id !== "string" || !u.company_id.trim()) {
+      await burnArgon2Compare(pin);
+      void insertAuthLoginEvent(admin, {
+        userId: null,
+        companyId: null,
+        success: false,
+        failureReason: "invalid_credentials",
+        ip,
+        userAgent,
+      });
+      return generic401();
+    }
+
+    const lockedUntil = u.locked_until ? Date.parse(u.locked_until) : Number.NaN;
+    if (Number.isFinite(lockedUntil) && lockedUntil > nowMs) {
+      void insertAuthLoginEvent(admin, {
+        userId: u.id,
+        companyId: u.company_id,
+        success: false,
+        failureReason: "account_locked",
+        ip,
+        userAgent,
+      });
+      logAuthStructured("login_locked", { user_id: u.id, company_id: u.company_id });
       return NextResponse.json(
-        { error: "Error interno del servidor" },
-        { status: 500 }
+        { ok: false as const, error: "Cuenta temporalmente bloqueada. Probá más tarde." },
+        { status: 403 }
       );
     }
 
-    const u = row as AppUserRow | null;
-    if (
-      !u ||
-      u.pin == null ||
-      u.pin !== pin ||
-      typeof u.company_id !== "string" ||
-      !u.company_id.trim()
-    ) {
-      return NextResponse.json(
-        { error: "Credenciales inválidas" },
-        { status: 401 }
-      );
+    const pinHash =
+      typeof u.pin_hash === "string" && u.pin_hash.trim()
+        ? u.pin_hash.trim()
+        : null;
+    const legacyPin =
+      typeof u.pin === "string" && u.pin.length > 0 ? u.pin : null;
+
+    let pinOk = false;
+    if (pinHash) {
+      pinOk = await verifyPinAgainstHash(pin, pinHash);
+      if (!pinOk) {
+        await burnArgon2Compare(pin);
+      }
+    } else if (legacyPin != null) {
+      pinOk = safeEqualPlaintextPin(legacyPin, pin);
+      if (!pinOk) {
+        await burnArgon2Compare(pin);
+      }
+    } else {
+      await burnArgon2Compare(pin);
+    }
+
+    if (!pinOk) {
+      const fails = Math.max(0, Number(u.failed_login_count ?? 0));
+      const nextFails = fails + 1;
+      const maxFails = resolveLoginMaxFailures();
+      const lockMs = resolveLoginLockMinutes() * 60_000;
+      const lockedUntilIso =
+        nextFails >= maxFails
+          ? new Date(nowMs + lockMs).toISOString()
+          : (u.locked_until ?? null);
+
+      await admin
+        .from("app_users")
+        .update({
+          failed_login_count: nextFails,
+          locked_until: lockedUntilIso,
+        })
+        .eq("id", u.id);
+
+      void insertAuthLoginEvent(admin, {
+        userId: u.id,
+        companyId: u.company_id,
+        success: false,
+        failureReason: "invalid_credentials",
+        ip,
+        userAgent,
+      });
+      return generic401();
+    }
+
+    const credentialVersion = Math.max(
+      1,
+      Math.floor(Number(u.credential_version ?? 1)) || 1
+    );
+
+    const updates: Record<string, unknown> = {
+      failed_login_count: 0,
+      locked_until: null,
+      last_login_at: new Date().toISOString(),
+    };
+
+    if (!pinHash && legacyPin != null) {
+      try {
+        updates.pin_hash = await hashPin(pin);
+        updates.credentials_updated_at = new Date().toISOString();
+      } catch (e) {
+        logAuthStructured("pin_hash_migration_error", {
+          user_id: u.id,
+          error: String(e),
+        });
+      }
+    }
+
+    const { error: updErr } = await admin.from("app_users").update(updates).eq("id", u.id);
+    if (updErr) {
+      logAuthStructured("login_post_success_update_error", {
+        user_id: u.id,
+        message: updErr.message,
+      });
+      return generic500();
     }
 
     const role = String(u.role ?? "").trim() || "user";
     const companyId = u.company_id.trim();
-    const cookieValue = serializeCopilotSessionValue(u.id, role, companyId);
-
-    const res = NextResponse.json({ ok: true });
-    res.cookies.set(COPILOT_SESSION_COOKIE, cookieValue, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: true,
-      path: "/",
-    });
-    return res;
-  } catch {
-    return NextResponse.json(
-      { error: "Error interno del servidor" },
-      { status: 500 }
+    const cookieValue = serializeCopilotSessionValue(
+      u.id,
+      role,
+      companyId,
+      credentialVersion
     );
+
+    void insertAuthLoginEvent(admin, {
+      userId: u.id,
+      companyId,
+      success: true,
+      failureReason: null,
+      ip,
+      userAgent,
+    });
+
+    logAuthStructured("login_success", {
+      user_id: u.id,
+      company_id: companyId,
+      pin_migrated_to_hash: Boolean(!pinHash && legacyPin != null && updates.pin_hash),
+    });
+
+    const res = NextResponse.json({ ok: true as const });
+    res.cookies.set(COPILOT_SESSION_COOKIE, cookieValue, getCopilotSessionCookieSetOptions());
+    return res;
+  } catch (e) {
+    logAuthStructured("login_unhandled_error", { error: String(e) });
+    return generic500();
   }
 }

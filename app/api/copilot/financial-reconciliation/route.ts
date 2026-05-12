@@ -272,6 +272,7 @@ export async function GET(request: NextRequest) {
       supabase
         .from("zeta_sync_state")
         .select("resource_flow, last_success_at, bootstrap_completed")
+        .eq("company_id", workspaceId)
         .order("resource_flow"),
     ]);
     mark("load_data_ms");

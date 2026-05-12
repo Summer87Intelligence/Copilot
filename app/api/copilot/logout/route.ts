@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { getCopilotSessionCookieClearOptions } from "@/lib/copilot-cookie-options";
 import { COPILOT_SESSION_COOKIE } from "@/lib/copilot-session-cookie";
 
 /**
@@ -8,11 +9,6 @@ import { COPILOT_SESSION_COOKIE } from "@/lib/copilot-session-cookie";
  */
 export async function POST() {
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(COPILOT_SESSION_COOKIE, "", {
-    httpOnly: true,
-    path: "/",
-    sameSite: "lax",
-    maxAge: 0,
-  });
+  res.cookies.set(COPILOT_SESSION_COOKIE, "", getCopilotSessionCookieClearOptions());
   return res;
 }

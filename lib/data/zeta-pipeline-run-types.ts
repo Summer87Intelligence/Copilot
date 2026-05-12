@@ -38,11 +38,28 @@ export type ZetaPipelineRunRow = {
   rows_failed: number;
   error_summary: string | null;
   metadata: Record<string, unknown> | null;
+  /** NULL = run fleet (cron multi-workspace). Ver migración zeta-06-03. */
+  workspace_company_id?: string | null;
+  last_heartbeat_at?: string | null;
 };
 
 export type CreatePipelineRunInput = {
   pipeline_name: string;
   metadata?: Record<string, unknown> | null;
+  /**
+   * NULL/omitido = run de orchestración fleet (default crons Zeta).
+   * UUID = futuro overlap por workspace.
+   */
+  workspace_company_id?: string | null;
+};
+
+/** Anti-overlap: por defecto solo compite con runs fleet (`workspace_company_id` IS NULL). */
+export type FindActivePipelineRunWorkspaceScope =
+  | "fleet"
+  | { companyId: string };
+
+export type FindActivePipelineRunOptions = {
+  workspaceScope?: FindActivePipelineRunWorkspaceScope;
 };
 
 export type UpdatePipelineRunInput = {

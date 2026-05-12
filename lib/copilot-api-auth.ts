@@ -5,6 +5,9 @@ import type { User } from "@supabase/supabase-js";
 import {
   getParsedCopilotSessionFromRequest,
 } from "@/lib/copilot-session-cookie";
+import { applyClearCopilotSessionCookie } from "@/lib/copilot-cookie-options";
+import { insertAuthLoginEvent } from "@/lib/security/auth-login-events";
+import { getRequestClientMeta } from "@/lib/security/request-client-meta";
 import { getAppUserByEmail } from "@/services/app-user-source";
 import type { AppUser } from "@/types/app-user";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
@@ -43,10 +46,19 @@ export type CopilotAuthResult = AuthFailure | AuthSuccess;
 
 function jsonError(
   status: 401 | 403,
-  code: "UNAUTHENTICATED" | "FORBIDDEN_TENANT" | "FORBIDDEN_MEMBERSHIP",
-  message: string
+  code:
+    | "UNAUTHENTICATED"
+    | "FORBIDDEN_TENANT"
+    | "FORBIDDEN_MEMBERSHIP"
+    | "SESSION_CREDENTIALS_STALE",
+  message: string,
+  options?: { clearCopilotSession?: boolean }
 ): NextResponse {
-  return NextResponse.json({ ok: false as const, code, message }, { status });
+  const res = NextResponse.json({ ok: false as const, code, message }, { status });
+  if (options?.clearCopilotSession) {
+    applyClearCopilotSessionCookie(res);
+  }
+  return res;
 }
 
 function createServiceRoleSupabaseClient(): SupabaseClient | null {
@@ -274,7 +286,7 @@ export async function requireCopilotTenantContext(
 
   const { data: row, error: rowErr } = await admin
     .from("app_users")
-    .select("id, company_id, full_name, email, role, created_at")
+    .select("id, company_id, full_name, email, role, created_at, credential_version")
     .eq("id", parsed.userId)
     .maybeSingle();
 
@@ -306,7 +318,35 @@ export async function requireCopilotTenantContext(
     email: string;
     role: string;
     created_at: string;
+    credential_version?: unknown;
   };
+
+  const dbCredentialVersion = Math.max(
+    1,
+    Math.floor(Number(r.credential_version ?? 1)) || 1
+  );
+  const sessionCredentialVersion = Math.max(1, Math.floor(parsed.credentialVersion ?? 1));
+
+  if (dbCredentialVersion !== sessionCredentialVersion) {
+    const meta = getRequestClientMeta(request);
+    void insertAuthLoginEvent(admin, {
+      userId: r.id,
+      companyId: String(r.company_id ?? "").trim() || null,
+      success: false,
+      failureReason: "session_credentials_stale",
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+    return {
+      ok: false,
+      response: jsonError(
+        401,
+        "SESSION_CREDENTIALS_STALE",
+        "Sesión expirada. Iniciá sesión de nuevo.",
+        { clearCopilotSession: true }
+      ),
+    };
+  }
 
   const tenantCompanyId = String(r.company_id ?? "").trim();
   if (!tenantCompanyId) {

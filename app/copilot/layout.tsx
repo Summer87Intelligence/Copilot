@@ -49,7 +49,7 @@ export default async function CopilotModuleLayout({
     if (admin) {
       const { data: row, error } = await admin
         .from("app_users")
-        .select("id, company_id, username, email, role")
+        .select("id, company_id, username, email, role, credential_version")
         .eq("id", parsed.userId)
         .maybeSingle();
 
@@ -60,7 +60,23 @@ export default async function CopilotModuleLayout({
           username: string | null;
           email: string | null;
           role: string | null;
+          credential_version?: unknown;
         };
+        const dbCv = Math.max(
+          1,
+          Math.floor(Number(r.credential_version ?? 1)) || 1
+        );
+        const sessionCv = Math.max(1, Math.floor(parsed.credentialVersion ?? 1));
+
+        if (dbCv !== sessionCv) {
+          if (process.env.NODE_ENV === "development") {
+            console.warn("[copilot/layout] credential_version mismatch", {
+              user_id: r.id,
+              dbCv,
+              sessionCv,
+            });
+          }
+        } else {
         const role = String(r.role ?? "").trim();
         const tenantCompanyId = String(r.company_id ?? "").trim();
 
@@ -91,6 +107,7 @@ export default async function CopilotModuleLayout({
             tenantCompanyId,
             activeCompanyName,
           };
+        }
         }
       }
     }

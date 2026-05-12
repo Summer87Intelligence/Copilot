@@ -20,9 +20,12 @@ import { createCronLogger } from "@/lib/observability/cron-logger";
 
 import { runZetaSaldosPendientesPipeline } from "@/lib/integrations/zeta/zeta-saldos-pipeline";
 import { withZetaRetry } from "@/lib/integrations/zeta/zeta-retry";
+import { fetchActiveWorkspaceIdPage } from "@/lib/cron/zeta-cron-workspace-pages";
 import {
   createPipelineRun,
+  expireStaleFleetPipelineRuns,
   findActivePipelineRun,
+  touchPipelineRunHeartbeat,
   updatePipelineRun,
 } from "@/lib/data/zeta-pipeline-run-repository";
 import { ZETA_PIPELINE_NAMES } from "@/lib/data/zeta-pipeline-run-types";
@@ -96,10 +99,21 @@ export async function GET(request: NextRequest) {
 
   log("cron_start");
 
-  // ── Anti-overlap ─────────────────────────────────────────────────────────
+  // ── Anti-overlap (fleet) + recuperación runs colgados ─────────────────────
+  try {
+    const closed = await expireStaleFleetPipelineRuns(supabase);
+    if (closed > 0) {
+      log("stale_fleet_runs_closed", { count: closed });
+    }
+  } catch (e) {
+    log("expire_stale_runs_error", { error: String(e) });
+  }
+
   let activeRun: Awaited<ReturnType<typeof findActivePipelineRun>> = null;
   try {
-    activeRun = await findActivePipelineRun(supabase, PIPELINE, ANTI_OVERLAP_WINDOW_MS);
+    activeRun = await findActivePipelineRun(supabase, PIPELINE, ANTI_OVERLAP_WINDOW_MS, {
+      workspaceScope: "fleet",
+    });
   } catch (e) {
     log("anti_overlap_check_error", { error: String(e) });
     // No bloquear el cron si la tabla no existe aún
@@ -129,38 +143,48 @@ export async function GET(request: NextRequest) {
     // Continúa aunque falle el registry
   }
 
-  // ── Cargar workspaces activos ─────────────────────────────────────────────
-  const { data: workspaces, error: wsErr } = await supabase
-    .from("companies")
-    .select("id")
-    .eq("status", "active")
-    .limit(20);
-
-  if (wsErr) {
-    log("workspace_load_error", { error: wsErr.message });
-    if (pipelineRunId) {
-      await updatePipelineRun(supabase, pipelineRunId, {
-        status: "failed",
-        duration_ms: Date.now() - started,
-        error_summary: `workspace_load_error: ${wsErr.message}`,
-      }).catch(() => {});
-    }
-    return NextResponse.json(
-      { ok: false, code: "DB_ERROR", message: wsErr.message },
-      { status: 500 }
-    );
-  }
-
-  const workspaceIds = ((workspaces ?? []) as { id: string }[]).map((w) => w.id);
-
   let totalProcessed = 0;
   let totalUpserted = 0;
   let totalFailed = 0;
   let totalReconciliationClosed = 0;
   const workspaceSummaries: WorkspaceSummary[] = [];
+  let workspacesTotal = 0;
+  let workspacePageIndex = 0;
+  let cursorAfterId: string | null = null;
 
-  // ── Procesar cada workspace ───────────────────────────────────────────────
-  for (const workspaceId of workspaceIds) {
+  // ── Workspaces activos: paginación determinística por `id` ───────────────
+  while (true) {
+    let page: { ids: string[]; nextAfterId: string | null };
+    try {
+      page = await fetchActiveWorkspaceIdPage(supabase, cursorAfterId);
+    } catch (e) {
+      const msg = String(e);
+      log("workspace_page_error", { error: msg, cursor_after: cursorAfterId });
+      if (pipelineRunId) {
+        await updatePipelineRun(supabase, pipelineRunId, {
+          status: "failed",
+          duration_ms: Date.now() - started,
+          error_summary: `workspace_page_error: ${msg}`,
+        }).catch(() => {});
+      }
+      return NextResponse.json(
+        { ok: false, code: "DB_ERROR", message: msg },
+        { status: 500 }
+      );
+    }
+
+    if (page.ids.length === 0) {
+      break;
+    }
+
+    workspacePageIndex += 1;
+    log("workspace_page", {
+      batch_index: workspacePageIndex,
+      batch_size: page.ids.length,
+      next_cursor: page.nextAfterId,
+    });
+
+    for (const workspaceId of page.ids) {
     // Orden determinístico por `id` para que la selección sea reproducible:
     // sin `.order()`, PostgREST devuelve filas en orden indefinido y el
     // antiguo cap de 10 dejaba a la mayoría de clientes fuera de la sync de
@@ -284,6 +308,21 @@ export async function GET(request: NextRequest) {
       errors: wsErrors,
       reconciliation_closed: wsReconciled,
     });
+
+    workspacesTotal += 1;
+    if (pipelineRunId) {
+      try {
+        await touchPipelineRunHeartbeat(supabase, pipelineRunId);
+      } catch (e) {
+        log("pipeline_heartbeat_error", { error: String(e) });
+      }
+    }
+    }
+
+    cursorAfterId = page.nextAfterId;
+    if (cursorAfterId == null) {
+      break;
+    }
   }
 
   const duration = Date.now() - started;
@@ -301,7 +340,8 @@ export async function GET(request: NextRequest) {
       error_summary: totalFailed > 0 ? `${totalFailed} clientes con error` : null,
       metadata: {
         cron_run_id: cronRunId,
-        workspaces: workspaceIds.length,
+        workspaces: workspacesTotal,
+        workspace_pages: workspacePageIndex,
         reconciliation_closed: totalReconciliationClosed,
         summaries: workspaceSummaries,
       },
@@ -309,7 +349,7 @@ export async function GET(request: NextRequest) {
   }
 
   log("cron_end", {
-    workspaces: workspaceIds.length,
+    workspaces: workspacesTotal,
     total_processed: totalProcessed,
     total_upserted: totalUpserted,
     total_failed: totalFailed,
@@ -323,7 +363,7 @@ export async function GET(request: NextRequest) {
     cron_run_id: cronRunId,
     pipeline_run_id: pipelineRunId,
     status: finalStatus,
-    workspaces_processed: workspaceIds.length,
+    workspaces_processed: workspacesTotal,
     total_processed: totalProcessed,
     total_upserted: totalUpserted,
     total_failed: totalFailed,

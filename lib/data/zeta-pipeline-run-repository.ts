@@ -1,12 +1,16 @@
 /**
  * ZETA-06: Repositorio para `zeta_pipeline_runs`.
  * Funciones para crear, actualizar y consultar runs de cron pipelines.
- * Usa service_role — la tabla no tiene RLS (nivel orchestración global).
+ * Usa service_role — la tabla no tiene RLS (nivel orchestración).
+ *
+ * Anti-overlap fleet (ZETA-06-03): solo considera runs con `workspace_company_id` IS NULL,
+ * más expiración de runs colgados (`expireStaleFleetPipelineRuns`).
  */
 
 import type { OperationalSupabase } from "@/lib/data/supabase-operational-data";
 import type {
   CreatePipelineRunInput,
+  FindActivePipelineRunOptions,
   UpdatePipelineRunInput,
   ZetaPipelineRunRow,
 } from "@/lib/data/zeta-pipeline-run-types";
@@ -14,22 +18,39 @@ import type {
 /** Ventana máxima para considerar un run como "activo" (guard anti-overlap). */
 const DEFAULT_ACTIVE_WINDOW_MS = 3 * 60 * 60 * 1000; // 3 horas
 
+/** Runs `running` sin pulso desde este umbral se marcan `failed` (cron fleet). */
+const DEFAULT_STALE_RUNNING_MS = 45 * 60 * 1000;
+
+function resolveStaleRunningMs(): number {
+  const raw = process.env.ZETA_PIPELINE_STALE_RUNNING_MS;
+  if (!raw) return DEFAULT_STALE_RUNNING_MS;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n >= 60_000 ? n : DEFAULT_STALE_RUNNING_MS;
+}
+
 /** Inserta un run en estado "running". Devuelve el id generado. */
 export async function createPipelineRun(
   supabase: OperationalSupabase,
   input: CreatePipelineRunInput
 ): Promise<{ id: string }> {
+  const now = new Date().toISOString();
+  const row: Record<string, unknown> = {
+    pipeline_name: input.pipeline_name,
+    status: "running",
+    rows_processed: 0,
+    rows_updated: 0,
+    rows_failed: 0,
+    metadata: input.metadata ?? null,
+    started_at: now,
+    last_heartbeat_at: now,
+  };
+  if (input.workspace_company_id !== undefined) {
+    row.workspace_company_id = input.workspace_company_id;
+  }
+
   const { data, error } = await supabase
     .from("zeta_pipeline_runs")
-    .insert({
-      pipeline_name: input.pipeline_name,
-      status: "running",
-      rows_processed: 0,
-      rows_updated: 0,
-      rows_failed: 0,
-      metadata: input.metadata ?? null,
-      started_at: new Date().toISOString(),
-    })
+    .insert(row)
     .select("id")
     .single();
 
@@ -63,28 +84,100 @@ export async function updatePipelineRun(
 }
 
 /**
+ * Pulso de vida para corridas largas: evita que `expireStaleFleetPipelineRuns`
+ * cierre un run legítimo mientras el cron sigue vivo.
+ */
+export async function touchPipelineRunHeartbeat(
+  supabase: OperationalSupabase,
+  runId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("zeta_pipeline_runs")
+    .update({ last_heartbeat_at: new Date().toISOString() })
+    .eq("id", runId)
+    .eq("status", "running");
+
+  if (error) throw new Error(`touchPipelineRunHeartbeat: ${error.message}`);
+}
+
+/**
+ * Marca como `failed` los runs fleet `running` sin pulso reciente (cron colgado / crash).
+ * No toca runs con `workspace_company_id` set (reservado futuro).
+ */
+export async function expireStaleFleetPipelineRuns(
+  supabase: OperationalSupabase,
+  staleMs?: number
+): Promise<number> {
+  const ms = staleMs ?? resolveStaleRunningMs();
+  const cutoff = new Date(Date.now() - ms).toISOString();
+
+  const { data: rows, error } = await supabase
+    .from("zeta_pipeline_runs")
+    .select("id, started_at, last_heartbeat_at")
+    .eq("status", "running")
+    .is("workspace_company_id", null)
+    .limit(500);
+
+  if (error) throw new Error(`expireStaleFleetPipelineRuns(select): ${error.message}`);
+
+  const stale = (rows ?? []).filter((r) => {
+    const row = r as {
+      id: string;
+      started_at: string;
+      last_heartbeat_at?: string | null;
+    };
+    const pulse = row.last_heartbeat_at ?? row.started_at;
+    return pulse < cutoff;
+  });
+
+  for (const r of stale) {
+    const row = r as { id: string; started_at: string };
+    const startedMs = new Date(row.started_at).getTime();
+    await updatePipelineRun(supabase, row.id, {
+      status: "failed",
+      duration_ms: Math.max(0, Date.now() - startedMs),
+      error_summary: "stale_running_timeout",
+    });
+  }
+
+  return stale.length;
+}
+
+/**
  * Busca un run activo (status="running") para el pipeline dado dentro de la
  * ventana de tiempo indicada. Usado para anti-overlap entre invocaciones.
+ *
+ * Por defecto `workspaceScope: "fleet"` → solo filas con `workspace_company_id` IS NULL,
+ * aislando de futuros runs por-tenant. Llamar `expireStaleFleetPipelineRuns` antes en crons.
  */
 export async function findActivePipelineRun(
   supabase: OperationalSupabase,
   pipelineName: string,
-  maxAgeMs: number = DEFAULT_ACTIVE_WINDOW_MS
+  maxAgeMs: number = DEFAULT_ACTIVE_WINDOW_MS,
+  options?: FindActivePipelineRunOptions
 ): Promise<ZetaPipelineRunRow | null> {
+  const scope = options?.workspaceScope ?? "fleet";
   const since = new Date(Date.now() - maxAgeMs).toISOString();
 
-  const { data, error } = await supabase
+  let q = supabase
     .from("zeta_pipeline_runs")
     .select("*")
     .eq("pipeline_name", pipelineName)
     .eq("status", "running")
     .gte("started_at", since)
     .order("started_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(5);
+
+  if (scope === "fleet") {
+    q = q.is("workspace_company_id", null);
+  } else {
+    q = q.eq("workspace_company_id", scope.companyId);
+  }
+
+  const { data, error } = await q;
 
   if (error) throw new Error(`findActivePipelineRun: ${error.message}`);
-  return (data as ZetaPipelineRunRow | null) ?? null;
+  return (data?.[0] as ZetaPipelineRunRow | undefined) ?? null;
 }
 
 /** Devuelve los N runs más recientes de un pipeline para el health layer. */

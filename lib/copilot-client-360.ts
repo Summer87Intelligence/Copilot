@@ -376,9 +376,13 @@ export async function loadClientCompany360(
   movements.sort((a, b) => b.fecha.localeCompare(a.fecha));
   const ultimos = movements.slice(0, 10);
 
-  const { data: syncRows, error: sErr } = await client.from("zeta_sync_state").select("*").order("updated_at", {
-    ascending: false,
-  });
+  const { data: syncRows, error: sErr } = await client
+    .from("zeta_sync_state")
+    .select("*")
+    .eq("company_id", wid)
+    .order("updated_at", {
+      ascending: false,
+    });
   if (sErr) throw new Error(sErr.message);
 
   const zeta_sync_rows: Client360ZetaSyncRow[] = (syncRows ?? []).map((row) => {

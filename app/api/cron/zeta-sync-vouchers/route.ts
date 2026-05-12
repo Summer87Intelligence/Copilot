@@ -22,9 +22,12 @@ import { createCronLogger } from "@/lib/observability/cron-logger";
 
 import { syncZetaCustomerVouchers } from "@/lib/integrations/zeta/zeta-customer-vouchers-pipeline";
 import { withZetaRetry } from "@/lib/integrations/zeta/zeta-retry";
+import { fetchActiveWorkspaceIdPage } from "@/lib/cron/zeta-cron-workspace-pages";
 import {
   createPipelineRun,
+  expireStaleFleetPipelineRuns,
   findActivePipelineRun,
+  touchPipelineRunHeartbeat,
   updatePipelineRun,
 } from "@/lib/data/zeta-pipeline-run-repository";
 import { ZETA_PIPELINE_NAMES } from "@/lib/data/zeta-pipeline-run-types";
@@ -112,10 +115,20 @@ export async function GET(request: NextRequest) {
 
   log("cron_start", { months: syncMonths });
 
-  // ── Anti-overlap ─────────────────────────────────────────────────────────
+  try {
+    const closed = await expireStaleFleetPipelineRuns(supabase);
+    if (closed > 0) {
+      log("stale_fleet_runs_closed", { count: closed });
+    }
+  } catch (e) {
+    log("expire_stale_runs_error", { error: String(e) });
+  }
+
   let activeRun: Awaited<ReturnType<typeof findActivePipelineRun>> = null;
   try {
-    activeRun = await findActivePipelineRun(supabase, PIPELINE, ANTI_OVERLAP_WINDOW_MS);
+    activeRun = await findActivePipelineRun(supabase, PIPELINE, ANTI_OVERLAP_WINDOW_MS, {
+      workspaceScope: "fleet",
+    });
   } catch (e) {
     log("anti_overlap_check_error", { error: String(e) });
   }
@@ -143,39 +156,51 @@ export async function GET(request: NextRequest) {
     log("pipeline_run_create_error", { error: String(e) });
   }
 
-  // ── Cargar workspaces activos ─────────────────────────────────────────────
-  const { data: workspaces, error: wsErr } = await supabase
-    .from("companies")
-    .select("id")
-    .eq("status", "active")
-    .limit(20);
-
-  if (wsErr) {
-    log("workspace_load_error", { error: wsErr.message });
-    if (pipelineRunId) {
-      await updatePipelineRun(supabase, pipelineRunId, {
-        status: "failed",
-        duration_ms: Date.now() - started,
-        error_summary: `workspace_load_error: ${wsErr.message}`,
-      }).catch(() => {});
-    }
-    return NextResponse.json(
-      { ok: false, code: "DB_ERROR", message: wsErr.message },
-      { status: 500 }
-    );
-  }
-
-  const workspaceIds = ((workspaces ?? []) as { id: string }[]).map((w) => w.id);
-
   let totalProcessed = 0;
   let totalUpdated = 0;
   let totalFailed = 0;
   const workspaceSummaries: WorkspaceSummary[] = [];
+  let workspacesTotal = 0;
+  let workspacePageIndex = 0;
+  let cursorAfterId: string | null = null;
+  let firstWorkspaceInCron = true;
 
-  // ── Procesar cada workspace ───────────────────────────────────────────────
-  for (let wi = 0; wi < workspaceIds.length; wi++) {
-    const workspaceId = workspaceIds[wi]!;
-    if (wi > 0) await sleep(WORKSPACE_DELAY_MS);
+  while (true) {
+    let page: { ids: string[]; nextAfterId: string | null };
+    try {
+      page = await fetchActiveWorkspaceIdPage(supabase, cursorAfterId);
+    } catch (e) {
+      const msg = String(e);
+      log("workspace_page_error", { error: msg, cursor_after: cursorAfterId });
+      if (pipelineRunId) {
+        await updatePipelineRun(supabase, pipelineRunId, {
+          status: "failed",
+          duration_ms: Date.now() - started,
+          error_summary: `workspace_page_error: ${msg}`,
+        }).catch(() => {});
+      }
+      return NextResponse.json(
+        { ok: false, code: "DB_ERROR", message: msg },
+        { status: 500 }
+      );
+    }
+
+    if (page.ids.length === 0) {
+      break;
+    }
+
+    workspacePageIndex += 1;
+    log("workspace_page", {
+      batch_index: workspacePageIndex,
+      batch_size: page.ids.length,
+      next_cursor: page.nextAfterId,
+    });
+
+    for (const workspaceId of page.ids) {
+    if (!firstWorkspaceInCron) {
+      await sleep(WORKSPACE_DELAY_MS);
+    }
+    firstWorkspaceInCron = false;
 
     let wsProcessed = 0;
     let wsUpdated = 0;
@@ -249,6 +274,21 @@ export async function GET(request: NextRequest) {
       rows_updated: wsUpdated,
       errors: wsErrors,
     });
+
+    workspacesTotal += 1;
+    if (pipelineRunId) {
+      try {
+        await touchPipelineRunHeartbeat(supabase, pipelineRunId);
+      } catch (e) {
+        log("pipeline_heartbeat_error", { error: String(e) });
+      }
+    }
+    }
+
+    cursorAfterId = page.nextAfterId;
+    if (cursorAfterId == null) {
+      break;
+    }
   }
 
   const duration = Date.now() - started;
@@ -265,7 +305,8 @@ export async function GET(request: NextRequest) {
       error_summary: totalFailed > 0 ? `${totalFailed} workspace/mes con error` : null,
       metadata: {
         cron_run_id: cronRunId,
-        workspaces: workspaceIds.length,
+        workspaces: workspacesTotal,
+        workspace_pages: workspacePageIndex,
         months: syncMonths,
         summaries: workspaceSummaries,
       },
@@ -273,7 +314,7 @@ export async function GET(request: NextRequest) {
   }
 
   log("cron_end", {
-    workspaces: workspaceIds.length,
+    workspaces: workspacesTotal,
     months: syncMonths,
     total_processed: totalProcessed,
     total_updated: totalUpdated,
@@ -287,7 +328,7 @@ export async function GET(request: NextRequest) {
     cron_run_id: cronRunId,
     pipeline_run_id: pipelineRunId,
     status: finalStatus,
-    workspaces_processed: workspaceIds.length,
+    workspaces_processed: workspacesTotal,
     months_synced: syncMonths,
     total_processed: totalProcessed,
     total_updated: totalUpdated,

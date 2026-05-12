@@ -31,12 +31,15 @@ export async function getCopilotIsSuperadminServer(): Promise<boolean> {
 
   const { data: row, error } = await admin
     .from("app_users")
-    .select("role, company_id")
+    .select("role, company_id, credential_version")
     .eq("id", parsed.userId)
     .maybeSingle();
 
   if (error || !row) return false;
-  const r = row as { role: string | null; company_id: string | null };
+  const r = row as { role: string | null; company_id: string | null; credential_version?: unknown };
+  const dbCv = Math.max(1, Math.floor(Number(r.credential_version ?? 1)) || 1);
+  const sessionCv = Math.max(1, Math.floor(parsed.credentialVersion ?? 1));
+  if (dbCv !== sessionCv) return false;
   if (!String(r.company_id ?? "").trim()) return false;
   return String(r.role ?? "").trim().toLowerCase() === "superadmin";
 }
