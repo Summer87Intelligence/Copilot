@@ -566,40 +566,6 @@ export function generateFinancialConsistencyReport(
   };
   const buckets: Partial<Record<string, Bucket>> = {};
 
-  const shouldLogUsdPendingAudit =
-    typeof process !== "undefined" && process.env.NODE_ENV === "development";
-  type PendingInvoiceAuditEntry = {
-    id: string;
-    companyId: string | null;
-    issueDate: string | null;
-    totalAmount: number;
-    balanceAmount: number | null;
-    pendingAmount: number;
-    dueDate: string | null;
-    dueDateSource: string | null;
-  };
-  type CreditNoteAuditEntry = {
-    id: string;
-    companyId: string | null;
-    issueDate: string | null;
-    totalAmount: number;
-    bucketPendingBefore?: number;
-    bucketPendingAfter?: number;
-  };
-  const usdPendingAudit: {
-    inPeriodPendingInvoices: PendingInvoiceAuditEntry[];
-    prePeriodPendingInvoices: PendingInvoiceAuditEntry[];
-    agingInvoices: Array<PendingInvoiceAuditEntry & { agingRange: AgingRange }>;
-    inPeriodCreditNotes: CreditNoteAuditEntry[];
-    prePeriodCreditNotes: CreditNoteAuditEntry[];
-  } = {
-    inPeriodPendingInvoices: [],
-    prePeriodPendingInvoices: [],
-    agingInvoices: [],
-    inPeriodCreditNotes: [],
-    prePeriodCreditNotes: [],
-  };
-
   // Acumulación adicional para opening: NCs pre-período reducen el saldo
   // anterior reconstruido. Se acumulan por moneda.
   const creditNotePrePeriodByCurrency: Partial<
@@ -736,36 +702,13 @@ export function generateFinancialConsistencyReport(
     // (no son venta nueva) y tampoco se suman a deuda. No se netean contra
     // `totalPending`: `balance_amount` ya viene neto desde Zeta por comprobante.
     if (inv.is_credit_note === true) {
-      const beforePending = b.totalPending;
       b.creditNoteAmount = round2(b.creditNoteAmount + totalAmount);
       b.creditNoteCount++;
-      if (shouldLogUsdPendingAudit && code === "USD") {
-        usdPendingAudit.inPeriodCreditNotes.push({
-          id: inv.id,
-          companyId: companyId || null,
-          issueDate: inv.issue_date ?? null,
-          totalAmount,
-          bucketPendingBefore: beforePending,
-          bucketPendingAfter: b.totalPending,
-        });
-      }
     } else {
       b.totalInvoiced = round2(b.totalInvoiced + totalAmount);
       b.totalPending = round2(b.totalPending + pendingAmount);
       b.invoiceCount++;
       if (pendingAmount > 0) b.pendingInvoiceCount++;
-      if (shouldLogUsdPendingAudit && code === "USD" && pendingAmount > 0) {
-        usdPendingAudit.inPeriodPendingInvoices.push({
-          id: inv.id,
-          companyId: companyId || null,
-          issueDate: inv.issue_date ?? null,
-          totalAmount,
-          balanceAmount: rawBalance,
-          pendingAmount,
-          dueDate: inv.due_date ?? null,
-          dueDateSource: inv.due_date_source ?? null,
-        });
-      }
     }
     buckets[code] = b;
 
@@ -797,19 +740,6 @@ export function generateFinancialConsistencyReport(
         if (ag.source === "real") bk.realCount++;
         else bk.syntheticCount++;
         bumpAgingSource(cc, ag.source);
-        if (shouldLogUsdPendingAudit && code === "USD") {
-          usdPendingAudit.agingInvoices.push({
-            id: inv.id,
-            companyId: companyId || null,
-            issueDate: inv.issue_date ?? null,
-            totalAmount,
-            balanceAmount: rawBalance,
-            pendingAmount,
-            dueDate: inv.due_date ?? null,
-            dueDateSource: inv.due_date_source ?? null,
-            agingRange: ag.range,
-          });
-        }
 
         if (companyId) {
           let cliAg = clientAgingAmounts.get(companyId);
@@ -904,14 +834,6 @@ export function generateFinancialConsistencyReport(
         creditNotePrePeriodByCurrency[cc] = round2(
           (creditNotePrePeriodByCurrency[cc] ?? 0) + total
         );
-        if (shouldLogUsdPendingAudit && cc === "USD") {
-          usdPendingAudit.prePeriodCreditNotes.push({
-            id: inv.id,
-            companyId: inv.company_id?.trim() || null,
-            issueDate: inv.issue_date ?? null,
-            totalAmount: total,
-          });
-        }
         continue;
       }
       invoicedPrePeriodByCurrency[cc] = round2(
@@ -923,18 +845,6 @@ export function generateFinancialConsistencyReport(
         pendingPrePeriodByCurrency[cc] = round2(
           (pendingPrePeriodByCurrency[cc] ?? 0) + pending
         );
-        if (shouldLogUsdPendingAudit && cc === "USD") {
-          usdPendingAudit.prePeriodPendingInvoices.push({
-            id: inv.id,
-            companyId: inv.company_id?.trim() || null,
-            issueDate: inv.issue_date ?? null,
-            totalAmount: total,
-            balanceAmount: rawBal,
-            pendingAmount: pending,
-            dueDate: inv.due_date ?? null,
-            dueDateSource: inv.due_date_source ?? null,
-          });
-        }
       }
     }
   }
@@ -1145,72 +1055,6 @@ export function generateFinancialConsistencyReport(
         );
       }
     }
-  }
-
-  if (shouldLogUsdPendingAudit) {
-    const usdBucket = buckets.USD;
-    const usdInPeriodPending = usdBucket?.totalPending ?? 0;
-    const usdPrePeriodPending = pendingPrePeriodByCurrency.USD ?? 0;
-    const usdPrePeriodCreditNotes = creditNotePrePeriodByCurrency.USD ?? 0;
-    const usdPendingBeforeClamp = round2(usdInPeriodPending + usdPrePeriodPending);
-    const usdPendingAfterClamp = round2(Math.max(0, usdPendingBeforeClamp));
-    const usdAgingBuckets = agingByCurrency.USD ?? [];
-    const usdAgingSum = round2(
-      usdAgingBuckets.reduce((s, b) => s + b.amount, 0)
-    );
-    const usdStaleClientsSum = round2(
-      staleClients.reduce((s, c) => s + (c.pendingByCurrency.USD ?? 0), 0)
-    );
-    console.info(
-      JSON.stringify({
-        timestamp: new Date().toISOString(),
-        source: "financial_reconciliation",
-        kind: "usd_pending_at_cutoff_audit",
-        mode,
-        period_start: periodStart,
-        period_end: periodEnd,
-        usd_pending_invoice_ids: [
-          ...usdPendingAudit.prePeriodPendingInvoices.map((i) => i.id),
-          ...usdPendingAudit.inPeriodPendingInvoices.map((i) => i.id),
-        ],
-        usd_balances: {
-          in_period: usdPendingAudit.inPeriodPendingInvoices,
-          pre_period: usdPendingAudit.prePeriodPendingInvoices,
-          aging: usdPendingAudit.agingInvoices,
-        },
-        usd_pending_aggregation_total: {
-          in_period_bucket_after_nc: usdInPeriodPending,
-          pre_period_pending: usdPrePeriodPending,
-          pre_period_nc_detected_not_netted: usdPrePeriodCreditNotes,
-          before_clamp: usdPendingBeforeClamp,
-          after_clamp: usdPendingAfterClamp,
-          currency_reconciliation_pending_at_cutoff: pendingAtCutoffFor("USD"),
-        },
-        usd_nc_reductions: {
-          in_period_credit_note_amount: usdBucket?.creditNoteAmount ?? 0,
-          in_period_credit_note_count: usdBucket?.creditNoteCount ?? 0,
-          in_period_credit_notes: usdPendingAudit.inPeriodCreditNotes,
-          pre_period_credit_note_amount: usdPrePeriodCreditNotes,
-          pre_period_credit_notes: usdPendingAudit.prePeriodCreditNotes,
-        },
-        usd_clamp_values: {
-          pending_at_cutoff_before_clamp: usdPendingBeforeClamp,
-          pending_at_cutoff_after_clamp: usdPendingAfterClamp,
-          pending_at_cutoff_clamped_to_zero: usdPendingBeforeClamp < 0,
-        },
-        comparison: {
-          aging_usd_sum: usdAgingSum,
-          stale_clients_usd_sum: usdStaleClientsSum,
-          pending_at_cutoff_usd: usdPendingAfterClamp,
-          aging_minus_pending_at_cutoff: round2(
-            usdAgingSum - usdPendingAfterClamp
-          ),
-          stale_minus_pending_at_cutoff: round2(
-            usdStaleClientsSum - usdPendingAfterClamp
-          ),
-        },
-      })
-    );
   }
 
   const gaps: ReconciliationGaps = {

@@ -507,41 +507,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Debug temporal: shape consolidado del reporte para `/copilot/cartera`.
-    function sumArr(arr: readonly number[]): number {
-      return arr.reduce((s, n) => s + (Number.isFinite(n) ? n : 0), 0);
-    }
-    console.info(
-      JSON.stringify({
-        timestamp: new Date().toISOString(),
-        source: "financial_reconciliation",
-        kind: "report_debug",
-        request_id: requestId,
-        workspace_id: workspaceId,
-        from: periodStart ?? null,
-        to: periodEnd ?? null,
-        invoices_loaded: invoices.length,
-        receipts_loaded: receipts.length,
-        currencies: report.currencies.map((c) => ({
-          code: c.currencyCode,
-          issued_in_period: c.issuedInPeriod,
-          pending_at_cutoff: c.pendingAtCutoff,
-          collected_in_period: c.collectedInPeriod,
-          opening_balance: c.openingBalance,
-          effectiveness: c.collectionEffectiveness,
-          invoice_count: c.invoiceCount,
-          pending_invoice_count: c.pendingInvoiceCount,
-          collected_receipt_count: c.collectedReceiptCount,
-        })),
-        aging_keys: Object.keys(report.agingByCurrency ?? {}),
-        aging_sums: {
-          UYU: sumArr((report.agingByCurrency?.UYU ?? []).map((b) => b.amount)),
-          USD: sumArr((report.agingByCurrency?.USD ?? []).map((b) => b.amount)),
-        },
-        stale_client_count: report.staleClients?.length ?? 0,
-      })
-    );
-
     stage = "serialize_response";
     const response = NextResponse.json({
       ok: true,

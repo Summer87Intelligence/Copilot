@@ -327,11 +327,11 @@ describe("findCurrencyMetrics", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Test de contrato: shape exacto del log report_debug observado en producción
+// Test de contrato: shape exacto de `report.currencies` observado en producción
 // ---------------------------------------------------------------------------
 describe("regresión: replica el shape exacto que el motor envió al cliente (2026-05-11 21:21:25)", () => {
   it("USD y UYU se normalizan a los valores observados en server logs", () => {
-    // Captura literal del log [report_debug] del server para el rango
+    // Captura literal de `report.currencies` para el rango
     // 2026-05-01 → 2026-05-11, workspace 040321ff-…
     const currencies = [
       {

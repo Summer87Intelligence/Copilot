@@ -397,67 +397,6 @@ export function ExecutiveSummaryCards({
     [report.currencies]
   );
 
-  // TEMP[2026-05-12]: log de auditoría con los 5 campos contables canónicos
-  // que alimentan TANTO el valor principal de cada card COMO su microcopy.
-  // Confirma visualmente que `report.currencies` es la única fuente. Remover
-  // cuando la verdad financiera quede estable en producción.
-  if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
-    try {
-      const pick = (m: NormalizedCurrencyMetrics | undefined) =>
-        m
-          ? {
-              issuedInPeriod: m.issuedInPeriod,
-              collectedInPeriod: m.collectedInPeriod,
-              pendingAtCutoff: m.pendingAtCutoff,
-              collectionEffectiveness: m.collectionEffectiveness,
-              openingBalance: m.openingBalance,
-              invoiceCount: m.invoiceCount,
-              pendingInvoiceCount: m.pendingInvoiceCount,
-              collectedReceiptCount: m.collectedReceiptCount,
-            }
-          : null;
-      console.log(
-        "[cards currencyMetrics]",
-        JSON.stringify(
-          {
-            currenciesShape: Array.isArray(report.currencies)
-              ? `array(${report.currencies.length})`
-              : typeof report.currencies,
-            USD: pick(currencyIndex.get("USD")),
-            UYU: pick(currencyIndex.get("UYU")),
-          },
-          null,
-          2
-        )
-      );
-    } catch {
-      /* noop */
-    }
-  }
-
-  // Detección de inconsistencia: aging muestra deuda en una moneda pero el
-  // índice normalizado no la encuentra. Es síntoma de motor mal poblado.
-  // Solo log dev — las cards muestran 0 en esa moneda (sin rederivar), el
-  // warn aquí indica que hay que arreglar el motor, no la UI.
-  if (process.env.NODE_ENV !== "production") {
-    for (const code of ["USD", "UYU"] as const) {
-      const inIndex = currencyIndex.has(code);
-      const inAging = (report.agingByCurrency?.[code] ?? []).some(
-        (b) => b.amount > 0
-      );
-      if (!inIndex && inAging) {
-        console.warn(
-          "[ExecutiveSummaryCards] inconsistencia detectada: aging muestra " +
-            code +
-            " con saldo > 0 pero `report.currencies` no expone esa moneda. " +
-            "Las cards mostrarán 0 en " +
-            code +
-            ". Revisar generateFinancialConsistencyReport()."
-        );
-      }
-    }
-  }
-
   const cards = useMemo<SummaryCard[]>(() => {
     const recent = pickMostRecentSync(report.syncStates);
     const zetaAge = recent ? formatRelativeAgeHours(recent.ageHours) : "sin sync";

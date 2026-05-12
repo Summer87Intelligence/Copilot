@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 
 import { CopilotAlertsProvider } from "@/components/copilot/copilot-alerts-context";
 import { buildCopilotNavItemGroups } from "@/components/copilot/copilot-nav-config";
@@ -29,20 +29,6 @@ export function CopilotShell({
     () => buildCopilotNavItemGroups(isSuperadmin),
     [isSuperadmin]
   );
-
-  useEffect(() => {
-    if (process.env.NODE_ENV !== "development") return;
-    const groupLabels = navItemGroups.map((g) => g.sectionTitle ?? "(sin título)");
-    const itemLabels = navItemGroups.flatMap((g) =>
-      g.items.map((i) => i.label)
-    );
-    console.debug("[CopilotShell]", {
-      isSuperadmin,
-      groupCount: navItemGroups.length,
-      groupLabels,
-      itemLabels,
-    });
-  }, [isSuperadmin, navItemGroups]);
 
   return (
     <CopilotAlertsProvider>
