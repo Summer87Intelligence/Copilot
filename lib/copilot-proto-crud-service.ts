@@ -973,9 +973,10 @@ export async function protoRestoreReceipt(
 export async function protoCreatePayment(
   supabase: SupabaseClient,
   input: ProtoPaymentInput,
-  workspaceCompanyId?: string
+  workspaceCompanyId?: string,
+  options: { allowUnlinkedCompany?: boolean } = {}
 ): Promise<ProtoCrudResult<Record<string, unknown>>> {
-  const err = validatePaymentIntegrity(input);
+  const err = validatePaymentIntegrity(input, options);
   if (err) return err;
 
   const oid = paymentObligationIdFromInput(input.obligation_id);
@@ -998,7 +999,7 @@ export async function protoCreatePayment(
   const wid = str(workspaceCompanyId);
   const row = {
     ...(wid ? { workspace_company_id: wid } : {}),
-    company_id: str(input.company_id),
+    company_id: options.allowUnlinkedCompany && !str(input.company_id) ? null : str(input.company_id),
     payment_number: str(input.payment_number),
     payment_date: input.payment_date.slice(0, 10),
     amount: input.amount,
@@ -1008,6 +1009,9 @@ export async function protoCreatePayment(
     reference: input.reference != null ? str(input.reference) || null : null,
     notes: input.notes != null ? str(input.notes) || null : null,
     obligation_id: oid,
+    ...(input.currency_code !== undefined ? { currency_code: input.currency_code } : {}),
+    ...(input.source !== undefined ? { source: input.source ?? "manual" } : {}),
+    ...(input.zeta_metadata !== undefined ? { zeta_metadata: input.zeta_metadata } : {}),
     is_active: true,
     archived_at: null as string | null,
   };
@@ -1054,7 +1058,8 @@ export async function protoUpdatePayment(
   supabase: SupabaseClient,
   id: string,
   patch: ProtoPaymentPatch,
-  workspaceCompanyId?: string
+  workspaceCompanyId?: string,
+  options: { allowUnlinkedCompany?: boolean } = {}
 ): Promise<ProtoCrudResult<Record<string, unknown>>> {
   if (!str(id)) {
     return protoCrudResult.fail("VALIDATION", "Falta el identificador del pago.");
@@ -1090,8 +1095,12 @@ export async function protoUpdatePayment(
     }
   }
 
+  const mergedCompanyId =
+    patch.company_id !== undefined
+      ? patch.company_id
+      : ((existing.company_id as string | null | undefined) ?? null);
   const merged: ProtoPaymentInput = {
-    company_id: str(patch.company_id ?? existing.company_id),
+    company_id: mergedCompanyId != null ? str(mergedCompanyId) || null : null,
     payment_number: str(patch.payment_number ?? existing.payment_number),
     payment_date: str(patch.payment_date ?? existing.payment_date),
     amount: num(patch.amount, num(existing.amount)),
@@ -1108,9 +1117,21 @@ export async function protoUpdatePayment(
     notes:
       patch.notes !== undefined ? patch.notes : (existing.notes as string | null) ?? null,
     obligation_id: mergedObligationId,
+    currency_code:
+      patch.currency_code !== undefined
+        ? patch.currency_code
+        : ((existing.currency_code as "USD" | "UYU" | null | undefined) ?? null),
+    source:
+      patch.source !== undefined
+        ? patch.source
+        : ((existing.source as "manual" | "zeta" | null | undefined) ?? "manual"),
+    zeta_metadata:
+      patch.zeta_metadata !== undefined
+        ? patch.zeta_metadata
+        : ((existing.zeta_metadata as Record<string, unknown> | null | undefined) ?? null),
   };
 
-  const verr = validatePaymentIntegrity(merged);
+  const verr = validatePaymentIntegrity(merged, options);
   if (verr) return verr;
 
   const statusNorm = allowedStatus(
@@ -1120,7 +1141,7 @@ export async function protoUpdatePayment(
   );
 
   const row = {
-    company_id: merged.company_id,
+    company_id: options.allowUnlinkedCompany && !str(merged.company_id) ? null : str(merged.company_id),
     payment_number: merged.payment_number,
     payment_date: merged.payment_date.slice(0, 10),
     amount: merged.amount,
@@ -1130,6 +1151,9 @@ export async function protoUpdatePayment(
     reference: merged.reference != null ? str(merged.reference) || null : null,
     notes: merged.notes != null ? str(merged.notes) || null : null,
     obligation_id: mergedObligationId,
+    ...(patch.currency_code !== undefined ? { currency_code: merged.currency_code ?? null } : {}),
+    ...(patch.source !== undefined ? { source: merged.source ?? "manual" } : {}),
+    ...(patch.zeta_metadata !== undefined ? { zeta_metadata: merged.zeta_metadata ?? null } : {}),
     updated_at: new Date().toISOString(),
   };
 

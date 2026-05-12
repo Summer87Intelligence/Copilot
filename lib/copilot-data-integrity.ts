@@ -306,8 +306,11 @@ export function operationalPaymentObligationAmountHint(
   return `El monto del pago ($ ${payStr}) difiere del estimado/confirmado de la obligación ($ ${refStr}). Revisá si es esperable; no bloqueamos el guardado.`;
 }
 
-export function validatePaymentIntegrity(input: ProtoPaymentInput): ProtoCrudFailure | null {
-  if (!str(input.company_id)) {
+export function validatePaymentIntegrity(
+  input: ProtoPaymentInput,
+  options: { allowUnlinkedCompany?: boolean } = {}
+): ProtoCrudFailure | null {
+  if (!options.allowUnlinkedCompany && !str(input.company_id)) {
     return protoCrudResult.fail("VALIDATION", "Elegí el cliente asociado a este pago.");
   }
   if (!str(input.payment_number)) {

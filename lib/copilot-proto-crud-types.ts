@@ -123,6 +123,7 @@ export const PROTO_PAYMENT_STATUSES = [
   "paid",
   "scheduled",
   "pending",
+  "void",
 ] as const;
 
 export const PROTO_TAX_OBLIGATION_STATUSES = [
@@ -204,7 +205,7 @@ export type ProtoReceiptInput = {
 export type ProtoReceiptPatch = Partial<ProtoReceiptInput>;
 
 export type ProtoPaymentInput = {
-  company_id: string;
+  company_id: string | null;
   payment_number: string;
   payment_date: string;
   amount: number;
@@ -215,6 +216,12 @@ export type ProtoPaymentInput = {
   notes?: string | null;
   /** Vínculo opcional a `proto_tax_obligations` (cierre fiscal vía pago operativo). */
   obligation_id?: string | null;
+  /** Moneda normalizada para pagos importados desde Zeta. */
+  currency_code?: "USD" | "UYU" | null;
+  /** Origen del pago: manual por defecto, zeta para sync read-only. */
+  source?: "manual" | "zeta" | null;
+  /** Metadata normalizada de Zeta (ids/códigos/caja/moneda). */
+  zeta_metadata?: Record<string, unknown> | null;
 };
 
 export type ProtoPaymentPatch = Partial<ProtoPaymentInput>;

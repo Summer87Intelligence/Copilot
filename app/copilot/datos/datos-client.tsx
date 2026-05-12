@@ -150,6 +150,9 @@ const columnsByEntity: Record<DataEntity, DataColumn[]> = {
     { key: "category", label: "Categoría" },
     { key: "obligation_id", label: "Obligación fiscal" },
     { key: "status", label: "Estado" },
+    { key: "vendor_name", label: "Proveedor" },
+    { key: "currency_code", label: "Moneda" },
+    { key: "caja_nombre", label: "Caja" },
   ],
   tax_obligations: [
     { key: "tax_type", label: "Impuesto" },
@@ -189,7 +192,7 @@ const searchKeysByEntity: Record<DataEntity, string[]> = {
     "status",
   ],
   receipts: ["receipt_number", "reference", "status"],
-  payments: ["payment_number", "category", "vendor_name", "status"],
+  payments: ["payment_number", "category", "vendor_name", "currency_code", "caja_nombre", "status"],
   tax_obligations: ["tax_type", "period_label", "status", "notes"],
 };
 
@@ -266,6 +269,16 @@ function emptyRowsByEntity(): Record<DataEntity, DataRow[]> {
   return Object.fromEntries(
     URL_ENTITIES.map((id) => [id, [] as DataRow[]])
   ) as Record<DataEntity, DataRow[]>;
+}
+
+function enrichPaymentRows(rows: DataRow[]): DataRow[] {
+  return rows.map((row) => {
+    const meta = row.zeta_metadata;
+    if (!meta || typeof meta !== "object" || Array.isArray(meta)) return row;
+    const caja = (meta as Record<string, unknown>).caja_nombre;
+    if (caja == null || row.caja_nombre != null) return row;
+    return { ...row, caja_nombre: caja };
+  });
 }
 
 function CopilotDatosPageContent() {
@@ -415,7 +428,10 @@ function CopilotDatosPageContent() {
                     ? await getProtoPayments(mode)
                     : await getProtoTaxObligationsRows(mode);
         if (listFetchIdRef.current !== reqId) return;
-        setRowsByEntity((prev) => ({ ...prev, [target]: data }));
+        setRowsByEntity((prev) => ({
+          ...prev,
+          [target]: target === "payments" ? enrichPaymentRows(data) : data,
+        }));
         lastLoadedKeyRef.current[target] = mode;
       } catch (e) {
         if (listFetchIdRef.current !== reqId) return;
