@@ -142,10 +142,10 @@ export function TreasuryBankPanel({ workspace }: Props) {
   }
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-4">
       <TreasurySantanderImportPanel workspace={workspace} />
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="space-y-4">
           <CopilotSectionTitle
             title="Conciliación bancaria Santander"

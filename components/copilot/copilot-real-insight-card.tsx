@@ -30,22 +30,25 @@ const typeLabel: Record<CopilotRealInsight["type"], string> = {
 
 export function CopilotRealInsightCard({ insight }: { insight: CopilotRealInsight }) {
   return (
-    <CopilotCard className="space-y-3 border-[var(--copilot-border)] bg-white/90">
+    <CopilotCard className="space-y-2 border-[var(--copilot-border)] bg-white/90 py-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
             {typeLabel[insight.type]}
           </p>
-          <p className="mt-1 text-base font-semibold text-[var(--copilot-ink)]">
+          <p className="mt-0.5 text-sm font-semibold text-[var(--copilot-ink)]">
             {insight.company_name}
           </p>
         </div>
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+          Impacto operativo
+        </span>
       </div>
       <p className="text-sm font-medium text-[var(--copilot-accent)]">{insight.message}</p>
-      <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">{evidenceBlock(insight)}</p>
-      <p className="text-xs text-[var(--copilot-ink-muted)]">{insight.basedOnLine}</p>
-      <div className="flex justify-end border-t border-[var(--copilot-border)] pt-3">
-        <CopilotPrimaryLink href={insight.href} className="inline-flex min-w-[8.5rem] justify-center">
+      <p className="text-xs leading-relaxed text-[var(--copilot-ink)]">{evidenceBlock(insight)}</p>
+      <p className="text-[11px] text-[var(--copilot-ink-muted)]">{insight.basedOnLine}</p>
+      <div className="flex justify-end border-t border-[var(--copilot-border)] pt-2">
+        <CopilotPrimaryLink href={insight.href} className="inline-flex min-w-[7.5rem] justify-center px-3 py-1.5 text-xs">
           {insight.action}
         </CopilotPrimaryLink>
       </div>

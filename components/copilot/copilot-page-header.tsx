@@ -18,8 +18,8 @@ export function CopilotPageHeader({
   surfaceId?: CopilotSurfaceId;
 }) {
   return (
-    <header className="border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.45)] px-6 py-7 backdrop-blur-sm">
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
+    <header className="border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.45)] px-6 py-5 backdrop-blur-sm">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-5">
         <div className="min-w-0 max-w-3xl flex-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--copilot-ink-muted)]">
@@ -27,11 +27,11 @@ export function CopilotPageHeader({
             </p>
             {surfaceId ? <CopilotSurfaceBadge surfaceId={surfaceId} /> : null}
           </div>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--copilot-ink)] sm:text-3xl">
+          <h1 className="mt-1.5 text-xl font-semibold tracking-tight text-[var(--copilot-ink)] sm:text-2xl">
             {title}
           </h1>
           {description ? (
-            <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
+            <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-[var(--copilot-ink-muted)] sm:text-sm">
               {description}
             </p>
           ) : null}

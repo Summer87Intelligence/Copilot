@@ -28,6 +28,7 @@ import {
   CopilotPrimaryButton,
   CopilotPrimaryLink,
   CopilotSectionTitle,
+  copilotPageMainClass,
 } from "@/components/copilot/copilot-ui";
 import { CopilotSeverityBadge } from "@/components/copilot/copilot-severity-badge";
 import {
@@ -263,9 +264,11 @@ function CopilotFinanzasPageContent() {
   const searchParams = useSearchParams();
   const { setReadingKeyOverride } = useCopilotReadingKeyOverride();
   const coberturaGuided = useMemo(() => {
+    if (searchParams.get("focus") === "liquidity") return true;
+    const from = searchParams.get("from");
     return (
       searchParams.get("mode") === "cobertura" &&
-      searchParams.get("from") === "atencion-prioritaria"
+      (from === "atencion-prioritaria" || from === "alertas")
     );
   }, [searchParams]);
 
@@ -896,7 +899,7 @@ function CopilotFinanzasPageContent() {
         }
       />
 
-      <div className="flex-1 space-y-8 overflow-auto px-6 py-8">
+      <div className={copilotPageMainClass}>
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <FinancialStatusBadge flags={financialFlags} />

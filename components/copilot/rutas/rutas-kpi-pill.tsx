@@ -17,12 +17,12 @@ export function RutasKpiPill({
           : "border-[var(--copilot-border)] bg-white/80";
   return (
     <div
-      className={`flex min-w-[7.5rem] shrink-0 flex-col rounded-xl border px-3 py-2 shadow-sm ${ring}`}
+      className={`flex min-w-[7rem] shrink-0 flex-col rounded-xl border px-2.5 py-1.5 shadow-sm ${ring}`}
     >
       <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
         {label}
       </span>
-      <span className="mt-0.5 truncate text-sm font-semibold tabular-nums text-[var(--copilot-ink)]">
+      <span className="mt-0.5 truncate text-base font-semibold tabular-nums text-[var(--copilot-ink)]">
         {value}
       </span>
     </div>

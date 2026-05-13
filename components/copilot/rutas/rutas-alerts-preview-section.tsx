@@ -10,6 +10,7 @@ import {
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
 import { mapAlertCategory } from "@/lib/copilot-format";
+import { buildCopilotAlertOpsContext } from "@/lib/copilot-alert-ops-mapper";
 
 const PREVIEW_LIMIT = 4;
 
@@ -43,16 +44,22 @@ export function RutasAlertsPreviewSection() {
           Cargando alertas…
         </div>
       ) : preview.length === 0 ? (
-        <CopilotCard className="mt-4 border-emerald-200/70 bg-emerald-50/35">
-          <p className="text-sm text-[var(--copilot-ink-muted)]">
-            No hay alertas activas en este momento.
+        <CopilotCard className="mt-2 border-dashed border-[var(--copilot-border)] bg-white/70 px-3 py-3">
+          <p className="text-sm font-medium text-[var(--copilot-ink)]">Sin alertas activas</p>
+          <p className="mt-1 text-sm text-[var(--copilot-ink-muted)]">
+            Revisá Hoy o Finanzas si esperabas tensión de caja.
           </p>
+          <CopilotGhostLink href="/copilot/alertas" className="mt-3 inline-flex font-semibold">
+            Abrir alertas
+          </CopilotGhostLink>
         </CopilotCard>
       ) : (
-        <ul className="mt-4 space-y-3">
-          {preview.map((alert) => (
+        <ul className="mt-2 space-y-2">
+          {preview.map((alert) => {
+            const ops = buildCopilotAlertOpsContext(alert);
+            return (
             <li key={alert.id}>
-              <CopilotCard className="border-[var(--copilot-border)] bg-white/90 p-4">
+              <CopilotCard className="border-[var(--copilot-border)] bg-white/90 px-3 py-3">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
@@ -62,14 +69,21 @@ export function RutasAlertsPreviewSection() {
                       {alert.title}
                     </p>
                     <p className="mt-1 text-sm text-[var(--copilot-ink-muted)]">
-                      {alert.summary}
+                      {ops.impact}
                     </p>
                   </div>
                   <CopilotSeverityBadge severity={alert.priority} />
                 </div>
+                <CopilotGhostLink
+                  href={ops.primary.href}
+                  className="mt-3 inline-flex text-xs font-semibold"
+                >
+                  {ops.primary.label}
+                </CopilotGhostLink>
               </CopilotCard>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </section>

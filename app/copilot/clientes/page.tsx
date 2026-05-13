@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
 
 import { CopilotInteractiveText } from "@/components/copilot/copilot-interactive-text";
 import { CopilotClientEvidenceDrawer } from "@/components/copilot/copilot-client-evidence-drawer";
@@ -11,7 +10,9 @@ import {
   CopilotGhostButton,
   CopilotGhostLink,
   CopilotSectionTitle,
+  copilotPageMainClass,
 } from "@/components/copilot/copilot-ui";
+import { CopilotSkeletonTable } from "@/components/copilot/copilot-loading-skeleton";
 import type { ClientPortfolioRow } from "@/lib/copilot-clients-portfolio";
 import { fetchClientPortfolioLoad } from "@/lib/copilot-client-portfolio-fetch";
 import {
@@ -91,12 +92,9 @@ export default function CopilotClientesPage() {
         description="Cartera comercial desde empresas (proto_companies), facturas y recibos — facturación, deuda y riesgo en lenguaje de negocio."
       />
 
-      <div className="flex-1 space-y-8 overflow-auto px-6 py-8">
+      <div className={copilotPageMainClass}>
         {loading ? (
-          <div className="flex items-center gap-2 text-sm text-[var(--copilot-ink-muted)]">
-            <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-            Cargando cartera de empresas desde Supabase…
-          </div>
+          <CopilotSkeletonTable rows={6} columns={5} />
         ) : null}
 
         {error ? (
@@ -107,57 +105,57 @@ export default function CopilotClientesPage() {
 
         {!loading && !error && load ? (
           <>
-            <div className="grid gap-4 lg:grid-cols-3">
-              <CopilotCard>
-                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+            <div className="grid gap-3 lg:grid-cols-3">
+              <CopilotCard className="py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                   Principales empresas
                 </p>
-                <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink)]">
+                <p className="mt-1 text-sm leading-snug text-[var(--copilot-ink)]">
                   {load.summary.top_clients_line}
                 </p>
               </CopilotCard>
-              <CopilotCard>
-                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+              <CopilotCard className="py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                   Empresas con deuda
                 </p>
-                <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink)]">
+                <p className="mt-1 text-sm leading-snug text-[var(--copilot-ink)]">
                   {load.summary.debt_clients_line}
                 </p>
               </CopilotCard>
-              <CopilotCard>
-                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+              <CopilotCard className="py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                   Riesgo de concentración
                 </p>
-                <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink)]">
+                <p className="mt-1 text-sm leading-snug text-[var(--copilot-ink)]">
                   {load.summary.concentration_line}
                 </p>
               </CopilotCard>
             </div>
 
             <CopilotCard className="overflow-hidden p-0">
-              <div className="border-b border-[var(--copilot-border)] px-5 py-4">
+              <div className="border-b border-[var(--copilot-border)] px-4 py-3">
                 <CopilotSectionTitle
                   title="Cartera activa"
                   subtitle="Ordenada por facturación total (total_amount) — datos proto en vivo."
                 />
               </div>
               {load.rows.length === 0 ? (
-                <p className="px-5 py-8 text-sm text-[var(--copilot-ink-muted)]">
+                <p className="px-4 py-5 text-sm text-[var(--copilot-ink-muted)]">
                   No hay empresas en proto_companies. Importá o cargá empresas en Supabase para ver
                   la cartera.
                 </p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[860px] border-collapse text-left text-sm">
-                    <thead>
-                      <tr className="bg-[rgba(255,255,255,0.65)] text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        <th className="px-5 py-3">Empresa</th>
-                        <th className="px-5 py-3">Industria</th>
-                        <th className="px-5 py-3">Facturación</th>
-                        <th className="px-5 py-3">Deuda</th>
-                        <th className="px-5 py-3">Riesgo</th>
-                        <th className="px-5 py-3">Participación</th>
-                        <th className="px-5 py-3 text-right">Vista</th>
+                    <thead className="sticky top-0 z-10 bg-[var(--copilot-card)]">
+                      <tr className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                        <th className="px-4 py-2">Empresa</th>
+                        <th className="px-4 py-2">Industria</th>
+                        <th className="px-4 py-2">Facturación</th>
+                        <th className="px-4 py-2">Deuda</th>
+                        <th className="px-4 py-2">Riesgo</th>
+                        <th className="px-4 py-2">Participación</th>
+                        <th className="px-4 py-2 text-right">Vista</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -167,13 +165,13 @@ export default function CopilotClientesPage() {
                         return (
                           <tr
                             key={row.company_id}
-                            className={`${
+                            className={`border-b border-[var(--copilot-border)] transition last:border-b-0 hover:bg-[var(--copilot-accent-soft)]/50 ${
                               i % 2 === 0
                                 ? "bg-[var(--copilot-card)]"
                                 : "bg-[rgba(255,255,255,0.5)]"
                             } ${evidenceOpenForRow ? "ring-1 ring-inset ring-[rgba(31,107,74,0.25)]" : ""}`}
                           >
-                            <td className="px-5 py-3.5">
+                            <td className="px-4 py-2.5">
                               <div className="flex flex-wrap items-center gap-2">
                                 <CopilotInteractiveText
                                   icon="chevron"
@@ -203,7 +201,7 @@ export default function CopilotClientesPage() {
                                 </span>
                               ) : null}
                             </td>
-                            <td className="px-5 py-3.5">
+                            <td className="px-4 py-2.5">
                               <span
                                 className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${riskTone(row.risk)}`}
                               >

@@ -2,7 +2,10 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 
 const primaryBtnClass =
-  "inline-flex items-center justify-center rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]";
+  "inline-flex items-center justify-center rounded-xl bg-[var(--copilot-accent)] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]";
+
+export const copilotPageMainClass =
+  "flex-1 space-y-5 overflow-auto px-6 py-6";
 
 const ink = "text-[var(--copilot-ink)]";
 const muted = "text-[var(--copilot-ink-muted)]";
@@ -16,7 +19,7 @@ export function CopilotCard({
 }) {
   return (
     <div
-      className={`rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-5 shadow-[var(--copilot-shadow)] ${className}`}
+      className={`rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-4 shadow-[var(--copilot-shadow)] ${className}`}
     >
       {children}
     </div>
@@ -33,13 +36,13 @@ export function CopilotSectionTitle({
   action?: ReactNode;
 }) {
   return (
-    <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+    <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
       <div>
-        <h2 className={`text-base font-semibold tracking-tight ${ink}`}>
+        <h2 className={`text-sm font-semibold tracking-tight ${ink}`}>
           {title}
         </h2>
         {subtitle ? (
-          <p className={`mt-1 text-sm ${muted}`}>{subtitle}</p>
+          <p className={`mt-0.5 text-xs ${muted}`}>{subtitle}</p>
         ) : null}
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
@@ -62,7 +65,7 @@ export function CopilotBadge({
   };
   return (
     <span
-      className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold ${tones[tone]}`}
+      className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold ${tones[tone]}`}
     >
       {children}
     </span>
@@ -95,7 +98,7 @@ export function CopilotPrimaryButton({
 }
 
 const ghostBtnClass =
-  "inline-flex items-center justify-center rounded-xl border border-[var(--copilot-border)] bg-white/60 px-4 py-2.5 text-sm font-medium text-[var(--copilot-ink)] shadow-sm transition hover:bg-white";
+  "inline-flex items-center justify-center rounded-xl border border-[var(--copilot-border)] bg-white/60 px-3.5 py-2 text-sm font-medium text-[var(--copilot-ink)] shadow-sm transition hover:bg-white";
 
 export function CopilotGhostLink({
   href,
@@ -134,11 +137,11 @@ export function CopilotKpiCard({
   trend?: string;
 }) {
   return (
-    <CopilotCard className="flex flex-col gap-2">
-      <p className={`text-xs font-semibold uppercase tracking-wide ${muted}`}>
+    <CopilotCard className="flex flex-col gap-1.5">
+      <p className={`text-[10px] font-semibold uppercase tracking-wide ${muted}`}>
         {label}
       </p>
-      <p className={`text-2xl font-semibold tracking-tight ${ink}`}>{value}</p>
+      <p className={`text-xl font-semibold tracking-tight ${ink}`}>{value}</p>
       {hint ? <p className={`text-xs ${muted}`}>{hint}</p> : null}
       {trend ? (
         <p className="text-xs font-medium text-[rgba(44,40,37,0.5)]"> {trend}</p>

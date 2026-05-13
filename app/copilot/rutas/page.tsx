@@ -9,7 +9,7 @@ import { RutasDecisionRoutesSection } from "@/components/copilot/rutas/rutas-dec
 import { RutasInsightsSection } from "@/components/copilot/rutas/rutas-insights-section";
 import { RutasPrioritySection } from "@/components/copilot/rutas/rutas-priority-section";
 import { RutasTreasuryPressureSection } from "@/components/copilot/rutas/rutas-treasury-pressure-section";
-import { CopilotCard, CopilotPrimaryLink } from "@/components/copilot/copilot-ui";
+import { CopilotCard, CopilotPrimaryLink, copilotPageMainClass } from "@/components/copilot/copilot-ui";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import type { FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
@@ -123,7 +123,7 @@ export default function CopilotRutasPage() {
         description="Centro operativo del día: prioridad, alertas, recomendaciones y rutas guiadas en un solo lugar."
       />
 
-      <div className="flex-1 space-y-10 overflow-auto px-6 py-8">
+      <div className={copilotPageMainClass}>
         <RutasDayStatusSection
           loading={loading}
           gate={hub?.gate ?? null}

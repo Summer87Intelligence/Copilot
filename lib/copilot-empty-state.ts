@@ -70,13 +70,11 @@ export const COPILOT_EMPTY_COPY = {
       "Un IVA próximo a vencer con saldo pendiente y poca caja suele disparar una alerta de prioridad alta o crítica.",
   },
   alertasPage: {
-    title: "No hay alertas activas en este momento",
+    title: "Sin alertas activas",
     paragraphs: [
-      "Las alertas se generan a partir de obligaciones fiscales abiertas, fechas de vencimiento y cruce con caja. Si vaciaste las tablas o aún no cargaste obligaciones, la lista queda vacía: es el comportamiento esperado, no un fallo.",
-      "Cargá obligaciones en `proto_tax_obligations` (o usá el SQL de capa fiscal) y registrá facturas/recibos para que el sistema pueda detectar tensión de cobranza o liquidez.",
+      "No hay tensiones fiscales ni de caja detectadas con los datos actuales.",
     ],
-    example:
-      "Ejemplo: una obligación IVA con vencimiento en los próximos días y saldo pendiente suele generar una alerta de prioridad alta o crítica.",
+    example: "Cuando haya vencimientos o presión de liquidez, aparecerán acá con un próximo paso.",
   },
   gestionIa: {
     title: "Todavía no hay acciones sugeridas para hoy",

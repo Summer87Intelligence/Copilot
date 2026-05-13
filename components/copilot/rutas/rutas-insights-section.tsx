@@ -1,8 +1,7 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
-
-import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
+import { CopilotOperationalEmptyState } from "@/components/copilot/copilot-operational-empty-state";
+import { CopilotSkeletonKpiRow } from "@/components/copilot/copilot-loading-skeleton";
 import { CopilotRealInsightCard } from "@/components/copilot/copilot-real-insight-card";
 import { CopilotTraceMeta } from "@/components/copilot/copilot-trace-meta";
 import {
@@ -64,36 +63,36 @@ export function RutasInsightsSection({
         </CopilotCard>
       ) : (
         <>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <CopilotCard className="flex flex-col gap-2 border-[rgba(31,107,74,0.12)] bg-gradient-to-br from-[var(--copilot-card)] to-white/95">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <CopilotCard className="flex flex-col gap-1 border-[rgba(31,107,74,0.12)] bg-gradient-to-br from-[var(--copilot-card)] to-white/95 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Insights activos
               </p>
-              <p className="text-3xl font-semibold tabular-nums text-[var(--copilot-ink)]">
+              <p className="text-2xl font-semibold tabular-nums text-[var(--copilot-ink)]">
                 {loading ? "…" : kpi.total}
               </p>
             </CopilotCard>
-            <CopilotCard className="flex flex-col gap-2 border-[rgba(31,107,74,0.12)] bg-gradient-to-br from-[var(--copilot-card)] to-white/95">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+            <CopilotCard className="flex flex-col gap-1 border-[rgba(31,107,74,0.12)] bg-gradient-to-br from-[var(--copilot-card)] to-white/95 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Deuda vencida
               </p>
-              <p className="text-3xl font-semibold tabular-nums text-[var(--copilot-ink)]">
+              <p className="text-2xl font-semibold tabular-nums text-[var(--copilot-ink)]">
                 {loading ? "…" : kpi.deudaVencida}
               </p>
             </CopilotCard>
-            <CopilotCard className="flex flex-col gap-2 border-[rgba(31,107,74,0.12)] bg-gradient-to-br from-[var(--copilot-card)] to-white/95">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+            <CopilotCard className="flex flex-col gap-1 border-[rgba(31,107,74,0.12)] bg-gradient-to-br from-[var(--copilot-card)] to-white/95 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Fiscal vencida
               </p>
-              <p className="text-3xl font-semibold tabular-nums text-[var(--copilot-ink)]">
+              <p className="text-2xl font-semibold tabular-nums text-[var(--copilot-ink)]">
                 {loading ? "…" : kpi.fiscalVencida}
               </p>
             </CopilotCard>
-            <CopilotCard className="flex flex-col gap-2 border-[rgba(31,107,74,0.12)] bg-gradient-to-br from-[var(--copilot-card)] to-white/95">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+            <CopilotCard className="flex flex-col gap-1 border-[rgba(31,107,74,0.12)] bg-gradient-to-br from-[var(--copilot-card)] to-white/95 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Alerta de caja
               </p>
-              <p className="text-3xl font-semibold tabular-nums text-[var(--copilot-ink)]">
+              <p className="text-2xl font-semibold tabular-nums text-[var(--copilot-ink)]">
                 {loading ? "…" : kpi.desbalanceCaja}
               </p>
             </CopilotCard>
@@ -108,22 +107,24 @@ export function RutasInsightsSection({
             </div>
           ) : null}
           {loading ? (
-            <div className="mt-4 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--copilot-border)] py-10 text-sm text-[var(--copilot-ink-muted)]">
-              <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-              Calculando recomendaciones…
-            </div>
+            <CopilotSkeletonKpiRow count={4} className="mt-3" />
           ) : preview.length === 0 ? (
-            <CopilotEmptyPanel
-              title={COPILOT_EMPTY_COPY.gestionIa.title}
-              paragraphs={[
-                "No hay condiciones que disparen los cinco tipos de insight con los datos actuales.",
-                "Cargá facturas con vencimiento y saldo, obligaciones fiscales o movimientos de caja para ver alertas aquí.",
-              ]}
-              example={COPILOT_EMPTY_COPY.gestionIa.example}
-              importance="Los umbrales son conservadores: si no hay evidencia suficiente, no mostramos tarjetas."
-            />
+            <div className="mt-3">
+              <CopilotOperationalEmptyState
+                title="Motor de recomendaciones activo"
+                status="Sin candidatos con evidencia suficiente"
+                statusTone="healthy"
+                metrics={[
+                  { label: "Insights", value: kpi.total },
+                  { label: "Deuda vencida", value: kpi.deudaVencida },
+                  { label: "Fiscal vencida", value: kpi.fiscalVencida },
+                  { label: "Caja", value: kpi.desbalanceCaja },
+                ]}
+                footnote={COPILOT_EMPTY_COPY.gestionIa.example}
+              />
+            </div>
           ) : (
-            <div className="mt-4 space-y-3">
+            <div className="mt-3 space-y-2">
               {preview.map((insight) => (
                 <CopilotRealInsightCard key={insight.id} insight={insight} />
               ))}

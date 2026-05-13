@@ -55,8 +55,8 @@ export function CopilotModuleSidebar({
       <div
         className={`flex shrink-0 border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.35)] ${
           collapsed
-            ? "flex-col items-center gap-2 px-2 py-3"
-            : "items-center gap-2 px-3 py-4"
+            ? "flex-col items-center gap-1.5 px-2 py-2.5"
+            : "items-center gap-2 px-3 py-3"
         }`}
       >
         <div
@@ -98,7 +98,7 @@ export function CopilotModuleSidebar({
       </div>
 
       <nav
-        className="flex min-h-0 flex-1 flex-col gap-px overflow-y-auto overflow-x-hidden p-1.5"
+        className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden p-1"
         aria-label="Navegación del módulo Copilot"
       >
         {groups.map((group, groupIndex) => (
@@ -138,7 +138,7 @@ export function CopilotModuleSidebar({
                   key={item.href}
                   href={item.href}
                   title={collapsed ? item.label : undefined}
-                  className={`group flex min-h-8 items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium leading-tight transition-colors ${
+                  className={`group flex min-h-7 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[13px] font-medium leading-tight transition-colors ${
                     active
                       ? `text-[var(--copilot-ink)] ring-1 ${activeRing}`
                       : "text-[var(--copilot-ink-muted)] hover:bg-white/60 hover:text-[var(--copilot-ink)]"

@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 
-import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
+import { CopilotOperationalEmptyState } from "@/components/copilot/copilot-operational-empty-state";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import { CopilotCard, CopilotSectionTitle } from "@/components/copilot/copilot-ui";
-import { COPILOT_EMPTY_COPY } from "@/lib/copilot-empty-state";
+import { CopilotCard, CopilotSectionTitle, copilotPageMainClass } from "@/components/copilot/copilot-ui";
 
 export default function CopilotEscenariosPage() {
   return (
@@ -16,12 +15,18 @@ export default function CopilotEscenariosPage() {
         description="Compará lecturas de riesgo, estabilidad y crecimiento cuando el motor esté alimentado por tus datos — sin simulaciones de relleno."
       />
 
-      <div className="flex-1 space-y-8 overflow-auto px-6 py-8">
-        <CopilotEmptyPanel
-          title={COPILOT_EMPTY_COPY.escenarios.title}
-          paragraphs={COPILOT_EMPTY_COPY.escenarios.paragraphs}
-          example={COPILOT_EMPTY_COPY.escenarios.example}
-          importance="Mientras no haya escenarios calculados sobre `proto_*`, esta pantalla se mantiene honesta: orientación en lugar de números ficticios."
+      <div className={copilotPageMainClass}>
+        <CopilotOperationalEmptyState
+          title="Motor listo"
+          status="Esperando configuración y datos mínimos"
+          statusTone="info"
+          metrics={[
+            { label: "Escenarios", value: 0 },
+            { label: "Comparativas", value: 0 },
+            { label: "Riesgo", value: "—" },
+            { label: "Crecimiento", value: "—" },
+          ]}
+          footnote="Cargá estructura mínima en Datos y alineá caja en Finanzas para habilitar lecturas comparables."
         />
 
         <CopilotCard>
@@ -29,7 +34,7 @@ export default function CopilotEscenariosPage() {
             title="Próximos pasos sugeridos"
             subtitle="Para que esta vista tenga sentido operativo."
           />
-          <ul className="space-y-3 text-sm text-[var(--copilot-ink-muted)]">
+          <ul className="space-y-2 text-xs text-[var(--copilot-ink-muted)]">
             <li className="flex gap-2">
               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--copilot-accent)]" />
               <span>

@@ -88,7 +88,7 @@ export function TreasurySantanderImportPanel({ workspace }: Props) {
   }
 
   return (
-    <section className="space-y-4 rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-5 shadow-[var(--copilot-shadow)]">
+    <section className="space-y-3 rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-4 shadow-[var(--copilot-shadow)]">
       <CopilotSectionTitle
         title="Importador Santander"
         subtitle="CSV o XLSX con preview, deduplicación por external_id y auto-match."

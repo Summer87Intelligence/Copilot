@@ -118,16 +118,16 @@ export function TesoreriaDashboard({ workspace, currencyFilter, asOfDate }: Prop
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {criticalAlerts.length > 0 ? (
-        <section className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 shadow-[var(--copilot-shadow)]">
+        <section className="rounded-2xl border border-rose-200 bg-rose-50/70 p-3 shadow-[var(--copilot-shadow)]">
           <CopilotSectionTitle
             title="Alertas críticas"
             subtitle="Riesgos financieros que requieren acción inmediata."
           />
-          <ul className="space-y-2">
+          <ul className="space-y-1.5">
             {criticalAlerts.slice(0, 4).map((alert) => (
-              <li key={alert.id} className="rounded-xl border border-rose-200 bg-white/70 px-3 py-2 text-sm">
+              <li key={alert.id} className="rounded-lg border border-rose-200 bg-white/70 px-2.5 py-1.5 text-xs">
                 <p className="font-medium text-rose-950">{alert.title}</p>
                 <p className="text-rose-900/80">{alert.description}</p>
               </li>
@@ -141,7 +141,7 @@ export function TesoreriaDashboard({ workspace, currencyFilter, asOfDate }: Prop
           title="KPIs financieros"
           subtitle="Caja actual, proyección, runway y exposición operativa."
         />
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <CopilotKpiCard
             label={`Caja actual ${currentCash.primary}`}
             value={formatTreasuryMoney(currentCash.value, currentCash.primary)}
@@ -185,8 +185,8 @@ export function TesoreriaDashboard({ workspace, currencyFilter, asOfDate }: Prop
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-2">
-        <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-5 shadow-[var(--copilot-shadow)]">
+      <section className="grid gap-3 xl:grid-cols-2">
+        <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-4 shadow-[var(--copilot-shadow)]">
           <CopilotSectionTitle
             title="Proyección 30 días"
             subtitle="Evolución diaria de caja proyectada."
@@ -194,8 +194,8 @@ export function TesoreriaDashboard({ workspace, currencyFilter, asOfDate }: Prop
           {chartSnapshots.length === 0 ? (
             <p className="text-sm text-[var(--copilot-ink-muted)]">Sin proyección disponible.</p>
           ) : (
-            <div className="space-y-3">
-              <div className="flex h-40 items-end gap-1">
+            <div className="space-y-2">
+              <div className="flex h-28 items-end gap-0.5">
                 {chartSnapshots.map((snapshot) => {
                   const value =
                     currencyFilter === "USD"
@@ -220,7 +220,7 @@ export function TesoreriaDashboard({ workspace, currencyFilter, asOfDate }: Prop
           )}
         </div>
 
-        <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-5 shadow-[var(--copilot-shadow)]">
+        <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-4 shadow-[var(--copilot-shadow)]">
           <CopilotSectionTitle
             title="Obligaciones próximas"
             subtitle="Compromisos en los próximos 30 días."
@@ -228,11 +228,11 @@ export function TesoreriaDashboard({ workspace, currencyFilter, asOfDate }: Prop
           {workspace.upcoming30.length === 0 ? (
             <p className="text-sm text-[var(--copilot-ink-muted)]">Sin obligaciones próximas.</p>
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-1.5">
               {workspace.upcoming30.slice(0, 8).map((obligation) => (
                 <li
                   key={obligation.id}
-                  className="rounded-xl border border-[var(--copilot-border)] bg-white/60 px-3 py-2 text-sm"
+                  className="rounded-lg border border-[var(--copilot-border)] bg-white/60 px-2.5 py-1.5 text-xs"
                 >
                   <p className="font-medium text-[var(--copilot-ink)]">{obligation.title}</p>
                   <p className="text-xs text-[var(--copilot-ink-muted)]">
@@ -249,17 +249,17 @@ export function TesoreriaDashboard({ workspace, currencyFilter, asOfDate }: Prop
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-2">
-        <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-5 shadow-[var(--copilot-shadow)]">
+      <section className="grid gap-3 xl:grid-cols-2">
+        <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-4 shadow-[var(--copilot-shadow)]">
           <CopilotSectionTitle title="Riesgos activos" subtitle="Alertas warning y critical." />
           {activeRisks.length === 0 ? (
             <p className="text-sm text-[var(--copilot-ink-muted)]">Sin riesgos activos.</p>
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-1.5">
               {activeRisks.slice(0, 8).map((alert) => (
                 <li
                   key={alert.id}
-                  className={`rounded-xl border px-3 py-2 text-sm ${severityClass(alert.severity)}`}
+                  className={`rounded-lg border px-2.5 py-1.5 text-xs ${severityClass(alert.severity)}`}
                 >
                   <p className="font-medium">{alert.title}</p>
                   <p className="text-xs opacity-90">{alert.description}</p>
@@ -269,16 +269,16 @@ export function TesoreriaDashboard({ workspace, currencyFilter, asOfDate }: Prop
           )}
         </div>
 
-        <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-5 shadow-[var(--copilot-shadow)]">
+        <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-4 shadow-[var(--copilot-shadow)]">
           <CopilotSectionTitle title="Insights IA" subtitle="Recomendaciones ejecutivas accionables." />
           {insights.length === 0 ? (
             <p className="text-sm text-[var(--copilot-ink-muted)]">Sin insights para el filtro actual.</p>
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-1.5">
               {insights.slice(0, 6).map((insight) => (
                 <li
                   key={insight.id}
-                  className={`rounded-xl border px-3 py-2 text-sm ${priorityClass(insight.priority)}`}
+                  className={`rounded-lg border px-2.5 py-1.5 text-xs ${priorityClass(insight.priority)}`}
                 >
                   <p className="font-medium text-[var(--copilot-ink)]">{insight.title}</p>
                   <p className="text-xs text-[var(--copilot-ink-muted)]">{insight.description}</p>
@@ -297,21 +297,21 @@ export function TesoreriaDashboard({ workspace, currencyFilter, asOfDate }: Prop
 
 function TesoreriaDashboardSkeleton() {
   return (
-    <div className="space-y-6" aria-busy="true" aria-live="polite">
+    <div className="space-y-4" aria-busy="true" aria-live="polite">
       <section>
-        <div className="mb-4 h-5 w-56 animate-pulse rounded-lg bg-[var(--copilot-border)]/60" />
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mb-3 h-4 w-48 animate-pulse rounded-lg bg-[var(--copilot-border)]/60" />
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 8 }, (_, i) => (
             <div
               key={i}
-              className="h-28 animate-pulse rounded-2xl border border-[var(--copilot-border)] bg-white/50"
+              className="h-20 animate-pulse rounded-2xl border border-[var(--copilot-border)] bg-white/50"
             />
           ))}
         </div>
       </section>
-      <section className="grid gap-4 xl:grid-cols-2">
-        <div className="h-64 animate-pulse rounded-2xl border border-[var(--copilot-border)] bg-white/50" />
-        <div className="h-64 animate-pulse rounded-2xl border border-[var(--copilot-border)] bg-white/50" />
+      <section className="grid gap-3 xl:grid-cols-2">
+        <div className="h-44 animate-pulse rounded-2xl border border-[var(--copilot-border)] bg-white/50" />
+        <div className="h-44 animate-pulse rounded-2xl border border-[var(--copilot-border)] bg-white/50" />
       </section>
     </div>
   );

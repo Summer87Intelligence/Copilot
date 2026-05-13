@@ -212,7 +212,7 @@ export function CopilotDataTable({
           <thead className="sticky top-0 z-10 bg-[var(--copilot-card)]">
             <tr>
               {inactiveBadge && entity !== "invoices" ? (
-                <th className="w-24 border-b border-[var(--copilot-border)] px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                <th className="w-24 border-b border-[var(--copilot-border)] px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                   Activo
                 </th>
               ) : null}
@@ -226,7 +226,7 @@ export function CopilotDataTable({
                         ? invoiceHeaderClass(col.key)
                         : entity === "receipts"
                           ? receiptHeaderClass(col.key)
-                          : "border-b border-[var(--copilot-border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]"
+                          : "border-b border-[var(--copilot-border)] px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]"
                     }
                   >
                     <button
@@ -254,7 +254,7 @@ export function CopilotDataTable({
             {sortedData.length === 0 ? (
               <tr>
                 <td
-                  className="px-4 py-10 text-center text-sm text-[var(--copilot-ink-muted)]"
+                  className="px-3 py-6 text-center text-sm text-[var(--copilot-ink-muted)]"
                   colSpan={((inactiveBadge && entity !== "invoices") ? 1 : 0) + (columns.length || 1)}
                 >
                   No hay registros para esta vista.
@@ -274,7 +274,7 @@ export function CopilotDataTable({
                   }`}
                 >
                   {inactiveBadge && entity !== "invoices" ? (
-                    <td className="px-3 py-3 align-middle">
+                    <td className="px-3 py-2 align-middle">
                       {isInactive ? (
                         <span className="inline-flex rounded-full bg-[rgba(44,40,37,0.12)] px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                           Inactivo
@@ -359,7 +359,7 @@ export function CopilotDataTable({
                             ? invoiceCellClass(col.key)
                             : entity === "receipts"
                               ? receiptCellClass(col.key)
-                              : "max-w-[280px] truncate px-4 py-3 text-sm text-[var(--copilot-ink)]"
+                              : "max-w-[280px] truncate px-3 py-2 text-sm text-[var(--copilot-ink)]"
                         }
                         title={cellTitle}
                       >

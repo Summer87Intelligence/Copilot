@@ -40,7 +40,7 @@ export function TesoreriaControlBar({
     draftStart !== "" && draftEnd !== "" && draftStart > draftEnd;
 
   return (
-    <div className="sticky top-0 z-20 -mx-6 mb-6 border-b border-[var(--copilot-border)] bg-[rgba(248,246,242,0.88)] px-6 py-4 backdrop-blur">
+    <div className="sticky top-0 z-20 -mx-6 mb-4 border-b border-[var(--copilot-border)] bg-[rgba(248,246,242,0.88)] px-6 py-3 backdrop-blur">
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-[9rem] flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
           Desde

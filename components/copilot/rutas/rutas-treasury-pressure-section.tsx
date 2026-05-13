@@ -6,7 +6,6 @@ import { RutasKpiPill } from "@/components/copilot/rutas/rutas-kpi-pill";
 import {
   CopilotCard,
   CopilotGhostLink,
-  CopilotPrimaryLink,
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
 import { useTreasuryHoySignals } from "@/hooks/use-treasury-hoy-signals";
@@ -49,7 +48,7 @@ export function RutasTreasuryPressureSection() {
     <section>
       <CopilotSectionTitle
         title="Presión de caja manual"
-        subtitle="Runway, obligaciones y egresos de Tesorería — sin abrir el módulo completo."
+        subtitle="Runway, obligaciones y egresos de Tesorería."
         action={
           <CopilotGhostLink href="/copilot/tesoreria" className="font-semibold">
             Abrir Tesorería
@@ -58,36 +57,35 @@ export function RutasTreasuryPressureSection() {
       />
 
       {loading ? (
-        <div className="mt-4 flex items-center gap-2 text-sm text-[var(--copilot-ink-muted)]">
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+        <div className="mt-2 flex items-center gap-2 text-xs text-[var(--copilot-ink-muted)]">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
           Leyendo caja manual…
         </div>
       ) : null}
 
       {!loading && error ? (
-        <CopilotCard className="mt-4 border-amber-200/80 bg-amber-50/50 px-4 py-3">
-          <p className="text-sm text-amber-950">{error}</p>
-          <CopilotGhostLink href="/copilot/tesoreria" className="mt-2 inline-flex font-semibold">
+        <CopilotCard className="mt-2 border-amber-200/80 bg-amber-50/50 px-3 py-2.5">
+          <p className="text-xs text-amber-950">{error}</p>
+          <CopilotGhostLink href="/copilot/tesoreria" className="mt-1.5 inline-flex text-xs font-semibold">
             Configurar Tesorería
           </CopilotGhostLink>
         </CopilotCard>
       ) : null}
 
       {!loading && !error && !hasOperationalData ? (
-        <CopilotCard className="mt-4 border-dashed border-[var(--copilot-border)] bg-white/60 px-4 py-3">
-          <p className="text-sm text-[var(--copilot-ink-muted)]">
-            Todavía no hay obligaciones, movimientos ni alertas de caja manual para presionar el
-            día.
+        <CopilotCard className="mt-2 border-dashed border-[var(--copilot-border)] bg-white/60 px-3 py-2.5">
+          <p className="text-xs text-[var(--copilot-ink-muted)]">
+            Sin obligaciones, movimientos ni alertas de caja manual para presionar el día.
           </p>
-          <CopilotGhostLink href="/copilot/tesoreria" className="mt-2 inline-flex font-semibold">
+          <CopilotGhostLink href="/copilot/tesoreria" className="mt-1.5 inline-flex text-xs font-semibold">
             Configurar Tesorería
           </CopilotGhostLink>
         </CopilotCard>
       ) : null}
 
       {!loading && !error && hasOperationalData && signals ? (
-        <CopilotCard className="mt-4 border-[rgba(31,107,74,0.14)] bg-white/90 px-4 py-4">
-          <div className="flex flex-wrap gap-2">
+        <CopilotCard className="mt-2 border-[rgba(31,107,74,0.14)] bg-white/90 px-3 py-3">
+          <div className="flex flex-wrap items-center gap-2">
             <RutasKpiPill
               label="Runway"
               value={runwayDays == null ? "—" : `${runwayDays} d`}
@@ -115,15 +113,20 @@ export function RutasTreasuryPressureSection() {
               tone={riskChipTone(risk)}
             />
           </div>
-          <p className="mt-3 text-sm text-[var(--copilot-ink-muted)]">
-            {runwayChipLabel(runwayDays)} · {obligationsChipLabel(upcomingCount)}
-            {signals.criticalAlertCount > 0
-              ? ` · ${signals.criticalAlertCount} alerta${signals.criticalAlertCount === 1 ? "" : "s"} crítica${signals.criticalAlertCount === 1 ? "" : "s"}`
-              : ""}
-          </p>
-          <CopilotPrimaryLink href="/copilot/tesoreria" className="mt-4 inline-flex">
-            Ver detalle en Tesorería
-          </CopilotPrimaryLink>
+          <div className="mt-2 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="min-w-0 text-[11px] leading-snug text-[var(--copilot-ink-muted)]">
+              {runwayChipLabel(runwayDays)} · {obligationsChipLabel(upcomingCount)}
+              {signals.criticalAlertCount > 0
+                ? ` · ${signals.criticalAlertCount} alerta${signals.criticalAlertCount === 1 ? "" : "s"} crítica${signals.criticalAlertCount === 1 ? "" : "s"}`
+                : ""}
+            </p>
+            <CopilotGhostLink
+              href="/copilot/tesoreria"
+              className="shrink-0 text-xs font-semibold"
+            >
+              Ver detalle en Tesorería
+            </CopilotGhostLink>
+          </div>
         </CopilotCard>
       ) : null}
     </section>

@@ -8,11 +8,12 @@ import { FinancialWarningBanner } from "@/components/copilot/financial-warning-b
 import { CopilotInteractiveText } from "@/components/copilot/copilot-interactive-text";
 import { CopilotInsightsEvidenceDrawer } from "@/components/copilot/copilot-insights-evidence-drawer";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
+import { CopilotOperationalEmptyState } from "@/components/copilot/copilot-operational-empty-state";
 import {
   CopilotCard,
   CopilotBadge,
   CopilotGhostButton,
+  copilotPageMainClass,
 } from "@/components/copilot/copilot-ui";
 import { CopilotTraceMeta } from "@/components/copilot/copilot-trace-meta";
 import { COPILOT_EMPTY_COPY } from "@/lib/copilot-empty-state";
@@ -79,8 +80,8 @@ export function CopilotInsightsClient({ insights }: { insights: CopilotInsightIt
         description="Historial del razonamiento del copiloto — transparente, trazable y priorizado."
       />
 
-      <div className="flex-1 overflow-auto px-6 py-8">
-        <div className="mx-auto mb-8 max-w-3xl space-y-3">
+      <div className={copilotPageMainClass}>
+        <div className="mx-auto mb-4 max-w-3xl space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <FinancialStatusBadge flags={insightFinancialFlags} />
             <span className="text-xs text-[var(--copilot-ink-muted)]">
@@ -94,11 +95,17 @@ export function CopilotInsightsClient({ insights }: { insights: CopilotInsightIt
         </div>
         {insights.length === 0 ? (
           <div className="mx-auto max-w-3xl">
-            <CopilotEmptyPanel
-              title={COPILOT_EMPTY_COPY.insights.title}
-              paragraphs={COPILOT_EMPTY_COPY.insights.paragraphs}
-              example={COPILOT_EMPTY_COPY.insights.example}
-              importance="Si la base está vacía, un timeline vacío es preferible a insights genéricos que parezcan análisis reales."
+            <CopilotOperationalEmptyState
+              title="Timeline operativo"
+              status="Sin eventos con evidencia suficiente en esta carga"
+              statusTone="healthy"
+              metrics={[
+                { label: "Eventos", value: 0 },
+                { label: "Alta prioridad", value: 0 },
+                { label: "Con respaldo", value: 0 },
+                { label: "Entidades", value: 0 },
+              ]}
+              footnote={COPILOT_EMPTY_COPY.insights.example}
             />
           </div>
         ) : (
@@ -107,19 +114,19 @@ export function CopilotInsightsClient({ insights }: { insights: CopilotInsightIt
               trace={traceFromInsightEngineItem(insights[0])}
               variant="embed"
               dense
-              className="mb-6"
+              className="mb-4"
             />
             <div
-              className="absolute bottom-0 left-[15px] top-8 w-px bg-[var(--copilot-border)]"
+              className="absolute bottom-0 left-[13px] top-6 w-px bg-[var(--copilot-border)]"
               aria-hidden
             />
-            <ul className="space-y-6">
+            <ul className="space-y-3">
               {insights.map((item) => {
                 const evidenceActive = isEvidenceOpen && selectedId === item.id;
                 return (
-                  <li key={item.id} className="relative flex gap-5 pl-2">
-                    <div className="relative z-[1] mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white ring-2 ring-[var(--copilot-border)]">
-                      <span className="h-2.5 w-2.5 rounded-full bg-[var(--copilot-accent)]" />
+                  <li key={item.id} className="relative flex gap-3 pl-1.5">
+                    <div className="relative z-[1] mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white ring-2 ring-[var(--copilot-border)]">
+                      <span className="h-2 w-2 rounded-full bg-[var(--copilot-accent)]" />
                     </div>
                     <CopilotCard
                       className={`flex-1 ${
@@ -128,7 +135,7 @@ export function CopilotInsightsClient({ insights }: { insights: CopilotInsightIt
                           : ""
                       }`}
                     >
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <CopilotBadge
                           tone={
                             item.priority === "Alta"
@@ -150,7 +157,7 @@ export function CopilotInsightsClient({ insights }: { insights: CopilotInsightIt
                           </span>
                         ) : null}
                       </div>
-                      <h2 className="mt-3 text-base font-semibold leading-snug">
+                      <h2 className="mt-2 text-sm font-semibold leading-snug">
                         <CopilotInteractiveText
                           icon="panel"
                           layout="block"
@@ -160,13 +167,13 @@ export function CopilotInsightsClient({ insights }: { insights: CopilotInsightIt
                           {item.title}
                         </CopilotInteractiveText>
                       </h2>
-                      <p className="mt-3 text-sm text-[var(--copilot-ink-muted)]">
+                      <p className="mt-1.5 text-xs text-[var(--copilot-ink-muted)]">
                         Estado:{" "}
                         <span className="font-medium text-[var(--copilot-ink)]">
                           {item.status}
                         </span>
                       </p>
-                      <div className="mt-4">
+                      <div className="mt-2">
                         <CopilotGhostButton
                           className="w-full justify-center sm:w-auto"
                           onClick={() => openEvidence(item.id)}
