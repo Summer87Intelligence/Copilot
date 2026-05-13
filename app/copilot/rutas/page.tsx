@@ -8,6 +8,7 @@ import { RutasDayStatusSection } from "@/components/copilot/rutas/rutas-day-stat
 import { RutasDecisionRoutesSection } from "@/components/copilot/rutas/rutas-decision-routes-section";
 import { RutasInsightsSection } from "@/components/copilot/rutas/rutas-insights-section";
 import { RutasPrioritySection } from "@/components/copilot/rutas/rutas-priority-section";
+import { RutasTreasuryPressureSection } from "@/components/copilot/rutas/rutas-treasury-pressure-section";
 import { CopilotCard, CopilotPrimaryLink } from "@/components/copilot/copilot-ui";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
@@ -130,6 +131,8 @@ export default function CopilotRutasPage() {
           portfolio={hub?.portfolio ?? null}
           hubLoadedAt={hubLoadedAt}
         />
+
+        <RutasTreasuryPressureSection />
 
         {!loading && !hasAnySignal ? (
           <CopilotCard className="border-amber-200/80 bg-amber-50/50">
