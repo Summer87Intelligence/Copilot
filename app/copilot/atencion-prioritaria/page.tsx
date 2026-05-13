@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
+import { CopilotHoyReturnLink } from "@/components/copilot/copilot-hoy-return-link";
 import { CopilotTaxEvidenceDrawer } from "@/components/copilot/copilot-tax-evidence-drawer";
 import { CopilotCollapsiblePanel } from "@/components/copilot/copilot-collapsible-panel";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
@@ -427,8 +428,9 @@ function CopilotAtencionPrioritariaPageContent() {
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
         surfaceId="copilot.atencion-prioritaria"
-        title="Atención prioritaria"
-        description="Diagnóstico, decisión y primer movimiento: un solo foco con plan ordenado y un camino claro a Finanzas y Datos."
+        title="Detalle de atención prioritaria"
+        description="Profundidad del caso crítico o alto. El centro operativo del día está en Hoy."
+        right={<CopilotHoyReturnLink />}
       />
 
       <div className="flex-1 space-y-8 overflow-auto px-6 py-8">

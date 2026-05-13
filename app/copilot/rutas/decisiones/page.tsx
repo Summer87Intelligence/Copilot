@@ -6,7 +6,7 @@ import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { DecisionStep } from "@/components/copilot/decision-step";
 import { RutasFlowBackLink } from "@/components/copilot/rutas-flow-back-link";
 
-const totalSteps = 3;
+const totalSteps = 2;
 
 export default function RutaDecisionesPage() {
   const [step, setStep] = useState(1);
@@ -17,7 +17,7 @@ export default function RutaDecisionesPage() {
       <CopilotPageHeader
         surfaceId="copilot.rutas"
         title="Decisiones pendientes"
-        description="Del disparador a la acción, sin perder el hilo."
+        description="Del disparador a la acción, sin pasar por listados legacy."
       />
       <div className="flex-1 overflow-auto px-6 py-8">
         {step === 1 ? (
@@ -25,10 +25,10 @@ export default function RutaDecisionesPage() {
             stepIndex={1}
             totalSteps={totalSteps}
             title="De la señal a la acción"
-            description="El copiloto ordena por impacto y te propone un siguiente paso claro por cliente."
+            description="Hoy resume las recomendaciones. El seguimiento operativo vive en Acciones."
             durationHint="~1 min"
             impact="Un caso abierto demasiado tiempo suele significar caja o relación en riesgo."
-            ctaLabel="Ver acciones sugeridas"
+            ctaLabel="Ver recomendaciones en Hoy"
             onNext={() => setStep(2)}
           />
         ) : null}
@@ -36,22 +36,11 @@ export default function RutaDecisionesPage() {
           <DecisionStep
             stepIndex={2}
             totalSteps={totalSteps}
-            title="Priorizá por impacto"
-            description="Ordená por severidad y canal: primero lo que mueve caja o cumplimiento."
-            durationHint="~2 min"
-            ctaLabel="Seguir en acciones recomendadas"
-            onNext={() => setStep(3)}
-          />
-        ) : null}
-        {step === 3 ? (
-          <DecisionStep
-            stepIndex={3}
-            totalSteps={totalSteps}
             title="Ejecutá y registrá resultado"
-            description="Las acciones generadas necesitan un cierre para alimentar el aprendizaje del copiloto."
+            description="Cerrá el ciclo en Acciones. El listado avanzado de IA queda como referencia histórica."
             durationHint="~1 min"
-            ctaLabel="Ir a acciones recomendadas"
-            nextHref="/copilot/gestion-ia"
+            ctaLabel="Ir a Acciones"
+            nextHref="/copilot/acciones"
           />
         ) : null}
       </div>

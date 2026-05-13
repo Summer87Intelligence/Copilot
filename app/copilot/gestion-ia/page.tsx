@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
+import { CopilotHoyReturnLink } from "@/components/copilot/copilot-hoy-return-link";
 import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
 import { CopilotRealInsightCard } from "@/components/copilot/copilot-real-insight-card";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
@@ -107,17 +108,19 @@ export default function CopilotGestionIaPage() {
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
         surfaceId="copilot.gestion-ia"
-        title="Acciones recomendadas hoy"
-        description="Solo lecturas respaldadas por facturas, obligaciones fiscales y caja real del prototipo. Sin textos generados ni puntuaciones mock."
-        right={
-          <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(31,107,74,0.2)] bg-[var(--copilot-accent-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--copilot-accent)]">
-            <Sparkles className="h-3.5 w-3.5" aria-hidden />
-            Copiloto activo
-          </span>
-        }
+        title="Recomendaciones IA"
+        description="Listado avanzado e histórico. La vista operativa principal está en Hoy."
+        right={<CopilotHoyReturnLink />}
       />
 
       <div className="flex-1 space-y-8 overflow-auto px-6 py-8">
+        <CopilotCard className="border-[var(--copilot-border)] bg-white/85">
+          <p className="text-sm text-[var(--copilot-ink-muted)]">
+            Para el resumen del día y el seguimiento operativo, usá{" "}
+            <CopilotHoyReturnLink className="inline font-semibold" />. Esta pantalla conserva el
+            detalle completo de insights y el briefing LLM.
+          </p>
+        </CopilotCard>
         {loadError ? (
           <div
             role="alert"
