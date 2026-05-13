@@ -1,0 +1,45 @@
+import { NextRequest, NextResponse } from "next/server";
+
+import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
+import { plannedCashObligationConfirmBodySchema } from "@/lib/api/schemas/treasury-api-bodies";
+import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
+import { plannedCashObligationConfirm } from "@/lib/treasury/services/planned-cash-obligation-service";
+import { nextResponseFromTreasuryCrud } from "@/lib/treasury/treasury-http";
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    if (!id?.trim()) {
+      return NextResponse.json(
+        { ok: false, code: "VALIDATION", message: "Falta el id de la obligación." },
+        { status: 400 }
+      );
+    }
+
+    const parsed = await parseAndValidateJsonBody(request, plannedCashObligationConfirmBodySchema);
+    if (!parsed.ok) return parsed.response;
+
+    const auth = await requireCopilotTenantContext(
+      request,
+      parsed.data as Record<string, unknown>
+    );
+    if (!auth.ok) return auth.response;
+
+    const result = await plannedCashObligationConfirm(
+      auth.ctx.supabase,
+      auth.ctx.tenantCompanyId,
+      id,
+      parsed.data.notes
+    );
+    return nextResponseFromTreasuryCrud(result);
+  } catch {
+    return NextResponse.json(
+      { ok: false as const, code: "DATABASE" as const, message: MSG_DB_USER },
+      { status: 500 }
+    );
+  }
+}

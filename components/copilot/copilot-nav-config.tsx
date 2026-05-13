@@ -19,6 +19,7 @@ import {
   TriangleAlert,
   Users,
   Wallet,
+  Banknote,
 } from "lucide-react";
 
 export type CopilotNavItem = {
@@ -71,6 +72,7 @@ const COPILOT_NAV_MAIN: CopilotNavItem[] = [
   { href: "/copilot/acciones", label: "Acciones", icon: CheckSquare },
   { href: "/copilot/clientes", label: "Clientes", icon: Users },
   { href: "/copilot/finanzas", label: "Finanzas", icon: Wallet },
+  { href: "/copilot/tesoreria", label: "Tesorería", icon: Banknote },
   { href: "/copilot/cartera", label: "Cartera", icon: Landmark },
   { href: "/copilot/escenarios", label: "Escenarios", icon: BarChart3 },
   { href: "/copilot/insights", label: "Insights", icon: Lightbulb },
