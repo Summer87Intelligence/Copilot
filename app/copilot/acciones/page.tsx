@@ -1,9 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
 import { CopilotActionsEvidenceDrawer } from "@/components/copilot/copilot-actions-evidence-drawer";
+import { CopilotOperationalActionsPanel } from "@/components/copilot/copilot-operational-actions-panel";
+import { CopilotOperationalEmptyState } from "@/components/copilot/copilot-operational-empty-state";
+import { CopilotSkeletonKpiRow } from "@/components/copilot/copilot-loading-skeleton";
 import { CopilotTraceMeta } from "@/components/copilot/copilot-trace-meta";
 import { CopilotInteractiveText } from "@/components/copilot/copilot-interactive-text";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
@@ -11,8 +15,10 @@ import {
   CopilotBadge,
   CopilotCard,
   CopilotGhostButton,
+  CopilotGhostLink,
   CopilotPrimaryButton,
   CopilotSectionTitle,
+  copilotPageMainClass,
 } from "@/components/copilot/copilot-ui";
 import type { ActionListItem } from "@/lib/ai/action-types";
 import {
@@ -22,6 +28,11 @@ import {
   mapOutcomeTypeLabelEs,
 } from "@/lib/copilot-format";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
+import {
+  formatActionProvenanceLabel,
+  parseCopilotActionProvenance,
+  provenanceBadgeTone,
+} from "@/lib/copilot-alert-ops-mapper";
 import { traceFromActionRow } from "@/lib/copilot-trace-meta";
 import type { OutcomeTypeValue } from "@/lib/ai/outcome-types";
 
@@ -50,6 +61,38 @@ const quickBtnClass =
   "rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm";
 
 export default function CopilotAccionesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-20 text-sm text-[var(--copilot-ink-muted)]">
+          Cargando acciones…
+        </div>
+      }
+    >
+      <CopilotAccionesPageContent />
+    </Suspense>
+  );
+}
+
+function CopilotAccionesPageContent() {
+  const searchParams = useSearchParams();
+  const provenance = useMemo(
+    () => parseCopilotActionProvenance(searchParams),
+    [searchParams]
+  );
+  const provenanceLabel = useMemo(
+    () => formatActionProvenanceLabel(provenance),
+    [provenance]
+  );
+  const provenanceSourceLabel =
+    provenance.source === "alert"
+      ? "Alerta"
+      : provenance.source === "insight"
+        ? "Insight"
+        : provenance.source === "recommendation"
+          ? "Recomendación"
+          : null;
+
   const [actions, setActions] = useState<ActionListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -248,12 +291,32 @@ export default function CopilotAccionesPage() {
     void submitOutcome(a, "sale", amount);
   };
 
+  const actionMetrics = useMemo(() => {
+    const pending = actions.filter(
+      (action) => action.execution_status.toLowerCase() === "pending"
+    ).length;
+    const tracking = actions.filter(
+      (action) =>
+        Boolean(action.assignee_name?.trim()) || Boolean(action.expected_result?.trim())
+    ).length;
+    const today = new Date().toDateString();
+    const resolvedToday = actions.filter((action) => {
+      if (action.execution_status.toLowerCase() !== "executed") return false;
+      try {
+        return new Date(action.updated_at).toDateString() === today;
+      } catch {
+        return false;
+      }
+    }).length;
+    return { pending, tracking, resolvedToday, total: actions.length };
+  }, [actions]);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
         surfaceId="copilot.acciones"
         title="Acciones"
-        description="Acciones desde decisiones: seguimiento (responsable, esperado, antes) y cierre con resultado real."
+        description="Cola operativa persistida y acciones del motor de decisiones con seguimiento y cierre."
         right={
           <CopilotPrimaryButton
             type="button"
@@ -269,7 +332,28 @@ export default function CopilotAccionesPage() {
         }
       />
 
-      <div className="flex-1 space-y-6 overflow-auto px-6 py-8">
+      <div className={copilotPageMainClass}>
+        {provenanceLabel ? (
+          <CopilotCard className="border-[var(--copilot-border)] bg-white/85">
+            <div className="flex flex-wrap items-start gap-3">
+              {provenanceSourceLabel ? (
+                <CopilotBadge tone={provenanceBadgeTone(provenance.priority)}>
+                  {provenanceSourceLabel}
+                </CopilotBadge>
+              ) : null}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-[var(--copilot-ink)]">
+                  {provenanceLabel}
+                </p>
+                {provenance.obligationId ? (
+                  <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
+                    Obligación asociada: {provenance.obligationId}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </CopilotCard>
+        ) : null}
         {error ? (
           <div
             role="alert"
@@ -282,21 +366,70 @@ export default function CopilotAccionesPage() {
           <p className="text-sm text-[var(--copilot-ink-muted)]">{lastResult}</p>
         ) : null}
 
+        <CopilotOperationalActionsPanel provenance={provenance} onError={setError} />
+
         <CopilotCard>
           <CopilotSectionTitle
             title="Acciones del pipeline"
             subtitle="Orden: más recientes primero. Resultado: una vez por acción."
           />
           {loading ? (
-            <div className="flex items-center justify-center gap-2 py-14 text-sm text-[var(--copilot-ink-muted)]">
-              <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-              Cargando…
-            </div>
+            <CopilotSkeletonKpiRow count={4} className="py-1" />
           ) : actions.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-[var(--copilot-border)] bg-white/60 px-4 py-8 text-center text-sm text-[var(--copilot-ink-muted)]">
-              No hay acciones todavía. Generá desde decisiones existentes con el botón
-              superior.
-            </p>
+            <div className="grid gap-4 lg:grid-cols-3">
+              <div className="space-y-3 lg:col-span-2">
+                <CopilotOperationalEmptyState
+                  title="Pipeline activo"
+                  status="Sin acciones pendientes en esta carga"
+                  statusTone="info"
+                  metrics={[
+                    { label: "Pendientes", value: actionMetrics.pending },
+                    { label: "Seguimiento", value: actionMetrics.tracking },
+                    { label: "Resueltas hoy", value: actionMetrics.resolvedToday },
+                    { label: "Total", value: actionMetrics.total },
+                  ]}
+                  footnote="Generá acciones desde decisiones o abrí un seguimiento desde alertas."
+                />
+                <CopilotPrimaryButton
+                  type="button"
+                  onClick={() => void handleGenerate()}
+                  disabled={generating}
+                  className="inline-flex items-center gap-2"
+                >
+                  {generating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  ) : null}
+                  Generar acciones
+                </CopilotPrimaryButton>
+              </div>
+              <CopilotCard className="h-fit border-[var(--copilot-border)] bg-white/80">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                  Siguientes pasos
+                </p>
+                <ul className="mt-2 space-y-1.5 text-sm">
+                  <li>
+                    <CopilotGhostLink href="/copilot/alertas" className="w-full justify-start px-0 py-1 text-xs font-semibold">
+                      Revisar alertas
+                    </CopilotGhostLink>
+                  </li>
+                  <li>
+                    <CopilotGhostLink href="/copilot/clientes" className="w-full justify-start px-0 py-1 text-xs font-semibold">
+                      Abrir clientes
+                    </CopilotGhostLink>
+                  </li>
+                  <li>
+                    <CopilotGhostLink href="/copilot/tesoreria" className="w-full justify-start px-0 py-1 text-xs font-semibold">
+                      Revisar tesorería
+                    </CopilotGhostLink>
+                  </li>
+                  <li>
+                    <CopilotGhostLink href="/copilot/gestion-ia" className="w-full justify-start px-0 py-1 text-xs font-semibold">
+                      Ver recomendaciones
+                    </CopilotGhostLink>
+                  </li>
+                </ul>
+              </CopilotCard>
+            </div>
           ) : (
             <ul className="space-y-3">
               {actions.map((a) => {
@@ -307,7 +440,7 @@ export default function CopilotAccionesPage() {
                 return (
                   <li
                     key={a.id}
-                    className={`rounded-2xl border border-[var(--copilot-border)] bg-white/85 px-4 py-4 shadow-sm ${
+                    className={`rounded-2xl border border-[var(--copilot-border)] bg-white/85 px-3.5 py-3 shadow-sm ${
                       evidenceActive
                         ? "ring-2 ring-[rgba(31,107,74,0.22)]"
                         : ""

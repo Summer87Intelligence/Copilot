@@ -11,17 +11,19 @@ import {
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { useCopilotAlerts } from "@/components/copilot/copilot-alerts-context";
-import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
 import { CopilotTaxEvidenceDrawer } from "@/components/copilot/copilot-tax-evidence-drawer";
+import { CopilotAlertOpsActions } from "@/components/copilot/copilot-alert-ops-actions";
 import { copilotInteractiveTextGroupAffordance } from "@/components/copilot/copilot-interactive-text";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import {
   CopilotBadge,
   CopilotCard,
-  CopilotGhostButton,
   CopilotSectionTitle,
+  copilotPageMainClass,
 } from "@/components/copilot/copilot-ui";
+import { CopilotOperationalEmptyState } from "@/components/copilot/copilot-operational-empty-state";
 import { mapAlertCategory } from "@/lib/copilot-format";
+import { buildCopilotAlertOpsContext } from "@/lib/copilot-alert-ops-mapper";
 import { COPILOT_EMPTY_COPY } from "@/lib/copilot-empty-state";
 
 type PriorityFilter = "all" | "critical" | "high" | "medium";
@@ -104,6 +106,11 @@ function CopilotAlertasPageContent() {
     return filtered.find((a) => a.id === effectiveSelectedId) ?? null;
   }, [filtered, effectiveSelectedId]);
 
+  const selectedOps = useMemo(
+    () => (selectedAlert ? buildCopilotAlertOpsContext(selectedAlert) : null),
+    [selectedAlert]
+  );
+
   useEffect(() => {
     if (filtered.length === 0) {
       setIsEvidenceOpen(false);
@@ -134,34 +141,34 @@ function CopilotAlertasPageContent() {
         description="Riesgos y desvíos detectados — priorizados para que sepas dónde mirar primero."
       />
 
-      <div className="flex-1 space-y-8 overflow-auto px-6 py-8">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <CopilotCard className="border-rose-200/80 bg-rose-50/50">
-            <p className="text-xs font-semibold uppercase tracking-wide text-rose-900/80">
+      <div className={copilotPageMainClass}>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <CopilotCard className="border-rose-200/70 bg-rose-50/45 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-900/80">
               Críticas
             </p>
-            <p className="mt-2 text-3xl font-semibold text-rose-950">
+            <p className="mt-1 text-2xl font-semibold text-rose-950">
               {summaryCounts.critical}
             </p>
-            <p className="mt-1 text-sm text-rose-900/70">Requieren acción inmediata</p>
+            <p className="mt-0.5 text-xs text-rose-900/70">Acción inmediata</p>
           </CopilotCard>
-          <CopilotCard className="border-amber-200/80 bg-amber-50/50">
-            <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/80">
+          <CopilotCard className="border-amber-200/70 bg-amber-50/45 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-900/80">
               Altas
             </p>
-            <p className="mt-2 text-3xl font-semibold text-amber-950">
+            <p className="mt-1 text-2xl font-semibold text-amber-950">
               {summaryCounts.high}
             </p>
-            <p className="mt-1 text-sm text-amber-900/70">Seguimiento esta semana</p>
+            <p className="mt-0.5 text-xs text-amber-900/70">Seguimiento semanal</p>
           </CopilotCard>
-          <CopilotCard>
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+          <CopilotCard className="py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
               Medias
             </p>
-            <p className="mt-2 text-3xl font-semibold text-[var(--copilot-ink)]">
+            <p className="mt-1 text-2xl font-semibold text-[var(--copilot-ink)]">
               {summaryCounts.medium}
             </p>
-            <p className="mt-1 text-sm text-[var(--copilot-ink-muted)]">
+            <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
               Monitoreo habitual
             </p>
           </CopilotCard>
@@ -240,11 +247,12 @@ function CopilotAlertasPageContent() {
           </div>
         </CopilotCard>
 
-        <div className="grid gap-6 lg:grid-cols-5">
+        <div className="grid gap-4 lg:grid-cols-5">
           <div className="space-y-3 lg:col-span-2">
             {filtered.map((a) => {
               const active = a.id === effectiveSelectedId;
               const evidenceOpenForCard = isEvidenceOpen && a.id === effectiveSelectedId;
+              const ops = buildCopilotAlertOpsContext(a);
               return (
                 <div
                   key={a.id}
@@ -287,27 +295,20 @@ function CopilotAlertasPageContent() {
                       {a.title}
                     </p>
                     <p className="mt-1 text-sm text-[var(--copilot-ink-muted)]">
-                      {a.summary}
+                      {ops.impact}
                     </p>
                   </button>
-                  <div className="mt-3">
-                    {a.obligationId ? (
-                      <CopilotGhostButton
-                        onClick={() => {
-                          setSelectedId(a.id);
-                          setIsEvidenceOpen(true);
-                        }}
-                        className="w-full justify-center py-2"
-                      >
-                        Ver respaldo fiscal
-                      </CopilotGhostButton>
-                    ) : (
-                      <p className="rounded-xl bg-[rgba(44,40,37,0.04)] px-3 py-2 text-center text-xs text-[var(--copilot-ink-muted)]">
-                        Sin obligación asociada: revisá el detalle a la derecha o en
-                        Finanzas / Datos.
-                      </p>
-                    )}
-                  </div>
+                  <CopilotAlertOpsActions
+                    primary={ops.primary}
+                    quick={ops.quick}
+                    compact
+                    followupAlert={a}
+                    showEvidence={Boolean(a.obligationId)}
+                    onOpenEvidence={() => {
+                      setSelectedId(a.id);
+                      setIsEvidenceOpen(true);
+                    }}
+                  />
                 </div>
               );
             })}
@@ -322,11 +323,17 @@ function CopilotAlertasPageContent() {
               </div>
             ) : filtered.length === 0 ? (
               allAlerts.length === 0 ? (
-                <CopilotEmptyPanel
-                  title={COPILOT_EMPTY_COPY.alertasPage.title}
-                  paragraphs={COPILOT_EMPTY_COPY.alertasPage.paragraphs}
-                  example={COPILOT_EMPTY_COPY.alertasPage.example}
-                  importance="Las alertas no son decorativas: si no hay filas en la base, la pantalla vacía es la lectura correcta."
+                <CopilotOperationalEmptyState
+                  title="Monitoreo activo"
+                  status="Última evaluación correcta · sin incidentes detectados"
+                  statusTone="healthy"
+                  metrics={[
+                    { label: "Críticas", value: summaryCounts.critical },
+                    { label: "Altas", value: summaryCounts.high },
+                    { label: "Medias", value: summaryCounts.medium },
+                    { label: "Total", value: allAlerts.length },
+                  ]}
+                  footnote={COPILOT_EMPTY_COPY.alertasPage.example}
                 />
               ) : (
                 <p className="text-sm text-[var(--copilot-ink-muted)]">
@@ -341,7 +348,7 @@ function CopilotAlertasPageContent() {
               title="Detalle"
               subtitle="Contexto y lectura recomendada."
             />
-            {selectedAlert ? (
+            {selectedAlert && selectedOps ? (
               <div className="space-y-4">
                 <div className="flex flex-wrap gap-2">
                   <CopilotBadge
@@ -362,34 +369,29 @@ function CopilotAlertasPageContent() {
                 <h3 className="text-lg font-semibold text-[var(--copilot-ink)]">
                   {selectedAlert.title}
                 </h3>
-                <p className="whitespace-pre-line text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
-                  {selectedAlert.detail}
-                </p>
-                <div className="rounded-xl border border-dashed border-[var(--copilot-border)] bg-white/60 p-4 text-sm text-[var(--copilot-ink)]">
-                  <p className="font-semibold">Próximo paso sugerido</p>
-                  <p className="mt-2 text-[var(--copilot-ink-muted)]">
-                    Asignar responsable y fecha de seguimiento en la vista Acciones.
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-[var(--copilot-ink)]">
+                    {selectedOps.impact}
+                  </p>
+                  <p className="text-sm text-[var(--copilot-ink-muted)]">
+                    {selectedOps.whyItMatters}
                   </p>
                 </div>
-                {selectedAlert.obligationId ? (
-                  <div className="flex items-center justify-between rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
-                    <div>
-                      <p className="text-sm font-semibold text-[var(--copilot-ink)]">
-                        Ver respaldo y evidencia
-                      </p>
-                      <p className="mt-1 text-sm text-[var(--copilot-ink-muted)]">
-                        Abrí trazabilidad completa: origen, registros, movimientos y
-                        documentos.
-                      </p>
-                    </div>
-                    <CopilotGhostButton
-                      onClick={() => setIsEvidenceOpen(true)}
-                      className="shrink-0 whitespace-nowrap"
-                    >
-                      Ver respaldo fiscal
-                    </CopilotGhostButton>
-                  </div>
-                ) : null}
+                <CopilotAlertOpsActions
+                  primary={selectedOps.primary}
+                  quick={selectedOps.quick}
+                  followupAlert={selectedAlert}
+                  showEvidence={Boolean(selectedAlert.obligationId)}
+                  onOpenEvidence={() => setIsEvidenceOpen(true)}
+                />
+                <details className="rounded-xl border border-[var(--copilot-border)] bg-white/60 px-4 py-3 text-sm text-[var(--copilot-ink-muted)]">
+                  <summary className="cursor-pointer font-semibold text-[var(--copilot-ink)]">
+                    Detalle técnico
+                  </summary>
+                  <p className="mt-3 whitespace-pre-line leading-relaxed">
+                    {selectedOps.technicalDetail}
+                  </p>
+                </details>
               </div>
             ) : (
               <div className="rounded-xl border border-dashed border-[var(--copilot-border)] bg-white/50 px-4 py-8 text-center">

@@ -164,3 +164,50 @@ export const protoTaxObligationUpdateBodySchema = z.object({
   notes: optionalNullableString,
   confirm_duplicate: z.boolean().optional(),
 });
+
+export const operationalActionCreateBodySchema = z.object({
+  origin: z.enum(["alert", "treasury", "finance", "customer", "insight", "manual"]),
+  action_type: z.string().trim().min(1).max(120),
+  priority: z.enum(["critical", "high", "medium", "low"]).optional(),
+  title: z.string().trim().min(1).max(300),
+  summary: z.string().max(4000).nullable().optional(),
+  related_entity_type: z.string().max(120).nullable().optional(),
+  related_entity_id: z.string().max(200).nullable().optional(),
+  context: z.record(z.string(), z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  due_at: z.string().datetime().nullable().optional(),
+  assigned_to: z.string().max(200).nullable().optional(),
+  owner_id: z.string().max(200).nullable().optional(),
+});
+
+export const operationalActionFromAlertBodySchema = z.object({
+  alert_id: z.string().trim().min(1),
+  title: z.string().trim().min(1).max(300),
+  summary: z.string().max(4000),
+  priority: z.enum(["critical", "high", "medium"]),
+  alert_type: z.enum(["fiscalidad", "liquidez", "cobertura", "conciliacion"]),
+  obligation_id: z.string().nullable().optional(),
+  detail: z.string().max(8000).optional(),
+});
+
+export const operationalActionPatchBodySchema = z
+  .object({
+    operational_status: z
+      .enum(["pending", "in_progress", "blocked", "resolved", "dismissed"])
+      .optional(),
+    assigned_to: z.union([z.string().max(200), z.null()]).optional(),
+    owner_id: z.union([z.string().max(200), z.null()]).optional(),
+    due_at: z.union([z.string().datetime(), z.null()]).optional(),
+    resolution_notes: z.union([z.string().max(4000), z.null()]).optional(),
+    summary: z.union([z.string().max(4000), z.null()]).optional(),
+  })
+  .refine(
+    (body) =>
+      body.operational_status !== undefined ||
+      body.assigned_to !== undefined ||
+      body.owner_id !== undefined ||
+      body.due_at !== undefined ||
+      body.resolution_notes !== undefined ||
+      body.summary !== undefined,
+    { message: "Enviá al menos un campo para actualizar." }
+  );
