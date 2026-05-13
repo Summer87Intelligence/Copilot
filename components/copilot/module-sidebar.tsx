@@ -120,6 +120,12 @@ export function CopilotModuleSidebar({
                   <div className={`mx-1 h-px ${dividerLineClass}`} />
                 )}
               </div>
+            ) : !collapsed && group.sectionTitle ? (
+              <p
+                className={`px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${sectionLabelClass}`}
+              >
+                {group.sectionTitle}
+              </p>
             ) : null}
             {group.items.map((item) => {
               const Icon = item.icon;
