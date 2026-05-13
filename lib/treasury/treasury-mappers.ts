@@ -4,6 +4,7 @@ import type {
   PlannedCashObligation,
   TreasuryAccount,
 } from "@/lib/treasury/treasury-types";
+import type { PlannedCashObligationTemplate } from "@/lib/treasury/treasury-recurring-obligations";
 
 function str(v: unknown): string {
   return v == null ? "" : String(v).trim();
@@ -151,5 +152,26 @@ export function mapPlannedCashObligationRow(row: Record<string, unknown>): Plann
     createdAt: str(row.created_at),
     updatedAt: str(row.updated_at),
     metadata: jsonRecord(row.metadata),
+  };
+}
+
+export function mapPlannedCashObligationTemplateRow(
+  row: Record<string, unknown>
+): PlannedCashObligationTemplate {
+  return {
+    id: str(row.id),
+    workspaceId: str(row.workspace_id),
+    title: str(row.title),
+    category: str(row.category),
+    currency: str(row.currency) as PlannedCashObligationTemplate["currency"],
+    amount: num(row.amount),
+    recurrenceType: str(row.recurrence_type) as PlannedCashObligationTemplate["recurrenceType"],
+    recurrenceInterval: Math.max(1, Math.trunc(num(row.recurrence_interval))),
+    nextOccurrenceDate: str(row.next_occurrence_date),
+    autoGenerate: Boolean(row.auto_generate),
+    active: Boolean(row.active),
+    metadata: jsonRecord(row.metadata),
+    createdAt: str(row.created_at),
+    updatedAt: str(row.updated_at),
   };
 }

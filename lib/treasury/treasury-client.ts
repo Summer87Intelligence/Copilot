@@ -1,4 +1,11 @@
 import { copilotApiFetch } from "@/lib/copilot-fetch";
+import type { TreasuryAlert } from "@/lib/treasury/treasury-alert-engine";
+import type { TreasuryCashProjectionResult } from "@/lib/treasury/treasury-cash-projection";
+import type { TreasuryInsight } from "@/lib/treasury/treasury-insights";
+import type {
+  GeneratedObligationDraft,
+  PlannedCashObligationTemplate,
+} from "@/lib/treasury/treasury-recurring-obligations";
 import type {
   BankReconciliationMovement,
   ManualCashMovement,
@@ -45,6 +52,10 @@ export const TREASURY_API = {
   upcomingObligations: "/api/copilot/treasury/planned-cash-obligations/upcoming",
   overdueObligations: "/api/copilot/treasury/planned-cash-obligations/overdue",
   importBankMovements: "/api/copilot/treasury/bank-reconciliation-movements/import",
+  projection: "/api/copilot/treasury/projection",
+  alerts: "/api/copilot/treasury/alerts",
+  insights: "/api/copilot/treasury/insights",
+  recurringObligations: "/api/copilot/treasury/recurring-obligations",
 } as const;
 
 export type TreasuryWorkspaceFilters = {
@@ -125,6 +136,56 @@ export async function fetchTreasuryOverdueObligations(
     `${TREASURY_API.overdueObligations}${q ? `?${q}` : ""}`
   );
   return readJson(res);
+}
+
+export async function fetchTreasuryProjection(
+  horizonDays = 30,
+  asOfDate?: string
+): Promise<TreasuryApiResult<TreasuryCashProjectionResult>> {
+  const params = new URLSearchParams({ horizon_days: String(horizonDays) });
+  if (asOfDate) params.set("as_of", asOfDate);
+  const res = await copilotApiFetch(`${TREASURY_API.projection}?${params}`);
+  return readJson(res);
+}
+
+export async function fetchTreasuryAlerts(
+  horizonDays = 30,
+  asOfDate?: string
+): Promise<TreasuryApiResult<TreasuryAlert[]>> {
+  const params = new URLSearchParams({ horizon_days: String(horizonDays) });
+  if (asOfDate) params.set("as_of", asOfDate);
+  const res = await copilotApiFetch(`${TREASURY_API.alerts}?${params}`);
+  return readJson(res);
+}
+
+export async function fetchTreasuryInsights(
+  horizonDays = 30,
+  asOfDate?: string
+): Promise<TreasuryApiResult<TreasuryInsight[]>> {
+  const params = new URLSearchParams({ horizon_days: String(horizonDays) });
+  if (asOfDate) params.set("as_of", asOfDate);
+  const res = await copilotApiFetch(`${TREASURY_API.insights}?${params}`);
+  return readJson(res);
+}
+
+export async function fetchRecurringObligationTemplates(
+  activeOnly = false
+): Promise<TreasuryApiResult<TreasuryListEnvelope<PlannedCashObligationTemplate>>> {
+  const params = new URLSearchParams();
+  if (activeOnly) params.set("active_only", "true");
+  const q = params.toString();
+  const res = await copilotApiFetch(
+    `${TREASURY_API.recurringObligations}${q ? `?${q}` : ""}`
+  );
+  return readJson(res);
+}
+
+export async function generateRecurringObligations(
+  body: Record<string, unknown>
+): Promise<
+  TreasuryApiResult<{ drafts: GeneratedObligationDraft[]; created: PlannedCashObligation[] }>
+> {
+  return treasuryApiPost(TREASURY_API.recurringObligations, body);
 }
 
 export async function treasuryApiPost<T>(

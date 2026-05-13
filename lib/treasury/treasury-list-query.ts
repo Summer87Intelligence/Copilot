@@ -93,3 +93,14 @@ export function parseOverdueObligationQuery(request: NextRequest) {
     limit: parseListLimit(params.get("limit")),
   };
 }
+
+export function parseTreasuryIntelligenceQuery(request: NextRequest) {
+  const params = request.nextUrl.searchParams;
+  const horizonRaw = params.get("horizon_days")?.trim() ?? params.get("days")?.trim();
+  const parsed = horizonRaw ? Number.parseInt(horizonRaw, 10) : 30;
+  const allowed = new Set([7, 15, 30, 60]);
+  return {
+    asOfDate: parseYmdQuery(params.get("as_of")) ?? undefined,
+    horizonDays: allowed.has(parsed) ? (parsed as 7 | 15 | 30 | 60) : 30,
+  };
+}

@@ -279,6 +279,50 @@ export const plannedCashObligationConfirmBodySchema = z
   })
   .strict();
 
+export const recurringObligationTemplateCreateBodySchema = z
+  .object({
+    workspace_id: rejectWorkspaceId,
+    title: z.string().trim().min(1),
+    category: z.string().trim().min(1),
+    currency: currencyCode,
+    amount: positiveAmount,
+    recurrence_type: z.enum(["monthly", "quarterly", "yearly", "custom"]),
+    recurrence_interval: z.number().int().positive().optional(),
+    next_occurrence_date: ymd,
+    auto_generate: z.boolean().optional(),
+    active: z.boolean().optional(),
+    metadata: optionalMetadata,
+  })
+  .strict();
+
+export const recurringObligationTemplateUpdateBodySchema = z
+  .object({
+    workspace_id: rejectWorkspaceId,
+    title: z.string().trim().min(1).optional(),
+    category: z.string().trim().min(1).optional(),
+    currency: currencyCode.optional(),
+    amount: positiveAmount.optional(),
+    recurrence_type: z.enum(["monthly", "quarterly", "yearly", "custom"]).optional(),
+    recurrence_interval: z.number().int().positive().optional(),
+    next_occurrence_date: ymd.optional(),
+    auto_generate: z.boolean().optional(),
+    active: z.boolean().optional(),
+    metadata: optionalMetadata,
+  })
+  .strict()
+  .refine((o) => Object.keys(o).some((k) => k !== "workspace_id"), {
+    message: "Enviá al menos un campo para actualizar.",
+  });
+
+export const recurringObligationGenerateBodySchema = z
+  .object({
+    workspace_id: rejectWorkspaceId,
+    within_days: z.number().int().min(1).max(365).optional(),
+    as_of_date: ymd.optional(),
+    persist: z.boolean().optional(),
+  })
+  .strict();
+
 export type TreasuryAccountCreateBody = z.infer<typeof treasuryAccountCreateBodySchema>;
 export type TreasuryAccountUpdateBody = z.infer<typeof treasuryAccountUpdateBodySchema>;
 export type ManualCashMovementCreateBody = z.infer<typeof manualCashMovementCreateBodySchema>;
@@ -293,3 +337,10 @@ export type BankReconciliationMatchBody = z.infer<typeof bankReconciliationMatch
 export type BankReconciliationImportBody = z.infer<typeof bankReconciliationImportBodySchema>;
 export type PlannedCashObligationCreateBody = z.infer<typeof plannedCashObligationCreateBodySchema>;
 export type PlannedCashObligationUpdateBody = z.infer<typeof plannedCashObligationUpdateBodySchema>;
+export type RecurringObligationTemplateCreateBody = z.infer<
+  typeof recurringObligationTemplateCreateBodySchema
+>;
+export type RecurringObligationTemplateUpdateBody = z.infer<
+  typeof recurringObligationTemplateUpdateBodySchema
+>;
+export type RecurringObligationGenerateBody = z.infer<typeof recurringObligationGenerateBodySchema>;
