@@ -7,7 +7,9 @@ import { RutasAlertsPreviewSection } from "@/components/copilot/rutas/rutas-aler
 import { RutasDayStatusSection } from "@/components/copilot/rutas/rutas-day-status-section";
 import { RutasDecisionRoutesSection } from "@/components/copilot/rutas/rutas-decision-routes-section";
 import { RutasInsightsSection } from "@/components/copilot/rutas/rutas-insights-section";
-import { RutasOperationalActionsSection } from "@/components/copilot/rutas/rutas-operational-actions-section";
+import { RutasOperationalNarrativesSection } from "@/components/copilot/rutas/rutas-operational-narratives-section";
+import { RutasMoreOptionsSection } from "@/components/copilot/rutas/rutas-more-options-section";
+import { RutasOperationalFeedSection } from "@/components/copilot/rutas/rutas-operational-feed-section";
 import { RutasPrioritySection } from "@/components/copilot/rutas/rutas-priority-section";
 import { RutasTreasuryPressureSection } from "@/components/copilot/rutas/rutas-treasury-pressure-section";
 import { CopilotCard, CopilotPrimaryLink, copilotPageMainClass } from "@/components/copilot/copilot-ui";
@@ -121,7 +123,7 @@ export default function CopilotRutasPage() {
       <CopilotPageHeader
         surfaceId="copilot.rutas"
         title="Qué hacer hoy"
-        description="Centro operativo del día: prioridad, alertas, recomendaciones y rutas guiadas en un solo lugar."
+        description="Centro operativo del día: prioridad ejecutiva, seguimiento y actividad reciente."
       />
 
       <div className={copilotPageMainClass}>
@@ -134,6 +136,10 @@ export default function CopilotRutasPage() {
         />
 
         <RutasTreasuryPressureSection />
+
+        <RutasOperationalNarrativesSection snapshot={hub?.snapshot ?? null} />
+
+        <RutasOperationalFeedSection />
 
         {!loading && !hasAnySignal ? (
           <CopilotCard className="border-amber-200/80 bg-amber-50/50">
@@ -149,23 +155,24 @@ export default function CopilotRutasPage() {
           </CopilotCard>
         ) : null}
 
-        <RutasPrioritySection />
-        <RutasOperationalActionsSection />
-        <RutasAlertsPreviewSection />
-        <RutasInsightsSection
-          loading={loading}
-          insights={insights}
-          computedAt={insightsComputedAt}
-          recommendationsEnabled={recommendationsEnabled}
-          loadError={insightsError}
-        />
-        <RutasDecisionRoutesSection
-          loading={loading}
-          visibility={visibility}
-          gate={hub?.gate ?? null}
-          portfolio={hub?.portfolio ?? null}
-          pendingDecisions={hub?.pendingDecisions ?? 0}
-        />
+        <RutasMoreOptionsSection>
+          <RutasPrioritySection />
+          <RutasAlertsPreviewSection />
+          <RutasInsightsSection
+            loading={loading}
+            insights={insights}
+            computedAt={insightsComputedAt}
+            recommendationsEnabled={recommendationsEnabled}
+            loadError={insightsError}
+          />
+          <RutasDecisionRoutesSection
+            loading={loading}
+            visibility={visibility}
+            gate={hub?.gate ?? null}
+            portfolio={hub?.portfolio ?? null}
+            pendingDecisions={hub?.pendingDecisions ?? 0}
+          />
+        </RutasMoreOptionsSection>
       </div>
     </div>
   );
