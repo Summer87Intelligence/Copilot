@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Loader2 } from "lucide-react";
 
 import {
@@ -9,8 +9,8 @@ import {
   CopilotCard,
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
+import { useRutasOperationalFeedSnapshot } from "@/components/copilot/rutas/rutas-operational-feed-context";
 import { buildOperationalActionHref } from "@/lib/copilot-alert-ops-mapper";
-import { copilotApiFetch } from "@/lib/copilot-fetch";
 import type { OperationalMemorySignal } from "@/lib/copilot-operational-memory-types";
 
 const SEVERITY_LABEL: Record<OperationalMemorySignal["severity"], string> = {
@@ -63,38 +63,8 @@ function MemorySignalCard({ signal }: { signal: OperationalMemorySignal }) {
 }
 
 export function RutasOperationalMemorySection() {
-  const [signals, setSignals] = useState<OperationalMemorySignal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await copilotApiFetch("/api/copilot/operational-memory");
-      const json = (await res.json()) as {
-        signals?: OperationalMemorySignal[];
-        error?: string;
-      };
-      if (!res.ok) {
-        setSignals([]);
-        setError(json.error ?? "No se pudo leer la memoria operacional.");
-        return;
-      }
-      setSignals(json.signals ?? []);
-    } catch {
-      setSignals([]);
-      setError("Error de red al leer la memoria operacional.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const preview = useMemo(() => signals.slice(0, 3), [signals]);
+  const { memorySignals, loading, error } = useRutasOperationalFeedSnapshot();
+  const preview = useMemo(() => memorySignals.slice(0, 3), [memorySignals]);
 
   return (
     <section className="space-y-1">

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
 import { Loader2 } from "lucide-react";
 
 import {
@@ -11,21 +10,7 @@ import {
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
 import { useRutasOperationalFeedSnapshot } from "@/components/copilot/rutas/rutas-operational-feed-context";
-import { useTreasuryHoySignals } from "@/hooks/use-treasury-hoy-signals";
-import type { FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
-import {
-  snapshotCoverageRatio,
-  snapshotLiquidityBalance,
-} from "@/lib/copilot-financial-snapshot-selectors";
-import {
-  buildOperationalNarratives,
-  buildTreasuryNarrativeContext,
-} from "@/lib/copilot-operational-narrative";
 import type { OperationalNarrative } from "@/lib/copilot-operational-narrative-types";
-
-type RutasOperationalNarrativesSectionProps = {
-  snapshot: FinancialSnapshotApiV1 | null;
-};
 
 const SEVERITY_LABEL: Record<OperationalNarrative["severity"], string> = {
   critical: "Crítica",
@@ -96,32 +81,10 @@ function NarrativeCard({ narrative }: { narrative: OperationalNarrative }) {
   );
 }
 
-export function RutasOperationalNarrativesSection({
-  snapshot,
-}: RutasOperationalNarrativesSectionProps) {
-  const { loading: treasuryLoading, signals } = useTreasuryHoySignals();
-  const { items, priorities, loading: feedLoading, error: feedError } =
-    useRutasOperationalFeedSnapshot();
+export function RutasOperationalNarrativesSection() {
+  const { narratives, loading, error } = useRutasOperationalFeedSnapshot();
 
-  const narratives = useMemo(
-    () =>
-      buildOperationalNarratives({
-        items,
-        priorities,
-        treasury: buildTreasuryNarrativeContext(signals),
-        finance: snapshot
-          ? {
-              coverageRatio: snapshotCoverageRatio(snapshot),
-              liquidityBalance: snapshotLiquidityBalance(snapshot),
-            }
-          : null,
-      }),
-    [items, priorities, signals, snapshot]
-  );
-
-  const loading = feedLoading || treasuryLoading;
-
-  if (!loading && narratives.length === 0 && !feedError) {
+  if (!loading && narratives.length === 0 && !error) {
     return null;
   }
 
@@ -140,9 +103,9 @@ export function RutasOperationalNarrativesSection({
         }
       />
 
-      {feedError ? (
+      {error ? (
         <p className="text-[11px] text-rose-800" role="alert">
-          {feedError}
+          {error}
         </p>
       ) : null}
 

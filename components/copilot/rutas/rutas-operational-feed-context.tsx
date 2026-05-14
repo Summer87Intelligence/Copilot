@@ -11,74 +11,60 @@ import {
 } from "react";
 
 import { copilotApiFetch } from "@/lib/copilot-fetch";
-import { buildGroupedOperationalFeed } from "@/lib/copilot-operational-feed-groups";
-import type {
-  OperationalFeedGroup,
-  OperationalFeedItem,
-  OperationalFeedTimelineItem,
-} from "@/lib/copilot-operational-feed-types";
+import type { OperationalFeedGroup, OperationalFeedItem } from "@/lib/copilot-operational-feed-types";
+import type { OperationalMemorySignal } from "@/lib/copilot-operational-memory-types";
+import type { OperationalNarrative } from "@/lib/copilot-operational-narrative-types";
+import type { CopilotRutasSnapshotApiResponse } from "@/lib/copilot-rutas-snapshot-types";
+import type { StrategicRecommendation } from "@/lib/copilot-strategic-recommendations-types";
 
-type RutasOperationalFeedSnapshot = {
+type RutasOperationalTimelineItem = {
+  id: string;
+  actionId: string;
+  eventType: string;
+  actorLabel: string | null;
+  actionTitle: string | null;
+  relatedEntityId: string | null;
+  createdAt: string;
+};
+
+type RutasOperationalSnapshotContextValue = {
+  generatedAt: string | null;
   items: OperationalFeedItem[];
   groups: OperationalFeedGroup[];
   priorities: OperationalFeedGroup[];
-  timeline: OperationalFeedTimelineItem[];
+  timeline: RutasOperationalTimelineItem[];
+  memorySignals: OperationalMemorySignal[];
+  narratives: OperationalNarrative[];
+  recommendations: StrategicRecommendation[];
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
 };
 
-const RutasOperationalFeedContext = createContext<RutasOperationalFeedSnapshot | null>(null);
+const RutasOperationalSnapshotContext = createContext<RutasOperationalSnapshotContextValue | null>(
+  null
+);
 
-let sharedFeedRequest: Promise<{
-  items: OperationalFeedItem[];
-  groups: OperationalFeedGroup[];
-  priorities: OperationalFeedGroup[];
-  timeline: OperationalFeedTimelineItem[];
-}> | null = null;
+function emptySnapshotState(): Omit<RutasOperationalSnapshotContextValue, "loading" | "error" | "refresh"> {
+  return {
+    generatedAt: null,
+    items: [],
+    groups: [],
+    priorities: [],
+    timeline: [],
+    memorySignals: [],
+    narratives: [],
+    recommendations: [],
+  };
+}
 
-async function loadRutasOperationalFeedSnapshot() {
-  if (!sharedFeedRequest) {
-    sharedFeedRequest = (async () => {
-      const [feedRes, timelineRes] = await Promise.all([
-        copilotApiFetch("/api/copilot/operational-feed"),
-        copilotApiFetch("/api/copilot/operational-feed/timeline?limit=5"),
-      ]);
-      const feedJson = (await feedRes.json()) as {
-        items?: OperationalFeedItem[];
-        groups?: OperationalFeedGroup[];
-        priorities?: OperationalFeedGroup[];
-        error?: string;
-      };
-      const timelineJson = (await timelineRes.json()) as {
-        events?: OperationalFeedTimelineItem[];
-      };
-      if (!feedRes.ok) {
-        throw new Error(feedJson.error ?? "No se pudo cargar el centro operativo.");
-      }
-      const items = feedJson.items ?? [];
-      const grouped =
-        feedJson.groups && feedJson.priorities
-          ? { groups: feedJson.groups, priorities: feedJson.priorities }
-          : buildGroupedOperationalFeed(items);
-      return {
-        items,
-        groups: grouped.groups,
-        priorities: grouped.priorities,
-        timeline: timelineJson.events ?? [],
-      };
-    })().finally(() => {
-      sharedFeedRequest = null;
-    });
-  }
-  return sharedFeedRequest;
+async function loadRutasSnapshot(): Promise<CopilotRutasSnapshotApiResponse> {
+  const res = await copilotApiFetch("/api/copilot/rutas-snapshot");
+  return (await res.json()) as CopilotRutasSnapshotApiResponse;
 }
 
 export function RutasOperationalFeedProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<OperationalFeedItem[]>([]);
-  const [groups, setGroups] = useState<OperationalFeedGroup[]>([]);
-  const [priorities, setPriorities] = useState<OperationalFeedGroup[]>([]);
-  const [timeline, setTimeline] = useState<OperationalFeedTimelineItem[]>([]);
+  const [snapshot, setSnapshot] = useState(emptySnapshotState);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,21 +72,25 @@ export function RutasOperationalFeedProvider({ children }: { children: ReactNode
     setLoading(true);
     setError(null);
     try {
-      const snapshot = await loadRutasOperationalFeedSnapshot();
-      setItems(snapshot.items);
-      setGroups(snapshot.groups);
-      setPriorities(snapshot.priorities);
-      setTimeline(snapshot.timeline);
-    } catch (loadError) {
-      setItems([]);
-      setGroups([]);
-      setPriorities([]);
-      setTimeline([]);
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : "Error de red al cargar el centro operativo."
-      );
+      const payload = await loadRutasSnapshot();
+      if (!payload.ok) {
+        setSnapshot(emptySnapshotState());
+        setError(payload.message);
+        return;
+      }
+      setSnapshot({
+        generatedAt: payload.data.generatedAt,
+        items: payload.data.feed.items,
+        groups: payload.data.feed.groups,
+        priorities: payload.data.feed.priorities,
+        timeline: payload.data.timeline,
+        memorySignals: payload.data.memory,
+        narratives: payload.data.narratives,
+        recommendations: payload.data.recommendations,
+      });
+    } catch {
+      setSnapshot(emptySnapshotState());
+      setError("Error de red al cargar el snapshot operacional.");
     } finally {
       setLoading(false);
     }
@@ -112,26 +102,23 @@ export function RutasOperationalFeedProvider({ children }: { children: ReactNode
 
   const value = useMemo(
     () => ({
-      items,
-      groups,
-      priorities,
-      timeline,
+      ...snapshot,
       loading,
       error,
       refresh,
     }),
-    [error, groups, items, loading, priorities, refresh, timeline]
+    [error, loading, refresh, snapshot]
   );
 
   return (
-    <RutasOperationalFeedContext.Provider value={value}>
+    <RutasOperationalSnapshotContext.Provider value={value}>
       {children}
-    </RutasOperationalFeedContext.Provider>
+    </RutasOperationalSnapshotContext.Provider>
   );
 }
 
-export function useRutasOperationalFeedSnapshot(): RutasOperationalFeedSnapshot {
-  const context = useContext(RutasOperationalFeedContext);
+export function useRutasOperationalFeedSnapshot(): RutasOperationalSnapshotContextValue {
+  const context = useContext(RutasOperationalSnapshotContext);
   if (!context) {
     throw new Error("useRutasOperationalFeedSnapshot requiere RutasOperationalFeedProvider.");
   }

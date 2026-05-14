@@ -74,7 +74,7 @@ export function RutasCommandCenterBody({
 
           <RutasStrategicRecommendationsSection />
 
-          <RutasOperationalNarrativesSection snapshot={hub?.snapshot ?? null} />
+          <RutasOperationalNarrativesSection />
 
           <RutasOperationalMemorySection />
 

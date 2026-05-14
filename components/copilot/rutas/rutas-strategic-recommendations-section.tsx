@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Loader2 } from "lucide-react";
 
 import {
@@ -9,7 +9,7 @@ import {
   CopilotCard,
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
-import { copilotApiFetch } from "@/lib/copilot-fetch";
+import { useRutasOperationalFeedSnapshot } from "@/components/copilot/rutas/rutas-operational-feed-context";
 import type { StrategicRecommendation } from "@/lib/copilot-strategic-recommendations-types";
 
 const PRIORITY_LABEL: Record<StrategicRecommendation["priority"], string> = {
@@ -86,37 +86,7 @@ function StrategicRecommendationCard({
 }
 
 export function RutasStrategicRecommendationsSection() {
-  const [recommendations, setRecommendations] = useState<StrategicRecommendation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await copilotApiFetch("/api/copilot/strategic-recommendations");
-      const json = (await res.json()) as {
-        recommendations?: StrategicRecommendation[];
-        error?: string;
-      };
-      if (!res.ok) {
-        setRecommendations([]);
-        setError(json.error ?? "No se pudo leer la prioridad estratégica.");
-        return;
-      }
-      setRecommendations(json.recommendations ?? []);
-    } catch {
-      setRecommendations([]);
-      setError("Error de red al leer la prioridad estratégica.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
+  const { recommendations, loading, error } = useRutasOperationalFeedSnapshot();
   const preview = useMemo(() => recommendations.slice(0, 3), [recommendations]);
 
   return (
