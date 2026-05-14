@@ -114,14 +114,18 @@ function CommandCenterRow({
         {item.status === "blocked" ? <CopilotBadge tone="danger">bloqueado</CopilotBadge> : null}
         {item.status === "overdue" ? <CopilotBadge tone="warning">vencido</CopilotBadge> : null}
         {item.metadata?.slaStatus === "breached" ? (
-          <CopilotBadge tone="danger">SLA</CopilotBadge>
+          <CopilotBadge tone="danger">SLA roto</CopilotBadge>
         ) : null}
         {item.metadata?.slaStatus === "warning" ? (
           <CopilotBadge tone="warning">SLA</CopilotBadge>
         ) : null}
-        {item.metadata?.recurring === true ? <CopilotBadge tone="warning">recurrente</CopilotBadge> : null}
+        {item.metadata?.recurring === true ? <CopilotBadge tone="warning">Recurrente</CopilotBadge> : null}
+        {item.metadata?.escalated === true ? <CopilotBadge tone="danger">Escalado</CopilotBadge> : null}
+        {item.metadata?.unassigned === true ? (
+          <CopilotBadge tone="warning">Sin responsable</CopilotBadge>
+        ) : null}
         {(item.metadata?.reopenCount as number | undefined) ? (
-          <CopilotBadge tone="neutral">reabierto {String(item.metadata?.reopenCount)}</CopilotBadge>
+          <CopilotBadge tone="neutral">Reabierto {String(item.metadata?.reopenCount)}</CopilotBadge>
         ) : null}
         <span className="text-[10px] text-[var(--copilot-ink-muted)]">U{item.urgencyScore}</span>
       </div>
@@ -237,6 +241,7 @@ export function RutasOperationalCommandCenterSection() {
     memorySignals,
     workflows,
     operationalEvents,
+    operationalAutomation,
     health,
     loading,
     refresh,
@@ -286,8 +291,9 @@ export function RutasOperationalCommandCenterSection() {
         memorySignals,
         events: operationalEvents,
         currentUser,
+        automation: operationalAutomation ?? undefined,
       }),
-    [currentUser, feedItems, memorySignals, operationalEvents, workflows]
+    [currentUser, feedItems, memorySignals, operationalAutomation, operationalEvents, workflows]
   );
 
   const filteredItems = useMemo(
@@ -442,6 +448,21 @@ export function RutasOperationalCommandCenterSection() {
           </CopilotBadge>
         }
       />
+
+      {operationalAutomation?.recommendations?.length ? (
+        <CopilotCard className="border border-[var(--copilot-border)]/70 bg-white/70 px-2.5 py-2 shadow-none">
+          <p className="text-[11px] font-semibold text-[var(--copilot-ink)]">Recomendaciones automáticas</p>
+          <ul className="mt-1 space-y-1">
+            {operationalAutomation.recommendations.slice(0, 4).map((recommendation) => (
+              <li key={recommendation.id} className="text-[10px] text-[var(--copilot-ink-muted)]">
+                <span className="font-medium text-[var(--copilot-ink)]">{recommendation.title}</span>
+                {" · "}
+                {recommendation.summary}
+              </li>
+            ))}
+          </ul>
+        </CopilotCard>
+      ) : null}
 
       <div className="flex flex-wrap gap-1">
         {FILTERS.map((entry) => (

@@ -1,12 +1,5 @@
-import type {
-  CommandCenterCurrentUser,
-  CommandCenterFilter,
-  CommandCenterItem,
-  CommandCenterQueueInput,
-  CommandCenterQueueResult,
-  CommandCenterSeverity,
-  CommandCenterStatus,
-} from "@/lib/copilot-command-center-types";
+import type { CommandCenterCurrentUser, CommandCenterFilter, CommandCenterItem, CommandCenterQueueInput, CommandCenterQueueResult, CommandCenterSeverity, CommandCenterStatus } from "@/lib/copilot-command-center-types";
+import type { OperationalAutomationResult } from "@/lib/copilot-operational-automation-types";
 
 const RELEVANT_EVENT_TYPES = new Set([
   "workflow_blocked",
@@ -17,6 +10,10 @@ const RELEVANT_EVENT_TYPES = new Set([
   "workflow_auto_completed",
   "workflow_reopened",
   "workflow_suppressed",
+  "workflow_followup_recommended",
+  "workflow_resolution_recommended",
+  "workflow_linked",
+  "workflow_recurring_detected",
 ]);
 
 function actionIdFromFeedItem(item: CommandCenterQueueInput["feedItems"][number]): string | null {
@@ -106,13 +103,24 @@ export function buildCommandCenterQueue(input: CommandCenterQueueInput): Command
     for (const actionId of workflow.relatedActionIds ?? []) {
       claimedActionIds.add(actionId);
     }
+    const automationForWorkflow = input.automation?.automations.filter(
+      (item) => item.workflowId === workflow.id
+    );
+    const escalated = input.automation?.escalations.some((item) => item.workflowId === workflow.id);
+    const reopenCount = workflow.lifecycle?.reopenCount ?? 0;
     items.push({
       id: `workflow:${workflow.id}`,
       type: "workflow",
       severity: severityFromWorkflowType(workflow.type, workflow.status),
       status: workflowStatus(workflow),
       title: workflow.title,
-      summary: `${workflow.progressPercent}% · ${workflow.currentStepTitle ?? "Sin paso activo"}`,
+      summary: `${workflow.progressPercent}% · ${workflow.currentStepTitle ?? "Sin paso activo"}${
+        (workflow.relatedWorkflowIds?.length ?? 0) > 0
+          ? ` · Relacionado con ${workflow.relatedWorkflowIds?.length} workflow${
+              (workflow.relatedWorkflowIds?.length ?? 0) === 1 ? "" : "s"
+            }`
+          : ""
+      }`,
       ownerLabel: workflow.ownerLabel ?? undefined,
       dueLabel: formatDueLabel(workflow.slaDueAt),
       urgencyScore: workflow.urgencyScore ?? 0,
@@ -122,10 +130,15 @@ export function buildCommandCenterQueue(input: CommandCenterQueueInput): Command
         currentStepId: workflow.currentStepId,
         workflowType: workflow.type,
         slaStatus: workflow.slaStatus,
-        reopenCount: workflow.lifecycle?.reopenCount ?? 0,
+        reopenCount,
         relatedCounts: workflow.relatedCounts,
         dedupeKey: workflow.dedupeKey,
         assignedUserId: workflow.assignedUserId,
+        relatedWorkflowIds: workflow.relatedWorkflowIds,
+        recurring: reopenCount >= 2 || automationForWorkflow?.some((item) => item.kind === "recurring_detection"),
+        escalated: escalated === true,
+        unassigned: !workflow.ownerLabel && !workflow.assignedUserId,
+        automationKinds: automationForWorkflow?.map((item) => item.kind) ?? [],
       },
     });
   }

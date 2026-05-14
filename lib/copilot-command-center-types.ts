@@ -1,3 +1,5 @@
+import type { OperationalAutomationResult } from "@/lib/copilot-operational-automation-types";
+
 export type CommandCenterItemType = "workflow" | "action" | "memory" | "event";
 
 export type CommandCenterSeverity = "critical" | "high" | "medium" | "low";
@@ -63,6 +65,7 @@ export type CommandCenterQueueInput = {
     relatedCounts?: { actions: number; alerts: number; insights: number };
     lifecycle?: { reopenCount?: number };
     dedupeKey?: string;
+    relatedWorkflowIds?: string[];
   }>;
   feedItems: Array<{
     id: string;
@@ -99,6 +102,7 @@ export type CommandCenterQueueInput = {
   }>;
   now?: Date;
   currentUser?: CommandCenterCurrentUser;
+  automation?: OperationalAutomationResult;
 };
 
 export type CommandCenterQueueResult = {

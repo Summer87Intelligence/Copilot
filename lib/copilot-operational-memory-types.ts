@@ -20,6 +20,12 @@ export type OperationalMemorySignal = {
   since?: string;
   lastSeenAt?: string;
   score: number;
+  derived?: {
+    recurrenceScore?: number;
+    reopenFrequency?: number;
+    unresolvedChainCount?: number;
+    historicalSeverity?: "low" | "medium" | "high" | "critical";
+  };
 };
 
 export type OperationalMemorySourceCounts = {

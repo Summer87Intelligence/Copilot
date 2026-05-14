@@ -20,6 +20,7 @@ import type {
   SnapshotHealth,
 } from "@/lib/copilot-rutas-snapshot-types";
 import type { OperationalTimelineItem } from "@/lib/copilot-operational-events-types";
+import type { OperationalAutomationResult } from "@/lib/copilot-operational-automation-types";
 import type { OperationalWorkflowExecution } from "@/lib/copilot-operational-workflows-types";
 import type { StrategicRecommendation } from "@/lib/copilot-strategic-recommendations-types";
 
@@ -63,6 +64,7 @@ type RutasOperationalSnapshotContextValue = {
   recommendations: StrategicRecommendation[];
   workflows: OperationalWorkflowExecution[];
   operationalEvents: OperationalTimelineItem[];
+  operationalAutomation: OperationalAutomationResult | null;
   health: SnapshotHealth | null;
   loading: boolean;
   error: string | null;
@@ -92,6 +94,7 @@ function emptySnapshotState(): Omit<
     recommendations: [],
     workflows: [],
     operationalEvents: [],
+    operationalAutomation: null,
     health: null,
   };
 }
@@ -150,6 +153,7 @@ async function loadOperationalWorkflows() {
   return (await res.json()) as {
     ok?: boolean;
     workflows?: OperationalWorkflowExecution[];
+    automation?: OperationalAutomationResult;
   };
 }
 
@@ -172,7 +176,8 @@ export function RutasOperationalFeedProvider({ children }: { children: ReactNode
     (
       payload: Extract<CopilotRutasSnapshotApiResponse, { ok: true }>,
       workflows: OperationalWorkflowExecution[],
-      operationalEvents: OperationalTimelineItem[]
+      operationalEvents: OperationalTimelineItem[],
+      operationalAutomation: OperationalAutomationResult | null
     ) => {
       setSnapshot({
         generatedAt: payload.data.generatedAt,
@@ -185,6 +190,7 @@ export function RutasOperationalFeedProvider({ children }: { children: ReactNode
         recommendations: payload.data.recommendations,
         workflows,
         operationalEvents,
+        operationalAutomation,
         health: payload.data.health,
       });
     },
@@ -212,7 +218,8 @@ export function RutasOperationalFeedProvider({ children }: { children: ReactNode
       applySnapshotPayload(
         payload,
         workflowsPayload.ok === false ? [] : workflowsPayload.workflows ?? [],
-        eventsPayload.ok === false ? [] : eventsPayload.events ?? []
+        eventsPayload.ok === false ? [] : eventsPayload.events ?? [],
+        workflowsPayload.automation ?? null
       );
       optimisticBackupRef.current = null;
     } catch {

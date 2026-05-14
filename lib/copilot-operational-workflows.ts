@@ -6,7 +6,11 @@ import {
   OperationalEventRequestBuffer,
   recordWorkflowCreatedEvent,
   recordWorkflowReconciliationEvents,
+  recordOperationalAutomationEvents,
+  listOperationalTimeline,
 } from "@/lib/copilot-operational-events";
+import { runOperationalAutomations } from "@/lib/copilot-operational-automation-engine";
+import { summarizeAutomationMetadata } from "@/lib/copilot-operational-automation-rules";
 import type { OperationalEventActor } from "@/lib/copilot-operational-events-types";
 import {
   applyWorkflowCancelLifecycle,
@@ -111,7 +115,33 @@ export async function buildOperationalWorkflows(
     warnings,
   };
   const reconciled = reconcileOperationalWorkflows(input, existing, health);
-  const persistedById = new Map(reconciled.response.workflows.map((workflow) => [workflow.id, workflow]));
+  const events = await listOperationalTimeline(client, input.workspaceCompanyId, 20);
+  const automationRun = runOperationalAutomations({
+    workspaceCompanyId: input.workspaceCompanyId,
+    now: input.now,
+    snapshot: input.snapshot,
+    workflows: reconciled.response.workflows,
+    actions: input.actions,
+    events,
+    memorySignals: input.snapshot.memory,
+  });
+  reconciled.response.workflows = automationRun.workflows;
+  reconciled.response.automation = {
+    automations: automationRun.automations,
+    escalations: automationRun.escalations,
+    recommendations: automationRun.recommendations,
+    memoryDerived: automationRun.memoryDerived,
+    computedAt: automationRun.computedAt,
+  };
+  reconciled.response.automationMetadata = summarizeAutomationMetadata(
+    automationRun.automations,
+    automationRun.escalations,
+    automationRun.recommendations
+  );
+
+  const persistedById = new Map(
+    automationRun.workflows.map((workflow) => [workflow.id, workflow])
+  );
 
   for (const workflow of reconciled.updated) {
     const updateResult = await updateOperationalWorkflowById(
@@ -163,6 +193,12 @@ export async function buildOperationalWorkflows(
   await recordWorkflowReconciliationEvents(
     client,
     reconciled.events,
+    context?.actor ?? { label: "Sistema" },
+    context?.eventBuffer
+  );
+  await recordOperationalAutomationEvents(
+    client,
+    automationRun.eventDrafts,
     context?.actor ?? { label: "Sistema" },
     context?.eventBuffer
   );

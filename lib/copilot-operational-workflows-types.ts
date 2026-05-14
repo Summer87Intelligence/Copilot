@@ -1,3 +1,8 @@
+import type {
+  OperationalAutomationMetadata,
+  OperationalAutomationResult,
+} from "@/lib/copilot-operational-automation-types";
+
 export type WorkflowExecutionStatus = "active" | "blocked" | "completed" | "cancelled";
 
 export type WorkflowStepStatus = "pending" | "active" | "blocked" | "completed" | "skipped";
@@ -78,6 +83,7 @@ export type OperationalWorkflowExecution = {
   relatedActionIds?: string[];
   relatedNarrativeIds?: string[];
   relatedMemoryIds?: string[];
+  relatedWorkflowIds?: string[];
 };
 
 export type OperationalWorkflowsHealth = {
@@ -90,6 +96,8 @@ export type OperationalWorkflowsResponse = {
   generatedAt: string;
   health: OperationalWorkflowsHealth;
   hasSuppressedWorkflows?: boolean;
+  automation?: OperationalAutomationResult;
+  automationMetadata?: OperationalAutomationMetadata;
 };
 
 export type WorkflowMutationAction =

@@ -1,3 +1,5 @@
+import type { OperationalAutomationMetadata } from "@/lib/copilot-operational-automation-types";
+
 export type OperationalEntityType = "workflow" | "workflow_step" | "action" | "snapshot";
 
 export type OperationalEventType =
@@ -17,7 +19,11 @@ export type OperationalEventType =
   | "workflow_reopened"
   | "workflow_auto_completed"
   | "workflow_sla_breached"
-  | "workflow_escalated";
+  | "workflow_escalated"
+  | "workflow_followup_recommended"
+  | "workflow_resolution_recommended"
+  | "workflow_linked"
+  | "workflow_recurring_detected";
 
 export type OperationalEventSeverity = "neutral" | "warning" | "danger" | "success";
 
@@ -61,6 +67,7 @@ export type OperationalTimelineItem = {
 export type OperationalEventsResponse = {
   events: OperationalTimelineItem[];
   computedAt: string;
+  automationMetadata?: OperationalAutomationMetadata;
 };
 
 export type CreateOperationalEventInput = {

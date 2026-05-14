@@ -13,6 +13,7 @@ import type {
 } from "@/lib/copilot-operational-events-types";
 import type { OperationalWorkflowExecution, WorkflowMutationInput } from "@/lib/copilot-operational-workflows-types";
 import type { WorkflowReconciliationEvent } from "@/lib/copilot-operational-reconciliation";
+import type { OperationalAutomationEventDraft } from "@/lib/copilot-operational-automation-types";
 import {
   createOperationalEvent,
   listOperationalEventsForEntity,
@@ -38,6 +39,10 @@ const EVENT_TYPE_LABELS: Record<OperationalEventType, string> = {
   workflow_auto_completed: "Workflow auto-completado",
   workflow_sla_breached: "SLA incumplido",
   workflow_escalated: "Workflow escalado",
+  workflow_followup_recommended: "Seguimiento recomendado",
+  workflow_resolution_recommended: "Cierre sugerido",
+  workflow_linked: "Workflow relacionado",
+  workflow_recurring_detected: "Patrón recurrente",
 };
 
 const EVENT_TYPE_SEVERITY: Record<OperationalEventType, OperationalEventSeverity> = {
@@ -58,6 +63,10 @@ const EVENT_TYPE_SEVERITY: Record<OperationalEventType, OperationalEventSeverity
   workflow_auto_completed: "success",
   workflow_sla_breached: "danger",
   workflow_escalated: "warning",
+  workflow_followup_recommended: "warning",
+  workflow_resolution_recommended: "neutral",
+  workflow_linked: "neutral",
+  workflow_recurring_detected: "warning",
 };
 
 export class OperationalEventRequestBuffer {
@@ -508,5 +517,30 @@ export async function recordWorkflowReconciliationEvents(
         buffer
       );
     }
+  }
+}
+
+export async function recordOperationalAutomationEvents(
+  client: SupabaseClient,
+  drafts: OperationalAutomationEventDraft[],
+  actor?: OperationalEventActor | null,
+  buffer?: OperationalEventRequestBuffer
+): Promise<void> {
+  for (const draft of drafts) {
+    await emitOperationalEvent(
+      client,
+      {
+        workspaceCompanyId: draft.workflow.workspaceCompanyId,
+        eventType: draft.eventType,
+        entityType: "workflow",
+        entityId: draft.workflow.id,
+        workflowId: draft.workflow.id,
+        title: draft.title,
+        detail: draft.detail ?? null,
+        metadata: draft.metadata ?? {},
+        actor,
+      },
+      buffer
+    );
   }
 }

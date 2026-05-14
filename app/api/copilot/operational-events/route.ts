@@ -6,6 +6,7 @@ import {
   listOperationalTimelineForEntity,
 } from "@/lib/copilot-operational-events";
 import type { OperationalEntityType } from "@/lib/copilot-operational-events-types";
+import { summarizeAutomationFromTimeline } from "@/lib/copilot-operational-automation-rules";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
 
@@ -53,6 +54,7 @@ export async function GET(request: NextRequest) {
       ok: true as const,
       events,
       computedAt: new Date().toISOString(),
+      automationMetadata: summarizeAutomationFromTimeline(events),
     });
   } catch (error) {
     log.error("copilot_request_unhandled", error, {
