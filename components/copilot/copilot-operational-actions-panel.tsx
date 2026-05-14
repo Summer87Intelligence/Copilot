@@ -12,7 +12,10 @@ import {
   CopilotPrimaryLink,
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
-import type { CopilotActionProvenanceQuery } from "@/lib/copilot-alert-ops-mapper";
+import {
+  resolveOperationalAlertBootstrapFromProvenance,
+  type CopilotActionProvenanceQuery,
+} from "@/lib/copilot-alert-ops-mapper";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import {
   formatOperationalEventDetail,
@@ -70,6 +73,11 @@ const EMPTY_SLA: OperationalActionSlaSummary = {
 
 const OPEN_STATUSES: OperationalActionStatus[] = ["pending", "in_progress", "blocked"];
 
+function logOperationalBootstrap(phase: string, detail?: Record<string, unknown>) {
+  if (process.env.NODE_ENV === "production") return;
+  console.info(`[copilot.ops-bootstrap] ${phase}`, detail ?? {});
+}
+
 function formatDateTime(iso: string | null) {
   if (!iso) return "—";
   try {
@@ -118,6 +126,8 @@ export function CopilotOperationalActionsPanel({
   const [slaSummary, setSlaSummary] = useState<OperationalActionSlaSummary>(EMPTY_SLA);
   const [loading, setLoading] = useState(true);
   const [bootstrapMessage, setBootstrapMessage] = useState<string | null>(null);
+  const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+  const [bootstrapLoading, setBootstrapLoading] = useState(false);
   const [patchingId, setPatchingId] = useState<string | null>(null);
   const [timelineId, setTimelineId] = useState<string | null>(null);
   const [timelineLoading, setTimelineLoading] = useState(false);
@@ -128,7 +138,21 @@ export function CopilotOperationalActionsPanel({
   const [originFilter, setOriginFilter] = useState<"all" | OperationalActionOrigin>("all");
   const [slaFilter, setSlaFilter] = useState<"all" | OperationalActionSlaStatus>("all");
   const [dueDrafts, setDueDrafts] = useState<Record<string, string>>({});
-  const bootstrapRef = useRef(false);
+  const bootstrapCompletedRef = useRef(false);
+  const bootstrapAttemptKeyRef = useRef<string | null>(null);
+  const bootstrapInFlightRef = useRef<string | null>(null);
+
+  const bootstrapPayload = useMemo(
+    () => resolveOperationalAlertBootstrapFromProvenance(provenance),
+    [provenance]
+  );
+
+  useEffect(() => {
+    logOperationalBootstrap("provenance", {
+      provenance: provenance ?? null,
+      bootstrapPayload,
+    });
+  }, [provenance, bootstrapPayload]);
 
   const refresh = useCallback(async (opts?: { soft?: boolean }) => {
     if (!opts?.soft) setLoading(true);
@@ -186,43 +210,105 @@ export function CopilotOperationalActionsPanel({
   }, []);
 
   useEffect(() => {
-    if (bootstrapRef.current) return;
-    if (provenance?.source !== "alert") return;
-    if (
-      !provenance.alertId ||
-      !provenance.alertTitle ||
-      !provenance.priority ||
-      !provenance.alertType
-    ) {
+    if (!bootstrapPayload) {
+      logOperationalBootstrap("skip", { reason: "no-bootstrap-payload" });
       return;
     }
-    bootstrapRef.current = true;
+    if (bootstrapCompletedRef.current) {
+      logOperationalBootstrap("skip", { reason: "bootstrap-completed" });
+      return;
+    }
+    if (loading) {
+      logOperationalBootstrap("skip", { reason: "list-loading" });
+      return;
+    }
+    if (bootstrapInFlightRef.current === bootstrapPayload.bootstrapKey) {
+      logOperationalBootstrap("skip", { reason: "post-in-flight" });
+      return;
+    }
+    if (bootstrapAttemptKeyRef.current === bootstrapPayload.bootstrapKey) {
+      logOperationalBootstrap("skip", { reason: "post-already-attempted" });
+      return;
+    }
+
+    const existing = actions.find(
+      (action) =>
+        action.origin === "alert" &&
+        action.related_entity_id === bootstrapPayload.alert_id &&
+        OPEN_STATUSES.includes(action.operational_status)
+    );
+    if (existing) {
+      bootstrapCompletedRef.current = true;
+      setBootstrapMessage("Seguimiento ya abierto para esta alerta.");
+      setBootstrapError(null);
+      logOperationalBootstrap("skip", {
+        reason: "open-action-exists",
+        actionId: existing.id,
+      });
+      return;
+    }
+
+    bootstrapAttemptKeyRef.current = bootstrapPayload.bootstrapKey;
+    bootstrapInFlightRef.current = bootstrapPayload.bootstrapKey;
+    let cancelled = false;
+
+    logOperationalBootstrap("post:start", {
+      alertId: bootstrapPayload.alert_id,
+      alertType: bootstrapPayload.alert_type,
+      priority: bootstrapPayload.priority,
+    });
+
     void (async () => {
+      setBootstrapError(null);
+      setBootstrapLoading(true);
+      onError?.(null);
       try {
         const res = await copilotApiFetch("/api/copilot/operational-actions/from-alert", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            alert_id: provenance.alertId,
-            title: provenance.alertTitle,
-            summary: provenance.alertTitle,
-            priority: provenance.priority,
-            alert_type: provenance.alertType,
-            obligation_id: provenance.obligationId,
+            alert_id: bootstrapPayload.alert_id,
+            title: bootstrapPayload.title,
+            summary: bootstrapPayload.summary,
+            priority: bootstrapPayload.priority,
+            alert_type: bootstrapPayload.alert_type,
+            obligation_id: bootstrapPayload.obligation_id,
           }),
         });
+        logOperationalBootstrap("post:response", { status: res.status, ok: res.ok });
         const json = (await res.json()) as { error?: string; message?: string };
         if (!res.ok) {
-          onError?.(json.error ?? "No se pudo crear el seguimiento desde la alerta.");
+          const message = json.error ?? "No se pudo crear el seguimiento desde la alerta.";
+          if (!cancelled) {
+            setBootstrapError(message);
+            onError?.(message);
+          }
           return;
         }
-        setBootstrapMessage(json.message ?? "Seguimiento operativo registrado.");
+        bootstrapCompletedRef.current = true;
+        if (!cancelled) {
+          setBootstrapMessage(json.message ?? "Seguimiento operativo registrado.");
+        }
         await refresh({ soft: true });
       } catch {
-        onError?.("Error de red al crear seguimiento desde alerta.");
+        const message = "Error de red al crear seguimiento desde alerta.";
+        logOperationalBootstrap("post:error", { message });
+        if (!cancelled) {
+          setBootstrapError(message);
+          onError?.(message);
+        }
+      } finally {
+        if (bootstrapInFlightRef.current === bootstrapPayload.bootstrapKey) {
+          bootstrapInFlightRef.current = null;
+        }
+        if (!cancelled) setBootstrapLoading(false);
       }
     })();
-  }, [provenance, onError, refresh]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bootstrapPayload, actions, loading, onError, refresh]);
 
   const openActions = useMemo(
     () => actions.filter((action) => OPEN_STATUSES.includes(action.operational_status)),
@@ -347,6 +433,16 @@ export function CopilotOperationalActionsPanel({
       />
       {bootstrapMessage ? (
         <p className="mb-3 text-sm text-[var(--copilot-ink-muted)]">{bootstrapMessage}</p>
+      ) : null}
+      {bootstrapLoading ? (
+        <p className="mb-3 text-sm text-[var(--copilot-ink-muted)]">
+          Registrando seguimiento desde alerta…
+        </p>
+      ) : null}
+      {bootstrapError ? (
+        <p className="mb-3 text-sm text-rose-800" role="alert">
+          {bootstrapError}
+        </p>
       ) : null}
       {loading ? (
         <CopilotSkeletonKpiRow count={4} className="py-1" />

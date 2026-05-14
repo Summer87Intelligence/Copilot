@@ -204,6 +204,63 @@ export type CopilotActionProvenanceQuery = {
   operationalActionId: string | null;
 };
 
+export type OperationalAlertBootstrapPayload = {
+  bootstrapKey: string;
+  alert_id: string;
+  title: string;
+  summary: string;
+  priority: FiscalAlertItem["priority"];
+  alert_type: FiscalAlertCategory;
+  obligation_id: string | null;
+};
+
+function provenanceAlertSeed(
+  provenance: Pick<
+    CopilotActionProvenanceQuery,
+    "alertType" | "priority" | "obligationId" | "alertTitle"
+  >
+): string {
+  return [
+    provenance.alertType ?? "",
+    provenance.priority ?? "",
+    (provenance.obligationId ?? "").trim(),
+    (provenance.alertTitle ?? "").trim().toLowerCase(),
+  ].join("|");
+}
+
+function deriveAlertIdFromProvenance(provenance: CopilotActionProvenanceQuery): string {
+  const seed = provenanceAlertSeed(provenance);
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  return `provenance:${provenance.alertType}:${hash.toString(16)}`;
+}
+
+export function resolveOperationalAlertBootstrapFromProvenance(
+  provenance: CopilotActionProvenanceQuery | null | undefined
+): OperationalAlertBootstrapPayload | null {
+  if (!provenance || provenance.source !== "alert") return null;
+  if (!provenance.priority || !provenance.alertType) {
+    return null;
+  }
+
+  const alertId = provenance.alertId?.trim() || deriveAlertIdFromProvenance(provenance);
+  const title =
+    provenance.alertTitle?.trim() ||
+    `Alerta ${PRIORITY_LABEL[provenance.priority]} (${provenance.alertType})`;
+
+  return {
+    bootstrapKey: alertId,
+    alert_id: alertId,
+    title,
+    summary: title,
+    priority: provenance.priority,
+    alert_type: provenance.alertType,
+    obligation_id: provenance.obligationId,
+  };
+}
+
 export function parseCopilotActionProvenance(
   searchParams: URLSearchParams
 ): CopilotActionProvenanceQuery {
