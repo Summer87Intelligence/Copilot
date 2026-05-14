@@ -15,23 +15,42 @@ import {
 import type { CopilotActionProvenanceQuery } from "@/lib/copilot-alert-ops-mapper";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import {
+  formatOperationalEventDetail,
   mapOperationalActionTypeLabel,
+  mapOperationalEventLabel,
   mapOperationalOriginLabel,
   mapOperationalPriorityLabel,
+  mapOperationalSlaLabel,
   mapOperationalStatusLabel,
   operationalPriorityTone,
+  operationalSlaTone,
   operationalStatusTone,
 } from "@/lib/copilot-operational-actions-format";
+import {
+  getActionSlaStatus,
+  sortOperationalActionsForQueue,
+} from "@/lib/copilot-operational-actions-sla";
 import type {
   OperationalActionEventRow,
   OperationalActionListItem,
+  OperationalActionOrigin,
+  OperationalActionPriority,
   OperationalActionQueueSummary,
+  OperationalActionSlaSummary,
+  OperationalActionSlaStatus,
   OperationalActionStatus,
 } from "@/lib/copilot-operational-actions-types";
 
 type Props = {
   provenance?: CopilotActionProvenanceQuery;
+  highlightActionId?: string | null;
   onError?: (message: string | null) => void;
+};
+
+type OperatorMe = {
+  id: string;
+  full_name: string;
+  email: string;
 };
 
 const EMPTY_SUMMARY: OperationalActionQueueSummary = {
@@ -41,7 +60,17 @@ const EMPTY_SUMMARY: OperationalActionQueueSummary = {
   resolvedToday: 0,
 };
 
-function formatDate(iso: string | null) {
+const EMPTY_SLA: OperationalActionSlaSummary = {
+  overdue: 0,
+  dueToday: 0,
+  dueSoon: 0,
+  noDueDate: 0,
+  blockedCritical: 0,
+};
+
+const OPEN_STATUSES: OperationalActionStatus[] = ["pending", "in_progress", "blocked"];
+
+function formatDateTime(iso: string | null) {
   if (!iso) return "—";
   try {
     return new Date(iso).toLocaleString("es-AR", {
@@ -51,6 +80,21 @@ function formatDate(iso: string | null) {
   } catch {
     return iso;
   }
+}
+
+function dueAtToInputValue(iso: string | null): string {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toISOString().slice(0, 10);
+  } catch {
+    return "";
+  }
+}
+
+function inputValueToDueAtIso(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return `${trimmed}T12:00:00.000Z`;
 }
 
 function contextHref(action: OperationalActionListItem): string | null {
@@ -64,36 +108,26 @@ function contextHref(action: OperationalActionListItem): string | null {
   return null;
 }
 
-function eventLabel(eventType: string): string {
-  switch (eventType) {
-    case "created":
-      return "Creada";
-    case "updated":
-      return "Actualizada";
-    case "status_changed":
-      return "Estado actualizado";
-    case "reassigned":
-      return "Reasignada";
-    case "resolved":
-      return "Resuelta";
-    case "dismissed":
-      return "Descartada";
-    case "blocked":
-      return "Bloqueada";
-    default:
-      return eventType;
-  }
-}
-
-export function CopilotOperationalActionsPanel({ provenance, onError }: Props) {
+export function CopilotOperationalActionsPanel({
+  provenance,
+  highlightActionId,
+  onError,
+}: Props) {
   const [actions, setActions] = useState<OperationalActionListItem[]>([]);
   const [summary, setSummary] = useState<OperationalActionQueueSummary>(EMPTY_SUMMARY);
+  const [slaSummary, setSlaSummary] = useState<OperationalActionSlaSummary>(EMPTY_SLA);
   const [loading, setLoading] = useState(true);
   const [bootstrapMessage, setBootstrapMessage] = useState<string | null>(null);
   const [patchingId, setPatchingId] = useState<string | null>(null);
   const [timelineId, setTimelineId] = useState<string | null>(null);
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [timelineEvents, setTimelineEvents] = useState<OperationalActionEventRow[]>([]);
+  const [operator, setOperator] = useState<OperatorMe | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | OperationalActionStatus>("all");
+  const [priorityFilter, setPriorityFilter] = useState<"all" | OperationalActionPriority>("all");
+  const [originFilter, setOriginFilter] = useState<"all" | OperationalActionOrigin>("all");
+  const [slaFilter, setSlaFilter] = useState<"all" | OperationalActionSlaStatus>("all");
+  const [dueDrafts, setDueDrafts] = useState<Record<string, string>>({});
   const bootstrapRef = useRef(false);
 
   const refresh = useCallback(async (opts?: { soft?: boolean }) => {
@@ -104,20 +138,32 @@ export function CopilotOperationalActionsPanel({ provenance, onError }: Props) {
       const json = (await res.json()) as {
         actions?: OperationalActionListItem[];
         summary?: OperationalActionQueueSummary;
+        sla_summary?: OperationalActionSlaSummary;
         error?: string;
       };
       if (!res.ok) {
         onError?.(json.error ?? "No se pudo cargar la cola operativa.");
         setActions([]);
         setSummary(EMPTY_SUMMARY);
+        setSlaSummary(EMPTY_SLA);
         return;
       }
-      setActions(json.actions ?? []);
+      const nextActions = json.actions ?? [];
+      setActions(nextActions);
       setSummary(json.summary ?? EMPTY_SUMMARY);
+      setSlaSummary(json.sla_summary ?? EMPTY_SLA);
+      setDueDrafts((prev) => {
+        const next = { ...prev };
+        for (const action of nextActions) {
+          next[action.id] = dueAtToInputValue(action.due_at);
+        }
+        return next;
+      });
     } catch {
       onError?.("Error de red al cargar la cola operativa.");
       setActions([]);
       setSummary(EMPTY_SUMMARY);
+      setSlaSummary(EMPTY_SLA);
     } finally {
       if (!opts?.soft) setLoading(false);
     }
@@ -126,6 +172,18 @@ export function CopilotOperationalActionsPanel({ provenance, onError }: Props) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await copilotApiFetch("/api/copilot/me");
+        const json = (await res.json()) as { appUser?: OperatorMe };
+        if (res.ok && json.appUser) setOperator(json.appUser);
+      } catch {
+        /* fallback: asignación manual sigue disponible vía API */
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (bootstrapRef.current) return;
@@ -167,12 +225,20 @@ export function CopilotOperationalActionsPanel({ provenance, onError }: Props) {
   }, [provenance, onError, refresh]);
 
   const openActions = useMemo(
-    () =>
-      actions.filter((action) =>
-        ["pending", "in_progress", "blocked"].includes(action.operational_status)
-      ),
+    () => actions.filter((action) => OPEN_STATUSES.includes(action.operational_status)),
     [actions]
   );
+
+  const filteredOpenActions = useMemo(() => {
+    const filtered = openActions.filter((action) => {
+      if (statusFilter !== "all" && action.operational_status !== statusFilter) return false;
+      if (priorityFilter !== "all" && action.priority !== priorityFilter) return false;
+      if (originFilter !== "all" && action.origin !== originFilter) return false;
+      if (slaFilter !== "all" && getActionSlaStatus(action) !== slaFilter) return false;
+      return true;
+    });
+    return sortOperationalActionsForQueue(filtered);
+  }, [openActions, originFilter, priorityFilter, slaFilter, statusFilter]);
 
   const resolvedToday = useMemo(() => {
     const today = new Date().toDateString();
@@ -186,14 +252,17 @@ export function CopilotOperationalActionsPanel({ provenance, onError }: Props) {
     });
   }, [actions]);
 
-  const patchStatus = async (actionId: string, operationalStatus: OperationalActionStatus) => {
+  const patchAction = async (
+    actionId: string,
+    body: Record<string, unknown>
+  ) => {
     setPatchingId(actionId);
     onError?.(null);
     try {
       const res = await copilotApiFetch(`/api/copilot/operational-actions/${actionId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ operational_status: operationalStatus }),
+        body: JSON.stringify(body),
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) {
@@ -211,7 +280,7 @@ export function CopilotOperationalActionsPanel({ provenance, onError }: Props) {
     }
   };
 
-  const loadTimeline = async (actionId: string) => {
+  const loadTimeline = useCallback(async (actionId: string) => {
     setTimelineLoading(true);
     try {
       const res = await copilotApiFetch(
@@ -233,7 +302,15 @@ export function CopilotOperationalActionsPanel({ provenance, onError }: Props) {
     } finally {
       setTimelineLoading(false);
     }
-  };
+  }, [onError]);
+
+  useEffect(() => {
+    if (!highlightActionId) return;
+    const node = document.getElementById(`operational-action-${highlightActionId}`);
+    node?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setTimelineId(highlightActionId);
+    void loadTimeline(highlightActionId);
+  }, [highlightActionId, actions, loadTimeline]);
 
   const toggleTimeline = (actionId: string) => {
     if (timelineId === actionId) {
@@ -245,11 +322,28 @@ export function CopilotOperationalActionsPanel({ provenance, onError }: Props) {
     void loadTimeline(actionId);
   };
 
+  const assignToMe = (action: OperationalActionListItem) => {
+    const label = operator?.full_name?.trim() || operator?.email;
+    if (!label) {
+      onError?.("No se pudo resolver el usuario actual para asignar.");
+      return;
+    }
+    void patchAction(action.id, {
+      assigned_to: label,
+      owner_id: operator?.id ?? null,
+    });
+  };
+
+  const saveDueDate = (actionId: string) => {
+    const draft = dueDrafts[actionId] ?? "";
+    void patchAction(actionId, { due_at: inputValueToDueAtIso(draft) });
+  };
+
   return (
     <CopilotCard>
       <CopilotSectionTitle
         title="Cola operativa"
-        subtitle="Seguimiento persistido: alerta → decisión → acción → responsable → resolución."
+        subtitle="Responsable, vencimiento y SLA sobre acciones persistidas."
       />
       {bootstrapMessage ? (
         <p className="mb-3 text-sm text-[var(--copilot-ink-muted)]">{bootstrapMessage}</p>
@@ -292,16 +386,104 @@ export function CopilotOperationalActionsPanel({ provenance, onError }: Props) {
             ))}
           </div>
 
-          {openActions.length > 0 ? (
+          <div className="flex flex-wrap gap-2 text-xs">
+            {[
+              { label: "Vencidas", value: slaSummary.overdue },
+              { label: "Para hoy", value: slaSummary.dueToday },
+              { label: "Esta semana", value: slaSummary.dueSoon },
+              { label: "Críticas bloqueadas", value: slaSummary.blockedCritical },
+            ].map((chip) => (
+              <span
+                key={chip.label}
+                className="rounded-full border border-[var(--copilot-border)] bg-white/80 px-2.5 py-1 font-semibold text-[var(--copilot-ink-muted)]"
+              >
+                {chip.label}: {chip.value}
+              </span>
+            ))}
+          </div>
+
+          <div className="grid gap-2 md:grid-cols-4">
+            <label className="text-xs font-medium text-[var(--copilot-ink-muted)]">
+              Estado
+              <select
+                className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm"
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as typeof statusFilter)
+                }
+              >
+                <option value="all">Todos</option>
+                <option value="pending">Pendiente</option>
+                <option value="in_progress">En seguimiento</option>
+                <option value="blocked">Bloqueada</option>
+              </select>
+            </label>
+            <label className="text-xs font-medium text-[var(--copilot-ink-muted)]">
+              Prioridad
+              <select
+                className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm"
+                value={priorityFilter}
+                onChange={(event) =>
+                  setPriorityFilter(event.target.value as typeof priorityFilter)
+                }
+              >
+                <option value="all">Todas</option>
+                <option value="critical">Crítica</option>
+                <option value="high">Alta</option>
+                <option value="medium">Media</option>
+                <option value="low">Baja</option>
+              </select>
+            </label>
+            <label className="text-xs font-medium text-[var(--copilot-ink-muted)]">
+              Origen
+              <select
+                className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm"
+                value={originFilter}
+                onChange={(event) =>
+                  setOriginFilter(event.target.value as typeof originFilter)
+                }
+              >
+                <option value="all">Todos</option>
+                <option value="alert">Alerta</option>
+                <option value="treasury">Tesorería</option>
+                <option value="finance">Finanzas</option>
+                <option value="customer">Cliente</option>
+                <option value="insight">Insight</option>
+                <option value="manual">Manual</option>
+              </select>
+            </label>
+            <label className="text-xs font-medium text-[var(--copilot-ink-muted)]">
+              Vencimiento
+              <select
+                className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm"
+                value={slaFilter}
+                onChange={(event) => setSlaFilter(event.target.value as typeof slaFilter)}
+              >
+                <option value="all">Todos</option>
+                <option value="overdue">Vencidas</option>
+                <option value="due_today">Vencen hoy</option>
+                <option value="due_soon">Esta semana</option>
+                <option value="no_due_date">Sin fecha</option>
+                <option value="ok">En plazo</option>
+              </select>
+            </label>
+          </div>
+
+          {filteredOpenActions.length > 0 ? (
             <ul className="space-y-3">
-              {openActions.map((action) => {
+              {filteredOpenActions.map((action) => {
                 const busy = patchingId === action.id;
                 const href = contextHref(action);
                 const timelineOpen = timelineId === action.id;
+                const sla = getActionSlaStatus(action);
+                const highlighted = highlightActionId === action.id;
                 return (
                   <li
                     key={action.id}
-                    className="rounded-2xl border border-[var(--copilot-border)] bg-white/85 px-3.5 py-3 shadow-sm"
+                    id={`operational-action-${action.id}`}
+                    className={`rounded-2xl border border-[var(--copilot-border)] bg-white/85 px-3.5 py-3 shadow-sm ${
+                      highlighted ? "ring-2 ring-[rgba(31,107,74,0.22)]" : ""
+                    }`}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
@@ -323,6 +505,9 @@ export function CopilotOperationalActionsPanel({ provenance, onError }: Props) {
                           <CopilotBadge tone={operationalStatusTone(action.operational_status)}>
                             {mapOperationalStatusLabel(action.operational_status)}
                           </CopilotBadge>
+                          <CopilotBadge tone={operationalSlaTone(sla)}>
+                            {mapOperationalSlaLabel(sla)}
+                          </CopilotBadge>
                         </div>
                         <p className="mt-2 text-xs text-[var(--copilot-ink-muted)]">
                           {mapOperationalActionTypeLabel(action.action_type)}
@@ -331,7 +516,7 @@ export function CopilotOperationalActionsPanel({ provenance, onError }: Props) {
                             : ""}
                         </p>
                         <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
-                          Vence {formatDate(action.due_at)} · Responsable{" "}
+                          Vence {formatDateTime(action.due_at)} · Responsable{" "}
                           {action.assigned_to?.trim() || "sin asignar"}
                         </p>
                       </div>
@@ -342,41 +527,80 @@ export function CopilotOperationalActionsPanel({ provenance, onError }: Props) {
                       ) : null}
                     </div>
 
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <div className="mt-3 flex flex-wrap items-end gap-2">
+                      <CopilotGhostButton
+                        type="button"
+                        disabled={busy}
+                        className="text-xs"
+                        onClick={() => assignToMe(action)}
+                      >
+                        Asignarme
+                      </CopilotGhostButton>
                       <CopilotGhostButton
                         type="button"
                         disabled={busy || action.operational_status === "in_progress"}
                         className="text-xs"
-                        onClick={() => void patchStatus(action.id, "in_progress")}
+                        onClick={() => void patchAction(action.id, { operational_status: "in_progress" })}
                       >
-                        {busy ? (
-                          <Loader2 className="mr-1 inline h-3.5 w-3.5 animate-spin" aria-hidden />
-                        ) : null}
-                        Tomar acción
+                        Tomar
                       </CopilotGhostButton>
                       <CopilotGhostButton
                         type="button"
                         disabled={busy}
                         className="text-xs"
-                        onClick={() => void patchStatus(action.id, "resolved")}
+                        onClick={() => void patchAction(action.id, { operational_status: "resolved" })}
                       >
-                        Marcar resuelta
+                        Resolver
                       </CopilotGhostButton>
-                      <CopilotGhostButton
-                        type="button"
-                        disabled={busy || action.operational_status === "blocked"}
-                        className="text-xs"
-                        onClick={() => void patchStatus(action.id, "blocked")}
-                      >
-                        Bloquear
-                      </CopilotGhostButton>
-                      <CopilotGhostButton
-                        type="button"
-                        className="text-xs"
-                        onClick={() => toggleTimeline(action.id)}
-                      >
-                        {timelineOpen ? "Ocultar historial" : "Ver historial"}
-                      </CopilotGhostButton>
+                      <label className="inline-flex min-w-[9rem] flex-col gap-1 text-xs text-[var(--copilot-ink-muted)]">
+                        Fecha objetivo
+                        <span className="flex items-center gap-2">
+                          <input
+                            type="date"
+                            className="rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1 text-sm text-[var(--copilot-ink)]"
+                            value={dueDrafts[action.id] ?? ""}
+                            onChange={(event) =>
+                              setDueDrafts((prev) => ({
+                                ...prev,
+                                [action.id]: event.target.value,
+                              }))
+                            }
+                          />
+                          <CopilotGhostButton
+                            type="button"
+                            disabled={busy}
+                            className="text-xs"
+                            onClick={() => saveDueDate(action.id)}
+                          >
+                            Guardar
+                          </CopilotGhostButton>
+                        </span>
+                      </label>
+                      <details className="text-xs">
+                        <summary className="cursor-pointer font-semibold text-[var(--copilot-ink-muted)]">
+                          Más
+                        </summary>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <CopilotGhostButton
+                            type="button"
+                            disabled={busy || action.operational_status === "blocked"}
+                            className="text-xs"
+                            onClick={() => void patchAction(action.id, { operational_status: "blocked" })}
+                          >
+                            Bloquear
+                          </CopilotGhostButton>
+                          <CopilotGhostButton
+                            type="button"
+                            className="text-xs"
+                            onClick={() => toggleTimeline(action.id)}
+                          >
+                            {timelineOpen ? "Ocultar historial" : "Ver historial"}
+                          </CopilotGhostButton>
+                        </div>
+                      </details>
+                      {busy ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-[var(--copilot-ink-muted)]" aria-hidden />
+                      ) : null}
                     </div>
 
                     {timelineOpen ? (
@@ -391,20 +615,28 @@ export function CopilotOperationalActionsPanel({ provenance, onError }: Props) {
                           </p>
                         ) : (
                           <ul className="space-y-2">
-                            {timelineEvents.map((event) => (
-                              <li
-                                key={event.id}
-                                className="border-b border-[var(--copilot-border)]/60 pb-2 last:border-b-0 last:pb-0"
-                              >
-                                <p className="text-xs font-semibold text-[var(--copilot-ink)]">
-                                  {eventLabel(event.event_type)}
-                                </p>
-                                <p className="text-[11px] text-[var(--copilot-ink-muted)]">
-                                  {formatDate(event.created_at)}
-                                  {event.actor_label ? ` · ${event.actor_label}` : ""}
-                                </p>
-                              </li>
-                            ))}
+                            {timelineEvents.map((event) => {
+                              const detail = formatOperationalEventDetail(event.detail);
+                              return (
+                                <li
+                                  key={event.id}
+                                  className="border-b border-[var(--copilot-border)]/60 pb-2 last:border-b-0 last:pb-0"
+                                >
+                                  <p className="text-xs font-semibold text-[var(--copilot-ink)]">
+                                    {mapOperationalEventLabel(event.event_type)}
+                                  </p>
+                                  <p className="text-[11px] text-[var(--copilot-ink-muted)]">
+                                    {formatDateTime(event.created_at)}
+                                    {event.actor_label ? ` · ${event.actor_label}` : ""}
+                                  </p>
+                                  {detail ? (
+                                    <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
+                                      {detail}
+                                    </p>
+                                  ) : null}
+                                </li>
+                              );
+                            })}
                           </ul>
                         )}
                       </div>
@@ -413,7 +645,11 @@ export function CopilotOperationalActionsPanel({ provenance, onError }: Props) {
                 );
               })}
             </ul>
-          ) : null}
+          ) : (
+            <p className="text-sm text-[var(--copilot-ink-muted)]">
+              No hay acciones abiertas con estos filtros.
+            </p>
+          )}
 
           {resolvedToday.length > 0 ? (
             <div>
@@ -428,7 +664,7 @@ export function CopilotOperationalActionsPanel({ provenance, onError }: Props) {
                   >
                     <span className="font-medium text-[var(--copilot-ink)]">{action.title}</span>
                     <span className="text-xs text-[var(--copilot-ink-muted)]">
-                      {formatDate(action.resolved_at)}
+                      {formatDateTime(action.resolved_at)}
                     </span>
                   </li>
                 ))}

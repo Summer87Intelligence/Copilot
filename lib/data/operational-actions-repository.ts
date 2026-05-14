@@ -62,6 +62,20 @@ function mapEventRow(row: Record<string, unknown>): OperationalActionEventRow {
   };
 }
 
+export async function selectOpenOperationalActionsByOrigin(
+  client: SupabaseClient,
+  workspaceCompanyId: string,
+  origin: string
+) {
+  return client
+    .from("operational_actions")
+    .select(ACTION_SELECT)
+    .eq("workspace_company_id", workspaceCompanyId)
+    .eq("origin", origin)
+    .in("operational_status", ["pending", "in_progress", "blocked"])
+    .order("created_at", { ascending: false });
+}
+
 export async function selectOperationalActionsOrdered(
   client: SupabaseClient,
   workspaceCompanyId: string,

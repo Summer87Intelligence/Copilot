@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import { CopilotGhostButton, CopilotPrimaryButton, CopilotPrimaryLink } from "@/components/copilot/copilot-ui";
 import {
   buildAccionesHrefFromAlert,
+  buildOperationalActionHref,
   type CopilotAlertOpsAction,
 } from "@/lib/copilot-alert-ops-mapper";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
@@ -20,6 +21,7 @@ type Props = {
   showEvidence?: boolean;
   compact?: boolean;
   followupAlert?: FiscalAlertItem;
+  openOperationalActionId?: string | null;
 };
 
 async function persistFollowupFromAlert(alert: FiscalAlertItem) {
@@ -112,11 +114,27 @@ export function CopilotAlertOpsActions({
   showEvidence = false,
   compact = false,
   followupAlert,
+  openOperationalActionId,
 }: Props) {
   const router = useRouter();
   const quickVisible = quick.filter((action) => action.id !== primary.id);
 
   const renderAction = (action: CopilotAlertOpsAction, isPrimary: boolean) => {
+    if (action.kind === "followup" && followupAlert && openOperationalActionId) {
+      return (
+        <div key={action.id} className={isPrimary ? "space-y-2" : "inline-flex flex-col gap-1"}>
+          <span className="inline-flex rounded-full bg-[var(--copilot-accent-soft)] px-2 py-0.5 text-[11px] font-semibold text-[var(--copilot-accent)]">
+            Seguimiento abierto
+          </span>
+          <CopilotPrimaryLink
+            href={buildOperationalActionHref(openOperationalActionId)}
+            className={compact ? "w-full justify-center sm:w-auto" : "inline-flex text-xs"}
+          >
+            Ver acción
+          </CopilotPrimaryLink>
+        </div>
+      );
+    }
     if (action.kind === "followup" && followupAlert) {
       return (
         <FollowupActionButton

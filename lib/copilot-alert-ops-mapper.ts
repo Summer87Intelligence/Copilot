@@ -41,6 +41,12 @@ export function buildAccionesHrefFromAlert(alert: FiscalAlertItem): string {
   return `/copilot/acciones?${params.toString()}`;
 }
 
+export function buildOperationalActionHref(actionId: string): string {
+  const params = new URLSearchParams();
+  params.set("operationalActionId", actionId);
+  return `/copilot/acciones?${params.toString()}`;
+}
+
 export function buildAlertasDeepLink(alert: FiscalAlertItem): string {
   const params = new URLSearchParams();
   params.set("priority", alert.priority);
@@ -195,6 +201,7 @@ export type CopilotActionProvenanceQuery = {
   obligationId: string | null;
   alertTitle: string | null;
   insightId: string | null;
+  operationalActionId: string | null;
 };
 
 export function parseCopilotActionProvenance(
@@ -222,6 +229,7 @@ export function parseCopilotActionProvenance(
     obligationId: searchParams.get("obligationId"),
     alertTitle: searchParams.get("alertTitle"),
     insightId: searchParams.get("insightId"),
+    operationalActionId: searchParams.get("operationalActionId"),
   };
 }
 

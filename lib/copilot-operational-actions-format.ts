@@ -1,6 +1,7 @@
 import type {
   OperationalActionOrigin,
   OperationalActionPriority,
+  OperationalActionSlaStatus,
   OperationalActionStatus,
 } from "@/lib/copilot-operational-actions-types";
 
@@ -70,4 +71,68 @@ export function operationalPriorityTone(
   if (priority === "critical") return "danger";
   if (priority === "high") return "warning";
   return "neutral";
+}
+
+const SLA_LABELS: Record<OperationalActionSlaStatus, string> = {
+  overdue: "Vencida",
+  due_today: "Vence hoy",
+  due_soon: "Vence esta semana",
+  no_due_date: "Sin fecha",
+  ok: "En plazo",
+};
+
+export function mapOperationalSlaLabel(status: OperationalActionSlaStatus): string {
+  return SLA_LABELS[status] ?? status;
+}
+
+export function operationalSlaTone(
+  status: OperationalActionSlaStatus
+): "neutral" | "warning" | "danger" | "success" {
+  if (status === "overdue") return "danger";
+  if (status === "due_today") return "warning";
+  if (status === "due_soon") return "warning";
+  if (status === "no_due_date") return "neutral";
+  return "success";
+}
+
+export function mapOperationalEventLabel(eventType: string): string {
+  switch (eventType) {
+    case "created":
+      return "Creada";
+    case "assigned":
+      return "Asignada";
+    case "reassigned":
+      return "Reasignada";
+    case "due_date_changed":
+      return "Vencimiento actualizado";
+    case "status_changed":
+      return "Estado actualizado";
+    case "resolved":
+      return "Resuelta";
+    case "dismissed":
+      return "Descartada";
+    case "blocked":
+      return "Bloqueada";
+    case "updated":
+      return "Actualizada";
+    default:
+      return eventType;
+  }
+}
+
+export function formatOperationalEventDetail(detail: Record<string, unknown>): string | null {
+  const parts: string[] = [];
+  if (detail.from_status && detail.to_status) {
+    parts.push(`${String(detail.from_status)} → ${String(detail.to_status)}`);
+  }
+  if (detail.assigned_to) {
+    parts.push(`Responsable: ${String(detail.assigned_to)}`);
+  }
+  if (detail.from_assigned_to && detail.assigned_to) {
+    parts.push(`${String(detail.from_assigned_to)} → ${String(detail.assigned_to)}`);
+  }
+  if (detail.due_at) {
+    parts.push(`Nuevo vencimiento: ${String(detail.due_at)}`);
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
 }

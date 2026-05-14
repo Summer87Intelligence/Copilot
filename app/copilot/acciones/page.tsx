@@ -366,7 +366,11 @@ function CopilotAccionesPageContent() {
           <p className="text-sm text-[var(--copilot-ink-muted)]">{lastResult}</p>
         ) : null}
 
-        <CopilotOperationalActionsPanel provenance={provenance} onError={setError} />
+        <CopilotOperationalActionsPanel
+          provenance={provenance}
+          highlightActionId={provenance.operationalActionId}
+          onError={setError}
+        />
 
         <CopilotCard>
           <CopilotSectionTitle

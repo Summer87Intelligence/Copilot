@@ -13,6 +13,7 @@ import {
   type OperationalActionStatus,
 } from "@/lib/copilot-operational-actions-types";
 import { buildAccionesHrefFromAlert } from "@/lib/copilot-alert-ops-mapper";
+import { summarizeOperationalSla } from "@/lib/copilot-operational-actions-sla";
 import {
   insertOperationalAction,
   insertOperationalActionEvent,
@@ -119,6 +120,8 @@ export function summarizeOperationalQueue(
     { pending: 0, inProgress: 0, blocked: 0, resolvedToday: 0 }
   );
 }
+
+export { summarizeOperationalSla };
 
 export async function listOperationalActions(
   client: SupabaseClient,
@@ -254,8 +257,7 @@ export async function patchOperationalAction(
   if (!current) return protoCrudResult.fail("NOT_FOUND", "Acción no encontrada.");
 
   const patch: Record<string, unknown> = {};
-  const detail: Record<string, unknown> = {};
-  let eventType = "updated";
+  const events: Array<{ eventType: string; detail: Record<string, unknown> }> = [];
 
   if (input.operationalStatus !== undefined) {
     const nextStatus = allowedEnum(
@@ -264,23 +266,44 @@ export async function patchOperationalAction(
       "pending"
     );
     patch.operational_status = nextStatus;
-    detail.from_status = current.operational_status;
-    detail.to_status = nextStatus;
+    const statusDetail = {
+      from_status: current.operational_status,
+      to_status: nextStatus,
+    };
     if (nextStatus === "resolved" || nextStatus === "dismissed") {
       patch.resolved_at = new Date().toISOString();
-      eventType = nextStatus === "resolved" ? "resolved" : "dismissed";
+      events.push({
+        eventType: nextStatus === "resolved" ? "resolved" : "dismissed",
+        detail: statusDetail,
+      });
+    } else if (nextStatus === "blocked") {
+      events.push({ eventType: "blocked", detail: statusDetail });
+    } else {
+      events.push({ eventType: "status_changed", detail: statusDetail });
     }
-    if (nextStatus === "blocked") eventType = "blocked";
-    if (nextStatus === "in_progress") eventType = "status_changed";
   }
 
   if (input.assignedTo !== undefined) {
     patch.assigned_to = input.assignedTo;
-    detail.assigned_to = input.assignedTo;
-    eventType = "reassigned";
+    events.push({
+      eventType: str(current.assigned_to) ? "reassigned" : "assigned",
+      detail: {
+        from_assigned_to: current.assigned_to,
+        assigned_to: input.assignedTo,
+      },
+    });
   }
   if (input.ownerId !== undefined) patch.owner_id = input.ownerId;
-  if (input.dueAt !== undefined) patch.due_at = input.dueAt;
+  if (input.dueAt !== undefined) {
+    patch.due_at = input.dueAt;
+    events.push({
+      eventType: "due_date_changed",
+      detail: {
+        from_due_at: current.due_at,
+        due_at: input.dueAt,
+      },
+    });
+  }
   if (input.resolutionNotes !== undefined) patch.resolution_notes = input.resolutionNotes;
   if (input.summary !== undefined) patch.summary = input.summary;
 
@@ -292,8 +315,17 @@ export async function patchOperationalAction(
   if (error) return protoCrudResult.fail("DATABASE", MSG_DB);
   if (!data) return protoCrudResult.fail("NOT_FOUND", "Acción no encontrada.");
 
-  const eventResult = await appendEvent(client, wid, actionId, eventType, actor, detail);
-  if (!eventResult.ok) return eventResult as ProtoCrudResult<OperationalActionListItem>;
+  for (const event of events) {
+    const eventResult = await appendEvent(
+      client,
+      wid,
+      actionId,
+      event.eventType,
+      actor,
+      event.detail
+    );
+    if (!eventResult.ok) return eventResult as ProtoCrudResult<OperationalActionListItem>;
+  }
 
   return protoCrudResult.ok(mapOperationalActionRow(data), "Acción actualizada.");
 }

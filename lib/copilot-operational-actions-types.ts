@@ -96,6 +96,21 @@ export type OperationalActionPatchInput = {
   summary?: string | null;
 };
 
+export type OperationalActionSlaStatus =
+  | "overdue"
+  | "due_today"
+  | "due_soon"
+  | "no_due_date"
+  | "ok";
+
+export type OperationalActionSlaSummary = {
+  overdue: number;
+  dueToday: number;
+  dueSoon: number;
+  noDueDate: number;
+  blockedCritical: number;
+};
+
 export type OperationalActionQueueSummary = {
   pending: number;
   inProgress: number;

@@ -25,6 +25,8 @@ import { CopilotOperationalEmptyState } from "@/components/copilot/copilot-opera
 import { mapAlertCategory } from "@/lib/copilot-format";
 import { buildCopilotAlertOpsContext } from "@/lib/copilot-alert-ops-mapper";
 import { COPILOT_EMPTY_COPY } from "@/lib/copilot-empty-state";
+import { copilotApiFetch } from "@/lib/copilot-fetch";
+import type { OperationalActionListItem } from "@/lib/copilot-operational-actions-types";
 
 type PriorityFilter = "all" | "critical" | "high" | "medium";
 type TypeFilter =
@@ -54,6 +56,30 @@ function CopilotAlertasPageContent() {
   } = useCopilotAlerts();
   const [selectedId, setSelectedId] = useState("");
   const [isEvidenceOpen, setIsEvidenceOpen] = useState(false);
+  const [openAlertActionById, setOpenAlertActionById] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await copilotApiFetch("/api/copilot/operational-actions?limit=120");
+        const json = (await res.json()) as { actions?: OperationalActionListItem[] };
+        if (!res.ok) return;
+        const next: Record<string, string> = {};
+        for (const action of json.actions ?? []) {
+          if (action.origin !== "alert" || !action.related_entity_id) continue;
+          if (!["pending", "in_progress", "blocked"].includes(action.operational_status)) {
+            continue;
+          }
+          if (!next[action.related_entity_id]) {
+            next[action.related_entity_id] = action.id;
+          }
+        }
+        setOpenAlertActionById(next);
+      } catch {
+        /* cola operativa opcional en alertas */
+      }
+    })();
+  }, []);
 
   useLayoutEffect(() => {
     const raw = searchParams.get("priority");
@@ -303,6 +329,7 @@ function CopilotAlertasPageContent() {
                     quick={ops.quick}
                     compact
                     followupAlert={a}
+                    openOperationalActionId={openAlertActionById[a.id] ?? null}
                     showEvidence={Boolean(a.obligationId)}
                     onOpenEvidence={() => {
                       setSelectedId(a.id);
@@ -381,6 +408,7 @@ function CopilotAlertasPageContent() {
                   primary={selectedOps.primary}
                   quick={selectedOps.quick}
                   followupAlert={selectedAlert}
+                  openOperationalActionId={openAlertActionById[selectedAlert.id] ?? null}
                   showEvidence={Boolean(selectedAlert.obligationId)}
                   onOpenEvidence={() => setIsEvidenceOpen(true)}
                 />

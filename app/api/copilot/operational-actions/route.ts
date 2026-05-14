@@ -7,6 +7,7 @@ import {
   createOperationalAction,
   listOperationalActions,
   summarizeOperationalQueue,
+  summarizeOperationalSla,
 } from "@/lib/copilot-operational-actions-service";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
     );
     if (!result.ok) {
       return NextResponse.json(
-        { error: result.message, actions: [], summary: summarizeOperationalQueue([]) },
+        { error: result.message, actions: [], summary: summarizeOperationalQueue([]), sla_summary: summarizeOperationalSla([]) },
         { status: result.code === "DATABASE" ? 500 : 400 }
       );
     }
@@ -51,6 +52,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       actions: result.data,
       summary: summarizeOperationalQueue(result.data),
+      sla_summary: summarizeOperationalSla(result.data),
     });
   } catch (error) {
     log.error("copilot_request_unhandled", error, {
@@ -58,7 +60,7 @@ export async function GET(request: NextRequest) {
     });
     const message = error instanceof Error ? error.message : "Error desconocido";
     return NextResponse.json(
-      { error: message, actions: [], summary: summarizeOperationalQueue([]) },
+      { error: message, actions: [], summary: summarizeOperationalQueue([]), sla_summary: summarizeOperationalSla([]) },
       { status: 500 }
     );
   }
