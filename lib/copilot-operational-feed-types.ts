@@ -34,6 +34,7 @@ export type OperationalFeedTimelineItem = {
   actionTitle: string | null;
   relatedEntityId: string | null;
   createdAt: string;
+  detailSummary?: string | null;
 };
 
 export type OperationalFeedResponse = {

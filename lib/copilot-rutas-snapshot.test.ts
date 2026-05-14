@@ -81,6 +81,7 @@ describe("buildCopilotRutasSnapshotFromInputs", () => {
     expect(snapshot.narratives.length).toBeGreaterThan(0);
     expect(snapshot.recommendations.length).toBeGreaterThan(0);
     expect(snapshot.timeline).toHaveLength(1);
+    expect(snapshot.health.status).toBe("ok");
     expect(snapshot.counts).toEqual({
       feedItems: 1,
       groups: snapshot.feed.groups.length,

@@ -113,6 +113,8 @@ export function mapOperationalEventLabel(eventType: string): string {
       return "Descartada";
     case "blocked":
       return "Bloqueada";
+    case "reopened":
+      return "Reabierta";
     case "updated":
       return "Actualizada";
     default:

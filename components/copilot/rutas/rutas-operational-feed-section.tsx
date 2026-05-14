@@ -12,6 +12,7 @@ import {
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
 import { useRutasOperationalFeedSnapshot } from "@/components/copilot/rutas/rutas-operational-feed-context";
+import type { RutasOptimisticActionPatch } from "@/components/copilot/rutas/rutas-operational-feed-context";
 import { buildOperationalActionHref } from "@/lib/copilot-alert-ops-mapper";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import {
@@ -35,6 +36,16 @@ type OperatorMe = {
   full_name: string;
   email: string;
 };
+
+type OwnershipFilter = "all" | "mine" | "unassigned" | "blocked" | "overdue";
+
+const OWNERSHIP_FILTERS: Array<{ id: OwnershipFilter; label: string }> = [
+  { id: "all", label: "Todos" },
+  { id: "mine", label: "Mías" },
+  { id: "unassigned", label: "Sin dueño" },
+  { id: "blocked", label: "Bloqueadas" },
+  { id: "overdue", label: "Vencidas" },
+];
 
 const SOURCE_LABEL: Record<OperationalFeedItem["source"], string> = {
   alert: "Alerta",
@@ -82,6 +93,42 @@ function actionIdFromItem(item: OperationalFeedItem): string | null {
   if (typeof metadata.actionId === "string") return metadata.actionId;
   if (item.id.startsWith("action:")) return item.id.slice("action:".length);
   return null;
+}
+
+function operatorLabels(operator: OperatorMe | null): string[] {
+  if (!operator) return [];
+  return [operator.full_name, operator.email]
+    .map((value) => value?.trim().toLowerCase())
+    .filter((value): value is string => Boolean(value));
+}
+
+function matchesOwnershipFilter(
+  group: OperationalFeedGroup,
+  filter: OwnershipFilter,
+  operator: OperatorMe | null
+): boolean {
+  if (filter === "all") return true;
+  const item = group.primaryItem;
+  const ownerLabel = item.owner?.label?.trim().toLowerCase() ?? "";
+  const slaStatus =
+    item.source === "action" && typeof item.metadata?.slaStatus === "string"
+      ? item.metadata.slaStatus
+      : null;
+
+  if (filter === "mine") {
+    const labels = operatorLabels(operator);
+    return labels.length > 0 && labels.includes(ownerLabel);
+  }
+  if (filter === "unassigned") {
+    return ownerLabel.length === 0;
+  }
+  if (filter === "blocked") {
+    return item.blocked === true || item.status === "blocked";
+  }
+  if (filter === "overdue") {
+    return slaStatus === "overdue";
+  }
+  return true;
 }
 
 function groupCountBadge(group: OperationalFeedGroup): string | null {
@@ -292,6 +339,9 @@ function TimelineRow({ event }: { event: OperationalFeedTimelineItem }) {
           {" "}
           · {event.actorLabel ?? "Sistema"}
         </span>
+        {event.detailSummary ? (
+          <span className="block text-[10px] text-[var(--copilot-ink-muted)]">{event.detailSummary}</span>
+        ) : null}
       </span>
       {event.actionId ? (
         <Link
@@ -339,10 +389,21 @@ function EmptyOperationalCenter() {
 }
 
 export function RutasOperationalFeedSection() {
-  const { groups, timeline, loading, error, refresh } = useRutasOperationalFeedSnapshot();
+  const {
+    groups,
+    timeline,
+    loading,
+    error,
+    actionFeedback,
+    refresh,
+    applyOptimisticActionPatch,
+    restoreOptimisticSnapshot,
+    setActionFeedback,
+  } = useRutasOperationalFeedSnapshot();
   const [operator, setOperator] = useState<OperatorMe | null>(null);
   const [busyActionId, setBusyActionId] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
+  const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
   const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(new Set());
   const [compact, setCompact] = useState(() =>
     readCopilotUiBoolean(COPILOT_UI_STATE_KEYS.rutasOperationalFeedCompact, false)
@@ -360,9 +421,17 @@ export function RutasOperationalFeedSection() {
     })();
   }, []);
 
-  const patchAction = async (actionId: string, body: Record<string, unknown>) => {
+  const patchAction = async (
+    actionId: string,
+    body: Record<string, unknown>,
+    optimistic: RutasOptimisticActionPatch,
+    successMessage: string
+  ) => {
     setBusyActionId(actionId);
     setMutationError(null);
+    setActionFeedback(null);
+    applyOptimisticActionPatch(optimistic);
+    setActionFeedback({ tone: "success", message: successMessage });
     try {
       const res = await copilotApiFetch(`/api/copilot/operational-actions/${actionId}`, {
         method: "PATCH",
@@ -371,11 +440,15 @@ export function RutasOperationalFeedSection() {
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) {
+        restoreOptimisticSnapshot();
+        setActionFeedback(null);
         setMutationError(json.error ?? "No se pudo actualizar la acción.");
         return;
       }
-      await refresh();
+      await refresh({ fresh: true, silent: true });
     } catch {
+      restoreOptimisticSnapshot();
+      setActionFeedback(null);
       setMutationError("Error de red al actualizar la acción.");
     } finally {
       setBusyActionId(null);
@@ -386,11 +459,23 @@ export function RutasOperationalFeedSection() {
     const actionId = actionIdFromItem(item);
     if (!actionId) return;
     const label = operator?.full_name?.trim() || operator?.email;
-    if (!label) return;
-    void patchAction(actionId, {
-      assigned_to: label,
-      owner_id: operator?.id ?? null,
-    });
+    if (!label) {
+      setMutationError("No se pudo resolver el usuario actual para asignar.");
+      return;
+    }
+    void patchAction(
+      actionId,
+      {
+        assigned_to: label,
+        owner_id: operator?.id ?? null,
+      },
+      {
+        actionId,
+        assignedTo: label,
+        ownerLabel: label,
+      },
+      "Asignación actualizada."
+    );
   };
 
   const toggleGroup = (groupId: string) => {
@@ -414,6 +499,10 @@ export function RutasOperationalFeedSection() {
     expandedGroupIds.has(group.id) || !group.collapsedByDefault;
 
   const hasSignal = groups.length > 0 || timeline.length > 0;
+  const filteredGroups = useMemo(
+    () => groups.filter((group) => matchesOwnershipFilter(group, ownershipFilter, operator)),
+    [groups, operator, ownershipFilter]
+  );
   const timelinePreview = useMemo(() => timeline.slice(0, 5), [timeline]);
 
   return (
@@ -446,6 +535,15 @@ export function RutasOperationalFeedSection() {
         </p>
       ) : null}
 
+      {actionFeedback ? (
+        <p
+          className={`text-[11px] ${actionFeedback.tone === "success" ? "text-emerald-900" : "text-rose-800"}`}
+          role="status"
+        >
+          {actionFeedback.message}
+        </p>
+      ) : null}
+
       {mutationError ? (
         <p className="text-[11px] text-rose-800" role="alert">
           {mutationError}
@@ -463,29 +561,69 @@ export function RutasOperationalFeedSection() {
         <div className="space-y-2">
           {groups.length > 0 ? (
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+              <div className="flex flex-wrap gap-1.5">
+                {OWNERSHIP_FILTERS.map((filter) => (
+                  <CopilotGhostButton
+                    key={filter.id}
+                    type="button"
+                    className={`px-2 py-0.5 text-[10px] ${
+                      ownershipFilter === filter.id
+                        ? "border-[var(--copilot-ink)] text-[var(--copilot-ink)]"
+                        : ""
+                    }`}
+                    onClick={() => setOwnershipFilter(filter.id)}
+                  >
+                    {filter.label}
+                  </CopilotGhostButton>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Seguimiento operativo
               </p>
-              <ul className="mt-1 space-y-1">
-                {groups.map((group) => (
-                  <li key={group.id}>
-                    <FeedGroupCard
-                      group={group}
-                      expanded={isExpanded(group)}
-                      busyActionId={busyActionId}
-                      compact={compact}
-                      onToggle={() => toggleGroup(group.id)}
-                      onAssignToMe={assignToMe}
-                      onResolve={(actionId) =>
-                        void patchAction(actionId, { operational_status: "resolved" })
-                      }
-                      onBlock={(actionId) =>
-                        void patchAction(actionId, { operational_status: "blocked" })
-                      }
-                    />
-                  </li>
-                ))}
-              </ul>
+              {filteredGroups.length === 0 ? (
+                <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
+                  Sin seguimientos para este filtro.
+                </p>
+              ) : (
+                <ul className="mt-1 space-y-1">
+                  {filteredGroups.map((group) => (
+                    <li key={group.id}>
+                      <FeedGroupCard
+                        group={group}
+                        expanded={isExpanded(group)}
+                        busyActionId={busyActionId}
+                        compact={compact}
+                        onToggle={() => toggleGroup(group.id)}
+                        onAssignToMe={assignToMe}
+                        onResolve={(actionId) =>
+                          void patchAction(
+                            actionId,
+                            { operational_status: "resolved" },
+                            {
+                              actionId,
+                              operationalStatus: "resolved",
+                              blocked: false,
+                            },
+                            "Seguimiento resuelto."
+                          )
+                        }
+                        onBlock={(actionId) =>
+                          void patchAction(
+                            actionId,
+                            { operational_status: "blocked" },
+                            {
+                              actionId,
+                              operationalStatus: "blocked",
+                              blocked: true,
+                            },
+                            "Seguimiento bloqueado."
+                          )
+                        }
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           ) : null}
 

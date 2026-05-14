@@ -12,20 +12,30 @@ import {
   buildOperationalMemorySignals,
   type OperationalMemoryInput,
 } from "@/lib/copilot-operational-memory";
+import type { OperationalMemorySignal } from "@/lib/copilot-operational-memory-types";
 import {
   buildOperationalNarratives,
   buildTreasuryNarrativeContext,
   type OperationalNarrativeTreasuryContext,
 } from "@/lib/copilot-operational-narrative";
+import type { OperationalNarrative } from "@/lib/copilot-operational-narrative-types";
+import {
+  buildSnapshotHealth,
+  createSnapshotWarning,
+  logSnapshotObservability,
+} from "@/lib/copilot-rutas-snapshot-health";
 import type {
   CopilotRutasSnapshot,
   CopilotRutasSnapshotCounts,
+  SnapshotHealthWarning,
 } from "@/lib/copilot-rutas-snapshot-types";
 import { buildStrategicRecommendations } from "@/lib/copilot-strategic-recommendations";
+import type { StrategicRecommendation } from "@/lib/copilot-strategic-recommendations-types";
 import { selectRecentOperationalActionEventsForWorkspace } from "@/lib/data/operational-actions-repository";
 import { treasuryIntelligenceBundle } from "@/lib/treasury/services/treasury-intelligence-service";
 
 const RUTAS_SNAPSHOT_TIMELINE_LIMIT = 5;
+const SECONDARY_STAGE_TIMEOUT_MS = 2_500;
 
 export type CopilotRutasSnapshotBuildInput = {
   actions: OperationalActionListItem[];
@@ -34,14 +44,9 @@ export type CopilotRutasSnapshotBuildInput = {
   treasury: OperationalNarrativeTreasuryContext | null;
   now: Date;
   timelineLimit?: number;
-};
-
-type SnapshotStageTimingMs = {
-  total: number;
-  feed: number;
-  memory: number;
-  narrative: number;
-  recommendations: number;
+  warnings?: SnapshotHealthWarning[];
+  timingMs?: CopilotRutasSnapshot["health"]["timingMs"];
+  feedAvailable?: boolean;
 };
 
 function mapOperationalEvents(rows: unknown[]): OperationalActionEventRow[] {
@@ -63,7 +68,9 @@ function mapOperationalEvents(rows: unknown[]): OperationalActionEventRow[] {
   });
 }
 
-function buildSnapshotCounts(snapshot: Omit<CopilotRutasSnapshot, "counts">): CopilotRutasSnapshotCounts {
+function buildSnapshotCounts(
+  snapshot: Omit<CopilotRutasSnapshot, "counts" | "health">
+): CopilotRutasSnapshotCounts {
   return {
     feedItems: snapshot.feed.items.length,
     groups: snapshot.feed.groups.length,
@@ -72,14 +79,6 @@ function buildSnapshotCounts(snapshot: Omit<CopilotRutasSnapshot, "counts">): Co
     recommendations: snapshot.recommendations.length,
     timelineEvents: snapshot.timeline.length,
   };
-}
-
-function logSnapshotTiming(timing: SnapshotStageTimingMs, counts: CopilotRutasSnapshotCounts): void {
-  if (process.env.NODE_ENV !== "development") return;
-  console.debug("[copilot-rutas-snapshot]", {
-    timingMs: timing,
-    counts,
-  });
 }
 
 async function loadTreasuryContext(
@@ -102,10 +101,54 @@ async function loadTreasuryContext(
   });
 }
 
+function runTimedStage<T>(
+  source: string,
+  timeoutMs: number,
+  run: () => T,
+  fallback: T,
+  warnings: SnapshotHealthWarning[]
+): Promise<{ value: T; ms: number }> {
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    let settled = false;
+
+    const finish = (value: T, warning?: SnapshotHealthWarning) => {
+      if (settled) return;
+      settled = true;
+      if (warning) warnings.push(warning);
+      resolve({ value, ms: Date.now() - startedAt });
+    };
+
+    const timer = setTimeout(() => {
+      finish(
+        fallback,
+        createSnapshotWarning(source, "TIMEOUT", `La fuente ${source} superó el tiempo esperado.`)
+      );
+    }, timeoutMs);
+
+    queueMicrotask(() => {
+      if (settled) return;
+      try {
+        const value = run();
+        clearTimeout(timer);
+        finish(value);
+      } catch (error) {
+        clearTimeout(timer);
+        const message = error instanceof Error ? error.message : "Error desconocido";
+        finish(
+          fallback,
+          createSnapshotWarning(source, "ERROR", `No se pudo calcular ${source}: ${message}.`)
+        );
+      }
+    });
+  });
+}
+
 export function buildCopilotRutasSnapshotFromInputs(
   input: CopilotRutasSnapshotBuildInput
 ): CopilotRutasSnapshot {
   const timelineLimit = input.timelineLimit ?? RUTAS_SNAPSHOT_TIMELINE_LIMIT;
+  const warnings = input.warnings ?? [];
   const grouped = buildGroupedOperationalFeed(input.feedItems);
   const feedGroups = [...grouped.priorities, ...grouped.groups];
 
@@ -137,7 +180,7 @@ export function buildCopilotRutasSnapshotFromInputs(
   );
   const timeline = mapOperationalFeedTimelineItems(input.events, input.actions, timelineLimit);
 
-  const snapshotWithoutCounts: Omit<CopilotRutasSnapshot, "counts"> = {
+  const snapshotWithoutCounts: Omit<CopilotRutasSnapshot, "counts" | "health"> = {
     generatedAt: input.now.toISOString(),
     feed: {
       items: input.feedItems,
@@ -150,9 +193,16 @@ export function buildCopilotRutasSnapshotFromInputs(
     recommendations,
   };
 
+  const counts = buildSnapshotCounts(snapshotWithoutCounts);
+  const health = buildSnapshotHealth(warnings, {
+    feedAvailable: input.feedAvailable ?? true,
+    timingMs: input.timingMs,
+  });
+
   return {
     ...snapshotWithoutCounts,
-    counts: buildSnapshotCounts(snapshotWithoutCounts),
+    counts,
+    health,
   };
 }
 
@@ -163,82 +213,187 @@ export async function buildCopilotRutasSnapshot(
   timelineLimit = RUTAS_SNAPSHOT_TIMELINE_LIMIT
 ): Promise<CopilotRutasSnapshot> {
   const startedAt = Date.now();
+  const warnings: SnapshotHealthWarning[] = [];
   const feedStartedAt = Date.now();
-  const [actionsResult, eventsResult, feedItems, treasury] = await Promise.all([
+  let feedItems: OperationalFeedItem[] = [];
+  let actions: OperationalActionListItem[] = [];
+  let events: OperationalActionEventRow[] = [];
+  let treasury: OperationalNarrativeTreasuryContext | null = null;
+  let feedAvailable = false;
+
+  const [actionsResult, eventsResult, feedResult, treasuryResult] = await Promise.allSettled([
     listOperationalActions(client, workspaceCompanyId, 120),
     selectRecentOperationalActionEventsForWorkspace(client, workspaceCompanyId, 120),
     buildOperationalFeed(client, workspaceCompanyId),
     loadTreasuryContext(client, workspaceCompanyId),
   ]);
-  const feedMs = Date.now() - feedStartedAt;
 
-  const actions = actionsResult.ok ? actionsResult.data ?? [] : [];
-  const events = mapOperationalEvents(eventsResult.data ?? []);
+  if (actionsResult.status === "fulfilled") {
+    actions = actionsResult.value.ok ? actionsResult.value.data ?? [] : [];
+    if (!actionsResult.value.ok) {
+      warnings.push(
+        createSnapshotWarning("actions", "UNAVAILABLE", "No se pudieron cargar las acciones operativas.")
+      );
+    }
+  } else {
+    warnings.push(
+      createSnapshotWarning("actions", "ERROR", "No se pudieron cargar las acciones operativas.")
+    );
+  }
+
+  if (eventsResult.status === "fulfilled") {
+    if (eventsResult.value.error) {
+      warnings.push(
+        createSnapshotWarning("events", "UNAVAILABLE", "No se pudo cargar la actividad reciente.")
+      );
+    } else {
+      events = mapOperationalEvents(eventsResult.value.data ?? []);
+    }
+  } else {
+    warnings.push(
+      createSnapshotWarning("events", "ERROR", "No se pudo cargar la actividad reciente.")
+    );
+  }
+
+  if (feedResult.status === "fulfilled") {
+    feedItems = feedResult.value;
+    feedAvailable = true;
+  } else {
+    warnings.push(
+      createSnapshotWarning("feed", "ERROR", "No se pudo construir el feed operativo principal.")
+    );
+  }
+
+  if (treasuryResult.status === "fulfilled") {
+    treasury = treasuryResult.value;
+    if (!treasury) {
+      warnings.push(
+        createSnapshotWarning("treasury", "UNAVAILABLE", "No se pudo leer el contexto de tesorería.")
+      );
+    }
+  } else {
+    warnings.push(
+      createSnapshotWarning("treasury", "ERROR", "No se pudo leer el contexto de tesorería.")
+    );
+  }
+
+  const feedMs = Date.now() - feedStartedAt;
+  if (!feedAvailable) {
+    const health = buildSnapshotHealth(warnings, {
+      feedAvailable: false,
+      timingMs: { total: Date.now() - startedAt, feed: feedMs },
+    });
+    const emptySnapshot: CopilotRutasSnapshot = {
+      generatedAt: now.toISOString(),
+      feed: { items: [], groups: [], priorities: [] },
+      timeline: [],
+      memory: [],
+      narratives: [],
+      recommendations: [],
+      counts: {
+        feedItems: 0,
+        groups: 0,
+        memorySignals: 0,
+        narratives: 0,
+        recommendations: 0,
+        timelineEvents: 0,
+      },
+      health,
+    };
+    logSnapshotObservability({ health, counts: emptySnapshot.counts });
+    return emptySnapshot;
+  }
+
   const grouped = buildGroupedOperationalFeed(feedItems);
   const feedGroups = [...grouped.priorities, ...grouped.groups];
 
-  const memoryStartedAt = Date.now();
-  const memorySignals = buildOperationalMemorySignals({
-    actions,
-    events,
-    feedItems,
-    feedGroups,
-    now,
-  });
-  const memoryMs = Date.now() - memoryStartedAt;
-
-  const narrativeStartedAt = Date.now();
-  const narratives = buildOperationalNarratives({
-    items: feedItems,
-    priorities: grouped.priorities,
-    treasury,
-    finance: null,
-  });
-  const narrativeMs = Date.now() - narrativeStartedAt;
-
-  const recommendationsStartedAt = Date.now();
-  const recommendations = buildStrategicRecommendations(
-    {
-      actions,
-      feedItems,
-      feedGroups,
-      narratives,
-      memorySignals,
-      treasury,
-      now,
-    },
-    3
+  const memoryStage = await runTimedStage<OperationalMemorySignal[]>(
+    "memory",
+    SECONDARY_STAGE_TIMEOUT_MS,
+    () =>
+      buildOperationalMemorySignals({
+        actions,
+        events,
+        feedItems,
+        feedGroups,
+        now,
+      }),
+    [],
+    warnings
   );
-  const recommendationsMs = Date.now() - recommendationsStartedAt;
 
-  const timeline = mapOperationalFeedTimelineItems(events, actions, timelineLimit);
-  const snapshotWithoutCounts: Omit<CopilotRutasSnapshot, "counts"> = {
+  const narrativeStage = await runTimedStage<OperationalNarrative[]>(
+    "narrative",
+    SECONDARY_STAGE_TIMEOUT_MS,
+    () =>
+      buildOperationalNarratives({
+        items: feedItems,
+        priorities: grouped.priorities,
+        treasury,
+        finance: null,
+      }),
+    [],
+    warnings
+  );
+
+  const recommendationsStage = await runTimedStage<StrategicRecommendation[]>(
+    "recommendations",
+    SECONDARY_STAGE_TIMEOUT_MS,
+    () =>
+      buildStrategicRecommendations(
+        {
+          actions,
+          feedItems,
+          feedGroups,
+          narratives: narrativeStage.value,
+          memorySignals: memoryStage.value,
+          treasury,
+          now,
+        },
+        3
+      ),
+    [],
+    warnings
+  );
+
+  const timelineStage = await runTimedStage(
+    "timeline",
+    SECONDARY_STAGE_TIMEOUT_MS,
+    () => mapOperationalFeedTimelineItems(events, actions, timelineLimit),
+    [],
+    warnings
+  );
+
+  const snapshotWithoutCounts: Omit<CopilotRutasSnapshot, "counts" | "health"> = {
     generatedAt: now.toISOString(),
     feed: {
       items: feedItems,
       groups: grouped.groups,
       priorities: grouped.priorities,
     },
-    timeline,
-    memory: memorySignals,
-    narratives,
-    recommendations,
+    timeline: timelineStage.value,
+    memory: memoryStage.value,
+    narratives: narrativeStage.value,
+    recommendations: recommendationsStage.value,
   };
-  const snapshot = {
-    ...snapshotWithoutCounts,
-    counts: buildSnapshotCounts(snapshotWithoutCounts),
-  };
-
-  logSnapshotTiming(
-    {
+  const counts = buildSnapshotCounts(snapshotWithoutCounts);
+  const health = buildSnapshotHealth(warnings, {
+    feedAvailable: true,
+    timingMs: {
       total: Date.now() - startedAt,
       feed: feedMs,
-      memory: memoryMs,
-      narrative: narrativeMs,
-      recommendations: recommendationsMs,
+      memory: memoryStage.ms,
+      narrative: narrativeStage.ms,
+      recommendations: recommendationsStage.ms,
+      timeline: timelineStage.ms,
     },
-    snapshot.counts
-  );
+  });
+  const snapshot = {
+    ...snapshotWithoutCounts,
+    counts,
+    health,
+  };
 
+  logSnapshotObservability({ health, counts });
   return snapshot;
 }

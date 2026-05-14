@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -14,7 +15,10 @@ import { copilotApiFetch } from "@/lib/copilot-fetch";
 import type { OperationalFeedGroup, OperationalFeedItem } from "@/lib/copilot-operational-feed-types";
 import type { OperationalMemorySignal } from "@/lib/copilot-operational-memory-types";
 import type { OperationalNarrative } from "@/lib/copilot-operational-narrative-types";
-import type { CopilotRutasSnapshotApiResponse } from "@/lib/copilot-rutas-snapshot-types";
+import type {
+  CopilotRutasSnapshotApiResponse,
+  SnapshotHealth,
+} from "@/lib/copilot-rutas-snapshot-types";
 import type { StrategicRecommendation } from "@/lib/copilot-strategic-recommendations-types";
 
 type RutasOperationalTimelineItem = {
@@ -25,6 +29,25 @@ type RutasOperationalTimelineItem = {
   actionTitle: string | null;
   relatedEntityId: string | null;
   createdAt: string;
+  detailSummary?: string | null;
+};
+
+type RutasSnapshotRefreshOptions = {
+  fresh?: boolean;
+  silent?: boolean;
+};
+
+export type RutasOptimisticActionPatch = {
+  actionId: string;
+  assignedTo?: string | null;
+  ownerLabel?: string | null;
+  operationalStatus?: OperationalFeedItem["status"];
+  blocked?: boolean;
+};
+
+type RutasActionFeedback = {
+  tone: "success" | "error";
+  message: string;
 };
 
 type RutasOperationalSnapshotContextValue = {
@@ -36,16 +59,24 @@ type RutasOperationalSnapshotContextValue = {
   memorySignals: OperationalMemorySignal[];
   narratives: OperationalNarrative[];
   recommendations: StrategicRecommendation[];
+  health: SnapshotHealth | null;
   loading: boolean;
   error: string | null;
-  refresh: () => Promise<void>;
+  actionFeedback: RutasActionFeedback | null;
+  refresh: (options?: RutasSnapshotRefreshOptions) => Promise<void>;
+  applyOptimisticActionPatch: (patch: RutasOptimisticActionPatch) => void;
+  restoreOptimisticSnapshot: () => void;
+  setActionFeedback: (feedback: RutasActionFeedback | null) => void;
 };
 
 const RutasOperationalSnapshotContext = createContext<RutasOperationalSnapshotContextValue | null>(
   null
 );
 
-function emptySnapshotState(): Omit<RutasOperationalSnapshotContextValue, "loading" | "error" | "refresh"> {
+function emptySnapshotState(): Omit<
+  RutasOperationalSnapshotContextValue,
+  "loading" | "error" | "refresh" | "actionFeedback" | "applyOptimisticActionPatch" | "restoreOptimisticSnapshot" | "setActionFeedback"
+> {
   return {
     generatedAt: null,
     items: [],
@@ -55,11 +86,56 @@ function emptySnapshotState(): Omit<RutasOperationalSnapshotContextValue, "loadi
     memorySignals: [],
     narratives: [],
     recommendations: [],
+    health: null,
   };
 }
 
-async function loadRutasSnapshot(): Promise<CopilotRutasSnapshotApiResponse> {
-  const res = await copilotApiFetch("/api/copilot/rutas-snapshot");
+function actionIdFromItem(item: OperationalFeedItem): string | null {
+  const metadata = item.metadata ?? {};
+  if (typeof metadata.actionId === "string") return metadata.actionId;
+  if (item.id.startsWith("action:")) return item.id.slice("action:".length);
+  return null;
+}
+
+function patchFeedItem(
+  item: OperationalFeedItem,
+  patch: RutasOptimisticActionPatch
+): OperationalFeedItem {
+  const actionId = actionIdFromItem(item);
+  if (!actionId || actionId !== patch.actionId) return item;
+
+  const next: OperationalFeedItem = { ...item };
+  if (patch.operationalStatus) {
+    next.status = patch.operationalStatus;
+  }
+  if (patch.blocked != null) {
+    next.blocked = patch.blocked;
+  }
+  if (patch.assignedTo !== undefined) {
+    next.owner = patch.ownerLabel
+      ? { ...(next.owner ?? {}), label: patch.ownerLabel }
+      : next.owner;
+  }
+  return next;
+}
+
+function patchFeedGroup(
+  group: OperationalFeedGroup,
+  patch: RutasOptimisticActionPatch
+): OperationalFeedGroup {
+  const primary = patchFeedItem(group.primaryItem, patch);
+  const items = group.items.map((item) => patchFeedItem(item, patch));
+  if (primary === group.primaryItem && items === group.items) return group;
+  return {
+    ...group,
+    primaryItem: primary,
+    items,
+  };
+}
+
+async function loadRutasSnapshot(fresh = false): Promise<CopilotRutasSnapshotApiResponse> {
+  const query = fresh ? "?fresh=1" : "";
+  const res = await copilotApiFetch(`/api/copilot/rutas-snapshot${query}`);
   return (await res.json()) as CopilotRutasSnapshotApiResponse;
 }
 
@@ -67,17 +143,11 @@ export function RutasOperationalFeedProvider({ children }: { children: ReactNode
   const [snapshot, setSnapshot] = useState(emptySnapshotState);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<RutasActionFeedback | null>(null);
+  const optimisticBackupRef = useRef<ReturnType<typeof emptySnapshotState> | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const payload = await loadRutasSnapshot();
-      if (!payload.ok) {
-        setSnapshot(emptySnapshotState());
-        setError(payload.message);
-        return;
-      }
+  const applySnapshotPayload = useCallback(
+    (payload: Extract<CopilotRutasSnapshotApiResponse, { ok: true }>) => {
       setSnapshot({
         generatedAt: payload.data.generatedAt,
         items: payload.data.feed.items,
@@ -87,13 +157,56 @@ export function RutasOperationalFeedProvider({ children }: { children: ReactNode
         memorySignals: payload.data.memory,
         narratives: payload.data.narratives,
         recommendations: payload.data.recommendations,
+        health: payload.data.health,
       });
+    },
+    []
+  );
+
+  const refresh = useCallback(async (options?: RutasSnapshotRefreshOptions) => {
+    if (!options?.silent) {
+      setLoading(true);
+    }
+    setError(null);
+    try {
+      const payload = await loadRutasSnapshot(Boolean(options?.fresh));
+      if (!payload.ok) {
+        if (!options?.silent) {
+          setSnapshot(emptySnapshotState());
+        }
+        setError(payload.message);
+        return;
+      }
+      applySnapshotPayload(payload);
+      optimisticBackupRef.current = null;
     } catch {
-      setSnapshot(emptySnapshotState());
+      if (!options?.silent) {
+        setSnapshot(emptySnapshotState());
+      }
       setError("Error de red al cargar el snapshot operacional.");
     } finally {
-      setLoading(false);
+      if (!options?.silent) {
+        setLoading(false);
+      }
     }
+  }, [applySnapshotPayload]);
+
+  const applyOptimisticActionPatch = useCallback((patch: RutasOptimisticActionPatch) => {
+    setSnapshot((prev) => {
+      if (!optimisticBackupRef.current) {
+        optimisticBackupRef.current = { ...prev };
+      }
+      return {
+        ...prev,
+        groups: prev.groups.map((group) => patchFeedGroup(group, patch)),
+      };
+    });
+  }, []);
+
+  const restoreOptimisticSnapshot = useCallback(() => {
+    if (!optimisticBackupRef.current) return;
+    setSnapshot(optimisticBackupRef.current);
+    optimisticBackupRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -105,9 +218,21 @@ export function RutasOperationalFeedProvider({ children }: { children: ReactNode
       ...snapshot,
       loading,
       error,
+      actionFeedback,
       refresh,
+      applyOptimisticActionPatch,
+      restoreOptimisticSnapshot,
+      setActionFeedback,
     }),
-    [error, loading, refresh, snapshot]
+    [
+      actionFeedback,
+      applyOptimisticActionPatch,
+      error,
+      loading,
+      refresh,
+      restoreOptimisticSnapshot,
+      snapshot,
+    ]
   );
 
   return (

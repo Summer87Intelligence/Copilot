@@ -11,6 +11,28 @@ export type OperationalActionEvent = {
   actionTitle: string | null;
   relatedEntityId: string | null;
   createdAt: string;
+  detailSummary?: string | null;
+};
+
+export type SnapshotHealthStatus = "ok" | "partial" | "degraded" | "stale" | "error";
+
+export type SnapshotHealthWarning = {
+  source: string;
+  code: string;
+  message: string;
+};
+
+export type SnapshotHealth = {
+  status: SnapshotHealthStatus;
+  warnings: SnapshotHealthWarning[];
+  timingMs?: {
+    total?: number;
+    feed?: number;
+    memory?: number;
+    narrative?: number;
+    recommendations?: number;
+    timeline?: number;
+  };
 };
 
 export type CopilotRutasSnapshotCounts = {
@@ -34,10 +56,12 @@ export type CopilotRutasSnapshot = {
   narratives: OperationalNarrative[];
   recommendations: StrategicRecommendation[];
   counts: CopilotRutasSnapshotCounts;
+  health: SnapshotHealth;
 };
 
 export type CopilotRutasSnapshotApiSuccess = {
   ok: true;
+  partial?: boolean;
   data: CopilotRutasSnapshot;
 };
 

@@ -23,6 +23,7 @@ import type {
   OperationalActionEventRow,
   OperationalActionListItem,
 } from "@/lib/copilot-operational-actions-types";
+import { formatOperationalEventDetail } from "@/lib/copilot-operational-actions-format";
 import { listOperationalActions } from "@/lib/copilot-operational-actions-service";
 import { getFiscalAlerts, type FiscalAlertItem } from "@/lib/copilot-tax-alerts";
 import {
@@ -258,6 +259,7 @@ export function mapOperationalFeedTimelineItems(
       actionTitle: action?.title ?? null,
       relatedEntityId: action?.related_entity_id ?? null,
       createdAt: event.created_at,
+      detailSummary: formatOperationalEventDetail(event.detail),
     };
   });
 }

@@ -12,6 +12,7 @@ import { RutasOperationalNarrativesSection } from "@/components/copilot/rutas/ru
 import { RutasMoreOptionsSection } from "@/components/copilot/rutas/rutas-more-options-section";
 import { RutasOperationalFeedSection } from "@/components/copilot/rutas/rutas-operational-feed-section";
 import { useRutasOperationalFeedSnapshot } from "@/components/copilot/rutas/rutas-operational-feed-context";
+import { RutasSnapshotHealthNotice } from "@/components/copilot/rutas/rutas-snapshot-health-notice";
 import { RutasPrioritySection } from "@/components/copilot/rutas/rutas-priority-section";
 import { RutasTreasuryPressureSection } from "@/components/copilot/rutas/rutas-treasury-pressure-section";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
@@ -56,7 +57,7 @@ export function RutasCommandCenterBody({
   visibility,
   hasAnySignal,
 }: RutasCommandCenterBodyProps) {
-  const { groups, loading: feedLoading } = useRutasOperationalFeedSnapshot();
+  const { groups, loading: feedLoading, health } = useRutasOperationalFeedSnapshot();
 
   return (
     <div className={rutasCommandCenterMainClass}>
@@ -71,6 +72,8 @@ export function RutasCommandCenterBody({
           />
 
           <RutasTreasuryPressureSection />
+
+          <RutasSnapshotHealthNotice health={health} />
 
           <RutasStrategicRecommendationsSection />
 
