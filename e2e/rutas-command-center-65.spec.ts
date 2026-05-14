@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import { ensureCopilotSession } from "./copilot-session";
 import { createNetworkMonitor } from "./network-monitor";
+import { waitForOperationalRuntime } from "./rutas-operational-runtime";
 import { createSevereCollector } from "./severity-console";
 
 const FILTER_STORAGE_KEY = "copilot:ui:rutas:command-center-filter";
@@ -15,8 +16,8 @@ const FILTER_LABELS = [
   "Recurrentes",
 ] as const;
 
-async function gotoRutas(page: Page): Promise<void> {
-  const runtimeReady = waitForOperationalRuntime(page);
+async function gotoRutas(page: Page, baseURL: string): Promise<void> {
+  const runtimeReady = waitForOperationalRuntime(page, baseURL);
   await page.goto("/copilot/rutas");
   await runtimeReady;
   await expect(page).toHaveURL(/\/copilot\/rutas/);
@@ -49,26 +50,6 @@ async function waitForCommandCenterReady(page: Page): Promise<void> {
   });
 }
 
-async function waitForOperationalRuntime(page: Page): Promise<void> {
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.url().includes("/api/copilot/rutas-snapshot") && response.ok(),
-      { timeout: 90_000 }
-    ),
-    page.waitForResponse(
-      (response) =>
-        response.url().includes("/api/copilot/operational-workflows") && response.ok(),
-      { timeout: 90_000 }
-    ),
-    page.waitForResponse(
-      (response) =>
-        response.url().includes("/api/copilot/operational-events") && response.ok(),
-      { timeout: 90_000 }
-    ),
-  ]);
-}
-
 test.describe("FASE 6.5 — Comando operativo en /copilot/rutas", () => {
   test.setTimeout(120_000);
 
@@ -76,13 +57,13 @@ test.describe("FASE 6.5 — Comando operativo en /copilot/rutas", () => {
     await ensureCopilotSession(page, baseURL ?? "http://127.0.0.1:3000");
   });
 
-  test("render, filtros, persistencia, panel, atajos y consola", async ({ page }) => {
+  test("render, filtros, persistencia, panel, atajos y consola", async ({ page, baseURL }) => {
     const severe = createSevereCollector();
     const network = createNetworkMonitor();
     severe.attach(page);
     network.attach(page);
 
-    await gotoRutas(page);
+    await gotoRutas(page, baseURL ?? "http://127.0.0.1:3000");
     await waitForCommandCenterReady(page);
 
     const section = commandCenter(page);
@@ -130,13 +111,13 @@ test.describe("FASE 6.5 — Comando operativo en /copilot/rutas", () => {
     network.assertNoServerErrors();
   });
 
-  test("quick actions sin reload completo ni duplicados", async ({ page }) => {
+  test("quick actions sin reload completo ni duplicados", async ({ page, baseURL }) => {
     const severe = createSevereCollector();
     const network = createNetworkMonitor();
     severe.attach(page);
     network.attach(page);
 
-    await gotoRutas(page);
+    await gotoRutas(page, baseURL ?? "http://127.0.0.1:3000");
     await waitForCommandCenterReady(page);
 
     const section = commandCenter(page);
@@ -214,12 +195,12 @@ test.describe("FASE 6.5 — Comando operativo en /copilot/rutas", () => {
     network.assertNoServerErrors();
   });
 
-  test("responsive 1366×768 sin overflow horizontal", async ({ page }) => {
+  test("responsive 1366×768 sin overflow horizontal", async ({ page, baseURL }) => {
     const severe = createSevereCollector();
     severe.attach(page);
 
     await page.setViewportSize({ width: 1366, height: 768 });
-    await gotoRutas(page);
+    await gotoRutas(page, baseURL ?? "http://127.0.0.1:3000");
     await waitForCommandCenterReady(page);
 
     await assertNoHorizontalOverflow(page);

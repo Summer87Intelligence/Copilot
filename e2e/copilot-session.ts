@@ -1,15 +1,20 @@
 import type { BrowserContext, Page } from "@playwright/test";
 
-const DEFAULT_SESSION_COOKIE =
-  "22535d5c-3c6d-4bc4-a9a1-550132a1819b:superadmin:040321ff-10fd-4da3-aeca-f1865f879986:1";
-
 function sessionCookieValue(): string {
-  return (
+  const value =
     process.env.PLAYWRIGHT_COPILOT_SESSION?.trim() ||
     process.env.COPILOT_E2E_SESSION?.trim() ||
-    process.env.TREASURY_SMOKE_COOKIE?.trim() ||
-    DEFAULT_SESSION_COOKIE
-  );
+    process.env.TREASURY_SMOKE_COOKIE?.trim();
+
+  if (!value) {
+    throw new Error(
+      [
+        "No hay sesión E2E configurada.",
+        "Exportá PLAYWRIGHT_COPILOT_SESSION, COPILOT_E2E_SESSION o PLAYWRIGHT_COPILOT_USER + PLAYWRIGHT_COPILOT_PIN.",
+      ].join(" ")
+    );
+  }
+  return value;
 }
 
 export async function seedCopilotSessionCookie(
@@ -38,6 +43,21 @@ export async function loginCopilotViaApi(page: Page): Promise<boolean> {
 
 export async function ensureCopilotSession(page: Page, baseURL: string): Promise<void> {
   const loggedIn = await loginCopilotViaApi(page);
-  if (loggedIn) return;
-  await seedCopilotSessionCookie(page.context(), baseURL);
+  if (!loggedIn) {
+    await seedCopilotSessionCookie(page.context(), baseURL);
+  }
+
+  const me = await page.request.get("/api/copilot/me");
+  if (!me.ok()) {
+    const body = await me.text().catch(() => "");
+    throw new Error(
+      [
+        `Sesión Copilot inválida (${me.status()}) en ${baseURL}.`,
+        "Configurá PLAYWRIGHT_COPILOT_SESSION o PLAYWRIGHT_COPILOT_USER / PLAYWRIGHT_COPILOT_PIN.",
+        body ? `Respuesta: ${body}` : "",
+      ]
+        .filter(Boolean)
+        .join(" ")
+    );
+  }
 }

@@ -8,11 +8,13 @@ const criticalTests = [
   "lib/copilot-operational-events.test.ts",
   "lib/copilot-operational-runtime.test.ts",
   "lib/copilot-operational-automation.test.ts",
+  "lib/copilot-operational-governance.test.ts",
   "lib/copilot-rutas-snapshot.test.ts",
   "lib/copilot-rutas-snapshot-health.test.ts",
   "lib/copilot-strategic-recommendations.test.ts",
   "lib/copilot-operational-feed.test.ts",
   "lib/copilot-operational-memory.test.ts",
+  "lib/copilot-operational-telemetry.test.ts",
 ];
 
 const result = spawnSync("npx", ["vitest", "run", ...criticalTests], {

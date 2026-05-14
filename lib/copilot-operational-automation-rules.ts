@@ -1,7 +1,9 @@
 import type { OperationalTimelineItem } from "@/lib/copilot-operational-events-types";
 import type { OperationalMemorySignal } from "@/lib/copilot-operational-memory-types";
+import { AUTOMATION_KIND_RULE_IDS, getOperationalAutomationRule } from "@/lib/copilot-operational-automation-registry";
 import type {
   OperationalAutomationEscalation,
+  OperationalAutomationExplanation,
   OperationalAutomationInput,
   OperationalAutomationItem,
   OperationalAutomationRecommendation,
@@ -14,6 +16,26 @@ import type { WorkflowSignalsInput } from "@/lib/copilot-operational-workflow-si
 
 export const AUTO_ESCALATION_OPEN_MINUTES = 60;
 export const RECURRING_REOPEN_THRESHOLD = 2;
+
+function buildExplanation(
+  ruleId: string,
+  summary: string,
+  reasons: string[],
+  evidence: string[],
+  confidence: OperationalAutomationExplanation["confidence"]
+): OperationalAutomationExplanation {
+  return { ruleId, summary, reasons, evidence, confidence };
+}
+
+function governanceFields(ruleId: string, explanation: OperationalAutomationExplanation) {
+  const rule = getOperationalAutomationRule(ruleId);
+  return {
+    ruleId,
+    riskLevel: rule?.riskLevel ?? "safe",
+    actionMode: rule?.actionMode ?? "suggest_only",
+    explanation,
+  };
+}
 
 function minutesOpen(createdAt: string, now: Date): number {
   const created = new Date(createdAt);
@@ -54,25 +76,44 @@ export function evaluateAutoEscalation(
   if (minutesOpen(workflow.createdAt, input.now) < AUTO_ESCALATION_OPEN_MINUTES) return null;
 
   const baseSeverity = severityFromWorkflow(workflow);
+  const openMinutes = minutesOpen(workflow.createdAt, input.now);
+  const ruleId = AUTOMATION_KIND_RULE_IDS.auto_escalation;
+  const explanation = buildExplanation(
+    ruleId,
+    "Escalado porque el workflow es crítico, no tiene responsable y el SLA está vencido.",
+    [
+      "Workflow crítico o con urgencia alta.",
+      "SLA en estado breached.",
+      "Sin responsable asignado.",
+      `Abierto hace ${openMinutes} minutos.`,
+    ],
+    [
+      `Tipo: ${workflow.type}`,
+      `SLA: ${workflow.slaStatus ?? "sin dato"}`,
+      `Urgencia: ${workflow.urgencyScore ?? 0}`,
+    ],
+    "high"
+  );
   return {
     id: `escalation:${workflow.id}`,
     workflowId: workflow.id,
     title: workflow.title,
-    detail: `Crítico sin responsable con SLA vencido hace ${minutesOpen(workflow.createdAt, input.now)} min.`,
+    detail: `Crítico sin responsable con SLA vencido hace ${openMinutes} min.`,
     severity: bumpSeverity(baseSeverity),
     tags: ["needs_attention"],
     urgencyDelta: 20,
     metadata: {
       dedupeKey: workflow.dedupeKey,
       slaStatus: workflow.slaStatus,
-      openMinutes: minutesOpen(workflow.createdAt, input.now),
+      openMinutes,
     },
+    ...governanceFields(ruleId, explanation),
   };
 }
 
 export function evaluateFollowUpAutomation(
   workflow: OperationalWorkflowExecution,
-  input: OperationalAutomationInput
+  _input: OperationalAutomationInput
 ): {
   automation: OperationalAutomationItem;
   recommendation: OperationalAutomationRecommendation;
@@ -80,6 +121,19 @@ export function evaluateFollowUpAutomation(
   const reopenCount = workflow.lifecycle?.reopenCount ?? 0;
   if (reopenCount < RECURRING_REOPEN_THRESHOLD) return null;
   if (!isOpenWorkflow(workflow)) return null;
+
+  const ruleId = AUTOMATION_KIND_RULE_IDS.follow_up;
+  const explanation = buildExplanation(
+    ruleId,
+    "Seguimiento recomendado porque el workflow se reabrió varias veces con la misma clave.",
+    [
+      `Reaperturas: ${reopenCount}.`,
+      "Workflow aún activo.",
+      "Misma dedupeKey operativa.",
+    ],
+    [`dedupeKey: ${workflow.dedupeKey}`, `workflowId: ${workflow.id}`],
+    reopenCount >= 3 ? "high" : "medium"
+  );
 
   const automation: OperationalAutomationItem = {
     id: `follow-up:${workflow.dedupeKey}`,
@@ -91,6 +145,7 @@ export function evaluateFollowUpAutomation(
     tags: ["follow_up_recommended", "recurrent_issue"],
     severity: reopenCount >= 3 ? "high" : "medium",
     metadata: { reopenCount, dedupeKey: workflow.dedupeKey },
+    ...governanceFields(ruleId, explanation),
   };
 
   const recommendation: OperationalAutomationRecommendation = {
@@ -101,6 +156,7 @@ export function evaluateFollowUpAutomation(
     summary: "Registrar nota operativa y validar si el workflow debe redefinirse.",
     severity: automation.severity,
     metadata: { reopenCount, dedupeKey: workflow.dedupeKey },
+    ...governanceFields(ruleId, explanation),
   };
 
   return { automation, recommendation };
@@ -119,6 +175,15 @@ export function evaluateResolutionSuggestion(
   };
   if (hasWorkflowJustifyingSignal(workflow, signalInput)) return null;
 
+  const ruleId = AUTOMATION_KIND_RULE_IDS.resolution_suggestion;
+  const explanation = buildExplanation(
+    ruleId,
+    "Se sugiere completar el workflow porque la señal operativa ya no lo justifica.",
+    ["Workflow activo y no bloqueado.", "Sin señal vigente en snapshot o acciones."],
+    [`dedupeKey: ${workflow.dedupeKey}`, `estado: ${workflow.status}`],
+    "medium"
+  );
+
   return {
     id: `resolution:${workflow.id}`,
     workflowId: workflow.id,
@@ -127,6 +192,7 @@ export function evaluateResolutionSuggestion(
     summary: "La señal operativa ya no justifica mantenerlo activo.",
     severity: "medium",
     metadata: { dedupeKey: workflow.dedupeKey },
+    ...governanceFields(ruleId, explanation),
   };
 }
 
@@ -171,7 +237,7 @@ export function deriveMemoryMetrics(
 ): OperationalMemoryDerivedMetrics {
   const reopenCount = workflow.lifecycle?.reopenCount ?? 0;
   const relatedEvents = events.filter(
-    (event) => event.entityId === workflow.id || event.eventType.includes("workflow")
+    (event) => event.entityId === workflow.id
   );
   const recurringSignals = memorySignals.filter((signal) =>
     (signal.relatedActionIds ?? []).some((actionId) =>

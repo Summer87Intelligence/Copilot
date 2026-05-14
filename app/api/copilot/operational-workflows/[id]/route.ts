@@ -13,6 +13,7 @@ import {
 import { invalidateOperationalRuntime } from "@/lib/copilot-operational-runtime";
 import { listOperationalActions } from "@/lib/copilot-operational-actions-service";
 import { buildCopilotRutasSnapshot } from "@/lib/copilot-rutas-snapshot";
+import { readCachedRutasSnapshot } from "@/lib/copilot-rutas-snapshot-cache";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import {
   getOperationalWorkflowById,
@@ -22,6 +23,9 @@ import {
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
 
 type RouteContext = { params: Promise<{ id: string }> };
+
+/** Acciones que no cambian el contexto financiero — pueden reusar snapshot cacheado */
+const LIGHTWEIGHT_ACTIONS = new Set(["assign", "block", "unblock", "block_step"]);
 
 function parseMutation(body: unknown): WorkflowMutationInput | null {
   if (!body || typeof body !== "object") return null;
@@ -106,6 +110,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const now = new Date();
+    const actor = {
+      userId: auth.ctx.authUser.id,
+      label: auth.ctx.appUser.full_name?.trim() || auth.ctx.appUser.email,
+    };
+
     const existing = mapOperationalWorkflowRow(existingResult.data as Record<string, unknown>);
     const updated = applyWorkflowMutation(existing, body, now);
     const updateResult = await updateOperationalWorkflowById(
@@ -125,30 +134,36 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       ? mapOperationalWorkflowRow(updateResult.data as Record<string, unknown>)
       : updated;
     const eventBuffer = new OperationalEventRequestBuffer();
-    await recordWorkflowPatchEvents(
-      supabase,
-      existing,
-      persisted,
-      body,
-      {
-        userId: auth.ctx.authUser.id,
-        label: auth.ctx.appUser.full_name?.trim() || auth.ctx.appUser.email,
-      },
-      eventBuffer
-    );
+    await recordWorkflowPatchEvents(supabase, existing, persisted, body, actor, eventBuffer);
 
+    // Invalidación selectiva: mutaciones de workflow no cambian estado financiero/snapshot.
+    // Solo se invalida el snapshot cuando la acción es estructural (complete_step, cancel).
+    const isLightweight = LIGHTWEIGHT_ACTIONS.has(body.action);
     invalidateOperationalRuntime({
       workspaceCompanyId: auth.ctx.tenantCompanyId,
-      snapshot: true,
+      snapshot: !isLightweight,
       workflows: true,
       timeline: true,
       reason: `workflow_${body.action}`,
     });
 
+    // Para acciones ligeras: intentar reusar el snapshot cacheado para reducir latencia.
+    const cachedSnapshot = isLightweight
+      ? readCachedRutasSnapshot(auth.ctx.tenantCompanyId)
+      : null;
+
     const [snapshot, actionsResult] = await Promise.all([
-      buildCopilotRutasSnapshot(supabase, auth.ctx.tenantCompanyId, now),
+      cachedSnapshot ?? buildCopilotRutasSnapshot(supabase, auth.ctx.tenantCompanyId, now),
       listOperationalActions(supabase, auth.ctx.tenantCompanyId, 120),
     ]);
+
+    if (cachedSnapshot) {
+      log.debug("copilot_workflow_patch_snapshot_cache_hit", {
+        action: body.action,
+        workflow_id: id,
+      });
+    }
+
     const actions = actionsResult.ok ? actionsResult.data ?? [] : [];
     const { response } = await buildOperationalWorkflows(
       supabase,
@@ -158,9 +173,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         snapshot,
         actions,
       },
-      { eventBuffer }
+      { eventBuffer, actor }
     );
     const workflow = response.workflows.find((row) => row.id === id) ?? persisted;
+
+    log.info("copilot_workflow_patched", {
+      workflow_id: id,
+      action: body.action,
+      snapshot_from_cache: cachedSnapshot !== null,
+    });
 
     return NextResponse.json({ ok: true as const, workflow, workflows: response.workflows });
   } catch (error) {

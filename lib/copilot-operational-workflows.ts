@@ -10,7 +10,17 @@ import {
   listOperationalTimeline,
 } from "@/lib/copilot-operational-events";
 import { runOperationalAutomations } from "@/lib/copilot-operational-automation-engine";
+import { getOperationalAutomationRule } from "@/lib/copilot-operational-automation-registry";
+import {
+  hydrateGovernanceStateFromDb,
+  persistGovernanceAuditToDb,
+  pruneExpiredCooldowns,
+  rememberAutomationGovernanceRun,
+  getGovernanceContextForWorkspace,
+} from "@/lib/copilot-operational-governance";
+import type { OperationalGovernedAutomation } from "@/lib/copilot-operational-governance-types";
 import { summarizeAutomationMetadata } from "@/lib/copilot-operational-automation-rules";
+import { recordRebuildMetric } from "@/lib/copilot-operational-telemetry";
 import type { OperationalEventActor } from "@/lib/copilot-operational-events-types";
 import {
   applyWorkflowCancelLifecycle,
@@ -93,8 +103,16 @@ export async function buildOperationalWorkflows(
   input: OperationalWorkflowsBuildInput,
   context?: OperationalWorkflowBuildContext
 ): Promise<WorkflowMergeResult> {
+  const buildStart = Date.now();
   const warnings: OperationalWorkflowsHealth["warnings"] = [];
   let existing: OperationalWorkflowExecution[] = [];
+
+  // Hidratar governance desde DB si aún no se cargó en este proceso
+  await hydrateGovernanceStateFromDb(client, input.workspaceCompanyId);
+
+  // Podar cooldowns expirados para mantener el Map acotado
+  const governanceCtx = getGovernanceContextForWorkspace(input.workspaceCompanyId, input.now);
+  pruneExpiredCooldowns(governanceCtx);
 
   const listResult = await listOperationalWorkflows(client, input.workspaceCompanyId);
   if (listResult.error) {
@@ -138,6 +156,26 @@ export async function buildOperationalWorkflows(
     automationRun.escalations,
     automationRun.recommendations
   );
+  const governedAutomations: OperationalGovernedAutomation[] = [];
+  for (const automation of automationRun.automations) {
+    const rule = getOperationalAutomationRule(automation.ruleId);
+    if (!rule) continue;
+    const recommendation = automationRun.recommendations.find(
+      (item) => item.workflowId === automation.workflowId && item.ruleId === automation.ruleId
+    );
+    governedAutomations.push({
+      automation,
+      recommendation,
+      rule,
+      explanation: automation.explanation,
+    });
+  }
+  rememberAutomationGovernanceRun(input.workspaceCompanyId, automationRun, governedAutomations);
+
+  // Persistir audit events a DB (fire-and-forget, no bloquea)
+  if (automationRun.auditEvents && automationRun.auditEvents.length > 0) {
+    persistGovernanceAuditToDb(client, input.workspaceCompanyId, automationRun.auditEvents);
+  }
 
   const persistedById = new Map(
     automationRun.workflows.map((workflow) => [workflow.id, workflow])
@@ -209,6 +247,18 @@ export async function buildOperationalWorkflows(
   reconciled.response.workflows = workflows;
   reconciled.response.hasSuppressedWorkflows = reconciled.hasSuppressedWorkflows;
   logWorkflowObservability(reconciled.stats);
+
+  recordRebuildMetric({
+    workspaceCompanyId: input.workspaceCompanyId,
+    durationMs: Date.now() - buildStart,
+    workflowCount: workflows.length,
+    emittedEventCount: automationRun.auditEvents?.length ?? 0,
+    automationCount: automationRun.automations.length,
+    degraded: health.status !== "ok",
+    rebuildReason: context?.actor?.label ? `actor:${context.actor.label}` : "system",
+    phase: "full",
+    timestamp: input.now.toISOString(),
+  });
 
   return {
     response: reconciled.response,
@@ -327,10 +377,10 @@ export function isWorkflowStepOverdue(
   workflowStatus: WorkflowExecutionStatus
 ): boolean {
   if (step.status === "completed" || step.status === "skipped") return false;
+  if (workflowStatus === "completed" || workflowStatus === "cancelled") return false;
   if (!step.dueAt) {
     if (!step.activatedAt) return false;
     return now.getTime() - new Date(step.activatedAt).getTime() > STEP_SLA_MS;
   }
-  if (!step.dueAt || workflowStatus === "completed" || workflowStatus === "cancelled") return false;
   return new Date(step.dueAt).getTime() < now.getTime();
 }

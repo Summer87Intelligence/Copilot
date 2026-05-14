@@ -1,6 +1,7 @@
 "use client";
 
 import { CopilotCard, CopilotPrimaryLink } from "@/components/copilot/copilot-ui";
+import { RutasActiveAutomationsSection } from "@/components/copilot/rutas/rutas-active-automations-section";
 import { RutasAlertsPreviewSection } from "@/components/copilot/rutas/rutas-alerts-preview-section";
 import { RutasDayStatusSection } from "@/components/copilot/rutas/rutas-day-status-section";
 import { RutasDecisionRoutesSection } from "@/components/copilot/rutas/rutas-decision-routes-section";
@@ -76,6 +77,8 @@ export function RutasCommandCenterBody({
           <RutasTreasuryPressureSection />
 
           <RutasSnapshotHealthNotice health={health} />
+
+          <RutasActiveAutomationsSection />
 
           <RutasStrategicRecommendationsSection />
 

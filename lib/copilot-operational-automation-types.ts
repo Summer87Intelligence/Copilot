@@ -19,6 +19,30 @@ export type OperationalAutomationTag =
 
 export type OperationalAutomationSeverity = "low" | "medium" | "high" | "critical";
 
+export type OperationalAutomationRuleCategory =
+  | "sla"
+  | "recurrence"
+  | "resolution"
+  | "linking"
+  | "ownership"
+  | "risk";
+
+export type OperationalAutomationRuleRiskLevel = "safe" | "supervised" | "restricted";
+
+export type OperationalAutomationActionMode =
+  | "suggest_only"
+  | "auto_flag"
+  | "auto_event"
+  | "requires_confirmation";
+
+export type OperationalAutomationExplanation = {
+  summary: string;
+  reasons: string[];
+  evidence: string[];
+  ruleId: string;
+  confidence: "high" | "medium" | "low";
+};
+
 export type OperationalMemoryDerivedMetrics = {
   recurrenceScore: number;
   reopenFrequency: number;
@@ -35,6 +59,10 @@ export type OperationalAutomationItem = {
   summary: string;
   tags: OperationalAutomationTag[];
   severity: OperationalAutomationSeverity;
+  ruleId: string;
+  riskLevel: OperationalAutomationRuleRiskLevel;
+  actionMode: OperationalAutomationActionMode;
+  explanation: OperationalAutomationExplanation;
   metadata?: Record<string, unknown>;
 };
 
@@ -46,6 +74,10 @@ export type OperationalAutomationEscalation = {
   severity: OperationalAutomationSeverity;
   tags: OperationalAutomationTag[];
   urgencyDelta: number;
+  ruleId: string;
+  riskLevel: OperationalAutomationRuleRiskLevel;
+  actionMode: OperationalAutomationActionMode;
+  explanation: OperationalAutomationExplanation;
   metadata?: Record<string, unknown>;
 };
 
@@ -56,8 +88,14 @@ export type OperationalAutomationRecommendation = {
   title: string;
   summary: string;
   severity: OperationalAutomationSeverity;
+  ruleId: string;
+  riskLevel: OperationalAutomationRuleRiskLevel;
+  actionMode: OperationalAutomationActionMode;
+  explanation: OperationalAutomationExplanation;
   metadata?: Record<string, unknown>;
 };
+
+import type { OperationalAutomationAuditEvent } from "@/lib/copilot-operational-governance-types";
 
 export type OperationalAutomationResult = {
   automations: OperationalAutomationItem[];
@@ -65,6 +103,7 @@ export type OperationalAutomationResult = {
   recommendations: OperationalAutomationRecommendation[];
   memoryDerived: Record<string, OperationalMemoryDerivedMetrics>;
   computedAt: string;
+  auditEvents?: OperationalAutomationAuditEvent[];
 };
 
 export type OperationalAutomationInput = {
