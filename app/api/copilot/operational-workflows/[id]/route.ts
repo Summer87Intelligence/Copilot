@@ -6,9 +6,13 @@ import {
   buildOperationalWorkflows,
 } from "@/lib/copilot-operational-workflows";
 import type { WorkflowMutationInput } from "@/lib/copilot-operational-workflows-types";
+import {
+  OperationalEventRequestBuffer,
+  recordWorkflowPatchEvents,
+} from "@/lib/copilot-operational-events";
+import { invalidateOperationalRuntime } from "@/lib/copilot-operational-runtime";
 import { listOperationalActions } from "@/lib/copilot-operational-actions-service";
 import { buildCopilotRutasSnapshot } from "@/lib/copilot-rutas-snapshot";
-import { invalidateCachedRutasSnapshot } from "@/lib/copilot-rutas-snapshot-cache";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import {
   getOperationalWorkflowById,
@@ -117,24 +121,46 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
-    invalidateCachedRutasSnapshot(auth.ctx.tenantCompanyId);
+    const persisted = updateResult.data
+      ? mapOperationalWorkflowRow(updateResult.data as Record<string, unknown>)
+      : updated;
+    const eventBuffer = new OperationalEventRequestBuffer();
+    await recordWorkflowPatchEvents(
+      supabase,
+      existing,
+      persisted,
+      body,
+      {
+        userId: auth.ctx.authUser.id,
+        label: auth.ctx.appUser.full_name?.trim() || auth.ctx.appUser.email,
+      },
+      eventBuffer
+    );
+
+    invalidateOperationalRuntime({
+      workspaceCompanyId: auth.ctx.tenantCompanyId,
+      snapshot: true,
+      workflows: true,
+      timeline: true,
+      reason: `workflow_${body.action}`,
+    });
 
     const [snapshot, actionsResult] = await Promise.all([
       buildCopilotRutasSnapshot(supabase, auth.ctx.tenantCompanyId, now),
       listOperationalActions(supabase, auth.ctx.tenantCompanyId, 120),
     ]);
     const actions = actionsResult.ok ? actionsResult.data ?? [] : [];
-    const { response } = await buildOperationalWorkflows(supabase, {
-      workspaceCompanyId: auth.ctx.tenantCompanyId,
-      now,
-      snapshot,
-      actions,
-    });
-    const workflow =
-      response.workflows.find((row) => row.id === id) ??
-      (updateResult.data
-        ? mapOperationalWorkflowRow(updateResult.data as Record<string, unknown>)
-        : updated);
+    const { response } = await buildOperationalWorkflows(
+      supabase,
+      {
+        workspaceCompanyId: auth.ctx.tenantCompanyId,
+        now,
+        snapshot,
+        actions,
+      },
+      { eventBuffer }
+    );
+    const workflow = response.workflows.find((row) => row.id === id) ?? persisted;
 
     return NextResponse.json({ ok: true as const, workflow, workflows: response.workflows });
   } catch (error) {

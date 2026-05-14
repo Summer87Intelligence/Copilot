@@ -34,6 +34,23 @@ export type WorkflowExecutionStep = {
   metadata?: Record<string, unknown>;
 };
 
+export type WorkflowSlaStatus = "healthy" | "warning" | "breached";
+
+export type WorkflowLifecycleContext = {
+  suppressedUntil?: string | null;
+  suppressedReason?: string | null;
+  lastCancelledAt?: string | null;
+  lastSignalHash?: string | null;
+  reopenCount?: number;
+  lastUrgencyScore?: number;
+};
+
+export type WorkflowRelatedCounts = {
+  actions: number;
+  alerts: number;
+  insights: number;
+};
+
 export type OperationalWorkflowExecution = {
   id: string;
   workspaceCompanyId: string;
@@ -49,6 +66,12 @@ export type OperationalWorkflowExecution = {
   assignedUserId?: string | null;
   nextDueAt: string | null;
   isOverdue: boolean;
+  slaStatus?: WorkflowSlaStatus;
+  slaDueAt?: string | null;
+  urgencyScore?: number;
+  lifecycle?: WorkflowLifecycleContext;
+  relatedCounts?: WorkflowRelatedCounts;
+  suppressed?: boolean;
   steps: WorkflowExecutionStep[];
   createdAt: string;
   updatedAt: string;
@@ -66,6 +89,7 @@ export type OperationalWorkflowsResponse = {
   workflows: OperationalWorkflowExecution[];
   generatedAt: string;
   health: OperationalWorkflowsHealth;
+  hasSuppressedWorkflows?: boolean;
 };
 
 export type WorkflowMutationAction =

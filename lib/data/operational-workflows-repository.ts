@@ -5,6 +5,7 @@ import type {
   OperationalWorkflowType,
   WorkflowExecutionStatus,
   WorkflowExecutionStep,
+  WorkflowLifecycleContext,
 } from "@/lib/copilot-operational-workflows-types";
 
 const WORKFLOW_SELECT =
@@ -42,6 +43,17 @@ function readContextStringArray(
   return value.map((entry) => String(entry));
 }
 
+function readLifecycleFromContext(context: Record<string, unknown>): WorkflowLifecycleContext {
+  return {
+    suppressedUntil: context.suppressedUntil != null ? String(context.suppressedUntil) : null,
+    suppressedReason: context.suppressedReason != null ? String(context.suppressedReason) : null,
+    lastCancelledAt: context.lastCancelledAt != null ? String(context.lastCancelledAt) : null,
+    lastSignalHash: context.lastSignalHash != null ? String(context.lastSignalHash) : null,
+    reopenCount: Number(context.reopenCount ?? 0),
+    lastUrgencyScore: Number(context.lastUrgencyScore ?? 0),
+  };
+}
+
 export function mapOperationalWorkflowRow(row: Record<string, unknown>): OperationalWorkflowExecution {
   const steps = Array.isArray(row.steps)
     ? (row.steps as WorkflowExecutionStep[])
@@ -74,6 +86,7 @@ export function mapOperationalWorkflowRow(row: Record<string, unknown>): Operati
     relatedActionIds: readContextStringArray(context, "relatedActionIds"),
     relatedNarrativeIds: readContextStringArray(context, "relatedNarrativeIds"),
     relatedMemoryIds: readContextStringArray(context, "relatedMemoryIds"),
+    lifecycle: readLifecycleFromContext(context),
   };
 }
 
@@ -107,6 +120,12 @@ export function executionToWorkflowRow(
       relatedActionIds: execution.relatedActionIds ?? [],
       relatedNarrativeIds: execution.relatedNarrativeIds ?? [],
       relatedMemoryIds: execution.relatedMemoryIds ?? [],
+      suppressedUntil: execution.lifecycle?.suppressedUntil ?? null,
+      suppressedReason: execution.lifecycle?.suppressedReason ?? null,
+      lastCancelledAt: execution.lifecycle?.lastCancelledAt ?? null,
+      lastSignalHash: execution.lifecycle?.lastSignalHash ?? null,
+      reopenCount: execution.lifecycle?.reopenCount ?? 0,
+      lastUrgencyScore: execution.lifecycle?.lastUrgencyScore ?? execution.urgencyScore ?? 0,
     },
     steps: execution.steps,
     progress: execution.progressPercent,

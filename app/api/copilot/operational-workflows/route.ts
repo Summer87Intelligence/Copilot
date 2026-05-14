@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { listOperationalActions } from "@/lib/copilot-operational-actions-service";
 import { buildOperationalWorkflows } from "@/lib/copilot-operational-workflows";
+import { OperationalEventRequestBuffer } from "@/lib/copilot-operational-events";
+import { invalidateOperationalRuntime } from "@/lib/copilot-operational-runtime";
 import { buildCopilotRutasSnapshot } from "@/lib/copilot-rutas-snapshot";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
@@ -31,12 +33,33 @@ export async function GET(request: NextRequest) {
       listOperationalActions(supabase, auth.ctx.tenantCompanyId, 120),
     ]);
     const actions = actionsResult.ok ? actionsResult.data ?? [] : [];
-    const { response } = await buildOperationalWorkflows(supabase, {
-      workspaceCompanyId: auth.ctx.tenantCompanyId,
-      now,
-      snapshot,
-      actions,
-    });
+    const eventBuffer = new OperationalEventRequestBuffer();
+    const { response } = await buildOperationalWorkflows(
+      supabase,
+      {
+        workspaceCompanyId: auth.ctx.tenantCompanyId,
+        now,
+        snapshot,
+        actions,
+      },
+      {
+        eventBuffer,
+        actor: {
+          userId: auth.ctx.authUser.id,
+          label: auth.ctx.appUser.full_name?.trim() || auth.ctx.appUser.email,
+        },
+      }
+    );
+
+    if (response.workflows.length > 0) {
+      invalidateOperationalRuntime({
+        workspaceCompanyId: auth.ctx.tenantCompanyId,
+        snapshot: true,
+        workflows: true,
+        timeline: true,
+        reason: "workflow_sync",
+      });
+    }
 
     return NextResponse.json({ ok: true as const, ...response });
   } catch (error) {

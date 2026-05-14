@@ -13,6 +13,7 @@ import {
   type OperationalActionStatus,
 } from "@/lib/copilot-operational-actions-types";
 import { buildAccionesHrefFromAlert } from "@/lib/copilot-alert-ops-mapper";
+import { recordOperationalActionPatchEvents } from "@/lib/copilot-operational-events";
 import { summarizeOperationalSla } from "@/lib/copilot-operational-actions-sla";
 import {
   insertOperationalAction,
@@ -327,7 +328,13 @@ export async function patchOperationalAction(
     if (!eventResult.ok) return eventResult as ProtoCrudResult<OperationalActionListItem>;
   }
 
-  return protoCrudResult.ok(mapOperationalActionRow(data), "Acción actualizada.");
+  const updatedAction = mapOperationalActionRow(data);
+  await recordOperationalActionPatchEvents(client, wid, updatedAction, events, {
+    userId: actor.id,
+    label: actor.label,
+  });
+
+  return protoCrudResult.ok(updatedAction, "Acción actualizada.");
 }
 
 export async function listOperationalActionEvents(

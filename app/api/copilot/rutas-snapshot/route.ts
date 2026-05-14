@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import {
+  OperationalEventRequestBuffer,
+  recordSnapshotDegradedEvent,
+} from "@/lib/copilot-operational-events";
 import { buildCopilotRutasSnapshot } from "@/lib/copilot-rutas-snapshot";
 import {
   readCachedRutasSnapshot,
@@ -58,6 +62,20 @@ export async function GET(request: NextRequest) {
         : auth.ctx.supabase;
 
     const data = await buildCopilotRutasSnapshot(supabase, auth.ctx.tenantCompanyId);
+    if (data.health.status === "degraded") {
+      const eventBuffer = new OperationalEventRequestBuffer();
+      await recordSnapshotDegradedEvent(
+        supabase,
+        auth.ctx.tenantCompanyId,
+        data.health.warnings.map((warning) => warning.message).join(" · "),
+        {
+          status: data.health.status,
+          warnings: data.health.warnings,
+        },
+        { label: "Sistema" },
+        eventBuffer
+      );
+    }
     if (data.health.status !== "error") {
       writeCachedRutasSnapshot(auth.ctx.tenantCompanyId, data);
     }

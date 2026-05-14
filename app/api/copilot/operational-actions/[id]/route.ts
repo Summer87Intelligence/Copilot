@@ -4,7 +4,7 @@ import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body
 import { operationalActionPatchBodySchema } from "@/lib/api/schemas/copilot-api-bodies";
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { patchOperationalAction } from "@/lib/copilot-operational-actions-service";
-import { invalidateCachedRutasSnapshot } from "@/lib/copilot-rutas-snapshot-cache";
+import { invalidateOperationalRuntime } from "@/lib/copilot-operational-runtime";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -57,7 +57,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: result.message }, { status });
     }
 
-    invalidateCachedRutasSnapshot(auth.ctx.tenantCompanyId);
+    invalidateOperationalRuntime({
+      workspaceCompanyId: auth.ctx.tenantCompanyId,
+      snapshot: true,
+      timeline: true,
+      reason: "action_patch",
+    });
 
     return NextResponse.json({ action: result.data, message: result.message });
   } catch (error) {
