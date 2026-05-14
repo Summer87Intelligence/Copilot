@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import {
@@ -10,11 +10,13 @@ import {
   CopilotGhostButton,
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
+import { useRutasOperationalFeedSnapshot } from "@/components/copilot/rutas/rutas-operational-feed-context";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
+import { compareWorkflowPriority } from "@/lib/copilot-operational-workflow-scoring";
 import type {
   OperationalWorkflowExecution,
-  OperationalWorkflowsResponse,
   WorkflowExecutionStep,
+  WorkflowSlaStatus,
 } from "@/lib/copilot-operational-workflows-types";
 
 type OperatorMe = {
@@ -85,6 +87,18 @@ function WorkflowStepRow({ step }: { step: WorkflowExecutionStep }) {
   );
 }
 
+function slaTone(status?: WorkflowSlaStatus): "neutral" | "warning" | "danger" | "success" {
+  if (status === "breached") return "danger";
+  if (status === "warning") return "warning";
+  return "success";
+}
+
+function slaLabel(status?: WorkflowSlaStatus): string {
+  if (status === "breached") return "SLA vencido";
+  if (status === "warning") return "SLA en riesgo";
+  return "SLA en plazo";
+}
+
 function GuidedWorkflowCard({
   workflow,
   busy,
@@ -117,6 +131,8 @@ function GuidedWorkflowCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <CopilotBadge tone={statusTone(workflow.status)}>{STATUS_LABEL[workflow.status]}</CopilotBadge>
+            <CopilotBadge tone="warning">Urgencia {workflow.urgencyScore ?? 0}</CopilotBadge>
+            <CopilotBadge tone={slaTone(workflow.slaStatus)}>{slaLabel(workflow.slaStatus)}</CopilotBadge>
             <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
               {workflow.type.replaceAll("_", " ")}
             </span>
@@ -130,6 +146,12 @@ function GuidedWorkflowCard({
                 ? ` · ${workflow.ownerLabel}`
                 : " · Sin responsable"}
             {workflow.nextDueAt ? ` · vence ${formatRelativeTime(workflow.nextDueAt)}` : ""}
+            {workflow.relatedCounts
+              ? ` · ${workflow.relatedCounts.actions} acc · ${workflow.relatedCounts.alerts} alertas · ${workflow.relatedCounts.insights} insights`
+              : ""}
+            {(workflow.lifecycle?.reopenCount ?? 0) > 0
+              ? ` · Reabierto ${workflow.lifecycle?.reopenCount}×`
+              : ""}
           </p>
           <p className="mt-1 text-[11px] text-[var(--copilot-ink)]">
             Paso actual:{" "}
@@ -216,40 +238,12 @@ function GuidedWorkflowCard({
 }
 
 export function RutasGuidedWorkflowsSection() {
-  const [workflows, setWorkflows] = useState<OperationalWorkflowExecution[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { workflows, loading, refresh } = useRutasOperationalFeedSnapshot();
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [busyWorkflowId, setBusyWorkflowId] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [operator, setOperator] = useState<OperatorMe | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await copilotApiFetch("/api/copilot/operational-workflows");
-      const json = (await res.json()) as OperationalWorkflowsResponse & {
-        ok?: boolean;
-        message?: string;
-      };
-      if (!res.ok || json.ok === false) {
-        setWorkflows([]);
-        setError(json.message ?? "No se pudieron cargar los workflows operativos.");
-        return;
-      }
-      setWorkflows(json.workflows ?? []);
-    } catch {
-      setWorkflows([]);
-      setError("Error de red al cargar ejecución guiada.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   useEffect(() => {
     void (async () => {
@@ -265,22 +259,20 @@ export function RutasGuidedWorkflowsSection() {
 
   const preview = useMemo(
     () =>
-      workflows.filter(
-        (workflow) => workflow.status === "active" || workflow.status === "blocked"
-      ),
+      workflows
+        .filter((workflow) => workflow.status === "active" || workflow.status === "blocked")
+        .sort(compareWorkflowPriority),
     [workflows]
   );
 
   const mutateWorkflow = async (
     workflow: OperationalWorkflowExecution,
     body: Record<string, unknown>,
-    optimistic: OperationalWorkflowExecution,
+    _optimistic: OperationalWorkflowExecution,
     successMessage: string
   ) => {
-    const backup = workflows;
     setBusyWorkflowId(workflow.id);
     setFeedback(null);
-    setWorkflows((prev) => prev.map((row) => (row.id === workflow.id ? optimistic : row)));
     setFeedback(successMessage);
     try {
       const res = await copilotApiFetch(`/api/copilot/operational-workflows/${workflow.id}`, {
@@ -290,22 +282,15 @@ export function RutasGuidedWorkflowsSection() {
       });
       const json = (await res.json()) as {
         ok?: boolean;
-        workflows?: OperationalWorkflowExecution[];
         message?: string;
       };
       if (!res.ok || json.ok === false) {
-        setWorkflows(backup);
         setFeedback(null);
         setError(json.message ?? "No se pudo actualizar el workflow.");
         return;
       }
-      if (json.workflows) {
-        setWorkflows(json.workflows);
-      } else {
-        await load();
-      }
+      await refresh({ fresh: true, silent: true });
     } catch {
-      setWorkflows(backup);
       setFeedback(null);
       setError("Error de red al actualizar el workflow.");
     } finally {

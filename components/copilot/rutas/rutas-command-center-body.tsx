@@ -10,6 +10,7 @@ import { RutasOperationalMemorySection } from "@/components/copilot/rutas/rutas-
 import { RutasStrategicRecommendationsSection } from "@/components/copilot/rutas/rutas-strategic-recommendations-section";
 import { RutasOperationalNarrativesSection } from "@/components/copilot/rutas/rutas-operational-narratives-section";
 import { RutasMoreOptionsSection } from "@/components/copilot/rutas/rutas-more-options-section";
+import { RutasOperationalCommandCenterSection } from "@/components/copilot/rutas/rutas-operational-command-center-section";
 import { RutasGuidedWorkflowsSection } from "@/components/copilot/rutas/rutas-guided-workflows-section";
 import { RutasOperationalFeedSection } from "@/components/copilot/rutas/rutas-operational-feed-section";
 import { useRutasOperationalFeedSnapshot } from "@/components/copilot/rutas/rutas-operational-feed-context";
@@ -77,6 +78,8 @@ export function RutasCommandCenterBody({
           <RutasSnapshotHealthNotice health={health} />
 
           <RutasStrategicRecommendationsSection />
+
+          <RutasOperationalCommandCenterSection />
 
           <RutasOperationalNarrativesSection />
 

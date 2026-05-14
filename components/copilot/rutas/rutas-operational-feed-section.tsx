@@ -13,7 +13,6 @@ import {
 } from "@/components/copilot/copilot-ui";
 import { useRutasOperationalFeedSnapshot } from "@/components/copilot/rutas/rutas-operational-feed-context";
 import type { RutasOptimisticActionPatch } from "@/components/copilot/rutas/rutas-operational-feed-context";
-import { buildOperationalActionHref } from "@/lib/copilot-alert-ops-mapper";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import {
   COPILOT_UI_STATE_KEYS,
@@ -23,12 +22,9 @@ import {
 import type {
   OperationalFeedGroup,
   OperationalFeedItem,
-  OperationalFeedTimelineItem,
 } from "@/lib/copilot-operational-feed-types";
-import {
-  mapOperationalEventLabel,
-  mapOperationalSlaLabel,
-} from "@/lib/copilot-operational-actions-format";
+import type { OperationalTimelineItem } from "@/lib/copilot-operational-events-types";
+import { mapOperationalSlaLabel } from "@/lib/copilot-operational-actions-format";
 import type { OperationalActionSlaStatus } from "@/lib/copilot-operational-actions-types";
 
 type OperatorMe = {
@@ -322,30 +318,33 @@ function FeedGroupCard({
   );
 }
 
-function TimelineRow({ event }: { event: OperationalFeedTimelineItem }) {
+function TimelineRow({ event }: { event: OperationalTimelineItem }) {
   return (
     <li className="grid grid-cols-[minmax(4.5rem,auto)_1fr_auto] items-baseline gap-x-2 gap-y-0.5 border-b border-[var(--copilot-border)]/40 py-1 text-[11px] last:border-b-0">
       <span className="font-semibold tabular-nums text-[var(--copilot-ink)]">
-        {formatRelativeTime(event.createdAt)}
+        {formatRelativeTime(event.occurredAt)}
       </span>
       <span className="min-w-0 text-[var(--copilot-ink-muted)]">
         <span className="mr-1 inline-flex align-middle">
-          <CopilotBadge tone="neutral">{mapOperationalEventLabel(event.eventType)}</CopilotBadge>
+          <CopilotBadge tone={event.severity === "danger" ? "danger" : event.severity === "success" ? "success" : "neutral"}>
+            {event.typeLabel}
+          </CopilotBadge>
         </span>
-        <span className="align-middle text-[var(--copilot-ink)]">
-          {event.actionTitle ?? "Seguimiento"}
-        </span>
+        <span className="align-middle text-[var(--copilot-ink)]">{event.entityLabel}</span>
         <span className="align-middle text-[var(--copilot-ink-muted)]">
           {" "}
           · {event.actorLabel ?? "Sistema"}
         </span>
-        {event.detailSummary ? (
-          <span className="block text-[10px] text-[var(--copilot-ink-muted)]">{event.detailSummary}</span>
+        {event.contextLabel ? (
+          <span className="block text-[10px] text-[var(--copilot-ink-muted)]">{event.contextLabel}</span>
+        ) : null}
+        {event.detail ? (
+          <span className="block text-[10px] text-[var(--copilot-ink-muted)]">{event.detail}</span>
         ) : null}
       </span>
-      {event.actionId ? (
+      {event.href ? (
         <Link
-          href={buildOperationalActionHref(event.actionId)}
+          href={event.href}
           className="shrink-0 text-[10px] font-medium text-[var(--copilot-ink-muted)] underline-offset-2 hover:text-[var(--copilot-ink)] hover:underline"
         >
           Abrir
@@ -391,7 +390,6 @@ function EmptyOperationalCenter() {
 export function RutasOperationalFeedSection() {
   const {
     groups,
-    timeline,
     loading,
     error,
     actionFeedback,
@@ -399,15 +397,18 @@ export function RutasOperationalFeedSection() {
     applyOptimisticActionPatch,
     restoreOptimisticSnapshot,
     setActionFeedback,
+    operationalEvents,
   } = useRutasOperationalFeedSnapshot();
   const [operator, setOperator] = useState<OperatorMe | null>(null);
   const [busyActionId, setBusyActionId] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
   const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(new Set());
-  const [compact, setCompact] = useState(() =>
-    readCopilotUiBoolean(COPILOT_UI_STATE_KEYS.rutasOperationalFeedCompact, false)
-  );
+  const [compact, setCompact] = useState(false);
+
+  useEffect(() => {
+    setCompact(readCopilotUiBoolean(COPILOT_UI_STATE_KEYS.rutasOperationalFeedCompact, false));
+  }, []);
 
   useEffect(() => {
     void (async () => {
@@ -498,12 +499,12 @@ export function RutasOperationalFeedSection() {
   const isExpanded = (group: OperationalFeedGroup) =>
     expandedGroupIds.has(group.id) || !group.collapsedByDefault;
 
-  const hasSignal = groups.length > 0 || timeline.length > 0;
+  const hasSignal = groups.length > 0 || operationalEvents.length > 0 || loading;
   const filteredGroups = useMemo(
     () => groups.filter((group) => matchesOwnershipFilter(group, ownershipFilter, operator)),
     [groups, operator, ownershipFilter]
   );
-  const timelinePreview = useMemo(() => timeline.slice(0, 5), [timeline]);
+  const timelinePreview = useMemo(() => operationalEvents.slice(0, 10), [operationalEvents]);
 
   return (
     <section className={`border-t border-[var(--copilot-border)]/50 ${hasSignal || loading ? "pt-2.5" : "pt-1.5"}`}>
@@ -627,7 +628,17 @@ export function RutasOperationalFeedSection() {
             </div>
           ) : null}
 
-          {timelinePreview.length > 0 ? (
+          {loading ? (
+            <CopilotCard className="border border-[var(--copilot-border)]/70 bg-white/60 px-2.5 py-1.5 shadow-none">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                Actividad reciente
+              </p>
+              <div className="mt-1 flex items-center gap-1.5 text-[11px] text-[var(--copilot-ink-muted)]">
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                Cargando actividad…
+              </div>
+            </CopilotCard>
+          ) : timelinePreview.length > 0 ? (
             <CopilotCard className="border border-[var(--copilot-border)]/70 bg-white/60 px-2.5 py-1.5 shadow-none">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Actividad reciente

@@ -19,6 +19,8 @@ import type {
   CopilotRutasSnapshotApiResponse,
   SnapshotHealth,
 } from "@/lib/copilot-rutas-snapshot-types";
+import type { OperationalTimelineItem } from "@/lib/copilot-operational-events-types";
+import type { OperationalWorkflowExecution } from "@/lib/copilot-operational-workflows-types";
 import type { StrategicRecommendation } from "@/lib/copilot-strategic-recommendations-types";
 
 type RutasOperationalTimelineItem = {
@@ -59,6 +61,8 @@ type RutasOperationalSnapshotContextValue = {
   memorySignals: OperationalMemorySignal[];
   narratives: OperationalNarrative[];
   recommendations: StrategicRecommendation[];
+  workflows: OperationalWorkflowExecution[];
+  operationalEvents: OperationalTimelineItem[];
   health: SnapshotHealth | null;
   loading: boolean;
   error: string | null;
@@ -86,6 +90,8 @@ function emptySnapshotState(): Omit<
     memorySignals: [],
     narratives: [],
     recommendations: [],
+    workflows: [],
+    operationalEvents: [],
     health: null,
   };
 }
@@ -139,6 +145,22 @@ async function loadRutasSnapshot(fresh = false): Promise<CopilotRutasSnapshotApi
   return (await res.json()) as CopilotRutasSnapshotApiResponse;
 }
 
+async function loadOperationalWorkflows() {
+  const res = await copilotApiFetch("/api/copilot/operational-workflows");
+  return (await res.json()) as {
+    ok?: boolean;
+    workflows?: OperationalWorkflowExecution[];
+  };
+}
+
+async function loadOperationalEvents() {
+  const res = await copilotApiFetch("/api/copilot/operational-events?limit=10");
+  return (await res.json()) as {
+    ok?: boolean;
+    events?: OperationalTimelineItem[];
+  };
+}
+
 export function RutasOperationalFeedProvider({ children }: { children: ReactNode }) {
   const [snapshot, setSnapshot] = useState(emptySnapshotState);
   const [loading, setLoading] = useState(true);
@@ -147,7 +169,11 @@ export function RutasOperationalFeedProvider({ children }: { children: ReactNode
   const optimisticBackupRef = useRef<ReturnType<typeof emptySnapshotState> | null>(null);
 
   const applySnapshotPayload = useCallback(
-    (payload: Extract<CopilotRutasSnapshotApiResponse, { ok: true }>) => {
+    (
+      payload: Extract<CopilotRutasSnapshotApiResponse, { ok: true }>,
+      workflows: OperationalWorkflowExecution[],
+      operationalEvents: OperationalTimelineItem[]
+    ) => {
       setSnapshot({
         generatedAt: payload.data.generatedAt,
         items: payload.data.feed.items,
@@ -157,6 +183,8 @@ export function RutasOperationalFeedProvider({ children }: { children: ReactNode
         memorySignals: payload.data.memory,
         narratives: payload.data.narratives,
         recommendations: payload.data.recommendations,
+        workflows,
+        operationalEvents,
         health: payload.data.health,
       });
     },
@@ -169,7 +197,11 @@ export function RutasOperationalFeedProvider({ children }: { children: ReactNode
     }
     setError(null);
     try {
-      const payload = await loadRutasSnapshot(Boolean(options?.fresh));
+      const [payload, workflowsPayload, eventsPayload] = await Promise.all([
+        loadRutasSnapshot(Boolean(options?.fresh)),
+        loadOperationalWorkflows(),
+        loadOperationalEvents(),
+      ]);
       if (!payload.ok) {
         if (!options?.silent) {
           setSnapshot(emptySnapshotState());
@@ -177,7 +209,11 @@ export function RutasOperationalFeedProvider({ children }: { children: ReactNode
         setError(payload.message);
         return;
       }
-      applySnapshotPayload(payload);
+      applySnapshotPayload(
+        payload,
+        workflowsPayload.ok === false ? [] : workflowsPayload.workflows ?? [],
+        eventsPayload.ok === false ? [] : eventsPayload.events ?? []
+      );
       optimisticBackupRef.current = null;
     } catch {
       if (!options?.silent) {
