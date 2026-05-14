@@ -13,7 +13,12 @@
     "zeta:md": "node scripts/zeta-html-to-md.js",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "check:types": "tsc --noEmit",
+    "check:unit": "node scripts/check-unit-critical.mjs",
+    "check:build": "npm run build",
+    "check:smoke:rutas": "node scripts/check-smoke-rutas.mjs",
+    "check:deploy": "node scripts/check-working-tree-clean.mjs && npm run check:types && npm run check:unit && npm run check:build"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
