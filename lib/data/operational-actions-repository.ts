@@ -76,6 +76,19 @@ export async function selectOpenOperationalActionsByOrigin(
     .order("created_at", { ascending: false });
 }
 
+export async function selectRecentOperationalActionEventsForWorkspace(
+  client: SupabaseClient,
+  workspaceCompanyId: string,
+  limit: number
+) {
+  return client
+    .from("operational_action_events")
+    .select(EVENT_SELECT)
+    .eq("workspace_company_id", workspaceCompanyId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+}
+
 export async function selectOperationalActionsOrdered(
   client: SupabaseClient,
   workspaceCompanyId: string,

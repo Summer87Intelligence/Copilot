@@ -14,6 +14,8 @@ import {
 } from "@/lib/copilot-financial-snapshot-selectors";
 import type { FiscalAlertItem, FiscalAlertPriority } from "@/lib/copilot-tax-alerts";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { loadPredictiveFinancialAlertsDatasetRows } from "@/lib/data/proto-analytics-read-repository";
 
 const TAX_HORIZON_DAYS = 30;
 
@@ -449,10 +451,13 @@ function alertUnlinkedTaxPayments(payments: PaymentRow[]): FiscalAlertItem[] {
  * Alertas predictivas (caja, cobertura, vencidas sin acreditación, conciliación de pagos).
  * Usa tablas proto_* reales con la misma lógica de horizonte que el snapshot de Finanzas.
  */
-export async function getFinancialPredictiveAlerts(
-  _input?: FinancialPredictiveAlertsInput
-): Promise<FiscalAlertItem[]> {
-  const ds = await loadPredictiveDataset();
+export function computeFinancialPredictiveAlertsFromRows(ds: {
+  payments: PaymentRow[];
+  obligations: TaxObligationRow[];
+  taxPayments: TaxPaymentRow[];
+  receipts: ReceiptRow[];
+  invoices: InvoiceRow[];
+}): FiscalAlertItem[] {
   const todayYmd = financialEngineLocalTodayYmd();
   const snapAligned = buildSnapshotFromDataset(ds, todayYmd);
 
@@ -487,4 +492,19 @@ export async function getFinancialPredictiveAlerts(
   });
 
   return out;
+}
+
+export async function getFinancialPredictiveAlertsForWorkspace(
+  client: SupabaseClient,
+  workspaceCompanyId: string
+): Promise<FiscalAlertItem[]> {
+  const data = await loadPredictiveFinancialAlertsDatasetRows(client, workspaceCompanyId);
+  return computeFinancialPredictiveAlertsFromRows(data);
+}
+
+export async function getFinancialPredictiveAlerts(
+  _input?: FinancialPredictiveAlertsInput
+): Promise<FiscalAlertItem[]> {
+  const ds = await loadPredictiveDataset();
+  return computeFinancialPredictiveAlertsFromRows(ds);
 }
