@@ -32,24 +32,27 @@ function MemorySignalCard({ signal }: { signal: OperationalMemorySignal }) {
   const actionId = signal.relatedActionIds?.[0];
 
   return (
-    <CopilotCard className="border-[var(--copilot-border)]/70 bg-white/75 p-2.5 shadow-none">
-      <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
+    <CopilotCard className="border border-dashed border-[var(--copilot-border)]/80 bg-white/70 p-2 shadow-none">
+      <div className="flex flex-wrap items-start gap-x-1.5 gap-y-0.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+          Arrastre
+        </span>
         <CopilotBadge tone={severityTone(signal.severity)}>{SEVERITY_LABEL[signal.severity]}</CopilotBadge>
-        <p className="min-w-0 flex-1 text-sm font-medium leading-snug text-[var(--copilot-ink)]">
+        <p className="min-w-0 flex-1 text-[13px] font-medium leading-snug text-[var(--copilot-ink)]">
           {signal.title}
         </p>
         {actionId ? (
           <Link
             href={buildOperationalActionHref(actionId)}
-            className="shrink-0 text-[11px] font-medium text-[var(--copilot-ink-muted)] underline-offset-2 hover:text-[var(--copilot-ink)] hover:underline"
+            className="shrink-0 text-[10px] font-medium text-[var(--copilot-ink-muted)] underline-offset-2 hover:text-[var(--copilot-ink)] hover:underline"
           >
             Abrir seguimiento
           </Link>
         ) : null}
       </div>
-      <p className="mt-1 text-xs leading-snug text-[var(--copilot-ink-muted)]">{signal.summary}</p>
+      <p className="mt-0.5 text-[11px] leading-snug text-[var(--copilot-ink-muted)]">{signal.summary}</p>
       {signal.evidence.length > 0 ? (
-        <ul className="mt-1 space-y-0.5 text-[11px] leading-snug text-[var(--copilot-ink-muted)]">
+        <ul className="mt-0.5 space-y-px text-[10px] leading-snug text-[var(--copilot-ink-muted)]">
           {signal.evidence.slice(0, 2).map((line) => (
             <li key={line}>{line}</li>
           ))}
@@ -94,27 +97,27 @@ export function RutasOperationalMemorySection() {
   const preview = useMemo(() => signals.slice(0, 3), [signals]);
 
   return (
-    <section className="space-y-1.5">
+    <section className="space-y-1">
       <CopilotSectionTitle
         title="Continuidad operacional"
-        subtitle="Qué sigue abierto, qué se repite y qué cambió."
+        subtitle="Memoria, repetición y cambios recientes."
       />
 
       {error ? (
-        <p className="text-xs text-rose-800" role="alert">
+        <p className="text-[11px] text-rose-800" role="alert">
           {error}
         </p>
       ) : null}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-[var(--copilot-ink-muted)]">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+        <div className="flex items-center gap-1.5 text-[11px] text-[var(--copilot-ink-muted)]">
+          <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
           Leyendo continuidad operacional…
         </div>
       ) : preview.length === 0 ? (
-        <p className="text-xs text-[var(--copilot-ink-muted)]">Sin arrastre operativo relevante.</p>
+        <p className="text-[11px] text-[var(--copilot-ink-muted)]">Sin arrastre operativo relevante.</p>
       ) : (
-        <ul className="space-y-1.5">
+        <ul className="space-y-1">
           {preview.map((signal) => (
             <li key={signal.id}>
               <MemorySignalCard signal={signal} />

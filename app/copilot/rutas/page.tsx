@@ -3,17 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import { RutasAlertsPreviewSection } from "@/components/copilot/rutas/rutas-alerts-preview-section";
-import { RutasDayStatusSection } from "@/components/copilot/rutas/rutas-day-status-section";
-import { RutasDecisionRoutesSection } from "@/components/copilot/rutas/rutas-decision-routes-section";
-import { RutasInsightsSection } from "@/components/copilot/rutas/rutas-insights-section";
-import { RutasOperationalMemorySection } from "@/components/copilot/rutas/rutas-operational-memory-section";
-import { RutasOperationalNarrativesSection } from "@/components/copilot/rutas/rutas-operational-narratives-section";
-import { RutasMoreOptionsSection } from "@/components/copilot/rutas/rutas-more-options-section";
-import { RutasOperationalFeedSection } from "@/components/copilot/rutas/rutas-operational-feed-section";
-import { RutasPrioritySection } from "@/components/copilot/rutas/rutas-priority-section";
-import { RutasTreasuryPressureSection } from "@/components/copilot/rutas/rutas-treasury-pressure-section";
-import { CopilotCard, CopilotPrimaryLink, copilotPageMainClass } from "@/components/copilot/copilot-ui";
+import { RutasCommandCenterBody } from "@/components/copilot/rutas/rutas-command-center-body";
+import { RutasOperationalFeedProvider } from "@/components/copilot/rutas/rutas-operational-feed-context";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import type { FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
@@ -127,56 +118,19 @@ export default function CopilotRutasPage() {
         description="Centro operativo del día: prioridad ejecutiva, seguimiento y actividad reciente."
       />
 
-      <div className={copilotPageMainClass}>
-        <RutasDayStatusSection
+      <RutasOperationalFeedProvider>
+        <RutasCommandCenterBody
           loading={loading}
-          gate={hub?.gate ?? null}
-          snapshot={hub?.snapshot ?? null}
-          portfolio={hub?.portfolio ?? null}
+          hub={hub}
           hubLoadedAt={hubLoadedAt}
+          insights={insights}
+          insightsComputedAt={insightsComputedAt}
+          insightsError={insightsError}
+          recommendationsEnabled={recommendationsEnabled}
+          visibility={visibility}
+          hasAnySignal={Boolean(hasAnySignal)}
         />
-
-        <RutasTreasuryPressureSection />
-
-        <RutasOperationalNarrativesSection snapshot={hub?.snapshot ?? null} />
-
-        <RutasOperationalMemorySection />
-
-        <RutasOperationalFeedSection />
-
-        {!loading && !hasAnySignal ? (
-          <CopilotCard className="border-amber-200/80 bg-amber-50/50">
-            <p className="text-sm font-semibold text-amber-950">
-              No hay contexto financiero validado suficiente
-            </p>
-            <p className="mt-2 text-sm text-amber-900/90">
-              Cargá datos completos y consistentes para habilitar recomendaciones con confianza.
-            </p>
-            <CopilotPrimaryLink href="/copilot/datos" className="mt-4 inline-flex">
-              Ir a datos
-            </CopilotPrimaryLink>
-          </CopilotCard>
-        ) : null}
-
-        <RutasMoreOptionsSection>
-          <RutasPrioritySection />
-          <RutasAlertsPreviewSection />
-          <RutasInsightsSection
-            loading={loading}
-            insights={insights}
-            computedAt={insightsComputedAt}
-            recommendationsEnabled={recommendationsEnabled}
-            loadError={insightsError}
-          />
-          <RutasDecisionRoutesSection
-            loading={loading}
-            visibility={visibility}
-            gate={hub?.gate ?? null}
-            portfolio={hub?.portfolio ?? null}
-            pendingDecisions={hub?.pendingDecisions ?? 0}
-          />
-        </RutasMoreOptionsSection>
-      </div>
+      </RutasOperationalFeedProvider>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import {
@@ -11,9 +11,14 @@ import {
   CopilotGhostLink,
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
+import { useRutasOperationalFeedSnapshot } from "@/components/copilot/rutas/rutas-operational-feed-context";
 import { buildOperationalActionHref } from "@/lib/copilot-alert-ops-mapper";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
-import { buildGroupedOperationalFeed } from "@/lib/copilot-operational-feed-groups";
+import {
+  COPILOT_UI_STATE_KEYS,
+  readCopilotUiBoolean,
+  writeCopilotUiBoolean,
+} from "@/lib/copilot-ui-state";
 import type {
   OperationalFeedGroup,
   OperationalFeedItem,
@@ -92,22 +97,24 @@ function FeedQuickActions({
   onAssignToMe,
   onResolve,
   onBlock,
+  compact = false,
 }: {
   item: OperationalFeedItem;
   busy: boolean;
   onAssignToMe: (item: OperationalFeedItem) => void;
   onResolve: (actionId: string) => void;
   onBlock: (actionId: string) => void;
+  compact?: boolean;
 }) {
   const actionId = actionIdFromItem(item);
 
   return (
-    <div className="mt-3 flex flex-wrap gap-2">
+    <div className={`flex flex-wrap gap-1.5 ${compact ? "mt-1.5" : "mt-2"}`}>
       {item.quickActions?.includes("assign_to_me") && actionId ? (
         <CopilotGhostButton
           type="button"
           disabled={busy}
-          className="text-xs"
+          className="px-2 py-1 text-[11px]"
           onClick={() => onAssignToMe(item)}
         >
           Asignarme
@@ -117,7 +124,7 @@ function FeedQuickActions({
         <CopilotGhostButton
           type="button"
           disabled={busy}
-          className="text-xs"
+          className="px-2 py-1 text-[11px]"
           onClick={() => onResolve(actionId)}
         >
           Resolver
@@ -127,7 +134,7 @@ function FeedQuickActions({
         <CopilotGhostButton
           type="button"
           disabled={busy}
-          className="text-xs"
+          className="px-2 py-1 text-[11px]"
           onClick={() => onBlock(actionId)}
         >
           Bloquear
@@ -136,7 +143,7 @@ function FeedQuickActions({
       {item.quickActions?.includes("open") && item.href ? (
         <Link
           href={item.href}
-          className="rounded-lg border border-[var(--copilot-border)] bg-white/80 px-3 py-1.5 text-xs font-semibold text-[var(--copilot-ink)] transition hover:bg-white"
+          className="rounded-md border border-[var(--copilot-border)] bg-white/80 px-2 py-1 text-[11px] font-semibold text-[var(--copilot-ink)] transition hover:bg-white"
         >
           Abrir detalle
         </Link>
@@ -153,7 +160,7 @@ function FeedItemMeta({ item }: { item: OperationalFeedItem }) {
 
   return (
     <>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         <CopilotBadge tone={severityTone(item.severity)}>{item.severity}</CopilotBadge>
         <CopilotBadge tone="neutral">{SOURCE_LABEL[item.source]}</CopilotBadge>
         {item.blocked ? <CopilotBadge tone="danger">Bloqueada</CopilotBadge> : null}
@@ -163,7 +170,7 @@ function FeedItemMeta({ item }: { item: OperationalFeedItem }) {
           </CopilotBadge>
         ) : null}
       </div>
-      <p className="mt-2 text-xs text-[var(--copilot-ink-muted)]">
+      <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
         {item.owner?.label ? `Responsable: ${item.owner.label}` : "Sin responsable"}
         {item.dueAt ? ` · Vence ${formatDueAt(item.dueAt)}` : ""}
       </p>
@@ -197,28 +204,29 @@ function FeedGroupCard({
   const countBadge = groupCountBadge(group);
 
   return (
-    <CopilotCard
-      className={
-        compact
-          ? "border-[var(--copilot-border)]/70 bg-white/70 px-3 py-2.5 shadow-none"
-          : "border-[var(--copilot-border)]/70 bg-white/65 px-3 py-2.5 shadow-none"
-      }
-    >
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <CopilotCard className="border border-[var(--copilot-border)]/80 bg-white/75 px-2.5 py-2 shadow-none">
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink)]">
+              Ejecución
+            </span>
             <CopilotBadge tone={severityTone(group.severity)}>{group.severity}</CopilotBadge>
             <CopilotBadge tone="neutral">{SOURCE_LABEL[group.source]}</CopilotBadge>
             {countBadge ? <CopilotBadge tone="neutral">{countBadge}</CopilotBadge> : null}
           </div>
-          <p className="mt-1.5 text-sm font-medium text-[var(--copilot-ink)]">{group.title}</p>
-          <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">{group.summary}</p>
+          <p className="mt-1 text-[13px] font-medium leading-snug text-[var(--copilot-ink)]">
+            {group.title}
+          </p>
+          <p className="mt-0.5 text-[11px] leading-snug text-[var(--copilot-ink-muted)]">
+            {group.summary}
+          </p>
           {!compact ? <FeedItemMeta item={primary} /> : null}
         </div>
         {primary.href ? (
           <Link
             href={primary.href}
-            className="shrink-0 text-xs font-medium text-[var(--copilot-ink-muted)] underline-offset-2 transition hover:text-[var(--copilot-ink)] hover:underline"
+            className="shrink-0 text-[10px] font-medium text-[var(--copilot-ink-muted)] underline-offset-2 transition hover:text-[var(--copilot-ink)] hover:underline"
           >
             {group.cta?.label ?? "Resolver primero"}
           </Link>
@@ -228,32 +236,33 @@ function FeedGroupCard({
       <FeedQuickActions
         item={primary}
         busy={busy}
+        compact={compact}
         onAssignToMe={onAssignToMe}
         onResolve={onResolve}
         onBlock={onBlock}
       />
 
       {canExpand ? (
-        <CopilotGhostButton type="button" className="mt-2 text-xs" onClick={onToggle}>
+        <CopilotGhostButton type="button" className="mt-1 px-0 py-0 text-[10px]" onClick={onToggle}>
           {expanded ? "Ocultar detalle" : "Ver detalle"}
         </CopilotGhostButton>
       ) : null}
 
       {expanded && canExpand ? (
-        <ul className="mt-3 space-y-2 border-t border-[var(--copilot-border)]/70 pt-3">
+        <ul className="mt-2 space-y-1 border-t border-[var(--copilot-border)]/70 pt-2">
           {group.items.map((item) => (
             <li
               key={item.id}
-              className="rounded-lg border border-[var(--copilot-border)]/70 bg-white/70 px-3 py-2"
+              className="rounded-md border border-[var(--copilot-border)]/70 bg-white/70 px-2 py-1.5"
             >
-              <p className="text-xs font-semibold text-[var(--copilot-ink)]">{item.title}</p>
+              <p className="text-[11px] font-semibold text-[var(--copilot-ink)]">{item.title}</p>
               {item.summary ? (
-                <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">{item.summary}</p>
+                <p className="mt-0.5 text-[10px] text-[var(--copilot-ink-muted)]">{item.summary}</p>
               ) : null}
               {item.href ? (
                 <Link
                   href={item.href}
-                  className="mt-2 inline-flex text-[11px] font-semibold text-[var(--copilot-ink)] underline-offset-2 hover:underline"
+                  className="mt-1 inline-flex text-[10px] font-semibold text-[var(--copilot-ink)] underline-offset-2 hover:underline"
                 >
                   Abrir
                 </Link>
@@ -266,56 +275,78 @@ function FeedGroupCard({
   );
 }
 
+function TimelineRow({ event }: { event: OperationalFeedTimelineItem }) {
+  return (
+    <li className="grid grid-cols-[minmax(4.5rem,auto)_1fr_auto] items-baseline gap-x-2 gap-y-0.5 border-b border-[var(--copilot-border)]/40 py-1 text-[11px] last:border-b-0">
+      <span className="font-semibold tabular-nums text-[var(--copilot-ink)]">
+        {formatRelativeTime(event.createdAt)}
+      </span>
+      <span className="min-w-0 text-[var(--copilot-ink-muted)]">
+        <span className="mr-1 inline-flex align-middle">
+          <CopilotBadge tone="neutral">{mapOperationalEventLabel(event.eventType)}</CopilotBadge>
+        </span>
+        <span className="align-middle text-[var(--copilot-ink)]">
+          {event.actionTitle ?? "Seguimiento"}
+        </span>
+        <span className="align-middle text-[var(--copilot-ink-muted)]">
+          {" "}
+          · {event.actorLabel ?? "Sistema"}
+        </span>
+      </span>
+      {event.actionId ? (
+        <Link
+          href={buildOperationalActionHref(event.actionId)}
+          className="shrink-0 text-[10px] font-medium text-[var(--copilot-ink-muted)] underline-offset-2 hover:text-[var(--copilot-ink)] hover:underline"
+        >
+          Abrir
+        </Link>
+      ) : (
+        <span />
+      )}
+    </li>
+  );
+}
+
+function EmptyOperationalCenter() {
+  return (
+    <CopilotCard className="border border-[var(--copilot-border)]/70 bg-white/70 px-2.5 py-2 shadow-none">
+      <p className="text-[13px] font-medium text-[var(--copilot-ink)]">Sin seguimientos activos</p>
+      <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">
+        No hay prioridades abiertas en el centro operativo.
+      </p>
+      <div className="mt-1.5 flex flex-wrap gap-2">
+        <CopilotGhostLink
+          href="/copilot/alertas"
+          className="border-transparent bg-transparent px-0 py-0 text-[11px] font-medium text-[var(--copilot-ink-muted)] shadow-none hover:bg-transparent hover:text-[var(--copilot-ink)] hover:underline"
+        >
+          Ir a Alertas
+        </CopilotGhostLink>
+        <CopilotGhostLink
+          href="/copilot/tesoreria"
+          className="border-transparent bg-transparent px-0 py-0 text-[11px] font-medium text-[var(--copilot-ink-muted)] shadow-none hover:bg-transparent hover:text-[var(--copilot-ink)] hover:underline"
+        >
+          Revisar Tesorería
+        </CopilotGhostLink>
+        <CopilotGhostLink
+          href="/copilot/acciones"
+          className="border-transparent bg-transparent px-0 py-0 text-[11px] font-medium text-[var(--copilot-ink-muted)] shadow-none hover:bg-transparent hover:text-[var(--copilot-ink)] hover:underline"
+        >
+          Abrir cola
+        </CopilotGhostLink>
+      </div>
+    </CopilotCard>
+  );
+}
+
 export function RutasOperationalFeedSection() {
-  const [groups, setGroups] = useState<OperationalFeedGroup[]>([]);
-  const [timeline, setTimeline] = useState<OperationalFeedTimelineItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { groups, timeline, loading, error, refresh } = useRutasOperationalFeedSnapshot();
   const [operator, setOperator] = useState<OperatorMe | null>(null);
   const [busyActionId, setBusyActionId] = useState<string | null>(null);
+  const [mutationError, setMutationError] = useState<string | null>(null);
   const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(new Set());
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [feedRes, timelineRes] = await Promise.all([
-        copilotApiFetch("/api/copilot/operational-feed"),
-        copilotApiFetch("/api/copilot/operational-feed/timeline?limit=5"),
-      ]);
-      const feedJson = (await feedRes.json()) as {
-        items?: OperationalFeedItem[];
-        groups?: OperationalFeedGroup[];
-        priorities?: OperationalFeedGroup[];
-        error?: string;
-      };
-      const timelineJson = (await timelineRes.json()) as {
-        events?: OperationalFeedTimelineItem[];
-      };
-      if (!feedRes.ok) {
-        setGroups([]);
-        setError(feedJson.error ?? "No se pudo cargar el centro operativo.");
-      } else {
-        const items = feedJson.items ?? [];
-        const grouped =
-          feedJson.groups && feedJson.priorities
-            ? { groups: feedJson.groups, priorities: feedJson.priorities }
-            : buildGroupedOperationalFeed(items);
-        setGroups(grouped.groups);
-      }
-      setTimeline(timelineJson.events ?? []);
-    } catch {
-      setGroups([]);
-      setTimeline([]);
-      setError("Error de red al cargar el centro operativo.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const [compact, setCompact] = useState(() =>
+    readCopilotUiBoolean(COPILOT_UI_STATE_KEYS.rutasOperationalFeedCompact, false)
+  );
 
   useEffect(() => {
     void (async () => {
@@ -331,7 +362,7 @@ export function RutasOperationalFeedSection() {
 
   const patchAction = async (actionId: string, body: Record<string, unknown>) => {
     setBusyActionId(actionId);
-    setError(null);
+    setMutationError(null);
     try {
       const res = await copilotApiFetch(`/api/copilot/operational-actions/${actionId}`, {
         method: "PATCH",
@@ -340,12 +371,12 @@ export function RutasOperationalFeedSection() {
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setError(json.error ?? "No se pudo actualizar la acción.");
+        setMutationError(json.error ?? "No se pudo actualizar la acción.");
         return;
       }
-      await load();
+      await refresh();
     } catch {
-      setError("Error de red al actualizar la acción.");
+      setMutationError("Error de red al actualizar la acción.");
     } finally {
       setBusyActionId(null);
     }
@@ -355,10 +386,7 @@ export function RutasOperationalFeedSection() {
     const actionId = actionIdFromItem(item);
     if (!actionId) return;
     const label = operator?.full_name?.trim() || operator?.email;
-    if (!label) {
-      setError("No se pudo resolver el usuario actual para asignar.");
-      return;
-    }
+    if (!label) return;
     void patchAction(actionId, {
       assigned_to: label,
       owner_id: operator?.id ?? null,
@@ -374,6 +402,14 @@ export function RutasOperationalFeedSection() {
     });
   };
 
+  const toggleCompact = () => {
+    setCompact((prev) => {
+      const next = !prev;
+      writeCopilotUiBoolean(COPILOT_UI_STATE_KEYS.rutasOperationalFeedCompact, next);
+      return next;
+    });
+  };
+
   const isExpanded = (group: OperationalFeedGroup) =>
     expandedGroupIds.has(group.id) || !group.collapsedByDefault;
 
@@ -381,55 +417,63 @@ export function RutasOperationalFeedSection() {
   const timelinePreview = useMemo(() => timeline.slice(0, 5), [timeline]);
 
   return (
-    <section className={`border-t border-[var(--copilot-border)]/50 ${hasSignal || loading ? "pt-4" : "pt-2"}`}>
+    <section className={`border-t border-[var(--copilot-border)]/50 ${hasSignal || loading ? "pt-2.5" : "pt-1.5"}`}>
       <CopilotSectionTitle
         title="Centro operativo"
-        subtitle="Seguimiento y cierre de prioridades abiertas."
+        subtitle="Ejecución y cierre de prioridades abiertas."
         action={
-          <CopilotGhostLink
-            href="/copilot/acciones"
-            className="border-transparent bg-transparent px-0 py-0 text-xs font-medium text-[var(--copilot-ink-muted)] shadow-none hover:bg-transparent hover:text-[var(--copilot-ink)] hover:underline"
-          >
-            Abrir cola
-          </CopilotGhostLink>
+          <div className="flex items-center gap-2">
+            <CopilotGhostButton
+              type="button"
+              className="px-0 py-0 text-[10px]"
+              onClick={toggleCompact}
+            >
+              {compact ? "Vista detallada" : "Vista compacta"}
+            </CopilotGhostButton>
+            <CopilotGhostLink
+              href="/copilot/acciones"
+              className="border-transparent bg-transparent px-0 py-0 text-[11px] font-medium text-[var(--copilot-ink-muted)] shadow-none hover:bg-transparent hover:text-[var(--copilot-ink)] hover:underline"
+            >
+              Abrir cola
+            </CopilotGhostLink>
+          </div>
         }
       />
 
       {error ? (
-        <p className="mt-3 text-sm text-rose-800" role="alert">
+        <p className="text-[11px] text-rose-800" role="alert">
           {error}
         </p>
       ) : null}
 
+      {mutationError ? (
+        <p className="text-[11px] text-rose-800" role="alert">
+          {mutationError}
+        </p>
+      ) : null}
+
       {loading ? (
-        <div className="mt-1 flex items-center gap-2 text-xs text-[var(--copilot-ink-muted)]">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+        <div className="flex items-center gap-1.5 text-[11px] text-[var(--copilot-ink-muted)]">
+          <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
           Cargando centro operativo…
         </div>
       ) : !hasSignal ? (
-        <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
-          Sin señales operativas abiertas.{" "}
-          <CopilotGhostLink
-            href="/copilot/acciones"
-            className="inline-flex border-transparent bg-transparent px-0 py-0 text-xs font-medium text-[var(--copilot-ink-muted)] shadow-none hover:bg-transparent hover:text-[var(--copilot-ink)] hover:underline"
-          >
-            Abrir cola
-          </CopilotGhostLink>
-        </p>
+        <EmptyOperationalCenter />
       ) : (
-        <div className="mt-3 space-y-3">
+        <div className="space-y-2">
           {groups.length > 0 ? (
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Seguimiento operativo
               </p>
-              <ul className="mt-2 space-y-2">
+              <ul className="mt-1 space-y-1">
                 {groups.map((group) => (
                   <li key={group.id}>
                     <FeedGroupCard
                       group={group}
                       expanded={isExpanded(group)}
                       busyActionId={busyActionId}
+                      compact={compact}
                       onToggle={() => toggleGroup(group.id)}
                       onAssignToMe={assignToMe}
                       onResolve={(actionId) =>
@@ -446,32 +490,13 @@ export function RutasOperationalFeedSection() {
           ) : null}
 
           {timelinePreview.length > 0 ? (
-            <CopilotCard className="border-[var(--copilot-border)]/70 bg-white/60 px-3 py-2 shadow-none">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+            <CopilotCard className="border border-[var(--copilot-border)]/70 bg-white/60 px-2.5 py-1.5 shadow-none">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Actividad reciente
               </p>
-              <ul className="mt-1.5 space-y-1">
+              <ul className="mt-1">
                 {timelinePreview.map((event) => (
-                  <li
-                    key={event.id}
-                    className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 border-b border-[var(--copilot-border)]/40 py-1 text-xs last:border-b-0"
-                  >
-                    <span className="shrink-0 font-semibold tabular-nums text-[var(--copilot-ink)]">
-                      {formatRelativeTime(event.createdAt)}
-                    </span>
-                    <span className="min-w-0 text-[var(--copilot-ink-muted)]">
-                      {event.actorLabel ?? "Sistema"} · {mapOperationalEventLabel(event.eventType)}
-                      {event.actionTitle ? ` · ${event.actionTitle}` : ""}
-                    </span>
-                    {event.actionId ? (
-                      <Link
-                        href={buildOperationalActionHref(event.actionId)}
-                        className="shrink-0 text-[11px] font-medium text-[var(--copilot-ink-muted)] underline-offset-2 hover:text-[var(--copilot-ink)] hover:underline"
-                      >
-                        Abrir
-                      </Link>
-                    ) : null}
-                  </li>
+                  <TimelineRow key={event.id} event={event} />
                 ))}
               </ul>
             </CopilotCard>
