@@ -7,6 +7,7 @@ import { RutasAlertsPreviewSection } from "@/components/copilot/rutas/rutas-aler
 import { RutasDayStatusSection } from "@/components/copilot/rutas/rutas-day-status-section";
 import { RutasDecisionRoutesSection } from "@/components/copilot/rutas/rutas-decision-routes-section";
 import { RutasInsightsSection } from "@/components/copilot/rutas/rutas-insights-section";
+import { RutasOperationalMemorySection } from "@/components/copilot/rutas/rutas-operational-memory-section";
 import { RutasOperationalNarrativesSection } from "@/components/copilot/rutas/rutas-operational-narratives-section";
 import { RutasMoreOptionsSection } from "@/components/copilot/rutas/rutas-more-options-section";
 import { RutasOperationalFeedSection } from "@/components/copilot/rutas/rutas-operational-feed-section";
@@ -138,6 +139,8 @@ export default function CopilotRutasPage() {
         <RutasTreasuryPressureSection />
 
         <RutasOperationalNarrativesSection snapshot={hub?.snapshot ?? null} />
+
+        <RutasOperationalMemorySection />
 
         <RutasOperationalFeedSection />
 
