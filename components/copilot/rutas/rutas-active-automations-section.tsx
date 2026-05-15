@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { CopilotBadge, CopilotCard, CopilotGhostButton } from "@/components/copilot/copilot-ui";
 import { useRutasOperationalFeedSnapshot } from "@/components/copilot/rutas/rutas-operational-feed-context";
-import { copilotApiFetch } from "@/lib/copilot-fetch";
 import type { OperationalAutomationGovernanceResponse } from "@/lib/copilot-operational-governance-types";
 
 function riskTone(risk: string): "neutral" | "warning" | "danger" {
@@ -27,29 +26,8 @@ function actionModeLabel(mode: string): string {
 }
 
 export function RutasActiveAutomationsSection() {
-  const { operationalAutomation, generatedAt } = useRutasOperationalFeedSnapshot();
+  const { operationalAutomation, governance, loading } = useRutasOperationalFeedSnapshot();
   const [expanded, setExpanded] = useState(false);
-  const [governance, setGovernance] = useState<OperationalAutomationGovernanceResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const loadGovernance = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await copilotApiFetch("/api/copilot/automation-governance");
-      const json = (await res.json()) as OperationalAutomationGovernanceResponse & { ok?: boolean };
-      if (json.ok !== false) {
-        setGovernance(json);
-      }
-    } catch {
-      setGovernance(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadGovernance();
-  }, [loadGovernance, generatedAt]);
 
   const activeRuleCount = useMemo(() => {
     if (!governance) return 0;
@@ -64,9 +42,7 @@ export function RutasActiveAutomationsSection() {
     return items.filter((item) => item.rule.riskLevel === "supervised").length;
   }, [governance]);
 
-  if (loading && !governance) {
-    return null;
-  }
+  if (loading && !governance) return null;
 
   return (
     <CopilotCard className="border border-[var(--copilot-border)]/60 bg-white/60 px-2.5 py-2 shadow-none">

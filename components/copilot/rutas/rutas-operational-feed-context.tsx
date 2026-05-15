@@ -23,6 +23,10 @@ import type { OperationalTimelineItem } from "@/lib/copilot-operational-events-t
 import type { OperationalAutomationResult } from "@/lib/copilot-operational-automation-types";
 import type { OperationalWorkflowExecution } from "@/lib/copilot-operational-workflows-types";
 import type { StrategicRecommendation } from "@/lib/copilot-strategic-recommendations-types";
+import type { ExecutiveBriefing } from "@/lib/copilot-executive-briefing-types";
+import type { OperationalIntelligenceResponse } from "@/lib/copilot-operational-intelligence-types";
+import type { OperationalAutomationGovernanceResponse } from "@/lib/copilot-operational-governance-types";
+import type { IntelligenceBundleApiResponse } from "@/lib/copilot-intelligence-bundle-types";
 
 type RutasOperationalTimelineItem = {
   id: string;
@@ -66,6 +70,12 @@ type RutasOperationalSnapshotContextValue = {
   operationalEvents: OperationalTimelineItem[];
   operationalAutomation: OperationalAutomationResult | null;
   health: SnapshotHealth | null;
+  // ── Bundle-derived fields ──────────────────────────────────────────────────
+  executiveBriefing: ExecutiveBriefing | null;
+  operationalIntelligence: OperationalIntelligenceResponse | null;
+  governance: OperationalAutomationGovernanceResponse | null;
+  bundleWarnings: string[];
+  // ─────────────────────────────────────────────────────────────────────────
   loading: boolean;
   error: string | null;
   actionFeedback: RutasActionFeedback | null;
@@ -81,7 +91,13 @@ const RutasOperationalSnapshotContext = createContext<RutasOperationalSnapshotCo
 
 function emptySnapshotState(): Omit<
   RutasOperationalSnapshotContextValue,
-  "loading" | "error" | "refresh" | "actionFeedback" | "applyOptimisticActionPatch" | "restoreOptimisticSnapshot" | "setActionFeedback"
+  | "loading"
+  | "error"
+  | "refresh"
+  | "actionFeedback"
+  | "applyOptimisticActionPatch"
+  | "restoreOptimisticSnapshot"
+  | "setActionFeedback"
 > {
   return {
     generatedAt: null,
@@ -96,6 +112,10 @@ function emptySnapshotState(): Omit<
     operationalEvents: [],
     operationalAutomation: null,
     health: null,
+    executiveBriefing: null,
+    operationalIntelligence: null,
+    governance: null,
+    bundleWarnings: [],
   };
 }
 
@@ -135,11 +155,17 @@ function patchFeedGroup(
   const primary = patchFeedItem(group.primaryItem, patch);
   const items = group.items.map((item) => patchFeedItem(item, patch));
   if (primary === group.primaryItem && items === group.items) return group;
-  return {
-    ...group,
-    primaryItem: primary,
-    items,
-  };
+  return { ...group, primaryItem: primary, items };
+}
+
+// ── Loaders ──────────────────────────────────────────────────────────────────
+
+async function loadIntelligenceBundle(
+  fresh = false
+): Promise<IntelligenceBundleApiResponse> {
+  const query = fresh ? "?fresh=1" : "";
+  const res = await copilotApiFetch(`/api/copilot/intelligence-bundle${query}`);
+  return (await res.json()) as IntelligenceBundleApiResponse;
 }
 
 async function loadRutasSnapshot(fresh = false): Promise<CopilotRutasSnapshotApiResponse> {
@@ -165,6 +191,8 @@ async function loadOperationalEvents() {
   };
 }
 
+// ── Provider ──────────────────────────────────────────────────────────────────
+
 export function RutasOperationalFeedProvider({ children }: { children: ReactNode }) {
   const [snapshot, setSnapshot] = useState(emptySnapshotState);
   const [loading, setLoading] = useState(true);
@@ -172,14 +200,36 @@ export function RutasOperationalFeedProvider({ children }: { children: ReactNode
   const [actionFeedback, setActionFeedback] = useState<RutasActionFeedback | null>(null);
   const optimisticBackupRef = useRef<ReturnType<typeof emptySnapshotState> | null>(null);
 
-  const applySnapshotPayload = useCallback(
+  const applyBundlePayload = useCallback((payload: Extract<IntelligenceBundleApiResponse, { ok: true }>) => {
+    const { data: bundle } = payload;
+    setSnapshot({
+      generatedAt: bundle.snapshot.generatedAt,
+      items: bundle.snapshot.feed.items,
+      groups: bundle.snapshot.feed.groups,
+      priorities: bundle.snapshot.feed.priorities,
+      timeline: bundle.snapshot.timeline,
+      memorySignals: bundle.snapshot.memory,
+      narratives: bundle.snapshot.narratives,
+      recommendations: bundle.snapshot.recommendations,
+      workflows: bundle.workflows,
+      operationalEvents: bundle.events,
+      operationalAutomation: bundle.operationalAutomation,
+      health: bundle.snapshot.health,
+      executiveBriefing: bundle.executiveBriefing,
+      operationalIntelligence: bundle.operationalIntelligence,
+      governance: bundle.governance,
+      bundleWarnings: bundle.warnings,
+    });
+  }, []);
+
+  const applyFallbackPayload = useCallback(
     (
       payload: Extract<CopilotRutasSnapshotApiResponse, { ok: true }>,
       workflows: OperationalWorkflowExecution[],
       operationalEvents: OperationalTimelineItem[],
       operationalAutomation: OperationalAutomationResult | null
     ) => {
-      setSnapshot({
+      setSnapshot((prev) => ({
         generatedAt: payload.data.generatedAt,
         items: payload.data.feed.items,
         groups: payload.data.feed.groups,
@@ -192,47 +242,62 @@ export function RutasOperationalFeedProvider({ children }: { children: ReactNode
         operationalEvents,
         operationalAutomation,
         health: payload.data.health,
-      });
+        // Preserve bundle-derived fields from previous load if available
+        executiveBriefing: prev.executiveBriefing,
+        operationalIntelligence: prev.operationalIntelligence,
+        governance: prev.governance,
+        bundleWarnings: ["Bundle no disponible — usando endpoints individuales."],
+      }));
     },
     []
   );
 
-  const refresh = useCallback(async (options?: RutasSnapshotRefreshOptions) => {
-    if (!options?.silent) {
-      setLoading(true);
-    }
-    setError(null);
-    try {
-      const [payload, workflowsPayload, eventsPayload] = await Promise.all([
-        loadRutasSnapshot(Boolean(options?.fresh)),
-        loadOperationalWorkflows(),
-        loadOperationalEvents(),
-      ]);
-      if (!payload.ok) {
-        if (!options?.silent) {
-          setSnapshot(emptySnapshotState());
+  const refresh = useCallback(
+    async (options?: RutasSnapshotRefreshOptions) => {
+      if (!options?.silent) setLoading(true);
+      setError(null);
+
+      try {
+        // ── Primary: bundle endpoint ─────────────────────────────────────
+        try {
+          const bundlePayload = await loadIntelligenceBundle(Boolean(options?.fresh));
+          if (bundlePayload.ok) {
+            applyBundlePayload(bundlePayload);
+            optimisticBackupRef.current = null;
+            return;
+          }
+          // Bundle responded but not ok — fall through to individual endpoints
+        } catch {
+          // Network or parse error — fall through to individual endpoints
         }
-        setError(payload.message);
-        return;
+
+        // ── Fallback: individual endpoints ──────────────────────────────
+        const [payload, workflowsPayload, eventsPayload] = await Promise.all([
+          loadRutasSnapshot(Boolean(options?.fresh)),
+          loadOperationalWorkflows(),
+          loadOperationalEvents(),
+        ]);
+        if (!payload.ok) {
+          if (!options?.silent) setSnapshot(emptySnapshotState());
+          setError(payload.message);
+          return;
+        }
+        applyFallbackPayload(
+          payload,
+          workflowsPayload.ok === false ? [] : workflowsPayload.workflows ?? [],
+          eventsPayload.ok === false ? [] : eventsPayload.events ?? [],
+          workflowsPayload.automation ?? null
+        );
+        optimisticBackupRef.current = null;
+      } catch {
+        if (!options?.silent) setSnapshot(emptySnapshotState());
+        setError("Error de red al cargar el snapshot operacional.");
+      } finally {
+        if (!options?.silent) setLoading(false);
       }
-      applySnapshotPayload(
-        payload,
-        workflowsPayload.ok === false ? [] : workflowsPayload.workflows ?? [],
-        eventsPayload.ok === false ? [] : eventsPayload.events ?? [],
-        workflowsPayload.automation ?? null
-      );
-      optimisticBackupRef.current = null;
-    } catch {
-      if (!options?.silent) {
-        setSnapshot(emptySnapshotState());
-      }
-      setError("Error de red al cargar el snapshot operacional.");
-    } finally {
-      if (!options?.silent) {
-        setLoading(false);
-      }
-    }
-  }, [applySnapshotPayload]);
+    },
+    [applyBundlePayload, applyFallbackPayload]
+  );
 
   const applyOptimisticActionPatch = useCallback((patch: RutasOptimisticActionPatch) => {
     setSnapshot((prev) => {
