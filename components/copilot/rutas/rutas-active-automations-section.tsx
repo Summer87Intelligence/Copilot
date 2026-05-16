@@ -74,7 +74,7 @@ function HeaderCopy({
 }) {
   return (
     <div className="min-w-0 space-y-0.5">
-      <p className="text-[11px] font-semibold text-[var(--copilot-ink)]">Automatizaciones activas</p>
+      <p className="text-[11px] font-semibold text-[var(--copilot-ink)]">Automatizaciones funcionando</p>
       <p className="text-[10px] text-[var(--copilot-ink-muted)]">
         {activeRuleCount} reglas activas · {recommendationCount} recomendaciones
         {supervisedCount > 0 ? ` · ${supervisedCount} supervisadas` : " · estado seguro"}

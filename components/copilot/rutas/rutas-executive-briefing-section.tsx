@@ -243,7 +243,7 @@ export function RutasExecutiveBriefingSection() {
   if (loading && !executiveBriefing) {
     return (
       <section className="space-y-1">
-        <CopilotSectionTitle title="Briefing ejecutivo" subtitle="Resumen del estado operacional." />
+        <CopilotSectionTitle title="Lo más importante hoy" subtitle="Resumen del estado operacional." />
         <div className="h-24 animate-pulse rounded-2xl bg-[var(--copilot-border)]/20" />
       </section>
     );
@@ -253,7 +253,7 @@ export function RutasExecutiveBriefingSection() {
 
   return (
     <section className="space-y-1">
-      <CopilotSectionTitle title="Briefing ejecutivo" subtitle="Resumen del estado operacional." />
+      <CopilotSectionTitle title="Lo más importante hoy" subtitle="Resumen del estado operacional." />
       <BriefingCard briefing={executiveBriefing} />
     </section>
   );

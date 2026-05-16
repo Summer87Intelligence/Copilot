@@ -69,8 +69,8 @@ export function RutasOperationalMemorySection() {
   return (
     <section className="space-y-1">
       <CopilotSectionTitle
-        title="Continuidad operacional"
-        subtitle="Memoria, repetición y cambios recientes."
+        title="Problemas recurrentes"
+        subtitle="Situaciones que se repiten o arrastran."
       />
 
       {error ? (

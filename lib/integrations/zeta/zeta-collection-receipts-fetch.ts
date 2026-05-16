@@ -145,10 +145,11 @@ function errMessage(err: unknown): string {
   return String(err);
 }
 
-function resolveHasMore(
+/** Expuesto para auditoría/tests de paginación (DIV recibos). */
+export function resolveZetaCollectionReceiptsHasMore(
   raw: unknown,
   rows: ZetaCollectionReceiptRecord[],
-  warnings: string[]
+  warnings: string[] = []
 ): boolean {
   const flags = readZetaCollectionReceiptsQueryOutFlags(raw);
   if (flags.isLastPage === true) return false;
@@ -330,7 +331,38 @@ export async function fetchZetaCollectionReceipts(
 
     const rows = extractZetaCollectionReceipts(raw);
     const flags = readZetaCollectionReceiptsQueryOutFlags(raw);
-    const hasMore = resolveHasMore(raw, rows, warnings);
+    const hasMore = resolveZetaCollectionReceiptsHasMore(raw, rows, warnings);
+    const isLastPageFromRows = readIsLastPageFromReceiptRows(rows);
+
+    console.info(
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        source: "zeta_collection_receipts_fetch",
+        kind: "zeta_receipts_page_audit",
+        request_id: params.ctx.requestId,
+        sync_run_id: params.ctx.syncRunId ?? null,
+        zeta_method,
+        page,
+        fecha_desde: null,
+        fecha_hasta: null,
+        filter_mes: params.filters.mes,
+        filter_anio: params.filters.anio,
+        rows_raw: rows.length,
+        rows_normalized: rows.length,
+        payload_preview_count: Math.min(rows.length, 3),
+        duplicate_count: 0,
+        filtered_count: 0,
+        watermark_filtered_count: 0,
+        invalid_shape_count: 0,
+        is_last_page_outer: flags.isLastPage,
+        is_last_page_last_row: isLastPageFromRows,
+        has_more_resolved: hasMore,
+        total_registros: flags.total ?? null,
+        max_pages_per_run: null,
+        page_size: null,
+        warnings,
+      })
+    );
 
     return {
       ok: true,

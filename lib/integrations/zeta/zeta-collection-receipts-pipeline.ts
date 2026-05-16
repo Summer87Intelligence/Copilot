@@ -232,25 +232,25 @@ export async function syncZetaCollectionReceipts(
       }
 
       rowsReceived += res.rows.length;
-      console.info(
-        JSON.stringify({
-          timestamp: new Date().toISOString(),
-          source: "zeta_collection_receipts_sync",
-          kind: "page",
-          zeta_method: res.zeta_method,
-          page,
-          rows_received: res.rows.length,
-          http_status: res.httpStatus,
-        })
-      );
+      let pageRowsNormalized = 0;
+      let pageRowsInserted = 0;
+      let pageRowsUpdated = 0;
+      let pageRowsSkipped = 0;
+      let pageDuplicateUpdates = 0;
+      let pageFilteredMapper = 0;
+      let pageFilteredNoRegistroId = 0;
+      let pageInvalidShape = 0;
 
       for (const row of res.rows) {
         processed += 1;
         const mapped = mapZetaCollectionReceiptToCopilot(row as ZetaCollectionReceiptRecord);
         if (!mapped) {
           skipped += 1;
+          pageRowsSkipped += 1;
+          pageFilteredNoRegistroId += 1;
           continue;
         }
+        pageRowsNormalized += 1;
 
         const codigoCliente = mapped.zeta_cliente_codigo;
         const rutNorm = mapped.cliente_documento ? normalizeRutForMatch(mapped.cliente_documento) : null;
@@ -263,6 +263,8 @@ export async function syncZetaCollectionReceipts(
         const mapResult = mapCopilotCollectionReceiptToProtoReceiptInput(companyId ?? null, mapped, runId ?? "");
         if (!mapResult.ok) {
           skipped += 1;
+          pageRowsSkipped += 1;
+          pageFilteredMapper += 1;
           if (mapResult.reason === "invalid_fecha") {
             invalidDateRows += 1;
             errors += 1;
@@ -303,6 +305,7 @@ export async function syncZetaCollectionReceipts(
         );
 
         if (existingId) {
+          pageDuplicateUpdates += 1;
           const up = await protoUpdateReceipt(
             params.supabase,
             existingId,
@@ -322,6 +325,7 @@ export async function syncZetaCollectionReceipts(
           if (!up.ok) errors += 1;
           else {
             updated += 1;
+            pageRowsUpdated += 1;
             persisted += 1;
           }
         } else {
@@ -329,10 +333,40 @@ export async function syncZetaCollectionReceipts(
           if (!cr.ok) errors += 1;
           else {
             inserted += 1;
+            pageRowsInserted += 1;
             persisted += 1;
           }
         }
       }
+
+      console.info(
+        JSON.stringify({
+          timestamp: new Date().toISOString(),
+          source: "zeta_collection_receipts_sync",
+          kind: "zeta_receipts_page_audit",
+          zeta_method: res.zeta_method,
+          page,
+          fecha_desde: `${anio}-${mes.padStart(2, "0")}-01`,
+          fecha_hasta: `${anio}-${mes.padStart(2, "0")}-31`,
+          filter_mes: mes,
+          filter_anio: anio,
+          rows_raw: res.rows.length,
+          rows_normalized: pageRowsNormalized,
+          rows_inserted: pageRowsInserted,
+          rows_updated: pageRowsUpdated,
+          rows_skipped: pageRowsSkipped,
+          duplicate_count: pageDuplicateUpdates,
+          filtered_count: pageFilteredMapper + pageFilteredNoRegistroId,
+          filtered_no_registro_id: pageFilteredNoRegistroId,
+          filtered_mapper: pageFilteredMapper,
+          watermark_filtered_count: 0,
+          invalid_shape_count: pageInvalidShape,
+          payload_preview_count: Math.min(res.rows.length, 3),
+          has_more: res.hasMore,
+          http_status: res.httpStatus,
+          max_pages_per_run: MAX_PAGES,
+        })
+      );
 
       hasMore = res.hasMore;
       page += 1;

@@ -171,8 +171,8 @@ export function RutasOperationalIntelligenceSection() {
     return (
       <section className="space-y-1">
         <CopilotSectionTitle
-          title="Inteligencia operacional"
-          subtitle="Análisis causal del estado operativo."
+          title="Por qué está pasando"
+          subtitle="Causas y señales del estado actual."
         />
         <div className="h-20 animate-pulse rounded-2xl bg-[var(--copilot-border)]/20" />
       </section>
@@ -183,8 +183,8 @@ export function RutasOperationalIntelligenceSection() {
     return (
       <section className="space-y-1">
         <CopilotSectionTitle
-          title="Inteligencia operacional"
-          subtitle="Análisis causal del estado operativo."
+          title="Por qué está pasando"
+          subtitle="Causas y señales del estado actual."
         />
         <p className="text-[11px] text-[var(--copilot-ink-muted)]">
           Sin señales operacionales relevantes en este momento.
@@ -199,8 +199,8 @@ export function RutasOperationalIntelligenceSection() {
   return (
     <section className="space-y-1">
       <CopilotSectionTitle
-        title="Inteligencia operacional"
-        subtitle="Análisis causal del estado operativo."
+        title="Por qué está pasando"
+        subtitle="Causas y señales del estado actual."
       />
 
       <div className="space-y-2">

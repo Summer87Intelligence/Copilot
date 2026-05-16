@@ -20,6 +20,22 @@ export const ZETA_PIPELINE_NAMES = {
    * distintas (cuotas no cambian tan seguido como saldos).
    */
   CUOTAS: "zeta-sync-cuotas",
+  /**
+   * ZETA-13 — completeness audit: compara conteos Zeta vs local por entidad y período.
+   * Detecta pérdidas silenciosas de sincronización. Diario a las 03:30 UTC.
+   */
+  COMPLETENESS_AUDIT: "zeta-completeness-audit",
+  /**
+   * ZETA-13 — integrity check: verifica invariantes financieros internos sin llamar Zeta.
+   * Detecta imposibles contables, orphans, duplicados. Diario a las 04:00 UTC.
+   */
+  INTEGRITY_CHECK: "zeta-integrity-check",
+  /**
+   * ZETA-14 — resync worker: procesa la cola `zeta_resync_jobs` de forma secuencial.
+   * Ejecuta pipelines de re-sincronización para jobs creados por completeness audit
+   * o triggers manuales. Cada 30 min.
+   */
+  RESYNC_WORKER: "zeta-resync-worker",
 } as const;
 
 export type ZetaPipelineName =

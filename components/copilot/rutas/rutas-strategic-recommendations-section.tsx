@@ -92,7 +92,7 @@ export function RutasStrategicRecommendationsSection() {
   return (
     <section className="space-y-1">
       <CopilotSectionTitle
-        title="Prioridad estratégica"
+        title="Qué hacer ahora"
         subtitle="Decisión priorizada para hoy."
       />
 

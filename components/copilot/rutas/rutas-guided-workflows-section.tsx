@@ -131,31 +131,28 @@ function GuidedWorkflowCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <CopilotBadge tone={statusTone(workflow.status)}>{STATUS_LABEL[workflow.status]}</CopilotBadge>
-            <CopilotBadge tone="warning">Urgencia {workflow.urgencyScore ?? 0}</CopilotBadge>
-            <CopilotBadge tone={slaTone(workflow.slaStatus)}>{slaLabel(workflow.slaStatus)}</CopilotBadge>
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-              {workflow.type.replaceAll("_", " ")}
-            </span>
+            {workflow.isOverdue ? <CopilotBadge tone="warning">Vencido</CopilotBadge> : null}
           </div>
           <p className="mt-1 text-[13px] font-semibold text-[var(--copilot-ink)]">{workflow.title}</p>
-          <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">
-            {workflow.progressPercent}% completo
+          {/* step progress bar */}
+          <div className="mt-1.5 flex items-center gap-2">
+            <div className="h-1 flex-1 rounded-full bg-[var(--copilot-border)]/30">
+              <div
+                className="h-1 rounded-full bg-[var(--copilot-accent)] transition-all"
+                style={{ width: `${workflow.progressPercent}%` }}
+              />
+            </div>
+            <span className="shrink-0 text-[10px] font-semibold text-[var(--copilot-ink-muted)]">
+              {workflow.progressPercent}%
+            </span>
+          </div>
+          <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
+            {workflow.currentStepTitle ? `Ahora: ${workflow.currentStepTitle}` : "Sin paso activo"}
             {assignedToMe
-              ? " · Asignada a vos"
+              ? " · Tuya"
               : workflow.ownerLabel
                 ? ` · ${workflow.ownerLabel}`
                 : " · Sin responsable"}
-            {workflow.nextDueAt ? ` · vence ${formatRelativeTime(workflow.nextDueAt)}` : ""}
-            {workflow.relatedCounts
-              ? ` · ${workflow.relatedCounts.actions} acc · ${workflow.relatedCounts.alerts} alertas · ${workflow.relatedCounts.insights} insights`
-              : ""}
-            {(workflow.lifecycle?.reopenCount ?? 0) > 0
-              ? ` · Reabierto ${workflow.lifecycle?.reopenCount}×`
-              : ""}
-          </p>
-          <p className="mt-1 text-[11px] text-[var(--copilot-ink)]">
-            Paso actual:{" "}
-            <span className="font-medium">{workflow.currentStepTitle ?? "Sin paso activo"}</span>
           </p>
         </div>
         {typeof currentHref === "string" ? (
@@ -305,8 +302,8 @@ export function RutasGuidedWorkflowsSection() {
   return (
     <section className="space-y-1">
       <CopilotSectionTitle
-        title="Ejecución guiada"
-        subtitle="Secuencias operativas determinísticas para cerrar prioridades."
+        title="Paso a paso"
+        subtitle="Seguí el progreso de cada tarea en curso."
       />
 
       {error ? (
@@ -324,7 +321,7 @@ export function RutasGuidedWorkflowsSection() {
       {loading ? (
         <div className="flex items-center gap-1.5 text-[11px] text-[var(--copilot-ink-muted)]">
           <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-          Preparando ejecución guiada…
+          Preparando paso a paso…
         </div>
       ) : (
         <ul className="space-y-1">

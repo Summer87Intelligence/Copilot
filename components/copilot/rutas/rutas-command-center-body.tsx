@@ -1,25 +1,28 @@
 "use client";
 
 import { CopilotCard, CopilotPrimaryLink } from "@/components/copilot/copilot-ui";
-import { RutasActiveAutomationsSection } from "@/components/copilot/rutas/rutas-active-automations-section";
+import { RutasAdvancedDetailsSection } from "@/components/copilot/rutas/rutas-advanced-details-section";
 import { RutasAlertsPreviewSection } from "@/components/copilot/rutas/rutas-alerts-preview-section";
+import { RutasDailyRouteSection } from "@/components/copilot/rutas/rutas-daily-route-section";
 import { RutasDayStatusSection } from "@/components/copilot/rutas/rutas-day-status-section";
 import { RutasDecisionRoutesSection } from "@/components/copilot/rutas/rutas-decision-routes-section";
 import { RutasExecutiveRail } from "@/components/copilot/rutas/rutas-executive-rail";
 import { RutasInsightsSection } from "@/components/copilot/rutas/rutas-insights-section";
 import { RutasOperationalMemorySection } from "@/components/copilot/rutas/rutas-operational-memory-section";
 import { RutasExecutiveBriefingSection } from "@/components/copilot/rutas/rutas-executive-briefing-section";
+import { RutasOperationalHero } from "@/components/copilot/rutas/rutas-operational-hero";
 import { RutasOperationalIntelligenceSection } from "@/components/copilot/rutas/rutas-operational-intelligence-section";
 import { RutasStrategicRecommendationsSection } from "@/components/copilot/rutas/rutas-strategic-recommendations-section";
 import { RutasOperationalNarrativesSection } from "@/components/copilot/rutas/rutas-operational-narratives-section";
-import { RutasMoreOptionsSection } from "@/components/copilot/rutas/rutas-more-options-section";
 import { RutasOperationalCommandCenterSection } from "@/components/copilot/rutas/rutas-operational-command-center-section";
 import { RutasGuidedWorkflowsSection } from "@/components/copilot/rutas/rutas-guided-workflows-section";
+import { RutasRecentActivitySection } from "@/components/copilot/rutas/rutas-recent-activity-section";
 import { RutasOperationalFeedSection } from "@/components/copilot/rutas/rutas-operational-feed-section";
-import { useRutasOperationalFeedSnapshot } from "@/components/copilot/rutas/rutas-operational-feed-context";
-import { RutasSnapshotHealthNotice } from "@/components/copilot/rutas/rutas-snapshot-health-notice";
+import { RutasActiveAutomationsSection } from "@/components/copilot/rutas/rutas-active-automations-section";
 import { RutasPrioritySection } from "@/components/copilot/rutas/rutas-priority-section";
+import { RutasSnapshotHealthNotice } from "@/components/copilot/rutas/rutas-snapshot-health-notice";
 import { RutasTreasuryPressureSection } from "@/components/copilot/rutas/rutas-treasury-pressure-section";
+import { useRutasOperationalFeedSnapshot } from "@/components/copilot/rutas/rutas-operational-feed-context";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import type { FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
 import type { CopilotRealInsight } from "@/lib/copilot-real-insights";
@@ -62,41 +65,40 @@ export function RutasCommandCenterBody({
   visibility,
   hasAnySignal,
 }: RutasCommandCenterBodyProps) {
-  const { groups, loading: feedLoading, health } = useRutasOperationalFeedSnapshot();
+  const { groups, loading: feedLoading, health, executiveBriefing } =
+    useRutasOperationalFeedSnapshot();
+
+  const isFocusMode = executiveBriefing?.status === "critical";
 
   return (
     <div className={rutasCommandCenterMainClass}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-3.5">
         <div className="order-2 min-w-0 flex-1 space-y-3 lg:order-1">
-          <RutasDayStatusSection
-            loading={loading}
-            gate={hub?.gate ?? null}
-            snapshot={hub?.snapshot ?? null}
-            portfolio={hub?.portfolio ?? null}
-            hubLoadedAt={hubLoadedAt}
-          />
-
-          <RutasTreasuryPressureSection />
-
           <RutasSnapshotHealthNotice health={health} />
 
-          <RutasActiveAutomationsSection />
+          {/* ── 1. Hero operativo ─────────────────────────────────────────── */}
+          <RutasOperationalHero />
 
+          {/* ── 2. Lo más importante hoy ──────────────────────────────────── */}
           <RutasExecutiveBriefingSection />
 
-          <RutasOperationalIntelligenceSection />
+          {/* ── 3. Por qué está pasando ───────────────────────────────────── */}
+          {!isFocusMode ? <RutasOperationalIntelligenceSection /> : null}
 
+          {/* ── 4. Qué hacer ahora ────────────────────────────────────────── */}
           <RutasStrategicRecommendationsSection />
 
-          <RutasOperationalCommandCenterSection />
+          {/* ── 5. Ruta del día ───────────────────────────────────────────── */}
+          <RutasDailyRouteSection />
 
-          <RutasOperationalNarrativesSection />
-
-          <RutasOperationalMemorySection />
-
+          {/* ── 6. Paso a paso ────────────────────────────────────────────── */}
           <RutasGuidedWorkflowsSection />
 
-          <RutasOperationalFeedSection />
+          {/* ── 7. Pendientes importantes ─────────────────────────────────── */}
+          {!isFocusMode ? <RutasOperationalCommandCenterSection /> : null}
+
+          {/* ── 8. Actividad reciente ─────────────────────────────────────── */}
+          <RutasRecentActivitySection />
 
           {!loading && !hasAnySignal ? (
             <CopilotCard className="border-amber-200/80 bg-amber-50/50 p-3">
@@ -112,7 +114,20 @@ export function RutasCommandCenterBody({
             </CopilotCard>
           ) : null}
 
-          <RutasMoreOptionsSection>
+          {/* ── 9. Detalles avanzados (colapsado) ─────────────────────────── */}
+          <RutasAdvancedDetailsSection>
+            <RutasDayStatusSection
+              loading={loading}
+              gate={hub?.gate ?? null}
+              snapshot={hub?.snapshot ?? null}
+              portfolio={hub?.portfolio ?? null}
+              hubLoadedAt={hubLoadedAt}
+            />
+            <RutasTreasuryPressureSection />
+            <RutasActiveAutomationsSection />
+            <RutasOperationalNarrativesSection />
+            <RutasOperationalMemorySection />
+            <RutasOperationalFeedSection />
             <RutasPrioritySection />
             <RutasAlertsPreviewSection />
             <RutasInsightsSection
@@ -129,7 +144,7 @@ export function RutasCommandCenterBody({
               portfolio={hub?.portfolio ?? null}
               pendingDecisions={hub?.pendingDecisions ?? 0}
             />
-          </RutasMoreOptionsSection>
+          </RutasAdvancedDetailsSection>
         </div>
 
         <div className="order-1 lg:order-2">

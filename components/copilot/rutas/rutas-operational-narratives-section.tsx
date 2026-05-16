@@ -91,7 +91,7 @@ export function RutasOperationalNarrativesSection() {
   return (
     <section className="space-y-1">
       <CopilotSectionTitle
-        title="Lectura ejecutiva"
+        title="Impacto del problema"
         subtitle="Causa, impacto y acción inmediata."
         action={
           <CopilotGhostLink

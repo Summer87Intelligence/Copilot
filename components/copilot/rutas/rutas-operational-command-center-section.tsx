@@ -109,25 +109,14 @@ function CommandCenterRow({
       }`}
     >
       <div className="flex flex-wrap items-center gap-1.5">
-        <CopilotBadge tone={severityTone(item.severity)}>{item.severity}</CopilotBadge>
-        <CopilotBadge tone="neutral">{item.type}</CopilotBadge>
-        {item.status === "blocked" ? <CopilotBadge tone="danger">bloqueado</CopilotBadge> : null}
-        {item.status === "overdue" ? <CopilotBadge tone="warning">vencido</CopilotBadge> : null}
-        {item.metadata?.slaStatus === "breached" ? (
-          <CopilotBadge tone="danger">SLA roto</CopilotBadge>
+        <CopilotBadge tone={severityTone(item.severity)}>
+          {item.severity === "critical" ? "Crítico" : item.severity === "high" ? "Alto" : "Normal"}
+        </CopilotBadge>
+        {item.status === "blocked" ? <CopilotBadge tone="danger">Bloqueado</CopilotBadge> : null}
+        {item.status === "overdue" ? <CopilotBadge tone="warning">Vencido</CopilotBadge> : null}
+        {!item.ownerLabel ? (
+          <CopilotBadge tone="neutral">Sin responsable</CopilotBadge>
         ) : null}
-        {item.metadata?.slaStatus === "warning" ? (
-          <CopilotBadge tone="warning">SLA</CopilotBadge>
-        ) : null}
-        {item.metadata?.recurring === true ? <CopilotBadge tone="warning">Recurrente</CopilotBadge> : null}
-        {item.metadata?.escalated === true ? <CopilotBadge tone="danger">Escalado</CopilotBadge> : null}
-        {item.metadata?.unassigned === true ? (
-          <CopilotBadge tone="warning">Sin responsable</CopilotBadge>
-        ) : null}
-        {(item.metadata?.reopenCount as number | undefined) ? (
-          <CopilotBadge tone="neutral">Reabierto {String(item.metadata?.reopenCount)}</CopilotBadge>
-        ) : null}
-        <span className="text-[10px] text-[var(--copilot-ink-muted)]">U{item.urgencyScore}</span>
       </div>
       <p className="mt-1 text-[12px] font-semibold text-[var(--copilot-ink)]">{item.title}</p>
       <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">{item.summary}</p>
@@ -160,9 +149,8 @@ function CommandCenterDetail({
     <CopilotCard className="border border-[var(--copilot-border)]/80 bg-white/85 px-2.5 py-2 shadow-none">
       <p className="text-[12px] font-semibold text-[var(--copilot-ink)]">{item.title}</p>
       <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">{item.summary}</p>
-      <p className="mt-1 text-[11px] text-[var(--copilot-ink)]">
-        Estado: <span className="font-medium">{item.status}</span>
-        {item.ownerLabel ? ` · ${item.ownerLabel}` : " · Sin responsable"}
+      <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
+        {item.ownerLabel ? item.ownerLabel : "Sin responsable"}
         {item.dueLabel ? ` · ${item.dueLabel}` : ""}
       </p>
       {relatedEvents.length > 0 ? (
@@ -440,8 +428,8 @@ export function RutasOperationalCommandCenterSection() {
       className="space-y-1 outline-none"
     >
       <CopilotSectionTitle
-        title="Comando operativo"
-        subtitle="Cola priorizada para resolver el día."
+        title="Pendientes importantes"
+        subtitle="Lo que necesita atención hoy."
         action={
           <CopilotBadge tone={runtimeHealthTone(health?.status)}>
             {runtimeHealthLabel(health?.status)}

@@ -18,6 +18,8 @@ const criticalTests = [
   "lib/copilot-executive-briefing.test.ts",
   "lib/copilot-operational-intelligence.test.ts",
   "lib/copilot-intelligence-bundle.test.ts",
+  "lib/integrations/zeta/zeta-integrity-checker.test.ts",
+  "lib/integrations/zeta/zeta-completeness-audit.test.ts",
 ];
 
 const result = spawnSync("npx", ["vitest", "run", ...criticalTests], {
