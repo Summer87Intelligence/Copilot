@@ -156,6 +156,9 @@ export async function GET(request: NextRequest) {
             local_count: invoiceAudit.local_count,
             drift: invoiceAudit.drift,
             severity: invoiceAudit.severity,
+            ...(invoiceAudit.metadata?.legacy_untraceable_count
+              ? { legacy_untraceable_count: invoiceAudit.metadata.legacy_untraceable_count }
+              : {}),
           });
 
           await recordDriftMetric(supabase, PIPELINE, workspaceId, "invoices", invoiceAudit.drift, invoiceAudit.severity, { mes, anio }).catch(() => {});

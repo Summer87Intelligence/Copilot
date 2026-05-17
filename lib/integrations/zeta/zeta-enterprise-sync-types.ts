@@ -35,6 +35,11 @@ export type CompletenessAuditMetadata = {
     cfe_tipo?: number;
     tipo_nombre?: string | null;
   }>;
+  /**
+   * Registros locales ZETA:CCV1: sin zeta_registro_id — históricos pre-trazabilidad.
+   * Excluidos del drift operacional. Informacional únicamente.
+   */
+  legacy_untraceable_count?: number;
 };
 
 export type CompletenessAuditResult = {
@@ -175,6 +180,51 @@ export type ResyncJobRow = CreateResyncJobInput & {
   retry_after: string | null;
 };
 
+// ── Acknowledged Drifts ───────────────────────────────────────────────────────
+
+export type AcknowledgedDrift = {
+  workspace_company_id: string;
+  entity: string;
+  audit_scope: string;
+  acknowledged_by: string;
+  acknowledgement_reason: string;
+  acknowledgement_expires_at?: string | null;
+  last_known_drift: number;
+  last_known_zeta_count: number;
+  last_known_local_count: number;
+};
+
+export type AcknowledgedDriftRow = AcknowledgedDrift & {
+  id: string;
+  acknowledged_at: string;
+};
+
+// ── Daily Snapshots ───────────────────────────────────────────────────────────
+
+export type DailySnapshotInput = {
+  workspace_company_id: string;
+  snapshot_date: string; // ISO date string YYYY-MM-DD
+  invoices_count?: number | null;
+  receipts_count?: number | null;
+  contacts_count?: number | null;
+  cuotas_count?: number | null;
+  open_invoices_count?: number | null;
+  total_balance_pending?: number | null;
+  sync_runs_today?: number;
+  sync_errors_today?: number;
+  integrity_violations_open?: number;
+  critical_violations_open?: number;
+  resync_jobs_completed?: number;
+  resync_jobs_failed?: number;
+  dead_letter_jobs?: number;
+  metadata?: Record<string, unknown>;
+};
+
+export type DailySnapshotRow = DailySnapshotInput & {
+  id: string;
+  created_at: string;
+};
+
 // ── Enterprise Health Summary ─────────────────────────────────────────────────
 
 export type EntityHealthSummary = {
@@ -194,4 +244,73 @@ export type EnterpriseSyncHealth = {
   total_open_violations: number;
   total_critical_violations: number;
   recent_resync_jobs: ResyncJobRow[];
+};
+
+// ── Sync Metrics History ──────────────────────────────────────────────────────
+
+export type SyncMetricsHistoryStatus = "succeeded" | "partial" | "failed";
+
+export type SyncMetricsHistoryInput = {
+  workspace_company_id: string;
+  pipeline_name: string;
+  pipeline_run_id?: string | null;
+  recorded_at?: string;
+  duration_ms?: number | null;
+  rows_fetched?: number;
+  rows_upserted?: number;
+  rows_inserted?: number;
+  rows_updated?: number;
+  rows_skipped?: number;
+  rows_failed?: number;
+  retry_count?: number;
+  error_count?: number;
+  status?: SyncMetricsHistoryStatus;
+  drift_count?: number | null;
+  drift_pct?: number | null;
+  api_latency_ms?: number | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+export type SyncMetricsHistoryRow = Required<SyncMetricsHistoryInput> & {
+  id: string;
+};
+
+// ── Contract Snapshot ─────────────────────────────────────────────────────────
+
+export type ContractSnapshotInput = {
+  endpoint: string;
+  workspace_company_id?: string | null;
+  schema_version?: string;
+  field_names?: string[];
+  unknown_fields?: string[];
+  validation_errors?: string[];
+  is_valid?: boolean;
+  row_count_in_batch?: number;
+};
+
+export type ContractSnapshotRow = ContractSnapshotInput & {
+  id: string;
+  sampled_at: string;
+};
+
+// ── Alert Events ──────────────────────────────────────────────────────────────
+
+export type AlertEventType =
+  | "critical_integrity_violation"
+  | "stale_pipeline"
+  | "dead_letter_spike"
+  | "api_auth_failure"
+  | "sync_stopped"
+  | "queue_congestion";
+
+export type AlertSeverity = "warning" | "critical";
+
+export type AlertEvent = {
+  event_type: AlertEventType;
+  severity: AlertSeverity;
+  workspace_company_id: string;
+  title: string;
+  body: string;
+  metadata?: Record<string, unknown>;
+  occurred_at?: string;
 };

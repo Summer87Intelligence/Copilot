@@ -73,6 +73,21 @@ function readRegistroId(row: Record<string, unknown>): string | null {
   return null;
 }
 
+function extractLocalRegistroIdFromMeta(meta: Record<string, unknown> | null): string | null {
+  if (!meta) return null;
+  const v1 = meta["zeta_customer_voucher_v1"] as Record<string, unknown> | undefined;
+  if (v1) {
+    const rid = v1["zeta_registro_id"];
+    if (rid != null && String(rid).trim()) return String(rid).trim();
+  }
+  const idv1 = meta["zeta_comprobante_identity_v1"] as Record<string, unknown> | undefined;
+  if (idv1) {
+    const rid = idv1["registro_id"];
+    if (rid != null && String(rid).trim()) return String(rid).trim();
+  }
+  return null;
+}
+
 // ── Invoices (Facturas de cliente) ────────────────────────────────────────────
 
 /**
@@ -253,11 +268,40 @@ export async function runInvoiceCompletenessAudit(
     }
   }
 
+  // Count legacy untraceable: ZETA:CCV1: invoices with no zeta_registro_id.
+  // Historical records that predate modern traceability — excluded from operational severity.
+  let legacyUntraceableCount = 0;
   const localTotal = localCount ?? 0;
-  // Severity based on accepted count, not raw count
-  const severity = computeSeverity(zetaAcceptedCount, localTotal);
+  if (localTotal > 0) {
+    try {
+      const { data: legacyCandidates } = await supabase
+        .from("proto_invoices")
+        .select("zeta_metadata")
+        .eq("workspace_company_id", workspaceId)
+        .like("invoice_number", "ZETA:CCV1:%")
+        .gte("issue_date", periodStart)
+        .lte("issue_date", periodEnd)
+        .eq("is_active", true)
+        .limit(5000);
+
+      for (const row of legacyCandidates ?? []) {
+        if (!extractLocalRegistroIdFromMeta(row.zeta_metadata as Record<string, unknown> | null)) {
+          legacyUntraceableCount++;
+        }
+      }
+    } catch { /* non-blocking */ }
+  }
+
+  // Operational count excludes legacy untraceable records (they are not real drift).
+  // Raw drift and local_count are preserved unchanged for auditability.
+  const operationalLocalCount = Math.max(0, localTotal - legacyUntraceableCount);
+  const severity = computeSeverity(zetaAcceptedCount, operationalLocalCount);
   const drift = localTotal - zetaAcceptedCount;
   const driftPct = zetaAcceptedCount > 0 ? Math.abs(drift / zetaAcceptedCount) * 100 : 0;
+
+  const legacyNote = legacyUntraceableCount > 0
+    ? `${legacyUntraceableCount} registro(s) legacy sin trazabilidad excluidos del drift operacional.`
+    : undefined;
 
   return {
     entity,
@@ -271,9 +315,11 @@ export async function runInvoiceCompletenessAudit(
     missing_registro_ids: missingIds.slice(0, 500),
     orphan_registro_ids: orphanIds.slice(0, 100),
     severity,
-    notes: zetaError,
+    notes: [zetaError, legacyNote].filter(Boolean).join(" ") || undefined,
     zeta_error: zetaError,
-    metadata: auditMetadata,
+    metadata: legacyUntraceableCount > 0
+      ? { ...auditMetadata, legacy_untraceable_count: legacyUntraceableCount }
+      : auditMetadata,
   };
 }
 

@@ -22,6 +22,7 @@ export type DriftClass =
   | "stale_local_record"
   | "archived_in_zeta"
   | "unsupported_document"
+  | "historical_legacy_untraceable"
   | "unknown";
 
 export type DriftClassification = {
@@ -54,6 +55,21 @@ type OrphanRecord = {
 const NON_DGI_CFE_TIPOS = new Set([0]);
 const ARCHIVED_STATUS_VALUES = new Set(["A", "anulado", "Anulado", "archived"]);
 
+function extractZetaRegistroId(meta: Record<string, unknown> | null | undefined): string | null {
+  if (!meta) return null;
+  const v1 = meta["zeta_customer_voucher_v1"] as Record<string, unknown> | undefined;
+  if (v1) {
+    const rid = v1["zeta_registro_id"];
+    if (rid != null && String(rid).trim()) return String(rid).trim();
+  }
+  const idv1 = meta["zeta_comprobante_identity_v1"] as Record<string, unknown> | undefined;
+  if (idv1) {
+    const rid = idv1["registro_id"];
+    if (rid != null && String(rid).trim()) return String(rid).trim();
+  }
+  return null;
+}
+
 function extractCfeTipo(meta: Record<string, unknown> | null | undefined): number | null {
   if (!meta) return null;
   const v =
@@ -79,6 +95,24 @@ function extractStatus(meta: Record<string, unknown> | null | undefined): string
 
 export function classifyOrphanInvoice(record: OrphanRecord): DriftClassification {
   const meta = record.zeta_metadata;
+
+  // Historical legacy: ZETA:CCV1: invoice without zeta_registro_id.
+  // These are pre-modern-traceability records — not operational sync loss.
+  // Must be checked first because they have metadata but no registro_id.
+  if (
+    record.invoice_number.startsWith("ZETA:CCV1:") &&
+    extractZetaRegistroId(meta) === null
+  ) {
+    return {
+      record_id: record.id,
+      invoice_number: record.invoice_number,
+      drift_class: "historical_legacy_untraceable",
+      confidence: "high",
+      reason: "ZETA:CCV1: sin zeta_registro_id — registro histórico previo a trazabilidad moderna, no representa pérdida de sync",
+      auto_deactivate_eligible: false,
+      metadata: { invoice_number: record.invoice_number, has_meta: meta !== null && meta !== undefined },
+    };
+  }
 
   // No Zeta metadata at all → pre-integration stale record
   if (!meta || Object.keys(meta).length === 0) {
@@ -164,7 +198,7 @@ export async function classifyOrphanInvoices(
       total_orphans: 0,
       classifications: [],
       auto_deactivate_candidates: [],
-      by_class: { cfe_type_not_dgi: 0, stale_local_record: 0, archived_in_zeta: 0, unsupported_document: 0, unknown: 0 },
+      by_class: { cfe_type_not_dgi: 0, stale_local_record: 0, archived_in_zeta: 0, unsupported_document: 0, historical_legacy_untraceable: 0, unknown: 0 },
       dry_run: dryRun,
       classified_at: classifiedAt,
     };
@@ -193,6 +227,7 @@ export async function classifyOrphanInvoices(
     stale_local_record: 0,
     archived_in_zeta: 0,
     unsupported_document: 0,
+    historical_legacy_untraceable: 0,
     unknown: 0,
   };
   for (const c of classifications) {
