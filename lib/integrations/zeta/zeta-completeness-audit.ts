@@ -288,10 +288,12 @@ export async function runInvoiceCompletenessAudit(
 
   const localTotal = localCount ?? 0;
 
-  // Operational count excludes legacy untraceable records (they are not real drift).
-  // Raw drift and local_count are preserved unchanged for auditability.
+  // Legacy untraceable records (ZETA:CCV1: without zeta_registro_id) exist in both Zeta
+  // and locally but can't be ID-matched. Exclude them from BOTH sides so they don't
+  // inflate the apparent drift. Raw drift and local_count are preserved for auditability.
   const operationalLocalCount = Math.max(0, localTotal - legacyUntraceableCount);
-  const severity = computeSeverity(zetaAcceptedCount, operationalLocalCount);
+  const adjustedZetaCount = Math.max(0, zetaAcceptedCount - legacyUntraceableCount);
+  const severity = computeSeverity(adjustedZetaCount, operationalLocalCount);
   const drift = localTotal - zetaAcceptedCount;
   const driftPct = zetaAcceptedCount > 0 ? Math.abs(drift / zetaAcceptedCount) * 100 : 0;
 

@@ -72,7 +72,7 @@ function okFetchResult(rows: Record<string, unknown>[], hasMore = false): FetchR
 function createSupabaseStub(opts: {
   localCount?: number;
   localCountError?: string;
-  localMetaRows?: Array<{ zeta_metadata: unknown }>;
+  localMetaRows?: Array<{ invoice_number?: string; zeta_metadata: unknown }>;
 }) {
   return {
     from(table: string) {
@@ -314,6 +314,95 @@ describe("runInvoiceCompletenessAudit — classifier alignment", () => {
     expect(result.zeta_count).toBe(1);
     expect(result.metadata?.zeta_skipped_count).toBe(0);
     expect(result.severity).toBe("ok");
+  });
+
+  it("legacy_untraceable: local=71 zeta=62 legacy=62 → severity=ok (all drift is legacy)", async () => {
+    // 62 Zeta accepted rows
+    const zetaRows = Array.from({ length: 62 }, (_, i) =>
+      makeVoucherRow({ RegistroId: String(9000 + i), CFETipo: 101 })
+    );
+    fetchMock.mockResolvedValue(okFetchResult(zetaRows));
+
+    // 62 ZETA:CCV1: legacy (no metadata → no RegistroId → legacyUntraceableCount++)
+    // 9 modern rows with RegistroId in metadata (will populate localRegistroIdSet)
+    const legacyRows = Array.from({ length: 62 }, (_, i) => ({
+      invoice_number: `ZETA:CCV1:001:001:A:${String(i).padStart(5, "0")}`,
+      zeta_metadata: null,
+    }));
+    const modernRows = Array.from({ length: 9 }, (_, i) => ({
+      invoice_number: `ZETA:INV:001:001:A:${String(i).padStart(5, "0")}`,
+      zeta_metadata: { zeta_comprobante_identity_v1: { registro_id: String(9000 + i) } },
+    }));
+
+    const supabase = createSupabaseStub({
+      localCount: 71,
+      localMetaRows: [...legacyRows, ...modernRows],
+    });
+
+    const result = await runInvoiceCompletenessAudit(supabase, WORKSPACE, 4, 2026);
+
+    expect(result.local_count).toBe(71);
+    expect(result.zeta_count).toBe(62);
+    expect(result.metadata?.legacy_untraceable_count).toBe(62);
+    expect(result.severity).toBe("ok");
+    // Raw drift preserved for auditability
+    expect(result.drift).toBe(9); // 71 local - 62 zeta
+  });
+
+  it("legacy_untraceable: local=71 zeta=62 legacy=10 → severity=critical (real drift remains)", async () => {
+    // Same Zeta side: 62 accepted rows
+    const zetaRows = Array.from({ length: 62 }, (_, i) =>
+      makeVoucherRow({ RegistroId: String(8000 + i), CFETipo: 101 })
+    );
+    fetchMock.mockResolvedValue(okFetchResult(zetaRows));
+
+    // 10 ZETA:CCV1: legacy + 61 modern rows (no RegistroId match for most → orphan drift)
+    const legacyRows = Array.from({ length: 10 }, (_, i) => ({
+      invoice_number: `ZETA:CCV1:001:002:A:${String(i).padStart(5, "0")}`,
+      zeta_metadata: null,
+    }));
+    const modernRows = Array.from({ length: 61 }, (_, i) => ({
+      invoice_number: `ZETA:INV:001:002:A:${String(i).padStart(5, "0")}`,
+      zeta_metadata: { zeta_comprobante_identity_v1: { registro_id: String(8000 + i) } },
+    }));
+
+    const supabase = createSupabaseStub({
+      localCount: 71,
+      localMetaRows: [...legacyRows, ...modernRows],
+    });
+
+    const result = await runInvoiceCompletenessAudit(supabase, WORKSPACE, 4, 2026);
+
+    expect(result.local_count).toBe(71);
+    expect(result.zeta_count).toBe(62);
+    expect(result.metadata?.legacy_untraceable_count).toBe(10);
+    // adjustedZeta=52, operationalLocal=61 → pct=17.3% → critical
+    expect(result.severity).toBe("critical");
+  });
+
+  it("receipts-equivalent: no legacy rows → severity computed from raw counts unchanged", async () => {
+    // Verify that when legacyUntraceableCount=0, formula is identical to before
+    const zetaRows = Array.from({ length: 50 }, (_, i) =>
+      makeVoucherRow({ RegistroId: String(7000 + i), CFETipo: 101 })
+    );
+    fetchMock.mockResolvedValue(okFetchResult(zetaRows));
+
+    // 30 local modern rows — no legacy
+    const modernRows = Array.from({ length: 30 }, (_, i) => ({
+      invoice_number: `ZETA:INV:001:003:A:${String(i).padStart(5, "0")}`,
+      zeta_metadata: { zeta_comprobante_identity_v1: { registro_id: String(7000 + i) } },
+    }));
+
+    const supabase = createSupabaseStub({
+      localCount: 30,
+      localMetaRows: modernRows,
+    });
+
+    const result = await runInvoiceCompletenessAudit(supabase, WORKSPACE, 4, 2026);
+
+    expect(result.metadata?.legacy_untraceable_count).toBeUndefined();
+    // zeta=50 local=30 → 40% drift → critical (no legacy to absorb)
+    expect(result.severity).toBe("critical");
   });
 
   it("april 2026: 129 raw, 31 CFETipo=0 skipped → zeta_accepted=98, matches local=98 → ok", async () => {

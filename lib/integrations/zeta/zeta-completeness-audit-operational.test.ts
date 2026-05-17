@@ -105,6 +105,22 @@ describe("isOperationalCriticalAudit — invoices with real operational drift", 
   });
 });
 
+describe("isOperationalCriticalAudit — exact bug scenario", () => {
+  it("local=71 zeta=62 legacy=62 severity=critical → returns false (secondary guard)", () => {
+    // This is the exact production bug: all 62 legacy records correspond to the 62 Zeta records.
+    // adjustedZeta = max(0, 62-62) = 0 → computeSeverity returns "ok" → not operational.
+    const audit = makeAudit({
+      entity: "invoices",
+      zeta_count: 62,
+      local_count: 71,
+      drift: 9,
+      severity: "critical",
+      metadata: { legacy_untraceable_count: 62 },
+    });
+    expect(isOperationalCriticalAudit(audit)).toBe(false);
+  });
+});
+
 describe("isOperationalCriticalAudit — receipts and contacts always operational", () => {
   it("returns true for receipts critical", () => {
     const audit = makeAudit({

@@ -19,9 +19,13 @@ export function isOperationalCriticalAudit(audit: CompletenessAuditResult): bool
   const legacyCount = audit.metadata?.legacy_untraceable_count ?? 0;
   if (legacyCount === 0) return true;
 
-  const operationalLocal = Math.max(0, audit.local_count - legacyCount);
+  // Mirror the audit formula: subtract legacy from BOTH sides.
+  // Legacy records exist in both systems but can't be ID-matched — they are accounted for.
+  const adjustedZeta = Math.max(0, audit.zeta_count - legacyCount);
+  const adjustedLocal = Math.max(0, audit.local_count - legacyCount);
 
-  if (audit.zeta_count === 0) return operationalLocal > 0;
-  const pct = (Math.abs(audit.zeta_count - operationalLocal) / audit.zeta_count) * 100;
+  // Mirrors computeSeverity(adjustedZeta, adjustedLocal)
+  if (adjustedZeta === 0) return false; // computeSeverity returns "ok" when zetaCount===0
+  const pct = (Math.abs(adjustedZeta - adjustedLocal) / adjustedZeta) * 100;
   return pct > 5;
 }
