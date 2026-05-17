@@ -40,12 +40,12 @@ import {
   createResyncJob,
 } from "@/lib/data/zeta-enterprise-sync-repository";
 import { recordDriftMetric } from "@/lib/observability/zeta-sync-metrics";
+import { isOperationalCriticalAudit } from "@/lib/integrations/zeta/zeta-completeness-audit-operational";
 
 const PIPELINE = "zeta-completeness-audit";
 const ANTI_OVERLAP_WINDOW_MS = 20 * 60 * 60 * 1_000; // 20h (cron diario)
 const WORKSPACE_DELAY_MS = 800;
 const ENTITY_DELAY_MS = 1_000;
-const AUTO_RESYNC_THRESHOLD: "critical" = "critical";
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -163,7 +163,7 @@ export async function GET(request: NextRequest) {
 
           await recordDriftMetric(supabase, PIPELINE, workspaceId, "invoices", invoiceAudit.drift, invoiceAudit.severity, { mes, anio }).catch(() => {});
 
-          if (invoiceAudit.severity === AUTO_RESYNC_THRESHOLD && auditRow) {
+          if (isOperationalCriticalAudit(invoiceAudit) && auditRow) {
             wsCritical++;
             // Registrar re-sync job (lo ejecuta el operator manualmente o un futuro cron)
             await createResyncJob(supabase, {
@@ -211,7 +211,7 @@ export async function GET(request: NextRequest) {
 
           await recordDriftMetric(supabase, PIPELINE, workspaceId, "receipts", receiptAudit.drift, receiptAudit.severity, { mes, anio }).catch(() => {});
 
-          if (receiptAudit.severity === AUTO_RESYNC_THRESHOLD && auditRow) {
+          if (isOperationalCriticalAudit(receiptAudit) && auditRow) {
             wsCritical++;
             await createResyncJob(supabase, {
               workspace_company_id: workspaceId,
