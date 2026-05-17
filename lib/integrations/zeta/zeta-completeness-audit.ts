@@ -227,25 +227,29 @@ export async function runInvoiceCompletenessAudit(
     };
   }
 
-  // 3. Comparar RegistroIds (best-effort) — solo de filas ACEPTADAS
+  // 3. Fetch local metadata unconditionally — needed for both RegistroId comparison
+  //    and legacy untraceable count. Running outside any guard ensures legacyUntraceableCount
+  //    is always computed correctly regardless of zetaRegistroIds contents.
   const missingIds: string[] = [];
   const orphanIds: string[] = [];
+  let legacyUntraceableCount = 0;
 
-  if (zetaRegistroIds.length > 0) {
-    const { data: localMetaRows } = await supabase
-      .from("proto_invoices")
-      .select("zeta_metadata")
-      .eq("workspace_company_id", workspaceId)
-      .like("invoice_number", "ZETA:%")
-      .gte("issue_date", periodStart)
-      .lte("issue_date", periodEnd)
-      .eq("is_active", true)
-      .limit(5000);
+  const { data: localMetaRows } = await supabase
+    .from("proto_invoices")
+    .select("invoice_number, zeta_metadata")
+    .eq("workspace_company_id", workspaceId)
+    .like("invoice_number", "ZETA:%")
+    .gte("issue_date", periodStart)
+    .lte("issue_date", periodEnd)
+    .eq("is_active", true)
+    .limit(5000);
 
-    const localRegistroIdSet = new Set<string>();
-    for (const row of localMetaRows ?? []) {
-      const meta = row.zeta_metadata as Record<string, unknown> | null;
-      if (!meta) continue;
+  const localRegistroIdSet = new Set<string>();
+  for (const row of localMetaRows ?? []) {
+    const meta = row.zeta_metadata as Record<string, unknown> | null;
+    const invNum = (row.invoice_number as string) ?? "";
+
+    if (meta) {
       // Ruta prioritaria (ZETA-03 formato v1)
       const identity = meta["zeta_comprobante_identity_v1"] as Record<string, unknown> | undefined;
       const id1 = identity?.["registro_id"];
@@ -255,10 +259,24 @@ export async function runInvoiceCompletenessAudit(
       }
       // Fallback: RegistroId en raíz del metadata
       const id2 = meta["RegistroId"] ?? meta["registroId"];
-      if (typeof id2 === "string" && id2.trim()) localRegistroIdSet.add(id2.trim());
-      else if (typeof id2 === "number" && id2 > 0) localRegistroIdSet.add(String(Math.round(id2)));
+      if (typeof id2 === "string" && id2.trim()) {
+        localRegistroIdSet.add(id2.trim());
+        continue;
+      }
+      if (typeof id2 === "number" && id2 > 0) {
+        localRegistroIdSet.add(String(Math.round(id2)));
+        continue;
+      }
     }
 
+    // No RegistroId found in any path: if ZETA:CCV1: prefix → historical legacy untraceable.
+    // These records predate modern traceability and are NOT operational drift.
+    if (invNum.startsWith("ZETA:CCV1:")) {
+      legacyUntraceableCount++;
+    }
+  }
+
+  if (zetaRegistroIds.length > 0) {
     for (const zetaId of zetaRegistroIds) {
       if (!localRegistroIdSet.has(zetaId)) missingIds.push(zetaId);
     }
@@ -268,29 +286,7 @@ export async function runInvoiceCompletenessAudit(
     }
   }
 
-  // Count legacy untraceable: ZETA:CCV1: invoices with no zeta_registro_id.
-  // Historical records that predate modern traceability — excluded from operational severity.
-  let legacyUntraceableCount = 0;
   const localTotal = localCount ?? 0;
-  if (localTotal > 0) {
-    try {
-      const { data: legacyCandidates } = await supabase
-        .from("proto_invoices")
-        .select("zeta_metadata")
-        .eq("workspace_company_id", workspaceId)
-        .like("invoice_number", "ZETA:CCV1:%")
-        .gte("issue_date", periodStart)
-        .lte("issue_date", periodEnd)
-        .eq("is_active", true)
-        .limit(5000);
-
-      for (const row of legacyCandidates ?? []) {
-        if (!extractLocalRegistroIdFromMeta(row.zeta_metadata as Record<string, unknown> | null)) {
-          legacyUntraceableCount++;
-        }
-      }
-    } catch { /* non-blocking */ }
-  }
 
   // Operational count excludes legacy untraceable records (they are not real drift).
   // Raw drift and local_count are preserved unchanged for auditability.
