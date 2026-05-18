@@ -21,11 +21,18 @@ import {
 import { getZetaPipelineDisplayLabel } from "@/lib/integrations/zeta/zeta-sync-resource-keys";
 
 const INTERVAL_LABELS: Record<string, string> = {
+  // Tier A — cada 3 h
   [ZETA_PIPELINE_NAMES.SALDOS]: "cada 3 h",
-  [ZETA_PIPELINE_NAMES.VOUCHERS]: "cada 6 h",
+  [ZETA_PIPELINE_NAMES.VOUCHERS]: "cada 3 h",
+  [ZETA_PIPELINE_NAMES.COLLECTION_RECEIPTS]: "cada 3 h",
+  [ZETA_PIPELINE_NAMES.CUOTAS]: "cada 3 h",
+  // Tier B — cada 6 h
+  [ZETA_PIPELINE_NAMES.VENDOR_PAYMENTS]: "cada 6 h",
+  [ZETA_PIPELINE_NAMES.COMPLETENESS_AUDIT]: "cada 6 h",
+  [ZETA_PIPELINE_NAMES.INTEGRITY_CHECK]: "cada 6 h",
+  [ZETA_PIPELINE_NAMES.RESYNC_WORKER]: "cada 6 h",
+  // Tier C — diario
   [ZETA_PIPELINE_NAMES.CONTACTS]: "diario",
-  [ZETA_PIPELINE_NAMES.VENDOR_PAYMENTS]: "diario",
-  [ZETA_PIPELINE_NAMES.COLLECTION_RECEIPTS]: "cada 6 h",
 };
 
 function statusConfig(status: PipelineHealthStatus): {

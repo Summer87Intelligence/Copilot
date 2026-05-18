@@ -32,24 +32,42 @@ describe("PIPELINE_EXPECTED_INTERVALS_MS", () => {
     expect(PIPELINE_EXPECTED_INTERVALS_MS[ZETA_PIPELINE_NAMES.SALDOS]).toBe(3 * 60 * 60 * 1_000);
   });
 
-  it("vouchers tiene intervalo de 6 horas", () => {
+  it("vouchers tiene intervalo de 3 horas (Tier A)", () => {
     expect(PIPELINE_EXPECTED_INTERVALS_MS[ZETA_PIPELINE_NAMES.VOUCHERS]).toBe(
+      3 * 60 * 60 * 1_000
+    );
+  });
+
+  it("cuotas tiene intervalo de 3 horas (Tier A)", () => {
+    expect(PIPELINE_EXPECTED_INTERVALS_MS[ZETA_PIPELINE_NAMES.CUOTAS]).toBe(
+      3 * 60 * 60 * 1_000
+    );
+  });
+
+  it("collection receipts tiene intervalo de 3 horas (Tier A)", () => {
+    expect(PIPELINE_EXPECTED_INTERVALS_MS[ZETA_PIPELINE_NAMES.COLLECTION_RECEIPTS]).toBe(
+      3 * 60 * 60 * 1_000
+    );
+  });
+
+  it("vendor payments tiene intervalo de 6 horas (Tier B)", () => {
+    expect(PIPELINE_EXPECTED_INTERVALS_MS[ZETA_PIPELINE_NAMES.VENDOR_PAYMENTS]).toBe(
       6 * 60 * 60 * 1_000
     );
   });
 
-  it("contacts y vendor payments tienen intervalo de 24 horas", () => {
-    expect(PIPELINE_EXPECTED_INTERVALS_MS[ZETA_PIPELINE_NAMES.VENDOR_PAYMENTS]).toBe(
-      24 * 60 * 60 * 1_000
+  it("completeness audit e integrity check tienen intervalo de 6 horas (Tier B)", () => {
+    expect(PIPELINE_EXPECTED_INTERVALS_MS[ZETA_PIPELINE_NAMES.COMPLETENESS_AUDIT]).toBe(
+      6 * 60 * 60 * 1_000
     );
+    expect(PIPELINE_EXPECTED_INTERVALS_MS[ZETA_PIPELINE_NAMES.INTEGRITY_CHECK]).toBe(
+      6 * 60 * 60 * 1_000
+    );
+  });
+
+  it("contacts tiene intervalo de 24 horas (Tier C)", () => {
     expect(PIPELINE_EXPECTED_INTERVALS_MS[ZETA_PIPELINE_NAMES.CONTACTS]).toBe(
       24 * 60 * 60 * 1_000
-    );
-  });
-
-  it("collection receipts tiene intervalo de 6 horas", () => {
-    expect(PIPELINE_EXPECTED_INTERVALS_MS[ZETA_PIPELINE_NAMES.COLLECTION_RECEIPTS]).toBe(
-      6 * 60 * 60 * 1_000
     );
   });
 });

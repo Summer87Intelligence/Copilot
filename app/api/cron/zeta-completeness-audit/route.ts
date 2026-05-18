@@ -43,7 +43,7 @@ import { recordDriftMetric } from "@/lib/observability/zeta-sync-metrics";
 import { isOperationalCriticalAudit } from "@/lib/integrations/zeta/zeta-completeness-audit-operational";
 
 const PIPELINE = "zeta-completeness-audit";
-const ANTI_OVERLAP_WINDOW_MS = 20 * 60 * 60 * 1_000; // 20h (cron diario)
+const ANTI_OVERLAP_WINDOW_MS = 6 * 60 * 60 * 1_000;
 const WORKSPACE_DELAY_MS = 800;
 const ENTITY_DELAY_MS = 1_000;
 

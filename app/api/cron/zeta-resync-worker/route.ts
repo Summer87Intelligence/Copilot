@@ -43,7 +43,7 @@ import { executeResyncJob } from "@/lib/integrations/zeta/zeta-resync-executor";
 import { recordResyncJobMetric } from "@/lib/observability/zeta-sync-metrics";
 
 const PIPELINE = ZETA_PIPELINE_NAMES.RESYNC_WORKER;
-const ANTI_OVERLAP_WINDOW_MS = 25 * 60 * 1_000; // 25 min (cron cada 30 min)
+const ANTI_OVERLAP_WINDOW_MS = 6 * 60 * 60 * 1_000; // igual al intervalo del cron
 const DEFAULT_JOB_LIMIT = 5;
 const MAX_JOB_LIMIT = 20;
 

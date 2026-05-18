@@ -2,7 +2,7 @@
  * GET /api/cron/zeta-sync-vouchers
  *
  * Cron Vercel — sincroniza comprobantes (vouchers) de todos los workspaces activos.
- * Frecuencia: cada 6 horas (vercel.json: "0 *\/6 * * *").
+ * Frecuencia: cada 3 horas (vercel.json: "10 *\/3 * * *").
  *
  * Estrategia de período:
  * - Sincroniza el mes actual y el mes anterior para cubrir facturas tardías.
@@ -39,8 +39,8 @@ const PIPELINE = ZETA_PIPELINE_NAMES.VOUCHERS;
 const WORKSPACE_DELAY_MS = 500;
 const MONTH_DELAY_MS = 1_000;
 
-// Anti-overlap: ventana de 6 horas (igual al intervalo del cron)
-const ANTI_OVERLAP_WINDOW_MS = 6 * 60 * 60 * 1_000;
+// Anti-overlap: ventana de 3 horas (igual al intervalo del cron)
+const ANTI_OVERLAP_WINDOW_MS = 3 * 60 * 60 * 1_000;
 
 // Período operativo mínimo: no sincronizar antes de enero 2026
 const OPERATIONAL_START_YEAR = 2026;

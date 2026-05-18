@@ -13,15 +13,13 @@ export const ZETA_SYNC_RESOURCE_STALE_HOURS: Record<
   string,
   { warningHours: number; criticalHours: number }
 > = {
-  /** Cron cada 6 h — margen sobre 2× intervalo. */
-  zeta_collection_receipts_v1: { warningHours: 30, criticalHours: 84 },
-  /** Cron saldos cada 3 h. */
-  factura_cliente_saldos_pendientes: { warningHours: 12, criticalHours: 72 },
-  zeta_saldos_pendientes_v1: { warningHours: 12, criticalHours: 72 },
-  /** Cron vouchers cada 6 h. */
-  zeta_customer_vouchers_v1: { warningHours: 30, criticalHours: 84 },
-  /** Cron vendor payments diario. */
-  "zeta-sync-vendor-payments": { warningHours: 36, criticalHours: 96 },
+  // Tier A — cron cada 3 h: WARN 12 h (4× intervalo), CRIT 24 h
+  zeta_collection_receipts_v1: { warningHours: 12, criticalHours: 24 },
+  factura_cliente_saldos_pendientes: { warningHours: 12, criticalHours: 24 },
+  zeta_saldos_pendientes_v1: { warningHours: 12, criticalHours: 24 },
+  zeta_customer_vouchers_v1: { warningHours: 12, criticalHours: 24 },
+  // Tier B — cron cada 6 h: WARN 18 h (3× intervalo), CRIT 48 h
+  "zeta-sync-vendor-payments": { warningHours: 18, criticalHours: 48 },
 };
 
 export function resolveSyncResourceStalenessHours(resourceFlow: string): {

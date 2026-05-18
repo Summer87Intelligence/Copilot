@@ -7,7 +7,7 @@
  * `zeta_sync_state.resource_flow` = `zeta_collection_receipts_v1`
  * `zeta_pipeline_runs.pipeline_name` = `zeta-sync-collection-receipts`
  *
- * Frecuencia: cada 6 h (vercel.json schedule 15 min past each 6h UTC).
+ * Frecuencia: cada 3 h (vercel.json: "20 *\/3 * * *").
  */
 
 import { randomUUID } from "node:crypto";
@@ -32,7 +32,7 @@ const PIPELINE = ZETA_PIPELINE_NAMES.COLLECTION_RECEIPTS;
 
 const WORKSPACE_DELAY_MS = 500;
 const MONTH_DELAY_MS = 1_000;
-const ANTI_OVERLAP_WINDOW_MS = 6 * 60 * 60 * 1_000;
+const ANTI_OVERLAP_WINDOW_MS = 3 * 60 * 60 * 1_000;
 
 const OPERATIONAL_START_YEAR = 2026;
 const OPERATIONAL_START_MONTH = 1;

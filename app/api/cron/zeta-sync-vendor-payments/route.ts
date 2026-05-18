@@ -2,7 +2,7 @@
  * GET /api/cron/zeta-sync-vendor-payments
  *
  * Cron Vercel — sincroniza recibos de pago a proveedores de todos los workspaces activos.
- * Frecuencia: diaria (vercel.json: "0 7 * * *").
+ * Frecuencia: cada 6 horas (vercel.json: "40 *\/6 * * *").
  *
  * Estrategia de período:
  * - Sincroniza el mes actual y el mes anterior para cubrir comprobantes tardíos.
@@ -38,8 +38,8 @@ const PIPELINE = ZETA_PIPELINE_NAMES.VENDOR_PAYMENTS;
 const WORKSPACE_DELAY_MS = 500;
 const MONTH_DELAY_MS = 1_000;
 
-// Anti-overlap: ventana de 24 horas (igual al intervalo del cron)
-const ANTI_OVERLAP_WINDOW_MS = 24 * 60 * 60 * 1_000;
+// Anti-overlap: ventana de 6 horas (igual al intervalo del cron)
+const ANTI_OVERLAP_WINDOW_MS = 6 * 60 * 60 * 1_000;
 
 const OPERATIONAL_START_YEAR = 2026;
 const OPERATIONAL_START_MONTH = 1;

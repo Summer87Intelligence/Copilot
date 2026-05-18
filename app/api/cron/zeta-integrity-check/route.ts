@@ -36,7 +36,7 @@ import {
 import { runAllIntegrityChecks } from "@/lib/integrations/zeta/zeta-integrity-checker";
 
 const PIPELINE = "zeta-integrity-check";
-const ANTI_OVERLAP_WINDOW_MS = 20 * 60 * 60 * 1_000; // 20h
+const ANTI_OVERLAP_WINDOW_MS = 6 * 60 * 60 * 1_000;
 const WORKSPACE_DELAY_MS = 600;
 
 function sleep(ms: number): Promise<void> {
