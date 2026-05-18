@@ -43,6 +43,12 @@ import type { CurrencyFilter } from "@/components/copilot/financial-control-bar"
 
 type ExplainStatus = "ok" | "info" | "warn" | "critical";
 
+type CreditNoteDetailLine = {
+  currency: ReconciliationCurrencyCode;
+  count: number;
+  amount: number;
+};
+
 type ExplainItem = {
   id: string;
   label: string;
@@ -50,6 +56,11 @@ type ExplainItem = {
   status: ExplainStatus;
   count?: number;
   icon: LucideIcon;
+  /** Si presente, habilita toggle "Ver detalle" con desglose inline. */
+  expandableDetail?: {
+    lines: CreditNoteDetailLine[];
+    note: string;
+  };
 };
 
 // ---------------------------------------------------------------------------
@@ -58,7 +69,8 @@ type ExplainItem = {
 
 function buildItems(
   report: FinancialConsistencyReport,
-  selectedCurrency: CurrencyFilter
+  selectedCurrency: CurrencyFilter,
+  isPreSync: boolean,
 ): ExplainItem[] {
   const items: ExplainItem[] = [];
   const { gaps, totalInvoicesWithoutCurrency, orphanSummary, voidedInvoices } = report;
@@ -146,61 +158,90 @@ function buildItems(
     });
   }
 
-  // 4. Deuda histórica (pre-2026)
-  const historical: ExcludedHistoricalSummary = report.excludedHistorical;
-  const historicalPendingEntries = currencyList.filter(
-    (c) => (historical.pendingByCurrency[c] ?? 0) > 0
-  );
+  // 4. Deuda histórica (pre-2026) — solo visible cuando el período incluye datos pre-sync
+  if (isPreSync) {
+    const historical: ExcludedHistoricalSummary = report.excludedHistorical;
+    const historicalPendingEntries = currencyList.filter(
+      (c) => (historical.pendingByCurrency[c] ?? 0) > 0
+    );
 
-  if (report.mode === "period_only") {
-    // En modo operativo: la deuda pre-2026 está deliberadamente excluida
-    if (historical.invoiceCount > 0) {
-      const pendingStr = historicalPendingEntries.length > 0
-        ? ` Saldo histórico pendiente: ${historicalPendingEntries
-            .map((c) => formatCarteraMoney(c, historical.pendingByCurrency[c] ?? 0, { fractionDigits: 0 }))
-            .join(" · ")}.`
-        : "";
-      items.push({
-        id: "pre-2026",
-        label: "Deuda histórica excluida de esta vista",
-        description: `${formatCarteraInteger(historical.invoiceCount)} factura${
-          historical.invoiceCount === 1 ? "" : "s"
-        } con fecha anterior al 01/01/2026 excluida${historical.invoiceCount === 1 ? "" : "s"} del período operativo.${pendingStr} Para verlas, cambiar a "Todo el historial".`,
-        status: "info",
-        count: historical.invoiceCount,
-        icon: CalendarX,
-      });
+    if (report.mode === "period_only") {
+      if (historical.invoiceCount > 0) {
+        const pendingStr = historicalPendingEntries.length > 0
+          ? ` Saldo histórico pendiente: ${historicalPendingEntries
+              .map((c) => formatCarteraMoney(c, historical.pendingByCurrency[c] ?? 0, { fractionDigits: 0 }))
+              .join(" · ")}.`
+          : "";
+        items.push({
+          id: "pre-2026",
+          label: "Deuda histórica excluida de esta vista",
+          description: `${formatCarteraInteger(historical.invoiceCount)} factura${
+            historical.invoiceCount === 1 ? "" : "s"
+          } con fecha anterior al 01/01/2026 excluida${historical.invoiceCount === 1 ? "" : "s"} del período operativo.${pendingStr} Para verlas, cambiar a "Todo el historial".`,
+          status: "info",
+          count: historical.invoiceCount,
+          icon: CalendarX,
+        });
+      } else {
+        items.push({
+          id: "pre-2026",
+          label: "Deuda histórica",
+          description: "Sin facturas previas a 2026 con saldo pendiente.",
+          status: "ok",
+          count: 0,
+          icon: CalendarX,
+        });
+      }
     } else {
-      items.push({
-        id: "pre-2026",
-        label: "Deuda histórica",
-        description: "Sin facturas previas a 2026 con saldo pendiente.",
-        status: "ok",
-        count: 0,
-        icon: CalendarX,
-      });
+      if (gaps.pre2026InvoiceCount > 0) {
+        items.push({
+          id: "pre-2026",
+          label: "Facturas pre-2026 incluidas",
+          description: `${formatCarteraInteger(gaps.pre2026InvoiceCount)} factura${
+            gaps.pre2026InvoiceCount === 1 ? "" : "s"
+          } con fecha anterior al 01/01/2026 incluida${gaps.pre2026InvoiceCount === 1 ? "" : "s"} en el saldo. Verificar si corresponde mantenerlas abiertas.`,
+          status: gaps.pre2026InvoiceCount > 5 ? "warn" : "info",
+          count: gaps.pre2026InvoiceCount,
+          icon: CalendarX,
+        });
+      } else {
+        items.push({
+          id: "pre-2026",
+          label: "Facturas pre-2026",
+          description: "Sin facturas previas a 2026 con saldo abierto en esta vista.",
+          status: "ok",
+          count: 0,
+          icon: CalendarX,
+        });
+      }
     }
-  } else {
-    // En modo all_outstanding: pre-2026 visible, puede merecer revisión
-    if (gaps.pre2026InvoiceCount > 0) {
+  }
+
+  // 4b. Notas de crédito — siempre visible si hay datos; para 2026+ explica el gap
+  {
+    const cnByCurrency = currencyList
+      .map((c) => {
+        const cur = report.currencies.find((cu) => cu.currencyCode === c);
+        return cur && (cur.creditNoteCount ?? 0) > 0
+          ? { currency: c, count: cur.creditNoteCount, amount: cur.creditNoteAmount }
+          : null;
+      })
+      .filter((x): x is CreditNoteDetailLine => x !== null);
+    const totalCNCount = cnByCurrency.reduce((s, x) => s + x.count, 0);
+
+    if (totalCNCount > 0) {
       items.push({
-        id: "pre-2026",
-        label: "Facturas pre-2026 incluidas",
-        description: `${formatCarteraInteger(gaps.pre2026InvoiceCount)} factura${
-          gaps.pre2026InvoiceCount === 1 ? "" : "s"
-        } con fecha anterior al 01/01/2026 incluida${gaps.pre2026InvoiceCount === 1 ? "" : "s"} en el saldo. Verificar si corresponde mantenerlas abiertas.`,
-        status: gaps.pre2026InvoiceCount > 5 ? "warn" : "info",
-        count: gaps.pre2026InvoiceCount,
-        icon: CalendarX,
-      });
-    } else {
-      items.push({
-        id: "pre-2026",
-        label: "Facturas pre-2026",
-        description: "Sin facturas previas a 2026 con saldo abierto en esta vista.",
-        status: "ok",
-        count: 0,
-        icon: CalendarX,
+        id: "credit-notes",
+        label: "Notas de crédito aplicadas",
+        description:
+          "Las notas de crédito reducen el saldo pendiente en Zeta, pero no se registran como recibos de caja. Por eso puede existir diferencia entre Facturado, Cobrado registrado y Saldo pendiente.",
+        status: "info",
+        count: totalCNCount,
+        icon: SlidersHorizontal,
+        expandableDetail: {
+          lines: cnByCurrency,
+          note: "No es un error: es una compensación contable, no un recibo de caja.",
+        },
       });
     }
   }
@@ -263,13 +304,16 @@ function buildItems(
 export function ExplainabilityPanel({
   report,
   selectedCurrency = "all",
+  isPreSync = false,
 }: {
   report: FinancialConsistencyReport;
   selectedCurrency?: CurrencyFilter;
+  /** Si true, el período incluye facturas pre-2026 — muestra contexto histórico. */
+  isPreSync?: boolean;
 }) {
   const items = useMemo(
-    () => buildItems(report, selectedCurrency),
-    [report, selectedCurrency]
+    () => buildItems(report, selectedCurrency, isPreSync),
+    [report, selectedCurrency, isPreSync]
   );
   const reduce = useReducedMotion();
   const [open, setOpen] = useState(false);
@@ -346,7 +390,7 @@ export function ExplainabilityPanel({
           }}
         >
           {items.map((item) => (
-            <ExplainItemRow key={item.id} item={item} reduce={!!reduce} />
+            <ExplainItemRow key={item.id} item={item} />
           ))}
         </motion.ul>
       )}
@@ -379,8 +423,11 @@ const STATUS_BADGE_LABEL: Record<ExplainStatus, string> = {
   critical: "⚠",
 };
 
-function ExplainItemRow({ item, reduce }: { item: ExplainItem; reduce: boolean }) {
+function ExplainItemRow({ item }: { item: ExplainItem }) {
   const Icon = item.icon;
+  const [expanded, setExpanded] = useState(false);
+  const hasDetail = !!item.expandableDetail;
+
   return (
     <motion.li
       variants={{
@@ -400,6 +447,39 @@ function ExplainItemRow({ item, reduce }: { item: ExplainItem; reduce: boolean }
         <p className="mt-0.5 text-[12px] leading-relaxed text-[var(--copilot-ink-muted)]">
           {item.description}
         </p>
+        {hasDetail && (
+          <>
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              aria-expanded={expanded}
+              className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-sky-600 transition-colors hover:text-sky-700 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60 rounded-sm"
+            >
+              {expanded ? "Ocultar detalle" : "Ver detalle"}
+              <ChevronDown
+                className={`h-3 w-3 transition-transform duration-150 ${expanded ? "rotate-0" : "-rotate-90"}`}
+                aria-hidden
+              />
+            </button>
+            {expanded && (
+              <div className="mt-2 rounded-xl border border-[var(--copilot-border)] bg-[rgba(44,40,37,0.025)] px-3 py-2.5 space-y-1.5">
+                {item.expandableDetail!.lines.map(({ currency, count, amount }) => (
+                  <div key={currency} className="flex items-baseline justify-between gap-4">
+                    <span className="text-[11px] text-[var(--copilot-ink-muted)]">
+                      {formatCarteraInteger(count)} NC {currency}
+                    </span>
+                    <span className="text-[11px] tabular-nums font-semibold text-[var(--copilot-ink)]">
+                      {formatCarteraMoney(currency, amount, { fractionDigits: 0 })}
+                    </span>
+                  </div>
+                ))}
+                <p className="mt-1 border-t border-[var(--copilot-border)] pt-1.5 text-[11px] leading-relaxed text-[var(--copilot-ink-muted)]/70">
+                  {item.expandableDetail!.note}
+                </p>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Badge */}

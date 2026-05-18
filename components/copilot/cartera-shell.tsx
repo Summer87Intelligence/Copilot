@@ -182,10 +182,11 @@ export function CarteraShell() {
             )}
             <AgingAnalytics report={report} selectedCurrency="all" />
             <ClientDebtExplorer report={report} selectedCurrency="all" />
-            <ExplainabilityPanel report={report} selectedCurrency="all" />
+            <ExplainabilityPanel report={report} selectedCurrency="all" isPreSync={isPreSync} />
             <ReconciliationCenter
               report={report}
               generatedAt={lastFetchedAt ?? report.generatedAt}
+              isPreSync={isPreSync}
             />
           </>
         ) : null}

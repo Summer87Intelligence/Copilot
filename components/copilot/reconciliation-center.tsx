@@ -62,12 +62,15 @@ type ReconCheck = {
 export function ReconciliationCenter({
   report,
   generatedAt,
+  isPreSync = false,
 }: {
   report: FinancialConsistencyReport;
   /** Sobre-escribe `report.generatedAt` (útil al refrescar manualmente). */
   generatedAt?: string;
+  /** Si true, el período incluye facturas pre-2026 — muestra checks históricos. */
+  isPreSync?: boolean;
 }) {
-  const checks = useMemo<ReconCheck[]>(() => buildChecks(report), [report]);
+  const checks = useMemo<ReconCheck[]>(() => buildChecks(report, isPreSync), [report, isPreSync]);
   const reduce = useReducedMotion();
   const [open, setOpen] = useState(false);
 
@@ -334,7 +337,7 @@ function SyncStatusBadge({ status }: { status: StalenessStatus }) {
 // Checks
 // ---------------------------------------------------------------------------
 
-function buildChecks(report: FinancialConsistencyReport): ReconCheck[] {
+function buildChecks(report: FinancialConsistencyReport, isPreSync: boolean): ReconCheck[] {
   const orphans = report.orphanSummary.warned;
   const orphanAutoClose = report.orphanSummary.pending_auto_close;
   const unknownCcy = report.totalInvoicesWithoutCurrency;
@@ -342,7 +345,7 @@ function buildChecks(report: FinancialConsistencyReport): ReconCheck[] {
     report.staleSummary.warning + report.staleSummary.critical + report.staleSummary.never_synced;
   const bootstrapPending = report.syncStates.filter((s) => !s.bootstrap_completed).length;
 
-  return [
+  const result: ReconCheck[] = [
     {
       id: "orphans",
       label: "Orphan invoices",
@@ -394,15 +397,21 @@ function buildChecks(report: FinancialConsistencyReport): ReconCheck[] {
       count: bootstrapPending,
       icon: ServerCog,
     },
-    {
+  ];
+
+  // Pre-2026 check: solo visible cuando el período incluye datos históricos pre-sync
+  if (isPreSync) {
+    result.push({
       id: "pre-2026",
       label: "Pre-2026 invoices",
       description:
         "Cobertura histórica de facturas previas a 2026 — pendiente de implementación en el motor.",
       status: "pending",
       icon: Hourglass,
-    },
-  ];
+    });
+  }
+
+  return result;
 }
 
 function describeStale(report: FinancialConsistencyReport): string {
