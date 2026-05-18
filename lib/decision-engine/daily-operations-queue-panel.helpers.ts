@@ -3,10 +3,12 @@
  */
 
 import type {
+  ClientOperationalSummary,
   DailyOperationsQueue,
   OperationalTask,
   QueueSection,
 } from "@/lib/decision-engine/de-types";
+import { buildClientOperationalSummaries } from "@/lib/decision-engine/client-operational-summary-builder";
 import { QUEUE_SECTION_LABELS } from "@/lib/decision-engine/de-types";
 
 export const QUEUE_SECTION_ORDER: QueueSection[] = [
@@ -35,6 +37,38 @@ export function sliceVisibleTasks(
     return { visible: tasks, hiddenCount: 0 };
   }
   return { visible: tasks.slice(0, limit), hiddenCount: tasks.length - limit };
+}
+
+export function sliceVisibleSummaries(
+  summaries: ClientOperationalSummary[],
+  expanded: boolean,
+  limit = MAX_TASKS_PER_SECTION
+): { visible: ClientOperationalSummary[]; hiddenCount: number } {
+  if (expanded || summaries.length <= limit) {
+    return { visible: summaries, hiddenCount: 0 };
+  }
+  return { visible: summaries.slice(0, limit), hiddenCount: summaries.length - limit };
+}
+
+export function getSectionClientSummaries(
+  queue: DailyOperationsQueue,
+  section: QueueSection
+): ClientOperationalSummary[] {
+  return buildClientOperationalSummaries(getSectionTasks(queue, section));
+}
+
+export function countClientsInQueue(queue: DailyOperationsQueue): number {
+  const ids = new Set<string>();
+  for (const section of QUEUE_SECTION_ORDER) {
+    for (const t of getSectionTasks(queue, section)) {
+      ids.add(t.customer_id);
+    }
+  }
+  return ids.size;
+}
+
+export function clientSeenKey(customerId: string): string {
+  return `client:${customerId}`;
 }
 
 export function isQueueEmpty(queue: DailyOperationsQueue | null | undefined): boolean {

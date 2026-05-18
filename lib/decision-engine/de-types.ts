@@ -630,3 +630,37 @@ export type DailyOperationsQueueInput = {
   portfolio_score: PortfolioScore;
   now?: Date;
 };
+
+// ---------------------------------------------------------------------------
+// Phase 3A — Client-centric operational queue (view-model)
+// ---------------------------------------------------------------------------
+
+export type ExpectedImpactRiskReduction = "low" | "medium" | "high";
+
+export type ClientOperationalExpectedImpact = {
+  recovery_amount: number;
+  risk_reduction: ExpectedImpactRiskReduction;
+  concentration_reduction: number | null;
+};
+
+export type ClientOperationalSummary = {
+  customer_id: string;
+  customer_name: string;
+  highest_priority: TaskPriority;
+  machine_state: OperationalMachineState | null;
+  risk_level: RiskLevel;
+  primary_action: OperationalTask;
+  secondary_actions: OperationalTask[];
+  reasons: string[];
+  total_pending_amount: number;
+  pending_currency_breakdown: {
+    uyu: number;
+    usd: number;
+  };
+  concentration_percent: number | null;
+  expected_impact: ClientOperationalExpectedImpact;
+  sla_breached: boolean;
+  actionable_now: boolean;
+  tasks_count: number;
+  generated_from: TaskSource[];
+};
