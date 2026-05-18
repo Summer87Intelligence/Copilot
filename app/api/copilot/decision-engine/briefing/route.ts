@@ -24,11 +24,17 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/** Returns false for snapshots generated before Phase 1B (missing recommendation/risk_assessment). */
-function isBriefingV1B(payload: { urgent?: unknown[]; important?: unknown[] }): boolean {
+/** Returns false for snapshots generated before Phase 1B/1C (missing required engine fields). */
+function isBriefingCurrent(payload: { urgent?: unknown[]; important?: unknown[]; follow_up_queue?: unknown }): boolean {
+  // Must have follow_up_queue array (Phase 1C)
+  if (!Array.isArray(payload.follow_up_queue)) return false;
   const first = (payload.urgent?.[0] ?? payload.important?.[0]) as Record<string, unknown> | undefined;
-  if (!first) return true; // no clients → nothing to check
-  return first["recommendation"] != null && first["risk_assessment"] != null;
+  if (!first) return true;
+  return (
+    first["recommendation"] != null &&
+    first["risk_assessment"] != null &&
+    first["follow_up_result"] != null
+  );
 }
 
 export async function GET(request: NextRequest) {
@@ -49,7 +55,7 @@ export async function GET(request: NextRequest) {
     // 1. Cache check
     if (!forceRefresh) {
       const cached = await readBriefingSnapshot(supabase, tenantCompanyId);
-      if (cached && isBriefingSnapshotFresh(cached) && isBriefingV1B(cached.payload)) {
+      if (cached && isBriefingSnapshotFresh(cached) && isBriefingCurrent(cached.payload)) {
         const recentActions = await loadRecentActionsOnly(supabase, tenantCompanyId);
         log.info("de_briefing_cache_hit", {
           generated_at: cached.generated_at,

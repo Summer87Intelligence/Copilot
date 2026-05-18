@@ -54,6 +54,9 @@ describe("rankClients — Phase 1B field guarantees", () => {
       expect(client.risk_assessment).toBeDefined();
       expect(typeof client.risk_assessment.score).toBe("number");
       expect(["low", "medium", "high", "critical"]).toContain(client.risk_assessment.level);
+      expect(client.follow_up_result).toBeDefined();
+      expect(client.follow_up_result.operational_state).toBeDefined();
+      expect(typeof client.follow_up_result.pending_action).toBe("string");
     }
   });
 
@@ -63,11 +66,13 @@ describe("rankClients — Phase 1B field guarantees", () => {
     expect(ranked).toHaveLength(0);
   });
 
-  it("client with no actions still gets recommendation", () => {
+  it("client with no actions still gets recommendation and follow_up_result", () => {
     const ref = new Date("2026-05-18T12:00:00Z");
     const ranked = rankClients([invoice()], [company], [], ref);
     expect(ranked[0]?.recommendation).toBeDefined();
     expect(ranked[0]?.risk_assessment).toBeDefined();
+    expect(ranked[0]?.follow_up_result).toBeDefined();
+    expect(ranked[0]?.follow_up_result.operational_state).toBeDefined();
   });
 });
 
@@ -76,19 +81,24 @@ describe("rankClients — Phase 1B field guarantees", () => {
 // ---------------------------------------------------------------------------
 
 describe("legacy snapshot detection", () => {
-  it("briefing with clients lacking recommendation is treated as stale", () => {
-    // Simulate what a pre-Phase-1B cached payload looks like
+  it("briefing with clients lacking Phase 1C fields is treated as stale", () => {
+    // Simulate pre-Phase-1C cached payload (missing follow_up_result)
     const legacyClient = {
       company_id: "c1",
       company_name: "Empresa",
-      // recommendation and risk_assessment are ABSENT
+      recommendation: { action: "monitor" },
+      risk_assessment: { score: 10, level: "low" },
+      // follow_up_result ABSENT
     };
-    const legacyPayload = { urgent: [legacyClient], important: [] };
+    const legacyPayload = { urgent: [legacyClient], important: [], follow_up_queue: [] };
 
-    // Replicate the isBriefingV1B logic inline
+    // Replicate isBriefingCurrent logic
     const first = legacyPayload.urgent[0] as Record<string, unknown> | undefined;
-    const isV1B = first ? (first["recommendation"] != null && first["risk_assessment"] != null) : true;
-    expect(isV1B).toBe(false);
+    const isCurrent = Array.isArray(legacyPayload.follow_up_queue) &&
+      (first
+        ? first["recommendation"] != null && first["risk_assessment"] != null && first["follow_up_result"] != null
+        : true);
+    expect(isCurrent).toBe(false);
   });
 
   it("briefing with no clients is treated as valid (no clients to check)", () => {

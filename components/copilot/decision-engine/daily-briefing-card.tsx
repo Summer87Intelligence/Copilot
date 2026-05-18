@@ -7,6 +7,7 @@ import { PortfolioScoreCard } from "./portfolio-score-card";
 import { ClientPriorityList } from "./client-priority-list";
 import { RiskAlertList } from "./risk-alert-list";
 import { CollectionActionModal } from "./collection-action-modal";
+import { DailyOperationsQueue } from "./daily-operations-queue";
 
 type QuickActionDefaults = {
   actionType?: CollectionActionType;
@@ -116,6 +117,20 @@ export function DailyBriefingCard({ briefing, recentActions, generatedAt, cached
             No hay facturas pendientes con urgencia o no vencidas aún.
           </p>
         </div>
+      )}
+
+      {/* Operations queue */}
+      {(briefing.follow_up_queue?.length ?? 0) > 0 && (
+        <DailyOperationsQueue
+          queue={briefing.follow_up_queue}
+          onActionClick={(item) => {
+            // Find the matching RankedClient to open the action modal
+            const client = [...briefing.urgent, ...briefing.important].find(
+              (c) => c.company_id === item.company_id && c.currency_code === item.currency_code
+            );
+            if (client) handleActionClick(client);
+          }}
+        />
       )}
 
       {/* Collection action modal */}

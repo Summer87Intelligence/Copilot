@@ -8,6 +8,12 @@ import {
   COLLECTION_PRIORITIES,
   type CollectionActionInput,
 } from "@/lib/copilot-collection-types";
+import { loadRecentActionsOnly } from "@/lib/data/decision-engine-data-loader";
+import { invalidateBriefingSnapshot } from "@/lib/data/decision-snapshot-repository";
+import {
+  collectionActionToDE,
+  persistActionOperationalUpdate,
+} from "@/lib/decision-engine/decision-action-operational-persistence";
 
 const MSG_DB = "Error de base de datos. Intentá de nuevo.";
 
@@ -101,7 +107,42 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    return NextResponse.json(result, { status: 201 });
+    const recentActions = (await loadRecentActionsOnly(supabase, tenantCompanyId)).map((a) =>
+      a.id === result.data.id ? collectionActionToDE(result.data) : a
+    );
+    if (!recentActions.some((a) => a.id === result.data.id)) {
+      recentActions.unshift(collectionActionToDE(result.data));
+    }
+
+    let operational;
+    try {
+      operational = await persistActionOperationalUpdate(
+        supabase,
+        tenantCompanyId,
+        result.data,
+        recentActions
+      );
+    } catch (persistErr) {
+      console.warn(
+        JSON.stringify({
+          source: "collection_actions",
+          kind: "de_operational_persist_failed",
+          workspace_id: tenantCompanyId,
+          company_id: companyId,
+          action_id: result.data.id,
+          message: persistErr instanceof Error ? persistErr.message : String(persistErr),
+        })
+      );
+    }
+
+    invalidateBriefingSnapshot(supabase, tenantCompanyId).catch(() => {
+      /* non-fatal */
+    });
+
+    return NextResponse.json(
+      operational != null ? { ...result, operational } : result,
+      { status: 201 }
+    );
   } catch {
     return NextResponse.json(
       { ok: false, code: "DATABASE", message: MSG_DB },

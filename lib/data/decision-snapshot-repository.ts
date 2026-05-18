@@ -76,6 +76,17 @@ export async function upsertBriefingSnapshot(
     );
 }
 
+export async function invalidateBriefingSnapshot(
+  supabase: SupabaseClient,
+  tenantCompanyId: string
+): Promise<void> {
+  await supabase
+    .from("decision_snapshots")
+    .update({ expires_at: new Date().toISOString() })
+    .eq("workspace_company_id", tenantCompanyId)
+    .eq("snapshot_type", SNAPSHOT_TYPE_BRIEFING);
+}
+
 // ---------------------------------------------------------------------------
 // portfolio_score_history
 // ---------------------------------------------------------------------------

@@ -9,11 +9,15 @@ import { COPILOT_OPERATIONAL_START_DATE } from "@/lib/copilot-operational-period
 import type {
   DECollectionAction,
   DECompany,
+  DEFollowUpRow,
+  DEOperationalStateRow,
   DEPendingInvoice,
   DERecentInvoice,
   DERecentReceipt,
   DecisionEngineDataBundle,
 } from "@/lib/decision-engine/de-types";
+import { selectPendingFollowUpsForWorkspace } from "@/lib/data/decision-follow-up-repository";
+import { selectOperationalStatesForWorkspace } from "@/lib/data/decision-operational-state-repository";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -197,14 +201,23 @@ export async function loadDecisionEngineBundle(
   supabase: SupabaseClient,
   tenantCompanyId: string
 ): Promise<DecisionEngineDataBundle> {
-  const [pendingInvoices, recentInvoices, recentReceipts, companies, recentActions] =
-    await Promise.all([
-      loadPendingInvoices(supabase, tenantCompanyId),
-      loadRecentInvoices(supabase, tenantCompanyId),
-      loadRecentReceipts(supabase, tenantCompanyId),
-      loadCompanies(supabase, tenantCompanyId),
-      loadRecentActions(supabase, tenantCompanyId),
-    ]);
+  const [
+    pendingInvoices,
+    recentInvoices,
+    recentReceipts,
+    companies,
+    recentActions,
+    operationalStates,
+    pendingFollowUps,
+  ] = await Promise.all([
+    loadPendingInvoices(supabase, tenantCompanyId),
+    loadRecentInvoices(supabase, tenantCompanyId),
+    loadRecentReceipts(supabase, tenantCompanyId),
+    loadCompanies(supabase, tenantCompanyId),
+    loadRecentActions(supabase, tenantCompanyId),
+    loadOperationalStates(supabase, tenantCompanyId),
+    loadPendingFollowUps(supabase, tenantCompanyId),
+  ]);
 
   return {
     pendingInvoices,
@@ -212,6 +225,22 @@ export async function loadDecisionEngineBundle(
     recentReceipts,
     companies,
     recentActions,
+    operationalStates,
+    pendingFollowUps,
     loadedAt: new Date().toISOString(),
   };
+}
+
+async function loadOperationalStates(
+  supabase: SupabaseClient,
+  tenantCompanyId: string
+): Promise<DEOperationalStateRow[]> {
+  return selectOperationalStatesForWorkspace(supabase, tenantCompanyId);
+}
+
+async function loadPendingFollowUps(
+  supabase: SupabaseClient,
+  tenantCompanyId: string
+): Promise<DEFollowUpRow[]> {
+  return selectPendingFollowUpsForWorkspace(supabase, tenantCompanyId);
 }

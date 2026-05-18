@@ -18,7 +18,9 @@ import type {
 import { CLIENT_INSTRUCTION_LABELS } from "@/lib/decision-engine/de-types";
 import { computeClientRiskScore } from "@/lib/decision-engine/client-risk-scorer";
 import { generateActionRecommendation } from "@/lib/decision-engine/action-recommendation-engine";
-import type { ActionRecommendation, RiskAssessment } from "@/lib/decision-engine/de-types";
+import { computeFollowUp } from "@/lib/decision-engine/follow-up-engine";
+import type { ActionRecommendation, FollowUpResult, RiskAssessment } from "@/lib/decision-engine/de-types";
+import { FALLBACK_FOLLOW_UP_RESULT } from "@/lib/decision-engine/de-types";
 
 const FALLBACK_RISK_ASSESSMENT: RiskAssessment = {
   score: 0,
@@ -161,6 +163,7 @@ function groupPendingByCompanyCurrency(
 
 type ActionSignals = {
   collection_status: string | null;
+  last_action_type: string | null;
   last_action_date: string | null;
   has_active_promise: boolean;
   promise_date: string | null;
@@ -183,6 +186,7 @@ function extractActionSignals(
   if (companyActions.length === 0) {
     return {
       collection_status: null,
+      last_action_type: null,
       last_action_date: null,
       has_active_promise: false,
       promise_date: null,
@@ -219,7 +223,8 @@ function extractActionSignals(
 
   return {
     collection_status: latest.status,
-    last_action_date: latest.created_at,
+    last_action_type:  latest.action_type,
+    last_action_date:  latest.created_at,
     has_active_promise: hasActivePromise,
     promise_date: promise?.promise_date ?? null,
     promise_amount: promise?.promise_amount ?? null,
@@ -470,6 +475,24 @@ export function rankClients(
       recommendation = { ...FALLBACK_RECOMMENDATION };
     }
 
+    let follow_up_result: FollowUpResult;
+    try {
+      follow_up_result = computeFollowUp({
+        last_action_type:   signals.last_action_type,
+        last_action_date:   signals.last_action_date,
+        last_action_status: signals.collection_status,
+        promise_date:       signals.promise_date,
+        has_active_promise: signals.has_active_promise,
+        has_broken_promise: signals.has_broken_promise,
+        has_escalation:     signals.has_escalation,
+        oldest_days:        summary.oldest_days,
+        risk_score:         risk_assessment.score,
+        days_since_contact: signals.days_since_contact,
+      }, ref);
+    } catch {
+      follow_up_result = { ...FALLBACK_FOLLOW_UP_RESULT };
+    }
+
     ranked.push({
       company_id: summary.company_id,
       company_name: companyMap.get(summary.company_id) ?? summary.company_id,
@@ -492,6 +515,7 @@ export function rankClients(
       concentration_pct: concentrationPct,
       risk_assessment,
       recommendation,
+      follow_up_result,
     });
   }
 

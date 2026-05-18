@@ -8,8 +8,15 @@ import type {
   BriefingAlert,
   DailyBriefing,
   DecisionEngineDataBundle,
+  DEFollowUpRow,
+  DEOperationalStateRow,
+  FollowUpQueueItem,
+  FollowUpResult,
   RankedClient,
+  SlaStatus,
 } from "@/lib/decision-engine/de-types";
+import { RISK_LEVEL_SCORES } from "@/lib/decision-engine/de-types";
+import { scheduledForDayKey } from "@/lib/data/decision-follow-up-repository";
 import { computePortfolioScore } from "@/lib/decision-engine/portfolio-scorer";
 import { rankClients } from "@/lib/decision-engine/client-priority-ranker";
 
@@ -114,6 +121,133 @@ const URGENT_THRESHOLD = 70;
 const IMPORTANT_THRESHOLD = 40;
 const MAX_URGENT = 3;
 const MAX_IMPORTANT = 5;
+const MAX_FOLLOW_UP_QUEUE = 15;
+
+const ACTIONABLE_SLA = new Set(["critical", "overdue", "due_today", "no_contact"]);
+const ACTIONABLE_STATES = new Set(["escalated_active", "overdue_no_contact", "awaiting_promise"]);
+
+function isActionableFollowUp(result: FollowUpResult): boolean {
+  return (
+    ACTIONABLE_SLA.has(result.sla_status) ||
+    ACTIONABLE_STATES.has(result.operational_state)
+  );
+}
+
+function slaFromScheduled(scheduledFor: string, now: Date): SlaStatus {
+  const target = new Date(scheduledFor);
+  if (isNaN(target.getTime())) return "ok";
+  const diffDays = (target.getTime() - now.getTime()) / 86_400_000;
+  if (diffDays < 0) return "overdue";
+  if (diffDays < 1) return "due_today";
+  if (diffDays <= 3) return "due_soon";
+  return "ok";
+}
+
+function followUpResultFromDb(
+  state: DEOperationalStateRow | undefined,
+  row: DEFollowUpRow,
+  now: Date
+): FollowUpResult {
+  const nextAt = state?.next_follow_up_at ?? row.scheduled_for;
+  const nextDate = scheduledForDayKey(nextAt);
+  return {
+    next_follow_up_at: nextDate,
+    sla_status: slaFromScheduled(row.scheduled_for, now),
+    pending_action: row.reason ?? "Seguimiento programado",
+    snoozed_until: null,
+    follow_up_reason: row.reason ?? "Seguimiento en cola operativa",
+    operational_state: state?.operational_state ?? "monitor",
+  };
+}
+
+function buildFollowUpQueueFromRanked(allRanked: RankedClient[]): FollowUpQueueItem[] {
+  return allRanked
+    .filter((c) => isActionableFollowUp(c.follow_up_result))
+    .slice(0, MAX_FOLLOW_UP_QUEUE)
+    .map((c) => ({
+      company_id:        c.company_id,
+      company_name:      c.company_name,
+      currency_code:     c.currency_code,
+      pending_amount:    c.pending_amount,
+      oldest_days:       c.oldest_days,
+      risk_level:        c.risk_assessment.level,
+      risk_score:        c.risk_assessment.score,
+      follow_up_result:  c.follow_up_result,
+      recommendation:    c.recommendation,
+      collection_status: c.collection_status,
+      last_action_date:  c.last_action_date,
+      promise_date:      c.promise_date,
+    }));
+}
+
+function buildFollowUpQueueFromDb(
+  bundle: DecisionEngineDataBundle,
+  allRanked: RankedClient[],
+  now: Date
+): FollowUpQueueItem[] {
+  const rankedById = new Map(allRanked.map((c) => [c.company_id, c]));
+  const stateByCustomer = new Map(
+    bundle.operationalStates.map((s) => [s.customer_id, s])
+  );
+  const companyById = new Map(bundle.companies.map((c) => [c.id, c.name]));
+
+  const items: FollowUpQueueItem[] = [];
+  const sorted = [...bundle.pendingFollowUps].sort(
+    (a, b) => new Date(a.scheduled_for).getTime() - new Date(b.scheduled_for).getTime()
+  );
+
+  for (const row of sorted) {
+    if (items.length >= MAX_FOLLOW_UP_QUEUE) break;
+
+    const state = stateByCustomer.get(row.customer_id);
+    const ranked = rankedById.get(row.customer_id);
+    const follow_up_result =
+      ranked?.follow_up_result ?? followUpResultFromDb(state, row, now);
+
+    if (!isActionableFollowUp(follow_up_result)) continue;
+
+    items.push({
+      company_id:        row.customer_id,
+      company_name:
+        ranked?.company_name ?? companyById.get(row.customer_id) ?? row.customer_id,
+      currency_code:     ranked?.currency_code ?? "UYU",
+      pending_amount:    ranked?.pending_amount ?? 0,
+      oldest_days:       ranked?.oldest_days ?? 0,
+      risk_level:        state?.current_risk ?? ranked?.risk_assessment.level ?? "medium",
+      risk_score:
+        ranked?.risk_assessment.score ??
+        RISK_LEVEL_SCORES[state?.current_risk ?? "medium"],
+      follow_up_result,
+      recommendation:
+        ranked?.recommendation ??
+        ({
+          action: "monitor",
+          channel: null,
+          urgency: "medium",
+          rationale: ["Cola operativa persistida"],
+          confidence: 0.5,
+          next_suggested_at: follow_up_result.next_follow_up_at,
+        } as FollowUpQueueItem["recommendation"]),
+      collection_status: ranked?.collection_status ?? null,
+      last_action_date:  ranked?.last_action_date ?? null,
+      promise_date:      ranked?.promise_date ?? null,
+    });
+  }
+
+  return items;
+}
+
+function buildFollowUpQueue(
+  bundle: DecisionEngineDataBundle,
+  allRanked: RankedClient[],
+  now: Date
+): FollowUpQueueItem[] {
+  if (bundle.pendingFollowUps.length > 0) {
+    const dbQueue = buildFollowUpQueueFromDb(bundle, allRanked, now);
+    if (dbQueue.length > 0) return dbQueue;
+  }
+  return buildFollowUpQueueFromRanked(allRanked);
+}
 
 export function generateDailyBriefing(bundle: DecisionEngineDataBundle): DailyBriefing {
   const now = new Date(bundle.loadedAt);
@@ -145,6 +279,8 @@ export function generateDailyBriefing(bundle: DecisionEngineDataBundle): DailyBr
     portfolioScore.over90_pct
   );
 
+  const follow_up_queue = buildFollowUpQueue(bundle, allRanked, now);
+
   return {
     generated_at: bundle.loadedAt,
     portfolio_score: portfolioScore,
@@ -154,5 +290,6 @@ export function generateDailyBriefing(bundle: DecisionEngineDataBundle): DailyBr
     total_pending_uyu: portfolioScore.total_pending_uyu,
     total_pending_usd: portfolioScore.total_pending_usd,
     total_debtors: portfolioScore.active_debtors_count,
+    follow_up_queue,
   };
 }

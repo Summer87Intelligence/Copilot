@@ -91,6 +91,8 @@ export type DecisionEngineDataBundle = {
   recentReceipts: DERecentReceipt[];
   companies: DECompany[];
   recentActions: DECollectionAction[];
+  operationalStates: DEOperationalStateRow[];
+  pendingFollowUps: DEFollowUpRow[];
   loadedAt: string;
 };
 
@@ -144,6 +146,7 @@ export type RankedClient = {
   concentration_pct: number;
   risk_assessment: RiskAssessment;
   recommendation: ActionRecommendation;
+  follow_up_result: FollowUpResult;
 };
 
 // ---------------------------------------------------------------------------
@@ -171,6 +174,7 @@ export type DailyBriefing = {
   total_pending_uyu: number;
   total_pending_usd: number;
   total_debtors: number;
+  follow_up_queue: FollowUpQueueItem[];
 };
 
 // ---------------------------------------------------------------------------
@@ -272,4 +276,164 @@ export type DEActionTimeline = {
   created_by: string | null;
   created_at: string;
   next_follow_up_at: string | null;
+};
+
+// ---------------------------------------------------------------------------
+// Phase 1C — Follow-up Engine + Action Impact Engine
+// ---------------------------------------------------------------------------
+
+export type SlaStatus =
+  | "critical"
+  | "overdue"
+  | "due_today"
+  | "due_soon"
+  | "ok"
+  | "no_contact";
+
+export const SLA_STATUS_LABELS: Record<SlaStatus, string> = {
+  critical:   "SLA crítico",
+  overdue:    "Vencido",
+  due_today:  "Vence hoy",
+  due_soon:   "Próximo",
+  ok:         "Al día",
+  no_contact: "Sin contacto",
+};
+
+export const SLA_STATUS_COLORS: Record<SlaStatus, string> = {
+  critical:   "bg-rose-100 text-rose-800 border border-rose-300",
+  overdue:    "bg-rose-50 text-rose-700 border border-rose-200",
+  due_today:  "bg-amber-50 text-amber-700 border border-amber-200",
+  due_soon:   "bg-blue-50 text-blue-700 border border-blue-200",
+  ok:         "bg-emerald-50 text-emerald-700 border border-emerald-200",
+  no_contact: "bg-slate-50 text-slate-600 border border-slate-200",
+};
+
+export type FollowUpState =
+  | "awaiting_promise"
+  | "retry_call"
+  | "retry_email"
+  | "payment_cleared"
+  | "escalated_active"
+  | "overdue_no_contact"
+  | "monitor";
+
+export const FOLLOW_UP_STATE_LABELS: Record<FollowUpState, string> = {
+  awaiting_promise:   "Esperando pago prometido",
+  retry_call:         "Reintentar llamada",
+  retry_email:        "Reintentar email",
+  payment_cleared:    "Pago confirmado",
+  escalated_active:   "Escalación activa",
+  overdue_no_contact: "Sin contacto — vencido",
+  monitor:            "Monitorear",
+};
+
+export type FollowUpResult = {
+  next_follow_up_at: string | null;
+  sla_status: SlaStatus;
+  pending_action: string;
+  snoozed_until: string | null;
+  follow_up_reason: string;
+  operational_state: FollowUpState;
+};
+
+export const FALLBACK_FOLLOW_UP_RESULT: FollowUpResult = {
+  next_follow_up_at: null,
+  sla_status:        "ok",
+  pending_action:    "Revisar",
+  snoozed_until:     null,
+  follow_up_reason:  "Sin datos de seguimiento calculados.",
+  operational_state: "monitor",
+};
+
+export type FollowUpInput = {
+  last_action_type: string | null;
+  last_action_date: string | null;
+  last_action_status: string | null;
+  promise_date: string | null;
+  has_active_promise: boolean;
+  has_broken_promise: boolean;
+  has_escalation: boolean;
+  oldest_days: number;
+  risk_score: number;
+  days_since_contact: number | null;
+};
+
+export type ActionImpactInput = {
+  action_type: string;
+  action_status: string;
+  current_risk_score: number;
+  has_active_promise: boolean;
+  has_broken_promise: boolean;
+  has_escalation: boolean;
+  ignored_call_count: number;
+};
+
+export type ActionImpact = {
+  risk_delta: number;
+  urgency_delta: number;
+  recommendation_override: RecommendedAction | null;
+  snooze_hours: number;
+  requires_follow_up: boolean;
+  operational_state: FollowUpState;
+};
+
+export type FollowUpQueueItem = {
+  company_id: string;
+  company_name: string;
+  currency_code: string;
+  pending_amount: number;
+  oldest_days: number;
+  risk_level: RiskLevel;
+  risk_score: number;
+  follow_up_result: FollowUpResult;
+  recommendation: ActionRecommendation;
+  collection_status: string | null;
+  last_action_date: string | null;
+  promise_date: string | null;
+};
+
+// ---------------------------------------------------------------------------
+// Phase 1D — DB row types + helpers
+// ---------------------------------------------------------------------------
+
+export type DEOperationalStateRow = {
+  customer_id: string;
+  current_risk: RiskLevel;
+  operational_state: FollowUpState;
+  next_follow_up_at: string | null;
+  last_contact_at: string | null;
+  active_promise: boolean;
+  escalated: boolean;
+  updated_at: string;
+};
+
+export type DEFollowUpRow = {
+  id: string;
+  customer_id: string;
+  status: "pending" | "in_progress" | "completed" | "snoozed" | "cancelled";
+  scheduled_for: string;
+  reason: string | null;
+  source_action_id: string | null;
+  priority: "low" | "medium" | "high" | "critical";
+};
+
+export const RISK_LEVEL_SCORES: Record<RiskLevel, number> = {
+  critical: 80,
+  high:     60,
+  medium:   35,
+  low:      10,
+};
+
+export function riskLevelFromScore(score: number): RiskLevel {
+  if (score >= 75) return "critical";
+  if (score >= 50) return "high";
+  if (score >= 25) return "medium";
+  return "low";
+}
+
+export type DEActionOperationalPayload = {
+  operational_state: DEOperationalStateRow;
+  follow_up: DEFollowUpRow | null;
+  action_impact: ActionImpact;
+  follow_up_result: FollowUpResult;
 };

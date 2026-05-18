@@ -76,18 +76,18 @@ export function CollectionActionModal({ client, onClose, onSuccess, defaultValue
 
     try {
       const body: Record<string, unknown> = {
-        companyId:   client.company_id,
-        actionType,
+        company_id:   client.company_id,
+        action_type:  actionType,
         status,
         priority,
-        notes:       notes.trim() || null,
-        contactDate: contactDate || null,
+        notes:        notes.trim() || null,
+        contact_date: contactDate || null,
       };
 
       if (showPromiseFields && promiseDate) {
-        body.promiseDate    = promiseDate;
-        body.promiseAmount  = promiseAmount ? Number(promiseAmount) : null;
-        body.promiseCurrency = client.currency_code;
+        body.promise_date     = promiseDate;
+        body.promise_amount   = promiseAmount ? Number(promiseAmount) : null;
+        body.promise_currency = client.currency_code;
       }
 
       const res = await copilotApiFetch(COLLECTION_API.create, {
