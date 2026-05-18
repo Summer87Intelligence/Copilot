@@ -1,7 +1,43 @@
 # Project Context
 
 ## Resumen del proyecto
-- Pendiente de completar.
+- SaaS financiero B2B (Summer87 Copilot) — Next.js 15 App Router + TypeScript + Supabase + Vercel.
+- Integración ERP ZetaSoftware (credenciales estáticas env vars, 5 pipelines sync activos).
+- Multi-tenant con workspace_company_id + RLS. 1 workspace productivo (Summer87, ~183 clientes Zeta).
+- 836/836 tests Vitest. Deploy en Vercel. Auth magic link OTP.
+
+## Architectural Council — 2026-05-17 (IMPLEMENTADO)
+
+**R-01 RESUELTO — Tenant resolver a auth.uid():**
+- `supabase/sec03-01-app-users-auth-uid.sql`: columna `auth_user_id` en `app_users`, backfill por email, función actualizada con auth.uid() + fallback email temporal.
+- `services/app-user-source.ts`: agregada `getAppUserByAuthUid()`.
+- `lib/copilot-api-auth.ts`: JWT path usa auth.uid() primero, fallback email para usuarios pre-migración.
+- **Pendiente de aplicar en Supabase**: `sec03-01-app-users-auth-uid.sql`.
+- **Pendiente eliminar fallback email** cuando todos los `app_users` tengan `auth_user_id`.
+
+**R-02 RESUELTO — Staleness detection + alertas:**
+- `lib/cron/cron-stale-check.ts`: `alertIfStale()` usando `zeta_pipeline_runs` existente.
+- `zeta-sync-saldos` y `zeta-sync-vouchers` llaman `alertIfStale` al inicio del run.
+- Proveedores: Slack/Discord/Email/Webhook via `lib/alerts/alert-dispatcher.ts` (ZETA-16).
+- **Activar**: configurar `SLACK_WEBHOOK_URL` o `CRON_ALERT_WEBHOOK_URL` en Vercel env.
+
+**R-03 RESUELTO — workspace_integrations para credenciales Zeta:**
+- `supabase/zeta-17-01-workspace-integrations.sql`: tabla con RLS (service_role only).
+- `supabase/zeta-17-02-companies-status.sql`: normaliza columna `companies.status` en repo.
+- `lib/integrations/zeta/zeta-config.ts`: `loadZetaServerConfigForWorkspace(workspaceId)` con DB lookup + env fallback.
+- `scripts/seed-zeta-integration-current-workspace.mjs`: seed del workspace actual.
+- **Pendiente de aplicar en Supabase**: zeta-17-01, zeta-17-02.
+- **Pendiente de wiring**: pipelines individuales (saldos, vouchers, cuotas) deben pasar `workspaceId` a `loadZetaServerConfigForWorkspace`. Hoy usan env vars.
+- **Pendiente**: encriptación de `credentials` (TODO documentado en SQL y en docs/operations/zeta-integrations.md).
+
+**Documentación operacional creada:**
+- `docs/operations/cron-reliability.md`
+- `docs/operations/zeta-integrations.md`
+- `docs/adr-001-zeta-credentials-per-workspace.md`
+
+**Estado de escalabilidad:** con las 3 SQL pendientes aplicadas en Supabase y `SLACK_WEBHOOK_URL` configurada, el sistema está listo para incorporar cliente #2 (onboarding sin re-deploy via `workspace_integrations`). El wiring de credenciales en pipelines es opcional para el primer cliente adicional si usa las mismas credenciales de desarrollador Zeta.
+
+**Deuda técnica residual:** (1) Supabase CLI migrations, (2) ROW_CAP paginación queries financieras, (3) LLM cache, (4) encriptación credentials, (5) wiring `loadZetaServerConfigForWorkspace` en todos los pipelines.
 
 ## Estado actual
 - Proyecto inicializado con Claude Skills.

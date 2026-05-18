@@ -23,6 +23,7 @@ import { createCronLogger } from "@/lib/observability/cron-logger";
 import { syncZetaCustomerVouchers } from "@/lib/integrations/zeta/zeta-customer-vouchers-pipeline";
 import { withZetaRetry } from "@/lib/integrations/zeta/zeta-retry";
 import { fetchActiveWorkspaceIdPage } from "@/lib/cron/zeta-cron-workspace-pages";
+import { alertIfStale } from "@/lib/cron/cron-stale-check";
 import {
   createPipelineRun,
   expireStaleFleetPipelineRuns,
@@ -114,6 +115,24 @@ export async function GET(request: NextRequest) {
   const log = createCronLogger(PIPELINE, cronRunId);
 
   log("cron_start", { months: syncMonths });
+
+  // ── Staleness check ────────────────────────────────────────────────────────
+  try {
+    const staleness = await alertIfStale(supabase, PIPELINE, {
+      thresholdMs: ANTI_OVERLAP_WINDOW_MS,
+      criticalMs: 24 * 60 * 60 * 1_000,
+    });
+    if (staleness.isStale) {
+      log("staleness_detected", {
+        last_success_at: staleness.lastSuccessAt,
+        age_ms: staleness.ageMs,
+        is_critical: staleness.isCritical,
+        never_succeeded: staleness.neverSucceeded,
+      });
+    }
+  } catch (e) {
+    log("staleness_check_error", { error: String(e) });
+  }
 
   try {
     const closed = await expireStaleFleetPipelineRuns(supabase);

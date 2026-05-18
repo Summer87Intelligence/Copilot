@@ -8,7 +8,7 @@ import {
 import { applyClearCopilotSessionCookie } from "@/lib/copilot-cookie-options";
 import { insertAuthLoginEvent } from "@/lib/security/auth-login-events";
 import { getRequestClientMeta } from "@/lib/security/request-client-meta";
-import { getAppUserByEmail } from "@/services/app-user-source";
+import { getAppUserByAuthUid, getAppUserByEmail } from "@/services/app-user-source";
 import type { AppUser } from "@/types/app-user";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
 
@@ -206,8 +206,18 @@ export async function requireCopilotTenantContext(
   const { data: userData, error: userErr } = await supabase.auth.getUser();
   if (!userErr && userData.user) {
     const authUser = userData.user;
-    const email = authUser.email?.trim();
-    if (!email) {
+
+    // SEC-03: resolver por auth.uid() primero (auth_user_id en app_users),
+    // fallback a email para usuarios pre-migración sin auth_user_id poblado.
+    let appUser = await getAppUserByAuthUid(authUser.id, supabase);
+    if (!appUser) {
+      const email = authUser.email?.trim();
+      if (email) {
+        appUser = await getAppUserByEmail(email, supabase);
+      }
+    }
+
+    if (!authUser.email?.trim() && !appUser) {
       return {
         ok: false,
         response: jsonError(
@@ -218,7 +228,6 @@ export async function requireCopilotTenantContext(
       };
     }
 
-    const appUser = await getAppUserByEmail(email, supabase);
     if (!appUser) {
       return {
         ok: false,

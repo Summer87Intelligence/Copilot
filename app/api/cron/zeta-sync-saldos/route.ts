@@ -29,6 +29,7 @@ import {
   updatePipelineRun,
 } from "@/lib/data/zeta-pipeline-run-repository";
 import { ZETA_PIPELINE_NAMES } from "@/lib/data/zeta-pipeline-run-types";
+import { alertIfStale } from "@/lib/cron/cron-stale-check";
 
 const PIPELINE = ZETA_PIPELINE_NAMES.SALDOS;
 
@@ -98,6 +99,26 @@ export async function GET(request: NextRequest) {
   const log = createCronLogger(PIPELINE, cronRunId);
 
   log("cron_start");
+
+  // ── Staleness check: alerta si la última corrida exitosa fue hace >6h ──────
+  // Diseñado para correr ANTES del anti-overlap para detectar el escenario
+  // "el cron ANTERIOR falló". No lanza excepciones — fallo de alerting no corta el cron.
+  try {
+    const staleness = await alertIfStale(supabase, PIPELINE, {
+      thresholdMs: ANTI_OVERLAP_WINDOW_MS,
+      criticalMs: 24 * 60 * 60 * 1_000,
+    });
+    if (staleness.isStale) {
+      log("staleness_detected", {
+        last_success_at: staleness.lastSuccessAt,
+        age_ms: staleness.ageMs,
+        is_critical: staleness.isCritical,
+        never_succeeded: staleness.neverSucceeded,
+      });
+    }
+  } catch (e) {
+    log("staleness_check_error", { error: String(e) });
+  }
 
   // ── Anti-overlap (fleet) + recuperación runs colgados ─────────────────────
   try {

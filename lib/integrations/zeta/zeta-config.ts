@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import { ZetaConfigurationError } from "@/lib/integrations/zeta/zeta-connection";
 import type { ZetaStaticCredentials } from "@/lib/integrations/zeta/zeta-connection-types";
 
@@ -42,6 +43,75 @@ function logDevZetaEnvResolution(parts: {
     onlyB ? "formato B (español)" : onlyA ? "formato A (inglés)" : "mixto B+A";
   console.log(`[zeta-config] Zeta env: ${resumen} — ${detail}`);
 }
+
+// ---------------------------------------------------------------------------
+// DB Lookup: workspace_integrations
+// ---------------------------------------------------------------------------
+
+type ZetaIntegrationRow = {
+  credentials: {
+    desarrolladorCodigo?: string;
+    desarrolladorClave?: string;
+    empresaCodigo?: string;
+    empresaClave?: string;
+    rolCodigo?: string;
+    baseUrl?: string;
+  } | null;
+};
+
+/**
+ * ZETA-17: Intenta leer credenciales Zeta desde `workspace_integrations` para el workspace dado.
+ * Usa service_role key (server-side only).
+ * Retorna null si no hay row activa o si las credenciales están incompletas.
+ * Never throws — el caller hace fallback a env vars.
+ */
+async function loadZetaCredentialsFromDb(
+  workspaceCompanyId: string
+): Promise<ZetaStaticCredentials | null> {
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+    if (!url || !key) return null;
+
+    const client = createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    });
+
+    const { data, error } = await client
+      .from("workspace_integrations")
+      .select("credentials")
+      .eq("workspace_company_id", workspaceCompanyId)
+      .eq("provider", "zeta")
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (error || !data) return null;
+
+    const row = data as ZetaIntegrationRow;
+    const c = row.credentials;
+    if (!c) return null;
+
+    // Validar campos obligatorios
+    if (!c.desarrolladorCodigo || !c.desarrolladorClave ||
+        !c.empresaCodigo || !c.empresaClave) {
+      return null;
+    }
+
+    return {
+      desarrolladorCodigo: c.desarrolladorCodigo,
+      desarrolladorClave: c.desarrolladorClave,
+      empresaCodigo: c.empresaCodigo,
+      empresaClave: c.empresaClave,
+      rolCodigo: c.rolCodigo ?? "1",
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Env vars reader (original, sin cambios)
+// ---------------------------------------------------------------------------
 
 /**
  * Lee credenciales **solo server-side** (sin prefijo `NEXT_PUBLIC_`).
@@ -149,4 +219,57 @@ export function loadZetaServerConfig(): {
   );
 
   return { baseUrl, credentials, timeoutMs, maxRetries };
+}
+
+// ---------------------------------------------------------------------------
+// ZETA-17: Config por workspace con fallback a env vars
+// ---------------------------------------------------------------------------
+
+/**
+ * Carga config Zeta para un workspace específico.
+ *
+ * Estrategia:
+ *   1) Intenta leer credenciales desde `workspace_integrations` en DB.
+ *   2) Si no hay row activa o las creds están incompletas → fallback a env vars.
+ *
+ * Esto permite onboarding de nuevos clientes sin re-deploy:
+ * basta con insertar una fila en `workspace_integrations`.
+ *
+ * Backward compatible: `loadZetaServerConfig()` sin argumento sigue funcionando.
+ *
+ * @param workspaceCompanyId - UUID de `public.companies`. Si undefined, usa env vars.
+ */
+export async function loadZetaServerConfigForWorkspace(
+  workspaceCompanyId: string | undefined
+): Promise<{
+  baseUrl: string;
+  credentials: ZetaStaticCredentials;
+  timeoutMs: number;
+  maxRetries: number;
+  source: "db" | "env";
+}> {
+  const baseUrl = (process.env.ZETA_API_BASE_URL ?? DEFAULT_BASE).replace(/\/+$/, "");
+  const timeoutMs = Math.min(
+    120_000,
+    Math.max(5_000, Number(process.env.ZETA_REQUEST_TIMEOUT_MS) || 30_000)
+  );
+  const maxRetries = Math.min(
+    6,
+    Math.max(0, Math.floor(Number(process.env.ZETA_MAX_RETRIES) || 3))
+  );
+
+  // Intentar credenciales desde DB si tenemos workspaceCompanyId
+  if (workspaceCompanyId) {
+    const dbCreds = await loadZetaCredentialsFromDb(workspaceCompanyId);
+    if (dbCreds) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(`[zeta-config] workspace ${workspaceCompanyId}: credenciales desde DB`);
+      }
+      return { baseUrl, credentials: dbCreds, timeoutMs, maxRetries, source: "db" };
+    }
+  }
+
+  // Fallback a env vars (comportamiento original, nunca rompe)
+  const envConfig = loadZetaServerConfig();
+  return { ...envConfig, source: "env" };
 }
