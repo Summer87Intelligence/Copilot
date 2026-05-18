@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import type {
   ClientOperationalHydrationRecord,
   DailyBriefing,
@@ -19,6 +20,9 @@ import {
   resolvePrimaryWorkflow,
   type WorkflowKind,
 } from "@/lib/decision-engine/client-operational-workflow";
+import {
+  buildExecutiveTimeline,
+} from "@/lib/decision-engine/executive-timeline-builder";
 import { PortfolioScoreCard } from "./portfolio-score-card";
 import { RiskAlertList } from "./risk-alert-list";
 import { CollectionActionModal } from "./collection-action-modal";
@@ -27,6 +31,40 @@ import { OperationalAnalyticsDashboard } from "./operational-analytics-dashboard
 import { OperationalAutomationPanel } from "./operational-automation-panel";
 import { OperationalIntelligencePanel } from "./operational-intelligence-panel";
 import { PredictiveIntelligencePanel } from "./predictive-intelligence-panel";
+import { ExecutiveCommandCenter } from "./executive-command-center";
+
+// ---------------------------------------------------------------------------
+// Collapsible wrapper
+// ---------------------------------------------------------------------------
+
+function CollapsibleSection({
+  title,
+  defaultOpen = true,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-xl border border-[var(--copilot-border)] overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-2.5 bg-[var(--copilot-surface)] hover:bg-[var(--copilot-surface-alt)]/60 transition-colors"
+      >
+        <span className="text-xs font-medium text-[var(--copilot-text-secondary)]">{title}</span>
+        {open ? (
+          <ChevronUp className="h-3.5 w-3.5 text-[var(--copilot-text-muted)]" />
+        ) : (
+          <ChevronDown className="h-3.5 w-3.5 text-[var(--copilot-text-muted)]" />
+        )}
+      </button>
+      {open && <div className="border-t border-[var(--copilot-border)]/60">{children}</div>}
+    </div>
+  );
+}
 
 type QuickActionDefaults = {
   actionType?: CollectionActionType;
@@ -324,8 +362,28 @@ export function DailyBriefingCard({
     void fetchOwnershipStats();
   }
 
+  // Build executive timeline from available actions (lightweight, no extra fetch)
+  const timelineEvents = useMemo(
+    () =>
+      buildExecutiveTimeline({
+        actions: recentActions.slice(0, 10),
+        followUps: [],
+        automationActions: [],
+        operationalStates: [],
+        companies: [],
+        limit: 5,
+      }),
+    [recentActions]
+  );
+
+  const queueRef = useCallback((el: HTMLDivElement | null) => {
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+  const [queueFocused, setQueueFocused] = useState(false);
+
   return (
     <div className="space-y-3">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-[var(--copilot-text)]">Centro operacional</h2>
@@ -350,44 +408,69 @@ export function DailyBriefingCard({
         </div>
       )}
 
+      {/* 1. Score + alertas */}
       <PortfolioScoreCard score={briefing.portfolio_score} />
-
       {briefing.alerts.length > 0 && <RiskAlertList alerts={briefing.alerts} />}
 
-      <OperationalIntelligencePanel />
+      {/* 2. Executive Command Center */}
+      <ExecutiveCommandCenter
+        timelineEvents={timelineEvents}
+        onGoToQueue={() => setQueueFocused(true)}
+      />
 
-      <PredictiveIntelligencePanel />
+      {/* 3. Inteligencia operacional (colapsable) */}
+      <CollapsibleSection title="Inteligencia operacional" defaultOpen={true}>
+        <div className="p-0">
+          <OperationalIntelligencePanel />
+        </div>
+      </CollapsibleSection>
 
+      {/* 4. Forecast predictivo (colapsable) */}
+      <CollapsibleSection title="Forecast predictivo" defaultOpen={true}>
+        <div className="p-0">
+          <PredictiveIntelligencePanel />
+        </div>
+      </CollapsibleSection>
+
+      {/* 5. Estado operacional (analytics compacto) */}
       <OperationalAnalyticsDashboard
         analytics={analytics}
         loading={analyticsLoading}
         error={analyticsError}
       />
 
-      <OperationalAutomationPanel />
+      {/* 6. Automatizaciones (colapsado por defecto) */}
+      <CollapsibleSection title="Automatizaciones" defaultOpen={false}>
+        <div className="p-0">
+          <OperationalAutomationPanel />
+        </div>
+      </CollapsibleSection>
 
-      <DailyOperationsQueuePanel
-        queue={dailyQueue}
-        hydrationByCustomer={hydrationByCustomer}
-        ownershipStats={ownershipStats}
-        queueSignals={analytics?.queue_signals ?? null}
-        currentUserId={currentUserId}
-        loading={queueLoading}
-        error={queueError}
-        stale={queueStale}
-        cached={queueCached}
-        generatedAt={queueGeneratedAt}
-        expiresAt={queueExpiresAt}
-        refreshing={queueRefreshing}
-        completedCustomerIds={completedCustomerIds}
-        loadingCustomerId={loadingCustomerId}
-        ownershipLoadingCustomerId={ownershipLoadingCustomerId}
-        onRefresh={(force) => void fetchDailyQueue(force ?? false)}
-        onExecuteWorkflow={handleExecuteWorkflow}
-        onTakeOwnership={handleTakeOwnership}
-        onReleaseOwnership={handleReleaseOwnership}
-        onAutoAssign={handleAutoAssign}
-      />
+      {/* 7. Cola operativa (principal) */}
+      <div ref={queueFocused ? queueRef : undefined}>
+        <DailyOperationsQueuePanel
+          queue={dailyQueue}
+          hydrationByCustomer={hydrationByCustomer}
+          ownershipStats={ownershipStats}
+          queueSignals={analytics?.queue_signals ?? null}
+          currentUserId={currentUserId}
+          loading={queueLoading}
+          error={queueError}
+          stale={queueStale}
+          cached={queueCached}
+          generatedAt={queueGeneratedAt}
+          expiresAt={queueExpiresAt}
+          refreshing={queueRefreshing}
+          completedCustomerIds={completedCustomerIds}
+          loadingCustomerId={loadingCustomerId}
+          ownershipLoadingCustomerId={ownershipLoadingCustomerId}
+          onRefresh={(force) => void fetchDailyQueue(force ?? false)}
+          onExecuteWorkflow={handleExecuteWorkflow}
+          onTakeOwnership={handleTakeOwnership}
+          onReleaseOwnership={handleReleaseOwnership}
+          onAutoAssign={handleAutoAssign}
+        />
+      </div>
 
       {actionClient && (
         <CollectionActionModal

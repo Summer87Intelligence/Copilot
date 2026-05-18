@@ -164,5 +164,23 @@
 - **Linking factura↔recibo** (opcional, no implementado): hoy todos los recibos quedan registrados como recibos puros sin `invoice_id`. Si se decide vincular, hace falta heurística confiable o reglas explícitas (ej.: matching por `Serie+Numero` con `proto_invoices`); requiere análisis aparte para no afectar `balance_amount`.
 - **Automatizar sync mensual de recibos** (cron / scheduler) tras el cierre actual.
 
+## FASE 5C — Executive Decision Layer + UX Consolidation (2026-05-18)
+
+**Entregados:**
+- `lib/decision-engine/executive-decision-engine.ts` — motor determinístico que combina señales (portfolio_score, analytics, predictive, ranked_clients, automation_runs, pipeline_signals) en `ExecutiveDecisionBrief` con 8 reglas de negocio.
+- `lib/decision-engine/executive-timeline-builder.ts` — línea de tiempo ejecutiva desde acciones, follow-ups, automatización y estados.
+- `lib/data/decision-executive-briefing-repository.ts` — repositorio con TTL 15 min.
+- `supabase/de-11-executive-briefings.sql` — tabla `decision_executive_briefings` (RLS tenant-safe, pendiente aplicar en Supabase).
+- `app/api/copilot/decision-engine/executive-brief/route.ts` — `GET /api/copilot/decision-engine/executive-brief` con cache-first + `?force=true`.
+- `components/copilot/decision-engine/executive-command-center.tsx` — UI ejecutiva con top 3 decisiones, evidencia expandible, CTAs, timeline.
+- `components/copilot/decision-engine/executive-timeline.tsx` — timeline compacto de 5 eventos recientes.
+- `lib/decision-engine/executive-decision-engine.test.ts` — 27 tests cubriendo 8 reglas + fallbacks + ordering + confidence.
+- Modificaciones `daily-briefing-card.tsx` — paneles reordenados (score → exec command center → intel colapsable → forecast colapsable → analytics → automation colapsado → cola), collapsible wrapper.
+- Modificaciones `client-operational-summary-card.tsx` — UX polish: border por prioridad, sin bloques de color internos, detalles expandibles.
+
+**Validado:** `tsc --noEmit` exit 0 · `vitest run` 1392/1392 verdes · `npm run build` limpio.
+
+**Pendiente operativo:** aplicar `supabase/de-11-executive-briefings.sql` en Supabase para activar persistencia del executive brief.
+
 ## Próximo paso recomendado
 - **Ejecutar saldos pipeline para abril 2026** para corregir los 44 status=issued que deberían estar paid (invocar `POST /api/zeta/sync-saldos-all-clients` o equivalente con mes=4, anio=2026). Confirmar post-run: paid_active debe subir de 18 a ~62, issued_active bajar a los reales emitidos.
