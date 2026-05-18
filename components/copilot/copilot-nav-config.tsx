@@ -4,6 +4,7 @@ import {
   BarChart3,
   BookOpen,
   Bot,
+  BrainCircuit,
   Building2,
   CheckSquare,
   Database,
@@ -51,6 +52,7 @@ const COPILOT_NAV_OPERACION: CopilotNavGroup = {
 const COPILOT_NAV_DECISIONES: CopilotNavGroup = {
   sectionTitle: "Decisiones",
   items: [
+    { href: "/copilot/decisiones", label: "Decisiones", icon: BrainCircuit },
     { href: "/copilot/alertas", label: "Alertas", icon: TriangleAlert },
     { href: "/copilot/acciones", label: "Acciones", icon: CheckSquare },
     { href: "/copilot/insights", label: "Insights", icon: Lightbulb },
