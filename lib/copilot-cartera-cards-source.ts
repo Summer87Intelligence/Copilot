@@ -80,6 +80,21 @@ export type NormalizedCurrencyMetrics = {
    * 0 si no aplica (sin filtro de período o sin pre-período).
    */
   openingBalance: number;
+  /** Notas de crédito del período: cantidad detectada. */
+  creditNoteCount: number;
+  /** Notas de crédito del período: monto total acumulado (signo positivo). */
+  creditNoteAmount: number;
+  /**
+   * Derived residual portfolio resolution amount.
+   *
+   * This is NOT a direct sum of receipts.
+   * Formula: gross issued − credit notes − pending balance
+   *
+   * Used to reconcile Zeta AR snapshots consistently.
+   * It can include cash collections, credit-note compensation,
+   * adjustments, overpayments, or other Zeta-side settlement effects.
+   */
+  portfolioResolvedAmount: number;
 };
 
 type AnyRecord = Record<string, unknown>;
@@ -216,6 +231,29 @@ function normalizeBucket(
   const openingBalance =
     readCurrencyMetric(raw, "openingBalance", "opening_balance") ?? 0;
 
+  const creditNoteAmount =
+    readCurrencyMetric(raw, "creditNoteAmount", "credit_note_amount") ?? 0;
+  const creditNoteCount = Math.max(
+    0,
+    Math.trunc(
+      readCurrencyMetric(raw, "creditNoteCount", "credit_note_count") ?? 0
+    )
+  );
+  /**
+   * Derived residual portfolio resolution amount.
+   *
+   * This is NOT a direct sum of receipts.
+   * Formula: gross issued - credit notes - pending balance
+   *
+   * Used to reconcile Zeta AR snapshots consistently.
+   * It can include cash collections, credit-note compensation,
+   * adjustments, overpayments, or other Zeta-side settlement effects.
+   */
+  const portfolioResolvedAmount = Math.max(
+    0,
+    issuedInPeriod - creditNoteAmount - pendingAtCutoff
+  );
+
   return {
     currencyCode: code,
     totalInvoiced,
@@ -229,6 +267,9 @@ function normalizeBucket(
     collectedInPeriod,
     collectedReceiptCount: Math.max(0, Math.trunc(collectedReceiptCount)),
     openingBalance,
+    creditNoteCount,
+    creditNoteAmount,
+    portfolioResolvedAmount,
   };
 }
 

@@ -20,6 +20,7 @@ import {
   CircleDollarSign,
   Clock,
   Database,
+  FileMinus,
   FileText,
   Info,
   ShieldAlert,
@@ -116,6 +117,10 @@ type CurrencyCardMetrics = {
   invoiceCount: number;
   /** true cuando el motor no recibió receipts (cobrado período no se puede mostrar). */
   collectedDataMissing: boolean;
+  creditNoteCount: number;
+  creditNoteAmount: number;
+  /** Derived residual: max(0, issuedInPeriod − creditNoteAmount − pendingAtCutoff). See NormalizedCurrencyMetrics. */
+  portfolioResolvedAmount: number;
 };
 
 function getCurrencyCardMetrics(
@@ -135,12 +140,13 @@ function getCurrencyCardMetrics(
       collectionEffectiveness: direct.collectionEffectiveness,
       invoiceCount: direct.invoiceCount,
       collectedDataMissing: direct.collectedReceiptCount === 0,
+      creditNoteCount: direct.creditNoteCount,
+      creditNoteAmount: direct.creditNoteAmount,
+      portfolioResolvedAmount: direct.portfolioResolvedAmount,
     };
   }
 
   // Bucket ausente en `report.currencies`: las cards muestran 0 / "—".
-  // NO derivamos desde aging/stale para evitar drift entre el valor
-  // principal y el microcopy. El banner dev arriba flagea este caso.
   return {
     issuedInPeriod: 0,
     pendingAtCutoff: 0,
@@ -151,6 +157,9 @@ function getCurrencyCardMetrics(
     collectionEffectiveness: null,
     invoiceCount: 0,
     collectedDataMissing: true,
+    creditNoteCount: 0,
+    creditNoteAmount: 0,
+    portfolioResolvedAmount: 0,
   };
 }
 
@@ -185,7 +194,7 @@ function issuedCard(
   const m = getCurrencyCardMetrics(index, code);
   return {
     id: `facturado-${code}`,
-    title: `Facturado en período ${code}`,
+    title: `Facturado bruto ${code}`,
     source: "zeta",
     tone: "neutral",
     icon: FileText,
@@ -196,34 +205,50 @@ function issuedCard(
         ? "Sin facturas emitidas en período"
         : `${formatCarteraInteger(m.invoiceCount)} factura${m.invoiceCount === 1 ? "" : "s"} ${currencyShortLabelFor(code).toLowerCase()} emitida${m.invoiceCount === 1 ? "" : "s"}`,
     meta: zetaAge,
-    tooltip: FINANCIAL_UX_COPY.kpiIssuedTooltip,
+    tooltip: FINANCIAL_UX_COPY.kpiGrossIssuedTooltip,
   };
 }
 
-/**
- * Cobrado en período (receipts in-period). Si el motor no recibió receipts
- * la card muestra "—" en lugar de "$ 0" para no mentir.
- */
-function collectedCard(
+function creditNotesCard(
   code: ReconciliationCurrencyCode,
-  index: Map<ReconciliationCurrencyCode, NormalizedCurrencyMetrics>,
-  zetaAge: string
+  index: Map<ReconciliationCurrencyCode, NormalizedCurrencyMetrics>
 ): SummaryCard {
   const m = getCurrencyCardMetrics(index, code);
-  const dataMissing = m.collectedReceiptCount === 0 && m.collectedInPeriod === 0;
   return {
-    id: `collected-${code}`,
-    title: `Cobrado registrado ${code}`,
+    id: `credit-notes-${code}`,
+    title: `NC aplicadas ${code}`,
     source: "zeta",
-    tone: m.collectedInPeriod > 0 ? "positive" : "neutral",
+    tone: "info",
+    icon: FileMinus,
+    value: m.creditNoteAmount,
+    format: (n) => formatCarteraMoney(code, n),
+    subtitle:
+      m.creditNoteCount === 1
+        ? "1 nota de crédito"
+        : `${formatCarteraInteger(m.creditNoteCount)} notas de crédito`,
+    tooltip: FINANCIAL_UX_COPY.kpiCreditNotesAppliedTooltip,
+  };
+}
+
+function collectedAppliedCard(
+  code: ReconciliationCurrencyCode,
+  index: Map<ReconciliationCurrencyCode, NormalizedCurrencyMetrics>
+): SummaryCard {
+  const m = getCurrencyCardMetrics(index, code);
+  return {
+    id: `collected-applied-${code}`,
+    title: `Cobrado aplicado ${code}`,
+    source: "zeta",
+    tone: m.portfolioResolvedAmount > 0 ? "positive" : "neutral",
     icon: CircleCheckBig,
-    value: m.collectedInPeriod,
-    format: (n) => (dataMissing ? "—" : formatCarteraMoney(code, n)),
-    subtitle: dataMissing
-      ? "Sin recibos registrados en período"
-      : `${formatCarteraInteger(m.collectedReceiptCount)} recibo${m.collectedReceiptCount === 1 ? "" : "s"} ${currencyShortLabelFor(code).toLowerCase()}`,
-    meta: zetaAge,
-    tooltip: FINANCIAL_UX_COPY.kpiCollectedTooltip,
+    value: m.portfolioResolvedAmount,
+    format: (n) => formatCarteraMoney(code, n),
+    subtitle: "Facturado neto − Saldo pendiente",
+    meta:
+      m.collectedInPeriod > 0
+        ? `Recibos período: ${formatCarteraMoney(code, m.collectedInPeriod)}`
+        : undefined,
+    tooltip: FINANCIAL_UX_COPY.kpiCollectedAppliedTooltip,
   };
 }
 
@@ -232,11 +257,15 @@ function effectivenessCard(
   index: Map<ReconciliationCurrencyCode, NormalizedCurrencyMetrics>
 ): SummaryCard {
   const m = getCurrencyCardMetrics(index, code);
-  const ratio = m.collectionEffectiveness;
+  const netIssued = Math.max(0, m.issuedInPeriod - m.creditNoteAmount);
+  const rawRatio = netIssued > 0 ? m.portfolioResolvedAmount / netIssued : null;
+  // Clamp to [0, 9.99] — avoids absurd % from advances/overpayments while
+  // still surfacing anomalies above 100%.
+  const ratio = rawRatio !== null ? Math.max(0, Math.min(rawRatio, 9.99)) : null;
 
   return {
     id: `effectiveness-${code}`,
-    title: `% cobranza registrada ${code}`,
+    title: `% cobranza neta ${code}`,
     source: "analytics",
     tone: ratio !== null && ratio < 0.8 ? "warning" : "info",
     icon: TrendingUp,
@@ -254,9 +283,9 @@ function effectivenessCard(
         : `${formatCarteraInteger(m.invoiceCount)} factura${m.invoiceCount === 1 ? "" : "s"} ${code}`,
     meta:
       ratio !== null
-        ? `Cobrado ${formatCarteraMoney(code, m.collectedInPeriod)} / Facturado ${formatCarteraMoney(code, m.issuedInPeriod)}`
+        ? `Resuelto ${formatCarteraMoney(code, m.portfolioResolvedAmount)} / Neto ${formatCarteraMoney(code, netIssued)}`
         : undefined,
-    tooltip: FINANCIAL_UX_COPY.kpiEffectivenessTooltip,
+    tooltip: FINANCIAL_UX_COPY.kpiNetEffectivenessTooltip,
   };
 }
 
@@ -428,22 +457,28 @@ export function ExecutiveSummaryCards({
 
     if (selectedCurrency === "USD" || selectedCurrency === "UYU") {
       const code = selectedCurrency;
+      const mSingle = getCurrencyCardMetrics(currencyIndex, code);
       list = [
         issuedCard(code, currencyIndex, zetaAge),
-        collectedCard(code, currencyIndex, zetaAge),
+        ...(mSingle.creditNoteAmount > 0 ? [creditNotesCard(code, currencyIndex)] : []),
+        collectedAppliedCard(code, currencyIndex),
         pendingCollectionCard(code, currencyIndex, zetaAge),
         effectivenessCard(code, currencyIndex),
         staleCardForCurrency(code, report),
       ];
       list = appendOpeningIfRelevant(list, code);
     } else {
+      const mUYU = getCurrencyCardMetrics(currencyIndex, "UYU");
+      const mUSD = getCurrencyCardMetrics(currencyIndex, "USD");
       list = [
         issuedCard("UYU", currencyIndex, zetaAge),
-        collectedCard("UYU", currencyIndex, zetaAge),
+        ...(mUYU.creditNoteAmount > 0 ? [creditNotesCard("UYU", currencyIndex)] : []),
+        collectedAppliedCard("UYU", currencyIndex),
         pendingCollectionCard("UYU", currencyIndex, zetaAge),
         effectivenessCard("UYU", currencyIndex),
         issuedCard("USD", currencyIndex, zetaAge),
-        collectedCard("USD", currencyIndex, zetaAge),
+        ...(mUSD.creditNoteAmount > 0 ? [creditNotesCard("USD", currencyIndex)] : []),
+        collectedAppliedCard("USD", currencyIndex),
         pendingCollectionCard("USD", currencyIndex, zetaAge),
         effectivenessCard("USD", currencyIndex),
         staleCardAll(report),
@@ -456,12 +491,17 @@ export function ExecutiveSummaryCards({
     // Marcar cards afectadas cuando el período incluye datos pre-sync
     if (isPreSync) {
       list = list.map((c) => {
-        if (c.id.startsWith("facturado-") || c.id.startsWith("effectiveness-")) {
+        if (
+          c.id.startsWith("facturado-") ||
+          c.id.startsWith("credit-notes-") ||
+          c.id.startsWith("collected-applied-") ||
+          c.id.startsWith("effectiveness-")
+        ) {
           return {
             ...c,
             isHistoricalPartial: true,
             ...(c.id.startsWith("effectiveness-")
-              ? { tooltip: FINANCIAL_UX_COPY.kpiEffectivenessTooltipPreSync }
+              ? { tooltip: FINANCIAL_UX_COPY.kpiNetEffectivenessTooltipPreSync }
               : {}),
           };
         }

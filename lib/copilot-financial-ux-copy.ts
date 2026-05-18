@@ -46,4 +46,14 @@ export const FINANCIAL_UX_COPY = {
     "Relación entre facturación emitida y cobranzas registradas dentro del período.",
   kpiEffectivenessTooltipPreSync:
     "Relación entre facturación emitida y cobranzas registradas dentro del período. Puede estar subestimado si el período incluye facturas anteriores al inicio operativo de sincronización.",
+  kpiGrossIssuedTooltip:
+    "Suma de facturas emitidas en el período. Excluye notas de crédito y anuladas. Base bruta de la cartera del período.",
+  kpiCreditNotesAppliedTooltip:
+    "Notas de crédito del período. Reducen el AR exigible en Zeta pero no representan ingreso de caja. Son compensaciones contables, no recibos.",
+  kpiCollectedAppliedTooltip:
+    "Importe de cartera resuelto dentro del período, derivado de facturación bruta menos notas de crédito y saldo pendiente. No representa necesariamente la suma de recibos.",
+  kpiNetEffectivenessTooltip:
+    "Cartera resuelta / Facturado neto. Mide qué fracción del AR neto fue resuelta en el período (caja, compensaciones o ajustes Zeta). Las NC no entran en el denominador.",
+  kpiNetEffectivenessTooltipPreSync:
+    "Cartera resuelta / Facturado neto. Puede estar subestimado si el período incluye facturas anteriores al inicio operativo de sincronización.",
 } as const;
