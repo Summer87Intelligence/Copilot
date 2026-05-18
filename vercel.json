@@ -9,6 +9,10 @@
       "schedule": "0 */6 * * *"
     },
     {
+      "path": "/api/cron/zeta-sync-collection-receipts",
+      "schedule": "15 */6 * * *"
+    },
+    {
       "path": "/api/cron/zeta-sync-contacts",
       "schedule": "0 2 * * *"
     },
@@ -35,6 +39,10 @@
     {
       "path": "/api/cron/zeta-sync-vendor-payments",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/zeta-orphan-metadata-repair",
+      "schedule": "30 */6 * * *"
     }
   ]
 }

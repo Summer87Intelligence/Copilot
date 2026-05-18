@@ -22,6 +22,11 @@ import {
   COPILOT_OPERATIONAL_START_DATE,
   MIN_FINANCIAL_DATE,
 } from "@/lib/copilot-operational-period";
+import {
+  isActiveOrphanWarning,
+  isStaleOrphanMetadata,
+} from "@/lib/integrations/zeta/zeta-orphan-auto-repair";
+import { stalenessFromHoursForResourceFlow } from "@/lib/integrations/zeta/zeta-sync-staleness";
 
 export const STALE_WARNING_HOURS = 24;
 export const STALE_CRITICAL_HOURS = 72;
@@ -269,11 +274,13 @@ export type ReconciliationGaps = {
 
 /** Orphan pending invoice summary derived from reconciliation_missing_count on invoices. */
 export type OrphanSummary = {
-  /** Invoices with missing_count >= 1 (warned at least once). */
+  /** Facturas con deuda abierta y missing_count >= 1 (warning activo). */
   warned: number;
-  /** Invoices with missing_count >= 3 that should be auto-closed next cleanup run. */
+  /** Facturas con missing_count >= 3, balance > 0, pendientes de auto-cierre. */
   pending_auto_close: number;
-  /** Total pending balance in warned invoices by currency. */
+  /** Metadata orphan obsoleta (ya cerradas / balance 0) — informativo. */
+  stale_metadata: number;
+  /** Total pending balance in active warned invoices by currency. */
   warnedPendingByCurrency: Partial<Record<ReconciliationCurrencyCode, number>>;
 };
 
@@ -1034,7 +1041,7 @@ export function generateFinancialConsistencyReport(
       last_success_at: s.last_success_at,
       bootstrap_completed: s.bootstrap_completed,
       ageHours: hours !== null ? round2(hours) : null,
-      status: stalenessFromHours(hours),
+      status: stalenessFromHoursForResourceFlow(hours, s.resource_flow),
     };
   });
 
@@ -1126,19 +1133,30 @@ export function generateFinancialConsistencyReport(
   const orphanSummary: OrphanSummary = {
     warned: 0,
     pending_auto_close: 0,
+    stale_metadata: 0,
     warnedPendingByCurrency: {},
   };
   for (const inv of invoices) {
-    const mc = inv.reconciliation_missing_count;
-    if (mc == null || mc <= 0) continue;
-    const status = (inv.status ?? "").trim().toLowerCase();
-    const voided = VOIDED_STATUSES.has(status);
-    if (voided) continue;
+    const view = {
+      reconciliation_missing_count: inv.reconciliation_missing_count,
+      balance_amount: inv.balance_amount,
+      status: inv.status,
+    };
+    if (isStaleOrphanMetadata(view)) {
+      orphanSummary.stale_metadata++;
+      continue;
+    }
+    if (!isActiveOrphanWarning(view)) continue;
     orphanSummary.warned++;
-    if (mc >= 3) orphanSummary.pending_auto_close++;
+    if ((inv.reconciliation_missing_count ?? 0) >= 3) {
+      orphanSummary.pending_auto_close++;
+    }
     const code = (inv.currency_code ?? "").trim().toUpperCase() as ReconciliationCurrencyCode;
     if (VALID_CURRENCIES.has(code)) {
-      const pending = inv.balance_amount != null ? Math.max(0, safeNum(inv.balance_amount)) : safeNum(inv.total_amount);
+      const pending =
+        inv.balance_amount != null
+          ? Math.max(0, safeNum(inv.balance_amount))
+          : safeNum(inv.total_amount);
       orphanSummary.warnedPendingByCurrency[code] = round2(
         (orphanSummary.warnedPendingByCurrency[code] ?? 0) + pending
       );

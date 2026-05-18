@@ -38,12 +38,18 @@ describe("PIPELINE_EXPECTED_INTERVALS_MS", () => {
     );
   });
 
-  it("contacts tiene intervalo de 24 horas", () => {
+  it("contacts y vendor payments tienen intervalo de 24 horas", () => {
     expect(PIPELINE_EXPECTED_INTERVALS_MS[ZETA_PIPELINE_NAMES.VENDOR_PAYMENTS]).toBe(
       24 * 60 * 60 * 1_000
     );
     expect(PIPELINE_EXPECTED_INTERVALS_MS[ZETA_PIPELINE_NAMES.CONTACTS]).toBe(
       24 * 60 * 60 * 1_000
+    );
+  });
+
+  it("collection receipts tiene intervalo de 6 horas", () => {
+    expect(PIPELINE_EXPECTED_INTERVALS_MS[ZETA_PIPELINE_NAMES.COLLECTION_RECEIPTS]).toBe(
+      6 * 60 * 60 * 1_000
     );
   });
 });

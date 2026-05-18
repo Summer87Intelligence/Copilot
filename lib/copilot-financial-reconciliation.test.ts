@@ -2267,3 +2267,42 @@ describe("hardening: optional sources degraded to []", () => {
     expect(uyu.pendingAtCutoff).toBe(500);
   });
 });
+
+describe("orphan summary — active vs stale metadata", () => {
+  it("does not count auto-closed paid invoices with stale missing_count", () => {
+    const report = generateFinancialConsistencyReport({
+      workspaceId: "ws-1",
+      invoices: [
+        inv({
+          id: "inv-stale",
+          company_id: "c1",
+          currency_code: "UYU",
+          total_amount: 1000,
+          balance_amount: 0,
+          status: "paid",
+          issue_date: "2026-02-01",
+          reconciliation_missing_count: 3,
+        }),
+        inv({
+          id: "inv-active",
+          company_id: "c1",
+          currency_code: "UYU",
+          total_amount: 500,
+          balance_amount: 200,
+          status: "open",
+          issue_date: "2026-03-01",
+          reconciliation_missing_count: 1,
+        }),
+      ],
+      companies: [{ id: "c1", name: "Cliente" }],
+      receipts: [],
+      syncStates: [],
+      now: "2026-05-18T12:00:00Z",
+      mode: "all_outstanding",
+    });
+    expect(report.orphanSummary.warned).toBe(1);
+    expect(report.orphanSummary.stale_metadata).toBe(1);
+    expect(report.orphanSummary.pending_auto_close).toBe(0);
+    expect(report.orphanSummary.warnedPendingByCurrency.UYU).toBe(200);
+  });
+});

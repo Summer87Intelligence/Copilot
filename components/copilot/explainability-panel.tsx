@@ -266,6 +266,7 @@ function buildItems(
   }
 
   // 5. Orphan warnings
+  const staleMeta = orphanSummary.stale_metadata ?? 0;
   if (orphanSummary.warned > 0) {
     const autoCloseNote =
       orphanSummary.pending_auto_close > 0
@@ -283,16 +284,20 @@ function buildItems(
       label: "Orphan warnings",
       description: `${formatCarteraInteger(orphanSummary.warned)} factura${
         orphanSummary.warned === 1 ? "" : "s"
-      } marcadas con missing_count ≥ 1.${autoCloseNote}${pendingStr}`,
+      } con deuda abierta y missing_count ≥ 1.${autoCloseNote}${pendingStr}`,
       status: orphanSummary.pending_auto_close > 0 ? "critical" : "warn",
       count: orphanSummary.warned,
       icon: AlertTriangle,
     });
   } else {
+    const staleNote =
+      staleMeta > 0
+        ? ` ${formatCarteraInteger(staleMeta)} con metadata obsoleta (auto-repair en cron).`
+        : "";
     items.push({
       id: "orphan-warnings",
       label: "Orphan warnings",
-      description: "Sin facturas marcadas como huérfanas por el proceso de reconciliación.",
+      description: `Sin facturas huérfanas activas.${staleNote}`,
       status: "ok",
       count: 0,
       icon: AlertTriangle,

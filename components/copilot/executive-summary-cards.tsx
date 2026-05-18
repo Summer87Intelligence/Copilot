@@ -397,6 +397,7 @@ function staleCardForCurrency(
 
 function orphanCardAll(report: FinancialConsistencyReport): SummaryCard {
   const o = report.orphanSummary;
+  const staleMeta = o.stale_metadata ?? 0;
   return {
     id: "orphans",
     title: "Orphan warnings",
@@ -407,12 +408,16 @@ function orphanCardAll(report: FinancialConsistencyReport): SummaryCard {
     format: (n) => formatCarteraInteger(n),
     subtitle:
       o.warned === 0
-        ? "Sin facturas huérfanas detectadas"
-        : `${formatCarteraInteger(o.warned)} con warning${o.warned === 1 ? "" : "s"}`,
+        ? staleMeta > 0
+          ? `Sin activas · ${formatCarteraInteger(staleMeta)} metadata en repair`
+          : "Sin facturas huérfanas activas"
+        : `${formatCarteraInteger(o.warned)} con deuda abierta`,
     meta:
       o.pending_auto_close > 0
         ? `${formatCarteraInteger(o.pending_auto_close)} pendiente${o.pending_auto_close === 1 ? "" : "s"} de cierre`
-        : "Cleanup al día",
+        : staleMeta > 0
+          ? `${formatCarteraInteger(staleMeta)} auto-repaired en cron`
+          : "Cleanup al día",
   };
 }
 

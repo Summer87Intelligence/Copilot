@@ -23,6 +23,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { protoUpdateInvoice } from "@/lib/copilot-proto-crud-service";
 import { createLogger } from "@/lib/observability/logger";
+import {
+  buildOrphanResolvedMetadataPatch,
+  ORPHAN_RESOLVED_REASONS,
+} from "@/lib/integrations/zeta/zeta-orphan-auto-repair";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -77,6 +81,9 @@ export type ZetaReconciliationState = {
   pending_sync_missing_count: number;
   last_seen_in_zeta_at: string | null;
   last_missing_detected_at: string | null;
+  resolved_at?: string | null;
+  resolved_reason?: string | null;
+  resolved_automatically?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -104,7 +111,20 @@ export function readZetaReconciliationState(metadata: unknown): ZetaReconciliati
     typeof rec.last_seen_in_zeta_at === "string" ? rec.last_seen_in_zeta_at : null;
   const lastMissing =
     typeof rec.last_missing_detected_at === "string" ? rec.last_missing_detected_at : null;
-  return { pending_sync_missing_count: count, last_seen_in_zeta_at: lastSeen, last_missing_detected_at: lastMissing };
+  const resolvedAt =
+    typeof rec.resolved_at === "string" ? rec.resolved_at : null;
+  const resolvedReason =
+    typeof rec.resolved_reason === "string" ? rec.resolved_reason : null;
+  const resolvedAutomatically =
+    typeof rec.resolved_automatically === "boolean" ? rec.resolved_automatically : undefined;
+  return {
+    pending_sync_missing_count: count,
+    last_seen_in_zeta_at: lastSeen,
+    last_missing_detected_at: lastMissing,
+    resolved_at: resolvedAt,
+    resolved_reason: resolvedReason,
+    resolved_automatically: resolvedAutomatically,
+  };
 }
 
 export function classifyOrphanAction(missingCount: number): OrphanAction {
@@ -130,6 +150,13 @@ export function mergeZetaReconciliationState(
     last_seen_in_zeta_at: patch.last_seen_in_zeta_at ?? prev.last_seen_in_zeta_at,
     last_missing_detected_at:
       patch.last_missing_detected_at ?? prev.last_missing_detected_at,
+    resolved_at: patch.resolved_at !== undefined ? patch.resolved_at : prev.resolved_at ?? null,
+    resolved_reason:
+      patch.resolved_reason !== undefined ? patch.resolved_reason : prev.resolved_reason ?? null,
+    resolved_automatically:
+      patch.resolved_automatically !== undefined
+        ? patch.resolved_automatically
+        : prev.resolved_automatically,
   };
   return base;
 }
@@ -198,12 +225,19 @@ export async function reconcileMissingPendingInvoices(
     const recState = readZetaReconciliationState(row.zeta_metadata);
 
     if (touchedInvoiceIds.has(row.id)) {
-      // Seen in this sync — reset missing count if it was > 0
-      if (recState.pending_sync_missing_count > 0) {
-        const mergedMeta = mergeZetaReconciliationState(row.zeta_metadata, {
-          pending_sync_missing_count: 0,
-          last_seen_in_zeta_at: now,
-        });
+      const needsSeenStamp =
+        recState.pending_sync_missing_count > 0 || recState.last_seen_in_zeta_at === null;
+      if (needsSeenStamp) {
+        const mergedMeta =
+          recState.pending_sync_missing_count > 0
+            ? buildOrphanResolvedMetadataPatch(
+                row.zeta_metadata,
+                ORPHAN_RESOLVED_REASONS.REAPPEARED_IN_ZETA,
+                now
+              )
+            : mergeZetaReconciliationState(row.zeta_metadata, {
+                last_seen_in_zeta_at: now,
+              });
         const { error: upErr } = await supabase
           .from("proto_invoices")
           .update({ zeta_metadata: mergedMeta })
@@ -219,6 +253,7 @@ export async function reconcileMissingPendingInvoices(
             invoice_id: row.id,
             invoice_number: row.invoice_number,
             prev_missing_count: recState.pending_sync_missing_count,
+            last_seen_set: recState.last_seen_in_zeta_at === null,
             sync_run_id: opts.syncRunId,
           });
         }
@@ -234,9 +269,11 @@ export async function reconcileMissingPendingInvoices(
     // previous runs, reset it now to repair that state.
     if (recState.last_seen_in_zeta_at === null) {
       if (recState.pending_sync_missing_count > 0) {
-        const repairMeta = mergeZetaReconciliationState(row.zeta_metadata, {
-          pending_sync_missing_count: 0,
-        });
+        const repairMeta = buildOrphanResolvedMetadataPatch(
+          row.zeta_metadata,
+          ORPHAN_RESOLVED_REASONS.NEVER_SEEN_REPAIR,
+          now
+        );
         const { error: repErr } = await supabase
           .from("proto_invoices")
           .update({ zeta_metadata: repairMeta })
@@ -284,11 +321,14 @@ export async function reconcileMissingPendingInvoices(
     const entry = buildEntry(row, protoCompanyId, newCount, action);
 
     if (action === "closed") {
-      // Auto-close: zero balance, set status=paid
-      const closedMeta = mergeZetaReconciliationState(row.zeta_metadata, {
-        pending_sync_missing_count: newCount,
-        last_missing_detected_at: now,
-      });
+      // Auto-close: zero balance, set status=paid; clear orphan warning metadata
+      const closedMeta = buildOrphanResolvedMetadataPatch(
+        mergeZetaReconciliationState(row.zeta_metadata, {
+          last_missing_detected_at: now,
+        }),
+        ORPHAN_RESOLVED_REASONS.AUTO_CLOSED,
+        now
+      );
       // First update metadata to record reconciliation state
       const { error: metaErr } = await supabase
         .from("proto_invoices")

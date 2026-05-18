@@ -415,7 +415,7 @@ export async function syncZetaCollectionReceipts(
     );
 
     return {
-      success: true,
+      success: errors === 0,
       processed,
       inserted,
       updated,
@@ -428,6 +428,7 @@ export async function syncZetaCollectionReceipts(
       invalid_date_rows: invalidDateRows,
       invalid_amount_rows: invalidAmountRows,
       negative_amount_rows: negativeAmountRows,
+      message: errors > 0 ? `${errors} errores de persistencia` : undefined,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

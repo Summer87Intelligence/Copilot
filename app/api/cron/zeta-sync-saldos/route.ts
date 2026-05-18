@@ -30,6 +30,7 @@ import {
 } from "@/lib/data/zeta-pipeline-run-repository";
 import { ZETA_PIPELINE_NAMES } from "@/lib/data/zeta-pipeline-run-types";
 import { alertIfStale } from "@/lib/cron/cron-stale-check";
+import { repairStaleOrphanInvoiceMetadata } from "@/lib/integrations/zeta/zeta-orphan-auto-repair";
 
 const PIPELINE = ZETA_PIPELINE_NAMES.SALDOS;
 
@@ -77,6 +78,7 @@ type WorkspaceSummary = {
   rows_upserted: number;
   errors: number;
   reconciliation_closed?: number;
+  orphan_metadata_repaired?: number;
 };
 
 export async function GET(request: NextRequest) {
@@ -168,6 +170,7 @@ export async function GET(request: NextRequest) {
   let totalUpserted = 0;
   let totalFailed = 0;
   let totalReconciliationClosed = 0;
+  let totalOrphanMetadataRepaired = 0;
   const workspaceSummaries: WorkspaceSummary[] = [];
   let workspacesTotal = 0;
   let workspacePageIndex = 0;
@@ -320,6 +323,27 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    let wsOrphanMetadataRepaired = 0;
+    try {
+      const repair = await repairStaleOrphanInvoiceMetadata(supabase, workspaceId, {
+        requestId: cronRunId,
+      });
+      wsOrphanMetadataRepaired = repair.repaired;
+      totalOrphanMetadataRepaired += repair.repaired;
+      if (repair.repaired > 0) {
+        log("orphan_metadata_repaired", {
+          workspace_id: workspaceId,
+          repaired: repair.repaired,
+          scanned: repair.scanned,
+        });
+      }
+    } catch (repairErr) {
+      log("orphan_metadata_repair_error", {
+        workspace_id: workspaceId,
+        error: String(repairErr),
+      });
+    }
+
     totalUpserted += wsUpserted;
     totalReconciliationClosed += wsReconciled;
     workspaceSummaries.push({
@@ -328,6 +352,7 @@ export async function GET(request: NextRequest) {
       rows_upserted: wsUpserted,
       errors: wsErrors,
       reconciliation_closed: wsReconciled,
+      orphan_metadata_repaired: wsOrphanMetadataRepaired,
     });
 
     workspacesTotal += 1;
@@ -364,6 +389,7 @@ export async function GET(request: NextRequest) {
         workspaces: workspacesTotal,
         workspace_pages: workspacePageIndex,
         reconciliation_closed: totalReconciliationClosed,
+        orphan_metadata_repaired: totalOrphanMetadataRepaired,
         summaries: workspaceSummaries,
       },
     }).catch((e) => log("pipeline_run_update_error", { error: String(e) }));
@@ -375,6 +401,7 @@ export async function GET(request: NextRequest) {
     total_upserted: totalUpserted,
     total_failed: totalFailed,
     reconciliation_closed: totalReconciliationClosed,
+    orphan_metadata_repaired: totalOrphanMetadataRepaired,
     status: finalStatus,
     duration_ms: duration,
   });
@@ -389,6 +416,7 @@ export async function GET(request: NextRequest) {
     total_upserted: totalUpserted,
     total_failed: totalFailed,
     reconciliation_closed: totalReconciliationClosed,
+    orphan_metadata_repaired: totalOrphanMetadataRepaired,
     duration_ms: duration,
     workspace_summaries: workspaceSummaries,
   });

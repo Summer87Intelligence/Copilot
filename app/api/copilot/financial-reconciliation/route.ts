@@ -47,6 +47,7 @@ import {
 } from "@/lib/copilot-operational-period";
 import { toSafeNumber } from "@/lib/copilot-numeric-parse";
 import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
+import { mergeZetaSyncStateRows } from "@/lib/integrations/zeta/zeta-sync-resource-keys";
 
 // CRÍTICO: el reporte debe recalcularse en cada request porque depende del
 // `period_start`/`period_end` recibidos por query string. Sin `force-dynamic`
@@ -421,14 +422,14 @@ export async function GET(request: NextRequest) {
       name: r.name != null ? String(r.name) : null,
     }));
 
-    const syncStates: SyncStateInput[] = (
-      (syncData ?? []) as Record<string, unknown>[]
-    ).map((r) => ({
-      resource_flow: String(r.resource_flow ?? ""),
-      last_success_at:
-        r.last_success_at != null ? String(r.last_success_at) : null,
-      bootstrap_completed: Boolean(r.bootstrap_completed),
-    }));
+    const syncStates: SyncStateInput[] = mergeZetaSyncStateRows(
+      ((syncData ?? []) as Record<string, unknown>[]).map((r) => ({
+        resource_flow: String(r.resource_flow ?? ""),
+        last_success_at:
+          r.last_success_at != null ? String(r.last_success_at) : null,
+        bootstrap_completed: Boolean(r.bootstrap_completed),
+      }))
+    );
 
     const receipts: ReceiptInput[] = (
       (receiptData ?? []) as Record<string, unknown>[]

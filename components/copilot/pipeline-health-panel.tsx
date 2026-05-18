@@ -25,6 +25,7 @@ const INTERVAL_LABELS: Record<string, string> = {
   [ZETA_PIPELINE_NAMES.VOUCHERS]: "cada 6 h",
   [ZETA_PIPELINE_NAMES.CONTACTS]: "diario",
   [ZETA_PIPELINE_NAMES.VENDOR_PAYMENTS]: "diario",
+  [ZETA_PIPELINE_NAMES.COLLECTION_RECEIPTS]: "cada 6 h",
 };
 
 function statusConfig(status: PipelineHealthStatus): {

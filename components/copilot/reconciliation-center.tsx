@@ -342,6 +342,7 @@ function SyncStatusBadge({ status }: { status: StalenessStatus }) {
 function buildChecks(report: FinancialConsistencyReport, isPreSync: boolean): ReconCheck[] {
   const orphans = report.orphanSummary.warned;
   const orphanAutoClose = report.orphanSummary.pending_auto_close;
+  const orphanStaleMeta = report.orphanSummary.stale_metadata ?? 0;
   const unknownCcy = report.totalInvoicesWithoutCurrency;
   const stale =
     report.staleSummary.warning + report.staleSummary.critical + report.staleSummary.never_synced;
@@ -353,10 +354,12 @@ function buildChecks(report: FinancialConsistencyReport, isPreSync: boolean): Re
       label: "Orphan invoices",
       description:
         orphans === 0
-          ? "Sin facturas marcadas con missing_count."
+          ? orphanStaleMeta > 0
+            ? `Sin huérfanas activas; ${formatCarteraInteger(orphanStaleMeta)} metadata obsoleta (cron repair).`
+            : "Sin facturas huérfanas activas."
           : orphanAutoClose > 0
             ? `${formatCarteraInteger(orphanAutoClose)} pendiente${orphanAutoClose === 1 ? "" : "s"} de cierre automático.`
-            : `${formatCarteraInteger(orphans)} factura${orphans === 1 ? "" : "s"} bajo observación.`,
+            : `${formatCarteraInteger(orphans)} factura${orphans === 1 ? "" : "s"} con deuda abierta.`,
       status: orphans === 0 ? "ok" : orphanAutoClose > 0 ? "critical" : "warn",
       count: orphans,
       icon: AlertTriangle,

@@ -41,6 +41,12 @@ export const ZETA_PIPELINE_NAMES = {
    * Diario a las 07:00 UTC.
    */
   VENDOR_PAYMENTS: "zeta-sync-vendor-payments",
+  /**
+   * Collection receipts — recibos de cobranza vía `RESTRecibosCobranzaV2QueryComprobantes`.
+   * Cada 6 h (offset :15 UTC). `zeta_sync_state.resource_flow` sigue siendo
+   * `zeta_collection_receipts_v1` (sin migración DB).
+   */
+  COLLECTION_RECEIPTS: "zeta-sync-collection-receipts",
 } as const;
 
 export type ZetaPipelineName =
