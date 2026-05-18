@@ -26,9 +26,13 @@
  *    rango confirmado.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { AlertOctagon, CalendarRange } from "lucide-react";
+import { AlertOctagon, CalendarRange, Info, X } from "lucide-react";
+import { COPILOT_OPERATIONAL_START_DATE } from "@/lib/copilot-operational-period";
+import { buildCurrencyIndex } from "@/lib/copilot-cartera-cards-source";
+import { FINANCIAL_UX_COPY } from "@/lib/copilot-financial-ux-copy";
+import { formatCarteraMoney } from "@/lib/copilot-cartera-format";
 
 import { useFinancialReconciliation } from "@/hooks/use-financial-reconciliation";
 import { FinancialControlBar } from "@/components/copilot/financial-control-bar";
@@ -51,18 +55,51 @@ function normalizeDateInput(value: string | null | undefined): string {
 export function CarteraShell() {
   const [periodStart, setPeriodStart] = useState<string | null>(null);
   const [periodEnd, setPeriodEnd] = useState<string | null>(null);
-  const [draftStart, setDraftStart] = useState<string>("");
+  const [draftStart, setDraftStart] = useState<string>(COPILOT_OPERATIONAL_START_DATE);
+  // draftEnd se inicializa vacío; el control bar guía al usuario a completarlo
   const [draftEnd, setDraftEnd] = useState<string>("");
   const [confirmedDraftStart, setConfirmedDraftStart] = useState<string>("");
   const [confirmedDraftEnd, setConfirmedDraftEnd] = useState<string>("");
   const [hasConfirmedRange, setHasConfirmedRange] = useState(false);
+  // Dismissal keyed por período confirmado: se resetea automáticamente al cambiar rango
+  const [dismissedPreSyncPeriod, setDismissedPreSyncPeriod] = useState<string | null>(null);
+  const [dismissedRowCapPeriod, setDismissedRowCapPeriod] = useState<string | null>(null);
 
-  const { report, loading, error, lastFetchedAt, refetch } = useFinancialReconciliation({
+  const { report, meta, loading, error, lastFetchedAt, refetch } = useFinancialReconciliation({
     mode: "period_only",
     periodStart,
     periodEnd,
     enabled: hasConfirmedRange,
   });
+
+  const isPreSync =
+    !!periodStart && periodStart < COPILOT_OPERATIONAL_START_DATE;
+
+  // Clave única del período confirmado para comparar dismissals
+  const confirmedPeriodKey =
+    periodStart && periodEnd ? `${periodStart}|${periodEnd}` : null;
+  const preSyncDismissed =
+    dismissedPreSyncPeriod !== null && dismissedPreSyncPeriod === confirmedPeriodKey;
+  const rowCapDismissed =
+    dismissedRowCapPeriod !== null && dismissedRowCapPeriod === confirmedPeriodKey;
+
+  const isTruncated = meta?.truncated === true;
+
+  // Gap estructural por moneda: emitido - cobrado - pendiente
+  // Solo relevante cuando el período incluye facturas pre-sync sin recibos disponibles
+  const structuralGaps = useMemo(() => {
+    if (!report || !isPreSync) return [] as Array<{ currency: "UYU" | "USD"; amount: number }>;
+    const index = buildCurrencyIndex(report.currencies);
+    const result: Array<{ currency: "UYU" | "USD"; amount: number }> = [];
+    for (const code of (["UYU", "USD"] as const)) {
+      const m = index.get(code);
+      if (!m) continue;
+      const gap =
+        Math.round((m.issuedInPeriod - m.collectedInPeriod - m.pendingAtCutoff) * 100) / 100;
+      if (gap > 1) result.push({ currency: code, amount: gap });
+    }
+    return result;
+  }, [report, isPreSync]);
 
   const hasPendingChanges =
     normalizeDateInput(draftStart) !== normalizeDateInput(confirmedDraftStart) ||
@@ -121,7 +158,28 @@ export function CarteraShell() {
           <ErrorBlock message={error ?? "Error desconocido"} onRetry={refetch} />
         ) : report ? (
           <>
-            <ExecutiveSummaryCards report={report} selectedCurrency="all" />
+            {isPreSync && !preSyncDismissed && (
+              <PreSyncBanner
+                onDismiss={() =>
+                  confirmedPeriodKey && setDismissedPreSyncPeriod(confirmedPeriodKey)
+                }
+              />
+            )}
+            {isTruncated && !rowCapDismissed && (
+              <RowCapBanner
+                onDismiss={() =>
+                  confirmedPeriodKey && setDismissedRowCapPeriod(confirmedPeriodKey)
+                }
+              />
+            )}
+            <ExecutiveSummaryCards
+              report={report}
+              selectedCurrency="all"
+              isPreSync={isPreSync}
+            />
+            {structuralGaps.length > 0 && (
+              <HistoricalGapNote gaps={structuralGaps} />
+            )}
             <AgingAnalytics report={report} selectedCurrency="all" />
             <ClientDebtExplorer report={report} selectedCurrency="all" />
             <ExplainabilityPanel report={report} selectedCurrency="all" />
@@ -165,12 +223,12 @@ function EmptyPeriodState() {
 
 function EmptySummaryPlaceholders({ shimmer = false }: { shimmer?: boolean }) {
   const cards = [
-    "Pendiente de cobro UYU",
-    "Pendiente de cobro USD",
-    "Emitido UYU",
-    "Emitido USD",
-    "Cobranza efectiva UYU",
-    "Cobranza efectiva USD",
+    "Saldo pendiente actual UYU",
+    "Saldo pendiente actual USD",
+    "Facturado en período UYU",
+    "Facturado en período USD",
+    "% cobranza registrada UYU",
+    "% cobranza registrada USD",
     "Clientes en riesgo",
     "Orphan warnings",
   ];
@@ -294,6 +352,85 @@ function PlaceholderBlock({
           transition={{ duration: 1.4, ease: "linear", repeat: Infinity }}
         />
       ) : null}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Banners contextuales
+// ---------------------------------------------------------------------------
+
+function PreSyncBanner({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <div
+      role="status"
+      className="flex items-start justify-between gap-3 rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-sm text-amber-950"
+    >
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 shrink-0 text-amber-700">
+          <Info className="h-4 w-4" aria-hidden />
+        </span>
+        <div className="space-y-0.5">
+          <p className="font-semibold">{FINANCIAL_UX_COPY.preSyncBannerTitle}</p>
+          <p className="text-[13px] text-amber-800/80">{FINANCIAL_UX_COPY.preSyncBannerBody}</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Cerrar aviso"
+        className="mt-0.5 shrink-0 text-amber-600 transition-colors hover:text-amber-900"
+      >
+        <X className="h-4 w-4" aria-hidden />
+      </button>
+    </div>
+  );
+}
+
+function RowCapBanner({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <div
+      role="status"
+      className="flex items-start justify-between gap-3 rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-sm text-amber-950"
+    >
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 shrink-0 text-amber-700">
+          <Info className="h-4 w-4" aria-hidden />
+        </span>
+        <div className="space-y-0.5">
+          <p className="font-semibold">{FINANCIAL_UX_COPY.rowCapWarningTitle}</p>
+          <p className="text-[13px] text-amber-800/80">{FINANCIAL_UX_COPY.rowCapWarningBody}</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Cerrar aviso"
+        className="mt-0.5 shrink-0 text-amber-600 transition-colors hover:text-amber-900"
+      >
+        <X className="h-4 w-4" aria-hidden />
+      </button>
+    </div>
+  );
+}
+
+function HistoricalGapNote({
+  gaps,
+}: {
+  gaps: Array<{ currency: "UYU" | "USD"; amount: number }>;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-[11px] text-[var(--copilot-ink-muted)]/70">
+      {gaps.map(({ currency, amount }) => (
+        <span key={currency} className="inline-flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" aria-hidden />
+          <span>
+            <span className="font-semibold">Δ sin reconciliar {currency}:</span>{" "}
+            {formatCarteraMoney(currency, amount)} — pagos anteriores al inicio de
+            sincronización (2026-01-01) no disponibles en el sistema
+          </span>
+        </span>
+      ))}
     </div>
   );
 }

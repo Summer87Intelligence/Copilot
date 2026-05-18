@@ -32,4 +32,18 @@ export const FINANCIAL_UX_COPY = {
   rowCapWarningTitle: "Datos potencialmente incompletos",
   rowCapWarningBody:
     "Los datos pueden estar incompletos porque se alcanzó el límite máximo de filas procesadas. Los KPIs financieros pueden estar subestimados. Contactá soporte para ampliar la ventana de datos.",
+  preSyncBannerTitle: "Período histórico parcial",
+  preSyncBannerBody:
+    "El rango seleccionado incluye facturación previa al inicio operativo de sincronización (2026-01-01). Algunas cobranzas históricas podrían no estar disponibles en el sistema.",
+  historicalPartialBadge: "Histórico parcial",
+  kpiIssuedTooltip:
+    "Suma de facturas emitidas dentro del rango seleccionado. Excluye notas de crédito y anuladas.",
+  kpiCollectedTooltip:
+    "Pagos registrados en el sistema desde el inicio operativo de sincronización.",
+  kpiPendingTooltip:
+    "Saldo vivo actual informado por Zeta al momento del último sync. Refleja todos los pagos históricos conocidos por Zeta.",
+  kpiEffectivenessTooltip:
+    "Relación entre facturación emitida y cobranzas registradas dentro del período.",
+  kpiEffectivenessTooltipPreSync:
+    "Relación entre facturación emitida y cobranzas registradas dentro del período. Puede estar subestimado si el período incluye facturas anteriores al inicio operativo de sincronización.",
 } as const;

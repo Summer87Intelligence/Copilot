@@ -12,14 +12,16 @@
  *  - Sin cálculos financieros: solo deriva ratios o lee subtotales del backend.
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   AlertTriangle,
   CircleCheckBig,
   CircleDollarSign,
+  Clock,
   Database,
   FileText,
+  Info,
   ShieldAlert,
   TrendingUp,
 } from "lucide-react";
@@ -43,6 +45,7 @@ import {
   buildCurrencyIndex,
   type NormalizedCurrencyMetrics,
 } from "@/lib/copilot-cartera-cards-source";
+import { FINANCIAL_UX_COPY } from "@/lib/copilot-financial-ux-copy";
 
 // ---------------------------------------------------------------------------
 // Tipos de card y badges
@@ -66,6 +69,10 @@ type SummaryCard = {
   subtitle: string;
   /** Texto auxiliar terciario (tipo "hace 2h"). */
   meta?: string;
+  /** Tooltip explicativo (ícono Info junto al título). */
+  tooltip?: string;
+  /** Marca la card como afectada por datos históricos pre-sync. */
+  isHistoricalPartial?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -155,7 +162,7 @@ function pendingCollectionCard(
   const m = getCurrencyCardMetrics(index, code);
   return {
     id: `cartera-${code}`,
-    title: `Pendiente de cobro al corte ${code}`,
+    title: `Saldo pendiente actual ${code}`,
     source: "zeta",
     tone: m.pendingInvoiceCount > 0 ? "warning" : "positive",
     icon: CircleDollarSign,
@@ -166,6 +173,7 @@ function pendingCollectionCard(
         ? "Sin facturas con saldo abierto al Hasta"
         : `${formatCarteraInteger(m.pendingInvoiceCount)} factura${m.pendingInvoiceCount === 1 ? "" : "s"} con saldo al corte`,
     meta: zetaAge,
+    tooltip: FINANCIAL_UX_COPY.kpiPendingTooltip,
   };
 }
 
@@ -177,7 +185,7 @@ function issuedCard(
   const m = getCurrencyCardMetrics(index, code);
   return {
     id: `facturado-${code}`,
-    title: `Emitido en período ${code}`,
+    title: `Facturado en período ${code}`,
     source: "zeta",
     tone: "neutral",
     icon: FileText,
@@ -188,6 +196,7 @@ function issuedCard(
         ? "Sin facturas emitidas en período"
         : `${formatCarteraInteger(m.invoiceCount)} factura${m.invoiceCount === 1 ? "" : "s"} ${currencyShortLabelFor(code).toLowerCase()} emitida${m.invoiceCount === 1 ? "" : "s"}`,
     meta: zetaAge,
+    tooltip: FINANCIAL_UX_COPY.kpiIssuedTooltip,
   };
 }
 
@@ -204,7 +213,7 @@ function collectedCard(
   const dataMissing = m.collectedReceiptCount === 0 && m.collectedInPeriod === 0;
   return {
     id: `collected-${code}`,
-    title: `Cobrado en período ${code}`,
+    title: `Cobrado registrado ${code}`,
     source: "zeta",
     tone: m.collectedInPeriod > 0 ? "positive" : "neutral",
     icon: CircleCheckBig,
@@ -214,6 +223,7 @@ function collectedCard(
       ? "Sin recibos registrados en período"
       : `${formatCarteraInteger(m.collectedReceiptCount)} recibo${m.collectedReceiptCount === 1 ? "" : "s"} ${currencyShortLabelFor(code).toLowerCase()}`,
     meta: zetaAge,
+    tooltip: FINANCIAL_UX_COPY.kpiCollectedTooltip,
   };
 }
 
@@ -226,7 +236,7 @@ function effectivenessCard(
 
   return {
     id: `effectiveness-${code}`,
-    title: `Cobranza efectiva ${code}`,
+    title: `% cobranza registrada ${code}`,
     source: "analytics",
     tone: ratio !== null && ratio < 0.8 ? "warning" : "info",
     icon: TrendingUp,
@@ -244,8 +254,9 @@ function effectivenessCard(
         : `${formatCarteraInteger(m.invoiceCount)} factura${m.invoiceCount === 1 ? "" : "s"} ${code}`,
     meta:
       ratio !== null
-        ? `Cobrado ${formatCarteraMoney(code, m.collectedInPeriod)} / Emitido ${formatCarteraMoney(code, m.issuedInPeriod)}`
+        ? `Cobrado ${formatCarteraMoney(code, m.collectedInPeriod)} / Facturado ${formatCarteraMoney(code, m.issuedInPeriod)}`
         : undefined,
+    tooltip: FINANCIAL_UX_COPY.kpiEffectivenessTooltip,
   };
 }
 
@@ -383,9 +394,12 @@ function orphanCardAll(report: FinancialConsistencyReport): SummaryCard {
 export function ExecutiveSummaryCards({
   report,
   selectedCurrency = "all",
+  isPreSync = false,
 }: {
   report: FinancialConsistencyReport;
   selectedCurrency?: CurrencyFilter;
+  /** Indica que el período confirmado incluye facturas pre-2026-01-01. */
+  isPreSync?: boolean;
 }) {
   const reduce = useReducedMotion();
 
@@ -401,20 +415,20 @@ export function ExecutiveSummaryCards({
     const recent = pickMostRecentSync(report.syncStates);
     const zetaAge = recent ? formatRelativeAgeHours(recent.ageHours) : "sin sync";
 
-    // Helper local: agregar "Saldo anterior" sólo cuando aplica (modo
-    // period_only + opening > 0). Evita poblar la grilla con cards vacías.
     function appendOpeningIfRelevant(
       list: SummaryCard[],
       code: ReconciliationCurrencyCode
     ): SummaryCard[] {
       const m = currencyIndex.get(code);
-      if (!m || m.openingBalance <= 0) return list;
+      if (!m || m.openingBalance <= 0 || !isPreSync) return list;
       return [...list, openingBalanceCard(code, currencyIndex)];
     }
 
+    let list: SummaryCard[];
+
     if (selectedCurrency === "USD" || selectedCurrency === "UYU") {
       const code = selectedCurrency;
-      let list: SummaryCard[] = [
+      list = [
         issuedCard(code, currencyIndex, zetaAge),
         collectedCard(code, currencyIndex, zetaAge),
         pendingCollectionCard(code, currencyIndex, zetaAge),
@@ -422,28 +436,41 @@ export function ExecutiveSummaryCards({
         staleCardForCurrency(code, report),
       ];
       list = appendOpeningIfRelevant(list, code);
-      return list;
+    } else {
+      list = [
+        issuedCard("UYU", currencyIndex, zetaAge),
+        collectedCard("UYU", currencyIndex, zetaAge),
+        pendingCollectionCard("UYU", currencyIndex, zetaAge),
+        effectivenessCard("UYU", currencyIndex),
+        issuedCard("USD", currencyIndex, zetaAge),
+        collectedCard("USD", currencyIndex, zetaAge),
+        pendingCollectionCard("USD", currencyIndex, zetaAge),
+        effectivenessCard("USD", currencyIndex),
+        staleCardAll(report),
+        orphanCardAll(report),
+      ];
+      list = appendOpeningIfRelevant(list, "UYU");
+      list = appendOpeningIfRelevant(list, "USD");
     }
 
-    let list: SummaryCard[] = [
-      // Bloque UYU
-      issuedCard("UYU", currencyIndex, zetaAge),
-      collectedCard("UYU", currencyIndex, zetaAge),
-      pendingCollectionCard("UYU", currencyIndex, zetaAge),
-      effectivenessCard("UYU", currencyIndex),
-      // Bloque USD
-      issuedCard("USD", currencyIndex, zetaAge),
-      collectedCard("USD", currencyIndex, zetaAge),
-      pendingCollectionCard("USD", currencyIndex, zetaAge),
-      effectivenessCard("USD", currencyIndex),
-      // Salud
-      staleCardAll(report),
-      orphanCardAll(report),
-    ];
-    list = appendOpeningIfRelevant(list, "UYU");
-    list = appendOpeningIfRelevant(list, "USD");
+    // Marcar cards afectadas cuando el período incluye datos pre-sync
+    if (isPreSync) {
+      list = list.map((c) => {
+        if (c.id.startsWith("facturado-") || c.id.startsWith("effectiveness-")) {
+          return {
+            ...c,
+            isHistoricalPartial: true,
+            ...(c.id.startsWith("effectiveness-")
+              ? { tooltip: FINANCIAL_UX_COPY.kpiEffectivenessTooltipPreSync }
+              : {}),
+          };
+        }
+        return c;
+      });
+    }
+
     return list;
-  }, [report, selectedCurrency, currencyIndex]);
+  }, [report, selectedCurrency, currencyIndex, isPreSync]);
 
   return (
     <motion.section
@@ -466,6 +493,40 @@ export function ExecutiveSummaryCards({
 // ---------------------------------------------------------------------------
 // Card view
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// KPI tooltip inline (click/hover + keyboard accessible)
+// ---------------------------------------------------------------------------
+
+function KpiInfoButton({ tooltip, id }: { tooltip: string; id: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative inline-flex shrink-0 items-center">
+      <button
+        type="button"
+        aria-label="Más información"
+        aria-expanded={open}
+        aria-describedby={open ? `${id}-kpi-tip` : undefined}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        className="inline-flex items-center rounded-sm text-[var(--copilot-ink-muted)]/50 transition-colors hover:text-[var(--copilot-ink-muted)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--copilot-accent)]/60"
+      >
+        <Info className="h-3 w-3" aria-hidden />
+      </button>
+      {open ? (
+        <div
+          id={`${id}-kpi-tip`}
+          role="tooltip"
+          className="pointer-events-none absolute bottom-full left-0 z-50 mb-1.5 w-52 rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-2 text-[11px] leading-relaxed text-[var(--copilot-ink)] shadow-md"
+        >
+          {tooltip}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 const TONE_VALUE_CLASS: Record<CardTone, string> = {
   neutral: "text-[var(--copilot-ink)]",
@@ -499,9 +560,14 @@ function SummaryCardView({ card }: { card: SummaryCard }) {
           >
             <Icon className="h-4 w-4" />
           </span>
-          <p className="truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--copilot-ink-muted)]">
-            {card.title}
-          </p>
+          <div className="flex min-w-0 items-center gap-1">
+            <p className="truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--copilot-ink-muted)]">
+              {card.title}
+            </p>
+            {card.tooltip ? (
+              <KpiInfoButton tooltip={card.tooltip} id={card.id} />
+            ) : null}
+          </div>
         </div>
         <SourceBadgeView source={card.source} />
       </header>
@@ -519,6 +585,12 @@ function SummaryCardView({ card }: { card: SummaryCard }) {
           <p className="text-[11px] uppercase tracking-[0.08em] text-[var(--copilot-ink-muted)]/80">
             {card.meta}
           </p>
+        ) : null}
+        {card.isHistoricalPartial ? (
+          <div className="mt-0.5 inline-flex items-center gap-1 rounded-full border border-amber-200/70 bg-amber-50/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-800">
+            <Clock className="h-2.5 w-2.5" aria-hidden />
+            {FINANCIAL_UX_COPY.historicalPartialBadge}
+          </div>
         ) : null}
       </div>
     </motion.article>
