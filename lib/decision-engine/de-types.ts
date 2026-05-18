@@ -142,6 +142,8 @@ export type RankedClient = {
   promise_amount: number | null;
   promise_currency: string | null;
   concentration_pct: number;
+  risk_assessment: RiskAssessment;
+  recommendation: ActionRecommendation;
 };
 
 // ---------------------------------------------------------------------------
@@ -169,4 +171,105 @@ export type DailyBriefing = {
   total_pending_uyu: number;
   total_pending_usd: number;
   total_debtors: number;
+};
+
+// ---------------------------------------------------------------------------
+// Phase 1B — Risk Assessment & Action Recommendations
+// ---------------------------------------------------------------------------
+
+export type RecommendedAction =
+  | "send_reminder"
+  | "manual_call"
+  | "escalate"
+  | "payment_plan"
+  | "hold_credit"
+  | "monitor"
+  | "no_action";
+
+export const RECOMMENDED_ACTION_LABELS: Record<RecommendedAction, string> = {
+  send_reminder: "Enviar recordatorio",
+  manual_call:   "Llamar directamente",
+  escalate:      "Escalar",
+  payment_plan:  "Proponer plan de pago",
+  hold_credit:   "Retener crédito",
+  monitor:       "Monitorear",
+  no_action:     "Sin acción requerida",
+};
+
+export type RecommendedChannel = "whatsapp" | "email" | "phone" | "internal";
+
+export const RECOMMENDED_CHANNEL_LABELS: Record<RecommendedChannel, string> = {
+  whatsapp: "WhatsApp",
+  email:    "Email",
+  phone:    "Teléfono",
+  internal: "Interno",
+};
+
+export type UrgencyLevel = "critical" | "high" | "medium" | "low";
+
+export const URGENCY_LEVEL_LABELS: Record<UrgencyLevel, string> = {
+  critical: "Crítico",
+  high:     "Alto",
+  medium:   "Medio",
+  low:      "Bajo",
+};
+
+export type RiskLevel = "critical" | "high" | "medium" | "low";
+
+export const RISK_LEVEL_LABELS: Record<RiskLevel, string> = {
+  critical: "Riesgo crítico",
+  high:     "Riesgo alto",
+  medium:   "Riesgo medio",
+  low:      "Riesgo bajo",
+};
+
+export type RiskAssessment = {
+  score: number;
+  level: RiskLevel;
+  aging_component: number;
+  concentration_component: number;
+  behavior_component: number;
+  contact_component: number;
+};
+
+export type ActionRecommendation = {
+  action: RecommendedAction;
+  channel: RecommendedChannel | null;
+  urgency: UrgencyLevel;
+  rationale: string[];
+  confidence: number;
+  next_suggested_at: string | null;
+};
+
+export type RiskScoringInput = {
+  oldest_days: number;
+  dominant_bucket: AgingBucket;
+  concentration_pct: number;
+  has_active_promise: boolean;
+  has_broken_promise: boolean;
+  days_since_contact: number | null;
+  invoice_count: number;
+};
+
+export type RecommendationInput = {
+  risk_assessment: RiskAssessment;
+  oldest_days: number;
+  dominant_bucket: AgingBucket;
+  has_active_promise: boolean;
+  has_broken_promise: boolean;
+  has_escalation: boolean;
+  days_since_contact: number | null;
+  instruction: ClientInstruction;
+};
+
+export type DEActionTimeline = {
+  id: string;
+  company_id: string;
+  action_type: string;
+  channel: string | null;
+  summary: string | null;
+  outcome: string | null;
+  created_by: string | null;
+  created_at: string;
+  next_follow_up_at: string | null;
 };

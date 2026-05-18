@@ -16,6 +16,27 @@ import type {
   SimpleEvidence,
 } from "@/lib/decision-engine/de-types";
 import { CLIENT_INSTRUCTION_LABELS } from "@/lib/decision-engine/de-types";
+import { computeClientRiskScore } from "@/lib/decision-engine/client-risk-scorer";
+import { generateActionRecommendation } from "@/lib/decision-engine/action-recommendation-engine";
+import type { ActionRecommendation, RiskAssessment } from "@/lib/decision-engine/de-types";
+
+const FALLBACK_RISK_ASSESSMENT: RiskAssessment = {
+  score: 0,
+  level: "low",
+  aging_component: 0,
+  concentration_component: 0,
+  behavior_component: 0,
+  contact_component: 0,
+};
+
+const FALLBACK_RECOMMENDATION: ActionRecommendation = {
+  action: "monitor",
+  channel: "internal",
+  urgency: "low",
+  rationale: ["Datos insuficientes para una recomendación específica."],
+  confidence: 50,
+  next_suggested_at: null,
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -417,6 +438,38 @@ export function rankClients(
     const evidence = buildEvidence(summary, signals, concentrationPct);
     const reason = buildReason(summary, signals, instruction);
 
+    let risk_assessment: RiskAssessment;
+    let recommendation: ActionRecommendation;
+
+    try {
+      risk_assessment = computeClientRiskScore({
+        oldest_days:        summary.oldest_days,
+        dominant_bucket:    summary.dominant_bucket,
+        concentration_pct:  concentrationPct,
+        has_active_promise: signals.has_active_promise,
+        has_broken_promise: signals.has_broken_promise,
+        days_since_contact: signals.days_since_contact,
+        invoice_count:      summary.invoice_count,
+      });
+    } catch {
+      risk_assessment = { ...FALLBACK_RISK_ASSESSMENT };
+    }
+
+    try {
+      recommendation = generateActionRecommendation({
+        risk_assessment,
+        oldest_days:        summary.oldest_days,
+        dominant_bucket:    summary.dominant_bucket,
+        has_active_promise: signals.has_active_promise,
+        has_broken_promise: signals.has_broken_promise,
+        has_escalation:     signals.has_escalation,
+        days_since_contact: signals.days_since_contact,
+        instruction,
+      }, ref);
+    } catch {
+      recommendation = { ...FALLBACK_RECOMMENDATION };
+    }
+
     ranked.push({
       company_id: summary.company_id,
       company_name: companyMap.get(summary.company_id) ?? summary.company_id,
@@ -437,6 +490,8 @@ export function rankClients(
       promise_amount: signals.promise_amount,
       promise_currency: signals.promise_currency,
       concentration_pct: concentrationPct,
+      risk_assessment,
+      recommendation,
     });
   }
 

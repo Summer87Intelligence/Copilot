@@ -10,7 +10,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
-import { loadDecisionEngineBundle } from "@/lib/data/decision-engine-data-loader";
+import {
+  loadDecisionEngineBundle,
+  loadRecentActionsOnly,
+} from "@/lib/data/decision-engine-data-loader";
 import { generateDailyBriefing } from "@/lib/decision-engine/daily-briefing-generator";
 import {
   isBriefingSnapshotFresh,
@@ -20,6 +23,13 @@ import {
 } from "@/lib/data/decision-snapshot-repository";
 
 export const dynamic = "force-dynamic";
+
+/** Returns false for snapshots generated before Phase 1B (missing recommendation/risk_assessment). */
+function isBriefingV1B(payload: { urgent?: unknown[]; important?: unknown[] }): boolean {
+  const first = (payload.urgent?.[0] ?? payload.important?.[0]) as Record<string, unknown> | undefined;
+  if (!first) return true; // no clients → nothing to check
+  return first["recommendation"] != null && first["risk_assessment"] != null;
+}
 
 export async function GET(request: NextRequest) {
   let log = copilotRequestLogger(request);
@@ -39,7 +49,8 @@ export async function GET(request: NextRequest) {
     // 1. Cache check
     if (!forceRefresh) {
       const cached = await readBriefingSnapshot(supabase, tenantCompanyId);
-      if (cached && isBriefingSnapshotFresh(cached)) {
+      if (cached && isBriefingSnapshotFresh(cached) && isBriefingV1B(cached.payload)) {
+        const recentActions = await loadRecentActionsOnly(supabase, tenantCompanyId);
         log.info("de_briefing_cache_hit", {
           generated_at: cached.generated_at,
           expires_at: cached.expires_at,
@@ -47,6 +58,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
           ok: true as const,
           briefing: cached.payload,
+          recentActions,
           cached: true,
           generated_at: cached.generated_at,
         });
@@ -85,6 +97,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       ok: true as const,
       briefing,
+      recentActions: bundle.recentActions,
       cached: false,
       generated_at: briefing.generated_at,
     });

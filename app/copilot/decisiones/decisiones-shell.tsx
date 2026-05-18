@@ -4,12 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2, AlertCircle } from "lucide-react";
 
 import { copilotApiFetch } from "@/lib/copilot-fetch";
-import type { DailyBriefing } from "@/lib/decision-engine/de-types";
+import type { DailyBriefing, DECollectionAction } from "@/lib/decision-engine/de-types";
 import { DailyBriefingCard } from "@/components/copilot/decision-engine/daily-briefing-card";
 
 type BriefingResponse = {
   ok: true;
   briefing: DailyBriefing;
+  recentActions: DECollectionAction[];
   cached: boolean;
   generated_at: string;
 } | {
@@ -20,6 +21,7 @@ type BriefingResponse = {
 
 export function DecisionesShell() {
   const [briefing, setBriefing] = useState<DailyBriefing | null>(null);
+  const [recentActions, setRecentActions] = useState<DECollectionAction[]>([]);
   const [generatedAt, setGeneratedAt] = useState<string>("");
   const [cached, setCached] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -41,6 +43,7 @@ export function DecisionesShell() {
       }
 
       setBriefing(json.briefing);
+      setRecentActions(json.recentActions ?? []);
       setGeneratedAt(json.generated_at);
       setCached(json.cached);
     } catch (err) {
@@ -87,6 +90,7 @@ export function DecisionesShell() {
   return (
     <DailyBriefingCard
       briefing={briefing}
+      recentActions={recentActions}
       generatedAt={generatedAt}
       cached={cached}
       refreshing={loading}

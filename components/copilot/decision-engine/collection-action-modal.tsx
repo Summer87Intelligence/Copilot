@@ -15,10 +15,17 @@ import {
 } from "@/lib/copilot-collection-types";
 import type { RankedClient } from "@/lib/decision-engine/de-types";
 
+type DefaultValues = {
+  actionType?: CollectionActionType;
+  status?: CollectionStatus;
+  notes?: string;
+};
+
 type Props = {
   client: RankedClient;
   onClose: () => void;
   onSuccess: () => void;
+  defaultValues?: DefaultValues;
 };
 
 const ACTION_TYPE_LABELS: Record<CollectionActionType, string> = {
@@ -49,11 +56,11 @@ const STATUS_LABELS: Record<CollectionStatus, string> = {
   paused:           "Pausado",
 };
 
-export function CollectionActionModal({ client, onClose, onSuccess }: Props) {
-  const [actionType, setActionType] = useState<CollectionActionType>("call");
-  const [status, setStatus] = useState<CollectionStatus>("contacted");
+export function CollectionActionModal({ client, onClose, onSuccess, defaultValues }: Props) {
+  const [actionType, setActionType] = useState<CollectionActionType>(defaultValues?.actionType ?? "call");
+  const [status, setStatus] = useState<CollectionStatus>(defaultValues?.status ?? "contacted");
   const [priority, setPriority] = useState<CollectionPriority>("medium");
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState(defaultValues?.notes ?? "");
   const [contactDate, setContactDate] = useState(new Date().toISOString().split("T")[0]!);
   const [promiseDate, setPromiseDate] = useState("");
   const [promiseAmount, setPromiseAmount] = useState("");

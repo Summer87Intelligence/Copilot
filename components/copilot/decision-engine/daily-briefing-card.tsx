@@ -1,14 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import type { DailyBriefing, RankedClient } from "@/lib/decision-engine/de-types";
+import type { DailyBriefing, DECollectionAction, RankedClient } from "@/lib/decision-engine/de-types";
+import type { CollectionActionType, CollectionStatus } from "@/lib/copilot-collection-types";
 import { PortfolioScoreCard } from "./portfolio-score-card";
 import { ClientPriorityList } from "./client-priority-list";
 import { RiskAlertList } from "./risk-alert-list";
 import { CollectionActionModal } from "./collection-action-modal";
 
+type QuickActionDefaults = {
+  actionType?: CollectionActionType;
+  status?: CollectionStatus;
+  notes?: string;
+};
+
 type Props = {
   briefing: DailyBriefing;
+  recentActions: DECollectionAction[];
   generatedAt: string;
   cached: boolean;
   onRefresh: () => void;
@@ -25,12 +33,19 @@ function formatRelativeTime(isoString: string): string {
   return `hace ${Math.floor(hrs / 24)} d`;
 }
 
-export function DailyBriefingCard({ briefing, generatedAt, cached, onRefresh, refreshing }: Props) {
+export function DailyBriefingCard({ briefing, recentActions, generatedAt, cached, onRefresh, refreshing }: Props) {
   const [actionClient, setActionClient] = useState<RankedClient | null>(null);
+  const [actionDefaults, setActionDefaults] = useState<QuickActionDefaults | undefined>(undefined);
   const [actionSuccess, setActionSuccess] = useState(false);
+
+  function handleActionClick(client: RankedClient, defaults?: QuickActionDefaults) {
+    setActionClient(client);
+    setActionDefaults(defaults);
+  }
 
   function handleActionSuccess() {
     setActionClient(null);
+    setActionDefaults(undefined);
     setActionSuccess(true);
     setTimeout(() => setActionSuccess(false), 3000);
     onRefresh();
@@ -75,9 +90,10 @@ export function DailyBriefingCard({ briefing, generatedAt, cached, onRefresh, re
       {briefing.urgent.length > 0 && (
         <ClientPriorityList
           clients={briefing.urgent}
+          recentActions={recentActions}
           title="Urgente — atender hoy"
           emptyMessage="Sin clientes urgentes."
-          onActionClick={setActionClient}
+          onActionClick={handleActionClick}
         />
       )}
 
@@ -85,9 +101,10 @@ export function DailyBriefingCard({ briefing, generatedAt, cached, onRefresh, re
       {briefing.important.length > 0 && (
         <ClientPriorityList
           clients={briefing.important}
+          recentActions={recentActions}
           title="Importante esta semana"
           emptyMessage="Sin clientes importantes pendientes."
-          onActionClick={setActionClient}
+          onActionClick={handleActionClick}
         />
       )}
 
@@ -105,7 +122,8 @@ export function DailyBriefingCard({ briefing, generatedAt, cached, onRefresh, re
       {actionClient && (
         <CollectionActionModal
           client={actionClient}
-          onClose={() => setActionClient(null)}
+          defaultValues={actionDefaults}
+          onClose={() => { setActionClient(null); setActionDefaults(undefined); }}
           onSuccess={handleActionSuccess}
         />
       )}

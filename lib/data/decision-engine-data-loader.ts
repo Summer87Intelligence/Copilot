@@ -186,6 +186,13 @@ async function loadRecentActions(
 // API pública
 // ---------------------------------------------------------------------------
 
+export async function loadRecentActionsOnly(
+  supabase: SupabaseClient,
+  tenantCompanyId: string
+): Promise<DECollectionAction[]> {
+  return loadRecentActions(supabase, tenantCompanyId);
+}
+
 export async function loadDecisionEngineBundle(
   supabase: SupabaseClient,
   tenantCompanyId: string

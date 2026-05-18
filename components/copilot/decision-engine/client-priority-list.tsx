@@ -1,12 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Phone, ArrowUpRight, Bell, Clock, Eye, Hourglass } from "lucide-react";
-import type { RankedClient, ClientInstruction } from "@/lib/decision-engine/de-types";
+import { ChevronDown, ChevronRight, Clock, History, Phone, ArrowUpRight, Bell, Eye, Hourglass, FileCheck, CalendarClock } from "lucide-react";
+import type { RankedClient, ClientInstruction, DECollectionAction } from "@/lib/decision-engine/de-types";
+import type { CollectionActionType, CollectionStatus } from "@/lib/copilot-collection-types";
+import { ActionRecommendationBadge } from "./action-recommendation-badge";
+import { ClientTimeline } from "./client-timeline";
+
+type QuickActionDefaults = {
+  actionType: CollectionActionType;
+  status: CollectionStatus;
+  notes?: string;
+};
 
 type Props = {
   clients: RankedClient[];
-  onActionClick?: (client: RankedClient) => void;
+  onActionClick?: (client: RankedClient, defaults?: QuickActionDefaults) => void;
+  recentActions?: DECollectionAction[];
   title?: string;
   emptyMessage?: string;
 };
@@ -28,8 +38,51 @@ const BUCKET_LABEL: Record<string, string> = {
   "90+":   "90+ días",
 };
 
-export function ClientPriorityList({ clients, onActionClick, title = "Clientes", emptyMessage = "Sin clientes pendientes." }: Props) {
+// Quick action presets
+const QUICK_ACTIONS: Array<{
+  label: string;
+  icon: React.ReactNode;
+  defaults: QuickActionDefaults;
+}> = [
+  {
+    label: "Llamé",
+    icon: <Phone className="h-3 w-3" />,
+    defaults: { actionType: "call", status: "contacted" },
+  },
+  {
+    label: "Prometió",
+    icon: <FileCheck className="h-3 w-3" />,
+    defaults: { actionType: "payment_promise", status: "promised_payment" },
+  },
+  {
+    label: "Pagó",
+    icon: <FileCheck className="h-3 w-3" />,
+    defaults: { actionType: "internal_note", status: "paid" },
+  },
+  {
+    label: "Reprogramar",
+    icon: <CalendarClock className="h-3 w-3" />,
+    defaults: { actionType: "internal_note", status: "pending_review" },
+  },
+];
+
+export function ClientPriorityList({
+  clients,
+  onActionClick,
+  recentActions = [],
+  title = "Clientes",
+  emptyMessage = "Sin clientes pendientes.",
+}: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Record<string, "recommendation" | "timeline">>({});
+
+  function getTab(key: string): "recommendation" | "timeline" {
+    return activeTab[key] ?? "recommendation";
+  }
+
+  function setTab(key: string, tab: "recommendation" | "timeline") {
+    setActiveTab((prev) => ({ ...prev, [key]: tab }));
+  }
 
   if (clients.length === 0) {
     return (
@@ -52,6 +105,10 @@ export function ClientPriorityList({ clients, onActionClick, title = "Clientes",
           const key = `${client.company_id}::${client.currency_code}`;
           const isOpen = expanded === key;
           const cfg = INSTRUCTION_CONFIG[client.instruction];
+          const tab = getTab(key);
+          const clientActions = recentActions
+            .filter((a) => a.company_id === client.company_id)
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
           return (
             <li key={key}>
@@ -85,7 +142,7 @@ export function ClientPriorityList({ clients, onActionClick, title = "Clientes",
               </button>
 
               {isOpen && (
-                <div className="px-4 pb-3 pt-1 bg-[var(--copilot-surface-alt)] space-y-3">
+                <div className="px-4 pb-4 pt-1 bg-[var(--copilot-surface-alt)] space-y-3">
                   {/* Amount + aging */}
                   <div className="flex gap-4 flex-wrap text-xs">
                     <div>
@@ -133,14 +190,66 @@ export function ClientPriorityList({ clients, onActionClick, title = "Clientes",
                     </p>
                   )}
 
-                  {onActionClick && (
+                  {/* Tab switcher: Recomendación | Historial */}
+                  <div className="flex gap-1 border-b border-[var(--copilot-border)] pb-1">
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); onActionClick(client); }}
-                      className="text-xs font-medium text-[var(--copilot-accent)] hover:underline"
+                      onClick={() => setTab(key, "recommendation")}
+                      className={`flex items-center gap-1 text-xs px-2 py-1 rounded-t transition-colors ${tab === "recommendation" ? "font-semibold text-[var(--copilot-accent)] border-b-2 border-[var(--copilot-accent)] -mb-px" : "text-[var(--copilot-text-muted)] hover:text-[var(--copilot-text)]"}`}
                     >
-                      + Registrar acción
+                      Recomendación
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setTab(key, "timeline")}
+                      className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-t transition-colors ${tab === "timeline" ? "font-semibold text-[var(--copilot-accent)] border-b-2 border-[var(--copilot-accent)] -mb-px" : "text-[var(--copilot-text-muted)] hover:text-[var(--copilot-text)]"}`}
+                    >
+                      <History className="h-3 w-3" />
+                      Historial
+                      {clientActions.length > 0 && (
+                        <span className="ml-0.5 text-[10px] bg-[var(--copilot-border)] text-[var(--copilot-text-secondary)] rounded-full px-1.5 py-0.5 leading-none">
+                          {clientActions.length}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+
+                  {tab === "recommendation" && (
+                    <ActionRecommendationBadge
+                      recommendation={client.recommendation}
+                      risk={client.risk_assessment}
+                    />
+                  )}
+
+                  {tab === "timeline" && (
+                    <ClientTimeline actions={clientActions} />
+                  )}
+
+                  {/* Quick actions */}
+                  {onActionClick && (
+                    <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-[var(--copilot-border)]">
+                      {QUICK_ACTIONS.map((qa) => (
+                        <button
+                          key={qa.label}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onActionClick(client, qa.defaults);
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-[var(--copilot-border)] bg-[var(--copilot-surface)] text-[var(--copilot-text-secondary)] hover:bg-[var(--copilot-surface-hover,var(--copilot-surface-alt))] hover:text-[var(--copilot-text)] transition-colors"
+                        >
+                          {qa.icon}
+                          {qa.label}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onActionClick(client); }}
+                        className="text-xs font-medium text-[var(--copilot-accent)] hover:underline ml-1"
+                      >
+                        + Registrar acción
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
