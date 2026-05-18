@@ -15,12 +15,21 @@ import type {
   DECollectionAction,
   DEActionOperationalPayload,
   DEPendingInvoice,
+  OperationalMachineState,
   RiskLevel,
 } from "@/lib/decision-engine/de-types";
 import {
   RISK_LEVEL_SCORES,
   riskLevelFromScore,
 } from "@/lib/decision-engine/de-types";
+import { machineStateToFollowUpState } from "@/lib/decision-engine/operational-state-bridge";
+import {
+  evaluateOperationalSla,
+} from "@/lib/decision-engine/operational-sla-engine";
+import {
+  inferPaymentEvent,
+  resolveOperationalTransition,
+} from "@/lib/decision-engine/operational-state-machine";
 import {
   createFollowUpDeduped,
   scheduleDateToTimestamptz,
@@ -29,6 +38,7 @@ import {
   selectOperationalStateByCustomer,
   upsertOperationalState,
 } from "@/lib/data/decision-operational-state-repository";
+import { scheduleDailyQueueRecalculation } from "@/lib/decision-engine/daily-queue-orchestrator";
 
 // ---------------------------------------------------------------------------
 // Mapping helpers
@@ -66,17 +76,19 @@ function companyPendingSignals(
   companyId: string,
   invoices: DEPendingInvoice[],
   ref: Date
-): { oldest_days: number; dominant_bucket: AgingBucket } {
+): { oldest_days: number; dominant_bucket: AgingBucket; pending_balance: number } {
   const companyInvoices = invoices.filter((i) => i.company_id === companyId && i.balance_amount > 0);
   if (companyInvoices.length === 0) {
-    return { oldest_days: 0, dominant_bucket: "not_due" };
+    return { oldest_days: 0, dominant_bucket: "not_due", pending_balance: 0 };
   }
 
   let oldestDays = 0;
   let dominantBucket: AgingBucket = "not_due";
   let maxBalance = 0;
+  let pendingBalance = 0;
 
   for (const inv of companyInvoices) {
+    pendingBalance += inv.balance_amount;
     const due = inv.due_date ? new Date(inv.due_date) : null;
     const days = due && !isNaN(due.getTime()) ? Math.max(0, daysBetween(due, ref)) : 0;
     if (days > oldestDays) oldestDays = days;
@@ -86,7 +98,7 @@ function companyPendingSignals(
     }
   }
 
-  return { oldest_days: oldestDays, dominant_bucket: dominantBucket };
+  return { oldest_days: oldestDays, dominant_bucket: dominantBucket, pending_balance: pendingBalance };
 }
 
 type ActionSignals = {
@@ -173,6 +185,23 @@ function priorityFromCollection(priority: string): RiskLevel {
   return "medium";
 }
 
+function boostPriority(base: RiskLevel, steps: number): RiskLevel {
+  const order: RiskLevel[] = ["low", "medium", "high", "critical"];
+  const idx = Math.min(order.length - 1, Math.max(0, order.indexOf(base) + steps));
+  return order[idx]!;
+}
+
+function readMetadataFlags(action: CollectionAction): { paused: boolean; legal: boolean } {
+  const meta = action.metadata;
+  if (meta == null || typeof meta !== "object" || Array.isArray(meta)) {
+    return { paused: false, legal: false };
+  }
+  return {
+    paused: meta["operational_paused"] === true,
+    legal: meta["legal_review"] === true || meta["dispute"] === true,
+  };
+}
+
 async function loadPendingInvoicesForCompany(
   supabase: SupabaseClient,
   tenantCompanyId: string,
@@ -217,6 +246,7 @@ export async function persistActionOperationalUpdate(
 ): Promise<DEActionOperationalPayload> {
   const ref = new Date();
   const companyId = action.companyId;
+  const metaFlags = readMetadataFlags(action);
 
   const [existingState, pendingInvoices] = await Promise.all([
     selectOperationalStateByCustomer(supabase, tenantCompanyId, companyId),
@@ -259,7 +289,54 @@ export async function persistActionOperationalUpdate(
   });
 
   const adjustedScore = Math.max(0, Math.min(100, baseScore + actionImpact.risk_delta));
-  const currentRisk = riskLevelFromScore(adjustedScore);
+  let currentRisk = riskLevelFromScore(adjustedScore);
+
+  const currentMachineState = existingState?.machine_state ?? null;
+  const transitionedAt = existingState?.transitioned_at ?? null;
+
+  const slaEvaluation = evaluateOperationalSla({
+    machine_state: currentMachineState ?? "new_risk",
+    transitioned_at: transitionedAt,
+    current_risk: currentRisk,
+    promise_date: signals.promise_date,
+    has_active_promise: signals.has_active_promise,
+    now: ref,
+  });
+
+  if (slaEvaluation.priority_boost_steps > 0) {
+    currentRisk = boostPriority(currentRisk, slaEvaluation.priority_boost_steps);
+  }
+
+  const paymentEvent = inferPaymentEvent(
+    action.actionType,
+    action.status,
+    pendingSignals.pending_balance
+  );
+
+  const stateTransition = resolveOperationalTransition({
+    current_state: currentMachineState,
+    transitioned_at: transitionedAt,
+    action_type: action.actionType,
+    action_status: action.status,
+    risk_delta: actionImpact.risk_delta,
+    risk_score: adjustedScore,
+    has_active_promise: signals.has_active_promise,
+    has_broken_promise: signals.has_broken_promise,
+    has_escalation: signals.has_escalation || action.status === "escalated",
+    oldest_days: pendingSignals.oldest_days,
+    days_since_contact: signals.days_since_contact,
+    pending_balance: pendingSignals.pending_balance,
+    dominant_bucket: pendingSignals.dominant_bucket,
+    payment_event: paymentEvent,
+    is_paused: metaFlags.paused,
+    is_legal_review: metaFlags.legal || action.actionType === "dispute",
+    sla_breached: slaEvaluation.breached,
+    sla_severity: slaEvaluation.severity,
+    now: ref,
+  });
+
+  const nextMachineState: OperationalMachineState = stateTransition.next_state;
+  const legacyFollowUpState = machineStateToFollowUpState(nextMachineState);
 
   const followUpResult = computeFollowUp(
     {
@@ -269,7 +346,7 @@ export async function persistActionOperationalUpdate(
       promise_date: signals.promise_date,
       has_active_promise: signals.has_active_promise,
       has_broken_promise: signals.has_broken_promise,
-      has_escalation: signals.has_escalation,
+      has_escalation: signals.has_escalation || nextMachineState === "escalated",
       oldest_days: pendingSignals.oldest_days,
       risk_score: adjustedScore,
       days_since_contact: signals.days_since_contact,
@@ -277,43 +354,76 @@ export async function persistActionOperationalUpdate(
     ref
   );
 
+  const followUpWithMachineState = {
+    ...followUpResult,
+    operational_state: legacyFollowUpState,
+    follow_up_reason: stateTransition.reason || followUpResult.follow_up_reason,
+  };
+
   const lastContactAt =
     action.contactDate != null
       ? scheduleDateToTimestamptz(action.contactDate)
       : existingState?.last_contact_at ?? null;
 
-  const nextFollowUpAt = followUpResult.next_follow_up_at
-    ? scheduleDateToTimestamptz(followUpResult.next_follow_up_at)
+  const nextFollowUpAt = followUpWithMachineState.next_follow_up_at
+    ? scheduleDateToTimestamptz(followUpWithMachineState.next_follow_up_at)
     : null;
 
-  const currentPriority = priorityFromCollection(action.priority);
+  const collectionPriority = priorityFromCollection(action.priority);
+  const currentPriority = boostPriority(
+    collectionPriority,
+    slaEvaluation.priority_boost_steps
+  );
+
+  const nowIso = ref.toISOString();
+  const previousState =
+    stateTransition.transitioned && currentMachineState != null
+      ? currentMachineState
+      : existingState?.previous_state ?? null;
 
   const operationalRow = await upsertOperationalState(supabase, tenantCompanyId, {
     customerId: companyId,
     currentRisk,
     currentPriority,
-    operationalState: followUpResult.operational_state,
+    machineState: nextMachineState,
+    previousState: stateTransition.transitioned ? currentMachineState : previousState,
+    transitionedAt: stateTransition.transitioned ? nowIso : (transitionedAt ?? nowIso),
+    transitionReason: stateTransition.reason,
+    breachedSla: slaEvaluation.breached || stateTransition.breached_sla,
     nextFollowUpAt,
     lastContactAt,
     activePromise: signals.has_active_promise,
-    escalated: signals.has_escalation || action.status === "escalated",
+    escalated:
+      nextMachineState === "escalated" ||
+      nextMachineState === "critical" ||
+      signals.has_escalation,
   });
 
   let followUpRow = null;
-  if (actionImpact.requires_follow_up && followUpResult.next_follow_up_at) {
+  const requiresQueue =
+    actionImpact.requires_follow_up ||
+    ["follow_up", "escalated", "critical", "payment_promised", "new_risk"].includes(
+      nextMachineState
+    );
+
+  if (requiresQueue && followUpWithMachineState.next_follow_up_at) {
     followUpRow = await createFollowUpDeduped(supabase, tenantCompanyId, {
       customerId: companyId,
-      scheduledFor: followUpResult.next_follow_up_at,
-      reason: followUpResult.follow_up_reason,
+      scheduledFor: followUpWithMachineState.next_follow_up_at,
+      reason: stateTransition.reason || followUpWithMachineState.follow_up_reason,
       sourceActionId: action.id,
       priority: currentRisk,
     });
   }
 
+  scheduleDailyQueueRecalculation(supabase, tenantCompanyId);
+
   return {
     operational_state: operationalRow,
     follow_up: followUpRow,
     action_impact: actionImpact,
-    follow_up_result: followUpResult,
+    follow_up_result: followUpWithMachineState,
+    state_transition: stateTransition,
+    sla_evaluation: slaEvaluation,
   };
 }

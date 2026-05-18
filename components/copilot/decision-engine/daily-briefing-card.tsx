@@ -1,19 +1,44 @@
 "use client";
 
-import { useState } from "react";
-import type { DailyBriefing, DECollectionAction, RankedClient } from "@/lib/decision-engine/de-types";
+import { useCallback, useEffect, useState } from "react";
+import type {
+  DailyBriefing,
+  DailyOperationsQueue,
+  DECollectionAction,
+  OperationalTask,
+  RankedClient,
+} from "@/lib/decision-engine/de-types";
 import type { CollectionActionType, CollectionStatus } from "@/lib/copilot-collection-types";
+import { copilotApiFetch } from "@/lib/copilot-fetch";
+import {
+  defaultActionForCategory,
+  rankedClientFromOperationalTask,
+} from "@/lib/decision-engine/operational-task-adapters";
 import { PortfolioScoreCard } from "./portfolio-score-card";
 import { ClientPriorityList } from "./client-priority-list";
 import { RiskAlertList } from "./risk-alert-list";
 import { CollectionActionModal } from "./collection-action-modal";
-import { DailyOperationsQueue } from "./daily-operations-queue";
+import { shouldShowLegacyFollowUpQueue } from "@/lib/decision-engine/daily-operations-queue-panel.helpers";
+import { DailyOperationsQueue as LegacyFollowUpQueue } from "./daily-operations-queue";
+import { DailyOperationsQueuePanel } from "./daily-operations-queue-panel";
 
 type QuickActionDefaults = {
   actionType?: CollectionActionType;
   status?: CollectionStatus;
   notes?: string;
 };
+
+type DailyQueueResponse =
+  | {
+      ok: true;
+      queue: DailyOperationsQueue;
+      cached: boolean;
+      stale: boolean;
+      generated_at: string;
+      expires_at: string | null;
+      generation_ms: number;
+    }
+  | { ok: false; code: string; message: string };
 
 type Props = {
   briefing: DailyBriefing;
@@ -39,9 +64,58 @@ export function DailyBriefingCard({ briefing, recentActions, generatedAt, cached
   const [actionDefaults, setActionDefaults] = useState<QuickActionDefaults | undefined>(undefined);
   const [actionSuccess, setActionSuccess] = useState(false);
 
+  const [dailyQueue, setDailyQueue] = useState<DailyOperationsQueue | null>(null);
+  const [queueGeneratedAt, setQueueGeneratedAt] = useState<string | null>(null);
+  const [queueExpiresAt, setQueueExpiresAt] = useState<string | null>(null);
+  const [queueCached, setQueueCached] = useState(false);
+  const [queueStale, setQueueStale] = useState(false);
+  const [queueLoading, setQueueLoading] = useState(true);
+  const [queueRefreshing, setQueueRefreshing] = useState(false);
+  const [queueError, setQueueError] = useState<string | null>(null);
+
+  const fetchDailyQueue = useCallback(async (force = false) => {
+    if (force) setQueueRefreshing(true);
+    else setQueueLoading(true);
+    setQueueError(null);
+    try {
+      const url = force
+        ? "/api/copilot/decision-engine/daily-queue?force=true"
+        : "/api/copilot/decision-engine/daily-queue";
+      const res = await copilotApiFetch(url);
+      const json = (await res.json()) as DailyQueueResponse;
+      if (!json.ok) {
+        setQueueError(json.message ?? "No se pudo cargar la cola operativa");
+        return;
+      }
+      setDailyQueue(json.queue);
+      setQueueGeneratedAt(json.generated_at);
+      setQueueExpiresAt(json.expires_at);
+      setQueueCached(json.cached);
+      setQueueStale(json.stale);
+    } catch (err) {
+      setQueueError(err instanceof Error ? err.message : "Error de conexión");
+    } finally {
+      setQueueLoading(false);
+      setQueueRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchDailyQueue(false);
+  }, [fetchDailyQueue]);
+
   function handleActionClick(client: RankedClient, defaults?: QuickActionDefaults) {
     setActionClient(client);
     setActionDefaults(defaults);
+  }
+
+  function handleQueueTaskAction(task: OperationalTask) {
+    const defaults = defaultActionForCategory(task.category);
+    handleActionClick(rankedClientFromOperationalTask(task), {
+      actionType: defaults.actionType,
+      status: defaults.status,
+      notes: defaults.notes,
+    });
   }
 
   function handleActionSuccess() {
@@ -50,7 +124,20 @@ export function DailyBriefingCard({ briefing, recentActions, generatedAt, cached
     setActionSuccess(true);
     setTimeout(() => setActionSuccess(false), 3000);
     onRefresh();
+    void fetchDailyQueue(true);
   }
+
+  function handleBriefingRefresh() {
+    onRefresh();
+    void fetchDailyQueue(true);
+  }
+
+  const showLegacyFollowUp =
+    shouldShowLegacyFollowUpQueue({
+      queueLoading,
+      queueError,
+      queue: dailyQueue,
+    }) && (briefing.follow_up_queue?.length ?? 0) > 0;
 
   return (
     <div className="space-y-5">
@@ -65,11 +152,11 @@ export function DailyBriefingCard({ briefing, recentActions, generatedAt, cached
         </div>
         <button
           type="button"
-          onClick={onRefresh}
-          disabled={refreshing}
+          onClick={handleBriefingRefresh}
+          disabled={refreshing || queueRefreshing}
           className="text-xs font-medium text-[var(--copilot-accent)] hover:underline disabled:opacity-50 disabled:no-underline"
         >
-          {refreshing ? "Actualizando…" : "Recalcular"}
+          {refreshing || queueRefreshing ? "Actualizando…" : "Recalcular"}
         </button>
       </div>
 
@@ -86,6 +173,20 @@ export function DailyBriefingCard({ briefing, recentActions, generatedAt, cached
       {briefing.alerts.length > 0 && (
         <RiskAlertList alerts={briefing.alerts} />
       )}
+
+      {/* Phase 2B/2C — Daily Operations Queue */}
+      <DailyOperationsQueuePanel
+        queue={dailyQueue}
+        loading={queueLoading}
+        error={queueError}
+        stale={queueStale}
+        cached={queueCached}
+        generatedAt={queueGeneratedAt}
+        expiresAt={queueExpiresAt}
+        refreshing={queueRefreshing}
+        onRefresh={(force) => void fetchDailyQueue(force ?? false)}
+        onRegisterAction={handleQueueTaskAction}
+      />
 
       {/* Urgent */}
       {briefing.urgent.length > 0 && (
@@ -119,9 +220,9 @@ export function DailyBriefingCard({ briefing, recentActions, generatedAt, cached
         </div>
       )}
 
-      {/* Operations queue */}
-      {(briefing.follow_up_queue?.length ?? 0) > 0 && (
-        <DailyOperationsQueue
+      {/* Legacy follow-up queue — fallback si Phase 2B falla o está vacía */}
+      {showLegacyFollowUp && (
+        <LegacyFollowUpQueue
           queue={briefing.follow_up_queue}
           onActionClick={(item) => {
             // Find the matching RankedClient to open the action modal

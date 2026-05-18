@@ -5,24 +5,31 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  machineStateToFollowUpState,
+  normalizeMachineState,
+} from "@/lib/decision-engine/operational-state-bridge";
 import type {
   DEOperationalStateRow,
-  FollowUpState,
+  OperationalMachineState,
   RiskLevel,
 } from "@/lib/decision-engine/de-types";
 
 const STATE_SELECT =
-  "customer_id, current_risk, current_priority, operational_state, next_follow_up_at, last_contact_at, active_promise, escalated, updated_at" as const;
+  "customer_id, current_risk, current_priority, operational_state, previous_state, transitioned_at, transition_reason, breached_sla, next_follow_up_at, last_contact_at, active_promise, escalated, updated_at" as const;
 
 const RISK_LEVELS = new Set<RiskLevel>(["low", "medium", "high", "critical"]);
-const FOLLOW_UP_STATES = new Set<FollowUpState>([
-  "awaiting_promise",
-  "retry_call",
-  "retry_email",
-  "payment_cleared",
-  "escalated_active",
-  "overdue_no_contact",
-  "monitor",
+
+const MACHINE_STATES = new Set<OperationalMachineState>([
+  "new_risk",
+  "monitoring",
+  "follow_up",
+  "payment_promised",
+  "escalated",
+  "critical",
+  "recovered",
+  "paused",
+  "legal_review",
 ]);
 
 function str(v: unknown): string {
@@ -38,16 +45,22 @@ function asRiskLevel(v: unknown): RiskLevel {
   return RISK_LEVELS.has(s as RiskLevel) ? (s as RiskLevel) : "medium";
 }
 
-function asFollowUpState(v: unknown): FollowUpState {
-  const s = str(v);
-  return FOLLOW_UP_STATES.has(s as FollowUpState) ? (s as FollowUpState) : "monitor";
+function asMachineState(v: unknown): OperationalMachineState {
+  const normalized = normalizeMachineState(str(v) || null);
+  return MACHINE_STATES.has(normalized) ? normalized : "monitoring";
 }
 
 export function mapOperationalStateRow(row: Record<string, unknown>): DEOperationalStateRow {
+  const machine_state = asMachineState(row["operational_state"]);
   return {
     customer_id: str(row["customer_id"]),
     current_risk: asRiskLevel(row["current_risk"]),
-    operational_state: asFollowUpState(row["operational_state"]),
+    machine_state,
+    legacy_follow_up_state: machineStateToFollowUpState(machine_state),
+    previous_state: row["previous_state"] != null ? asMachineState(row["previous_state"]) : null,
+    transitioned_at: strOrNull(row["transitioned_at"]),
+    transition_reason: strOrNull(row["transition_reason"]),
+    breached_sla: row["breached_sla"] === true,
     next_follow_up_at: strOrNull(row["next_follow_up_at"]),
     last_contact_at: strOrNull(row["last_contact_at"]),
     active_promise: row["active_promise"] === true,
@@ -60,7 +73,11 @@ export type UpsertOperationalStateInput = {
   customerId: string;
   currentRisk: RiskLevel;
   currentPriority: RiskLevel;
-  operationalState: FollowUpState;
+  machineState: OperationalMachineState;
+  previousState: OperationalMachineState | null;
+  transitionedAt: string;
+  transitionReason: string;
+  breachedSla: boolean;
   nextFollowUpAt: string | null;
   lastContactAt: string | null;
   activePromise: boolean;
@@ -117,7 +134,11 @@ export async function upsertOperationalState(
         customer_id: input.customerId,
         current_risk: input.currentRisk,
         current_priority: input.currentPriority,
-        operational_state: input.operationalState,
+        operational_state: input.machineState,
+        previous_state: input.previousState,
+        transitioned_at: input.transitionedAt,
+        transition_reason: input.transitionReason,
+        breached_sla: input.breachedSla,
         next_follow_up_at: input.nextFollowUpAt,
         last_contact_at: input.lastContactAt,
         active_promise: input.activePromise,

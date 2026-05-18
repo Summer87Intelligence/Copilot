@@ -393,13 +393,93 @@ export type FollowUpQueueItem = {
 };
 
 // ---------------------------------------------------------------------------
+// Phase 2A — Operational state machine
+// ---------------------------------------------------------------------------
+
+export type OperationalMachineState =
+  | "new_risk"
+  | "monitoring"
+  | "follow_up"
+  | "payment_promised"
+  | "escalated"
+  | "critical"
+  | "recovered"
+  | "paused"
+  | "legal_review";
+
+export const OPERATIONAL_MACHINE_STATE_LABELS: Record<OperationalMachineState, string> = {
+  new_risk:         "Riesgo nuevo",
+  monitoring:       "Monitoreo",
+  follow_up:        "Seguimiento activo",
+  payment_promised: "Promesa de pago",
+  escalated:        "Escalado",
+  critical:         "Crítico",
+  recovered:        "Recuperado",
+  paused:           "Pausado",
+  legal_review:     "Revisión legal",
+};
+
+export type OperationalTransitionSeverity = "low" | "medium" | "high" | "critical";
+
+export type PaymentEventKind = "none" | "partial" | "full";
+
+export type StateTransitionInput = {
+  current_state: OperationalMachineState | null;
+  transitioned_at: string | null;
+  action_type: string | null;
+  action_status: string | null;
+  risk_delta: number;
+  risk_score: number;
+  has_active_promise: boolean;
+  has_broken_promise: boolean;
+  has_escalation: boolean;
+  oldest_days: number;
+  days_since_contact: number | null;
+  pending_balance: number;
+  dominant_bucket: AgingBucket;
+  payment_event: PaymentEventKind;
+  is_paused: boolean;
+  is_legal_review: boolean;
+  sla_breached: boolean;
+  sla_severity: OperationalTransitionSeverity;
+  now?: Date;
+};
+
+export type StateTransitionResult = {
+  next_state: OperationalMachineState;
+  reason: string;
+  severity: OperationalTransitionSeverity;
+  transitioned: boolean;
+  breached_sla: boolean;
+};
+
+export type OperationalSlaSeverity = OperationalTransitionSeverity;
+
+export type OperationalSlaEvaluation = {
+  breached: boolean;
+  days_in_state: number;
+  max_days: number | null;
+  severity: OperationalSlaSeverity;
+  priority_boost_steps: number;
+  suggested_risk: RiskLevel;
+  reason: string;
+};
+
+// ---------------------------------------------------------------------------
 // Phase 1D — DB row types + helpers
 // ---------------------------------------------------------------------------
 
 export type DEOperationalStateRow = {
   customer_id: string;
   current_risk: RiskLevel;
-  operational_state: FollowUpState;
+  /** Estado formal Phase 2A (columna operational_state en DB). */
+  machine_state: OperationalMachineState;
+  /** Derivado para compatibilidad con follow-up engine Phase 1C. */
+  legacy_follow_up_state: FollowUpState;
+  previous_state: OperationalMachineState | null;
+  transitioned_at: string | null;
+  transition_reason: string | null;
+  breached_sla: boolean;
   next_follow_up_at: string | null;
   last_contact_at: string | null;
   active_promise: boolean;
@@ -436,4 +516,117 @@ export type DEActionOperationalPayload = {
   follow_up: DEFollowUpRow | null;
   action_impact: ActionImpact;
   follow_up_result: FollowUpResult;
+  state_transition: StateTransitionResult;
+  sla_evaluation: OperationalSlaEvaluation;
+};
+
+// ---------------------------------------------------------------------------
+// Phase 2B — Daily Operations Queue
+// ---------------------------------------------------------------------------
+
+export type TaskPriority = "critical" | "high" | "medium" | "low";
+
+export type TaskCategory =
+  | "call_today"
+  | "promise_follow_up"
+  | "escalation_review"
+  | "legal_review"
+  | "payment_confirmation"
+  | "stale_contact"
+  | "high_concentration"
+  | "recovery_watch";
+
+export const TASK_CATEGORY_LABELS: Record<TaskCategory, string> = {
+  call_today:            "Llamar hoy",
+  promise_follow_up:     "Seguimiento de promesa",
+  escalation_review:     "Revisar escalación",
+  legal_review:          "Revisión legal",
+  payment_confirmation:  "Confirmar pago",
+  stale_contact:         "Contacto estancado",
+  high_concentration:    "Alta concentración",
+  recovery_watch:        "Monitoreo post-recuperación",
+};
+
+export type TaskImpact = "critical" | "high" | "medium" | "low";
+
+export type TaskSource =
+  | "state_machine"
+  | "sla_engine"
+  | "risk_ranker"
+  | "portfolio"
+  | "follow_up"
+  | "automated";
+
+export type QueueSection =
+  | "urgent_today"
+  | "high_impact"
+  | "this_week"
+  | "monitoring"
+  | "automated";
+
+export const QUEUE_SECTION_LABELS: Record<QueueSection, string> = {
+  urgent_today:  "Urgente hoy",
+  high_impact:   "Alto impacto",
+  this_week:     "Esta semana",
+  monitoring:    "Monitoreo",
+  automated:     "Automatizado",
+};
+
+export type OperationalTask = {
+  id: string;
+  customer_id: string;
+  company_name: string;
+  section: QueueSection;
+  category: TaskCategory;
+  priority: TaskPriority;
+  impact: TaskImpact;
+  source: TaskSource;
+  title: string;
+  action_label: string;
+  reason: string;
+  priority_score: number;
+  currency_code: string;
+  pending_amount: number;
+  oldest_days: number;
+  risk_level: RiskLevel;
+  machine_state: OperationalMachineState;
+  breached_sla: boolean;
+  group_key: string | null;
+  group_label: string | null;
+  due_at: string | null;
+};
+
+export type QueueGroupKind =
+  | "risk_band"
+  | "promise_due_today"
+  | "critical_concentration";
+
+export type QueueGroup = {
+  key: string;
+  label: string;
+  kind: QueueGroupKind;
+  task_ids: string[];
+};
+
+export type DailyOperationsQueueStats = {
+  total_tasks: number;
+  urgent_count: number;
+  sla_breach_count: number;
+  promises_due_today: number;
+  by_section: Record<QueueSection, number>;
+  by_category: Partial<Record<TaskCategory, number>>;
+};
+
+export type DailyOperationsQueue = {
+  generated_at: string;
+  sections: Record<QueueSection, OperationalTask[]>;
+  groups: QueueGroup[];
+  stats: DailyOperationsQueueStats;
+};
+
+export type DailyOperationsQueueInput = {
+  bundle: DecisionEngineDataBundle;
+  ranked: RankedClient[];
+  portfolio_score: PortfolioScore;
+  now?: Date;
 };

@@ -124,12 +124,37 @@ const MAX_IMPORTANT = 5;
 const MAX_FOLLOW_UP_QUEUE = 15;
 
 const ACTIONABLE_SLA = new Set(["critical", "overdue", "due_today", "no_contact"]);
-const ACTIONABLE_STATES = new Set(["escalated_active", "overdue_no_contact", "awaiting_promise"]);
+const ACTIONABLE_LEGACY_STATES = new Set([
+  "escalated_active",
+  "overdue_no_contact",
+  "awaiting_promise",
+  "retry_call",
+]);
+const ACTIONABLE_MACHINE_STATES = new Set([
+  "new_risk",
+  "follow_up",
+  "payment_promised",
+  "escalated",
+  "critical",
+  "legal_review",
+]);
 
-function isActionableFollowUp(result: FollowUpResult): boolean {
+function isActionableMachineState(state: DEOperationalStateRow | undefined): boolean {
+  if (!state) return false;
+  return (
+    ACTIONABLE_MACHINE_STATES.has(state.machine_state) ||
+    state.breached_sla
+  );
+}
+
+function isActionableFollowUp(
+  result: FollowUpResult,
+  machineState?: DEOperationalStateRow
+): boolean {
   return (
     ACTIONABLE_SLA.has(result.sla_status) ||
-    ACTIONABLE_STATES.has(result.operational_state)
+    ACTIONABLE_LEGACY_STATES.has(result.operational_state) ||
+    isActionableMachineState(machineState)
   );
 }
 
@@ -156,7 +181,7 @@ function followUpResultFromDb(
     pending_action: row.reason ?? "Seguimiento programado",
     snoozed_until: null,
     follow_up_reason: row.reason ?? "Seguimiento en cola operativa",
-    operational_state: state?.operational_state ?? "monitor",
+    operational_state: state?.legacy_follow_up_state ?? "monitor",
   };
 }
 
@@ -204,7 +229,7 @@ function buildFollowUpQueueFromDb(
     const follow_up_result =
       ranked?.follow_up_result ?? followUpResultFromDb(state, row, now);
 
-    if (!isActionableFollowUp(follow_up_result)) continue;
+    if (!isActionableFollowUp(follow_up_result, state)) continue;
 
     items.push({
       company_id:        row.customer_id,
@@ -217,7 +242,10 @@ function buildFollowUpQueueFromDb(
       risk_score:
         ranked?.risk_assessment.score ??
         RISK_LEVEL_SCORES[state?.current_risk ?? "medium"],
-      follow_up_result,
+      follow_up_result: {
+        ...follow_up_result,
+        follow_up_reason: state?.transition_reason ?? follow_up_result.follow_up_reason,
+      },
       recommendation:
         ranked?.recommendation ??
         ({

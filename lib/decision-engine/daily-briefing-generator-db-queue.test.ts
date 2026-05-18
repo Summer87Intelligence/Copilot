@@ -28,7 +28,12 @@ describe("generateDailyBriefing — DB-first follow_up_queue", () => {
           {
             customer_id: "c1",
             current_risk: "high",
-            operational_state: "escalated_active",
+            machine_state: "escalated",
+            legacy_follow_up_state: "escalated_active",
+            previous_state: "monitoring",
+            transitioned_at: "2026-05-18T10:00:00.000Z",
+            transition_reason: "Escalación formal",
+            breached_sla: false,
             next_follow_up_at: "2026-05-19T12:00:00.000Z",
             last_contact_at: null,
             active_promise: false,
@@ -55,6 +60,9 @@ describe("generateDailyBriefing — DB-first follow_up_queue", () => {
     expect(briefing.follow_up_queue[0]?.company_name).toBe("Cliente DB");
     expect(briefing.follow_up_queue[0]?.follow_up_result.operational_state).toBe(
       "escalated_active"
+    );
+    expect(briefing.follow_up_queue[0]?.follow_up_result.follow_up_reason).toBe(
+      "Escalación formal"
     );
   });
 
