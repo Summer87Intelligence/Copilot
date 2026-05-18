@@ -849,3 +849,99 @@ export type OperatorAnalyticsInput = {
   operatorNames: Map<string, string>;
   loadedAt: string;
 };
+
+// ---------------------------------------------------------------------------
+// Phase 4C — Operational Automation & Escalation
+// ---------------------------------------------------------------------------
+
+export type AutomationActionType =
+  | "create_follow_up"
+  | "escalate_case"
+  | "auto_assign"
+  | "increase_priority"
+  | "create_operational_alert"
+  | "mark_overdue"
+  | "suggest_payment_plan"
+  | "trigger_manual_review";
+
+export type AutomationRuleKey =
+  | "promise_overdue_no_action_24h"
+  | "critical_unowned_2h"
+  | "sla_breach_48h"
+  | "no_contact_14d"
+  | "concentration_critical_alert"
+  | "aging_90d_manual_review"
+  | "partial_payment_plan";
+
+export type AutomationAction = {
+  rule_key: AutomationRuleKey;
+  action_type: AutomationActionType;
+  customer_id: string;
+  dedupe_key: string;
+  priority: number;
+  reason: string;
+  payload: Record<string, unknown>;
+};
+
+export type AutomationCustomerContext = {
+  customer_id: string;
+  state: DEOperationalStateRow | null;
+  pending_follow_up: DEFollowUpRow | null;
+  recent_actions: DECollectionAction[];
+  concentration_pct: number;
+  oldest_invoice_days: number;
+  pending_balance: number;
+  last_action_at: string | null;
+  last_contact_at: string | null;
+  has_partial_payment_recent: boolean;
+};
+
+export type AutomationEvaluationInput = {
+  customers: AutomationCustomerContext[];
+  operatorNames: Map<string, string>;
+  loadedAt: string;
+};
+
+export type AutomationRunStatus = "running" | "completed" | "failed";
+
+export type AutomationRunRow = {
+  id: string;
+  workspace_company_id: string;
+  started_at: string;
+  completed_at: string | null;
+  rules_evaluated: number;
+  actions_generated: number;
+  actions_executed: number;
+  actions_deduped: number;
+  dry_run: boolean;
+  status: AutomationRunStatus;
+  error_message: string | null;
+};
+
+export type AutomationActionRow = {
+  id: string;
+  automation_run_id: string;
+  customer_id: string;
+  rule_key: string;
+  action_type: AutomationActionType;
+  action_payload: Record<string, unknown>;
+  executed: boolean;
+  executed_at: string | null;
+  execution_result: Record<string, unknown> | null;
+  dedupe_key: string;
+  created_at: string;
+};
+
+export type AutomationRunResult = {
+  run: AutomationRunRow;
+  actions: AutomationActionRow[];
+  preview: AutomationAction[];
+  metrics: {
+    total_evaluated: number;
+    actions_generated: number;
+    actions_executed: number;
+    actions_deduped: number;
+    escalations_triggered: number;
+    follow_ups_created: number;
+  };
+};

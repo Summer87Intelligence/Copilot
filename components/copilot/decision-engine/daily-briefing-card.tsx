@@ -24,6 +24,9 @@ import { RiskAlertList } from "./risk-alert-list";
 import { CollectionActionModal } from "./collection-action-modal";
 import { DailyOperationsQueuePanel } from "./daily-operations-queue-panel";
 import { OperationalAnalyticsDashboard } from "./operational-analytics-dashboard";
+import { OperationalAutomationPanel } from "./operational-automation-panel";
+import { OperationalIntelligencePanel } from "./operational-intelligence-panel";
+import { PredictiveIntelligencePanel } from "./predictive-intelligence-panel";
 
 type QuickActionDefaults = {
   actionType?: CollectionActionType;
@@ -351,11 +354,17 @@ export function DailyBriefingCard({
 
       {briefing.alerts.length > 0 && <RiskAlertList alerts={briefing.alerts} />}
 
+      <OperationalIntelligencePanel />
+
+      <PredictiveIntelligencePanel />
+
       <OperationalAnalyticsDashboard
         analytics={analytics}
         loading={analyticsLoading}
         error={analyticsError}
       />
+
+      <OperationalAutomationPanel />
 
       <DailyOperationsQueuePanel
         queue={dailyQueue}

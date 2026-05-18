@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -26,6 +26,12 @@ import {
   resolveSummaryWorkflow,
   type WorkflowKind,
 } from "@/lib/decision-engine/client-operational-workflow";
+import { explainPriority } from "@/lib/decision-engine/ai/ai-priority-explainer";
+import {
+  computeRecoveryLikelihoodForSummary,
+  formatRecoveryLikelihoodLine,
+} from "@/lib/decision-engine/predictive/recovery-likelihood-engine";
+import type { ClientOperationalHydrationRecord } from "@/lib/decision-engine/de-types";
 
 export type ClientOperationalSummaryCardProps = {
   summary: ClientOperationalSummaryHydrated;
@@ -67,6 +73,54 @@ export function ClientOperationalSummaryCard({
   const workflow = resolveSummaryWorkflow(summary);
   const live = summary.live_state;
   const ownership = summary.live_ownership;
+  const priorityExplanation = useMemo(() => {
+    const hydration: ClientOperationalHydrationRecord = {
+      customer_id: summary.customer_id,
+      machine_state: summary.machine_state,
+      previous_state: null,
+      transitioned_at: live.transitioned_at,
+      transition_reason: live.transition_reason,
+      breached_sla: summary.live_sla.breached,
+      next_follow_up_at: summary.live_follow_up.scheduled_for,
+      pending_follow_up_id: summary.live_follow_up.id,
+      pending_follow_up_reason: summary.live_follow_up.reason,
+      last_action_at: null,
+      last_action_type: null,
+      last_action_summary: null,
+      timeline_preview: summary.live_timeline,
+      assigned_user_id: ownership.assigned_user_id,
+      assigned_at: ownership.assigned_at,
+      assigned_by: null,
+      assignment_note: ownership.assignment_note,
+      assignee_display_name: ownership.is_unassigned ? null : ownership.assignee_display_name,
+    };
+    return explainPriority({ summary, hydration });
+  }, [summary, live, ownership]);
+
+  const recoveryLikelihoodLine = useMemo(() => {
+    const hydration: ClientOperationalHydrationRecord = {
+      customer_id: summary.customer_id,
+      machine_state: summary.machine_state,
+      previous_state: null,
+      transitioned_at: live.transitioned_at,
+      transition_reason: live.transition_reason,
+      breached_sla: summary.live_sla.breached,
+      next_follow_up_at: summary.live_follow_up.scheduled_for,
+      pending_follow_up_id: summary.live_follow_up.id,
+      pending_follow_up_reason: summary.live_follow_up.reason,
+      last_action_at: null,
+      last_action_type: null,
+      last_action_summary: null,
+      timeline_preview: summary.live_timeline,
+      assigned_user_id: ownership.assigned_user_id,
+      assigned_at: ownership.assigned_at,
+      assigned_by: null,
+      assignment_note: ownership.assignment_note,
+      assignee_display_name: ownership.is_unassigned ? null : ownership.assignee_display_name,
+    };
+    const likelihood = computeRecoveryLikelihoodForSummary(summary, hydration);
+    return formatRecoveryLikelihoodLine(likelihood);
+  }, [summary, live, ownership]);
   const timeline = summary.live_timeline;
   const canTake =
     Boolean(currentUserId && onTakeOwnership && (ownership.is_unassigned || !ownership.is_mine));
@@ -189,6 +243,30 @@ export function ClientOperationalSummaryCard({
       <div className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-[var(--copilot-text)] leading-tight">
         <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[var(--copilot-accent)]" />
         <span className="truncate">{summary.primary_action.action_label}</span>
+      </div>
+
+      <div className="mt-2 rounded border border-teal-100 bg-teal-50/40 px-2 py-1.5">
+        <p className="text-[9px] font-semibold uppercase tracking-wide text-teal-800">
+          Probabilidad de recuperación
+        </p>
+        <p className="text-[11px] text-[var(--copilot-text-secondary)] leading-snug mt-0.5">
+          {recoveryLikelihoodLine}
+        </p>
+      </div>
+
+      {/* AI priority explanation (complements score, does not replace) */}
+      <div className="mt-2 rounded border border-indigo-100 bg-indigo-50/40 px-2 py-1.5">
+        <p className="text-[9px] font-semibold uppercase tracking-wide text-indigo-700">
+          Por qué está priorizado
+        </p>
+        <p className="text-[11px] text-[var(--copilot-text-secondary)] leading-snug mt-0.5">
+          {priorityExplanation.explanation}
+        </p>
+        {priorityExplanation.expected_outcome && (
+          <p className="text-[10px] text-[var(--copilot-text-muted)] mt-0.5 truncate">
+            {priorityExplanation.expected_outcome}
+          </p>
+        )}
       </div>
 
       {/* Reason chips */}
