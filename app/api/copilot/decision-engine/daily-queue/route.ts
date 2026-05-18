@@ -3,6 +3,7 @@
  *
  * Cola operacional priorizada (Phase 2B/2C).
  * Cache-first en decision_daily_queue_snapshots; ?force=true recalcula.
+ * Phase 3C: hydration_by_customer con estado DB real (no en snapshot).
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -13,6 +14,7 @@ import {
   isDailyQueueSnapshotFresh,
   readDailyQueueSnapshot,
 } from "@/lib/data/decision-daily-queue-repository";
+import { loadDailyQueueHydration } from "@/lib/decision-engine/daily-queue-hydration";
 import { recalculateDailyOperationsQueue } from "@/lib/decision-engine/daily-queue-orchestrator";
 
 export const dynamic = "force-dynamic";
@@ -47,17 +49,23 @@ export async function GET(request: NextRequest) {
     if (!forceRefresh) {
       const cached = await readDailyQueueSnapshot(supabase, tenantCompanyId);
       if (cached && isDailyQueueSnapshotFresh(cached) && isQueuePayloadCurrent(cached.payload)) {
-        const stale = false;
+        const hydration_by_customer = await loadDailyQueueHydration(
+          supabase,
+          tenantCompanyId,
+          cached.payload
+        );
         log.info("de_daily_queue_cache_hit", {
           generated_at: cached.generated_at,
           expires_at: cached.expires_at,
           total_tasks: cached.payload.stats.total_tasks,
+          hydrated_clients: Object.keys(hydration_by_customer).length,
         });
         return NextResponse.json({
           ok: true as const,
           queue: cached.payload,
+          hydration_by_customer,
           cached: true,
-          stale,
+          stale: false,
           generated_at: cached.generated_at,
           expires_at: cached.expires_at,
           generation_ms: cached.generation_ms ?? 0,
@@ -75,17 +83,24 @@ export async function GET(request: NextRequest) {
     });
 
     const snapshot = await readDailyQueueSnapshot(supabase, tenantCompanyId);
+    const hydration_by_customer = await loadDailyQueueHydration(
+      supabase,
+      tenantCompanyId,
+      result.queue
+    );
 
     log.info("de_daily_queue_generated", {
       total_tasks: result.queue.stats.total_tasks,
       urgent: result.queue.stats.urgent_count,
       generation_ms: result.generation_ms,
       cached: result.cached,
+      hydrated_clients: Object.keys(hydration_by_customer).length,
     });
 
     return NextResponse.json({
       ok: true as const,
       queue: result.queue,
+      hydration_by_customer,
       cached: result.cached,
       stale: false,
       generated_at: result.queue.generated_at,

@@ -485,6 +485,26 @@ export type DEOperationalStateRow = {
   active_promise: boolean;
   escalated: boolean;
   updated_at: string;
+  assigned_user_id: string | null;
+  assigned_at: string | null;
+  assigned_by: string | null;
+  assignment_note: string | null;
+};
+
+export type OperationalOwnershipOperatorStats = {
+  user_id: string;
+  display_name: string;
+  total_assigned: number;
+  critical_assigned: number;
+  overdue_assigned: number;
+};
+
+export type OperationalOwnershipStats = {
+  total_assigned: number;
+  overdue_assigned: number;
+  unassigned_critical: number;
+  high_workload: boolean;
+  operators: OperationalOwnershipOperatorStats[];
 };
 
 export type DEFollowUpRow = {
@@ -663,4 +683,169 @@ export type ClientOperationalSummary = {
   actionable_now: boolean;
   tasks_count: number;
   generated_from: TaskSource[];
+};
+
+// ---------------------------------------------------------------------------
+// Phase 3C — Operational hydration (API + UI view-model)
+// ---------------------------------------------------------------------------
+
+export type ClientOperationalTimelinePreviewItem = {
+  id: string;
+  at: string;
+  action_type: string;
+  summary: string;
+};
+
+/** Payload por cliente en GET daily-queue (no persiste en snapshot). */
+export type ClientOperationalHydrationRecord = {
+  customer_id: string;
+  machine_state: OperationalMachineState | null;
+  previous_state: OperationalMachineState | null;
+  transitioned_at: string | null;
+  transition_reason: string | null;
+  breached_sla: boolean;
+  next_follow_up_at: string | null;
+  pending_follow_up_id: string | null;
+  pending_follow_up_reason: string | null;
+  last_action_at: string | null;
+  last_action_type: string | null;
+  last_action_summary: string | null;
+  timeline_preview: ClientOperationalTimelinePreviewItem[];
+  assigned_user_id: string | null;
+  assigned_at: string | null;
+  assigned_by: string | null;
+  assignment_note: string | null;
+  assignee_display_name: string | null;
+};
+
+export type ClientOperationalOwnershipHydrated = {
+  assigned_user_id: string | null;
+  assigned_at: string | null;
+  assignee_display_name: string;
+  assignment_note: string | null;
+  is_mine: boolean;
+  is_unassigned: boolean;
+  ownership_overdue: boolean;
+  assigned_duration_label: string | null;
+  ownership_status_label: string;
+};
+
+export type ClientOperationalLiveStateHydrated = {
+  last_action_label: string | null;
+  next_follow_up_label: string | null;
+  state_label: string;
+  sla_label: string;
+  assignee_label: string;
+  transitioned_at: string | null;
+  transition_reason: string | null;
+};
+
+export type ClientOperationalLiveSlaHydrated = {
+  breached: boolean;
+  label: string;
+  next_follow_up_at: string | null;
+};
+
+export type ClientOperationalLiveFollowUpHydrated = {
+  id: string | null;
+  scheduled_for: string | null;
+  reason: string | null;
+};
+
+export type ClientOperationalSummaryHydrated = ClientOperationalSummary & {
+  live_state: ClientOperationalLiveStateHydrated;
+  live_sla: ClientOperationalLiveSlaHydrated;
+  live_follow_up: ClientOperationalLiveFollowUpHydrated;
+  live_timeline: ClientOperationalTimelinePreviewItem[];
+  live_ownership: ClientOperationalOwnershipHydrated;
+  hydration_source: "db" | "fallback";
+};
+
+// ---------------------------------------------------------------------------
+// Phase 4B — Operator Analytics & SLA Dashboard
+// ---------------------------------------------------------------------------
+
+export type WorkloadBand = "normal" | "elevated" | "overloaded" | "critical";
+
+export const WORKLOAD_BAND_LABELS: Record<WorkloadBand, string> = {
+  normal:     "NORMAL",
+  elevated:   "ELEVADA",
+  overloaded: "SOBRECARGA",
+  critical:   "CRÍTICA",
+};
+
+export type OperationalAnalyticsGlobal = {
+  active_cases: number;
+  unassigned_cases: number;
+  breached_sla_cases: number;
+  avg_time_to_first_action_hours: number | null;
+  avg_resolution_time_hours: number | null;
+  critical_open: number;
+  recovered_today: number;
+  followups_due_today: number;
+  operational_backlog: number;
+};
+
+export type OperatorAnalyticsRow = {
+  user_id: string;
+  display_name: string;
+  assigned_total: number;
+  active_critical: number;
+  sla_breaches: number;
+  completed_today: number;
+  avg_response_time_hours: number | null;
+  avg_resolution_time_hours: number | null;
+  overload_score: number;
+  workload_band: WorkloadBand;
+  workload_score: number;
+  critical_ratio: number;
+  overdue_ratio: number;
+};
+
+export type SlaBreachAgingBucket = "<24h" | "1-3d" | "3-7d" | "+7d";
+
+export type SlaBreachAgingCounts = Record<SlaBreachAgingBucket, number>;
+
+export type SlaBreachTrendPoint = {
+  date: string;
+  breached: number;
+  compliant: number;
+};
+
+export type OperatorSlaPerformanceRow = {
+  user_id: string;
+  display_name: string;
+  compliance_pct: number;
+  breaches: number;
+  assigned_active: number;
+};
+
+export type OperationalSlaAnalyticsSnapshot = {
+  compliance_pct: number;
+  breach_trend: SlaBreachTrendPoint[];
+  operator_sla: OperatorSlaPerformanceRow[];
+  breached_aging_buckets: SlaBreachAgingCounts;
+  breached_total: number;
+};
+
+export type OperationalAnalyticsQueueSignals = {
+  sla_breached_count: number;
+  overloaded_operators_count: number;
+  followups_due_today: number;
+};
+
+export type OperationalAnalyticsSnapshot = {
+  generated_at: string;
+  global: OperationalAnalyticsGlobal;
+  operators: OperatorAnalyticsRow[];
+  sla: OperationalSlaAnalyticsSnapshot;
+  queue_signals: OperationalAnalyticsQueueSignals;
+};
+
+export type OperatorAnalyticsInput = {
+  operationalStates: DEOperationalStateRow[];
+  pendingFollowUps: DEFollowUpRow[];
+  recentActions: DECollectionAction[];
+  operatorNames: Map<string, string>;
+  loadedAt: string;
 };

@@ -39,6 +39,10 @@ describe("generateDailyBriefing — DB-first follow_up_queue", () => {
             active_promise: false,
             escalated: true,
             updated_at: "2026-05-18T10:00:00.000Z",
+            assigned_user_id: null,
+            assigned_at: null,
+            assigned_by: null,
+            assignment_note: null,
           },
         ],
         pendingFollowUps: [

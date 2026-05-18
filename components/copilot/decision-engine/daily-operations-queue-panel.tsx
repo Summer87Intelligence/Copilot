@@ -10,22 +10,21 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import { copilotApiFetch } from "@/lib/copilot-fetch";
-import type { CollectionAction } from "@/lib/copilot-collection-types";
 import type {
-  ClientOperationalSummary,
+  ClientOperationalHydrationRecord,
+  ClientOperationalSummaryHydrated,
   DailyOperationsQueue,
-  DECollectionAction,
+  OperationalAnalyticsQueueSignals,
+  OperationalOwnershipStats,
   OperationalTask,
   QueueSection,
 } from "@/lib/decision-engine/de-types";
-import { collectCompanyIdsFromQueue } from "@/lib/decision-engine/client-operational-execution-context";
 import type { WorkflowKind } from "@/lib/decision-engine/client-operational-workflow";
 import {
   allSectionsWithTasks,
   clientSeenKey,
   countClientsInQueue,
-  getSectionClientSummaries,
+  getSectionHydratedSummaries,
   isCacheStale,
   isQueueEmpty,
   sectionLabel,
@@ -66,30 +65,38 @@ function saveSeenIds(ids: Set<string>) {
   }
 }
 
-type BatchActionsResponse =
-  | { ok: true; actionsByCompany: Record<string, CollectionAction[]> }
-  | { ok: false; message?: string };
-
 type QueueSectionBlockProps = {
   section: QueueSection;
-  summaries: ClientOperationalSummary[];
+  summaries: ClientOperationalSummaryHydrated[];
   seenIds: Set<string>;
-  actionsByCompany: Record<string, Array<CollectionAction | DECollectionAction>>;
   completedCustomerIds: Set<string>;
   loadingCustomerId: string | null;
+  ownershipLoadingCustomerId: string | null;
+  focusedCustomerId: string | null;
+  currentUserId: string | null;
   onExecuteWorkflow?: (task: OperationalTask, kind: WorkflowKind) => void;
   onMarkSeen: (customerId: string) => void;
+  onTakeOwnership?: (customerId: string) => void;
+  onReleaseOwnership?: (customerId: string) => void;
+  onAutoAssign?: (customerId: string) => void;
+  onFocusCustomer?: (customerId: string) => void;
 };
 
 function QueueSectionBlock({
   section,
   summaries,
   seenIds,
-  actionsByCompany,
   completedCustomerIds,
   loadingCustomerId,
+  ownershipLoadingCustomerId,
+  focusedCustomerId,
+  currentUserId,
   onExecuteWorkflow,
   onMarkSeen,
+  onTakeOwnership,
+  onReleaseOwnership,
+  onAutoAssign,
+  onFocusCustomer,
 }: QueueSectionBlockProps) {
   const [expanded, setExpanded] = useState(false);
   const { visible, hiddenCount } = sliceVisibleSummaries(summaries, expanded);
@@ -104,16 +111,26 @@ function QueueSectionBlock({
       </h3>
       <div className="space-y-2">
         {visible.map((summary) => (
-          <ClientOperationalSummaryCard
+          <div
             key={summary.customer_id}
-            summary={summary}
-            customerActions={actionsByCompany[summary.customer_id] ?? []}
-            seen={seenIds.has(clientSeenKey(summary.customer_id))}
-            completed={completedCustomerIds.has(summary.customer_id)}
-            actionLoading={loadingCustomerId === summary.customer_id}
-            onExecuteWorkflow={onExecuteWorkflow}
-            onMarkSeen={onMarkSeen}
-          />
+            onMouseEnter={() => onFocusCustomer?.(summary.customer_id)}
+            onFocusCapture={() => onFocusCustomer?.(summary.customer_id)}
+          >
+            <ClientOperationalSummaryCard
+              summary={summary}
+              seen={seenIds.has(clientSeenKey(summary.customer_id))}
+              completed={completedCustomerIds.has(summary.customer_id)}
+              actionLoading={loadingCustomerId === summary.customer_id}
+              ownershipLoading={ownershipLoadingCustomerId === summary.customer_id}
+              focused={focusedCustomerId === summary.customer_id}
+              currentUserId={currentUserId}
+              onExecuteWorkflow={onExecuteWorkflow}
+              onMarkSeen={onMarkSeen}
+              onTakeOwnership={onTakeOwnership}
+              onReleaseOwnership={onReleaseOwnership}
+              onAutoAssign={onAutoAssign}
+            />
+          </div>
         ))}
       </div>
       {hiddenCount > 0 && (
@@ -141,6 +158,10 @@ function QueueSectionBlock({
 
 export type DailyOperationsQueuePanelProps = {
   queue: DailyOperationsQueue | null;
+  hydrationByCustomer?: Record<string, ClientOperationalHydrationRecord>;
+  ownershipStats?: OperationalOwnershipStats | null;
+  queueSignals?: OperationalAnalyticsQueueSignals | null;
+  currentUserId?: string | null;
   loading?: boolean;
   error?: string | null;
   stale?: boolean;
@@ -148,15 +169,22 @@ export type DailyOperationsQueuePanelProps = {
   generatedAt?: string | null;
   expiresAt?: string | null;
   refreshing?: boolean;
-  recentActions?: DECollectionAction[];
   completedCustomerIds?: Set<string>;
   loadingCustomerId?: string | null;
+  ownershipLoadingCustomerId?: string | null;
   onRefresh?: (force?: boolean) => void;
   onExecuteWorkflow?: (task: OperationalTask, kind: WorkflowKind) => void;
+  onTakeOwnership?: (customerId: string) => void;
+  onReleaseOwnership?: (customerId: string) => void;
+  onAutoAssign?: (customerId: string) => void;
 };
 
 export function DailyOperationsQueuePanel({
   queue,
+  hydrationByCustomer = {},
+  ownershipStats = null,
+  queueSignals = null,
+  currentUserId = null,
   loading = false,
   error = null,
   stale = false,
@@ -164,17 +192,18 @@ export function DailyOperationsQueuePanel({
   generatedAt = null,
   expiresAt = null,
   refreshing = false,
-  recentActions = [],
   completedCustomerIds = new Set(),
   loadingCustomerId = null,
+  ownershipLoadingCustomerId = null,
   onRefresh,
   onExecuteWorkflow,
+  onTakeOwnership,
+  onReleaseOwnership,
+  onAutoAssign,
 }: DailyOperationsQueuePanelProps) {
   const [seenIds, setSeenIds] = useState<Set<string>>(() => loadSeenIds());
-  const [actionsByCompany, setActionsByCompany] = useState<
-    Record<string, Array<CollectionAction | DECollectionAction>>
-  >({});
-  const [tick, setTick] = useState(0);
+  const [focusedCustomerId, setFocusedCustomerId] = useState<string | null>(null);
+  const [, setTick] = useState(0);
 
   const markSeen = useCallback((customerId: string) => {
     setSeenIds((prev) => {
@@ -191,54 +220,14 @@ export function DailyOperationsQueuePanel({
   }, [queue]);
 
   const clientCount = queue ? countClientsInQueue(queue) : 0;
+  const hydratedCount = Object.keys(hydrationByCustomer).length;
   const showStaleBanner = stale || (expiresAt != null && isCacheStale(expiresAt));
-
-  const mergedActionsByCompany = useMemo(() => {
-    const map: Record<string, Array<CollectionAction | DECollectionAction>> = {
-      ...actionsByCompany,
-    };
-    for (const a of recentActions) {
-      const list = map[a.company_id] ?? [];
-      if (!list.some((x) => "id" in x && x.id === a.id)) {
-        map[a.company_id] = [...list, a];
-      }
-    }
-    return map;
-  }, [actionsByCompany, recentActions]);
-
-  useEffect(() => {
-    if (!queue) return;
-    const ids = collectCompanyIdsFromQueue(queue.sections);
-    if (ids.length === 0) return;
-
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await copilotApiFetch("/api/copilot/collection-actions/batch", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ company_ids: ids.slice(0, 100) }),
-        });
-        const json = (await res.json()) as BatchActionsResponse;
-        if (cancelled || !json.ok) return;
-        setActionsByCompany(json.actionsByCompany as Record<string, CollectionAction[]>);
-      } catch {
-        /* fallback: recentActions only */
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [queue]);
 
   useEffect(() => {
     if (!generatedAt) return;
     const id = setInterval(() => setTick((t) => t + 1), 15_000);
     return () => clearInterval(id);
   }, [generatedAt]);
-
-  void tick;
 
   if (loading && !queue) {
     return (
@@ -277,6 +266,42 @@ export function DailyOperationsQueuePanel({
                 <span>
                   {" "}
                   · {clientCount} clientes · {queue.stats.urgent_count} urgentes
+                  {queueSignals && queueSignals.sla_breached_count > 0 && (
+                    <span className="text-rose-600">
+                      {" "}
+                      · {queueSignals.sla_breached_count} SLA vencidos
+                    </span>
+                  )}
+                  {queueSignals && queueSignals.overloaded_operators_count > 0 && (
+                    <span className="text-amber-700">
+                      {" "}
+                      · {queueSignals.overloaded_operators_count} operadores sobrecargados
+                    </span>
+                  )}
+                  {queueSignals && queueSignals.followups_due_today > 0 && (
+                    <span>
+                      {" "}
+                      · {queueSignals.followups_due_today} follow-ups hoy
+                    </span>
+                  )}
+                  {ownershipStats && !queueSignals && (
+                    <span>
+                      {" "}
+                      · {ownershipStats.total_assigned} asignados
+                      {ownershipStats.unassigned_critical > 0 && (
+                        <span className="text-rose-600">
+                          {" "}
+                          · {ownershipStats.unassigned_critical} críticos sin dueño
+                        </span>
+                      )}
+                      {ownershipStats.high_workload && (
+                        <span className="text-amber-700"> · Carga alta</span>
+                      )}
+                    </span>
+                  )}
+                  {hydratedCount > 0 && (
+                    <span className="opacity-70"> · {hydratedCount} con estado DB</span>
+                  )}
                 </span>
               )}
             </p>
@@ -323,13 +348,24 @@ export function DailyOperationsQueuePanel({
             <QueueSectionBlock
               key={section}
               section={section}
-              summaries={getSectionClientSummaries(queue, section)}
+              summaries={getSectionHydratedSummaries(
+                queue,
+                section,
+                hydrationByCustomer,
+                currentUserId
+              )}
               seenIds={seenIds}
-              actionsByCompany={mergedActionsByCompany}
               completedCustomerIds={completedCustomerIds}
               loadingCustomerId={loadingCustomerId}
+              ownershipLoadingCustomerId={ownershipLoadingCustomerId}
+              focusedCustomerId={focusedCustomerId}
+              currentUserId={currentUserId}
               onExecuteWorkflow={onExecuteWorkflow}
               onMarkSeen={markSeen}
+              onTakeOwnership={onTakeOwnership}
+              onReleaseOwnership={onReleaseOwnership}
+              onAutoAssign={onAutoAssign}
+              onFocusCustomer={setFocusedCustomerId}
             />
           ))}
       </div>

@@ -244,3 +244,69 @@ async function loadPendingFollowUps(
 ): Promise<DEFollowUpRow[]> {
   return selectPendingFollowUpsForWorkspace(supabase, tenantCompanyId);
 }
+
+// ---------------------------------------------------------------------------
+// Phase 3C — índices por customer_id
+// ---------------------------------------------------------------------------
+
+export type DecisionEngineOperationalIndex = {
+  operationalStateByCustomer: Map<string, DEOperationalStateRow>;
+  pendingFollowUpByCustomer: Map<string, DEFollowUpRow>;
+  recentActionsByCustomer: Map<string, DECollectionAction[]>;
+};
+
+export function indexDecisionEngineOperationalData(
+  data: Pick<
+    DecisionEngineDataBundle,
+    "operationalStates" | "pendingFollowUps" | "recentActions"
+  >
+): DecisionEngineOperationalIndex {
+  const operationalStateByCustomer = new Map<string, DEOperationalStateRow>();
+  for (const row of data.operationalStates) {
+    operationalStateByCustomer.set(row.customer_id, row);
+  }
+
+  const pendingFollowUpByCustomer = new Map<string, DEFollowUpRow>();
+  const sortedFollowUps = [...data.pendingFollowUps].sort((a, b) =>
+    a.scheduled_for.localeCompare(b.scheduled_for)
+  );
+  for (const fu of sortedFollowUps) {
+    if (!pendingFollowUpByCustomer.has(fu.customer_id)) {
+      pendingFollowUpByCustomer.set(fu.customer_id, fu);
+    }
+  }
+
+  const recentActionsByCustomer = new Map<string, DECollectionAction[]>();
+  for (const action of data.recentActions) {
+    const list = recentActionsByCustomer.get(action.company_id) ?? [];
+    list.push(action);
+    recentActionsByCustomer.set(action.company_id, list);
+  }
+  for (const [id, list] of recentActionsByCustomer) {
+    list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    recentActionsByCustomer.set(id, list);
+  }
+
+  return {
+    operationalStateByCustomer,
+    pendingFollowUpByCustomer,
+    recentActionsByCustomer,
+  };
+}
+
+/** Carga solo estado operacional + follow-ups + acciones (hidratación API). */
+export async function loadDecisionEngineOperationalIndex(
+  supabase: SupabaseClient,
+  tenantCompanyId: string
+): Promise<DecisionEngineOperationalIndex> {
+  const [operationalStates, pendingFollowUps, recentActions] = await Promise.all([
+    loadOperationalStates(supabase, tenantCompanyId),
+    loadPendingFollowUps(supabase, tenantCompanyId),
+    loadRecentActions(supabase, tenantCompanyId),
+  ]);
+  return indexDecisionEngineOperationalData({
+    operationalStates,
+    pendingFollowUps,
+    recentActions,
+  });
+}

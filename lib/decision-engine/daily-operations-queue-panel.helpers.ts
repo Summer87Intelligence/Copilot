@@ -3,11 +3,14 @@
  */
 
 import type {
+  ClientOperationalHydrationRecord,
   ClientOperationalSummary,
+  ClientOperationalSummaryHydrated,
   DailyOperationsQueue,
   OperationalTask,
   QueueSection,
 } from "@/lib/decision-engine/de-types";
+import { hydrateClientOperationalSummaries } from "@/lib/decision-engine/client-operational-hydrator";
 import { buildClientOperationalSummaries } from "@/lib/decision-engine/client-operational-summary-builder";
 import { QUEUE_SECTION_LABELS } from "@/lib/decision-engine/de-types";
 
@@ -39,11 +42,11 @@ export function sliceVisibleTasks(
   return { visible: tasks.slice(0, limit), hiddenCount: tasks.length - limit };
 }
 
-export function sliceVisibleSummaries(
-  summaries: ClientOperationalSummary[],
+export function sliceVisibleSummaries<T extends ClientOperationalSummary>(
+  summaries: T[],
   expanded: boolean,
   limit = MAX_TASKS_PER_SECTION
-): { visible: ClientOperationalSummary[]; hiddenCount: number } {
+): { visible: T[]; hiddenCount: number } {
   if (expanded || summaries.length <= limit) {
     return { visible: summaries, hiddenCount: 0 };
   }
@@ -55,6 +58,19 @@ export function getSectionClientSummaries(
   section: QueueSection
 ): ClientOperationalSummary[] {
   return buildClientOperationalSummaries(getSectionTasks(queue, section));
+}
+
+export function getSectionHydratedSummaries(
+  queue: DailyOperationsQueue,
+  section: QueueSection,
+  hydrationByCustomer: Record<string, ClientOperationalHydrationRecord>,
+  currentUserId: string | null = null
+): ClientOperationalSummaryHydrated[] {
+  return hydrateClientOperationalSummaries(
+    getSectionClientSummaries(queue, section),
+    hydrationByCustomer,
+    currentUserId
+  );
 }
 
 export function countClientsInQueue(queue: DailyOperationsQueue): number {

@@ -7,6 +7,7 @@ import {
   isDailyQueueSnapshotFresh,
   readDailyQueueSnapshot,
 } from "@/lib/data/decision-daily-queue-repository";
+import { loadDailyQueueHydration } from "@/lib/decision-engine/daily-queue-hydration";
 import { recalculateDailyOperationsQueue } from "@/lib/decision-engine/daily-queue-orchestrator";
 
 vi.mock("@/lib/copilot-api-auth", () => ({
@@ -33,10 +34,15 @@ vi.mock("@/lib/decision-engine/daily-queue-orchestrator", () => ({
   recalculateDailyOperationsQueue: vi.fn(),
 }));
 
+vi.mock("@/lib/decision-engine/daily-queue-hydration", () => ({
+  loadDailyQueueHydration: vi.fn(),
+}));
+
 const mockAuth = vi.mocked(requireCopilotTenantContext);
 const mockReadSnapshot = vi.mocked(readDailyQueueSnapshot);
 const mockIsFresh = vi.mocked(isDailyQueueSnapshotFresh);
 const mockRecalc = vi.mocked(recalculateDailyOperationsQueue);
+const mockHydration = vi.mocked(loadDailyQueueHydration);
 
 const TENANT_ID = "tenant-abc";
 const mockSupabase = {} as never;
@@ -90,6 +96,7 @@ describe("GET /api/copilot/decision-engine/daily-queue", () => {
       cached: false,
       generation_ms: 12,
     });
+    mockHydration.mockResolvedValue({});
   });
 
   it("403 cuando requireCopilotTenantContext falla", async () => {
@@ -115,12 +122,20 @@ describe("GET /api/copilot/decision-engine/daily-queue", () => {
     mockIsFresh.mockReturnValue(true);
 
     const res = await GET(jsonRequest("http://localhost/api/copilot/decision-engine/daily-queue"));
-    const body = (await res.json()) as { ok: boolean; cached: boolean };
+    const body = (await res.json()) as {
+      ok: boolean;
+      cached: boolean;
+      queue: unknown;
+      hydration_by_customer: Record<string, unknown>;
+    };
 
     expect(res.status).toBe(200);
     expect(body.ok).toBe(true);
     expect(body.cached).toBe(true);
+    expect(body.queue).toBeDefined();
+    expect(body.hydration_by_customer).toBeDefined();
     expect(mockRecalc).not.toHaveBeenCalled();
+    expect(mockHydration).toHaveBeenCalled();
   });
 
   it("?force=true recalcula aunque haya caché fresca", async () => {

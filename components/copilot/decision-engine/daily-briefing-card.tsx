@@ -2,9 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type {
+  ClientOperationalHydrationRecord,
   DailyBriefing,
   DailyOperationsQueue,
   DECollectionAction,
+  DEOperationalStateRow,
+  OperationalAnalyticsSnapshot,
+  OperationalOwnershipStats,
   OperationalTask,
   RankedClient,
 } from "@/lib/decision-engine/de-types";
@@ -19,6 +23,7 @@ import { PortfolioScoreCard } from "./portfolio-score-card";
 import { RiskAlertList } from "./risk-alert-list";
 import { CollectionActionModal } from "./collection-action-modal";
 import { DailyOperationsQueuePanel } from "./daily-operations-queue-panel";
+import { OperationalAnalyticsDashboard } from "./operational-analytics-dashboard";
 
 type QuickActionDefaults = {
   actionType?: CollectionActionType;
@@ -30,6 +35,7 @@ type DailyQueueResponse =
   | {
       ok: true;
       queue: DailyOperationsQueue;
+      hydration_by_customer: Record<string, ClientOperationalHydrationRecord>;
       cached: boolean;
       stale: boolean;
       generated_at: string;
@@ -72,6 +78,9 @@ export function DailyBriefingCard({
   const [loadingCustomerId, setLoadingCustomerId] = useState<string | null>(null);
 
   const [dailyQueue, setDailyQueue] = useState<DailyOperationsQueue | null>(null);
+  const [hydrationByCustomer, setHydrationByCustomer] = useState<
+    Record<string, ClientOperationalHydrationRecord>
+  >({});
   const [queueGeneratedAt, setQueueGeneratedAt] = useState<string | null>(null);
   const [queueExpiresAt, setQueueExpiresAt] = useState<string | null>(null);
   const [queueCached, setQueueCached] = useState(false);
@@ -79,6 +88,77 @@ export function DailyBriefingCard({
   const [queueLoading, setQueueLoading] = useState(true);
   const [queueRefreshing, setQueueRefreshing] = useState(false);
   const [queueError, setQueueError] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [ownershipStats, setOwnershipStats] = useState<OperationalOwnershipStats | null>(null);
+  const [ownershipLoadingCustomerId, setOwnershipLoadingCustomerId] = useState<string | null>(null);
+  const [analytics, setAnalytics] = useState<OperationalAnalyticsSnapshot | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
+  const fetchAnalytics = useCallback(async (force = false) => {
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
+    try {
+      const url = force
+        ? "/api/copilot/decision-engine/analytics?force=true"
+        : "/api/copilot/decision-engine/analytics";
+      const res = await copilotApiFetch(url);
+      const json = (await res.json()) as
+        | { ok: true; analytics: OperationalAnalyticsSnapshot }
+        | { ok: false; message?: string };
+      if (!json.ok) {
+        setAnalyticsError(json.message ?? "No se pudo cargar analytics");
+        return;
+      }
+      setAnalytics(json.analytics);
+    } catch (err) {
+      setAnalyticsError(err instanceof Error ? err.message : "Error de conexión");
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, []);
+
+  const fetchOwnershipStats = useCallback(async () => {
+    try {
+      const res = await copilotApiFetch("/api/copilot/decision-engine/ownership-stats");
+      const json = (await res.json()) as
+        | { ok: true; stats: OperationalOwnershipStats }
+        | { ok: false; message?: string };
+      if (json.ok) setOwnershipStats(json.stats);
+    } catch {
+      /* non-fatal */
+    }
+  }, []);
+
+  const applyStateToHydration = useCallback((state: DEOperationalStateRow) => {
+    setHydrationByCustomer((prev) => {
+      const existing = prev[state.customer_id];
+      return {
+        ...prev,
+        [state.customer_id]: {
+          ...(existing ?? {
+            customer_id: state.customer_id,
+            machine_state: state.machine_state,
+            previous_state: state.previous_state,
+            transitioned_at: state.transitioned_at,
+            transition_reason: state.transition_reason,
+            breached_sla: state.breached_sla,
+            next_follow_up_at: state.next_follow_up_at,
+            pending_follow_up_id: null,
+            pending_follow_up_reason: null,
+            last_action_at: state.last_contact_at,
+            last_action_type: null,
+            last_action_summary: null,
+            timeline_preview: [],
+          }),
+          assigned_user_id: state.assigned_user_id,
+          assigned_at: state.assigned_at,
+          assigned_by: state.assigned_by,
+          assignment_note: state.assignment_note,
+        },
+      };
+    });
+  }, []);
 
   const fetchDailyQueue = useCallback(async (force = false) => {
     if (force) setQueueRefreshing(true);
@@ -95,6 +175,7 @@ export function DailyBriefingCard({
         return;
       }
       setDailyQueue(json.queue);
+      setHydrationByCustomer(json.hydration_by_customer ?? {});
       setQueueGeneratedAt(json.generated_at);
       setQueueExpiresAt(json.expires_at);
       setQueueCached(json.cached);
@@ -109,7 +190,97 @@ export function DailyBriefingCard({
 
   useEffect(() => {
     void fetchDailyQueue(false);
-  }, [fetchDailyQueue]);
+    void fetchAnalytics(false);
+    void fetchOwnershipStats();
+    void (async () => {
+      try {
+        const res = await copilotApiFetch("/api/copilot/me");
+        const json = (await res.json()) as { appUser?: { id: string } };
+        if (json.appUser?.id) setCurrentUserId(json.appUser.id);
+      } catch {
+        /* non-fatal */
+      }
+    })();
+  }, [fetchDailyQueue, fetchAnalytics, fetchOwnershipStats]);
+
+  const postOwnership = useCallback(
+    async (
+      path: string,
+      body: Record<string, unknown>,
+      customerId: string
+    ): Promise<boolean> => {
+      setOwnershipLoadingCustomerId(customerId);
+      try {
+        const res = await copilotApiFetch(path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const json = (await res.json()) as
+          | { ok: true; state?: DEOperationalStateRow }
+          | { ok: false; message?: string };
+        if (!json.ok) return false;
+        if (json.state) applyStateToHydration(json.state);
+        void fetchOwnershipStats();
+        void fetchAnalytics(true);
+        void fetchDailyQueue(true);
+        return true;
+      } catch {
+        return false;
+      } finally {
+        setOwnershipLoadingCustomerId(null);
+      }
+    },
+    [applyStateToHydration, fetchAnalytics, fetchDailyQueue, fetchOwnershipStats]
+  );
+
+  const handleTakeOwnership = useCallback(
+    (customerId: string) => {
+      if (!currentUserId) return;
+      void postOwnership(
+        "/api/copilot/decision-engine/assign",
+        { customer_id: customerId, assigned_user_id: currentUserId },
+        customerId
+      );
+    },
+    [currentUserId, postOwnership]
+  );
+
+  const handleReleaseOwnership = useCallback(
+    (customerId: string) => {
+      void postOwnership(
+        "/api/copilot/decision-engine/unassign",
+        { customer_id: customerId },
+        customerId
+      );
+    },
+    [postOwnership]
+  );
+
+  const handleAutoAssign = useCallback(
+    (customerId: string) => {
+      setOwnershipLoadingCustomerId(customerId);
+      void (async () => {
+        try {
+          const res = await copilotApiFetch("/api/copilot/decision-engine/auto-assign", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ customer_ids: [customerId] }),
+          });
+          const json = (await res.json()) as
+            | { ok: true; assigned: DEOperationalStateRow[] }
+            | { ok: false };
+          if (json.ok && json.assigned[0]) applyStateToHydration(json.assigned[0]);
+          void fetchOwnershipStats();
+          void fetchAnalytics(true);
+          void fetchDailyQueue(true);
+        } finally {
+          setOwnershipLoadingCustomerId(null);
+        }
+      })();
+    },
+    [applyStateToHydration, fetchAnalytics, fetchDailyQueue, fetchOwnershipStats]
+  );
 
   function handleExecuteWorkflow(task: OperationalTask, _kind: WorkflowKind) {
     const workflow = resolvePrimaryWorkflow(task);
@@ -146,6 +317,8 @@ export function DailyBriefingCard({
   function handleBriefingRefresh() {
     onRefresh();
     void fetchDailyQueue(true);
+    void fetchAnalytics(true);
+    void fetchOwnershipStats();
   }
 
   return (
@@ -178,8 +351,18 @@ export function DailyBriefingCard({
 
       {briefing.alerts.length > 0 && <RiskAlertList alerts={briefing.alerts} />}
 
+      <OperationalAnalyticsDashboard
+        analytics={analytics}
+        loading={analyticsLoading}
+        error={analyticsError}
+      />
+
       <DailyOperationsQueuePanel
         queue={dailyQueue}
+        hydrationByCustomer={hydrationByCustomer}
+        ownershipStats={ownershipStats}
+        queueSignals={analytics?.queue_signals ?? null}
+        currentUserId={currentUserId}
         loading={queueLoading}
         error={queueError}
         stale={queueStale}
@@ -187,11 +370,14 @@ export function DailyBriefingCard({
         generatedAt={queueGeneratedAt}
         expiresAt={queueExpiresAt}
         refreshing={queueRefreshing}
-        recentActions={recentActions}
         completedCustomerIds={completedCustomerIds}
         loadingCustomerId={loadingCustomerId}
+        ownershipLoadingCustomerId={ownershipLoadingCustomerId}
         onRefresh={(force) => void fetchDailyQueue(force ?? false)}
         onExecuteWorkflow={handleExecuteWorkflow}
+        onTakeOwnership={handleTakeOwnership}
+        onReleaseOwnership={handleReleaseOwnership}
+        onAutoAssign={handleAutoAssign}
       />
 
       {actionClient && (

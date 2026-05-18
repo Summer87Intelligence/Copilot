@@ -10,10 +10,12 @@ import {
   ExternalLink,
   History,
   Loader2,
+  UserMinus,
+  UserPlus,
 } from "lucide-react";
 
-import type { CollectionAction } from "@/lib/copilot-collection-types";
-import type { ClientOperationalSummary, DECollectionAction, OperationalTask } from "@/lib/decision-engine/de-types";
+import type { ClientOperationalSummaryHydrated, OperationalTask } from "@/lib/decision-engine/de-types";
+import { assigneeInitials } from "@/lib/decision-engine/client-operational-ownership-display";
 import {
   BADGE_TONE_CLASS,
   buildOperationalBadges,
@@ -21,33 +23,38 @@ import {
   compactReasonChips,
 } from "@/lib/decision-engine/client-operational-display";
 import {
-  buildClientOperationalLiveState,
-  buildTimelineForCustomer,
-  type TimelineEvent,
-} from "@/lib/decision-engine/client-operational-execution-context";
-import {
   resolveSummaryWorkflow,
   type WorkflowKind,
 } from "@/lib/decision-engine/client-operational-workflow";
 
 export type ClientOperationalSummaryCardProps = {
-  summary: ClientOperationalSummary;
-  customerActions?: Array<CollectionAction | DECollectionAction>;
+  summary: ClientOperationalSummaryHydrated;
   seen?: boolean;
   completed?: boolean;
   actionLoading?: boolean;
+  ownershipLoading?: boolean;
+  focused?: boolean;
+  currentUserId?: string | null;
   onExecuteWorkflow?: (task: OperationalTask, kind: WorkflowKind) => void;
   onMarkSeen?: (customerId: string) => void;
+  onTakeOwnership?: (customerId: string) => void;
+  onReleaseOwnership?: (customerId: string) => void;
+  onAutoAssign?: (customerId: string) => void;
 };
 
 export function ClientOperationalSummaryCard({
   summary,
-  customerActions = [],
   seen = false,
   completed = false,
   actionLoading = false,
+  ownershipLoading = false,
+  focused = false,
+  currentUserId = null,
   onExecuteWorkflow,
   onMarkSeen,
+  onTakeOwnership,
+  onReleaseOwnership,
+  onAutoAssign,
 }: ClientOperationalSummaryCardProps) {
   const router = useRouter();
   const cardRef = useRef<HTMLElement>(null);
@@ -58,12 +65,12 @@ export function ClientOperationalSummaryCard({
   const reasonChips = compactReasonChips(summary);
   const impactBullets = compactImpactBullets(summary);
   const workflow = resolveSummaryWorkflow(summary);
-  const live = buildClientOperationalLiveState(summary, customerActions);
-  const timeline: TimelineEvent[] = buildTimelineForCustomer(
-    summary.customer_id,
-    customerActions,
-    3
-  );
+  const live = summary.live_state;
+  const ownership = summary.live_ownership;
+  const timeline = summary.live_timeline;
+  const canTake =
+    Boolean(currentUserId && onTakeOwnership && (ownership.is_unassigned || !ownership.is_mine));
+  const canRelease = Boolean(currentUserId && onReleaseOwnership && ownership.is_mine);
 
   const clientHref = `/copilot/clientes/${encodeURIComponent(summary.customer_id)}`;
 
@@ -116,9 +123,29 @@ export function ClientOperationalSummaryCard({
       } else if (k === "e") {
         e.preventDefault();
         runWorkflow("escalate");
+      } else if (k === "t" && canTake) {
+        e.preventDefault();
+        onTakeOwnership?.(summary.customer_id);
+      } else if (k === "u" && canRelease) {
+        e.preventDefault();
+        onReleaseOwnership?.(summary.customer_id);
+      } else if (k === "a" && onAutoAssign) {
+        e.preventDefault();
+        onAutoAssign(summary.customer_id);
       }
     },
-    [router, clientHref, handleCopy, runWorkflow]
+    [
+      router,
+      clientHref,
+      handleCopy,
+      runWorkflow,
+      canTake,
+      canRelease,
+      onTakeOwnership,
+      onReleaseOwnership,
+      onAutoAssign,
+      summary.customer_id,
+    ]
   );
 
   return (
@@ -129,8 +156,10 @@ export function ClientOperationalSummaryCard({
       className={`group rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-surface)] p-3 shadow-sm outline-none transition-all duration-200 hover:border-[var(--copilot-accent)]/40 focus-visible:ring-2 focus-visible:ring-[var(--copilot-accent)]/50 ${
         seen ? "opacity-55" : ""
       } ${completed ? "border-emerald-300 bg-emerald-50/30" : ""} ${
+        focused ? "ring-2 ring-[var(--copilot-accent)]/60 border-[var(--copilot-accent)]/50" : ""
+      } ${
         summary.actionable_now ? "border-l-[3px] border-l-rose-500" : "border-l-[3px] border-l-slate-200"
-      }`}
+      } ${ownership.ownership_overdue ? "bg-rose-50/20" : ""}`}
     >
       {/* Header + badges */}
       <div className="flex items-start justify-between gap-2">
@@ -176,6 +205,45 @@ export function ClientOperationalSummaryCard({
         </div>
       )}
 
+      {/* Ownership */}
+      <div className="mt-2 flex items-start gap-2 border-t border-[var(--copilot-border)]/60 pt-1.5">
+        <div
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+            ownership.is_unassigned
+              ? "bg-slate-100 text-slate-500"
+              : ownership.is_mine
+                ? "bg-[var(--copilot-accent)]/15 text-[var(--copilot-accent)]"
+                : "bg-slate-200 text-slate-700"
+          }`}
+        >
+          {ownership.is_unassigned ? "—" : assigneeInitials(ownership.assignee_display_name)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
+              Responsable
+            </span>
+            {ownership.is_mine && (
+              <span className="rounded bg-[var(--copilot-accent)] px-1 py-px text-[8px] font-bold uppercase text-white">
+                Mío
+              </span>
+            )}
+            {ownership.ownership_overdue && (
+              <span className="rounded border border-rose-200 bg-rose-50 px-1 py-px text-[8px] font-semibold uppercase text-rose-700">
+                SLA ownership
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] font-medium text-[var(--copilot-text)] truncate">
+            {ownership.assignee_display_name}
+          </p>
+          <p className="text-[10px] text-[var(--copilot-text-muted)]">
+            {ownership.ownership_status_label}
+            {ownership.assigned_duration_label ? ` · ${ownership.assigned_duration_label}` : ""}
+          </p>
+        </div>
+      </div>
+
       {/* Live operational state */}
       <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] text-[var(--copilot-text-muted)] border-t border-[var(--copilot-border)]/60 pt-1.5">
         <span className="col-span-2 text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
@@ -195,6 +263,12 @@ export function ClientOperationalSummaryCard({
         <span>
           <span className="text-[var(--copilot-text-secondary)]">SLA:</span> {live.sla_label}
         </span>
+        {live.transitioned_at && (
+          <span className="col-span-2 text-[9px] text-[var(--copilot-text-muted)] truncate">
+            Transición {new Date(live.transitioned_at).toLocaleDateString("es-UY")}
+            {live.transition_reason ? ` · ${live.transition_reason}` : ""}
+          </span>
+        )}
       </div>
 
       {/* Timeline inline */}
@@ -203,7 +277,7 @@ export function ClientOperationalSummaryCard({
           {timeline.map((ev) => (
             <li key={ev.id} className="flex gap-1 truncate">
               <span className="text-[var(--copilot-text-secondary)]">•</span>
-              <span className="truncate">{ev.label}</span>
+              <span className="truncate">{ev.summary}</span>
             </li>
           ))}
         </ul>
@@ -225,6 +299,41 @@ export function ClientOperationalSummaryCard({
 
       {/* CTAs */}
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {canTake && (
+          <button
+            type="button"
+            disabled={ownershipLoading}
+            onClick={() => onTakeOwnership?.(summary.customer_id)}
+            className="inline-flex items-center gap-1 rounded-md border border-[var(--copilot-accent)]/40 bg-[var(--copilot-accent)]/5 px-2 py-1 text-[11px] font-medium text-[var(--copilot-accent)] hover:bg-[var(--copilot-accent)]/10 disabled:opacity-50"
+            title="Atajo: T"
+          >
+            {ownershipLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserPlus className="h-3 w-3" />}
+            Tomar caso
+          </button>
+        )}
+        {canRelease && (
+          <button
+            type="button"
+            disabled={ownershipLoading}
+            onClick={() => onReleaseOwnership?.(summary.customer_id)}
+            className="inline-flex items-center gap-1 rounded-md border border-[var(--copilot-border)] px-2 py-1 text-[11px] text-[var(--copilot-text-muted)] hover:bg-[var(--copilot-surface-alt)] disabled:opacity-50"
+            title="Atajo: U"
+          >
+            <UserMinus className="h-3 w-3" />
+            Liberar
+          </button>
+        )}
+        {onAutoAssign && ownership.is_unassigned && (
+          <button
+            type="button"
+            disabled={ownershipLoading}
+            onClick={() => onAutoAssign(summary.customer_id)}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-[var(--copilot-text-muted)] hover:underline disabled:opacity-50"
+            title="Atajo: A"
+          >
+            Auto-asignar
+          </button>
+        )}
         {onExecuteWorkflow && (
           <button
             type="button"
