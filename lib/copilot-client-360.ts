@@ -10,6 +10,7 @@ import { companyPrimaryLabel } from "@/lib/copilot-datos-company-display";
 import { COPILOT_COMMERCIAL_CLIENT_METADATA_KEY } from "@/lib/integrations/zeta/zeta-commercial-data-client-mapper";
 import { fetchInvoiceFinancialBalanceMap } from "@/lib/data/proto-analytics-read-repository";
 import { readInvoiceFinancial } from "@/lib/copilot-invoice-financial-read";
+import { getZetaSyncResourceFlowLabel } from "@/lib/integrations/zeta/zeta-sync-resource-keys";
 
 function str(v: unknown): string {
   if (v === null || v === undefined) return "";
@@ -130,16 +131,8 @@ export type Client360Payload = {
   zeta_metadata: unknown;
 };
 
-const RESOURCE_LABELS: Record<string, string> = {
-  zeta_commercial_client_v1: "Datos comerciales cliente",
-  zeta_customer_vouchers_v1: "Comprobantes por cliente",
-  zeta_collection_receipts_v1: "Recibos de cobranza",
-  zeta_saldos_pendientes_v1: "Saldos pendientes",
-  zeta_clients_v1: "Clientes / contactos",
-};
-
 function resourceLabel(flow: string): string {
-  return RESOURCE_LABELS[flow] ?? flow;
+  return getZetaSyncResourceFlowLabel(flow);
 }
 
 function parseCommercialBlock(zeta_metadata: unknown): Client360CommercialBlock | null {

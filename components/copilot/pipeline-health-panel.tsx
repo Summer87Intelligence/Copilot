@@ -13,21 +13,18 @@ import {
 } from "lucide-react";
 
 import type { PipelineHealthSummary, PipelineHealthStatus } from "@/lib/data/zeta-pipeline-health";
+import { ZETA_PIPELINE_NAMES } from "@/lib/data/zeta-pipeline-run-types";
 import {
   derivePipelineAlerts,
   type RealtimeConnectionStatus,
 } from "@/lib/copilot-pipeline-health-realtime";
-
-const PIPELINE_LABELS: Record<string, string> = {
-  "zeta-sync-saldos": "Saldos",
-  "zeta-sync-vouchers": "Facturas",
-  "zeta-sync-contacts": "Contactos",
-};
+import { getZetaPipelineDisplayLabel } from "@/lib/integrations/zeta/zeta-sync-resource-keys";
 
 const INTERVAL_LABELS: Record<string, string> = {
-  "zeta-sync-saldos": "cada 3 h",
-  "zeta-sync-vouchers": "cada 6 h",
-  "zeta-sync-contacts": "diario",
+  [ZETA_PIPELINE_NAMES.SALDOS]: "cada 3 h",
+  [ZETA_PIPELINE_NAMES.VOUCHERS]: "cada 6 h",
+  [ZETA_PIPELINE_NAMES.CONTACTS]: "diario",
+  [ZETA_PIPELINE_NAMES.VENDOR_PAYMENTS]: "diario",
 };
 
 function statusConfig(status: PipelineHealthStatus): {
@@ -165,7 +162,7 @@ function AlertsBar({ summaries }: { summaries: PipelineHealthSummary[] }) {
   const alerts = derivePipelineAlerts(summaries);
   if (alerts.length === 0) return null;
 
-  const pipelineLabel = (name: string) => PIPELINE_LABELS[name] ?? name;
+  const pipelineLabel = getZetaPipelineDisplayLabel;
 
   return (
     <div
@@ -195,7 +192,7 @@ function AlertsBar({ summaries }: { summaries: PipelineHealthSummary[] }) {
 
 function PipelineCard({ summary }: { summary: PipelineHealthSummary }) {
   const { icon, label, pill } = statusConfig(summary.status);
-  const pipelineLabel = PIPELINE_LABELS[summary.pipeline_name] ?? summary.pipeline_name;
+  const pipelineLabel = getZetaPipelineDisplayLabel(summary.pipeline_name);
   const intervalLabel = INTERVAL_LABELS[summary.pipeline_name] ?? "—";
 
   return (

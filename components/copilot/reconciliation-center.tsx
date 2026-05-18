@@ -28,6 +28,7 @@ import {
   XCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { getZetaSyncResourceFlowLabel } from "@/lib/integrations/zeta/zeta-sync-resource-keys";
 
 import {
   formatCarteraInteger,
@@ -279,15 +280,16 @@ function SyncHealth({ syncStates }: { syncStates: readonly SyncStateSummary[] })
 }
 
 function SyncRow({ state }: { state: SyncStateSummary }) {
+  const label = getZetaSyncResourceFlowLabel(state.resource_flow);
   return (
     <li className="grid grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5">
       <SyncStatusDot status={state.status} />
       <div className="min-w-0">
         <p className="truncate text-sm font-medium text-[var(--copilot-ink)]">
-          {state.resource_flow}
+          {label}
         </p>
         <p className="truncate text-[11px] text-[var(--copilot-ink-muted)]">
-          {formatRelativeAgeHours(state.ageHours)} ·{" "}
+          {state.resource_flow} · {formatRelativeAgeHours(state.ageHours)} ·{" "}
           {state.bootstrap_completed ? "bootstrap completo" : "bootstrap pendiente"}
         </p>
       </div>

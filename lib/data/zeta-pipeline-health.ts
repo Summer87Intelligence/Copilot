@@ -31,6 +31,7 @@ export const PIPELINE_EXPECTED_INTERVALS_MS: Record<string, number> = {
   [ZETA_PIPELINE_NAMES.SALDOS]: 3 * 60 * 60 * 1_000,    // 3 h
   [ZETA_PIPELINE_NAMES.VOUCHERS]: 6 * 60 * 60 * 1_000,  // 6 h
   [ZETA_PIPELINE_NAMES.CONTACTS]: 24 * 60 * 60 * 1_000, // 24 h
+  [ZETA_PIPELINE_NAMES.VENDOR_PAYMENTS]: 24 * 60 * 60 * 1_000, // diario 07:00 UTC
 };
 
 /**

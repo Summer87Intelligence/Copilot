@@ -3,8 +3,7 @@
  * → `proto_payments`.
  */
 
-import { applyProtoActiveListFilter } from "@/lib/copilot-proto-active";
-import { protoCreatePayment, protoUpdatePayment } from "@/lib/copilot-proto-crud-service";
+import { persistZetaVendorPaymentRow } from "@/lib/integrations/zeta/zeta-vendor-payment-persist";
 import type { OperationalSupabase } from "@/lib/data/supabase-operational-data";
 import {
   insertZetaSyncRun,
@@ -25,8 +24,33 @@ import {
   mapZetaVendorPaymentToCopilot,
 } from "@/lib/integrations/zeta/zeta-vendor-payments-mapper";
 import { resolveZetaVendorPaymentsRestMethod } from "@/lib/integrations/zeta/zeta-vendor-payments-rest-method";
+import {
+  ZETA_VENDOR_PAYMENTS_RESOURCE_FLOW,
+  ZETA_VENDOR_PAYMENTS_RESOURCE_FLOW_LEGACY_ALIASES,
+} from "@/lib/integrations/zeta/zeta-sync-resource-keys";
 
-export const ZETA_VENDOR_PAYMENTS_RESOURCE_FLOW = "zeta_vendor_payments_v1";
+export { ZETA_VENDOR_PAYMENTS_RESOURCE_FLOW };
+
+async function selectVendorPaymentsSyncState(
+  supabase: OperationalSupabase,
+  workspaceCompanyId: string
+) {
+  const canonical = await selectZetaSyncStateByResource(
+    supabase,
+    ZETA_VENDOR_PAYMENTS_RESOURCE_FLOW,
+    workspaceCompanyId
+  );
+  if (canonical) return canonical;
+  for (const legacyFlow of ZETA_VENDOR_PAYMENTS_RESOURCE_FLOW_LEGACY_ALIASES) {
+    const legacy = await selectZetaSyncStateByResource(
+      supabase,
+      legacyFlow,
+      workspaceCompanyId
+    );
+    if (legacy) return legacy;
+  }
+  return null;
+}
 
 const MAX_PAGES = 5_000;
 
@@ -70,24 +94,6 @@ async function fetchPageWithRetry(
       zeta_method: resolveZetaVendorPaymentsRestMethod(),
     }
   );
-}
-
-async function findActivePaymentIdByNumber(
-  client: OperationalSupabase,
-  workspaceCompanyId: string,
-  paymentNumber: string
-): Promise<string | null> {
-  const q = applyProtoActiveListFilter(
-    client
-      .from("proto_payments")
-      .select("id")
-      .eq("workspace_company_id", workspaceCompanyId.trim())
-      .eq("payment_number", paymentNumber),
-    "active"
-  );
-  const { data, error } = await q.maybeSingle();
-  if (error) return null;
-  return data && typeof (data as { id?: unknown }).id === "string" ? (data as { id: string }).id : null;
 }
 
 export type SyncZetaVendorPaymentsParams = {
@@ -152,7 +158,7 @@ export async function syncZetaVendorPayments(
 
   let runId: string | null = null;
   try {
-    const prior = await selectZetaSyncStateByResource(params.supabase, ZETA_VENDOR_PAYMENTS_RESOURCE_FLOW, wid);
+    const prior = await selectVendorPaymentsSyncState(params.supabase, wid);
     const syncMode: ZetaSyncMode = prior?.bootstrap_completed ? "incremental" : "bootstrap";
     const run = await insertZetaSyncRun(params.supabase, {
       resource_flow: ZETA_VENDOR_PAYMENTS_RESOURCE_FLOW,
@@ -265,26 +271,43 @@ export async function syncZetaVendorPayments(
         }
 
         const input = mapResult.input;
-        const existingId = await findActivePaymentIdByNumber(params.supabase, wid, input.payment_number);
-        if (existingId) {
-          const up = await protoUpdatePayment(
-            params.supabase,
-            existingId,
-            input,
-            wid,
-            { allowUnlinkedCompany: true }
+        const persistResult = await persistZetaVendorPaymentRow(
+          params.supabase,
+          wid,
+          input
+        );
+        if (!persistResult.ok) {
+          errors += 1;
+          console.info(
+            JSON.stringify({
+              timestamp: new Date().toISOString(),
+              source: "zeta_vendor_payments_sync",
+              kind: "row_persist_failed",
+              tenant: wid,
+              reason: persistResult.reason,
+              payment_number: input.payment_number,
+              registro_id: mapped.zeta_registro_id,
+              sync_run_id: runId ?? null,
+            })
           );
-          if (!up.ok) errors += 1;
-          else {
-            updated += 1;
-            persisted += 1;
-          }
+        } else if (persistResult.action === "inserted") {
+          inserted += 1;
+          persisted += 1;
         } else {
-          const cr = await protoCreatePayment(params.supabase, input, wid, { allowUnlinkedCompany: true });
-          if (!cr.ok) errors += 1;
-          else {
-            inserted += 1;
-            persisted += 1;
+          updated += 1;
+          persisted += 1;
+          if (persistResult.action === "updated_after_unique_race") {
+            console.info(
+              JSON.stringify({
+                timestamp: new Date().toISOString(),
+                source: "zeta_vendor_payments_sync",
+                kind: "row_persist_unique_race_recovered",
+                tenant: wid,
+                payment_number: input.payment_number,
+                registro_id: mapped.zeta_registro_id,
+                sync_run_id: runId ?? null,
+              })
+            );
           }
         }
       }
@@ -337,7 +360,7 @@ export async function syncZetaVendorPayments(
     );
 
     return {
-      success: true,
+      success: errors === 0,
       processed,
       inserted,
       updated,
@@ -350,6 +373,7 @@ export async function syncZetaVendorPayments(
       invalid_amount_rows: invalidAmountRows,
       negative_amount_rows: negativeAmountRows,
       pre_operational_rows: preOperationalRows,
+      message: errors > 0 ? `${errors} errores de persistencia` : undefined,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
