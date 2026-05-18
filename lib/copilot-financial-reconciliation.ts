@@ -20,6 +20,7 @@
 
 import {
   COPILOT_OPERATIONAL_START_DATE,
+  MIN_FINANCIAL_DATE,
 } from "@/lib/copilot-operational-period";
 
 export const STALE_WARNING_HOURS = 24;
@@ -334,6 +335,15 @@ export type FinancialConsistencyReport = {
   operationalPeriod: OperationalPeriod;
   /** Facturas históricas (pre-operacionales) con saldo pendiente, excluidas del período operativo. */
   excludedHistorical: ExcludedHistoricalSummary;
+  /**
+   * Facturas excluidas por política MIN_FINANCIAL_DATE (issue_date < 2026-01-01).
+   * Son visibles en DB pero no participan en ningún cálculo financiero.
+   */
+  excludedByMinFinancialDateCount: number;
+  /**
+   * Recibos excluidos por política MIN_FINANCIAL_DATE (receipt_date < 2026-01-01).
+   */
+  excludedByMinFinancialDateReceiptCount: number;
 };
 
 export type GenerateFinancialConsistencyReportInput = {
@@ -524,7 +534,7 @@ export function generateFinancialConsistencyReport(
   const operationalStart = COPILOT_OPERATIONAL_START_DATE;
   const operationalEnd = generatedAt.slice(0, 10); // YYYY-MM-DD from ISO
 
-  // --- Pre-pass: compute excludedHistorical (before period filter, over all non-voided invoices) ---
+  // --- excludedHistorical: raw input, before MIN filter (audit / explainability only) ---
   const excludedHistoricalAccum: Partial<Record<ReconciliationCurrencyCode, number>> = {};
   let excludedHistoricalCount = 0;
   for (const inv of input.invoices) {
@@ -545,6 +555,36 @@ export function generateFinancialConsistencyReport(
     excludedHistoricalAccum[code] = round2(
       (excludedHistoricalAccum[code] ?? 0) + pendingAmount
     );
+  }
+
+  // --- MIN_FINANCIAL_DATE hard exclusion (policy floor, query-level) ---
+  //
+  // Comprobantes con fecha anterior a MIN_FINANCIAL_DATE son excluidos de TODOS
+  // los cálculos operativos: cartera, aging, pendiente, KPIs, ratios, reconciliation.
+  // Los registros físicos NO se borran — solo se excluyen lógicamente aquí.
+  // excludedHistorical (arriba) sigue reportando el saldo histórico excluido para UI.
+  let excludedByMinFinancialDateCount = 0;
+  let excludedByMinFinancialDateReceiptCount = 0;
+
+  const invoices: InvoiceInput[] = [];
+  for (const inv of input.invoices) {
+    const d = (inv.issue_date ?? "").slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d < MIN_FINANCIAL_DATE) {
+      if (!isVoided(inv.status)) excludedByMinFinancialDateCount++;
+      continue;
+    }
+    invoices.push(inv);
+  }
+
+  const receiptsProvided = input.receipts !== undefined;
+  const receipts: ReceiptInput[] = [];
+  for (const rec of input.receipts ?? []) {
+    const d = (rec.receipt_date ?? "").slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d < MIN_FINANCIAL_DATE) {
+      if (!isVoided(rec.status ?? null)) excludedByMinFinancialDateReceiptCount++;
+      continue;
+    }
+    receipts.push(rec);
   }
 
   // Name lookup
@@ -639,7 +679,7 @@ export function generateFinancialConsistencyReport(
 
   let pre2026Count = 0;
 
-  for (const inv of input.invoices) {
+  for (const inv of invoices) {
     if (isVoided(inv.status)) {
       voidedInvoices++;
       continue;
@@ -769,8 +809,6 @@ export function generateFinancialConsistencyReport(
   // Esto es necesario para no romper tests y consumidores que aún no
   // alimentan recibos al motor. La nueva card "Cobrado en período" sólo
   // se activa cuando hay datos reales (`receiptsProvided === true`).
-  const receipts = input.receipts ?? [];
-  const receiptsProvided = input.receipts !== undefined;
   const collectedInPeriodByCurrency: Partial<Record<ReconciliationCurrencyCode, number>> = {};
   const collectedReceiptCountByCurrency: Partial<Record<ReconciliationCurrencyCode, number>> = {};
   const collectedPrePeriodByCurrency: Partial<Record<ReconciliationCurrencyCode, number>> = {};
@@ -819,7 +857,7 @@ export function generateFinancialConsistencyReport(
   const invoicedPrePeriodByCurrency: Partial<Record<ReconciliationCurrencyCode, number>> = {};
   const pendingPrePeriodByCurrency: Partial<Record<ReconciliationCurrencyCode, number>> = {};
   if (usePeriodFilter) {
-    for (const inv of input.invoices) {
+    for (const inv of invoices) {
       if (isVoided(inv.status)) continue;
       const issueSl = (inv.issue_date ?? "").slice(0, 10);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(issueSl)) continue;
@@ -1090,7 +1128,7 @@ export function generateFinancialConsistencyReport(
     pending_auto_close: 0,
     warnedPendingByCurrency: {},
   };
-  for (const inv of input.invoices) {
+  for (const inv of invoices) {
     const mc = inv.reconciliation_missing_count;
     if (mc == null || mc <= 0) continue;
     const status = (inv.status ?? "").trim().toLowerCase();
@@ -1132,5 +1170,7 @@ export function generateFinancialConsistencyReport(
       invoiceCount: excludedHistoricalCount,
       pendingByCurrency: excludedHistoricalAccum,
     },
+    excludedByMinFinancialDateCount,
+    excludedByMinFinancialDateReceiptCount,
   };
 }

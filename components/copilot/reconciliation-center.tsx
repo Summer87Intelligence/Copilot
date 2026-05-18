@@ -399,14 +399,14 @@ function buildChecks(report: FinancialConsistencyReport, isPreSync: boolean): Re
     },
   ];
 
-  // Pre-2026 check: solo visible cuando el período incluye datos históricos pre-sync
+  // Pre-2026 check: visible cuando el período incluye fechas históricas (isPreSync)
   if (isPreSync) {
     result.push({
       id: "pre-2026",
       label: "Pre-2026 invoices",
       description:
-        "Cobertura histórica de facturas previas a 2026 — pendiente de implementación en el motor.",
-      status: "pending",
+        "Filtro MIN_FINANCIAL_DATE activo: facturas y recibos anteriores a 2026-01-01 excluidos a nivel de query en backend. No afectan totales ni consumen cuota.",
+      status: "ok",
       icon: Hourglass,
     });
   }

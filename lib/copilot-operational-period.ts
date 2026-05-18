@@ -15,6 +15,21 @@
 /** Primer día del período operativo de Copilot (inclusive). */
 export const COPILOT_OPERATIONAL_START_DATE = "2026-01-01" as const;
 
+/**
+ * Piso mínimo de fechas financieras aceptadas en el dominio operativo.
+ *
+ * Todo comprobante (factura, NC, recibo) con fecha estrictamente anterior
+ * a esta constante es excluido lógicamente de TODOS los cálculos:
+ *  - cartera / aging / pendiente
+ *  - KPIs derivados, ratios, snapshots
+ *  - reconciliation, explainability, debt explorer
+ *
+ * La exclusión es SOLO lógica/query-level. Los registros físicos en DB NO
+ * se borran. Fuente única de verdad — nunca hardcodear "2026-01-01" en
+ * queries, motores ni componentes: importar siempre desde aquí.
+ */
+export const MIN_FINANCIAL_DATE = "2026-01-01" as const;
+
 /** Devuelve COPILOT_OPERATIONAL_START_DATE. Útil cuando se quiere llamada explícita. */
 export function getCopilotOperationalStartDate(): string {
   return COPILOT_OPERATIONAL_START_DATE;

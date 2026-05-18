@@ -152,7 +152,7 @@ export async function syncZetaVendorPayments(
 
   let runId: string | null = null;
   try {
-    const prior = await selectZetaSyncStateByResource(params.supabase, ZETA_VENDOR_PAYMENTS_RESOURCE_FLOW);
+    const prior = await selectZetaSyncStateByResource(params.supabase, ZETA_VENDOR_PAYMENTS_RESOURCE_FLOW, wid);
     const syncMode: ZetaSyncMode = prior?.bootstrap_completed ? "incremental" : "bootstrap";
     const run = await insertZetaSyncRun(params.supabase, {
       resource_flow: ZETA_VENDOR_PAYMENTS_RESOURCE_FLOW,
@@ -236,7 +236,6 @@ export async function syncZetaVendorPayments(
           skipped += 1;
           if (mapResult.reason === "invalid_fecha") {
             invalidDateRows += 1;
-            errors += 1;
           } else if (mapResult.reason === "negative_amount") {
             negativeAmountRows += 1;
           } else if (mapResult.reason === "pre_operational_date") {

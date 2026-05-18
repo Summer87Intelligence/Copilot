@@ -43,6 +43,7 @@ import {
 import {
   getCopilotOperationalEndDate,
   getCopilotOperationalStartDate,
+  MIN_FINANCIAL_DATE,
 } from "@/lib/copilot-operational-period";
 import { toSafeNumber } from "@/lib/copilot-numeric-parse";
 import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
@@ -242,11 +243,15 @@ export async function GET(request: NextRequest) {
     // `.order("id")` en invoices garantiza reproducibilidad si se trunca por
     // INVOICE_LIMIT.
     stage = "load_data";
+    // MIN_FINANCIAL_DATE filter aplicado a nivel Supabase para evitar que
+    // comprobantes históricos (< 2026-01-01) consuman slots del INVOICE_LIMIT.
+    // El motor también filtra como segunda línea de defensa.
     let receiptsQuery = supabase
       .from("proto_receipts")
       .select("id, company_id, currency_code, amount, receipt_date, status")
       .eq("workspace_company_id", workspaceId)
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .gte("receipt_date", MIN_FINANCIAL_DATE);
     if (mode === "period_only" && periodEnd) {
       receiptsQuery = receiptsQuery.lte("receipt_date", periodEnd);
     }
@@ -259,6 +264,7 @@ export async function GET(request: NextRequest) {
         )
         .eq("workspace_company_id", workspaceId)
         .eq("is_active", true)
+        .gte("issue_date", MIN_FINANCIAL_DATE)
         .order("id", { ascending: true })
         .limit(INVOICE_LIMIT),
       supabase
@@ -479,6 +485,8 @@ export async function GET(request: NextRequest) {
           balance_amount_strings: rawStringBalances,
           invoices_loaded: invoices.length,
           credit_notes_detected: creditNoteCount,
+          excluded_by_min_financial_date: report.excludedByMinFinancialDateCount,
+          excluded_receipts_by_min_financial_date: report.excludedByMinFinancialDateReceiptCount,
         },
         duration_ms: round2(performance.now() - t0),
       })
@@ -516,6 +524,8 @@ export async function GET(request: NextRequest) {
         invoice_limit: INVOICE_LIMIT,
         invoices_loaded: invoices.length,
         truncated: invoices.length >= INVOICE_LIMIT,
+        excluded_by_min_financial_date: report.excludedByMinFinancialDateCount,
+        excluded_receipts_by_min_financial_date: report.excludedByMinFinancialDateReceiptCount,
         requestId,
       },
     });

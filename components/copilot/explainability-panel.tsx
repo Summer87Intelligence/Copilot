@@ -192,28 +192,47 @@ function buildItems(
           icon: CalendarX,
         });
       }
+    } else if (historical.invoiceCount > 0) {
+      const pendingStr =
+        historicalPendingEntries.length > 0
+          ? ` Saldo histórico pendiente: ${historicalPendingEntries
+              .map((c) =>
+                formatCarteraMoney(c, historical.pendingByCurrency[c] ?? 0, {
+                  fractionDigits: 0,
+                })
+              )
+              .join(" · ")}.`
+          : "";
+      items.push({
+        id: "pre-2026",
+        label: "Deuda histórica excluida del saldo operativo",
+        description: `${formatCarteraInteger(historical.invoiceCount)} factura${
+          historical.invoiceCount === 1 ? "" : "s"
+        } con fecha anterior al 01/01/2026 excluida${historical.invoiceCount === 1 ? "" : "s"} por política MIN_FINANCIAL_DATE.${pendingStr}`,
+        status: "info",
+        count: historical.invoiceCount,
+        icon: CalendarX,
+      });
+    } else if (gaps.pre2026InvoiceCount > 0) {
+      items.push({
+        id: "pre-2026-leak",
+        label: "Facturas pre-2026 en saldo operativo",
+        description: `${formatCarteraInteger(gaps.pre2026InvoiceCount)} factura${
+          gaps.pre2026InvoiceCount === 1 ? "" : "s"
+        } con fecha anterior al 01/01/2026 aparece${gaps.pre2026InvoiceCount === 1 ? "" : "n"} en el saldo operativo. Revisar filtro MIN_FINANCIAL_DATE.`,
+        status: "warn",
+        count: gaps.pre2026InvoiceCount,
+        icon: CalendarX,
+      });
     } else {
-      if (gaps.pre2026InvoiceCount > 0) {
-        items.push({
-          id: "pre-2026",
-          label: "Facturas pre-2026 incluidas",
-          description: `${formatCarteraInteger(gaps.pre2026InvoiceCount)} factura${
-            gaps.pre2026InvoiceCount === 1 ? "" : "s"
-          } con fecha anterior al 01/01/2026 incluida${gaps.pre2026InvoiceCount === 1 ? "" : "s"} en el saldo. Verificar si corresponde mantenerlas abiertas.`,
-          status: gaps.pre2026InvoiceCount > 5 ? "warn" : "info",
-          count: gaps.pre2026InvoiceCount,
-          icon: CalendarX,
-        });
-      } else {
-        items.push({
-          id: "pre-2026",
-          label: "Facturas pre-2026",
-          description: "Sin facturas previas a 2026 con saldo abierto en esta vista.",
-          status: "ok",
-          count: 0,
-          icon: CalendarX,
-        });
-      }
+      items.push({
+        id: "pre-2026",
+        label: "Facturas pre-2026",
+        description: "Sin facturas previas a 2026 con saldo abierto en esta vista.",
+        status: "ok",
+        count: 0,
+        icon: CalendarX,
+      });
     }
   }
 
@@ -292,6 +311,31 @@ function buildItems(
       count: voidedInvoices,
       icon: FileX2,
     });
+  }
+
+  // 7. Excluidas por política histórica MIN_FINANCIAL_DATE (< 2026-01-01)
+  {
+    const excInv = report.excludedByMinFinancialDateCount ?? 0;
+    const excRec = report.excludedByMinFinancialDateReceiptCount ?? 0;
+    if (excInv > 0 || excRec > 0) {
+      const parts: string[] = [];
+      if (excInv > 0)
+        parts.push(
+          `${formatCarteraInteger(excInv)} factura${excInv === 1 ? "" : "s"}`
+        );
+      if (excRec > 0)
+        parts.push(
+          `${formatCarteraInteger(excRec)} recibo${excRec === 1 ? "" : "s"}`
+        );
+      items.push({
+        id: "min-financial-date",
+        label: "Excluidas por política histórica (< 2026-01-01)",
+        description: `${parts.join(" y ")} con fecha anterior al 01/01/2026 excluida${excInv + excRec === 1 ? "" : "s"} a nivel de query. No consumen cuota de carga ni afectan totales. Política MIN_FINANCIAL_DATE aplicada en backend.`,
+        status: "info",
+        count: excInv + excRec,
+        icon: CalendarX,
+      });
+    }
   }
 
   return items;

@@ -463,7 +463,9 @@ describe("period filter (mode: period_only)", () => {
     const uyu = report.currencies.find((c) => c.currencyCode === "UYU");
     expect(uyu?.totalPending).toBe(1000);
     expect(uyu?.invoiceCount).toBe(1);
-    expect(report.gaps.invoicesExcludedByPeriodFilter).toBe(2);
+    // i2 excluded by MIN_FINANCIAL_DATE before period filter; i3 outside period window.
+    expect(report.gaps.invoicesExcludedByPeriodFilter).toBe(1);
+    expect(report.excludedByMinFinancialDateCount).toBe(1);
   });
 
   it("includes invoices on period boundary dates", () => {
@@ -486,7 +488,8 @@ describe("period filter (mode: period_only)", () => {
       "2026-12-31"
     );
     expect(report.totalInvoices).toBe(0);
-    expect(report.gaps.invoicesExcludedByPeriodFilter).toBe(1);
+    expect(report.gaps.invoicesExcludedByPeriodFilter).toBe(0);
+    expect(report.excludedByMinFinancialDateCount).toBe(1);
     expect(report.currencies).toEqual([]);
   });
 
@@ -522,8 +525,9 @@ describe("period filter (mode: period_only)", () => {
       "2026-01-01",
       "2026-12-31"
     );
-    // 1 included, 2 excluded out of 3 total non-voided
-    expect(report.metrics.period_exclusion_ratio).toBeCloseTo(2 / 3, 2);
+    // 1 in period; i2 dropped by MIN; i3 excluded by period (2 of 2 post-MIN invoices)
+    expect(report.metrics.period_exclusion_ratio).toBeCloseTo(0.5, 2);
+    expect(report.excludedByMinFinancialDateCount).toBe(1);
   });
 });
 
@@ -581,20 +585,30 @@ describe("gaps explainability", () => {
 // ---------------------------------------------------------------------------
 
 describe("agingByCurrency", () => {
-  // NOW = "2026-01-15T12:00:00.000Z"
-  // Days from issue_date to NOW:
-  //   "2026-01-15" → 0 days  → 0_30
-  //   "2026-01-10" → 5 days  → 0_30
-  //   "2025-12-15" → 31 days → 31_60
-  //   "2025-11-15" → 61 days → 61_90
-  //   "2025-10-15" → 92 days → 90_plus
+  const AGING_NOW = "2026-05-15T12:00:00.000Z";
+
+  function runAging(invoices: InvoiceInput[]) {
+    return generateFinancialConsistencyReport({
+      workspaceId: "ws-1",
+      invoices,
+      companies: [],
+      syncStates: [],
+      now: AGING_NOW,
+    });
+  }
+
+  // AGING_NOW = 2026-05-15 — fechas >= MIN_FINANCIAL_DATE (2026-01-01):
+  //   "2026-05-10" → 5 days  → 0_30
+  //   "2026-04-10" → 35 days → 31_60
+  //   "2026-03-10" → 66 days → 61_90
+  //   "2026-02-10" → 94 days → 90_plus
 
   it("assigns invoices to correct aging buckets", () => {
-    const report = run([
-      inv({ id: "i1", currency_code: "UYU", total_amount: 1000, balance_amount: 1000, issue_date: "2026-01-10" }),
-      inv({ id: "i2", currency_code: "UYU", total_amount: 500,  balance_amount: 500,  issue_date: "2025-12-15" }),
-      inv({ id: "i3", currency_code: "UYU", total_amount: 200,  balance_amount: 200,  issue_date: "2025-11-15" }),
-      inv({ id: "i4", currency_code: "UYU", total_amount: 100,  balance_amount: 100,  issue_date: "2025-10-15" }),
+    const report = runAging([
+      inv({ id: "i1", currency_code: "UYU", total_amount: 1000, balance_amount: 1000, issue_date: "2026-05-10" }),
+      inv({ id: "i2", currency_code: "UYU", total_amount: 500,  balance_amount: 500,  issue_date: "2026-04-10" }),
+      inv({ id: "i3", currency_code: "UYU", total_amount: 200,  balance_amount: 200,  issue_date: "2026-03-10" }),
+      inv({ id: "i4", currency_code: "UYU", total_amount: 100,  balance_amount: 100,  issue_date: "2026-02-10" }),
     ]);
     const uyu = report.agingByCurrency.UYU;
     expect(uyu).toBeDefined();
@@ -609,9 +623,9 @@ describe("agingByCurrency", () => {
   });
 
   it("computes percentages relative to total pending in that currency", () => {
-    const report = run([
-      inv({ id: "i1", currency_code: "UYU", total_amount: 800, balance_amount: 800, issue_date: "2026-01-10" }),
-      inv({ id: "i2", currency_code: "UYU", total_amount: 200, balance_amount: 200, issue_date: "2025-12-15" }),
+    const report = runAging([
+      inv({ id: "i1", currency_code: "UYU", total_amount: 800, balance_amount: 800, issue_date: "2026-05-10" }),
+      inv({ id: "i2", currency_code: "UYU", total_amount: 200, balance_amount: 200, issue_date: "2026-04-10" }),
     ]);
     const uyu = report.agingByCurrency.UYU!;
     const b0_30  = uyu.find(b => b.range === "0_30")!;
@@ -621,9 +635,9 @@ describe("agingByCurrency", () => {
   });
 
   it("excludes zero-balance invoices from aging", () => {
-    const report = run([
-      inv({ id: "i1", currency_code: "UYU", total_amount: 1000, balance_amount: 0,    issue_date: "2026-01-10" }),
-      inv({ id: "i2", currency_code: "UYU", total_amount: 500,  balance_amount: 500,  issue_date: "2025-12-15" }),
+    const report = runAging([
+      inv({ id: "i1", currency_code: "UYU", total_amount: 1000, balance_amount: 0,    issue_date: "2026-05-10" }),
+      inv({ id: "i2", currency_code: "UYU", total_amount: 500,  balance_amount: 500,  issue_date: "2026-04-10" }),
     ]);
     const uyu = report.agingByCurrency.UYU!;
     const b0_30 = uyu.find(b => b.range === "0_30")!;
@@ -644,9 +658,9 @@ describe("agingByCurrency", () => {
   });
 
   it("USD and UYU aged independently", () => {
-    const report = run([
-      inv({ id: "i1", currency_code: "USD", total_amount: 100, balance_amount: 100, issue_date: "2025-12-15" }),
-      inv({ id: "i2", currency_code: "UYU", total_amount: 200, balance_amount: 200, issue_date: "2026-01-10" }),
+    const report = runAging([
+      inv({ id: "i1", currency_code: "USD", total_amount: 100, balance_amount: 100, issue_date: "2026-04-10" }),
+      inv({ id: "i2", currency_code: "UYU", total_amount: 200, balance_amount: 200, issue_date: "2026-05-10" }),
     ]);
     expect(report.agingByCurrency.USD).toBeDefined();
     expect(report.agingByCurrency.UYU).toBeDefined();
@@ -678,10 +692,16 @@ describe("agingByCurrency", () => {
 
 describe("dominantAgingRange", () => {
   it("sets dominantAgingRange to bucket with highest pending amount", () => {
-    const report = run([
-      inv({ id: "i1", company_id: "c1", currency_code: "UYU", total_amount: 1000, balance_amount: 1000, issue_date: "2025-12-15" }), // 31_60
-      inv({ id: "i2", company_id: "c1", currency_code: "UYU", total_amount: 200,  balance_amount: 200,  issue_date: "2026-01-10" }), // 0_30
-    ]);
+    const report = generateFinancialConsistencyReport({
+      workspaceId: "ws-1",
+      invoices: [
+        inv({ id: "i1", company_id: "c1", currency_code: "UYU", total_amount: 1000, balance_amount: 1000, issue_date: "2026-04-10" }),
+        inv({ id: "i2", company_id: "c1", currency_code: "UYU", total_amount: 200,  balance_amount: 200,  issue_date: "2026-05-10" }),
+      ],
+      companies: [],
+      syncStates: [],
+      now: "2026-05-15T12:00:00.000Z",
+    });
     const client = report.staleClients.find(c => c.companyId === "c1");
     expect(client?.dominantAgingRange).toBe("31_60");
   });
@@ -708,21 +728,24 @@ describe("dominantAgingRange", () => {
 // ---------------------------------------------------------------------------
 
 describe("pre2026InvoiceCount", () => {
-  it("counts non-voided invoices with issue_date before 2026", () => {
+  it("is 0 in operational totals when pre-2026 invoices are excluded by MIN_FINANCIAL_DATE", () => {
     const report = run([
       inv({ id: "i1", currency_code: "UYU", total_amount: 1000, balance_amount: 1000, issue_date: "2025-12-31" }),
       inv({ id: "i2", currency_code: "UYU", total_amount: 500,  balance_amount: 500,  issue_date: "2025-01-01" }),
       inv({ id: "i3", currency_code: "UYU", total_amount: 200,  balance_amount: 200,  issue_date: "2026-01-01" }),
     ]);
-    expect(report.gaps.pre2026InvoiceCount).toBe(2);
+    expect(report.gaps.pre2026InvoiceCount).toBe(0);
+    expect(report.excludedByMinFinancialDateCount).toBe(2);
+    expect(report.totalInvoices).toBe(1);
   });
 
-  it("excludes voided pre-2026 invoices", () => {
+  it("does not count voided pre-2026 in excludedByMinFinancialDate", () => {
     const report = run([
       inv({ id: "i1", currency_code: "UYU", total_amount: 1000, balance_amount: 1000, issue_date: "2025-12-31", status: "voided" }),
       inv({ id: "i2", currency_code: "UYU", total_amount: 500,  balance_amount: 500,  issue_date: "2025-12-31" }),
     ]);
-    expect(report.gaps.pre2026InvoiceCount).toBe(1);
+    expect(report.gaps.pre2026InvoiceCount).toBe(0);
+    expect(report.excludedByMinFinancialDateCount).toBe(1);
   });
 
   it("is 0 when all invoices are 2026+", () => {
@@ -730,6 +753,7 @@ describe("pre2026InvoiceCount", () => {
       inv({ id: "i1", currency_code: "UYU", total_amount: 1000, balance_amount: 1000, issue_date: "2026-01-01" }),
     ]);
     expect(report.gaps.pre2026InvoiceCount).toBe(0);
+    expect(report.excludedByMinFinancialDateCount).toBe(0);
   });
 });
 
@@ -923,10 +947,11 @@ describe("period_only mode with operational start date", () => {
     // Only i2 should be in totals
     expect(report.currencies[0]?.totalPending).toBe(2000);
     expect(report.totalInvoices).toBe(1);
-    expect(report.gaps.invoicesExcludedByPeriodFilter).toBe(1);
+    expect(report.gaps.invoicesExcludedByPeriodFilter).toBe(0);
+    expect(report.excludedByMinFinancialDateCount).toBe(1);
   });
 
-  it("all_outstanding includes pre-2026 invoices in totals", () => {
+  it("all_outstanding excludes pre-2026 invoices from operational totals (MIN_FINANCIAL_DATE)", () => {
     const report = generateFinancialConsistencyReport({
       workspaceId: "ws-1",
       invoices: [
@@ -938,8 +963,11 @@ describe("period_only mode with operational start date", () => {
       now: NOW,
       mode: "all_outstanding",
     });
-    expect(report.currencies[0]?.totalPending).toBe(7000);
-    expect(report.totalInvoices).toBe(2);
+    expect(report.currencies[0]?.totalPending).toBe(2000);
+    expect(report.totalInvoices).toBe(1);
+    expect(report.excludedByMinFinancialDateCount).toBe(1);
+    expect(report.excludedHistorical.invoiceCount).toBe(1);
+    expect(report.excludedHistorical.pendingByCurrency.UYU).toBe(5000);
   });
 });
 
@@ -2019,6 +2047,101 @@ describe("notas de crédito: opt-in is_credit_note", () => {
     const uyu = report.currencies.find((c) => c.currencyCode === "UYU")!;
     expect(uyu.totalPending).toBe(1000); // NC ignorada por sin moneda
     expect(uyu.creditNoteCount).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MIN_FINANCIAL_DATE policy (2026-01-01 floor)
+// ---------------------------------------------------------------------------
+
+describe("MIN_FINANCIAL_DATE", () => {
+  it("excludes invoice with issue_date 2025 from operational totals", () => {
+    const report = run([
+      inv({ id: "pre", issue_date: "2025-12-31", total_amount: 5000, balance_amount: 5000 }),
+      inv({ id: "ok", issue_date: "2026-01-15", total_amount: 1000, balance_amount: 1000 }),
+    ]);
+    expect(report.excludedByMinFinancialDateCount).toBe(1);
+    expect(report.totalInvoices).toBe(1);
+    expect(report.currencies[0]?.totalPending).toBe(1000);
+  });
+
+  it("includes invoice with issue_date 2026-01-01", () => {
+    const report = run([
+      inv({ id: "boundary", issue_date: "2026-01-01", total_amount: 1000, balance_amount: 1000 }),
+    ]);
+    expect(report.excludedByMinFinancialDateCount).toBe(0);
+    expect(report.totalInvoices).toBe(1);
+  });
+
+  it("excludes receipt with receipt_date 2025", () => {
+    const report = generateFinancialConsistencyReport({
+      workspaceId: "ws-1",
+      invoices: [
+        inv({ id: "i", currency_code: "USD", issue_date: "2026-05-04", total_amount: 1000, balance_amount: 1000 }),
+      ],
+      receipts: [
+        makeReceipt({ id: "r-pre", currency_code: "USD", amount: 500, receipt_date: "2025-12-31" }),
+        makeReceipt({ id: "r-ok", currency_code: "USD", amount: 200, receipt_date: "2026-05-06" }),
+      ],
+      companies: [],
+      syncStates: [],
+      now: "2026-05-11T12:00:00Z",
+      mode: "period_only",
+      periodStart: "2026-05-01",
+      periodEnd: "2026-05-11",
+    });
+    expect(report.excludedByMinFinancialDateReceiptCount).toBe(1);
+    const usd = report.currencies.find((c) => c.currencyCode === "USD")!;
+    expect(usd.collectedInPeriod).toBe(200);
+  });
+
+  it("includes receipt with receipt_date 2026-01-01", () => {
+    const report = generateFinancialConsistencyReport({
+      workspaceId: "ws-1",
+      invoices: [
+        inv({ id: "i", currency_code: "USD", issue_date: "2026-05-04", total_amount: 1000, balance_amount: 1000 }),
+      ],
+      receipts: [
+        makeReceipt({ id: "r", currency_code: "USD", amount: 100, receipt_date: "2026-01-01" }),
+      ],
+      companies: [],
+      syncStates: [],
+      now: "2026-05-11T12:00:00Z",
+      mode: "period_only",
+      periodStart: "2026-05-01",
+      periodEnd: "2026-05-11",
+    });
+    expect(report.excludedByMinFinancialDateReceiptCount).toBe(0);
+    const usd = report.currencies.find((c) => c.currencyCode === "USD")!;
+    expect(usd.collectedInPeriod).toBe(0);
+  });
+
+  it("bruto - NC audit fields do not zero pending when NC is present", () => {
+    const report = run([
+      inv({ id: "fact", currency_code: "UYU", total_amount: 5000, balance_amount: 5000, issue_date: "2026-01-10" }),
+      inv({
+        id: "nc",
+        currency_code: "UYU",
+        total_amount: 1500,
+        balance_amount: 0,
+        is_credit_note: true,
+        issue_date: "2026-01-12",
+      }),
+    ]);
+    const uyu = report.currencies.find((c) => c.currencyCode === "UYU")!;
+    expect(uyu.totalInvoiced).toBe(5000);
+    expect(uyu.creditNoteAmount).toBe(1500);
+    expect(uyu.totalPending).toBe(5000);
+  });
+
+  it("dashboard non-zero regression: operational invoices still aggregate", () => {
+    const report = run([
+      inv({ id: "i1", currency_code: "UYU", total_amount: 500000, balance_amount: 500000, issue_date: "2026-01-10" }),
+      inv({ id: "i2", currency_code: "USD", total_amount: 10000, balance_amount: 10000, issue_date: "2026-01-10" }),
+    ]);
+    expect(report.currencies.length).toBe(2);
+    expect(report.currencies.find((c) => c.currencyCode === "UYU")?.totalPending).toBe(500000);
+    expect(report.currencies.find((c) => c.currencyCode === "USD")?.totalPending).toBe(10000);
   });
 });
 

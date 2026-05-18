@@ -30,6 +30,13 @@ import { createLogger } from "@/lib/observability/logger";
 
 export const ORPHAN_AUTO_CLOSE_THRESHOLD = 3;
 
+/**
+ * Período de gracia (días) desde `issue_date` antes de contar misses de saldos.
+ * Facturas creadas recientemente via CCV1 no han tenido tiempo de aparecer en
+ * `QuerySaldosPendientes` — no contarlas como orphans evita falsos positivos.
+ */
+export const ORPHAN_GRACE_PERIOD_DAYS = 14;
+
 const VOIDED_STATUSES = new Set([
   "paid", "void", "voided", "canceled", "cancelled",
   "anulada", "anulado", "annulled", "annul",
@@ -136,6 +143,7 @@ type PendingInvoiceRow = {
   invoice_number: string;
   balance_amount: number;
   status: string | null;
+  issue_date: string | null;
   zeta_metadata: unknown;
 };
 
@@ -161,7 +169,7 @@ export async function reconcileMissingPendingInvoices(
   // 1. Load all active invoices with positive balance for this company
   const { data, error } = await supabase
     .from("proto_invoices")
-    .select("id, invoice_number, balance_amount, status, zeta_metadata")
+    .select("id, invoice_number, balance_amount, status, issue_date, zeta_metadata")
     .eq("workspace_company_id", wid)
     .eq("company_id", protoCompanyId)
     .eq("is_active", true)
@@ -218,7 +226,58 @@ export async function reconcileMissingPendingInvoices(
       continue;
     }
 
-    // Not seen in this sync — orphan candidate
+    // --- Guard 1: never confirmed as pending in saldos ---
+    // last_seen_in_zeta_at === null means Zeta's QuerySaldosPendientes never
+    // returned this invoice. Counting it as "missing" is a false positive —
+    // it could be a new CCV1 invoice that hasn't been processed by saldos yet,
+    // or a mis-matched duplicate. If it incorrectly accumulated count > 0 in
+    // previous runs, reset it now to repair that state.
+    if (recState.last_seen_in_zeta_at === null) {
+      if (recState.pending_sync_missing_count > 0) {
+        const repairMeta = mergeZetaReconciliationState(row.zeta_metadata, {
+          pending_sync_missing_count: 0,
+        });
+        const { error: repErr } = await supabase
+          .from("proto_invoices")
+          .update({ zeta_metadata: repairMeta })
+          .eq("id", row.id)
+          .eq("workspace_company_id", wid);
+        if (repErr) {
+          result.db_errors++;
+          pipelineReconcileLog("warn", "zeta_reconcile_repair_never_seen_error", {
+            invoice_id: row.id, error: repErr.message, sync_run_id: opts.syncRunId,
+          });
+        } else {
+          pipelineReconcileLog("info", "zeta_reconcile_repair_never_seen", {
+            invoice_id: row.id,
+            invoice_number: row.invoice_number,
+            prev_missing_count: recState.pending_sync_missing_count,
+            reason: "never_seen_in_saldos",
+            sync_run_id: opts.syncRunId,
+          });
+        }
+      }
+      result.skipped.push(buildEntry(row, protoCompanyId, 0, "skipped"));
+      continue;
+    }
+
+    // --- Guard 2: grace period for recently issued invoices ---
+    // Even if last_seen_in_zeta_at is set, invoices within the grace window
+    // may be experiencing a transient saldos lag (e.g., end-of-month batch).
+    // Don't start counting misses until the invoice is old enough.
+    const issueYmd = (row.issue_date ?? "").slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(issueYmd)) {
+      const issueMs = Date.parse(issueYmd + "T12:00:00Z");
+      const ageDays = Number.isFinite(issueMs)
+        ? (Date.now() - issueMs) / (1000 * 60 * 60 * 24)
+        : Infinity;
+      if (ageDays < ORPHAN_GRACE_PERIOD_DAYS) {
+        result.skipped.push(buildEntry(row, protoCompanyId, recState.pending_sync_missing_count, "skipped"));
+        continue;
+      }
+    }
+
+    // Not seen in this sync — confirmed orphan candidate
     result.orphans_detected++;
     const newCount = recState.pending_sync_missing_count + 1;
     const action = classifyOrphanAction(newCount);

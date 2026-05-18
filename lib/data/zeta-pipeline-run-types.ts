@@ -36,6 +36,11 @@ export const ZETA_PIPELINE_NAMES = {
    * o triggers manuales. Cada 30 min.
    */
   RESYNC_WORKER: "zeta-resync-worker",
+  /**
+   * Vendor payments — recibos de pago a proveedores vía `RESTRecibosPagosV1QueryComprobantes`.
+   * Diario a las 07:00 UTC.
+   */
+  VENDOR_PAYMENTS: "zeta-sync-vendor-payments",
 } as const;
 
 export type ZetaPipelineName =
