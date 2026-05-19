@@ -1,6 +1,9 @@
 import { readInvoiceFinancial } from "@/lib/copilot-invoice-financial-read";
 import type { OperationalSupabase } from "@/lib/data/supabase-operational-data";
-import { COPILOT_OPERATIONAL_START_DATE } from "@/lib/copilot-operational-period";
+import {
+  COPILOT_OPERATIONAL_START_DATE,
+  MIN_FINANCIAL_DATE,
+} from "@/lib/copilot-operational-period";
 
 export const FINANCIAL_SNAPSHOT_ROW_CAP = 5000;
 const ROW_CAP = FINANCIAL_SNAPSHOT_ROW_CAP;
@@ -430,13 +433,17 @@ export async function loadClientPortfolioSourceRows(
     (() => {
       let q = client.from("proto_companies").select("*").eq("is_active", true);
       if (wid) q = q.eq("workspace_company_id", wid);
-      return q.limit(ROW_CAP);
+      return q.order("name", { ascending: true }).limit(ROW_CAP);
     })(),
     (() => {
       copilotProtoQueryDebugLog("proto_invoices", wid, Boolean(wid));
-      let q = client.from("proto_invoices").select("*").eq("is_active", true);
+      let q = client
+        .from("proto_invoices")
+        .select("*")
+        .eq("is_active", true)
+        .gte("issue_date", MIN_FINANCIAL_DATE);
       if (wid) q = q.eq("workspace_company_id", wid);
-      return q.limit(ROW_CAP);
+      return q.order("id", { ascending: true }).limit(ROW_CAP);
     })(),
     (() => {
       copilotProtoQueryDebugLog("proto_receipts", wid, Boolean(wid));

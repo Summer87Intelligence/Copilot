@@ -31,12 +31,29 @@ function shareLabel(sharePct: number): string {
   return `${(sharePct * 100).toLocaleString("es-AR", { maximumFractionDigits: 1 })}%`;
 }
 
+type ClientListFilter = "all" | "with_debt" | "without_debt" | "no_contact";
+
+const FILTER_OPTIONS: Array<{ id: ClientListFilter; label: string }> = [
+  { id: "all", label: "Todos" },
+  { id: "with_debt", label: "Con deuda" },
+  { id: "without_debt", label: "Sin deuda" },
+  { id: "no_contact", label: "Sin datos de contacto" },
+];
+
+function matchesClientFilter(row: ClientPortfolioRow, filter: ClientListFilter): boolean {
+  if (filter === "with_debt") return row.total_debt > 0;
+  if (filter === "without_debt") return row.total_debt <= 0;
+  if (filter === "no_contact") return !row.has_contact_data;
+  return true;
+}
+
 export default function CopilotClientesPage() {
   const [load, setLoad] = useState<ClientPortfolioLoad | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isEvidenceOpen, setIsEvidenceOpen] = useState(false);
+  const [clientFilter, setClientFilter] = useState<ClientListFilter>("all");
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -73,6 +90,11 @@ export default function CopilotClientesPage() {
       setIsEvidenceOpen(true);
     }
   }, [load]);
+
+  const visibleRows = useMemo(() => {
+    if (!load) return [];
+    return load.rows.filter((row) => matchesClientFilter(row, clientFilter));
+  }, [load, clientFilter]);
 
   const activeDetail: ClientCompanyDetail | null = useMemo(() => {
     if (!load || !selectedId) return null;
@@ -132,12 +154,47 @@ export default function CopilotClientesPage() {
               </CopilotCard>
             </div>
 
+            {load.directory_diagnostics &&
+            (load.directory_diagnostics.debtors_missing_company_row > 0 ||
+              load.directory_diagnostics.debtors_inactive_company_row > 0) ? (
+              <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 px-4 py-3 text-sm text-amber-950">
+                Se incorporaron clientes con deuda en facturas que no figuraban solo en empresas
+                activas (
+                {load.directory_diagnostics.debtors_missing_company_row} derivados de facturación,{" "}
+                {load.directory_diagnostics.debtors_inactive_company_row} inactivos en
+                proto_companies).
+              </div>
+            ) : null}
+
             <CopilotCard className="overflow-hidden p-0">
               <div className="border-b border-[var(--copilot-border)] px-4 py-3">
                 <CopilotSectionTitle
                   title="Cartera activa"
-                  subtitle="Ordenada por facturación total (total_amount) — datos proto en vivo."
+                  subtitle="Directorio unificado: empresas + deudores en facturas (misma base que Cartera)."
                 />
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {FILTER_OPTIONS.map((opt) => {
+                    const active = clientFilter === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setClientFilter(opt.id)}
+                        className={[
+                          "rounded-full px-3 py-1 text-xs font-medium transition",
+                          active
+                            ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]"
+                            : "bg-white/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-white",
+                        ].join(" ")}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                  <span className="self-center text-[11px] text-[var(--copilot-ink-muted)]">
+                    {visibleRows.length} de {load.rows.length} visibles
+                  </span>
+                </div>
               </div>
               {load.rows.length === 0 ? (
                 <p className="px-4 py-5 text-sm text-[var(--copilot-ink-muted)]">
@@ -159,7 +216,7 @@ export default function CopilotClientesPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {load.rows.map((row, i) => {
+                      {visibleRows.map((row, i) => {
                         const isSelected = row.company_id === selectedId;
                         const evidenceOpenForRow = isEvidenceOpen && isSelected;
                         return (
@@ -180,6 +237,21 @@ export default function CopilotClientesPage() {
                                 >
                                   {row.name}
                                 </CopilotInteractiveText>
+                                {row.total_debt > 0 ? (
+                                  <span className="inline-block rounded-full border border-rose-200/70 bg-rose-50/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-rose-800">
+                                    Con deuda
+                                  </span>
+                                ) : null}
+                                {row.derived_from_debt ? (
+                                  <span className="inline-block rounded-full border border-amber-200/70 bg-amber-50/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-amber-900">
+                                    Derivado de facturación
+                                  </span>
+                                ) : null}
+                                {!row.has_contact_data ? (
+                                  <span className="inline-block rounded-full border border-[var(--copilot-border)] bg-white/70 px-2 py-0.5 text-[10px] font-medium text-[var(--copilot-ink-muted)]">
+                                    Sin dato de contacto
+                                  </span>
+                                ) : null}
                                 {evidenceOpenForRow ? (
                                   <span className="inline-block rounded-full bg-[var(--copilot-accent-soft)] px-2 py-0.5 text-[11px] font-semibold text-[var(--copilot-accent)]">
                                     Respaldo abierto

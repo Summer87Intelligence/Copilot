@@ -12,7 +12,7 @@
  *  - Sin cálculos financieros: solo deriva ratios o lee subtotales del backend.
  */
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   AlertTriangle,
@@ -44,6 +44,8 @@ import {
   type NormalizedCurrencyMetrics,
 } from "@/lib/copilot-cartera-cards-source";
 import { FINANCIAL_UX_COPY } from "@/lib/copilot-financial-ux-copy";
+import { buildCurrentDebtSnapshot } from "@/lib/copilot-cartera-pending-debt-snapshot";
+import { CarteraPendingDrawer } from "@/components/copilot/cartera-pending-drawer";
 
 // ---------------------------------------------------------------------------
 // Tipos de card y badges
@@ -71,6 +73,10 @@ type SummaryCard = {
   tooltip?: string;
   /** Marca la card como afectada por datos históricos pre-sync. */
   isHistoricalPartial?: boolean;
+  /** Abre el drawer de deuda pendiente (solo cards `cartera-*` con saldo > 0). */
+  clickable?: boolean;
+  onClick?: () => void;
+  actionLabel?: string;
   /**
    * Opcional: desglose de 2 líneas bajo el subtitle.
    * Usado en cards de saldo pendiente para mostrar período / anterior.
@@ -472,6 +478,24 @@ export function ExecutiveSummaryCards({
   showBadges?: boolean;
 }) {
   const reduce = useReducedMotion();
+  const [pendingDrawerCurrency, setPendingDrawerCurrency] =
+    useState<ReconciliationCurrencyCode | null>(null);
+
+  const openPendingDrawer = useCallback((currency: ReconciliationCurrencyCode) => {
+    setPendingDrawerCurrency(currency);
+  }, []);
+
+  const closePendingDrawer = useCallback(() => {
+    setPendingDrawerCurrency(null);
+  }, []);
+
+  const pendingSnapshot = useMemo(
+    () =>
+      pendingDrawerCurrency
+        ? buildCurrentDebtSnapshot(report, pendingDrawerCurrency)
+        : null,
+    [report, pendingDrawerCurrency]
+  );
 
   // Normaliza `report.currencies` (array | objeto | snake_case | strings) a un
   // índice por moneda. Esto es lo ÚNICO que las cards consultan para emitido /
@@ -575,21 +599,44 @@ export function ExecutiveSummaryCards({
 
   const showBadge = showBadges;
 
+  const cardsWithPendingActions = useMemo(() => {
+    return cards.map((card) => {
+      if (card.id !== "cartera-UYU" && card.id !== "cartera-USD") return card;
+      if (card.value <= 0) return card;
+      const currency: ReconciliationCurrencyCode =
+        card.id === "cartera-UYU" ? "UYU" : "USD";
+      return {
+        ...card,
+        clickable: true,
+        actionLabel: "Ver facturas",
+        onClick: () => openPendingDrawer(currency),
+      };
+    });
+  }, [cards, openPendingDrawer]);
+
   return (
-    <motion.section
-      aria-label="Resumen ejecutivo"
-      className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4"
-      initial={reduce ? false : "hidden"}
-      animate="visible"
-      variants={{
-        hidden: {},
-        visible: { transition: { staggerChildren: 0.05, delayChildren: 0.04 } },
-      }}
-    >
-      {cards.map((card) => (
-        <SummaryCardView key={card.id} card={card} showBadge={showBadge} />
-      ))}
-    </motion.section>
+    <>
+      <motion.section
+        aria-label="Resumen ejecutivo"
+        className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4"
+        initial={reduce ? false : "hidden"}
+        animate="visible"
+        variants={{
+          hidden: {},
+          visible: { transition: { staggerChildren: 0.05, delayChildren: 0.04 } },
+        }}
+      >
+        {cardsWithPendingActions.map((card) => (
+          <SummaryCardView key={card.id} card={card} showBadge={showBadge} />
+        ))}
+      </motion.section>
+
+      <CarteraPendingDrawer
+        snapshot={pendingSnapshot}
+        open={pendingDrawerCurrency !== null}
+        onClose={closePendingDrawer}
+      />
+    </>
   );
 }
 
@@ -649,13 +696,33 @@ const TONE_ICON_CLASS: Record<CardTone, string> = {
 
 function SummaryCardView({ card, showBadge = false }: { card: SummaryCard; showBadge?: boolean }) {
   const Icon = card.icon;
+  const isClickable = card.clickable === true && typeof card.onClick === "function";
+
   return (
     <motion.article
       variants={{
         hidden: { opacity: 0, y: 8 },
         visible: { opacity: 1, y: 0, transition: { duration: 0.22, ease: "easeOut" } },
       }}
-      className="group relative flex flex-col rounded-2xl border border-[rgba(15,23,42,0.10)] bg-[var(--copilot-card)] px-5 py-6 shadow-[0_1px_3px_rgba(15,23,42,0.07)] transition hover:shadow-[0_4px_12px_rgba(15,23,42,0.10)]"
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onClick={isClickable ? card.onClick : undefined}
+      onKeyDown={
+        isClickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                card.onClick?.();
+              }
+            }
+          : undefined
+      }
+      className={[
+        "group relative flex flex-col rounded-2xl border border-[rgba(15,23,42,0.10)] bg-[var(--copilot-card)] px-5 py-6 shadow-[0_1px_3px_rgba(15,23,42,0.07)] transition",
+        isClickable
+          ? "cursor-pointer hover:border-[var(--copilot-accent)]/25 hover:bg-white/80 hover:shadow-[0_6px_16px_rgba(15,23,42,0.12)]"
+          : "hover:shadow-[0_4px_12px_rgba(15,23,42,0.10)]",
+      ].join(" ")}
     >
       {/* Label row */}
       <div className="mb-4 flex items-center gap-2">
@@ -670,7 +737,12 @@ function SummaryCardView({ card, showBadge = false }: { card: SummaryCard; showB
             {card.title}
           </p>
           {card.tooltip ? (
-            <KpiInfoButton tooltip={card.tooltip} id={card.id} />
+            <span
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              <KpiInfoButton tooltip={card.tooltip} id={card.id} />
+            </span>
           ) : null}
         </div>
         {showBadge ? <SourceBadgeView source={card.source} /> : null}
@@ -705,6 +777,12 @@ function SummaryCardView({ card, showBadge = false }: { card: SummaryCard; showB
           <Clock className="h-2.5 w-2.5" aria-hidden />
           {FINANCIAL_UX_COPY.historicalPartialBadge}
         </div>
+      ) : null}
+
+      {isClickable && card.actionLabel ? (
+        <p className="mt-3 text-xs font-semibold text-[var(--copilot-accent)]">
+          {card.actionLabel}
+        </p>
       ) : null}
     </motion.article>
   );

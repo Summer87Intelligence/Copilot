@@ -93,6 +93,11 @@ describe("buildClientPortfolioSummary", () => {
       share_pct: 0,
       payment_behavior: "medio",
       risk: "Bajo",
+      source: "contact",
+      has_contact_data: true,
+      derived_from_debt: false,
+      debt_uyu: 0,
+      debt_usd: 0,
     };
     const s = buildClientPortfolioSummary([row]);
     expect(s.top_clients_line).toContain("Aún no hay facturación");
@@ -114,6 +119,11 @@ describe("buildClientPortfolioSummary", () => {
         share_pct: 0.8,
         payment_behavior: "bueno",
         risk: "Alto",
+        source: "contact",
+        has_contact_data: false,
+        derived_from_debt: false,
+        debt_uyu: 0,
+        debt_usd: 0,
       },
       {
         company_id: "b",
@@ -127,6 +137,11 @@ describe("buildClientPortfolioSummary", () => {
         share_pct: 0.2,
         payment_behavior: "bueno",
         risk: "Medio",
+        source: "contact",
+        has_contact_data: false,
+        derived_from_debt: false,
+        debt_uyu: 0,
+        debt_usd: 0,
       },
     ];
     const s = buildClientPortfolioSummary(rows);

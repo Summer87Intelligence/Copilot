@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  buildClientsDirectory,
+  type ClientDirectorySource,
+  type ClientsDirectoryDiagnostics,
+} from "@/lib/copilot-clients-directory";
 import { loadClientPortfolioSourceRows } from "@/lib/data/proto-analytics-read-repository";
 import { supabase } from "@/lib/supabase-client";
 
@@ -19,6 +24,12 @@ export type ClientPortfolioRow = {
   share_pct: number;
   payment_behavior: PaymentBehaviorLabel;
   risk: ClientRiskLabel;
+  /** Origen del registro en el directorio unificado. */
+  source: ClientDirectorySource;
+  has_contact_data: boolean;
+  derived_from_debt: boolean;
+  debt_uyu: number;
+  debt_usd: number;
 };
 
 export type ClientPortfolioContact = {
@@ -70,6 +81,8 @@ export type ClientPortfolioLoad = {
   rows: ClientPortfolioRow[];
   summary: ClientPortfolioSummary;
   details: Record<string, ClientCompanyDetail>;
+  /** Diagnóstico de brecha contacts vs deudores en facturas (auditoría). */
+  directory_diagnostics?: ClientsDirectoryDiagnostics;
 };
 
 type CompanyRow = {
@@ -130,12 +143,6 @@ function localTodayYmd(): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
-}
-
-function industryOf(c: CompanyRow): string {
-  const raw = c.industry ?? c.sector ?? "";
-  const s = String(raw).trim();
-  return s || "—";
 }
 
 /** Facturas mínimas para clasificar comportamiento de pago (sin I/O). */
@@ -273,10 +280,31 @@ export async function getClientPortfolio(
   if (iRes.error) throw new Error(iRes.error.message);
   if (rRes.error) throw new Error(rRes.error.message);
 
-  const companies = (cRes.data ?? []) as CompanyRow[];
+  let companies = (cRes.data ?? []) as CompanyRow[];
   const invoices = (iRes.data ?? []) as InvoiceRow[];
   const receipts = (rRes.data ?? []) as ReceiptRow[];
   const contactsRaw = ctRes.error ? [] : ((ctRes.data ?? []) as ContactRow[]);
+
+  const invoiceCompanyIds = new Set<string>();
+  for (const inv of invoices) {
+    const cid = String(inv.company_id ?? "").trim();
+    if (cid) invoiceCompanyIds.add(cid);
+  }
+
+  const knownCompanyIds = new Set(
+    companies.map((c) => String(c.id ?? "").trim()).filter(Boolean)
+  );
+  const missingCompanyIds = [...invoiceCompanyIds].filter((id) => !knownCompanyIds.has(id));
+  if (missingCompanyIds.length > 0) {
+    const { data: extraCompanies, error: extraErr } = await client
+      .from("proto_companies")
+      .select("*")
+      .eq("workspace_company_id", workspaceCompanyId)
+      .in("id", missingCompanyIds.slice(0, 500));
+    if (!extraErr && extraCompanies?.length) {
+      companies = [...companies, ...(extraCompanies as CompanyRow[])];
+    }
+  }
 
   const totalBillingAll = invoices.reduce((s, inv) => s + num(inv.total_amount), 0);
 
@@ -288,10 +316,12 @@ export async function getClientPortfolio(
   }
 
   const receiptsByCompany = new Map<string, ReceiptRow[]>();
+  const receiptsCountByCompany = new Map<string, number>();
   for (const rec of receipts) {
     const cid = String(rec.company_id ?? "").trim();
     if (!cid) continue;
     pushMapArray(receiptsByCompany, cid, rec);
+    receiptsCountByCompany.set(cid, (receiptsCountByCompany.get(cid) ?? 0) + 1);
   }
 
   const contactsByCompany = new Map<string, ContactRow[]>();
@@ -302,49 +332,65 @@ export async function getClientPortfolio(
   }
 
   const todayYmd = localTodayYmd();
+
+  const { entries, diagnostics } = buildClientsDirectory({
+    companies: companies.map((c) => ({
+      id: String(c.id ?? ""),
+      name: c.name != null ? String(c.name) : null,
+      industry: c.industry != null ? String(c.industry) : null,
+      sector: c.sector != null ? String(c.sector) : null,
+      is_active: (c as { is_active?: boolean }).is_active,
+    })),
+    invoices: invoices.map((inv) => ({
+      id: String(inv.id ?? ""),
+      company_id:
+        inv.company_id != null ? String(inv.company_id) : null,
+      total_amount: inv.total_amount,
+      balance_amount: inv.balance_amount,
+      status: inv.status != null ? String(inv.status) : null,
+      due_date: inv.due_date,
+      issue_date: inv.issue_date,
+      currency_code: (inv as { currency_code?: string }).currency_code,
+      zeta_metadata: (inv as { zeta_metadata?: unknown }).zeta_metadata,
+    })),
+    contacts: contactsRaw.map((ct) => ({
+      company_id: ct.company_id != null ? String(ct.company_id) : null,
+    })),
+    receiptsByCompany: receiptsCountByCompany,
+    todayYmd,
+  });
+
   const rows: ClientPortfolioRow[] = [];
   const details: Record<string, ClientCompanyDetail> = {};
 
-  for (const c of companies) {
-    const company_id = String(c.id ?? "").trim();
-    if (!company_id) continue;
-
-    const name = String(c.name ?? "").trim() || "Sin nombre";
-    const industry = industryOf(c);
+  for (const entry of entries) {
+    const company_id = entry.company_id;
     const invs = invoicesByCompany.get(company_id) ?? [];
     const recs = receiptsByCompany.get(company_id) ?? [];
     const cts = contactsByCompany.get(company_id) ?? [];
 
-    let total_billing = 0;
-    let total_debt = 0;
-    let overdue_debt = 0;
-
-    for (const inv of invs) {
-      total_billing += num(inv.total_amount);
-      const bal = num(inv.balance_amount);
-      total_debt += bal;
-      const due = ymd(inv.due_date);
-      if (bal > 0 && due && due < todayYmd) {
-        overdue_debt += bal;
-      }
-    }
-
-    const share_pct = totalBillingAll > 0 ? total_billing / totalBillingAll : 0;
+    const share_pct =
+      totalBillingAll > 0 ? entry.total_billing / totalBillingAll : 0;
     const payment_behavior = paymentBehaviorForInvoices(invs, todayYmd);
-    const risk = riskForCompany(share_pct, total_debt, overdue_debt);
+    const risk = riskForCompany(share_pct, entry.total_debt, entry.overdue_debt);
 
     const row: ClientPortfolioRow = {
       company_id,
-      name,
-      industry,
-      total_billing,
-      total_debt,
-      overdue_debt,
-      invoices_count: invs.length,
-      receipts_count: recs.length,
+      name: entry.name,
+      industry: entry.industry,
+      total_billing: entry.total_billing,
+      total_debt: entry.total_debt,
+      overdue_debt: entry.overdue_debt,
+      invoices_count: entry.invoiceCount,
+      receipts_count: entry.receipts_count,
       share_pct,
       payment_behavior,
       risk,
+      source: entry.source,
+      has_contact_data: entry.has_contact_data,
+      derived_from_debt: entry.derived_from_debt,
+      debt_uyu: entry.debtUYU,
+      debt_usd: entry.debtUSD,
     };
     rows.push(row);
 
@@ -386,26 +432,25 @@ export async function getClientPortfolio(
 
     details[company_id] = {
       company_id,
-      company_name: name,
-      industry,
+      company_name: entry.name,
+      industry: entry.industry,
       contacts,
       invoices: invOut,
       receipts: recOut,
-      overdue_debt,
-      total_debt,
+      overdue_debt: entry.overdue_debt,
+      total_debt: entry.total_debt,
       payment_behavior,
       risk,
       share_pct,
-      total_billing,
+      total_billing: entry.total_billing,
     };
   }
-
-  rows.sort((a, b) => b.total_billing - a.total_billing);
 
   return {
     rows,
     summary: buildClientPortfolioSummary(rows),
     details,
+    directory_diagnostics: diagnostics,
   };
 }
 
