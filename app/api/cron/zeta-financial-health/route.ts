@@ -32,8 +32,21 @@ import {
   updatePipelineRun,
 } from "@/lib/data/zeta-pipeline-run-repository";
 import { recordSyncMetric } from "@/lib/observability/zeta-sync-metrics";
-import { runFinancialHealthChecks } from "@/lib/copilot-financial-health";
+import { runFinancialHealthChecks, type FinancialHealthReport } from "@/lib/copilot-financial-health";
 import { dispatchHealthAlerts, createDashboardAdapter } from "@/lib/copilot-financial-health-alerting";
+
+type WorkspaceDebugResult = {
+  workspace_id: string;
+  severity: FinancialHealthReport["severity"];
+  duration_ms: number;
+  checks: Array<{
+    code: string;
+    severity: string;
+    summary: string;
+    affectedCount: number;
+    suggestedAction: string;
+  }>;
+};
 
 const PIPELINE = "zeta-financial-health";
 const ANTI_OVERLAP_WINDOW_MS = 6 * 60 * 60 * 1_000;
@@ -60,45 +73,51 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: false, code: "CONFIG_ERROR" }, { status: 500 });
   }
 
+  const debugMode = request.nextUrl.searchParams.get("debug") === "1";
+
   const supabase = createClient(supabaseUrl, supabaseKey);
   const cronRunId = randomUUID();
   const started = Date.now();
   const log = createCronLogger(PIPELINE, cronRunId);
 
-  log("cron_start", { pipeline: PIPELINE });
+  log("cron_start", { pipeline: PIPELINE, debug: debugMode });
 
-  // ── Anti-overlap ──────────────────────────────────────────────────────────
-  try {
-    const closed = await expireStaleFleetPipelineRuns(supabase);
-    if (closed > 0) log("stale_runs_closed", { count: closed });
-  } catch (e) {
-    log("expire_stale_error", { error: String(e) });
+  // ── Anti-overlap (skip in debug — read-only run, no state written) ────────
+  if (!debugMode) {
+    try {
+      const closed = await expireStaleFleetPipelineRuns(supabase);
+      if (closed > 0) log("stale_runs_closed", { count: closed });
+    } catch (e) {
+      log("expire_stale_error", { error: String(e) });
+    }
+
+    let activeRun: Awaited<ReturnType<typeof findActivePipelineRun>> = null;
+    try {
+      activeRun = await findActivePipelineRun(supabase, PIPELINE, ANTI_OVERLAP_WINDOW_MS, {
+        workspaceScope: "fleet",
+      });
+    } catch {
+      // tabla puede no existir; continuar
+    }
+
+    if (activeRun) {
+      log("cron_skipped_overlap", { running_since: activeRun.started_at });
+      return NextResponse.json({ ok: true, skipped: true, reason: "already_running" });
+    }
   }
 
-  let activeRun: Awaited<ReturnType<typeof findActivePipelineRun>> = null;
-  try {
-    activeRun = await findActivePipelineRun(supabase, PIPELINE, ANTI_OVERLAP_WINDOW_MS, {
-      workspaceScope: "fleet",
-    });
-  } catch {
-    // tabla puede no existir; continuar
-  }
-
-  if (activeRun) {
-    log("cron_skipped_overlap", { running_since: activeRun.started_at });
-    return NextResponse.json({ ok: true, skipped: true, reason: "already_running" });
-  }
-
-  // ── Registrar run ─────────────────────────────────────────────────────────
+  // ── Registrar run (solo en modo normal) ───────────────────────────────────
   let pipelineRunId: string | null = null;
-  try {
-    const created = await createPipelineRun(supabase, {
-      pipeline_name: PIPELINE,
-      metadata: { cron_run_id: cronRunId },
-    });
-    pipelineRunId = created.id;
-  } catch (e) {
-    log("pipeline_run_create_error", { error: String(e) });
+  if (!debugMode) {
+    try {
+      const created = await createPipelineRun(supabase, {
+        pipeline_name: PIPELINE,
+        metadata: { cron_run_id: cronRunId },
+      });
+      pipelineRunId = created.id;
+    } catch (e) {
+      log("pipeline_run_create_error", { error: String(e) });
+    }
   }
 
   const adapters = [createDashboardAdapter()];
@@ -107,6 +126,7 @@ export async function GET(request: NextRequest) {
   let totalCritical = 0;
   let totalWarning = 0;
   let cursorAfterId: string | null = null;
+  const debugResults: WorkspaceDebugResult[] = [];
 
   // ── Workspace loop ────────────────────────────────────────────────────────
   while (true) {
@@ -128,7 +148,7 @@ export async function GET(request: NextRequest) {
         await touchPipelineRunHeartbeat(supabase, pipelineRunId).catch(() => {});
       }
 
-      let report;
+      let report: FinancialHealthReport;
       try {
         report = await runFinancialHealthChecks(supabase, workspaceId);
       } catch (e) {
@@ -136,25 +156,38 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      // ── Persistir severidad global como métrica ───────────────────────────
-      const severityScore = report.severity === "critical" ? 2 : report.severity === "warning" ? 1 : 0;
-      await recordSyncMetric(supabase, PIPELINE, workspaceId, "health_severity_score", severityScore, {
-        severity: report.severity,
-        duration_ms: report.durationMs,
-      }).catch(() => {});
-
-      // Persistir count de checks por severidad
       const criticalChecks = report.checks.filter((c) => c.severity === "critical").length;
       const warningChecks = report.checks.filter((c) => c.severity === "warning").length;
 
-      if (criticalChecks > 0) {
-        await recordSyncMetric(supabase, PIPELINE, workspaceId, "health_critical_checks", criticalChecks, {
-          codes: report.checks.filter((c) => c.severity === "critical").map((c) => c.code).join(","),
+      if (debugMode) {
+        debugResults.push({
+          workspace_id: workspaceId,
+          severity: report.severity,
+          duration_ms: report.durationMs,
+          checks: report.checks.map((c) => ({
+            code: c.code,
+            severity: c.severity,
+            summary: c.summary,
+            affectedCount: c.affectedCount,
+            suggestedAction: c.suggestedAction,
+          })),
+        });
+      } else {
+        // ── Persistir severidad global como métrica ─────────────────────────
+        const severityScore = report.severity === "critical" ? 2 : report.severity === "warning" ? 1 : 0;
+        await recordSyncMetric(supabase, PIPELINE, workspaceId, "health_severity_score", severityScore, {
+          severity: report.severity,
+          duration_ms: report.durationMs,
         }).catch(() => {});
-      }
 
-      // ── Dispatchar alertas (solo warning/critical) ────────────────────────
-      await dispatchHealthAlerts(report, adapters).catch(() => {});
+        if (criticalChecks > 0) {
+          await recordSyncMetric(supabase, PIPELINE, workspaceId, "health_critical_checks", criticalChecks, {
+            codes: report.checks.filter((c) => c.severity === "critical").map((c) => c.code).join(","),
+          }).catch(() => {});
+        }
+
+        await dispatchHealthAlerts(report, adapters).catch(() => {});
+      }
 
       if (report.severity === "critical") totalCritical++;
       if (report.severity === "warning") totalWarning++;
@@ -165,6 +198,7 @@ export async function GET(request: NextRequest) {
         critical_checks: criticalChecks,
         warning_checks: warningChecks,
         duration_ms: report.durationMs,
+        debug: debugMode,
       });
     }
 
@@ -172,10 +206,10 @@ export async function GET(request: NextRequest) {
     if (!cursorAfterId) break;
   }
 
-  // ── Finalizar run ─────────────────────────────────────────────────────────
+  // ── Finalizar run (solo en modo normal) ───────────────────────────────────
   const duration = Date.now() - started;
 
-  if (pipelineRunId) {
+  if (!debugMode && pipelineRunId) {
     await updatePipelineRun(supabase, pipelineRunId, {
       status: totalCritical > 0 ? "partial" : "succeeded",
       finished_at: new Date().toISOString(),
@@ -194,7 +228,20 @@ export async function GET(request: NextRequest) {
     workspaces: workspacesTotal,
     critical: totalCritical,
     warning: totalWarning,
+    debug: debugMode,
   });
+
+  if (debugMode) {
+    return NextResponse.json({
+      ok: true,
+      debug: true,
+      duration_ms: duration,
+      workspaces_total: workspacesTotal,
+      workspaces_critical: totalCritical,
+      workspaces_warning: totalWarning,
+      workspaces: debugResults,
+    });
+  }
 
   return NextResponse.json({
     ok: true,
