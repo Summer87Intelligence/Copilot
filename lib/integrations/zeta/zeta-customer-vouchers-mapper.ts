@@ -488,7 +488,6 @@ export function mapCopilotCustomerVoucherToProtoInvoiceInput(
   const due = addDaysIso(issue, 30);
   const total = mapped.total_recibo ?? 0;
   const status = mapCfeEstadoToProtoStatus(mapped.cfe_estado);
-  const balance_amount = 0;
   const invNum = buildZetaCustomerVoucherInvoiceNumber(mapped);
   const notes = `zeta_vouchers:${syncRunId}|${mapped.zeta_comprobante_codigo ?? "?"}|${mapped.serie ?? ""}-${mapped.numero ?? ""}`.slice(0, 500);
   return {
@@ -500,11 +499,31 @@ export function mapCopilotCustomerVoucherToProtoInvoiceInput(
       due_date: due,
       due_date_source: "synthetic_30d",
       total_amount: total,
-      balance_amount,
+      /** Placeholder solo para `protoCreateInvoice`; no usar en `protoUpdateInvoice`. */
+      balance_amount: 0,
       status,
       category: "Zeta / comprobantes por cliente",
       notes,
     },
+  };
+}
+
+/**
+ * Patch para `protoUpdateInvoice` desde vouchers: **nunca** incluye `balance_amount`.
+ * El saldo pendiente lo escribe exclusivamente `RESTFacturaClienteV4QuerySaldosPendientes`.
+ */
+export function buildZetaVoucherProtoUpdatePatch(
+  input: ProtoInvoiceInput,
+  invoiceNumber: string
+): Omit<ProtoInvoiceInput, "balance_amount" | "company_id" | "due_date_source"> {
+  return {
+    invoice_number: invoiceNumber,
+    issue_date: input.issue_date,
+    due_date: input.due_date,
+    total_amount: input.total_amount,
+    status: input.status,
+    category: input.category,
+    notes: input.notes,
   };
 }
 

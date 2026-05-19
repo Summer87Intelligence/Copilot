@@ -22,6 +22,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { protoUpdateInvoice } from "@/lib/copilot-proto-crud-service";
+import { maybeLogZetaBalanceWriteAfterUpdate } from "@/lib/integrations/zeta/zeta-balance-write-diag";
 import { createLogger } from "@/lib/observability/logger";
 import {
   buildOrphanResolvedMetadataPatch,
@@ -357,6 +358,20 @@ export async function reconcileMissingPendingInvoices(
           invoice_id: row.id, error: up.message, sync_run_id: opts.syncRunId,
         });
       } else {
+        await maybeLogZetaBalanceWriteAfterUpdate(supabase, wid, row.id, row.invoice_number, {
+          source: "reconciliation",
+          writer_process: "reconcileMissingPendingInvoices_auto_close",
+          balance_payload: 0,
+          beforeSnap: {
+            balance_amount:
+              typeof row.balance_amount === "number"
+                ? row.balance_amount
+                : Number(row.balance_amount) || 0,
+            status: String(row.status ?? "issued"),
+            invoice_number: row.invoice_number,
+          },
+          up,
+        });
         result.auto_closed.push(entry);
         pipelineReconcileLog("info", "zeta_reconcile_auto_closed", {
           type: "orphan_pending_invoice",

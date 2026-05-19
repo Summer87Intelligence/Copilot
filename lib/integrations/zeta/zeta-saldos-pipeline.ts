@@ -28,6 +28,10 @@ import {
   queryFacturaClienteSaldosPendientes,
 } from "@/lib/integrations/zeta/zeta-factura-cliente";
 import { sanitizeZetaInvoiceKeyPart } from "@/lib/integrations/zeta/zeta-customer-vouchers-mapper";
+import {
+  maybeLogZetaBalanceWriteAfterUpdate,
+  shouldLogZetaBalanceWrite,
+} from "@/lib/integrations/zeta/zeta-balance-write-diag";
 import { zetaLog } from "@/lib/integrations/zeta/zeta-log";
 import {
   extractRegistroIdsFromInvoiceZetaMetadata,
@@ -519,6 +523,13 @@ async function zeroCcV1BalancesWithoutSaldoRow(
       { allowBalanceGtTotal: true }
     );
     if (!up.ok) throw new Error(up.message);
+    await maybeLogZetaBalanceWriteAfterUpdate(supabase, wid, id, num, {
+      source: "saldos_zero_pass",
+      writer_process: "zeroCcV1BalancesWithoutSaldoRow",
+      balance_payload: 0,
+      beforeSnap: { balance_amount: curBal, status: st, invoice_number: num },
+      up,
+    });
     if (zetaSaldosDiagEnabled()) {
       diagLog("zero_pass_applied", {
         invoice_id: id,
@@ -638,7 +649,9 @@ async function persistZetaInvoice(
     });
   }
   if (regHit) {
-    const prev = diagOn ? await readProtoInvoiceSaldoSnapshot(supabase, wid, regHit.id) : null;
+    const invNumRegEarly = ccv1 ?? `ZETA:${inv.zetaId}`;
+    const needSnap = diagOn || shouldLogZetaBalanceWrite(invNumRegEarly);
+    const prev = needSnap ? await readProtoInvoiceSaldoSnapshot(supabase, wid, regHit.id) : null;
     if (diagOn) {
       diagLog("before_update", {
         invoice_id: regHit.id,
@@ -658,6 +671,17 @@ async function persistZetaInvoice(
       { allowBalanceGtTotal: true }
     );
     if (!up.ok) throw new Error(up.message);
+    const invNumReg = prev?.invoice_number ?? ccv1 ?? `ZETA:${inv.zetaId}`;
+    await maybeLogZetaBalanceWriteAfterUpdate(supabase, wid, regHit.id, invNumReg, {
+      source: "saldos",
+      writer_process: "zeta_saldos_persist_registro",
+      balance_payload: bal,
+      beforeSnap: prev
+        ? { balance_amount: prev.balance_amount, status: prev.status, invoice_number: invNumReg }
+        : null,
+      up,
+      zeta_registro_id: inv.zetaId,
+    });
     if (diagOn) {
       diagLog("after_update", {
         invoice_id: regHit.id,
@@ -694,7 +718,10 @@ async function persistZetaInvoice(
       }
     }
     if (ccv1Target) {
-      const prev = diagOn ? await readProtoInvoiceSaldoSnapshot(supabase, wid, ccv1Target) : null;
+      const needSnapCcv1 = diagOn || shouldLogZetaBalanceWrite(ccv1);
+      const prev = needSnapCcv1
+        ? await readProtoInvoiceSaldoSnapshot(supabase, wid, ccv1Target)
+        : null;
       if (diagOn) {
         diagLog("before_update", {
           invoice_id: ccv1Target,
@@ -714,6 +741,16 @@ async function persistZetaInvoice(
         { allowBalanceGtTotal: true }
       );
       if (!up.ok) throw new Error(up.message);
+      await maybeLogZetaBalanceWriteAfterUpdate(supabase, wid, ccv1Target, ccv1, {
+        source: "saldos",
+        writer_process: "zeta_saldos_persist_ccv1",
+        balance_payload: bal,
+        beforeSnap: prev
+          ? { balance_amount: prev.balance_amount, status: prev.status, invoice_number: ccv1 }
+          : null,
+        up,
+        zeta_registro_id: inv.zetaId,
+      });
       if (diagOn) {
         diagLog("after_update", {
           invoice_id: ccv1Target,
@@ -770,7 +807,9 @@ async function persistZetaInvoice(
         issue_date_saldo: inv.issueDate,
         match_tier: "heuristic_controlado",
       });
-      const prevHeur = diagOn
+      const needSnapHeur =
+        diagOn || shouldLogZetaBalanceWrite(heuristicOutcome.invoice_number);
+      const prevHeur = needSnapHeur
         ? await readProtoInvoiceSaldoSnapshot(supabase, wid, heuristicOutcome.invoice_id)
         : null;
       if (diagOn) {
@@ -793,6 +832,26 @@ async function persistZetaInvoice(
         { allowBalanceGtTotal: true }
       );
       if (!upHeur.ok) throw new Error(upHeur.message);
+      await maybeLogZetaBalanceWriteAfterUpdate(
+        supabase,
+        wid,
+        heuristicOutcome.invoice_id,
+        heuristicOutcome.invoice_number,
+        {
+          source: "saldos",
+          writer_process: "zeta_saldos_persist_heuristic",
+          balance_payload: bal,
+          beforeSnap: prevHeur
+            ? {
+                balance_amount: prevHeur.balance_amount,
+                status: prevHeur.status,
+                invoice_number: heuristicOutcome.invoice_number,
+              }
+            : null,
+          up: upHeur,
+          zeta_registro_id: inv.zetaId,
+        }
+      );
       if (diagOn) {
         diagLog("after_update", {
           invoice_id: heuristicOutcome.invoice_id,
@@ -852,7 +911,10 @@ async function persistZetaInvoice(
     wid
   );
   if (existingLegacy) {
-    const prev = diagOn ? await readProtoInvoiceSaldoSnapshot(supabase, wid, existingLegacy) : null;
+    const needSnapLegacy = diagOn || shouldLogZetaBalanceWrite(input.invoice_number);
+    const prev = needSnapLegacy
+      ? await readProtoInvoiceSaldoSnapshot(supabase, wid, existingLegacy)
+      : null;
     if (diagOn) {
       diagLog("before_update", {
         invoice_id: existingLegacy,
@@ -883,6 +945,26 @@ async function persistZetaInvoice(
       { allowBalanceGtTotal: true }
     );
     if (!up.ok) throw new Error(up.message);
+    await maybeLogZetaBalanceWriteAfterUpdate(
+      supabase,
+      wid,
+      existingLegacy,
+      input.invoice_number,
+      {
+        source: "saldos",
+        writer_process: "zeta_saldos_persist_legacy",
+        balance_payload: bal,
+        beforeSnap: prev
+          ? {
+              balance_amount: prev.balance_amount,
+              status: prev.status,
+              invoice_number: input.invoice_number,
+            }
+          : null,
+        up,
+        zeta_registro_id: inv.zetaId,
+      }
+    );
     if (diagOn) {
       diagLog("after_update", {
         invoice_id: existingLegacy,
@@ -914,7 +996,10 @@ async function persistZetaInvoice(
       wid
     );
     if (again) {
-      const prev = diagOn ? await readProtoInvoiceSaldoSnapshot(supabase, wid, again) : null;
+      const needSnapRetry = diagOn || shouldLogZetaBalanceWrite(input.invoice_number);
+      const prev = needSnapRetry
+        ? await readProtoInvoiceSaldoSnapshot(supabase, wid, again)
+        : null;
       if (diagOn) {
         diagLog("before_update", {
           invoice_id: again,
@@ -945,6 +1030,26 @@ async function persistZetaInvoice(
         { allowBalanceGtTotal: true }
       );
       if (!up2.ok) throw new Error(up2.message);
+      await maybeLogZetaBalanceWriteAfterUpdate(
+        supabase,
+        wid,
+        again,
+        input.invoice_number,
+        {
+          source: "saldos",
+          writer_process: "zeta_saldos_persist_legacy_retry",
+          balance_payload: bal,
+          beforeSnap: prev
+            ? {
+                balance_amount: prev.balance_amount,
+                status: prev.status,
+                invoice_number: input.invoice_number,
+              }
+            : null,
+          up: up2,
+          zeta_registro_id: inv.zetaId,
+        }
+      );
       if (diagOn) {
         diagLog("after_update", {
           invoice_id: again,

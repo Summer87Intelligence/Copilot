@@ -28,9 +28,16 @@ import {
   buildZetaCustomerVoucherInvoiceNumberLegacyCompKey,
   buildZetaCustomerVoucherInvoiceNumberLegacyHash,
   copilotCustomerVoucherHasPersistableIdentity,
+  buildZetaVoucherProtoUpdatePatch,
   mapCopilotCustomerVoucherToProtoInvoiceInput,
   mapZetaCustomerVoucherToCopilot,
 } from "@/lib/integrations/zeta/zeta-customer-vouchers-mapper";
+import {
+  balanceFromProtoUpdateResult,
+  logZetaBalanceWrite,
+  readProtoInvoiceBalanceForDiag,
+  shouldLogZetaBalanceWrite,
+} from "@/lib/integrations/zeta/zeta-balance-write-diag";
 import {
   buildZetaComprobanteIdentityV1,
   findActiveProtoInvoiceIdByZetaRegistroMetadata,
@@ -746,19 +753,16 @@ export async function syncZetaCustomerVouchers(
 
         if (existingId) {
           logZetaVoucherPersistIdentity("protoUpdateInvoice", persistIdentityLog);
+          const clientHint = mapped.zeta_cliente_nombre ?? null;
+          const logBalance = shouldLogZetaBalanceWrite(invNum, clientHint);
+          const beforeSnap = logBalance
+            ? await readProtoInvoiceBalanceForDiag(params.supabase, wid, existingId)
+            : null;
+          const voucherUpdatePatch = buildZetaVoucherProtoUpdatePatch(input, invNum);
           const up = await protoUpdateInvoice(
             params.supabase,
             existingId,
-            {
-              invoice_number: invNum,
-              issue_date: input.issue_date,
-              due_date: input.due_date,
-              total_amount: input.total_amount,
-              balance_amount: input.balance_amount,
-              status: input.status,
-              category: input.category,
-              notes: input.notes,
-            },
+            voucherUpdatePatch,
             wid,
             { allowBalanceGtTotal: true }
           );
@@ -777,6 +781,23 @@ export async function syncZetaCustomerVouchers(
             );
           } else {
             updated += 1;
+            if (logBalance && beforeSnap) {
+              const afterBal = balanceFromProtoUpdateResult(
+                up.data as Record<string, unknown> | undefined,
+                beforeSnap.balance_amount
+              );
+              logZetaBalanceWrite({
+                source: "vouchers",
+                writer_process: "zeta_customer_vouchers_sync",
+                invoice_id: existingId,
+                invoice_number: invNum,
+                balance_before: beforeSnap.balance_amount,
+                balance_after: afterBal,
+                balance_payload_omitted: true,
+                status_before: beforeSnap.status,
+                status_after: String((up.data as { status?: unknown })?.status ?? beforeSnap.status),
+              });
+            }
             if (hasZetaMeta) {
               await mergeInvoiceZetaMetadata(params.supabase, existingId, {
                 ...mapped,

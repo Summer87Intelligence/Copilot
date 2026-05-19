@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildZetaCustomerVoucherInvoiceNumber,
   buildZetaCustomerVoucherInvoiceNumberLegacyCompKey,
+  buildZetaVoucherProtoUpdatePatch,
   extractZetaSaldoFromCustomerVoucherRow,
   mapCopilotCustomerVoucherToProtoInvoiceInput,
   mapZetaCustomerVoucherToCopilot,
@@ -160,6 +161,25 @@ describe("mapCopilotCustomerVoucherToProtoInvoiceInput (montos)", () => {
     const r = mapCopilotCustomerVoucherToProtoInvoiceInput("cc1", m, "run-1");
     if (!r.ok) throw new Error(`expected ok, got ${r.reason}`);
     expect(r.input.balance_amount).toBe(0);
+  });
+
+  it("buildZetaVoucherProtoUpdatePatch omite balance_amount (no pisar saldos pendientes)", () => {
+    const row = {
+      Fecha: "20260107",
+      Serie: "A",
+      Numero: 2926,
+      ClienteCodigo: "2",
+      Total: 678.32,
+      CFEEstado: "EMITIDO",
+    };
+    const m = mapZetaCustomerVoucherToCopilot(row);
+    const r = mapCopilotCustomerVoucherToProtoInvoiceInput("cc1", m, "run-1");
+    if (!r.ok) throw new Error(`expected ok, got ${r.reason}`);
+    const invNum = buildZetaCustomerVoucherInvoiceNumber(m);
+    const patch = buildZetaVoucherProtoUpdatePatch(r.input, invNum);
+    expect(patch).not.toHaveProperty("balance_amount");
+    expect(patch.invoice_number).toBe(invNum);
+    expect(patch.total_amount).toBe(678.32);
   });
 
   it("sin Saldo ni Pagos y emitido: balance 0 (no usar total como saldo por defecto)", () => {
