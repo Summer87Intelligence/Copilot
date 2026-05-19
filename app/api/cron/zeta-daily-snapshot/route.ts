@@ -92,7 +92,7 @@ async function buildSnapshot(
       .eq("workspace_company_id", workspaceId)
       .like("invoice_number", "ZETA:%")
       .eq("is_active", true)
-      .eq("status", "pending"),
+      .eq("status", "issued"),
   ]);
 
   // Operational metrics for today

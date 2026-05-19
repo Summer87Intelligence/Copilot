@@ -33,7 +33,7 @@ import {
 // Constants
 // ---------------------------------------------------------------------------
 
-export const ORPHAN_AUTO_CLOSE_THRESHOLD = 3;
+export const ORPHAN_AUTO_CLOSE_THRESHOLD = 7;
 
 /**
  * Período de gracia (días) desde `issue_date` antes de contar misses de saldos.

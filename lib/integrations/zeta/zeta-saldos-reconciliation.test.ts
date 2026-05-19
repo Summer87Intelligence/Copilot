@@ -23,16 +23,16 @@ describe("classifyOrphanAction", () => {
     expect(classifyOrphanAction(ORPHAN_AUTO_CLOSE_THRESHOLD)).toBe("closed");
   });
 
-  it("returns closed above threshold (count 4)", () => {
-    expect(classifyOrphanAction(4)).toBe("closed");
+  it("returns closed above threshold (count 8)", () => {
+    expect(classifyOrphanAction(8)).toBe("closed");
   });
 
   it("returns closed at count 10", () => {
     expect(classifyOrphanAction(10)).toBe("closed");
   });
 
-  it("ORPHAN_AUTO_CLOSE_THRESHOLD is 3", () => {
-    expect(ORPHAN_AUTO_CLOSE_THRESHOLD).toBe(3);
+  it("ORPHAN_AUTO_CLOSE_THRESHOLD is 7", () => {
+    expect(ORPHAN_AUTO_CLOSE_THRESHOLD).toBe(7);
   });
 
   it("false positive protection: count 2 is warn, not closed", () => {
@@ -171,11 +171,11 @@ describe("mergeZetaReconciliationState", () => {
 // 3-strike scenario simulations (pure)
 // ---------------------------------------------------------------------------
 
-describe("3-strike consecutive miss simulation", () => {
+describe("7-strike consecutive miss simulation", () => {
   function simulateOrphan(initialCount: number, reappearsAt?: number): OrphanAction[] {
     const actions: OrphanAction[] = [];
     let count = initialCount;
-    for (let run = 1; run <= 5; run++) {
+    for (let run = 1; run <= 10; run++) {
       if (reappearsAt === run) {
         count = 0; // reset on re-appearance
         continue;
@@ -187,11 +187,15 @@ describe("3-strike consecutive miss simulation", () => {
   }
   type OrphanAction = "warn" | "closed" | "skipped";
 
-  it("invoice disappears 3 times consecutively → auto-close on 3rd", () => {
-    const actions = simulateOrphan(0).slice(0, 3);
+  it("invoice disappears 7 times consecutively → auto-close on 7th", () => {
+    const actions = simulateOrphan(0).slice(0, 7);
     expect(actions[0]).toBe("warn");
     expect(actions[1]).toBe("warn");
-    expect(actions[2]).toBe("closed");
+    expect(actions[2]).toBe("warn");
+    expect(actions[3]).toBe("warn");
+    expect(actions[4]).toBe("warn");
+    expect(actions[5]).toBe("warn");
+    expect(actions[6]).toBe("closed");
   });
 
   it("invoice disappears 2 times, reappears, then disappears again → restarts counter", () => {
