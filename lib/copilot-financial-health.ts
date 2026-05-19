@@ -65,9 +65,20 @@ export type DriftStats = {
 };
 
 export type BalanceOverwriteStats = {
-  /** Facturas en estado issued/partial/overdue con balance_amount = 0. */
-  zeroBalanceUnpaidCount: number;
+  /**
+   * Facturas confirmadas como overwrite: balance_amount = 0 pero fuente
+   * externa (installments o invoice_financials view) indica saldo > 0.
+   * Único trigger válido para critical.
+   */
+  confirmedOverwrites: number;
+  /**
+   * Facturas con balance_amount = 0 + status no-paid sin evidencia externa
+   * que confirme ni descarte el overwrite. Sólo trigger de warning.
+   */
+  unconfirmedSuspicious: number;
   totalActiveInvoices: number;
+  /** Fuente que pudo cruzar datos; "none" si ninguna tabla estaba disponible. */
+  crossReferenceSource: "installments" | "invoice_financials" | "none";
 };
 
 export type CurrencyAmbiguityStats = {
@@ -152,39 +163,70 @@ export function checkDrift(stats: DriftStats): HealthCheckResult {
 // ── B) Balance overwrite detection ────────────────────────────────────────────
 
 /**
- * Detecta facturas con balance_amount=0 que no deberían tenerlo (issued/partial/overdue).
- * Un bug de overwrite deja facturas con status activo pero sin saldo.
+ * Detecta overwrite real de balance_amount usando cross-reference externo.
+ *
+ * Lógica de severidad:
+ *   critical → confirmedOverwrites > 0 (fuente externa dice saldo > 0, local tiene 0)
+ *   warning  → confirmedOverwrites = 0 pero:
+ *              a) crossReferenceSource disponible y unconfirmedSuspicious > 0 (inconcluso)
+ *              b) crossReferenceSource ausente y unconfirmedSuspicious > 20 (informativo)
+ *   ok       → sin overwrites confirmados ni señal fuerte sin evidencia
+ *
+ * Falso positivo conocido: facturas cobradas con balance=0 y status="issued" son
+ * legítimas cuando el saldo Zeta llega a 0 pero el status legacy no se actualiza.
+ * Sin evidencia externa, no se marca como critical.
  */
 export function checkBalanceOverwrite(stats: BalanceOverwriteStats): HealthCheckResult {
   const code: HealthCheckCode = "balance_overwrite_detected";
-  const { zeroBalanceUnpaidCount, totalActiveInvoices } = stats;
+  const { confirmedOverwrites, unconfirmedSuspicious, crossReferenceSource } = stats;
 
-  const ratio = totalActiveInvoices > 0 ? zeroBalanceUnpaidCount / totalActiveInvoices : 0;
-
-  if (zeroBalanceUnpaidCount > 20 || ratio > 0.15) {
+  if (confirmedOverwrites > 0) {
+    const src = crossReferenceSource === "installments"
+      ? "proto_invoice_installments (cuota_saldo > 0)"
+      : "invoice_financials view";
     return {
       code,
       severity: "critical",
-      summary: `${zeroBalanceUnpaidCount} factura(s) con balance=0 en estado no-pagado (${(ratio * 100).toFixed(1)}% del total)`,
+      summary: `${confirmedOverwrites} factura(s) con balance=0 pero saldo pendiente confirmado en ${src}`,
       details:
-        "Facturas con status issued/partial/overdue deberían tener balance > 0. " +
-        "Este patrón indica posible overwrite de balance_amount por sync de vouchers o saldos.",
-      affectedCount: zeroBalanceUnpaidCount,
+        `Fuente: ${src}. ` +
+        "La fuente externa indica saldo pendiente > 0 mientras proto_invoices.balance_amount = 0. " +
+        "Indica overwrite de balance_amount por sync de vouchers o saldos.",
+      affectedCount: confirmedOverwrites,
       suggestedAction:
-        "Verificar logs de zeta-sync-vouchers y zeta-sync-saldos. Comparar balance_amount con proto_invoice_financials.",
+        "Verificar logs de zeta-sync-vouchers y zeta-sync-saldos del último run. " +
+        "Comparar balance_amount vs cuota_saldo en proto_invoice_installments.",
     };
   }
 
-  if (zeroBalanceUnpaidCount > 5 || ratio > 0.05) {
+  // Sin overwrites confirmados: evaluar señal sin evidencia externa
+  if (crossReferenceSource !== "none" && unconfirmedSuspicious > 0) {
     return {
       code,
       severity: "warning",
-      summary: `${zeroBalanceUnpaidCount} factura(s) con balance=0 en estado no-pagado`,
+      summary: `${unconfirmedSuspicious} factura(s) con balance=0 y status no-paid (sin overwrite confirmado por ${crossReferenceSource})`,
       details:
-        `${(ratio * 100).toFixed(1)}% de las facturas activas tienen balance=0 sin estar en estado paid/cancelled.`,
-      affectedCount: zeroBalanceUnpaidCount,
+        `Cross-reference via ${crossReferenceSource} no encontró discrepancia. ` +
+        "Estas facturas pueden ser cobradas legítimamente con status legacy desactualizado.",
+      affectedCount: unconfirmedSuspicious,
       suggestedAction:
-        "Investigar si la sync de vouchers o saldos actualizó incorrectamente estos registros.",
+        "Revisar si el status de estas facturas debería actualizarse a paid. " +
+        "Si el volumen crece, investigar si el sync de saldos está actualizando el status correctamente.",
+    };
+  }
+
+  if (crossReferenceSource === "none" && unconfirmedSuspicious > 20) {
+    return {
+      code,
+      severity: "warning",
+      summary: `${unconfirmedSuspicious} factura(s) con balance=0 y status no-paid (sin fuente externa para confirmar)`,
+      details:
+        "No hay tabla de cross-reference disponible (proto_invoice_installments o invoice_financials). " +
+        "Este volumen puede ser normal si muchas facturas se cobran sin actualizar el status legacy.",
+      affectedCount: unconfirmedSuspicious,
+      suggestedAction:
+        "Verificar que proto_invoice_installments exista y tenga datos actualizados. " +
+        "Si el check drift_detected está ok, el balance_amount probablemente es correcto.",
     };
   }
 
@@ -192,8 +234,11 @@ export function checkBalanceOverwrite(stats: BalanceOverwriteStats): HealthCheck
     code,
     severity: "ok",
     summary: "Sin indicadores de balance overwrite detectados",
-    details: `${zeroBalanceUnpaidCount} facturas con balance=0 no-pagado (dentro de tolerancia).`,
-    affectedCount: zeroBalanceUnpaidCount,
+    details:
+      confirmedOverwrites === 0 && unconfirmedSuspicious === 0
+        ? "Todas las facturas activas con status no-paid tienen balance > 0."
+        : `${unconfirmedSuspicious} facturas con balance=0 y status no-paid — volumen normal, sin overwrite confirmado.`,
+    affectedCount: 0,
     suggestedAction: "",
   };
 }
@@ -471,15 +516,24 @@ async function loadBalanceOverwriteStats(
   client: SupabaseClient,
   wid: string
 ): Promise<BalanceOverwriteStats> {
+  const fallback: BalanceOverwriteStats = {
+    confirmedOverwrites: 0,
+    unconfirmedSuspicious: 0,
+    totalActiveInvoices: 0,
+    crossReferenceSource: "none",
+  };
+
   return safe(async () => {
+    // ── Paso 1: candidatos sospechosos (balance=0, status no-paid) ────────────
     const [suspiciousRes, totalRes] = await Promise.all([
       client
         .from("proto_invoices")
-        .select("id", { count: "exact", head: true })
+        .select("id", { count: "exact", head: false })
         .eq("workspace_company_id", wid)
         .eq("is_active", true)
         .eq("balance_amount", 0)
-        .in("status", ["issued", "partial", "overdue"]),
+        .in("status", ["issued", "partial", "overdue"])
+        .limit(300),
       client
         .from("proto_invoices")
         .select("id", { count: "exact", head: true })
@@ -487,11 +541,83 @@ async function loadBalanceOverwriteStats(
         .eq("is_active", true),
     ]);
 
+    const totalActiveInvoices = totalRes.count ?? 0;
+    const suspiciousIds = ((suspiciousRes.data ?? []) as Array<{ id: string }>)
+      .map((r) => r.id)
+      .filter(Boolean);
+    const suspiciousTotal = suspiciousRes.count ?? suspiciousIds.length;
+
+    if (suspiciousIds.length === 0) {
+      return { ...fallback, totalActiveInvoices };
+    }
+
+    // ── Paso 2: cross-reference con proto_invoice_installments ────────────────
+    // Si una factura con balance=0 tiene cuotas con cuota_saldo > 0 → overwrite confirmado.
+    // Ausencia de resultado = las cuotas están saldadas o la factura no tiene cuotas (no confirma nada).
+    let confirmedOverwrites = 0;
+    let crossReferenceSource: BalanceOverwriteStats["crossReferenceSource"] = "none";
+
+    try {
+      const { data: installRows, error: installErr } = await client
+        .from("proto_invoice_installments")
+        .select("invoice_id")
+        .eq("workspace_company_id", wid)
+        .in("invoice_id", suspiciousIds.slice(0, 250))
+        .gt("cuota_saldo", 0)
+        .limit(300);
+
+      if (!installErr) {
+        crossReferenceSource = "installments";
+        const confirmedIds = new Set(
+          ((installRows ?? []) as Array<{ invoice_id: string }>).map((r) => r.invoice_id)
+        );
+        confirmedOverwrites = confirmedIds.size;
+      }
+    } catch {
+      // tabla puede no existir — intentar invoice_financials
+    }
+
+    // ── Paso 3: fallback a invoice_financials view (opcional) ─────────────────
+    if (crossReferenceSource === "none") {
+      try {
+        const { data: finRows, error: finErr } = await (client as SupabaseClient & {
+          from(t: "invoice_financials"): ReturnType<SupabaseClient["from"]>;
+        })
+          .from("invoice_financials")
+          .select("invoice_id, balance, computed_balance, net_balance, balance_amount")
+          .in("invoice_id", suspiciousIds.slice(0, 250))
+          .limit(300);
+
+        if (!finErr && finRows !== null) {
+          crossReferenceSource = "invoice_financials";
+          const confirmedIds = new Set<string>();
+          for (const row of finRows as Array<Record<string, unknown>>) {
+            const bal =
+              (row["balance"] as number | null) ??
+              (row["computed_balance"] as number | null) ??
+              (row["net_balance"] as number | null) ??
+              (row["balance_amount"] as number | null) ??
+              0;
+            if (bal > 0 && row["invoice_id"]) {
+              confirmedIds.add(row["invoice_id"] as string);
+            }
+          }
+          confirmedOverwrites = confirmedIds.size;
+        }
+      } catch {
+        // view no disponible — dejar crossReferenceSource = "none"
+      }
+    }
+
+    const unconfirmedSuspicious = Math.max(0, suspiciousTotal - confirmedOverwrites);
+
     return {
-      zeroBalanceUnpaidCount: suspiciousRes.count ?? 0,
-      totalActiveInvoices: totalRes.count ?? 0,
+      confirmedOverwrites,
+      unconfirmedSuspicious,
+      totalActiveInvoices,
+      crossReferenceSource,
     };
-  }, { zeroBalanceUnpaidCount: 0, totalActiveInvoices: 0 });
+  }, fallback);
 }
 
 async function loadCurrencyAmbiguityStats(

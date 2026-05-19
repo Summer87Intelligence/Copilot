@@ -70,59 +70,107 @@ describe("checkDrift", () => {
 // ── B) checkBalanceOverwrite ──────────────────────────────────────────────────
 
 describe("checkBalanceOverwrite", () => {
-  it("returns ok when count is below tolerances", () => {
+  // Escenario del falso positivo real: 90 facturas cobradas, status="issued",
+  // balance=0 — pero proto_invoice_installments no tiene cuota_saldo > 0.
+  // → debe ser warning (no critical) porque no hay overwrite confirmado.
+  it("falso positivo real: 90 suspicious via installments, 0 confirmados → warning no critical", () => {
     const stats: BalanceOverwriteStats = {
-      zeroBalanceUnpaidCount: 3,
+      confirmedOverwrites: 0,
+      unconfirmedSuspicious: 90,
       totalActiveInvoices: 500,
+      crossReferenceSource: "installments",
     };
     const result = checkBalanceOverwrite(stats);
-    expect(result.severity).toBe("ok");
-    expect(result.affectedCount).toBe(3);
+    expect(result.severity).toBe("warning");
+    expect(result.severity).not.toBe("critical");
+    expect(result.affectedCount).toBe(90);
   });
 
-  it("returns ok for zero count", () => {
+  // Sin fuente externa Y volumen alto → warning informativo
+  it("sin cross-reference y volumen alto (> 20) → warning informativo", () => {
     const stats: BalanceOverwriteStats = {
-      zeroBalanceUnpaidCount: 0,
+      confirmedOverwrites: 0,
+      unconfirmedSuspicious: 90,
+      totalActiveInvoices: 300,
+      crossReferenceSource: "none",
+    };
+    const result = checkBalanceOverwrite(stats);
+    expect(result.severity).toBe("warning");
+    expect(result.summary).toContain("sin fuente externa");
+  });
+
+  // Sin fuente externa Y volumen bajo → ok
+  it("sin cross-reference y volumen bajo (≤ 20) → ok", () => {
+    const stats: BalanceOverwriteStats = {
+      confirmedOverwrites: 0,
+      unconfirmedSuspicious: 5,
       totalActiveInvoices: 200,
+      crossReferenceSource: "none",
     };
     expect(checkBalanceOverwrite(stats).severity).toBe("ok");
   });
 
-  it("returns warning when count > 5 but ≤ 20 and ratio ≤ 0.15", () => {
+  // Overwrite confirmado por installments → critical
+  it("overwrite confirmado por installments → critical", () => {
     const stats: BalanceOverwriteStats = {
-      zeroBalanceUnpaidCount: 10,
-      totalActiveInvoices: 500,
+      confirmedOverwrites: 3,
+      unconfirmedSuspicious: 10,
+      totalActiveInvoices: 200,
+      crossReferenceSource: "installments",
     };
     const result = checkBalanceOverwrite(stats);
-    expect(result.severity).toBe("warning");
-    expect(result.affectedCount).toBe(10);
+    expect(result.severity).toBe("critical");
+    expect(result.affectedCount).toBe(3);
+    expect(result.details).toContain("installments");
   });
 
-  it("returns critical when count > 20", () => {
+  // Overwrite confirmado por invoice_financials → critical
+  it("overwrite confirmado por invoice_financials → critical", () => {
     const stats: BalanceOverwriteStats = {
-      zeroBalanceUnpaidCount: 25,
+      confirmedOverwrites: 1,
+      unconfirmedSuspicious: 0,
       totalActiveInvoices: 100,
+      crossReferenceSource: "invoice_financials",
     };
     const result = checkBalanceOverwrite(stats);
     expect(result.severity).toBe("critical");
-    expect(result.affectedCount).toBe(25);
+    expect(result.details).toContain("invoice_financials");
   });
 
-  it("returns critical when ratio > 0.15 even with low absolute count", () => {
+  // Vouchers recientes: installments confirma saldo pendiente → critical
+  it("expectedPending > 0 vía installments con unconfirmed también → critical (confirmed es el trigger)", () => {
     const stats: BalanceOverwriteStats = {
-      zeroBalanceUnpaidCount: 8,
-      totalActiveInvoices: 40,
+      confirmedOverwrites: 5,
+      unconfirmedSuspicious: 85,
+      totalActiveInvoices: 500,
+      crossReferenceSource: "installments",
     };
     const result = checkBalanceOverwrite(stats);
     expect(result.severity).toBe("critical");
+    expect(result.affectedCount).toBe(5);
   });
 
-  it("handles zero totalActiveInvoices without dividing by zero", () => {
+  // Zero en todo → ok limpio
+  it("zero en todo → ok", () => {
     const stats: BalanceOverwriteStats = {
-      zeroBalanceUnpaidCount: 0,
-      totalActiveInvoices: 0,
+      confirmedOverwrites: 0,
+      unconfirmedSuspicious: 0,
+      totalActiveInvoices: 300,
+      crossReferenceSource: "installments",
     };
-    expect(() => checkBalanceOverwrite(stats)).not.toThrow();
+    const result = checkBalanceOverwrite(stats);
+    expect(result.severity).toBe("ok");
+    expect(result.affectedCount).toBe(0);
+  });
+
+  // Facturas pagadas normalmente: balance=0, sin suspicious → ok
+  it("facturas pagadas normales (balance=0 coincide con paid) → ok", () => {
+    const stats: BalanceOverwriteStats = {
+      confirmedOverwrites: 0,
+      unconfirmedSuspicious: 0,
+      totalActiveInvoices: 150,
+      crossReferenceSource: "none",
+    };
     expect(checkBalanceOverwrite(stats).severity).toBe("ok");
   });
 });
