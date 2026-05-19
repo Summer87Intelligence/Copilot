@@ -774,7 +774,7 @@ function Th({
             <ChevronDown className="h-3 w-3" aria-hidden />
           )
         ) : (
-          <ChevronsUpDown className="h-3 w-3 opacity-40" aria-hidden />
+          <ChevronsUpDown className="h-3 w-3 opacity-50" aria-hidden />
         )}
       </button>
     </th>
@@ -996,7 +996,7 @@ function ExpandedRow({
         {pendingCurrencies.length > 0 ? (
           pendingCurrencies.map((c) => (
             <div key={c}>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-ink-muted)]">
+              <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--copilot-ink-muted)]/90">
                 Saldo pendiente {c}
               </p>
               <p className="mt-0.5 text-lg font-semibold tabular-nums text-[var(--copilot-ink)]">
@@ -1008,7 +1008,7 @@ function ExpandedRow({
           ))
         ) : (
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-ink-muted)]">
+            <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--copilot-ink-muted)]/90">
               Saldo pendiente
             </p>
             <p className="mt-0.5 text-sm text-emerald-800">Sin deuda activa</p>
@@ -1017,7 +1017,7 @@ function ExpandedRow({
 
         {/* Aging dominante */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-ink-muted)]">
+          <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--copilot-ink-muted)]/90">
             Aging dominante
           </p>
           <p className="mt-1">
@@ -1035,7 +1035,7 @@ function ExpandedRow({
 
         {/* Facturas / staleness */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-ink-muted)]">
+          <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--copilot-ink-muted)]/90">
             Facturas / estado sync
           </p>
           <p className="mt-0.5 text-sm text-[var(--copilot-ink)]">
@@ -1049,7 +1049,7 @@ function ExpandedRow({
 
         {/* Última actualización */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-ink-muted)]">
+          <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--copilot-ink-muted)]/90">
             Última factura actualizada
           </p>
           <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
@@ -1069,7 +1069,7 @@ function ExpandedRow({
       {/* Timeline de cobranza */}
       {actions.length > 0 && (
         <div className="mt-4 border-t border-[var(--copilot-border)] pt-4">
-          <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-ink-muted)]">
+          <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--copilot-ink-muted)]/90">
             Acciones de cobranza
           </p>
           <ol className="space-y-2">

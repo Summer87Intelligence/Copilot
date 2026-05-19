@@ -39,30 +39,30 @@ const BUCKET_CONFIG: Record<
   "0_30": {
     label: "0–30 días",
     bar: "bg-emerald-400",
-    bg: "bg-emerald-50/70",
-    text: "text-emerald-900",
-    badge: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    bg: "bg-emerald-50/50",
+    text: "text-emerald-700",
+    badge: "border-emerald-200 bg-emerald-50 text-emerald-700",
   },
   "31_60": {
     label: "31–60 días",
     bar: "bg-amber-400",
-    bg: "bg-amber-50/70",
-    text: "text-amber-900",
-    badge: "border-amber-200 bg-amber-50 text-amber-800",
+    bg: "bg-amber-50/50",
+    text: "text-amber-700",
+    badge: "border-amber-200 bg-amber-50 text-amber-700",
   },
   "61_90": {
     label: "61–90 días",
     bar: "bg-orange-400",
-    bg: "bg-orange-50/70",
-    text: "text-orange-900",
-    badge: "border-orange-200 bg-orange-50 text-orange-800",
+    bg: "bg-orange-50/50",
+    text: "text-orange-700",
+    badge: "border-orange-200 bg-orange-50 text-orange-700",
   },
   "90_plus": {
     label: "+90 días",
     bar: "bg-rose-400",
-    bg: "bg-rose-50/70",
-    text: "text-rose-900",
-    badge: "border-rose-200 bg-rose-50 text-rose-800",
+    bg: "bg-rose-50/50",
+    text: "text-rose-700",
+    badge: "border-rose-200 bg-rose-50 text-rose-700",
   },
 };
 
@@ -116,7 +116,7 @@ export function AgingAnalytics({
               Aging de cartera
             </h3>
             <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-              Distribución del riesgo por antigüedad · solo facturas pendientes
+              Deuda viva por antigüedad · estado actual, no limitado al rango seleccionado
             </p>
           </div>
         </div>
@@ -240,7 +240,7 @@ function BucketRow({
           {cfg.label}
         </span>
         <span
-          className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${cfg.badge}`}
+          className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${cfg.badge}`}
         >
           {pctLabel}
         </span>

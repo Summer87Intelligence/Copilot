@@ -16,6 +16,7 @@ import { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   AlertTriangle,
+  ChevronDown,
   CircleCheckBig,
   CircleDollarSign,
   Clock,
@@ -30,12 +31,8 @@ import type { LucideIcon } from "lucide-react";
 
 import { CarteraCountUp } from "@/components/copilot/cartera-count-up";
 import {
-  currencyShortLabelFor,
   formatCarteraInteger,
   formatCarteraMoney,
-  formatCarteraPercent,
-  formatRelativeAgeHours,
-  pickMostRecentSync,
 } from "@/lib/copilot-cartera-format";
 import type {
   FinancialConsistencyReport,
@@ -54,7 +51,7 @@ import { FINANCIAL_UX_COPY } from "@/lib/copilot-financial-ux-copy";
 
 type SourceBadge = "zeta" | "analytics" | "recon";
 
-type CardTone = "neutral" | "info" | "positive" | "warning";
+type CardTone = "neutral" | "info" | "positive" | "warning" | "danger";
 
 type SummaryCard = {
   id: string;
@@ -74,6 +71,11 @@ type SummaryCard = {
   tooltip?: string;
   /** Marca la card como afectada por datos históricos pre-sync. */
   isHistoricalPartial?: boolean;
+  /**
+   * Opcional: desglose de 2 líneas bajo el subtitle.
+   * Usado en cards de saldo pendiente para mostrar período / anterior.
+   */
+  breakdown?: { label: string; value: string }[];
 };
 
 // ---------------------------------------------------------------------------
@@ -108,7 +110,15 @@ type SummaryCard = {
 //     "Cobrado en período" muestra "—".
 type CurrencyCardMetrics = {
   issuedInPeriod: number;
+  issuedInPeriodNet: number;
+  /** Saldo pendiente al corte (incluye pre-período). Alias canónico para "Comprobantes Pendientes Zeta". */
   pendingAtCutoff: number;
+  /**
+   * Saldo pendiente SOLO de facturas emitidas en el período (alias legacy).
+   * Usado para derivar deuda pre-período: prePeriodPending = pendingAtCutoff − totalPending.
+   */
+  totalPending: number;
+  /** Facturas con balance > 0 emitidas EN el período (no incluye deuda histórica). */
   pendingInvoiceCount: number;
   collectedInPeriod: number;
   collectedReceiptCount: number;
@@ -119,6 +129,8 @@ type CurrencyCardMetrics = {
   collectedDataMissing: boolean;
   creditNoteCount: number;
   creditNoteAmount: number;
+  /** Saldo arrastrado: facturas anteriores al período con balance > 0. */
+  previousPending: number;
   /** Derived residual: max(0, issuedInPeriod − creditNoteAmount − pendingAtCutoff). See NormalizedCurrencyMetrics. */
   portfolioResolvedAmount: number;
 };
@@ -132,7 +144,9 @@ function getCurrencyCardMetrics(
   if (direct) {
     return {
       issuedInPeriod: direct.issuedInPeriod,
+      issuedInPeriodNet: direct.issuedInPeriodNet,
       pendingAtCutoff: direct.pendingAtCutoff,
+      totalPending: direct.totalPending,
       pendingInvoiceCount: direct.pendingInvoiceCount,
       collectedInPeriod: direct.collectedInPeriod,
       collectedReceiptCount: direct.collectedReceiptCount,
@@ -142,6 +156,7 @@ function getCurrencyCardMetrics(
       collectedDataMissing: direct.collectedReceiptCount === 0,
       creditNoteCount: direct.creditNoteCount,
       creditNoteAmount: direct.creditNoteAmount,
+      previousPending: direct.previousPending,
       portfolioResolvedAmount: direct.portfolioResolvedAmount,
     };
   }
@@ -149,7 +164,9 @@ function getCurrencyCardMetrics(
   // Bucket ausente en `report.currencies`: las cards muestran 0 / "—".
   return {
     issuedInPeriod: 0,
+    issuedInPeriodNet: 0,
     pendingAtCutoff: 0,
+    totalPending: 0,
     pendingInvoiceCount: 0,
     collectedInPeriod: 0,
     collectedReceiptCount: 0,
@@ -159,52 +176,74 @@ function getCurrencyCardMetrics(
     collectedDataMissing: true,
     creditNoteCount: 0,
     creditNoteAmount: 0,
+    previousPending: 0,
     portfolioResolvedAmount: 0,
   };
 }
 
 function pendingCollectionCard(
   code: ReconciliationCurrencyCode,
-  index: Map<ReconciliationCurrencyCode, NormalizedCurrencyMetrics>,
-  zetaAge: string
+  index: Map<ReconciliationCurrencyCode, NormalizedCurrencyMetrics>
 ): SummaryCard {
   const m = getCurrencyCardMetrics(index, code);
+
+  const hasAnyDebt = m.pendingAtCutoff > 0;
+
+  // Deuda del período = totalPending (facturas emitidas dentro del rango con balance > 0)
+  // Deuda anterior    = previousPending (facturas pre-período con balance vivo)
+  // Total             = pendingAtCutoff = período + anterior
+  const periodPending = m.totalPending;
+
+  const breakdown: { label: string; value: string }[] | undefined = hasAnyDebt
+    ? [
+        {
+          label: "Del período",
+          value: formatCarteraMoney(code, periodPending, { fractionDigits: 0 }),
+        },
+        {
+          label: "Anterior",
+          value: formatCarteraMoney(code, m.previousPending, { fractionDigits: 0 }),
+        },
+      ]
+    : undefined;
+
+  const subtitle = !hasAnyDebt
+    ? "Sin deuda en cartera"
+    : "Total pendiente";
+
   return {
     id: `cartera-${code}`,
-    title: `Saldo pendiente actual ${code}`,
+    title: `Saldo pendiente ${code}`,
     source: "zeta",
-    tone: m.pendingInvoiceCount > 0 ? "warning" : "positive",
+    tone: hasAnyDebt ? "danger" : "positive",
     icon: CircleDollarSign,
     value: m.pendingAtCutoff,
     format: (n) => formatCarteraMoney(code, n),
-    subtitle:
-      m.pendingInvoiceCount === 0
-        ? "Sin facturas con saldo abierto al Hasta"
-        : `${formatCarteraInteger(m.pendingInvoiceCount)} factura${m.pendingInvoiceCount === 1 ? "" : "s"} con saldo al corte`,
-    meta: zetaAge,
+    subtitle,
+    breakdown,
     tooltip: FINANCIAL_UX_COPY.kpiPendingTooltip,
   };
 }
 
 function issuedCard(
   code: ReconciliationCurrencyCode,
-  index: Map<ReconciliationCurrencyCode, NormalizedCurrencyMetrics>,
-  zetaAge: string
+  index: Map<ReconciliationCurrencyCode, NormalizedCurrencyMetrics>
 ): SummaryCard {
   const m = getCurrencyCardMetrics(index, code);
+  const hasNcs = m.creditNoteAmount > 0;
   return {
     id: `facturado-${code}`,
-    title: `Facturado bruto ${code}`,
+    title: `Facturado neto ${code}`,
     source: "zeta",
-    tone: "neutral",
+    tone: "positive",
     icon: FileText,
-    value: m.issuedInPeriod,
+    value: m.issuedInPeriodNet,
     format: (n) => formatCarteraMoney(code, n),
-    subtitle:
-      m.invoiceCount === 0
-        ? "Sin facturas emitidas en período"
-        : `${formatCarteraInteger(m.invoiceCount)} factura${m.invoiceCount === 1 ? "" : "s"} ${currencyShortLabelFor(code).toLowerCase()} emitida${m.invoiceCount === 1 ? "" : "s"}`,
-    meta: zetaAge,
+    subtitle: hasNcs
+      ? `Bruto ${formatCarteraMoney(code, m.issuedInPeriod)}`
+      : m.invoiceCount === 0
+        ? "Sin facturas en el período"
+        : `${formatCarteraInteger(m.invoiceCount)} factura${m.invoiceCount === 1 ? "" : "s"}`,
     tooltip: FINANCIAL_UX_COPY.kpiGrossIssuedTooltip,
   };
 }
@@ -216,16 +255,13 @@ function creditNotesCard(
   const m = getCurrencyCardMetrics(index, code);
   return {
     id: `credit-notes-${code}`,
-    title: `NC aplicadas ${code}`,
+    title: `Notas de crédito ${code}`,
     source: "zeta",
-    tone: "info",
+    tone: "danger",
     icon: FileMinus,
     value: m.creditNoteAmount,
     format: (n) => formatCarteraMoney(code, n),
-    subtitle:
-      m.creditNoteCount === 1
-        ? "1 nota de crédito"
-        : `${formatCarteraInteger(m.creditNoteCount)} notas de crédito`,
+    subtitle: `${formatCarteraInteger(m.creditNoteCount)} nota${m.creditNoteCount === 1 ? "" : "s"} de crédito`,
     tooltip: FINANCIAL_UX_COPY.kpiCreditNotesAppliedTooltip,
   };
 }
@@ -243,11 +279,12 @@ function collectedAppliedCard(
     icon: CircleCheckBig,
     value: m.portfolioResolvedAmount,
     format: (n) => formatCarteraMoney(code, n),
-    subtitle: "Facturado neto − Saldo pendiente",
-    meta:
-      m.collectedInPeriod > 0
-        ? `Recibos período: ${formatCarteraMoney(code, m.collectedInPeriod)}`
-        : undefined,
+    subtitle:
+      m.collectedReceiptCount > 0
+        ? `${formatCarteraInteger(m.collectedReceiptCount)} recibo${m.collectedReceiptCount === 1 ? "" : "s"} aplicado${m.collectedReceiptCount === 1 ? "" : "s"}`
+        : m.portfolioResolvedAmount === 0
+          ? "Sin cobros registrados"
+          : "Del período",
     tooltip: FINANCIAL_UX_COPY.kpiCollectedAppliedTooltip,
   };
 }
@@ -265,9 +302,9 @@ function effectivenessCard(
 
   return {
     id: `effectiveness-${code}`,
-    title: `% cobranza neta ${code}`,
+    title: `Cobranza efectiva ${code}`,
     source: "analytics",
-    tone: ratio !== null && ratio < 0.8 ? "warning" : "info",
+    tone: "info",
     icon: TrendingUp,
     value: ratio !== null ? ratio * 100 : 0,
     format: (n) =>
@@ -279,12 +316,8 @@ function effectivenessCard(
           })}%`,
     subtitle:
       m.invoiceCount === 0
-        ? `Sin facturas ${code} en período`
-        : `${formatCarteraInteger(m.invoiceCount)} factura${m.invoiceCount === 1 ? "" : "s"} ${code}`,
-    meta:
-      ratio !== null
-        ? `Resuelto ${formatCarteraMoney(code, m.portfolioResolvedAmount)} / Neto ${formatCarteraMoney(code, netIssued)}`
-        : undefined,
+        ? "Sin datos en el período"
+        : `${formatCarteraInteger(m.invoiceCount)} factura${m.invoiceCount === 1 ? "" : "s"} emitida${m.invoiceCount === 1 ? "" : "s"}`,
     tooltip: FINANCIAL_UX_COPY.kpiNetEffectivenessTooltip,
   };
 }
@@ -307,34 +340,46 @@ function openingBalanceCard(
     icon: FileText,
     value: m.openingBalance,
     format: (n) => formatCarteraMoney(code, n),
-    subtitle: "Deuda anterior al Desde",
-    meta: "Ledger: Σ facturas pre-Desde − Σ recibos pre-Desde",
+    subtitle: "Deuda anterior al período",
   };
 }
 
 function staleCardAll(report: FinancialConsistencyReport): SummaryCard {
-  const s = report.staleSummary;
-  const total = s.warning + s.critical + s.never_synced;
+  // Misma fuente que ClientDebtExplorer: solo clientes con deuda activa > 0.
+  // staleSummary incluye clientes con saldo $0 (stale sin deuda real) que el
+  // Explorer no muestra — usar ese pre-cómputo generaba discrepancias de conteo.
+  const withDebt = report.staleClients.filter((c) =>
+    Object.values(c.pendingByCurrency).some((v) => (v ?? 0) > 0.005)
+  );
+  let warning = 0;
+  let critical = 0;
+  let neverSynced = 0;
+  let ok = 0;
+  for (const c of withDebt) {
+    if (c.status === "critical") critical++;
+    else if (c.status === "warning") warning++;
+    else if (c.status === "never_synced") neverSynced++;
+    else ok++;
+  }
+  const total = warning + critical + neverSynced;
   const breakdown: string[] = [];
-  if (s.warning > 0) breakdown.push(`${s.warning} warning`);
-  if (s.critical > 0) breakdown.push(`${s.critical} critical`);
-  if (s.never_synced > 0) breakdown.push(`${s.never_synced} sin sync`);
+  if (critical > 0) breakdown.push(`${critical} crítico${critical === 1 ? "" : "s"}`);
+  if (warning > 0) breakdown.push(`${warning} con alerta`);
+  if (neverSynced > 0) breakdown.push(`${neverSynced} sin sync`);
   return {
     id: "stale",
     title: "Clientes en riesgo",
     source: "recon",
-    tone: total === 0 ? "positive" : s.critical > 0 || s.never_synced > 0 ? "warning" : "info",
+    tone: total === 0 ? "positive" : critical > 0 || neverSynced > 0 ? "warning" : "info",
     icon: ShieldAlert,
     value: total,
     format: (n) => formatCarteraInteger(n),
     subtitle:
       total === 0
-        ? `${formatCarteraInteger(s.ok)} clientes al día`
-        : breakdown.join(" · "),
-    meta:
-      report.metrics.stale_ratio !== null
-        ? `${formatCarteraPercent(report.metrics.stale_ratio)} del total`
-        : undefined,
+        ? withDebt.length > 0
+          ? `${formatCarteraInteger(ok)} clientes con deuda al día`
+          : "Sin deuda activa en cartera"
+        : `${breakdown.join(" · ")} · con deuda activa`,
   };
 }
 
@@ -366,8 +411,6 @@ function staleCardForCurrency(
   if (neverSynced > 0) breakdown.push(`${neverSynced} sin sync`);
 
   const total = atRisk.length;
-  const ratio =
-    clientsWithDebt.length > 0 ? total / clientsWithDebt.length : null;
 
   return {
     id: `stale-${code}`,
@@ -386,21 +429,16 @@ function staleCardForCurrency(
       total === 0
         ? clientsWithDebt.length === 0
           ? `Sin clientes con saldo ${code}`
-          : `${formatCarteraInteger(clientsWithDebt.length)} cliente${clientsWithDebt.length === 1 ? "" : "s"} con saldo ${code} al día`
+          : `${formatCarteraInteger(clientsWithDebt.length)} cliente${clientsWithDebt.length === 1 ? "" : "s"} al día`
         : breakdown.join(" · "),
-    meta:
-      ratio !== null
-        ? `${formatCarteraPercent(ratio)} de la cartera ${code}`
-        : undefined,
   };
 }
 
 function orphanCardAll(report: FinancialConsistencyReport): SummaryCard {
   const o = report.orphanSummary;
-  const staleMeta = o.stale_metadata ?? 0;
   return {
     id: "orphans",
-    title: "Orphan warnings",
+    title: "Facturas huérfanas",
     source: "recon",
     tone: o.warned === 0 ? "positive" : o.pending_auto_close > 0 ? "warning" : "info",
     icon: AlertTriangle,
@@ -408,16 +446,8 @@ function orphanCardAll(report: FinancialConsistencyReport): SummaryCard {
     format: (n) => formatCarteraInteger(n),
     subtitle:
       o.warned === 0
-        ? staleMeta > 0
-          ? `Sin activas · ${formatCarteraInteger(staleMeta)} metadata en repair`
-          : "Sin facturas huérfanas activas"
+        ? "Sin alertas activas"
         : `${formatCarteraInteger(o.warned)} con deuda abierta`,
-    meta:
-      o.pending_auto_close > 0
-        ? `${formatCarteraInteger(o.pending_auto_close)} pendiente${o.pending_auto_close === 1 ? "" : "s"} de cierre`
-        : staleMeta > 0
-          ? `${formatCarteraInteger(staleMeta)} auto-repaired en cron`
-          : "Cleanup al día",
   };
 }
 
@@ -429,11 +459,17 @@ export function ExecutiveSummaryCards({
   report,
   selectedCurrency = "all",
   isPreSync = false,
+  block,
+  showBadges = false,
 }: {
   report: FinancialConsistencyReport;
   selectedCurrency?: CurrencyFilter;
   /** Indica que el período confirmado incluye facturas pre-2026-01-01. */
   isPreSync?: boolean;
+  /** Filtra por bloque temático: "cobranza" (saldos, cobros, efectividad) o "ventas" (facturado, NCs). Sin valor → todas las cards. */
+  block?: "executive" | "cobranza" | "ventas" | "auditoria";
+  /** Ocultar badges de fuente (Zeta / Analytics / Recon). Útil en el resumen ejecutivo compacto. */
+  showBadges?: boolean;
 }) {
   const reduce = useReducedMotion();
 
@@ -446,9 +482,6 @@ export function ExecutiveSummaryCards({
   );
 
   const cards = useMemo<SummaryCard[]>(() => {
-    const recent = pickMostRecentSync(report.syncStates);
-    const zetaAge = recent ? formatRelativeAgeHours(recent.ageHours) : "sin sync";
-
     function appendOpeningIfRelevant(
       list: SummaryCard[],
       code: ReconciliationCurrencyCode
@@ -464,10 +497,10 @@ export function ExecutiveSummaryCards({
       const code = selectedCurrency;
       const mSingle = getCurrencyCardMetrics(currencyIndex, code);
       list = [
-        issuedCard(code, currencyIndex, zetaAge),
+        issuedCard(code, currencyIndex),
         ...(mSingle.creditNoteAmount > 0 ? [creditNotesCard(code, currencyIndex)] : []),
         collectedAppliedCard(code, currencyIndex),
-        pendingCollectionCard(code, currencyIndex, zetaAge),
+        pendingCollectionCard(code, currencyIndex),
         effectivenessCard(code, currencyIndex),
         staleCardForCurrency(code, report),
       ];
@@ -476,15 +509,15 @@ export function ExecutiveSummaryCards({
       const mUYU = getCurrencyCardMetrics(currencyIndex, "UYU");
       const mUSD = getCurrencyCardMetrics(currencyIndex, "USD");
       list = [
-        issuedCard("UYU", currencyIndex, zetaAge),
+        issuedCard("UYU", currencyIndex),
         ...(mUYU.creditNoteAmount > 0 ? [creditNotesCard("UYU", currencyIndex)] : []),
         collectedAppliedCard("UYU", currencyIndex),
-        pendingCollectionCard("UYU", currencyIndex, zetaAge),
+        pendingCollectionCard("UYU", currencyIndex),
         effectivenessCard("UYU", currencyIndex),
-        issuedCard("USD", currencyIndex, zetaAge),
+        issuedCard("USD", currencyIndex),
         ...(mUSD.creditNoteAmount > 0 ? [creditNotesCard("USD", currencyIndex)] : []),
         collectedAppliedCard("USD", currencyIndex),
-        pendingCollectionCard("USD", currencyIndex, zetaAge),
+        pendingCollectionCard("USD", currencyIndex),
         effectivenessCard("USD", currencyIndex),
         staleCardAll(report),
         orphanCardAll(report),
@@ -514,8 +547,33 @@ export function ExecutiveSummaryCards({
       });
     }
 
+    // Filtrar por bloque temático
+    if (block === "executive") {
+      // 4 KPIs críticos: cobrado aplicado + saldo pendiente por moneda
+      list = list.filter(
+        (c) =>
+          c.id.startsWith("collected-applied-") || c.id.startsWith("cartera-")
+      );
+    } else if (block === "cobranza") {
+      // KPIs secundarios de cobranza: efectividad, clientes en riesgo, saldo anterior
+      list = list.filter(
+        (c) =>
+          c.id.startsWith("effectiveness-") ||
+          c.id === "stale" ||
+          c.id.startsWith("stale-") ||
+          c.id.startsWith("opening-")
+      );
+    } else if (block === "ventas") {
+      list = list.filter((c) => c.id.startsWith("facturado-"));
+    } else if (block === "auditoria") {
+      // Alertas técnicas: orphan warnings
+      list = list.filter((c) => c.id === "orphans");
+    }
+
     return list;
-  }, [report, selectedCurrency, currencyIndex, isPreSync]);
+  }, [report, selectedCurrency, currencyIndex, isPreSync, block]);
+
+  const showBadge = showBadges;
 
   return (
     <motion.section
@@ -529,7 +587,7 @@ export function ExecutiveSummaryCards({
       }}
     >
       {cards.map((card) => (
-        <SummaryCardView key={card.id} card={card} />
+        <SummaryCardView key={card.id} card={card} showBadge={showBadge} />
       ))}
     </motion.section>
   );
@@ -574,20 +632,22 @@ function KpiInfoButton({ tooltip, id }: { tooltip: string; id: string }) {
 }
 
 const TONE_VALUE_CLASS: Record<CardTone, string> = {
-  neutral: "text-[var(--copilot-ink)]",
-  info: "text-[var(--copilot-ink)]",
-  positive: "text-emerald-800",
-  warning: "text-amber-900",
+  neutral:  "text-[var(--copilot-ink)]",
+  info:     "text-sky-700",      // azul petróleo suave (era sky-900, demasiado oscuro)
+  positive: "text-emerald-600",  // jade suave (era emerald-800, verde oscuro)
+  warning:  "text-amber-600",    // naranja suave (era amber-900, casi marrón)
+  danger:   "text-rose-600",     // coral premium (era rose-800, vino oscuro)
 };
 
 const TONE_ICON_CLASS: Record<CardTone, string> = {
-  neutral: "bg-[rgba(44,40,37,0.06)] text-[var(--copilot-ink)]",
-  info: "bg-sky-50 text-sky-700",
-  positive: "bg-emerald-50 text-emerald-700",
-  warning: "bg-amber-50 text-amber-800",
+  neutral:  "bg-slate-50 text-slate-400",
+  info:     "bg-sky-50 text-sky-500",
+  positive: "bg-emerald-50 text-emerald-500",
+  warning:  "bg-amber-50 text-amber-500",
+  danger:   "bg-rose-50 text-rose-500",
 };
 
-function SummaryCardView({ card }: { card: SummaryCard }) {
+function SummaryCardView({ card, showBadge = false }: { card: SummaryCard; showBadge?: boolean }) {
   const Icon = card.icon;
   return (
     <motion.article
@@ -595,49 +655,57 @@ function SummaryCardView({ card }: { card: SummaryCard }) {
         hidden: { opacity: 0, y: 8 },
         visible: { opacity: 1, y: 0, transition: { duration: 0.22, ease: "easeOut" } },
       }}
-      className="group relative flex flex-col justify-between rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-5 shadow-[var(--copilot-shadow)] transition hover:shadow-md"
+      className="group relative flex flex-col rounded-2xl border border-[rgba(15,23,42,0.10)] bg-[var(--copilot-card)] px-5 py-6 shadow-[0_1px_3px_rgba(15,23,42,0.07)] transition hover:shadow-[0_4px_12px_rgba(15,23,42,0.10)]"
     >
-      <header className="mb-4 flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span
-            className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${TONE_ICON_CLASS[card.tone]}`}
-            aria-hidden
-          >
-            <Icon className="h-4 w-4" />
-          </span>
-          <div className="flex min-w-0 items-center gap-1">
-            <p className="truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--copilot-ink-muted)]">
-              {card.title}
-            </p>
-            {card.tooltip ? (
-              <KpiInfoButton tooltip={card.tooltip} id={card.id} />
-            ) : null}
-          </div>
-        </div>
-        <SourceBadgeView source={card.source} />
-      </header>
-
-      <div className="space-y-1.5">
-        <p
-          className={`text-2xl font-semibold leading-tight tabular-nums ${TONE_VALUE_CLASS[card.tone]}`}
+      {/* Label row */}
+      <div className="mb-4 flex items-center gap-2">
+        <span
+          className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${TONE_ICON_CLASS[card.tone]}`}
+          aria-hidden
         >
-          <CarteraCountUp value={card.value} format={card.format} />
-        </p>
-        <p className="text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
-          {card.subtitle}
-        </p>
-        {card.meta ? (
-          <p className="text-[11px] uppercase tracking-[0.08em] text-[var(--copilot-ink-muted)]/80">
-            {card.meta}
+          <Icon className="h-3.5 w-3.5" />
+        </span>
+        <div className="flex min-w-0 items-center gap-1">
+          <p className="truncate text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--copilot-ink-muted)]/90">
+            {card.title}
           </p>
-        ) : null}
-        {card.isHistoricalPartial ? (
-          <div className="mt-0.5 inline-flex items-center gap-1 rounded-full border border-amber-200/70 bg-amber-50/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-800">
-            <Clock className="h-2.5 w-2.5" aria-hidden />
-            {FINANCIAL_UX_COPY.historicalPartialBadge}
-          </div>
-        ) : null}
+          {card.tooltip ? (
+            <KpiInfoButton tooltip={card.tooltip} id={card.id} />
+          ) : null}
+        </div>
+        {showBadge ? <SourceBadgeView source={card.source} /> : null}
       </div>
+
+      {/* Value — dominant */}
+      <p
+        className={`text-[28px] font-bold leading-none tabular-nums ${TONE_VALUE_CLASS[card.tone]}`}
+      >
+        <CarteraCountUp value={card.value} format={card.format} />
+      </p>
+
+      {/* Descriptor line */}
+      <p className="mt-2 text-[12px] leading-snug text-[var(--copilot-ink-muted)]/85">
+        {card.subtitle}
+      </p>
+
+      {/* Breakdown: Del período / Anterior */}
+      {card.breakdown && card.breakdown.length > 0 ? (
+        <div className="mt-2 space-y-1 border-t border-[rgba(15,23,42,0.07)] pt-2">
+          {card.breakdown.map((line) => (
+            <div key={line.label} className="flex items-baseline justify-between gap-2">
+              <span className="text-[11px] text-[var(--copilot-ink-muted)]/65">{line.label}</span>
+              <span className="text-[12px] tabular-nums text-[var(--copilot-ink-muted)]/80">{line.value}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {card.isHistoricalPartial ? (
+        <div className="mt-3 inline-flex items-center gap-1 rounded-full border border-amber-200/70 bg-amber-50/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-800">
+          <Clock className="h-2.5 w-2.5" aria-hidden />
+          {FINANCIAL_UX_COPY.historicalPartialBadge}
+        </div>
+      ) : null}
     </motion.article>
   );
 }
@@ -668,6 +736,107 @@ function SourceBadgeView({ source }: { source: SourceBadge }) {
       {source === "recon" ? <ShieldAlert className="h-3 w-3" aria-hidden /> : null}
       {SOURCE_LABEL[source]}
     </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CreditNotesSection — colapsable, default cerrado
+// ---------------------------------------------------------------------------
+
+export function CreditNotesSection({
+  report,
+  selectedCurrency = "all",
+}: {
+  report: FinancialConsistencyReport;
+  selectedCurrency?: CurrencyFilter;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const currencyIndex = useMemo(
+    () => buildCurrencyIndex(report.currencies),
+    [report.currencies]
+  );
+
+  const currencies =
+    selectedCurrency === "USD" || selectedCurrency === "UYU"
+      ? ([selectedCurrency] as const)
+      : (["UYU", "USD"] as const);
+
+  const ncLines = currencies
+    .map((code) => {
+      const m = currencyIndex.get(code);
+      if (!m || m.creditNoteAmount === 0) return null;
+      return { code, amount: m.creditNoteAmount, count: m.creditNoteCount, issuedBruto: m.issuedInPeriod };
+    })
+    .filter(Boolean) as Array<{
+      code: "UYU" | "USD";
+      amount: number;
+      count: number;
+      issuedBruto: number;
+    }>;
+
+  if (ncLines.length === 0) return null;
+
+  const summaryText = ncLines
+    .map(
+      (l) =>
+        `${l.code}: ${formatCarteraMoney(l.code, l.amount)} (${l.count} nota${l.count === 1 ? "" : "s"})`
+    )
+    .join(" · ");
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-rose-200/70 bg-rose-50/30 shadow-[var(--copilot-shadow)]">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center justify-between px-5 py-4 text-left transition-colors hover:bg-rose-50/60"
+      >
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-700">
+            <FileMinus className="h-4 w-4" aria-hidden />
+          </span>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-rose-800">
+              Notas de crédito del período
+            </p>
+            <p className="mt-0.5 text-xs text-rose-700/80">{summaryText}</p>
+          </div>
+        </div>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-rose-600 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+          aria-hidden
+        />
+      </button>
+
+      {expanded && (
+        <div className="border-t border-rose-200/50 px-5 pb-5 pt-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {ncLines.map((l) => (
+              <div
+                key={l.code}
+                className="rounded-xl border border-rose-200/60 bg-white/70 p-4"
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-rose-700">
+                  NC aplicadas {l.code}
+                </p>
+                <p className="mt-1.5 text-xl font-semibold tabular-nums text-rose-800">
+                  −{formatCarteraMoney(l.code, l.amount)}
+                </p>
+                <p className="mt-1 text-sm text-rose-700/80">
+                  {l.count} nota{l.count === 1 ? "" : "s"} de crédito
+                </p>
+                <p className="mt-0.5 text-[11px] text-rose-600/70">
+                  Facturado bruto: {formatCarteraMoney(l.code, l.issuedBruto)}
+                </p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[11px] text-rose-600/60">
+            Las NCs reducen el facturado neto, no el saldo pendiente · Detalle por comprobante disponible en Zeta
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
 

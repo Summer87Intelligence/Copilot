@@ -166,6 +166,13 @@ export type CurrencyReconciliation = {
    */
   pendingAtCutoff: number;
   /**
+   * Saldo pendiente arrastrado de períodos anteriores: suma de `balance_amount > 0`
+   * de facturas con `issue_date < periodStart`. Complemento de `pendingAtCutoff`:
+   * `pendingAtCutoff ≈ totalPending (período) + previousPending (anterior)`.
+   * Cero en modo `all_outstanding` (sin filtro de período activo).
+   */
+  previousPending: number;
+  /**
    * @deprecated Usar `collectedInPeriod`. Alias mantenido por compatibilidad.
    * El motor lo pre-calcula desde recibos reales (no desde `invoiced - pending`).
    */
@@ -686,6 +693,9 @@ export function generateFinancialConsistencyReport(
 
   let pre2026Count = 0;
 
+  // Period pass: only accumulates bucket metrics (issuedInPeriod, pendingInPeriod,
+  // invoiceCount, creditNotes). Per-client tracking and aging are handled separately
+  // in the portfolio pass below so that pre-period debtors are included.
   for (const inv of invoices) {
     if (isVoided(inv.status)) {
       voidedInvoices++;
@@ -708,20 +718,7 @@ export function generateFinancialConsistencyReport(
       if (/^\d{4}-\d{2}-\d{2}$/.test(issueSl) && issueSl < "2026-01-01") pre2026Count++;
     }
 
-    // Per-client updated_at tracking
-    const companyId = inv.company_id?.trim() ?? "";
-    if (companyId) {
-      if (inv.updated_at) {
-        const ms = Date.parse(inv.updated_at);
-        if (Number.isFinite(ms)) {
-          const prev = clientLatestMs.get(companyId) ?? 0;
-          if (ms > prev) clientLatestMs.set(companyId, ms);
-        }
-      }
-      clientInvoiceCount.set(companyId, (clientInvoiceCount.get(companyId) ?? 0) + 1);
-    }
-
-    // Currency accumulation
+    // Currency accumulation (period metrics only)
     const code = (inv.currency_code ?? "").trim().toUpperCase();
     if (!code || !VALID_CURRENCIES.has(code)) {
       totalWithoutCurrency++;
@@ -758,46 +755,6 @@ export function generateFinancialConsistencyReport(
       if (pendingAmount > 0) b.pendingInvoiceCount++;
     }
     buckets[code] = b;
-
-    // Track per-client pending for gap analysis. NCs no son deuda abierta y no
-    // se netean acá: hacerlo duplicaría descuentos ya reflejados en saldos Zeta.
-    if (companyId) {
-      const cur = clientPendingByCurrency.get(companyId) ?? {};
-      const cc = code as ReconciliationCurrencyCode;
-      const delta = inv.is_credit_note === true ? 0 : pendingAmount;
-      cur[cc] = round2(Math.max(0, (cur[cc] ?? 0) + delta));
-      clientPendingByCurrency.set(companyId, cur);
-    }
-
-    // NCs no entran en aging: no son deuda abierta.
-    if (inv.is_credit_note === true) continue;
-
-    // Aging accumulation (only pending invoices with parseable date).
-    // ZETA-08: usa due_date real cuando due_date_source = 'zeta_cuotas_v1';
-    // fallback al sintético basado en issue_date.
-    if (pendingAmount > 0) {
-      const ag = resolveAging(inv, nowMs);
-      if (ag !== null) {
-        const cc = code as ReconciliationCurrencyCode;
-        const accum = getOrCreateAgingAccum(cc);
-        const bk = accum[ag.range];
-        bk.amount = round2(bk.amount + pendingAmount);
-        bk.invoiceCount++;
-        if (companyId) bk.clients.add(companyId);
-        if (ag.source === "real") bk.realCount++;
-        else bk.syntheticCount++;
-        bumpAgingSource(cc, ag.source);
-
-        if (companyId) {
-          let cliAg = clientAgingAmounts.get(companyId);
-          if (!cliAg) {
-            cliAg = { "0_30": 0, "31_60": 0, "61_90": 0, "90_plus": 0 };
-            clientAgingAmounts.set(companyId, cliAg);
-          }
-          cliAg[ag.range] = round2(cliAg[ag.range] + pendingAmount);
-        }
-      }
-    }
   }
 
   const currencyOrder: ReconciliationCurrencyCode[] = ["USD", "UYU"];
@@ -890,6 +847,77 @@ export function generateFinancialConsistencyReport(
         pendingPrePeriodByCurrency[cc] = round2(
           (pendingPrePeriodByCurrency[cc] ?? 0) + pending
         );
+      }
+    }
+  }
+
+  // --- Portfolio pass: per-client tracking + aging ---
+  // Drives staleClients, agingByCurrency, and ClientDebtExplorer.
+  // When a period filter is active, includes ALL invoices up to periodEnd so
+  // that pre-period debtors with open balances appear in the Explorer and Aging.
+  // NCs are skipped: they are not open debt.
+  for (const inv of invoices) {
+    if (isVoided(inv.status)) continue;
+
+    if (usePeriodFilter) {
+      const issueSl = (inv.issue_date ?? "").slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(issueSl) || issueSl > periodEnd!) continue;
+    }
+
+    const companyId = inv.company_id?.trim() ?? "";
+    if (companyId) {
+      if (inv.updated_at) {
+        const ms = Date.parse(inv.updated_at);
+        if (Number.isFinite(ms)) {
+          const prev = clientLatestMs.get(companyId) ?? 0;
+          if (ms > prev) clientLatestMs.set(companyId, ms);
+        }
+      }
+      clientInvoiceCount.set(companyId, (clientInvoiceCount.get(companyId) ?? 0) + 1);
+    }
+
+    if (inv.is_credit_note === true) continue;
+
+    const portCode = (inv.currency_code ?? "").trim().toUpperCase();
+    if (!portCode || !VALID_CURRENCIES.has(portCode)) continue;
+
+    const portTotal = round2(Math.max(0, safeNum(inv.total_amount)));
+    if (!(portTotal > 0)) continue;
+
+    const portRawBal = inv.balance_amount;
+    const portPending =
+      portRawBal == null
+        ? portTotal
+        : round2(Math.max(0, safeNum(portRawBal)));
+
+    if (companyId) {
+      const cur = clientPendingByCurrency.get(companyId) ?? {};
+      const cc = portCode as ReconciliationCurrencyCode;
+      cur[cc] = round2(Math.max(0, (cur[cc] ?? 0) + portPending));
+      clientPendingByCurrency.set(companyId, cur);
+    }
+
+    if (portPending > 0) {
+      const ag = resolveAging(inv, nowMs);
+      if (ag !== null) {
+        const cc = portCode as ReconciliationCurrencyCode;
+        const accum = getOrCreateAgingAccum(cc);
+        const bk = accum[ag.range];
+        bk.amount = round2(bk.amount + portPending);
+        bk.invoiceCount++;
+        if (companyId) bk.clients.add(companyId);
+        if (ag.source === "real") bk.realCount++;
+        else bk.syntheticCount++;
+        bumpAgingSource(cc, ag.source);
+
+        if (companyId) {
+          let cliAg = clientAgingAmounts.get(companyId);
+          if (!cliAg) {
+            cliAg = { "0_30": 0, "31_60": 0, "61_90": 0, "90_plus": 0 };
+            clientAgingAmounts.set(companyId, cliAg);
+          }
+          cliAg[ag.range] = round2(cliAg[ag.range] + portPending);
+        }
       }
     }
   }
@@ -1021,6 +1049,7 @@ export function generateFinancialConsistencyReport(
         // Nuevos campos canónicos con semántica contable explícita.
         issuedInPeriod,
         pendingAtCutoff,
+        previousPending: pendingPrePeriodByCurrency[code] ?? 0,
         collectedInPeriod,
         collectedReceiptCount,
         openingBalance,

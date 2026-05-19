@@ -22,13 +22,14 @@
  *    y la opción histórica generaba confusión.
  *  - La pantalla no hace fetch al montar. El usuario debe confirmar un rango
  *    Desde/Hasta para habilitar el hook y cargar el reporte.
- *  - No hay selector de año ni defaults visuales; toda la cartera depende del
- *    rango confirmado.
+ *  - Al montar, Desde/Hasta se precargan con mes actual → hoy (calendario local).
+ *    El fetch sigue requiriendo Confirmar; el usuario no debe tipear fechas.
  */
 
 import { useCallback, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AlertOctagon, CalendarRange, Info, X } from "lucide-react";
+import { getCurrentMonthToTodayRange } from "@/lib/copilot-date-range-defaults";
 import { COPILOT_OPERATIONAL_START_DATE } from "@/lib/copilot-operational-period";
 import { buildCurrencyIndex } from "@/lib/copilot-cartera-cards-source";
 import { FINANCIAL_UX_COPY } from "@/lib/copilot-financial-ux-copy";
@@ -38,6 +39,7 @@ import { useFinancialReconciliation } from "@/hooks/use-financial-reconciliation
 import { FinancialControlBar } from "@/components/copilot/financial-control-bar";
 import {
   ExecutiveSummaryCards,
+  CreditNotesSection,
 } from "@/components/copilot/executive-summary-cards";
 import {
   ReconciliationCenter,
@@ -47,6 +49,7 @@ import {
 } from "@/components/copilot/aging-analytics";
 import { ClientDebtExplorer } from "@/components/copilot/client-debt-explorer";
 import { ExplainabilityPanel } from "@/components/copilot/explainability-panel";
+import { CollapsibleSection } from "@/components/copilot/collapsible-section";
 
 function normalizeDateInput(value: string | null | undefined): string {
   return (value ?? "").slice(0, 10);
@@ -55,9 +58,12 @@ function normalizeDateInput(value: string | null | undefined): string {
 export function CarteraShell() {
   const [periodStart, setPeriodStart] = useState<string | null>(null);
   const [periodEnd, setPeriodEnd] = useState<string | null>(null);
-  const [draftStart, setDraftStart] = useState<string>(COPILOT_OPERATIONAL_START_DATE);
-  // draftEnd se inicializa vacío; el control bar guía al usuario a completarlo
-  const [draftEnd, setDraftEnd] = useState<string>("");
+  const [draftStart, setDraftStart] = useState(
+    () => getCurrentMonthToTodayRange().from
+  );
+  const [draftEnd, setDraftEnd] = useState(
+    () => getCurrentMonthToTodayRange().to
+  );
   const [confirmedDraftStart, setConfirmedDraftStart] = useState<string>("");
   const [confirmedDraftEnd, setConfirmedDraftEnd] = useState<string>("");
   const [hasConfirmedRange, setHasConfirmedRange] = useState(false);
@@ -172,22 +178,93 @@ export function CarteraShell() {
                 }
               />
             )}
-            <ExecutiveSummaryCards
-              report={report}
-              selectedCurrency="all"
-              isPreSync={isPreSync}
-            />
-            {structuralGaps.length > 0 && (
-              <HistoricalGapNote gaps={structuralGaps} />
-            )}
-            <AgingAnalytics report={report} selectedCurrency="all" />
-            <ClientDebtExplorer report={report} selectedCurrency="all" />
-            <ExplainabilityPanel report={report} selectedCurrency="all" isPreSync={isPreSync} />
-            <ReconciliationCenter
-              report={report}
-              generatedAt={lastFetchedAt ?? report.generatedAt}
-              isPreSync={isPreSync}
-            />
+            {/* Bloque A — Ventas del período (arriba, abierto por defecto) */}
+            <CollapsibleSection
+              id="ventas"
+              title="Ventas del período"
+              subtitle="Facturación, notas de crédito y cobros del rango seleccionado"
+              defaultOpen
+            >
+              <ExecutiveSummaryCards
+                report={report}
+                selectedCurrency="all"
+                isPreSync={isPreSync}
+                block="ventas"
+              />
+              <CreditNotesSection report={report} selectedCurrency="all" />
+            </CollapsibleSection>
+
+            {/* Bloque — Resumen financiero (cobrado aplicado + saldo pendiente) */}
+            <CollapsibleSection
+              id="summary"
+              title="Resumen financiero"
+              subtitle="Cobros aplicados y deuda activa total"
+              defaultOpen
+            >
+              <ExecutiveSummaryCards
+                report={report}
+                selectedCurrency="all"
+                isPreSync={isPreSync}
+                block="executive"
+              />
+            </CollapsibleSection>
+
+            {/* Bloque B — Cobranza y deuda activa */}
+            <CollapsibleSection
+              id="cobranza"
+              title="Cobranza"
+              subtitle="Deuda activa total, incluyendo saldos anteriores arrastrados"
+              defaultOpen
+            >
+              <ExecutiveSummaryCards
+                report={report}
+                selectedCurrency="all"
+                isPreSync={isPreSync}
+                block="cobranza"
+              />
+              {structuralGaps.length > 0 && (
+                <HistoricalGapNote gaps={structuralGaps} />
+              )}
+              <CollapsibleSection
+                id="aging"
+                title="Aging de cartera"
+                subtitle="Deuda viva agrupada por antigüedad · todos los saldos activos al día de hoy"
+                defaultOpen={false}
+                variant="secondary"
+              >
+                <AgingAnalytics report={report} selectedCurrency="all" />
+              </CollapsibleSection>
+              <CollapsibleSection
+                id="explorador"
+                title="Explorador de deuda"
+                subtitle="Clientes con deuda activa al día de hoy · no limitado al rango seleccionado"
+                defaultOpen={false}
+                variant="secondary"
+              >
+                <ClientDebtExplorer report={report} selectedCurrency="all" />
+              </CollapsibleSection>
+            </CollapsibleSection>
+
+            {/* Bloque C — Auditoría (cerrado por defecto) */}
+            <CollapsibleSection
+              id="auditoria"
+              title="Auditoría y trazabilidad"
+              subtitle="Orphan warnings, reconciliación y explicabilidad del motor"
+              defaultOpen={false}
+            >
+              <ExecutiveSummaryCards
+                report={report}
+                selectedCurrency="all"
+                isPreSync={isPreSync}
+                block="auditoria"
+              />
+              <ExplainabilityPanel report={report} selectedCurrency="all" isPreSync={isPreSync} />
+              <ReconciliationCenter
+                report={report}
+                generatedAt={lastFetchedAt ?? report.generatedAt}
+                isPreSync={isPreSync}
+              />
+            </CollapsibleSection>
           </>
         ) : null}
       </div>

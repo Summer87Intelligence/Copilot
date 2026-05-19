@@ -85,6 +85,18 @@ export type NormalizedCurrencyMetrics = {
   /** Notas de crédito del período: monto total acumulado (signo positivo). */
   creditNoteAmount: number;
   /**
+   * Facturado neto = issuedInPeriod − creditNoteAmount.
+   * Valor principal que deben mostrar las cards de "Facturado en el mes".
+   */
+  issuedInPeriodNet: number;
+  /**
+   * Saldo pendiente arrastrado de períodos anteriores: facturas emitidas ANTES
+   * del `Desde` con balance > 0. Cero si no hay filtro de período activo o si
+   * no existe deuda histórica. Junto con `totalPending` (in-period) suma
+   * `pendingAtCutoff`.
+   */
+  previousPending: number;
+  /**
    * Derived residual portfolio resolution amount.
    *
    * This is NOT a direct sum of receipts.
@@ -239,6 +251,21 @@ function normalizeBucket(
       readCurrencyMetric(raw, "creditNoteCount", "credit_note_count") ?? 0
     )
   );
+  const issuedInPeriodNet = Math.max(0, issuedInPeriod - creditNoteAmount);
+
+  // previousPending: saldo arrastrado anterior al período.
+  // Primero intenta leerlo directo del motor; si no viene, lo deriva como
+  // max(0, pendingAtCutoff − totalPending) que es la identidad contable exacta.
+  const previousPendingRaw = readCurrencyMetric(
+    raw,
+    "previousPending",
+    "previous_pending"
+  );
+  const previousPending =
+    previousPendingRaw !== null
+      ? Math.max(0, previousPendingRaw)
+      : Math.max(0, pendingAtCutoff - totalPending);
+
   /**
    * Derived residual portfolio resolution amount.
    *
@@ -264,11 +291,13 @@ function normalizeBucket(
     collectionEffectiveness,
     issuedInPeriod,
     pendingAtCutoff,
+    previousPending,
     collectedInPeriod,
     collectedReceiptCount: Math.max(0, Math.trunc(collectedReceiptCount)),
     openingBalance,
     creditNoteCount,
     creditNoteAmount,
+    issuedInPeriodNet,
     portfolioResolvedAmount,
   };
 }
