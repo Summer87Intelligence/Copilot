@@ -54,10 +54,23 @@ export function sumPortfolioOverdueDebt(portfolio: ClientPortfolioLoad | null): 
   if (!portfolio?.rows?.length) return 0;
   let t = 0;
   for (const r of portfolio.rows) {
-    // TODO Fase 3: overdue_debt es agregado mixto UYU+USD; usar overdue_uyu + overdue_usd para umbrales por moneda
+    // TODO FASE 4: overdue_debt es agregado mixto UYU+USD; usar sumPortfolioOverdueByCurrency para breakdown real
     t += r.overdue_debt;
   }
   return t;
+}
+
+/** Fase 3: desglose de overdue por moneda sin sumar UYU+USD. */
+export function sumPortfolioOverdueByCurrency(
+  portfolio: ClientPortfolioLoad | null
+): { UYU: number; USD: number } {
+  const out = { UYU: 0, USD: 0 };
+  if (!portfolio?.rows?.length) return out;
+  for (const r of portfolio.rows) {
+    out.UYU += r.overdue_uyu ?? 0;
+    out.USD += r.overdue_usd ?? 0;
+  }
+  return out;
 }
 
 export function countTaxAgendaUpcoming(
@@ -79,8 +92,26 @@ export function countTaxAgendaUpcoming(
 
 export function hasHighRiskClients(portfolio: ClientPortfolioLoad | null): boolean {
   if (!portfolio?.rows?.length) return false;
-  // TODO Fase 3: overdue_debt es agregado mixto UYU+USD; usar overdue_uyu + overdue_usd para umbrales por moneda
+  // TODO FASE 4: overdue_debt es agregado mixto UYU+USD; usar hasHighRiskClientsByCurrency para evaluación real
   return portfolio.rows.some((r) => r.risk === "Alto" || r.overdue_debt > 0);
+}
+
+/**
+ * Fase 3: determina si hay clientes de alto riesgo evaluando UYU y USD por separado.
+ * Usa per-currency cuando disponible; cae en legacy cuando no hay datos de moneda.
+ */
+export function hasHighRiskClientsByCurrency(portfolio: ClientPortfolioLoad | null): boolean {
+  if (!portfolio?.rows?.length) return false;
+  return portfolio.rows.some((r) => {
+    if (r.risk === "Alto") return true;
+    const overdueUyu = r.overdue_uyu ?? 0;
+    const overdueUsd = r.overdue_usd ?? 0;
+    if (overdueUyu > 0 || overdueUsd > 0) return true;
+    if (overdueUyu === 0 && overdueUsd === 0 && !r.has_mixed_currency) {
+      return r.overdue_debt > 0;
+    }
+    return false;
+  });
 }
 
 export type RutasVisibility = {

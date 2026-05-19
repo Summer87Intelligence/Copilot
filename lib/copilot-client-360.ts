@@ -11,6 +11,11 @@ import { COPILOT_COMMERCIAL_CLIENT_METADATA_KEY } from "@/lib/integrations/zeta/
 import { fetchInvoiceFinancialBalanceMap } from "@/lib/data/proto-analytics-read-repository";
 import { readInvoiceFinancial } from "@/lib/copilot-invoice-financial-read";
 import { getZetaSyncResourceFlowLabel } from "@/lib/integrations/zeta/zeta-sync-resource-keys";
+import {
+  buildCurrencyRiskSummary,
+  currencyRiskToClientRiskLabel,
+  type SnapshotCurrencyCode,
+} from "@/lib/copilot-financial-thresholds";
 
 function str(v: unknown): string {
   if (v === null || v === undefined) return "";
@@ -206,6 +211,8 @@ function computeInsights(input: {
   receipts: Client360ReceiptRow[];
   movements: Client360Movement[];
   overdueDebt: number;
+  /** Fase 3: overdue por moneda — cuando presente reemplaza al threshold mixto legacy */
+  overdueByCurrency?: Partial<Record<SnapshotCurrencyCode, number>>;
 }): Client360Insight[] {
   const today = localTodayYmd();
   const lastReceipt = input.receipts
@@ -219,8 +226,21 @@ function computeInsights(input: {
   });
 
   let riesgo: "Bajo" | "Medio" | "Alto" = "Bajo";
-  if (input.saldoPendiente <= 0) riesgo = "Bajo";
-  else {
+  if (input.saldoPendiente <= 0) {
+    riesgo = "Bajo";
+  } else if (input.overdueByCurrency && Object.keys(input.overdueByCurrency).length > 0) {
+    // Fase 3: evaluar overdue por moneda sin sumar UYU+USD
+    const byCurrencyInput = Object.fromEntries(
+      (Object.entries(input.overdueByCurrency) as [SnapshotCurrencyCode, number][]).map(
+        ([cur, overdue]) => [cur, { overdue: overdue ?? 0 }]
+      )
+    ) as Partial<Record<SnapshotCurrencyCode, { overdue: number }>>;
+    const summary = buildCurrencyRiskSummary(byCurrencyInput);
+    riesgo = currencyRiskToClientRiskLabel(summary.highestRisk);
+    // TODO FASE 4: saldoPendiente >= 80_000 es threshold UYU-scale; no aplica a USD puro
+    if (riesgo === "Bajo" && input.saldoPendiente >= 80_000) riesgo = "Medio";
+  } else {
+    // Legacy: threshold mixto UYU+USD — TODO FASE 4: separar por moneda
     const odShare = input.saldoPendiente > 0 ? input.overdueDebt / input.saldoPendiente : 0;
     if (input.overdueDebt >= 200_000 || odShare >= 0.55) riesgo = "Alto";
     else if (input.overdueDebt > 0 || input.saldoPendiente >= 80_000) riesgo = "Medio";
@@ -295,6 +315,7 @@ export async function loadClientCompany360(
 
   let saldoPendiente = 0;
   let overdueDebt = 0;
+  const overdueByCurrency: Partial<Record<SnapshotCurrencyCode, number>> = {};
 
   const invoices: Client360InvoiceRow[] = [...invoicesRaw]
     .map((inv) => {
@@ -308,7 +329,14 @@ export async function loadClientCompany360(
       const bal = fin.balance_authoritative;
       saldoPendiente += bal;
       const due = ymd(inv.due_date);
-      if (bal > 0 && due && due < todayYmd) overdueDebt += bal;
+      if (bal > 0 && due && due < todayYmd) {
+        overdueDebt += bal;
+        // Fase 3: acumular overdue por moneda
+        const rawCur = str(inv.currency_code).toUpperCase();
+        const cur: SnapshotCurrencyCode | null =
+          rawCur === "UYU" || rawCur === "USD" ? rawCur : null;
+        if (cur) overdueByCurrency[cur] = (overdueByCurrency[cur] ?? 0) + bal;
+      }
       return {
         id,
         issue_date: ymd(inv.issue_date) || "—",
@@ -415,6 +443,7 @@ export async function loadClientCompany360(
     receipts,
     movements,
     overdueDebt,
+    overdueByCurrency: Object.keys(overdueByCurrency).length > 0 ? overdueByCurrency : undefined,
   });
 
   return {

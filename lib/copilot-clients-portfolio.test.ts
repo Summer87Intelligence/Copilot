@@ -8,6 +8,7 @@ import {
   paymentBehaviorForInvoices,
   paymentBehaviorLabelEs,
   riskForCompany,
+  riskForCompanyPerCurrency,
   type ClientCompanyDetail,
   type ClientPortfolioReceipt,
   type ClientPortfolioRow,
@@ -425,5 +426,68 @@ describe("formatMoneyPortfolio — símbolo por moneda", () => {
 
   it("sin moneda (legacy) → $ (default UYU)", () => {
     expect(formatMoneyPortfolio(10_000)).toBe("$ 10.000");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fase 3 — riskForCompanyPerCurrency
+// ---------------------------------------------------------------------------
+
+describe("riskForCompanyPerCurrency — evaluación por moneda sin sumar UYU+USD", () => {
+  it("sin deuda en ninguna moneda → Bajo", () => {
+    expect(riskForCompanyPerCurrency(0.05, 0, 0, 0, 0)).toBe("Bajo");
+  });
+
+  it("sharePct alto → Alto independientemente de monedas", () => {
+    expect(riskForCompanyPerCurrency(0.35, 0, 0, 0, 0)).toBe("Alto");
+  });
+
+  it("sharePct medio → Medio como mínimo", () => {
+    expect(riskForCompanyPerCurrency(0.2, 0, 0, 0, 0)).toBe("Medio");
+  });
+
+  it("UYU overdue bajo threshold high → Medio (any overdue > 0 = medium)", () => {
+    // 1000 UYU overdue < 50K high threshold → "medium" → "Medio"
+    expect(riskForCompanyPerCurrency(0.05, 1_000, 0, 2_000, 0)).toBe("Medio");
+  });
+
+  it("UYU overdue > threshold crítico → Alto", () => {
+    // 300K UYU overdue supera threshold UYU critical (280K)
+    expect(riskForCompanyPerCurrency(0.05, 300_000, 0, 300_000, 0)).toBe("Alto");
+  });
+
+  it("USD overdue > threshold crítico → Alto aunque UYU sea 0", () => {
+    // $8K USD overdue supera threshold USD critical (7K) → Alto
+    expect(riskForCompanyPerCurrency(0.05, 0, 8_000, 0, 8_000)).toBe("Alto");
+  });
+
+  it("USD overdue bajo threshold crítico pero alto → Alto", () => {
+    // $7K USD exacto = critical → Alto
+    expect(riskForCompanyPerCurrency(0.05, 0, 7_000, 0, 7_000)).toBe("Alto");
+  });
+
+  it("USD overdue medio ($2K) → Medio", () => {
+    // $2K USD overdue: high threshold USD (1.5K) ≤ 2K < critical (7K) → high → Alto
+    // (high mapea a Alto)
+    expect(riskForCompanyPerCurrency(0.05, 0, 2_000, 0, 2_000)).toBe("Alto");
+  });
+
+  it("mezcla UYU bajo + USD critical → Alto (toma el peor)", () => {
+    // UYU: 10K overdue → low; USD: 7K overdue → critical → Alto
+    expect(riskForCompanyPerCurrency(0.05, 10_000, 7_000, 10_000, 7_000)).toBe("Alto");
+  });
+
+  it("legacy riskForCompany y perCurrency coinciden en caso sin monedas", () => {
+    // Sin datos de moneda, compartamiento debe ser similar al legacy
+    const legacy = riskForCompany(0.05, 0, 0);
+    const perCurrency = riskForCompanyPerCurrency(0.05, 0, 0, 0, 0);
+    expect(perCurrency).toBe(legacy); // ambos Bajo
+  });
+
+  it("no regressions: riskForCompany legacy funciona igual que antes", () => {
+    expect(riskForCompany(0.05, 0, 0)).toBe("Bajo");
+    expect(riskForCompany(0.2, 50_000, 0)).toBe("Medio");
+    expect(riskForCompany(0.35, 50_000, 0)).toBe("Alto");
+    expect(riskForCompany(0.1, 50_000, 300_000)).toBe("Alto");
   });
 });

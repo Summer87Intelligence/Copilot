@@ -6,6 +6,10 @@ import {
   type ClientDirectorySource,
   type ClientsDirectoryDiagnostics,
 } from "@/lib/copilot-clients-directory";
+import {
+  buildCurrencyRiskSummary,
+  currencyRiskToClientRiskLabel,
+} from "@/lib/copilot-financial-thresholds";
 import { loadClientPortfolioSourceRows } from "@/lib/data/proto-analytics-read-repository";
 import { supabase } from "@/lib/supabase-client";
 
@@ -276,6 +280,36 @@ export function riskForCompany(
   return "Bajo";
 }
 
+function maxClientRiskLabel(a: ClientRiskLabel, b: ClientRiskLabel): ClientRiskLabel {
+  const order: ClientRiskLabel[] = ["Bajo", "Medio", "Alto"];
+  return order.indexOf(a) >= order.indexOf(b) ? a : b;
+}
+
+/**
+ * Fase 3: evaluación de riesgo por moneda sin sumar UYU+USD.
+ * Evalúa UYU y USD contra thresholds calibrados por moneda.
+ * sharePct es currency-agnostic (porcentaje de facturación total).
+ */
+export function riskForCompanyPerCurrency(
+  sharePct: number,
+  overdueUyu: number,
+  overdueUsd: number,
+  debtUyu: number,
+  debtUsd: number
+): ClientRiskLabel {
+  if (sharePct >= 0.34) return "Alto";
+
+  const byCurrency: Partial<Record<"UYU" | "USD", { pending?: number; overdue?: number }>> = {};
+  if (debtUyu > 0 || overdueUyu > 0) byCurrency.UYU = { pending: debtUyu, overdue: overdueUyu };
+  if (debtUsd > 0 || overdueUsd > 0) byCurrency.USD = { pending: debtUsd, overdue: overdueUsd };
+
+  const summary = buildCurrencyRiskSummary(byCurrency);
+  const currencyRisk = currencyRiskToClientRiskLabel(summary.highestRisk);
+
+  const shareRisk: ClientRiskLabel = sharePct >= 0.16 ? "Medio" : "Bajo";
+  return maxClientRiskLabel(currencyRisk, shareRisk);
+}
+
 function formatPctEs(ratio: number): string {
   return `${(ratio * 100).toLocaleString("es-AR", { maximumFractionDigits: 1 })}%`;
 }
@@ -449,10 +483,19 @@ export async function getClientPortfolio(
     const share_pct =
       totalBillingAll > 0 ? entry.total_billing / totalBillingAll : 0;
     const payment_behavior = paymentBehaviorForInvoices(invs, todayYmd);
-    const risk = riskForCompany(share_pct, entry.total_debt, entry.overdue_debt);
 
     const { billingUYU, billingUSD, overdueUYU, overdueUSD, hasMixedCurrency } =
       computeInvoiceCurrencyBreakdown(invs, todayYmd);
+
+    // Fase 3: evaluate risk per-currency when data is available; take the highest severity
+    const legacyRisk = riskForCompany(share_pct, entry.total_debt, entry.overdue_debt);
+    const hasCurrencyData = entry.debtUYU > 0 || entry.debtUSD > 0 || overdueUYU > 0 || overdueUSD > 0;
+    const risk = hasCurrencyData
+      ? maxClientRiskLabel(
+          legacyRisk,
+          riskForCompanyPerCurrency(share_pct, overdueUYU, overdueUSD, entry.debtUYU, entry.debtUSD)
+        )
+      : legacyRisk;
 
     const row: ClientPortfolioRow = {
       company_id,

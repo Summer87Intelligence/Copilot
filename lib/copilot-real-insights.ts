@@ -45,6 +45,10 @@ export type CopilotRealInsightDeudaVencida = BaseInsight & {
     amount: number;
     invoices_count: number;
     days_overdue: number;
+    /** Fase 3: desglose por moneda — presente cuando hay datos per-currency */
+    amount_uyu?: number;
+    amount_usd?: number;
+    has_mixed_currency?: boolean;
   };
 };
 
@@ -57,6 +61,8 @@ export type CopilotRealInsightConcentracionDeuda = BaseInsight & {
     top2_amount: number;
     top2_share_pct: number;
     client_names: [string, string];
+    /** Fase 3: verdadero cuando hay clientes con deuda en múltiples monedas */
+    has_mixed_currency?: boolean;
   };
 };
 
@@ -164,14 +170,37 @@ function detectDeudaVencida(
 ): CopilotRealInsightDeudaVencida[] {
   const out: CopilotRealInsightDeudaVencida[] = [];
   for (const row of load.rows) {
-    // TODO Fase 3: row.overdue_debt es agregado mixto UYU+USD; usar overdue_uyu + overdue_usd para umbrales por moneda
-    if (row.overdue_debt <= EPS) continue;
+    // Fase 3: usar per-currency cuando disponible; legacy mixed es fallback
+    const overdueUyu = row.overdue_uyu ?? 0;
+    const overdueUsd = row.overdue_usd ?? 0;
+    const hasCurrencyData = overdueUyu > 0 || overdueUsd > 0;
+    if (!hasCurrencyData && row.overdue_debt <= EPS) continue;
+    if (hasCurrencyData && overdueUyu <= EPS && overdueUsd <= EPS) continue;
+    if (!hasCurrencyData && row.overdue_debt <= EPS) continue;
+
     const detail = load.details[row.company_id];
     if (!detail) continue;
     const { count, maxDaysOverdue } = overdueInvoiceStats(detail, today);
     if (count === 0) continue;
-    // TODO Fase 3: amount mezcla UYU+USD sin conversión; reemplazar con breakdown por moneda
+
+    // TODO FASE 4: eliminar amount como agregado mixto una vez que UI consuma per-currency
     const amount = row.overdue_debt;
+
+    // Armar mensaje con contexto de moneda cuando hay desglose disponible
+    let message: string;
+    let basedOnLineSuffix = "";
+    if (row.has_mixed_currency && overdueUyu > 0 && overdueUsd > 0) {
+      message = `Cliente con deuda vencida en UYU y USD (${formatMoney(overdueUyu)} UYU · ${formatMoney(overdueUsd)} USD)`;
+      basedOnLineSuffix = ` — UYU ${formatMoney(overdueUyu)} · USD ${formatMoney(overdueUsd)}`;
+    } else if (overdueUsd > 0 && overdueUyu <= EPS) {
+      message = `Cliente con deuda vencida en USD por ${formatMoney(overdueUsd)} USD`;
+      basedOnLineSuffix = ` — en USD`;
+    } else if (overdueUyu > 0 && overdueUsd <= EPS) {
+      message = `Cliente con deuda vencida por ${formatMoney(overdueUyu)} UYU`;
+    } else {
+      message = `Cliente con deuda vencida por ${formatMoney(amount)}`;
+    }
+
     out.push({
       id: `deuda_vencida:${row.company_id}`,
       type: "deuda_vencida",
@@ -181,11 +210,18 @@ function detectDeudaVencida(
         amount,
         invoices_count: count,
         days_overdue: maxDaysOverdue,
+        ...(hasCurrencyData
+          ? {
+              amount_uyu: overdueUyu,
+              amount_usd: overdueUsd,
+              has_mixed_currency: row.has_mixed_currency ?? false,
+            }
+          : {}),
       },
-      message: `Cliente con deuda vencida por ${formatMoney(amount)}`,
+      message,
       action: "Ver cliente",
       href: hrefCliente(row.company_id),
-      basedOnLine: `Basado en: ${count} factura${count === 1 ? "" : "s"} con vencimiento anterior a hoy y saldo pendiente`,
+      basedOnLine: `Basado en: ${count} factura${count === 1 ? "" : "s"} con vencimiento anterior a hoy y saldo pendiente${basedOnLineSuffix}`,
     });
   }
   out.sort((a, b) => b.evidence.amount - a.evidence.amount);
@@ -201,11 +237,14 @@ function detectConcentracionDeuda(load: ClientPortfolioLoad): CopilotRealInsight
     .filter((r) => r.overdue_debt > EPS)
     .sort((a, b) => b.overdue_debt - a.overdue_debt);
   if (withOverdue.length < 2) return null;
+  // TODO FASE 4: total es suma mixta UYU+USD; usar breakdown por moneda para concentración real
   const total = withOverdue.reduce((s, r) => s + r.overdue_debt, 0);
   if (total <= EPS) return null;
   const top2 = withOverdue[0].overdue_debt + withOverdue[1].overdue_debt;
   const share = top2 / total;
   if (share < CONC_MIN_TWO_CLIENTS_SHARE) return null;
+  const hasMixedCurrency = withOverdue.some((r) => r.has_mixed_currency);
+  const mixedNote = hasMixedCurrency ? " (montos en UYU y USD — sin conversión)" : "";
   return {
     id: "concentracion_deuda:portfolio",
     type: "concentracion_deuda",
@@ -216,11 +255,12 @@ function detectConcentracionDeuda(load: ClientPortfolioLoad): CopilotRealInsight
       top2_amount: top2,
       top2_share_pct: share,
       client_names: [withOverdue[0].name, withOverdue[1].name],
+      has_mixed_currency: hasMixedCurrency,
     },
     message: `El ${formatPct(share)} de la deuda vencida está en ${withOverdue[0].name} y ${withOverdue[1].name}`,
     action: "Ver clientes",
     href: "/copilot/clientes",
-    basedOnLine: `Basado en: suma de saldos vencidos en proto_invoices (${formatMoney(total)} total)`,
+    basedOnLine: `Basado en: suma de saldos vencidos en proto_invoices (${formatMoney(total)} total${mixedNote})`,
   };
 }
 

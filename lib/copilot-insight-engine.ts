@@ -6,7 +6,9 @@ import type { CopilotSeverity } from "@/lib/copilot-alerts-evidence-mock";
 export const INSIGHT_ENGINE_ROW_LIMIT = 100;
 const ROW_LIMIT = INSIGHT_ENGINE_ROW_LIMIT;
 
+// TODO FASE 4: DEBT_CRITICAL_THRESHOLD mezcla UYU+USD; usar DEBT_CRITICAL_THRESHOLD_USD para clientes en USD
 const DEBT_CRITICAL_THRESHOLD = 500_000;
+const DEBT_CRITICAL_THRESHOLD_USD = 12_500;
 const REVENUE_SHARE_DOMINANCE = 0.4;
 const PAYMENT_DROP_RATIO = 0.5;
 
@@ -346,6 +348,8 @@ export async function generateInsightsFromBatch(
   const names = buildCompanyNameMap(companies);
   const insights: CopilotInsightItem[] = [];
 
+  // Fase 3: acumular deuda por compañía, también por moneda separada
+  const debtByCurrencyByCompany = new Map<string, { UYU: number; USD: number }>();
   const debtRows: DebtByCompanyRow[] = (() => {
     const byCompany = new Map<string, number>();
     for (const inv of invoices) {
@@ -355,6 +359,14 @@ export async function generateInsightsFromBatch(
       if (!cid) continue;
       const bal = toNumber(inv.balance_amount);
       byCompany.set(cid, (byCompany.get(cid) ?? 0) + bal);
+      // Per-currency accumulation
+      const rawCur = String(inv.currency_code ?? "").trim().toUpperCase();
+      if (rawCur === "UYU" || rawCur === "USD") {
+        const cur = rawCur as "UYU" | "USD";
+        const entry = debtByCurrencyByCompany.get(cid) ?? { UYU: 0, USD: 0 };
+        entry[cur] += bal;
+        debtByCurrencyByCompany.set(cid, entry);
+      }
     }
     return [...byCompany.entries()].map(([company_id, debt]) => ({
       company_id,
@@ -408,14 +420,40 @@ export async function generateInsightsFromBatch(
   const prev30Sum = sumPaymentsInWindow(payments, prev30Start, prev30End);
 
   for (const row of debtRows) {
-    if (row.debt <= DEBT_CRITICAL_THRESHOLD) continue;
+    // Fase 3: evaluar threshold por moneda cuando hay datos; fallback a threshold mixto legacy
+    const currencyBreakdown = debtByCurrencyByCompany.get(row.company_id);
+    const usdOnly = currencyBreakdown && currencyBreakdown.USD > 0 && currencyBreakdown.UYU === 0;
+    const uyuOnly = currencyBreakdown && currencyBreakdown.UYU > 0 && currencyBreakdown.USD === 0;
+    const exceededMixed = row.debt > DEBT_CRITICAL_THRESHOLD;
+    const exceededUsd = usdOnly && currencyBreakdown.USD > DEBT_CRITICAL_THRESHOLD_USD;
+    const exceededUyu = uyuOnly && currencyBreakdown.UYU > DEBT_CRITICAL_THRESHOLD;
+    const mixed = currencyBreakdown && currencyBreakdown.UYU > 0 && currencyBreakdown.USD > 0;
+
+    // TODO FASE 4: cuando hay mezcla UYU+USD, usar thresholds per-currency independientes en lugar de sum
+    if (!exceededMixed && !exceededUsd && !exceededUyu) continue;
+
     const od = overdueByCompany.get(row.company_id) ?? 0;
+
+    // Armar label de moneda para el título
+    const currencyLabel = usdOnly ? " en USD" : uyuOnly ? " en UYU" : mixed ? " (UYU + USD)" : "";
     const title =
       od > 0
-        ? `${row.company_name} concentra $${formatMoneyEs(row.debt)} en deuda pendiente y presenta ${od} factura${od === 1 ? "" : "s"} vencida${od === 1 ? "" : "s"}.`
-        : `${row.company_name} concentra $${formatMoneyEs(row.debt)} en deuda pendiente (facturas emitidas / parciales / vencidas).`;
+        ? `${row.company_name} concentra $${formatMoneyEs(row.debt)} en deuda pendiente${currencyLabel} y presenta ${od} factura${od === 1 ? "" : "s"} vencida${od === 1 ? "" : "s"}.`
+        : `${row.company_name} concentra $${formatMoneyEs(row.debt)} en deuda pendiente${currencyLabel} (facturas emitidas / parciales / vencidas).`;
 
     const id = `eng-debt-${row.company_id}`;
+    const activeThreshold = usdOnly ? DEBT_CRITICAL_THRESHOLD_USD : DEBT_CRITICAL_THRESHOLD;
+    const currencyIndicators = currencyBreakdown
+      ? ([
+          currencyBreakdown.UYU > 0
+            ? { label: "Deuda UYU", value: `$ ${formatMoneyEs(currencyBreakdown.UYU)}`, severity: "high" as CopilotSeverity }
+            : null,
+          currencyBreakdown.USD > 0
+            ? { label: "Deuda USD", value: `U$S ${formatMoneyEs(currencyBreakdown.USD)}`, severity: "high" as CopilotSeverity }
+            : null,
+        ].filter(Boolean) as Array<{ label: string; value: string; severity: CopilotSeverity }>)
+      : [];
+
     insights.push({
       id,
       title,
@@ -441,6 +479,7 @@ export async function generateInsightsFromBatch(
             value: `$ ${formatMoneyEs(row.debt)}`,
             severity: "high",
           },
+          ...currencyIndicators,
           {
             label: "Facturas vencidas (empresa)",
             value: String(od),
@@ -448,7 +487,7 @@ export async function generateInsightsFromBatch(
           },
           {
             label: "Umbral crítico",
-            value: `$ ${formatMoneyEs(DEBT_CRITICAL_THRESHOLD)}`,
+            value: usdOnly ? `U$S ${formatMoneyEs(activeThreshold)}` : `$ ${formatMoneyEs(activeThreshold)}`,
             severity: "medium",
           },
         ],
