@@ -32,6 +32,7 @@ import { OperationalAutomationPanel } from "./operational-automation-panel";
 import { OperationalIntelligencePanel } from "./operational-intelligence-panel";
 import { PredictiveIntelligencePanel } from "./predictive-intelligence-panel";
 import { ExecutiveCommandCenter } from "./executive-command-center";
+import { StrategicLearningPanel } from "./strategic-learning-panel";
 
 // ---------------------------------------------------------------------------
 // Collapsible wrapper
@@ -439,14 +440,21 @@ export function DailyBriefingCard({
         error={analyticsError}
       />
 
-      {/* 6. Automatizaciones (colapsado por defecto) */}
+      {/* 6. Aprendizaje estratégico (colapsado por defecto) */}
+      <CollapsibleSection title="Aprendizaje estratégico" defaultOpen={false}>
+        <div className="p-4">
+          <StrategicLearningPanel />
+        </div>
+      </CollapsibleSection>
+
+      {/* 7. Automatizaciones (colapsado por defecto) */}
       <CollapsibleSection title="Automatizaciones" defaultOpen={false}>
         <div className="p-0">
           <OperationalAutomationPanel />
         </div>
       </CollapsibleSection>
 
-      {/* 7. Cola operativa (principal) */}
+      {/* 8. Cola operativa (principal) */}
       <div ref={queueFocused ? queueRef : undefined}>
         <DailyOperationsQueuePanel
           queue={dailyQueue}

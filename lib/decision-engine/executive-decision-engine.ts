@@ -12,6 +12,7 @@ import type {
   RankedClient,
 } from "@/lib/decision-engine/de-types";
 import type { PredictiveSnapshot } from "@/lib/decision-engine/predictive/predictive-types";
+import type { StrategyRecommendation } from "@/lib/decision-engine/learning/learning-types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -72,6 +73,8 @@ export type ExecutiveDecisionEngineInput = {
   automation_runs: AutomationRunRow[];
   automation_actions: AutomationActionRow[];
   pipeline_signals: PipelineSignal[];
+  strategy_recommendations?: StrategyRecommendation[];
+  calibration_score?: number | null;
   now?: Date;
 };
 
@@ -322,6 +325,35 @@ function rulePipelinesUnhealthy(
   });
 }
 
+function ruleLearningRecommendations(
+  recommendations: StrategyRecommendation[],
+  decisions: ExecutiveDecision[]
+): void {
+  const highConfidence = recommendations.filter(
+    (r) => r.confidence === "high" && r.actionable
+  );
+  for (const rec of highConfidence.slice(0, 2)) {
+    const actionTypeMap: Record<string, ExecutiveDecisionActionType> = {
+      action:     "recover_cash",
+      operator:   "rebalance_workload",
+      automation: "review_pipeline",
+      forecast:   "monitor",
+      portfolio:  "recover_cash",
+    };
+    decisions.push({
+      id:           `learning_${rec.id}`,
+      rank:         0,
+      title:        rec.title,
+      reason:       rec.reason,
+      urgency:      "medium",
+      action_type:  actionTypeMap[rec.category] ?? "monitor",
+      expected_impact: {},
+      recommended_action: rec.evidence[0] ?? rec.reason,
+      evidence: rec.evidence,
+    });
+  }
+}
+
 function ruleStaleData(
   portfolioScore: PortfolioScore | null,
   analytics: OperationalAnalyticsSnapshot | null,
@@ -451,6 +483,9 @@ function buildConfidence(input: ExecutiveDecisionEngineInput): number {
   if (!input.analytics) score -= 25;
   if (!input.predictive) score -= 15;
   if (input.pipeline_signals.some((s) => !s.ok || s.stale)) score -= 10;
+  if (input.calibration_score !== undefined && input.calibration_score !== null && input.calibration_score < 50) {
+    score -= 10; // Low forecast calibration reduces confidence in predictions
+  }
   return Math.max(score, 20);
 }
 
@@ -499,6 +534,10 @@ export function generateExecutiveBrief(
 
   if (input.pipeline_signals.length > 0) {
     rulePipelinesUnhealthy(input.pipeline_signals, rawDecisions);
+  }
+
+  if (input.strategy_recommendations && input.strategy_recommendations.length > 0) {
+    ruleLearningRecommendations(input.strategy_recommendations, rawDecisions);
   }
 
   const top_decisions = rankAndSort(rawDecisions);
