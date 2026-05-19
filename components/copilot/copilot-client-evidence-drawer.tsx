@@ -206,6 +206,32 @@ export function CopilotClientEvidenceDrawer({
                   label="Participación"
                   value={`${(detail.share_pct * 100).toLocaleString("es-AR", { maximumFractionDigits: 1 })}%`}
                 />
+                {(detail.debt_uyu ?? 0) > 0 || (detail.debt_usd ?? 0) > 0 ? (
+                  <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4 sm:col-span-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                      Deuda por moneda
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1">
+                      {(detail.debt_uyu ?? 0) > 0 ? (
+                        <span className="text-sm tabular-nums text-[var(--copilot-ink)]">
+                          {formatMoneyPortfolio(detail.debt_uyu!, "UYU")}
+                          <span className="ml-1 text-xs text-[var(--copilot-ink-muted)]">UYU</span>
+                        </span>
+                      ) : null}
+                      {(detail.debt_usd ?? 0) > 0 ? (
+                        <span className="text-sm tabular-nums text-amber-900">
+                          {formatMoneyPortfolio(detail.debt_usd!, "USD")}
+                          <span className="ml-1 text-xs text-amber-700">USD</span>
+                        </span>
+                      ) : null}
+                    </div>
+                    {detail.has_mixed_currency ? (
+                      <p className="mt-1 text-[10px] text-[var(--copilot-ink-muted)]">
+                        Facturación en UYU y USD
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
                 <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4 sm:col-span-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                     Comportamiento de pago
@@ -280,8 +306,7 @@ export function CopilotClientEvidenceDrawer({
                       className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4 text-sm"
                     >
                       <p className="font-semibold tabular-nums text-emerald-800">
-                        {/* TODO: ClientPortfolioReceipt no expone currency_code — defaultea a UYU */}
-                        {formatMoneyPortfolio(r.amount)}
+                        {formatMoneyPortfolio(r.amount, r.currency_code ?? undefined)}
                       </p>
                       <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
                         Fecha {formatDateShort(r.receipt_date)}

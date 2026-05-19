@@ -695,6 +695,11 @@ function CopilotAtencionPrioritariaPageContent() {
                   </div>
                 </dl>
               ) : null}
+              {snapshot && (snapshot.meta.currency === "unspecified" || snapshot.meta.currency === "mixed") ? (
+                <p className="mt-2 text-[11px] text-[var(--copilot-ink-muted)]">
+                  Montos multi-moneda (UYU + USD) — desglose pendiente.
+                </p>
+              ) : null}
               {obligation ? (
                 <p className="mt-4 text-xs text-[var(--copilot-ink-muted)]">
                   Obligación: {mapTaxTypeLabel(obligation.tax_type)} ·{" "}

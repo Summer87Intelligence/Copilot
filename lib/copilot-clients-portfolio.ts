@@ -17,8 +17,11 @@ export type ClientPortfolioRow = {
   company_id: string;
   name: string;
   industry: string;
+  /** TODO: legacy mixed-currency aggregate — use billing_uyu + billing_usd for per-currency breakdown */
   total_billing: number;
+  /** TODO: legacy mixed-currency aggregate — use debt_uyu + debt_usd for per-currency breakdown */
   total_debt: number;
+  /** TODO: legacy mixed-currency aggregate — use overdue_uyu + overdue_usd for per-currency breakdown */
   overdue_debt: number;
   invoices_count: number;
   receipts_count: number;
@@ -31,6 +34,12 @@ export type ClientPortfolioRow = {
   derived_from_debt: boolean;
   debt_uyu: number;
   debt_usd: number;
+  /** Fase 1 multi-moneda — campos opcionales; indefinidos si no hay facturas con currency_code reconocido. */
+  billing_uyu?: number;
+  billing_usd?: number;
+  overdue_uyu?: number;
+  overdue_usd?: number;
+  has_mixed_currency?: boolean;
 };
 
 export type ClientPortfolioContact = {
@@ -56,6 +65,7 @@ export type ClientPortfolioReceipt = {
   amount: number;
   receipt_date: string;
   invoice_id: string | null;
+  currency_code?: string | null;
 };
 
 export type ClientCompanyDetail = {
@@ -65,12 +75,23 @@ export type ClientCompanyDetail = {
   contacts: ClientPortfolioContact[];
   invoices: ClientPortfolioInvoice[];
   receipts: ClientPortfolioReceipt[];
+  /** TODO: legacy mixed-currency aggregate */
   overdue_debt: number;
+  /** TODO: legacy mixed-currency aggregate */
   total_debt: number;
   payment_behavior: PaymentBehaviorLabel;
   risk: ClientRiskLabel;
   share_pct: number;
+  /** TODO: legacy mixed-currency aggregate */
   total_billing: number;
+  /** Fase 1 multi-moneda — opcionales; propagados desde el directorio y el cálculo de facturas. */
+  debt_uyu?: number;
+  debt_usd?: number;
+  billing_uyu?: number;
+  billing_usd?: number;
+  overdue_uyu?: number;
+  overdue_usd?: number;
+  has_mixed_currency?: boolean;
 };
 
 export type ClientPortfolioSummary = {
@@ -112,6 +133,7 @@ type ReceiptRow = {
   amount: unknown;
   receipt_date: unknown;
   invoice_id?: unknown;
+  currency_code?: unknown;
 };
 
 type ContactRow = {
@@ -146,6 +168,58 @@ function localTodayYmd(): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+function currencyOf(inv: InvoiceRow): "UYU" | "USD" | null {
+  const raw = String(inv.currency_code ?? "").trim().toUpperCase();
+  if (raw === "UYU" || raw === "USD") return raw as "UYU" | "USD";
+  return null;
+}
+
+export type InvoiceCurrencyBreakdownInput = {
+  currency_code?: string | null;
+  total_amount?: unknown;
+  balance_amount?: unknown;
+  due_date?: unknown;
+};
+
+export type InvoiceCurrencyBreakdown = {
+  billingUYU: number;
+  billingUSD: number;
+  overdueUYU: number;
+  overdueUSD: number;
+  hasMixedCurrency: boolean;
+};
+
+/** Desagrega facturación y vencidos por moneda a partir de facturas con currency_code conocido. */
+export function computeInvoiceCurrencyBreakdown(
+  invs: readonly InvoiceCurrencyBreakdownInput[],
+  todayYmd: string
+): InvoiceCurrencyBreakdown {
+  let billingUYU = 0, billingUSD = 0;
+  let overdueUYU = 0, overdueUSD = 0;
+  for (const inv of invs) {
+    const cur = currencyOf(inv as InvoiceRow);
+    if (!cur) continue;
+    const total = num(inv.total_amount);
+    const pending = num(inv.balance_amount);
+    const d = ymd(inv.due_date);
+    const isOverdue = pending > 0 && d !== "" && d < todayYmd;
+    if (cur === "UYU") {
+      billingUYU += total;
+      if (isOverdue) overdueUYU += pending;
+    } else {
+      billingUSD += total;
+      if (isOverdue) overdueUSD += pending;
+    }
+  }
+  return {
+    billingUYU,
+    billingUSD,
+    overdueUYU,
+    overdueUSD,
+    hasMixedCurrency: billingUYU > 0 && billingUSD > 0,
+  };
 }
 
 /** Facturas mínimas para clasificar comportamiento de pago (sin I/O). */
@@ -377,6 +451,9 @@ export async function getClientPortfolio(
     const payment_behavior = paymentBehaviorForInvoices(invs, todayYmd);
     const risk = riskForCompany(share_pct, entry.total_debt, entry.overdue_debt);
 
+    const { billingUYU, billingUSD, overdueUYU, overdueUSD, hasMixedCurrency } =
+      computeInvoiceCurrencyBreakdown(invs, todayYmd);
+
     const row: ClientPortfolioRow = {
       company_id,
       name: entry.name,
@@ -394,6 +471,11 @@ export async function getClientPortfolio(
       derived_from_debt: entry.derived_from_debt,
       debt_uyu: entry.debtUYU,
       debt_usd: entry.debtUSD,
+      billing_uyu: billingUYU,
+      billing_usd: billingUSD,
+      overdue_uyu: overdueUYU,
+      overdue_usd: overdueUSD,
+      has_mixed_currency: hasMixedCurrency,
     };
     rows.push(row);
 
@@ -432,6 +514,9 @@ export async function getClientPortfolio(
           r.invoice_id != null && String(r.invoice_id).trim()
             ? String(r.invoice_id)
             : null,
+        currency_code: r.currency_code != null
+          ? String(r.currency_code).trim().toUpperCase() || null
+          : null,
       }));
 
     details[company_id] = {
@@ -447,6 +532,13 @@ export async function getClientPortfolio(
       risk,
       share_pct,
       total_billing: entry.total_billing,
+      debt_uyu: entry.debtUYU,
+      debt_usd: entry.debtUSD,
+      billing_uyu: billingUYU,
+      billing_usd: billingUSD,
+      overdue_uyu: overdueUYU,
+      overdue_usd: overdueUSD,
+      has_mixed_currency: hasMixedCurrency,
     };
   }
 

@@ -94,7 +94,7 @@ export type FinancialMetricsInvoiceFinancialsCoverage =
 
 export type FinancialSnapshotApiMeta = {
   tenant_scope: "workspace_company_id";
-  currency: "unspecified";
+  currency: "unspecified" | "UYU" | "USD" | "mixed";
   amount_scale: "unit";
   fiscal_expected_horizon_days: 30;
   operational_outflows_scope: "payment_date_strictly_after_as_of";

@@ -1499,6 +1499,11 @@ function CopilotFinanzasPageContent() {
                     </p>
                   </div>
                 </div>
+                {snapshot.meta.currency === "unspecified" || snapshot.meta.currency === "mixed" ? (
+                  <p className="text-[11px] text-[var(--copilot-ink-muted)]">
+                    Montos multi-moneda (UYU + USD) — desglose por moneda pendiente.
+                  </p>
+                ) : null}
 
                 <div
                   id="copilot-finanzas-cobranza"
