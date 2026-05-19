@@ -60,6 +60,10 @@ import {
   COPILOT_OPERATIONAL_START_DATE,
   isPreOperationalPeriod,
 } from "@/lib/copilot-operational-period";
+import {
+  deriveInvoiceFinancialStatusFromBalance,
+  isTerminalInvoiceStatus,
+} from "@/lib/integrations/zeta/zeta-invoice-status";
 import type { ZetaInvoice } from "@/types/zeta";
 
 const DEFAULT_MAX_PAGES = 5;
@@ -414,7 +418,7 @@ function resolveInvoiceCurrencyCode(inv: ZetaInvoice): string | null {
 function zetaInvoiceToProtoInput(inv: ZetaInvoice, syncRunId: string): ProtoInvoiceInput {
   const issue = inv.issueDate.slice(0, 10);
   const bal = inv.outstandingAmount ?? 0;
-  const status = bal <= 1e-6 ? "paid" : "issued";
+  const status = deriveInvoiceFinancialStatusFromBalance({ balanceAmount: bal, totalAmount: inv.totalAmount });
   const currencyCode = resolveInvoiceCurrencyCode(inv);
   return {
     company_id: inv.companyId,
@@ -492,7 +496,7 @@ async function zeroCcV1BalancesWithoutSaldoRow(
     if (touchedInvoiceIds.has(id)) continue;
 
     const st = String(row.status ?? "").trim().toLowerCase();
-    if (st === "cancelled") continue;
+    if (isTerminalInvoiceStatus(st)) continue;
 
     const cur =
       row.balance_amount === null || row.balance_amount === undefined
@@ -544,6 +548,51 @@ async function zeroCcV1BalancesWithoutSaldoRow(
     cleared += 1;
   }
   return cleared;
+}
+
+/**
+ * Alinea el status de facturas que tienen balance_amount = 0 pero status != "paid".
+ * Cubre formatos CCV1 y legacy (ZETA:{id}) que no fueron alcanzados por el zero pass.
+ * Solo toca facturas activas para el cliente dado; nunca toca statuses terminales.
+ *
+ * Se llama únicamente cuando stopped === "completed" (corrida completa).
+ */
+async function alignZeroBalanceStatuses(
+  supabase: SupabaseClient,
+  workspaceCompanyId: string,
+  protoCompanyId: string,
+  touchedInvoiceIds: Set<string>
+): Promise<number> {
+  const wid = workspaceCompanyId.trim();
+
+  const q = applyProtoActiveListFilter(
+    supabase
+      .from("proto_invoices")
+      .select("id, invoice_number, status")
+      .eq("workspace_company_id", wid)
+      .eq("company_id", protoCompanyId)
+      .eq("balance_amount", 0),
+    "active"
+  );
+  const { data, error } = await q;
+  if (error) throw new Error(`alignZeroBalanceStatuses: ${error.message}`);
+
+  let aligned = 0;
+  for (const raw of data ?? []) {
+    const row = raw as { id?: string; invoice_number?: string; status?: string };
+    const id = typeof row.id === "string" ? row.id : null;
+    if (!id) continue;
+    if (touchedInvoiceIds.has(id)) continue;
+
+    const st = String(row.status ?? "").trim().toLowerCase();
+    if (st === "paid") continue;
+    if (isTerminalInvoiceStatus(st)) continue;
+
+    const up = await protoUpdateInvoice(supabase, id, { status: "paid" }, wid, {});
+    if (!up.ok) continue;
+    aligned++;
+  }
+  return aligned;
 }
 
 async function findActiveInvoiceIdByZetaNumber(
@@ -607,7 +656,7 @@ async function persistZetaInvoice(
 
   const wid = workspaceCompanyId.trim();
   const bal = inv.outstandingAmount ?? 0;
-  const status = bal <= 1e-6 ? "paid" : "issued";
+  const status = deriveInvoiceFinancialStatusFromBalance({ balanceAmount: bal, totalAmount: inv.totalAmount });
   const diagOn = zetaSaldosDiagEnabled();
   const currencyCode = resolveInvoiceCurrencyCode(inv);
 
@@ -1404,6 +1453,31 @@ export async function runZetaSaldosPendientesPipeline(
           tenant_id: tenantCompanyId,
           cleared_count: cleared,
         });
+
+        // Alinear status de facturas con balance=0 que no son CCV1 (formato legacy
+        // ZETA:{id}) o que el zero pass no alcanzó. Protege statuses terminales.
+        try {
+          const aligned = await alignZeroBalanceStatuses(
+            supabase,
+            wid,
+            opts.protoCompanyId,
+            touchedInvoiceIds
+          );
+          if (aligned > 0) {
+            pipelineEmit("info", "zeta_saldos_zero_balance_statuses_aligned", {
+              request_id: requestId,
+              sync_run_id: runId,
+              tenant_id: tenantCompanyId,
+              aligned_count: aligned,
+            });
+          }
+        } catch (alignErr) {
+          pipelineEmit("warn", "zeta_saldos_align_zero_balance_error", {
+            request_id: requestId,
+            sync_run_id: runId,
+            tenant_id: tenantCompanyId,
+          }, alignErr);
+        }
       } else {
         const skipReason =
           pagesFetched < 1
