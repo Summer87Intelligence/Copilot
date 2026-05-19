@@ -11,7 +11,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { runAllIntegrityChecks } from "@/lib/integrations/zeta/zeta-integrity-checker";
+import { INTEGRITY_CHECK_INVOICE_LIMIT, runAllIntegrityChecks } from "@/lib/integrations/zeta/zeta-integrity-checker";
 
 // ── Mock upsertIntegrityViolation ─────────────────────────────────────────────
 
@@ -68,6 +68,12 @@ function createStub(rows: RowMap = {}, errors: ErrorMap = {}) {
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
+
+describe("INTEGRITY_CHECK_INVOICE_LIMIT", () => {
+  it("anti-regression: must be >= 5000 (cannot regress to 500)", () => {
+    expect(INTEGRITY_CHECK_INVOICE_LIMIT).toBeGreaterThanOrEqual(5000);
+  });
+});
 
 describe("runAllIntegrityChecks — violations_critical tracking", () => {
   beforeEach(() => {

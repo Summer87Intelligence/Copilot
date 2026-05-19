@@ -2,7 +2,7 @@
  * Orphan pending invoice reconciliation — Fase 4.
  *
  * Detects invoices with balance_amount > 0 that Zeta stopped returning
- * in QuerySaldosPendientes and applies a 3-strike safe-zeroing rule.
+ * in QuerySaldosPendientes and applies a 7-strike safe-zeroing rule.
  *
  * State is stored in proto_invoices.zeta_metadata under "zeta_reconciliation":
  * {
@@ -11,10 +11,9 @@
  *   last_missing_detected_at: string | null // ISO — last time we flagged it missing
  * }
  *
- * 3-strike rule:
- *   1st miss → warn
- *   2nd miss → warn
- *   3rd miss → auto-close (balance=0, status=paid)
+ * 7-strike rule:
+ *   Misses 1–6 → warn
+ *   7th miss → auto-close (balance=0, status=paid)
  *
  * On re-appearance: count resets to 0.
  * Auto-close is never a hard delete.

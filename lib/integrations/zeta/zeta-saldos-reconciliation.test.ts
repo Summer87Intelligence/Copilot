@@ -35,6 +35,10 @@ describe("classifyOrphanAction", () => {
     expect(ORPHAN_AUTO_CLOSE_THRESHOLD).toBe(7);
   });
 
+  it("ORPHAN_AUTO_CLOSE_THRESHOLD anti-regression: must be >= 7 (cannot regress to 3)", () => {
+    expect(ORPHAN_AUTO_CLOSE_THRESHOLD).toBeGreaterThanOrEqual(7);
+  });
+
   it("false positive protection: count 2 is warn, not closed", () => {
     expect(classifyOrphanAction(2)).toBe("warn");
     expect(classifyOrphanAction(2)).not.toBe("closed");

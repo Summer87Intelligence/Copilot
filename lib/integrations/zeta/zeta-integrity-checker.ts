@@ -35,6 +35,11 @@ type CheckResult = {
   error?: string;
 };
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+/** Max rows scanned per workspace in financial integrity checks. Must stay >= ROW_CAP (5000). */
+export const INTEGRITY_CHECK_INVOICE_LIMIT = 5000;
+
 // ── Invoice Checks ────────────────────────────────────────────────────────────
 
 /**
@@ -57,7 +62,7 @@ async function checkInvoiceBalanceExceedsTotal(
     .not("total_amount", "is", null)
     .not("balance_amount", "is", null)
     .gt("balance_amount", 0) // Solo pendientes
-    .limit(500);
+    .limit(INTEGRITY_CHECK_INVOICE_LIMIT);
 
   if (error) return { violations: [], error: error.message };
 

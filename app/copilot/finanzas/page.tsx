@@ -92,9 +92,17 @@ function ymdFromUnknown(iso: unknown): string {
   return `${y}-${m}-${day}`;
 }
 
+const VOIDED_INVOICE_STATUSES = new Set([
+  "paid", "void", "voided", "canceled", "cancelled",
+  "anulada", "anulado", "annulled", "annul",
+]);
+
+function isVoidedInvoiceStatus(status: unknown): boolean {
+  return VOIDED_INVOICE_STATUSES.has(String(status ?? "").toLowerCase());
+}
+
 function isOpenInvoiceRow(row: DataRow): boolean {
-  const st = String(row.status ?? "").toLowerCase();
-  if (st === "paid" || st === "cancelled") return false;
+  if (isVoidedInvoiceStatus(row.status)) return false;
   return rowNum(row.balance_amount) > 0;
 }
 
