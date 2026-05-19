@@ -168,6 +168,81 @@ describe("buildFinancialSnapshotApiV1FromRows (contrato canónico, mismas fórmu
     expect(v1.as_of_date).toBe(TODAY);
     expect(v1.diagnostics.snapshot_load).toEqual(diag);
   });
+
+  const diag: FinancialSnapshotLoadDiagnostics = {
+    active_invoice_count: 0,
+    invoice_financials_distinct_keys: 0,
+    invoice_financials_matched_invoice_ids: 0,
+    invoice_financials_coverage: "unavailable",
+  };
+
+  it("by_currency undefined when no invoices have currency_code", () => {
+    const rows: FinancialEngineSnapshotRows = {
+      ...emptyRows(),
+      invoices: [{ balance_amount: 1000, collection_probability: 50 }],
+    };
+    const v1 = buildFinancialSnapshotApiV1FromRows(rows, TODAY, diag);
+    expect(v1.by_currency).toBeUndefined();
+    expect(v1.meta.currency).toBe("unspecified");
+  });
+
+  it("by_currency.UYU populated for UYU-only invoices and meta.currency = UYU", () => {
+    const rows: FinancialEngineSnapshotRows = {
+      ...emptyRows(),
+      invoices: [
+        { balance_amount: 500, collection_probability: 80, currency_code: "UYU", total_amount: 1000, due_date: "2025-01-01" },
+        { balance_amount: 0, collection_probability: 100, currency_code: "UYU", total_amount: 2000, due_date: "2025-06-01" },
+      ],
+    };
+    const v1 = buildFinancialSnapshotApiV1FromRows(rows, TODAY, diag);
+    expect(v1.meta.currency).toBe("UYU");
+    expect(v1.by_currency?.UYU?.invoiced).toBe(3000);
+    expect(v1.by_currency?.UYU?.pending).toBe(500);
+    expect(v1.by_currency?.UYU?.overdue).toBe(500);
+    expect(v1.by_currency?.USD).toBeUndefined();
+  });
+
+  it("by_currency.USD populated for USD-only invoices and meta.currency = USD", () => {
+    const rows: FinancialEngineSnapshotRows = {
+      ...emptyRows(),
+      invoices: [
+        { balance_amount: 200, collection_probability: 70, currency_code: "USD", total_amount: 800, due_date: "2025-01-01" },
+      ],
+    };
+    const v1 = buildFinancialSnapshotApiV1FromRows(rows, TODAY, diag);
+    expect(v1.meta.currency).toBe("USD");
+    expect(v1.by_currency?.USD?.invoiced).toBe(800);
+    expect(v1.by_currency?.UYU).toBeUndefined();
+  });
+
+  it("meta.currency = mixed and both currencies present when UYU + USD invoices", () => {
+    const rows: FinancialEngineSnapshotRows = {
+      ...emptyRows(),
+      invoices: [
+        { balance_amount: 300, collection_probability: 60, currency_code: "UYU", total_amount: 1000, due_date: "2025-01-01" },
+        { balance_amount: 100, collection_probability: 90, currency_code: "USD", total_amount: 500, due_date: "2025-01-01" },
+      ],
+    };
+    const v1 = buildFinancialSnapshotApiV1FromRows(rows, TODAY, diag);
+    expect(v1.meta.currency).toBe("mixed");
+    expect(v1.by_currency?.UYU).toBeDefined();
+    expect(v1.by_currency?.USD).toBeDefined();
+  });
+
+  it("legacy fields still present after Fase 2 (no breaking changes)", () => {
+    const rows: FinancialEngineSnapshotRows = {
+      ...emptyRows(),
+      receipts: [{ amount: 5000 }],
+      invoices: [
+        { balance_amount: 200, collection_probability: 50, currency_code: "UYU", total_amount: 600, due_date: "2025-01-01" },
+      ],
+    };
+    const v1 = buildFinancialSnapshotApiV1FromRows(rows, TODAY, diag);
+    expect(v1.realized.cash_net).toBeDefined();
+    expect(v1.expected.receivables_open_balance).toBeDefined();
+    expect(v1.projected.liquidity_balance).toBeDefined();
+    expect(v1.metrics_schema_version).toBe("1.0.0");
+  });
 });
 
 describe("getFinancialRisks", () => {

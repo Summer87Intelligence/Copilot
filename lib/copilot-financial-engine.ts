@@ -17,6 +17,11 @@ import {
   type FinancialSnapshotLoadDiagnostics,
 } from "@/lib/data/proto-analytics-read-repository";
 import {
+  buildSnapshotCurrencyBreakdown,
+  detectSnapshotCurrency,
+  type SnapshotCurrencyBreakdown,
+} from "@/lib/copilot-snapshot-currency";
+import {
   snapshotCoverageRatio,
   snapshotExpectedOutflowsTotal,
   snapshotLiquidityBalance,
@@ -155,6 +160,8 @@ export type FinancialSnapshotCanonicalV1 = {
   expected: FinancialSnapshotApiExpected;
   projected: FinancialSnapshotApiProjected;
   diagnostics: FinancialSnapshotApiDiagnostics;
+  /** Fase 2 multi-moneda: desglose por moneda (UYU/USD). Presente solo si hay facturas con currency_code. */
+  by_currency?: SnapshotCurrencyBreakdown;
 };
 
 /**
@@ -168,7 +175,13 @@ export type FinancialSnapshotApiV1 = FinancialSnapshot & FinancialSnapshotCanoni
 
 type ReceiptRow = { amount: unknown };
 type PaymentRow = { amount: unknown; payment_date: unknown };
-type InvoiceRow = { balance_amount: unknown; collection_probability: unknown };
+type InvoiceRow = {
+  balance_amount: unknown;
+  collection_probability: unknown;
+  currency_code?: unknown;
+  total_amount?: unknown;
+  due_date?: unknown;
+};
 type TaxObligationRow = {
   id: unknown;
   due_date: unknown;
@@ -401,9 +414,13 @@ export function buildFinancialSnapshotApiV1FromRows(
   const receivables_open_balance = sumOpenReceivablesBalance(rows.invoices);
   const tax_paid_ltd = sumTaxPaymentsPaidLtd(rows.taxPayments);
 
+  const byCurrency = buildSnapshotCurrencyBreakdown(rows.invoices, todayYmd);
+  const detectedCurrency = detectSnapshotCurrency(byCurrency);
+  const hasByCurrency = Object.keys(byCurrency).length > 0;
+
   const meta: FinancialSnapshotApiMeta = {
     tenant_scope: "workspace_company_id",
-    currency: "unspecified",
+    currency: detectedCurrency,
     amount_scale: "unit",
     fiscal_expected_horizon_days: 30,
     operational_outflows_scope: "payment_date_strictly_after_as_of",
@@ -456,6 +473,7 @@ export function buildFinancialSnapshotApiV1FromRows(
       risk_band: legacy.risk_level,
     },
     diagnostics,
+    ...(hasByCurrency ? { by_currency: byCurrency } : {}),
   };
 }
 

@@ -695,7 +695,28 @@ function CopilotAtencionPrioritariaPageContent() {
                   </div>
                 </dl>
               ) : null}
-              {snapshot && (snapshot.meta.currency === "unspecified" || snapshot.meta.currency === "mixed") ? (
+              {snapshot?.by_currency && snapshot.meta.currency === "mixed" ? (
+                <div className="mt-3 space-y-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                    Desglose por moneda
+                  </p>
+                  <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs tabular-nums text-[var(--copilot-ink-muted)]">
+                    {(["UYU", "USD"] as const).map((cur) => {
+                      const t = snapshot.by_currency![cur];
+                      if (!t) return null;
+                      return (
+                        <span key={cur}>
+                          <span className="font-semibold text-[var(--copilot-ink)]">{cur}</span>{" "}
+                          pendiente {t.pending?.toLocaleString("es-AR", { maximumFractionDigits: 0 }) ?? "—"}
+                          {t.overdue && t.overdue > 0
+                            ? ` · vencido ${t.overdue.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
+                            : ""}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : snapshot && (snapshot.meta.currency === "unspecified" || snapshot.meta.currency === "mixed") ? (
                 <p className="mt-2 text-[11px] text-[var(--copilot-ink-muted)]">
                   Montos multi-moneda (UYU + USD) — desglose pendiente.
                 </p>

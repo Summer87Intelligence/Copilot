@@ -173,7 +173,7 @@ export async function loadFinancialFactsBundle(
       let qMeta = client
         .from("proto_invoices")
         .select(
-          "id,company_id,issue_date,due_date,balance_amount,collection_probability"
+          "id,company_id,issue_date,due_date,balance_amount,collection_probability,currency_code,total_amount"
         )
         .eq("is_active", true)
         .gte("issue_date", COPILOT_OPERATIONAL_START_DATE);
@@ -197,6 +197,8 @@ export async function loadFinancialFactsBundle(
           due_date: row.due_date,
           balance_amount: r.balance_authoritative,
           collection_probability: row.collection_probability,
+          currency_code: row.currency_code,
+          total_amount: row.total_amount,
         };
       });
       const matchedIfCount = ids.filter((id) => balMap.has(id)).length;
@@ -316,6 +318,9 @@ export async function loadFinancialSnapshotRows(
     invoices: bundle.invoices.map((inv) => ({
       balance_amount: inv.balance_amount,
       collection_probability: inv.collection_probability,
+      currency_code: inv.currency_code,
+      total_amount: inv.total_amount,
+      due_date: inv.due_date,
     })),
     taxObligations: bundle.tax_obligations,
     taxPayments: bundle.tax_payments,

@@ -164,11 +164,13 @@ function detectDeudaVencida(
 ): CopilotRealInsightDeudaVencida[] {
   const out: CopilotRealInsightDeudaVencida[] = [];
   for (const row of load.rows) {
+    // TODO Fase 3: row.overdue_debt es agregado mixto UYU+USD; usar overdue_uyu + overdue_usd para umbrales por moneda
     if (row.overdue_debt <= EPS) continue;
     const detail = load.details[row.company_id];
     if (!detail) continue;
     const { count, maxDaysOverdue } = overdueInvoiceStats(detail, today);
     if (count === 0) continue;
+    // TODO Fase 3: amount mezcla UYU+USD sin conversión; reemplazar con breakdown por moneda
     const amount = row.overdue_debt;
     out.push({
       id: `deuda_vencida:${row.company_id}`,

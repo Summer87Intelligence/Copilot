@@ -54,6 +54,7 @@ export function sumPortfolioOverdueDebt(portfolio: ClientPortfolioLoad | null): 
   if (!portfolio?.rows?.length) return 0;
   let t = 0;
   for (const r of portfolio.rows) {
+    // TODO Fase 3: overdue_debt es agregado mixto UYU+USD; usar overdue_uyu + overdue_usd para umbrales por moneda
     t += r.overdue_debt;
   }
   return t;
@@ -78,6 +79,7 @@ export function countTaxAgendaUpcoming(
 
 export function hasHighRiskClients(portfolio: ClientPortfolioLoad | null): boolean {
   if (!portfolio?.rows?.length) return false;
+  // TODO Fase 3: overdue_debt es agregado mixto UYU+USD; usar overdue_uyu + overdue_usd para umbrales por moneda
   return portfolio.rows.some((r) => r.risk === "Alto" || r.overdue_debt > 0);
 }
 

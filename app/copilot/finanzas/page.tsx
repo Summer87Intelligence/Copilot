@@ -1499,7 +1499,53 @@ function CopilotFinanzasPageContent() {
                     </p>
                   </div>
                 </div>
-                {snapshot.meta.currency === "unspecified" || snapshot.meta.currency === "mixed" ? (
+                {snapshot.by_currency ? (
+                  <div className="rounded-xl border border-[var(--copilot-border)] bg-white/60 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                      Desglose por moneda
+                    </p>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      {(["UYU", "USD"] as const).map((cur) => {
+                        const totals = snapshot.by_currency![cur];
+                        if (!totals) return null;
+                        return (
+                          <div
+                            key={cur}
+                            className="rounded-lg border border-[var(--copilot-border)] bg-white/70 p-3"
+                          >
+                            <p className="text-xs font-semibold text-[var(--copilot-ink)]">{cur}</p>
+                            <dl className="mt-2 space-y-1 text-xs text-[var(--copilot-ink-muted)]">
+                              {totals.invoiced !== undefined ? (
+                                <div className="flex justify-between gap-2">
+                                  <dt>Facturado</dt>
+                                  <dd className="tabular-nums text-[var(--copilot-ink)]">
+                                    {totals.invoiced.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
+                                  </dd>
+                                </div>
+                              ) : null}
+                              {totals.pending !== undefined ? (
+                                <div className="flex justify-between gap-2">
+                                  <dt>Pendiente</dt>
+                                  <dd className="tabular-nums text-[var(--copilot-ink)]">
+                                    {totals.pending.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
+                                  </dd>
+                                </div>
+                              ) : null}
+                              {totals.overdue !== undefined && totals.overdue > 0 ? (
+                                <div className="flex justify-between gap-2">
+                                  <dt>Vencido</dt>
+                                  <dd className="tabular-nums font-semibold text-amber-900">
+                                    {totals.overdue.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
+                                  </dd>
+                                </div>
+                              ) : null}
+                            </dl>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : snapshot.meta.currency === "unspecified" || snapshot.meta.currency === "mixed" ? (
                   <p className="text-[11px] text-[var(--copilot-ink-muted)]">
                     Montos multi-moneda (UYU + USD) — desglose por moneda pendiente.
                   </p>
