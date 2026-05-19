@@ -99,6 +99,8 @@ export type InvoiceInput = {
    * `lib/copilot-zeta-credit-note.ts` (`isCreditNoteFromMetadata`).
    */
   is_credit_note?: boolean;
+  /** Desde zeta_metadata (solo lectura para búsqueda / display). */
+  zeta_client_name?: string | null;
 };
 
 /**
@@ -237,6 +239,8 @@ export type CurrencyReconciliation = {
 export type ClientStaleness = {
   companyId: string;
   companyName: string | null;
+  /** Nombre en facturas Zeta (`zeta_cliente_nombre`), si difiere de proto_companies. */
+  zetaClientName?: string | null;
   lastInvoiceUpdatedAt: string | null;
   ageHours: number | null;
   status: StalenessStatus;
@@ -640,6 +644,7 @@ export function generateFinancialConsistencyReport(
     string,
     Partial<Record<ReconciliationCurrencyCode, number>>
   >();
+  const clientZetaNameById = new Map<string, string>();
 
   // Aging accumulation: per-currency per-range (pending invoices only)
   type AgingBucketAccum = {
@@ -895,6 +900,10 @@ export function generateFinancialConsistencyReport(
       const cc = portCode as ReconciliationCurrencyCode;
       cur[cc] = round2(Math.max(0, (cur[cc] ?? 0) + portPending));
       clientPendingByCurrency.set(companyId, cur);
+      const zetaName = inv.zeta_client_name?.trim();
+      if (zetaName && !clientZetaNameById.has(companyId)) {
+        clientZetaNameById.set(companyId, zetaName);
+      }
     }
 
     if (portPending > 0) {
@@ -1098,6 +1107,7 @@ export function generateFinancialConsistencyReport(
     staleClients.push({
       companyId,
       companyName: companyNameById.get(companyId) ?? null,
+      zetaClientName: clientZetaNameById.get(companyId) ?? null,
       lastInvoiceUpdatedAt: lastMs !== null ? new Date(lastMs).toISOString() : null,
       ageHours: hours !== null ? round2(hours) : null,
       status,

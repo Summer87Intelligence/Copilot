@@ -51,6 +51,7 @@ import type {
   ReconciliationCurrencyCode,
   StalenessStatus,
 } from "@/lib/copilot-financial-reconciliation";
+import { clientMatchesDebtExplorerSearch } from "@/lib/copilot-debt-explorer-search";
 import type { CurrencyFilter } from "@/components/copilot/financial-control-bar";
 
 // ---------------------------------------------------------------------------
@@ -317,9 +318,8 @@ export function ClientDebtExplorer({
   }, []);
 
   const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
     return baseClients.filter((c) => {
-      const nameMatch = !term || (c.companyName ?? "").toLowerCase().includes(term);
+      const nameMatch = clientMatchesDebtExplorerSearch(c, search);
       const chipMatch = matchesFilter(c, filterChip);
       return nameMatch && chipMatch;
     });

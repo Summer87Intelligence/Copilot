@@ -32,6 +32,7 @@ import { performance } from "node:perf_hooks";
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { readInvoiceZetaClientName } from "@/lib/copilot-clients-directory";
 import {
   generateFinancialConsistencyReport,
   type CompanyInput,
@@ -400,6 +401,7 @@ export async function GET(request: NextRequest) {
         due_date_source:
           r.due_date_source != null ? String(r.due_date_source) : null,
         is_credit_note: isCreditNote,
+        zeta_client_name: readInvoiceZetaClientName(r.zeta_metadata),
         reconciliation_missing_count: (() => {
           try {
             const meta = r.zeta_metadata as Record<string, unknown> | null;

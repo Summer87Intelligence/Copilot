@@ -1637,10 +1637,12 @@ describe("contrato contable: collectedInPeriod + openingBalance", () => {
     });
 
     const uyu = report.currencies.find((c) => c.currencyCode === "UYU")!;
+    const elPais = report.staleClients.find((c) => c.companyId === "elpais")!;
     expect(uyu.openingBalance).toBe(58560);
     expect(uyu.issuedInPeriod).toBe(8662 + 8662);
     expect(uyu.collectedInPeriod).toBe(0);
     expect(uyu.pendingAtCutoff).toBe(58560 + 8662 + 8662);
+    expect(elPais.pendingByCurrency.UYU).toBe(uyu.pendingAtCutoff);
     // El PDF muestra "saldo final 67.222" porque incluye NC A391 de 8.662
     // que reduce el saldo. Sin NC, nuestro motor reporta 75.884. Divergencia
     // esperada y documentada en KNOWN-DIVERGENCES (DIV-003).
