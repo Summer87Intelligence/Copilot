@@ -42,9 +42,11 @@ import {
   type ProtoTaxObligation,
 } from "@/lib/copilot-tax-data";
 import { traceFromAttentionPrimary } from "@/lib/copilot-trace-meta";
+import { formatMoneyCurrency } from "@/lib/copilot-format-money";
 
+// TODO: snapshot amounts are mixed UYU+USD aggregates — pending currency-aware rendering
 function formatMoney(n: number): string {
-  return `$ ${n.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
+  return formatMoneyCurrency(n);
 }
 
 function formatRatio(r: number): string {

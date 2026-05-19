@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { formatMoneyCurrency } from "@/lib/copilot-format-money";
 import {
   buildClientsDirectory,
   type ClientDirectorySource,
@@ -47,6 +48,7 @@ export type ClientPortfolioInvoice = {
   total_amount: number;
   balance_amount: number;
   status: string;
+  currency_code?: string | null;
 };
 
 export type ClientPortfolioReceipt = {
@@ -101,6 +103,7 @@ type InvoiceRow = {
   issue_date: unknown;
   status: unknown;
   invoice_number?: unknown;
+  currency_code?: string;
 };
 
 type ReceiptRow = {
@@ -350,7 +353,7 @@ export async function getClientPortfolio(
       status: inv.status != null ? String(inv.status) : null,
       due_date: inv.due_date,
       issue_date: inv.issue_date,
-      currency_code: (inv as { currency_code?: string }).currency_code,
+      currency_code: inv.currency_code,
       zeta_metadata: (inv as { zeta_metadata?: unknown }).zeta_metadata,
     })),
     contacts: contactsRaw.map((ct) => ({
@@ -416,6 +419,7 @@ export async function getClientPortfolio(
         total_amount: num(inv.total_amount),
         balance_amount: num(inv.balance_amount),
         status: String(inv.status ?? "").trim() || "—",
+        currency_code: inv.currency_code ?? null,
       }));
 
     const recOut: ClientPortfolioReceipt[] = [...recs]
@@ -468,6 +472,12 @@ export function paymentBehaviorLabelEs(b: PaymentBehaviorLabel): string {
   return "Medio";
 }
 
-export function formatMoneyPortfolio(n: number): string {
-  return `$ ${n.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
+/**
+ * Formatea un monto para la vista de portfolio.
+ * Si se pasa `currency`, usa el símbolo correcto (UYU→"$", USD→"U$S").
+ * TODO: total_billing / total_debt / overdue_debt son agregados mixtos UYU+USD —
+ *       estos callsites no pueden pasar currency hasta que el modelo separe monedas.
+ */
+export function formatMoneyPortfolio(n: number, currency?: string | null): string {
+  return formatMoneyCurrency(n, currency);
 }

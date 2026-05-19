@@ -65,6 +65,7 @@ import {
   getProtoPayments,
   type DataRow,
 } from "@/lib/copilot-data";
+import { formatMoneyCurrency } from "@/lib/copilot-format-money";
 import { deriveFinancialFlags } from "@/lib/derive-financial-flags";
 import { FINANCIAL_UX_COPY } from "@/lib/copilot-financial-ux-copy";
 import {
@@ -107,7 +108,8 @@ function isOpenInvoiceRow(row: DataRow): boolean {
 }
 
 function formatMoneyCompact(n: number): string {
-  return `$ ${n.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
+  // TODO: snapshot amounts are mixed UYU+USD aggregates — pending currency-aware rendering
+  return formatMoneyCurrency(n, null, { compact: true });
 }
 
 function dueLabel(iso: string): string {

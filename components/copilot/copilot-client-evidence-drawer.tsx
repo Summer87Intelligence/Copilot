@@ -102,6 +102,8 @@ export function CopilotClientEvidenceDrawer({
   if (!isOpen || !detail) return null;
 
   const riskSev = clientRiskToCopilotSeverity(detail.risk);
+  // TODO: total_billing / total_debt / overdue_debt son agregados mixtos UYU+USD —
+  //       no se puede mostrar un símbolo único hasta que el modelo separe monedas por cliente.
   const narrative = [
     `Facturación acumulada ${formatMoneyPortfolio(detail.total_billing)} con participación ${(detail.share_pct * 100).toLocaleString("es-AR", { maximumFractionDigits: 1 })}% del total cargado.`,
     detail.overdue_debt > 0
@@ -248,13 +250,13 @@ export function CopilotClientEvidenceDrawer({
                         {formatDateShort(inv.due_date)}
                       </p>
                       <p className="mt-2 tabular-nums text-[var(--copilot-ink)]">
-                        Total {formatMoneyPortfolio(inv.total_amount)} · Saldo{" "}
+                        Total {formatMoneyPortfolio(inv.total_amount, inv.currency_code)} · Saldo{" "}
                         <span
                           className={
                             inv.balance_amount > 0 ? "font-semibold text-amber-900" : ""
                           }
                         >
-                          {formatMoneyPortfolio(inv.balance_amount)}
+                          {formatMoneyPortfolio(inv.balance_amount, inv.currency_code)}
                         </span>
                       </p>
                     </li>
@@ -278,6 +280,7 @@ export function CopilotClientEvidenceDrawer({
                       className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4 text-sm"
                     >
                       <p className="font-semibold tabular-nums text-emerald-800">
+                        {/* TODO: ClientPortfolioReceipt no expone currency_code — defaultea a UYU */}
                         {formatMoneyPortfolio(r.amount)}
                       </p>
                       <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
