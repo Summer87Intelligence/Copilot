@@ -362,6 +362,24 @@ export type FinancialConsistencyReport = {
    * Recibos excluidos por política MIN_FINANCIAL_DATE (receipt_date < 2026-01-01).
    */
   excludedByMinFinancialDateReceiptCount: number;
+  /** Caps de carga paginada (A-02). severity solo si hubo truncamiento por maxRows. */
+  diagnostics?: FinancialReconciliationDiagnostics;
+};
+
+export type DatasetCapsSeverity = "warning" | "critical";
+
+export type FinancialReconciliationDatasetCaps = {
+  row_cap: number;
+  isTruncated: boolean;
+  tables_at_cap: string[];
+  /** null si no hubo truncamiento; critical si proto_invoices alcanzó el cap. */
+  severity: DatasetCapsSeverity | null;
+  pages_fetched: Partial<Record<"proto_invoices" | "proto_receipts" | "proto_companies", number>>;
+  note: string;
+};
+
+export type FinancialReconciliationDiagnostics = {
+  dataset_caps: FinancialReconciliationDatasetCaps;
 };
 
 export type GenerateFinancialConsistencyReportInput = {
@@ -388,6 +406,8 @@ export type GenerateFinancialConsistencyReportInput = {
   periodStart?: string;
   /** YYYY-MM-DD inclusive upper bound. Required when mode='period_only'. */
   periodEnd?: string;
+  /** Caps de dataset paginado (lo arma el route; el motor solo lo expone). */
+  diagnostics?: FinancialReconciliationDiagnostics;
 };
 
 // ---------------------------------------------------------------------------
@@ -1229,5 +1249,6 @@ export function generateFinancialConsistencyReport(
     },
     excludedByMinFinancialDateCount,
     excludedByMinFinancialDateReceiptCount,
+    diagnostics: input.diagnostics,
   };
 }
