@@ -57,6 +57,10 @@ import {
 } from "@/lib/integrations/zeta/zeta-pipeline-types";
 import { normalizeZetaCurrency } from "@/lib/integrations/zeta/zeta-currency-normalize";
 import {
+  sumOpenInstallmentSaldoForInvoice,
+  INSTALLMENT_SALDO_EPSILON,
+} from "@/lib/integrations/zeta/zeta-installment-guard";
+import {
   COPILOT_OPERATIONAL_START_DATE,
   isPreOperationalPeriod,
 } from "@/lib/copilot-operational-period";
@@ -507,6 +511,19 @@ async function zeroCcV1BalancesWithoutSaldoRow(
     const curBal = Number.isFinite(cur) ? cur : 0;
     const alreadyClosed = Math.abs(curBal) <= 1e-6 && st === "paid";
     if (alreadyClosed) continue;
+
+    // Guard: do not zero an invoice that still has open installment saldo.
+    // null = DB error → block conservatively.
+    const installmentSaldo = await sumOpenInstallmentSaldoForInvoice(supabase, wid, id);
+    if (installmentSaldo === null || installmentSaldo > INSTALLMENT_SALDO_EPSILON) {
+      pipelineEmit("warn", "zero_pass_blocked_by_installments", {
+        invoice_id: id,
+        invoice_number: num,
+        installment_saldo: installmentSaldo,
+        workspace_company_id: wid,
+      });
+      continue;
+    }
 
     if (zetaSaldosDiagEnabled()) {
       diagLog("before_update", {
