@@ -20,7 +20,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { applyProtoActiveListFilter } from "@/lib/copilot-proto-active";
-import { ZETA_REGISTRO_ID_METADATA_JSON_PATHS_FOR_FILTER } from "@/lib/integrations/zeta/zeta-proto-invoice-registro-match";
+import {
+  ZETA_REGISTRO_ID_METADATA_JSON_PATHS_FOR_FILTER,
+  extractRegistroIdsFromInvoiceZetaMetadata,
+} from "@/lib/integrations/zeta/zeta-proto-invoice-registro-match";
 
 export type InstallmentLinkResolution = {
   invoice_id: string | null;
@@ -104,10 +107,14 @@ export async function findActiveProtoInvoiceIdsByRegistroIds(
   for (const path of ZETA_REGISTRO_ID_METADATA_JSON_PATHS_FOR_FILTER) {
     if (pending.size === 0) break;
     const ridsArr = Array.from(pending);
+    // PostgREST 12 flattens JSON path selects to the last segment as key
+    // (e.g. "zeta_metadata->...->registro_id" returns { id, registro_id: "..." }).
+    // Selecting the full zeta_metadata instead and extracting locally is reliable
+    // across all PostgREST versions and response shapes.
     const q = applyProtoActiveListFilter(
       supabase
         .from("proto_invoices")
-        .select(`id, ${path}`)
+        .select("id, zeta_metadata")
         .eq("workspace_company_id", wid)
         .like("invoice_number", "ZETA:CCV1:%")
         .filter(path, "in", `(${ridsArr.map((x) => `"${x}"`).join(",")})`)
@@ -121,49 +128,16 @@ export async function findActiveProtoInvoiceIdsByRegistroIds(
     }
     for (const row of (data ?? []) as Array<Record<string, unknown>>) {
       const invId = row?.id;
-      // Para extraer el valor del path tenemos que walkear el JSON desde
-      // el alias devuelto por PostgREST. PostgREST devuelve los aliases
-      // anidados, así que probamos cada estructura común.
-      const rawValue = extractValueFromJsonPathRow(row, path);
-      const rid = rawValue != null ? String(rawValue).trim() : null;
-      if (rid && pending.has(rid) && typeof invId === "string") {
-        out.set(rid, invId);
-        pending.delete(rid);
+      if (typeof invId !== "string") continue;
+      const rids = extractRegistroIdsFromInvoiceZetaMetadata(row.zeta_metadata);
+      for (const rid of rids) {
+        if (pending.has(rid)) {
+          out.set(rid, invId);
+          pending.delete(rid);
+        }
       }
     }
   }
 
   return out;
-}
-
-/**
- * Extrae el valor de un path JSON Postgres anidado (`zeta_metadata->...->>field`)
- * desde la fila devuelta por PostgREST. PostgREST devuelve el path como una
- * clave compuesta, anidado o "deep alias" según el formato.
- *
- * Ejemplos de entradas reales que vemos en runtime:
- *   - `{ id, zeta_metadata: { zeta_comprobante_identity_v1: { registro_id: "2527" } } }`
- *   - `{ id, "zeta_metadata->zeta_comprobante_identity_v1->>registro_id": "2527" }`
- */
-function extractValueFromJsonPathRow(
-  row: Record<string, unknown>,
-  path: string
-): unknown {
-  // 1) Path literal
-  if (Object.prototype.hasOwnProperty.call(row, path)) return row[path];
-
-  // 2) Path normalizado a deep walk (camino sin operadores)
-  //    e.g. zeta_metadata->zeta_comprobante_identity_v1->>registro_id
-  //    -> ["zeta_metadata", "zeta_comprobante_identity_v1", "registro_id"]
-  const parts = path
-    .replace(/->>?/g, "|")
-    .split("|")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  let cur: unknown = row;
-  for (const p of parts) {
-    if (cur === null || cur === undefined || typeof cur !== "object" || Array.isArray(cur)) return null;
-    cur = (cur as Record<string, unknown>)[p];
-  }
-  return cur;
 }

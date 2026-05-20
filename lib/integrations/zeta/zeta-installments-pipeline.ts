@@ -75,6 +75,7 @@ export type ZetaInstallmentsPipelineResult = {
   rows_upserted: number;
   rows_linked: number;
   rows_orphan: number;
+  rows_reconciled: number;
   invoices_due_date_updated: number;
   stopped_reason: ZetaInstallmentsPipelineStoppedReason;
   errors: string[];
@@ -152,6 +153,7 @@ export async function runZetaInstallmentsPipeline(
     rows_upserted: 0,
     rows_linked: 0,
     rows_orphan: 0,
+    rows_reconciled: 0,
     invoices_due_date_updated: 0,
     stopped_reason: "completed",
     errors: [],
@@ -341,6 +343,27 @@ export async function runZetaInstallmentsPipeline(
     result.invoices_due_date_updated = updated;
   }
 
+  // ── FASE 7: self-healing — re-linkear orphans previos de este cliente ───
+  // Cubre el timing gap: facturas sincronizadas DESPUÉS de las cuotas en runs anteriores.
+  const reconciled = await reconcileOrphanInstallmentsForClient(
+    supabase,
+    wid,
+    clienteCodigo,
+    syncRunId,
+    shouldUpdateDueDate
+  );
+  result.rows_reconciled = reconciled.linked;
+  result.invoices_due_date_updated += reconciled.due_date_updated;
+  if (reconciled.linked > 0) {
+    pipelineLog("info", "pipeline_orphan_reconciled", {
+      workspace_company_id: wid,
+      cliente_codigo: clienteCodigo,
+      reconciled: reconciled.linked,
+      due_date_updated: reconciled.due_date_updated,
+      sync_run_id: syncRunId,
+    });
+  }
+
   pipelineLog("info", "pipeline_end", {
     workspace_company_id: wid,
     cliente_codigo: clienteCodigo,
@@ -349,6 +372,7 @@ export async function runZetaInstallmentsPipeline(
     rows_upserted: result.rows_upserted,
     rows_linked: result.rows_linked,
     rows_orphan: result.rows_orphan,
+    rows_reconciled: result.rows_reconciled,
     invoices_due_date_updated: result.invoices_due_date_updated,
     stopped_reason: result.stopped_reason,
     errors: result.errors.length,
@@ -456,4 +480,118 @@ async function applyRealDueDateToInvoices(
   }
 
   return updates;
+}
+
+/**
+ * Self-healing: re-linkea cuotas huérfanas (invoice_id IS NULL) de un cliente
+ * que pudieron haberse linkeado ahora que el cron de vouchers corrió.
+ *
+ * Casos cubiertos:
+ *  - Timing gap: cuota sincronizada antes que la factura.
+ *  - Batch linker bug (pre-fix): orphans de runs anteriores con el bug.
+ *
+ * Garantías:
+ *  - Sólo toca filas de este workspace + cliente.
+ *  - Sólo actualiza filas con invoice_id IS NULL (idempotente).
+ *  - Nunca crea facturas ni modifica balance_amount.
+ *  - Si shouldUpdateDueDate: propaga el min(cuota_vencimiento) a la factura.
+ */
+async function reconcileOrphanInstallmentsForClient(
+  supabase: SupabaseClient,
+  workspaceCompanyId: string,
+  clienteCodigo: string,
+  syncRunId: string,
+  shouldUpdateDueDate: boolean
+): Promise<{ linked: number; due_date_updated: number }> {
+  // 1. Cargar orphans de este cliente
+  const { data: orphanRows, error: orphanErr } = await supabase
+    .from("proto_invoice_installments")
+    .select("id, zeta_registro_id, cuota_saldo, cuota_vencimiento")
+    .eq("workspace_company_id", workspaceCompanyId)
+    .eq("cliente_codigo", clienteCodigo)
+    .is("invoice_id", null)
+    .limit(500);
+
+  if (orphanErr || !orphanRows || orphanRows.length === 0) return { linked: 0, due_date_updated: 0 };
+
+  const rows = orphanRows as Array<{
+    id: string;
+    zeta_registro_id?: string | null;
+    cuota_saldo?: number | null;
+    cuota_vencimiento?: string | null;
+  }>;
+
+  // 2. Resolver batch
+  const rids = [...new Set(
+    rows.map((r) => String(r.zeta_registro_id ?? "").trim()).filter((s) => s && s !== "0")
+  )];
+  if (rids.length === 0) return { linked: 0, due_date_updated: 0 };
+
+  const linkMap = await findActiveProtoInvoiceIdsByRegistroIds(
+    supabase,
+    workspaceCompanyId,
+    rids,
+    {
+      onFilterError: (path, msg) =>
+        pipelineLog("warn", "pipeline_reconcile_filter_error", {
+          workspace_company_id: workspaceCompanyId,
+          cliente_codigo: clienteCodigo,
+          path,
+          message: msg,
+        }),
+    }
+  );
+
+  // 3. Aplicar links y acumular due_dates
+  const newDueDateByInvoice = new Map<string, string>();
+  let linked = 0;
+
+  for (const row of rows) {
+    const rid = String(row.zeta_registro_id ?? "").trim();
+    const invoiceId = linkMap.get(rid) ?? null;
+    if (!invoiceId) continue;
+
+    const { error } = await supabase
+      .from("proto_invoice_installments")
+      .update({ invoice_id: invoiceId })
+      .eq("workspace_company_id", workspaceCompanyId)
+      .eq("id", row.id)
+      .is("invoice_id", null);
+
+    if (error) {
+      pipelineLog("warn", "pipeline_reconcile_update_error", {
+        workspace_company_id: workspaceCompanyId,
+        row_id: row.id,
+        invoice_id: invoiceId,
+      }, error);
+      continue;
+    }
+
+    linked += 1;
+
+    if (
+      shouldUpdateDueDate &&
+      row.cuota_saldo != null &&
+      (row.cuota_saldo as number) > 0 &&
+      row.cuota_vencimiento
+    ) {
+      const prev = newDueDateByInvoice.get(invoiceId);
+      if (!prev || (row.cuota_vencimiento as string) < prev) {
+        newDueDateByInvoice.set(invoiceId, row.cuota_vencimiento as string);
+      }
+    }
+  }
+
+  // 4. Propagar due_date a facturas recién linkeadas
+  let due_date_updated = 0;
+  if (linked > 0 && shouldUpdateDueDate && newDueDateByInvoice.size > 0) {
+    due_date_updated = await applyRealDueDateToInvoices(
+      supabase,
+      workspaceCompanyId,
+      newDueDateByInvoice,
+      syncRunId
+    );
+  }
+
+  return { linked, due_date_updated };
 }

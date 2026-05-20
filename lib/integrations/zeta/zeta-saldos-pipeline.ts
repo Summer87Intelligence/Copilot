@@ -1150,7 +1150,8 @@ function resolveStartPage(
  * - **(b)** Última página con `IsLastPage` y `Response` **array JSON** vacío (`responseExplicitArray`
  *   y 0 filas): el contrato devolvió lista explícita `[]`, no un `[]` “sintético” por `Response` ausente.
  */
-function canApplyZeroPass(params: {
+/** @internal exported for testing only */
+export function canApplyZeroPass(params: {
   stopped: ZetaSaldosPipelineResult["stopped_reason"];
   pagesFetched: number;
   rowsNormalized: number;
