@@ -22,6 +22,13 @@ import { runZetaSaldosPendientesPipeline } from "@/lib/integrations/zeta/zeta-sa
 import { withZetaRetry } from "@/lib/integrations/zeta/zeta-retry";
 import { fetchActiveWorkspaceIdPage } from "@/lib/cron/zeta-cron-workspace-pages";
 import {
+  queryFacturaClienteSaldosPendientes,
+} from "@/lib/integrations/zeta/zeta-factura-cliente";
+import {
+  extractUnknownCodigosFromSaldosRows,
+  ensureProtoCompanyForZetaCodigo,
+} from "@/lib/integrations/zeta/zeta-company-autocreate";
+import {
   createPipelineRun,
   expireStaleFleetPipelineRuns,
   findActivePipelineRun,
@@ -79,7 +86,64 @@ type WorkspaceSummary = {
   errors: number;
   reconciliation_closed?: number;
   orphan_metadata_repaired?: number;
+  clients_autocreated?: number;
 };
+
+// ── A-05: discovery + autocreate de nuevos clientes Zeta ─────────────────────
+
+type SaldosSupabaseClient = Parameters<typeof runZetaSaldosPendientesPipeline>[0];
+
+/**
+ * Discovery step: llama a Zeta con ClienteCodigo vacío (una página) para detectar
+ * clientes con deuda que no existen en proto_companies todavía.
+ * Crea placeholders (source=zeta_saldos_autocreate) y devuelve los entries para
+ * agregarlos a `eligible` en el mismo run — reduce visibilidad de <24h a <3h.
+ * Docs Zeta: "ClienteCodigo puede dejarse vacío para obtener todos; solo una vez."
+ * No-blocking: cualquier error de Zeta o DB se loggea y se retorna array vacío.
+ */
+async function discoverAndAutocreateNewZetaClients(
+  supabase: SaldosSupabaseClient,
+  workspaceId: string,
+  requestId: string,
+  knownCodigos: Set<string>
+): Promise<Array<{ id: string; Codigo: string }>> {
+  try {
+    const result = await queryFacturaClienteSaldosPendientes(
+      { requestId, tenantId: workspaceId },
+      { clienteCodigo: "", page: "1" }
+    );
+    if (!result.succeed || result.rows.length === 0) return [];
+
+    const unknown = extractUnknownCodigosFromSaldosRows(result.rows, knownCodigos);
+    if (unknown.length === 0) return [];
+
+    const created: Array<{ id: string; Codigo: string }> = [];
+    for (const { codigo, nombre } of unknown) {
+      const id = await ensureProtoCompanyForZetaCodigo(
+        supabase,
+        workspaceId,
+        codigo,
+        nombre,
+        "zeta_saldos_autocreate"
+      );
+      if (!id) continue;
+      created.push({ id, Codigo: codigo });
+      console.info(
+        JSON.stringify({
+          kind: "zeta_autocreate_company",
+          source: "saldos",
+          workspace_id: workspaceId,
+          codigo,
+          nombre,
+          company_id: id,
+        })
+      );
+    }
+    return created;
+  } catch {
+    return [];
+  }
+}
 
 export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) {
@@ -229,9 +293,35 @@ export async function GET(request: NextRequest) {
       continue;
     }
 
-    const eligible = ((companies ?? []) as { id: string; Codigo: string | null }[]).filter(
-      (c) => c.Codigo?.trim()
-    );
+    const eligible: Array<{ id: string; Codigo: string }> = (
+      (companies ?? []) as { id: string; Codigo: string | null }[]
+    )
+      .filter((c): c is { id: string; Codigo: string } => Boolean(c.Codigo?.trim()));
+
+    // A-05: descubrir clientes Zeta nuevos sin proto_company y crearlos en el acto.
+    // Llama a Zeta con ClienteCodigo vacío (una página) — contrato documentado.
+    // Los nuevos clientes se agregan a `eligible` y se sincronizan en este mismo run.
+    let wsAutocreated = 0;
+    try {
+      const knownCodigos = new Set(eligible.map((c) => c.Codigo));
+      const newClients = await discoverAndAutocreateNewZetaClients(
+        supabase,
+        workspaceId,
+        cronRunId,
+        knownCodigos
+      );
+      if (newClients.length > 0) {
+        wsAutocreated = newClients.length;
+        eligible.push(...newClients);
+        log("new_clients_autocreated", {
+          workspace_id: workspaceId,
+          count: newClients.length,
+          codigos: newClients.map((c) => c.Codigo),
+        });
+      }
+    } catch (e) {
+      log("discovery_error", { workspace_id: workspaceId, error: String(e) });
+    }
 
     // Detección de cobertura insuficiente: si llenamos el batch hasta el
     // tope, podría haber clientes fuera del sync que terminen con
@@ -353,6 +443,7 @@ export async function GET(request: NextRequest) {
       errors: wsErrors,
       reconciliation_closed: wsReconciled,
       orphan_metadata_repaired: wsOrphanMetadataRepaired,
+      clients_autocreated: wsAutocreated > 0 ? wsAutocreated : undefined,
     });
 
     workspacesTotal += 1;

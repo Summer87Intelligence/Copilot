@@ -49,6 +49,21 @@ import {
 import { toSafeNumber } from "@/lib/copilot-numeric-parse";
 import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
 import { mergeZetaSyncStateRows } from "@/lib/integrations/zeta/zeta-sync-resource-keys";
+import { buildInstallmentCoverageDiagnostics } from "@/lib/copilot-installment-coverage";
+import { buildFinancialReconciliationDatasetCaps } from "@/lib/copilot-financial-reconciliation-dataset-caps";
+import { computeInstallmentAging } from "@/lib/copilot-installment-aging";
+import {
+  buildAgingComparativeDiagnostics,
+  resolveAgingMode,
+} from "@/lib/copilot-installment-aging-delta";
+import { buildInstallmentAgingObservation } from "@/lib/copilot-installment-aging-observation";
+import type { FinancialReconciliationDiagnostics } from "@/lib/copilot-financial-reconciliation";
+import {
+  DEFAULT_MAX_ROWS,
+  DEFAULT_PAGE_SIZE,
+  fetchAllRows,
+  fetchAllRowsSafe,
+} from "@/lib/supabase-pagination";
 
 // CRÍTICO: el reporte debe recalcularse en cada request porque depende del
 // `period_start`/`period_end` recibidos por query string. Sin `force-dynamic`
@@ -57,8 +72,21 @@ import { mergeZetaSyncStateRows } from "@/lib/integrations/zeta/zeta-sync-resour
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const INVOICE_LIMIT = 5000;
 const ISO_DATE_RX = /^\d{4}-\d{2}-\d{2}$/;
+
+const FINANCIAL_RECON_PAGE_SIZE = (() => {
+  const raw = process.env.FINANCIAL_RECONCILIATION_PAGE_SIZE;
+  if (!raw) return DEFAULT_PAGE_SIZE;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_PAGE_SIZE;
+})();
+
+const FINANCIAL_RECON_MAX_ROWS = (() => {
+  const raw = process.env.FINANCIAL_RECONCILIATION_MAX_ROWS;
+  if (!raw) return DEFAULT_MAX_ROWS;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_MAX_ROWS;
+})();
 
 function normalizePeriodParam(raw: string | null): string | null {
   if (raw === null) return null;
@@ -91,13 +119,14 @@ export async function GET(request: NextRequest) {
   const t0 = performance.now();
   const timings: Record<string, number> = {};
   const counts: Record<
-    "invoices" | "receipts" | "companies" | "syncStates",
+    "invoices" | "receipts" | "companies" | "syncStates" | "installments",
     number | null
   > = {
     invoices: null,
     receipts: null,
     companies: null,
     syncStates: null,
+    installments: null,
   };
   let stage: Stage = "init";
   let workspaceId = "";
@@ -147,6 +176,10 @@ export async function GET(request: NextRequest) {
     const params = request.nextUrl.searchParams;
     const mode = (params.get("mode") ?? "period_only") as ReconciliationMode;
     modeCtx = mode;
+    const agingMode = resolveAgingMode(
+      process.env.AGING_MODE,
+      params.get("aging_mode")
+    );
 
     // Parseo seguro: si `period_start`/`period_end` no respetan YYYY-MM-DD se
     // descartan y se cae al período operativo default (mode=period_only).
@@ -232,61 +265,87 @@ export async function GET(request: NextRequest) {
     }
     mark("validate_workspace_ms");
 
-    // ---- Load all sources in parallel ----
-    //
-    // Antes eran 4 queries secuenciales (invoices → companies → receipts →
-    // sync). Bajo carga (47 requests `collection-actions` en paralelo en la
-    // misma página), el pool de Supabase se saturaba y el handler colgaba
-    // 10+ segundos sin loggear nada → 500 ciego.
-    //
-    // Paralelizar reduce el tiempo total al máximo de las 4 (≈ 1 query) y
-    // libera slots de pool más rápido.
-    //
-    // `.order("id")` en invoices garantiza reproducibilidad si se trunca por
-    // INVOICE_LIMIT.
+    // Carga paralela con paginación `.range(from, to)` (A-02 / FIX-8).
     stage = "load_data";
-    // MIN_FINANCIAL_DATE filter aplicado a nivel Supabase para evitar que
-    // comprobantes históricos (< 2026-01-01) consuman slots del INVOICE_LIMIT.
-    // El motor también filtra como segunda línea de defensa.
-    let receiptsQuery = supabase
-      .from("proto_receipts")
-      .select("id, company_id, currency_code, amount, receipt_date, status")
-      .eq("workspace_company_id", workspaceId)
-      .eq("is_active", true)
-      .gte("receipt_date", MIN_FINANCIAL_DATE);
-    if (mode === "period_only" && periodEnd) {
-      receiptsQuery = receiptsQuery.lte("receipt_date", periodEnd);
-    }
 
-    const [invoiceRes, companyRes, receiptRes, syncRes] = await Promise.all([
-      supabase
-        .from("proto_invoices")
-        .select(
-          "id, company_id, currency_code, total_amount, balance_amount, status, updated_at, issue_date, due_date, due_date_source, zeta_metadata"
-        )
-        .eq("workspace_company_id", workspaceId)
-        .eq("is_active", true)
-        .gte("issue_date", MIN_FINANCIAL_DATE)
-        .order("id", { ascending: true })
-        .limit(INVOICE_LIMIT),
-      supabase
-        .from("proto_companies")
-        .select("id, name")
-        .eq("workspace_company_id", workspaceId)
-        .eq("is_active", true),
-      receiptsQuery
-        .order("receipt_date", { ascending: true })
-        .limit(INVOICE_LIMIT),
-      supabase
-        .from("zeta_sync_state")
-        .select("resource_flow, last_success_at, bootstrap_completed")
-        .eq("company_id", workspaceId)
-        .order("resource_flow"),
-    ]);
-    mark("load_data_ms");
+    const paginationOpts = {
+      pageSize: FINANCIAL_RECON_PAGE_SIZE,
+      maxRows: FINANCIAL_RECON_MAX_ROWS,
+    };
 
-    // proto_invoices ES la fuente crítica. Sin invoices no hay reporte posible.
-    if (invoiceRes.error) {
+    let invoiceFetch;
+    let companyFetch;
+    let receiptFetch;
+    let installmentFetch;
+    let syncRes;
+
+    try {
+      [invoiceFetch, companyFetch, receiptFetch, installmentFetch, syncRes] = await Promise.all([
+        fetchAllRows<Record<string, unknown>>({
+          ...paginationOpts,
+          queryPage: (from, to) =>
+            supabase
+              .from("proto_invoices")
+              .select(
+                "id, company_id, currency_code, total_amount, balance_amount, status, updated_at, issue_date, due_date, due_date_source, zeta_metadata"
+              )
+              .eq("workspace_company_id", workspaceId)
+              .eq("is_active", true)
+              .gte("issue_date", MIN_FINANCIAL_DATE)
+              .order("id", { ascending: true })
+              .range(from, to),
+        }),
+        fetchAllRowsSafe<Record<string, unknown>>({
+          ...paginationOpts,
+          queryPage: (from, to) =>
+            supabase
+              .from("proto_companies")
+              .select("id, name")
+              .eq("workspace_company_id", workspaceId)
+              .eq("is_active", true)
+              .order("id", { ascending: true })
+              .range(from, to),
+        }),
+        fetchAllRowsSafe<Record<string, unknown>>({
+          ...paginationOpts,
+          queryPage: (from, to) => {
+            let q = supabase
+              .from("proto_receipts")
+              .select("id, company_id, currency_code, amount, receipt_date, status")
+              .eq("workspace_company_id", workspaceId)
+              .eq("is_active", true)
+              .gte("receipt_date", MIN_FINANCIAL_DATE);
+            if (mode === "period_only" && periodEnd) {
+              q = q.lte("receipt_date", periodEnd);
+            }
+            return q
+              .order("receipt_date", { ascending: true })
+              .order("id", { ascending: true })
+              .range(from, to);
+          },
+        }),
+        fetchAllRowsSafe<Record<string, unknown>>({
+          ...paginationOpts,
+          queryPage: (from, to) =>
+            supabase
+              .from("proto_invoice_installments")
+              .select(
+                "invoice_id, currency_code, cuota_saldo, cuota_total, cuota_vencimiento"
+              )
+              .eq("workspace_company_id", workspaceId)
+              .order("cuota_vencimiento", { ascending: true })
+              .order("id", { ascending: true })
+              .range(from, to),
+        }),
+        supabase
+          .from("zeta_sync_state")
+          .select("resource_flow, last_success_at, bootstrap_completed")
+          .eq("company_id", workspaceId)
+          .order("resource_flow"),
+      ]);
+    } catch (invoiceErr) {
+      const message =
+        invoiceErr instanceof Error ? invoiceErr.message : String(invoiceErr);
       stage = "load_invoices_failed";
       console.error(
         JSON.stringify({
@@ -295,7 +354,7 @@ export async function GET(request: NextRequest) {
           kind: "db_error",
           request_id: requestId,
           table: "proto_invoices",
-          error: invoiceRes.error.message,
+          error: message,
           workspace_id: workspaceId,
         })
       );
@@ -304,19 +363,18 @@ export async function GET(request: NextRequest) {
         {
           ok: false,
           code: "DB_ERROR",
-          message: invoiceRes.error.message,
+          message,
           stage,
           requestId,
         },
         { status: 500 }
       );
     }
-    counts.invoices = invoiceRes.data?.length ?? 0;
+    mark("load_data_ms");
 
-    // Sources opcionales: si fallan, degradamos a `[]` con warning. Mejor
-    // mostrar reporte parcial (sin nombres de cliente, sin opening balance,
-    // sin staleness) que reventar toda la pantalla.
-    if (companyRes.error) {
+    counts.invoices = invoiceFetch.totalFetched;
+
+    if (companyFetch.fetchError) {
       console.warn(
         JSON.stringify({
           timestamp: new Date().toISOString(),
@@ -324,15 +382,31 @@ export async function GET(request: NextRequest) {
           kind: "db_error_degraded",
           request_id: requestId,
           table: "proto_companies",
-          error: companyRes.error.message,
+          error: companyFetch.fetchError,
           workspace_id: workspaceId,
           impact: "company names empty",
         })
       );
     }
-    counts.companies = companyRes.data?.length ?? 0;
+    counts.companies = companyFetch.totalFetched;
 
-    if (receiptRes.error) {
+    if (installmentFetch.fetchError) {
+      console.warn(
+        JSON.stringify({
+          timestamp: new Date().toISOString(),
+          source: "financial_reconciliation",
+          kind: "db_error_degraded",
+          request_id: requestId,
+          table: "proto_invoice_installments",
+          error: installmentFetch.fetchError,
+          workspace_id: workspaceId,
+          impact: "installment_coverage diagnostics omitted",
+        })
+      );
+    }
+    counts.installments = installmentFetch.totalFetched;
+
+    if (receiptFetch.fetchError) {
       console.warn(
         JSON.stringify({
           timestamp: new Date().toISOString(),
@@ -340,13 +414,13 @@ export async function GET(request: NextRequest) {
           kind: "db_error_degraded",
           request_id: requestId,
           table: "proto_receipts",
-          error: receiptRes.error.message,
+          error: receiptFetch.fetchError,
           workspace_id: workspaceId,
           impact: "collected_in_period y opening_balance no calculables",
         })
       );
     }
-    counts.receipts = receiptRes.data?.length ?? 0;
+    counts.receipts = receiptFetch.totalFetched;
 
     if (syncRes.error) {
       console.warn(
@@ -364,6 +438,13 @@ export async function GET(request: NextRequest) {
     }
     counts.syncStates = syncRes.data?.length ?? 0;
 
+    const datasetDiagnostics = buildFinancialReconciliationDatasetCaps({
+      maxRows: FINANCIAL_RECON_MAX_ROWS,
+      invoices: invoiceFetch,
+      receipts: receiptFetch,
+      companies: companyFetch,
+    });
+
     // ---- Map to typed inputs ----
     //
     // IMPORTANTE: Supabase serializa columnas `numeric` (precio/saldo) como
@@ -376,9 +457,9 @@ export async function GET(request: NextRequest) {
     let rawStringAmounts = 0;
     let rawStringBalances = 0;
     let creditNoteCount = 0;
-    const invoiceData = invoiceRes.data;
-    const companyData = companyRes.error ? [] : companyRes.data;
-    const receiptData = receiptRes.error ? [] : receiptRes.data;
+    const invoiceData = invoiceFetch.rows;
+    const companyData = companyFetch.fetchError ? [] : companyFetch.rows;
+    const receiptData = receiptFetch.fetchError ? [] : receiptFetch.rows;
     const syncData = syncRes.error ? [] : syncRes.data;
 
     const invoices: InvoiceInput[] = (
@@ -445,6 +526,44 @@ export async function GET(request: NextRequest) {
     }));
     mark("map_inputs_ms");
 
+    const diagnostics: FinancialReconciliationDiagnostics = {
+      ...datasetDiagnostics,
+    };
+    let pendingInstResult: ReturnType<typeof computeInstallmentAging> | null = null;
+
+    if (!installmentFetch.fetchError) {
+      const installmentData = installmentFetch.rows;
+      const mappedInstallments = (
+        (installmentData ?? []) as Record<string, unknown>[]
+      ).map((r) => ({
+        invoice_id: r.invoice_id != null ? String(r.invoice_id) : null,
+        currency_code: r.currency_code != null ? String(r.currency_code) : null,
+        cuota_saldo: toSafeNumber(r.cuota_saldo),
+        cuota_total: toSafeNumber(r.cuota_total),
+        cuota_vencimiento:
+          r.cuota_vencimiento != null ? String(r.cuota_vencimiento) : null,
+      }));
+
+      diagnostics.installment_coverage = buildInstallmentCoverageDiagnostics({
+        invoices: invoices.map((inv) => ({
+          id: inv.id,
+          company_id: inv.company_id,
+          balance_amount: inv.balance_amount,
+          due_date: inv.due_date ?? null,
+          due_date_source: inv.due_date_source ?? null,
+          status: inv.status,
+        })),
+        installments: mappedInstallments,
+      });
+
+      if (agingMode !== "legacy") {
+        pendingInstResult = computeInstallmentAging(
+          mappedInstallments,
+          new Date().toISOString()
+        );
+      }
+    }
+
     // ---- Generate report (pure) ----
     stage = "generate_report";
     const report = generateFinancialConsistencyReport({
@@ -456,7 +575,43 @@ export async function GET(request: NextRequest) {
       mode,
       periodStart,
       periodEnd,
+      diagnostics,
     });
+
+    // Attach shadow aging comparative after report — requires report.agingByCurrency.
+    if (pendingInstResult) {
+      diagnostics.aging_comparative = buildAgingComparativeDiagnostics(
+        pendingInstResult,
+        report.agingByCurrency,
+        agingMode
+      );
+
+      diagnostics.aging_observation = buildInstallmentAgingObservation({
+        installments: (
+          (installmentFetch.rows ?? []) as Record<string, unknown>[]
+        ).map((r) => ({
+          invoice_id: r.invoice_id != null ? String(r.invoice_id) : null,
+          currency_code: r.currency_code != null ? String(r.currency_code) : null,
+          cuota_saldo: toSafeNumber(r.cuota_saldo),
+          cuota_vencimiento:
+            r.cuota_vencimiento != null ? String(r.cuota_vencimiento) : null,
+        })),
+        invoices: invoices.map((inv) => ({
+          id: inv.id,
+          company_id: inv.company_id ?? null,
+          currency_code: inv.currency_code ?? null,
+          balance_amount: inv.balance_amount,
+          status: inv.status,
+          due_date: inv.due_date ?? null,
+          due_date_source: inv.due_date_source ?? null,
+          issue_date: inv.issue_date ?? null,
+        })),
+        companies,
+        agingComparative: diagnostics.aging_comparative,
+        installmentCoverage: diagnostics.installment_coverage,
+        now: new Date().toISOString(),
+      });
+    }
     mark("generate_report_ms");
 
     // ---- Observability logs (existentes) ----
@@ -470,7 +625,11 @@ export async function GET(request: NextRequest) {
         total_invoices: report.totalInvoices,
         invoices_without_currency: report.totalInvoicesWithoutCurrency,
         voided_invoices: report.voidedInvoices,
-        truncated: invoices.length >= INVOICE_LIMIT,
+        truncated: datasetDiagnostics.dataset_caps.isTruncated,
+        dataset_caps: datasetDiagnostics.dataset_caps,
+        installment_coverage: diagnostics.installment_coverage ?? null,
+        aging_mode: agingMode,
+        aging_comparative: diagnostics.aging_comparative ?? null,
         currencies: report.currencies.map((c) => ({
           currency: c.currencyCode,
           total_pending: c.totalPending,
@@ -494,6 +653,35 @@ export async function GET(request: NextRequest) {
         duration_ms: round2(performance.now() - t0),
       })
     );
+
+    // Shadow aging observability log (solo cuando está activo el shadow mode)
+    if (diagnostics.aging_comparative && diagnostics.aging_observation) {
+      const obs = diagnostics.aging_observation;
+      const comp = diagnostics.aging_comparative;
+      console.info(
+        JSON.stringify({
+          timestamp: new Date().toISOString(),
+          source: "financial_reconciliation",
+          kind: "installment_aging_shadow",
+          request_id: requestId,
+          workspace_id: workspaceId,
+          aging_mode: agingMode,
+          legacy_overdue_by_currency: comp.installment_vs_legacy_delta.byCurrency.map((d) => ({
+            currency: d.currency,
+            legacy_overdue: d.legacy_overdue_total,
+            installment_overdue: d.installment_overdue_total,
+            delta: d.diff,
+            hidden_overdue: d.hidden_overdue,
+          })),
+          total_hidden_overdue: comp.installment_vs_legacy_delta.total_hidden_overdue,
+          affected_clients: obs.top_underestimated_clients.length,
+          overdue_invoice_count: comp.installment_vs_legacy_delta.overdue_invoice_count,
+          mixed_aging_invoice_count: comp.installment_vs_legacy_delta.mixed_aging_invoice_count,
+          recommendation: comp.installment_vs_legacy_delta.recommendation,
+          switch_readiness: obs.switch_readiness,
+        })
+      );
+    }
 
     // Alerta de inconsistencia: si hay facturas cargadas pero el reporte
     // queda con 0 monedas activas o totales en cero, dejamos rastro claro
@@ -524,9 +712,23 @@ export async function GET(request: NextRequest) {
       ok: true,
       report,
       meta: {
-        invoice_limit: INVOICE_LIMIT,
+        /** @deprecated use max_rows — kept for cartera RowCapBanner compat */
+        invoice_limit: FINANCIAL_RECON_MAX_ROWS,
+        max_rows: FINANCIAL_RECON_MAX_ROWS,
+        page_size: FINANCIAL_RECON_PAGE_SIZE,
         invoices_loaded: invoices.length,
-        truncated: invoices.length >= INVOICE_LIMIT,
+        receipts_loaded: receiptData.length,
+        companies_loaded: companyData.length,
+        truncated: datasetDiagnostics.dataset_caps.isTruncated,
+        pages_fetched: datasetDiagnostics.dataset_caps.pages_fetched,
+        dataset_caps: datasetDiagnostics.dataset_caps,
+        installment_coverage: diagnostics.installment_coverage ?? null,
+        aging_mode: agingMode,
+        aging_comparative: diagnostics.aging_comparative ?? null,
+        aging_observation: diagnostics.aging_observation ?? null,
+        installments_loaded: installmentFetch.fetchError
+          ? 0
+          : installmentFetch.totalFetched,
         excluded_by_min_financial_date: report.excludedByMinFinancialDateCount,
         excluded_receipts_by_min_financial_date: report.excludedByMinFinancialDateReceiptCount,
         requestId,
@@ -535,7 +737,13 @@ export async function GET(request: NextRequest) {
     mark("serialize_response_ms");
 
     stage = "done";
-    emitTiming({ degraded: { companies: !!companyRes.error, receipts: !!receiptRes.error, syncStates: !!syncRes.error } });
+    emitTiming({
+      degraded: {
+        companies: !!companyFetch.fetchError,
+        receipts: !!receiptFetch.fetchError,
+        syncStates: !!syncRes.error,
+      },
+    });
 
     return response;
   } catch (err) {

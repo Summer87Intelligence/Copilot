@@ -18,6 +18,7 @@ import {
 import { mapZetaClientToProtoCompanyPreview } from "@/lib/integrations/zeta/zeta-client-mapper";
 import { fetchZetaContactsTyped, type FetchZetaContactsResult } from "@/lib/integrations/zeta/zeta-contacts-fetch";
 import type { ZetaCallContext } from "@/lib/integrations/zeta/zeta-http-client";
+import { ensureProtoCompanyForZetaCodigo } from "@/lib/integrations/zeta/zeta-company-autocreate";
 
 export const ZETA_CONTACTS_RESOURCE_FLOW = "zeta_contacts_incremental_v1";
 
@@ -172,6 +173,7 @@ export type SyncZetaContactsIncrementalResult = {
   duration_ms: number;
   run_id: string | null;
   message?: string;
+  companiesAutocreated?: number;
 };
 
 export type SyncZetaContactsIncrementalParams = {
@@ -277,6 +279,7 @@ export async function syncZetaContactsIncremental(
     let errors = 0;
     let fetched = 0;
     let skippedNoCompany = 0;
+    let companiesAutocreated = 0;
 
     while (hasMore && page <= MAX_PAGES) {
       const res = await fetchPageWithSimpleRetry(params.ctx, String(page), {
@@ -326,7 +329,34 @@ export async function syncZetaContactsIncremental(
       for (const c of res.contacts) {
         const raw = asRecord(c);
         const preview = mapZetaClientToProtoCompanyPreview(c);
-        const company_id = resolveCompanyId(raw, preview, byCodigo, byRutNorm);
+        let company_id = resolveCompanyId(raw, preview, byCodigo, byRutNorm);
+
+        // A-05: auto-create placeholder proto_company for new Zeta clients
+        // not yet in proto_companies. Reduces visibility delay from ~24h to <3h.
+        if (!company_id && preview.external_id && preview.name) {
+          const autocreatedId = await ensureProtoCompanyForZetaCodigo(
+            params.supabase,
+            wid,
+            preview.external_id,
+            preview.name,
+            "zeta_contacts_autocreate"
+          );
+          if (autocreatedId) {
+            company_id = autocreatedId;
+            byCodigo.set(preview.external_id, autocreatedId);
+            companiesAutocreated++;
+            console.info(
+              JSON.stringify({
+                kind: "zeta_autocreate_company",
+                workspace_id: wid,
+                codigo: preview.external_id,
+                name: preview.name,
+                company_id: autocreatedId,
+              })
+            );
+          }
+        }
+
         if (!company_id) {
           skippedNoCompany += 1;
           errors += 1;
@@ -455,6 +485,7 @@ export async function syncZetaContactsIncremental(
       duration_ms: Date.now() - started,
       run_id: runId,
       message: finalMessage,
+      companiesAutocreated: companiesAutocreated > 0 ? companiesAutocreated : undefined,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

@@ -315,6 +315,74 @@ describe("staleSummary", () => {
 });
 
 // ---------------------------------------------------------------------------
+// A-01: inactive companies with live debt remain visible in cartera
+// ---------------------------------------------------------------------------
+
+describe("A-01: inactive companies with live debt", () => {
+  it("inactive company with debt appears in staleClients with isInactiveWithDebt=true", () => {
+    const invoices = [
+      inv({ id: "i1", company_id: "c-inactive", balance_amount: 500, updated_at: hoursAgoIso(2) }),
+    ];
+    const companies: CompanyInput[] = [
+      { id: "c-inactive", name: "Cliente Inactivo SA", isActive: false },
+    ];
+    const report = run(invoices, companies);
+    const client = report.staleClients.find((c) => c.companyId === "c-inactive");
+    expect(client).toBeDefined();
+    expect(client?.companyName).toBe("Cliente Inactivo SA");
+    expect(client?.isInactiveWithDebt).toBe(true);
+  });
+
+  it("active company with debt does NOT get isInactiveWithDebt", () => {
+    const invoices = [
+      inv({ id: "i1", company_id: "c-active", balance_amount: 500, updated_at: hoursAgoIso(2) }),
+    ];
+    const companies: CompanyInput[] = [
+      { id: "c-active", name: "Cliente Activo SA", isActive: true },
+    ];
+    const report = run(invoices, companies);
+    const client = report.staleClients.find((c) => c.companyId === "c-active");
+    expect(client?.isInactiveWithDebt).toBeUndefined();
+  });
+
+  it("inactive company with balance=0 does NOT get isInactiveWithDebt", () => {
+    const invoices = [
+      inv({ id: "i1", company_id: "c-inactive-paid", balance_amount: 0, updated_at: hoursAgoIso(2) }),
+    ];
+    const companies: CompanyInput[] = [
+      { id: "c-inactive-paid", name: "Ex Cliente", isActive: false },
+    ];
+    const report = run(invoices, companies);
+    const client = report.staleClients.find((c) => c.companyId === "c-inactive-paid");
+    expect(client?.isInactiveWithDebt).toBeUndefined();
+  });
+
+  it("invoice totals include inactive company debt", () => {
+    const invoices = [
+      inv({ id: "i1", company_id: "c-active", balance_amount: 1000, total_amount: 1000, updated_at: hoursAgoIso(1) }),
+      inv({ id: "i2", company_id: "c-inactive", balance_amount: 500, total_amount: 500, updated_at: hoursAgoIso(1) }),
+    ];
+    const companies: CompanyInput[] = [
+      { id: "c-active", name: "Activo", isActive: true },
+      { id: "c-inactive", name: "Inactivo", isActive: false },
+    ];
+    const report = run(invoices, companies);
+    const uyu = report.currencies.find((c) => c.currencyCode === "UYU");
+    expect(uyu?.totalPending).toBe(1500);
+  });
+
+  it("company without isActive field defaults to active (backward compat)", () => {
+    const invoices = [
+      inv({ id: "i1", company_id: "c1", balance_amount: 200, updated_at: hoursAgoIso(1) }),
+    ];
+    const companies: CompanyInput[] = [{ id: "c1", name: "Legacy" }];
+    const report = run(invoices, companies);
+    const client = report.staleClients.find((c) => c.companyId === "c1");
+    expect(client?.isInactiveWithDebt).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Sync state
 // ---------------------------------------------------------------------------
 

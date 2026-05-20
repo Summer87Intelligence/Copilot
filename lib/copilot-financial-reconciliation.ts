@@ -27,6 +27,8 @@ import {
   isStaleOrphanMetadata,
 } from "@/lib/integrations/zeta/zeta-orphan-auto-repair";
 import { stalenessFromHoursForResourceFlow } from "@/lib/integrations/zeta/zeta-sync-staleness";
+import type { AgingComparativeDiagnostics } from "@/lib/copilot-installment-aging-delta";
+import type { InstallmentAgingObservationDiagnostics } from "@/lib/copilot-installment-aging-observation";
 
 export const STALE_WARNING_HOURS = 24;
 export const STALE_CRITICAL_HOURS = 72;
@@ -362,6 +364,57 @@ export type FinancialConsistencyReport = {
    * Recibos excluidos por política MIN_FINANCIAL_DATE (receipt_date < 2026-01-01).
    */
   excludedByMinFinancialDateReceiptCount: number;
+  /** Caps de carga paginada (A-02). severity solo si hubo truncamiento por maxRows. */
+  diagnostics?: FinancialReconciliationDiagnostics;
+};
+
+export type DatasetCapsSeverity = "warning" | "critical";
+
+export type FinancialReconciliationDatasetCaps = {
+  row_cap: number;
+  isTruncated: boolean;
+  tables_at_cap: string[];
+  /** null si no hubo truncamiento; critical si proto_invoices alcanzó el cap. */
+  severity: DatasetCapsSeverity | null;
+  pages_fetched: Partial<Record<"proto_invoices" | "proto_receipts" | "proto_companies", number>>;
+  note: string;
+};
+
+/** ZETA-08 Fase 0 — cobertura de cuotas vs rollup `due_date` en facturas. */
+export type InstallmentCoverageDiagnostics = {
+  coveragePct: number;
+  syntheticPct: number;
+  orphanCount: number;
+  minDateTrapCount: number;
+  balanceMismatchCount: number;
+  /** Facturas con balance > 0 (denominador de coverage/synthetic). */
+  pendingInvoiceCount: number;
+  realDueDateInvoiceCount: number;
+  syntheticDueDateInvoiceCount: number;
+  /** status=partial y al menos una cuota vencida con saldo. */
+  partialWithOverdueCount: number;
+  /** Clientes con overdue por cuota pero ninguna factura overdue por due_date rollup. */
+  underestimatedClientCount: number;
+  installmentRowCount: number;
+  linkedInstallmentCount: number;
+  /** Shadow del motor Fase 1 (sin cambiar aging de cartera). */
+  installmentAging: {
+    dominantRange: string | null;
+    hasMixedAging: boolean;
+    overdueInstallments: number;
+    overdueInvoiceCount: number;
+  };
+  note: string;
+};
+
+export type FinancialReconciliationDiagnostics = {
+  dataset_caps: FinancialReconciliationDatasetCaps;
+  /** Ausente si la tabla no existe o falló la carga (degradación). */
+  installment_coverage?: InstallmentCoverageDiagnostics;
+  /** ZETA-08 Fase 2: shadow aging comparativo. Ausente en modo legacy o si falló la carga. */
+  aging_comparative?: AgingComparativeDiagnostics;
+  /** ZETA-08 Fase 2: observation layer — top clientes subestimados, overdue oculto y readiness GO/NO-GO. */
+  aging_observation?: InstallmentAgingObservationDiagnostics;
 };
 
 export type GenerateFinancialConsistencyReportInput = {
@@ -388,6 +441,8 @@ export type GenerateFinancialConsistencyReportInput = {
   periodStart?: string;
   /** YYYY-MM-DD inclusive upper bound. Required when mode='period_only'. */
   periodEnd?: string;
+  /** Caps de dataset paginado (lo arma el route; el motor solo lo expone). */
+  diagnostics?: FinancialReconciliationDiagnostics;
 };
 
 // ---------------------------------------------------------------------------
@@ -1229,5 +1284,6 @@ export function generateFinancialConsistencyReport(
     },
     excludedByMinFinancialDateCount,
     excludedByMinFinancialDateReceiptCount,
+    diagnostics: input.diagnostics,
   };
 }
