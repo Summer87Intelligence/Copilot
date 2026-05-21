@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
+import { CopilotCard, CopilotGhostLink } from "@/components/copilot/copilot-ui";
 import { OicHealthPanel } from "@/components/copilot/operacional/oic-health-panel";
 import { OicQuickStats } from "@/components/copilot/operacional/oic-quick-stats";
 import { OicSkeletonCard } from "@/components/copilot/operacional/oic-skeleton-card";
@@ -21,6 +22,20 @@ export default function OperacionalPage() {
         <Suspense fallback={<OicSkeletonCard rows={7} />}>
           <OicHealthPanel />
         </Suspense>
+
+        <CopilotCard className="border-[var(--copilot-border)] bg-white/90">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-[var(--copilot-ink)]">Pipelines</p>
+              <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
+                Estado de sincronización Zeta en tiempo real
+              </p>
+            </div>
+            <CopilotGhostLink href="/copilot/operacional/pipelines" className="shrink-0 text-xs font-semibold">
+              Ver pipelines →
+            </CopilotGhostLink>
+          </div>
+        </CopilotCard>
       </div>
     </>
   );

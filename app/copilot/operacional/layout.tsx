@@ -4,10 +4,11 @@ import { isOicEnabled } from "@/lib/operacional/oic-feature-flag";
 import Link from "next/link";
 
 const NAV_ITEMS = [
-  { href: "/copilot/operacional",              label: "Dashboard" },
+  { href: "/copilot/operacional",                label: "Dashboard" },
   { href: "/copilot/operacional/reconciliacion", label: "Reconciliación" },
-  { href: "/copilot/operacional/actividad",     label: "Actividad" },
-  { href: "/copilot/operacional/snapshots",     label: "Snapshots" },
+  { href: "/copilot/operacional/actividad",      label: "Actividad" },
+  { href: "/copilot/operacional/snapshots",      label: "Snapshots" },
+  { href: "/copilot/operacional/pipelines",      label: "Pipelines" },
 ];
 
 export default function OperacionalLayout({ children }: { children: ReactNode }) {

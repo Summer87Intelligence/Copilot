@@ -1,15 +1,11 @@
-"use client";
-
 import { CopilotHoyReturnLink } from "@/components/copilot/copilot-hoy-return-link";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import { PipelineHealthPanel } from "@/components/copilot/pipeline-health-panel";
 import {
   CopilotCard,
   CopilotGhostLink,
   CopilotPrimaryLink,
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
-import { usePipelineHealthRealtime } from "@/lib/copilot-pipeline-health-realtime";
 
 const secondaryDestinations = [
   {
@@ -30,15 +26,6 @@ const secondaryDestinations = [
 ] as const;
 
 export default function CopilotHomePage() {
-  const {
-    summaries: pipelineHealth,
-    loading: pipelineHealthLoading,
-    error: pipelineHealthError,
-    realtimeStatus: pipelineRealtimeStatus,
-    lastUpdatedAt: pipelineLastUpdatedAt,
-    isRefreshing: pipelineIsRefreshing,
-  } = usePipelineHealthRealtime();
-
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
@@ -85,22 +72,6 @@ export default function CopilotHomePage() {
           </div>
         </section>
 
-        <section>
-          <CopilotSectionTitle
-            title="Pipelines"
-            subtitle="Salud de sincronización Zeta sin abrir el tablero ejecutivo anterior."
-          />
-          <div className="mt-4">
-            <PipelineHealthPanel
-              summaries={pipelineHealth}
-              loading={pipelineHealthLoading}
-              error={pipelineHealthError}
-              realtimeStatus={pipelineRealtimeStatus}
-              lastUpdatedAt={pipelineLastUpdatedAt}
-              isRefreshing={pipelineIsRefreshing}
-            />
-          </div>
-        </section>
       </div>
     </div>
   );
