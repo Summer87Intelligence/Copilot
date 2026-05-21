@@ -15,14 +15,14 @@ import {
   type CarteraPeriodMetrics,
   type DebtorCollectionRow,
   type PendingItem,
-  type RecommendedAction,
 } from "@/lib/copilot-today-business-pulse";
 
 import { AttentionClientsDrawer } from "./hoy-attention-clients-drawer";
 import { CurrencyExecutiveCard } from "./hoy-currency-executive-card";
 import { HoyDrawer } from "./hoy-drawer";
+import { HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
 import { AttentionFollowUpStrip, PulseHero } from "./hoy-pulse-hero";
-import { PriorityCollectionsTable } from "./hoy-priority-collections-table";
+import { DebtorsReviewTable } from "./hoy-priority-collections-table";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -98,6 +98,23 @@ function DebtorsDrawer({
 }) {
   const [filter, setFilter] = useState<DebtorFilter>("all");
 
+  const totals = useMemo(() => {
+    let pendingUyu = 0;
+    let pendingUsd = 0;
+    let vencidoUyu = 0;
+    let vencidoUsd = 0;
+    for (const r of rows) {
+      if (r.currency === "UYU") {
+        pendingUyu += r.deuda.amount;
+        vencidoUyu += r.vencido?.amount ?? 0;
+      } else {
+        pendingUsd += r.deuda.amount;
+        vencidoUsd += r.vencido?.amount ?? 0;
+      }
+    }
+    return { pendingUyu, pendingUsd, vencidoUyu, vencidoUsd };
+  }, [rows]);
+
   const filtered = useMemo(() => {
     return rows.filter((r) => {
       if (filter === "UYU") return r.currency === "UYU";
@@ -120,7 +137,7 @@ function DebtorsDrawer({
 
   return (
     <HoyDrawer
-      title="Deuda activa — todos los deudores"
+      title="Todos los deudores"
       onClose={onClose}
       footer={
         <Link
@@ -132,11 +149,45 @@ function DebtorsDrawer({
         </Link>
       }
     >
-      <p className="mb-3 text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
-        {debtorClients} {debtorClients === 1 ? "cliente" : "clientes"} con deuda activa ·{" "}
-        {rows.length} filas (una por moneda) · {filtered.length} visibles con el filtro actual. UYU y
-        USD no se suman.
+      <p className="mb-2 text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
+        Clientes con saldo pendiente, separados por moneda. {debtorClients}{" "}
+        {debtorClients === 1 ? "cliente" : "clientes"} · {rows.length} filas · {filtered.length}{" "}
+        visibles con el filtro.
       </p>
+      <div className="mb-4 grid grid-cols-2 gap-2 text-[11px]">
+        <div className="rounded-lg border border-[var(--copilot-border)] px-2.5 py-2">
+          <span className="text-[var(--copilot-ink-muted)]">Por cobrar UYU </span>
+          <span className="font-semibold text-amber-800">
+            {totals.pendingUyu > 0
+              ? `UYU $ ${totals.pendingUyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
+              : "—"}
+          </span>
+        </div>
+        <div className="rounded-lg border border-[var(--copilot-border)] px-2.5 py-2">
+          <span className="text-[var(--copilot-ink-muted)]">Por cobrar USD </span>
+          <span className="font-semibold text-amber-800">
+            {totals.pendingUsd > 0
+              ? `USD U$S ${totals.pendingUsd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
+              : "—"}
+          </span>
+        </div>
+        <div className="rounded-lg border border-rose-100/80 bg-rose-50/30 px-2.5 py-2">
+          <span className="text-[var(--copilot-ink-muted)]">Vencido UYU </span>
+          <span className="font-semibold text-rose-800">
+            {totals.vencidoUyu > 0
+              ? `UYU $ ${totals.vencidoUyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
+              : "—"}
+          </span>
+        </div>
+        <div className="rounded-lg border border-rose-100/80 bg-rose-50/30 px-2.5 py-2">
+          <span className="text-[var(--copilot-ink-muted)]">Vencido USD </span>
+          <span className="font-semibold text-rose-800">
+            {totals.vencidoUsd > 0
+              ? `USD U$S ${totals.vencidoUsd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
+              : "—"}
+          </span>
+        </div>
+      </div>
       <div className="mb-4 flex flex-wrap gap-1.5">
         {filters.map((f) => (
           <button
@@ -165,7 +216,7 @@ function DebtorsDrawer({
               <span className="text-[10px] font-semibold text-[var(--copilot-ink-muted)]">{row.currency}</span>
             </div>
             <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs tabular-nums">
-              <span className="text-amber-700">Falta cobrar {row.deuda.formatted}</span>
+              <span className="text-amber-700">Por cobrar {row.deuda.formatted}</span>
               {row.vencido ? (
                 <span className="font-semibold text-rose-700">Vencido {row.vencido.formatted}</span>
               ) : (
@@ -211,37 +262,11 @@ function PendingList({
           {urgencyBadge(item.urgency)}
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-[var(--copilot-ink)]">{item.title}</p>
-            <p className="text-xs text-[var(--copilot-ink-muted)]">
-              {item.impacto} · {item.accion}
-            </p>
+            <p className="text-xs text-[var(--copilot-ink-muted)]">{item.accion}</p>
           </div>
         </li>
       ))}
     </ol>
-  );
-}
-
-function ActionsBar({ actions }: { actions: RecommendedAction[] }) {
-  if (actions.length === 0) return null;
-  return (
-    <div className="flex flex-wrap gap-2">
-      {actions.map((a) => (
-        <Link
-          key={a.id}
-          href={a.deepLink}
-          className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold shadow-sm ${
-            a.tone === "critical"
-              ? "border-rose-200 bg-rose-50 text-rose-700"
-              : a.tone === "warning"
-                ? "border-amber-200 bg-amber-50 text-amber-800"
-                : "border-[var(--copilot-border)] bg-white text-[var(--copilot-ink)]"
-          }`}
-        >
-          {a.label}
-          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-        </Link>
-      ))}
-    </div>
   );
 }
 
@@ -282,12 +307,9 @@ export function HoyPageView({
   );
 
   const topDebtorRows = useMemo(() => pulse.allDebtorRows.slice(0, 8), [pulse.allDebtorRows]);
-  const pendingTop = useMemo(() => pulse.importantPendingItems.slice(0, 4), [pulse.importantPendingItems]);
+  const pendingTop = useMemo(() => pulse.importantPendingItems.slice(0, 3), [pulse.importantPendingItems]);
 
-  const dataStaleNote =
-    gate.confidence === "medium" && !pulse.dataWarning
-      ? "Algunos datos pueden estar pendientes de actualización."
-      : null;
+  const dataNotice = pulse.dataWarning ?? null;
 
   if (loading) return <LoadingSkeleton />;
 
@@ -317,8 +339,7 @@ export function HoyPageView({
           status={pulse.overallStatus}
           headline={pulse.headline}
           subline={pulse.heroSubline}
-          dataWarning={pulse.dataWarning}
-          dataStaleNote={dataStaleNote}
+          dataNotice={dataNotice}
           onRefresh={onRefresh}
         />
 
@@ -339,18 +360,19 @@ export function HoyPageView({
         {pulse.attentionClients.total > 0 ? (
           <AttentionFollowUpStrip
             count={pulse.attentionClients.total}
-            totalDebtors={pulse.clientCounts.debtorClients}
             onClick={() => setDrawer({ kind: "attention", data: pulse.attentionClients })}
           />
         ) : null}
 
         <CopilotCard>
-          <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">Cobranza prioritaria</h2>
+          <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">
+            {HOY_COPY.debtorsSectionTitle}
+          </h2>
           <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-            Top clientes a revisar hoy. Para ver toda la deuda activa, abrí la lista completa.
+            Clientes con saldo pendiente, ordenados por vencimiento y monto.
           </p>
           <div className="mt-4">
-            <PriorityCollectionsTable
+            <DebtorsReviewTable
               rows={topDebtorRows}
               allRows={pulse.allDebtorRows}
               counts={pulse.clientCounts}
@@ -361,21 +383,14 @@ export function HoyPageView({
         </CopilotCard>
 
         <CopilotCard>
-          <h2 className="mb-3 text-sm font-semibold text-[var(--copilot-ink)]">Pendientes importantes</h2>
+          <h2 className="mb-3 text-sm font-semibold text-[var(--copilot-ink)]">
+            {HOY_COPY.pendingSectionTitle}
+          </h2>
           <PendingList
             items={pendingTop}
             onItemClick={(item) => setDrawer({ kind: "pending", item })}
           />
         </CopilotCard>
-
-        {pulse.recommendedActions.length > 0 ? (
-          <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] px-5 py-4 shadow-sm">
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-              Acciones recomendadas
-            </h2>
-            <ActionsBar actions={pulse.recommendedActions} />
-          </div>
-        ) : null}
       </div>
 
       {drawer.kind === "attention" ? (
@@ -414,7 +429,7 @@ export function HoyPageView({
               <span className="text-[var(--copilot-ink-muted)]">Moneda:</span> {drawer.row.currency}
             </p>
             <p>
-              <span className="text-[var(--copilot-ink-muted)]">Falta cobrar:</span>{" "}
+              <span className="text-[var(--copilot-ink-muted)]">Por cobrar:</span>{" "}
               <span className="font-semibold text-amber-700">{drawer.row.deuda.formatted}</span>
             </p>
             <p>

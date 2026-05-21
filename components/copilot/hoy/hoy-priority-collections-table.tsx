@@ -18,15 +18,14 @@ export function buildCollectionsSummaryLine(
     else pendingUsd += r.deuda.amount;
   }
   const parts: string[] = [
-    `${visibleCount} prioritarios visibles`,
-    `${counts.debtorClients} deudores activos`,
+    `Mostrando ${visibleCount} de ${counts.debtorClients} deudores`,
   ];
-  if (pendingUyu > 0) parts.push(`${fmtCurrencyAmount(pendingUyu, "UYU")} pendiente`);
-  if (pendingUsd > 0) parts.push(`${fmtCurrencyAmount(pendingUsd, "USD")} pendiente`);
+  if (pendingUyu > 0) parts.push(`${fmtCurrencyAmount(pendingUyu, "UYU")} por cobrar`);
+  if (pendingUsd > 0) parts.push(`${fmtCurrencyAmount(pendingUsd, "USD")} por cobrar`);
   return parts.join(" · ");
 }
 
-export function PriorityCollectionsTable({
+export function DebtorsReviewTable({
   rows,
   allRows,
   counts,
@@ -42,7 +41,7 @@ export function PriorityCollectionsTable({
   if (rows.length === 0) {
     return (
       <p className="text-sm text-[var(--copilot-ink-muted)]">
-        No hay clientes con deuda pendiente — todo al día.
+        No hay clientes con saldo pendiente — todo al día.
       </p>
     );
   }
@@ -61,7 +60,7 @@ export function PriorityCollectionsTable({
           type="button"
           onClick={onViewAll}
           className="shrink-0 rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--copilot-accent)] shadow-sm hover:bg-[rgba(44,40,37,0.03)]"
-          title="Lista completa de clientes con deuda activa, por moneda, con filtros"
+          title="Lista completa de clientes con saldo pendiente, por moneda"
         >
           {debtorLabel} →
         </button>
@@ -72,7 +71,7 @@ export function PriorityCollectionsTable({
             <tr className="bg-[rgba(44,40,37,0.03)] text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
               <th className="px-4 py-2.5">Cliente</th>
               <th className="px-4 py-2.5">Moneda</th>
-              <th className="px-4 py-2.5">Falta cobrar</th>
+              <th className="px-4 py-2.5">Por cobrar</th>
               <th className="px-4 py-2.5">Vencido</th>
               <th className="px-4 py-2.5">Antigüedad</th>
               <th className="px-4 py-2.5">Acción</th>

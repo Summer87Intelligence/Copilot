@@ -452,7 +452,7 @@ function cappedTone(tone: PulseTone, status: PulseStatus): PulseTone {
 
 // ─── Headline ─────────────────────────────────────────────────────────────────
 
-/** Headline ejecutivo: deudores activos vs atención prioritaria (no confundir ambos). */
+/** Headline ejecutivo: deuda activa vs señales de demora (sin “prioritario”). */
 export function buildExecutiveHeadline(
   status: PulseStatus,
   debtorClients: number,
@@ -469,9 +469,13 @@ export function buildExecutiveHeadline(
     return "La empresa está en buen estado. Todo al día.";
   }
   if (attentionClients > 0) {
-    return `Hay ${debtorClients} clientes con deuda activa. ${attentionClients} requieren seguimiento prioritario.`;
+    const demora =
+      attentionClients === 1
+        ? "tiene vencimientos o señales de demora"
+        : "tienen vencimientos o señales de demora";
+    return `${debtorClients} ${debtorClients === 1 ? "cliente" : "clientes"} con deuda activa. ${attentionClients} ${demora}.`;
   }
-  return `Hay ${debtorClients} clientes con deuda activa.`;
+  return `${debtorClients} ${debtorClients === 1 ? "cliente" : "clientes"} con deuda activa.`;
 }
 
 export function buildHeroSubline(
@@ -496,7 +500,7 @@ export function buildHeroSubline(
       if (slow > 0) bits.push(`${slow} con cobro lento`);
       parts.push(bits.join(" · "));
     } else {
-      parts.push(`${attentionRows.length} requieren seguimiento`);
+      parts.push(`${attentionRows.length} con señales de atraso`);
     }
   }
   if (activeClients > 0) parts.push(`${activeClients} clientes activos`);
@@ -919,19 +923,22 @@ function buildPendingItems(p: {
     });
   }
 
-  // Datos atrasados
-  if (p.gate.confidence === "low" && p.gate.coverage === "insufficient") {
-    items.push({
-      id: "data_quality",
-      title: "Información pendiente de actualización",
-      impacto: "Los indicadores pueden no ser precisos",
-      accion: "Actualizar la información desde el sistema",
-      deepLink: "/copilot/operacional",
-      urgency: "media",
-    });
-  }
+  const financial = items.filter((i) => i.id !== "data_quality");
+  const operational =
+    p.gate.confidence === "low" && p.gate.coverage === "insufficient"
+      ? [
+          {
+            id: "data_quality",
+            title: "Revisar actualización de datos",
+            impacto: "Información secundaria pendiente de actualizar",
+            accion: "Ver estado operacional",
+            deepLink: "/copilot/operacional",
+            urgency: "baja" as const,
+          },
+        ]
+      : [];
 
-  return items.slice(0, 4);
+  return [...financial.slice(0, 3), ...operational].slice(0, 4);
 }
 
 // ─── Last 30 days summary ─────────────────────────────────────────────────────
@@ -1025,10 +1032,8 @@ function buildRecommendedActions(p: {
 // ─── Data warning ─────────────────────────────────────────────────────────────
 
 function buildDataWarning(gate: BusinessPulseGate, isTruncated: boolean): string | null {
-  if (gate.confidence === "low" && gate.coverage === "insufficient")
-    return "Actualización pendiente — Hay datos de algunos clientes pendientes de actualización. Los saldos principales siguen disponibles.";
   if (gate.confidence === "low")
-    return "Actualización pendiente — Parte de la información de clientes puede estar desactualizada. Los saldos principales siguen disponibles.";
+    return "Algunos datos están pendientes de actualización. Los saldos principales están disponibles.";
   if (isTruncated)
     return "Algunos registros están siendo procesados. Los números pueden ser estimativos.";
   return null;

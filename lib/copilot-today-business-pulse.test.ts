@@ -15,7 +15,12 @@ function blockFor(pulse: TodayBusinessPulse, currency: "UYU" | "USD") {
   return pulse.currencyBlocks.find((b) => b.currency === currency);
 }
 import type { ClientPortfolioRow } from "./copilot-clients-portfolio";
-import { CURRENCY_METRIC_LABELS, CURRENCY_METRIC_TONES, HOY_UI } from "./copilot-hoy-ui-contract";
+import {
+  CURRENCY_METRIC_LABELS,
+  CURRENCY_METRIC_TONES,
+  HOY_COPY,
+  HOY_UI,
+} from "./copilot-hoy-ui-contract";
 
 // ─── Snapshot mocks ───────────────────────────────────────────────────────────
 
@@ -186,9 +191,11 @@ describe("buildTodayBusinessPulse", () => {
       expect(buildTodayBusinessPulse(input).overallStatus).toBe("attention");
     });
 
-    it("headline distingue deudores activos de seguimiento prioritario", () => {
+    it("headline distingue deudores activos de señales de demora", () => {
       const { headline, clientCounts } = buildTodayBusinessPulse(input);
       expect(headline.toLowerCase()).toContain("deuda activa");
+      expect(headline.toLowerCase()).toContain("vencimientos o señales de demora");
+      expect(headline.toLowerCase()).not.toContain("prioritario");
       expect(clientCounts.debtorClients).toBe(2);
       expect(clientCounts.attentionClients).toBeGreaterThan(0);
     });
@@ -256,9 +263,9 @@ describe("buildTodayBusinessPulse", () => {
       expect(priorityCollections[0]!.company_id).toBe("c1");
     });
 
-    it("accion del cliente alto riesgo con vencido menciona urgencia", () => {
+    it("accion del cliente con vencido indica contacto por saldo vencido", () => {
       const { priorityCollections } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: rows, gate: GATE_HIGH });
-      expect(priorityCollections[0]!.accion.toLowerCase()).toContain("urgente");
+      expect(priorityCollections[0]!.accion.toLowerCase()).toContain("contactar por saldo vencido");
     });
 
     it("deepLink apunta a ficha del cliente", () => {
@@ -636,7 +643,7 @@ describe("buildTodayBusinessPulse", () => {
       expect(pulse.clientCounts.debtorClients).toBe(2);
       expect(pulse.clientCounts.attentionClients).toBe(1);
       expect(pulse.headline).toContain("2 clientes con deuda activa");
-      expect(pulse.headline).toContain("1 requieren seguimiento");
+      expect(pulse.headline).toContain("vencimientos o señales de demora");
     });
 
     it("attentionClients incluye motivos y montos por moneda", () => {
@@ -851,11 +858,30 @@ describe("buildTodayBusinessPulse", () => {
       expect(CURRENCY_METRIC_LABELS.billed.toLowerCase()).not.toContain("bruto");
     });
 
-    it("semántica de color: facturado neutral, cobrado positive, pendiente warning, crítico danger", () => {
+    it("labels: Por cobrar y Vencido +30 días (no Crítico ni prioritario)", () => {
+      expect(CURRENCY_METRIC_LABELS.pending).toBe("Por cobrar");
+      expect(CURRENCY_METRIC_LABELS.overdue30).toBe("Vencido +30 días");
+      expect(CURRENCY_METRIC_LABELS.billed).not.toMatch(/bruto/i);
+      expect(HOY_COPY.debtorsSectionTitle).toBe("Deudores a revisar");
+      expect(HOY_COPY.debtorsSectionTitle.toLowerCase()).not.toContain("prioritario");
+      expect(HOY_UI.showRecommendedActions).toBe(false);
+    });
+
+    it("semántica de color: facturado neutral, cobrado positive, pendiente warning, +30 danger", () => {
       expect(CURRENCY_METRIC_TONES.billed).toBe("neutral");
       expect(CURRENCY_METRIC_TONES.collected).toBe("positive");
       expect(CURRENCY_METRIC_TONES.pending).toBe("warning");
-      expect(CURRENCY_METRIC_TONES.critical30).toBe("danger");
+      expect(CURRENCY_METRIC_TONES.overdue30).toBe("danger");
+    });
+
+    it("aviso de datos usa copy informativo, no Actualización pendiente protagonista", () => {
+      const pulse = buildTodayBusinessPulse({
+        snapshot: null,
+        portfolioRows: [],
+        gate: { confidence: "low", coverage: "partial", recommendations_enabled: false },
+      });
+      expect(pulse.dataWarning).toContain("saldos principales");
+      expect(pulse.dataWarning?.toLowerCase()).not.toMatch(/^actualización pendiente —/);
     });
 
     it("UYU y USD siguen en bloques separados sin mezclar", () => {

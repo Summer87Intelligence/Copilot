@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
+import { HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
 import type { AttentionClientsSummary } from "@/lib/copilot-today-business-pulse";
 
 import { HoyDrawer } from "./hoy-drawer";
@@ -24,7 +25,7 @@ export function AttentionClientsDrawer({
 
   return (
     <HoyDrawer
-      title="Seguimiento prioritario"
+      title={HOY_COPY.attentionDrawerTitle}
       onClose={onClose}
       footer={
         <div className="flex flex-col gap-2">
@@ -46,17 +47,16 @@ export function AttentionClientsDrawer({
       }
     >
       <p className="mb-3 text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
-        {data.total} {data.total === 1 ? "cliente requiere" : "clientes requieren"} seguimiento
-        prioritario. Hay {data.totalActiveDebtors} con deuda activa en total — esta lista no los
-        incluye a todos.
+        {data.total} {data.total === 1 ? "caso" : "casos"} con deuda vencida, cobro lento o datos
+        pendientes. Hay {data.totalActiveDebtors} con deuda activa en total.
       </p>
 
       <div className="mb-4 grid grid-cols-2 gap-2 text-xs">
         <div className="rounded-lg border border-[var(--copilot-border)] bg-white p-2.5">
-          <p className="text-[var(--copilot-ink-muted)]">Prioritarios</p>
+          <p className="text-[var(--copilot-ink-muted)]">Casos</p>
           <p className="text-xl font-bold text-[var(--copilot-ink)]">{data.total}</p>
         </div>
-        <div className="rounded-lg border border-rose-100 bg-rose-50/40 p-2.5">
+        <div className="rounded-lg border border-rose-100/80 bg-rose-50/30 p-2.5">
           <p className="text-[var(--copilot-ink-muted)]">Vencido UYU</p>
           <MoneyValue
             amount={
@@ -71,7 +71,7 @@ export function AttentionClientsDrawer({
             tone="danger"
           />
         </div>
-        <div className="rounded-lg border border-rose-100 bg-rose-50/40 p-2.5">
+        <div className="rounded-lg border border-rose-100/80 bg-rose-50/30 p-2.5">
           <p className="text-[var(--copilot-ink-muted)]">Vencido USD</p>
           <MoneyValue
             amount={
@@ -86,8 +86,8 @@ export function AttentionClientsDrawer({
             tone="danger"
           />
         </div>
-        <div className="rounded-lg border border-amber-100 bg-amber-50/40 p-2.5">
-          <p className="text-[var(--copilot-ink-muted)]">Pendiente UYU (prioritarios)</p>
+        <div className="rounded-lg border border-[var(--copilot-border)] bg-white p-2.5">
+          <p className="text-[var(--copilot-ink-muted)]">Por cobrar UYU (estos casos)</p>
           <MoneyValue
             amount={
               data.deudaTotalUyu > 0
@@ -101,8 +101,8 @@ export function AttentionClientsDrawer({
             tone="warning"
           />
         </div>
-        <div className="col-span-2 rounded-lg border border-amber-100 bg-amber-50/40 p-2.5">
-          <p className="text-[var(--copilot-ink-muted)]">Pendiente USD (prioritarios)</p>
+        <div className="col-span-2 rounded-lg border border-[var(--copilot-border)] bg-white p-2.5">
+          <p className="text-[var(--copilot-ink-muted)]">Por cobrar USD (estos casos)</p>
           <MoneyValue
             amount={
               data.deudaTotalUsd > 0
@@ -142,7 +142,7 @@ export function AttentionClientsDrawer({
               {c.motivos.map((m) => (
                 <span
                   key={m}
-                  className="rounded-md bg-amber-50 px-1.5 py-0.5 text-[9px] font-medium text-amber-800"
+                  className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-700"
                 >
                   {m}
                 </span>

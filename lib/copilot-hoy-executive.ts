@@ -198,10 +198,9 @@ function inferAntiguedad(row: ClientPortfolioRow): string {
 }
 
 function debtorAccion(row: ClientPortfolioRow, hasOverdue: boolean): string {
-  if (hasOverdue && row.risk === "Alto") return "Contactar urgente — saldo vencido y cobro lento";
-  if (hasOverdue) return "Gestionar cobro de saldo vencido";
-  if (row.risk === "Alto") return "Revisar situación de crédito";
-  return "Hacer seguimiento de cobro";
+  if (hasOverdue) return "Contactar por saldo vencido";
+  if (row.risk === "Alto" || row.payment_behavior === "lento") return "Hacer seguimiento";
+  return "Revisar ficha";
 }
 
 function sortScore(vencido: number, deuda: number, slow: boolean): number {
