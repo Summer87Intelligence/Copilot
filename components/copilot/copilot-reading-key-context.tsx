@@ -12,7 +12,10 @@ import {
 import { usePathname } from "next/navigation";
 
 import type { CopilotReadingKeyEntry } from "@/lib/copilot-reading-keys";
-import { getCopilotReadingKeyForPath } from "@/lib/copilot-reading-keys";
+import {
+  getCopilotReadingKeyForPath,
+  isCopilotReadingKeySuppressed,
+} from "@/lib/copilot-reading-keys";
 
 export type CopilotReadingKeyOverride =
   | { kind: "auto" }
@@ -70,6 +73,9 @@ export function resolveCopilotReadingKey(
   }
   if (override.kind === "custom") {
     return override.entry;
+  }
+  if (isCopilotReadingKeySuppressed(pathname)) {
+    return null;
   }
   return getCopilotReadingKeyForPath(pathname);
 }

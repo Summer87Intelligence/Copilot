@@ -144,6 +144,13 @@ const COPILOT_READING_KEY_FALLBACK: CopilotReadingKeyEntry = {
   ],
 };
 
+/** Rutas donde no se muestra el panel lateral “Clave de lectura”. */
+export const COPILOT_READING_KEY_SUPPRESSED_PATHS = new Set<string>(["/copilot/hoy"]);
+
+export function isCopilotReadingKeySuppressed(pathname: string): boolean {
+  return COPILOT_READING_KEY_SUPPRESSED_PATHS.has(normalizeCopilotPath(pathname));
+}
+
 export function normalizeCopilotPath(pathname: string): string {
   const pathOnly = pathname.split("?")[0] ?? pathname;
   if (pathOnly.length > 1 && pathOnly.endsWith("/")) {

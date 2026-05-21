@@ -30,6 +30,7 @@ export const COPILOT_SURFACE_IDS = [
   "copilot.configuracion",
   "copilot.personalizacion",
   "copilot.atencion-prioritaria",
+  "copilot.hoy",
 ] as const;
 
 export type CopilotSurfaceId = (typeof COPILOT_SURFACE_IDS)[number];
@@ -131,6 +132,12 @@ export const COPILOT_SURFACE_INDEX: Record<CopilotSurfaceId, CopilotSurfaceMeta>
     kind: "partial",
     rationale:
       "Priorización sobre alertas y obligaciones reales; drawers fiscales pueden mostrar evidencia simulada al faltar documentos.",
+  },
+  "copilot.hoy": {
+    id: "copilot.hoy",
+    kind: "real",
+    rationale:
+      "Pulso del negocio: indicadores ejecutivos derivados del motor financiero y cartera de clientes vía rutas-hub; lenguaje sin términos técnicos.",
   },
 };
 

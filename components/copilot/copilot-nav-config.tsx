@@ -36,7 +36,7 @@ export type CopilotNavGroup = {
 
 const COPILOT_NAV_HOY: CopilotNavGroup = {
   sectionTitle: "Hoy",
-  items: [{ href: "/copilot/rutas", label: "Hoy", icon: ListTodo }],
+  items: [{ href: "/copilot/hoy", label: "Hoy", icon: ListTodo }],
 };
 
 const COPILOT_NAV_OPERACION: CopilotNavGroup = {
