@@ -1040,13 +1040,46 @@ function CopilotDatosPageContent() {
                         />
                       </button>
 
-                      {tab.id === "invoices" ? (
+                      {tab.id === "invoices" && !isOpen ? (
                         <div className="border-t border-[var(--copilot-border)] bg-[rgba(44,40,37,0.02)] px-4 py-3">
-                          <div className="flex flex-wrap items-end justify-between gap-3">
-                            <div className="min-w-0 flex-1 space-y-2">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                                  Emisión
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <p className="max-w-xl text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
+                              {DATOS_EXPAND_HINT.invoices}
+                            </p>
+                            <CopilotGhostButton
+                              type="button"
+                              onClick={() => expandEntityBlock("invoices")}
+                              className="shrink-0 whitespace-nowrap border-[var(--copilot-accent)] font-semibold text-[var(--copilot-accent)] shadow-none hover:bg-[var(--copilot-accent-soft)]"
+                            >
+                              {DATOS_EXPAND_CTA.invoices}
+                            </CopilotGhostButton>
+                          </div>
+                        </div>
+                      ) : !isOpen ? (
+                        <div className="border-t border-[var(--copilot-border)] bg-[rgba(44,40,37,0.02)] px-4 py-3">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <p className="max-w-xl text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
+                              {DATOS_EXPAND_HINT[tab.id]}
+                            </p>
+                            <CopilotGhostButton
+                              type="button"
+                              onClick={() => expandEntityBlock(tab.id)}
+                              className="shrink-0 whitespace-nowrap border-[var(--copilot-accent)] font-semibold text-[var(--copilot-accent)] shadow-none hover:bg-[var(--copilot-accent-soft)]"
+                            >
+                              {DATOS_EXPAND_CTA[tab.id]}
+                            </CopilotGhostButton>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {isOpen ? (
+                        <div className="space-y-4 border-t border-[var(--copilot-border)] p-4">
+                          {tab.id === "invoices" ? (
+                            <>
+                              {/* Filtro de período — dentro del contexto de Ver facturas */}
+                              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--copilot-border)] bg-[rgba(44,40,37,0.02)] px-4 py-2.5">
+                                <span className="mr-1 text-sm font-semibold text-[var(--copilot-ink)]">
+                                  {DATOS_EXPAND_CTA.invoices}
                                 </span>
                                 <select
                                   value={invoicePeriodMode}
@@ -1120,45 +1153,6 @@ function CopilotDatosPageContent() {
                                   </div>
                                 ) : null}
                               </div>
-                              <p className="text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
-                                {DATOS_EXPAND_HINT.invoices}
-                              </p>
-                            </div>
-                            <CopilotGhostButton
-                              type="button"
-                              onClick={() => expandEntityBlock("invoices")}
-                              disabled={isOpen}
-                              className="shrink-0 whitespace-nowrap border-[var(--copilot-accent)] font-semibold text-[var(--copilot-accent)] shadow-none hover:bg-[var(--copilot-accent-soft)] disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {isOpen ? "Mostrando" : DATOS_EXPAND_CTA.invoices}
-                            </CopilotGhostButton>
-                          </div>
-                          <p className="mt-2 text-xs text-[var(--copilot-ink-muted)]">
-                            La carga ocurre al mostrar Facturas; mes, año o rango filtran en
-                            pantalla sin nueva llamada.
-                          </p>
-                        </div>
-                      ) : !isOpen ? (
-                        <div className="border-t border-[var(--copilot-border)] bg-[rgba(44,40,37,0.02)] px-4 py-3">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <p className="max-w-xl text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
-                              {DATOS_EXPAND_HINT[tab.id]}
-                            </p>
-                            <CopilotGhostButton
-                              type="button"
-                              onClick={() => expandEntityBlock(tab.id)}
-                              className="shrink-0 whitespace-nowrap border-[var(--copilot-accent)] font-semibold text-[var(--copilot-accent)] shadow-none hover:bg-[var(--copilot-accent-soft)]"
-                            >
-                              {DATOS_EXPAND_CTA[tab.id]}
-                            </CopilotGhostButton>
-                          </div>
-                        </div>
-                      ) : null}
-
-                      {isOpen ? (
-                        <div className="space-y-4 border-t border-[var(--copilot-border)] p-4">
-                          {tab.id === "invoices" ? (
-                            <>
                               <FinancialWarningBanner />
                               <FinancialWarningBanner variant="info" />
                               <DataFreshnessBanner freshness={invoiceFlags} />
