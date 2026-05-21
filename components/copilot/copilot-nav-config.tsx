@@ -1,6 +1,7 @@
 /** Navegación del entorno PROTOTIPO (`/copilot`). */
 import type { LucideIcon } from "lucide-react";
 import {
+  Activity,
   BarChart3,
   BookOpen,
   Bot,
@@ -72,6 +73,7 @@ const COPILOT_NAV_IA: CopilotNavGroup = {
 const COPILOT_NAV_SYSTEM: CopilotNavGroup = {
   sectionTitle: "Sistema",
   items: [
+    { href: "/copilot/operacional", label: "Operacional", icon: Activity },
     { href: "/copilot/configuracion", label: "Configuración", icon: Settings },
     { href: "/copilot/personalizacion", label: "Personalización", icon: SlidersHorizontal },
     {
