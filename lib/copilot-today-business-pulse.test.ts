@@ -4,11 +4,18 @@ import type { AgingBucket } from "./copilot-financial-reconciliation";
 import {
   buildTodayBusinessPulse,
   buildBreakdown,
+  carteraPeriodMetricsFromReport,
   fmtCurrencyAmount,
   resolveOverdueDisplaySemantics,
   type BusinessPulseInput,
+  type TodayBusinessPulse,
 } from "./copilot-today-business-pulse";
+
+function blockFor(pulse: TodayBusinessPulse, currency: "UYU" | "USD") {
+  return pulse.currencyBlocks.find((b) => b.currency === currency);
+}
 import type { ClientPortfolioRow } from "./copilot-clients-portfolio";
+import { CURRENCY_METRIC_LABELS, CURRENCY_METRIC_TONES, HOY_UI } from "./copilot-hoy-ui-contract";
 
 // ─── Snapshot mocks ───────────────────────────────────────────────────────────
 
@@ -179,15 +186,18 @@ describe("buildTodayBusinessPulse", () => {
       expect(buildTodayBusinessPulse(input).overallStatus).toBe("attention");
     });
 
-    it("headline menciona deuda vencida", () => {
-      const { headline } = buildTodayBusinessPulse(input);
-      expect(headline.toLowerCase()).toContain("vencida");
+    it("headline distingue deudores activos de seguimiento prioritario", () => {
+      const { headline, clientCounts } = buildTodayBusinessPulse(input);
+      expect(headline.toLowerCase()).toContain("deuda activa");
+      expect(clientCounts.debtorClients).toBe(2);
+      expect(clientCounts.attentionClients).toBeGreaterThan(0);
     });
 
-    it("indicador de deuda vencida tiene tone warning o critical", () => {
-      const { keyIndicators } = buildTodayBusinessPulse(input);
-      const overdue = keyIndicators.find((i) => i.id === "overdue");
-      expect(["warning", "critical"]).toContain(overdue?.tone);
+    it("bloque UYU con mora tiene status attention o critical", () => {
+      const pulse = buildTodayBusinessPulse(input);
+      const uyu = blockFor(pulse, "UYU");
+      expect(uyu).toBeDefined();
+      expect(["attention", "critical"]).toContain(uyu?.status);
     });
 
     it("priorityCollections ordena por vencido descendente", () => {
@@ -228,16 +238,9 @@ describe("buildTodayBusinessPulse", () => {
       expect(importantPendingItems.some((i) => i.urgency === "alta")).toBe(true);
     });
 
-    it("indicador de flujo tiene tone critical cuando es negativo", () => {
-      const { keyIndicators } = buildTodayBusinessPulse(input);
-      const cash = keyIndicators.find((i) => i.id === "cash_flow");
-      expect(cash?.tone).toBe("critical");
-    });
-
-    it("indicador de capacidad de pago tone critical cuando < 0.5", () => {
-      const { keyIndicators } = buildTodayBusinessPulse(input);
-      const cov = keyIndicators.find((i) => i.id === "coverage");
-      expect(cov?.tone).toBe("critical");
+    it("no expone card Capacidad de pago en indicadores operativos", () => {
+      const { operationalIndicators } = buildTodayBusinessPulse(input);
+      expect(operationalIndicators.find((i) => i.id === "coverage")).toBeUndefined();
     });
   });
 
@@ -307,9 +310,9 @@ describe("buildTodayBusinessPulse", () => {
       gate: { confidence: "medium", coverage: "partial", recommendations_enabled: true },
     };
 
-    it("keyIndicators no contiene términos técnicos en label/helperText", () => {
-      const { keyIndicators } = buildTodayBusinessPulse(input);
-      for (const ind of keyIndicators) {
+    it("operationalIndicators no contiene términos técnicos en label/helperText", () => {
+      const { operationalIndicators } = buildTodayBusinessPulse(input);
+      for (const ind of operationalIndicators) {
         for (const word of forbiddenWords) {
           expect(ind.label.toLowerCase()).not.toContain(word);
           expect(ind.helperText.toLowerCase()).not.toContain(word);
@@ -336,13 +339,25 @@ describe("buildTodayBusinessPulse", () => {
       }
     });
 
-    it("siempre hay exactamente 6 keyIndicators", () => {
-      expect(buildTodayBusinessPulse(input).keyIndicators).toHaveLength(6);
+    it("hay un solo indicador operativo (atención); estado de datos va al hero", () => {
+      const { operationalIndicators } = buildTodayBusinessPulse(input);
+      expect(operationalIndicators).toHaveLength(1);
+      expect(operationalIndicators.map((i) => i.id)).toEqual(["clients"]);
+      expect(operationalIndicators.some((i) => i.id === "data_status")).toBe(false);
+    });
+
+    it("no aparece Capacidad de pago ni Cobros netos en operationalIndicators", () => {
+      const { operationalIndicators } = buildTodayBusinessPulse(input);
+      const ids = operationalIndicators.map((i) => i.id);
+      expect(ids).not.toContain("coverage");
+      expect(ids).not.toContain("cash_flow");
+      expect(ids).not.toContain("collections");
+      expect(ids).not.toContain("overdue");
     });
 
     it("indicador de clientes se llama 'Clientes con atención', no 'Clientes activos'", () => {
-      const { keyIndicators } = buildTodayBusinessPulse(input);
-      const clients = keyIndicators.find((i) => i.id === "clients");
+      const { operationalIndicators } = buildTodayBusinessPulse(input);
+      const clients = operationalIndicators.find((i) => i.id === "clients");
       expect(clients?.label).toContain("atención");
       expect(clients?.label.toLowerCase()).not.toContain("activos");
     });
@@ -370,10 +385,9 @@ describe("buildTodayBusinessPulse", () => {
       expect(dataWarning).toBeNull();
     });
 
-    it("Capacidad de pago muestra 'Sin señales críticas' cuando no hay datos", () => {
-      const { keyIndicators } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: [], gate: GATE_HIGH });
-      const cov = keyIndicators.find((i) => i.id === "coverage");
-      expect(cov?.value).toBe("Sin señales críticas");
+    it("sin portfolio no genera bloques por moneda", () => {
+      const { currencyBlocks } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: [], gate: GATE_HIGH });
+      expect(currencyBlocks).toHaveLength(0);
     });
   });
 
@@ -411,11 +425,10 @@ describe("buildTodayBusinessPulse", () => {
       expect(c.deuda_breakdown[0]!.formatted).toMatch(/^UYU \$/);
     });
 
-    it("indicador cobranza pendiente tiene currencyValues con solo UYU", () => {
-      const { keyIndicators } = buildTodayBusinessPulse(input);
-      const coll = keyIndicators.find((i) => i.id === "collections");
-      expect(coll?.currencyValues).toHaveLength(1);
-      expect(coll?.currencyValues?.[0]?.currency).toBe("UYU");
+    it("bloque UYU: pendiente coincide con debt_uyu", () => {
+      const pulse = buildTodayBusinessPulse(input);
+      expect(blockFor(pulse, "UYU")?.pendingCurrent?.amount).toBe(100_000);
+      expect(blockFor(pulse, "USD")).toBeUndefined();
     });
   });
 
@@ -447,11 +460,9 @@ describe("buildTodayBusinessPulse", () => {
       expect(c.deuda_breakdown[0]!.formatted).toMatch(/^USD U\$S/);
     });
 
-    it("indicador cobranza pendiente tiene currencyValues con solo USD", () => {
-      const { keyIndicators } = buildTodayBusinessPulse(input);
-      const coll = keyIndicators.find((i) => i.id === "collections");
-      expect(coll?.currencyValues).toHaveLength(1);
-      expect(coll?.currencyValues?.[0]?.currency).toBe("USD");
+    it("bloque USD: pendiente coincide con debt_usd", () => {
+      const pulse = buildTodayBusinessPulse(input);
+      expect(blockFor(pulse, "USD")?.pendingCurrent?.amount).toBe(10_000);
     });
   });
 
@@ -486,18 +497,11 @@ describe("buildTodayBusinessPulse", () => {
       expect(c.deuda_breakdown).toHaveLength(2);
     });
 
-    it("indicador cobranza pendiente tiene currencyValues con UYU y USD", () => {
-      const { keyIndicators } = buildTodayBusinessPulse(input);
-      const coll = keyIndicators.find((i) => i.id === "collections");
-      expect(coll?.currencyValues?.some((m) => m.currency === "UYU")).toBe(true);
-      expect(coll?.currencyValues?.some((m) => m.currency === "USD")).toBe(true);
-    });
-
-    it("UYU y USD no se suman en currencyValues del indicador", () => {
-      const { keyIndicators } = buildTodayBusinessPulse(input);
-      const coll = keyIndicators.find((i) => i.id === "collections");
-      // 2 entries: UYU 130_000 and USD 30_000 (total from both rows)
-      expect(coll?.currencyValues).toHaveLength(2);
+    it("genera dos bloques UYU y USD separados", () => {
+      const pulse = buildTodayBusinessPulse(input);
+      expect(pulse.currencyBlocks).toHaveLength(2);
+      expect(blockFor(pulse, "UYU")?.pendingCurrent?.amount).toBe(130_000);
+      expect(blockFor(pulse, "USD")?.pendingCurrent?.amount).toBe(30_000);
     });
   });
 
@@ -509,8 +513,8 @@ describe("buildTodayBusinessPulse", () => {
         makeRow({ company_id: "c2", name: "B", total_debt: 80_000, overdue_debt: 0, risk: "Bajo" }),
         makeRow({ company_id: "c3", name: "C", total_debt: 60_000, overdue_debt: 0, risk: "Bajo" }),
       ];
-      const { keyIndicators } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: rows, gate: GATE_HIGH });
-      const clients = keyIndicators.find((i) => i.id === "clients");
+      const { operationalIndicators } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: rows, gate: GATE_HIGH });
+      const clients = operationalIndicators.find((i) => i.id === "clients");
       // Only c1 has overdue → 1 client needs attention, not 3
       expect(clients?.value).toBe("1");
     });
@@ -519,8 +523,8 @@ describe("buildTodayBusinessPulse", () => {
       const rows = [
         makeRow({ company_id: "c1", name: "A", total_debt: 100_000, overdue_debt: 0, risk: "Bajo" }),
       ];
-      const { keyIndicators } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: rows, gate: GATE_HIGH });
-      const clients = keyIndicators.find((i) => i.id === "clients");
+      const { operationalIndicators } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: rows, gate: GATE_HIGH });
+      const clients = operationalIndicators.find((i) => i.id === "clients");
       expect(clients?.value).toBe("Sin señales");
     });
 
@@ -528,30 +532,151 @@ describe("buildTodayBusinessPulse", () => {
       const rows = [
         makeRow({ company_id: "c1", name: "A", total_debt: 100_000, overdue_debt: 0, risk: "Bajo" }),
       ];
-      const { keyIndicators } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: rows, gate: GATE_HIGH });
-      const clients = keyIndicators.find((i) => i.id === "clients");
+      const { operationalIndicators } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: rows, gate: GATE_HIGH });
+      const clients = operationalIndicators.find((i) => i.id === "clients");
       expect(clients?.tone).toBe("ok");
     });
   });
 
-  // ─ Capacidad de pago ────────────────────────────────────────────────────────
-  describe("capacidad de pago", () => {
-    it("muestra ratio cuando hay datos", () => {
-      const { keyIndicators } = buildTodayBusinessPulse({ snapshot: SNAPSHOT_HEALTHY, portfolioRows: [], gate: GATE_HIGH });
-      const cov = keyIndicators.find((i) => i.id === "coverage");
-      expect(cov?.value).toMatch(/×$/);
+  // ─ Bloques ejecutivos por moneda ───────────────────────────────────────────
+  describe("currencyBlocks ejecutivos", () => {
+    it("facturado y cobrado UYU separados de USD con carteraPeriodMetrics", () => {
+      const pulse = buildTodayBusinessPulse({
+        snapshot: null,
+        portfolioRows: [
+          makeRow({ company_id: "c1", debt_uyu: 50_000, debt_usd: 1_000, total_debt: 51_000 }),
+        ],
+        gate: GATE_HIGH,
+        carteraPeriodMetrics: {
+          billed: { UYU: 200_000, USD: 10_000 },
+          collected: { UYU: 80_000, USD: 4_000 },
+          pending: { UYU: 50_000, USD: 1_000 },
+        },
+        carteraAgingOverdue: { UYU: 5_000, USD: 500 },
+        carteraAgingCurrent: { UYU: 45_000, USD: 500 },
+      });
+      expect(blockFor(pulse, "UYU")?.billedPeriod?.amount).toBe(200_000);
+      expect(blockFor(pulse, "USD")?.billedPeriod?.amount).toBe(10_000);
+      expect(blockFor(pulse, "UYU")?.collectedPeriod?.amount).toBe(80_000);
+      expect(blockFor(pulse, "USD")?.collectedPeriod?.amount).toBe(4_000);
     });
 
-    it("muestra 'Sin señales críticas' cuando no hay snapshot", () => {
-      const { keyIndicators } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: [], gate: GATE_HIGH });
-      const cov = keyIndicators.find((i) => i.id === "coverage");
-      expect(cov?.value).toBe("Sin señales críticas");
+    it("crítico +30 usa aging cartera por moneda", () => {
+      const pulse = buildTodayBusinessPulse({
+        snapshot: null,
+        portfolioRows: [makeRow({ company_id: "c1", debt_uyu: 100_000, total_debt: 100_000 })],
+        gate: GATE_HIGH,
+        carteraAgingOverdue: { UYU: 17_080, USD: 1_887 },
+      });
+      expect(blockFor(pulse, "UYU")?.overdueCritical30?.amount).toBe(17_080);
+      expect(blockFor(pulse, "USD")?.overdueCritical30?.amount).toBe(1_887);
     });
 
-    it("tono neutral cuando no hay datos de coverage", () => {
-      const { keyIndicators } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: [], gate: GATE_HIGH });
-      const cov = keyIndicators.find((i) => i.id === "coverage");
-      expect(cov?.tone).toBe("neutral");
+    it("ingresos esperados = pendiente; separa al día vs en riesgo", () => {
+      const pulse = buildTodayBusinessPulse({
+        snapshot: null,
+        portfolioRows: [makeRow({ company_id: "c1", debt_uyu: 100_000, total_debt: 100_000 })],
+        gate: GATE_HIGH,
+        carteraAgingOverdue: { UYU: 20_000, USD: 0 },
+        carteraAgingCurrent: { UYU: 80_000, USD: 0 },
+      });
+      const uyu = blockFor(pulse, "UYU")!;
+      expect(uyu.expectedIncome?.amount).toBe(100_000);
+      expect(uyu.expectedIncomeCurrent?.amount).toBe(80_000);
+      expect(uyu.expectedIncomeAtRisk?.amount).toBe(20_000);
+    });
+
+    it("allDebtorRows lista UYU y USD en filas separadas para un mismo cliente", () => {
+      const pulse = buildTodayBusinessPulse({
+        snapshot: null,
+        portfolioRows: [
+          makeRow({
+            company_id: "c1",
+            name: "Mixto",
+            debt_uyu: 50_000,
+            debt_usd: 3_000,
+            total_debt: 53_000,
+          }),
+        ],
+        gate: GATE_HIGH,
+      });
+      expect(pulse.allDebtorRows).toHaveLength(2);
+      expect(pulse.allDebtorRows.map((r) => r.currency).sort()).toEqual(["USD", "UYU"]);
+    });
+
+    it("priorityCollections es subconjunto de allDebtorRows", () => {
+      const pulse = buildTodayBusinessPulse({
+        snapshot: null,
+        portfolioRows: Array.from({ length: 12 }, (_, i) =>
+          makeRow({ company_id: `c${i}`, name: `C${i}`, debt_uyu: 10_000 * (i + 1), total_debt: 10_000 * (i + 1) })
+        ),
+        gate: GATE_HIGH,
+      });
+      expect(pulse.priorityCollections.length).toBeLessThanOrEqual(8);
+      expect(pulse.allDebtorRows.length).toBe(12);
+      expect(pulse.clientCounts.debtorClients).toBe(12);
+      expect(pulse.clientCounts.debtorRows).toBe(12);
+    });
+
+    it("debtorClients y attentionClients son conceptos distintos", () => {
+      const pulse = buildTodayBusinessPulse({
+        snapshot: null,
+        portfolioRows: [
+          makeRow({ company_id: "c1", debt_uyu: 5_000, overdue_debt: 0, risk: "Bajo" }),
+          makeRow({
+            company_id: "c2",
+            debt_uyu: 10_000,
+            overdue_uyu: 3_000,
+            overdue_debt: 3_000,
+            risk: "Medio",
+          }),
+        ],
+        gate: GATE_HIGH,
+      });
+      expect(pulse.clientCounts.debtorClients).toBe(2);
+      expect(pulse.clientCounts.attentionClients).toBe(1);
+      expect(pulse.headline).toContain("2 clientes con deuda activa");
+      expect(pulse.headline).toContain("1 requieren seguimiento");
+    });
+
+    it("attentionClients incluye motivos y montos por moneda", () => {
+      const pulse = buildTodayBusinessPulse({
+        snapshot: null,
+        portfolioRows: [
+          makeRow({
+            company_id: "c1",
+            name: "El País",
+            debt_uyu: 58_560,
+            overdue_uyu: 58_560,
+            overdue_debt: 58_560,
+            risk: "Alto",
+            has_contact_data: false,
+          }),
+        ],
+        gate: GATE_HIGH,
+      });
+      expect(pulse.attentionClients.total).toBe(1);
+      expect(pulse.attentionClients.clients[0]!.motivos).toContain("Deuda vencida");
+      expect(pulse.attentionClients.clients[0]!.motivos).toContain("Cobro lento");
+      expect(pulse.attentionClients.clients[0]!.deuda_uyu?.amount).toBe(58_560);
+    });
+
+    it("labels de bloques sin términos técnicos prohibidos", () => {
+      const forbidden = ["reconciliation", "pipeline", "sync", "orphan", "stale", "workflow", "aging"];
+      const pulse = buildTodayBusinessPulse({
+        snapshot: SNAPSHOT_ATTENTION,
+        portfolioRows: [makeRow({ company_id: "c1", debt_uyu: 10_000, total_debt: 10_000 })],
+        gate: GATE_HIGH,
+        carteraPeriodMetrics: {
+          billed: { UYU: 1, USD: 0 },
+          collected: { UYU: 1, USD: 0 },
+          pending: { UYU: 10_000, USD: 0 },
+        },
+      });
+      const text = JSON.stringify(pulse.currencyBlocks).toLowerCase();
+      for (const w of forbidden) {
+        expect(text).not.toContain(w);
+      }
     });
   });
 
@@ -605,159 +730,151 @@ describe("buildTodayBusinessPulse", () => {
   }
 
   describe("alineación Hoy ↔ Cartera", () => {
-    it("cobranza pendiente UYU es la suma exacta de debt_uyu de los clientes", () => {
+    it("pendiente UYU en bloque = Σ debt_uyu portfolio", () => {
       const rows = [
         makeRow({ company_id: "c1", debt_uyu: 100_000, debt_usd: 0, total_debt: 100_000 }),
         makeRow({ company_id: "c2", debt_uyu: 50_000, debt_usd: 0, total_debt: 50_000 }),
-        makeRow({ company_id: "c3", debt_uyu: 0, debt_usd: 0, total_debt: 0 }),
       ];
-      const { keyIndicators } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: rows, gate: GATE_HIGH });
-      const coll = keyIndicators.find((i) => i.id === "collections")!;
-      const uyuAmount = coll.currencyValues?.find((m) => m.currency === "UYU")?.amount;
-      expect(uyuAmount).toBe(150_000); // 100k + 50k (c3 excluida: debt=0)
+      const pulse = buildTodayBusinessPulse({ snapshot: null, portfolioRows: rows, gate: GATE_HIGH });
+      expect(blockFor(pulse, "UYU")?.pendingCurrent?.amount).toBe(150_000);
     });
 
-    it("cobranza pendiente USD es la suma exacta de debt_usd de los clientes", () => {
+    it("pendiente USD en bloque = Σ debt_usd portfolio", () => {
       const rows = [
         makeRow({ company_id: "c1", debt_uyu: 0, debt_usd: 5_000, total_debt: 5_000 }),
         makeRow({ company_id: "c2", debt_uyu: 0, debt_usd: 3_000, total_debt: 3_000 }),
       ];
-      const { keyIndicators } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: rows, gate: GATE_HIGH });
-      const coll = keyIndicators.find((i) => i.id === "collections")!;
-      const usdAmount = coll.currencyValues?.find((m) => m.currency === "USD")?.amount;
-      expect(usdAmount).toBe(8_000); // 5k + 3k
+      const pulse = buildTodayBusinessPulse({ snapshot: null, portfolioRows: rows, gate: GATE_HIGH });
+      expect(blockFor(pulse, "USD")?.pendingCurrent?.amount).toBe(8_000);
     });
 
-    it("sin Aging de Cartera: deuda vencida UYU = Σ overdue_uyu del portfolio", () => {
+    it("crítico +30 UYU = buckets 31+ (no Σ overdue_uyu)", () => {
       const rows = [
-        makeRow({ company_id: "c1", debt_uyu: 100_000, debt_usd: 0, overdue_uyu: 60_000, overdue_usd: 0, total_debt: 100_000, overdue_debt: 60_000, risk: "Medio" }),
-        makeRow({ company_id: "c2", debt_uyu: 80_000, debt_usd: 0, overdue_uyu: 40_000, overdue_usd: 0, total_debt: 80_000, overdue_debt: 40_000, risk: "Bajo" }),
-      ];
-      const { keyIndicators } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: rows, gate: GATE_HIGH });
-      const overdue = keyIndicators.find((i) => i.id === "overdue")!;
-      const uyuAmount = overdue.currencyValues?.find((m) => m.currency === "UYU")?.amount;
-      expect(uyuAmount).toBe(100_000);
-      expect(overdue.label).toBe("Deuda vencida");
-    });
-
-    it("con Aging de Cartera: card Deuda crítica +30 días UYU = buckets 31+ (no Σ overdue_uyu)", () => {
-      const rows = [
-        makeRow({ company_id: "c1", debt_uyu: 100_000, debt_usd: 0, overdue_uyu: 60_000, overdue_usd: 0, total_debt: 100_000, overdue_debt: 60_000, risk: "Medio" }),
-        makeRow({ company_id: "c2", debt_uyu: 80_000, debt_usd: 0, overdue_uyu: 40_000, overdue_usd: 0, total_debt: 80_000, overdue_debt: 40_000, risk: "Bajo" }),
+        makeRow({ company_id: "c1", debt_uyu: 100_000, overdue_uyu: 60_000, total_debt: 100_000, overdue_debt: 60_000 }),
       ];
       const aging = mockAgingBuckets(65_469, 0);
-      const carteraAgingOverdue = sumCarteraAgingOverdue(aging);
-      const { keyIndicators } = buildTodayBusinessPulse({
-        snapshot: null,
-        portfolioRows: rows,
-        gate: GATE_HIGH,
-        carteraAgingOverdue,
-      });
-      const overdue = keyIndicators.find((i) => i.id === "overdue")!;
-      const uyuAmount = overdue.currencyValues?.find((m) => m.currency === "UYU")?.amount;
-      expect(uyuAmount).toBe(65_469);
-      expect(uyuAmount).not.toBe(100_000);
-      expect(overdue.label).toBe("Deuda crítica +30 días");
-      expect(overdue.helperText.toLowerCase()).toContain("30");
-      expect(overdue.helperText.toLowerCase()).toContain("atraso");
-    });
-
-    it("con Aging de Cartera: Deuda crítica +30 días USD = buckets 31+ por moneda", () => {
-      const rows = [
-        makeRow({ company_id: "c1", debt_uyu: 0, debt_usd: 10_000, overdue_uyu: 0, overdue_usd: 7_000, total_debt: 10_000, overdue_debt: 7_000, risk: "Alto" }),
-        makeRow({ company_id: "c2", debt_uyu: 0, debt_usd: 5_000, overdue_uyu: 0, overdue_usd: 2_000, total_debt: 5_000, overdue_debt: 2_000, risk: "Bajo" }),
-      ];
-      const aging = mockAgingBuckets(0, 3_181);
-      const { keyIndicators } = buildTodayBusinessPulse({
+      const pulse = buildTodayBusinessPulse({
         snapshot: null,
         portfolioRows: rows,
         gate: GATE_HIGH,
         carteraAgingOverdue: sumCarteraAgingOverdue(aging),
       });
-      const overdue = keyIndicators.find((i) => i.id === "overdue")!;
-      const usdAmount = overdue.currencyValues?.find((m) => m.currency === "USD")?.amount;
-      expect(usdAmount).toBe(3_181);
-      expect(usdAmount).not.toBe(9_000);
-      expect(overdue.label).toBe("Deuda crítica +30 días");
+      expect(blockFor(pulse, "UYU")?.overdueCritical30?.amount).toBe(65_469);
+      expect(blockFor(pulse, "UYU")?.overdueCritical30?.amount).not.toBe(60_000);
     });
 
-    it("si portfolio overdue ≈ saldo anterior: label Deuda arrastrada (no vencida)", () => {
-      const rows = [
-        makeRow({
-          company_id: "c1",
-          debt_uyu: 65_469,
-          debt_usd: 3_181,
-          overdue_uyu: 65_469,
-          overdue_usd: 3_181,
-          total_debt: 68_650,
-          overdue_debt: 68_650,
-          risk: "Medio",
-        }),
-      ];
-      const { keyIndicators } = buildTodayBusinessPulse({
+    it("facturado neto resta notas de crédito (mismo normalizador que Cartera)", () => {
+      const metrics = carteraPeriodMetricsFromReport([
+        {
+          currencyCode: "UYU",
+          issuedInPeriod: 3_524_219.54,
+          creditNoteAmount: 156_614.11,
+          collectedInPeriod: 3_392_658,
+          pendingAtCutoff: 185_584,
+        },
+        {
+          currencyCode: "USD",
+          issuedInPeriod: 82_944.2,
+          creditNoteAmount: 19_214.6,
+          collectedInPeriod: 57_151,
+          pendingAtCutoff: 6_725,
+        },
+      ]);
+      expect(metrics.billed.UYU).toBeCloseTo(3_367_605.43, 0);
+      expect(metrics.billed.USD).toBeCloseTo(63_729.6, 0);
+      const pulse = buildTodayBusinessPulse({
         snapshot: null,
-        portfolioRows: rows,
+        portfolioRows: [
+          makeRow({ company_id: "c1", debt_uyu: 185_584, debt_usd: 6_725, total_debt: 192_309 }),
+        ],
         gate: GATE_HIGH,
-        carteraOpeningByCurrency: { UYU: 65_469, USD: 3_181 },
+        carteraPeriodMetrics: metrics,
       });
-      const overdue = keyIndicators.find((i) => i.id === "overdue")!;
-      expect(overdue.label).toBe("Deuda arrastrada");
-      expect(overdue.label.toLowerCase()).not.toContain("vencida");
-      expect(overdue.helperText.toLowerCase()).toContain("anterior");
+      expect(blockFor(pulse, "UYU")?.billedPeriod?.amount).toBeCloseTo(3_367_605.43, 0);
+      expect(blockFor(pulse, "USD")?.collectedPeriod?.amount).toBe(57_151);
     });
 
-    it("UYU y USD en cobranza pendiente no se suman (2 entradas separadas)", () => {
-      const rows = [
-        makeRow({ company_id: "c1", debt_uyu: 100_000, debt_usd: 5_000, total_debt: 105_000 }),
-      ];
-      const { keyIndicators } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: rows, gate: GATE_HIGH });
-      const coll = keyIndicators.find((i) => i.id === "collections")!;
-      // Must be 2 separate entries, never summed
-      expect(coll.currencyValues).toHaveLength(2);
-      const uyu = coll.currencyValues!.find((m) => m.currency === "UYU");
-      const usd = coll.currencyValues!.find((m) => m.currency === "USD");
-      expect(uyu?.amount).toBe(100_000);
-      expect(usd?.amount).toBe(5_000);
+    it("facturado/cobrado del período vienen de carteraPeriodMetrics", () => {
+      const metrics = carteraPeriodMetricsFromReport([
+        { currencyCode: "UYU", issuedInPeriod: 500_000, collectedInPeriod: 120_000, pendingAtCutoff: 80_000 },
+        { currencyCode: "USD", issuedInPeriod: 20_000, collectedInPeriod: 8_000, pendingAtCutoff: 5_000 },
+      ]);
+      const pulse = buildTodayBusinessPulse({
+        snapshot: null,
+        portfolioRows: [
+          makeRow({ company_id: "c1", debt_uyu: 80_000, debt_usd: 5_000, total_debt: 85_000 }),
+        ],
+        gate: GATE_HIGH,
+        carteraPeriodMetrics: metrics,
+      });
+      expect(blockFor(pulse, "UYU")?.billedPeriod?.amount).toBe(500_000);
+      expect(blockFor(pulse, "USD")?.collectedPeriod?.amount).toBe(8_000);
     });
 
-    it("indicador 'cash_flow' ya no se llama 'Flujo de caja' (renombrado a Cobros netos)", () => {
-      const { keyIndicators } = buildTodayBusinessPulse({ snapshot: SNAPSHOT_HEALTHY, portfolioRows: [], gate: GATE_HIGH });
-      const cashFlow = keyIndicators.find((i) => i.id === "cash_flow")!;
-      expect(cashFlow.label).not.toBe("Flujo de caja");
-      expect(cashFlow.label.toLowerCase()).toContain("cobros");
-    });
-
-    it("helperText de cobranza pendiente menciona 'hoy'", () => {
-      const { keyIndicators } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: [], gate: GATE_HIGH });
-      const coll = keyIndicators.find((i) => i.id === "collections")!;
-      expect(coll.helperText.toLowerCase()).toContain("hoy");
-    });
-
-    it("helperText de deuda vencida (portfolio) menciona vencimiento", () => {
-      const rows = [
-        makeRow({ company_id: "c1", debt_uyu: 10_000, overdue_uyu: 5_000, total_debt: 10_000, overdue_debt: 5_000, risk: "Medio" }),
-      ];
-      const { keyIndicators } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: rows, gate: GATE_HIGH });
-      const overdue = keyIndicators.find((i) => i.id === "overdue")!;
-      expect(overdue.helperText.toLowerCase()).toMatch(/vencim|hoy/);
-    });
-
-    it("helperText de cobros netos NO dice 'del período' (fuente es acumulada histórica)", () => {
-      const { keyIndicators } = buildTodayBusinessPulse({ snapshot: SNAPSHOT_HEALTHY, portfolioRows: [], gate: GATE_HIGH });
-      const cashFlow = keyIndicators.find((i) => i.id === "cash_flow")!;
-      expect(cashFlow.helperText.toLowerCase()).not.toContain("del período");
-    });
-
-    it("todos los montos en currencyValues tienen formatted con moneda explícita (nunca $ solo)", () => {
-      const rows = [
-        makeRow({ company_id: "c1", debt_uyu: 100_000, debt_usd: 5_000, total_debt: 105_000, overdue_uyu: 50_000, overdue_usd: 2_000, overdue_debt: 52_000, risk: "Medio" }),
-      ];
-      const { keyIndicators } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: rows, gate: GATE_HIGH });
-      for (const ind of keyIndicators) {
-        for (const m of ind.currencyValues ?? []) {
-          // Must start with "UYU $" or "USD U$S", never bare "$"
-          expect(m.formatted).toMatch(/^(UYU \$|USD U\$S)/);
+    it("montos formateados con prefijo de moneda explícito", () => {
+      const pulse = buildTodayBusinessPulse({
+        snapshot: null,
+        portfolioRows: [makeRow({ company_id: "c1", debt_uyu: 100_000, debt_usd: 5_000, total_debt: 105_000 })],
+        gate: GATE_HIGH,
+      });
+      for (const block of pulse.currencyBlocks) {
+        for (const field of [
+          block.pendingCurrent,
+          block.overdueCritical30,
+          block.expectedIncome,
+        ]) {
+          if (field) expect(field.formatted).toMatch(/^(UYU \$|USD U\$S)/);
         }
+      }
+    });
+  });
+
+  describe("contrato UI /copilot/hoy", () => {
+    it("situación financiera no se muestra en hoy (evita duplicar bloques UYU/USD)", () => {
+      expect(HOY_UI.showFinancialSituation).toBe(false);
+      const pulse = buildTodayBusinessPulse({
+        snapshot: null,
+        portfolioRows: [makeRow({ company_id: "c1", debt_uyu: 50_000, total_debt: 50_000 })],
+        gate: GATE_HIGH,
+        carteraPeriodMetrics: {
+          billed: { UYU: 100_000, USD: 0 },
+          collected: { UYU: 80_000, USD: 0 },
+          pending: { UYU: 50_000, USD: 0 },
+        },
+      });
+      expect(pulse.financialSituation.length).toBeGreaterThan(0);
+      expect(pulse.currencyBlocks.length).toBeGreaterThan(0);
+    });
+
+    it("label principal es Facturado neto, no bruto", () => {
+      expect(CURRENCY_METRIC_LABELS.billed).toBe("Facturado neto");
+      expect(CURRENCY_METRIC_LABELS.billed.toLowerCase()).not.toContain("bruto");
+    });
+
+    it("semántica de color: facturado neutral, cobrado positive, pendiente warning, crítico danger", () => {
+      expect(CURRENCY_METRIC_TONES.billed).toBe("neutral");
+      expect(CURRENCY_METRIC_TONES.collected).toBe("positive");
+      expect(CURRENCY_METRIC_TONES.pending).toBe("warning");
+      expect(CURRENCY_METRIC_TONES.critical30).toBe("danger");
+    });
+
+    it("UYU y USD siguen en bloques separados sin mezclar", () => {
+      const pulse = buildTodayBusinessPulse({
+        snapshot: null,
+        portfolioRows: [
+          makeRow({ company_id: "c1", debt_uyu: 10_000, debt_usd: 1_000, total_debt: 11_000 }),
+        ],
+        gate: GATE_HIGH,
+        carteraPeriodMetrics: {
+          billed: { UYU: 100, USD: 200 },
+          collected: { UYU: 50, USD: 100 },
+          pending: { UYU: 10_000, USD: 1_000 },
+        },
+      });
+      const currencies = pulse.currencyBlocks.map((b) => b.currency).sort();
+      expect(currencies).toEqual(["USD", "UYU"]);
+      for (const block of pulse.currencyBlocks) {
+        expect(block.pendingCurrent?.currency).toBe(block.currency);
       }
     });
   });
@@ -765,13 +882,13 @@ describe("buildTodayBusinessPulse", () => {
   // ─ Tono cappado ────────────────────────────────────────────────────────────
   describe("capping de tono en estado healthy", () => {
     it("ningún indicador puede ser critical cuando el estado es healthy", () => {
-      const { keyIndicators, overallStatus } = buildTodayBusinessPulse({
+      const { operationalIndicators, overallStatus } = buildTodayBusinessPulse({
         snapshot: SNAPSHOT_HEALTHY,
         portfolioRows: [makeRow({ company_id: "c1", total_debt: 10_000, overdue_debt: 0, risk: "Bajo" })],
         gate: GATE_HIGH,
       });
       expect(overallStatus).toBe("healthy");
-      for (const ind of keyIndicators) {
+      for (const ind of operationalIndicators) {
         expect(ind.tone).not.toBe("critical");
       }
     });
@@ -803,12 +920,13 @@ describe("buildTodayBusinessPulse", () => {
       expect(sem.breakdown.find((m) => m.currency === "UYU")?.amount).toBe(12_000);
     });
 
-    it("card Aging usa label Deuda crítica +30 días; headline sigue deuda vencida", () => {
+    it("crítico +30 en bloque ≠ vencido por cliente; headline usa deuda activa", () => {
       const input: BusinessPulseInput = {
         snapshot: SNAPSHOT_ATTENTION,
         portfolioRows: [
           makeRow({
             company_id: "c1",
+            name: "El País",
             debt_uyu: 58_560,
             overdue_uyu: 58_560,
             total_debt: 58_560,
@@ -820,11 +938,10 @@ describe("buildTodayBusinessPulse", () => {
         carteraAgingOverdue: { UYU: 17_080, USD: 1_887 },
       };
       const pulse = buildTodayBusinessPulse(input);
-      const overdue = pulse.keyIndicators.find((i) => i.id === "overdue")!;
-      expect(overdue.label).toBe("Deuda crítica +30 días");
-      expect(overdue.currencyValues?.find((m) => m.currency === "UYU")?.amount).toBe(17_080);
-      expect(pulse.headline.toLowerCase()).toContain("deuda vencida");
-      expect(pulse.priorityCollections[0]!.vencido_breakdown[0]!.amount).toBe(58_560);
+      expect(blockFor(pulse, "UYU")?.overdueCritical30?.amount).toBe(17_080);
+      expect(pulse.headline.toLowerCase()).toContain("deuda activa");
+      expect(pulse.allDebtorRows.find((r) => r.currency === "UYU")?.vencido?.amount).toBe(58_560);
+      expect(pulse.allDebtorRows.every((r) => r.motivo.length > 0)).toBe(true);
     });
 
     it("no usa label vencida cuando el monto coincide con saldo anterior", () => {

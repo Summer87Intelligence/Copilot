@@ -8,10 +8,13 @@ import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import type { FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
 import type { FinancialConsistencyReport } from "@/lib/copilot-financial-reconciliation";
+import { sumCarteraAgingCurrent } from "@/lib/copilot-cartera-aging-totals";
 import {
   carteraAgingOverdueFromReport,
   carteraOpeningFromReport,
+  carteraPeriodMetricsFromReport,
   type BusinessPulseGate,
+  type CarteraPeriodMetrics,
 } from "@/lib/copilot-today-business-pulse";
 import type { CarteraCurrencyTotals } from "@/lib/copilot-cartera-aging-totals";
 import { toRutasGateMeta } from "@/lib/copilot-rutas-gate";
@@ -31,6 +34,12 @@ export default function CopilotHoyPage() {
     undefined
   );
   const [carteraOpeningByCurrency, setCarteraOpeningByCurrency] = useState<
+    CarteraCurrencyTotals | undefined
+  >(undefined);
+  const [carteraPeriodMetrics, setCarteraPeriodMetrics] = useState<
+    CarteraPeriodMetrics | undefined
+  >(undefined);
+  const [carteraAgingCurrent, setCarteraAgingCurrent] = useState<
     CarteraCurrencyTotals | undefined
   >(undefined);
   const [error, setError] = useState<string | null>(null);
@@ -56,10 +65,14 @@ export default function CopilotHoyPage() {
       } | null;
       if (reconRes.ok && reconJson?.ok && reconJson.report) {
         setCarteraAgingOverdue(carteraAgingOverdueFromReport(reconJson.report.agingByCurrency));
+        setCarteraAgingCurrent(sumCarteraAgingCurrent(reconJson.report.agingByCurrency));
         setCarteraOpeningByCurrency(carteraOpeningFromReport(reconJson.report.currencies));
+        setCarteraPeriodMetrics(carteraPeriodMetricsFromReport(reconJson.report.currencies));
       } else {
         setCarteraAgingOverdue(undefined);
+        setCarteraAgingCurrent(undefined);
         setCarteraOpeningByCurrency(undefined);
+        setCarteraPeriodMetrics(undefined);
       }
     } catch {
       setError("No se pudo cargar el resumen del negocio. Intentá de nuevo.");
@@ -77,7 +90,7 @@ export default function CopilotHoyPage() {
       <CopilotPageHeader
         surfaceId="copilot.hoy"
         title="Pulso del negocio"
-        description="Resumen ejecutivo del estado financiero y operativo."
+        description="Estado actual + actividad financiera del período."
       />
       <HoyPageView
         loading={loading}
@@ -85,7 +98,9 @@ export default function CopilotHoyPage() {
         portfolioRows={portfolioRows}
         gate={gate}
         carteraAgingOverdue={carteraAgingOverdue}
+        carteraAgingCurrent={carteraAgingCurrent}
         carteraOpeningByCurrency={carteraOpeningByCurrency}
+        carteraPeriodMetrics={carteraPeriodMetrics}
         error={error}
         onRefresh={load}
       />

@@ -19,6 +19,11 @@ export const CARTERA_AGING_OVERDUE_RANGES: ReadonlyArray<
   Extract<AgingRange, "31_60" | "61_90" | "90_plus">
 > = ["31_60", "61_90", "90_plus"];
 
+/** Bucket 0–30 días (corto plazo / al día en mora reciente). */
+export const CARTERA_AGING_CURRENT_RANGES: ReadonlyArray<Extract<AgingRange, "0_30">> = [
+  "0_30",
+];
+
 const CURRENCIES: ReadonlyArray<ReconciliationCurrencyCode> = ["UYU", "USD"];
 
 function round2(n: number): number {
@@ -46,6 +51,16 @@ export function sumCarteraAgingOverdue(
   return {
     UYU: sumBuckets(agingByCurrency.UYU, CARTERA_AGING_OVERDUE_RANGES),
     USD: sumBuckets(agingByCurrency.USD, CARTERA_AGING_OVERDUE_RANGES),
+  };
+}
+
+/** Saldo en bucket 0–30 días (mismo motor que Cartera). */
+export function sumCarteraAgingCurrent(
+  agingByCurrency: Partial<Record<ReconciliationCurrencyCode, AgingBucket[]>>
+): CarteraCurrencyTotals {
+  return {
+    UYU: sumBuckets(agingByCurrency.UYU, CARTERA_AGING_CURRENT_RANGES),
+    USD: sumBuckets(agingByCurrency.USD, CARTERA_AGING_CURRENT_RANGES),
   };
 }
 

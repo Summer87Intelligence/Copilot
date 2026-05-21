@@ -19,7 +19,25 @@ import {
   snapshotLiquidityBalance,
   snapshotRiskBand,
 } from "@/lib/copilot-financial-snapshot-selectors";
+import { buildCurrencyIndex } from "@/lib/copilot-cartera-cards-source";
 import type { ClientPortfolioRow } from "@/lib/copilot-clients-portfolio";
+import {
+  buildAttentionClientsSummary,
+  clientQualifiesForAttention,
+  countActiveDebtorClients,
+  buildCurrencyExecutiveBlocks,
+  buildDebtorCollectionRows,
+  buildFinancialSituationBlocks,
+  countDebtorsByCurrency,
+  debtorRowsToPriorityCollections,
+  extractAgingTotals,
+  HOY_PRIORITY_TABLE_TOP,
+  type AttentionClientsSummary,
+  type CarteraPeriodMetrics,
+  type CurrencyExecutiveBlock,
+  type DebtorCollectionRow,
+  type FinancialSituationBlock,
+} from "@/lib/copilot-hoy-executive";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -88,17 +106,56 @@ export type RecommendedAction = {
   tone: PulseTone;
 };
 
+export type HoyClientCounts = {
+  /** Clientes en portfolio (cartera activa). */
+  activeClients: number;
+  /** Clientes con saldo UYU > 0 o USD > 0 (Explorador de deuda). */
+  debtorClients: number;
+  /** Subgrupo: vencido, cobro lento o datos pendientes. */
+  attentionClients: number;
+  /** Filas en tabla/drawer (una por moneda). */
+  debtorRows: number;
+};
+
 export type TodayBusinessPulse = {
   overallStatus: PulseStatus;
   headline: string;
+  /** Subcopy del hero: atención vs activos. */
+  heroSubline: string | null;
+  clientCounts: HoyClientCounts;
   summaryBullets: string[];
+  /** Bloques UYU / USD — resumen principal del CEO. */
+  currencyBlocks: CurrencyExecutiveBlock[];
+  /** Indicadores operativos (atención + datos). */
+  operationalIndicators: KeyIndicator[];
+  /** @deprecated Usar operationalIndicators + currencyBlocks en UI. */
   keyIndicators: KeyIndicator[];
+  /** Top N en tabla; lista completa en allDebtorRows. */
   priorityCollections: PriorityCollection[];
+  allDebtorRows: DebtorCollectionRow[];
+  attentionClients: AttentionClientsSummary;
+  financialSituation: FinancialSituationBlock[];
   importantPendingItems: PendingItem[];
+  /** @deprecated Usar financialSituation. */
   last30DaysSummary: SummaryItem[];
   recommendedActions: RecommendedAction[];
   dataWarning: string | null;
 };
+
+export type {
+  CurrencyExecutiveBlock,
+  DebtorCollectionRow,
+  AttentionClientsSummary,
+  FinancialSituationBlock,
+  CarteraPeriodMetrics,
+} from "@/lib/copilot-hoy-executive";
+
+export {
+  countActiveDebtorClients,
+  clientQualifiesForAttention,
+} from "@/lib/copilot-hoy-executive";
+
+export { HOY_PRIORITY_TABLE_TOP } from "@/lib/copilot-hoy-executive";
 
 export type BusinessPulseGate = {
   confidence: "high" | "medium" | "low";
@@ -136,9 +193,31 @@ export type BusinessPulseInput = {
    * Solo para detectar mislabel vs card Anterior en Cartera.
    */
   carteraOpeningByCurrency?: CarteraCurrencyTotals;
+  /** Métricas de período alineadas con Cartera (facturado / cobrado / pendiente). */
+  carteraPeriodMetrics?: CarteraPeriodMetrics;
+  /** Bucket 0–30 por moneda (Cartera Aging). */
+  carteraAgingCurrent?: CarteraCurrencyTotals;
   /** Injectable para tests — YYYY-MM-DD. */
   today?: string;
 };
+
+/** Métricas por moneda desde `report.currencies` — mismo normalizador que Cartera. */
+export function carteraPeriodMetricsFromReport(currencies: unknown): CarteraPeriodMetrics {
+  const billed: CarteraCurrencyTotals = { UYU: 0, USD: 0 };
+  const collected: CarteraCurrencyTotals = { UYU: 0, USD: 0 };
+  const pending: CarteraCurrencyTotals = { UYU: 0, USD: 0 };
+
+  const index = buildCurrencyIndex(currencies);
+  for (const code of ["UYU", "USD"] as const) {
+    const m = index.get(code);
+    if (!m) continue;
+    billed[code] = Math.round(m.issuedInPeriodNet * 100) / 100;
+    collected[code] = Math.round(m.collectedInPeriod * 100) / 100;
+    pending[code] = Math.round(m.pendingAtCutoff * 100) / 100;
+  }
+
+  return { billed, collected, pending };
+}
 
 /** Extrae overdue de Aging desde el reporte de reconciliación (helper para la página Hoy). */
 export function carteraAgingOverdueFromReport(
@@ -170,7 +249,7 @@ export function fmtCurrencyAmount(amount: number, currency: "UYU" | "USD"): stri
   return currency === "USD" ? `USD U$S ${n}` : `UYU $ ${n}`;
 }
 
-function makeMoneyAmount(amount: number, currency: "UYU" | "USD"): MoneyAmount {
+export function makeMoneyAmount(amount: number, currency: "UYU" | "USD"): MoneyAmount {
   return { currency, amount, formatted: fmtCurrencyAmount(amount, currency) };
 }
 
@@ -373,6 +452,58 @@ function cappedTone(tone: PulseTone, status: PulseStatus): PulseTone {
 
 // ─── Headline ─────────────────────────────────────────────────────────────────
 
+/** Headline ejecutivo: deudores activos vs atención prioritaria (no confundir ambos). */
+export function buildExecutiveHeadline(
+  status: PulseStatus,
+  debtorClients: number,
+  attentionClients: number,
+  riskBand: string,
+  coverageRatio: number
+): string {
+  if (debtorClients === 0) {
+    if (status === "critical" && riskBand === "critical")
+      return "La empresa enfrenta presión financiera significativa — el flujo de caja requiere atención inmediata.";
+    if (status === "critical") return "La situación financiera requiere atención inmediata.";
+    if (status === "attention" && coverageRatio > 0 && coverageRatio < 1)
+      return "El flujo de caja proyectado está por debajo del objetivo — vale la pena monitorear de cerca.";
+    return "La empresa está en buen estado. Todo al día.";
+  }
+  if (attentionClients > 0) {
+    return `Hay ${debtorClients} clientes con deuda activa. ${attentionClients} requieren seguimiento prioritario.`;
+  }
+  return `Hay ${debtorClients} clientes con deuda activa.`;
+}
+
+export function buildHeroSubline(
+  activeClients: number,
+  attentionRows: ClientPortfolioRow[]
+): string | null {
+  if (activeClients <= 0 && attentionRows.length === 0) return null;
+  const parts: string[] = [];
+  if (attentionRows.length > 0) {
+    const overdue = attentionRows.filter(
+      (r) =>
+        r.overdue_debt > 0 ||
+        (r.overdue_uyu ?? 0) > 0 ||
+        (r.overdue_usd ?? 0) > 0
+    ).length;
+    const slow = attentionRows.filter(
+      (r) => r.risk === "Alto" || r.payment_behavior === "lento"
+    ).length;
+    if (overdue > 0 || slow > 0) {
+      const bits: string[] = [];
+      if (overdue > 0) bits.push(`${overdue} con deuda vencida`);
+      if (slow > 0) bits.push(`${slow} con cobro lento`);
+      parts.push(bits.join(" · "));
+    } else {
+      parts.push(`${attentionRows.length} requieren seguimiento`);
+    }
+  }
+  if (activeClients > 0) parts.push(`${activeClients} clientes activos`);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+/** @deprecated Preferir buildExecutiveHeadline en /copilot/hoy. */
 function buildHeadline(
   status: PulseStatus,
   overdueCount: number,
@@ -437,6 +568,32 @@ function buildSummaryBullets(p: {
 }
 
 // ─── Key indicators ───────────────────────────────────────────────────────────
+
+function buildOperationalIndicators(p: {
+  totalClients: number;
+  clientsNeedingAttention: number;
+  confidence: "high" | "medium" | "low";
+  overallStatus: PulseStatus;
+}): KeyIndicator[] {
+  const all = rawKeyIndicators({
+    cashNet: 0,
+    snapCurrency: "UYU",
+    debtBreakdown: [],
+    overdueSemantics: {
+      mode: "portfolio_due",
+      breakdown: [],
+      clientCount: 0,
+      debtLabel: "deuda vencida",
+    },
+    totalClients: p.totalClients,
+    clientsNeedingAttention: p.clientsNeedingAttention,
+    coverageRatio: 0,
+    confidence: p.confidence,
+  });
+  return all
+    .filter((ind) => ind.id === "clients")
+    .map((ind) => ({ ...ind, tone: cappedTone(ind.tone, p.overallStatus) }));
+}
 
 function buildKeyIndicators(p: {
   cashNet: number;
@@ -592,7 +749,7 @@ function rawKeyIndicators(p: {
     },
     {
       id: "data_status",
-      label: "Estado de datos",
+      label: "Actualización de datos",
       value: dataValue,
       tone: dataTone,
       helperText: "Actualización de la información al día de hoy",
@@ -669,14 +826,22 @@ function buildPendingItems(p: {
 
   for (const r of overdueHighRisk) {
     const breakdown = inferOverdueBreakdown(r);
+    const primary =
+      breakdown.length === 1
+        ? breakdown[0]!
+        : breakdown.length > 0
+          ? breakdown.sort((a, b) => b.amount - a.amount)[0]!
+          : null;
     const impacto = breakdown.length > 0
       ? breakdown.map((v) => v.formatted).join(" + ")
       : fmtCurrencyAmount(r.overdue_debt, r.debt_usd === 0 ? "UYU" : "USD");
     items.push({
       id: `overdue_high_${r.company_id}`,
-      title: `${r.name} — ${overdueTitleSuffix}`,
+      title: primary
+        ? `${r.name} — ${primary.formatted} vencido`
+        : `${r.name} — ${overdueTitleSuffix}`,
       impacto,
-      accion: "Contactar al cliente y gestionar el cobro",
+      accion: "Contactar y gestionar cobro",
       deepLink: `/copilot/clientes/${r.company_id}`,
       urgency: "alta",
     });
@@ -690,14 +855,49 @@ function buildPendingItems(p: {
 
   for (const r of overdueNormal) {
     const breakdown = inferOverdueBreakdown(r);
+    const primary =
+      breakdown.length === 1
+        ? breakdown[0]!
+        : breakdown.length > 0
+          ? breakdown.sort((a, b) => b.amount - a.amount)[0]!
+          : null;
     const impacto = breakdown.length > 0
       ? breakdown.map((v) => v.formatted).join(" + ")
       : fmtCurrencyAmount(r.overdue_debt, r.debt_usd === 0 ? "UYU" : "USD");
     items.push({
       id: `overdue_${r.company_id}`,
-      title: `${r.name} — ${overdueTitleNormal}`,
+      title: primary
+        ? `${r.name} — ${primary.formatted} vencido`
+        : `${r.name} — ${overdueTitleNormal}`,
       impacto,
       accion: "Hacer seguimiento del cobro",
+      deepLink: `/copilot/clientes/${r.company_id}`,
+      urgency: "media",
+    });
+  }
+
+  const slowNoOverdue = p.portfolioRows
+    .filter(
+      (r) =>
+        r.overdue_debt <= 0 &&
+        (r.overdue_uyu ?? 0) + (r.overdue_usd ?? 0) <= 0 &&
+        (r.risk === "Alto" || r.payment_behavior === "lento") &&
+        r.total_debt > 0
+    )
+    .slice(0, 1);
+
+  for (const r of slowNoOverdue) {
+    const debtLine =
+      (r.debt_uyu ?? 0) > 0 && (r.debt_usd ?? 0) > 0
+        ? `${fmtCurrencyAmount(r.debt_uyu!, "UYU")} + ${fmtCurrencyAmount(r.debt_usd!, "USD")}`
+        : (r.debt_usd ?? 0) > 0
+          ? fmtCurrencyAmount(r.debt_usd!, "USD")
+          : fmtCurrencyAmount(r.debt_uyu ?? r.total_debt, "UYU");
+    items.push({
+      id: `slow_${r.company_id}`,
+      title: `${r.name} — cobro lento`,
+      impacto: `${debtLine} pendiente`,
+      accion: "Revisar situación de crédito y plan de cobro",
       deepLink: `/copilot/clientes/${r.company_id}`,
       urgency: "media",
     });
@@ -731,7 +931,7 @@ function buildPendingItems(p: {
     });
   }
 
-  return items.slice(0, 5);
+  return items.slice(0, 4);
 }
 
 // ─── Last 30 days summary ─────────────────────────────────────────────────────
@@ -825,14 +1025,12 @@ function buildRecommendedActions(p: {
 // ─── Data warning ─────────────────────────────────────────────────────────────
 
 function buildDataWarning(gate: BusinessPulseGate, isTruncated: boolean): string | null {
-  // Solo mostrar si realmente hay datos atrasados o insuficientes
   if (gate.confidence === "low" && gate.coverage === "insufficient")
-    return "Hay datos pendientes de actualización en algunos clientes. Los indicadores principales siguen disponibles.";
+    return "Actualización pendiente — Hay datos de algunos clientes pendientes de actualización. Los saldos principales siguen disponibles.";
   if (gate.confidence === "low")
-    return "Parte de la información está pendiente de actualización. Los indicadores principales siguen disponibles.";
+    return "Actualización pendiente — Parte de la información de clientes puede estar desactualizada. Los saldos principales siguen disponibles.";
   if (isTruncated)
     return "Algunos registros están siendo procesados. Los números pueden ser estimativos.";
-  // confidence = "medium" → no mostrar warning (no bloquea decisiones)
   return null;
 }
 
@@ -857,9 +1055,10 @@ export function buildTodayBusinessPulse(input: BusinessPulseInput): TodayBusines
   // Portfolio counts
   const highRiskClients = rows.filter((r) => r.risk === "Alto");
   const overdueClients = rows.filter((r) => r.overdue_debt > 0);
-  const clientsNeedingAttention = rows.filter(
-    (r) => r.overdue_debt > 0 || r.risk === "Alto"
+  const attentionRows = rows.filter((r) =>
+    clientQualifiesForAttention(r, input.gate.confidence)
   );
+  const debtorClientsCount = countActiveDebtorClients(rows);
   const overdueSignalCount =
     overdueSemantics.breakdown.length > 0
       ? overdueSemantics.clientCount
@@ -872,35 +1071,73 @@ export function buildTodayBusinessPulse(input: BusinessPulseInput): TodayBusines
     overdueCount: overdueSignalCount,
   });
 
+  const portfolioPending: CarteraCurrencyTotals = {
+    UYU: totalDebtUYU,
+    USD: totalDebtUSD,
+  };
+  const aging = extractAgingTotals(undefined, input.carteraAgingOverdue);
+  const agingCurrent = input.carteraAgingCurrent ?? aging.current;
+
+  const currencyBlocks = buildCurrencyExecutiveBlocks({
+    period: input.carteraPeriodMetrics ?? null,
+    portfolioPending,
+    agingCritical30: input.carteraAgingOverdue ?? aging.critical,
+    agingCurrent,
+    debtorCounts: countDebtorsByCurrency(rows),
+  });
+
+  const allDebtorRows = buildDebtorCollectionRows(rows);
+  const operationalIndicators = buildOperationalIndicators({
+    totalClients: rows.length,
+    clientsNeedingAttention: attentionRows.length,
+    confidence: input.gate.confidence,
+    overallStatus,
+  });
+
+  const attentionClients = buildAttentionClientsSummary(
+    rows,
+    input.gate.confidence,
+    debtorClientsCount
+  );
+  const financialSituation = buildFinancialSituationBlocks(
+    input.snapshot,
+    input.carteraPeriodMetrics ?? null,
+    portfolioPending
+  );
+
   return {
     overallStatus,
-    headline: buildHeadline(
+    headline: buildExecutiveHeadline(
       overallStatus,
-      overdueSignalCount,
-      highRiskClients.length,
+      debtorClientsCount,
+      attentionRows.length,
       riskBand,
-      coverageRatio,
-      overdueSemantics.debtLabel
+      coverageRatio
     ),
+    heroSubline: buildHeroSubline(rows.length, attentionRows),
+    clientCounts: {
+      activeClients: rows.length,
+      debtorClients: debtorClientsCount,
+      attentionClients: attentionRows.length,
+      debtorRows: allDebtorRows.length,
+    },
     summaryBullets: buildSummaryBullets({
       totalClients: rows.length,
-      clientsNeedingAttention: clientsNeedingAttention.length,
+      clientsNeedingAttention: attentionRows.length,
       overdueCount: overdueSignalCount,
       highRiskCount: highRiskClients.length,
       debtPhrase: overdueSemantics.debtLabel,
     }),
-    keyIndicators: buildKeyIndicators({
-      cashNet,
-      snapCurrency,
-      debtBreakdown,
-      overdueSemantics,
-      totalClients: rows.length,
-      clientsNeedingAttention: clientsNeedingAttention.length,
-      coverageRatio,
-      confidence: input.gate.confidence,
-      overallStatus,
-    }),
-    priorityCollections: buildPriorityCollections(rows, overdueSemantics),
+    currencyBlocks,
+    operationalIndicators,
+    keyIndicators: operationalIndicators,
+    priorityCollections: debtorRowsToPriorityCollections(
+      allDebtorRows,
+      HOY_PRIORITY_TABLE_TOP
+    ),
+    allDebtorRows,
+    attentionClients,
+    financialSituation,
     importantPendingItems: buildPendingItems({
       portfolioRows: rows,
       gate: input.gate,
