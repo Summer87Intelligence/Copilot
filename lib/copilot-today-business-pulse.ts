@@ -21,12 +21,26 @@ import {
 } from "@/lib/copilot-financial-snapshot-selectors";
 import { buildCurrencyIndex } from "@/lib/copilot-cartera-cards-source";
 import type { ClientPortfolioRow } from "@/lib/copilot-clients-portfolio";
+import type { HoyPeriodRange } from "@/lib/copilot-hoy-period";
+import {
+  buildHoyCurrentScope,
+  buildHoyCurrentStateBlocks,
+  buildHoyPeriodActivity,
+  buildHoyPeriodActivityBlocks,
+  type HoyCurrentScope,
+  type HoyCurrentStateBlock,
+  type HoyPeriodActivity,
+  type HoyPeriodActivityBlock,
+} from "@/lib/copilot-hoy-scopes";
 import {
   buildHoyCashPositionBlocks,
+  buildHoyProjection30dBlocks,
   buildHoyTreasuryAlerts,
   type HoyCashPositionBlock,
+  type HoyProjection30dBlock,
   type HoyTreasuryAlert,
 } from "@/lib/copilot-hoy-treasury";
+import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
 import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
 import {
   buildAttentionClientsSummary,
@@ -151,8 +165,16 @@ export type TodayBusinessPulse = {
   /** Alertas ejecutivas cruce deuda ↔ egresos (sin LLM). */
   treasuryAlerts: HoyTreasuryAlert[];
   treasuryOutflowsConfigured: boolean;
-  /** Caja actual + proyección por moneda (Tesorería manual + saldos iniciales). */
+  /** Caja actual por moneda (sin deuda pendiente). */
   cashPositionBlocks: HoyCashPositionBlock[];
+  /** Proyección 30d: caja segura vs esperada, por moneda. */
+  projection30dBlocks: HoyProjection30dBlock[];
+  /** Período confirmado (solo afecta actividad del período). */
+  periodRange: HoyPeriodRange;
+  currentScope: HoyCurrentScope;
+  currentStateBlocks: HoyCurrentStateBlock[];
+  periodActivity: HoyPeriodActivity;
+  periodActivityBlocks: HoyPeriodActivityBlock[];
 };
 
 export type {
@@ -163,7 +185,19 @@ export type {
   CarteraPeriodMetrics,
 } from "@/lib/copilot-hoy-executive";
 
-export type { HoyCashPositionBlock, HoyTreasuryAlert } from "@/lib/copilot-hoy-treasury";
+export type {
+  HoyCashPositionBlock,
+  HoyProjection30dBlock,
+  HoyTreasuryAlert,
+} from "@/lib/copilot-hoy-treasury";
+export type {
+  HoyCurrentScope,
+  HoyCurrentStateBlock,
+  HoyPeriodActivity,
+  HoyPeriodActivityBlock,
+} from "@/lib/copilot-hoy-scopes";
+export type { HoyPeriodRange } from "@/lib/copilot-hoy-period";
+export { defaultHoyPeriodRange, formatHoyPeriodLabel } from "@/lib/copilot-hoy-period";
 
 export {
   countActiveDebtorClients,
@@ -208,8 +242,17 @@ export type BusinessPulseInput = {
    * Solo para detectar mislabel vs card Anterior en Cartera.
    */
   carteraOpeningByCurrency?: CarteraCurrencyTotals;
-  /** Métricas de período alineadas con Cartera (facturado / cobrado / pendiente). */
+  /**
+   * @deprecated Preferir `periodReportCurrencies` + `periodRange`.
+   * Métricas legacy (cobrado aplicado). Tests de Cartera.
+   */
   carteraPeriodMetrics?: CarteraPeriodMetrics;
+  /** Rango confirmado — solo actividad del período. */
+  periodRange?: HoyPeriodRange;
+  /** `report.currencies` de reconciliación `mode=period_only`. */
+  periodReportCurrencies?: unknown;
+  /** Movimientos manuales para ingresos/egresos del período. */
+  manualCashMovements?: readonly ManualCashMovement[];
   /**
    * Cobrado acumulado por clientes (suma de recibos) para caja actual en Hoy.
    * Con `mode=all_outstanding` en reconciliación = acumulado histórico, independiente del rango de reportes.
@@ -1133,15 +1176,9 @@ export function buildTodayBusinessPulse(input: BusinessPulseInput): TodayBusines
   const cashPositions = input.treasuryCashPositions;
   const collectedByCurrency =
     input.carteraCollectedToDate ?? input.carteraPeriodMetrics?.collected;
-  const currencyBlocks = buildCurrencyExecutiveBlocks({
-    period: input.carteraPeriodMetrics ?? null,
-    portfolioPending,
-    agingCritical30: input.carteraAgingOverdue ?? aging.critical,
-    agingCurrent,
-    debtorCounts: countDebtorsByCurrency(rows),
-    treasurySummaries,
-    treasuryCashPositions: cashPositions,
-  });
+  const asOfDate = input.today ?? new Date().toISOString().slice(0, 10);
+  const periodRange =
+    input.periodRange ?? { from: asOfDate.slice(0, 8) + "01", to: asOfDate };
 
   const cashPositionBlocks = buildHoyCashPositionBlocks({
     cashPositions,
@@ -1150,18 +1187,65 @@ export function buildTodayBusinessPulse(input: BusinessPulseInput): TodayBusines
     treasurySummaries,
   });
 
+  const periodActivity = buildHoyPeriodActivity(
+    periodRange,
+    input.periodReportCurrencies ?? [],
+    input.manualCashMovements ?? []
+  );
+  const periodActivityBlocks = buildHoyPeriodActivityBlocks(periodActivity);
+
+  const debtorCounts = countDebtorsByCurrency(rows);
+  const currentScope = buildHoyCurrentScope({
+    asOfDate,
+    portfolioPending,
+    agingOverdue30: input.carteraAgingOverdue ?? aging.critical,
+    agingCurrent,
+    debtorCounts,
+    cashBlocks: cashPositionBlocks,
+  });
+  const currentStateBlocks = buildHoyCurrentStateBlocks(cashPositionBlocks, currentScope);
+
+  const projection30dBlocks = buildHoyProjection30dBlocks({
+    cashPositionBlocks,
+    pendingByCurrency: portfolioPending,
+    treasurySummaries,
+  });
+
+  /** Bloques legacy (tests Cartera): prioriza actividad del período; fallback `carteraPeriodMetrics`. */
+  const periodFromReport =
+    periodActivity.billedNetByCurrency.UYU > 0 ||
+    periodActivity.billedNetByCurrency.USD > 0 ||
+    periodActivity.collectedInPeriodByCurrency.UYU > 0 ||
+    periodActivity.collectedInPeriodByCurrency.USD > 0;
+  const executivePeriod: CarteraPeriodMetrics | null = periodFromReport
+    ? {
+        billed: periodActivity.billedNetByCurrency,
+        collected: periodActivity.collectedInPeriodByCurrency,
+        pending: portfolioPending,
+      }
+    : (input.carteraPeriodMetrics ?? null);
+
+  const currencyBlocks = buildCurrencyExecutiveBlocks({
+    period: executivePeriod,
+    portfolioPending,
+    agingCritical30: input.carteraAgingOverdue ?? aging.critical,
+    agingCurrent,
+    debtorCounts,
+    treasurySummaries: [],
+    treasuryCashPositions: [],
+  });
+
   const manualExpenseInPeriod: CarteraCurrencyTotals = {
     UYU: cashPositions?.find((p) => p.currency === "UYU")?.manualExpenseInRange ?? 0,
     USD: cashPositions?.find((p) => p.currency === "USD")?.manualExpenseInRange ?? 0,
   };
 
   const treasuryAlerts = buildHoyTreasuryAlerts({
-    cashPositions,
-    collectedByCurrency,
+    projectionBlocks: projection30dBlocks,
     summaries: treasurySummaries,
-    pendingByCurrency: portfolioPending,
     overdueCritical30: input.carteraAgingOverdue ?? aging.critical,
     manualExpenseInPeriod,
+    cashPositionBlocks,
   });
   const treasuryOutflowsConfigured = treasurySummaries.some((s) => s.itemsCount > 0);
 
@@ -1233,5 +1317,11 @@ export function buildTodayBusinessPulse(input: BusinessPulseInput): TodayBusines
     treasuryAlerts,
     treasuryOutflowsConfigured,
     cashPositionBlocks,
+    projection30dBlocks,
+    periodRange,
+    currentScope,
+    currentStateBlocks,
+    periodActivity,
+    periodActivityBlocks,
   };
 }

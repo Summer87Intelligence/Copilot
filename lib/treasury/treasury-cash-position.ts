@@ -168,6 +168,25 @@ export function calculateCashPosition(
 }
 
 /** Caja proyectada 30d = caja actual + por cobrar − pagos futuros (misma moneda). */
+/** Suma ingresos manuales que afectan caja en [fromDate, toDate]. */
+export function sumManualIncomeInRange(
+  movements: readonly ManualCashMovement[],
+  currency: TreasuryCurrencyCode,
+  fromDate: string,
+  toDate: string
+): number {
+  let total = 0;
+  for (const m of movements) {
+    if (m.currencyCode !== currency) continue;
+    if (m.movementDate < fromDate || m.movementDate > toDate) continue;
+    if (!shouldCountManualCashInCashflow(m)) continue;
+    if (!isTransferLegCounted(m, movements)) continue;
+    if (m.movementType !== "income") continue;
+    total += m.amount;
+  }
+  return roundMoney(total);
+}
+
 /** Suma egresos manuales que afectan caja en [fromDate, toDate]. */
 export function sumManualExpenseInRange(
   movements: readonly ManualCashMovement[],
@@ -211,10 +230,28 @@ export function mergeCollectedIntoCashPositions(
   });
 }
 
-export function projectedCashBalance30d(
+/** Caja segura 30d = caja actual − pagos programados (sin deuda pendiente). */
+export function safeCashBalance30d(
+  availableCash: number,
+  scheduledOutflows30d: number
+): number {
+  return roundMoney(availableCash - scheduledOutflows30d);
+}
+
+/** Caja esperada 30d = caja actual + por cobrar − pagos programados. */
+export function expectedCashBalance30d(
   availableCash: number,
   pendingReceivables: number,
   scheduledOutflows30d: number
 ): number {
   return roundMoney(availableCash + pendingReceivables - scheduledOutflows30d);
+}
+
+/** @deprecated Usar `expectedCashBalance30d`. */
+export function projectedCashBalance30d(
+  availableCash: number,
+  pendingReceivables: number,
+  scheduledOutflows30d: number
+): number {
+  return expectedCashBalance30d(availableCash, pendingReceivables, scheduledOutflows30d);
 }

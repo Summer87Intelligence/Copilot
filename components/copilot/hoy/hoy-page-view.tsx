@@ -8,35 +8,47 @@ import { CopilotCard } from "@/components/copilot/copilot-ui";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import type { FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
 import type { CarteraCurrencyTotals } from "@/lib/copilot-cartera-aging-totals";
+import type { HoyPeriodRange } from "@/lib/copilot-hoy-period";
 import {
   buildTodayBusinessPulse,
   type AttentionClientsSummary,
   type BusinessPulseGate,
-  type CarteraPeriodMetrics,
   type DebtorCollectionRow,
 } from "@/lib/copilot-today-business-pulse";
 import { HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
+import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
+import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
+import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
 
 import { AttentionClientsDrawer } from "./hoy-attention-clients-drawer";
 import { ClientsWithDebtSection } from "./hoy-clients-with-debt-section";
-import { CurrencyExecutiveCard } from "./hoy-currency-executive-card";
 import { HoyDrawer } from "./hoy-drawer";
-import { HoyCashCurrentSection } from "./hoy-cash-current-section";
+import { HoyCurrentStateSection } from "./hoy-current-state-section";
+import { HoyPeriodActivitySection } from "./hoy-period-activity-section";
+import { HoyPeriodBar } from "./hoy-period-bar";
 import { HoyProjection30dSection } from "./hoy-projection-30d-section";
 import { AttentionFollowUpStrip, PulseHero } from "./hoy-pulse-hero";
-import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
-import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
 
 type HoyPageViewProps = {
   loading: boolean;
+  today: string;
   snapshot: FinancialSnapshotApiV1 | null;
   portfolioRows: ClientPortfolioLoad["rows"] | null;
   gate: BusinessPulseGate;
   carteraAgingOverdue?: CarteraCurrencyTotals;
   carteraAgingCurrent?: CarteraCurrencyTotals;
-  carteraOpeningByCurrency?: CarteraCurrencyTotals;
-  carteraPeriodMetrics?: CarteraPeriodMetrics;
   carteraCollectedToDate?: CarteraCurrencyTotals;
+  periodReportCurrencies: unknown;
+  manualCashMovements: readonly ManualCashMovement[];
+  confirmedPeriod: HoyPeriodRange;
+  draftFrom: string;
+  draftTo: string;
+  hasPendingPeriodChanges: boolean;
+  onDraftFromChange: (v: string) => void;
+  onDraftToChange: (v: string) => void;
+  onConfirmPeriod: () => void;
+  onMonthToDate: () => void;
+  onLast30Days: () => void;
   treasuryOutflowSummaries?: TreasuryOutflowSummary[];
   treasuryCashPositions?: CashPositionByCurrency[];
   error: string | null;
@@ -56,6 +68,7 @@ function LoadingSkeleton() {
   return (
     <div className="flex-1 space-y-5 overflow-auto px-6 py-6">
       <Skeleton className="h-24 w-full" />
+      <Skeleton className="h-20 w-full" />
       <div className="grid gap-4 lg:grid-cols-2">
         <Skeleton className="h-56" />
         <Skeleton className="h-56" />
@@ -67,14 +80,24 @@ function LoadingSkeleton() {
 
 export function HoyPageView({
   loading,
+  today,
   snapshot,
   portfolioRows,
   gate,
   carteraAgingOverdue,
   carteraAgingCurrent,
-  carteraOpeningByCurrency,
-  carteraPeriodMetrics,
   carteraCollectedToDate,
+  periodReportCurrencies,
+  manualCashMovements,
+  confirmedPeriod,
+  draftFrom,
+  draftTo,
+  hasPendingPeriodChanges,
+  onDraftFromChange,
+  onDraftToChange,
+  onConfirmPeriod,
+  onMonthToDate,
+  onLast30Days,
   treasuryOutflowSummaries,
   treasuryCashPositions,
   error,
@@ -92,11 +115,13 @@ export function HoyPageView({
         gate,
         carteraAgingOverdue,
         carteraAgingCurrent,
-        carteraOpeningByCurrency,
-        carteraPeriodMetrics,
         carteraCollectedToDate,
+        periodRange: confirmedPeriod,
+        periodReportCurrencies,
+        manualCashMovements,
         treasuryOutflowSummaries,
         treasuryCashPositions,
+        today,
       }),
     [
       snapshot,
@@ -104,11 +129,13 @@ export function HoyPageView({
       gate,
       carteraAgingOverdue,
       carteraAgingCurrent,
-      carteraOpeningByCurrency,
-      carteraPeriodMetrics,
       carteraCollectedToDate,
+      confirmedPeriod,
+      periodReportCurrencies,
+      manualCashMovements,
       treasuryOutflowSummaries,
       treasuryCashPositions,
+      today,
     ]
   );
 
@@ -154,25 +181,29 @@ export function HoyPageView({
           onRefresh={onRefresh}
         />
 
-        {pulse.currencyBlocks.length > 0 ? (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {pulse.currencyBlocks.map((block) => (
-              <CurrencyExecutiveCard key={block.currency} block={block} />
-            ))}
-          </div>
-        ) : (
-          <CopilotCard>
-            <p className="text-sm text-[var(--copilot-ink-muted)]">
-              Sin actividad financiera por moneda para mostrar.
-            </p>
-          </CopilotCard>
-        )}
+        <HoyPeriodBar
+          draftFrom={draftFrom}
+          draftTo={draftTo}
+          confirmed={confirmedPeriod}
+          onDraftFromChange={onDraftFromChange}
+          onDraftToChange={onDraftToChange}
+          hasPendingChanges={hasPendingPeriodChanges}
+          onConfirm={onConfirmPeriod}
+          onMonthToDate={onMonthToDate}
+          onLast30Days={onLast30Days}
+          onRefresh={onRefresh}
+          loading={loading}
+        />
 
-        <HoyCashCurrentSection blocks={pulse.cashPositionBlocks} />
+        <HoyCurrentStateSection blocks={pulse.currentStateBlocks} />
+
+        <HoyPeriodActivitySection
+          blocks={pulse.periodActivityBlocks}
+          periodRange={pulse.periodRange}
+        />
 
         <HoyProjection30dSection
-          blocks={pulse.currencyBlocks}
-          cashBlocks={pulse.cashPositionBlocks}
+          blocks={pulse.projection30dBlocks}
           alerts={pulse.treasuryAlerts}
           configured={pulse.treasuryOutflowsConfigured}
         />
@@ -202,7 +233,6 @@ export function HoyPageView({
             />
           </div>
         </CopilotCard>
-
       </div>
 
       {drawer.kind === "attention" ? (
