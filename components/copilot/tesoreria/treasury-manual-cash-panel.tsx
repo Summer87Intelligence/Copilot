@@ -19,6 +19,7 @@ import {
   parseMoneyInput,
   zodFieldErrors,
 } from "@/lib/treasury/treasury-form-schemas";
+import { isManualCashMovementDeletable } from "@/lib/treasury/treasury-manual-cash-movements";
 import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
 
 type Props = {
@@ -91,7 +92,10 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
         ? row.metadata.tags
         : "";
     setForm({
-      movementType: row.movementType === "adjustment" ? "expense" : row.movementType,
+      movementType:
+        row.movementType === "adjustment"
+          ? "expense"
+          : (row.movementType as FormState["movementType"]),
       ledgerType: row.ledgerType,
       accountId: row.accountId ?? "",
       concept: row.concept,
@@ -146,7 +150,11 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
       metadata: Object.keys(metadata).length ? metadata : null,
     };
     if (form.movementType === "transfer") {
-      body.transfer_pair_id = crypto.randomUUID();
+      const existingPair = editing?.metadata?.transfer_pair_id;
+      body.transfer_pair_id =
+        typeof existingPair === "string" && existingPair.length > 0
+          ? existingPair
+          : crypto.randomUUID();
     }
     const result = editing
       ? await workspace.updateManual(editing.id, body)
@@ -233,10 +241,33 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                   </td>
                   <td className={TESORERIA_TD_CLASS}>
                     <div className="flex flex-wrap gap-2">
-                      <CopilotGhostButton type="button" onClick={() => openEdit(row)}>
+                      <CopilotGhostButton
+                        type="button"
+                        onClick={() => openEdit(row)}
+                        disabled={!isManualCashMovementDeletable(row)}
+                        title={
+                          isManualCashMovementDeletable(row)
+                            ? "Editar movimiento"
+                            : "Solo movimientos creados manualmente"
+                        }
+                      >
                         Editar
                       </CopilotGhostButton>
-                      {row.status === "active" ? (
+                      {isManualCashMovementDeletable(row) ? (
+                        <CopilotGhostButton
+                          type="button"
+                          className="!text-rose-700 hover:!bg-rose-50/80"
+                          onClick={() => {
+                            const msg = row.reconciled
+                              ? "Este movimiento está conciliado. Eliminarlo puede afectar la conciliación.\n\n¿Eliminar este movimiento de caja? Esta acción no se puede deshacer."
+                              : "¿Eliminar este movimiento de caja? Esta acción no se puede deshacer.";
+                            if (window.confirm(msg)) void workspace.deleteManual(row.id);
+                          }}
+                        >
+                          Eliminar
+                        </CopilotGhostButton>
+                      ) : null}
+                      {row.status === "active" && isManualCashMovementDeletable(row) ? (
                         <CopilotGhostButton
                           type="button"
                           onClick={() => void workspace.archiveManual(row.id)}

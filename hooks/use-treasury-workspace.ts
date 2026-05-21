@@ -9,6 +9,7 @@ import {
   fetchTreasuryObligations,
   fetchTreasuryOverdueObligations,
   fetchTreasuryUpcomingObligations,
+  treasuryApiDelete,
   treasuryApiPatch,
   treasuryApiPost,
   treasuryErrorMessage,
@@ -56,8 +57,10 @@ type Action =
   | { type: "CLEAR_FEEDBACK" }
   | { type: "UPSERT_ACCOUNT"; account: TreasuryAccount }
   | { type: "UPSERT_MANUAL"; movement: ManualCashMovement }
+  | { type: "REMOVE_MANUAL"; id: string }
   | { type: "UPSERT_BANK"; movement: BankReconciliationMovement }
-  | { type: "UPSERT_OBLIGATION"; obligation: PlannedCashObligation };
+  | { type: "UPSERT_OBLIGATION"; obligation: PlannedCashObligation }
+  | { type: "REMOVE_OBLIGATION"; id: string };
 
 const initial: State = {
   accounts: [],
@@ -117,6 +120,11 @@ function reducer(state: State, action: Action): State {
           : [action.movement, ...state.manualMovements],
       };
     }
+    case "REMOVE_MANUAL":
+      return {
+        ...state,
+        manualMovements: state.manualMovements.filter((m) => m.id !== action.id),
+      };
     case "UPSERT_BANK": {
       const exists = state.bankMovements.some((m) => m.id === action.movement.id);
       return {
@@ -137,6 +145,17 @@ function reducer(state: State, action: Action): State {
               o.id === action.obligation.id ? action.obligation : o
             )
           : [action.obligation, ...state.obligations],
+      };
+    }
+    case "REMOVE_OBLIGATION": {
+      const drop = (list: PlannedCashObligation[]) =>
+        list.filter((o) => o.id !== action.id);
+      return {
+        ...state,
+        obligations: drop(state.obligations),
+        upcoming7: drop(state.upcoming7),
+        upcoming30: drop(state.upcoming30),
+        overdue: drop(state.overdue),
       };
     }
     default:
@@ -315,10 +334,28 @@ export function useTreasuryWorkspace(filters: TreasuryWorkspaceFilters) {
         return null;
       }
       dispatch({ type: "UPSERT_MANUAL", movement: result.data });
-      notify("success", result.message);
+      notify("success", result.message ?? "Movimiento actualizado.");
+      void refetch();
       return result.data;
     },
-    [notify]
+    [notify, refetch]
+  );
+
+  const deleteManual = useCallback(
+    async (id: string) => {
+      const result = await treasuryApiDelete<{ id: string }>(
+        TREASURY_API.manualCashItem(id)
+      );
+      if (!result.ok) {
+        notify("error", treasuryErrorMessage(result));
+        return false;
+      }
+      dispatch({ type: "REMOVE_MANUAL", id });
+      notify("success", result.message ?? "Movimiento eliminado.");
+      void refetch();
+      return true;
+    },
+    [notify, refetch]
   );
 
   const archiveManual = useCallback(
@@ -512,6 +549,23 @@ export function useTreasuryWorkspace(filters: TreasuryWorkspaceFilters) {
     [notify, refetch]
   );
 
+  const deleteScheduledPayment = useCallback(
+    async (id: string) => {
+      const result = await treasuryApiDelete<{ id: string }>(
+        TREASURY_API.scheduledPayment(id)
+      );
+      if (!result.ok) {
+        notify("error", treasuryErrorMessage(result));
+        return false;
+      }
+      dispatch({ type: "REMOVE_OBLIGATION", id });
+      notify("success", "Pago futuro eliminado.");
+      void refetch();
+      return true;
+    },
+    [notify, refetch]
+  );
+
   const accountById = useMemo(
     () => new Map(state.accounts.map((a) => [a.id, a])),
     [state.accounts]
@@ -530,6 +584,7 @@ export function useTreasuryWorkspace(filters: TreasuryWorkspaceFilters) {
     previewSantanderMovements,
     createManual,
     updateManual,
+    deleteManual,
     archiveManual,
     createBank,
     matchBank,
@@ -539,6 +594,7 @@ export function useTreasuryWorkspace(filters: TreasuryWorkspaceFilters) {
     confirmObligation,
     paidObligation,
     cancelObligation,
+    deleteScheduledPayment,
   };
 }
 

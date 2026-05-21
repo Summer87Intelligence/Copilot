@@ -6,6 +6,7 @@ import type {
 } from "@/lib/api/schemas/treasury-api-bodies";
 import { protoCrudResult, type ProtoCrudResult } from "@/lib/copilot-proto-crud-types";
 import {
+  manualCashMovementRepositoryDelete,
   manualCashMovementRepositoryGetById,
   manualCashMovementRepositoryInsert,
   manualCashMovementRepositoryList,
@@ -132,8 +133,11 @@ export async function manualCashMovementUpdate(
   const existing = await manualCashMovementRepositoryGetById(supabase, workspaceId, id);
   if (existing.error) return mapDbError(existing.error);
   if (!existing.row) return protoCrudResult.fail("NOT_FOUND", "Movimiento no encontrado.");
-  if (existing.row.status === "archived") {
-    return protoCrudResult.fail("VALIDATION", "No se puede editar un movimiento archivado.");
+  if (existing.row.source !== "manual") {
+    return protoCrudResult.fail(
+      "VALIDATION",
+      "Este movimiento no puede editarse porque no fue creado manualmente."
+    );
   }
 
   const merged = {
@@ -204,6 +208,46 @@ export async function manualCashMovementUpdate(
   if (error) return mapDbError(error);
   if (!row) return protoCrudResult.fail("NOT_FOUND", "Movimiento no encontrado.");
   return protoCrudResult.ok(row, "Movimiento actualizado.");
+}
+
+export async function manualCashMovementDelete(
+  supabase: SupabaseClient,
+  tenantCompanyId: string,
+  id: string
+): Promise<ProtoCrudResult<{ id: string }>> {
+  const workspaceId = resolveTreasuryWorkspaceId(tenantCompanyId);
+  const trimmedId = id?.trim();
+  if (!trimmedId) {
+    return protoCrudResult.fail("VALIDATION", "Falta el id del movimiento.");
+  }
+
+  const existing = await manualCashMovementRepositoryGetById(
+    supabase,
+    workspaceId,
+    trimmedId
+  );
+  if (existing.error) return mapDbError(existing.error);
+  if (!existing.row) {
+    return protoCrudResult.fail("NOT_FOUND", "Movimiento no encontrado.");
+  }
+  if (existing.row.source !== "manual") {
+    return protoCrudResult.fail(
+      "VALIDATION",
+      "Este movimiento no puede eliminarse porque no fue creado manualmente."
+    );
+  }
+
+  const { deleted, error } = await manualCashMovementRepositoryDelete(
+    supabase,
+    workspaceId,
+    trimmedId
+  );
+  if (error) return mapDbError(error);
+  if (!deleted) {
+    return protoCrudResult.fail("NOT_FOUND", "Movimiento no encontrado.");
+  }
+
+  return protoCrudResult.ok({ id: trimmedId }, "Movimiento eliminado.");
 }
 
 export async function manualCashMovementArchive(
