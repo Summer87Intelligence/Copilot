@@ -5,9 +5,24 @@ import { OicEmptyState } from "@/components/copilot/operacional/oic-empty-state"
 const th = "border-b border-[var(--copilot-border)] px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]";
 const td = "px-3 py-2 text-sm text-[var(--copilot-ink)]";
 
-export function OicConflictTable({ rows }: { rows: OicConflictiveInvoice[] }) {
+export function OicConflictTable({
+  rows,
+  lastAuditAt,
+}: {
+  rows: OicConflictiveInvoice[];
+  lastAuditAt?: string | null;
+}) {
   if (rows.length === 0) {
-    return <OicEmptyState title="Sin conflictos" description="Todas las facturas tienen saldo reconciliado." />;
+    return (
+      <OicEmptyState
+        title="Sin conflictos activos"
+        description={
+          lastAuditAt
+            ? `Última auditoría: ${new Date(lastAuditAt).toLocaleString("es-AR")} — sin facturas con saldo desalineado.`
+            : "Todas las facturas tienen saldo reconciliado."
+        }
+      />
+    );
   }
 
   return (
@@ -20,9 +35,11 @@ export function OicConflictTable({ rows }: { rows: OicConflictiveInvoice[] }) {
               <th className={th}>Cliente</th>
               <th className={th}>Moneda</th>
               <th className={`${th} text-right`}>Saldo DB</th>
-              <th className={`${th} text-right`}>Gap</th>
+              <th className={`${th} text-right`}>Saldo Zeta</th>
+              <th className={`${th} text-right`}>Diff</th>
               <th className={th}>Miss.</th>
               <th className={th}>Estado</th>
+              <th className={th}>Acción sugerida</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--copilot-border)]">
@@ -34,12 +51,20 @@ export function OicConflictTable({ rows }: { rows: OicConflictiveInvoice[] }) {
                 <td className={`${td} text-right tabular-nums`}>
                   {row.balanceDb.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                 </td>
+                <td className={`${td} text-right tabular-nums text-[var(--copilot-ink-muted)]`}>
+                  {row.balanceZeta != null
+                    ? row.balanceZeta.toLocaleString("es-AR", { minimumFractionDigits: 2 })
+                    : "—"}
+                </td>
                 <td className={`${td} text-right tabular-nums font-semibold ${row.gapAmount > 0 ? "text-rose-700" : ""}`}>
                   {row.gapAmount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                 </td>
                 <td className={`${td} tabular-nums`}>{row.missingCount}</td>
                 <td className={td}>
                   <OicSeverityBadge severity={row.severity} />
+                </td>
+                <td className={`${td} max-w-[200px] text-xs text-[var(--copilot-ink-muted)]`}>
+                  {row.suggestedAction}
                 </td>
               </tr>
             ))}

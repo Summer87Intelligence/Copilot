@@ -17,29 +17,49 @@ export function OicQuickStats() {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => <OicSkeletonCard key={i} rows={2} />)}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {[0, 1, 2, 3, 4].map((i) => <OicSkeletonCard key={i} rows={2} />)}
       </div>
     );
   }
 
   const rd = rec.data;
   const ad = act.data;
-
   const failPct = ad ? Math.round(ad.failureRateLastDay * 100) : null;
 
+  // Severity de conflictos viene del status calculado en el servicio (solo facturas actuales)
+  const conflictSeverity = rd
+    ? rd.status
+    : undefined;
+
+  // Hint para la card de conflictos
+  const conflictHint = rd
+    ? rd.conflictCount === 0
+      ? "Sin conflictos activos"
+      : rd.criticalCount > 0
+        ? `${rd.criticalCount} crítico${rd.criticalCount > 1 ? "s" : ""}`
+        : rd.warningCount > 0
+          ? `${rd.warningCount} warning${rd.warningCount > 1 ? "s" : ""}`
+          : `${rd.infoCount} info`
+    : undefined;
+
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
       <OicMetricCard
-        label="Facturas activas"
-        value={rd?.totalInvoices ?? "—"}
-        hint={rd ? `${rd.matchedCount} sin conflicto` : undefined}
-        severity={rd && rd.criticalCount > 0 ? "critical" : rd && rd.conflictCount > 0 ? "warning" : rd ? "ok" : undefined}
+        label="Facturas evaluadas"
+        value={rd?.totalChecked ?? "—"}
+        hint={rd ? `${rd.okCount} sin conflicto` : undefined}
+        severity={rd ? "ok" : undefined}
+      />
+      <OicMetricCard
+        label="Conflictos activos"
+        value={rd?.conflictCount ?? "—"}
+        hint={conflictHint}
+        severity={conflictSeverity}
       />
       <OicMetricCard
         label="Gap USD"
         value={rd ? fmtCurrency(rd.gapUsd, "USD") : "—"}
-        hint={rd && rd.criticalCount > 0 ? `${rd.criticalCount} críticas` : undefined}
         severity={rd && rd.gapUsd > 500 ? "critical" : rd && rd.gapUsd > 0 ? "warning" : rd ? "ok" : undefined}
       />
       <OicMetricCard
@@ -48,7 +68,7 @@ export function OicQuickStats() {
         severity={rd && rd.gapUyu > 10000 ? "critical" : rd && rd.gapUyu > 0 ? "warning" : rd ? "ok" : undefined}
       />
       <OicMetricCard
-        label="Fallas pipelines 24h"
+        label="Fallos pipelines 24h"
         value={failPct != null ? `${failPct}%` : "—"}
         hint={ad ? `${ad.recentRuns.filter((r) => r.status === "failed").length} runs fallidos` : undefined}
         severity={failPct != null && failPct > 50 ? "critical" : failPct != null && failPct > 20 ? "warning" : failPct != null ? "ok" : undefined}

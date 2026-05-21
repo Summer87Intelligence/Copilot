@@ -76,18 +76,35 @@ export type OicConflictiveInvoice = {
   missingCount: number;
   lastSyncAt: string | null;
   registroId: string | null;
+  suggestedAction: string;
 };
 
+// Contrato semántico único para reconciliación.
+//
+// Invariantes:
+//   - Si conflictCount === 0 → status === "ok" SIEMPRE
+//   - criticalCount + warningCount + infoCount === conflictCount
+//   - historicalAuditCritical / historicalAuditWarning vienen de zeta_completeness_audits
+//     y NO contaminan status ni criticalCount
+//   - conflictiveInvoices.length === conflictCount (máx 50)
 export type OicReconciliationSummary = {
   workspaceCompanyId: string;
   computedAt: string;
-  totalInvoices: number;
-  matchedCount: number;
-  conflictCount: number;
-  criticalCount: number;
+  // ── Estado actual ──────────────────────────────────────────────────────────
+  totalChecked: number;       // facturas evaluadas (balance > 0, open/partial)
+  okCount: number;            // sin conflicto activo
+  conflictCount: number;      // con conflicto activo (= criticalCount + warningCount + infoCount)
+  criticalCount: number;      // conflictos críticos (de conflictiveInvoices)
+  warningCount: number;       // conflictos warning
+  infoCount: number;          // conflictos info (missingCount bajo, gap pequeño)
+  status: OicSeverity;        // derivado SOLO de conflictCount/criticalCount actuales
   gapUsd: number;
   gapUyu: number;
-  conflictiveInvoices: OicConflictiveInvoice[];
+  conflictiveInvoices: OicConflictiveInvoice[]; // máx 50, solo status != ok
+  // ── Histórico — separado, NO afecta status ────────────────────────────────
+  historicalAuditCritical: number;  // audits severity=critical últimos 30d
+  historicalAuditWarning: number;   // audits severity=warning últimos 30d
+  lastAuditAt: string | null;       // timestamp de la audit más reciente
 };
 
 // ── Pipeline Activity ─────────────────────────────────────────────────────────
