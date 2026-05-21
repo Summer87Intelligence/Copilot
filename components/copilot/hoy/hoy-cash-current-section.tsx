@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 
 import { CopilotCard } from "@/components/copilot/copilot-ui";
 import type { HoyCashPositionBlock } from "@/lib/copilot-today-business-pulse";
@@ -16,9 +15,11 @@ function CashCurrencyBlock({ block }: { block: HoyCashPositionBlock }) {
       <p className="text-sm font-semibold text-[var(--copilot-ink)]">{title}</p>
       <div className="mt-3 space-y-2 text-sm">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-[var(--copilot-ink-muted)]">Caja actual</span>
-          <span className="font-semibold tabular-nums text-[var(--copilot-ink)]">
-            {fmtCurrencyAmount(block.currentCash, block.currency)}
+          <span className="text-[var(--copilot-ink-muted)]">{HOY_COPY.cashCollectedLabel}</span>
+          <span className="tabular-nums text-[var(--copilot-ink)]">
+            {block.collectedFromClients > 0
+              ? fmtCurrencyAmount(block.collectedFromClients, block.currency)
+              : "—"}
           </span>
         </div>
         <div className="flex items-baseline justify-between gap-2">
@@ -34,6 +35,12 @@ function CashCurrencyBlock({ block }: { block: HoyCashPositionBlock }) {
           </span>
         </div>
         <div className="flex items-baseline justify-between gap-2 border-t border-dashed border-[var(--copilot-border)] pt-2">
+          <span className="font-medium text-[var(--copilot-ink)]">Caja actual estimada</span>
+          <span className="font-semibold tabular-nums text-[var(--copilot-ink)]">
+            {fmtCurrencyAmount(block.availableCash, block.currency)}
+          </span>
+        </div>
+        <div className="flex items-baseline justify-between gap-2">
           <span className="text-[var(--copilot-ink-muted)]">Último movimiento</span>
           {block.lastMovement ? (
             <span className="max-w-[55%] truncate text-right text-xs text-[var(--copilot-ink)]">
@@ -45,11 +52,11 @@ function CashCurrencyBlock({ block }: { block: HoyCashPositionBlock }) {
         </div>
       </div>
       {!block.openingConfigured ? (
-        <p className="mt-2 text-[10px] leading-relaxed text-amber-800">
-          {HOY_COPY.cashOpeningMissing}.{" "}
+        <p className="mt-2 text-[10px] leading-relaxed text-[var(--copilot-ink-muted)]">
+          {HOY_COPY.cashOpeningDetail}.{" "}
           <Link
             href="/copilot/tesoreria?section=opening"
-            className="font-semibold text-[var(--copilot-accent)] hover:underline"
+            className="font-medium text-[var(--copilot-accent)] hover:underline"
           >
             {HOY_COPY.cashOpeningCta}
           </Link>

@@ -43,6 +43,8 @@ function makeObligation(
     relatedManualMovementId: null,
     relatedBankMovementId: null,
     relatedZetaRecordId: null,
+    recurringTemplateId: null,
+    recurringInstanceKey: null,
     notes: null,
     createdBy: null,
     createdAt: "2026-01-01T00:00:00Z",

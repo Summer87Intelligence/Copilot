@@ -12,7 +12,10 @@ import {
   recurringObligationTemplateRepositoryList,
   recurringObligationTemplateRepositoryUpdate,
 } from "@/lib/treasury/repositories/recurring-obligation-template-repository";
-import { plannedCashObligationRepositoryInsert } from "@/lib/treasury/repositories/planned-cash-obligation-repository";
+import {
+  plannedCashObligationRepositoryFindByInstanceKey,
+  plannedCashObligationRepositoryInsert,
+} from "@/lib/treasury/repositories/planned-cash-obligation-repository";
 import { mapDbError, todayYmdUtc, validationFailure } from "@/lib/treasury/treasury-db-helpers";
 import {
   buildNextOccurrence,
@@ -130,6 +133,14 @@ export async function recurringObligationGenerate(
 
   const created: PlannedCashObligation[] = [];
   for (const draft of drafts) {
+    const existing = await plannedCashObligationRepositoryFindByInstanceKey(
+      supabase,
+      workspaceId,
+      draft.recurringInstanceKey
+    );
+    if (existing.error) return mapDbError(existing.error);
+    if (existing.row) continue;
+
     const validation = validatePlannedCashObligationInput(draft.input);
     if (!validation.ok) return validationFailure(validation.issues);
     const { row, error: insertError } = await plannedCashObligationRepositoryInsert(
@@ -154,11 +165,16 @@ export async function recurringObligationGenerate(
         affects_cashflow: draft.input.affectsCashflow ?? true,
         reminder_days_before: draft.input.reminderDaysBefore ?? [7, 3, 1],
         source: draft.input.source ?? "recurring_rule",
+        recurring_template_id: draft.templateId,
+        recurring_instance_key: draft.recurringInstanceKey,
         notes: draft.input.notes ?? null,
         metadata: draft.input.metadata ?? null,
       }
     );
-    if (insertError) return mapDbError(insertError);
+    if (insertError) {
+      if (String(insertError.message ?? "").includes("recurring_instance")) continue;
+      return mapDbError(insertError);
+    }
     if (!row) continue;
     created.push(row);
 

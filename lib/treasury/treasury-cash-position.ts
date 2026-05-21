@@ -18,35 +18,46 @@ export type CashOpeningBalanceInput = {
   amount: number;
 };
 
+/** Cobrado por clientes acumulado (suma de recibos; en Hoy vía `carteraCollectedToDateFromReport`). */
+export type CollectedFromClientsInput = {
+  currency: TreasuryCurrencyCode;
+  amount: number;
+};
+
 export type CashPositionByCurrency = {
   currency: TreasuryCurrencyCode;
   openingConfigured: boolean;
   openingBalance: number;
+  /** Cobros de clientes (Zeta/Cartera), opcional — default 0. */
+  collectedFromClients: number;
   manualIncome: number;
   manualExpense: number;
   adjustments: number;
   transfersNet: number;
+  /** Caja disponible estimada (antes `currentCash`). */
+  availableCash: number;
+  /** @deprecated Usar `availableCash`. */
   currentCash: number;
   movementsCount: number;
   lastMovement: { date: string; concept: string } | null;
-  /** Egresos manuales en rango (solo si se pide en el servicio). */
   manualExpenseInRange?: number;
 };
 
 export type CalculateCashPositionInput = {
   manualCashMovements: readonly ManualCashMovement[];
   openingBalances?: readonly CashOpeningBalanceInput[];
+  collectedFromClients?: readonly CollectedFromClientsInput[];
 };
 
 function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-function openingMap(
-  balances: readonly CashOpeningBalanceInput[] | undefined
+function amountMapByCurrency(
+  rows: readonly { currency: TreasuryCurrencyCode; amount: number }[] | undefined
 ): Partial<Record<TreasuryCurrencyCode, number>> {
   const out: Partial<Record<TreasuryCurrencyCode, number>> = {};
-  for (const row of balances ?? []) {
+  for (const row of rows ?? []) {
     if (row.currency !== "UYU" && row.currency !== "USD") continue;
     if (!Number.isFinite(row.amount) || row.amount < 0) continue;
     out[row.currency] = roundMoney(row.amount);
@@ -70,13 +81,15 @@ export function manualMovementAffectsCurrentCash(
 export function calculateCashPosition(
   input: CalculateCashPositionInput
 ): CashPositionByCurrency[] {
-  const openings = openingMap(input.openingBalances);
+  const openings = amountMapByCurrency(input.openingBalances);
+  const collectedMap = amountMapByCurrency(input.collectedFromClients);
   const currencies: TreasuryCurrencyCode[] = ["UYU", "USD"];
   const movements = input.manualCashMovements;
 
   return currencies.map((currency) => {
     const openingConfigured = openings[currency] != null;
     const openingBalance = openings[currency] ?? 0;
+    const collectedFromClients = collectedMap[currency] ?? 0;
 
     let manualIncome = 0;
     let manualExpense = 0;
@@ -128,19 +141,26 @@ export function calculateCashPosition(
     adjustments = roundMoney(adjustments);
     transfersNet = roundMoney(transfersNet);
 
-    const currentCash = roundMoney(
-      openingBalance + manualIncome - manualExpense + adjustments + transfersNet
+    const availableCash = roundMoney(
+      openingBalance +
+        collectedFromClients +
+        manualIncome -
+        manualExpense +
+        adjustments +
+        transfersNet
     );
 
     return {
       currency,
       openingConfigured,
       openingBalance,
+      collectedFromClients,
       manualIncome,
       manualExpense,
       adjustments,
       transfersNet,
-      currentCash,
+      availableCash,
+      currentCash: availableCash,
       movementsCount,
       lastMovement,
     };
@@ -167,10 +187,34 @@ export function sumManualExpenseInRange(
   return roundMoney(total);
 }
 
+/** Fusiona cobrado de Cartera en posiciones ya calculadas (manual + saldo inicial). */
+export function mergeCollectedIntoCashPositions(
+  positions: readonly CashPositionByCurrency[],
+  collectedByCurrency: Partial<Record<TreasuryCurrencyCode, number>>
+): CashPositionByCurrency[] {
+  return positions.map((p) => {
+    const collectedFromClients = roundMoney(collectedByCurrency[p.currency] ?? 0);
+    const availableCash = roundMoney(
+      p.openingBalance +
+        collectedFromClients +
+        p.manualIncome -
+        p.manualExpense +
+        p.adjustments +
+        p.transfersNet
+    );
+    return {
+      ...p,
+      collectedFromClients,
+      availableCash,
+      currentCash: availableCash,
+    };
+  });
+}
+
 export function projectedCashBalance30d(
-  currentCash: number,
+  availableCash: number,
   pendingReceivables: number,
   scheduledOutflows30d: number
 ): number {
-  return roundMoney(currentCash + pendingReceivables - scheduledOutflows30d);
+  return roundMoney(availableCash + pendingReceivables - scheduledOutflows30d);
 }

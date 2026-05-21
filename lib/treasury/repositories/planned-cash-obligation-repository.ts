@@ -37,6 +37,36 @@ export async function plannedCashObligationRepositoryList(
   return { rows, error: null };
 }
 
+export async function plannedCashObligationRepositoryListByRecurringTemplate(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  templateId: string,
+  limit = 500
+): Promise<{ rows: PlannedCashObligation[]; error: { message?: string } | null }> {
+  const { data, error } = await eqTreasuryWorkspace(supabase.from(TABLE).select("*"), workspaceId)
+    .eq("recurring_template_id", templateId.trim())
+    .order("due_date", { ascending: true })
+    .limit(limit);
+  if (error) return { rows: [], error };
+  const rows = ((data ?? []) as Record<string, unknown>[]).map((row) =>
+    mapPlannedCashObligationRow(row)
+  );
+  return { rows, error: null };
+}
+
+export async function plannedCashObligationRepositoryFindByInstanceKey(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  instanceKey: string
+): Promise<{ row: PlannedCashObligation | null; error: { message?: string } | null }> {
+  const { data, error } = await eqTreasuryWorkspace(supabase.from(TABLE).select("*"), workspaceId)
+    .eq("recurring_instance_key", instanceKey.trim())
+    .maybeSingle();
+  if (error) return { row: null, error };
+  if (!data) return { row: null, error: null };
+  return { row: mapPlannedCashObligationRow(data as Record<string, unknown>), error: null };
+}
+
 export async function plannedCashObligationRepositoryGetById(
   supabase: SupabaseClient,
   workspaceId: string,

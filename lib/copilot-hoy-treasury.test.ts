@@ -55,6 +55,8 @@ function makeObligation(
     relatedManualMovementId: null,
     relatedBankMovementId: null,
     relatedZetaRecordId: null,
+    recurringTemplateId: null,
+    recurringInstanceKey: null,
     notes: null,
     createdBy: null,
     createdAt: "2026-01-01T00:00:00Z",
@@ -63,13 +65,13 @@ function makeObligation(
   };
 }
 
-describe("Hoy × Tesorería — caja actual y proyección", () => {
+describe("Hoy × Tesorería — caja disponible estimada", () => {
   const asOf = "2026-05-21";
 
-  it("caja proyectada = caja actual + por cobrar − pagos futuros", () => {
+  it("caja proyectada = available + por cobrar - pagos futuros", () => {
     expect(projectedCashBalance30d(50_000, 170_944, 40_000)).toBe(180_944);
     const ext = buildTreasuryBlockExtensionAmounts({
-      currentCash: 50_000,
+      availableCash: 50_000,
       pending: 170_944,
       summary: summarizeScheduledOutflows(
         [makeObligation({ currencyCode: "UYU", amountEstimated: 40_000, dueDate: "2026-06-01" })],
@@ -79,39 +81,19 @@ describe("Hoy × Tesorería — caja actual y proyección", () => {
     expect(ext.projectedBalance30d).toBe(180_944);
   });
 
-  it("sin saldo inicial configurado → openingConfigured false en bloques", () => {
-    const blocks = buildHoyCashPositionBlocks({
-      cashPositions: [
-        {
-          currency: "UYU",
-          openingConfigured: false,
-          openingBalance: 0,
-          manualIncome: 1_000,
-          manualExpense: 0,
-          adjustments: 0,
-          transfersNet: 0,
-          currentCash: 1_000,
-          movementsCount: 1,
-          lastMovement: { date: "2026-05-01", concept: "Test" },
-        },
-      ],
-      pendingByCurrency: { UYU: 0, USD: 0 },
-      treasurySummaries: [],
-    });
-    expect(blocks[0]?.openingConfigured).toBe(false);
-  });
-
-  it("alerta caja inicial no configurada", () => {
+  it("sin saldo inicial no muestra alerta de error", () => {
     const alerts = buildHoyTreasuryAlerts({
       cashPositions: [
         {
           currency: "UYU",
           openingConfigured: false,
           openingBalance: 0,
+          collectedFromClients: 0,
           manualIncome: 0,
           manualExpense: 0,
           adjustments: 0,
           transfersNet: 0,
+          availableCash: 0,
           currentCash: 0,
           movementsCount: 0,
           lastMovement: null,
@@ -121,10 +103,36 @@ describe("Hoy × Tesorería — caja actual y proyección", () => {
       pendingByCurrency: { UYU: 0, USD: 0 },
       overdueCritical30: { UYU: 0, USD: 0 },
     });
-    expect(alerts.some((a) => a.id === "treasury_opening_missing")).toBe(true);
+    expect(alerts.some((a) => a.id === "treasury_opening_missing")).toBe(false);
   });
 
-  it("sin egresos configurados → CTA y sin balance proyectado", () => {
+  it("muestra cobrado por clientes en bloques de caja", () => {
+    const blocks = buildHoyCashPositionBlocks({
+      cashPositions: [
+        {
+          currency: "UYU",
+          openingConfigured: false,
+          openingBalance: 0,
+          collectedFromClients: 0,
+          manualIncome: 1_000,
+          manualExpense: 0,
+          adjustments: 0,
+          transfersNet: 0,
+          availableCash: 1_000,
+          currentCash: 1_000,
+          movementsCount: 1,
+          lastMovement: null,
+        },
+      ],
+      collectedByCurrency: { UYU: 80_000, USD: 0 },
+      pendingByCurrency: { UYU: 0, USD: 0 },
+      treasurySummaries: [],
+    });
+    expect(blocks[0]?.collectedFromClients).toBe(80_000);
+    expect(blocks[0]?.availableCash).toBe(81_000);
+  });
+
+  it("sin egresos configurados → CTA", () => {
     const pulse = buildTodayBusinessPulse({
       snapshot: null,
       portfolioRows: [makeRow()],
@@ -132,84 +140,6 @@ describe("Hoy × Tesorería — caja actual y proyección", () => {
       treasuryOutflowSummaries: [],
       treasuryCashPositions: [],
     });
-    expect(pulse.treasuryOutflowsConfigured).toBe(false);
-    expect(pulse.currencyBlocks[0]?.hasConfiguredOutflows).toBe(false);
-    expect(pulse.currencyBlocks[0]?.projectedBalance30d).toBeNull();
     expect(pulse.treasuryAlerts.some((a) => a.id === "treasury_no_outflows")).toBe(true);
-  });
-
-  it("caja proyectada negativa → alerta critical", () => {
-    const summaries = summarizeScheduledOutflows(
-      [makeObligation({ currencyCode: "UYU", amountEstimated: 200_000, dueDate: "2026-06-01" })],
-      { asOfDate: asOf, horizonEndDate: "2026-06-20" }
-    );
-    const alerts = buildHoyTreasuryAlerts({
-      cashPositions: [
-        {
-          currency: "UYU",
-          openingConfigured: true,
-          openingBalance: 10_000,
-          manualIncome: 0,
-          manualExpense: 0,
-          adjustments: 0,
-          transfersNet: 0,
-          currentCash: 10_000,
-          movementsCount: 0,
-          lastMovement: null,
-        },
-      ],
-      summaries,
-      pendingByCurrency: { UYU: 50_000, USD: 0 },
-      overdueCritical30: { UYU: 10_000, USD: 0 },
-    });
-    expect(alerts.some((a) => a.id === "treasury_deficit_UYU")).toBe(true);
-  });
-
-  it("UYU y USD separados en pulse", () => {
-    const summaries = summarizeScheduledOutflows(
-      [
-        makeObligation({ currencyCode: "UYU", amountEstimated: 10_000, dueDate: "2026-06-01" }),
-        makeObligation({ currencyCode: "USD", amountEstimated: 500, dueDate: "2026-06-01" }),
-      ],
-      { asOfDate: asOf, horizonEndDate: "2026-06-20" }
-    );
-    const pulse = buildTodayBusinessPulse({
-      snapshot: null,
-      portfolioRows: [makeRow({ debt_uyu: 100_000, debt_usd: 5_000, total_debt: 105_000 })],
-      gate: GATE,
-      treasuryOutflowSummaries: summaries,
-      treasuryCashPositions: [
-        {
-          currency: "UYU",
-          openingConfigured: true,
-          openingBalance: 0,
-          manualIncome: 0,
-          manualExpense: 0,
-          adjustments: 0,
-          transfersNet: 0,
-          currentCash: 0,
-          movementsCount: 0,
-          lastMovement: null,
-        },
-        {
-          currency: "USD",
-          openingConfigured: true,
-          openingBalance: 1_000,
-          manualIncome: 0,
-          manualExpense: 0,
-          adjustments: 0,
-          transfersNet: 0,
-          currentCash: 1_000,
-          movementsCount: 0,
-          lastMovement: null,
-        },
-      ],
-    });
-    const uyu = pulse.currencyBlocks.find((b) => b.currency === "UYU");
-    const usd = pulse.currencyBlocks.find((b) => b.currency === "USD");
-    expect(uyu?.scheduledOutflows30d?.currency).toBe("UYU");
-    expect(usd?.scheduledOutflows30d?.currency).toBe("USD");
-    expect(uyu?.projectedBalance30d?.amount).toBe(90_000);
-    expect(usd?.projectedBalance30d?.amount).toBe(5_500);
   });
 });

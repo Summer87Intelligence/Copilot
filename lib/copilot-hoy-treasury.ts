@@ -1,15 +1,19 @@
 /**
- * Proyección Hoy ↔ Tesorería (caja actual + pagos programados). Puro, sin LLM.
+ * Proyección Hoy ↔ Tesorería. Puro, sin LLM.
  */
 
 import type { CarteraCurrencyTotals } from "@/lib/copilot-cartera-aging-totals";
 import type { CurrencyCode } from "@/lib/copilot-hoy-executive";
 import {
+  mergeCollectedIntoCashPositions,
+  projectedCashBalance30d,
+  type CashPositionByCurrency,
+} from "@/lib/treasury/treasury-cash-position";
+import {
   projectedBalanceCoverage,
   type CoverageStatus,
   type TreasuryOutflowSummary,
 } from "@/lib/treasury/treasury-scheduled-payments";
-import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
 
 export type { CoverageStatus };
 
@@ -22,9 +26,11 @@ export type HoyTreasuryAlert = {
 export type HoyCashPositionBlock = {
   currency: CurrencyCode;
   openingConfigured: boolean;
-  currentCash: number;
+  openingBalance: number;
+  collectedFromClients: number;
   manualIncome: number;
   manualExpense: number;
+  availableCash: number;
   lastMovement: { date: string; concept: string } | null;
   scheduledOutflows30d: number | null;
   projectedBalance30d: number | null;
@@ -41,25 +47,34 @@ function positionForCurrency(
 
 export function buildHoyCashPositionBlocks(p: {
   cashPositions?: readonly CashPositionByCurrency[];
+  collectedByCurrency?: CarteraCurrencyTotals;
   pendingByCurrency: CarteraCurrencyTotals;
   treasurySummaries: readonly TreasuryOutflowSummary[];
 }): HoyCashPositionBlock[] {
+  const raw = p.cashPositions ?? [];
+  const enriched =
+    p.collectedByCurrency && Object.keys(p.collectedByCurrency).length > 0
+      ? mergeCollectedIntoCashPositions(raw, p.collectedByCurrency)
+      : raw;
+
   const codes: CurrencyCode[] = ["UYU", "USD"];
   const blocks: HoyCashPositionBlock[] = [];
 
   for (const currency of codes) {
-    const pos = positionForCurrency(p.cashPositions, currency);
+    const pos = positionForCurrency(enriched, currency);
     const pending = p.pendingByCurrency[currency] ?? 0;
     const summary = p.treasurySummaries.find((s) => s.currency === currency) ?? null;
     const scheduled = summary?.next30Days ?? 0;
     const hasConfigured = (summary?.itemsCount ?? 0) > 0;
-    const currentCash = pos?.currentCash ?? 0;
+    const availableCash = pos?.availableCash ?? 0;
+    const collectedFromClients = pos?.collectedFromClients ?? 0;
 
     const { projected, coverageStatus } = hasConfigured
-      ? projectedBalanceCoverage(currentCash, pending, scheduled)
+      ? projectedBalanceCoverage(availableCash, pending, scheduled)
       : { projected: null as number | null, coverageStatus: "healthy" as CoverageStatus };
 
     const hasActivity =
+      collectedFromClients > 0 ||
       (pos?.movementsCount ?? 0) > 0 ||
       pos?.openingConfigured ||
       pending > 0 ||
@@ -70,9 +85,11 @@ export function buildHoyCashPositionBlocks(p: {
     blocks.push({
       currency,
       openingConfigured: pos?.openingConfigured ?? false,
-      currentCash,
+      openingBalance: pos?.openingBalance ?? 0,
+      collectedFromClients,
       manualIncome: pos?.manualIncome ?? 0,
       manualExpense: pos?.manualExpense ?? 0,
+      availableCash,
       lastMovement: pos?.lastMovement ?? null,
       scheduledOutflows30d: hasConfigured ? scheduled : null,
       projectedBalance30d: hasConfigured ? projected : null,
@@ -86,24 +103,19 @@ export function buildHoyCashPositionBlocks(p: {
 
 export function buildHoyTreasuryAlerts(p: {
   cashPositions?: readonly CashPositionByCurrency[];
+  collectedByCurrency?: CarteraCurrencyTotals;
   summaries: readonly TreasuryOutflowSummary[];
   pendingByCurrency: CarteraCurrencyTotals;
   overdueCritical30: CarteraCurrencyTotals;
-  /** Egresos manuales altos en ventana (ej. últimos 30 días), por moneda. */
   manualExpenseInPeriod?: CarteraCurrencyTotals;
 }): HoyTreasuryAlert[] {
   const alerts: HoyTreasuryAlert[] = [];
   const anyConfigured = p.summaries.some((s) => s.itemsCount > 0);
-  const anyOpeningMissing = (p.cashPositions ?? []).some((pos) => !pos.openingConfigured);
 
-  if (anyOpeningMissing) {
-    alerts.push({
-      id: "treasury_opening_missing",
-      tone: "attention",
-      message:
-        "No hay caja inicial configurada. Configurala para proyectar liquidez.",
-    });
-  }
+  const enriched =
+    p.collectedByCurrency && Object.keys(p.collectedByCurrency).length > 0
+      ? mergeCollectedIntoCashPositions(p.cashPositions ?? [], p.collectedByCurrency)
+      : p.cashPositions ?? [];
 
   if (!anyConfigured) {
     alerts.push({
@@ -117,13 +129,13 @@ export function buildHoyTreasuryAlerts(p: {
     const summary = p.summaries.find((s) => s.currency === code);
     const pending = p.pendingByCurrency[code] ?? 0;
     const scheduled = summary?.next30Days ?? 0;
-    const pos = positionForCurrency(p.cashPositions, code);
-    const currentCash = pos?.currentCash ?? 0;
+    const pos = positionForCurrency(enriched, code);
+    const availableCash = pos?.availableCash ?? 0;
     const manualExpensePeriod = p.manualExpenseInPeriod?.[code] ?? 0;
 
     if (scheduled > 0) {
       const { projected, coverageStatus } = projectedBalanceCoverage(
-        currentCash,
+        availableCash,
         pending,
         scheduled
       );
@@ -142,7 +154,7 @@ export function buildHoyTreasuryAlerts(p: {
       }
     }
 
-    if (manualExpensePeriod > 0 && currentCash > 0 && manualExpensePeriod >= currentCash * 0.5) {
+    if (manualExpensePeriod > 0 && availableCash > 0 && manualExpensePeriod >= availableCash * 0.5) {
       alerts.push({
         id: `treasury_high_manual_expense_${code}`,
         tone: "attention",
@@ -170,8 +182,8 @@ export function treasurySummaryForCurrency(
   return summaries.find((s) => s.currency === currency) ?? null;
 }
 
-/** @deprecated Usar buildHoyCashPositionBlocks — mantiene compat con currencyBlocks legacy. */
 export function buildTreasuryBlockExtensionAmounts(p: {
+  availableCash?: number;
   currentCash?: number;
   pending: number;
   summary: TreasuryOutflowSummary | null;
@@ -183,7 +195,7 @@ export function buildTreasuryBlockExtensionAmounts(p: {
 } {
   const scheduled = p.summary?.next30Days ?? 0;
   const hasConfigured = (p.summary?.itemsCount ?? 0) > 0;
-  const currentCash = p.currentCash ?? 0;
+  const availableCash = p.availableCash ?? p.currentCash ?? 0;
 
   if (!hasConfigured) {
     return {
@@ -195,7 +207,7 @@ export function buildTreasuryBlockExtensionAmounts(p: {
   }
 
   const { projected, coverageStatus } = projectedBalanceCoverage(
-    currentCash,
+    availableCash,
     p.pending,
     scheduled
   );

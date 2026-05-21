@@ -33,6 +33,7 @@ export type GeneratedObligationDraft = {
   templateId: string;
   dueDate: string;
   input: PlannedCashObligationInput;
+  recurringInstanceKey: string;
 };
 
 function parseYmd(ymd: string): Date | null {
@@ -59,18 +60,50 @@ function addDaysUtc(date: Date, days: number): Date {
   return new Date(date.getTime() + days * 86_400_000);
 }
 
-function mapCategoryToObligationType(category: string): PlannedObligationType {
-  const normalized = category.trim().toLowerCase();
+/** Normaliza etiquetas UI (español, acentos) para lookup estable. */
+export function normalizeRecurringCategoryLabel(category: string): string {
+  return category
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "");
+}
+
+/** Categorías del formulario Recurrentes → `obligation_type` en pagos futuros. */
+const RECURRING_UI_CATEGORY_TO_OBLIGATION_TYPE: Record<string, PlannedObligationType> = {
+  suscripciones: "service",
+  servicios: "service",
+  sueldos: "salary",
+  proveedores: "supplier",
+  alquiler: "rent",
+  impuestos: "tax",
+  prestamos: "loan",
+  otros: "other",
+};
+
+export function mapCategoryToObligationType(category: string): PlannedObligationType {
+  const normalized = normalizeRecurringCategoryLabel(category);
+  const exact = RECURRING_UI_CATEGORY_TO_OBLIGATION_TYPE[normalized];
+  if (exact) return exact;
+
   if (normalized.includes("bps")) return "bps";
   if (normalized.includes("dgi")) return "dgi";
   if (normalized.includes("iva")) return "iva";
-  if (normalized.includes("salario")) return "salary";
+  if (normalized.includes("salario") || normalized.includes("sueldo")) return "salary";
   if (normalized.includes("aguinaldo")) return "bonus";
   if (normalized.includes("alquiler")) return "rent";
-  if (normalized.includes("aws") || normalized.includes("openai") || normalized.includes("licencia")) {
+  if (normalized.includes("prestamo") || normalized.includes("loan")) return "loan";
+  if (
+    normalized.includes("suscripcion") ||
+    normalized.includes("servicio") ||
+    normalized.includes("aws") ||
+    normalized.includes("openai") ||
+    normalized.includes("licencia")
+  ) {
     return "service";
   }
   if (normalized.includes("proveedor")) return "supplier";
+  if (normalized.includes("impuesto")) return "tax";
   return "other";
 }
 
@@ -101,13 +134,18 @@ export function createGeneratedObligation(
   template: PlannedCashObligationTemplate,
   dueDate: string
 ): GeneratedObligationDraft {
+  const meta = template.metadata ?? {};
+  const direction =
+    meta.direction === "income" ? "inflow" : ("outflow" as const);
+  const instanceKey = `${template.id}:${dueDate}`;
+
   return {
     templateId: template.id,
     dueDate,
     input: {
       title: template.title,
       obligationType: mapCategoryToObligationType(template.category),
-      direction: "outflow",
+      direction,
       amountEstimated: template.amount,
       currencyCode: template.currency,
       dueDate,
@@ -117,10 +155,12 @@ export function createGeneratedObligation(
       source: "recurring_rule",
       metadata: {
         recurring_template_id: template.id,
+        recurring_instance_key: instanceKey,
         recurring_category: template.category,
         ...(template.metadata ?? {}),
       },
     },
+    recurringInstanceKey: instanceKey,
   };
 }
 

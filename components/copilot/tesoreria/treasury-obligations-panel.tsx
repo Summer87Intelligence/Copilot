@@ -24,7 +24,17 @@ import {
   parseMoneyInput,
   zodFieldErrors,
 } from "@/lib/treasury/treasury-form-schemas";
+import { isRecurringGeneratedObligation } from "@/lib/treasury/treasury-recurring-payments";
 import type { PlannedCashObligation, PlannedObligationType } from "@/lib/treasury/treasury-types";
+
+function obligationCategoryLabel(row: PlannedCashObligation): string {
+  const recurring = row.metadata?.recurring_category;
+  if (typeof recurring === "string" && recurring.trim()) {
+    return `${recurring.trim()} / ${row.obligationType}`;
+  }
+  const preset = OBLIGATION_PRESETS.find((p) => p.type === row.obligationType);
+  return preset?.label ?? row.obligationType;
+}
 
 const OBLIGATION_PRESETS: { type: PlannedObligationType; label: string }[] = [
   { type: "dgi", label: "DGI" },
@@ -238,8 +248,15 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
             <tbody>
               {pageItems.map((row) => (
                 <tr key={row.id}>
-                  <td className={TESORERIA_TD_CLASS}>{row.title}</td>
-                  <td className={TESORERIA_TD_CLASS}>{row.obligationType}</td>
+                  <td className={TESORERIA_TD_CLASS}>
+                    <span>{row.title}</span>
+                    {isRecurringGeneratedObligation(row) ? (
+                      <span className="ml-2 inline-block">
+                        <CopilotBadge tone="neutral">Recurrente</CopilotBadge>
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className={TESORERIA_TD_CLASS}>{obligationCategoryLabel(row)}</td>
                   <td className={TESORERIA_TD_CLASS}>
                     {formatTreasuryMoney(row.amountEstimated, row.currencyCode)}
                   </td>

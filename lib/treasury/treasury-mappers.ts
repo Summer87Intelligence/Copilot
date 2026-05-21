@@ -147,6 +147,14 @@ export function mapPlannedCashObligationRow(row: Record<string, unknown>): Plann
       row.related_bank_movement_id != null ? str(row.related_bank_movement_id) || null : null,
     relatedZetaRecordId:
       row.related_zeta_record_id != null ? str(row.related_zeta_record_id) || null : null,
+    recurringTemplateId:
+      row.recurring_template_id != null
+        ? str(row.recurring_template_id) || null
+        : null,
+    recurringInstanceKey:
+      row.recurring_instance_key != null
+        ? str(row.recurring_instance_key) || null
+        : null,
     notes: row.notes != null ? str(row.notes) || null : null,
     createdBy: row.created_by != null ? str(row.created_by) || null : null,
     createdAt: str(row.created_at),

@@ -78,6 +78,8 @@ export type TreasuryScheduledPayment = {
   paidAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Etiqueta de categoría del recurrente (ej. Suscripciones), si aplica. */
+  recurringCategoryLabel: string | null;
 };
 
 export type TreasuryOutflowSummary = {
@@ -175,16 +177,37 @@ function mapStatus(
   return "scheduled";
 }
 
+function scheduledCategoryFromRecurringMetadata(
+  row: PlannedCashObligation
+): ScheduledPaymentCategory | null {
+  const raw = row.metadata?.recurring_category;
+  if (typeof raw !== "string" || !raw.trim()) return null;
+  const label = raw.trim();
+  const map: Record<string, ScheduledPaymentCategory> = {
+    Suscripciones: "Servicios",
+    Servicios: "Servicios",
+    Sueldos: "Sueldos",
+    Proveedores: "Proveedores",
+    Alquiler: "Alquiler",
+    Impuestos: "DGI",
+    Préstamos: "Préstamos",
+    Prestamos: "Préstamos",
+    Otros: "Otros",
+  };
+  return map[label] ?? null;
+}
+
 export function mapPlannedObligationToScheduledPayment(
   row: PlannedCashObligation,
   asOfDate: string
 ): TreasuryScheduledPayment {
   const status = mapStatus(row, asOfDate);
+  const recurringCategory = scheduledCategoryFromRecurringMetadata(row);
   return {
     id: row.id,
     workspaceId: row.workspaceId,
     name: row.title,
-    category: obligationTypeToScheduledCategory(row.obligationType),
+    category: recurringCategory ?? obligationTypeToScheduledCategory(row.obligationType),
     obligationType: row.obligationType,
     currency: row.currencyCode,
     amount: paymentAmount(row),
@@ -196,6 +219,10 @@ export function mapPlannedObligationToScheduledPayment(
     paidAt: status === "paid" ? row.updatedAt : null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    recurringCategoryLabel:
+      typeof row.metadata?.recurring_category === "string"
+        ? row.metadata.recurring_category.trim() || null
+        : null,
   };
 }
 

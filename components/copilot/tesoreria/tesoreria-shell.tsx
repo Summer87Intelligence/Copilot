@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { TesoreriaControlBar } from "@/components/copilot/tesoreria/tesoreria-control-bar";
 import { TesoreriaDashboard } from "@/components/copilot/tesoreria/tesoreria-dashboard";
@@ -10,6 +10,7 @@ import { TreasuryBankPanel } from "@/components/copilot/tesoreria/treasury-bank-
 import { TreasuryFeedbackBanner } from "@/components/copilot/tesoreria/treasury-feedback-banner";
 import { TreasuryManualCashPanel } from "@/components/copilot/tesoreria/treasury-manual-cash-panel";
 import { TreasuryOpeningBalancesPanel } from "@/components/copilot/tesoreria/treasury-opening-balances-panel";
+import { TreasuryRecurringPaymentsPanel } from "@/components/copilot/tesoreria/treasury-recurring-payments-panel";
 import { TreasuryObligationsPanel } from "@/components/copilot/tesoreria/treasury-obligations-panel";
 import {
   TESORERIA_SECTIONS,
@@ -23,15 +24,34 @@ function normalizeDateInput(value: string): string {
 
 function parseTesoreriaSection(raw: string | null): TesoreriaSection | null {
   if (!raw) return null;
+  if (raw === "santander") return "bank";
   return TESORERIA_SECTIONS.some((item) => item.id === raw)
     ? (raw as TesoreriaSection)
     : null;
 }
 
 export function TesoreriaShell() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const sectionFromUrl = searchParams.get("section");
   const [section, setSection] = useState<TesoreriaSection>(
-    () => parseTesoreriaSection(searchParams.get("section")) ?? "dashboard"
+    () => parseTesoreriaSection(sectionFromUrl) ?? "dashboard"
+  );
+
+  useEffect(() => {
+    const parsed = parseTesoreriaSection(sectionFromUrl);
+    if (parsed && parsed !== section) setSection(parsed);
+  }, [sectionFromUrl, section]);
+
+  const setSectionWithUrl = useCallback(
+    (next: TesoreriaSection) => {
+      setSection(next);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("section", next);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [router, pathname, searchParams]
   );
   const [draftStart, setDraftStart] = useState("");
   const [draftEnd, setDraftEnd] = useState("");
@@ -98,7 +118,7 @@ export function TesoreriaShell() {
           <button
             key={item.id}
             type="button"
-            onClick={() => setSection(item.id)}
+            onClick={() => setSectionWithUrl(item.id)}
             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
               section === item.id
                 ? "bg-[var(--copilot-accent)] text-white shadow-sm"
@@ -115,6 +135,7 @@ export function TesoreriaShell() {
       ) : null}
       {section === "accounts" ? <TreasuryAccountsPanel workspace={workspace} /> : null}
       {section === "opening" ? <TreasuryOpeningBalancesPanel workspace={workspace} /> : null}
+      {section === "recurring" ? <TreasuryRecurringPaymentsPanel workspace={workspace} /> : null}
       {section === "manual" ? <TreasuryManualCashPanel workspace={workspace} /> : null}
       {section === "bank" ? <TreasuryBankPanel workspace={workspace} /> : null}
       {section === "obligations" ? (

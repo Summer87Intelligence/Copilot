@@ -54,7 +54,7 @@ function ProjectionCurrencyBlock({
           )}
         </div>
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-[var(--copilot-ink-muted)]">Caja actual</span>
+          <span className="text-[var(--copilot-ink-muted)]">Caja actual estimada</span>
           <span className="font-medium tabular-nums text-[var(--copilot-ink)]">
             {fmtCurrencyAmount(currentCash, block.currency)}
           </span>
@@ -92,7 +92,7 @@ export function HoyProjection30dSection({
 }) {
   if (blocks.length === 0) return null;
 
-  const cashByCurrency = new Map(cashBlocks.map((c) => [c.currency, c.currentCash]));
+  const cashByCurrency = new Map(cashBlocks.map((c) => [c.currency, c.availableCash]));
 
   return (
     <CopilotCard>

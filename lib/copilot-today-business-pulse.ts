@@ -210,6 +210,11 @@ export type BusinessPulseInput = {
   carteraOpeningByCurrency?: CarteraCurrencyTotals;
   /** Métricas de período alineadas con Cartera (facturado / cobrado / pendiente). */
   carteraPeriodMetrics?: CarteraPeriodMetrics;
+  /**
+   * Cobrado acumulado por clientes (suma de recibos) para caja actual en Hoy.
+   * Con `mode=all_outstanding` en reconciliación = acumulado histórico, independiente del rango de reportes.
+   */
+  carteraCollectedToDate?: CarteraCurrencyTotals;
   /** Bucket 0–30 por moneda (Cartera Aging). */
   carteraAgingCurrent?: CarteraCurrencyTotals;
   /** Resumen de pagos programados (Tesorería / planned_cash_obligations). */
@@ -242,6 +247,22 @@ export function carteraPeriodMetricsFromReport(currencies: unknown): CarteraPeri
   }
 
   return { billed, collected, pending };
+}
+
+/**
+ * Cobrado por clientes acumulado hasta hoy — suma de recibos (`collectedInPeriod` del motor).
+ * En `mode=all_outstanding` no hay filtro de período: todos los recibos sincronizados.
+ * No usar `portfolioResolvedAmount` (residual del período / corte de deuda).
+ */
+export function carteraCollectedToDateFromReport(currencies: unknown): CarteraCurrencyTotals {
+  const collected: CarteraCurrencyTotals = { UYU: 0, USD: 0 };
+  const index = buildCurrencyIndex(currencies);
+  for (const code of ["UYU", "USD"] as const) {
+    const m = index.get(code);
+    if (!m) continue;
+    collected[code] = Math.round(m.collectedInPeriod * 100) / 100;
+  }
+  return collected;
 }
 
 /** Extrae overdue de Aging desde el reporte de reconciliación (helper para la página Hoy). */
@@ -1110,6 +1131,8 @@ export function buildTodayBusinessPulse(input: BusinessPulseInput): TodayBusines
 
   const treasurySummaries = input.treasuryOutflowSummaries ?? [];
   const cashPositions = input.treasuryCashPositions;
+  const collectedByCurrency =
+    input.carteraCollectedToDate ?? input.carteraPeriodMetrics?.collected;
   const currencyBlocks = buildCurrencyExecutiveBlocks({
     period: input.carteraPeriodMetrics ?? null,
     portfolioPending,
@@ -1122,6 +1145,7 @@ export function buildTodayBusinessPulse(input: BusinessPulseInput): TodayBusines
 
   const cashPositionBlocks = buildHoyCashPositionBlocks({
     cashPositions,
+    collectedByCurrency,
     pendingByCurrency: portfolioPending,
     treasurySummaries,
   });
@@ -1133,6 +1157,7 @@ export function buildTodayBusinessPulse(input: BusinessPulseInput): TodayBusines
 
   const treasuryAlerts = buildHoyTreasuryAlerts({
     cashPositions,
+    collectedByCurrency,
     summaries: treasurySummaries,
     pendingByCurrency: portfolioPending,
     overdueCritical30: input.carteraAgingOverdue ?? aging.critical,

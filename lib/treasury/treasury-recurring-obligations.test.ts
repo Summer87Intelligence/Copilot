@@ -4,6 +4,7 @@ import {
   buildNextOccurrence,
   createGeneratedObligation,
   generateUpcomingObligations,
+  mapCategoryToObligationType,
   type PlannedCashObligationTemplate,
 } from "@/lib/treasury/treasury-recurring-obligations";
 
@@ -36,6 +37,28 @@ describe("treasury-recurring-obligations", () => {
     expect(draft.input.source).toBe("recurring_rule");
     expect(draft.input.obligationType).toBe("bps");
     expect(draft.dueDate).toBe("2026-05-20");
+  });
+
+  it("Suscripciones → obligation_type service", () => {
+    const draft = createGeneratedObligation(
+      template({ title: "Claude", category: "Suscripciones" }),
+      "2026-06-10"
+    );
+    expect(draft.input.obligationType).toBe("service");
+    expect(draft.input.metadata?.recurring_category).toBe("Suscripciones");
+  });
+
+  it("Servicios → obligation_type service", () => {
+    const draft = createGeneratedObligation(
+      template({ title: "Cursor cuenta 2", category: "Servicios" }),
+      "2026-06-10"
+    );
+    expect(draft.input.obligationType).toBe("service");
+    expect(draft.input.metadata?.recurring_category).toBe("Servicios");
+  });
+
+  it("categoría desconocida → other", () => {
+    expect(mapCategoryToObligationType("Categoría rara XYZ")).toBe("other");
   });
 
   it("genera próximas obligaciones dentro de ventana", () => {

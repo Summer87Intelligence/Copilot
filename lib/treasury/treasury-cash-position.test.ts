@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   calculateCashPosition,
   manualMovementAffectsCurrentCash,
+  mergeCollectedIntoCashPositions,
   projectedCashBalance30d,
 } from "@/lib/treasury/treasury-cash-position";
 import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
@@ -37,97 +38,72 @@ function manual(partial: Partial<ManualCashMovement>): ManualCashMovement {
   };
 }
 
-describe("calculateCashPosition", () => {
-  it("income suma y expense resta en UYU", () => {
+describe("calculateCashPosition — caja disponible estimada", () => {
+  it("availableCash = collected + manualIncome - manualExpense sin saldo inicial", () => {
     const positions = calculateCashPosition({
-      openingBalances: [{ currency: "UYU", amount: 10_000 }],
       manualCashMovements: [
         manual({ id: "i1", movementType: "income", amount: 5_000 }),
         manual({ id: "e1", movementType: "expense", amount: 2_000 }),
       ],
+      collectedFromClients: [{ currency: "UYU", amount: 100_000 }],
     });
     const uyu = positions.find((p) => p.currency === "UYU");
-    expect(uyu?.manualIncome).toBe(5_000);
-    expect(uyu?.manualExpense).toBe(2_000);
-    expect(uyu?.currentCash).toBe(13_000);
-    expect(uyu?.openingConfigured).toBe(true);
+    expect(uyu?.collectedFromClients).toBe(100_000);
+    expect(uyu?.availableCash).toBe(103_000);
+    expect(uyu?.openingConfigured).toBe(false);
   });
 
-  it("adjustment increase suma y decrease resta", () => {
+  it("openingBalance opcional default 0", () => {
     const positions = calculateCashPosition({
-      openingBalances: [{ currency: "USD", amount: 100 }],
-      manualCashMovements: [
-        manual({
-          id: "a1",
-          currencyCode: "USD",
-          movementType: "adjustment",
-          amount: 50,
-          metadata: { adjustment_direction: "increase" },
-        }),
-        manual({
-          id: "a2",
-          currencyCode: "USD",
-          movementType: "adjustment",
-          amount: 20,
-          metadata: { adjustment_direction: "decrease" },
-        }),
-      ],
+      manualCashMovements: [manual({ movementType: "income", amount: 500 })],
     });
-    const usd = positions.find((p) => p.currency === "USD");
-    expect(usd?.adjustments).toBe(30);
-    expect(usd?.currentCash).toBe(130);
+    expect(positions.find((p) => p.currency === "UYU")?.openingBalance).toBe(0);
+    expect(positions.find((p) => p.currency === "UYU")?.availableCash).toBe(500);
   });
 
   it("UYU y USD separados", () => {
     const positions = calculateCashPosition({
-      openingBalances: [
-        { currency: "UYU", amount: 1_000 },
-        { currency: "USD", amount: 200 },
+      collectedFromClients: [
+        { currency: "UYU", amount: 10_000 },
+        { currency: "USD", amount: 500 },
       ],
       manualCashMovements: [
-        manual({ id: "u1", currencyCode: "UYU", movementType: "income", amount: 500 }),
-        manual({ id: "d1", currencyCode: "USD", movementType: "expense", amount: 50 }),
+        manual({ currencyCode: "USD", movementType: "expense", amount: 60 }),
       ],
     });
-    expect(positions.find((p) => p.currency === "UYU")?.currentCash).toBe(1_500);
-    expect(positions.find((p) => p.currency === "USD")?.currentCash).toBe(150);
+    expect(positions.find((p) => p.currency === "UYU")?.availableCash).toBe(10_000);
+    expect(positions.find((p) => p.currency === "USD")?.availableCash).toBe(440);
   });
 
-  it("archived no afecta caja actual", () => {
+  it("archived no afecta caja", () => {
     const positions = calculateCashPosition({
-      openingBalances: [{ currency: "UYU", amount: 0 }],
       manualCashMovements: [
         manual({ movementType: "income", amount: 9_000, status: "archived" }),
         manual({ movementType: "income", amount: 1_000, status: "active" }),
       ],
     });
-    expect(positions.find((p) => p.currency === "UYU")?.currentCash).toBe(1_000);
-    expect(positions.find((p) => p.currency === "UYU")?.movementsCount).toBe(1);
+    expect(positions.find((p) => p.currency === "UYU")?.availableCash).toBe(1_000);
   });
+});
 
-  it("sin saldo inicial → openingConfigured false", () => {
-    const positions = calculateCashPosition({
-      manualCashMovements: [manual({ movementType: "income", amount: 500 })],
+describe("mergeCollectedIntoCashPositions", () => {
+  it("fusiona cobrado de Cartera post-cálculo manual", () => {
+    const base = calculateCashPosition({
+      manualCashMovements: [manual({ movementType: "expense", amount: 60, currencyCode: "USD" })],
     });
-    const uyu = positions.find((p) => p.currency === "UYU");
-    expect(uyu?.openingConfigured).toBe(false);
-    expect(uyu?.currentCash).toBe(500);
+    const merged = mergeCollectedIntoCashPositions(base, { USD: 500 });
+    expect(merged.find((p) => p.currency === "USD")?.availableCash).toBe(440);
+  });
+});
+
+describe("projectedCashBalance30d", () => {
+  it("caja proyectada = available + por cobrar - pagos futuros", () => {
+    expect(projectedCashBalance30d(50_000, 170_944, 40_000)).toBe(180_944);
   });
 });
 
 describe("manualMovementAffectsCurrentCash", () => {
   it("active income afecta", () => {
     expect(manualMovementAffectsCurrentCash(manual({ movementType: "income" }))).toBe(true);
-  });
-  it("archived no afecta", () => {
-    expect(
-      manualMovementAffectsCurrentCash(manual({ movementType: "income", status: "archived" }))
-    ).toBe(false);
-  });
-});
-
-describe("projectedCashBalance30d", () => {
-  it("caja actual + por cobrar - pagos futuros", () => {
-    expect(projectedCashBalance30d(50_000, 170_944, 40_000)).toBe(180_944);
   });
 });

@@ -212,6 +212,8 @@ export type PlannedCashObligation = {
   relatedManualMovementId: string | null;
   relatedBankMovementId: string | null;
   relatedZetaRecordId: string | null;
+  recurringTemplateId: string | null;
+  recurringInstanceKey: string | null;
   notes: string | null;
   createdBy: string | null;
   createdAt: string;

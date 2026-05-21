@@ -100,8 +100,8 @@ export function TreasuryOpeningBalancesPanel({ workspace }: Props) {
   return (
     <section className="space-y-4">
       <CopilotSectionTitle
-        title="Saldos iniciales"
-        subtitle="Este es el dinero inicial desde donde Copilot calcula tu caja actual."
+        title="Saldos iniciales opcionales"
+        subtitle="Usalos solo si ya tenías dinero disponible antes de empezar a medir con Copilot."
       />
 
       {loading ? (

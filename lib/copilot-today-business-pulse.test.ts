@@ -4,6 +4,7 @@ import type { AgingBucket } from "./copilot-financial-reconciliation";
 import {
   buildTodayBusinessPulse,
   buildBreakdown,
+  carteraCollectedToDateFromReport,
   carteraPeriodMetricsFromReport,
   fmtCurrencyAmount,
   resolveOverdueDisplaySemantics,
@@ -772,6 +773,50 @@ describe("buildTodayBusinessPulse", () => {
       });
       expect(blockFor(pulse, "UYU")?.overdueCritical30?.amount).toBe(65_469);
       expect(blockFor(pulse, "UYU")?.overdueCritical30?.amount).not.toBe(60_000);
+    });
+
+    it("caja actual usa cobrado acumulado (collectedInPeriod), no portfolioResolved del período", () => {
+      const currencies = [
+        {
+          currencyCode: "UYU",
+          issuedInPeriod: 500_000,
+          collectedInPeriod: 900_000,
+          pendingAtCutoff: 80_000,
+        },
+      ];
+      const period = carteraPeriodMetricsFromReport(currencies);
+      const toDate = carteraCollectedToDateFromReport(currencies);
+      expect(period.collected.UYU).toBe(420_000);
+      expect(toDate.UYU).toBe(900_000);
+
+      const pulse = buildTodayBusinessPulse({
+        snapshot: null,
+        portfolioRows: [
+          makeRow({ company_id: "c1", debt_uyu: 80_000, debt_usd: 0, total_debt: 80_000 }),
+        ],
+        gate: GATE_HIGH,
+        carteraPeriodMetrics: period,
+        carteraCollectedToDate: toDate,
+        treasuryCashPositions: [
+          {
+            currency: "UYU",
+            openingConfigured: false,
+            openingBalance: 0,
+            collectedFromClients: 0,
+            manualIncome: 10_000,
+            manualExpense: 0,
+            adjustments: 0,
+            transfersNet: 0,
+            availableCash: 10_000,
+            currentCash: 10_000,
+            movementsCount: 1,
+            lastMovement: null,
+          },
+        ],
+      });
+      const cash = pulse.cashPositionBlocks.find((b) => b.currency === "UYU");
+      expect(cash?.collectedFromClients).toBe(900_000);
+      expect(cash?.availableCash).toBe(910_000);
     });
 
     it("cobrado aplicado alineado con Cartera (portfolioResolved, no collectedInPeriod bruto)", () => {

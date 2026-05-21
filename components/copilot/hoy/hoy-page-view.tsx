@@ -36,6 +36,7 @@ type HoyPageViewProps = {
   carteraAgingCurrent?: CarteraCurrencyTotals;
   carteraOpeningByCurrency?: CarteraCurrencyTotals;
   carteraPeriodMetrics?: CarteraPeriodMetrics;
+  carteraCollectedToDate?: CarteraCurrencyTotals;
   treasuryOutflowSummaries?: TreasuryOutflowSummary[];
   treasuryCashPositions?: CashPositionByCurrency[];
   error: string | null;
@@ -73,6 +74,7 @@ export function HoyPageView({
   carteraAgingCurrent,
   carteraOpeningByCurrency,
   carteraPeriodMetrics,
+  carteraCollectedToDate,
   treasuryOutflowSummaries,
   treasuryCashPositions,
   error,
@@ -92,6 +94,7 @@ export function HoyPageView({
         carteraAgingCurrent,
         carteraOpeningByCurrency,
         carteraPeriodMetrics,
+        carteraCollectedToDate,
         treasuryOutflowSummaries,
         treasuryCashPositions,
       }),
@@ -103,6 +106,7 @@ export function HoyPageView({
       carteraAgingCurrent,
       carteraOpeningByCurrency,
       carteraPeriodMetrics,
+      carteraCollectedToDate,
       treasuryOutflowSummaries,
       treasuryCashPositions,
     ]
