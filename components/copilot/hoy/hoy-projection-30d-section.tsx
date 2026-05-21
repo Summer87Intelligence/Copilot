@@ -4,7 +4,13 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { CopilotCard } from "@/components/copilot/copilot-ui";
-import type { CurrencyExecutiveBlock, HoyTreasuryAlert } from "@/lib/copilot-today-business-pulse";
+import type {
+  CurrencyExecutiveBlock,
+  HoyCashPositionBlock,
+  HoyTreasuryAlert,
+} from "@/lib/copilot-today-business-pulse";
+import { HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
+import { fmtCurrencyAmount } from "@/lib/copilot-today-business-pulse";
 
 import { MoneyValue } from "./hoy-money-value";
 
@@ -17,7 +23,13 @@ function balanceTone(
   return "positive";
 }
 
-function ProjectionCurrencyBlock({ block }: { block: CurrencyExecutiveBlock }) {
+function ProjectionCurrencyBlock({
+  block,
+  currentCash,
+}: {
+  block: CurrencyExecutiveBlock;
+  currentCash: number;
+}) {
   const title = block.currency === "USD" ? "Dólares (USD)" : "Pesos (UYU)";
   const balTone = balanceTone(block);
 
@@ -41,8 +53,16 @@ function ProjectionCurrencyBlock({ block }: { block: CurrencyExecutiveBlock }) {
             <span className="text-xs text-[var(--copilot-ink-muted)]">Sin egresos configurados</span>
           )}
         </div>
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-[var(--copilot-ink-muted)]">Caja actual</span>
+          <span className="font-medium tabular-nums text-[var(--copilot-ink)]">
+            {fmtCurrencyAmount(currentCash, block.currency)}
+          </span>
+        </div>
         <div className="flex items-baseline justify-between gap-2 border-t border-dashed border-[var(--copilot-border)] pt-2">
-          <span className="font-medium text-[var(--copilot-ink)]">Balance proyectado</span>
+          <span className="font-medium text-[var(--copilot-ink)]">
+            {HOY_COPY.projectedBalanceLabel}
+          </span>
           {block.projectedBalance30d ? (
             <MoneyValue amount={block.projectedBalance30d} tone={balTone} />
           ) : (
@@ -52,7 +72,7 @@ function ProjectionCurrencyBlock({ block }: { block: CurrencyExecutiveBlock }) {
       </div>
       {block.hasConfiguredOutflows ? (
         <p className="mt-2 text-[10px] leading-relaxed text-[var(--copilot-ink-muted)]">
-          Por cobrar menos pagos programados. No es caja real.
+          {HOY_COPY.projectedBalanceHelper}
         </p>
       ) : null}
     </div>
@@ -61,20 +81,26 @@ function ProjectionCurrencyBlock({ block }: { block: CurrencyExecutiveBlock }) {
 
 export function HoyProjection30dSection({
   blocks,
+  cashBlocks,
   alerts,
   configured,
 }: {
   blocks: CurrencyExecutiveBlock[];
+  cashBlocks: HoyCashPositionBlock[];
   alerts: HoyTreasuryAlert[];
   configured: boolean;
 }) {
   if (blocks.length === 0) return null;
 
+  const cashByCurrency = new Map(cashBlocks.map((c) => [c.currency, c.currentCash]));
+
   return (
     <CopilotCard>
-      <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">Próximos 30 días</h2>
+      <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">
+        {HOY_COPY.projection30Title}
+      </h2>
       <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-        Cruce de deuda activa con pagos programados en Tesorería.
+        Caja actual, por cobrar y pagos programados en Tesorería.
       </p>
 
       {!configured ? (
@@ -94,7 +120,11 @@ export function HoyProjection30dSection({
         <>
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             {blocks.map((block) => (
-              <ProjectionCurrencyBlock key={block.currency} block={block} />
+              <ProjectionCurrencyBlock
+                key={block.currency}
+                block={block}
+                currentCash={cashByCurrency.get(block.currency) ?? 0}
+              />
             ))}
           </div>
           {alerts.length > 0 ? (

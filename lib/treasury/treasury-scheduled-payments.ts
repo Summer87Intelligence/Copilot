@@ -8,13 +8,17 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   ScheduledPaymentCancelBody,
   ScheduledPaymentCreateBody,
+  ScheduledPaymentMarkPaidBody,
   ScheduledPaymentUpdateBody,
 } from "@/lib/api/schemas/treasury-scheduled-payment-bodies";
 import { protoCrudResult, type ProtoCrudResult } from "@/lib/copilot-proto-crud-types";
 import {
   plannedCashObligationRepositoryDelete,
   plannedCashObligationRepositoryGetById,
+  plannedCashObligationRepositoryUpdate,
 } from "@/lib/treasury/repositories/planned-cash-obligation-repository";
+import { manualCashMovementCreate } from "@/lib/treasury/services/manual-cash-movement-service";
+import { todayYmdUtc } from "@/lib/treasury/treasury-db-helpers";
 import {
   plannedCashObligationCancel,
   plannedCashObligationCreate,
@@ -311,15 +315,17 @@ export function scheduledOutflowsThroughDate(
 export type CoverageStatus = "healthy" | "attention" | "critical";
 
 export function projectedBalanceCoverage(
-  pending: number,
+  currentCash: number,
+  pendingReceivables: number,
   scheduledOutflows: number
 ): { projected: number; coverageStatus: CoverageStatus } {
-  const projected = roundMoney(pending - scheduledOutflows);
+  const projected = roundMoney(currentCash + pendingReceivables - scheduledOutflows);
   if (scheduledOutflows <= 0) {
-    return { projected, coverageStatus: pending > 0 ? "healthy" : "healthy" };
+    return { projected, coverageStatus: projected >= 0 ? "healthy" : "critical" };
   }
   if (projected < 0) return { projected, coverageStatus: "critical" };
-  const ratio = pending > 0 ? projected / pending : 0;
+  const base = currentCash + pendingReceivables;
+  const ratio = base > 0 ? projected / base : 0;
   if (ratio < 0.15) return { projected, coverageStatus: "attention" };
   return { projected, coverageStatus: "healthy" };
 }
@@ -433,20 +439,78 @@ export async function updateScheduledPayment(
 export async function markScheduledPaymentAsPaid(
   supabase: SupabaseClient,
   tenantCompanyId: string,
-  id: string
+  id: string,
+  body?: ScheduledPaymentMarkPaidBody
 ): Promise<ProtoCrudResult<TreasuryScheduledPayment>> {
+  const workspaceId = resolveTreasuryWorkspaceId(tenantCompanyId);
+  const trimmedId = id?.trim();
+  if (!trimmedId) {
+    return protoCrudResult.fail("VALIDATION", "Falta el id del pago.");
+  }
+
+  const existing = await plannedCashObligationRepositoryGetById(
+    supabase,
+    workspaceId,
+    trimmedId
+  );
+  if (existing.error) return mapDbError(existing.error);
+  if (!existing.row) {
+    return protoCrudResult.fail("NOT_FOUND", "Pago programado no encontrado.");
+  }
+
+  if (body?.register_cash_movement && existing.row.relatedManualMovementId) {
+    return protoCrudResult.fail(
+      "VALIDATION",
+      "Este pago ya tiene un movimiento de caja vinculado."
+    );
+  }
+
   const result = await plannedCashObligationMarkPaid(
     supabase,
     tenantCompanyId,
-    id,
-    undefined,
+    trimmedId,
+    body?.amount_final,
     undefined
   );
   if (!result.ok) return result;
+
+  let obligation = result.data;
+
+  if (body?.register_cash_movement && !obligation.relatedManualMovementId) {
+    const finalAmount = obligation.amountFinal ?? obligation.amountEstimated;
+    const movement = await manualCashMovementCreate(supabase, tenantCompanyId, {
+      movement_type: "expense",
+      ledger_type: "cash",
+      source: "manual",
+      concept: obligation.title,
+      category: obligation.obligationType,
+      amount: finalAmount,
+      currency_code: obligation.currencyCode,
+      movement_date: todayYmdUtc(),
+      account_id: obligation.expectedAccountId,
+      affects_cashflow: true,
+      notes: `Egreso por pago programado: ${obligation.title}`,
+      metadata: { planned_obligation_id: trimmedId },
+    });
+    if (!movement.ok) return movement;
+
+    const linked = await plannedCashObligationRepositoryUpdate(
+      supabase,
+      workspaceId,
+      trimmedId,
+      { related_manual_movement_id: movement.data.id }
+    );
+    if (linked.error) return mapDbError(linked.error);
+    if (linked.row) obligation = linked.row;
+  }
+
   const asOf = new Date().toISOString().slice(0, 10);
+  const message = body?.register_cash_movement
+    ? "Pago marcado como pagado y registrado en caja manual."
+    : result.message;
   return protoCrudResult.ok(
-    mapPlannedObligationToScheduledPayment(result.data, asOf),
-    result.message
+    mapPlannedObligationToScheduledPayment(obligation, asOf),
+    message
   );
 }
 

@@ -255,7 +255,17 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
                       <CopilotGhostButton type="button" onClick={() => void workspace.confirmObligation(row.id)}>
                         Confirmar
                       </CopilotGhostButton>
-                      <CopilotGhostButton type="button" onClick={() => void workspace.paidObligation(row.id)}>
+                      <CopilotGhostButton
+                        type="button"
+                        onClick={() => {
+                          const register = window.confirm(
+                            "¿Registrar este pago también como egreso real de caja?"
+                          );
+                          void workspace.paidObligation(row.id, {
+                            registerCashMovement: register,
+                          });
+                        }}
+                      >
                         Pagada
                       </CopilotGhostButton>
                       <CopilotGhostButton type="button" onClick={() => void workspace.cancelObligation(row.id)}>

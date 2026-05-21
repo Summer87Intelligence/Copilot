@@ -140,12 +140,12 @@ describe("scheduledOutflowsThroughDate", () => {
 
 describe("projectedBalanceCoverage", () => {
   it("balance negativo → critical", () => {
-    expect(projectedBalanceCoverage(100_000, 150_000).coverageStatus).toBe("critical");
-    expect(projectedBalanceCoverage(100_000, 150_000).projected).toBe(-50_000);
+    expect(projectedBalanceCoverage(0, 100_000, 150_000).coverageStatus).toBe("critical");
+    expect(projectedBalanceCoverage(0, 100_000, 150_000).projected).toBe(-50_000);
   });
 
-  it("cubre egresos → healthy", () => {
-    expect(projectedBalanceCoverage(170_944, 50_000).coverageStatus).toBe("healthy");
+  it("cubre egresos con caja actual → healthy", () => {
+    expect(projectedBalanceCoverage(20_000, 170_944, 50_000).coverageStatus).toBe("healthy");
   });
 });
 

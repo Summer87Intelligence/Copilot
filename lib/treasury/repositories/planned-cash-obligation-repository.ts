@@ -78,3 +78,16 @@ export async function plannedCashObligationRepositoryUpdate(
   if (!data) return { row: null, error: null };
   return { row: mapPlannedCashObligationRow(data as Record<string, unknown>), error: null };
 }
+
+export async function plannedCashObligationRepositoryDelete(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  id: string
+): Promise<{ deleted: boolean; error: { message?: string } | null }> {
+  const { data, error } = await eqTreasuryWorkspace(supabase.from(TABLE).delete(), workspaceId)
+    .eq("id", id.trim())
+    .select("id")
+    .maybeSingle();
+  if (error) return { deleted: false, error };
+  return { deleted: data != null, error: null };
+}

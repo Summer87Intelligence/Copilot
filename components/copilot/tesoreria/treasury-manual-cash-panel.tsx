@@ -20,6 +20,7 @@ import {
   zodFieldErrors,
 } from "@/lib/treasury/treasury-form-schemas";
 import { isManualCashMovementDeletable } from "@/lib/treasury/treasury-manual-cash-movements";
+import { manualMovementAffectsCurrentCash } from "@/lib/treasury/treasury-cash-position";
 import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
 
 type Props = {
@@ -170,7 +171,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
     <section className="space-y-4">
       <CopilotSectionTitle
         title="Caja manual"
-        subtitle="Ingresos, egresos y transferencias internas."
+        subtitle="Movimientos reales de dinero: ingresos, egresos, ajustes y transferencias."
         action={
           <CopilotPrimaryButton type="button" onClick={openCreate}>
             <Plus className="mr-2 h-4 w-4" />
@@ -212,9 +213,11 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                 <th className={TESORERIA_TH_CLASS}>Fecha</th>
                 <th className={TESORERIA_TH_CLASS}>Concepto</th>
                 <th className={TESORERIA_TH_CLASS}>Tipo</th>
+                <th className={TESORERIA_TH_CLASS}>Moneda</th>
                 <th className={TESORERIA_TH_CLASS}>Monto</th>
                 <th className={TESORERIA_TH_CLASS}>Cuenta</th>
                 <th className={TESORERIA_TH_CLASS}>Estado</th>
+                <th className={TESORERIA_TH_CLASS}>Afecta caja</th>
                 <th className={TESORERIA_TH_CLASS}>Conciliado</th>
                 <th className={TESORERIA_TH_CLASS}>Acciones</th>
               </tr>
@@ -225,6 +228,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                   <td className={TESORERIA_TD_CLASS}>{row.movementDate}</td>
                   <td className={TESORERIA_TD_CLASS}>{row.concept}</td>
                   <td className={TESORERIA_TD_CLASS}>{row.movementType}</td>
+                  <td className={TESORERIA_TD_CLASS}>{row.currencyCode}</td>
                   <td className={TESORERIA_TD_CLASS}>
                     {formatTreasuryMoney(row.amount, row.currencyCode)}
                   </td>
@@ -235,6 +239,11 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                     <CopilotBadge tone={row.status === "active" ? "success" : "neutral"}>
                       {row.status}
                     </CopilotBadge>
+                  </td>
+                  <td className={TESORERIA_TD_CLASS}>
+                    {manualMovementAffectsCurrentCash(row, workspace.manualMovements)
+                      ? "Sí"
+                      : "No"}
                   </td>
                   <td className={TESORERIA_TD_CLASS}>
                     {row.reconciled ? "Sí" : "No"}

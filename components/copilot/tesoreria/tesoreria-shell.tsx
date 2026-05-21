@@ -9,6 +9,7 @@ import { TreasuryAccountsPanel } from "@/components/copilot/tesoreria/treasury-a
 import { TreasuryBankPanel } from "@/components/copilot/tesoreria/treasury-bank-panel";
 import { TreasuryFeedbackBanner } from "@/components/copilot/tesoreria/treasury-feedback-banner";
 import { TreasuryManualCashPanel } from "@/components/copilot/tesoreria/treasury-manual-cash-panel";
+import { TreasuryOpeningBalancesPanel } from "@/components/copilot/tesoreria/treasury-opening-balances-panel";
 import { TreasuryObligationsPanel } from "@/components/copilot/tesoreria/treasury-obligations-panel";
 import {
   TESORERIA_SECTIONS,
@@ -113,6 +114,7 @@ export function TesoreriaShell() {
         <TesoreriaDashboard workspace={workspace} currencyFilter={currency} asOfDate={asOfDate} />
       ) : null}
       {section === "accounts" ? <TreasuryAccountsPanel workspace={workspace} /> : null}
+      {section === "opening" ? <TreasuryOpeningBalancesPanel workspace={workspace} /> : null}
       {section === "manual" ? <TreasuryManualCashPanel workspace={workspace} /> : null}
       {section === "bank" ? <TreasuryBankPanel workspace={workspace} /> : null}
       {section === "obligations" ? (

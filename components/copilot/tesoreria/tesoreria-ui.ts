@@ -15,6 +15,7 @@ export const TESORERIA_PAGE_SIZE = 10;
 export type TesoreriaSection =
   | "dashboard"
   | "accounts"
+  | "opening"
   | "manual"
   | "bank"
   | "obligations";
@@ -22,7 +23,8 @@ export type TesoreriaSection =
 export const TESORERIA_SECTIONS: { id: TesoreriaSection; label: string }[] = [
   { id: "dashboard", label: "Dashboard" },
   { id: "accounts", label: "Cuentas" },
+  { id: "opening", label: "Saldos iniciales" },
   { id: "manual", label: "Caja manual" },
   { id: "bank", label: "Conciliación Santander" },
-  { id: "obligations", label: "Obligaciones" },
+  { id: "obligations", label: "Pagos futuros" },
 ];

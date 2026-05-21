@@ -49,6 +49,7 @@ export const TREASURY_API = {
   confirmObligation: (id: string) => `/api/copilot/treasury/planned-cash-obligations/${id}/confirm`,
   paidObligation: (id: string) => `/api/copilot/treasury/planned-cash-obligations/${id}/paid`,
   cancelObligation: (id: string) => `/api/copilot/treasury/planned-cash-obligations/${id}/cancel`,
+  scheduledPayment: (id: string) => `/api/copilot/treasury/scheduled-payments/${id}`,
   upcomingObligations: "/api/copilot/treasury/planned-cash-obligations/upcoming",
   overdueObligations: "/api/copilot/treasury/planned-cash-obligations/overdue",
   importBankMovements: "/api/copilot/treasury/bank-reconciliation-movements/import",
@@ -209,6 +210,11 @@ export async function treasuryApiPatch<T>(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+  return readJson(res);
+}
+
+export async function treasuryApiDelete<T>(path: string): Promise<TreasuryApiResult<T>> {
+  const res = await copilotApiFetch(path, { method: "DELETE" });
   return readJson(res);
 }
 

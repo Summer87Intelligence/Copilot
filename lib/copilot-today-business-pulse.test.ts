@@ -18,8 +18,11 @@ import type { ClientPortfolioRow } from "./copilot-clients-portfolio";
 import {
   CURRENCY_METRIC_LABELS,
   CURRENCY_METRIC_TONES,
+  COLLECTION_EXCEEDS_BILLING_NOTE,
   HOY_COPY,
+  HOY_PAGE,
   HOY_UI,
+  shouldShowCollectionExceedsBillingNote,
 } from "./copilot-hoy-ui-contract";
 
 // ─── Snapshot mocks ───────────────────────────────────────────────────────────
@@ -194,7 +197,7 @@ describe("buildTodayBusinessPulse", () => {
     it("headline distingue deudores activos de señales de demora", () => {
       const { headline, clientCounts } = buildTodayBusinessPulse(input);
       expect(headline.toLowerCase()).toContain("deuda activa");
-      expect(headline.toLowerCase()).toContain("vencimientos o señales de demora");
+      expect(headline.toLowerCase()).toContain("atraso o señales de demora");
       expect(headline.toLowerCase()).not.toContain("prioritario");
       expect(clientCounts.debtorClients).toBe(2);
       expect(clientCounts.attentionClients).toBeGreaterThan(0);
@@ -611,7 +614,7 @@ describe("buildTodayBusinessPulse", () => {
       expect(pulse.allDebtorRows.map((r) => r.currency).sort()).toEqual(["USD", "UYU"]);
     });
 
-    it("priorityCollections es subconjunto de allDebtorRows", () => {
+    it("allDebtorRows incluye todos los deudores; UI muestra 8 al inicio", () => {
       const pulse = buildTodayBusinessPulse({
         snapshot: null,
         portfolioRows: Array.from({ length: 12 }, (_, i) =>
@@ -623,6 +626,7 @@ describe("buildTodayBusinessPulse", () => {
       expect(pulse.allDebtorRows.length).toBe(12);
       expect(pulse.clientCounts.debtorClients).toBe(12);
       expect(pulse.clientCounts.debtorRows).toBe(12);
+      expect(HOY_UI.initialDebtorTableRows).toBe(8);
     });
 
     it("debtorClients y attentionClients son conceptos distintos", () => {
@@ -642,8 +646,8 @@ describe("buildTodayBusinessPulse", () => {
       });
       expect(pulse.clientCounts.debtorClients).toBe(2);
       expect(pulse.clientCounts.attentionClients).toBe(1);
-      expect(pulse.headline).toContain("2 clientes con deuda activa");
-      expect(pulse.headline).toContain("vencimientos o señales de demora");
+      expect(pulse.headline).toContain("Hay 2 clientes con deuda activa");
+      expect(pulse.headline).toContain("atraso o señales de demora");
     });
 
     it("attentionClients incluye motivos y montos por moneda", () => {
@@ -770,42 +774,59 @@ describe("buildTodayBusinessPulse", () => {
       expect(blockFor(pulse, "UYU")?.overdueCritical30?.amount).not.toBe(60_000);
     });
 
-    it("facturado neto resta notas de crédito (mismo normalizador que Cartera)", () => {
+    it("cobrado aplicado alineado con Cartera (portfolioResolved, no collectedInPeriod bruto)", () => {
       const metrics = carteraPeriodMetricsFromReport([
         {
           currencyCode: "UYU",
           issuedInPeriod: 3_524_219.54,
           creditNoteAmount: 156_614.11,
-          collectedInPeriod: 3_392_658,
-          pendingAtCutoff: 185_584,
+          collectedInPeriod: 3_407_298,
+          pendingAtCutoff: 170_944,
         },
         {
           currencyCode: "USD",
           issuedInPeriod: 82_944.2,
           creditNoteAmount: 19_214.6,
           collectedInPeriod: 57_151,
-          pendingAtCutoff: 6_725,
+          pendingAtCutoff: 6_725.21,
         },
       ]);
       expect(metrics.billed.UYU).toBeCloseTo(3_367_605.43, 0);
       expect(metrics.billed.USD).toBeCloseTo(63_729.6, 0);
+      expect(metrics.collected.UYU).toBeCloseTo(3_196_661.43, 0);
+      expect(metrics.collected.USD).toBeCloseTo(57_004.39, 0);
+      expect(metrics.pending.UYU).toBeCloseTo(170_944, 0);
+      expect(metrics.pending.USD).toBeCloseTo(6_725.21, 0);
+
       const pulse = buildTodayBusinessPulse({
         snapshot: null,
         portfolioRows: [
-          makeRow({ company_id: "c1", debt_uyu: 185_584, debt_usd: 6_725, total_debt: 192_309 }),
+          makeRow({ company_id: "c1", debt_uyu: 170_944, debt_usd: 6_725.21, total_debt: 177_669.21 }),
         ],
         gate: GATE_HIGH,
         carteraPeriodMetrics: metrics,
       });
-      expect(blockFor(pulse, "UYU")?.billedPeriod?.amount).toBeCloseTo(3_367_605.43, 0);
-      expect(blockFor(pulse, "USD")?.collectedPeriod?.amount).toBe(57_151);
+      const uyu = blockFor(pulse, "UYU");
+      const usd = blockFor(pulse, "USD");
+      expect(uyu?.collectedPeriod?.amount).toBeCloseTo(3_196_661.43, 0);
+      expect(usd?.collectedPeriod?.amount).toBeCloseTo(57_004.39, 0);
+      expect(uyu?.collectionRate).toBeCloseTo(0.949, 2);
+      expect(usd?.collectionRate).toBeCloseTo(0.894, 2);
+      expect(shouldShowCollectionExceedsBillingNote(uyu?.billedPeriod?.amount, uyu?.collectedPeriod?.amount)).toBe(
+        false
+      );
+      expect(shouldShowCollectionExceedsBillingNote(usd?.billedPeriod?.amount, usd?.collectedPeriod?.amount)).toBe(
+        false
+      );
     });
 
-    it("facturado/cobrado del período vienen de carteraPeriodMetrics", () => {
+    it("facturado/cobrado del período vienen de carteraPeriodMetrics (cobrado aplicado)", () => {
       const metrics = carteraPeriodMetricsFromReport([
         { currencyCode: "UYU", issuedInPeriod: 500_000, collectedInPeriod: 120_000, pendingAtCutoff: 80_000 },
         { currencyCode: "USD", issuedInPeriod: 20_000, collectedInPeriod: 8_000, pendingAtCutoff: 5_000 },
       ]);
+      expect(metrics.collected.UYU).toBe(420_000);
+      expect(metrics.collected.USD).toBe(15_000);
       const pulse = buildTodayBusinessPulse({
         snapshot: null,
         portfolioRows: [
@@ -815,7 +836,8 @@ describe("buildTodayBusinessPulse", () => {
         carteraPeriodMetrics: metrics,
       });
       expect(blockFor(pulse, "UYU")?.billedPeriod?.amount).toBe(500_000);
-      expect(blockFor(pulse, "USD")?.collectedPeriod?.amount).toBe(8_000);
+      expect(blockFor(pulse, "UYU")?.collectedPeriod?.amount).toBe(420_000);
+      expect(blockFor(pulse, "USD")?.collectedPeriod?.amount).toBe(15_000);
     });
 
     it("montos formateados con prefijo de moneda explícito", () => {
@@ -853,18 +875,30 @@ describe("buildTodayBusinessPulse", () => {
       expect(pulse.currencyBlocks.length).toBeGreaterThan(0);
     });
 
-    it("label principal es Facturado neto, no bruto", () => {
-      expect(CURRENCY_METRIC_LABELS.billed).toBe("Facturado neto");
+    it("label principal es Facturado neto del período, no bruto", () => {
+      expect(CURRENCY_METRIC_LABELS.billed).toBe("Facturado neto del período");
       expect(CURRENCY_METRIC_LABELS.billed.toLowerCase()).not.toContain("bruto");
     });
 
-    it("labels: Por cobrar y Vencido +30 días (no Crítico ni prioritario)", () => {
+    it("labels: período, Por cobrar, Atrasado +30 (no Crítico ni prioritario)", () => {
+      expect(CURRENCY_METRIC_LABELS.billed).toBe("Facturado neto del período");
+      expect(CURRENCY_METRIC_LABELS.collected).toBe("Cobrado en el período");
       expect(CURRENCY_METRIC_LABELS.pending).toBe("Por cobrar");
-      expect(CURRENCY_METRIC_LABELS.overdue30).toBe("Vencido +30 días");
+      expect(CURRENCY_METRIC_LABELS.overdue30).toBe("Atrasado +30 días");
       expect(CURRENCY_METRIC_LABELS.billed).not.toMatch(/bruto/i);
-      expect(HOY_COPY.debtorsSectionTitle).toBe("Deudores a revisar");
+      expect(HOY_COPY.debtorsSectionTitle).toBe("Clientes con deuda");
       expect(HOY_COPY.debtorsSectionTitle.toLowerCase()).not.toContain("prioritario");
+      expect(HOY_PAGE.title).toBe("Hoy en la empresa");
+      expect(HOY_PAGE.title).not.toMatch(/pulso/i);
       expect(HOY_UI.showRecommendedActions).toBe(false);
+      expect(HOY_UI.showPendingSection).toBe(false);
+      expect(HOY_UI.initialDebtorTableRows).toBe(8);
+    });
+
+    it("cobrado mayor que facturado: nota explicativa, no error", () => {
+      expect(shouldShowCollectionExceedsBillingNote(100, 150)).toBe(true);
+      expect(shouldShowCollectionExceedsBillingNote(100, 80)).toBe(false);
+      expect(COLLECTION_EXCEEDS_BILLING_NOTE).toContain("facturas anteriores");
     });
 
     it("semántica de color: facturado neutral, cobrado positive, pendiente warning, +30 danger", () => {
@@ -880,6 +914,7 @@ describe("buildTodayBusinessPulse", () => {
         portfolioRows: [],
         gate: { confidence: "low", coverage: "partial", recommendations_enabled: false },
       });
+      expect(pulse.dataWarning).toContain("datos secundarios");
       expect(pulse.dataWarning).toContain("saldos principales");
       expect(pulse.dataWarning?.toLowerCase()).not.toMatch(/^actualización pendiente —/);
     });

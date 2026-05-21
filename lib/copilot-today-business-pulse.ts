@@ -22,6 +22,13 @@ import {
 import { buildCurrencyIndex } from "@/lib/copilot-cartera-cards-source";
 import type { ClientPortfolioRow } from "@/lib/copilot-clients-portfolio";
 import {
+  buildHoyCashPositionBlocks,
+  buildHoyTreasuryAlerts,
+  type HoyCashPositionBlock,
+  type HoyTreasuryAlert,
+} from "@/lib/copilot-hoy-treasury";
+import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
+import {
   buildAttentionClientsSummary,
   clientQualifiesForAttention,
   countActiveDebtorClients,
@@ -38,6 +45,7 @@ import {
   type DebtorCollectionRow,
   type FinancialSituationBlock,
 } from "@/lib/copilot-hoy-executive";
+import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -140,6 +148,11 @@ export type TodayBusinessPulse = {
   last30DaysSummary: SummaryItem[];
   recommendedActions: RecommendedAction[];
   dataWarning: string | null;
+  /** Alertas ejecutivas cruce deuda ↔ egresos (sin LLM). */
+  treasuryAlerts: HoyTreasuryAlert[];
+  treasuryOutflowsConfigured: boolean;
+  /** Caja actual + proyección por moneda (Tesorería manual + saldos iniciales). */
+  cashPositionBlocks: HoyCashPositionBlock[];
 };
 
 export type {
@@ -149,6 +162,8 @@ export type {
   FinancialSituationBlock,
   CarteraPeriodMetrics,
 } from "@/lib/copilot-hoy-executive";
+
+export type { HoyCashPositionBlock, HoyTreasuryAlert } from "@/lib/copilot-hoy-treasury";
 
 export {
   countActiveDebtorClients,
@@ -197,11 +212,21 @@ export type BusinessPulseInput = {
   carteraPeriodMetrics?: CarteraPeriodMetrics;
   /** Bucket 0–30 por moneda (Cartera Aging). */
   carteraAgingCurrent?: CarteraCurrencyTotals;
+  /** Resumen de pagos programados (Tesorería / planned_cash_obligations). */
+  treasuryOutflowSummaries?: TreasuryOutflowSummary[];
+  /** Posición de caja actual por moneda (movimientos manuales + saldo inicial). */
+  treasuryCashPositions?: readonly CashPositionByCurrency[];
   /** Injectable para tests — YYYY-MM-DD. */
   today?: string;
 };
 
-/** Métricas por moneda desde `report.currencies` — mismo normalizador que Cartera. */
+/**
+ * Métricas por moneda desde `report.currencies` — mismo normalizador que Cartera.
+ *
+ * `collected` = **Cobrado aplicado** (`portfolioResolvedAmount` en Cartera), no
+ * `collectedInPeriod` (suma bruta de recibos en período). Fórmula:
+ * max(0, issuedInPeriod − creditNoteAmount − pendingAtCutoff).
+ */
 export function carteraPeriodMetricsFromReport(currencies: unknown): CarteraPeriodMetrics {
   const billed: CarteraCurrencyTotals = { UYU: 0, USD: 0 };
   const collected: CarteraCurrencyTotals = { UYU: 0, USD: 0 };
@@ -212,7 +237,7 @@ export function carteraPeriodMetricsFromReport(currencies: unknown): CarteraPeri
     const m = index.get(code);
     if (!m) continue;
     billed[code] = Math.round(m.issuedInPeriodNet * 100) / 100;
-    collected[code] = Math.round(m.collectedInPeriod * 100) / 100;
+    collected[code] = Math.round(m.portfolioResolvedAmount * 100) / 100;
     pending[code] = Math.round(m.pendingAtCutoff * 100) / 100;
   }
 
@@ -471,11 +496,11 @@ export function buildExecutiveHeadline(
   if (attentionClients > 0) {
     const demora =
       attentionClients === 1
-        ? "tiene vencimientos o señales de demora"
-        : "tienen vencimientos o señales de demora";
-    return `${debtorClients} ${debtorClients === 1 ? "cliente" : "clientes"} con deuda activa. ${attentionClients} ${demora}.`;
+        ? "tiene atraso o señales de demora"
+        : "tienen atraso o señales de demora";
+    return `Hay ${debtorClients} ${debtorClients === 1 ? "cliente" : "clientes"} con deuda activa. ${attentionClients} ${demora}.`;
   }
-  return `${debtorClients} ${debtorClients === 1 ? "cliente" : "clientes"} con deuda activa.`;
+  return `Hay ${debtorClients} ${debtorClients === 1 ? "cliente" : "clientes"} con deuda activa.`;
 }
 
 export function buildHeroSubline(
@@ -1033,7 +1058,7 @@ function buildRecommendedActions(p: {
 
 function buildDataWarning(gate: BusinessPulseGate, isTruncated: boolean): string | null {
   if (gate.confidence === "low")
-    return "Algunos datos están pendientes de actualización. Los saldos principales están disponibles.";
+    return "Algunos datos secundarios están pendientes de actualización. Los saldos principales están disponibles.";
   if (isTruncated)
     return "Algunos registros están siendo procesados. Los números pueden ser estimativos.";
   return null;
@@ -1083,13 +1108,37 @@ export function buildTodayBusinessPulse(input: BusinessPulseInput): TodayBusines
   const aging = extractAgingTotals(undefined, input.carteraAgingOverdue);
   const agingCurrent = input.carteraAgingCurrent ?? aging.current;
 
+  const treasurySummaries = input.treasuryOutflowSummaries ?? [];
+  const cashPositions = input.treasuryCashPositions;
   const currencyBlocks = buildCurrencyExecutiveBlocks({
     period: input.carteraPeriodMetrics ?? null,
     portfolioPending,
     agingCritical30: input.carteraAgingOverdue ?? aging.critical,
     agingCurrent,
     debtorCounts: countDebtorsByCurrency(rows),
+    treasurySummaries,
+    treasuryCashPositions: cashPositions,
   });
+
+  const cashPositionBlocks = buildHoyCashPositionBlocks({
+    cashPositions,
+    pendingByCurrency: portfolioPending,
+    treasurySummaries,
+  });
+
+  const manualExpenseInPeriod: CarteraCurrencyTotals = {
+    UYU: cashPositions?.find((p) => p.currency === "UYU")?.manualExpenseInRange ?? 0,
+    USD: cashPositions?.find((p) => p.currency === "USD")?.manualExpenseInRange ?? 0,
+  };
+
+  const treasuryAlerts = buildHoyTreasuryAlerts({
+    cashPositions,
+    summaries: treasurySummaries,
+    pendingByCurrency: portfolioPending,
+    overdueCritical30: input.carteraAgingOverdue ?? aging.critical,
+    manualExpenseInPeriod,
+  });
+  const treasuryOutflowsConfigured = treasurySummaries.some((s) => s.itemsCount > 0);
 
   const allDebtorRows = buildDebtorCollectionRows(rows);
   const operationalIndicators = buildOperationalIndicators({
@@ -1156,5 +1205,8 @@ export function buildTodayBusinessPulse(input: BusinessPulseInput): TodayBusines
       confidence: input.gate.confidence,
     }),
     dataWarning: buildDataWarning(input.gate, isTruncated),
+    treasuryAlerts,
+    treasuryOutflowsConfigured,
+    cashPositionBlocks,
   };
 }

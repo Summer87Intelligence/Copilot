@@ -21,8 +21,10 @@ import { AttentionClientsDrawer } from "./hoy-attention-clients-drawer";
 import { ClientsWithDebtSection } from "./hoy-clients-with-debt-section";
 import { CurrencyExecutiveCard } from "./hoy-currency-executive-card";
 import { HoyDrawer } from "./hoy-drawer";
+import { HoyCashCurrentSection } from "./hoy-cash-current-section";
 import { HoyProjection30dSection } from "./hoy-projection-30d-section";
 import { AttentionFollowUpStrip, PulseHero } from "./hoy-pulse-hero";
+import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
 import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
 
 type HoyPageViewProps = {
@@ -35,6 +37,7 @@ type HoyPageViewProps = {
   carteraOpeningByCurrency?: CarteraCurrencyTotals;
   carteraPeriodMetrics?: CarteraPeriodMetrics;
   treasuryOutflowSummaries?: TreasuryOutflowSummary[];
+  treasuryCashPositions?: CashPositionByCurrency[];
   error: string | null;
   onRefresh: () => void;
 };
@@ -71,6 +74,7 @@ export function HoyPageView({
   carteraOpeningByCurrency,
   carteraPeriodMetrics,
   treasuryOutflowSummaries,
+  treasuryCashPositions,
   error,
   onRefresh,
 }: HoyPageViewProps) {
@@ -89,6 +93,7 @@ export function HoyPageView({
         carteraOpeningByCurrency,
         carteraPeriodMetrics,
         treasuryOutflowSummaries,
+        treasuryCashPositions,
       }),
     [
       snapshot,
@@ -99,6 +104,7 @@ export function HoyPageView({
       carteraOpeningByCurrency,
       carteraPeriodMetrics,
       treasuryOutflowSummaries,
+      treasuryCashPositions,
     ]
   );
 
@@ -158,8 +164,11 @@ export function HoyPageView({
           </CopilotCard>
         )}
 
+        <HoyCashCurrentSection blocks={pulse.cashPositionBlocks} />
+
         <HoyProjection30dSection
           blocks={pulse.currencyBlocks}
+          cashBlocks={pulse.cashPositionBlocks}
           alerts={pulse.treasuryAlerts}
           configured={pulse.treasuryOutflowsConfigured}
         />

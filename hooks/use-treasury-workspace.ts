@@ -514,10 +514,13 @@ export function useTreasuryWorkspace(filters: TreasuryWorkspaceFilters) {
   );
 
   const paidObligation = useCallback(
-    async (id: string, amountFinal?: number) => {
+    async (id: string, options?: { amountFinal?: number; registerCashMovement?: boolean }) => {
+      const body: Record<string, unknown> = {};
+      if (options?.amountFinal != null) body.amount_final = options.amountFinal;
+      if (options?.registerCashMovement) body.register_cash_movement = true;
       const result = await treasuryApiPost<PlannedCashObligation>(
         TREASURY_API.paidObligation(id),
-        amountFinal != null ? { amount_final: amountFinal } : {}
+        body
       );
       if (!result.ok) {
         notify("error", treasuryErrorMessage(result));
