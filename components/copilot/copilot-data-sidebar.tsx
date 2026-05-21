@@ -298,6 +298,47 @@ function CompactList({
   );
 }
 
+function ContactsBlock({ contacts }: { contacts: DataRow[] }) {
+  return (
+    <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+        Contactos ({contacts.length})
+      </h4>
+      {contacts.length === 0 ? (
+        <p className="text-sm text-[var(--copilot-ink-muted)]">
+          No hay contactos registrados para este cliente.
+        </p>
+      ) : (
+        <ul className="space-y-1.5">
+          {contacts.map((ct, i) => {
+            const name = String(ct.full_name ?? ct.name ?? "Sin nombre").trim() || "Sin nombre";
+            const cargo = ct.job_title ? String(ct.job_title).trim() : null;
+            const email = ct.email ? String(ct.email).trim() : null;
+            const phone = ct.phone ? String(ct.phone).trim() : null;
+            const mobile = ct.mobile ? String(ct.mobile).trim() : null;
+            const status = ct.status ? String(ct.status).trim() : null;
+            return (
+              <li
+                key={String(ct.id ?? i)}
+                className="space-y-1 rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-2 text-sm text-[var(--copilot-ink)]"
+              >
+                <p className="font-medium">{name}</p>
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-[var(--copilot-ink-muted)]">
+                  {cargo && <span>Cargo: {cargo}</span>}
+                  {email && <span>Email: {email}</span>}
+                  {phone && <span>Tel: {phone}</span>}
+                  {mobile && <span>Cel: {mobile}</span>}
+                  {status && <span>Estado: {status}</span>}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 const CRUD_ENTITIES: DataEntity[] = [
   "companies",
   "invoices",
@@ -879,11 +920,7 @@ export function CopilotDataSidebar({
                 afterCutoff={afterCutoff}
                 onCompareWithPdf={handleCompareWithPdf}
               />
-              <CompactList
-                title="Contactos relacionados"
-                rows={contacts}
-                rowEntity="contacts"
-              />
+              <ContactsBlock contacts={contacts} />
               {isPanelFiltered && filteredInvoices.length === 0 ? (
                 <section className="space-y-2 rounded-xl border border-dashed border-[var(--copilot-border)] bg-white/70 p-3">
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">

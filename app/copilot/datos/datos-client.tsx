@@ -80,7 +80,6 @@ import { getFinancialSnapshot } from "@/lib/copilot-financial-engine";
 
 const entityTabs: Array<{ id: DataEntity; label: string }> = [
   { id: "companies", label: "Clientes" },
-  { id: "contacts", label: "Contactos" },
   { id: "invoices", label: "Facturas" },
   { id: "receipts", label: "Recibos" },
   { id: "payments", label: "Pagos" },
