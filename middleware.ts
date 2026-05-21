@@ -18,7 +18,8 @@ function isCopilotProtectedPath(pathname: string): boolean {
   return (
     pathname === "/copilot" ||
     pathname.startsWith("/copilot/") ||
-    pathname.startsWith("/api/copilot/")
+    pathname.startsWith("/api/copilot/") ||
+    pathname.startsWith("/api/operacional/")
   );
 }
 
