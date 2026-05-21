@@ -16,6 +16,10 @@ import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
 import { effectivePlannedObligationStatus } from "@/lib/treasury/treasury-obligation-status";
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
 import {
+  addDaysYmd,
+  summarizeScheduledOutflows,
+} from "@/lib/treasury/treasury-scheduled-payments";
+import {
   obligationFormSchema,
   parseMoneyInput,
   zodFieldErrors,
@@ -23,16 +27,17 @@ import {
 import type { PlannedCashObligation, PlannedObligationType } from "@/lib/treasury/treasury-types";
 
 const OBLIGATION_PRESETS: { type: PlannedObligationType; label: string }[] = [
-  { type: "bps", label: "BPS" },
   { type: "dgi", label: "DGI" },
-  { type: "bonus", label: "Aguinaldos" },
-  { type: "vacation", label: "Licencias" },
-  { type: "travel", label: "Viajes" },
+  { type: "bps", label: "BPS" },
   { type: "salary", label: "Sueldos" },
-  { type: "service", label: "Servicios" },
   { type: "supplier", label: "Proveedores" },
-  { type: "other", label: "Personalizado" },
+  { type: "rent", label: "Alquiler" },
+  { type: "loan", label: "Préstamos" },
+  { type: "service", label: "Servicios" },
+  { type: "other", label: "Otros" },
 ];
+
+type ObligationView = "next7" | "next30" | "overdue" | "all";
 
 type Props = {
   workspace: TreasuryWorkspace;
@@ -41,6 +46,7 @@ type Props = {
 
 export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
   const [search, setSearch] = useState("");
+  const [view, setView] = useState<ObligationView>("next30");
   const [page, setPage] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -56,13 +62,27 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
     notes: "",
   });
 
+  const horizonEnd = addDaysYmd(asOfDate, 30);
+  const summaries = useMemo(
+    () =>
+      summarizeScheduledOutflows(workspace.obligations, {
+        asOfDate,
+        horizonEndDate: horizonEnd,
+      }),
+    [workspace.obligations, asOfDate, horizonEnd]
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return workspace.obligations.filter((o) => {
+    let base = workspace.obligations;
+    if (view === "next7") base = workspace.upcoming7;
+    else if (view === "next30") base = workspace.upcoming30;
+    else if (view === "overdue") base = workspace.overdue;
+    return base.filter((o) => {
       if (!q) return true;
       return o.title.toLowerCase().includes(q) || (o.notes ?? "").toLowerCase().includes(q);
     });
-  }, [workspace.obligations, search]);
+  }, [workspace.obligations, workspace.upcoming7, workspace.upcoming30, workspace.overdue, search, view]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / TESORERIA_PAGE_SIZE));
   const pageItems = filtered.slice(page * TESORERIA_PAGE_SIZE, (page + 1) * TESORERIA_PAGE_SIZE);
@@ -110,15 +130,75 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
   return (
     <section className="space-y-4">
       <CopilotSectionTitle
-        title="Obligaciones futuras"
-        subtitle="Compromisos de caja con estados operativos."
+        title="Pagos futuros"
+        subtitle="Egresos programados por moneda: impuestos, sueldos, proveedores y más."
         action={
           <CopilotPrimaryButton type="button" onClick={() => setDrawerOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Nueva obligación
+            Nuevo pago
           </CopilotPrimaryButton>
         }
       />
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {summaries.map((s) => (
+          <div
+            key={s.currency}
+            className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4"
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+              {s.currency}
+            </p>
+            <dl className="mt-2 space-y-1 text-sm">
+              <div className="flex justify-between gap-2">
+                <dt className="text-[var(--copilot-ink-muted)]">Egresos próx. 30 días</dt>
+                <dd className="font-semibold tabular-nums text-[var(--copilot-ink)]">
+                  {formatTreasuryMoney(s.next30Days, s.currency)}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-[var(--copilot-ink-muted)]">Vencidos</dt>
+                <dd className="font-semibold tabular-nums text-rose-700">
+                  {formatTreasuryMoney(s.overdue, s.currency)}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-[var(--copilot-ink-muted)]">Pagados del período</dt>
+                <dd className="font-semibold tabular-nums text-emerald-700">
+                  {formatTreasuryMoney(s.paidInPeriod, s.currency)}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {(
+          [
+            ["next7", "Próximos 7 días"],
+            ["next30", "Próximos 30 días"],
+            ["overdue", "Vencidos"],
+            ["all", "Todos"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => {
+              setView(id);
+              setPage(0);
+            }}
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              view === id
+                ? "bg-[var(--copilot-accent)] text-white"
+                : "border border-[var(--copilot-border)] bg-white text-[var(--copilot-ink-muted)] hover:bg-[rgba(44,40,37,0.03)]"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       <input
         value={search}
@@ -180,6 +260,18 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
                       </CopilotGhostButton>
                       <CopilotGhostButton type="button" onClick={() => void workspace.cancelObligation(row.id)}>
                         Cancelar
+                      </CopilotGhostButton>
+                      <CopilotGhostButton
+                        type="button"
+                        className="!text-rose-700 hover:!bg-rose-50/80"
+                        onClick={() => {
+                          const ok = window.confirm(
+                            "¿Eliminar este pago futuro? Esta acción no se puede deshacer."
+                          );
+                          if (ok) void workspace.deleteScheduledPayment(row.id);
+                        }}
+                      >
+                        Eliminar
                       </CopilotGhostButton>
                     </div>
                   </td>

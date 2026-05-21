@@ -20,7 +20,7 @@ export function AttentionClientsDrawer({
 }) {
   const debtorBtn =
     data.totalActiveDebtors === 1
-      ? "Ver el deudor activo"
+      ? "Ver el deudor en la lista"
       : `Ver todos los deudores (${data.totalActiveDebtors})`;
 
   return (
@@ -47,8 +47,7 @@ export function AttentionClientsDrawer({
       }
     >
       <p className="mb-3 text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
-        {data.total} {data.total === 1 ? "caso" : "casos"} con deuda vencida, cobro lento o datos
-        pendientes. Hay {data.totalActiveDebtors} con deuda activa en total.
+        {HOY_COPY.attentionDrawerSubtitle} Hay {data.totalActiveDebtors} con deuda activa en total.
       </p>
 
       <div className="mb-4 grid grid-cols-2 gap-2 text-xs">
@@ -56,7 +55,7 @@ export function AttentionClientsDrawer({
           <p className="text-[var(--copilot-ink-muted)]">Casos</p>
           <p className="text-xl font-bold text-[var(--copilot-ink)]">{data.total}</p>
         </div>
-        <div className="rounded-lg border border-rose-100/80 bg-rose-50/30 p-2.5">
+        <div className="rounded-lg border border-[var(--copilot-border)] bg-white p-2.5">
           <p className="text-[var(--copilot-ink-muted)]">Vencido UYU</p>
           <MoneyValue
             amount={
@@ -71,7 +70,7 @@ export function AttentionClientsDrawer({
             tone="danger"
           />
         </div>
-        <div className="rounded-lg border border-rose-100/80 bg-rose-50/30 p-2.5">
+        <div className="rounded-lg border border-[var(--copilot-border)] bg-white p-2.5">
           <p className="text-[var(--copilot-ink-muted)]">Vencido USD</p>
           <MoneyValue
             amount={
@@ -87,7 +86,7 @@ export function AttentionClientsDrawer({
           />
         </div>
         <div className="rounded-lg border border-[var(--copilot-border)] bg-white p-2.5">
-          <p className="text-[var(--copilot-ink-muted)]">Por cobrar UYU (estos casos)</p>
+          <p className="text-[var(--copilot-ink-muted)]">Por cobrar UYU</p>
           <MoneyValue
             amount={
               data.deudaTotalUyu > 0
@@ -102,7 +101,7 @@ export function AttentionClientsDrawer({
           />
         </div>
         <div className="col-span-2 rounded-lg border border-[var(--copilot-border)] bg-white p-2.5">
-          <p className="text-[var(--copilot-ink-muted)]">Por cobrar USD (estos casos)</p>
+          <p className="text-[var(--copilot-ink-muted)]">Por cobrar USD</p>
           <MoneyValue
             amount={
               data.deudaTotalUsd > 0
@@ -137,7 +136,6 @@ export function AttentionClientsDrawer({
               {c.vencido_uyu ? <MoneyValue amount={c.vencido_uyu} tone="danger" /> : null}
               {c.vencido_usd ? <MoneyValue amount={c.vencido_usd} tone="danger" /> : null}
             </div>
-            <p className="mt-1.5 text-[11px] text-[var(--copilot-ink-muted)]">{c.antiguedad}</p>
             <div className="mt-1.5 flex flex-wrap gap-1">
               {c.motivos.map((m) => (
                 <span

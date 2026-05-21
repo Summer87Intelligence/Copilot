@@ -1,0 +1,105 @@
+import { NextRequest, NextResponse } from "next/server";
+
+import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
+import { scheduledPaymentCreateBodySchema } from "@/lib/api/schemas/treasury-scheduled-payment-bodies";
+import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
+import { parseYmdQuery } from "@/lib/treasury/treasury-db-helpers";
+import { nextResponseFromTreasuryCrud, treasuryCreatedResponse } from "@/lib/treasury/treasury-http";
+import {
+  addDaysYmd,
+  createScheduledPayment,
+  listScheduledPayments,
+  summarizeScheduledOutflows,
+} from "@/lib/treasury/treasury-scheduled-payments";
+import { plannedCashObligationList } from "@/lib/treasury/services/planned-cash-obligation-service";
+import type { TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
+
+function parseScheduledListQuery(request: NextRequest) {
+  const params = request.nextUrl.searchParams;
+  const raw = params.get("currency")?.trim() || params.get("currency_code")?.trim();
+  const currency =
+    raw === "UYU" || raw === "USD" ? (raw as TreasuryCurrencyCode) : undefined;
+  return {
+    currencyCode: currency,
+    fromDate: parseYmdQuery(params.get("from_date")),
+    toDate: parseYmdQuery(params.get("to_date")),
+    asOfDate: parseYmdQuery(params.get("as_of")) ?? new Date().toISOString().slice(0, 10),
+    horizonDays: Math.min(365, Math.max(1, Number(params.get("horizon_days") ?? "30") || 30)),
+    includeSummary: params.get("include_summary") === "1" || params.get("include_summary") === "true",
+  };
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const auth = await requireCopilotTenantContext(request);
+    if (!auth.ok) return auth.response;
+
+    const q = parseScheduledListQuery(request);
+
+    if (q.includeSummary) {
+      const listed = await plannedCashObligationList(
+        auth.ctx.supabase,
+        auth.ctx.tenantCompanyId,
+        { direction: "outflow", currencyCode: q.currencyCode },
+        500
+      );
+      if (!listed.ok) return nextResponseFromTreasuryCrud(listed);
+      const horizonEnd = addDaysYmd(q.asOfDate, q.horizonDays);
+      const summary = summarizeScheduledOutflows(listed.data.items, {
+        asOfDate: q.asOfDate,
+        horizonEndDate: horizonEnd,
+        periodStartDate: q.fromDate,
+        periodEndDate: q.toDate ?? horizonEnd,
+      });
+      const itemsResult = await listScheduledPayments(auth.ctx.supabase, auth.ctx.tenantCompanyId, {
+        currencyCode: q.currencyCode,
+        fromDate: q.fromDate,
+        toDate: q.toDate,
+      });
+      if (!itemsResult.ok) return nextResponseFromTreasuryCrud(itemsResult);
+      return NextResponse.json({
+        ok: true as const,
+        data: { items: itemsResult.data.items, count: itemsResult.data.count, summary },
+        message: "Pagos programados listados.",
+      });
+    }
+
+    const result = await listScheduledPayments(auth.ctx.supabase, auth.ctx.tenantCompanyId, {
+      currencyCode: q.currencyCode,
+      fromDate: q.fromDate,
+      toDate: q.toDate,
+    });
+    return nextResponseFromTreasuryCrud(result);
+  } catch {
+    return NextResponse.json(
+      { ok: false as const, code: "DATABASE" as const, message: MSG_DB_USER },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const parsed = await parseAndValidateJsonBody(request, scheduledPaymentCreateBodySchema);
+    if (!parsed.ok) return parsed.response;
+
+    const auth = await requireCopilotTenantContext(
+      request,
+      parsed.data as Record<string, unknown>
+    );
+    if (!auth.ok) return auth.response;
+
+    const result = await createScheduledPayment(
+      auth.ctx.supabase,
+      auth.ctx.tenantCompanyId,
+      parsed.data
+    );
+    return treasuryCreatedResponse(result);
+  } catch {
+    return NextResponse.json(
+      { ok: false as const, code: "DATABASE" as const, message: MSG_DB_USER },
+      { status: 500 }
+    );
+  }
+}

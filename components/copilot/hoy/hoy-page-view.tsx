@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, RefreshCw, XCircle } from "lucide-react";
 
@@ -14,17 +14,16 @@ import {
   type BusinessPulseGate,
   type CarteraPeriodMetrics,
   type DebtorCollectionRow,
-  type PendingItem,
 } from "@/lib/copilot-today-business-pulse";
+import { HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
 
 import { AttentionClientsDrawer } from "./hoy-attention-clients-drawer";
+import { ClientsWithDebtSection } from "./hoy-clients-with-debt-section";
 import { CurrencyExecutiveCard } from "./hoy-currency-executive-card";
 import { HoyDrawer } from "./hoy-drawer";
-import { HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
+import { HoyProjection30dSection } from "./hoy-projection-30d-section";
 import { AttentionFollowUpStrip, PulseHero } from "./hoy-pulse-hero";
-import { DebtorsReviewTable } from "./hoy-priority-collections-table";
-
-// ─── Props ────────────────────────────────────────────────────────────────────
+import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
 
 type HoyPageViewProps = {
   loading: boolean;
@@ -35,6 +34,7 @@ type HoyPageViewProps = {
   carteraAgingCurrent?: CarteraCurrencyTotals;
   carteraOpeningByCurrency?: CarteraCurrencyTotals;
   carteraPeriodMetrics?: CarteraPeriodMetrics;
+  treasuryOutflowSummaries?: TreasuryOutflowSummary[];
   error: string | null;
   onRefresh: () => void;
 };
@@ -42,11 +42,7 @@ type HoyPageViewProps = {
 type DrawerState =
   | { kind: "closed" }
   | { kind: "attention"; data: AttentionClientsSummary }
-  | { kind: "debtors"; rows: DebtorCollectionRow[] }
-  | { kind: "client"; row: DebtorCollectionRow }
-  | { kind: "pending"; item: PendingItem };
-
-type DebtorFilter = "all" | "UYU" | "USD" | "overdue" | "critical30" | "slow";
+  | { kind: "client"; row: DebtorCollectionRow };
 
 function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse rounded-xl bg-[rgba(44,40,37,0.07)] ${className}`} />;
@@ -65,211 +61,6 @@ function LoadingSkeleton() {
   );
 }
 
-function urgencyBadge(u: PendingItem["urgency"]) {
-  if (u === "alta")
-    return (
-      <span className="rounded-md bg-rose-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-rose-700">
-        Urgente
-      </span>
-    );
-  if (u === "media")
-    return (
-      <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-amber-700">
-        Esta semana
-      </span>
-    );
-  return (
-    <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-slate-600">
-      Cuando puedas
-    </span>
-  );
-}
-
-function DebtorsDrawer({
-  rows,
-  debtorClients,
-  onClose,
-  onOpenClient,
-}: {
-  rows: DebtorCollectionRow[];
-  debtorClients: number;
-  onClose: () => void;
-  onOpenClient: (row: DebtorCollectionRow) => void;
-}) {
-  const [filter, setFilter] = useState<DebtorFilter>("all");
-
-  const totals = useMemo(() => {
-    let pendingUyu = 0;
-    let pendingUsd = 0;
-    let vencidoUyu = 0;
-    let vencidoUsd = 0;
-    for (const r of rows) {
-      if (r.currency === "UYU") {
-        pendingUyu += r.deuda.amount;
-        vencidoUyu += r.vencido?.amount ?? 0;
-      } else {
-        pendingUsd += r.deuda.amount;
-        vencidoUsd += r.vencido?.amount ?? 0;
-      }
-    }
-    return { pendingUyu, pendingUsd, vencidoUyu, vencidoUsd };
-  }, [rows]);
-
-  const filtered = useMemo(() => {
-    return rows.filter((r) => {
-      if (filter === "UYU") return r.currency === "UYU";
-      if (filter === "USD") return r.currency === "USD";
-      if (filter === "overdue") return r.flags.hasOverdue;
-      if (filter === "critical30") return r.flags.critical30Share;
-      if (filter === "slow") return r.flags.slowCollection;
-      return true;
-    });
-  }, [rows, filter]);
-
-  const filters: { id: DebtorFilter; label: string }[] = [
-    { id: "all", label: "Todos" },
-    { id: "UYU", label: "UYU" },
-    { id: "USD", label: "USD" },
-    { id: "overdue", label: "Vencidos" },
-    { id: "critical30", label: "+30 días" },
-    { id: "slow", label: "Cobro lento" },
-  ];
-
-  return (
-    <HoyDrawer
-      title="Todos los deudores"
-      onClose={onClose}
-      footer={
-        <Link
-          href="/copilot/cartera"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-white"
-        >
-          Ver cartera completa
-          <ArrowRight className="h-4 w-4" aria-hidden />
-        </Link>
-      }
-    >
-      <p className="mb-2 text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
-        Clientes con saldo pendiente, separados por moneda. {debtorClients}{" "}
-        {debtorClients === 1 ? "cliente" : "clientes"} · {rows.length} filas · {filtered.length}{" "}
-        visibles con el filtro.
-      </p>
-      <div className="mb-4 grid grid-cols-2 gap-2 text-[11px]">
-        <div className="rounded-lg border border-[var(--copilot-border)] px-2.5 py-2">
-          <span className="text-[var(--copilot-ink-muted)]">Por cobrar UYU </span>
-          <span className="font-semibold text-amber-800">
-            {totals.pendingUyu > 0
-              ? `UYU $ ${totals.pendingUyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
-              : "—"}
-          </span>
-        </div>
-        <div className="rounded-lg border border-[var(--copilot-border)] px-2.5 py-2">
-          <span className="text-[var(--copilot-ink-muted)]">Por cobrar USD </span>
-          <span className="font-semibold text-amber-800">
-            {totals.pendingUsd > 0
-              ? `USD U$S ${totals.pendingUsd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
-              : "—"}
-          </span>
-        </div>
-        <div className="rounded-lg border border-rose-100/80 bg-rose-50/30 px-2.5 py-2">
-          <span className="text-[var(--copilot-ink-muted)]">Vencido UYU </span>
-          <span className="font-semibold text-rose-800">
-            {totals.vencidoUyu > 0
-              ? `UYU $ ${totals.vencidoUyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
-              : "—"}
-          </span>
-        </div>
-        <div className="rounded-lg border border-rose-100/80 bg-rose-50/30 px-2.5 py-2">
-          <span className="text-[var(--copilot-ink-muted)]">Vencido USD </span>
-          <span className="font-semibold text-rose-800">
-            {totals.vencidoUsd > 0
-              ? `USD U$S ${totals.vencidoUsd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
-              : "—"}
-          </span>
-        </div>
-      </div>
-      <div className="mb-4 flex flex-wrap gap-1.5">
-        {filters.map((f) => (
-          <button
-            key={f.id}
-            type="button"
-            onClick={() => setFilter(f.id)}
-            className={`rounded-lg px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition ${
-              filter === f.id
-                ? "bg-[var(--copilot-accent)] text-white"
-                : "border border-[var(--copilot-border)] bg-white text-[var(--copilot-ink-muted)]"
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-      <ul className="space-y-2">
-        {filtered.map((row) => (
-          <li
-            key={row.row_id}
-            className="cursor-pointer rounded-xl border border-[var(--copilot-border)] px-3 py-2.5 hover:bg-[rgba(44,40,37,0.03)]"
-            onClick={() => onOpenClient(row)}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-medium text-[var(--copilot-ink)]">{row.name}</span>
-              <span className="text-[10px] font-semibold text-[var(--copilot-ink-muted)]">{row.currency}</span>
-            </div>
-            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs tabular-nums">
-              <span className="text-amber-700">Por cobrar {row.deuda.formatted}</span>
-              {row.vencido ? (
-                <span className="font-semibold text-rose-700">Vencido {row.vencido.formatted}</span>
-              ) : (
-                <span className="text-emerald-700">Al día</span>
-              )}
-            </div>
-            <p className="mt-1 text-[10px] font-medium text-amber-800">{row.motivo}</p>
-            <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">
-              {row.antiguedad} · {row.accion}
-            </p>
-          </li>
-        ))}
-      </ul>
-    </HoyDrawer>
-  );
-}
-
-function PendingList({
-  items,
-  onItemClick,
-}: {
-  items: PendingItem[];
-  onItemClick: (item: PendingItem) => void;
-}) {
-  if (items.length === 0) {
-    return (
-      <p className="text-sm text-[var(--copilot-ink-muted)]">Sin pendientes importantes por ahora.</p>
-    );
-  }
-  return (
-    <ol className="space-y-2">
-      {items.map((item) => (
-        <li
-          key={item.id}
-          className="flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--copilot-border)] bg-white px-4 py-3 hover:bg-[rgba(44,40,37,0.03)]"
-          onClick={() => onItemClick(item)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") onItemClick(item);
-          }}
-        >
-          {urgencyBadge(item.urgency)}
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-[var(--copilot-ink)]">{item.title}</p>
-            <p className="text-xs text-[var(--copilot-ink-muted)]">{item.accion}</p>
-          </div>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 export function HoyPageView({
   loading,
   snapshot,
@@ -279,10 +70,13 @@ export function HoyPageView({
   carteraAgingCurrent,
   carteraOpeningByCurrency,
   carteraPeriodMetrics,
+  treasuryOutflowSummaries,
   error,
   onRefresh,
 }: HoyPageViewProps) {
   const [drawer, setDrawer] = useState<DrawerState>({ kind: "closed" });
+  const [debtorsExpanded, setDebtorsExpanded] = useState(false);
+  const debtorsSectionRef = useRef<HTMLElement>(null);
 
   const pulse = useMemo(
     () =>
@@ -294,6 +88,7 @@ export function HoyPageView({
         carteraAgingCurrent,
         carteraOpeningByCurrency,
         carteraPeriodMetrics,
+        treasuryOutflowSummaries,
       }),
     [
       snapshot,
@@ -303,13 +98,19 @@ export function HoyPageView({
       carteraAgingCurrent,
       carteraOpeningByCurrency,
       carteraPeriodMetrics,
+      treasuryOutflowSummaries,
     ]
   );
 
-  const topDebtorRows = useMemo(() => pulse.allDebtorRows.slice(0, 8), [pulse.allDebtorRows]);
-  const pendingTop = useMemo(() => pulse.importantPendingItems.slice(0, 3), [pulse.importantPendingItems]);
-
   const dataNotice = pulse.dataWarning ?? null;
+
+  const expandDebtorsOnPage = () => {
+    setDebtorsExpanded(true);
+    setDrawer({ kind: "closed" });
+    requestAnimationFrame(() => {
+      debtorsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
 
   if (loading) return <LoadingSkeleton />;
 
@@ -357,6 +158,12 @@ export function HoyPageView({
           </CopilotCard>
         )}
 
+        <HoyProjection30dSection
+          blocks={pulse.currencyBlocks}
+          alerts={pulse.treasuryAlerts}
+          configured={pulse.treasuryOutflowsConfigured}
+        />
+
         {pulse.attentionClients.total > 0 ? (
           <AttentionFollowUpStrip
             count={pulse.attentionClients.total}
@@ -369,45 +176,27 @@ export function HoyPageView({
             {HOY_COPY.debtorsSectionTitle}
           </h2>
           <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-            Clientes con saldo pendiente, ordenados por vencimiento y monto.
+            {HOY_COPY.debtorsSectionSubtitle}
           </p>
           <div className="mt-4">
-            <DebtorsReviewTable
-              rows={topDebtorRows}
+            <ClientsWithDebtSection
+              sectionRef={debtorsSectionRef}
               allRows={pulse.allDebtorRows}
               counts={pulse.clientCounts}
-              onViewAll={() => setDrawer({ kind: "debtors", rows: pulse.allDebtorRows })}
+              expanded={debtorsExpanded}
+              onExpandedChange={setDebtorsExpanded}
               onRowClick={(row) => setDrawer({ kind: "client", row })}
             />
           </div>
         </CopilotCard>
 
-        <CopilotCard>
-          <h2 className="mb-3 text-sm font-semibold text-[var(--copilot-ink)]">
-            {HOY_COPY.pendingSectionTitle}
-          </h2>
-          <PendingList
-            items={pendingTop}
-            onItemClick={(item) => setDrawer({ kind: "pending", item })}
-          />
-        </CopilotCard>
       </div>
 
       {drawer.kind === "attention" ? (
         <AttentionClientsDrawer
           data={drawer.data}
           onClose={() => setDrawer({ kind: "closed" })}
-          onViewAllDebtors={() =>
-            setDrawer({ kind: "debtors", rows: pulse.allDebtorRows })
-          }
-        />
-      ) : null}
-      {drawer.kind === "debtors" ? (
-        <DebtorsDrawer
-          rows={drawer.rows}
-          debtorClients={pulse.clientCounts.debtorClients}
-          onClose={() => setDrawer({ kind: "closed" })}
-          onOpenClient={(row) => setDrawer({ kind: "client", row })}
+          onViewAllDebtors={expandDebtorsOnPage}
         />
       ) : null}
       {drawer.kind === "client" ? (
@@ -450,28 +239,6 @@ export function HoyPageView({
               <span className="text-[var(--copilot-ink-muted)]">Acción:</span> {drawer.row.accion}
             </p>
           </div>
-        </HoyDrawer>
-      ) : null}
-      {drawer.kind === "pending" ? (
-        <HoyDrawer
-          title={drawer.item.title}
-          onClose={() => setDrawer({ kind: "closed" })}
-          footer={
-            <Link
-              href={drawer.item.deepLink}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-white"
-            >
-              Ver detalle
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </Link>
-          }
-        >
-          <p className="text-sm text-[var(--copilot-ink-muted)]">
-            <strong>Impacto:</strong> {drawer.item.impacto}
-          </p>
-          <p className="mt-3 text-sm text-[var(--copilot-ink-muted)]">
-            <strong>Qué hacer:</strong> {drawer.item.accion}
-          </p>
         </HoyDrawer>
       ) : null}
     </>
