@@ -929,7 +929,7 @@ describe("buildTodayBusinessPulse", () => {
       expect(CURRENCY_METRIC_LABELS.billed).toBe("Facturado neto del período");
       expect(CURRENCY_METRIC_LABELS.collected).toBe("Cobrado en el período");
       expect(CURRENCY_METRIC_LABELS.pending).toBe("Por cobrar");
-      expect(CURRENCY_METRIC_LABELS.overdue30).toBe("Atrasado +30 días");
+      expect(CURRENCY_METRIC_LABELS.overdue30).toBe("Atrasado +30");
       expect(CURRENCY_METRIC_LABELS.billed).not.toMatch(/bruto/i);
       expect(HOY_COPY.debtorsSectionTitle).toBe("Clientes con deuda");
       expect(HOY_COPY.debtorsSectionTitle.toLowerCase()).not.toContain("prioritario");

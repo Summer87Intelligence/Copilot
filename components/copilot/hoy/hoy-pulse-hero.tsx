@@ -94,28 +94,28 @@ export function PulseHero({
 }
 
 export function AttentionFollowUpStrip({
-  count,
+  attentionCount,
+  debtorTotal,
   onClick,
 }: {
-  count: number;
+  attentionCount: number;
+  debtorTotal: number;
   onClick: () => void;
 }) {
-  if (count <= 0) return null;
+  if (attentionCount <= 0) return null;
+  const total = debtorTotal > 0 ? debtorTotal : attentionCount;
   return (
     <button
       type="button"
       onClick={onClick}
       className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--copilot-border)] bg-white px-4 py-3 text-left shadow-sm transition hover:bg-[rgba(44,40,37,0.02)]"
     >
-      <div>
-        <p className="text-sm font-semibold text-[var(--copilot-ink)]">
-          {count} {HOY_COPY.attentionStripTitle}
-        </p>
-        <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-          Deuda vencida, cobro lento o datos pendientes — no son todos los deudores.
-        </p>
-      </div>
-      <span className="text-xs font-semibold text-[var(--copilot-accent)]">Ver casos →</span>
+      <p className="text-sm font-semibold text-[var(--copilot-ink)]">
+        {attentionCount} de {total} deudores tienen atraso o señales de demora
+      </p>
+      <span className="shrink-0 text-xs font-semibold text-[var(--copilot-accent)]">
+        {HOY_COPY.attentionStripCta}
+      </span>
     </button>
   );
 }

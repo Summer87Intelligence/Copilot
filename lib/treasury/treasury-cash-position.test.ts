@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   calculateCashPosition,
+  expectedCashBalance30d,
   manualMovementAffectsCurrentCash,
   mergeCollectedIntoCashPositions,
   projectedCashBalance30d,
+  safeCashBalance30d,
 } from "@/lib/treasury/treasury-cash-position";
 import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
 
@@ -96,8 +98,15 @@ describe("mergeCollectedIntoCashPositions", () => {
   });
 });
 
-describe("projectedCashBalance30d", () => {
-  it("caja proyectada = available + por cobrar - pagos futuros", () => {
+describe("safeCashBalance30d", () => {
+  it("caja segura = available - pagos futuros", () => {
+    expect(safeCashBalance30d(50_000, 40_000)).toBe(10_000);
+  });
+});
+
+describe("expectedCashBalance30d / projectedCashBalance30d", () => {
+  it("caja esperada = available + por cobrar - pagos futuros", () => {
+    expect(expectedCashBalance30d(50_000, 170_944, 40_000)).toBe(180_944);
     expect(projectedCashBalance30d(50_000, 170_944, 40_000)).toBe(180_944);
   });
 });

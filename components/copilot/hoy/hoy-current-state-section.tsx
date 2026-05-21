@@ -2,32 +2,49 @@
 
 import { CopilotCard } from "@/components/copilot/copilot-ui";
 import type { HoyCurrentStateBlock } from "@/lib/copilot-today-business-pulse";
-import { CURRENCY_METRIC_LABELS, HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
+import { HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
 import { fmtCurrencyAmount } from "@/lib/copilot-today-business-pulse";
 
+import { HoyMetricLabel } from "./hoy-metric-label";
 import { HoyScopeBadge } from "./hoy-scope-badge";
 import { moneyToneClass, type MoneyTone } from "./hoy-money-value";
 
-function MetricRow({
+function PrimaryMetric({
   label,
+  tip,
   value,
   tone = "neutral",
-  helper,
 }: {
   label: string;
+  tip?: string;
   value: string;
   tone?: MoneyTone;
-  helper?: string;
 }) {
   return (
-    <div>
+    <div className="rounded-lg bg-[rgba(44,40,37,0.03)] px-3 py-2.5">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[var(--copilot-ink-muted)]">{label}</span>
-        <span className={moneyToneClass(tone)}>{value}</span>
+        <HoyMetricLabel label={label} tip={tip} className="text-sm font-medium text-[var(--copilot-ink)]" />
+        <span className={`text-base font-semibold tabular-nums ${moneyToneClass(tone)}`}>{value}</span>
       </div>
-      {helper ? (
-        <p className="mt-0.5 text-[10px] leading-relaxed text-[var(--copilot-ink-muted)]">{helper}</p>
-      ) : null}
+    </div>
+  );
+}
+
+function SecondaryMetric({
+  label,
+  tip,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  tip?: string;
+  value: string;
+  tone?: MoneyTone;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-2 text-xs">
+      <HoyMetricLabel label={label} tip={tip} className="text-[var(--copilot-ink-muted)]" />
+      <span className={`tabular-nums ${moneyToneClass(tone)}`}>{value}</span>
     </div>
   );
 }
@@ -39,53 +56,51 @@ function CurrentCurrencyCard({ block }: { block: HoyCurrentStateBlock }) {
   return (
     <div className="rounded-xl border border-[var(--copilot-border)] bg-white p-4">
       <p className="text-sm font-semibold text-[var(--copilot-ink)]">{title}</p>
-      <div className="mt-3 space-y-2 text-sm">
-        <MetricRow
-          label={HOY_COPY.cashCollectedLabel}
-          value={
-            block.collectedAccumulated > 0
-              ? fmtCurrencyAmount(block.collectedAccumulated, c)
-              : "—"
-          }
-          helper={HOY_COPY.cashCollectedHelper}
+      <div className="mt-3 space-y-2">
+        <PrimaryMetric
+          label={HOY_COPY.availableCashEstimatedLabel}
+          tip={HOY_COPY.cashCurrentTip}
+          value={fmtCurrencyAmount(block.cashAvailable, c)}
         />
-        <MetricRow
-          label="Ingresos manuales"
-          value={fmtCurrencyAmount(block.manualIncome, c)}
-          tone="positive"
-        />
-        <MetricRow
-          label="Egresos manuales"
-          value={fmtCurrencyAmount(block.manualExpense, c)}
-          tone="danger"
-        />
-        <div className="border-t border-dashed border-[var(--copilot-border)] pt-2">
-          <MetricRow
-            label={HOY_COPY.availableCashLabel}
-            value={fmtCurrencyAmount(block.cashAvailable, c)}
-            tone="neutral"
-          />
-        </div>
-        <MetricRow
+        <PrimaryMetric
           label={HOY_COPY.currentReceivablesLabel}
+          tip={HOY_COPY.currentReceivablesTip}
           value={
-            block.pendingReceivables > 0
-              ? fmtCurrencyAmount(block.pendingReceivables, c)
-              : "—"
+            block.pendingReceivables > 0 ? fmtCurrencyAmount(block.pendingReceivables, c) : "—"
           }
           tone="warning"
-          helper={HOY_COPY.currentReceivablesHelper}
         />
-        <MetricRow
-          label={CURRENCY_METRIC_LABELS.overdue30}
+        <PrimaryMetric
+          label={HOY_COPY.overdue30Short}
+          tip="Parte de la deuda abierta con más de 30 días de atraso."
           value={block.overdue30 > 0 ? fmtCurrencyAmount(block.overdue30, c) : "—"}
           tone="danger"
         />
-        <MetricRow
-          label={HOY_COPY.activeDebtorsLabel}
-          value={String(block.debtorClients)}
-          tone="neutral"
-        />
+        <div className="border-t border-dashed border-[var(--copilot-border)] pt-2 space-y-1.5">
+          <SecondaryMetric
+            label={HOY_COPY.cashCollectedLabel}
+            tip={HOY_COPY.cashCollectedTip}
+            value={
+              block.collectedAccumulated > 0
+                ? fmtCurrencyAmount(block.collectedAccumulated, c)
+                : "—"
+            }
+          />
+          <SecondaryMetric
+            label="Ingresos manuales"
+            value={fmtCurrencyAmount(block.manualIncome, c)}
+            tone="positive"
+          />
+          <SecondaryMetric
+            label="Egresos manuales"
+            value={fmtCurrencyAmount(block.manualExpense, c)}
+            tone="danger"
+          />
+          <SecondaryMetric
+            label={HOY_COPY.activeDebtorsLabel}
+            value={String(block.debtorClients)}
+          />
+        </div>
       </div>
     </div>
   );
@@ -100,7 +115,9 @@ export function HoyCurrentStateSection({ blocks }: { blocks: HoyCurrentStateBloc
         <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">{HOY_COPY.currentStateTitle}</h2>
         <HoyScopeBadge label={HOY_COPY.scopeBadgeCurrent} />
       </div>
-      <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">{HOY_COPY.cashCurrentHelper}</p>
+      <p className="mt-0.5 text-[10px] text-[var(--copilot-ink-muted)]" title={HOY_COPY.cashCurrentTip}>
+        Sin deuda pendiente en caja disponible.
+      </p>
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {blocks.map((block) => (
           <CurrentCurrencyCard key={block.currency} block={block} />

@@ -20,9 +20,6 @@ function CashCurrencyBlock({ block }: { block: HoyCashPositionBlock }) {
               : "—"}
           </span>
         </div>
-        <p className="text-[10px] leading-relaxed text-[var(--copilot-ink-muted)]">
-          {HOY_COPY.cashCollectedHelper}
-        </p>
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-[var(--copilot-ink-muted)]">Ingresos manuales</span>
           <span className="tabular-nums text-emerald-800">
@@ -73,7 +70,9 @@ export function HoyCashCurrentSection({
       <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">
         {HOY_COPY.cashCurrentTitle}
       </h2>
-      <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">{HOY_COPY.cashCurrentHelper}</p>
+      <p className="mt-0.5 text-[10px] text-[var(--copilot-ink-muted)]" title={HOY_COPY.cashCurrentTip}>
+        Sin deuda pendiente en caja disponible.
+      </p>
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {blocks.map((block) => (
           <CashCurrencyBlock key={block.currency} block={block} />

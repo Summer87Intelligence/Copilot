@@ -206,11 +206,13 @@ export function HoyPageView({
           blocks={pulse.projection30dBlocks}
           alerts={pulse.treasuryAlerts}
           configured={pulse.treasuryOutflowsConfigured}
+          overdueCritical30={carteraAgingOverdue}
         />
 
         {pulse.attentionClients.total > 0 ? (
           <AttentionFollowUpStrip
-            count={pulse.attentionClients.total}
+            attentionCount={pulse.attentionClients.total}
+            debtorTotal={pulse.clientCounts.debtorClients}
             onClick={() => setDrawer({ kind: "attention", data: pulse.attentionClients })}
           />
         ) : null}

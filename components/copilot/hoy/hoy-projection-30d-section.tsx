@@ -4,10 +4,16 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { CopilotCard } from "@/components/copilot/copilot-ui";
+import type { CarteraCurrencyTotals } from "@/lib/copilot-cartera-aging-totals";
 import type { HoyProjection30dBlock, HoyTreasuryAlert } from "@/lib/copilot-today-business-pulse";
+import {
+  projectionCurrencySummaryLine,
+  selectHoyProjectionUiAlerts,
+} from "@/lib/copilot-hoy-projection-display";
 import { HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
 import { fmtCurrencyAmount } from "@/lib/copilot-today-business-pulse";
 
+import { HoyMetricLabel } from "./hoy-metric-label";
 import { HoyScopeBadge } from "./hoy-scope-badge";
 import { type MoneyTone, moneyToneClass } from "./hoy-money-value";
 
@@ -20,19 +26,20 @@ function amountTone(value: number): MoneyTone {
 function ProjectionCurrencyBlock({ block }: { block: HoyProjection30dBlock }) {
   const title = block.currency === "USD" ? "Dólares (USD)" : "Pesos (UYU)";
   const currency = block.currency;
+  const summary = projectionCurrencySummaryLine(block);
 
   return (
     <div className="rounded-xl border border-[var(--copilot-border)] bg-white p-4">
       <p className="text-sm font-semibold text-[var(--copilot-ink)]">{title}</p>
       <div className="mt-3 space-y-2 text-sm">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-[var(--copilot-ink-muted)]">{HOY_COPY.availableCashLabel}</span>
+          <HoyMetricLabel label={HOY_COPY.availableCashLabel} tip={HOY_COPY.cashCurrentTip} />
           <span className={moneyToneClass("neutral")}>
             {fmtCurrencyAmount(block.currentCash, currency)}
           </span>
         </div>
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-[var(--copilot-ink-muted)]">{HOY_COPY.scheduledPaymentsLabel}</span>
+          <HoyMetricLabel label={HOY_COPY.scheduledPaymentsLabel} />
           {block.hasConfiguredPayments ? (
             <span className={moneyToneClass("warning")}>
               {fmtCurrencyAmount(block.scheduledPayments, currency)}
@@ -42,9 +49,13 @@ function ProjectionCurrencyBlock({ block }: { block: HoyProjection30dBlock }) {
           )}
         </div>
         <div className="flex items-baseline justify-between gap-2 border-t border-dashed border-[var(--copilot-border)] pt-2">
-          <span className="font-medium text-[var(--copilot-ink)]">{HOY_COPY.safeCash30Label}</span>
+          <HoyMetricLabel
+            label={HOY_COPY.safeCash30Label}
+            tip={HOY_COPY.safeCash30Tip}
+            className="font-medium text-[var(--copilot-ink)]"
+          />
           {block.hasConfiguredPayments ? (
-            <span className={moneyToneClass(amountTone(block.safeCash30d))}>
+            <span className={`font-semibold tabular-nums ${moneyToneClass(amountTone(block.safeCash30d))}`}>
               {fmtCurrencyAmount(block.safeCash30d, currency)}
             </span>
           ) : (
@@ -53,13 +64,11 @@ function ProjectionCurrencyBlock({ block }: { block: HoyProjection30dBlock }) {
             </span>
           )}
         </div>
-        {block.hasConfiguredPayments ? (
-          <p className="text-[10px] leading-relaxed text-[var(--copilot-ink-muted)]">
-            {HOY_COPY.safeCash30Helper}
-          </p>
-        ) : null}
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-[var(--copilot-ink-muted)]">{HOY_COPY.pendingReceivablesLabel}</span>
+          <HoyMetricLabel
+            label={HOY_COPY.pendingReceivablesLabel}
+            tip={HOY_COPY.pendingReceivablesTip}
+          />
           {block.pendingReceivables > 0 ? (
             <span className={moneyToneClass("warning")}>
               {fmtCurrencyAmount(block.pendingReceivables, currency)}
@@ -68,18 +77,19 @@ function ProjectionCurrencyBlock({ block }: { block: HoyProjection30dBlock }) {
             <span className="text-[var(--copilot-ink-muted)]">—</span>
           )}
         </div>
-        <p className="text-[10px] leading-relaxed text-[var(--copilot-ink-muted)]">
-          {HOY_COPY.pendingReceivablesHelper}
-        </p>
         <div className="flex items-baseline justify-between gap-2 border-t border-dashed border-[var(--copilot-border)] pt-2">
-          <span className="font-medium text-[var(--copilot-ink)]">{HOY_COPY.expectedCash30Label}</span>
-          <span className={moneyToneClass(amountTone(block.expectedCash30d))}>
+          <HoyMetricLabel
+            label={HOY_COPY.expectedCash30Label}
+            tip={HOY_COPY.expectedCash30Tip}
+            className="font-medium text-[var(--copilot-ink)]"
+          />
+          <span className={`font-semibold tabular-nums ${moneyToneClass(amountTone(block.expectedCash30d))}`}>
             {fmtCurrencyAmount(block.expectedCash30d, currency)}
           </span>
         </div>
-        <p className="text-[10px] leading-relaxed text-[var(--copilot-ink-muted)]">
-          {HOY_COPY.expectedCash30Helper}
-        </p>
+        {summary ? (
+          <p className="text-[10px] leading-snug text-[var(--copilot-ink-muted)]">{summary}</p>
+        ) : null}
       </div>
     </div>
   );
@@ -89,12 +99,20 @@ export function HoyProjection30dSection({
   blocks,
   alerts,
   configured,
+  overdueCritical30,
 }: {
   blocks: HoyProjection30dBlock[];
   alerts: HoyTreasuryAlert[];
   configured: boolean;
+  overdueCritical30?: CarteraCurrencyTotals;
 }) {
   if (blocks.length === 0) return null;
+
+  const uiAlerts = selectHoyProjectionUiAlerts(
+    alerts,
+    blocks,
+    overdueCritical30 ?? { UYU: 0, USD: 0 }
+  );
 
   return (
     <CopilotCard>
@@ -102,7 +120,9 @@ export function HoyProjection30dSection({
         <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">{HOY_COPY.projection30Title}</h2>
         <HoyScopeBadge label={HOY_COPY.scopeBadgeProjection} />
       </div>
-      <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">{HOY_COPY.projection30Subtitle}</p>
+      <p className="mt-0.5 text-[10px] text-[var(--copilot-ink-muted)]" title={HOY_COPY.projection30Tip}>
+        Próximos 30 días desde hoy.
+      </p>
 
       {!configured ? (
         <div className="mt-4 rounded-lg border border-amber-200/60 bg-amber-50/40 px-4 py-3 text-sm text-amber-950">
@@ -125,9 +145,9 @@ export function HoyProjection30dSection({
         ))}
       </div>
 
-      {alerts.length > 0 ? (
+      {uiAlerts.length > 0 ? (
         <ul className="mt-4 space-y-2">
-          {alerts.map((a) => (
+          {uiAlerts.map((a) => (
             <li
               key={a.id}
               className={`rounded-lg px-3 py-2 text-xs leading-snug ${

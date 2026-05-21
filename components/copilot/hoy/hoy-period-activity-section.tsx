@@ -2,26 +2,33 @@
 
 import { CopilotCard } from "@/components/copilot/copilot-ui";
 import type { HoyPeriodActivityBlock } from "@/lib/copilot-today-business-pulse";
-import { HOY_COPY, shouldShowCollectionExceedsBillingNote } from "@/lib/copilot-hoy-ui-contract";
+import {
+  COLLECTION_EXCEEDS_BILLING_NOTE,
+  HOY_COPY,
+  shouldShowCollectionExceedsBillingNote,
+} from "@/lib/copilot-hoy-ui-contract";
 import { formatHoyPeriodLabel, type HoyPeriodRange } from "@/lib/copilot-hoy-period";
 import { fmtCurrencyAmount } from "@/lib/copilot-today-business-pulse";
 
+import { HoyMetricLabel } from "./hoy-metric-label";
 import { HoyScopeBadge } from "./hoy-scope-badge";
 import { moneyToneClass, type MoneyTone } from "./hoy-money-value";
 
-function MetricRow({
+function DetailMetric({
   label,
+  tip,
   value,
   tone = "neutral",
 }: {
   label: string;
+  tip?: string;
   value: string;
   tone?: MoneyTone;
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-2">
-      <span className="text-[var(--copilot-ink-muted)]">{label}</span>
-      <span className={moneyToneClass(tone)}>{value}</span>
+    <div className="flex items-baseline justify-between gap-2 text-xs">
+      <HoyMetricLabel label={label} tip={tip} />
+      <span className={`tabular-nums ${moneyToneClass(tone)}`}>{value}</span>
     </div>
   );
 }
@@ -35,48 +42,52 @@ function ActivityCurrencyCard({ block }: { block: HoyPeriodActivityBlock }) {
   return (
     <div className="rounded-xl border border-[var(--copilot-border)] bg-white p-4">
       <p className="text-sm font-semibold text-[var(--copilot-ink)]">{title}</p>
-      <div className="mt-3 space-y-2 text-sm">
-        <MetricRow
+      <div className="mt-3 space-y-1.5 text-[var(--copilot-ink-muted)]">
+        <DetailMetric
           label={HOY_COPY.periodBilledLabel}
+          tip={HOY_COPY.periodBilledTip}
           value={block.billedNet > 0 ? fmtCurrencyAmount(block.billedNet, c) : "—"}
-          tone="neutral"
         />
-        <MetricRow
+        <DetailMetric
           label={HOY_COPY.periodCollectedLabel}
-          value={block.collectedInPeriod > 0 ? fmtCurrencyAmount(block.collectedInPeriod, c) : "—"}
+          tip={HOY_COPY.periodCollectedTip}
+          value={
+            block.collectedInPeriod > 0 ? fmtCurrencyAmount(block.collectedInPeriod, c) : "—"
+          }
           tone="positive"
         />
         {block.creditNoteAmount > 0 ? (
-          <MetricRow
+          <DetailMetric
             label={HOY_COPY.periodCreditNotesLabel}
             value={fmtCurrencyAmount(block.creditNoteAmount, c)}
-            tone="neutral"
           />
         ) : null}
-        <MetricRow
+        <DetailMetric
           label={HOY_COPY.periodManualIncomeLabel}
           value={fmtCurrencyAmount(block.manualIncome, c)}
           tone="positive"
         />
-        <MetricRow
+        <DetailMetric
           label={HOY_COPY.periodManualExpenseLabel}
           value={fmtCurrencyAmount(block.manualExpense, c)}
           tone="danger"
         />
-        <div className="border-t border-dashed border-[var(--copilot-border)] pt-2">
-          <MetricRow
+      </div>
+      <div className="mt-4 rounded-lg border border-[var(--copilot-border)] bg-[rgba(44,40,37,0.03)] px-3 py-3">
+        <div className="flex items-baseline justify-between gap-2">
+          <HoyMetricLabel
             label={HOY_COPY.periodOperatingResultLabel}
-            value={fmtCurrencyAmount(block.operatingResult, c)}
-            tone={resultTone}
+            tip={HOY_COPY.periodOperatingResultTip}
+            className="text-sm font-semibold text-[var(--copilot-ink)]"
           />
+          <span className={`text-lg font-bold tabular-nums ${moneyToneClass(resultTone)}`}>
+            {fmtCurrencyAmount(block.operatingResult, c)}
+          </span>
         </div>
-        <p className="text-[10px] leading-relaxed text-[var(--copilot-ink-muted)]">
-          {HOY_COPY.periodOperatingResultHelper}
-        </p>
       </div>
       {showNote ? (
-        <p className="mt-2 text-[10px] text-[var(--copilot-ink-muted)]">
-          Cobraste más de lo facturado en el período porque hay cobros de facturas anteriores.
+        <p className="mt-2 text-[10px] text-[var(--copilot-ink-muted)]" title={COLLECTION_EXCEEDS_BILLING_NOTE}>
+          Cobraste más de lo facturado en el período.
         </p>
       ) : null}
     </div>

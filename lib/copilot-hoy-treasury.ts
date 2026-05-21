@@ -1,19 +1,26 @@
 /**
  * Proyección Hoy ↔ Tesorería. Puro, sin LLM.
+ *
+ * Fórmulas (por moneda, sin conversión):
+ * - cajaActualEstimada = cobrado acumulado clientes + ingresos manuales − egresos manuales
+ *   (+ saldo inicial opcional + ajustes + transferencias netas vía treasury-cash-position)
+ * - porCobrar = saldo pendiente de clientes (deuda abierta)
+ * - pagosProgramados = obligaciones planificadas próximos 30 días
+ * - cajaSegura30d = cajaActualEstimada − pagosProgramados
+ * - cajaEsperada30d = cajaActualEstimada + porCobrar − pagosProgramados
  */
 
 import type { CarteraCurrencyTotals } from "@/lib/copilot-cartera-aging-totals";
-import type { CurrencyCode } from "@/lib/copilot-hoy-executive";
+import type { TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
+
+type CurrencyCode = TreasuryCurrencyCode;
 import {
+  expectedCashBalance30d,
   mergeCollectedIntoCashPositions,
-  projectedCashBalance30d,
+  safeCashBalance30d,
   type CashPositionByCurrency,
 } from "@/lib/treasury/treasury-cash-position";
-import {
-  projectedBalanceCoverage,
-  type CoverageStatus,
-  type TreasuryOutflowSummary,
-} from "@/lib/treasury/treasury-scheduled-payments";
+import type { CoverageStatus, TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
 
 export type { CoverageStatus };
 
@@ -32,10 +39,22 @@ export type HoyCashPositionBlock = {
   manualExpense: number;
   availableCash: number;
   lastMovement: { date: string; concept: string } | null;
-  scheduledOutflows30d: number | null;
-  projectedBalance30d: number | null;
-  coverageStatus: CoverageStatus;
-  hasConfiguredOutflows: boolean;
+};
+
+export type HoyProjection30dBlock = {
+  currency: CurrencyCode;
+  /** Caja actual estimada (solo dinero ya disponible). */
+  currentCash: number;
+  /** Pagos programados próximos 30 días. */
+  scheduledPayments: number;
+  /** cajaSegura30d */
+  safeCash30d: number;
+  /** porCobrar — deuda de clientes, no es caja. */
+  pendingReceivables: number;
+  /** cajaEsperada30d */
+  expectedCash30d: number;
+  hasConfiguredPayments: boolean;
+  safeCoverageStatus: CoverageStatus;
 };
 
 function positionForCurrency(
@@ -43,6 +62,14 @@ function positionForCurrency(
   currency: CurrencyCode
 ): CashPositionByCurrency | undefined {
   return positions?.find((p) => p.currency === currency);
+}
+
+function safeCoverageStatus(safeCash: number, scheduledPayments: number): CoverageStatus {
+  if (scheduledPayments <= 0) return safeCash >= 0 ? "healthy" : "critical";
+  if (safeCash < 0) return "critical";
+  const ratio = scheduledPayments > 0 ? safeCash / scheduledPayments : 1;
+  if (ratio < 0.15) return "attention";
+  return "healthy";
 }
 
 export function buildHoyCashPositionBlocks(p: {
@@ -64,14 +91,9 @@ export function buildHoyCashPositionBlocks(p: {
     const pos = positionForCurrency(enriched, currency);
     const pending = p.pendingByCurrency[currency] ?? 0;
     const summary = p.treasurySummaries.find((s) => s.currency === currency) ?? null;
-    const scheduled = summary?.next30Days ?? 0;
     const hasConfigured = (summary?.itemsCount ?? 0) > 0;
-    const availableCash = pos?.availableCash ?? 0;
     const collectedFromClients = pos?.collectedFromClients ?? 0;
-
-    const { projected, coverageStatus } = hasConfigured
-      ? projectedBalanceCoverage(availableCash, pending, scheduled)
-      : { projected: null as number | null, coverageStatus: "healthy" as CoverageStatus };
+    const availableCash = pos?.availableCash ?? 0;
 
     const hasActivity =
       collectedFromClients > 0 ||
@@ -91,10 +113,48 @@ export function buildHoyCashPositionBlocks(p: {
       manualExpense: pos?.manualExpense ?? 0,
       availableCash,
       lastMovement: pos?.lastMovement ?? null,
-      scheduledOutflows30d: hasConfigured ? scheduled : null,
-      projectedBalance30d: hasConfigured ? projected : null,
-      coverageStatus,
-      hasConfiguredOutflows: hasConfigured,
+    });
+  }
+
+  return blocks;
+}
+
+export function buildHoyProjection30dBlocks(p: {
+  cashPositionBlocks: readonly HoyCashPositionBlock[];
+  pendingByCurrency: CarteraCurrencyTotals;
+  treasurySummaries: readonly TreasuryOutflowSummary[];
+}): HoyProjection30dBlock[] {
+  const blocks: HoyProjection30dBlock[] = [];
+
+  for (const currency of ["UYU", "USD"] as const) {
+    const cash = p.cashPositionBlocks.find((b) => b.currency === currency);
+    const pending = p.pendingByCurrency[currency] ?? 0;
+    const summary = p.treasurySummaries.find((s) => s.currency === currency) ?? null;
+    const scheduled = summary?.next30Days ?? 0;
+    const hasConfigured = (summary?.itemsCount ?? 0) > 0;
+    const currentCash = cash?.availableCash ?? 0;
+
+    const hasActivity = currentCash !== 0 || pending > 0 || hasConfigured;
+    if (!hasActivity) continue;
+
+    const safeCash30d = hasConfigured
+      ? safeCashBalance30d(currentCash, scheduled)
+      : currentCash;
+    const expectedCash30d = hasConfigured
+      ? expectedCashBalance30d(currentCash, pending, scheduled)
+      : currentCash + pending;
+
+    blocks.push({
+      currency,
+      currentCash,
+      scheduledPayments: hasConfigured ? scheduled : 0,
+      safeCash30d,
+      pendingReceivables: pending,
+      expectedCash30d,
+      hasConfiguredPayments: hasConfigured,
+      safeCoverageStatus: hasConfigured
+        ? safeCoverageStatus(safeCash30d, scheduled)
+        : "healthy",
     });
   }
 
@@ -102,20 +162,14 @@ export function buildHoyCashPositionBlocks(p: {
 }
 
 export function buildHoyTreasuryAlerts(p: {
-  cashPositions?: readonly CashPositionByCurrency[];
-  collectedByCurrency?: CarteraCurrencyTotals;
+  projectionBlocks: readonly HoyProjection30dBlock[];
   summaries: readonly TreasuryOutflowSummary[];
-  pendingByCurrency: CarteraCurrencyTotals;
   overdueCritical30: CarteraCurrencyTotals;
   manualExpenseInPeriod?: CarteraCurrencyTotals;
+  cashPositionBlocks?: readonly HoyCashPositionBlock[];
 }): HoyTreasuryAlert[] {
   const alerts: HoyTreasuryAlert[] = [];
   const anyConfigured = p.summaries.some((s) => s.itemsCount > 0);
-
-  const enriched =
-    p.collectedByCurrency && Object.keys(p.collectedByCurrency).length > 0
-      ? mergeCollectedIntoCashPositions(p.cashPositions ?? [], p.collectedByCurrency)
-      : p.cashPositions ?? [];
 
   if (!anyConfigured) {
     alerts.push({
@@ -125,40 +179,43 @@ export function buildHoyTreasuryAlerts(p: {
     });
   }
 
-  for (const code of ["UYU", "USD"] as const) {
-    const summary = p.summaries.find((s) => s.currency === code);
-    const pending = p.pendingByCurrency[code] ?? 0;
-    const scheduled = summary?.next30Days ?? 0;
-    const pos = positionForCurrency(enriched, code);
-    const availableCash = pos?.availableCash ?? 0;
-    const manualExpensePeriod = p.manualExpenseInPeriod?.[code] ?? 0;
+  for (const block of p.projectionBlocks) {
+    const code = block.currency;
+    const pending = block.pendingReceivables;
+    const scheduled = block.scheduledPayments;
 
-    if (scheduled > 0) {
-      const { projected, coverageStatus } = projectedBalanceCoverage(
-        availableCash,
-        pending,
-        scheduled
-      );
-      if (coverageStatus === "critical") {
-        alerts.push({
-          id: `treasury_deficit_${code}`,
-          tone: "critical",
-          message: `Con los pagos programados actuales, la caja proyectada queda negativa en ${code}.`,
-        });
-      } else if (projected >= 0 && coverageStatus === "healthy") {
-        alerts.push({
-          id: `treasury_covers_${code}`,
-          tone: "healthy",
-          message: `La caja proyectada cubre los pagos programados de los próximos 30 días en ${code}.`,
-        });
-      }
+    if (pending > 0) {
+      alerts.push({
+        id: `treasury_pending_not_cash_${code}`,
+        tone: "attention",
+        message: "No contar deuda pendiente como caja disponible hasta cobrarla.",
+      });
     }
 
-    if (manualExpensePeriod > 0 && availableCash > 0 && manualExpensePeriod >= availableCash * 0.5) {
+    if (!block.hasConfiguredPayments || scheduled <= 0) continue;
+
+    const { safeCash30d, expectedCash30d } = block;
+
+    if (safeCash30d < 0) {
       alerts.push({
-        id: `treasury_high_manual_expense_${code}`,
+        id: `treasury_safe_deficit_${code}`,
+        tone: "critical",
+        message:
+          "Sin cobrar deuda pendiente, la caja no cubre los pagos programados de los próximos 30 días.",
+      });
+    } else {
+      alerts.push({
+        id: `treasury_safe_covers_${code}`,
+        tone: "healthy",
+        message: "La caja actual cubre los pagos programados de los próximos 30 días.",
+      });
+    }
+
+    if (expectedCash30d >= 0 && safeCash30d < 0) {
+      alerts.push({
+        id: `treasury_depends_collection_${code}`,
         tone: "attention",
-        message: `Los egresos manuales del período fueron altos en ${code}.`,
+        message: "Dependés de cobrar deuda pendiente para cubrir los próximos pagos.",
       });
     }
 
@@ -172,7 +229,20 @@ export function buildHoyTreasuryAlerts(p: {
     }
   }
 
-  return alerts.slice(0, 6);
+  for (const code of ["UYU", "USD"] as const) {
+    const cash = p.cashPositionBlocks?.find((b) => b.currency === code);
+    const manualExpensePeriod = p.manualExpenseInPeriod?.[code] ?? 0;
+    const availableCash = cash?.availableCash ?? 0;
+    if (manualExpensePeriod > 0 && availableCash > 0 && manualExpensePeriod >= availableCash * 0.5) {
+      alerts.push({
+        id: `treasury_high_manual_expense_${code}`,
+        tone: "attention",
+        message: `Los egresos manuales del período fueron altos en ${code}.`,
+      });
+    }
+  }
+
+  return alerts.slice(0, 8);
 }
 
 export function treasurySummaryForCurrency(
@@ -182,6 +252,7 @@ export function treasurySummaryForCurrency(
   return summaries.find((s) => s.currency === currency) ?? null;
 }
 
+/** @deprecated Usar buildHoyProjection30dBlocks. */
 export function buildTreasuryBlockExtensionAmounts(p: {
   availableCash?: number;
   currentCash?: number;
@@ -206,16 +277,13 @@ export function buildTreasuryBlockExtensionAmounts(p: {
     };
   }
 
-  const { projected, coverageStatus } = projectedBalanceCoverage(
-    availableCash,
-    p.pending,
-    scheduled
-  );
+  const expected = expectedCashBalance30d(availableCash, p.pending, scheduled);
+  const safe = safeCashBalance30d(availableCash, scheduled);
 
   return {
     scheduledOutflows30d: scheduled,
-    projectedBalance30d: projected,
-    coverageStatus,
+    projectedBalance30d: expected,
+    coverageStatus: safeCoverageStatus(safe, scheduled),
     hasConfiguredOutflows: true,
   };
 }

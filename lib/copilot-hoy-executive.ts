@@ -16,17 +16,26 @@ import {
   snapshotExpectedOutflowsTotal,
   snapshotLiquidityBalance,
 } from "@/lib/copilot-financial-snapshot-selectors";
+import type { CoverageStatus } from "@/lib/copilot-hoy-treasury";
 import type {
   MoneyAmount,
   PulseStatus,
   PriorityCollection,
 } from "@/lib/copilot-today-business-pulse";
 import { fmtCurrencyAmount, makeMoneyAmount } from "@/lib/copilot-today-business-pulse";
+import {
+  buildTreasuryBlockExtensionAmounts,
+  treasurySummaryForCurrency,
+} from "@/lib/copilot-hoy-treasury";
+import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
+import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
 
 export type CurrencyCode = "UYU" | "USD";
 
 export type CarteraPeriodMetrics = {
+  /** Facturado neto del período (`issuedInPeriodNet`). */
   billed: CarteraCurrencyTotals;
+  /** Cobrado aplicado del período (`portfolioResolvedAmount` en Cartera). */
   collected: CarteraCurrencyTotals;
   pending: CarteraCurrencyTotals;
 };
@@ -42,6 +51,12 @@ export type CurrencyExecutiveBlock = {
   expectedIncomeAtRisk: MoneyAmount | null;
   debtorClientsCount: number;
   collectionRate: number | null;
+  /** Egresos programados ≤ hoy + 30 días (Tesorería). */
+  scheduledOutflows30d: MoneyAmount | null;
+  /** Caja actual + por cobrar − egresos programados (30 días). */
+  projectedBalance30d: MoneyAmount | null;
+  coverageStatus: CoverageStatus;
+  hasConfiguredOutflows: boolean;
   status: PulseStatus;
   summary: string;
 };
@@ -142,6 +157,8 @@ export function buildCurrencyExecutiveBlocks(p: {
   agingCritical30: CarteraCurrencyTotals;
   agingCurrent: CarteraCurrencyTotals;
   debtorCounts: CarteraCurrencyTotals;
+  treasurySummaries?: readonly TreasuryOutflowSummary[];
+  treasuryCashPositions?: readonly CashPositionByCurrency[];
 }): CurrencyExecutiveBlock[] {
   const codes: CurrencyCode[] = ["UYU", "USD"];
   const blocks: CurrencyExecutiveBlock[] = [];
@@ -168,6 +185,14 @@ export function buildCurrencyExecutiveBlocks(p: {
       billed > 0 && collected >= 0 ? Math.min(1, Math.round((collected / billed) * 1000) / 1000) : null;
 
     const status = blockStatus(pending, critical30, debtors);
+    const cashPos = p.treasuryCashPositions?.find((c) => c.currency === currency);
+    const treasuryAmt = buildTreasuryBlockExtensionAmounts({
+      availableCash: cashPos?.availableCash ?? cashPos?.currentCash ?? 0,
+      pending,
+      summary: p.treasurySummaries
+        ? treasurySummaryForCurrency(p.treasurySummaries, currency)
+        : null,
+    });
 
     blocks.push({
       currency,
@@ -180,6 +205,16 @@ export function buildCurrencyExecutiveBlocks(p: {
       expectedIncomeAtRisk: moneyOrNull(critical30, currency),
       debtorClientsCount: debtors,
       collectionRate,
+      scheduledOutflows30d:
+        treasuryAmt.scheduledOutflows30d != null
+          ? makeMoneyAmount(treasuryAmt.scheduledOutflows30d, currency)
+          : null,
+      projectedBalance30d:
+        treasuryAmt.projectedBalance30d != null
+          ? makeMoneyAmount(treasuryAmt.projectedBalance30d, currency)
+          : null,
+      coverageStatus: treasuryAmt.coverageStatus,
+      hasConfiguredOutflows: treasuryAmt.hasConfiguredOutflows,
       status,
       summary: blockSummary(currency, status, pending, critical30, debtors),
     });
