@@ -126,14 +126,29 @@ export type Client360ZetaSyncRow = {
   bootstrap_completed: boolean;
 };
 
+export type Client360Contact = {
+  id: string;
+  full_name: string;
+  email: string | null;
+  job_title: string | null;
+};
+
 export type Client360Payload = {
   summary: Client360Summary;
   cuenta: Client360AccountBlock;
   invoices: Client360InvoiceRow[];
   receipts: Client360ReceiptRow[];
   insights: Client360Insight[];
+  contacts: Client360Contact[];
   zeta_sync_rows: Client360ZetaSyncRow[];
   zeta_metadata: unknown;
+  debt_uyu: number;
+  debt_usd: number;
+  overdue_uyu: number;
+  overdue_usd: number;
+  last_receipt_date: string | null;
+  last_invoice_date: string | null;
+  last_sync_at: string | null;
 };
 
 function resourceLabel(flow: string): string {
@@ -316,6 +331,7 @@ export async function loadClientCompany360(
   let saldoPendiente = 0;
   let overdueDebt = 0;
   const overdueByCurrency: Partial<Record<SnapshotCurrencyCode, number>> = {};
+  const debtByCurrency: Partial<Record<SnapshotCurrencyCode, number>> = {};
 
   const invoices: Client360InvoiceRow[] = [...invoicesRaw]
     .map((inv) => {
@@ -329,12 +345,14 @@ export async function loadClientCompany360(
       const bal = fin.balance_authoritative;
       saldoPendiente += bal;
       const due = ymd(inv.due_date);
+      const rawCur = str(inv.currency_code).toUpperCase();
+      const cur: SnapshotCurrencyCode | null =
+        rawCur === "UYU" || rawCur === "USD" ? rawCur : null;
+      if (bal > 0 && cur) {
+        debtByCurrency[cur] = (debtByCurrency[cur] ?? 0) + bal;
+      }
       if (bal > 0 && due && due < todayYmd) {
         overdueDebt += bal;
-        // Fase 3: acumular overdue por moneda
-        const rawCur = str(inv.currency_code).toUpperCase();
-        const cur: SnapshotCurrencyCode | null =
-          rawCur === "UYU" || rawCur === "USD" ? rawCur : null;
         if (cur) overdueByCurrency[cur] = (overdueByCurrency[cur] ?? 0) + bal;
       }
       return {
@@ -397,6 +415,25 @@ export async function loadClientCompany360(
   movements.sort((a, b) => b.fecha.localeCompare(a.fecha));
   const ultimos = movements.slice(0, 10);
 
+  const { data: contactRows, error: ctErr } = await client
+    .from("proto_contacts")
+    .select("id, full_name, job_title, email, is_active")
+    .eq("workspace_company_id", wid)
+    .eq("company_id", cid)
+    .eq("is_active", true);
+
+  if (ctErr) throw new Error(ctErr.message);
+
+  const contacts: Client360Contact[] = (contactRows ?? []).map((row) => {
+    const r = row as Record<string, unknown>;
+    return {
+      id: str(r.id),
+      full_name: str(r.full_name) || "—",
+      email: str(r.email) || null,
+      job_title: str(r.job_title) || null,
+    };
+  });
+
   const { data: syncRows, error: sErr } = await client
     .from("zeta_sync_state")
     .select("*")
@@ -446,13 +483,28 @@ export async function loadClientCompany360(
     overdueByCurrency: Object.keys(overdueByCurrency).length > 0 ? overdueByCurrency : undefined,
   });
 
+  const lastReceiptDate =
+    receipts.map((r) => r.receipt_date).filter((d) => d && d !== "—").sort((a, b) => b.localeCompare(a))[0] ?? null;
+  const lastInvoiceDate =
+    invoices.map((r) => r.issue_date).filter((d) => d && d !== "—").sort((a, b) => b.localeCompare(a))[0] ?? null;
+  const lastSyncAt =
+    zeta_sync_rows.map((r) => r.last_success_at).filter(Boolean).sort((a, b) => (b ?? "").localeCompare(a ?? ""))[0] ?? null;
+
   return {
     summary,
     cuenta,
     invoices,
     receipts,
     insights,
+    contacts,
     zeta_sync_rows,
     zeta_metadata: crow.zeta_metadata ?? null,
+    debt_uyu: debtByCurrency.UYU ?? 0,
+    debt_usd: debtByCurrency.USD ?? 0,
+    overdue_uyu: overdueByCurrency.UYU ?? 0,
+    overdue_usd: overdueByCurrency.USD ?? 0,
+    last_receipt_date: lastReceiptDate,
+    last_invoice_date: lastInvoiceDate,
+    last_sync_at: lastSyncAt,
   };
 }
