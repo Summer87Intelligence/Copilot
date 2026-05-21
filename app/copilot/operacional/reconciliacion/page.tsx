@@ -5,6 +5,7 @@ import { CopilotCard, CopilotGhostButton } from "@/components/copilot/copilot-ui
 import { OicReconciliationSummaryBar } from "@/components/copilot/operacional/oic-reconciliation-summary-bar";
 import { OicConflictTable } from "@/components/copilot/operacional/oic-conflict-table";
 import { OicSkeletonCard } from "@/components/copilot/operacional/oic-skeleton-card";
+import { FinancialAuditPanel } from "@/components/copilot/operacional/financial-audit-panel";
 import { useOicReconciliacion } from "@/hooks/use-oic-reconciliacion";
 
 function ReconciliacionShell() {
@@ -83,12 +84,38 @@ export default function ReconciliacionPage() {
     <>
       <CopilotPageHeader
         eyebrow="Operacional"
-        title="Reconciliación Zeta"
-        description="Comparación entre saldos en base de datos y datos reportados por Zeta. Detecta gaps y conflictos activos."
+        title="Reconciliación"
+        description="Estado de saldos Zeta vs base de datos, auditoría financiera, checks técnicos y sync health."
       />
-      <div className="px-6 py-6">
-        <ReconciliacionShell />
+      <div className="space-y-8 px-6 py-6">
+        {/* Sección 1: Estado actual Zeta vs DB */}
+        <section>
+          <SectionLabel label="Estado actual" />
+          <ReconciliacionShell />
+        </section>
+
+        {/* Sección 2: Auditoría financiera — viene de /copilot/cartera */}
+        <section>
+          <SectionLabel
+            label="Auditoría y trazabilidad financiera"
+            description="Explicabilidad del motor, orphan warnings, checks técnicos y sync health. Carga el mes en curso por defecto."
+          />
+          <FinancialAuditPanel />
+        </section>
       </div>
     </>
+  );
+}
+
+function SectionLabel({ label, description }: { label: string; description?: string }) {
+  return (
+    <div className="mb-4">
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--copilot-ink-muted)]">
+        {label}
+      </p>
+      {description && (
+        <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]/80">{description}</p>
+      )}
+    </div>
   );
 }

@@ -28,7 +28,8 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { AlertOctagon, CalendarRange, Info, X } from "lucide-react";
+import { AlertOctagon, ArrowRight, CalendarRange, Info, X } from "lucide-react";
+import Link from "next/link";
 import { getCurrentMonthToTodayRange } from "@/lib/copilot-date-range-defaults";
 import { COPILOT_OPERATIONAL_START_DATE } from "@/lib/copilot-operational-period";
 import { buildCurrencyIndex } from "@/lib/copilot-cartera-cards-source";
@@ -42,13 +43,9 @@ import {
   CreditNotesSection,
 } from "@/components/copilot/executive-summary-cards";
 import {
-  ReconciliationCenter,
-} from "@/components/copilot/reconciliation-center";
-import {
   AgingAnalytics,
 } from "@/components/copilot/aging-analytics";
 import { ClientDebtExplorer } from "@/components/copilot/client-debt-explorer";
-import { ExplainabilityPanel } from "@/components/copilot/explainability-panel";
 import { CollapsibleSection } from "@/components/copilot/collapsible-section";
 
 function normalizeDateInput(value: string | null | undefined): string {
@@ -151,14 +148,12 @@ export function CarteraShell() {
             <EmptySummaryPlaceholders />
             <EmptyAgingPlaceholder />
             <EmptyDebtExplorerPlaceholder />
-            <EmptyReconciliationPlaceholder />
           </>
         ) : initialLoading ? (
           <>
             <EmptySummaryPlaceholders shimmer />
             <EmptyAgingPlaceholder shimmer />
             <EmptyDebtExplorerPlaceholder shimmer />
-            <EmptyReconciliationPlaceholder shimmer />
           </>
         ) : showError ? (
           <ErrorBlock message={error ?? "Error desconocido"} onRetry={refetch} />
@@ -245,30 +240,35 @@ export function CarteraShell() {
               </CollapsibleSection>
             </CollapsibleSection>
 
-            {/* Bloque C — Auditoría (cerrado por defecto) */}
-            <CollapsibleSection
-              id="auditoria"
-              title="Auditoría y trazabilidad"
-              subtitle="Orphan warnings, reconciliación y explicabilidad del motor"
-              defaultOpen={false}
-            >
-              <ExecutiveSummaryCards
-                report={report}
-                selectedCurrency="all"
-                isPreSync={isPreSync}
-                block="auditoria"
-              />
-              <ExplainabilityPanel report={report} selectedCurrency="all" isPreSync={isPreSync} />
-              <ReconciliationCenter
-                report={report}
-                generatedAt={lastFetchedAt ?? report.generatedAt}
-                isPreSync={isPreSync}
-              />
-            </CollapsibleSection>
+            {/* Auditoría movida a Operacional */}
+            <AuditLink />
           </>
         ) : null}
       </div>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Audit link CTA
+// ---------------------------------------------------------------------------
+
+function AuditLink() {
+  return (
+    <Link
+      href="/copilot/operacional/reconciliacion"
+      className="flex items-center justify-between rounded-2xl border border-[var(--copilot-border)] bg-white/70 px-5 py-3.5 shadow-[var(--copilot-shadow)] transition hover:bg-white"
+    >
+      <div>
+        <p className="text-sm font-semibold text-[var(--copilot-ink)]">
+          Auditoría de reconciliación
+        </p>
+        <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
+          Orphan warnings, checks técnicos, sync health y explicabilidad del motor
+        </p>
+      </div>
+      <ArrowRight className="h-4 w-4 shrink-0 text-[var(--copilot-ink-muted)]" aria-hidden />
+    </Link>
   );
 }
 
@@ -389,24 +389,6 @@ function EmptyDebtExplorerPlaceholder({ shimmer = false }: { shimmer?: boolean }
       <div className="space-y-2 p-5">
         {[0, 1, 2].map((i) => (
           <PlaceholderBlock key={i} className="h-10 w-full rounded-lg" shimmer={shimmer} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function EmptyReconciliationPlaceholder({ shimmer = false }: { shimmer?: boolean }) {
-  return (
-    <section className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-5 shadow-[var(--copilot-shadow)]">
-      <h3 className="text-base font-semibold tracking-tight text-[var(--copilot-ink)]">
-        Centro de reconciliación
-      </h3>
-      <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-        Los checks se calculan después de confirmar un período.
-      </p>
-      <div className="mt-4 grid gap-2 sm:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => (
-          <PlaceholderBlock key={i} className="h-16 rounded-xl" shimmer={shimmer} />
         ))}
       </div>
     </section>
