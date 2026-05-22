@@ -31,12 +31,12 @@ export default function LoginPage() {
       }
       if (data.user) {
         if (process.env.NODE_ENV === "development") {
-          console.log("[login] sesión activa, redirigiendo a /copilot/rutas", {
+          console.log("[login] sesión activa, redirigiendo a /copilot/hoy", {
             email: data.user.email,
           });
         }
         setPhase("redirecting");
-        router.replace("/copilot/rutas");
+        router.replace("/copilot/hoy");
         return;
       }
       setPhase("guest");

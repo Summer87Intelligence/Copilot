@@ -30,7 +30,7 @@ test.describe("Copilot smoke", () => {
     severe.assertClean();
   });
 
-  test("navegación lateral a Datos, Gestión IA y Rutas (sin asserts de negocio)", async ({
+  test("navegación lateral a Datos, Gestión IA y Hoy (sin asserts de negocio)", async ({
     page,
   }) => {
     const severe = createSevereCollector();
@@ -52,10 +52,10 @@ test.describe("Copilot smoke", () => {
       })
     ).toBeVisible();
 
-    await page.locator('aside nav a[href="/copilot/rutas"]').click();
-    await expect(page).toHaveURL(/\/copilot\/rutas$/);
+    await page.locator('aside nav a[href="/copilot/hoy"]').click();
+    await expect(page).toHaveURL(/\/copilot\/hoy$/);
     await expect(
-      page.getByRole("heading", { level: 1, name: "Qué hacer hoy" })
+      page.getByRole("heading", { level: 1, name: "Copilot · Hoy" })
     ).toBeVisible();
 
     await expect(page.locator("body")).not.toContainText("Unhandled Runtime Error");

@@ -44,7 +44,7 @@ export default function CopilotHomePage() {
             Prioridad, alertas, recomendaciones y rutas guiadas viven en Hoy. Esta pantalla
             queda como acceso rápido a módulos profundos y al estado de pipelines.
           </p>
-          <CopilotPrimaryLink href="/copilot/rutas" className="mt-6 inline-flex">
+          <CopilotPrimaryLink href="/copilot/hoy" className="mt-6 inline-flex">
             Ir a Hoy
           </CopilotPrimaryLink>
         </CopilotCard>
