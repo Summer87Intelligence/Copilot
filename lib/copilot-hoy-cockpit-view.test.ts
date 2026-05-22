@@ -12,6 +12,7 @@ const gate: BusinessPulseGate = {
 describe("buildCockpitView", () => {
   it("exposes four money blocks and max 3 insights", () => {
     const pulse = buildTodayBusinessPulse({
+      snapshot: null,
       portfolioRows: [
         {
           company_id: "1",
@@ -31,11 +32,11 @@ describe("buildCockpitView", () => {
           collectedFromClients: 5000,
           manualIncome: 0,
           manualExpense: 0,
+          adjustments: 0,
+          transfersNet: 0,
           openingConfigured: false,
           openingBalance: 0,
           movementsCount: 1,
-          manualIncomeInRange: 0,
-          manualExpenseInRange: 0,
           lastMovement: null,
         },
       ],

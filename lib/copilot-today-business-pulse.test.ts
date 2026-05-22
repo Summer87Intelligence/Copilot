@@ -738,7 +738,7 @@ describe("buildTodayBusinessPulse", () => {
     return {
       UYU: [bucket(uyuOverdue)],
       USD: [bucket(usdOverdue)],
-    } as const;
+    };
   }
 
   describe("alineación Hoy ↔ Cartera", () => {
