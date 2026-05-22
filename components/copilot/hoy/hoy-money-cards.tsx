@@ -115,7 +115,7 @@ function sortAmounts(amounts: CockpitMoneyBlock["amounts"]) {
   return [...amounts].sort((a, b) => (a.currency === "UYU" ? -1 : b.currency === "UYU" ? 1 : 0));
 }
 
-type AmountSize = "primary" | "compact" | "alert";
+type AmountSize = "primary" | "compact" | "alert" | "nested";
 
 const AMOUNT_SIZE: Record<
   AmountSize,
@@ -144,6 +144,14 @@ const AMOUNT_SIZE: Record<
     rowSecondary: "py-0.5",
     labelPrimary: "text-[9px]",
     labelSecondary: "text-[9px] opacity-70",
+  },
+  nested: {
+    uyu: "text-[1.05rem] xl:text-[1.15rem]",
+    usd: "text-[0.92rem] xl:text-[1rem]",
+    rowPrimary: "py-0.5",
+    rowSecondary: "py-0.5",
+    labelPrimary: "text-[9px]",
+    labelSecondary: "text-[8px] opacity-70",
   },
 };
 
@@ -308,15 +316,25 @@ function ReceivablesCard({ card }: { card: CockpitReceivablesCard }) {
           amountSecondaryClass="text-amber-800/80"
           size="primary"
         />
-        <div className="my-2.5 border-t border-amber-200/50" aria-hidden />
-        <ReceivablesSection
-          label={HOY_COCKPIT.receivablesOverdue30}
-          amounts={card.overdue30}
-          labelClass="text-rose-700/90"
-          amountPrimaryClass="text-rose-800"
-          amountSecondaryClass="text-rose-700/75"
-          size="alert"
-        />
+        <div
+          className="mt-2.5 border-t border-amber-200/45 pt-2.5"
+          role="group"
+          aria-label={`${HOY_COCKPIT.receivablesIncludedInTotal}: ${HOY_COCKPIT.receivablesOverdue30}`}
+        >
+          <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-rose-700/75">
+            {HOY_COCKPIT.receivablesIncludedInTotal}
+          </p>
+          <div className="mt-1">
+            <ReceivablesSection
+              label={HOY_COCKPIT.receivablesOverdue30}
+              amounts={card.overdue30}
+              labelClass="text-rose-700/90"
+              amountPrimaryClass="text-rose-800"
+              amountSecondaryClass="text-rose-700/70"
+              size="nested"
+            />
+          </div>
+        </div>
       </div>
     </article>
   );

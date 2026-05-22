@@ -20,6 +20,7 @@ export const HOY_COCKPIT = {
   payments: "Pagos próximos",
   afterPayments: "Después de pagos",
   receivablesTotalPending: "Total pendiente",
+  receivablesIncludedInTotal: "Incluido en ese total",
   receivablesOverdue30: "Vencido >30 días",
   criticalClients: "Clientes críticos",
   advancedTitle: "Detalle avanzado",
