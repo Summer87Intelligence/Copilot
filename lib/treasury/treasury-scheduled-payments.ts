@@ -29,6 +29,11 @@ import {
 import { mapDbError } from "@/lib/treasury/treasury-db-helpers";
 import { resolveTreasuryWorkspaceId } from "@/lib/treasury/treasury-tenant";
 import {
+  buildInactiveRecurringTemplateIdSet,
+  filterPlannedCashObligationsForScheduledOutflow,
+  shouldIncludePlannedObligationInScheduledOutflow,
+} from "@/lib/treasury/treasury-scheduled-outflow-eligibility";
+import {
   daysUntilDue,
   effectivePlannedObligationStatus,
   isPlannedObligationOverdue,
@@ -104,6 +109,11 @@ export type ScheduledPaymentsRange = {
   /** Inicio del período para “pagados del período” (opcional). */
   periodStartDate?: string;
   periodEndDate?: string;
+  /**
+   * Plantillas recurrentes inactivas (paused/cancelled). Sus obligaciones pendientes
+   * no cuentan en Hoy ni en resúmenes de egresos programados.
+   */
+  inactiveRecurringTemplateIds?: ReadonlySet<string>;
 };
 
 const CATEGORY_TO_TYPE: Record<ScheduledPaymentCategory, PlannedObligationType> = {
@@ -283,6 +293,16 @@ export function summarizeScheduledOutflows(
 
       if (!isOutflowPending(row, asOf)) continue;
 
+      if (
+        range.inactiveRecurringTemplateIds &&
+        !shouldIncludePlannedObligationInScheduledOutflow(
+          row,
+          range.inactiveRecurringTemplateIds
+        )
+      ) {
+        continue;
+      }
+
       if (!dueOnOrBefore(row.dueDate, horizonEnd)) continue;
 
       itemsCount += 1;
@@ -394,6 +414,41 @@ function updateBodyFromScheduled(input: ScheduledPaymentUpdateBody) {
             : "planned";
   }
   return patch;
+}
+
+export {
+  buildInactiveRecurringTemplateIdSet,
+  filterPlannedCashObligationsForScheduledOutflow,
+  resolveRecurringTemplateId,
+  shouldIncludePlannedObligationInScheduledOutflow,
+} from "@/lib/treasury/treasury-scheduled-outflow-eligibility";
+
+/** Obligaciones que alimentan el listado de Pagos próximos (Hoy): pendientes, en horizonte, template activo. */
+export function filterPlannedObligationsForHoyScheduledList(
+  payments: readonly PlannedCashObligation[],
+  range: Pick<
+    ScheduledPaymentsRange,
+    "asOfDate" | "horizonEndDate" | "inactiveRecurringTemplateIds"
+  >
+): PlannedCashObligation[] {
+  const inactive = range.inactiveRecurringTemplateIds ?? new Set<string>();
+  return filterPlannedCashObligationsForScheduledOutflow(payments, inactive).filter(
+    (row) =>
+      isOutflowPending(row, range.asOfDate) &&
+      dueOnOrBefore(row.dueDate, range.horizonEndDate)
+  );
+}
+
+export async function loadInactiveRecurringTemplateIds(
+  supabase: SupabaseClient,
+  tenantCompanyId: string
+): Promise<ReadonlySet<string>> {
+  const { recurringObligationTemplateList } = await import(
+    "@/lib/treasury/services/recurring-obligation-template-service"
+  );
+  const listed = await recurringObligationTemplateList(supabase, tenantCompanyId, false);
+  if (!listed.ok) return new Set<string>();
+  return buildInactiveRecurringTemplateIdSet(listed.data.items);
 }
 
 export async function listScheduledPayments(

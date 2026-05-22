@@ -9,7 +9,10 @@ import { nextResponseFromTreasuryCrud, treasuryCreatedResponse } from "@/lib/tre
 import {
   addDaysYmd,
   createScheduledPayment,
+  filterPlannedObligationsForHoyScheduledList,
   listScheduledPayments,
+  loadInactiveRecurringTemplateIds,
+  mapPlannedObligationToScheduledPayment,
   summarizeScheduledOutflows,
 } from "@/lib/treasury/treasury-scheduled-payments";
 import { plannedCashObligationList } from "@/lib/treasury/services/planned-cash-obligation-service";
@@ -46,21 +49,27 @@ export async function GET(request: NextRequest) {
       );
       if (!listed.ok) return nextResponseFromTreasuryCrud(listed);
       const horizonEnd = addDaysYmd(q.asOfDate, q.horizonDays);
-      const summary = summarizeScheduledOutflows(listed.data.items, {
+      const inactiveRecurringTemplateIds = await loadInactiveRecurringTemplateIds(
+        auth.ctx.supabase,
+        auth.ctx.tenantCompanyId
+      );
+      const range = {
         asOfDate: q.asOfDate,
         horizonEndDate: horizonEnd,
         periodStartDate: q.fromDate,
         periodEndDate: q.toDate ?? horizonEnd,
-      });
-      const itemsResult = await listScheduledPayments(auth.ctx.supabase, auth.ctx.tenantCompanyId, {
-        currencyCode: q.currencyCode,
-        fromDate: q.fromDate,
-        toDate: q.toDate,
-      });
-      if (!itemsResult.ok) return nextResponseFromTreasuryCrud(itemsResult);
+        inactiveRecurringTemplateIds,
+      };
+      const summary = summarizeScheduledOutflows(listed.data.items, range);
+      const hoyRows = filterPlannedObligationsForHoyScheduledList(listed.data.items, range).filter(
+        (row) => !q.currencyCode || row.currencyCode === q.currencyCode
+      );
+      const items = hoyRows.map((row) =>
+        mapPlannedObligationToScheduledPayment(row, q.asOfDate)
+      );
       return NextResponse.json({
         ok: true as const,
-        data: { items: itemsResult.data.items, count: itemsResult.data.count, summary },
+        data: { items, count: items.length, summary },
         message: "Pagos programados listados.",
       });
     }
