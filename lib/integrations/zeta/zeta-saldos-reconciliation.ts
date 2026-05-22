@@ -27,10 +27,11 @@ import {
   buildOrphanResolvedMetadataPatch,
   ORPHAN_RESOLVED_REASONS,
 } from "@/lib/integrations/zeta/zeta-orphan-auto-repair";
+import { INSTALLMENT_SALDO_EPSILON } from "@/lib/integrations/zeta/zeta-installment-guard";
 import {
-  sumOpenInstallmentSaldoForInvoice,
-  INSTALLMENT_SALDO_EPSILON,
-} from "@/lib/integrations/zeta/zeta-installment-guard";
+  fetchOpenCuotaKeysFromZeta,
+  prepareInvoiceCloseAfterStaleInstallmentCleanup,
+} from "@/lib/integrations/zeta/zeta-stale-installment-cleanup";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -183,10 +184,29 @@ export async function reconcileMissingPendingInvoices(
   workspaceCompanyId: string,
   protoCompanyId: string,
   touchedInvoiceIds: Set<string>,
-  opts: { syncRunId: string; requestId: string; now?: string }
+  opts: {
+    syncRunId: string;
+    requestId: string;
+    clienteCodigo?: string;
+    tenantId?: string;
+    now?: string;
+  }
 ): Promise<ReconciliationRunResult> {
   const wid = workspaceCompanyId.trim();
   const now = opts.now ?? new Date().toISOString();
+  const clienteCodigo = opts.clienteCodigo?.trim() ?? "";
+
+  const openCuotaKeysFromZeta =
+    clienteCodigo && opts.tenantId
+      ? await fetchOpenCuotaKeysFromZeta(
+          {
+            requestId: opts.requestId,
+            tenantId: opts.tenantId,
+            syncRunId: opts.syncRunId,
+          },
+          clienteCodigo
+        )
+      : null;
 
   const result: ReconciliationRunResult = {
     pending_invoices_checked: 0,
@@ -325,9 +345,17 @@ export async function reconcileMissingPendingInvoices(
     const entry = buildEntry(row, protoCompanyId, newCount, action);
 
     if (action === "closed") {
-      // Guard: do not auto-close an invoice that still has open installment saldo.
-      // null = DB error → block conservatively; preserve missing_count for next run.
-      const installmentSaldo = await sumOpenInstallmentSaldoForInvoice(supabase, wid, row.id);
+      const { installmentSaldo, cleanup } =
+        await prepareInvoiceCloseAfterStaleInstallmentCleanup(supabase, {
+          workspaceCompanyId: wid,
+          invoiceId: row.id,
+          invoiceNumber: row.invoice_number,
+          clienteCodigo: clienteCodigo || "unknown",
+          touchedInvoiceIds,
+          openCuotaKeysFromZeta,
+          syncRunId: opts.syncRunId,
+        });
+
       if (installmentSaldo === null || installmentSaldo > INSTALLMENT_SALDO_EPSILON) {
         const blockMeta = mergeZetaReconciliationState(row.zeta_metadata, {
           pending_sync_missing_count: newCount,
@@ -338,16 +366,34 @@ export async function reconcileMissingPendingInvoices(
           .update({ zeta_metadata: blockMeta })
           .eq("id", row.id)
           .eq("workspace_company_id", wid);
-        pipelineReconcileLog("warn", "orphan_autoclose_blocked_by_installments", {
-          invoice_id: row.id,
-          invoice_number: row.invoice_number,
-          installment_saldo: installmentSaldo,
-          missing_count: newCount,
-          workspace_company_id: wid,
-          sync_run_id: opts.syncRunId,
-        });
+        pipelineReconcileLog(
+          "warn",
+          cleanup.blocked_by_open_zeta_cuota
+            ? "orphan_autoclose_blocked_by_open_zeta_cuota"
+            : "orphan_autoclose_blocked_by_installments",
+          {
+            invoice_id: row.id,
+            invoice_number: row.invoice_number,
+            installment_saldo: installmentSaldo,
+            missing_count: newCount,
+            workspace_company_id: wid,
+            sync_run_id: opts.syncRunId,
+            stale_installments_closed: cleanup.closed_count,
+            cuotas_fetch_unavailable: cleanup.cuotas_fetch_unavailable,
+          }
+        );
         result.skipped.push(buildEntry(row, protoCompanyId, newCount, "skipped"));
         continue;
+      }
+
+      if (cleanup.closed_count > 0) {
+        pipelineReconcileLog("info", "orphan_autoclose_unblocked_by_stale_installment_cleanup", {
+          invoice_id: row.id,
+          invoice_number: row.invoice_number,
+          missing_count: newCount,
+          closed_count: cleanup.closed_count,
+          sync_run_id: opts.syncRunId,
+        });
       }
 
       // Auto-close: zero balance, set status=paid; clear orphan warning metadata

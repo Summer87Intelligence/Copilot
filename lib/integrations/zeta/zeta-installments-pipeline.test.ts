@@ -183,15 +183,19 @@ function createSupabaseStub(opts: {
   }
 
   function makeInstallmentsTable() {
-    // Chainable query for the reconciliation SELECT (orphan query).
-    // In tests, orphan reconciliation returns empty — all linking happens in the main pass.
+    // Chainable query for orphan reconciliation + stale installment cleanup.
     const selectChain: Record<string, unknown> = {};
     const chainReturn = () => selectChain;
     Object.assign(selectChain, {
       select: chainReturn,
       eq: chainReturn,
+      gt: chainReturn,
+      not: chainReturn,
       is: chainReturn,
       limit: () => Promise.resolve({ data: [], error: null }),
+      then(onFulfilled: (v: unknown) => unknown) {
+        return Promise.resolve({ data: [], error: null }).then(onFulfilled);
+      },
       update: (patch: Record<string, unknown>) => {
         const updFilters: Array<[string, unknown]> = [];
         const updObj: Record<string, unknown> = {

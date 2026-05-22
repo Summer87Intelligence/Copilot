@@ -61,6 +61,10 @@ import {
   INSTALLMENT_SALDO_EPSILON,
 } from "@/lib/integrations/zeta/zeta-installment-guard";
 import {
+  fetchOpenCuotaKeysFromZeta,
+  prepareInvoiceCloseAfterStaleInstallmentCleanup,
+} from "@/lib/integrations/zeta/zeta-stale-installment-cleanup";
+import {
   COPILOT_OPERATIONAL_START_DATE,
   isPreOperationalPeriod,
 } from "@/lib/copilot-operational-period";
@@ -461,10 +465,23 @@ async function zeroCcV1BalancesWithoutSaldoRow(
   workspaceCompanyId: string,
   protoCompanyId: string,
   clienteCodigo: string,
-  touchedInvoiceIds: Set<string>
+  touchedInvoiceIds: Set<string>,
+  zetaCtx: { tenantId: string; requestId: string; syncRunId: string } | null
 ): Promise<number> {
   const wid = workspaceCompanyId.trim();
   const expectedCli = sanitizeZetaInvoiceKeyPart(clienteCodigo, 24) || "NCLI";
+
+  const openCuotaKeysFromZeta =
+    zetaCtx != null
+      ? await fetchOpenCuotaKeysFromZeta(
+          {
+            requestId: zetaCtx.requestId,
+            tenantId: zetaCtx.tenantId,
+            syncRunId: zetaCtx.syncRunId,
+          },
+          clienteCodigo
+        )
+      : null;
 
   const q = applyProtoActiveListFilter(
     supabase
@@ -512,16 +529,32 @@ async function zeroCcV1BalancesWithoutSaldoRow(
     const alreadyClosed = Math.abs(curBal) <= 1e-6 && st === "paid";
     if (alreadyClosed) continue;
 
-    // Guard: do not zero an invoice that still has open installment saldo.
-    // null = DB error → block conservatively.
-    const installmentSaldo = await sumOpenInstallmentSaldoForInvoice(supabase, wid, id);
-    if (installmentSaldo === null || installmentSaldo > INSTALLMENT_SALDO_EPSILON) {
-      pipelineEmit("warn", "zero_pass_blocked_by_installments", {
-        invoice_id: id,
-        invoice_number: num,
-        installment_saldo: installmentSaldo,
-        workspace_company_id: wid,
+    const { installmentSaldo, cleanup } =
+      await prepareInvoiceCloseAfterStaleInstallmentCleanup(supabase, {
+        workspaceCompanyId: wid,
+        invoiceId: id,
+        invoiceNumber: num,
+        clienteCodigo,
+        touchedInvoiceIds,
+        openCuotaKeysFromZeta,
+        syncRunId: zetaCtx?.syncRunId,
       });
+
+    if (installmentSaldo === null || installmentSaldo > INSTALLMENT_SALDO_EPSILON) {
+      pipelineEmit(
+        "warn",
+        cleanup.blocked_by_open_zeta_cuota
+          ? "zero_pass_blocked_by_open_zeta_cuota"
+          : "zero_pass_blocked_by_installments",
+        {
+          invoice_id: id,
+          invoice_number: num,
+          installment_saldo: installmentSaldo,
+          workspace_company_id: wid,
+          stale_installments_closed: cleanup.closed_count,
+          cuotas_fetch_unavailable: cleanup.cuotas_fetch_unavailable,
+        }
+      );
       continue;
     }
 
@@ -1463,7 +1496,14 @@ export async function runZetaSaldosPendientesPipeline(
           wid,
           opts.protoCompanyId,
           opts.clienteCodigo,
-          touchedInvoiceIds
+          touchedInvoiceIds,
+          runId
+            ? {
+                tenantId: tenantCompanyId,
+                requestId,
+                syncRunId: runId,
+              }
+            : null
         );
         pipelineEmit("info", "zeta_saldos_ccv1_zeroed_unlisted", {
           request_id: requestId,
@@ -1538,7 +1578,12 @@ export async function runZetaSaldosPendientesPipeline(
             wid,
             opts.protoCompanyId,
             touchedInvoiceIds,
-            { syncRunId: runId, requestId }
+            {
+              syncRunId: runId,
+              requestId,
+              clienteCodigo: opts.clienteCodigo,
+              tenantId: tenantCompanyId,
+            }
           );
         } catch (recErr) {
           pipelineEmit("warn", "zeta_reconcile_unexpected_error", {
