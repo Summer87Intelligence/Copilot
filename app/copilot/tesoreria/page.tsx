@@ -15,9 +15,11 @@ export default function TesoreriaPage() {
         description="Caja manual, conciliación bancaria, obligaciones futuras y proyección de liquidez."
       />
       <div className={`${copilotPageMainClass} !space-y-4`}>
-        <Suspense fallback={<TesoreriaFallback />}>
-          <TesoreriaShell />
-        </Suspense>
+        <div className="mx-auto w-full max-w-7xl">
+          <Suspense fallback={<TesoreriaFallback />}>
+            <TesoreriaShell />
+          </Suspense>
+        </div>
       </div>
     </>
   );
