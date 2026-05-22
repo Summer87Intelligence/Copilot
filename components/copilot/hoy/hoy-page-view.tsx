@@ -8,7 +8,11 @@ import { CopilotCard } from "@/components/copilot/copilot-ui";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import type { FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
 import type { CarteraCurrencyTotals } from "@/lib/copilot-cartera-aging-totals";
-import { buildCockpitView, sortDebtorRowsForCockpit } from "@/lib/copilot-hoy-cockpit-view";
+import {
+  buildCockpitView,
+  sortDebtorRowsForCockpit,
+  topDebtorRowsPerCurrency,
+} from "@/lib/copilot-hoy-cockpit-view";
 import type { HoyPeriodRange } from "@/lib/copilot-hoy-period";
 import { HOY_COCKPIT, HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
 import {
@@ -172,7 +176,10 @@ export function HoyPageView({
     });
   };
 
-  const topCriticalClients = useMemo(() => sortedDebtorRows.slice(0, 5), [sortedDebtorRows]);
+  const topCriticalClients = useMemo(
+    () => topDebtorRowsPerCurrency(sortedDebtorRows, 5),
+    [sortedDebtorRows]
+  );
 
   const openAttentionDrawer = () => {
     if (pulse.attentionClients.total > 0) {

@@ -3,11 +3,35 @@
  */
 
 import type { CarteraCurrencyTotals } from "@/lib/copilot-cartera-aging-totals";
+import type { DebtorCollectionRow } from "@/lib/copilot-hoy-executive";
 import {
   fmtCurrencyAmount,
   type PulseStatus,
   type TodayBusinessPulse,
 } from "@/lib/copilot-today-business-pulse";
+
+const RECEIVABLES_DRAWER_CURRENCY_ORDER = ["UYU", "USD"] as const;
+
+/** Top N deudores por moneda (resumen ejecutivo del drawer Por cobrar). */
+export function topDebtorRowsPerCurrency(
+  rows: DebtorCollectionRow[],
+  limitPerCurrency = 5
+): DebtorCollectionRow[] {
+  const out: DebtorCollectionRow[] = [];
+  for (const currency of RECEIVABLES_DRAWER_CURRENCY_ORDER) {
+    out.push(...rows.filter((r) => r.currency === currency).slice(0, limitPerCurrency));
+  }
+  return out;
+}
+
+export function groupDebtorRowsByCurrency(
+  rows: DebtorCollectionRow[]
+): { currency: "UYU" | "USD"; rows: DebtorCollectionRow[] }[] {
+  return RECEIVABLES_DRAWER_CURRENCY_ORDER.map((currency) => ({
+    currency,
+    rows: rows.filter((r) => r.currency === currency),
+  })).filter((g) => g.rows.length > 0);
+}
 
 export type CockpitCurrencyAmount = {
   currency: "UYU" | "USD";

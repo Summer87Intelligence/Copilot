@@ -4,10 +4,13 @@
  * Fórmulas (por moneda, sin conversión):
  * - cajaActualEstimada = cobrado acumulado clientes + ingresos manuales − egresos manuales
  *   (+ saldo inicial opcional + ajustes + transferencias netas vía treasury-cash-position)
- * - porCobrar = saldo pendiente de clientes (deuda abierta)
+ * - porCobrar = saldo pendiente de clientes (deuda abierta) — NO entra en caja disponible
  * - pagosProgramados = obligaciones planificadas próximos 30 días
- * - cajaSegura30d = cajaActualEstimada − pagosProgramados
- * - cajaEsperada30d = cajaActualEstimada + porCobrar − pagosProgramados
+ * - cajaSegura30d = cajaActualEstimada − pagosProgramados  → card «Después de pagos»
+ * - cajaEsperada30d = cajaActualEstimada + porCobrar − pagosProgramados (escenario, no caja hoy)
+ *
+ * Cobro sincronizado: pending Cartera ↓; caja ↑ solo si el recibo impactó tesorería.
+ * Ver `HOY_COLLECTION_SYNC_BEHAVIOR` en `lib/copilot-hoy-money-rules.ts`.
  */
 
 import type { CarteraCurrencyTotals } from "@/lib/copilot-cartera-aging-totals";

@@ -6,10 +6,11 @@ import { ArrowRight } from "lucide-react";
 
 import { HoyDrawer } from "@/components/copilot/hoy/hoy-drawer";
 import { formatMoneySymbolOnly } from "@/components/copilot/hoy/hoy-clients-with-debt-section";
-import type {
-  CockpitMoneyBlock,
-  CockpitReceivablesCard,
-  CockpitView,
+import {
+  groupDebtorRowsByCurrency,
+  type CockpitMoneyBlock,
+  type CockpitReceivablesCard,
+  type CockpitView,
 } from "@/lib/copilot-hoy-cockpit-view";
 import { HOY_COCKPIT, HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
 import type { DebtorCollectionRow } from "@/lib/copilot-today-business-pulse";
@@ -359,6 +360,9 @@ function ReceivablesPanel({
             secondaryClass="text-rose-700/80"
           />
         </div>
+        <p className="mt-2 text-[11px] leading-snug text-rose-700/70">
+          {HOY_COCKPIT.receivablesOverdue30Hint}
+        </p>
       </div>
 
       {topClients.length > 0 ? (
@@ -366,19 +370,38 @@ function ReceivablesPanel({
           <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
             Principales en seguimiento
           </p>
-          <ul className="mt-2 space-y-2">
-            {topClients.map((row) => (
-              <li
-                key={row.row_id}
-                className="flex items-baseline justify-between gap-2 rounded-md bg-white/70 px-2 py-1.5 text-xs"
-              >
-                <span className="min-w-0 font-medium text-[var(--copilot-ink)]">{row.name}</span>
-                <span className="shrink-0 tabular-nums text-amber-800">
-                  {formatMoneySymbolOnly(row.deuda)}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className="mt-3 space-y-4">
+            {groupDebtorRowsByCurrency(topClients).map((group) => {
+              const sectionTitle =
+                group.currency === "UYU"
+                  ? HOY_COCKPIT.drawerClientsUyu
+                  : HOY_COCKPIT.drawerClientsUsd;
+              const amountClass =
+                group.currency === "UYU" ? "text-amber-900" : "text-amber-800/90";
+              return (
+                <div key={group.currency}>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-amber-900/80">
+                    {sectionTitle}
+                  </p>
+                  <ul className="mt-1.5 space-y-1.5">
+                    {group.rows.map((row) => (
+                      <li
+                        key={row.row_id}
+                        className="flex items-baseline justify-between gap-2 rounded-md bg-white/70 px-2 py-1.5 text-xs"
+                      >
+                        <span className="min-w-0 font-medium text-[var(--copilot-ink)]">
+                          {row.name}
+                        </span>
+                        <span className={`shrink-0 tabular-nums font-medium ${amountClass}`}>
+                          {formatMoneySymbolOnly(row.deuda)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
         </div>
       ) : null}
     </div>

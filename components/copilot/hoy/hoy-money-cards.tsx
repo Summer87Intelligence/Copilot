@@ -370,6 +370,9 @@ function ReceivablesCard({
               size="nested"
             />
           </div>
+          <p className="mt-1.5 text-[10px] leading-snug text-rose-700/65">
+            {HOY_COCKPIT.receivablesOverdue30Hint}
+          </p>
         </div>
       </div>
     </article>
