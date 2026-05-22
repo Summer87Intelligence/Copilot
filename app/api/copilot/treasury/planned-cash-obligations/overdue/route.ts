@@ -6,6 +6,7 @@ import { plannedCashObligationOverdue } from "@/lib/treasury/services/planned-ca
 import { todayYmdUtc } from "@/lib/treasury/treasury-db-helpers";
 import { nextResponseFromTreasuryCrud } from "@/lib/treasury/treasury-http";
 import { parseOverdueObligationQuery } from "@/lib/treasury/treasury-list-query";
+import { loadInactiveRecurringTemplateIds } from "@/lib/treasury/treasury-scheduled-payments";
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,11 +14,16 @@ export async function GET(request: NextRequest) {
     if (!auth.ok) return auth.response;
 
     const query = parseOverdueObligationQuery(request);
+    const inactiveRecurringTemplateIds = await loadInactiveRecurringTemplateIds(
+      auth.ctx.supabase,
+      auth.ctx.tenantCompanyId
+    );
     const result = await plannedCashObligationOverdue(
       auth.ctx.supabase,
       auth.ctx.tenantCompanyId,
       query.asOfDate ?? todayYmdUtc(),
-      query.limit
+      query.limit,
+      inactiveRecurringTemplateIds
     );
     return nextResponseFromTreasuryCrud(result);
   } catch {

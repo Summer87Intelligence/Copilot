@@ -21,6 +21,7 @@ import {
   filterOverdueObligations,
   filterUpcomingObligations,
 } from "@/lib/treasury/treasury-obligation-status";
+import { filterPlannedCashObligationsForScheduledOutflow } from "@/lib/treasury/treasury-scheduled-outflow-eligibility";
 import { resolveTreasuryWorkspaceId, normalizeErpCompanyId } from "@/lib/treasury/treasury-tenant";
 import type {
   PlannedCashObligation,
@@ -295,11 +296,16 @@ export async function plannedCashObligationUpcoming(
   tenantCompanyId: string,
   withinDays = 30,
   asOfDate = todayYmdUtc(),
-  limit = 200
+  limit = 200,
+  inactiveRecurringTemplateIds: ReadonlySet<string> = new Set()
 ): Promise<ProtoCrudResult<PlannedCashObligationListResult>> {
   const listed = await plannedCashObligationList(supabase, tenantCompanyId, {}, limit);
   if (!listed.ok) return listed;
-  const items = filterUpcomingObligations(listed.data.items, asOfDate, withinDays);
+  const eligible = filterPlannedCashObligationsForScheduledOutflow(
+    listed.data.items,
+    inactiveRecurringTemplateIds
+  );
+  const items = filterUpcomingObligations(eligible, asOfDate, withinDays);
   return protoCrudResult.ok({ items, count: items.length }, "Obligaciones próximas listadas.");
 }
 
@@ -307,10 +313,15 @@ export async function plannedCashObligationOverdue(
   supabase: SupabaseClient,
   tenantCompanyId: string,
   asOfDate = todayYmdUtc(),
-  limit = 200
+  limit = 200,
+  inactiveRecurringTemplateIds: ReadonlySet<string> = new Set()
 ): Promise<ProtoCrudResult<PlannedCashObligationListResult>> {
   const listed = await plannedCashObligationList(supabase, tenantCompanyId, {}, limit);
   if (!listed.ok) return listed;
-  const items = filterOverdueObligations(listed.data.items, asOfDate);
+  const eligible = filterPlannedCashObligationsForScheduledOutflow(
+    listed.data.items,
+    inactiveRecurringTemplateIds
+  );
+  const items = filterOverdueObligations(eligible, asOfDate);
   return protoCrudResult.ok({ items, count: items.length }, "Obligaciones vencidas listadas.");
 }

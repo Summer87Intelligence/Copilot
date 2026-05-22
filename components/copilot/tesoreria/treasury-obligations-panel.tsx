@@ -123,6 +123,8 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
     const result = await workspace.createObligation({
       title: parsed.data.title,
       obligation_type: parsed.data.obligationType,
+      direction: "outflow",
+      affects_cashflow: true,
       amount_estimated: parseMoneyInput(parsed.data.amountEstimated),
       currency_code: parsed.data.currencyCode,
       due_date: parsed.data.dueDate,

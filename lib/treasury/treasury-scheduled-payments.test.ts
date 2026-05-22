@@ -2,9 +2,11 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 import * as obligationRepo from "@/lib/treasury/repositories/planned-cash-obligation-repository";
 import type { PlannedCashObligation } from "@/lib/treasury/treasury-types";
+import { buildInactiveRecurringTemplateIdSet } from "@/lib/treasury/treasury-scheduled-outflow-eligibility";
 import {
   addDaysYmd,
   deleteScheduledPayment,
+  filterPlannedObligationsForHoyScheduledList,
   mapPlannedObligationToScheduledPayment,
   projectedBalanceCoverage,
   scheduledOutflowsThroughDate,
@@ -43,8 +45,8 @@ function makeObligation(
     relatedManualMovementId: null,
     relatedBankMovementId: null,
     relatedZetaRecordId: null,
-    recurringTemplateId: null,
-    recurringInstanceKey: null,
+    recurringTemplateId: partial.recurringTemplateId ?? null,
+    recurringInstanceKey: partial.recurringInstanceKey ?? null,
     notes: null,
     createdBy: null,
     createdAt: "2026-01-01T00:00:00Z",
@@ -101,6 +103,50 @@ describe("summarizeScheduledOutflows", () => {
     }).find((s) => s.currency === "UYU")!;
     expect(uyu.paidInPeriod).toBe(8_000);
     expect(uyu.next30Days).toBe(0);
+  });
+
+  it("excluye egresos de template recurrente pausado", () => {
+    const inactive = buildInactiveRecurringTemplateIdSet([
+      { id: "tpl-usd-paused", active: false },
+    ]);
+    const payments = [
+      makeObligation({
+        currencyCode: "USD",
+        amountEstimated: 60,
+        dueDate: "2026-06-01",
+        recurringTemplateId: "tpl-usd-paused",
+        source: "recurring_rule",
+      }),
+    ];
+    const usd = summarizeScheduledOutflows(payments, {
+      asOfDate: asOf,
+      horizonEndDate: horizon,
+      inactiveRecurringTemplateIds: inactive,
+    }).find((s) => s.currency === "USD")!;
+    expect(usd.next30Days).toBe(0);
+    expect(usd.itemsCount).toBe(0);
+  });
+
+  it("incluye egreso recurrente con template activo", () => {
+    const inactive = buildInactiveRecurringTemplateIdSet([
+      { id: "tpl-usd-active", active: true },
+    ]);
+    const payments = [
+      makeObligation({
+        currencyCode: "USD",
+        amountEstimated: 60,
+        dueDate: "2026-06-01",
+        recurringTemplateId: "tpl-usd-active",
+        source: "recurring_rule",
+      }),
+    ];
+    const usd = summarizeScheduledOutflows(payments, {
+      asOfDate: asOf,
+      horizonEndDate: horizon,
+      inactiveRecurringTemplateIds: inactive,
+    }).find((s) => s.currency === "USD")!;
+    expect(usd.next30Days).toBe(60);
+    expect(usd.itemsCount).toBe(1);
   });
 
   it("ignora inflows y cancelados", () => {
@@ -250,5 +296,56 @@ describe("mapPlannedObligationToScheduledPayment", () => {
     const mapped = mapPlannedObligationToScheduledPayment(row, "2026-05-21");
     expect(mapped.category).toBe("DGI");
     expect(mapped.name).toBe("DGI mayo");
+  });
+});
+
+describe("filterPlannedObligationsForHoyScheduledList — F1: direction y affectsCashflow", () => {
+  const asOf = "2026-05-22";
+  const horizonEnd = addDaysYmd(asOf, 30);
+
+  it("incluye obligación con direction=outflow y affectsCashflow=true", () => {
+    const row = makeObligation({
+      currencyCode: "UYU",
+      amountEstimated: 10_000,
+      dueDate: "2026-06-10",
+      direction: "outflow",
+      affectsCashflow: true,
+    });
+    const result = filterPlannedObligationsForHoyScheduledList(
+      [row],
+      { asOfDate: asOf, horizonEndDate: horizonEnd }
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(row.id);
+  });
+
+  it("excluye obligación con affectsCashflow=false aunque direction=outflow", () => {
+    const row = makeObligation({
+      currencyCode: "UYU",
+      amountEstimated: 10_000,
+      dueDate: "2026-06-10",
+      direction: "outflow",
+      affectsCashflow: false,
+    });
+    const result = filterPlannedObligationsForHoyScheduledList(
+      [row],
+      { asOfDate: asOf, horizonEndDate: horizonEnd }
+    );
+    expect(result).toHaveLength(0);
+  });
+
+  it("excluye obligación con direction=inflow aunque affectsCashflow=true", () => {
+    const row = makeObligation({
+      currencyCode: "UYU",
+      amountEstimated: 10_000,
+      dueDate: "2026-06-10",
+      direction: "inflow",
+      affectsCashflow: true,
+    });
+    const result = filterPlannedObligationsForHoyScheduledList(
+      [row],
+      { asOfDate: asOf, horizonEndDate: horizonEnd }
+    );
+    expect(result).toHaveLength(0);
   });
 });
