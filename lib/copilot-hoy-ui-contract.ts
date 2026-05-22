@@ -10,7 +10,7 @@ export const HOY_UI = {
 
 export const HOY_PAGE = {
   title: "Copilot · Hoy",
-  description: "Cockpit financiero — caja, cobros y pagos al instante.",
+  description: "Caja, cobros y pagos al instante.",
 } as const;
 
 /** Cockpit financiero — bloques principales. */
@@ -23,6 +23,13 @@ export const HOY_COCKPIT = {
   receivablesIncludedInTotal: "Incluido en ese total",
   receivablesOverdue30: "Vencido >30 días",
   criticalClients: "Clientes críticos",
+  viewCriticalClients: "Ver clientes críticos",
+  drawerCashSummary: "Caja actual registrada disponible para operar.",
+  drawerPaymentsEmpty: "Detalle de pagos disponible en Tesorería.",
+  drawerAfterPaymentsSummary: "Resultado de caja disponible menos pagos próximos.",
+  drawerViewTreasury: "Ver Tesorería",
+  drawerViewProjection: "Ver proyección",
+  drawerGoToCriticalClients: "Ir a clientes críticos",
   advancedTitle: "Detalle avanzado",
   businessHealth: "Business Health",
 } as const;
@@ -68,6 +75,12 @@ export const HOY_COPY = {
   periodOperatingResultTip: "Cobrado + ingresos manuales − egresos manuales en el período.",
   debtorsSectionTitle: "Clientes con deuda",
   debtorsSectionSubtitle: "Todos los clientes con saldo pendiente, separados por moneda.",
+  debtorContactSectionTitle: "Contacto",
+  debtorNoPhone: "Sin teléfono registrado",
+  debtorNoEmail: "Sin email registrado",
+  debtorWhatsApp: "Abrir WhatsApp",
+  debtorSendEmail: "Enviar email",
+  debtorViewProfile: "Ver ficha",
   attentionStripCta: "Ver casos",
   attentionDrawerTitle: "Clientes con señales de atraso",
   attentionDrawerSubtitle:

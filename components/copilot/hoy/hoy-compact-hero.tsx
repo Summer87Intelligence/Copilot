@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
-
 import type { CockpitHero } from "@/lib/copilot-hoy-cockpit-view";
-import { HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
+import { HOY_COCKPIT } from "@/lib/copilot-hoy-ui-contract";
 import type { PulseStatus } from "@/lib/copilot-today-business-pulse";
 
 const STATUS_THEME: Record<
@@ -32,13 +30,12 @@ const STATUS_THEME: Record<
 
 export function HoyCompactHero({
   hero,
-  dataNotice,
+  onViewCriticalClients,
 }: {
   hero: CockpitHero;
-  dataNotice?: string | null;
+  onViewCriticalClients?: () => void;
 }) {
   const t = STATUS_THEME[hero.status];
-  const notice = dataNotice ?? HOY_COPY.dataNotice;
 
   return (
     <section
@@ -56,18 +53,17 @@ export function HoyCompactHero({
           {hero.metricsLine ? (
             <p className="mt-1 text-sm leading-snug text-slate-600">{hero.metricsLine}</p>
           ) : null}
+          {onViewCriticalClients ? (
+            <button
+              type="button"
+              onClick={onViewCriticalClients}
+              className="mt-3 inline-flex items-center rounded-lg border border-amber-300/80 bg-amber-50/90 px-3 py-1.5 text-xs font-semibold text-amber-950 shadow-sm transition-colors hover:bg-amber-100/90"
+            >
+              {HOY_COCKPIT.viewCriticalClients}
+            </button>
+          ) : null}
         </div>
       </div>
-
-      <p className="mt-3 text-xs leading-relaxed text-slate-600 sm:pl-6">
-        {notice}{" "}
-        <Link
-          href={hero.operacionalHref}
-          className="font-semibold text-[var(--copilot-accent)] hover:underline"
-        >
-          Ver estado operacional
-        </Link>
-      </p>
     </section>
   );
 }

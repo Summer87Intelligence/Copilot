@@ -1,14 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
+import { Fragment, useMemo, useState } from "react";
 import type { RefObject } from "react";
+import Link from "next/link";
+import { ChevronDown, ExternalLink, Mail, MessageCircle } from "lucide-react";
 
 import { fmtCurrencyAmount } from "@/lib/copilot-today-business-pulse";
-import type { DebtorCollectionRow } from "@/lib/copilot-today-business-pulse";
+import type { DebtorCollectionRow, MoneyAmount } from "@/lib/copilot-today-business-pulse";
 import type { HoyClientCounts } from "@/lib/copilot-today-business-pulse";
-import { HOY_UI } from "@/lib/copilot-hoy-ui-contract";
+import { HOY_COPY, HOY_UI } from "@/lib/copilot-hoy-ui-contract";
 
-import { MoneyValue } from "./hoy-money-value";
+import { moneyToneClass } from "./hoy-money-value";
 
 export function buildDebtorsSummaryLine(
   counts: HoyClientCounts,
@@ -26,6 +28,34 @@ export function buildDebtorsSummaryLine(
   if (pendingUyu > 0) parts.push(`${fmtCurrencyAmount(pendingUyu, "UYU")} por cobrar`);
   if (pendingUsd > 0) parts.push(`${fmtCurrencyAmount(pendingUsd, "USD")} por cobrar`);
   return parts.join(" · ");
+}
+
+/** Importe sin repetir código de moneda (la columna Moneda ya lo indica). */
+export function formatMoneySymbolOnly(amount: MoneyAmount): string {
+  const n = amount.amount.toLocaleString("es-AR", { maximumFractionDigits: 0 });
+  return amount.currency === "USD" ? `U$S ${n}` : `$ ${n}`;
+}
+
+function normalizeWhatsAppDigits(phone: string): string | null {
+  const digits = phone.replace(/\D/g, "");
+  return digits.length >= 8 ? digits : null;
+}
+
+function DebtorAmount({
+  amount,
+  tone,
+  empty = "—",
+}: {
+  amount: MoneyAmount | null;
+  tone: "warning" | "danger";
+  empty?: string;
+}) {
+  if (!amount) {
+    return <span className="text-sm text-[var(--copilot-ink-muted)]">{empty}</span>;
+  }
+  return (
+    <span className={`text-sm ${moneyToneClass(tone)}`}>{formatMoneySymbolOnly(amount)}</span>
+  );
 }
 
 function riskChips(row: DebtorCollectionRow): { label: string; className: string }[] {
@@ -49,69 +79,221 @@ function rowSeverityClass(row: DebtorCollectionRow, highlightRisk: boolean): str
   return "";
 }
 
+function DebtorRowActions({ row }: { row: DebtorCollectionRow }) {
+  const waDigits = row.phone ? normalizeWhatsAppDigits(row.phone) : null;
+  const hasOverdue = (row.vencido?.amount ?? 0) > 0;
+
+  return (
+    <div className="flex flex-col items-start gap-1" onClick={(e) => e.stopPropagation()}>
+      {hasOverdue ? (
+        <span className="text-xs font-medium leading-snug text-[var(--copilot-ink-muted)]">
+          {row.accion}
+        </span>
+      ) : null}
+      <div className="flex flex-wrap gap-1.5">
+        {waDigits ? (
+          <a
+            href={`https://wa.me/${waDigits}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-md border border-emerald-200/80 bg-emerald-50/80 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-50"
+          >
+            <MessageCircle className="h-3 w-3" aria-hidden />
+            {HOY_COPY.debtorWhatsApp}
+          </a>
+        ) : null}
+        {row.email ? (
+          <a
+            href={`mailto:${encodeURIComponent(row.email)}`}
+            className="inline-flex items-center gap-1 rounded-md border border-[var(--copilot-border)] bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-[var(--copilot-accent)] hover:bg-white"
+          >
+            <Mail className="h-3 w-3" aria-hidden />
+            {HOY_COPY.debtorSendEmail}
+          </a>
+        ) : null}
+        <Link
+          href={row.deepLink}
+          className="inline-flex items-center gap-1 rounded-md border border-[var(--copilot-border)] bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-[var(--copilot-ink)] hover:bg-white"
+        >
+          <ExternalLink className="h-3 w-3" aria-hidden />
+          {HOY_COPY.debtorViewProfile}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function DebtorRowExpandPanel({ row }: { row: DebtorCollectionRow }) {
+  const waDigits = row.phone ? normalizeWhatsAppDigits(row.phone) : null;
+  const hasOverdue = (row.vencido?.amount ?? 0) > 0;
+
+  return (
+    <div className="border-t border-[var(--copilot-border)]/60 bg-slate-50/70 px-4 py-3">
+      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--copilot-ink-muted)]">
+        {HOY_COPY.debtorContactSectionTitle}
+      </p>
+      <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-1 text-xs">
+          <p className="text-[var(--copilot-ink-muted)]">Teléfono</p>
+          <p className="font-medium text-[var(--copilot-ink)]">
+            {row.phone ?? (
+              <span className="font-normal text-[var(--copilot-ink-muted)]">
+                {HOY_COPY.debtorNoPhone}
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="space-y-1 text-xs">
+          <p className="text-[var(--copilot-ink-muted)]">Email</p>
+          <p className="font-medium text-[var(--copilot-ink)]">
+            {row.email ? (
+              <a
+                href={`mailto:${encodeURIComponent(row.email)}`}
+                className="text-[var(--copilot-accent)] hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {row.email}
+              </a>
+            ) : (
+              <span className="font-normal text-[var(--copilot-ink-muted)]">
+                {HOY_COPY.debtorNoEmail}
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-end gap-2 sm:col-span-2 lg:col-span-1">
+          {waDigits ? (
+            <a
+              href={`https://wa.me/${waDigits}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100/80"
+            >
+              <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+              {HOY_COPY.debtorWhatsApp}
+            </a>
+          ) : null}
+          {row.email ? (
+            <a
+              href={`mailto:${encodeURIComponent(row.email)}`}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-xs font-semibold text-[var(--copilot-accent)] hover:bg-white"
+            >
+              <Mail className="h-3.5 w-3.5" aria-hidden />
+              {HOY_COPY.debtorSendEmail}
+            </a>
+          ) : null}
+          <Link
+            href={row.deepLink}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-xs font-semibold text-[var(--copilot-ink)] hover:bg-white"
+          >
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+            {HOY_COPY.debtorViewProfile}
+          </Link>
+        </div>
+      </div>
+      {hasOverdue ? (
+        <p className="mt-2.5 text-[11px] text-[var(--copilot-ink-muted)]">
+          <span className="font-semibold text-rose-800">{row.accion}</span>
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function DebtorTable({
   rows,
-  onRowClick,
   highlightRisk = false,
 }: {
   rows: DebtorCollectionRow[];
-  onRowClick: (row: DebtorCollectionRow) => void;
   highlightRisk?: boolean;
 }) {
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  function toggleRow(rowId: string) {
+    setExpandedRows((current) => {
+      const next = new Set(current);
+      if (next.has(rowId)) {
+        next.delete(rowId);
+      } else {
+        next.add(rowId);
+      }
+      return next;
+    });
+  }
+
   return (
     <div className="overflow-x-auto rounded-xl ring-1 ring-[var(--copilot-border)]">
       <table className="w-full min-w-[640px] border-collapse text-left text-sm">
         <thead>
           <tr className="bg-[rgba(44,40,37,0.04)] text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-            <th className="px-3 py-1">Cliente</th>
-            <th className="px-3 py-1">Moneda</th>
-            <th className="px-3 py-1">Por cobrar</th>
-            <th className="px-3 py-1">Vencido</th>
-            <th className="px-3 py-1">Antigüedad</th>
-            <th className="px-3 py-1">Acción</th>
+            <th className="px-3 py-1.5">Cliente</th>
+            <th className="px-3 py-1.5">Moneda</th>
+            <th className="px-3 py-1.5">Por cobrar</th>
+            <th className="px-3 py-1.5">Vencido</th>
+            <th className="px-3 py-1.5">Antigüedad</th>
+            <th className="px-3 py-1.5">Acción</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[var(--copilot-border)]/80">
           {rows.map((row) => {
             const chips = highlightRisk ? riskChips(row) : [];
+            const isExpanded = expandedRows.has(row.row_id);
             return (
-            <tr
-              key={row.row_id}
-              className={`cursor-pointer transition-colors duration-150 hover:bg-[rgba(44,40,37,0.05)] ${rowSeverityClass(row, highlightRisk)}`}
-              onClick={() => onRowClick(row)}
-            >
-              <td className="px-3 py-1.5">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="font-medium text-[var(--copilot-ink)]">{row.name}</span>
-                  {chips.map((c) => (
-                    <span
-                      key={c.label}
-                      className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase ${c.className}`}
-                    >
-                      {c.label}
-                    </span>
-                  ))}
-                </div>
-              </td>
-              <td className="px-3 py-1.5 text-xs font-semibold text-[var(--copilot-ink-muted)]">
-                {row.currency}
-              </td>
-              <td className="px-3 py-1.5">
-                <MoneyValue amount={row.deuda} tone="warning" />
-              </td>
-              <td className="px-3 py-1.5">
-                {row.vencido ? (
-                  <MoneyValue amount={row.vencido} tone="danger" />
-                ) : (
-                  <span className="text-sm font-medium text-emerald-700">Al día</span>
-                )}
-              </td>
-              <td className="px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)]">{row.antiguedad}</td>
-              <td className="max-w-[200px] px-3 py-1.5 text-xs leading-snug text-[var(--copilot-ink-muted)]">
-                {row.accion}
-              </td>
-            </tr>
-          );
+              <Fragment key={row.row_id}>
+                <tr
+                  className={`cursor-pointer transition-colors duration-150 hover:bg-slate-50 ${rowSeverityClass(row, highlightRisk)} ${isExpanded ? "bg-slate-50/90" : ""}`}
+                  onClick={() => toggleRow(row.row_id)}
+                  aria-expanded={isExpanded}
+                >
+                  <td className="px-3 py-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <ChevronDown
+                        className={`h-3.5 w-3.5 shrink-0 text-[var(--copilot-ink-muted)] transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                        aria-hidden
+                      />
+                      <span className="font-medium text-[var(--copilot-ink)]">{row.name}</span>
+                      {chips.map((c) => (
+                        <span
+                          key={c.label}
+                          className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase ${c.className}`}
+                        >
+                          {c.label}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {row.currency}
+                  </td>
+                  <td className="px-3 py-1.5">
+                    <DebtorAmount amount={row.deuda} tone="warning" />
+                  </td>
+                  <td className="px-3 py-1.5">
+                    {row.vencido ? (
+                      <DebtorAmount amount={row.vencido} tone="danger" />
+                    ) : (
+                      <span className="text-sm font-medium text-emerald-700">Al día</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)]">
+                    {row.antiguedad}
+                  </td>
+                  <td className="max-w-[220px] px-3 py-1.5">
+                    <DebtorRowActions row={row} />
+                  </td>
+                </tr>
+                {isExpanded ? (
+                  <tr key={`${row.row_id}-detail`} className="bg-slate-50/50">
+                    <td colSpan={6} className="p-0">
+                      <DebtorRowExpandPanel row={row} />
+                    </td>
+                  </tr>
+                ) : null}
+              </Fragment>
+            );
           })}
         </tbody>
       </table>
@@ -124,7 +306,6 @@ export function ClientsWithDebtSection({
   counts,
   expanded,
   onExpandedChange,
-  onRowClick,
   sectionRef,
   highlightRisk = false,
 }: {
@@ -132,14 +313,13 @@ export function ClientsWithDebtSection({
   counts: HoyClientCounts;
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
-  onRowClick: (row: DebtorCollectionRow) => void;
   sectionRef?: RefObject<HTMLElement | null>;
   highlightRisk?: boolean;
 }) {
   const initialCount = HOY_UI.initialDebtorTableRows;
   const visibleRows = useMemo(
     () => (expanded ? allRows : allRows.slice(0, initialCount)),
-    [allRows, expanded]
+    [allRows, expanded, initialCount]
   );
 
   const summary = buildDebtorsSummaryLine(counts, allRows);
@@ -151,10 +331,10 @@ export function ClientsWithDebtSection({
       : `Mostrar todos los deudores (${counts.debtorClients})`;
 
   return (
-    <section ref={sectionRef} className="scroll-mt-4">
+    <section ref={sectionRef} id="clientes-criticos" className="scroll-mt-4">
       <p className="text-xs text-[var(--copilot-ink-muted)]">{summary}</p>
       <div className="mt-2">
-        <DebtorTable rows={visibleRows} onRowClick={onRowClick} highlightRisk={highlightRisk} />
+        <DebtorTable rows={visibleRows} highlightRisk={highlightRisk} />
       </div>
       {canExpand ? (
         <button

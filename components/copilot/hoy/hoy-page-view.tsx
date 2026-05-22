@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import Link from "next/link";
-import { ArrowRight, RefreshCw, XCircle } from "lucide-react";
+import { RefreshCw, XCircle } from "lucide-react";
 
 import { CopilotCard } from "@/components/copilot/copilot-ui";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
@@ -16,7 +15,6 @@ import {
   buildTodayBusinessPulse,
   type AttentionClientsSummary,
   type BusinessPulseGate,
-  type DebtorCollectionRow,
 } from "@/lib/copilot-today-business-pulse";
 import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
 import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
@@ -25,8 +23,11 @@ import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-p
 import { AttentionClientsDrawer } from "./hoy-attention-clients-drawer";
 import { HoyAdvancedDetail } from "./hoy-advanced-detail";
 import { ClientsWithDebtSection } from "./hoy-clients-with-debt-section";
+import {
+  HoyCockpitCardDrawer,
+  type HoyCockpitCardId,
+} from "./hoy-cockpit-card-drawer";
 import { HoyCompactHero } from "./hoy-compact-hero";
-import { HoyDrawer } from "./hoy-drawer";
 import { HoyCurrentStateSection } from "./hoy-current-state-section";
 import { HoyMoneyCards } from "./hoy-money-cards";
 import { HoyPeriodActivitySection } from "./hoy-period-activity-section";
@@ -63,8 +64,7 @@ type HoyPageViewProps = {
 
 type DrawerState =
   | { kind: "closed" }
-  | { kind: "attention"; data: AttentionClientsSummary }
-  | { kind: "client"; row: DebtorCollectionRow };
+  | { kind: "attention"; data: AttentionClientsSummary };
 
 function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse rounded-xl bg-[rgba(44,40,37,0.07)] ${className}`} />;
@@ -112,6 +112,7 @@ export function HoyPageView({
   onRefresh,
 }: HoyPageViewProps) {
   const [drawer, setDrawer] = useState<DrawerState>({ kind: "closed" });
+  const [cockpitCard, setCockpitCard] = useState<HoyCockpitCardId | null>(null);
   const [advancedExpanded, setAdvancedExpanded] = useState(false);
   const pathname = usePathname();
 
@@ -164,7 +165,14 @@ export function HoyPageView({
     [pulse.allDebtorRows]
   );
 
-  const dataNotice = pulse.dataWarning ?? null;
+  const scrollToCriticalClients = () => {
+    document.getElementById("clientes-criticos")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
+  const topCriticalClients = useMemo(() => sortedDebtorRows.slice(0, 5), [sortedDebtorRows]);
 
   const openAttentionDrawer = () => {
     if (pulse.attentionClients.total > 0) {
@@ -196,13 +204,15 @@ export function HoyPageView({
   return (
     <>
       <div className={HOY_PAGE_SHELL}>
-        <HoyCompactHero hero={cockpit.hero} dataNotice={dataNotice} />
+        <HoyCompactHero hero={cockpit.hero} onViewCriticalClients={scrollToCriticalClients} />
 
         <HoyMoneyCards
           moneyAvailable={cockpit.moneyAvailable}
           payments={cockpit.payments}
           afterPayments={cockpit.afterPayments}
           receivables={cockpit.receivables}
+          onCardClick={setCockpitCard}
+          activeCard={cockpitCard}
         />
 
         <HoyQuickInsights insights={cockpit.insights} />
@@ -236,7 +246,6 @@ export function HoyPageView({
               counts={pulse.clientCounts}
               expanded={debtorsExpanded}
               onExpandedChange={setDebtorsExpanded}
-              onRowClick={(row) => setDrawer({ kind: "client", row })}
               highlightRisk
             />
           </div>
@@ -270,6 +279,24 @@ export function HoyPageView({
         </HoyAdvancedDetail>
       </div>
 
+      {cockpitCard ? (
+        <HoyCockpitCardDrawer
+          cardId={cockpitCard}
+          cockpit={cockpit}
+          cashPositionBlocks={pulse.cashPositionBlocks}
+          projectionBlocks={pulse.projection30dBlocks}
+          currentStateBlocks={pulse.currentStateBlocks}
+          treasurySummaries={treasuryOutflowSummaries}
+          manualMovements={manualCashMovements}
+          topCriticalClients={topCriticalClients}
+          onClose={() => setCockpitCard(null)}
+          onScrollToCriticalClients={() => {
+            setCockpitCard(null);
+            scrollToCriticalClients();
+          }}
+        />
+      ) : null}
+
       {drawer.kind === "attention" ? (
         <AttentionClientsDrawer
           data={drawer.data}
@@ -280,48 +307,6 @@ export function HoyPageView({
             debtorsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
           }}
         />
-      ) : null}
-      {drawer.kind === "client" ? (
-        <HoyDrawer
-          title={drawer.row.name}
-          onClose={() => setDrawer({ kind: "closed" })}
-          footer={
-            <Link
-              href={drawer.row.deepLink}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-white"
-            >
-              Abrir ficha 360
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </Link>
-          }
-        >
-          <div className="space-y-3 text-sm">
-            <p>
-              <span className="text-[var(--copilot-ink-muted)]">Moneda:</span> {drawer.row.currency}
-            </p>
-            <p>
-              <span className="text-[var(--copilot-ink-muted)]">Por cobrar:</span>{" "}
-              <span className="font-semibold text-amber-700">{drawer.row.deuda.formatted}</span>
-            </p>
-            <p>
-              <span className="text-[var(--copilot-ink-muted)]">Vencido:</span>{" "}
-              {drawer.row.vencido ? (
-                <span className="font-semibold text-rose-700">{drawer.row.vencido.formatted}</span>
-              ) : (
-                <span className="font-semibold text-emerald-700">Al día</span>
-              )}
-            </p>
-            <p>
-              <span className="text-[var(--copilot-ink-muted)]">Antigüedad:</span> {drawer.row.antiguedad}
-            </p>
-            <p>
-              <span className="text-[var(--copilot-ink-muted)]">Motivo:</span> {drawer.row.motivo}
-            </p>
-            <p>
-              <span className="text-[var(--copilot-ink-muted)]">Acción:</span> {drawer.row.accion}
-            </p>
-          </div>
-        </HoyDrawer>
       ) : null}
     </>
   );

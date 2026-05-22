@@ -1,5 +1,8 @@
 "use client";
 
+import type { KeyboardEvent } from "react";
+
+import type { HoyCockpitCardId } from "@/components/copilot/hoy/hoy-cockpit-card-drawer";
 import type {
   CockpitAfterPaymentsAccent,
   CockpitCurrencyAmount,
@@ -232,20 +235,38 @@ function CardFooter({
   );
 }
 
+function cardActivateKey(e: KeyboardEvent, onActivate: () => void) {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    onActivate();
+  }
+}
+
 function MoneyCard({
+  cardId,
   variant,
   title,
   block,
+  onCardClick,
+  isActive,
 }: {
+  cardId: HoyCockpitCardId;
   variant: CardVariant;
   title: string;
   block: CockpitMoneyBlock;
+  onCardClick?: (id: HoyCockpitCardId) => void;
+  isActive?: boolean;
 }) {
   const theme = resolveTheme(variant, block);
+  const interactive = Boolean(onCardClick);
 
   return (
     <article
-      className={`flex min-h-[190px] flex-col rounded-3xl border border-black/[0.04] p-5 shadow-sm transition-shadow hover:shadow-md ${theme.shell}`}
+      role={interactive ? "button" : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onClick={interactive ? () => onCardClick?.(cardId) : undefined}
+      onKeyDown={interactive ? (e) => cardActivateKey(e, () => onCardClick?.(cardId)) : undefined}
+      className={`flex min-h-[190px] flex-col rounded-3xl border border-black/[0.04] p-5 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${theme.shell}`}
     >
       <header>
         <CardHeader theme={theme} title={title} />
@@ -296,12 +317,27 @@ function ReceivablesSection({
   );
 }
 
-function ReceivablesCard({ card }: { card: CockpitReceivablesCard }) {
+function ReceivablesCard({
+  card,
+  onCardClick,
+  isActive,
+}: {
+  card: CockpitReceivablesCard;
+  onCardClick?: (id: HoyCockpitCardId) => void;
+  isActive?: boolean;
+}) {
   const shell = CARD_THEME.receivables;
+  const interactive = Boolean(onCardClick);
 
   return (
     <article
-      className={`flex min-h-[190px] flex-col rounded-3xl border border-black/[0.04] p-5 shadow-sm transition-shadow hover:shadow-md ${shell.shell}`}
+      role={interactive ? "button" : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onClick={interactive ? () => onCardClick?.("receivables") : undefined}
+      onKeyDown={
+        interactive ? (e) => cardActivateKey(e, () => onCardClick?.("receivables")) : undefined
+      }
+      className={`flex min-h-[190px] flex-col rounded-3xl border border-black/[0.04] p-5 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${shell.shell}`}
     >
       <header>
         <CardHeader theme={shell} title={HOY_COCKPIT.receivables} />
@@ -345,18 +381,47 @@ export function HoyMoneyCards({
   payments,
   afterPayments,
   receivables,
+  onCardClick,
+  activeCard,
 }: {
   moneyAvailable: CockpitMoneyBlock;
   payments: CockpitMoneyBlock;
   afterPayments: CockpitMoneyBlock;
   receivables: CockpitReceivablesCard;
+  onCardClick?: (id: HoyCockpitCardId) => void;
+  activeCard?: HoyCockpitCardId | null;
 }) {
   return (
     <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <MoneyCard variant="cash" title={HOY_COCKPIT.moneyAvailable} block={moneyAvailable} />
-      <MoneyCard variant="payments" title={HOY_COCKPIT.payments} block={payments} />
-      <MoneyCard variant="afterPayments" title={HOY_COCKPIT.afterPayments} block={afterPayments} />
-      <ReceivablesCard card={receivables} />
+      <MoneyCard
+        cardId="cash"
+        variant="cash"
+        title={HOY_COCKPIT.moneyAvailable}
+        block={moneyAvailable}
+        onCardClick={onCardClick}
+        isActive={activeCard === "cash"}
+      />
+      <MoneyCard
+        cardId="payments"
+        variant="payments"
+        title={HOY_COCKPIT.payments}
+        block={payments}
+        onCardClick={onCardClick}
+        isActive={activeCard === "payments"}
+      />
+      <MoneyCard
+        cardId="afterPayments"
+        variant="afterPayments"
+        title={HOY_COCKPIT.afterPayments}
+        block={afterPayments}
+        onCardClick={onCardClick}
+        isActive={activeCard === "afterPayments"}
+      />
+      <ReceivablesCard
+        card={receivables}
+        onCardClick={onCardClick}
+        isActive={activeCard === "receivables"}
+      />
     </div>
   );
 }
