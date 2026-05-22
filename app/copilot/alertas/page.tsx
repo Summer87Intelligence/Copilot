@@ -11,6 +11,7 @@ import {
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { useCopilotAlerts } from "@/components/copilot/copilot-alerts-context";
+import { CopilotOperationalStatusSection } from "@/components/copilot/copilot-operational-status-section";
 import { CopilotTaxEvidenceDrawer } from "@/components/copilot/copilot-tax-evidence-drawer";
 import { CopilotAlertOpsActions } from "@/components/copilot/copilot-alert-ops-actions";
 import { copilotInteractiveTextGroupAffordance } from "@/components/copilot/copilot-interactive-text";
@@ -49,6 +50,7 @@ function CopilotAlertasPageContent() {
 
   const [priority, setPriority] = useState<PriorityFilter>("all");
   const [type, setType] = useState<TypeFilter>("all");
+  const fromOperationalSource = searchParams.get("source") === "operational";
   const {
     items: allAlerts,
     fiscalError: fiscalLoadError,
@@ -168,6 +170,13 @@ function CopilotAlertasPageContent() {
       />
 
       <div className={copilotPageMainClass}>
+        <CopilotOperationalStatusSection scrollIntoView={fromOperationalSource} />
+
+        <CopilotSectionTitle
+          title="Alertas detectadas"
+          subtitle="Riesgos fiscales, liquidez y conciliación del motor de alertas."
+        />
+
         <div className="grid gap-3 sm:grid-cols-3">
           <CopilotCard className="border-rose-200/70 bg-rose-50/45 py-3">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-900/80">

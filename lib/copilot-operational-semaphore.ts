@@ -147,13 +147,9 @@ export function deriveOperationalSemaphore(input: {
   }
 
   const ctaHref =
-    level === "critical" && criticalCount > 0
-      ? "/copilot/atencion-prioritaria?level=critical"
-      : level === "attention" && highCount > 0 && criticalCount === 0
-        ? "/copilot/atencion-prioritaria?level=high"
-        : "/copilot/hoy";
+    level === "ok" ? "/copilot/hoy" : "/copilot/alertas?source=operational";
 
-  const ctaLabel = ctaHref.startsWith("/copilot/hoy") ? "Ver Hoy" : "Ver estado";
+  const ctaLabel = level === "ok" ? "Ver Hoy" : "Ver alertas";
 
   return {
     level,
