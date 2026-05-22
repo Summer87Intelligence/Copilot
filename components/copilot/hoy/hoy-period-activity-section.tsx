@@ -106,14 +106,14 @@ export function HoyPeriodActivitySection({
   const periodLabel = formatHoyPeriodLabel(periodRange);
 
   return (
-    <CopilotCard>
+    <CopilotCard className="!p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">
+        <h2 className="text-xs font-semibold text-[var(--copilot-ink-muted)]">
           {HOY_COPY.periodActivityTitle} · {periodLabel}
         </h2>
         <HoyScopeBadge label={`${HOY_COPY.scopeBadgePeriod} · ${periodLabel}`} />
       </div>
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
         {blocks.map((block) => (
           <ActivityCurrencyCard key={block.currency} block={block} />
         ))}

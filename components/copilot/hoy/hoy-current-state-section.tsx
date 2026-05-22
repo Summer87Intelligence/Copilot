@@ -110,15 +110,12 @@ export function HoyCurrentStateSection({ blocks }: { blocks: HoyCurrentStateBloc
   if (blocks.length === 0) return null;
 
   return (
-    <CopilotCard>
+    <CopilotCard className="!p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">{HOY_COPY.currentStateTitle}</h2>
+        <h2 className="text-xs font-semibold text-[var(--copilot-ink-muted)]">{HOY_COPY.currentStateTitle}</h2>
         <HoyScopeBadge label={HOY_COPY.scopeBadgeCurrent} />
       </div>
-      <p className="mt-0.5 text-[10px] text-[var(--copilot-ink-muted)]" title={HOY_COPY.cashCurrentTip}>
-        Sin deuda pendiente en caja disponible.
-      </p>
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
         {blocks.map((block) => (
           <CurrentCurrencyCard key={block.currency} block={block} />
         ))}

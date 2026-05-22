@@ -28,53 +28,91 @@ export function buildDebtorsSummaryLine(
   return parts.join(" · ");
 }
 
+function riskChips(row: DebtorCollectionRow): { label: string; className: string }[] {
+  const chips: { label: string; className: string }[] = [];
+  if ((row.vencido?.amount ?? 0) > 0) {
+    chips.push({ label: "Vencido", className: "bg-rose-100/90 text-rose-900" });
+  }
+  if (row.flags.critical30Share) {
+    chips.push({ label: ">30d", className: "bg-rose-50 text-rose-800 ring-1 ring-rose-200/60" });
+  }
+  if (row.riesgo === "Alto") {
+    chips.push({ label: "Alto", className: "bg-amber-100/90 text-amber-950" });
+  }
+  return chips;
+}
+
+function rowSeverityClass(row: DebtorCollectionRow, highlightRisk: boolean): string {
+  if (!highlightRisk) return "";
+  if ((row.vencido?.amount ?? 0) > 0) return "bg-rose-50/50";
+  if (row.flags.critical30Share || row.riesgo === "Alto") return "bg-amber-50/40";
+  return "";
+}
+
 function DebtorTable({
   rows,
   onRowClick,
+  highlightRisk = false,
 }: {
   rows: DebtorCollectionRow[];
   onRowClick: (row: DebtorCollectionRow) => void;
+  highlightRisk?: boolean;
 }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-[var(--copilot-border)]">
+    <div className="overflow-x-auto rounded-xl ring-1 ring-[var(--copilot-border)]">
       <table className="w-full min-w-[640px] border-collapse text-left text-sm">
         <thead>
-          <tr className="bg-[rgba(44,40,37,0.03)] text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-            <th className="px-4 py-2.5">Cliente</th>
-            <th className="px-4 py-2.5">Moneda</th>
-            <th className="px-4 py-2.5">Por cobrar</th>
-            <th className="px-4 py-2.5">Vencido</th>
-            <th className="px-4 py-2.5">Antigüedad</th>
-            <th className="px-4 py-2.5">Acción</th>
+          <tr className="bg-[rgba(44,40,37,0.04)] text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+            <th className="px-3 py-1">Cliente</th>
+            <th className="px-3 py-1">Moneda</th>
+            <th className="px-3 py-1">Por cobrar</th>
+            <th className="px-3 py-1">Vencido</th>
+            <th className="px-3 py-1">Antigüedad</th>
+            <th className="px-3 py-1">Acción</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-[var(--copilot-border)]">
-          {rows.map((row) => (
+        <tbody className="divide-y divide-[var(--copilot-border)]/80">
+          {rows.map((row) => {
+            const chips = highlightRisk ? riskChips(row) : [];
+            return (
             <tr
               key={row.row_id}
-              className="cursor-pointer transition hover:bg-[rgba(44,40,37,0.03)]"
+              className={`cursor-pointer transition-colors duration-150 hover:bg-[rgba(44,40,37,0.05)] ${rowSeverityClass(row, highlightRisk)}`}
               onClick={() => onRowClick(row)}
             >
-              <td className="px-4 py-3 font-medium text-[var(--copilot-ink)]">{row.name}</td>
-              <td className="px-4 py-3 text-xs font-semibold text-[var(--copilot-ink-muted)]">
+              <td className="px-3 py-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="font-medium text-[var(--copilot-ink)]">{row.name}</span>
+                  {chips.map((c) => (
+                    <span
+                      key={c.label}
+                      className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase ${c.className}`}
+                    >
+                      {c.label}
+                    </span>
+                  ))}
+                </div>
+              </td>
+              <td className="px-3 py-1.5 text-xs font-semibold text-[var(--copilot-ink-muted)]">
                 {row.currency}
               </td>
-              <td className="px-4 py-3">
+              <td className="px-3 py-1.5">
                 <MoneyValue amount={row.deuda} tone="warning" />
               </td>
-              <td className="px-4 py-3">
+              <td className="px-3 py-1.5">
                 {row.vencido ? (
                   <MoneyValue amount={row.vencido} tone="danger" />
                 ) : (
                   <span className="text-sm font-medium text-emerald-700">Al día</span>
                 )}
               </td>
-              <td className="px-4 py-3 text-xs text-[var(--copilot-ink-muted)]">{row.antiguedad}</td>
-              <td className="max-w-[200px] px-4 py-3 text-xs leading-snug text-[var(--copilot-ink-muted)]">
+              <td className="px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)]">{row.antiguedad}</td>
+              <td className="max-w-[200px] px-3 py-1.5 text-xs leading-snug text-[var(--copilot-ink-muted)]">
                 {row.accion}
               </td>
             </tr>
-          ))}
+          );
+          })}
         </tbody>
       </table>
     </div>
@@ -88,6 +126,7 @@ export function ClientsWithDebtSection({
   onExpandedChange,
   onRowClick,
   sectionRef,
+  highlightRisk = false,
 }: {
   allRows: DebtorCollectionRow[];
   counts: HoyClientCounts;
@@ -95,6 +134,7 @@ export function ClientsWithDebtSection({
   onExpandedChange: (expanded: boolean) => void;
   onRowClick: (row: DebtorCollectionRow) => void;
   sectionRef?: RefObject<HTMLElement | null>;
+  highlightRisk?: boolean;
 }) {
   const initialCount = HOY_UI.initialDebtorTableRows;
   const visibleRows = useMemo(
@@ -113,8 +153,8 @@ export function ClientsWithDebtSection({
   return (
     <section ref={sectionRef} className="scroll-mt-4">
       <p className="text-xs text-[var(--copilot-ink-muted)]">{summary}</p>
-      <div className="mt-4">
-        <DebtorTable rows={visibleRows} onRowClick={onRowClick} />
+      <div className="mt-2">
+        <DebtorTable rows={visibleRows} onRowClick={onRowClick} highlightRisk={highlightRisk} />
       </div>
       {canExpand ? (
         <button

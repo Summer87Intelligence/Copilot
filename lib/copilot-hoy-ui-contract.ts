@@ -9,8 +9,21 @@ export const HOY_UI = {
 } as const;
 
 export const HOY_PAGE = {
-  title: "Hoy en la empresa",
-  description: "Estado actual, actividad del período y proyección de caja.",
+  title: "Copilot · Hoy",
+  description: "Cockpit financiero — caja, cobros y pagos al instante.",
+} as const;
+
+/** Cockpit financiero — bloques principales. */
+export const HOY_COCKPIT = {
+  moneyAvailable: "Dinero disponible",
+  receivables: "Por cobrar",
+  payments: "Pagos próximos",
+  afterPayments: "Después de pagos",
+  receivablesTotalPending: "Total pendiente",
+  receivablesOverdue30: "Vencido >30 días",
+  criticalClients: "Clientes críticos",
+  advancedTitle: "Detalle avanzado",
+  businessHealth: "Business Health",
 } as const;
 
 /** Labels visibles en bloques UYU/USD. */
@@ -18,7 +31,7 @@ export const CURRENCY_METRIC_LABELS = {
   billed: "Facturado neto del período",
   collected: "Cobrado en el período",
   pending: "Por cobrar",
-  overdue30: "Atrasado +30",
+  overdue30: "Saldo vencido >30 días",
 } as const;
 
 export const CURRENCY_METRIC_HELPERS = {
@@ -41,7 +54,7 @@ export const HOY_COPY = {
   currentReceivablesLabel: "Por cobrar",
   currentReceivablesTip: "Deuda de clientes todavía no cobrada.",
   activeDebtorsLabel: "Clientes con deuda",
-  overdue30Short: "Atrasado +30",
+  overdue30Short: "Saldo vencido >30 días",
   periodActivityTitle: "Actividad del período",
   periodBilledLabel: "Facturado neto",
   periodBilledTip: "Facturas emitidas menos notas de crédito en el período.",
@@ -50,8 +63,8 @@ export const HOY_COPY = {
   periodCreditNotesLabel: "Notas de crédito",
   periodManualIncomeLabel: "Ingresos manuales",
   periodManualExpenseLabel: "Egresos manuales",
-  periodOperatingResultLabel: "Resultado operativo del período",
-  periodOperatingResultTip: "Cobrado + ingresos manuales − egresos manuales.",
+  periodOperatingResultLabel: "Liquidez operativa",
+  periodOperatingResultTip: "Cobrado + ingresos manuales − egresos manuales en el período.",
   debtorsSectionTitle: "Clientes con deuda",
   debtorsSectionSubtitle: "Todos los clientes con saldo pendiente, separados por moneda.",
   attentionStripCta: "Ver casos",
@@ -75,11 +88,11 @@ export const HOY_COPY = {
   /** @deprecated Usar `availableCashLabel`. */
   currentCashLabel: "Caja disponible estimada",
   scheduledPaymentsLabel: "Pagos programados",
-  safeCash30Label: "Caja segura 30 días",
+  safeCash30Label: "Cobertura 30 días",
   safeCash30Tip: "Caja disponible menos pagos programados. Sin deuda pendiente.",
   pendingReceivablesLabel: "Por cobrar",
   pendingReceivablesTip: "Deuda de clientes todavía no cobrada.",
-  expectedCash30Label: "Caja esperada si se cobra",
+  expectedCash30Label: "Escenario de cobranza",
   expectedCash30Tip: "Caja disponible + por cobrar − pagos programados.",
   scheduledOutflowsLabel: "Pagos programados",
   treasuryCta: "Configurar pagos futuros",

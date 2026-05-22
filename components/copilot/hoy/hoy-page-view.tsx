@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, RefreshCw, XCircle } from "lucide-react";
 
@@ -8,26 +9,31 @@ import { CopilotCard } from "@/components/copilot/copilot-ui";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import type { FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
 import type { CarteraCurrencyTotals } from "@/lib/copilot-cartera-aging-totals";
+import { buildCockpitView, sortDebtorRowsForCockpit } from "@/lib/copilot-hoy-cockpit-view";
 import type { HoyPeriodRange } from "@/lib/copilot-hoy-period";
+import { HOY_COCKPIT, HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
 import {
   buildTodayBusinessPulse,
   type AttentionClientsSummary,
   type BusinessPulseGate,
   type DebtorCollectionRow,
 } from "@/lib/copilot-today-business-pulse";
-import { HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
 import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
 import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
 import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
 
 import { AttentionClientsDrawer } from "./hoy-attention-clients-drawer";
+import { HoyAdvancedDetail } from "./hoy-advanced-detail";
 import { ClientsWithDebtSection } from "./hoy-clients-with-debt-section";
+import { HoyCompactHero } from "./hoy-compact-hero";
 import { HoyDrawer } from "./hoy-drawer";
 import { HoyCurrentStateSection } from "./hoy-current-state-section";
+import { HoyMoneyCards } from "./hoy-money-cards";
 import { HoyPeriodActivitySection } from "./hoy-period-activity-section";
 import { HoyPeriodBar } from "./hoy-period-bar";
 import { HoyProjection30dSection } from "./hoy-projection-30d-section";
-import { AttentionFollowUpStrip, PulseHero } from "./hoy-pulse-hero";
+import { HOY_PAGE_SHELL } from "./hoy-layout";
+import { HoyQuickInsights } from "./hoy-quick-insights";
 
 type HoyPageViewProps = {
   loading: boolean;
@@ -66,14 +72,16 @@ function Skeleton({ className = "" }: { className?: string }) {
 
 function LoadingSkeleton() {
   return (
-    <div className="flex-1 space-y-5 overflow-auto px-6 py-6">
-      <Skeleton className="h-24 w-full" />
-      <Skeleton className="h-20 w-full" />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Skeleton className="h-56" />
-        <Skeleton className="h-56" />
+    <div className={HOY_PAGE_SHELL}>
+      <Skeleton className="h-14 w-full" />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <Skeleton className="min-h-[190px]" />
+        <Skeleton className="min-h-[190px]" />
+        <Skeleton className="min-h-[190px]" />
+        <Skeleton className="min-h-[190px]" />
       </div>
-      <Skeleton className="h-72 w-full" />
+      <Skeleton className="h-9 w-full" />
+      <Skeleton className="h-64 w-full" />
     </div>
   );
 }
@@ -104,6 +112,13 @@ export function HoyPageView({
   onRefresh,
 }: HoyPageViewProps) {
   const [drawer, setDrawer] = useState<DrawerState>({ kind: "closed" });
+  const [advancedExpanded, setAdvancedExpanded] = useState(false);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setAdvancedExpanded(false);
+  }, [pathname]);
+
   const [debtorsExpanded, setDebtorsExpanded] = useState(false);
   const debtorsSectionRef = useRef<HTMLElement>(null);
 
@@ -139,21 +154,29 @@ export function HoyPageView({
     ]
   );
 
+  const cockpit = useMemo(
+    () => buildCockpitView(pulse, carteraAgingOverdue),
+    [pulse, carteraAgingOverdue]
+  );
+
+  const sortedDebtorRows = useMemo(
+    () => sortDebtorRowsForCockpit(pulse.allDebtorRows),
+    [pulse.allDebtorRows]
+  );
+
   const dataNotice = pulse.dataWarning ?? null;
 
-  const expandDebtorsOnPage = () => {
-    setDebtorsExpanded(true);
-    setDrawer({ kind: "closed" });
-    requestAnimationFrame(() => {
-      debtorsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+  const openAttentionDrawer = () => {
+    if (pulse.attentionClients.total > 0) {
+      setDrawer({ kind: "attention", data: pulse.attentionClients });
+    }
   };
 
   if (loading) return <LoadingSkeleton />;
 
   if (error) {
     return (
-      <div className="flex-1 px-6 py-6">
+      <div className={HOY_PAGE_SHELL}>
         <div className="flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-950">
           <XCircle className="h-4 w-4 shrink-0 text-rose-500" aria-hidden />
           {error}
@@ -172,76 +195,90 @@ export function HoyPageView({
 
   return (
     <>
-      <div className="flex-1 space-y-5 overflow-auto px-6 py-6">
-        <PulseHero
-          status={pulse.overallStatus}
-          headline={pulse.headline}
-          subline={pulse.heroSubline}
-          dataNotice={dataNotice}
-          onRefresh={onRefresh}
+      <div className={HOY_PAGE_SHELL}>
+        <HoyCompactHero hero={cockpit.hero} dataNotice={dataNotice} />
+
+        <HoyMoneyCards
+          moneyAvailable={cockpit.moneyAvailable}
+          payments={cockpit.payments}
+          afterPayments={cockpit.afterPayments}
+          receivables={cockpit.receivables}
         />
 
-        <HoyPeriodBar
-          draftFrom={draftFrom}
-          draftTo={draftTo}
-          confirmed={confirmedPeriod}
-          onDraftFromChange={onDraftFromChange}
-          onDraftToChange={onDraftToChange}
-          hasPendingChanges={hasPendingPeriodChanges}
-          onConfirm={onConfirmPeriod}
-          onMonthToDate={onMonthToDate}
-          onLast30Days={onLast30Days}
-          onRefresh={onRefresh}
-          loading={loading}
-        />
+        <HoyQuickInsights insights={cockpit.insights} />
 
-        <HoyCurrentStateSection blocks={pulse.currentStateBlocks} />
-
-        <HoyPeriodActivitySection
-          blocks={pulse.periodActivityBlocks}
-          periodRange={pulse.periodRange}
-        />
-
-        <HoyProjection30dSection
-          blocks={pulse.projection30dBlocks}
-          alerts={pulse.treasuryAlerts}
-          configured={pulse.treasuryOutflowsConfigured}
-          overdueCritical30={carteraAgingOverdue}
-        />
-
-        {pulse.attentionClients.total > 0 ? (
-          <AttentionFollowUpStrip
-            attentionCount={pulse.attentionClients.total}
-            debtorTotal={pulse.clientCounts.debtorClients}
-            onClick={() => setDrawer({ kind: "attention", data: pulse.attentionClients })}
-          />
-        ) : null}
-
-        <CopilotCard>
-          <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">
-            {HOY_COPY.debtorsSectionTitle}
-          </h2>
-          <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-            {HOY_COPY.debtorsSectionSubtitle}
-          </p>
-          <div className="mt-4">
+        <CopilotCard className="w-full !p-3">
+          <div className="flex flex-wrap items-center justify-between gap-1.5">
+            <div>
+              <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">
+                {HOY_COCKPIT.criticalClients}
+              </h2>
+              <p className="text-xs text-[var(--copilot-ink-muted)]">
+                {pulse.clientCounts.attentionClients > 0
+                  ? `${pulse.clientCounts.attentionClients} con riesgo elevado · ordenados por severidad`
+                  : HOY_COPY.debtorsSectionSubtitle}
+              </p>
+            </div>
+            {pulse.attentionClients.total > 0 ? (
+              <button
+                type="button"
+                onClick={openAttentionDrawer}
+                className="text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
+              >
+                {HOY_COPY.attentionStripCta}
+              </button>
+            ) : null}
+          </div>
+          <div className="mt-2">
             <ClientsWithDebtSection
               sectionRef={debtorsSectionRef}
-              allRows={pulse.allDebtorRows}
+              allRows={sortedDebtorRows}
               counts={pulse.clientCounts}
               expanded={debtorsExpanded}
               onExpandedChange={setDebtorsExpanded}
               onRowClick={(row) => setDrawer({ kind: "client", row })}
+              highlightRisk
             />
           </div>
         </CopilotCard>
+
+        <HoyAdvancedDetail expanded={advancedExpanded} onExpandedChange={setAdvancedExpanded}>
+          <HoyPeriodBar
+            draftFrom={draftFrom}
+            draftTo={draftTo}
+            confirmed={confirmedPeriod}
+            onDraftFromChange={onDraftFromChange}
+            onDraftToChange={onDraftToChange}
+            hasPendingChanges={hasPendingPeriodChanges}
+            onConfirm={onConfirmPeriod}
+            onMonthToDate={onMonthToDate}
+            onLast30Days={onLast30Days}
+            onRefresh={onRefresh}
+            loading={loading}
+          />
+          <HoyCurrentStateSection blocks={pulse.currentStateBlocks} />
+          <HoyPeriodActivitySection
+            blocks={pulse.periodActivityBlocks}
+            periodRange={pulse.periodRange}
+          />
+          <HoyProjection30dSection
+            blocks={pulse.projection30dBlocks}
+            alerts={pulse.treasuryAlerts}
+            configured={pulse.treasuryOutflowsConfigured}
+            overdueCritical30={carteraAgingOverdue}
+          />
+        </HoyAdvancedDetail>
       </div>
 
       {drawer.kind === "attention" ? (
         <AttentionClientsDrawer
           data={drawer.data}
           onClose={() => setDrawer({ kind: "closed" })}
-          onViewAllDebtors={expandDebtorsOnPage}
+          onViewAllDebtors={() => {
+            setDebtorsExpanded(true);
+            setDrawer({ kind: "closed" });
+            debtorsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
         />
       ) : null}
       {drawer.kind === "client" ? (

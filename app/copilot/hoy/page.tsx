@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { RefreshCw } from "lucide-react";
 
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { HoyPageView } from "@/components/copilot/hoy/hoy-page-view";
@@ -181,9 +182,22 @@ export default function CopilotHoyPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
+        dense
         surfaceId="copilot.hoy"
         title={HOY_PAGE.title}
         description={HOY_PAGE.description}
+        right={
+          <button
+            type="button"
+            onClick={() => void load()}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-white/80 px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-white disabled:opacity-50"
+            aria-label="Actualizar datos"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} aria-hidden />
+            Actualizar
+          </button>
+        }
       />
       <HoyPageView
         loading={loading}
