@@ -31,6 +31,10 @@ import {
   type ProtoInstallmentInput,
 } from "@/lib/integrations/zeta/zeta-installments-mapper";
 import { findActiveProtoInvoiceIdsByRegistroIds } from "@/lib/integrations/zeta/zeta-installments-link";
+import {
+  collectOpenCuotaKeysFromMapped,
+  reconcileStaleInstallmentsAfterCuotasFetch,
+} from "@/lib/integrations/zeta/zeta-stale-installment-cleanup";
 
 const _pipelineLogger = createLogger({ source: "zeta_installments_pipeline" });
 
@@ -180,6 +184,8 @@ export async function runZetaInstallmentsPipeline(
 
   /** Acumulador `invoice_id` → min cuota_vencimiento de cuotas con saldo > 0. */
   const dueDateByInvoice = new Map<string, string>();
+  /** Cuotas abiertas devueltas por Zeta en esta corrida (todas las páginas). */
+  const openCuotaKeysFromZeta = new Set<string>();
 
   let page = 1;
   for (; page <= maxPages; page++) {
@@ -226,6 +232,9 @@ export async function runZetaInstallmentsPipeline(
     }
 
     const { mapped, discards } = mapZetaInstallmentsBatch(fetchResult.rows);
+    for (const key of collectOpenCuotaKeysFromMapped(mapped)) {
+      openCuotaKeysFromZeta.add(key);
+    }
     result.rows_mapped += mapped.length;
     result.rows_discarded += discards.length;
     if (discards.length > 0) {
@@ -360,6 +369,21 @@ export async function runZetaInstallmentsPipeline(
       cliente_codigo: clienteCodigo,
       reconciled: reconciled.linked,
       due_date_updated: reconciled.due_date_updated,
+      sync_run_id: syncRunId,
+    });
+  }
+
+  const staleCuotas = await reconcileStaleInstallmentsAfterCuotasFetch(supabase, {
+    workspaceCompanyId: wid,
+    clienteCodigo,
+    openCuotaKeysFromZeta,
+    syncRunId,
+  });
+  if (staleCuotas.closed_count > 0) {
+    pipelineLog("info", "pipeline_stale_installments_closed", {
+      workspace_company_id: wid,
+      cliente_codigo: clienteCodigo,
+      closed_count: staleCuotas.closed_count,
       sync_run_id: syncRunId,
     });
   }
