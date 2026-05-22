@@ -36,9 +36,20 @@ export function formatMoneySymbolOnly(amount: MoneyAmount): string {
   return amount.currency === "USD" ? `U$S ${n}` : `$ ${n}`;
 }
 
+function debtorContactFields(row: DebtorCollectionRow): {
+  phone: string | null;
+  email: string | null;
+} {
+  return {
+    phone: row.phone ?? row.contact_phone ?? null,
+    email: row.email ?? row.contact_email ?? null,
+  };
+}
+
+/** Solo para enlace wa.me; el teléfono en pantalla se muestra tal cual viene de la fuente. */
 function normalizeWhatsAppDigits(phone: string): string | null {
   const digits = phone.replace(/\D/g, "");
-  return digits.length >= 8 ? digits : null;
+  return digits.length > 0 ? digits : null;
 }
 
 function DebtorAmount({
@@ -80,7 +91,8 @@ function rowSeverityClass(row: DebtorCollectionRow, highlightRisk: boolean): str
 }
 
 function DebtorRowActions({ row }: { row: DebtorCollectionRow }) {
-  const waDigits = row.phone ? normalizeWhatsAppDigits(row.phone) : null;
+  const { phone, email } = debtorContactFields(row);
+  const waDigits = phone ? normalizeWhatsAppDigits(phone) : null;
   const hasOverdue = (row.vencido?.amount ?? 0) > 0;
 
   return (
@@ -102,9 +114,9 @@ function DebtorRowActions({ row }: { row: DebtorCollectionRow }) {
             {HOY_COPY.debtorWhatsApp}
           </a>
         ) : null}
-        {row.email ? (
+        {email ? (
           <a
-            href={`mailto:${encodeURIComponent(row.email)}`}
+            href={`mailto:${encodeURIComponent(email)}`}
             className="inline-flex items-center gap-1 rounded-md border border-[var(--copilot-border)] bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-[var(--copilot-accent)] hover:bg-white"
           >
             <Mail className="h-3 w-3" aria-hidden />
@@ -124,7 +136,8 @@ function DebtorRowActions({ row }: { row: DebtorCollectionRow }) {
 }
 
 function DebtorRowExpandPanel({ row }: { row: DebtorCollectionRow }) {
-  const waDigits = row.phone ? normalizeWhatsAppDigits(row.phone) : null;
+  const { phone, email } = debtorContactFields(row);
+  const waDigits = phone ? normalizeWhatsAppDigits(phone) : null;
   const hasOverdue = (row.vencido?.amount ?? 0) > 0;
 
   return (
@@ -136,7 +149,7 @@ function DebtorRowExpandPanel({ row }: { row: DebtorCollectionRow }) {
         <div className="space-y-1 text-xs">
           <p className="text-[var(--copilot-ink-muted)]">Teléfono</p>
           <p className="font-medium text-[var(--copilot-ink)]">
-            {row.phone ?? (
+            {phone ?? (
               <span className="font-normal text-[var(--copilot-ink-muted)]">
                 {HOY_COPY.debtorNoPhone}
               </span>
@@ -146,13 +159,13 @@ function DebtorRowExpandPanel({ row }: { row: DebtorCollectionRow }) {
         <div className="space-y-1 text-xs">
           <p className="text-[var(--copilot-ink-muted)]">Email</p>
           <p className="font-medium text-[var(--copilot-ink)]">
-            {row.email ? (
+            {email ? (
               <a
-                href={`mailto:${encodeURIComponent(row.email)}`}
+                href={`mailto:${encodeURIComponent(email)}`}
                 className="text-[var(--copilot-accent)] hover:underline"
                 onClick={(e) => e.stopPropagation()}
               >
-                {row.email}
+                {email}
               </a>
             ) : (
               <span className="font-normal text-[var(--copilot-ink-muted)]">
@@ -174,9 +187,9 @@ function DebtorRowExpandPanel({ row }: { row: DebtorCollectionRow }) {
               {HOY_COPY.debtorWhatsApp}
             </a>
           ) : null}
-          {row.email ? (
+          {email ? (
             <a
-              href={`mailto:${encodeURIComponent(row.email)}`}
+              href={`mailto:${encodeURIComponent(email)}`}
               onClick={(e) => e.stopPropagation()}
               className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-xs font-semibold text-[var(--copilot-accent)] hover:bg-white"
             >

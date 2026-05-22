@@ -73,6 +73,11 @@ export type DebtorCollectionRow = {
   riesgo: "Bajo" | "Medio" | "Alto";
   accion: string;
   deepLink: string;
+  /** Alias UI; suele venir de `contact_email` en portfolio. */
+  email?: string | null;
+  phone?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
   flags: {
     hasOverdue: boolean;
     slowCollection: boolean;
@@ -267,6 +272,10 @@ export function buildDebtorCollectionRows(
         riesgo: r.risk,
         accion: debtorAccion(r, hasOverdue),
         deepLink: `/copilot/clientes/${r.company_id}`,
+        email: r.contact_email ?? null,
+        phone: r.contact_phone ?? null,
+        contact_email: r.contact_email ?? null,
+        contact_phone: r.contact_phone ?? null,
         flags: { hasOverdue, slowCollection: slow, critical30Share: hasOverdue },
       });
     }
@@ -286,6 +295,10 @@ export function buildDebtorCollectionRows(
         riesgo: r.risk,
         accion: debtorAccion(r, hasOverdue),
         deepLink: `/copilot/clientes/${r.company_id}`,
+        email: r.contact_email ?? null,
+        phone: r.contact_phone ?? null,
+        contact_email: r.contact_email ?? null,
+        contact_phone: r.contact_phone ?? null,
         flags: { hasOverdue, slowCollection: slow, critical30Share: hasOverdue },
       });
     }

@@ -35,6 +35,10 @@ export type ClientPortfolioRow = {
   /** Origen del registro en el directorio unificado. */
   source: ClientDirectorySource;
   has_contact_data: boolean;
+  /** Primer email de contacto ya cargado en portfolio (sin fetch extra). */
+  contact_email?: string | null;
+  /** Teléfono principal si existe en proto_contacts. */
+  contact_phone?: string | null;
   derived_from_debt: boolean;
   debt_uyu: number;
   debt_usd: number;
@@ -145,9 +149,37 @@ type ContactRow = {
   company_id: unknown;
   name?: unknown;
   email?: unknown;
+  phone?: unknown;
+  telefono?: unknown;
+  mobile?: unknown;
   title?: unknown;
   role?: unknown;
 };
+
+function readContactPhone(ct: ContactRow): string | null {
+  for (const raw of [ct.phone, ct.telefono, ct.mobile]) {
+    if (raw != null && String(raw).trim()) return String(raw).trim();
+  }
+  return null;
+}
+
+function pickPrimaryContactFields(cts: ContactRow[]): {
+  contact_email: string | null;
+  contact_phone: string | null;
+} {
+  let contact_email: string | null = null;
+  let contact_phone: string | null = null;
+  for (const ct of cts) {
+    if (!contact_email && ct.email != null && String(ct.email).trim()) {
+      contact_email = String(ct.email).trim();
+    }
+    if (!contact_phone) {
+      contact_phone = readContactPhone(ct);
+    }
+    if (contact_email && contact_phone) break;
+  }
+  return { contact_email, contact_phone };
+}
 
 function num(v: unknown): number {
   if (v === null || v === undefined) return 0;
@@ -497,6 +529,8 @@ export async function getClientPortfolio(
         )
       : legacyRisk;
 
+    const { contact_email, contact_phone } = pickPrimaryContactFields(cts);
+
     const row: ClientPortfolioRow = {
       company_id,
       name: entry.name,
@@ -511,6 +545,8 @@ export async function getClientPortfolio(
       risk,
       source: entry.source,
       has_contact_data: entry.has_contact_data,
+      contact_email,
+      contact_phone,
       derived_from_debt: entry.derived_from_debt,
       debt_uyu: entry.debtUYU,
       debt_usd: entry.debtUSD,
