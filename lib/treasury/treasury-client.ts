@@ -50,6 +50,7 @@ export const TREASURY_API = {
   paidObligation: (id: string) => `/api/copilot/treasury/planned-cash-obligations/${id}/paid`,
   cancelObligation: (id: string) => `/api/copilot/treasury/planned-cash-obligations/${id}/cancel`,
   scheduledPayment: (id: string) => `/api/copilot/treasury/scheduled-payments/${id}`,
+  markPaidScheduledPayment: (id: string) => `/api/copilot/treasury/scheduled-payments/${id}/mark-paid`,
   upcomingObligations: "/api/copilot/treasury/planned-cash-obligations/upcoming",
   overdueObligations: "/api/copilot/treasury/planned-cash-obligations/overdue",
   importBankMovements: "/api/copilot/treasury/bank-reconciliation-movements/import",

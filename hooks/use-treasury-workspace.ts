@@ -514,22 +514,41 @@ export function useTreasuryWorkspace(filters: TreasuryWorkspaceFilters) {
   );
 
   const paidObligation = useCallback(
-    async (id: string, options?: { amountFinal?: number; registerCashMovement?: boolean }) => {
+    async (
+      id: string,
+      options?: { amountFinal?: number; registerCashMovement?: boolean }
+    ): Promise<boolean> => {
+      const withMovement = options?.registerCashMovement === true;
       const body: Record<string, unknown> = {};
       if (options?.amountFinal != null) body.amount_final = options.amountFinal;
-      if (options?.registerCashMovement) body.register_cash_movement = true;
+
+      if (withMovement) {
+        body.register_cash_movement = true;
+        const result = await treasuryApiPost<{ id: string }>(
+          TREASURY_API.markPaidScheduledPayment(id),
+          body
+        );
+        if (!result.ok) {
+          notify("error", treasuryErrorMessage(result));
+          return false;
+        }
+        notify("success", result.message);
+        void refetch();
+        return true;
+      }
+
       const result = await treasuryApiPost<PlannedCashObligation>(
         TREASURY_API.paidObligation(id),
         body
       );
       if (!result.ok) {
         notify("error", treasuryErrorMessage(result));
-        return null;
+        return false;
       }
       dispatch({ type: "UPSERT_OBLIGATION", obligation: result.data });
       notify("success", result.message);
       void refetch();
-      return result.data;
+      return true;
     },
     [notify, refetch]
   );
