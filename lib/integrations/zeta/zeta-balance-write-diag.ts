@@ -6,6 +6,12 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  isZetaLegacyShadowInvoiceNumber,
+  isZetaSaldosMatchWatchInvoice,
+  ZETA_SALDOS_MATCH_WATCH,
+} from "@/lib/integrations/zeta/zeta-invoice-registro-metadata-merge";
+
 export type ZetaBalanceWriteSource =
   | "vouchers"
   | "saldos"
@@ -24,6 +30,8 @@ export type ZetaBalanceWriteDiagPayload = {
   status_before?: string | null;
   status_after?: string | null;
   zeta_registro_id?: string | null;
+  /** true si el writer tocó invoice_number legacy ZETA:{id} en lugar de CCV1 */
+  legacy_shadow_write?: boolean;
 };
 
 /** Placeholder del mapper de vouchers; no debe persistirse en `protoUpdateInvoice`. */
@@ -31,6 +39,8 @@ export const ZETA_VOUCHER_PLACEHOLDER_BALANCE_AMOUNT = 0;
 
 const WATCH_INVOICE_NUMBERS = new Set([
   "ZETA:CCV1:0:2:A:2926",
+  ZETA_SALDOS_MATCH_WATCH.canonicalCcv1,
+  ZETA_SALDOS_MATCH_WATCH.legacyShadow,
 ]);
 
 const WATCH_CLIENT_MARKERS = [
@@ -63,17 +73,22 @@ export function shouldLogZetaBalanceWrite(
   if (envDiagEnabled()) return true;
   const inv = invoiceNumber.trim();
   if (WATCH_INVOICE_NUMBERS.has(inv)) return true;
+  if (isZetaSaldosMatchWatchInvoice(inv)) return true;
   if (inv.includes(":A:2926") && matchesWatchClientHint("ACQUAGARDEN")) return true;
   return matchesWatchClientHint(clientHint);
 }
 
 export function logZetaBalanceWrite(payload: ZetaBalanceWriteDiagPayload): void {
   if (!shouldLogZetaBalanceWrite(payload.invoice_number)) return;
+  const legacyShadow =
+    payload.legacy_shadow_write ??
+    (payload.source === "saldos" && isZetaLegacyShadowInvoiceNumber(payload.invoice_number));
   console.info(
     JSON.stringify({
       timestamp: new Date().toISOString(),
       kind: "zeta_balance_write_diag",
       ...payload,
+      ...(legacyShadow ? { legacy_shadow_write: true, watch_pair: ZETA_SALDOS_MATCH_WATCH.canonicalCcv1 } : {}),
     })
   );
 }
@@ -161,5 +176,8 @@ export async function maybeLogZetaBalanceWriteAfterUpdate(
     status_before: before.status,
     status_after: String(opts.up.data?.status ?? before.status),
     zeta_registro_id: opts.zeta_registro_id ?? null,
+    legacy_shadow_write:
+      opts.writer_process.includes("legacy") ||
+      isZetaLegacyShadowInvoiceNumber(invoiceNumber),
   });
 }

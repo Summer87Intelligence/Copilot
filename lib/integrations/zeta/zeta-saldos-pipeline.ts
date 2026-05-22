@@ -65,6 +65,10 @@ import {
   prepareInvoiceCloseAfterStaleInstallmentCleanup,
 } from "@/lib/integrations/zeta/zeta-stale-installment-cleanup";
 import {
+  isZetaLegacyShadowInvoiceNumber,
+  isZetaSaldosMatchWatchInvoice,
+} from "@/lib/integrations/zeta/zeta-invoice-registro-metadata-merge";
+import {
   COPILOT_OPERATIONAL_START_DATE,
   isPreOperationalPeriod,
 } from "@/lib/copilot-operational-period";
@@ -993,6 +997,20 @@ async function persistZetaInvoice(
   }
 
   const input = zetaInvoiceToProtoInput(inv, syncRunId);
+  if (
+    isZetaSaldosMatchWatchInvoice(input.invoice_number) &&
+    isZetaLegacyShadowInvoiceNumber(input.invoice_number)
+  ) {
+    pipelineEmit("warn", "zeta_saldos_legacy_shadow_balance_write", {
+      request_id: requestId,
+      sync_run_id: syncRunId,
+      tenant_id: wid,
+      zeta_registro_id: inv.zetaId,
+      legacy_invoice_number: input.invoice_number,
+      balance_payload: bal,
+      ccv1_expected: inv.ccv1InvoiceNumber ?? null,
+    });
+  }
   pipelineEmit("info", "zeta_saldos_legacy_path", {
     request_id: requestId,
     sync_run_id: syncRunId,
