@@ -6,6 +6,7 @@ import type {
   GeneratedObligationDraft,
   PlannedCashObligationTemplate,
 } from "@/lib/treasury/treasury-recurring-obligations";
+import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
 import type {
   BankReconciliationMovement,
   ManualCashMovement,
@@ -58,6 +59,7 @@ export const TREASURY_API = {
   alerts: "/api/copilot/treasury/alerts",
   insights: "/api/copilot/treasury/insights",
   recurringObligations: "/api/copilot/treasury/recurring-obligations",
+  cashPosition: "/api/copilot/treasury/cash-position",
 } as const;
 
 export type TreasuryWorkspaceFilters = {
@@ -88,6 +90,13 @@ async function readJson<T>(res: Response): Promise<TreasuryApiResult<T>> {
     };
   }
   return json;
+}
+
+export async function fetchTreasuryCashPosition(): Promise<
+  TreasuryApiResult<{ positions: CashPositionByCurrency[]; openingBalances: unknown[] }>
+> {
+  const res = await copilotApiFetch(TREASURY_API.cashPosition);
+  return readJson(res);
 }
 
 export async function fetchTreasuryAccounts(

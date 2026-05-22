@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useReducer } from "react";
 
 import {
+  fetchTreasuryCashPosition,
   fetchTreasuryAccounts,
   fetchTreasuryBankMovements,
   fetchTreasuryManualCash,
@@ -18,6 +19,7 @@ import {
   type BankImportResult,
   type TreasuryWorkspaceFilters,
 } from "@/lib/treasury/treasury-client";
+import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
 import type {
   BankReconciliationMovement,
   ManualCashMovement,
@@ -33,6 +35,7 @@ type State = {
   upcoming7: PlannedCashObligation[];
   upcoming30: PlannedCashObligation[];
   overdue: PlannedCashObligation[];
+  cashPositions: CashPositionByCurrency[];
   loading: boolean;
   error: string | null;
   lastFetchedAt: string | null;
@@ -50,6 +53,7 @@ type Action =
       upcoming7: PlannedCashObligation[];
       upcoming30: PlannedCashObligation[];
       overdue: PlannedCashObligation[];
+      cashPositions: CashPositionByCurrency[];
       ts: string;
     }
   | { type: "FETCH_ERROR"; error: string }
@@ -70,6 +74,7 @@ const initial: State = {
   upcoming7: [],
   upcoming30: [],
   overdue: [],
+  cashPositions: [],
   loading: false,
   error: null,
   lastFetchedAt: null,
@@ -92,6 +97,7 @@ function reducer(state: State, action: Action): State {
         upcoming7: action.upcoming7,
         upcoming30: action.upcoming30,
         overdue: action.overdue,
+        cashPositions: action.cashPositions,
         lastFetchedAt: action.ts,
       };
     case "FETCH_ERROR":
@@ -170,7 +176,7 @@ export function useTreasuryWorkspace(filters: TreasuryWorkspaceFilters) {
     async (signal?: AbortSignal) => {
       dispatch({ type: "FETCH_START" });
       try {
-        const [accounts, manual, bank, obligations, upcoming7, upcoming30, overdue] =
+        const [accounts, manual, bank, obligations, upcoming7, upcoming30, overdue, cashPos] =
           await Promise.all([
             fetchTreasuryAccounts(filters),
             fetchTreasuryManualCash(filters),
@@ -179,6 +185,7 @@ export function useTreasuryWorkspace(filters: TreasuryWorkspaceFilters) {
             fetchTreasuryUpcomingObligations(7),
             fetchTreasuryUpcomingObligations(30),
             fetchTreasuryOverdueObligations(),
+            fetchTreasuryCashPosition(),
           ]);
         if (signal?.aborted) return;
         const failed = [
@@ -203,6 +210,7 @@ export function useTreasuryWorkspace(filters: TreasuryWorkspaceFilters) {
           upcoming7: upcoming7.ok ? upcoming7.data.items : [],
           upcoming30: upcoming30.ok ? upcoming30.data.items : [],
           overdue: overdue.ok ? overdue.data.items : [],
+          cashPositions: cashPos.ok ? cashPos.data.positions : [],
           ts: new Date().toISOString(),
         });
       } catch (err) {

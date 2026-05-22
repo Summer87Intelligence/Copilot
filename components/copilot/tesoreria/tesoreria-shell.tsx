@@ -176,7 +176,11 @@ export function TesoreriaShell() {
       </div>
 
       {section === "resumen" ? (
-        <TesoreriaDashboard workspace={workspace} currencyFilter={currency} asOfDate={asOfDate} />
+        <TesoreriaDashboard
+          workspace={workspace}
+          asOfDate={asOfDate}
+          onGoToPagos={() => setSectionWithUrl("pagos")}
+        />
       ) : null}
       {section === "accounts" ? <TreasuryAccountsPanel workspace={workspace} /> : null}
       {section === "opening" ? <TreasuryOpeningBalancesPanel workspace={workspace} /> : null}
