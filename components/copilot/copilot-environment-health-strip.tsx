@@ -1,32 +1,18 @@
 "use client";
 
-import { useMemo } from "react";
-
-import { useCopilotAlerts } from "@/components/copilot/copilot-alerts-context";
 import type { CopilotSessionPreview } from "@/components/copilot/copilot-session-preview";
 import { CopilotUserBar } from "@/components/copilot/CopilotUserBar";
 import { EnvironmentBannerLeft } from "@/components/copilot/environment-banner";
-import { HealthIndicator } from "@/components/copilot/HealthIndicator";
+import { OperationalSemaphoreIndicator } from "@/components/copilot/operational-semaphore-indicator";
 
 /**
- * Primera fila del módulo: badge PROTOTIPO + copy (izq.); sesión + Salud (der.), misma franja.
+ * Primera fila del módulo: badge PROTOTIPO + copy (izq.); sesión + semáforo operacional (der.).
  */
 export function CopilotEnvironmentHealthStrip({
   sessionPreview = null,
 }: {
   sessionPreview?: CopilotSessionPreview | null;
 }) {
-  const { items, loading } = useCopilotAlerts();
-  const alerts = useMemo(
-    () =>
-      items.map((a) => ({
-        id: a.id,
-        title: a.title,
-        severity: a.priority,
-      })),
-    [items]
-  );
-
   return (
     <>
       <div
@@ -38,7 +24,7 @@ export function CopilotEnvironmentHealthStrip({
         </div>
         <div className="flex max-w-full shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-2 sm:gap-x-4">
           <CopilotUserBar sessionPreview={sessionPreview} />
-          <HealthIndicator alerts={alerts} loading={loading} />
+          <OperationalSemaphoreIndicator />
         </div>
       </div>
     </>
