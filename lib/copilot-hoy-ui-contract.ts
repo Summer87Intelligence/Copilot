@@ -22,6 +22,11 @@ export const HOY_COCKPIT = {
   receivablesTotalPending: "Total pendiente",
   receivablesIncludedInTotal: "Incluido en ese total",
   receivablesOverdue30: "Vencido >30 días",
+  /** Vencido >30 forma parte del total pendiente; no es un monto adicional. */
+  receivablesOverdue30Hint:
+    "Ya está incluido en el total pendiente; no se suma aparte.",
+  drawerClientsUyu: "Clientes en UYU",
+  drawerClientsUsd: "Clientes en USD",
   criticalClients: "Clientes críticos",
   viewCriticalClients: "Ver clientes críticos",
   drawerCashSummary: "Caja actual registrada disponible para operar.",
