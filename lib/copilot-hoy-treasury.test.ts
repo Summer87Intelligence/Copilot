@@ -10,19 +10,26 @@ import {
   expectedCashBalance30d,
   safeCashBalance30d,
 } from "@/lib/treasury/treasury-cash-position";
+import type { ClientPortfolioRow } from "@/lib/copilot-clients-portfolio";
 import type { PlannedCashObligation } from "@/lib/treasury/treasury-types";
 import { summarizeScheduledOutflows } from "@/lib/treasury/treasury-scheduled-payments";
 
 const GATE = { confidence: "high" as const, coverage: "full" as const, recommendations_enabled: true };
 
-function makeRow(overrides: Record<string, unknown> = {}) {
+function makeRow(overrides: Partial<ClientPortfolioRow> = {}): ClientPortfolioRow {
   return {
     company_id: "c1",
     name: "Cliente",
+    industry: "Comercio",
+    total_billing: 0,
     total_debt: 100_000,
     overdue_debt: 0,
-    risk: "Bajo" as const,
-    payment_behavior: "normal" as const,
+    invoices_count: 0,
+    receipts_count: 0,
+    share_pct: 0,
+    payment_behavior: "bueno",
+    risk: "Bajo",
+    source: "zeta_invoice",
     has_contact_data: true,
     derived_from_debt: false,
     debt_uyu: 100_000,
