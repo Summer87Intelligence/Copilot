@@ -16,6 +16,7 @@ function block(
     pendingReceivables: 200,
     expectedCash30d: 700,
     hasConfiguredPayments: true,
+    safeCoverageStatus: "healthy",
     ...partial,
   };
 }
@@ -62,7 +63,7 @@ describe("selectHoyProjectionUiAlerts", () => {
 describe("projectionCurrencySummaryLine", () => {
   it("returns depends-on-collection line when safe negative but expected positive", () => {
     const line = projectionCurrencySummaryLine(
-      block({ safeCash30d: -10, expectedCash30d: 100 })
+      block({ currency: "UYU", safeCash30d: -10, expectedCash30d: 100 })
     );
     expect(line).toContain("si se cobra");
   });

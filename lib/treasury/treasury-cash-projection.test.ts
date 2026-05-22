@@ -36,6 +36,8 @@ function obligation(partial: Partial<PlannedCashObligation>): PlannedCashObligat
     relatedManualMovementId: partial.relatedManualMovementId ?? null,
     relatedBankMovementId: partial.relatedBankMovementId ?? null,
     relatedZetaRecordId: partial.relatedZetaRecordId ?? null,
+    recurringTemplateId: partial.recurringTemplateId ?? null,
+    recurringInstanceKey: partial.recurringInstanceKey ?? null,
     notes: partial.notes ?? null,
     createdBy: partial.createdBy ?? null,
     createdAt: partial.createdAt ?? "2026-05-01T00:00:00Z",

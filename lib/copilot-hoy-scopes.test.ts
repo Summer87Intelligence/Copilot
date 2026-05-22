@@ -7,30 +7,60 @@ import {
   expectedCashBalance30d,
   safeCashBalance30d,
 } from "@/lib/treasury/treasury-cash-position";
+import type { ClientPortfolioRow } from "@/lib/copilot-clients-portfolio";
 import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
 
 const GATE = { confidence: "high" as const, coverage: "full" as const, recommendations_enabled: true };
 
 function manual(partial: Partial<ManualCashMovement>): ManualCashMovement {
   return {
-    id: "m1",
-    workspaceId: "ws",
-    companyId: null,
-    concept: "Test",
-    category: null,
+    id: partial.id ?? "m1",
+    workspaceId: partial.workspaceId ?? "ws",
+    companyId: partial.companyId ?? null,
+    accountId: partial.accountId ?? null,
+    ledgerType: partial.ledgerType ?? "cash",
     movementType: partial.movementType ?? "income",
-    ledgerType: "cash",
+    source: partial.source ?? "manual",
+    concept: partial.concept ?? "Test",
+    category: partial.category ?? null,
     amount: partial.amount ?? 100,
     currencyCode: partial.currencyCode ?? "UYU",
     movementDate: partial.movementDate ?? "2026-05-10",
-    status: "active",
-    affectsCashflow: true,
-    accountId: null,
-    notes: null,
-    metadata: null,
-    createdAt: "2026-01-01T00:00:00Z",
-    updatedAt: "2026-01-01T00:00:00Z",
-    ...partial,
+    paymentMethod: partial.paymentMethod ?? null,
+    counterparty: partial.counterparty ?? null,
+    reference: partial.reference ?? null,
+    notes: partial.notes ?? null,
+    affectsCashflow: partial.affectsCashflow ?? true,
+    reconciled: partial.reconciled ?? false,
+    bankReconciliationId: partial.bankReconciliationId ?? null,
+    status: partial.status ?? "active",
+    createdBy: partial.createdBy ?? null,
+    createdAt: partial.createdAt ?? "2026-01-01T00:00:00Z",
+    updatedAt: partial.updatedAt ?? "2026-01-01T00:00:00Z",
+    rawPayload: partial.rawPayload ?? null,
+    metadata: partial.metadata ?? null,
+  };
+}
+
+function makePortfolioRow(overrides: Partial<ClientPortfolioRow> = {}): ClientPortfolioRow {
+  return {
+    company_id: "c1",
+    name: "A",
+    industry: "Comercio",
+    total_billing: 0,
+    total_debt: 100_000,
+    overdue_debt: 0,
+    invoices_count: 0,
+    receipts_count: 0,
+    share_pct: 0,
+    payment_behavior: "bueno",
+    risk: "Bajo",
+    source: "zeta_invoice",
+    has_contact_data: true,
+    derived_from_debt: false,
+    debt_uyu: 100_000,
+    debt_usd: 0,
+    ...overrides,
   };
 }
 
@@ -139,20 +169,7 @@ describe("copilot-hoy-scopes — aislamiento período vs actual", () => {
   it("buildTodayBusinessPulse: periodo aislado de carteraCollectedToDate", () => {
     const pulseA = buildTodayBusinessPulse({
       snapshot: null,
-      portfolioRows: [
-        {
-          company_id: "c1",
-          name: "A",
-          total_debt: 100_000,
-          overdue_debt: 0,
-          risk: "Bajo",
-          payment_behavior: "normal",
-          has_contact_data: true,
-          derived_from_debt: false,
-          debt_uyu: 100_000,
-          debt_usd: 0,
-        },
-      ],
+      portfolioRows: [makePortfolioRow()],
       gate: GATE,
       carteraCollectedToDate: { UYU: 900_000, USD: 0 },
       periodRange: { from: "2026-05-01", to: "2026-05-10" },
@@ -177,18 +194,7 @@ describe("copilot-hoy-scopes — aislamiento período vs actual", () => {
       today: "2026-05-21",
     });
 
-    const row = {
-      company_id: "c1",
-      name: "A",
-      total_debt: 100_000,
-      overdue_debt: 0,
-      risk: "Bajo" as const,
-      payment_behavior: "normal" as const,
-      has_contact_data: true,
-      derived_from_debt: false,
-      debt_uyu: 100_000,
-      debt_usd: 0,
-    };
+    const row = makePortfolioRow();
     const treasuryCash = [
       {
         currency: "UYU" as const,
