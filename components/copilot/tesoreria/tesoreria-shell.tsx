@@ -58,16 +58,6 @@ export function TesoreriaShell() {
     if (parsed && parsed !== section) setSection(parsed);
   }, [sectionFromUrl, section]);
 
-  const setSectionWithUrl = useCallback(
-    (next: TesoreriaSection) => {
-      setSection(next);
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("section", next);
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    },
-    [router, pathname, searchParams]
-  );
-
   const [draftStart, setDraftStart] = useState("");
   const [draftEnd, setDraftEnd] = useState("");
   const [confirmedStart, setConfirmedStart] = useState("");
@@ -85,6 +75,23 @@ export function TesoreriaShell() {
 
   const workspace = useTreasuryWorkspace(filters);
   const asOfDate = new Date().toISOString().slice(0, 10);
+
+  const setSectionWithUrl = useCallback(
+    (next: TesoreriaSection) => {
+      setSection(next);
+      workspace.clearFeedback();
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("section", next);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [router, pathname, searchParams, workspace.clearFeedback]
+  );
+
+  useEffect(() => {
+    if (!workspace.feedback) return;
+    const timer = setTimeout(() => workspace.clearFeedback(), 5000);
+    return () => clearTimeout(timer);
+  }, [workspace.feedback, workspace.clearFeedback]);
 
   const hasPendingChanges =
     normalizeDateInput(draftStart) !== normalizeDateInput(confirmedStart) ||

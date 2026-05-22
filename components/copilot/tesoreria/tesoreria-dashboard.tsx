@@ -60,19 +60,22 @@ export function TesoreriaDashboard({ workspace, currencyFilter, asOfDate }: Prop
   });
 
   const openingBalances = deriveOpeningBalancesFromManualCash(workspace.manualMovements);
+  const activeObligations = [...workspace.overdue, ...workspace.upcoming30];
   const projection = buildTreasuryProjection({
     asOfDate,
     horizonDays: 30,
     openingBalances,
     manualMovements: workspace.manualMovements,
     bankMovements: workspace.bankMovements,
-    obligations: workspace.obligations,
+    obligations: activeObligations,
     zetaCollections: [],
   });
 
   const alerts = buildTreasuryAlerts({
     asOfDate,
     obligations: workspace.obligations,
+    overdueObligations: workspace.overdue,
+    upcomingObligations: workspace.upcoming30,
     manualMovements: workspace.manualMovements,
     bankMovements: workspace.bankMovements,
     projection,
@@ -82,7 +85,7 @@ export function TesoreriaDashboard({ workspace, currencyFilter, asOfDate }: Prop
     asOfDate,
     alerts,
     projection,
-    obligations: workspace.obligations,
+    obligations: activeObligations,
     manualMovements: workspace.manualMovements,
     cashByCurrency: openingBalances,
   });

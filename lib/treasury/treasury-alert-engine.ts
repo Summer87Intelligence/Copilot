@@ -369,19 +369,27 @@ export function buildHighUpcomingOutflowAlerts(params: {
 export function buildTreasuryAlerts(params: {
   asOfDate: string;
   obligations: readonly PlannedCashObligation[];
+  /** Pre-filtered overdue obligations — excludes paused recurring templates. When provided,
+   *  replaces `obligations` for overdue alert computation. */
+  overdueObligations?: readonly PlannedCashObligation[];
+  /** Pre-filtered upcoming obligations — excludes paused recurring templates. When provided,
+   *  replaces `obligations` for upcoming + high-outflow alert computation. */
+  upcomingObligations?: readonly PlannedCashObligation[];
   manualMovements: readonly ManualCashMovement[];
   bankMovements: readonly BankReconciliationMovement[];
   projection?: TreasuryCashProjectionResult;
   thresholds?: Partial<TreasuryAlertEngineThresholds>;
 }): TreasuryAlert[] {
+  const forOverdue = params.overdueObligations ?? params.obligations;
+  const forUpcoming = params.upcomingObligations ?? params.obligations;
   const alerts = [
     ...buildOverdueObligationAlerts({
       asOfDate: params.asOfDate,
-      obligations: params.obligations,
+      obligations: forOverdue,
     }),
     ...buildUpcomingObligationAlerts({
       asOfDate: params.asOfDate,
-      obligations: params.obligations,
+      obligations: forUpcoming,
     }),
     ...buildUnreconciledBankAlerts({
       asOfDate: params.asOfDate,
@@ -398,7 +406,7 @@ export function buildTreasuryAlerts(params: {
     }),
     ...buildHighUpcomingOutflowAlerts({
       asOfDate: params.asOfDate,
-      obligations: params.obligations,
+      obligations: forUpcoming,
       manualMovements: params.manualMovements,
       thresholds: params.thresholds,
     }),

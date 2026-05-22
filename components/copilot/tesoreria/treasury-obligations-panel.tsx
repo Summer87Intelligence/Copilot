@@ -717,14 +717,15 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
   });
 
   const horizonEnd = addDaysYmd(asOfDate, 30);
-  const summaries = useMemo(
-    () =>
-      summarizeScheduledOutflows(workspace.obligations, {
-        asOfDate,
-        horizonEndDate: horizonEnd,
-      }),
-    [workspace.obligations, asOfDate, horizonEnd]
-  );
+  const summaries = useMemo(() => {
+    const paidObligations = workspace.obligations.filter(
+      (o) => effectivePlannedObligationStatus(o.status, o.dueDate, asOfDate) === "paid"
+    );
+    return summarizeScheduledOutflows(
+      [...workspace.overdue, ...workspace.upcoming30, ...paidObligations],
+      { asOfDate, horizonEndDate: horizonEnd }
+    );
+  }, [workspace.overdue, workspace.upcoming30, workspace.obligations, asOfDate, horizonEnd]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
