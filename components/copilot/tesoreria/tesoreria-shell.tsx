@@ -13,7 +13,11 @@ import { TreasuryOpeningBalancesPanel } from "@/components/copilot/tesoreria/tre
 import { TreasuryRecurringPaymentsPanel } from "@/components/copilot/tesoreria/treasury-recurring-payments-panel";
 import { TreasuryObligationsPanel } from "@/components/copilot/tesoreria/treasury-obligations-panel";
 import {
+  TESORERIA_SECTION_ALIASES,
   TESORERIA_SECTIONS,
+  TESORERIA_SECTIONS_CONFIG,
+  TESORERIA_SECTIONS_MAIN,
+  TESORERIA_SECTIONS_WITH_CONTROL_BAR,
   type TesoreriaSection,
 } from "@/components/copilot/tesoreria/tesoreria-ui";
 import { useTreasuryWorkspace } from "@/hooks/use-treasury-workspace";
@@ -24,11 +28,21 @@ function normalizeDateInput(value: string): string {
 
 function parseTesoreriaSection(raw: string | null): TesoreriaSection | null {
   if (!raw) return null;
-  if (raw === "santander") return "bank";
+  const alias = TESORERIA_SECTION_ALIASES[raw];
+  if (alias) return alias;
   return TESORERIA_SECTIONS.some((item) => item.id === raw)
     ? (raw as TesoreriaSection)
     : null;
 }
+
+const NAV_BTN_BASE =
+  "rounded-lg px-3 py-1.5 text-xs font-medium transition";
+const NAV_BTN_ACTIVE =
+  "bg-[var(--copilot-accent)] text-white shadow-sm";
+const NAV_BTN_IDLE =
+  "border border-[var(--copilot-border)] bg-white/70 text-[var(--copilot-ink)] hover:bg-[rgba(44,40,37,0.04)]";
+const NAV_BTN_CONFIG_IDLE =
+  "border border-[var(--copilot-border)] bg-white/50 text-[var(--copilot-ink-muted)] text-[11px] hover:bg-[rgba(44,40,37,0.04)]";
 
 export function TesoreriaShell() {
   const router = useRouter();
@@ -36,7 +50,7 @@ export function TesoreriaShell() {
   const searchParams = useSearchParams();
   const sectionFromUrl = searchParams.get("section");
   const [section, setSection] = useState<TesoreriaSection>(
-    () => parseTesoreriaSection(sectionFromUrl) ?? "dashboard"
+    () => parseTesoreriaSection(sectionFromUrl) ?? "resumen"
   );
 
   useEffect(() => {
@@ -53,6 +67,7 @@ export function TesoreriaShell() {
     },
     [router, pathname, searchParams]
   );
+
   const [draftStart, setDraftStart] = useState("");
   const [draftEnd, setDraftEnd] = useState("");
   const [confirmedStart, setConfirmedStart] = useState("");
@@ -83,21 +98,25 @@ export function TesoreriaShell() {
     setConfirmedEnd(nextEnd);
   }, [draftStart, draftEnd]);
 
+  const showControlBar = TESORERIA_SECTIONS_WITH_CONTROL_BAR.has(section);
+
   return (
     <div className="space-y-3">
-      <TesoreriaControlBar
-        draftStart={draftStart}
-        draftEnd={draftEnd}
-        currency={currency}
-        onDraftStartChange={setDraftStart}
-        onDraftEndChange={setDraftEnd}
-        onCurrencyChange={setCurrency}
-        hasPendingChanges={hasPendingChanges}
-        onConfirmDraft={handleConfirmDraft}
-        onRefresh={() => void workspace.refetch()}
-        loading={workspace.loading}
-        canRefresh
-      />
+      {showControlBar ? (
+        <TesoreriaControlBar
+          draftStart={draftStart}
+          draftEnd={draftEnd}
+          currency={currency}
+          onDraftStartChange={setDraftStart}
+          onDraftEndChange={setDraftEnd}
+          onCurrencyChange={setCurrency}
+          hasPendingChanges={hasPendingChanges}
+          onConfirmDraft={handleConfirmDraft}
+          onRefresh={() => void workspace.refetch()}
+          loading={workspace.loading}
+          canRefresh
+        />
+      ) : null}
 
       {workspace.feedback ? (
         <TreasuryFeedbackBanner
@@ -113,24 +132,43 @@ export function TesoreriaShell() {
         </div>
       ) : null}
 
-      <nav className="flex flex-wrap gap-1.5" aria-label="Secciones de tesorería">
-        {TESORERIA_SECTIONS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => setSectionWithUrl(item.id)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-              section === item.id
-                ? "bg-[var(--copilot-accent)] text-white shadow-sm"
-                : "border border-[var(--copilot-border)] bg-white/70 text-[var(--copilot-ink)]"
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </nav>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {/* Tabs principales */}
+        <nav className="flex flex-wrap gap-1.5" aria-label="Secciones de tesorería">
+          {TESORERIA_SECTIONS_MAIN.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setSectionWithUrl(item.id)}
+              className={`${NAV_BTN_BASE} ${section === item.id ? NAV_BTN_ACTIVE : NAV_BTN_IDLE}`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
 
-      {section === "dashboard" ? (
+        {/* Separador + configuración */}
+        <div
+          className="flex items-center gap-1.5 border-l border-[var(--copilot-border)] pl-2"
+          aria-label="Configuración"
+        >
+          <span className="text-[10px] uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+            Config
+          </span>
+          {TESORERIA_SECTIONS_CONFIG.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setSectionWithUrl(item.id)}
+              className={`${NAV_BTN_BASE} ${section === item.id ? NAV_BTN_ACTIVE : NAV_BTN_CONFIG_IDLE}`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {section === "resumen" ? (
         <TesoreriaDashboard workspace={workspace} currencyFilter={currency} asOfDate={asOfDate} />
       ) : null}
       {section === "accounts" ? <TreasuryAccountsPanel workspace={workspace} /> : null}
@@ -138,7 +176,7 @@ export function TesoreriaShell() {
       {section === "recurring" ? <TreasuryRecurringPaymentsPanel workspace={workspace} /> : null}
       {section === "manual" ? <TreasuryManualCashPanel workspace={workspace} /> : null}
       {section === "bank" ? <TreasuryBankPanel workspace={workspace} /> : null}
-      {section === "obligations" ? (
+      {section === "pagos" ? (
         <TreasuryObligationsPanel workspace={workspace} asOfDate={asOfDate} />
       ) : null}
     </div>

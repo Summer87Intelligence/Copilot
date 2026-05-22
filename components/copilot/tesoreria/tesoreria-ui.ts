@@ -13,20 +13,43 @@ export const TESORERIA_TD_CLASS =
 export const TESORERIA_PAGE_SIZE = 10;
 
 export type TesoreriaSection =
-  | "dashboard"
-  | "accounts"
-  | "opening"
-  | "recurring"
+  | "resumen"
+  | "pagos"
   | "manual"
+  | "recurring"
   | "bank"
-  | "obligations";
+  | "accounts"
+  | "opening";
 
-export const TESORERIA_SECTIONS: { id: TesoreriaSection; label: string }[] = [
-  { id: "dashboard", label: "Dashboard" },
+/** Aliases para URL params viejos (ej. ?section=dashboard → resumen). */
+export const TESORERIA_SECTION_ALIASES: Record<string, TesoreriaSection> = {
+  dashboard: "resumen",
+  obligations: "pagos",
+  santander: "bank",
+};
+
+/** Tabs operativas que aparecen en la navegación principal. */
+export const TESORERIA_SECTIONS_MAIN: { id: TesoreriaSection; label: string }[] = [
+  { id: "resumen", label: "Resumen" },
+  { id: "pagos", label: "Pagos" },
+  { id: "manual", label: "Caja manual" },
+  { id: "recurring", label: "Recurrentes" },
+  { id: "bank", label: "Conciliación" },
+];
+
+/** Tabs de configuración — accesibles pero fuera del flujo principal. */
+export const TESORERIA_SECTIONS_CONFIG: { id: TesoreriaSection; label: string }[] = [
   { id: "accounts", label: "Cuentas" },
   { id: "opening", label: "Saldos iniciales" },
-  { id: "recurring", label: "Recurrentes" },
-  { id: "manual", label: "Caja manual" },
-  { id: "bank", label: "Conciliación Santander" },
-  { id: "obligations", label: "Pagos futuros" },
 ];
+
+/** Todas las secciones (para parseo de URL). */
+export const TESORERIA_SECTIONS = [...TESORERIA_SECTIONS_MAIN, ...TESORERIA_SECTIONS_CONFIG];
+
+/** Secciones donde se muestra la barra de filtro de fecha/moneda. */
+export const TESORERIA_SECTIONS_WITH_CONTROL_BAR = new Set<TesoreriaSection>([
+  "resumen",
+  "pagos",
+  "manual",
+  "bank",
+]);

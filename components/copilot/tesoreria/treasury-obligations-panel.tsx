@@ -99,7 +99,11 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
 
   function statusLabel(row: PlannedCashObligation): string {
     const effective = effectivePlannedObligationStatus(row.status, row.dueDate, asOfDate);
-    if (effective === "planned") return "pending";
+    if (effective === "planned") return "Pendiente";
+    if (effective === "confirmed") return "Confirmado";
+    if (effective === "overdue") return "Vencido";
+    if (effective === "paid") return "Pagado";
+    if (effective === "cancelled") return "Cancelado";
     return effective;
   }
 
@@ -265,7 +269,14 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
                   <td className={TESORERIA_TD_CLASS}>{row.dueDate}</td>
                   <td className={TESORERIA_TD_CLASS}>{row.priority}</td>
                   <td className={TESORERIA_TD_CLASS}>
-                    <CopilotBadge tone={statusLabel(row) === "overdue" ? "danger" : "neutral"}>
+                    <CopilotBadge
+                      tone={
+                        effectivePlannedObligationStatus(row.status, row.dueDate, asOfDate) ===
+                        "overdue"
+                          ? "danger"
+                          : "neutral"
+                      }
+                    >
                       {statusLabel(row)}
                     </CopilotBadge>
                   </td>
