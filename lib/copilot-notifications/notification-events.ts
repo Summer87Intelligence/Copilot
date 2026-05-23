@@ -99,18 +99,20 @@ export async function notifyClientOverdue(opts: ClientOverdueOpts) {
     : opts.daysOverdue >= 60 ? "60d"
     : opts.daysOverdue >= 30 ? "30d"
     : "7d";
+  // Month bucket prevents re-notifying daily while allowing a fresh alert each month.
+  const yyyyMm = new Date().toISOString().slice(0, 7);
   const amountStr = opts.amount.toLocaleString("es-AR", { maximumFractionDigits: 0 });
   return createNotificationIfNotExists(opts.tenantCompanyId, {
     type: "client_overdue",
     severity: opts.daysOverdue >= 60 ? "critical" : "warning",
     title: "Cliente vencido",
-    body: `${opts.clientName} tiene ${opts.currency} ${amountStr} vencido hace más de ${opts.daysOverdue} días`,
+    body: `${opts.clientName} tiene ${opts.currency} ${amountStr} vencido`,
     entity_type: "company",
     entity_id: opts.clientId,
     amount: opts.amount,
     currency: opts.currency,
     action_href: `/copilot/clientes/${opts.clientId}`,
-    dedup_key: `client_overdue:${opts.clientId}:${bucket}`,
+    dedup_key: `client_overdue:${opts.clientId}:${opts.currency}:${bucket}:${yyyyMm}`,
   });
 }
 

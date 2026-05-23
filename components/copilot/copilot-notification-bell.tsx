@@ -52,6 +52,7 @@ const BUCKET_LABELS: Record<"hoy" | "ayer" | "anterior", string> = {
 
 /** Smart CTA label derived from action_href. */
 function actionLabel(href: string): string {
+  if (href.includes("clientes-criticos")) return "Ver clientes críticos";
   if (href.includes("/clientes/")) return "Ver cliente";
   if (href.includes("/cartera")) return "Ver cartera";
   if (href.includes("/tesoreria")) return "Ver pagos";
