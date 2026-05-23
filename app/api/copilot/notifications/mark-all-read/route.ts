@@ -11,7 +11,11 @@ export async function POST(request: NextRequest) {
 
     const ok = await markAllNotificationsRead(auth.ctx.supabase, auth.ctx.tenantCompanyId);
     return NextResponse.json({ ok });
-  } catch {
+  } catch (err: unknown) {
+    const e = err as Record<string, unknown> | null;
+    if (e && (e.code === "PGRST106" || e.code === "42P01")) {
+      return NextResponse.json({ ok: true });
+    }
     return NextResponse.json(
       { ok: false, code: "DATABASE", message: MSG_DB_USER },
       { status: 500 }
