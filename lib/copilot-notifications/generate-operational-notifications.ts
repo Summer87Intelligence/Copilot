@@ -136,7 +136,7 @@ async function generateTreasuryDueNotifications(
   const { data, error } = await admin
     .from("planned_cash_obligations")
     .select(
-      "id, title, amount_estimated, amount_final, currency_code, due_date, status, " +
+      "id, title, amount_estimated, amount_final, currency_code, due_date, due_time, status, " +
       "affects_cashflow, recurring_template_id, recurring_instance_key, metadata"
     )
     .eq("workspace_id", tenantCompanyId)
@@ -153,6 +153,7 @@ async function generateTreasuryDueNotifications(
     const dueDate = String(ob.due_date ?? "").trim();
     if (!dueDate) continue;
     const daysUntilDue = daysBetween(today, dueDate);
+    const dueTime = ob.due_time ? String(ob.due_time).trim() || null : null;
     const r = await notifyTreasuryPaymentDue({
       tenantCompanyId,
       obligationId: String(ob.id),
@@ -161,6 +162,7 @@ async function generateTreasuryDueNotifications(
       currency: String(ob.currency_code ?? "UYU").toUpperCase(),
       dueDate,
       daysUntilDue,
+      dueTime,
     });
     tally(acc, "treasury_payment_due", r);
   }

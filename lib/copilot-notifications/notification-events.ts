@@ -4,6 +4,34 @@
  */
 import { createNotificationIfNotExists } from "./create-notification";
 
+// ─── Pure helpers (exported for testing) ─────────────────────────────────────
+
+export type DueMilestone = "7d" | "3d" | "1d" | "today";
+
+/** Maps daysUntilDue to the closest milestone bucket. */
+export function computeTreasuryDueMilestone(daysUntilDue: number): DueMilestone {
+  if (daysUntilDue <= 0) return "today";
+  if (daysUntilDue === 1) return "1d";
+  if (daysUntilDue <= 3) return "3d";
+  return "7d";
+}
+
+/**
+ * Builds the human-readable body for a treasury_payment_due notification.
+ * Includes time suffix only for "today" and "1d" milestones when dueTime is provided.
+ */
+export function buildTreasuryDueBody(
+  title: string,
+  milestone: DueMilestone,
+  daysUntilDue: number,
+  dueTime?: string | null
+): string {
+  const timeStr = dueTime ? ` a las ${dueTime.slice(0, 5)}` : "";
+  if (milestone === "today") return `${title} vence hoy${timeStr}.`;
+  if (milestone === "1d") return `${title} vence mañana${timeStr}.`;
+  return `${title} vence en ${daysUntilDue} días.`;
+}
+
 type CollectionReceivedOpts = {
   tenantCompanyId: string;
   receiptId: string;
@@ -94,28 +122,24 @@ type TreasuryPaymentDueOpts = {
   currency: string;
   dueDate: string;      // YYYY-MM-DD
   daysUntilDue: number;
+  dueTime?: string | null; // HH:mm or HH:mm:ss — optional
 };
 
 export async function notifyTreasuryPaymentDue(opts: TreasuryPaymentDueOpts) {
-  const bucket =
-    opts.daysUntilDue <= 1 ? "1d"
-    : opts.daysUntilDue <= 3 ? "3d"
-    : "7d";
-  const severity =
-    opts.daysUntilDue <= 1 ? "critical"
-    : opts.daysUntilDue <= 3 ? "warning"
-    : "info";
+  const milestone = computeTreasuryDueMilestone(opts.daysUntilDue);
+  const severity: "info" | "warning" = milestone === "7d" ? "info" : "warning";
+  const body = buildTreasuryDueBody(opts.title, milestone, opts.daysUntilDue, opts.dueTime);
   return createNotificationIfNotExists(opts.tenantCompanyId, {
     type: "treasury_payment_due",
     severity,
     title: "Pago próximo",
-    body: `${opts.title} vence el ${opts.dueDate}`,
+    body,
     entity_type: "planned_cash_obligation",
     entity_id: opts.obligationId,
     amount: opts.amount,
     currency: opts.currency,
     action_href: "/copilot/tesoreria?section=pagos",
-    dedup_key: `treasury_payment_due:${opts.obligationId}:${opts.dueDate}:${bucket}`,
+    dedup_key: `treasury_payment_due:${opts.obligationId}:${opts.dueDate}:${milestone}`,
   });
 }
 
@@ -130,11 +154,13 @@ type TreasuryPaymentOverdueOpts = {
 };
 
 export async function notifyTreasuryPaymentOverdue(opts: TreasuryPaymentOverdueOpts) {
+  const [y, m, d] = opts.dueDate.split("-");
+  const formattedDate = `${d}/${m}/${y}`;
   return createNotificationIfNotExists(opts.tenantCompanyId, {
     type: "treasury_payment_overdue",
-    severity: opts.daysOverdue >= 7 ? "critical" : "warning",
+    severity: "critical",
     title: "Pago vencido",
-    body: `${opts.title} venció el ${opts.dueDate} (hace ${opts.daysOverdue} días)`,
+    body: `${opts.title} está vencido desde el ${formattedDate}.`,
     entity_type: "planned_cash_obligation",
     entity_id: opts.obligationId,
     amount: opts.amount,
