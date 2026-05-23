@@ -14,8 +14,12 @@ export async function GET(request: NextRequest) {
       auth.ctx.supabase,
       auth.ctx.tenantCompanyId
     );
+    if (!result.ok) {
+      console.error("[cash-position] treasuryCashPositionGet failed:", result);
+    }
     return nextResponseFromTreasuryCrud(result);
-  } catch {
+  } catch (err) {
+    console.error("[cash-position] unexpected error:", err);
     return NextResponse.json(
       { ok: false as const, code: "DATABASE" as const, message: MSG_DB_USER },
       { status: 500 }

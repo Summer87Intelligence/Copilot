@@ -37,6 +37,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
     return <TesoreriaDashboardSkeleton />;
   }
 
+  const cashPositionFailed = workspace.cashPositionFailed;
   const cashByCode = Object.fromEntries(
     workspace.cashPositions.map((p) => [p.currency, p])
   ) as Partial<Record<TreasuryCurrencyCode, CashPositionByCurrency>>;
@@ -45,11 +46,13 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
   const upcoming7Totals = sumOutflowsByCurrency(workspace.upcoming7);
   const upcoming30Totals = sumOutflowsByCurrency(workspace.upcoming30);
 
-  // After commitments: available cash − overdue − upcoming 30d outflows
+  // After commitments: skip calculation if cash position failed (avoid false negatives)
   const afterCommitments: Partial<Record<TreasuryCurrencyCode, number>> = {};
-  for (const cur of CURRENCIES) {
-    const cash = cashByCode[cur]?.availableCash ?? 0;
-    afterCommitments[cur] = cash - (overdueTotals[cur] ?? 0) - (upcoming30Totals[cur] ?? 0);
+  if (!cashPositionFailed) {
+    for (const cur of CURRENCIES) {
+      const cash = cashByCode[cur]?.availableCash ?? 0;
+      afterCommitments[cur] = cash - (overdueTotals[cur] ?? 0) - (upcoming30Totals[cur] ?? 0);
+    }
   }
 
   // Top 5 most urgent: overdue first, then upcoming7 (deduped by id)
@@ -82,16 +85,18 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
     });
   }
 
-  for (const cur of CURRENCIES) {
-    if (alerts.length >= 3) break;
-    const after = afterCommitments[cur] ?? 0;
-    if (after < 0) {
-      alerts.push({
-        id: `low-cash-${cur}`,
-        severity: "critical",
-        title: `Caja insuficiente en ${cur}`,
-        description: `La caja disponible no cubre los compromisos de 30 días. Diferencia: ${fmt(after, cur)}.`,
-      });
+  if (!cashPositionFailed) {
+    for (const cur of CURRENCIES) {
+      if (alerts.length >= 3) break;
+      const after = afterCommitments[cur] ?? 0;
+      if (after < 0) {
+        alerts.push({
+          id: `low-cash-${cur}`,
+          severity: "critical",
+          title: `Caja insuficiente en ${cur}`,
+          description: `La caja disponible no cubre los compromisos de 30 días. Diferencia: ${fmt(after, cur)}.`,
+        });
+      }
     }
   }
 
@@ -115,52 +120,64 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
       <section>
         <CopilotSectionTitle
           title="Caja disponible"
-          subtitle="Saldo inicial configurado + movimientos manuales registrados."
+          subtitle="Saldo inicial + cobros de clientes + movimientos manuales."
         />
-        <div className="grid gap-3 sm:grid-cols-2">
-          {CURRENCIES.map((cur) => {
-            const pos = cashByCode[cur];
-            const cash = pos?.availableCash ?? 0;
-            return (
-              <div
-                key={cur}
-                className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4"
-              >
-                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                  {cur}
-                </p>
-                <p className="mt-1 text-2xl font-bold tabular-nums text-[var(--copilot-ink)]">
-                  {fmt(cash, cur)}
-                </p>
-                <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
-                  {pos?.openingConfigured ? "Saldo inicial + movimientos" : "Solo movimientos manuales"}
-                </p>
-                {pos ? (
-                  <dl className="mt-2 space-y-0.5 text-xs">
-                    {pos.openingBalance > 0 ? (
-                      <div className="flex justify-between gap-2">
-                        <dt className="text-[var(--copilot-ink-muted)]">Saldo inicial</dt>
-                        <dd className="tabular-nums text-[var(--copilot-ink)]">{fmt(pos.openingBalance, cur)}</dd>
-                      </div>
-                    ) : null}
-                    {pos.manualIncome > 0 ? (
-                      <div className="flex justify-between gap-2">
-                        <dt className="text-[var(--copilot-ink-muted)]">Ingresos manuales</dt>
-                        <dd className="tabular-nums text-emerald-700">+{fmt(pos.manualIncome, cur)}</dd>
-                      </div>
-                    ) : null}
-                    {pos.manualExpense > 0 ? (
-                      <div className="flex justify-between gap-2">
-                        <dt className="text-[var(--copilot-ink-muted)]">Egresos manuales</dt>
-                        <dd className="tabular-nums text-rose-700">−{fmt(pos.manualExpense, cur)}</dd>
-                      </div>
-                    ) : null}
-                  </dl>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
+        {cashPositionFailed ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-800">
+            No se pudo cargar la posición de caja. Intentá recargar la página.
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {CURRENCIES.map((cur) => {
+              const pos = cashByCode[cur];
+              const cash = pos?.availableCash ?? 0;
+              return (
+                <div
+                  key={cur}
+                  className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                    {cur}
+                  </p>
+                  <p className="mt-1 text-2xl font-bold tabular-nums text-[var(--copilot-ink)]">
+                    {fmt(cash, cur)}
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
+                    {pos?.openingConfigured ? "Saldo inicial + movimientos" : "Solo movimientos manuales"}
+                  </p>
+                  {pos ? (
+                    <dl className="mt-2 space-y-0.5 text-xs">
+                      {pos.openingBalance > 0 ? (
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-[var(--copilot-ink-muted)]">Saldo inicial</dt>
+                          <dd className="tabular-nums text-[var(--copilot-ink)]">{fmt(pos.openingBalance, cur)}</dd>
+                        </div>
+                      ) : null}
+                      {pos.collectedFromClients > 0 ? (
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-[var(--copilot-ink-muted)]">Cobros de clientes</dt>
+                          <dd className="tabular-nums text-emerald-700">+{fmt(pos.collectedFromClients, cur)}</dd>
+                        </div>
+                      ) : null}
+                      {pos.manualIncome > 0 ? (
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-[var(--copilot-ink-muted)]">Ingresos manuales</dt>
+                          <dd className="tabular-nums text-emerald-700">+{fmt(pos.manualIncome, cur)}</dd>
+                        </div>
+                      ) : null}
+                      {pos.manualExpense > 0 ? (
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-[var(--copilot-ink-muted)]">Egresos manuales</dt>
+                          <dd className="tabular-nums text-rose-700">−{fmt(pos.manualExpense, cur)}</dd>
+                        </div>
+                      ) : null}
+                    </dl>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* ── Bloque 2: Compromisos próximos ── */}
@@ -203,42 +220,48 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
           title="Caja después de compromisos"
           subtitle="Disponible − vencidos − egresos 30 días programados."
         />
-        <div className="grid gap-3 sm:grid-cols-2">
-          {CURRENCIES.map((cur) => {
-            const after = afterCommitments[cur] ?? 0;
-            const cash = cashByCode[cur]?.availableCash ?? 0;
-            const committed = (overdueTotals[cur] ?? 0) + (upcoming30Totals[cur] ?? 0);
-            const negative = after < 0;
-            return (
-              <div
-                key={cur}
-                className={`rounded-xl border p-4 ${
-                  negative
-                    ? "border-rose-200 bg-rose-50/70"
-                    : "border-[var(--copilot-border)] bg-white/70"
-                }`}
-              >
-                <p
-                  className={`text-xs font-semibold uppercase tracking-wide ${
-                    negative ? "text-rose-700" : "text-[var(--copilot-ink-muted)]"
+        {cashPositionFailed ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-800">
+            No se pudo calcular la caja después de compromisos sin datos de caja disponible.
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {CURRENCIES.map((cur) => {
+              const after = afterCommitments[cur] ?? 0;
+              const cash = cashByCode[cur]?.availableCash ?? 0;
+              const committed = (overdueTotals[cur] ?? 0) + (upcoming30Totals[cur] ?? 0);
+              const negative = after < 0;
+              return (
+                <div
+                  key={cur}
+                  className={`rounded-xl border p-4 ${
+                    negative
+                      ? "border-rose-200 bg-rose-50/70"
+                      : "border-[var(--copilot-border)] bg-white/70"
                   }`}
                 >
-                  {cur}
-                </p>
-                <p
-                  className={`mt-1 text-2xl font-bold tabular-nums ${
-                    negative ? "text-rose-700" : "text-[var(--copilot-ink)]"
-                  }`}
-                >
-                  {fmt(after, cur)}
-                </p>
-                <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
-                  {fmt(cash, cur)} disponible − {fmt(committed, cur)} compromisos
-                </p>
-              </div>
-            );
-          })}
-        </div>
+                  <p
+                    className={`text-xs font-semibold uppercase tracking-wide ${
+                      negative ? "text-rose-700" : "text-[var(--copilot-ink-muted)]"
+                    }`}
+                  >
+                    {cur}
+                  </p>
+                  <p
+                    className={`mt-1 text-2xl font-bold tabular-nums ${
+                      negative ? "text-rose-700" : "text-[var(--copilot-ink)]"
+                    }`}
+                  >
+                    {fmt(after, cur)}
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
+                    {fmt(cash, cur)} disponible − {fmt(committed, cur)} compromisos
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* ── Bloque 4: Próximos pagos relevantes ── */}

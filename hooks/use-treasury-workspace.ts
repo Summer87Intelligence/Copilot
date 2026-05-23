@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useReducer } from "react";
 
+import { copilotApiFetch } from "@/lib/copilot-fetch";
+import {
+  carteraCollectedToDateFromReport,
+} from "@/lib/copilot-today-business-pulse";
 import {
   fetchTreasuryCashPosition,
   fetchTreasuryAccounts,
@@ -19,7 +23,10 @@ import {
   type BankImportResult,
   type TreasuryWorkspaceFilters,
 } from "@/lib/treasury/treasury-client";
-import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
+import {
+  mergeCollectedIntoCashPositions,
+  type CashPositionByCurrency,
+} from "@/lib/treasury/treasury-cash-position";
 import type {
   BankReconciliationMovement,
   ManualCashMovement,
@@ -36,6 +43,7 @@ type State = {
   upcoming30: PlannedCashObligation[];
   overdue: PlannedCashObligation[];
   cashPositions: CashPositionByCurrency[];
+  cashPositionFailed: boolean;
   loading: boolean;
   error: string | null;
   lastFetchedAt: string | null;
@@ -54,6 +62,7 @@ type Action =
       upcoming30: PlannedCashObligation[];
       overdue: PlannedCashObligation[];
       cashPositions: CashPositionByCurrency[];
+      cashPositionFailed: boolean;
       ts: string;
     }
   | { type: "FETCH_ERROR"; error: string }
@@ -75,6 +84,7 @@ const initial: State = {
   upcoming30: [],
   overdue: [],
   cashPositions: [],
+  cashPositionFailed: false,
   loading: false,
   error: null,
   lastFetchedAt: null,
@@ -98,6 +108,7 @@ function reducer(state: State, action: Action): State {
         upcoming30: action.upcoming30,
         overdue: action.overdue,
         cashPositions: action.cashPositions,
+        cashPositionFailed: action.cashPositionFailed,
         lastFetchedAt: action.ts,
       };
     case "FETCH_ERROR":
@@ -176,7 +187,7 @@ export function useTreasuryWorkspace(filters: TreasuryWorkspaceFilters) {
     async (signal?: AbortSignal) => {
       dispatch({ type: "FETCH_START" });
       try {
-        const [accounts, manual, bank, obligations, upcoming7, upcoming30, overdue, cashPos] =
+        const [accounts, manual, bank, obligations, upcoming7, upcoming30, overdue, cashPos, reconRes] =
           await Promise.all([
             fetchTreasuryAccounts(filters),
             fetchTreasuryManualCash(filters),
@@ -186,6 +197,7 @@ export function useTreasuryWorkspace(filters: TreasuryWorkspaceFilters) {
             fetchTreasuryUpcomingObligations(30),
             fetchTreasuryOverdueObligations(),
             fetchTreasuryCashPosition(),
+            copilotApiFetch("/api/copilot/financial-reconciliation?mode=all_outstanding").catch(() => null),
           ]);
         if (signal?.aborted) return;
         const failed = [
@@ -201,6 +213,38 @@ export function useTreasuryWorkspace(filters: TreasuryWorkspaceFilters) {
           dispatch({ type: "FETCH_ERROR", error: treasuryErrorMessage(failed) });
           return;
         }
+
+        const cashPositionFailed = !cashPos.ok;
+        let cashPositions: CashPositionByCurrency[] = [];
+        if (cashPos.ok) {
+          const rawPositions = cashPos.data.positions;
+          const reconJson = reconRes
+            ? await reconRes.json().catch(() => null) as { ok?: boolean; report?: { currencies?: unknown } } | null
+            : null;
+          const collectedByCurrency =
+            reconRes?.ok && reconJson?.ok && reconJson?.report?.currencies
+              ? carteraCollectedToDateFromReport(reconJson.report.currencies)
+              : undefined;
+          cashPositions =
+            collectedByCurrency && Object.values(collectedByCurrency).some((v) => v > 0)
+              ? mergeCollectedIntoCashPositions(rawPositions, collectedByCurrency)
+              : rawPositions;
+          if (process.env.NODE_ENV !== "production") {
+            console.log(
+              "[treasury] cashPositions (merged):",
+              cashPositions.map((p) => ({
+                currency: p.currency,
+                openingConfigured: p.openingConfigured,
+                openingBalance: p.openingBalance,
+                collectedFromClients: p.collectedFromClients,
+                availableCash: p.availableCash,
+              }))
+            );
+          }
+        } else if (process.env.NODE_ENV !== "production") {
+          console.warn("[treasury] fetchTreasuryCashPosition failed:", cashPos);
+        }
+
         dispatch({
           type: "FETCH_OK",
           accounts: accounts.ok ? accounts.data.items : [],
@@ -210,7 +254,8 @@ export function useTreasuryWorkspace(filters: TreasuryWorkspaceFilters) {
           upcoming7: upcoming7.ok ? upcoming7.data.items : [],
           upcoming30: upcoming30.ok ? upcoming30.data.items : [],
           overdue: overdue.ok ? overdue.data.items : [],
-          cashPositions: cashPos.ok ? cashPos.data.positions : [],
+          cashPositions,
+          cashPositionFailed,
           ts: new Date().toISOString(),
         });
       } catch (err) {
