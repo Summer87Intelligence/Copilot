@@ -1,10 +1,19 @@
 "use client";
 
 import { createBrowserClient } from "@supabase/ssr";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { CopilotSessionPreview } from "@/components/copilot/copilot-session-preview";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
+
+function getInitials(email: string | null): string {
+  if (!email) return "?";
+  return email.charAt(0).toUpperCase();
+}
+
+function capitalizeRole(role: string): string {
+  return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+}
 
 type AppUserMe = {
   id: string;
@@ -35,6 +44,28 @@ export function CopilotUserBar({
 
   const [mePending, setMePending] = useState(false);
   const [appUser, setAppUser] = useState<AppUserMe | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") setMenuOpen(false);
+    }
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [menuOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,7 +147,7 @@ export function CopilotUserBar({
 
   if (authPending) {
     return (
-      <span className="text-xs text-[var(--copilot-ink-muted)]">Cargando...</span>
+      <div className="h-8 w-8 animate-pulse rounded-full bg-[var(--copilot-border)]" />
     );
   }
 
@@ -124,31 +155,47 @@ export function CopilotUserBar({
     return null;
   }
 
+  const initials = mePending && !sessionPreview ? "…" : getInitials(displayEmail);
+
   return (
-    <div className="flex max-w-full flex-wrap items-center justify-end gap-2 sm:gap-3">
-      <div className="min-w-0 max-w-[220px] text-right text-xs sm:max-w-[280px]">
-        {mePending && !sessionPreview ? (
-          <span className="text-[var(--copilot-ink-muted)]">Cargando perfil…</span>
-        ) : displayEmail ? (
-          <>
-            <p className="truncate font-medium text-[var(--copilot-ink)]">
-              {displayEmail}
-            </p>
-            {displayRole ? (
-              <p className="truncate text-[var(--copilot-ink-muted)]">
-                Rol: {displayRole}
-              </p>
-            ) : null}
-          </>
-        ) : null}
-      </div>
+    <div ref={containerRef} className="relative">
       <button
         type="button"
-        onClick={() => void handleSignOut()}
-        className="shrink-0 rounded-lg border border-[var(--copilot-border)] bg-white/90 px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink)] transition hover:bg-white dark:bg-neutral-900/90 dark:hover:bg-neutral-900"
+        onClick={() => setMenuOpen((o) => !o)}
+        aria-label="Menú de usuario"
+        aria-expanded={menuOpen}
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--copilot-accent)] text-sm font-semibold text-white shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/40"
       >
-        Cerrar sesión
+        {initials}
       </button>
+
+      {menuOpen ? (
+        <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-[var(--copilot-border)] bg-white shadow-xl">
+          {displayEmail || displayRole ? (
+            <div className="border-b border-[var(--copilot-border)] px-4 py-3">
+              {displayEmail ? (
+                <p className="truncate text-xs font-medium text-[var(--copilot-ink)]">
+                  {displayEmail}
+                </p>
+              ) : null}
+              {displayRole ? (
+                <p className="text-xs text-[var(--copilot-ink-muted)]">
+                  {capitalizeRole(displayRole)}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          <div className="py-1">
+            <button
+              type="button"
+              onClick={() => void handleSignOut()}
+              className="w-full px-4 py-2 text-left text-sm text-rose-600 transition hover:bg-rose-50"
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

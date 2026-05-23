@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, Plus } from "lucide-react";
 
 import {
@@ -36,6 +36,14 @@ const ACCOUNT_TYPES: { value: TreasuryAccountType; label: string }[] = [
   { value: "credit_card", label: "Tarjeta" },
   { value: "investment", label: "Inversión" },
 ];
+
+const ACCOUNT_TYPE_LABEL: Record<string, string> = {
+  cash: "Caja",
+  bank: "Banco",
+  wallet: "Wallet",
+  credit_card: "Tarjeta",
+  investment: "Inversión",
+};
 
 type Props = {
   workspace: TreasuryWorkspace;
@@ -99,6 +107,16 @@ export function TreasuryAccountsPanel({ workspace }: Props) {
     setDrawerOpen(true);
   }
 
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape" || saving || !drawerOpen) return;
+      setDrawerOpen(false);
+      setEditing(null);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [drawerOpen, saving]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const parsed = treasuryAccountFormSchema.safeParse(form);
@@ -128,8 +146,8 @@ export function TreasuryAccountsPanel({ workspace }: Props) {
   return (
     <section className="space-y-4">
       <CopilotSectionTitle
-        title="Cuentas treasury"
-        subtitle="Alta, edición y desactivación de cuentas reales del workspace."
+        title="Cuentas de tesorería"
+        subtitle="Cajas, bancos y billeteras usados para calcular la posición de caja."
         action={
           <CopilotPrimaryButton type="button" onClick={openCreate}>
             <Plus className="mr-2 h-4 w-4" />
@@ -156,8 +174,8 @@ export function TreasuryAccountsPanel({ workspace }: Props) {
         </div>
       ) : filtered.length === 0 ? (
         <CopilotEmptyPanel
-          title="Sin cuentas treasury"
-          paragraphs={["Creá cuentas de caja o banco para asociar movimientos y conciliación."]}
+          title="Sin cuentas de tesorería"
+          paragraphs={["Creá cuentas de caja o banco para asociar movimientos y calcular la posición."]}
         />
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-white/50">
@@ -183,7 +201,7 @@ export function TreasuryAccountsPanel({ workspace }: Props) {
                     <td className={TESORERIA_TD_CLASS}>
                       {readTreasuryAccountAlias(account.metadata) ?? "—"}
                     </td>
-                    <td className={TESORERIA_TD_CLASS}>{account.type}</td>
+                    <td className={TESORERIA_TD_CLASS}>{ACCOUNT_TYPE_LABEL[account.type] ?? account.type}</td>
                     <td className={TESORERIA_TD_CLASS}>{account.currencyCode}</td>
                     <td className={TESORERIA_TD_CLASS}>{account.bankName ?? "—"}</td>
                     <td className={TESORERIA_TD_CLASS}>
@@ -240,7 +258,10 @@ export function TreasuryAccountsPanel({ workspace }: Props) {
       ) : null}
 
       {drawerOpen ? (
-        <div className="fixed inset-0 z-40 flex justify-end bg-black/30">
+        <div
+          className="fixed inset-0 z-40 flex justify-end bg-black/30"
+          onMouseDown={(e) => { if (e.target === e.currentTarget && !saving) { setDrawerOpen(false); setEditing(null); } }}
+        >
           <div className="h-full w-full max-w-lg overflow-y-auto bg-[var(--copilot-card)] p-6 shadow-2xl">
             <h3 className="text-lg font-semibold text-[var(--copilot-ink)]">
               {editing ? "Editar cuenta" : "Nueva cuenta"}

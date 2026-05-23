@@ -117,12 +117,26 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
   const [modal, setModal] = useState<ModalKind>({ type: "none" });
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
+  const editingItem = editingId ? items.find((i) => i.id === editingId) ?? null : null;
+
   useEffect(() => {
     if (!openMenuId) return;
     function close() { setOpenMenuId(null); }
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, [openMenuId]);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      if (submitting || saving) return;
+      if (openMenuId) { setOpenMenuId(null); return; }
+      if (modal.type !== "none") { setModal({ type: "none" }); return; }
+      if (drawerOpen) { setDrawerOpen(false); setEditingId(null); }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [modal, drawerOpen, openMenuId, submitting, saving]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -444,7 +458,10 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
 
       {/* ── Modal: Pausar ── */}
       {modal.type === "pause" ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          onMouseDown={(e) => { if (e.target === e.currentTarget && !submitting) setModal({ type: "none" }); }}
+        >
           <div className="w-full max-w-sm rounded-2xl border border-[var(--copilot-border)] bg-white p-6 shadow-xl">
             <h3 className="text-sm font-semibold text-[var(--copilot-ink)]">
               Pausar &ldquo;{modal.row.title}&rdquo;
@@ -478,7 +495,10 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
 
       {/* ── Modal: Reactivar ── */}
       {modal.type === "reactivate" ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          onMouseDown={(e) => { if (e.target === e.currentTarget && !submitting) setModal({ type: "none" }); }}
+        >
           <div className="w-full max-w-sm rounded-2xl border border-[var(--copilot-border)] bg-white p-6 shadow-xl">
             <h3 className="text-sm font-semibold text-[var(--copilot-ink)]">
               Reactivar &ldquo;{modal.row.title}&rdquo;
@@ -527,7 +547,10 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
 
       {/* ── Modal: Eliminar ── */}
       {modal.type === "delete" ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          onMouseDown={(e) => { if (e.target === e.currentTarget && !submitting) setModal({ type: "none" }); }}
+        >
           <div className="w-full max-w-sm rounded-2xl border border-[var(--copilot-border)] bg-white p-6 shadow-xl">
             <h3 className="text-sm font-semibold text-rose-700">
               Eliminar &ldquo;{modal.row.title}&rdquo;
@@ -577,7 +600,10 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
 
       {/* ── Drawer: Ver pagos generados ── */}
       {modal.type === "payments" ? (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/30">
+        <div
+          className="fixed inset-0 z-50 flex justify-end bg-black/30"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setModal({ type: "none" }); }}
+        >
           <div className="flex h-full w-full max-w-md flex-col bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-[var(--copilot-border)] px-4 py-3">
               <div>
@@ -609,7 +635,10 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
 
       {/* ── Drawer: Crear / Editar ── */}
       {drawerOpen ? (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/30">
+        <div
+          className="fixed inset-0 z-50 flex justify-end bg-black/30"
+          onMouseDown={(e) => { if (e.target === e.currentTarget && !saving) { setDrawerOpen(false); setEditingId(null); } }}
+        >
           <form
             className="flex h-full w-full max-w-md flex-col bg-white shadow-xl"
             onSubmit={(e) => void handleSubmit(e)}
@@ -744,19 +773,54 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
                 />
               </label>
             </div>
-            <div className="flex gap-2 border-t border-[var(--copilot-border)] p-4">
-              <CopilotPrimaryButton type="submit" disabled={saving}>
-                {saving ? "Guardando…" : editingId ? "Guardar cambios" : "Crear recurrente"}
-              </CopilotPrimaryButton>
-              <CopilotGhostButton
-                type="button"
-                onClick={() => {
-                  setDrawerOpen(false);
-                  setEditingId(null);
-                }}
-              >
-                Cancelar
-              </CopilotGhostButton>
+            <div className="border-t border-[var(--copilot-border)]">
+              <div className="flex gap-2 p-4">
+                <CopilotPrimaryButton type="submit" disabled={saving}>
+                  {saving ? "Guardando…" : editingId ? "Guardar cambios" : "Crear recurrente"}
+                </CopilotPrimaryButton>
+                <CopilotGhostButton
+                  type="button"
+                  disabled={saving}
+                  onClick={() => {
+                    setDrawerOpen(false);
+                    setEditingId(null);
+                  }}
+                >
+                  Cancelar
+                </CopilotGhostButton>
+              </div>
+              {editingItem ? (
+                <div className="px-4 pb-4">
+                  {editingItem.active ? (
+                    <button
+                      type="button"
+                      className="text-left text-xs text-[var(--copilot-ink-muted)] transition hover:text-amber-700"
+                      onClick={() => {
+                        setDrawerOpen(false);
+                        setEditingId(null);
+                        setModal({ type: "pause", row: editingItem });
+                      }}
+                    >
+                      Pausar recurrente
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="text-left text-xs text-[var(--copilot-ink-muted)] transition hover:text-rose-700"
+                      onClick={() => {
+                        setDrawerOpen(false);
+                        setEditingId(null);
+                        setModal({ type: "delete", row: editingItem, cancelPending: true });
+                      }}
+                    >
+                      Eliminar recurrente
+                    </button>
+                  )}
+                  <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">
+                    Esto detiene futuras generaciones. No borra pagos ya pagados.
+                  </p>
+                </div>
+              ) : null}
             </div>
           </form>
         </div>
