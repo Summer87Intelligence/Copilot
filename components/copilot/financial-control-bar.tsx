@@ -46,7 +46,7 @@ export type FinancialControlBarProps = {
   /**
    * `syncStates` del reporte vigente. Solo se usa para el indicador de
    * auto-sync Zeta. Si está vacío o ausente, el indicador cae al copy
-   * estático "Auto-sync Zeta: cada 3 h".
+   * estático "Auto-sync Zeta: cada 2 h".
    */
   syncStates?: readonly SyncStateSummary[];
 };
@@ -198,16 +198,16 @@ export function FinancialControlBar({
 //
 // Bloque informativo compacto que explica la actualización automática Zeta:
 //
-//   "Auto-sync Zeta · cada 3 h"
+//   "Auto-sync Zeta · cada 2 h"
 //   "Última: hace Xh"
 //   "Próxima ≈ HH:mm"
 //
 // Reglas:
 //  - Si `syncStates` está vacío o no trae timestamps → fallback estático:
-//      "Auto-sync Zeta · cada 3 h"
+//      "Auto-sync Zeta · cada 2 h"
 //      "Última sync: no disponible"
 //      (sin línea de próxima — el cron sigue corriendo, no se conoce última)
-//  - Próxima se calcula del schedule absoluto UTC (`0 *​/3 * * *`), no respecto
+//  - Próxima se calcula del schedule absoluto UTC (`0 *​/2 * * *`), no respecto
 //    a la última sync. Esto coincide con el comportamiento real del cron Vercel.
 //  - El componente NO usa `useState`/`useEffect`: instancia `new Date()` en
 //    render. La pantalla refresca con cada fetch del reporte; la "próxima

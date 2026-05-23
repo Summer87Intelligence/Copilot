@@ -2,7 +2,7 @@
  * GET /api/cron/zeta-sync-cuotas
  *
  * Cron Vercel — sincroniza cuotas pendientes (`RESTCuotasV1QueryCliente`)
- * de todos los workspaces activos. Frecuencia: cada 3 horas (vercel.json: "30 *\/3 * * *").
+ * de todos los workspaces activos. Frecuencia: cada 2 horas (vercel.json: "30 *\/2 * * *").
  *
  * Razón de ser:
  *   El pipeline de saldos solo provee `balance_amount` por factura. Esta ruta
@@ -54,8 +54,8 @@ const PAGE_DELAY_MS = 400;
 const CLIENT_DELAY_MS = 600;
 const MAX_PAGES_PER_CLIENT = 5;
 
-// Anti-overlap: ventana = intervalo del cron (3h).
-const ANTI_OVERLAP_WINDOW_MS = 3 * 60 * 60 * 1_000;
+// Anti-overlap: ventana = intervalo del cron (2h).
+const ANTI_OVERLAP_WINDOW_MS = 2 * 60 * 60 * 1_000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));

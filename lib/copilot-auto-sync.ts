@@ -7,7 +7,7 @@
  *   - cuándo será aproximadamente la próxima corrida según la schedule
  *
  * El cron real está declarado en `vercel.json`:
- *   { "path": "/api/cron/zeta-sync-saldos", "schedule": "0 *​/3 * * *" }
+ *   { "path": "/api/cron/zeta-sync-saldos", "schedule": "0 *​/2 * * *" }
  *
  * Vercel ejecuta los crons en UTC. Por eso `computeNextZetaSyncAt` razona en
  * UTC al ubicar el próximo múltiplo entero del intervalo y luego se delega
@@ -19,11 +19,11 @@ import { pickMostRecentSync } from "@/lib/copilot-cartera-format";
 
 /**
  * Intervalo del cron de saldos pendientes Zeta en horas.
- * Refleja `vercel.json → crons[0].schedule = "0 *​/3 * * *"`.
+ * Refleja `vercel.json → crons[0].schedule = "0 *​/2 * * *"`.
  *
  * Si en el futuro se cambia la schedule, ajustar acá y en `vercel.json`.
  */
-export const ZETA_SALDOS_SYNC_INTERVAL_HOURS = 3;
+export const ZETA_SALDOS_SYNC_INTERVAL_HOURS = 2;
 
 /**
  * Devuelve el `SyncStateSummary` que corresponde al flujo de saldos pendientes
@@ -49,7 +49,7 @@ export function pickZetaSaldosSyncState(
  * Calcula el siguiente instante en el que el cron Vercel `0 *​/N * * *` se va a
  * disparar a partir de `now`. Razona en UTC porque Vercel ejecuta crons en UTC.
  *
- *   intervalHours = 3 → 00:00, 03:00, 06:00, 09:00, 12:00, 15:00, 18:00, 21:00 UTC
+ *   intervalHours = 2 → 00:00, 02:00, 04:00, 06:00, 08:00, 10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00 UTC
  *
  * Si `now` cae exactamente en un múltiplo, devuelve el SIGUIENTE bloque
  * (semántica "próxima ejecución estrictamente futura").

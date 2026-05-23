@@ -2,7 +2,7 @@
  * GET /api/cron/zeta-sync-saldos
  *
  * Cron Vercel — sincroniza saldos pendientes de todos los workspaces activos.
- * Frecuencia: cada 3 horas (vercel.json: "0 *\/3 * * *").
+ * Frecuencia: cada 2 horas (vercel.json: "0 *\/2 * * *").
  *
  * Protecciones:
  * - Auth: Bearer CRON_SECRET (enviado automáticamente por Vercel)
@@ -66,8 +66,8 @@ const PAGE_DELAY_MS = 400;
 const CLIENT_DELAY_MS = 600;
 const MAX_PAGES_PER_CLIENT = 5;
 
-// Anti-overlap: ventana de 3 horas (igual al intervalo del cron)
-const ANTI_OVERLAP_WINDOW_MS = 3 * 60 * 60 * 1_000;
+// Anti-overlap: ventana de 2 horas (igual al intervalo del cron)
+const ANTI_OVERLAP_WINDOW_MS = 2 * 60 * 60 * 1_000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -97,7 +97,7 @@ type SaldosSupabaseClient = Parameters<typeof runZetaSaldosPendientesPipeline>[0
  * Discovery step: llama a Zeta con ClienteCodigo vacío (una página) para detectar
  * clientes con deuda que no existen en proto_companies todavía.
  * Crea placeholders (source=zeta_saldos_autocreate) y devuelve los entries para
- * agregarlos a `eligible` en el mismo run — reduce visibilidad de <24h a <3h.
+ * agregarlos a `eligible` en el mismo run — reduce visibilidad de <24h a <2h.
  * Docs Zeta: "ClienteCodigo puede dejarse vacío para obtener todos; solo una vez."
  * No-blocking: cualquier error de Zeta o DB se loggea y se retorna array vacío.
  */

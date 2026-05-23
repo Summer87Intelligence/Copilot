@@ -23,8 +23,8 @@ function syncState(
 }
 
 describe("ZETA_SALDOS_SYNC_INTERVAL_HOURS", () => {
-  it("refleja el cron `0 */3 * * *` configurado en vercel.json", () => {
-    expect(ZETA_SALDOS_SYNC_INTERVAL_HOURS).toBe(3);
+  it("refleja el cron `0 */2 * * *` configurado en vercel.json", () => {
+    expect(ZETA_SALDOS_SYNC_INTERVAL_HOURS).toBe(2);
   });
 });
 
@@ -78,28 +78,28 @@ describe("pickZetaSaldosSyncState", () => {
   });
 });
 
-describe("computeNextZetaSyncAt — cada 3h en UTC", () => {
-  it("a las 14:35 UTC → próxima 15:00 UTC", () => {
+describe("computeNextZetaSyncAt — cada 2h en UTC", () => {
+  it("a las 14:35 UTC → próxima 16:00 UTC", () => {
     const now = new Date("2026-05-11T14:35:00Z");
-    const next = computeNextZetaSyncAt(now, 3);
-    expect(next.toISOString()).toBe("2026-05-11T15:00:00.000Z");
+    const next = computeNextZetaSyncAt(now, 2);
+    expect(next.toISOString()).toBe("2026-05-11T16:00:00.000Z");
   });
 
   it("a las 17:59 UTC → próxima 18:00 UTC", () => {
     const now = new Date("2026-05-11T17:59:59.999Z");
-    const next = computeNextZetaSyncAt(now, 3);
+    const next = computeNextZetaSyncAt(now, 2);
     expect(next.toISOString()).toBe("2026-05-11T18:00:00.000Z");
   });
 
-  it("exactamente en el múltiplo (15:00:00 UTC) → siguiente bloque 18:00 UTC", () => {
-    const now = new Date("2026-05-11T15:00:00.000Z");
-    const next = computeNextZetaSyncAt(now, 3);
+  it("exactamente en el múltiplo (16:00:00 UTC) → siguiente bloque 18:00 UTC", () => {
+    const now = new Date("2026-05-11T16:00:00.000Z");
+    const next = computeNextZetaSyncAt(now, 2);
     expect(next.toISOString()).toBe("2026-05-11T18:00:00.000Z");
   });
 
   it("a las 22:30 UTC → cruza medianoche → 00:00 del día siguiente UTC", () => {
     const now = new Date("2026-05-11T22:30:00Z");
-    const next = computeNextZetaSyncAt(now, 3);
+    const next = computeNextZetaSyncAt(now, 2);
     expect(next.toISOString()).toBe("2026-05-12T00:00:00.000Z");
   });
 

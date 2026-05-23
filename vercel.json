@@ -7,15 +7,15 @@
   "crons": [
     {
       "path": "/api/cron/zeta-sync-saldos",
-      "schedule": "0 */3 * * *"
+      "schedule": "0 */2 * * *"
     },
     {
       "path": "/api/cron/zeta-sync-vouchers",
-      "schedule": "10 */3 * * *"
+      "schedule": "10 */2 * * *"
     },
     {
       "path": "/api/cron/zeta-sync-collection-receipts",
-      "schedule": "20 */3 * * *"
+      "schedule": "20 */2 * * *"
     },
     {
       "path": "/api/cron/zeta-sync-contacts",
@@ -23,7 +23,7 @@
     },
     {
       "path": "/api/cron/zeta-sync-cuotas",
-      "schedule": "30 */3 * * *"
+      "schedule": "30 */2 * * *"
     },
     {
       "path": "/api/cron/zeta-completeness-audit",
