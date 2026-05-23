@@ -27,6 +27,21 @@ type Props = {
   workspace: TreasuryWorkspace;
 };
 
+function movementTypeLabel(type: string): string {
+  const t = type.toLowerCase();
+  if (t === "debit") return "Débito";
+  if (t === "credit") return "Crédito";
+  return type;
+}
+
+function matchStatusLabel(status: string, hasSuggestion: boolean): string {
+  switch (status) {
+    case "matched": return "Coincide";
+    case "ignored": return "Ignorado";
+    default: return hasSuggestion ? "Sugerido" : "Pendiente";
+  }
+}
+
 export function TreasuryBankPanel({ workspace }: Props) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -148,8 +163,8 @@ export function TreasuryBankPanel({ workspace }: Props) {
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="space-y-4">
           <CopilotSectionTitle
-            title="Conciliación bancaria Santander"
-            subtitle="Atajos: ↑↓ navegar · M aceptar sugerencia · I ignorar · Esc cerrar."
+            title="Conciliación bancaria"
+            subtitle="Revisá movimientos importados y confirmá coincidencias con la caja registrada."
           />
           <input
             value={search}
@@ -168,9 +183,9 @@ export function TreasuryBankPanel({ workspace }: Props) {
             </div>
           ) : filtered.length === 0 ? (
             <CopilotEmptyPanel
-              title="Sin movimientos Santander"
+              title="Sin movimientos importados"
               paragraphs={[
-                "Importá o cargá movimientos bancarios asociados a cuentas Santander para conciliar.",
+                "Importá un extracto bancario para empezar a conciliar movimientos.",
               ]}
             />
           ) : (
@@ -183,8 +198,8 @@ export function TreasuryBankPanel({ workspace }: Props) {
                     <th className={TESORERIA_TH_CLASS}>Débito/Crédito</th>
                     <th className={TESORERIA_TH_CLASS}>Monto</th>
                     <th className={TESORERIA_TH_CLASS}>Saldo</th>
-                    <th className={TESORERIA_TH_CLASS}>Match</th>
-                    <th className={TESORERIA_TH_CLASS}>Conf.</th>
+                    <th className={TESORERIA_TH_CLASS}>Coincidencia</th>
+                    <th className={TESORERIA_TH_CLASS}>Confianza</th>
                     <th className={TESORERIA_TH_CLASS}>Acciones</th>
                   </tr>
                 </thead>
@@ -210,7 +225,7 @@ export function TreasuryBankPanel({ workspace }: Props) {
                           >
                             <td className={TESORERIA_TD_CLASS}>{row.movementDate}</td>
                             <td className={TESORERIA_TD_CLASS}>{row.description}</td>
-                            <td className={TESORERIA_TD_CLASS}>{row.movementType}</td>
+                            <td className={TESORERIA_TD_CLASS}>{movementTypeLabel(row.movementType)}</td>
                             <td className={TESORERIA_TD_CLASS}>
                               {formatTreasuryMoney(row.amount, row.currencyCode)}
                             </td>
@@ -229,7 +244,7 @@ export function TreasuryBankPanel({ workspace }: Props) {
                                       : "warning"
                                 }
                               >
-                                {row.matchStatus}
+                                {matchStatusLabel(row.matchStatus, suggestion != null)}
                               </CopilotBadge>
                             </td>
                             <td className={TESORERIA_TD_CLASS}>
@@ -238,7 +253,7 @@ export function TreasuryBankPanel({ workspace }: Props) {
                             <td className={TESORERIA_TD_CLASS}>
                               <div className="flex flex-wrap gap-2">
                                 <CopilotGhostButton type="button" onClick={() => setSelected(row)}>
-                                  Detalle
+                                  Ver detalle
                                 </CopilotGhostButton>
                                 {suggestion ? (
                                   <CopilotPrimaryButton
@@ -252,7 +267,7 @@ export function TreasuryBankPanel({ workspace }: Props) {
                                   type="button"
                                   onClick={() => void workspace.ignoreBank(row.id)}
                                 >
-                                  Rechazar
+                                  Descartar match
                                 </CopilotGhostButton>
                               </div>
                             </td>
@@ -287,13 +302,13 @@ export function TreasuryBankPanel({ workspace }: Props) {
         </div>
 
         <aside className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-4 shadow-[var(--copilot-shadow)]">
-          <h3 className="text-sm font-semibold text-[var(--copilot-ink)]">Sugerencias de match</h3>
+          <h3 className="text-sm font-semibold text-[var(--copilot-ink)]">Sugerencias de conciliación</h3>
           <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
-            Diferencia de monto y fecha dentro de tolerancia.
+            Coincidencias detectadas por monto, fecha y descripción.
           </p>
           <ul className="mt-3 space-y-2">
             {suggestions.length === 0 ? (
-              <li className="text-sm text-[var(--copilot-ink-muted)]">Sin sugerencias por ahora.</li>
+              <li className="text-sm text-[var(--copilot-ink-muted)]">Sin sugerencias pendientes.</li>
             ) : (
               suggestions.map((suggestion) => (
                 <li
@@ -327,7 +342,7 @@ export function TreasuryBankPanel({ workspace }: Props) {
                         void workspace.ignoreBank(bank.id);
                       }}
                     >
-                      Rechazar
+                      Descartar match
                     </CopilotGhostButton>
                   </div>
                 </li>

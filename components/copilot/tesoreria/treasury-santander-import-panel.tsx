@@ -19,6 +19,13 @@ type Props = {
   workspace: TreasuryWorkspace;
 };
 
+function movementTypeLabel(type: string): string {
+  const t = type.toLowerCase();
+  if (t === "debit") return "Débito";
+  if (t === "credit") return "Crédito";
+  return type;
+}
+
 export function TreasurySantanderImportPanel({ workspace }: Props) {
   const [accountId, setAccountId] = useState("");
   const [parsing, setParsing] = useState(false);
@@ -90,9 +97,12 @@ export function TreasurySantanderImportPanel({ workspace }: Props) {
   return (
     <section className="space-y-3 rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-4 shadow-[var(--copilot-shadow)]">
       <CopilotSectionTitle
-        title="Importador Santander"
-        subtitle="CSV o XLSX con preview, deduplicación por external_id y auto-match."
+        title="Importador bancario"
+        subtitle="Subí un extracto CSV o XLSX para revisar movimientos y posibles coincidencias."
       />
+      <p className="text-xs text-[var(--copilot-ink-muted)]">
+        Compatible actualmente con extractos Santander.
+      </p>
 
       <TreasuryFormField label="Cuenta destino" htmlFor="import-account">
         <select
@@ -180,7 +190,7 @@ export function TreasurySantanderImportPanel({ workspace }: Props) {
                   <td className={TESORERIA_TD_CLASS}>
                     {formatTreasuryMoney(row.amount, row.currencyCode as "UYU" | "USD")}
                   </td>
-                  <td className={TESORERIA_TD_CLASS}>{row.movementType}</td>
+                  <td className={TESORERIA_TD_CLASS}>{movementTypeLabel(row.movementType)}</td>
                   <td className={TESORERIA_TD_CLASS}>{row.duplicate ? "Sí" : "No"}</td>
                   <td className={TESORERIA_TD_CLASS}>
                     {row.suggestion
