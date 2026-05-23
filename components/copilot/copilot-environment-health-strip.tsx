@@ -14,7 +14,7 @@ export function CopilotEnvironmentHealthStrip({
   sessionPreview?: CopilotSessionPreview | null;
 }) {
   return (
-    <div className="flex min-h-[56px] flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.80)] px-4 py-3 sm:px-6">
+    <div className="flex h-[56px] items-center justify-between gap-x-4 overflow-hidden border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.80)] px-4 sm:px-6">
       <TodayDateDisplay />
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-2 sm:gap-x-4">
         <CopilotUserBar sessionPreview={sessionPreview} />

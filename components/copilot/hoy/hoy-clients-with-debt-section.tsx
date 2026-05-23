@@ -102,7 +102,7 @@ function DebtorRowActions({ row }: { row: DebtorCollectionRow }) {
           {row.accion}
         </span>
       ) : null}
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex items-center gap-1.5">
         {waDigits ? (
           <a
             href={`https://wa.me/${waDigits}`}
@@ -294,7 +294,7 @@ function DebtorTable({
                   <td className="px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)]">
                     {row.antiguedad}
                   </td>
-                  <td className="max-w-[220px] px-3 py-1.5">
+                  <td className="px-3 py-1.5">
                     <DebtorRowActions row={row} />
                   </td>
                 </tr>
