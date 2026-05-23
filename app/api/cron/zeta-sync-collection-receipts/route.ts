@@ -27,6 +27,7 @@ import {
   updatePipelineRun,
 } from "@/lib/data/zeta-pipeline-run-repository";
 import { ZETA_PIPELINE_NAMES } from "@/lib/data/zeta-pipeline-run-types";
+import { runNotificationGenerationBestEffort } from "@/lib/copilot-notifications/run-notification-generation-best-effort";
 
 const PIPELINE = ZETA_PIPELINE_NAMES.COLLECTION_RECEIPTS;
 
@@ -274,6 +275,11 @@ export async function GET(request: NextRequest) {
           log("pipeline_heartbeat_error", { error: String(e) });
         }
       }
+      await runNotificationGenerationBestEffort({
+        workspaceCompanyId: workspaceId,
+        source: PIPELINE,
+        logger: log,
+      });
     }
 
     cursorAfterId = page.nextAfterId;
