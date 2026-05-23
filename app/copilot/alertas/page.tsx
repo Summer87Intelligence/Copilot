@@ -1,472 +1,573 @@
 "use client";
 
+import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
-  Suspense,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useState,
-} from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+  AlertTriangle,
+  Bell,
+  CheckCheck,
+  ChevronRight,
+  TrendingDown,
+  TrendingUp,
+  Users,
+  Wallet,
+  XCircle,
+  Zap,
+} from "lucide-react";
 
-import { useCopilotAlerts } from "@/components/copilot/copilot-alerts-context";
-import { CopilotOperationalStatusSection } from "@/components/copilot/copilot-operational-status-section";
-import { CopilotTaxEvidenceDrawer } from "@/components/copilot/copilot-tax-evidence-drawer";
-import { CopilotAlertOpsActions } from "@/components/copilot/copilot-alert-ops-actions";
-import { copilotInteractiveTextGroupAffordance } from "@/components/copilot/copilot-interactive-text";
+import { useCopilotNotifications } from "@/hooks/use-copilot-notifications";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import {
-  CopilotBadge,
-  CopilotCard,
-  CopilotSectionTitle,
-  copilotPageMainClass,
-} from "@/components/copilot/copilot-ui";
-import { CopilotOperationalEmptyState } from "@/components/copilot/copilot-operational-empty-state";
-import { mapAlertCategory } from "@/lib/copilot-format";
-import { buildCopilotAlertOpsContext } from "@/lib/copilot-alert-ops-mapper";
-import { COPILOT_EMPTY_COPY } from "@/lib/copilot-empty-state";
-import { copilotApiFetch } from "@/lib/copilot-fetch";
-import type { OperationalActionListItem } from "@/lib/copilot-operational-actions-types";
+import { copilotPageMainClass } from "@/components/copilot/copilot-ui";
+import type { CopilotNotification } from "@/lib/copilot-notifications/notification-types";
 
-type PriorityFilter = "all" | "critical" | "high" | "medium";
-type TypeFilter =
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function relativeTime(isoString: string): string {
+  const diff = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
+  if (diff < 60) return "ahora";
+  if (diff < 3_600) return `hace ${Math.floor(diff / 60)} min`;
+  if (diff < 86_400) return `hace ${Math.floor(diff / 3_600)} h`;
+  if (diff < 172_800) return "ayer";
+  return new Date(isoString).toLocaleDateString("es-UY", {
+    day: "numeric",
+    month: "short",
+    timeZone: "America/Montevideo",
+  });
+}
+
+function dateBucket(isoString: string): "hoy" | "ayer" | "anterior" {
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("en-CA", { timeZone: "America/Montevideo" });
+  const item = fmt(new Date(isoString));
+  const today = fmt(new Date());
+  if (item === today) return "hoy";
+  if (item === fmt(new Date(Date.now() - 86_400_000))) return "ayer";
+  return "anterior";
+}
+
+function actionLabel(href: string): string {
+  if (href.includes("/clientes/")) return "Ver cliente";
+  if (href.includes("/cartera")) return "Ver cartera";
+  if (href.includes("/tesoreria")) return "Ver pagos";
+  if (href.includes("/hoy")) return "Ver hoy";
+  if (href.includes("/estado")) return "Ver estado";
+  return "Ver";
+}
+
+// ─── Icon bubbles ─────────────────────────────────────────────────────────────
+
+type IconConfig = { bg: string; icon: React.ReactNode };
+
+function getIconConfig(type: string, severity: string): IconConfig {
+  const sz = "h-4 w-4 shrink-0";
+  if (type === "collection_received")
+    return {
+      bg: "bg-emerald-100",
+      icon: <TrendingUp className={`${sz} text-emerald-600`} aria-hidden />,
+    };
+  if (type === "new_debtor")
+    return {
+      bg: "bg-amber-100",
+      icon: <Users className={`${sz} text-amber-600`} aria-hidden />,
+    };
+  if (type === "client_overdue")
+    return {
+      bg: "bg-rose-100",
+      icon: <TrendingDown className={`${sz} text-rose-600`} aria-hidden />,
+    };
+  if (type === "treasury_payment_due")
+    return {
+      bg: severity === "critical" ? "bg-rose-100" : "bg-amber-100",
+      icon: (
+        <Wallet
+          className={`${sz} ${severity === "critical" ? "text-rose-600" : "text-amber-600"}`}
+          aria-hidden
+        />
+      ),
+    };
+  if (type === "treasury_payment_overdue")
+    return {
+      bg: "bg-rose-100",
+      icon: <AlertTriangle className={`${sz} text-rose-600`} aria-hidden />,
+    };
+  if (type === "sync_changes_detected")
+    return {
+      bg: "bg-sky-100",
+      icon: <Zap className={`${sz} text-sky-500`} aria-hidden />,
+    };
+  if (type === "sync_failed")
+    return {
+      bg: "bg-rose-100",
+      icon: <XCircle className={`${sz} text-rose-500`} aria-hidden />,
+    };
+  if (type === "cash_risk_detected")
+    return {
+      bg: "bg-amber-100",
+      icon: <AlertTriangle className={`${sz} text-amber-600`} aria-hidden />,
+    };
+  return {
+    bg: "bg-slate-100",
+    icon: <Bell className={`${sz} text-slate-400`} aria-hidden />,
+  };
+}
+
+// ─── Severity pill ────────────────────────────────────────────────────────────
+
+const SEVERITY_CFG = {
+  critical: { label: "Crítica", cls: "bg-rose-100 text-rose-700" },
+  warning: { label: "Alerta", cls: "bg-amber-100 text-amber-700" },
+  info: { label: "Info", cls: "bg-sky-100 text-sky-700" },
+} as const;
+
+function SeverityPill({ severity }: { severity: string }) {
+  const cfg =
+    SEVERITY_CFG[severity as keyof typeof SEVERITY_CFG] ?? {
+      label: severity,
+      cls: "bg-slate-100 text-slate-600",
+    };
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${cfg.cls}`}
+    >
+      {cfg.label}
+    </span>
+  );
+}
+
+// ─── Filter tabs ──────────────────────────────────────────────────────────────
+
+type AlertFilter =
   | "all"
-  | "fiscalidad"
-  | "liquidez"
-  | "cobertura"
-  | "conciliacion";
+  | "unread"
+  | "critical"
+  | "cobros"
+  | "clientes"
+  | "tesoreria"
+  | "sistema";
 
-const priorityLabel: Record<Exclude<PriorityFilter, "all">, string> = {
-  critical: "Crítica",
-  high: "Alta",
-  medium: "Media",
+const FILTER_TABS: Array<{ id: AlertFilter; label: string }> = [
+  { id: "all", label: "Todas" },
+  { id: "unread", label: "No leídas" },
+  { id: "critical", label: "Críticas" },
+  { id: "cobros", label: "Cobros" },
+  { id: "clientes", label: "Clientes" },
+  { id: "tesoreria", label: "Tesorería" },
+  { id: "sistema", label: "Sistema" },
+];
+
+function matchesFilter(n: CopilotNotification, filter: AlertFilter): boolean {
+  switch (filter) {
+    case "all":
+      return true;
+    case "unread":
+      return !n.read_at;
+    case "critical":
+      return n.severity === "critical";
+    case "cobros":
+      return n.type === "collection_received";
+    case "clientes":
+      return n.type === "client_overdue" || n.type === "new_debtor";
+    case "tesoreria":
+      return (
+        n.type === "treasury_payment_due" || n.type === "treasury_payment_overdue"
+      );
+    case "sistema":
+      return (
+        n.type === "sync_changes_detected" ||
+        n.type === "sync_failed" ||
+        n.type === "cash_risk_detected" ||
+        n.type === "copilot_action_suggested" ||
+        n.type === "notification_digest"
+      );
+    default:
+      return true;
+  }
+}
+
+// ─── Metric card ──────────────────────────────────────────────────────────────
+
+function MetricCard({
+  label,
+  value,
+  sub,
+  tone = "neutral",
+}: {
+  label: string;
+  value: number;
+  sub: string;
+  tone?: "critical" | "warning" | "positive" | "neutral";
+}) {
+  const cfg = {
+    critical: {
+      border: "border-rose-200/70",
+      bg: "bg-rose-50/50",
+      label: "text-rose-900/70",
+      value: "text-rose-950",
+    },
+    warning: {
+      border: "border-amber-200/70",
+      bg: "bg-amber-50/50",
+      label: "text-amber-900/70",
+      value: "text-amber-950",
+    },
+    positive: {
+      border: "border-emerald-200/70",
+      bg: "bg-emerald-50/50",
+      label: "text-emerald-900/70",
+      value: "text-emerald-950",
+    },
+    neutral: {
+      border: "border-[var(--copilot-border)]",
+      bg: "bg-white/60",
+      label: "text-[var(--copilot-ink-muted)]",
+      value: "text-[var(--copilot-ink)]",
+    },
+  }[tone];
+
+  return (
+    <div className={`rounded-xl border ${cfg.border} ${cfg.bg} px-4 py-3`}>
+      <p
+        className={`text-[10px] font-semibold uppercase tracking-wide ${cfg.label}`}
+      >
+        {label}
+      </p>
+      <p className={`mt-1 text-2xl font-semibold tabular-nums ${cfg.value}`}>
+        {value}
+      </p>
+      <p className={`mt-0.5 text-[11px] ${cfg.label}`}>{sub}</p>
+    </div>
+  );
+}
+
+// ─── Notification card ────────────────────────────────────────────────────────
+
+function NotificationCard({
+  n,
+  onRead,
+}: {
+  n: CopilotNotification;
+  onRead: (id: string) => void;
+}) {
+  const unread = !n.read_at;
+  const { bg, icon } = getIconConfig(n.type, n.severity);
+
+  return (
+    <article
+      className={`rounded-xl border p-4 transition-colors ${
+        unread
+          ? "border-[rgba(31,107,74,0.22)] bg-[rgba(31,107,74,0.028)] shadow-sm"
+          : "border-[var(--copilot-border)] bg-white/70"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        {/* Icon */}
+        <div
+          className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${bg}`}
+        >
+          {icon}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          {/* Title row */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <p
+              className={`text-[13.5px] font-semibold leading-snug ${
+                unread
+                  ? "text-[var(--copilot-ink)]"
+                  : "text-[var(--copilot-ink)]/80"
+              }`}
+            >
+              {n.title}
+            </p>
+            <SeverityPill severity={n.severity} />
+            {unread ? (
+              <span
+                className="ml-auto h-[7px] w-[7px] shrink-0 rounded-full bg-[var(--copilot-accent)]"
+                aria-label="No leída"
+              />
+            ) : null}
+          </div>
+
+          {/* Body */}
+          {n.body ? (
+            <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-[var(--copilot-ink-muted)]">
+              {n.body}
+            </p>
+          ) : null}
+
+          {/* Amount */}
+          {n.amount != null && n.currency ? (
+            <p className="mt-1.5 text-[13px] font-semibold tabular-nums text-[var(--copilot-ink)]">
+              {n.currency}{" "}
+              {n.amount.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
+            </p>
+          ) : null}
+
+          {/* Footer */}
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <span className="text-[11px] tabular-nums text-[var(--copilot-ink-muted)]/60">
+              {relativeTime(n.created_at)}
+            </span>
+
+            {n.action_href ? (
+              <Link
+                href={n.action_href}
+                onClick={() => {
+                  if (unread) onRead(n.id);
+                }}
+                className="flex items-center gap-0.5 text-[11.5px] font-semibold text-[var(--copilot-accent)] transition-opacity hover:opacity-75"
+              >
+                {actionLabel(n.action_href)}
+                <ChevronRight className="h-3 w-3" aria-hidden />
+              </Link>
+            ) : null}
+
+            {unread ? (
+              <button
+                type="button"
+                onClick={() => onRead(n.id)}
+                className="ml-auto flex items-center gap-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] transition-opacity hover:opacity-70"
+              >
+                <CheckCheck className="h-3 w-3" aria-hidden />
+                Marcar leída
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+function NotifSkeleton() {
+  return (
+    <div className="space-y-2.5">
+      {[0, 1, 2, 3].map((i) => (
+        <div
+          key={i}
+          className="flex gap-3 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4"
+        >
+          <div className="h-9 w-9 animate-pulse rounded-xl bg-[var(--copilot-border)]" />
+          <div className="flex-1 space-y-2.5 pt-1">
+            <div className="flex gap-2">
+              <div className="h-3 w-2/5 animate-pulse rounded-full bg-[var(--copilot-border)]" />
+              <div className="h-3 w-12 animate-pulse rounded-full bg-[var(--copilot-border)]/70" />
+            </div>
+            <div className="h-2.5 w-4/5 animate-pulse rounded-full bg-[var(--copilot-border)]/60" />
+            <div className="h-2.5 w-1/4 animate-pulse rounded-full bg-[var(--copilot-border)]/40" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+const BUCKET_ORDER = ["hoy", "ayer", "anterior"] as const;
+const BUCKET_LABELS: Record<"hoy" | "ayer" | "anterior", string> = {
+  hoy: "Hoy",
+  ayer: "Ayer",
+  anterior: "Anteriores",
 };
 
-function CopilotAlertasPageContent() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+export default function CopilotAlertasPage() {
+  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } =
+    useCopilotNotifications();
 
-  const [priority, setPriority] = useState<PriorityFilter>("all");
-  const [type, setType] = useState<TypeFilter>("all");
-  const fromOperationalSource = searchParams.get("source") === "operational";
-  const {
-    items: allAlerts,
-    fiscalError: fiscalLoadError,
-    predictiveError: predictiveLoadError,
-  } = useCopilotAlerts();
-  const [selectedId, setSelectedId] = useState("");
-  const [isEvidenceOpen, setIsEvidenceOpen] = useState(false);
-  const [openAlertActionById, setOpenAlertActionById] = useState<Record<string, string>>({});
+  const [activeFilter, setActiveFilter] = useState<AlertFilter>("all");
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        const res = await copilotApiFetch("/api/copilot/operational-actions?limit=120");
-        const json = (await res.json()) as { actions?: OperationalActionListItem[] };
-        if (!res.ok) return;
-        const next: Record<string, string> = {};
-        for (const action of json.actions ?? []) {
-          if (action.origin !== "alert" || !action.related_entity_id) continue;
-          if (!["pending", "in_progress", "blocked"].includes(action.operational_status)) {
-            continue;
-          }
-          if (!next[action.related_entity_id]) {
-            next[action.related_entity_id] = action.id;
-          }
-        }
-        setOpenAlertActionById(next);
-      } catch {
-        /* cola operativa opcional en alertas */
-      }
-    })();
-  }, []);
-
-  useLayoutEffect(() => {
-    const raw = searchParams.get("priority");
-    if (raw === "critical" || raw === "high" || raw === "medium") {
-      setPriority(raw);
-    } else {
-      setPriority("all");
+  const metrics = useMemo(() => {
+    let unread = 0,
+      critical = 0,
+      vencimientos = 0,
+      cobros = 0;
+    for (const n of notifications) {
+      if (!n.read_at) unread++;
+      if (n.severity === "critical") critical++;
+      if (
+        n.type === "treasury_payment_due" ||
+        n.type === "treasury_payment_overdue"
+      )
+        vencimientos++;
+      if (n.type === "collection_received") cobros++;
     }
-  }, [searchParams]);
+    return { unread, critical, vencimientos, cobros };
+  }, [notifications]);
 
-  const setPriorityFilter = useCallback(
-    (id: PriorityFilter) => {
-      setPriority(id);
-      const next = new URLSearchParams(searchParams.toString());
-      if (id === "all") {
-        next.delete("priority");
-      } else {
-        next.set("priority", id);
-      }
-      const q = next.toString();
-      router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
-    },
-    [pathname, router, searchParams]
-  );
-
-  const summaryCounts = useMemo(() => {
-    const fc = { critical: 0, high: 0, medium: 0 };
-    for (const a of allAlerts) {
-      fc[a.priority] += 1;
+  const tabCounts = useMemo(() => {
+    const counts: Record<AlertFilter, number> = {
+      all: 0,
+      unread: 0,
+      critical: 0,
+      cobros: 0,
+      clientes: 0,
+      tesoreria: 0,
+      sistema: 0,
+    };
+    for (const n of notifications) {
+      counts.all++;
+      if (!n.read_at) counts.unread++;
+      if (n.severity === "critical") counts.critical++;
+      if (n.type === "collection_received") counts.cobros++;
+      if (n.type === "client_overdue" || n.type === "new_debtor")
+        counts.clientes++;
+      if (
+        n.type === "treasury_payment_due" ||
+        n.type === "treasury_payment_overdue"
+      )
+        counts.tesoreria++;
+      if (
+        n.type === "sync_changes_detected" ||
+        n.type === "sync_failed" ||
+        n.type === "cash_risk_detected" ||
+        n.type === "copilot_action_suggested" ||
+        n.type === "notification_digest"
+      )
+        counts.sistema++;
     }
-    return fc;
-  }, [allAlerts]);
+    return counts;
+  }, [notifications]);
 
-  const filtered = useMemo(() => {
-    return allAlerts.filter((a) => {
-      if (priority !== "all" && a.priority !== priority) return false;
-      if (type !== "all" && a.type !== type) return false;
-      return true;
-    });
-  }, [allAlerts, priority, type]);
+  const groups = useMemo(() => {
+    const filtered = notifications.filter((n) =>
+      matchesFilter(n, activeFilter)
+    );
+    return BUCKET_ORDER.map((bucket) => ({
+      key: bucket,
+      label: BUCKET_LABELS[bucket],
+      items: filtered.filter((n) => dateBucket(n.created_at) === bucket),
+    })).filter((g) => g.items.length > 0);
+  }, [notifications, activeFilter]);
 
-  const effectiveSelectedId = useMemo(() => {
-    if (filtered.length === 0) return null;
-    if (filtered.some((a) => a.id === selectedId)) return selectedId;
-    return filtered[0].id;
-  }, [filtered, selectedId]);
-
-  const selectedAlert = useMemo(() => {
-    if (effectiveSelectedId == null) return null;
-    return filtered.find((a) => a.id === effectiveSelectedId) ?? null;
-  }, [filtered, effectiveSelectedId]);
-
-  const selectedOps = useMemo(
-    () => (selectedAlert ? buildCopilotAlertOpsContext(selectedAlert) : null),
-    [selectedAlert]
-  );
-
-  useEffect(() => {
-    if (filtered.length === 0) {
-      setIsEvidenceOpen(false);
-      return;
-    }
-    if (filtered.some((a) => a.id === selectedId)) return;
-    setIsEvidenceOpen(false);
-    setSelectedId(filtered[0].id);
-  }, [filtered, selectedId]);
-
-  useEffect(() => {
-    const qp = searchParams.get("priority");
-    if (qp !== "critical" && qp !== "high" && qp !== "medium") return;
-    if (!effectiveSelectedId || filtered.length === 0) return;
-    const t = window.setTimeout(() => {
-      document
-        .getElementById(`copilot-alert-card-${effectiveSelectedId}`)
-        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }, 120);
-    return () => window.clearTimeout(t);
-  }, [searchParams, effectiveSelectedId, filtered.length]);
+  const totalFiltered = groups.reduce((s, g) => s + g.items.length, 0);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
         surfaceId="copilot.alertas"
-        title="Alertas"
-        description="Riesgos y desvíos detectados — priorizados para que sepas dónde mirar primero."
+        title="Centro de alertas"
+        description="Cobros, vencimientos, pagos y eventos relevantes del negocio."
       />
 
       <div className={copilotPageMainClass}>
-        <CopilotOperationalStatusSection scrollIntoView={fromOperationalSource} />
-
-        <CopilotSectionTitle
-          title="Alertas detectadas"
-          subtitle="Riesgos fiscales, liquidez y conciliación del motor de alertas."
-        />
-
-        <div className="grid gap-3 sm:grid-cols-3">
-          <CopilotCard className="border-rose-200/70 bg-rose-50/45 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-900/80">
-              Críticas
-            </p>
-            <p className="mt-1 text-2xl font-semibold text-rose-950">
-              {summaryCounts.critical}
-            </p>
-            <p className="mt-0.5 text-xs text-rose-900/70">Acción inmediata</p>
-          </CopilotCard>
-          <CopilotCard className="border-amber-200/70 bg-amber-50/45 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-900/80">
-              Altas
-            </p>
-            <p className="mt-1 text-2xl font-semibold text-amber-950">
-              {summaryCounts.high}
-            </p>
-            <p className="mt-0.5 text-xs text-amber-900/70">Seguimiento semanal</p>
-          </CopilotCard>
-          <CopilotCard className="py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-              Medias
-            </p>
-            <p className="mt-1 text-2xl font-semibold text-[var(--copilot-ink)]">
-              {summaryCounts.medium}
-            </p>
-            <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-              Monitoreo habitual
-            </p>
-          </CopilotCard>
-        </div>
-
-        <CopilotCard>
-          <CopilotSectionTitle
-            title="Filtros"
-            subtitle="Refiná la lista sin perder el contexto."
+        {/* ── Metrics ─────────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <MetricCard
+            label="No leídas"
+            value={metrics.unread}
+            sub="pendientes de revisar"
+            tone={metrics.unread > 0 ? "warning" : "neutral"}
           />
-          <div className="flex flex-wrap gap-3">
-            {fiscalLoadError ? (
-              <p className="w-full text-xs text-amber-800/90">
-                Alertas fiscales no disponibles: {fiscalLoadError}
-              </p>
-            ) : null}
-            {predictiveLoadError ? (
-              <p className="w-full text-xs text-amber-800/90">
-                Alertas predictivas no disponibles: {predictiveLoadError}
-              </p>
-            ) : null}
-            <div className="flex flex-wrap gap-2">
-              <span className="self-center text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                Prioridad
-              </span>
-              {(
-                [
-                  ["all", "Todas"],
-                  ["critical", "Crítica"],
-                  ["high", "Alta"],
-                  ["medium", "Media"],
-                ] as const
-              ).map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setPriorityFilter(id)}
-                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                    priority === id
-                      ? "bg-[var(--copilot-ink)] text-white"
-                      : "bg-white/80 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-white"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="hidden h-8 w-px bg-[var(--copilot-border)] sm:block" />
-            <div className="flex flex-wrap gap-2">
-              <span className="self-center text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                Tipo
-              </span>
-              {(
-                [
-                  ["all", "Todos"],
-                  ["fiscalidad", "Fiscalidad"],
-                  ["liquidez", "Liquidez"],
-                  ["cobertura", "Cobertura"],
-                  ["conciliacion", "Conciliación"],
-                ] as const
-              ).map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setType(id)}
-                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                    type === id
-                      ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]"
-                      : "bg-white/80 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-white"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </CopilotCard>
+          <MetricCard
+            label="Críticas"
+            value={metrics.critical}
+            sub="requieren acción"
+            tone={metrics.critical > 0 ? "critical" : "neutral"}
+          />
+          <MetricCard
+            label="Vencimientos"
+            value={metrics.vencimientos}
+            sub="próximos y vencidos"
+            tone={metrics.vencimientos > 0 ? "warning" : "neutral"}
+          />
+          <MetricCard
+            label="Cobros recibidos"
+            value={metrics.cobros}
+            sub="últimas 72 h"
+            tone={metrics.cobros > 0 ? "positive" : "neutral"}
+          />
+        </div>
 
-        <div className="grid gap-4 lg:grid-cols-5">
-          <div className="space-y-3 lg:col-span-2">
-            {filtered.map((a) => {
-              const active = a.id === effectiveSelectedId;
-              const evidenceOpenForCard = isEvidenceOpen && a.id === effectiveSelectedId;
-              const ops = buildCopilotAlertOpsContext(a);
-              return (
-                <div
-                  key={a.id}
-                  id={`copilot-alert-card-${a.id}`}
-                  className={`w-full scroll-mt-24 rounded-2xl border p-4 text-left transition ${
-                    active
-                      ? "border-[rgba(31,107,74,0.35)] bg-white shadow-[var(--copilot-shadow)] ring-1 ring-[rgba(31,107,74,0.12)]"
-                      : "border-[var(--copilot-border)] bg-[var(--copilot-card)] hover:bg-white"
-                  } ${evidenceOpenForCard ? "ring-2 ring-[rgba(31,107,74,0.22)]" : ""}`}
-                >
+        {/* ── Filters ─────────────────────────────────────────────────────── */}
+        <div className="flex items-center gap-3">
+          {/* Horizontal scroll on mobile */}
+          <div className="-mx-6 min-w-0 flex-1 overflow-x-auto px-6 sm:mx-0 sm:overflow-x-visible sm:px-0">
+            <div className="flex shrink-0 gap-2 pb-0.5">
+              {FILTER_TABS.map(({ id, label }) => {
+                const count = tabCounts[id];
+                const active = activeFilter === id;
+                return (
                   <button
+                    key={id}
                     type="button"
-                    onClick={() => setSelectedId(a.id)}
-                    className="group w-full text-left"
+                    onClick={() => setActiveFilter(id)}
+                    className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition ${
+                      active
+                        ? "bg-[var(--copilot-ink)] text-white shadow-sm"
+                        : "bg-white/80 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-white"
+                    }`}
                   >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <CopilotBadge
-                        tone={
-                          a.priority === "critical"
-                            ? "danger"
-                            : a.priority === "high"
-                              ? "warning"
-                              : "neutral"
-                        }
+                    {label}
+                    {count > 0 ? (
+                      <span
+                        className={`rounded-full px-1.5 py-px text-[10px] font-bold leading-none ${
+                          active
+                            ? "bg-white/20 text-white"
+                            : "bg-[var(--copilot-border)] text-[var(--copilot-ink-muted)]"
+                        }`}
                       >
-                        {priorityLabel[a.priority]}
-                      </CopilotBadge>
-                      <span className="text-xs font-medium text-[var(--copilot-ink-muted)]">
-                        {mapAlertCategory(a.type)}
+                        {count}
                       </span>
-                      {evidenceOpenForCard ? (
-                        <span className="rounded-full bg-[var(--copilot-accent-soft)] px-2 py-0.5 text-[11px] font-semibold text-[var(--copilot-accent)]">
-                          Respaldo abierto
-                        </span>
-                      ) : null}
-                    </div>
-                    <p
-                      className={`mt-2 text-sm font-semibold text-[var(--copilot-ink)] ${copilotInteractiveTextGroupAffordance}`}
-                    >
-                      {a.title}
-                    </p>
-                    <p className="mt-1 text-sm text-[var(--copilot-ink-muted)]">
-                      {ops.impact}
-                    </p>
+                    ) : null}
                   </button>
-                  <CopilotAlertOpsActions
-                    primary={ops.primary}
-                    quick={ops.quick}
-                    compact
-                    followupAlert={a}
-                    openOperationalActionId={openAlertActionById[a.id] ?? null}
-                    showEvidence={Boolean(a.obligationId)}
-                    onOpenEvidence={() => {
-                      setSelectedId(a.id);
-                      setIsEvidenceOpen(true);
-                    }}
-                  />
-                </div>
-              );
-            })}
-            {allAlerts.length === 0 && (fiscalLoadError || predictiveLoadError) ? (
-              <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
-                {fiscalLoadError ? (
-                  <p>No se pudieron cargar alertas fiscales: {fiscalLoadError}</p>
-                ) : null}
-                {predictiveLoadError ? (
-                  <p>No se pudieron cargar alertas predictivas: {predictiveLoadError}</p>
-                ) : null}
-              </div>
-            ) : filtered.length === 0 ? (
-              allAlerts.length === 0 ? (
-                <CopilotOperationalEmptyState
-                  title="Monitoreo activo"
-                  status="Última evaluación correcta · sin incidentes detectados"
-                  statusTone="healthy"
-                  metrics={[
-                    { label: "Críticas", value: summaryCounts.critical },
-                    { label: "Altas", value: summaryCounts.high },
-                    { label: "Medias", value: summaryCounts.medium },
-                    { label: "Total", value: allAlerts.length },
-                  ]}
-                  footnote={COPILOT_EMPTY_COPY.alertasPage.example}
-                />
-              ) : (
-                <p className="text-sm text-[var(--copilot-ink-muted)]">
-                  No hay alertas con estos filtros.
-                </p>
-              )
-            ) : null}
+                );
+              })}
+            </div>
           </div>
 
-          <CopilotCard className="lg:col-span-3">
-            <CopilotSectionTitle
-              title="Detalle"
-              subtitle="Contexto y lectura recomendada."
-            />
-            {selectedAlert && selectedOps ? (
-              <div className="space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  <CopilotBadge
-                    tone={
-                      selectedAlert.priority === "critical"
-                        ? "danger"
-                        : selectedAlert.priority === "high"
-                          ? "warning"
-                          : "neutral"
-                    }
-                  >
-                    {priorityLabel[selectedAlert.priority]}
-                  </CopilotBadge>
-                  <CopilotBadge tone="neutral">
-                    {mapAlertCategory(selectedAlert.type)}
-                  </CopilotBadge>
-                </div>
-                <h3 className="text-lg font-semibold text-[var(--copilot-ink)]">
-                  {selectedAlert.title}
-                </h3>
-                <div className="space-y-2">
-                  <p className="text-sm font-semibold text-[var(--copilot-ink)]">
-                    {selectedOps.impact}
-                  </p>
-                  <p className="text-sm text-[var(--copilot-ink-muted)]">
-                    {selectedOps.whyItMatters}
-                  </p>
-                </div>
-                <CopilotAlertOpsActions
-                  primary={selectedOps.primary}
-                  quick={selectedOps.quick}
-                  followupAlert={selectedAlert}
-                  openOperationalActionId={openAlertActionById[selectedAlert.id] ?? null}
-                  showEvidence={Boolean(selectedAlert.obligationId)}
-                  onOpenEvidence={() => setIsEvidenceOpen(true)}
-                />
-                <details className="rounded-xl border border-[var(--copilot-border)] bg-white/60 px-4 py-3 text-sm text-[var(--copilot-ink-muted)]">
-                  <summary className="cursor-pointer font-semibold text-[var(--copilot-ink)]">
-                    Detalle técnico
-                  </summary>
-                  <p className="mt-3 whitespace-pre-line leading-relaxed">
-                    {selectedOps.technicalDetail}
-                  </p>
-                </details>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-dashed border-[var(--copilot-border)] bg-white/50 px-4 py-8 text-center">
-                <p className="text-base font-semibold text-[var(--copilot-ink)]">
-                  Sin alerta seleccionada
-                </p>
-                <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
-                  No hay alertas para los filtros actuales. Ajustá prioridad o tipo para
-                  ver detalle.
-                </p>
-              </div>
-            )}
-          </CopilotCard>
+          {unreadCount > 0 ? (
+            <button
+              type="button"
+              onClick={markAllAsRead}
+              className="flex shrink-0 items-center gap-1.5 text-[12px] font-medium text-[var(--copilot-accent)] transition-opacity hover:opacity-70"
+            >
+              <CheckCheck className="h-3.5 w-3.5" aria-hidden />
+              <span className="hidden sm:inline">Marcar todas como leídas</span>
+            </button>
+          ) : null}
         </div>
-      </div>
-      <CopilotTaxEvidenceDrawer
-        obligationId={
-          isEvidenceOpen && selectedAlert?.obligationId
-            ? selectedAlert.obligationId
-            : null
-        }
-        isOpen={isEvidenceOpen && Boolean(selectedAlert?.obligationId)}
-        onClose={() => setIsEvidenceOpen(false)}
-      />
-    </div>
-  );
-}
 
-export default function CopilotAlertasPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-20 text-sm text-[var(--copilot-ink-muted)] transition-opacity duration-200">
-          Cargando vista de alertas…
-        </div>
-      }
-    >
-      <CopilotAlertasPageContent />
-    </Suspense>
+        {/* ── List ────────────────────────────────────────────────────────── */}
+        {loading && notifications.length === 0 ? (
+          <NotifSkeleton />
+        ) : totalFiltered === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--copilot-border)] bg-white/50 px-6 py-16 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
+              <Bell className="h-6 w-6 text-slate-300" aria-hidden />
+            </div>
+            <div className="space-y-1">
+              <p className="text-[15px] font-semibold text-[var(--copilot-ink)]">
+                {activeFilter === "all"
+                  ? "Sin alertas por ahora."
+                  : "Sin resultados para este filtro."}
+              </p>
+              <p className="max-w-sm text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
+                {activeFilter === "all"
+                  ? "Copilot te avisará cuando haya cobros, vencimientos o cambios relevantes."
+                  : "Probá otro filtro para ver más notificaciones."}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {groups.map((group) => (
+              <section key={group.key}>
+                <h2 className="mb-3 text-[10.5px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/60">
+                  {group.label}
+                </h2>
+                <div className="space-y-2.5">
+                  {group.items.map((n) => (
+                    <NotificationCard key={n.id} n={n} onRead={markAsRead} />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
