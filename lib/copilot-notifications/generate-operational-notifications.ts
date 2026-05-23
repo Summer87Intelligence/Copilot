@@ -30,7 +30,6 @@ function getAdminClient(): AdminClient | null {
 
 function todayYmd(now: Date): string {
   return now.toISOString().slice(0, 10);
-
 }
 
 function futureDateYmd(now: Date, days: number): string {
@@ -55,28 +54,102 @@ function tally(acc: GenerateResult, type: string, result: NotifResult) {
   }
 }
 
+// ─── Eligibility (mirrors treasury-scheduled-outflow-eligibility for raw DB rows) ───
+
+/**
+ * Mirrors resolveRecurringTemplateId() from treasury-scheduled-outflow-eligibility.ts
+ * but works on raw PostgREST rows (snake_case columns, no mapping).
+ */
+function resolveTemplateIdFromRow(ob: Record<string, unknown>): string | null {
+  const direct = String(ob.recurring_template_id ?? "").trim();
+  if (direct) return direct;
+
+  const meta = ob.metadata;
+  if (meta && typeof meta === "object") {
+    const fromMeta = String(
+      (meta as Record<string, unknown>).recurring_template_id ?? ""
+    ).trim();
+    if (fromMeta) return fromMeta;
+  }
+
+  const key = String(ob.recurring_instance_key ?? "").trim();
+  if (key.includes(":")) {
+    const tpl = key.split(":")[0]?.trim();
+    if (tpl) return tpl;
+  }
+
+  return null;
+}
+
+/**
+ * Same logic as shouldIncludePlannedObligationInScheduledOutflow().
+ * Excludes obligations that:
+ *   - have affects_cashflow = false
+ *   - belong to a paused/inactive recurring template
+ */
+function isObligationEligible(
+  ob: Record<string, unknown>,
+  inactiveTemplateIds: ReadonlySet<string>
+): boolean {
+  if (ob.affects_cashflow === false) return false;
+
+  const templateId = resolveTemplateIdFromRow(ob);
+  if (templateId && inactiveTemplateIds.has(templateId)) return false;
+
+  return true;
+}
+
+/** Returns the set of template IDs where active = false for this workspace. */
+async function loadInactiveTemplateIds(
+  admin: AdminClient,
+  workspaceId: string
+): Promise<ReadonlySet<string>> {
+  const { data, error } = await admin
+    .from("planned_cash_obligation_templates")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("active", false)
+    .limit(500);
+
+  if (error || !data) return new Set<string>();
+
+  const ids = new Set<string>();
+  for (const t of data as Record<string, unknown>[]) {
+    const id = String(t.id ?? "").trim();
+    if (id) ids.add(id);
+  }
+  return ids;
+}
+
+// ─── Treasury generators ──────────────────────────────────────────────────────
+
 async function generateTreasuryDueNotifications(
   admin: AdminClient,
   tenantCompanyId: string,
   now: Date,
+  inactiveTemplateIds: ReadonlySet<string>,
   acc: GenerateResult
 ) {
   const today = todayYmd(now);
-  const limit = futureDateYmd(now, 7);
+  const horizon = futureDateYmd(now, 7);
 
   const { data, error } = await admin
     .from("planned_cash_obligations")
-    .select("id, title, amount_estimated, amount_final, currency_code, due_date, status")
+    .select(
+      "id, title, amount_estimated, amount_final, currency_code, due_date, status, " +
+      "affects_cashflow, recurring_template_id, recurring_instance_key, metadata"
+    )
     .eq("workspace_id", tenantCompanyId)
     .in("status", ["planned", "confirmed"])
     .gte("due_date", today)
-    .lte("due_date", limit)
+    .lte("due_date", horizon)
     .order("due_date", { ascending: true })
     .limit(100);
 
   if (error || !data) return;
 
-  for (const ob of data as Record<string, unknown>[]) {
+  for (const ob of (data as unknown) as Record<string, unknown>[]) {
+    if (!isObligationEligible(ob, inactiveTemplateIds)) continue;
     const dueDate = String(ob.due_date ?? "").trim();
     if (!dueDate) continue;
     const daysUntilDue = daysBetween(today, dueDate);
@@ -97,13 +170,17 @@ async function generateTreasuryOverdueNotifications(
   admin: AdminClient,
   tenantCompanyId: string,
   now: Date,
+  inactiveTemplateIds: ReadonlySet<string>,
   acc: GenerateResult
 ) {
   const today = todayYmd(now);
 
   const { data, error } = await admin
     .from("planned_cash_obligations")
-    .select("id, title, amount_estimated, amount_final, currency_code, due_date, status")
+    .select(
+      "id, title, amount_estimated, amount_final, currency_code, due_date, status, " +
+      "affects_cashflow, recurring_template_id, recurring_instance_key, metadata"
+    )
     .eq("workspace_id", tenantCompanyId)
     .in("status", ["planned", "confirmed", "overdue"])
     .lt("due_date", today)
@@ -112,7 +189,8 @@ async function generateTreasuryOverdueNotifications(
 
   if (error || !data) return;
 
-  for (const ob of data as Record<string, unknown>[]) {
+  for (const ob of (data as unknown) as Record<string, unknown>[]) {
+    if (!isObligationEligible(ob, inactiveTemplateIds)) continue;
     const dueDate = String(ob.due_date ?? "").trim();
     if (!dueDate) continue;
     const daysOverdue = Math.max(0, daysBetween(dueDate, today));
@@ -128,6 +206,8 @@ async function generateTreasuryOverdueNotifications(
     tally(acc, "treasury_payment_overdue", r);
   }
 }
+
+// ─── Portfolio generators ─────────────────────────────────────────────────────
 
 async function generateClientOverdueNotifications(
   admin: AdminClient,
@@ -161,10 +241,8 @@ async function generateClientOverdueNotifications(
     const companyId = String(inv.company_id ?? "").trim();
     const dueDate = String(inv.due_date ?? "").trim();
     if (!companyId || !dueDate || dueDate >= today) continue;
-
     const balance = Number(inv.balance_amount ?? 0);
     if (balance <= 0) continue;
-
     const currency = String(inv.currency_code ?? "UYU").toUpperCase();
     if (!overdueByCompany.has(companyId)) {
       overdueByCompany.set(companyId, { uyu: 0, usd: 0, other: 0 });
@@ -184,39 +262,22 @@ async function generateClientOverdueNotifications(
     const name = nameMap.get(companyId) ?? "Cliente";
 
     if (agg.uyu > 0) {
-      const r = await notifyClientOverdue({
-        tenantCompanyId,
-        clientId: companyId,
-        clientName: name,
-        amount: agg.uyu,
-        currency: "UYU",
-        daysOverdue: 30,
-      });
-      tally(acc, "client_overdue", r);
+      tally(acc, "client_overdue", await notifyClientOverdue({
+        tenantCompanyId, clientId: companyId, clientName: name,
+        amount: agg.uyu, currency: "UYU", daysOverdue: 30,
+      }));
     }
-
     if (agg.usd > 0) {
-      const r = await notifyClientOverdue({
-        tenantCompanyId,
-        clientId: companyId,
-        clientName: name,
-        amount: agg.usd,
-        currency: "USD",
-        daysOverdue: 30,
-      });
-      tally(acc, "client_overdue", r);
+      tally(acc, "client_overdue", await notifyClientOverdue({
+        tenantCompanyId, clientId: companyId, clientName: name,
+        amount: agg.usd, currency: "USD", daysOverdue: 30,
+      }));
     }
-
     if (agg.other > 0 && agg.uyu === 0 && agg.usd === 0) {
-      const r = await notifyClientOverdue({
-        tenantCompanyId,
-        clientId: companyId,
-        clientName: name,
-        amount: agg.other,
-        currency: "UYU",
-        daysOverdue: 30,
-      });
-      tally(acc, "client_overdue", r);
+      tally(acc, "client_overdue", await notifyClientOverdue({
+        tenantCompanyId, clientId: companyId, clientName: name,
+        amount: agg.other, currency: "UYU", daysOverdue: 30,
+      }));
     }
   }
 }
@@ -265,20 +326,19 @@ async function generateRecentCollectionNotifications(
     const amount = Number(rec.amount ?? 0);
     if (amount <= 0) continue;
     const companyId = String(rec.company_id ?? "").trim();
-    const clientName = nameMap.get(companyId) ?? "Cliente";
-    const currency = String(rec.currency_code ?? "UYU").toUpperCase();
-
     const r = await notifyCollectionReceived({
       tenantCompanyId,
       receiptId,
-      clientName,
+      clientName: nameMap.get(companyId) ?? "Cliente",
       amount,
-      currency,
+      currency: String(rec.currency_code ?? "UYU").toUpperCase(),
       clientId: companyId || null,
     });
     tally(acc, "collection_received", r);
   }
 }
+
+// ─── Public entry point ───────────────────────────────────────────────────────
 
 export async function generateOperationalNotificationsForWorkspace({
   workspaceCompanyId,
@@ -295,9 +355,13 @@ export async function generateOperationalNotificationsForWorkspace({
     return { ...acc, ok: false };
   }
 
+  // Load inactive recurring template IDs once — shared by both treasury generators.
+  // This mirrors the loadInactiveRecurringTemplateIds() call in Hoy/Tesorería routes.
+  const inactiveTemplateIds = await loadInactiveTemplateIds(admin, workspaceCompanyId);
+
   await Promise.allSettled([
-    generateTreasuryDueNotifications(admin, workspaceCompanyId, now, acc),
-    generateTreasuryOverdueNotifications(admin, workspaceCompanyId, now, acc),
+    generateTreasuryDueNotifications(admin, workspaceCompanyId, now, inactiveTemplateIds, acc),
+    generateTreasuryOverdueNotifications(admin, workspaceCompanyId, now, inactiveTemplateIds, acc),
     generateClientOverdueNotifications(admin, workspaceCompanyId, acc),
     generateRecentCollectionNotifications(admin, workspaceCompanyId, now, acc),
   ]);
