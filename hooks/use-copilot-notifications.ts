@@ -12,6 +12,7 @@ type NotificationsState = {
 };
 
 const POLL_INTERVAL_MS = 60_000;
+const SESSION_GENERATED_KEY = "copilot_notifications_generated_session_v1";
 
 export function useCopilotNotifications() {
   const [state, setState] = useState<NotificationsState>({
@@ -77,6 +78,32 @@ export function useCopilotNotifications() {
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [doFetch]);
+
+  // Fire the notification generator once per browser session.
+  // Checks sessionStorage so it never re-runs on route changes.
+  useEffect(() => {
+    if (typeof sessionStorage === "undefined") return;
+    if (sessionStorage.getItem(SESSION_GENERATED_KEY)) return;
+
+    void (async () => {
+      try {
+        const res = await copilotApiFetch("/api/copilot/notifications/generate", {
+          method: "POST",
+        });
+        if (res.ok) {
+          sessionStorage.setItem(SESSION_GENERATED_KEY, "1");
+          void doFetch();
+          if (process.env.NODE_ENV === "development") {
+            const result = await res.clone().json().catch(() => null);
+            console.log("[notifications] session generate", result);
+          }
+        }
+      } catch {
+        // Silent — never surface notification errors to the user
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally empty: run only on mount, not on every doFetch change
 
   return { ...state, markAsRead, markAllAsRead, refetch: doFetch };
 }
