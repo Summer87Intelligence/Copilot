@@ -121,7 +121,7 @@ export function OperationalSemaphoreIndicator() {
           id={panelId}
           role="dialog"
           aria-label="Estado operacional"
-          className={`absolute right-0 top-full z-50 mt-2 w-[min(100vw-2rem,20rem)] rounded-xl border bg-white p-3 shadow-xl ${theme.panelBorder}`}
+          className={`absolute right-0 top-full z-[80] mt-2 w-[min(100vw-2rem,20rem)] rounded-xl border bg-white p-3 shadow-xl ${theme.panelBorder}`}
         >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
