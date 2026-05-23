@@ -53,10 +53,10 @@ export function CopilotModuleSidebar({
       }`}
     >
       <div
-        className={`flex shrink-0 border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.35)] ${
+        className={`flex min-h-[56px] shrink-0 border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.35)] ${
           collapsed
-            ? "flex-col items-center gap-1.5 px-2 py-2.5"
-            : "items-center gap-2 px-3 py-3"
+            ? "items-center justify-center px-2"
+            : "items-center gap-2 px-3 py-2"
         }`}
       >
         <div
@@ -70,9 +70,6 @@ export function CopilotModuleSidebar({
               <p className="truncate text-sm font-semibold text-[var(--copilot-ink)]">
                 {brandTitle}
               </p>
-              <p className="truncate text-xs text-[var(--copilot-ink-muted)]">
-                {brandSubtitle}
-              </p>
             </div>
             <button
               type="button"
@@ -84,23 +81,26 @@ export function CopilotModuleSidebar({
               <ChevronLeft className="h-5 w-5 shrink-0" aria-hidden />
             </button>
           </>
-        ) : (
-          <button
-            type="button"
-            onClick={onToggleCollapsed}
-            aria-expanded={false}
-            aria-label="Expandir menú lateral"
-            className={toggleBtnClass}
-          >
-            <ChevronRight className="h-5 w-5 shrink-0" aria-hidden />
-          </button>
-        )}
+        ) : null}
       </div>
 
       <nav
         className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden p-1"
         aria-label="Navegación del módulo Copilot"
       >
+        {collapsed ? (
+          <div className="flex justify-center py-0.5">
+            <button
+              type="button"
+              onClick={onToggleCollapsed}
+              aria-expanded={false}
+              aria-label="Expandir menú lateral"
+              className={toggleBtnClass}
+            >
+              <ChevronRight className="h-5 w-5 shrink-0" aria-hidden />
+            </button>
+          </div>
+        ) : null}
         {groups.map((group, groupIndex) => (
           <Fragment key={groupIndex}>
             {groupIndex > 0 ? (
