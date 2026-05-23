@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import { CopilotAlertsProvider } from "@/components/copilot/copilot-alerts-context";
+import { CopilotNotificationsProvider } from "@/components/copilot/copilot-notifications-context";
 import { CopilotOperationalPulseProvider } from "@/components/copilot/copilot-operational-pulse-context";
 import { buildCopilotNavItemGroups } from "@/components/copilot/copilot-nav-config";
 import { CopilotEnvironmentHealthStrip } from "@/components/copilot/copilot-environment-health-strip";
@@ -32,6 +33,7 @@ export function CopilotShell({
   );
 
   return (
+    <CopilotNotificationsProvider>
     <CopilotAlertsProvider>
       <CopilotOperationalPulseProvider>
       <CopilotModuleShell
@@ -49,5 +51,6 @@ export function CopilotShell({
       </CopilotModuleShell>
       </CopilotOperationalPulseProvider>
     </CopilotAlertsProvider>
+    </CopilotNotificationsProvider>
   );
 }
