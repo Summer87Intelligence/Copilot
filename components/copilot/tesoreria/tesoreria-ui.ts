@@ -48,7 +48,6 @@ export const TESORERIA_SECTIONS = [...TESORERIA_SECTIONS_MAIN, ...TESORERIA_SECT
 
 /** Secciones donde se muestra la barra de filtro de fecha/moneda. */
 export const TESORERIA_SECTIONS_WITH_CONTROL_BAR = new Set<TesoreriaSection>([
-  "resumen",
   "pagos",
   "manual",
   "bank",

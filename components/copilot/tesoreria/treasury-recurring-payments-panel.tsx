@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, Plus, X } from "lucide-react";
+import { Loader2, MoreHorizontal, Plus, X } from "lucide-react";
 
 import {
   CopilotBadge,
@@ -115,6 +115,14 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [modal, setModal] = useState<ModalKind>({ type: "none" });
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!openMenuId) return;
+    function close() { setOpenMenuId(null); }
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [openMenuId]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -398,15 +406,33 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
                       >
                         Ver pagos
                       </CopilotGhostButton>
-                      <button
-                        type="button"
-                        className="rounded px-2 py-1 text-xs text-[var(--copilot-ink-muted)] transition hover:text-rose-700"
-                        onClick={() =>
-                          setModal({ type: "delete", row, cancelPending: true })
-                        }
-                      >
-                        Eliminar
-                      </button>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          className="rounded p-1 text-[var(--copilot-ink-muted)] transition hover:bg-[rgba(44,40,37,0.06)] hover:text-[var(--copilot-ink)]"
+                          aria-label="Más opciones"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuId(openMenuId === row.id ? null : row.id);
+                          }}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                        {openMenuId === row.id ? (
+                          <div className="absolute right-0 top-full z-10 mt-1 min-w-[120px] rounded-lg border border-[var(--copilot-border)] bg-white py-1 shadow-lg">
+                            <button
+                              type="button"
+                              className="w-full px-3 py-1.5 text-left text-xs text-rose-600 transition hover:bg-rose-50"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                setModal({ type: "delete", row, cancelPending: true });
+                              }}
+                            >
+                              Eliminar
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
                   </td>
                 </tr>

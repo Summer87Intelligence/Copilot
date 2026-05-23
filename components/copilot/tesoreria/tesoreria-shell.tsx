@@ -80,6 +80,7 @@ export function TesoreriaShell() {
     (next: TesoreriaSection) => {
       setSection(next);
       workspace.clearFeedback();
+      window.scrollTo(0, 0);
       const params = new URLSearchParams(searchParams.toString());
       params.set("section", next);
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
