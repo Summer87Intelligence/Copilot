@@ -600,20 +600,42 @@ function RowActionsCell({
   onAction: (modal: ActiveModal) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
   const effective = effectivePlannedObligationStatus(row.status, row.dueDate, asOfDate);
   const actions = getTreasuryPaymentActionsByStatus(effective);
 
   useEffect(() => {
     if (!menuOpen) return;
-    function handler(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+    function handleOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      if (
+        menuRef.current && !menuRef.current.contains(target) &&
+        triggerRef.current && !triggerRef.current.contains(target)
+      ) {
         setMenuOpen(false);
       }
     }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, [menuOpen]);
+
+  function handleToggleMenu() {
+    if (menuOpen) { setMenuOpen(false); return; }
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    }
+    setMenuOpen(true);
+  }
 
   const menuItems: { label: string; onClick: () => void; danger?: boolean }[] = [];
   if (actions.canCancel) {
@@ -660,36 +682,43 @@ function RowActionsCell({
         </CopilotGhostButton>
       ) : null}
 
-      <div ref={menuRef} className="relative">
+      {/* Trigger wrapper: ref used for position calculation */}
+      <div ref={triggerRef} className="inline-flex">
         <CopilotGhostButton
           type="button"
           className="!p-1.5"
-          onClick={() => setMenuOpen((o) => !o)}
+          onClick={handleToggleMenu}
           aria-label="Más acciones"
           aria-expanded={menuOpen}
         >
           <MoreHorizontal className="h-4 w-4" />
         </CopilotGhostButton>
-        {menuOpen ? (
-          <div className="absolute right-0 z-20 mt-1 min-w-[160px] overflow-hidden rounded-xl border border-[var(--copilot-border)] bg-white shadow-lg">
-            {menuItems.map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  item.onClick();
-                }}
-                className={`block w-full px-4 py-2.5 text-left text-sm transition hover:bg-[rgba(44,40,37,0.04)] ${
-                  item.danger ? "text-rose-700" : "text-[var(--copilot-ink)]"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
       </div>
+
+      {/* Fixed dropdown: escapes overflow-x-auto table container */}
+      {menuOpen && menuPos ? (
+        <div
+          ref={menuRef}
+          className="fixed z-[80] min-w-[160px] overflow-hidden rounded-xl border border-[var(--copilot-border)] bg-white shadow-lg"
+          style={{ top: menuPos.top, right: menuPos.right }}
+        >
+          {menuItems.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                item.onClick();
+              }}
+              className={`block w-full px-4 py-2.5 text-left text-sm transition hover:bg-[rgba(44,40,37,0.04)] ${
+                item.danger ? "text-rose-700" : "text-[var(--copilot-ink)]"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
