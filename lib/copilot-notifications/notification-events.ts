@@ -119,6 +119,31 @@ export async function notifyTreasuryPaymentDue(opts: TreasuryPaymentDueOpts) {
   });
 }
 
+type TreasuryPaymentOverdueOpts = {
+  tenantCompanyId: string;
+  obligationId: string;
+  title: string;
+  amount: number;
+  currency: string;
+  dueDate: string; // YYYY-MM-DD
+  daysOverdue: number;
+};
+
+export async function notifyTreasuryPaymentOverdue(opts: TreasuryPaymentOverdueOpts) {
+  return createNotificationIfNotExists(opts.tenantCompanyId, {
+    type: "treasury_payment_overdue",
+    severity: opts.daysOverdue >= 7 ? "critical" : "warning",
+    title: "Pago vencido",
+    body: `${opts.title} venció el ${opts.dueDate} (hace ${opts.daysOverdue} días)`,
+    entity_type: "planned_cash_obligation",
+    entity_id: opts.obligationId,
+    amount: opts.amount,
+    currency: opts.currency,
+    action_href: "/copilot/tesoreria?section=pagos",
+    dedup_key: `treasury_payment_overdue:${opts.obligationId}:${opts.dueDate}`,
+  });
+}
+
 type SyncChangesDetectedOpts = {
   tenantCompanyId: string;
   changesSummary: string;

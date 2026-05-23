@@ -3,7 +3,12 @@ export const NOTIFICATION_TYPES = [
   "new_debtor",
   "client_overdue",
   "treasury_payment_due",
+  "treasury_payment_overdue",
   "sync_changes_detected",
+  "cash_risk_detected",
+  "sync_failed",
+  "copilot_action_suggested",
+  "notification_digest",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];

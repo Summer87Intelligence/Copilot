@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  AlertTriangle,
   Bell,
   CheckCheck,
   ExternalLink,
@@ -10,6 +11,7 @@ import {
   TrendingUp,
   Users,
   Wallet,
+  XCircle,
   Zap,
 } from "lucide-react";
 
@@ -65,8 +67,16 @@ function NotifIcon({ type, severity }: { type: string; severity: string }) {
         aria-hidden
       />
     );
+  if (type === "treasury_payment_overdue")
+    return <AlertTriangle className={`${base} text-rose-600`} aria-hidden />;
   if (type === "sync_changes_detected")
     return <Zap className={`${base} text-blue-500`} aria-hidden />;
+  if (type === "sync_failed")
+    return <XCircle className={`${base} text-rose-500`} aria-hidden />;
+  if (type === "cash_risk_detected")
+    return <AlertTriangle className={`${base} text-amber-600`} aria-hidden />;
+  if (type === "notification_digest")
+    return <Bell className={`${base} text-blue-500`} aria-hidden />;
   return <Bell className={`${base} text-[var(--copilot-ink-muted)]`} aria-hidden />;
 }
 
