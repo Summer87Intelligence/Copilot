@@ -184,7 +184,12 @@ export function TesoreriaShell() {
       ) : null}
       {section === "accounts" ? <TreasuryAccountsPanel workspace={workspace} /> : null}
       {section === "opening" ? <TreasuryOpeningBalancesPanel workspace={workspace} /> : null}
-      {section === "recurring" ? <TreasuryRecurringPaymentsPanel workspace={workspace} /> : null}
+      {section === "recurring" ? (
+        <TreasuryRecurringPaymentsPanel
+          workspace={workspace}
+          onGoToPagos={() => setSectionWithUrl("pagos")}
+        />
+      ) : null}
       {section === "manual" ? <TreasuryManualCashPanel workspace={workspace} /> : null}
       {section === "bank" ? <TreasuryBankPanel workspace={workspace} /> : null}
       {section === "pagos" ? (
