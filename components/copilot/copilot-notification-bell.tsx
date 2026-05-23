@@ -6,7 +6,7 @@ import {
   AlertTriangle,
   Bell,
   CheckCheck,
-  ExternalLink,
+  ChevronRight,
   TrendingDown,
   TrendingUp,
   Users,
@@ -18,7 +18,7 @@ import {
 import { useCopilotNotifications } from "@/hooks/use-copilot-notifications";
 import type { CopilotNotification } from "@/lib/copilot-notifications/notification-types";
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function relativeTime(isoString: string): string {
   const diff = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
@@ -50,34 +50,46 @@ const BUCKET_LABELS: Record<"hoy" | "ayer" | "anterior", string> = {
   anterior: "Anteriores",
 };
 
-// ─── Icon by type ────────────────────────────────────────────────────────────
+/** Smart CTA label derived from action_href. */
+function actionLabel(href: string): string {
+  if (href.includes("/clientes/")) return "Ver cliente";
+  if (href.includes("/cartera")) return "Ver cartera";
+  if (href.includes("/tesoreria")) return "Ver pagos";
+  if (href.includes("/hoy")) return "Ver hoy";
+  if (href.includes("/rutas")) return "Ver ruta";
+  return "Ver";
+}
 
-function NotifIcon({ type, severity }: { type: string; severity: string }) {
-  const base = "h-3.5 w-3.5 shrink-0";
+// ─── Icon bubble ──────────────────────────────────────────────────────────────
+
+type IconConfig = { bg: string; icon: React.ReactNode };
+
+function getIconConfig(type: string, severity: string): IconConfig {
+  const sz = "h-[15px] w-[15px] shrink-0";
+
   if (type === "collection_received")
-    return <TrendingUp className={`${base} text-emerald-600`} aria-hidden />;
+    return { bg: "bg-emerald-50", icon: <TrendingUp className={`${sz} text-emerald-600`} aria-hidden /> };
   if (type === "new_debtor")
-    return <Users className={`${base} text-amber-600`} aria-hidden />;
+    return { bg: "bg-amber-50", icon: <Users className={`${sz} text-amber-600`} aria-hidden /> };
   if (type === "client_overdue")
-    return <TrendingDown className={`${base} text-rose-600`} aria-hidden />;
+    return { bg: "bg-rose-50", icon: <TrendingDown className={`${sz} text-rose-600`} aria-hidden /> };
   if (type === "treasury_payment_due")
-    return (
-      <Wallet
-        className={`${base} ${severity === "critical" ? "text-rose-600" : "text-amber-600"}`}
-        aria-hidden
-      />
-    );
+    return {
+      bg: severity === "critical" ? "bg-rose-50" : "bg-amber-50",
+      icon: <Wallet className={`${sz} ${severity === "critical" ? "text-rose-600" : "text-amber-600"}`} aria-hidden />,
+    };
   if (type === "treasury_payment_overdue")
-    return <AlertTriangle className={`${base} text-rose-600`} aria-hidden />;
+    return { bg: "bg-rose-50", icon: <AlertTriangle className={`${sz} text-rose-600`} aria-hidden /> };
   if (type === "sync_changes_detected")
-    return <Zap className={`${base} text-blue-500`} aria-hidden />;
+    return { bg: "bg-blue-50", icon: <Zap className={`${sz} text-blue-500`} aria-hidden /> };
   if (type === "sync_failed")
-    return <XCircle className={`${base} text-rose-500`} aria-hidden />;
+    return { bg: "bg-rose-50", icon: <XCircle className={`${sz} text-rose-500`} aria-hidden /> };
   if (type === "cash_risk_detected")
-    return <AlertTriangle className={`${base} text-amber-600`} aria-hidden />;
+    return { bg: "bg-amber-50", icon: <AlertTriangle className={`${sz} text-amber-600`} aria-hidden /> };
   if (type === "notification_digest")
-    return <Bell className={`${base} text-blue-500`} aria-hidden />;
-  return <Bell className={`${base} text-[var(--copilot-ink-muted)]`} aria-hidden />;
+    return { bg: "bg-blue-50", icon: <Bell className={`${sz} text-blue-500`} aria-hidden /> };
+
+  return { bg: "bg-slate-100", icon: <Bell className={`${sz} text-slate-400`} aria-hidden /> };
 }
 
 // ─── Single notification row ──────────────────────────────────────────────────
@@ -90,56 +102,58 @@ function NotifItem({
   onRead: (id: string) => void;
 }) {
   const unread = !n.read_at;
+  const { bg, icon } = getIconConfig(n.type, n.severity);
 
   return (
     <div
-      className={`cursor-default px-4 py-3 transition-colors hover:bg-slate-50 ${
-        unread ? "bg-[rgba(31,107,74,0.03)]" : ""
+      role="article"
+      className={`cursor-default px-4 py-3.5 transition-colors hover:bg-slate-50 ${
+        unread ? "bg-[rgba(31,107,74,0.035)]" : ""
       }`}
       onClick={() => { if (unread) onRead(n.id); }}
     >
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[rgba(44,40,37,0.07)]">
-          <NotifIcon type={n.type} severity={n.severity} />
+        {/* Icon bubble */}
+        <div
+          className={`mt-[1px] flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${bg}`}
+        >
+          {icon}
         </div>
 
         <div className="min-w-0 flex-1">
+          {/* Title + unread dot */}
           <div className="flex items-start justify-between gap-2">
-            <p
-              className={`text-[13px] leading-snug ${
-                unread
-                  ? "font-semibold text-[var(--copilot-ink)]"
-                  : "font-medium text-[var(--copilot-ink)]"
-              }`}
-            >
+            <p className="text-[13px] font-semibold leading-snug text-[var(--copilot-ink)]">
               {n.title}
             </p>
             {unread ? (
               <span
-                className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--copilot-accent)]"
+                className="mt-[5px] h-[7px] w-[7px] shrink-0 rounded-full bg-[var(--copilot-accent)] opacity-80"
                 aria-label="No leída"
               />
             ) : null}
           </div>
 
+          {/* Body */}
           {n.body ? (
-            <p className="mt-0.5 text-xs leading-snug text-[var(--copilot-ink-muted)]">
+            <p className="mt-[3px] line-clamp-2 text-[12.5px] leading-relaxed text-[var(--copilot-ink-muted)]">
               {n.body}
             </p>
           ) : null}
 
-          <div className="mt-1.5 flex items-center gap-3">
-            <span className="text-[11px] text-[var(--copilot-ink-muted)]">
+          {/* Footer: time + action */}
+          <div className="mt-2 flex items-center gap-2.5">
+            <span className="text-[11px] tabular-nums text-[var(--copilot-ink-muted)]/70">
               {relativeTime(n.created_at)}
             </span>
             {n.action_href ? (
               <Link
                 href={n.action_href}
                 onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1 text-[11px] font-semibold text-[var(--copilot-accent)] hover:underline"
+                className="flex items-center gap-0.5 text-[11px] font-semibold text-[var(--copilot-accent)] transition-opacity hover:opacity-80"
               >
-                <ExternalLink className="h-2.5 w-2.5" aria-hidden />
-                Ver
+                {actionLabel(n.action_href)}
+                <ChevronRight className="h-3 w-3" aria-hidden />
               </Link>
             ) : null}
           </div>
@@ -153,13 +167,14 @@ function NotifItem({
 
 function NotifSkeleton() {
   return (
-    <div className="space-y-3 p-4">
+    <div className="space-y-px">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="flex gap-3">
-          <div className="h-6 w-6 animate-pulse rounded-full bg-[var(--copilot-border)]" />
-          <div className="flex-1 space-y-1.5">
-            <div className="h-3.5 w-3/4 animate-pulse rounded bg-[var(--copilot-border)]" />
-            <div className="h-3 w-1/2 animate-pulse rounded bg-[var(--copilot-border)]" />
+        <div key={i} className="flex gap-3 px-4 py-3.5">
+          <div className="h-7 w-7 animate-pulse rounded-full bg-[var(--copilot-border)]" />
+          <div className="flex-1 space-y-2 pt-0.5">
+            <div className="h-3 w-3/5 animate-pulse rounded-full bg-[var(--copilot-border)]" />
+            <div className="h-2.5 w-4/5 animate-pulse rounded-full bg-[var(--copilot-border)]/70" />
+            <div className="h-2.5 w-2/5 animate-pulse rounded-full bg-[var(--copilot-border)]/50" />
           </div>
         </div>
       ))}
@@ -199,7 +214,6 @@ export function CopilotNotificationBell() {
     };
   }, [open]);
 
-  // Group notifications by date bucket
   const groups = (["hoy", "ayer", "anterior"] as const)
     .map((bucket) => ({
       key: bucket,
@@ -224,10 +238,10 @@ export function CopilotNotificationBell() {
         aria-expanded={open}
         className="relative flex h-8 w-8 items-center justify-center rounded-full text-[var(--copilot-ink-muted)] transition hover:bg-[rgba(44,40,37,0.08)] hover:text-[var(--copilot-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--copilot-accent)]"
       >
-        <Bell className="h-4 w-4" aria-hidden />
+        <Bell className="h-[17px] w-[17px]" aria-hidden />
         {badge > 0 ? (
           <span
-            className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white"
+            className="absolute -right-0.5 -top-0.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white"
             aria-hidden
           >
             {badge > 9 ? "9+" : badge}
@@ -239,17 +253,17 @@ export function CopilotNotificationBell() {
       {open ? (
         <div
           ref={panelRef}
-          className="absolute right-0 top-full z-[80] mt-2 flex w-[360px] flex-col overflow-hidden rounded-2xl border border-[var(--copilot-border)] bg-white shadow-xl"
-          style={{ maxHeight: "min(520px, calc(100vh - 80px))" }}
+          className="absolute right-0 top-full z-[80] mt-2 flex w-[420px] max-w-[calc(100vw-20px)] flex-col overflow-hidden rounded-2xl border border-[var(--copilot-border)] bg-white shadow-2xl"
+          style={{ maxHeight: "min(560px, calc(100vh - 80px))" }}
         >
           {/* Header */}
-          <div className="flex shrink-0 items-center justify-between border-b border-[var(--copilot-border)] px-4 py-3">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-b border-[var(--copilot-border)] px-4 py-3">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">
+              <h2 className="text-[13px] font-semibold text-[var(--copilot-ink)]">
                 Notificaciones
               </h2>
               {unreadCount > 0 ? (
-                <span className="rounded-full bg-[var(--copilot-accent)] px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--copilot-accent)] px-1.5 text-[10px] font-bold leading-none text-white">
                   {unreadCount}
                 </span>
               ) : null}
@@ -258,7 +272,7 @@ export function CopilotNotificationBell() {
               <button
                 type="button"
                 onClick={() => markAllAsRead()}
-                className="flex items-center gap-1 text-xs font-medium text-[var(--copilot-accent)] transition hover:underline"
+                className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[11.5px] font-medium text-[var(--copilot-accent)] transition-opacity hover:opacity-70"
               >
                 <CheckCheck className="h-3.5 w-3.5" aria-hidden />
                 Marcar todas como leídas
@@ -267,32 +281,37 @@ export function CopilotNotificationBell() {
           </div>
 
           {/* Body */}
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             {loading && notifications.length === 0 ? (
               <NotifSkeleton />
             ) : groups.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-2 px-6 py-10 text-center">
-                <Bell className="h-8 w-8 text-[var(--copilot-border)]" aria-hidden />
-                <p className="text-sm font-medium text-[var(--copilot-ink)]">
+              <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
+                  <Bell className="h-5 w-5 text-slate-300" aria-hidden />
+                </div>
+                <p className="text-[13px] font-semibold text-[var(--copilot-ink)]">
                   Sin novedades por ahora.
                 </p>
-                <p className="text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
-                  Copilot te avisará cuando haya cobros, vencimientos o cambios
-                  relevantes.
+                <p className="max-w-[220px] text-[12px] leading-relaxed text-[var(--copilot-ink-muted)]">
+                  Copilot te avisará cuando haya cobros, vencimientos o cambios relevantes.
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-[var(--copilot-border)]/60">
-                {groups.map((group) => (
-                  <div key={group.key}>
-                    <div className="sticky top-0 bg-[rgba(255,255,255,0.96)] px-4 py-1.5 backdrop-blur-sm">
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+              <div>
+                {groups.map((group, gi) => (
+                  <div key={group.key} className={gi > 0 ? "border-t border-[var(--copilot-border)]/60" : ""}>
+                    {/* Sticky section header */}
+                    <div className="sticky top-0 z-10 bg-[rgba(255,255,255,0.95)] px-4 pb-1.5 pt-2.5 backdrop-blur-sm">
+                      <p className="text-[10.5px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/60">
                         {group.label}
                       </p>
                     </div>
-                    {group.items.map((n) => (
-                      <NotifItem key={n.id} n={n} onRead={markAsRead} />
-                    ))}
+                    {/* Items with subtle dividers */}
+                    <div className="divide-y divide-[var(--copilot-border)]/40">
+                      {group.items.map((n) => (
+                        <NotifItem key={n.id} n={n} onRead={markAsRead} />
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
