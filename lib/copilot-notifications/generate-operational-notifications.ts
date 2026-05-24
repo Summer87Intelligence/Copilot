@@ -7,6 +7,17 @@ import {
   notifyTreasuryPaymentOverdue,
 } from "./notification-events";
 
+// Lookback window for "collection received" notifications.
+// Override via env for staging/testing without touching code.
+export const COLLECTION_RECEIVED_LOOKBACK_HOURS = (() => {
+  const raw = process.env.COPILOT_NOTIFICATIONS_COLLECTION_LOOKBACK_HOURS?.trim();
+  if (raw) {
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  return 72;
+})();
+
 type NotifResult = { ok: boolean; created: boolean };
 
 type GenerateResult = {
@@ -99,6 +110,8 @@ function isObligationEligible(
   return true;
 }
 
+const INACTIVE_TEMPLATE_LIMIT = 500;
+
 /** Returns the set of template IDs where active = false for this workspace. */
 async function loadInactiveTemplateIds(
   admin: AdminClient,
@@ -109,9 +122,15 @@ async function loadInactiveTemplateIds(
     .select("id")
     .eq("workspace_id", workspaceId)
     .eq("active", false)
-    .limit(500);
+    .limit(INACTIVE_TEMPLATE_LIMIT);
 
   if (error || !data) return new Set<string>();
+
+  if (data.length >= INACTIVE_TEMPLATE_LIMIT) {
+    console.warn(
+      `[generate-notifications] loadInactiveTemplateIds hit limit (${INACTIVE_TEMPLATE_LIMIT}) for workspace ${workspaceId} — some inactive templates may be missed`
+    );
+  }
 
   const ids = new Set<string>();
   for (const t of data as Record<string, unknown>[]) {
@@ -228,14 +247,21 @@ async function generateClientOverdueNotifications(
 
   if (cErr || !companies?.length) return;
 
+  const OVERDUE_INVOICE_LIMIT = 2000;
   const { data: invoices, error: iErr } = await admin
     .from("proto_invoices")
     .select("company_id, balance_amount, due_date, currency_code, status")
     .eq("workspace_company_id", tenantCompanyId)
     .in("status", ["pending", "overdue", "partial"])
-    .limit(2000);
+    .limit(OVERDUE_INVOICE_LIMIT);
 
   if (iErr || !invoices) return;
+
+  if (invoices.length >= OVERDUE_INVOICE_LIMIT) {
+    console.warn(
+      `[generate-notifications] generateClientOverdueNotifications hit invoice limit (${OVERDUE_INVOICE_LIMIT}) for workspace ${tenantCompanyId} — aggregation may be incomplete`
+    );
+  }
 
   // Track both aggregated balance and the maximum daysOverdue per company+currency.
   type OverdueAgg = {
@@ -307,7 +333,7 @@ async function generateRecentCollectionNotifications(
   now: Date,
   acc: GenerateResult
 ) {
-  const since72h = new Date(now.getTime() - 72 * 3_600_000).toISOString();
+  const since72h = new Date(now.getTime() - COLLECTION_RECEIVED_LOOKBACK_HOURS * 3_600_000).toISOString();
 
   const { data: receipts, error } = await admin
     .from("proto_receipts")
