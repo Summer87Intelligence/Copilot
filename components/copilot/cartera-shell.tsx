@@ -28,8 +28,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { AlertOctagon, ArrowRight, CalendarRange, Info, X } from "lucide-react";
-import Link from "next/link";
+import { AlertOctagon, CalendarRange, Info, X } from "lucide-react";
 import { getCurrentMonthToTodayRange } from "@/lib/copilot-date-range-defaults";
 import { COPILOT_OPERATIONAL_START_DATE } from "@/lib/copilot-operational-period";
 import { buildCurrencyIndex } from "@/lib/copilot-cartera-cards-source";
@@ -240,35 +239,10 @@ export function CarteraShell() {
               </CollapsibleSection>
             </CollapsibleSection>
 
-            {/* Auditoría movida a Operacional */}
-            <AuditLink />
           </>
         ) : null}
       </div>
     </>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Audit link CTA
-// ---------------------------------------------------------------------------
-
-function AuditLink() {
-  return (
-    <Link
-      href="/copilot/operacional/reconciliacion"
-      className="flex items-center justify-between rounded-2xl border border-[var(--copilot-border)] bg-white/70 px-5 py-3.5 shadow-[var(--copilot-shadow)] transition hover:bg-white"
-    >
-      <div>
-        <p className="text-sm font-semibold text-[var(--copilot-ink)]">
-          Auditoría de reconciliación
-        </p>
-        <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-          Orphan warnings, checks técnicos, sync health y explicabilidad del motor
-        </p>
-      </div>
-      <ArrowRight className="h-4 w-4 shrink-0 text-[var(--copilot-ink-muted)]" aria-hidden />
-    </Link>
   );
 }
 

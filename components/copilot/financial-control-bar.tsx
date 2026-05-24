@@ -230,20 +230,20 @@ function AutoSyncIndicator({
   return (
     <div
       className="hidden text-right text-[10px] leading-tight text-[var(--copilot-ink-muted)] sm:block"
-      aria-label="Estado de sincronización automática Zeta"
+      aria-label="Estado de actualización automática"
     >
       <div className="flex items-center justify-end gap-1 font-semibold uppercase tracking-[0.08em]">
         <Clock3 className="h-3 w-3" aria-hidden />
-        <span>Auto-sync Zeta · cada {ZETA_SALDOS_SYNC_INTERVAL_HOURS} h</span>
+        <span>Actualizaciones cada {ZETA_SALDOS_SYNC_INTERVAL_HOURS} h</span>
       </div>
       <div className="mt-0.5 tabular-nums">
         {lastSyncRel ? (
-          <>Última sync: {lastSyncRel}</>
+          <>Última actualización: {lastSyncRel}</>
         ) : (
-          <>Última sync: no disponible</>
+          <>Última actualización: no disponible</>
         )}
       </div>
-      <div className="tabular-nums">Próxima aprox.: {nextHHmm}</div>
+      <div className="tabular-nums">Próxima actualización: {nextHHmm}</div>
     </div>
   );
 }

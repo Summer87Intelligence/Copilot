@@ -23,9 +23,6 @@ import {
   type DataColumn,
 } from "@/components/copilot/copilot-data-table";
 import {
-  CopilotDataTrainingBlock,
-} from "@/components/copilot/copilot-data-training-block";
-import {
   CopilotProtoCrudDrawer,
 } from "@/components/copilot/copilot-proto-crud-drawer";
 import { CopilotProtoDeleteDialog } from "@/components/copilot/copilot-proto-delete-dialog";
@@ -54,7 +51,6 @@ import {
 import { invalidateCopilotDatasetCache } from "@/lib/copilot-dataset-client";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import { buildDatosFilterOptions } from "@/lib/copilot-format";
-import { DATA_TRAINING } from "@/lib/copilot-data-integrity";
 import {
   COPILOT_DATA_API,
   type ProtoCrudEntity,
@@ -898,7 +894,7 @@ function CopilotDatosPageContent() {
       ? "El alta quedó registrada en la base. Podés volver a Finanzas para seguir el plan."
       : isQuickAddForm
         ? "Flujo guiado: completá los campos y guardá. Los datos impactan caja y lecturas en Copilot."
-        : "Centro de trazabilidad de datos reales del sistema: validación, contexto y confianza operativa.";
+        : "Clientes, facturas, recibos y obligaciones que alimentan las lecturas del Copilot.";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -995,8 +991,8 @@ function CopilotDatosPageContent() {
 
             <CopilotCard className="space-y-4">
               <CopilotSectionTitle
-                title="Entidades operativas"
-                subtitle="En cada bloque usá el botón «Ver …» de la fila inferior para cargar y mostrar datos; la flecha del título sigue sirviendo para expandir o colapsar. En Facturas la API corre al abrir; mes, año o rango filtran en cliente sin nueva llamada."
+                title="Datos del negocio"
+                subtitle="Clientes, facturas, recibos y obligaciones que alimentan las lecturas del Copilot."
                 action={
                   expandedEntity &&
                   newRecordLabel &&
@@ -1165,14 +1161,6 @@ function CopilotDatosPageContent() {
                               </div>
                             </>
                           ) : null}
-                          {isProtoCrudEntity(tab.id) ? (
-                            <CopilotDataTrainingBlock
-                              severity={DATA_TRAINING.datosOverview.severity}
-                              title="Capacitación · módulo Datos"
-                              paragraphs={DATA_TRAINING.datosOverview.paragraphs}
-                            />
-                          ) : null}
-
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <label className="relative min-w-[220px] flex-1">
                               <Search
