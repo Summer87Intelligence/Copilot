@@ -278,7 +278,7 @@ function FinanzasFiscalCalendarCollapsible({
   if (coberturaGuided) return <>{children}</>;
   return (
     <CopilotCollapsiblePanel
-      title="Calendario fiscal completo y resumen"
+      title="Detalle fiscal"
       defaultOpen={false}
     >
       {children}
@@ -1339,6 +1339,28 @@ function CopilotFinanzasPageContent() {
               </CopilotCard>
             </div>
 
+            {/* ── Aviso de fuente de datos ───────────────────────────────────── */}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3 text-[11px] text-slate-600">
+              <span>
+                Esta vista resume flujo proyectado e histórico desde Zeta.
+                La caja real operativa se consulta en Hoy y Tesorería.
+              </span>
+              <div className="flex shrink-0 gap-3">
+                <Link
+                  href="/copilot/tesoreria"
+                  className="font-semibold text-slate-700 underline-offset-2 hover:underline"
+                >
+                  Ver Tesorería →
+                </Link>
+                <Link
+                  href="/copilot/hoy"
+                  className="font-semibold text-slate-700 underline-offset-2 hover:underline"
+                >
+                  Ver Hoy →
+                </Link>
+              </div>
+            </div>
+
             {/* ── KPIs de liquidez ───────────────────────────────────────────── */}
             <div id="copilot-finanzas-panorama" className="scroll-mt-28">
               {snapshotLoading ? (
@@ -1362,7 +1384,7 @@ function CopilotFinanzasPageContent() {
                         {formatMoneyCompact(snapshotCashNet(snapshot))}
                       </p>
                       <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
-                        Cobros acumulados − pagos registrados · distinto de caja en Tesorería
+                        Cobros registrados − pagos registrados. No es caja bancaria actual.
                       </p>
                     </div>
                     <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/30 p-4 shadow-sm">
@@ -1373,7 +1395,7 @@ function CopilotFinanzasPageContent() {
                         {formatMoneyCompact(snapshotReceivablesRiskWeighted(snapshot))}
                       </p>
                       <p className="mt-1 text-[11px] text-emerald-900/60">
-                        Facturas abiertas × probabilidad de cobro · no es caja disponible
+                        Facturas abiertas ponderadas por probabilidad de cobro.
                       </p>
                     </div>
                     <div className="rounded-xl border border-rose-200/60 bg-rose-50/30 p-4 shadow-sm">
@@ -1384,7 +1406,7 @@ function CopilotFinanzasPageContent() {
                         {formatMoneyCompact(snapshotExpectedOutflowsTotal(snapshot))}
                       </p>
                       <p className="mt-1 text-[11px] text-rose-900/60">
-                        Pagos operativos post-hoy + obligaciones fiscales próximas 30 d
+                        Pagos operativos y obligaciones fiscales próximas.
                       </p>
                     </div>
                     <div className={`rounded-xl border p-4 shadow-sm ${
@@ -1432,7 +1454,7 @@ function CopilotFinanzasPageContent() {
                           <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
                             {isNoOutflows
                               ? "No hay egresos operativos ni fiscales modelados en el horizonte de 30 días."
-                              : "(neto + cobranza esperada) / egresos proyectados · meta ≥ 1,00×"}
+                              : "Capacidad estimada para cubrir egresos proyectados. Meta ≥ 1,00×"}
                           </p>
                         </div>
                       );
@@ -1449,7 +1471,7 @@ function CopilotFinanzasPageContent() {
                         Flujo proyectado de caja
                       </p>
                       <p className="text-[10px] text-[var(--copilot-ink-muted)]">
-                        Proyección forward-looking · no es facturación del período
+                        Lectura forward-looking basada en datos Zeta y obligaciones próximas.
                       </p>
                     </div>
                     <div className="mt-3 space-y-3">
@@ -1643,22 +1665,24 @@ function CopilotFinanzasPageContent() {
                 <div className="mt-6 space-y-6">
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Caja disponible</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Neto acumulado</p>
                       <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-ink)]">{formatMoneyCompact(snapshotCashNet(snapshot))}</p>
+                      <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">Cobros registrados − pagos registrados.</p>
                     </div>
                     <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Ingresos esperados</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Cobranza esperada</p>
                       <p className="mt-2 text-xl font-semibold tabular-nums text-emerald-700">{formatMoneyCompact(snapshotReceivablesRiskWeighted(snapshot))}</p>
-                      <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">Facturas abiertas × probabilidad de cobro</p>
+                      <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">Facturas abiertas ponderadas por probabilidad de cobro.</p>
                     </div>
                     <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Egresos esperados</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Egresos proyectados</p>
                       <p className="mt-2 text-xl font-semibold tabular-nums text-red-600">{formatMoneyCompact(snapshotExpectedOutflowsTotal(snapshot))}</p>
-                      <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">Pagos futuros + fiscal pendiente (30 días)</p>
+                      <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">Pagos operativos y obligaciones fiscales próximas.</p>
                     </div>
                     <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Balance proyectado</p>
                       <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-ink)]">{formatMoneyCompact(snapshotLiquidityBalance(snapshot))}</p>
+                      <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">Neto + cobranza esperada − egresos proyectados.</p>
                     </div>
                     <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm sm:col-span-2 lg:col-span-2">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Ratio de cobertura</p>
@@ -1666,7 +1690,7 @@ function CopilotFinanzasPageContent() {
                       <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
                         {coverageRatioDisplay(snapshot).isNoOutflows
                           ? "Sin egresos operativos ni fiscales modelados en el horizonte."
-                          : "(caja + ingresos esperados) / egresos esperados"}
+                          : "Capacidad estimada para cubrir egresos proyectados."}
                       </p>
                     </div>
                   </div>
@@ -1700,9 +1724,10 @@ function CopilotFinanzasPageContent() {
                     <p className="text-[11px] text-[var(--copilot-ink-muted)]">Montos multi-moneda (UYU + USD) — desglose por moneda pendiente.</p>
                   ) : null}
                   <div id="copilot-finanzas-cobranza" className="scroll-mt-28 space-y-3 rounded-xl border border-[var(--copilot-border)] bg-white/60 p-4">
-                    <p className="text-xs font-semibold text-[var(--copilot-ink)]">Cobranza esperada vs egresos esperados</p>
-                    <FlowBar label="Cobranza ponderada" value={snapshotReceivablesRiskWeighted(snapshot)} max={flowMax} flow="in" />
-                    <FlowBar label="Salidas modeladas" value={snapshotExpectedOutflowsTotal(snapshot)} max={flowMax} flow="out" />
+                    <p className="text-xs font-semibold text-[var(--copilot-ink)]">Flujo proyectado de caja</p>
+                    <p className="text-[10px] text-[var(--copilot-ink-muted)]">Lectura forward-looking basada en datos Zeta y obligaciones próximas.</p>
+                    <FlowBar label="Cobranza esperada (facturas × prob. de cobro)" value={snapshotReceivablesRiskWeighted(snapshot)} max={flowMax} flow="in" />
+                    <FlowBar label="Egresos proyectados (operativos + fiscal 30 d)" value={snapshotExpectedOutflowsTotal(snapshot)} max={flowMax} flow="out" />
                   </div>
                 </div>
               ) : null}
@@ -1860,8 +1885,8 @@ function CopilotFinanzasPageContent() {
             <FinanzasFiscalCalendarCollapsible coberturaGuided={coberturaGuided}>
             <CopilotCard className="border-[rgba(31,107,74,0.18)] bg-[rgba(31,107,74,0.04)]">
               <CopilotSectionTitle
-                title="Obligaciones fiscales"
-                subtitle="Vencimientos y montos — mismo criterio de un solo estado que arriba."
+                title="Detalle fiscal"
+                subtitle="Obligaciones fiscales sincronizadas o registradas."
               />
               {taxLoading ? (
                 <div className="flex items-center gap-2 py-8 text-sm text-[var(--copilot-ink-muted)]">
