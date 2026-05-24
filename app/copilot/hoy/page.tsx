@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { HoyPageView, type HoySectionErrors } from "@/components/copilot/hoy/hoy-page-view";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
@@ -69,6 +69,7 @@ export default function CopilotHoyPage() {
   >(undefined);
   const [error, setError] = useState<string | null>(null);
   const [sectionErrors, setSectionErrors] = useState<HoySectionErrors>({});
+  const loadAbortRef = useRef<AbortController | null>(null);
 
   const [draftFrom, setDraftFrom] = useState(defaultPeriod.from);
   const [draftTo, setDraftTo] = useState(defaultPeriod.to);
@@ -79,6 +80,11 @@ export default function CopilotHoyPage() {
     normalizeDateInput(draftTo) !== normalizeDateInput(confirmedPeriod.to);
 
   const load = useCallback(async () => {
+    loadAbortRef.current?.abort();
+    const controller = new AbortController();
+    loadAbortRef.current = controller;
+    const { signal } = controller;
+
     setLoading(true);
     setError(null);
     setSectionErrors({});
@@ -93,15 +99,18 @@ export default function CopilotHoyPage() {
     // Each fetch is independent — a single failure must not block the others.
     const [hubResult, reconCurrentResult, reconPeriodResult, treasuryResult, cashResult, manualResult] =
       await Promise.allSettled([
-        copilotApiFetch("/api/copilot/rutas-hub"),
-        copilotApiFetch("/api/copilot/financial-reconciliation?mode=all_outstanding"),
-        copilotApiFetch(`/api/copilot/financial-reconciliation?${periodQuery.toString()}`),
+        copilotApiFetch("/api/copilot/rutas-hub", { signal }),
+        copilotApiFetch("/api/copilot/financial-reconciliation?mode=all_outstanding", { signal }),
+        copilotApiFetch(`/api/copilot/financial-reconciliation?${periodQuery.toString()}`, { signal }),
         copilotApiFetch(
-          "/api/copilot/treasury/scheduled-payments?include_summary=1&horizon_days=30"
+          "/api/copilot/treasury/scheduled-payments?include_summary=1&horizon_days=30",
+          { signal }
         ),
-        copilotApiFetch("/api/copilot/treasury/cash-position"),
-        copilotApiFetch("/api/copilot/treasury/manual-cash-movements"),
+        copilotApiFetch("/api/copilot/treasury/cash-position", { signal }),
+        copilotApiFetch("/api/copilot/treasury/manual-cash-movements", { signal }),
       ]);
+
+    if (signal.aborted) return;
 
     const newErrors: HoySectionErrors = {};
 

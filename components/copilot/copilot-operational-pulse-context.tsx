@@ -94,19 +94,19 @@ export function CopilotOperationalPulseProvider({ children }: { children: ReactN
       let treasurySummaries: TreasuryOutflowSummary[] | undefined;
       const treasuryJson = (await treasuryRes.json().catch(() => null)) as {
         ok?: boolean;
-        summaries?: TreasuryOutflowSummary[];
+        data?: { summary?: TreasuryOutflowSummary[] };
       } | null;
-      if (treasuryRes.ok && treasuryJson?.ok && Array.isArray(treasuryJson.summaries)) {
-        treasurySummaries = treasuryJson.summaries;
+      if (treasuryRes.ok && treasuryJson?.ok && Array.isArray(treasuryJson.data?.summary)) {
+        treasurySummaries = treasuryJson.data?.summary;
       }
 
       let cashPositions: CashPositionByCurrency[] | undefined;
       const cashJson = (await cashRes.json().catch(() => null)) as {
         ok?: boolean;
-        positions?: CashPositionByCurrency[];
+        data?: { positions?: CashPositionByCurrency[] };
       } | null;
-      if (cashRes.ok && cashJson?.ok && Array.isArray(cashJson.positions)) {
-        cashPositions = cashJson.positions;
+      if (cashRes.ok && cashJson?.ok && Array.isArray(cashJson.data?.positions)) {
+        cashPositions = cashJson.data?.positions;
       }
 
       setPulse(
