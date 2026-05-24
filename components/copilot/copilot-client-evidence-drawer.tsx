@@ -142,7 +142,7 @@ export function CopilotClientEvidenceDrawer({
                 href={`/copilot/clientes/${encodeURIComponent(detail.company_id)}`}
                 className="mt-2 inline-flex px-3 py-1.5 text-xs"
               >
-                Abrir ficha 360
+                Ver ficha completa
               </CopilotGhostLink>
             </div>
             <CopilotGhostButton onClick={onClose} className="px-3 py-1.5">
@@ -190,20 +190,20 @@ export function CopilotClientEvidenceDrawer({
           {tab === "resumen" ? (
             <div className="space-y-4">
               <p className="text-xs text-[var(--copilot-ink-muted)]">
-                Basado en flujo real de facturas y recibos en Supabase (proto).
+                Basado en facturas y cobros registrados en Copilot.
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <KpiPill
-                  label="Facturación (total_amount)"
+                  label="Facturación total"
                   value={formatMoneyPortfolio(detail.total_billing)}
                 />
-                <KpiPill label="Deuda total" value={formatMoneyPortfolio(detail.total_debt)} />
+                <KpiPill label="Saldo pendiente" value={formatMoneyPortfolio(detail.total_debt)} />
                 <KpiPill
                   label="Deuda vencida"
                   value={formatMoneyPortfolio(detail.overdue_debt)}
                 />
                 <KpiPill
-                  label="Participación"
+                  label="Concentración"
                   value={`${(detail.share_pct * 100).toLocaleString("es-AR", { maximumFractionDigits: 1 })}%`}
                 />
                 {(detail.debt_uyu ?? 0) > 0 || (detail.debt_usd ?? 0) > 0 ? (
@@ -323,7 +323,7 @@ export function CopilotClientEvidenceDrawer({
             <div className="space-y-2">
               {detail.contacts.length === 0 ? (
                 <p className="text-sm text-[var(--copilot-ink-muted)]">
-                  No hay contactos en proto para esta empresa.
+                  No hay contactos registrados para este cliente.
                 </p>
               ) : (
                 <ul className="space-y-2">
@@ -348,8 +348,8 @@ export function CopilotClientEvidenceDrawer({
         </div>
 
         <div className="flex flex-wrap gap-2 border-t border-[var(--copilot-border)] px-6 py-4">
-          <CopilotGhostLink href="/copilot/acciones">Ir a acciones</CopilotGhostLink>
-          <CopilotGhostLink href="/copilot/alertas">Ver alertas</CopilotGhostLink>
+          <CopilotGhostLink href="/copilot/cartera">Ver cartera</CopilotGhostLink>
+          <CopilotGhostLink href="/copilot/operacional">Ver alertas</CopilotGhostLink>
           <CopilotGhostButton onClick={onClose}>Cerrar</CopilotGhostButton>
         </div>
       </aside>

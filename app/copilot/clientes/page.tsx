@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Mail, MessageCircle, Search } from "lucide-react";
 
 import { CopilotInteractiveText } from "@/components/copilot/copilot-interactive-text";
 import { CopilotClientEvidenceDrawer } from "@/components/copilot/copilot-client-evidence-drawer";
@@ -21,34 +22,160 @@ import {
   type ClientPortfolioLoad,
 } from "@/lib/copilot-clients-portfolio";
 
+// ── Status derivation ────────────────────────────────────────────────────────
+
+type ClientStatus = "al_dia" | "pendiente" | "vencido" | "critico";
+
+function deriveClientStatus(row: ClientPortfolioRow): ClientStatus {
+  const hasOverdue =
+    (row.overdue_uyu ?? 0) > 0 || (row.overdue_usd ?? 0) > 0 || row.overdue_debt > 0;
+  const hasDebt = row.debt_uyu > 0 || row.debt_usd > 0 || row.total_debt > 0;
+  if (hasOverdue && row.risk === "Alto") return "critico";
+  if (hasOverdue) return "vencido";
+  if (hasDebt) return "pendiente";
+  return "al_dia";
+}
+
+const STATUS_LABEL: Record<ClientStatus, string> = {
+  al_dia: "Al día",
+  pendiente: "Pendiente",
+  vencido: "Vencido",
+  critico: "Crítico",
+};
+
+function statusTone(s: ClientStatus): string {
+  if (s === "critico") return "text-rose-800 bg-rose-100/80 border-rose-200/70";
+  if (s === "vencido") return "text-orange-800 bg-orange-100/80 border-orange-200/70";
+  if (s === "pendiente") return "text-amber-900 bg-amber-100/80 border-amber-200/70";
+  return "text-emerald-900 bg-emerald-100/70 border-emerald-200/70";
+}
+
 function riskTone(r: ClientPortfolioRow["risk"]) {
   if (r === "Alto") return "text-rose-800 bg-rose-100/80";
   if (r === "Medio") return "text-amber-900 bg-amber-100/80";
-  return "text-emerald-900 bg-emerald-100/80";
+  return "text-emerald-900 bg-emerald-100/70";
 }
 
-function shareLabel(sharePct: number): string {
-  return `${(sharePct * 100).toLocaleString("es-AR", { maximumFractionDigits: 1 })}%`;
-}
+// ── Filters ──────────────────────────────────────────────────────────────────
 
-type ClientListFilter = "all" | "with_debt" | "without_debt" | "no_contact" | "high_risk" | "recent_activity";
+type ClientListFilter = "all" | "with_debt" | "vencido" | "critico" | "al_dia" | "no_contact";
 
 const FILTER_OPTIONS: Array<{ id: ClientListFilter; label: string }> = [
   { id: "all", label: "Todos" },
   { id: "with_debt", label: "Con deuda" },
-  { id: "without_debt", label: "Sin deuda" },
+  { id: "vencido", label: "Vencidos" },
+  { id: "critico", label: "Críticos" },
+  { id: "al_dia", label: "Al día" },
   { id: "no_contact", label: "Sin contacto" },
-  { id: "high_risk", label: "Riesgo alto" },
 ];
 
-function matchesClientFilter(row: ClientPortfolioRow, filter: ClientListFilter): boolean {
-  if (filter === "with_debt") return row.total_debt > 0;
-  if (filter === "without_debt") return row.total_debt <= 0;
+function matchesClientFilter(
+  row: ClientPortfolioRow,
+  filter: ClientListFilter,
+  search: string
+): boolean {
+  if (search.trim() && !row.name.toLowerCase().includes(search.trim().toLowerCase())) return false;
+  const status = deriveClientStatus(row);
+  if (filter === "with_debt") return row.debt_uyu > 0 || row.debt_usd > 0 || row.total_debt > 0;
+  if (filter === "vencido") return status === "vencido" || status === "critico";
+  if (filter === "critico") return status === "critico";
+  if (filter === "al_dia") return status === "al_dia";
   if (filter === "no_contact") return !row.has_contact_data;
-  if (filter === "high_risk") return row.risk === "Alto";
-  if (filter === "recent_activity") return row.invoices_count > 0 || row.receipts_count > 0;
   return true;
 }
+
+// ── Debt cell ────────────────────────────────────────────────────────────────
+
+function DebtCell({ row }: { row: ClientPortfolioRow }) {
+  const hasUyu = row.debt_uyu > 0;
+  const hasUsd = row.debt_usd > 0;
+  const overdueUyu = (row.overdue_uyu ?? 0) > 0;
+  const overdueUsd = (row.overdue_usd ?? 0) > 0;
+
+  if (!hasUyu && !hasUsd) {
+    if (row.total_debt > 0) {
+      return (
+        <span className="tabular-nums text-sm text-[var(--copilot-ink-muted)]">
+          {formatMoneyPortfolio(row.total_debt)}
+        </span>
+      );
+    }
+    return <span className="text-xs text-emerald-700">—</span>;
+  }
+
+  return (
+    <div className="space-y-0.5">
+      {hasUyu ? (
+        <div
+          className={`tabular-nums text-sm ${overdueUyu ? "font-semibold text-rose-700" : "text-[var(--copilot-ink)]"}`}
+        >
+          $ {row.debt_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
+          <span className="ml-1 text-[10px] text-[var(--copilot-ink-muted)]">UYU</span>
+          {overdueUyu ? (
+            <span className="ml-1 text-[10px] font-medium text-rose-600">vencido</span>
+          ) : null}
+        </div>
+      ) : null}
+      {hasUsd ? (
+        <div
+          className={`tabular-nums text-sm ${overdueUsd ? "font-semibold text-rose-700" : "text-amber-900"}`}
+        >
+          U$S {row.debt_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
+          <span className="ml-1 text-[10px] text-[var(--copilot-ink-muted)]">USD</span>
+          {overdueUsd ? (
+            <span className="ml-1 text-[10px] font-medium text-rose-600">vencido</span>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// ── Contact cell ─────────────────────────────────────────────────────────────
+
+function ContactCell({ row }: { row: ClientPortfolioRow }) {
+  if (!row.has_contact_data) {
+    return <span className="text-xs text-[var(--copilot-ink-muted)]">Sin contacto</span>;
+  }
+  const hasActions = row.contact_phone || row.contact_email;
+  if (!hasActions) {
+    return (
+      <span className="inline-flex items-center rounded-full border border-emerald-200/80 bg-emerald-50/80 px-2 py-0.5 text-[10px] font-medium text-emerald-800">
+        Disponible
+      </span>
+    );
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {row.contact_phone ? (
+        <a
+          href={`https://wa.me/${row.contact_phone.replace(/\D/g, "")}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`WhatsApp ${row.contact_phone}`}
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center gap-1 rounded-lg border border-emerald-200/80 bg-emerald-50/70 px-2 py-1 text-[10px] font-medium text-emerald-800 hover:bg-emerald-100/80"
+        >
+          <MessageCircle className="h-3 w-3" aria-hidden />
+          WA
+        </a>
+      ) : null}
+      {row.contact_email ? (
+        <a
+          href={`mailto:${row.contact_email}`}
+          title={row.contact_email}
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-2 py-1 text-[10px] font-medium text-[var(--copilot-ink-muted)] hover:bg-white"
+        >
+          <Mail className="h-3 w-3" aria-hidden />
+          Email
+        </a>
+      ) : null}
+    </div>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CopilotClientesPage() {
   const [load, setLoad] = useState<ClientPortfolioLoad | null>(null);
@@ -57,6 +184,7 @@ export default function CopilotClientesPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isEvidenceOpen, setIsEvidenceOpen] = useState(false);
   const [clientFilter, setClientFilter] = useState<ClientListFilter>("all");
+  const [search, setSearch] = useState("");
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -71,9 +199,7 @@ export default function CopilotClientesPage() {
     } catch (e) {
       setLoad(null);
       setSelectedId(null);
-      setError(
-        e instanceof Error ? e.message : "No se pudo cargar la cartera desde Supabase."
-      );
+      setError(e instanceof Error ? e.message : "No se pudo cargar la cartera.");
     } finally {
       setLoading(false);
     }
@@ -83,7 +209,6 @@ export default function CopilotClientesPage() {
     void refresh();
   }, [refresh]);
 
-  /** Deep link desde Copilot (`/copilot/clientes?c=<company_id>`). */
   useEffect(() => {
     if (!load || typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -96,8 +221,8 @@ export default function CopilotClientesPage() {
 
   const visibleRows = useMemo(() => {
     if (!load) return [];
-    return load.rows.filter((row) => matchesClientFilter(row, clientFilter));
-  }, [load, clientFilter]);
+    return load.rows.filter((row) => matchesClientFilter(row, clientFilter, search));
+  }, [load, clientFilter, search]);
 
   const activeDetail: ClientCompanyDetail | null = useMemo(() => {
     if (!load || !selectedId) return null;
@@ -114,13 +239,11 @@ export default function CopilotClientesPage() {
       <CopilotPageHeader
         surfaceId="copilot.clientes"
         title="Clientes"
-        description="Cartera comercial desde empresas (proto_companies), facturas y recibos — facturación, deuda y riesgo en lenguaje de negocio."
+        description="Cartera comercial activa: deuda por moneda, estado de cobranza y contacto directo."
       />
 
       <div className={copilotPageMainClass}>
-        {loading ? (
-          <CopilotSkeletonTable rows={6} columns={5} />
-        ) : null}
+        {loading ? <CopilotSkeletonTable rows={6} columns={5} /> : null}
 
         {error ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
@@ -132,16 +255,26 @@ export default function CopilotClientesPage() {
           <>
             {/* Summary cards */}
             {(() => {
-              const highRiskCount = load.rows.filter((r) => r.risk === "Alto").length;
+              const overdueCount = load.rows.filter(
+                (r) => (r.overdue_uyu ?? 0) > 0 || (r.overdue_usd ?? 0) > 0 || r.overdue_debt > 0
+              ).length;
+              const criticalCount = load.rows.filter(
+                (r) => deriveClientStatus(r) === "critico"
+              ).length;
+              const withDebtCount = load.rows.filter(
+                (r) => r.debt_uyu > 0 || r.debt_usd > 0 || r.total_debt > 0
+              ).length;
               const noContactCount = load.rows.filter((r) => !r.has_contact_data).length;
-              const withDebtCount = load.rows.filter((r) => r.total_debt > 0).length;
               return (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <CopilotCard className="py-3">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                      Principales clientes
+                      Clientes activos
                     </p>
-                    <p className="mt-1 text-sm leading-snug text-[var(--copilot-ink)]">
+                    <p className="mt-1 text-2xl font-bold tabular-nums text-[var(--copilot-ink)]">
+                      {load.rows.length}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
                       {load.summary.top_clients_line}
                     </p>
                   </CopilotCard>
@@ -156,28 +289,40 @@ export default function CopilotClientesPage() {
                       {load.summary.debt_clients_line}
                     </p>
                   </CopilotCard>
-                  <CopilotCard className={`py-3 ${highRiskCount > 0 ? "border-rose-200/80 bg-rose-50/40" : ""}`}>
+                  <CopilotCard
+                    className={`py-3 ${criticalCount > 0 ? "border-rose-200/80 bg-rose-50/40" : overdueCount > 0 ? "border-orange-200/80 bg-orange-50/30" : ""}`}
+                  >
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                      Riesgo alto
+                      Vencidos
                     </p>
-                    <p className={`mt-1 text-2xl font-bold tabular-nums ${highRiskCount > 0 ? "text-rose-700" : "text-[var(--copilot-ink)]"}`}>
-                      {highRiskCount}
+                    <p
+                      className={`mt-1 text-2xl font-bold tabular-nums ${criticalCount > 0 ? "text-rose-700" : overdueCount > 0 ? "text-orange-700" : "text-[var(--copilot-ink)]"}`}
+                    >
+                      {overdueCount}
                     </p>
                     <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-                      {load.summary.concentration_line}
+                      {criticalCount > 0
+                        ? `${criticalCount} en nivel crítico`
+                        : overdueCount === 0
+                          ? "Sin deuda vencida"
+                          : load.summary.concentration_line}
                     </p>
                   </CopilotCard>
-                  <CopilotCard className={`py-3 ${noContactCount > 0 ? "border-amber-200/80 bg-amber-50/40" : ""}`}>
+                  <CopilotCard
+                    className={`py-3 ${noContactCount > 0 ? "border-amber-200/80 bg-amber-50/40" : ""}`}
+                  >
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                      Sin contacto registrado
+                      Sin contacto
                     </p>
-                    <p className={`mt-1 text-2xl font-bold tabular-nums ${noContactCount > 0 ? "text-amber-700" : "text-[var(--copilot-ink)]"}`}>
+                    <p
+                      className={`mt-1 text-2xl font-bold tabular-nums ${noContactCount > 0 ? "text-amber-700" : "text-[var(--copilot-ink)]"}`}
+                    >
                       {noContactCount}
                     </p>
                     <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
                       {noContactCount === 0
-                        ? "Todos los clientes tienen contacto"
-                        : "Clientes sin datos de contacto en Copilot"}
+                        ? "Todos tienen datos de contacto"
+                        : "Sin teléfono ni email registrado"}
                     </p>
                   </CopilotCard>
                 </div>
@@ -188,21 +333,32 @@ export default function CopilotClientesPage() {
             (load.directory_diagnostics.debtors_missing_company_row > 0 ||
               load.directory_diagnostics.debtors_inactive_company_row > 0) ? (
               <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 px-4 py-3 text-sm text-amber-950">
-                Se incorporaron clientes con deuda en facturas que no figuraban solo en empresas
-                activas (
-                {load.directory_diagnostics.debtors_missing_company_row} derivados de facturación,{" "}
-                {load.directory_diagnostics.debtors_inactive_company_row} inactivos en
-                proto_companies).
+                Se incorporaron{" "}
+                {load.directory_diagnostics.debtors_missing_company_row +
+                  load.directory_diagnostics.debtors_inactive_company_row}{" "}
+                clientes detectados en facturas que no figuran como empresas activas en la cartera.
               </div>
             ) : null}
 
             <CopilotCard className="overflow-hidden p-0">
               <div className="border-b border-[var(--copilot-border)] px-4 py-3">
                 <CopilotSectionTitle
-                  title="Cartera activa"
-                  subtitle="Directorio unificado: empresas + deudores en facturas (misma base que Cartera)."
+                  title="Cartera de clientes"
+                  subtitle="Directorio unificado — misma base que Cartera."
                 />
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {/* Search */}
+                  <div className="flex items-center gap-1.5 rounded-full border border-[var(--copilot-border)] bg-white/80 px-3 py-1">
+                    <Search className="h-3.5 w-3.5 shrink-0 text-[var(--copilot-ink-muted)]" aria-hidden />
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Buscar cliente…"
+                      className="w-36 bg-transparent text-xs text-[var(--copilot-ink)] outline-none placeholder:text-[var(--copilot-ink-muted)]"
+                    />
+                  </div>
+                  {/* Filters */}
                   {FILTER_OPTIONS.map((opt) => {
                     const active = clientFilter === opt.id;
                     return (
@@ -222,32 +378,35 @@ export default function CopilotClientesPage() {
                     );
                   })}
                   <span className="self-center text-[11px] text-[var(--copilot-ink-muted)]">
-                    {visibleRows.length} de {load.rows.length} visibles
+                    {visibleRows.length} de {load.rows.length}
                   </span>
                 </div>
               </div>
+
               {load.rows.length === 0 ? (
-                <p className="px-4 py-5 text-sm text-[var(--copilot-ink-muted)]">
-                  No hay empresas en proto_companies. Importá o cargá empresas en Supabase para ver
-                  la cartera.
+                <p className="px-4 py-8 text-center text-sm text-[var(--copilot-ink-muted)]">
+                  No hay clientes en la cartera aún.
+                </p>
+              ) : visibleRows.length === 0 ? (
+                <p className="px-4 py-8 text-center text-sm text-[var(--copilot-ink-muted)]">
+                  No hay clientes para este filtro.
                 </p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[920px] border-collapse text-left text-sm">
+                  <table className="w-full min-w-[780px] border-collapse text-left text-sm">
                     <thead className="sticky top-0 z-10 bg-[var(--copilot-card)]">
                       <tr className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        <th className="px-4 py-2">Empresa</th>
-                        <th className="px-4 py-2">Industria</th>
-                        <th className="px-4 py-2">Facturación</th>
+                        <th className="px-4 py-2">Cliente</th>
+                        <th className="px-4 py-2">Estado</th>
                         <th className="px-4 py-2">Deuda</th>
                         <th className="px-4 py-2">Riesgo</th>
-                        <th className="px-4 py-2">Participación</th>
                         <th className="px-4 py-2">Contacto</th>
                         <th className="px-4 py-2 text-right">Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
                       {visibleRows.map((row, i) => {
+                        const status = deriveClientStatus(row);
                         const isSelected = row.company_id === selectedId;
                         const evidenceOpenForRow = isEvidenceOpen && isSelected;
                         return (
@@ -259,8 +418,9 @@ export default function CopilotClientesPage() {
                                 : "bg-[rgba(255,255,255,0.5)]"
                             } ${evidenceOpenForRow ? "ring-1 ring-inset ring-[rgba(31,107,74,0.25)]" : ""}`}
                           >
-                            <td className="px-4 py-2.5">
-                              <div className="flex flex-wrap items-center gap-2">
+                            {/* Cliente */}
+                            <td className="max-w-[220px] px-4 py-2.5">
+                              <div className="flex flex-wrap items-center gap-1.5">
                                 <CopilotInteractiveText
                                   icon="chevron"
                                   className="font-semibold"
@@ -268,42 +428,34 @@ export default function CopilotClientesPage() {
                                 >
                                   {row.name}
                                 </CopilotInteractiveText>
-                                {row.total_debt > 0 ? (
-                                  <span className="inline-block rounded-full border border-rose-200/70 bg-rose-50/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-rose-800">
-                                    Con deuda
-                                  </span>
-                                ) : null}
                                 {row.derived_from_debt ? (
-                                  <span className="inline-block rounded-full border border-amber-200/70 bg-amber-50/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-amber-900">
-                                    Derivado de facturación
-                                  </span>
-                                ) : null}
-                                {!row.has_contact_data ? (
-                                  <span className="inline-block rounded-full border border-[var(--copilot-border)] bg-white/70 px-2 py-0.5 text-[10px] font-medium text-[var(--copilot-ink-muted)]">
-                                    Sin dato de contacto
-                                  </span>
-                                ) : null}
-                                {evidenceOpenForRow ? (
-                                  <span className="inline-block rounded-full bg-[var(--copilot-accent-soft)] px-2 py-0.5 text-[11px] font-semibold text-[var(--copilot-accent)]">
-                                    Respaldo abierto
+                                  <span className="inline-block rounded-full border border-slate-200/70 bg-slate-50/80 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                                    Vía facturación
                                   </span>
                                 ) : null}
                               </div>
-                            </td>
-                            <td className="max-w-[200px] px-5 py-3.5 text-[var(--copilot-ink-muted)]">
-                              <span className="line-clamp-2">{row.industry}</span>
-                            </td>
-                            <td className="px-5 py-3.5 tabular-nums text-[var(--copilot-ink-muted)]">
-                              {formatMoneyPortfolio(row.total_billing)}
-                            </td>
-                            <td className="px-5 py-3.5 tabular-nums text-[var(--copilot-ink-muted)]">
-                              {formatMoneyPortfolio(row.total_debt)}
-                              {row.overdue_debt > 0 ? (
-                                <span className="mt-0.5 block text-xs text-rose-700">
-                                  Vencido {formatMoneyPortfolio(row.overdue_debt)}
-                                </span>
+                              {row.industry && row.industry !== "—" ? (
+                                <p className="mt-0.5 line-clamp-1 text-[11px] text-[var(--copilot-ink-muted)]">
+                                  {row.industry}
+                                </p>
                               ) : null}
                             </td>
+
+                            {/* Estado */}
+                            <td className="px-4 py-2.5">
+                              <span
+                                className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${statusTone(status)}`}
+                              >
+                                {STATUS_LABEL[status]}
+                              </span>
+                            </td>
+
+                            {/* Deuda */}
+                            <td className="px-4 py-2.5">
+                              <DebtCell row={row} />
+                            </td>
+
+                            {/* Riesgo */}
                             <td className="px-4 py-2.5">
                               <span
                                 className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${riskTone(row.risk)}`}
@@ -311,33 +463,26 @@ export default function CopilotClientesPage() {
                                 {row.risk}
                               </span>
                             </td>
-                            <td className="px-5 py-3.5 tabular-nums text-[var(--copilot-ink-muted)]">
-                              {shareLabel(row.share_pct)}
-                            </td>
+
+                            {/* Contacto */}
                             <td className="px-4 py-2.5">
-                              {row.has_contact_data ? (
-                                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200/80 bg-emerald-50/80 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
-                                  Disponible
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/70 bg-amber-50/70 px-2 py-0.5 text-[10px] font-semibold text-amber-900">
-                                  Sin contacto
-                                </span>
-                              )}
+                              <ContactCell row={row} />
                             </td>
-                            <td className="px-5 py-3.5 text-right">
+
+                            {/* Acciones */}
+                            <td className="px-4 py-2.5 text-right">
                               <div className="flex flex-wrap items-center justify-end gap-2">
                                 <CopilotGhostLink
                                   href={`/copilot/clientes/${encodeURIComponent(row.company_id)}`}
                                   className="whitespace-nowrap px-3 py-1.5 text-xs font-semibold"
                                 >
-                                  Ver ficha 360
+                                  Ver ficha
                                 </CopilotGhostLink>
                                 <CopilotGhostButton
                                   onClick={() => openClient(row.company_id)}
                                   className="whitespace-nowrap px-3 py-1.5 text-xs"
                                 >
-                                  Respaldo
+                                  Resumen
                                 </CopilotGhostButton>
                               </div>
                             </td>

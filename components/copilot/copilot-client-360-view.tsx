@@ -13,7 +13,6 @@ import {
   FileText,
   Loader2,
   Mail,
-  RefreshCw,
   ShieldAlert,
   Sparkles,
   TrendingDown,
@@ -42,7 +41,7 @@ type TabId = "resumen" | "cuenta" | "comprobantes" | "recibos" | "contactos" | "
 const TABS: { id: TabId; label: string }[] = [
   { id: "resumen", label: "Resumen" },
   { id: "cuenta", label: "Estado de cuenta" },
-  { id: "comprobantes", label: "Comprobantes" },
+  { id: "comprobantes", label: "Facturas" },
   { id: "recibos", label: "Recibos" },
   { id: "contactos", label: "Contactos" },
   { id: "zeta", label: "Integración Zeta" },
@@ -155,9 +154,18 @@ function KpiChip({
 
 // ─── Quick Actions ────────────────────────────────────────────────────────────
 
-function QuickActions() {
+function QuickActions({ contactEmail }: { contactEmail?: string | null }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {contactEmail ? (
+        <a
+          href={`mailto:${contactEmail}`}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-white/70 px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-white"
+        >
+          <Mail className="h-3.5 w-3.5" aria-hidden />
+          Contactar
+        </a>
+      ) : null}
       <CopilotGhostLink
         href={`/copilot/cartera`}
         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs"
@@ -172,27 +180,6 @@ function QuickActions() {
         <ShieldAlert className="h-3.5 w-3.5" aria-hidden />
         Ver alertas
       </CopilotGhostLink>
-      <button
-        type="button"
-        disabled
-        title="Próximamente: análisis con IA"
-        className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-white/50 px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] opacity-50"
-      >
-        <Sparkles className="h-3.5 w-3.5" aria-hidden />
-        Resumen IA
-        <span className="ml-1 rounded bg-amber-100 px-1 text-[9px] font-semibold text-amber-700">
-          Próx.
-        </span>
-      </button>
-      <button
-        type="button"
-        disabled
-        title="Re-sincronización manual no disponible en este cliente"
-        className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-white/50 px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] opacity-50"
-      >
-        <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-        Re-sincronizar
-      </button>
     </div>
   );
 }
@@ -233,8 +220,8 @@ function CopilotHintBlock({ data }: { data: Client360Payload }) {
         <span className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink)]">
           Lectura de Copilot
         </span>
-        <span className="ml-auto rounded-md bg-amber-100/80 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700">
-          Heurístico · sin IA
+        <span className="ml-auto rounded-md bg-slate-100/80 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-500">
+          Análisis automático
         </span>
       </div>
       <p className="mb-3 text-xs text-[var(--copilot-ink-muted)]">{summary.executiveSummary}</p>
@@ -317,8 +304,8 @@ function ContactsTab({ contacts }: { contacts: Client360Payload["contacts"] }) {
             No hay contactos registrados para este cliente.
           </p>
           <p className="max-w-sm text-xs text-[var(--copilot-ink-muted)]">
-            Los contactos se sincronizan automáticamente desde Zeta. Si el cliente tiene contactos
-            en Zeta, aparecerán aquí tras la próxima sincronización.
+            Los contactos se actualizan automáticamente. Si el cliente tiene contactos registrados,
+            aparecerán aquí tras la próxima sincronización.
           </p>
         </div>
       </CopilotCard>
@@ -449,8 +436,8 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
         surfaceId="copilot.clientes"
-        title="Ficha cliente 360"
-        description="Estado de cuenta, comprobantes, recibos y metadata sincronizados en Copilot."
+        title="Ficha de cliente"
+        description="Estado de cuenta, facturas, cobros y contactos registrados en Copilot."
       />
 
       {/* ── Breadcrumb ─────────────────────────────────────────────────────── */}
@@ -494,7 +481,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                 ) : null}
               </div>
             </div>
-            <QuickActions />
+            <QuickActions contactEmail={data.contacts[0]?.email} />
           </div>
 
           {/* Badges */}
@@ -616,17 +603,13 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
               }
             />
             <KpiChip
-              label="Últ. sync Zeta"
+              label="Últ. sync"
               value={
                 data.last_sync_at
                   ? formatRelativeDays(data.last_sync_at.slice(0, 10))
                   : "—"
               }
-              tone={
-                data.last_sync_at
-                  ? "ok"
-                  : "warning"
-              }
+              tone={data.last_sync_at ? "ok" : "warning"}
             />
           </div>
         </div>
@@ -697,8 +680,8 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                 {/* Identificación */}
                 <CopilotCard>
                   <CopilotSectionTitle
-                    title="Identificación y comercial"
-                    subtitle="Datos proto y bloque comercial Zeta (si fue sincronizado)."
+                    title="Datos del cliente"
+                    subtitle="Información comercial sincronizada con el sistema de gestión."
                   />
                   <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
@@ -796,8 +779,8 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                     ) : (
                       <div className="sm:col-span-2 lg:col-span-3">
                         <p className="text-sm text-[var(--copilot-ink-muted)]">
-                          Sin bloque comercial Zeta sincronizado. Sincronizá datos comerciales para
-                          completar categoría, condición y vendedor.
+                          Sin datos comerciales sincronizados. Categoría, condición y límite de
+                          crédito estarán disponibles tras la próxima sincronización.
                         </p>
                       </div>
                     )}
@@ -920,8 +903,8 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
               <CopilotCard className="overflow-hidden p-0">
                 <div className="border-b border-[var(--copilot-border)] px-5 py-4">
                   <CopilotSectionTitle
-                    title="Comprobantes"
-                    subtitle="Facturas y comprobantes asociados al cliente."
+                    title="Facturas"
+                    subtitle="Comprobantes emitidos a este cliente."
                   />
                 </div>
                 <div className="overflow-x-auto">
@@ -989,8 +972,8 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
               <CopilotCard className="overflow-hidden p-0">
                 <div className="border-b border-[var(--copilot-border)] px-5 py-4">
                   <CopilotSectionTitle
-                    title="Recibos"
-                    subtitle="Cobranzas registradas (incluye sync Zeta si aplica)."
+                    title="Cobros"
+                    subtitle="Recibos y cobros registrados para este cliente."
                   />
                 </div>
                 <div className="overflow-x-auto">
@@ -1048,7 +1031,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
               <div className="space-y-4">
                 <CopilotSectionTitle
                   title="Contactos"
-                  subtitle="Contactos sincronizados desde Zeta para coordinar cobranzas y gestión comercial."
+                  subtitle="Contactos disponibles para cobranza y gestión comercial."
                 />
                 <ContactsTab contacts={data.contacts} />
               </div>
