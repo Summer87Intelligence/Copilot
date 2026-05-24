@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 /**
  * Datos (/copilot/datos): entidades en acordeón; cada bloque carga `getProto*` solo al expandir.
  * - Sin fetch inicial al entrar; dataset API solo cuando el usuario abre una sección.
@@ -13,6 +13,7 @@ import {
   useRef,
   useState,
 } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ChevronDown, Loader2, Plus, Search } from "lucide-react";
 
@@ -83,12 +84,12 @@ const entityTabs: Array<{ id: DataEntity; label: string }> = [
 ];
 
 const DATOS_EXPAND_HINT: Record<DataEntity, string> = {
-  companies: "Tocá «Ver clientes» para cargar el listado del tenant.",
-  contacts: "Tocá «Ver contactos» para cargar el listado del tenant.",
+  companies: "Catálogo de clientes registrados.",
+  contacts: "Contactos asociados a los clientes.",
   invoices: "Elegí el período y luego tocá «Ver facturas».",
-  receipts: "Tocá «Ver recibos» para cargar el listado del tenant.",
-  payments: "Tocá «Ver pagos» para cargar el listado del tenant.",
-  tax_obligations: "Tocá «Ver obligaciones» para cargar el listado del tenant.",
+  receipts: "Cobros registrados.",
+  payments: "Pagos fiscales registrados.",
+  tax_obligations: "Obligaciones fiscales registradas.",
 };
 
 const DATOS_EXPAND_CTA: Record<DataEntity, string> = {
@@ -887,7 +888,7 @@ function CopilotDatosPageContent() {
         ? "Registrar pago"
         : isQuickAddForm && quickAddEntityParam === "invoices"
           ? "Registrar cobro"
-          : "Datos";
+          : "Datos del negocio";
 
   const pageDescription =
     isQuickAddForm && quickAddSaved
@@ -1313,6 +1314,15 @@ function CopilotDatosPageContent() {
                   );
                 })}
               </div>
+              <p className="border-t border-[var(--copilot-border)] pt-3 text-xs text-[var(--copilot-ink-muted)]">
+                {"Vista de consulta. Para gestión, usá "}
+                <Link href="/copilot/cartera" className="font-semibold text-[var(--copilot-ink)] hover:underline">Cartera</Link>
+                {", "}
+                <Link href="/copilot/tesoreria" className="font-semibold text-[var(--copilot-ink)] hover:underline">Tesorería</Link>
+                {" o "}
+                <Link href="/copilot/acciones" className="font-semibold text-[var(--copilot-ink)] hover:underline">Acciones</Link>
+                {"."}
+              </p>
             </CopilotCard>
           </>
         )}
