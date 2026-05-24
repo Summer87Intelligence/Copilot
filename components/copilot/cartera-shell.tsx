@@ -282,7 +282,7 @@ function EmptySummaryPlaceholders({ shimmer = false }: { shimmer?: boolean }) {
     "% cobranza registrada UYU",
     "% cobranza registrada USD",
     "Clientes en riesgo",
-    "Orphan warnings",
+    "Clientes por revisar",
   ];
 
   return (
@@ -489,7 +489,7 @@ function ErrorBlock({ message, onRetry }: { message: string; onRetry: () => void
         </span>
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-rose-700">
-            Error de reconciliación
+            No se pudo cargar la cartera
           </p>
           <p className="mt-1 text-sm text-rose-900/90">{message}</p>
         </div>

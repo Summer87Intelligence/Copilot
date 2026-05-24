@@ -160,7 +160,7 @@ export function FinancialControlBar({
             type="button"
             onClick={onRefresh}
             disabled={loading || !canRefresh}
-            title="Forzar lectura inmediata del reporte. No reemplaza al cron automático Zeta."
+            title="Actualiza la vista con los últimos datos disponibles."
             className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 text-xs font-semibold text-[var(--copilot-ink)] shadow-sm transition hover:bg-white disabled:opacity-60"
           >
             {loading ? (

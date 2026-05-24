@@ -103,20 +103,20 @@ const RISK_BADGE: Record<RiskLevel, { cls: string; label: string }> = {
 };
 
 const STALE_BADGE: Record<StalenessStatus, { cls: string; label: string }> = {
-  ok:           { cls: "border-emerald-200 bg-emerald-50 text-emerald-800",   label: "OK" },
-  warning:      { cls: "border-amber-200 bg-amber-50 text-amber-800",         label: "WARN" },
-  critical:     { cls: "border-rose-200 bg-rose-50 text-rose-800",             label: "CRIT" },
+  ok:           { cls: "border-emerald-200 bg-emerald-50 text-emerald-800",   label: "Al día" },
+  warning:      { cls: "border-amber-200 bg-amber-50 text-amber-800",         label: "Alerta" },
+  critical:     { cls: "border-rose-200 bg-rose-50 text-rose-800",             label: "Crítico" },
   never_synced: { cls: "border-[var(--copilot-border)] bg-white/60 text-[var(--copilot-ink-muted)]", label: "—" },
 };
 
 const FILTER_CHIPS: Array<{ id: FilterChip; label: string }> = [
   { id: "all",      label: "Todos" },
-  { id: "stale",    label: "Stale" },
+  { id: "stale",    label: "Desactualizado" },
   { id: "90_plus",  label: "+90 d" },
   { id: "61_90",    label: "61–90 d" },
   { id: "31_60",    label: "31–60 d" },
   { id: "0_30",     label: "0–30 d" },
-  { id: "no_aging", label: "Sin aging" },
+  { id: "no_aging", label: "Sin antigüedad" },
 ];
 
 const COLLECTION_ACTIONS_CACHE_TTL_MS = 60_000;
@@ -527,7 +527,7 @@ export function ClientDebtExplorer({
             </h3>
             <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
               {formatCarteraInteger(baseClients.length)} cliente{baseClients.length === 1 ? "" : "s"} con deuda{" "}
-              {currencyFilter ? `${currencyFilter} ` : ""}activa · sin recálculos en frontend
+              {currencyFilter ? `${currencyFilter} ` : ""}activa
             </p>
           </div>
         </div>
@@ -619,7 +619,7 @@ export function ClientDebtExplorer({
                 Fact.
               </Th>
               <Th field="lastSync" sort={effectiveSort} onSort={handleSort}>
-                Último sync
+                Última act.
               </Th>
               {/* Cobranza (sin sort — columna operativa) */}
               <th className="px-3 py-2.5 text-left">

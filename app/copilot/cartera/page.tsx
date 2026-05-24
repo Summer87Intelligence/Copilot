@@ -32,7 +32,7 @@ export default function CarteraPage() {
       <CopilotPageHeader
         eyebrow="Summer87 Copilot"
         title="Cartera"
-        description="Reconciliación financiera, exposición por moneda, cobranza y prioridades de cobro."
+        description="Clientes con saldo pendiente, deuda vencida y prioridad de cobranza."
       />
       <div className="px-6 pb-12 pt-6">
         <Suspense fallback={<CarteraInitialFallback />}>
@@ -50,10 +50,10 @@ function CarteraInitialFallback() {
       aria-live="polite"
     >
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--copilot-ink-muted)]">
-        Cartera · setup
+        Cartera
       </p>
       <p className="mt-2 text-sm text-[var(--copilot-ink-muted)]">
-        Inicializando centro de cartera…
+        Cargando…
       </p>
     </div>
   );

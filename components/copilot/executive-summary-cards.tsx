@@ -371,7 +371,7 @@ function staleCardAll(report: FinancialConsistencyReport): SummaryCard {
   const breakdown: string[] = [];
   if (critical > 0) breakdown.push(`${critical} crítico${critical === 1 ? "" : "s"}`);
   if (warning > 0) breakdown.push(`${warning} con alerta`);
-  if (neverSynced > 0) breakdown.push(`${neverSynced} sin sync`);
+  if (neverSynced > 0) breakdown.push(`${neverSynced} sin datos`);
   return {
     id: "stale",
     title: "Clientes en riesgo",
@@ -412,9 +412,9 @@ function staleCardForCurrency(
     else if (c.status === "critical") critical++;
     else if (c.status === "never_synced") neverSynced++;
   }
-  if (warning > 0) breakdown.push(`${warning} warning`);
-  if (critical > 0) breakdown.push(`${critical} critical`);
-  if (neverSynced > 0) breakdown.push(`${neverSynced} sin sync`);
+  if (warning > 0) breakdown.push(`${warning} con alerta`);
+  if (critical > 0) breakdown.push(`${critical} crítico${critical === 1 ? "" : "s"}`);
+  if (neverSynced > 0) breakdown.push(`${neverSynced} sin datos`);
 
   const total = atRisk.length;
 
@@ -444,7 +444,7 @@ function orphanCardAll(report: FinancialConsistencyReport): SummaryCard {
   const o = report.orphanSummary;
   return {
     id: "orphans",
-    title: "Facturas huérfanas",
+    title: "Facturas por conciliar",
     source: "recon",
     tone: o.warned === 0 ? "positive" : o.pending_auto_close > 0 ? "warning" : "info",
     icon: AlertTriangle,
