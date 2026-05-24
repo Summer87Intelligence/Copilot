@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import { HoyPageView } from "@/components/copilot/hoy/hoy-page-view";
+import { HoyPageView, type HoySectionErrors } from "@/components/copilot/hoy/hoy-page-view";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import type { FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
@@ -36,6 +36,12 @@ function normalizeDateInput(value: string): string {
   return value.slice(0, 10);
 }
 
+function devWarn(section: string, reason: unknown) {
+  if (process.env.NODE_ENV !== "production") {
+    console.warn(`[Hoy] ${section} load failed`, reason);
+  }
+}
+
 export default function CopilotHoyPage() {
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const defaultPeriod = useMemo(() => defaultHoyPeriodRange(today), [today]);
@@ -62,6 +68,7 @@ export default function CopilotHoyPage() {
     CashPositionByCurrency[] | undefined
   >(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [sectionErrors, setSectionErrors] = useState<HoySectionErrors>({});
 
   const [draftFrom, setDraftFrom] = useState(defaultPeriod.from);
   const [draftTo, setDraftTo] = useState(defaultPeriod.to);
@@ -74,25 +81,33 @@ export default function CopilotHoyPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setSectionErrors({});
     const period = confirmedPeriod;
-    try {
-      const periodQuery = new URLSearchParams({
-        mode: "period_only",
-        period_start: period.from,
-        period_end: period.to,
-      });
-      const [hubRes, reconCurrentRes, reconPeriodRes, treasuryRes, cashRes, manualRes] =
-        await Promise.all([
-          copilotApiFetch("/api/copilot/rutas-hub"),
-          copilotApiFetch("/api/copilot/financial-reconciliation?mode=all_outstanding"),
-          copilotApiFetch(`/api/copilot/financial-reconciliation?${periodQuery.toString()}`),
-          copilotApiFetch(
-            "/api/copilot/treasury/scheduled-payments?include_summary=1&horizon_days=30"
-          ),
-          copilotApiFetch("/api/copilot/treasury/cash-position"),
-          copilotApiFetch("/api/copilot/treasury/manual-cash-movements"),
-        ]);
-      const json = (await hubRes.json().catch(() => null)) as Record<string, unknown> | null;
+
+    const periodQuery = new URLSearchParams({
+      mode: "period_only",
+      period_start: period.from,
+      period_end: period.to,
+    });
+
+    // Each fetch is independent — a single failure must not block the others.
+    const [hubResult, reconCurrentResult, reconPeriodResult, treasuryResult, cashResult, manualResult] =
+      await Promise.allSettled([
+        copilotApiFetch("/api/copilot/rutas-hub"),
+        copilotApiFetch("/api/copilot/financial-reconciliation?mode=all_outstanding"),
+        copilotApiFetch(`/api/copilot/financial-reconciliation?${periodQuery.toString()}`),
+        copilotApiFetch(
+          "/api/copilot/treasury/scheduled-payments?include_summary=1&horizon_days=30"
+        ),
+        copilotApiFetch("/api/copilot/treasury/cash-position"),
+        copilotApiFetch("/api/copilot/treasury/manual-cash-movements"),
+      ]);
+
+    const newErrors: HoySectionErrors = {};
+
+    // ── Hub (panorama principal + portfolio) ────────────────────────────────
+    if (hubResult.status === "fulfilled") {
+      const json = (await hubResult.value.json().catch(() => null)) as Record<string, unknown> | null;
       const hub = json ?? {};
       const meta = toRutasGateMeta(hub);
       setSnapshot((hub.snapshot as FinancialSnapshotApiV1 | null) ?? null);
@@ -102,12 +117,21 @@ export default function CopilotHoyPage() {
         coverage: meta.coverage,
         recommendations_enabled: meta.recommendations_enabled,
       });
+    } else {
+      devWarn("hub", hubResult.reason);
+      newErrors.hub = "No se pudo cargar el panorama principal.";
+      setSnapshot(null);
+      setPortfolioRows(null);
+      setGate(DEFAULT_GATE);
+    }
 
-      const reconCurrentJson = (await reconCurrentRes.json().catch(() => null)) as {
+    // ── Cartera — estado actual (vencido, cobrado) ──────────────────────────
+    if (reconCurrentResult.status === "fulfilled") {
+      const reconCurrentJson = (await reconCurrentResult.value.json().catch(() => null)) as {
         ok?: boolean;
         report?: FinancialConsistencyReport;
       } | null;
-      if (reconCurrentRes.ok && reconCurrentJson?.ok && reconCurrentJson.report) {
+      if (reconCurrentResult.value.ok && reconCurrentJson?.ok && reconCurrentJson.report) {
         setCarteraAgingOverdue(
           carteraAgingOverdueFromReport(reconCurrentJson.report.agingByCurrency)
         );
@@ -120,51 +144,91 @@ export default function CopilotHoyPage() {
         setCarteraAgingCurrent(undefined);
         setCarteraCollectedToDate(undefined);
       }
+    } else {
+      devWarn("cartera-current-recon", reconCurrentResult.reason);
+      newErrors.carteraCurrentRecon = "No se pudo cargar el estado de cartera vencida.";
+      setCarteraAgingOverdue(undefined);
+      setCarteraAgingCurrent(undefined);
+      setCarteraCollectedToDate(undefined);
+    }
 
-      const reconPeriodJson = (await reconPeriodRes.json().catch(() => null)) as {
+    // ── Cartera — actividad del período ─────────────────────────────────────
+    if (reconPeriodResult.status === "fulfilled") {
+      const reconPeriodJson = (await reconPeriodResult.value.json().catch(() => null)) as {
         ok?: boolean;
         report?: FinancialConsistencyReport;
       } | null;
-      if (reconPeriodRes.ok && reconPeriodJson?.ok && reconPeriodJson.report) {
+      if (reconPeriodResult.value.ok && reconPeriodJson?.ok && reconPeriodJson.report) {
         setPeriodReportCurrencies(reconPeriodJson.report.currencies);
       } else {
         setPeriodReportCurrencies([]);
       }
+    } else {
+      devWarn("cartera-period-recon", reconPeriodResult.reason);
+      newErrors.carteraPeriodRecon = "No se pudo cargar la actividad del período.";
+      setPeriodReportCurrencies([]);
+    }
 
-      const treasuryJson = (await treasuryRes.json().catch(() => null)) as {
+    // ── Tesorería — pagos programados ───────────────────────────────────────
+    if (treasuryResult.status === "fulfilled") {
+      const treasuryJson = (await treasuryResult.value.json().catch(() => null)) as {
         ok?: boolean;
         data?: { summary?: TreasuryOutflowSummary[] };
       } | null;
-      if (treasuryRes.ok && treasuryJson?.ok && treasuryJson.data?.summary) {
+      if (treasuryResult.value.ok && treasuryJson?.ok && treasuryJson.data?.summary) {
         setTreasuryOutflowSummaries(treasuryJson.data.summary);
       } else {
         setTreasuryOutflowSummaries([]);
       }
+    } else {
+      devWarn("treasury-scheduled-payments", treasuryResult.reason);
+      newErrors.treasury = "No se pudo cargar los pagos programados.";
+      setTreasuryOutflowSummaries([]);
+    }
 
-      const cashJson = (await cashRes.json().catch(() => null)) as {
+    // ── Tesorería — posición de caja ────────────────────────────────────────
+    if (cashResult.status === "fulfilled") {
+      const cashJson = (await cashResult.value.json().catch(() => null)) as {
         ok?: boolean;
         data?: { positions?: CashPositionByCurrency[] };
       } | null;
-      if (cashRes.ok && cashJson?.ok && cashJson.data?.positions) {
+      if (cashResult.value.ok && cashJson?.ok && cashJson.data?.positions) {
         setTreasuryCashPositions(cashJson.data.positions);
       } else {
         setTreasuryCashPositions([]);
       }
+    } else {
+      devWarn("treasury-cash-position", cashResult.reason);
+      newErrors.cashPosition = "No se pudo cargar la posición de caja.";
+      setTreasuryCashPositions([]);
+    }
 
-      const manualJson = (await manualRes.json().catch(() => null)) as {
+    // ── Movimientos manuales ────────────────────────────────────────────────
+    if (manualResult.status === "fulfilled") {
+      const manualJson = (await manualResult.value.json().catch(() => null)) as {
         ok?: boolean;
         data?: { items?: ManualCashMovement[] };
       } | null;
-      if (manualRes.ok && manualJson?.ok && manualJson.data?.items) {
+      if (manualResult.value.ok && manualJson?.ok && manualJson.data?.items) {
         setManualCashMovements(manualJson.data.items);
       } else {
         setManualCashMovements([]);
       }
-    } catch {
-      setError("No se pudo cargar el resumen del negocio. Intentá de nuevo.");
-    } finally {
-      setLoading(false);
+    } else {
+      devWarn("treasury-manual-movements", manualResult.reason);
+      newErrors.manualMovements = "No se pudo cargar los movimientos manuales.";
+      setManualCashMovements([]);
     }
+
+    setSectionErrors(newErrors);
+
+    // Only set global error if the primary data source (hub) failed —
+    // secondary section failures are communicated via sectionErrors.
+    if (newErrors.hub) {
+      setError("No se pudo cargar el resumen del negocio. Intentá de nuevo.");
+    }
+
+    setLoading(false);
   }, [confirmedPeriod]);
 
   useEffect(() => {
@@ -211,6 +275,7 @@ export default function CopilotHoyPage() {
         treasuryOutflowSummaries={treasuryOutflowSummaries}
         treasuryCashPositions={treasuryCashPositions}
         error={error}
+        sectionErrors={sectionErrors}
         onRefresh={load}
       />
     </div>

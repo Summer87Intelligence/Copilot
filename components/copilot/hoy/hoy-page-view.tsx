@@ -40,6 +40,15 @@ import { HoyProjection30dSection } from "./hoy-projection-30d-section";
 import { HOY_PAGE_SHELL } from "./hoy-layout";
 import { HoyQuickInsights } from "./hoy-quick-insights";
 
+export type HoySectionErrors = {
+  hub?: string;
+  carteraCurrentRecon?: string;
+  carteraPeriodRecon?: string;
+  treasury?: string;
+  cashPosition?: string;
+  manualMovements?: string;
+};
+
 type HoyPageViewProps = {
   loading: boolean;
   today: string;
@@ -63,6 +72,7 @@ type HoyPageViewProps = {
   treasuryOutflowSummaries?: TreasuryOutflowSummary[];
   treasuryCashPositions?: CashPositionByCurrency[];
   error: string | null;
+  sectionErrors?: HoySectionErrors;
   onRefresh: () => void;
 };
 
@@ -90,6 +100,42 @@ function LoadingSkeleton() {
   );
 }
 
+function SectionErrorStrip({
+  sectionErrors,
+  onRefresh,
+}: {
+  sectionErrors: HoySectionErrors;
+  onRefresh: () => void;
+}) {
+  const failed = [
+    sectionErrors.carteraCurrentRecon,
+    sectionErrors.carteraPeriodRecon,
+    sectionErrors.treasury,
+    sectionErrors.cashPosition,
+    sectionErrors.manualMovements,
+  ].filter(Boolean);
+
+  if (failed.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-2.5 text-xs text-amber-900">
+      <span className="flex-1">
+        {failed.length === 1
+          ? failed[0]
+          : `${failed.length} secciones no se pudieron cargar: ${failed.map((m) => m!.replace(/^No se pudo cargar /, "").replace(/\.$/, "")).join(", ")}.`}
+      </span>
+      <button
+        type="button"
+        onClick={onRefresh}
+        className="flex shrink-0 items-center gap-1 rounded-lg border border-amber-200 bg-white/70 px-2.5 py-1 font-medium text-amber-700 hover:bg-white"
+      >
+        <RefreshCw className="h-3 w-3" aria-hidden />
+        Reintentar
+      </button>
+    </div>
+  );
+}
+
 export function HoyPageView({
   loading,
   today,
@@ -113,6 +159,7 @@ export function HoyPageView({
   treasuryOutflowSummaries,
   treasuryCashPositions,
   error,
+  sectionErrors,
   onRefresh,
 }: HoyPageViewProps) {
   const [drawer, setDrawer] = useState<DrawerState>({ kind: "closed" });
@@ -221,6 +268,10 @@ export function HoyPageView({
           onCardClick={setCockpitCard}
           activeCard={cockpitCard}
         />
+
+        {sectionErrors && (
+          <SectionErrorStrip sectionErrors={sectionErrors} onRefresh={onRefresh} />
+        )}
 
         <HoyQuickInsights insights={cockpit.insights} />
 
