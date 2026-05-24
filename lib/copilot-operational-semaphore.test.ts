@@ -121,10 +121,11 @@ describe("highCount no se infla cuando solo hay attentionClients", () => {
     expect(r.highCount).toBe(1);
   });
 
-  it("attentionClients aparece en highItems como texto, no como alerta numérica", () => {
+  it("attentionClients aparece en operativeItems como señal operativa, no en highItems", () => {
     const pulse = makePulse({ attentionClients: 2 });
     const r = deriveOperationalSemaphore({ alerts: NO_ALERTS, pulse });
-    expect(r.highItems.some((i) => i.includes("2"))).toBe(true);
+    expect(r.operativeItems.some((i) => i.includes("2"))).toBe(true);
+    expect(r.highItems).toHaveLength(0);
     expect(r.highCount).toBe(0);
   });
 });
@@ -196,11 +197,12 @@ describe("cashDeficit → nivel critical", () => {
 // ─── nivel attention por dataPending ─────────────────────────────────────────
 
 describe("dataPending → nivel attention", () => {
-  it("dataWarning string → attention", () => {
+  it("dataWarning string → attention con señal en operativeItems", () => {
     const pulse = makePulse({ dataWarning: "Datos parciales" });
     const r = deriveOperationalSemaphore({ alerts: NO_ALERTS, pulse });
     expect(r.level).toBe("attention");
-    expect(r.mediumItems).toContain("Datos secundarios pendientes de actualización");
+    expect(r.operativeItems).toContain("Datos secundarios pendientes de actualización");
+    expect(r.mediumItems).not.toContain("Datos secundarios pendientes de actualización");
   });
 
   it("dataWarning null → ok", () => {

@@ -22,9 +22,14 @@ export type OperationalSemaphoreView = {
   mediumCount: number;
   counterLine: string;
   primaryReason: string;
+  /** Titles of real critical alerts only. */
   criticalItems: string[];
+  /** Titles of real high-priority alerts only. */
   highItems: string[];
+  /** Titles of real medium-priority alerts only. */
   mediumItems: string[];
+  /** Operational/business signals that are not formal alerts (clients with arrears, upcoming payments, etc.). */
+  operativeItems: string[];
   ctaHref: string;
   ctaLabel: string;
 };
@@ -75,22 +80,25 @@ export function deriveOperationalSemaphore(input: {
     criticalItems.push("Caja después de pagos en negativo");
   }
 
+  // Real alert items — no business signals mixed in.
   const highItems: string[] = highAlerts.map((a) => a.title);
+  const mediumItems: string[] = mediumAlerts.map((a) => a.title);
+
+  // Business/operative signals — separate from formal alerts.
+  const operativeItems: string[] = [];
   if (attentionClients > 0) {
-    highItems.push(
+    operativeItems.push(
       `${attentionClients} ${attentionClients === 1 ? "cliente" : "clientes"} con atraso o señales de demora`
     );
   }
-
-  const mediumItems: string[] = mediumAlerts.map((a) => a.title);
   if (overdue30 && attentionClients === 0) {
-    mediumItems.push("Saldo vencido mayor a 30 días");
+    operativeItems.push("Saldo vencido mayor a 30 días");
   }
   if (upcomingPayments) {
-    mediumItems.push("Pagos programados en los próximos 30 días");
+    operativeItems.push("Pagos programados en los próximos 30 días");
   }
   if (dataPending) {
-    mediumItems.push("Datos secundarios pendientes de actualización");
+    operativeItems.push("Datos secundarios pendientes de actualización");
   }
 
   let level: OperationalSemaphoreLevel = "ok";
@@ -156,10 +164,25 @@ export function deriveOperationalSemaphore(input: {
     primaryReason = "No hay alertas críticas ni altas. Podés arrancar tranquilo.";
   }
 
-  const ctaHref =
-    level === "ok" ? "/copilot/hoy" : "/copilot/alertas?source=operational";
-
-  const ctaLabel = level === "ok" ? "Ver Hoy" : "Ver alertas";
+  // CTA points to the most relevant destination given the primary cause.
+  let ctaHref: string;
+  let ctaLabel: string;
+  if (level === "ok") {
+    ctaHref = "/copilot/hoy";
+    ctaLabel = "Ver Hoy";
+  } else if (criticalAlerts.length > 0 || highAlerts.length > 0 || mediumAlerts.length > 0) {
+    ctaHref = "/copilot/alertas?source=operational";
+    ctaLabel = "Ver alertas";
+  } else if (attentionClients > 0) {
+    ctaHref = "/copilot/clientes";
+    ctaLabel = "Ver cartera de clientes";
+  } else if (cashDeficit || upcomingPayments) {
+    ctaHref = "/copilot/tesoreria";
+    ctaLabel = "Ver tesorería";
+  } else {
+    ctaHref = "/copilot/operacional";
+    ctaLabel = "Ver Operacional";
+  }
 
   return {
     level,
@@ -172,6 +195,7 @@ export function deriveOperationalSemaphore(input: {
     criticalItems,
     highItems,
     mediumItems,
+    operativeItems,
     ctaHref,
     ctaLabel,
   };

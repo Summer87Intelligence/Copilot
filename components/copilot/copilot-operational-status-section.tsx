@@ -90,18 +90,21 @@ export function CopilotOperationalStatusSection({
           <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
             {semaphore.primaryReason}
           </p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <SeverityList
               label="Críticas"
               items={semaphore.criticalItems}
               empty="Ninguna"
             />
-            <SeverityList label="Altas" items={semaphore.highItems} empty="Ninguna" />
+            <SeverityList label="Alertas altas" items={semaphore.highItems} empty="Ninguna" />
             <SeverityList
-              label="Medias"
+              label="Alertas medias"
               items={semaphore.mediumItems}
               empty="Ninguna"
             />
+            {semaphore.operativeItems.length > 0 ? (
+              <SeverityList label="Señales operativas" items={semaphore.operativeItems} empty="" />
+            ) : null}
           </div>
           <p className="mt-4 text-xs text-[var(--copilot-ink-muted)]">
             {semaphore.counterLine}

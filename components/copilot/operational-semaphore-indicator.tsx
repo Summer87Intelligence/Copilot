@@ -147,28 +147,44 @@ export function OperationalSemaphoreIndicator() {
           </p>
 
           <div className="mt-3 space-y-2.5 border-t border-[var(--copilot-border)]/70 pt-2.5">
-            <SeverityList
-              label="Críticas"
-              items={semaphore.criticalItems}
-              empty="Ninguna"
-            />
-            <SeverityList label="Altas" items={semaphore.highItems} empty="Ninguna" />
-            {semaphore.mediumCount > 0 || semaphore.mediumItems.length > 0 ? (
-              <SeverityList
-                label="Medias"
-                items={semaphore.mediumItems}
-                empty="Ninguna"
-              />
+            {semaphore.criticalItems.length > 0 ? (
+              <SeverityList label="Críticas" items={semaphore.criticalItems} empty="Ninguna" />
+            ) : null}
+            {semaphore.highItems.length > 0 ? (
+              <SeverityList label="Alertas altas" items={semaphore.highItems} empty="Ninguna" />
+            ) : null}
+            {semaphore.mediumItems.length > 0 ? (
+              <SeverityList label="Alertas medias" items={semaphore.mediumItems} empty="Ninguna" />
+            ) : null}
+            {semaphore.operativeItems.length > 0 ? (
+              <SeverityList label="Señales operativas" items={semaphore.operativeItems} empty="" />
+            ) : null}
+            {semaphore.criticalItems.length === 0 &&
+             semaphore.highItems.length === 0 &&
+             semaphore.mediumItems.length === 0 &&
+             semaphore.operativeItems.length === 0 ? (
+              <p className="text-xs text-[var(--copilot-ink-muted)]">Sin señales activas.</p>
             ) : null}
           </div>
 
-          <Link
-            href={semaphore.ctaHref}
-            onClick={close}
-            className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-[var(--copilot-accent)] px-3 py-2 text-xs font-semibold text-white hover:opacity-95"
-          >
-            {semaphore.ctaLabel}
-          </Link>
+          <div className="mt-3 flex flex-col gap-2">
+            <Link
+              href={semaphore.ctaHref}
+              onClick={close}
+              className="inline-flex w-full items-center justify-center rounded-lg bg-[var(--copilot-accent)] px-3 py-2 text-xs font-semibold text-white hover:opacity-95"
+            >
+              {semaphore.ctaLabel}
+            </Link>
+            {semaphore.level !== "ok" ? (
+              <Link
+                href="/copilot/operacional"
+                onClick={close}
+                className="inline-flex w-full items-center justify-center rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-[rgba(44,40,37,0.04)]"
+              >
+                Ver Operacional
+              </Link>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </div>

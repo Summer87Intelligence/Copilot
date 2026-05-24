@@ -4,6 +4,7 @@ import { CopilotCard, CopilotGhostLink } from "@/components/copilot/copilot-ui";
 import { OicHealthPanel } from "@/components/copilot/operacional/oic-health-panel";
 import { OicQuickStats } from "@/components/copilot/operacional/oic-quick-stats";
 import { OicSkeletonCard } from "@/components/copilot/operacional/oic-skeleton-card";
+import { CopilotOperationalStatusSection } from "@/components/copilot/copilot-operational-status-section";
 
 export const dynamic = "force-dynamic";
 
@@ -13,9 +14,12 @@ export default function OperacionalPage() {
       <CopilotPageHeader
         eyebrow="Summer87 Copilot"
         title="Centro Operacional"
-        description="Salud del sistema, reconciliación financiera y actividad de pipelines en tiempo real."
+        description="Estado de negocio, reconciliación financiera y actividad de sincronización."
       />
       <div className="space-y-5 px-6 py-6">
+        {/* Business status — same semaphore as the header indicator, expanded */}
+        <CopilotOperationalStatusSection />
+
         <Suspense fallback={<div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[0,1,2,3].map(i=><OicSkeletonCard key={i} rows={2}/>)}</div>}>
           <OicQuickStats />
         </Suspense>
@@ -28,7 +32,7 @@ export default function OperacionalPage() {
             <div>
               <p className="text-sm font-semibold text-[var(--copilot-ink)]">Pipelines</p>
               <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-                Estado de sincronización Zeta en tiempo real
+                Sincronización de datos en tiempo real
               </p>
             </div>
             <CopilotGhostLink href="/copilot/operacional/pipelines" className="shrink-0 text-xs font-semibold">
