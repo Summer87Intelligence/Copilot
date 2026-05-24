@@ -105,9 +105,6 @@ export function CopilotOperationalStatusSection({
           </div>
           <p className="mt-4 text-xs text-[var(--copilot-ink-muted)]">
             {semaphore.counterLine}
-            {semaphore.mediumCount > 0
-              ? ` · ${semaphore.mediumCount} media${semaphore.mediumCount === 1 ? "" : "s"}`
-              : ""}
           </p>
         </>
       )}

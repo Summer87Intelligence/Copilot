@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildTreasuryDueBody,
+  computeClientOverdueBucket,
   computeTreasuryDueMilestone,
   type DueMilestone,
 } from "@/lib/copilot-notifications/notification-events";
@@ -104,5 +105,57 @@ describe("hitos generan dedup_keys distintas entre sí", () => {
     const dueKey = `treasury_payment_due:${id}:${date}:today`;
     const overdueKey = `treasury_payment_overdue:${id}:${date}`;
     expect(dueKey).not.toBe(overdueKey);
+  });
+});
+
+// ── computeClientOverdueBucket ────────────────────────────────────────────────
+
+describe("computeClientOverdueBucket", () => {
+  it("31 días → 30d (warning)", () => expect(computeClientOverdueBucket(31)).toBe("30d"));
+  it("59 días → 30d (warning, borde inferior de 60d)", () =>
+    expect(computeClientOverdueBucket(59)).toBe("30d"));
+  it("60 días → 60d (critical)", () => expect(computeClientOverdueBucket(60)).toBe("60d"));
+  it("65 días → 60d (critical)", () => expect(computeClientOverdueBucket(65)).toBe("60d"));
+  it("89 días → 60d (borde inferior de 90d)", () =>
+    expect(computeClientOverdueBucket(89)).toBe("60d"));
+  it("90 días → 90d (critical)", () => expect(computeClientOverdueBucket(90)).toBe("90d"));
+  it("95 días → 90d (critical)", () => expect(computeClientOverdueBucket(95)).toBe("90d"));
+  it("1 día → 7d (sin bucket de atención)", () => expect(computeClientOverdueBucket(1)).toBe("7d"));
+  it("0 días → 7d", () => expect(computeClientOverdueBucket(0)).toBe("7d"));
+});
+
+describe("computeClientOverdueBucket — severity derivada", () => {
+  function severity(days: number): "warning" | "critical" {
+    return days >= 60 ? "critical" : "warning";
+  }
+
+  it("31 días → warning", () => expect(severity(31)).toBe("warning"));
+  it("59 días → warning", () => expect(severity(59)).toBe("warning"));
+  it("60 días → critical", () => expect(severity(60)).toBe("critical"));
+  it("65 días → critical", () => expect(severity(65)).toBe("critical"));
+  it("95 días → critical", () => expect(severity(95)).toBe("critical"));
+});
+
+describe("dedup_key por bucket no colisiona entre clientes distintos", () => {
+  const date = "2026-05";
+  const c1 = "client-uuid-1";
+  const c2 = "client-uuid-2";
+
+  it("mismo cliente, distinta moneda → dedup distinto", () => {
+    const k1 = `client_overdue:${c1}:UYU:30d:${date}`;
+    const k2 = `client_overdue:${c1}:USD:30d:${date}`;
+    expect(k1).not.toBe(k2);
+  });
+
+  it("mismo cliente, distinto bucket → dedup distinto", () => {
+    const k1 = `client_overdue:${c1}:UYU:30d:${date}`;
+    const k2 = `client_overdue:${c1}:UYU:60d:${date}`;
+    expect(k1).not.toBe(k2);
+  });
+
+  it("clientes distintos, mismo bucket → dedup distinto", () => {
+    const k1 = `client_overdue:${c1}:UYU:30d:${date}`;
+    const k2 = `client_overdue:${c2}:UYU:30d:${date}`;
+    expect(k1).not.toBe(k2);
   });
 });

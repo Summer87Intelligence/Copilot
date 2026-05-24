@@ -214,9 +214,10 @@ async function generateTreasuryOverdueNotifications(
 async function generateClientOverdueNotifications(
   admin: AdminClient,
   tenantCompanyId: string,
+  now: Date,
   acc: GenerateResult
 ) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayYmd(now);
 
   const { data: companies, error: cErr } = await admin
     .from("proto_companies")
@@ -236,7 +237,11 @@ async function generateClientOverdueNotifications(
 
   if (iErr || !invoices) return;
 
-  type OverdueAgg = { uyu: number; usd: number; other: number };
+  // Track both aggregated balance and the maximum daysOverdue per company+currency.
+  type OverdueAgg = {
+    uyu: number; usd: number; other: number;
+    maxDaysUyu: number; maxDaysUsd: number; maxDaysOther: number;
+  };
   const overdueByCompany = new Map<string, OverdueAgg>();
 
   for (const inv of invoices as Record<string, unknown>[]) {
@@ -246,13 +251,25 @@ async function generateClientOverdueNotifications(
     const balance = Number(inv.balance_amount ?? 0);
     if (balance <= 0) continue;
     const currency = String(inv.currency_code ?? "UYU").toUpperCase();
+    const days = Math.max(0, daysBetween(dueDate, today));
+
     if (!overdueByCompany.has(companyId)) {
-      overdueByCompany.set(companyId, { uyu: 0, usd: 0, other: 0 });
+      overdueByCompany.set(companyId, {
+        uyu: 0, usd: 0, other: 0,
+        maxDaysUyu: 0, maxDaysUsd: 0, maxDaysOther: 0,
+      });
     }
     const agg = overdueByCompany.get(companyId)!;
-    if (currency === "USD") agg.usd += balance;
-    else if (currency === "UYU") agg.uyu += balance;
-    else agg.other += balance;
+    if (currency === "USD") {
+      agg.usd += balance;
+      if (days > agg.maxDaysUsd) agg.maxDaysUsd = days;
+    } else if (currency === "UYU") {
+      agg.uyu += balance;
+      if (days > agg.maxDaysUyu) agg.maxDaysUyu = days;
+    } else {
+      agg.other += balance;
+      if (days > agg.maxDaysOther) agg.maxDaysOther = days;
+    }
   }
 
   const nameMap = new Map<string, string>();
@@ -266,19 +283,19 @@ async function generateClientOverdueNotifications(
     if (agg.uyu > 0) {
       tally(acc, "client_overdue", await notifyClientOverdue({
         tenantCompanyId, clientId: companyId, clientName: name,
-        amount: agg.uyu, currency: "UYU", daysOverdue: 30,
+        amount: agg.uyu, currency: "UYU", daysOverdue: agg.maxDaysUyu,
       }));
     }
     if (agg.usd > 0) {
       tally(acc, "client_overdue", await notifyClientOverdue({
         tenantCompanyId, clientId: companyId, clientName: name,
-        amount: agg.usd, currency: "USD", daysOverdue: 30,
+        amount: agg.usd, currency: "USD", daysOverdue: agg.maxDaysUsd,
       }));
     }
     if (agg.other > 0 && agg.uyu === 0 && agg.usd === 0) {
       tally(acc, "client_overdue", await notifyClientOverdue({
         tenantCompanyId, clientId: companyId, clientName: name,
-        amount: agg.other, currency: "UYU", daysOverdue: 30,
+        amount: agg.other, currency: "UYU", daysOverdue: agg.maxDaysOther,
       }));
     }
   }
@@ -340,6 +357,15 @@ async function generateRecentCollectionNotifications(
   }
 }
 
+// ─── Not yet implemented generators ──────────────────────────────────────────
+// TODO: notifyNewDebtor — requires a reliable historical snapshot to detect
+//   when a company transitions from "no overdue" to "has overdue" for the first
+//   time in a period. Cannot be derived safely from a single-pass query.
+//
+// TODO: notifySyncChangesDetected — requires the sync job to emit a structured
+//   summary (added/updated/removed counts) and pass it to this generator.
+//   Until the sync job exposes that data, this type is intentionally unused.
+
 // ─── Public entry point ───────────────────────────────────────────────────────
 
 export async function generateOperationalNotificationsForWorkspace({
@@ -364,7 +390,7 @@ export async function generateOperationalNotificationsForWorkspace({
   await Promise.allSettled([
     generateTreasuryDueNotifications(admin, workspaceCompanyId, now, inactiveTemplateIds, acc),
     generateTreasuryOverdueNotifications(admin, workspaceCompanyId, now, inactiveTemplateIds, acc),
-    generateClientOverdueNotifications(admin, workspaceCompanyId, acc),
+    generateClientOverdueNotifications(admin, workspaceCompanyId, now, acc),
     generateRecentCollectionNotifications(admin, workspaceCompanyId, now, acc),
   ]);
 

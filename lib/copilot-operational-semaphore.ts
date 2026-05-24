@@ -29,9 +29,9 @@ export type OperationalSemaphoreView = {
   ctaLabel: string;
 };
 
-function sumTotals(t: CarteraCurrencyTotals | undefined): number {
-  if (!t) return 0;
-  return (t.UYU ?? 0) + (t.USD ?? 0);
+function hasPositiveAmount(t: CarteraCurrencyTotals | undefined): boolean {
+  if (!t) return false;
+  return (t.UYU ?? 0) > 0 || (t.USD ?? 0) > 0;
 }
 
 function hasCashDeficitAfterPayments(pulse: TodayBusinessPulse): boolean {
@@ -46,10 +46,10 @@ function hasRelevantUpcomingPayments(pulse: TodayBusinessPulse): boolean {
   );
 }
 
-function hasOverdue30(pulse: TodayBusinessPulse, overdueCritical?: CarteraCurrencyTotals): number {
-  const fromBlocks = pulse.currentStateBlocks.reduce((s, b) => s + (b.overdue30 ?? 0), 0);
-  if (fromBlocks > 0) return fromBlocks;
-  return sumTotals(overdueCritical);
+function hasOverdue30(pulse: TodayBusinessPulse, overdueCritical?: CarteraCurrencyTotals): boolean {
+  const fromBlocks = pulse.currentStateBlocks.some((b) => (b.overdue30 ?? 0) > 0);
+  if (fromBlocks) return true;
+  return hasPositiveAmount(overdueCritical);
 }
 
 export function deriveOperationalSemaphore(input: {
@@ -66,7 +66,7 @@ export function deriveOperationalSemaphore(input: {
 
   const cashDeficit = pulse ? hasCashDeficitAfterPayments(pulse) : false;
   const attentionClients = pulse?.clientCounts.attentionClients ?? 0;
-  const overdue30 = pulse ? hasOverdue30(pulse, input.carteraAgingOverdue) : 0;
+  const overdue30 = pulse ? hasOverdue30(pulse, input.carteraAgingOverdue) : false;
   const upcomingPayments = pulse ? hasRelevantUpcomingPayments(pulse) : false;
   const dataPending = Boolean(pulse?.dataWarning);
 
@@ -83,7 +83,7 @@ export function deriveOperationalSemaphore(input: {
   }
 
   const mediumItems: string[] = mediumAlerts.map((a) => a.title);
-  if (overdue30 > 0 && attentionClients === 0) {
+  if (overdue30 && attentionClients === 0) {
     mediumItems.push("Saldo vencido mayor a 30 días");
   }
   if (upcomingPayments) {
@@ -98,7 +98,7 @@ export function deriveOperationalSemaphore(input: {
     level = "critical";
   } else if (
     attentionClients > 0 ||
-    overdue30 > 0 ||
+    overdue30 ||
     upcomingPayments ||
     dataPending ||
     highAlerts.length > 0 ||
@@ -108,17 +108,27 @@ export function deriveOperationalSemaphore(input: {
   }
 
   const criticalCount = criticalAlerts.length;
-  let highCount = highAlerts.length;
-  if (attentionClients > 0 && highCount === 0) {
-    highCount = 1;
-  }
-
+  const highCount = highAlerts.length;
   const mediumCount = mediumAlerts.length;
+
+  // attentionClients ya aparece como item descriptivo en highItems.
+  // No se infla el contador numérico.
+  const attentionSignals =
+    (attentionClients > 0 ? 1 : 0) +
+    (overdue30 && attentionClients === 0 ? 1 : 0) +
+    (upcomingPayments ? 1 : 0) +
+    (dataPending ? 1 : 0);
+  const totalSignals = highCount + mediumCount + attentionSignals;
 
   const statusLabel =
     level === "critical" ? "Crítico" : level === "attention" ? "Atención" : "OK";
 
-  const counterLine = `${criticalCount} crítica${criticalCount === 1 ? "" : "s"} · ${highCount} alta${highCount === 1 ? "" : "s"}`;
+  const counterLine =
+    level === "ok"
+      ? "Sin alertas activas"
+      : criticalCount > 0
+        ? `${criticalCount} crítica${criticalCount === 1 ? "" : "s"} · ${highCount} alta${highCount === 1 ? "" : "s"} · ${mediumCount} media${mediumCount === 1 ? "" : "s"}`
+        : `${totalSignals} señal${totalSignals === 1 ? "" : "es"} de atención`;
 
   let primaryReason: string;
   if (level === "critical") {

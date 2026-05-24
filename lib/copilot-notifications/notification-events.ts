@@ -93,12 +93,18 @@ type ClientOverdueOpts = {
   daysOverdue: number;
 };
 
+export type ClientOverdueBucket = "7d" | "30d" | "60d" | "90d";
+
+/** Maps daysOverdue to the dedup bucket. Exported for testing. */
+export function computeClientOverdueBucket(daysOverdue: number): ClientOverdueBucket {
+  if (daysOverdue >= 90) return "90d";
+  if (daysOverdue >= 60) return "60d";
+  if (daysOverdue >= 30) return "30d";
+  return "7d";
+}
+
 export async function notifyClientOverdue(opts: ClientOverdueOpts) {
-  const bucket =
-    opts.daysOverdue >= 90 ? "90d"
-    : opts.daysOverdue >= 60 ? "60d"
-    : opts.daysOverdue >= 30 ? "30d"
-    : "7d";
+  const bucket = computeClientOverdueBucket(opts.daysOverdue);
   // Month bucket prevents re-notifying daily while allowing a fresh alert each month.
   const yyyyMm = new Date().toISOString().slice(0, 7);
   const amountStr = opts.amount.toLocaleString("es-AR", { maximumFractionDigits: 0 });
