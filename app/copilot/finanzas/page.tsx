@@ -897,6 +897,14 @@ function CopilotFinanzasPageContent() {
   const guidedLinkClass =
     "text-sm font-medium text-[var(--copilot-ink-muted)] underline decoration-[var(--copilot-border)] underline-offset-4 transition hover:text-[var(--copilot-ink)]";
 
+  const riskBand = snapshot ? snapshotRiskBand(snapshot) : null;
+  const riskBandConfig = {
+    low: { label: "Riesgo bajo", cls: "border-emerald-200/70 bg-emerald-50/40 text-emerald-900" },
+    medium: { label: "Riesgo moderado", cls: "border-amber-200/70 bg-amber-50/40 text-amber-900" },
+    high: { label: "Riesgo alto", cls: "border-rose-200/70 bg-rose-50/40 text-rose-900" },
+    critical: { label: "Riesgo crítico", cls: "border-rose-300/80 bg-rose-50/60 text-rose-950" },
+  } as const;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
@@ -905,7 +913,7 @@ function CopilotFinanzasPageContent() {
         description={
           coberturaGuided
             ? "Modo cobertura: foco en caja, ingresos esperados y egresos modelados."
-            : "Caja, ingresos y gastos en una lectura clara — sin overload de términos contables."
+            : "Panel ejecutivo — posición de caja, cobranza y riesgo en una sola vista."
         }
       />
 
@@ -1271,36 +1279,222 @@ function CopilotFinanzasPageContent() {
 
         {!coberturaGuided ? (
           <>
+            {/* ── Hero ejecutivo ─────────────────────────────────────────────── */}
             <div id="copilot-finanzas-decision-hero" className="scroll-mt-28">
               <CopilotCard className="border-[rgba(31,107,74,0.22)] bg-[rgba(31,107,74,0.06)] ring-1 ring-[rgba(31,107,74,0.1)]">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-accent)]">
-                  Situación principal
-                </p>
-                <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--copilot-ink)] sm:text-2xl">
-                  {finanzasHero.title}
-                </h2>
-                <p className="mt-3 text-sm font-medium leading-relaxed text-[var(--copilot-ink)]">
-                  {finanzasHero.impact}
-                </p>
-                <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
-                  {finanzasHero.urgency}
-                </p>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-accent)]">
+                      Situación principal
+                    </p>
+                    <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--copilot-ink)] sm:text-2xl">
+                      {finanzasHero.title}
+                    </h2>
+                    <p className="mt-3 text-sm font-medium leading-relaxed text-[var(--copilot-ink)]">
+                      {finanzasHero.impact}
+                    </p>
+                    <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
+                      {finanzasHero.urgency}
+                    </p>
+                  </div>
+                  {riskBand && riskBandConfig[riskBand] ? (
+                    <span className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-semibold ${riskBandConfig[riskBand].cls}`}>
+                      {riskBandConfig[riskBand].label}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <CopilotPrimaryLink
+                    href={finanzasMainCta.href}
+                    className="shadow-sm"
+                  >
+                    {finanzasMainCta.label}
+                  </CopilotPrimaryLink>
+                  {predictiveHint && predictiveHint.total > 0 ? (
+                    <CopilotGhostLink
+                      href="/copilot/alertas"
+                      className="text-sm font-medium"
+                    >
+                      {predictiveHint.total} alerta{predictiveHint.total === 1 ? "" : "s"}
+                      {predictiveHint.critical > 0 ? ` · ${predictiveHint.critical} crítica${predictiveHint.critical === 1 ? "" : "s"}` : ""} →
+                    </CopilotGhostLink>
+                  ) : null}
+                </div>
               </CopilotCard>
             </div>
 
-            <div id="copilot-finanzas-main-cta" className="scroll-mt-28 pt-2">
-              <CopilotPrimaryLink
-                href={finanzasMainCta.href}
-                className="w-full justify-center shadow-sm sm:inline-flex sm:w-auto"
-              >
-                {finanzasMainCta.label}
-              </CopilotPrimaryLink>
+            {/* ── KPIs de liquidez ───────────────────────────────────────────── */}
+            <div id="copilot-finanzas-panorama" className="scroll-mt-28">
+              {snapshotLoading ? (
+                <div className="flex items-center gap-2 py-4 text-sm text-[var(--copilot-ink-muted)]">
+                  <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                  Calculando posición financiera…
+                </div>
+              ) : snapshotError ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
+                  {snapshotError}
+                </div>
+              ) : snapshot ? (
+                <div className="space-y-4">
+                  {/* KPI grid */}
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                        Caja disponible
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--copilot-ink)]">
+                        {formatMoneyCompact(snapshotCashNet(snapshot))}
+                      </p>
+                      <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
+                        Recibos − pagos realizados
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/30 p-4 shadow-sm">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-900/70">
+                        Ingresos esperados
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold tabular-nums text-emerald-800">
+                        {formatMoneyCompact(snapshotReceivablesRiskWeighted(snapshot))}
+                      </p>
+                      <p className="mt-1 text-[11px] text-emerald-900/60">
+                        Facturas abiertas × prob. de cobro
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-rose-200/60 bg-rose-50/30 p-4 shadow-sm">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-rose-900/70">
+                        Egresos esperados
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold tabular-nums text-rose-800">
+                        {formatMoneyCompact(snapshotExpectedOutflowsTotal(snapshot))}
+                      </p>
+                      <p className="mt-1 text-[11px] text-rose-900/60">
+                        Pagos futuros + fiscal pendiente (30 d)
+                      </p>
+                    </div>
+                    <div className={`rounded-xl border p-4 shadow-sm ${
+                      snapshotLiquidityBalance(snapshot) < 0
+                        ? "border-rose-200/70 bg-rose-50/30"
+                        : "border-[var(--copilot-border)] bg-white/85"
+                    }`}>
+                      <p className={`text-[11px] font-semibold uppercase tracking-wide ${
+                        snapshotLiquidityBalance(snapshot) < 0
+                          ? "text-rose-900/70"
+                          : "text-[var(--copilot-ink-muted)]"
+                      }`}>
+                        Balance proyectado
+                      </p>
+                      <p className={`mt-2 text-2xl font-semibold tabular-nums ${
+                        snapshotLiquidityBalance(snapshot) < 0
+                          ? "text-rose-800"
+                          : "text-[var(--copilot-ink)]"
+                      }`}>
+                        {formatMoneyCompact(snapshotLiquidityBalance(snapshot))}
+                      </p>
+                      <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
+                        Caja + ingresos − egresos
+                      </p>
+                    </div>
+                    <div className={`rounded-xl border p-4 shadow-sm sm:col-span-1 lg:col-span-2 ${
+                      snapshotCoverageRatio(snapshot) < 1 && Number.isFinite(snapshotCoverageRatio(snapshot))
+                        ? "border-amber-200/70 bg-amber-50/30"
+                        : "border-[var(--copilot-border)] bg-white/85"
+                    }`}>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                        Ratio de cobertura
+                      </p>
+                      <p className={`mt-2 text-2xl font-semibold tabular-nums ${
+                        snapshotCoverageRatio(snapshot) < 1 && Number.isFinite(snapshotCoverageRatio(snapshot))
+                          ? "text-amber-800"
+                          : "text-[var(--copilot-ink)]"
+                      }`}>
+                        {formatCoverageRatio(snapshotCoverageRatio(snapshot))}
+                      </p>
+                      <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
+                        (caja + ingresos esperados) / egresos esperados · meta ≥ 1,00×
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Facturación vs cobranza — flow visual */}
+                  <div
+                    id="copilot-finanzas-cobranza"
+                    className="scroll-mt-28 rounded-xl border border-[var(--copilot-border)] bg-white/60 p-4"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                      Facturación vs cobranza
+                    </p>
+                    <div className="mt-3 space-y-3">
+                      <FlowBar
+                        label="Cobranza ponderada (ingresos esperados)"
+                        value={snapshotReceivablesRiskWeighted(snapshot)}
+                        max={flowMax}
+                        flow="in"
+                      />
+                      <FlowBar
+                        label="Salidas modeladas (egresos esperados)"
+                        value={snapshotExpectedOutflowsTotal(snapshot)}
+                        max={flowMax}
+                        flow="out"
+                      />
+                    </div>
+                    {snapshot.by_currency ? (
+                      <div className="mt-4 border-t border-[var(--copilot-border)] pt-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                          Desglose por moneda
+                        </p>
+                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                          {(["UYU", "USD"] as const).map((cur) => {
+                            const totals = snapshot.by_currency![cur];
+                            if (!totals) return null;
+                            return (
+                              <div key={cur} className="rounded-lg border border-[var(--copilot-border)] bg-white/70 p-3">
+                                <p className="text-xs font-semibold text-[var(--copilot-ink)]">{cur}</p>
+                                <dl className="mt-1.5 space-y-1 text-xs text-[var(--copilot-ink-muted)]">
+                                  {totals.invoiced !== undefined ? (
+                                    <div className="flex justify-between gap-2">
+                                      <dt>Facturado</dt>
+                                      <dd className="tabular-nums text-[var(--copilot-ink)]">
+                                        {totals.invoiced.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
+                                      </dd>
+                                    </div>
+                                  ) : null}
+                                  {totals.pending !== undefined ? (
+                                    <div className="flex justify-between gap-2">
+                                      <dt>Pendiente</dt>
+                                      <dd className="tabular-nums text-[var(--copilot-ink)]">
+                                        {totals.pending.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
+                                      </dd>
+                                    </div>
+                                  ) : null}
+                                  {totals.overdue !== undefined && totals.overdue > 0 ? (
+                                    <div className="flex justify-between gap-2">
+                                      <dt>Vencido</dt>
+                                      <dd className="tabular-nums font-semibold text-amber-900">
+                                        {totals.overdue.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
+                                      </dd>
+                                    </div>
+                                  ) : null}
+                                </dl>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : snapshot.meta.currency === "unspecified" || snapshot.meta.currency === "mixed" ? (
+                      <p className="mt-3 text-[11px] text-[var(--copilot-ink-muted)]">
+                        Montos multi-moneda (UYU + USD) — desglose por moneda pendiente.
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
             </div>
 
-            <CopilotCard className="mt-2 border-[var(--copilot-border)]">
+            {/* ── Obligaciones prioritarias — impacto en caja ────────────────── */}
+            <CopilotCard className="border-[var(--copilot-border)]">
               <CopilotSectionTitle
-                title="Lo que impacta tu caja ahora"
-                subtitle="Críticos y vencidos primero; un solo estado por obligación."
+                title="Impacto en caja"
+                subtitle="Obligaciones fiscales ordenadas por urgencia y monto comprometido."
               />
               {taxLoading ? (
                 <div className="mt-4 flex items-center gap-2 text-sm text-[var(--copilot-ink-muted)]">
@@ -1318,15 +1512,12 @@ function CopilotFinanzasPageContent() {
                   {cashImpactObligations.map((o) => {
                     const ps = getPrimaryObligationState(o, todayYmd);
                     const hint = getObligationSecondaryHint(o, ps);
-                    const activeDrawer =
-                      isTaxDrawerOpen && taxObligationId === o.id;
+                    const activeDrawer = isTaxDrawerOpen && taxObligationId === o.id;
                     return (
                       <li
                         key={o.id}
                         className={`flex flex-wrap items-end justify-between gap-3 rounded-xl border border-[var(--copilot-border)] bg-white/90 px-4 py-3 ${
-                          activeDrawer
-                            ? "ring-2 ring-[rgba(31,107,74,0.22)]"
-                            : ""
+                          activeDrawer ? "ring-2 ring-[rgba(31,107,74,0.22)]" : ""
                         }`}
                       >
                         <div className="min-w-0 flex-1 space-y-1">
@@ -1366,216 +1557,127 @@ function CopilotFinanzasPageContent() {
           </>
         ) : null}
 
-        {predictiveHint && predictiveHint.total > 0 ? (
-          coberturaGuided ? (
-            <CopilotCard className="border-sky-200/70 bg-sky-50/35">
-              <p className="text-xs font-semibold uppercase tracking-wide text-sky-950/85">
-                Señales predictivas
-              </p>
-              <p className="mt-2 text-sm font-semibold text-sky-950">
-                {predictiveHint.total} alerta{predictiveHint.total === 1 ? "" : "s"} desde
-                caja y calendario fiscal
-                {predictiveHint.critical > 0
-                  ? ` · ${predictiveHint.critical} crítica${predictiveHint.critical === 1 ? "" : "s"}`
-                  : ""}
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-sky-900/80">
-                Incluye liquidez proyectada, colchón de cobertura, vencidas sin acreditación
-                fiscal y pagos de impuestos sin obligación vinculada.
-              </p>
-              <CopilotGhostLink
-                href="/copilot/alertas"
-                className="mt-3 inline-flex text-sm font-semibold text-sky-950"
-              >
-                Abrir en Alertas →
-              </CopilotGhostLink>
-            </CopilotCard>
-          ) : (
-            <CopilotCollapsiblePanel
-              title="Señales predictivas (alertas del motor)"
-              defaultOpen={false}
+        {/* ── Señales predictivas — solo modo cobertura (normal: inlined en hero) ── */}
+        {coberturaGuided && predictiveHint && predictiveHint.total > 0 ? (
+          <CopilotCard className="border-sky-200/70 bg-sky-50/35">
+            <p className="text-xs font-semibold uppercase tracking-wide text-sky-950/85">
+              Señales predictivas
+            </p>
+            <p className="mt-2 text-sm font-semibold text-sky-950">
+              {predictiveHint.total} alerta{predictiveHint.total === 1 ? "" : "s"} desde
+              caja y calendario fiscal
+              {predictiveHint.critical > 0
+                ? ` · ${predictiveHint.critical} crítica${predictiveHint.critical === 1 ? "" : "s"}`
+                : ""}
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-sky-900/80">
+              Incluye liquidez proyectada, colchón de cobertura, vencidas sin acreditación
+              fiscal y pagos de impuestos sin obligación vinculada.
+            </p>
+            <CopilotGhostLink
+              href="/copilot/alertas"
+              className="mt-3 inline-flex text-sm font-semibold text-sky-950"
             >
-              <div className="rounded-xl border border-sky-200/70 bg-sky-50/35 p-4">
-                <p className="text-sm font-semibold text-sky-950">
-                  {predictiveHint.total} alerta{predictiveHint.total === 1 ? "" : "s"} desde
-                  caja y calendario fiscal
-                  {predictiveHint.critical > 0
-                    ? ` · ${predictiveHint.critical} crítica${predictiveHint.critical === 1 ? "" : "s"}`
-                    : ""}
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-sky-900/80">
-                  Incluye liquidez proyectada, colchón de cobertura, vencidas sin acreditación
-                  fiscal y pagos de impuestos sin obligación vinculada.
-                </p>
-                <CopilotGhostLink
-                  href="/copilot/alertas"
-                  className="mt-3 inline-flex text-sm font-semibold text-sky-950"
-                >
-                  Abrir en Alertas →
-                </CopilotGhostLink>
-              </div>
-            </CopilotCollapsiblePanel>
-          )
+              Abrir en Alertas →
+            </CopilotGhostLink>
+          </CopilotCard>
         ) : null}
 
-        <FinanzasPanoramaSection coberturaGuided={coberturaGuided}>
-          <CopilotCard className="border-[rgba(31,107,74,0.16)] bg-[rgba(31,107,74,0.03)]">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <CopilotSectionTitle
-                title="Panorama de liquidez"
-                subtitle="Misma base que Inicio y Alertas: recibos, pagos, facturas abiertas y obligaciones fiscales."
-              />
-              {snapshot && !snapshotLoading ? (
-                <CopilotSeverityBadge severity={snapshotRiskBand(snapshot)} />
-              ) : null}
-            </div>
-            <p className="mt-2 text-xs text-[var(--copilot-ink-muted)]">
-              Basado en flujo real de ingresos, egresos y obligaciones fiscales.
-            </p>
-
-            {snapshotLoading ? (
-              <div className="mt-6 flex items-center gap-2 text-sm text-[var(--copilot-ink-muted)]">
-                <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-                Calculando snapshot financiero…
+        {/* ── Panorama de liquidez — solo modo cobertura (normal: KPI grid arriba) ── */}
+        {coberturaGuided ? (
+          <FinanzasPanoramaSection coberturaGuided={coberturaGuided}>
+            <CopilotCard className="border-[rgba(31,107,74,0.16)] bg-[rgba(31,107,74,0.03)]">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <CopilotSectionTitle
+                  title="Panorama de liquidez"
+                  subtitle="Misma base que Inicio y Alertas: recibos, pagos, facturas abiertas y obligaciones fiscales."
+                />
+                {snapshot && !snapshotLoading ? (
+                  <CopilotSeverityBadge severity={snapshotRiskBand(snapshot)} />
+                ) : null}
               </div>
-            ) : null}
-
-            {snapshotError ? (
-              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
-                {snapshotError}
-              </div>
-            ) : null}
-
-            {!snapshotLoading && !snapshotError && snapshot ? (
-              <div className="mt-6 space-y-6">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                      Caja disponible
-                    </p>
-                    <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-ink)]">
-                      {formatMoneyCompact(snapshotCashNet(snapshot))}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                      Ingresos esperados
-                    </p>
-                    <p className="mt-2 text-xl font-semibold tabular-nums text-emerald-700">
-                      {formatMoneyCompact(snapshotReceivablesRiskWeighted(snapshot))}
-                    </p>
-                    <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
-                      Facturas abiertas × probabilidad de cobro
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                      Egresos esperados
-                    </p>
-                    <p className="mt-2 text-xl font-semibold tabular-nums text-red-600">
-                      {formatMoneyCompact(snapshotExpectedOutflowsTotal(snapshot))}
-                    </p>
-                    <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
-                      Pagos futuros + fiscal pendiente (30 días)
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                      Balance proyectado
-                    </p>
-                    <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-ink)]">
-                      {formatMoneyCompact(snapshotLiquidityBalance(snapshot))}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm sm:col-span-2 lg:col-span-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                      Ratio de cobertura
-                    </p>
-                    <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-ink)]">
-                      {formatCoverageRatio(snapshotCoverageRatio(snapshot))}
-                    </p>
-                    <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
-                      (caja + ingresos esperados) / egresos esperados
-                    </p>
-                  </div>
+              <p className="mt-2 text-xs text-[var(--copilot-ink-muted)]">
+                Basado en flujo real de ingresos, egresos y obligaciones fiscales.
+              </p>
+              {snapshotLoading ? (
+                <div className="mt-6 flex items-center gap-2 text-sm text-[var(--copilot-ink-muted)]">
+                  <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                  Calculando snapshot financiero…
                 </div>
-                {snapshot.by_currency ? (
-                  <div className="rounded-xl border border-[var(--copilot-border)] bg-white/60 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                      Desglose por moneda
-                    </p>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      {(["UYU", "USD"] as const).map((cur) => {
-                        const totals = snapshot.by_currency![cur];
-                        if (!totals) return null;
-                        return (
-                          <div
-                            key={cur}
-                            className="rounded-lg border border-[var(--copilot-border)] bg-white/70 p-3"
-                          >
-                            <p className="text-xs font-semibold text-[var(--copilot-ink)]">{cur}</p>
-                            <dl className="mt-2 space-y-1 text-xs text-[var(--copilot-ink-muted)]">
-                              {totals.invoiced !== undefined ? (
-                                <div className="flex justify-between gap-2">
-                                  <dt>Facturado</dt>
-                                  <dd className="tabular-nums text-[var(--copilot-ink)]">
-                                    {totals.invoiced.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
-                                  </dd>
-                                </div>
-                              ) : null}
-                              {totals.pending !== undefined ? (
-                                <div className="flex justify-between gap-2">
-                                  <dt>Pendiente</dt>
-                                  <dd className="tabular-nums text-[var(--copilot-ink)]">
-                                    {totals.pending.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
-                                  </dd>
-                                </div>
-                              ) : null}
-                              {totals.overdue !== undefined && totals.overdue > 0 ? (
-                                <div className="flex justify-between gap-2">
-                                  <dt>Vencido</dt>
-                                  <dd className="tabular-nums font-semibold text-amber-900">
-                                    {totals.overdue.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
-                                  </dd>
-                                </div>
-                              ) : null}
-                            </dl>
-                          </div>
-                        );
-                      })}
+              ) : null}
+              {snapshotError ? (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
+                  {snapshotError}
+                </div>
+              ) : null}
+              {!snapshotLoading && !snapshotError && snapshot ? (
+                <div className="mt-6 space-y-6">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Caja disponible</p>
+                      <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-ink)]">{formatMoneyCompact(snapshotCashNet(snapshot))}</p>
+                    </div>
+                    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Ingresos esperados</p>
+                      <p className="mt-2 text-xl font-semibold tabular-nums text-emerald-700">{formatMoneyCompact(snapshotReceivablesRiskWeighted(snapshot))}</p>
+                      <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">Facturas abiertas × probabilidad de cobro</p>
+                    </div>
+                    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Egresos esperados</p>
+                      <p className="mt-2 text-xl font-semibold tabular-nums text-red-600">{formatMoneyCompact(snapshotExpectedOutflowsTotal(snapshot))}</p>
+                      <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">Pagos futuros + fiscal pendiente (30 días)</p>
+                    </div>
+                    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Balance proyectado</p>
+                      <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-ink)]">{formatMoneyCompact(snapshotLiquidityBalance(snapshot))}</p>
+                    </div>
+                    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm sm:col-span-2 lg:col-span-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Ratio de cobertura</p>
+                      <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-ink)]">{formatCoverageRatio(snapshotCoverageRatio(snapshot))}</p>
+                      <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">(caja + ingresos esperados) / egresos esperados</p>
                     </div>
                   </div>
-                ) : snapshot.meta.currency === "unspecified" || snapshot.meta.currency === "mixed" ? (
-                  <p className="text-[11px] text-[var(--copilot-ink-muted)]">
-                    Montos multi-moneda (UYU + USD) — desglose por moneda pendiente.
-                  </p>
-                ) : null}
-
-                <div
-                  id="copilot-finanzas-cobranza"
-                  className="scroll-mt-28 space-y-3 rounded-xl border border-[var(--copilot-border)] bg-white/60 p-4"
-                >
-                  <p className="text-xs font-semibold text-[var(--copilot-ink)]">
-                    Cobranza esperada vs egresos esperados
-                  </p>
-                  <FlowBar
-                    label="Cobranza ponderada"
-                    value={snapshotReceivablesRiskWeighted(snapshot)}
-                    max={flowMax}
-                    flow="in"
-                  />
-                  <FlowBar
-                    label="Salidas modeladas"
-                    value={snapshotExpectedOutflowsTotal(snapshot)}
-                    max={flowMax}
-                    flow="out"
-                  />
+                  {snapshot.by_currency ? (
+                    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/60 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Desglose por moneda</p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        {(["UYU", "USD"] as const).map((cur) => {
+                          const totals = snapshot.by_currency![cur];
+                          if (!totals) return null;
+                          return (
+                            <div key={cur} className="rounded-lg border border-[var(--copilot-border)] bg-white/70 p-3">
+                              <p className="text-xs font-semibold text-[var(--copilot-ink)]">{cur}</p>
+                              <dl className="mt-2 space-y-1 text-xs text-[var(--copilot-ink-muted)]">
+                                {totals.invoiced !== undefined ? (
+                                  <div className="flex justify-between gap-2"><dt>Facturado</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{totals.invoiced.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>
+                                ) : null}
+                                {totals.pending !== undefined ? (
+                                  <div className="flex justify-between gap-2"><dt>Pendiente</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{totals.pending.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>
+                                ) : null}
+                                {totals.overdue !== undefined && totals.overdue > 0 ? (
+                                  <div className="flex justify-between gap-2"><dt>Vencido</dt><dd className="tabular-nums font-semibold text-amber-900">{totals.overdue.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>
+                                ) : null}
+                              </dl>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : snapshot.meta.currency === "unspecified" || snapshot.meta.currency === "mixed" ? (
+                    <p className="text-[11px] text-[var(--copilot-ink-muted)]">Montos multi-moneda (UYU + USD) — desglose por moneda pendiente.</p>
+                  ) : null}
+                  <div id="copilot-finanzas-cobranza" className="scroll-mt-28 space-y-3 rounded-xl border border-[var(--copilot-border)] bg-white/60 p-4">
+                    <p className="text-xs font-semibold text-[var(--copilot-ink)]">Cobranza esperada vs egresos esperados</p>
+                    <FlowBar label="Cobranza ponderada" value={snapshotReceivablesRiskWeighted(snapshot)} max={flowMax} flow="in" />
+                    <FlowBar label="Salidas modeladas" value={snapshotExpectedOutflowsTotal(snapshot)} max={flowMax} flow="out" />
+                  </div>
                 </div>
-              </div>
-            ) : null}
-          </CopilotCard>
-        </FinanzasPanoramaSection>
+              ) : null}
+            </CopilotCard>
+          </FinanzasPanoramaSection>
+        ) : null}
 
+        {/* ── Sección fiscal ─────────────────────────────────────────────────── */}
         <div id="copilot-finanzas-fiscal" className="scroll-mt-28 space-y-4">
           {coberturaGuided && fiscalPriorityGuideOpen ? (
             prioritaryObligation ? (
