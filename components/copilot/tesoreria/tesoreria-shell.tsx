@@ -54,8 +54,8 @@ export function TesoreriaShell() {
   );
 
   useEffect(() => {
-    const parsed = parseTesoreriaSection(sectionFromUrl);
-    if (parsed && parsed !== section) setSection(parsed);
+    const next = parseTesoreriaSection(sectionFromUrl) ?? "resumen";
+    if (next !== section) setSection(next);
   }, [sectionFromUrl, section]);
 
   const [draftStart, setDraftStart] = useState("");
