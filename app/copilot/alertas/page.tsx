@@ -49,10 +49,12 @@ function actionLabel(href: string): string {
   if (href.includes("clientes-criticos")) return "Ver clientes críticos";
   if (href.includes("/clientes/")) return "Ver cliente";
   if (href.includes("/cartera")) return "Ver cartera";
-  if (href.includes("/tesoreria")) return "Ver pagos";
+  if (href.includes("section=pagos")) return "Ver pagos";
+  if (href.includes("/tesoreria")) return "Ver Tesorería";
+  if (href.includes("/operacional")) return "Ver operacional";
+  if (href.includes("/acciones")) return "Ver acciones";
   if (href.includes("/hoy")) return "Ver hoy";
-  if (href.includes("/estado")) return "Ver estado";
-  return "Ver";
+  return "Ver detalle";
 }
 
 // ─── Icon bubbles ─────────────────────────────────────────────────────────────

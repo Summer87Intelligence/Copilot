@@ -84,7 +84,7 @@ export function buildActionsFromNotifications(
           extractEntityName(n.body, " vence ") ?? n.title;
         title = entityName;
         reason = n.body ?? n.title;
-        primaryActionLabel = "Ver tesorería";
+        primaryActionLabel = "Ver pagos";
         href = n.action_href ?? "/copilot/tesoreria";
         break;
       }
@@ -97,7 +97,7 @@ export function buildActionsFromNotifications(
           n.title;
         title = entityName;
         reason = n.body ?? n.title;
-        primaryActionLabel = "Ver tesorería";
+        primaryActionLabel = "Ver pagos";
         href = n.action_href ?? "/copilot/tesoreria";
         break;
       }
@@ -115,8 +115,8 @@ export function buildActionsFromNotifications(
         priority = "high";
         title = n.title;
         reason = n.body ?? "Sincronización fallida — revisar integración.";
-        primaryActionLabel = "Ver estado";
-        href = n.action_href ?? "/copilot/hoy";
+        primaryActionLabel = "Ver operacional";
+        href = n.action_href ?? "/copilot/operacional";
         break;
       }
       case "new_debtor": {
@@ -136,7 +136,7 @@ export function buildActionsFromNotifications(
         priority = severityToPriority(n.severity);
         title = n.title;
         reason = n.body ?? n.title;
-        primaryActionLabel = "Ver";
+        primaryActionLabel = "Ver detalle";
         href = n.action_href ?? "/copilot/hoy";
     }
 
