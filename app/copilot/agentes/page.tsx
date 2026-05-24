@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -318,13 +318,13 @@ export default function CopilotAgentesPage() {
             ) : (
               <CopilotCard className="border-emerald-200/80 bg-emerald-50/40">
                 <p className="text-sm font-semibold text-emerald-950">
-                  Listo — en una integración real, acá dispararíamos orquestación (colas), permisos y trazabilidad por agente.
+                  Configuración registrada.
                 </p>
                 <p className="mt-2 text-sm text-emerald-900/85">
-                  Por ahora es una demo visual: ya tenés la experiencia de “equipo de IA” y el contraste de valor en cada tarjeta.
+                  Revisá Acciones y Alertas para ver las prioridades actuales del copiloto.
                 </p>
                 <div className="mt-5 flex flex-wrap gap-2">
-                  <CopilotGhostLink href="/copilot">Ir al dashboard</CopilotGhostLink>
+                  <CopilotGhostLink href="/copilot/hoy">Ver Hoy</CopilotGhostLink>
                   <CopilotGhostLink href="/copilot/acciones">Ver acciones</CopilotGhostLink>
                 </div>
               </CopilotCard>

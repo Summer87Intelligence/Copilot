@@ -12,13 +12,13 @@ export default function CopilotEscenariosPage() {
       <CopilotPageHeader
         surfaceId="copilot.escenarios"
         title="Escenarios"
-        description="Compará lecturas de riesgo, estabilidad y crecimiento cuando el motor esté alimentado por tus datos — sin simulaciones de relleno."
+        description="Comparación de riesgo, estabilidad y crecimiento. Próximamente disponible."
       />
 
       <div className={copilotPageMainClass}>
         <CopilotOperationalEmptyState
-          title="Motor listo"
-          status="Esperando configuración y datos mínimos"
+          title="En preparación"
+          status="Esta sección todavía no está activa"
           statusTone="info"
           metrics={[
             { label: "Escenarios", value: 0 },
@@ -26,39 +26,52 @@ export default function CopilotEscenariosPage() {
             { label: "Riesgo", value: "—" },
             { label: "Crecimiento", value: "—" },
           ]}
-          footnote="Cargá estructura mínima en Datos y alineá caja en Finanzas para habilitar lecturas comparables."
+          footnote="Mientras tanto, podés ver el estado de cartera en Cartera y el flujo de caja en Tesorería."
         />
 
         <CopilotCard>
           <CopilotSectionTitle
-            title="Próximos pasos sugeridos"
-            subtitle="Para que esta vista tenga sentido operativo."
+            title="Mientras tanto"
+            subtitle="Estas secciones ya están disponibles."
           />
           <ul className="space-y-2 text-xs text-[var(--copilot-ink-muted)]">
             <li className="flex gap-2">
               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--copilot-accent)]" />
               <span>
-                Cargá estructura mínima en{" "}
+                Revisá el estado de cartera en{" "}
                 <Link
-                  href="/copilot/datos"
+                  href="/copilot/cartera"
                   className="font-semibold text-[var(--copilot-accent)] hover:underline"
                 >
-                  Datos
-                </Link>{" "}
-                (empresas, facturas, pagos).
+                  Cartera
+                </Link>
+                .
               </span>
             </li>
             <li className="flex gap-2">
               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--copilot-accent)]" />
               <span>
-                Revisá caja y obligaciones en{" "}
+                Seguí el flujo de caja en{" "}
                 <Link
-                  href="/copilot/finanzas"
+                  href="/copilot/tesoreria"
                   className="font-semibold text-[var(--copilot-accent)] hover:underline"
                 >
-                  Finanzas
+                  Tesorería
+                </Link>
+                .
+              </span>
+            </li>
+            <li className="flex gap-2">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--copilot-accent)]" />
+              <span>
+                Volvé a{" "}
+                <Link
+                  href="/copilot/hoy"
+                  className="font-semibold text-[var(--copilot-accent)] hover:underline"
+                >
+                  Hoy
                 </Link>{" "}
-                para alinear escenarios con liquidez real.
+                para ver el resumen del negocio.
               </span>
             </li>
           </ul>

@@ -1,18 +1,14 @@
-/** Navegación del entorno PROTOTIPO (`/copilot`). */
+/** Navegación del módulo Copilot. */
 import type { LucideIcon } from "lucide-react";
 import {
   Activity,
-  BarChart3,
   BookOpen,
-  Bot,
   BrainCircuit,
   Building2,
   CheckSquare,
   Database,
   Landmark,
-  Lightbulb,
   ListTodo,
-  MessageSquareMore,
   Settings,
   SlidersHorizontal,
   TriangleAlert,
@@ -35,52 +31,30 @@ export type CopilotNavGroup = {
 };
 
 const COPILOT_NAV_HOY: CopilotNavGroup = {
-  sectionTitle: "Hoy",
+  sectionTitle: null,
   items: [{ href: "/copilot/hoy", label: "Hoy", icon: ListTodo }],
 };
 
-const COPILOT_NAV_OPERACION: CopilotNavGroup = {
-  sectionTitle: "Operación",
+const COPILOT_NAV_PRINCIPAL: CopilotNavGroup = {
+  sectionTitle: "Principal",
   items: [
-    { href: "/copilot/datos", label: "Datos", icon: Database },
-    { href: "/copilot/finanzas", label: "Finanzas", icon: Wallet },
-    { href: "/copilot/tesoreria", label: "Tesorería", icon: Banknote },
+    { href: "/copilot/acciones", label: "Acciones", icon: CheckSquare },
+    { href: "/copilot/alertas", label: "Alertas", icon: TriangleAlert },
+    { href: "/copilot/decisiones", label: "Decisiones", icon: BrainCircuit },
     { href: "/copilot/cartera", label: "Cartera", icon: Landmark },
     { href: "/copilot/clientes", label: "Clientes", icon: Users },
+    { href: "/copilot/tesoreria", label: "Tesorería", icon: Banknote },
+    { href: "/copilot/finanzas", label: "Finanzas", icon: Wallet },
+    { href: "/copilot/datos", label: "Datos", icon: Database },
   ],
 };
 
-const COPILOT_NAV_DECISIONES: CopilotNavGroup = {
-  sectionTitle: "Decisiones",
-  items: [
-    { href: "/copilot/decisiones", label: "Decisiones", icon: BrainCircuit },
-    { href: "/copilot/alertas", label: "Alertas", icon: TriangleAlert },
-    { href: "/copilot/acciones", label: "Acciones", icon: CheckSquare },
-    { href: "/copilot/insights", label: "Insights", icon: Lightbulb },
-  ],
-};
-
-const COPILOT_NAV_ESTRATEGIA: CopilotNavGroup = {
-  sectionTitle: "Estrategia",
-  items: [{ href: "/copilot/escenarios", label: "Escenarios", icon: BarChart3 }],
-};
-
-const COPILOT_NAV_IA: CopilotNavGroup = {
-  sectionTitle: "IA",
-  items: [{ href: "/copilot/agentes", label: "Agentes", icon: Bot }],
-};
-
-const COPILOT_NAV_SYSTEM: CopilotNavGroup = {
+const COPILOT_NAV_SISTEMA: CopilotNavGroup = {
   sectionTitle: "Sistema",
   items: [
     { href: "/copilot/operacional", label: "Operacional", icon: Activity },
     { href: "/copilot/configuracion", label: "Configuración", icon: Settings },
     { href: "/copilot/personalizacion", label: "Personalización", icon: SlidersHorizontal },
-    {
-      href: "/copilot/mesa-de-ayuda",
-      label: "Ayuda",
-      icon: MessageSquareMore,
-    },
   ],
 };
 
@@ -104,11 +78,8 @@ export const COPILOT_NAV_ADMIN_GROUP: CopilotNavGroup = {
 /** Grupos base del menú lateral. */
 export const COPILOT_NAV_BASE_GROUPS: CopilotNavGroup[] = [
   COPILOT_NAV_HOY,
-  COPILOT_NAV_OPERACION,
-  COPILOT_NAV_DECISIONES,
-  COPILOT_NAV_ESTRATEGIA,
-  COPILOT_NAV_IA,
-  COPILOT_NAV_SYSTEM,
+  COPILOT_NAV_PRINCIPAL,
+  COPILOT_NAV_SISTEMA,
 ];
 
 /** Menú lateral completo según rol (resuelto en servidor en `app/copilot/layout.tsx`). */

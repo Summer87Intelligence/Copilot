@@ -85,7 +85,7 @@ export default function CopilotMesaDeAyudaPage() {
           <CopilotCard>
             <CopilotSectionTitle
               title="Historial reciente"
-              subtitle="Estado de tus solicitudes (simulado)."
+              subtitle="Estado de tus solicitudes."
             />
             <ul className="space-y-3">
               {MOCK_TICKETS.map((t) => (
