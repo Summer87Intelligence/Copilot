@@ -162,6 +162,22 @@ function formatCoverageRatio(r: number): string {
   return `${r.toFixed(2)}×`;
 }
 
+/**
+ * Devuelve el texto del ratio de cobertura distinguiendo "sin egresos" de ratio inválido.
+ * El motor asigna 999 cuando expected_outflows = 0; "—" solo cuando el cálculo no aplica.
+ */
+function coverageRatioDisplay(snapshot: FinancialSnapshotApiV1): {
+  value: string;
+  isNoOutflows: boolean;
+} {
+  const outflows = snapshotExpectedOutflowsTotal(snapshot);
+  const ratio = snapshotCoverageRatio(snapshot);
+  if (outflows <= 0) {
+    return { value: "Sin egresos", isNoOutflows: true };
+  }
+  return { value: formatCoverageRatio(ratio), isNoOutflows: false };
+}
+
 function buildDeficitGuidedCopy(
   snapshot: FinancialSnapshotApiV1 | null,
   snapshotLoading: boolean
@@ -700,7 +716,7 @@ function CopilotFinanzasPageContent() {
     }
     return {
       title: "Tu liquidez está bajo control",
-      impact: `Balance proyectado ${formatMoneyCompact(snapshotLiquidityBalance(snapshot))} · cobertura ${formatCoverageRatio(snapshotCoverageRatio(snapshot))}.`,
+      impact: `Balance proyectado ${formatMoneyCompact(snapshotLiquidityBalance(snapshot))} · cobertura ${coverageRatioDisplay(snapshot).value}.`,
       urgency: nextOpen
         ? `Próximo vencimiento: ${dueLabel(nextOpen.due_date)} (${mapTaxTypeLabel(nextOpen.tax_type)}).`
         : "Mantené facturas y pagos actualizados en Datos para conservar esta lectura.",
@@ -1340,35 +1356,35 @@ function CopilotFinanzasPageContent() {
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        Caja disponible
+                        Neto acumulado
                       </p>
                       <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--copilot-ink)]">
                         {formatMoneyCompact(snapshotCashNet(snapshot))}
                       </p>
                       <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
-                        Recibos − pagos realizados
+                        Cobros acumulados − pagos registrados · distinto de caja en Tesorería
                       </p>
                     </div>
                     <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/30 p-4 shadow-sm">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-900/70">
-                        Ingresos esperados
+                        Cobranza esperada
                       </p>
                       <p className="mt-2 text-2xl font-semibold tabular-nums text-emerald-800">
                         {formatMoneyCompact(snapshotReceivablesRiskWeighted(snapshot))}
                       </p>
                       <p className="mt-1 text-[11px] text-emerald-900/60">
-                        Facturas abiertas × prob. de cobro
+                        Facturas abiertas × probabilidad de cobro · no es caja disponible
                       </p>
                     </div>
                     <div className="rounded-xl border border-rose-200/60 bg-rose-50/30 p-4 shadow-sm">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-rose-900/70">
-                        Egresos esperados
+                        Egresos proyectados
                       </p>
                       <p className="mt-2 text-2xl font-semibold tabular-nums text-rose-800">
                         {formatMoneyCompact(snapshotExpectedOutflowsTotal(snapshot))}
                       </p>
                       <p className="mt-1 text-[11px] text-rose-900/60">
-                        Pagos futuros + fiscal pendiente (30 d)
+                        Pagos operativos post-hoy + obligaciones fiscales próximas 30 d
                       </p>
                     </div>
                     <div className={`rounded-xl border p-4 shadow-sm ${
@@ -1391,47 +1407,60 @@ function CopilotFinanzasPageContent() {
                         {formatMoneyCompact(snapshotLiquidityBalance(snapshot))}
                       </p>
                       <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
-                        Caja + ingresos − egresos
+                        Neto + cobranza esperada − egresos proyectados
                       </p>
                     </div>
-                    <div className={`rounded-xl border p-4 shadow-sm sm:col-span-1 lg:col-span-2 ${
-                      snapshotCoverageRatio(snapshot) < 1 && Number.isFinite(snapshotCoverageRatio(snapshot))
-                        ? "border-amber-200/70 bg-amber-50/30"
-                        : "border-[var(--copilot-border)] bg-white/85"
-                    }`}>
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        Ratio de cobertura
-                      </p>
-                      <p className={`mt-2 text-2xl font-semibold tabular-nums ${
-                        snapshotCoverageRatio(snapshot) < 1 && Number.isFinite(snapshotCoverageRatio(snapshot))
-                          ? "text-amber-800"
-                          : "text-[var(--copilot-ink)]"
-                      }`}>
-                        {formatCoverageRatio(snapshotCoverageRatio(snapshot))}
-                      </p>
-                      <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
-                        (caja + ingresos esperados) / egresos esperados · meta ≥ 1,00×
-                      </p>
-                    </div>
+                    {(() => {
+                      const { value: cvDisplay, isNoOutflows } = coverageRatioDisplay(snapshot);
+                      const isBelow1 = !isNoOutflows &&
+                        snapshotCoverageRatio(snapshot) < 1 &&
+                        Number.isFinite(snapshotCoverageRatio(snapshot));
+                      return (
+                        <div className={`rounded-xl border p-4 shadow-sm sm:col-span-1 lg:col-span-2 ${
+                          isBelow1
+                            ? "border-amber-200/70 bg-amber-50/30"
+                            : "border-[var(--copilot-border)] bg-white/85"
+                        }`}>
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                            Ratio de cobertura
+                          </p>
+                          <p className={`mt-2 text-2xl font-semibold tabular-nums ${
+                            isBelow1 ? "text-amber-800" : "text-[var(--copilot-ink)]"
+                          }`}>
+                            {cvDisplay}
+                          </p>
+                          <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
+                            {isNoOutflows
+                              ? "No hay egresos operativos ni fiscales modelados en el horizonte de 30 días."
+                              : "(neto + cobranza esperada) / egresos proyectados · meta ≥ 1,00×"}
+                          </p>
+                        </div>
+                      );
+                    })()}
                   </div>
 
-                  {/* Facturación vs cobranza — flow visual */}
+                  {/* Flujo proyectado — forward-looking, no es período */}
                   <div
                     id="copilot-finanzas-cobranza"
                     className="scroll-mt-28 rounded-xl border border-[var(--copilot-border)] bg-white/60 p-4"
                   >
-                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                      Facturación vs cobranza
-                    </p>
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                        Flujo proyectado de caja
+                      </p>
+                      <p className="text-[10px] text-[var(--copilot-ink-muted)]">
+                        Proyección forward-looking · no es facturación del período
+                      </p>
+                    </div>
                     <div className="mt-3 space-y-3">
                       <FlowBar
-                        label="Cobranza ponderada (ingresos esperados)"
+                        label="Cobranza esperada (facturas × prob. de cobro)"
                         value={snapshotReceivablesRiskWeighted(snapshot)}
                         max={flowMax}
                         flow="in"
                       />
                       <FlowBar
-                        label="Salidas modeladas (egresos esperados)"
+                        label="Egresos proyectados (operativos + fiscal 30 d)"
                         value={snapshotExpectedOutflowsTotal(snapshot)}
                         max={flowMax}
                         flow="out"
@@ -1633,8 +1662,12 @@ function CopilotFinanzasPageContent() {
                     </div>
                     <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm sm:col-span-2 lg:col-span-2">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Ratio de cobertura</p>
-                      <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-ink)]">{formatCoverageRatio(snapshotCoverageRatio(snapshot))}</p>
-                      <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">(caja + ingresos esperados) / egresos esperados</p>
+                      <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-ink)]">{coverageRatioDisplay(snapshot).value}</p>
+                      <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
+                        {coverageRatioDisplay(snapshot).isNoOutflows
+                          ? "Sin egresos operativos ni fiscales modelados en el horizonte."
+                          : "(caja + ingresos esperados) / egresos esperados"}
+                      </p>
                     </div>
                   </div>
                   {snapshot.by_currency ? (
