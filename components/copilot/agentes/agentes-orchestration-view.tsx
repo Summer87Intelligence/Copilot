@@ -26,6 +26,7 @@ import type { ExecutiveBriefingApiResponse } from "@/lib/copilot-executive-brief
 import type { NotificationListResponse } from "@/lib/copilot-notifications/notification-types";
 import { buildDailyExecutiveBrief } from "@/lib/copilot-agents/build-daily-executive-brief";
 import { buildCollectionAgentBrief } from "@/lib/copilot-agents/build-collection-agent-brief";
+import { buildTreasuryAgentBrief } from "@/lib/copilot-agents/build-treasury-agent-brief";
 import { orchestrateAgents } from "@/lib/copilot-agents/orchestrate-agents";
 import type { CollectionAction } from "@/lib/copilot-collection-types";
 import { groupCollectionActionsByCompany } from "@/lib/copilot-actions/enrich-actions";
@@ -74,7 +75,6 @@ const AGENT_ICON: Record<string, LucideIcon> = {
 };
 
 const COMING_SOON_DESCRIPTION: Record<string, string> = {
-  treasury: "Revisa pagos, caja y compromisos.",
   data_integrity: "Explica si los datos están actualizados.",
   cfo: "Analiza liquidez, riesgo y concentración.",
   client: "Resume un cliente específico.",
@@ -320,8 +320,9 @@ async function fetchAndOrchestrate(): Promise<CopilotAgentsOrchestration> {
 
   const executiveBrief = buildDailyExecutiveBrief(briefing, notifications);
   const collectionBrief = buildCollectionAgentBrief(notifications, collectionByCompanyId);
+  const treasuryBrief = buildTreasuryAgentBrief(notifications);
 
-  return orchestrateAgents({ executiveBrief, collectionBrief });
+  return orchestrateAgents({ executiveBrief, collectionBrief, treasuryBrief });
 }
 
 // ─── Phase types ──────────────────────────────────────────────────────────────
@@ -397,7 +398,7 @@ export function AgentesOrchestrationView() {
               Analizando tu negocio...
             </p>
             <p className="mt-0.5 text-[12px] text-[var(--copilot-ink-muted)]">
-              Ejecutivo Diario y Cobranza trabajando en conjunto.
+              Ejecutivo Diario, Cobranza y Tesorería trabajando en conjunto.
             </p>
           </div>
         </div>

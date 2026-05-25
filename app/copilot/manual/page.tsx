@@ -893,6 +893,32 @@ const SECTIONS: Section[] = [
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Agente de Tesoreria
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            Revisa notificaciones de tesoreria y ordena lo que necesita atencion:
+            pagos vencidos, riesgo de caja, pagos que vencen hoy y compromisos
+            proximos. No modifica ni ejecuta pagos.
+          </p>
+          <Bullets
+            items={[
+              "Pagos vencidos — si hay obligaciones con fecha pasada, las muestra como prioridad critica.",
+              "Riesgo de caja — si la caja puede quedar ajustada despues de los pagos proximos.",
+              "Vence hoy — pagos programados para hoy, para confirmar antes de cerrar el dia.",
+              "Proximos 1-3 dias — compromisos inminentes que conviene revisar con anticipacion.",
+              "Proximos 7 dias — compromisos de la semana para planificacion.",
+              "Solo lee notificaciones. No toca pagos ni saldos.",
+            ]}
+          />
+          <Callout variant="info">
+            El Agente de Tesoreria trabaja junto al Agente Ejecutivo Diario. Si
+            ambos detectan el mismo pago vencido, el sistema muestra la senial
+            una sola vez — la de mayor urgencia — para no duplicar alertas.
+          </Callout>
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
             Agentes preparados para proximas versiones
           </p>
           <p className="mb-2 text-sm text-[var(--copilot-ink)]">
@@ -900,7 +926,6 @@ const SECTIONS: Section[] = [
           </p>
           <Bullets
             items={[
-              "Tesoreria — revision de pagos, caja y compromisos.",
               "Integridad de datos — explica si los datos estan actualizados.",
               "CFO / Finanzas — liquidez, riesgo y concentracion de cartera.",
               "Cliente — resumen de un cliente especifico.",
@@ -956,6 +981,14 @@ const SECTIONS: Section[] = [
               {
                 q: "¿Con que frecuencia debo generar el analisis?",
                 a: "Al inicio del dia o cuando necesites una mirada rapida. Podes repetirlo cuando quieras para actualizar el resultado.",
+              },
+              {
+                q: "¿El Agente de Tesoreria puede pagar o modificar algo?",
+                a: "No. Solo lee las notificaciones de tesoreria y las ordena por urgencia. Para confirmar o registrar un pago, tenes que ir a Tesoreria y hacerlo manualmente.",
+              },
+              {
+                q: "¿Por que el mismo pago vencido aparece solo una vez si lo detectan dos agentes?",
+                a: "El sistema deduplica por destino: si el Agente Ejecutivo y el de Tesoreria detectan el mismo pago, muestra una sola prioridad — la de mayor urgencia — para no repetir la misma alerta.",
               },
             ].map(({ q, a }) => (
               <div key={q}>

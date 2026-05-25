@@ -23,8 +23,8 @@ export const AGENT_REGISTRY: AgentRegistryEntry[] = [
   {
     id: "treasury",
     label: "Tesorería",
-    status: "coming_soon",
-    description: "Revisa pagos, caja y compromisos.",
+    status: "active",
+    description: "Revisa pagos, caja y compromisos para evitar sorpresas.",
   },
   {
     id: "data_integrity",

@@ -1,7 +1,8 @@
 /**
  * Orquestador de Agentes IA.
- * Combina briefs de agentes activos, deduplica, ordena por severidad
- * y genera el resumen coordinado. Sin LLM, sin Supabase, sin Zeta.
+ * Combina briefs de agentes activos, deduplica por href (prioridad más grave gana),
+ * ordena por severidad y genera el resumen coordinado.
+ * Sin LLM, sin Supabase, sin Zeta.
  */
 
 import type { DailyExecutiveBrief } from "./build-daily-executive-brief";
@@ -25,6 +26,7 @@ const SEV_ORDER: Record<"critical" | "high" | "medium" | "low", number> = {
 export type OrchestrateAgentsInput = {
   executiveBrief: DailyExecutiveBrief | null;
   collectionBrief: CopilotAgentBrief;
+  treasuryBrief: CopilotAgentBrief;
 };
 
 // ─── Orchestrator ─────────────────────────────────────────────────────────────
@@ -44,18 +46,22 @@ export function orchestrateAgents(
   // Agente de Cobranza
   allPriorities.push(...input.collectionBrief.priorities);
 
-  // Deduplicar: misma href + severidad → conservar primera aparición
-  const seenKeys = new Set<string>();
-  const deduped = allPriorities.filter((p) => {
-    const key = `${p.href}|${p.severity}`;
-    if (seenKeys.has(key)) return false;
-    seenKeys.add(key);
-    return true;
-  });
+  // Agente de Tesorería
+  allPriorities.push(...input.treasuryBrief.priorities);
 
-  // Ordenar: critical > high > medium > low
-  const sorted = [...deduped].sort(
-    (a, b) => SEV_ORDER[a.severity] - SEV_ORDER[b.severity]
+  // Deduplicar por href: mismo destino → conservar la prioridad más grave.
+  // Esto evita que el Agente Ejecutivo y el de Tesorería muestren el mismo
+  // pago vencido dos veces en el resumen global.
+  const byHref = new Map<string, CopilotAgentPriority>();
+  for (const p of allPriorities) {
+    const existing = byHref.get(p.href);
+    if (!existing || (SEV_ORDER[p.severity] ?? 4) < (SEV_ORDER[existing.severity] ?? 4)) {
+      byHref.set(p.href, p);
+    }
+  }
+
+  const sorted = [...byHref.values()].sort(
+    (a, b) => (SEV_ORDER[a.severity] ?? 4) - (SEV_ORDER[b.severity] ?? 4)
   );
 
   const topPriorities = sorted.slice(0, 5);
@@ -83,6 +89,7 @@ export function orchestrateAgents(
   }
 
   agentBriefs.push(input.collectionBrief);
+  agentBriefs.push(input.treasuryBrief);
 
   const nextBestAction =
     topPriorities[0]
@@ -105,6 +112,14 @@ function buildOrchestrationSummary(
   priorities: CopilotAgentPriority[]
 ): string {
   if (status === "critical") {
+    const hasTreasuryOverdue = priorities.some((p) => p.id === "treasury-overdue");
+    const hasCashRisk = priorities.some((p) => p.id === "treasury-cash-risk");
+    if (hasTreasuryOverdue && hasCashRisk) {
+      return "Hay pagos vencidos y riesgo de caja que requieren atención hoy.";
+    }
+    if (hasTreasuryOverdue) {
+      return "Hay pagos vencidos o compromisos de caja críticos para revisar hoy.";
+    }
     return "Tu negocio tiene situaciones críticas que requieren atención hoy.";
   }
   if (status === "attention") {
@@ -112,7 +127,7 @@ function buildOrchestrationSummary(
       (p) => p.agentId === "collection" && p.severity !== "low"
     );
     const hasTreasury = priorities.some(
-      (p) => p.href.includes("tesoreria") || p.href.includes("pagos")
+      (p) => p.agentId === "treasury" && p.severity !== "low"
     );
     const hasPromiseOverdue = priorities.some((p) =>
       p.id?.startsWith("followup-promise-overdue")
@@ -120,6 +135,8 @@ function buildOrchestrationSummary(
     const hasFollowupOverdue = priorities.some((p) =>
       p.id?.startsWith("followup-overdue")
     );
+    const hasDueToday = priorities.some((p) => p.id === "treasury-due-today");
+
     if (hasCollection && hasTreasury) {
       return "Hay clientes vencidos y compromisos de pago para revisar hoy.";
     }
@@ -128,6 +145,9 @@ function buildOrchestrationSummary(
     }
     if (hasFollowupOverdue) {
       return "Hay seguimientos de cobranza vencidos y clientes para contactar.";
+    }
+    if (hasDueToday) {
+      return "Hay pagos programados para hoy y señales que requieren revisión.";
     }
     if (hasCollection) {
       return "Hay clientes con saldo vencido para gestionar.";
