@@ -4,6 +4,7 @@ import {
   Activity,
   BookMarked,
   BookOpen,
+  Bot,
   Building2,
   CheckSquare,
   Database,
@@ -48,6 +49,13 @@ const COPILOT_NAV_PRINCIPAL: CopilotNavGroup = {
   ],
 };
 
+const COPILOT_NAV_IA: CopilotNavGroup = {
+  sectionTitle: "IA",
+  items: [
+    { href: "/copilot/agentes", label: "Agentes IA", icon: Bot },
+  ],
+};
+
 const COPILOT_NAV_SISTEMA: CopilotNavGroup = {
   sectionTitle: "Sistema",
   items: [
@@ -79,6 +87,7 @@ export const COPILOT_NAV_ADMIN_GROUP: CopilotNavGroup = {
 export const COPILOT_NAV_BASE_GROUPS: CopilotNavGroup[] = [
   COPILOT_NAV_HOY,
   COPILOT_NAV_PRINCIPAL,
+  COPILOT_NAV_IA,
   COPILOT_NAV_SISTEMA,
 ];
 
