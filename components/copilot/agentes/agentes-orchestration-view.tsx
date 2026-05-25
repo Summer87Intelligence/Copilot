@@ -27,7 +27,9 @@ import type { NotificationListResponse } from "@/lib/copilot-notifications/notif
 import { buildDailyExecutiveBrief } from "@/lib/copilot-agents/build-daily-executive-brief";
 import { buildCollectionAgentBrief } from "@/lib/copilot-agents/build-collection-agent-brief";
 import { buildTreasuryAgentBrief } from "@/lib/copilot-agents/build-treasury-agent-brief";
+import { buildDataIntegrityAgentBrief } from "@/lib/copilot-agents/build-data-integrity-agent-brief";
 import { orchestrateAgents } from "@/lib/copilot-agents/orchestrate-agents";
+import type { OicHealthDashboardData } from "@/lib/operacional/types";
 import type { CollectionAction } from "@/lib/copilot-collection-types";
 import { groupCollectionActionsByCompany } from "@/lib/copilot-actions/enrich-actions";
 import { COMING_SOON_AGENTS } from "@/lib/copilot-agents/agent-registry";
@@ -75,7 +77,6 @@ const AGENT_ICON: Record<string, LucideIcon> = {
 };
 
 const COMING_SOON_DESCRIPTION: Record<string, string> = {
-  data_integrity: "Explica si los datos están actualizados.",
   cfo: "Analiza liquidez, riesgo y concentración.",
   client: "Resume un cliente específico.",
   alerts: "Prioriza alertas relevantes.",
@@ -304,25 +305,34 @@ async function fetchAndOrchestrate(): Promise<CopilotAgentsOrchestration> {
   const briefing = briefingData.ok ? briefingData.briefing : null;
   const notifications = notifData.ok ? notifData.notifications : [];
 
-  // Collection actions are optional — don't fail orchestration if unavailable
+  // Collection + operational health in parallel — both non-fatal
+  const [collectionOutcome, healthOutcome] = await Promise.allSettled([
+    copilotApiFetch("/api/copilot/collection-actions").then((r) =>
+      r.ok ? (r.json() as Promise<{ ok?: boolean; actions?: CollectionAction[] }>) : null
+    ),
+    copilotApiFetch("/api/operacional/health").then((r) =>
+      r.ok ? (r.json() as Promise<{ ok?: boolean; data?: OicHealthDashboardData }>) : null
+    ),
+  ]);
+
   let collectionByCompanyId: Map<string, CollectionAction[]> | undefined;
-  try {
-    const collectionRes = await copilotApiFetch("/api/copilot/collection-actions");
-    if (collectionRes.ok) {
-      const json = (await collectionRes.json()) as { ok?: boolean; actions?: CollectionAction[] };
-      if (json?.actions?.length) {
-        collectionByCompanyId = groupCollectionActionsByCompany(json.actions);
-      }
-    }
-  } catch {
-    // non-fatal
+  if (collectionOutcome.status === "fulfilled" && collectionOutcome.value?.actions?.length) {
+    collectionByCompanyId = groupCollectionActionsByCompany(
+      collectionOutcome.value.actions as CollectionAction[]
+    );
+  }
+
+  let operationalHealth: OicHealthDashboardData | null = null;
+  if (healthOutcome.status === "fulfilled" && healthOutcome.value?.ok && healthOutcome.value?.data) {
+    operationalHealth = healthOutcome.value.data as OicHealthDashboardData;
   }
 
   const executiveBrief = buildDailyExecutiveBrief(briefing, notifications);
   const collectionBrief = buildCollectionAgentBrief(notifications, collectionByCompanyId);
   const treasuryBrief = buildTreasuryAgentBrief(notifications);
+  const dataIntegrityBrief = buildDataIntegrityAgentBrief({ notifications, operationalHealth });
 
-  return orchestrateAgents({ executiveBrief, collectionBrief, treasuryBrief });
+  return orchestrateAgents({ executiveBrief, collectionBrief, treasuryBrief, dataIntegrityBrief });
 }
 
 // ─── Phase types ──────────────────────────────────────────────────────────────
@@ -398,7 +408,7 @@ export function AgentesOrchestrationView() {
               Analizando tu negocio...
             </p>
             <p className="mt-0.5 text-[12px] text-[var(--copilot-ink-muted)]">
-              Ejecutivo Diario, Cobranza y Tesorería trabajando en conjunto.
+              Ejecutivo Diario, Cobranza, Tesorería e Integridad de datos trabajando en conjunto.
             </p>
           </div>
         </div>

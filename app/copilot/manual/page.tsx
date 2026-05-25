@@ -919,6 +919,33 @@ const SECTIONS: Section[] = [
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Agente de Integridad de Datos
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            Revisa si los datos estan actualizados y si hay problemas de
+            sincronizacion con fuentes externas como Zeta. No reinicia
+            procesos ni modifica datos. Te lleva a Operacional para ver
+            el detalle.
+          </p>
+          <Bullets
+            items={[
+              "Sincronizacion fallida — si una actualizacion de datos no se completo, lo muestra como prioridad.",
+              "Fuente externa con problemas — si Zeta u otra fuente falla, informa de forma simple.",
+              "Datos desactualizados — si el proceso no se ejecuto en la ventana esperada.",
+              "Inconsistencias detectadas — si hay datos que no coinciden entre fuentes.",
+              "Todo bien — si no hay senales de problema, muestra estado estable.",
+              "No modifica datos ni reinicia sincronizaciones.",
+            ]}
+          />
+          <Callout variant="info">
+            Si Zeta falla, Copilot puede seguir mostrando los ultimos datos
+            disponibles. El Agente de Integridad te avisa para que revises
+            Operacional y entiendas que esta pasando.
+          </Callout>
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
             Agentes preparados para proximas versiones
           </p>
           <p className="mb-2 text-sm text-[var(--copilot-ink)]">
@@ -926,7 +953,6 @@ const SECTIONS: Section[] = [
           </p>
           <Bullets
             items={[
-              "Integridad de datos — explica si los datos estan actualizados.",
               "CFO / Finanzas — liquidez, riesgo y concentracion de cartera.",
               "Cliente — resumen de un cliente especifico.",
               "Alertas — priorizacion de avisos del sistema.",
@@ -985,6 +1011,14 @@ const SECTIONS: Section[] = [
               {
                 q: "¿El Agente de Tesoreria puede pagar o modificar algo?",
                 a: "No. Solo lee las notificaciones de tesoreria y las ordena por urgencia. Para confirmar o registrar un pago, tenes que ir a Tesoreria y hacerlo manualmente.",
+              },
+              {
+                q: "¿Que hace el Agente de Integridad de Datos?",
+                a: "Te explica si los datos estan actualizados y si hay algo que revisar en la conexion o sincronizacion. Te lleva a Operacional para ver el detalle. No reinicia procesos ni modifica nada.",
+              },
+              {
+                q: "¿Si Zeta falla, Copilot deja de funcionar?",
+                a: "No necesariamente. Copilot puede mostrar los ultimos datos disponibles y avisarte en Operacional que la actualizacion necesita revision. El agente te informa para que puedas actuar.",
               },
               {
                 q: "¿Por que el mismo pago vencido aparece solo una vez si lo detectan dos agentes?",

@@ -27,6 +27,7 @@ export type OrchestrateAgentsInput = {
   executiveBrief: DailyExecutiveBrief | null;
   collectionBrief: CopilotAgentBrief;
   treasuryBrief: CopilotAgentBrief;
+  dataIntegrityBrief: CopilotAgentBrief;
 };
 
 // ─── Orchestrator ─────────────────────────────────────────────────────────────
@@ -48,6 +49,9 @@ export function orchestrateAgents(
 
   // Agente de Tesorería
   allPriorities.push(...input.treasuryBrief.priorities);
+
+  // Agente de Integridad de Datos
+  allPriorities.push(...input.dataIntegrityBrief.priorities);
 
   // Deduplicar por href: mismo destino → conservar la prioridad más grave.
   // Esto evita que el Agente Ejecutivo y el de Tesorería muestren el mismo
@@ -90,6 +94,7 @@ export function orchestrateAgents(
 
   agentBriefs.push(input.collectionBrief);
   agentBriefs.push(input.treasuryBrief);
+  agentBriefs.push(input.dataIntegrityBrief);
 
   const nextBestAction =
     topPriorities[0]
@@ -114,11 +119,17 @@ function buildOrchestrationSummary(
   if (status === "critical") {
     const hasTreasuryOverdue = priorities.some((p) => p.id === "treasury-overdue");
     const hasCashRisk = priorities.some((p) => p.id === "treasury-cash-risk");
+    const hasDataIntegrity = priorities.some(
+      (p) => p.agentId === "data_integrity" && p.severity === "critical"
+    );
     if (hasTreasuryOverdue && hasCashRisk) {
       return "Hay pagos vencidos y riesgo de caja que requieren atención hoy.";
     }
     if (hasTreasuryOverdue) {
       return "Hay pagos vencidos o compromisos de caja críticos para revisar hoy.";
+    }
+    if (hasDataIntegrity) {
+      return "Hay problemas de actualización de datos para revisar.";
     }
     return "Tu negocio tiene situaciones críticas que requieren atención hoy.";
   }
@@ -149,11 +160,15 @@ function buildOrchestrationSummary(
     if (hasDueToday) {
       return "Hay pagos programados para hoy y señales que requieren revisión.";
     }
+    const hasDataIntegrityIssue = priorities.some((p) => p.agentId === "data_integrity");
     if (hasCollection) {
       return "Hay clientes con saldo vencido para gestionar.";
     }
     if (hasTreasury) {
       return "Hay compromisos de pago próximos o vencidos para revisar.";
+    }
+    if (hasDataIntegrityIssue) {
+      return "Algunas lecturas pueden depender de la última sincronización disponible.";
     }
     return "Tu negocio tiene señales para revisar esta sesión.";
   }

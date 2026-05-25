@@ -29,8 +29,8 @@ export const AGENT_REGISTRY: AgentRegistryEntry[] = [
   {
     id: "data_integrity",
     label: "Integridad de datos",
-    status: "coming_soon",
-    description: "Explica si los datos están actualizados.",
+    status: "active",
+    description: "Explica si los datos están actualizados y si hay problemas externos o de sincronización.",
   },
   {
     id: "cfo",
