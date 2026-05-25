@@ -9,6 +9,10 @@ import {
   type CollectionMessageSuggestion,
   type CollectionMessageTone,
 } from "@/lib/copilot-agents/build-collection-message";
+import {
+  buildWhatsAppHref,
+  normalizeUruguayPhoneForWhatsApp,
+} from "@/lib/phone/normalize-phone-for-whatsapp";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -19,6 +23,7 @@ type Props = {
   overdueUyu: number;
   overdueUsd: number;
   contactEmail: string | null;
+  phone: string | null;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -77,7 +82,9 @@ export function CollectionMessageAssistant({
   overdueUyu,
   overdueUsd,
   contactEmail,
+  phone,
 }: Props) {
+  const waPhone = normalizeUruguayPhoneForWhatsApp(phone);
   const hasDebt = debtUyu > 0 || debtUsd > 0 || overdueUyu > 0 || overdueUsd > 0;
 
   const [channel, setChannel] = useState<CollectionMessageChannel>("whatsapp");
@@ -251,12 +258,29 @@ export function CollectionMessageAssistant({
               )
             ) : null}
 
-            {/* WhatsApp — sin teléfono en el modelo de datos */}
+            {/* WhatsApp */}
             {suggestion.channel === "whatsapp" ? (
-              <span className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)]/50 bg-white/50 px-3 py-1.5 text-[12px] text-[var(--copilot-ink-muted)]/50">
-                <MessageCircle className="h-3.5 w-3.5" aria-hidden />
-                Sin teléfono cargado
-              </span>
+              waPhone?.isValid ? (
+                <a
+                  href={buildWhatsAppHref(waPhone.digits, suggestion.body)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-[12px] font-medium text-[var(--copilot-ink-muted)] transition hover:bg-slate-50"
+                >
+                  <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+                  Abrir WhatsApp
+                </a>
+              ) : waPhone ? (
+                <span className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)]/50 bg-white/50 px-3 py-1.5 text-[12px] text-[var(--copilot-ink-muted)]/50">
+                  <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+                  Teléfono no utilizable para WhatsApp
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)]/50 bg-white/50 px-3 py-1.5 text-[12px] text-[var(--copilot-ink-muted)]/50">
+                  <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+                  Sin teléfono cargado
+                </span>
+              )
             ) : null}
           </div>
 

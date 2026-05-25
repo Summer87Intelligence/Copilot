@@ -15,6 +15,7 @@ import {
   FileText,
   Loader2,
   Mail,
+  MessageCircle,
   RefreshCw,
   ShieldAlert,
   TrendingDown,
@@ -33,6 +34,7 @@ import {
 } from "@/components/copilot/copilot-ui";
 import { CollectionMessageAssistant } from "@/components/copilot/clientes/collection-message-assistant";
 import type { Client360Payload } from "@/lib/copilot-client-360";
+import { normalizeUruguayPhoneForWhatsApp } from "@/lib/phone/normalize-phone-for-whatsapp";
 import {
   buildClientOperationalSummary,
   type OperationalHintSeverity,
@@ -445,8 +447,15 @@ function TimelineBlock({ events }: { events: TimelineEvent[] }) {
 
 // ─── Contacts tab ─────────────────────────────────────────────────────────────
 
-function ContactsTab({ contacts }: { contacts: Client360Payload["contacts"] }) {
+function ContactsTab({
+  contacts,
+  companyPhone,
+}: {
+  contacts: Client360Payload["contacts"];
+  companyPhone: string | null;
+}) {
   const [copied, setCopied] = useState<string | null>(null);
+  const waPhone = normalizeUruguayPhoneForWhatsApp(companyPhone);
 
   function copyEmail(email: string) {
     navigator.clipboard?.writeText(email).catch(() => null);
@@ -472,7 +481,40 @@ function ContactsTab({ contacts }: { contacts: Client360Payload["contacts"] }) {
   }
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="space-y-4">
+      {/* Company phone */}
+      {companyPhone ? (
+        <CopilotCard className="flex items-center gap-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--copilot-accent-soft)]">
+            <MessageCircle className="h-4 w-4 text-[var(--copilot-accent)]" aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
+              Teléfono de la empresa
+            </p>
+            <p className="truncate text-sm font-medium text-[var(--copilot-ink)]">
+              {waPhone?.isValid ? waPhone.display : companyPhone}
+            </p>
+          </div>
+          {waPhone?.isValid ? (
+            <a
+              href={waPhone.waHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50"
+            >
+              <MessageCircle className="h-3 w-3" aria-hidden />
+              WhatsApp
+            </a>
+          ) : (
+            <span className="shrink-0 text-[11px] text-[var(--copilot-ink-muted)]/50">
+              No apto WhatsApp
+            </span>
+          )}
+        </CopilotCard>
+      ) : null}
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {contacts.map((c) => (
         <CopilotCard key={c.id} className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
@@ -522,11 +564,9 @@ function ContactsTab({ contacts }: { contacts: Client360Payload["contacts"] }) {
             <p className="text-xs text-[var(--copilot-ink-muted)]/60">Sin email cargado</p>
           )}
 
-          <p className="text-xs text-[var(--copilot-ink-muted)]/60">
-            Sin telefono cargado
-          </p>
         </CopilotCard>
       ))}
+      </div>
     </div>
   );
 }
@@ -867,6 +907,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
             overdueUyu={data.overdue_uyu}
             overdueUsd={data.overdue_usd}
             contactEmail={data.contacts.find((c) => c.email != null)?.email ?? null}
+            phone={data.summary.phone}
           />
         </div>
       ) : null}
@@ -1299,7 +1340,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   title="Contactos"
                   subtitle="Personas disponibles para gestion de cobranza y contacto comercial."
                 />
-                <ContactsTab contacts={data.contacts} />
+                <ContactsTab contacts={data.contacts} companyPhone={data.summary.phone} />
               </div>
             ) : null}
 

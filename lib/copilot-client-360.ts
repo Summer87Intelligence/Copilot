@@ -74,6 +74,7 @@ export type Client360Summary = {
   codigo: string | null;
   rut_documento: string | null;
   industry: string | null;
+  phone: string | null;
   commercial: Client360CommercialBlock | null;
 };
 
@@ -465,6 +466,7 @@ export async function loadClientCompany360(
     codigo: str(crow.Codigo) || null,
     rut_documento: str(crow.RUT) || str(crow.Documento) || null,
     industry: str(crow.industry) || str(crow.sector) || null,
+    phone: str(crow.Celular) || str(crow.Telefono) || null,
     commercial: parseCommercialBlock(crow.zeta_metadata),
   };
 

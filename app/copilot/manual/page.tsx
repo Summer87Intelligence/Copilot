@@ -458,7 +458,7 @@ const SECTIONS: Section[] = [
           <Bullets
             items={[
               "Email — tocá el botón «Enviar email» para abrir tu cliente de correo, o «Copiar email» para copiarlo al portapapeles.",
-              "Teléfono — si el cliente tiene teléfono cargado en el sistema, aparece en su ficha. Si no, se indica «Sin teléfono cargado».",
+              "Teléfono — si el cliente tiene celular o teléfono cargado en Zeta, aparece en la pestaña Contactos. Si es un celular uruguayo válido, el botón WhatsApp se habilita directamente.",
               "Si no hay datos de contacto → revisá los datos en tu sistema contable (Zeta).",
             ]}
           />
@@ -492,7 +492,9 @@ const SECTIONS: Section[] = [
               "Generar mensaje — crea el texto con los datos reales del cliente (nombre y monto).",
               "Copiar mensaje — copia el texto al portapapeles para pegarlo donde quieras.",
               "Enviar email — si el cliente tiene email cargado, abre tu cliente de correo con el texto y asunto preparados.",
-              "Sin telefono cargado — el boton de WhatsApp aparece deshabilitado si el cliente no tiene telefono registrado.",
+              "Abrir WhatsApp — aparece solo si el cliente tiene un celular utilizable (formato uruguayo). Al hacer clic, abre WhatsApp con el mensaje ya escrito.",
+              "Telefono no utilizable para WhatsApp — aparece cuando hay un telefono cargado pero es fijo o tiene formato invalido. Corregi el telefono en Zeta para habilitarlo.",
+              "Sin telefono cargado — el cliente no tiene telefono registrado en el sistema.",
             ]}
           />
           <Callout variant="info">
