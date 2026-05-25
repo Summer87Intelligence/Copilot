@@ -26,9 +26,8 @@ function createServiceRoleClient() {
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Summer87 Copilot · Prototipo",
-  description:
-    "Gestión operativa con datos reales (Supabase). La entrada principal es / y redirige a este módulo.",
+  title: "Summer87 Copilot",
+  description: "Gestión operativa para Summer87.",
 };
 
 export default async function CopilotModuleLayout({

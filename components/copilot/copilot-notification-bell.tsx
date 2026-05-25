@@ -318,6 +318,18 @@ export function CopilotNotificationBell() {
               </div>
             )}
           </div>
+
+          {/* Footer */}
+          <div className="shrink-0 border-t border-[var(--copilot-border)] px-4 py-2.5">
+            <Link
+              href="/copilot/alertas"
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-center gap-1 text-[11.5px] font-medium text-[var(--copilot-ink-muted)] transition-colors hover:text-[var(--copilot-accent)]"
+            >
+              Ver todas
+              <ChevronRight className="h-3 w-3" aria-hidden />
+            </Link>
+          </div>
         </div>
       ) : null}
     </div>

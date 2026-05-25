@@ -611,7 +611,7 @@ function CopilotAccionesPageContent() {
                     </p>
                     <ul className="mt-2 space-y-1.5 text-sm">
                       <li>
-                        <CopilotGhostLink href="/copilot/operacional" className="w-full justify-start px-0 py-1 text-xs font-semibold">
+                        <CopilotGhostLink href="/copilot/alertas" className="w-full justify-start px-0 py-1 text-xs font-semibold">
                           Revisar alertas
                         </CopilotGhostLink>
                       </li>
@@ -623,11 +623,6 @@ function CopilotAccionesPageContent() {
                       <li>
                         <CopilotGhostLink href="/copilot/tesoreria" className="w-full justify-start px-0 py-1 text-xs font-semibold">
                           Revisar tesorería
-                        </CopilotGhostLink>
-                      </li>
-                      <li>
-                        <CopilotGhostLink href="/copilot/gestion-ia" className="w-full justify-start px-0 py-1 text-xs font-semibold">
-                          Ver recomendaciones
                         </CopilotGhostLink>
                       </li>
                     </ul>
