@@ -369,27 +369,27 @@ const SECTIONS: Section[] = [
   {
     id: "clientes",
     icon: <Users className="h-4 w-4" aria-hidden />,
-    title: "Clientes — Directorio comercial",
+    title: "Clientes — Directorio y ficha 360",
     content: (
       <>
         <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
           <strong>Clientes</strong> muestra a quién le vendés y cómo está cada
-          relación comercial: si está al día, si tiene deuda, cuánto debe y cómo
-          contactarlo.
+          relación comercial. Tocar un cliente abre su <em>ficha 360</em>:
+          deuda, facturas, cobros, historial y contacto en un solo lugar.
         </p>
+
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
-            Estados posibles
+            Estados posibles en el listado
           </p>
           <div className="space-y-2 text-sm">
             {[
-              { color: "bg-emerald-100 text-emerald-800", label: "Al día", desc: "No tiene deuda vencida." },
-              { color: "bg-amber-100 text-amber-800", label: "Pendiente", desc: "Tiene facturas abiertas pero sin vencer aún." },
-              { color: "bg-orange-100 text-orange-800", label: "Vencido", desc: "Tiene facturas que ya vencieron." },
-              { color: "bg-rose-100 text-rose-800", label: "Crítico", desc: "Lleva mucho tiempo sin pagar o la deuda es importante." },
+              { color: "bg-emerald-100 text-emerald-800", label: "Sin deuda", desc: "No tiene facturas pendientes." },
+              { color: "bg-amber-100 text-amber-800", label: "Con deuda al día", desc: "Tiene facturas abiertas que aún no vencieron." },
+              { color: "bg-rose-100 text-rose-800", label: "Con deuda vencida", desc: "Tiene facturas que ya pasaron su fecha de vencimiento." },
             ].map((s) => (
               <div key={s.label} className="flex items-center gap-3">
-                <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${s.color}`}>
+                <span className={`inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${s.color}`}>
                   {s.label}
                 </span>
                 <span className="text-[var(--copilot-ink)]">{s.desc}</span>
@@ -397,19 +397,91 @@ const SECTIONS: Section[] = [
             ))}
           </div>
         </div>
+
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
-            Desde la ficha del cliente podés
+            Qué muestra la ficha 360
           </p>
           <Bullets
             items={[
-              "Ver su deuda total y cuánto lleva vencido.",
-              "Ver las facturas abiertas una por una.",
-              "Llamar o escribir por WhatsApp con un toque.",
-              "Enviar un email directo.",
+              "Qué pasa — resumen ejecutivo de la situación actual del cliente.",
+              "Por qué importa — cuánto debe y qué porcentaje está vencido.",
+              "Qué hacer — primera acción sugerida por Copilot.",
+              "Estado de cuenta — deuda total en UYU y USD, con % vencido.",
+              "Facturas — cada factura activa con su monto y estado.",
+              "Cobros — recibos registrados que el cliente ya pagó.",
+              "Actividad reciente — timeline de facturas, cobros y actualizaciones.",
+              "Contactos — emails con opción de copiar o escribir directo.",
+              "Datos de integración — cuándo se actualizó la información desde Zeta.",
             ]}
           />
         </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Deuda y vencimiento
+          </p>
+          <Bullets
+            items={[
+              "Deuda total — suma de todas las facturas abiertas (emitidas o pendientes).",
+              "Deuda vencida — parte de esa deuda cuya fecha de vencimiento ya pasó.",
+              "% vencido — qué proporción de la deuda total ya está vencida. Cuanto más alto, más urgente.",
+            ]}
+          />
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Facturas y cobros
+          </p>
+          <div className="space-y-2">
+            {[
+              { label: "Factura emitida", color: "bg-amber-50 text-amber-700 border-amber-200", desc: "Se emitió pero aún no fue pagada ni venció." },
+              { label: "Factura vencida", color: "bg-rose-50 text-rose-700 border-rose-200", desc: "Pasó su fecha de vencimiento sin cobro registrado." },
+              { label: "Factura pagada", color: "bg-emerald-50 text-emerald-700 border-emerald-200", desc: "Hay un cobro registrado que la cubre." },
+              { label: "Cobro registrado", color: "bg-slate-100 text-slate-600 border-slate-200", desc: "Pago que el cliente realizó, registrado en el sistema contable." },
+            ].map((s) => (
+              <div key={s.label} className="flex items-start gap-3 text-sm">
+                <span className={`mt-0.5 inline-flex shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${s.color}`}>
+                  {s.label}
+                </span>
+                <span className="text-[var(--copilot-ink)]">{s.desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Cómo contactar al cliente
+          </p>
+          <Bullets
+            items={[
+              "Email — tocá el botón «Enviar email» para abrir tu cliente de correo, o «Copiar email» para copiarlo al portapapeles.",
+              "Teléfono — si el cliente tiene teléfono cargado en el sistema, aparece en su ficha. Si no, se indica «Sin teléfono cargado».",
+              "Si no hay datos de contacto → revisá los datos en tu sistema contable (Zeta).",
+            ]}
+          />
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Datos de integración
+          </p>
+          <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
+            La pestaña <strong>Actualización de datos</strong> muestra cuándo se
+            sincronizó cada tipo de información (facturas, cobros, contactos, etc.)
+            desde el sistema contable. Si algo parece desactualizado, podés ver
+            aquí la fecha exacta del último dato disponible.
+          </p>
+        </div>
+
+        <Callout variant="tip">
+          <strong>Copilot sugiere, vos decidís.</strong> Los resúmenes y acciones
+          que muestra la ficha son lecturas automáticas. La decisión de contactar
+          al cliente, negociar un plazo o dar de baja una deuda siempre es tuya.
+        </Callout>
+
         <div className="flex gap-3 flex-wrap">
           <NavLink href="/copilot/clientes" label="Ir a Clientes" />
         </div>
