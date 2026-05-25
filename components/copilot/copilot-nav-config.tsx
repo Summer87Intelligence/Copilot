@@ -3,7 +3,6 @@ import type { LucideIcon } from "lucide-react";
 import {
   Activity,
   BookOpen,
-  BrainCircuit,
   Building2,
   CheckSquare,
   Database,
@@ -40,7 +39,6 @@ const COPILOT_NAV_PRINCIPAL: CopilotNavGroup = {
   items: [
     { href: "/copilot/acciones", label: "Acciones", icon: CheckSquare },
     { href: "/copilot/alertas", label: "Alertas", icon: TriangleAlert },
-    { href: "/copilot/decisiones", label: "Decisiones", icon: BrainCircuit },
     { href: "/copilot/cartera", label: "Cartera", icon: Landmark },
     { href: "/copilot/clientes", label: "Clientes", icon: Users },
     { href: "/copilot/tesoreria", label: "Tesorería", icon: Banknote },
