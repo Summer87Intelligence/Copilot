@@ -200,6 +200,7 @@ async function computeApiHealthDimension(
     .select("status")
     .eq("company_id", workspaceCompanyId)
     .gte("started_at", since.toISOString())
+    .order("started_at", { ascending: false })
     .limit(20);
 
   const rows = data ?? [];
