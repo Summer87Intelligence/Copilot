@@ -850,18 +850,45 @@ const SECTIONS: Section[] = [
             Agente de Cobranza
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
-            Revisa los clientes con saldo vencido y los ordena por urgencia.
-            Te indica a quien contactar primero y con cuanto.
+            Revisa los clientes con saldo vencido, gestiones registradas,
+            promesas de pago y seguimientos pendientes. Los ordena por urgencia
+            y te indica a quien atender primero.
           </p>
           <Bullets
             items={[
               "Clientes vencidos ordenados por monto, de mayor a menor.",
+              "Promesas de pago vencidas — si un cliente prometio pagar y la fecha ya paso.",
+              "Seguimientos vencidos — si tenes un proximo contacto programado para hoy o antes.",
+              "Reintentos — clientes que no respondieron hace 2 o mas dias.",
               "Si hay mas de 3 clientes vencidos, muestra un resumen de cartera.",
-              "Si el cliente tiene ficha en Copilot, el boton va directo a su ficha.",
-              "Si no tiene ficha identificada, va a la vista de Cartera.",
               "No sugiere enviar mensajes automaticamente.",
             ]}
           />
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Seguimiento de cobranza
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            Cuando registras una gestion en la ficha del cliente, Copilot
+            puede recordarte volver a contactarlo. Esto se basa en lo que
+            registraste en Gestion de cobranza, no en los datos contables.
+          </p>
+          <Bullets
+            items={[
+              "Proximo seguimiento — si agendaste una fecha, Copilot te lo muestra como prioridad cuando llega el dia.",
+              "Promesa de pago — si el cliente prometio pagar y la fecha llego sin confirmacion, aparece como prioridad critica.",
+              "Promesa futura — si la promesa es para mas adelante, aparece como baja prioridad mientras no venza.",
+              "Sin respuesta — si la ultima gestion fue 'Sin respuesta' y pasaron 2 o mas dias, sugiere reintentar el contacto.",
+              "Contacto incorrecto — si registraste 'Contacto incorrecto', el agente lo marca como prioridad para actualizar los datos.",
+            ]}
+          />
+          <Callout variant="warning">
+            Registrar una promesa de pago NO marca la factura como pagada ni
+            modifica el saldo. Solo es un seguimiento operativo. Para registrar
+            un pago real, usa el sistema contable (Zeta).
+          </Callout>
         </div>
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
@@ -1220,6 +1247,14 @@ const FAQ: Array<{ q: string; a: React.ReactNode }> = [
   {
     q: "¿Registrar una gestion modifica la deuda del cliente?",
     a: "No. Registrar una gestion es solo un seguimiento operativo. No modifica facturas, saldos ni pagos. Para marcar un pago, hacelo desde el sistema contable (Zeta).",
+  },
+  {
+    q: "¿Que pasa si un cliente prometio pagar?",
+    a: "Copilot lo muestra como seguimiento de baja prioridad mientras la fecha no llego. Si llega la fecha y la deuda sigue abierta, lo muestra como prioridad critica para que lo verifiques. Registrar una promesa de pago no marca ninguna factura como pagada.",
+  },
+  {
+    q: "¿Que pasa si cargo una fecha de proximo seguimiento?",
+    a: "Cuando llega ese dia, Copilot lo muestra como prioridad alta en los Agentes y en Acciones. Es un recordatorio operativo — no ejecuta ninguna accion automatica.",
   },
 ];
 

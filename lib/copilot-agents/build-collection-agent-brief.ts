@@ -2,11 +2,18 @@
  * Agente de Cobranza — builder puro.
  * Sin LLM, sin Supabase, sin Zeta. Solo reglas determinísticas.
  * Multi-moneda: UYU y USD nunca se mezclan.
+ *
+ * Incluye detección de seguimientos pendientes, promesas de pago y reintentos
+ * a través de buildCollectionFollowupPriorities.
  */
 
 import type { CopilotNotification } from "@/lib/copilot-notifications/notification-types";
 import type { CollectionAction } from "@/lib/copilot-collection-types";
 import type { CopilotAgentBrief, CopilotAgentPriority } from "./types";
+import {
+  buildCollectionFollowupPriorities,
+  SEV_ORDER,
+} from "./build-collection-followup-agent-brief";
 
 const RECENT_DAYS = 7;
 
@@ -64,18 +71,28 @@ function fmtDate(ymd: string): string {
   }
 }
 
+/**
+ * Extrae el nombre del cliente del body de una notificación client_overdue.
+ * Formato del body: "{clientName} tiene {currency} {amount} vencido"
+ */
+function extractClientName(body: string | null): string | null {
+  if (!body) return null;
+  const idx = body.indexOf(" tiene ");
+  return idx > 0 ? body.slice(0, idx) : null;
+}
+
 export function buildCollectionAgentBrief(
   notifications: CopilotNotification[],
   collectionByCompanyId?: Map<string, CollectionAction[]>
 ): CopilotAgentBrief {
-  const priorities: CopilotAgentPriority[] = [];
+  const todayYmd = new Date().toISOString().slice(0, 10);
 
   // 1. Clientes vencidos — ordenados por monto desc
   const overdueClients = notifications
     .filter((n) => n.type === "client_overdue" && !n.read_at)
     .sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
 
-  const todayYmd = new Date().toISOString().slice(0, 10);
+  const overdueClientPriorities: CopilotAgentPriority[] = [];
 
   for (const n of overdueClients.slice(0, 3)) {
     const companyId =
@@ -90,7 +107,6 @@ export function buildCollectionAgentBrief(
         ? { amount: n.amount, currency: n.currency as "UYU" | "USD" }
         : {};
 
-    // Enrich with follow-up context if available
     let reason = n.body ?? "El cliente tiene saldo vencido pendiente de gestión.";
     let ctaLabel = companyId ? "Ver cliente" : "Ver cartera";
     let severity: CopilotAgentPriority["severity"] =
@@ -110,7 +126,7 @@ export function buildCollectionAgentBrief(
       }
     }
 
-    priorities.push({
+    overdueClientPriorities.push({
       id: `collection-overdue-${n.id}`,
       agentId: "collection",
       title: n.title ?? "Cliente con saldo vencido",
@@ -122,9 +138,43 @@ export function buildCollectionAgentBrief(
     });
   }
 
-  // 2. Cartera vencida — resumen si hay más de 3 clientes
+  // 2. Seguimientos y promesas — detectados desde gestiones registradas
+  const nameByCompanyId = new Map<string, string>();
+  for (const n of notifications) {
+    if (n.entity_id) {
+      const name = extractClientName(n.body);
+      if (name) nameByCompanyId.set(n.entity_id, name);
+    }
+  }
+
+  const allCollectionActions = collectionByCompanyId
+    ? [...collectionByCompanyId.values()].flat()
+    : [];
+
+  const followupPriorities = buildCollectionFollowupPriorities(
+    allCollectionActions,
+    nameByCompanyId,
+    todayYmd
+  );
+
+  // Merge overdue + followup: por cada href, conservar la más grave
+  const byHref = new Map<string, CopilotAgentPriority>();
+  for (const p of [...overdueClientPriorities, ...followupPriorities]) {
+    const existing = byHref.get(p.href);
+    if (!existing || (SEV_ORDER[p.severity] ?? 4) < (SEV_ORDER[existing.severity] ?? 4)) {
+      byHref.set(p.href, p);
+    }
+  }
+
+  const clientPriorities = [...byHref.values()].sort(
+    (a, b) => (SEV_ORDER[a.severity] ?? 4) - (SEV_ORDER[b.severity] ?? 4)
+  );
+
+  // 3. Cartera vencida — resumen si hay más de 3 clientes
+  const allPriorities: CopilotAgentPriority[] = [...clientPriorities];
+
   if (overdueClients.length > 3) {
-    priorities.push({
+    allPriorities.push({
       id: "collection-portfolio",
       agentId: "collection",
       title: "Revisar cartera vencida",
@@ -135,13 +185,13 @@ export function buildCollectionAgentBrief(
     });
   }
 
-  // 3. Nuevos deudores
+  // 4. Nuevos deudores
   const newDebtors = notifications.filter(
     (n) => n.type === "new_debtor" && !n.read_at
   );
-  if (newDebtors.length > 0 && priorities.length < 5) {
+  if (newDebtors.length > 0 && allPriorities.length < 5) {
     const count = newDebtors.length;
-    priorities.push({
+    allPriorities.push({
       id: "collection-new-debtors",
       agentId: "collection",
       title: "Nuevos clientes con deuda",
@@ -152,22 +202,29 @@ export function buildCollectionAgentBrief(
     });
   }
 
-  const hasCritical = priorities.some((p) => p.severity === "critical");
-  const hasHigh = priorities.some((p) => p.severity === "high");
+  const topPriorities = allPriorities.slice(0, 5);
+
+  const hasCritical = topPriorities.some((p) => p.severity === "critical");
+  const hasHigh = topPriorities.some((p) => p.severity === "high");
+  const hasFollowup = followupPriorities.length > 0;
+
   const status: CopilotAgentBrief["status"] =
     hasCritical
       ? "critical"
-      : hasHigh || overdueClients.length > 0
+      : hasHigh || overdueClients.length > 0 || hasFollowup
       ? "attention"
       : "stable";
-
-  const topPriorities = priorities.slice(0, 5);
 
   return {
     agentId: "collection",
     title: "Cobranza",
     status,
-    summary: buildCollectionSummary(status, overdueClients.length, newDebtors.length),
+    summary: buildCollectionSummary(
+      status,
+      overdueClients.length,
+      newDebtors.length,
+      topPriorities
+    ),
     priorities: topPriorities,
     nextBestAction:
       topPriorities.length > 0
@@ -179,19 +236,41 @@ export function buildCollectionAgentBrief(
 function buildCollectionSummary(
   status: CopilotAgentBrief["status"],
   overdueCount: number,
-  newDebtorCount: number
+  newDebtorCount: number,
+  priorities: CopilotAgentPriority[]
 ): string {
   if (status === "critical") {
+    const hasPromiseOverdue = priorities.some((p) =>
+      p.id.startsWith("followup-promise-overdue")
+    );
+    if (hasPromiseOverdue && overdueCount === 0) {
+      return "Hay promesas de pago vencidas que requieren verificación urgente.";
+    }
     return "Hay clientes con saldo crítico vencido que requieren gestión urgente.";
   }
   if (status === "attention") {
+    const hasFollowupOverdue = priorities.some((p) =>
+      p.id.startsWith("followup-overdue")
+    );
+    const hasPromiseOverdue = priorities.some((p) =>
+      p.id.startsWith("followup-promise-overdue")
+    );
     if (overdueCount > 0 && newDebtorCount > 0) {
       return `${overdueCount} cliente${overdueCount > 1 ? "s" : ""} vencido${overdueCount > 1 ? "s" : ""} y ${newDebtorCount} nuevo${newDebtorCount > 1 ? "s" : ""} con deuda.`;
     }
     if (overdueCount > 0) {
       return `${overdueCount} cliente${overdueCount > 1 ? "s con saldos vencidos" : " con saldo vencido"} para gestionar.`;
     }
-    return `${newDebtorCount} cliente${newDebtorCount > 1 ? "s" : ""} nuevo${newDebtorCount > 1 ? "s" : ""} con deuda pendiente.`;
+    if (hasPromiseOverdue) {
+      return "Hay promesas de pago vencidas que requieren verificación.";
+    }
+    if (hasFollowupOverdue) {
+      return "Hay seguimientos de cobranza pendientes de retomar.";
+    }
+    if (newDebtorCount > 0) {
+      return `${newDebtorCount} cliente${newDebtorCount > 1 ? "s" : ""} nuevo${newDebtorCount > 1 ? "s" : ""} con deuda pendiente.`;
+    }
+    return "Hay gestiones de cobranza que requieren atención.";
   }
   return "La cartera está en orden. No hay clientes vencidos urgentes.";
 }

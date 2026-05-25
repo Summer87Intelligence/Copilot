@@ -114,8 +114,20 @@ function buildOrchestrationSummary(
     const hasTreasury = priorities.some(
       (p) => p.href.includes("tesoreria") || p.href.includes("pagos")
     );
+    const hasPromiseOverdue = priorities.some((p) =>
+      p.id?.startsWith("followup-promise-overdue")
+    );
+    const hasFollowupOverdue = priorities.some((p) =>
+      p.id?.startsWith("followup-overdue")
+    );
     if (hasCollection && hasTreasury) {
       return "Hay clientes vencidos y compromisos de pago para revisar hoy.";
+    }
+    if (hasPromiseOverdue) {
+      return "Hay promesas de pago vencidas y clientes pendientes de gestionar.";
+    }
+    if (hasFollowupOverdue) {
+      return "Hay seguimientos de cobranza vencidos y clientes para contactar.";
     }
     if (hasCollection) {
       return "Hay clientes con saldo vencido para gestionar.";

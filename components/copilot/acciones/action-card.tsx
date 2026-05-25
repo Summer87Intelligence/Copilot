@@ -111,6 +111,21 @@ function CollectionContextBlock({ ctx }: { ctx: CopilotActionCollectionContext }
   const badgeCls =
     CONTEXT_BADGE_CLASS[ctx.statusLabel] ?? "bg-slate-100 text-slate-500 border-slate-200";
   const channelLabel = CHANNEL_LABEL[ctx.latestChannel] ?? ctx.latestChannel;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const followupTag = (() => {
+    if (ctx.nextFollowUpAt && ctx.nextFollowUpAt <= today) {
+      return { label: "Seguimiento vencido", cls: "bg-amber-50 text-amber-700 border-amber-200" };
+    }
+    if (ctx.latestOutcome === "promised_payment" && ctx.promiseDate) {
+      if (ctx.promiseDate < today) {
+        return { label: "Promesa vencida", cls: "bg-rose-50 text-rose-700 border-rose-200" };
+      }
+      return { label: "Promesa vigente", cls: "bg-blue-50 text-blue-700 border-blue-200" };
+    }
+    return null;
+  })();
+
   return (
     <div className="mt-2.5 rounded-xl border border-[var(--copilot-border)]/70 bg-[rgba(44,40,37,0.025)] px-3 py-2 space-y-1">
       <div className="flex flex-wrap items-center gap-1.5">
@@ -119,6 +134,13 @@ function CollectionContextBlock({ ctx }: { ctx: CopilotActionCollectionContext }
         >
           {ctx.statusLabel}
         </span>
+        {followupTag ? (
+          <span
+            className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${followupTag.cls}`}
+          >
+            {followupTag.label}
+          </span>
+        ) : null}
         <span className="text-[11px] text-[var(--copilot-ink-muted)]">
           Última gestión: {channelLabel} · {formatRelativeDate(ctx.latestDateIso)}
         </span>
