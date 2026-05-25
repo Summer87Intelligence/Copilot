@@ -505,6 +505,54 @@ const SECTIONS: Section[] = [
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Gestion de cobranza
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            Despues de contactar al cliente, registra que paso. Esto te permite
+            recordar que se hablo, cuándo volver a contactar, y si hay una
+            promesa de pago pendiente.
+          </p>
+          <Bullets
+            items={[
+              "Canal — elegis como fue el contacto: WhatsApp, Email, Telefono u Otro.",
+              "Resultado — que paso: Contactado, Prometio pagar, Sin respuesta, Contacto incorrecto, En disputa, Requiere seguimiento.",
+              "Nota — campo libre para escribir el detalle: 'prometio pagar el viernes', 'sin respuesta, llamar en 3 dias', etc.",
+              "Proximo seguimiento — fecha opcional para recordar cuando volver a contactar.",
+              "Promesa de pago — si el resultado fue 'Prometio pagar', podes registrar la fecha y monto de la promesa.",
+              "Registrar gestion — guarda el registro. No modifica la deuda ni marca facturas como pagadas.",
+            ]}
+          />
+          <Callout variant="warning">
+            Registrar una gestion NO marca ninguna factura como pagada ni
+            modifica el saldo. Solo es un registro de seguimiento. Para marcar
+            un pago, usa el sistema contable (Zeta).
+          </Callout>
+          <p className="mt-3 mb-2 text-[11px] font-semibold text-[var(--copilot-ink-muted)]">
+            Que significa cada resultado
+          </p>
+          <Bullets
+            items={[
+              "Contactado — lograste comunicarte con el cliente.",
+              "Prometio pagar — el cliente se compromete a pagar en una fecha. Registra la fecha y monto si podes.",
+              "Sin respuesta — llamaste o escribiste pero no contesto.",
+              "Contacto incorrecto — el numero o email que tenes no es el correcto.",
+              "En disputa — el cliente no reconoce la deuda o la cuestiona.",
+              "Requiere seguimiento — necesitas volver a contactar, pero no hay mas detalle por ahora.",
+            ]}
+          />
+          <p className="mt-3 mb-2 text-[11px] font-semibold text-[var(--copilot-ink-muted)]">
+            Historial
+          </p>
+          <p className="text-sm text-[var(--copilot-ink-muted)]">
+            Debajo del formulario aparece el historial de todas las gestiones
+            registradas para ese cliente, ordenadas de la mas reciente a la mas
+            antigua. Cada entrada muestra canal, resultado, nota y proximo
+            seguimiento si existe.
+          </p>
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
             Datos vs. ficha completa
           </p>
           <Bullets
@@ -1136,6 +1184,14 @@ const FAQ: Array<{ q: string; a: React.ReactNode }> = [
   {
     q: "¿Que pasa si Zeta falla y uso el agente?",
     a: "El agente puede mostrar informacion con los ultimos datos disponibles y recomendar revisar Operacional. No inventa datos nuevos.",
+  },
+  {
+    q: "Copie o envie un mensaje al cliente. ¿Que hago ahora?",
+    a: "Registra el resultado en Gestion de cobranza, en la ficha del cliente. Por ejemplo: 'Contactado', 'Sin respuesta', o 'Prometio pagar'. Eso queda guardado en el historial y te ayuda a recordar cuando volver a contactar.",
+  },
+  {
+    q: "¿Registrar una gestion modifica la deuda del cliente?",
+    a: "No. Registrar una gestion es solo un seguimiento operativo. No modifica facturas, saldos ni pagos. Para marcar un pago, hacelo desde el sistema contable (Zeta).",
   },
 ];
 

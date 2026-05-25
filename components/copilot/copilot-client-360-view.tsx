@@ -33,6 +33,7 @@ import {
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
 import { CollectionMessageAssistant } from "@/components/copilot/clientes/collection-message-assistant";
+import { CollectionFollowupForm } from "@/components/copilot/clientes/collection-followup-form";
 import type { Client360Payload } from "@/lib/copilot-client-360";
 import { normalizeUruguayPhoneForWhatsApp } from "@/lib/phone/normalize-phone-for-whatsapp";
 import {
@@ -909,6 +910,13 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
             contactEmail={data.contacts.find((c) => c.email != null)?.email ?? null}
             phone={data.summary.phone}
           />
+        </div>
+      ) : null}
+
+      {/* Gestión de cobranza */}
+      {!loading && !error && data ? (
+        <div className="border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.4)] px-6 py-4">
+          <CollectionFollowupForm companyId={data.summary.company_id} />
         </div>
       ) : null}
 
