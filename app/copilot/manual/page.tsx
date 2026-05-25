@@ -478,6 +478,31 @@ const SECTIONS: Section[] = [
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Asistente de cobranza
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            Cuando el cliente tiene deuda, la ficha muestra el Asistente de
+            cobranza. Te permite generar un mensaje sugerido para contactarlo.
+            Copilot no envia nada automaticamente.
+          </p>
+          <Bullets
+            items={[
+              "Canal — elige WhatsApp o Email segun como preferis contactar al cliente.",
+              "Tono — Amable para el primer aviso, Firme si ya paso un tiempo, Urgente si la deuda lleva mucho sin atenderse.",
+              "Generar mensaje — crea el texto con los datos reales del cliente (nombre y monto).",
+              "Copiar mensaje — copia el texto al portapapeles para pegarlo donde quieras.",
+              "Enviar email — si el cliente tiene email cargado, abre tu cliente de correo con el texto y asunto preparados.",
+              "Sin telefono cargado — el boton de WhatsApp aparece deshabilitado si el cliente no tiene telefono registrado.",
+            ]}
+          />
+          <Callout variant="info">
+            Los mensajes son sugerencias. Revisalos antes de enviarlos. Copilot
+            no los envia automaticamente.
+          </Callout>
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
             Datos vs. ficha completa
           </p>
           <Bullets
@@ -814,6 +839,10 @@ const SECTIONS: Section[] = [
               {
                 q: "¿Que significa 'Prioridades principales'?",
                 a: "Son las prioridades mas urgentes de todos los agentes activos juntos. Se ordenan de mayor a menor urgencia y se muestran sin duplicados.",
+              },
+              {
+                q: "¿Copilot puede escribir mensajes de cobranza?",
+                a: "Si. Podes generar mensajes sugeridos para WhatsApp o email desde la ficha de cada cliente. Copilot no los envia automaticamente. Vos revises el texto y decides si enviarlo.",
               },
               {
                 q: "¿Los agentes pueden equivocarse?",

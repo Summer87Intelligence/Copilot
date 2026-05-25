@@ -31,6 +31,7 @@ import {
   CopilotGhostLink,
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
+import { CollectionMessageAssistant } from "@/components/copilot/clientes/collection-message-assistant";
 import type { Client360Payload } from "@/lib/copilot-client-360";
 import {
   buildClientOperationalSummary,
@@ -852,6 +853,21 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
       {!loading && !error && data ? (
         <div className="border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.4)] px-6 py-4">
           <CopilotHintBlock data={data} />
+        </div>
+      ) : null}
+
+      {/* Collection message assistant — solo cuando hay deuda */}
+      {!loading && !error && data &&
+        (data.debt_uyu > 0 || data.debt_usd > 0 || data.overdue_uyu > 0 || data.overdue_usd > 0) ? (
+        <div className="border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.4)] px-6 py-4">
+          <CollectionMessageAssistant
+            clientName={data.summary.nombre_visible}
+            debtUyu={data.debt_uyu}
+            debtUsd={data.debt_usd}
+            overdueUyu={data.overdue_uyu}
+            overdueUsd={data.overdue_usd}
+            contactEmail={data.contacts.find((c) => c.email != null)?.email ?? null}
+          />
         </div>
       ) : null}
 
