@@ -1,0 +1,62 @@
+import type { CopilotAgentId, CopilotAgentStatus } from "./types";
+
+export type AgentRegistryEntry = {
+  id: CopilotAgentId;
+  label: string;
+  status: CopilotAgentStatus;
+  description: string;
+};
+
+export const AGENT_REGISTRY: AgentRegistryEntry[] = [
+  {
+    id: "daily_executive",
+    label: "Ejecutivo Diario",
+    status: "active",
+    description: "Resume el día y ordena prioridades.",
+  },
+  {
+    id: "collection",
+    label: "Cobranza",
+    status: "active",
+    description: "Ordena clientes por urgencia de cobro.",
+  },
+  {
+    id: "treasury",
+    label: "Tesorería",
+    status: "coming_soon",
+    description: "Revisa pagos, caja y compromisos.",
+  },
+  {
+    id: "data_integrity",
+    label: "Integridad de datos",
+    status: "coming_soon",
+    description: "Explica si los datos están actualizados.",
+  },
+  {
+    id: "cfo",
+    label: "CFO / Finanzas",
+    status: "coming_soon",
+    description: "Analiza liquidez, riesgo y concentración.",
+  },
+  {
+    id: "client",
+    label: "Cliente",
+    status: "coming_soon",
+    description: "Resume un cliente específico.",
+  },
+  {
+    id: "alerts",
+    label: "Alertas",
+    status: "coming_soon",
+    description: "Prioriza alertas relevantes.",
+  },
+  {
+    id: "risk",
+    label: "Riesgo",
+    status: "coming_soon",
+    description: "Detecta riesgos antes de que escalen.",
+  },
+];
+
+export const ACTIVE_AGENTS = AGENT_REGISTRY.filter((a) => a.status === "active");
+export const COMING_SOON_AGENTS = AGENT_REGISTRY.filter((a) => a.status === "coming_soon");

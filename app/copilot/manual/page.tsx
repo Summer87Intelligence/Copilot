@@ -688,49 +688,98 @@ const SECTIONS: Section[] = [
   {
     id: "agentes",
     icon: <Bot className="h-4 w-4" aria-hidden />,
-    title: "Agentes IA — Resumen y prioridades automaticas",
+    title: "Agentes IA — Sistema coordinado de asistentes",
     content: (
       <>
         <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
           <strong>Agentes IA</strong> son asistentes que leen la informacion del
-          negocio y te ayudan a ordenar que revisar primero. No hacen cambios
-          solos. Solo resumen, priorizan y te llevan al modulo correcto.
+          negocio y te ayudan a ordenar que revisar primero. Trabajan en
+          conjunto: cada agente mira una parte del negocio, y el sistema combina
+          lo que encontraron para darte una vision unificada.
         </p>
         <Callout variant="info">
           <strong>Los agentes no ejecutan acciones.</strong> No pagan, no
-          borran, no envian mensajes automaticamente. Ves siempre el resultado
-          antes de decidir que hacer.
+          borran, no envian mensajes automaticamente. Solo leen datos, ordenan
+          prioridades y te llevan al modulo correcto. Vos siempre decides que
+          hacer.
         </Callout>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Resumen coordinado
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            Al generar el analisis, todos los agentes activos trabajan al mismo
+            tiempo. El sistema combina sus resultados, elimina duplicados y
+            ordena las prioridades mas importantes de mayor a menor urgencia.
+          </p>
+          <Bullets
+            items={[
+              "Muestra hasta 5 prioridades globales ordenadas por urgencia.",
+              "Las prioridades vienen de todos los agentes activos, no de uno solo.",
+              "No mezcla monedas: UYU y USD se tratan por separado.",
+              "El estado puede ser Estable, En atencion o Critico.",
+              "Siempre sugiere el proximo paso mas importante a dar.",
+            ]}
+          />
+        </div>
+
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
             Agente Ejecutivo Diario
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
-            Lee informacion de Hoy, Alertas, Notificaciones, Cartera, Tesoreria
-            y Operacional. Con eso genera un resumen del dia con las cosas mas
-            importantes para atender.
+            Lee notificaciones, caja, cartera, pagos y estado operacional.
+            Resume el dia con las cosas mas importantes para atender.
           </p>
           <Bullets
             items={[
-              "Muestra hasta 5 prioridades ordenadas por urgencia.",
-              "Indica que cambio desde la ultima vez que generaste el resumen.",
-              "Sugiere el proximo paso concreto a dar.",
+              "Detecta problemas de sincronizacion, riesgo de caja y clientes vencidos.",
+              "Indica que cambio desde la ultima vez.",
+              "Sugiere el proximo paso concreto.",
               "Usa reglas del sistema, no reemplaza tu criterio.",
-              "Si una fuente no carga, muestra lo que puede con los datos disponibles.",
             ]}
           />
         </div>
+
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
-            Boton: Generar resumen de hoy
+            Agente de Cobranza
           </p>
-          <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
-            Al tocarlo, el agente lee todas las fuentes y genera la lectura
-            ejecutiva del dia. Podes repetirlo cuando quieras para actualizar
-            el resumen. Si hay un problema externo, el agente igual intenta
-            mostrar lo que pueda.
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            Revisa los clientes con saldo vencido y los ordena por urgencia.
+            Te indica a quien contactar primero y con cuanto.
           </p>
+          <Bullets
+            items={[
+              "Clientes vencidos ordenados por monto, de mayor a menor.",
+              "Si hay mas de 3 clientes vencidos, muestra un resumen de cartera.",
+              "Si el cliente tiene ficha en Copilot, el boton va directo a su ficha.",
+              "Si no tiene ficha identificada, va a la vista de Cartera.",
+              "No sugiere enviar mensajes automaticamente.",
+            ]}
+          />
         </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Agentes preparados para proximas versiones
+          </p>
+          <p className="mb-2 text-sm text-[var(--copilot-ink)]">
+            Ya estan definidos pero todavia no estan activos:
+          </p>
+          <Bullets
+            items={[
+              "Tesoreria — revision de pagos, caja y compromisos.",
+              "Integridad de datos — explica si los datos estan actualizados.",
+              "CFO / Finanzas — liquidez, riesgo y concentracion de cartera.",
+              "Cliente — resumen de un cliente especifico.",
+              "Alertas — priorizacion de avisos del sistema.",
+              "Riesgo — deteccion temprana de riesgos antes de que escalen.",
+            ]}
+          />
+        </div>
+
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
             Niveles de prioridad
@@ -751,23 +800,40 @@ const SECTIONS: Section[] = [
             ))}
           </div>
         </div>
+
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
-            Acciones posibles desde el resumen
+            Preguntas frecuentes
           </p>
-          <Bullets
-            items={[
-              "Ver Acciones — ir a la lista de cosas concretas para hacer.",
-              "Ver Alertas — revisar el historial de avisos.",
-              "Ver Cartera — ver quien debe y cuanto.",
-              "Ver Clientes — abrir la ficha de un cliente.",
-              "Ver Pagos — revisar compromisos en Tesoreria.",
-              "Ver Operacional — ver el estado de sincronizacion de datos.",
-            ]}
-          />
+          <div className="space-y-4">
+            {[
+              {
+                q: "¿Los agentes trabajan juntos?",
+                a: "Si. Cada agente mira una parte del negocio y el resumen coordinado ordena lo mas importante. El resultado final combina lo que encontro cada agente.",
+              },
+              {
+                q: "¿Que significa 'Prioridades principales'?",
+                a: "Son las prioridades mas urgentes de todos los agentes activos juntos. Se ordenan de mayor a menor urgencia y se muestran sin duplicados.",
+              },
+              {
+                q: "¿Los agentes pueden equivocarse?",
+                a: "Pueden mostrar informacion incompleta si los datos no estan sincronizados. Siempre conviene verificar en el modulo correspondiente antes de actuar.",
+              },
+              {
+                q: "¿Con que frecuencia debo generar el analisis?",
+                a: "Al inicio del dia o cuando necesites una mirada rapida. Podes repetirlo cuando quieras para actualizar el resultado.",
+              },
+            ].map(({ q, a }) => (
+              <div key={q}>
+                <p className="text-sm font-semibold text-[var(--copilot-ink)]">{q}</p>
+                <p className="mt-0.5 text-sm text-[var(--copilot-ink-muted)]">{a}</p>
+              </div>
+            ))}
+          </div>
         </div>
+
         <Callout variant="tip">
-          Usa el agente al inicio del dia para tener una mirada rapida de que
+          Usa los agentes al inicio del dia para tener una mirada rapida de que
           requiere atencion. Despues vas a los modulos especificos para actuar.
         </Callout>
         <div className="flex gap-3 flex-wrap">

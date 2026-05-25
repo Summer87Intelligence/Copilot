@@ -2,10 +2,21 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import type { AgentPriority, AgentSeverity } from "@/lib/copilot-agents/build-daily-executive-brief";
+
+// Accepts both AgentPriority (daily executive) and CopilotAgentPriority (orchestration)
+type PriorityData = {
+  id: string;
+  title: string;
+  reason: string;
+  severity: "critical" | "high" | "medium" | "low";
+  amount?: number;
+  currency?: "UYU" | "USD";
+  href: string;
+  ctaLabel: string;
+};
 
 const SEVERITY_STYLES: Record<
-  AgentSeverity,
+  "critical" | "high" | "medium" | "low",
   { badge: string; bar: string; label: string }
 > = {
   critical: {
@@ -39,7 +50,7 @@ export function AgentPriorityCard({
   priority,
   index,
 }: {
-  priority: AgentPriority;
+  priority: PriorityData;
   index: number;
 }) {
   const style = SEVERITY_STYLES[priority.severity];
