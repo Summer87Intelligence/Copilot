@@ -4,6 +4,18 @@ import type { ClientPortfolioRow } from "@/lib/copilot-clients-portfolio";
 export type CopilotActionType = "collection" | "treasury" | "system" | "client";
 export type CopilotActionPriority = "critical" | "high" | "medium" | "low";
 
+export type CopilotActionCollectionContext = {
+  latestOutcome: string;
+  latestChannel: string;
+  latestDateIso: string;
+  nextFollowUpAt: string | null;
+  promiseDate: string | null;
+  promiseAmount: number | null;
+  promiseCurrency: string | null;
+  isRecent: boolean;
+  statusLabel: string;
+};
+
 export type CopilotAction = {
   id: string;
   type: CopilotActionType;
@@ -19,6 +31,7 @@ export type CopilotAction = {
   contactEmail?: string | null;
   source: "notification" | "portfolio";
   notificationId?: string;
+  collectionContext?: CopilotActionCollectionContext | null;
 };
 
 const PRIORITY_ORDER: Record<CopilotActionPriority, number> = {

@@ -47,6 +47,11 @@ import {
   type CopilotActionPriority,
   type CopilotActionType,
 } from "@/lib/copilot-actions/build-actions";
+import {
+  enrichActionsWithCollectionFollowups,
+  groupCollectionActionsByCompany,
+} from "@/lib/copilot-actions/enrich-actions";
+import type { CollectionAction } from "@/lib/copilot-collection-types";
 
 // ── Pipeline helpers ──────────────────────────────────────────────────────────
 
@@ -136,9 +141,10 @@ function CopilotAccionesPageContent() {
   const loadBandeja = useCallback(async () => {
     setBandejaLoading(true);
     try {
-      const [notifRes, portfolioResult] = await Promise.allSettled([
+      const [notifRes, portfolioResult, collectionRes] = await Promise.allSettled([
         copilotApiFetch("/api/copilot/notifications?limit=100"),
         fetchClientPortfolioLoad(),
+        copilotApiFetch("/api/copilot/collection-actions"),
       ]);
 
       let notifications: CopilotNotification[] = [];
@@ -155,13 +161,25 @@ function CopilotAccionesPageContent() {
         portfolioRows = portfolioResult.value.rows;
       }
 
+      let collectionByCompanyId = new Map<string, CollectionAction[]>();
+      if (collectionRes.status === "fulfilled") {
+        const json = (await collectionRes.value.json().catch(() => null)) as {
+          ok?: boolean;
+          actions?: CollectionAction[];
+        } | null;
+        if (json?.actions?.length) {
+          collectionByCompanyId = groupCollectionActionsByCompany(json.actions);
+        }
+      }
+
       const fromNotifications = buildActionsFromNotifications(notifications);
       const coveredIds = new Set(
         fromNotifications.map((a) => a.entityId).filter(Boolean) as string[]
       );
       const fromPortfolio = buildActionsFromPortfolioRows(portfolioRows, coveredIds);
       const merged = mergePrioritizedActions(fromNotifications, fromPortfolio);
-      setBandejaActions(merged);
+      const enriched = enrichActionsWithCollectionFollowups(merged, collectionByCompanyId);
+      setBandejaActions(enriched);
     } finally {
       setBandejaLoading(false);
     }

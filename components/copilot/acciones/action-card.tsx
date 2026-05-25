@@ -5,6 +5,7 @@ import { Mail, MessageCircle } from "lucide-react";
 
 import type {
   CopilotAction,
+  CopilotActionCollectionContext,
   CopilotActionPriority,
   CopilotActionType,
 } from "@/lib/copilot-actions/build-actions";
@@ -61,6 +62,84 @@ function typeLabel(type: CopilotActionType): string {
   }
 }
 
+function formatRelativeDate(iso: string): string {
+  try {
+    const diff = Math.round((Date.now() - new Date(iso).getTime()) / 86_400_000);
+    if (diff === 0) return "hoy";
+    if (diff === 1) return "ayer";
+    if (diff <= 6) return `hace ${diff} días`;
+    return new Date(iso).toLocaleDateString("es-UY", { day: "numeric", month: "short" });
+  } catch {
+    return iso.slice(0, 10);
+  }
+}
+
+function formatDateShort(ymd: string): string {
+  try {
+    return new Date(ymd + "T12:00:00").toLocaleDateString("es-UY", {
+      day: "numeric",
+      month: "short",
+    });
+  } catch {
+    return ymd;
+  }
+}
+
+const CHANNEL_LABEL: Record<string, string> = {
+  whatsapp: "WhatsApp",
+  email: "Email",
+  call: "Teléfono",
+  internal_note: "Nota",
+  meeting: "Reunión",
+  payment_promise: "Promesa",
+  dispute: "Disputa",
+  escalation: "Escalación",
+};
+
+const CONTEXT_BADGE_CLASS: Record<string, string> = {
+  "En seguimiento": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Promesa de pago": "bg-blue-50 text-blue-700 border-blue-200",
+  "Reintentar contacto": "bg-slate-100 text-slate-600 border-slate-200",
+  "Actualizar contacto": "bg-orange-50 text-orange-700 border-orange-200",
+  "En disputa": "bg-red-50 text-red-700 border-red-200",
+  "Seguimiento pendiente": "bg-amber-50 text-amber-700 border-amber-200",
+  Escalado: "bg-red-50 text-red-700 border-red-200",
+  Gestionado: "bg-emerald-50 text-emerald-700 border-emerald-200",
+};
+
+function CollectionContextBlock({ ctx }: { ctx: CopilotActionCollectionContext }) {
+  const badgeCls =
+    CONTEXT_BADGE_CLASS[ctx.statusLabel] ?? "bg-slate-100 text-slate-500 border-slate-200";
+  const channelLabel = CHANNEL_LABEL[ctx.latestChannel] ?? ctx.latestChannel;
+  return (
+    <div className="mt-2.5 rounded-xl border border-[var(--copilot-border)]/70 bg-[rgba(44,40,37,0.025)] px-3 py-2 space-y-1">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span
+          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${badgeCls}`}
+        >
+          {ctx.statusLabel}
+        </span>
+        <span className="text-[11px] text-[var(--copilot-ink-muted)]">
+          Última gestión: {channelLabel} · {formatRelativeDate(ctx.latestDateIso)}
+        </span>
+      </div>
+      {ctx.promiseDate ? (
+        <p className="text-[11px] text-blue-600">
+          Prometió pagar: {formatDateShort(ctx.promiseDate)}
+          {ctx.promiseAmount != null && ctx.promiseCurrency
+            ? ` · ${ctx.promiseCurrency === "USD" ? "U$S" : "$"} ${ctx.promiseAmount.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
+            : ""}
+        </p>
+      ) : null}
+      {ctx.nextFollowUpAt ? (
+        <p className="text-[11px] text-[var(--copilot-ink-muted)]">
+          Próximo seguimiento: {formatDateShort(ctx.nextFollowUpAt)}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function formatAmount(amount: number, currency?: string | null): string {
   const symbol = currency === "USD" ? "U$S" : "$";
   return `${symbol} ${amount.toLocaleString("es-AR", {
@@ -105,6 +184,10 @@ export function ActionCard({ action }: { action: CopilotAction }) {
       <p className="mt-1 text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
         {action.reason}
       </p>
+
+      {action.collectionContext ? (
+        <CollectionContextBlock ctx={action.collectionContext} />
+      ) : null}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Link

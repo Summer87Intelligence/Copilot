@@ -314,6 +314,25 @@ const SECTIONS: Section[] = [
             ]}
           />
         </div>
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Contexto de gestión en cada acción
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            Si ya registraste una gestión de cobranza para un cliente, la acción
+            correspondiente lo muestra directamente. No tenés que recordar qué
+            pasó — aparece en la tarjeta.
+          </p>
+          <Bullets
+            items={[
+              "Última gestión — canal, resultado y fecha de la última gestión registrada.",
+              "Prometió pagar — si hay una promesa activa, se muestra la fecha y el monto.",
+              "Próximo seguimiento — si agendaste un seguimiento, aparece la fecha.",
+              "La prioridad puede bajar si el cliente ya fue contactado o tiene una promesa futura.",
+              "El botón cambia a «Ver seguimiento» para ir directo al historial del cliente.",
+            ]}
+          />
+        </div>
         <div className="flex gap-3 flex-wrap">
           <NavLink href="/copilot/acciones" label="Ir a Acciones" />
         </div>
@@ -540,6 +559,15 @@ const SECTIONS: Section[] = [
               "Requiere seguimiento — necesitas volver a contactar, pero no hay mas detalle por ahora.",
             ]}
           />
+          <p className="mt-3 mb-2 text-[11px] font-semibold text-[var(--copilot-ink-muted)]">
+            Ultima gestion
+          </p>
+          <p className="mb-2 text-sm text-[var(--copilot-ink-muted)]">
+            Si ya hay gestiones registradas, aparece un resumen compacto justo
+            arriba del formulario: canal, resultado, fecha y proximo seguimiento.
+            Asi no hace falta leer todo el historial para saber en que punto
+            quedo la gestion.
+          </p>
           <p className="mt-3 mb-2 text-[11px] font-semibold text-[var(--copilot-ink-muted)]">
             Historial
           </p>

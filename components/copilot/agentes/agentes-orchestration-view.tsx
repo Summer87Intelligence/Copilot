@@ -27,6 +27,8 @@ import type { NotificationListResponse } from "@/lib/copilot-notifications/notif
 import { buildDailyExecutiveBrief } from "@/lib/copilot-agents/build-daily-executive-brief";
 import { buildCollectionAgentBrief } from "@/lib/copilot-agents/build-collection-agent-brief";
 import { orchestrateAgents } from "@/lib/copilot-agents/orchestrate-agents";
+import type { CollectionAction } from "@/lib/copilot-collection-types";
+import { groupCollectionActionsByCompany } from "@/lib/copilot-actions/enrich-actions";
 import { COMING_SOON_AGENTS } from "@/lib/copilot-agents/agent-registry";
 import type {
   CopilotAgentBrief,
@@ -302,8 +304,22 @@ async function fetchAndOrchestrate(): Promise<CopilotAgentsOrchestration> {
   const briefing = briefingData.ok ? briefingData.briefing : null;
   const notifications = notifData.ok ? notifData.notifications : [];
 
+  // Collection actions are optional — don't fail orchestration if unavailable
+  let collectionByCompanyId: Map<string, CollectionAction[]> | undefined;
+  try {
+    const collectionRes = await copilotApiFetch("/api/copilot/collection-actions");
+    if (collectionRes.ok) {
+      const json = (await collectionRes.json()) as { ok?: boolean; actions?: CollectionAction[] };
+      if (json?.actions?.length) {
+        collectionByCompanyId = groupCollectionActionsByCompany(json.actions);
+      }
+    }
+  } catch {
+    // non-fatal
+  }
+
   const executiveBrief = buildDailyExecutiveBrief(briefing, notifications);
-  const collectionBrief = buildCollectionAgentBrief(notifications);
+  const collectionBrief = buildCollectionAgentBrief(notifications, collectionByCompanyId);
 
   return orchestrateAgents({ executiveBrief, collectionBrief });
 }

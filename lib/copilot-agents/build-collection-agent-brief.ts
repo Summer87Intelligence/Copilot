@@ -5,10 +5,68 @@
  */
 
 import type { CopilotNotification } from "@/lib/copilot-notifications/notification-types";
+import type { CollectionAction } from "@/lib/copilot-collection-types";
 import type { CopilotAgentBrief, CopilotAgentPriority } from "./types";
 
+const RECENT_DAYS = 7;
+
+function isRecentAction(action: CollectionAction, todayYmd: string): boolean {
+  const daysDiff = (Date.now() - new Date(action.createdAt).getTime()) / 86_400_000;
+  if (daysDiff <= RECENT_DAYS) return true;
+  if (action.nextActionDate && action.nextActionDate >= todayYmd) return true;
+  if (action.status === "promised_payment" && action.promiseDate && action.promiseDate >= todayYmd) return true;
+  return false;
+}
+
+function getUiOutcome(action: CollectionAction): string {
+  const meta = action.metadata as Record<string, unknown> | null;
+  const uiOutcome = meta?.ui_outcome;
+  if (typeof uiOutcome === "string" && uiOutcome) return uiOutcome;
+  return action.status;
+}
+
+function followupReason(action: CollectionAction, todayYmd: string): string {
+  const outcome = getUiOutcome(action);
+  switch (outcome) {
+    case "contacted":
+      return "Cliente ya contactado recientemente.";
+    case "promised_payment":
+      if (action.promiseDate) {
+        const isPast = action.promiseDate < todayYmd;
+        return isPast
+          ? `Prometió pagar el ${fmtDate(action.promiseDate)} (sin confirmar).`
+          : `Prometió pagar el ${fmtDate(action.promiseDate)}.`;
+      }
+      return "Promesa de pago registrada.";
+    case "no_response":
+      return "No respondió en la última gestión. Reintentar contacto.";
+    case "wrong_contact":
+      return "Contacto incorrecto. Actualizar datos del cliente.";
+    case "disputed":
+      return "El cliente está en disputa. Requiere atención.";
+    case "needs_followup":
+      return action.nextActionDate
+        ? `Seguimiento pendiente: ${fmtDate(action.nextActionDate)}.`
+        : "Requiere seguimiento.";
+    default:
+      return "Gestión registrada recientemente.";
+  }
+}
+
+function fmtDate(ymd: string): string {
+  try {
+    return new Date(ymd + "T12:00:00").toLocaleDateString("es-UY", {
+      day: "numeric",
+      month: "short",
+    });
+  } catch {
+    return ymd;
+  }
+}
+
 export function buildCollectionAgentBrief(
-  notifications: CopilotNotification[]
+  notifications: CopilotNotification[],
+  collectionByCompanyId?: Map<string, CollectionAction[]>
 ): CopilotAgentBrief {
   const priorities: CopilotAgentPriority[] = [];
 
@@ -16,6 +74,8 @@ export function buildCollectionAgentBrief(
   const overdueClients = notifications
     .filter((n) => n.type === "client_overdue" && !n.read_at)
     .sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
+
+  const todayYmd = new Date().toISOString().slice(0, 10);
 
   for (const n of overdueClients.slice(0, 3)) {
     const companyId =
@@ -29,15 +89,36 @@ export function buildCollectionAgentBrief(
       n.amount != null && n.currency
         ? { amount: n.amount, currency: n.currency as "UYU" | "USD" }
         : {};
+
+    // Enrich with follow-up context if available
+    let reason = n.body ?? "El cliente tiene saldo vencido pendiente de gestión.";
+    let ctaLabel = companyId ? "Ver cliente" : "Ver cartera";
+    let severity: CopilotAgentPriority["severity"] =
+      n.severity === "critical" ? "critical" : "high";
+
+    if (companyId && collectionByCompanyId) {
+      const companyActions = collectionByCompanyId.get(companyId);
+      const latestAction = companyActions?.[0];
+      if (latestAction && isRecentAction(latestAction, todayYmd)) {
+        reason = `${reason} ${followupReason(latestAction, todayYmd)}`;
+        ctaLabel = "Ver seguimiento";
+        const outcome = getUiOutcome(latestAction);
+        if (outcome === "contacted" || outcome === "promised_payment") {
+          if (severity === "critical") severity = "high";
+          else if (severity === "high") severity = "medium";
+        }
+      }
+    }
+
     priorities.push({
       id: `collection-overdue-${n.id}`,
       agentId: "collection",
       title: n.title ?? "Cliente con saldo vencido",
-      reason: n.body ?? "El cliente tiene saldo vencido pendiente de gestión.",
-      severity: n.severity === "critical" ? "critical" : "high",
+      reason,
+      severity,
       ...amountFields,
       href,
-      ctaLabel: companyId ? "Ver cliente" : "Ver cartera",
+      ctaLabel,
     });
   }
 

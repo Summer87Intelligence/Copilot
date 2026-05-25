@@ -147,6 +147,18 @@ function formatYmd(ymd: string | null): string {
   }
 }
 
+function formatRelative(iso: string): string {
+  try {
+    const diff = Math.round((Date.now() - new Date(iso).getTime()) / 86_400_000);
+    if (diff === 0) return "hoy";
+    if (diff === 1) return "ayer";
+    if (diff <= 6) return `hace ${diff} días`;
+    return new Date(iso).toLocaleDateString("es-UY", { day: "numeric", month: "short" });
+  } catch {
+    return iso.slice(0, 10);
+  }
+}
+
 // ─── Pill ─────────────────────────────────────────────────────────────────────
 
 function Pill({
@@ -273,6 +285,36 @@ export function CollectionFollowupForm({ companyId }: { companyId: string }) {
       <p className="mb-4 text-[12.5px] text-[var(--copilot-ink-muted)]">
         Registrá qué pasó después de contactar al cliente.
       </p>
+
+      {/* Última gestión — compact summary */}
+      {!loading && actions.length > 0 ? (
+        <div className="mb-4 rounded-xl border border-[var(--copilot-border)]/60 bg-[rgba(44,40,37,0.02)] px-3.5 py-3">
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
+            Última gestión
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[var(--copilot-accent)]">
+              {getChannelIcon(actions[0].actionType)}
+            </span>
+            <span className="text-[11px] text-[var(--copilot-ink-muted)]">
+              {getChannelLabel(actions[0].actionType)}
+            </span>
+            <span
+              className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getBadgeClass(actions[0])}`}
+            >
+              {getOutcomeLabel(actions[0])}
+            </span>
+            <span className="text-[11px] text-[var(--copilot-ink-muted)]">
+              · {formatRelative(actions[0].createdAt)}
+            </span>
+          </div>
+          {actions[0].nextActionDate ? (
+            <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
+              Próximo seguimiento: {formatYmd(actions[0].nextActionDate)}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* Form */}
       <div className="space-y-3">
