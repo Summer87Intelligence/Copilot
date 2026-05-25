@@ -162,10 +162,18 @@ export function usePipelineHealthRealtime(): UsePipelineHealthRealtimeResult {
   }, [doFetch]);
 
   // Fallback polling. Interval adapts to Realtime connection health.
+  // Skips fetch when tab is hidden; fires immediately on tab becoming visible.
   useEffect(() => {
     const intervalMs = getPollingIntervalMs(realtimeStatus);
-    const id = setInterval(() => void doFetch(), intervalMs);
-    return () => clearInterval(id);
+    const id = setInterval(() => {
+      if (!document.hidden) void doFetch();
+    }, intervalMs);
+    function onVisibilityChange() { if (!document.hidden) void doFetch(); }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [realtimeStatus, doFetch]);
 
   return {

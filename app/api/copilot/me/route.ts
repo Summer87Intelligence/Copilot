@@ -8,8 +8,6 @@ import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
  */
 export async function GET(request: NextRequest) {
   try {
-    console.log("RAW COOKIE HEADER:", request.headers.get("cookie"));
-    console.log("PARSED COOKIES:", request.cookies.getAll());
     const auth = await requireCopilotTenantContext(request);
     if (!auth.ok) {
       if (process.env.NODE_ENV === "development") {

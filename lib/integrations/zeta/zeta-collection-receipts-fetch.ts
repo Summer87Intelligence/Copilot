@@ -224,29 +224,31 @@ export async function fetchZetaCollectionReceipts(
     payload_size_bytes: bodyBytes,
   });
 
-  console.log(
-    "ZETA RECEIPTS PAYLOAD SHAPE:",
-    JSON.stringify({
-      timestamp: new Date().toISOString(),
-      source: "zeta_collection_receipts_fetch",
-      kind: "zeta_receipts_payload_shape",
-      request_id: params.ctx.requestId,
-      sync_run_id: params.ctx.syncRunId ?? null,
-      tenant_id: params.ctx.tenantId ?? null,
-      zeta_method,
-      root_in_key: rootInKey,
-      top_level_keys: Object.keys(payloadForLog),
-      request_keys: Object.keys((payloadForLog[rootInKey] as Record<string, unknown>) ?? {}),
-      data_keys: Object.keys(data),
-      filters_keys: Object.keys(data.Filters),
-      payload_preview: {
-        [rootInKey]: {
-          Connection: redactConnectionForLog(connection),
-          Data: data,
+  if (process.env.NODE_ENV !== "production") {
+    console.log(
+      "ZETA RECEIPTS PAYLOAD SHAPE:",
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        source: "zeta_collection_receipts_fetch",
+        kind: "zeta_receipts_payload_shape",
+        request_id: params.ctx.requestId,
+        sync_run_id: params.ctx.syncRunId ?? null,
+        tenant_id: params.ctx.tenantId ?? null,
+        zeta_method,
+        root_in_key: rootInKey,
+        top_level_keys: Object.keys(payloadForLog),
+        request_keys: Object.keys((payloadForLog[rootInKey] as Record<string, unknown>) ?? {}),
+        data_keys: Object.keys(data),
+        filters_keys: Object.keys(data.Filters),
+        payload_preview: {
+          [rootInKey]: {
+            Connection: redactConnectionForLog(connection),
+            Data: data,
+          },
         },
-      },
-    })
-  );
+      })
+    );
+  }
 
   const started = Date.now();
   try {
@@ -273,21 +275,23 @@ export async function fetchZetaCollectionReceipts(
     });
 
     const responseShape = summarizeZetaCollectionReceiptsResponseShape(raw);
-    console.log(
-      "ZETA RECEIPTS RAW RESPONSE:",
-      JSON.stringify({
-        timestamp: new Date().toISOString(),
-        source: "zeta_collection_receipts_fetch",
-        kind: "zeta_receipts_raw_response",
-        request_id: params.ctx.requestId,
-        sync_run_id: params.ctx.syncRunId ?? null,
-        tenant_id: params.ctx.tenantId ?? null,
-        zeta_method,
-        http_status: res.status,
-        payload_size_bytes: responseBytes,
-        ...responseShape,
-      })
-    );
+    if (process.env.NODE_ENV !== "production") {
+      console.log(
+        "ZETA RECEIPTS RAW RESPONSE:",
+        JSON.stringify({
+          timestamp: new Date().toISOString(),
+          source: "zeta_collection_receipts_fetch",
+          kind: "zeta_receipts_raw_response",
+          request_id: params.ctx.requestId,
+          sync_run_id: params.ctx.syncRunId ?? null,
+          tenant_id: params.ctx.tenantId ?? null,
+          zeta_method,
+          http_status: res.status,
+          payload_size_bytes: responseBytes,
+          ...responseShape,
+        })
+      );
+    }
 
     if (!res.status || res.status < 200 || res.status >= 300) {
       return {

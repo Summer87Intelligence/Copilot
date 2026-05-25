@@ -85,14 +85,21 @@ export function CopilotNotificationsProvider({ children }: { children: React.Rea
   useEffect(() => { void doFetch(); }, [doFetch]);
 
   useEffect(() => {
-    const id = setInterval(() => void doFetch(), POLL_INTERVAL_MS);
+    const id = setInterval(() => {
+      if (!document.hidden) void doFetch();
+    }, POLL_INTERVAL_MS);
     return () => clearInterval(id);
   }, [doFetch]);
 
   useEffect(() => {
     function onFocus() { void doFetch(); }
+    function onVisibilityChange() { if (!document.hidden) void doFetch(); }
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [doFetch]);
 
   // Fire the notification generator once per browser session.
