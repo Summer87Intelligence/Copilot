@@ -9,6 +9,7 @@ import {
   Banknote,
   Bell,
   BookMarked,
+  Bot,
   CheckCircle,
   CheckSquare,
   ChevronDown,
@@ -573,6 +574,97 @@ const SECTIONS: Section[] = [
     ),
   },
   {
+    id: "agentes",
+    icon: <Bot className="h-4 w-4" aria-hidden />,
+    title: "Agentes IA — Resumen y prioridades automaticas",
+    content: (
+      <>
+        <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
+          <strong>Agentes IA</strong> son asistentes que leen la informacion del
+          negocio y te ayudan a ordenar que revisar primero. No hacen cambios
+          solos. Solo resumen, priorizan y te llevan al modulo correcto.
+        </p>
+        <Callout variant="info">
+          <strong>Los agentes no ejecutan acciones.</strong> No pagan, no
+          borran, no envian mensajes automaticamente. Ves siempre el resultado
+          antes de decidir que hacer.
+        </Callout>
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Agente Ejecutivo Diario
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            Lee informacion de Hoy, Alertas, Notificaciones, Cartera, Tesoreria
+            y Operacional. Con eso genera un resumen del dia con las cosas mas
+            importantes para atender.
+          </p>
+          <Bullets
+            items={[
+              "Muestra hasta 5 prioridades ordenadas por urgencia.",
+              "Indica que cambio desde la ultima vez que generaste el resumen.",
+              "Sugiere el proximo paso concreto a dar.",
+              "Usa reglas del sistema, no reemplaza tu criterio.",
+              "Si una fuente no carga, muestra lo que puede con los datos disponibles.",
+            ]}
+          />
+        </div>
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Boton: Generar resumen de hoy
+          </p>
+          <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
+            Al tocarlo, el agente lee todas las fuentes y genera la lectura
+            ejecutiva del dia. Podes repetirlo cuando quieras para actualizar
+            el resumen. Si hay un problema externo, el agente igual intenta
+            mostrar lo que pueda.
+          </p>
+        </div>
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Niveles de prioridad
+          </p>
+          <div className="space-y-2">
+            {[
+              { label: "Critica", color: "bg-rose-50 text-rose-700 border-rose-200", desc: "Requiere atencion inmediata. Puede afectar caja o datos." },
+              { label: "Alta", color: "bg-amber-50 text-amber-700 border-amber-200", desc: "Importante. Conviene atenderla hoy." },
+              { label: "Media", color: "bg-blue-50 text-blue-700 border-blue-100", desc: "Para revisar cuando puedas, sin urgencia inmediata." },
+              { label: "Baja", color: "bg-slate-100 text-slate-600 border-slate-200", desc: "Informativa. Puede esperar." },
+            ].map((s) => (
+              <div key={s.label} className="flex items-start gap-3 text-sm">
+                <span className={`mt-0.5 inline-flex shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${s.color}`}>
+                  {s.label}
+                </span>
+                <span className="text-[var(--copilot-ink)]">{s.desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Acciones posibles desde el resumen
+          </p>
+          <Bullets
+            items={[
+              "Ver Acciones — ir a la lista de cosas concretas para hacer.",
+              "Ver Alertas — revisar el historial de avisos.",
+              "Ver Cartera — ver quien debe y cuanto.",
+              "Ver Clientes — abrir la ficha de un cliente.",
+              "Ver Pagos — revisar compromisos en Tesoreria.",
+              "Ver Operacional — ver el estado de sincronizacion de datos.",
+            ]}
+          />
+        </div>
+        <Callout variant="tip">
+          Usa el agente al inicio del dia para tener una mirada rapida de que
+          requiere atencion. Despues vas a los modulos especificos para actuar.
+        </Callout>
+        <div className="flex gap-3 flex-wrap">
+          <NavLink href="/copilot/agentes" label="Ir a Agentes IA" />
+        </div>
+      </>
+    ),
+  },
+  {
     id: "operacional",
     icon: <Activity className="h-4 w-4" aria-hidden />,
     title: "Operacional — Estado de la sincronización",
@@ -824,6 +916,18 @@ const FAQ: Array<{ q: string; a: React.ReactNode }> = [
       </span>
     ),
   },
+  {
+    q: "¿Los agentes pueden modificar datos?",
+    a: "No. En esta version solo leen informacion y sugieren acciones. Vos decides que hacer.",
+  },
+  {
+    q: "¿El agente envía WhatsApp o emails?",
+    a: "No. Puede llevarte al cliente o a la accion correspondiente, pero no envia mensajes automaticamente.",
+  },
+  {
+    q: "¿Que pasa si Zeta falla y uso el agente?",
+    a: "El agente puede mostrar informacion con los ultimos datos disponibles y recomendar revisar Operacional. No inventa datos nuevos.",
+  },
 ];
 
 function FaqBlock() {
@@ -873,6 +977,7 @@ const MODULE_CARDS = [
   { icon: <Banknote className="h-5 w-5" />, label: "Tesorería", href: "/copilot/tesoreria", color: "text-teal-600 bg-teal-50" },
   { icon: <Wallet className="h-5 w-5" />, label: "Finanzas", href: "/copilot/finanzas", color: "text-indigo-600 bg-indigo-50" },
   { icon: <Database className="h-5 w-5" />, label: "Datos", href: "/copilot/datos", color: "text-slate-600 bg-slate-100" },
+  { icon: <Bot className="h-5 w-5" />, label: "Agentes IA", href: "/copilot/agentes", color: "text-purple-600 bg-purple-50" },
   { icon: <Activity className="h-5 w-5" />, label: "Operacional", href: "/copilot/operacional", color: "text-rose-600 bg-rose-50" },
 ];
 
