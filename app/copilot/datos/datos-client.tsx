@@ -223,9 +223,8 @@ const CRUD_ENTITIES: readonly ProtoCrudEntity[] = [
   "tax_obligations",
 ] as const;
 
-/** Etiqueta del botón de alta (Contactos sin drawer CRUD aún). */
+/** Etiqueta del botón de alta. Companies se omite: los clientes vienen de Zeta. */
 const NEW_RECORD_LABEL: Partial<Record<DataEntity, string>> = {
-  companies: "Nuevo cliente",
   invoices: "Nueva factura",
   receipts: "Nuevo recibo",
   payments: "Nuevo pago",
@@ -995,9 +994,13 @@ function CopilotDatosPageContent() {
                 title="Datos del negocio"
                 subtitle="Clientes, facturas, recibos y obligaciones que alimentan las lecturas del Copilot."
                 action={
-                  expandedEntity &&
-                  newRecordLabel &&
-                  isProtoCrudEntity(expandedEntity) ? (
+                  expandedEntity === "companies" ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--copilot-border)] bg-[rgba(44,40,37,0.04)] px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)]">
+                      Clientes sincronizados desde Zeta
+                    </span>
+                  ) : expandedEntity &&
+                    newRecordLabel &&
+                    isProtoCrudEntity(expandedEntity) ? (
                     <button
                       type="button"
                       onClick={openCreate}

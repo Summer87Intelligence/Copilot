@@ -1045,9 +1045,14 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
             {/* ── ESTADO DE CUENTA ─────────────────────────────────────────── */}
             {tab === "cuenta" ? (
               <div className="space-y-4">
-                <p className="text-sm text-[var(--copilot-ink-muted)]">
-                  Deuda activa del cliente, separada por moneda. UYU y USD no se suman entre si.
-                </p>
+                <div>
+                  <p className="text-sm font-semibold text-[var(--copilot-ink)]">
+                    Deuda actual del cliente
+                  </p>
+                  <p className="mt-0.5 text-sm text-[var(--copilot-ink-muted)]">
+                    Calculada con el saldo pendiente informado en las facturas. UYU y USD no se suman entre si.
+                  </p>
+                </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <CopilotCard>
                     <div className="flex items-center justify-between gap-2">
@@ -1112,8 +1117,8 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
 
                 <CopilotCard>
                   <CopilotSectionTitle
-                    title="Movimientos recientes"
-                    subtitle="Facturas emitidas y cobros registrados para este cliente."
+                    title="Estado de cuenta historico"
+                    subtitle="Facturas y cobros sincronizados. Puede diferir de la deuda actual si hay notas de credito, imputaciones o ajustes pendientes de sincronizar."
                   />
                   {data.cuenta.ultimos_movimientos.length === 0 ? (
                     <p className="text-sm text-[var(--copilot-ink-muted)]">

@@ -476,6 +476,19 @@ const SECTIONS: Section[] = [
           </p>
         </div>
 
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Datos vs. ficha completa
+          </p>
+          <Bullets
+            items={[
+              "Datos — panel lateral rápido: código, deuda, facturas y contactos básicos.",
+              "Ficha completa (esta sección) — análisis completo: Qué pasa / Por qué importa / Qué hacer, historial, recibos y recomendación de Copilot.",
+              "Detalle técnico — bloque colapsado disponible en la pestaña Actualización de datos. Solo para casos avanzados.",
+            ]}
+          />
+        </div>
+
         <Callout variant="tip">
           <strong>Copilot sugiere, vos decidís.</strong> Los resúmenes y acciones
           que muestra la ficha son lecturas automáticas. La decisión de contactar
@@ -639,6 +652,33 @@ const SECTIONS: Section[] = [
             ]}
           />
         </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Por que no hay botón para crear clientes
+          </p>
+          <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
+            Los clientes se sincronizan automáticamente desde el sistema
+            contable (Zeta). Crearlos a mano podría generar duplicados o
+            registros que no coincidan con los datos reales. Por eso no hay
+            botón de nuevo cliente en esta sección.
+          </p>
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Vista rápida vs. ficha completa
+          </p>
+          <Bullets
+            items={[
+              "Datos → consulta rápida: código, RUT, teléfono, deuda actual y facturas recientes.",
+              "Al tocar un cliente aparece un panel lateral con deuda, facturas, recibos y contactos.",
+              'El botón "Ver ficha completa" abre la ficha 360 con análisis completo, recomendación de Copilot y toda la actividad histórica.',
+              "Si solo querés confirmar un dato, usá el panel lateral. Si vas a gestionar al cliente, abrí la ficha completa.",
+            ]}
+          />
+        </div>
+
         <div className="flex gap-3 flex-wrap">
           <NavLink href="/copilot/datos" label="Ir a Datos" />
         </div>

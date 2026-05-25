@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 
 import { CopilotClientAccountStatement } from "@/components/copilot/copilot-client-account-statement";
 import { ClientCurrentDebtSummary } from "@/components/copilot/copilot-client-current-debt-summary";
@@ -201,6 +202,38 @@ const RECEIPT_SIDEBAR_SKIP = new Set([
   "moneda",
   "moneda_codigo",
   "moneda_simbolo",
+]);
+
+const COMPANY_SIDEBAR_LABELS: Record<string, string> = {
+  Codigo: "Código",
+  RazonSocial: "Razón social",
+  Nombre: "Nombre",
+  Documento: "Documento",
+  DocumentoTipo: "Tipo de documento",
+  Email1: "Email",
+  Telefono: "Teléfono",
+  Celular: "Celular",
+  DireccionCompleta: "Dirección",
+  Direccion: "Dirección",
+  Localidad: "Ciudad",
+  RUT: "RUT",
+  GiroNombre: "Actividad",
+  status: "Estado",
+  risk_level: "Riesgo",
+};
+
+/** Campos técnicos que no se muestran en la vista principal del drawer de cliente. */
+const COMPANY_SIDEBAR_SKIP = new Set([
+  "id",
+  "workspace_company_id",
+  "is_active",
+  "zeta_metadata",
+  "zeta_snapshot",
+  "created_at",
+  "updated_at",
+  "DocumentoSigla",
+  "ContactoActivo",
+  // si DireccionCompleta existe, omitir la versión corta
 ]);
 
 /**
@@ -440,7 +473,6 @@ export function CopilotDataSidebar({
         "Nombre",
         "Documento",
         "DocumentoTipo",
-        "DocumentoSigla",
         "Email1",
         "Telefono",
         "Celular",
@@ -449,20 +481,17 @@ export function CopilotDataSidebar({
         "Localidad",
         "RUT",
         "GiroNombre",
-        "ContactoActivo",
         "status",
         "risk_level",
-        "is_active",
-        "workspace_company_id",
       ] as const;
+      const hasDireccionCompleta = "DireccionCompleta" in row && row["DireccionCompleta"] != null;
       const ordered: string[] = [];
       for (const k of priority) {
+        if (k === "Direccion" && hasDireccionCompleta) continue;
+        if (COMPANY_SIDEBAR_SKIP.has(k)) continue;
         if (k in row) ordered.push(k);
       }
-      for (const k of Object.keys(row)) {
-        if (!ordered.includes(k)) ordered.push(k);
-      }
-      return ordered.slice(0, 24).map((k) => [k, row[k]] as [string, unknown]);
+      return ordered.slice(0, 16).map((k) => [k, row[k]] as [string, unknown]);
     }
     if (entity === "invoices") {
       const ordered: string[] = [];
@@ -815,7 +844,9 @@ export function CopilotDataSidebar({
                       ? (INVOICE_SIDEBAR_LABELS[k] ?? k)
                       : entity === "receipts"
                         ? (RECEIPT_SIDEBAR_LABELS[k] ?? k)
-                        : k}
+                        : entity === "companies"
+                          ? (COMPANY_SIDEBAR_LABELS[k] ?? k)
+                          : k}
                   </p>
                   <p className="mt-1 text-sm text-[var(--copilot-ink)]">
                     {entity === "invoices"
@@ -835,6 +866,14 @@ export function CopilotDataSidebar({
 
           {entity === "companies" ? (
             <>
+              {row?.id ? (
+                <Link
+                  href={`/copilot/clientes/${encodeURIComponent(String(row.id))}`}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+                >
+                  Ver ficha completa
+                </Link>
+              ) : null}
               {currentDebtSummary ? (
                 <ClientCurrentDebtSummary summary={currentDebtSummary} />
               ) : null}
@@ -1017,8 +1056,7 @@ export function CopilotDataSidebar({
 
           {entity === "tax_obligations" ? (
             <p className="text-xs text-[var(--copilot-ink-muted)]">
-              Obligación fiscal del prototipo. Los pagos asociados viven en{" "}
-              <code className="rounded bg-[rgba(44,40,37,0.06)] px-1">proto_tax_payments</code>.
+              Los pagos registrados para esta obligación aparecen en la sección Pagos.
             </p>
           ) : null}
 
