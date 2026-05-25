@@ -2,6 +2,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Activity,
+  BookMarked,
   BookOpen,
   Building2,
   CheckSquare,
@@ -50,6 +51,7 @@ const COPILOT_NAV_PRINCIPAL: CopilotNavGroup = {
 const COPILOT_NAV_SISTEMA: CopilotNavGroup = {
   sectionTitle: "Sistema",
   items: [
+    { href: "/copilot/manual", label: "Manual de uso", icon: BookMarked },
     { href: "/copilot/operacional", label: "Operacional", icon: Activity },
     { href: "/copilot/configuracion", label: "Configuración", icon: Settings },
     { href: "/copilot/personalizacion", label: "Personalización", icon: SlidersHorizontal },
