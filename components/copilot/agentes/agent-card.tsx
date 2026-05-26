@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { normalizeAgentHref } from "@/lib/copilot-agents/normalize-agent-href";
 
 type AgentStatus = "active" | "coming_soon";
 
@@ -87,7 +88,7 @@ export function AgentCard({
         >
           {ctaHref ? (
             <Link
-              href={ctaHref}
+              href={normalizeAgentHref(ctaHref)}
               className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80"
             >
               {ctaLabel}

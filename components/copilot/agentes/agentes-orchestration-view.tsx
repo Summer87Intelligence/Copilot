@@ -42,6 +42,7 @@ import type { FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
 import type { CollectionAction } from "@/lib/copilot-collection-types";
 import { groupCollectionActionsByCompany } from "@/lib/copilot-actions/enrich-actions";
 import type { OicHealthDashboardData } from "@/lib/operacional/types";
+import { normalizeAgentHref } from "@/lib/copilot-agents/normalize-agent-href";
 import { AgentCard } from "./agent-card";
 import { AgentPriorityCard } from "./agent-priority-card";
 
@@ -413,7 +414,7 @@ function SummarySection({
               importante que detectaron los agentes.
             </p>
             <Link
-              href={orchestration.nextBestAction.href}
+              href={normalizeAgentHref(orchestration.nextBestAction.href)}
               className="mt-5 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-4 py-3 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
             >
               Ir ahora

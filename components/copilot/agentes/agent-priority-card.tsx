@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { normalizeAgentHref } from "@/lib/copilot-agents/normalize-agent-href";
 
 // Accepts both AgentPriority (daily executive) and CopilotAgentPriority (orchestration)
 type PriorityData = {
@@ -90,7 +91,7 @@ export function AgentPriorityCard({
 
         <div className="mt-3">
           <Link
-            href={priority.href}
+            href={normalizeAgentHref(priority.href)}
             className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-[rgba(31,107,74,0.04)] px-2.5 py-1 text-[11.5px] font-semibold text-[var(--copilot-accent)] transition-colors hover:bg-[rgba(31,107,74,0.08)]"
           >
             {priority.ctaLabel}
