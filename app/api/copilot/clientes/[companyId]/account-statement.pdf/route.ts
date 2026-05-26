@@ -12,7 +12,8 @@ import {
   getProtoCompanyById,
 } from "@/lib/data/proto-operational-read-repository";
 import { buildClientAccountStatement } from "@/lib/copilot-client-account-statement";
-import { renderAccountStatementPdf } from "@/lib/account-statement/render-account-statement-pdf";
+import { renderAccountStatementPdf, type ClientInfo } from "@/lib/account-statement/render-account-statement-pdf";
+import { ISSUER_FALLBACK, type IssuerInfo } from "@/lib/account-statement/issuer-fallback";
 
 export async function GET(
   request: NextRequest,
@@ -58,10 +59,12 @@ export async function GET(
       ["UYU", "USD"];
 
     log.info("account_statement_pdf_fetching", { companyId, from, to, currencies });
-    const [invoices, receipts, company] = await Promise.all([
+    const [invoices, receipts, company, issuerRow] = await Promise.all([
       listProtoInvoicesByCompanyId(supabase, companyId, "all", tenantCompanyId),
       listProtoReceiptsByCompanyId(supabase, companyId, "all", tenantCompanyId),
       getProtoCompanyById(supabase, companyId, tenantCompanyId),
+      // Intenta cargar la empresa del workspace como emisor; usa fallback si falla o no existe
+      getProtoCompanyById(supabase, tenantCompanyId, tenantCompanyId).catch(() => null),
     ]);
     log.info("account_statement_pdf_data_ready", {
       invoiceCount: invoices.length,
@@ -73,8 +76,41 @@ export async function GET(
       String(company?.name ?? company?.company_name ?? company?.zeta_client_name ?? "").trim() ||
       "Cliente";
 
-    log.info("account_statement_pdf_rendering", { companyName });
-    const pdfBuffer = await renderAccountStatementPdf({ companyName, statement, currencies, from, to });
+    // Datos del cliente para el bloque gris del PDF
+    const client: ClientInfo = {
+      code: String(company?.external_id ?? "").trim() || undefined,
+      name: companyName,
+      address: [
+        String(company?.address ?? "").trim(),
+        String(company?.city ?? "").trim(),
+      ].filter(Boolean).join(", ") || undefined,
+      phone: String(company?.phone ?? "").trim() || undefined,
+    };
+
+    // Datos del emisor — empresa del workspace, con fallback a config demo
+    const issuerName = String(issuerRow?.name ?? issuerRow?.company_name ?? "").trim();
+    const issuer: IssuerInfo = issuerName
+      ? {
+          name: issuerName,
+          rut: String(issuerRow?.rut ?? "").trim() || undefined,
+          addressLine: String(issuerRow?.address ?? "").trim() || undefined,
+          phone: String(issuerRow?.phone ?? "").trim()
+            ? `Tel. ${String(issuerRow?.phone).trim()}`
+            : undefined,
+          city: String(issuerRow?.city ?? "").trim() || undefined,
+        }
+      : ISSUER_FALLBACK;
+
+    log.info("account_statement_pdf_rendering", { companyName, hasIssuer: issuerName !== "" });
+    const pdfBuffer = await renderAccountStatementPdf({
+      companyName,
+      statement,
+      currencies,
+      from,
+      to,
+      issuer,
+      client,
+    });
     log.info("account_statement_pdf_done", { bytes: pdfBuffer.length });
     const safeFilename = companyName.replace(/[^a-zA-Z0-9_\-áéíóúÁÉÍÓÚüÜñÑ ]/g, "_").slice(0, 60);
 
