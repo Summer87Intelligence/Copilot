@@ -627,11 +627,23 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showRawJson, setShowRawJson] = useState(false);
+  const [collectionPrefill, setCollectionPrefill] = useState<import("@/lib/account-statement/build-account-statement-followup-prefill").CollectionFollowupInitialValues | null>(null);
+  const [collectionPrefillKey, setCollectionPrefillKey] = useState(0);
   const assistantRef = useRef<HTMLDivElement>(null);
+  const collectionFormRef = useRef<HTMLDivElement>(null);
 
   function scrollToAssistant() {
     assistantRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
+
+  const handleSuggestFollowup = useCallback(
+    (prefill: import("@/lib/account-statement/build-account-statement-followup-prefill").CollectionFollowupInitialValues) => {
+      setCollectionPrefill(prefill);
+      setCollectionPrefillKey((k) => k + 1);
+      collectionFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    []
+  );
 
   const load = useCallback(async () => {
     setError(null);
@@ -925,8 +937,12 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
 
       {/* Gestión de cobranza */}
       {!loading && !error && data ? (
-        <div className="border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.4)] px-6 py-4">
-          <CollectionFollowupForm companyId={data.summary.company_id} />
+        <div ref={collectionFormRef} className="border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.4)] px-6 py-4">
+          <CollectionFollowupForm
+            companyId={data.summary.company_id}
+            initialValues={collectionPrefill}
+            prefillKey={collectionPrefillKey}
+          />
         </div>
       ) : null}
 
@@ -1132,6 +1148,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   debtUsd={data.debt_usd}
                   overdueUyu={data.overdue_uyu}
                   overdueUsd={data.overdue_usd}
+                  onSuggestFollowup={handleSuggestFollowup}
                 />
 
                 <div>

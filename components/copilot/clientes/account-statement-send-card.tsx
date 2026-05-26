@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { AlertTriangle, Copy, Mail, MessageCircle } from "lucide-react";
+import { AlertTriangle, ClipboardList, Copy, Mail, MessageCircle } from "lucide-react";
 import { CopilotCard, CopilotSectionTitle } from "@/components/copilot/copilot-ui";
+import { buildAccountStatementMessage } from "@/lib/account-statement/build-account-statement-message";
 import {
-  buildAccountStatementMessage,
-  type AccountStatementMessageInput,
-} from "@/lib/account-statement/build-account-statement-message";
+  buildAccountStatementFollowupPrefill,
+  type CollectionFollowupInitialValues,
+} from "@/lib/account-statement/build-account-statement-followup-prefill";
 import {
   normalizeUruguayPhoneForWhatsApp,
   buildWhatsAppHref,
@@ -14,6 +15,7 @@ import {
 
 type Channel = "email" | "whatsapp";
 type Tone = "friendly" | "firm" | "brief";
+type LastAction = "copied" | "emailed" | "whatsapped";
 
 type Props = {
   clientName: string;
@@ -23,6 +25,7 @@ type Props = {
   debtUsd: number;
   overdueUyu: number;
   overdueUsd: number;
+  onSuggestFollowup?: (prefill: CollectionFollowupInitialValues) => void;
 };
 
 function todayYmd(): string {
@@ -42,11 +45,13 @@ export function AccountStatementSendCard({
   debtUsd,
   overdueUyu,
   overdueUsd,
+  onSuggestFollowup,
 }: Props) {
   const [channel, setChannel] = useState<Channel>("email");
   const [tone, setTone] = useState<Tone>("friendly");
   const [currency, setCurrency] = useState<"UYU" | "USD">("UYU");
   const [copied, setCopied] = useState(false);
+  const [lastAction, setLastAction] = useState<LastAction | null>(null);
 
   const today = todayYmd();
   const yearStart = `${today.slice(0, 4)}-01-01`;
@@ -78,6 +83,7 @@ export function AccountStatementSendCard({
     const text = message.subject ? `${message.subject}\n\n${message.body}` : message.body;
     void navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
+      setLastAction("copied");
       setTimeout(() => setCopied(false), 2000);
     });
   }, [message]);
@@ -95,6 +101,19 @@ export function AccountStatementSendCard({
     if (!canWhatsApp || !phoneResult?.digits) return null;
     return buildWhatsAppHref(`+${phoneResult.digits}`, message.body);
   }, [canWhatsApp, phoneResult, message.body]);
+
+  const handleSuggestFollowup = useCallback(() => {
+    if (!onSuggestFollowup || !lastAction) return;
+    onSuggestFollowup(
+      buildAccountStatementFollowupPrefill({
+        lastAction,
+        channel,
+        periodFrom: yearStart,
+        periodTo: today,
+        currency,
+      })
+    );
+  }, [onSuggestFollowup, lastAction, channel, yearStart, today, currency]);
 
   return (
     <CopilotCard>
@@ -202,6 +221,7 @@ export function AccountStatementSendCard({
             href={mailtoHref}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => setLastAction("emailed")}
             className="flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-surface)] px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink)] transition-colors hover:bg-[var(--copilot-surface-alt)]"
           >
             <Mail className="h-3.5 w-3.5" aria-hidden />
@@ -222,6 +242,7 @@ export function AccountStatementSendCard({
             href={waHref}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => setLastAction("whatsapped")}
             className="flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-surface)] px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink)] transition-colors hover:bg-[var(--copilot-surface-alt)]"
           >
             <MessageCircle className="h-3.5 w-3.5" aria-hidden />
@@ -242,11 +263,27 @@ export function AccountStatementSendCard({
         )}
       </div>
 
-      {/* Post-send hint */}
-      <p className="mt-3 text-xs text-[var(--copilot-ink-muted)]">
-        Después de enviar, registrá el resultado en{" "}
-        <span className="font-medium text-[var(--copilot-ink)]">Gestión de cobranza</span>.
-      </p>
+      {/* Post-action followup callout */}
+      {lastAction && onSuggestFollowup ? (
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-surface-alt)] px-3 py-2.5">
+          <p className="text-xs text-[var(--copilot-ink-muted)]">
+            ¿Querés registrar esta gestión en cobranza?
+          </p>
+          <button
+            type="button"
+            onClick={handleSuggestFollowup}
+            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-[var(--copilot-accent)] transition hover:bg-[var(--copilot-accent-soft)]"
+          >
+            <ClipboardList className="h-3.5 w-3.5" aria-hidden />
+            Registrar gestión
+          </button>
+        </div>
+      ) : (
+        <p className="mt-3 text-xs text-[var(--copilot-ink-muted)]">
+          Después de enviar, registrá el resultado en{" "}
+          <span className="font-medium text-[var(--copilot-ink)]">Gestión de cobranza</span>.
+        </p>
+      )}
     </CopilotCard>
   );
 }

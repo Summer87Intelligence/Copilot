@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, ClipboardList, FileText, Mail, MessageCircle, Phone } from "lucide-react";
+import type { CollectionFollowupInitialValues } from "@/lib/account-statement/build-account-statement-followup-prefill";
 
 import { useCollectionActions } from "@/hooks/use-collection-actions";
 import type {
@@ -230,7 +231,15 @@ function HistoryItem({ action }: { action: CollectionAction }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function CollectionFollowupForm({ companyId }: { companyId: string }) {
+export function CollectionFollowupForm({
+  companyId,
+  initialValues,
+  prefillKey,
+}: {
+  companyId: string;
+  initialValues?: CollectionFollowupInitialValues | null;
+  prefillKey?: string | number;
+}) {
   const { actions, loading, error, create } = useCollectionActions(companyId);
 
   const [channel, setChannel] = useState<CollectionActionType>("whatsapp");
@@ -243,6 +252,28 @@ export function CollectionFollowupForm({ companyId }: { companyId: string }) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [pendingSuggestion, setPendingSuggestion] = useState<CollectionFollowupInitialValues | null>(null);
+
+  const noteRef = useRef(note);
+  useEffect(() => { noteRef.current = note; }, [note]);
+
+  useEffect(() => {
+    if (!initialValues || prefillKey == null) return;
+    const applyPrefill = (vals: CollectionFollowupInitialValues) => {
+      if (vals.channel) setChannel(vals.channel as CollectionActionType);
+      if (vals.outcome && OUTCOME_OPTS.some((o) => o.id === vals.outcome)) {
+        setOutcome(vals.outcome as UiOutcome);
+      }
+      if (vals.note != null) setNote(vals.note);
+      setPendingSuggestion(null);
+    };
+    if (!noteRef.current.trim()) {
+      applyPrefill(initialValues);
+    } else {
+      setPendingSuggestion(initialValues);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillKey]);
 
   const handleSubmit = async () => {
     setSaving(true);
@@ -318,6 +349,30 @@ export function CollectionFollowupForm({ companyId }: { companyId: string }) {
 
       {/* Form */}
       <div className="space-y-3">
+        {/* Pending suggestion banner */}
+        {pendingSuggestion ? (
+          <div className="flex items-start gap-2 rounded-xl border border-[var(--copilot-border)] bg-[rgba(44,40,37,0.02)] p-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold text-[var(--copilot-ink)]">Sugerencia disponible</p>
+              <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">{pendingSuggestion.note}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (pendingSuggestion.channel) setChannel(pendingSuggestion.channel as CollectionActionType);
+                if (pendingSuggestion.outcome && OUTCOME_OPTS.some((o) => o.id === pendingSuggestion.outcome)) {
+                  setOutcome(pendingSuggestion.outcome as UiOutcome);
+                }
+                if (pendingSuggestion.note != null) setNote(pendingSuggestion.note);
+                setPendingSuggestion(null);
+              }}
+              className="shrink-0 rounded-lg border border-[var(--copilot-accent)] px-3 py-1 text-[11px] font-semibold text-[var(--copilot-accent)] transition hover:bg-[var(--copilot-accent-soft)]"
+            >
+              Usar sugerencia
+            </button>
+          </div>
+        ) : null}
+
         {/* Canal */}
         <div>
           <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">

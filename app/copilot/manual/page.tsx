@@ -644,7 +644,8 @@ const SECTIONS: Section[] = [
               "Si el cliente no tiene email registrado, el botón de email queda deshabilitado.",
               "Si el cliente no tiene celular apto para WhatsApp, ese botón queda deshabilitado.",
               "El PDF no se adjunta automáticamente — debés descargarlo y adjuntarlo manualmente.",
-              "Después de enviar, registrá el resultado en Gestión de cobranza.",
+              "Después de Copiar, Abrir email o Abrir WhatsApp, aparece el botón Registrar gestión. Al hacerlo, el formulario de Gestión de cobranza se completa automáticamente con el canal y una nota del período enviado.",
+              "Si el formulario de cobranza ya tiene texto, en lugar de pisarlo aparece una sugerencia que podés aplicar o ignorar.",
             ]}
           />
           <Callout variant="info">
