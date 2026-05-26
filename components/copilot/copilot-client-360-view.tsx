@@ -35,6 +35,7 @@ import {
 import { CollectionMessageAssistant } from "@/components/copilot/clientes/collection-message-assistant";
 import { CollectionFollowupForm } from "@/components/copilot/clientes/collection-followup-form";
 import { ClientAgentBlock } from "@/components/copilot/clientes/client-agent-block";
+import { AccountStatementSendCard } from "@/components/copilot/clientes/account-statement-send-card";
 import type { Client360Payload } from "@/lib/copilot-client-360";
 import { normalizeUruguayPhoneForWhatsApp } from "@/lib/phone/normalize-phone-for-whatsapp";
 import {
@@ -1121,6 +1122,17 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
               <div className="space-y-4">
                 {/* PDF download card */}
                 <AccountStatementPdfCard companyId={companyId} hasUyu={data.debt_uyu > 0 || data.cuenta.ultimos_movimientos.some(m => m.kind === "factura")} />
+
+                {/* Send flow card */}
+                <AccountStatementSendCard
+                  clientName={data.summary.nombre_visible ?? data.summary.razon_social}
+                  email={data.contacts.find((c) => c.email)?.email ?? null}
+                  phone={data.summary.phone}
+                  debtUyu={data.debt_uyu}
+                  debtUsd={data.debt_usd}
+                  overdueUyu={data.overdue_uyu}
+                  overdueUsd={data.overdue_usd}
+                />
 
                 <div>
                   <p className="text-sm font-semibold text-[var(--copilot-ink)]">

@@ -627,6 +627,33 @@ const SECTIONS: Section[] = [
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Enviar estado de cuenta
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            Debajo de la card de descarga PDF aparece la card <strong>Enviar estado de cuenta</strong>. Permite generar un mensaje personalizado para enviarle al cliente junto con el PDF.
+          </p>
+          <Bullets
+            items={[
+              "Elegí el canal: Email o WhatsApp.",
+              "Elegí la moneda: Pesos (UYU) o Dólares (USD) — el saldo del mensaje se ajusta automáticamente.",
+              "Elegí el tono: Amable (informal), Firme (formal exigente) o Breve (mensaje corto).",
+              "El mensaje se genera con el período del año actual al día de hoy y el saldo vigente del cliente.",
+              "Botón Copiar mensaje — copia el texto al portapapeles.",
+              "Botón Abrir email — abre el cliente de correo con destinatario, asunto y cuerpo pre-cargados.",
+              "Botón Abrir WhatsApp — abre WhatsApp Web o la app con el mensaje pre-cargado.",
+              "Si el cliente no tiene email registrado, el botón de email queda deshabilitado.",
+              "Si el cliente no tiene celular apto para WhatsApp, ese botón queda deshabilitado.",
+              "El PDF no se adjunta automáticamente — debés descargarlo y adjuntarlo manualmente.",
+              "Después de enviar, registrá el resultado en Gestión de cobranza.",
+            ]}
+          />
+          <Callout variant="info">
+            Esta función no envía nada directamente. Abre tu cliente de correo o WhatsApp con el mensaje pre-redactado para que vos lo revisés y enviés manualmente.
+          </Callout>
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
             Detalle de facturas y recibos en Datos
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
