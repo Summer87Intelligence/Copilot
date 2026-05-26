@@ -379,13 +379,32 @@ describe("número de comprobante desde metadata CCV1", () => {
 // ── Descripción de ítems desde Lineas ────────────────────────────────────────
 
 describe("detalle desde Lineas[0].Descripcion", () => {
-  it("usa la descripción del primer ítem del comprobante", () => {
+  it("usa la descripción del primer ítem del comprobante (Descripcion)", () => {
     const stmt = buildClientAccountStatement({
       invoices: [invoice({ id: "i", date: "2026-01-01", total: 5000, linea: "Filmación" })],
       receipts: [],
       ledgerMode: true,
     });
     expect(stmt.uyu.movements[0].detail).toBe("Filmación");
+  });
+
+  it("usa Concepto como fallback de descripción (clave documentada en Zeta)", () => {
+    // Zeta docs show Lineas[].Concepto; algunas respuestas QueryComprobantes usan esta clave
+    const row: DataRow = {
+      id: "i",
+      invoice_number: "INV-i",
+      issue_date: "2026-01-01",
+      total_amount: 5000,
+      currency_code: "UYU",
+      is_active: true,
+      zeta_metadata: {
+        zeta_customer_voucher_v1: {
+          raw_payload: { Lineas: [{ Concepto: "Mantenimiento web" }] },
+        },
+      },
+    };
+    const stmt = buildClientAccountStatement({ invoices: [row], receipts: [], ledgerMode: true });
+    expect(stmt.uyu.movements[0].detail).toBe("Mantenimiento web");
   });
 
   it("no muestra categoría técnica 'Zeta / comprobantes por cliente'", () => {

@@ -170,6 +170,8 @@ function readFirstLineasDescription(row: DataRow): string | null {
   const desc =
     first["Descripcion"] ??
     first["descripcion"] ??
+    first["Concepto"] ??    // clave documentada en RESTFacturaClienteV4Agregar
+    first["concepto"] ??
     first["Detalle"] ??
     first["detalle"] ??
     null;
