@@ -25,15 +25,6 @@ type Props = {
   overdueUsd: number;
 };
 
-function currentYearRange(): { from: string; to: string } {
-  const now = new Date();
-  const y = now.getFullYear();
-  return {
-    from: `${y}-01-01`,
-    to: `${String(now.getMonth() + 1).padStart(2, "0") === "01" ? `${y}-01-${String(now.getDate()).padStart(2, "0")}` : `${y}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`}`,
-  };
-}
-
 function todayYmd(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -68,29 +59,20 @@ export function AccountStatementSendCard({
   const canEmail = Boolean(email);
   const canWhatsApp = phoneResult?.isValid === true;
 
-  const input: AccountStatementMessageInput = {
-    clientName,
-    periodFrom: yearStart,
-    periodTo: today,
-    currency,
-    debtAmount: currency === "UYU" ? debtUyu : debtUsd,
-    overdueAmount: currency === "UYU" ? overdueUyu : overdueUsd,
-    channel,
-    tone,
-  };
-
-  const message = useMemo(() => buildAccountStatementMessage(input), [
-    clientName,
-    yearStart,
-    today,
-    currency,
-    debtUyu,
-    debtUsd,
-    overdueUyu,
-    overdueUsd,
-    channel,
-    tone,
-  ]);
+  const message = useMemo(
+    () =>
+      buildAccountStatementMessage({
+        clientName,
+        periodFrom: yearStart,
+        periodTo: today,
+        currency,
+        debtAmount: currency === "UYU" ? debtUyu : debtUsd,
+        overdueAmount: currency === "UYU" ? overdueUyu : overdueUsd,
+        channel,
+        tone,
+      }),
+    [clientName, yearStart, today, currency, debtUyu, debtUsd, overdueUyu, overdueUsd, channel, tone]
+  );
 
   const handleCopy = useCallback(() => {
     const text = message.subject ? `${message.subject}\n\n${message.body}` : message.body;
