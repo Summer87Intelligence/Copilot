@@ -144,10 +144,48 @@ export type AccountStatementPdfOptions = {
   statement: ClientAccountStatement;
   generatedAt?: Date;
   currencies?: Array<"UYU" | "USD">;
+  /** YYYY-MM-DD inclusive filter — applied after buildClientAccountStatement */
+  from?: string;
+  to?: string;
 };
 
+function filterMovements(
+  block: AccountStatementByCurrency,
+  from: string | undefined,
+  to: string | undefined
+): AccountStatementByCurrency {
+  if (!from && !to) return block;
+  const mvs = block.movements.filter((m) => {
+    if (from && m.date < from) return false;
+    if (to && m.date > to) return false;
+    return true;
+  });
+  // Recalculate summary from filtered movements
+  let totalDebit = 0, totalCredit = 0;
+  for (const m of mvs) {
+    totalDebit += m.debit;
+    totalCredit += m.credit;
+  }
+  const finalBalance = totalDebit - totalCredit;
+  return {
+    ...block,
+    movements: mvs,
+    summary: {
+      ...block.summary,
+      totalDebit,
+      totalCredit,
+      finalBalance,
+      totalInvoiced: totalDebit,
+      totalCollected: totalCredit,
+      pendingBalance: finalBalance,
+      movementCount: mvs.length,
+      hasNegativeBalance: finalBalance < 0,
+    },
+  };
+}
+
 export async function renderAccountStatementPdf(opts: AccountStatementPdfOptions): Promise<Buffer> {
-  const { companyName, statement, generatedAt = new Date(), currencies = ["UYU", "USD"] } = opts;
+  const { companyName, statement, generatedAt = new Date(), currencies = ["UYU", "USD"], from, to } = opts;
 
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: PAGE.margin, size: "A4", autoFirstPage: true });
@@ -172,8 +210,11 @@ export async function renderAccountStatementPdf(opts: AccountStatementPdfOptions
       year: "numeric",
       timeZone: "America/Montevideo",
     });
-    doc.fillColor(COLORS.muted).font("Helvetica").fontSize(8)
-      .text(`Generado el ${dateStr}`, mx, y);
+    const rangeLabel = from && to ? `Período: ${formatDate(from)} – ${formatDate(to)}` :
+      from ? `Desde: ${formatDate(from)}` :
+      to ? `Hasta: ${formatDate(to)}` : "";
+    const meta = [rangeLabel, `Generado el ${dateStr}`].filter(Boolean).join("   ·   ");
+    doc.fillColor(COLORS.muted).font("Helvetica").fontSize(8).text(meta, mx, y);
     y += 20;
 
     // divider
@@ -182,8 +223,9 @@ export async function renderAccountStatementPdf(opts: AccountStatementPdfOptions
 
     // ── Currency blocks ──
     for (const currency of currencies) {
-      const block = currency === "UYU" ? statement.uyu : statement.usd;
-      if (block.movements.length === 0 && block.summary.movementCount === 0) continue;
+      const rawBlock = currency === "UYU" ? statement.uyu : statement.usd;
+      const block = filterMovements(rawBlock, from, to);
+      if (block.movements.length === 0) continue;
       if (y > 720) { doc.addPage(); y = PAGE.margin; }
       y = renderCurrencyBlock(doc, block, y);
     }

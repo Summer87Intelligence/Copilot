@@ -492,23 +492,31 @@ function ZetaSyncStatusCard({
   );
 }
 
-// ─── Main view ────────────────────────────────────────────────────────────────
+// ─── PDF download card ────────────────────────────────────────────────────────
 
-export function CopilotClient360View({ companyId }: { companyId: string }) {
-  const [tab, setTab] = useState<TabId>("resumen");
-  const [data, setData] = useState<Client360Payload | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showRawJson, setShowRawJson] = useState(false);
-  const [pdfDownloading, setPdfDownloading] = useState(false);
-  const assistantRef = useRef<HTMLDivElement>(null);
+function AccountStatementPdfCard({ companyId, hasUyu }: { companyId: string; hasUyu: boolean }) {
+  const thisYear = new Date().getFullYear();
+  const [currency, setCurrency] = useState<"UYU" | "USD">(hasUyu ? "UYU" : "USD");
+  const [from, setFrom] = useState(`${thisYear}-01-01`);
+  const [to, setTo] = useState(`${thisYear}-12-31`);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  async function downloadAccountStatementPdf() {
-    if (pdfDownloading) return;
-    setPdfDownloading(true);
+  function buildUrl() {
+    const params = new URLSearchParams({ currency, from, to });
+    return `/api/copilot/clientes/${encodeURIComponent(companyId)}/account-statement.pdf?${params.toString()}`;
+  }
+
+  async function handleDownload() {
+    if (loading) return;
+    setErrorMsg(null);
+    setLoading(true);
     try {
-      const res = await fetch(`/api/copilot/clientes/${encodeURIComponent(companyId)}/account-statement.pdf`);
-      if (!res.ok) throw new Error("Error al generar el PDF.");
+      const res = await fetch(buildUrl());
+      if (!res.ok) {
+        setErrorMsg("No se pudo generar el PDF. Intentá de nuevo.");
+        return;
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -519,11 +527,106 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
       a.remove();
       URL.revokeObjectURL(url);
     } catch {
-      // silent — no state to show, the button just re-enables
+      setErrorMsg("No se pudo generar el PDF. Intentá de nuevo.");
     } finally {
-      setPdfDownloading(false);
+      setLoading(false);
     }
   }
+
+  return (
+    <CopilotCard>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-[var(--copilot-ink)]">Estado de cuenta PDF</p>
+          <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
+            Descargá un estado de cuenta del cliente para revisar o enviar manualmente.
+          </p>
+        </div>
+        <Download className="h-4 w-4 shrink-0 text-[var(--copilot-accent)] mt-0.5" aria-hidden />
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-end gap-3">
+        {/* Currency */}
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+            Moneda
+          </label>
+          <div className="flex rounded-xl overflow-hidden border border-[var(--copilot-border)]">
+            {(["UYU", "USD"] as const).map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setCurrency(c)}
+                className={`px-3.5 py-1.5 text-[12px] font-semibold transition-colors ${
+                  currency === c
+                    ? "bg-[var(--copilot-accent)] text-white"
+                    : "bg-white text-[var(--copilot-ink-muted)] hover:bg-slate-50"
+                }`}
+              >
+                {c === "UYU" ? "Pesos" : "Dólares"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* From */}
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+            Desde
+          </label>
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            className="rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-[12px] text-[var(--copilot-ink)] focus:outline-none focus:ring-1 focus:ring-[var(--copilot-accent)]"
+          />
+        </div>
+
+        {/* To */}
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+            Hasta
+          </label>
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            className="rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-[12px] text-[var(--copilot-ink)] focus:outline-none focus:ring-1 focus:ring-[var(--copilot-accent)]"
+          />
+        </div>
+
+        {/* Button */}
+        <button
+          type="button"
+          onClick={() => void handleDownload()}
+          disabled={loading}
+          className="flex items-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+        >
+          {loading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          ) : (
+            <Download className="h-3.5 w-3.5" aria-hidden />
+          )}
+          {loading ? "Generando…" : "Descargar PDF"}
+        </button>
+      </div>
+
+      {errorMsg ? (
+        <p className="mt-2 text-[12px] text-rose-600">{errorMsg}</p>
+      ) : null}
+    </CopilotCard>
+  );
+}
+
+// ─── Main view ────────────────────────────────────────────────────────────────
+
+export function CopilotClient360View({ companyId }: { companyId: string }) {
+  const [tab, setTab] = useState<TabId>("resumen");
+  const [data, setData] = useState<Client360Payload | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showRawJson, setShowRawJson] = useState(false);
+  const assistantRef = useRef<HTMLDivElement>(null);
 
   function scrollToAssistant() {
     assistantRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1016,6 +1119,9 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
             {/* ── ESTADO DE CUENTA ─────────────────────────────────────────── */}
             {tab === "cuenta" ? (
               <div className="space-y-4">
+                {/* PDF download card */}
+                <AccountStatementPdfCard companyId={companyId} hasUyu={data.debt_uyu > 0 || data.cuenta.ultimos_movimientos.some(m => m.kind === "factura")} />
+
                 <div>
                   <p className="text-sm font-semibold text-[var(--copilot-ink)]">
                     Deuda actual del cliente
@@ -1087,25 +1193,10 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                 </div>
 
                 <CopilotCard>
-                  <div className="flex items-start justify-between gap-3">
-                    <CopilotSectionTitle
-                      title="Estado de cuenta histórico"
-                      subtitle="Facturas y cobros sincronizados. Puede diferir de la deuda actual si hay notas de crédito, imputaciones o ajustes pendientes de sincronizar."
-                    />
-                    <button
-                      type="button"
-                      onClick={() => void downloadAccountStatementPdf()}
-                      disabled={pdfDownloading}
-                      className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-[12px] font-semibold text-[var(--copilot-accent)] transition-opacity hover:opacity-75 disabled:opacity-50"
-                    >
-                      {pdfDownloading ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                      ) : (
-                        <Download className="h-3.5 w-3.5" aria-hidden />
-                      )}
-                      {pdfDownloading ? "Generando…" : "Descargar PDF"}
-                    </button>
-                  </div>
+                  <CopilotSectionTitle
+                    title="Estado de cuenta histórico"
+                    subtitle="Facturas y cobros sincronizados. Puede diferir de la deuda actual si hay notas de crédito, imputaciones o ajustes pendientes de sincronizar."
+                  />
                   {data.cuenta.ultimos_movimientos.length === 0 ? (
                     <p className="text-sm text-[var(--copilot-ink-muted)]">
                       Sin movimientos registrados.

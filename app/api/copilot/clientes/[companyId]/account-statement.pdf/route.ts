@@ -45,6 +45,15 @@ export async function GET(
     const { data: userData, error: userErr } = await supabaseFromCookies.auth.getUser();
     const supabase = !userErr && userData.user ? supabaseFromCookies : auth.ctx.supabase;
 
+    const sp = request.nextUrl.searchParams;
+    const from = sp.get("from")?.trim() || undefined;
+    const to = sp.get("to")?.trim() || undefined;
+    const currencyParam = sp.get("currency")?.trim().toUpperCase();
+    const currencies: Array<"UYU" | "USD"> =
+      currencyParam === "UYU" ? ["UYU"] :
+      currencyParam === "USD" ? ["USD"] :
+      ["UYU", "USD"];
+
     const [invoices, receipts, company] = await Promise.all([
       listProtoInvoicesByCompanyId(supabase, companyId, "all", tenantCompanyId),
       listProtoReceiptsByCompanyId(supabase, companyId, "all", tenantCompanyId),
@@ -56,7 +65,7 @@ export async function GET(
       String(company?.name ?? company?.company_name ?? company?.zeta_client_name ?? "").trim() ||
       "Cliente";
 
-    const pdfBuffer = await renderAccountStatementPdf({ companyName, statement });
+    const pdfBuffer = await renderAccountStatementPdf({ companyName, statement, currencies, from, to });
     const safeFilename = companyName.replace(/[^a-zA-Z0-9_\-áéíóúÁÉÍÓÚüÜñÑ ]/g, "_").slice(0, 60);
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
