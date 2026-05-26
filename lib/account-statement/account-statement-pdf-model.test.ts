@@ -73,30 +73,33 @@ function receipt(opts: {
 
 // ── Fixture El País S.A. — datos de producción ────────────────────────────────
 //
-// Situación real en proto_invoices / proto_receipts:
+// CFE tipos REALES confirmados en Supabase (2026-05-26):
+//   111 = e-Boleta de Contado  (facturas de este tenant)
+//   112 = e-NC de e-Boleta     (nota de crédito A391)
+//   NO usan 101/181 — esos son e-Factura/NC e-Factura, no utilizados por este tenant.
 //
-//   ZETA:CCV1:0:36:A:2821  13/03/26  CFE 101  Venta Crédito   17.080  → Debe
-//   ZETA:CCV1:0:36:A:2877  17/04/26  CFE 101  Venta Crédito   41.480  → Debe
+//   ZETA:CCV1:0:36:A:2821  13/03/26  CFE 111  Venta Crédito   17.080  → Debe
+//   ZETA:CCV1:0:36:A:2877  17/04/26  CFE 111  Venta Crédito   41.480  → Debe
 //   ZETA:2574              17/04/26  —        saldos pendientes 41.480 → EXCLUIR
-//   ZETA:CCV1:0:36:A:2932  07/05/26  CFE 101  Venta Crédito    8.662  → Debe
-//   ZETA:CCV1:0:36:A:2934  08/05/26  CFE 101  Venta Crédito    8.662  → Debe
+//   ZETA:CCV1:0:36:A:2932  07/05/26  CFE 111  Venta Crédito    8.662  → Debe
+//   ZETA:CCV1:0:36:A:2934  08/05/26  CFE 111  Venta Crédito    8.662  → Debe
 //   ZETA:2674              08/05/26  —        saldos pendientes  8.662 → EXCLUIR
-//   ZETA:CCV1:0:36:A:391   08/05/26  CFE 181  Nota de Crédito  8.662  → Haber
+//   ZETA:CCV1:0:36:A:391   08/05/26  CFE 112  Nota de Crédito  8.662  → Haber
 //   A768                   20/05/26  Recibo   Recibo de Cobro 41.480  → Haber
 //
 // Saldo final esperado: 17.080 + 41.480 + 8.662 + 8.662 − 8.662 − 41.480 = 25.742
 
 const EL_PAIS_INVOICES = [
-  invoice({ id: "i1", number: "ZETA:CCV1:0:36:A:2821", date: "2026-03-13", total: 17080, cfeTipo: "101" }),
-  invoice({ id: "i2", number: "ZETA:CCV1:0:36:A:2877", date: "2026-04-17", total: 41480, cfeTipo: "101" }),
+  invoice({ id: "i1", number: "ZETA:CCV1:0:36:A:2821", date: "2026-03-13", total: 17080, cfeTipo: "111" }),
+  invoice({ id: "i2", number: "ZETA:CCV1:0:36:A:2877", date: "2026-04-17", total: 41480, cfeTipo: "111" }),
   // saldo pendiente derivado — debe excluirse
   invoice({ id: "sp1", number: "ZETA:2574",             date: "2026-04-17", total: 41480, category: "Zeta / saldos pendientes" }),
-  invoice({ id: "i3", number: "ZETA:CCV1:0:36:A:2932", date: "2026-05-07", total: 8662,  cfeTipo: "101" }),
-  invoice({ id: "i4", number: "ZETA:CCV1:0:36:A:2934", date: "2026-05-08", total: 8662,  cfeTipo: "101" }),
+  invoice({ id: "i3", number: "ZETA:CCV1:0:36:A:2932", date: "2026-05-07", total: 8662,  cfeTipo: "111" }),
+  invoice({ id: "i4", number: "ZETA:CCV1:0:36:A:2934", date: "2026-05-08", total: 8662,  cfeTipo: "111" }),
   // saldo pendiente derivado — debe excluirse
   invoice({ id: "sp2", number: "ZETA:2674",             date: "2026-05-08", total: 8662,  category: "Zeta / saldos pendientes" }),
-  // nota de crédito CFE 181 — debe ir a Haber
-  invoice({ id: "nc1", number: "ZETA:CCV1:0:36:A:391",  date: "2026-05-08", total: 8662,  cfeTipo: "181" }),
+  // nota de crédito CFE 112 (e-NC de e-Boleta) — debe ir a Haber
+  invoice({ id: "nc1", number: "ZETA:CCV1:0:36:A:391",  date: "2026-05-08", total: 8662,  cfeTipo: "112" }),
 ];
 
 const EL_PAIS_RECEIPTS = [
@@ -217,7 +220,23 @@ describe("saldos pendientes", () => {
 // ── Detección de notas de crédito por CFE tipo ────────────────────────────────
 
 describe("credit_note detection", () => {
-  it("CFE 181 → credit_note / Haber", () => {
+  // Tipos reales confirmados en Supabase para este tenant (El País S.A., 2026-05-26):
+  //   111 = e-Boleta de Contado (factura normal)
+  //   112 = e-NC de e-Boleta de Contado (nota de crédito A391)
+
+  it("CFE 112 → credit_note / Haber (tipo REAL de este tenant)", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [invoice({ id: "nc", date: "2026-01-01", total: 5000, cfeTipo: "112" })],
+      receipts: [],
+      ledgerMode: true,
+    });
+    const m = stmt.uyu.movements[0];
+    expect(m.kind).toBe("credit_note");
+    expect(m.credit).toBe(5000);
+    expect(m.debit).toBe(0);
+  });
+
+  it("CFE 181 → credit_note / Haber (e-NC de e-Factura, otros tenants)", () => {
     const stmt = buildClientAccountStatement({
       invoices: [invoice({ id: "nc", date: "2026-01-01", total: 5000, cfeTipo: "181" })],
       receipts: [],
@@ -238,7 +257,19 @@ describe("credit_note detection", () => {
     expect(stmt.uyu.movements[0].kind).toBe("credit_note");
   });
 
-  it("CFE 101 → invoice / Debe", () => {
+  it("CFE 111 → invoice / Debe (tipo REAL de facturas de este tenant)", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [invoice({ id: "inv", date: "2026-01-01", total: 5000, cfeTipo: "111" })],
+      receipts: [],
+      ledgerMode: true,
+    });
+    const m = stmt.uyu.movements[0];
+    expect(m.kind).toBe("invoice");
+    expect(m.debit).toBe(5000);
+    expect(m.credit).toBe(0);
+  });
+
+  it("CFE 101 → invoice / Debe (e-Factura, otros tenants)", () => {
     const stmt = buildClientAccountStatement({
       invoices: [invoice({ id: "inv", date: "2026-01-01", total: 5000, cfeTipo: "101" })],
       receipts: [],
@@ -248,6 +279,26 @@ describe("credit_note detection", () => {
     expect(m.kind).toBe("invoice");
     expect(m.debit).toBe(5000);
     expect(m.credit).toBe(0);
+  });
+
+  it("raw_payload.CFETipo 112 detectado como credit_note (sin cfe_tipo en metadata)", () => {
+    // Cubre el caso donde el mapper no puso cfe_tipo pero raw_payload.CFETipo sí está
+    const row: DataRow = {
+      id: "nc",
+      invoice_number: "ZETA:CCV1:0:36:A:391",
+      issue_date: "2026-05-08",
+      total_amount: 8662,
+      currency_code: "UYU",
+      is_active: true,
+      zeta_metadata: {
+        zeta_customer_voucher_v1: {
+          raw_payload: { CFETipo: 112 },
+          // cfe_tipo ausente — debe caer al raw_payload
+        },
+      },
+    };
+    const stmt = buildClientAccountStatement({ invoices: [row], receipts: [], ledgerMode: true });
+    expect(stmt.uyu.movements[0].kind).toBe("credit_note");
   });
 
   it("sin metadata CFE → invoice por defecto", () => {
@@ -261,7 +312,7 @@ describe("credit_note detection", () => {
 
   it("NC no se detecta en modo operacional (ledgerMode: false)", () => {
     const stmt = buildClientAccountStatement({
-      invoices: [invoice({ id: "nc", date: "2026-01-01", total: 5000, cfeTipo: "181" })],
+      invoices: [invoice({ id: "nc", date: "2026-01-01", total: 5000, cfeTipo: "112" })],
       receipts: [],
       ledgerMode: false,
     });
@@ -272,7 +323,7 @@ describe("credit_note detection", () => {
     const stmt = buildClientAccountStatement({
       invoices: [
         invoice({ id: "inv", date: "2026-01-01", total: 10000 }),
-        invoice({ id: "nc",  date: "2026-01-15", total:  3000, cfeTipo: "181" }),
+        invoice({ id: "nc",  date: "2026-01-15", total:  3000, cfeTipo: "112" }),
       ],
       receipts: [],
       ledgerMode: true,

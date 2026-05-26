@@ -216,30 +216,46 @@ function isSaldosPendientesRow(row: DataRow): boolean {
 }
 
 /**
- * Lee el código CFE tipo desde `zeta_metadata.zeta_customer_voucher_v1.cfe_tipo`.
- * Los valores son strings que representan enteros (ej. "181", "182").
+ * Lee el código CFE tipo desde dos fuentes en orden de prioridad:
+ *   1. `zeta_customer_voucher_v1.cfe_tipo` (string, puesto por el mapper)
+ *   2. `zeta_customer_voucher_v1.raw_payload.CFETipo` (entero PascalCase del API Zeta)
+ *
+ * Datos reales (tenant El País S.A.): invoices → 111, NC → 112.
  */
 function readInvoiceCfeTipo(row: DataRow): number | null {
   const zm = row.zeta_metadata;
   if (!zm || typeof zm !== "object") return null;
   const v1 = (zm as Record<string, unknown>).zeta_customer_voucher_v1;
   if (!v1 || typeof v1 !== "object") return null;
+  // Fuente primaria: campo normalizado por el mapper
   const raw = (v1 as Record<string, unknown>).cfe_tipo;
-  if (raw == null || raw === "") return null;
-  const n = parseInt(String(raw), 10);
-  return Number.isFinite(n) ? n : null;
+  if (raw != null && raw !== "") {
+    const n = parseInt(String(raw), 10);
+    if (Number.isFinite(n)) return n;
+  }
+  // Fuente secundaria: campo PascalCase en raw_payload (API Zeta directo)
+  const payload = (v1 as Record<string, unknown>).raw_payload;
+  if (payload && typeof payload === "object") {
+    const rawCfe = (payload as Record<string, unknown>).CFETipo;
+    if (rawCfe != null) {
+      const n = parseInt(String(rawCfe), 10);
+      if (Number.isFinite(n)) return n;
+    }
+  }
+  return null;
 }
 
 /**
- * Detecta notas de crédito por código CFE DGI:
- *   181 = e-Nota de Crédito (e-Factura)
- *   182 = e-Nota de Crédito (e-Ticket)
+ * Detecta notas de crédito por código CFE DGI (Uruguay):
+ *   112 = e-Nota de Crédito de e-Boleta de Contado  ← tenant real (confirmado A391, El País S.A.)
+ *   181 = e-Nota de Crédito de e-Factura
+ *   182 = e-Nota de Débito / NC variante e-Boleta
  *
  * Solo se usa en `ledgerMode: true` (estado de cuenta contable).
  */
 function invoiceIsCfeCreditNote(row: DataRow): boolean {
   const tipo = readInvoiceCfeTipo(row);
-  return tipo === 181 || tipo === 182;
+  return tipo === 112 || tipo === 181 || tipo === 182;
 }
 
 /** Orden ASC: fecha, kind (invoice antes que receipt mismo día), número. */
