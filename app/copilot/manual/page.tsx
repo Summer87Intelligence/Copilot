@@ -523,79 +523,79 @@ const SECTIONS: Section[] = [
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
             Cuando el cliente tiene deuda, la ficha muestra el Asistente de
             cobranza. Te permite generar un mensaje sugerido para contactarlo.
-            Copilot no envia nada automaticamente.
+            Copilot no envía nada automáticamente.
           </p>
           <Bullets
             items={[
-              "Canal — elige WhatsApp o Email segun como preferis contactar al cliente.",
-              "Tono — Amable para el primer aviso, Firme si ya paso un tiempo, Urgente si la deuda lleva mucho sin atenderse.",
+              "Canal — elige WhatsApp o Email según como preferís contactar al cliente.",
+              "Tono — Amable para el primer aviso, Firme si ya pasó un tiempo, Urgente si la deuda lleva mucho sin atenderse.",
               "Generar mensaje — crea el texto con los datos reales del cliente (nombre y monto).",
               "Copiar mensaje — copia el texto al portapapeles para pegarlo donde quieras.",
               "Enviar email — si el cliente tiene email cargado, abre tu cliente de correo con el texto y asunto preparados.",
               "Abrir WhatsApp — aparece solo si el cliente tiene un celular utilizable (formato uruguayo). Al hacer clic, abre WhatsApp con el mensaje ya escrito.",
-              "Telefono no utilizable para WhatsApp — aparece cuando hay un telefono cargado pero es fijo o tiene formato invalido. Corregi el telefono en Zeta para habilitarlo.",
-              "Sin telefono cargado — el cliente no tiene telefono registrado en el sistema.",
+              "Teléfono no utilizable para WhatsApp — aparece cuando hay un teléfono cargado pero es fijo o tiene formato inválido. Corregí el teléfono en Zeta para habilitarlo.",
+              "Sin teléfono cargado — el cliente no tiene teléfono registrado en el sistema.",
             ]}
           />
           <Callout variant="info">
             Los mensajes son sugerencias. Revisalos antes de enviarlos. Copilot
-            no los envia automaticamente.
+            no los envía automáticamente.
           </Callout>
         </div>
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
-            Gestion de cobranza
+            Gestión de cobranza
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
-            Despues de contactar al cliente, registra que paso. Esto te permite
-            recordar que se hablo, cuándo volver a contactar, y si hay una
+            Después de contactar al cliente, registrá qué pasó. Esto te permite
+            recordar qué se habló, cuándo volver a contactar, y si hay una
             promesa de pago pendiente.
           </p>
           <Bullets
             items={[
-              "Canal — elegis como fue el contacto: WhatsApp, Email, Telefono u Otro.",
-              "Resultado — que paso: Contactado, Prometio pagar, Sin respuesta, Contacto incorrecto, En disputa, Requiere seguimiento.",
-              "Nota — campo libre para escribir el detalle: 'prometio pagar el viernes', 'sin respuesta, llamar en 3 dias', etc.",
-              "Proximo seguimiento — fecha opcional para recordar cuando volver a contactar.",
-              "Promesa de pago — si el resultado fue 'Prometio pagar', podes registrar la fecha y monto de la promesa.",
-              "Registrar gestion — guarda el registro. No modifica la deuda ni marca facturas como pagadas.",
+              "Canal — elegís cómo fue el contacto: WhatsApp, Email, Teléfono u Otro.",
+              "Resultado — qué pasó: Contactado, Prometió pagar, Sin respuesta, Contacto incorrecto, En disputa, Requiere seguimiento.",
+              "Nota — campo libre para escribir el detalle: 'prometió pagar el viernes', 'sin respuesta, llamar en 3 días', etc.",
+              "Próximo seguimiento — fecha opcional para recordar cuándo volver a contactar.",
+              "Promesa de pago — si el resultado fue 'Prometió pagar', podés registrar la fecha y monto de la promesa.",
+              "Registrar gestión — guarda el registro. No modifica la deuda ni marca facturas como pagadas.",
             ]}
           />
           <Callout variant="warning">
-            Registrar una gestion NO marca ninguna factura como pagada ni
+            Registrar una gestión NO marca ninguna factura como pagada ni
             modifica el saldo. Solo es un registro de seguimiento. Para marcar
-            un pago, usa el sistema contable (Zeta).
+            un pago, usá el sistema contable (Zeta).
           </Callout>
           <p className="mt-3 mb-2 text-[11px] font-semibold text-[var(--copilot-ink-muted)]">
-            Que significa cada resultado
+            Qué significa cada resultado
           </p>
           <Bullets
             items={[
               "Contactado — lograste comunicarte con el cliente.",
-              "Prometio pagar — el cliente se compromete a pagar en una fecha. Registra la fecha y monto si podes.",
-              "Sin respuesta — llamaste o escribiste pero no contesto.",
-              "Contacto incorrecto — el numero o email que tenes no es el correcto.",
+              "Prometió pagar — el cliente se compromete a pagar en una fecha. Registrá la fecha y monto si podés.",
+              "Sin respuesta — llamaste o escribiste pero no contestó.",
+              "Contacto incorrecto — el número o email que tenés no es el correcto.",
               "En disputa — el cliente no reconoce la deuda o la cuestiona.",
-              "Requiere seguimiento — necesitas volver a contactar, pero no hay mas detalle por ahora.",
+              "Requiere seguimiento — necesitás volver a contactar, pero no hay más detalle por ahora.",
             ]}
           />
           <p className="mt-3 mb-2 text-[11px] font-semibold text-[var(--copilot-ink-muted)]">
-            Ultima gestion
+            Última gestión
           </p>
           <p className="mb-2 text-sm text-[var(--copilot-ink-muted)]">
             Si ya hay gestiones registradas, aparece un resumen compacto justo
-            arriba del formulario: canal, resultado, fecha y proximo seguimiento.
-            Asi no hace falta leer todo el historial para saber en que punto
-            quedo la gestion.
+            arriba del formulario: canal, resultado, fecha y próximo seguimiento.
+            Así no hace falta leer todo el historial para saber en qué punto
+            quedó la gestión.
           </p>
           <p className="mt-3 mb-2 text-[11px] font-semibold text-[var(--copilot-ink-muted)]">
             Historial
           </p>
           <p className="text-sm text-[var(--copilot-ink-muted)]">
             Debajo del formulario aparece el historial de todas las gestiones
-            registradas para ese cliente, ordenadas de la mas reciente a la mas
-            antigua. Cada entrada muestra canal, resultado, nota y proximo
+            registradas para ese cliente, ordenadas de la más reciente a la más
+            antigua. Cada entrada muestra canal, resultado, nota y próximo
             seguimiento si existe.
           </p>
         </div>
@@ -817,14 +817,14 @@ const SECTIONS: Section[] = [
       <>
         <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
           <strong>Agentes IA</strong> son asistentes que leen el Copilot y te
-          ayudan a ordenar que revisar primero. Trabajan en conjunto: cada
+          ayudan a ordenar qué revisar primero. Trabajan en conjunto: cada
           agente mira una parte del negocio, y el sistema combina lo que
-          encontraron para darte una vision unificada.
+          encontraron para darte una visión unificada.
         </p>
         <Callout variant="info">
           <strong>Los agentes no ejecutan acciones.</strong> No pagan, no
-          borran, no envian mensajes automaticamente. Solo leen datos, ordenan
-          prioridades y te llevan al modulo correcto. Vos siempre decides que
+          borran, no envían mensajes automáticamente. Solo leen datos, ordenan
+          prioridades y te llevan al módulo correcto. Vos siempre decidís qué
           hacer.
         </Callout>
 
@@ -833,18 +833,18 @@ const SECTIONS: Section[] = [
             Resumen coordinado
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
-            Es la pieza principal de la pantalla. Al generar el analisis, todos
+            Es la pieza principal de la pantalla. Al generar el análisis, todos
             los agentes activos trabajan al mismo tiempo y el sistema combina
-            sus resultados para decirte que revisar primero.
+            sus resultados para decirte qué revisar primero.
           </p>
           <Bullets
             items={[
-              "Va arriba de todo y resume el estado global: Bajo, En atencion o Critico.",
+              "Va arriba de todo y resume el estado global: Bajo, En atención o Crítico.",
               "Muestra hasta 5 prioridades globales ordenadas por urgencia.",
-              "Incluye el proximo paso recomendado para arrancar por el modulo correcto.",
+              "Incluye el próximo paso recomendado para arrancar por el módulo correcto.",
               "Debajo aparecen el Agente de Riesgo y luego los agentes operativos.",
               "No mezcla monedas: UYU y USD se tratan por separado.",
-              "Si falta algun dato, puede mostrar una lectura parcial sin romper la pantalla.",
+              "Si falta algún dato, puede mostrar una lectura parcial sin romper la pantalla.",
             ]}
           />
         </div>
@@ -854,17 +854,17 @@ const SECTIONS: Section[] = [
             Agentes operativos
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
-            Despues del Resumen coordinado y del Agente de Riesgo, la pantalla
+            Después del Resumen coordinado y del Agente de Riesgo, la pantalla
             muestra los agentes operativos en cards separadas: Ejecutivo Diario,
-            Cobranza, Tesoreria, Integridad de Datos y CFO / Finanzas.
+            Cobranza, Tesorería, Integridad de Datos y CFO / Finanzas.
           </p>
           <Bullets
             items={[
-              "Cada card explica que analiza ese agente.",
+              "Cada card explica qué analiza ese agente.",
               "Cada una muestra su estado actual y un resumen corto.",
               "Cada agente enseña hasta 3 prioridades internas para no sobrecargar la lectura.",
-              "Cada card tiene un CTA principal para ir al modulo correcto.",
-              "La idea es entender la pantalla en segundos y despues entrar al detalle donde corresponda.",
+              "Cada card tiene un CTA principal para ir al módulo correcto.",
+              "La idea es entender la pantalla en segundos y después entrar al detalle donde corresponda.",
             ]}
           />
         </div>
@@ -875,13 +875,13 @@ const SECTIONS: Section[] = [
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
             Lee notificaciones, caja, cartera, pagos y estado operacional.
-            Resume el dia con las cosas mas importantes para atender.
+            Resume el día con las cosas más importantes para atender.
           </p>
           <Bullets
             items={[
-              "Detecta problemas de sincronizacion, riesgo de caja y clientes vencidos.",
-              "Indica que cambio desde la ultima vez.",
-              "Sugiere el proximo paso concreto.",
+              "Detecta problemas de sincronización, riesgo de caja y clientes vencidos.",
+              "Indica qué cambió desde la última vez.",
+              "Sugiere el próximo paso concreto.",
               "Usa reglas del sistema, no reemplaza tu criterio.",
             ]}
           />
@@ -899,11 +899,11 @@ const SECTIONS: Section[] = [
           <Bullets
             items={[
               "Clientes vencidos ordenados por monto, de mayor a menor.",
-              "Promesas de pago vencidas — si un cliente prometio pagar y la fecha ya paso.",
-              "Seguimientos vencidos — si tenes un proximo contacto programado para hoy o antes.",
-              "Reintentos — clientes que no respondieron hace 2 o mas dias.",
-              "Si hay mas de 3 clientes vencidos, muestra un resumen de cartera.",
-              "No sugiere enviar mensajes automaticamente.",
+              "Promesas de pago vencidas — si un cliente prometió pagar y la fecha ya pasó.",
+              "Seguimientos vencidos — si tenés un próximo contacto programado para hoy o antes.",
+              "Reintentos — clientes que no respondieron hace 2 o más días.",
+              "Si hay más de 3 clientes vencidos, muestra un resumen de cartera.",
+              "No sugiere enviar mensajes automáticamente.",
             ]}
           />
         </div>
@@ -913,48 +913,48 @@ const SECTIONS: Section[] = [
             Seguimiento de cobranza
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
-            Cuando registras una gestion en la ficha del cliente, Copilot
+            Cuando registrás una gestión en la ficha del cliente, Copilot
             puede recordarte volver a contactarlo. Esto se basa en lo que
-            registraste en Gestion de cobranza, no en los datos contables.
+            registraste en Gestión de cobranza, no en los datos contables.
           </p>
           <Bullets
             items={[
-              "Proximo seguimiento — si agendaste una fecha, Copilot te lo muestra como prioridad cuando llega el dia.",
-              "Promesa de pago — si el cliente prometio pagar y la fecha llego sin confirmacion, aparece como prioridad critica.",
-              "Promesa futura — si la promesa es para mas adelante, aparece como baja prioridad mientras no venza.",
-              "Sin respuesta — si la ultima gestion fue 'Sin respuesta' y pasaron 2 o mas dias, sugiere reintentar el contacto.",
+              "Próximo seguimiento — si agendaste una fecha, Copilot te lo muestra como prioridad cuando llega el día.",
+              "Promesa de pago — si el cliente prometió pagar y la fecha llegó sin confirmación, aparece como prioridad crítica.",
+              "Promesa futura — si la promesa es para más adelante, aparece como baja prioridad mientras no venza.",
+              "Sin respuesta — si la última gestión fue 'Sin respuesta' y pasaron 2 o más días, sugiere reintentar el contacto.",
               "Contacto incorrecto — si registraste 'Contacto incorrecto', el agente lo marca como prioridad para actualizar los datos.",
             ]}
           />
           <Callout variant="warning">
             Registrar una promesa de pago NO marca la factura como pagada ni
             modifica el saldo. Solo es un seguimiento operativo. Para registrar
-            un pago real, usa el sistema contable (Zeta).
+            un pago real, usá el sistema contable (Zeta).
           </Callout>
         </div>
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
-            Agente de Tesoreria
+            Agente de Tesorería
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
-            Revisa notificaciones de tesoreria y ordena lo que necesita atencion:
+            Revisa notificaciones de tesorería y ordena lo que necesita atención:
             pagos vencidos, riesgo de caja, pagos que vencen hoy y compromisos
-            proximos. No modifica ni ejecuta pagos.
+            próximos. No modifica ni ejecuta pagos.
           </p>
           <Bullets
             items={[
-              "Pagos vencidos — si hay obligaciones con fecha pasada, las muestra como prioridad critica.",
-              "Riesgo de caja — si la caja puede quedar ajustada despues de los pagos proximos.",
-              "Vence hoy — pagos programados para hoy, para confirmar antes de cerrar el dia.",
-              "Proximos 1-3 dias — compromisos inminentes que conviene revisar con anticipacion.",
-              "Proximos 7 dias — compromisos de la semana para planificacion.",
+              "Pagos vencidos — si hay obligaciones con fecha pasada, las muestra como prioridad crítica.",
+              "Riesgo de caja — si la caja puede quedar ajustada después de los pagos próximos.",
+              "Vence hoy — pagos programados para hoy, para confirmar antes de cerrar el día.",
+              "Próximos 1-3 días — compromisos inminentes que conviene revisar con anticipación.",
+              "Próximos 7 días — compromisos de la semana para planificación.",
               "Solo lee notificaciones. No toca pagos ni saldos.",
             ]}
           />
           <Callout variant="info">
-            El Agente de Tesoreria trabaja junto al Agente Ejecutivo Diario. Si
-            ambos detectan el mismo pago vencido, el sistema muestra la senial
+            El Agente de Tesorería trabaja junto al Agente Ejecutivo Diario. Si
+            ambos detectan el mismo pago vencido, el sistema muestra la señal
             una sola vez — la de mayor urgencia — para no duplicar alertas.
           </Callout>
         </div>
@@ -964,25 +964,25 @@ const SECTIONS: Section[] = [
             Agente de Integridad de Datos
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
-            Revisa si los datos estan actualizados y si hay problemas de
-            sincronizacion con fuentes externas como Zeta. No reinicia
+            Revisa si los datos están actualizados y si hay problemas de
+            sincronización con fuentes externas como Zeta. No reinicia
             procesos ni modifica datos. Te lleva a Operacional para ver
             el detalle.
           </p>
           <Bullets
             items={[
-              "Sincronizacion fallida — si una actualizacion de datos no se completo, lo muestra como prioridad.",
+              "Sincronización fallida — si una actualización de datos no se completó, lo muestra como prioridad.",
               "Fuente externa con problemas — si Zeta u otra fuente falla, informa de forma simple.",
-              "Datos desactualizados — si el proceso no se ejecuto en la ventana esperada.",
+              "Datos desactualizados — si el proceso no se ejecutó en la ventana esperada.",
               "Inconsistencias detectadas — si hay datos que no coinciden entre fuentes.",
-              "Todo bien — si no hay senales de problema, muestra estado estable.",
+              "Todo bien — si no hay señales de problema, muestra estado estable.",
               "No modifica datos ni reinicia sincronizaciones.",
             ]}
           />
           <Callout variant="info">
-            Si Zeta falla, Copilot puede seguir mostrando los ultimos datos
+            Si Zeta falla, Copilot puede seguir mostrando los últimos datos
             disponibles. El Agente de Integridad te avisa para que revises
-            Operacional y entiendas que esta pasando.
+            Operacional y entiendas qué está pasando.
           </Callout>
         </div>
 
@@ -991,23 +991,23 @@ const SECTIONS: Section[] = [
             Agente CFO / Finanzas
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
-            Analiza la situacion financiera del negocio: liquidez, cartera vencida,
-            egresos proyectados y calidad de los datos. Te lleva al modulo correcto
-            segun lo que encuentra. No modifica datos ni ejecuta pagos.
+            Analiza la situación financiera del negocio: liquidez, cartera vencida,
+            egresos proyectados y calidad de los datos. Te lleva al módulo correcto
+            según lo que encuentra. No modifica datos ni ejecuta pagos.
           </p>
           <Bullets
             items={[
-              "Riesgo de liquidez — si el snapshot financiero muestra riesgo critico o alto, lo informa como prioridad.",
-              "Caja en riesgo — si una notificacion indica que los egresos pueden superar la caja disponible.",
+              "Riesgo de liquidez — si el snapshot financiero muestra riesgo crítico o alto, lo informa como prioridad.",
+              "Caja en riesgo — si una notificación indica que los egresos pueden superar la caja disponible.",
               "Cartera vencida — si hay clientes con saldo vencido que pueden afectar la cobranza esperada.",
-              "Egresos proximos — pagos vencidos o con vencimiento proximo que pueden impactar el flujo de caja.",
+              "Egresos próximos — pagos vencidos o con vencimiento próximo que pueden impactar el flujo de caja.",
               "Datos parciales — si el snapshot financiero puede estar incompleto, avisa para que lo confirmes.",
-              "Solo lee datos. No inventa montos. No ejecuta ninguna accion.",
+              "Solo lee datos. No inventa montos. No ejecuta ninguna acción.",
             ]}
           />
           <Callout variant="info">
-            El Agente CFO trabaja junto al Agente de Tesoreria. Si ambos detectan
-            el mismo compromiso de pago, el sistema muestra la senial una sola vez
+            El Agente CFO trabaja junto al Agente de Tesorería. Si ambos detectan
+            el mismo compromiso de pago, el sistema muestra la señal una sola vez
             — la de mayor urgencia — para no duplicar alertas.
           </Callout>
         </div>
@@ -1019,7 +1019,7 @@ const SECTIONS: Section[] = [
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
             Aparece debajo del Resumen coordinado como una lectura global.
             Junta señales de caja, cobranza, pagos, datos y finanzas para
-            resumir si el negocio esta en riesgo bajo, en atencion o critico.
+            resumir si el negocio está en riesgo bajo, en atención o crítico.
             No cambia datos ni ejecuta acciones.
           </p>
           <Bullets
@@ -1028,7 +1028,7 @@ const SECTIONS: Section[] = [
               "Revisar cobranza — si hay deuda vencida, promesas caídas o seguimientos pendientes.",
               "Validar datos — si conviene revisar la actualización antes de decidir.",
               "Ver Finanzas — si la lectura financiera general requiere monitoreo.",
-              "No tapa las prioridades especificas: solo te indica donde mirar primero.",
+              "No tapa las prioridades específicas: solo te indica dónde mirar primero.",
             ]}
           />
           <Callout variant="info">
@@ -1050,39 +1050,39 @@ const SECTIONS: Section[] = [
           </p>
           <Bullets
             items={[
-              "Resume la situacion de un cliente: sin deuda, al dia, vencida o con promesa.",
-              "Dice que pasa, por que importa y que hacer ahora para ese cliente especifico.",
-              "Puede sugerir preparar cobranza, ver seguimiento, ver contactos o revisar actualizacion.",
-              "No modifica datos. No envia mensajes. No marca facturas como pagadas.",
-              "El usuario decide si contacta, genera un mensaje o registra una gestion.",
+              "Resume la situación de un cliente: sin deuda, al día, vencida o con promesa.",
+              "Dice qué pasa, por qué importa y qué hacer ahora para ese cliente específico.",
+              "Puede sugerir preparar cobranza, ver seguimiento, ver contactos o revisar actualización.",
+              "No modifica datos. No envía mensajes. No marca facturas como pagadas.",
+              "El usuario decide si contacta, genera un mensaje o registra una gestión.",
             ]}
           />
         </div>
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
-            Que pueden y que no pueden hacer
+            Qué pueden y qué no pueden hacer
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
             Al final de la pantalla vas a ver un bloque de seguridad con este
-            resumen rapido:
+            resumen rápido:
           </p>
           <Bullets
             items={[
-              "Pueden leer informacion, resumir, priorizar y sugerir el siguiente paso.",
-              "No pueden pagar, borrar, modificar importes ni enviar mensajes automaticamente.",
+              "Pueden leer información, resumir, priorizar y sugerir el siguiente paso.",
+              "No pueden pagar, borrar, modificar importes ni enviar mensajes automáticamente.",
               "No pueden marcar facturas como pagadas.",
-              "Vos siempre decidis que hacer despues de leer la recomendacion.",
+              "Vos siempre decidís qué hacer después de leer la recomendación.",
             ]}
           />
         </div>
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
-            Agentes preparados para proximas versiones
+            Agentes preparados para próximas versiones
           </p>
           <p className="mb-2 text-sm text-[var(--copilot-ink)]">
-            Ya estan definidos pero todavia no estan activos:
+            Ya están definidos pero todavía no están activos:
           </p>
           <Bullets
             items={[
@@ -1097,7 +1097,7 @@ const SECTIONS: Section[] = [
           </p>
           <div className="space-y-2">
             {[
-              { label: "Critica", color: "bg-rose-50 text-rose-700 border-rose-200", desc: "Requiere atencion inmediata. Puede afectar caja o datos." },
+              { label: "Crítica", color: "bg-rose-50 text-rose-700 border-rose-200", desc: "Requiere atención inmediata. Puede afectar caja o datos." },
               { label: "Alta", color: "bg-amber-50 text-amber-700 border-amber-200", desc: "Importante. Conviene atenderla hoy." },
               { label: "Media", color: "bg-blue-50 text-blue-700 border-blue-100", desc: "Para revisar cuando puedas, sin urgencia inmediata." },
               { label: "Baja", color: "bg-slate-100 text-slate-600 border-slate-200", desc: "Informativa. Puede esperar." },
@@ -1120,47 +1120,47 @@ const SECTIONS: Section[] = [
             {[
               {
                 q: "¿Los agentes trabajan juntos?",
-                a: "Si. Cada agente mira una parte del negocio. Arriba ves el Resumen coordinado, despues el Agente de Riesgo y luego los agentes operativos por separado.",
+                a: "Sí. Cada agente mira una parte del negocio. Arriba ves el Resumen coordinado, después el Agente de Riesgo y luego los agentes operativos por separado.",
               },
               {
-                q: "¿Que significa 'Prioridades principales'?",
-                a: "Son las prioridades mas urgentes de todos los agentes activos juntos. Se ordenan de mayor a menor urgencia, se muestran sin duplicados y te ayudan a decidir por donde empezar.",
+                q: "¿Qué significa 'Prioridades principales'?",
+                a: "Son las prioridades más urgentes de todos los agentes activos juntos. Se ordenan de mayor a menor urgencia, se muestran sin duplicados y te ayudan a decidir por dónde empezar.",
               },
               {
                 q: "¿Copilot puede escribir mensajes de cobranza?",
-                a: "Si. Podes generar mensajes sugeridos para WhatsApp o email desde la ficha de cada cliente. Copilot no los envia automaticamente. Vos revises el texto y decides si enviarlo.",
+                a: "Sí. Podés generar mensajes sugeridos para WhatsApp o email desde la ficha de cada cliente. Copilot no los envía automáticamente. Vos revisás el texto y decidís si enviarlo.",
               },
               {
                 q: "¿Los agentes pueden equivocarse?",
-                a: "Pueden mostrar informacion incompleta si los datos no estan sincronizados. Siempre conviene verificar en el modulo correspondiente antes de actuar.",
+                a: "Pueden mostrar información incompleta si los datos no están sincronizados. Siempre conviene verificar en el módulo correspondiente antes de actuar.",
               },
               {
-                q: "¿Con que frecuencia debo generar el analisis?",
-                a: "Al inicio del dia o cuando necesites una mirada rapida. Podes repetirlo cuando quieras para actualizar el resultado.",
+                q: "¿Con qué frecuencia debo generar el análisis?",
+                a: "Al inicio del día o cuando necesites una mirada rápida. Podés repetirlo cuando quieras para actualizar el resultado.",
               },
               {
-                q: "¿El Agente de Tesoreria puede pagar o modificar algo?",
-                a: "No. Solo lee las notificaciones de tesoreria y las ordena por urgencia. Para confirmar o registrar un pago, tenes que ir a Tesoreria y hacerlo manualmente.",
+                q: "¿El Agente de Tesorería puede pagar o modificar algo?",
+                a: "No. Solo lee las notificaciones de tesorería y las ordena por urgencia. Para confirmar o registrar un pago, tenés que ir a Tesorería y hacerlo manualmente.",
               },
               {
-                q: "¿Que hace el Agente de Integridad de Datos?",
-                a: "Te explica si los datos estan actualizados y si hay algo que revisar en la conexion o sincronizacion. Te lleva a Operacional para ver el detalle. No reinicia procesos ni modifica nada.",
+                q: "¿Qué hace el Agente de Integridad de Datos?",
+                a: "Te explica si los datos están actualizados y si hay algo que revisar en la conexión o sincronización. Te lleva a Operacional para ver el detalle. No reinicia procesos ni modifica nada.",
               },
               {
                 q: "¿Si Zeta falla, Copilot deja de funcionar?",
-                a: "No necesariamente. Copilot puede mostrar los ultimos datos disponibles y avisarte en Operacional que la actualizacion necesita revision. El agente te informa para que puedas actuar.",
+                a: "No necesariamente. Copilot puede mostrar los últimos datos disponibles y avisarte en Operacional que la actualización necesita revisión. El agente te informa para que puedas actuar.",
               },
               {
-                q: "¿Por que el mismo pago vencido aparece solo una vez si lo detectan dos agentes?",
-                a: "El sistema deduplica por destino: si el Agente Ejecutivo y el de Tesoreria detectan el mismo pago, muestra una sola prioridad — la de mayor urgencia — para no repetir la misma alerta.",
+                q: "¿Por qué el mismo pago vencido aparece solo una vez si lo detectan dos agentes?",
+                a: "El sistema deduplica por destino: si el Agente Ejecutivo y el de Tesorería detectan el mismo pago, muestra una sola prioridad — la de mayor urgencia — para no repetir la misma alerta.",
               },
               {
-                q: "¿Que hace el Agente CFO / Finanzas?",
-                a: "Analiza liquidez, cartera vencida, egresos proximos y calidad de los datos financieros. Si detecta riesgo de caja o datos incompletos, te lleva a Finanzas, Cartera o Tesoreria segun corresponda. No modifica datos ni ejecuta pagos.",
+                q: "¿Qué hace el Agente CFO / Finanzas?",
+                a: "Analiza liquidez, cartera vencida, egresos próximos y calidad de los datos financieros. Si detecta riesgo de caja o datos incompletos, te lleva a Finanzas, Cartera o Tesorería según corresponda. No modifica datos ni ejecuta pagos.",
               },
               {
                 q: "¿El Agente CFO puede ver el snapshot financiero?",
-                a: "Si. Lee el snapshot de Finanzas para detectar riesgo de liquidez y datos parciales. Si el snapshot no esta disponible, usa las notificaciones de tesoreria y cartera como fuente alternativa.",
+                a: "Sí. Lee el snapshot de Finanzas para detectar riesgo de liquidez y datos parciales. Si el snapshot no está disponible, usa las notificaciones de tesorería y cartera como fuente alternativa.",
               },
               {
                 q: "¿Qué significa riesgo operativo?",
@@ -1171,12 +1171,12 @@ const SECTIONS: Section[] = [
                 a: "No. Solo ordena señales y te recomienda dónde mirar primero.",
               },
               {
-                q: "¿El Agente de Cliente puede cobrar automaticamente?",
-                a: "No. Solo recomienda que hacer. Vos decides si generás un mensaje, contactas al cliente o registras una gestion. El agente no modifica datos, no envia mensajes ni marca facturas como pagadas.",
+                q: "¿El Agente de Cliente puede cobrar automáticamente?",
+                a: "No. Solo recomienda qué hacer. Vos decidís si generás un mensaje, contactás al cliente o registrás una gestión. El agente no modifica datos, no envía mensajes ni marca facturas como pagadas.",
               },
               {
-                q: "¿Por que el Agente de Cliente no aparece en el resumen global de Agentes IA?",
-                a: "Porque analiza un cliente puntual, no el negocio en general. Lo encontras directamente en la ficha de cada cliente, arriba del asistente de cobranza.",
+                q: "¿Por qué el Agente de Cliente no aparece en el resumen global de Agentes IA?",
+                a: "Porque analiza un cliente puntual, no el negocio en general. Lo encontrás directamente en la ficha de cada cliente, arriba del asistente de cobranza.",
               },
             ].map(({ q, a }) => (
               <div key={q}>
@@ -1451,31 +1451,31 @@ const FAQ: Array<{ q: string; a: React.ReactNode }> = [
   },
   {
     q: "¿Los agentes pueden modificar datos?",
-    a: "No. En esta version solo leen informacion y sugieren acciones. Vos decides que hacer.",
+    a: "No. En esta versión solo leen información y sugieren acciones. Vos decidís qué hacer.",
   },
   {
     q: "¿El agente envía WhatsApp o emails?",
-    a: "No. Puede llevarte al cliente o a la accion correspondiente, pero no envia mensajes automaticamente.",
+    a: "No. Puede llevarte al cliente o a la acción correspondiente, pero no envía mensajes automáticamente.",
   },
   {
-    q: "¿Que pasa si Zeta falla y uso el agente?",
-    a: "El agente puede mostrar informacion con los ultimos datos disponibles y recomendar revisar Operacional. No inventa datos nuevos.",
+    q: "¿Qué pasa si Zeta falla y uso el agente?",
+    a: "El agente puede mostrar información con los últimos datos disponibles y recomendar revisar Operacional. No inventa datos nuevos.",
   },
   {
-    q: "Copie o envie un mensaje al cliente. ¿Que hago ahora?",
-    a: "Registra el resultado en Gestion de cobranza, en la ficha del cliente. Por ejemplo: 'Contactado', 'Sin respuesta', o 'Prometio pagar'. Eso queda guardado en el historial y te ayuda a recordar cuando volver a contactar.",
+    q: "Copié o envié un mensaje al cliente. ¿Qué hago ahora?",
+    a: "Registrá el resultado en Gestión de cobranza, en la ficha del cliente. Por ejemplo: 'Contactado', 'Sin respuesta', o 'Prometió pagar'. Eso queda guardado en el historial y te ayuda a recordar cuándo volver a contactar.",
   },
   {
-    q: "¿Registrar una gestion modifica la deuda del cliente?",
-    a: "No. Registrar una gestion es solo un seguimiento operativo. No modifica facturas, saldos ni pagos. Para marcar un pago, hacelo desde el sistema contable (Zeta).",
+    q: "¿Registrar una gestión modifica la deuda del cliente?",
+    a: "No. Registrar una gestión es solo un seguimiento operativo. No modifica facturas, saldos ni pagos. Para marcar un pago, hacelo desde el sistema contable (Zeta).",
   },
   {
-    q: "¿Que pasa si un cliente prometio pagar?",
-    a: "Copilot lo muestra como seguimiento de baja prioridad mientras la fecha no llego. Si llega la fecha y la deuda sigue abierta, lo muestra como prioridad critica para que lo verifiques. Registrar una promesa de pago no marca ninguna factura como pagada.",
+    q: "¿Qué pasa si un cliente prometió pagar?",
+    a: "Copilot lo muestra como seguimiento de baja prioridad mientras la fecha no llegó. Si llega la fecha y la deuda sigue abierta, lo muestra como prioridad crítica para que lo verifiques. Registrar una promesa de pago no marca ninguna factura como pagada.",
   },
   {
-    q: "¿Que pasa si cargo una fecha de proximo seguimiento?",
-    a: "Cuando llega ese dia, Copilot lo muestra como prioridad alta en los Agentes y en Acciones. Es un recordatorio operativo — no ejecuta ninguna accion automatica.",
+    q: "¿Qué pasa si cargo una fecha de próximo seguimiento?",
+    a: "Cuando llega ese día, Copilot lo muestra como prioridad alta en los Agentes y en Acciones. Es un recordatorio operativo — no ejecuta ninguna acción automática.",
   },
 ];
 

@@ -7,6 +7,7 @@ import {
   Bell,
   CheckCheck,
   ChevronRight,
+  RefreshCw,
   TrendingDown,
   TrendingUp,
   Users,
@@ -302,7 +303,7 @@ function NotificationCard({
           {n.amount != null && n.currency ? (
             <p className="mt-1.5 text-[13px] font-semibold tabular-nums text-[var(--copilot-ink)]">
               {n.currency}{" "}
-              {n.amount.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
+              {n.amount.toLocaleString("es-UY", { maximumFractionDigits: 0 })}
             </p>
           ) : null}
 
@@ -377,7 +378,7 @@ const BUCKET_LABELS: Record<"hoy" | "ayer" | "anterior", string> = {
 };
 
 export default function CopilotAlertasPage() {
-  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } =
+  const { notifications, unreadCount, loading, error, markAsRead, markAllAsRead, refetch } =
     useCopilotNotifications();
 
   const [activeFilter, setActiveFilter] = useState<AlertFilter>("all");
@@ -534,7 +535,29 @@ export default function CopilotAlertasPage() {
         </div>
 
         {/* ── List ────────────────────────────────────────────────────────── */}
-        {loading && notifications.length === 0 ? (
+        {error && notifications.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-rose-200 bg-rose-50/50 px-6 py-14 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100">
+              <XCircle className="h-6 w-6 text-rose-400" aria-hidden />
+            </div>
+            <div className="space-y-1">
+              <p className="text-[15px] font-semibold text-[var(--copilot-ink)]">
+                No se pudieron cargar las alertas.
+              </p>
+              <p className="max-w-sm text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
+                Verificá tu conexión e intentá de nuevo.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-[13px] font-semibold text-[var(--copilot-ink)] ring-1 ring-[var(--copilot-border)] transition-opacity hover:opacity-70"
+            >
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+              Reintentar
+            </button>
+          </div>
+        ) : loading && notifications.length === 0 ? (
           <NotifSkeleton />
         ) : totalFiltered === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--copilot-border)] bg-white/50 px-6 py-16 text-center">

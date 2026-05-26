@@ -11,6 +11,7 @@ type NotificationsState = {
   notifications: CopilotNotification[];
   unreadCount: number;
   loading: boolean;
+  error: boolean;
 };
 
 type NotificationsContextValue = NotificationsState & {
@@ -35,6 +36,7 @@ export function CopilotNotificationsProvider({ children }: { children: React.Rea
     notifications: [],
     unreadCount: 0,
     loading: false,
+    error: false,
   });
   const inFlight = useRef(false);
 
@@ -44,15 +46,19 @@ export function CopilotNotificationsProvider({ children }: { children: React.Rea
     setState((s) => ({ ...s, loading: true }));
     try {
       const res = await copilotApiFetch("/api/copilot/notifications?limit=50");
-      if (!res.ok) return;
+      if (!res.ok) {
+        setState((s) => ({ ...s, loading: false, error: true }));
+        return;
+      }
       const data = (await res.json()) as NotificationListResponse;
       setState({
         notifications: data.notifications ?? [],
         unreadCount: data.unreadCount ?? 0,
         loading: false,
+        error: false,
       });
     } catch {
-      setState((s) => ({ ...s, loading: false }));
+      setState((s) => ({ ...s, loading: false, error: true }));
     } finally {
       inFlight.current = false;
     }

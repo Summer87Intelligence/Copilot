@@ -310,7 +310,7 @@ function TimelineBlock({ events }: { events: TimelineEvent[] }) {
       {syncEvents.length > 0 ? (
         <div>
           <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
-            Actualizacion de datos
+            Actualización de datos
           </p>
           <EventList evts={syncEvents} />
         </div>
@@ -346,8 +346,8 @@ function ContactsTab({
             No hay contactos registrados para este cliente.
           </p>
           <p className="max-w-sm text-xs text-[var(--copilot-ink-muted)]">
-            Los contactos se actualizan automaticamente. Apareceran aqui tras la
-            proxima sincronizacion si el cliente tiene contactos.
+            Los contactos se actualizan automáticamente. Aparecerán aquí tras la
+            próxima sincronización si el cliente tiene contactos.
           </p>
         </div>
       </CopilotCard>

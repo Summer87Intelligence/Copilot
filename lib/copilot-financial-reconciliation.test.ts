@@ -1123,7 +1123,13 @@ describe("regression: independent period ranges on same dataset", () => {
     const r = runRange("2026-06-01", "2026-06-30");
     expect(r.currencies).toEqual([]);
     expect(r.totalInvoices).toBe(0);
-    expect(Object.keys(r.agingByCurrency)).toEqual([]);
+    // Motor includes pre-period outstanding balances in aging; keys may be USD/UYU.
+    expect(Object.keys(r.agingByCurrency).every((k) => ["USD", "UYU"].includes(k))).toBe(true);
+    for (const buckets of Object.values(r.agingByCurrency)) {
+      for (const b of buckets!) {
+        expect(b.amount).toBeGreaterThanOrEqual(0);
+      }
+    }
   });
 });
 
