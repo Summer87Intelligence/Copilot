@@ -635,7 +635,7 @@ const SECTIONS: Section[] = [
           <Bullets
             items={[
               "Facturas — muestra fecha, importe, saldo, estado y las líneas del comprobante (concepto, artículo, importe por línea).",
-              "Recibos — muestra número visible, fecha, monto, caja y cobrador cuando están disponibles.",
+              "Recibos — tabla con número real (ej. A-768), cliente, fecha, monto, moneda y método de cobro. Al hacer clic se abre el panel lateral con caja y cobrador.",
               "Las notas de crédito se identifican automáticamente y no se suman a la deuda del cliente.",
               "Los datos técnicos internos (IDs Zeta, categorías de pipeline) no se muestran en la vista principal.",
             ]}
@@ -812,7 +812,7 @@ const SECTIONS: Section[] = [
             items={[
               "Clientes — directorio completo con datos de contacto.",
               "Facturas — todas las facturas por período, con saldo y estado.",
-              "Recibos — cobros registrados.",
+              "Recibos — cobros con número real, cliente, monto, moneda y método.",
               "Pagos — pagos fiscales y a proveedores.",
               "Obligaciones fiscales — vencimientos tributarios.",
             ]}

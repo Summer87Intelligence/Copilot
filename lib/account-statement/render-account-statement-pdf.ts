@@ -304,23 +304,29 @@ function renderSaldoAnteriorRow(
 }
 
 const DETAIL_LINE_H = 11;
-const DETAIL_LABEL_W = COL.description.w + COL.reference.w + COL.currency.w - 22;
+// Label spans from description to just before debit column
+const DETAIL_LABEL_X = colX("description") + 14;
+const DETAIL_LABEL_W = colX("debit") - 4 - DETAIL_LABEL_X;
 
 function renderDetailLine(
   doc: PDFKit.PDFDocument,
   dl: MovementDetailLine,
   y: number
 ): void {
+  // Label in muted color (descriptive)
   doc.fillColor(COLORS.muted).font("Helvetica").fontSize(7)
-    .text(dl.label, colX("description") + 14, y + 2,
+    .text(dl.label, DETAIL_LABEL_X, y + 2,
       { width: DETAIL_LABEL_W, lineBreak: false });
+  // Amounts in ink color (same visual weight as main row)
   if (dl.debit != null && dl.debit > 0) {
-    doc.text(formatAmount(dl.debit), colX("debit"), y + 2,
-      { width: COL.debit.w - 4, align: "right" });
+    doc.fillColor(COLORS.ink)
+      .text(formatAmount(dl.debit), colX("debit"), y + 2,
+        { width: COL.debit.w - 4, align: "right" });
   }
   if (dl.credit != null && dl.credit > 0) {
-    doc.text(formatAmount(dl.credit), colX("credit"), y + 2,
-      { width: COL.credit.w - 4, align: "right" });
+    doc.fillColor(COLORS.ink)
+      .text(formatAmount(dl.credit), colX("credit"), y + 2,
+        { width: COL.credit.w - 4, align: "right" });
   }
 }
 
@@ -335,8 +341,17 @@ function renderMovementRow(
   const ROW_H = 14;
   let y = startY;
 
+  // Compute detail lines first to size the alternating background correctly
+  const lines: readonly MovementDetailLine[] =
+    mv.detailLines?.length > 0
+      ? mv.detailLines
+      : mv.detail
+        ? [{ label: mv.detail }]
+        : [];
+  const totalH = ROW_H + lines.length * DETAIL_LINE_H;
+
   if (rowIdx % 2 === 1) {
-    doc.rect(mx, y, TABLE_W, ROW_H).fill(COLORS.rowAlt);
+    doc.rect(mx, y, TABLE_W, totalH).fill(COLORS.rowAlt);
   }
 
   const neg = mv.runningBalance < 0;
@@ -374,14 +389,6 @@ function renderMovementRow(
   doc.moveTo(mx, y + ROW_H).lineTo(mx + TABLE_W, y + ROW_H)
     .strokeColor(COLORS.border).lineWidth(0.2).stroke();
   y += ROW_H;
-
-  // Líneas de detalle secundarias (indentadas, informativas)
-  const lines: readonly MovementDetailLine[] =
-    mv.detailLines?.length > 0
-      ? mv.detailLines
-      : mv.detail
-        ? [{ label: mv.detail }]
-        : [];
 
   for (const dl of lines) {
     renderDetailLine(doc, dl, y);

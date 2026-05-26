@@ -67,6 +67,11 @@ import {
   invoiceIssueInClosedRange,
 } from "@/lib/copilot-datos-invoices-ui";
 import {
+  enrichReceiptRowsForDatos,
+  RECEIPT_REF_DISPLAY_KEY,
+  RECEIPT_CLIENT_NAME_KEY,
+} from "@/lib/copilot-datos-receipts-ui";
+import {
   filterRowsByPeriod,
   PERIOD_MONTH_OPTIONS,
   type PeriodSelector,
@@ -133,9 +138,11 @@ const columnsByEntity: Record<DataEntity, DataColumn[]> = {
     { key: "collection_probability", label: "Prob. cobro" },
   ],
   receipts: [
-    { key: "receipt_number", label: "Recibo" },
+    { key: RECEIPT_REF_DISPLAY_KEY, label: "Número" },
+    { key: RECEIPT_CLIENT_NAME_KEY, label: "Cliente" },
     { key: "receipt_date", label: "Fecha" },
     { key: "amount", label: "Monto" },
+    { key: "currency_code", label: "Moneda" },
     { key: "payment_method", label: "Método" },
     { key: "status", label: "Estado" },
   ],
@@ -187,7 +194,7 @@ const searchKeysByEntity: Record<DataEntity, string[]> = {
     "category",
     "status",
   ],
-  receipts: ["receipt_number", "reference", "status"],
+  receipts: ["receipt_number", "reference", RECEIPT_REF_DISPLAY_KEY, RECEIPT_CLIENT_NAME_KEY, "payment_method", "status"],
   payments: ["payment_number", "category", "vendor_name", "currency_code", "caja_nombre", "status"],
   tax_obligations: ["tax_type", "period_label", "status", "notes"],
 };
@@ -210,7 +217,7 @@ const interactiveColumnKeysByEntity: Record<DataEntity, string[]> = {
   companies: ["RazonSocial", "Codigo"],
   contacts: ["full_name"],
   invoices: ["invoice_number", INVOICE_CLIENT_RAZON_KEY],
-  receipts: ["receipt_number"],
+  receipts: [RECEIPT_REF_DISPLAY_KEY, RECEIPT_CLIENT_NAME_KEY],
   payments: ["payment_number"],
   tax_obligations: ["period_label"],
 };
@@ -631,6 +638,7 @@ function CopilotDatosPageContent() {
 
   const baseRows = useMemo(() => {
     if (expandedEntity === "invoices") return enrichInvoiceRowsForDatos(rows, companies);
+    if (expandedEntity === "receipts") return enrichReceiptRowsForDatos(rows, companies);
     if (expandedEntity === "contacts" && companies.length > 0) {
       const companyMap = new Map<string, string>(
         companies.map((c) => [String(c.id ?? ""), String(c.RazonSocial ?? c.Nombre ?? "")])

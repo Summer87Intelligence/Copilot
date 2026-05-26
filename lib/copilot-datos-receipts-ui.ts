@@ -1,0 +1,25 @@
+import type { DataRow } from "@/lib/copilot-data";
+import { companyPrimaryLabel } from "@/lib/copilot-datos-company-display";
+
+export const RECEIPT_REF_DISPLAY_KEY = "receipt_ref_display" as const;
+export const RECEIPT_CLIENT_NAME_KEY = "receipt_client_name_display" as const;
+
+export function enrichReceiptRowsForDatos(receipts: DataRow[], companies: DataRow[]): DataRow[] {
+  const byId = new Map<string, DataRow>();
+  for (const c of companies) {
+    const id = String(c.id ?? "").trim();
+    if (id) byId.set(id, c);
+  }
+  return receipts.map((rec) => {
+    const ref = String(rec.reference ?? "").trim();
+    const refDisplay =
+      ref && !ref.startsWith("ZETA:") ? ref : String(rec.receipt_number ?? "").trim() || "—";
+    const c = byId.get(String(rec.company_id ?? "").trim());
+    const clientName = c != null ? companyPrimaryLabel(c) : "—";
+    return {
+      ...rec,
+      [RECEIPT_REF_DISPLAY_KEY]: refDisplay,
+      [RECEIPT_CLIENT_NAME_KEY]: clientName,
+    };
+  });
+}
