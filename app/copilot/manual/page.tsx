@@ -497,6 +497,27 @@ const SECTIONS: Section[] = [
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Agente de cliente
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            La ficha de cada cliente incluye el <strong>Agente de cliente</strong>:
+            un resumen que dice qué pasa, por qué importa y qué hacer ahora.
+            No modifica datos ni envía mensajes. Solo ayuda a decidir.
+          </p>
+          <Bullets
+            items={[
+              "Qué pasa — resume la situación del cliente: sin deuda, deuda al día, vencida o con promesa de pago.",
+              "Por qué importa — explica el contexto: cuánto tiene vencido, en qué moneda, si tiene contacto disponible.",
+              "Qué hacer ahora — sugiere el próximo paso: preparar cobranza, ver seguimiento, ver contactos o revisar actualización.",
+              "Insights — muestra hasta 5 señales del cliente: vencido por moneda, promesa, contacto, última gestión.",
+              "CTA — el botón lleva al asistente de cobranza, a los contactos, al estado de cuenta o a la actualización de datos.",
+              "No modifica nada. No marca facturas. No envía mensajes. Solo sugiere.",
+            ]}
+          />
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
             Asistente de cobranza
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
@@ -972,6 +993,26 @@ const SECTIONS: Section[] = [
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Agente de Cliente
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            El Agente de Cliente trabaja dentro de cada ficha de cliente.
+            No aparece en el resumen global de Agentes IA porque analiza un cliente puntual,
+            no el negocio en general.
+          </p>
+          <Bullets
+            items={[
+              "Resume la situacion de un cliente: sin deuda, al dia, vencida o con promesa.",
+              "Dice que pasa, por que importa y que hacer ahora para ese cliente especifico.",
+              "Puede sugerir preparar cobranza, ver seguimiento, ver contactos o revisar actualizacion.",
+              "No modifica datos. No envia mensajes. No marca facturas como pagadas.",
+              "El usuario decide si contacta, genera un mensaje o registra una gestion.",
+            ]}
+          />
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
             Agentes preparados para proximas versiones
           </p>
           <p className="mb-2 text-sm text-[var(--copilot-ink)]">
@@ -979,7 +1020,6 @@ const SECTIONS: Section[] = [
           </p>
           <Bullets
             items={[
-              "Cliente — resumen de un cliente especifico.",
               "Alertas — priorizacion de avisos del sistema.",
               "Riesgo — deteccion temprana de riesgos antes de que escalen.",
             ]}
@@ -1056,6 +1096,14 @@ const SECTIONS: Section[] = [
               {
                 q: "¿El Agente CFO puede ver el snapshot financiero?",
                 a: "Si. Lee el snapshot de Finanzas para detectar riesgo de liquidez y datos parciales. Si el snapshot no esta disponible, usa las notificaciones de tesoreria y cartera como fuente alternativa.",
+              },
+              {
+                q: "¿El Agente de Cliente puede cobrar automaticamente?",
+                a: "No. Solo recomienda que hacer. Vos decides si generás un mensaje, contactas al cliente o registras una gestion. El agente no modifica datos, no envia mensajes ni marca facturas como pagadas.",
+              },
+              {
+                q: "¿Por que el Agente de Cliente no aparece en el resumen global de Agentes IA?",
+                a: "Porque analiza un cliente puntual, no el negocio en general. Lo encontras directamente en la ficha de cada cliente, arriba del asistente de cobranza.",
               },
             ].map(({ q, a }) => (
               <div key={q}>

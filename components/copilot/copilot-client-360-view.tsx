@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -22,7 +22,6 @@ import {
   User,
   Wallet,
   XCircle,
-  Zap,
 } from "lucide-react";
 
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
@@ -34,6 +33,7 @@ import {
 } from "@/components/copilot/copilot-ui";
 import { CollectionMessageAssistant } from "@/components/copilot/clientes/collection-message-assistant";
 import { CollectionFollowupForm } from "@/components/copilot/clientes/collection-followup-form";
+import { ClientAgentBlock } from "@/components/copilot/clientes/client-agent-block";
 import type { Client360Payload } from "@/lib/copilot-client-360";
 import { normalizeUruguayPhoneForWhatsApp } from "@/lib/phone/normalize-phone-for-whatsapp";
 import {
@@ -149,16 +149,6 @@ function riskTone(r: string) {
   return { bg: "bg-emerald-100/70", text: "text-emerald-900", border: "border-emerald-200" };
 }
 
-function hintSeverityStyle(s: OperationalHintSeverity) {
-  const map: Record<OperationalHintSeverity, { icon: typeof AlertTriangle; color: string; bg: string }> = {
-    ok: { icon: CheckCircle2, color: "text-emerald-700", bg: "bg-emerald-50/60" },
-    info: { icon: Zap, color: "text-sky-700", bg: "bg-sky-50/60" },
-    warning: { icon: AlertTriangle, color: "text-amber-700", bg: "bg-amber-50/70" },
-    critical: { icon: ShieldAlert, color: "text-rose-700", bg: "bg-rose-50/70" },
-  };
-  return map[s];
-}
-
 function timelineIcon(kind: TimelineEvent["kind"], severity: OperationalHintSeverity) {
   if (kind === "receipt") return <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden />;
   if (kind === "invoice_overdue") return <XCircle className="h-4 w-4 text-rose-600" aria-hidden />;
@@ -254,123 +244,6 @@ function QuickActions({ contactEmail }: { contactEmail?: string | null }) {
         <ShieldAlert className="h-3.5 w-3.5" aria-hidden />
         Ver alertas
       </CopilotGhostLink>
-    </div>
-  );
-}
-
-// ─── Copilot hint block ───────────────────────────────────────────────────────
-
-function CopilotHintBlock({ data }: { data: Client360Payload }) {
-  const summary = useMemo(() => {
-    const riskHint = data.insights.find((i) => i.id === "riesgo_basico");
-    const risk: "Bajo" | "Medio" | "Alto" = riskHint?.label.includes("Alto")
-      ? "Alto"
-      : riskHint?.label.includes("Medio")
-        ? "Medio"
-        : "Bajo";
-    return buildClientOperationalSummary({
-      saldo_pendiente: data.cuenta.saldo_pendiente_total,
-      overdue_debt: data.overdue_uyu + data.overdue_usd,
-      overdue_uyu: data.overdue_uyu,
-      overdue_usd: data.overdue_usd,
-      debt_uyu: data.debt_uyu,
-      debt_usd: data.debt_usd,
-      receipts_count: data.receipts.length,
-      receipts_last_date: data.last_receipt_date,
-      contacts_count: data.contacts.length,
-      risk,
-      has_mixed_currency: data.debt_uyu > 0 && data.debt_usd > 0,
-      invoices_count: data.invoices.length,
-      last_sync_at: data.last_sync_at,
-    });
-  }, [data]);
-
-  const whyItMatters = useMemo(() => {
-    if (data.overdue_uyu > 0 && data.debt_uyu > 0) {
-      const pct = Math.round((data.overdue_uyu / data.debt_uyu) * 100);
-      return `Tiene $ ${data.overdue_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })} vencido sobre $ ${data.debt_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })} pendientes en pesos (${pct}% vencido).`;
-    }
-    if (data.overdue_usd > 0 && data.debt_usd > 0) {
-      const pct = Math.round((data.overdue_usd / data.debt_usd) * 100);
-      return `Tiene U$S ${data.overdue_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })} vencido sobre U$S ${data.debt_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })} pendientes en dólares (${pct}% vencido).`;
-    }
-    if (data.debt_uyu > 0 || data.debt_usd > 0) {
-      const parts: string[] = [];
-      if (data.debt_uyu > 0)
-        parts.push(
-          `$ ${data.debt_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })} en pesos`
-        );
-      if (data.debt_usd > 0)
-        parts.push(
-          `U$S ${data.debt_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })} en dólares`
-        );
-      return `Tiene ${parts.join(" y ")} pendiente${parts.length > 1 ? "s" : ""} sin vencer.`;
-    }
-    return "No tiene saldo pendiente actualmente.";
-  }, [data]);
-
-  const queHacer =
-    summary.suggestedActions[0] ??
-    summary.riskHints.find((h) => h.action)?.action ??
-    "Revisar el estado de cuenta del cliente.";
-
-  const extraHints = [...summary.riskHints, ...summary.missingDataHints].filter(
-    (h) => h.id !== "no_debt" && h.id !== "overdue_debt" && h.id !== "active_debt"
-  );
-
-  return (
-    <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/60 p-5 shadow-sm">
-      <div className="mb-4 flex items-center gap-2">
-        <Zap className="h-4 w-4 text-[var(--copilot-accent)]" aria-hidden />
-        <span className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink)]">
-          Lectura de Copilot
-        </span>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div>
-          <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
-            Que pasa
-          </p>
-          <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
-            {summary.executiveSummary}
-          </p>
-        </div>
-        <div>
-          <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
-            Por que importa
-          </p>
-          <p className="text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
-            {whyItMatters}
-          </p>
-        </div>
-        <div>
-          <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
-            Que hacer
-          </p>
-          <p className="text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
-            {queHacer}
-          </p>
-        </div>
-      </div>
-
-      {extraHints.length > 0 ? (
-        <ul className="mt-4 space-y-1.5 border-t border-[var(--copilot-border)]/60 pt-4">
-          {extraHints.slice(0, 4).map((hint) => {
-            const style = hintSeverityStyle(hint.severity);
-            const Icon = style.icon;
-            return (
-              <li
-                key={hint.id}
-                className={`flex items-start gap-2 rounded-lg px-3 py-2 text-sm ${style.bg}`}
-              >
-                <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${style.color}`} aria-hidden />
-                <span className={`font-medium ${style.color}`}>{hint.text}</span>
-              </li>
-            );
-          })}
-        </ul>
-      ) : null}
     </div>
   );
 }
@@ -626,6 +499,11 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showRawJson, setShowRawJson] = useState(false);
+  const assistantRef = useRef<HTMLDivElement>(null);
+
+  function scrollToAssistant() {
+    assistantRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   const load = useCallback(async () => {
     setError(null);
@@ -890,17 +768,21 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
         </div>
       ) : null}
 
-      {/* Copilot block */}
+      {/* Agente de cliente */}
       {!loading && !error && data ? (
         <div className="border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.4)] px-6 py-4">
-          <CopilotHintBlock data={data} />
+          <ClientAgentBlock
+            data={data}
+            onNavigateTab={(t) => setTab(t as TabId)}
+            onScrollToAssistant={scrollToAssistant}
+          />
         </div>
       ) : null}
 
       {/* Collection message assistant — solo cuando hay deuda */}
       {!loading && !error && data &&
         (data.debt_uyu > 0 || data.debt_usd > 0 || data.overdue_uyu > 0 || data.overdue_usd > 0) ? (
-        <div className="border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.4)] px-6 py-4">
+        <div ref={assistantRef} className="border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.4)] px-6 py-4">
           <CollectionMessageAssistant
             clientName={data.summary.nombre_visible}
             debtUyu={data.debt_uyu}

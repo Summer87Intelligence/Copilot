@@ -39,12 +39,6 @@ export const AGENT_REGISTRY: AgentRegistryEntry[] = [
     description: "Detecta riesgo de liquidez, cartera vencida y compromisos de pago.",
   },
   {
-    id: "client",
-    label: "Cliente",
-    status: "coming_soon",
-    description: "Resume un cliente específico.",
-  },
-  {
     id: "alerts",
     label: "Alertas",
     status: "coming_soon",
