@@ -290,20 +290,21 @@ function renderSaldoAnteriorRow(
   startY: number
 ): number {
   const mx = PAGE.margin;
-  doc.rect(mx, startY, TABLE_W, 14).fill(COLORS.clientBg);
+  doc.rect(mx, startY, TABLE_W, ROW_H).fill(COLORS.clientBg);
   doc.fillColor(COLORS.muted).font("Helvetica").fontSize(7.5)
-    .text("Saldo anterior...", colX("description") + 4, startY + 3,
+    .text("Saldo anterior...", colX("description") + 4, startY + 5,
       { width: COL.description.w - 8, lineBreak: false });
   const neg = previousBalance < 0;
   doc.fillColor(neg ? "#b91c1c" : COLORS.ink).font("Helvetica").fontSize(7.5)
-    .text(formatAmount(previousBalance), colX("balance"), startY + 3,
+    .text(formatAmount(previousBalance), colX("balance"), startY + 5,
       { width: COL.balance.w - 4, align: "right" });
-  doc.moveTo(mx, startY + 14).lineTo(mx + TABLE_W, startY + 14)
+  doc.moveTo(mx, startY + ROW_H).lineTo(mx + TABLE_W, startY + ROW_H)
     .strokeColor(COLORS.border).lineWidth(0.3).stroke();
-  return startY + 14;
+  return startY + ROW_H;
 }
 
-const DETAIL_LINE_H = 11;
+const ROW_H = 18;
+const DETAIL_LINE_H = 14;
 // Label spans from description to just before debit column
 const DETAIL_LABEL_X = colX("description") + 14;
 const DETAIL_LABEL_W = colX("debit") - 4 - DETAIL_LABEL_X;
@@ -314,18 +315,18 @@ function renderDetailLine(
   y: number
 ): void {
   // Label in muted color (descriptive)
-  doc.fillColor(COLORS.muted).font("Helvetica").fontSize(7)
-    .text(dl.label, DETAIL_LABEL_X, y + 2,
+  doc.fillColor(COLORS.muted).font("Helvetica").fontSize(7.5)
+    .text(dl.label, DETAIL_LABEL_X, y + 3,
       { width: DETAIL_LABEL_W, lineBreak: false });
   // Amounts in ink color (same visual weight as main row)
   if (dl.debit != null && dl.debit > 0) {
     doc.fillColor(COLORS.ink)
-      .text(formatAmount(dl.debit), colX("debit"), y + 2,
+      .text(formatAmount(dl.debit), colX("debit"), y + 3,
         { width: COL.debit.w - 4, align: "right" });
   }
   if (dl.credit != null && dl.credit > 0) {
     doc.fillColor(COLORS.ink)
-      .text(formatAmount(dl.credit), colX("credit"), y + 2,
+      .text(formatAmount(dl.credit), colX("credit"), y + 3,
         { width: COL.credit.w - 4, align: "right" });
   }
 }
@@ -338,7 +339,6 @@ function renderMovementRow(
   startY: number
 ): number {
   const mx = PAGE.margin;
-  const ROW_H = 14;
   let y = startY;
 
   // Compute detail lines first to size the alternating background correctly
@@ -360,40 +360,42 @@ function renderMovementRow(
   doc.fillColor(COLORS.ink).font("Helvetica").fontSize(7.5);
 
   // Fecha
-  doc.text(formatDate(mv.date), colX("date") + 4, y + 3,
+  doc.text(formatDate(mv.date), colX("date") + 4, y + 5,
     { width: COL.date.w - 4, lineBreak: false });
   // Comprobante
-  doc.text(describeComprobante(mv.kind), colX("description") + 4, y + 3,
+  doc.text(describeComprobante(mv.kind), colX("description") + 4, y + 5,
     { width: COL.description.w - 8, lineBreak: false });
   // Serie y Nº
-  doc.text(extractSerieNumero(mv.number), colX("reference") + 4, y + 3,
+  doc.text(extractSerieNumero(mv.number), colX("reference") + 4, y + 5,
     { width: COL.reference.w - 4, lineBreak: false });
   // Moneda
-  doc.text(sym, colX("currency") + 4, y + 3,
+  doc.text(sym, colX("currency") + 4, y + 5,
     { width: COL.currency.w - 4, lineBreak: false });
   // Debe
   if (mv.debit > 0) {
-    doc.text(formatAmount(mv.debit), colX("debit"), y + 3,
+    doc.text(formatAmount(mv.debit), colX("debit"), y + 5,
       { width: COL.debit.w - 4, align: "right" });
   }
   // Haber
   if (mv.credit > 0) {
-    doc.text(formatAmount(mv.credit), colX("credit"), y + 3,
+    doc.text(formatAmount(mv.credit), colX("credit"), y + 5,
       { width: COL.credit.w - 4, align: "right" });
   }
   // Saldo
   doc.fillColor(neg ? "#b91c1c" : COLORS.ink)
-    .text(formatAmount(mv.runningBalance), colX("balance"), y + 3,
+    .text(formatAmount(mv.runningBalance), colX("balance"), y + 5,
       { width: COL.balance.w - 4, align: "right" });
 
-  doc.moveTo(mx, y + ROW_H).lineTo(mx + TABLE_W, y + ROW_H)
-    .strokeColor(COLORS.border).lineWidth(0.2).stroke();
   y += ROW_H;
 
   for (const dl of lines) {
     renderDetailLine(doc, dl, y);
     y += DETAIL_LINE_H;
   }
+
+  // separator after the full group (main row + all detail lines)
+  doc.moveTo(mx, y).lineTo(mx + TABLE_W, y)
+    .strokeColor(COLORS.border).lineWidth(0.2).stroke();
 
   return y;
 }
@@ -515,7 +517,7 @@ export async function renderAccountStatementPdf(opts: AccountStatementPdfOptions
           mv.detailLines?.length > 0
             ? mv.detailLines.length
             : mv.detail ? 1 : 0;
-        const rowH = 16 + detailCount * DETAIL_LINE_H;
+        const rowH = ROW_H + 2 + detailCount * DETAIL_LINE_H;
         ensureSpace(rowH, reTable);
         y = renderMovementRow(doc, mv, currency, i, y);
       }

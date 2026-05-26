@@ -7,6 +7,18 @@ import { companyPrimaryLabel } from "@/lib/copilot-datos-company-display";
 
 export const INVOICE_CLIENT_CODIGO_KEY = "client_codigo_display" as const;
 export const INVOICE_CLIENT_RAZON_KEY = "client_razon_display" as const;
+export const INVOICE_IS_NC_KEY = "_invoice_is_nc" as const;
+
+const CFE_NC_TIPOS: readonly number[] = [112, 181, 182];
+
+function detectIsNc(row: DataRow): boolean {
+  const raw = row.raw_payload;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
+  const tipo = (raw as Record<string, unknown>).Tipo;
+  if (tipo == null) return false;
+  const n = typeof tipo === "number" ? tipo : parseInt(String(tipo), 10);
+  return CFE_NC_TIPOS.includes(n);
+}
 
 /** `issue_date` como Y-M-D sin depender de zona horaria del runtime. */
 export function parseInvoiceIssueYmd(row: DataRow): { y: number; m: number; d: number } | null {
@@ -51,6 +63,7 @@ export function enrichInvoiceRowsForDatos(invoices: DataRow[], companies: DataRo
       ...inv,
       [INVOICE_CLIENT_CODIGO_KEY]: cod || "—",
       [INVOICE_CLIENT_RAZON_KEY]: razon || "—",
+      [INVOICE_IS_NC_KEY]: detectIsNc(inv),
     };
   });
 }

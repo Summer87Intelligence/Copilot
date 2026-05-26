@@ -63,6 +63,7 @@ import {
   enrichInvoiceRowsForDatos,
   INVOICE_CLIENT_CODIGO_KEY,
   INVOICE_CLIENT_RAZON_KEY,
+  INVOICE_IS_NC_KEY,
   invoiceIssueInCalendarMonth,
   invoiceIssueInClosedRange,
 } from "@/lib/copilot-datos-invoices-ui";
@@ -73,6 +74,7 @@ import {
 } from "@/lib/copilot-datos-receipts-ui";
 import {
   filterRowsByPeriod,
+  filterRowsByDateRange,
   PERIOD_MONTH_OPTIONS,
   type PeriodSelector,
 } from "@/lib/copilot-datos-period-filter";
@@ -335,6 +337,12 @@ function CopilotDatosPageContent() {
    */
   const [receiptYear, setReceiptYear] = useState<PeriodSelector>(() => new Date().getFullYear());
   const [receiptMonth, setReceiptMonth] = useState<PeriodSelector>("all");
+  const [receiptPeriodMode, setReceiptPeriodMode] = useState<"month" | "range" | "all">("month");
+  const [receiptRangeFrom, setReceiptRangeFrom] = useState("");
+  const [receiptRangeTo, setReceiptRangeTo] = useState("");
+  const [invoiceCurrencyFilter, setInvoiceCurrencyFilter] = useState<"all" | "UYU" | "USD">("all");
+  const [receiptCurrencyFilter, setReceiptCurrencyFilter] = useState<"all" | "UYU" | "USD">("all");
+  const [invoiceQuickFilter, setInvoiceQuickFilter] = useState<"all" | "with_balance" | "credit_notes">("all");
   const [paymentPrefillRow, setPaymentPrefillRow] = useState<DataRow | null>(
     null
   );
@@ -572,6 +580,9 @@ function CopilotDatosPageContent() {
     setSelectedRow(null);
     setSidebarOpen(false);
     setFilterValue("all");
+    setInvoiceCurrencyFilter("all");
+    setReceiptCurrencyFilter("all");
+    setInvoiceQuickFilter("all");
 
     const intent = searchParams.get("intent");
     const eParam = searchParams.get("entity");
@@ -610,6 +621,9 @@ function CopilotDatosPageContent() {
       setEntity(id);
       setSearch("");
       setFilterValue("all");
+      setInvoiceCurrencyFilter("all");
+      setReceiptCurrencyFilter("all");
+      setInvoiceQuickFilter("all");
       setSelectedRow(null);
       setSidebarOpen(false);
       return id;
@@ -623,6 +637,9 @@ function CopilotDatosPageContent() {
       setEntity(id);
       setSearch("");
       setFilterValue("all");
+      setInvoiceCurrencyFilter("all");
+      setReceiptCurrencyFilter("all");
+      setInvoiceQuickFilter("all");
       setSelectedRow(null);
       setSidebarOpen(false);
       return id;
@@ -664,6 +681,10 @@ function CopilotDatosPageContent() {
       );
     }
     if (expandedEntity === "receipts") {
+      if (receiptPeriodMode === "all") return baseRows;
+      if (receiptPeriodMode === "range") {
+        return filterRowsByDateRange(baseRows, "receipt_date", receiptRangeFrom || null, receiptRangeTo || null);
+      }
       return filterRowsByPeriod(baseRows, "receipt_date", receiptYear, receiptMonth);
     }
     return baseRows;
@@ -677,6 +698,9 @@ function CopilotDatosPageContent() {
     invoiceRangeTo,
     receiptYear,
     receiptMonth,
+    receiptPeriodMode,
+    receiptRangeFrom,
+    receiptRangeTo,
   ]);
 
   const filteredRows = useMemo(() => {
@@ -686,8 +710,24 @@ function CopilotDatosPageContent() {
       .filter((row) => rowMatchesSearch(row, expandedEntity, search))
       .filter((row) =>
         key && filterValue !== "all" ? String(row[key] ?? "") === filterValue : true
-      );
-  }, [periodFilteredRows, expandedEntity, search, filterValue]);
+      )
+      .filter((row) => {
+        if (expandedEntity === "invoices" && invoiceCurrencyFilter !== "all") {
+          return String(row.currency_code ?? row.currency ?? "") === invoiceCurrencyFilter;
+        }
+        if (expandedEntity === "receipts" && receiptCurrencyFilter !== "all") {
+          return String(row.currency_code ?? row.currency ?? "") === receiptCurrencyFilter;
+        }
+        return true;
+      })
+      .filter((row) => {
+        if (expandedEntity === "invoices") {
+          if (invoiceQuickFilter === "with_balance") return Number(row.balance_amount ?? 0) > 0;
+          if (invoiceQuickFilter === "credit_notes") return row[INVOICE_IS_NC_KEY] === true;
+        }
+        return true;
+      });
+  }, [periodFilteredRows, expandedEntity, search, filterValue, invoiceCurrencyFilter, receiptCurrencyFilter, invoiceQuickFilter]);
 
   const externalValidated = false;
 
@@ -1173,6 +1213,46 @@ function CopilotDatosPageContent() {
                               </div>
                             </>
                           ) : null}
+                          {tab.id === "invoices" ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                                Ver:
+                              </span>
+                              {([
+                                { key: "all", label: "Todos" },
+                                { key: "with_balance", label: "Con saldo" },
+                                { key: "credit_notes", label: "Notas de crédito" },
+                              ] as const).map((f) => (
+                                <button
+                                  key={f.key}
+                                  type="button"
+                                  onClick={() => setInvoiceQuickFilter(f.key)}
+                                  className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                                    invoiceQuickFilter === f.key
+                                      ? "border-[var(--copilot-accent)] bg-[var(--copilot-accent)] text-white"
+                                      : "border-[var(--copilot-border)] text-[var(--copilot-ink-muted)] hover:border-[var(--copilot-accent)] hover:text-[var(--copilot-accent)]"
+                                  }`}
+                                >
+                                  {f.label}
+                                </button>
+                              ))}
+                              <span className="text-[var(--copilot-border)]">·</span>
+                              {(["all", "UYU", "USD"] as const).map((c) => (
+                                <button
+                                  key={c}
+                                  type="button"
+                                  onClick={() => setInvoiceCurrencyFilter(c)}
+                                  className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                                    invoiceCurrencyFilter === c
+                                      ? "border-[var(--copilot-accent)] bg-[var(--copilot-accent)] text-white"
+                                      : "border-[var(--copilot-border)] text-[var(--copilot-ink-muted)] hover:border-[var(--copilot-accent)] hover:text-[var(--copilot-accent)]"
+                                  }`}
+                                >
+                                  {c === "all" ? "Todas las monedas" : c === "UYU" ? "Pesos" : "Dólares"}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <label className="relative min-w-[220px] flex-1">
                               <Search
@@ -1185,8 +1265,10 @@ function CopilotDatosPageContent() {
                                 onChange={(e) => setSearch(e.target.value)}
                                 placeholder={
                                   tab.id === "invoices"
-                                    ? "Factura (Serie-Número), cliente, estado…"
-                                    : "Buscar en registros…"
+                                    ? "Factura, cliente, número, concepto…"
+                                    : tab.id === "receipts"
+                                      ? "Recibo, cliente, número, método…"
+                                      : "Buscar en registros…"
                                 }
                                 className="w-full rounded-xl border border-[var(--copilot-border)] bg-white px-9 py-2.5 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
                               />
@@ -1217,56 +1299,144 @@ function CopilotDatosPageContent() {
                           </div>
 
                           {tab.id === "receipts" ? (
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                                Período:
-                              </span>
-                              <label className="flex items-center gap-1.5 text-xs text-[var(--copilot-ink-muted)]">
-                                Año
+                            <div className="space-y-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                                  Período:
+                                </span>
                                 <select
-                                  value={String(receiptYear)}
-                                  onChange={(e) => {
-                                    const v = e.target.value;
-                                    setReceiptYear(v === "all" ? "all" : Number(v));
-                                  }}
-                                  className="rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                  value={receiptPeriodMode}
+                                  onChange={(e) =>
+                                    setReceiptPeriodMode(
+                                      e.target.value as "month" | "range" | "all"
+                                    )
+                                  }
+                                  className="rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-sm text-[var(--copilot-ink)]"
                                 >
-                                  <option value="all">Todos</option>
-                                  {invoiceYearOptions.map((y) => (
-                                    <option key={y} value={y}>
-                                      {y}
-                                    </option>
-                                  ))}
+                                  <option value="month">Mes y año</option>
+                                  <option value="range">Rango de fechas</option>
+                                  <option value="all">Todo</option>
                                 </select>
-                              </label>
-                              <label className="flex items-center gap-1.5 text-xs text-[var(--copilot-ink-muted)]">
-                                Mes
-                                <select
-                                  value={String(receiptMonth)}
-                                  onChange={(e) => {
-                                    const v = e.target.value;
-                                    setReceiptMonth(v === "all" ? "all" : Number(v));
+                                {receiptPeriodMode === "month" ? (
+                                  <>
+                                    <label className="flex items-center gap-1.5 text-xs text-[var(--copilot-ink-muted)]">
+                                      Año
+                                      <select
+                                        value={String(receiptYear)}
+                                        onChange={(e) => {
+                                          const v = e.target.value;
+                                          setReceiptYear(v === "all" ? "all" : Number(v));
+                                        }}
+                                        className="rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                      >
+                                        <option value="all">Todos</option>
+                                        {invoiceYearOptions.map((y) => (
+                                          <option key={y} value={y}>
+                                            {y}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </label>
+                                    <label className="flex items-center gap-1.5 text-xs text-[var(--copilot-ink-muted)]">
+                                      Mes
+                                      <select
+                                        value={String(receiptMonth)}
+                                        onChange={(e) => {
+                                          const v = e.target.value;
+                                          setReceiptMonth(v === "all" ? "all" : Number(v));
+                                        }}
+                                        className="rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                      >
+                                        <option value="all">Todos</option>
+                                        {PERIOD_MONTH_OPTIONS.map((opt) => (
+                                          <option key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </label>
+                                  </>
+                                ) : null}
+                                {receiptPeriodMode === "range" ? (
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <label className="flex items-center gap-1.5 text-xs text-[var(--copilot-ink-muted)]">
+                                      Desde
+                                      <input
+                                        type="date"
+                                        value={receiptRangeFrom}
+                                        onChange={(e) => setReceiptRangeFrom(e.target.value)}
+                                        className="rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                      />
+                                    </label>
+                                    <label className="flex items-center gap-1.5 text-xs text-[var(--copilot-ink-muted)]">
+                                      Hasta
+                                      <input
+                                        type="date"
+                                        value={receiptRangeTo}
+                                        onChange={(e) => setReceiptRangeTo(e.target.value)}
+                                        className="rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                      />
+                                    </label>
+                                  </div>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const now = new Date();
+                                    setReceiptPeriodMode("month");
+                                    setReceiptYear(now.getFullYear());
+                                    setReceiptMonth(now.getMonth() + 1);
                                   }}
-                                  className="rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                  className="rounded-full border border-[var(--copilot-border)] px-3 py-1 text-xs font-medium text-[var(--copilot-ink-muted)] transition hover:border-[var(--copilot-accent)] hover:text-[var(--copilot-accent)]"
                                 >
-                                  <option value="all">Todos</option>
-                                  {PERIOD_MONTH_OPTIONS.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>
-                                      {opt.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              </label>
-                              <CopilotGhostButton
-                                type="button"
-                                className="px-3 py-1.5 text-xs"
-                                onClick={() => {
-                                  setReceiptYear("all");
-                                  setReceiptMonth("all");
-                                }}
-                              >
-                                Limpiar
-                              </CopilotGhostButton>
+                                  Mes actual
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const d = new Date();
+                                    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                                    setReceiptPeriodMode("range");
+                                    setReceiptRangeFrom(today);
+                                    setReceiptRangeTo(today);
+                                  }}
+                                  className="rounded-full border border-[var(--copilot-border)] px-3 py-1 text-xs font-medium text-[var(--copilot-ink-muted)] transition hover:border-[var(--copilot-accent)] hover:text-[var(--copilot-accent)]"
+                                >
+                                  Hoy
+                                </button>
+                                <CopilotGhostButton
+                                  type="button"
+                                  className="px-3 py-1.5 text-xs"
+                                  onClick={() => {
+                                    setReceiptPeriodMode("month");
+                                    setReceiptYear(new Date().getFullYear());
+                                    setReceiptMonth("all");
+                                    setReceiptRangeFrom("");
+                                    setReceiptRangeTo("");
+                                  }}
+                                >
+                                  Limpiar
+                                </CopilotGhostButton>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                                  Moneda:
+                                </span>
+                                {(["all", "UYU", "USD"] as const).map((c) => (
+                                  <button
+                                    key={c}
+                                    type="button"
+                                    onClick={() => setReceiptCurrencyFilter(c)}
+                                    className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                                      receiptCurrencyFilter === c
+                                        ? "border-[var(--copilot-accent)] bg-[var(--copilot-accent)] text-white"
+                                        : "border-[var(--copilot-border)] text-[var(--copilot-ink-muted)] hover:border-[var(--copilot-accent)] hover:text-[var(--copilot-accent)]"
+                                    }`}
+                                  >
+                                    {c === "all" ? "Todas" : c === "UYU" ? "Pesos" : "Dólares"}
+                                  </button>
+                                ))}
+                              </div>
                             </div>
                           ) : null}
 

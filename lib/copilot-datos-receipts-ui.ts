@@ -15,7 +15,7 @@ export function enrichReceiptRowsForDatos(receipts: DataRow[], companies: DataRo
     const refDisplay =
       ref && !ref.startsWith("ZETA:") ? ref : String(rec.receipt_number ?? "").trim() || "—";
     const c = byId.get(String(rec.company_id ?? "").trim());
-    const clientName = c != null ? companyPrimaryLabel(c) : "—";
+    const clientName = c != null ? companyPrimaryLabel(c) : "Cliente no identificado";
     return {
       ...rec,
       [RECEIPT_REF_DISPLAY_KEY]: refDisplay,
