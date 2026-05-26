@@ -354,36 +354,45 @@ Hasta que el cron de cuotas haya recorrido a TODOS los clientes activos al menos
 
 ---
 
-## DIV-CONT-002 · Notas de crédito NO contabilizadas
+## DIV-CONT-002 · Notas de crédito y saldos pendientes en Estado de Cuenta PDF
 
 **Fecha observada:** 2026-05-11
-**Endpoint origen:** `RESTFacturaClienteV4QuerySaldosPendientes` (NCs sincronizan como filas sin distinción confiable)
-**Estado:** CONFIRMADO — placeholder en motor, regla pendiente de certificar
+**Última actualización:** 2026-05-26 — RESUELTO para `ledgerMode: true`
+**Estado:** RESUELTO en PDF/ledger — pendiente para motor de reconciliación
 
-### Origen del problema
+### Problema original
 
-`lib/copilot-client-account-statement.ts` documenta:
+Dos causas hacían que el PDF mostrara saldo incorrecto para El País S.A.:
 
-> NO inventa notas de crédito: cuando no hay regla certificada para detectar NC en la metadata sincronizada (`zeta_customer_voucher_v1.cfe_tipo` / `raw_payload.ComprobanteTipo` varían por tenant) se reporta el placeholder `hasCreditNoteSupport = false` y la suma queda en 0.
+1. **Registros "saldos pendientes"** (`category = "Zeta / saldos pendientes"`) del pipeline
+   `RESTFacturaClienteV4QuerySaldosPendientes` se incluían como movimientos contables reales.
+   Estos representan el saldo vivo sincronizado, NO comprobantes emitidos.
 
-Las NCs entran a `proto_invoices` mezcladas con facturas regulares, sin metadata estable que permita reconocerlas como movimientos de crédito (signo negativo en Debe).
+2. **Notas de crédito** (CFE tipo 181/182) almacenadas en `proto_invoices` eran tratadas
+   como facturas (Debe), cuando deben reducir el saldo (Haber).
 
-### Impacto en cartera contable
+**Caso documentado El País UYU (corregido):**
+- Copilot antes: $ 93.208 | Zeta: $ 25.742 | Diferencia: $ 67.466
+- Detalle: saldo pendiente 2574 (41.480) + saldo pendiente 2674 (8.662) + NC A391 dirección incorrecta (2 × 8.662 = 17.324) = 67.466 ✓
 
-- **Estado de Cuenta** (Zeta) muestra NCs como filas que reducen el saldo. Nuestro motor las trata como facturas regulares.
-- **`pendingAtCutoff`** (card "Pendiente al corte"): cliente con NC sin contabilizar muestra deuda MAYOR que en Zeta.
-- **`openingBalance`** reconstruido: igual sobreestima si hay NCs pre-período.
-- **Caso documentado El País UYU**: Copilot reporta saldo final 75.884 vs PDF Zeta 67.222. Divergencia = 8.662 = exactamente la NC A391.
+### Solución implementada (2026-05-26)
 
-### Solución pendiente
+En `lib/copilot-client-account-statement.ts`, cuando `ledgerMode: true`:
 
-1. Auditar metadata Zeta de NCs reales (`audit-zeta-estado-cuenta.mjs` con cliente con NC conocida) para identificar regla certificada: `cfe_tipo === ?`, `ComprobanteTipo === ?`, o flag en `zeta_metadata.zeta_voucher_v1`.
-2. Documentar regla y agregar test de detección.
-3. Ampliar `lib/copilot-client-account-statement.ts` para tratar NCs como `kind: "credit_note"` con `credit > 0, debit = 0`.
-4. Ampliar motor `lib/copilot-financial-reconciliation.ts` para restar NCs en `pendingAtCutoff` y `openingBalance`.
-5. Tests con caso El País.
+- **Filtro saldos pendientes**: se omiten filas con `category === "Zeta / saldos pendientes"`.
+  Solo aplica en `ledgerMode: true` para no afectar el modo operacional.
 
-Hasta ese momento, divergencias de hasta el monto total de NCs son esperadas y deben anotarse en cualquier reporte de validación contra Zeta.
+- **Detección de NCs por CFE tipo**: se lee `zeta_metadata.zeta_customer_voucher_v1.cfe_tipo`.
+  Si el valor es 181 (e-NC e-Factura) o 182 (e-NC e-Ticket), el movimiento se clasifica
+  como `kind: "credit_note"` con `credit = total, debit = 0`.
+  `hasCreditNoteSupport` pasa a `true` cuando se detectan NCs reales.
+
+### Pendiente
+
+- `lib/copilot-financial-reconciliation.ts` (`pendingAtCutoff`, `openingBalance`) aún NO resta NCs.
+  Divergencias en esos campos son esperadas cuando el cliente tiene NCs en el período.
+- La detección por `cfe_tipo` aplica solo para el tenant que escribe ese campo vía el pipeline
+  de customer vouchers. Validar en otros tenants si la NC no aparece correctamente.
 
 ---
 

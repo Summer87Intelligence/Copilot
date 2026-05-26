@@ -1,13 +1,14 @@
 /**
  * Tests del modelo de estado de cuenta orientados al PDF:
  * running balance, saldo anterior, saldo final, separación de monedas,
- * y fixture El País S.A.
+ * fixture El País S.A. con datos de producción (saldos pendientes + NC A391).
  */
 import { describe, expect, it } from "vitest";
 
 import {
   buildClientAccountStatement,
 } from "@/lib/copilot-client-account-statement";
+import { extractSerieNumero } from "./extract-serie-numero";
 import type { DataRow } from "@/lib/copilot-data";
 
 // ── Factories ─────────────────────────────────────────────────────────────────
@@ -18,7 +19,13 @@ function invoice(opts: {
   date: string;
   total: number;
   currency?: "UYU" | "USD";
+  category?: string;
+  cfeTipo?: string | number;
 }): DataRow {
+  const meta: Record<string, unknown> | undefined =
+    opts.cfeTipo != null
+      ? { zeta_customer_voucher_v1: { cfe_tipo: String(opts.cfeTipo) } }
+      : undefined;
   return {
     id: opts.id,
     invoice_number: opts.number ?? `INV-${opts.id}`,
@@ -26,6 +33,8 @@ function invoice(opts: {
     total_amount: opts.total,
     currency_code: opts.currency ?? "UYU",
     is_active: true,
+    ...(opts.category !== undefined ? { category: opts.category } : {}),
+    ...(meta !== undefined ? { zeta_metadata: meta } : {}),
   };
 }
 
@@ -46,51 +55,81 @@ function receipt(opts: {
   };
 }
 
-// ── Fixture El País S.A. ──────────────────────────────────────────────────────
+// ── Fixture El País S.A. — datos de producción ────────────────────────────────
 //
-// Movimientos reales del tenant demo:
-//   A2821  13/03/26  Venta Crédito  17.080,00  Debe
-//   A2877  17/04/26  Venta Crédito  41.480,00  Debe
-//   A2932  07/05/26  Venta Crédito   8.662,00  Debe
-//   A2934  08/05/26  Venta Crédito   8.662,00  Debe
-//   A391   08/05/26  Recibo          8.662,00  Haber
-//   A768   20/05/26  Recibo         41.480,00  Haber
+// Situación real en proto_invoices / proto_receipts:
 //
-// Saldo final esperado: 25.742,00
+//   ZETA:CCV1:0:36:A:2821  13/03/26  CFE 101  Venta Crédito   17.080  → Debe
+//   ZETA:CCV1:0:36:A:2877  17/04/26  CFE 101  Venta Crédito   41.480  → Debe
+//   ZETA:2574              17/04/26  —        saldos pendientes 41.480 → EXCLUIR
+//   ZETA:CCV1:0:36:A:2932  07/05/26  CFE 101  Venta Crédito    8.662  → Debe
+//   ZETA:CCV1:0:36:A:2934  08/05/26  CFE 101  Venta Crédito    8.662  → Debe
+//   ZETA:2674              08/05/26  —        saldos pendientes  8.662 → EXCLUIR
+//   ZETA:CCV1:0:36:A:391   08/05/26  CFE 181  Nota de Crédito  8.662  → Haber
+//   A768                   20/05/26  Recibo   Recibo de Cobro 41.480  → Haber
+//
+// Saldo final esperado: 17.080 + 41.480 + 8.662 + 8.662 − 8.662 − 41.480 = 25.742
 
 const EL_PAIS_INVOICES = [
-  invoice({ id: "i1", number: "A2821", date: "2026-03-13", total: 17080 }),
-  invoice({ id: "i2", number: "A2877", date: "2026-04-17", total: 41480 }),
-  invoice({ id: "i3", number: "A2932", date: "2026-05-07", total: 8662  }),
-  invoice({ id: "i4", number: "A2934", date: "2026-05-08", total: 8662  }),
+  invoice({ id: "i1", number: "ZETA:CCV1:0:36:A:2821", date: "2026-03-13", total: 17080, cfeTipo: "101" }),
+  invoice({ id: "i2", number: "ZETA:CCV1:0:36:A:2877", date: "2026-04-17", total: 41480, cfeTipo: "101" }),
+  // saldo pendiente derivado — debe excluirse
+  invoice({ id: "sp1", number: "ZETA:2574",             date: "2026-04-17", total: 41480, category: "Zeta / saldos pendientes" }),
+  invoice({ id: "i3", number: "ZETA:CCV1:0:36:A:2932", date: "2026-05-07", total: 8662,  cfeTipo: "101" }),
+  invoice({ id: "i4", number: "ZETA:CCV1:0:36:A:2934", date: "2026-05-08", total: 8662,  cfeTipo: "101" }),
+  // saldo pendiente derivado — debe excluirse
+  invoice({ id: "sp2", number: "ZETA:2674",             date: "2026-05-08", total: 8662,  category: "Zeta / saldos pendientes" }),
+  // nota de crédito CFE 181 — debe ir a Haber
+  invoice({ id: "nc1", number: "ZETA:CCV1:0:36:A:391",  date: "2026-05-08", total: 8662,  cfeTipo: "181" }),
 ];
 
 const EL_PAIS_RECEIPTS = [
-  receipt({ id: "r1", number: "A391", date: "2026-05-08", amount: 8662  }),
-  receipt({ id: "r2", number: "A768", date: "2026-05-20", amount: 41480 }),
+  receipt({ id: "r1", number: "A768", date: "2026-05-20", amount: 41480 }),
 ];
 
-describe("fixture El País S.A.", () => {
+describe("fixture El País S.A. — producción", () => {
   const stmt = buildClientAccountStatement({
     invoices: EL_PAIS_INVOICES,
     receipts: EL_PAIS_RECEIPTS,
     ledgerMode: true,
   });
 
-  it("saldo final UYU es 25742", () => {
+  it("saldo final UYU es 25742 (coincide con PDF Zeta)", () => {
     expect(stmt.uyu.summary.finalBalance).toBe(25742);
   });
 
-  it("totalDebit es 75884 (suma de facturas)", () => {
+  it("hay 6 movimientos UYU (saldos pendientes excluidos)", () => {
+    expect(stmt.uyu.movements).toHaveLength(6);
+  });
+
+  it("no incluye los registros de saldos pendientes 2574 y 2674", () => {
+    const ids = stmt.uyu.movements.map((m) => m.id);
+    expect(ids).not.toContain("sp1");
+    expect(ids).not.toContain("sp2");
+  });
+
+  it("A391 está clasificada como credit_note (no invoice)", () => {
+    const nc = stmt.uyu.movements.find((m) => m.id === "nc1");
+    expect(nc?.kind).toBe("credit_note");
+    expect(nc?.credit).toBe(8662);
+    expect(nc?.debit).toBe(0);
+  });
+
+  it("totalDebit es 75884 (solo facturas reales)", () => {
     expect(stmt.uyu.summary.totalDebit).toBe(75884);
   });
 
-  it("totalCredit es 50142 (suma de recibos)", () => {
+  it("totalCredit es 50142 (recibo + NC)", () => {
+    // A768(41480) + A391(8662) = 50142
     expect(stmt.uyu.summary.totalCredit).toBe(50142);
   });
 
-  it("hay 6 movimientos UYU", () => {
-    expect(stmt.uyu.movements).toHaveLength(6);
+  it("totalCreditNotes es 8662", () => {
+    expect(stmt.uyu.summary.totalCreditNotes).toBe(8662);
+  });
+
+  it("hasCreditNoteSupport es true cuando hay NC detectadas", () => {
+    expect(stmt.uyu.summary.hasCreditNoteSupport).toBe(true);
   });
 
   it("USD vacío", () => {
@@ -99,35 +138,26 @@ describe("fixture El País S.A.", () => {
 
   it("running balance en cada movimiento es correcto", () => {
     const mvs = stmt.uyu.movements;
-    // Orden: invoice antes que receipt mismo día, luego por número
-    // 2026-03-13 A2821 debit 17080 → 17080
-    // 2026-04-17 A2877 debit 41480 → 58560
-    // 2026-05-07 A2932 debit  8662 → 67222
-    // 2026-05-08 A2934 debit  8662 → 75884 (invoice, primero)
-    // 2026-05-08 A391  credit 8662 → 67222 (receipt, después)
+    // Orden ASC: invoice(0) → credit_note(1) → receipt(2) mismo día
+    // 2026-03-13 A2821 debit 17080  → 17080
+    // 2026-04-17 A2877 debit 41480  → 58560
+    // 2026-05-07 A2932 debit  8662  → 67222
+    // 2026-05-08 A2934 debit  8662  → 75884  (invoice, orden 0)
+    // 2026-05-08 A391  credit 8662  → 67222  (credit_note, orden 1)
     // 2026-05-20 A768  credit 41480 → 25742
     const expected = [17080, 58560, 67222, 75884, 67222, 25742];
     expect(mvs.map((m) => m.runningBalance)).toEqual(expected);
   });
 
-  it("facturas producen debit y credit = 0", () => {
-    const invoiceMovs = stmt.uyu.movements.filter((m) => m.kind === "invoice");
-    for (const m of invoiceMovs) {
-      expect(m.debit).toBeGreaterThan(0);
-      expect(m.credit).toBe(0);
-    }
-  });
-
-  it("recibos producen credit y debit = 0", () => {
-    const receiptMovs = stmt.uyu.movements.filter((m) => m.kind === "receipt");
-    for (const m of receiptMovs) {
-      expect(m.credit).toBeGreaterThan(0);
-      expect(m.debit).toBe(0);
-    }
+  it("extractSerieNumero produce los códigos legibles correctos", () => {
+    const mvs = stmt.uyu.movements;
+    expect(mvs.map((m) => extractSerieNumero(m.number))).toEqual([
+      "A2821", "A2877", "A2932", "A2934", "A391", "A768",
+    ]);
   });
 
   it("primer movimiento es la factura más antigua (A2821)", () => {
-    expect(stmt.uyu.movements[0].number).toBe("A2821");
+    expect(extractSerieNumero(stmt.uyu.movements[0].number)).toBe("A2821");
     expect(stmt.uyu.movements[0].kind).toBe("invoice");
   });
 
@@ -139,10 +169,108 @@ describe("fixture El País S.A.", () => {
   });
 });
 
-// ── Saldo anterior (previousBalance) ─────────────────────────────────────────
+// ── Saldos pendientes excluidos en ledgerMode ─────────────────────────────────
+
+describe("saldos pendientes", () => {
+  it("se excluyen del ledger (ledgerMode: true)", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [
+        invoice({ id: "sp", number: "ZETA:2574", date: "2026-04-17", total: 41480, category: "Zeta / saldos pendientes" }),
+        invoice({ id: "real", number: "ZETA:CCV1:0:36:A:2877", date: "2026-04-17", total: 41480, cfeTipo: "101" }),
+      ],
+      receipts: [],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements).toHaveLength(1);
+    expect(stmt.uyu.movements[0].id).toBe("real");
+  });
+
+  it("se incluyen en modo operacional (ledgerMode: false) si están activos", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [
+        invoice({ id: "sp", number: "ZETA:2574", date: "2026-04-17", total: 41480, category: "Zeta / saldos pendientes" }),
+      ],
+      receipts: [],
+      ledgerMode: false,
+    });
+    expect(stmt.uyu.movements).toHaveLength(1);
+  });
+});
+
+// ── Detección de notas de crédito por CFE tipo ────────────────────────────────
+
+describe("credit_note detection", () => {
+  it("CFE 181 → credit_note / Haber", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [invoice({ id: "nc", date: "2026-01-01", total: 5000, cfeTipo: "181" })],
+      receipts: [],
+      ledgerMode: true,
+    });
+    const m = stmt.uyu.movements[0];
+    expect(m.kind).toBe("credit_note");
+    expect(m.credit).toBe(5000);
+    expect(m.debit).toBe(0);
+  });
+
+  it("CFE 182 → credit_note / Haber", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [invoice({ id: "nc", date: "2026-01-01", total: 3000, cfeTipo: "182" })],
+      receipts: [],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements[0].kind).toBe("credit_note");
+  });
+
+  it("CFE 101 → invoice / Debe", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [invoice({ id: "inv", date: "2026-01-01", total: 5000, cfeTipo: "101" })],
+      receipts: [],
+      ledgerMode: true,
+    });
+    const m = stmt.uyu.movements[0];
+    expect(m.kind).toBe("invoice");
+    expect(m.debit).toBe(5000);
+    expect(m.credit).toBe(0);
+  });
+
+  it("sin metadata CFE → invoice por defecto", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [invoice({ id: "inv", date: "2026-01-01", total: 5000 })],
+      receipts: [],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements[0].kind).toBe("invoice");
+  });
+
+  it("NC no se detecta en modo operacional (ledgerMode: false)", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [invoice({ id: "nc", date: "2026-01-01", total: 5000, cfeTipo: "181" })],
+      receipts: [],
+      ledgerMode: false,
+    });
+    expect(stmt.uyu.movements[0].kind).toBe("invoice");
+  });
+
+  it("NC reduce el saldo en el runningBalance", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [
+        invoice({ id: "inv", date: "2026-01-01", total: 10000 }),
+        invoice({ id: "nc",  date: "2026-01-15", total:  3000, cfeTipo: "181" }),
+      ],
+      receipts: [],
+      ledgerMode: true,
+    });
+    const mvs = stmt.uyu.movements;
+    expect(mvs[0].runningBalance).toBe(10000);
+    expect(mvs[1].runningBalance).toBe(7000);
+    expect(stmt.uyu.summary.finalBalance).toBe(7000);
+  });
+});
+
+// ── Saldo anterior al filtrar por período ────────────────────────────────────
 
 describe("saldo anterior al filtrar por período", () => {
-  it("movimientos antes del período quedan fuera pero afectan el runningBalance", () => {
+  it("movimientos antes del período afectan el runningBalance de los posteriores", () => {
     const stmt = buildClientAccountStatement({
       invoices: [
         invoice({ id: "prev", date: "2025-12-01", total: 5000 }),
@@ -151,18 +279,14 @@ describe("saldo anterior al filtrar por período", () => {
       receipts: [],
       ledgerMode: true,
     });
-
-    // El movimiento de enero ya tiene runningBalance = 5000 + 3000 = 8000
     const jan = stmt.uyu.movements.find((m) => m.id === "curr");
     expect(jan?.runningBalance).toBe(8000);
-
-    // El movimiento de dic tiene runningBalance = 5000
     const dec = stmt.uyu.movements.find((m) => m.id === "prev");
     expect(dec?.runningBalance).toBe(5000);
   });
 });
 
-// ── Separación de monedas ─────────────────────────────────────────────────────
+// ── Aislamiento por moneda ────────────────────────────────────────────────────
 
 describe("aislamiento por moneda", () => {
   const stmt = buildClientAccountStatement({

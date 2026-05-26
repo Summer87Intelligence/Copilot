@@ -147,6 +147,42 @@ function receiptDetail(row: DataRow): string {
   return "Recibo";
 }
 
+/**
+ * Retorna `true` para registros derivados del pipeline de saldos pendientes Zeta.
+ * Estos representan el saldo vivo sincronizado, NO comprobantes contables reales emitidos.
+ * Se excluyen del libro mayor (ledgerMode) para evitar duplicar movimientos con los comprobantes CCV1.
+ */
+function isSaldosPendientesRow(row: DataRow): boolean {
+  return row.category === "Zeta / saldos pendientes";
+}
+
+/**
+ * Lee el código CFE tipo desde `zeta_metadata.zeta_customer_voucher_v1.cfe_tipo`.
+ * Los valores son strings que representan enteros (ej. "181", "182").
+ */
+function readInvoiceCfeTipo(row: DataRow): number | null {
+  const zm = row.zeta_metadata;
+  if (!zm || typeof zm !== "object") return null;
+  const v1 = (zm as Record<string, unknown>).zeta_customer_voucher_v1;
+  if (!v1 || typeof v1 !== "object") return null;
+  const raw = (v1 as Record<string, unknown>).cfe_tipo;
+  if (raw == null || raw === "") return null;
+  const n = parseInt(String(raw), 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Detecta notas de crédito por código CFE DGI:
+ *   181 = e-Nota de Crédito (e-Factura)
+ *   182 = e-Nota de Crédito (e-Ticket)
+ *
+ * Solo se usa en `ledgerMode: true` (estado de cuenta contable).
+ */
+function invoiceIsCfeCreditNote(row: DataRow): boolean {
+  const tipo = readInvoiceCfeTipo(row);
+  return tipo === 181 || tipo === 182;
+}
+
 /** Orden ASC: fecha, kind (invoice antes que receipt mismo día), número. */
 function compareMovements(a: AccountStatementMovement, b: AccountStatementMovement): number {
   if (a.date !== b.date) return a.date < b.date ? -1 : 1;
@@ -171,14 +207,18 @@ function buildByCurrency(
   let running = 0;
   let totalDebit = 0;
   let totalCredit = 0;
-  const totalCreditNotes = 0;
+  let totalCreditNotes = 0;
   for (const m of sorted) {
     running += m.debit - m.credit;
     m.runningBalance = round2(running);
     totalDebit += m.debit;
     totalCredit += m.credit;
+    if (m.kind === "credit_note") totalCreditNotes += m.credit;
   }
   const finalBalance = round2(totalDebit - totalCredit);
+  // hasCreditNoteSupport refleja si se detectaron NCs reales vía CFE tipo 181/182.
+  // Es false cuando ninguna NC fue clasificada (p. ej. modo operacional o tenant sin metadata CFE).
+  const hasCreditNoteSupport = totalCreditNotes > 0;
   return {
     currency,
     summary: {
@@ -187,11 +227,10 @@ function buildByCurrency(
       finalBalance,
       totalInvoiced: round2(totalDebit),
       totalCollected: round2(totalCredit - totalCreditNotes),
-      totalCreditNotes,
+      totalCreditNotes: round2(totalCreditNotes),
       pendingBalance: finalBalance,
       movementCount: sorted.length,
-      // Placeholder hasta que haya una regla certificada de detección de NC.
-      hasCreditNoteSupport: false,
+      hasCreditNoteSupport,
       hasNegativeBalance: finalBalance < 0,
     },
     movements: sorted,
@@ -237,24 +276,34 @@ export function buildClientAccountStatement(
 
   for (const inv of input.invoices) {
     if (!ledgerMode && inv.is_active === false) continue;
+    // En modo ledger: excluir registros del pipeline de saldos pendientes.
+    // Representan el saldo vivo sincronizado, no comprobantes contables reales;
+    // duplicarían movimientos ya presentes via comprobantes CCV1.
+    if (ledgerMode && isSaldosPendientesRow(inv)) continue;
+
     const cur = symbolToIso(readInvoiceCurrency(inv));
     if (!cur) {
       unknownCurrencyCount += 1;
       continue;
     }
     const total = parseAmount(inv.total_amount);
-    if (!(total > 0)) continue; // ignoramos facturas con total <= 0 para no contaminar saldo
+    if (!(total > 0)) continue;
     const date = ymdToString(parseRowYmd(inv, "issue_date"), inv.issue_date);
     const number = String(inv.invoice_number ?? "").trim();
+
+    // En modo ledger: detectar notas de crédito por CFE tipo 181/182.
+    // Se tratan como crédito (Haber) en el libro mayor, no como débito (Debe).
+    const isCreditNote = ledgerMode && invoiceIsCfeCreditNote(inv);
+
     const movement: AccountStatementMovement = {
       id: String(inv.id ?? ""),
       date,
-      kind: "invoice",
+      kind: isCreditNote ? "credit_note" : "invoice",
       number,
       detail: invoiceDetail(inv),
       currency: cur,
-      debit: round2(total),
-      credit: 0,
+      debit: isCreditNote ? 0 : round2(total),
+      credit: isCreditNote ? round2(total) : 0,
       runningBalance: 0,
       raw: inv,
     };
