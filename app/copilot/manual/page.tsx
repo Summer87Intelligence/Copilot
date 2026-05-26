@@ -816,10 +816,10 @@ const SECTIONS: Section[] = [
     content: (
       <>
         <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
-          <strong>Agentes IA</strong> son asistentes que leen la informacion del
-          negocio y te ayudan a ordenar que revisar primero. Trabajan en
-          conjunto: cada agente mira una parte del negocio, y el sistema combina
-          lo que encontraron para darte una vision unificada.
+          <strong>Agentes IA</strong> son asistentes que leen el Copilot y te
+          ayudan a ordenar que revisar primero. Trabajan en conjunto: cada
+          agente mira una parte del negocio, y el sistema combina lo que
+          encontraron para darte una vision unificada.
         </p>
         <Callout variant="info">
           <strong>Los agentes no ejecutan acciones.</strong> No pagan, no
@@ -833,17 +833,38 @@ const SECTIONS: Section[] = [
             Resumen coordinado
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
-            Al generar el analisis, todos los agentes activos trabajan al mismo
-            tiempo. El sistema combina sus resultados, elimina duplicados y
-            ordena las prioridades mas importantes de mayor a menor urgencia.
+            Es la pieza principal de la pantalla. Al generar el analisis, todos
+            los agentes activos trabajan al mismo tiempo y el sistema combina
+            sus resultados para decirte que revisar primero.
           </p>
           <Bullets
             items={[
+              "Va arriba de todo y resume el estado global: Bajo, En atencion o Critico.",
               "Muestra hasta 5 prioridades globales ordenadas por urgencia.",
-              "Las prioridades vienen de todos los agentes activos, no de uno solo.",
+              "Incluye el proximo paso recomendado para arrancar por el modulo correcto.",
+              "Debajo aparecen el Agente de Riesgo y luego los agentes operativos.",
               "No mezcla monedas: UYU y USD se tratan por separado.",
-              "El estado puede ser Estable, En atencion o Critico.",
-              "Siempre sugiere el proximo paso mas importante a dar.",
+              "Si falta algun dato, puede mostrar una lectura parcial sin romper la pantalla.",
+            ]}
+          />
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Agentes operativos
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            Despues del Resumen coordinado y del Agente de Riesgo, la pantalla
+            muestra los agentes operativos en cards separadas: Ejecutivo Diario,
+            Cobranza, Tesoreria, Integridad de Datos y CFO / Finanzas.
+          </p>
+          <Bullets
+            items={[
+              "Cada card explica que analiza ese agente.",
+              "Cada una muestra su estado actual y un resumen corto.",
+              "Cada agente enseña hasta 3 prioridades internas para no sobrecargar la lectura.",
+              "Cada card tiene un CTA principal para ir al modulo correcto.",
+              "La idea es entender la pantalla en segundos y despues entrar al detalle donde corresponda.",
             ]}
           />
         </div>
@@ -996,8 +1017,9 @@ const SECTIONS: Section[] = [
             Agente de Riesgo
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            Aparece debajo del Resumen coordinado como una lectura global.
             Junta señales de caja, cobranza, pagos, datos y finanzas para
-            resumir si el negocio está en riesgo bajo, en atención o crítico.
+            resumir si el negocio esta en riesgo bajo, en atencion o critico.
             No cambia datos ni ejecuta acciones.
           </p>
           <Bullets
@@ -1006,7 +1028,7 @@ const SECTIONS: Section[] = [
               "Revisar cobranza — si hay deuda vencida, promesas caídas o seguimientos pendientes.",
               "Validar datos — si conviene revisar la actualización antes de decidir.",
               "Ver Finanzas — si la lectura financiera general requiere monitoreo.",
-              "Solo ordena señales y te indica dónde mirar primero.",
+              "No tapa las prioridades especificas: solo te indica donde mirar primero.",
             ]}
           />
           <Callout variant="info">
@@ -1022,8 +1044,9 @@ const SECTIONS: Section[] = [
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
             El Agente de Cliente trabaja dentro de cada ficha de cliente.
-            No aparece en el resumen global de Agentes IA porque analiza un cliente puntual,
-            no el negocio en general.
+            En la pantalla de Agentes IA solo aparece como referencia para
+            recordarte donde encontrarlo. No aparece en el resumen global
+            porque analiza un cliente puntual, no el negocio en general.
           </p>
           <Bullets
             items={[
@@ -1032,6 +1055,24 @@ const SECTIONS: Section[] = [
               "Puede sugerir preparar cobranza, ver seguimiento, ver contactos o revisar actualizacion.",
               "No modifica datos. No envia mensajes. No marca facturas como pagadas.",
               "El usuario decide si contacta, genera un mensaje o registra una gestion.",
+            ]}
+          />
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Que pueden y que no pueden hacer
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            Al final de la pantalla vas a ver un bloque de seguridad con este
+            resumen rapido:
+          </p>
+          <Bullets
+            items={[
+              "Pueden leer informacion, resumir, priorizar y sugerir el siguiente paso.",
+              "No pueden pagar, borrar, modificar importes ni enviar mensajes automaticamente.",
+              "No pueden marcar facturas como pagadas.",
+              "Vos siempre decidis que hacer despues de leer la recomendacion.",
             ]}
           />
         </div>
@@ -1079,11 +1120,11 @@ const SECTIONS: Section[] = [
             {[
               {
                 q: "¿Los agentes trabajan juntos?",
-                a: "Si. Cada agente mira una parte del negocio y el resumen coordinado ordena lo mas importante. El resultado final combina lo que encontro cada agente.",
+                a: "Si. Cada agente mira una parte del negocio. Arriba ves el Resumen coordinado, despues el Agente de Riesgo y luego los agentes operativos por separado.",
               },
               {
                 q: "¿Que significa 'Prioridades principales'?",
-                a: "Son las prioridades mas urgentes de todos los agentes activos juntos. Se ordenan de mayor a menor urgencia y se muestran sin duplicados.",
+                a: "Son las prioridades mas urgentes de todos los agentes activos juntos. Se ordenan de mayor a menor urgencia, se muestran sin duplicados y te ayudan a decidir por donde empezar.",
               },
               {
                 q: "¿Copilot puede escribir mensajes de cobranza?",

@@ -4,9 +4,9 @@ import { AgentesOrchestrationView } from "@/components/copilot/agentes/agentes-o
 
 export default function AgentesPage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Hero */}
-      <div className="mb-8">
+      <div className="mb-8 space-y-4">
         <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--copilot-border)] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
           <Bot className="h-3.5 w-3.5" aria-hidden />
           Agentes IA
@@ -15,9 +15,14 @@ export default function AgentesPage() {
           Agentes IA
         </h1>
         <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--copilot-ink-muted)]">
-          Asistentes que analizan tu negocio, ordenan prioridades y te indican
-          qué revisar primero.
+          Asistentes que leen el Copilot, ordenan prioridades y te indican qué
+          revisar primero.
         </p>
+        <div className="max-w-2xl rounded-2xl border border-[var(--copilot-border)]/70 bg-[rgba(44,40,37,0.02)] px-4 py-3">
+          <p className="text-[13px] text-[var(--copilot-ink-muted)]">
+            Los agentes no modifican datos ni ejecutan acciones solos.
+          </p>
+        </div>
       </div>
 
       <AgentesOrchestrationView />

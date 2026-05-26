@@ -42,7 +42,7 @@ const SEVERITY_STYLES: Record<
 };
 
 function formatAmount(amount: number, currency: "UYU" | "USD"): string {
-  const prefix = currency === "UYU" ? "UYU $ " : "USD U$S ";
+  const prefix = currency === "UYU" ? "$ " : "U$S ";
   return `${prefix}${amount.toLocaleString("es-UY", { maximumFractionDigits: 0 })}`;
 }
 
@@ -56,7 +56,7 @@ export function AgentPriorityCard({
   const style = SEVERITY_STYLES[priority.severity];
 
   return (
-    <div className="flex gap-3 rounded-xl border border-[var(--copilot-border)] bg-white p-4 transition-shadow hover:shadow-sm">
+    <div className="flex gap-3 rounded-xl border border-[var(--copilot-border)] bg-white p-3.5 transition-shadow hover:shadow-sm sm:p-4">
       {/* Severity bar + number */}
       <div className="flex flex-col items-center gap-1 pt-0.5">
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[rgba(44,40,37,0.06)] text-[11px] font-bold text-[var(--copilot-ink-muted)]">
@@ -88,10 +88,10 @@ export function AgentPriorityCard({
           </p>
         ) : null}
 
-        <div className="mt-2.5">
+        <div className="mt-3">
           <Link
             href={priority.href}
-            className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-[var(--copilot-accent)] transition-opacity hover:opacity-75"
+            className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-[rgba(31,107,74,0.04)] px-2.5 py-1 text-[11.5px] font-semibold text-[var(--copilot-accent)] transition-colors hover:bg-[rgba(31,107,74,0.08)]"
           >
             {priority.ctaLabel}
             <ArrowRight className="h-3 w-3" aria-hidden />

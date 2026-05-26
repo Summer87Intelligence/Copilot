@@ -18,6 +18,7 @@ import {
   TriangleAlert,
   Users,
   Wallet,
+  XCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -31,44 +32,44 @@ import { buildDataIntegrityAgentBrief } from "@/lib/copilot-agents/build-data-in
 import { buildCfoAgentBrief } from "@/lib/copilot-agents/build-cfo-agent-brief";
 import { buildRiskAgentBrief } from "@/lib/copilot-agents/build-risk-agent-brief";
 import { orchestrateAgents } from "@/lib/copilot-agents/orchestrate-agents";
-import type { OicHealthDashboardData } from "@/lib/operacional/types";
-import type { FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
-import type { CollectionAction } from "@/lib/copilot-collection-types";
-import { groupCollectionActionsByCompany } from "@/lib/copilot-actions/enrich-actions";
 import { COMING_SOON_AGENTS } from "@/lib/copilot-agents/agent-registry";
 import type {
   CopilotAgentBrief,
+  CopilotAgentId,
   CopilotAgentsOrchestration,
 } from "@/lib/copilot-agents/types";
+import type { FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
+import type { CollectionAction } from "@/lib/copilot-collection-types";
+import { groupCollectionActionsByCompany } from "@/lib/copilot-actions/enrich-actions";
+import type { OicHealthDashboardData } from "@/lib/operacional/types";
+import { AgentCard } from "./agent-card";
 import { AgentPriorityCard } from "./agent-priority-card";
-
-// ─── Status config ────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG = {
   stable: {
     icon: CheckCircle2,
     iconCls: "text-emerald-600",
-    label: "Estable",
+    label: "Bajo",
     badgeCls: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-    bannerCls: "bg-emerald-50 border-emerald-200",
+    surfaceCls: "bg-emerald-50 border-emerald-200",
   },
   attention: {
     icon: CircleDot,
     iconCls: "text-amber-600",
-    label: "En atención",
+    label: "Atención",
     badgeCls: "bg-amber-50 text-amber-700 border border-amber-200",
-    bannerCls: "bg-amber-50 border-amber-200",
+    surfaceCls: "bg-amber-50 border-amber-200",
   },
   critical: {
     icon: TriangleAlert,
     iconCls: "text-rose-600",
     label: "Crítico",
     badgeCls: "bg-rose-50 text-rose-700 border border-rose-200",
-    bannerCls: "bg-rose-50 border-rose-200",
+    surfaceCls: "bg-rose-50 border-rose-200",
   },
 } as const;
 
-const AGENT_ICON: Record<string, LucideIcon> = {
+const AGENT_ICON: Record<CopilotAgentId, LucideIcon> = {
   daily_executive: Bot,
   collection: BarChart3,
   treasury: Wallet,
@@ -79,123 +80,252 @@ const AGENT_ICON: Record<string, LucideIcon> = {
   risk: Brain,
 };
 
-const COMING_SOON_DESCRIPTION: Record<string, string> = {
-  alerts: "Prioriza alertas relevantes.",
+const AGENT_DESCRIPTION: Record<
+  "daily_executive" | "collection" | "treasury" | "data_integrity" | "cfo" | "risk",
+  string
+> = {
+  daily_executive: "Lee el Copilot completo y ordena lo más importante del día.",
+  collection: "Revisa deuda vencida, promesas y seguimientos para cobrar a tiempo.",
+  treasury: "Revisa pagos, compromisos y señales de caja para evitar sorpresas.",
+  data_integrity: "Te dice si los datos están listos para decidir o conviene revisarlos.",
+  cfo: "Resume liquidez, cartera vencida y señales financieras relevantes.",
+  risk: "Junta caja, cobranza, datos y finanzas para mostrar el riesgo operativo.",
 };
 
-// ─── Agent brief card ─────────────────────────────────────────────────────────
+const OPERATIONAL_AGENT_ORDER: CopilotAgentId[] = [
+  "daily_executive",
+  "collection",
+  "treasury",
+  "data_integrity",
+  "cfo",
+];
 
-function AgentBriefCard({ brief }: { brief: CopilotAgentBrief }) {
+const COMING_SOON_DESCRIPTION: Record<string, string> = {
+  alerts: "Agrupará avisos importantes para que no tengas que revisar todo por separado.",
+};
+
+type HealthResponse = { ok?: boolean; data?: OicHealthDashboardData };
+type CollectionActionsResponse = { ok?: boolean; actions?: CollectionAction[] };
+type FinancialSnapshotResponse = { ok?: boolean; data?: FinancialSnapshotApiV1 };
+type OrchestrationLoadResult = {
+  orchestration: CopilotAgentsOrchestration;
+  warnings: string[];
+};
+
+type Phase =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "done"; data: OrchestrationLoadResult }
+  | { kind: "error"; message: string };
+
+async function fetchJson<T>(url: string): Promise<T | null> {
+  const response = await copilotApiFetch(url);
+  if (!response.ok) return null;
+  return (await response.json()) as T;
+}
+
+function getValue<T>(result: PromiseSettledResult<T | null>): T | null {
+  if (result.status !== "fulfilled") return null;
+  return result.value ?? null;
+}
+
+function buildWarning(label: string): string {
+  return `No se pudo cargar ${label}. Se muestra la mejor lectura disponible.`;
+}
+
+function sortOperationalBriefs(briefs: CopilotAgentBrief[]): CopilotAgentBrief[] {
+  return [...briefs].sort(
+    (a, b) =>
+      OPERATIONAL_AGENT_ORDER.indexOf(a.agentId) -
+      OPERATIONAL_AGENT_ORDER.indexOf(b.agentId)
+  );
+}
+
+async function fetchAndOrchestrate(): Promise<OrchestrationLoadResult> {
+  const [
+    briefingOutcome,
+    notificationsOutcome,
+    collectionOutcome,
+    healthOutcome,
+    snapshotOutcome,
+  ] = await Promise.allSettled([
+    fetchJson<ExecutiveBriefingApiResponse>("/api/copilot/executive-briefing"),
+    fetchJson<NotificationListResponse>("/api/copilot/notifications?limit=50"),
+    fetchJson<CollectionActionsResponse>("/api/copilot/collection-actions"),
+    fetchJson<HealthResponse>("/api/operacional/health"),
+    fetchJson<FinancialSnapshotResponse>("/api/copilot/financial-snapshot"),
+  ]);
+
+  const warnings: string[] = [];
+
+  const briefingData = getValue(briefingOutcome);
+  if (!briefingData?.ok) {
+    warnings.push(buildWarning("el resumen coordinado"));
+  }
+
+  const notificationsData = getValue(notificationsOutcome);
+  if (!notificationsData?.ok) {
+    warnings.push(buildWarning("las notificaciones base"));
+  }
+
+  const collectionData = getValue(collectionOutcome);
+  if (!collectionData?.ok) {
+    warnings.push(buildWarning("los seguimientos de cobranza"));
+  }
+
+  const healthData = getValue(healthOutcome);
+  if (!healthData?.ok) {
+    warnings.push(buildWarning("el estado operacional"));
+  }
+
+  const snapshotData = getValue(snapshotOutcome);
+  if (!snapshotData?.ok) {
+    warnings.push(buildWarning("la lectura financiera"));
+  }
+
+  const briefing = briefingData?.ok ? briefingData.briefing : null;
+  const notifications =
+    notificationsData?.ok ? notificationsData.notifications : [];
+
+  const collectionByCompanyId =
+    collectionData?.ok && collectionData.actions?.length
+      ? groupCollectionActionsByCompany(collectionData.actions)
+      : undefined;
+
+  const operationalHealth =
+    healthData?.ok && healthData.data ? healthData.data : null;
+  const financialSnapshot =
+    snapshotData?.ok && snapshotData.data ? snapshotData.data : null;
+
+  const executiveBrief = buildDailyExecutiveBrief(briefing, notifications);
+  const collectionBrief = buildCollectionAgentBrief(
+    notifications,
+    collectionByCompanyId
+  );
+  const treasuryBrief = buildTreasuryAgentBrief(notifications);
+  const dataIntegrityBrief = buildDataIntegrityAgentBrief({
+    notifications,
+    operationalHealth,
+  });
+  const cfoBrief = buildCfoAgentBrief({ notifications, financialSnapshot });
+  const riskBrief = buildRiskAgentBrief({
+    cfoBrief,
+    treasuryBrief,
+    collectionBrief,
+    dataIntegrityBrief,
+    notifications,
+  });
+
+  return {
+    orchestration: orchestrateAgents({
+      executiveBrief,
+      collectionBrief,
+      treasuryBrief,
+      dataIntegrityBrief,
+      cfoBrief,
+      riskBrief,
+    }),
+    warnings,
+  };
+}
+
+function SectionEyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
+      {children}
+    </p>
+  );
+}
+
+function PartialWarning({ warnings }: { warnings: string[] }) {
+  if (warnings.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+      <div className="flex items-start gap-2.5">
+        <AlertTriangle
+          className="mt-0.5 h-4 w-4 shrink-0 text-amber-600"
+          aria-hidden
+        />
+        <div className="min-w-0">
+          <p className="text-[13px] font-semibold text-amber-900">
+            Se cargó una versión parcial del análisis.
+          </p>
+          <ul className="mt-1 space-y-1 text-[12px] leading-relaxed text-amber-800">
+            {warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BriefStatusSummary({ brief }: { brief: CopilotAgentBrief }) {
   const cfg = STATUS_CONFIG[brief.status];
   const StatusIcon = cfg.icon;
-  const AgentIcon = AGENT_ICON[brief.agentId] ?? Brain;
 
   return (
-    <div className="flex flex-col rounded-2xl border border-[var(--copilot-border)] bg-white shadow-sm">
-      {/* Header */}
-      <div className="flex items-start gap-3 p-5">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--copilot-accent)]/10">
-          <AgentIcon className="h-5 w-5 text-[var(--copilot-accent)]" aria-hidden />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[14px] font-semibold text-[var(--copilot-ink)]">
-              {brief.title}
-            </p>
-            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10.5px] font-semibold leading-none text-emerald-700">
-              Activo
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="space-y-4 border-t border-[var(--copilot-border)]/60 px-5 py-4">
-        {/* Status */}
-        <div className={`flex items-start gap-2.5 rounded-xl border p-3 ${cfg.bannerCls}`}>
-          <StatusIcon className={`mt-0.5 h-4 w-4 shrink-0 ${cfg.iconCls}`} aria-hidden />
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[12px] font-semibold text-[var(--copilot-ink)]">
-                Estado
-              </span>
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold leading-none ${cfg.badgeCls}`}>
-                {cfg.label}
-              </span>
-            </div>
-            <p className="mt-0.5 text-[12px] leading-relaxed text-[var(--copilot-ink-muted)]">
-              {brief.summary}
-            </p>
-          </div>
-        </div>
-
-        {/* Priorities */}
-        {brief.priorities.length > 0 ? (
-          <div className="space-y-2">
-            {brief.priorities.slice(0, 3).map((p, i) => (
-              <AgentPriorityCard key={p.id} priority={p} index={i} />
-            ))}
-          </div>
-        ) : (
-          <p className="py-2 text-center text-[12px] text-[var(--copilot-ink-muted)]">
-            Sin prioridades urgentes.
-          </p>
-        )}
-
-        {/* CTA */}
-        {brief.nextBestAction && (
-          <Link
-            href={brief.nextBestAction.href}
-            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+    <div className={`flex items-start gap-2.5 rounded-xl border p-3 ${cfg.surfaceCls}`}>
+      <StatusIcon
+        className={`mt-0.5 h-4 w-4 shrink-0 ${cfg.iconCls}`}
+        aria-hidden
+      />
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[12px] font-semibold text-[var(--copilot-ink)]">
+            Estado
+          </span>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[10px] font-bold leading-none ${cfg.badgeCls}`}
           >
-            {brief.nextBestAction.label}
-            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-          </Link>
-        )}
+            {cfg.label}
+          </span>
+        </div>
+        <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--copilot-ink-muted)]">
+          {brief.summary}
+        </p>
       </div>
     </div>
   );
 }
 
-// ─── Coming soon card ─────────────────────────────────────────────────────────
-
-function ComingSoonCard({
-  id,
-  label,
-  description,
+function BriefCardBody({
+  brief,
+  emptyMessage,
 }: {
-  id: string;
-  label: string;
-  description: string;
+  brief: CopilotAgentBrief;
+  emptyMessage: string;
 }) {
-  const Icon = AGENT_ICON[id] ?? Brain;
+  const priorities = brief.priorities.slice(0, 3);
+
   return (
-    <div className="flex flex-col rounded-2xl border border-[var(--copilot-border)]/60 bg-white opacity-70">
-      <div className="flex items-start gap-3 p-5">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100">
-          <Icon className="h-5 w-5 text-slate-400" aria-hidden />
+    <div className="space-y-4">
+      <BriefStatusSummary brief={brief} />
+
+      {priorities.length > 0 ? (
+        <div className="space-y-2.5">
+          {priorities.map((priority, index) => (
+            <AgentPriorityCard
+              key={priority.id}
+              priority={priority}
+              index={index}
+            />
+          ))}
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[14px] font-semibold text-[var(--copilot-ink)]">
-              {label}
-            </p>
-            <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10.5px] font-semibold leading-none text-slate-500">
-              Próximamente
-            </span>
-          </div>
-          <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--copilot-ink-muted)]">
-            {description}
+      ) : (
+        <div className="rounded-xl border border-[var(--copilot-border)]/60 bg-[rgba(44,40,37,0.02)] px-4 py-3">
+          <p className="text-[12.5px] text-[var(--copilot-ink-muted)]">
+            {emptyMessage}
           </p>
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
-// ─── Orchestration results ────────────────────────────────────────────────────
-
-function OrchestrationResults({
+function SummarySection({
   orchestration,
   onRegenerate,
 }: {
@@ -206,167 +336,339 @@ function OrchestrationResults({
   const StatusIcon = cfg.icon;
 
   return (
-    <div className="space-y-8">
-      {/* Resumen coordinado */}
-      <section>
-        <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
-          Resumen coordinado
-        </p>
-        <div className={`flex items-start gap-3 rounded-xl border p-4 ${cfg.bannerCls}`}>
-          <StatusIcon className={`mt-0.5 h-5 w-5 shrink-0 ${cfg.iconCls}`} aria-hidden />
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-[13px] font-semibold text-[var(--copilot-ink)]">
-                Estado general del negocio
-              </p>
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold leading-none ${cfg.badgeCls}`}>
-                {cfg.label}
-              </span>
-            </div>
-            <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--copilot-ink-muted)]">
-              {orchestration.summary}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Prioridades principales */}
-      {orchestration.topPriorities.length > 0 && (
-        <section>
-          <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
-            Prioridades principales
+    <section className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <SectionEyebrow>Resumen coordinado</SectionEyebrow>
+          <p className="mt-1 text-[14px] text-[var(--copilot-ink-muted)]">
+            La lectura principal para entender qué revisar primero.
           </p>
-          <div className="space-y-2.5">
-            {orchestration.topPriorities.map((p, i) => (
-              <AgentPriorityCard key={p.id} priority={p} index={i} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Próximo paso */}
-      <section className="rounded-xl border border-[var(--copilot-border)] bg-[rgba(31,107,74,0.03)] p-4">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
-          Próximo paso recomendado
-        </p>
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-[13px] font-semibold text-[var(--copilot-ink)]">
-            {orchestration.nextBestAction.label}
-          </p>
-          <Link
-            href={orchestration.nextBestAction.href}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-4 py-2 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90"
-          >
-            Ir ahora
-            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-          </Link>
         </div>
-      </section>
-
-      {/* Agentes activos — resultados individuales */}
-      <section>
-        <p className="mb-4 text-[11px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
-          Agentes activos
-        </p>
-        <div className="space-y-4">
-          {orchestration.agentBriefs.map((brief) => (
-            <AgentBriefCard key={brief.agentId} brief={brief} />
-          ))}
-        </div>
-      </section>
-
-      {/* Regenerar */}
-      <div className="flex items-center justify-end gap-1.5 border-t border-[var(--copilot-border)]/60 pt-3">
-        <Clock className="h-3 w-3 text-[var(--copilot-ink-muted)]/50" aria-hidden />
         <button
           type="button"
           onClick={onRegenerate}
-          className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--copilot-accent)] transition-opacity hover:opacity-75"
+          className="inline-flex items-center gap-1.5 self-start rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-2 text-[12px] font-semibold text-[var(--copilot-ink)] transition-colors hover:bg-[rgba(44,40,37,0.03)]"
         >
-          <RefreshCw className="h-3 w-3" aria-hidden />
+          <RefreshCw className="h-3.5 w-3.5" aria-hidden />
           Actualizar análisis
         </button>
       </div>
-    </div>
+
+      <div className="rounded-3xl border border-[var(--copilot-border)] bg-white p-5 shadow-sm sm:p-6">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.9fr)]">
+          <div className="space-y-4">
+            <div className={`flex items-start gap-3 rounded-2xl border p-4 ${cfg.surfaceCls}`}>
+              <StatusIcon
+                className={`mt-0.5 h-5 w-5 shrink-0 ${cfg.iconCls}`}
+                aria-hidden
+              />
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-[14px] font-semibold text-[var(--copilot-ink)]">
+                    Estado global
+                  </p>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[10.5px] font-bold leading-none ${cfg.badgeCls}`}
+                  >
+                    {cfg.label}
+                  </span>
+                </div>
+                <p className="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-[var(--copilot-ink-muted)]">
+                  {orchestration.summary}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-3 text-[12px] font-semibold text-[var(--copilot-ink)]">
+                Prioridades globales
+              </p>
+              {orchestration.topPriorities.length > 0 ? (
+                <div className="space-y-2.5">
+                  {orchestration.topPriorities.map((priority, index) => (
+                    <AgentPriorityCard
+                      key={priority.id}
+                      priority={priority}
+                      index={index}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-[var(--copilot-border)]/60 bg-[rgba(44,40,37,0.02)] px-4 py-3">
+                  <p className="text-[12.5px] text-[var(--copilot-ink-muted)]">
+                    No hay prioridades urgentes en este momento.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--copilot-border)] bg-[rgba(31,107,74,0.03)] p-4 sm:p-5">
+            <SectionEyebrow>Próximo paso</SectionEyebrow>
+            <p className="mt-3 text-[16px] font-semibold text-[var(--copilot-ink)]">
+              {orchestration.nextBestAction.label}
+            </p>
+            <p className="mt-2 text-[12.5px] leading-relaxed text-[var(--copilot-ink-muted)]">
+              Si empezás por este módulo, resolvés antes la prioridad más
+              importante que detectaron los agentes.
+            </p>
+            <Link
+              href={orchestration.nextBestAction.href}
+              className="mt-5 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-4 py-3 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+            >
+              Ir ahora
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </Link>
+            <div className="mt-4 flex items-center gap-1.5 text-[11.5px] text-[var(--copilot-ink-muted)]/70">
+              <Clock className="h-3.5 w-3.5" aria-hidden />
+              Recomendación generada con la información disponible en esta sesión.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
-// ─── Data fetching ────────────────────────────────────────────────────────────
+function RiskSection({ brief }: { brief: CopilotAgentBrief }) {
+  return (
+    <section className="space-y-4">
+      <div>
+        <SectionEyebrow>Agente de Riesgo</SectionEyebrow>
+        <p className="mt-1 text-[14px] text-[var(--copilot-ink-muted)]">
+          Una lectura global para entender si conviene mirar caja, cobranza,
+          datos o finanzas primero.
+        </p>
+      </div>
 
-async function fetchAndOrchestrate(): Promise<CopilotAgentsOrchestration> {
-  const [briefingRes, notifRes] = await Promise.all([
-    copilotApiFetch("/api/copilot/executive-briefing"),
-    copilotApiFetch("/api/copilot/notifications?limit=50"),
-  ]);
-
-  const briefingData: ExecutiveBriefingApiResponse = await briefingRes.json();
-  const notifData: NotificationListResponse = await notifRes.json();
-
-  const briefing = briefingData.ok ? briefingData.briefing : null;
-  const notifications = notifData.ok ? notifData.notifications : [];
-
-  // Collection + operational health + financial snapshot in parallel — all non-fatal
-  const [collectionOutcome, healthOutcome, snapshotOutcome] = await Promise.allSettled([
-    copilotApiFetch("/api/copilot/collection-actions").then((r) =>
-      r.ok ? (r.json() as Promise<{ ok?: boolean; actions?: CollectionAction[] }>) : null
-    ),
-    copilotApiFetch("/api/operacional/health").then((r) =>
-      r.ok ? (r.json() as Promise<{ ok?: boolean; data?: OicHealthDashboardData }>) : null
-    ),
-    copilotApiFetch("/api/copilot/financial-snapshot").then((r) =>
-      r.ok ? (r.json() as Promise<{ ok?: boolean; data?: FinancialSnapshotApiV1 }>) : null
-    ),
-  ]);
-
-  let collectionByCompanyId: Map<string, CollectionAction[]> | undefined;
-  if (collectionOutcome.status === "fulfilled" && collectionOutcome.value?.actions?.length) {
-    collectionByCompanyId = groupCollectionActionsByCompany(
-      collectionOutcome.value.actions as CollectionAction[]
-    );
-  }
-
-  let operationalHealth: OicHealthDashboardData | null = null;
-  if (healthOutcome.status === "fulfilled" && healthOutcome.value?.ok && healthOutcome.value?.data) {
-    operationalHealth = healthOutcome.value.data as OicHealthDashboardData;
-  }
-
-  let financialSnapshot: FinancialSnapshotApiV1 | null = null;
-  if (snapshotOutcome.status === "fulfilled" && snapshotOutcome.value?.ok && snapshotOutcome.value?.data) {
-    financialSnapshot = snapshotOutcome.value.data as FinancialSnapshotApiV1;
-  }
-
-  const executiveBrief = buildDailyExecutiveBrief(briefing, notifications);
-  const collectionBrief = buildCollectionAgentBrief(notifications, collectionByCompanyId);
-  const treasuryBrief = buildTreasuryAgentBrief(notifications);
-  const dataIntegrityBrief = buildDataIntegrityAgentBrief({ notifications, operationalHealth });
-  const cfoBrief = buildCfoAgentBrief({ notifications, financialSnapshot });
-  const riskBrief = buildRiskAgentBrief({
-    cfoBrief,
-    treasuryBrief,
-    collectionBrief,
-    dataIntegrityBrief,
-    notifications,
-  });
-
-  return orchestrateAgents({
-    executiveBrief,
-    collectionBrief,
-    treasuryBrief,
-    dataIntegrityBrief,
-    cfoBrief,
-    riskBrief,
-  });
+      <AgentCard
+        icon={AGENT_ICON.risk}
+        name="Riesgo operativo"
+        description={AGENT_DESCRIPTION.risk}
+        status="active"
+        showStatusBadge={false}
+        ctaLabel={brief.nextBestAction?.label}
+        ctaHref={brief.nextBestAction?.href}
+      >
+        <BriefCardBody
+          brief={brief}
+          emptyMessage="Hoy no se ven señales fuertes de riesgo operativo."
+        />
+      </AgentCard>
+    </section>
+  );
 }
 
-// ─── Phase types ──────────────────────────────────────────────────────────────
+function OperationalAgentsSection({ briefs }: { briefs: CopilotAgentBrief[] }) {
+  return (
+    <section className="space-y-4">
+      <div>
+        <SectionEyebrow>Agentes operativos</SectionEyebrow>
+        <p className="mt-1 text-[14px] text-[var(--copilot-ink-muted)]">
+          Cada agente mira una parte distinta del negocio y muestra un resumen
+          corto con hasta 3 prioridades.
+        </p>
+      </div>
 
-type Phase =
-  | { kind: "idle" }
-  | { kind: "loading" }
-  | { kind: "done"; orchestration: CopilotAgentsOrchestration }
-  | { kind: "error"; message: string };
+      <div className="grid gap-4 xl:grid-cols-2">
+        {briefs.map((brief) => (
+          <AgentCard
+            key={brief.agentId}
+            icon={AGENT_ICON[brief.agentId]}
+            name={brief.title}
+            description={
+              AGENT_DESCRIPTION[
+                brief.agentId as keyof typeof AGENT_DESCRIPTION
+              ] ?? "Resume una parte del negocio y recomienda dónde revisar."
+            }
+            status="active"
+            showStatusBadge={false}
+            ctaLabel={brief.nextBestAction?.label}
+            ctaHref={brief.nextBestAction?.href}
+          >
+            <BriefCardBody
+              brief={brief}
+              emptyMessage="No hay prioridades urgentes para revisar ahora."
+            />
+          </AgentCard>
+        ))}
+      </div>
+    </section>
+  );
+}
 
-// ─── Main component ───────────────────────────────────────────────────────────
+function SupplementalCardsSection() {
+  return (
+    <section className="space-y-4">
+      <div>
+        <SectionEyebrow>Más contexto</SectionEyebrow>
+        <p className="mt-1 text-[14px] text-[var(--copilot-ink-muted)]">
+          El Agente de Cliente vive en la ficha 360 y Alertas queda preparado
+          para una próxima versión.
+        </p>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border border-[var(--copilot-border)] bg-white p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--copilot-accent)]/10">
+              <Users className="h-5 w-5 text-[var(--copilot-accent)]" aria-hidden />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-[14px] font-semibold text-[var(--copilot-ink)]">
+                  Agente de Cliente
+                </p>
+                <span className="rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[10.5px] font-semibold leading-none text-blue-700">
+                  En fichas de cliente
+                </span>
+              </div>
+              <p className="mt-1 text-[13px] leading-relaxed text-[var(--copilot-ink-muted)]">
+                Disponible dentro de cada ficha de cliente. Resume qué pasa con
+                ese cliente, por qué importa y cuál es el siguiente paso recomendado.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-[var(--copilot-border)]/60 bg-[rgba(44,40,37,0.02)] px-4 py-3">
+            <p className="text-[12.5px] text-[var(--copilot-ink-muted)]">
+              No aparece como agente global porque no analiza todo el negocio.
+            </p>
+          </div>
+
+          <Link
+            href="/copilot/clientes"
+            className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            Ver Clientes
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </Link>
+        </div>
+
+        {COMING_SOON_AGENTS.map((agent) => {
+          const Icon = AGENT_ICON[agent.id];
+
+          return (
+            <div
+              key={agent.id}
+              className="rounded-2xl border border-[var(--copilot-border)]/60 bg-white p-5 opacity-80"
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+                  <Icon className="h-5 w-5 text-slate-400" aria-hidden />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-[14px] font-semibold text-[var(--copilot-ink)]">
+                      {agent.label}
+                    </p>
+                    <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10.5px] font-semibold leading-none text-slate-500">
+                      Próximamente
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[13px] leading-relaxed text-[var(--copilot-ink-muted)]">
+                    {COMING_SOON_DESCRIPTION[agent.id] ?? agent.description}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function SecuritySection() {
+  return (
+    <section className="space-y-4">
+      <div>
+        <SectionEyebrow>Seguridad</SectionEyebrow>
+        <p className="mt-1 text-[14px] text-[var(--copilot-ink-muted)]">
+          Qué pueden y qué no pueden hacer los agentes.
+        </p>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden />
+            <p className="text-[13px] font-semibold text-emerald-900">
+              Pueden
+            </p>
+          </div>
+          <ul className="mt-3 space-y-2 text-[13px] text-emerald-900/90">
+            {[
+              "Leer información del Copilot.",
+              "Resumir la situación actual.",
+              "Priorizar lo más urgente.",
+              "Sugerir el siguiente paso.",
+            ].map((item) => (
+              <li key={item} className="flex items-start gap-2">
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5">
+          <div className="flex items-center gap-2">
+            <XCircle className="h-4 w-4 text-rose-600" aria-hidden />
+            <p className="text-[13px] font-semibold text-rose-900">
+              No pueden
+            </p>
+          </div>
+          <ul className="mt-3 space-y-2 text-[13px] text-rose-900/90">
+            {[
+              "Pagar o borrar información.",
+              "Modificar importes.",
+              "Enviar mensajes automáticamente.",
+              "Marcar facturas como pagadas.",
+              "Ejecutar acciones solos.",
+            ].map((item) => (
+              <li key={item} className="flex items-start gap-2">
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-600" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OrchestrationResults({
+  data,
+  onRegenerate,
+}: {
+  data: OrchestrationLoadResult;
+  onRegenerate: () => void;
+}) {
+  const riskBrief =
+    data.orchestration.agentBriefs.find((brief) => brief.agentId === "risk") ??
+    null;
+  const operationalBriefs = sortOperationalBriefs(
+    data.orchestration.agentBriefs.filter((brief) =>
+      OPERATIONAL_AGENT_ORDER.includes(brief.agentId)
+    )
+  );
+
+  return (
+    <div className="space-y-8">
+      <PartialWarning warnings={data.warnings} />
+      <SummarySection
+        orchestration={data.orchestration}
+        onRegenerate={onRegenerate}
+      />
+      {riskBrief ? <RiskSection brief={riskBrief} /> : null}
+      <OperationalAgentsSection briefs={operationalBriefs} />
+      <SupplementalCardsSection />
+      <SecuritySection />
+    </div>
+  );
+}
 
 export function AgentesOrchestrationView() {
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
@@ -374,7 +676,7 @@ export function AgentesOrchestrationView() {
   const generate = () => {
     setPhase({ kind: "loading" });
     fetchAndOrchestrate()
-      .then((orchestration) => setPhase({ kind: "done", orchestration }))
+      .then((data) => setPhase({ kind: "done", data }))
       .catch((err) =>
         setPhase({
           kind: "error",
@@ -386,60 +688,50 @@ export function AgentesOrchestrationView() {
 
   return (
     <div className="space-y-10">
-      {/* Nota de seguridad */}
-      <div className="flex items-start gap-2.5 rounded-xl border border-[var(--copilot-border)]/60 bg-[rgba(44,40,37,0.02)] px-4 py-3">
-        <ShieldCheck
-          className="mt-0.5 h-4 w-4 shrink-0 text-[var(--copilot-ink-muted)]/60"
-          aria-hidden
-        />
-        <p className="text-[12px] text-[var(--copilot-ink-muted)]">
-          Los agentes no modifican datos ni ejecutan acciones solos. Solo
-          ordenan información y sugieren próximos pasos.
-        </p>
-      </div>
-
-      {/* Idle */}
-      {phase.kind === "idle" && (
-        <div className="rounded-2xl border border-[var(--copilot-border)] bg-white p-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--copilot-accent)]/10">
-            <Bot className="h-7 w-7 text-[var(--copilot-accent)]" aria-hidden />
-          </div>
-          <h2 className="text-[16px] font-semibold text-[var(--copilot-ink)]">
-            Análisis coordinado
-          </h2>
-          <p className="mx-auto mt-1.5 max-w-sm text-[13px] text-[var(--copilot-ink-muted)]">
-            Los agentes analizan tu negocio en conjunto y ordenan lo más
-            importante para esta sesión.
-          </p>
-          <button
-            type="button"
-            onClick={generate}
-            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[var(--copilot-accent)] px-6 py-3 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80"
-          >
-            <Bot className="h-4 w-4" aria-hidden />
-            Generar análisis coordinado
-          </button>
-        </div>
-      )}
-
-      {/* Loading */}
-      {phase.kind === "loading" && (
-        <div className="flex flex-col items-center gap-4 py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-[var(--copilot-accent)]" />
-          <div className="text-center">
-            <p className="text-[13px] font-medium text-[var(--copilot-ink)]">
-              Analizando tu negocio...
+      {phase.kind === "idle" ? (
+        <div className="rounded-3xl border border-[var(--copilot-border)] bg-white p-8 shadow-sm">
+          <div className="mx-auto max-w-2xl text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--copilot-accent)]/10">
+              <Bot className="h-7 w-7 text-[var(--copilot-accent)]" aria-hidden />
+            </div>
+            <h2 className="text-[18px] font-semibold text-[var(--copilot-ink)]">
+              Generar lectura coordinada
+            </h2>
+            <p className="mx-auto mt-2 max-w-xl text-[13.5px] leading-relaxed text-[var(--copilot-ink-muted)]">
+              Vas a ver un resumen global, el nivel de riesgo, los agentes
+              operativos y las prioridades más importantes de esta sesión.
             </p>
-            <p className="mt-0.5 text-[12px] text-[var(--copilot-ink-muted)]">
-              Ejecutivo Diario, Cobranza, Tesorería, Integridad de datos, CFO y Riesgo trabajando en conjunto.
-            </p>
+            <button
+              type="button"
+              onClick={generate}
+              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[var(--copilot-accent)] px-6 py-3 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80"
+            >
+              <Bot className="h-4 w-4" aria-hidden />
+              Generar análisis coordinado
+            </button>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Error */}
-      {phase.kind === "error" && (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center">
+      {phase.kind === "loading" ? (
+        <div className="rounded-3xl border border-[var(--copilot-border)] bg-white px-6 py-12 shadow-sm">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-[var(--copilot-accent)]" />
+            <div>
+              <p className="text-[14px] font-semibold text-[var(--copilot-ink)]">
+                Analizando tu negocio...
+              </p>
+              <p className="mt-1 text-[12.5px] text-[var(--copilot-ink-muted)]">
+                Resumen coordinado, riesgo, cobranza, tesorería, datos y finanzas
+                trabajando en conjunto.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {phase.kind === "error" ? (
+        <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-center">
           <p className="text-[13px] text-rose-700">{phase.message}</p>
           <button
             type="button"
@@ -449,34 +741,11 @@ export function AgentesOrchestrationView() {
             Reintentar
           </button>
         </div>
-      )}
+      ) : null}
 
-      {/* Done */}
-      {phase.kind === "done" && (
-        <OrchestrationResults
-          orchestration={phase.orchestration}
-          onRegenerate={generate}
-        />
-      )}
-
-      {/* Próximos agentes — siempre visibles */}
-      <section>
-        <p className="mb-4 text-[11px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
-          Próximos agentes
-        </p>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {COMING_SOON_AGENTS.map((agent) => (
-            <ComingSoonCard
-              key={agent.id}
-              id={agent.id}
-              label={agent.label}
-              description={
-                COMING_SOON_DESCRIPTION[agent.id] ?? agent.description
-              }
-            />
-          ))}
-        </div>
-      </section>
+      {phase.kind === "done" ? (
+        <OrchestrationResults data={phase.data} onRegenerate={generate} />
+      ) : null}
     </div>
   );
 }

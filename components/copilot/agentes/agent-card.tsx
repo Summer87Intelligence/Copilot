@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -21,7 +22,9 @@ export function AgentCard({
   name,
   description,
   status,
+  showStatusBadge = true,
   ctaLabel,
+  ctaHref,
   onCta,
   children,
 }: {
@@ -29,7 +32,9 @@ export function AgentCard({
   name: string;
   description: string;
   status: AgentStatus;
+  showStatusBadge?: boolean;
   ctaLabel?: string;
+  ctaHref?: string;
   onCta?: () => void;
   children?: React.ReactNode;
 }) {
@@ -54,11 +59,13 @@ export function AgentCard({
             <p className="text-[14px] font-semibold text-[var(--copilot-ink)]">
               {name}
             </p>
-            <span
-              className={`rounded-full px-2 py-0.5 text-[10.5px] font-semibold leading-none ${badge.cls}`}
-            >
-              {badge.label}
-            </span>
+            {showStatusBadge ? (
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10.5px] font-semibold leading-none ${badge.cls}`}
+              >
+                {badge.label}
+              </span>
+            ) : null}
           </div>
           <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--copilot-ink-muted)]">
             {description}
@@ -74,18 +81,28 @@ export function AgentCard({
       ) : null}
 
       {/* CTA */}
-      {isActive && ctaLabel && onCta ? (
+      {isActive && ctaLabel && (onCta || ctaHref) ? (
         <div
           className={`${children ? "" : "border-t border-[var(--copilot-border)]/60"} px-5 py-3`}
         >
-          <button
-            type="button"
-            onClick={onCta}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80"
-          >
-            {ctaLabel}
-            <ChevronRight className="h-4 w-4" aria-hidden />
-          </button>
+          {ctaHref ? (
+            <Link
+              href={ctaHref}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80"
+            >
+              {ctaLabel}
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={onCta}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80"
+            >
+              {ctaLabel}
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </button>
+          )}
         </div>
       ) : null}
     </div>
