@@ -491,3 +491,99 @@ describe("riskForCompanyPerCurrency — evaluación por moneda sin sumar UYU+USD
     expect(riskForCompany(0.1, 50_000, 300_000)).toBe("Alto");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Guard Notas de Crédito — computeInvoiceCurrencyBreakdown
+// ---------------------------------------------------------------------------
+
+const TODAY_NC = "2026-05-26";
+
+function ncMetadata(cfeTipo: string | number) {
+  return { zeta_customer_voucher_v1: { cfe_tipo: String(cfeTipo) } };
+}
+
+describe("computeInvoiceCurrencyBreakdown — guard Notas de Crédito", () => {
+  it("NC CFE 112 no suma al billingUYU", () => {
+    const result = computeInvoiceCurrencyBreakdown(
+      [
+        // NC A391 (tipo real del tenant El País S.A.)
+        { currency_code: "UYU", total_amount: 8_662, balance_amount: 0, due_date: "2026-05-08",
+          zeta_metadata: ncMetadata("112") },
+        // Factura real
+        { currency_code: "UYU", total_amount: 17_080, balance_amount: 17_080, due_date: "2026-03-13" },
+      ],
+      TODAY_NC
+    );
+    expect(result.billingUYU).toBe(17_080); // NC excluida del billing
+    expect(result.billingUSD).toBe(0);
+  });
+
+  it("NC CFE 112 con balance > 0 no suma al overdueUYU (defensa NC no imputada)", () => {
+    // Escenario defensivo: NC con balance transitoriamente > 0 en DB
+    const result = computeInvoiceCurrencyBreakdown(
+      [
+        { currency_code: "UYU", total_amount: 8_662, balance_amount: 8_662, due_date: "2026-05-08",
+          zeta_metadata: ncMetadata("112") },
+        { currency_code: "UYU", total_amount: 17_080, balance_amount: 17_080, due_date: "2026-03-13" },
+      ],
+      TODAY_NC
+    );
+    expect(result.overdueUYU).toBe(17_080); // Solo la factura real vencida
+    expect(result.billingUYU).toBe(17_080); // NC excluida del billing
+  });
+
+  it("NC CFE 102 (e-NC de e-Factura) tampoco suma a billing ni overdue", () => {
+    const result = computeInvoiceCurrencyBreakdown(
+      [
+        { currency_code: "UYU", total_amount: 5_000, balance_amount: 5_000, due_date: "2026-01-01",
+          zeta_metadata: ncMetadata("102") },
+        { currency_code: "UYU", total_amount: 10_000, balance_amount: 10_000, due_date: "2026-01-01" },
+      ],
+      TODAY_NC
+    );
+    expect(result.billingUYU).toBe(10_000);
+    expect(result.overdueUYU).toBe(10_000);
+  });
+
+  it("NC USD no contamina overdueUSD", () => {
+    const result = computeInvoiceCurrencyBreakdown(
+      [
+        { currency_code: "USD", total_amount: 500, balance_amount: 500, due_date: "2026-01-01",
+          zeta_metadata: ncMetadata("112") },
+        { currency_code: "USD", total_amount: 1_000, balance_amount: 1_000, due_date: "2026-01-01" },
+      ],
+      TODAY_NC
+    );
+    expect(result.overdueUSD).toBe(1_000);
+    expect(result.billingUSD).toBe(1_000);
+  });
+
+  it("factura sin zeta_metadata (no NC) sigue sumando normalmente", () => {
+    const result = computeInvoiceCurrencyBreakdown(
+      [
+        { currency_code: "UYU", total_amount: 25_742, balance_amount: 25_742, due_date: "2026-03-13" },
+      ],
+      TODAY_NC
+    );
+    expect(result.billingUYU).toBe(25_742);
+    expect(result.overdueUYU).toBe(25_742);
+  });
+
+  it("fixture El País S.A.: facturas + NC + recibo → billing solo facturas reales", () => {
+    // Facturas reales del tenant
+    const elpais = [
+      { currency_code: "UYU", total_amount: 17_080, balance_amount: 17_080, due_date: "2026-03-13" },
+      { currency_code: "UYU", total_amount: 41_480, balance_amount: 0,      due_date: "2026-04-17" },
+      { currency_code: "UYU", total_amount:  8_662, balance_amount:  8_662, due_date: "2026-05-07" },
+      { currency_code: "UYU", total_amount:  8_662, balance_amount:  8_662, due_date: "2026-05-08" },
+      // NC A391
+      { currency_code: "UYU", total_amount:  8_662, balance_amount: 0, due_date: "2026-05-08",
+        zeta_metadata: ncMetadata("112") },
+    ];
+    const result = computeInvoiceCurrencyBreakdown(elpais, TODAY_NC);
+    // Billing = suma de facturas reales únicamente (NC excluida)
+    expect(result.billingUYU).toBe(17_080 + 41_480 + 8_662 + 8_662); // 75_884
+    // Overdue = facturas reales vencidas con balance > 0
+    expect(result.overdueUYU).toBe(17_080 + 8_662 + 8_662); // 34_404
+  });
+});

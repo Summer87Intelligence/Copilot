@@ -16,6 +16,7 @@ import {
   currencyRiskToClientRiskLabel,
   type SnapshotCurrencyCode,
 } from "@/lib/copilot-financial-thresholds";
+import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
 
 function str(v: unknown): string {
   if (v === null || v === undefined) return "";
@@ -344,17 +345,22 @@ export async function loadClientCompany360(
         balanceFromFinancialsMap: balMap,
       });
       const bal = fin.balance_authoritative;
-      saldoPendiente += bal;
       const due = ymd(inv.due_date);
       const rawCur = str(inv.currency_code).toUpperCase();
       const cur: SnapshotCurrencyCode | null =
         rawCur === "UYU" || rawCur === "USD" ? rawCur : null;
-      if (bal > 0 && cur) {
-        debtByCurrency[cur] = (debtByCurrency[cur] ?? 0) + bal;
-      }
-      if (bal > 0 && due && due < todayYmd) {
-        overdueDebt += bal;
-        if (cur) overdueByCurrency[cur] = (overdueByCurrency[cur] ?? 0) + bal;
+      // NC (CFE tipo 112/181/182): no suman deuda cobrable ni vencido.
+      // El balance_amount ya viene en 0 desde Zeta, pero este guard es defensa
+      // explícita para el caso de NC no imputada con balance transitoriamente > 0.
+      if (!isCreditNoteFromMetadata(inv.zeta_metadata)) {
+        saldoPendiente += bal;
+        if (bal > 0 && cur) {
+          debtByCurrency[cur] = (debtByCurrency[cur] ?? 0) + bal;
+        }
+        if (bal > 0 && due && due < todayYmd) {
+          overdueDebt += bal;
+          if (cur) overdueByCurrency[cur] = (overdueByCurrency[cur] ?? 0) + bal;
+        }
       }
       return {
         id,

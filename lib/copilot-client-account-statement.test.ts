@@ -391,7 +391,7 @@ describe("buildClientAccountStatement — columnas contables Debe/Haber/Saldo", 
     });
   });
 
-  it("rellena `detail` desde payment_method/reference (recibo) y category (factura)", () => {
+  it("category 'Zeta /...' se filtra del detail (no expone ruido técnico)", () => {
     const stmt = buildClientAccountStatement({
       invoices: [
         {
@@ -419,8 +419,10 @@ describe("buildClientAccountStatement — columnas contables Debe/Haber/Saldo", 
     });
     const factura = stmt.uyu.movements.find((m) => m.kind === "invoice")!;
     const recibo = stmt.uyu.movements.find((m) => m.kind === "receipt")!;
-    expect(factura.detail).toBe("Zeta / comprobantes por cliente");
-    expect(recibo.detail).toBe("Transferencia · TRF-001");
+    // Categorías "Zeta /..." son ruido técnico de sync; no se exponen en el detail
+    expect(factura.detail).toBe("");
+    // El detail del recibo usa solo payment_method; reference va en el campo number
+    expect(recibo.detail).toBe("Transferencia");
   });
 });
 

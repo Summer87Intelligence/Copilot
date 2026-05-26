@@ -12,6 +12,7 @@ import {
 } from "@/lib/copilot-financial-thresholds";
 import { loadClientPortfolioSourceRows } from "@/lib/data/proto-analytics-read-repository";
 import { supabase } from "@/lib/supabase-client";
+import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
 
 export type PaymentBehaviorLabel = "bueno" | "medio" | "lento";
 
@@ -133,6 +134,7 @@ type InvoiceRow = {
   status: unknown;
   invoice_number?: unknown;
   currency_code?: string;
+  zeta_metadata?: unknown;
 };
 
 type ReceiptRow = {
@@ -217,6 +219,8 @@ export type InvoiceCurrencyBreakdownInput = {
   total_amount?: unknown;
   balance_amount?: unknown;
   due_date?: unknown;
+  /** Metadata Zeta para detectar Notas de Crédito (CFE tipo 112/181/182). */
+  zeta_metadata?: unknown;
 };
 
 export type InvoiceCurrencyBreakdown = {
@@ -235,6 +239,8 @@ export function computeInvoiceCurrencyBreakdown(
   let billingUYU = 0, billingUSD = 0;
   let overdueUYU = 0, overdueUSD = 0;
   for (const inv of invs) {
+    // NC (CFE tipo 112/181/182): no suman facturación ni vencido cobrable.
+    if (isCreditNoteFromMetadata(inv.zeta_metadata)) continue;
     const cur = currencyOf(inv as InvoiceRow);
     if (!cur) continue;
     const total = num(inv.total_amount);
