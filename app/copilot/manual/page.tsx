@@ -602,6 +602,27 @@ const SECTIONS: Section[] = [
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Estado de cuenta PDF
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            Desde la ficha del cliente, pestaña Estado de cuenta, podés descargar un PDF con el historial completo de facturas y cobros.
+          </p>
+          <Bullets
+            items={[
+              "Botón Descargar PDF — aparece en la sección Estado de cuenta histórico de la ficha.",
+              "Incluye todos los movimientos del cliente: facturas emitidas, cobros recibidos y saldo acumulado.",
+              "Separa UYU y USD en bloques independientes. No mezcla monedas.",
+              "Usa el modo ledger: incluye también registros archivados para un historial completo.",
+              "El archivo se descarga directamente en el navegador.",
+            ]}
+          />
+          <Callout variant="info">
+            El PDF refleja los datos sincronizados en Copilot. Si hay movimientos recientes en Zeta que todavía no se sincronizaron, no aparecerán hasta la próxima actualización.
+          </Callout>
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
             Datos vs. ficha completa
           </p>
           <Bullets

@@ -12,6 +12,7 @@ import {
   CircleDashed,
   Clock,
   Copy,
+  Download,
   FileText,
   Loader2,
   Mail,
@@ -499,7 +500,30 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showRawJson, setShowRawJson] = useState(false);
+  const [pdfDownloading, setPdfDownloading] = useState(false);
   const assistantRef = useRef<HTMLDivElement>(null);
+
+  async function downloadAccountStatementPdf() {
+    if (pdfDownloading) return;
+    setPdfDownloading(true);
+    try {
+      const res = await fetch(`/api/copilot/clientes/${encodeURIComponent(companyId)}/account-statement.pdf`);
+      if (!res.ok) throw new Error("Error al generar el PDF.");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `estado-de-cuenta.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      // silent — no state to show, the button just re-enables
+    } finally {
+      setPdfDownloading(false);
+    }
+  }
 
   function scrollToAssistant() {
     assistantRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1063,10 +1087,25 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                 </div>
 
                 <CopilotCard>
-                  <CopilotSectionTitle
-                    title="Estado de cuenta historico"
-                    subtitle="Facturas y cobros sincronizados. Puede diferir de la deuda actual si hay notas de credito, imputaciones o ajustes pendientes de sincronizar."
-                  />
+                  <div className="flex items-start justify-between gap-3">
+                    <CopilotSectionTitle
+                      title="Estado de cuenta histórico"
+                      subtitle="Facturas y cobros sincronizados. Puede diferir de la deuda actual si hay notas de crédito, imputaciones o ajustes pendientes de sincronizar."
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void downloadAccountStatementPdf()}
+                      disabled={pdfDownloading}
+                      className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-[12px] font-semibold text-[var(--copilot-accent)] transition-opacity hover:opacity-75 disabled:opacity-50"
+                    >
+                      {pdfDownloading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                      ) : (
+                        <Download className="h-3.5 w-3.5" aria-hidden />
+                      )}
+                      {pdfDownloading ? "Generando…" : "Descargar PDF"}
+                    </button>
+                  </div>
                   {data.cuenta.ultimos_movimientos.length === 0 ? (
                     <p className="text-sm text-[var(--copilot-ink-muted)]">
                       Sin movimientos registrados.
