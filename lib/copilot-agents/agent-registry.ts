@@ -47,8 +47,8 @@ export const AGENT_REGISTRY: AgentRegistryEntry[] = [
   {
     id: "risk",
     label: "Riesgo",
-    status: "coming_soon",
-    description: "Detecta riesgos antes de que escalen.",
+    status: "active",
+    description: "Resume el nivel de riesgo operativo del negocio y explica qué lo provoca.",
   },
 ];
 

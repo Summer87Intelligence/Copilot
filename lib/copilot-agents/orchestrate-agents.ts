@@ -29,6 +29,7 @@ export type OrchestrateAgentsInput = {
   treasuryBrief: CopilotAgentBrief;
   dataIntegrityBrief: CopilotAgentBrief;
   cfoBrief: CopilotAgentBrief;
+  riskBrief: CopilotAgentBrief;
 };
 
 // ─── Orchestrator ─────────────────────────────────────────────────────────────
@@ -57,6 +58,9 @@ export function orchestrateAgents(
   // Agente CFO / Finanzas
   allPriorities.push(...input.cfoBrief.priorities);
 
+  // El Agente de Riesgo aporta lectura global y resumen.
+  // No agrega prioridades al top global para no tapar a Tesorería/Cobranza/CFO.
+
   // Deduplicar por href: mismo destino → conservar la prioridad más grave.
   // Esto evita que el Agente Ejecutivo y el de Tesorería muestren el mismo
   // pago vencido dos veces en el resumen global.
@@ -77,7 +81,11 @@ export function orchestrateAgents(
   const hasCritical = topPriorities.some((p) => p.severity === "critical");
   const hasHigh = topPriorities.some((p) => p.severity === "high");
   const status: CopilotAgentsOrchestration["status"] =
-    hasCritical ? "critical" : hasHigh ? "attention" : "stable";
+    input.riskBrief.status === "critical" || hasCritical
+      ? "critical"
+      : input.riskBrief.status === "attention" || hasHigh
+      ? "attention"
+      : "stable";
 
   // Construir briefs por agente
   const agentBriefs: CopilotAgentBrief[] = [];
@@ -100,6 +108,7 @@ export function orchestrateAgents(
   agentBriefs.push(input.treasuryBrief);
   agentBriefs.push(input.dataIntegrityBrief);
   agentBriefs.push(input.cfoBrief);
+  agentBriefs.push(input.riskBrief);
 
   const nextBestAction =
     topPriorities[0]
@@ -108,7 +117,7 @@ export function orchestrateAgents(
 
   return {
     status,
-    summary: buildOrchestrationSummary(status, topPriorities),
+    summary: buildOrchestrationSummary(status, topPriorities, input.riskBrief),
     topPriorities,
     agentBriefs,
     nextBestAction,
@@ -119,8 +128,15 @@ export function orchestrateAgents(
 
 function buildOrchestrationSummary(
   status: CopilotAgentsOrchestration["status"],
-  priorities: CopilotAgentPriority[]
+  priorities: CopilotAgentPriority[],
+  riskBrief?: CopilotAgentBrief | null
 ): string {
+  if (riskBrief?.status === "critical") {
+    return "El riesgo operativo requiere revisión inmediata.";
+  }
+  if (riskBrief?.status === "attention" && status !== "critical") {
+    return "Hay riesgos operativos para monitorear.";
+  }
   if (status === "critical") {
     const hasTreasuryOverdue = priorities.some((p) => p.id === "treasury-overdue");
     const hasCashRisk = priorities.some((p) => p.id === "treasury-cash-risk");

@@ -29,6 +29,7 @@ import { buildCollectionAgentBrief } from "@/lib/copilot-agents/build-collection
 import { buildTreasuryAgentBrief } from "@/lib/copilot-agents/build-treasury-agent-brief";
 import { buildDataIntegrityAgentBrief } from "@/lib/copilot-agents/build-data-integrity-agent-brief";
 import { buildCfoAgentBrief } from "@/lib/copilot-agents/build-cfo-agent-brief";
+import { buildRiskAgentBrief } from "@/lib/copilot-agents/build-risk-agent-brief";
 import { orchestrateAgents } from "@/lib/copilot-agents/orchestrate-agents";
 import type { OicHealthDashboardData } from "@/lib/operacional/types";
 import type { FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
@@ -79,9 +80,7 @@ const AGENT_ICON: Record<string, LucideIcon> = {
 };
 
 const COMING_SOON_DESCRIPTION: Record<string, string> = {
-  client: "Resume un cliente específico.",
   alerts: "Prioriza alertas relevantes.",
-  risk: "Detecta riesgos antes de que escalen.",
 };
 
 // ─── Agent brief card ─────────────────────────────────────────────────────────
@@ -341,8 +340,22 @@ async function fetchAndOrchestrate(): Promise<CopilotAgentsOrchestration> {
   const treasuryBrief = buildTreasuryAgentBrief(notifications);
   const dataIntegrityBrief = buildDataIntegrityAgentBrief({ notifications, operationalHealth });
   const cfoBrief = buildCfoAgentBrief({ notifications, financialSnapshot });
+  const riskBrief = buildRiskAgentBrief({
+    cfoBrief,
+    treasuryBrief,
+    collectionBrief,
+    dataIntegrityBrief,
+    notifications,
+  });
 
-  return orchestrateAgents({ executiveBrief, collectionBrief, treasuryBrief, dataIntegrityBrief, cfoBrief });
+  return orchestrateAgents({
+    executiveBrief,
+    collectionBrief,
+    treasuryBrief,
+    dataIntegrityBrief,
+    cfoBrief,
+    riskBrief,
+  });
 }
 
 // ─── Phase types ──────────────────────────────────────────────────────────────
@@ -418,7 +431,7 @@ export function AgentesOrchestrationView() {
               Analizando tu negocio...
             </p>
             <p className="mt-0.5 text-[12px] text-[var(--copilot-ink-muted)]">
-              Ejecutivo Diario, Cobranza, Tesorería, CFO e Integridad de datos trabajando en conjunto.
+              Ejecutivo Diario, Cobranza, Tesorería, Integridad de datos, CFO y Riesgo trabajando en conjunto.
             </p>
           </div>
         </div>

@@ -993,6 +993,31 @@ const SECTIONS: Section[] = [
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Agente de Riesgo
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            Junta señales de caja, cobranza, pagos, datos y finanzas para
+            resumir si el negocio está en riesgo bajo, en atención o crítico.
+            No cambia datos ni ejecuta acciones.
+          </p>
+          <Bullets
+            items={[
+              "Revisar caja — si hay pagos vencidos, caja ajustada o compromisos importantes.",
+              "Revisar cobranza — si hay deuda vencida, promesas caídas o seguimientos pendientes.",
+              "Validar datos — si conviene revisar la actualización antes de decidir.",
+              "Ver Finanzas — si la lectura financiera general requiere monitoreo.",
+              "Solo ordena señales y te indica dónde mirar primero.",
+            ]}
+          />
+          <Callout variant="info">
+            El Agente de Riesgo no modifica datos, no crea pagos, no marca
+            facturas como pagadas y no envía mensajes. Solo resume el nivel
+            de riesgo operativo.
+          </Callout>
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
             Agente de Cliente
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
@@ -1021,7 +1046,6 @@ const SECTIONS: Section[] = [
           <Bullets
             items={[
               "Alertas — priorizacion de avisos del sistema.",
-              "Riesgo — deteccion temprana de riesgos antes de que escalen.",
             ]}
           />
         </div>
@@ -1096,6 +1120,14 @@ const SECTIONS: Section[] = [
               {
                 q: "¿El Agente CFO puede ver el snapshot financiero?",
                 a: "Si. Lee el snapshot de Finanzas para detectar riesgo de liquidez y datos parciales. Si el snapshot no esta disponible, usa las notificaciones de tesoreria y cartera como fuente alternativa.",
+              },
+              {
+                q: "¿Qué significa riesgo operativo?",
+                a: "Es una lectura simple de señales que pueden afectar la operación: caja, pagos, cobranza, datos o finanzas.",
+              },
+              {
+                q: "¿El Agente de Riesgo decide por mí?",
+                a: "No. Solo ordena señales y te recomienda dónde mirar primero.",
               },
               {
                 q: "¿El Agente de Cliente puede cobrar automaticamente?",
