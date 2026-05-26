@@ -946,6 +946,32 @@ const SECTIONS: Section[] = [
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Agente CFO / Finanzas
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            Analiza la situacion financiera del negocio: liquidez, cartera vencida,
+            egresos proyectados y calidad de los datos. Te lleva al modulo correcto
+            segun lo que encuentra. No modifica datos ni ejecuta pagos.
+          </p>
+          <Bullets
+            items={[
+              "Riesgo de liquidez — si el snapshot financiero muestra riesgo critico o alto, lo informa como prioridad.",
+              "Caja en riesgo — si una notificacion indica que los egresos pueden superar la caja disponible.",
+              "Cartera vencida — si hay clientes con saldo vencido que pueden afectar la cobranza esperada.",
+              "Egresos proximos — pagos vencidos o con vencimiento proximo que pueden impactar el flujo de caja.",
+              "Datos parciales — si el snapshot financiero puede estar incompleto, avisa para que lo confirmes.",
+              "Solo lee datos. No inventa montos. No ejecuta ninguna accion.",
+            ]}
+          />
+          <Callout variant="info">
+            El Agente CFO trabaja junto al Agente de Tesoreria. Si ambos detectan
+            el mismo compromiso de pago, el sistema muestra la senial una sola vez
+            — la de mayor urgencia — para no duplicar alertas.
+          </Callout>
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
             Agentes preparados para proximas versiones
           </p>
           <p className="mb-2 text-sm text-[var(--copilot-ink)]">
@@ -953,7 +979,6 @@ const SECTIONS: Section[] = [
           </p>
           <Bullets
             items={[
-              "CFO / Finanzas — liquidez, riesgo y concentracion de cartera.",
               "Cliente — resumen de un cliente especifico.",
               "Alertas — priorizacion de avisos del sistema.",
               "Riesgo — deteccion temprana de riesgos antes de que escalen.",
@@ -1023,6 +1048,14 @@ const SECTIONS: Section[] = [
               {
                 q: "¿Por que el mismo pago vencido aparece solo una vez si lo detectan dos agentes?",
                 a: "El sistema deduplica por destino: si el Agente Ejecutivo y el de Tesoreria detectan el mismo pago, muestra una sola prioridad — la de mayor urgencia — para no repetir la misma alerta.",
+              },
+              {
+                q: "¿Que hace el Agente CFO / Finanzas?",
+                a: "Analiza liquidez, cartera vencida, egresos proximos y calidad de los datos financieros. Si detecta riesgo de caja o datos incompletos, te lleva a Finanzas, Cartera o Tesoreria segun corresponda. No modifica datos ni ejecuta pagos.",
+              },
+              {
+                q: "¿El Agente CFO puede ver el snapshot financiero?",
+                a: "Si. Lee el snapshot de Finanzas para detectar riesgo de liquidez y datos parciales. Si el snapshot no esta disponible, usa las notificaciones de tesoreria y cartera como fuente alternativa.",
               },
             ].map(({ q, a }) => (
               <div key={q}>

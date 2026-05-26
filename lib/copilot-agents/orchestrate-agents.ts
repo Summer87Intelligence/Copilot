@@ -28,6 +28,7 @@ export type OrchestrateAgentsInput = {
   collectionBrief: CopilotAgentBrief;
   treasuryBrief: CopilotAgentBrief;
   dataIntegrityBrief: CopilotAgentBrief;
+  cfoBrief: CopilotAgentBrief;
 };
 
 // ─── Orchestrator ─────────────────────────────────────────────────────────────
@@ -52,6 +53,9 @@ export function orchestrateAgents(
 
   // Agente de Integridad de Datos
   allPriorities.push(...input.dataIntegrityBrief.priorities);
+
+  // Agente CFO / Finanzas
+  allPriorities.push(...input.cfoBrief.priorities);
 
   // Deduplicar por href: mismo destino → conservar la prioridad más grave.
   // Esto evita que el Agente Ejecutivo y el de Tesorería muestren el mismo
@@ -95,6 +99,7 @@ export function orchestrateAgents(
   agentBriefs.push(input.collectionBrief);
   agentBriefs.push(input.treasuryBrief);
   agentBriefs.push(input.dataIntegrityBrief);
+  agentBriefs.push(input.cfoBrief);
 
   const nextBestAction =
     topPriorities[0]
@@ -122,11 +127,17 @@ function buildOrchestrationSummary(
     const hasDataIntegrity = priorities.some(
       (p) => p.agentId === "data_integrity" && p.severity === "critical"
     );
+    const hasCfoLiquidity = priorities.some(
+      (p) => (p.id === "cfo-liquidity-critical" || p.id === "cfo-cash-risk") && p.severity === "critical"
+    );
     if (hasTreasuryOverdue && hasCashRisk) {
       return "Hay pagos vencidos y riesgo de caja que requieren atención hoy.";
     }
     if (hasTreasuryOverdue) {
       return "Hay pagos vencidos o compromisos de caja críticos para revisar hoy.";
+    }
+    if (hasCfoLiquidity) {
+      return "La liquidez requiere revisión inmediata antes de asumir nuevos compromisos.";
     }
     if (hasDataIntegrity) {
       return "Hay problemas de actualización de datos para revisar.";
@@ -161,11 +172,21 @@ function buildOrchestrationSummary(
       return "Hay pagos programados para hoy y señales que requieren revisión.";
     }
     const hasDataIntegrityIssue = priorities.some((p) => p.agentId === "data_integrity");
+    const hasCfoAttention = priorities.some((p) => p.agentId === "cfo");
+    if (hasCollection && hasTreasury) {
+      return "Hay clientes vencidos y compromisos de pago para revisar hoy.";
+    }
+    if (hasCollection && hasCfoAttention) {
+      return "Hay cartera vencida y señales financieras para revisar.";
+    }
     if (hasCollection) {
       return "Hay clientes con saldo vencido para gestionar.";
     }
     if (hasTreasury) {
       return "Hay compromisos de pago próximos o vencidos para revisar.";
+    }
+    if (hasCfoAttention) {
+      return "Hay indicadores financieros que conviene revisar esta sesión.";
     }
     if (hasDataIntegrityIssue) {
       return "Algunas lecturas pueden depender de la última sincronización disponible.";

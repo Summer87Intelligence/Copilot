@@ -35,8 +35,8 @@ export const AGENT_REGISTRY: AgentRegistryEntry[] = [
   {
     id: "cfo",
     label: "CFO / Finanzas",
-    status: "coming_soon",
-    description: "Analiza liquidez, riesgo y concentración.",
+    status: "active",
+    description: "Detecta riesgo de liquidez, cartera vencida y compromisos de pago.",
   },
   {
     id: "client",
