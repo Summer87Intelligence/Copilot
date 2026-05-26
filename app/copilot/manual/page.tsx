@@ -654,17 +654,21 @@ const SECTIONS: Section[] = [
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
-            Detalle de facturas y recibos en Datos
+            Buscar y filtrar en Datos
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
-            En la sección <strong>Datos</strong>, al hacer clic en una factura o recibo, se abre un panel lateral con el detalle completo.
+            Todas las secciones de <strong>Datos</strong> siguen el mismo patrón de filtros: buscador, período y chips de categoría.
           </p>
           <Bullets
             items={[
-              "Facturas — buscá por cliente, número o concepto. Filtrá por moneda (Pesos / Dólares), Con saldo, o Notas de crédito. Las notas de crédito se ven como documentos pero no se computan como deuda cobrable.",
-              "Recibos — buscá por cliente, número real (A-768) o método de cobro. Filtrá por período (Mes y año / Rango de fechas), acceso rápido Mes actual o Hoy, y moneda (Pesos / Dólares).",
-              "Al hacer clic en una factura o recibo se abre el panel lateral con el detalle completo: líneas, caja, cobrador, local y facturas asociadas.",
-              "Los IDs técnicos de Zeta quedan ocultos en el bloque «Datos técnicos» dentro del panel — no aparecen como información principal.",
+              "Buscador — busca en texto libre: cliente, número, RUT, concepto, método de cobro o estado.",
+              "Listado — alternás entre Activos, Inactivos o Todos sin recargar la página.",
+              "Contador — muestra cuántos registros coinciden con los filtros activos.",
+              "Período (Facturas y Recibos) — filtrá por Mes y año, Rango de fechas o Todo. Botones rápidos: Mes actual, Hoy (Recibos) y Limpiar.",
+              "Chips Facturas — Todos / Con saldo / Notas de crédito y Pesos / Dólares.",
+              "Chips Recibos — Pesos / Dólares.",
+              "Al hacer clic en cualquier registro se abre el panel lateral con el detalle completo.",
+              "Los IDs técnicos de Zeta quedan en el bloque «Datos técnicos» dentro del panel — no aparecen en la vista principal.",
             ]}
           />
         </div>
