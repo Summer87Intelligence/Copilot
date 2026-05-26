@@ -1,4 +1,7 @@
-import PDFDocument from "pdfkit";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const PDFDocument = require("pdfkit/js/pdfkit.standalone.js") as new (
+  opts?: PDFKit.PDFDocumentOptions
+) => PDFKit.PDFDocument;
 import type {
   AccountStatementByCurrency,
   ClientAccountStatement,

@@ -1,3 +1,6 @@
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
@@ -54,18 +57,25 @@ export async function GET(
       currencyParam === "USD" ? ["USD"] :
       ["UYU", "USD"];
 
+    log.info("account_statement_pdf_fetching", { companyId, from, to, currencies });
     const [invoices, receipts, company] = await Promise.all([
       listProtoInvoicesByCompanyId(supabase, companyId, "all", tenantCompanyId),
       listProtoReceiptsByCompanyId(supabase, companyId, "all", tenantCompanyId),
       getProtoCompanyById(supabase, companyId, tenantCompanyId),
     ]);
+    log.info("account_statement_pdf_data_ready", {
+      invoiceCount: invoices.length,
+      receiptCount: receipts.length,
+    });
 
     const statement = buildClientAccountStatement({ invoices, receipts, ledgerMode: true });
     const companyName =
       String(company?.name ?? company?.company_name ?? company?.zeta_client_name ?? "").trim() ||
       "Cliente";
 
+    log.info("account_statement_pdf_rendering", { companyName });
     const pdfBuffer = await renderAccountStatementPdf({ companyName, statement, currencies, from, to });
+    log.info("account_statement_pdf_done", { bytes: pdfBuffer.length });
     const safeFilename = companyName.replace(/[^a-zA-Z0-9_\-áéíóúÁÉÍÓÚüÜñÑ ]/g, "_").slice(0, 60);
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
@@ -77,7 +87,9 @@ export async function GET(
       },
     });
   } catch (err) {
-    log.error("account_statement_pdf_error", { error: String(err) });
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error("[account-statement-pdf] INTERNAL_ERROR:", errMsg, err instanceof Error ? err.stack : "");
+    log.error("account_statement_pdf_error", err);
     return NextResponse.json(
       { ok: false, code: "INTERNAL_ERROR", error: "No se pudo generar el PDF." },
       { status: 500 }
