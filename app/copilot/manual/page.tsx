@@ -649,7 +649,10 @@ const SECTIONS: Section[] = [
             ]}
           />
           <Callout variant="info">
-            Esta función no envía nada directamente. Abre tu cliente de correo o WhatsApp con el mensaje pre-redactado para que vos lo revisés y enviés manualmente.
+            Registrar la gestión desde esta card es lo que le permite a Acciones y Agentes saber que el cliente ya fue contactado. Sin ese registro, el sistema no tiene constancia del contacto.
+          </Callout>
+          <Callout variant="warning">
+            Esta función no envía ningún mensaje automáticamente, no marca facturas como pagadas y no modifica ningún dato contable. El botón &quot;Registrar gestión&quot; propone un pre-llenado que el usuario debe revisar y guardar manualmente.
           </Callout>
         </div>
 
@@ -1537,7 +1540,7 @@ const FAQ: Array<{ q: string; a: React.ReactNode }> = [
   },
   {
     q: "Copié o envié un mensaje al cliente. ¿Qué hago ahora?",
-    a: "Registrá el resultado en Gestión de cobranza, en la ficha del cliente. Por ejemplo: 'Contactado', 'Sin respuesta', o 'Prometió pagar'. Eso queda guardado en el historial y te ayuda a recordar cuándo volver a contactar.",
+    a: "Si usaste la card Enviar estado de cuenta, Copilot te va a ofrecer el botón Registrar gestión automáticamente. Hacé clic, revisá el pre-llenado (canal y nota) y guardá. Si no usaste esa card, abrí la ficha del cliente, andá a Gestión de cobranza y registrá manualmente: canal, resultado (por ejemplo 'Contactado') y una nota. Eso queda en el historial y lo usan Acciones y Agentes para saber que el cliente ya fue contactado.",
   },
   {
     q: "¿Registrar una gestión modifica la deuda del cliente?",
