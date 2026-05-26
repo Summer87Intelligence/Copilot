@@ -3,6 +3,7 @@
  * Todos son idempotentes: pueden llamarse desde crons sin crear duplicados.
  */
 import { createNotificationIfNotExists } from "./create-notification";
+import { businessMonthYm } from "./business-date";
 
 // ─── Pure helpers (exported for testing) ─────────────────────────────────────
 
@@ -106,7 +107,7 @@ export function computeClientOverdueBucket(daysOverdue: number): ClientOverdueBu
 export async function notifyClientOverdue(opts: ClientOverdueOpts) {
   const bucket = computeClientOverdueBucket(opts.daysOverdue);
   // Month bucket prevents re-notifying daily while allowing a fresh alert each month.
-  const yyyyMm = new Date().toISOString().slice(0, 7);
+  const yyyyMm = businessMonthYm(new Date());
   const amountStr = opts.amount.toLocaleString("es-AR", { maximumFractionDigits: 0 });
   return createNotificationIfNotExists(opts.tenantCompanyId, {
     type: "client_overdue",

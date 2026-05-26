@@ -6,6 +6,7 @@ import {
   notifyTreasuryPaymentDue,
   notifyTreasuryPaymentOverdue,
 } from "./notification-events";
+import { businessDateYmd } from "./business-date";
 
 // Lookback window for "collection received" notifications.
 // Override via env for staging/testing without touching code.
@@ -40,11 +41,11 @@ function getAdminClient(): AdminClient | null {
 }
 
 function todayYmd(now: Date): string {
-  return now.toISOString().slice(0, 10);
+  return businessDateYmd(now);
 }
 
 function futureDateYmd(now: Date, days: number): string {
-  return new Date(now.getTime() + days * 86_400_000).toISOString().slice(0, 10);
+  return businessDateYmd(new Date(now.getTime() + days * 86_400_000));
 }
 
 function daysBetween(fromYmd: string, toYmd: string): number {
