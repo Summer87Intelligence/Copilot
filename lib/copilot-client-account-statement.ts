@@ -134,17 +134,74 @@ function compactText(value: unknown, fallback = "—"): string {
   return s || fallback;
 }
 
+/**
+ * Extrae el número de serie visible del comprobante desde `zeta_metadata.zeta_customer_voucher_v1`.
+ * Estrategia de prioridad:
+ *   1. serie + numero del bloque CCV1 → "A2934"
+ *   2. invoice_number crudo → extractSerieNumero lo parsea en la UI
+ * Devuelve null cuando no hay metadata CCV1 útil.
+ */
+function readInvoiceSerieNumero(row: DataRow): string | null {
+  const zm = row.zeta_metadata;
+  if (!zm || typeof zm !== "object") return null;
+  const v1 = (zm as Record<string, unknown>).zeta_customer_voucher_v1;
+  if (!v1 || typeof v1 !== "object") return null;
+  const serie = String((v1 as Record<string, unknown>).serie ?? "").trim();
+  const numero = String((v1 as Record<string, unknown>).numero ?? "").trim();
+  if (serie && numero) return `${serie}${numero}`;
+  if (numero) return numero;
+  return null;
+}
+
+/**
+ * Lee la descripción del primer ítem del comprobante desde `raw_payload.Lineas`.
+ * Soporta variantes de casing del campo Descripcion observadas en payloads Zeta.
+ */
+function readFirstLineasDescription(row: DataRow): string | null {
+  const zm = row.zeta_metadata;
+  if (!zm || typeof zm !== "object") return null;
+  const v1 = (zm as Record<string, unknown>).zeta_customer_voucher_v1;
+  if (!v1 || typeof v1 !== "object") return null;
+  const payload = (v1 as Record<string, unknown>).raw_payload;
+  if (!payload || typeof payload !== "object") return null;
+  const lineas = (payload as Record<string, unknown>).Lineas;
+  if (!Array.isArray(lineas) || lineas.length === 0) return null;
+  const first = lineas[0] as Record<string, unknown>;
+  const desc =
+    first["Descripcion"] ??
+    first["descripcion"] ??
+    first["Detalle"] ??
+    first["detalle"] ??
+    null;
+  if (desc == null) return null;
+  const s = String(desc).trim();
+  return s || null;
+}
+
+/** Normaliza "A-768" → "A768", "ZETA:COB:2732" → null (IDs internos). */
+function normalizeReceiptReference(ref: unknown): string | null {
+  if (ref == null) return null;
+  const s = String(ref).trim();
+  if (!s) return null;
+  // Rechazar referencias internas tipo "ZETA:COB:2732" o cualquier cosa con ":"
+  if (s.includes(":")) return null;
+  // Quitar guiones internos entre letra y número: "A-768" → "A768"
+  const normalized = s.replace(/^([A-Za-z]+)-(\d+)$/, "$1$2");
+  return normalized || null;
+}
+
 function invoiceDetail(row: DataRow): string {
-  return compactText(row.category ?? row.status, "Factura");
+  const desc = readFirstLineasDescription(row);
+  if (desc) return desc;
+  // Evitar mostrar categorías técnicas del pipeline de sync Zeta
+  const cat = row.category == null ? "" : String(row.category).trim();
+  if (cat && !cat.startsWith("Zeta /")) return cat;
+  return compactText(row.status, "");
 }
 
 function receiptDetail(row: DataRow): string {
-  const method = compactText(row.payment_method, "");
-  const reference = compactText(row.reference, "");
-  if (method && reference) return `${method} · ${reference}`;
-  if (method) return method;
-  if (reference) return reference;
-  return "Recibo";
+  // El número visible (A768) ya va en la columna Serie y Nº; aquí solo mostramos el medio de pago.
+  return compactText(row.payment_method, "");
 }
 
 /**
@@ -289,7 +346,7 @@ export function buildClientAccountStatement(
     const total = parseAmount(inv.total_amount);
     if (!(total > 0)) continue;
     const date = ymdToString(parseRowYmd(inv, "issue_date"), inv.issue_date);
-    const number = String(inv.invoice_number ?? "").trim();
+    const number = readInvoiceSerieNumero(inv) ?? String(inv.invoice_number ?? "").trim();
 
     // En modo ledger: detectar notas de crédito por CFE tipo 181/182.
     // Se tratan como crédito (Haber) en el libro mayor, no como débito (Debe).
@@ -320,7 +377,9 @@ export function buildClientAccountStatement(
     const amount = parseAmount(rec.amount);
     if (!(amount > 0)) continue;
     const date = ymdToString(parseRowYmd(rec, "receipt_date"), rec.receipt_date);
-    const number = String(rec.receipt_number ?? "").trim();
+    const number =
+      normalizeReceiptReference(rec.reference) ??
+      String(rec.receipt_number ?? "").trim();
     const movement: AccountStatementMovement = {
       id: String(rec.id ?? ""),
       date,

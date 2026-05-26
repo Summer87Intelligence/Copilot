@@ -21,11 +21,22 @@ function invoice(opts: {
   currency?: "UYU" | "USD";
   category?: string;
   cfeTipo?: string | number;
+  /** serie + numero para metadata CCV1 (e.g. serie:"A", numero:"2934") */
+  serie?: string;
+  numero?: string;
+  /** primer ítem del comprobante para Lineas[0].Descripcion */
+  linea?: string;
 }): DataRow {
-  const meta: Record<string, unknown> | undefined =
-    opts.cfeTipo != null
-      ? { zeta_customer_voucher_v1: { cfe_tipo: String(opts.cfeTipo) } }
-      : undefined;
+  const hasCcv1 = opts.cfeTipo != null || opts.serie != null || opts.numero != null || opts.linea != null;
+  const lineas = opts.linea != null ? [{ Descripcion: opts.linea }] : undefined;
+  const ccv1: Record<string, unknown> = {};
+  if (opts.cfeTipo != null) ccv1.cfe_tipo = String(opts.cfeTipo);
+  if (opts.serie != null) ccv1.serie = opts.serie;
+  if (opts.numero != null) ccv1.numero = opts.numero;
+  if (lineas) ccv1.raw_payload = { Lineas: lineas };
+  const meta: Record<string, unknown> | undefined = hasCcv1
+    ? { zeta_customer_voucher_v1: ccv1 }
+    : undefined;
   return {
     id: opts.id,
     invoice_number: opts.number ?? `INV-${opts.id}`,
@@ -44,6 +55,9 @@ function receipt(opts: {
   date: string;
   amount: number;
   currency?: "UYU" | "USD";
+  /** Número real del recibo visible en Zeta (e.g. "A-768") */
+  reference?: string;
+  paymentMethod?: string;
 }): DataRow {
   return {
     id: opts.id,
@@ -52,6 +66,8 @@ function receipt(opts: {
     amount: opts.amount,
     currency_code: opts.currency ?? "UYU",
     is_active: true,
+    ...(opts.reference !== undefined ? { reference: opts.reference } : {}),
+    ...(opts.paymentMethod !== undefined ? { payment_method: opts.paymentMethod } : {}),
   };
 }
 
@@ -84,7 +100,8 @@ const EL_PAIS_INVOICES = [
 ];
 
 const EL_PAIS_RECEIPTS = [
-  receipt({ id: "r1", number: "A768", date: "2026-05-20", amount: 41480 }),
+  // receipt_number es el RegistroId interno "ZETA:COB:2732"; reference es el número visible en Zeta "A-768"
+  receipt({ id: "r1", number: "ZETA:COB:2732", date: "2026-05-20", amount: 41480, reference: "A-768" }),
 ];
 
 describe("fixture El País S.A. — producción", () => {
@@ -315,5 +332,176 @@ describe("aislamiento por moneda", () => {
 
   it("saldo USD es 300", () => {
     expect(stmt.usd.summary.finalBalance).toBe(300);
+  });
+});
+
+// ── Serie y número real desde metadata CCV1 ──────────────────────────────────
+
+describe("número de comprobante desde metadata CCV1", () => {
+  it("usa serie+numero del bloque CCV1 cuando están presentes", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [invoice({ id: "i", date: "2026-01-01", total: 5000, serie: "A", numero: "2934" })],
+      receipts: [],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements[0].number).toBe("A2934");
+  });
+
+  it("solo numero sin serie queda como el número", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [invoice({ id: "i", date: "2026-01-01", total: 5000, numero: "391" })],
+      receipts: [],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements[0].number).toBe("391");
+  });
+
+  it("sin metadata CCV1 cae al invoice_number crudo", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [invoice({ id: "i", number: "ZETA:CCV1:0:36:A:2821", date: "2026-01-01", total: 5000 })],
+      receipts: [],
+      ledgerMode: true,
+    });
+    // Sin metadata CCV1, cae al invoice_number crudo
+    expect(stmt.uyu.movements[0].number).toBe("ZETA:CCV1:0:36:A:2821");
+  });
+
+  it("serie+numero tiene prioridad sobre invoice_number", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [invoice({ id: "i", number: "ZETA:CCV1:0:36:A:2821", date: "2026-01-01", total: 5000, serie: "A", numero: "2821" })],
+      receipts: [],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements[0].number).toBe("A2821");
+  });
+});
+
+// ── Descripción de ítems desde Lineas ────────────────────────────────────────
+
+describe("detalle desde Lineas[0].Descripcion", () => {
+  it("usa la descripción del primer ítem del comprobante", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [invoice({ id: "i", date: "2026-01-01", total: 5000, linea: "Filmación" })],
+      receipts: [],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements[0].detail).toBe("Filmación");
+  });
+
+  it("no muestra categoría técnica 'Zeta / comprobantes por cliente'", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [invoice({ id: "i", date: "2026-01-01", total: 5000, category: "Zeta / comprobantes por cliente" })],
+      receipts: [],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements[0].detail).not.toContain("Zeta /");
+  });
+
+  it("sin metadata ni categoría válida devuelve string vacío", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [invoice({ id: "i", date: "2026-01-01", total: 5000 })],
+      receipts: [],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements[0].detail).toBe("");
+  });
+
+  it("categoría no-Zeta se usa como detalle", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [invoice({ id: "i", date: "2026-01-01", total: 5000, category: "Servicios de diseño" })],
+      receipts: [],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements[0].detail).toBe("Servicios de diseño");
+  });
+
+  it("Lineas tiene prioridad sobre category válida", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [invoice({ id: "i", date: "2026-01-01", total: 5000, category: "Servicios", linea: "Mantenimiento web" })],
+      receipts: [],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements[0].detail).toBe("Mantenimiento web");
+  });
+});
+
+// ── Número visible de recibo (reference) ─────────────────────────────────────
+
+describe("número de recibo desde reference", () => {
+  it("normaliza 'A-768' a 'A768'", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [],
+      receipts: [receipt({ id: "r", number: "ZETA:COB:2732", date: "2026-01-01", amount: 1000, reference: "A-768" })],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements[0].number).toBe("A768");
+  });
+
+  it("reference sin guión se usa directamente", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [],
+      receipts: [receipt({ id: "r", number: "ZETA:COB:999", date: "2026-01-01", amount: 1000, reference: "B123" })],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements[0].number).toBe("B123");
+  });
+
+  it("referencia interna con ':' se ignora y cae al receipt_number", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [],
+      receipts: [receipt({ id: "r", number: "ZETA:COB:2732", date: "2026-01-01", amount: 1000, reference: "ZETA:COB:2732" })],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements[0].number).toBe("ZETA:COB:2732");
+  });
+
+  it("sin reference usa receipt_number como fallback", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [],
+      receipts: [receipt({ id: "r", number: "REC-999", date: "2026-01-01", amount: 1000 })],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements[0].number).toBe("REC-999");
+  });
+
+  it("recibo detalle usa payment_method, no reference", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [],
+      receipts: [receipt({ id: "r", number: "REC-1", date: "2026-01-01", amount: 1000, reference: "A-768", paymentMethod: "Transferencia" })],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements[0].detail).toBe("Transferencia");
+  });
+
+  it("recibo sin payment_method tiene detail vacío", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [],
+      receipts: [receipt({ id: "r", date: "2026-01-01", amount: 1000, reference: "A-768" })],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements[0].detail).toBe("");
+  });
+});
+
+// ── Fixture El País S.A. — número de recibo real ──────────────────────────────
+
+describe("fixture El País S.A. — número de recibo real", () => {
+  const stmt = buildClientAccountStatement({
+    invoices: [
+      invoice({ id: "i1", number: "ZETA:CCV1:0:36:A:2821", date: "2026-03-13", total: 17080, serie: "A", numero: "2821", cfeTipo: "101" }),
+    ],
+    receipts: [
+      receipt({ id: "r1", number: "ZETA:COB:2732", date: "2026-05-20", amount: 17080, reference: "A-768" }),
+    ],
+    ledgerMode: true,
+  });
+
+  it("factura muestra 'A2821' desde metadata CCV1", () => {
+    expect(stmt.uyu.movements[0].number).toBe("A2821");
+  });
+
+  it("recibo muestra 'A768' desde reference normalizado", () => {
+    const rec = stmt.uyu.movements.find((m) => m.kind === "receipt");
+    expect(rec?.number).toBe("A768");
   });
 });
