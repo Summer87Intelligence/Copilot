@@ -611,14 +611,35 @@ const SECTIONS: Section[] = [
             items={[
               "Botón Descargar PDF — aparece en la sección Estado de cuenta histórico de la ficha.",
               "Incluye todos los movimientos del cliente: facturas emitidas, cobros recibidos y saldo acumulado.",
+              "Cada factura muestra su concepto/ítem real (viene de Zeta) debajo del movimiento principal.",
+              "Cada recibo muestra la caja o medio de cobro como línea secundaria.",
+              "Las notas de crédito van en columna Haber (descuentan saldo), no como deuda a cobrar.",
               "Separa UYU y USD en bloques independientes. No mezcla monedas.",
               "Usa el modo ledger: incluye también registros archivados para un historial completo.",
+              "El PDF no modifica datos — es solo lectura de lo sincronizado desde Zeta.",
               "El archivo se descarga directamente en el navegador.",
             ]}
           />
           <Callout variant="info">
-            El PDF refleja los datos sincronizados en Copilot. Si hay movimientos recientes en Zeta que todavía no se sincronizaron, no aparecerán hasta la próxima actualización.
+            El PDF refleja los datos sincronizados en Copilot. Los importes y conceptos vienen directamente de Zeta. Si hay movimientos recientes en Zeta que todavía no se sincronizaron, no aparecerán hasta la próxima actualización.
           </Callout>
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Detalle de facturas y recibos en Datos
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            En la sección <strong>Datos</strong>, al hacer clic en una factura o recibo, se abre un panel lateral con el detalle completo.
+          </p>
+          <Bullets
+            items={[
+              "Facturas — muestra fecha, importe, saldo, estado y las líneas del comprobante (concepto, artículo, importe por línea).",
+              "Recibos — muestra número visible, fecha, monto, caja y cobrador cuando están disponibles.",
+              "Las notas de crédito se identifican automáticamente y no se suman a la deuda del cliente.",
+              "Los datos técnicos internos (IDs Zeta, categorías de pipeline) no se muestran en la vista principal.",
+            ]}
+          />
         </div>
 
         <div className={`rounded-2xl border ${C.border} p-4`}>

@@ -13,6 +13,19 @@ import type { DataRow } from "@/lib/copilot-data";
 
 // ── Factories ─────────────────────────────────────────────────────────────────
 
+/** Forma completa de una línea de comprobante Zeta (raw_payload.Lineas[n]). */
+type ZetaLinea = {
+  Concepto?: string;
+  Descripcion?: string;
+  Notas?: string;
+  Total?: string | number;
+  Neto?: string | number;
+  IVA?: string | number;
+  Cantidad?: string | number;
+  PrecioUnitario?: string | number;
+  ArticuloCodigo?: string;
+};
+
 function invoice(opts: {
   id: string;
   number?: string;
@@ -24,16 +37,29 @@ function invoice(opts: {
   /** serie + numero para metadata CCV1 (e.g. serie:"A", numero:"2934") */
   serie?: string;
   numero?: string;
-  /** primer ítem del comprobante para Lineas[0].Descripcion */
+  /** primer ítem del comprobante — Lineas[0].Descripcion (legacy shorthand) */
   linea?: string;
+  /** líneas completas del comprobante — usa Concepto+Total igual que Zeta real */
+  lineas?: ZetaLinea[];
 }): DataRow {
-  const hasCcv1 = opts.cfeTipo != null || opts.serie != null || opts.numero != null || opts.linea != null;
-  const lineas = opts.linea != null ? [{ Descripcion: opts.linea }] : undefined;
+  const hasCcv1 =
+    opts.cfeTipo != null ||
+    opts.serie != null ||
+    opts.numero != null ||
+    opts.linea != null ||
+    opts.lineas != null;
+  // lineas option precede sobre linea shorthand
+  const rawLineas: ZetaLinea[] | undefined =
+    opts.lineas != null
+      ? opts.lineas
+      : opts.linea != null
+        ? [{ Descripcion: opts.linea }]
+        : undefined;
   const ccv1: Record<string, unknown> = {};
   if (opts.cfeTipo != null) ccv1.cfe_tipo = String(opts.cfeTipo);
   if (opts.serie != null) ccv1.serie = opts.serie;
   if (opts.numero != null) ccv1.numero = opts.numero;
-  if (lineas) ccv1.raw_payload = { Lineas: lineas };
+  if (rawLineas) ccv1.raw_payload = { Lineas: rawLineas };
   const meta: Record<string, unknown> | undefined = hasCcv1
     ? { zeta_customer_voucher_v1: ccv1 }
     : undefined;
@@ -573,5 +599,273 @@ describe("fixture El País S.A. — número de recibo real", () => {
   it("recibo muestra 'A768' desde reference normalizado", () => {
     const rec = stmt.uyu.movements.find((m) => m.kind === "receipt");
     expect(rec?.number).toBe("A768");
+  });
+});
+
+// ── detailLines — líneas secundarias enriquecidas ─────────────────────────────
+
+describe("detailLines — factura con Lineas reales", () => {
+  it("una línea con Concepto y Total → detailLine con label y debit", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [
+        invoice({
+          id: "i",
+          date: "2026-03-13",
+          total: 17080,
+          cfeTipo: "111",
+          lineas: [{ Concepto: "Filmación", Total: "17080.00" }],
+        }),
+      ],
+      receipts: [],
+      ledgerMode: true,
+    });
+    const dl = stmt.uyu.movements[0].detailLines;
+    expect(dl).toHaveLength(1);
+    expect(dl[0].label).toBe("Filmación");
+    expect(dl[0].debit).toBe(17080);
+    expect(dl[0].credit).toBeUndefined();
+  });
+
+  it("Concepto + Notas no-vacías → label concatenado con ' · '", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [
+        invoice({
+          id: "i",
+          date: "2026-04-17",
+          total: 41480,
+          cfeTipo: "111",
+          lineas: [{ Concepto: "Filmación", Notas: "Video Redes", Total: "41480.00" }],
+        }),
+      ],
+      receipts: [],
+      ledgerMode: true,
+    });
+    const dl = stmt.uyu.movements[0].detailLines;
+    expect(dl[0].label).toBe("Filmación · Video Redes");
+    expect(dl[0].debit).toBe(41480);
+  });
+
+  it("múltiples líneas → múltiples detailLines", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [
+        invoice({
+          id: "i",
+          date: "2026-01-01",
+          total: 10000,
+          cfeTipo: "111",
+          lineas: [
+            { Concepto: "Servicio A", Total: "6000.00" },
+            { Concepto: "Servicio B", Total: "4000.00" },
+          ],
+        }),
+      ],
+      receipts: [],
+      ledgerMode: true,
+    });
+    const dl = stmt.uyu.movements[0].detailLines;
+    expect(dl).toHaveLength(2);
+    expect(dl[0].label).toBe("Servicio A");
+    expect(dl[0].debit).toBe(6000);
+    expect(dl[1].label).toBe("Servicio B");
+    expect(dl[1].debit).toBe(4000);
+  });
+
+  it("sin Lineas → detailLines vacío", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [invoice({ id: "i", date: "2026-01-01", total: 5000 })],
+      receipts: [],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements[0].detailLines).toHaveLength(0);
+  });
+
+  it("detailLines no modifican el runningBalance", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [
+        invoice({
+          id: "i1",
+          date: "2026-01-01",
+          total: 10000,
+          lineas: [{ Concepto: "Ítem A", Total: "10000.00" }],
+        }),
+        invoice({
+          id: "i2",
+          date: "2026-02-01",
+          total: 5000,
+          lineas: [{ Concepto: "Ítem B", Total: "5000.00" }],
+        }),
+      ],
+      receipts: [],
+      ledgerMode: true,
+    });
+    const mvs = stmt.uyu.movements;
+    expect(mvs[0].runningBalance).toBe(10000);
+    expect(mvs[1].runningBalance).toBe(15000);
+    expect(stmt.uyu.summary.finalBalance).toBe(15000);
+  });
+});
+
+describe("detailLines — nota de crédito", () => {
+  it("NC CFE 112 con Lineas → detailLine credit (no debit)", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [
+        invoice({
+          id: "nc",
+          date: "2026-05-08",
+          total: 8662,
+          cfeTipo: "112",
+          lineas: [{ Concepto: "Inn content de Viandas hotel del Prado", Total: "8662.00" }],
+        }),
+      ],
+      receipts: [],
+      ledgerMode: true,
+    });
+    const mv = stmt.uyu.movements[0];
+    expect(mv.kind).toBe("credit_note");
+    const dl = mv.detailLines;
+    expect(dl).toHaveLength(1);
+    expect(dl[0].label).toBe("Inn content de Viandas hotel del Prado");
+    expect(dl[0].credit).toBe(8662);
+    expect(dl[0].debit).toBeUndefined();
+  });
+
+  it("NC detailLine credit no altera el runningBalance", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [
+        invoice({ id: "inv", date: "2026-01-01", total: 10000 }),
+        invoice({
+          id: "nc",
+          date: "2026-01-15",
+          total: 3000,
+          cfeTipo: "112",
+          lineas: [{ Concepto: "Descuento", Total: "3000.00" }],
+        }),
+      ],
+      receipts: [],
+      ledgerMode: true,
+    });
+    const mvs = stmt.uyu.movements;
+    expect(mvs[0].runningBalance).toBe(10000);
+    expect(mvs[1].runningBalance).toBe(7000);
+    expect(stmt.uyu.summary.finalBalance).toBe(7000);
+  });
+});
+
+describe("detailLines — recibo", () => {
+  it("recibo con payment_method → detailLine con label solo", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [],
+      receipts: [
+        receipt({ id: "r", date: "2026-05-20", amount: 41480, paymentMethod: "Caja Principal" }),
+      ],
+      ledgerMode: true,
+    });
+    const dl = stmt.uyu.movements[0].detailLines;
+    expect(dl).toHaveLength(1);
+    expect(dl[0].label).toBe("Caja Principal");
+    expect(dl[0].debit).toBeUndefined();
+    expect(dl[0].credit).toBeUndefined();
+  });
+
+  it("recibo sin payment_method → detailLines vacío", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [],
+      receipts: [receipt({ id: "r", date: "2026-05-20", amount: 41480 })],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements[0].detailLines).toHaveLength(0);
+  });
+
+  it("detailLines del recibo no alteran el runningBalance", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [invoice({ id: "i", date: "2026-01-01", total: 10000 })],
+      receipts: [
+        receipt({ id: "r", date: "2026-02-01", amount: 5000, paymentMethod: "Caja Principal" }),
+      ],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements[1].runningBalance).toBe(5000);
+    expect(stmt.uyu.summary.finalBalance).toBe(5000);
+  });
+});
+
+describe("fixture El País S.A. — detailLines de producción", () => {
+  const EL_PAIS_FULL = buildClientAccountStatement({
+    invoices: [
+      invoice({
+        id: "i1", number: "ZETA:CCV1:0:36:A:2821", date: "2026-03-13", total: 17080,
+        cfeTipo: "111", serie: "A", numero: "2821",
+        lineas: [{ Concepto: "Filmación", Notas: "Video Redes", Total: "17080.00" }],
+      }),
+      invoice({
+        id: "i2", number: "ZETA:CCV1:0:36:A:2877", date: "2026-04-17", total: 41480,
+        cfeTipo: "111", serie: "A", numero: "2877",
+        lineas: [{ Concepto: "Filmación", Notas: "Video Redes", Total: "41480.00" }],
+      }),
+      invoice({ id: "sp1", number: "ZETA:2574", date: "2026-04-17", total: 41480, category: "Zeta / saldos pendientes" }),
+      invoice({
+        id: "i3", number: "ZETA:CCV1:0:36:A:2932", date: "2026-05-07", total: 8662,
+        cfeTipo: "111", serie: "A", numero: "2932",
+        lineas: [{ Concepto: "Inn content de Viandas hotel del Prado", Total: "8662.00" }],
+      }),
+      invoice({
+        id: "i4", number: "ZETA:CCV1:0:36:A:2934", date: "2026-05-08", total: 8662,
+        cfeTipo: "111", serie: "A", numero: "2934",
+        lineas: [{ Concepto: "Inn content de Viandas hotel del Prado", Total: "8662.00" }],
+      }),
+      invoice({ id: "sp2", number: "ZETA:2674", date: "2026-05-08", total: 8662, category: "Zeta / saldos pendientes" }),
+      invoice({
+        id: "nc1", number: "ZETA:CCV1:0:36:A:391", date: "2026-05-08", total: 8662,
+        cfeTipo: "112", serie: "A", numero: "391",
+        lineas: [{ Concepto: "Inn content de Viandas hotel del Prado", Total: "8662.00" }],
+      }),
+    ],
+    receipts: [
+      receipt({ id: "r1", number: "ZETA:COB:2732", date: "2026-05-20", amount: 41480, reference: "A-768", paymentMethod: "Caja Principal" }),
+    ],
+    ledgerMode: true,
+  });
+
+  it("saldo final sigue siendo 25742", () => {
+    expect(EL_PAIS_FULL.uyu.summary.finalBalance).toBe(25742);
+  });
+
+  it("A391 NC tiene detailLine con credit = 8662", () => {
+    const nc = EL_PAIS_FULL.uyu.movements.find((m) => m.id === "nc1")!;
+    expect(nc.kind).toBe("credit_note");
+    expect(nc.detailLines).toHaveLength(1);
+    expect(nc.detailLines[0].label).toBe("Inn content de Viandas hotel del Prado");
+    expect(nc.detailLines[0].credit).toBe(8662);
+    expect(nc.detailLines[0].debit).toBeUndefined();
+  });
+
+  it("A2877 tiene detailLine con label 'Filmación · Video Redes' y debit = 41480", () => {
+    const inv = EL_PAIS_FULL.uyu.movements.find((m) => m.id === "i2")!;
+    expect(inv.detailLines[0].label).toBe("Filmación · Video Redes");
+    expect(inv.detailLines[0].debit).toBe(41480);
+  });
+
+  it("A768 recibo tiene detailLine 'Caja Principal' sin importe", () => {
+    const rec = EL_PAIS_FULL.uyu.movements.find((m) => m.id === "r1")!;
+    expect(rec.detailLines).toHaveLength(1);
+    expect(rec.detailLines[0].label).toBe("Caja Principal");
+    expect(rec.detailLines[0].debit).toBeUndefined();
+    expect(rec.detailLines[0].credit).toBeUndefined();
+  });
+
+  it("saldos pendientes excluidos no tienen detailLines", () => {
+    const ids = EL_PAIS_FULL.uyu.movements.map((m) => m.id);
+    expect(ids).not.toContain("sp1");
+    expect(ids).not.toContain("sp2");
+  });
+
+  it("ningún detailLine contiene categorías técnicas", () => {
+    for (const mv of EL_PAIS_FULL.uyu.movements) {
+      for (const dl of mv.detailLines) {
+        expect(dl.label).not.toMatch(/^Zeta \//);
+        expect(dl.label).not.toMatch(/ZETA:COB/);
+        expect(dl.label).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}/i);
+      }
+    }
   });
 });

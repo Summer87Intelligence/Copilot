@@ -42,6 +42,16 @@ export type AccountStatementCurrency = "UYU" | "USD";
 
 export type AccountStatementMovementKind = "invoice" | "receipt" | "credit_note";
 
+/** Línea secundaria informativa debajo del movimiento principal (igual que Zeta). */
+export type MovementDetailLine = {
+  /** Concepto, medio de pago u otro texto descriptivo. */
+  label: string;
+  /** Importe en columna Debe (solo informativo — NO modifica el saldo). */
+  debit?: number;
+  /** Importe en columna Haber (solo informativo — NO modifica el saldo). */
+  credit?: number;
+};
+
 export type AccountStatementMovement = {
   /** ID estable: fila DB. */
   id: string;
@@ -50,7 +60,7 @@ export type AccountStatementMovement = {
   kind: AccountStatementMovementKind;
   /** Número visible: invoice_number o receipt_number. */
   number: string;
-  /** Texto breve para explicar el origen operativo del movimiento. */
+  /** Texto breve (legacy / UI web). El PDF usa `detailLines` para más riqueza. */
   detail: string;
   currency: AccountStatementCurrency;
   /** Aumenta el saldo del cliente (factura, NC negativa). */
@@ -59,6 +69,8 @@ export type AccountStatementMovement = {
   credit: number;
   /** Saldo acumulado al cerrar este movimiento (ASC). */
   runningBalance: number;
+  /** Líneas secundarias para el PDF: conceptos, importes, medio de pago. No alteran el saldo. */
+  detailLines: readonly MovementDetailLine[];
   /** Fila original para tooltip / link / debug. */
   raw: DataRow;
 };
@@ -204,6 +216,54 @@ function invoiceDetail(row: DataRow): string {
 function receiptDetail(row: DataRow): string {
   // El número visible (A768) ya va en la columna Serie y Nº; aquí solo mostramos el medio de pago.
   return compactText(row.payment_method, "");
+}
+
+/**
+ * Retorna todas las líneas de `raw_payload.Lineas` de un comprobante.
+ * Defensivo: cualquier forma inválida devuelve array vacío.
+ */
+function readRawPayloadLineas(row: DataRow): Array<Record<string, unknown>> {
+  try {
+    const zm = row.zeta_metadata;
+    if (!zm || typeof zm !== "object") return [];
+    const v1 = (zm as Record<string, unknown>).zeta_customer_voucher_v1;
+    if (!v1 || typeof v1 !== "object") return [];
+    const rp = (v1 as Record<string, unknown>).raw_payload;
+    if (!rp || typeof rp !== "object") return [];
+    const lineas = (rp as Record<string, unknown>).Lineas;
+    if (!Array.isArray(lineas)) return [];
+    return (lineas as unknown[]).filter((l) => l && typeof l === "object") as Array<Record<string, unknown>>;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Construye las líneas de detalle secundarias para facturas/NCs desde `raw_payload.Lineas`.
+ * Para facturas: el importe va en Debe. Para NCs: va en Haber.
+ * Si no hay Lineas, devuelve array vacío (sin detalle).
+ */
+function buildInvoiceDetailLines(row: DataRow, isCreditNote: boolean): readonly MovementDetailLine[] {
+  const lineas = readRawPayloadLineas(row);
+  if (lineas.length === 0) return [];
+  return lineas.map((l) => {
+    const concepto = String(l["Concepto"] ?? l["Descripcion"] ?? l["descripcion"] ?? l["Detalle"] ?? "").trim();
+    const notas = String(l["Notas"] ?? "").trim();
+    const label = concepto && notas ? `${concepto} · ${notas}` : concepto || notas || "—";
+    const totalRaw = l["Total"];
+    const total = totalRaw != null ? parseFloat(String(totalRaw)) : NaN;
+    const amount = Number.isFinite(total) && total > 0 ? round2(total) : undefined;
+    return isCreditNote
+      ? { label, credit: amount }
+      : { label, debit: amount };
+  });
+}
+
+/** Construye la línea de detalle secundaria para recibos (medio de pago). */
+function buildReceiptDetailLines(row: DataRow): readonly MovementDetailLine[] {
+  const pm = String(row.payment_method ?? "").trim();
+  if (!pm) return [];
+  return [{ label: pm }];
 }
 
 /**
@@ -380,6 +440,7 @@ export function buildClientAccountStatement(
       debit: isCreditNote ? 0 : round2(total),
       credit: isCreditNote ? round2(total) : 0,
       runningBalance: 0,
+      detailLines: buildInvoiceDetailLines(inv, isCreditNote),
       raw: inv,
     };
     (cur === "USD" ? usd : uyu).push(movement);
@@ -408,6 +469,7 @@ export function buildClientAccountStatement(
       debit: 0,
       credit: round2(amount),
       runningBalance: 0,
+      detailLines: buildReceiptDetailLines(rec),
       raw: rec,
     };
     (cur === "USD" ? usd : uyu).push(movement);

@@ -7,6 +7,7 @@ import type {
   AccountStatementByCurrency,
   ClientAccountStatement,
   AccountStatementMovement,
+  MovementDetailLine,
 } from "@/lib/copilot-client-account-statement";
 import { extractSerieNumero } from "./extract-serie-numero";
 import { ISSUER_FALLBACK, type IssuerInfo } from "./issuer-fallback";
@@ -302,6 +303,27 @@ function renderSaldoAnteriorRow(
   return startY + 14;
 }
 
+const DETAIL_LINE_H = 11;
+const DETAIL_LABEL_W = COL.description.w + COL.reference.w + COL.currency.w - 22;
+
+function renderDetailLine(
+  doc: PDFKit.PDFDocument,
+  dl: MovementDetailLine,
+  y: number
+): void {
+  doc.fillColor(COLORS.muted).font("Helvetica").fontSize(7)
+    .text(dl.label, colX("description") + 14, y + 2,
+      { width: DETAIL_LABEL_W, lineBreak: false });
+  if (dl.debit != null && dl.debit > 0) {
+    doc.text(formatAmount(dl.debit), colX("debit"), y + 2,
+      { width: COL.debit.w - 4, align: "right" });
+  }
+  if (dl.credit != null && dl.credit > 0) {
+    doc.text(formatAmount(dl.credit), colX("credit"), y + 2,
+      { width: COL.credit.w - 4, align: "right" });
+  }
+}
+
 function renderMovementRow(
   doc: PDFKit.PDFDocument,
   mv: AccountStatementMovement,
@@ -353,12 +375,17 @@ function renderMovementRow(
     .strokeColor(COLORS.border).lineWidth(0.2).stroke();
   y += ROW_H;
 
-  // Línea de detalle secundaria (indentada)
-  if (mv.detail) {
-    doc.fillColor(COLORS.muted).font("Helvetica").fontSize(7)
-      .text(mv.detail, colX("description") + 14, y + 2,
-        { width: COL.description.w - 22, lineBreak: false });
-    y += 11;
+  // Líneas de detalle secundarias (indentadas, informativas)
+  const lines: readonly MovementDetailLine[] =
+    mv.detailLines?.length > 0
+      ? mv.detailLines
+      : mv.detail
+        ? [{ label: mv.detail }]
+        : [];
+
+  for (const dl of lines) {
+    renderDetailLine(doc, dl, y);
+    y += DETAIL_LINE_H;
   }
 
   return y;
@@ -477,7 +504,11 @@ export async function renderAccountStatementPdf(opts: AccountStatementPdfOptions
 
       for (let i = 0; i < block.movements.length; i++) {
         const mv = block.movements[i];
-        const rowH = mv.detail ? 27 : 16;
+        const detailCount =
+          mv.detailLines?.length > 0
+            ? mv.detailLines.length
+            : mv.detail ? 1 : 0;
+        const rowH = 16 + detailCount * DETAIL_LINE_H;
         ensureSpace(rowH, reTable);
         y = renderMovementRow(doc, mv, currency, i, y);
       }

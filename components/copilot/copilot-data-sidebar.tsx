@@ -58,6 +58,13 @@ function rowTitle(row: DataRow, entity?: DataEntity): string {
     const label = formatInvoiceFacturaPrimary(row);
     if (label && label !== "—") return label;
   }
+  if (entity === "receipts") {
+    // Prefer visible reference (e.g. "A-768" → "A768") over internal ID "ZETA:COB:2732"
+    const ref = String(row.reference ?? "").trim();
+    if (ref && !ref.includes(":")) {
+      return ref.replace(/^([A-Za-z]+)-(\d+)$/, "$1$2");
+    }
+  }
   return String(
     row.full_name ??
       row.name ??
@@ -162,31 +169,29 @@ function formatInvoiceSidebarCellValue(row: DataRow, k: string, v: unknown): str
 }
 
 const RECEIPT_SIDEBAR_LABELS: Record<string, string> = {
-  receipt_number: "Recibo",
+  reference: "Número",
   receipt_date: "Fecha",
   amount: "Monto",
   currency_code: "Moneda",
-  payment_method: "Método",
+  payment_method: "Método de cobro",
   status: "Estado",
-  reference: "Referencia",
   notes: "Notas",
 };
 
 /** Campos a mostrar (en orden) en el panel de detalle de recibos. */
 const RECEIPT_SIDEBAR_PRIORITY = [
-  "receipt_number",
+  "reference",
   "receipt_date",
   "amount",
   "currency_code",
   "payment_method",
   "status",
-  "reference",
 ] as const;
 
 /**
  * Campos técnicos / legacy que NO se muestran en el detalle de recibos.
- *  - `notes` queda fuera porque es el JSON `zeta_collection_receipt_v1` (gigante, ya lo
- *    consume `readReceiptCurrency` internamente).
+ *  - `receipt_number` es el ID interno Zeta (ZETA:COB:2732); la referencia visible está en `reference`.
+ *  - `notes` queda fuera porque es el JSON `zeta_collection_receipt_v1` (ya consumido por `readReceiptCurrency`).
  *  - Las claves legacy de moneda se omiten para evitar valores divergentes con la grilla.
  */
 const RECEIPT_SIDEBAR_SKIP = new Set([
@@ -197,6 +202,7 @@ const RECEIPT_SIDEBAR_SKIP = new Set([
   "is_active",
   "created_at",
   "updated_at",
+  "receipt_number",
   "notes",
   "currency",
   "moneda",
@@ -256,6 +262,146 @@ function formatReceiptSidebarCellValue(row: DataRow, k: string, v: unknown): str
   }
   return formatCopilotDataCell("receipts", k, v);
 }
+
+// ── Helpers de detalle Zeta ───────────────────────────────────────────────────
+
+type ZetaRawLinea = {
+  Concepto?: string;
+  Descripcion?: string;
+  Notas?: string;
+  Total?: string | number;
+  Neto?: string | number;
+  IVA?: string | number;
+  Cantidad?: string | number;
+  PrecioUnitario?: string | number;
+  ArticuloCodigo?: string;
+};
+
+/** Lee raw_payload.Lineas desde zeta_metadata de una factura. */
+function readInvoiceLineas(row: DataRow): ZetaRawLinea[] {
+  try {
+    const zm = row.zeta_metadata;
+    if (!zm || typeof zm !== "object") return [];
+    const v1 = (zm as Record<string, unknown>).zeta_customer_voucher_v1;
+    if (!v1 || typeof v1 !== "object") return [];
+    const rp = (v1 as Record<string, unknown>).raw_payload;
+    if (!rp || typeof rp !== "object") return [];
+    const lineas = (rp as Record<string, unknown>).Lineas;
+    if (!Array.isArray(lineas)) return [];
+    return lineas.filter((l) => l && typeof l === "object") as ZetaRawLinea[];
+  } catch {
+    return [];
+  }
+}
+
+type ZetaReceiptPayload = {
+  CajaNombre?: string;
+  CobradorNombre?: string;
+  LocalNombre?: string;
+  ComprobanteNombre?: string;
+  Descripcion?: string;
+};
+
+/** Lee zeta_collection_receipt_v1.raw_payload desde el campo notes de un recibo. */
+function readReceiptZetaPayload(row: DataRow): ZetaReceiptPayload | null {
+  try {
+    const raw = row.notes;
+    if (!raw || typeof raw !== "string") return null;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const v1 = parsed.zeta_collection_receipt_v1;
+    if (!v1 || typeof v1 !== "object") return null;
+    const rp = (v1 as Record<string, unknown>).raw_payload;
+    if (!rp || typeof rp !== "object") return null;
+    return rp as ZetaReceiptPayload;
+  } catch {
+    return null;
+  }
+}
+
+function formatLineaAmount(val: string | number | undefined): string | null {
+  if (val == null) return null;
+  const n = parseFloat(String(val));
+  if (!Number.isFinite(n)) return null;
+  return n.toLocaleString("es-UY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/** Sección "Líneas del comprobante" para facturas — muestra los ítems de raw_payload.Lineas. */
+function InvoiceLineasSection({ row }: { row: DataRow }) {
+  const lineas = readInvoiceLineas(row);
+  if (lineas.length === 0) return null;
+  return (
+    <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+        Líneas del comprobante ({lineas.length})
+      </h4>
+      <ul className="space-y-1.5">
+        {lineas.map((l, i) => {
+          const concepto = String(l.Concepto ?? l.Descripcion ?? "—").trim() || "—";
+          const notas = String(l.Notas ?? "").trim();
+          const articulo = String(l.ArticuloCodigo ?? "").trim();
+          const showArticulo = articulo && articulo !== "*";
+          const total = formatLineaAmount(l.Total);
+          return (
+            <li
+              key={i}
+              className="rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-2"
+            >
+              <p className="text-sm font-medium text-[var(--copilot-ink)]">{concepto}</p>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-[var(--copilot-ink-muted)]">
+                {notas && <span>{notas}</span>}
+                {showArticulo && <span>Art. {articulo}</span>}
+                {total && (
+                  <span className="ml-auto font-semibold text-[var(--copilot-ink)]">
+                    $ {total}
+                  </span>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/** Sección "Datos de cobro" para recibos — muestra caja, cobrador, local desde Zeta. */
+function ReceiptCobroSection({ row }: { row: DataRow }) {
+  const payload = readReceiptZetaPayload(row);
+  const pm = String(row.payment_method ?? "").trim();
+  const caja = payload?.CajaNombre?.trim() || pm || null;
+  const cobrador = payload?.CobradorNombre?.trim() || null;
+  const local = payload?.LocalNombre?.trim() || null;
+  const descripcion = payload?.Descripcion?.trim() || null;
+
+  if (!caja && !cobrador && !local && !descripcion) return null;
+
+  const items = [
+    caja && { label: "Caja / medio", value: caja },
+    cobrador && { label: "Cobrador", value: cobrador },
+    local && { label: "Local", value: local },
+    descripcion && { label: "Descripción", value: descripcion },
+  ].filter(Boolean) as Array<{ label: string; value: string }>;
+
+  return (
+    <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+        Datos de cobro
+      </h4>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {items.map(({ label, value }) => (
+          <div key={label} className="rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+              {label}
+            </p>
+            <p className="mt-1 text-sm text-[var(--copilot-ink)]">{value}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ── Listas compactas de registros relacionados ───────────────────────────────
 
 function CompactList({
   title,
@@ -1007,6 +1153,7 @@ export function CopilotDataSidebar({
                   {company ? rowTitle(company, "companies") : "Sin cliente asociado."}
                 </p>
               </section>
+              <InvoiceLineasSection row={row} />
               <CompactList title="Recibos asociados" rows={receipts} rowEntity="receipts" />
             </>
           ) : null}
@@ -1043,14 +1190,15 @@ export function CopilotDataSidebar({
                   {company ? rowTitle(company, "companies") : "Sin cliente asociado."}
                 </p>
               </section>
-              <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                  Factura
-                </h4>
-                <p className="text-sm text-[var(--copilot-ink)]">
-                  {invoice ? rowTitle(invoice) : "Sin factura relacionada."}
-                </p>
-              </section>
+              <ReceiptCobroSection row={row} />
+              {invoice ? (
+                <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                    Factura asociada
+                  </h4>
+                  <p className="text-sm text-[var(--copilot-ink)]">{rowTitle(invoice)}</p>
+                </section>
+              ) : null}
             </>
           ) : null}
 
