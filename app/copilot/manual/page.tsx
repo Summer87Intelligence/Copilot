@@ -558,7 +558,7 @@ const SECTIONS: Section[] = [
               "Resultado — qué pasó: Contactado, Prometió pagar, Sin respuesta, Contacto incorrecto, En disputa, Requiere seguimiento.",
               "Nota — campo libre para escribir el detalle: 'prometió pagar el viernes', 'sin respuesta, llamar en 3 días', etc.",
               "Próximo seguimiento — fecha opcional para recordar cuándo volver a contactar.",
-              "Promesa de pago — si el resultado fue 'Prometió pagar', podés registrar la fecha y monto de la promesa.",
+              "Promesa de pago — si el resultado fue 'Prometió pagar', la fecha es requerida para guardar la gestión. El monto es opcional.",
               "Registrar gestión — guarda el registro. No modifica la deuda ni marca facturas como pagadas.",
             ]}
           />
@@ -573,7 +573,7 @@ const SECTIONS: Section[] = [
           <Bullets
             items={[
               "Contactado — lograste comunicarte con el cliente.",
-              "Prometió pagar — el cliente se compromete a pagar en una fecha. Registrá la fecha y monto si podés.",
+              "Prometió pagar — el cliente se compromete a pagar en una fecha. La fecha de promesa es requerida; el monto es opcional.",
               "Sin respuesta — llamaste o escribiste pero no contestó.",
               "Contacto incorrecto — el número o email que tenés no es el correcto.",
               "En disputa — el cliente no reconoce la deuda o la cuestiona.",

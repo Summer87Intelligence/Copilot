@@ -10,6 +10,11 @@ import type {
   CollectionActionType,
   CollectionCurrency,
 } from "@/lib/copilot-collection-types";
+import {
+  formatActionDate,
+  formatRelative,
+  formatYmd,
+} from "@/lib/collection/collection-date-helpers";
 
 // ─── Local types ──────────────────────────────────────────────────────────────
 
@@ -124,42 +129,6 @@ function getBadgeClass(action: CollectionAction): string {
   return CLASSES[key] ?? "bg-slate-100 text-slate-500 border-slate-200";
 }
 
-function formatActionDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString("es-UY", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return iso.slice(0, 10);
-  }
-}
-
-function formatYmd(ymd: string | null): string {
-  if (!ymd) return "";
-  try {
-    return new Date(ymd + "T12:00:00").toLocaleDateString("es-UY", {
-      day: "numeric",
-      month: "short",
-    });
-  } catch {
-    return ymd;
-  }
-}
-
-function formatRelative(iso: string): string {
-  try {
-    const diff = Math.round((Date.now() - new Date(iso).getTime()) / 86_400_000);
-    if (diff === 0) return "hoy";
-    if (diff === 1) return "ayer";
-    if (diff <= 6) return `hace ${diff} días`;
-    return new Date(iso).toLocaleDateString("es-UY", { day: "numeric", month: "short" });
-  } catch {
-    return iso.slice(0, 10);
-  }
-}
-
 // ─── Pill ─────────────────────────────────────────────────────────────────────
 
 function Pill({
@@ -211,19 +180,24 @@ function HistoryItem({ action }: { action: CollectionAction }) {
         {action.notes ? (
           <p className="text-[12px] text-[var(--copilot-ink)]">{action.notes}</p>
         ) : null}
-        {action.promiseDate ? (
-          <p className="text-[11px] text-blue-600">
-            Promesa de pago: {formatYmd(action.promiseDate)}
-            {action.promiseAmount != null && action.promiseCurrency
-              ? ` · ${action.promiseCurrency === "USD" ? "U$S" : "$"} ${action.promiseAmount.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
-              : ""}
-          </p>
-        ) : null}
-        {action.nextActionDate ? (
-          <p className="text-[11px] text-[var(--copilot-ink-muted)]">
-            Próximo seguimiento: {formatYmd(action.nextActionDate)}
-          </p>
-        ) : null}
+        {(action.promiseDate || action.promiseAmount != null) ? (() => {
+          const dateFmt = formatYmd(action.promiseDate);
+          const amountFmt = action.promiseAmount != null && action.promiseCurrency
+            ? ` · ${action.promiseCurrency === "USD" ? "U$S" : "$"} ${action.promiseAmount.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
+            : "";
+          const label = dateFmt
+            ? `Promesa de pago: ${dateFmt}${amountFmt}`
+            : `Promesa de pago registrada sin fecha${amountFmt}`;
+          return <p className="text-[11px] text-blue-600">{label}</p>;
+        })() : null}
+        {action.nextActionDate ? (() => {
+          const dateFmt = formatYmd(action.nextActionDate);
+          return dateFmt ? (
+            <p className="text-[11px] text-[var(--copilot-ink-muted)]">
+              Próximo seguimiento: {dateFmt}
+            </p>
+          ) : null;
+        })() : null}
       </div>
     </div>
   );
@@ -276,6 +250,10 @@ export function CollectionFollowupForm({
   }, [prefillKey]);
 
   const handleSubmit = async () => {
+    if (outcome === "promised_payment" && !promiseDate.trim()) {
+      setSaveError("Ingresá una fecha de promesa de pago.");
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     const isPromise = outcome === "promised_payment";
@@ -339,11 +317,14 @@ export function CollectionFollowupForm({
               · {formatRelative(actions[0].createdAt)}
             </span>
           </div>
-          {actions[0].nextActionDate ? (
-            <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
-              Próximo seguimiento: {formatYmd(actions[0].nextActionDate)}
-            </p>
-          ) : null}
+          {actions[0].nextActionDate ? (() => {
+            const dateFmt = formatYmd(actions[0].nextActionDate);
+            return dateFmt ? (
+              <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
+                Próximo seguimiento: {dateFmt}
+              </p>
+            ) : null;
+          })() : null}
         </div>
       ) : null}
 
