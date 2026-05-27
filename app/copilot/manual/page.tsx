@@ -342,8 +342,15 @@ const SECTIONS: Section[] = [
             seguimientos, promesas y contactos recientes en un solo lugar. Es la respuesta a
             «¿a quién tengo que contactar hoy?» sin tener que revisar cada ficha.
           </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            También aparece resumida en <strong>Hoy</strong>: una card compacta muestra los counts
+            de vencidos, hoy, próximos y promesas. El CTA <em>Ver agenda</em> lleva directo a
+            Acciones → Agenda de cobranza.
+          </p>
           <Bullets
             items={[
+              "Acceso directo: Acciones → pestaña Agenda de cobranza (o /copilot/acciones?tab=agenda).",
+              "También en Hoy: resumen compacto con counts y link Ver agenda.",
               "Vencidos — seguimientos cuya fecha ya pasó, contactos incorrectos y clientes sin respuesta hace 5+ días.",
               "Hoy — seguimientos programados para hoy. Alta prioridad: hacer antes del cierre del día.",
               "Próximos — seguimientos futuros ordenados por fecha. Para planificar la semana.",
@@ -1603,7 +1610,7 @@ const FAQ: Array<{ q: string; a: React.ReactNode }> = [
   },
   {
     q: "¿Qué es la Agenda de cobranza y cómo la uso?",
-    a: "Es una pestaña dentro de Acciones que agrupa todos los seguimientos, promesas y contactos recientes en un solo lugar. La encontrás en Acciones → pestaña 'Agenda de cobranza'. Filtrá por Vencidos, Hoy, Próximos, Promesas o Contactados según lo que necesitás revisar. Solo muestra lo que vos registraste en las fichas de los clientes — no genera datos ni modifica deuda.",
+    a: "Es una pestaña dentro de Acciones que agrupa todos los seguimientos, promesas y contactos recientes en un solo lugar. La encontrás en Acciones → pestaña 'Agenda de cobranza', o entrando directo a /copilot/acciones?tab=agenda. También aparece resumida en Hoy: una card con counts de vencidos, hoy, próximos y promesas. Filtrá por categoría y hacé clic en Ver cliente para ir a la ficha. Solo muestra lo que vos registraste — no genera datos ni modifica deuda.",
   },
 ];
 

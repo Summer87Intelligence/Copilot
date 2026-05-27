@@ -25,6 +25,7 @@ import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
 import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
 
 import { AttentionClientsDrawer } from "./hoy-attention-clients-drawer";
+import { CollectionAgendaHoyCard } from "./collection-agenda-hoy-card";
 import { HoyAdvancedDetail } from "./hoy-advanced-detail";
 import { ClientsWithDebtSection } from "./hoy-clients-with-debt-section";
 import {
@@ -274,6 +275,8 @@ export function HoyPageView({
         )}
 
         <HoyQuickInsights insights={cockpit.insights} />
+
+        <CollectionAgendaHoyCard />
 
         <CopilotCard className="w-full !p-3">
           <div className="flex flex-wrap items-center justify-between gap-1.5">

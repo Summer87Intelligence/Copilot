@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { ActionCard } from "@/components/copilot/acciones/action-card";
 import { CopilotActionsEvidenceDrawer } from "@/components/copilot/copilot-actions-evidence-drawer";
@@ -139,8 +139,22 @@ function CopilotAccionesPageContent() {
           ? "Recomendación"
           : null;
 
-  // ── Tab state ────────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<"acciones" | "agenda">("acciones");
+  // ── Tab state (URL-synced) ───────────────────────────────────────────────────
+  const router = useRouter();
+  const activeTab: "acciones" | "agenda" =
+    searchParams.get("tab") === "agenda" ? "agenda" : "acciones";
+
+  function setTab(tab: "acciones" | "agenda") {
+    const params = new URLSearchParams(searchParams.toString());
+    // Always strip provenance params when switching tabs to keep URL clean
+    if (tab === "acciones") {
+      params.delete("tab");
+    } else {
+      params.set("tab", tab);
+    }
+    const qs = params.toString();
+    router.replace(`/copilot/acciones${qs ? `?${qs}` : ""}`, { scroll: false });
+  }
 
   // ── Bandeja state ───────────────────────────────────────────────────────────
   const [bandejaActions, setBandejaActions] = useState<CopilotAction[]>([]);
@@ -490,7 +504,7 @@ function CopilotAccionesPageContent() {
             <button
               key={tab}
               type="button"
-              onClick={() => setActiveTab(tab)}
+              onClick={() => setTab(tab)}
               className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition ${
                 activeTab === tab
                   ? "bg-[var(--copilot-accent)] text-white shadow-sm"
