@@ -333,6 +333,33 @@ const SECTIONS: Section[] = [
             ]}
           />
         </div>
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Agenda de cobranza
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            La pestaña <strong>Agenda de cobranza</strong> dentro de Acciones agrupa todos los
+            seguimientos, promesas y contactos recientes en un solo lugar. Es la respuesta a
+            «¿a quién tengo que contactar hoy?» sin tener que revisar cada ficha.
+          </p>
+          <Bullets
+            items={[
+              "Vencidos — seguimientos cuya fecha ya pasó, contactos incorrectos y clientes sin respuesta hace 5+ días.",
+              "Hoy — seguimientos programados para hoy. Alta prioridad: hacer antes del cierre del día.",
+              "Próximos — seguimientos futuros ordenados por fecha. Para planificar la semana.",
+              "Promesas — clientes con promesa de pago activa, separadas en vencidas (crítico) y futuras (monitorear).",
+              "Contactados — clientes contactados en los últimos 7 días sin señal pendiente. Estado 'Esperando respuesta'.",
+            ]}
+          />
+          <Callout variant="info">
+            La agenda se arma a partir de las gestiones registradas en las fichas de los clientes.
+            Si no registrás gestiones, la agenda queda vacía — no genera seguimientos automáticos.
+          </Callout>
+          <Callout variant="warning">
+            La agenda no modifica deuda, no marca facturas como pagadas y no ejecuta ninguna acción
+            automática. Es solo una vista operativa de lo que registraste.
+          </Callout>
+        </div>
         <div className="flex gap-3 flex-wrap">
           <NavLink href="/copilot/acciones" label="Ir a Acciones" />
         </div>
@@ -1573,6 +1600,10 @@ const FAQ: Array<{ q: string; a: React.ReactNode }> = [
   {
     q: "¿Qué pasa si cargo una fecha de próximo seguimiento?",
     a: "Cuando llega ese día, Copilot lo muestra como prioridad alta en los Agentes y en Acciones. Es un recordatorio operativo — no ejecuta ninguna acción automática.",
+  },
+  {
+    q: "¿Qué es la Agenda de cobranza y cómo la uso?",
+    a: "Es una pestaña dentro de Acciones que agrupa todos los seguimientos, promesas y contactos recientes en un solo lugar. La encontrás en Acciones → pestaña 'Agenda de cobranza'. Filtrá por Vencidos, Hoy, Próximos, Promesas o Contactados según lo que necesitás revisar. Solo muestra lo que vos registraste en las fichas de los clientes — no genera datos ni modifica deuda.",
   },
 ];
 

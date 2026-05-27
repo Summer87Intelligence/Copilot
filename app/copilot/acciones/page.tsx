@@ -52,6 +52,12 @@ import {
   groupCollectionActionsByCompany,
 } from "@/lib/copilot-actions/enrich-actions";
 import type { CollectionAction } from "@/lib/copilot-collection-types";
+import { CollectionAgendaSection } from "@/components/copilot/acciones/collection-agenda-section";
+import {
+  buildCollectionAgenda,
+  type CollectionAgenda,
+  type AgendaClientInfo,
+} from "@/lib/collection/build-collection-agenda";
 
 // ── Pipeline helpers ──────────────────────────────────────────────────────────
 
@@ -133,10 +139,14 @@ function CopilotAccionesPageContent() {
           ? "Recomendación"
           : null;
 
+  // ── Tab state ────────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<"acciones" | "agenda">("acciones");
+
   // ── Bandeja state ───────────────────────────────────────────────────────────
   const [bandejaActions, setBandejaActions] = useState<CopilotAction[]>([]);
   const [bandejaLoading, setBandejaLoading] = useState(true);
   const [bandejaFilter, setBandejaFilter] = useState<BandejaFilter>("all");
+  const [agenda, setAgenda] = useState<CollectionAgenda | null>(null);
 
   const loadBandeja = useCallback(async () => {
     setBandejaLoading(true);
@@ -162,12 +172,14 @@ function CopilotAccionesPageContent() {
       }
 
       let collectionByCompanyId = new Map<string, CollectionAction[]>();
+      let allCollectionActions: CollectionAction[] = [];
       if (collectionRes.status === "fulfilled") {
         const json = (await collectionRes.value.json().catch(() => null)) as {
           ok?: boolean;
           actions?: CollectionAction[];
         } | null;
         if (json?.actions?.length) {
+          allCollectionActions = json.actions;
           collectionByCompanyId = groupCollectionActionsByCompany(json.actions);
         }
       }
@@ -180,6 +192,19 @@ function CopilotAccionesPageContent() {
       const merged = mergePrioritizedActions(fromNotifications, fromPortfolio);
       const enriched = enrichActionsWithCollectionFollowups(merged, collectionByCompanyId);
       setBandejaActions(enriched);
+
+      // Build agenda from raw collection actions + portfolio client info
+      const agendaClients: AgendaClientInfo[] = portfolioRows.map((r) => ({
+        companyId: r.company_id,
+        name: r.name,
+        debtUyu: r.debt_uyu,
+        debtUsd: r.debt_usd,
+        overdueUyu: r.overdue_uyu,
+        overdueUsd: r.overdue_usd,
+      }));
+      setAgenda(
+        buildCollectionAgenda({ actions: allCollectionActions, clients: agendaClients })
+      );
     } finally {
       setBandejaLoading(false);
     }
@@ -459,7 +484,30 @@ function CopilotAccionesPageContent() {
           </div>
         ) : null}
 
+        {/* ── Tab bar ────────────────────────────────────────────────────── */}
+        <div className="flex gap-1 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-1">
+          {(["acciones", "agenda"] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                activeTab === tab
+                  ? "bg-[var(--copilot-accent)] text-white shadow-sm"
+                  : "text-[var(--copilot-ink-muted)] hover:bg-white"
+              }`}
+            >
+              {tab === "acciones" ? "Acciones" : "Agenda de cobranza"}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "agenda" ? (
+          <CollectionAgendaSection agenda={agenda} loading={bandejaLoading} />
+        ) : null}
+
         {/* ── PRIMARY: Bandeja operativa ─────────────────────────────────── */}
+        {activeTab === "acciones" ? (<>
         <CopilotCard>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div>
@@ -1015,6 +1063,8 @@ function CopilotAccionesPageContent() {
             </div>
           ) : null}
         </div>
+        </>
+        ) : null}
       </div>
 
       <CopilotActionsEvidenceDrawer
