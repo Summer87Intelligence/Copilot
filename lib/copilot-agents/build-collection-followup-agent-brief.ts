@@ -14,6 +14,7 @@
 
 import type { CollectionAction } from "@/lib/copilot-collection-types";
 import type { CopilotAgentPriority } from "./types";
+import { formatYmd as _fmtYmd } from "@/lib/collection/collection-date-helpers";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -36,15 +37,8 @@ function getUiOutcome(action: CollectionAction): string {
   return action.status;
 }
 
-function fmtDate(ymd: string): string {
-  try {
-    return new Date(ymd + "T12:00:00").toLocaleDateString("es-UY", {
-      day: "numeric",
-      month: "short",
-    });
-  } catch {
-    return ymd;
-  }
+function fmtDate(ymd: string | null | undefined): string {
+  return _fmtYmd(ymd) ?? (ymd ? ymd.slice(0, 10) : "—");
 }
 
 function daysAgo(createdAtIso: string, todayYmd: string): number {

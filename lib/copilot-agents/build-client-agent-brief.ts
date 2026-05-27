@@ -220,6 +220,13 @@ export function buildClientAgentBrief(input: BuildClientAgentBriefInput): Client
   const promiseIsExpired = isPromiseOutcome && !!promiseDateYmd && promiseDateYmd < today;
   const promiseIsFuture = isPromiseOutcome && !!promiseDateYmd && promiseDateYmd >= today;
 
+  // ── Recent contact logic ──
+  const actionCreatedYmd = extractYmd(action?.createdAt);
+  const daysSinceAction =
+    actionCreatedYmd !== null ? daysBetween(actionCreatedYmd, today) : null;
+  const isRecentlyContacted =
+    outcome === "contacted" && daysSinceAction !== null && daysSinceAction <= 7;
+
   // ── Overdue relevance ──
   const overdueShareUyu = input.debtUyu > 0 ? input.overdueUyu / input.debtUyu : 0;
   const overdueShareUsd = input.debtUsd > 0 ? input.overdueUsd / input.debtUsd : 0;
@@ -340,11 +347,30 @@ export function buildClientAgentBrief(input: BuildClientAgentBriefInput): Client
   if (action && action.createdAt) {
     const label = relativeLabel(action.createdAt, now);
     const ch = channelLabel(action.channel);
+    let lastActionBody: string;
+    let lastActionSeverity: ClientAgentInsight["severity"] = "low";
+
+    if (isRecentlyContacted) {
+      lastActionBody = `Ya contactado por ${ch} ${label}. Esperar respuesta o programar seguimiento.`;
+    } else if (outcome === "no_response") {
+      const days = daysSinceAction ?? 0;
+      lastActionBody = `Sin respuesta en la última gestión por ${ch} (${label}).`;
+      lastActionSeverity = days >= 5 ? "high" : "medium";
+    } else if (outcome === "wrong_contact") {
+      lastActionBody = `El último contacto fue incorrecto. Actualizar datos del cliente.`;
+      lastActionSeverity = "high";
+    } else if (outcome === "disputed") {
+      lastActionBody = `El cliente está en disputa (gestión ${label}).`;
+      lastActionSeverity = "medium";
+    } else {
+      lastActionBody = `La última gestión fue por ${ch} ${label}.`;
+    }
+
     insights.push({
       id: "last-action",
       title: "Última gestión",
-      body: `La última gestión fue por ${ch} ${label}.`,
-      severity: "low",
+      body: lastActionBody,
+      severity: lastActionSeverity,
     });
   } else if (hasDebt) {
     insights.push({
@@ -416,14 +442,25 @@ export function buildClientAgentBrief(input: BuildClientAgentBriefInput): Client
     whyItMatters = `${buildDebtWhyItMatters(input)} ${buildMissingContactReason(input)} ${contextSentence}`.trim();
     recommendedAction = { label: "Ver contactos", tab: "contactos" };
   } else if (hasOverdue) {
-    summary = promiseIsFuture
-      ? "El cliente tiene saldo vencido, pero ya hay una promesa de pago vigente."
-      : "El cliente tiene saldo vencido y requiere seguimiento de cobranza.";
-    mainFinding = promiseIsFuture ? "Saldo vencido con promesa vigente" : "Saldo vencido";
     whyItMatters = `${buildDebtWhyItMatters(input)} ${contextSentence}`.trim();
-    if (promiseIsFuture) {
+    if (isRecentlyContacted && !promiseIsFuture) {
+      const ch = channelLabel(action!.channel);
+      const whenLabel =
+        daysSinceAction === 0
+          ? "hoy"
+          : daysSinceAction === 1
+          ? "ayer"
+          : `hace ${daysSinceAction} días`;
+      summary = `El cliente tiene saldo vencido, pero ya fue contactado por ${ch} ${whenLabel}. Esperar respuesta o programar seguimiento.`;
+      mainFinding = "Saldo vencido — ya contactado";
+      recommendedAction = { label: "Ver seguimiento", scrollToAssistant: true };
+    } else if (promiseIsFuture) {
+      summary = "El cliente tiene saldo vencido, pero ya hay una promesa de pago vigente.";
+      mainFinding = "Saldo vencido con promesa vigente";
       recommendedAction = { label: "Ver seguimiento", scrollToAssistant: true };
     } else {
+      summary = "El cliente tiene saldo vencido y requiere seguimiento de cobranza.";
+      mainFinding = "Saldo vencido";
       recommendedAction = { label: "Preparar cobranza", scrollToAssistant: true };
     }
   } else if (promiseIsFuture) {

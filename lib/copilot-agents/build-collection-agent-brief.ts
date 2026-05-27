@@ -14,6 +14,7 @@ import {
   buildCollectionFollowupPriorities,
   SEV_ORDER,
 } from "./build-collection-followup-agent-brief";
+import { formatYmd as _fmtYmd } from "@/lib/collection/collection-date-helpers";
 
 const RECENT_DAYS = 7;
 
@@ -60,15 +61,8 @@ function followupReason(action: CollectionAction, todayYmd: string): string {
   }
 }
 
-function fmtDate(ymd: string): string {
-  try {
-    return new Date(ymd + "T12:00:00").toLocaleDateString("es-UY", {
-      day: "numeric",
-      month: "short",
-    });
-  } catch {
-    return ymd;
-  }
+function fmtDate(ymd: string | null | undefined): string {
+  return _fmtYmd(ymd) ?? (ymd ? ymd.slice(0, 10) : "—");
 }
 
 /**

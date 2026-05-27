@@ -234,4 +234,96 @@ describe("buildClientAgentBrief", () => {
     expect(result.recommendedAction.label).toBe("Ver actualización");
     expect(result.recommendedAction.tab).toBe("zeta");
   });
+
+  // ── Contacto reciente ─────────────────────────────────────────────────────
+
+  it("vencido + contactado hoy → summary menciona 'contactado' y CTA de ver seguimiento", () => {
+    const result = buildClientAgentBrief(
+      base({
+        debtUyu: 10000,
+        overdueUyu: 3000,
+        hasEmail: true,
+        lastCollectionAction: {
+          outcome: "contacted",
+          channel: "email",
+          createdAt: NOW.toISOString(), // hoy
+        },
+      })
+    );
+    expect(result.summary).toContain("contactado");
+    expect(result.recommendedAction.label).toBe("Ver seguimiento");
+    expect(result.recommendedAction.scrollToAssistant).toBe(true);
+  });
+
+  it("vencido + contactado hace 10 días → CTA de preparar cobranza (ya no reciente)", () => {
+    const tenDaysAgo = new Date(NOW.getTime() - 10 * 86_400_000).toISOString();
+    const result = buildClientAgentBrief(
+      base({
+        debtUyu: 10000,
+        overdueUyu: 3000,
+        hasEmail: true,
+        lastCollectionAction: {
+          outcome: "contacted",
+          channel: "email",
+          createdAt: tenDaysAgo,
+        },
+      })
+    );
+    expect(result.recommendedAction.label).toBe("Preparar cobranza");
+  });
+
+  it("insight last-action con outcome 'contacted' reciente → menciona 'Esperar respuesta'", () => {
+    const result = buildClientAgentBrief(
+      base({
+        debtUyu: 5000,
+        hasEmail: true,
+        lastCollectionAction: {
+          outcome: "contacted",
+          channel: "whatsapp",
+          createdAt: NOW.toISOString(),
+        },
+      })
+    );
+    const lastAction = result.insights.find((i) => i.id === "last-action");
+    expect(lastAction).toBeDefined();
+    expect(lastAction!.body).toContain("WhatsApp");
+    expect(lastAction!.body).toContain("Esperar");
+    expect(lastAction!.severity).toBe("low");
+  });
+
+  it("insight last-action con outcome 'no_response' → severity medium/high", () => {
+    const result = buildClientAgentBrief(
+      base({
+        debtUyu: 5000,
+        hasEmail: true,
+        lastCollectionAction: {
+          outcome: "no_response",
+          channel: "call",
+          createdAt: new Date(NOW.getTime() - 6 * 86_400_000).toISOString(),
+        },
+      })
+    );
+    const lastAction = result.insights.find((i) => i.id === "last-action");
+    expect(lastAction).toBeDefined();
+    expect(lastAction!.body.toLowerCase()).toContain("sin respuesta");
+    expect(["medium", "high"]).toContain(lastAction!.severity);
+  });
+
+  it("insight last-action con outcome 'wrong_contact' → severity high y texto sobre actualizar", () => {
+    const result = buildClientAgentBrief(
+      base({
+        debtUyu: 5000,
+        hasEmail: true,
+        lastCollectionAction: {
+          outcome: "wrong_contact",
+          channel: "whatsapp",
+          createdAt: NOW.toISOString(),
+        },
+      })
+    );
+    const lastAction = result.insights.find((i) => i.id === "last-action");
+    expect(lastAction).toBeDefined();
+    expect(lastAction!.severity).toBe("high");
+    expect(lastAction!.body.toLowerCase()).toContain("incorrecto");
+  });
 });

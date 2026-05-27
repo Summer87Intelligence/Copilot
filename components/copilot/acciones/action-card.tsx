@@ -9,6 +9,10 @@ import type {
   CopilotActionPriority,
   CopilotActionType,
 } from "@/lib/copilot-actions/build-actions";
+import {
+  formatYmd as _fmtYmd,
+  formatRelative as _fmtRelative,
+} from "@/lib/collection/collection-date-helpers";
 
 function priorityBadgeClass(priority: CopilotActionPriority): string {
   switch (priority) {
@@ -63,26 +67,11 @@ function typeLabel(type: CopilotActionType): string {
 }
 
 function formatRelativeDate(iso: string): string {
-  try {
-    const diff = Math.round((Date.now() - new Date(iso).getTime()) / 86_400_000);
-    if (diff === 0) return "hoy";
-    if (diff === 1) return "ayer";
-    if (diff <= 6) return `hace ${diff} días`;
-    return new Date(iso).toLocaleDateString("es-UY", { day: "numeric", month: "short" });
-  } catch {
-    return iso.slice(0, 10);
-  }
+  return _fmtRelative(iso);
 }
 
-function formatDateShort(ymd: string): string {
-  try {
-    return new Date(ymd + "T12:00:00").toLocaleDateString("es-UY", {
-      day: "numeric",
-      month: "short",
-    });
-  } catch {
-    return ymd;
-  }
+function formatDateShort(ymd: string | null | undefined): string {
+  return _fmtYmd(ymd) ?? (ymd ? ymd.slice(0, 10) : "—");
 }
 
 const CHANNEL_LABEL: Record<string, string> = {

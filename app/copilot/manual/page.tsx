@@ -598,6 +598,23 @@ const SECTIONS: Section[] = [
             antigua. Cada entrada muestra canal, resultado, nota y próximo
             seguimiento si existe.
           </p>
+          <p className="mt-3 mb-2 text-[11px] font-semibold text-[var(--copilot-ink-muted)]">
+            Efecto en Acciones y Agentes
+          </p>
+          <Bullets
+            items={[
+              "Registrar una gestión hace que Acciones y Agentes reconozcan el estado real del cliente, sin repetir la misma recomendación de contacto.",
+              "Si el cliente fue contactado recientemente, Copilot lo muestra como 'ya contactado' o 'esperando respuesta' en lugar de 'priorizar cobranza'.",
+              "Si hay una promesa de pago futura, los Agentes sugieren monitorearla en lugar de contactar.",
+              "Si la promesa vence sin confirmación de pago, la prioridad sube automáticamente.",
+              "Si el resultado fue 'Sin respuesta' hace más de 5 días, vuelve a ser prioritario.",
+              "Si el resultado fue 'Contacto incorrecto', la prioridad se mantiene alta porque no hubo contacto útil.",
+              "La deuda nunca desaparece. Solo cambia el copy y el tono de la recomendación.",
+            ]}
+          />
+          <Callout variant="info">
+            Registrar la gestión es lo único que hace que Acciones y Agentes sepan que el cliente ya fue contactado. Sin ese registro, el sistema no tiene constancia del contacto y seguirá recomendando contactarlo.
+          </Callout>
         </div>
 
         <div className={`rounded-2xl border ${C.border} p-4`}>

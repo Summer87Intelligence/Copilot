@@ -13,6 +13,7 @@ import type {
   CopilotActionPriority,
 } from "./build-actions";
 import type { CollectionAction } from "@/lib/copilot-collection-types";
+import { formatYmd as _fmtYmd } from "@/lib/collection/collection-date-helpers";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -86,15 +87,8 @@ function computeAdjustedPriority(
   }
 }
 
-function formatDateShort(ymd: string): string {
-  try {
-    return new Date(ymd + "T12:00:00").toLocaleDateString("es-UY", {
-      day: "numeric",
-      month: "short",
-    });
-  } catch {
-    return ymd;
-  }
+function formatDateShort(ymd: string | null | undefined): string {
+  return _fmtYmd(ymd) ?? (ymd ? ymd.slice(0, 10) : "—");
 }
 
 function buildEnrichedReason(
