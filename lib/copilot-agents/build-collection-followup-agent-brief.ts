@@ -75,15 +75,15 @@ export function buildCollectionFollowupPriorities(
     const clientName = nameByCompanyId.get(companyId) ?? null;
     const href = `/copilot/clientes/${encodeURIComponent(companyId)}`;
 
-    // A) Próximo seguimiento vencido
+    // A) Próximo seguimiento vencido o igual a hoy
     if (action.nextActionDate && action.nextActionDate <= todayYmd) {
       const isToday = action.nextActionDate === todayYmd;
       result.push({
         id: `followup-overdue-${companyId}`,
         agentId: "collection",
-        title: clientName
-          ? `Retomar seguimiento de ${clientName}`
-          : "Retomar seguimiento pendiente",
+        title: isToday
+          ? (clientName ? `Hacer seguimiento hoy — ${clientName}` : "Hacer seguimiento hoy")
+          : (clientName ? `Retomar seguimiento de ${clientName}` : "Retomar seguimiento pendiente"),
         reason: isToday
           ? "Tiene seguimiento programado para hoy."
           : `Seguimiento programado para ${fmtDate(action.nextActionDate)} (vencido).`,

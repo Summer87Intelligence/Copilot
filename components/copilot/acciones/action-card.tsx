@@ -103,8 +103,14 @@ function CollectionContextBlock({ ctx }: { ctx: CopilotActionCollectionContext }
 
   const today = new Date().toISOString().slice(0, 10);
   const followupTag = (() => {
-    if (ctx.nextFollowUpAt && ctx.nextFollowUpAt <= today) {
-      return { label: "Seguimiento vencido", cls: "bg-amber-50 text-amber-700 border-amber-200" };
+    if (ctx.nextFollowUpAt) {
+      if (ctx.nextFollowUpAt < today) {
+        return { label: "Seguimiento vencido", cls: "bg-rose-50 text-rose-700 border-rose-200" };
+      }
+      if (ctx.nextFollowUpAt === today) {
+        return { label: "Seguimiento hoy", cls: "bg-amber-50 text-amber-700 border-amber-200" };
+      }
+      return { label: "Seguimiento programado", cls: "bg-sky-50 text-sky-700 border-sky-200" };
     }
     if (ctx.latestOutcome === "promised_payment" && ctx.promiseDate) {
       if (ctx.promiseDate < today) {

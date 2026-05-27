@@ -202,3 +202,74 @@ describe("getCollectionFollowupContext — prioridad de reglas", () => {
     expect(ctx.recommendedTone).toBe("monitor");
   });
 });
+
+describe("getCollectionFollowupContext — seguimientos programados", () => {
+  it("nextActionDate futuro → hasUpcomingFollowup, hasNextFollowupDue false, tone monitor", () => {
+    const action = makeAction({ nextActionDate: "2026-06-10" });
+    const ctx = getCollectionFollowupContext([action], NOW);
+    expect(ctx.hasUpcomingFollowup).toBe(true);
+    expect(ctx.hasOverdueFollowup).toBe(false);
+    expect(ctx.hasNextFollowupDue).toBe(false);
+    expect(ctx.recommendedTone).toBe("monitor");
+    expect(ctx.reason).toContain("programado");
+  });
+
+  it("nextActionDate hoy → hasNextFollowupDue, hasOverdueFollowup false, hasUpcomingFollowup false, tone follow_up", () => {
+    const action = makeAction({ nextActionDate: TODAY_YMD });
+    const ctx = getCollectionFollowupContext([action], NOW);
+    expect(ctx.hasNextFollowupDue).toBe(true);
+    expect(ctx.hasOverdueFollowup).toBe(false);
+    expect(ctx.hasUpcomingFollowup).toBe(false);
+    expect(ctx.recommendedTone).toBe("follow_up");
+  });
+
+  it("nextActionDate pasado → hasOverdueFollowup, hasNextFollowupDue, hasUpcomingFollowup false", () => {
+    const action = makeAction({ nextActionDate: "2026-05-20" });
+    const ctx = getCollectionFollowupContext([action], NOW);
+    expect(ctx.hasOverdueFollowup).toBe(true);
+    expect(ctx.hasNextFollowupDue).toBe(true);
+    expect(ctx.hasUpcomingFollowup).toBe(false);
+    expect(ctx.recommendedTone).toBe("follow_up");
+  });
+
+  it("sin nextActionDate → hasUpcomingFollowup false, hasOverdueFollowup false", () => {
+    const action = makeAction({ nextActionDate: null });
+    const ctx = getCollectionFollowupContext([action], NOW);
+    expect(ctx.hasUpcomingFollowup).toBe(false);
+    expect(ctx.hasOverdueFollowup).toBe(false);
+  });
+
+  it("sin gestiones → hasUpcomingFollowup false, hasOverdueFollowup false", () => {
+    const ctx = getCollectionFollowupContext([], NOW);
+    expect(ctx.hasUpcomingFollowup).toBe(false);
+    expect(ctx.hasOverdueFollowup).toBe(false);
+    expect(ctx.hasNextFollowupDue).toBe(false);
+  });
+
+  it("promesa vencida prevalece sobre followup futuro — tone urgent no monitor", () => {
+    const action = makeAction({
+      status: "promised_payment",
+      metadata: { ui_outcome: "promised_payment" },
+      promiseDate: "2026-05-20",
+      nextActionDate: "2026-06-01", // futuro
+    });
+    const ctx = getCollectionFollowupContext([action], NOW);
+    expect(ctx.hasOverduePromise).toBe(true);
+    expect(ctx.hasUpcomingFollowup).toBe(true);
+    expect(ctx.recommendedTone).toBe("urgent");
+  });
+
+  it("followup vencido prevalece sobre followup futuro (no aplica en mismo action, pero se valida lógica)", () => {
+    const action = makeAction({ nextActionDate: "2026-05-20" }); // pasado
+    const ctx = getCollectionFollowupContext([action], NOW);
+    expect(ctx.hasOverdueFollowup).toBe(true);
+    expect(ctx.hasUpcomingFollowup).toBe(false);
+    expect(ctx.recommendedTone).toBe("follow_up");
+  });
+
+  it("followup futuro reason menciona la fecha", () => {
+    const action = makeAction({ nextActionDate: "2026-06-01" });
+    const ctx = getCollectionFollowupContext([action], NOW);
+    expect(ctx.reason).toContain("1");
+  });
+});

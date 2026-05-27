@@ -22,6 +22,10 @@ export type CollectionFollowupContext = {
   hasUpcomingPromise: boolean;
   /** nextActionDate vencido o igual a hoy. */
   hasNextFollowupDue: boolean;
+  /** nextActionDate estrictamente pasado (< hoy). Subconjunto de hasNextFollowupDue. */
+  hasOverdueFollowup: boolean;
+  /** nextActionDate en el futuro (> hoy). */
+  hasUpcomingFollowup: boolean;
   /** Label del canal de la última gestión: "email", "WhatsApp", "teléfono", etc. */
   latestActionLabel: string | null;
   /** ISO timestamp de createdAt de la última gestión. */
@@ -31,8 +35,8 @@ export type CollectionFollowupContext = {
   /**
    * Tono recomendado para el copy:
    * - urgent: sin respuesta hace 5+ días, promesa vencida, contacto incorrecto
-   * - follow_up: seguimiento vencido, sin respuesta 2-4 días
-   * - monitor: promesa futura, contacto reciente válido
+   * - follow_up: seguimiento vencido (hoy o pasado), sin respuesta 2-4 días
+   * - monitor: promesa futura, seguimiento futuro, contacto reciente válido
    * - normal: no hay señales activas
    */
   recommendedTone: "urgent" | "follow_up" | "monitor" | "normal";
@@ -92,6 +96,8 @@ export function getCollectionFollowupContext(
       hasOverduePromise: false,
       hasUpcomingPromise: false,
       hasNextFollowupDue: false,
+      hasOverdueFollowup: false,
+      hasUpcomingFollowup: false,
       latestActionLabel: null,
       latestActionDate: null,
       daysSinceLatest: null,
@@ -120,6 +126,10 @@ export function getCollectionFollowupContext(
     hasPromiseToPay && !!latest.promiseDate && latest.promiseDate >= todayYmd;
   const hasNextFollowupDue =
     !!latest.nextActionDate && latest.nextActionDate <= todayYmd;
+  const hasOverdueFollowup =
+    !!latest.nextActionDate && latest.nextActionDate < todayYmd;
+  const hasUpcomingFollowup =
+    !!latest.nextActionDate && latest.nextActionDate > todayYmd;
 
   // ── Tone ──
   let recommendedTone: CollectionFollowupContext["recommendedTone"];
@@ -152,6 +162,12 @@ export function getCollectionFollowupContext(
     reason = dateFmt
       ? `Promesa de pago vigente hasta ${dateFmt}. Monitorear.`
       : "Promesa de pago vigente. Monitorear.";
+  } else if (hasUpcomingFollowup) {
+    recommendedTone = "monitor";
+    const dateFmt = formatYmd(latest.nextActionDate);
+    reason = dateFmt
+      ? `Seguimiento programado para ${dateFmt}.`
+      : "Seguimiento programado para más adelante.";
   } else if (hasRecentContact) {
     recommendedTone = "monitor";
     reason = `Contactado por ${latestActionLabel} hace ${daysSinceLatest === 0 ? "hoy" : daysSinceLatest === 1 ? "ayer" : `${daysSinceLatest} días`}. Esperar respuesta.`;
@@ -166,6 +182,8 @@ export function getCollectionFollowupContext(
     hasOverduePromise,
     hasUpcomingPromise,
     hasNextFollowupDue,
+    hasOverdueFollowup,
+    hasUpcomingFollowup,
     latestActionLabel,
     latestActionDate,
     daysSinceLatest,

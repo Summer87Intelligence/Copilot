@@ -227,6 +227,12 @@ export function buildClientAgentBrief(input: BuildClientAgentBriefInput): Client
   const isRecentlyContacted =
     outcome === "contacted" && daysSinceAction !== null && daysSinceAction <= 7;
 
+  // ── Followup logic ──
+  const followupYmd = extractYmd(action?.nextFollowUpAt);
+  const followupIsOverdue = !!followupYmd && followupYmd < today;
+  const followupIsToday = followupYmd === today;
+  const followupIsFuture = !!followupYmd && followupYmd > today;
+
   // ── Overdue relevance ──
   const overdueShareUyu = input.debtUyu > 0 ? input.overdueUyu / input.debtUyu : 0;
   const overdueShareUsd = input.debtUsd > 0 ? input.overdueUsd / input.debtUsd : 0;
@@ -381,6 +387,32 @@ export function buildClientAgentBrief(input: BuildClientAgentBriefInput): Client
     });
   }
 
+  // Followup scheduled insight
+  if (followupYmd && hasDebt) {
+    if (followupIsOverdue) {
+      insights.push({
+        id: "followup-scheduled",
+        title: "Seguimiento vencido",
+        body: `El seguimiento estaba programado para ${formatDateShortYmd(followupYmd)} y no fue retomado.`,
+        severity: "high",
+      });
+    } else if (followupIsToday) {
+      insights.push({
+        id: "followup-scheduled",
+        title: "Seguimiento programado hoy",
+        body: "Hay un seguimiento programado para hoy. Revisar antes de fin del día.",
+        severity: "high",
+      });
+    } else if (followupIsFuture) {
+      insights.push({
+        id: "followup-scheduled",
+        title: "Próximo seguimiento programado",
+        body: `El próximo seguimiento está programado para ${formatDateShortYmd(followupYmd)}.`,
+        severity: "low",
+      });
+    }
+  }
+
   if (input.lastMovement?.date) {
     const movementCopy =
       input.lastMovement.kind === "recibo"
@@ -457,6 +489,14 @@ export function buildClientAgentBrief(input: BuildClientAgentBriefInput): Client
     } else if (promiseIsFuture) {
       summary = "El cliente tiene saldo vencido, pero ya hay una promesa de pago vigente.";
       mainFinding = "Saldo vencido con promesa vigente";
+      recommendedAction = { label: "Ver seguimiento", scrollToAssistant: true };
+    } else if (followupIsToday) {
+      summary = "El cliente tiene saldo vencido. Hay un seguimiento programado para hoy.";
+      mainFinding = "Saldo vencido — seguimiento hoy";
+      recommendedAction = { label: "Ver seguimiento", scrollToAssistant: true };
+    } else if (followupIsOverdue) {
+      summary = "El cliente tiene saldo vencido y hay un seguimiento pendiente de retomar.";
+      mainFinding = "Saldo vencido — seguimiento vencido";
       recommendedAction = { label: "Ver seguimiento", scrollToAssistant: true };
     } else {
       summary = "El cliente tiene saldo vencido y requiere seguimiento de cobranza.";

@@ -192,11 +192,28 @@ function HistoryItem({ action }: { action: CollectionAction }) {
         })() : null}
         {action.nextActionDate ? (() => {
           const dateFmt = formatYmd(action.nextActionDate);
-          return dateFmt ? (
-            <p className="text-[11px] text-[var(--copilot-ink-muted)]">
-              Próximo seguimiento: {dateFmt}
+          if (!dateFmt) return null;
+          const todayStr = new Date().toISOString().slice(0, 10);
+          const isOverdue = action.nextActionDate < todayStr;
+          const isToday = action.nextActionDate === todayStr;
+          const badgeCls = isOverdue
+            ? "bg-rose-50 text-rose-700 border-rose-200"
+            : isToday
+            ? "bg-amber-50 text-amber-700 border-amber-200"
+            : "bg-sky-50 text-sky-700 border-sky-200";
+          const badgeLabel = isOverdue
+            ? "Seguimiento vencido"
+            : isToday
+            ? "Seguimiento hoy"
+            : "Próx. seguimiento";
+          return (
+            <p className="flex items-center gap-1.5 text-[11px]">
+              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${badgeCls}`}>
+                {badgeLabel}
+              </span>
+              <span className="text-[var(--copilot-ink-muted)]">{dateFmt}</span>
             </p>
-          ) : null;
+          );
         })() : null}
       </div>
     </div>

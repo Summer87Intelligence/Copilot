@@ -1013,13 +1013,16 @@ const SECTIONS: Section[] = [
           </p>
           <Bullets
             items={[
-              "Próximo seguimiento — si agendaste una fecha, Copilot te lo muestra como prioridad cuando llega el día.",
+              "Próximo seguimiento — si agendaste una fecha futura, aparece en Acciones con badge 'Seguimiento programado' (azul). Cuando llega el día, el badge cambia a 'Seguimiento hoy' (ámbar). Si la fecha pasó sin registrar contacto, aparece como 'Seguimiento vencido' (rojo) con prioridad alta.",
               "Promesa de pago — si el cliente prometió pagar y la fecha llegó sin confirmación, aparece como prioridad crítica.",
               "Promesa futura — si la promesa es para más adelante, aparece como baja prioridad mientras no venza.",
               "Sin respuesta — si la última gestión fue 'Sin respuesta' y pasaron 2 o más días, sugiere reintentar el contacto.",
               "Contacto incorrecto — si registraste 'Contacto incorrecto', el agente lo marca como prioridad para actualizar los datos.",
             ]}
           />
+          <Callout variant="info">
+            Los badges de seguimiento (programado / hoy / vencido) también aparecen en el historial del cliente, dentro de cada gestión. Así podés ver de un vistazo el estado del seguimiento sin leer toda la nota.
+          </Callout>
           <Callout variant="warning">
             Registrar una promesa de pago NO marca la factura como pagada ni
             modifica el saldo. Solo es un seguimiento operativo. Para registrar
