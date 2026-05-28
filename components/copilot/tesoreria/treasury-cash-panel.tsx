@@ -99,19 +99,38 @@ function BalanceCard({
   const baselineDate = pos?.baselineDate ?? null;
 
   return (
-    <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/85 px-4 py-4 shadow-sm">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-        Caja {currency}
-      </p>
+    <div
+      className={`rounded-2xl border px-4 py-4 shadow-sm transition-shadow ${
+        isNegative
+          ? "border-rose-200 bg-gradient-to-br from-white to-rose-50/70"
+          : "border-emerald-100 bg-gradient-to-br from-white to-emerald-50/60"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <span
+            className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+              isNegative
+                ? "bg-rose-100 text-rose-800"
+                : "bg-emerald-100 text-emerald-800"
+            }`}
+          >
+            Caja disponible
+          </span>
+          <p className="mt-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+            Caja {currency}
+          </p>
+        </div>
+      </div>
       <p
-        className={`mt-1 text-2xl font-bold tabular-nums ${
-          isNegative ? "text-rose-700" : "text-[var(--copilot-ink)]"
+        className={`mt-2 text-2xl font-bold tabular-nums sm:text-[28px] ${
+          isNegative ? "text-rose-800" : "text-emerald-950"
         }`}
       >
         {pos ? formatTreasuryMoney(pureAvailable, currency) : "—"}
       </p>
 
-      <div className="mt-2 space-y-0.5 text-[11px] text-[var(--copilot-ink-muted)]">
+      <div className="mt-2 space-y-1 text-[11px] text-[var(--copilot-ink-muted)]">
         <p>
           Saldo cargado al {baselineDate ?? "—"}:{" "}
           {pos ? formatTreasuryMoney(pos.openingBalance, currency) : "—"}
@@ -133,7 +152,7 @@ function BalanceCard({
       </div>
 
       {editing ? (
-        <div className="mt-3 flex items-center gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <input
             type="number"
             min="0"
@@ -169,7 +188,11 @@ function BalanceCard({
         <button
           type="button"
           onClick={startEdit}
-          className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-[var(--copilot-accent)] hover:underline"
+          className={`mt-2 inline-flex items-center gap-1 text-xs font-medium ${
+            isNegative
+              ? "text-rose-700 hover:text-rose-900"
+              : "text-emerald-700 hover:text-emerald-900"
+          }`}
         >
           <Pencil className="h-3 w-3" aria-hidden />
           Editar saldo actual
@@ -177,7 +200,7 @@ function BalanceCard({
       )}
 
       {isNegative ? (
-        <p className="mt-2 text-[10px] text-amber-700">
+        <p className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[10px] text-rose-700">
           Caja negativa — revisá movimientos o actualizá el saldo actual.
         </p>
       ) : null}
@@ -478,18 +501,31 @@ export function TreasuryCashPanel({ workspace }: { workspace: TreasuryWorkspace 
         <button
           type="button"
           onClick={() => setShowForm(true)}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--copilot-border)] bg-white/60 py-3 text-sm font-semibold text-[var(--copilot-accent)] hover:bg-white/80"
+          className="w-full rounded-2xl border border-dashed border-emerald-200 bg-gradient-to-br from-white to-emerald-50/50 px-4 py-4 text-left shadow-sm transition-colors hover:from-white hover:to-emerald-50"
         >
-          <Plus className="h-4 w-4" aria-hidden />
-          Registrar movimiento
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100">
+              <Plus className="h-4 w-4 text-emerald-800" aria-hidden />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-emerald-900">
+                Registrar movimiento
+              </p>
+              <p className="text-[11px] text-[var(--copilot-ink-muted)]">
+                Ingreso, egreso o pago programado.
+              </p>
+            </div>
+          </div>
         </button>
       )}
 
       <RecentMovements workspace={workspace} />
 
-      <p className="text-center text-[10px] text-[var(--copilot-ink-muted)]">
-        Tesorería muestra dinero disponible en caja. Cartera muestra facturación y deuda de clientes.
-      </p>
+      <div className="rounded-xl border border-[var(--copilot-border)]/70 bg-white/70 px-3 py-2">
+        <p className="text-center text-[11px] text-[var(--copilot-ink-muted)]">
+          Tesorería muestra caja disponible. Cartera muestra facturación y deuda de clientes.
+        </p>
+      </div>
     </div>
   );
 }
