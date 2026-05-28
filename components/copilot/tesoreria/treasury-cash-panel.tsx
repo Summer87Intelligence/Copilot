@@ -90,6 +90,7 @@ function BalanceCard({
 
   const pureAvailable =
     (pos?.openingBalance ?? 0) +
+    (pos?.collectedFromClients ?? 0) +  // post-baseline Zeta receipts
     (pos?.manualIncome ?? 0) -
     (pos?.manualExpense ?? 0) +
     (pos?.adjustments ?? 0) +
@@ -115,8 +116,13 @@ function BalanceCard({
           Saldo cargado al {baselineDate ?? "—"}:{" "}
           {pos ? formatTreasuryMoney(pos.openingBalance, currency) : "—"}
         </p>
+        {pos && pos.collectedFromClients > 0 ? (
+          <p className="text-emerald-700">
+            + Cobros Zeta posteriores: {formatTreasuryMoney(pos.collectedFromClients, currency)}
+          </p>
+        ) : null}
         {pos && pos.manualIncome > 0 ? (
-          <p className="text-emerald-700">+ Ingresos: {formatTreasuryMoney(pos.manualIncome, currency)}</p>
+          <p className="text-emerald-700">+ Ingresos manuales: {formatTreasuryMoney(pos.manualIncome, currency)}</p>
         ) : null}
         {pos && pos.manualExpense > 0 ? (
           <p className="text-rose-700">− Egresos: {formatTreasuryMoney(pos.manualExpense, currency)}</p>

@@ -18,9 +18,44 @@ import {
   calculateCashPosition,
   sumManualExpenseInRange,
   type CashPositionByCurrency,
+  type CollectedFromClientsInput,
 } from "@/lib/treasury/treasury-cash-position";
+import { filterAndSumZetaReceipts } from "@/lib/treasury/treasury-zeta-collections";
 import { resolveTreasuryWorkspaceId } from "@/lib/treasury/treasury-tenant";
 import type { TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
+
+/**
+ * Query `proto_receipts` for Zeta client receipts after each currency's
+ * baseline date and return the sums per currency.
+ *
+ * Currencies without a configured baseline are excluded — we don't know
+ * which receipts are already baked into the user's loaded balance.
+ * Failures are swallowed (treated as 0) so the position degrades gracefully.
+ */
+async function sumZetaCollectionsAfterBaseline(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  baselineDates: Partial<Record<TreasuryCurrencyCode, string>>
+): Promise<Partial<Record<TreasuryCurrencyCode, number>>> {
+  const currencies = (["UYU", "USD"] as const).filter((c) => baselineDates[c]);
+  if (currencies.length === 0) return {};
+
+  const earliestBaseline = currencies.map((c) => baselineDates[c]!).sort()[0]!;
+
+  const { data, error } = await supabase
+    .from("proto_receipts")
+    .select("currency_code, amount, receipt_date, status")
+    .eq("workspace_company_id", workspaceId)
+    .eq("is_active", true)
+    .gte("receipt_date", earliestBaseline);
+
+  if (error || !data) return {};
+
+  return filterAndSumZetaReceipts(
+    data as { currency_code: string | null; amount: number | null; receipt_date: string | null; status?: string | null }[],
+    baselineDates
+  );
+}
 
 export type TreasuryOpeningBalanceUpsertBody = {
   currency_code: TreasuryCurrencyCode;
@@ -85,6 +120,7 @@ export async function treasuryCashPositionGet(
 ): Promise<ProtoCrudResult<TreasuryCashPositionResult>> {
   const workspaceId = resolveTreasuryWorkspaceId(tenantCompanyId);
 
+  // Phase 1: fetch openings + manual movements in parallel.
   const [openings, movements] = await Promise.all([
     treasuryCashOpeningBalanceRepositoryList(supabase, workspaceId),
     manualCashMovementList(supabase, tenantCompanyId, { status: "active" }, 5000),
@@ -92,6 +128,30 @@ export async function treasuryCashPositionGet(
 
   if (openings.error) return mapDbError(openings.error);
   if (!movements.ok) return movements;
+
+  // Build baseline date map per currency (only currencies with a configured opening balance).
+  const baselineDates: Partial<Record<TreasuryCurrencyCode, string>> = {};
+  for (const row of openings.rows) {
+    if (row.effectiveDate) {
+      baselineDates[row.currencyCode] = row.effectiveDate;
+    }
+  }
+
+  // Phase 2: sum Zeta client receipts after each currency's baseline.
+  // Only counted when a baseline is configured — prevents double-counting receipts
+  // already baked into the user's loaded balance.
+  const zetaCollections = await sumZetaCollectionsAfterBaseline(
+    supabase,
+    workspaceId,
+    baselineDates
+  );
+
+  // Build collectedFromClients input — one entry per currency that has Zeta data.
+  const collectedFromClients: CollectedFromClientsInput[] = (
+    ["UYU", "USD"] as const
+  )
+    .filter((c) => (zetaCollections[c] ?? 0) > 0)
+    .map((c) => ({ currency: c, amount: zetaCollections[c]! }));
 
   const items = movements.data.items;
   const asOf = todayYmdUtc();
@@ -104,6 +164,7 @@ export async function treasuryCashPositionGet(
       amount: r.amount,
       effectiveDate: r.effectiveDate,
     })),
+    collectedFromClients,
   }).map((p) => ({
     ...p,
     manualExpenseInRange: sumManualExpenseInRange(items, p.currency, rangeStart, asOf),
