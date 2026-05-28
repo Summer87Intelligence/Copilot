@@ -77,7 +77,7 @@ function BalanceCard({
       });
       const json = (await res.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
       if (json?.ok) {
-        workspace.notify("success", `Saldo inicial ${currency} actualizado.`);
+        workspace.notify("success", `Saldo actual ${currency} actualizado.`);
         setEditing(false);
         void workspace.refetch();
       } else {
@@ -88,8 +88,14 @@ function BalanceCard({
     }
   };
 
-  const available = pos?.availableCash ?? 0;
-  const isNegative = available < 0;
+  const pureAvailable =
+    (pos?.openingBalance ?? 0) +
+    (pos?.manualIncome ?? 0) -
+    (pos?.manualExpense ?? 0) +
+    (pos?.adjustments ?? 0) +
+    (pos?.transfersNet ?? 0);
+  const isNegative = pureAvailable < 0;
+  const baselineDate = pos?.baselineDate ?? null;
 
   return (
     <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/85 px-4 py-4 shadow-sm">
@@ -101,11 +107,14 @@ function BalanceCard({
           isNegative ? "text-rose-700" : "text-[var(--copilot-ink)]"
         }`}
       >
-        {pos ? formatTreasuryMoney(available, currency) : "—"}
+        {pos ? formatTreasuryMoney(pureAvailable, currency) : "—"}
       </p>
 
       <div className="mt-2 space-y-0.5 text-[11px] text-[var(--copilot-ink-muted)]">
-        <p>Saldo inicial: {pos ? formatTreasuryMoney(pos.openingBalance, currency) : "—"}</p>
+        <p>
+          Saldo cargado al {baselineDate ?? "—"}:{" "}
+          {pos ? formatTreasuryMoney(pos.openingBalance, currency) : "—"}
+        </p>
         {pos && pos.manualIncome > 0 ? (
           <p className="text-emerald-700">+ Ingresos: {formatTreasuryMoney(pos.manualIncome, currency)}</p>
         ) : null}
@@ -157,13 +166,13 @@ function BalanceCard({
           className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-[var(--copilot-accent)] hover:underline"
         >
           <Pencil className="h-3 w-3" aria-hidden />
-          Editar saldo inicial
+          Editar saldo actual
         </button>
       )}
 
       {isNegative ? (
         <p className="mt-2 text-[10px] text-amber-700">
-          Caja negativa — revisá movimientos o actualizá el saldo inicial.
+          Caja negativa — revisá movimientos o actualizá el saldo actual.
         </p>
       ) : null}
     </div>
@@ -185,6 +194,13 @@ function QuickMovementForm({
 
   const set = <K extends keyof QuickForm>(key: K, value: QuickForm[K]) =>
     setForm((p) => ({ ...p, [key]: value }));
+
+  const baselineForCurrency =
+    workspace.cashPositions.find((p) => p.currency === form.currency)?.baselineDate ?? null;
+  const isBeforeBaseline =
+    form.mode === "now" &&
+    baselineForCurrency !== null &&
+    form.date < baselineForCurrency;
 
   const handleSubmit = async () => {
     setError(null);
@@ -355,6 +371,13 @@ function QuickMovementForm({
         ) : null}
       </div>
 
+      {isBeforeBaseline ? (
+        <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
+          La fecha ingresada es anterior al corte del saldo cargado ({baselineForCurrency}). Este movimiento
+          NO afectará la caja — ya está reflejado en el saldo actual.
+        </p>
+      ) : null}
+
       {error ? <p className="mt-2 text-xs text-rose-600">{error}</p> : null}
 
       <p className="mt-2 text-[11px] text-[var(--copilot-ink-muted)]">
@@ -457,6 +480,10 @@ export function TreasuryCashPanel({ workspace }: { workspace: TreasuryWorkspace 
       )}
 
       <RecentMovements workspace={workspace} />
+
+      <p className="text-center text-[10px] text-[var(--copilot-ink-muted)]">
+        Tesorería muestra dinero disponible en caja. Cartera muestra facturación y deuda de clientes.
+      </p>
     </div>
   );
 }

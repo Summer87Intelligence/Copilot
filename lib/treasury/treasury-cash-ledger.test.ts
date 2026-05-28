@@ -16,7 +16,7 @@ function mov(partial: Partial<ManualCashMovement>): ManualCashMovement {
     category: null,
     amount: partial.amount ?? 1000,
     currencyCode: partial.currencyCode ?? "UYU",
-    movementDate: "2026-05-15",
+    movementDate: partial.movementDate ?? "2026-05-15",
     paymentMethod: null,
     counterparty: null,
     reference: null,
@@ -273,5 +273,162 @@ describe("Caja operativa — opening balance proxy exclusions", () => {
     });
     expect(uyu(pos).availableCash).toBe(253_033);
     expect(uyu(pos).manualExpense).toBe(10_000);
+  });
+});
+
+describe("Caja operativa — saldo actual cargado y baseline date", () => {
+  it("13. saldo actual cargado sin movimientos: caja = saldo cargado", () => {
+    const pos = calculateCashPosition({
+      manualCashMovements: [],
+      openingBalances: [{ currency: "UYU", amount: 100_000, effectiveDate: "2026-05-01" }],
+    });
+    expect(uyu(pos).availableCash).toBe(100_000);
+    expect(uyu(pos).openingBalance).toBe(100_000);
+    expect(uyu(pos).baselineDate).toBe("2026-05-01");
+  });
+
+  it("14. movimiento anterior al corte NO afecta caja (ya está reflejado en el saldo cargado)", () => {
+    const pos = calculateCashPosition({
+      manualCashMovements: [
+        mov({ movementType: "income", amount: 5_000, movementDate: "2026-04-30" }),
+      ],
+      openingBalances: [{ currency: "UYU", amount: 50_000, effectiveDate: "2026-05-01" }],
+    });
+    expect(uyu(pos).availableCash).toBe(50_000);
+    expect(uyu(pos).manualIncome).toBe(0);
+    expect(uyu(pos).movementsCount).toBe(0);
+  });
+
+  it("15. movimiento posterior al corte de ingreso suma a la caja", () => {
+    const pos = calculateCashPosition({
+      manualCashMovements: [
+        mov({ movementType: "income", amount: 8_000, movementDate: "2026-05-02" }),
+      ],
+      openingBalances: [{ currency: "UYU", amount: 50_000, effectiveDate: "2026-05-01" }],
+    });
+    expect(uyu(pos).availableCash).toBe(58_000);
+    expect(uyu(pos).manualIncome).toBe(8_000);
+  });
+
+  it("16. movimiento posterior al corte de egreso resta de la caja", () => {
+    const pos = calculateCashPosition({
+      manualCashMovements: [
+        mov({ movementType: "expense", amount: 3_000, movementDate: "2026-05-15" }),
+      ],
+      openingBalances: [{ currency: "UYU", amount: 50_000, effectiveDate: "2026-05-01" }],
+    });
+    expect(uyu(pos).availableCash).toBe(47_000);
+    expect(uyu(pos).manualExpense).toBe(3_000);
+  });
+
+  it("17. movimiento exactamente en la fecha del corte SÍ cuenta (>= baseline)", () => {
+    const pos = calculateCashPosition({
+      manualCashMovements: [
+        mov({ movementType: "income", amount: 2_000, movementDate: "2026-05-01" }),
+      ],
+      openingBalances: [{ currency: "UYU", amount: 10_000, effectiveDate: "2026-05-01" }],
+    });
+    expect(uyu(pos).availableCash).toBe(12_000);
+    expect(uyu(pos).manualIncome).toBe(2_000);
+  });
+
+  it("18. sin baseline configurado, todos los movimientos cuentan", () => {
+    const pos = calculateCashPosition({
+      manualCashMovements: [
+        mov({ movementType: "income", amount: 1_000, movementDate: "2020-01-01" }),
+        mov({ id: "m2", movementType: "expense", amount: 400, movementDate: "2024-12-31" }),
+      ],
+      openingBalances: [{ currency: "UYU", amount: 5_000 }],
+    });
+    expect(uyu(pos).baselineDate).toBeNull();
+    expect(uyu(pos).availableCash).toBe(5_600);
+    expect(uyu(pos).movementsCount).toBe(2);
+  });
+
+  it("19. pago programado pendiente (affectsCashflow=false) no afecta caja aunque sea posterior al corte", () => {
+    const pos = calculateCashPosition({
+      manualCashMovements: [
+        mov({ movementType: "expense", amount: 10_000, affectsCashflow: false, movementDate: "2026-05-10" }),
+      ],
+      openingBalances: [{ currency: "UYU", amount: 30_000, effectiveDate: "2026-05-01" }],
+    });
+    expect(uyu(pos).availableCash).toBe(30_000);
+    expect(uyu(pos).manualExpense).toBe(0);
+  });
+
+  it("20. pago programado marcado como pagado (affectsCashflow=true) posterior al corte afecta caja", () => {
+    const pos = calculateCashPosition({
+      manualCashMovements: [
+        mov({
+          movementType: "expense",
+          amount: 10_000,
+          affectsCashflow: true,
+          status: "active",
+          movementDate: "2026-05-10",
+        }),
+      ],
+      openingBalances: [{ currency: "UYU", amount: 30_000, effectiveDate: "2026-05-01" }],
+    });
+    expect(uyu(pos).availableCash).toBe(20_000);
+    expect(uyu(pos).manualExpense).toBe(10_000);
+  });
+
+  it("21. UYU y USD tienen baselines independientes", () => {
+    const pos = calculateCashPosition({
+      manualCashMovements: [
+        mov({ id: "u1", currencyCode: "UYU", movementType: "income", amount: 5_000, movementDate: "2026-04-20" }),
+        mov({ id: "u2", currencyCode: "UYU", movementType: "income", amount: 2_000, movementDate: "2026-05-05" }),
+        mov({ id: "d1", currencyCode: "USD", movementType: "income", amount: 300, movementDate: "2026-04-30" }),
+        mov({ id: "d2", currencyCode: "USD", movementType: "expense", amount: 100, movementDate: "2026-05-10" }),
+      ],
+      openingBalances: [
+        { currency: "UYU", amount: 20_000, effectiveDate: "2026-05-01" },
+        { currency: "USD", amount: 1_000, effectiveDate: "2026-05-01" },
+      ],
+    });
+    expect(uyu(pos).availableCash).toBe(22_000);
+    expect(usd(pos).availableCash).toBe(900);
+  });
+
+  it("22. opening_balance proxy (metadata.kind) no cuenta en ningún escenario de baseline", () => {
+    const pos = calculateCashPosition({
+      manualCashMovements: [
+        mov({
+          movementType: "income",
+          amount: 50_000,
+          metadata: { kind: "opening_balance" },
+          movementDate: "2026-05-10",
+        }),
+      ],
+      openingBalances: [{ currency: "UYU", amount: 30_000, effectiveDate: "2026-05-01" }],
+    });
+    expect(uyu(pos).availableCash).toBe(30_000);
+    expect(uyu(pos).manualIncome).toBe(0);
+  });
+
+  it("23. movimiento archivado (status=archived) no afecta caja aunque sea posterior al corte", () => {
+    const pos = calculateCashPosition({
+      manualCashMovements: [
+        mov({ movementType: "income", amount: 7_000, status: "archived", movementDate: "2026-05-15" }),
+      ],
+      openingBalances: [{ currency: "UYU", amount: 10_000, effectiveDate: "2026-05-01" }],
+    });
+    expect(uyu(pos).availableCash).toBe(10_000);
+    expect(uyu(pos).movementsCount).toBe(0);
+  });
+
+  it("24. mix: anterior excluido + posterior contado → caja correcta", () => {
+    const pos = calculateCashPosition({
+      manualCashMovements: [
+        mov({ id: "pre", movementType: "income", amount: 99_000, movementDate: "2026-04-15" }),
+        mov({ id: "post1", movementType: "income", amount: 5_000, movementDate: "2026-05-10" }),
+        mov({ id: "post2", movementType: "expense", amount: 2_000, movementDate: "2026-05-20" }),
+      ],
+      openingBalances: [{ currency: "UYU", amount: 100_000, effectiveDate: "2026-05-01" }],
+    });
+    expect(uyu(pos).availableCash).toBe(103_000);
+    expect(uyu(pos).manualIncome).toBe(5_000);
+    expect(uyu(pos).manualExpense).toBe(2_000);
+    expect(uyu(pos).movementsCount).toBe(2);
   });
 });

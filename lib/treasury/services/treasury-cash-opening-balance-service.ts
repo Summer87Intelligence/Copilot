@@ -102,6 +102,7 @@ export async function treasuryCashPositionGet(
     openingBalances: openings.rows.map((r) => ({
       currency: r.currencyCode,
       amount: r.amount,
+      effectiveDate: r.effectiveDate,
     })),
   }).map((p) => ({
     ...p,

@@ -16,6 +16,8 @@ import type {
 export type CashOpeningBalanceInput = {
   currency: TreasuryCurrencyCode;
   amount: number;
+  /** YYYY-MM-DD. When set, only movements on or after this date count toward cash. */
+  effectiveDate?: string;
 };
 
 /** Cobrado por clientes acumulado (suma de recibos; en Hoy vía `carteraCollectedToDateFromReport`). */
@@ -28,6 +30,11 @@ export type CashPositionByCurrency = {
   currency: TreasuryCurrencyCode;
   openingConfigured: boolean;
   openingBalance: number;
+  /**
+   * YYYY-MM-DD date used as baseline. Only movements on or after this date are
+   * counted. Null (or absent) when no opening balance is configured.
+   */
+  baselineDate?: string | null;
   /** Cobros de clientes (Zeta/Cartera), opcional — default 0. */
   collectedFromClients: number;
   manualIncome: number;
@@ -65,6 +72,19 @@ function amountMapByCurrency(
   return out;
 }
 
+function baselineDateMapByCurrency(
+  rows: readonly CashOpeningBalanceInput[] | undefined
+): Partial<Record<TreasuryCurrencyCode, string>> {
+  const out: Partial<Record<TreasuryCurrencyCode, string>> = {};
+  for (const row of rows ?? []) {
+    if (row.currency !== "UYU" && row.currency !== "USD") continue;
+    if (row.effectiveDate && /^\d{4}-\d{2}-\d{2}$/.test(row.effectiveDate)) {
+      out[row.currency] = row.effectiveDate;
+    }
+  }
+  return out;
+}
+
 /** Movimiento individual afecta caja actual (para UI). */
 export function manualMovementAffectsCurrentCash(
   movement: ManualCashMovement,
@@ -82,6 +102,7 @@ export function calculateCashPosition(
   input: CalculateCashPositionInput
 ): CashPositionByCurrency[] {
   const openings = amountMapByCurrency(input.openingBalances);
+  const baselines = baselineDateMapByCurrency(input.openingBalances);
   const collectedMap = amountMapByCurrency(input.collectedFromClients);
   const currencies: TreasuryCurrencyCode[] = ["UYU", "USD"];
   const movements = input.manualCashMovements;
@@ -89,6 +110,7 @@ export function calculateCashPosition(
   return currencies.map((currency) => {
     const openingConfigured = openings[currency] != null;
     const openingBalance = openings[currency] ?? 0;
+    const baselineDate = baselines[currency] ?? null;
     const collectedFromClients = collectedMap[currency] ?? 0;
 
     let manualIncome = 0;
@@ -102,6 +124,9 @@ export function calculateCashPosition(
       if (m.currencyCode !== currency) continue;
       if (!shouldCountManualCashInCashflow(m)) continue;
       if (!isTransferLegCounted(m, movements)) continue;
+      // When a baseline date is configured, only count movements on or after it.
+      // Movements before the baseline are already baked into the loaded cash balance.
+      if (baselineDate && m.movementDate < baselineDate) continue;
 
       const signed = signedManualCashAmount({
         movementType: m.movementType,
@@ -154,6 +179,7 @@ export function calculateCashPosition(
       currency,
       openingConfigured,
       openingBalance,
+      baselineDate,
       collectedFromClients,
       manualIncome,
       manualExpense,
