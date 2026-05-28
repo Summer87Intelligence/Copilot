@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronRight,
   Database,
+  FileText,
   Info,
   Landmark,
   ListTodo,
@@ -271,6 +272,7 @@ const SECTIONS: Section[] = [
           <Bullets
             items={[
               "Datos — facturas, recibos y registros en tabla.",
+              "Reportes — PDF de deudores y acceso centralizado a reportes del cliente.",
               "Panorama financiero — lectura general (no reemplaza Tesorería ni Cartera).",
               "Agentes IA — briefings de lectura; no modifican datos.",
             ]}
@@ -389,8 +391,8 @@ const SECTIONS: Section[] = [
           hoy. No avisa qué pasó — dice qué hacer.
         </p>
         <Callout variant="tip">
-          <strong>Diferencia clave:</strong> Alertas = qué pasó. Acciones = qué
-          hacer ahora.
+          <strong>Inbox operativo:</strong> Prioridades = qué resolver · Agenda = a quién
+          seguir · Alertas = qué revisar (vista previa con enlace al módulo completo).
         </Callout>
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
@@ -1005,7 +1007,7 @@ const SECTIONS: Section[] = [
           </p>
           <Bullets
             items={[
-              "Caja — saldo disponible cargado al corte, más cobros y movimientos confirmados después.",
+              "Caja — saldo disponible cargado al corte. Arriba del formulario: ¿Qué querés registrar? (Ingreso, Egreso o Pago programado).",
               "Programados — pagos con fecha futura; no afectan caja hasta confirmarse.",
               "Movimientos — ingresos y egresos confirmados que ajustan tu caja.",
               "Avanzado — conciliación bancaria, recurrentes y opciones técnicas.",
@@ -1532,15 +1534,43 @@ const SECTIONS: Section[] = [
     ),
   },
   {
-    id: "operacional",
-    icon: <Activity className="h-4 w-4" aria-hidden />,
-    title: "Operacional — Estado de la sincronización",
+    id: "reportes",
+    icon: <FileText className="h-4 w-4" aria-hidden />,
+    title: "Reportes — PDFs operativos",
     content: (
       <>
         <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
-          <strong>Operacional</strong> muestra si los datos se están actualizando
-          correctamente. Es el panel técnico del sistema.
+          <strong>Reportes</strong> centraliza los PDFs que podés descargar para
+          revisar deuda y cobranza. También podés generar el reporte de deudores desde{" "}
+          <strong>Clientes</strong>; ambos accesos usan el mismo generador.
         </p>
+        <Bullets
+          items={[
+            "Reporte de deudores — clientes con deuda, moneda, antigüedad y contacto.",
+            "Estado de cuenta por cliente — desde la ficha de cada cliente.",
+            "Los reportes no modifican facturas, caja ni gestiones.",
+          ]}
+        />
+        <div className="flex gap-3 flex-wrap">
+          <NavLink href="/copilot/reportes" label="Ir a Reportes" />
+        </div>
+      </>
+    ),
+  },
+  {
+    id: "operacional",
+    icon: <Activity className="h-4 w-4" aria-hidden />,
+    title: "Estado del sistema — Sincronización y salud técnica",
+    content: (
+      <>
+        <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
+          <strong>Estado del sistema</strong> (antes Operacional) muestra si los datos
+          se están actualizando correctamente y la salud de la integración con Zeta.
+        </p>
+        <Callout variant="info">
+          Al entrar verás <strong>Confianza del dato</strong>: última actualización,
+          cantidad de clientes/facturas/recibos sincronizados y si hay conflictos.
+        </Callout>
         <Callout variant="info">
           En general, no necesitás entrar a Operacional a diario. Solo revisalo
           cuando veas que algo parece desactualizado o cuando una alerta de sistema

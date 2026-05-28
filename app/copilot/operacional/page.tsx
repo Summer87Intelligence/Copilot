@@ -5,6 +5,7 @@ import { OicHealthPanel } from "@/components/copilot/operacional/oic-health-pane
 import { OicQuickStats } from "@/components/copilot/operacional/oic-quick-stats";
 import { OicSkeletonCard } from "@/components/copilot/operacional/oic-skeleton-card";
 import { CopilotOperationalStatusSection } from "@/components/copilot/copilot-operational-status-section";
+import { DataConfidencePanel } from "@/components/copilot/operacional/data-confidence-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +14,12 @@ export default function OperacionalPage() {
     <>
       <CopilotPageHeader
         eyebrow="Summer87 Copilot"
-        title="Centro Operacional"
-        description="Estado de negocio, reconciliación financiera y actividad de sincronización."
+        title="Estado del sistema"
+        description="Actualización de datos, reconciliación y salud de integraciones con Zeta."
       />
       <div className="space-y-5 px-6 py-6">
+        <DataConfidencePanel />
+
         {/* Business status — same semaphore as the header indicator, expanded */}
         <CopilotOperationalStatusSection />
 
