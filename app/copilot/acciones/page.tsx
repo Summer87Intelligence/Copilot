@@ -1,7 +1,8 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { ChevronDown, ChevronRight, ChevronUp, Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { ActionCard } from "@/components/copilot/acciones/action-card";
@@ -141,12 +142,13 @@ function CopilotAccionesPageContent() {
 
   // ── Tab state (URL-synced) ───────────────────────────────────────────────────
   const router = useRouter();
-  const activeTab: "acciones" | "agenda" =
-    searchParams.get("tab") === "agenda" ? "agenda" : "acciones";
+  type InboxTab = "acciones" | "agenda" | "alertas";
+  const tabParam = searchParams.get("tab");
+  const activeTab: InboxTab =
+    tabParam === "agenda" ? "agenda" : tabParam === "alertas" ? "alertas" : "acciones";
 
-  function setTab(tab: "acciones" | "agenda") {
+  function setTab(tab: InboxTab) {
     const params = new URLSearchParams(searchParams.toString());
-    // Always strip provenance params when switching tabs to keep URL clean
     if (tab === "acciones") {
       params.delete("tab");
     } else {
@@ -161,6 +163,7 @@ function CopilotAccionesPageContent() {
   const [bandejaLoading, setBandejaLoading] = useState(true);
   const [bandejaFilter, setBandejaFilter] = useState<BandejaFilter>("all");
   const [agenda, setAgenda] = useState<CollectionAgenda | null>(null);
+  const [inboxNotifications, setInboxNotifications] = useState<CopilotNotification[]>([]);
 
   const loadBandeja = useCallback(async () => {
     setBandejaLoading(true);
@@ -178,6 +181,9 @@ function CopilotAccionesPageContent() {
           notifications?: CopilotNotification[];
         } | null;
         notifications = json?.notifications ?? [];
+        setInboxNotifications(notifications);
+      } else {
+        setInboxNotifications([]);
       }
 
       let portfolioRows: ClientPortfolioLoad["rows"] = [];
@@ -463,7 +469,7 @@ function CopilotAccionesPageContent() {
       <CopilotPageHeader
         surfaceId="copilot.acciones"
         title="Acciones"
-        description="Bandeja de trabajo operativo — cobranza, tesorería y seguimiento."
+        description="Tu bandeja operativa: qué resolver, a quién seguir y qué revisar."
       />
 
       <div className={copilotPageMainClass}>
@@ -500,18 +506,31 @@ function CopilotAccionesPageContent() {
 
         {/* ── Tab bar ────────────────────────────────────────────────────── */}
         <div className="flex gap-1 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-1">
-          {(["acciones", "agenda"] as const).map((tab) => (
+          {(
+            [
+              { id: "acciones" as const, label: "Prioridades", hint: "Qué resolver" },
+              { id: "agenda" as const, label: "Agenda", hint: "A quién seguir" },
+              { id: "alertas" as const, label: "Alertas", hint: "Qué revisar" },
+            ] as const
+          ).map((tab) => (
             <button
-              key={tab}
+              key={tab.id}
               type="button"
-              onClick={() => setTab(tab)}
-              className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition ${
-                activeTab === tab
+              onClick={() => setTab(tab.id)}
+              className={`flex-1 rounded-lg px-2 py-2 text-center transition ${
+                activeTab === tab.id
                   ? "bg-[var(--copilot-accent)] text-white shadow-sm"
                   : "text-[var(--copilot-ink-muted)] hover:bg-white"
               }`}
             >
-              {tab === "acciones" ? "Acciones" : "Agenda de cobranza"}
+              <span className="block text-xs font-semibold">{tab.label}</span>
+              <span
+                className={`block text-[10px] font-normal ${
+                  activeTab === tab.id ? "text-white/85" : "text-[var(--copilot-ink-muted)]"
+                }`}
+              >
+                {tab.hint}
+              </span>
             </button>
           ))}
         </div>
@@ -520,16 +539,61 @@ function CopilotAccionesPageContent() {
           <CollectionAgendaSection agenda={agenda} loading={bandejaLoading} />
         ) : null}
 
+        {activeTab === "alertas" ? (
+          <CopilotCard>
+            <div className="mb-3">
+              <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">
+                Alertas del sistema
+              </h2>
+              <p className="text-xs text-[var(--copilot-ink-muted)]">
+                Qué pasó en el negocio. Para resolver tareas concretas, usá Prioridades.
+              </p>
+            </div>
+            {bandejaLoading ? (
+              <p className="text-sm text-[var(--copilot-ink-muted)]">Cargando alertas…</p>
+            ) : inboxNotifications.length === 0 ? (
+              <p className="text-sm text-[var(--copilot-ink-muted)]">
+                No hay alertas recientes en esta carga.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {inboxNotifications.slice(0, 8).map((n) => (
+                  <li
+                    key={n.id}
+                    className="rounded-xl border border-[var(--copilot-border)] bg-white/80 px-3 py-2.5"
+                  >
+                    <p className="text-sm font-medium text-[var(--copilot-ink)]">{n.title}</p>
+                    {n.body ? (
+                      <p className="mt-0.5 line-clamp-2 text-xs text-[var(--copilot-ink-muted)]">
+                        {n.body}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="mt-4">
+              <Link
+                href="/copilot/alertas"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
+              >
+                Ver todas las alertas
+                <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+              </Link>
+            </div>
+          </CopilotCard>
+        ) : null}
+
         {/* ── PRIMARY: Bandeja operativa ─────────────────────────────────── */}
         {activeTab === "acciones" ? (<>
         <CopilotCard>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">
-                Acciones pendientes
+                Prioridades pendientes
               </h2>
               <p className="text-xs text-[var(--copilot-ink-muted)]">
-                Derivadas de alertas y cartera · ordenadas por prioridad
+                Qué resolver ahora · ordenadas por prioridad
               </p>
             </div>
             <button
