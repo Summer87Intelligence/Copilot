@@ -247,13 +247,41 @@ const SECTIONS: Section[] = [
           </p>
           <Bullets
             items={[
-              "Caja disponible — cuánto dinero hay ahora.",
+              "Dinero disponible — caja estimada ahora. Viene de Tesorería, no de facturación ni de Cartera.",
               "Pagos próximos — qué salidas están programadas en los próximos días.",
               "Después de pagos — cuánto quedaría si se pagan todos los compromisos.",
-              "Por cobrar — facturas abiertas que los clientes aún no pagaron.",
+              "Por cobrar — facturas abiertas que los clientes aún no pagaron. Es deuda de clientes, no plata en caja.",
               "Clientes con deuda — quiénes deben más o llevan más tiempo sin pagar.",
             ]}
           />
+        </div>
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Dinero disponible — cómo se calcula
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            El número de <strong>Dinero disponible</strong> se arma a partir del saldo que cargaste en Tesorería más los movimientos confirmados posteriores a esa fecha.
+          </p>
+          <Bullets
+            items={[
+              "Saldo actual cargado — el punto de partida. Lo cargás vos en Tesorería con la plata real que tenés en caja o cuenta.",
+              "Cobros Zeta posteriores — si un cliente paga después de que cargaste el saldo, Copilot lo suma automáticamente cuando aparece en Zeta. No tenés que registrarlo a mano.",
+              "Ingresos manuales — plata que ingresa pero no viene de facturas Zeta (transferencias, adelantos, etc.). Se registra en Tesorería.",
+              "Egresos confirmados — pagos realizados registrados en Tesorería. Restan del disponible.",
+              "Pagos programados sin confirmar — no restan hasta que los marcás como ejecutados.",
+            ]}
+          />
+          <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm text-[var(--copilot-ink)]">
+            <p className="font-semibold mb-1">Ejemplo</p>
+            <p className="leading-relaxed">
+              Cargás $263.034 como saldo actual. Luego El País paga $25.742 y ese cobro aparece en Zeta.
+              Copilot lo suma solo: <strong>Dinero disponible = $288.776</strong>.
+              Si después registrás un egreso de $10.000 en Tesorería, baja a <strong>$278.776</strong>.
+            </p>
+          </div>
+          <Callout variant="warning">
+            <strong>Por cobrar ≠ Dinero disponible.</strong> La deuda de los clientes se muestra en el bloque &ldquo;Por cobrar&rdquo; pero no entra en caja hasta que el cliente efectivamente pague y el cobro aparezca en Zeta.
+          </Callout>
         </div>
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
@@ -264,7 +292,7 @@ const SECTIONS: Section[] = [
               "Si hay clientes críticos → tocar el nombre para abrir su ficha, llamar o escribir por WhatsApp.",
               "Si hay pagos próximos → entrar a Tesorería para confirmar si están listos.",
               "Si el dinero después de pagos queda bajo → revisar caja en Tesorería.",
-              "Si hay montos inusuales → comparar con Cartera para confirmar.",
+              "Si el Dinero disponible parece incorrecto → verificar que el saldo actual en Tesorería esté actualizado.",
             ]}
           />
         </div>
@@ -764,6 +792,11 @@ const SECTIONS: Section[] = [
           Es la vista de cobranza: cuánto hay pendiente, qué está vencido y
           quiénes tienen más urgencia.
         </p>
+        <Callout variant="info">
+          <strong>Cartera ≠ Caja.</strong> Lo que ves en Cartera es deuda que los clientes todavía no pagaron.
+          No es plata disponible. Entra en caja solo cuando el cliente paga y el cobro aparece en Zeta.
+          El <strong>Dinero disponible</strong> viene de Tesorería, no de Cartera.
+        </Callout>
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
             Cómo interpretar la antigüedad de deuda
@@ -802,10 +835,61 @@ const SECTIONS: Section[] = [
     content: (
       <>
         <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
-          <strong>Tesorería</strong> muestra el dinero que manejás operativamente:
-          cuánto hay en caja, qué pagos están programados y qué compromisos
-          recurrentes tenés.
+          <strong>Tesorería</strong> es donde cargás y gestionás el dinero operativo:
+          el saldo actual de caja, los egresos y pagos que no vienen de Zeta.
+          Es la fuente del número <strong>Dinero disponible</strong> que ves en Hoy.
         </p>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Saldo actual cargado
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            El primer paso es cargar el saldo actual. Es la plata real que tenés en caja o cuenta bancaria en ese momento.
+          </p>
+          <Bullets
+            items={[
+              "No es facturación anual. No es lo que te deben. No es el total cobrado histórico.",
+              "Es el punto de partida: la plata que tenés ahora, que vos conocés mejor que nadie.",
+              "Se carga en Tesorería → panel de caja disponible → botón Editar saldo actual.",
+              "Podés actualizarlo cuando quieras. Cada vez que lo actualizás, la fecha de corte se resetea a ese día.",
+              "UYU y USD se cargan por separado.",
+            ]}
+          />
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Cobros de clientes — automáticos desde Zeta
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            No hace falta registrar a mano los cobros de clientes. Copilot los toma directamente de Zeta.
+          </p>
+          <Bullets
+            items={[
+              "Si un cliente paga después de que cargaste el saldo, el cobro aparece en Zeta y Copilot lo suma solo al Dinero disponible.",
+              "Si el cobro ocurrió antes de la fecha en que cargaste el saldo, no se suma de nuevo — ya estaba incluido en el saldo que cargaste.",
+              "Esto evita duplicar: el saldo que cargaste ya refleja todo lo cobrado hasta ese momento.",
+              "Los cobros anulados o cancelados no suman aunque tengan fecha posterior.",
+            ]}
+          />
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Egresos y movimientos manuales
+          </p>
+          <Bullets
+            items={[
+              "Registrá en Tesorería los pagos que hacés: sueldos, impuestos, proveedores, gastos operativos.",
+              "Los egresos confirmados restan del Dinero disponible desde la fecha en que ocurrieron.",
+              "Los pagos programados (fecha futura o sin confirmar) no restan hasta que los ejecutás.",
+              "Los ingresos manuales (no de facturas Zeta) también se registran acá y suman al disponible.",
+              "Caja manual → Movimientos de entrada y salida registrados por vos.",
+            ]}
+          />
+        </div>
+
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
             Secciones de Tesorería
@@ -820,11 +904,22 @@ const SECTIONS: Section[] = [
             ]}
           />
         </div>
-        <Callout variant="info">
-          <strong>Importante:</strong> un pago registrado en Tesorería solo afecta
-          el saldo de caja si también se registra el movimiento correspondiente.
-          Si tenés dudas, hablá con tu contador.
-        </Callout>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Garantías del sistema
+          </p>
+          <Bullets
+            items={[
+              "No marca ninguna factura como pagada desde Tesorería.",
+              "No modifica datos en Zeta.",
+              "No duplica cobros: si el cobro es anterior al saldo cargado, no se suma de nuevo.",
+              "UYU y USD se calculan por separado — no se mezclan.",
+              "Los cobros de clientes vienen de Zeta; los egresos operativos se registran en Tesorería.",
+            ]}
+          />
+        </div>
+
         <div className="flex gap-3 flex-wrap">
           <NavLink href="/copilot/tesoreria" label="Ir a Tesorería" />
           <NavLink href="/copilot/tesoreria?section=pagos" label="Ver pagos" ghost />
