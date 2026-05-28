@@ -248,9 +248,9 @@ describe("Hoy × Tesorería — fórmulas de caja", () => {
       cashPositions: [
         {
           currency: "UYU",
-          openingConfigured: false,
-          openingBalance: 0,
-          collectedFromClients: 80_000,
+          openingConfigured: true,
+          openingBalance: 80_000,
+          collectedFromClients: 0,
           manualIncome: 0,
           manualExpense: 0,
           adjustments: 0,
@@ -261,7 +261,6 @@ describe("Hoy × Tesorería — fórmulas de caja", () => {
           lastMovement: null,
         },
       ],
-      collectedByCurrency: { UYU: 80_000, USD: 0 },
       pendingByCurrency: { UYU: 200_000, USD: 0 },
       treasurySummaries: [],
     });
@@ -296,30 +295,32 @@ describe("Hoy × Tesorería — fórmulas de caja", () => {
     expect(alerts.some((a) => a.id === "treasury_opening_missing")).toBe(false);
   });
 
-  it("muestra cobrado por clientes en bloques de caja", () => {
+  it("caja disponible usa tesorería pura — cartera no infla availableCash", () => {
+    // Treasury positions are already the source of truth. Cartera (collectedByCurrency)
+    // must NOT be merged in — that was the root cause of the "UYU 3.7M" bug.
     const blocks = buildHoyCashPositionBlocks({
       cashPositions: [
         {
           currency: "UYU",
-          openingConfigured: false,
-          openingBalance: 0,
+          openingConfigured: true,
+          openingBalance: 50_000,
           collectedFromClients: 0,
           manualIncome: 1_000,
           manualExpense: 0,
           adjustments: 0,
           transfersNet: 0,
-          availableCash: 1_000,
-          currentCash: 1_000,
+          availableCash: 51_000,
+          currentCash: 51_000,
           movementsCount: 1,
           lastMovement: null,
         },
       ],
-      collectedByCurrency: { UYU: 80_000, USD: 0 },
       pendingByCurrency: { UYU: 0, USD: 0 },
       treasurySummaries: [],
     });
-    expect(blocks[0]?.collectedFromClients).toBe(80_000);
-    expect(blocks[0]?.availableCash).toBe(81_000);
+    // availableCash = openingBalance + manualIncome (no cartera added)
+    expect(blocks[0]?.availableCash).toBe(51_000);
+    expect(blocks[0]?.collectedFromClients).toBe(0);
   });
 
   it("no rompe facturado/cobrado/por cobrar de Cartera en bloques ejecutivos", () => {
@@ -357,7 +358,8 @@ describe("Hoy × Tesorería — fórmulas de caja", () => {
     expect(uyuExec?.collectedPeriod?.amount).toBe(420_000);
     expect(pulse.periodActivity.collectedInPeriodByCurrency.UYU).toBe(420_000);
     expect(uyuExec?.pendingCurrent?.amount).toBe(80_000);
-    expect(pulse.cashPositionBlocks.find((b) => b.currency === "UYU")?.availableCash).toBe(900_000);
+    // carteraCollectedToDate (900_000) must NOT inflate availableCash — treasury position has 0
+    expect(pulse.cashPositionBlocks.find((b) => b.currency === "UYU")?.availableCash).toBe(0);
   });
 
   it("sin egresos configurados → CTA", () => {
@@ -369,5 +371,194 @@ describe("Hoy × Tesorería — fórmulas de caja", () => {
       treasuryCashPositions: [],
     });
     expect(pulse.treasuryAlerts.some((a) => a.id === "treasury_no_outflows")).toBe(true);
+  });
+});
+
+describe("Hoy × Tesorería — reglas de fuente correcta (dinero disponible = tesorería, no cartera)", () => {
+  const GATE_HOY = { confidence: "high" as const, coverage: "full" as const, recommendations_enabled: true };
+
+  function treasuryPosition(overrides: {
+    currency?: "UYU" | "USD";
+    openingBalance?: number;
+    openingConfigured?: boolean;
+    manualIncome?: number;
+    manualExpense?: number;
+    availableCash?: number;
+  } = {}) {
+    const openingBalance = overrides.openingBalance ?? 0;
+    const manualIncome = overrides.manualIncome ?? 0;
+    const manualExpense = overrides.manualExpense ?? 0;
+    const available = openingBalance + manualIncome - manualExpense;
+    return {
+      currency: overrides.currency ?? "UYU" as const,
+      openingConfigured: overrides.openingConfigured ?? (openingBalance > 0),
+      openingBalance,
+      collectedFromClients: 0,
+      manualIncome,
+      manualExpense,
+      adjustments: 0,
+      transfersNet: 0,
+      availableCash: overrides.availableCash ?? available,
+      currentCash: overrides.availableCash ?? available,
+      movementsCount: (manualIncome > 0 || manualExpense > 0) ? 1 : 0,
+      lastMovement: null as null,
+    };
+  }
+
+  it("1. Dinero disponible usa cashPosition de Tesorería", () => {
+    const pulse = buildTodayBusinessPulse({
+      snapshot: null,
+      portfolioRows: [],
+      gate: GATE_HOY,
+      treasuryCashPositions: [treasuryPosition({ openingBalance: 120_000, openingConfigured: true })],
+      carteraCollectedToDate: { UYU: 3_773_788, USD: 72_826 },
+    });
+    const cash = pulse.cashPositionBlocks.find((b) => b.currency === "UYU");
+    expect(cash?.availableCash).toBe(120_000);
+  });
+
+  it("2. Dinero disponible NO usa facturado anual", () => {
+    const pulse = buildTodayBusinessPulse({
+      snapshot: null,
+      portfolioRows: [],
+      gate: GATE_HOY,
+      treasuryCashPositions: [treasuryPosition({ openingBalance: 50_000, openingConfigured: true })],
+      periodReportCurrencies: [{ currencyCode: "UYU", issuedInPeriod: 5_000_000, collectedInPeriod: 4_000_000 }],
+    });
+    const cash = pulse.cashPositionBlocks.find((b) => b.currency === "UYU");
+    expect(cash?.availableCash).toBe(50_000);
+    expect(cash?.availableCash).not.toBe(5_000_000);
+    expect(cash?.availableCash).not.toBe(4_000_000);
+  });
+
+  it("3. Dinero disponible NO usa cobrado histórico de Cartera", () => {
+    const pulse = buildTodayBusinessPulse({
+      snapshot: null,
+      portfolioRows: [],
+      gate: GATE_HOY,
+      treasuryCashPositions: [treasuryPosition({ openingBalance: 30_000, openingConfigured: true })],
+      carteraCollectedToDate: { UYU: 900_000, USD: 0 },
+    });
+    const cash = pulse.cashPositionBlocks.find((b) => b.currency === "UYU");
+    expect(cash?.availableCash).toBe(30_000);
+    expect(cash?.availableCash).not.toBe(900_000);
+    expect(cash?.availableCash).not.toBe(930_000);
+  });
+
+  it("4. Por cobrar sigue usando cartera (pendingReceivables)", () => {
+    const pulse = buildTodayBusinessPulse({
+      snapshot: null,
+      portfolioRows: [makeRow({ debt_uyu: 200_000, debt_usd: 0, total_debt: 200_000 })],
+      gate: GATE_HOY,
+      treasuryCashPositions: [treasuryPosition({ openingBalance: 50_000, openingConfigured: true })],
+    });
+    const state = pulse.currentStateBlocks.find((b) => b.currency === "UYU");
+    expect(state?.cashAvailable).toBe(50_000);
+    expect(state?.pendingReceivables).toBe(200_000);
+    expect(state?.cashAvailable).not.toBe(state?.pendingReceivables);
+  });
+
+  it("5. Después de pagos = caja tesorería − pagos próximos", () => {
+    const obligations = [
+      makeObligation({ currencyCode: "UYU", amountEstimated: 20_000, dueDate: "2026-06-01" }),
+    ];
+    const summaries = summarizeScheduledOutflows(obligations, {
+      asOfDate: "2026-05-21",
+      horizonEndDate: "2026-06-20",
+    });
+    const pulse = buildTodayBusinessPulse({
+      snapshot: null,
+      portfolioRows: [],
+      gate: GATE_HOY,
+      treasuryCashPositions: [treasuryPosition({ openingBalance: 80_000, openingConfigured: true })],
+      treasuryOutflowSummaries: summaries,
+    });
+    const proj = pulse.projection30dBlocks.find((b) => b.currency === "UYU");
+    expect(proj?.currentCash).toBe(80_000);
+    expect(proj?.scheduledPayments).toBe(20_000);
+    expect(proj?.safeCash30d).toBe(60_000);
+  });
+
+  it("6. UYU y USD separados — no se mezclan monedas", () => {
+    const pulse = buildTodayBusinessPulse({
+      snapshot: null,
+      portfolioRows: [],
+      gate: GATE_HOY,
+      treasuryCashPositions: [
+        treasuryPosition({ currency: "UYU", openingBalance: 100_000, openingConfigured: true }),
+        treasuryPosition({ currency: "USD", openingBalance: 5_000, openingConfigured: true }),
+      ],
+    });
+    const uyu = pulse.cashPositionBlocks.find((b) => b.currency === "UYU");
+    const usd = pulse.cashPositionBlocks.find((b) => b.currency === "USD");
+    expect(uyu?.availableCash).toBe(100_000);
+    expect(usd?.availableCash).toBe(5_000);
+  });
+
+  it("7. Sin saldo cargado: openingConfigured=false en el bloque", () => {
+    const pulse = buildTodayBusinessPulse({
+      snapshot: null,
+      portfolioRows: [makeRow({ debt_uyu: 50_000, total_debt: 50_000 })],
+      gate: GATE_HOY,
+      treasuryCashPositions: [
+        treasuryPosition({ openingBalance: 0, openingConfigured: false, manualIncome: 0 }),
+      ],
+    });
+    const block = pulse.cashPositionBlocks.find((b) => b.currency === "UYU");
+    // No treasury activity → block not emitted (hasActivity=false when no opening, no movements, no pending in treasury)
+    // OR if emitted, openingConfigured=false
+    if (block) {
+      expect(block.openingConfigured).toBe(false);
+    }
+  });
+
+  it("8. Pago programado pendiente (affectsCashflow=false) afecta proyección, no caja actual", () => {
+    const obligations = [
+      makeObligation({ currencyCode: "UYU", amountEstimated: 15_000, dueDate: "2026-06-05" }),
+    ];
+    const summaries = summarizeScheduledOutflows(obligations, {
+      asOfDate: "2026-05-21",
+      horizonEndDate: "2026-06-20",
+    });
+    const pulse = buildTodayBusinessPulse({
+      snapshot: null,
+      portfolioRows: [],
+      gate: GATE_HOY,
+      treasuryCashPositions: [treasuryPosition({ openingBalance: 60_000, openingConfigured: true })],
+      treasuryOutflowSummaries: summaries,
+    });
+    const cash = pulse.cashPositionBlocks.find((b) => b.currency === "UYU");
+    const proj = pulse.projection30dBlocks.find((b) => b.currency === "UYU");
+    expect(cash?.availableCash).toBe(60_000);     // caja actual sin tocar
+    expect(proj?.scheduledPayments).toBe(15_000); // aparece en proyección
+    expect(proj?.safeCash30d).toBe(45_000);       // después de pagos
+  });
+
+  it("9. Ingreso manual confirmado aumenta dinero disponible en caja", () => {
+    const pulse = buildTodayBusinessPulse({
+      snapshot: null,
+      portfolioRows: [],
+      gate: GATE_HOY,
+      treasuryCashPositions: [
+        treasuryPosition({ openingBalance: 50_000, openingConfigured: true, manualIncome: 10_000, availableCash: 60_000 }),
+      ],
+    });
+    const cash = pulse.cashPositionBlocks.find((b) => b.currency === "UYU");
+    expect(cash?.availableCash).toBe(60_000);
+    expect(cash?.manualIncome).toBe(10_000);
+  });
+
+  it("10. Egreso manual confirmado reduce dinero disponible en caja", () => {
+    const pulse = buildTodayBusinessPulse({
+      snapshot: null,
+      portfolioRows: [],
+      gate: GATE_HOY,
+      treasuryCashPositions: [
+        treasuryPosition({ openingBalance: 80_000, openingConfigured: true, manualExpense: 12_000, availableCash: 68_000 }),
+      ],
+    });
+    const cash = pulse.cashPositionBlocks.find((b) => b.currency === "UYU");
+    expect(cash?.availableCash).toBe(68_000);
+    expect(cash?.manualExpense).toBe(12_000);
   });
 });

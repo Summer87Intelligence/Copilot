@@ -1174,15 +1174,12 @@ export function buildTodayBusinessPulse(input: BusinessPulseInput): TodayBusines
 
   const treasurySummaries = input.treasuryOutflowSummaries ?? [];
   const cashPositions = input.treasuryCashPositions;
-  const collectedByCurrency =
-    input.carteraCollectedToDate ?? input.carteraPeriodMetrics?.collected;
   const asOfDate = input.today ?? new Date().toISOString().slice(0, 10);
   const periodRange =
     input.periodRange ?? { from: asOfDate.slice(0, 8) + "01", to: asOfDate };
 
   const cashPositionBlocks = buildHoyCashPositionBlocks({
     cashPositions,
-    collectedByCurrency,
     pendingByCurrency: portfolioPending,
     treasurySummaries,
   });

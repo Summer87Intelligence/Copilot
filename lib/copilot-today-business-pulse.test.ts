@@ -775,7 +775,9 @@ describe("buildTodayBusinessPulse", () => {
       expect(blockFor(pulse, "UYU")?.overdueCritical30?.amount).not.toBe(60_000);
     });
 
-    it("caja actual usa cobrado acumulado (collectedInPeriod), no portfolioResolved del período", () => {
+    it("caja actual usa tesorería real, no cobrado acumulado de cartera", () => {
+      // carteraCollectedToDate (900_000) must NOT inflate availableCash.
+      // Dinero disponible = pure treasury: openingBalance + manualIncome - manualExpense.
       const currencies = [
         {
           currencyCode: "UYU",
@@ -815,8 +817,9 @@ describe("buildTodayBusinessPulse", () => {
         ],
       });
       const cash = pulse.cashPositionBlocks.find((b) => b.currency === "UYU");
-      expect(cash?.collectedFromClients).toBe(900_000);
-      expect(cash?.availableCash).toBe(910_000);
+      // carteraCollectedToDate must NOT be merged into availableCash
+      expect(cash?.collectedFromClients).toBe(0);
+      expect(cash?.availableCash).toBe(10_000);
     });
 
     it("cobrado aplicado alineado con Cartera (portfolioResolved, no collectedInPeriod bruto)", () => {

@@ -11,7 +11,7 @@ export const HOY_MONEY_FIELD_SOURCES = {
     card: "Dinero disponible",
     field: "currentStateBlocks[].cashAvailable",
     origin:
-      "HoyCashPositionBlock.availableCash — caja/tesorería (cobros acumulados + movimientos manuales ± saldo inicial)",
+      "HoyCashPositionBlock.availableCash — caja/tesorería (saldo actual cargado + movimientos confirmados). Sin cartera/facturación.",
     mustNotInclude: ["pendingReceivables", "por cobrar de Cartera"],
   },
   receivables: {

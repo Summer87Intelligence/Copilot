@@ -19,7 +19,6 @@ import type { TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
 type CurrencyCode = TreasuryCurrencyCode;
 import {
   expectedCashBalance30d,
-  mergeCollectedIntoCashPositions,
   safeCashBalance30d,
   type CashPositionByCurrency,
 } from "@/lib/treasury/treasury-cash-position";
@@ -77,21 +76,16 @@ function safeCoverageStatus(safeCash: number, scheduledPayments: number): Covera
 
 export function buildHoyCashPositionBlocks(p: {
   cashPositions?: readonly CashPositionByCurrency[];
-  collectedByCurrency?: CarteraCurrencyTotals;
   pendingByCurrency: CarteraCurrencyTotals;
   treasurySummaries: readonly TreasuryOutflowSummary[];
 }): HoyCashPositionBlock[] {
-  const raw = p.cashPositions ?? [];
-  const enriched =
-    p.collectedByCurrency && Object.keys(p.collectedByCurrency).length > 0
-      ? mergeCollectedIntoCashPositions(raw, p.collectedByCurrency)
-      : raw;
+  const positions = p.cashPositions ?? [];
 
   const codes: CurrencyCode[] = ["UYU", "USD"];
   const blocks: HoyCashPositionBlock[] = [];
 
   for (const currency of codes) {
-    const pos = positionForCurrency(enriched, currency);
+    const pos = positionForCurrency(positions, currency);
     const pending = p.pendingByCurrency[currency] ?? 0;
     const summary = p.treasurySummaries.find((s) => s.currency === currency) ?? null;
     const hasConfigured = (summary?.itemsCount ?? 0) > 0;
