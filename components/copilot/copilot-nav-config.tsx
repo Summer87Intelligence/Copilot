@@ -8,6 +8,7 @@ import {
   Building2,
   CheckSquare,
   Database,
+  FileText,
   Landmark,
   ListTodo,
   Settings,
@@ -96,6 +97,12 @@ const COPILOT_NAV_CONSULTAR: CopilotNavGroup = {
       label: "Datos",
       description: "Consulta de registros",
       icon: Database,
+    },
+    {
+      href: "/copilot/reportes",
+      label: "Reportes",
+      description: "PDFs operativos",
+      icon: FileText,
     },
     {
       href: "/copilot/finanzas",
