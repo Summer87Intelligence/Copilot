@@ -252,6 +252,7 @@ const SECTIONS: Section[] = [
               "Después de pagos — cuánto quedaría si se pagan todos los compromisos.",
               "Por cobrar — facturas abiertas que los clientes aún no pagaron. Es deuda de clientes, no plata en caja.",
               "Clientes con deuda — quiénes deben más o llevan más tiempo sin pagar.",
+              "Generar PDF — en Clientes críticos podés descargar el reporte de deudores filtrado.",
             ]}
           />
         </div>
@@ -509,6 +510,30 @@ const SECTIONS: Section[] = [
               "% vencido — qué proporción de la deuda total ya está vencida. Cuanto más alto, más urgente.",
             ]}
           />
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Reporte de deudores (PDF)
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            Podés descargar un <strong>reporte de deudores</strong> con todos los clientes que deben plata,
+            filtrado según lo que necesites revisar o compartir.
+          </p>
+          <Bullets
+            items={[
+              "Dónde generarlo — botón Generar PDF en Hoy (bloque Clientes críticos) y en Clientes (Cartera de clientes).",
+              "Antes de descargar — elegís moneda, estado, montos mínimos, antigüedad de vencimiento y contacto.",
+              "Vista previa — el modal indica cuántos clientes entrarán con los filtros elegidos.",
+              "Antigüedad — días exactos desde la factura vencida más antigua (fecha de emisión del PDF como referencia).",
+              "UYU y USD — cada moneda va en filas separadas; los totales no se mezclan.",
+              "Columnas — cliente, moneda, deuda, vencido, días de atraso, contacto y estado.",
+              "Es informativo — no modifica datos, no marca clientes como pagados y no envía mensajes.",
+            ]}
+          />
+          <Callout variant="info">
+            Si un cliente debe en pesos y en dólares, aparece una fila por moneda. Las notas de crédito no inflan la deuda mostrada.
+          </Callout>
         </div>
 
         <div className={`rounded-2xl border ${C.border} p-4`}>

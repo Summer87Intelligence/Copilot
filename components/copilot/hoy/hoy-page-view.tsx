@@ -40,6 +40,7 @@ import { HoyPeriodBar } from "./hoy-period-bar";
 import { HoyProjection30dSection } from "./hoy-projection-30d-section";
 import { HOY_PAGE_SHELL } from "./hoy-layout";
 import { HoyQuickInsights } from "./hoy-quick-insights";
+import { DebtorsReportTrigger } from "@/components/copilot/reports/debtors-report-dialog";
 
 export type HoySectionErrors = {
   hub?: string;
@@ -290,6 +291,15 @@ export function HoyPageView({
                   : HOY_COPY.debtorsSectionSubtitle}
               </p>
             </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {portfolioRows && portfolioRows.length > 0 ? (
+                <DebtorsReportTrigger
+                  portfolioRows={portfolioRows}
+                  defaultFilters={{ status: "overdue", currency: "all", overdueDays: "all" }}
+                  hint="Descargá un reporte filtrado de clientes con deuda."
+                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white/80 px-2.5 py-1 text-xs font-semibold text-[var(--copilot-ink)] hover:bg-white"
+                />
+              ) : null}
             {pulse.attentionClients.total > 0 ? (
               <button
                 type="button"
@@ -299,6 +309,7 @@ export function HoyPageView({
                 {HOY_COPY.attentionStripCta}
               </button>
             ) : null}
+            </div>
           </div>
           <div className="mt-2">
             <ClientsWithDebtSection

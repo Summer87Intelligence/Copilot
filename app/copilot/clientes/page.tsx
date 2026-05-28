@@ -14,6 +14,7 @@ import {
   copilotPageMainClass,
 } from "@/components/copilot/copilot-ui";
 import { CopilotSkeletonTable } from "@/components/copilot/copilot-loading-skeleton";
+import { DebtorsReportTrigger } from "@/components/copilot/reports/debtors-report-dialog";
 import type { ClientPortfolioRow } from "@/lib/copilot-clients-portfolio";
 import { fetchClientPortfolioLoad } from "@/lib/copilot-client-portfolio-fetch";
 import {
@@ -342,10 +343,18 @@ export default function CopilotClientesPage() {
 
             <CopilotCard className="overflow-hidden p-0">
               <div className="border-b border-[var(--copilot-border)] px-4 py-3">
-                <CopilotSectionTitle
-                  title="Cartera de clientes"
-                  subtitle="Directorio unificado — misma base que Cartera."
-                />
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <CopilotSectionTitle
+                    title="Cartera de clientes"
+                    subtitle="Directorio unificado — misma base que Cartera."
+                  />
+                  <DebtorsReportTrigger
+                    portfolioRows={load.rows}
+                    portfolioDetails={load.details}
+                    defaultFilters={{ status: "all", currency: "all" }}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--copilot-accent)] shadow-sm hover:bg-[rgba(31,107,74,0.04)]"
+                  />
+                </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   {/* Search */}
                   <div className="flex items-center gap-1.5 rounded-full border border-[var(--copilot-border)] bg-white/80 px-3 py-1">
