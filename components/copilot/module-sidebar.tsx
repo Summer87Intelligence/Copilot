@@ -129,25 +129,37 @@ export function CopilotModuleSidebar({
               const Icon = item.icon;
               const active = isNavActiveForBase(pathname, item.href, basePath);
               const label = item.shortLabel ?? item.label;
+              const tooltip = item.description
+                ? `${item.label} — ${item.description}`
+                : item.label;
               const activeRing = "ring-[rgba(44,40,37,0.08)] bg-white shadow-sm";
               const accentActive = "text-[var(--copilot-accent)]";
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  title={collapsed ? item.label : undefined}
-                  className={`group flex min-h-7 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[13px] font-medium leading-tight transition-colors ${
+                  title={tooltip}
+                  className={`group flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[13px] font-medium leading-tight transition-colors ${
                     active
                       ? `text-[var(--copilot-ink)] ring-1 ${activeRing}`
                       : "text-[var(--copilot-ink-muted)] hover:bg-white/60 hover:text-[var(--copilot-ink)]"
-                  } ${collapsed ? "justify-center px-0" : ""}`}
+                  } ${collapsed ? "min-h-7 justify-center px-0" : item.description ? "min-h-9 py-1.5" : "min-h-7"}`}
                 >
                   <Icon
                     className={`h-4 w-4 shrink-0 ${active ? accentActive : ""}`}
                     aria-hidden
                   />
                   {!collapsed ? (
-                    <span className="truncate">{label}</span>
+                    item.description ? (
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate leading-snug">{label}</span>
+                        <span className="block truncate text-[10px] font-normal leading-snug text-[var(--copilot-ink-muted)]">
+                          {item.description}
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="truncate">{label}</span>
+                    )
                   ) : (
                     <span className="sr-only">{item.label}</span>
                   )}

@@ -232,6 +232,75 @@ const SECTIONS: Section[] = [
     ),
   },
   {
+    id: "navegacion",
+    icon: <ChevronRight className="h-4 w-4" aria-hidden />,
+    title: "Cómo moverse por Copilot",
+    content: (
+      <>
+        <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
+          El menú lateral está organizado para que sepas dónde empezar, dónde operar y
+          dónde consultar sin perder rutas ni funciones.
+        </p>
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Para empezar el día
+          </p>
+          <Bullets
+            items={[
+              "Hoy — resumen, prioridad diaria y caja al instante.",
+            ]}
+          />
+        </div>
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Para operar
+          </p>
+          <Bullets
+            items={[
+              "Acciones — tareas y agenda de cobranza.",
+              "Clientes — ficha 360, cobranza y contacto.",
+              "Cartera — deuda por período y reportes.",
+              "Tesorería — caja, pagos programados y movimientos.",
+            ]}
+          />
+        </div>
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Para consultar y revisar
+          </p>
+          <Bullets
+            items={[
+              "Datos — facturas, recibos y registros en tabla.",
+              "Panorama financiero — lectura general (no reemplaza Tesorería ni Cartera).",
+              "Agentes IA — briefings de lectura; no modifican datos.",
+            ]}
+          />
+        </div>
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Ayuda y sistema
+          </p>
+          <Bullets
+            items={[
+              "Manual de uso — esta guía.",
+              "Alertas — qué pasó en el negocio (inbox de avisos).",
+              "Estado del sistema — integraciones, sincronización y salud técnica.",
+              "Configuración y Personalización — ajustes del workspace y la vista.",
+            ]}
+          />
+        </div>
+        <Callout variant="tip">
+          <strong>Acciones vs. Alertas:</strong> Alertas cuenta qué pasó; Acciones dice qué
+          hacer. Ambas siguen disponibles; Alertas está en Sistema para no competir con el
+          flujo diario.
+        </Callout>
+        <div className="flex gap-3 flex-wrap">
+          <NavLink href="/copilot/hoy" label="Ir a Hoy" />
+        </div>
+      </>
+    ),
+  },
+  {
     id: "hoy",
     icon: <ListTodo className="h-4 w-4" aria-hidden />,
     title: "Hoy — La pantalla principal",
@@ -1793,10 +1862,10 @@ const MODULE_CARDS = [
   { icon: <Users className="h-5 w-5" />, label: "Clientes", href: "/copilot/clientes", color: "text-violet-600 bg-violet-50" },
   { icon: <Landmark className="h-5 w-5" />, label: "Cartera", href: "/copilot/cartera", color: "text-orange-600 bg-orange-50" },
   { icon: <Banknote className="h-5 w-5" />, label: "Tesorería", href: "/copilot/tesoreria", color: "text-teal-600 bg-teal-50" },
-  { icon: <Wallet className="h-5 w-5" />, label: "Finanzas", href: "/copilot/finanzas", color: "text-indigo-600 bg-indigo-50" },
+  { icon: <Wallet className="h-5 w-5" />, label: "Panorama financiero", href: "/copilot/finanzas", color: "text-indigo-600 bg-indigo-50" },
   { icon: <Database className="h-5 w-5" />, label: "Datos", href: "/copilot/datos", color: "text-slate-600 bg-slate-100" },
   { icon: <Bot className="h-5 w-5" />, label: "Agentes IA", href: "/copilot/agentes", color: "text-purple-600 bg-purple-50" },
-  { icon: <Activity className="h-5 w-5" />, label: "Operacional", href: "/copilot/operacional", color: "text-rose-600 bg-rose-50" },
+  { icon: <Activity className="h-5 w-5" />, label: "Estado del sistema", href: "/copilot/operacional", color: "text-rose-600 bg-rose-50" },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -1858,8 +1927,8 @@ export default function ManualPage() {
                 "Entrá a Acciones — ahí están las cosas concretas que conviene hacer hoy.",
                 "Si hay clientes vencidos → abrí su ficha, escribí por WhatsApp o email.",
                 "Si hay pagos próximos → entrá a Tesorería para confirmar que estén listos.",
-                "Si querés una mirada más amplia → entrá a Finanzas.",
-                "Si algo parece desactualizado → revisá Operacional.",
+                "Si querés una mirada más amplia → entrá a Panorama financiero.",
+                "Si algo parece desactualizado → revisá Estado del sistema.",
               ]}
             />
           </div>

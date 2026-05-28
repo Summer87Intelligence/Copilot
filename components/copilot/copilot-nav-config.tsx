@@ -21,7 +21,10 @@ import {
 export type CopilotNavItem = {
   href: string;
   label: string;
+  /** Etiqueta corta en sidebar colapsado (iconos). */
   shortLabel?: string;
+  /** Subtítulo en sidebar expandido y tooltip en colapsado. */
+  description?: string;
   icon: LucideIcon;
 };
 
@@ -31,38 +34,120 @@ export type CopilotNavGroup = {
   items: CopilotNavItem[];
 };
 
-const COPILOT_NAV_HOY: CopilotNavGroup = {
-  sectionTitle: null,
-  items: [{ href: "/copilot/hoy", label: "Hoy", icon: ListTodo }],
+const COPILOT_NAV_INICIO: CopilotNavGroup = {
+  sectionTitle: "Inicio",
+  items: [
+    {
+      href: "/copilot/hoy",
+      label: "Hoy",
+      description: "Resumen y prioridad diaria",
+      icon: ListTodo,
+    },
+  ],
 };
 
-const COPILOT_NAV_PRINCIPAL: CopilotNavGroup = {
-  sectionTitle: "Principal",
+const COPILOT_NAV_OPERAR: CopilotNavGroup = {
+  sectionTitle: "Operar",
   items: [
-    { href: "/copilot/acciones", label: "Acciones", icon: CheckSquare },
-    { href: "/copilot/alertas", label: "Alertas", icon: TriangleAlert },
-    { href: "/copilot/cartera", label: "Cartera", icon: Landmark },
-    { href: "/copilot/clientes", label: "Clientes", icon: Users },
-    { href: "/copilot/tesoreria", label: "Tesorería", icon: Banknote },
-    { href: "/copilot/finanzas", label: "Finanzas", icon: Wallet },
-    { href: "/copilot/datos", label: "Datos", icon: Database },
+    {
+      href: "/copilot/acciones",
+      label: "Acciones",
+      description: "Tareas operativas",
+      icon: CheckSquare,
+    },
+    {
+      href: "/copilot/clientes",
+      label: "Clientes",
+      description: "Ficha y cobranza",
+      icon: Users,
+    },
+    {
+      href: "/copilot/cartera",
+      label: "Cartera",
+      description: "Deuda y cobros",
+      icon: Landmark,
+    },
+    {
+      href: "/copilot/tesoreria",
+      label: "Tesorería",
+      description: "Caja y pagos",
+      icon: Banknote,
+    },
   ],
 };
 
 const COPILOT_NAV_IA: CopilotNavGroup = {
   sectionTitle: "IA",
   items: [
-    { href: "/copilot/agentes", label: "Agentes IA", icon: Bot },
+    {
+      href: "/copilot/agentes",
+      label: "Agentes IA",
+      description: "Lecturas y recomendaciones",
+      icon: Bot,
+    },
+  ],
+};
+
+const COPILOT_NAV_CONSULTAR: CopilotNavGroup = {
+  sectionTitle: "Consultar",
+  items: [
+    {
+      href: "/copilot/datos",
+      label: "Datos",
+      description: "Consulta de registros",
+      icon: Database,
+    },
+    {
+      href: "/copilot/finanzas",
+      label: "Panorama financiero",
+      shortLabel: "Finanzas",
+      description: "Lectura general",
+      icon: Wallet,
+    },
+  ],
+};
+
+const COPILOT_NAV_AYUDA: CopilotNavGroup = {
+  sectionTitle: "Ayuda",
+  items: [
+    {
+      href: "/copilot/manual",
+      label: "Manual de uso",
+      shortLabel: "Manual",
+      description: "Guía paso a paso",
+      icon: BookMarked,
+    },
   ],
 };
 
 const COPILOT_NAV_SISTEMA: CopilotNavGroup = {
   sectionTitle: "Sistema",
   items: [
-    { href: "/copilot/manual", label: "Manual de uso", icon: BookMarked },
-    { href: "/copilot/operacional", label: "Operacional", icon: Activity },
-    { href: "/copilot/configuracion", label: "Configuración", icon: Settings },
-    { href: "/copilot/personalizacion", label: "Personalización", icon: SlidersHorizontal },
+    {
+      href: "/copilot/alertas",
+      label: "Alertas",
+      description: "Avisos y novedades",
+      icon: TriangleAlert,
+    },
+    {
+      href: "/copilot/operacional",
+      label: "Estado del sistema",
+      shortLabel: "Sistema",
+      description: "Integraciones y salud técnica",
+      icon: Activity,
+    },
+    {
+      href: "/copilot/configuracion",
+      label: "Configuración",
+      description: "Ajustes del workspace",
+      icon: Settings,
+    },
+    {
+      href: "/copilot/personalizacion",
+      label: "Personalización",
+      description: "Preferencias de vista",
+      icon: SlidersHorizontal,
+    },
   ],
 };
 
@@ -73,11 +158,14 @@ export const COPILOT_NAV_ADMIN_GROUP: CopilotNavGroup = {
     {
       href: "/admin/companies",
       label: "Empresas",
+      description: "Gestión multi-empresa",
       icon: Building2,
     },
     {
       href: "/copilot/knowledge/zeta",
-      label: "Zeta KB",
+      label: "Base Zeta",
+      shortLabel: "Zeta",
+      description: "Documentación de integración",
       icon: BookOpen,
     },
   ],
@@ -85,9 +173,11 @@ export const COPILOT_NAV_ADMIN_GROUP: CopilotNavGroup = {
 
 /** Grupos base del menú lateral. */
 export const COPILOT_NAV_BASE_GROUPS: CopilotNavGroup[] = [
-  COPILOT_NAV_HOY,
-  COPILOT_NAV_PRINCIPAL,
+  COPILOT_NAV_INICIO,
+  COPILOT_NAV_OPERAR,
   COPILOT_NAV_IA,
+  COPILOT_NAV_CONSULTAR,
+  COPILOT_NAV_AYUDA,
   COPILOT_NAV_SISTEMA,
 ];
 
