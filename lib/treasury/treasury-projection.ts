@@ -14,11 +14,33 @@ import type {
 } from "@/lib/treasury/treasury-types";
 import { readTransferPairId } from "@/lib/treasury/treasury-validation";
 
+/**
+ * Returns true when a movement was created as a proxy for opening balance setup
+ * instead of using the proper treasury_cash_opening_balances table.
+ *
+ * Two cases are excluded:
+ * 1. metadata.kind === "opening_balance"  — explicit future-proof marker
+ * 2. concept "Caja inicial" + metadata.planned_obligation_id — movement created
+ *    by marking a planned obligation named "Caja inicial" as paid, the common
+ *    workaround before the opening-balance form existed.
+ */
+function isOpeningBalanceProxy(movement: ManualCashMovement): boolean {
+  const meta = movement.metadata;
+  if (meta?.kind === "opening_balance") return true;
+  if (
+    movement.concept.toLowerCase().trim() === "caja inicial" &&
+    typeof meta?.planned_obligation_id === "string"
+  )
+    return true;
+  return false;
+}
+
 export function shouldCountManualCashInCashflow(movement: ManualCashMovement): boolean {
   if (movement.status !== "active") return false;
   if (!movement.affectsCashflow) return false;
   if (movement.movementType === "transfer") return false;
   if (movement.reconciled && movement.bankReconciliationId) return false;
+  if (isOpeningBalanceProxy(movement)) return false;
   return true;
 }
 

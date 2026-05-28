@@ -7,9 +7,12 @@ import { TesoreriaControlBar } from "@/components/copilot/tesoreria/tesoreria-co
 import { TesoreriaDashboard } from "@/components/copilot/tesoreria/tesoreria-dashboard";
 import { TreasuryAccountsPanel } from "@/components/copilot/tesoreria/treasury-accounts-panel";
 import { TreasuryBankPanel } from "@/components/copilot/tesoreria/treasury-bank-panel";
+import { TreasuryCashPanel } from "@/components/copilot/tesoreria/treasury-cash-panel";
 import { TreasuryFeedbackBanner } from "@/components/copilot/tesoreria/treasury-feedback-banner";
 import { TreasuryManualCashPanel } from "@/components/copilot/tesoreria/treasury-manual-cash-panel";
+import { TreasuryMovimientosPanel } from "@/components/copilot/tesoreria/treasury-movimientos-panel";
 import { TreasuryOpeningBalancesPanel } from "@/components/copilot/tesoreria/treasury-opening-balances-panel";
+import { TreasuryProgramadosPanel } from "@/components/copilot/tesoreria/treasury-programados-panel";
 import { TreasuryRecurringPaymentsPanel } from "@/components/copilot/tesoreria/treasury-recurring-payments-panel";
 import { TreasuryObligationsPanel } from "@/components/copilot/tesoreria/treasury-obligations-panel";
 import {
@@ -50,11 +53,11 @@ export function TesoreriaShell() {
   const searchParams = useSearchParams();
   const sectionFromUrl = searchParams.get("section");
   const [section, setSection] = useState<TesoreriaSection>(
-    () => parseTesoreriaSection(sectionFromUrl) ?? "resumen"
+    () => parseTesoreriaSection(sectionFromUrl) ?? "caja"
   );
 
   useEffect(() => {
-    const next = parseTesoreriaSection(sectionFromUrl) ?? "resumen";
+    const next = parseTesoreriaSection(sectionFromUrl) ?? "caja";
     if (next !== section) setSection(next);
   }, [sectionFromUrl, section]);
 
@@ -155,46 +158,53 @@ export function TesoreriaShell() {
           ))}
         </nav>
 
-        {/* Separador + configuración */}
-        <div
-          className="flex items-center gap-1.5 border-l border-[var(--copilot-border)] pl-2"
-          aria-label="Configuración"
-        >
-          <span className="text-[10px] uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-            Config
-          </span>
-          {TESORERIA_SECTIONS_CONFIG.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setSectionWithUrl(item.id)}
-              className={`${NAV_BTN_BASE} ${section === item.id ? NAV_BTN_ACTIVE : NAV_BTN_CONFIG_IDLE}`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        {TESORERIA_SECTIONS_CONFIG.length > 0 ? (
+          <div
+            className="flex items-center gap-1.5 border-l border-[var(--copilot-border)] pl-2"
+            aria-label="Configuración"
+          >
+            <span className="text-[10px] uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+              Config
+            </span>
+            {TESORERIA_SECTIONS_CONFIG.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setSectionWithUrl(item.id)}
+                className={`${NAV_BTN_BASE} ${section === item.id ? NAV_BTN_ACTIVE : NAV_BTN_CONFIG_IDLE}`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
-      {section === "resumen" ? (
-        <TesoreriaDashboard
-          workspace={workspace}
-          asOfDate={asOfDate}
-          onGoToPagos={() => setSectionWithUrl("pagos")}
-        />
+      {section === "caja" ? <TreasuryCashPanel workspace={workspace} /> : null}
+
+      {section === "programados" ? (
+        <TreasuryProgramadosPanel workspace={workspace} asOfDate={asOfDate} />
       ) : null}
-      {section === "accounts" ? <TreasuryAccountsPanel workspace={workspace} /> : null}
-      {section === "opening" ? <TreasuryOpeningBalancesPanel workspace={workspace} /> : null}
-      {section === "recurring" ? (
-        <TreasuryRecurringPaymentsPanel
-          workspace={workspace}
-          onGoToPagos={() => setSectionWithUrl("pagos")}
-        />
-      ) : null}
-      {section === "manual" ? <TreasuryManualCashPanel workspace={workspace} /> : null}
-      {section === "bank" ? <TreasuryBankPanel workspace={workspace} /> : null}
-      {section === "pagos" ? (
-        <TreasuryObligationsPanel workspace={workspace} asOfDate={asOfDate} />
+
+      {section === "movimientos" ? <TreasuryMovimientosPanel workspace={workspace} /> : null}
+
+      {section === "avanzado" ? (
+        <div className="space-y-6">
+          <TesoreriaDashboard
+            workspace={workspace}
+            asOfDate={asOfDate}
+            onGoToPagos={() => setSectionWithUrl("programados")}
+          />
+          <TreasuryObligationsPanel workspace={workspace} asOfDate={asOfDate} />
+          <TreasuryManualCashPanel workspace={workspace} />
+          <TreasuryBankPanel workspace={workspace} />
+          <TreasuryRecurringPaymentsPanel
+            workspace={workspace}
+            onGoToPagos={() => setSectionWithUrl("programados")}
+          />
+          <TreasuryAccountsPanel workspace={workspace} />
+          <TreasuryOpeningBalancesPanel workspace={workspace} />
+        </div>
       ) : null}
     </div>
   );

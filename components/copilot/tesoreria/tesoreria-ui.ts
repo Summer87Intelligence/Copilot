@@ -13,6 +13,12 @@ export const TESORERIA_TD_CLASS =
 export const TESORERIA_PAGE_SIZE = 10;
 
 export type TesoreriaSection =
+  // Nuevas tabs principales (Fase 2)
+  | "caja"
+  | "programados"
+  | "movimientos"
+  | "avanzado"
+  // Secciones legacy (mantenidas para backward-compat por URL aliases)
   | "resumen"
   | "pagos"
   | "manual"
@@ -21,32 +27,44 @@ export type TesoreriaSection =
   | "accounts"
   | "opening";
 
-/** Aliases para URL params viejos (ej. ?section=dashboard → resumen). */
+/** Aliases para URL params viejos → nuevas secciones. */
 export const TESORERIA_SECTION_ALIASES: Record<string, TesoreriaSection> = {
-  dashboard: "resumen",
-  obligations: "pagos",
-  santander: "bank",
+  dashboard: "caja",
+  resumen: "caja",
+  pagos: "programados",
+  manual: "movimientos",
+  obligations: "programados",
+  santander: "avanzado",
+  bank: "avanzado",
+  recurring: "avanzado",
+  accounts: "avanzado",
+  opening: "caja",
 };
 
-/** Tabs operativas que aparecen en la navegación principal. */
+/** Tabs operativas principales — vista simple. */
 export const TESORERIA_SECTIONS_MAIN: { id: TesoreriaSection; label: string }[] = [
+  { id: "caja", label: "Caja" },
+  { id: "programados", label: "Programados" },
+  { id: "movimientos", label: "Movimientos" },
+  { id: "avanzado", label: "Avanzado" },
+];
+
+/** Secciones de configuración legacy — ya no aparecen en nav principal. */
+export const TESORERIA_SECTIONS_CONFIG: { id: TesoreriaSection; label: string }[] = [];
+
+/** Todas las secciones (para parseo de URL). */
+export const TESORERIA_SECTIONS: { id: TesoreriaSection; label: string }[] = [
+  ...TESORERIA_SECTIONS_MAIN,
   { id: "resumen", label: "Resumen" },
   { id: "pagos", label: "Pagos" },
   { id: "manual", label: "Caja manual" },
   { id: "recurring", label: "Recurrentes" },
   { id: "bank", label: "Conciliación" },
-];
-
-/** Tabs de configuración — accesibles pero fuera del flujo principal. */
-export const TESORERIA_SECTIONS_CONFIG: { id: TesoreriaSection; label: string }[] = [
   { id: "accounts", label: "Cuentas" },
   { id: "opening", label: "Saldos iniciales" },
 ];
 
-/** Todas las secciones (para parseo de URL). */
-export const TESORERIA_SECTIONS = [...TESORERIA_SECTIONS_MAIN, ...TESORERIA_SECTIONS_CONFIG];
-
-/** Secciones donde se muestra la barra de filtro de fecha/moneda. */
+/** Secciones donde se muestra la barra de filtro de fecha/moneda (legacy). */
 export const TESORERIA_SECTIONS_WITH_CONTROL_BAR = new Set<TesoreriaSection>([
   "pagos",
   "manual",
