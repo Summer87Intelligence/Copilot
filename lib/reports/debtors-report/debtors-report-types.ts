@@ -41,6 +41,7 @@ export type DebtorsReportModel = {
   emittedAt: string;
   emittedAtLabel: string;
   issuerName: string;
+  currencyFilter: DebtorsReportCurrencyFilter;
   filtersLabel: string[];
   totals: {
     clientsCount: number;

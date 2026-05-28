@@ -10,23 +10,26 @@ const COLORS = {
   muted: "#6b7280",
   accent: "#1a5fa8",
   border: "#d1d5db",
-  rowAlt: "#f7f9fb",
-  headerBg: "#eef4fa",
+  rowAlt: "#f8fafc",
+  headerBg: "#e8f0f8",
 };
 
 const PAGE = { margin: 48, width: 595, height: 842 };
-const FOOTER_RESERVE = 40;
+const FOOTER_RESERVE = 48;
 const MAX_Y = PAGE.height - PAGE.margin - FOOTER_RESERVE;
+
+const ROW_MIN_H = 22;
+const ROW_PAD_V = 6;
 
 // Cliente | Moneda | Deuda | Vencido | Antigüedad | Contacto | Estado
 const COL = {
-  client: { w: 118 },
-  currency: { w: 36 },
-  debt: { w: 62 },
-  overdue: { w: 62 },
-  aging: { w: 58 },
-  contact: { w: 72 },
-  status: { w: 51 },
+  client: { w: 120 },
+  currency: { w: 34 },
+  debt: { w: 64 },
+  overdue: { w: 64 },
+  aging: { w: 52 },
+  contact: { w: 78 },
+  status: { w: 47 },
 } as const;
 
 type ColKey = keyof typeof COL;
@@ -58,6 +61,22 @@ function truncate(doc: PDFKit.PDFDocument, text: string, width: number): string 
     t = t.slice(0, -1);
   }
   return `${t}…`;
+}
+
+function summaryLinesForModel(model: DebtorsReportModel): string[] {
+  const lines: string[] = [`Clientes incluidos: ${model.totals.clientsCount}`];
+  const showUyu = model.currencyFilter !== "USD";
+  const showUsd = model.currencyFilter !== "UYU";
+
+  if (showUyu) {
+    lines.push(`Total UYU: ${formatMoney(model.totals.totalDebtUyu, "UYU")}`);
+    lines.push(`Vencido UYU: ${formatMoney(model.totals.totalOverdueUyu, "UYU")}`);
+  }
+  if (showUsd) {
+    lines.push(`Total USD: ${formatMoney(model.totals.totalDebtUsd, "USD")}`);
+    lines.push(`Vencido USD: ${formatMoney(model.totals.totalOverdueUsd, "USD")}`);
+  }
+  return lines;
 }
 
 export type RenderDebtorsReportPdfOptions = {
@@ -96,53 +115,48 @@ export function renderDebtorsReportPdf(
       if (y + needed > MAX_Y) breakPage();
     };
 
-    // ── Portada / encabezado ──
-    doc.fillColor(COLORS.accent).font("Helvetica-Bold").fontSize(16)
+    doc.fillColor(COLORS.accent).font("Helvetica-Bold").fontSize(17)
       .text("Reporte de deudores", PAGE.margin, y);
-    y += 22;
+    y += 26;
 
-    doc.fillColor(COLORS.ink).font("Helvetica").fontSize(9);
+    doc.fillColor(COLORS.ink).font("Helvetica").fontSize(9.5);
     doc.text(`Emisión: ${model.emittedAtLabel}`, PAGE.margin, y);
-    y += 12;
+    y += 14;
     if (issuerName.trim()) {
       doc.text(`Empresa: ${issuerName.trim()}`, PAGE.margin, y);
-      y += 12;
+      y += 14;
     }
 
-    doc.fillColor(COLORS.muted).fontSize(8).text("Filtros aplicados:", PAGE.margin, y);
-    y += 10;
-    for (const label of model.filtersLabel) {
-      doc.text(`• ${label}`, PAGE.margin + 8, y, { width: PAGE.width - PAGE.margin * 2 });
-      y += 10;
+    if (model.filtersLabel.length > 0) {
+      doc.fillColor(COLORS.muted).fontSize(8.5).text("Filtros aplicados:", PAGE.margin, y);
+      y += 11;
+      for (const label of model.filtersLabel) {
+        doc.text(`• ${label}`, PAGE.margin + 10, y, { width: PAGE.width - PAGE.margin * 2 });
+        y += 11;
+      }
+      y += 4;
     }
-    y += 6;
 
-    // ── Resumen ──
-    doc.fillColor(COLORS.headerBg).rect(PAGE.margin, y, TABLE_W, 52).fill();
-    doc.fillColor(COLORS.ink).font("Helvetica-Bold").fontSize(9)
-      .text("Resumen", PAGE.margin + 8, y + 8);
-    doc.font("Helvetica").fontSize(8);
-    const summaryLines = [
-      `Clientes incluidos: ${model.totals.clientsCount}`,
-      `Total UYU: ${formatMoney(model.totals.totalDebtUyu, "UYU")}`,
-      `Vencido UYU: ${formatMoney(model.totals.totalOverdueUyu, "UYU")}`,
-      `Total USD: ${formatMoney(model.totals.totalDebtUsd, "USD")}`,
-      `Vencido USD: ${formatMoney(model.totals.totalOverdueUsd, "USD")}`,
-    ];
-    let sy = y + 20;
+    const summaryLines = summaryLinesForModel(model);
+    const summaryH = 16 + summaryLines.length * 12;
+    doc.fillColor(COLORS.headerBg).rect(PAGE.margin, y, TABLE_W, summaryH).fill();
+    doc.fillColor(COLORS.ink).font("Helvetica-Bold").fontSize(9.5)
+      .text("Resumen", PAGE.margin + 10, y + 8);
+    doc.font("Helvetica").fontSize(8.5);
+    let sy = y + 22;
     for (const line of summaryLines) {
-      doc.text(line, PAGE.margin + 8, sy);
-      sy += 10;
+      doc.text(line, PAGE.margin + 10, sy);
+      sy += 12;
     }
-    y += 58;
+    y += summaryH + 14;
 
     if (model.rows.length === 0) {
-      ensureSpace(40);
-      doc.fillColor(COLORS.muted).font("Helvetica").fontSize(10)
+      ensureSpace(56);
+      doc.fillColor(COLORS.muted).font("Helvetica").fontSize(11)
         .text(
           "No hay clientes que coincidan con los filtros seleccionados.",
           PAGE.margin,
-          y,
+          y + 12,
           { width: TABLE_W, align: "center" }
         );
       renderFooter(doc, pageNum);
@@ -154,10 +168,7 @@ export function renderDebtorsReportPdf(
 
     for (let i = 0; i < model.rows.length; i++) {
       const row = model.rows[i]!;
-      ensureSpace(18);
-      if (i > 0 && y === PAGE.margin) {
-        // header already drawn on new page
-      }
+      ensureSpace(ROW_MIN_H + 4);
       y = renderDataRow(doc, row, i, y);
     }
 
@@ -167,21 +178,30 @@ export function renderDebtorsReportPdf(
 }
 
 function renderTableHeader(doc: PDFKit.PDFDocument, y: number): number {
-  doc.fillColor(COLORS.headerBg).rect(PAGE.margin, y, TABLE_W, 16).fill();
-  doc.fillColor(COLORS.accent).font("Helvetica-Bold").fontSize(7);
-  const headers: Array<[ColKey, string]> = [
-    ["client", "Cliente"],
-    ["currency", "Moneda"],
-    ["debt", "Deuda"],
-    ["overdue", "Vencido"],
-    ["aging", "Antigüedad"],
-    ["contact", "Contacto"],
-    ["status", "Estado"],
+  const h = 20;
+  doc.fillColor(COLORS.headerBg).rect(PAGE.margin, y, TABLE_W, h).fill();
+  doc.strokeColor(COLORS.border).lineWidth(0.5)
+    .moveTo(PAGE.margin, y + h)
+    .lineTo(PAGE.margin + TABLE_W, y + h)
+    .stroke();
+
+  doc.fillColor(COLORS.accent).font("Helvetica-Bold").fontSize(7.5);
+  const headers: Array<[ColKey, string, "left" | "right" | "center"]> = [
+    ["client", "Cliente", "left"],
+    ["currency", "Mon.", "center"],
+    ["debt", "Deuda", "right"],
+    ["overdue", "Vencido", "right"],
+    ["aging", "Antigüedad", "center"],
+    ["contact", "Contacto", "left"],
+    ["status", "Estado", "left"],
   ];
-  for (const [key, label] of headers) {
-    doc.text(label, colX(key) + 3, y + 4, { width: COL[key].w - 6 });
+  for (const [key, label, align] of headers) {
+    doc.text(label, colX(key) + 4, y + 6, {
+      width: COL[key].w - 8,
+      align,
+    });
   }
-  return y + 18;
+  return y + h + 2;
 }
 
 function renderDataRow(
@@ -190,36 +210,40 @@ function renderDataRow(
   index: number,
   y: number
 ): number {
-  const rowH = 16;
+  const rowH = ROW_MIN_H;
   if (index % 2 === 1) {
     doc.fillColor(COLORS.rowAlt).rect(PAGE.margin, y, TABLE_W, rowH).fill();
   }
-  doc.fillColor(COLORS.ink).font("Helvetica").fontSize(7);
 
-  const statusText = row.agingBadge ? `${row.statusLabel} ${row.agingBadge}` : row.statusLabel;
+  const textY = y + ROW_PAD_V;
+  doc.fillColor(COLORS.ink).font("Helvetica").fontSize(7.5);
 
-  doc.text(truncate(doc, row.clientName, COL.client.w - 6), colX("client") + 3, y + 4, {
-    width: COL.client.w - 6,
+  doc.text(truncate(doc, row.clientName, COL.client.w - 8), colX("client") + 4, textY, {
+    width: COL.client.w - 8,
   });
-  doc.text(row.currency, colX("currency") + 3, y + 4, { width: COL.currency.w - 6 });
-  doc.text(formatMoney(row.debtAmount, row.currency), colX("debt") + 3, y + 4, {
-    width: COL.debt.w - 6,
+  doc.text(row.currency, colX("currency") + 4, textY, {
+    width: COL.currency.w - 8,
+    align: "center",
+  });
+  doc.text(formatMoney(row.debtAmount, row.currency), colX("debt") + 4, textY, {
+    width: COL.debt.w - 8,
     align: "right",
   });
   doc.text(
     row.overdueAmount > 0 ? formatMoney(row.overdueAmount, row.currency) : "—",
-    colX("overdue") + 3,
-    y + 4,
-    { width: COL.overdue.w - 6, align: "right" }
+    colX("overdue") + 4,
+    textY,
+    { width: COL.overdue.w - 8, align: "right" }
   );
-  doc.text(row.overdueDaysLabel, colX("aging") + 3, y + 4, {
-    width: COL.aging.w - 6,
+  doc.text(row.overdueDaysLabel, colX("aging") + 4, textY, {
+    width: COL.aging.w - 8,
+    align: "center",
   });
-  doc.text(truncate(doc, row.contactLabel, COL.contact.w - 6), colX("contact") + 3, y + 4, {
-    width: COL.contact.w - 6,
+  doc.text(truncate(doc, row.contactLabel, COL.contact.w - 8), colX("contact") + 4, textY, {
+    width: COL.contact.w - 8,
   });
-  doc.text(truncate(doc, statusText, COL.status.w - 6), colX("status") + 3, y + 4, {
-    width: COL.status.w - 6,
+  doc.text(truncate(doc, row.statusLabel, COL.status.w - 8), colX("status") + 4, textY, {
+    width: COL.status.w - 8,
   });
 
   doc.strokeColor(COLORS.border).lineWidth(0.25)
@@ -231,13 +255,17 @@ function renderDataRow(
 }
 
 function renderFooter(doc: PDFKit.PDFDocument, pageNum: number): void {
-  const y = PAGE.height - PAGE.margin - 24;
+  const y = PAGE.height - PAGE.margin - 28;
+  doc.strokeColor(COLORS.border).lineWidth(0.35)
+    .moveTo(PAGE.margin, y - 6)
+    .lineTo(PAGE.margin + TABLE_W, y - 6)
+    .stroke();
   doc.fillColor(COLORS.muted).font("Helvetica").fontSize(7)
     .text(`Página ${pageNum}`, PAGE.margin, y, { width: TABLE_W, align: "right" });
   doc.text(
     "Documento informativo generado por Summer87 Copilot",
     PAGE.margin,
-    y + 10,
+    y + 11,
     { width: TABLE_W, align: "center" }
   );
 }

@@ -2,17 +2,17 @@ import type { ClientPortfolioRow } from "@/lib/copilot-clients-portfolio";
 import type { ClientCompanyDetail } from "@/lib/copilot-clients-portfolio";
 
 import {
-  agingBadgeFromDays,
   computeCurrencyOverdueAging,
-  formatOverdueDaysLabel,
 } from "./compute-currency-overdue-aging";
-import { describeDebtorsReportFilters } from "./debtors-report-filters";
+import { describeActiveDebtorsReportFilters } from "./debtors-report-filters";
 import type {
   BuildDebtorsReportModelInput,
   DebtorsReportFilters,
   DebtorsReportModel,
   DebtorsReportRow,
 } from "./debtors-report-types";
+import { sortDebtorsReportRows } from "./sort-debtors-report-rows";
+import { buildReportContactLabel } from "./valid-report-contact";
 
 function formatEmittedAtLabel(date: Date): string {
   const d = date.toLocaleDateString("es-UY", {
@@ -29,22 +29,17 @@ function formatEmittedAtLabel(date: Date): string {
   return `${d} ${t}`;
 }
 
-function buildContactLabel(row: ClientPortfolioRow): string {
-  const parts: string[] = [];
-  if (row.contact_phone?.trim()) parts.push("WhatsApp");
-  if (row.contact_email?.trim()) parts.push("Email");
-  if (parts.length === 0) return row.has_contact_data ? "Contacto disponible" : "Sin contacto";
-  return parts.join(" / ");
+function formatAgingLabel(overdueDays: number | null): string {
+  if (overdueDays == null || overdueDays < 0) return "—";
+  return `${overdueDays} día${overdueDays === 1 ? "" : "s"}`;
 }
 
 function rowStatusLabel(
   overdueAmount: number,
-  risk: ClientPortfolioRow["risk"],
-  overdueDays: number | null
+  risk: ClientPortfolioRow["risk"]
 ): string {
   if (overdueAmount <= 0) return "Pendiente";
   if (risk === "Alto") return "Crítico";
-  if (overdueDays != null && overdueDays >= 30) return "Vencido +30D";
   return "Vencido";
 }
 
@@ -113,8 +108,7 @@ function buildCurrencyRow(
     ? computeCurrencyOverdueAging(detail.invoices, currency, emittedAt)
     : { oldestDueDate: null, overdueDays: null, usedIssueDateFallback: false };
 
-  const overdueDays =
-    overdueAmount > 0 ? aging.overdueDays : null;
+  const overdueDays = overdueAmount > 0 ? aging.overdueDays : null;
 
   return {
     clientId: row.company_id,
@@ -124,13 +118,13 @@ function buildCurrencyRow(
     overdueAmount,
     oldestDueDate: overdueAmount > 0 ? aging.oldestDueDate : null,
     overdueDays,
-    overdueDaysLabel:
-      overdueAmount > 0
-        ? formatOverdueDaysLabel(aging.overdueDays, aging.usedIssueDateFallback)
-        : "Sin vencimiento detectado",
-    statusLabel: rowStatusLabel(overdueAmount, row.risk, overdueDays),
-    agingBadge: agingBadgeFromDays(overdueDays),
-    contactLabel: buildContactLabel(row),
+    overdueDaysLabel: overdueAmount > 0 ? formatAgingLabel(overdueDays) : "—",
+    statusLabel: rowStatusLabel(overdueAmount, row.risk),
+    agingBadge: null,
+    contactLabel: buildReportContactLabel({
+      phone: row.contact_phone,
+      email: row.contact_email,
+    }),
     href: `/copilot/clientes/${row.company_id}`,
   };
 }
@@ -183,19 +177,13 @@ export function buildDebtorsReportModel(input: BuildDebtorsReportModelInput): De
     }
   }
 
-  rows.sort((a, b) => {
-    const va = a.overdueAmount || 0;
-    const vb = b.overdueAmount || 0;
-    if (vb !== va) return vb - va;
-    if (b.debtAmount !== a.debtAmount) return b.debtAmount - a.debtAmount;
-    return a.clientName.localeCompare(b.clientName, "es");
-  });
+  const sortedRows = sortDebtorsReportRows(rows, filters.currency);
 
   let totalDebtUyu = 0;
   let totalDebtUsd = 0;
   let totalOverdueUyu = 0;
   let totalOverdueUsd = 0;
-  for (const r of rows) {
+  for (const r of sortedRows) {
     if (r.currency === "UYU") {
       totalDebtUyu += r.debtAmount;
       totalOverdueUyu += r.overdueAmount;
@@ -209,15 +197,16 @@ export function buildDebtorsReportModel(input: BuildDebtorsReportModelInput): De
     emittedAt: emittedAt.toISOString(),
     emittedAtLabel: formatEmittedAtLabel(emittedAt),
     issuerName: "",
-    filtersLabel: describeDebtorsReportFilters(filters),
+    currencyFilter: filters.currency,
+    filtersLabel: describeActiveDebtorsReportFilters(filters),
     totals: {
-      clientsCount: rows.length,
+      clientsCount: sortedRows.length,
       totalDebtUyu,
       totalDebtUsd,
       totalOverdueUyu,
       totalOverdueUsd,
     },
-    rows,
+    rows: sortedRows,
   };
 }
 

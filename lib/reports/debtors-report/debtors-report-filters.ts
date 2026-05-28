@@ -63,12 +63,12 @@ export function debtorsReportFiltersToSearchParams(
   return sp;
 }
 
-export function describeDebtorsReportFilters(filters: DebtorsReportFilters): string[] {
+/** Etiquetas de filtros que restringen el reporte (omite valores por defecto). */
+export function describeActiveDebtorsReportFilters(filters: DebtorsReportFilters): string[] {
   const labels: string[] = [];
 
   if (filters.currency === "UYU") labels.push("Moneda: solo pesos");
   else if (filters.currency === "USD") labels.push("Moneda: solo dólares");
-  else labels.push("Moneda: todas");
 
   switch (filters.status) {
     case "overdue":
@@ -80,8 +80,6 @@ export function describeDebtorsReportFilters(filters: DebtorsReportFilters): str
     case "without_contact":
       labels.push("Estado: sin contacto");
       break;
-    default:
-      labels.push("Estado: todos con deuda");
   }
 
   if (filters.minUyu > 0) {
@@ -102,9 +100,12 @@ export function describeDebtorsReportFilters(filters: DebtorsReportFilters): str
     case "without_contact":
       labels.push("Contacto: sin contacto");
       break;
-    default:
-      labels.push("Contacto: todos");
   }
 
   return labels;
+}
+
+/** @deprecated Usar describeActiveDebtorsReportFilters */
+export function describeDebtorsReportFilters(filters: DebtorsReportFilters): string[] {
+  return describeActiveDebtorsReportFilters(filters);
 }

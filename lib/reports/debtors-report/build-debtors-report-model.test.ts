@@ -4,6 +4,7 @@ import type { ClientPortfolioRow } from "@/lib/copilot-clients-portfolio";
 import type { ClientCompanyDetail } from "@/lib/copilot-clients-portfolio";
 
 import { buildDebtorsReportModel } from "./build-debtors-report-model";
+import { describeActiveDebtorsReportFilters } from "./debtors-report-filters";
 import { DEFAULT_DEBTORS_REPORT_FILTERS } from "./debtors-report-types";
 
 function baseRow(overrides: Partial<ClientPortfolioRow> = {}): ClientPortfolioRow {
@@ -147,7 +148,119 @@ describe("buildDebtorsReportModel", () => {
     });
 
     expect(model.rows[0]?.overdueDays).toBe(76);
-    expect(model.rows[0]?.overdueDaysLabel).toContain("76");
+    expect(model.rows[0]?.overdueDaysLabel).toBe("76 días");
+    expect(model.rows[0]?.statusLabel).toBe("Crítico");
+  });
+
+  it("no incluye filtros default en filtersLabel", () => {
+    const model = buildDebtorsReportModel({
+      portfolioRows: [baseRow({ debt_uyu: 100 })],
+      filters: DEFAULT_DEBTORS_REPORT_FILTERS,
+      emittedAt: EMITTED,
+    });
+    expect(model.filtersLabel).toEqual([]);
+  });
+
+  it("sin vencimiento usa — en antigüedad", () => {
+    const model = buildDebtorsReportModel({
+      portfolioRows: [baseRow({ debt_uyu: 100, overdue_uyu: 0 })],
+      filters: DEFAULT_DEBTORS_REPORT_FILTERS,
+      emittedAt: EMITTED,
+    });
+    expect(model.rows[0]?.overdueDaysLabel).toBe("—");
+    expect(model.rows[0]?.statusLabel).toBe("Pendiente");
+  });
+
+  it("orden all: UYU desc primero, USD desc después", () => {
+    const model = buildDebtorsReportModel({
+      portfolioRows: [
+        baseRow({ company_id: "u1", name: "B UYU", debt_uyu: 1000, debt_usd: 0 }),
+        baseRow({ company_id: "u2", name: "A UYU", debt_uyu: 5000, debt_usd: 0 }),
+        baseRow({ company_id: "d1", name: "Z USD", debt_uyu: 0, debt_usd: 800 }),
+        baseRow({ company_id: "d2", name: "Y USD", debt_uyu: 0, debt_usd: 3000 }),
+      ],
+      filters: DEFAULT_DEBTORS_REPORT_FILTERS,
+      emittedAt: EMITTED,
+    });
+    expect(model.rows.map((r) => `${r.currency}:${r.clientName}`)).toEqual([
+      "UYU:A UYU",
+      "UYU:B UYU",
+      "USD:Y USD",
+      "USD:Z USD",
+    ]);
+  });
+
+  it("orden UYU desc", () => {
+    const model = buildDebtorsReportModel({
+      portfolioRows: [
+        baseRow({ company_id: "a", name: "A", debt_uyu: 100 }),
+        baseRow({ company_id: "b", name: "B", debt_uyu: 500 }),
+      ],
+      filters: { ...DEFAULT_DEBTORS_REPORT_FILTERS, currency: "UYU" },
+      emittedAt: EMITTED,
+    });
+    expect(model.rows[0]?.debtAmount).toBe(500);
+    expect(model.rows[1]?.debtAmount).toBe(100);
+  });
+
+  it("orden USD desc", () => {
+    const model = buildDebtorsReportModel({
+      portfolioRows: [
+        baseRow({ company_id: "a", debt_usd: 200 }),
+        baseRow({ company_id: "b", debt_usd: 900 }),
+      ],
+      filters: { ...DEFAULT_DEBTORS_REPORT_FILTERS, currency: "USD" },
+      emittedAt: EMITTED,
+    });
+    expect(model.rows[0]?.debtAmount).toBe(900);
+  });
+
+  it("empate ordena por vencido desc y nombre asc", () => {
+    const model = buildDebtorsReportModel({
+      portfolioRows: [
+        baseRow({
+          company_id: "b",
+          name: "Beta",
+          debt_uyu: 1000,
+          overdue_uyu: 50,
+        }),
+        baseRow({
+          company_id: "a",
+          name: "Alfa",
+          debt_uyu: 1000,
+          overdue_uyu: 200,
+        }),
+        baseRow({
+          company_id: "c",
+          name: "Gamma",
+          debt_uyu: 1000,
+          overdue_uyu: 200,
+        }),
+      ],
+      filters: DEFAULT_DEBTORS_REPORT_FILTERS,
+      emittedAt: EMITTED,
+    });
+    expect(model.rows.map((r) => r.clientName)).toEqual(["Alfa", "Gamma", "Beta"]);
+  });
+
+  it("contacto inválido muestra Sin contacto", () => {
+    const model = buildDebtorsReportModel({
+      portfolioRows: [
+        baseRow({
+          debt_uyu: 100,
+          contact_phone: "22",
+          contact_email: "bad",
+          has_contact_data: true,
+        }),
+      ],
+      filters: DEFAULT_DEBTORS_REPORT_FILTERS,
+      emittedAt: EMITTED,
+    });
+    expect(model.rows[0]?.contactLabel).toBe("Sin contacto");
+  });
+
+  it("describeActiveDebtorsReportFilters vacío con defaults", () => {
+    expect(describeActiveDebtorsReportFilters(DEFAULT_DEBTORS_REPORT_FILTERS)).toEqual([]);
   });
 
   it("filtra vencidos más de 30 días", () => {

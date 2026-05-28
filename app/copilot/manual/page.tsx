@@ -528,6 +528,9 @@ const SECTIONS: Section[] = [
               "Antigüedad — días exactos desde la factura vencida más antigua (fecha de emisión del PDF como referencia).",
               "UYU y USD — cada moneda va en filas separadas; los totales no se mezclan.",
               "Columnas — cliente, moneda, deuda, vencido, días de atraso, contacto y estado.",
+              "Orden — primero pesos de mayor a menor deuda, luego dólares de mayor a menor (si aplica el filtro de moneda).",
+              "Contacto — solo muestra WhatsApp o email si el dato es válido (teléfono corto o email inválido no cuenta).",
+              "Filtros en el PDF — solo aparecen los filtros que realmente restringen el reporte; los valores por defecto no se listan.",
               "Es informativo — no modifica datos, no marca clientes como pagados y no envía mensajes.",
             ]}
           />
