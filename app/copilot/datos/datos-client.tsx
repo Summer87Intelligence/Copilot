@@ -36,6 +36,13 @@ import {
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
 import {
+  actionCardClass,
+  dangerFinancialCardClass,
+  neutralFinancialCardClass,
+  softCalloutClass,
+  warningFinancialCardClass,
+} from "@/components/copilot/ui/copilot-visual-system";
+import {
   getProtoCompanies,
   getProtoContacts,
   getProtoInvoices,
@@ -943,7 +950,7 @@ function CopilotDatosPageContent() {
 
       <div className="flex-1 space-y-6 overflow-auto px-6 py-8">
         {isQuickAddForm && quickAddSaved ? (
-          <CopilotCard className="space-y-4 p-6">
+          <CopilotCard className={`${actionCardClass} space-y-4 p-6`}>
             <p className="text-sm font-medium text-emerald-950">{quickAddSaveMessage}</p>
             {quickAddSaveWarning ? (
               <p className="text-sm text-emerald-900/90">{quickAddSaveWarning}</p>
@@ -958,12 +965,12 @@ function CopilotDatosPageContent() {
         ) : isQuickAddForm ? (
           <>
             {error ? (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+              <div className={`${dangerFinancialCardClass} rounded-2xl border px-4 py-3 text-sm text-rose-900`}>
                 {error}
               </div>
             ) : null}
             {!crudEntity ? (
-              <div className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--copilot-border)] py-14 text-sm text-[var(--copilot-ink-muted)]">
+              <div className={`${neutralFinancialCardClass} flex items-center justify-center gap-2 rounded-2xl border border-dashed py-14 text-sm text-[var(--copilot-ink-muted)]`}>
                 <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
                 Preparando formulario…
               </div>
@@ -996,7 +1003,7 @@ function CopilotDatosPageContent() {
         ) : (
           <>
             {banner?.kind === "ok" ? (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
+              <div className={`${warningFinancialCardClass} rounded-2xl border px-4 py-3 text-sm text-emerald-950`}>
                 <p className="font-medium">{banner.message}</p>
                 {banner.warning ? (
                   <p className="mt-1 text-emerald-900/90">{banner.warning}</p>
@@ -1004,18 +1011,18 @@ function CopilotDatosPageContent() {
               </div>
             ) : null}
             {banner?.kind === "err" ? (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+              <div className={`${dangerFinancialCardClass} rounded-2xl border px-4 py-3 text-sm text-rose-900`}>
                 {banner.message}
               </div>
             ) : null}
 
             {expandedEntity != null && error ? (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+              <div className={`${dangerFinancialCardClass} rounded-2xl border px-4 py-3 text-sm text-rose-900`}>
                 {error}
               </div>
             ) : null}
 
-            <CopilotCard className="space-y-4">
+            <CopilotCard className={`${actionCardClass} space-y-4`}>
               <CopilotSectionTitle
                 title="Datos del negocio"
                 subtitle="Clientes, facturas, recibos y obligaciones que alimentan las lecturas del Copilot."
@@ -1043,10 +1050,7 @@ function CopilotDatosPageContent() {
                 {entityTabs.map((tab) => {
                   const isOpen = expandedEntity === tab.id;
                   return (
-                    <div
-                      key={tab.id}
-                      className="overflow-hidden rounded-2xl border border-[var(--copilot-border)] bg-white"
-                    >
+                    <div key={tab.id} className={`${neutralFinancialCardClass} overflow-hidden rounded-2xl border`}>
                       <button
                         type="button"
                         onClick={() => toggleExpanded(tab.id)}
@@ -1066,7 +1070,7 @@ function CopilotDatosPageContent() {
                       </button>
 
                       {tab.id === "invoices" && !isOpen ? (
-                        <div className="border-t border-[var(--copilot-border)] bg-[rgba(44,40,37,0.02)] px-4 py-3">
+                        <div className={`border-t border-[var(--copilot-border)] px-4 py-3 ${softCalloutClass}`}>
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <p className="max-w-xl text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
                               {DATOS_EXPAND_HINT.invoices}
@@ -1081,7 +1085,7 @@ function CopilotDatosPageContent() {
                           </div>
                         </div>
                       ) : !isOpen ? (
-                        <div className="border-t border-[var(--copilot-border)] bg-[rgba(44,40,37,0.02)] px-4 py-3">
+                        <div className={`border-t border-[var(--copilot-border)] px-4 py-3 ${softCalloutClass}`}>
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <p className="max-w-xl text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
                               {DATOS_EXPAND_HINT[tab.id]}

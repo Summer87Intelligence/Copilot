@@ -10,6 +10,12 @@ import type {
   CockpitReceivablesCard,
 } from "@/lib/copilot-hoy-cockpit-view";
 import { HOY_COCKPIT } from "@/lib/copilot-hoy-ui-contract";
+import {
+  dangerFinancialCardClass,
+  metricValueClass,
+  positiveFinancialCardClass,
+  warningFinancialCardClass,
+} from "@/components/copilot/ui/copilot-visual-system";
 
 type CardVariant = "cash" | "receivables" | "payments" | "afterPayments";
 
@@ -24,7 +30,7 @@ type CardTheme = {
 
 const CARD_THEME: Record<Exclude<CardVariant, "afterPayments">, CardTheme> = {
   cash: {
-    shell: "bg-emerald-50/35 ring-1 ring-emerald-100/70",
+    shell: positiveFinancialCardClass,
     badge: "bg-emerald-100/70 text-emerald-800",
     dot: "bg-emerald-500",
     amountPrimary: "text-emerald-900",
@@ -36,7 +42,7 @@ const CARD_THEME: Record<Exclude<CardVariant, "afterPayments">, CardTheme> = {
     },
   },
   receivables: {
-    shell: "bg-amber-50/35 ring-1 ring-amber-100/70",
+    shell: warningFinancialCardClass,
     badge: "bg-amber-100/70 text-amber-900",
     dot: "bg-amber-500",
     amountPrimary: "text-amber-900",
@@ -48,7 +54,7 @@ const CARD_THEME: Record<Exclude<CardVariant, "afterPayments">, CardTheme> = {
     },
   },
   payments: {
-    shell: "bg-rose-50/35 ring-1 ring-rose-100/70",
+    shell: dangerFinancialCardClass,
     badge: "bg-rose-100/70 text-rose-800",
     dot: "bg-rose-500",
     amountPrimary: "text-rose-900",
@@ -63,7 +69,7 @@ const CARD_THEME: Record<Exclude<CardVariant, "afterPayments">, CardTheme> = {
 
 const AFTER_PAYMENTS_THEME: Record<CockpitAfterPaymentsAccent, CardTheme> = {
   comfortable: {
-    shell: "bg-teal-50/45 ring-1 ring-teal-200/70",
+    shell: positiveFinancialCardClass,
     badge: "bg-teal-100 text-teal-800",
     dot: "bg-teal-500",
     amountPrimary: "text-teal-900",
@@ -75,7 +81,7 @@ const AFTER_PAYMENTS_THEME: Record<CockpitAfterPaymentsAccent, CardTheme> = {
     },
   },
   adjusted: {
-    shell: "bg-amber-50/35 ring-1 ring-amber-100/70",
+    shell: warningFinancialCardClass,
     badge: "bg-amber-100/70 text-amber-900",
     dot: "bg-amber-500",
     amountPrimary: "text-amber-900",
@@ -87,7 +93,7 @@ const AFTER_PAYMENTS_THEME: Record<CockpitAfterPaymentsAccent, CardTheme> = {
     },
   },
   critical: {
-    shell: "bg-rose-50/35 ring-1 ring-rose-100/70",
+    shell: dangerFinancialCardClass,
     badge: "bg-rose-100/70 text-rose-800",
     dot: "bg-rose-500",
     amountPrimary: "text-rose-900",
@@ -191,7 +197,7 @@ function CurrencyStack({
               {a.currency}
             </span>
             <span
-              className={`whitespace-nowrap text-right font-semibold tabular-nums tracking-tight ${isPrimary ? `${s.uyu} ${amountPrimaryClass}` : `${s.usd} ${amountSecondaryClass}`}`}
+              className={`whitespace-nowrap text-right tracking-tight ${metricValueClass} ${isPrimary ? `${s.uyu} ${amountPrimaryClass}` : `${s.usd} ${amountSecondaryClass}`}`}
             >
               {amountDisplayLine(a)}
             </span>
@@ -266,7 +272,7 @@ function MoneyCard({
       tabIndex={interactive ? 0 : undefined}
       onClick={interactive ? () => onCardClick?.(cardId) : undefined}
       onKeyDown={interactive ? (e) => cardActivateKey(e, () => onCardClick?.(cardId)) : undefined}
-      className={`flex min-h-[190px] flex-col rounded-3xl border border-black/[0.04] p-5 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${theme.shell}`}
+      className={`flex min-h-[190px] flex-col rounded-3xl border p-5 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${theme.shell}`}
     >
       <header>
         <CardHeader theme={theme} title={title} />
@@ -337,7 +343,7 @@ function ReceivablesCard({
       onKeyDown={
         interactive ? (e) => cardActivateKey(e, () => onCardClick?.("receivables")) : undefined
       }
-      className={`flex min-h-[190px] flex-col rounded-3xl border border-black/[0.04] p-5 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${shell.shell}`}
+      className={`flex min-h-[190px] flex-col rounded-3xl border p-5 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${shell.shell}`}
     >
       <header>
         <CardHeader theme={shell} title={HOY_COCKPIT.receivables} />

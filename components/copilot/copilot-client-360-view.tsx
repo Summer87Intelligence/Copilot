@@ -43,6 +43,13 @@ import {
   type OperationalHintSeverity,
   type TimelineEvent,
 } from "@/lib/copilot-client-operational-summary";
+import {
+  actionCardClass,
+  metricValueClass,
+  neutralFinancialCardClass,
+  subtleLabelClass,
+  warningFinancialCardClass,
+} from "@/components/copilot/ui/copilot-visual-system";
 
 type TabId = "resumen" | "cuenta" | "comprobantes" | "recibos" | "contactos" | "zeta";
 
@@ -204,11 +211,11 @@ function KpiChip({
     ok: "text-emerald-700",
   };
   return (
-    <div className="flex flex-col gap-0.5 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] px-4 py-3 shadow-sm">
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+    <div className={`${actionCardClass} flex flex-col gap-0.5 px-4 py-3`}>
+      <span className={subtleLabelClass}>
         {label}
       </span>
-      <span className={`text-lg font-bold tabular-nums leading-tight ${tones[tone]}`}>
+      <span className={`text-lg leading-tight ${metricValueClass} ${tones[tone]}`}>
         {value}
       </span>
       {sub ? (
@@ -1160,7 +1167,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   </p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <CopilotCard>
+                  <CopilotCard className={warningFinancialCardClass}>
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                         Deuda en pesos (UYU)
@@ -1191,7 +1198,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                     ) : null}
                   </CopilotCard>
 
-                  <CopilotCard>
+                  <CopilotCard className={warningFinancialCardClass}>
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                         Deuda en dolares (USD)
@@ -1221,7 +1228,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   </CopilotCard>
                 </div>
 
-                <CopilotCard>
+                <CopilotCard className={neutralFinancialCardClass}>
                   <CopilotSectionTitle
                     title="Estado de cuenta histórico"
                     subtitle="Facturas y cobros sincronizados. Puede diferir de la deuda actual si hay notas de crédito, imputaciones o ajustes pendientes de sincronizar."

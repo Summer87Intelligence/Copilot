@@ -43,6 +43,15 @@ import type { CollectionAction } from "@/lib/copilot-collection-types";
 import { groupCollectionActionsByCompany } from "@/lib/copilot-actions/enrich-actions";
 import type { OicHealthDashboardData } from "@/lib/operacional/types";
 import { normalizeAgentHref } from "@/lib/copilot-agents/normalize-agent-href";
+import {
+  actionCardClass,
+  dangerFinancialCardClass,
+  neutralFinancialCardClass,
+  positiveFinancialCardClass,
+  softCalloutClass,
+  statusBadgeVariants,
+  warningFinancialCardClass,
+} from "@/components/copilot/ui/copilot-visual-system";
 import { AgentCard } from "./agent-card";
 import { AgentPriorityCard } from "./agent-priority-card";
 
@@ -51,22 +60,22 @@ const STATUS_CONFIG = {
     icon: CheckCircle2,
     iconCls: "text-emerald-600",
     label: "Bajo",
-    badgeCls: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-    surfaceCls: "bg-emerald-50 border-emerald-200",
+    badgeCls: `${statusBadgeVariants.stable} border`,
+    surfaceCls: positiveFinancialCardClass,
   },
   attention: {
     icon: CircleDot,
     iconCls: "text-amber-600",
     label: "Atención",
-    badgeCls: "bg-amber-50 text-amber-700 border border-amber-200",
-    surfaceCls: "bg-amber-50 border-amber-200",
+    badgeCls: `${statusBadgeVariants.attention} border`,
+    surfaceCls: warningFinancialCardClass,
   },
   critical: {
     icon: TriangleAlert,
     iconCls: "text-rose-600",
     label: "Crítico",
-    badgeCls: "bg-rose-50 text-rose-700 border border-rose-200",
-    surfaceCls: "bg-rose-50 border-rose-200",
+    badgeCls: `${statusBadgeVariants.critical} border`,
+    surfaceCls: dangerFinancialCardClass,
   },
 } as const;
 
@@ -242,7 +251,7 @@ function PartialWarning({ warnings }: { warnings: string[] }) {
   if (warnings.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+    <div className={`rounded-2xl border px-4 py-3 ${warningFinancialCardClass}`}>
       <div className="flex items-start gap-2.5">
         <AlertTriangle
           className="mt-0.5 h-4 w-4 shrink-0 text-amber-600"
@@ -395,7 +404,7 @@ function SummarySection({
                   ))}
                 </div>
               ) : (
-                <div className="rounded-xl border border-[var(--copilot-border)]/60 bg-[rgba(44,40,37,0.02)] px-4 py-3">
+                <div className={softCalloutClass}>
                   <p className="text-[12.5px] text-[var(--copilot-ink-muted)]">
                     No hay prioridades urgentes en este momento.
                   </p>
@@ -404,7 +413,7 @@ function SummarySection({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[var(--copilot-border)] bg-[rgba(31,107,74,0.03)] p-4 sm:p-5">
+          <div className={`${positiveFinancialCardClass} rounded-2xl border p-4 sm:p-5`}>
             <SectionEyebrow>Próximo paso</SectionEyebrow>
             <p className="mt-3 text-[16px] font-semibold text-[var(--copilot-ink)]">
               {orchestration.nextBestAction.label}
@@ -510,7 +519,7 @@ function SupplementalCardsSection() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border border-[var(--copilot-border)] bg-white p-5 shadow-sm">
+        <div className={`${actionCardClass} p-5`}>
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--copilot-accent)]/10">
               <Users className="h-5 w-5 text-[var(--copilot-accent)]" aria-hidden />
@@ -531,7 +540,7 @@ function SupplementalCardsSection() {
             </div>
           </div>
 
-          <div className="mt-4 rounded-xl border border-[var(--copilot-border)]/60 bg-[rgba(44,40,37,0.02)] px-4 py-3">
+          <div className={softCalloutClass}>
             <p className="text-[12.5px] text-[var(--copilot-ink-muted)]">
               No aparece como agente global porque no analiza todo el negocio.
             </p>
@@ -552,7 +561,7 @@ function SupplementalCardsSection() {
           return (
             <div
               key={agent.id}
-              className="rounded-2xl border border-[var(--copilot-border)]/60 bg-white p-5 opacity-80"
+              className={`${neutralFinancialCardClass} rounded-2xl border p-5 opacity-80`}
             >
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100">
@@ -591,7 +600,7 @@ function SecuritySection() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+        <div className={`${positiveFinancialCardClass} rounded-2xl border p-5`}>
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden />
             <p className="text-[13px] font-semibold text-emerald-900">
@@ -613,7 +622,7 @@ function SecuritySection() {
           </ul>
         </div>
 
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5">
+        <div className={`${dangerFinancialCardClass} rounded-2xl border p-5`}>
           <div className="flex items-center gap-2">
             <XCircle className="h-4 w-4 text-rose-600" aria-hidden />
             <p className="text-[13px] font-semibold text-rose-900">

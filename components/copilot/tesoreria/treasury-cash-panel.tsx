@@ -8,6 +8,13 @@ import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
 import { SCHEDULED_PAYMENT_CATEGORIES } from "@/lib/treasury/treasury-scheduled-payments";
 import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
 import type { TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
+import {
+  dangerFinancialCardClass,
+  metricValueClass,
+  positiveFinancialCardClass,
+  softCalloutClass,
+  subtleLabelClass,
+} from "@/components/copilot/ui/copilot-visual-system";
 import { TESORERIA_FIELD_CLASS } from "./tesoreria-ui";
 
 const CURRENCIES: TreasuryCurrencyCode[] = ["UYU", "USD"];
@@ -102,8 +109,8 @@ function BalanceCard({
     <div
       className={`rounded-2xl border px-4 py-4 shadow-sm transition-shadow ${
         isNegative
-          ? "border-rose-200 bg-gradient-to-br from-white to-rose-50/70"
-          : "border-emerald-100 bg-gradient-to-br from-white to-emerald-50/60"
+          ? dangerFinancialCardClass
+          : positiveFinancialCardClass
       }`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -117,15 +124,15 @@ function BalanceCard({
           >
             Caja disponible
           </span>
-          <p className="mt-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+          <p className={`mt-1.5 text-[12px] ${subtleLabelClass}`}>
             Caja {currency}
           </p>
         </div>
       </div>
       <p
-        className={`mt-2 text-2xl font-bold tabular-nums sm:text-[28px] ${
+        className={`mt-2 text-2xl sm:text-[28px] ${
           isNegative ? "text-rose-800" : "text-emerald-950"
-        }`}
+        } ${metricValueClass}`}
       >
         {pos ? formatTreasuryMoney(pureAvailable, currency) : "—"}
       </p>
@@ -521,7 +528,7 @@ export function TreasuryCashPanel({ workspace }: { workspace: TreasuryWorkspace 
 
       <RecentMovements workspace={workspace} />
 
-      <div className="rounded-xl border border-[var(--copilot-border)]/70 bg-white/70 px-3 py-2">
+      <div className={softCalloutClass}>
         <p className="text-center text-[11px] text-[var(--copilot-ink-muted)]">
           Tesorería muestra caja disponible. Cartera muestra facturación y deuda de clientes.
         </p>

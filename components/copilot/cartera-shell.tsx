@@ -34,6 +34,13 @@ import { COPILOT_OPERATIONAL_START_DATE } from "@/lib/copilot-operational-period
 import { buildCurrencyIndex } from "@/lib/copilot-cartera-cards-source";
 import { FINANCIAL_UX_COPY } from "@/lib/copilot-financial-ux-copy";
 import { formatCarteraMoney } from "@/lib/copilot-cartera-format";
+import {
+  dangerFinancialCardClass,
+  neutralFinancialCardClass,
+  softCalloutClass,
+  subtleLabelClass,
+  warningFinancialCardClass,
+} from "@/components/copilot/ui/copilot-visual-system";
 
 import { useFinancialReconciliation } from "@/hooks/use-financial-reconciliation";
 import { FinancialControlBar } from "@/components/copilot/financial-control-bar";
@@ -258,7 +265,7 @@ function EmptyPeriodState() {
       initial={reduce ? false : { opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.22, ease: "easeOut" }}
-      className="rounded-2xl border border-dashed border-[var(--copilot-border)] bg-white/55 px-6 py-10 text-center shadow-[var(--copilot-shadow)]"
+      className="rounded-2xl border border-dashed border-[var(--copilot-border)] bg-gradient-to-br from-white to-slate-50/55 px-6 py-10 text-center shadow-[var(--copilot-shadow)]"
     >
       <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-[rgba(44,40,37,0.06)] text-[var(--copilot-ink)]">
         <CalendarRange className="h-5 w-5" aria-hidden />
@@ -293,11 +300,11 @@ function EmptySummaryPlaceholders({ shimmer = false }: { shimmer?: boolean }) {
       {cards.map((title) => (
         <article
           key={title}
-          className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-5 shadow-[var(--copilot-shadow)]"
+          className={`rounded-2xl border p-5 shadow-[var(--copilot-shadow)] ${neutralFinancialCardClass}`}
         >
           <div className="mb-4 flex items-center gap-2.5">
             <PlaceholderBlock className="h-8 w-8 rounded-lg" shimmer={shimmer} />
-            <p className="truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--copilot-ink-muted)]">
+            <p className={`truncate ${subtleLabelClass}`}>
               {title}
             </p>
           </div>
@@ -315,7 +322,7 @@ function EmptySummaryPlaceholders({ shimmer = false }: { shimmer?: boolean }) {
 
 function EmptyAgingPlaceholder({ shimmer = false }: { shimmer?: boolean }) {
   return (
-    <section className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] shadow-[var(--copilot-shadow)]">
+    <section className={`rounded-2xl border shadow-[var(--copilot-shadow)] ${neutralFinancialCardClass}`}>
       <header className="border-b border-[var(--copilot-border)] px-5 py-4">
         <h3 className="text-base font-semibold tracking-tight text-[var(--copilot-ink)]">
           Aging de cartera
@@ -351,7 +358,7 @@ function EmptyAgingPlaceholder({ shimmer = false }: { shimmer?: boolean }) {
 
 function EmptyDebtExplorerPlaceholder({ shimmer = false }: { shimmer?: boolean }) {
   return (
-    <section className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] shadow-[var(--copilot-shadow)]">
+    <section className={`rounded-2xl border shadow-[var(--copilot-shadow)] ${neutralFinancialCardClass}`}>
       <header className="border-b border-[var(--copilot-border)] px-5 py-4">
         <h3 className="text-base font-semibold tracking-tight text-[var(--copilot-ink)]">
           Explorador de deuda
@@ -398,7 +405,7 @@ function PreSyncBanner({ onDismiss }: { onDismiss: () => void }) {
   return (
     <div
       role="status"
-      className="flex items-start justify-between gap-3 rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-sm text-amber-950"
+      className={`flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 text-sm text-amber-950 ${warningFinancialCardClass}`}
     >
       <div className="flex items-start gap-3">
         <span className="mt-0.5 shrink-0 text-amber-700">
@@ -425,7 +432,7 @@ function RowCapBanner({ onDismiss }: { onDismiss: () => void }) {
   return (
     <div
       role="status"
-      className="flex items-start justify-between gap-3 rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-sm text-amber-950"
+      className={`flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 text-sm text-amber-950 ${warningFinancialCardClass}`}
     >
       <div className="flex items-start gap-3">
         <span className="mt-0.5 shrink-0 text-amber-700">
@@ -454,7 +461,7 @@ function HistoricalGapNote({
   gaps: Array<{ currency: "UYU" | "USD"; amount: number }>;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-[11px] text-[var(--copilot-ink-muted)]/70">
+    <div className={`${softCalloutClass} flex flex-wrap items-center gap-x-5 gap-y-1 px-3 text-[11px] text-[var(--copilot-ink-muted)]/70`}>
       {gaps.map(({ currency, amount }) => (
         <span key={currency} className="inline-flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" aria-hidden />
@@ -481,7 +488,7 @@ function ErrorBlock({ message, onRetry }: { message: string; onRetry: () => void
       initial={reduce ? false : { opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.22, ease: "easeOut" }}
-      className="flex flex-col items-start gap-3 rounded-2xl border border-rose-200/70 bg-rose-50/55 p-5 sm:flex-row sm:items-center sm:justify-between"
+      className={`flex flex-col items-start gap-3 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between ${dangerFinancialCardClass}`}
     >
       <div className="flex items-start gap-3">
         <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-rose-100 text-rose-700">

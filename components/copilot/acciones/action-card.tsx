@@ -13,6 +13,10 @@ import {
   formatYmd as _fmtYmd,
   formatRelative as _fmtRelative,
 } from "@/lib/collection/collection-date-helpers";
+import {
+  actionCardClass,
+  metricValueClass,
+} from "@/components/copilot/ui/copilot-visual-system";
 
 function priorityBadgeClass(priority: CopilotActionPriority): string {
   switch (priority) {
@@ -174,7 +178,7 @@ export function ActionCard({ action }: { action: CopilotAction }) {
     : null;
 
   return (
-    <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/85 px-4 py-3.5 shadow-sm">
+    <div className={`${actionCardClass} px-4 py-3.5`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <span
@@ -189,7 +193,7 @@ export function ActionCard({ action }: { action: CopilotAction }) {
           </span>
         </div>
         {action.amount != null && action.amount > 0 ? (
-          <span className="text-sm font-semibold tabular-nums text-[var(--copilot-ink)]">
+          <span className={`text-sm ${metricValueClass}`}>
             {formatAmount(action.amount, action.currency)}
           </span>
         ) : null}
