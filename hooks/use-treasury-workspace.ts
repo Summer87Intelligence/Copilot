@@ -2,10 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useReducer } from "react";
 
-import { copilotApiFetch } from "@/lib/copilot-fetch";
-import {
-  carteraCollectedToDateFromReport,
-} from "@/lib/copilot-today-business-pulse";
 import {
   fetchTreasuryCashPosition,
   fetchTreasuryAccounts,
@@ -23,10 +19,7 @@ import {
   type BankImportResult,
   type TreasuryWorkspaceFilters,
 } from "@/lib/treasury/treasury-client";
-import {
-  mergeCollectedIntoCashPositions,
-  type CashPositionByCurrency,
-} from "@/lib/treasury/treasury-cash-position";
+import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
 import type {
   BankReconciliationMovement,
   ManualCashMovement,
@@ -187,7 +180,7 @@ export function useTreasuryWorkspace(filters: TreasuryWorkspaceFilters) {
     async (signal?: AbortSignal) => {
       dispatch({ type: "FETCH_START" });
       try {
-        const [accounts, manual, bank, obligations, upcoming7, upcoming30, overdue, cashPos, reconRes] =
+        const [accounts, manual, bank, obligations, upcoming7, upcoming30, overdue, cashPos] =
           await Promise.all([
             fetchTreasuryAccounts(filters),
             fetchTreasuryManualCash(filters),
@@ -197,7 +190,6 @@ export function useTreasuryWorkspace(filters: TreasuryWorkspaceFilters) {
             fetchTreasuryUpcomingObligations(30),
             fetchTreasuryOverdueObligations(),
             fetchTreasuryCashPosition(),
-            copilotApiFetch("/api/copilot/financial-reconciliation?mode=all_outstanding").catch(() => null),
           ]);
         if (signal?.aborted) return;
         const failed = [
@@ -214,36 +206,10 @@ export function useTreasuryWorkspace(filters: TreasuryWorkspaceFilters) {
           return;
         }
 
+        // cashPositions come directly from the treasury service which already includes
+        // post-baseline Zeta receipts in collectedFromClients. No cartera merge needed.
         const cashPositionFailed = !cashPos.ok;
-        let cashPositions: CashPositionByCurrency[] = [];
-        if (cashPos.ok) {
-          const rawPositions = cashPos.data.positions;
-          const reconJson = reconRes
-            ? await reconRes.json().catch(() => null) as { ok?: boolean; report?: { currencies?: unknown } } | null
-            : null;
-          const collectedByCurrency =
-            reconRes?.ok && reconJson?.ok && reconJson?.report?.currencies
-              ? carteraCollectedToDateFromReport(reconJson.report.currencies)
-              : undefined;
-          cashPositions =
-            collectedByCurrency && Object.values(collectedByCurrency).some((v) => v > 0)
-              ? mergeCollectedIntoCashPositions(rawPositions, collectedByCurrency)
-              : rawPositions;
-          if (process.env.NODE_ENV !== "production") {
-            console.log(
-              "[treasury] cashPositions (merged):",
-              cashPositions.map((p) => ({
-                currency: p.currency,
-                openingConfigured: p.openingConfigured,
-                openingBalance: p.openingBalance,
-                collectedFromClients: p.collectedFromClients,
-                availableCash: p.availableCash,
-              }))
-            );
-          }
-        } else if (process.env.NODE_ENV !== "production") {
-          console.warn("[treasury] fetchTreasuryCashPosition failed:", cashPos);
-        }
+        const cashPositions: CashPositionByCurrency[] = cashPos.ok ? cashPos.data.positions : [];
 
         dispatch({
           type: "FETCH_OK",
@@ -423,9 +389,10 @@ export function useTreasuryWorkspace(filters: TreasuryWorkspaceFilters) {
       }
       dispatch({ type: "UPSERT_MANUAL", movement: result.data });
       notify("success", result.message);
+      void refetch();
       return result.data;
     },
-    [notify]
+    [notify, refetch]
   );
 
   const createBank = useCallback(
