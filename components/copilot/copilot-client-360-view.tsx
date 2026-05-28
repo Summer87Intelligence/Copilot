@@ -171,6 +171,47 @@ function timelineIcon(kind: TimelineEvent["kind"], severity: OperationalHintSeve
 
 // ─── Debt status label ────────────────────────────────────────────────────────
 
+function CollapsibleSection({
+  title,
+  subtitle,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <div className="border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.35)]">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-2 px-6 py-3 text-left"
+        aria-expanded={open}
+      >
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-[var(--copilot-ink)]">{title}</p>
+          {subtitle ? (
+            <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">{subtitle}</p>
+          ) : null}
+        </div>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-[var(--copilot-ink-muted)] transition ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        />
+      </button>
+      {open ? (
+        <div className="space-y-4 border-t border-[var(--copilot-border)] px-6 py-4">
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function debtStatusLabel(data: Client360Payload): { label: string; cls: string } {
   const hasOverdue = data.overdue_uyu > 0 || data.overdue_usd > 0;
   const hasDebt = data.debt_uyu > 0 || data.debt_usd > 0;
@@ -736,6 +777,12 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
   }, [data, riskLabel, hasMixedCurrency]);
 
   const debtStatus = data ? debtStatusLabel(data) : null;
+  const hasDebt = data
+    ? data.debt_uyu > 0 ||
+      data.debt_usd > 0 ||
+      data.overdue_uyu > 0 ||
+      data.overdue_usd > 0
+    : false;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -930,42 +977,50 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
         />
       ) : null}
 
-      {/* Agente de cliente */}
+      {/* Cobranza — bloque unificado */}
       {!loading && !error && data ? (
-        <div className="border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.4)] px-6 py-4">
+        <div className="border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.4)]">
+          <div className="border-b border-[var(--copilot-border)]/50 px-6 py-4">
+            <CopilotSectionTitle
+              title="Cobranza"
+              subtitle="Prepará el contacto, enviá el estado de cuenta y registrá la gestión."
+            />
+          </div>
+          {hasDebt ? (
+            <div ref={assistantRef} className="border-b border-[var(--copilot-border)]/50 px-6 py-4">
+              <CollectionMessageAssistant
+                clientName={data.summary.nombre_visible}
+                debtUyu={data.debt_uyu}
+                debtUsd={data.debt_usd}
+                overdueUyu={data.overdue_uyu}
+                overdueUsd={data.overdue_usd}
+                contactEmail={data.contacts.find((c) => c.email != null)?.email ?? null}
+                phone={data.summary.phone}
+              />
+            </div>
+          ) : null}
+          <div ref={collectionFormRef} className="px-6 py-4">
+            <CollectionFollowupForm
+              companyId={data.summary.company_id}
+              initialValues={collectionPrefill}
+              prefillKey={collectionPrefillKey}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {!loading && !error && data ? (
+        <CollapsibleSection
+          title="Lectura de Copilot"
+          subtitle="Análisis del agente de cliente (solo lectura, no modifica datos)"
+          defaultOpen={false}
+        >
           <ClientAgentBlock
             data={data}
             onNavigateTab={(t) => setTab(t as TabId)}
             onScrollToAssistant={scrollToAssistant}
           />
-        </div>
-      ) : null}
-
-      {/* Collection message assistant — solo cuando hay deuda */}
-      {!loading && !error && data &&
-        (data.debt_uyu > 0 || data.debt_usd > 0 || data.overdue_uyu > 0 || data.overdue_usd > 0) ? (
-        <div ref={assistantRef} className="border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.4)] px-6 py-4">
-          <CollectionMessageAssistant
-            clientName={data.summary.nombre_visible}
-            debtUyu={data.debt_uyu}
-            debtUsd={data.debt_usd}
-            overdueUyu={data.overdue_uyu}
-            overdueUsd={data.overdue_usd}
-            contactEmail={data.contacts.find((c) => c.email != null)?.email ?? null}
-            phone={data.summary.phone}
-          />
-        </div>
-      ) : null}
-
-      {/* Gestión de cobranza */}
-      {!loading && !error && data ? (
-        <div ref={collectionFormRef} className="border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.4)] px-6 py-4">
-          <CollectionFollowupForm
-            companyId={data.summary.company_id}
-            initialValues={collectionPrefill}
-            prefillKey={collectionPrefillKey}
-          />
-        </div>
+        </CollapsibleSection>
       ) : null}
 
       {/* Tabs — horizontal scroll on mobile */}
