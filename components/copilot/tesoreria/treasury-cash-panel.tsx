@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Pencil, Check, X, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowDownCircle, ArrowUpCircle, CalendarClock, Pencil, Check, X, Plus } from "lucide-react";
 
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
@@ -217,14 +218,16 @@ function BalanceCard({
 
 // ─── Quick movement form ───────────────────────────────────────────────────────
 
-function QuickMovementForm({
+export function QuickMovementForm({
   workspace,
   onClose,
+  initial,
 }: {
   workspace: TreasuryWorkspace;
   onClose: () => void;
+  initial?: Partial<QuickForm>;
 }) {
-  const [form, setForm] = useState<QuickForm>(emptyForm);
+  const [form, setForm] = useState<QuickForm>(() => ({ ...emptyForm(), ...initial }));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -489,8 +492,81 @@ function RecentMovements({ workspace }: { workspace: TreasuryWorkspace }) {
 
 // ─── Main export ───────────────────────────────────────────────────────────────
 
+function TreasuryMovementGuide({
+  onIncome,
+  onExpense,
+  onScheduled,
+}: {
+  onIncome: () => void;
+  onExpense: () => void;
+  onScheduled: () => void;
+}) {
+  const guides = [
+    {
+      id: "income",
+      label: "Ingreso",
+      hint: "Dinero que entra a caja.",
+      icon: ArrowUpCircle,
+      onClick: onIncome,
+    },
+    {
+      id: "expense",
+      label: "Egreso",
+      hint: "Gasto o pago que sale de caja.",
+      icon: ArrowDownCircle,
+      onClick: onExpense,
+    },
+    {
+      id: "scheduled",
+      label: "Pago programado",
+      hint: "Compromiso para una fecha futura.",
+      icon: CalendarClock,
+      onClick: onScheduled,
+    },
+  ] as const;
+
+  return (
+    <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
+      <p className="text-sm font-semibold text-[var(--copilot-ink)]">¿Qué querés registrar?</p>
+      <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
+        Elegí el tipo de movimiento. Los pagos futuros no afectan caja hasta confirmarse.
+      </p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        {guides.map((g) => {
+          const Icon = g.icon;
+          return (
+            <button
+              key={g.id}
+              type="button"
+              onClick={g.onClick}
+              className="flex flex-col items-start gap-1 rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-2.5 text-left transition hover:border-[var(--copilot-accent)]/40 hover:bg-[var(--copilot-accent-soft)]/30"
+            >
+              <Icon className="h-4 w-4 text-[var(--copilot-accent)]" aria-hidden />
+              <span className="text-xs font-semibold text-[var(--copilot-ink)]">{g.label}</span>
+              <span className="text-[10px] leading-snug text-[var(--copilot-ink-muted)]">
+                {g.hint}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function TreasuryCashPanel({ workspace }: { workspace: TreasuryWorkspace }) {
+  const router = useRouter();
   const [showForm, setShowForm] = useState(false);
+  const [formPreset, setFormPreset] = useState<Partial<QuickForm> | undefined>(undefined);
+
+  const openForm = (preset: Partial<QuickForm>) => {
+    setFormPreset(preset);
+    setShowForm(true);
+  };
+
+  useEffect(() => {
+    if (!showForm) setFormPreset(undefined);
+  }, [showForm]);
 
   return (
     <div className="space-y-4">
@@ -498,6 +574,14 @@ export function TreasuryCashPanel({ workspace }: { workspace: TreasuryWorkspace 
         Este saldo es el dinero disponible que tenés cargado al corte, más cobros y movimientos
         confirmados después de esa fecha.
       </p>
+
+      <TreasuryMovementGuide
+        onIncome={() => openForm({ movementType: "income", mode: "now" })}
+        onExpense={() => openForm({ movementType: "expense", mode: "now" })}
+        onScheduled={() => {
+          router.push("/copilot/tesoreria?section=programados");
+        }}
+      />
       {/* Balance cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {CURRENCIES.map((currency) => (
@@ -507,7 +591,11 @@ export function TreasuryCashPanel({ workspace }: { workspace: TreasuryWorkspace 
 
       {/* Quick movement */}
       {showForm ? (
-        <QuickMovementForm workspace={workspace} onClose={() => setShowForm(false)} />
+        <QuickMovementForm
+          workspace={workspace}
+          initial={formPreset}
+          onClose={() => setShowForm(false)}
+        />
       ) : (
         <button
           type="button"
