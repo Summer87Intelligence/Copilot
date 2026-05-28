@@ -8,6 +8,13 @@ import { fmtCurrencyAmount } from "@/lib/copilot-today-business-pulse";
 import { HoyMetricLabel } from "./hoy-metric-label";
 import { HoyScopeBadge } from "./hoy-scope-badge";
 import { moneyToneClass, type MoneyTone } from "./hoy-money-value";
+import {
+  actionCardClass,
+  metricValueClass,
+  neutralFinancialCardClass,
+  subtleLabelClass,
+  warningFinancialCardClass,
+} from "@/components/copilot/ui/copilot-visual-system";
 
 function PrimaryMetric({
   label,
@@ -21,10 +28,10 @@ function PrimaryMetric({
   tone?: MoneyTone;
 }) {
   return (
-    <div className="rounded-lg bg-[rgba(44,40,37,0.03)] px-3 py-2.5">
+    <div className={`${actionCardClass} rounded-lg px-3 py-2.5`}>
       <div className="flex items-baseline justify-between gap-2">
         <HoyMetricLabel label={label} tip={tip} className="text-sm font-medium text-[var(--copilot-ink)]" />
-        <span className={`text-base font-semibold tabular-nums ${moneyToneClass(tone)}`}>{value}</span>
+        <span className={`text-base ${metricValueClass} ${moneyToneClass(tone)}`}>{value}</span>
       </div>
     </div>
   );
@@ -54,7 +61,7 @@ function CurrentCurrencyCard({ block }: { block: HoyCurrentStateBlock }) {
   const c = block.currency;
 
   return (
-    <div className="rounded-xl border border-[var(--copilot-border)] bg-white p-4">
+    <div className={`${neutralFinancialCardClass} rounded-xl border p-4`}>
       <p className="text-sm font-semibold text-[var(--copilot-ink)]">{title}</p>
       <div className="mt-3 space-y-2">
         <PrimaryMetric
@@ -76,7 +83,7 @@ function CurrentCurrencyCard({ block }: { block: HoyCurrentStateBlock }) {
           value={block.overdue30 > 0 ? fmtCurrencyAmount(block.overdue30, c) : "—"}
           tone="danger"
         />
-        <div className="border-t border-dashed border-[var(--copilot-border)] pt-2 space-y-1.5">
+        <div className={`${warningFinancialCardClass} rounded-lg border border-dashed pt-2 px-2.5 space-y-1.5`}>
           <SecondaryMetric
             label={HOY_COPY.cashCollectedLabel}
             tip={HOY_COPY.cashCollectedTip}
@@ -112,7 +119,7 @@ export function HoyCurrentStateSection({ blocks }: { blocks: HoyCurrentStateBloc
   return (
     <CopilotCard className="!p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-xs font-semibold text-[var(--copilot-ink-muted)]">{HOY_COPY.currentStateTitle}</h2>
+        <h2 className={`text-xs ${subtleLabelClass}`}>{HOY_COPY.currentStateTitle}</h2>
         <HoyScopeBadge label={HOY_COPY.scopeBadgeCurrent} />
       </div>
       <div className="mt-3 grid gap-3 lg:grid-cols-2">

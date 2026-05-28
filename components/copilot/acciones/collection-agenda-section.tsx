@@ -5,6 +5,14 @@ import Link from "next/link";
 import { Calendar, Clock, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 
 import type { CollectionAgenda, CollectionAgendaItem } from "@/lib/collection/build-collection-agenda";
+import {
+  actionCardClass,
+  dangerFinancialCardClass,
+  metricValueClass,
+  neutralFinancialCardClass,
+  softCalloutClass,
+  warningFinancialCardClass,
+} from "@/components/copilot/ui/copilot-visual-system";
 
 // ─── Filter types ─────────────────────────────────────────────────────────────
 
@@ -101,12 +109,12 @@ function AgendaSummaryCard({
 }) {
   const cls =
     tone === "danger" && value > 0
-      ? "border-rose-200 bg-rose-50/80"
+      ? dangerFinancialCardClass
       : tone === "warning" && value > 0
-      ? "border-amber-200 bg-amber-50/80"
+      ? warningFinancialCardClass
       : tone === "info" && value > 0
-      ? "border-sky-200 bg-sky-50/80"
-      : "border-[var(--copilot-border)] bg-white/70";
+      ? "border-sky-200 bg-gradient-to-br from-white to-sky-50/70"
+      : neutralFinancialCardClass;
   const valCls =
     tone === "danger" && value > 0
       ? "text-rose-700"
@@ -120,7 +128,7 @@ function AgendaSummaryCard({
       <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
         {label}
       </p>
-      <p className={`mt-1 text-lg font-bold tabular-nums ${valCls}`}>{value}</p>
+      <p className={`mt-1 text-lg ${metricValueClass} ${valCls}`}>{value}</p>
     </div>
   );
 }
@@ -128,7 +136,7 @@ function AgendaSummaryCard({
 function AgendaItemCard({ item }: { item: CollectionAgendaItem }) {
   const { bg, label: typeLabel } = typeBadgeCls(item.type);
   return (
-    <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/85 px-4 py-3.5 shadow-sm">
+    <div className={`${actionCardClass} px-4 py-3.5`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <span
@@ -143,7 +151,7 @@ function AgendaItemCard({ item }: { item: CollectionAgendaItem }) {
           ) : null}
         </div>
         {item.amountLabel ? (
-          <span className="text-sm font-semibold tabular-nums text-[var(--copilot-ink)]">
+          <span className={`text-sm ${metricValueClass}`}>
             {item.amountLabel}
           </span>
         ) : null}
@@ -196,7 +204,7 @@ function EmptyState({ filter }: { filter: AgendaFilter }) {
     contacts: "No hay contactos recientes registrados.",
   };
   return (
-    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/60 px-4 py-6 text-center">
+    <div className={`${softCalloutClass} px-4 py-6 text-center`}>
       <CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-emerald-400" aria-hidden />
       <p className="text-sm font-medium text-[var(--copilot-ink)]">
         {messages[filter]}
@@ -250,7 +258,7 @@ export function CollectionAgendaSection({
           <span className="ml-2 text-sm">Cargando agenda…</span>
         </div>
       ) : agenda === null ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+        <div className={`${dangerFinancialCardClass} rounded-xl border px-4 py-3 text-sm text-rose-900`}>
           No se pudo cargar la agenda. Intentá actualizar la página.
         </div>
       ) : (

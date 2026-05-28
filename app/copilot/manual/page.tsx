@@ -1223,11 +1223,11 @@ const SECTIONS: Section[] = [
           </p>
           <Bullets
             items={[
-              "Riesgo de liquidez — si el snapshot financiero muestra riesgo crítico o alto, lo informa como prioridad.",
+              "Riesgo de liquidez — si la lectura financiera muestra riesgo crítico o alto, lo informa como prioridad.",
               "Caja en riesgo — si una notificación indica que los egresos pueden superar la caja disponible.",
               "Cartera vencida — si hay clientes con saldo vencido que pueden afectar la cobranza esperada.",
               "Egresos próximos — pagos vencidos o con vencimiento próximo que pueden impactar el flujo de caja.",
-              "Datos parciales — si el snapshot financiero puede estar incompleto, avisa para que lo confirmes.",
+              "Datos parciales — si la lectura financiera puede estar incompleta, avisa para que lo confirmes.",
               "Solo lee datos. No inventa montos. No ejecuta ninguna acción.",
             ]}
           />
@@ -1385,8 +1385,8 @@ const SECTIONS: Section[] = [
                 a: "Analiza liquidez, cartera vencida, egresos próximos y calidad de los datos financieros. Si detecta riesgo de caja o datos incompletos, te lleva a Finanzas, Cartera o Tesorería según corresponda. No modifica datos ni ejecuta pagos.",
               },
               {
-                q: "¿El Agente CFO puede ver el snapshot financiero?",
-                a: "Sí. Lee el snapshot de Finanzas para detectar riesgo de liquidez y datos parciales. Si el snapshot no está disponible, usa las notificaciones de tesorería y cartera como fuente alternativa.",
+                q: "¿El Agente CFO puede ver la lectura de Finanzas?",
+                a: "Sí. Lee la información de Finanzas para detectar riesgo de liquidez y datos parciales. Si esa lectura no está disponible, usa señales de tesorería y cartera como fuente alternativa.",
               },
               {
                 q: "¿Qué significa riesgo operativo?",

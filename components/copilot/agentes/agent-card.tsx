@@ -4,17 +4,22 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { normalizeAgentHref } from "@/lib/copilot-agents/normalize-agent-href";
+import {
+  actionCardClass,
+  neutralFinancialCardClass,
+  statusBadgeVariants,
+} from "@/components/copilot/ui/copilot-visual-system";
 
 type AgentStatus = "active" | "coming_soon";
 
 const STATUS_STYLES: Record<AgentStatus, { label: string; cls: string }> = {
   active: {
     label: "Activo",
-    cls: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+    cls: `${statusBadgeVariants.stable} border`,
   },
   coming_soon: {
     label: "Próximamente",
-    cls: "bg-slate-100 text-slate-500 border border-slate-200",
+    cls: `${statusBadgeVariants.neutral} border`,
   },
 };
 
@@ -44,10 +49,10 @@ export function AgentCard({
 
   return (
     <div
-      className={`flex flex-col rounded-2xl border bg-white ${
+      className={`flex flex-col rounded-2xl border ${
         isActive
-          ? "border-[var(--copilot-border)] shadow-sm"
-          : "border-[var(--copilot-border)]/60 opacity-75"
+          ? actionCardClass
+          : `${neutralFinancialCardClass} border-[var(--copilot-border)]/60 opacity-75`
       }`}
     >
       {/* Header */}
