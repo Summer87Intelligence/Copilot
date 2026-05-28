@@ -12,7 +12,7 @@ export default function TesoreriaPage() {
       <CopilotPageHeader
         eyebrow="Summer87 Copilot"
         title="Tesorería"
-        description="Caja manual, conciliación bancaria, obligaciones futuras y proyección de liquidez."
+        description="Caja disponible, pagos programados y movimientos manuales."
       />
       <div className={`${copilotPageMainClass} !space-y-4`}>
         <div className="mx-auto w-full max-w-7xl">

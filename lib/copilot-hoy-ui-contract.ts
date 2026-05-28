@@ -36,7 +36,8 @@ export const HOY_COCKPIT = {
   drawerViewProjection: "Ver proyección",
   drawerGoToCriticalClients: "Ir a clientes críticos",
   advancedTitle: "Detalle avanzado",
-  businessHealth: "Business Health",
+  businessHealth: "Salud del negocio",
+  todayPriorityTitle: "Tu prioridad hoy",
 } as const;
 
 /** Labels visibles en bloques UYU/USD. */

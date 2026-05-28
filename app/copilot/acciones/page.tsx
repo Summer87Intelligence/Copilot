@@ -617,7 +617,7 @@ function CopilotAccionesPageContent() {
           >
             <div>
               <p className="text-sm font-semibold text-[var(--copilot-ink)]">
-                Pipeline de decisiones
+                Seguimiento de resultados
               </p>
               <p className="text-xs text-[var(--copilot-ink-muted)]">
                 Acciones persistidas con seguimiento y cierre de loop
@@ -662,7 +662,7 @@ function CopilotAccionesPageContent() {
                 <div className="grid gap-4 lg:grid-cols-3">
                   <div className="space-y-3 lg:col-span-2">
                     <CopilotOperationalEmptyState
-                      title="Pipeline activo"
+                      title="Seguimiento activo"
                       status="Sin acciones pendientes en esta carga"
                       statusTone="info"
                       metrics={[
@@ -1024,7 +1024,7 @@ function CopilotAccionesPageContent() {
                                   </span>
                                   {a.outcome.notes?.trim()
                                     ? a.outcome.notes
-                                    : "Sin notas en el outcome."}
+                                    : "Sin notas en el resultado."}
                                 </p>
                                 {a.outcome.outcome_type === "sale" &&
                                 a.outcome.revenue_amount != null ? (
@@ -1058,13 +1058,13 @@ function CopilotAccionesPageContent() {
                                   </p>
                                 ) : null}
                                 <p className="text-xs text-[var(--copilot-ink-muted)]">
-                                  Outcome registrado: {formatDate(a.outcome.created_at)}
+                                  Resultado registrado: {formatDate(a.outcome.created_at)}
                                 </p>
                               </div>
                             ) : (
                               <p className="text-sm text-amber-900/90">
                                 Estado {mapExecutionStatus(a.execution_status)} sin fila de
-                                outcome en esta carga. Volvé a listar o revisá permisos.
+                                resultado en esta carga. Volvé a listar o revisá permisos.
                               </p>
                             )}
                           </div>

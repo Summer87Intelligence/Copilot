@@ -15,6 +15,7 @@ import {
   formatRelative,
   formatYmd,
 } from "@/lib/collection/collection-date-helpers";
+import { COLLECTION_UX } from "@/lib/copilot-collection-ux-copy";
 
 // ─── Local types ──────────────────────────────────────────────────────────────
 
@@ -308,8 +309,11 @@ export function CollectionFollowupForm({
           Gestión de cobranza
         </span>
       </div>
-      <p className="mb-4 text-[12.5px] text-[var(--copilot-ink-muted)]">
+      <p className="mb-2 text-[12.5px] text-[var(--copilot-ink-muted)]">
         Registrá qué pasó después de contactar al cliente.
+      </p>
+      <p className="mb-4 text-[11px] leading-relaxed text-[var(--copilot-ink-muted)]">
+        {COLLECTION_UX.registerDoesNotPay} {COLLECTION_UX.promiseNotPayment}
       </p>
 
       {/* Última gestión — compact summary */}

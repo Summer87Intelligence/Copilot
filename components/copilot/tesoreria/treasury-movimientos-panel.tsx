@@ -268,7 +268,7 @@ export function TreasuryMovimientosPanel({ workspace }: { workspace: TreasuryWor
       <div>
         <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">Movimientos de caja</h2>
         <p className="text-xs text-[var(--copilot-ink-muted)]">
-          Ingresos y egresos confirmados. Editá o anulá si hubo un error.
+          Ingresos y egresos confirmados que ajustan tu caja. Editá o anulá si hubo un error.
         </p>
       </div>
 

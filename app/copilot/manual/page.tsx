@@ -241,12 +241,18 @@ const SECTIONS: Section[] = [
           <strong>Hoy</strong> es lo primero que deberías mirar cada mañana.
           Resume todo lo que está pasando en el negocio en un solo lugar.
         </p>
+        <Callout variant="tip">
+          <strong>Tu prioridad hoy</strong> — al entrar, un bloque destacado te indica el
+          siguiente paso recomendado (clientes vencidos, agenda de cobranza, Tesorería o revisar
+          acciones). Un solo botón principal para no perderse.
+        </Callout>
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
             Qué ves en Hoy
           </p>
           <Bullets
             items={[
+              "Tu prioridad hoy — una acción sugerida con un CTA claro (ver clientes críticos, agenda, Tesorería o acciones).",
               "Dinero disponible — caja estimada ahora. Viene de Tesorería, no de facturación ni de Cartera.",
               "Pagos próximos — qué salidas están programadas en los próximos días.",
               "Después de pagos — cuánto quedaría si se pagan todos los compromisos.",
@@ -584,6 +590,12 @@ const SECTIONS: Section[] = [
             aquí la fecha exacta del último dato disponible.
           </p>
         </div>
+
+        <Callout variant="tip">
+          <strong>Próximo paso</strong> — debajo del encabezado de la ficha, un bloque compacto
+          resume qué conviene hacer ahora (preparar cobranza, ver seguimiento, etc.) con un solo
+          botón. Usa la misma lectura que el Agente de cliente, sin duplicar pantallas.
+        </Callout>
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
@@ -924,11 +936,10 @@ const SECTIONS: Section[] = [
           </p>
           <Bullets
             items={[
-              "Resumen — visión general de caja y pagos próximos.",
-              "Pagos — obligaciones específicas: impuestos, proveedores, servicios.",
-              "Caja manual — movimientos de entrada y salida que registrás vos.",
-              "Recurrentes — pagos que se repiten (sueldos, servicios fijos, etc.).",
-              "Conciliación — comparación entre lo registrado y el banco.",
+              "Caja — saldo disponible cargado al corte, más cobros y movimientos confirmados después.",
+              "Programados — pagos con fecha futura; no afectan caja hasta confirmarse.",
+              "Movimientos — ingresos y egresos confirmados que ajustan tu caja.",
+              "Avanzado — conciliación bancaria, recurrentes y opciones técnicas.",
             ]}
           />
         </div>

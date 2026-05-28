@@ -396,7 +396,7 @@ export function TreasuryProgramadosPanel({
         <div>
           <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">Pagos programados</h2>
           <p className="text-xs text-[var(--copilot-ink-muted)]">
-            Egresos futuros planificados. No afectan caja hasta que los marcás como pagados.
+            Pagos con fecha futura. No afectan caja hasta confirmarse como pagados.
           </p>
         </div>
         <button

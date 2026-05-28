@@ -668,7 +668,7 @@ function CopilotFinanzasPageContent() {
     if (snapshotLoading) {
       return {
         title: "Sincronizando tu posición de caja",
-        impact: "Cargando cifras del motor financiero…",
+        impact: "Cargando panorama financiero…",
         urgency: "En segundos vas a ver el foco y la acción sugerida.",
       };
     }
@@ -1471,7 +1471,7 @@ function CopilotFinanzasPageContent() {
                         Flujo proyectado de caja
                       </p>
                       <p className="text-[10px] text-[var(--copilot-ink-muted)]">
-                        Lectura forward-looking basada en datos Zeta y obligaciones próximas.
+                        Proyección a futuro basada en datos de contabilidad y obligaciones próximas.
                       </p>
                     </div>
                     <div className="mt-3 space-y-3">
@@ -1653,7 +1653,7 @@ function CopilotFinanzasPageContent() {
               {snapshotLoading ? (
                 <div className="mt-6 flex items-center gap-2 text-sm text-[var(--copilot-ink-muted)]">
                   <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-                  Calculando snapshot financiero…
+                  Calculando panorama financiero…
                 </div>
               ) : null}
               {snapshotError ? (

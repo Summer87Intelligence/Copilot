@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { AlertTriangle, ClipboardList, Copy, Mail, MessageCircle } from "lucide-react";
 import { CopilotCard, CopilotSectionTitle } from "@/components/copilot/copilot-ui";
 import { buildAccountStatementMessage } from "@/lib/account-statement/build-account-statement-message";
+import { COLLECTION_UX } from "@/lib/copilot-collection-ux-copy";
 import {
   buildAccountStatementFollowupPrefill,
   type CollectionFollowupInitialValues,
@@ -201,9 +202,12 @@ export function AccountStatementSendCard({
       </div>
 
       {/* Warning */}
-      <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 p-2.5 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-        <span>Adjuntá manualmente el PDF descargado antes de enviar.</span>
+      <div className="mt-3 space-y-1.5 rounded-lg bg-amber-50/90 px-2.5 py-2 text-[11px] leading-relaxed text-amber-900">
+        <div className="flex items-start gap-2">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span>Adjuntá manualmente el PDF descargado antes de enviar.</span>
+        </div>
+        <p className="pl-5 text-amber-800/90">{COLLECTION_UX.noAutoSend}</p>
       </div>
 
       {/* Actions */}

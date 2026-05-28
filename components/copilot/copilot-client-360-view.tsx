@@ -35,6 +35,7 @@ import {
 import { CollectionMessageAssistant } from "@/components/copilot/clientes/collection-message-assistant";
 import { CollectionFollowupForm } from "@/components/copilot/clientes/collection-followup-form";
 import { ClientAgentBlock } from "@/components/copilot/clientes/client-agent-block";
+import { ClientNextStepBanner } from "@/components/copilot/clientes/client-next-step-banner";
 import { AccountStatementSendCard } from "@/components/copilot/clientes/account-statement-send-card";
 import type { Client360Payload } from "@/lib/copilot-client-360";
 import { normalizeUruguayPhoneForWhatsApp } from "@/lib/phone/normalize-phone-for-whatsapp";
@@ -547,7 +548,8 @@ function AccountStatementPdfCard({ companyId, hasUyu }: { companyId: string; has
         <div>
           <p className="text-sm font-semibold text-[var(--copilot-ink)]">Estado de cuenta PDF</p>
           <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-            Descargá un estado de cuenta del cliente para revisar o enviar manualmente.
+            Descargá un estado de cuenta del cliente para revisar o enviar manualmente. El PDF no se
+            envía solo.
           </p>
         </div>
         <Download className="h-4 w-4 shrink-0 text-[var(--copilot-accent)] mt-0.5" aria-hidden />
@@ -641,6 +643,10 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
 
   function scrollToAssistant() {
     assistantRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function scrollToCollectionForm() {
+    collectionFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   const handleSuggestFollowup = useCallback(
@@ -913,6 +919,15 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
             />
           </div>
         </div>
+      ) : null}
+
+      {!loading && !error && data ? (
+        <ClientNextStepBanner
+          data={data}
+          onNavigateTab={(t) => setTab(t as TabId)}
+          onScrollToAssistant={scrollToAssistant}
+          onScrollToCollectionForm={scrollToCollectionForm}
+        />
       ) : null}
 
       {/* Agente de cliente */}

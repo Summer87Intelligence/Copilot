@@ -288,8 +288,8 @@ export function CollectionMessageAssistant({
           <div className="flex items-start gap-2 rounded-xl border border-[var(--copilot-border)]/60 bg-[rgba(44,40,37,0.02)] px-3 py-2.5">
             <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--copilot-ink-muted)]/60" aria-hidden />
             <p className="text-[11.5px] text-[var(--copilot-ink-muted)]">
-              Los mensajes son sugerencias. Revisalos antes de enviarlos.{" "}
-              Después de contactar, registrá el resultado en Gestión de cobranza.
+              Los mensajes son sugerencias: no se envían solos. Revisalos antes de contactar al
+              cliente. Después de contactar, registrá el resultado en Gestión de cobranza.
             </p>
           </div>
         </div>
