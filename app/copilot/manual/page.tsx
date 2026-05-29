@@ -1040,42 +1040,31 @@ const SECTIONS: Section[] = [
   {
     id: "finanzas",
     icon: <Wallet className="h-4 w-4" aria-hidden />,
-    title: "Finanzas — Mirada general del negocio",
+    title: "Panorama financiero — Lectura ejecutiva",
     content: (
       <>
         <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
-          <strong>Finanzas</strong> muestra proyecciones y tendencias. No es para
-          operar el día a día — es para entender el panorama general.
+          <strong>Panorama financiero</strong> resume el período: ingresos netos,
+          cobros, deuda pendiente y caja. No reemplaza Cartera ni Tesorería para
+          operar el día a día.
         </p>
-        <Callout variant="warning">
-          <strong>Neto acumulado ≠ caja bancaria real.</strong>{" "}
-          El neto acumulado es la diferencia entre lo cobrado y lo pagado hasta hoy.
-          Para ver cuánto hay en caja, usá <strong>Hoy</strong> o{" "}
-          <strong>Tesorería</strong>.
+        <Bullets
+          items={[
+            "Ingresos netos — facturación del período menos notas de crédito (las NC no son ingreso).",
+            "Cobrado aplicado — cartera resuelta en el período (no confundir con caja).",
+            "Pendiente y vencido — saldos abiertos de clientes (Cartera).",
+            "Caja disponible — dinero actual en Tesorería; no es facturación.",
+            "UYU y USD se analizan por separado; no se suman.",
+            "Proyección 30 días — operativa (cobros esperados y pagos próximos), no cierre contable formal.",
+          ]}
+        />
+        <Callout variant="info">
+          Para cierre contable final, validá con tu contador o el export oficial de Zeta.
         </Callout>
-        <div className={`rounded-2xl border ${C.border} p-4`}>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
-            Qué muestra
-          </p>
-          <Bullets
-            items={[
-              "Neto acumulado — cobros totales menos pagos totales registrados.",
-              "Cobranza esperada — lo que está pendiente de cobrar en cartera.",
-              "Egresos proyectados — pagos que se esperan en los próximos días.",
-              "Balance proyectado — si se cobra y se paga todo, qué quedaría.",
-              "Ratio de cobertura — si lo disponible alcanza para cubrir los compromisos.",
-              "Detalle fiscal — resumen de obligaciones tributarias.",
-            ]}
-          />
-        </div>
-        <div className={`rounded-2xl border ${C.border} p-4`}>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
-            Para profundizar
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <NavLink href="/copilot/cartera" label="Ver deuda en Cartera" ghost />
-            <NavLink href="/copilot/tesoreria" label="Ver caja en Tesorería" ghost />
-          </div>
+        <div className="flex flex-wrap gap-3">
+          <NavLink href="/copilot/finanzas" label="Ir a Panorama financiero" />
+          <NavLink href="/copilot/cartera" label="Ver Cartera" ghost />
+          <NavLink href="/copilot/tesoreria" label="Ver Tesorería" ghost />
         </div>
       </>
     ),
