@@ -27,7 +27,10 @@ import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-p
 import { AttentionClientsDrawer } from "./hoy-attention-clients-drawer";
 import { CollectionAgendaHoyCard } from "./collection-agenda-hoy-card";
 import { HoyAdvancedDetail } from "./hoy-advanced-detail";
-import { ClientsWithDebtSection } from "./hoy-clients-with-debt-section";
+import {
+  ClientsWithDebtSection,
+  formatMoneySymbolOnly,
+} from "./hoy-clients-with-debt-section";
 import {
   HoyCockpitCardDrawer,
   type HoyCockpitCardId,
@@ -261,7 +264,7 @@ export function HoyPageView({
   return (
     <>
       <div className={HOY_PAGE_SHELL}>
-        <HoyCompactHero hero={cockpit.hero} onViewCriticalClients={scrollToCriticalClients} />
+        <HoyCompactHero hero={cockpit.hero} />
 
         <HoyTodayPriorityCard
           attentionClientsCount={pulse.clientCounts.attentionClients}
@@ -295,11 +298,11 @@ export function HoyPageView({
           <div className="flex flex-wrap items-center justify-between gap-1.5">
             <div>
               <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">
-                {HOY_COCKPIT.criticalClients}
+                Clientes que explican el riesgo
               </h2>
               <p className="text-xs text-[var(--copilot-ink-muted)]">
                 {pulse.clientCounts.attentionClients > 0
-                  ? `${pulse.clientCounts.attentionClients} con riesgo elevado · ordenados por severidad`
+                  ? `${pulse.clientCounts.debtorClients} con deuda · ${pulse.clientCounts.attentionClients} requieren seguimiento`
                   : HOY_COPY.debtorsSectionSubtitle}
               </p>
             </div>
@@ -312,17 +315,44 @@ export function HoyPageView({
                   className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white/80 px-2.5 py-1 text-xs font-semibold text-[var(--copilot-ink)] hover:bg-white"
                 />
               ) : null}
-            {pulse.attentionClients.total > 0 ? (
-              <button
-                type="button"
-                onClick={openAttentionDrawer}
-                className="text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
-              >
-                {HOY_COPY.attentionStripCta}
-              </button>
-            ) : null}
+              {pulse.attentionClients.total > 0 ? (
+                <button
+                  type="button"
+                  onClick={openAttentionDrawer}
+                  className="text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
+                >
+                  {HOY_COPY.attentionStripCta}
+                </button>
+              ) : null}
             </div>
           </div>
+
+          {sortedDebtorRows.slice(0, 3).length > 0 && (
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {sortedDebtorRows.slice(0, 3).map((row) => (
+                <div
+                  key={`${row.company_id}-${row.currency}`}
+                  className="flex items-center gap-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 px-3 py-1.5 text-xs"
+                >
+                  <span className="max-w-[120px] truncate font-semibold text-[var(--copilot-ink)]">
+                    {row.name}
+                  </span>
+                  <span className={`tabular-nums ${(row.vencido?.amount ?? 0) > 0 ? "text-rose-700 font-semibold" : "text-amber-700"}`}>
+                    {formatMoneySymbolOnly(row.deuda)}
+                  </span>
+                  <span className="text-[10px] font-medium text-[var(--copilot-ink-muted)]">
+                    {row.currency}
+                  </span>
+                  {(row.vencido?.amount ?? 0) > 0 && (
+                    <span className="rounded-full bg-rose-100/80 px-1.5 py-0.5 text-[10px] font-semibold text-rose-800">
+                      Vencido
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="mt-2">
             <ClientsWithDebtSection
               sectionRef={debtorsSectionRef}

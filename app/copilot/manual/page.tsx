@@ -313,9 +313,7 @@ const SECTIONS: Section[] = [
           Resume todo lo que está pasando en el negocio en un solo lugar.
         </p>
         <Callout variant="tip">
-          <strong>Tu prioridad hoy</strong> — al entrar, un bloque destacado te indica el
-          siguiente paso recomendado (clientes vencidos, agenda de cobranza, Tesorería o revisar
-          acciones). Un solo botón principal para no perderse.
+          <strong>Tu día en una frase</strong> — al entrar, un bloque te dice qué hacer primero: contactar clientes vencidos, revisar agenda de cobranza, ir a Tesorería o revisar acciones. Un CTA claro para no perderse.
         </Callout>
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
@@ -323,29 +321,30 @@ const SECTIONS: Section[] = [
           </p>
           <Bullets
             items={[
-              "Tu prioridad hoy — una acción sugerida con un CTA claro (ver clientes críticos, agenda, Tesorería o acciones).",
-              "Dinero disponible — caja estimada ahora. Viene de Tesorería, no de facturación ni de Cartera.",
-              "Pagos próximos — qué salidas están programadas en los próximos días.",
-              "Después de pagos — cuánto quedaría si se pagan todos los compromisos.",
-              "Por cobrar — facturas abiertas que los clientes aún no pagaron. Es deuda de clientes, no plata en caja.",
-              "Clientes con deuda — quiénes deben más o llevan más tiempo sin pagar.",
-              "Generar PDF — en Clientes críticos podés descargar el reporte de deudores filtrado.",
+              "Tu día en una frase — la acción concreta sugerida con un CTA (clientes vencidos, agenda, Tesorería o acciones).",
+              "Caja disponible — dinero en Tesorería ahora. No es facturación ni deuda de clientes.",
+              "Clientes por cobrar — facturas abiertas. Es deuda de clientes, no plata en caja.",
+              "Pagos próximos — qué salidas están cargadas en Tesorería para los próximos días.",
+              "Caja después de pagos — cuánto queda si se pagan todos los compromisos cargados.",
+              "Clientes que explican el riesgo — quiénes deben más o llevan más tiempo sin pagar.",
+              "Detalle financiero del período — facturación, cobros y proyección del período seleccionado.",
+              "Próximos 30 días — escenario operativo con caja, pagos y lo que podrías cobrar.",
+              "Generar PDF — en Clientes podés descargar el reporte de deudores.",
             ]}
           />
         </div>
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
-            Dinero disponible — cómo se calcula
+            Caja disponible — cómo se calcula
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
-            El número de <strong>Dinero disponible</strong> se arma a partir del saldo que cargaste en Tesorería más los movimientos confirmados posteriores a esa fecha.
+            El número de <strong>Caja disponible</strong> se arma a partir del saldo que cargaste en Tesorería más los movimientos confirmados posteriores a esa fecha.
           </p>
           <Bullets
             items={[
               "Saldo actual cargado — el punto de partida. Lo cargás vos en Tesorería con la plata real que tenés en caja o cuenta.",
               "Cobros Zeta posteriores — si un cliente paga después de que cargaste el saldo, Copilot lo suma automáticamente cuando aparece en Zeta. No tenés que registrarlo a mano.",
-              "Ingresos manuales — plata que ingresa pero no viene de facturas Zeta (transferencias, adelantos, etc.). Se registra en Tesorería.",
-              "Egresos confirmados — pagos realizados registrados en Tesorería. Restan del disponible.",
+              "Registros manuales — plata que ingresa o egresa pero no viene de Zeta (transferencias, adelantos, pagos realizados). Se registra en Tesorería.",
               "Pagos programados sin confirmar — no restan hasta que los marcás como ejecutados.",
             ]}
           />
@@ -353,12 +352,12 @@ const SECTIONS: Section[] = [
             <p className="font-semibold mb-1">Ejemplo</p>
             <p className="leading-relaxed">
               Cargás $263.034 como saldo actual. Luego El País paga $25.742 y ese cobro aparece en Zeta.
-              Copilot lo suma solo: <strong>Dinero disponible = $288.776</strong>.
+              Copilot lo suma solo: <strong>Caja disponible = $288.776</strong>.
               Si después registrás un egreso de $10.000 en Tesorería, baja a <strong>$278.776</strong>.
             </p>
           </div>
           <Callout variant="warning">
-            <strong>Por cobrar ≠ Dinero disponible.</strong> La deuda de los clientes se muestra en el bloque &ldquo;Por cobrar&rdquo; pero no entra en caja hasta que el cliente efectivamente pague y el cobro aparezca en Zeta.
+            <strong>Clientes por cobrar ≠ Caja disponible.</strong> La deuda de clientes se muestra en &ldquo;Clientes por cobrar&rdquo; pero no entra en caja hasta que el cliente pague y el cobro aparezca en Zeta.
           </Callout>
         </div>
         <div className={`rounded-2xl border ${C.border} p-4`}>
@@ -367,10 +366,12 @@ const SECTIONS: Section[] = [
           </p>
           <Bullets
             items={[
-              "Si hay clientes críticos → tocar el nombre para abrir su ficha, llamar o escribir por WhatsApp.",
-              "Si hay pagos próximos → entrar a Tesorería para confirmar si están listos.",
-              "Si el dinero después de pagos queda bajo → revisar caja en Tesorería.",
-              "Si el Dinero disponible parece incorrecto → verificar que el saldo actual en Tesorería esté actualizado.",
+              "Si hay clientes con deuda vencida → abrí su ficha y contactá por WhatsApp o email.",
+              "Si hay pagos próximos → entrá a Tesorería para confirmar que estén cubiertos.",
+              "Si la caja después de pagos queda baja → revisá saldo y pagos en Tesorería.",
+              "Si la caja disponible parece incorrecta → verificá que el saldo en Tesorería esté actualizado.",
+              "Para ver el detalle de facturación y cobros → abrí 'Detalle financiero del período'.",
+              "Para ver escenario a 30 días → abrí 'Próximos 30 días' dentro del mismo detalle.",
             ]}
           />
         </div>

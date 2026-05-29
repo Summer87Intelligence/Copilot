@@ -1,6 +1,8 @@
 "use client";
 
 import type { KeyboardEvent } from "react";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 import type { HoyCockpitCardId } from "@/components/copilot/hoy/hoy-cockpit-card-drawer";
 import type {
@@ -13,6 +15,7 @@ import { HOY_COCKPIT } from "@/lib/copilot-hoy-ui-contract";
 import {
   dangerFinancialCardClass,
   metricValueClass,
+  neutralFinancialCardClass,
   positiveFinancialCardClass,
   warningFinancialCardClass,
 } from "@/components/copilot/ui/copilot-visual-system";
@@ -67,6 +70,19 @@ const CARD_THEME: Record<Exclude<CardVariant, "afterPayments">, CardTheme> = {
   },
 };
 
+const EMPTY_PAYMENTS_THEME: CardTheme = {
+  shell: neutralFinancialCardClass,
+  badge: "bg-slate-100/70 text-slate-600",
+  dot: "bg-slate-400",
+  amountPrimary: "text-slate-700",
+  amountSecondary: "text-slate-600/70",
+  footer: {
+    ok: "text-slate-700",
+    warn: "text-slate-600",
+    danger: "text-slate-700",
+  },
+};
+
 const AFTER_PAYMENTS_THEME: Record<CockpitAfterPaymentsAccent, CardTheme> = {
   comfortable: {
     shell: positiveFinancialCardClass,
@@ -107,6 +123,9 @@ const AFTER_PAYMENTS_THEME: Record<CockpitAfterPaymentsAccent, CardTheme> = {
 };
 
 function resolveTheme(variant: CardVariant, block: CockpitMoneyBlock): CardTheme {
+  if (variant === "payments" && block.amounts.length === 0) {
+    return EMPTY_PAYMENTS_THEME;
+  }
   if (variant === "afterPayments") {
     return AFTER_PAYMENTS_THEME[block.afterPaymentsAccent ?? "comfortable"];
   }
@@ -208,14 +227,29 @@ function CurrencyStack({
   );
 }
 
-function CardHeader({ theme, title }: { theme: CardTheme; title: string }) {
+function CardHeader({
+  theme,
+  title,
+  subtitle,
+}: {
+  theme: CardTheme;
+  title: string;
+  subtitle?: string;
+}) {
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] ${theme.badge}`}
-    >
-      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${theme.dot}`} aria-hidden />
-      {title}
-    </span>
+    <>
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] ${theme.badge}`}
+      >
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${theme.dot}`} aria-hidden />
+        {title}
+      </span>
+      {subtitle ? (
+        <p className="mt-1.5 text-[11px] leading-snug text-[var(--copilot-ink-muted)]">
+          {subtitle}
+        </p>
+      ) : null}
+    </>
   );
 }
 
@@ -252,6 +286,7 @@ function MoneyCard({
   cardId,
   variant,
   title,
+  subtitle,
   block,
   onCardClick,
   isActive,
@@ -259,12 +294,14 @@ function MoneyCard({
   cardId: HoyCockpitCardId;
   variant: CardVariant;
   title: string;
+  subtitle?: string;
   block: CockpitMoneyBlock;
   onCardClick?: (id: HoyCockpitCardId) => void;
   isActive?: boolean;
 }) {
   const theme = resolveTheme(variant, block);
   const interactive = Boolean(onCardClick);
+  const isEmptyPayments = variant === "payments" && block.amounts.length === 0;
 
   return (
     <article
@@ -275,18 +312,34 @@ function MoneyCard({
       className={`flex min-h-[190px] flex-col rounded-3xl border p-5 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${theme.shell}`}
     >
       <header>
-        <CardHeader theme={theme} title={title} />
+        <CardHeader theme={theme} title={title} subtitle={subtitle} />
       </header>
 
-      <div className="mt-2 flex flex-1 flex-col justify-center">
-        <CurrencyStack
-          amounts={block.amounts}
-          amountPrimaryClass={theme.amountPrimary}
-          amountSecondaryClass={theme.amountSecondary}
-        />
-      </div>
+      {isEmptyPayments ? (
+        <div className="mt-3 flex flex-1 flex-col justify-center">
+          <p className="text-sm text-[var(--copilot-ink-muted)]">No hay pagos próximos cargados.</p>
+          <Link
+            href="/copilot/tesoreria?section=obligations"
+            onClick={(e) => e.stopPropagation()}
+            className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
+          >
+            Agregar pago programado
+            <ArrowRight className="h-3 w-3" aria-hidden />
+          </Link>
+        </div>
+      ) : (
+        <div className="mt-2 flex flex-1 flex-col justify-center">
+          <CurrencyStack
+            amounts={block.amounts}
+            amountPrimaryClass={theme.amountPrimary}
+            amountSecondaryClass={theme.amountSecondary}
+          />
+        </div>
+      )}
 
-      <CardFooter theme={theme} tone={block.footnote.tone} text={block.footnote.text} />
+      {!isEmptyPayments && (
+        <CardFooter theme={theme} tone={block.footnote.tone} text={block.footnote.text} />
+      )}
     </article>
   );
 }
@@ -325,10 +378,12 @@ function ReceivablesSection({
 
 function ReceivablesCard({
   card,
+  subtitle,
   onCardClick,
   isActive,
 }: {
   card: CockpitReceivablesCard;
+  subtitle?: string;
   onCardClick?: (id: HoyCockpitCardId) => void;
   isActive?: boolean;
 }) {
@@ -346,7 +401,7 @@ function ReceivablesCard({
       className={`flex min-h-[190px] flex-col rounded-3xl border p-5 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${shell.shell}`}
     >
       <header>
-        <CardHeader theme={shell} title={HOY_COCKPIT.receivables} />
+        <CardHeader theme={shell} title={HOY_COCKPIT.receivables} subtitle={subtitle} />
       </header>
 
       <div className="mt-3 flex flex-1 flex-col justify-center">
@@ -406,14 +461,22 @@ export function HoyMoneyCards({
         cardId="cash"
         variant="cash"
         title={HOY_COCKPIT.moneyAvailable}
+        subtitle="Dinero disponible en Tesorería."
         block={moneyAvailable}
         onCardClick={onCardClick}
         isActive={activeCard === "cash"}
+      />
+      <ReceivablesCard
+        card={receivables}
+        subtitle="Facturas abiertas de clientes."
+        onCardClick={onCardClick}
+        isActive={activeCard === "receivables"}
       />
       <MoneyCard
         cardId="payments"
         variant="payments"
         title={HOY_COCKPIT.payments}
+        subtitle={payments.amounts.length > 0 ? "Pagos cargados para los próximos 30 días." : undefined}
         block={payments}
         onCardClick={onCardClick}
         isActive={activeCard === "payments"}
@@ -422,14 +485,10 @@ export function HoyMoneyCards({
         cardId="afterPayments"
         variant="afterPayments"
         title={HOY_COCKPIT.afterPayments}
+        subtitle="Caja actual menos pagos próximos."
         block={afterPayments}
         onCardClick={onCardClick}
         isActive={activeCard === "afterPayments"}
-      />
-      <ReceivablesCard
-        card={receivables}
-        onCardClick={onCardClick}
-        isActive={activeCard === "receivables"}
       />
     </div>
   );

@@ -15,10 +15,10 @@ export const HOY_PAGE = {
 
 /** Cockpit financiero — bloques principales. */
 export const HOY_COCKPIT = {
-  moneyAvailable: "Dinero disponible",
-  receivables: "Por cobrar",
+  moneyAvailable: "Caja disponible",
+  receivables: "Clientes por cobrar",
   payments: "Pagos próximos",
-  afterPayments: "Después de pagos",
+  afterPayments: "Caja después de pagos",
   receivablesTotalPending: "Total pendiente",
   receivablesIncludedInTotal: "Incluido en ese total",
   receivablesOverdue30: "Vencido >30 días",
@@ -31,13 +31,13 @@ export const HOY_COCKPIT = {
   viewCriticalClients: "Ver clientes críticos",
   drawerCashSummary: "Caja actual registrada disponible para operar.",
   drawerPaymentsEmpty: "Detalle de pagos disponible en Tesorería.",
-  drawerAfterPaymentsSummary: "Resultado de caja disponible menos pagos próximos.",
+  drawerAfterPaymentsSummary: "Caja disponible menos pagos próximos.",
   drawerViewTreasury: "Ver Tesorería",
   drawerViewProjection: "Ver proyección",
   drawerGoToCriticalClients: "Ir a clientes críticos",
-  advancedTitle: "Detalle avanzado",
+  advancedTitle: "Detalle financiero del período",
   businessHealth: "Salud del negocio",
-  todayPriorityTitle: "Tu prioridad hoy",
+  todayPriorityTitle: "Tu día en una frase",
 } as const;
 
 /** Labels visibles en bloques UYU/USD. */
@@ -103,8 +103,8 @@ export const HOY_COPY = {
   availableCashLabel: "Caja disponible",
   availableCashEstimatedLabel: "Caja disponible",
   cashOpeningNote: "Configurá tu saldo actual en Tesorería para ver el dinero disponible.",
-  projection30Title: "Proyección · Próximos 30 días",
-  projection30Tip: "Escenarios desde hoy. El período de análisis no afecta esta sección.",
+  projection30Title: "Próximos 30 días",
+  projection30Tip: "Caja actual, pagos cargados y escenario si cobrás lo pendiente.",
   /** @deprecated Usar `availableCashLabel`. */
   currentCashLabel: "Caja disponible",
   scheduledPaymentsLabel: "Pagos programados",

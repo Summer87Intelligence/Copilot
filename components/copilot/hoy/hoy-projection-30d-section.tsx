@@ -120,20 +120,20 @@ export function HoyProjection30dSection({
         <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">{HOY_COPY.projection30Title}</h2>
         <HoyScopeBadge label={HOY_COPY.scopeBadgeProjection} />
       </div>
-      <p className="mt-0.5 text-[10px] text-[var(--copilot-ink-muted)]" title={HOY_COPY.projection30Tip}>
-        Próximos 30 días desde hoy.
+      <p className="mt-0.5 text-[10px] text-[var(--copilot-ink-muted)]">
+        {HOY_COPY.projection30Tip}
       </p>
 
       {!configured ? (
-        <div className="mt-4 rounded-lg border border-amber-200/60 bg-amber-50/40 px-4 py-3 text-sm text-amber-950">
+        <div className="mt-4 rounded-lg border border-[var(--copilot-border)] bg-[rgba(44,40,37,0.03)] px-4 py-3 text-sm text-[var(--copilot-ink-muted)]">
           <p>
-            No hay egresos futuros configurados. Configuralos en Tesorería para proyectar caja segura.
+            No hay pagos próximos cargados. Configuralos en Tesorería para proyectar mejor.
           </p>
           <Link
             href="/copilot/tesoreria?section=obligations"
             className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
           >
-            Ir a Tesorería
+            Configurar pagos futuros
             <ArrowRight className="h-3.5 w-3.5" aria-hidden />
           </Link>
         </div>

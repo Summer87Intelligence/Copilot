@@ -19,14 +19,19 @@ export function HoyAdvancedDetail({
       <button
         type="button"
         onClick={() => onExpandedChange(!expanded)}
-        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
+        className="flex w-full items-start justify-between gap-2 px-3 py-2.5 text-left"
         aria-expanded={expanded}
       >
-        <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--copilot-ink-muted)]">
-          {HOY_COCKPIT.advancedTitle}
-        </span>
+        <div>
+          <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--copilot-ink-muted)]">
+            {HOY_COCKPIT.advancedTitle}
+          </span>
+          <p className="mt-0.5 text-[10px] text-[var(--copilot-ink-muted)]/70">
+            Cambia facturación, cobros y proyección del período. La caja actual no varía.
+          </p>
+        </div>
         <ChevronDown
-          className={`h-3.5 w-3.5 text-[var(--copilot-ink-muted)]/70 transition ${expanded ? "rotate-180" : ""}`}
+          className={`mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--copilot-ink-muted)]/70 transition ${expanded ? "rotate-180" : ""}`}
           aria-hidden
         />
       </button>

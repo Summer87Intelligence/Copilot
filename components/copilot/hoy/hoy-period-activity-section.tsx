@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+
 import { CopilotCard } from "@/components/copilot/copilot-ui";
 import type { HoyPeriodActivityBlock } from "@/lib/copilot-today-business-pulse";
 import {
@@ -117,6 +120,15 @@ export function HoyPeriodActivitySection({
         {blocks.map((block) => (
           <ActivityCurrencyCard key={block.currency} block={block} />
         ))}
+      </div>
+      <div className="mt-3 flex justify-end">
+        <Link
+          href="/copilot/finanzas"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
+        >
+          Ver Finanzas
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+        </Link>
       </div>
     </CopilotCard>
   );

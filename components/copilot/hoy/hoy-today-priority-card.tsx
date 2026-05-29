@@ -99,7 +99,7 @@ export function HoyTodayPriorityCard({
               id="hoy-today-priority-title"
               className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--copilot-accent)]"
             >
-              Tu prioridad hoy
+              Tu día en una frase
             </p>
             <p className="mt-0.5 text-sm font-semibold text-[var(--copilot-ink)]">
               {priority.title}
