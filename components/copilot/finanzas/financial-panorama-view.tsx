@@ -238,7 +238,7 @@ function CurrencyMetricBlock({
               onClick={() => onSelectMetric({ kind: "slice", metricId: "collected", slice: s })}
             />
             <MetricCard
-              label={`Pendiente (${currency})`}
+              label={`Deuda total (${currency})`}
               value={fmt(s.pending, currency)}
               subcopy="Facturas abiertas de clientes."
               tone={resolvePendingSemaphore(s).tone}
@@ -247,7 +247,7 @@ function CurrencyMetricBlock({
               onClick={() => onSelectMetric({ kind: "slice", metricId: "pending", slice: s })}
             />
             <MetricCard
-              label={`Vencido (${currency})`}
+              label={`Deuda vencida (${currency})`}
               value={fmt(s.overdue, currency)}
               subcopy="Parte del pendiente con atraso."
               tone={overdueSem.tone}
@@ -297,8 +297,8 @@ function CurrencyBreakdownTable({ slice }: { slice: PanoramaCurrencySlice }) {
   ];
   const collectionRows = [
     { label: "Cobrado aplicado", value: slice.collectedApplied },
-    { label: "Pendiente", value: slice.pending },
-    { label: "Vencido", value: slice.overdue, danger: slice.overdue > 0 },
+    { label: "Deuda total", value: slice.pending },
+    { label: "Deuda vencida", value: slice.overdue, danger: slice.overdue > 0 },
   ];
 
   return (
@@ -442,7 +442,7 @@ function PanoramaContent({
                 }`}
               >
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                  Vencido {c.code}
+                  Deuda vencida {c.code}
                 </p>
                 <p className={`mt-1 text-lg font-semibold tabular-nums ${isRelevant ? "text-amber-950" : ""}`}>
                   {formatPanoramaRate(c.overdueRate)}

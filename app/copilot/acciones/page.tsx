@@ -647,7 +647,7 @@ function CopilotAccionesPageContent() {
                 Sin acciones pendientes
               </p>
               <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
-                No hay alertas activas ni saldos vencidos en cartera.
+                No hay alertas activas ni deuda vencida en cartera.
               </p>
             </div>
           ) : filteredBandeja.length === 0 ? (

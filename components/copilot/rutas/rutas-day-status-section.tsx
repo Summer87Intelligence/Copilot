@@ -78,7 +78,7 @@ export function RutasDayStatusSection({
           />
           <RutasKpiPill
             label="Deuda vencida"
-            value={overdueDebt > 0 ? formatMoneyRutas(overdueDebt) : "Sin saldo vencido"}
+            value={overdueDebt > 0 ? formatMoneyRutas(overdueDebt) : "Sin deuda vencida"}
             tone={overdueDebt > 0 ? "danger" : "success"}
           />
           <RutasKpiPill

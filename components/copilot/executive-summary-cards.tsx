@@ -215,7 +215,7 @@ function pendingCollectionCard(
 
   const subtitle = !hasAnyDebt
     ? "Sin deuda en cartera"
-    : "Total pendiente";
+    : "Deuda total";
 
   return {
     id: `cartera-${code}`,

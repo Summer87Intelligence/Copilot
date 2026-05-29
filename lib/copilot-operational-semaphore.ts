@@ -92,7 +92,7 @@ export function deriveOperationalSemaphore(input: {
     );
   }
   if (overdue30 && attentionClients === 0) {
-    operativeItems.push("Saldo vencido mayor a 30 días");
+    operativeItems.push("Deuda vencida mayor a 30 días");
   }
   if (upcomingPayments) {
     operativeItems.push("Pagos programados en los próximos 30 días");

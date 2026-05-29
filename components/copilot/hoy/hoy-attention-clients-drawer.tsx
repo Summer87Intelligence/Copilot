@@ -86,7 +86,7 @@ export function AttentionClientsDrawer({
           />
         </div>
         <div className="rounded-lg border border-[var(--copilot-border)] bg-white p-2.5">
-          <p className="text-[var(--copilot-ink-muted)]">Por cobrar UYU</p>
+          <p className="text-[var(--copilot-ink-muted)]">Deuda total UYU</p>
           <MoneyValue
             amount={
               data.deudaTotalUyu > 0
@@ -101,7 +101,7 @@ export function AttentionClientsDrawer({
           />
         </div>
         <div className="col-span-2 rounded-lg border border-[var(--copilot-border)] bg-white p-2.5">
-          <p className="text-[var(--copilot-ink-muted)]">Por cobrar USD</p>
+          <p className="text-[var(--copilot-ink-muted)]">Deuda total USD</p>
           <MoneyValue
             amount={
               data.deudaTotalUsd > 0
