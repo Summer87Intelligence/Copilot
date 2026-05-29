@@ -109,7 +109,7 @@ function isOpenInvoiceRow(row: DataRow): boolean {
 }
 
 function formatMoneyCompact(n: number): string {
-  // TODO: snapshot amounts are mixed UYU+USD aggregates — pending currency-aware rendering
+  // Legacy aggregate only used for non-accounting summary. Do not display as currency-specific amount.
   return formatMoneyCurrency(n, null, { compact: true });
 }
 

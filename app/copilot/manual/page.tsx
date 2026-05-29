@@ -1221,7 +1221,7 @@ const SECTIONS: Section[] = [
             Agente de Cobranza
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
-            Revisa los clientes con saldo vencido, gestiones registradas,
+            Revisa los clientes con deuda vencida, gestiones registradas,
             promesas de pago y seguimientos pendientes. Los ordena por urgencia
             y te indica a quien atender primero.
           </p>
@@ -1331,7 +1331,7 @@ const SECTIONS: Section[] = [
             items={[
               "Riesgo de liquidez — si la lectura financiera muestra riesgo crítico o alto, lo informa como prioridad.",
               "Caja en riesgo — si una notificación indica que los egresos pueden superar la caja disponible.",
-              "Cartera vencida — si hay clientes con saldo vencido que pueden afectar la cobranza esperada.",
+              "Cartera vencida — si hay clientes con deuda vencida que pueden afectar la cobranza esperada.",
               "Egresos próximos — pagos vencidos o con vencimiento próximo que pueden impactar el flujo de caja.",
               "Datos parciales — si la lectura financiera puede estar incompleta, avisa para que lo confirmes.",
               "Solo lee datos. No inventa montos. No ejecuta ninguna acción.",
