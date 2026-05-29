@@ -628,7 +628,7 @@ function CopilotAtencionPrioritariaPageContent() {
             <CopilotCard className="border-0 bg-transparent p-0 shadow-none ring-0">
               <CopilotSectionTitle
                 title="Datos clave"
-                subtitle="Misma base numérica que Finanzas y alertas (proto_* + motor)."
+                subtitle="Misma base numérica que Finanzas y alertas."
               />
               {snapshotLoading ? (
                 <p className="mt-3 flex items-center gap-2 text-sm text-[var(--copilot-ink-muted)]">

@@ -189,7 +189,7 @@ function buildDeficitGuidedCopy(
   const balance = snapshotLiquidityBalance(snapshot);
   const ratio = snapshotCoverageRatio(snapshot);
   if (balance < 0) {
-    return `Hay un déficit proyectado de ${formatMoneyCompact(balance)}: caja más cobranza esperada no cubre los egresos modelados en la ventana del motor.`;
+    return `Hay un déficit proyectado de ${formatMoneyCompact(balance)} (estimación combinada UYU+USD): caja más cobranza esperada no cubre los egresos modelados en la ventana del motor.`;
   }
   if (ratio < 1 && Number.isFinite(ratio)) {
     return `La cobertura está por debajo de 1,00× (${formatCoverageRatio(ratio)}): el colchón es insuficiente frente a salidas ya comprometidas.`;
@@ -881,7 +881,7 @@ function CopilotFinanzasPageContent() {
             </p>
             <p className="mt-3 text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
               No hay simulador automático acá: los pasos usan los mismos datos que el motor de
-              Finanzas (proto_*). Lo accionable está abajo cuando lo abrís.
+              Finanzas. Lo accionable está abajo cuando lo abrís.
             </p>
             {coberturaSinPalancasInternas ? (
               <p className="mt-3 rounded-xl border border-amber-200/80 bg-amber-50/60 px-3 py-2 text-xs leading-relaxed text-amber-950">
@@ -1115,8 +1115,8 @@ function CopilotFinanzasPageContent() {
                           <p className="mt-2 text-sm text-amber-900">{taxError}</p>
                         ) : openOblCount === 0 ? (
                           <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
-                            No hay obligaciones fiscales abiertas en el prototipo. Si en la realidad
-                            sí las tenés, sincronizá `proto_tax_obligations` para listarlas acá.
+                            No hay obligaciones fiscales abiertas. Si en la realidad
+                            sí las tenés, ingresalas en la sección Datos para listarlas acá.
                           </p>
                         ) : (
                           <ul className="mt-2 space-y-2 text-sm text-[var(--copilot-ink)]">
@@ -1270,6 +1270,9 @@ function CopilotFinanzasPageContent() {
               ) : null}
               {!snapshotLoading && !snapshotError && snapshot ? (
                 <div className="mt-6 space-y-6">
+                  <p className="text-[10px] text-[var(--copilot-ink-muted)]">
+                    Estimación operativa — los montos combinan UYU y USD sin conversión. Ver desglose por moneda.
+                  </p>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Neto acumulado</p>
@@ -1332,7 +1335,7 @@ function CopilotFinanzasPageContent() {
                   ) : null}
                   <div id="copilot-finanzas-cobranza" className="scroll-mt-28 space-y-3 rounded-xl border border-[var(--copilot-border)] bg-white/60 p-4">
                     <p className="text-xs font-semibold text-[var(--copilot-ink)]">Flujo proyectado de caja</p>
-                    <p className="text-[10px] text-[var(--copilot-ink-muted)]">Lectura forward-looking basada en datos Zeta y obligaciones próximas.</p>
+                    <p className="text-[10px] text-[var(--copilot-ink-muted)]">Lectura forward-looking basada en datos Zeta y obligaciones próximas. Estimación combinada UYU+USD.</p>
                     <FlowBar label="Cobranza esperada (facturas × prob. de cobro)" value={snapshotReceivablesRiskWeighted(snapshot)} max={flowMax} flow="in" />
                     <FlowBar label="Egresos proyectados (operativos + fiscal 30 d)" value={snapshotExpectedOutflowsTotal(snapshot)} max={flowMax} flow="out" />
                   </div>

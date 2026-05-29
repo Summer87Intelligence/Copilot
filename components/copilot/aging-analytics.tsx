@@ -103,7 +103,7 @@ export function AgingAnalytics({
 
   return (
     <section
-      aria-label="Aging analytics"
+      aria-label="Antigüedad de cartera"
       className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] shadow-[var(--copilot-shadow)]"
     >
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--copilot-border)] px-5 py-4">
@@ -113,7 +113,7 @@ export function AgingAnalytics({
           </span>
           <div>
             <h3 className="text-base font-semibold tracking-tight text-[var(--copilot-ink)]">
-              Aging de cartera
+              Antigüedad de cartera
             </h3>
             <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
               Deuda viva por antigüedad · estado actual, no limitado al rango seleccionado

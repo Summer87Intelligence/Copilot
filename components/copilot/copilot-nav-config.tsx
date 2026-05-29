@@ -83,7 +83,7 @@ const COPILOT_NAV_IA: CopilotNavGroup = {
     {
       href: "/copilot/agentes",
       label: "Agentes IA",
-      description: "Lecturas y recomendaciones",
+      description: "Análisis de tendencias",
       icon: Bot,
     },
   ],
