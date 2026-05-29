@@ -94,6 +94,7 @@ describe("copilot-financial-panorama-details", () => {
     });
     expect(d.sourceLabel).toContain("Tesorería");
     expect(d.cta?.href).toBe("/copilot/tesoreria");
+    expect(d.explanation?.toLowerCase()).toContain("facturación");
   });
 
   it("notas de crédito no se etiquetan como caja", () => {

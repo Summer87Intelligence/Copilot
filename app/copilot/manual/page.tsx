@@ -1050,12 +1050,13 @@ const SECTIONS: Section[] = [
         </p>
         <Bullets
           items={[
+            "Resumen por moneda — bloques UYU y USD separados; dentro de cada uno: neto, cobrado, pendiente, vencido, caja y NC.",
             "Ingresos netos — facturación del período menos notas de crédito (fórmula: Bruto − NC = Neto).",
             "Cobrado aplicado — cartera resuelta en el período (no confundir con caja).",
             "Pendiente y vencido — saldos abiertos de clientes (Cartera).",
             "Caja disponible — dinero actual en Tesorería; no es facturación.",
             "Semáforos en cada KPI — Saludable, Revisar o Crítico según cobranza, vencido y NC.",
-            "Ver detalle — clic en una tarjeta abre fórmula, fuente del dato y enlace contextual.",
+            "Ver detalle — abre fórmula, composición, fuente y período; CTA al módulo origen.",
             "Evolución mensual — ventas netas, cobros y NC por mes; UYU y USD separados.",
             "UYU y USD se analizan por separado; no se suman.",
             "Proyección 30 días — operativa (cobros esperados y pagos próximos), no cierre contable formal.",

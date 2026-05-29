@@ -160,6 +160,135 @@ function MetricCard({
   return <div className={cardClass}>{content}</div>;
 }
 
+const CURRENCY_BLOCKS: { code: "UYU" | "USD"; title: string }[] = [
+  { code: "UYU", title: "Pesos uruguayos (UYU)" },
+  { code: "USD", title: "Dólares (USD)" },
+];
+
+function emptySlice(code: "UYU" | "USD"): PanoramaCurrencySlice {
+  return {
+    code,
+    grossInvoiced: 0,
+    creditNotes: 0,
+    netIncome: 0,
+    collectedApplied: 0,
+    pending: 0,
+    overdue: 0,
+    collectionRate: null,
+    overdueRate: null,
+  };
+}
+
+function shouldShowCurrencyBlock(
+  code: "UYU" | "USD",
+  slice: PanoramaCurrencySlice | undefined,
+  cashPosition: CashPositionByCurrency | undefined,
+  cashAmount: number
+): boolean {
+  if (slice) return true;
+  if (cashPosition) return true;
+  if (cashAmount !== 0) return true;
+  return false;
+}
+
+function CurrencyMetricBlock({
+  title,
+  currency,
+  slice,
+  cashAmount,
+  cashPosition,
+  projection,
+  onSelectMetric,
+}: {
+  title: string;
+  currency: "UYU" | "USD";
+  slice: PanoramaCurrencySlice | undefined;
+  cashAmount: number;
+  cashPosition: CashPositionByCurrency | undefined;
+  projection: FinancialPanoramaModel["projection"];
+  onSelectMetric: (sel: MetricSelection) => void;
+}) {
+  const s = slice ?? emptySlice(currency);
+  const hasMetrics = Boolean(slice);
+  const overdueSem = resolveOverdueSemaphore(s);
+  const isOverdueCritical = overdueSem.level === "critical";
+
+  return (
+    <section className="space-y-3">
+      <h3 className="text-sm font-semibold text-[var(--copilot-ink)]">{title}</h3>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {hasMetrics ? (
+          <>
+            <MetricCard
+              label={`Ingresos netos (${currency})`}
+              value={fmt(s.netIncome, currency)}
+              subcopy="Facturación menos notas de crédito."
+              tone={resolveNetIncomeSemaphore(s).tone}
+              semaphore={resolveNetIncomeSemaphore(s)}
+              tier="primary"
+              onClick={() => onSelectMetric({ kind: "slice", metricId: "net-income", slice: s })}
+            />
+            <MetricCard
+              label={`Cobrado aplicado (${currency})`}
+              value={fmt(s.collectedApplied, currency)}
+              subcopy="Cobros registrados sobre ventas."
+              tone={resolveCollectedSemaphore(s).tone}
+              semaphore={resolveCollectedSemaphore(s)}
+              tier="secondary"
+              onClick={() => onSelectMetric({ kind: "slice", metricId: "collected", slice: s })}
+            />
+            <MetricCard
+              label={`Pendiente (${currency})`}
+              value={fmt(s.pending, currency)}
+              subcopy="Facturas abiertas de clientes."
+              tone={resolvePendingSemaphore(s).tone}
+              semaphore={resolvePendingSemaphore(s)}
+              tier="primary"
+              onClick={() => onSelectMetric({ kind: "slice", metricId: "pending", slice: s })}
+            />
+            <MetricCard
+              label={`Vencido (${currency})`}
+              value={fmt(s.overdue, currency)}
+              subcopy="Parte del pendiente con atraso."
+              tone={overdueSem.tone}
+              semaphore={overdueSem}
+              tier="primary"
+              emphasize={isOverdueCritical}
+              onClick={() => onSelectMetric({ kind: "slice", metricId: "overdue", slice: s })}
+            />
+          </>
+        ) : null}
+        {(cashAmount !== 0 || cashPosition) ? (
+          <MetricCard
+            label={`Caja disponible (${currency})`}
+            value={fmt(cashAmount, currency)}
+            subcopy="Saldo actual en Tesorería. No es facturación."
+            tone={resolveCashSemaphore(cashAmount, projection).tone}
+            semaphore={resolveCashSemaphore(cashAmount, projection)}
+            tier="primary"
+            onClick={() => onSelectMetric({ kind: "cash", currency })}
+          />
+        ) : null}
+        {hasMetrics ? (
+          <MetricCard
+            label={`Notas de crédito (${currency})`}
+            value={fmt(s.creditNotes, currency)}
+            subcopy={
+              s.creditNotes > 0
+                ? "Reducen ingresos netos. No son caja."
+                : "Sin NC en el período."
+            }
+            tone={s.creditNotes > 0 ? resolveCreditNotesSemaphore(s).tone : "neutral"}
+            semaphore={s.creditNotes > 0 ? resolveCreditNotesSemaphore(s) : undefined}
+            tier="tertiary"
+            onClick={() => onSelectMetric({ kind: "slice", metricId: "credit-notes", slice: s })}
+          />
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 function CurrencyBreakdownTable({ slice }: { slice: PanoramaCurrencySlice }) {
   const netRows = [
     { label: "Bruto facturado", value: slice.grossInvoiced },
@@ -241,11 +370,7 @@ function PanoramaContent({
   onSelectMetric: (sel: MetricSelection) => void;
 }) {
   const hasMixed = model.currencies.length > 1;
-  const primary = model.currencies[0];
   const riskSem = resolveRiskSemaphore(model.risk.level);
-
-  const cashUyu = cashPositions.find((p) => p.currency === "UYU");
-  const cashUsd = cashPositions.find((p) => p.currency === "USD");
 
   const concentrationCompanyId = model.concentration
     ? portfolioRows.find((r) => r.name === model.concentration?.clientName)?.company_id
@@ -260,117 +385,29 @@ function PanoramaContent({
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {model.currencies.map((c) => {
-          const sem = resolveNetIncomeSemaphore(c);
+      <div className="space-y-6">
+        <CopilotSectionTitle
+          title="Resumen por moneda"
+          subtitle="UYU y USD por separado. Cada bloque agrupa generación, cobranza, riesgo y caja."
+        />
+        {CURRENCY_BLOCKS.map(({ code, title }) => {
+          const slice = model.currencies.find((c) => c.code === code);
+          const cashPosition = cashPositions.find((p) => p.currency === code);
+          const cashAmount = code === "UYU" ? model.projection.cashTodayUyu : model.projection.cashTodayUsd;
+          if (!shouldShowCurrencyBlock(code, slice, cashPosition, cashAmount)) return null;
           return (
-            <MetricCard
-              key={`net-${c.code}`}
-              label={`Ingresos netos (${c.code})`}
-              value={fmt(c.netIncome, c.code)}
-              subcopy="Facturación menos notas de crédito."
-              tone={sem.tone}
-              semaphore={sem}
-              tier="primary"
-              onClick={() => onSelectMetric({ kind: "slice", metricId: "net-income", slice: c })}
+            <CurrencyMetricBlock
+              key={code}
+              title={title}
+              currency={code}
+              slice={slice}
+              cashAmount={cashAmount}
+              cashPosition={cashPosition}
+              projection={model.projection}
+              onSelectMetric={onSelectMetric}
             />
           );
         })}
-        {(model.projection.cashTodayUyu !== 0 || cashUyu) ? (
-          <MetricCard
-            label="Caja disponible (UYU)"
-            value={fmt(model.projection.cashTodayUyu, "UYU")}
-            subcopy="Saldo operativo actual en Tesorería. No es facturación."
-            tone={resolveCashSemaphore(model.projection.cashTodayUyu, model.projection).tone}
-            semaphore={resolveCashSemaphore(model.projection.cashTodayUyu, model.projection)}
-            tier="primary"
-            onClick={() => onSelectMetric({ kind: "cash", currency: "UYU" })}
-          />
-        ) : null}
-        {(model.projection.cashTodayUsd !== 0 || cashUsd) ? (
-          <MetricCard
-            label="Caja disponible (USD)"
-            value={fmt(model.projection.cashTodayUsd, "USD")}
-            subcopy="Saldo operativo actual en Tesorería. No es facturación."
-            tone={resolveCashSemaphore(model.projection.cashTodayUsd, model.projection).tone}
-            semaphore={resolveCashSemaphore(model.projection.cashTodayUsd, model.projection)}
-            tier="primary"
-            onClick={() => onSelectMetric({ kind: "cash", currency: "USD" })}
-          />
-        ) : null}
-        {model.currencies.map((c) => {
-          const sem = resolvePendingSemaphore(c);
-          return (
-            <MetricCard
-              key={`pend-${c.code}`}
-              label={`Pendiente (${c.code})`}
-              value={fmt(c.pending, c.code)}
-              subcopy="Facturas abiertas de clientes."
-              tone={sem.tone}
-              semaphore={sem}
-              tier="primary"
-              onClick={() => onSelectMetric({ kind: "slice", metricId: "pending", slice: c })}
-            />
-          );
-        })}
-        {model.currencies.map((c) => {
-          const sem = resolveOverdueSemaphore(c);
-          const isCritical = sem.level === "critical";
-          return (
-            <MetricCard
-              key={`ov-${c.code}`}
-              label={`Vencido (${c.code})`}
-              value={fmt(c.overdue, c.code)}
-              subcopy="Parte del pendiente con atraso."
-              tone={sem.tone}
-              semaphore={sem}
-              tier="primary"
-              emphasize={isCritical}
-              onClick={() => onSelectMetric({ kind: "slice", metricId: "overdue", slice: c })}
-            />
-          );
-        })}
-        {model.currencies.map((c) => {
-          const sem = resolveCollectedSemaphore(c);
-          return (
-            <MetricCard
-              key={`col-${c.code}`}
-              label={`Cobrado aplicado (${c.code})`}
-              value={fmt(c.collectedApplied, c.code)}
-              subcopy="Cobros registrados sobre ventas."
-              tone={sem.tone}
-              semaphore={sem}
-              tier="secondary"
-              onClick={() => onSelectMetric({ kind: "slice", metricId: "collected", slice: c })}
-            />
-          );
-        })}
-        {model.currencies.map((c) =>
-          c.creditNotes > 0 ? (
-            <MetricCard
-              key={`nc-${c.code}`}
-              label={`Notas de crédito (${c.code})`}
-              value={fmt(c.creditNotes, c.code)}
-              subcopy="Reducen ingresos netos. No son caja."
-              tone={resolveCreditNotesSemaphore(c).tone}
-              semaphore={resolveCreditNotesSemaphore(c)}
-              tier="tertiary"
-              onClick={() => onSelectMetric({ kind: "slice", metricId: "credit-notes", slice: c })}
-            />
-          ) : null
-        )}
-        {primary && primary.creditNotes <= 0 && model.currencies.length === 1 ? (
-          <MetricCard
-            label={`Notas de crédito (${primary.code})`}
-            value={fmt(0, primary.code)}
-            subcopy="Sin NC en el período."
-            tone="neutral"
-            tier="tertiary"
-            onClick={() =>
-              onSelectMetric({ kind: "slice", metricId: "credit-notes", slice: primary })
-            }
-          />
-        ) : null}
       </div>
 
       <CopilotCard>
@@ -668,14 +705,19 @@ export function FinancialPanoramaView() {
     };
   }, []);
 
-  const model = useMemo(() => {
-    if (!reconciliation.report) return null;
+  const metricsByCode = useMemo(() => {
+    if (!reconciliation.report) return {} as Partial<Record<"UYU" | "USD", import("@/lib/copilot-cartera-cards-source").NormalizedCurrencyMetrics>>;
     const index = buildCurrencyIndex(reconciliation.report.currencies);
-    const metricsByCode: Partial<Record<"UYU" | "USD", import("@/lib/copilot-cartera-cards-source").NormalizedCurrencyMetrics>> = {};
+    const out: Partial<Record<"UYU" | "USD", import("@/lib/copilot-cartera-cards-source").NormalizedCurrencyMetrics>> = {};
     const uyu = index.get("UYU");
     const usd = index.get("USD");
-    if (uyu) metricsByCode.UYU = uyu;
-    if (usd) metricsByCode.USD = usd;
+    if (uyu) out.UYU = uyu;
+    if (usd) out.USD = usd;
+    return out;
+  }, [reconciliation.report]);
+
+  const model = useMemo(() => {
+    if (!reconciliation.report) return null;
     return buildFinancialPanoramaModel({
       periodLabel,
       metricsByCode,
@@ -691,26 +733,31 @@ export function FinancialPanoramaView() {
         isEmpty: true,
       },
     });
-  }, [reconciliation.report, periodLabel, snapshot, cashPositions, portfolioRows]);
+  }, [reconciliation.report, periodLabel, metricsByCode, snapshot, cashPositions, portfolioRows]);
 
   const metricDetail = useMemo(() => {
     if (!metricSelection || !model) return null;
+    const detailContext = { period, metrics: undefined as import("@/lib/copilot-cartera-cards-source").NormalizedCurrencyMetrics | undefined };
     if (metricSelection.kind === "cash") {
       const pos = cashPositions.find((p) => p.currency === metricSelection.currency);
+      detailContext.metrics = metricsByCode[metricSelection.currency];
       return buildPanoramaMetricDetail({
         metricId: "cash",
         currency: metricSelection.currency,
         cashPosition: pos,
         projection: model.projection,
+        context: detailContext,
       });
     }
+    detailContext.metrics = metricsByCode[metricSelection.slice.code];
     return buildPanoramaMetricDetail({
       metricId: metricSelection.metricId,
       slice: metricSelection.slice,
       agingBuckets: reconciliation.report?.agingByCurrency?.[metricSelection.slice.code],
       projection: model.projection,
+      context: detailContext,
     });
-  }, [metricSelection, model, cashPositions, reconciliation.report]);
+  }, [metricSelection, model, cashPositions, reconciliation.report, period, metricsByCode]);
 
   const loading = reconciliation.loading || snapshotLoading;
   const error = reconciliation.error ?? snapshotError;
