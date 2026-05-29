@@ -108,6 +108,26 @@ function safeJsonPreview(value: unknown, max = 12_000): string {
   }
 }
 
+// ─── Technical reference cleaners ────────────────────────────────────────────
+
+function cleanMovementLabel(label: string): string {
+  if (!label || /^ZETA:/i.test(label)) return "";
+  return label;
+}
+
+function cleanInvoiceType(tipo: string): string {
+  if (!tipo) return "Factura";
+  const lower = tipo.toLowerCase();
+  if (lower.includes("nota de cr") || lower.includes("credit note")) return "Nota de crédito";
+  if (lower.includes("recibo") || lower.includes("receipt")) return "Recibo";
+  return "Factura";
+}
+
+function cleanSerieNumero(sn: string): string {
+  if (!sn || /^ZETA:/i.test(sn)) return "—";
+  return sn;
+}
+
 // ─── Status translations ──────────────────────────────────────────────────────
 
 function translateInvoiceStatus(estado: string): string {
@@ -907,32 +927,32 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
           {/* KPI row — responsive grid */}
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
             <KpiChip
-              label="Deuda UYU"
+              label="Deuda total UYU"
               value={`$ ${data.debt_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
               sub={
                 data.debt_uyu > 0 && data.overdue_uyu > 0
-                  ? `${Math.round((data.overdue_uyu / data.debt_uyu) * 100)}% vencido`
+                  ? `${Math.round((data.overdue_uyu / data.debt_uyu) * 100)}% de la deuda está vencida`
                   : undefined
               }
               tone={data.debt_uyu > 0 ? "warning" : "neutral"}
             />
             <KpiChip
-              label="Deuda USD"
+              label="Deuda total USD"
               value={`U$S ${data.debt_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
               sub={
                 data.debt_usd > 0 && data.overdue_usd > 0
-                  ? `${Math.round((data.overdue_usd / data.debt_usd) * 100)}% vencido`
+                  ? `${Math.round((data.overdue_usd / data.debt_usd) * 100)}% de la deuda está vencida`
                   : undefined
               }
               tone={data.debt_usd > 0 ? "warning" : "neutral"}
             />
             <KpiChip
-              label="Vencido UYU"
+              label="Deuda vencida UYU"
               value={`$ ${data.overdue_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
               tone={data.overdue_uyu > 0 ? "danger" : "neutral"}
             />
             <KpiChip
-              label="Vencido USD"
+              label="Deuda vencida USD"
               value={`U$S ${data.overdue_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
               tone={data.overdue_usd > 0 ? "danger" : "neutral"}
             />
@@ -1240,7 +1260,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   <CopilotCard className={warningFinancialCardClass}>
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        Deuda en pesos (UYU)
+                        Deuda total en pesos (UYU)
                       </p>
                       {data.overdue_uyu > 0 ? (
                         <TrendingDown className="h-4 w-4 text-rose-500 shrink-0" aria-hidden />
@@ -1252,7 +1272,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                     {data.overdue_uyu > 0 ? (
                       <div className="mt-2 space-y-0.5">
                         <p className="text-xs font-medium text-rose-600">
-                          {`$ ${data.overdue_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`} vencido
+                          {`$ ${data.overdue_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`} de deuda vencida
                           {data.debt_uyu > 0
                             ? ` (${Math.round((data.overdue_uyu / data.debt_uyu) * 100)}% del total)`
                             : ""}
@@ -1271,7 +1291,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   <CopilotCard className={warningFinancialCardClass}>
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        Deuda en dolares (USD)
+                        Deuda total en dólares (USD)
                       </p>
                       {data.overdue_usd > 0 ? (
                         <TrendingDown className="h-4 w-4 text-rose-500 shrink-0" aria-hidden />
@@ -1282,7 +1302,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                     </p>
                     {data.overdue_usd > 0 ? (
                       <p className="mt-1 text-xs font-medium text-rose-600">
-                        {`U$S ${data.overdue_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`} vencido
+                        {`U$S ${data.overdue_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`} de deuda vencida
                         {data.debt_usd > 0
                           ? ` (${Math.round((data.overdue_usd / data.debt_usd) * 100)}% del total)`
                           : ""}
@@ -1297,6 +1317,10 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                     ) : null}
                   </CopilotCard>
                 </div>
+
+                <p className="text-[11px] text-[var(--copilot-ink-muted)]">
+                  La deuda total incluye todas las facturas abiertas. La deuda vencida es la parte que ya superó su fecha de vencimiento.
+                </p>
 
                 <CopilotCard className={neutralFinancialCardClass}>
                   <CopilotSectionTitle
@@ -1324,7 +1348,9 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                               <span className="font-medium text-[var(--copilot-ink)]">
                                 {m.kind === "factura" ? "Factura" : "Cobro"}
                               </span>
-                              <span className="text-[var(--copilot-ink-muted)]"> · {m.label}</span>
+                              {cleanMovementLabel(m.label) ? (
+                                <span className="text-[var(--copilot-ink-muted)]"> · {cleanMovementLabel(m.label)}</span>
+                              ) : null}
                             </div>
                           </div>
                           <div className="tabular-nums text-[var(--copilot-ink)]">
@@ -1353,18 +1379,17 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                     <thead>
                       <tr className="bg-[rgba(255,255,255,0.65)] text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                         <th className="px-5 py-3">Fecha</th>
-                        <th className="px-5 py-3">Numero</th>
+                        <th className="px-5 py-3">Comprobante</th>
                         <th className="px-5 py-3">Tipo</th>
                         <th className="px-5 py-3">Importe</th>
                         <th className="px-5 py-3">Saldo</th>
                         <th className="px-5 py-3">Estado</th>
-                        <th className="px-5 py-3">Referencia</th>
                       </tr>
                     </thead>
                     <tbody>
                       {data.invoices.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="px-5 py-8 text-[var(--copilot-ink-muted)]">
+                          <td colSpan={6} className="px-5 py-8 text-[var(--copilot-ink-muted)]">
                             No hay facturas para este cliente.
                           </td>
                         </tr>
@@ -1375,8 +1400,8 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                             className={i % 2 === 0 ? "bg-[var(--copilot-card)]" : "bg-[rgba(255,255,255,0.5)]"}
                           >
                             <td className="px-5 py-3">{formatDateShort(inv.issue_date)}</td>
-                            <td className="px-5 py-3 font-medium">{inv.serie_numero}</td>
-                            <td className="px-5 py-3 text-[var(--copilot-ink-muted)]">{inv.tipo}</td>
+                            <td className="px-5 py-3 font-medium">{cleanSerieNumero(inv.serie_numero)}</td>
+                            <td className="px-5 py-3 text-[var(--copilot-ink-muted)]">{cleanInvoiceType(inv.tipo)}</td>
                             <td className="px-5 py-3 tabular-nums">
                               {`$ ${inv.importe.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
                             </td>
@@ -1387,9 +1412,6 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                               <CopilotBadge tone={invoiceBadgeTone(inv.estado)}>
                                 {translateInvoiceStatus(inv.estado)}
                               </CopilotBadge>
-                            </td>
-                            <td className="max-w-[220px] px-5 py-3 text-xs text-[var(--copilot-ink-muted)]">
-                              <span className="line-clamp-2">{inv.referencia ?? "—"}</span>
                             </td>
                           </tr>
                         ))

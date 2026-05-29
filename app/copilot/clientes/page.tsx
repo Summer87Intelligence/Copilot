@@ -38,8 +38,8 @@ function deriveClientStatus(row: ClientPortfolioRow): ClientStatus {
 }
 
 const STATUS_LABEL: Record<ClientStatus, string> = {
-  al_dia: "Al día",
-  pendiente: "Pendiente",
+  al_dia: "Sin deuda",
+  pendiente: "Deuda al día",
   vencido: "Vencido",
   critico: "Crítico",
 };
@@ -66,7 +66,7 @@ const FILTER_OPTIONS: Array<{ id: ClientListFilter; label: string }> = [
   { id: "with_debt", label: "Con deuda" },
   { id: "vencido", label: "Vencidos" },
   { id: "critico", label: "Críticos" },
-  { id: "al_dia", label: "Al día" },
+  { id: "al_dia", label: "Sin deuda vencida" },
   { id: "no_contact", label: "Sin contacto" },
 ];
 
@@ -80,7 +80,7 @@ function matchesClientFilter(
   if (filter === "with_debt") return row.debt_uyu > 0 || row.debt_usd > 0 || row.total_debt > 0;
   if (filter === "vencido") return status === "vencido" || status === "critico";
   if (filter === "critico") return status === "critico";
-  if (filter === "al_dia") return status === "al_dia";
+  if (filter === "al_dia") return status === "al_dia" || status === "pendiente";
   if (filter === "no_contact") return !row.has_contact_data;
   return true;
 }
@@ -346,7 +346,7 @@ export default function CopilotClientesPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <CopilotSectionTitle
                     title="Cartera de clientes"
-                    subtitle="Directorio unificado — misma base que Cartera."
+                    subtitle="Clientes, deuda y seguimiento de cobranza."
                   />
                   <DebtorsReportTrigger
                     portfolioRows={load.rows}
@@ -407,7 +407,7 @@ export default function CopilotClientesPage() {
                       <tr className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                         <th className="px-4 py-2">Cliente</th>
                         <th className="px-4 py-2">Estado</th>
-                        <th className="px-4 py-2">Deuda</th>
+                        <th className="px-4 py-2">Deuda total</th>
                         <th className="px-4 py-2">Riesgo</th>
                         <th className="px-4 py-2">Contacto</th>
                         <th className="px-4 py-2 text-right">Acciones</th>
