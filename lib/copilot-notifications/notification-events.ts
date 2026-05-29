@@ -40,10 +40,19 @@ type CollectionReceivedOpts = {
   amount: number;
   currency: string;
   clientId?: string | null;
+  /** YYYY-MM-DD — fecha real del recibo en Zeta. */
+  receiptDate?: string | null;
+  /** YYYY-MM-DD — baseline de tesorería para la moneda del recibo. */
+  treasuryBaselineDate?: string | null;
 };
 
 export async function notifyCollectionReceived(opts: CollectionReceivedOpts) {
   const amountStr = opts.amount.toLocaleString("es-AR", { maximumFractionDigits: 0 });
+
+  const meta: Record<string, unknown> = {};
+  if (opts.receiptDate) meta.receipt_date = opts.receiptDate;
+  if (opts.treasuryBaselineDate) meta.treasury_baseline_date = opts.treasuryBaselineDate;
+
   return createNotificationIfNotExists(opts.tenantCompanyId, {
     type: "collection_received",
     severity: "info",
@@ -57,6 +66,7 @@ export async function notifyCollectionReceived(opts: CollectionReceivedOpts) {
       ? `/copilot/clientes/${opts.clientId}`
       : "/copilot/cartera",
     dedup_key: `collection_received:${opts.receiptId}`,
+    metadata: Object.keys(meta).length > 0 ? meta : undefined,
   });
 }
 

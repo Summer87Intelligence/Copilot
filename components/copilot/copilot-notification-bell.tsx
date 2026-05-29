@@ -50,6 +50,32 @@ const BUCKET_LABELS: Record<"hoy" | "ayer" | "anterior", string> = {
   anterior: "Anteriores",
 };
 
+/**
+ * Returns a one-line cash-impact note for collection_received notifications
+ * when receipt_date and treasury_baseline_date are present in metadata.
+ * Returns null when the data is missing (legacy notifications, no baseline configured).
+ */
+function collectionCashImpactLine(metadata: Record<string, unknown>): string | null {
+  const receiptDate =
+    typeof metadata.receipt_date === "string" ? metadata.receipt_date : null;
+  const baseline =
+    typeof metadata.treasury_baseline_date === "string"
+      ? metadata.treasury_baseline_date
+      : null;
+
+  if (!receiptDate || !baseline) return null;
+
+  const fmt = (ymd: string) => {
+    const parts = ymd.split("-");
+    return parts.length === 3 ? `${parts[2]}/${parts[1]}` : ymd;
+  };
+
+  if (receiptDate >= baseline) {
+    return "Sumado a Caja disponible.";
+  }
+  return `Pago del ${fmt(receiptDate)}. Ya incluido en el saldo cargado el ${fmt(baseline)}.`;
+}
+
 /** Smart CTA label derived from action_href. */
 function actionLabel(href: string): string {
   if (href.includes("clientes-criticos")) return "Ver clientes críticos";
@@ -104,6 +130,10 @@ function NotifItem({
 }) {
   const unread = !n.read_at;
   const { bg, icon } = getIconConfig(n.type, n.severity);
+  const cashImpactLine =
+    n.type === "collection_received"
+      ? collectionCashImpactLine(n.metadata)
+      : null;
 
   return (
     <div
@@ -139,6 +169,13 @@ function NotifItem({
           {n.body ? (
             <p className="mt-[3px] line-clamp-2 text-[12.5px] leading-relaxed text-[var(--copilot-ink-muted)]">
               {n.body}
+            </p>
+          ) : null}
+
+          {/* Cash impact context (collection_received only) */}
+          {cashImpactLine ? (
+            <p className="mt-1 text-[11px] italic leading-snug text-[var(--copilot-ink-muted)]/70">
+              {cashImpactLine}
             </p>
           ) : null}
 

@@ -336,15 +336,34 @@ async function generateRecentCollectionNotifications(
 ) {
   const since72h = new Date(now.getTime() - COLLECTION_RECEIVED_LOOKBACK_HOURS * 3_600_000).toISOString();
 
-  const { data: receipts, error } = await admin
-    .from("proto_receipts")
-    .select("id, company_id, amount, currency_code, receipt_date")
-    .eq("workspace_company_id", tenantCompanyId)
-    .gte("created_at", since72h)
-    .order("created_at", { ascending: false })
-    .limit(50);
+  // Fetch treasury baselines and receipts in parallel — baseline is needed to
+  // annotate each notification with cash-impact context (pre vs post baseline).
+  const [receiptsRes, balancesRes] = await Promise.all([
+    admin
+      .from("proto_receipts")
+      .select("id, company_id, amount, currency_code, receipt_date")
+      .eq("workspace_company_id", tenantCompanyId)
+      .gte("created_at", since72h)
+      .order("created_at", { ascending: false })
+      .limit(50),
+    admin
+      .from("treasury_cash_opening_balances")
+      .select("currency_code, effective_date")
+      .eq("workspace_id", tenantCompanyId),
+  ]);
 
-  if (error || !receipts) return;
+  if (receiptsRes.error || !receiptsRes.data) return;
+  const receipts = receiptsRes.data;
+
+  // Build baseline map: currency → YYYY-MM-DD (null if not configured)
+  const baselineByCurrency: Partial<Record<string, string>> = {};
+  for (const b of (balancesRes.data ?? []) as Record<string, unknown>[]) {
+    const code = String(b.currency_code ?? "").trim().toUpperCase();
+    const date = String(b.effective_date ?? "").slice(0, 10);
+    if (code && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      baselineByCurrency[code] = date;
+    }
+  }
 
   const companyIds = [
     ...new Set(
@@ -372,13 +391,18 @@ async function generateRecentCollectionNotifications(
     const amount = Number(rec.amount ?? 0);
     if (amount <= 0) continue;
     const companyId = String(rec.company_id ?? "").trim();
+    const currency = String(rec.currency_code ?? "UYU").toUpperCase();
+    const rawDate = String(rec.receipt_date ?? "").slice(0, 10);
+    const receiptDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : null;
     const r = await notifyCollectionReceived({
       tenantCompanyId,
       receiptId,
       clientName: nameMap.get(companyId) ?? "Cliente",
       amount,
-      currency: String(rec.currency_code ?? "UYU").toUpperCase(),
+      currency,
       clientId: companyId || null,
+      receiptDate,
+      treasuryBaselineDate: baselineByCurrency[currency] ?? null,
     });
     tally(acc, "collection_received", r);
   }
