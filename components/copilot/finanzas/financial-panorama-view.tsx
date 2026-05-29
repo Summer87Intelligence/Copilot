@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, ChevronRight, Loader2 } from "lucide-react";
 
 import {
   CopilotCard,
@@ -11,6 +11,8 @@ import {
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
 import { CopilotSeverityBadge } from "@/components/copilot/copilot-severity-badge";
+import { FinancialMetricDetailDialog } from "@/components/copilot/finanzas/financial-metric-detail-dialog";
+import { FinancialMonthlyTrends } from "@/components/copilot/finanzas/financial-monthly-trends";
 import {
   financialCardToneClass,
   metricValueClass,
@@ -22,12 +24,28 @@ import { useFinancialReconciliation } from "@/hooks/use-financial-reconciliation
 import { buildCurrencyIndex } from "@/lib/copilot-cartera-cards-source";
 import { fetchClientPortfolioLoad } from "@/lib/copilot-client-portfolio-fetch";
 import type { ClientPortfolioRow } from "@/lib/copilot-clients-portfolio";
+import { getProtoInvoices, getProtoReceipts } from "@/lib/copilot-data";
+import {
+  buildPanoramaMetricDetail,
+  type PanoramaMetricId,
+} from "@/lib/copilot-financial-panorama-details";
 import {
   buildFinancialPanoramaModel,
   formatPanoramaRate,
   type FinancialPanoramaModel,
   type PanoramaCurrencySlice,
 } from "@/lib/copilot-financial-panorama-model";
+import {
+  resolveCashSemaphore,
+  resolveCollectedSemaphore,
+  resolveCreditNotesSemaphore,
+  resolveNetIncomeSemaphore,
+  resolveOverdueSemaphore,
+  resolvePendingSemaphore,
+  resolveRiskSemaphore,
+  semaphoreBadgeClass,
+  type MetricSemaphore,
+} from "@/lib/copilot-financial-panorama-semaphore";
 import {
   financialEngineLocalTodayYmd,
   getFinancialSnapshot,
@@ -42,28 +60,68 @@ import {
   snapshotReceivablesRiskWeighted,
 } from "@/lib/copilot-financial-snapshot-selectors";
 import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
+import type { DataRow } from "@/lib/data/proto-operational-read-repository";
 
 function fmt(n: number, currency: "UYU" | "USD" | null = null): string {
   return formatMoneyCurrency(n, currency, { compact: n >= 100_000 });
 }
+
+type MetricSelection =
+  | { kind: "slice"; metricId: PanoramaMetricId; slice: PanoramaCurrencySlice }
+  | { kind: "cash"; currency: "UYU" | "USD" };
 
 function MetricCard({
   label,
   value,
   subcopy,
   tone = "neutral",
+  semaphore,
+  onClick,
 }: {
   label: string;
   value: string;
   subcopy: string;
   tone?: "positive" | "warning" | "danger" | "neutral";
+  semaphore?: MetricSemaphore;
+  onClick?: () => void;
 }) {
-  return (
-    <div className={`rounded-2xl border p-4 shadow-sm ${financialCardToneClass(tone)}`}>
-      <p className={subtleLabelClass}>{label}</p>
+  const content = (
+    <>
+      <div className="flex items-start justify-between gap-2">
+        <p className={subtleLabelClass}>{label}</p>
+        {semaphore ? (
+          <span
+            className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${semaphoreBadgeClass(semaphore.level)}`}
+          >
+            {semaphore.label}
+          </span>
+        ) : null}
+      </div>
       <p className={`mt-2 text-2xl ${metricValueClass}`}>{value}</p>
       <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--copilot-ink-muted)]">{subcopy}</p>
-    </div>
+      {onClick ? (
+        <p className="mt-2 flex items-center gap-0.5 text-[11px] font-semibold text-[var(--copilot-accent)]">
+          Ver detalle
+          <ChevronRight className="h-3 w-3" aria-hidden />
+        </p>
+      ) : null}
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={`w-full rounded-2xl border p-4 text-left shadow-sm transition hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)] ${financialCardToneClass(tone)}`}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className={`rounded-2xl border p-4 shadow-sm ${financialCardToneClass(tone)}`}>{content}</div>
   );
 }
 
@@ -103,71 +161,130 @@ function CurrencyBreakdownTable({ slice }: { slice: PanoramaCurrencySlice }) {
   );
 }
 
-function PanoramaContent({ model }: { model: FinancialPanoramaModel }) {
+function PanoramaContent({
+  model,
+  cashPositions,
+  invoices,
+  receipts,
+  asOfYmd,
+  onSelectMetric,
+}: {
+  model: FinancialPanoramaModel;
+  cashPositions: CashPositionByCurrency[];
+  invoices: DataRow[];
+  receipts: DataRow[];
+  asOfYmd: string;
+  onSelectMetric: (sel: MetricSelection) => void;
+}) {
   const hasMixed = model.currencies.length > 1;
   const primary = model.currencies[0];
+  const riskSem = resolveRiskSemaphore(model.risk.level);
+
+  const cashUyu = cashPositions.find((p) => p.currency === "UYU");
+  const cashUsd = cashPositions.find((p) => p.currency === "USD");
 
   return (
     <div className="space-y-6">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {model.currencies.map((c) => (
-          <MetricCard
-            key={`net-${c.code}`}
-            label={`Ingresos netos (${c.code})`}
-            value={fmt(c.netIncome, c.code)}
-            subcopy="Facturación menos notas de crédito."
-            tone="positive"
-          />
-        ))}
-        {model.currencies.map((c) => (
-          <MetricCard
-            key={`col-${c.code}`}
-            label={`Cobrado aplicado (${c.code})`}
-            value={fmt(c.collectedApplied, c.code)}
-            subcopy="Cobros registrados sobre ventas."
-            tone="positive"
-          />
-        ))}
-        {model.currencies.map((c) => (
-          <MetricCard
-            key={`pend-${c.code}`}
-            label={`Pendiente (${c.code})`}
-            value={fmt(c.pending, c.code)}
-            subcopy="Facturas abiertas de clientes."
-            tone="warning"
-          />
-        ))}
-        {model.currencies.map((c) => (
-          <MetricCard
-            key={`ov-${c.code}`}
-            label={`Vencido (${c.code})`}
-            value={fmt(c.overdue, c.code)}
-            subcopy="Parte del pendiente con atraso."
-            tone={c.overdue > 0 ? "danger" : "neutral"}
-          />
-        ))}
-        {model.projection.cashTodayUyu > 0 ? (
+        {model.currencies.map((c) => {
+          const sem = resolveNetIncomeSemaphore(c);
+          return (
+            <MetricCard
+              key={`net-${c.code}`}
+              label={`Ingresos netos (${c.code})`}
+              value={fmt(c.netIncome, c.code)}
+              subcopy="Facturación menos notas de crédito."
+              tone={sem.tone}
+              semaphore={sem}
+              onClick={() => onSelectMetric({ kind: "slice", metricId: "net-income", slice: c })}
+            />
+          );
+        })}
+        {model.currencies.map((c) => {
+          const sem = resolveCollectedSemaphore(c);
+          return (
+            <MetricCard
+              key={`col-${c.code}`}
+              label={`Cobrado aplicado (${c.code})`}
+              value={fmt(c.collectedApplied, c.code)}
+              subcopy="Cobros registrados sobre ventas."
+              tone={sem.tone}
+              semaphore={sem}
+              onClick={() => onSelectMetric({ kind: "slice", metricId: "collected", slice: c })}
+            />
+          );
+        })}
+        {model.currencies.map((c) => {
+          const sem = resolvePendingSemaphore(c);
+          return (
+            <MetricCard
+              key={`pend-${c.code}`}
+              label={`Pendiente (${c.code})`}
+              value={fmt(c.pending, c.code)}
+              subcopy="Facturas abiertas de clientes."
+              tone={sem.tone}
+              semaphore={sem}
+              onClick={() => onSelectMetric({ kind: "slice", metricId: "pending", slice: c })}
+            />
+          );
+        })}
+        {model.currencies.map((c) => {
+          const sem = resolveOverdueSemaphore(c);
+          return (
+            <MetricCard
+              key={`ov-${c.code}`}
+              label={`Vencido (${c.code})`}
+              value={fmt(c.overdue, c.code)}
+              subcopy="Parte del pendiente con atraso."
+              tone={sem.tone}
+              semaphore={sem}
+              onClick={() => onSelectMetric({ kind: "slice", metricId: "overdue", slice: c })}
+            />
+          );
+        })}
+        {(model.projection.cashTodayUyu !== 0 || cashUyu) ? (
           <MetricCard
             label="Caja disponible (UYU)"
             value={fmt(model.projection.cashTodayUyu, "UYU")}
             subcopy="Dinero disponible actual. No es facturación."
-            tone="positive"
+            tone={resolveCashSemaphore(model.projection.cashTodayUyu, model.projection).tone}
+            semaphore={resolveCashSemaphore(model.projection.cashTodayUyu, model.projection)}
+            onClick={() => onSelectMetric({ kind: "cash", currency: "UYU" })}
           />
         ) : null}
-        {model.projection.cashTodayUsd > 0 ? (
+        {(model.projection.cashTodayUsd !== 0 || cashUsd) ? (
           <MetricCard
             label="Caja disponible (USD)"
             value={fmt(model.projection.cashTodayUsd, "USD")}
             subcopy="Dinero disponible actual. No es facturación."
-            tone="positive"
+            tone={resolveCashSemaphore(model.projection.cashTodayUsd, model.projection).tone}
+            semaphore={resolveCashSemaphore(model.projection.cashTodayUsd, model.projection)}
+            onClick={() => onSelectMetric({ kind: "cash", currency: "USD" })}
           />
         ) : null}
-        {primary && primary.creditNotes > 0 ? (
+        {model.currencies.map((c) =>
+          c.creditNotes > 0 ? (
+            <MetricCard
+              key={`nc-${c.code}`}
+              label={`Notas de crédito (${c.code})`}
+              value={fmt(c.creditNotes, c.code)}
+              subcopy="Anulaciones/descuentos que reducen ingresos."
+              tone={resolveCreditNotesSemaphore(c).tone}
+              semaphore={resolveCreditNotesSemaphore(c)}
+              onClick={() => onSelectMetric({ kind: "slice", metricId: "credit-notes", slice: c })}
+            />
+          ) : null
+        )}
+        {primary && primary.creditNotes <= 0 && model.currencies.length === 1 ? (
           <MetricCard
             label={`Notas de crédito (${primary.code})`}
-            value={fmt(primary.creditNotes, primary.code)}
-            subcopy="Anulaciones/descuentos que reducen ingresos."
-            tone="danger"
+            value={fmt(0, primary.code)}
+            subcopy="Sin NC en el período."
+            tone="neutral"
+            semaphore={{ level: "neutral", label: "Informativo", tone: "neutral" }}
+            onClick={() =>
+              onSelectMetric({ kind: "slice", metricId: "credit-notes", slice: primary })
+            }
           />
         ) : null}
       </div>
@@ -207,9 +324,9 @@ function PanoramaContent({ model }: { model: FinancialPanoramaModel }) {
             <p className="mt-1">
               <span
                 className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-                  model.risk.level === "low"
+                  riskSem.level === "healthy"
                     ? statusBadgeVariants.stable
-                    : model.risk.level === "attention"
+                    : riskSem.level === "attention"
                       ? statusBadgeVariants.attention
                       : statusBadgeVariants.critical
                 }`}
@@ -274,6 +391,8 @@ function PanoramaContent({ model }: { model: FinancialPanoramaModel }) {
           <CopilotGhostLink href="/copilot/datos">Datos</CopilotGhostLink>
         </div>
       </CopilotCard>
+
+      <FinancialMonthlyTrends invoices={invoices} receipts={receipts} asOfYmd={asOfYmd} />
 
       <CopilotCard>
         <CopilotSectionTitle
@@ -361,6 +480,9 @@ export function FinancialPanoramaView() {
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
   const [cashPositions, setCashPositions] = useState<CashPositionByCurrency[]>([]);
   const [portfolioRows, setPortfolioRows] = useState<ClientPortfolioRow[]>([]);
+  const [invoices, setInvoices] = useState<DataRow[]>([]);
+  const [receipts, setReceipts] = useState<DataRow[]>([]);
+  const [metricSelection, setMetricSelection] = useState<MetricSelection | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -417,6 +539,26 @@ export function FinancialPanoramaView() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([getProtoInvoices("active"), getProtoReceipts("active")])
+      .then(([inv, rec]) => {
+        if (!cancelled) {
+          setInvoices(inv);
+          setReceipts(rec);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setInvoices([]);
+          setReceipts([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const model = useMemo(() => {
     if (!reconciliation.report) return null;
     const index = buildCurrencyIndex(reconciliation.report.currencies);
@@ -441,6 +583,25 @@ export function FinancialPanoramaView() {
       },
     });
   }, [reconciliation.report, periodLabel, snapshot, cashPositions, portfolioRows]);
+
+  const metricDetail = useMemo(() => {
+    if (!metricSelection || !model) return null;
+    if (metricSelection.kind === "cash") {
+      const pos = cashPositions.find((p) => p.currency === metricSelection.currency);
+      return buildPanoramaMetricDetail({
+        metricId: "cash",
+        currency: metricSelection.currency,
+        cashPosition: pos,
+        projection: model.projection,
+      });
+    }
+    return buildPanoramaMetricDetail({
+      metricId: metricSelection.metricId,
+      slice: metricSelection.slice,
+      agingBuckets: reconciliation.report?.agingByCurrency?.[metricSelection.slice.code],
+      projection: model.projection,
+    });
+  }, [metricSelection, model, cashPositions, reconciliation.report]);
 
   const loading = reconciliation.loading || snapshotLoading;
   const error = reconciliation.error ?? snapshotError;
@@ -491,7 +652,19 @@ export function FinancialPanoramaView() {
           </span>
         </div>
       ) : null}
-      <PanoramaContent model={model} />
+      <PanoramaContent
+        model={model}
+        cashPositions={cashPositions}
+        invoices={invoices}
+        receipts={receipts}
+        asOfYmd={today}
+        onSelectMetric={setMetricSelection}
+      />
+      <FinancialMetricDetailDialog
+        detail={metricDetail}
+        isOpen={metricSelection != null}
+        onClose={() => setMetricSelection(null)}
+      />
     </>
   );
 }

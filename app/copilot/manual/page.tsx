@@ -1050,16 +1050,21 @@ const SECTIONS: Section[] = [
         </p>
         <Bullets
           items={[
-            "Ingresos netos — facturación del período menos notas de crédito (las NC no son ingreso).",
+            "Ingresos netos — facturación del período menos notas de crédito (fórmula: Bruto − NC = Neto).",
             "Cobrado aplicado — cartera resuelta en el período (no confundir con caja).",
             "Pendiente y vencido — saldos abiertos de clientes (Cartera).",
             "Caja disponible — dinero actual en Tesorería; no es facturación.",
+            "Semáforos en cada KPI — Saludable, Revisar o Crítico según cobranza, vencido y NC.",
+            "Ver detalle — clic en una tarjeta abre fórmula, fuente del dato y enlace contextual.",
+            "Evolución mensual — ventas netas, cobros y NC por mes; UYU y USD separados.",
             "UYU y USD se analizan por separado; no se suman.",
             "Proyección 30 días — operativa (cobros esperados y pagos próximos), no cierre contable formal.",
           ]}
         />
         <Callout variant="info">
-          Para cierre contable final, validá con tu contador o el export oficial de Zeta.
+          Los gráficos mensuales son operativos y se basan en datos sincronizados. Pendiente y
+          vencido en gráficos reflejan el estado actual, no histórico mensual. Para cierre contable
+          final, validá con tu contador o el export oficial de Zeta.
         </Callout>
         <div className="flex flex-wrap gap-3">
           <NavLink href="/copilot/finanzas" label="Ir a Panorama financiero" />
