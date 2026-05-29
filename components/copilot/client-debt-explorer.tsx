@@ -116,7 +116,7 @@ const FILTER_CHIPS: Array<{ id: FilterChip; label: string }> = [
   { id: "61_90",    label: "61–90 d" },
   { id: "31_60",    label: "31–60 d" },
   { id: "0_30",     label: "0–30 d" },
-  { id: "no_aging", label: "Sin antigüedad" },
+  { id: "no_aging", label: "Sin días de atraso" },
 ];
 
 const COLLECTION_ACTIONS_CACHE_TTL_MS = 60_000;

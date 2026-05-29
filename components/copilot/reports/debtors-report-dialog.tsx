@@ -282,7 +282,7 @@ export function DebtorsReportDialog({
           </div>
 
           <FilterPills
-            label="Antigüedad"
+            label="Días de atraso"
             options={OVERDUE_OPTIONS}
             value={filters.overdueDays}
             onChange={(overdueDays) => setPartial({ overdueDays })}

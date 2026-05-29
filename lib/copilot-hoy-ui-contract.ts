@@ -19,7 +19,7 @@ export const HOY_COCKPIT = {
   receivables: "Clientes por cobrar",
   payments: "Pagos próximos",
   afterPayments: "Caja después de pagos",
-  receivablesTotalPending: "Total pendiente",
+  receivablesTotalPending: "Deuda total",
   receivablesIncludedInTotal: "Incluido en ese total",
   receivablesOverdue30: "Vencido >30 días",
   /** Vencido >30 forma parte del total pendiente; no es un monto adicional. */

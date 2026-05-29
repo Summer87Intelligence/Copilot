@@ -244,9 +244,9 @@ function DebtorTable({
           <tr className="bg-[rgba(44,40,37,0.04)] text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
             <th className="px-3 py-1.5">Cliente</th>
             <th className="px-3 py-1.5">Moneda</th>
-            <th className="px-3 py-1.5">Por cobrar</th>
-            <th className="px-3 py-1.5">Vencido</th>
-            <th className="px-3 py-1.5">Antigüedad</th>
+            <th className="px-3 py-1.5">Deuda total</th>
+            <th className="px-3 py-1.5">Deuda vencida</th>
+            <th className="px-3 py-1.5">Días de atraso</th>
             <th className="px-3 py-1.5">Acción</th>
           </tr>
         </thead>
@@ -288,7 +288,7 @@ function DebtorTable({
                     {row.vencido ? (
                       <DebtorAmount amount={row.vencido} tone="danger" />
                     ) : (
-                      <span className="text-sm font-medium text-emerald-700">Al día</span>
+                      <span className="text-sm font-medium text-emerald-700">Sin deuda vencida</span>
                     )}
                   </td>
                   <td className="px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)]">

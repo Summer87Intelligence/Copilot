@@ -231,14 +231,14 @@ export function buildCurrencyExecutiveBlocks(p: {
 function inferAntiguedad(row: ClientPortfolioRow): string {
   const overdue =
     (row.overdue_uyu ?? 0) + (row.overdue_usd ?? 0) > 0 || row.overdue_debt > 0;
-  if (overdue) return "Con saldo vencido";
+  if (overdue) return "Tiene deuda vencida";
   if (row.risk === "Alto" || row.payment_behavior === "lento") return "Cobro lento";
-  if ((row.debt_uyu ?? 0) + (row.debt_usd ?? 0) > 0) return "Pendiente reciente";
+  if ((row.debt_uyu ?? 0) + (row.debt_usd ?? 0) > 0) return "Deuda al día";
   return "Sin mora";
 }
 
 function debtorAccion(row: ClientPortfolioRow, hasOverdue: boolean): string {
-  if (hasOverdue) return "Contactar por saldo vencido";
+  if (hasOverdue) return "Contactar por deuda vencida";
   if (row.risk === "Alto" || row.payment_behavior === "lento") return "Hacer seguimiento";
   return "Revisar ficha";
 }

@@ -1747,6 +1747,111 @@ const SECTIONS: Section[] = [
       </>
     ),
   },
+  {
+    id: "glosario-deuda",
+    icon: <BookMarked className="h-4 w-4" aria-hidden />,
+    title: "Glosario — Términos de deuda de clientes",
+    content: (
+      <>
+        <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
+          Referencia rápida de los términos que Copilot usa para describir la deuda de clientes.
+          Cada término tiene un significado preciso para evitar confusión entre saldo, vencimiento y estado.
+        </p>
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Columnas en tablas de clientes
+          </p>
+          <div className="space-y-3">
+            {[
+              {
+                term: "Deuda total",
+                def: "Todo lo que el cliente debe hasta hoy, sin importar si ya venció o no. Es la suma de deuda vencida + deuda al día.",
+              },
+              {
+                term: "Deuda vencida",
+                def: "La parte de la deuda cuya fecha de vencimiento ya pasó. Cuanto más alta, más urgente la gestión.",
+              },
+              {
+                term: "Días de atraso",
+                def: "Clasificación del tiempo transcurrido desde el vencimiento: Al día, 1–30 d, 31–60 d, 61–90 d o +90 d.",
+              },
+            ].map(({ term, def }) => (
+              <div key={term} className="flex gap-3 text-sm">
+                <span className="mt-0.5 inline-flex shrink-0 rounded-md border border-[var(--copilot-border)] bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-[var(--copilot-ink)]">
+                  {term}
+                </span>
+                <span className="text-[var(--copilot-ink-muted)]">{def}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Valores en la columna "Días de atraso"
+          </p>
+          <div className="space-y-3">
+            {[
+              {
+                term: "Sin deuda vencida",
+                def: "El cliente tiene facturas abiertas pero ninguna venció todavía. Hay deuda, pero no es urgente.",
+              },
+              {
+                term: "Tiene deuda vencida",
+                def: "Al menos una factura ya superó su fecha de vencimiento. Requiere seguimiento.",
+              },
+              {
+                term: "Deuda al día",
+                def: "Tiene deuda abierta, pero todas sus facturas están dentro del plazo. No hay mora todavía.",
+              },
+              {
+                term: "Cobro lento",
+                def: "El cliente tiene historial de pagos lentos o riesgo alto, aunque no tenga vencimientos.",
+              },
+            ].map(({ term, def }) => (
+              <div key={term} className="flex gap-3 text-sm">
+                <span className="mt-0.5 inline-flex shrink-0 rounded-md border border-[var(--copilot-border)] bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-[var(--copilot-ink)]">
+                  {term}
+                </span>
+                <span className="text-[var(--copilot-ink-muted)]">{def}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Términos en acciones de cobranza
+          </p>
+          <div className="space-y-3">
+            {[
+              {
+                term: "Contactar por deuda vencida",
+                def: "Acción recomendada cuando el cliente tiene al menos una factura vencida. Es el caso de mayor urgencia.",
+              },
+              {
+                term: "Hacer seguimiento",
+                def: "Acción recomendada para clientes con historial de pagos lentos o riesgo alto, aunque no tengan vencimientos.",
+              },
+              {
+                term: "Revisar ficha",
+                def: "Acción recomendada para clientes con deuda corriente. Sin urgencia inmediata.",
+              },
+            ].map(({ term, def }) => (
+              <div key={term} className="flex gap-3 text-sm">
+                <span className="mt-0.5 inline-flex shrink-0 rounded-md border border-[var(--copilot-border)] bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-[var(--copilot-ink)]">
+                  {term}
+                </span>
+                <span className="text-[var(--copilot-ink-muted)]">{def}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <Callout variant="info">
+          La deuda nunca desaparece de Copilot hasta que el pago aparece registrado en Zeta.
+          Los términos describen el <strong>estado actual</strong> de la factura, no una opinión sobre el cliente.
+        </Callout>
+      </>
+    ),
+  },
 ];
 
 // ─── FAQ ──────────────────────────────────────────────────────────────────────

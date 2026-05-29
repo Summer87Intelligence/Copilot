@@ -267,9 +267,9 @@ describe("buildTodayBusinessPulse", () => {
       expect(priorityCollections[0]!.company_id).toBe("c1");
     });
 
-    it("accion del cliente con vencido indica contacto por saldo vencido", () => {
+    it("accion del cliente con vencido indica contacto por deuda vencida", () => {
       const { priorityCollections } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: rows, gate: GATE_HIGH });
-      expect(priorityCollections[0]!.accion.toLowerCase()).toContain("contactar por saldo vencido");
+      expect(priorityCollections[0]!.accion.toLowerCase()).toContain("contactar por deuda vencida");
     });
 
     it("deepLink apunta a ficha del cliente", () => {
