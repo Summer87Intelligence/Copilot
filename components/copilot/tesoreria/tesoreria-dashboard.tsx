@@ -120,7 +120,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
       <section>
         <CopilotSectionTitle
           title="Caja disponible"
-          subtitle="Saldo inicial + cobros de clientes + movimientos manuales."
+          subtitle="Saldo inicial + cobros de clientes + registros manuales."
         />
         {cashPositionFailed ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-800">

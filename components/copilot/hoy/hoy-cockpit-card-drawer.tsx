@@ -168,7 +168,7 @@ function CashPanel({
       {recentManual.length > 0 ? (
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-            Movimientos manuales recientes
+            Registros manuales recientes
           </p>
           <ul className="mt-2 space-y-1.5">
             {recentManual.map((m) => (

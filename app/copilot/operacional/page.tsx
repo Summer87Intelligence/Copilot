@@ -33,13 +33,13 @@ export default function OperacionalPage() {
         <CopilotCard className="border-[var(--copilot-border)] bg-white/90">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold text-[var(--copilot-ink)]">Pipelines</p>
+              <p className="text-sm font-semibold text-[var(--copilot-ink)]">Sincronizaciones</p>
               <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
                 Sincronización de datos en tiempo real
               </p>
             </div>
             <CopilotGhostLink href="/copilot/operacional/pipelines" className="shrink-0 text-xs font-semibold">
-              Ver pipelines →
+              Ver sincronizaciones →
             </CopilotGhostLink>
           </div>
         </CopilotCard>

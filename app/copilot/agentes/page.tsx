@@ -15,8 +15,7 @@ export default function AgentesPage() {
           Agentes IA
         </h1>
         <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--copilot-ink-muted)]">
-          Asistentes que leen el Copilot, ordenan prioridades y te indican qué
-          revisar primero.
+          Análisis de tendencias, riesgos y señales que complementan lo que ya ves en Hoy.
         </p>
         <div className="max-w-2xl rounded-2xl border border-[var(--copilot-border)]/70 bg-[rgba(44,40,37,0.02)] px-4 py-3">
           <p className="text-[13px] text-[var(--copilot-ink-muted)]">

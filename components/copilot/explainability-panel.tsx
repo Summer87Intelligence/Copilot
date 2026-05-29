@@ -404,10 +404,10 @@ export function ExplainabilityPanel({
           </span>
           <div>
             <h3 className="text-base font-semibold tracking-tight text-[var(--copilot-ink)]">
-              Explicabilidad financiera
+              ¿Cómo se calcula esto?
             </h3>
             <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-              Qué montos se excluyen de los totales y por qué · auditoría interna
+              Qué montos se incluyen o excluyen de los totales y por qué
             </p>
           </div>
         </div>

@@ -1946,14 +1946,11 @@ export default function ManualPage() {
             </div>
             <Steps
               items={[
-                "Abrí Hoy — es la pantalla principal. Muestra caja, deuda y pagos de un vistazo.",
-                "Mirá el estado en la parte de arriba — Estable, Atención o Crítico.",
-                "Revisá si hay notificaciones — la campana en la esquina superior derecha.",
-                "Entrá a Acciones — ahí están las cosas concretas que conviene hacer hoy.",
-                "Si hay clientes vencidos → abrí su ficha, escribí por WhatsApp o email.",
-                "Si hay pagos próximos → entrá a Tesorería para confirmar que estén listos.",
-                "Si querés una mirada más amplia → entrá a Panorama financiero.",
-                "Si algo parece desactualizado → revisá Estado del sistema.",
+                "Abrí Hoy — es la pantalla principal. Muestra caja disponible, deuda de clientes y prioridad del día.",
+                "Mirá Acciones — ahí están las cosas concretas que conviene hacer: clientes a llamar, cobros a registrar.",
+                "Si hay clientes vencidos → abrí su ficha y contactá por WhatsApp o email directamente desde Copilot.",
+                "Si hay pagos próximos → entrá a Tesorería para ver caja real y confirmar que estén cubiertos.",
+                "Si querés la foto completa del negocio → Cartera para deuda y antigüedad, Finanzas para panorama general.",
               ]}
             />
           </div>

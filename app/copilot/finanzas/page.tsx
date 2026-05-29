@@ -1295,7 +1295,7 @@ function CopilotFinanzasPageContent() {
                       <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">Neto + cobranza esperada − egresos proyectados.</p>
                     </div>
                     <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm sm:col-span-2 lg:col-span-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Ratio de cobertura</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Cobertura de pagos</p>
                       <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-ink)]">{coverageRatioDisplay(snapshot).value}</p>
                       <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
                         {coverageRatioDisplay(snapshot).isNoOutflows

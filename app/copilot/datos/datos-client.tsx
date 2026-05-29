@@ -927,7 +927,7 @@ function CopilotDatosPageContent() {
       ? "El alta quedó registrada en la base. Podés volver a Finanzas para seguir el plan."
       : isQuickAddForm
         ? "Flujo guiado: completá los campos y guardá. Los datos impactan caja y lecturas en Copilot."
-        : "Clientes, facturas, recibos y obligaciones que alimentan las lecturas del Copilot.";
+        : "Consulta de clientes, facturas y recibos sincronizados desde Zeta.";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

@@ -32,7 +32,7 @@ export default function CarteraPage() {
       <CopilotPageHeader
         eyebrow="Summer87 Copilot"
         title="Cartera"
-        description="Clientes con saldo pendiente, deuda vencida y prioridad de cobranza."
+        description="Análisis financiero de deuda, cobros y antigüedad. Para contactar clientes, usá Clientes o Acciones."
       />
       <div className="px-6 pb-12 pt-6">
         <Suspense fallback={<CarteraInitialFallback />}>

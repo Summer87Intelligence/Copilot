@@ -510,7 +510,7 @@ function CopilotAccionesPageContent() {
             [
               { id: "acciones" as const, label: "Prioridades", hint: "Qué resolver" },
               { id: "agenda" as const, label: "Agenda", hint: "A quién seguir" },
-              { id: "alertas" as const, label: "Alertas", hint: "Qué revisar" },
+              { id: "alertas" as const, label: "Novedades", hint: "Qué pasó" },
             ] as const
           ).map((tab) => (
             <button

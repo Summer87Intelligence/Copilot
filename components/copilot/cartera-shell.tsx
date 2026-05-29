@@ -228,7 +228,7 @@ export function CarteraShell() {
               )}
               <CollapsibleSection
                 id="aging"
-                title="Aging de cartera"
+                title="Antigüedad de cartera"
                 subtitle="Deuda viva agrupada por antigüedad · todos los saldos activos al día de hoy"
                 defaultOpen={false}
                 variant="secondary"
@@ -325,7 +325,7 @@ function EmptyAgingPlaceholder({ shimmer = false }: { shimmer?: boolean }) {
     <section className={`rounded-2xl border shadow-[var(--copilot-shadow)] ${neutralFinancialCardClass}`}>
       <header className="border-b border-[var(--copilot-border)] px-5 py-4">
         <h3 className="text-base font-semibold tracking-tight text-[var(--copilot-ink)]">
-          Aging de cartera
+          Antigüedad de cartera
         </h3>
         <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
           Sin período confirmado · montos y porcentajes pendientes
