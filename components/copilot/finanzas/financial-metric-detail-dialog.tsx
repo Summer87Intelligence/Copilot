@@ -1,8 +1,6 @@
 "use client";
 
-import Link from "next/link";
-
-import { CopilotGhostButton, CopilotPrimaryLink } from "@/components/copilot/copilot-ui";
+import { CopilotGhostLink } from "@/components/copilot/copilot-ui";
 import type { FinancialMetricDetail } from "@/lib/copilot-financial-panorama-details";
 
 function rowToneClass(tone?: FinancialMetricDetail["rows"][number]["tone"]): string {
@@ -38,9 +36,13 @@ export function FinancialMetricDetailDialog({
               <h3 className="text-lg font-semibold text-[var(--copilot-ink)]">{detail.title}</h3>
               <p className="text-sm text-[var(--copilot-ink-muted)]">{detail.subtitle}</p>
             </div>
-            <CopilotGhostButton onClick={onClose} className="px-3 py-1.5">
+            <button
+              type="button"
+              onClick={onClose}
+              className="shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-100"
+            >
               Cerrar
-            </CopilotGhostButton>
+            </button>
           </div>
         </div>
 
@@ -54,7 +56,7 @@ export function FinancialMetricDetailDialog({
             </div>
           ) : null}
 
-          <dl className="space-y-3">
+          <dl className="space-y-3 border-b border-[var(--copilot-border)] pb-5">
             {detail.rows.map((row) => (
               <div key={row.label} className="flex items-start justify-between gap-4 text-sm">
                 <dt className="text-[var(--copilot-ink-muted)]">{row.label}</dt>
@@ -65,7 +67,7 @@ export function FinancialMetricDetailDialog({
             ))}
           </dl>
 
-          <div className="mt-6 rounded-xl border border-[var(--copilot-border)] bg-white/70 px-4 py-3">
+          <div className="mt-5 rounded-xl border border-[var(--copilot-border)] bg-white/70 px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
               Fuente del dato
             </p>
@@ -75,34 +77,11 @@ export function FinancialMetricDetailDialog({
 
         {detail.cta ? (
           <div className="border-t border-[var(--copilot-border)] px-6 py-4">
-            <CopilotPrimaryLink href={detail.cta.href} className="w-full justify-center shadow-sm">
+            <CopilotGhostLink href={detail.cta.href} className="w-full justify-center">
               {detail.cta.label}
-            </CopilotPrimaryLink>
+            </CopilotGhostLink>
           </div>
         ) : null}
-      </aside>
-    </>
-  );
-}
-
-export function FinancialMetricDetailFallback({
-  title,
-  onClose,
-}: {
-  title: string;
-  onClose: () => void;
-}) {
-  return (
-    <>
-      <button type="button" aria-label="Cerrar" onClick={onClose} className="fixed inset-0 z-30 bg-[rgba(19,23,22,0.28)]" />
-      <aside className="fixed inset-y-0 right-0 z-40 w-full max-w-lg border-l border-[var(--copilot-border)] bg-[var(--copilot-card)] p-6 shadow-2xl">
-        <h3 className="text-lg font-semibold">{title}</h3>
-        <p className="mt-3 text-sm text-[var(--copilot-ink-muted)]">
-          No hay detalle disponible para esta métrica.
-        </p>
-        <Link href="/copilot/datos" className="mt-4 inline-block text-sm font-semibold text-[var(--copilot-accent)]">
-          Ver Datos
-        </Link>
       </aside>
     </>
   );

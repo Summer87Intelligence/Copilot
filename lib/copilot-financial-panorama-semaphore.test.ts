@@ -72,9 +72,9 @@ describe("copilot-financial-panorama-details", () => {
       slice({ code: "UYU", grossInvoiced: 100_000, creditNotes: 8_662, netIncome: 91_338 })
     );
     expect(d.formula).toContain("Bruto");
-    expect(d.rows.some((r) => r.label === "Facturación bruta")).toBe(true);
+    expect(d.rows.some((r) => r.label === "Bruto facturado")).toBe(true);
     expect(d.rows.some((r) => r.label === "Notas de crédito")).toBe(true);
-    expect(d.rows.some((r) => r.label === "Ingresos netos")).toBe(true);
+    expect(d.rows.some((r) => r.label === "Neto generado")).toBe(true);
   });
 
   it("caja muestra fuente Tesorería", () => {

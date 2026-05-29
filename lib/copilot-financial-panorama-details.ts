@@ -59,16 +59,15 @@ function agingRows(
 export function buildNetIncomeDetail(slice: PanoramaCurrencySlice): FinancialMetricDetail {
   return {
     id: "net-income",
-    title: `Ingresos netos (${slice.code})`,
+    title: `Detalle — Ingresos netos ${slice.code}`,
     subtitle: "Facturación del período menos notas de crédito.",
-    formula: "Bruto − Notas de crédito = Neto",
+    formula: "Bruto facturado − Notas de crédito = Neto generado",
     rows: [
-      { label: "Facturación bruta", value: fmt(slice.grossInvoiced, slice.code) },
+      { label: "Bruto facturado", value: fmt(slice.grossInvoiced, slice.code) },
       { label: "Notas de crédito", value: fmt(slice.creditNotes, slice.code), tone: "danger" },
-      { label: "Ingresos netos", value: fmt(slice.netIncome, slice.code), tone: "positive" },
-      { label: "Moneda", value: slice.code },
+      { label: "Neto generado", value: fmt(slice.netIncome, slice.code), tone: "positive" },
     ],
-    sourceLabel: "Cartera / reconciliación Zeta (period_only)",
+    sourceLabel: "Cartera — datos sincronizados del período",
     cta: { label: "Ver Cartera", href: "/copilot/cartera" },
   };
 }
@@ -76,17 +75,16 @@ export function buildNetIncomeDetail(slice: PanoramaCurrencySlice): FinancialMet
 export function buildCollectedDetail(slice: PanoramaCurrencySlice): FinancialMetricDetail {
   return {
     id: "collected",
-    title: `Cobrado aplicado (${slice.code})`,
-    subtitle: "Cartera resuelta en el período.",
-    formula: "Cobrado / Neto = Tasa de cobranza",
+    title: `Detalle — Cobrado aplicado ${slice.code}`,
+    subtitle: "Cobros registrados sobre ventas del período.",
+    formula: "Cobrado aplicado / Neto generado = Tasa de cobranza",
     rows: [
       { label: "Cobrado aplicado", value: fmt(slice.collectedApplied, slice.code), tone: "positive" },
-      { label: "Ingresos netos", value: fmt(slice.netIncome, slice.code) },
+      { label: "Neto generado", value: fmt(slice.netIncome, slice.code) },
       { label: "Tasa de cobranza", value: formatPanoramaRate(slice.collectionRate) },
-      { label: "Moneda", value: slice.code },
     ],
-    sourceLabel: "Recibos y cartera resuelta (portfolioResolvedAmount)",
-    cta: { label: "Ver Datos", href: "/copilot/datos?entity=receipts" },
+    sourceLabel: "Recibos y cartera resuelta",
+    cta: { label: "Ver Recibos", href: "/copilot/datos?entity=receipts" },
   };
 }
 
@@ -94,15 +92,14 @@ export function buildPendingDetail(slice: PanoramaCurrencySlice): FinancialMetri
   const onTime = Math.max(0, slice.pending - slice.overdue);
   return {
     id: "pending",
-    title: `Pendiente por cobrar (${slice.code})`,
+    title: `Detalle — Pendiente ${slice.code}`,
     subtitle: "Saldo abierto de clientes al corte.",
     rows: [
       { label: "Pendiente total", value: fmt(slice.pending, slice.code), tone: "warning" },
       { label: "Vencido", value: fmt(slice.overdue, slice.code), tone: slice.overdue > 0 ? "danger" : "neutral" },
       { label: "Al día (estimado)", value: fmt(onTime, slice.code) },
-      { label: "Moneda", value: slice.code },
     ],
-    sourceLabel: "Facturas abiertas / cartera (pendingAtCutoff)",
+    sourceLabel: "Facturas abiertas en Cartera",
     cta: { label: "Ver Cartera", href: "/copilot/cartera" },
   };
 }
@@ -118,10 +115,10 @@ export function buildOverdueDetail(
   ];
   return {
     id: "overdue",
-    title: `Vencido (${slice.code})`,
-    subtitle: "Parte del pendiente con atraso según aging de Cartera.",
+    title: `Detalle — Vencido ${slice.code}`,
+    subtitle: "Parte del pendiente con atraso según Cartera.",
     rows,
-    sourceLabel: "Aging Cartera (31–60 + 61–90 + +90 días)",
+    sourceLabel: "Antigüedad de deuda en Cartera",
     cta: { label: "Ver clientes vencidos", href: "/copilot/cartera" },
   };
 }
@@ -138,29 +135,28 @@ export function buildCashDetail(
       value: fmt(position?.openingBalance ?? 0, currency),
     },
     {
-      label: "Cobros Zeta post-corte",
+      label: "Cobros registrados post-corte",
       value: fmt(position?.collectedFromClients ?? 0, currency),
       tone: "positive",
     },
     { label: "Ingresos manuales", value: fmt(position?.manualIncome ?? 0, currency), tone: "positive" },
     { label: "Egresos manuales", value: fmt(position?.manualExpense ?? 0, currency), tone: "danger" },
     { label: "Caja disponible", value: fmt(cash, currency), tone: cash >= 0 ? "positive" : "danger" },
-    { label: "Moneda", value: currency },
   ];
   if (projection?.hasOutflows) {
     rows.push({
-      label: "Pagos próximos (proyección)",
+      label: "Pagos próximos (estimación)",
       value: formatMoneyCurrency(projection.upcomingOutflows, null, { compact: true }),
       tone: "warning",
     });
   }
   return {
     id: "cash",
-    title: `Caja disponible (${currency})`,
+    title: `Detalle — Caja disponible ${currency}`,
     subtitle: "Dinero operativo actual. No es facturación.",
     formula: "Saldo corte + cobros + ingresos − egresos = Caja disponible",
     rows,
-    sourceLabel: "Tesorería (cash-position)",
+    sourceLabel: "Tesorería — saldo operativo actual",
     cta: { label: "Ver Tesorería", href: "/copilot/tesoreria" },
   };
 }
@@ -170,15 +166,14 @@ export function buildCreditNotesDetail(slice: PanoramaCurrencySlice): FinancialM
     slice.grossInvoiced > 0 ? `${Math.round((slice.creditNotes / slice.grossInvoiced) * 100)}%` : "—";
   return {
     id: "credit-notes",
-    title: `Notas de crédito (${slice.code})`,
+    title: `Detalle — Notas de crédito ${slice.code}`,
     subtitle: "Reducen ingresos netos. No son caja disponible.",
     rows: [
       { label: "Total NC período", value: fmt(slice.creditNotes, slice.code), tone: "danger" },
       { label: "% sobre bruto", value: share },
-      { label: "Facturación bruta", value: fmt(slice.grossInvoiced, slice.code) },
-      { label: "Moneda", value: slice.code },
+      { label: "Bruto facturado", value: fmt(slice.grossInvoiced, slice.code) },
     ],
-    sourceLabel: "Comprobantes NC detectados en reconciliación",
+    sourceLabel: "Facturas — notas de crédito del período",
     cta: { label: "Ver Cartera", href: "/copilot/cartera" },
   };
 }

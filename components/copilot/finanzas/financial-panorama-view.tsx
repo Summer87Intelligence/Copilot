@@ -44,6 +44,8 @@ import {
   resolvePendingSemaphore,
   resolveRiskSemaphore,
   semaphoreBadgeClass,
+  shouldShowProminentSemaphore,
+  shouldShowSubtleSemaphore,
   type MetricSemaphore,
 } from "@/lib/copilot-financial-panorama-semaphore";
 import {
@@ -70,12 +72,50 @@ type MetricSelection =
   | { kind: "slice"; metricId: PanoramaMetricId; slice: PanoramaCurrencySlice }
   | { kind: "cash"; currency: "UYU" | "USD" };
 
+type MetricTier = "primary" | "secondary" | "tertiary";
+
+function tierCardClass(tier: MetricTier, tone: "positive" | "warning" | "danger" | "neutral"): string {
+  const base = `rounded-2xl border ${financialCardToneClass(tone)}`;
+  if (tier === "primary") return `${base} border-[rgba(31,107,74,0.22)] p-5 shadow-sm`;
+  if (tier === "tertiary") return `${base} border-slate-200/80 bg-slate-50/40 p-3.5 opacity-95`;
+  return `${base} p-4 shadow-sm`;
+}
+
+function tierValueClass(tier: MetricTier): string {
+  if (tier === "primary") return `${metricValueClass} text-3xl`;
+  if (tier === "tertiary") return `${metricValueClass} text-xl text-[var(--copilot-ink-muted)]`;
+  return `${metricValueClass} text-2xl`;
+}
+
+function SemaphoreIndicator({ semaphore }: { semaphore: MetricSemaphore }) {
+  if (shouldShowProminentSemaphore(semaphore.level)) {
+    return (
+      <span
+        className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${semaphoreBadgeClass(semaphore.level)}`}
+      >
+        {semaphore.label}
+      </span>
+    );
+  }
+  if (shouldShowSubtleSemaphore(semaphore.level)) {
+    return (
+      <span className="flex shrink-0 items-center gap-1 text-[10px] text-emerald-700/80">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/70" aria-hidden />
+        Saludable
+      </span>
+    );
+  }
+  return null;
+}
+
 function MetricCard({
   label,
   value,
   subcopy,
   tone = "neutral",
   semaphore,
+  tier = "secondary",
+  emphasize = false,
   onClick,
 }: {
   label: string;
@@ -83,24 +123,25 @@ function MetricCard({
   subcopy: string;
   tone?: "positive" | "warning" | "danger" | "neutral";
   semaphore?: MetricSemaphore;
+  tier?: MetricTier;
+  emphasize?: boolean;
   onClick?: () => void;
 }) {
+  const cardTone = emphasize && tone !== "danger" ? "warning" : tone;
+  const cardClass = `${tierCardClass(tier, cardTone)}${emphasize ? " ring-1 ring-rose-200/80" : ""} transition hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]`;
+
   const content = (
     <>
       <div className="flex items-start justify-between gap-2">
-        <p className={subtleLabelClass}>{label}</p>
-        {semaphore ? (
-          <span
-            className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${semaphoreBadgeClass(semaphore.level)}`}
-          >
-            {semaphore.label}
-          </span>
-        ) : null}
+        <p className={`${subtleLabelClass}${tier === "primary" ? " text-[var(--copilot-ink)]" : ""}`}>
+          {label}
+        </p>
+        {semaphore ? <SemaphoreIndicator semaphore={semaphore} /> : null}
       </div>
-      <p className={`mt-2 text-2xl ${metricValueClass}`}>{value}</p>
+      <p className={`mt-2 ${tierValueClass(tier)}`}>{value}</p>
       <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--copilot-ink-muted)]">{subcopy}</p>
       {onClick ? (
-        <p className="mt-2 flex items-center gap-0.5 text-[11px] font-semibold text-[var(--copilot-accent)]">
+        <p className="mt-2 flex items-center gap-0.5 text-[11px] font-medium text-[var(--copilot-accent)]/90">
           Ver detalle
           <ChevronRight className="h-3 w-3" aria-hidden />
         </p>
@@ -110,49 +151,70 @@ function MetricCard({
 
   if (onClick) {
     return (
-      <button
-        type="button"
-        onClick={onClick}
-        className={`w-full rounded-2xl border p-4 text-left shadow-sm transition hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)] ${financialCardToneClass(tone)}`}
-      >
+      <button type="button" onClick={onClick} className={`w-full text-left ${cardClass}`}>
         {content}
       </button>
     );
   }
 
-  return (
-    <div className={`rounded-2xl border p-4 shadow-sm ${financialCardToneClass(tone)}`}>{content}</div>
-  );
+  return <div className={cardClass}>{content}</div>;
 }
 
 function CurrencyBreakdownTable({ slice }: { slice: PanoramaCurrencySlice }) {
-  const rows = [
+  const netRows = [
     { label: "Bruto facturado", value: slice.grossInvoiced },
     { label: "Notas de crédito", value: -slice.creditNotes, negative: true },
-    { label: "Neto generado", value: slice.netIncome, bold: true },
+    { label: "Neto generado", value: slice.netIncome, bold: true, equals: true },
+  ];
+  const collectionRows = [
     { label: "Cobrado aplicado", value: slice.collectedApplied },
     { label: "Pendiente", value: slice.pending },
-    { label: "Vencido", value: slice.overdue },
+    { label: "Vencido", value: slice.overdue, danger: slice.overdue > 0 },
   ];
 
   return (
     <div className="rounded-xl border border-[var(--copilot-border)] bg-white/80 p-4">
       <p className="text-sm font-semibold text-[var(--copilot-ink)]">{slice.code}</p>
-      <dl className="mt-3 space-y-2">
-        {rows.map((row) => (
+
+      <p className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+        Cálculo del neto
+      </p>
+      <dl className="mt-2 space-y-2">
+        {netRows.map((row) => (
           <div key={row.label} className="flex items-center justify-between gap-3 text-sm">
-            <dt className="text-[var(--copilot-ink-muted)]">{row.label}</dt>
+            <dt className="text-[var(--copilot-ink-muted)]">
+              {row.negative ? "− " : row.equals ? "= " : ""}
+              {row.label}
+            </dt>
             <dd
-              className={`tabular-nums ${row.bold ? "font-semibold" : ""} ${
+              className={`tabular-nums ${row.bold ? "font-semibold text-[var(--copilot-ink)]" : ""} ${
                 row.negative ? "text-rose-700" : "text-[var(--copilot-ink)]"
               }`}
             >
-              {row.negative && row.value !== 0 ? "−" : ""}
               {fmt(Math.abs(row.value), slice.code)}
             </dd>
           </div>
         ))}
       </dl>
+
+      <div className="my-3 border-t border-dashed border-[var(--copilot-border)]" />
+
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+        Estado de cobranza
+      </p>
+      <dl className="mt-2 space-y-2">
+        {collectionRows.map((row) => (
+          <div key={row.label} className="flex items-center justify-between gap-3 text-sm">
+            <dt className="text-[var(--copilot-ink-muted)]">{row.label}</dt>
+            <dd
+              className={`tabular-nums ${row.danger ? "font-semibold text-rose-800" : "text-[var(--copilot-ink)]"}`}
+            >
+              {fmt(row.value, slice.code)}
+            </dd>
+          </div>
+        ))}
+      </dl>
+
       <p className="mt-3 text-[11px] text-[var(--copilot-ink-muted)]">
         {formatPanoramaRate(slice.collectionRate)} cobrado del neto ·{" "}
         {formatPanoramaRate(slice.overdueRate)} del pendiente vencido
@@ -164,6 +226,7 @@ function CurrencyBreakdownTable({ slice }: { slice: PanoramaCurrencySlice }) {
 function PanoramaContent({
   model,
   cashPositions,
+  portfolioRows,
   invoices,
   receipts,
   asOfYmd,
@@ -171,6 +234,7 @@ function PanoramaContent({
 }: {
   model: FinancialPanoramaModel;
   cashPositions: CashPositionByCurrency[];
+  portfolioRows: ClientPortfolioRow[];
   invoices: DataRow[];
   receipts: DataRow[];
   asOfYmd: string;
@@ -182,6 +246,17 @@ function PanoramaContent({
 
   const cashUyu = cashPositions.find((p) => p.currency === "UYU");
   const cashUsd = cashPositions.find((p) => p.currency === "USD");
+
+  const concentrationCompanyId = model.concentration
+    ? portfolioRows.find((r) => r.name === model.concentration?.clientName)?.company_id
+    : undefined;
+
+  const riskCalloutClass =
+    riskSem.level === "critical"
+      ? "border-rose-200/80 bg-rose-50/50"
+      : riskSem.level === "attention"
+        ? "border-amber-200/80 bg-amber-50/40"
+        : softCalloutClass;
 
   return (
     <div className="space-y-6">
@@ -196,7 +271,62 @@ function PanoramaContent({
               subcopy="Facturación menos notas de crédito."
               tone={sem.tone}
               semaphore={sem}
+              tier="primary"
               onClick={() => onSelectMetric({ kind: "slice", metricId: "net-income", slice: c })}
+            />
+          );
+        })}
+        {(model.projection.cashTodayUyu !== 0 || cashUyu) ? (
+          <MetricCard
+            label="Caja disponible (UYU)"
+            value={fmt(model.projection.cashTodayUyu, "UYU")}
+            subcopy="Saldo operativo actual en Tesorería. No es facturación."
+            tone={resolveCashSemaphore(model.projection.cashTodayUyu, model.projection).tone}
+            semaphore={resolveCashSemaphore(model.projection.cashTodayUyu, model.projection)}
+            tier="primary"
+            onClick={() => onSelectMetric({ kind: "cash", currency: "UYU" })}
+          />
+        ) : null}
+        {(model.projection.cashTodayUsd !== 0 || cashUsd) ? (
+          <MetricCard
+            label="Caja disponible (USD)"
+            value={fmt(model.projection.cashTodayUsd, "USD")}
+            subcopy="Saldo operativo actual en Tesorería. No es facturación."
+            tone={resolveCashSemaphore(model.projection.cashTodayUsd, model.projection).tone}
+            semaphore={resolveCashSemaphore(model.projection.cashTodayUsd, model.projection)}
+            tier="primary"
+            onClick={() => onSelectMetric({ kind: "cash", currency: "USD" })}
+          />
+        ) : null}
+        {model.currencies.map((c) => {
+          const sem = resolvePendingSemaphore(c);
+          return (
+            <MetricCard
+              key={`pend-${c.code}`}
+              label={`Pendiente (${c.code})`}
+              value={fmt(c.pending, c.code)}
+              subcopy="Facturas abiertas de clientes."
+              tone={sem.tone}
+              semaphore={sem}
+              tier="primary"
+              onClick={() => onSelectMetric({ kind: "slice", metricId: "pending", slice: c })}
+            />
+          );
+        })}
+        {model.currencies.map((c) => {
+          const sem = resolveOverdueSemaphore(c);
+          const isCritical = sem.level === "critical";
+          return (
+            <MetricCard
+              key={`ov-${c.code}`}
+              label={`Vencido (${c.code})`}
+              value={fmt(c.overdue, c.code)}
+              subcopy="Parte del pendiente con atraso."
+              tone={sem.tone}
+              semaphore={sem}
+              tier="primary"
+              emphasize={isCritical}
+              onClick={() => onSelectMetric({ kind: "slice", metricId: "overdue", slice: c })}
             />
           );
         })}
@@ -210,67 +340,21 @@ function PanoramaContent({
               subcopy="Cobros registrados sobre ventas."
               tone={sem.tone}
               semaphore={sem}
+              tier="secondary"
               onClick={() => onSelectMetric({ kind: "slice", metricId: "collected", slice: c })}
             />
           );
         })}
-        {model.currencies.map((c) => {
-          const sem = resolvePendingSemaphore(c);
-          return (
-            <MetricCard
-              key={`pend-${c.code}`}
-              label={`Pendiente (${c.code})`}
-              value={fmt(c.pending, c.code)}
-              subcopy="Facturas abiertas de clientes."
-              tone={sem.tone}
-              semaphore={sem}
-              onClick={() => onSelectMetric({ kind: "slice", metricId: "pending", slice: c })}
-            />
-          );
-        })}
-        {model.currencies.map((c) => {
-          const sem = resolveOverdueSemaphore(c);
-          return (
-            <MetricCard
-              key={`ov-${c.code}`}
-              label={`Vencido (${c.code})`}
-              value={fmt(c.overdue, c.code)}
-              subcopy="Parte del pendiente con atraso."
-              tone={sem.tone}
-              semaphore={sem}
-              onClick={() => onSelectMetric({ kind: "slice", metricId: "overdue", slice: c })}
-            />
-          );
-        })}
-        {(model.projection.cashTodayUyu !== 0 || cashUyu) ? (
-          <MetricCard
-            label="Caja disponible (UYU)"
-            value={fmt(model.projection.cashTodayUyu, "UYU")}
-            subcopy="Dinero disponible actual. No es facturación."
-            tone={resolveCashSemaphore(model.projection.cashTodayUyu, model.projection).tone}
-            semaphore={resolveCashSemaphore(model.projection.cashTodayUyu, model.projection)}
-            onClick={() => onSelectMetric({ kind: "cash", currency: "UYU" })}
-          />
-        ) : null}
-        {(model.projection.cashTodayUsd !== 0 || cashUsd) ? (
-          <MetricCard
-            label="Caja disponible (USD)"
-            value={fmt(model.projection.cashTodayUsd, "USD")}
-            subcopy="Dinero disponible actual. No es facturación."
-            tone={resolveCashSemaphore(model.projection.cashTodayUsd, model.projection).tone}
-            semaphore={resolveCashSemaphore(model.projection.cashTodayUsd, model.projection)}
-            onClick={() => onSelectMetric({ kind: "cash", currency: "USD" })}
-          />
-        ) : null}
         {model.currencies.map((c) =>
           c.creditNotes > 0 ? (
             <MetricCard
               key={`nc-${c.code}`}
               label={`Notas de crédito (${c.code})`}
               value={fmt(c.creditNotes, c.code)}
-              subcopy="Anulaciones/descuentos que reducen ingresos."
+              subcopy="Reducen ingresos netos. No son caja."
               tone={resolveCreditNotesSemaphore(c).tone}
               semaphore={resolveCreditNotesSemaphore(c)}
+              tier="tertiary"
               onClick={() => onSelectMetric({ kind: "slice", metricId: "credit-notes", slice: c })}
             />
           ) : null
@@ -281,7 +365,7 @@ function PanoramaContent({
             value={fmt(0, primary.code)}
             subcopy="Sin NC en el período."
             tone="neutral"
-            semaphore={{ level: "neutral", label: "Informativo", tone: "neutral" }}
+            tier="tertiary"
             onClick={() =>
               onSelectMetric({ kind: "slice", metricId: "credit-notes", slice: primary })
             }
@@ -306,18 +390,31 @@ function PanoramaContent({
               <p className="text-[11px] text-[var(--copilot-ink-muted)]">cobrado del neto generado</p>
             </div>
           ))}
-          {model.currencies.map((c) => (
-            <div key={`ovr-${c.code}`} className={softCalloutClass}>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                Vencido {c.code}
-              </p>
-              <p className="mt-1 text-lg font-semibold tabular-nums">
-                {formatPanoramaRate(c.overdueRate)}
-              </p>
-              <p className="text-[11px] text-[var(--copilot-ink-muted)]">del pendiente está vencido</p>
-            </div>
-          ))}
-          <div className={softCalloutClass}>
+          {model.currencies.map((c) => {
+            const overduePct = c.overdueRate != null ? Math.round(c.overdueRate * 100) : 0;
+            const isRelevant = overduePct >= 30;
+            return (
+              <div
+                key={`ovr-${c.code}`}
+                className={`rounded-xl border p-3 ${
+                  isRelevant
+                    ? "border-amber-200/80 bg-amber-50/40"
+                    : overduePct === 0
+                      ? "border-[var(--copilot-border)] bg-white/60 opacity-80"
+                      : softCalloutClass
+                }`}
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                  Vencido {c.code}
+                </p>
+                <p className={`mt-1 text-lg font-semibold tabular-nums ${isRelevant ? "text-amber-950" : ""}`}>
+                  {formatPanoramaRate(c.overdueRate)}
+                </p>
+                <p className="text-[11px] text-[var(--copilot-ink-muted)]">del pendiente está vencido</p>
+              </div>
+            );
+          })}
+          <div className={`rounded-xl border p-3 ${riskCalloutClass}`}>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
               Riesgo financiero
             </p>
@@ -340,9 +437,18 @@ function PanoramaContent({
               <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Mayor exposición
               </p>
-              <p className="mt-1 text-sm font-semibold text-[var(--copilot-ink)]">
-                {model.concentration.clientName}
-              </p>
+              {concentrationCompanyId ? (
+                <Link
+                  href={`/copilot/clientes/${concentrationCompanyId}`}
+                  className="mt-1 block text-sm font-semibold text-[var(--copilot-accent)] hover:underline"
+                >
+                  {model.concentration.clientName}
+                </Link>
+              ) : (
+                <p className="mt-1 text-sm font-semibold text-[var(--copilot-ink)]">
+                  {model.concentration.clientName}
+                </p>
+              )}
               <p className="text-[11px] tabular-nums text-[var(--copilot-ink-muted)]">
                 {fmt(model.concentration.amount, model.concentration.currency)} ·{" "}
                 {model.concentration.sharePct}% del pendiente {model.concentration.currency}
@@ -361,7 +467,7 @@ function PanoramaContent({
             <p className="text-[11px] text-[var(--copilot-ink-muted)]">
               {model.projection.hasOutflows
                 ? "Caja + cobros esperados vs pagos próximos"
-                : "No hay egresos próximos cargados en Tesorería."}
+                : "No hay pagos próximos cargados."}
             </p>
           </div>
         </div>
@@ -428,15 +534,18 @@ function PanoramaContent({
             tone="warning"
           />
           <MetricCard
-            label="Caja estimada 30 días"
+            label="Escenario estimado 30 días"
             value={fmt(model.projection.estimatedCash30d, null)}
-            subcopy="Caja + cobros esperados − pagos próximos."
+            subcopy="Caja actual + cobros esperados − pagos próximos."
             tone={model.projection.estimatedCash30d < 0 ? "danger" : "neutral"}
           />
         </div>
+        <p className="mt-3 text-[11px] leading-relaxed text-[var(--copilot-ink-muted)]">
+          No es saldo bancario. Es una estimación operativa según cobranza esperada y pagos cargados.
+        </p>
         {!model.projection.hasOutflows ? (
-          <p className={`mt-4 text-sm text-[var(--copilot-ink-muted)] ${softCalloutClass}`}>
-            No hay egresos próximos cargados en Tesorería.
+          <p className={`mt-3 text-sm text-[var(--copilot-ink-muted)] ${softCalloutClass}`}>
+            No hay pagos próximos cargados.
           </p>
         ) : null}
       </CopilotCard>
@@ -655,6 +764,7 @@ export function FinancialPanoramaView() {
       <PanoramaContent
         model={model}
         cashPositions={cashPositions}
+        portfolioRows={portfolioRows}
         invoices={invoices}
         receipts={receipts}
         asOfYmd={today}
