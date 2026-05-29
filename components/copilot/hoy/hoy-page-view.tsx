@@ -35,8 +35,7 @@ import {
   HoyCockpitCardDrawer,
   type HoyCockpitCardId,
 } from "./hoy-cockpit-card-drawer";
-import { HoyCompactHero } from "./hoy-compact-hero";
-import { HoyTodayPriorityCard } from "./hoy-today-priority-card";
+import { HoyExecutiveSummaryCard } from "./hoy-executive-summary-card";
 import { HoyCurrentStateSection } from "./hoy-current-state-section";
 import { HoyMoneyCards } from "./hoy-money-cards";
 import { HoyPeriodActivitySection } from "./hoy-period-activity-section";
@@ -264,9 +263,8 @@ export function HoyPageView({
   return (
     <>
       <div className={HOY_PAGE_SHELL}>
-        <HoyCompactHero hero={cockpit.hero} />
-
-        <HoyTodayPriorityCard
+        <HoyExecutiveSummaryCard
+          hero={cockpit.hero}
           attentionClientsCount={pulse.clientCounts.attentionClients}
           cashAfterPaymentsCritical={
             cockpit.afterPayments.afterPaymentsAccent === "critical" ||
