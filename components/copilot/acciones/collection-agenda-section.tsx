@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Calendar, Clock, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { Calendar, Clock, AlertCircle, CheckCircle2, Loader2, X } from "lucide-react";
+import { copilotApiFetch } from "@/lib/copilot-fetch";
 
 import type { CollectionAgenda, CollectionAgendaItem } from "@/lib/collection/build-collection-agenda";
 import {
@@ -133,8 +134,41 @@ function AgendaSummaryCard({
   );
 }
 
-function AgendaItemCard({ item }: { item: CollectionAgendaItem }) {
+function AgendaItemCard({
+  item,
+  onArchived,
+}: {
+  item: CollectionAgendaItem;
+  onArchived: (actionId: string) => void;
+}) {
   const { bg, label: typeLabel } = typeBadgeCls(item.type);
+  const [confirming, setConfirming] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
+
+  const handleArchive = async () => {
+    setArchiveError(null);
+    setArchiving(true);
+    try {
+      const res = await copilotApiFetch(
+        `/api/copilot/data/collection-actions/${item.actionId}/archive`,
+        { method: "POST" }
+      );
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
+      if (json?.ok) {
+        onArchived(item.actionId);
+      } else {
+        setArchiveError(json?.message ?? "No se pudo cancelar. Intentá de nuevo.");
+        setConfirming(false);
+      }
+    } catch {
+      setArchiveError("Error de red al cancelar.");
+      setConfirming(false);
+    } finally {
+      setArchiving(false);
+    }
+  };
+
   return (
     <div className={`${actionCardClass} px-4 py-3.5`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -176,20 +210,58 @@ function AgendaItemCard({ item }: { item: CollectionAgendaItem }) {
         </p>
       ) : null}
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Link
-          href={item.href}
-          className="inline-flex items-center rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
-        >
-          Ver cliente
-        </Link>
-        <Link
-          href={`${item.href}#gestion-cobranza`}
-          className="inline-flex items-center rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-white"
-        >
-          Registrar gestión
-        </Link>
-      </div>
+      {archiveError ? (
+        <p className="mt-2 text-xs text-rose-600">{archiveError}</p>
+      ) : null}
+
+      {confirming ? (
+        <div className="mt-3 rounded-xl border border-amber-200/80 bg-amber-50/70 px-3 py-2.5">
+          <p className="text-xs font-medium text-amber-900">
+            Esto quitará este seguimiento de la agenda. No borra la deuda ni modifica facturas.
+          </p>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={() => void handleArchive()}
+              disabled={archiving}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50 hover:bg-amber-800"
+            >
+              {archiving ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : null}
+              {archiving ? "Cancelando…" : "Sí, cancelar"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirming(false)}
+              className="rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-white"
+            >
+              No
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Link
+            href={item.href}
+            className="inline-flex items-center rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+          >
+            Ver cliente
+          </Link>
+          <Link
+            href={`${item.href}#gestion-cobranza`}
+            className="inline-flex items-center rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-white"
+          >
+            Registrar gestión
+          </Link>
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:border-rose-200 hover:bg-rose-50/60 hover:text-rose-700"
+          >
+            <X className="h-3 w-3" aria-hidden />
+            Cancelar seguimiento
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -226,19 +298,29 @@ export function CollectionAgendaSection({
   loading: boolean;
 }) {
   const [filter, setFilter] = useState<AgendaFilter>("all");
+  const [archivedIds, setArchivedIds] = useState<Set<string>>(new Set());
 
-  const items = useMemo(
-    () => (agenda ? filterItems(agenda, filter) : []),
-    [agenda, filter]
-  );
+  const handleArchived = (actionId: string) => {
+    setArchivedIds((prev) => new Set([...prev, actionId]));
+  };
+
+  const filterItemsActive = (raw: CollectionAgendaItem[]) =>
+    raw.filter((i) => !archivedIds.has(i.actionId));
+
+  const items = useMemo(() => {
+    if (!agenda) return [];
+    return filterItems(agenda, filter).filter((i) => !archivedIds.has(i.actionId));
+  }, [agenda, filter, archivedIds]);
 
   const totalItems = agenda
-    ? agenda.overdueFollowups.length +
-      agenda.dueTodayFollowups.length +
-      agenda.upcomingFollowups.length +
-      agenda.overduePromises.length +
-      agenda.upcomingPromises.length +
-      agenda.recentContacts.length
+    ? filterItemsActive([
+        ...agenda.overdueFollowups,
+        ...agenda.dueTodayFollowups,
+        ...agenda.upcomingFollowups,
+        ...agenda.overduePromises,
+        ...agenda.upcomingPromises,
+        ...agenda.recentContacts,
+      ]).length
     : 0;
 
   return (
@@ -268,27 +350,27 @@ export function CollectionAgendaSection({
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
               <AgendaSummaryCard
                 label="Vencidos"
-                value={agenda.summary.overdueFollowupsCount + agenda.summary.overduePromisesCount}
+                value={filterItemsActive([...agenda.overdueFollowups, ...agenda.overduePromises]).length}
                 tone="danger"
               />
               <AgendaSummaryCard
                 label="Hoy"
-                value={agenda.summary.dueTodayCount}
+                value={filterItemsActive(agenda.dueTodayFollowups).length}
                 tone="warning"
               />
               <AgendaSummaryCard
                 label="Próximos"
-                value={agenda.summary.upcomingCount}
+                value={filterItemsActive(agenda.upcomingFollowups).length}
                 tone="info"
               />
               <AgendaSummaryCard
                 label="Promesas"
-                value={agenda.upcomingPromises.length}
+                value={filterItemsActive(agenda.upcomingPromises).length}
                 tone="neutral"
               />
               <AgendaSummaryCard
                 label="Contactados"
-                value={agenda.summary.recentContactsCount}
+                value={filterItemsActive(agenda.recentContacts).length}
                 tone="neutral"
               />
             </div>
@@ -325,8 +407,8 @@ export function CollectionAgendaSection({
           ) : (
             <ul className="space-y-2.5">
               {items.map((item) => (
-                <li key={`${item.companyId}-${item.type}`}>
-                  <AgendaItemCard item={item} />
+                <li key={`${item.actionId}-${item.type}`}>
+                  <AgendaItemCard item={item} onArchived={handleArchived} />
                 </li>
               ))}
             </ul>

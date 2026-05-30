@@ -44,6 +44,7 @@ export type CollectionAgendaItemType =
 
 export type CollectionAgendaItem = {
   companyId: string;
+  actionId: string;
   clientName: string;
   type: CollectionAgendaItemType;
   severity: "critical" | "high" | "medium" | "low";
@@ -183,6 +184,7 @@ export function buildCollectionAgenda(
 
     const base = {
       companyId,
+      actionId: action.id,
       clientName,
       href,
       channelLabel: ch,
