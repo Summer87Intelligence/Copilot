@@ -32,6 +32,7 @@ export const TESORERIA_SECTION_ALIASES: Record<string, TesoreriaSection> = {
   dashboard: "caja",
   resumen: "caja",
   pagos: "programados",
+  "pagos-proximos": "programados",
   manual: "movimientos",
   obligations: "programados",
   santander: "movimientos",
@@ -45,7 +46,7 @@ export const TESORERIA_SECTION_ALIASES: Record<string, TesoreriaSection> = {
 /** Tabs operativas principales — vista simple. */
 export const TESORERIA_SECTIONS_MAIN: { id: TesoreriaSection; label: string }[] = [
   { id: "caja", label: "Caja" },
-  { id: "programados", label: "Programados" },
+  { id: "programados", label: "Pagos próximos" },
   { id: "movimientos", label: "Movimientos" },
 ];
 

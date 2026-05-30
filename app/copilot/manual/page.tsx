@@ -261,7 +261,7 @@ const SECTIONS: Section[] = [
               "Acciones — tareas y agenda de cobranza.",
               "Clientes — ficha 360, cobranza y contacto.",
               "Cartera — deuda por período y reportes.",
-              "Tesorería — caja, pagos programados y movimientos.",
+              "Tesorería — caja, pagos próximos y movimientos.",
             ]}
           />
         </div>
@@ -1009,9 +1009,8 @@ const SECTIONS: Section[] = [
           <Bullets
             items={[
               "Caja — saldo disponible cargado al corte. Arriba del formulario: ¿Qué querés registrar? (Ingreso, Egreso o Pago programado).",
-              "Programados — pagos con fecha futura; no afectan caja hasta confirmarse.",
-              "Movimientos — ingresos y egresos confirmados que ajustan tu caja.",
-              "Avanzado — conciliación bancaria, recurrentes y opciones técnicas.",
+              "Pagos próximos — pagos con fecha futura, recurrentes y obligaciones; no afectan caja hasta confirmarse.",
+              "Movimientos — ingresos y egresos confirmados que ajustan tu caja. Incluye conciliación bancaria y cuentas.",
             ]}
           />
         </div>
