@@ -6,7 +6,6 @@ import { CopilotCard, CopilotSectionTitle } from "@/components/copilot/copilot-u
 import {
   buildFinancialTrendDashboard,
   buildFinancialMonthlyTrends,
-  type FinancialTrendDashboard,
   type TrendPoint,
   type MonthlyTrendInvoiceInput,
   type MonthlyTrendReceiptInput,
@@ -16,6 +15,15 @@ import { formatMoneyCurrency } from "@/lib/copilot-format-money";
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 type Period = "7d" | "1m" | "3m" | "6m" | "12m";
+
+type BarPoint = {
+  key: string;
+  label: string;
+  netSales: number;
+  collections: number;
+  creditNotes: number;
+  isEmpty: boolean;
+};
 
 const PERIOD_OPTIONS: { id: Period; label: string }[] = [
   { id: "7d", label: "7 días" },
@@ -35,10 +43,42 @@ function fmtPct(r: number): string {
   return `${Math.round(r * 100)}%`;
 }
 
-function fmtAxisLabel(n: number): string {
+function fmtAxis(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${Math.round(n / 1_000)}k`;
   return String(Math.round(n));
+}
+
+function r2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/** Group daily TrendPoints into ~7-day buckets for "Este mes" view. */
+function groupToWeeks(daily: TrendPoint[]): BarPoint[] {
+  const out: BarPoint[] = [];
+  for (let i = 0; i < daily.length; i += 7) {
+    const chunk = daily.slice(i, i + 7);
+    const ns = r2(chunk.reduce((s, p) => s + p.netSales, 0));
+    const co = r2(chunk.reduce((s, p) => s + p.collections, 0));
+    const nc = r2(chunk.reduce((s, p) => s + p.creditNotes, 0));
+    out.push({
+      key: chunk[0].key,
+      label: chunk[0].label,
+      netSales: ns,
+      collections: co,
+      creditNotes: nc,
+      isEmpty: ns === 0 && co === 0 && nc === 0,
+    });
+  }
+  return out;
+}
+
+function toBarPoints(points: TrendPoint[], period: Period): BarPoint[] {
+  const src = period === "1m" ? groupToWeeks(points) : points;
+  return src.map((p) => ({
+    ...p,
+    isEmpty: "isEmpty" in p ? (p as BarPoint).isEmpty : p.netSales === 0 && p.collections === 0 && p.creditNotes === 0,
+  }));
 }
 
 // ─── Delta badge ────────────────────────────────────────────────────────────────
@@ -76,21 +116,27 @@ function KpiCard({
   value,
   delta,
   sub,
+  tone,
 }: {
   label: string;
   value: string;
   delta?: React.ReactNode;
   sub?: string;
+  tone?: "ok" | "warn" | "neutral";
 }) {
+  const valueColor =
+    tone === "ok"
+      ? "text-emerald-800"
+      : tone === "warn"
+        ? "text-amber-800"
+        : "text-[var(--copilot-ink)]";
   return (
     <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 px-3 py-2.5">
       <p className="truncate text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
         {label}
       </p>
       <div className="mt-1 flex flex-wrap items-baseline gap-1.5">
-        <p className="text-sm font-bold tabular-nums leading-tight text-[var(--copilot-ink)]">
-          {value}
-        </p>
+        <p className={`text-sm font-bold tabular-nums leading-tight ${valueColor}`}>{value}</p>
         {delta}
       </div>
       {sub ? (
@@ -100,55 +146,55 @@ function KpiCard({
   );
 }
 
-// ─── SVG Chart ──────────────────────────────────────────────────────────────────
+// ─── Grouped bar chart ──────────────────────────────────────────────────────────
 
 const VB_W = 640;
-const VB_H = 200;
-const PAD_L = 50;
-const PAD_R = 12;
-const PAD_T = 12;
-const PAD_B = 38;
+const VB_H = 210;
+const PAD_L = 54;
+const PAD_R = 8;
+const PAD_T = 10;
+const PAD_B = 42;
 const CW = VB_W - PAD_L - PAD_R;
 const CH = VB_H - PAD_T - PAD_B;
 
-function toSvgY(value: number, maxY: number): number {
-  if (maxY === 0) return PAD_T + CH;
-  return PAD_T + CH - (value / maxY) * CH;
-}
-
-function TrendChart({
-  points,
+function GroupedBarChart({
+  bars,
   currency,
 }: {
-  points: TrendPoint[];
+  bars: BarPoint[];
   currency: "UYU" | "USD";
 }) {
-  if (points.length === 0) return null;
+  const n = bars.length;
+  if (n === 0) return null;
 
   const maxY = Math.max(
     1,
-    ...points.flatMap((p) => [p.netSales, p.collections, p.creditNotes]),
+    ...bars.flatMap((b) => [b.netSales, b.collections, b.creditNotes]),
   );
 
-  const n = points.length;
-  const step = CW / n;
-  const px = (i: number) => PAD_L + (i + 0.5) * step;
-  const py = (v: number) => toSvgY(v, maxY);
+  const groupW = CW / n;
+  const maxBarAreaW = Math.min(groupW * 0.82, 96);
+  const barW = Math.max(3, (maxBarAreaW - 4) / 3);
+  const groupBarTotalW = barW * 3 + 4;
 
-  const salesPts = points.map((p, i) => `${px(i)},${py(p.netSales)}`).join(" ");
-  const collPts = points.map((p, i) => `${px(i)},${py(p.collections)}`).join(" ");
+  const baselineY = PAD_T + CH;
+
+  const groupX = (i: number) => PAD_L + i * groupW;
+  const barX = (i: number, j: number) => {
+    const startX = groupX(i) + (groupW - groupBarTotalW) / 2;
+    return startX + j * (barW + 2);
+  };
+  const py = (v: number) => PAD_T + CH - (v / maxY) * CH;
 
   const gridSteps = [0.25, 0.5, 0.75, 1.0];
-  const barW = Math.max(2, Math.min(step * 0.45, 22));
-
-  // Show at most 12 x-axis labels
-  const labelEvery = n <= 12 ? 1 : Math.ceil(n / 12);
+  // Show group value label if few enough groups
+  const showGroupLabel = n <= 6;
 
   return (
     <svg
       viewBox={`0 0 ${VB_W} ${VB_H}`}
       width="100%"
-      aria-label="Gráfico de evolución comercial"
+      aria-label="Gráfico de barras comparativas"
       style={{ overflow: "visible" }}
     >
       {/* Horizontal grid */}
@@ -161,12 +207,11 @@ function TrendChart({
               y1={y}
               x2={PAD_L + CW}
               y2={y}
-              stroke="#e5e7eb"
+              stroke="#f0f0f0"
               strokeWidth="1"
-              strokeDasharray="4 3"
             />
-            <text x={PAD_L - 5} y={y + 3.5} textAnchor="end" fontSize="9" fill="#9ca3af">
-              {fmtAxisLabel(maxY * s)}
+            <text x={PAD_L - 5} y={y + 3.5} textAnchor="end" fontSize="9" fill="#adb5bd">
+              {fmtAxis(maxY * s)}
             </text>
           </g>
         );
@@ -175,103 +220,127 @@ function TrendChart({
       {/* Baseline */}
       <line
         x1={PAD_L}
-        y1={PAD_T + CH}
+        y1={baselineY}
         x2={PAD_L + CW}
-        y2={PAD_T + CH}
+        y2={baselineY}
         stroke="#d1d5db"
         strokeWidth="1"
       />
 
-      {/* Credit note bars */}
-      {points.map((p, i) => {
-        if (p.creditNotes <= 0) return null;
-        const barH = (p.creditNotes / maxY) * CH;
+      {/* Bar groups */}
+      {bars.map((b, i) => {
+        const tooltip = [
+          b.label,
+          b.netSales > 0 ? `Ventas: ${fmt(b.netSales, currency)}` : null,
+          b.collections > 0 ? `Cobros: ${fmt(b.collections, currency)}` : null,
+          b.creditNotes > 0 ? `NC: ${fmt(b.creditNotes, currency)}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+
+        const labelY = py(Math.max(b.netSales, b.collections, b.creditNotes, 1)) - 5;
+        const groupCx = PAD_L + (i + 0.5) * groupW;
+
         return (
-          <rect
-            key={`nc-${p.key}`}
-            x={px(i) - barW / 2}
-            y={py(p.creditNotes)}
-            width={barW}
-            height={barH}
-            fill="#fca5a5"
-            fillOpacity={0.65}
-            rx="2"
-          >
-            <title>{`${p.label} — NC: ${fmt(p.creditNotes, currency)}`}</title>
-          </rect>
-        );
-      })}
+          <g key={b.key}>
+            {/* Transparent hover area for tooltip */}
+            <rect
+              x={groupX(i)}
+              y={PAD_T}
+              width={groupW}
+              height={CH}
+              fill="transparent"
+            >
+              <title>{tooltip}</title>
+            </rect>
 
-      {/* Collections line */}
-      <polyline
-        points={collPts}
-        fill="none"
-        stroke="#38bdf8"
-        strokeWidth="2"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-      {points.map((p, i) =>
-        p.collections > 0 ? (
-          <circle key={`col-${p.key}`} cx={px(i)} cy={py(p.collections)} r="3" fill="#38bdf8">
-            <title>{`${p.label} — Cobros: ${fmt(p.collections, currency)}`}</title>
-          </circle>
-        ) : null,
-      )}
+            {/* Ventas netas bar */}
+            {b.netSales > 0 ? (
+              <rect
+                x={barX(i, 0)}
+                y={py(b.netSales)}
+                width={barW}
+                height={(b.netSales / maxY) * CH}
+                fill="#34d399"
+                fillOpacity={0.9}
+                rx="2"
+              />
+            ) : null}
 
-      {/* Net sales line — drawn last, on top */}
-      <polyline
-        points={salesPts}
-        fill="none"
-        stroke="#34d399"
-        strokeWidth="2.5"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-      {points.map((p, i) =>
-        p.netSales > 0 ? (
-          <circle key={`ns-${p.key}`} cx={px(i)} cy={py(p.netSales)} r="3.5" fill="#34d399">
-            <title>{`${p.label} — Ventas netas: ${fmt(p.netSales, currency)}`}</title>
-          </circle>
-        ) : null,
-      )}
+            {/* Cobros bar */}
+            {b.collections > 0 ? (
+              <rect
+                x={barX(i, 1)}
+                y={py(b.collections)}
+                width={barW}
+                height={(b.collections / maxY) * CH}
+                fill="#38bdf8"
+                fillOpacity={0.9}
+                rx="2"
+              />
+            ) : null}
 
-      {/* X axis labels */}
-      {points.map((p, i) => {
-        if (i % labelEvery !== 0) return null;
-        return (
-          <text
-            key={`xl-${p.key}`}
-            x={px(i)}
-            y={PAD_T + CH + 16}
-            textAnchor="middle"
-            fontSize="9"
-            fill="#9ca3af"
-          >
-            {p.label}
-          </text>
+            {/* NC bar */}
+            {b.creditNotes > 0 ? (
+              <rect
+                x={barX(i, 2)}
+                y={py(b.creditNotes)}
+                width={barW}
+                height={(b.creditNotes / maxY) * CH}
+                fill="#fca5a5"
+                fillOpacity={0.85}
+                rx="2"
+              />
+            ) : null}
+
+            {/* Per-group value label (few groups only) */}
+            {showGroupLabel && !b.isEmpty && b.netSales > 0 ? (
+              <text
+                x={groupCx}
+                y={labelY}
+                textAnchor="middle"
+                fontSize="9"
+                fill="#6b7280"
+                fontWeight="500"
+              >
+                {fmtAxis(b.netSales)}
+              </text>
+            ) : null}
+
+            {/* X axis label */}
+            <text
+              x={groupCx}
+              y={baselineY + 16}
+              textAnchor="middle"
+              fontSize="9"
+              fill={b.isEmpty ? "#c9c9c9" : "#9ca3af"}
+            >
+              {b.label}
+            </text>
+          </g>
         );
       })}
     </svg>
   );
 }
 
-// ─── Compact table ──────────────────────────────────────────────────────────────
+// ─── Collapsible detail table ───────────────────────────────────────────────────
 
-function TrendTable({
-  points,
+function DetailTable({
+  bars,
   currency,
 }: {
-  points: TrendPoint[];
+  bars: BarPoint[];
   currency: "UYU" | "USD";
 }) {
-  const rows = points.slice(-12);
+  const rows = bars.filter((b) => !b.isEmpty);
+  if (rows.length === 0) return null;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[440px] text-left text-[11px]">
+      <table className="w-full min-w-[400px] text-left text-[11px]">
         <thead>
           <tr>
-            {["Período", "Ventas netas", "Cobros", "NC", "Tasa cobro"].map((h) => (
+            {["Período", "Ventas netas", "Cobros", "NC", "Diferencia"].map((h) => (
               <th
                 key={h}
                 className="border-b border-[var(--copilot-border)] px-2 py-1.5 font-semibold text-[var(--copilot-ink-muted)]"
@@ -282,29 +351,36 @@ function TrendTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((p) => (
-            <tr key={p.key} className="hover:bg-slate-50/60">
-              <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 font-medium text-[var(--copilot-ink)]">
-                {p.label}
-              </td>
-              <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 tabular-nums text-emerald-700">
-                {p.netSales > 0 ? fmt(p.netSales, currency) : "—"}
-              </td>
-              <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 tabular-nums text-sky-700">
-                {p.collections > 0 ? fmt(p.collections, currency) : "—"}
-              </td>
-              <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 tabular-nums text-rose-500">
-                {p.creditNotes > 0 ? fmt(p.creditNotes, currency) : "—"}
-              </td>
-              <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 tabular-nums text-[var(--copilot-ink)]">
-                {p.collectionRate != null
-                  ? p.collectionRate > 1
-                    ? `${fmtPct(p.collectionRate)} ↑`
-                    : fmtPct(p.collectionRate)
-                  : "—"}
-              </td>
-            </tr>
-          ))}
+          {rows.map((b) => {
+            const diff = b.netSales - b.collections;
+            return (
+              <tr key={b.key} className="hover:bg-slate-50/60">
+                <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 font-medium text-[var(--copilot-ink)]">
+                  {b.label}
+                </td>
+                <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 tabular-nums text-emerald-700">
+                  {b.netSales > 0 ? fmt(b.netSales, currency) : "—"}
+                </td>
+                <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 tabular-nums text-sky-700">
+                  {b.collections > 0 ? fmt(b.collections, currency) : "—"}
+                </td>
+                <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 tabular-nums text-rose-500">
+                  {b.creditNotes > 0 ? fmt(b.creditNotes, currency) : "—"}
+                </td>
+                <td
+                  className={`border-b border-[var(--copilot-border)] px-2 py-1.5 tabular-nums ${
+                    diff > 0
+                      ? "text-amber-700"
+                      : diff < 0
+                        ? "text-emerald-700"
+                        : "text-[var(--copilot-ink-muted)]"
+                  }`}
+                >
+                  {diff !== 0 ? (diff > 0 ? `+${fmt(diff, currency)}` : fmt(diff, currency)) : "—"}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -324,8 +400,9 @@ export function FinancialMonthlyTrends({
 }) {
   const [period, setPeriod] = useState<Period>("6m");
   const [currency, setCurrency] = useState<"UYU" | "USD">("UYU");
+  const [showDetail, setShowDetail] = useState(false);
 
-  // Detect which currencies have data (scan last 12 months)
+  // Detect available currencies
   const { hasUyu, hasUsd } = useMemo(() => {
     const scan = buildFinancialMonthlyTrends({ invoices, receipts, asOfYmd, monthsBack: 12 });
     return {
@@ -343,28 +420,29 @@ export function FinancialMonthlyTrends({
     [invoices, receipts, asOfYmd, period, currency],
   );
 
-  const { totals, previousTotals, deltas, best, gap, insights, points } = dashboard;
-
-  const isEmpty = points.every(
-    (p) => p.netSales === 0 && p.collections === 0 && p.creditNotes === 0,
+  const bars = useMemo(
+    () => toBarPoints(dashboard.points, period),
+    [dashboard.points, period],
   );
 
-  const highRate = totals.collectionRate !== null && totals.collectionRate > 1;
+  const { totals, previousTotals, deltas, best, gap, insights } = dashboard;
 
-  const gapLabel =
-    gap.salesMinusCollections > 0
-      ? "Faltan cobrar"
-      : gap.salesMinusCollections < 0
-        ? "Recuperado"
-        : "Brecha";
+  const hasAnyData = bars.some((b) => !b.isEmpty);
+
+  const cobrosSupVentas = totals.collections > totals.netSales && totals.collections > 0;
+  const ventasSupCobros = totals.netSales > totals.collections && totals.netSales > 0;
+
+  // Tasa de cobro as small secondary info only if reasonable
+  const collRate = totals.collectionRate;
+  const showRateHint = collRate !== null && collRate > 0;
 
   return (
     <CopilotCard>
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <CopilotSectionTitle
           title="Evolución comercial"
-          subtitle="Ventas netas, cobros y notas de crédito por período."
+          subtitle="Compará ventas, cobros y notas de crédito por período."
         />
         <div className="flex flex-wrap items-center gap-2">
           {/* Period selector */}
@@ -426,14 +504,14 @@ export function FinancialMonthlyTrends({
         </div>
       </div>
 
-      {isEmpty ? (
+      {!hasAnyData ? (
         <p className="mt-4 text-sm text-[var(--copilot-ink-muted)]">
-          No hay datos suficientes para el período seleccionado.
+          No hay datos para el período seleccionado.
         </p>
       ) : (
         <>
-          {/* KPI row */}
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+          {/* ── KPI cards ── */}
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             <KpiCard
               label="Ventas netas"
               value={fmt(totals.netSales, currency)}
@@ -441,8 +519,9 @@ export function FinancialMonthlyTrends({
               sub={
                 previousTotals
                   ? `Anterior: ${fmt(previousTotals.netSales, currency)}`
-                  : undefined
+                  : "Sin comparación previa"
               }
+              tone="ok"
             />
             <KpiCard
               label="Cobros"
@@ -451,8 +530,9 @@ export function FinancialMonthlyTrends({
               sub={
                 previousTotals
                   ? `Anterior: ${fmt(previousTotals.collections, currency)}`
-                  : undefined
+                  : "Sin comparación previa"
               }
+              tone="ok"
             />
             <KpiCard
               label="Notas de crédito"
@@ -462,76 +542,100 @@ export function FinancialMonthlyTrends({
                   <DeltaBadge pct={deltas.creditNotesPct} invertColor />
                 ) : undefined
               }
+              sub="Anulaciones / descuentos"
             />
             <KpiCard
-              label="Tasa de cobro"
-              value={totals.collectionRate != null ? fmtPct(totals.collectionRate) : "—"}
-              delta={<DeltaBadge pts={deltas.collectionRatePoints} />}
-              sub={
-                previousTotals?.collectionRate != null
-                  ? `Anterior: ${fmtPct(previousTotals.collectionRate)}`
-                  : undefined
-              }
-            />
-            <KpiCard
-              label="Mejor período"
-              value={best.netSalesPeriod?.label ?? "—"}
-              sub={
-                best.netSalesPeriod
-                  ? fmt(best.netSalesPeriod.value, currency)
-                  : undefined
-              }
-            />
-            <KpiCard
-              label={gapLabel}
+              label={cobrosSupVentas ? "Cobraste más de lo vendido" : "Quedó por cobrar"}
               value={fmt(Math.abs(gap.salesMinusCollections), currency)}
-              sub={gap.label}
+              sub={
+                cobrosSupVentas
+                  ? "Puede incluir deuda anterior"
+                  : ventasSupCobros
+                    ? "Diferencia entre ventas y cobros"
+                    : "Ventas al día"
+              }
+              tone={cobrosSupVentas ? "ok" : ventasSupCobros ? "warn" : "neutral"}
             />
           </div>
 
-          {/* High collection rate alert */}
-          {highRate ? (
+          {/* Comparison row */}
+          {previousTotals ? (
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[var(--copilot-ink-muted)]">
+              <span className="font-semibold text-[var(--copilot-ink)]">Vs período anterior:</span>
+              <span className="flex items-center gap-1">
+                Ventas{" "}
+                <DeltaBadge pct={deltas.netSalesPct} />
+              </span>
+              <span className="flex items-center gap-1">
+                Cobros{" "}
+                <DeltaBadge pct={deltas.collectionsPct} />
+              </span>
+              {totals.creditNotes > 0 ? (
+                <span className="flex items-center gap-1">
+                  NC <DeltaBadge pct={deltas.creditNotesPct} invertColor />
+                </span>
+              ) : (
+                <span>NC sin cambios</span>
+              )}
+              {showRateHint ? (
+                <span className="ml-auto text-[10px] tabular-nums text-[var(--copilot-ink-muted)]">
+                  Cobros/ventas:{" "}
+                  <span className={collRate! > 1 ? "text-amber-700" : ""}>
+                    {fmtPct(collRate!)}
+                    {collRate! > 1 ? " — incluye deuda anterior" : ""}
+                  </span>
+                </span>
+              ) : null}
+            </div>
+          ) : (
+            <p className="mt-2 text-[11px] text-[var(--copilot-ink-muted)]">
+              Sin comparación previa para este período.
+            </p>
+          )}
+
+          {/* Alert banners */}
+          {cobrosSupVentas ? (
+            <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+              Cobraste más de lo vendido en este período. Puede incluir recuperación de deuda anterior.
+            </div>
+          ) : ventasSupCobros && gap.salesMinusCollections > totals.netSales * 0.3 ? (
             <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              <strong>Tasa de cobro {fmtPct(totals.collectionRate!)}.</strong> Cobraste más de lo
-              vendido en este período — puede incluir recuperación de deuda de períodos anteriores.
+              Vendiste más de lo cobrado en este período. Revisá la deuda de clientes.
             </div>
           ) : null}
 
-          {/* Chart */}
+          {/* ── Bar chart ── */}
           <div className="mt-4 overflow-x-auto rounded-xl border border-[var(--copilot-border)] bg-white/60 px-3 pb-2 pt-3">
-            <div style={{ minWidth: Math.max(points.length * 36, 280) }}>
-              <TrendChart points={points} currency={currency} />
+            <div style={{ minWidth: Math.max(bars.length * 44, 280) }}>
+              <GroupedBarChart bars={bars} currency={currency} />
             </div>
           </div>
 
           {/* Legend */}
           <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1.5 text-[11px] text-[var(--copilot-ink-muted)]">
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-5 rounded-full bg-emerald-400" aria-hidden />
+              <span className="h-2.5 w-3 rounded-sm bg-emerald-400/90" aria-hidden />
               Ventas netas
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-5 rounded-full bg-sky-400" aria-hidden />
+              <span className="h-2.5 w-3 rounded-sm bg-sky-400/90" aria-hidden />
               Cobros
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-sm bg-rose-300" aria-hidden />
-              Notas de crédito (barra)
+              <span className="h-2.5 w-3 rounded-sm bg-rose-300" aria-hidden />
+              Notas de crédito
             </span>
           </div>
 
-          {/* Insights */}
+          {/* ── Lectura rápida ── */}
           {insights.length > 0 ? (
             <div className="mt-4 rounded-xl border border-[var(--copilot-border)] bg-slate-50/70 px-4 py-3">
               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Lectura rápida
               </p>
               <ul className="space-y-1.5">
-                {insights.map((ins, i) => (
-                  <li
-                    key={i}
-                    className="flex items-start gap-2 text-xs text-[var(--copilot-ink)]"
-                  >
+                {insights.slice(0, 3).map((ins, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-[var(--copilot-ink)]">
                     <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--copilot-accent)]" />
                     {ins}
                   </li>
@@ -540,16 +644,31 @@ export function FinancialMonthlyTrends({
             </div>
           ) : null}
 
-          {/* Data table */}
+          {/* ── Collapsible detail table ── */}
           <div className="mt-4 border-t border-[var(--copilot-border)] pt-3">
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-              Detalle por período
-            </p>
-            <TrendTable points={points} currency={currency} />
+            <button
+              type="button"
+              onClick={() => setShowDetail((v) => !v)}
+              className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)] transition"
+            >
+              <span
+                className="inline-block transition-transform"
+                style={{ transform: showDetail ? "rotate(90deg)" : "rotate(0deg)" }}
+              >
+                ▶
+              </span>
+              {showDetail ? "Ocultar detalle" : "Ver detalle por período"}
+            </button>
+            {showDetail ? (
+              <div className="mt-3">
+                <DetailTable bars={bars} currency={currency} />
+              </div>
+            ) : null}
           </div>
         </>
       )}
 
+      {/* Footer */}
       <p className="mt-4 text-[11px] leading-relaxed text-[var(--copilot-ink-muted)]">
         Ventas netas = facturación menos notas de crédito. Cobros = recibos registrados. No es
         cierre contable formal. UYU y USD se analizan por separado.
