@@ -232,7 +232,18 @@ export function mergePrioritizedActions(
   fromNotifications: CopilotAction[],
   fromPortfolio: CopilotAction[]
 ): CopilotAction[] {
-  return [...fromNotifications, ...fromPortfolio].sort(
+  const sorted = [...fromNotifications, ...fromPortfolio].sort(
     (a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
   );
+  // Deduplicate by entityId: keep highest-priority (first in sorted order)
+  const seenEntities = new Set<string>();
+  const result: CopilotAction[] = [];
+  for (const action of sorted) {
+    if (action.entityId) {
+      if (seenEntities.has(action.entityId)) continue;
+      seenEntities.add(action.entityId);
+    }
+    result.push(action);
+  }
+  return result;
 }
