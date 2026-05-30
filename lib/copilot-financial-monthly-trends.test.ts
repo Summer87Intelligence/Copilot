@@ -5,6 +5,7 @@ import {
   buildFinancialTrendDashboard,
   defaultTrendCurrency,
   filterTrendsByCurrency,
+  FINANCIAL_TRENDS_MIN_DATE,
 } from "@/lib/copilot-financial-monthly-trends";
 
 describe("copilot-financial-monthly-trends", () => {
@@ -148,17 +149,18 @@ describe("buildFinancialTrendDashboard", () => {
   });
 
   it("calcula deltas vs período anterior", () => {
+    // asOfYmd in June so previous 3m = [ene, feb, mar 2026] — fully within 2026 cutoff
     const result = buildFinancialTrendDashboard({
-      asOfYmd: "2026-05-30",
+      asOfYmd: "2026-06-30",
       period: "3m",
       currency: "UYU",
       invoices: [
-        inv("2026-03-01", 1000),
         inv("2026-04-01", 1000),
         inv("2026-05-01", 1000),
-        inv("2025-12-01", 500),
+        inv("2026-06-01", 1000),
         inv("2026-01-01", 500),
         inv("2026-02-01", 500),
+        inv("2026-03-01", 500),
       ],
       receipts: [],
     });
@@ -266,5 +268,102 @@ describe("buildFinancialTrendDashboard", () => {
     });
     expect(result.previousTotals).toBeNull();
     expect(result.deltas.netSalesPct).toBeNull();
+  });
+});
+
+// ─── FINANCIAL_TRENDS_MIN_DATE cutoff ─────────────────────────────────────────
+
+describe("buildFinancialTrendDashboard — corte min date 2026-01", () => {
+  const inv = (date: string, amount: number, cur = "UYU") => ({
+    issue_date: date,
+    total_amount: amount,
+    currency_code: cur,
+    is_active: true,
+  });
+
+  it("12m desde 2026-05 devuelve solo ene-may 2026", () => {
+    const result = buildFinancialTrendDashboard({
+      asOfYmd: "2026-05-30",
+      period: "12m",
+      currency: "UYU",
+      invoices: [
+        inv("2025-06-01", 5000), // excluido
+        inv("2025-12-01", 3000), // excluido
+        inv("2026-01-01", 1000), // incluido
+        inv("2026-03-01", 2000), // incluido
+        inv("2026-05-01", 1500), // incluido
+      ],
+      receipts: [],
+    });
+    expect(result.points.every((p) => p.key >= "2026-01")).toBe(true);
+    expect(result.points.length).toBe(5);
+    expect(result.totals.netSales).toBe(4500);
+  });
+
+  it("no incluye jun-dic 2025 en keys de 12 meses", () => {
+    const result = buildFinancialTrendDashboard({
+      asOfYmd: "2026-05-30",
+      period: "12m",
+      currency: "UYU",
+      invoices: [],
+      receipts: [],
+    });
+    expect(result.points.every((p) => p.key >= "2026-01")).toBe(true);
+    expect(result.points.length).toBeLessThanOrEqual(5);
+  });
+
+  it("previousTotals es null cuando comparación cae antes de 2026-01", () => {
+    // 3m desde may 2026: prevKeys = [2025-12, 2026-01, 2026-02] → cruzó el corte
+    const result = buildFinancialTrendDashboard({
+      asOfYmd: "2026-05-30",
+      period: "3m",
+      currency: "UYU",
+      invoices: [inv("2026-03-01", 1000), inv("2025-12-01", 999)],
+      receipts: [],
+    });
+    expect(result.previousTotals).toBeNull();
+    expect(result.deltas.netSalesPct).toBeNull();
+  });
+
+  it("3 meses no cruza antes de 2026 en currentKeys", () => {
+    const result = buildFinancialTrendDashboard({
+      asOfYmd: "2026-05-30",
+      period: "3m",
+      currency: "UYU",
+      invoices: [],
+      receipts: [],
+    });
+    expect(result.points.every((p) => p.key >= "2026-01")).toBe(true);
+  });
+
+  it("7 días respeta min date si asOf está cerca de 2026-01-01", () => {
+    const result = buildFinancialTrendDashboard({
+      asOfYmd: "2026-01-05",
+      period: "7d",
+      currency: "UYU",
+      invoices: [
+        inv("2025-12-30", 999), // excluido
+        inv("2026-01-02", 500), // incluido
+      ],
+      receipts: [],
+    });
+    expect(result.points.every((p) => p.key >= FINANCIAL_TRENDS_MIN_DATE)).toBe(true);
+    expect(result.totals.netSales).toBe(500);
+    expect(result.previousTotals).toBeNull();
+  });
+
+  it("no mezcla monedas con corte activo", () => {
+    const result = buildFinancialTrendDashboard({
+      asOfYmd: "2026-05-30",
+      period: "6m",
+      currency: "UYU",
+      invoices: [
+        inv("2026-03-01", 1000, "UYU"),
+        inv("2026-03-01", 9000, "USD"),
+        inv("2025-12-01", 5000, "UYU"), // excluido por corte
+      ],
+      receipts: [],
+    });
+    expect(result.totals.netSales).toBe(1000);
   });
 });

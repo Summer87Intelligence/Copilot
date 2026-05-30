@@ -671,7 +671,8 @@ export function FinancialMonthlyTrends({
       {/* Footer */}
       <p className="mt-4 text-[11px] leading-relaxed text-[var(--copilot-ink-muted)]">
         Ventas netas = facturación menos notas de crédito. Cobros = recibos registrados. No es
-        cierre contable formal. UYU y USD se analizan por separado.
+        cierre contable formal. UYU y USD se analizan por separado. Se muestran datos desde enero
+        2026.
       </p>
     </CopilotCard>
   );

@@ -284,6 +284,10 @@ export function maxTrendValue(trends: readonly FinancialMonthlyTrend[]): number 
   return max || 1;
 }
 
+/** Corte mínimo de fecha para el dashboard de tendencias. No se muestran períodos anteriores. */
+export const FINANCIAL_TRENDS_MIN_DATE = "2026-01-01";
+const FINANCIAL_TRENDS_MIN_YM = "2026-01";
+
 // ─── Financial trend dashboard ────────────────────────────────────────────────
 
 export type TrendPoint = {
@@ -478,7 +482,13 @@ export function buildFinancialTrendDashboard(input: {
     return { currentKeys: curr, prevKeys: prev };
   };
 
-  const { currentKeys, prevKeys } = getKeys();
+  const { currentKeys: rawCurrentKeys, prevKeys } = getKeys();
+
+  // Apply min-date cutoff — exclude periods before FINANCIAL_TRENDS_MIN_DATE.
+  const minKey = useDaily ? FINANCIAL_TRENDS_MIN_DATE : FINANCIAL_TRENDS_MIN_YM;
+  const currentKeys = rawCurrentKeys.filter((k) => k >= minKey);
+  // If any prevKey falls before the cutoff, the comparison period is unavailable.
+  const prevKeysValid = prevKeys.length > 0 && prevKeys.every((k) => k >= minKey);
 
   const invKeyFn: (inv: MonthlyTrendInvoiceInput) => string = useDaily
     ? (inv) => String(inv.issue_date ?? "").slice(0, 10)
@@ -491,13 +501,15 @@ export function buildFinancialTrendDashboard(input: {
   const currentAcc = accumulateForKeys(
     invoices, receipts, new Set(currentKeys), currency, invKeyFn, recKeyFn,
   );
-  const prevAcc = accumulateForKeys(
-    invoices, receipts, new Set(prevKeys), currency, invKeyFn, recKeyFn,
-  );
+  const prevAcc = prevKeysValid
+    ? accumulateForKeys(invoices, receipts, new Set(prevKeys), currency, invKeyFn, recKeyFn)
+    : new Map<string, Acc>();
 
   const currentSum = sumAccMap(currentAcc);
-  const prevSum = sumAccMap(prevAcc);
-  const hasPrevData = prevSum.grossIssued > 0 || prevSum.creditNotes > 0 || prevSum.collected > 0;
+  const prevSum = prevKeysValid ? sumAccMap(prevAcc) : emptyAcc();
+  const hasPrevData =
+    prevKeysValid &&
+    (prevSum.grossIssued > 0 || prevSum.creditNotes > 0 || prevSum.collected > 0);
 
   const totals = accToTotals(currentSum);
   const previousTotals = hasPrevData ? accToTotals(prevSum) : null;
