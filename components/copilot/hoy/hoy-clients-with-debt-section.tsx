@@ -288,7 +288,7 @@ function DebtorTable({
                     {row.vencido ? (
                       <DebtorAmount amount={row.vencido} tone="danger" />
                     ) : (
-                      <span className="text-sm font-medium text-emerald-700">Sin deuda vencida</span>
+                      <span className="text-sm font-medium text-[var(--copilot-ink-muted)]">Sin deuda vencida</span>
                     )}
                   </td>
                   <td className="px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)]">
