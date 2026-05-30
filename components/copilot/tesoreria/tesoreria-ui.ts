@@ -34,11 +34,12 @@ export const TESORERIA_SECTION_ALIASES: Record<string, TesoreriaSection> = {
   pagos: "programados",
   manual: "movimientos",
   obligations: "programados",
-  santander: "avanzado",
-  bank: "avanzado",
-  recurring: "avanzado",
-  accounts: "avanzado",
+  santander: "movimientos",
+  bank: "movimientos",
+  recurring: "programados",
+  accounts: "movimientos",
   opening: "caja",
+  avanzado: "movimientos",
 };
 
 /** Tabs operativas principales — vista simple. */
@@ -46,7 +47,6 @@ export const TESORERIA_SECTIONS_MAIN: { id: TesoreriaSection; label: string }[] 
   { id: "caja", label: "Caja" },
   { id: "programados", label: "Programados" },
   { id: "movimientos", label: "Movimientos" },
-  { id: "avanzado", label: "Avanzado" },
 ];
 
 /** Secciones de configuración legacy — ya no aparecen en nav principal. */

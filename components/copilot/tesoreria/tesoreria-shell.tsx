@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { TesoreriaControlBar } from "@/components/copilot/tesoreria/tesoreria-control-bar";
-import { TesoreriaDashboard } from "@/components/copilot/tesoreria/tesoreria-dashboard";
 import { TreasuryAccountsPanel } from "@/components/copilot/tesoreria/treasury-accounts-panel";
 import { TreasuryBankPanel } from "@/components/copilot/tesoreria/treasury-bank-panel";
 import { TreasuryCashPanel } from "@/components/copilot/tesoreria/treasury-cash-panel";
@@ -183,25 +182,21 @@ export function TesoreriaShell() {
       {section === "caja" ? <TreasuryCashPanel workspace={workspace} /> : null}
 
       {section === "programados" ? (
-        <TreasuryProgramadosPanel workspace={workspace} asOfDate={asOfDate} />
-      ) : null}
-
-      {section === "movimientos" ? <TreasuryMovimientosPanel workspace={workspace} /> : null}
-
-      {section === "avanzado" ? (
         <div className="space-y-6">
-          <TesoreriaDashboard
-            workspace={workspace}
-            asOfDate={asOfDate}
-            onGoToPagos={() => setSectionWithUrl("programados")}
-          />
-          <TreasuryObligationsPanel workspace={workspace} asOfDate={asOfDate} />
-          <TreasuryManualCashPanel workspace={workspace} />
-          <TreasuryBankPanel workspace={workspace} />
+          <TreasuryProgramadosPanel workspace={workspace} asOfDate={asOfDate} />
           <TreasuryRecurringPaymentsPanel
             workspace={workspace}
             onGoToPagos={() => setSectionWithUrl("programados")}
           />
+          <TreasuryObligationsPanel workspace={workspace} asOfDate={asOfDate} />
+        </div>
+      ) : null}
+
+      {section === "movimientos" ? (
+        <div className="space-y-6">
+          <TreasuryMovimientosPanel workspace={workspace} />
+          <TreasuryManualCashPanel workspace={workspace} />
+          <TreasuryBankPanel workspace={workspace} />
           <TreasuryAccountsPanel workspace={workspace} />
           <TreasuryOpeningBalancesPanel workspace={workspace} />
         </div>

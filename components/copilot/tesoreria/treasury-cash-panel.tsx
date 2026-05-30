@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowDownCircle, ArrowUpCircle, CalendarClock, Pencil, Check, X, Plus } from "lucide-react";
 
 import { copilotApiFetch } from "@/lib/copilot-fetch";
@@ -555,7 +554,6 @@ function TreasuryMovementGuide({
 }
 
 export function TreasuryCashPanel({ workspace }: { workspace: TreasuryWorkspace }) {
-  const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [formPreset, setFormPreset] = useState<Partial<QuickForm> | undefined>(undefined);
 
@@ -578,9 +576,7 @@ export function TreasuryCashPanel({ workspace }: { workspace: TreasuryWorkspace 
       <TreasuryMovementGuide
         onIncome={() => openForm({ movementType: "income", mode: "now" })}
         onExpense={() => openForm({ movementType: "expense", mode: "now" })}
-        onScheduled={() => {
-          router.push("/copilot/tesoreria?section=programados");
-        }}
+        onScheduled={() => openForm({ movementType: "expense", mode: "scheduled" })}
       />
       {/* Balance cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
