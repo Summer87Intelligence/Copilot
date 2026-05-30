@@ -421,7 +421,7 @@ export function QuickMovementForm({
       <p className="mt-2 text-[11px] text-[var(--copilot-ink-muted)]">
         {form.mode === "now"
           ? "Este movimiento afectará la caja inmediatamente."
-          : "No afecta caja hasta que lo marcás como pagado en Programados."}
+          : "No afecta caja hasta que lo marcás como pagado en Pagos próximos."}
       </p>
 
       <button
