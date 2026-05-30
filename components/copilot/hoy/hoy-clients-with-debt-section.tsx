@@ -314,6 +314,29 @@ function DebtorTable({
   );
 }
 
+/** Deduplica por (company_id, currency) conservando la fila de mayor riesgo. */
+function dedupeDebtorRows(rows: DebtorCollectionRow[]): DebtorCollectionRow[] {
+  const map = new Map<string, DebtorCollectionRow>();
+  for (const row of rows) {
+    const key = `${row.company_id}|${row.currency}`;
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, row);
+    } else {
+      const scoreA = (existing.vencido?.amount ?? 0) * 1000 + existing.deuda.amount;
+      const scoreB = (row.vencido?.amount ?? 0) * 1000 + row.deuda.amount;
+      if (scoreB > scoreA) map.set(key, row);
+    }
+  }
+  return [...map.values()].sort((a, b) => {
+    const vA = a.vencido?.amount ?? 0;
+    const vB = b.vencido?.amount ?? 0;
+    if (vB !== vA) return vB - vA;
+    if (b.deuda.amount !== a.deuda.amount) return b.deuda.amount - a.deuda.amount;
+    return a.name.localeCompare(b.name, "es");
+  });
+}
+
 export function ClientsWithDebtSection({
   allRows,
   counts,
@@ -330,18 +353,19 @@ export function ClientsWithDebtSection({
   highlightRisk?: boolean;
 }) {
   const initialCount = HOY_UI.initialDebtorTableRows;
+  const dedupedRows = useMemo(() => dedupeDebtorRows(allRows), [allRows]);
   const visibleRows = useMemo(
-    () => (expanded ? allRows : allRows.slice(0, initialCount)),
-    [allRows, expanded, initialCount]
+    () => (expanded ? dedupedRows : dedupedRows.slice(0, initialCount)),
+    [dedupedRows, expanded, initialCount]
   );
 
   const summary = buildDebtorsSummaryLine(counts, allRows);
-  const canExpand = allRows.length > initialCount;
+  const canExpand = dedupedRows.length > initialCount;
 
   const expandLabel =
-    counts.debtorClients === 1
+    dedupedRows.length === 1
       ? "Mostrar el deudor activo"
-      : `Mostrar todos los deudores (${counts.debtorClients})`;
+      : `Mostrar todos los deudores (${dedupedRows.length})`;
 
   return (
     <section ref={sectionRef} id="clientes-criticos" className="scroll-mt-4">
