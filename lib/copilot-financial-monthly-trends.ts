@@ -180,6 +180,88 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+export type DailyTrend = {
+  day: string;
+  label: string;
+  currency: "UYU" | "USD";
+  netIssued: number;
+  collected: number;
+  creditNotes: number;
+};
+
+export function buildFinancialDailyTrends(input: {
+  invoices: readonly MonthlyTrendInvoiceInput[];
+  receipts: readonly MonthlyTrendReceiptInput[];
+  asOfYmd: string;
+  daysBack?: number;
+}): { trends: DailyTrend[]; isEmpty: boolean } {
+  const daysBack = input.daysBack ?? 7;
+  const endDate = new Date(`${input.asOfYmd.slice(0, 10)}T12:00:00`);
+  const days: string[] = [];
+  for (let i = daysBack - 1; i >= 0; i--) {
+    const d = new Date(endDate);
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().slice(0, 10));
+  }
+
+  const acc = new Map<string, Acc>();
+  for (const day of days) {
+    for (const cur of ["UYU", "USD"] as const) {
+      acc.set(`${day}|${cur}`, emptyAcc());
+    }
+  }
+
+  for (const inv of input.invoices) {
+    if (!isActiveInvoice(inv)) continue;
+    const day = String(inv.issue_date ?? "").slice(0, 10);
+    if (!days.includes(day)) continue;
+    const cur = normalizeCurrency(inv.currency_code);
+    if (!cur) continue;
+    const key = `${day}|${cur}`;
+    const bucket = acc.get(key) ?? emptyAcc();
+    const amount = Math.abs(num(inv.total_amount));
+    if (isCreditNoteFromMetadata(inv.zeta_metadata)) {
+      bucket.creditNotes += amount;
+    } else {
+      bucket.grossIssued += amount;
+    }
+    acc.set(key, bucket);
+  }
+
+  for (const rec of input.receipts) {
+    if (rec.is_active === false) continue;
+    const day = String(rec.receipt_date ?? "").slice(0, 10);
+    if (!days.includes(day)) continue;
+    const cur = normalizeCurrency(rec.currency_code);
+    if (!cur) continue;
+    const key = `${day}|${cur}`;
+    const bucket = acc.get(key) ?? emptyAcc();
+    bucket.collected += Math.abs(num(rec.amount));
+    acc.set(key, bucket);
+  }
+
+  const trends: DailyTrend[] = [];
+  for (const day of days) {
+    for (const cur of ["UYU", "USD"] as const) {
+      const bucket = acc.get(`${day}|${cur}`) ?? emptyAcc();
+      const hasData = bucket.grossIssued > 0 || bucket.creditNotes > 0 || bucket.collected > 0;
+      if (!hasData) continue;
+      const d = new Date(`${day}T12:00:00`);
+      const label = d.toLocaleDateString("es-UY", { weekday: "short", day: "numeric" });
+      trends.push({
+        day,
+        label,
+        currency: cur,
+        netIssued: round2(Math.max(0, bucket.grossIssued - bucket.creditNotes)),
+        collected: round2(bucket.collected),
+        creditNotes: round2(bucket.creditNotes),
+      });
+    }
+  }
+
+  return { trends, isEmpty: trends.length === 0 };
+}
+
 export function filterTrendsByCurrency(
   trends: readonly FinancialMonthlyTrend[],
   currency: "UYU" | "USD"
