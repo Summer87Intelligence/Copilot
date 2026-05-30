@@ -254,7 +254,7 @@ export default function CopilotClientesPage() {
 
         {!loading && !error && load ? (
           <>
-            {/* Summary cards */}
+            {/* Summary cards — always global, independent of active filter */}
             {(() => {
               const overdueCount = load.rows.filter(
                 (r) => (r.overdue_uyu ?? 0) > 0 || (r.overdue_usd ?? 0) > 0 || r.overdue_debt > 0
@@ -266,7 +266,14 @@ export default function CopilotClientesPage() {
                 (r) => r.debt_uyu > 0 || r.debt_usd > 0 || r.total_debt > 0
               ).length;
               const noContactCount = load.rows.filter((r) => !r.has_contact_data).length;
+              const hasActiveFilter = clientFilter !== "all" || search.trim() !== "";
               return (
+                <>
+                  {hasActiveFilter ? (
+                    <p className="text-[11px] text-[var(--copilot-ink-muted)]">
+                      Resumen general · todos los clientes · la lista de abajo refleja el filtro activo.
+                    </p>
+                  ) : null}
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <CopilotCard className="py-3">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
@@ -327,6 +334,7 @@ export default function CopilotClientesPage() {
                     </p>
                   </CopilotCard>
                 </div>
+                </>
               );
             })()}
 
