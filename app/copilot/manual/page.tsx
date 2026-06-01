@@ -272,7 +272,7 @@ const SECTIONS: Section[] = [
           <Bullets
             items={[
               "Datos — facturas, recibos y registros en tabla.",
-              "Reportes — PDFs de cobranza, caja, ventas netas, ejecutivo mensual y ranking de clientes.",
+              "Reportes — cada reporte puede verse en pantalla o descargarse como PDF. Cubre cobranza, caja, ventas netas, ejecutivo mensual y ranking de clientes.",
               "Panorama financiero — lectura general (no reemplaza Tesorería ni Cartera).",
               "Agentes IA — briefings de lectura; no modifican datos.",
             ]}
@@ -1532,22 +1532,29 @@ const SECTIONS: Section[] = [
   {
     id: "reportes",
     icon: <FileText className="h-4 w-4" aria-hidden />,
-    title: "Reportes — PDFs operativos",
+    title: "Reportes — vista en pantalla y PDF",
     content: (
       <>
         <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
-          <strong>Reportes</strong> centraliza los PDFs que podés descargar para revisar deuda,
-          cobranza, caja y ventas. Están organizados en tres grupos: Cobranza, Finanzas y Clientes.
+          <strong>Reportes</strong> centraliza los 6 reportes operativos, organizados en tres grupos: Cobranza, Finanzas y Clientes. Cada reporte tiene dos modos de uso:
         </p>
         <Bullets
           items={[
-            "Reporte de deudores — clientes con deuda, moneda, antigüedad y contacto.",
-            "Reporte de cobranza — cobros registrados del mes separados por moneda (UYU o USD). Incluye fecha, número de recibo, cliente e importe.",
-            "Reporte de caja mensual — movimientos de caja del período con saldo inicial, ingresos, egresos y saldo final acumulado.",
-            "Reporte de ventas netas — facturación del mes por cliente descontando notas de crédito. Ordenado por ventas netas descendente.",
-            "Reporte ejecutivo mensual — resumen CEO en un solo PDF: indicadores clave, top 5 clientes por facturación, top 5 deudores, estado de caja y nivel de riesgo.",
-            "Clientes principales — ranking de clientes ordenable por facturación, deuda total o deuda vencida. Muestra participación y riesgo.",
-            "Estado de cuenta por cliente — desde la ficha de cada cliente.",
+            "Ver reporte — abre una vista previa dentro de Copilot con filtros, resumen de métricas y tabla. Ideal para consulta rápida sin descargar nada.",
+            "Generar PDF — descarga el reporte como archivo profesional para enviar, imprimir o archivar.",
+            "Ambos modos usan los mismos datos y cálculos. No hay diferencia en los números.",
+          ]}
+        />
+        <p className="text-sm font-semibold text-[var(--copilot-ink)] mt-2">Reportes disponibles</p>
+        <Bullets
+          items={[
+            "Deudores — clientes con deuda, moneda, antigüedad y contacto. Los filtros se aplican en tiempo real en la vista previa.",
+            "Cobranza mensual — cobros registrados del mes por moneda. Incluye fecha, número de recibo, cliente e importe.",
+            "Caja mensual — movimientos del período con saldo inicial, ingresos, egresos y saldo acumulado. Ingresos en verde, egresos en rojo.",
+            "Ventas netas — facturación por cliente descontando notas de crédito. Ordenado por ventas netas descendente con participación %.",
+            "Ejecutivo mensual — resumen CEO: indicadores clave, top 5 clientes, top 5 deudores, estado de caja y nivel de riesgo (Bajo / Atención / Crítico).",
+            "Clientes principales — ranking ordenable por facturación, deuda total o deuda vencida. Muestra participación y nivel de riesgo por cliente.",
+            "Estado de cuenta — detalle individual por cliente. Se genera desde la ficha de cada cliente.",
             "Los reportes son de solo lectura: no modifican facturas, caja ni gestiones.",
           ]}
         />
