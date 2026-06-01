@@ -104,29 +104,44 @@ function DebtCell({ row }: { row: ClientPortfolioRow }) {
     return <span className="text-xs text-emerald-700">—</span>;
   }
 
+  const uyuTitle = overdueUyu
+    ? `$ ${row.debt_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })} UYU vencido`
+    : `$ ${row.debt_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })} UYU`;
+  const usdTitle = overdueUsd
+    ? `U$S ${row.debt_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })} USD vencido`
+    : `U$S ${row.debt_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })} USD`;
+
   return (
-    <div className="space-y-0.5">
+    <div
+      className="flex flex-wrap items-center gap-x-2 gap-y-0.5 sm:flex-nowrap"
+      title={hasUyu && hasUsd ? `${uyuTitle} · ${usdTitle}` : hasUyu ? uyuTitle : usdTitle}
+    >
       {hasUyu ? (
-        <div
-          className={`tabular-nums text-sm ${overdueUyu ? "font-semibold text-rose-700" : "text-[var(--copilot-ink)]"}`}
+        <span
+          className={`inline-flex shrink-0 items-center tabular-nums text-sm whitespace-nowrap ${overdueUyu ? "font-semibold text-rose-700" : "text-[var(--copilot-ink)]"}`}
         >
           $ {row.debt_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
           <span className="ml-1 text-[10px] text-[var(--copilot-ink-muted)]">UYU</span>
           {overdueUyu ? (
             <span className="ml-1 text-[10px] font-medium text-rose-600">vencido</span>
           ) : null}
-        </div>
+        </span>
+      ) : null}
+      {hasUyu && hasUsd ? (
+        <span className="hidden text-[10px] text-[var(--copilot-ink-muted)] sm:inline" aria-hidden>
+          ·
+        </span>
       ) : null}
       {hasUsd ? (
-        <div
-          className={`tabular-nums text-sm ${overdueUsd ? "font-semibold text-rose-700" : "text-amber-900"}`}
+        <span
+          className={`inline-flex shrink-0 items-center tabular-nums text-sm whitespace-nowrap ${overdueUsd ? "font-semibold text-rose-700" : "text-amber-900"}`}
         >
           U$S {row.debt_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
           <span className="ml-1 text-[10px] text-[var(--copilot-ink-muted)]">USD</span>
           {overdueUsd ? (
             <span className="ml-1 text-[10px] font-medium text-rose-600">vencido</span>
           ) : null}
-        </div>
+        </span>
       ) : null}
     </div>
   );
@@ -147,7 +162,7 @@ function ContactCell({ row }: { row: ClientPortfolioRow }) {
     );
   }
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex flex-nowrap items-center gap-1.5">
       {row.contact_phone ? (
         <a
           href={`https://wa.me/${row.contact_phone.replace(/\D/g, "")}`}
@@ -225,6 +240,8 @@ export default function CopilotClientesPage() {
     return load.rows.filter((row) => matchesClientFilter(row, clientFilter, search));
   }, [load, clientFilter, search]);
 
+  const hasActiveFilter = clientFilter !== "all" || search.trim() !== "";
+
   const activeDetail: ClientCompanyDetail | null = useMemo(() => {
     if (!load || !selectedId) return null;
     return load.details[selectedId] ?? null;
@@ -237,11 +254,18 @@ export default function CopilotClientesPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <CopilotPageHeader
-        surfaceId="copilot.clientes"
-        title="Clientes"
-        description="Cartera comercial activa: deuda por moneda, estado de cobranza y contacto directo."
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <CopilotPageHeader
+          surfaceId="copilot.clientes"
+          title="Clientes"
+          description="Cartera comercial activa: deuda por moneda, estado de cobranza y contacto directo."
+        />
+        {!loading && !error && load && hasActiveFilter ? (
+          <span className="inline-flex shrink-0 items-center rounded-full border border-[var(--copilot-border)] bg-white/80 px-2.5 py-0.5 text-[10px] font-medium text-[var(--copilot-ink-muted)]">
+            Resumen global · filtro activo
+          </span>
+        ) : null}
+      </div>
 
       <div className={copilotPageMainClass}>
         {loading ? <CopilotSkeletonTable rows={6} columns={5} /> : null}
@@ -266,14 +290,8 @@ export default function CopilotClientesPage() {
                 (r) => r.debt_uyu > 0 || r.debt_usd > 0 || r.total_debt > 0
               ).length;
               const noContactCount = load.rows.filter((r) => !r.has_contact_data).length;
-              const hasActiveFilter = clientFilter !== "all" || search.trim() !== "";
               return (
                 <>
-                  {hasActiveFilter ? (
-                    <p className="text-[11px] text-[var(--copilot-ink-muted)]">
-                      Resumen general · todos los clientes · la lista de abajo refleja el filtro activo.
-                    </p>
-                  ) : null}
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <CopilotCard className="py-3">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">

@@ -655,6 +655,12 @@ function CopilotAccionesPageContent() {
               Sin acciones en este filtro.
             </p>
           ) : (
+            <>
+            {bandejaFilter !== "all" || filteredBandeja.length < bandejaActions.length ? (
+              <p className="mb-2 text-[11px] text-[var(--copilot-ink-muted)]">
+                Mostrando {filteredBandeja.length} de {bandejaActions.length} acciones
+              </p>
+            ) : null}
             <ul className="space-y-2.5">
               {filteredBandeja.map((action) => (
                 <li key={action.id}>
@@ -662,6 +668,7 @@ function CopilotAccionesPageContent() {
                 </li>
               ))}
             </ul>
+            </>
           )}
         </CopilotCard>
 

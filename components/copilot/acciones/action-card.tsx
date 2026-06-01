@@ -210,10 +210,10 @@ export function ActionCard({ action }: { action: CopilotAction }) {
         <CollectionContextBlock ctx={action.collectionContext} />
       ) : null}
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="mt-3 flex flex-nowrap items-center gap-1.5 overflow-x-auto">
         <Link
           href={action.href}
-          className="inline-flex items-center rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+          className="inline-flex shrink-0 items-center rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
         >
           {action.primaryActionLabel}
         </Link>
@@ -222,16 +222,20 @@ export function ActionCard({ action }: { action: CopilotAction }) {
             href={whatsappHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-white"
+            title={`WhatsApp ${action.contactPhone}`}
+            aria-label={`WhatsApp ${action.contactPhone}`}
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-2 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-white"
           >
             <MessageCircle className="h-3.5 w-3.5 shrink-0 text-emerald-600" aria-hidden />
-            WhatsApp
+            WA
           </a>
         ) : null}
         {mailtoHref ? (
           <a
             href={mailtoHref}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-white"
+            title={action.contactEmail ?? "Email"}
+            aria-label={`Email ${action.contactEmail}`}
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-2 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-white"
           >
             <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
             Email

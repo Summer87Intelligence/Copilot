@@ -239,26 +239,28 @@ function AgendaItemCard({
           </div>
         </div>
       ) : (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="mt-3 flex flex-nowrap items-center gap-1.5 overflow-x-auto">
           <Link
             href={item.href}
-            className="inline-flex items-center rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+            className="inline-flex shrink-0 items-center rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
           >
             Ver cliente
           </Link>
           <Link
             href={`${item.href}#gestion-cobranza`}
-            className="inline-flex items-center rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-white"
+            className="inline-flex shrink-0 items-center rounded-lg border border-[var(--copilot-border)] bg-white/70 px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-white"
           >
-            Registrar gestión
+            Gestionar
           </Link>
           <button
             type="button"
             onClick={() => setConfirming(true)}
-            className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:border-rose-200 hover:bg-rose-50/60 hover:text-rose-700"
+            title="Cancelar seguimiento"
+            aria-label="Cancelar seguimiento"
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:border-rose-200 hover:bg-rose-50/60 hover:text-rose-700"
           >
             <X className="h-3 w-3" aria-hidden />
-            Cancelar seguimiento
+            Cancelar
           </button>
         </div>
       )}
@@ -347,7 +349,7 @@ export function CollectionAgendaSection({
         <>
           {/* Summary cards */}
           {totalItems > 0 ? (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
               <AgendaSummaryCard
                 label="Vencidos"
                 value={filterItemsActive([...agenda.overdueFollowups, ...agenda.overduePromises]).length}
@@ -378,7 +380,7 @@ export function CollectionAgendaSection({
 
           {/* Filter pills */}
           {totalItems > 0 ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {FILTER_LABELS.map((f) => {
                 const active = filter === f.id;
                 return (
@@ -396,6 +398,11 @@ export function CollectionAgendaSection({
                   </button>
                 );
               })}
+              {filter !== "all" || items.length < totalItems ? (
+                <span className="text-[11px] text-[var(--copilot-ink-muted)]">
+                  Mostrando {items.length} de {totalItems} seguimientos
+                </span>
+              ) : null}
             </div>
           ) : null}
 
