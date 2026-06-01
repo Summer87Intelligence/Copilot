@@ -74,11 +74,7 @@ export function CopilotModuleShell({
 
   return (
     <div
-      className="flex min-h-0 w-full flex-1 bg-[var(--copilot-canvas)] text-[var(--copilot-ink)] antialiased"
-      style={{
-        fontFamily:
-          'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
-      }}
+      className="flex min-h-0 w-full flex-1 bg-[var(--copilot-canvas)] font-[family-name:var(--font-geist-sans)] text-[var(--copilot-ink)] antialiased"
     >
       <CopilotModuleSidebar
         collapsed={hydrated ? collapsed : true}

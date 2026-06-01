@@ -198,7 +198,7 @@ export default function CopilotReportesPage() {
         description="Consultá reportes en pantalla o descargalos como PDF."
       />
 
-      <div className={`${copilotPageMainClass} max-w-3xl`}>
+      <div className={`${copilotPageMainClass} max-w-4xl`}>
         <p className="text-xs text-[var(--copilot-ink-muted)]">
           Los reportes son de solo lectura: no modifican facturas, caja ni gestiones registradas.
         </p>

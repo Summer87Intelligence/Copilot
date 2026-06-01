@@ -34,7 +34,7 @@ export default function CarteraPage() {
         title="Cartera"
         description="Análisis financiero de deuda, cobros y antigüedad. Para contactar clientes, usá Clientes o Acciones."
       />
-      <div className="px-6 pb-12 pt-6">
+      <div className="px-4 pb-12 pt-5 sm:px-6 sm:pt-6 lg:px-8">
         <Suspense fallback={<CarteraInitialFallback />}>
           <CarteraShell />
         </Suspense>

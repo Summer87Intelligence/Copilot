@@ -5,7 +5,7 @@ const primaryBtnClass =
   "inline-flex items-center justify-center rounded-xl bg-[var(--copilot-accent)] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]";
 
 export const copilotPageMainClass =
-  "flex-1 space-y-5 overflow-auto px-6 py-6";
+  "flex-1 space-y-6 overflow-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8";
 
 const ink = "text-[var(--copilot-ink)]";
 const muted = "text-[var(--copilot-ink-muted)]";

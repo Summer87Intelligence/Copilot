@@ -17,7 +17,7 @@ export default function OperacionalPage() {
         title="Estado del sistema"
         description="Actualización de datos, reconciliación y salud de integraciones con Zeta."
       />
-      <div className="space-y-5 px-6 py-6">
+      <div className="space-y-6 px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
         <DataConfidencePanel />
 
         {/* Business status — same semaphore as the header indicator, expanded */}
