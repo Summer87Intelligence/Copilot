@@ -55,6 +55,7 @@ export const TREASURY_API = {
   upcomingObligations: "/api/copilot/treasury/planned-cash-obligations/upcoming",
   overdueObligations: "/api/copilot/treasury/planned-cash-obligations/overdue",
   importBankMovements: "/api/copilot/treasury/bank-reconciliation-movements/import",
+  parseBankStatement: "/api/copilot/treasury/bank-reconciliation-movements/parse",
   projection: "/api/copilot/treasury/projection",
   alerts: "/api/copilot/treasury/alerts",
   insights: "/api/copilot/treasury/insights",
@@ -253,6 +254,23 @@ export async function treasuryImportBankMovements(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  });
+  return readJson(res);
+}
+
+export type SantanderBankStatementParseResult = {
+  metadata: import("@/lib/treasury/santander-pdf-statement-parser").SantanderPdfMetadata;
+  movements: import("@/lib/treasury/santander-statement-parser").SantanderParsedMovement[];
+};
+
+export async function treasuryParseBankStatement(
+  file: File
+): Promise<TreasuryApiResult<SantanderBankStatementParseResult>> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await copilotApiFetch(TREASURY_API.parseBankStatement, {
+    method: "POST",
+    body: formData,
   });
   return readJson(res);
 }

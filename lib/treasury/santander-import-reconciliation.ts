@@ -3,6 +3,14 @@
  * Motor puro — sin I/O.
  */
 
+export {
+  isSantanderPdfStatementText,
+  parseSantanderPdfMetadata,
+  parseSantanderPdfMovements,
+  parseSantanderPdfStatementText,
+  type SantanderPdfMetadata,
+} from "@/lib/treasury/santander-pdf-statement-parser";
+
 import type { SantanderParsedMovement } from "@/lib/treasury/santander-statement-parser";
 import type { ManualCashMovement, TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
 

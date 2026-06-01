@@ -133,7 +133,7 @@ function readCell(row: string[], index: number | undefined): string {
   return row[index] ?? "";
 }
 
-function buildExternalId(input: {
+function buildSantanderMovementExternalId(input: {
   movementDate: string;
   description: string;
   amount: number;
@@ -154,6 +154,8 @@ function buildExternalId(input: {
   return `santander:${input.movementDate}:${input.movementType}:${input.amount.toFixed(2)}:${hash.toString(16)}`;
 }
 
+export { buildSantanderMovementExternalId };
+
 function rowToMovement(
   row: string[],
   headerIndex: Record<string, number>,
@@ -172,7 +174,7 @@ function rowToMovement(
   const currencyCode = parseCurrency(readCell(row, headerIndex.currencyCode), fallbackCurrency);
   const balanceAfter = parseMoney(readCell(row, headerIndex.balanceAfter));
   const documentNumber = readCell(row, headerIndex.documentNumber).trim() || null;
-  const externalId = buildExternalId({
+  const externalId = buildSantanderMovementExternalId({
     movementDate,
     description,
     amount,

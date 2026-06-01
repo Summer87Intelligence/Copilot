@@ -1007,16 +1007,19 @@ const SECTIONS: Section[] = [
             Importador bancario
           </p>
           <p className="mb-3 text-sm text-[var(--copilot-ink)]">
-            En Tesorería → Movimientos podés subir un extracto CSV o XLSX exportado desde Santander
-            (cuenta o tarjeta) para comparar cobros y gastos del banco con lo registrado en Copilot.
+            En Tesorería → Movimientos podés subir un extracto CSV, Excel o PDF exportado desde
+            Santander (cuenta o tarjeta) para comparar cobros y gastos del banco con lo registrado
+            en Copilot.
           </p>
           <Bullets
             items={[
+              "Soporta CSV, Excel y PDF Santander con texto extraíble. PDF no usa OCR.",
               "Generá un preview antes de guardar: ves fecha, monto, tipo y un estado de coincidencia por fila.",
               "Coincide — el movimiento del banco parece ya estar en Tesorería (y en Zeta si aplica).",
               "Falta en Copilot — hay señal en Zeta o es un cobro en banco sin movimiento equivalente en Tesorería.",
               "Falta en Zeta — está en Tesorería pero no hay recibo Zeta en la ventana de fechas.",
               "Posible coincidencia — monto, fecha o texto parecen relacionados; conviene revisar manualmente.",
+              "Si el PDF no puede leerse, exportá CSV o Excel desde Santander.",
               "No modifica caja automáticamente ni crea recibos en Zeta. Guardar solo almacena el extracto para conciliación.",
               "Para impactar caja tenés que crear o confirmar un movimiento de Tesorería por separado.",
             ]}

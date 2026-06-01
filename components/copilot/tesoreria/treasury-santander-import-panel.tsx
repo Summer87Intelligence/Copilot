@@ -12,6 +12,8 @@ import {
 } from "@/components/copilot/tesoreria/tesoreria-ui";
 import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
 import type { BankImportPreviewRow, BankImportResult, SantanderImportSummary } from "@/lib/treasury/treasury-client";
+import { treasuryParseBankStatement } from "@/lib/treasury/treasury-client";
+import { getBankImportFileType } from "@/lib/treasury/santander-bank-import-file-type";
 import {
   buildSantanderImportSummary,
   SANTANDER_STATUS_LABELS,
@@ -128,6 +130,16 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
     setPreviewResult(null);
     setIgnoredIds(new Set());
     try {
+      const fileType = getBankImportFileType(file);
+      if (fileType === "pdf") {
+        const result = await treasuryParseBankStatement(file);
+        if (!result.ok) {
+          setFileError(result.message);
+          return;
+        }
+        setParsedRows(result.data.movements);
+        return;
+      }
       const rows = await parseSantanderStatementFile(file);
       setParsedRows(rows);
     } catch (error) {
@@ -292,8 +304,9 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
               Moneda · Saldo · Referencia
             </p>
             <p className="mt-2">
-              Para mejor precisión, usá CSV o Excel. PDF puede depender del formato exportado por el
-              banco.
+              PDF Santander: Copilot intenta leer automáticamente extractos con tabla Fecha /
+              Referencia / Descripción / Débito / Crédito / Saldo. Para mejor precisión, CSV o Excel
+              suelen ser más confiables.
             </p>
           </div>
         ) : null}
