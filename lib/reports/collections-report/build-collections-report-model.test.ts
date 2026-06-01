@@ -41,8 +41,8 @@ describe("buildCollectionsReportModel", () => {
       ],
     });
     expect(result.rows).toHaveLength(2);
-    expect(result.rows[0]?.date).toBe("2026-05-01");
-    expect(result.rows[1]?.date).toBe("2026-05-31");
+    expect(result.rows[0]?.date).toBe("2026-05-31");
+    expect(result.rows[1]?.date).toBe("2026-05-01");
   });
 
   it("filtra por año correcto", () => {
@@ -109,19 +109,35 @@ describe("buildCollectionsReportModel", () => {
     expect(result.rows[0]?.amount).toBe(300);
   });
 
-  it("ordena por fecha ASC, luego cliente ASC", () => {
+  it("ordena por fecha DESC, luego cliente ASC, luego documento ASC", () => {
     const result = buildCollectionsReportModel({
       ...BASE,
       receipts: [
-        rec({ id: "r1", receipt_date: "2026-05-20", company_id: "c2", amount: 1 }),
-        rec({ id: "r2", receipt_date: "2026-05-10", company_id: "c1", amount: 2 }),
-        rec({ id: "r3", receipt_date: "2026-05-10", company_id: "c2", amount: 3 }),
+        rec({ id: "r1", receipt_date: "2026-05-10", company_id: "c1", receipt_number: "ZETA:COB:100", amount: 1 }),
+        rec({ id: "r2", receipt_date: "2026-05-20", company_id: "c2", receipt_number: "ZETA:COB:200", amount: 2 }),
+        rec({ id: "r3", receipt_date: "2026-05-10", company_id: "c2", receipt_number: "ZETA:COB:101", amount: 3 }),
       ],
     });
-    expect(result.rows[0]?.date).toBe("2026-05-10");
+    // 20/05 primero (DESC)
+    expect(result.rows[0]?.date).toBe("2026-05-20");
     expect(result.rows[0]?.clientName).toBe("Cliente Dos");
-    expect(result.rows[1]?.clientName).toBe("Cliente Uno");
-    expect(result.rows[2]?.date).toBe("2026-05-20");
+    // misma fecha 10/05: Cliente Dos antes que Cliente Uno (ASC)
+    expect(result.rows[1]?.date).toBe("2026-05-10");
+    expect(result.rows[1]?.clientName).toBe("Cliente Dos");
+    expect(result.rows[2]?.date).toBe("2026-05-10");
+    expect(result.rows[2]?.clientName).toBe("Cliente Uno");
+  });
+
+  it("mismo cliente misma fecha: documentLabel ASC", () => {
+    const result = buildCollectionsReportModel({
+      ...BASE,
+      receipts: [
+        rec({ id: "r1", receipt_date: "2026-05-15", company_id: "c1", receipt_number: "ZETA:COB:300", amount: 10 }),
+        rec({ id: "r2", receipt_date: "2026-05-15", company_id: "c1", receipt_number: "ZETA:COB:100", amount: 20 }),
+      ],
+    });
+    expect(result.rows[0]?.documentLabel).toBe("COB-100");
+    expect(result.rows[1]?.documentLabel).toBe("COB-300");
   });
 
   it("calcula total y count correctamente", () => {

@@ -117,7 +117,7 @@ export function buildCollectionsReportModel(
       };
     })
     .sort((a, b) => {
-      if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+      if (a.date !== b.date) return a.date > b.date ? -1 : 1;
       const nc = a.clientName.localeCompare(b.clientName, "es");
       if (nc !== 0) return nc;
       return (a.documentLabel ?? "").localeCompare(b.documentLabel ?? "", "es");
