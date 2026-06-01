@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   BarChart2,
   CalendarClock,
+  Eye,
   FileDown,
   FileText,
   Landmark,
@@ -21,19 +22,27 @@ import { CollectionsReportTrigger } from "@/components/copilot/reports/collectio
 import { DebtorsReportTrigger } from "@/components/copilot/reports/debtors-report-dialog";
 import { MonthlyReportDialog } from "@/components/copilot/reports/monthly-report-dialog";
 import { TopClientsReportTrigger } from "@/components/copilot/reports/top-clients-report-dialog";
+
+import { CashMonthlyPreviewDialog } from "@/components/copilot/reports/cash-monthly-preview-dialog";
+import { CollectionsPreviewDialog } from "@/components/copilot/reports/collections-preview-dialog";
+import { DebtorsPreviewDialog } from "@/components/copilot/reports/debtors-preview-dialog";
+import { ExecutiveMonthlyPreviewDialog } from "@/components/copilot/reports/executive-monthly-preview-dialog";
+import { NetSalesPreviewDialog } from "@/components/copilot/reports/net-sales-preview-dialog";
+import { TopClientsPreviewDialog } from "@/components/copilot/reports/top-clients-preview-dialog";
+
 import { fetchClientPortfolioLoad } from "@/lib/copilot-client-portfolio-fetch";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import { actionCardClass } from "@/components/copilot/ui/copilot-visual-system";
 
-// ── Simple trigger wrappers for the 3 MonthlyReportDialog-based reports ──────
+// ── PDF-only trigger wrappers using MonthlyReportDialog ───────────────────────
 
-function CashMonthlyReportTrigger({ className = "", label = "Generar PDF" }: { className?: string; label?: string }) {
+function CashMonthlyReportTrigger({ className = "" }: { className?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className={className || defaultBtnClass}>
+      <button type="button" onClick={() => setOpen(true)} className={className || smallPdfBtnClass}>
         <FileDown className="h-3.5 w-3.5" aria-hidden />
-        {label}
+        PDF
       </button>
       <MonthlyReportDialog
         open={open}
@@ -49,13 +58,13 @@ function CashMonthlyReportTrigger({ className = "", label = "Generar PDF" }: { c
   );
 }
 
-function NetSalesReportTrigger({ className = "", label = "Generar PDF" }: { className?: string; label?: string }) {
+function NetSalesReportTrigger({ className = "" }: { className?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className={className || defaultBtnClass}>
+      <button type="button" onClick={() => setOpen(true)} className={className || smallPdfBtnClass}>
         <FileDown className="h-3.5 w-3.5" aria-hidden />
-        {label}
+        PDF
       </button>
       <MonthlyReportDialog
         open={open}
@@ -73,13 +82,13 @@ function NetSalesReportTrigger({ className = "", label = "Generar PDF" }: { clas
   );
 }
 
-function ExecutiveMonthlyReportTrigger({ className = "", label = "Generar PDF" }: { className?: string; label?: string }) {
+function ExecutiveMonthlyReportTrigger({ className = "" }: { className?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className={className || defaultBtnClass}>
+      <button type="button" onClick={() => setOpen(true)} className={className || smallPdfBtnClass}>
         <FileDown className="h-3.5 w-3.5" aria-hidden />
-        {label}
+        PDF
       </button>
       <MonthlyReportDialog
         open={open}
@@ -97,11 +106,11 @@ function ExecutiveMonthlyReportTrigger({ className = "", label = "Generar PDF" }
   );
 }
 
-const defaultBtnClass =
-  "inline-flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-white/80 px-3 py-1.5 text-xs font-semibold text-[var(--copilot-accent)] hover:bg-white";
+const viewBtnClass =
+  "inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-accent)] bg-white px-3.5 py-2 text-xs font-semibold text-[var(--copilot-accent)] hover:bg-[var(--copilot-accent-soft)]";
 
-const primaryBtnClass =
-  "inline-flex items-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-3.5 py-2 text-xs font-semibold text-white hover:opacity-90";
+const smallPdfBtnClass =
+  "inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-white/80 px-3 py-2 text-xs font-semibold text-[var(--copilot-ink-muted)] hover:bg-white";
 
 // ── Layout components ─────────────────────────────────────────────────────────
 
@@ -148,9 +157,19 @@ function ReportCard({
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+type ActivePreview =
+  | "debtors"
+  | "collections"
+  | "cash"
+  | "netsales"
+  | "topclients"
+  | "executive"
+  | null;
+
 export default function CopilotReportesPage() {
   const [portfolio, setPortfolio] = useState<ClientPortfolioLoad | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activePreview, setActivePreview] = useState<ActivePreview>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -169,12 +188,14 @@ export default function CopilotReportesPage() {
     };
   }, []);
 
+  const closePreview = () => setActivePreview(null);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
         surfaceId="copilot.clientes"
         title="Reportes"
-        description="Descargá reportes operativos para revisar deuda, cobranza, caja y ventas."
+        description="Consultá reportes en pantalla o descargalos como PDF."
       />
 
       <div className={`${copilotPageMainClass} max-w-3xl`}>
@@ -191,29 +212,46 @@ export default function CopilotReportesPage() {
             title="Reporte de deudores"
             description="Clientes con deuda, moneda, antigüedad y contacto validado. Ideal para priorizar cobranza."
           >
-            {loading ? (
-              <span className="inline-flex items-center gap-1.5 text-xs text-[var(--copilot-ink-muted)]">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                Cargando…
-              </span>
-            ) : portfolio && portfolio.rows.length > 0 ? (
-              <DebtorsReportTrigger
-                portfolioRows={portfolio.rows}
-                portfolioDetails={portfolio.details}
-                label="Generar PDF"
-                className={primaryBtnClass}
-              />
-            ) : (
-              <span className="text-xs text-[var(--copilot-ink-muted)]">Sin clientes con deuda</span>
-            )}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setActivePreview("debtors")}
+                className={viewBtnClass}
+              >
+                <Eye className="h-3.5 w-3.5" aria-hidden />
+                Ver reporte
+              </button>
+              {loading ? (
+                <span className="inline-flex items-center gap-1.5 text-xs text-[var(--copilot-ink-muted)]">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                </span>
+              ) : portfolio && portfolio.rows.length > 0 ? (
+                <DebtorsReportTrigger
+                  portfolioRows={portfolio.rows}
+                  portfolioDetails={portfolio.details}
+                  label="PDF"
+                  className={smallPdfBtnClass}
+                />
+              ) : null}
+            </div>
           </ReportCard>
 
           <ReportCard
             icon={<Receipt className="h-5 w-5" aria-hidden />}
-            title="Reporte de cobranza"
+            title="Reporte de cobranza mensual"
             description="Cobros registrados del mes, separados por moneda. Ideal para conciliar con extracto bancario."
           >
-            <CollectionsReportTrigger label="Generar PDF" className={primaryBtnClass} />
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setActivePreview("collections")}
+                className={viewBtnClass}
+              >
+                <Eye className="h-3.5 w-3.5" aria-hidden />
+                Ver reporte
+              </button>
+              <CollectionsReportTrigger label="PDF" className={smallPdfBtnClass} />
+            </div>
           </ReportCard>
         </div>
 
@@ -226,7 +264,17 @@ export default function CopilotReportesPage() {
             title="Reporte de caja mensual"
             description="Movimientos confirmados del período con saldo inicial, ingresos, egresos y saldo final."
           >
-            <CashMonthlyReportTrigger label="Generar PDF" className={primaryBtnClass} />
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setActivePreview("cash")}
+                className={viewBtnClass}
+              >
+                <Eye className="h-3.5 w-3.5" aria-hidden />
+                Ver reporte
+              </button>
+              <CashMonthlyReportTrigger className={smallPdfBtnClass} />
+            </div>
           </ReportCard>
 
           <ReportCard
@@ -234,7 +282,17 @@ export default function CopilotReportesPage() {
             title="Reporte de ventas netas"
             description="Facturación del mes por cliente, descontando notas de crédito. Agrupa en una vista limpia."
           >
-            <NetSalesReportTrigger label="Generar PDF" className={primaryBtnClass} />
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setActivePreview("netsales")}
+                className={viewBtnClass}
+              >
+                <Eye className="h-3.5 w-3.5" aria-hidden />
+                Ver reporte
+              </button>
+              <NetSalesReportTrigger className={smallPdfBtnClass} />
+            </div>
           </ReportCard>
 
           <ReportCard
@@ -242,7 +300,17 @@ export default function CopilotReportesPage() {
             title="Reporte ejecutivo mensual"
             description="Resumen CEO: indicadores clave, top 5 clientes, top 5 deudores y estado de caja en un solo PDF."
           >
-            <ExecutiveMonthlyReportTrigger label="Generar PDF" className={primaryBtnClass} />
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setActivePreview("executive")}
+                className={viewBtnClass}
+              >
+                <Eye className="h-3.5 w-3.5" aria-hidden />
+                Ver reporte
+              </button>
+              <ExecutiveMonthlyReportTrigger className={smallPdfBtnClass} />
+            </div>
           </ReportCard>
         </div>
 
@@ -255,7 +323,17 @@ export default function CopilotReportesPage() {
             title="Clientes principales"
             description="Ranking de clientes ordenado por facturación, deuda o vencimiento. Muestra participación y nivel de riesgo."
           >
-            <TopClientsReportTrigger label="Generar PDF" className={primaryBtnClass} />
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setActivePreview("topclients")}
+                className={viewBtnClass}
+              >
+                <Eye className="h-3.5 w-3.5" aria-hidden />
+                Ver reporte
+              </button>
+              <TopClientsReportTrigger label="PDF" className={smallPdfBtnClass} />
+            </div>
           </ReportCard>
 
           <ReportCard
@@ -292,6 +370,34 @@ export default function CopilotReportesPage() {
           .
         </p>
       </div>
+
+      {/* ── Preview modals ───────────────────────────────────── */}
+      <DebtorsPreviewDialog
+        open={activePreview === "debtors"}
+        onClose={closePreview}
+        portfolioRows={portfolio?.rows ?? []}
+        portfolioDetails={portfolio?.details}
+      />
+      <CollectionsPreviewDialog
+        open={activePreview === "collections"}
+        onClose={closePreview}
+      />
+      <CashMonthlyPreviewDialog
+        open={activePreview === "cash"}
+        onClose={closePreview}
+      />
+      <NetSalesPreviewDialog
+        open={activePreview === "netsales"}
+        onClose={closePreview}
+      />
+      <TopClientsPreviewDialog
+        open={activePreview === "topclients"}
+        onClose={closePreview}
+      />
+      <ExecutiveMonthlyPreviewDialog
+        open={activePreview === "executive"}
+        onClose={closePreview}
+      />
     </div>
   );
 }
