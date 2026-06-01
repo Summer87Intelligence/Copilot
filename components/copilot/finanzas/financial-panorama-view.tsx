@@ -7,15 +7,13 @@ import { CopilotCard } from "@/components/copilot/copilot-ui";
 import { FinancialMetricDetailDialog } from "@/components/copilot/finanzas/financial-metric-detail-dialog";
 import { FinancialMonthlyTrends } from "@/components/copilot/finanzas/financial-monthly-trends";
 import {
-  FinancialCollectionDebtSection,
-  FinancialCurrencyBreakdown,
-  FinancialExecutiveHeader,
-  FinancialExecutiveReading,
-  FinancialPeriodComparisons,
-  FinancialProjection30d,
-  FinancialTopClientsSection,
-  FinancialCurrencySummary,
-} from "@/components/copilot/finanzas/financial-executive-sections";
+  FinancialAdvancedDetail,
+  FinancialCollectionRisk,
+  FinancialExecutiveSummary,
+  FinancialLayeredHeader,
+  FinancialMainComparison,
+  FinancialProjectionCompact,
+} from "@/components/copilot/finanzas/financial-layered-sections";
 import { useFinancialReconciliation } from "@/hooks/use-financial-reconciliation";
 import { buildCurrencyIndex } from "@/lib/copilot-cartera-cards-source";
 import { fetchClientPortfolioLoad } from "@/lib/copilot-client-portfolio-fetch";
@@ -240,43 +238,30 @@ export function FinancialPanoramaView() {
 
   return (
     <>
-      <div className="space-y-6">
-        <FinancialExecutiveHeader dashboard={dashboard} />
+      <div className="space-y-5">
+        <FinancialLayeredHeader dashboard={dashboard} />
 
-        <CopilotCard>
-          <div className="space-y-8">
-            {dashboard.currencies.map((panel) => (
-              <FinancialCurrencySummary
-                key={panel.currency}
-                panel={panel}
-                onSelectMetric={(metricId, slice) =>
-                  setMetricSelection({ kind: "slice", metricId, slice })
-                }
-              />
-            ))}
-          </div>
-        </CopilotCard>
+        <FinancialExecutiveSummary
+          dashboard={dashboard}
+          onSelectMetric={(metricId, slice) =>
+            setMetricSelection({ kind: "slice", metricId, slice })
+          }
+        />
 
-        <FinancialPeriodComparisons panels={dashboard.currencies} />
+        <FinancialMainComparison dashboard={dashboard} />
 
-        <FinancialMonthlyTrends invoices={invoices} receipts={receipts} asOfYmd={today} />
+        <FinancialMonthlyTrends
+          invoices={invoices}
+          receipts={receipts}
+          asOfYmd={today}
+          executiveView
+        />
 
-        {dashboard.currencies.map((panel) => (
-          <FinancialCollectionDebtSection key={panel.currency} panel={panel} />
-        ))}
+        <FinancialCollectionRisk panels={dashboard.currencies} />
 
-        <FinancialTopClientsSection panels={dashboard.currencies} />
+        <FinancialProjectionCompact model={dashboard.panorama} />
 
-        <FinancialProjection30d model={dashboard.panorama} />
-
-        <FinancialCurrencyBreakdown model={dashboard.panorama} />
-
-        <FinancialExecutiveReading dashboard={dashboard} />
-
-        <p className="text-[11px] leading-relaxed text-[var(--copilot-ink-muted)]">
-          Lectura operativa basada en datos sincronizados. Ventas netas = bruto − notas de crédito.
-          Caja desde Tesorería. Deuda desde Cartera. No es cierre contable formal.
-        </p>
+        <FinancialAdvancedDetail dashboard={dashboard} />
       </div>
 
       <FinancialMetricDetailDialog

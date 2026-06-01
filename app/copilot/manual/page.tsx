@@ -1054,15 +1054,18 @@ const SECTIONS: Section[] = [
             "Fecha de corte — día hasta el cual están calculados los números (hoy operativo).",
             "Período actual — desde el 1.º del mes hasta la fecha de corte (mes en curso, lectura parcial).",
             "Último mes cerrado — mes calendario completo anterior; Finanzas lo usa para comparar desempeño mensual cuando el mes actual recién empieza.",
-            "Resumen por moneda — dos bloques: situación actual (Cartera + Tesorería) y actividad del período (ventas netas, cobros, NC).",
-            "Comparativas — mes en curso (no comparable con mes completo), último mes cerrado vs anterior, y semana vs semana.",
+            "Vista por capas — resumen ejecutivo (6 métricas), comparación principal, evolución, riesgo de cobranza y proyección visibles; detalle avanzado colapsado.",
+            "Resumen ejecutivo — hasta 6 KPIs combinando UYU y USD, con 3 bullets de lectura integrados.",
+            "Comparación principal — una tabla por moneda (selector UYU/USD): último mes cerrado vs anterior; el mes en curso aparece como nota aparte.",
             "Ventas netas — facturas del período menos notas de crédito (Bruto − NC). Fuente distinta a cobros y a deuda.",
             "Cobros — recibos por fecha de recibo; pueden superar ventas del período si se recupera deuda anterior.",
             "Deuda total y vencida — saldo de clientes en Cartera al corte; no es lo mismo que cobros ni caja.",
             "Caja disponible — Tesorería (baseline + movimientos); no es facturación ni cierre bancario.",
-            "Proyección 30 días — estimación operativa (caja + cobros esperados − pagos cargados); no es saldo bancario.",
-            "Evolución comercial — histórico desde enero 2026; el mes en curso aparece como parcial.",
-            "Obligaciones fiscales — bloque colapsado al final de la página.",
+            "Proyección 30 días — estimación operativa compacta (caja + cobros esperados − pagos cargados).",
+            "Riesgo de cobranza — un bloque con selector UYU/USD (deuda, vencido, top 5).",
+            "Detalle avanzado — colapsado: clientes, desglose contable, semana vs semana y enlace fiscal.",
+            "Evolución comercial — gráfico principal (6 meses por defecto); tabla colapsada «Ver tabla de evolución».",
+            "Obligaciones fiscales — al final de la página, fuera del detalle avanzado.",
           ]}
         />
         <Callout variant="info">

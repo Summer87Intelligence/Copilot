@@ -464,37 +464,54 @@ function ClientTable({
 
 export function FinancialTopClientsSection({
   panels,
+  mode = "both",
+  embedded = false,
 }: {
   panels: ExecutiveCurrencyPanel[];
+  mode?: "sales" | "debt" | "both";
+  embedded?: boolean;
 }) {
   if (panels.length === 0) return null;
+  const body = (
+    <>
+      <div className={embedded ? "space-y-3" : "mt-4 space-y-6"}>
+        {panels.map((panel) => (
+          <div key={panel.currency} className={mode === "both" ? "grid gap-4 lg:grid-cols-2" : ""}>
+            {(mode === "sales" || mode === "both") && (
+              <ClientTable
+                title={`Top ventas netas · ${panel.currency}`}
+                rows={panel.topSalesClients}
+                currency={panel.currency}
+                mode="sales"
+              />
+            )}
+            {(mode === "debt" || mode === "both") && (
+              <ClientTable
+                title={`Top deuda · ${panel.currency}`}
+                rows={panel.topDebtClients}
+                currency={panel.currency}
+                mode="debt"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+      <CopilotGhostLink
+        href="/copilot/reportes"
+        className={`${embedded ? "mt-2" : "mt-4"} inline-flex text-sm font-semibold`}
+      >
+        Ver reporte clientes principales
+      </CopilotGhostLink>
+    </>
+  );
+  if (embedded) return body;
   return (
     <CopilotCard>
       <CopilotSectionTitle
         title="Clientes principales"
         subtitle="Quién explica ventas y deuda por moneda."
       />
-      <div className="mt-4 space-y-6">
-        {panels.map((panel) => (
-          <div key={panel.currency} className="grid gap-4 lg:grid-cols-2">
-            <ClientTable
-              title={`Top ventas netas · ${panel.currency}`}
-              rows={panel.topSalesClients}
-              currency={panel.currency}
-              mode="sales"
-            />
-            <ClientTable
-              title={`Top deuda · ${panel.currency}`}
-              rows={panel.topDebtClients}
-              currency={panel.currency}
-              mode="debt"
-            />
-          </div>
-        ))}
-      </div>
-      <CopilotGhostLink href="/copilot/reportes" className="mt-4 inline-flex text-sm font-semibold">
-        Ver reporte clientes principales
-      </CopilotGhostLink>
+      {body}
     </CopilotCard>
   );
 }
@@ -594,10 +611,12 @@ function BreakdownCard({ slice }: { slice: PanoramaCurrencySlice }) {
 
 export function FinancialCurrencyBreakdown({
   model,
+  defaultOpen = false,
 }: {
   model: FinancialPanoramaModel;
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(model.currencies.length <= 2);
+  const [open, setOpen] = useState(defaultOpen);
   if (model.currencies.length === 0) return null;
   return (
     <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/50">

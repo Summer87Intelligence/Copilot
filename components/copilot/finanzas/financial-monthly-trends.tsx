@@ -27,9 +27,15 @@ type BarPoint = {
   status?: "Cerrado" | "En curso" | "Sin datos";
 };
 
-const PERIOD_OPTIONS: { id: Period; label: string }[] = [
+const PERIOD_OPTIONS_FULL: { id: Period; label: string }[] = [
   { id: "7d", label: "7 días" },
   { id: "1m", label: "Este mes" },
+  { id: "3m", label: "3 meses" },
+  { id: "6m", label: "6 meses" },
+  { id: "12m", label: "12 meses" },
+];
+
+const PERIOD_OPTIONS_EXECUTIVE: { id: Period; label: string }[] = [
   { id: "3m", label: "3 meses" },
   { id: "6m", label: "6 meses" },
   { id: "12m", label: "12 meses" },
@@ -431,28 +437,39 @@ export function FinancialMonthlyTrends({
   invoices,
   receipts,
   asOfYmd,
+  executiveView = false,
 }: {
   invoices: readonly MonthlyTrendInvoiceInput[];
   receipts: readonly MonthlyTrendReceiptInput[];
   asOfYmd: string;
+  /** Vista principal Finanzas: gráfico protagonista, menos KPIs. */
+  executiveView?: boolean;
 }) {
   const [period, setPeriod] = useState<Period>("6m");
+  const periodOptions = executiveView ? PERIOD_OPTIONS_EXECUTIVE : PERIOD_OPTIONS_FULL;
   const [currency, setCurrency] = useState<"UYU" | "USD">("UYU");
   const [showDetail, setShowDetail] = useState(false);
   const periodContext = useMemo(() => buildFinancialPeriodContext(asOfYmd), [asOfYmd]);
 
-  // Detect available currencies
-  const { hasUyu, hasUsd } = useMemo(() => {
+  const { hasUyu, hasUsd, defaultCurrency } = useMemo(() => {
     const scan = buildFinancialMonthlyTrends({ invoices, receipts, asOfYmd, monthsBack: 12 });
-    return {
-      hasUyu: scan.trends.some((t) => t.currency === "UYU"),
-      hasUsd: scan.trends.some((t) => t.currency === "USD"),
-    };
+    const uyuTotal = scan.trends
+      .filter((t) => t.currency === "UYU")
+      .reduce((s, t) => s + t.netIssued + t.collected, 0);
+    const usdTotal = scan.trends
+      .filter((t) => t.currency === "USD")
+      .reduce((s, t) => s + t.netIssued + t.collected, 0);
+    const hasU = scan.trends.some((t) => t.currency === "UYU");
+    const hasD = scan.trends.some((t) => t.currency === "USD");
+    let def: "UYU" | "USD" = "UYU";
+    if (!hasU && hasD) def = "USD";
+    else if (hasU && hasD && usdTotal > uyuTotal) def = "USD";
+    return { hasUyu: hasU, hasUsd: hasD, defaultCurrency: def };
   }, [invoices, receipts, asOfYmd]);
 
   useEffect(() => {
-    if (!hasUyu && hasUsd) setCurrency("USD");
-  }, [hasUyu, hasUsd]);
+    setCurrency(defaultCurrency);
+  }, [defaultCurrency]);
 
   const dashboard = useMemo(
     () => buildFinancialTrendDashboard({ invoices, receipts, asOfYmd, period, currency }),
@@ -498,7 +515,7 @@ export function FinancialMonthlyTrends({
             role="tablist"
             aria-label="Período"
           >
-            {PERIOD_OPTIONS.map((p) => (
+            {periodOptions.map((p) => (
               <button
                 key={p.id}
                 type="button"
@@ -557,7 +574,7 @@ export function FinancialMonthlyTrends({
         </p>
       ) : (
         <>
-          {/* ── KPI cards ── */}
+          {!executiveView ? (
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             <KpiCard
               label="Ventas netas"
@@ -604,9 +621,10 @@ export function FinancialMonthlyTrends({
               tone={cobrosSupVentas ? "ok" : ventasSupCobros ? "warn" : "neutral"}
             />
           </div>
+          ) : null}
 
           {/* Comparison row */}
-          {previousTotals ? (
+          {!executiveView && previousTotals ? (
             <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[var(--copilot-ink-muted)]">
               <span className="font-semibold text-[var(--copilot-ink)]">Vs período anterior:</span>
               <span className="flex items-center gap-1">
@@ -634,25 +652,24 @@ export function FinancialMonthlyTrends({
                 </span>
               ) : null}
             </div>
-          ) : (
+          ) : !executiveView ? (
             <p className="mt-2 text-[11px] text-[var(--copilot-ink-muted)]">
               Sin comparación previa para este período.
             </p>
-          )}
+          ) : null}
 
           {/* Alert banners */}
-          {cobrosSupVentas ? (
+          {!executiveView && cobrosSupVentas ? (
             <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
               Cobraste más de lo vendido en este período. Puede incluir recuperación de deuda anterior.
             </div>
-          ) : ventasSupCobros && gap.salesMinusCollections > totals.netSales * 0.3 ? (
+          ) : !executiveView && ventasSupCobros && gap.salesMinusCollections > totals.netSales * 0.3 ? (
             <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
               Vendiste más de lo cobrado en este período. Revisá la deuda de clientes.
             </div>
           ) : null}
 
-          {/* ── Bar chart ── */}
-          <div className="mt-4 overflow-x-auto rounded-xl border border-[var(--copilot-border)] bg-white/60 px-3 pb-2 pt-3">
+          <div className={`${executiveView ? "mt-3" : "mt-4"} overflow-x-auto rounded-xl border border-[var(--copilot-border)] bg-white/60 px-3 pb-2 pt-3`}>
             <div style={{ minWidth: Math.max(bars.length * 44, 280) }}>
               <GroupedBarChart bars={bars} currency={currency} />
             </div>
@@ -704,7 +721,7 @@ export function FinancialMonthlyTrends({
               >
                 ▶
               </span>
-              {showDetail ? "Ocultar detalle" : "Ver detalle por período"}
+              {showDetail ? "Ocultar tabla" : "Ver tabla de evolución"}
             </button>
             {showDetail ? (
               <div className="mt-3">
@@ -715,12 +732,13 @@ export function FinancialMonthlyTrends({
         </>
       )}
 
-      {/* Footer */}
-      <p className="mt-4 text-[11px] leading-relaxed text-[var(--copilot-ink-muted)]">
-        Ventas netas = facturación menos notas de crédito. Cobros = recibos registrados. No es
-        cierre contable formal. UYU y USD se analizan por separado. Se muestran datos desde enero
-        2026.
-      </p>
+      {!executiveView ? (
+        <p className="mt-4 text-[11px] leading-relaxed text-[var(--copilot-ink-muted)]">
+          Ventas netas = facturación menos notas de crédito. Cobros = recibos registrados. No es
+          cierre contable formal. UYU y USD se analizan por separado. Se muestran datos desde enero
+          2026.
+        </p>
+      ) : null}
     </CopilotCard>
   );
 }
