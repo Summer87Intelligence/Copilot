@@ -1010,7 +1010,7 @@ const SECTIONS: Section[] = [
             items={[
               "Caja — saldo disponible cargado al corte. Arriba del formulario: ¿Qué querés registrar? (Ingreso, Egreso o Pago programado).",
               "Pagos próximos — pagos con fecha futura, recurrentes y obligaciones; no afectan caja hasta confirmarse.",
-              "Movimientos — ingresos y egresos confirmados que ajustan tu caja. Incluye conciliación bancaria y cuentas.",
+              "Movimientos — ingresos y egresos confirmados que ajustan tu caja. Incluye importador bancario (extracto CSV/XLSX).",
             ]}
           />
         </div>
