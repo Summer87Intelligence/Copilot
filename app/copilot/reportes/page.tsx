@@ -7,12 +7,14 @@ import {
   FileDown,
   FileText,
   Loader2,
+  Receipt,
   Users,
   Wallet,
 } from "lucide-react";
 
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { CopilotCard, CopilotGhostLink, copilotPageMainClass } from "@/components/copilot/copilot-ui";
+import { CollectionsReportTrigger } from "@/components/copilot/reports/collections-report-dialog";
 import { DebtorsReportTrigger } from "@/components/copilot/reports/debtors-report-dialog";
 import { fetchClientPortfolioLoad } from "@/lib/copilot-client-portfolio-fetch";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
@@ -108,6 +110,17 @@ export default function CopilotReportesPage() {
         </ReportCard>
 
         <ReportCard
+          icon={<Receipt className="h-5 w-5" aria-hidden />}
+          title="Reporte de cobranza"
+          description="Cobros registrados del mes, separados por moneda. Ideal para conciliar con extracto bancario."
+        >
+          <CollectionsReportTrigger
+            label="Generar PDF"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-3.5 py-2 text-xs font-semibold text-white hover:opacity-90"
+          />
+        </ReportCard>
+
+        <ReportCard
           icon={<FileText className="h-5 w-5" aria-hidden />}
           title="Estado de cuenta por cliente"
           description="Detalle individual de facturas, notas de crédito y recibos. Se genera desde la ficha de cada cliente."
@@ -136,12 +149,6 @@ export default function CopilotReportesPage() {
             icon={<Wallet className="h-5 w-5 opacity-60" aria-hidden />}
             title="Tesorería"
             description="Movimientos y proyección de caja en PDF."
-          />
-          <ReportCard
-            muted
-            icon={<FileText className="h-5 w-5 opacity-60" aria-hidden />}
-            title="Recibos"
-            description="Listado de cobros por período."
           />
         </div>
 

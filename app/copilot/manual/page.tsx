@@ -1058,6 +1058,7 @@ const SECTIONS: Section[] = [
             "Semáforos en cada KPI — Saludable, Revisar o Crítico según cobranza, vencido y NC.",
             "Ver detalle — abre fórmula, composición, fuente y período; CTA al módulo origen.",
             "Evolución comercial — ventas netas, cobros y notas de crédito por período, con UYU y USD separados. Se muestran datos desde enero 2026.",
+            "Reporte de cobranza — listado de cobros registrados en el mes, separado por moneda (UYU o USD). Incluye fecha, número de recibo, cliente e importe. No muestra deuda pendiente; eso está en el Reporte de deudores. Se basa en cobros sincronizados desde Zeta.",
             "UYU y USD se analizan por separado; no se suman.",
             "Proyección 30 días — operativa (cobros esperados y pagos próximos), no cierre contable formal.",
           ]}
