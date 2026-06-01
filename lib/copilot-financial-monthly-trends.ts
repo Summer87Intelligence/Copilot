@@ -286,7 +286,7 @@ export function maxTrendValue(trends: readonly FinancialMonthlyTrend[]): number 
 
 /** Corte mínimo de fecha para el dashboard de tendencias. No se muestran períodos anteriores. */
 export const FINANCIAL_TRENDS_MIN_DATE = "2026-01-01";
-const FINANCIAL_TRENDS_MIN_YM = "2026-01";
+export const FINANCIAL_TRENDS_MIN_YM = "2026-01";
 
 // ─── Financial trend dashboard ────────────────────────────────────────────────
 

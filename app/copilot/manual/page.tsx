@@ -1044,29 +1044,31 @@ const SECTIONS: Section[] = [
     content: (
       <>
         <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
-          <strong>Panorama financiero</strong> resume el período: ingresos netos,
-          cobros, deuda pendiente y caja. No reemplaza Cartera ni Tesorería para
-          operar el día a día.
+          <strong>Panorama financiero</strong> es el panel ejecutivo para CEO y
+          contador: ventas netas, cobros, deuda, caja y evolución del negocio. No
+          reemplaza Cartera ni Tesorería para operar el día a día ni es un cierre
+          contable formal.
         </p>
         <Bullets
           items={[
-            "Resumen por moneda — bloques UYU y USD separados; dentro de cada uno: neto, cobrado, pendiente, vencido, caja y NC.",
-            "Ingresos netos — facturación del período menos notas de crédito (fórmula: Bruto − NC = Neto).",
-            "Cobrado aplicado — cartera resuelta en el período (no confundir con caja).",
-            "Pendiente y vencido — saldos abiertos de clientes (Cartera).",
-            "Caja disponible — dinero actual en Tesorería; no es facturación.",
-            "Semáforos en cada KPI — Saludable, Revisar o Crítico según cobranza, vencido y NC.",
-            "Ver detalle — abre fórmula, composición, fuente y período; CTA al módulo origen.",
-            "Evolución comercial — ventas netas, cobros y notas de crédito por período, con UYU y USD separados. Se muestran datos desde enero 2026.",
-            "Reporte de cobranza — listado de cobros registrados en el mes, separado por moneda (UYU o USD). Incluye fecha, número de recibo, cliente e importe. No muestra deuda pendiente; eso está en el Reporte de deudores. Se basa en cobros sincronizados desde Zeta.",
-            "UYU y USD se analizan por separado; no se suman.",
-            "Proyección 30 días — operativa (cobros esperados y pagos próximos), no cierre contable formal.",
+            "Fecha de corte — día hasta el cual están calculados los números (hoy operativo).",
+            "Período actual — desde el 1.º del mes hasta la fecha de corte (mes en curso, lectura parcial).",
+            "Último mes cerrado — mes calendario completo anterior; Finanzas lo usa para comparar desempeño mensual cuando el mes actual recién empieza.",
+            "Resumen por moneda — dos bloques: situación actual (Cartera + Tesorería) y actividad del período (ventas netas, cobros, NC).",
+            "Comparativas — mes en curso (no comparable con mes completo), último mes cerrado vs anterior, y semana vs semana.",
+            "Ventas netas — facturas del período menos notas de crédito (Bruto − NC). Fuente distinta a cobros y a deuda.",
+            "Cobros — recibos por fecha de recibo; pueden superar ventas del período si se recupera deuda anterior.",
+            "Deuda total y vencida — saldo de clientes en Cartera al corte; no es lo mismo que cobros ni caja.",
+            "Caja disponible — Tesorería (baseline + movimientos); no es facturación ni cierre bancario.",
+            "Proyección 30 días — estimación operativa (caja + cobros esperados − pagos cargados); no es saldo bancario.",
+            "Evolución comercial — histórico desde enero 2026; el mes en curso aparece como parcial.",
+            "Obligaciones fiscales — bloque colapsado al final de la página.",
           ]}
         />
         <Callout variant="info">
-          Los gráficos mensuales son operativos y se basan en datos sincronizados. Pendiente y
-          vencido en gráficos reflejan el estado actual, no histórico mensual. Para cierre contable
-          final, validá con tu contador o el export oficial de Zeta.
+          Si el mes actual está en curso, Finanzas no presenta “este mes vs el anterior” como
+          comparación principal de performance: muestra el acumulado parcial y compara meses
+          cerrados (ej. Mayo vs Abril). Para cierre contable formal, validá con tu contador.
         </Callout>
         <div className="flex flex-wrap gap-3">
           <NavLink href="/copilot/finanzas" label="Ir a Panorama financiero" />

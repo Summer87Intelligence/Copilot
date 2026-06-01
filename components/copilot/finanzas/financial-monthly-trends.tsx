@@ -10,6 +10,7 @@ import {
   type MonthlyTrendInvoiceInput,
   type MonthlyTrendReceiptInput,
 } from "@/lib/copilot-financial-monthly-trends";
+import { buildFinancialPeriodContext } from "@/lib/copilot-financial-period-context";
 import { formatMoneyCurrency } from "@/lib/copilot-format-money";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -23,6 +24,7 @@ type BarPoint = {
   collections: number;
   creditNotes: number;
   isEmpty: boolean;
+  status?: "Cerrado" | "En curso" | "Sin datos";
 };
 
 const PERIOD_OPTIONS: { id: Period; label: string }[] = [
@@ -73,12 +75,45 @@ function groupToWeeks(daily: TrendPoint[]): BarPoint[] {
   return out;
 }
 
-function toBarPoints(points: TrendPoint[], period: Period): BarPoint[] {
+function periodStatus(
+  key: string,
+  period: Period,
+  ctx: ReturnType<typeof buildFinancialPeriodContext>
+): "Cerrado" | "En curso" | "Sin datos" {
+  if (period === "7d" || period === "1m") {
+    return key === ctx.asOfYmd ? "En curso" : "Cerrado";
+  }
+  if (key === ctx.currentMonthYm && ctx.isCurrentMonthPartial) return "En curso";
+  if (key > ctx.currentMonthYm) return "Sin datos";
+  return "Cerrado";
+}
+
+function toBarPoints(
+  points: TrendPoint[],
+  period: Period,
+  ctx: ReturnType<typeof buildFinancialPeriodContext>
+): BarPoint[] {
   const src = period === "1m" ? groupToWeeks(points) : points;
-  return src.map((p) => ({
-    ...p,
-    isEmpty: "isEmpty" in p ? (p as BarPoint).isEmpty : p.netSales === 0 && p.collections === 0 && p.creditNotes === 0,
-  }));
+  return src
+    .filter((p) => {
+      if (period === "7d" || period === "1m") return true;
+      return p.key <= ctx.currentMonthYm;
+    })
+    .map((p) => {
+      const partial =
+        !["7d", "1m"].includes(period) &&
+        p.key === ctx.currentMonthYm &&
+        ctx.isCurrentMonthPartial;
+      return {
+        ...p,
+        label: partial ? `${p.label} parcial` : p.label,
+        isEmpty:
+          "isEmpty" in p
+            ? (p as BarPoint).isEmpty
+            : p.netSales === 0 && p.collections === 0 && p.creditNotes === 0,
+        status: periodStatus(p.key, period, ctx),
+      };
+    });
 }
 
 // ─── Delta badge ────────────────────────────────────────────────────────────────
@@ -333,14 +368,14 @@ function DetailTable({
   bars: BarPoint[];
   currency: "UYU" | "USD";
 }) {
-  const rows = bars.filter((b) => !b.isEmpty);
+  const rows = bars.filter((b) => !b.isEmpty || b.status === "En curso");
   if (rows.length === 0) return null;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[400px] text-left text-[11px]">
+      <table className="w-full min-w-[480px] text-left text-[11px]">
         <thead>
           <tr>
-            {["Período", "Ventas netas", "Cobros", "NC", "Diferencia"].map((h) => (
+            {["Período", "Estado", "Ventas netas", "Cobros", "NC", "Diferencia"].map((h) => (
               <th
                 key={h}
                 className="border-b border-[var(--copilot-border)] px-2 py-1.5 font-semibold text-[var(--copilot-ink-muted)]"
@@ -357,6 +392,9 @@ function DetailTable({
               <tr key={b.key} className="hover:bg-slate-50/60">
                 <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 font-medium text-[var(--copilot-ink)]">
                   {b.label}
+                </td>
+                <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 text-[var(--copilot-ink-muted)]">
+                  {b.status ?? "—"}
                 </td>
                 <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 tabular-nums text-emerald-700">
                   {b.netSales > 0 ? fmt(b.netSales, currency) : "—"}
@@ -401,6 +439,7 @@ export function FinancialMonthlyTrends({
   const [period, setPeriod] = useState<Period>("6m");
   const [currency, setCurrency] = useState<"UYU" | "USD">("UYU");
   const [showDetail, setShowDetail] = useState(false);
+  const periodContext = useMemo(() => buildFinancialPeriodContext(asOfYmd), [asOfYmd]);
 
   // Detect available currencies
   const { hasUyu, hasUsd } = useMemo(() => {
@@ -421,8 +460,8 @@ export function FinancialMonthlyTrends({
   );
 
   const bars = useMemo(
-    () => toBarPoints(dashboard.points, period),
-    [dashboard.points, period],
+    () => toBarPoints(dashboard.points, period, periodContext),
+    [dashboard.points, period, periodContext],
   );
 
   const { totals, previousTotals, deltas, best, gap, insights } = dashboard;
@@ -440,10 +479,18 @@ export function FinancialMonthlyTrends({
     <CopilotCard>
       {/* ── Header ── */}
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <CopilotSectionTitle
-          title="Evolución comercial"
-          subtitle="Compará ventas, cobros y notas de crédito por período."
-        />
+        <div>
+          <CopilotSectionTitle
+            title="Evolución comercial desde enero 2026"
+            subtitle="Compara ventas netas, cobros y notas de crédito por período. No incluye meses anteriores a enero 2026."
+          />
+          <span className="mt-2 inline-flex rounded-full border border-[var(--copilot-border)] bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-[var(--copilot-ink-muted)]">
+            Datos disponibles: {periodContext.trendsDataRangeLabel}
+          </span>
+          <p className="mt-1 text-[10px] text-[var(--copilot-ink-muted)]">
+            Fuente: ventas y cobros sincronizados desde enero 2026.
+          </p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* Period selector */}
           <div
