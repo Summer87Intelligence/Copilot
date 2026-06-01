@@ -18,14 +18,15 @@ import {
   type SantanderReconciliationStatus,
 } from "@/lib/treasury/santander-import-reconciliation";
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
-import { parseSantanderStatementFile } from "@/lib/treasury/santander-statement-parser";
+import {
+  parseSantanderStatementFile,
+  SantanderStatementParseError,
+} from "@/lib/treasury/santander-statement-parser";
 
 type Props = {
   workspace: TreasuryWorkspace;
   embedded?: boolean;
 };
-
-type FileKind = "csv" | "xlsx";
 
 function movementTypeLabel(type: string): string {
   const t = type.toLowerCase();
@@ -83,7 +84,6 @@ function formatCurrencyTotals(totals: Partial<Record<"UYU" | "USD", number>>): s
 
 export function TreasurySantanderImportPanel({ workspace, embedded = false }: Props) {
   const [accountId, setAccountId] = useState("");
-  const [fileKind, setFileKind] = useState<FileKind>("csv");
   const [formatOpen, setFormatOpen] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [previewing, setPreviewing] = useState(false);
@@ -91,7 +91,8 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
   const [previewResult, setPreviewResult] = useState<BankImportResult | null>(null);
   const [ignoredIds, setIgnoredIds] = useState<Set<string>>(() => new Set());
   const [detailRow, setDetailRow] = useState<BankImportPreviewRow | null>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [parsedRows, setParsedRows] = useState<
     Awaited<ReturnType<typeof parseSantanderStatementFile>>
   >([]);
@@ -120,16 +121,22 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
 
   async function handleFileChange(file: File | null) {
     if (!file) return;
-    const lower = file.name.toLowerCase();
-    if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) setFileKind("xlsx");
-    else setFileKind("csv");
     setParsing(true);
-    setFileName(file.name);
+    setSelectedFile(file);
+    setFileError(null);
+    setParsedRows([]);
     setPreviewResult(null);
     setIgnoredIds(new Set());
     try {
       const rows = await parseSantanderStatementFile(file);
       setParsedRows(rows);
+    } catch (error) {
+      setParsedRows([]);
+      if (error instanceof SantanderStatementParseError) {
+        setFileError(error.message);
+      } else {
+        setFileError("No pudimos leer el archivo. Revisá el formato e intentá de nuevo.");
+      }
     } finally {
       setParsing(false);
     }
@@ -236,36 +243,30 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
         ) : null}
       </TreasuryFormField>
 
-      <TreasuryFormField label="Tipo de archivo" htmlFor="import-file-kind">
-        <select
-          id="import-file-kind"
-          className={treasuryInputClassName()}
-          value={fileKind}
-          onChange={(e) => setFileKind(e.target.value as FileKind)}
-        >
-          <option value="csv">CSV</option>
-          <option value="xlsx">XLSX</option>
-        </select>
-      </TreasuryFormField>
-
       <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--copilot-border)] bg-white/50 px-6 py-10 text-center">
         <Upload className="mb-3 h-8 w-8 text-[var(--copilot-ink-muted)]" />
         <span className="text-sm font-medium text-[var(--copilot-ink)]">
-          Subí un extracto CSV o XLSX
+          Subí un extracto bancario
         </span>
         <span className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
-          Compatible con movimientos exportados desde Santander.
+          Compatible con CSV, Excel o PDF exportado desde Santander.
         </span>
         <span className="mt-2 text-xs text-[var(--copilot-ink-muted)]">
-          {fileName ?? "Sin archivo seleccionado"}
+          {selectedFile?.name ?? "Sin archivo seleccionado"}
         </span>
         <input
           type="file"
-          accept=".csv,.xlsx,.xls,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          accept=".csv,.xlsx,.xls,.pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/pdf"
           className="sr-only"
           onChange={(e) => void handleFileChange(e.target.files?.[0] ?? null)}
         />
       </label>
+
+      {fileError ? (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="alert">
+          {fileError}
+        </p>
+      ) : null}
 
       <div className="rounded-xl border border-[var(--copilot-border)] bg-white/40">
         <button
@@ -290,6 +291,10 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
               Fecha · Descripción / Concepto / Detalle · Importe / Monto · Débito · Crédito ·
               Moneda · Saldo · Referencia
             </p>
+            <p className="mt-2">
+              Para mejor precisión, usá CSV o Excel. PDF puede depender del formato exportado por el
+              banco.
+            </p>
           </div>
         ) : null}
       </div>
@@ -310,7 +315,7 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
       <div className="flex flex-wrap gap-2">
         <CopilotGhostButton
           type="button"
-          disabled={parsedRows.length === 0 || previewing}
+          disabled={!selectedFile || parsedRows.length === 0 || previewing || parsing}
           onClick={() => void handlePreview()}
         >
           {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Generar preview"}

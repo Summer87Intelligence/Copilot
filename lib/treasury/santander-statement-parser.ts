@@ -1,4 +1,16 @@
 import type { BankImportedFrom, BankMovementType, TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
+import {
+  getBankImportFileType,
+  hasRequiredSantanderColumns,
+  SantanderStatementParseError,
+} from "@/lib/treasury/santander-bank-import-file-type";
+
+export {
+  getBankImportFileType,
+  SantanderStatementParseError,
+  BANK_IMPORT_ERROR_MESSAGES,
+} from "@/lib/treasury/santander-bank-import-file-type";
+export type { BankImportFileType, BankImportParseErrorCode } from "@/lib/treasury/santander-bank-import-file-type";
 
 export type SantanderParsedMovement = {
   movementDate: string;
@@ -213,23 +225,39 @@ export async function parseSantanderStatementFile(
   file: File,
   fallbackCurrency: TreasuryCurrencyCode = "UYU"
 ): Promise<SantanderParsedMovement[]> {
-  const lower = file.name.toLowerCase();
-  if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) {
+  const fileType = getBankImportFileType(file);
+  if (fileType === "unsupported") {
+    throw new SantanderStatementParseError("UNSUPPORTED_FORMAT");
+  }
+  if (fileType === "pdf") {
+    throw new SantanderStatementParseError("PDF_NOT_SUPPORTED");
+  }
+
+  if (fileType === "xlsx") {
     const XLSX = await import("xlsx");
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: "array" });
     const sheetName = workbook.SheetNames[0];
-    if (!sheetName) return [];
+    if (!sheetName) {
+      throw new SantanderStatementParseError("EMPTY_FILE");
+    }
     const sheet = workbook.Sheets[sheetName];
-    if (!sheet) return [];
+    if (!sheet) {
+      throw new SantanderStatementParseError("EMPTY_FILE");
+    }
     const rows = XLSX.utils.sheet_to_json<(string | number | null)[]>(sheet, {
       header: 1,
       raw: false,
       defval: "",
     });
-    if (rows.length < 2) return [];
+    if (rows.length < 2) {
+      throw new SantanderStatementParseError("EMPTY_FILE");
+    }
     const headers = rows[0]!.map((cell) => String(cell ?? ""));
     const headerIndex = resolveHeaderIndex(headers);
+    if (!hasRequiredSantanderColumns(headerIndex)) {
+      throw new SantanderStatementParseError("COLUMNS_NOT_DETECTED");
+    }
     const out: SantanderParsedMovement[] = [];
     for (const row of rows.slice(1)) {
       const cells = row.map((cell) => String(cell ?? ""));
@@ -237,9 +265,30 @@ export async function parseSantanderStatementFile(
       if (!movement) continue;
       out.push({ ...movement, importedFrom: "csv", rawPayload: { ...movement.rawPayload, source: "xlsx" } });
     }
+    if (out.length === 0) {
+      throw new SantanderStatementParseError("EMPTY_FILE");
+    }
     return out;
   }
 
   const text = await file.text();
-  return parseSantanderCsvText(text, fallbackCurrency);
+  const lines = text
+    .replace(/^\uFEFF/, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length < 2) {
+    throw new SantanderStatementParseError("EMPTY_FILE");
+  }
+  const delimiter = detectDelimiter(lines[0]!);
+  const headers = splitCsvLine(lines[0]!, delimiter);
+  const headerIndex = resolveHeaderIndex(headers);
+  if (!hasRequiredSantanderColumns(headerIndex)) {
+    throw new SantanderStatementParseError("COLUMNS_NOT_DETECTED");
+  }
+  const out = parseSantanderCsvText(text, fallbackCurrency);
+  if (out.length === 0) {
+    throw new SantanderStatementParseError("EMPTY_FILE");
+  }
+  return out;
 }
