@@ -272,7 +272,7 @@ const SECTIONS: Section[] = [
           <Bullets
             items={[
               "Datos — facturas, recibos y registros en tabla.",
-              "Reportes — PDF de deudores y acceso centralizado a reportes del cliente.",
+              "Reportes — PDFs de cobranza, caja, ventas netas, ejecutivo mensual y ranking de clientes.",
               "Panorama financiero — lectura general (no reemplaza Tesorería ni Cartera).",
               "Agentes IA — briefings de lectura; no modifican datos.",
             ]}
@@ -1536,15 +1536,19 @@ const SECTIONS: Section[] = [
     content: (
       <>
         <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
-          <strong>Reportes</strong> centraliza los PDFs que podés descargar para
-          revisar deuda y cobranza. También podés generar el reporte de deudores desde{" "}
-          <strong>Clientes</strong>; ambos accesos usan el mismo generador.
+          <strong>Reportes</strong> centraliza los PDFs que podés descargar para revisar deuda,
+          cobranza, caja y ventas. Están organizados en tres grupos: Cobranza, Finanzas y Clientes.
         </p>
         <Bullets
           items={[
             "Reporte de deudores — clientes con deuda, moneda, antigüedad y contacto.",
+            "Reporte de cobranza — cobros registrados del mes separados por moneda (UYU o USD). Incluye fecha, número de recibo, cliente e importe.",
+            "Reporte de caja mensual — movimientos de caja del período con saldo inicial, ingresos, egresos y saldo final acumulado.",
+            "Reporte de ventas netas — facturación del mes por cliente descontando notas de crédito. Ordenado por ventas netas descendente.",
+            "Reporte ejecutivo mensual — resumen CEO en un solo PDF: indicadores clave, top 5 clientes por facturación, top 5 deudores, estado de caja y nivel de riesgo.",
+            "Clientes principales — ranking de clientes ordenable por facturación, deuda total o deuda vencida. Muestra participación y riesgo.",
             "Estado de cuenta por cliente — desde la ficha de cada cliente.",
-            "Los reportes no modifican facturas, caja ni gestiones.",
+            "Los reportes son de solo lectura: no modifican facturas, caja ni gestiones.",
           ]}
         />
         <div className="flex gap-3 flex-wrap">
