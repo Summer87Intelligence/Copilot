@@ -47,6 +47,7 @@ const ACCOUNT_TYPE_LABEL: Record<string, string> = {
 
 type Props = {
   workspace: TreasuryWorkspace;
+  embedded?: boolean;
 };
 
 const emptyForm: TreasuryAccountFormValues = {
@@ -59,7 +60,7 @@ const emptyForm: TreasuryAccountFormValues = {
   initialBalance: "",
 };
 
-export function TreasuryAccountsPanel({ workspace }: Props) {
+export function TreasuryAccountsPanel({ workspace, embedded = false }: Props) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -145,16 +146,25 @@ export function TreasuryAccountsPanel({ workspace }: Props) {
 
   return (
     <section className="space-y-4">
-      <CopilotSectionTitle
-        title="Cuentas de tesorería"
-        subtitle="Cajas, bancos y billeteras usados para calcular la posición de caja."
-        action={
+      {embedded ? (
+        <div className="flex justify-end">
           <CopilotPrimaryButton type="button" onClick={openCreate}>
             <Plus className="mr-2 h-4 w-4" />
             Nueva cuenta
           </CopilotPrimaryButton>
-        }
-      />
+        </div>
+      ) : (
+        <CopilotSectionTitle
+          title="Cuentas de tesorería"
+          subtitle="Cuentas usadas para organizar movimientos de tesorería."
+          action={
+            <CopilotPrimaryButton type="button" onClick={openCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nueva cuenta
+            </CopilotPrimaryButton>
+          }
+        />
+      )}
 
       <input
         value={search}

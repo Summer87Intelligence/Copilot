@@ -4,13 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { TesoreriaControlBar } from "@/components/copilot/tesoreria/tesoreria-control-bar";
-import { TreasuryAccountsPanel } from "@/components/copilot/tesoreria/treasury-accounts-panel";
-import { TreasuryBankPanel } from "@/components/copilot/tesoreria/treasury-bank-panel";
+import { TreasuryAdvancedToolsPanel } from "@/components/copilot/tesoreria/treasury-advanced-tools-panel";
 import { TreasuryCashPanel } from "@/components/copilot/tesoreria/treasury-cash-panel";
 import { TreasuryFeedbackBanner } from "@/components/copilot/tesoreria/treasury-feedback-banner";
 import { TreasuryManualCashPanel } from "@/components/copilot/tesoreria/treasury-manual-cash-panel";
-import { TreasuryMovimientosPanel } from "@/components/copilot/tesoreria/treasury-movimientos-panel";
-import { TreasuryOpeningBalancesPanel } from "@/components/copilot/tesoreria/treasury-opening-balances-panel";
 import { TreasuryProgramadosPanel } from "@/components/copilot/tesoreria/treasury-programados-panel";
 import { TreasuryRecurringPaymentsPanel } from "@/components/copilot/tesoreria/treasury-recurring-payments-panel";
 import { TreasuryObligationsPanel } from "@/components/copilot/tesoreria/treasury-obligations-panel";
@@ -194,11 +191,8 @@ export function TesoreriaShell() {
 
       {section === "movimientos" ? (
         <div className="space-y-6">
-          <TreasuryMovimientosPanel workspace={workspace} />
           <TreasuryManualCashPanel workspace={workspace} />
-          <TreasuryBankPanel workspace={workspace} />
-          <TreasuryAccountsPanel workspace={workspace} />
-          <TreasuryOpeningBalancesPanel workspace={workspace} />
+          <TreasuryAdvancedToolsPanel workspace={workspace} />
         </div>
       ) : null}
     </div>

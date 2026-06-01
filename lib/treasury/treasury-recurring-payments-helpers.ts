@@ -26,9 +26,24 @@ export function getRecurringTemplateActions(
 
 /** Etiqueta de estado en español. */
 export function getRecurringTemplateStatusLabel(
-  row: Pick<TreasuryRecurringPayment, "active">
-): "Activo" | "Pausado" {
+  row: Pick<TreasuryRecurringPayment, "active" | "autoGenerate">
+): "Activo" | "Pausado" | "Eliminado" {
+  if (isRecurringTemplateDeleted(row)) return "Eliminado";
   return row.active ? "Activo" : "Pausado";
+}
+
+/** Eliminado vía menú: desactivado y sin auto-generación (distinto de pausa). */
+export function isRecurringTemplateDeleted(
+  row: Pick<TreasuryRecurringPayment, "active" | "autoGenerate">
+): boolean {
+  return !row.active && row.autoGenerate === false;
+}
+
+/** Filas visibles en la tabla de recurrentes activos/pausados. */
+export function filterVisibleRecurringTemplates(
+  items: readonly TreasuryRecurringPayment[]
+): TreasuryRecurringPayment[] {
+  return items.filter((row) => !isRecurringTemplateDeleted(row));
 }
 
 /** Frecuencia legible: "Mensual día 20", "Semanal", "Anual", "Mensual". */

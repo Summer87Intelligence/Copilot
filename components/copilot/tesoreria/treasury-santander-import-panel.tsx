@@ -17,6 +17,7 @@ import { parseSantanderStatementFile } from "@/lib/treasury/santander-statement-
 
 type Props = {
   workspace: TreasuryWorkspace;
+  embedded?: boolean;
 };
 
 function movementTypeLabel(type: string): string {
@@ -26,7 +27,7 @@ function movementTypeLabel(type: string): string {
   return type;
 }
 
-export function TreasurySantanderImportPanel({ workspace }: Props) {
+export function TreasurySantanderImportPanel({ workspace, embedded = false }: Props) {
   const [accountId, setAccountId] = useState("");
   const [parsing, setParsing] = useState(false);
   const [previewing, setPreviewing] = useState(false);
@@ -95,11 +96,19 @@ export function TreasurySantanderImportPanel({ workspace }: Props) {
   }
 
   return (
-    <section className="space-y-3 rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-4 shadow-[var(--copilot-shadow)]">
-      <CopilotSectionTitle
-        title="Importador bancario"
-        subtitle="Subí un extracto CSV o XLSX para revisar movimientos y posibles coincidencias."
-      />
+    <section
+      className={
+        embedded
+          ? "space-y-3"
+          : "space-y-3 rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-4 shadow-[var(--copilot-shadow)]"
+      }
+    >
+      {embedded ? null : (
+        <CopilotSectionTitle
+          title="Importador bancario"
+          subtitle="Subí un extracto CSV o XLSX para revisar movimientos y posibles coincidencias."
+        />
+      )}
       <p className="text-xs text-[var(--copilot-ink-muted)]">
         Compatible actualmente con extractos Santander.
       </p>

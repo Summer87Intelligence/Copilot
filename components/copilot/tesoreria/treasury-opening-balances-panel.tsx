@@ -25,9 +25,10 @@ const DEFAULT_ROWS: OpeningRow[] = [
 
 type Props = {
   workspace: TreasuryWorkspace;
+  embedded?: boolean;
 };
 
-export function TreasuryOpeningBalancesPanel({ workspace }: Props) {
+export function TreasuryOpeningBalancesPanel({ workspace, embedded = false }: Props) {
   const [rows, setRows] = useState<OpeningRow[]>(DEFAULT_ROWS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -99,10 +100,12 @@ export function TreasuryOpeningBalancesPanel({ workspace }: Props) {
 
   return (
     <section className="space-y-4">
-      <CopilotSectionTitle
-        title="Saldos iniciales opcionales"
-        subtitle="Usalos solo si ya tenías dinero disponible antes de empezar a medir con Copilot."
-      />
+      {embedded ? null : (
+        <CopilotSectionTitle
+          title="Saldos iniciales"
+          subtitle="Definen desde qué saldo empieza Copilot a calcular caja disponible."
+        />
+      )}
 
       {loading ? (
         <p className="flex items-center gap-2 text-sm text-[var(--copilot-ink-muted)]">

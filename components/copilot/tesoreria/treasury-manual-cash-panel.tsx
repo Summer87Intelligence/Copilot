@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { Loader2, Plus } from "lucide-react";
 
+import type { TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
+
 import { CopilotBadge, CopilotGhostButton, CopilotPrimaryButton, CopilotSectionTitle } from "@/components/copilot/copilot-ui";
 import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
 import {
@@ -41,6 +43,16 @@ type FormState = {
   adjustmentDirection: "increase" | "decrease";
 };
 
+type CurrencyFilter = "all" | TreasuryCurrencyCode;
+type TypeFilter = "all" | "income" | "expense" | "adjustment";
+
+const TYPE_LABELS: Record<string, string> = {
+  income: "Ingreso",
+  expense: "Egreso",
+  adjustment: "Ajuste",
+  transfer: "Transferencia",
+};
+
 const initialForm: FormState = {
   movementType: "expense",
   ledgerType: "cash",
@@ -57,6 +69,8 @@ const initialForm: FormState = {
 
 export function TreasuryManualCashPanel({ workspace }: Props) {
   const [search, setSearch] = useState("");
+  const [currencyFilter, setCurrencyFilter] = useState<CurrencyFilter>("all");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [page, setPage] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<ManualCashMovement | null>(null);
@@ -66,15 +80,22 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return workspace.manualMovements.filter((m) => {
-      if (!q) return true;
-      return (
-        m.concept.toLowerCase().includes(q) ||
-        (m.category ?? "").toLowerCase().includes(q) ||
-        (m.notes ?? "").toLowerCase().includes(q)
+    return workspace.manualMovements
+      .filter((m) => currencyFilter === "all" || m.currencyCode === currencyFilter)
+      .filter((m) => typeFilter === "all" || m.movementType === typeFilter)
+      .filter((m) => {
+        if (!q) return true;
+        return (
+          m.concept.toLowerCase().includes(q) ||
+          (m.category ?? "").toLowerCase().includes(q) ||
+          (m.notes ?? "").toLowerCase().includes(q)
+        );
+      })
+      .sort(
+        (a, b) =>
+          b.movementDate.localeCompare(a.movementDate) || b.createdAt.localeCompare(a.createdAt)
       );
-    });
-  }, [workspace.manualMovements, search]);
+  }, [workspace.manualMovements, search, currencyFilter, typeFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / TESORERIA_PAGE_SIZE));
   const pageItems = filtered.slice(page * TESORERIA_PAGE_SIZE, (page + 1) * TESORERIA_PAGE_SIZE);
@@ -170,8 +191,8 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
   return (
     <section className="space-y-4">
       <CopilotSectionTitle
-        title="Caja manual"
-        subtitle="Movimientos reales de dinero: ingresos, egresos, ajustes y transferencias."
+        title="Movimientos de caja"
+        subtitle="Ingresos, egresos y ajustes confirmados que impactan la caja."
         action={
           <CopilotPrimaryButton type="button" onClick={openCreate}>
             <Plus className="mr-2 h-4 w-4" />
@@ -179,6 +200,44 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
           </CopilotPrimaryButton>
         }
       />
+
+      <div className="flex flex-wrap items-center gap-2">
+        {(["all", "UYU", "USD"] as CurrencyFilter[]).map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => {
+              setCurrencyFilter(c);
+              setPage(0);
+            }}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+              currencyFilter === c
+                ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]"
+                : "bg-white/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-white"
+            }`}
+          >
+            {c === "all" ? "Todos" : c}
+          </button>
+        ))}
+        <span className="mx-1 text-[var(--copilot-border)]">·</span>
+        {(["all", "income", "expense", "adjustment"] as TypeFilter[]).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => {
+              setTypeFilter(t);
+              setPage(0);
+            }}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+              typeFilter === t
+                ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]"
+                : "bg-white/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-white"
+            }`}
+          >
+            {t === "all" ? "Todos" : TYPE_LABELS[t]}
+          </button>
+        ))}
+      </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <input
@@ -200,9 +259,9 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
         </div>
       ) : filtered.length === 0 ? (
         <CopilotEmptyPanel
-          title="Sin movimientos manuales"
+          title="Sin movimientos"
           paragraphs={[
-            "Registrá ingresos, egresos o transferencias para ver el flujo de caja real del workspace.",
+            "Registrá ingresos, egresos o ajustes para ver el flujo de caja del workspace.",
           ]}
         />
       ) : (
@@ -227,7 +286,9 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                 <tr key={row.id}>
                   <td className={TESORERIA_TD_CLASS}>{row.movementDate}</td>
                   <td className={TESORERIA_TD_CLASS}>{row.concept}</td>
-                  <td className={TESORERIA_TD_CLASS}>{row.movementType}</td>
+                  <td className={TESORERIA_TD_CLASS}>
+                    {TYPE_LABELS[row.movementType] ?? row.movementType}
+                  </td>
                   <td className={TESORERIA_TD_CLASS}>{row.currencyCode}</td>
                   <td className={TESORERIA_TD_CLASS}>
                     {formatTreasuryMoney(row.amount, row.currencyCode)}
@@ -237,7 +298,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                   </td>
                   <td className={TESORERIA_TD_CLASS}>
                     <CopilotBadge tone={row.status === "active" ? "success" : "neutral"}>
-                      {row.status}
+                      {row.status === "active" ? "Activo" : "Archivado"}
                     </CopilotBadge>
                   </td>
                   <td className={TESORERIA_TD_CLASS}>
@@ -281,7 +342,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                           type="button"
                           onClick={() => void workspace.archiveManual(row.id)}
                         >
-                          Archivar
+                          Anular
                         </CopilotGhostButton>
                       ) : null}
                     </div>

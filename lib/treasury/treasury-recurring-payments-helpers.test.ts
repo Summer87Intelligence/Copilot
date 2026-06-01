@@ -7,8 +7,11 @@ import {
   formatRecurrenceFrequency,
   getObligationStatusLabel,
   getRecurringTemplateActions,
+  filterVisibleRecurringTemplates,
   getRecurringTemplateStatusLabel,
+  isRecurringTemplateDeleted,
 } from "@/lib/treasury/treasury-recurring-payments-helpers";
+import type { TreasuryRecurringPayment } from "@/lib/treasury/treasury-recurring-payments";
 import type { PlannedCashObligation } from "@/lib/treasury/treasury-types";
 
 function makeObligation(
@@ -63,11 +66,44 @@ describe("getRecurringTemplateActions", () => {
 
 describe("getRecurringTemplateStatusLabel", () => {
   it("active → 'Activo'", () => {
-    expect(getRecurringTemplateStatusLabel({ active: true })).toBe("Activo");
+    expect(getRecurringTemplateStatusLabel({ active: true, autoGenerate: true })).toBe(
+      "Activo"
+    );
   });
 
   it("paused → 'Pausado'", () => {
-    expect(getRecurringTemplateStatusLabel({ active: false })).toBe("Pausado");
+    expect(getRecurringTemplateStatusLabel({ active: false, autoGenerate: true })).toBe(
+      "Pausado"
+    );
+  });
+
+  it("deleted → 'Eliminado'", () => {
+    expect(getRecurringTemplateStatusLabel({ active: false, autoGenerate: false })).toBe(
+      "Eliminado"
+    );
+  });
+});
+
+describe("isRecurringTemplateDeleted", () => {
+  it("detects delete pattern (inactive + no auto-generate)", () => {
+    expect(isRecurringTemplateDeleted({ active: false, autoGenerate: false })).toBe(true);
+  });
+
+  it("pause is not delete", () => {
+    expect(isRecurringTemplateDeleted({ active: false, autoGenerate: true })).toBe(false);
+  });
+});
+
+describe("filterVisibleRecurringTemplates", () => {
+  const rows = [
+    { id: "a", active: true, autoGenerate: true },
+    { id: "b", active: false, autoGenerate: true },
+    { id: "c", active: false, autoGenerate: false },
+  ] as TreasuryRecurringPayment[];
+
+  it("hides deleted templates", () => {
+    const visible = filterVisibleRecurringTemplates(rows);
+    expect(visible.map((r) => r.id)).toEqual(["a", "b"]);
   });
 });
 

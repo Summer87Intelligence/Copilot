@@ -42,7 +42,10 @@ function matchStatusLabel(status: string, hasSuggestion: boolean): string {
   }
 }
 
-export function TreasuryBankPanel({ workspace }: Props) {
+export function TreasuryBankReconciliationPanel({
+  workspace,
+  embedded = false,
+}: Props & { embedded?: boolean }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<BankReconciliationMovement | null>(null);
@@ -158,14 +161,14 @@ export function TreasuryBankPanel({ workspace }: Props) {
 
   return (
     <section className="space-y-4">
-      <TreasurySantanderImportPanel workspace={workspace} />
-
-      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="space-y-4">
-          <CopilotSectionTitle
-            title="Conciliación bancaria"
-            subtitle="Revisá movimientos importados y confirmá coincidencias con la caja registrada."
-          />
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(260px,300px)]">
+        <div className="min-w-0 space-y-4">
+          {embedded ? null : (
+            <CopilotSectionTitle
+              title="Conciliación bancaria"
+              subtitle="Revisá movimientos importados y confirmá coincidencias con la caja registrada."
+            />
+          )}
           <input
             value={search}
             onChange={(e) => {
@@ -301,7 +304,7 @@ export function TreasuryBankPanel({ workspace }: Props) {
           ) : null}
         </div>
 
-        <aside className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-4 shadow-[var(--copilot-shadow)]">
+        <aside className="min-w-0 rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-4 shadow-[var(--copilot-shadow)]">
           <h3 className="text-sm font-semibold text-[var(--copilot-ink)]">Sugerencias de conciliación</h3>
           <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
             Coincidencias detectadas por monto, fecha y descripción.
@@ -390,6 +393,15 @@ export function TreasuryBankPanel({ workspace }: Props) {
           </div>
         </div>
       ) : null}
+    </section>
+  );
+}
+
+export function TreasuryBankPanel({ workspace }: Props) {
+  return (
+    <section className="space-y-6">
+      <TreasurySantanderImportPanel workspace={workspace} />
+      <TreasuryBankReconciliationPanel workspace={workspace} />
     </section>
   );
 }

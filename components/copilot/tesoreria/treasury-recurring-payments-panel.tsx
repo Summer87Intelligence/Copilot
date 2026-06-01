@@ -21,6 +21,7 @@ import { copilotApiFetch } from "@/lib/copilot-fetch";
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
 import {
   filterGeneratedPaymentsByTemplate,
+  filterVisibleRecurringTemplates,
   formatNextOccurrenceDisplay,
   formatRecurrenceFrequency,
   getObligationStatusLabel,
@@ -121,7 +122,11 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
 
   useEffect(() => {
     if (!openMenuId) return;
-    function close() { setOpenMenuId(null); }
+    function close(e: MouseEvent) {
+      const target = e.target;
+      if (target instanceof Element && target.closest("[data-recurring-menu]")) return;
+      setOpenMenuId(null);
+    }
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, [openMenuId]);
@@ -147,7 +152,7 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
         data?: { items?: TreasuryRecurringPayment[] };
       };
       if (res.ok && json.ok && json.data?.items) {
-        setItems(json.data.items);
+        setItems(filterVisibleRecurringTemplates(json.data.items));
       }
     } finally {
       setLoading(false);
@@ -319,6 +324,7 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
       }
       workspace.notify("success", json.message ?? "Recurrente eliminado.");
       setModal({ type: "none" });
+      setItems((prev) => prev.filter((i) => i.id !== row.id));
       void load();
       await workspace.refetch();
     } finally {
@@ -420,7 +426,7 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
                       >
                         Ver pagos
                       </CopilotGhostButton>
-                      <div className="relative">
+                      <div className="relative" data-recurring-menu>
                         <button
                           type="button"
                           className="rounded p-1 text-[var(--copilot-ink-muted)] transition hover:bg-[rgba(44,40,37,0.06)] hover:text-[var(--copilot-ink)]"
@@ -433,11 +439,15 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
                           <MoreHorizontal className="h-4 w-4" />
                         </button>
                         {openMenuId === row.id ? (
-                          <div className="absolute right-0 top-full z-10 mt-1 min-w-[120px] rounded-lg border border-[var(--copilot-border)] bg-white py-1 shadow-lg">
+                          <div
+                            className="absolute right-0 top-full z-10 mt-1 min-w-[120px] rounded-lg border border-[var(--copilot-border)] bg-white py-1 shadow-lg"
+                            data-recurring-menu
+                          >
                             <button
                               type="button"
                               className="w-full px-3 py-1.5 text-left text-xs text-rose-600 transition hover:bg-rose-50"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setOpenMenuId(null);
                                 setModal({ type: "delete", row, cancelPending: true });
                               }}
