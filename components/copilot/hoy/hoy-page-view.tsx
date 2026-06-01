@@ -27,10 +27,7 @@ import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-p
 import { AttentionClientsDrawer } from "./hoy-attention-clients-drawer";
 import { CollectionAgendaHoyCard } from "./collection-agenda-hoy-card";
 import { HoyAdvancedDetail } from "./hoy-advanced-detail";
-import {
-  ClientsWithDebtSection,
-  formatMoneySymbolOnly,
-} from "./hoy-clients-with-debt-section";
+import { ClientsWithDebtSection } from "./hoy-clients-with-debt-section";
 import {
   HoyCockpitCardDrawer,
   type HoyCockpitCardId,
@@ -325,37 +322,10 @@ export function HoyPageView({
             </div>
           </div>
 
-          {sortedDebtorRows.slice(0, 3).length > 0 && (
-            <div className="mt-2.5 flex flex-wrap gap-2">
-              {sortedDebtorRows.slice(0, 3).map((row) => (
-                <div
-                  key={`${row.company_id}-${row.currency}`}
-                  className="flex items-center gap-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 px-3 py-1.5 text-xs"
-                >
-                  <span className="max-w-[120px] truncate font-semibold text-[var(--copilot-ink)]">
-                    {row.name}
-                  </span>
-                  <span className={`tabular-nums ${(row.vencido?.amount ?? 0) > 0 ? "text-rose-700 font-semibold" : "text-amber-700"}`}>
-                    {formatMoneySymbolOnly(row.deuda)}
-                  </span>
-                  <span className="text-[10px] font-medium text-[var(--copilot-ink-muted)]">
-                    {row.currency}
-                  </span>
-                  {(row.vencido?.amount ?? 0) > 0 && (
-                    <span className="rounded-full bg-rose-100/80 px-1.5 py-0.5 text-[10px] font-semibold text-rose-800">
-                      Vencido
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
           <div className="mt-2">
             <ClientsWithDebtSection
               sectionRef={debtorsSectionRef}
               allRows={sortedDebtorRows}
-              counts={pulse.clientCounts}
               expanded={debtorsExpanded}
               onExpandedChange={setDebtorsExpanded}
               highlightRisk

@@ -93,44 +93,36 @@ function rowSeverityClass(row: DebtorCollectionRow, highlightRisk: boolean): str
 function DebtorRowActions({ row }: { row: DebtorCollectionRow }) {
   const { phone, email } = debtorContactFields(row);
   const waDigits = phone ? normalizeWhatsAppDigits(phone) : null;
-  const hasOverdue = (row.vencido?.amount ?? 0) > 0;
 
   return (
-    <div className="flex flex-col items-start gap-1" onClick={(e) => e.stopPropagation()}>
-      {hasOverdue ? (
-        <span className="text-xs font-medium leading-snug text-[var(--copilot-ink-muted)]">
-          {row.accion}
-        </span>
-      ) : null}
-      <div className="flex items-center gap-1.5">
-        {waDigits ? (
-          <a
-            href={`https://wa.me/${waDigits}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 rounded-md border border-emerald-200/80 bg-emerald-50/80 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-50"
-          >
-            <MessageCircle className="h-3 w-3" aria-hidden />
-            {HOY_COPY.debtorWhatsApp}
-          </a>
-        ) : null}
-        {email ? (
-          <a
-            href={`mailto:${encodeURIComponent(email)}`}
-            className="inline-flex items-center gap-1 rounded-md border border-[var(--copilot-border)] bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-[var(--copilot-accent)] hover:bg-white"
-          >
-            <Mail className="h-3 w-3" aria-hidden />
-            {HOY_COPY.debtorSendEmail}
-          </a>
-        ) : null}
-        <Link
-          href={row.deepLink}
-          className="inline-flex items-center gap-1 rounded-md border border-[var(--copilot-border)] bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-[var(--copilot-ink)] hover:bg-white"
+    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+      {waDigits ? (
+        <a
+          href={`https://wa.me/${waDigits}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 rounded-md border border-emerald-200/80 bg-emerald-50/80 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-50"
         >
-          <ExternalLink className="h-3 w-3" aria-hidden />
-          {HOY_COPY.debtorViewProfile}
-        </Link>
-      </div>
+          <MessageCircle className="h-3 w-3" aria-hidden />
+          {HOY_COPY.debtorWhatsApp}
+        </a>
+      ) : null}
+      {email ? (
+        <a
+          href={`mailto:${encodeURIComponent(email)}`}
+          className="inline-flex items-center gap-1 rounded-md border border-[var(--copilot-border)] bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-[var(--copilot-accent)] hover:bg-white"
+        >
+          <Mail className="h-3 w-3" aria-hidden />
+          {HOY_COPY.debtorSendEmail}
+        </a>
+      ) : null}
+      <Link
+        href={row.deepLink}
+        className="inline-flex items-center gap-1 rounded-md border border-[var(--copilot-border)] bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-[var(--copilot-ink)] hover:bg-white"
+      >
+        <ExternalLink className="h-3 w-3" aria-hidden />
+        {HOY_COPY.debtorViewProfile}
+      </Link>
     </div>
   );
 }
@@ -285,10 +277,10 @@ function DebtorTable({
                     <DebtorAmount amount={row.deuda} tone="warning" />
                   </td>
                   <td className="px-3 py-1.5">
-                    {row.vencido ? (
+                    {(row.vencido?.amount ?? 0) > 0 ? (
                       <DebtorAmount amount={row.vencido} tone="danger" />
                     ) : (
-                      <span className="text-sm font-medium text-[var(--copilot-ink-muted)]">Sin deuda vencida</span>
+                      <span className="text-xs text-[var(--copilot-ink-muted)]">—</span>
                     )}
                   </td>
                   <td className="px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)]">
@@ -339,14 +331,12 @@ function dedupeDebtorRows(rows: DebtorCollectionRow[]): DebtorCollectionRow[] {
 
 export function ClientsWithDebtSection({
   allRows,
-  counts,
   expanded,
   onExpandedChange,
   sectionRef,
   highlightRisk = false,
 }: {
   allRows: DebtorCollectionRow[];
-  counts: HoyClientCounts;
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
   sectionRef?: RefObject<HTMLElement | null>;
@@ -359,7 +349,20 @@ export function ClientsWithDebtSection({
     [dedupedRows, expanded, initialCount]
   );
 
-  const summary = buildDebtorsSummaryLine(counts, allRows);
+  const { uyuDebt, usdDebt, uyuOverdue, usdOverdue } = useMemo(() => {
+    let uyuDebt = 0, usdDebt = 0, uyuOverdue = 0, usdOverdue = 0;
+    for (const r of dedupedRows) {
+      if (r.currency === "UYU") {
+        uyuDebt += r.deuda.amount;
+        uyuOverdue += r.vencido?.amount ?? 0;
+      } else {
+        usdDebt += r.deuda.amount;
+        usdOverdue += r.vencido?.amount ?? 0;
+      }
+    }
+    return { uyuDebt, usdDebt, uyuOverdue, usdOverdue };
+  }, [dedupedRows]);
+
   const canExpand = dedupedRows.length > initialCount;
 
   const expandLabel =
@@ -369,7 +372,32 @@ export function ClientsWithDebtSection({
 
   return (
     <section ref={sectionRef} id="clientes-criticos" className="scroll-mt-4">
-      <p className="text-xs text-[var(--copilot-ink-muted)]">{summary}</p>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-xs text-[var(--copilot-ink-muted)]">
+        {uyuDebt > 0 && (
+          <span>
+            Deuda UYU{" "}
+            <span className="font-semibold text-amber-700">{fmtCurrencyAmount(uyuDebt, "UYU")}</span>
+          </span>
+        )}
+        {usdDebt > 0 && (
+          <span>
+            Deuda USD{" "}
+            <span className="font-semibold text-amber-700">{fmtCurrencyAmount(usdDebt, "USD")}</span>
+          </span>
+        )}
+        {uyuOverdue > 0 && (
+          <span>
+            Vencido UYU{" "}
+            <span className="font-semibold text-rose-700">{fmtCurrencyAmount(uyuOverdue, "UYU")}</span>
+          </span>
+        )}
+        {usdOverdue > 0 && (
+          <span>
+            Vencido USD{" "}
+            <span className="font-semibold text-rose-700">{fmtCurrencyAmount(usdOverdue, "USD")}</span>
+          </span>
+        )}
+      </div>
       <div className="mt-2">
         <DebtorTable rows={visibleRows} highlightRisk={highlightRisk} />
       </div>
