@@ -9,43 +9,118 @@ import {
 } from "@/lib/treasury/repositories/bank-reconciliation-movement-repository";
 import { treasuryAccountRepositoryGetById } from "@/lib/treasury/repositories/treasury-account-repository";
 import {
+  enrichSantanderImportRows,
+  buildSantanderImportSummary,
+  type EnrichedSantanderImportRow,
+  type SantanderImportSummary,
+  type ClientMatchInput,
+  type ZetaReceiptMatchInput,
+} from "@/lib/treasury/santander-import-reconciliation";
+import {
   ensureTreasuryAccountForMovement,
   mapDbError,
 } from "@/lib/treasury/treasury-db-helpers";
-import { bestMatchSuggestionForBank } from "@/lib/treasury/treasury-reconciliation-match";
 import { resolveTreasuryWorkspaceId } from "@/lib/treasury/treasury-tenant";
-import type { BankReconciliationMovement } from "@/lib/treasury/treasury-types";
-import {
-  bankReconciliationMovementMarkMatched,
-} from "@/lib/treasury/services/bank-reconciliation-movement-service";
+import type { BankReconciliationMovement, TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
 
-const AUTO_MATCH_THRESHOLD = 85;
-
-export type BankImportPreviewRow = {
-  movementDate: string;
-  description: string;
-  amount: number;
-  currencyCode: string;
-  movementType: string;
-  externalId: string;
-  documentNumber: string | null;
-  balanceAfter: number | null;
-  duplicate: boolean;
-  suggestion: {
-    manualId: string;
-    confidence: number;
-    amountDelta: number;
-    dayDelta: number;
-  } | null;
-};
+export type BankImportPreviewRow = EnrichedSantanderImportRow;
 
 export type BankImportResult = {
   preview: BankImportPreviewRow[];
+  summary: SantanderImportSummary;
   imported: BankReconciliationMovement[];
   importedCount: number;
   skippedDuplicates: number;
   autoMatchedCount: number;
 };
+
+async function loadZetaReceipts(
+  supabase: SupabaseClient,
+  tenantCompanyId: string
+): Promise<ZetaReceiptMatchInput[]> {
+  const since = new Date();
+  since.setMonth(since.getMonth() - 18);
+  const sinceYmd = since.toISOString().slice(0, 10);
+
+  const { data, error } = await supabase
+    .from("proto_receipts")
+    .select("id, amount, currency_code, receipt_date, receipt_number, company_id, status")
+    .eq("workspace_company_id", tenantCompanyId)
+    .eq("is_active", true)
+    .gte("receipt_date", sinceYmd)
+    .limit(8000);
+  if (error || !data) return [];
+
+  const companyIds = [
+    ...new Set(
+      data
+        .map((r) => (r as { company_id?: string | null }).company_id)
+        .filter((id): id is string => Boolean(id))
+    ),
+  ];
+  const names = new Map<string, string>();
+  if (companyIds.length > 0) {
+    const { data: companies } = await supabase
+      .from("proto_companies")
+      .select("id, name")
+      .in("id", companyIds.slice(0, 500));
+    for (const c of companies ?? []) {
+      const row = c as { id: string; name: string | null };
+      if (row.id && row.name) names.set(row.id, row.name);
+    }
+  }
+
+  const out: ZetaReceiptMatchInput[] = [];
+  for (const raw of data) {
+    const row = raw as {
+      id: string;
+      amount: number | null;
+      currency_code: string | null;
+      receipt_date: string | null;
+      receipt_number: string | null;
+      company_id: string | null;
+      status: string | null;
+    };
+    const code = String(row.currency_code ?? "").toUpperCase();
+    if (code !== "UYU" && code !== "USD") continue;
+    const amount = typeof row.amount === "number" ? row.amount : 0;
+    const receiptDate = String(row.receipt_date ?? "").slice(0, 10);
+    if (amount <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(receiptDate)) continue;
+    const st = String(row.status ?? "").toLowerCase();
+    if (st && ["void", "voided", "canceled", "cancelled", "anulada"].includes(st)) continue;
+    out.push({
+      id: row.id,
+      amount,
+      currencyCode: code as TreasuryCurrencyCode,
+      receiptDate,
+      clientName: row.company_id ? names.get(row.company_id) ?? null : null,
+      receiptNumber: row.receipt_number,
+    });
+  }
+  return out;
+}
+
+async function loadClients(
+  supabase: SupabaseClient,
+  tenantCompanyId: string
+): Promise<ClientMatchInput[]> {
+  const { data, error } = await supabase
+    .from("proto_companies")
+    .select("id, name")
+    .eq("workspace_company_id", tenantCompanyId)
+    .eq("is_active", true)
+    .limit(3000);
+  if (error || !data) return [];
+  return data.map((row) => {
+    const r = row as { id: string; name: string | null };
+    return {
+      id: r.id,
+      name: r.name ?? "Cliente",
+      debtUyu: 0,
+      debtUsd: 0,
+    };
+  });
+}
 
 export async function bankReconciliationImportSantander(
   supabase: SupabaseClient,
@@ -53,12 +128,23 @@ export async function bankReconciliationImportSantander(
   body: BankReconciliationImportBody
 ): Promise<ProtoCrudResult<BankImportResult>> {
   const workspaceId = resolveTreasuryWorkspaceId(tenantCompanyId);
-  const account = await treasuryAccountRepositoryGetById(supabase, workspaceId, body.account_id);
+
+  const account =
+    body.account_id != null
+      ? await treasuryAccountRepositoryGetById(supabase, workspaceId, body.account_id)
+      : { row: null, error: null };
   if (account.error) return mapDbError(account.error);
-  if (!account.row) return protoCrudResult.fail("NOT_FOUND", "Cuenta treasury no encontrada.");
+  if (body.account_id && !account.row) {
+    return protoCrudResult.fail("NOT_FOUND", "Cuenta treasury no encontrada.");
+  }
 
   const manualList = await manualCashMovementRepositoryList(supabase, workspaceId, {}, 500);
   if (manualList.error) return mapDbError(manualList.error);
+
+  const [receipts, clients] = await Promise.all([
+    loadZetaReceipts(supabase, tenantCompanyId),
+    loadClients(supabase, tenantCompanyId),
+  ]);
 
   const externalIds = body.rows.map((row) => row.external_id);
   const existing = await bankReconciliationMovementRepositoryListExternalIds(
@@ -68,76 +154,51 @@ export async function bankReconciliationImportSantander(
   );
   if (existing.error) return mapDbError(existing.error);
 
-  const preview: BankImportPreviewRow[] = body.rows.map((row) => {
-    const suggestion = bestMatchSuggestionForBank(
-      {
-        id: "preview",
-        workspaceId,
-        companyId: null,
-        accountId: body.account_id,
-        bankName: account.row?.bankName ?? "Santander",
-        accountNumber: account.row?.accountNumber ?? null,
-        accountName: account.row?.name ?? null,
-        movementDate: row.movement_date,
-        description: row.description,
-        amount: row.amount,
-        currencyCode: row.currency_code,
-        movementType: row.movement_type,
-        externalId: row.external_id,
-        documentNumber: row.document_number ?? null,
-        balanceAfter: row.balance_after ?? null,
-        matched: false,
-        matchStatus: "unmatched",
-        matchedSource: "none",
-        matchedRecordId: null,
-        confidence: null,
-        importedFrom: "csv",
-        importedAt: new Date().toISOString(),
-        rawPayload: row.raw_payload ?? null,
-        notes: null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      manualList.rows
-    );
+  const parsedRows = body.rows.map((row) => ({
+    movementDate: row.movement_date,
+    description: row.description,
+    amount: row.amount,
+    currencyCode: row.currency_code as TreasuryCurrencyCode,
+    movementType: row.movement_type as "credit" | "debit",
+    externalId: row.external_id,
+    documentNumber: row.document_number ?? null,
+    balanceAfter: row.balance_after ?? null,
+    importedFrom: "csv" as const,
+    rawPayload: (row.raw_payload as Record<string, unknown>) ?? {},
+  }));
 
-    return {
-      movementDate: row.movement_date,
-      description: row.description,
-      amount: row.amount,
-      currencyCode: row.currency_code,
-      movementType: row.movement_type,
-      externalId: row.external_id,
-      documentNumber: row.document_number ?? null,
-      balanceAfter: row.balance_after ?? null,
-      duplicate: existing.ids.has(row.external_id),
-      suggestion: suggestion
-        ? {
-            manualId: suggestion.manualId,
-            confidence: suggestion.confidence,
-            amountDelta: suggestion.amountDelta,
-            dayDelta: suggestion.dayDelta,
-          }
-        : null,
-    };
+  const preview = enrichSantanderImportRows({
+    rows: parsedRows,
+    manualMovements: manualList.rows,
+    receipts,
+    clients,
+    existingExternalIds: existing.ids,
   });
+  const summary = buildSantanderImportSummary(preview);
 
   if (!body.apply) {
     return protoCrudResult.ok(
       {
         preview,
+        summary,
         imported: [],
         importedCount: 0,
-        skippedDuplicates: preview.filter((row) => row.duplicate).length,
+        skippedDuplicates: summary.duplicate,
         autoMatchedCount: 0,
       },
       "Preview de importación Santander generado."
     );
   }
 
+  if (!body.account_id || !account.row) {
+    return protoCrudResult.fail(
+      "VALIDATION",
+      "Seleccioná una cuenta destino para guardar movimientos importados."
+    );
+  }
+
   const imported: BankReconciliationMovement[] = [];
   let skippedDuplicates = 0;
-  let autoMatchedCount = 0;
 
   for (const row of body.rows) {
     if (existing.ids.has(row.external_id)) {
@@ -186,37 +247,17 @@ export async function bankReconciliationImportSantander(
 
     existing.ids.add(row.external_id);
     imported.push(created);
-
-    if (body.auto_match !== false) {
-      const suggestion = bestMatchSuggestionForBank(created, manualList.rows);
-      if (suggestion && suggestion.confidence >= AUTO_MATCH_THRESHOLD) {
-        const matched = await bankReconciliationMovementMarkMatched(
-          supabase,
-          tenantCompanyId,
-          created.id,
-          {
-            matched_source: "manual_cash",
-            matched_record_id: suggestion.manualId,
-            confidence: suggestion.confidence,
-            notes: "Auto-match importación Santander",
-          }
-        );
-        if (matched.ok) {
-          autoMatchedCount += 1;
-          imported[imported.length - 1] = matched.data;
-        }
-      }
-    }
   }
 
   return protoCrudResult.ok(
     {
       preview,
+      summary,
       imported,
       importedCount: imported.length,
       skippedDuplicates,
-      autoMatchedCount,
+      autoMatchedCount: 0,
     },
-    "Importación Santander completada."
+    "Movimientos bancarios guardados. No se modificó la caja automáticamente."
   );
 }

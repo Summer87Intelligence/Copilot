@@ -232,26 +232,14 @@ export function treasuryErrorMessage(result: TreasuryApiFailure): string {
   return result.message || "No se pudo completar la operación.";
 }
 
-export type BankImportPreviewRow = {
-  movementDate: string;
-  description: string;
-  amount: number;
-  currencyCode: string;
-  movementType: string;
-  externalId: string;
-  documentNumber: string | null;
-  balanceAfter: number | null;
-  duplicate: boolean;
-  suggestion: {
-    manualId: string;
-    confidence: number;
-    amountDelta: number;
-    dayDelta: number;
-  } | null;
-};
+export type {
+  BankImportPreviewRow,
+  SantanderImportSummary,
+} from "@/lib/treasury/santander-import-reconciliation";
 
 export type BankImportResult = {
-  preview: BankImportPreviewRow[];
+  preview: import("@/lib/treasury/santander-import-reconciliation").EnrichedSantanderImportRow[];
+  summary: import("@/lib/treasury/santander-import-reconciliation").SantanderImportSummary;
   imported: BankReconciliationMovement[];
   importedCount: number;
   skippedDuplicates: number;

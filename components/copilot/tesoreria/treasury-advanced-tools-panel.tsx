@@ -26,7 +26,8 @@ export function TreasuryAdvancedToolsPanel({ workspace }: Props) {
             Importador bancario
           </span>
           <span className="mt-0.5 block text-xs text-[var(--copilot-ink-muted)]">
-            Subí un extracto CSV o XLSX para revisar movimientos y posibles coincidencias.
+            Subí movimientos de Santander para compararlos con Tesorería, Zeta y Copilot. No modifica
+            caja hasta que confirmes una acción.
           </span>
         </span>
         <ChevronDown

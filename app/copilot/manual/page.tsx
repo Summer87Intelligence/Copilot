@@ -1004,6 +1004,30 @@ const SECTIONS: Section[] = [
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Importador bancario
+          </p>
+          <p className="mb-3 text-sm text-[var(--copilot-ink)]">
+            En Tesorería → Movimientos podés subir un extracto CSV o XLSX exportado desde Santander
+            (cuenta o tarjeta) para comparar cobros y gastos del banco con lo registrado en Copilot.
+          </p>
+          <Bullets
+            items={[
+              "Generá un preview antes de guardar: ves fecha, monto, tipo y un estado de coincidencia por fila.",
+              "Coincide — el movimiento del banco parece ya estar en Tesorería (y en Zeta si aplica).",
+              "Falta en Copilot — hay señal en Zeta o es un cobro en banco sin movimiento equivalente en Tesorería.",
+              "Falta en Zeta — está en Tesorería pero no hay recibo Zeta en la ventana de fechas.",
+              "Posible coincidencia — monto, fecha o texto parecen relacionados; conviene revisar manualmente.",
+              "No modifica caja automáticamente ni crea recibos en Zeta. Guardar solo almacena el extracto para conciliación.",
+              "Para impactar caja tenés que crear o confirmar un movimiento de Tesorería por separado.",
+            ]}
+          />
+          <div className="mt-3">
+            <NavLink href="/copilot/tesoreria?section=movimientos" label="Ir al importador" ghost />
+          </div>
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
             Secciones de Tesorería
           </p>
           <Bullets

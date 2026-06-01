@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader2, Upload } from "lucide-react";
+import { ChevronDown, Loader2, Upload, X } from "lucide-react";
 
 import { CopilotGhostButton, CopilotPrimaryButton, CopilotSectionTitle } from "@/components/copilot/copilot-ui";
 import { TreasuryFormField, treasuryInputClassName } from "@/components/copilot/tesoreria/treasury-form-fields";
@@ -11,7 +11,12 @@ import {
   TESORERIA_TH_CLASS,
 } from "@/components/copilot/tesoreria/tesoreria-ui";
 import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
-import type { BankImportPreviewRow } from "@/lib/treasury/treasury-client";
+import type { BankImportPreviewRow, BankImportResult, SantanderImportSummary } from "@/lib/treasury/treasury-client";
+import {
+  buildSantanderImportSummary,
+  SANTANDER_STATUS_LABELS,
+  type SantanderReconciliationStatus,
+} from "@/lib/treasury/santander-import-reconciliation";
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
 import { parseSantanderStatementFile } from "@/lib/treasury/santander-statement-parser";
 
@@ -20,6 +25,8 @@ type Props = {
   embedded?: boolean;
 };
 
+type FileKind = "csv" | "xlsx";
+
 function movementTypeLabel(type: string): string {
   const t = type.toLowerCase();
   if (t === "debit") return "Débito";
@@ -27,12 +34,63 @@ function movementTypeLabel(type: string): string {
   return type;
 }
 
+function statusBadgeClass(status: SantanderReconciliationStatus): string {
+  switch (status) {
+    case "matched":
+      return "bg-emerald-100 text-emerald-900";
+    case "possible":
+      return "bg-sky-100 text-sky-900";
+    case "missing_copilot":
+    case "missing_zeta":
+      return "bg-amber-100 text-amber-900";
+    case "amount_diff":
+      return "bg-rose-100 text-rose-900";
+    case "duplicate":
+    case "ignored":
+    case "unknown":
+    default:
+      return "bg-slate-100 text-slate-700";
+  }
+}
+
+function applyLocalIgnores(
+  rows: BankImportPreviewRow[],
+  ignored: ReadonlySet<string>
+): BankImportPreviewRow[] {
+  if (ignored.size === 0) return rows;
+  return rows.map((row) =>
+    ignored.has(row.externalId)
+      ? {
+          ...row,
+          status: "ignored" as const,
+          statusLabel: SANTANDER_STATUS_LABELS.ignored,
+          suggestedAction: "Ignorar",
+          decisionHint: "Marcado para ignorar en esta revisión.",
+          confidence: null,
+        }
+      : row
+  );
+}
+
+function formatCurrencyTotals(totals: Partial<Record<"UYU" | "USD", number>>): string {
+  const parts: string[] = [];
+  for (const code of ["UYU", "USD"] as const) {
+    const v = totals[code];
+    if (v != null && v > 0) parts.push(formatTreasuryMoney(v, code));
+  }
+  return parts.length > 0 ? parts.join(" · ") : "—";
+}
+
 export function TreasurySantanderImportPanel({ workspace, embedded = false }: Props) {
   const [accountId, setAccountId] = useState("");
+  const [fileKind, setFileKind] = useState<FileKind>("csv");
+  const [formatOpen, setFormatOpen] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [previewRows, setPreviewRows] = useState<BankImportPreviewRow[]>([]);
+  const [previewResult, setPreviewResult] = useState<BankImportResult | null>(null);
+  const [ignoredIds, setIgnoredIds] = useState<Set<string>>(() => new Set());
+  const [detailRow, setDetailRow] = useState<BankImportPreviewRow | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [parsedRows, setParsedRows] = useState<
     Awaited<ReturnType<typeof parseSantanderStatementFile>>
@@ -48,24 +106,38 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
     [workspace.accounts]
   );
 
+  const displayRows = useMemo(() => {
+    if (!previewResult?.preview.length) return [];
+    return applyLocalIgnores(previewResult.preview, ignoredIds);
+  }, [previewResult, ignoredIds]);
+
+  const summary: SantanderImportSummary | null = useMemo(() => {
+    if (displayRows.length === 0) return previewResult?.summary ?? null;
+    return buildSantanderImportSummary(displayRows);
+  }, [displayRows, previewResult?.summary]);
+
+  const hasValidPreview = previewResult != null && displayRows.length > 0;
+
   async function handleFileChange(file: File | null) {
     if (!file) return;
+    const lower = file.name.toLowerCase();
+    if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) setFileKind("xlsx");
+    else setFileKind("csv");
     setParsing(true);
     setFileName(file.name);
+    setPreviewResult(null);
+    setIgnoredIds(new Set());
     try {
       const rows = await parseSantanderStatementFile(file);
       setParsedRows(rows);
-      setPreviewRows([]);
     } finally {
       setParsing(false);
     }
   }
 
-  function buildPayload(apply: boolean) {
-    return {
-      account_id: accountId,
+  function buildPayload(apply: boolean): Record<string, unknown> {
+    const payload: Record<string, unknown> = {
       apply,
-      auto_match: true,
       rows: parsedRows.map((row) => ({
         movement_date: row.movementDate,
         description: row.description,
@@ -78,42 +150,71 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
         raw_payload: row.rawPayload,
       })),
     };
+    if (accountId) payload.account_id = accountId;
+    return payload;
   }
 
   async function handlePreview() {
-    if (!accountId || parsedRows.length === 0) return;
+    if (parsedRows.length === 0) return;
     setPreviewing(true);
     const result = await workspace.previewSantanderMovements(buildPayload(false));
-    if (result) setPreviewRows(result.preview);
+    if (result) setPreviewResult(result);
     setPreviewing(false);
   }
 
   async function handleImport() {
-    if (!accountId || parsedRows.length === 0) return;
+    if (!hasValidPreview || !accountId) return;
     setImporting(true);
-    await workspace.importSantanderMovements(buildPayload(true));
+    const result = await workspace.importSantanderMovements(buildPayload(true));
+    if (result) {
+      setPreviewResult(result);
+    }
     setImporting(false);
   }
+
+  function toggleIgnore(externalId: string) {
+    setIgnoredIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(externalId)) next.delete(externalId);
+      else next.add(externalId);
+      return next;
+    });
+    setDetailRow((row) => (row?.externalId === externalId ? null : row));
+  }
+
+  const reviewCount =
+    summary != null
+      ? summary.missingCopilot +
+        summary.missingZeta +
+        summary.possible +
+        summary.unknown +
+        summary.amountDiff
+      : 0;
 
   return (
     <section
       className={
         embedded
-          ? "space-y-3"
-          : "space-y-3 rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-4 shadow-[var(--copilot-shadow)]"
+          ? "space-y-4"
+          : "space-y-4 rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-4 shadow-[var(--copilot-shadow)]"
       }
     >
       {embedded ? null : (
         <CopilotSectionTitle
           title="Importador bancario"
-          subtitle="Subí un extracto CSV o XLSX para revisar movimientos y posibles coincidencias."
+          subtitle="Subí movimientos de Santander para compararlos con Copilot."
         />
       )}
-      <p className="text-xs text-[var(--copilot-ink-muted)]">
-        Compatible actualmente con extractos Santander.
+
+      <p className="text-sm text-[var(--copilot-ink-muted)]">
+        Sirve para detectar cobros o gastos que están en el banco pero todavía no están
+        registrados en Tesorería o Zeta.{" "}
+        <strong className="font-medium text-[var(--copilot-ink)]">
+          No modifica caja automáticamente.
+        </strong>
       </p>
 
-      <TreasuryFormField label="Cuenta destino" htmlFor="import-account">
+      <TreasuryFormField label="Cuenta destino (opcional en preview)" htmlFor="import-account">
         <select
           id="import-account"
           className={treasuryInputClassName()}
@@ -127,6 +228,24 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
             </option>
           ))}
         </select>
+        {santanderAccounts.length === 0 ? (
+          <p className="mt-1 text-xs text-amber-800">
+            No hay cuentas bancarias cargadas. Podés generar el preview igual; para guardar
+            movimientos importados necesitás elegir una cuenta.
+          </p>
+        ) : null}
+      </TreasuryFormField>
+
+      <TreasuryFormField label="Tipo de archivo" htmlFor="import-file-kind">
+        <select
+          id="import-file-kind"
+          className={treasuryInputClassName()}
+          value={fileKind}
+          onChange={(e) => setFileKind(e.target.value as FileKind)}
+        >
+          <option value="csv">CSV</option>
+          <option value="xlsx">XLSX</option>
+        </select>
       </TreasuryFormField>
 
       <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--copilot-border)] bg-white/50 px-6 py-10 text-center">
@@ -135,15 +254,45 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
           Subí un extracto CSV o XLSX
         </span>
         <span className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
+          Compatible con movimientos exportados desde Santander.
+        </span>
+        <span className="mt-2 text-xs text-[var(--copilot-ink-muted)]">
           {fileName ?? "Sin archivo seleccionado"}
         </span>
         <input
           type="file"
-          accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          accept=".csv,.xlsx,.xls,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           className="sr-only"
           onChange={(e) => void handleFileChange(e.target.files?.[0] ?? null)}
         />
       </label>
+
+      <div className="rounded-xl border border-[var(--copilot-border)] bg-white/40">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm"
+          onClick={() => setFormatOpen((v) => !v)}
+          aria-expanded={formatOpen}
+        >
+          <span className="font-medium text-[var(--copilot-ink)]">Formato esperado</span>
+          <ChevronDown
+            className={`h-4 w-4 text-[var(--copilot-ink-muted)] transition ${formatOpen ? "rotate-180" : ""}`}
+          />
+        </button>
+        {formatOpen ? (
+          <div className="border-t border-[var(--copilot-border)] px-3 pb-3 text-xs text-[var(--copilot-ink-muted)]">
+            <p className="pt-2">
+              El archivo debe incluir fecha, descripción y monto. Si el banco separa créditos y
+              débitos en columnas distintas, Copilot los normaliza.
+            </p>
+            <p className="mt-2 font-medium text-[var(--copilot-ink)]">Columnas aceptadas:</p>
+            <p className="mt-1">
+              Fecha · Descripción / Concepto / Detalle · Importe / Monto · Débito · Crédito ·
+              Moneda · Saldo · Referencia
+            </p>
+          </div>
+        ) : null}
+      </div>
 
       {parsing ? (
         <p className="flex items-center gap-2 text-sm text-[var(--copilot-ink-muted)]">
@@ -161,55 +310,222 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
       <div className="flex flex-wrap gap-2">
         <CopilotGhostButton
           type="button"
-          disabled={!accountId || parsedRows.length === 0 || previewing}
+          disabled={parsedRows.length === 0 || previewing}
           onClick={() => void handlePreview()}
         >
           {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Generar preview"}
         </CopilotGhostButton>
         <CopilotPrimaryButton
           type="button"
-          disabled={!accountId || parsedRows.length === 0 || importing}
+          disabled={!hasValidPreview || !accountId || importing}
+          title={
+            !accountId
+              ? "Seleccioná una cuenta para guardar movimientos importados"
+              : !hasValidPreview
+                ? "Generá un preview válido antes de guardar"
+                : undefined
+          }
           onClick={() => void handleImport()}
         >
-          {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Importar movimientos"}
+          {importing ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            "Guardar movimientos importados"
+          )}
         </CopilotPrimaryButton>
       </div>
 
-      {previewRows.length > 0 ? (
+      <p className="text-xs text-[var(--copilot-ink-muted)]">
+        Guardar solo registra el extracto bancario para conciliación. La caja cambia únicamente si
+        confirmás un movimiento de Tesorería por separado.
+      </p>
+
+      {summary ? (
+        <div className="space-y-2 rounded-2xl border border-[var(--copilot-border)] bg-white/50 p-3">
+          <p className="text-sm font-medium text-[var(--copilot-ink)]">
+            Copilot encontró {summary.matched} coincidencias y {reviewCount} movimientos para
+            revisar.
+          </p>
+          <div className="grid gap-2 text-xs text-[var(--copilot-ink-muted)] sm:grid-cols-2 lg:grid-cols-4">
+            <span>Leídos: {summary.total}</span>
+            <span>Coinciden: {summary.matched}</span>
+            <span>Posibles: {summary.possible}</span>
+            <span>Faltan en Copilot: {summary.missingCopilot}</span>
+            <span>Faltan en Zeta: {summary.missingZeta}</span>
+            <span>No identificados: {summary.unknown}</span>
+            <span>Duplicados: {summary.duplicate}</span>
+            <span>Ignorados: {summary.ignored}</span>
+          </div>
+          <div className="grid gap-1 text-xs sm:grid-cols-2">
+            <span>Créditos: {formatCurrencyTotals(summary.creditsByCurrency)}</span>
+            <span>Débitos: {formatCurrencyTotals(summary.debitsByCurrency)}</span>
+          </div>
+        </div>
+      ) : null}
+
+      {displayRows.length > 0 ? (
         <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-white/50">
           <table className={TESORERIA_TABLE_CLASS}>
             <thead>
               <tr>
                 <th className={TESORERIA_TH_CLASS}>Fecha</th>
                 <th className={TESORERIA_TH_CLASS}>Descripción</th>
-                <th className={TESORERIA_TH_CLASS}>Monto</th>
                 <th className={TESORERIA_TH_CLASS}>Tipo</th>
-                <th className={TESORERIA_TH_CLASS}>Duplicado</th>
-                <th className={TESORERIA_TH_CLASS}>Match sugerido</th>
+                <th className={TESORERIA_TH_CLASS}>Moneda</th>
+                <th className={TESORERIA_TH_CLASS}>Importe</th>
+                <th className={TESORERIA_TH_CLASS}>Coincidencia</th>
+                <th className={TESORERIA_TH_CLASS}>Confianza</th>
+                <th className={TESORERIA_TH_CLASS}>Acción</th>
               </tr>
             </thead>
             <tbody>
-              {previewRows.map((row) => (
-                <tr
-                  key={row.externalId}
-                  className={row.duplicate ? "bg-amber-50/70" : undefined}
-                >
+              {displayRows.map((row) => (
+                <tr key={row.externalId}>
                   <td className={TESORERIA_TD_CLASS}>{row.movementDate}</td>
-                  <td className={TESORERIA_TD_CLASS}>{row.description}</td>
-                  <td className={TESORERIA_TD_CLASS}>
-                    {formatTreasuryMoney(row.amount, row.currencyCode as "UYU" | "USD")}
+                  <td className={`${TESORERIA_TD_CLASS} max-w-[200px] truncate`} title={row.description}>
+                    {row.description}
                   </td>
                   <td className={TESORERIA_TD_CLASS}>{movementTypeLabel(row.movementType)}</td>
-                  <td className={TESORERIA_TD_CLASS}>{row.duplicate ? "Sí" : "No"}</td>
+                  <td className={TESORERIA_TD_CLASS}>{row.currencyCode}</td>
                   <td className={TESORERIA_TD_CLASS}>
-                    {row.suggestion
-                      ? `${row.suggestion.confidence}% · Δ ${row.suggestion.amountDelta.toFixed(2)}`
-                      : "—"}
+                    {formatTreasuryMoney(row.amount, row.currencyCode)}
+                  </td>
+                  <td className={TESORERIA_TD_CLASS}>
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(row.status)}`}
+                    >
+                      {row.statusLabel}
+                    </span>
+                  </td>
+                  <td className={TESORERIA_TD_CLASS}>
+                    {row.confidence != null ? `${row.confidence}%` : "—"}
+                  </td>
+                  <td className={TESORERIA_TD_CLASS}>
+                    <div className="flex flex-wrap gap-1">
+                      <CopilotGhostButton
+                        type="button"
+                        className="!px-2 !py-1 text-xs"
+                        onClick={() => setDetailRow(row)}
+                      >
+                        Ver detalle
+                      </CopilotGhostButton>
+                      <CopilotGhostButton
+                        type="button"
+                        className="!px-2 !py-1 text-xs"
+                        onClick={() => toggleIgnore(row.externalId)}
+                      >
+                        {ignoredIds.has(row.externalId) ? "Desmarcar" : "Ignorar"}
+                      </CopilotGhostButton>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      ) : null}
+
+      {detailRow ? (
+        <div className="fixed inset-0 z-40 flex justify-end bg-black/30">
+          <div className="h-full w-full max-w-lg overflow-y-auto bg-[var(--copilot-card)] p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="text-lg font-semibold text-[var(--copilot-ink)]">Detalle del movimiento</h3>
+              <button
+                type="button"
+                className="rounded-lg p-1 text-[var(--copilot-ink-muted)] hover:bg-black/5"
+                onClick={() => setDetailRow(null)}
+                aria-label="Cerrar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <dl className="mt-4 space-y-2 text-sm">
+              <div>
+                <dt className="text-[var(--copilot-ink-muted)]">Fecha</dt>
+                <dd>{detailRow.movementDate}</dd>
+              </div>
+              <div>
+                <dt className="text-[var(--copilot-ink-muted)]">Descripción</dt>
+                <dd>{detailRow.description}</dd>
+              </div>
+              <div>
+                <dt className="text-[var(--copilot-ink-muted)]">Tipo</dt>
+                <dd>{movementTypeLabel(detailRow.movementType)}</dd>
+              </div>
+              <div>
+                <dt className="text-[var(--copilot-ink-muted)]">Moneda / Importe</dt>
+                <dd>
+                  {formatTreasuryMoney(detailRow.amount, detailRow.currencyCode)}
+                </dd>
+              </div>
+              {detailRow.balanceAfter != null ? (
+                <div>
+                  <dt className="text-[var(--copilot-ink-muted)]">Saldo</dt>
+                  <dd>
+                    {formatTreasuryMoney(detailRow.balanceAfter, detailRow.currencyCode)}
+                  </dd>
+                </div>
+              ) : null}
+              {detailRow.documentNumber ? (
+                <div>
+                  <dt className="text-[var(--copilot-ink-muted)]">Referencia</dt>
+                  <dd>{detailRow.documentNumber}</dd>
+                </div>
+              ) : null}
+            </dl>
+
+            <div className="mt-4 rounded-xl border border-[var(--copilot-border)] p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                Decisión sugerida
+              </p>
+              <p className="mt-1 text-sm text-[var(--copilot-ink)]">{detailRow.decisionHint}</p>
+              <p className="mt-2 text-xs text-[var(--copilot-ink-muted)]">
+                Estado: {detailRow.statusLabel}
+                {detailRow.confidence != null ? ` · Confianza ${detailRow.confidence}%` : ""}
+              </p>
+            </div>
+
+            {detailRow.matches.length > 0 ? (
+              <div className="mt-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                  Coincidencias detectadas
+                </p>
+                <ul className="mt-2 space-y-2 text-sm">
+                  {detailRow.matches.map((m) => (
+                    <li
+                      key={`${m.source}-${m.id}`}
+                      className="rounded-lg border border-[var(--copilot-border)] px-3 py-2"
+                    >
+                      <span className="font-medium text-[var(--copilot-ink)]">{m.label}</span>
+                      <span className="mt-0.5 block text-xs text-[var(--copilot-ink-muted)]">
+                        {m.source === "treasury_manual"
+                          ? "Movimiento Tesorería"
+                          : m.source === "zeta_receipt"
+                            ? "Recibo Zeta"
+                            : "Cliente"}
+                        {" · "}
+                        {m.confidence}% · Δ monto {m.amountDelta.toFixed(2)} · Δ días {m.dayDelta}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-[var(--copilot-ink-muted)]">
+                No se encontraron coincidencias en Tesorería, Zeta ni por nombre de cliente.
+              </p>
+            )}
+
+            <div className="mt-6 flex gap-2">
+              <CopilotGhostButton type="button" onClick={() => toggleIgnore(detailRow.externalId)}>
+                {ignoredIds.has(detailRow.externalId) ? "Desmarcar ignorado" : "Ignorar"}
+              </CopilotGhostButton>
+              <CopilotGhostButton type="button" onClick={() => setDetailRow(null)}>
+                Cerrar
+              </CopilotGhostButton>
+            </div>
+          </div>
         </div>
       ) : null}
     </section>

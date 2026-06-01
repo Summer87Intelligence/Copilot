@@ -195,12 +195,16 @@ export const bankReconciliationImportRowSchema = z
 export const bankReconciliationImportBodySchema = z
   .object({
     workspace_id: rejectWorkspaceId,
-    account_id: z.string().uuid(),
+    account_id: z.string().uuid().optional(),
     apply: z.boolean().optional(),
     auto_match: z.boolean().optional(),
     rows: z.array(bankReconciliationImportRowSchema).min(1).max(500),
   })
-  .strict();
+  .strict()
+  .refine((body) => !body.apply || Boolean(body.account_id), {
+    message: "Seleccioná una cuenta destino para guardar movimientos importados.",
+    path: ["account_id"],
+  });
 
 export const plannedCashObligationCreateBodySchema = z
   .object({
