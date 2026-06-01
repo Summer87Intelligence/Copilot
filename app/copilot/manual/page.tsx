@@ -1057,7 +1057,7 @@ const SECTIONS: Section[] = [
             "Caja disponible — dinero actual en Tesorería; no es facturación.",
             "Semáforos en cada KPI — Saludable, Revisar o Crítico según cobranza, vencido y NC.",
             "Ver detalle — abre fórmula, composición, fuente y período; CTA al módulo origen.",
-            "Evolución mensual — ventas netas, cobros y NC por mes; UYU y USD separados.",
+            "Evolución comercial — ventas netas, cobros y notas de crédito por período, con UYU y USD separados. Se muestran datos desde enero 2026.",
             "UYU y USD se analizan por separado; no se suman.",
             "Proyección 30 días — operativa (cobros esperados y pagos próximos), no cierre contable formal.",
           ]}

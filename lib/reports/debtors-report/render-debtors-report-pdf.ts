@@ -189,7 +189,7 @@ function renderTableHeader(doc: PDFKit.PDFDocument, y: number): number {
   const headers: Array<[ColKey, string, "left" | "right" | "center"]> = [
     ["client", "Cliente", "left"],
     ["currency", "Mon.", "center"],
-    ["debt", "Deuda", "right"],
+    ["debt", "Deuda total", "right"],
     ["overdue", "Deuda vencida", "right"],
     ["aging", "Días de atraso", "center"],
     ["contact", "Contacto", "left"],
