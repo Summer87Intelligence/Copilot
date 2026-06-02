@@ -1791,68 +1791,135 @@ const SECTIONS: Section[] = [
     ),
   },
   {
-    id: "demo-readonly",
+    id: "roles-permisos",
     icon: <Users className="h-4 w-4" aria-hidden />,
-    title: "Modo demo — Solo lectura",
+    title: "Roles y permisos",
     content: (
       <>
         <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
-          El <strong>modo demo</strong> permite explorar Copilot sin posibilidad de modificar datos.
-          Cuando iniciás sesión con un usuario de rol <code className="rounded bg-slate-100 px-1 py-0.5 text-xs font-mono">demo_readonly</code>,
-          aparece un badge <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">Modo demo · solo lectura</span> en la barra superior.
+          Copilot tiene tres roles de usuario. La regla es simple: solo{" "}
+          <strong>superadmin</strong> puede modificar datos. Los roles{" "}
+          <strong>usuario</strong> y <strong>demo_readonly</strong> son de solo lectura operativa.
         </p>
+
+        <div className="space-y-3">
+          {[
+            {
+              role: "superadmin",
+              badge: "bg-emerald-50 text-emerald-800 border-emerald-200",
+              label: "Superadmin",
+              desc: "Acceso total. Puede leer y modificar cualquier dato del workspace.",
+            },
+            {
+              role: "usuario",
+              badge: "bg-amber-50 text-amber-800 border-amber-200",
+              label: "Usuario · Solo lectura",
+              desc: "Puede navegar, consultar y descargar reportes. No puede modificar nada operativo.",
+            },
+            {
+              role: "demo_readonly",
+              badge: "bg-amber-50 text-amber-800 border-amber-200",
+              label: "Modo demo · Solo lectura",
+              desc: "Igual que usuario. Diseñado para mostrar el sistema a clientes o invitados sin riesgo.",
+            },
+          ].map((r) => (
+            <div key={r.role} className={`rounded-xl border p-4 ${r.badge.replace(/text-\S+/, "").replace(/bg-\S+/, "").trim()} border-[var(--copilot-border)]`}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${r.badge}`}>
+                  {r.label}
+                </span>
+              </div>
+              <p className="text-sm text-[var(--copilot-ink)]">{r.desc}</p>
+            </div>
+          ))}
+        </div>
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
-            Qué puede hacer el usuario demo
+            Qué puede hacer un usuario de solo lectura
           </p>
           <Bullets
             items={[
-              "Iniciar sesión y navegar por todas las secciones de Copilot.",
-              "Ver datos: clientes, facturas, recibos, cartera, tesorería, finanzas.",
-              "Abrir reportes en pantalla y descargar PDFs (lectura).",
-              "Consultar agentes IA, briefings y análisis.",
-              "Explorar acciones, alertas y notificaciones.",
+              "Navegar por todas las secciones: Hoy, Acciones, Clientes, Cartera, Tesorería, Finanzas, Datos, Reportes, Agentes IA y Manual.",
+              "Ver dashboards, fichas de clientes, movimientos y deuda.",
+              "Abrir reportes en pantalla y descargar PDFs — son operaciones de lectura.",
+              "Ver agenda de cobranza, seguimientos y acciones sugeridas.",
+              "Consultar alertas y notificaciones.",
+              "Explorar Agentes IA y análisis generados.",
+              "Ver el estado de las integraciones y la salud técnica del sistema.",
             ]}
           />
         </div>
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
-            Qué NO puede hacer el usuario demo
+            Qué NO puede hacer un usuario de solo lectura
           </p>
           <Bullets
             items={[
-              "Crear, editar o eliminar movimientos.",
-              "Importar o guardar extractos bancarios.",
+              "Cargar ingresos, egresos o ajustes en Tesorería.",
+              "Crear, editar, eliminar o anular movimientos de caja.",
+              "Crear pagos programados o recurrentes.",
+              "Marcar un pago como pagado o reprogramarlo.",
+              "Editar el saldo actual de caja.",
+              "Guardar o importar extractos bancarios.",
               "Registrar gestiones de cobranza.",
-              "Crear o editar pagos recurrentes o programados.",
               "Cancelar o archivar seguimientos.",
-              "Sincronizar datos manualmente.",
+              "Modificar o guardar notas de clientes.",
+              "Ejecutar sincronizaciones manuales.",
               "Cambiar configuración del workspace.",
-              "Cualquier acción que modifique datos.",
+              "Crear, editar o cambiar roles de usuarios.",
             ]}
           />
         </div>
 
         <Callout variant="warning">
-          Solo el rol <strong>superadmin</strong> puede crear, editar y eliminar datos.
-          El usuario demo recibe un error 403 si intenta cualquier operación de escritura,
-          tanto desde la UI como por llamada directa a los endpoints.
+          Las acciones bloqueadas aparecen con un ícono de candado{" "}
+          <strong>🔒</strong> o están deshabilitadas con el tooltip{" "}
+          «Solo disponible para superadmin.». Si intentás llamar a un endpoint
+          de escritura directamente, el servidor devuelve{" "}
+          <code className="rounded bg-slate-100 px-1 py-0.5 text-xs font-mono">403 READ_ONLY_USER</code>.
         </Callout>
 
         <div className={`rounded-2xl border ${C.border} p-4`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
-            Cómo acceder
+            Reportes PDF — permitidos para solo lectura
           </p>
-          <Steps
+          <p className="text-sm text-[var(--copilot-ink)]">
+            Generar y descargar PDFs es una operación de lectura. No modifica ningún dato.
+            Por eso está permitido para usuarios y modo demo:
+          </p>
+          <Bullets
             items={[
-              "Ir a /login.",
-              "Usuario: usuariodemo · PIN: 1234.",
-              "El sistema redirige directo a Hoy.",
-              "El badge naranja confirma que estás en modo demo.",
+              "Reporte de deudores.",
+              "Cobranza mensual.",
+              "Caja mensual.",
+              "Ventas netas.",
+              "Ejecutivo mensual.",
+              "Clientes principales.",
+              "Estado de cuenta (desde la ficha del cliente).",
             ]}
           />
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Badge de solo lectura
+          </p>
+          <p className="text-sm text-[var(--copilot-ink)]">
+            Cuando iniciás sesión con un rol de solo lectura, aparece un badge en la barra superior:
+          </p>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+              Solo lectura
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+              Modo demo · solo lectura
+            </span>
+          </div>
+          <p className="mt-2 text-xs text-[var(--copilot-ink-muted)]">
+            Superadmin no tiene badge — puede operar con normalidad.
+          </p>
         </div>
       </>
     ),

@@ -20,15 +20,16 @@ export const COPILOT_PROTOTYPE_STORAGE_KEY = COPILOT_SIDEBAR_COLLAPSED_STORAGE_K
 export function CopilotShell({
   children,
   isSuperadmin,
-  isReadOnlyDemo = false,
+  isReadOnly = false,
+  readOnlyLabel = null,
   sessionPreview = null,
 }: {
   children: React.ReactNode;
-  /** Cookie `copilot_session` válida ⇒ superadmin en menú (paso inicial). */
   isSuperadmin: boolean;
-  /** Rol demo_readonly: muestra badge y deshabilita acciones mutantes. */
-  isReadOnlyDemo?: boolean;
-  /** Opcional: datos fijos desde layout para la barra de usuario sin `/api/copilot/me`. */
+  /** true para demo_readonly y usuario — deshabilita acciones mutantes. */
+  isReadOnly?: boolean;
+  /** Texto del badge de solo lectura (null = no mostrar). */
+  readOnlyLabel?: string | null;
   sessionPreview?: CopilotSessionPreview | null;
 }) {
   const navItemGroups = useMemo(
@@ -37,8 +38,8 @@ export function CopilotShell({
   );
 
   const permissions = useMemo(
-    () => ({ canWrite: !isReadOnlyDemo, isReadOnlyDemo }),
-    [isReadOnlyDemo]
+    () => ({ canWrite: !isReadOnly, isReadOnly, readOnlyLabel }),
+    [isReadOnly, readOnlyLabel]
   );
 
   return (
@@ -53,7 +54,7 @@ export function CopilotShell({
         brandTitle="Summer87 Copilot"
         brandSubtitle="Prototipo operativo"
         headerStrip={
-          <CopilotEnvironmentHealthStrip sessionPreview={sessionPreview} isReadOnlyDemo={isReadOnlyDemo} />
+          <CopilotEnvironmentHealthStrip sessionPreview={sessionPreview} readOnlyLabel={readOnlyLabel} />
         }
         autoCollapseWhenPathIncludes="/copilot/atencion-prioritaria"
       >

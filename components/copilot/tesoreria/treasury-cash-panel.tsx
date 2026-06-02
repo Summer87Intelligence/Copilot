@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowDownCircle, ArrowUpCircle, CalendarClock, Pencil, Check, X, Plus } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, CalendarClock, Lock, Pencil, Check, X, Plus } from "lucide-react";
 
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
+import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 import { SCHEDULED_PAYMENT_CATEGORIES } from "@/lib/treasury/treasury-scheduled-payments";
 import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
 import type { TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
@@ -59,6 +60,7 @@ function BalanceCard({
   currency: TreasuryCurrencyCode;
   workspace: TreasuryWorkspace;
 }) {
+  const { canWrite } = useCopilotPermissions();
   const pos = workspace.cashPositions.find((p) => p.currency === currency);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -191,7 +193,7 @@ function BalanceCard({
             <X className="h-3 w-3" aria-hidden />
           </button>
         </div>
-      ) : (
+      ) : canWrite ? (
         <button
           type="button"
           onClick={startEdit}
@@ -204,7 +206,7 @@ function BalanceCard({
           <Pencil className="h-3 w-3" aria-hidden />
           Editar saldo actual
         </button>
-      )}
+      ) : null}
 
       {isNegative ? (
         <p className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[10px] text-rose-700">
@@ -554,6 +556,7 @@ function TreasuryMovementGuide({
 }
 
 export function TreasuryCashPanel({ workspace }: { workspace: TreasuryWorkspace }) {
+  const { canWrite } = useCopilotPermissions();
   const [showForm, setShowForm] = useState(false);
   const [formPreset, setFormPreset] = useState<Partial<QuickForm> | undefined>(undefined);
 
@@ -573,11 +576,49 @@ export function TreasuryCashPanel({ workspace }: { workspace: TreasuryWorkspace 
         confirmados después de esa fecha.
       </p>
 
-      <TreasuryMovementGuide
-        onIncome={() => openForm({ movementType: "income", mode: "now" })}
-        onExpense={() => openForm({ movementType: "expense", mode: "now" })}
-        onScheduled={() => openForm({ movementType: "expense", mode: "scheduled" })}
-      />
+      {canWrite ? (
+        <TreasuryMovementGuide
+          onIncome={() => openForm({ movementType: "income", mode: "now" })}
+          onExpense={() => openForm({ movementType: "expense", mode: "now" })}
+          onScheduled={() => openForm({ movementType: "expense", mode: "scheduled" })}
+        />
+      ) : (
+        <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
+          <p className="text-sm font-semibold text-[var(--copilot-ink)]">¿Qué querés registrar?</p>
+          <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
+            Elegí el tipo de movimiento. Los pagos futuros no afectan caja hasta confirmarse.
+          </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {(
+              [
+                { id: "income", label: "Ingreso", hint: "Dinero que entra a caja.", icon: ArrowUpCircle },
+                { id: "expense", label: "Egreso", hint: "Gasto o pago que sale de caja.", icon: ArrowDownCircle },
+                { id: "scheduled", label: "Pago programado", hint: "Compromiso para una fecha futura.", icon: CalendarClock },
+              ] as const
+            ).map((g) => {
+              const Icon = g.icon;
+              return (
+                <div
+                  key={g.id}
+                  title="Solo disponible para superadmin."
+                  className="flex cursor-not-allowed flex-col items-start gap-1 rounded-xl border border-[var(--copilot-border)] bg-white/60 px-3 py-2.5 opacity-60"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Icon className="h-4 w-4 text-[var(--copilot-ink-muted)]" aria-hidden />
+                    <Lock className="h-3 w-3 text-[var(--copilot-ink-muted)]" aria-hidden />
+                  </div>
+                  <span className="text-xs font-semibold text-[var(--copilot-ink-muted)]">{g.label}</span>
+                  <span className="text-[10px] leading-snug text-[var(--copilot-ink-muted)]">{g.hint}</span>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-[11px] text-[var(--copilot-ink-muted)]">
+            Solo superadmin puede registrar movimientos.
+          </p>
+        </div>
+      )}
+
       {/* Balance cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {CURRENCIES.map((currency) => (
@@ -585,8 +626,8 @@ export function TreasuryCashPanel({ workspace }: { workspace: TreasuryWorkspace 
         ))}
       </div>
 
-      {/* Quick movement */}
-      {showForm ? (
+      {/* Quick movement — only for superadmin */}
+      {canWrite ? showForm ? (
         <QuickMovementForm
           workspace={workspace}
           initial={formPreset}
@@ -612,7 +653,7 @@ export function TreasuryCashPanel({ workspace }: { workspace: TreasuryWorkspace 
             </div>
           </div>
         </button>
-      )}
+      ) : null}
 
       <RecentMovements workspace={workspace} />
 

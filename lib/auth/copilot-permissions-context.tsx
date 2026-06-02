@@ -4,12 +4,14 @@ import { createContext, useContext } from "react";
 
 export type CopilotPermissions = {
   canWrite: boolean;
-  isReadOnlyDemo: boolean;
+  isReadOnly: boolean;
+  readOnlyLabel: string | null;
 };
 
 const defaultPermissions: CopilotPermissions = {
   canWrite: true,
-  isReadOnlyDemo: false,
+  isReadOnly: false,
+  readOnlyLabel: null,
 };
 
 export const CopilotPermissionsContext =

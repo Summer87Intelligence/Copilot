@@ -7,6 +7,7 @@ import {
   isSuperAdmin,
   ROLE_DEMO_READONLY,
   ROLE_SUPERADMIN,
+  ROLE_USUARIO,
 } from "@/lib/auth/permissions";
 
 describe("permissions", () => {
@@ -31,8 +32,13 @@ describe("permissions", () => {
       expect(isReadOnlyRole("demo_readonly")).toBe(true);
       expect(isReadOnlyRole(ROLE_DEMO_READONLY)).toBe(true);
     });
+    it("devuelve true para usuario", () => {
+      expect(isReadOnlyRole("usuario")).toBe(true);
+      expect(isReadOnlyRole(ROLE_USUARIO)).toBe(true);
+    });
     it("es case-insensitive", () => {
       expect(isReadOnlyRole("DEMO_READONLY")).toBe(true);
+      expect(isReadOnlyRole("USUARIO")).toBe(true);
     });
     it("devuelve false para otros roles", () => {
       expect(isReadOnlyRole("superadmin")).toBe(false);
@@ -51,6 +57,10 @@ describe("permissions", () => {
       expect(canWrite(ROLE_DEMO_READONLY)).toBe(false);
       expect(canWrite("demo_readonly")).toBe(false);
     });
+    it("niega escritura a usuario", () => {
+      expect(canWrite(ROLE_USUARIO)).toBe(false);
+      expect(canWrite("usuario")).toBe(false);
+    });
     it("niega escritura a cualquier otro rol", () => {
       expect(canWrite("admin")).toBe(false);
       expect(canWrite("user")).toBe(false);
@@ -64,6 +74,7 @@ describe("permissions", () => {
     it("permite lectura a cualquier rol autenticado", () => {
       expect(canRead(ROLE_SUPERADMIN)).toBe(true);
       expect(canRead(ROLE_DEMO_READONLY)).toBe(true);
+      expect(canRead(ROLE_USUARIO)).toBe(true);
       expect(canRead("admin")).toBe(true);
       expect(canRead("user")).toBe(true);
       expect(canRead("")).toBe(true);
@@ -79,6 +90,15 @@ describe("permissions", () => {
     });
     it("demo_readonly puede leer", () => {
       expect(canRead(ROLE_DEMO_READONLY)).toBe(true);
+    });
+    it("usuario no puede escribir", () => {
+      expect(canWrite(ROLE_USUARIO)).toBe(false);
+    });
+    it("usuario puede leer", () => {
+      expect(canRead(ROLE_USUARIO)).toBe(true);
+    });
+    it("usuario es rol readonly", () => {
+      expect(isReadOnlyRole(ROLE_USUARIO)).toBe(true);
     });
   });
 });
