@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   NON_SANTANDER_PDF_FIXTURE,
   SANTANDER_PDF_UMSATZ_FIXTURE,
+  SANTANDER_PDF_UMSATZ_NO_BRAND_FIXTURE,
 } from "@/lib/treasury/fixtures/santander-pdf-umsatz-text.fixture";
 import {
   isSantanderPdfStatementText,
@@ -92,5 +93,60 @@ describe("santander-pdf-statement-parser", () => {
     const first = parseSantanderPdfMovements(SANTANDER_PDF_UMSATZ_FIXTURE);
     const second = parseSantanderPdfMovements(SANTANDER_PDF_UMSATZ_FIXTURE);
     expect(first.map((m) => m.externalId)).toEqual(second.map((m) => m.externalId));
+  });
+});
+
+describe("santander-pdf-statement-parser — sin marca extraíble", () => {
+  it("reconoce PDF por estructura aunque no tenga texto Santander", () => {
+    expect(isSantanderPdfStatementText(SANTANDER_PDF_UMSATZ_NO_BRAND_FIXTURE)).toBe(true);
+  });
+
+  it("rechaza PDF sin estructura bancaria válida", () => {
+    expect(isSantanderPdfStatementText(NON_SANTANDER_PDF_FIXTURE)).toBe(false);
+  });
+
+  it("parsea movimientos del PDF sin marca", () => {
+    const { movements } = parseSantanderPdfStatementText(SANTANDER_PDF_UMSATZ_NO_BRAND_FIXTURE);
+    expect(movements.length).toBeGreaterThan(0);
+  });
+
+  it("detecta moneda USD desde línea de cuenta", () => {
+    const { metadata } = parseSantanderPdfStatementText(SANTANDER_PDF_UMSATZ_NO_BRAND_FIXTURE);
+    expect(metadata.currencyCode).toBe("USD");
+  });
+
+  it("extrae número de cuenta del PDF sin marca", () => {
+    const { metadata } = parseSantanderPdfStatementText(SANTANDER_PDF_UMSATZ_NO_BRAND_FIXTURE);
+    expect(metadata.accountNumber).toBe("005101107711");
+  });
+
+  it("parsea período del PDF sin marca", () => {
+    const { metadata } = parseSantanderPdfStatementText(SANTANDER_PDF_UMSATZ_NO_BRAND_FIXTURE);
+    expect(metadata.periodFrom).toBe("2026-05-01");
+    expect(metadata.periodTo).toBe("2026-05-31");
+  });
+
+  it("parsea crédito Dolby del PDF sin marca", () => {
+    const { movements } = parseSantanderPdfStatementText(SANTANDER_PDF_UMSATZ_NO_BRAND_FIXTURE);
+    const row = movements.find((m) => m.description.includes("DOLBY"));
+    expect(row).toMatchObject({
+      movementDate: "2026-05-27",
+      movementType: "credit",
+      amount: 366,
+      currencyCode: "USD",
+    });
+  });
+
+  it("parsea débito GoDaddy del PDF sin marca", () => {
+    const { movements } = parseSantanderPdfStatementText(SANTANDER_PDF_UMSATZ_NO_BRAND_FIXTURE);
+    const row = movements.find(
+      (m) => m.movementType === "debit" && m.description.includes("GODADDY") && m.amount === 5.99
+    );
+    expect(row).toMatchObject({
+      movementDate: "2026-05-29",
+      movementType: "debit",
+      amount: 5.99,
+      currencyCode: "USD",
+    });
   });
 });

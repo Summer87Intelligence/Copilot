@@ -22,6 +22,31 @@ Fecha	Referencia	Tipo Movimiento	Descripción	Débito	Crédito	Saldo
 El saldo informado no incluye movimientos en tránsito.
 `.trim();
 
+/**
+ * Texto extraído del mismo extracto pero sin texto "Santander" extraíble
+ * (el logo viene como imagen). Simula el caso real de umsatz.pdf.
+ */
+export const SANTANDER_PDF_UMSATZ_NO_BRAND_FIXTURE = `
+Movimientos de cuenta
+
+Cliente
+Easy Digital Agencysas
+Cuenta Moneda Sucursal
+Cta. Pyme Básica, 005101107711 USD 17 - Ciudad De La Costa
+Movimientos
+01/05/2026 - 31/05/2026
+
+Fecha	Referencia	Tipo Movimiento	Descripción	Débito	Crédito	Saldo
+29/05/2026	614822990282		COMISION COMPRA INTERNACIONAL GODADDY	-0,18		12.504,36
+29/05/2026	614822990282		COMPRA CON TARJETA DEBITO EXT. GODADDY	-5,99		12.504,54
+27/05/2026	527474		CREDITO POR OPERACION EN SUPERNET TA 2941/DOLBY SOCIEDAD ANONIMA		366,00	12.510,53
+27/05/2026	TR0084255336		TRANSFERENCIA RECIBIDA 531999TT RECIBIDA PETROVIC SOLUTIONS		450,00	12.172,53
+27/05/2026	COM0084255336		COMISION TRANSFERENCIA RECIBIDA PETROVIC SOLUTIONS	-28,00		12.144,53
+25/05/2026	LR55167568		TRANSF INSTANTANEA RECIBIDA ACQUAGARDEN SAS		339,00	11.158,09
+
+El saldo informado no incluye movimientos en tránsito.
+`.trim();
+
 export const NON_SANTANDER_PDF_FIXTURE = `
 Banco Demo
 Resumen de cuenta

@@ -59,24 +59,54 @@ export function parseUruguayMoney(value: string | null | undefined): number | nu
 
 export function isSantanderPdfStatementText(text: string): boolean {
   const normalized = normalizeMatchText(text);
-  const hasSantander = normalized.includes("santander");
-  const hasMovimientos = normalized.includes("movimientos");
+
   const hasHeader =
     normalized.includes("fecha") &&
     normalized.includes("referencia") &&
-    (normalized.includes("debito") || normalized.includes("débito")) &&
-    (normalized.includes("credito") || normalized.includes("crédito")) &&
+    (normalized.includes("debito") || normalized.includes("debito")) &&
+    (normalized.includes("credito") || normalized.includes("credito")) &&
     normalized.includes("saldo");
-  return hasSantander && hasMovimientos && hasHeader;
+
+  if (!hasHeader) return false;
+
+  // Accept if Santander brand is present alongside movement section
+  if (normalized.includes("santander") && normalized.includes("movimientos")) {
+    return true;
+  }
+
+  // Accept by structure when brand text is not extractable (e.g. logo as image):
+  // requires bank-level field markers + date range
+  const hasBankStructure =
+    normalized.includes("cliente") &&
+    normalized.includes("cuenta") &&
+    normalized.includes("moneda") &&
+    normalized.includes("movimientos");
+
+  const hasDateRange = /\d{2}\/\d{2}\/\d{4}\s*-\s*\d{2}\/\d{2}\/\d{4}/.test(text);
+
+  return hasBankStructure && hasDateRange;
 }
 
 export function parseSantanderPdfMetadata(text: string): SantanderPdfMetadata {
-  const clientMatch = /Cliente:\s*(.+?)(?:\n|$)/i.exec(text);
-  const accountMatch = /Cuenta:\s*(.+?)(?:\n|$)/i.exec(text);
-  const currencyMatch = /Moneda:\s*(USD|UYU|U\$S)/i.exec(text);
+  // Support both "Cliente: value" (with colon) and "Cliente\nvalue" (logo-as-image PDFs)
+  const clientMatch =
+    /Cliente:\s*(.+?)(?:\n|$)/i.exec(text) ??
+    /\bCliente\b[^\n]*\n([^\n]+)/i.exec(text);
+
+  // Support both "Cuenta: value" and "Cuenta ...\nvalue"
+  const accountMatch =
+    /Cuenta:\s*(.+?)(?:\n|$)/i.exec(text) ??
+    /\bCuenta\b[^\n]*\n([^\n]+)/i.exec(text);
+
+  // Support "Moneda: USD" and standalone "USD/UYU" in the header section
+  const currencyMatch =
+    /Moneda:\s*(USD|UYU|U\$S)/i.exec(text) ??
+    /\b(USD|UYU|U\$S)\b/.exec(text.slice(0, 600));
+
   const periodMatch =
     /Per[ií]odo:\s*(\d{2}\/\d{2}\/\d{4})\s*-\s*(\d{2}\/\d{2}\/\d{4})/i.exec(text) ??
     /(\d{2}\/\d{2}\/\d{4})\s*-\s*(\d{2}\/\d{2}\/\d{4})/.exec(text);
+
   const accountLabel = accountMatch?.[1]?.trim() ?? null;
   const accountNumber =
     accountLabel?.match(/(\d{6,})/)?.[1] ??
