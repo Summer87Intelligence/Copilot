@@ -59,28 +59,33 @@ export function middleware(request: NextRequest) {
       loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
       return NextResponse.redirect(loginUrl);
     }
+  }
 
-    // Block ALL write operations for read-only demo role across every API prefix
-    const parsed = parseCopilotSessionValue(sessionCookieValue);
-    if (parsed && isReadOnlyRole(parsed.role)) {
-      const method = request.method.toUpperCase();
-      const isMutation =
-        method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE";
-      const isPublicAuthPath =
-        pathname === "/api/copilot/login" ||
-        pathname.startsWith("/api/copilot/login/") ||
-        pathname === "/api/copilot/logout" ||
-        pathname.startsWith("/api/copilot/logout/");
-      const isApiPath = pathname.startsWith("/api/");
-      if (isMutation && isApiPath && !isPublicAuthPath) {
-        return NextResponse.json(
-          {
-            ok: false,
-            error: "READ_ONLY_USER",
-            message: "Este usuario es solo lectura. Solo un superadmin puede modificar datos.",
-          },
-          { status: 403 }
-        );
+  // Block ALL write operations for read-only demo role across EVERY /api/* prefix
+  // (intentionally outside isCopilotProtectedPath so /api/zeta/*, etc. are also covered)
+  if (pathname.startsWith("/api/")) {
+    const sessionCookieValue = request.cookies.get(COPILOT_SESSION_COOKIE)?.value;
+    if (sessionCookieValue && isValidCopilotSessionCookie(sessionCookieValue)) {
+      const parsed = parseCopilotSessionValue(sessionCookieValue);
+      if (parsed && isReadOnlyRole(parsed.role)) {
+        const method = request.method.toUpperCase();
+        const isMutation =
+          method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE";
+        const isPublicAuthPath =
+          pathname === "/api/copilot/login" ||
+          pathname.startsWith("/api/copilot/login/") ||
+          pathname === "/api/copilot/logout" ||
+          pathname.startsWith("/api/copilot/logout/");
+        if (isMutation && !isPublicAuthPath) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error: "READ_ONLY_USER",
+              message: "Este usuario es solo lectura. Solo un superadmin puede modificar datos.",
+            },
+            { status: 403 }
+          );
+        }
       }
     }
   }
