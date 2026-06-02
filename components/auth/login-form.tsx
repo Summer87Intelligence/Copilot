@@ -37,7 +37,7 @@ export function LoginForm() {
           return;
         }
         if (json?.ok) {
-          router.replace("/copilot");
+          router.replace("/copilot/hoy");
           router.refresh();
           return;
         }
