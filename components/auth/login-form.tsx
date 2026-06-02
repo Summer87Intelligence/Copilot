@@ -3,6 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useState, type FormEvent } from "react";
 
+const LOGIN_INPUT_CLASS =
+  "copilot-login-input w-full rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2.5 text-sm text-[var(--copilot-ink)] placeholder:text-[var(--copilot-ink-muted)] outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-600/20 disabled:cursor-not-allowed disabled:opacity-60";
+
 export function LoginForm() {
   const router = useRouter();
   const [user, setUser] = useState("");
@@ -69,7 +72,7 @@ export function LoginForm() {
             value={user}
             onChange={(e) => setUser(e.target.value)}
             disabled={loading}
-            className="w-full rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2.5 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)] disabled:opacity-60 dark:bg-neutral-900"
+            className={LOGIN_INPUT_CLASS}
           />
         </div>
 
@@ -89,7 +92,7 @@ export function LoginForm() {
             value={pin}
             onChange={(e) => setPin(e.target.value)}
             disabled={loading}
-            className="w-full rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2.5 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)] disabled:opacity-60 dark:bg-neutral-900"
+            className={LOGIN_INPUT_CLASS}
           />
         </div>
 
@@ -104,7 +107,7 @@ export function LoginForm() {
 
       {error ? (
         <p
-          className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100"
+          className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"
           role="alert"
         >
           {error}

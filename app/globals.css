@@ -37,3 +37,12 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+/* Login — evitar barras negras con autofill / dark mode del navegador */
+.copilot-login-input:-webkit-autofill,
+.copilot-login-input:-webkit-autofill:hover,
+.copilot-login-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--copilot-ink);
+  box-shadow: 0 0 0 1000px #ffffff inset;
+  transition: background-color 9999s ease-in-out 0s;
+}

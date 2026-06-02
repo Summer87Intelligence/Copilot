@@ -287,7 +287,6 @@ const SECTIONS: Section[] = [
               "Manual de uso — esta guía.",
               "Alertas — qué pasó en el negocio (inbox de avisos).",
               "Estado del sistema — integraciones, sincronización y salud técnica.",
-              "Configuración y Personalización — ajustes del workspace y la vista.",
             ]}
           />
         </div>

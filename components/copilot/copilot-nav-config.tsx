@@ -11,8 +11,6 @@ import {
   FileText,
   Landmark,
   ListTodo,
-  Settings,
-  SlidersHorizontal,
   TriangleAlert,
   Users,
   Wallet,
@@ -142,18 +140,6 @@ const COPILOT_NAV_SISTEMA: CopilotNavGroup = {
       shortLabel: "Sistema",
       description: "Integraciones y salud técnica",
       icon: Activity,
-    },
-    {
-      href: "/copilot/configuracion",
-      label: "Configuración",
-      description: "Ajustes del workspace",
-      icon: Settings,
-    },
-    {
-      href: "/copilot/personalizacion",
-      label: "Personalización",
-      description: "Preferencias de vista",
-      icon: SlidersHorizontal,
     },
   ],
 };

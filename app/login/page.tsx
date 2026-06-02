@@ -1,7 +1,6 @@
 "use client";
 
 import { createBrowserClient } from "@supabase/ssr";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -51,15 +50,6 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-[var(--copilot-canvas)] px-4 py-10 text-[var(--copilot-ink)] antialiased">
       <div className="mx-auto max-w-md">
-        <p className="mb-6 text-sm">
-          <Link
-            href="/"
-            className="text-[var(--copilot-accent)] underline-offset-2 hover:underline"
-          >
-            ← Volver al inicio
-          </Link>
-        </p>
-
         <h1 className="mb-2 text-2xl font-bold tracking-tight">
           Iniciar sesión · Copilot
         </h1>
@@ -81,15 +71,6 @@ export default function LoginPage() {
         ) : null}
 
         {showForm ? <LoginForm /> : null}
-
-        <p className="mt-8 text-center text-sm text-[var(--copilot-ink-muted)]">
-          <Link
-            href="/account"
-            className="font-medium text-[var(--copilot-accent)] underline-offset-2 hover:underline"
-          >
-            Mi cuenta
-          </Link>
-        </p>
       </div>
     </main>
   );

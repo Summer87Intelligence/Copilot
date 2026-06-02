@@ -93,14 +93,6 @@ export const COPILOT_READING_KEYS: Record<string, CopilotReadingKeyEntry> = {
     title: "Clave de lectura",
     lines: ["Esto es claro.", "Lo entiendo.", "Lo usaría."],
   },
-  "/copilot/configuracion": {
-    title: "Clave de lectura",
-    lines: [
-      "Entiendo qué documentos alimentan al sistema.",
-      "Sé cómo se relacionan las tablas.",
-      "Puedo planificar el salto a contabilidad y bancos.",
-    ],
-  },
   "/copilot/escenarios": {
     title: "Clave de lectura",
     lines: [
@@ -115,14 +107,6 @@ export const COPILOT_READING_KEYS: Record<string, CopilotReadingKeyEntry> = {
       "Tengo un canal directo.",
       "Pido ayuda sin fricción.",
       "Mi voz cuenta para mejorar el producto.",
-    ],
-  },
-  "/copilot/personalizacion": {
-    title: "Clave de lectura",
-    lines: [
-      "El copiloto se adapta a mí.",
-      "Elijo qué ver y qué silenciar.",
-      "Menos ruido, más señal.",
     ],
   },
   "/copilot/insights": {
