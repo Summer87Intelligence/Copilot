@@ -1013,7 +1013,7 @@ const SECTIONS: Section[] = [
           </p>
           <Bullets
             items={[
-              "Soporta CSV, Excel y PDF Santander con texto extraíble. PDF no usa OCR.",
+              "Soporta CSV, Excel y PDF Santander con texto extraíble. PDF no usa OCR. El importador reconoce el extracto por la estructura de la tabla aunque el logo Santander no sea texto extraíble.",
               "Generá un preview antes de guardar: ves fecha, monto, tipo y un estado de coincidencia por fila.",
               "Coincide — el movimiento del banco parece ya estar en Tesorería (y en Zeta si aplica).",
               "Falta en Copilot — hay señal en Zeta o es un cobro en banco sin movimiento equivalente en Tesorería.",
@@ -1786,6 +1786,73 @@ const SECTIONS: Section[] = [
           <NavLink href="/copilot/alertas" label="Ir a Alertas" ghost />
           <NavLink href="/copilot/acciones" label="Ir a Acciones" ghost />
           <NavLink href="/copilot/operacional" label="Ir a Operacional" ghost />
+        </div>
+      </>
+    ),
+  },
+  {
+    id: "demo-readonly",
+    icon: <Users className="h-4 w-4" aria-hidden />,
+    title: "Modo demo — Solo lectura",
+    content: (
+      <>
+        <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">
+          El <strong>modo demo</strong> permite explorar Copilot sin posibilidad de modificar datos.
+          Cuando iniciás sesión con un usuario de rol <code className="rounded bg-slate-100 px-1 py-0.5 text-xs font-mono">demo_readonly</code>,
+          aparece un badge <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">Modo demo · solo lectura</span> en la barra superior.
+        </p>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Qué puede hacer el usuario demo
+          </p>
+          <Bullets
+            items={[
+              "Iniciar sesión y navegar por todas las secciones de Copilot.",
+              "Ver datos: clientes, facturas, recibos, cartera, tesorería, finanzas.",
+              "Abrir reportes en pantalla y descargar PDFs (lectura).",
+              "Consultar agentes IA, briefings y análisis.",
+              "Explorar acciones, alertas y notificaciones.",
+            ]}
+          />
+        </div>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Qué NO puede hacer el usuario demo
+          </p>
+          <Bullets
+            items={[
+              "Crear, editar o eliminar movimientos.",
+              "Importar o guardar extractos bancarios.",
+              "Registrar gestiones de cobranza.",
+              "Crear o editar pagos recurrentes o programados.",
+              "Cancelar o archivar seguimientos.",
+              "Sincronizar datos manualmente.",
+              "Cambiar configuración del workspace.",
+              "Cualquier acción que modifique datos.",
+            ]}
+          />
+        </div>
+
+        <Callout variant="warning">
+          Solo el rol <strong>superadmin</strong> puede crear, editar y eliminar datos.
+          El usuario demo recibe un error 403 si intenta cualquier operación de escritura,
+          tanto desde la UI como por llamada directa a los endpoints.
+        </Callout>
+
+        <div className={`rounded-2xl border ${C.border} p-4`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] mb-3">
+            Cómo acceder
+          </p>
+          <Steps
+            items={[
+              "Ir a /login.",
+              "Usuario: usuariodemo · PIN: 1234.",
+              "El sistema redirige directo a Hoy.",
+              "El badge naranja confirma que estás en modo demo.",
+            ]}
+          />
         </div>
       </>
     ),

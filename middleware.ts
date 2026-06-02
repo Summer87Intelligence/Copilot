@@ -3,7 +3,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   COPILOT_SESSION_COOKIE,
   isValidCopilotSessionCookie,
+  parseCopilotSessionValue,
 } from "@/lib/copilot-session-cookie";
+import { isReadOnlyRole } from "@/lib/auth/permissions";
 
 /** Rutas del módulo Copilot y APIs (excepto login/logout públicos). */
 function isCopilotProtectedPath(pathname: string): boolean {
@@ -50,11 +52,29 @@ export function middleware(request: NextRequest) {
   }
 
   if (isCopilotProtectedPath(pathname)) {
-    if (!hasValidCopilotSession(request)) {
+    const sessionCookieValue = request.cookies.get(COPILOT_SESSION_COOKIE)?.value;
+    if (!isValidCopilotSessionCookie(sessionCookieValue)) {
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = "/login";
       loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
       return NextResponse.redirect(loginUrl);
+    }
+
+    // Block write operations for read-only demo role
+    const parsed = parseCopilotSessionValue(sessionCookieValue);
+    if (parsed && isReadOnlyRole(parsed.role)) {
+      const method = request.method.toUpperCase();
+      const isApiMutation =
+        (pathname.startsWith("/api/copilot/") || pathname.startsWith("/api/operacional/")) &&
+        (method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE") &&
+        pathname !== "/api/copilot/login" &&
+        pathname !== "/api/copilot/logout";
+      if (isApiMutation) {
+        return NextResponse.json(
+          { ok: false, error: "READ_ONLY_USER", message: "Este usuario es solo lectura." },
+          { status: 403 }
+        );
+      }
     }
   }
 

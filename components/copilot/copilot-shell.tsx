@@ -19,11 +19,14 @@ export const COPILOT_PROTOTYPE_STORAGE_KEY = COPILOT_SIDEBAR_COLLAPSED_STORAGE_K
 export function CopilotShell({
   children,
   isSuperadmin,
+  isReadOnlyDemo = false,
   sessionPreview = null,
 }: {
   children: React.ReactNode;
   /** Cookie `copilot_session` válida ⇒ superadmin en menú (paso inicial). */
   isSuperadmin: boolean;
+  /** Rol demo_readonly: muestra badge y deshabilita acciones mutantes. */
+  isReadOnlyDemo?: boolean;
   /** Opcional: datos fijos desde layout para la barra de usuario sin `/api/copilot/me`. */
   sessionPreview?: CopilotSessionPreview | null;
 }) {
@@ -43,7 +46,7 @@ export function CopilotShell({
         brandTitle="Summer87 Copilot"
         brandSubtitle="Prototipo operativo"
         headerStrip={
-          <CopilotEnvironmentHealthStrip sessionPreview={sessionPreview} />
+          <CopilotEnvironmentHealthStrip sessionPreview={sessionPreview} isReadOnlyDemo={isReadOnlyDemo} />
         }
         autoCollapseWhenPathIncludes="/copilot/atencion-prioritaria"
       >

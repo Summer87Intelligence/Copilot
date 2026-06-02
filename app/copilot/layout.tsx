@@ -43,6 +43,8 @@ export default async function CopilotModuleLayout({
   let isSuperadmin = false;
   let sessionPreview: CopilotSessionPreview | null = null;
 
+  let isReadOnlyDemo = false;
+
   if (parsed) {
     const admin = createServiceRoleClient();
     if (admin) {
@@ -85,6 +87,7 @@ export default async function CopilotModuleLayout({
           }
         } else {
           isSuperadmin = role.toLowerCase() === "superadmin";
+          isReadOnlyDemo = role.toLowerCase() === "demo_readonly";
           const displayLogin =
             (r.username && r.username.trim()) ||
             (r.email && r.email.trim()) ||
@@ -125,6 +128,7 @@ export default async function CopilotModuleLayout({
     <div className="flex h-dvh min-h-0 w-full flex-col">
       <CopilotShell
         isSuperadmin={isSuperadmin}
+        isReadOnlyDemo={isReadOnlyDemo}
         sessionPreview={sessionPreview}
       >
         <CopilotMainWithReadingPanel>{children}</CopilotMainWithReadingPanel>
