@@ -4,6 +4,7 @@ import {
   NON_SANTANDER_PDF_FIXTURE,
   SANTANDER_PDF_UMSATZ_FIXTURE,
   SANTANDER_PDF_UMSATZ_NO_BRAND_FIXTURE,
+  SANTANDER_PDF_UMSATZ_REAL_TEXT_FIXTURE,
 } from "@/lib/treasury/fixtures/santander-pdf-umsatz-text.fixture";
 import {
   isSantanderPdfStatementText,
@@ -148,5 +149,101 @@ describe("santander-pdf-statement-parser — sin marca extraíble", () => {
       amount: 5.99,
       currencyCode: "USD",
     });
+  });
+});
+
+describe("santander-pdf-statement-parser — texto real (espacio-separado, refs partidas)", () => {
+  const { metadata, movements } = parseSantanderPdfStatementText(SANTANDER_PDF_UMSATZ_REAL_TEXT_FIXTURE);
+
+  it("reconoce PDF real por estructura", () => {
+    expect(isSantanderPdfStatementText(SANTANDER_PDF_UMSATZ_REAL_TEXT_FIXTURE)).toBe(true);
+  });
+
+  it("parsea metadata del texto real", () => {
+    expect(metadata.currencyCode).toBe("USD");
+    expect(metadata.accountNumber).toBe("005101107711");
+    expect(metadata.periodFrom).toBe("2026-05-01");
+    expect(metadata.periodTo).toBe("2026-05-31");
+    expect(metadata.clientName).toContain("Easy Digital");
+  });
+
+  it("extrae 6 movimientos del texto real", () => {
+    expect(movements).toHaveLength(6);
+  });
+
+  it("parsea débito comisión GoDaddy (ref partida 614822990 282)", () => {
+    const row = movements.find((m) => m.description.includes("COMISION COMPRA INTERNACIONAL GODADDY"));
+    expect(row).toMatchObject({
+      movementDate: "2026-05-29",
+      movementType: "debit",
+      amount: 0.18,
+      currencyCode: "USD",
+      documentNumber: "614822990282",
+    });
+  });
+
+  it("parsea débito compra GoDaddy 5.99 (ref partida 614822990 282)", () => {
+    const row = movements.find(
+      (m) => m.movementType === "debit" && m.description.includes("COMPRA CON TARJETA") && m.amount === 5.99
+    );
+    expect(row).toMatchObject({
+      movementDate: "2026-05-29",
+      movementType: "debit",
+      amount: 5.99,
+      currencyCode: "USD",
+      documentNumber: "614822990282",
+    });
+  });
+
+  it("parsea crédito Dolby 366 (ref 527474)", () => {
+    const row = movements.find((m) => m.description.includes("DOLBY"));
+    expect(row).toMatchObject({
+      movementDate: "2026-05-27",
+      movementType: "credit",
+      amount: 366,
+      currencyCode: "USD",
+      documentNumber: "527474",
+    });
+  });
+
+  it("parsea crédito Petrovic 450 (ref partida TR0084255 336)", () => {
+    const row = movements.find((m) => m.movementType === "credit" && m.description.includes("PETROVIC") && m.amount === 450);
+    expect(row).toMatchObject({
+      movementDate: "2026-05-27",
+      movementType: "credit",
+      amount: 450,
+      currencyCode: "USD",
+      documentNumber: "TR0084255336",
+    });
+  });
+
+  it("parsea débito comisión Petrovic 28 (ref partida TR0084255 336)", () => {
+    const row = movements.find((m) => m.movementType === "debit" && m.description.includes("PETROVIC") && m.amount === 28);
+    expect(row).toMatchObject({
+      movementDate: "2026-05-27",
+      movementType: "debit",
+      amount: 28,
+      currencyCode: "USD",
+      documentNumber: "TR0084255336",
+    });
+  });
+
+  it("parsea crédito Acquagarden 339 (ref LR55167568)", () => {
+    const row = movements.find((m) => m.description.includes("ACQUAGARDEN"));
+    expect(row).toMatchObject({
+      movementDate: "2026-05-25",
+      movementType: "credit",
+      amount: 339,
+      currencyCode: "USD",
+      documentNumber: "LR55167568",
+    });
+  });
+
+  it("no genera movimiento por línea de saldo informado", () => {
+    expect(movements.every((m) => !m.description.toLowerCase().includes("saldo informado"))).toBe(true);
+  });
+
+  it("todos los movimientos son USD", () => {
+    expect(movements.every((m) => m.currencyCode === "USD")).toBe(true);
   });
 });

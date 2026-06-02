@@ -14,6 +14,8 @@ export type SantanderPdfMetadata = {
 const UY_MONEY_PATTERN = /-?\d{1,3}(?:\.\d{3})*(?:,\d{2})?|-?\d+(?:,\d{2})?/g;
 const DATE_PATTERN = /\b(\d{2}\/\d{2}\/\d{4})\b/;
 const ROW_DATE_START = /^\d{2}\/\d{2}\/\d{4}\b/;
+// Strict variant: decimal part is required (`,\d{2}`), so bare integers are NOT matched.
+const UY_STRICT_MONEY_SRC = String.raw`-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2}`;
 
 function normalizePdfText(text: string): string {
   return text
@@ -28,6 +30,29 @@ function normalizeMatchText(text: string): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/\p{M}/gu, "");
+}
+
+function findStrictMoneyAmounts(text: string): string[] {
+  return [...text.matchAll(new RegExp(UY_STRICT_MONEY_SRC, "g"))].map((m) => m[0]);
+}
+
+function extractRefDescFromRemainder(text: string): { reference: string; description: string } {
+  const tokens = text.trim().split(/\s+/).filter(Boolean);
+  const refParts: string[] = [];
+  let i = 0;
+  for (; i < tokens.length; i++) {
+    const t = tokens[i]!;
+    // Reference token: must contain at least one digit, only alphanumeric/hyphen chars
+    if (/\d/.test(t) && /^[A-Z0-9-]+$/i.test(t)) {
+      refParts.push(t);
+    } else {
+      break;
+    }
+  }
+  return {
+    reference: refParts.join(""),
+    description: tokens.slice(i).join(" ").trim(),
+  };
 }
 
 export function parseSantanderPdfDate(value: string): string | null {
@@ -304,19 +329,136 @@ function parseMultilineBlocks(
   return out;
 }
 
+function movementFromDateBlockStr(
+  block: string,
+  metadata: SantanderPdfMetadata
+): SantanderParsedMovement | null {
+  const lines = block.replace(/\r/g, "").split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0) return null;
+
+  const firstLine = lines[0]!;
+  if (!ROW_DATE_START.test(firstLine)) return null;
+  const firstLower = firstLine.toLowerCase();
+  if (firstLower.includes("saldo informado") || firstLower.includes("movimientos en tr")) return null;
+
+  // Collapse relevant lines; stop at next date start or known footer lines
+  const relevantLines: string[] = [firstLine];
+  for (let i = 1; i < lines.length; i++) {
+    const l = lines[i]!;
+    if (ROW_DATE_START.test(l)) break;
+    const ll = l.toLowerCase();
+    if (ll.includes("saldo informado") || ll.includes("movimientos en tr")) break;
+    relevantLines.push(l);
+  }
+
+  const collapsed = relevantLines.join(" ").replace(/\s+/g, " ").trim();
+  const dateMatch = /^(\d{2}\/\d{2}\/\d{4})\b/.exec(collapsed);
+  if (!dateMatch) return null;
+  const movementDate = parseSantanderPdfDate(dateMatch[1]!);
+  if (!movementDate) return null;
+
+  const moneyAmounts = findStrictMoneyAmounts(collapsed);
+  if (moneyAmounts.length < 2) return null;
+
+  const balanceRaw = moneyAmounts[moneyAmounts.length - 1]!;
+  const amountRaw = moneyAmounts[moneyAmounts.length - 2]!;
+  const balanceAfterValue = parseUruguayMoney(balanceRaw);
+  const amountValue = parseUruguayMoney(amountRaw);
+  if (amountValue == null || amountValue === 0) return null;
+
+  const movementType: BankMovementType = amountValue < 0 ? "debit" : "credit";
+  const amount = Math.abs(amountValue);
+
+  const strictMoneyRe = new RegExp(UY_STRICT_MONEY_SRC, "g");
+  const remainder = collapsed
+    .replace(/^\d{2}\/\d{2}\/\d{4}\s*/, "")
+    .replace(strictMoneyRe, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const { reference, description } = extractRefDescFromRemainder(remainder);
+  if (!description) return null;
+
+  const documentNumber = reference || null;
+  const externalId = buildSantanderMovementExternalId({
+    movementDate,
+    description,
+    amount,
+    movementType,
+    documentNumber,
+  });
+
+  return {
+    movementDate,
+    description,
+    amount,
+    currencyCode: metadata.currencyCode,
+    movementType,
+    externalId,
+    documentNumber,
+    balanceAfter: balanceAfterValue != null ? Math.abs(balanceAfterValue) : null,
+    importedFrom: "csv",
+    rawPayload: {
+      source: "pdf",
+      reference: documentNumber,
+      rawBlock: block,
+      clientName: metadata.clientName,
+      accountNumber: metadata.accountNumber,
+      periodFrom: metadata.periodFrom,
+      periodTo: metadata.periodTo,
+    },
+  };
+}
+
+function parseSantanderPdfRowsByDateBlocks(
+  text: string,
+  metadata: SantanderPdfMetadata
+): SantanderParsedMovement[] {
+  const blocks = text
+    .replace(/\r/g, "")
+    .split(/(?=\b\d{2}\/\d{2}\/\d{4}\b)/)
+    .filter((b) => /^\s*\d{2}\/\d{2}\/\d{4}/.test(b));
+
+  const out: SantanderParsedMovement[] = [];
+  for (const block of blocks) {
+    const movement = movementFromDateBlockStr(block, metadata);
+    if (movement) out.push(movement);
+  }
+
+  if (process.env.NODE_ENV === "development" && out.length === 0 && blocks.length > 0) {
+    console.log("[santander-pdf] date-block fallback: 0 movements from", blocks.length, "blocks");
+  }
+
+  return out;
+}
+
 export function parseSantanderPdfMovements(
   text: string,
   metadata: SantanderPdfMetadata = parseSantanderPdfMetadata(text)
 ): SantanderParsedMovement[] {
   const lines = text.replace(/\r/g, "").split("\n").map((line) => line.trim());
   const startIdx = findTableStartIndex(lines);
-  if (startIdx < 0) return [];
 
-  const tableLines = lines.slice(startIdx).filter(Boolean);
-  const tabular = parseTabularLines(tableLines, metadata);
-  if (tabular.length > 0) return tabular;
+  // Tab-separated: use column-aware tabular parser (fastest, most accurate)
+  if (startIdx >= 0) {
+    const tableLines = lines.slice(startIdx).filter(Boolean);
+    if (tableLines.some((l) => l.includes("\t"))) {
+      const tabular = parseTabularLines(tableLines, metadata);
+      if (tabular.length > 0) return tabular;
+    }
+  }
 
-  return parseMultilineBlocks(tableLines.join("\n"), metadata);
+  // Robust fallback: date-block approach handles space-separated PDFs and split references
+  const dateBlocks = parseSantanderPdfRowsByDateBlocks(text, metadata);
+  if (dateBlocks.length > 0) return dateBlocks;
+
+  // Last resort: original multiline block parser (requires header to be detected)
+  if (startIdx >= 0) {
+    const tableLines = lines.slice(startIdx).filter(Boolean);
+    return parseMultilineBlocks(tableLines.join("\n"), metadata);
+  }
+
+  return [];
 }
 
 export function parseSantanderPdfStatementText(text: string): {
