@@ -5,6 +5,7 @@ import { ChevronDown, Loader2, Upload, X } from "lucide-react";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 
 import { CopilotGhostButton, CopilotPrimaryButton, CopilotSectionTitle } from "@/components/copilot/copilot-ui";
+import { PermissionButton } from "@/components/copilot/permission-button";
 import { TreasuryFormField, treasuryInputClassName } from "@/components/copilot/tesoreria/treasury-form-fields";
 import {
   TESORERIA_TABLE_CLASS,
@@ -375,12 +376,19 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
               "Guardar movimientos importados"
             )}
           </CopilotPrimaryButton>
-        ) : null}
+        ) : (
+          <PermissionButton
+            lockedLabel="Vista previa permitida. Guardar requiere superadmin."
+          >
+            Guardar movimientos importados
+          </PermissionButton>
+        )}
       </div>
 
       <p className="text-xs text-[var(--copilot-ink-muted)]">
-        Guardar solo registra el extracto bancario para conciliación. La caja cambia únicamente si
-        confirmás un movimiento de Tesorería por separado.
+        {canWrite
+          ? "Guardar solo registra el extracto bancario para conciliación. La caja cambia únicamente si confirmás un movimiento de Tesorería por separado."
+          : "Vista previa permitida. Guardar requiere superadmin. El preview no modifica caja ni deuda."}
       </p>
 
       {summary ? (

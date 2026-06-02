@@ -6,6 +6,7 @@ import {
   parseCopilotSessionValue,
 } from "@/lib/copilot-session-cookie";
 import { isReadOnlyRole } from "@/lib/auth/permissions";
+import { shouldBlockReadOnlyApiMutation } from "@/lib/auth/read-only-post-allowed";
 
 /** Rutas del módulo Copilot y APIs (excepto login/logout públicos). */
 function isCopilotProtectedPath(pathname: string): boolean {
@@ -68,15 +69,7 @@ export function middleware(request: NextRequest) {
     if (sessionCookieValue && isValidCopilotSessionCookie(sessionCookieValue)) {
       const parsed = parseCopilotSessionValue(sessionCookieValue);
       if (parsed && isReadOnlyRole(parsed.role)) {
-        const method = request.method.toUpperCase();
-        const isMutation =
-          method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE";
-        const isPublicAuthPath =
-          pathname === "/api/copilot/login" ||
-          pathname.startsWith("/api/copilot/login/") ||
-          pathname === "/api/copilot/logout" ||
-          pathname.startsWith("/api/copilot/logout/");
-        if (isMutation && !isPublicAuthPath) {
+        if (shouldBlockReadOnlyApiMutation(pathname, request.method)) {
           return NextResponse.json(
             {
               ok: false,

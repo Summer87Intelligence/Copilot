@@ -1014,6 +1014,7 @@ const SECTIONS: Section[] = [
           <Bullets
             items={[
               "Soporta CSV, Excel y PDF Santander con texto extraíble. PDF no usa OCR. El importador reconoce el extracto por la estructura de la tabla aunque el logo Santander no sea texto extraíble.",
+              "Usuario y modo demo pueden generar vista previa (no persiste datos). Guardar o importar el extracto requiere superadmin.",
               "Generá un preview antes de guardar: ves fecha, monto, tipo y un estado de coincidencia por fila.",
               "Coincide — el movimiento del banco parece ya estar en Tesorería (y en Zeta si aplica).",
               "Falta en Copilot — hay señal en Zeta o es un cobro en banco sin movimiento equivalente en Tesorería.",
@@ -1843,6 +1844,7 @@ const SECTIONS: Section[] = [
               "Navegar por todas las secciones: Hoy, Acciones, Clientes, Cartera, Tesorería, Finanzas, Datos, Reportes, Agentes IA y Manual.",
               "Ver dashboards, fichas de clientes, movimientos y deuda.",
               "Abrir reportes en pantalla y descargar PDFs — son operaciones de lectura.",
+              "Generar vista previa del importador Santander (CSV, Excel o PDF) — no guarda ni modifica caja.",
               "Ver agenda de cobranza, seguimientos y acciones sugeridas.",
               "Consultar alertas y notificaciones.",
               "Explorar Agentes IA y análisis generados.",
