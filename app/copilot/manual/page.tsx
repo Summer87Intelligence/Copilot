@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Manual web enriquecido (UI). Contenido funcional compartido con PDF en:
+ * lib/copilot-manual-content.ts — mantener sincronizados al cambiar el producto.
+ */
+
 import { useState } from "react";
 import Link from "next/link";
 import {
@@ -15,6 +20,7 @@ import {
   ChevronDown,
   ChevronRight,
   Database,
+  FileDown,
   FileText,
   Info,
   Landmark,
@@ -2197,22 +2203,35 @@ export default function ManualPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <div className="border-b border-[var(--copilot-border)] bg-white/60 px-6 py-6">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--copilot-border)] bg-white px-2.5 py-0.5 text-[11px] font-semibold text-[var(--copilot-ink-muted)]">
-            <BookMarked className="h-3 w-3" aria-hidden />
-            Guía para usuarios
-          </span>
-        </div>
-        <h1 className="text-xl font-bold text-[var(--copilot-ink)]">
-          Manual de uso
-        </h1>
-        <p className="mt-1 text-sm text-[var(--copilot-ink-muted)]">
-          Guía simple para entender qué está pasando en tu negocio y qué hacer
-          después.
-        </p>
-        <div className="mt-4">
-          <NavLink href="/copilot/hoy" label="Empezar por Hoy" />
+      <div className="border-b border-[var(--copilot-border)] bg-white/60 px-4 py-6 sm:px-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--copilot-border)] bg-white px-2.5 py-0.5 text-[11px] font-semibold text-[var(--copilot-ink-muted)]">
+                <BookMarked className="h-3 w-3" aria-hidden />
+                Guía para usuarios
+              </span>
+            </div>
+            <h1 className="text-xl font-bold text-[var(--copilot-ink)]">
+              Manual de uso
+            </h1>
+            <p className="mt-1 text-sm text-[var(--copilot-ink-muted)]">
+              Guía simple para entender qué está pasando en tu negocio y qué hacer
+              después.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <NavLink href="/copilot/hoy" label="Empezar por Hoy" />
+            </div>
+          </div>
+          <a
+            href="/api/copilot/manual.pdf"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-[var(--copilot-border)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--copilot-ink)] shadow-sm transition hover:bg-[rgba(31,107,74,0.04)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]"
+          >
+            <FileDown className="h-4 w-4 text-[var(--copilot-accent)]" aria-hidden />
+            Descargar PDF
+          </a>
         </div>
       </div>
 
