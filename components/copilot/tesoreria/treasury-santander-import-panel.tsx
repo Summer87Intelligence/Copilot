@@ -123,6 +123,15 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
 
   const hasValidPreview = previewResult != null && displayRows.length > 0;
 
+  const currencyMismatch = useMemo(() => {
+    if (!accountId || parsedRows.length === 0) return null;
+    const account = santanderAccounts.find((a) => a.id === accountId);
+    if (!account?.currencyCode) return null;
+    const statementCurrency = parsedRows[0]?.currencyCode;
+    if (!statementCurrency || statementCurrency === account.currencyCode) return null;
+    return { accountCurrency: account.currencyCode, statementCurrency };
+  }, [accountId, parsedRows, santanderAccounts]);
+
   async function handleFileChange(file: File | null) {
     if (!file) return;
     setParsing(true);
@@ -282,6 +291,16 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
         </p>
       ) : null}
 
+      {currencyMismatch ? (
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900" role="alert">
+          La cuenta seleccionada es{" "}
+          <strong className="font-semibold">{currencyMismatch.accountCurrency}</strong>, pero el
+          extracto detectado es{" "}
+          <strong className="font-semibold">{currencyMismatch.statementCurrency}</strong>. Elegí la
+          cuenta correcta antes de guardar.
+        </p>
+      ) : null}
+
       <div className="rounded-xl border border-[var(--copilot-border)] bg-white/40">
         <button
           type="button"
@@ -338,13 +357,15 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
         {canWrite ? (
           <CopilotPrimaryButton
             type="button"
-            disabled={!hasValidPreview || !accountId || importing}
+            disabled={!hasValidPreview || !accountId || importing || !!currencyMismatch}
             title={
-              !accountId
-                ? "Seleccioná una cuenta para guardar movimientos importados"
-                : !hasValidPreview
-                  ? "Generá un preview válido antes de guardar"
-                  : undefined
+              currencyMismatch
+                ? `Moneda del extracto (${currencyMismatch.statementCurrency}) no coincide con la cuenta (${currencyMismatch.accountCurrency})`
+                : !accountId
+                  ? "Seleccioná una cuenta para guardar movimientos importados"
+                  : !hasValidPreview
+                    ? "Generá un preview válido antes de guardar"
+                    : undefined
             }
             onClick={() => void handleImport()}
           >

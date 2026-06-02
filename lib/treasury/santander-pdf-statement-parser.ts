@@ -16,6 +16,8 @@ const DATE_PATTERN = /\b(\d{2}\/\d{2}\/\d{4})\b/;
 const ROW_DATE_START = /^\d{2}\/\d{2}\/\d{4}\b/;
 // Strict variant: decimal part is required (`,\d{2}`), so bare integers are NOT matched.
 const UY_STRICT_MONEY_SRC = String.raw`-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2}`;
+// Relaxed variant: also matches thousand-separated integers without decimal (e.g. UYU "3.335").
+const UY_RELAXED_MONEY_SRC = String.raw`-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d{1,3}(?:\.\d{3})+|-?\d+,\d{2}`;
 
 function normalizePdfText(text: string): string {
   return text
@@ -34,6 +36,10 @@ function normalizeMatchText(text: string): string {
 
 function findStrictMoneyAmounts(text: string): string[] {
   return [...text.matchAll(new RegExp(UY_STRICT_MONEY_SRC, "g"))].map((m) => m[0]);
+}
+
+function findRelaxedMoneyAmounts(text: string): string[] {
+  return [...text.matchAll(new RegExp(UY_RELAXED_MONEY_SRC, "g"))].map((m) => m[0]);
 }
 
 function extractRefDescFromRemainder(text: string): { reference: string; description: string } {
@@ -87,9 +93,7 @@ export function isSantanderPdfStatementText(text: string): boolean {
 
   const hasHeader =
     normalized.includes("fecha") &&
-    normalized.includes("referencia") &&
-    (normalized.includes("debito") || normalized.includes("debito")) &&
-    (normalized.includes("credito") || normalized.includes("credito")) &&
+    (normalized.includes("debito") || normalized.includes("credito")) &&
     normalized.includes("saldo");
 
   if (!hasHeader) return false;
@@ -102,9 +106,7 @@ export function isSantanderPdfStatementText(text: string): boolean {
   // Accept by structure when brand text is not extractable (e.g. logo as image):
   // requires bank-level field markers + date range
   const hasBankStructure =
-    normalized.includes("cliente") &&
-    normalized.includes("cuenta") &&
-    normalized.includes("moneda") &&
+    (normalized.includes("cliente") || normalized.includes("cuenta")) &&
     normalized.includes("movimientos");
 
   const hasDateRange = /\d{2}\/\d{2}\/\d{4}\s*-\s*\d{2}\/\d{2}\/\d{4}/.test(text);
@@ -165,9 +167,7 @@ function findTableStartIndex(lines: readonly string[]): number {
     const normalized = normalizeMatchText(lines[i] ?? "");
     if (
       normalized.includes("fecha") &&
-      normalized.includes("referencia") &&
-      normalized.includes("debito") &&
-      normalized.includes("credito") &&
+      (normalized.includes("debito") || normalized.includes("credito")) &&
       normalized.includes("saldo")
     ) {
       return i + 1;
@@ -357,7 +357,15 @@ function movementFromDateBlockStr(
   const movementDate = parseSantanderPdfDate(dateMatch[1]!);
   if (!movementDate) return null;
 
-  const moneyAmounts = findStrictMoneyAmounts(collapsed);
+  let moneyAmounts = findStrictMoneyAmounts(collapsed);
+  let activeMoneyReSrc = UY_STRICT_MONEY_SRC;
+
+  // Relax matching for UYU amounts without `,\d{2}` decimal (e.g. "3.335" from pdf-parse)
+  if (moneyAmounts.length < 2) {
+    moneyAmounts = findRelaxedMoneyAmounts(collapsed);
+    activeMoneyReSrc = UY_RELAXED_MONEY_SRC;
+  }
+
   if (moneyAmounts.length < 2) return null;
 
   const balanceRaw = moneyAmounts[moneyAmounts.length - 1]!;
@@ -369,10 +377,10 @@ function movementFromDateBlockStr(
   const movementType: BankMovementType = amountValue < 0 ? "debit" : "credit";
   const amount = Math.abs(amountValue);
 
-  const strictMoneyRe = new RegExp(UY_STRICT_MONEY_SRC, "g");
+  const activeMoneyRe = new RegExp(activeMoneyReSrc, "g");
   const remainder = collapsed
     .replace(/^\d{2}\/\d{2}\/\d{4}\s*/, "")
-    .replace(strictMoneyRe, " ")
+    .replace(activeMoneyRe, " ")
     .replace(/\s+/g, " ")
     .trim();
 
