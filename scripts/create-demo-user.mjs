@@ -11,6 +11,10 @@
  *
  * El script es idempotente: si el usuario ya existe, actualiza rol/password.
  * No borra nada.
+ *
+ * Schema app_users NOT NULL: id, company_id, full_name, email, role,
+ * created_at, credential_version, failed_login_count.
+ * id es propio (gen_random_uuid()), auth_user_id es nullable.
  */
 
 import { readFileSync } from "fs";
@@ -41,6 +45,7 @@ const DEMO_EMAIL = "usuariodemo@gmail.com";
 const DEMO_PASSWORD = "1234";
 const DEMO_ROLE = "demo_readonly";
 const DEMO_USERNAME = "usuariodemo";
+const DEMO_FULL_NAME = "Usuario Demo";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -69,7 +74,7 @@ async function resolveWorkspaceId() {
 }
 
 async function upsertAuthUser() {
-  // Buscar usuario existente por email
+  // Buscar usuario existente por email en auth.users
   const { data: list } = await admin.auth.admin.listUsers();
   const existing = list?.users?.find((u) => u.email === DEMO_EMAIL);
 
@@ -80,8 +85,9 @@ async function upsertAuthUser() {
       email_confirm: true,
     });
     if (error) {
-      console.error("❌ No se pudo actualizar el password:", error.message);
-      process.exit(1);
+      // Si falla por política de password, continuar — el login usa PIN propio
+      console.warn(`⚠️  No se pudo actualizar password en Supabase Auth: ${error.message}`);
+      console.warn("   (El login de Copilot usa PIN propio, esto no bloquea el acceso.)");
     }
     return existing.id;
   }
@@ -92,59 +98,89 @@ async function upsertAuthUser() {
     password: DEMO_PASSWORD,
     email_confirm: true,
   });
+
   if (error || !data?.user) {
     if (error?.message?.toLowerCase().includes("password")) {
-      console.error(
-        "❌ Supabase rechazó el password '1234'.",
-        "\n   Sugerencia: ajustá la política en Authentication → Settings → Password strength",
-        "\n   o definí DEMO_PASSWORD=<alternativa> en .env.local.",
-        "\n   Error original:", error?.message
+      console.warn(
+        `⚠️  Supabase Auth rechazó el password '${DEMO_PASSWORD}': ${error?.message}`,
+        "\n   El login de Copilot usa PIN propio — el auth user es opcional.",
+        "\n   Continuando sin auth user de Supabase."
       );
     } else {
-      console.error("❌ Error al crear auth user:", error?.message);
+      console.warn(`⚠️  No se pudo crear auth user: ${error?.message}. Continuando…`);
     }
-    process.exit(1);
+    return null;
   }
+
   return data.user.id;
 }
 
 async function upsertAppUser(authUserId, companyId) {
-  const { data: existing } = await admin
+  // Buscar por email (UNIQUE en app_users)
+  const { data: existing, error: fetchErr } = await admin
     .from("app_users")
-    .select("id")
-    .eq("id", authUserId)
+    .select("id, role, pin")
+    .eq("email", DEMO_EMAIL)
     .maybeSingle();
 
+  if (fetchErr) {
+    console.error("❌ Error al buscar en app_users:", fetchErr.message);
+    process.exit(1);
+  }
+
   if (existing) {
-    console.log("ℹ️  app_users ya existe. Actualizando rol…");
+    console.log(`ℹ️  app_users ya existe (id: ${existing.id}). Actualizando…`);
+    const updates = {
+      role: DEMO_ROLE,
+      company_id: companyId,
+      username: DEMO_USERNAME,
+      full_name: DEMO_FULL_NAME,
+      pin: DEMO_PASSWORD,
+      pin_hash: null,           // Forzar re-hash en próximo login
+      credential_version: 1,
+      failed_login_count: 0,
+      locked_until: null,
+    };
+    if (authUserId) updates.auth_user_id = authUserId;
+
     const { error } = await admin
       .from("app_users")
-      .update({ role: DEMO_ROLE, company_id: companyId, username: DEMO_USERNAME })
-      .eq("id", authUserId);
+      .update(updates)
+      .eq("id", existing.id);
+
     if (error) {
       console.error("❌ Error al actualizar app_users:", error.message);
       process.exit(1);
     }
-    return;
+    return existing.id;
   }
 
   console.log("ℹ️  Insertando fila en app_users…");
-  const { error } = await admin.from("app_users").insert({
-    id: authUserId,
+  const row = {
     company_id: companyId,
-    username: DEMO_USERNAME,
+    full_name: DEMO_FULL_NAME,
     email: DEMO_EMAIL,
     role: DEMO_ROLE,
-    pin: null,
+    username: DEMO_USERNAME,
+    pin: DEMO_PASSWORD,
     pin_hash: null,
     credential_version: 1,
     failed_login_count: 0,
     locked_until: null,
-  });
+  };
+  if (authUserId) row.auth_user_id = authUserId;
+
+  const { data: inserted, error } = await admin
+    .from("app_users")
+    .insert(row)
+    .select("id")
+    .single();
+
   if (error) {
     console.error("❌ Error al insertar app_users:", error.message);
     process.exit(1);
   }
+  return inserted.id;
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -153,13 +189,17 @@ async function upsertAppUser(authUserId, companyId) {
 
   const companyId = await resolveWorkspaceId();
   const authUserId = await upsertAuthUser();
-  await upsertAppUser(authUserId, companyId);
+  const appUserId = await upsertAppUser(authUserId, companyId);
 
+  console.log("");
   console.log("✅ Usuario demo creado/actualizado:");
-  console.log("   Email   :", DEMO_EMAIL);
-  console.log("   PIN     : 1234");
-  console.log("   Rol     :", DEMO_ROLE);
-  console.log("   Workspace:", companyId);
+  console.log("   app_users.id :", appUserId);
+  console.log("   Email        :", DEMO_EMAIL);
+  console.log("   Username     :", DEMO_USERNAME);
+  console.log("   PIN          :", DEMO_PASSWORD);
+  console.log("   Rol          :", DEMO_ROLE);
+  console.log("   Workspace    :", companyId);
   console.log("");
   console.log("   Para login: /login → usuario: usuariodemo → PIN: 1234");
+  console.log("   (O email: usuariodemo@gmail.com)");
 })();
