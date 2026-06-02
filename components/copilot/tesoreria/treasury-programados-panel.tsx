@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 
+import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
 import { effectivePlannedObligationStatus } from "@/lib/treasury/treasury-obligation-status";
@@ -296,6 +297,7 @@ function ProgramadoRow({
   workspace: TreasuryWorkspace;
   asOfDate: string;
 }) {
+  const { canWrite } = useCopilotPermissions();
   const [mode, setMode] = useState<"view" | "edit" | "markPaid" | "cancel">("view");
   const effective = effectivePlannedObligationStatus(obl.status, obl.dueDate, asOfDate);
   const statusCls = STATUS_CLS[effective] ?? STATUS_CLS["planned"];
@@ -319,7 +321,7 @@ function ProgramadoRow({
           <span className="text-sm font-bold tabular-nums text-rose-700">
             {formatTreasuryMoney(amount, obl.currencyCode)}
           </span>
-          {isPending ? (
+          {isPending && canWrite ? (
             <div className="flex gap-1">
               <button type="button" onClick={() => setMode(mode === "markPaid" ? "view" : "markPaid")} className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700 hover:bg-emerald-100">
                 Pagar
@@ -357,6 +359,7 @@ export function TreasuryProgramadosPanel({
   workspace: TreasuryWorkspace;
   asOfDate: string;
 }) {
+  const { canWrite } = useCopilotPermissions();
   const [showNew, setShowNew] = useState(false);
   const [showPaid, setShowPaid] = useState(false);
 
@@ -399,13 +402,15 @@ export function TreasuryProgramadosPanel({
             Pagos con fecha futura. No afectan caja hasta confirmarse como pagados.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowNew((v) => !v)}
-          className="shrink-0 rounded-xl bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
-        >
-          + Nuevo
-        </button>
+        {canWrite ? (
+          <button
+            type="button"
+            onClick={() => setShowNew((v) => !v)}
+            className="shrink-0 rounded-xl bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+          >
+            + Nuevo
+          </button>
+        ) : null}
       </div>
 
       {showNew ? (

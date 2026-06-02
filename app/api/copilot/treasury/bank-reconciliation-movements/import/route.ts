@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
 import { bankReconciliationImportBodySchema } from "@/lib/api/schemas/treasury-api-bodies";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotWriteContext } from "@/lib/copilot-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import { bankReconciliationImportSantander } from "@/lib/treasury/services/bank-reconciliation-import-service";
 import { nextResponseFromTreasuryCrud } from "@/lib/treasury/treasury-http";
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     const parsed = await parseAndValidateJsonBody(request, bankReconciliationImportBodySchema);
     if (!parsed.ok) return parsed.response;
 
-    const auth = await requireCopilotTenantContext(
+    const auth = await requireCopilotWriteContext(
       request,
       parsed.data as Record<string, unknown>
     );

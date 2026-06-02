@@ -24,6 +24,7 @@ import {
 import { isManualCashMovementDeletable } from "@/lib/treasury/treasury-manual-cash-movements";
 import { manualMovementAffectsCurrentCash } from "@/lib/treasury/treasury-cash-position";
 import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
+import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 
 type Props = {
   workspace: TreasuryWorkspace;
@@ -68,6 +69,7 @@ const initialForm: FormState = {
 };
 
 export function TreasuryManualCashPanel({ workspace }: Props) {
+  const { canWrite } = useCopilotPermissions();
   const [search, setSearch] = useState("");
   const [currencyFilter, setCurrencyFilter] = useState<CurrencyFilter>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
@@ -194,10 +196,12 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
         title="Movimientos de caja"
         subtitle="Ingresos, egresos y ajustes confirmados que impactan la caja."
         action={
-          <CopilotPrimaryButton type="button" onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nuevo movimiento
-          </CopilotPrimaryButton>
+          canWrite ? (
+            <CopilotPrimaryButton type="button" onClick={openCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nuevo movimiento
+            </CopilotPrimaryButton>
+          ) : null
         }
       />
 
@@ -310,42 +314,46 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                     {row.reconciled ? "Sí" : "No"}
                   </td>
                   <td className={TESORERIA_TD_CLASS}>
-                    <div className="flex flex-wrap gap-2">
-                      <CopilotGhostButton
-                        type="button"
-                        onClick={() => openEdit(row)}
-                        disabled={!isManualCashMovementDeletable(row)}
-                        title={
-                          isManualCashMovementDeletable(row)
-                            ? "Editar movimiento"
-                            : "Solo movimientos creados manualmente"
-                        }
-                      >
-                        Editar
-                      </CopilotGhostButton>
-                      {isManualCashMovementDeletable(row) ? (
+                    {canWrite ? (
+                      <div className="flex flex-wrap gap-2">
                         <CopilotGhostButton
                           type="button"
-                          className="!text-rose-700 hover:!bg-rose-50/80"
-                          onClick={() => {
-                            const msg = row.reconciled
-                              ? "Este movimiento está conciliado. Eliminarlo puede afectar la conciliación.\n\n¿Eliminar este movimiento de caja? Esta acción no se puede deshacer."
-                              : "¿Eliminar este movimiento de caja? Esta acción no se puede deshacer.";
-                            if (window.confirm(msg)) void workspace.deleteManual(row.id);
-                          }}
+                          onClick={() => openEdit(row)}
+                          disabled={!isManualCashMovementDeletable(row)}
+                          title={
+                            isManualCashMovementDeletable(row)
+                              ? "Editar movimiento"
+                              : "Solo movimientos creados manualmente"
+                          }
                         >
-                          Eliminar
+                          Editar
                         </CopilotGhostButton>
-                      ) : null}
-                      {row.status === "active" && isManualCashMovementDeletable(row) ? (
-                        <CopilotGhostButton
-                          type="button"
-                          onClick={() => void workspace.archiveManual(row.id)}
-                        >
-                          Anular
-                        </CopilotGhostButton>
-                      ) : null}
-                    </div>
+                        {isManualCashMovementDeletable(row) ? (
+                          <CopilotGhostButton
+                            type="button"
+                            className="!text-rose-700 hover:!bg-rose-50/80"
+                            onClick={() => {
+                              const msg = row.reconciled
+                                ? "Este movimiento está conciliado. Eliminarlo puede afectar la conciliación.\n\n¿Eliminar este movimiento de caja? Esta acción no se puede deshacer."
+                                : "¿Eliminar este movimiento de caja? Esta acción no se puede deshacer.";
+                              if (window.confirm(msg)) void workspace.deleteManual(row.id);
+                            }}
+                          >
+                            Eliminar
+                          </CopilotGhostButton>
+                        ) : null}
+                        {row.status === "active" && isManualCashMovementDeletable(row) ? (
+                          <CopilotGhostButton
+                            type="button"
+                            onClick={() => void workspace.archiveManual(row.id)}
+                          >
+                            Anular
+                          </CopilotGhostButton>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-[var(--copilot-ink-muted)]">—</span>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Calendar, Clock, AlertCircle, CheckCircle2, Loader2, X } from "lucide-react";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
+import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 
 import type { CollectionAgenda, CollectionAgendaItem } from "@/lib/collection/build-collection-agenda";
 import {
@@ -141,6 +142,7 @@ function AgendaItemCard({
   item: CollectionAgendaItem;
   onArchived: (actionId: string) => void;
 }) {
+  const { canWrite } = useCopilotPermissions();
   const { bg, label: typeLabel } = typeBadgeCls(item.type);
   const [confirming, setConfirming] = useState(false);
   const [archiving, setArchiving] = useState(false);
@@ -220,15 +222,17 @@ function AgendaItemCard({
             Esto quitará este seguimiento de la agenda. No borra la deuda ni modifica facturas.
           </p>
           <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              onClick={() => void handleArchive()}
-              disabled={archiving}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50 hover:bg-amber-800"
-            >
-              {archiving ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : null}
-              {archiving ? "Cancelando…" : "Sí, cancelar"}
-            </button>
+            {canWrite ? (
+              <button
+                type="button"
+                onClick={() => void handleArchive()}
+                disabled={archiving}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50 hover:bg-amber-800"
+              >
+                {archiving ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : null}
+                {archiving ? "Cancelando…" : "Sí, cancelar"}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => setConfirming(false)}
@@ -252,16 +256,18 @@ function AgendaItemCard({
           >
             Gestionar
           </Link>
-          <button
-            type="button"
-            onClick={() => setConfirming(true)}
-            title="Cancelar seguimiento"
-            aria-label="Cancelar seguimiento"
-            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:border-rose-200 hover:bg-rose-50/60 hover:text-rose-700"
-          >
-            <X className="h-3 w-3" aria-hidden />
-            Cancelar
-          </button>
+          {canWrite ? (
+            <button
+              type="button"
+              onClick={() => setConfirming(true)}
+              title="Cancelar seguimiento"
+              aria-label="Cancelar seguimiento"
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:border-rose-200 hover:bg-rose-50/60 hover:text-rose-700"
+            >
+              <X className="h-3 w-3" aria-hidden />
+              Cancelar
+            </button>
+          ) : null}
         </div>
       )}
     </div>

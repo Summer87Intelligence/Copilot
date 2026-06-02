@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 
 import {
   CopilotBadge,
@@ -46,6 +47,7 @@ export function TreasuryBankReconciliationPanel({
   workspace,
   embedded = false,
 }: Props & { embedded?: boolean }) {
+  const { canWrite } = useCopilotPermissions();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<BankReconciliationMovement | null>(null);
@@ -254,25 +256,31 @@ export function TreasuryBankReconciliationPanel({
                               {suggestion?.confidence ?? row.confidence ?? "—"}
                             </td>
                             <td className={TESORERIA_TD_CLASS}>
-                              <div className="flex flex-wrap gap-2">
+                              {canWrite ? (
+                                <div className="flex flex-wrap gap-2">
+                                  <CopilotGhostButton type="button" onClick={() => setSelected(row)}>
+                                    Ver detalle
+                                  </CopilotGhostButton>
+                                  {suggestion ? (
+                                    <CopilotPrimaryButton
+                                      type="button"
+                                      onClick={() => void acceptSuggestion(row)}
+                                    >
+                                      Aceptar
+                                    </CopilotPrimaryButton>
+                                  ) : null}
+                                  <CopilotGhostButton
+                                    type="button"
+                                    onClick={() => void workspace.ignoreBank(row.id)}
+                                  >
+                                    Descartar match
+                                  </CopilotGhostButton>
+                                </div>
+                              ) : (
                                 <CopilotGhostButton type="button" onClick={() => setSelected(row)}>
                                   Ver detalle
                                 </CopilotGhostButton>
-                                {suggestion ? (
-                                  <CopilotPrimaryButton
-                                    type="button"
-                                    onClick={() => void acceptSuggestion(row)}
-                                  >
-                                    Aceptar
-                                  </CopilotPrimaryButton>
-                                ) : null}
-                                <CopilotGhostButton
-                                  type="button"
-                                  onClick={() => void workspace.ignoreBank(row.id)}
-                                >
-                                  Descartar match
-                                </CopilotGhostButton>
-                              </div>
+                              )}
                             </td>
                           </tr>
                         );
@@ -322,32 +330,34 @@ export function TreasuryBankReconciliationPanel({
                   <p className="text-xs text-[var(--copilot-ink-muted)]">
                     Δ monto {suggestion.amountDelta.toFixed(2)} · Δ días {suggestion.dayDelta}
                   </p>
-                  <div className="mt-2 flex gap-2">
-                    <CopilotPrimaryButton
-                      type="button"
-                      onClick={() => {
-                        const bank = workspace.bankMovements.find((row) => row.id === suggestion.bankId);
-                        if (!bank) return;
-                        void workspace.matchBank(bank.id, {
-                          matched_source: "manual_cash",
-                          matched_record_id: suggestion.manualId,
-                          confidence: suggestion.confidence,
-                        });
-                      }}
-                    >
-                      Aceptar
-                    </CopilotPrimaryButton>
-                    <CopilotGhostButton
-                      type="button"
-                      onClick={() => {
-                        const bank = workspace.bankMovements.find((row) => row.id === suggestion.bankId);
-                        if (!bank) return;
-                        void workspace.ignoreBank(bank.id);
-                      }}
-                    >
-                      Descartar match
-                    </CopilotGhostButton>
-                  </div>
+                  {canWrite ? (
+                    <div className="mt-2 flex gap-2">
+                      <CopilotPrimaryButton
+                        type="button"
+                        onClick={() => {
+                          const bank = workspace.bankMovements.find((row) => row.id === suggestion.bankId);
+                          if (!bank) return;
+                          void workspace.matchBank(bank.id, {
+                            matched_source: "manual_cash",
+                            matched_record_id: suggestion.manualId,
+                            confidence: suggestion.confidence,
+                          });
+                        }}
+                      >
+                        Aceptar
+                      </CopilotPrimaryButton>
+                      <CopilotGhostButton
+                        type="button"
+                        onClick={() => {
+                          const bank = workspace.bankMovements.find((row) => row.id === suggestion.bankId);
+                          if (!bank) return;
+                          void workspace.ignoreBank(bank.id);
+                        }}
+                      >
+                        Descartar match
+                      </CopilotGhostButton>
+                    </div>
+                  ) : null}
                 </li>
               ))
             )}
@@ -379,13 +389,15 @@ export function TreasuryBankReconciliationPanel({
               </select>
             </label>
             <div className="mt-4 flex gap-2">
-              <CopilotPrimaryButton
-                type="button"
-                disabled={saving || !manualMatchId}
-                onClick={() => void handleMatch()}
-              >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Conciliar"}
-              </CopilotPrimaryButton>
+              {canWrite ? (
+                <CopilotPrimaryButton
+                  type="button"
+                  disabled={saving || !manualMatchId}
+                  onClick={() => void handleMatch()}
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Conciliar"}
+                </CopilotPrimaryButton>
+              ) : null}
               <CopilotGhostButton type="button" onClick={() => setSelected(null)}>
                 Cerrar
               </CopilotGhostButton>

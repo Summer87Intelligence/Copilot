@@ -4,7 +4,7 @@ import {
   recurringObligationGenerateBodySchema,
   recurringObligationTemplateCreateBodySchema,
 } from "@/lib/api/schemas/treasury-api-bodies";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotTenantContext, requireCopilotWriteContext } from "@/lib/copilot-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import {
   recurringObligationGenerate,
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotWriteContext(request);
     if (!auth.ok) return auth.response;
 
     const json = await request.json();

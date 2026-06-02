@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
 import { manualCashMovementCreateBodySchema } from "@/lib/api/schemas/treasury-api-bodies";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotTenantContext, requireCopilotWriteContext } from "@/lib/copilot-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import {
   manualCashMovementCreate,
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     const parsed = await parseAndValidateJsonBody(request, manualCashMovementCreateBodySchema);
     if (!parsed.ok) return parsed.response;
 
-    const auth = await requireCopilotTenantContext(
+    const auth = await requireCopilotWriteContext(
       request,
       parsed.data as Record<string, unknown>
     );

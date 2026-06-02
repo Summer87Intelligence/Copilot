@@ -9,6 +9,7 @@ import { buildCopilotNavItemGroups } from "@/components/copilot/copilot-nav-conf
 import { CopilotEnvironmentHealthStrip } from "@/components/copilot/copilot-environment-health-strip";
 import type { CopilotSessionPreview } from "@/components/copilot/copilot-session-preview";
 import { CopilotModuleShell } from "@/components/copilot/module-shell";
+import { CopilotPermissionsContext } from "@/lib/auth/copilot-permissions-context";
 
 /** Preferencia de sidebar del módulo Copilot (1 = colapsado, 0 = expandido). */
 export const COPILOT_SIDEBAR_COLLAPSED_STORAGE_KEY = "copilot_sidebar_collapsed";
@@ -35,7 +36,13 @@ export function CopilotShell({
     [isSuperadmin]
   );
 
+  const permissions = useMemo(
+    () => ({ canWrite: !isReadOnlyDemo, isReadOnlyDemo }),
+    [isReadOnlyDemo]
+  );
+
   return (
+    <CopilotPermissionsContext.Provider value={permissions}>
     <CopilotNotificationsProvider>
     <CopilotAlertsProvider>
       <CopilotOperationalPulseProvider>
@@ -55,5 +62,6 @@ export function CopilotShell({
       </CopilotOperationalPulseProvider>
     </CopilotAlertsProvider>
     </CopilotNotificationsProvider>
+    </CopilotPermissionsContext.Provider>
   );
 }

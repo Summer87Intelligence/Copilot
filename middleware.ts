@@ -60,18 +60,25 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    // Block write operations for read-only demo role
+    // Block ALL write operations for read-only demo role across every API prefix
     const parsed = parseCopilotSessionValue(sessionCookieValue);
     if (parsed && isReadOnlyRole(parsed.role)) {
       const method = request.method.toUpperCase();
-      const isApiMutation =
-        (pathname.startsWith("/api/copilot/") || pathname.startsWith("/api/operacional/")) &&
-        (method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE") &&
-        pathname !== "/api/copilot/login" &&
-        pathname !== "/api/copilot/logout";
-      if (isApiMutation) {
+      const isMutation =
+        method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE";
+      const isPublicAuthPath =
+        pathname === "/api/copilot/login" ||
+        pathname.startsWith("/api/copilot/login/") ||
+        pathname === "/api/copilot/logout" ||
+        pathname.startsWith("/api/copilot/logout/");
+      const isApiPath = pathname.startsWith("/api/");
+      if (isMutation && isApiPath && !isPublicAuthPath) {
         return NextResponse.json(
-          { ok: false, error: "READ_ONLY_USER", message: "Este usuario es solo lectura." },
+          {
+            ok: false,
+            error: "READ_ONLY_USER",
+            message: "Este usuario es solo lectura. Solo un superadmin puede modificar datos.",
+          },
           { status: 403 }
         );
       }

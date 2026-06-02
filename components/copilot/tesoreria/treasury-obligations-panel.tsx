@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Loader2, MoreHorizontal, Plus, X } from "lucide-react";
+import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 
 import {
   CopilotBadge,
@@ -599,6 +600,7 @@ function RowActionsCell({
   asOfDate: string;
   onAction: (modal: ActiveModal) => void;
 }) {
+  const { canWrite } = useCopilotPermissions();
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -649,6 +651,10 @@ function RowActionsCell({
     onClick: () => onAction({ kind: "delete", row }),
     danger: true,
   });
+
+  if (!canWrite) {
+    return <span className="text-xs text-[var(--copilot-ink-muted)]">—</span>;
+  }
 
   return (
     <div className="flex items-center gap-2">
@@ -726,6 +732,7 @@ function RowActionsCell({
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
 export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
+  const { canWrite } = useCopilotPermissions();
   const [search, setSearch] = useState("");
   const [view, setView] = useState<ObligationView>("next30");
   const [page, setPage] = useState(0);
@@ -841,10 +848,12 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
         title="Pagos futuros"
         subtitle="Egresos programados por moneda: impuestos, sueldos, proveedores y más."
         action={
-          <CopilotPrimaryButton type="button" onClick={() => setDrawerOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nuevo pago
-          </CopilotPrimaryButton>
+          canWrite ? (
+            <CopilotPrimaryButton type="button" onClick={() => setDrawerOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nuevo pago
+            </CopilotPrimaryButton>
+          ) : null
         }
       />
 

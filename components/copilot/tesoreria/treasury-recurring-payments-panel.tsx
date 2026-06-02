@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, MoreHorizontal, Plus, X } from "lucide-react";
+import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 
 import {
   CopilotBadge,
@@ -108,6 +109,7 @@ function obligationStatusTone(
 }
 
 export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props) {
+  const { canWrite } = useCopilotPermissions();
   const [items, setItems] = useState<TreasuryRecurringPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -338,10 +340,12 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
         title="Recurrentes"
         subtitle="Copilot genera pagos futuros automáticamente en cada período. Pausar suspende sin borrar historial."
         action={
-          <CopilotPrimaryButton type="button" onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nuevo recurrente
-          </CopilotPrimaryButton>
+          canWrite ? (
+            <CopilotPrimaryButton type="button" onClick={openCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nuevo recurrente
+            </CopilotPrimaryButton>
+          ) : null
         }
       />
 
@@ -398,66 +402,75 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
                     </CopilotBadge>
                   </td>
                   <td className={TESORERIA_TD_CLASS}>
-                    <div className="flex flex-wrap items-center gap-1">
-                      <CopilotGhostButton
-                        type="button"
-                        onClick={() => openEdit(row)}
-                      >
-                        Editar
-                      </CopilotGhostButton>
-                      {row.active ? (
+                    {canWrite ? (
+                      <div className="flex flex-wrap items-center gap-1">
                         <CopilotGhostButton
                           type="button"
-                          onClick={() => setModal({ type: "pause", row })}
+                          onClick={() => openEdit(row)}
                         >
-                          Pausar
+                          Editar
                         </CopilotGhostButton>
-                      ) : (
+                        {row.active ? (
+                          <CopilotGhostButton
+                            type="button"
+                            onClick={() => setModal({ type: "pause", row })}
+                          >
+                            Pausar
+                          </CopilotGhostButton>
+                        ) : (
+                          <CopilotGhostButton
+                            type="button"
+                            onClick={() => setModal({ type: "reactivate", row })}
+                          >
+                            Reactivar
+                          </CopilotGhostButton>
+                        )}
                         <CopilotGhostButton
                           type="button"
-                          onClick={() => setModal({ type: "reactivate", row })}
+                          onClick={() => setModal({ type: "payments", row })}
                         >
-                          Reactivar
+                          Ver pagos
                         </CopilotGhostButton>
-                      )}
+                        <div className="relative" data-recurring-menu>
+                          <button
+                            type="button"
+                            className="rounded p-1 text-[var(--copilot-ink-muted)] transition hover:bg-[rgba(44,40,37,0.06)] hover:text-[var(--copilot-ink)]"
+                            aria-label="Más opciones"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(openMenuId === row.id ? null : row.id);
+                            }}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
+                          {openMenuId === row.id ? (
+                            <div
+                              className="absolute right-0 top-full z-10 mt-1 min-w-[120px] rounded-lg border border-[var(--copilot-border)] bg-white py-1 shadow-lg"
+                              data-recurring-menu
+                            >
+                              <button
+                                type="button"
+                                className="w-full px-3 py-1.5 text-left text-xs text-rose-600 transition hover:bg-rose-50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenuId(null);
+                                  setModal({ type: "delete", row, cancelPending: true });
+                                }}
+                              >
+                                Eliminar
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : (
                       <CopilotGhostButton
                         type="button"
                         onClick={() => setModal({ type: "payments", row })}
                       >
                         Ver pagos
                       </CopilotGhostButton>
-                      <div className="relative" data-recurring-menu>
-                        <button
-                          type="button"
-                          className="rounded p-1 text-[var(--copilot-ink-muted)] transition hover:bg-[rgba(44,40,37,0.06)] hover:text-[var(--copilot-ink)]"
-                          aria-label="Más opciones"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenuId(openMenuId === row.id ? null : row.id);
-                          }}
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </button>
-                        {openMenuId === row.id ? (
-                          <div
-                            className="absolute right-0 top-full z-10 mt-1 min-w-[120px] rounded-lg border border-[var(--copilot-border)] bg-white py-1 shadow-lg"
-                            data-recurring-menu
-                          >
-                            <button
-                              type="button"
-                              className="w-full px-3 py-1.5 text-left text-xs text-rose-600 transition hover:bg-rose-50"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setOpenMenuId(null);
-                                setModal({ type: "delete", row, cancelPending: true });
-                              }}
-                            >
-                              Eliminar
-                            </button>
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
+                    )}
                   </td>
                 </tr>
               ))}

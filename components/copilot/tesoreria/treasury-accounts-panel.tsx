@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Plus } from "lucide-react";
+import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 
 import {
   CopilotBadge,
@@ -61,6 +62,7 @@ const emptyForm: TreasuryAccountFormValues = {
 };
 
 export function TreasuryAccountsPanel({ workspace, embedded = false }: Props) {
+  const { canWrite } = useCopilotPermissions();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -147,21 +149,25 @@ export function TreasuryAccountsPanel({ workspace, embedded = false }: Props) {
   return (
     <section className="space-y-4">
       {embedded ? (
-        <div className="flex justify-end">
-          <CopilotPrimaryButton type="button" onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nueva cuenta
-          </CopilotPrimaryButton>
-        </div>
+        canWrite ? (
+          <div className="flex justify-end">
+            <CopilotPrimaryButton type="button" onClick={openCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nueva cuenta
+            </CopilotPrimaryButton>
+          </div>
+        ) : null
       ) : (
         <CopilotSectionTitle
           title="Cuentas de tesorería"
           subtitle="Cuentas usadas para organizar movimientos de tesorería."
           action={
-            <CopilotPrimaryButton type="button" onClick={openCreate}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nueva cuenta
-            </CopilotPrimaryButton>
+            canWrite ? (
+              <CopilotPrimaryButton type="button" onClick={openCreate}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nueva cuenta
+              </CopilotPrimaryButton>
+            ) : null
           }
         />
       )}
@@ -225,19 +231,21 @@ export function TreasuryAccountsPanel({ workspace, embedded = false }: Props) {
                       </CopilotBadge>
                     </td>
                     <td className={TESORERIA_TD_CLASS}>
-                      <div className="flex flex-wrap gap-2">
-                        <CopilotGhostButton type="button" onClick={() => openEdit(account)}>
-                          Editar
-                        </CopilotGhostButton>
-                        {account.active ? (
-                          <CopilotGhostButton
-                            type="button"
-                            onClick={() => void workspace.deactivateAccount(account.id)}
-                          >
-                            Desactivar
+                      {canWrite ? (
+                        <div className="flex flex-wrap gap-2">
+                          <CopilotGhostButton type="button" onClick={() => openEdit(account)}>
+                            Editar
                           </CopilotGhostButton>
-                        ) : null}
-                      </div>
+                          {account.active ? (
+                            <CopilotGhostButton
+                              type="button"
+                              onClick={() => void workspace.deactivateAccount(account.id)}
+                            >
+                              Desactivar
+                            </CopilotGhostButton>
+                          ) : null}
+                        </div>
+                      ) : <span className="text-xs text-[var(--copilot-ink-muted)]">—</span>}
                     </td>
                   </tr>
                 );

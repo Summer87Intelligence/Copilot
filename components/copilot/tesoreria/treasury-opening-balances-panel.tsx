@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 
 import {
   CopilotGhostButton,
@@ -29,6 +30,7 @@ type Props = {
 };
 
 export function TreasuryOpeningBalancesPanel({ workspace, embedded = false }: Props) {
+  const { canWrite } = useCopilotPermissions();
   const [rows, setRows] = useState<OpeningRow[]>(DEFAULT_ROWS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -158,13 +160,15 @@ export function TreasuryOpeningBalancesPanel({ workspace, embedded = false }: Pr
                 />
               </label>
               <div className="mt-3 flex gap-2">
-                <CopilotPrimaryButton
-                  type="button"
-                  disabled={saving}
-                  onClick={() => void save(row.currencyCode)}
-                >
-                  Guardar {row.currencyCode}
-                </CopilotPrimaryButton>
+                {canWrite ? (
+                  <CopilotPrimaryButton
+                    type="button"
+                    disabled={saving}
+                    onClick={() => void save(row.currencyCode)}
+                  >
+                    Guardar {row.currencyCode}
+                  </CopilotPrimaryButton>
+                ) : null}
                 <CopilotGhostButton type="button" onClick={() => void load()}>
                   Recargar
                 </CopilotGhostButton>

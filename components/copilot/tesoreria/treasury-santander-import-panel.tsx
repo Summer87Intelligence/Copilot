@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ChevronDown, Loader2, Upload, X } from "lucide-react";
+import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 
 import { CopilotGhostButton, CopilotPrimaryButton, CopilotSectionTitle } from "@/components/copilot/copilot-ui";
 import { TreasuryFormField, treasuryInputClassName } from "@/components/copilot/tesoreria/treasury-form-fields";
@@ -85,6 +86,7 @@ function formatCurrencyTotals(totals: Partial<Record<"UYU" | "USD", number>>): s
 }
 
 export function TreasurySantanderImportPanel({ workspace, embedded = false }: Props) {
+  const { canWrite } = useCopilotPermissions();
   const [accountId, setAccountId] = useState("");
   const [formatOpen, setFormatOpen] = useState(false);
   const [parsing, setParsing] = useState(false);
@@ -333,24 +335,26 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
         >
           {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Generar preview"}
         </CopilotGhostButton>
-        <CopilotPrimaryButton
-          type="button"
-          disabled={!hasValidPreview || !accountId || importing}
-          title={
-            !accountId
-              ? "Seleccioná una cuenta para guardar movimientos importados"
-              : !hasValidPreview
-                ? "Generá un preview válido antes de guardar"
-                : undefined
-          }
-          onClick={() => void handleImport()}
-        >
-          {importing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            "Guardar movimientos importados"
-          )}
-        </CopilotPrimaryButton>
+        {canWrite ? (
+          <CopilotPrimaryButton
+            type="button"
+            disabled={!hasValidPreview || !accountId || importing}
+            title={
+              !accountId
+                ? "Seleccioná una cuenta para guardar movimientos importados"
+                : !hasValidPreview
+                  ? "Generá un preview válido antes de guardar"
+                  : undefined
+            }
+            onClick={() => void handleImport()}
+          >
+            {importing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "Guardar movimientos importados"
+            )}
+          </CopilotPrimaryButton>
+        ) : null}
       </div>
 
       <p className="text-xs text-[var(--copilot-ink-muted)]">

@@ -11,6 +11,7 @@ import { getRequestClientMeta } from "@/lib/security/request-client-meta";
 import { getAppUserByAuthUid, getAppUserByEmail } from "@/services/app-user-source";
 import type { AppUser } from "@/types/app-user";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
+import { isReadOnlyRole } from "@/lib/auth/permissions";
 
 /** Nombres de query/body que intentan fijar el tenant desde el cliente (no son fuente de verdad). */
 const TENANT_OVERRIDE_KEYS = [
@@ -432,4 +433,33 @@ export async function requireCopilotTenantContext(
       tenantCompanyId,
     },
   };
+}
+
+/**
+ * Idéntico a requireCopilotTenantContext + verifica que el rol permita escritura.
+ * Usar en todos los handlers POST/PATCH/PUT/DELETE como defensa en profundidad
+ * (el middleware ya bloquea a nivel HTTP, esto bloquea a nivel de aplicación).
+ */
+export async function requireCopilotWriteContext(
+  request: NextRequest,
+  body?: unknown
+): Promise<CopilotAuthResult> {
+  const result = await requireCopilotTenantContext(request, body);
+  if (!result.ok) return result;
+
+  if (isReadOnlyRole(result.ctx.appUser.role)) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          ok: false,
+          error: "READ_ONLY_USER",
+          message: "Este usuario es solo lectura. Solo un superadmin puede modificar datos.",
+        },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return result;
 }
