@@ -11,18 +11,31 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
 }
 
 describe("renderCopilotManualPdf", () => {
-  it("genera PDF con título y secciones críticas", async () => {
+  it("genera PDF completo con secciones críticas del manual web", async () => {
     const buf = await renderCopilotManualPdf({
       generatedAt: new Date("2026-06-01T12:00:00.000Z"),
     });
-    expect(buf.length).toBeGreaterThan(2000);
+    expect(buf.length).toBeGreaterThan(15_000);
     expect(buf.subarray(0, 4).toString("ascii")).toBe("%PDF");
 
     const text = await extractPdfText(buf);
+
     expect(text).toContain("Manual de Usuario");
     expect(text).toContain("Roles y permisos");
+    expect(text).toContain("superadmin");
+    expect(text).toContain("usuario");
+    expect(text).toContain("demo_readonly");
     expect(text).toContain("Importador bancario Santander");
-    expect(text).toContain("Solo lectura");
+    expect(text).toContain("CSV");
+    expect(text).toContain("Excel");
+    expect(text).toMatch(/PDF/);
+    expect(text).toMatch(/Vista previa|Preview/i);
+    expect(text).toContain("Guardar requiere superadmin");
+    expect(text).toContain("Fecha de corte");
+    expect(text).toContain("Último mes cerrado");
+    expect(text).toContain("Deuda total");
+    expect(text).toContain("Deuda vencida");
+    expect(text).toMatch(/Cobranza mensual|Reporte de cobranza mensual/i);
     expect(text).not.toMatch(/Personalización\s*—/i);
     expect(text).not.toMatch(/Configuración\s*—\s*Ajustes del workspace/i);
   });

@@ -9,9 +9,11 @@ import {
   COPILOT_MANUAL_TITLE,
   COPILOT_MANUAL_TOC_ORDER,
   getCopilotManualSectionsForPdf,
-  type CopilotManualBlock,
-  type CopilotManualSection,
 } from "@/lib/copilot-manual-content";
+import type {
+  CopilotManualBlock,
+  CopilotManualSection,
+} from "@/lib/copilot-manual/types";
 
 const COLORS = {
   ink: "#1a1a1a",
@@ -29,6 +31,19 @@ const MAX_Y = PAGE.height - PAGE.margin - FOOTER_RESERVE;
 const CONTENT_W = PAGE.width - PAGE.margin * 2;
 
 const FOOTER_TEXT = `${COPILOT_MANUAL_PRODUCT} · ${COPILOT_MANUAL_TITLE}`;
+
+/** Normaliza texto para PDF (flechas, comillas, espacios). */
+export function normalizeCopilotManualPdfText(text: string): string {
+  return text
+    .replace(/!\s*[''`]/g, "→")
+    .replace(/[''`]/g, "'")
+    .replace(/[""]/g, '"')
+    .replace(/\u00AB/g, '"')
+    .replace(/\u00BB/g, '"')
+    .replace(/\s*→\s*/g, " → ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
 
 export type RenderCopilotManualPdfOptions = {
   generatedAt?: Date;
@@ -93,33 +108,36 @@ function drawSectionTitle(ctx: PdfCtx, title: string, level: 1 | 2 = 1) {
 }
 
 function drawParagraph(ctx: PdfCtx, text: string) {
+  const t = normalizeCopilotManualPdfText(text);
   ctx.doc.font("Helvetica").fontSize(10).fillColor(COLORS.ink);
-  const h = ctx.doc.heightOfString(text, { width: CONTENT_W, lineGap: 3 });
-  ensureSpace(ctx, h + 8);
-  ctx.doc.text(text, PAGE.margin, ctx.y, { width: CONTENT_W, lineGap: 3 });
-  ctx.y += h + 10;
+  const h = ctx.doc.heightOfString(t, { width: CONTENT_W, lineGap: 4 });
+  ensureSpace(ctx, h + 10);
+  ctx.doc.text(t, PAGE.margin, ctx.y, { width: CONTENT_W, lineGap: 4 });
+  ctx.y += h + 12;
 }
 
 function drawBullets(ctx: PdfCtx, items: string[]) {
   const bulletIndent = 14;
   const textW = CONTENT_W - bulletIndent;
   ctx.doc.font("Helvetica").fontSize(10).fillColor(COLORS.ink);
-  for (const item of items) {
-    const h = ctx.doc.heightOfString(item, { width: textW, lineGap: 2 });
-    ensureSpace(ctx, h + 6);
+  for (const raw of items) {
+    const item = normalizeCopilotManualPdfText(raw);
+    const h = ctx.doc.heightOfString(item, { width: textW, lineGap: 3 });
+    ensureSpace(ctx, h + 8);
     ctx.doc.circle(PAGE.margin + 4, ctx.y + 5, 2).fill(COLORS.accent);
-    ctx.doc.text(item, PAGE.margin + bulletIndent, ctx.y, { width: textW, lineGap: 2 });
-    ctx.y += h + 8;
+    ctx.doc.text(item, PAGE.margin + bulletIndent, ctx.y, { width: textW, lineGap: 3 });
+    ctx.y += h + 10;
   }
-  ctx.y += 4;
+  ctx.y += 6;
 }
 
 function drawSteps(ctx: PdfCtx, items: string[]) {
   const numW = 18;
   const textW = CONTENT_W - numW - 4;
   ctx.doc.font("Helvetica").fontSize(10).fillColor(COLORS.ink);
-  items.forEach((item, i) => {
-    const h = ctx.doc.heightOfString(item, { width: textW, lineGap: 2 });
+  items.forEach((raw, i) => {
+    const item = normalizeCopilotManualPdfText(raw);
+    const h = ctx.doc.heightOfString(item, { width: textW, lineGap: 3 });
     ensureSpace(ctx, h + 8);
     ctx.doc
       .font("Helvetica-Bold")
@@ -134,7 +152,40 @@ function drawSteps(ctx: PdfCtx, items: string[]) {
   ctx.y += 4;
 }
 
+function drawRoles(
+  ctx: PdfCtx,
+  entries: Array<{ role: string; label: string; description: string }>
+) {
+  for (const { label, description } of entries) {
+    const title = normalizeCopilotManualPdfText(label);
+    const desc = normalizeCopilotManualPdfText(description);
+    ctx.doc.font("Helvetica-Bold").fontSize(10).fillColor(COLORS.accent);
+    const tH = ctx.doc.heightOfString(title, { width: CONTENT_W });
+    ctx.doc.font("Helvetica").fontSize(9.5).fillColor(COLORS.ink);
+    const dH = ctx.doc.heightOfString(desc, { width: CONTENT_W, lineGap: 2 });
+    ensureSpace(ctx, tH + dH + 14);
+    ctx.doc.font("Helvetica-Bold").fontSize(10).fillColor(COLORS.accent).text(title, PAGE.margin, ctx.y);
+    ctx.y += tH + 4;
+    ctx.doc.font("Helvetica").fontSize(9.5).fillColor(COLORS.ink).text(desc, PAGE.margin, ctx.y, {
+      width: CONTENT_W,
+      lineGap: 2,
+    });
+    ctx.y += dH + 12;
+  }
+}
+
+function drawStatus(
+  ctx: PdfCtx,
+  entries: Array<{ level: string; title: string; description: string }>
+) {
+  for (const { title, description } of entries) {
+    const line = `${normalizeCopilotManualPdfText(title)}: ${normalizeCopilotManualPdfText(description)}`;
+    drawParagraph(ctx, line);
+  }
+}
+
 function drawCallout(ctx: PdfCtx, variant: "tip" | "warning" | "info", text: string) {
+  const normalized = normalizeCopilotManualPdfText(text);
   const bg =
     variant === "warning"
       ? COLORS.calloutWarn
@@ -142,16 +193,21 @@ function drawCallout(ctx: PdfCtx, variant: "tip" | "warning" | "info", text: str
         ? COLORS.calloutInfo
         : COLORS.calloutTip;
   ctx.doc.font("Helvetica").fontSize(9.5).fillColor(COLORS.ink);
-  const h = ctx.doc.heightOfString(text, { width: CONTENT_W - 16, lineGap: 2 });
-  const boxH = h + 14;
-  ensureSpace(ctx, boxH + 8);
+  const h = ctx.doc.heightOfString(normalized, { width: CONTENT_W - 16, lineGap: 3 });
+  const boxH = h + 16;
+  ensureSpace(ctx, boxH + 10);
   ctx.doc.roundedRect(PAGE.margin, ctx.y, CONTENT_W, boxH, 4).fill(bg);
-  ctx.doc.text(text, PAGE.margin + 8, ctx.y + 7, { width: CONTENT_W - 16, lineGap: 2 });
-  ctx.y += boxH + 10;
+  ctx.doc.text(normalized, PAGE.margin + 8, ctx.y + 8, {
+    width: CONTENT_W - 16,
+    lineGap: 3,
+  });
+  ctx.y += boxH + 12;
 }
 
 function drawGlossary(ctx: PdfCtx, entries: Array<{ term: string; definition: string }>) {
-  for (const { term, definition } of entries) {
+  for (const { term: rawTerm, definition: rawDef } of entries) {
+    const term = normalizeCopilotManualPdfText(rawTerm);
+    const definition = normalizeCopilotManualPdfText(rawDef);
     ctx.doc.font("Helvetica-Bold").fontSize(10).fillColor(COLORS.ink);
     const termH = ctx.doc.heightOfString(term, { width: CONTENT_W });
     ctx.doc.font("Helvetica").fontSize(9.5).fillColor(COLORS.muted);
@@ -191,6 +247,12 @@ function drawBlocks(ctx: PdfCtx, blocks: CopilotManualBlock[]) {
         break;
       case "glossary":
         drawGlossary(ctx, block.entries);
+        break;
+      case "roles":
+        drawRoles(ctx, block.entries);
+        break;
+      case "status":
+        drawStatus(ctx, block.entries);
         break;
       default:
         break;
@@ -246,9 +308,10 @@ function renderToc(ctx: PdfCtx) {
 }
 
 function renderSection(ctx: PdfCtx, section: CopilotManualSection) {
+  breakPage(ctx);
   drawSectionTitle(ctx, section.title, 1);
   drawBlocks(ctx, section.blocks);
-  ctx.y += 8;
+  ctx.y += 12;
 }
 
 export function renderCopilotManualPdf(
