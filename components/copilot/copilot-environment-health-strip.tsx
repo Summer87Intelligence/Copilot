@@ -6,6 +6,11 @@ import { CopilotNotificationBell } from "@/components/copilot/copilot-notificati
 import { TodayDateDisplay } from "@/components/copilot/copilot-today-date";
 import { OperationalSemaphoreIndicator } from "@/components/copilot/operational-semaphore-indicator";
 
+function readOnlyBadgeShortLabel(label: string): string {
+  if (label.toLowerCase().includes("demo")) return "Demo";
+  return "Solo lectura";
+}
+
 export function CopilotEnvironmentHealthStrip({
   sessionPreview = null,
   readOnlyLabel = null,
@@ -13,15 +18,22 @@ export function CopilotEnvironmentHealthStrip({
   sessionPreview?: CopilotSessionPreview | null;
   readOnlyLabel?: string | null;
 }) {
+  const readOnlyShort =
+    readOnlyLabel != null ? readOnlyBadgeShortLabel(readOnlyLabel) : null;
+
   return (
-    <div className="relative z-[50] flex h-[56px] items-center justify-between gap-x-4 border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.80)] px-4 sm:px-6">
+    <div className="relative z-[50] flex h-[56px] min-w-0 items-center justify-between gap-x-2 border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.80)] px-4 sm:gap-x-4 sm:px-6">
       <TodayDateDisplay />
-      <div className="flex shrink-0 items-center justify-end gap-x-3 sm:gap-x-4">
-        {readOnlyLabel && (
-          <span className="hidden items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 sm:flex">
-            {readOnlyLabel}
+      <div className="flex min-w-0 shrink-0 items-center justify-end gap-x-2 sm:gap-x-4">
+        {readOnlyLabel && readOnlyShort ? (
+          <span
+            className="inline-flex max-w-[5.5rem] shrink-0 items-center rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold leading-tight text-amber-800 sm:max-w-none sm:px-2.5 sm:text-xs"
+            title={readOnlyLabel}
+          >
+            <span className="truncate sm:hidden">{readOnlyShort}</span>
+            <span className="hidden sm:inline">{readOnlyLabel}</span>
           </span>
-        )}
+        ) : null}
         <CopilotNotificationBell />
         <CopilotUserBar sessionPreview={sessionPreview} />
         <OperationalSemaphoreIndicator />
