@@ -2,6 +2,7 @@ export const NOTIFICATION_TYPES = [
   "collection_received",
   "new_debtor",
   "client_overdue",
+  "debt_followup_summary",
   "treasury_payment_due",
   "treasury_payment_overdue",
   "sync_changes_detected",

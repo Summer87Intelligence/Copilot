@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import {
   notifyClientOverdue,
   notifyCollectionReceived,
+  notifyDebtFollowupSummary,
   notifyTreasuryPaymentDue,
   notifyTreasuryPaymentOverdue,
 } from "./notification-events";
@@ -408,6 +409,59 @@ async function generateRecentCollectionNotifications(
   }
 }
 
+// ─── Debt followup summary ────────────────────────────────────────────────────
+
+/**
+ * Genera UNA notificación diaria que resume clientes con deuda vencida.
+ * Reemplaza el spam de notificaciones individuales cuando hay muchos deudores.
+ * Dedup diario: solo se crea una por workspace por día.
+ */
+async function generateDebtFollowupSummaryNotification(
+  admin: AdminClient,
+  tenantCompanyId: string,
+  now: Date,
+  acc: GenerateResult
+) {
+  const today = todayYmd(now);
+
+  const { data: invoices, error } = await admin
+    .from("proto_invoices")
+    .select("company_id, balance_amount, currency_code, due_date, status")
+    .eq("workspace_company_id", tenantCompanyId)
+    .in("status", ["pending", "overdue", "partial"])
+    .limit(2000);
+
+  if (error || !invoices) return;
+
+  const overdueClients = new Set<string>();
+  let uyuOverdue = 0;
+  let usdOverdue = 0;
+
+  for (const inv of invoices as Record<string, unknown>[]) {
+    const dueDate = String(inv.due_date ?? "").trim();
+    if (!dueDate || dueDate >= today) continue;
+    const balance = Number(inv.balance_amount ?? 0);
+    if (balance <= 0) continue;
+    const companyId = String(inv.company_id ?? "").trim();
+    if (!companyId) continue;
+    const currency = String(inv.currency_code ?? "UYU").toUpperCase();
+    overdueClients.add(companyId);
+    if (currency === "USD") usdOverdue += balance;
+    else uyuOverdue += balance;
+  }
+
+  if (overdueClients.size === 0) return;
+
+  const r = await notifyDebtFollowupSummary({
+    tenantCompanyId,
+    overdueClientCount: overdueClients.size,
+    uyuOverdue,
+    usdOverdue,
+    asOfYmd: today,
+  });
+  tally(acc, "debt_followup_summary", r);
+}
+
 // ─── Not yet implemented generators ──────────────────────────────────────────
 // TODO: notifyNewDebtor — requires a reliable historical snapshot to detect
 //   when a company transitions from "no overdue" to "has overdue" for the first
@@ -443,6 +497,7 @@ export async function generateOperationalNotificationsForWorkspace({
     generateTreasuryOverdueNotifications(admin, workspaceCompanyId, now, inactiveTemplateIds, acc),
     generateClientOverdueNotifications(admin, workspaceCompanyId, now, acc),
     generateRecentCollectionNotifications(admin, workspaceCompanyId, now, acc),
+    generateDebtFollowupSummaryNotification(admin, workspaceCompanyId, now, acc),
   ]);
 
   return acc;

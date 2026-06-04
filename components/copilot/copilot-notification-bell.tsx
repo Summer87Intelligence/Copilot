@@ -113,6 +113,8 @@ function getIconConfig(type: string, severity: string): IconConfig {
     return { bg: "bg-rose-50", icon: <XCircle className={`${sz} text-rose-500`} aria-hidden /> };
   if (type === "cash_risk_detected")
     return { bg: "bg-amber-50", icon: <AlertTriangle className={`${sz} text-amber-600`} aria-hidden /> };
+  if (type === "debt_followup_summary")
+    return { bg: "bg-rose-50", icon: <Users className={`${sz} text-rose-500`} aria-hidden /> };
   if (type === "notification_digest")
     return { bg: "bg-blue-50", icon: <Bell className={`${sz} text-blue-500`} aria-hidden /> };
 

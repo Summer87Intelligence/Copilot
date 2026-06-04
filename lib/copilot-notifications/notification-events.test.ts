@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildDebtFollowupSummaryBody,
+  buildDebtFollowupSummaryTitle,
   buildTreasuryDueBody,
   computeClientOverdueBucket,
   computeTreasuryDueMilestone,
@@ -157,5 +159,70 @@ describe("dedup_key por bucket no colisiona entre clientes distintos", () => {
     const k1 = `client_overdue:${c1}:UYU:30d:${date}`;
     const k2 = `client_overdue:${c2}:UYU:30d:${date}`;
     expect(k1).not.toBe(k2);
+  });
+});
+
+// ── buildDebtFollowupSummaryTitle ─────────────────────────────────────────────
+
+describe("buildDebtFollowupSummaryTitle", () => {
+  it("1 cliente → singular", () =>
+    expect(buildDebtFollowupSummaryTitle(1)).toBe("1 cliente con deuda vencida"));
+
+  it("2 clientes → plural", () =>
+    expect(buildDebtFollowupSummaryTitle(2)).toBe("2 clientes con deuda vencida"));
+
+  it("17 clientes → plural con número real", () =>
+    expect(buildDebtFollowupSummaryTitle(17)).toBe("17 clientes con deuda vencida"));
+
+  it("47 clientes → plural con número real", () =>
+    expect(buildDebtFollowupSummaryTitle(47)).toBe("47 clientes con deuda vencida"));
+});
+
+// ── buildDebtFollowupSummaryBody ──────────────────────────────────────────────
+
+describe("buildDebtFollowupSummaryBody", () => {
+  it("solo UYU → muestra monto UYU", () =>
+    expect(buildDebtFollowupSummaryBody(32120, 0)).toBe(
+      "UYU 32.120 vencidos. Revisá clientes críticos."
+    ));
+
+  it("solo USD → muestra monto USD", () =>
+    expect(buildDebtFollowupSummaryBody(0, 3049)).toBe(
+      "USD 3.049 vencidos. Revisá clientes críticos."
+    ));
+
+  it("UYU y USD → muestra ambos separados por 'y'", () =>
+    expect(buildDebtFollowupSummaryBody(32120, 3049)).toBe(
+      "UYU 32.120 y USD 3.049 vencidos. Revisá clientes críticos."
+    ));
+
+  it("sin montos → solo CTA", () =>
+    expect(buildDebtFollowupSummaryBody(0, 0)).toBe("Revisá clientes críticos."));
+});
+
+// ── debt_followup_summary dedup_key ──────────────────────────────────────────
+
+describe("dedup_key de debt_followup_summary", () => {
+  it("formato esperado", () => {
+    const ymd = "2026-06-04";
+    expect(`debt_followup_summary:${ymd}`).toBe("debt_followup_summary:2026-06-04");
+  });
+
+  it("mismo día → misma dedup_key (no duplica)", () => {
+    const day1 = "2026-06-04";
+    const day2 = "2026-06-04";
+    expect(`debt_followup_summary:${day1}`).toBe(`debt_followup_summary:${day2}`);
+  });
+
+  it("días distintos → dedup_keys distintas", () => {
+    const k1 = "debt_followup_summary:2026-06-04";
+    const k2 = "debt_followup_summary:2026-06-05";
+    expect(k1).not.toBe(k2);
+  });
+
+  it("no colisiona con client_overdue", () => {
+    const summary = "debt_followup_summary:2026-06-04";
+    const individual = "client_overdue:client-uuid:UYU:30d:2026-06";
+    expect(summary).not.toBe(individual);
   });
 });

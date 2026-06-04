@@ -189,6 +189,54 @@ export async function notifyTreasuryPaymentOverdue(opts: TreasuryPaymentOverdueO
   });
 }
 
+// ─── Debt followup summary ───────────────────────────────────────────────────
+
+/**
+ * Título de la notificación resumen de deuda vencida. Exportado para tests.
+ * Aparece una vez por día en la campana en lugar de N notificaciones individuales.
+ */
+export function buildDebtFollowupSummaryTitle(overdueClientCount: number): string {
+  if (overdueClientCount === 1) return "1 cliente con deuda vencida";
+  return `${overdueClientCount} clientes con deuda vencida`;
+}
+
+/**
+ * Cuerpo de la notificación resumen. Exportado para tests.
+ * Muestra montos vencidos UYU/USD y CTA textual.
+ */
+export function buildDebtFollowupSummaryBody(
+  uyuOverdue: number,
+  usdOverdue: number
+): string {
+  const parts: string[] = [];
+  if (uyuOverdue > 0)
+    parts.push(`UYU ${uyuOverdue.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`);
+  if (usdOverdue > 0)
+    parts.push(`USD ${usdOverdue.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`);
+  if (parts.length === 0) return "Revisá clientes críticos.";
+  return `${parts.join(" y ")} vencidos. Revisá clientes críticos.`;
+}
+
+type DebtFollowupSummaryOpts = {
+  tenantCompanyId: string;
+  overdueClientCount: number;
+  uyuOverdue: number;
+  usdOverdue: number;
+  /** YYYY-MM-DD — bucket diario para dedupe. 1 resumen por día. */
+  asOfYmd: string;
+};
+
+export async function notifyDebtFollowupSummary(opts: DebtFollowupSummaryOpts) {
+  return createNotificationIfNotExists(opts.tenantCompanyId, {
+    type: "debt_followup_summary",
+    severity: "warning",
+    title: buildDebtFollowupSummaryTitle(opts.overdueClientCount),
+    body: buildDebtFollowupSummaryBody(opts.uyuOverdue, opts.usdOverdue),
+    action_href: "/copilot/hoy#clientes-criticos",
+    dedup_key: `debt_followup_summary:${opts.asOfYmd}`,
+  });
+}
+
 type SyncChangesDetectedOpts = {
   tenantCompanyId: string;
   changesSummary: string;
