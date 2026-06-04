@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import type { RefObject } from "react";
 import Link from "next/link";
 import { ChevronDown, ExternalLink, Mail, MessageCircle } from "lucide-react";
@@ -331,22 +331,33 @@ function dedupeDebtorRows(rows: DebtorCollectionRow[]): DebtorCollectionRow[] {
 
 export function ClientsWithDebtSection({
   allRows,
-  expanded,
-  onExpandedChange,
+  showAll,
   sectionRef,
   highlightRisk = false,
 }: {
   allRows: DebtorCollectionRow[];
-  expanded: boolean;
-  onExpandedChange: (expanded: boolean) => void;
+  /** Cuando es true (disparado desde drawer externo) muestra todas las filas. */
+  showAll?: boolean;
   sectionRef?: RefObject<HTMLElement | null>;
   highlightRisk?: boolean;
 }) {
   const initialCount = HOY_UI.initialDebtorTableRows;
+  const pageStep = HOY_UI.debtorPageStep;
   const dedupedRows = useMemo(() => dedupeDebtorRows(allRows), [allRows]);
+
+  const [visibleCount, setVisibleCount] = useState<number>(initialCount);
+
+  useEffect(() => {
+    if (showAll) {
+      setVisibleCount(dedupedRows.length);
+    } else {
+      setVisibleCount(initialCount);
+    }
+  }, [showAll, dedupedRows.length, initialCount]);
+
   const visibleRows = useMemo(
-    () => (expanded ? dedupedRows : dedupedRows.slice(0, initialCount)),
-    [dedupedRows, expanded, initialCount]
+    () => dedupedRows.slice(0, visibleCount),
+    [dedupedRows, visibleCount]
   );
 
   const { uyuDebt, usdDebt, uyuOverdue, usdOverdue } = useMemo(() => {
@@ -363,12 +374,17 @@ export function ClientsWithDebtSection({
     return { uyuDebt, usdDebt, uyuOverdue, usdOverdue };
   }, [dedupedRows]);
 
-  const canExpand = dedupedRows.length > initialCount;
+  const canShowMore = visibleCount < dedupedRows.length;
+  const canShowLess = visibleCount > initialCount;
+  const remaining = dedupedRows.length - visibleCount;
 
-  const expandLabel =
-    dedupedRows.length === 1
-      ? "Mostrar el deudor activo"
-      : `Mostrar todos los deudores (${dedupedRows.length})`;
+  function handleShowMore() {
+    setVisibleCount((c) => Math.min(c + pageStep, dedupedRows.length));
+  }
+
+  function handleShowLess() {
+    setVisibleCount(initialCount);
+  }
 
   return (
     <section ref={sectionRef} id="clientes-criticos" className="scroll-mt-4">
@@ -401,15 +417,28 @@ export function ClientsWithDebtSection({
       <div className="mt-2">
         <DebtorTable rows={visibleRows} highlightRisk={highlightRisk} />
       </div>
-      {canExpand ? (
-        <button
-          type="button"
-          onClick={() => onExpandedChange(!expanded)}
-          className="mt-3 w-full rounded-lg border border-[var(--copilot-border)] bg-white py-2 text-xs font-semibold text-[var(--copilot-accent)] hover:bg-[rgba(44,40,37,0.02)]"
-        >
-          {expanded ? "Mostrar menos" : expandLabel}
-        </button>
-      ) : null}
+      {(canShowMore || canShowLess) && (
+        <div className="mt-3 flex items-center gap-2">
+          {canShowMore && (
+            <button
+              type="button"
+              onClick={handleShowMore}
+              className="flex-1 rounded-lg border border-[var(--copilot-border)] bg-white py-2 text-xs font-semibold text-[var(--copilot-accent)] hover:bg-[rgba(44,40,37,0.02)]"
+            >
+              {`Mostrar ${Math.min(pageStep, remaining)} más`}
+            </button>
+          )}
+          {canShowLess && (
+            <button
+              type="button"
+              onClick={handleShowLess}
+              className="rounded-lg border border-[var(--copilot-border)] bg-white px-4 py-2 text-xs font-semibold text-[var(--copilot-ink-muted)] hover:bg-[rgba(44,40,37,0.02)]"
+            >
+              Mostrar menos
+            </button>
+          )}
+        </div>
+      )}
     </section>
   );
 }

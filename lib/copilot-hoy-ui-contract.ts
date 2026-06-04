@@ -5,7 +5,8 @@ export const HOY_UI = {
   showFinancialSituation: false,
   showPendingSection: false,
   showRecommendedActions: false,
-  initialDebtorTableRows: 8,
+  initialDebtorTableRows: 10,
+  debtorPageStep: 10,
 } as const;
 
 export const HOY_PAGE = {
@@ -81,6 +82,8 @@ export const HOY_COPY = {
   periodOperatingResultTip: "Cobrado + ingresos manuales − egresos manuales en el período.",
   debtorsSectionTitle: "Clientes con deuda",
   debtorsSectionSubtitle: "Todos los clientes con saldo pendiente, separados por moneda.",
+  debtorsSectionRiskSubtitle: "Vencidos, >30 días o con seguimiento prioritario.",
+  debtorsViewAllCartera: "Ver toda la cartera",
   debtorContactSectionTitle: "Contacto",
   debtorNoPhone: "Sin teléfono registrado",
   debtorNoEmail: "Sin email registrado",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { RefreshCw, XCircle } from "lucide-react";
 
@@ -173,7 +174,6 @@ export function HoyPageView({
     setAdvancedExpanded(false);
   }, [pathname]);
 
-  const [debtorsExpanded, setDebtorsExpanded] = useState(false);
   const debtorsSectionRef = useRef<HTMLElement>(null);
 
   const pulse = useMemo(
@@ -216,6 +216,12 @@ export function HoyPageView({
   const sortedDebtorRows = useMemo(
     () => sortDebtorRowsForCockpit(pulse.allDebtorRows),
     [pulse.allDebtorRows]
+  );
+
+  // Solo clientes accionables: vencido, cobro lento o señal de riesgo.
+  const riskDebtorRows = useMemo(
+    () => sortedDebtorRows.filter((r) => r.flags.hasOverdue || r.flags.slowCollection),
+    [sortedDebtorRows]
   );
 
   const scrollToCriticalClients = () => {
@@ -296,9 +302,7 @@ export function HoyPageView({
                 Clientes que explican el riesgo
               </h2>
               <p className="text-xs text-[var(--copilot-ink-muted)]">
-                {pulse.clientCounts.attentionClients > 0
-                  ? `${pulse.clientCounts.debtorClients} con deuda · ${pulse.clientCounts.attentionClients} requieren seguimiento`
-                  : HOY_COPY.debtorsSectionSubtitle}
+                {HOY_COPY.debtorsSectionRiskSubtitle}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -323,14 +327,29 @@ export function HoyPageView({
           </div>
 
           <div className="mt-2">
-            <ClientsWithDebtSection
-              sectionRef={debtorsSectionRef}
-              allRows={sortedDebtorRows}
-              expanded={debtorsExpanded}
-              onExpandedChange={setDebtorsExpanded}
-              highlightRisk
-            />
+            {riskDebtorRows.length > 0 ? (
+              <ClientsWithDebtSection
+                sectionRef={debtorsSectionRef}
+                allRows={riskDebtorRows}
+                highlightRisk
+              />
+            ) : (
+              <p className="py-4 text-center text-sm text-[var(--copilot-ink-muted)]">
+                No hay clientes con deuda vencida ni señales de riesgo activas.
+              </p>
+            )}
           </div>
+
+          <p className="mt-3 text-[11px] text-[var(--copilot-ink-muted)]">
+            Mostrando clientes con mayor riesgo.{" "}
+            <Link
+              href="/copilot/cartera"
+              className="font-semibold text-[var(--copilot-accent)] hover:underline"
+            >
+              {HOY_COPY.debtorsViewAllCartera}
+            </Link>{" "}
+            para ver todos los deudores.
+          </p>
         </CopilotCard>
 
         <HoyAdvancedDetail expanded={advancedExpanded} onExpandedChange={setAdvancedExpanded}>
@@ -384,7 +403,6 @@ export function HoyPageView({
           data={drawer.data}
           onClose={() => setDrawer({ kind: "closed" })}
           onViewAllDebtors={() => {
-            setDebtorsExpanded(true);
             setDrawer({ kind: "closed" });
             debtorsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
           }}
