@@ -207,11 +207,11 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
     title: "Roles y permisos",
     includeInToc: true,
     blocks: [
-      { type: "paragraph", text: "Copilot soporta seis roles de usuario. Solo superadmin tiene acceso total. Los roles operativos (cobranza, tesorería, contador) tienen acceso de escritura en sus módulos. Los roles usuario y demo_readonly son de solo lectura." },
-      { type: "roles", entries: [{"role":"superadmin","label":"Superadmin","description":"Acceso total. Puede leer y modificar cualquier dato del workspace. El único que puede administrar usuarios."},{"role":"cobranza","label":"Cobranza","description":"Puede modificar acciones y clientes. No accede a tesorería. Diseñado para el equipo de cobranza."},{"role":"tesoreria","label":"Tesorería","description":"Puede modificar tesorería. Acceso de lectura al resto. Diseñado para quien gestiona caja y pagos."},{"role":"contador","label":"Contador","description":"Solo lectura en todos los módulos incluyendo finanzas y reportes. No puede modificar datos."},{"role":"usuario","label":"Usuario · Solo lectura","description":"Puede navegar, consultar y descargar reportes. No puede modificar nada operativo."},{"role":"demo_readonly","label":"Modo demo · Solo lectura","description":"Igual que usuario. Diseñado para mostrar el sistema a clientes o invitados sin riesgo."}] },
-      { type: "callout", variant: "info", text: "Los permisos se configuran por módulo desde el Panel administrativo (solo superadmin). Los niveles son: No ver, Ver y Modificar. Un módulo en 'No ver' no aparece en el menú lateral." },
+      { type: "paragraph", text: "Copilot tiene dos roles principales: Superadmin y Usuario. El acceso detallado a cada módulo se configura con permisos Ver y Modificar desde el Panel administrativo." },
+      { type: "roles", entries: [{"role":"superadmin","label":"Superadmin","description":"Acceso total. Puede leer y modificar cualquier dato de la empresa. El único que puede administrar usuarios, roles y permisos."},{"role":"usuario","label":"Usuario","description":"Rol base. El acceso a cada módulo se define individualmente con los permisos Ver y Modificar. Por defecto: solo lectura en todo."}] },
+      { type: "callout", variant: "info", text: "Los permisos se configuran por módulo desde el Panel administrativo (solo superadmin). Ver da acceso de lectura; Modificar da acceso de escritura e incluye Ver automáticamente. Sin ninguno de los dos, el módulo no aparece en el menú." },
       { type: "bullets", items: ["Navegar por todas las secciones permitidas según rol y permisos.","Ver dashboards, fichas de clientes, movimientos y deuda (donde haya acceso de lectura).","Abrir reportes en pantalla y descargar PDFs — son operaciones de lectura.","Generar vista previa del importador Santander — no guarda ni modifica caja.","Consultar alertas, notificaciones y Agentes IA."] },
-      { type: "bullets", items: ["Cargar ingresos, egresos o ajustes en Tesorería (requiere rol tesorería o superadmin).","Registrar gestiones de cobranza (requiere rol cobranza o superadmin).","Ejecutar sincronizaciones manuales (solo superadmin).","Crear, editar o cambiar roles de usuarios (solo superadmin vía Panel administrativo).","Acceder al Panel administrativo (solo superadmin)."] },
+      { type: "bullets", items: ["Cargar ingresos, egresos o ajustes en Tesorería (requiere permiso Modificar en Tesorería o superadmin).","Registrar gestiones de cobranza (requiere permiso Modificar en Acciones o superadmin).","Ejecutar sincronizaciones manuales (solo superadmin).","Crear, editar o eliminar usuarios (solo superadmin vía Panel administrativo).","Acceder al Panel administrativo (solo superadmin)."] },
       { type: "bullets", items: ["Reporte de deudores.","Cobranza mensual.","Caja mensual.","Ventas netas.","Ejecutivo mensual.","Clientes principales.","Estado de cuenta (desde la ficha del cliente)."] },
     ],
   },
@@ -220,34 +220,34 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
     title: "Panel administrativo",
     includeInToc: true,
     blocks: [
-      { type: "paragraph", text: "El Panel administrativo es exclusivo del superadmin. Permite crear usuarios, asignar roles y configurar qué puede ver y modificar cada persona en el workspace." },
+      { type: "paragraph", text: "El Panel administrativo es exclusivo del superadmin. Permite crear usuarios, asignar roles y configurar qué puede ver y modificar cada persona en la empresa." },
       { type: "callout", variant: "warning", text: "Solo superadmin puede acceder a /copilot/admin. Cualquier otro usuario que intente entrar es redirigido a Hoy." },
       {
         type: "subsection",
         title: "Cómo crear un usuario",
         blocks: [
-          { type: "steps", items: ["Ir a Panel administrativo → Nuevo usuario.","Ingresar email, nombre completo y rol.","Indicar un PIN temporal o dejarlo vacío para que se genere automáticamente.","Hacer clic en Crear usuario.","El PIN temporal se muestra UNA SOLA VEZ — anotarlo y entregarlo al usuario de forma segura.","El usuario puede cambiar su PIN luego desde el perfil (si aplica) o el superadmin puede resetearlo."] },
+          { type: "steps", items: ["Ir a Panel administrativo → Nuevo usuario.","Ingresar email, nombre completo y rol (Superadmin o Usuario).","Indicar un PIN temporal o dejarlo vacío para que se genere automáticamente.","Hacer clic en Crear usuario.","El PIN temporal se muestra UNA SOLA VEZ — anotarlo y entregarlo al usuario de forma segura.","El usuario puede cambiar su PIN luego desde el perfil (si aplica) o el superadmin puede resetearlo."] },
         ],
       },
       {
         type: "subsection",
         title: "Roles disponibles",
         blocks: [
-          { type: "bullets", items: ["Superadmin — acceso total, gestión de usuarios.","Cobranza — modificar acciones y clientes.","Tesorería — modificar tesorería.","Contador — solo lectura en todo.","Usuario — solo lectura, rol general.","Demo (solo lectura) — para mostrar el sistema sin riesgo."] },
+          { type: "bullets", items: ["Superadmin — acceso total a todos los módulos. Puede gestionar usuarios, roles y permisos. El único que accede al Panel administrativo.","Usuario — rol base de solo lectura. Puede navegar, consultar y descargar reportes. No puede modificar datos operativos."] },
         ],
       },
       {
         type: "subsection",
         title: "Qué significa cada nivel de acceso",
         blocks: [
-          { type: "bullets", items: ["No ver — el módulo desaparece del menú lateral y la URL queda bloqueada. Si el usuario intenta entrar manualmente, el sistema lo redirige a Hoy o muestra un mensaje de acceso denegado.","Ver — puede navegar, ver datos y descargar PDFs del módulo.","Modificar — puede leer y también crear, editar o eliminar registros en ese módulo.","Admin — acceso completo incluyendo configuración (solo para superadmin en módulo Admin)."] },
+          { type: "bullets", items: ["Sin acceso — el módulo desaparece del menú lateral y la URL queda bloqueada. Si el usuario intenta entrar manualmente, el sistema lo redirige a Hoy o muestra un mensaje de acceso denegado.","Ver — puede navegar, ver datos y descargar PDFs del módulo.","Modificar — puede leer y también crear, editar o eliminar registros en ese módulo. Marcar Modificar activa Ver automáticamente."] },
         ],
       },
       {
         type: "subsection",
         title: "Cómo editar permisos de un usuario",
         blocks: [
-          { type: "steps", items: ["En la tabla de usuarios, hacer clic en el ícono de lápiz (Editar permisos).","Se abre un modal con la tabla de módulos.","Para cada módulo, seleccionar el nivel: No ver / Ver / Modificar.","Hacer clic en Guardar cambios.","Los cambios aplican en el próximo acceso del usuario (o inmediatamente si recarga la página)."] },
+          { type: "steps", items: ["En la tabla de usuarios, hacer clic en el ícono de lápiz (Editar permisos).","Se abre un modal con la tabla de módulos.","Marcar Ver para dar acceso de lectura a un módulo. Marcar Modificar para dar acceso de escritura (incluye Ver automáticamente). Desmarcar Ver quita ambos accesos.","Hacer clic en Guardar cambios.","Los cambios aplican en el próximo acceso del usuario (o inmediatamente si recarga la página)."] },
         ],
       },
       {
@@ -259,9 +259,17 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
       },
       {
         type: "subsection",
+        title: "Cómo eliminar un usuario",
+        blocks: [
+          { type: "steps", items: ["En la tabla de usuarios, hacer clic en el ícono de papelera (Eliminar usuario).","Se abre un modal de confirmación.","Escribir ELIMINAR para confirmar.","Hacer clic en Eliminar usuario.","El usuario pierde acceso inmediatamente. Esta acción no se puede deshacer desde la interfaz."] },
+          { type: "callout", variant: "warning", text: "No se puede eliminar el único superadmin activo. El sistema lo bloquea para proteger el acceso administrativo." },
+        ],
+      },
+      {
+        type: "subsection",
         title: "Recomendaciones de seguridad",
         blocks: [
-          { type: "bullets", items: ["No compartir la cuenta superadmin entre varias personas.","Crear una cuenta separada para cada persona del equipo.","Usar demo_readonly para mostrar el sistema a clientes externos.","Mantener siempre al menos un superadmin activo (el sistema lo bloquea si intentás desactivar el último).","El PIN temporal que se muestra al crear o resetear un usuario debe entregarse en forma segura (no por email sin encriptar).","Revisar periódicamente la lista de usuarios activos para desactivar accesos que ya no correspondan."] },
+          { type: "bullets", items: ["No compartir la cuenta superadmin entre varias personas.","Crear una cuenta separada para cada persona del equipo.","Mantener siempre al menos un superadmin activo (el sistema lo bloquea si intentás eliminar el último).","El PIN temporal que se muestra al crear o resetear un usuario debe entregarse en forma segura (no por email sin encriptar).","Revisar periódicamente la lista de usuarios activos y eliminar accesos que ya no correspondan."] },
         ],
       },
     ],
@@ -272,7 +280,7 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
     includeInToc: true,
     blocks: [
       { type: "paragraph", text: "El acceso a Copilot es con usuario y PIN en la pantalla de login. No usa enlaces externos ni registro público." },
-      { type: "steps", items: ["Ir a /login.","Ingresar Usuario y PIN provistos por quien administra el workspace.","Pulsar Entrar.","Si las credenciales son válidas, Copilot redirige a /copilot/hoy."] },
+      { type: "steps", items: ["Ir a /login.","Ingresar Usuario y PIN provistos por quien administra la empresa.","Pulsar Entrar.","Si las credenciales son válidas, Copilot redirige a /copilot/hoy."] },
       { type: "bullets", items: ["Superadmin, usuario y demo_readonly usan el mismo formulario; el rol define permisos después del login.","En solo lectura verás un badge en la barra superior (Solo lectura o Demo en móvil).","Superadmin no tiene badge y puede modificar datos operativos."] },
     ],
   },
