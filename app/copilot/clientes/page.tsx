@@ -81,7 +81,8 @@ function matchesClientFilter(
     const q = search.trim().toLowerCase();
     const nameMatch = row.name.toLowerCase().includes(q);
     const transferMatch = (row.transfer_method ?? "").toLowerCase().includes(q);
-    if (!nameMatch && !transferMatch) return false;
+    const aliasMatch = (row.transferAliases ?? []).some((a) => a.toLowerCase().includes(q));
+    if (!nameMatch && !transferMatch && !aliasMatch) return false;
   }
   const status = deriveClientStatus(row);
   if (filter === "with_debt") return row.debt_uyu > 0 || row.debt_usd > 0 || row.total_debt > 0;
@@ -214,11 +215,19 @@ export default function CopilotClientesPage() {
     setError(null);
     setLoading(true);
     try {
-      const data = await fetchClientPortfolioLoad();
-      setLoad(data);
+      const [data, aliasJson] = await Promise.all([
+        fetchClientPortfolioLoad(),
+        fetch("/api/copilot/transfer-aliases")
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
+      ]);
+      const byCompany: Record<string, string[]> = (aliasJson as { byCompany?: Record<string, string[]> } | null)?.byCompany ?? {};
+      const rows = data.rows.map((r) => ({ ...r, transferAliases: byCompany[r.company_id] ?? [] }));
+      const merged = { ...data, rows };
+      setLoad(merged);
       setSelectedId((prev) => {
-        if (prev && data.rows.some((r) => r.company_id === prev)) return prev;
-        return data.rows[0]?.company_id ?? null;
+        if (prev && rows.some((r) => r.company_id === prev)) return prev;
+        return rows[0]?.company_id ?? null;
       });
     } catch (e) {
       setLoad(null);
@@ -484,7 +493,14 @@ export default function CopilotClientesPage() {
                                   {row.industry}
                                 </p>
                               ) : null}
-                              {row.transfer_method ? (
+                              {row.transferAliases && row.transferAliases.length > 0 ? (
+                                <p className="mt-0.5 line-clamp-1 text-[11px] text-[var(--copilot-ink-muted)]">
+                                  {row.transferAliases.slice(0, 2).join(", ")}
+                                  {row.transferAliases.length > 2
+                                    ? ` +${row.transferAliases.length - 2}`
+                                    : ""}
+                                </p>
+                              ) : row.transfer_method ? (
                                 <p className="mt-0.5 line-clamp-1 text-[11px] text-[var(--copilot-ink-muted)]">
                                   {row.transfer_method}
                                 </p>

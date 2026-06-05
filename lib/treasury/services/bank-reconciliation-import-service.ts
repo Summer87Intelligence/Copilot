@@ -106,22 +106,38 @@ async function loadClients(
 ): Promise<ClientMatchInput[]> {
   const { data, error } = await supabase
     .from("proto_companies")
-    .select("id, name, transfer_method")
+    .select("id, name")
     .eq("workspace_company_id", tenantCompanyId)
     .eq("is_active", true)
     .limit(3000);
   if (error || !data) return [];
+
+  const companyIds = data.map((r) => (r as { id: string }).id);
+  const aliasMap = new Map<string, string[]>();
+  if (companyIds.length > 0) {
+    const { data: aliasRows } = await supabase
+      .from("client_transfer_aliases")
+      .select("company_id, label")
+      .eq("workspace_id", tenantCompanyId)
+      .eq("is_active", true)
+      .in("company_id", companyIds.slice(0, 500))
+      .order("created_at", { ascending: true })
+      .limit(20000);
+    for (const row of aliasRows ?? []) {
+      const r = row as { company_id: string; label: string };
+      if (!aliasMap.has(r.company_id)) aliasMap.set(r.company_id, []);
+      aliasMap.get(r.company_id)!.push(r.label);
+    }
+  }
+
   return data.map((row) => {
-    const r = row as { id: string; name: string | null; transfer_method?: string | null };
-    const tm = typeof r.transfer_method === "string" && r.transfer_method.trim()
-      ? r.transfer_method.trim()
-      : null;
+    const r = row as { id: string; name: string | null };
     return {
       id: r.id,
       name: r.name ?? "Cliente",
       debtUyu: 0,
       debtUsd: 0,
-      transferMethod: tm,
+      transferAliases: aliasMap.get(r.id) ?? [],
     };
   });
 }

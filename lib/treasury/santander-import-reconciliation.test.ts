@@ -149,7 +149,7 @@ describe("transfer_method matching", () => {
       manualMovements: [],
       receipts: [],
       clients: [
-        { id: "c1", name: "Dolby SA", debtUyu: 0, debtUsd: 0, transferMethod: "DOLBY SOCIEDAD ANONIMA" },
+        { id: "c1", name: "Dolby SA", debtUyu: 0, debtUsd: 0, transferAliases: ["DOLBY SOCIEDAD ANONIMA"] },
       ],
       existingExternalIds: new Set(),
     });
@@ -174,7 +174,7 @@ describe("transfer_method matching", () => {
       manualMovements: [],
       receipts: [],
       clients: [
-        { id: "c2", name: "Petrovic", debtUyu: 0, debtUsd: 0, transferMethod: "PETROVIC SOLUTIONS" },
+        { id: "c2", name: "Petrovic", debtUyu: 0, debtUsd: 0, transferAliases: ["PETROVIC SOLUTIONS"] },
       ],
       existingExternalIds: new Set(),
     });
@@ -189,7 +189,7 @@ describe("transfer_method matching", () => {
       manualMovements: [],
       receipts: [],
       clients: [
-        { id: "c3", name: "ClienteX", debtUyu: 0, debtUsd: 0, transferMethod: "" },
+        { id: "c3", name: "ClienteX", debtUyu: 0, debtUsd: 0, transferAliases: [] },
       ],
       existingExternalIds: new Set(),
     });
@@ -203,7 +203,7 @@ describe("transfer_method matching", () => {
       manualMovements: [],
       receipts: [],
       clients: [
-        { id: "c4", name: "Cliente Generico", debtUyu: 0, debtUsd: 0, transferMethod: "BROU" },
+        { id: "c4", name: "Cliente Generico", debtUyu: 0, debtUsd: 0, transferAliases: ["BROU"] },
       ],
       existingExternalIds: new Set(),
     });
@@ -228,7 +228,7 @@ describe("transfer_method matching", () => {
           name: "Cardona",
           debtUyu: 0,
           debtUsd: 0,
-          transferMethod: "CARDONA ROMERO CARLOS DÁNILO",
+          transferAliases: ["CARDONA ROMERO CARLOS DÁNILO"],
         },
       ],
       existingExternalIds: new Set(),
@@ -247,7 +247,7 @@ describe("transfer_method matching", () => {
       manualMovements: [],
       receipts: [],
       clients: [
-        { id: "c6", name: "Dolby", debtUyu: 0, debtUsd: 366, transferMethod: "DOLBY SOCIEDAD ANONIMA" },
+        { id: "c6", name: "Dolby", debtUyu: 0, debtUsd: 366, transferAliases: ["DOLBY SOCIEDAD ANONIMA"] },
       ],
       existingExternalIds: new Set(),
     });
@@ -260,7 +260,7 @@ describe("transfer_method matching", () => {
       manualMovements: [],
       receipts: [],
       clients: [
-        { id: "c6", name: "Dolby", debtUyu: 0, debtUsd: 366, transferMethod: null },
+        { id: "c6", name: "Dolby", debtUyu: 0, debtUsd: 366, transferAliases: [] },
       ],
       existingExternalIds: new Set(),
     });
@@ -279,8 +279,8 @@ describe("transfer_method matching", () => {
       manualMovements: [],
       receipts: [],
       clients: [
-        { id: "c7a", name: "Dolby SA", debtUyu: 0, debtUsd: 0, transferMethod: "DOLBY SOCIEDAD ANONIMA" },
-        { id: "c7b", name: "Otro Cliente", debtUyu: 0, debtUsd: 0, transferMethod: null },
+        { id: "c7a", name: "Dolby SA", debtUyu: 0, debtUsd: 0, transferAliases: ["DOLBY SOCIEDAD ANONIMA"] },
+        { id: "c7b", name: "Otro Cliente", debtUyu: 0, debtUsd: 0, transferAliases: [] },
       ],
       existingExternalIds: new Set(),
     });
@@ -295,7 +295,7 @@ describe("transfer_method matching", () => {
       manualMovements: [],
       receipts: [],
       clients: [
-        { id: "c8", name: "Dolby", debtUyu: 0, debtUsd: 0, transferMethod: "DOLBY SOCIEDAD ANONIMA" },
+        { id: "c8", name: "Dolby", debtUyu: 0, debtUsd: 0, transferAliases: ["DOLBY SOCIEDAD ANONIMA"] },
       ],
       existingExternalIds: new Set(),
     });
@@ -305,5 +305,47 @@ describe("transfer_method matching", () => {
 
   it("normalizeBankMatchText normaliza tildes y puntuación", () => {
     expect(normalizeBankMatchText("DÁNILO PÉREZ S.A.").trim()).toBe("danilo perez s a");
+  });
+
+  it("cliente con múltiples aliases: usa el que mejor matchea", () => {
+    const rows = enrichSantanderImportRows({
+      rows: [
+        baseRow({
+          description: "CREDITO POR OPERACION EN SUPERNET TA 2941/DOLBY SOCIEDAD ANONIMA",
+          currencyCode: "USD",
+          movementType: "credit",
+        }),
+      ],
+      manualMovements: [],
+      receipts: [],
+      clients: [
+        {
+          id: "c9",
+          name: "Dolby Corp",
+          debtUyu: 0,
+          debtUsd: 0,
+          transferAliases: ["DOLBY CORP ALIAS VIEJO", "DOLBY SOCIEDAD ANONIMA"],
+        },
+      ],
+      existingExternalIds: new Set(),
+    });
+    const tmMatch = rows[0]?.matches.find((m) => m.matchReason === "Forma de transferencia");
+    expect(tmMatch).toBeDefined();
+    expect(tmMatch?.transferMethodMatched).toBe("DOLBY SOCIEDAD ANONIMA");
+    expect(tmMatch?.confidence).toBeGreaterThanOrEqual(70);
+  });
+
+  it("alias inactivo no matchea (array vacío equivalente)", () => {
+    const rows = enrichSantanderImportRows({
+      rows: [baseRow({ description: "CREDITO POR OPERACION DOLBY SOCIEDAD ANONIMA" })],
+      manualMovements: [],
+      receipts: [],
+      clients: [
+        { id: "c10", name: "Dolby", debtUyu: 0, debtUsd: 0, transferAliases: [] },
+      ],
+      existingExternalIds: new Set(),
+    });
+    const tmMatch = rows[0]?.matches.find((m) => m.matchReason === "Forma de transferencia");
+    expect(tmMatch).toBeUndefined();
   });
 });

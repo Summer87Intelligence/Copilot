@@ -19,8 +19,10 @@ import {
   Mail,
   MessageCircle,
   PenLine,
+  Plus,
   RefreshCw,
   ShieldAlert,
+  Trash2,
   TrendingDown,
   User,
   Wallet,
@@ -40,7 +42,7 @@ import { CollectionFollowupForm } from "@/components/copilot/clientes/collection
 import { ClientAgentBlock } from "@/components/copilot/clientes/client-agent-block";
 import { ClientNextStepBanner } from "@/components/copilot/clientes/client-next-step-banner";
 import { AccountStatementSendCard } from "@/components/copilot/clientes/account-statement-send-card";
-import type { Client360Payload } from "@/lib/copilot-client-360";
+import type { Client360Payload, TransferAlias } from "@/lib/copilot-client-360";
 import { normalizeUruguayPhoneForWhatsApp } from "@/lib/phone/normalize-phone-for-whatsapp";
 import {
   buildClientOperationalSummary,
@@ -708,6 +710,22 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
   const [editingTransferMethod, setEditingTransferMethod] = useState(false);
   const [transferMethodDraft, setTransferMethodDraft] = useState("");
   const [savingTransferMethod, setSavingTransferMethod] = useState(false);
+
+  // ── Transfer aliases state ──────────────────────────────────────────────────
+  const [aliases, setAliases] = useState<TransferAlias[]>([]);
+  const [aliasesReady, setAliasesReady] = useState(false);
+  const [aliasNewLabel, setAliasNewLabel] = useState("");
+  const [aliasNewNotes, setAliasNewNotes] = useState("");
+  const [addingAlias, setAddingAlias] = useState(false);
+  const [savingAlias, setSavingAlias] = useState(false);
+  const [editingAliasId, setEditingAliasId] = useState<string | null>(null);
+  const [editingAliasLabel, setEditingAliasLabel] = useState("");
+  const [editingAliasNotes, setEditingAliasNotes] = useState("");
+  const [savingEditAlias, setSavingEditAlias] = useState(false);
+  const [deletingAliasId, setDeletingAliasId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [aliasError, setAliasError] = useState<string | null>(null);
+
   const [showRawJson, setShowRawJson] = useState(false);
   const [collectionPrefill, setCollectionPrefill] = useState<import("@/lib/account-statement/build-account-statement-followup-prefill").CollectionFollowupInitialValues | null>(null);
   const [collectionPrefillKey, setCollectionPrefillKey] = useState(0);
@@ -779,6 +797,93 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
       }
     } finally {
       setSavingTransferMethod(false);
+    }
+  }
+
+  // ── Alias handlers ──────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!data) return;
+    setAliases(data.transferAliases ?? []);
+    setAliasesReady(true);
+  }, [data]);
+
+  async function handleAddAlias() {
+    const label = aliasNewLabel.trim();
+    if (!label || label.length < 3) return;
+    if (savingAlias) return;
+    setSavingAlias(true);
+    setAliasError(null);
+    try {
+      const res = await fetch(
+        `/api/copilot/clients/${encodeURIComponent(companyId)}/transfer-aliases`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ label, notes: aliasNewNotes.trim() || null }),
+        }
+      );
+      const body = (await res.json().catch(() => null)) as { ok?: boolean; alias?: TransferAlias; error?: string } | null;
+      if (!res.ok || !body?.ok) {
+        setAliasError(body?.error ?? "Error al guardar.");
+        return;
+      }
+      if (body.alias) setAliases((prev) => [...prev, body.alias!]);
+      setAliasNewLabel("");
+      setAliasNewNotes("");
+      setAddingAlias(false);
+    } finally {
+      setSavingAlias(false);
+    }
+  }
+
+  async function handleSaveEditAlias(aliasId: string) {
+    const label = editingAliasLabel.trim();
+    if (!label || label.length < 3) return;
+    if (savingEditAlias) return;
+    setSavingEditAlias(true);
+    setAliasError(null);
+    try {
+      const res = await fetch(
+        `/api/copilot/clients/${encodeURIComponent(companyId)}/transfer-aliases/${encodeURIComponent(aliasId)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ label, notes: editingAliasNotes.trim() || null }),
+        }
+      );
+      const body = (await res.json().catch(() => null)) as { ok?: boolean; alias?: TransferAlias; error?: string } | null;
+      if (!res.ok || !body?.ok) {
+        setAliasError(body?.error ?? "Error al guardar.");
+        return;
+      }
+      if (body.alias) {
+        setAliases((prev) => prev.map((a) => (a.id === aliasId ? body.alias! : a)));
+      }
+      setEditingAliasId(null);
+    } finally {
+      setSavingEditAlias(false);
+    }
+  }
+
+  async function handleDeleteAlias(aliasId: string) {
+    if (deletingAliasId) return;
+    setDeletingAliasId(aliasId);
+    setAliasError(null);
+    try {
+      const res = await fetch(
+        `/api/copilot/clients/${encodeURIComponent(companyId)}/transfer-aliases/${encodeURIComponent(aliasId)}`,
+        { method: "DELETE" }
+      );
+      if (res.ok) {
+        setAliases((prev) => prev.filter((a) => a.id !== aliasId));
+        setConfirmDeleteId(null);
+      } else {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        setAliasError(body?.error ?? "Error al eliminar.");
+      }
+    } finally {
+      setDeletingAliasId(null);
     }
   }
 
@@ -1143,6 +1248,204 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
             {/* ── RESUMEN ──────────────────────────────────────────────────── */}
             {tab === "resumen" ? (
               <div className="space-y-6">
+
+                {/* ── Formas de transferencia ─────────────────────────────── */}
+                {aliasesReady ? (
+                  <CopilotCard>
+                    <div className="flex items-start justify-between gap-2">
+                      <CopilotSectionTitle
+                        title="Formas de transferencia"
+                        subtitle="Textos, bancos, cuentas o razones sociales desde donde este cliente suele pagar."
+                      />
+                      {canWrite && !addingAlias ? (
+                        <button
+                          type="button"
+                          onClick={() => { setAddingAlias(true); setAliasError(null); }}
+                          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-border)] hover:text-[var(--copilot-ink)]"
+                        >
+                          <Plus className="h-3 w-3" />
+                          Agregar
+                        </button>
+                      ) : null}
+                    </div>
+
+                    {aliasError ? (
+                      <p className="mt-1 text-xs text-red-500">{aliasError}</p>
+                    ) : null}
+
+                    {/* Add form */}
+                    {addingAlias ? (
+                      <div className="mt-3 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-bg)] p-3 space-y-2">
+                        <input
+                          type="text"
+                          autoFocus
+                          value={aliasNewLabel}
+                          onChange={(e) => setAliasNewLabel(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") void handleAddAlias();
+                            if (e.key === "Escape") { setAddingAlias(false); setAliasNewLabel(""); setAliasNewNotes(""); }
+                          }}
+                          placeholder="Ej. DOLBY SOCIEDAD ANONIMA"
+                          maxLength={300}
+                          className="w-full rounded-lg border border-[var(--copilot-accent)]/40 bg-white px-3 py-1.5 text-sm text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
+                        />
+                        <input
+                          type="text"
+                          value={aliasNewNotes}
+                          onChange={(e) => setAliasNewNotes(e.target.value)}
+                          placeholder="Nota opcional (banco, cuenta…)"
+                          maxLength={500}
+                          className="w-full rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] focus:outline-none"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void handleAddAlias()}
+                            disabled={savingAlias || aliasNewLabel.trim().length < 3}
+                            className="inline-flex items-center gap-1 rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                          >
+                            {savingAlias ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                            Guardar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setAddingAlias(false); setAliasNewLabel(""); setAliasNewNotes(""); setAliasError(null); }}
+                            className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-border)]"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Alias list */}
+                    {aliases.length > 0 ? (
+                      <ul className="mt-3 space-y-2">
+                        {aliases.map((alias) => (
+                          <li key={alias.id} className="rounded-lg border border-[var(--copilot-border)] px-3 py-2">
+                            {editingAliasId === alias.id ? (
+                              <div className="space-y-2">
+                                <input
+                                  type="text"
+                                  autoFocus
+                                  value={editingAliasLabel}
+                                  onChange={(e) => setEditingAliasLabel(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") void handleSaveEditAlias(alias.id);
+                                    if (e.key === "Escape") setEditingAliasId(null);
+                                  }}
+                                  maxLength={300}
+                                  className="w-full rounded-lg border border-[var(--copilot-accent)]/40 bg-white px-3 py-1.5 text-sm text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
+                                />
+                                <input
+                                  type="text"
+                                  value={editingAliasNotes}
+                                  onChange={(e) => setEditingAliasNotes(e.target.value)}
+                                  placeholder="Nota opcional"
+                                  maxLength={500}
+                                  className="w-full rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] focus:outline-none"
+                                />
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleSaveEditAlias(alias.id)}
+                                    disabled={savingEditAlias || editingAliasLabel.trim().length < 3}
+                                    className="inline-flex items-center gap-1 rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                                  >
+                                    {savingEditAlias ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                                    Guardar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingAliasId(null)}
+                                    className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-border)]"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </div>
+                            ) : confirmDeleteId === alias.id ? (
+                              <div className="space-y-2">
+                                <p className="text-xs font-medium text-[var(--copilot-ink)]">Eliminar forma de transferencia</p>
+                                <p className="text-xs text-[var(--copilot-ink-muted)]">Copilot dejará de usar este texto para sugerir pagos de este cliente.</p>
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleDeleteAlias(alias.id)}
+                                    disabled={!!deletingAliasId}
+                                    className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                                  >
+                                    {deletingAliasId === alias.id ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                                    Eliminar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setConfirmDeleteId(null)}
+                                    className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-border)]"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-medium text-[var(--copilot-ink)]">{alias.label}</p>
+                                  {alias.notes ? (
+                                    <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">{alias.notes}</p>
+                                  ) : null}
+                                </div>
+                                {canWrite ? (
+                                  <div className="flex shrink-0 gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingAliasId(alias.id);
+                                        setEditingAliasLabel(alias.label);
+                                        setEditingAliasNotes(alias.notes ?? "");
+                                        setAliasError(null);
+                                      }}
+                                      className="rounded-lg p-1.5 text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-border)] hover:text-[var(--copilot-accent)]"
+                                      title="Editar"
+                                    >
+                                      <PenLine className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => { setConfirmDeleteId(alias.id); setAliasError(null); }}
+                                      className="rounded-lg p-1.5 text-[var(--copilot-ink-muted)] hover:bg-red-50 hover:text-red-600"
+                                      title="Eliminar"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                ) : null}
+                              </div>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      !addingAlias && (
+                        <div className="mt-3 rounded-lg border border-dashed border-[var(--copilot-border)] px-4 py-5 text-center">
+                          <p className="text-sm text-[var(--copilot-ink-muted)]">Sin formas de transferencia registradas.</p>
+                          {data.transfer_method && (
+                            <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
+                              Valor anterior: <span className="font-medium">{data.transfer_method}</span>
+                              {canWrite ? " — usá Agregar para migrarlo al nuevo sistema." : ""}
+                            </p>
+                          )}
+                          {canWrite && !data.transfer_method && (
+                            <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
+                              Agregá nombres, bancos o referencias que aparezcan en los extractos.
+                            </p>
+                          )}
+                        </div>
+                      )
+                    )}
+                  </CopilotCard>
+                ) : null}
+
                 <CopilotCard>
                   <CopilotSectionTitle
                     title="Datos del cliente"
@@ -1187,69 +1490,6 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                       </dt>
                       <dd className="mt-1 text-sm text-[var(--copilot-ink)]">
                         {data.summary.industry ?? "—"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        Forma de transferencia
-                      </dt>
-                      <dd className="mt-1">
-                        {editingTransferMethod ? (
-                          <div className="flex items-center gap-1.5">
-                            <input
-                              type="text"
-                              autoFocus
-                              value={transferMethodDraft}
-                              onChange={(e) => setTransferMethodDraft(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") void handleSaveTransferMethod();
-                                if (e.key === "Escape") setEditingTransferMethod(false);
-                              }}
-                              className="flex-1 rounded-lg border border-[var(--copilot-accent)]/40 bg-white px-2 py-1 text-sm text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
-                              placeholder="Ej. Transferencia BROU, Cheque, Efectivo…"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => void handleSaveTransferMethod()}
-                              disabled={savingTransferMethod}
-                              className="rounded-lg p-1.5 text-emerald-600 hover:bg-emerald-50"
-                              title="Guardar"
-                            >
-                              {savingTransferMethod ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Check className="h-3.5 w-3.5" />
-                              )}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setEditingTransferMethod(false)}
-                              className="rounded-lg p-1.5 text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-border)]"
-                              title="Cancelar"
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-sm text-[var(--copilot-ink)]">
-                              {data.transfer_method || "—"}
-                            </span>
-                            {canWrite ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setTransferMethodDraft(data.transfer_method ?? "");
-                                  setEditingTransferMethod(true);
-                                }}
-                                className="rounded-lg p-1 text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-border)] hover:text-[var(--copilot-accent)]"
-                                title="Editar forma de transferencia"
-                              >
-                                <PenLine className="h-3 w-3" />
-                              </button>
-                            ) : null}
-                          </div>
-                        )}
                       </dd>
                     </div>
                     {data.summary.commercial ? (

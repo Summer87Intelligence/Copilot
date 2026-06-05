@@ -55,6 +55,8 @@ export type ClientPortfolioRow = {
   overdue_days_usd?: number | null;
   /** Forma de transferencia registrada en Copilot (no proviene de Zeta). */
   transfer_method?: string | null;
+  /** Aliases de transferencia activos (de client_transfer_aliases). */
+  transferAliases?: string[];
 };
 
 export type ClientPortfolioContact = {

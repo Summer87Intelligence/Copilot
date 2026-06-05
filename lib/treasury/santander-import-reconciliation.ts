@@ -62,7 +62,7 @@ export type ClientMatchInput = {
   name: string;
   debtUyu: number;
   debtUsd: number;
-  transferMethod?: string | null;
+  transferAliases?: string[];
 };
 
 export type EnrichedSantanderImportRow = {
@@ -234,17 +234,17 @@ function isTransferMethodUsable(tm: string | null | undefined): tm is string {
   return significantTokens.length >= 1;
 }
 
-function scoreTransferMethodHint(
+function scoreOneAlias(
   row: SantanderParsedMovement,
-  client: ClientMatchInput
+  client: ClientMatchInput,
+  alias: string
 ): SantanderMatchHit | null {
-  if (!isTransferMethodUsable(client.transferMethod)) return null;
+  if (!isTransferMethodUsable(alias)) return null;
 
   const normDesc = normalizeText(row.description);
-  const normTM = normalizeText(client.transferMethod);
+  const normAlias = normalizeText(alias);
 
-  // Primary: transfer method text is a substring of the bank description
-  if (normDesc.includes(normTM)) {
+  if (normDesc.includes(normAlias)) {
     return {
       source: "client",
       id: client.id,
@@ -253,24 +253,23 @@ function scoreTransferMethodHint(
       amountDelta: 0,
       dayDelta: 0,
       matchReason: "Forma de transferencia",
-      transferMethodMatched: client.transferMethod,
+      transferMethodMatched: alias,
     };
   }
 
-  // Secondary: significant token overlap excluding generic bank tokens
-  const tmTokens = new Set(
-    normTM.split(" ").filter((t) => t.length > 2 && !GENERIC_BANK_TOKENS.has(t))
+  const aliasTokens = new Set(
+    normAlias.split(" ").filter((t) => t.length > 2 && !GENERIC_BANK_TOKENS.has(t))
   );
   const descTokens = new Set(
     normDesc.split(" ").filter((t) => t.length > 2 && !GENERIC_BANK_TOKENS.has(t))
   );
-  if (tmTokens.size === 0) return null;
+  if (aliasTokens.size === 0) return null;
 
   let hits = 0;
-  for (const t of tmTokens) if (descTokens.has(t)) hits++;
+  for (const t of aliasTokens) if (descTokens.has(t)) hits++;
   if (hits < 2) return null;
 
-  const overlap = hits / Math.max(tmTokens.size, descTokens.size);
+  const overlap = hits / Math.max(aliasTokens.size, descTokens.size);
   const confidence = Math.min(70, Math.round(35 + overlap * 50));
   return {
     source: "client",
@@ -280,8 +279,23 @@ function scoreTransferMethodHint(
     amountDelta: 0,
     dayDelta: 0,
     matchReason: "Forma de transferencia",
-    transferMethodMatched: client.transferMethod,
+    transferMethodMatched: alias,
   };
+}
+
+function scoreTransferMethodHint(
+  row: SantanderParsedMovement,
+  client: ClientMatchInput
+): SantanderMatchHit | null {
+  const aliases = client.transferAliases ?? [];
+  if (aliases.length === 0) return null;
+
+  let best: SantanderMatchHit | null = null;
+  for (const alias of aliases) {
+    const hit = scoreOneAlias(row, client, alias);
+    if (hit && (!best || hit.confidence > best.confidence)) best = hit;
+  }
+  return best;
 }
 
 function bestMatch(matches: SantanderMatchHit[]): SantanderMatchHit | null {

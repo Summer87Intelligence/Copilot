@@ -135,6 +135,14 @@ export type Client360Contact = {
   job_title: string | null;
 };
 
+export type TransferAlias = {
+  id: string;
+  label: string;
+  notes: string | null;
+  isActive: boolean;
+  createdAt: string;
+};
+
 export type Client360Payload = {
   summary: Client360Summary;
   cuenta: Client360AccountBlock;
@@ -152,6 +160,7 @@ export type Client360Payload = {
   last_invoice_date: string | null;
   last_sync_at: string | null;
   transfer_method: string | null;
+  transferAliases: TransferAlias[];
 };
 
 function resourceLabel(flow: string): string {
@@ -499,6 +508,31 @@ export async function loadClientCompany360(
   const lastSyncAt =
     zeta_sync_rows.map((r) => r.last_success_at).filter(Boolean).sort((a, b) => (b ?? "").localeCompare(a ?? ""))[0] ?? null;
 
+  const { data: aliasRows } = await client
+    .from("client_transfer_aliases")
+    .select("id, label, notes, is_active, created_at")
+    .eq("workspace_id", wid)
+    .eq("company_id", cid)
+    .eq("is_active", true)
+    .order("created_at", { ascending: true });
+
+  const transferAliases: TransferAlias[] = (aliasRows ?? []).map((r) => {
+    const row = r as {
+      id: string;
+      label: string;
+      notes: string | null;
+      is_active: boolean;
+      created_at: string;
+    };
+    return {
+      id: row.id,
+      label: row.label,
+      notes: row.notes ?? null,
+      isActive: row.is_active,
+      createdAt: row.created_at,
+    };
+  });
+
   return {
     summary,
     cuenta,
@@ -516,5 +550,6 @@ export async function loadClientCompany360(
     last_invoice_date: lastInvoiceDate,
     last_sync_at: lastSyncAt,
     transfer_method: str(crow.transfer_method) || null,
+    transferAliases,
   };
 }
