@@ -12,6 +12,10 @@ import {
   getProtoCompanyById,
 } from "@/lib/data/proto-operational-read-repository";
 import { buildClientAccountStatement } from "@/lib/copilot-client-account-statement";
+import {
+  buildAccountStatementDownloadFilename,
+  slugifyClientNameForFilename,
+} from "@/lib/account-statement/build-collection-account-statement-attachments";
 import { renderAccountStatementPdf, type ClientInfo } from "@/lib/account-statement/render-account-statement-pdf";
 import { ISSUER_FALLBACK, type IssuerInfo } from "@/lib/account-statement/issuer-fallback";
 
@@ -112,13 +116,19 @@ export async function GET(
       client,
     });
     log.info("account_statement_pdf_done", { bytes: pdfBuffer.length });
-    const safeFilename = companyName.replace(/[^a-zA-Z0-9_\-áéíóúÁÉÍÓÚüÜñÑ ]/g, "_").slice(0, 60);
+    const todayYmd = new Date().toISOString().slice(0, 10);
+    const currencySuffix =
+      currencies.length === 1 ? currencies[0]!.toLowerCase() : "multi";
+    const filename =
+      currencies.length === 1
+        ? buildAccountStatementDownloadFilename(companyName, currencies[0]!, todayYmd)
+        : `estado-cuenta-${slugifyClientNameForFilename(companyName)}-${currencySuffix}-${todayYmd}.pdf`;
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="estado-de-cuenta-${safeFilename}.pdf"`,
+        "Content-Disposition": `attachment; filename="${filename}"`,
         "Cache-Control": "no-store",
       },
     });

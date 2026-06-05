@@ -536,7 +536,7 @@ export function CollectionFollowupForm({
           </p>
         ) : actions.length === 0 ? (
           <p className="text-[12.5px] text-[var(--copilot-ink-muted)]">
-            Todavía no hay gestiones registradas para este cliente.
+            Sin gestiones registradas
           </p>
         ) : (
           <div className="divide-y divide-[var(--copilot-border)]/40">

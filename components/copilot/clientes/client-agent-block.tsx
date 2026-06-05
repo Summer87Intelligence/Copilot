@@ -3,14 +3,13 @@
 import { useMemo } from "react";
 import {
   ArrowRight,
-  Bot,
   CheckCircle2,
   CircleDot,
+  Database,
+  MessageCircle,
   TriangleAlert,
   User,
   Wallet,
-  Database,
-  MessageCircle,
 } from "lucide-react";
 
 import { useCollectionActions } from "@/hooks/use-collection-actions";
@@ -55,7 +54,12 @@ const SEVERITY_DOT: Record<ClientAgentInsight["severity"], string> = {
   low: "bg-slate-300",
 };
 
-// ─── Tab icon mapping ─────────────────────────────────────────────────────────
+const HIDDEN_AGENT_INSIGHT_IDS = new Set([
+  "last-movement",
+  "contact-ok",
+  "contact-email",
+  "contact-wa",
+]);
 
 const TAB_ICON: Record<string, typeof User> = {
   contactos: User,
@@ -67,13 +71,13 @@ const TAB_ICON: Record<string, typeof User> = {
 
 function InsightPill({ insight }: { insight: ClientAgentInsight }) {
   return (
-    <div className="flex items-start gap-2 rounded-xl border border-[var(--copilot-border)]/60 bg-white/70 px-3 py-2">
+    <div className="flex items-start gap-2 rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-2.5">
       <span
         className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${SEVERITY_DOT[insight.severity]}`}
       />
       <div className="min-w-0">
-        <p className="text-[11.5px] font-semibold text-[var(--copilot-ink)]">{insight.title}</p>
-        <p className="text-[11px] leading-snug text-[var(--copilot-ink-muted)]">{insight.body}</p>
+        <p className="text-[12px] font-semibold text-[var(--copilot-ink)]">{insight.title}</p>
+        <p className="text-[11.5px] leading-snug text-[var(--copilot-ink-muted)]">{insight.body}</p>
       </div>
     </div>
   );
@@ -106,53 +110,53 @@ function AgentResults({
       : ArrowRight;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Status banner */}
-      <div className={`flex items-start gap-2.5 rounded-xl border p-3 ${cfg.bannerCls}`}>
+      <div className={`flex items-start gap-3 rounded-xl border p-3.5 ${cfg.bannerCls}`}>
         <StatusIcon className={`mt-0.5 h-4 w-4 shrink-0 ${cfg.iconCls}`} aria-hidden />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[12px] font-semibold text-[var(--copilot-ink)]">
+            <span className="text-[13px] font-semibold text-[var(--copilot-ink)]">
               Estado del cliente
             </span>
             <span
-              className={`rounded-full border px-2 py-0.5 text-[10px] font-bold leading-none ${cfg.badgeCls}`}
+              className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold leading-none ${cfg.badgeCls}`}
             >
               {cfg.label}
             </span>
           </div>
-          <p className="mt-0.5 text-[12px] leading-relaxed text-[var(--copilot-ink-muted)]">
+          <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--copilot-ink-muted)]">
             {brief.summary}
           </p>
         </div>
       </div>
 
-      {/* Three blocks */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div>
-          <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
+      {/* Three diagnosis blocks */}
+      <div className="grid gap-2 sm:grid-cols-3">
+        <div className="rounded-xl border border-[var(--copilot-border)] bg-[rgba(44,40,37,0.03)] px-3.5 py-3">
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
             Qué pasa
           </p>
-          <p className="text-[12.5px] leading-relaxed text-[var(--copilot-ink)]">
+          <p className="text-[13px] leading-snug text-[var(--copilot-ink)]">
             {brief.mainFinding}
           </p>
         </div>
-        <div>
-          <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
+        <div className="rounded-xl border border-[var(--copilot-border)] bg-[rgba(44,40,37,0.03)] px-3.5 py-3">
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
             Por qué importa
           </p>
-          <p className="text-[12.5px] leading-relaxed text-[var(--copilot-ink-muted)]">
+          <p className="text-[13px] leading-snug text-[var(--copilot-ink-muted)]">
             {brief.whyItMatters}
           </p>
         </div>
-        <div>
-          <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
+        <div className="rounded-xl border border-[var(--copilot-border)] bg-[rgba(44,40,37,0.03)] px-3.5 py-3">
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
             Qué hacer ahora
           </p>
           <button
             type="button"
             onClick={handleCta}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-3.5 py-2 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80"
+            className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80"
           >
             <CtaIcon className="h-3.5 w-3.5" aria-hidden />
             {brief.recommendedAction.label}
@@ -160,12 +164,14 @@ function AgentResults({
         </div>
       </div>
 
-      {/* Insights */}
-      {brief.insights.length > 0 ? (
+      {/* Insight pills */}
+      {brief.insights.filter((ins) => !HIDDEN_AGENT_INSIGHT_IDS.has(ins.id)).length > 0 ? (
         <div className="grid gap-2 sm:grid-cols-2">
-          {brief.insights.map((ins) => (
-            <InsightPill key={ins.id} insight={ins} />
-          ))}
+          {brief.insights
+            .filter((ins) => !HIDDEN_AGENT_INSIGHT_IDS.has(ins.id))
+            .map((ins) => (
+              <InsightPill key={ins.id} insight={ins} />
+            ))}
         </div>
       ) : null}
     </div>
@@ -233,17 +239,6 @@ export function ClientAgentBlock({
 
   return (
     <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/60 p-5 shadow-sm">
-      {/* Header */}
-      <div className="mb-4 flex items-center gap-2">
-        <Bot className="h-4 w-4 text-[var(--copilot-accent)]" aria-hidden />
-        <span className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink)]">
-          Agente de cliente
-        </span>
-        <span className="text-[10px] text-[var(--copilot-ink-muted)]/60">
-          · Resumen de este cliente y próximo paso recomendado.
-        </span>
-      </div>
-
       <AgentResults
         brief={brief}
         onNavigateTab={onNavigateTab}

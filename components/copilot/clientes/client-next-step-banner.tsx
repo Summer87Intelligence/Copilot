@@ -1,26 +1,37 @@
 "use client";
 
 import { useMemo } from "react";
-import { ArrowRight, Compass } from "lucide-react";
 
 import { useCollectionActions } from "@/hooks/use-collection-actions";
 import type { Client360Payload } from "@/lib/copilot-client-360";
 import { normalizeUruguayPhoneForWhatsApp } from "@/lib/phone/normalize-phone-for-whatsapp";
 import { buildClientAgentBrief } from "@/lib/copilot-agents/build-client-agent-brief";
-import { actionCardClass } from "@/components/copilot/ui/copilot-visual-system";
 
 type ClientNextStepBannerProps = {
   data: Client360Payload;
   onNavigateTab: (tab: string) => void;
   onScrollToAssistant: () => void;
   onScrollToCollectionForm: () => void;
+  onViewAccountStatement: () => void;
 };
+
+function formatDebtLine(debtUyu: number, debtUsd: number): string {
+  const parts: string[] = [];
+  if (debtUyu > 0) {
+    parts.push(`$ ${debtUyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`);
+  }
+  if (debtUsd > 0) {
+    parts.push(`U$S ${debtUsd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`);
+  }
+  return parts.join(" · ") || "—";
+}
 
 export function ClientNextStepBanner({
   data,
   onNavigateTab,
   onScrollToAssistant,
   onScrollToCollectionForm,
+  onViewAccountStatement,
 }: ClientNextStepBannerProps) {
   const { actions } = useCollectionActions(data.summary.company_id);
 
@@ -92,36 +103,53 @@ export function ClientNextStepBanner({
       ? "Sin acción urgente"
       : brief.recommendedAction.label;
 
+  const debtLine = formatDebtLine(data.debt_uyu, data.debt_usd);
+
   return (
     <div
-      className={`${actionCardClass} mx-6 mt-4 flex flex-col gap-3 border-[rgba(31,107,74,0.18)] bg-gradient-to-r from-white to-[rgba(31,107,74,0.05)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between`}
+      className="rounded-xl border border-[var(--copilot-border)] bg-white px-4 py-3 shadow-sm"
       aria-labelledby="client-next-step-title"
     >
-      <div className="flex min-w-0 items-start gap-2.5">
-        <Compass className="mt-0.5 h-4 w-4 shrink-0 text-[var(--copilot-accent)]" aria-hidden />
-        <div className="min-w-0">
-          <p
-            id="client-next-step-title"
-            className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--copilot-accent)]"
-          >
-            Próximo paso
-          </p>
-          <p className="text-sm font-semibold text-[var(--copilot-ink)]">{stepTitle}</p>
-          <p className="mt-0.5 line-clamp-2 text-xs text-[var(--copilot-ink-muted)]">
-            {brief.mainFinding}
-          </p>
-        </div>
-      </div>
-      {brief.status !== "stable" || hasDebt ? (
+      <p
+        id="client-next-step-title"
+        className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--copilot-accent)]"
+      >
+        Próximo paso
+      </p>
+      <p className="mt-0.5 text-sm font-semibold text-[var(--copilot-ink)]">
+        {stepTitle}
+      </p>
+      {hasDebt ? (
+        <p className="mt-0.5 text-sm font-semibold tabular-nums text-amber-700">
+          {debtLine}
+        </p>
+      ) : null}
+      <div className="mt-2.5 flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={handlePrimaryCta}
-          className="inline-flex shrink-0 items-center justify-center gap-1.5 self-start rounded-xl bg-[var(--copilot-accent)] px-3.5 py-2 text-xs font-semibold text-white sm:self-center"
+          onClick={onViewAccountStatement}
+          className="inline-flex items-center rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--copilot-ink)] hover:bg-slate-50 transition-colors"
         >
-          {brief.recommendedAction.label}
-          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+          Ver estado
         </button>
-      ) : null}
+        {hasDebt ? (
+          <button
+            type="button"
+            onClick={onScrollToAssistant}
+            className="inline-flex items-center rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 transition-opacity"
+          >
+            Cobrar
+          </button>
+        ) : brief.status !== "stable" ? (
+          <button
+            type="button"
+            onClick={handlePrimaryCta}
+            className="inline-flex items-center rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 transition-opacity"
+          >
+            {brief.recommendedAction.label}
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

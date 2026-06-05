@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Check, Copy, Mail, MessageCircle, ShieldCheck } from "lucide-react";
 
+import { CollectionSuggestedAttachments } from "@/components/copilot/clientes/collection-suggested-attachments";
+import {
+  buildCollectionAccountStatementAttachments,
+} from "@/lib/account-statement/build-collection-account-statement-attachments";
 import {
   buildCollectionMessage,
   type CollectionMessageChannel,
@@ -17,6 +21,7 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Props = {
+  companyId: string;
   clientName: string;
   debtUyu: number;
   debtUsd: number;
@@ -76,6 +81,7 @@ function Pill({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function CollectionMessageAssistant({
+  companyId,
   clientName,
   debtUyu,
   debtUsd,
@@ -85,7 +91,18 @@ export function CollectionMessageAssistant({
   phone,
 }: Props) {
   const waPhone = normalizeUruguayPhoneForWhatsApp(phone);
-  const hasDebt = debtUyu > 0 || debtUsd > 0 || overdueUyu > 0 || overdueUsd > 0;
+  const hasDebt = debtUyu > 0 || debtUsd > 0;
+
+  const suggestedAttachments = useMemo(
+    () =>
+      buildCollectionAccountStatementAttachments({
+        companyId,
+        clientName,
+        debtUyu,
+        debtUsd,
+      }),
+    [companyId, clientName, debtUyu, debtUsd]
+  );
 
   const [channel, setChannel] = useState<CollectionMessageChannel>("whatsapp");
   const [tone, setTone] = useState<CollectionMessageTone>("friendly");
@@ -130,21 +147,21 @@ export function CollectionMessageAssistant({
   };
 
   return (
-    <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/70 p-5 shadow-sm">
+    <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/70 p-4 shadow-sm">
       {/* Header */}
-      <div className="mb-4 flex items-center gap-2">
+      <div className="mb-3 flex items-center gap-2">
         <MessageCircle className="h-4 w-4 text-[var(--copilot-accent)]" aria-hidden />
         <span className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink)]">
           Asistente de cobranza
         </span>
       </div>
-      <p className="mb-4 text-[12.5px] text-[var(--copilot-ink-muted)]">
+      <p className="mb-3 text-[12.5px] text-[var(--copilot-ink-muted)]">
         Generá un mensaje sugerido para contactar al cliente. Copilot no lo envía
         automáticamente.
       </p>
 
       {/* Controls */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div>
           <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
             Canal
@@ -191,11 +208,18 @@ export function CollectionMessageAssistant({
       <button
         type="button"
         onClick={generate}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-4 py-2 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80"
+        className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-4 py-2 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80"
       >
         <MessageCircle className="h-3.5 w-3.5" aria-hidden />
         {suggestion ? "Regenerar mensaje" : "Generar mensaje"}
       </button>
+
+      <div className="mt-3">
+        <CollectionSuggestedAttachments
+          attachments={suggestedAttachments}
+          channel={channel}
+        />
+      </div>
 
       {/* Generated message */}
       {suggestion && (

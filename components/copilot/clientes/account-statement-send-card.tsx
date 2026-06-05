@@ -3,7 +3,9 @@
 import { useCallback, useMemo, useState } from "react";
 import { AlertTriangle, ClipboardList, Copy, Mail, MessageCircle } from "lucide-react";
 import { CopilotCard, CopilotSectionTitle } from "@/components/copilot/copilot-ui";
+import { CollectionSuggestedAttachments } from "@/components/copilot/clientes/collection-suggested-attachments";
 import { buildAccountStatementMessage } from "@/lib/account-statement/build-account-statement-message";
+import { buildCollectionAccountStatementAttachments } from "@/lib/account-statement/build-collection-account-statement-attachments";
 import { COLLECTION_UX } from "@/lib/copilot-collection-ux-copy";
 import {
   buildAccountStatementFollowupPrefill,
@@ -19,6 +21,7 @@ type Tone = "friendly" | "firm" | "brief";
 type LastAction = "copied" | "emailed" | "whatsapped";
 
 type Props = {
+  companyId: string;
   clientName: string;
   email: string | null;
   phone: string | null | undefined;
@@ -39,6 +42,7 @@ const TONE_LABELS: Record<Tone, string> = { friendly: "Amable", firm: "Firme", b
 const CURRENCY_LABELS = { UYU: "Pesos (UYU)", USD: "Dólares (USD)" };
 
 export function AccountStatementSendCard({
+  companyId,
   clientName,
   email,
   phone,
@@ -78,6 +82,20 @@ export function AccountStatementSendCard({
         tone,
       }),
     [clientName, yearStart, today, currency, debtUyu, debtUsd, overdueUyu, overdueUsd, channel, tone]
+  );
+
+  const suggestedAttachments = useMemo(
+    () =>
+      buildCollectionAccountStatementAttachments({
+        companyId,
+        clientName,
+        debtUyu,
+        debtUsd,
+        from: yearStart,
+        to: today,
+        fileDate: today,
+      }),
+    [companyId, clientName, debtUyu, debtUsd, yearStart, today]
   );
 
   const handleCopy = useCallback(() => {
@@ -201,13 +219,19 @@ export function AccountStatementSendCard({
         </pre>
       </div>
 
+      <div className="mt-3">
+        <CollectionSuggestedAttachments
+          attachments={suggestedAttachments}
+          channel={channel}
+        />
+      </div>
+
       {/* Warning */}
       <div className="mt-3 space-y-1.5 rounded-lg bg-amber-50/90 px-2.5 py-2 text-[11px] leading-relaxed text-amber-900">
         <div className="flex items-start gap-2">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-          <span>Adjuntá manualmente el PDF descargado antes de enviar.</span>
+          <span>{COLLECTION_UX.noAutoSend}</span>
         </div>
-        <p className="pl-5 text-amber-800/90">{COLLECTION_UX.noAutoSend}</p>
       </div>
 
       {/* Actions */}

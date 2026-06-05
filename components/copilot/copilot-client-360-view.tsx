@@ -1,17 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
   BadgeCheck,
-  Building2,
   Check,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   CircleDashed,
-  Clock,
   Copy,
   Download,
   FileText,
@@ -24,7 +22,6 @@ import {
   ShieldAlert,
   Trash2,
   TrendingDown,
-  User,
   Wallet,
   X,
   XCircle,
@@ -50,7 +47,6 @@ import {
   type TimelineEvent,
 } from "@/lib/copilot-client-operational-summary";
 import {
-  actionCardClass,
   metricValueClass,
   neutralFinancialCardClass,
   subtleLabelClass,
@@ -58,16 +54,53 @@ import {
 } from "@/components/copilot/ui/copilot-visual-system";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 
-type TabId = "resumen" | "cuenta" | "comprobantes" | "recibos" | "contactos" | "zeta";
+const RESUMEN_ACTIVITY_LIMIT = 5;
+const SESSION_TAB_KEY = "copilot-client360-active-tab";
 
-const TABS: { id: TabId; label: string }[] = [
+type SectionNavId = "resumen" | "cobranza" | "cuenta" | "facturas" | "cobros" | "datos" | "transferencias";
+
+const SECTION_NAV_TABS: { id: SectionNavId; label: string }[] = [
   { id: "resumen", label: "Resumen" },
+  { id: "cobranza", label: "Cobranza" },
   { id: "cuenta", label: "Estado de cuenta" },
-  { id: "comprobantes", label: "Facturas" },
-  { id: "recibos", label: "Cobros" },
-  { id: "contactos", label: "Contactos" },
-  { id: "zeta", label: "Actualización de datos" },
+  { id: "facturas", label: "Facturas" },
+  { id: "cobros", label: "Cobros" },
+  { id: "datos", label: "Datos" },
+  { id: "transferencias", label: "Formas de transferencia" },
 ];
+
+function Client360TabNav({
+  activeTab,
+  onTabChange,
+}: {
+  activeTab: SectionNavId;
+  onTabChange: (id: SectionNavId) => void;
+}) {
+  return (
+    <div className="sticky top-0 z-20 border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.95)] backdrop-blur-sm">
+      <nav
+        className="flex overflow-x-auto scrollbar-none px-2"
+        aria-label="Secciones de la ficha"
+      >
+        {SECTION_NAV_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => onTabChange(tab.id)}
+            aria-current={activeTab === tab.id ? "page" : undefined}
+            className={`shrink-0 border-b-2 px-4 py-2.5 text-[13px] transition-colors ${
+              activeTab === tab.id
+                ? "border-[var(--copilot-accent)] font-semibold text-[var(--copilot-accent)]"
+                : "border-transparent font-medium text-[var(--copilot-ink-muted)] hover:border-[var(--copilot-border)] hover:text-[var(--copilot-ink)]"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+    </div>
+  );
+}
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 
@@ -130,7 +163,7 @@ function cleanInvoiceType(tipo: string): string {
 }
 
 function cleanSerieNumero(sn: string): string {
-  if (!sn || /^ZETA:/i.test(sn)) return "—";
+  if (!sn) return "—";
   return sn;
 }
 
@@ -164,7 +197,6 @@ function translateReceiptStatus(estado: string): string {
   return map[estado.toLowerCase()] ?? estado;
 }
 
-// Clean up timeline event titles for display
 function cleanTimelineTitle(ev: TimelineEvent): string {
   if (ev.kind === "sync") {
     return ev.title.replace(/^Sync Zeta:\s*/i, "Datos actualizados: ");
@@ -195,41 +227,44 @@ function timelineIcon(kind: TimelineEvent["kind"], severity: OperationalHintSeve
   return <CircleDashed className="h-4 w-4 text-slate-400" aria-hidden />;
 }
 
-// ─── Debt status label ────────────────────────────────────────────────────────
+// ─── CollapsibleSection ───────────────────────────────────────────────────────
 
 function CollapsibleSection({
   title,
   subtitle,
+  count,
   defaultOpen = false,
   children,
 }: {
   title: string;
   subtitle?: string;
+  count?: number;
   defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const titleLabel = count != null && count >= 0 ? `${title} (${count})` : title;
 
   return (
     <div className="border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.35)]">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setIsOpen((v) => !v)}
         className="flex w-full items-center justify-between gap-2 px-6 py-3 text-left"
-        aria-expanded={open}
+        aria-expanded={isOpen}
       >
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-[var(--copilot-ink)]">{title}</p>
+          <p className="text-sm font-semibold text-[var(--copilot-ink)]">{titleLabel}</p>
           {subtitle ? (
             <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">{subtitle}</p>
           ) : null}
         </div>
         <ChevronDown
-          className={`h-4 w-4 shrink-0 text-[var(--copilot-ink-muted)] transition ${open ? "rotate-180" : ""}`}
+          className={`h-4 w-4 shrink-0 text-[var(--copilot-ink-muted)] transition ${isOpen ? "rotate-180" : ""}`}
           aria-hidden
         />
       </button>
-      {open ? (
+      {isOpen ? (
         <div className="space-y-4 border-t border-[var(--copilot-border)] px-6 py-4">
           {children}
         </div>
@@ -279,11 +314,11 @@ function KpiChip({
     ok: "text-emerald-700",
   };
   return (
-    <div className={`${actionCardClass} flex flex-col gap-0.5 px-4 py-3`}>
+    <div className="flex flex-col gap-1 rounded-xl border border-[var(--copilot-border)] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
       <span className={subtleLabelClass}>
         {label}
       </span>
-      <span className={`text-lg leading-tight ${metricValueClass} ${tones[tone]}`}>
+      <span className={`text-[17px] leading-tight ${metricValueClass} ${tones[tone]}`}>
         {value}
       </span>
       {sub ? (
@@ -327,11 +362,22 @@ function QuickActions({ contactEmail }: { contactEmail?: string | null }) {
 
 // ─── Timeline ─────────────────────────────────────────────────────────────────
 
-function TimelineBlock({ events }: { events: TimelineEvent[] }) {
-  const commercialEvents = events.filter((e) => e.kind !== "sync");
-  const syncEvents = events.filter((e) => e.kind === "sync");
+function TimelineBlock({
+  events,
+  maxEvents,
+  commercialOnly = false,
+}: {
+  events: TimelineEvent[];
+  maxEvents?: number;
+  commercialOnly?: boolean;
+}) {
+  const filtered = commercialOnly ? events.filter((e) => e.kind !== "sync") : events;
+  const commercialEvents = filtered.filter((e) => e.kind !== "sync");
+  const syncEvents = commercialOnly ? [] : filtered.filter((e) => e.kind === "sync");
+  const limitedCommercial =
+    maxEvents != null ? commercialEvents.slice(0, maxEvents) : commercialEvents;
 
-  if (events.length === 0) {
+  if (filtered.length === 0) {
     return (
       <p className="text-sm text-[var(--copilot-ink-muted)]">
         No hay actividad reciente registrada.
@@ -344,7 +390,7 @@ function TimelineBlock({ events }: { events: TimelineEvent[] }) {
     return (
       <ol className="relative space-y-0 border-l border-[var(--copilot-border)]">
         {evts.map((ev) => (
-          <li key={ev.id} className="relative pb-5 pl-6 last:pb-0">
+          <li key={ev.id} className="relative pb-4 pl-6 last:pb-0">
             <span className="absolute -left-2 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--copilot-card)] ring-2 ring-[var(--copilot-border)]">
               {timelineIcon(ev.kind, ev.severity)}
             </span>
@@ -375,18 +421,20 @@ function TimelineBlock({ events }: { events: TimelineEvent[] }) {
   }
 
   return (
-    <div className="space-y-5">
-      {commercialEvents.length > 0 ? (
+    <div className="space-y-4">
+      {limitedCommercial.length > 0 ? (
         <div>
-          <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
-            Actividad comercial
-          </p>
-          <EventList evts={commercialEvents} />
+          {!commercialOnly ? (
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
+              Actividad comercial
+            </p>
+          ) : null}
+          <EventList evts={limitedCommercial} />
         </div>
       ) : null}
       {syncEvents.length > 0 ? (
         <div>
-          <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
             Actualización de datos
           </p>
           <EventList evts={syncEvents} />
@@ -396,9 +444,9 @@ function TimelineBlock({ events }: { events: TimelineEvent[] }) {
   );
 }
 
-// ─── Contacts tab ─────────────────────────────────────────────────────────────
+// ─── Contactos compactos ──────────────────────────────────────────────────────
 
-function ContactsTab({
+function ContactsStrip({
   contacts,
   companyPhone,
 }: {
@@ -406,118 +454,79 @@ function ContactsTab({
   companyPhone: string | null;
 }) {
   const [copied, setCopied] = useState<string | null>(null);
+  const primary = contacts.find((c) => c.email) ?? contacts[0] ?? null;
+  const email = primary?.email ?? null;
   const waPhone = normalizeUruguayPhoneForWhatsApp(companyPhone);
 
-  function copyEmail(email: string) {
-    navigator.clipboard?.writeText(email).catch(() => null);
-    setCopied(email);
+  function copyEmail(value: string) {
+    navigator.clipboard?.writeText(value).catch(() => null);
+    setCopied(value);
     setTimeout(() => setCopied(null), 2000);
   }
 
-  if (contacts.length === 0) {
-    return (
-      <CopilotCard>
-        <div className="flex flex-col items-center gap-3 py-10 text-center">
-          <User className="h-10 w-10 text-[var(--copilot-ink-muted)]/40" aria-hidden />
-          <p className="text-sm font-medium text-[var(--copilot-ink-muted)]">
-            No hay contactos registrados para este cliente.
-          </p>
-          <p className="max-w-sm text-xs text-[var(--copilot-ink-muted)]">
-            Los contactos se actualizan automáticamente. Aparecerán aquí tras la
-            próxima sincronización si el cliente tiene contactos.
-          </p>
-        </div>
-      </CopilotCard>
-    );
-  }
-
   return (
-    <div className="space-y-4">
-      {/* Company phone */}
-      {companyPhone ? (
-        <CopilotCard className="flex items-center gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--copilot-accent-soft)]">
-            <MessageCircle className="h-4 w-4 text-[var(--copilot-accent)]" aria-hidden />
+    <div className="px-5 pb-3">
+      {contacts.length === 0 && !companyPhone ? (
+        <p className="text-sm text-[var(--copilot-ink-muted)]">
+          Sin contactos registrados para este cliente.
+        </p>
+      ) : (
+        <>
+          <div className="flex flex-col gap-0.5 text-sm text-[var(--copilot-ink)]">
+            {email ? (
+              <span className="inline-flex items-center gap-2">
+                <Mail className="h-3.5 w-3.5 shrink-0 text-[var(--copilot-ink-muted)]" aria-hidden />
+                {email}
+              </span>
+            ) : (
+              <span className="text-[var(--copilot-ink-muted)]">Sin email cargado</span>
+            )}
+            {companyPhone ? (
+              <span className="inline-flex items-center gap-2">
+                <MessageCircle className="h-3.5 w-3.5 shrink-0 text-[var(--copilot-ink-muted)]" aria-hidden />
+                {waPhone?.isValid ? waPhone.display : companyPhone}
+              </span>
+            ) : null}
+            {primary?.full_name && contacts.length > 1 ? (
+              <span className="text-xs text-[var(--copilot-ink-muted)]">
+                Contacto principal: {primary.full_name}
+              </span>
+            ) : null}
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
-              Teléfono de la empresa
-            </p>
-            <p className="truncate text-sm font-medium text-[var(--copilot-ink)]">
-              {waPhone?.isValid ? waPhone.display : companyPhone}
-            </p>
-          </div>
-          {waPhone?.isValid ? (
-            <a
-              href={waPhone.waHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50"
-            >
-              <MessageCircle className="h-3 w-3" aria-hidden />
-              WhatsApp
-            </a>
-          ) : (
-            <span className="shrink-0 text-[11px] text-[var(--copilot-ink-muted)]/50">
-              No apto WhatsApp
-            </span>
-          )}
-        </CopilotCard>
-      ) : null}
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {contacts.map((c) => (
-        <CopilotCard key={c.id} className="flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--copilot-accent-soft)] text-sm font-semibold text-[var(--copilot-accent)]">
-              {c.full_name.charAt(0).toUpperCase()}
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-[var(--copilot-ink)]">
-                {c.full_name}
-              </p>
-              {c.job_title ? (
-                <p className="truncate text-xs text-[var(--copilot-ink-muted)]">
-                  {c.job_title}
-                </p>
-              ) : null}
-            </div>
-          </div>
-
-          {c.email ? (
-            <div className="space-y-1.5">
-              <a
-                href={`mailto:${c.email}`}
-                className="flex items-center gap-1.5 truncate text-xs text-[var(--copilot-accent)] hover:underline"
-              >
-                <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                {c.email}
-              </a>
-              <div className="flex flex-wrap gap-1.5">
+          <div className="mt-2 flex flex-wrap gap-2">
+            {email ? (
+              <>
                 <a
-                  href={`mailto:${c.email}`}
-                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50"
+                  href={`mailto:${email}`}
+                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50"
                 >
                   <Mail className="h-3 w-3" aria-hidden />
                   Enviar email
                 </a>
                 <button
                   type="button"
-                  onClick={() => copyEmail(c.email!)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50"
+                  onClick={() => copyEmail(email)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50"
                 >
                   <Copy className="h-3 w-3" aria-hidden />
-                  {copied === c.email ? "Copiado" : "Copiar email"}
+                  {copied === email ? "Copiado" : "Copiar email"}
                 </button>
-              </div>
-            </div>
-          ) : (
-            <p className="text-xs text-[var(--copilot-ink-muted)]/60">Sin email cargado</p>
-          )}
-
-        </CopilotCard>
-      ))}
-      </div>
+              </>
+            ) : null}
+            {waPhone?.isValid ? (
+              <a
+                href={waPhone.waHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50"
+              >
+                <MessageCircle className="h-3 w-3" aria-hidden />
+                WhatsApp
+              </a>
+            ) : null}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -622,7 +631,7 @@ function AccountStatementPdfCard({ companyId, hasUyu }: { companyId: string; has
         <Download className="h-4 w-4 shrink-0 text-[var(--copilot-accent)] mt-0.5" aria-hidden />
       </div>
 
-      <div className="mt-4 flex flex-wrap items-end gap-3">
+      <div className="mt-3 flex flex-wrap items-end gap-3">
         {/* Currency */}
         <div className="flex flex-col gap-1">
           <label className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
@@ -702,7 +711,6 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
   const canWrite =
     modulePermissions["clientes"] === "write" || modulePermissions["clientes"] === "admin";
 
-  const [tab, setTab] = useState<TabId>("resumen");
   const [data, setData] = useState<Client360Payload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -726,25 +734,32 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [aliasError, setAliasError] = useState<string | null>(null);
 
-  const [showRawJson, setShowRawJson] = useState(false);
   const [collectionPrefill, setCollectionPrefill] = useState<import("@/lib/account-statement/build-account-statement-followup-prefill").CollectionFollowupInitialValues | null>(null);
   const [collectionPrefillKey, setCollectionPrefillKey] = useState(0);
-  const assistantRef = useRef<HTMLDivElement>(null);
-  const collectionFormRef = useRef<HTMLDivElement>(null);
 
-  function scrollToAssistant() {
-    assistantRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+  // ── Tab state ───────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<SectionNavId>("resumen");
 
-  function scrollToCollectionForm() {
-    collectionFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(SESSION_TAB_KEY);
+      if (saved && SECTION_NAV_TABS.some((t) => t.id === saved)) {
+        setActiveTab(saved as SectionNavId);
+      }
+    } catch { /* noop */ }
+  }, []);
+
+  function handleTabChange(id: SectionNavId) {
+    setActiveTab(id);
+    try { sessionStorage.setItem(SESSION_TAB_KEY, id); } catch { /* noop */ }
   }
 
   const handleSuggestFollowup = useCallback(
     (prefill: import("@/lib/account-statement/build-account-statement-followup-prefill").CollectionFollowupInitialValues) => {
       setCollectionPrefill(prefill);
       setCollectionPrefillKey((k) => k + 1);
-      collectionFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setActiveTab("cobranza");
+      try { sessionStorage.setItem(SESSION_TAB_KEY, "cobranza"); } catch { /* noop */ }
     },
     []
   );
@@ -941,6 +956,8 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
       data.overdue_usd > 0
     : false;
 
+  const commercialEvents = timelineEvents.filter((e) => e.kind !== "sync");
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
@@ -950,7 +967,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
       />
 
       {/* Breadcrumb */}
-      <div className="border-b border-[var(--copilot-border)] bg-[var(--copilot-card)] px-6 py-3">
+      <div className="border-b border-[var(--copilot-border)] bg-[var(--copilot-card)] px-6 py-2.5">
         <nav className="flex items-center gap-2 text-sm" aria-label="Ruta">
           <CopilotGhostLink
             href="/copilot/clientes"
@@ -966,269 +983,16 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
         </nav>
       </div>
 
-      {/* Header */}
-      {!loading && !error && data ? (
-        <div className="border-b border-[var(--copilot-border)] bg-[var(--copilot-card)] px-6 py-5">
-          {/* Identity row */}
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--copilot-accent-soft)] text-lg font-bold text-[var(--copilot-accent)]">
-                {data.summary.nombre_visible.charAt(0).toUpperCase()}
-              </span>
-              <div>
-                <h1 className="text-xl font-bold tracking-tight text-[var(--copilot-ink)]">
-                  {data.summary.nombre_visible}
-                </h1>
-                {data.summary.razon_social &&
-                  data.summary.razon_social !== data.summary.nombre_visible ? (
-                  <p className="text-sm text-[var(--copilot-ink-muted)]">
-                    {data.summary.razon_social}
-                  </p>
-                ) : null}
-                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-[var(--copilot-ink-muted)]">
-                  {data.summary.rut_documento ? (
-                    <span>RUT {data.summary.rut_documento}</span>
-                  ) : null}
-                  {data.summary.codigo ? (
-                    <span>Codigo {data.summary.codigo}</span>
-                  ) : null}
-                  {data.summary.industry ? (
-                    <span className="flex items-center gap-0.5">
-                      <Building2 className="h-3 w-3" aria-hidden />
-                      {data.summary.industry}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-            <QuickActions contactEmail={data.contacts[0]?.email} />
-          </div>
-
-          {/* Status badges */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            {debtStatus ? (
-              <span
-                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${debtStatus.cls}`}
-              >
-                {debtStatus.label}
-              </span>
-            ) : null}
-
-            {(() => {
-              const tone = riskTone(riskLabel);
-              return (
-                <span
-                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${tone.bg} ${tone.text} ${tone.border}`}
-                >
-                  Riesgo {riskLabel}
-                </span>
-              );
-            })()}
-
-            {data.insights.map((i) =>
-              i.active && i.id === "sin_recibos_recientes" ? (
-                <span
-                  key={i.id}
-                  className="inline-flex items-center gap-1 rounded-full border border-amber-200/80 bg-amber-50/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-900"
-                >
-                  Sin cobros recientes
-                </span>
-              ) : i.active && i.id === "actividad_reciente" ? (
-                <span
-                  key={i.id}
-                  className="inline-flex items-center gap-1 rounded-full border border-emerald-200/80 bg-emerald-50/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-800"
-                >
-                  Con actividad reciente
-                </span>
-              ) : null
-            )}
-
-            {hasMixedCurrency ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-sky-200/80 bg-sky-50/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-700">
-                Multi-moneda
-              </span>
-            ) : null}
-
-            {data.last_sync_at ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200/80 bg-emerald-50/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
-                <Clock className="h-3 w-3" aria-hidden />
-                Datos {formatRelativeDays(data.last_sync_at.slice(0, 10))}
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 rounded-full border border-slate-200/80 bg-slate-50/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
-                Sin datos recientes
-              </span>
-            )}
-          </div>
-
-          {/* KPI row — responsive grid */}
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-            <KpiChip
-              label="Deuda total UYU"
-              value={`$ ${data.debt_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
-              sub={
-                data.debt_uyu > 0 && data.overdue_uyu > 0
-                  ? `${Math.round((data.overdue_uyu / data.debt_uyu) * 100)}% de la deuda está vencida`
-                  : undefined
-              }
-              tone={data.debt_uyu > 0 ? "warning" : "neutral"}
-            />
-            <KpiChip
-              label="Deuda total USD"
-              value={`U$S ${data.debt_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
-              sub={
-                data.debt_usd > 0 && data.overdue_usd > 0
-                  ? `${Math.round((data.overdue_usd / data.debt_usd) * 100)}% de la deuda está vencida`
-                  : undefined
-              }
-              tone={data.debt_usd > 0 ? "warning" : "neutral"}
-            />
-            <KpiChip
-              label="Deuda vencida UYU"
-              value={`$ ${data.overdue_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
-              tone={data.overdue_uyu > 0 ? "danger" : "neutral"}
-            />
-            <KpiChip
-              label="Deuda vencida USD"
-              value={`U$S ${data.overdue_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
-              tone={data.overdue_usd > 0 ? "danger" : "neutral"}
-            />
-            <KpiChip
-              label="Facturas"
-              value={String(data.cuenta.comprobantes_count)}
-              sub="activas"
-            />
-            <KpiChip
-              label="Cobros"
-              value={String(data.cuenta.recibos_count)}
-              sub="registrados"
-            />
-            <KpiChip
-              label="Ultimo cobro"
-              value={
-                data.last_receipt_date
-                  ? formatRelativeDays(data.last_receipt_date)
-                  : "—"
-              }
-              tone={data.last_receipt_date ? "ok" : "warning"}
-            />
-            <KpiChip
-              label="Datos actualizados"
-              value={
-                data.last_sync_at
-                  ? formatRelativeDays(data.last_sync_at.slice(0, 10))
-                  : "—"
-              }
-              tone={data.last_sync_at ? "ok" : "warning"}
-            />
-          </div>
-        </div>
-      ) : null}
-
-      {!loading && !error && data ? (
-        <ClientNextStepBanner
-          data={data}
-          onNavigateTab={(t) => setTab(t as TabId)}
-          onScrollToAssistant={scrollToAssistant}
-          onScrollToCollectionForm={scrollToCollectionForm}
-        />
-      ) : null}
-
-      {/* Cobranza — bloque unificado */}
-      {!loading && !error && data ? (
-        <div className="border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.4)]">
-          <div className="border-b border-[var(--copilot-border)]/50 px-6 py-4">
-            <CopilotSectionTitle
-              title="Cobranza"
-              subtitle="Prepará el contacto, enviá el estado de cuenta y registrá la gestión."
-            />
-          </div>
-          {hasDebt ? (
-            <div ref={assistantRef} className="border-b border-[var(--copilot-border)]/50 px-6 py-4">
-              <CollectionMessageAssistant
-                clientName={data.summary.nombre_visible}
-                debtUyu={data.debt_uyu}
-                debtUsd={data.debt_usd}
-                overdueUyu={data.overdue_uyu}
-                overdueUsd={data.overdue_usd}
-                contactEmail={data.contacts.find((c) => c.email != null)?.email ?? null}
-                phone={data.summary.phone}
-              />
-            </div>
-          ) : null}
-          <div ref={collectionFormRef} className="px-6 py-4">
-            <CollectionFollowupForm
-              companyId={data.summary.company_id}
-              initialValues={collectionPrefill}
-              prefillKey={collectionPrefillKey}
-            />
-          </div>
-        </div>
-      ) : null}
-
-      {!loading && !error && data ? (
-        <CollapsibleSection
-          title="Lectura de Copilot"
-          subtitle="Análisis del agente de cliente (solo lectura, no modifica datos)"
-          defaultOpen={false}
-        >
-          <ClientAgentBlock
-            data={data}
-            onNavigateTab={(t) => setTab(t as TabId)}
-            onScrollToAssistant={scrollToAssistant}
-          />
-        </CollapsibleSection>
-      ) : null}
-
-      {/* Tabs — horizontal scroll on mobile */}
-      <div className="border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.55)]">
-        <nav
-          className="flex overflow-x-auto px-6 py-2 gap-1 scrollbar-none"
-          aria-label="Secciones ficha cliente"
-        >
-          {TABS.map((t) => {
-            const count =
-              t.id === "comprobantes"
-                ? data?.invoices.length
-                : t.id === "recibos"
-                  ? data?.receipts.length
-                  : t.id === "contactos"
-                    ? data?.contacts.length
-                    : null;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                  tab === t.id
-                    ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)]"
-                    : "text-[var(--copilot-ink-muted)] hover:bg-[rgba(44,40,37,0.06)]"
-                }`}
-              >
-                {t.label}
-                {count != null && count > 0 ? (
-                  <span className="rounded-full bg-white/90 px-1.5 py-0.5 text-[10px] font-semibold text-[var(--copilot-ink)]">
-                    {count}
-                  </span>
-                ) : null}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* Tab content */}
-      <div className="flex-1 space-y-6 overflow-auto px-6 py-6">
+      <div className="flex-1 overflow-auto">
         {loading ? (
-          <div className="flex items-center gap-2 text-sm text-[var(--copilot-ink-muted)]">
+          <div className="flex items-center gap-2 px-6 py-6 text-sm text-[var(--copilot-ink-muted)]">
             <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
             Cargando ficha…
           </div>
         ) : null}
 
         {error ? (
-          <div className="space-y-3">
+          <div className="space-y-3 px-6 py-6">
             <div className="rounded-xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-950">
               {error}
             </div>
@@ -1245,334 +1009,191 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
 
         {!loading && !error && data ? (
           <>
-            {/* ── RESUMEN ──────────────────────────────────────────────────── */}
-            {tab === "resumen" ? (
-              <div className="space-y-6">
-
-                {/* ── Formas de transferencia ─────────────────────────────── */}
-                {aliasesReady ? (
-                  <CopilotCard>
-                    <div className="flex items-start justify-between gap-2">
-                      <CopilotSectionTitle
-                        title="Formas de transferencia"
-                        subtitle="Textos, bancos, cuentas o razones sociales desde donde este cliente suele pagar."
-                      />
-                      {canWrite && !addingAlias ? (
-                        <button
-                          type="button"
-                          onClick={() => { setAddingAlias(true); setAliasError(null); }}
-                          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-border)] hover:text-[var(--copilot-ink)]"
-                        >
-                          <Plus className="h-3 w-3" />
-                          Agregar
-                        </button>
+            {/* ── Client header card ───────────────────────────────────── */}
+            <div className="border-b border-[var(--copilot-border)] bg-[var(--copilot-card)]">
+            <div className="px-5 pt-4 pb-2">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--copilot-accent-soft)] text-base font-bold text-[var(--copilot-accent)]">
+                    {data.summary.nombre_visible.charAt(0).toUpperCase()}
+                  </span>
+                  <div>
+                    <h1 className="text-xl font-bold tracking-tight text-[var(--copilot-ink)]">
+                      {data.summary.nombre_visible}
+                    </h1>
+                    {data.summary.razon_social &&
+                      data.summary.razon_social !== data.summary.nombre_visible ? (
+                      <p className="text-sm text-[var(--copilot-ink-muted)]">
+                        {data.summary.razon_social}
+                      </p>
+                    ) : null}
+                    <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-[var(--copilot-ink-muted)]">
+                      {data.summary.rut_documento ? (
+                        <span>RUT {data.summary.rut_documento}</span>
+                      ) : null}
+                      {data.summary.codigo ? (
+                        <span>Codigo {data.summary.codigo}</span>
                       ) : null}
                     </div>
+                  </div>
+                </div>
+              </div>
 
-                    {aliasError ? (
-                      <p className="mt-1 text-xs text-red-500">{aliasError}</p>
-                    ) : null}
-
-                    {/* Add form */}
-                    {addingAlias ? (
-                      <div className="mt-3 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-bg)] p-3 space-y-2">
-                        <input
-                          type="text"
-                          autoFocus
-                          value={aliasNewLabel}
-                          onChange={(e) => setAliasNewLabel(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") void handleAddAlias();
-                            if (e.key === "Escape") { setAddingAlias(false); setAliasNewLabel(""); setAliasNewNotes(""); }
-                          }}
-                          placeholder="Ej. DOLBY SOCIEDAD ANONIMA"
-                          maxLength={300}
-                          className="w-full rounded-lg border border-[var(--copilot-accent)]/40 bg-white px-3 py-1.5 text-sm text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
-                        />
-                        <input
-                          type="text"
-                          value={aliasNewNotes}
-                          onChange={(e) => setAliasNewNotes(e.target.value)}
-                          placeholder="Nota opcional (banco, cuenta…)"
-                          maxLength={500}
-                          className="w-full rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] focus:outline-none"
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => void handleAddAlias()}
-                            disabled={savingAlias || aliasNewLabel.trim().length < 3}
-                            className="inline-flex items-center gap-1 rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-                          >
-                            {savingAlias ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                            Guardar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setAddingAlias(false); setAliasNewLabel(""); setAliasNewNotes(""); setAliasError(null); }}
-                            className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-border)]"
-                          >
-                            Cancelar
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {/* Alias list */}
-                    {aliases.length > 0 ? (
-                      <ul className="mt-3 space-y-2">
-                        {aliases.map((alias) => (
-                          <li key={alias.id} className="rounded-lg border border-[var(--copilot-border)] px-3 py-2">
-                            {editingAliasId === alias.id ? (
-                              <div className="space-y-2">
-                                <input
-                                  type="text"
-                                  autoFocus
-                                  value={editingAliasLabel}
-                                  onChange={(e) => setEditingAliasLabel(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") void handleSaveEditAlias(alias.id);
-                                    if (e.key === "Escape") setEditingAliasId(null);
-                                  }}
-                                  maxLength={300}
-                                  className="w-full rounded-lg border border-[var(--copilot-accent)]/40 bg-white px-3 py-1.5 text-sm text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
-                                />
-                                <input
-                                  type="text"
-                                  value={editingAliasNotes}
-                                  onChange={(e) => setEditingAliasNotes(e.target.value)}
-                                  placeholder="Nota opcional"
-                                  maxLength={500}
-                                  className="w-full rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] focus:outline-none"
-                                />
-                                <div className="flex gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => void handleSaveEditAlias(alias.id)}
-                                    disabled={savingEditAlias || editingAliasLabel.trim().length < 3}
-                                    className="inline-flex items-center gap-1 rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-                                  >
-                                    {savingEditAlias ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                                    Guardar
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setEditingAliasId(null)}
-                                    className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-border)]"
-                                  >
-                                    Cancelar
-                                  </button>
-                                </div>
-                              </div>
-                            ) : confirmDeleteId === alias.id ? (
-                              <div className="space-y-2">
-                                <p className="text-xs font-medium text-[var(--copilot-ink)]">Eliminar forma de transferencia</p>
-                                <p className="text-xs text-[var(--copilot-ink-muted)]">Copilot dejará de usar este texto para sugerir pagos de este cliente.</p>
-                                <div className="flex gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => void handleDeleteAlias(alias.id)}
-                                    disabled={!!deletingAliasId}
-                                    className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-                                  >
-                                    {deletingAliasId === alias.id ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                                    Eliminar
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setConfirmDeleteId(null)}
-                                    className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-border)]"
-                                  >
-                                    Cancelar
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0">
-                                  <p className="truncate text-sm font-medium text-[var(--copilot-ink)]">{alias.label}</p>
-                                  {alias.notes ? (
-                                    <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">{alias.notes}</p>
-                                  ) : null}
-                                </div>
-                                {canWrite ? (
-                                  <div className="flex shrink-0 gap-1">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setEditingAliasId(alias.id);
-                                        setEditingAliasLabel(alias.label);
-                                        setEditingAliasNotes(alias.notes ?? "");
-                                        setAliasError(null);
-                                      }}
-                                      className="rounded-lg p-1.5 text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-border)] hover:text-[var(--copilot-accent)]"
-                                      title="Editar"
-                                    >
-                                      <PenLine className="h-3.5 w-3.5" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => { setConfirmDeleteId(alias.id); setAliasError(null); }}
-                                      className="rounded-lg p-1.5 text-[var(--copilot-ink-muted)] hover:bg-red-50 hover:text-red-600"
-                                      title="Eliminar"
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </button>
-                                  </div>
-                                ) : null}
-                              </div>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      !addingAlias && (
-                        <div className="mt-3 rounded-lg border border-dashed border-[var(--copilot-border)] px-4 py-5 text-center">
-                          <p className="text-sm text-[var(--copilot-ink-muted)]">Sin formas de transferencia registradas.</p>
-                          {data.transfer_method && (
-                            <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
-                              Valor anterior: <span className="font-medium">{data.transfer_method}</span>
-                              {canWrite ? " — usá Agregar para migrarlo al nuevo sistema." : ""}
-                            </p>
-                          )}
-                          {canWrite && !data.transfer_method && (
-                            <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
-                              Agregá nombres, bancos o referencias que aparezcan en los extractos.
-                            </p>
-                          )}
-                        </div>
-                      )
-                    )}
-                  </CopilotCard>
+              {/* Status badges */}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {debtStatus ? (
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${debtStatus.cls}`}
+                  >
+                    {debtStatus.label}
+                  </span>
                 ) : null}
 
-                <CopilotCard>
-                  <CopilotSectionTitle
-                    title="Datos del cliente"
-                    subtitle="Informacion comercial registrada para este cliente."
-                  />
-                  <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <div>
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        Razon social
-                      </dt>
-                      <dd className="mt-1 text-sm text-[var(--copilot-ink)]">
-                        {data.summary.razon_social || "—"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        Nombre
-                      </dt>
-                      <dd className="mt-1 text-sm text-[var(--copilot-ink)]">
-                        {data.summary.nombre_visible}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        Codigo en el sistema
-                      </dt>
-                      <dd className="mt-1 text-sm text-[var(--copilot-ink)]">
-                        {data.summary.codigo ?? "—"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        RUT
-                      </dt>
-                      <dd className="mt-1 text-sm text-[var(--copilot-ink)]">
-                        {data.summary.rut_documento ?? "—"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        Industria
-                      </dt>
-                      <dd className="mt-1 text-sm text-[var(--copilot-ink)]">
-                        {data.summary.industry ?? "—"}
-                      </dd>
-                    </div>
-                    {data.summary.commercial ? (
-                      <>
-                        <div>
-                          <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                            Condicion de pago
-                          </dt>
-                          <dd className="mt-1 text-sm text-[var(--copilot-ink)]">
-                            {data.summary.commercial.condicion_comercial ?? "—"}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                            Categoria
-                          </dt>
-                          <dd className="mt-1 text-sm text-[var(--copilot-ink)]">
-                            {data.summary.commercial.categoria ?? "—"}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                            Moneda
-                          </dt>
-                          <dd className="mt-1 text-sm text-[var(--copilot-ink)]">
-                            {data.summary.commercial.moneda_codigo ?? "—"}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                            Estado comercial
-                          </dt>
-                          <dd className="mt-1 text-sm text-[var(--copilot-ink)]">
-                            {data.summary.commercial.estado_comercial_activo === null
-                              ? "—"
-                              : data.summary.commercial.estado_comercial_activo
-                                ? "Activo"
-                                : "Inactivo"}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                            Limite de credito
-                          </dt>
-                          <dd className="mt-1 text-sm text-[var(--copilot-ink)]">
-                            {[
-                              data.summary.commercial.limite_credito_monto,
-                              data.summary.commercial.limite_credito_dias,
-                            ]
-                              .filter(Boolean)
-                              .join(" · ") || "—"}
-                          </dd>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="sm:col-span-2 lg:col-span-3">
-                        <p className="text-sm text-[var(--copilot-ink-muted)]">
-                          Sin datos comerciales disponibles aun. Categoria, condicion de
-                          pago y limite de credito aparecen tras la proxima actualizacion.
-                        </p>
-                      </div>
-                    )}
-                  </dl>
-                </CopilotCard>
+                {(() => {
+                  const tone = riskTone(riskLabel);
+                  return (
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${tone.bg} ${tone.text} ${tone.border}`}
+                    >
+                      Riesgo {riskLabel}
+                    </span>
+                  );
+                })()}
 
-                <CopilotCard>
-                  <CopilotSectionTitle
-                    title="Actividad reciente"
-                    subtitle="Facturas emitidas, cobros registrados y estado de actualizacion de datos."
+                {data.insights.map((i) =>
+                  i.active && i.id === "sin_recibos_recientes" ? (
+                    <span
+                      key={i.id}
+                      className="inline-flex items-center gap-1 rounded-full border border-amber-200/80 bg-amber-50/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-900"
+                    >
+                      Sin cobros recientes
+                    </span>
+                  ) : i.active && i.id === "actividad_reciente" ? (
+                    <span
+                      key={i.id}
+                      className="inline-flex items-center gap-1 rounded-full border border-emerald-200/80 bg-emerald-50/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-800"
+                    >
+                      Con actividad reciente
+                    </span>
+                  ) : null
+                )}
+
+                {hasMixedCurrency ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-sky-200/80 bg-sky-50/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-700">
+                    Multi-moneda
+                  </span>
+                ) : null}
+              </div>
+            </div>
+
+            <ContactsStrip contacts={data.contacts} companyPhone={data.summary.phone} />
+
+            {/* KPI grid */}
+            <div className="border-t border-[var(--copilot-border)]/40 px-5 py-3">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <KpiChip
+                  label="Deuda UYU"
+                  value={`$ ${data.debt_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
+                  tone={data.debt_uyu > 0 ? "warning" : "neutral"}
+                />
+                <KpiChip
+                  label="Deuda USD"
+                  value={`U$S ${data.debt_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
+                  tone={data.debt_usd > 0 ? "warning" : "neutral"}
+                />
+                <KpiChip
+                  label="Facturas pendientes"
+                  value={String(data.cuenta.comprobantes_count)}
+                />
+                <KpiChip
+                  label="Ultimo cobro"
+                  value={
+                    data.last_receipt_date
+                      ? formatRelativeDays(data.last_receipt_date)
+                      : "—"
+                  }
+                  tone={data.last_receipt_date ? "ok" : "warning"}
+                />
+              </div>
+            </div>
+            </div>
+
+            {/* ── Próximo paso ──────────────────────────────────────────── */}
+            <div className="border-b border-[var(--copilot-border)] px-5 py-4">
+              <ClientNextStepBanner
+                data={data}
+                onNavigateTab={() => handleTabChange("cuenta")}
+                onScrollToAssistant={() => handleTabChange("cobranza")}
+                onScrollToCollectionForm={() => handleTabChange("cobranza")}
+                onViewAccountStatement={() => handleTabChange("cuenta")}
+              />
+            </div>
+
+            {/* ── Real tab nav ───────────────────────────────────────────── */}
+            <Client360TabNav activeTab={activeTab} onTabChange={handleTabChange} />
+
+            {/* ── Tab: Resumen ───────────────────────────────────────────── */}
+            {activeTab === "resumen" ? (
+              <div className="space-y-4 px-5 py-4">
+                <ClientAgentBlock
+                  data={data}
+                  onNavigateTab={(tab) => handleTabChange(tab as SectionNavId)}
+                  onScrollToAssistant={() => handleTabChange("cobranza")}
+                />
+                <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/70 p-4 shadow-sm">
+                  <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
+                    Actividad reciente
+                  </p>
+                  <TimelineBlock
+                    events={timelineEvents}
+                    maxEvents={RESUMEN_ACTIVITY_LIMIT}
+                    commercialOnly
                   />
-                  <TimelineBlock events={timelineEvents} />
-                </CopilotCard>
+                  {commercialEvents.length > RESUMEN_ACTIVITY_LIMIT ? (
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange("cuenta")}
+                      className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
+                    >
+                      Ver actividad completa
+                      <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                  ) : null}
+                </div>
               </div>
             ) : null}
 
-            {/* ── ESTADO DE CUENTA ─────────────────────────────────────────── */}
-            {tab === "cuenta" ? (
-              <div className="space-y-4">
-                {/* PDF download card */}
-                <AccountStatementPdfCard companyId={companyId} hasUyu={data.debt_uyu > 0 || data.cuenta.ultimos_movimientos.some(m => m.kind === "factura")} />
+            {/* ── Tab: Cobranza ──────────────────────────────────────────── */}
+            {activeTab === "cobranza" ? (
+              <div className="space-y-4 px-5 py-4">
+                <CollectionMessageAssistant
+                  companyId={data.summary.company_id}
+                  clientName={data.summary.nombre_visible}
+                  debtUyu={data.debt_uyu}
+                  debtUsd={data.debt_usd}
+                  overdueUyu={data.overdue_uyu}
+                  overdueUsd={data.overdue_usd}
+                  contactEmail={data.contacts.find((c) => c.email != null)?.email ?? null}
+                  phone={data.summary.phone}
+                />
+                <CollectionFollowupForm
+                  companyId={data.summary.company_id}
+                  initialValues={collectionPrefill}
+                  prefillKey={collectionPrefillKey}
+                />
+              </div>
+            ) : null}
 
-                {/* Send flow card */}
+            {/* ── Tab: Estado de cuenta ──────────────────────────────────── */}
+            {activeTab === "cuenta" ? (
+              <div className="space-y-4 px-5 py-4">
+                <AccountStatementPdfCard
+                  companyId={companyId}
+                  hasUyu={data.debt_uyu > 0 || data.cuenta.ultimos_movimientos.some(m => m.kind === "factura")}
+                />
+
                 <AccountStatementSendCard
+                  companyId={companyId}
                   clientName={data.summary.nombre_visible ?? data.summary.razon_social}
                   email={data.contacts.find((c) => c.email)?.email ?? null}
                   phone={data.summary.phone}
@@ -1587,11 +1208,12 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   <p className="text-sm font-semibold text-[var(--copilot-ink)]">
                     Deuda actual del cliente
                   </p>
-                  <p className="mt-0.5 text-sm text-[var(--copilot-ink-muted)]">
+                  <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
                     Calculada con el saldo pendiente informado en las facturas. UYU y USD no se suman entre si.
                   </p>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+
+                <div className="grid gap-3 sm:grid-cols-2">
                   <CopilotCard className={warningFinancialCardClass}>
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
@@ -1601,23 +1223,21 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                         <TrendingDown className="h-4 w-4 text-rose-500 shrink-0" aria-hidden />
                       ) : null}
                     </div>
-                    <p className={`mt-2 text-2xl font-bold tabular-nums ${data.debt_uyu > 0 ? "text-amber-700" : "text-[var(--copilot-ink)]"}`}>
+                    <p className={`mt-1.5 text-2xl font-bold tabular-nums ${data.debt_uyu > 0 ? "text-amber-700" : "text-[var(--copilot-ink)]"}`}>
                       {`$ ${data.debt_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
                     </p>
                     {data.overdue_uyu > 0 ? (
-                      <div className="mt-2 space-y-0.5">
-                        <p className="text-xs font-medium text-rose-600">
-                          {`$ ${data.overdue_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`} de deuda vencida
-                          {data.debt_uyu > 0
-                            ? ` (${Math.round((data.overdue_uyu / data.debt_uyu) * 100)}% del total)`
-                            : ""}
-                        </p>
-                      </div>
+                      <p className="mt-1 text-xs font-medium text-rose-600">
+                        {`$ ${data.overdue_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`} de deuda vencida
+                        {data.debt_uyu > 0
+                          ? ` (${Math.round((data.overdue_uyu / data.debt_uyu) * 100)}%)`
+                          : ""}
+                      </p>
                     ) : (
                       <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">Sin deuda vencida</p>
                     )}
                     {data.last_receipt_date ? (
-                      <p className="mt-3 text-xs text-[var(--copilot-ink-muted)]">
+                      <p className="mt-2 text-xs text-[var(--copilot-ink-muted)]">
                         Ultimo cobro: {formatDateShort(data.last_receipt_date)}
                       </p>
                     ) : null}
@@ -1632,21 +1252,21 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                         <TrendingDown className="h-4 w-4 text-rose-500 shrink-0" aria-hidden />
                       ) : null}
                     </div>
-                    <p className={`mt-2 text-2xl font-bold tabular-nums ${data.debt_usd > 0 ? "text-amber-700" : "text-[var(--copilot-ink)]"}`}>
+                    <p className={`mt-1.5 text-2xl font-bold tabular-nums ${data.debt_usd > 0 ? "text-amber-700" : "text-[var(--copilot-ink)]"}`}>
                       {`U$S ${data.debt_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
                     </p>
                     {data.overdue_usd > 0 ? (
                       <p className="mt-1 text-xs font-medium text-rose-600">
                         {`U$S ${data.overdue_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`} de deuda vencida
                         {data.debt_usd > 0
-                          ? ` (${Math.round((data.overdue_usd / data.debt_usd) * 100)}% del total)`
+                          ? ` (${Math.round((data.overdue_usd / data.debt_usd) * 100)}%)`
                           : ""}
                       </p>
                     ) : (
                       <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">Sin deuda vencida</p>
                     )}
                     {data.last_invoice_date ? (
-                      <p className="mt-3 text-xs text-[var(--copilot-ink-muted)]">
+                      <p className="mt-2 text-xs text-[var(--copilot-ink-muted)]">
                         Ultima factura: {formatDateShort(data.last_invoice_date)}
                       </p>
                     ) : null}
@@ -1671,7 +1291,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                       {data.cuenta.ultimos_movimientos.map((m, idx) => (
                         <li
                           key={`${m.kind}-${m.fecha}-${idx}`}
-                          className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm"
+                          className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
                         >
                           <div className="flex items-center gap-2">
                             {m.kind === "factura" ? (
@@ -1700,164 +1320,398 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
               </div>
             ) : null}
 
-            {/* ── FACTURAS ─────────────────────────────────────────────────── */}
-            {tab === "comprobantes" ? (
-              <CopilotCard className="overflow-hidden p-0">
-                <div className="border-b border-[var(--copilot-border)] px-5 py-4">
-                  <CopilotSectionTitle
-                    title="Facturas"
-                    subtitle="Comprobantes emitidos a este cliente y su estado actual."
-                  />
+            {/* ── Tab: Facturas ──────────────────────────────────────────── */}
+            {activeTab === "facturas" ? (
+              <div className="px-5 py-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-[var(--copilot-ink)]">
+                    Facturas
+                    {data.invoices.length > 0 ? (
+                      <span className="ml-2 text-xs font-normal text-[var(--copilot-ink-muted)]">
+                        ({data.invoices.length})
+                      </span>
+                    ) : null}
+                  </p>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[720px] border-collapse text-left text-sm">
-                    <thead>
-                      <tr className="bg-[rgba(255,255,255,0.65)] text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        <th className="px-5 py-3">Fecha</th>
-                        <th className="px-5 py-3">Comprobante</th>
-                        <th className="px-5 py-3">Tipo</th>
-                        <th className="px-5 py-3">Importe</th>
-                        <th className="px-5 py-3">Saldo</th>
-                        <th className="px-5 py-3">Estado</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.invoices.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="px-5 py-8 text-[var(--copilot-ink-muted)]">
-                            No hay facturas para este cliente.
-                          </td>
+                <CopilotCard className="overflow-hidden p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+                      <thead>
+                        <tr className="bg-[rgba(255,255,255,0.65)] text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                          <th className="px-4 py-2.5">Fecha</th>
+                          <th className="px-4 py-2.5">Comprobante</th>
+                          <th className="px-4 py-2.5">Tipo</th>
+                          <th className="px-4 py-2.5">Importe</th>
+                          <th className="px-4 py-2.5">Saldo</th>
+                          <th className="px-4 py-2.5">Estado</th>
                         </tr>
-                      ) : (
-                        data.invoices.map((inv, i) => (
-                          <tr
-                            key={inv.id}
-                            className={i % 2 === 0 ? "bg-[var(--copilot-card)]" : "bg-[rgba(255,255,255,0.5)]"}
-                          >
-                            <td className="px-5 py-3">{formatDateShort(inv.issue_date)}</td>
-                            <td className="px-5 py-3 font-medium">{cleanSerieNumero(inv.serie_numero)}</td>
-                            <td className="px-5 py-3 text-[var(--copilot-ink-muted)]">{cleanInvoiceType(inv.tipo)}</td>
-                            <td className="px-5 py-3 tabular-nums">
-                              {`$ ${inv.importe.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
-                            </td>
-                            <td className="px-5 py-3 tabular-nums text-[var(--copilot-ink-muted)]">
-                              {inv.saldo}
-                            </td>
-                            <td className="px-5 py-3">
-                              <CopilotBadge tone={invoiceBadgeTone(inv.estado)}>
-                                {translateInvoiceStatus(inv.estado)}
-                              </CopilotBadge>
+                      </thead>
+                      <tbody>
+                        {data.invoices.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="px-4 py-8 text-[var(--copilot-ink-muted)]">
+                              No hay facturas para este cliente.
                             </td>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </CopilotCard>
-            ) : null}
-
-            {/* ── COBROS ───────────────────────────────────────────────────── */}
-            {tab === "recibos" ? (
-              <CopilotCard className="overflow-hidden p-0">
-                <div className="border-b border-[var(--copilot-border)] px-5 py-4">
-                  <CopilotSectionTitle
-                    title="Cobros"
-                    subtitle="Pagos registrados de este cliente."
-                  />
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[640px] border-collapse text-left text-sm">
-                    <thead>
-                      <tr className="bg-[rgba(255,255,255,0.65)] text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        <th className="px-5 py-3">Fecha</th>
-                        <th className="px-5 py-3">Importe</th>
-                        <th className="px-5 py-3">Medio de pago</th>
-                        <th className="px-5 py-3">Referencia</th>
-                        <th className="px-5 py-3">Estado</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.receipts.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="px-5 py-8 text-[var(--copilot-ink-muted)]">
-                            No hay cobros registrados para este cliente.
-                          </td>
-                        </tr>
-                      ) : (
-                        data.receipts.map((r, i) => (
-                          <tr
-                            key={r.id}
-                            className={i % 2 === 0 ? "bg-[var(--copilot-card)]" : "bg-[rgba(255,255,255,0.5)]"}
-                          >
-                            <td className="px-5 py-3">{formatDateShort(r.receipt_date)}</td>
-                            <td className="px-5 py-3 tabular-nums font-medium">
-                              {`$ ${r.importe.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
-                            </td>
-                            <td className="px-5 py-3 text-[var(--copilot-ink-muted)]">
-                              {r.medio ?? "—"}
-                            </td>
-                            <td className="px-5 py-3 text-[var(--copilot-ink-muted)]">
-                              {r.referencia ?? "—"}
-                            </td>
-                            <td className="px-5 py-3">
-                              <CopilotBadge
-                                tone={r.estado === "paid" ? "success" : "neutral"}
-                              >
-                                {translateReceiptStatus(r.estado)}
-                              </CopilotBadge>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </CopilotCard>
-            ) : null}
-
-            {/* ── CONTACTOS ────────────────────────────────────────────────── */}
-            {tab === "contactos" ? (
-              <div className="space-y-4">
-                <CopilotSectionTitle
-                  title="Contactos"
-                  subtitle="Personas disponibles para gestion de cobranza y contacto comercial."
-                />
-                <ContactsTab contacts={data.contacts} companyPhone={data.summary.phone} />
+                        ) : (
+                          data.invoices.map((inv, i) => (
+                            <tr
+                              key={inv.id}
+                              className={i % 2 === 0 ? "bg-[var(--copilot-card)]" : "bg-[rgba(255,255,255,0.5)]"}
+                            >
+                              <td className="px-4 py-2.5">{formatDateShort(inv.issue_date)}</td>
+                              <td className="px-4 py-2.5 font-medium">{cleanSerieNumero(inv.serie_numero)}</td>
+                              <td className="px-4 py-2.5 text-[var(--copilot-ink-muted)]">{cleanInvoiceType(inv.tipo)}</td>
+                              <td className="px-4 py-2.5 tabular-nums">
+                                {`$ ${inv.importe.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
+                              </td>
+                              <td className="px-4 py-2.5 tabular-nums text-[var(--copilot-ink-muted)]">
+                                {inv.saldo}
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <CopilotBadge tone={invoiceBadgeTone(inv.estado)}>
+                                  {translateInvoiceStatus(inv.estado)}
+                                </CopilotBadge>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </CopilotCard>
               </div>
             ) : null}
 
-            {/* ── ACTUALIZACION DE DATOS ───────────────────────────────────── */}
-            {tab === "zeta" ? (
-              <div className="space-y-4">
-                <CopilotCard>
-                  <CopilotSectionTitle
-                    title="Estado de actualizacion"
-                    subtitle="Cuando se actualizaron por ultima vez los datos de este cliente."
-                  />
-                  <ZetaSyncStatusCard rows={data.zeta_sync_rows} />
+            {/* ── Tab: Cobros ────────────────────────────────────────────── */}
+            {activeTab === "cobros" ? (
+              <div className="px-5 py-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-[var(--copilot-ink)]">
+                    Cobros
+                    {data.receipts.length > 0 ? (
+                      <span className="ml-2 text-xs font-normal text-[var(--copilot-ink-muted)]">
+                        ({data.receipts.length})
+                      </span>
+                    ) : null}
+                  </p>
+                </div>
+                <CopilotCard className="overflow-hidden p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+                      <thead>
+                        <tr className="bg-[rgba(255,255,255,0.65)] text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                          <th className="px-4 py-2.5">Fecha</th>
+                          <th className="px-4 py-2.5">Importe</th>
+                          <th className="px-4 py-2.5">Medio de pago</th>
+                          <th className="px-4 py-2.5">Referencia</th>
+                          <th className="px-4 py-2.5">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.receipts.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-8 text-[var(--copilot-ink-muted)]">
+                              No hay cobros registrados para este cliente.
+                            </td>
+                          </tr>
+                        ) : (
+                          data.receipts.map((r, i) => (
+                            <tr
+                              key={r.id}
+                              className={i % 2 === 0 ? "bg-[var(--copilot-card)]" : "bg-[rgba(255,255,255,0.5)]"}
+                            >
+                              <td className="px-4 py-2.5">{formatDateShort(r.receipt_date)}</td>
+                              <td className="px-4 py-2.5 tabular-nums font-medium">
+                                {`$ ${r.importe.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
+                              </td>
+                              <td className="px-4 py-2.5 text-[var(--copilot-ink-muted)]">
+                                {r.medio ?? "—"}
+                              </td>
+                              <td className="px-4 py-2.5 text-[var(--copilot-ink-muted)]">
+                                {r.referencia ?? "—"}
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <CopilotBadge
+                                  tone={r.estado === "paid" ? "success" : "neutral"}
+                                >
+                                  {translateReceiptStatus(r.estado)}
+                                </CopilotBadge>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </CopilotCard>
+              </div>
+            ) : null}
 
-                <CopilotCard>
-                  <button
-                    type="button"
-                    onClick={() => setShowRawJson((v) => !v)}
-                    className="flex w-full items-center justify-between gap-2 text-left"
-                  >
-                    <span className="text-sm font-semibold text-[var(--copilot-ink)]">
-                      Ver detalle tecnico
-                    </span>
-                    <ChevronDown
-                      className={`h-4 w-4 text-[var(--copilot-ink-muted)] transition-transform ${showRawJson ? "rotate-180" : ""}`}
-                      aria-hidden
-                    />
-                  </button>
-                  {showRawJson ? (
-                    <pre className="mt-4 max-h-[420px] overflow-auto rounded-xl bg-[rgba(44,40,37,0.04)] p-4 text-xs leading-relaxed text-[var(--copilot-ink)]">
-                      {safeJsonPreview(data.zeta_metadata)}
-                    </pre>
+            {/* ── Tab: Datos ─────────────────────────────────────────────── */}
+            {activeTab === "datos" ? (
+              <div className="px-5 py-4">
+                <div className="rounded-2xl border border-[var(--copilot-border)] bg-white p-5 shadow-sm">
+                  <p className="mb-4 text-[11px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
+                    Información del cliente
+                  </p>
+                  <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-3">
+                    <div>
+                      <dt className="text-[10px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                        Razón social
+                      </dt>
+                      <dd className="mt-0.5 text-sm font-medium text-[var(--copilot-ink)]">
+                        {data.summary.razon_social || "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                        Nombre
+                      </dt>
+                      <dd className="mt-0.5 text-sm font-medium text-[var(--copilot-ink)]">
+                        {data.summary.nombre_visible}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                        Código
+                      </dt>
+                      <dd className="mt-0.5 text-sm font-medium text-[var(--copilot-ink)]">
+                        {data.summary.codigo ?? "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                        RUT
+                      </dt>
+                      <dd className="mt-0.5 text-sm font-medium text-[var(--copilot-ink)]">
+                        {data.summary.rut_documento ?? "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                        Email
+                      </dt>
+                      <dd className="mt-0.5 text-sm font-medium text-[var(--copilot-ink)]">
+                        {data.contacts.find((c) => c.email)?.email ?? "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                        Teléfono
+                      </dt>
+                      <dd className="mt-0.5 text-sm font-medium text-[var(--copilot-ink)]">
+                        {data.summary.phone ?? "—"}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+            ) : null}
+
+            {/* ── Tab: Formas de transferencia ──────────────────────────── */}
+            {activeTab === "transferencias" ? (
+              <div className="px-5 py-4">
+                <div className="rounded-2xl border border-[var(--copilot-border)] bg-white p-5 shadow-sm">
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--copilot-ink)]">
+                        Formas de transferencia
+                      </p>
+                      <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
+                        Textos, bancos o razones sociales desde donde este cliente suele pagar.
+                      </p>
+                    </div>
+                    {canWrite && !addingAlias ? (
+                      <button
+                        type="button"
+                        onClick={() => { setAddingAlias(true); setAliasError(null); }}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50 hover:text-[var(--copilot-ink)]"
+                      >
+                        <Plus className="h-3 w-3" />
+                        Agregar
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {aliasError ? (
+                    <p className="mb-3 text-xs text-red-500">{aliasError}</p>
                   ) : null}
-                </CopilotCard>
+
+                  {aliasesReady ? (
+                    <>
+                      {addingAlias ? (
+                        <div className="mb-3 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-bg)] p-3 space-y-2">
+                          <input
+                            type="text"
+                            autoFocus
+                            value={aliasNewLabel}
+                            onChange={(e) => setAliasNewLabel(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") void handleAddAlias();
+                              if (e.key === "Escape") { setAddingAlias(false); setAliasNewLabel(""); setAliasNewNotes(""); }
+                            }}
+                            placeholder="Ej. DOLBY SOCIEDAD ANONIMA"
+                            maxLength={300}
+                            className="w-full rounded-lg border border-[var(--copilot-accent)]/40 bg-white px-3 py-1.5 text-sm text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
+                          />
+                          <input
+                            type="text"
+                            value={aliasNewNotes}
+                            onChange={(e) => setAliasNewNotes(e.target.value)}
+                            placeholder="Nota opcional (banco, cuenta…)"
+                            maxLength={500}
+                            className="w-full rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] focus:outline-none"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => void handleAddAlias()}
+                              disabled={savingAlias || aliasNewLabel.trim().length < 3}
+                              className="inline-flex items-center gap-1 rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                            >
+                              {savingAlias ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                              Guardar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setAddingAlias(false); setAliasNewLabel(""); setAliasNewNotes(""); setAliasError(null); }}
+                              className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-slate-50"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {aliases.length > 0 ? (
+                        <ul className="space-y-2">
+                          {aliases.map((alias) => (
+                            <li key={alias.id} className="rounded-xl border border-[var(--copilot-border)] px-4 py-3">
+                              {editingAliasId === alias.id ? (
+                                <div className="space-y-2">
+                                  <input
+                                    type="text"
+                                    autoFocus
+                                    value={editingAliasLabel}
+                                    onChange={(e) => setEditingAliasLabel(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") void handleSaveEditAlias(alias.id);
+                                      if (e.key === "Escape") setEditingAliasId(null);
+                                    }}
+                                    maxLength={300}
+                                    className="w-full rounded-lg border border-[var(--copilot-accent)]/40 bg-white px-3 py-1.5 text-sm text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={editingAliasNotes}
+                                    onChange={(e) => setEditingAliasNotes(e.target.value)}
+                                    placeholder="Nota opcional"
+                                    maxLength={500}
+                                    className="w-full rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] focus:outline-none"
+                                  />
+                                  <div className="flex gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => void handleSaveEditAlias(alias.id)}
+                                      disabled={savingEditAlias || editingAliasLabel.trim().length < 3}
+                                      className="inline-flex items-center gap-1 rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                                    >
+                                      {savingEditAlias ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                                      Guardar
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingAliasId(null)}
+                                      className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-slate-50"
+                                    >
+                                      Cancelar
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : confirmDeleteId === alias.id ? (
+                                <div className="space-y-2">
+                                  <p className="text-xs font-medium text-[var(--copilot-ink)]">Eliminar forma de transferencia</p>
+                                  <p className="text-xs text-[var(--copilot-ink-muted)]">Copilot dejará de usar este texto para sugerir pagos de este cliente.</p>
+                                  <div className="flex gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => void handleDeleteAlias(alias.id)}
+                                      disabled={!!deletingAliasId}
+                                      className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                                    >
+                                      {deletingAliasId === alias.id ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                                      Eliminar
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setConfirmDeleteId(null)}
+                                      className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-slate-50"
+                                    >
+                                      Cancelar
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm font-medium text-[var(--copilot-ink)]">{alias.label}</p>
+                                    {alias.notes ? (
+                                      <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">{alias.notes}</p>
+                                    ) : null}
+                                  </div>
+                                  {canWrite ? (
+                                    <div className="flex shrink-0 gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setEditingAliasId(alias.id);
+                                          setEditingAliasLabel(alias.label);
+                                          setEditingAliasNotes(alias.notes ?? "");
+                                          setAliasError(null);
+                                        }}
+                                        className="rounded-lg p-1.5 text-[var(--copilot-ink-muted)] hover:bg-slate-100 hover:text-[var(--copilot-accent)]"
+                                        title="Editar"
+                                      >
+                                        <PenLine className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => { setConfirmDeleteId(alias.id); setAliasError(null); }}
+                                        className="rounded-lg p-1.5 text-[var(--copilot-ink-muted)] hover:bg-red-50 hover:text-red-600"
+                                        title="Eliminar"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        !addingAlias && (
+                          <div className="rounded-xl border border-dashed border-[var(--copilot-border)] px-4 py-6 text-center">
+                            <p className="text-sm text-[var(--copilot-ink-muted)]">No hay formas de transferencia registradas.</p>
+                            {data.transfer_method ? (
+                              <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
+                                Valor anterior: <span className="font-medium">{data.transfer_method}</span>
+                                {canWrite ? " — usá Agregar para migrarlo." : ""}
+                              </p>
+                            ) : canWrite ? (
+                              <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
+                                Agregá nombres, bancos o referencias que aparezcan en los extractos.
+                              </p>
+                            ) : null}
+                          </div>
+                        )
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-[var(--copilot-ink-muted)]">Cargando…</p>
+                  )}
+                </div>
               </div>
             ) : null}
           </>
