@@ -5,7 +5,7 @@ import {
   isValidCopilotSessionCookie,
   parseCopilotSessionValue,
 } from "@/lib/copilot-session-cookie";
-import { isReadOnlyRole } from "@/lib/auth/permissions";
+import { isReadOnlyRole, isSuperAdmin } from "@/lib/auth/permissions";
 import { shouldBlockReadOnlyApiMutation } from "@/lib/auth/read-only-post-allowed";
 
 /** Rutas del módulo Copilot y APIs (excepto login/logout públicos). */
@@ -59,6 +59,28 @@ export function middleware(request: NextRequest) {
       loginUrl.pathname = "/login";
       loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
       return NextResponse.redirect(loginUrl);
+    }
+
+    // /copilot/admin y /api/copilot/admin/* son exclusivos de superadmin
+    const isAdminPath =
+      pathname === "/copilot/admin" ||
+      pathname.startsWith("/copilot/admin/") ||
+      pathname.startsWith("/api/copilot/admin");
+
+    if (isAdminPath) {
+      const parsed = parseCopilotSessionValue(sessionCookieValue);
+      if (!parsed || !isSuperAdmin(parsed.role ?? "")) {
+        if (pathname.startsWith("/api/")) {
+          return NextResponse.json(
+            { ok: false, error: "FORBIDDEN", message: "Solo superadmin puede acceder a esta sección." },
+            { status: 403 }
+          );
+        }
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = "/copilot/hoy";
+        redirectUrl.searchParams.set("blocked", "admin-access");
+        return NextResponse.redirect(redirectUrl);
+      }
     }
   }
 

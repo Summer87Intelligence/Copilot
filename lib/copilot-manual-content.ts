@@ -54,6 +54,7 @@ export const COPILOT_MANUAL_TOC_ORDER: Array<{ id: string; title: string }> = [
   { id: "navegacion", title: "Cómo moverse por Copilot" },
   { id: "inicio-sesion", title: "Inicio de sesión" },
   { id: "roles-permisos", title: "Roles y permisos" },
+  { id: "admin", title: "Panel administrativo" },
   { id: "hoy", title: "Hoy" },
   { id: "acciones", title: "Acciones" },
   { id: "alertas", title: "Alertas" },
@@ -109,6 +110,7 @@ export const COPILOT_MANUAL_WEB_SECTION_IDS = [
   "campana",
   "problemas",
   "roles-permisos",
+  "admin",
   "glosario-deuda",
 ] as const;
 

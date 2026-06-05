@@ -207,11 +207,63 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
     title: "Roles y permisos",
     includeInToc: true,
     blocks: [
-      { type: "paragraph", text: "Copilot tiene tres roles de usuario. La regla es simple: solo superadmin puede modificar datos. Los roles usuario y demo_readonly son de solo lectura operativa." },
-      { type: "roles", entries: [{"role":"superadmin","label":"Superadmin","description":"Acceso total. Puede leer y modificar cualquier dato del workspace."},{"role":"usuario","label":"Usuario · Solo lectura","description":"Puede navegar, consultar y descargar reportes. No puede modificar nada operativo."},{"role":"demo_readonly","label":"Modo demo · Solo lectura","description":"Igual que usuario. Diseñado para mostrar el sistema a clientes o invitados sin riesgo."}] },
-      { type: "bullets", items: ["Navegar por todas las secciones: Hoy, Acciones, Clientes, Cartera, Tesorería, Finanzas, Datos, Reportes, Agentes IA y Manual.","Ver dashboards, fichas de clientes, movimientos y deuda.","Abrir reportes en pantalla y descargar PDFs — son operaciones de lectura.","Generar vista previa del importador Santander (CSV, Excel o PDF) — no guarda ni modifica caja.","Ver agenda de cobranza, seguimientos y acciones sugeridas.","Consultar alertas y notificaciones.","Explorar Agentes IA y análisis generados.","Ver el estado de las integraciones y la salud técnica del sistema."] },
-      { type: "bullets", items: ["Cargar ingresos, egresos o ajustes en Tesorería.","Crear, editar, eliminar o anular movimientos de caja.","Crear pagos programados o recurrentes.","Marcar un pago como pagado o reprogramarlo.","Editar el saldo actual de caja.","Guardar o importar extractos bancarios.","Registrar gestiones de cobranza.","Cancelar o archivar seguimientos.","Modificar o guardar notas de clientes.","Ejecutar sincronizaciones manuales.","Cambiar configuración del workspace.","Crear, editar o cambiar roles de usuarios."] },
+      { type: "paragraph", text: "Copilot soporta seis roles de usuario. Solo superadmin tiene acceso total. Los roles operativos (cobranza, tesorería, contador) tienen acceso de escritura en sus módulos. Los roles usuario y demo_readonly son de solo lectura." },
+      { type: "roles", entries: [{"role":"superadmin","label":"Superadmin","description":"Acceso total. Puede leer y modificar cualquier dato del workspace. El único que puede administrar usuarios."},{"role":"cobranza","label":"Cobranza","description":"Puede modificar acciones y clientes. No accede a tesorería. Diseñado para el equipo de cobranza."},{"role":"tesoreria","label":"Tesorería","description":"Puede modificar tesorería. Acceso de lectura al resto. Diseñado para quien gestiona caja y pagos."},{"role":"contador","label":"Contador","description":"Solo lectura en todos los módulos incluyendo finanzas y reportes. No puede modificar datos."},{"role":"usuario","label":"Usuario · Solo lectura","description":"Puede navegar, consultar y descargar reportes. No puede modificar nada operativo."},{"role":"demo_readonly","label":"Modo demo · Solo lectura","description":"Igual que usuario. Diseñado para mostrar el sistema a clientes o invitados sin riesgo."}] },
+      { type: "callout", variant: "info", text: "Los permisos se configuran por módulo desde el Panel administrativo (solo superadmin). Los niveles son: No ver, Ver y Modificar. Un módulo en 'No ver' no aparece en el menú lateral." },
+      { type: "bullets", items: ["Navegar por todas las secciones permitidas según rol y permisos.","Ver dashboards, fichas de clientes, movimientos y deuda (donde haya acceso de lectura).","Abrir reportes en pantalla y descargar PDFs — son operaciones de lectura.","Generar vista previa del importador Santander — no guarda ni modifica caja.","Consultar alertas, notificaciones y Agentes IA."] },
+      { type: "bullets", items: ["Cargar ingresos, egresos o ajustes en Tesorería (requiere rol tesorería o superadmin).","Registrar gestiones de cobranza (requiere rol cobranza o superadmin).","Ejecutar sincronizaciones manuales (solo superadmin).","Crear, editar o cambiar roles de usuarios (solo superadmin vía Panel administrativo).","Acceder al Panel administrativo (solo superadmin)."] },
       { type: "bullets", items: ["Reporte de deudores.","Cobranza mensual.","Caja mensual.","Ventas netas.","Ejecutivo mensual.","Clientes principales.","Estado de cuenta (desde la ficha del cliente)."] },
+    ],
+  },
+  {
+    id: "admin",
+    title: "Panel administrativo",
+    includeInToc: true,
+    blocks: [
+      { type: "paragraph", text: "El Panel administrativo es exclusivo del superadmin. Permite crear usuarios, asignar roles y configurar qué puede ver y modificar cada persona en el workspace." },
+      { type: "callout", variant: "warning", text: "Solo superadmin puede acceder a /copilot/admin. Cualquier otro usuario que intente entrar es redirigido a Hoy." },
+      {
+        type: "subsection",
+        title: "Cómo crear un usuario",
+        blocks: [
+          { type: "steps", items: ["Ir a Panel administrativo → Nuevo usuario.","Ingresar email, nombre completo y rol.","Indicar un PIN temporal o dejarlo vacío para que se genere automáticamente.","Hacer clic en Crear usuario.","El PIN temporal se muestra UNA SOLA VEZ — anotarlo y entregarlo al usuario de forma segura.","El usuario puede cambiar su PIN luego desde el perfil (si aplica) o el superadmin puede resetearlo."] },
+        ],
+      },
+      {
+        type: "subsection",
+        title: "Roles disponibles",
+        blocks: [
+          { type: "bullets", items: ["Superadmin — acceso total, gestión de usuarios.","Cobranza — modificar acciones y clientes.","Tesorería — modificar tesorería.","Contador — solo lectura en todo.","Usuario — solo lectura, rol general.","Demo (solo lectura) — para mostrar el sistema sin riesgo."] },
+        ],
+      },
+      {
+        type: "subsection",
+        title: "Qué significa cada nivel de acceso",
+        blocks: [
+          { type: "bullets", items: ["No ver — el módulo no aparece en el menú lateral. Si el usuario entra manualmente, es redirigido a Hoy.","Ver — puede navegar, ver datos y descargar PDFs del módulo.","Modificar — puede leer y también crear, editar o eliminar registros en ese módulo.","Admin — acceso completo incluyendo configuración (solo para superadmin en módulo Admin)."] },
+        ],
+      },
+      {
+        type: "subsection",
+        title: "Cómo editar permisos de un usuario",
+        blocks: [
+          { type: "steps", items: ["En la tabla de usuarios, hacer clic en el ícono de lápiz (Editar permisos).","Se abre un modal con la tabla de módulos.","Para cada módulo, seleccionar el nivel: No ver / Ver / Modificar.","Hacer clic en Guardar cambios.","Los cambios aplican en el próximo acceso del usuario (o inmediatamente si recarga la página)."] },
+        ],
+      },
+      {
+        type: "subsection",
+        title: "Cómo resetear el PIN de un usuario",
+        blocks: [
+          { type: "steps", items: ["En la tabla de usuarios, hacer clic en el ícono de llave (Resetear PIN).","Confirmar la acción en el popup.","El nuevo PIN temporal se muestra una sola vez.","La sesión activa del usuario se invalida automáticamente."] },
+        ],
+      },
+      {
+        type: "subsection",
+        title: "Recomendaciones de seguridad",
+        blocks: [
+          { type: "bullets", items: ["No compartir la cuenta superadmin entre varias personas.","Crear una cuenta separada para cada persona del equipo.","Usar demo_readonly para mostrar el sistema a clientes externos.","Mantener siempre al menos un superadmin activo (el sistema lo bloquea si intentás desactivar el último).","El PIN temporal que se muestra al crear o resetear un usuario debe entregarse en forma segura (no por email sin encriptar).","Revisar periódicamente la lista de usuarios activos para desactivar accesos que ya no correspondan."] },
+        ],
+      },
     ],
   },
   {

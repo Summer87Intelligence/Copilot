@@ -11,6 +11,7 @@ import {
   FileText,
   Landmark,
   ListTodo,
+  ShieldCheck,
   TriangleAlert,
   Users,
   Wallet,
@@ -148,6 +149,13 @@ const COPILOT_NAV_SISTEMA: CopilotNavGroup = {
 export const COPILOT_NAV_ADMIN_GROUP: CopilotNavGroup = {
   sectionTitle: "Admin",
   items: [
+    {
+      href: "/copilot/admin",
+      label: "Panel administrativo",
+      shortLabel: "Admin",
+      description: "Usuarios, roles y permisos",
+      icon: ShieldCheck,
+    },
     {
       href: "/admin/companies",
       label: "Empresas",
