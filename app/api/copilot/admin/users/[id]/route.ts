@@ -122,3 +122,62 @@ export async function PATCH(
 
   return NextResponse.json({ ok: true, message: "Usuario actualizado." });
 }
+
+/**
+ * DELETE /api/copilot/admin/users/:id
+ * Soft-deletes a user (is_active=false, deleted_at=now()).
+ * Last superadmin cannot be deleted.
+ */
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const auth = await requireAdminContext(request);
+  if (!auth.ok) return auth.response;
+  const { admin, tenantCompanyId } = auth.ctx;
+
+  const params = await context.params;
+  const targetId = params.id?.trim();
+  if (!targetId) {
+    return NextResponse.json({ ok: false, message: "ID inválido." }, { status: 400 });
+  }
+
+  const { data: targetUser, error: fetchErr } = await admin
+    .from("app_users")
+    .select("id, role, is_active")
+    .eq("id", targetId)
+    .eq("company_id", tenantCompanyId)
+    .maybeSingle();
+
+  if (fetchErr || !targetUser) {
+    return NextResponse.json({ ok: false, message: "Usuario no encontrado." }, { status: 404 });
+  }
+
+  const currentRole = (targetUser as { role: string }).role?.toLowerCase();
+  if (currentRole === "superadmin") {
+    const safetyCheck = await admin
+      .from("app_users")
+      .select("id", { count: "exact" })
+      .eq("company_id", tenantCompanyId)
+      .eq("role", "superadmin")
+      .eq("is_active", true);
+    if ((safetyCheck.count ?? 0) <= 1) {
+      return NextResponse.json(
+        { ok: false, message: "No podés eliminar el único superadmin activo." },
+        { status: 409 }
+      );
+    }
+  }
+
+  const { error: deleteErr } = await admin
+    .from("app_users")
+    .update({ is_active: false, deleted_at: new Date().toISOString() })
+    .eq("id", targetId)
+    .eq("company_id", tenantCompanyId);
+
+  if (deleteErr) {
+    return NextResponse.json({ ok: false, message: deleteErr.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true, message: "Usuario eliminado." });
+}

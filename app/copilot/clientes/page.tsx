@@ -77,7 +77,12 @@ function matchesClientFilter(
   filter: ClientListFilter,
   search: string
 ): boolean {
-  if (search.trim() && !row.name.toLowerCase().includes(search.trim().toLowerCase())) return false;
+  if (search.trim()) {
+    const q = search.trim().toLowerCase();
+    const nameMatch = row.name.toLowerCase().includes(q);
+    const transferMatch = (row.transfer_method ?? "").toLowerCase().includes(q);
+    if (!nameMatch && !transferMatch) return false;
+  }
   const status = deriveClientStatus(row);
   if (filter === "with_debt") return row.debt_uyu > 0 || row.debt_usd > 0 || row.total_debt > 0;
   if (filter === "vencido") return status === "vencido" || status === "critico";
@@ -477,6 +482,11 @@ export default function CopilotClientesPage() {
                               {row.industry && row.industry !== "—" ? (
                                 <p className="mt-0.5 line-clamp-1 text-[11px] text-[var(--copilot-ink-muted)]">
                                   {row.industry}
+                                </p>
+                              ) : null}
+                              {row.transfer_method ? (
+                                <p className="mt-0.5 line-clamp-1 text-[11px] text-[var(--copilot-ink-muted)]">
+                                  {row.transfer_method}
                                 </p>
                               ) : null}
                             </td>

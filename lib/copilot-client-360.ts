@@ -151,6 +151,7 @@ export type Client360Payload = {
   last_receipt_date: string | null;
   last_invoice_date: string | null;
   last_sync_at: string | null;
+  transfer_method: string | null;
 };
 
 function resourceLabel(flow: string): string {
@@ -514,5 +515,6 @@ export async function loadClientCompany360(
     last_receipt_date: lastReceiptDate,
     last_invoice_date: lastInvoiceDate,
     last_sync_at: lastSyncAt,
+    transfer_method: str(crow.transfer_method) || null,
   };
 }

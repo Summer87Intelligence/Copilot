@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   BadgeCheck,
   Building2,
+  Check,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -17,11 +18,13 @@ import {
   Loader2,
   Mail,
   MessageCircle,
+  PenLine,
   RefreshCw,
   ShieldAlert,
   TrendingDown,
   User,
   Wallet,
+  X,
   XCircle,
 } from "lucide-react";
 
@@ -51,6 +54,7 @@ import {
   subtleLabelClass,
   warningFinancialCardClass,
 } from "@/components/copilot/ui/copilot-visual-system";
+import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 
 type TabId = "resumen" | "cuenta" | "comprobantes" | "recibos" | "contactos" | "zeta";
 
@@ -692,10 +696,18 @@ function AccountStatementPdfCard({ companyId, hasUyu }: { companyId: string; has
 // ─── Main view ────────────────────────────────────────────────────────────────
 
 export function CopilotClient360View({ companyId }: { companyId: string }) {
+  const { modulePermissions } = useCopilotPermissions();
+  const canWrite =
+    modulePermissions["clientes"] === "write" || modulePermissions["clientes"] === "admin";
+
   const [tab, setTab] = useState<TabId>("resumen");
   const [data, setData] = useState<Client360Payload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [editingTransferMethod, setEditingTransferMethod] = useState(false);
+  const [transferMethodDraft, setTransferMethodDraft] = useState("");
+  const [savingTransferMethod, setSavingTransferMethod] = useState(false);
   const [showRawJson, setShowRawJson] = useState(false);
   const [collectionPrefill, setCollectionPrefill] = useState<import("@/lib/account-statement/build-account-statement-followup-prefill").CollectionFollowupInitialValues | null>(null);
   const [collectionPrefillKey, setCollectionPrefillKey] = useState(0);
@@ -749,6 +761,26 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function handleSaveTransferMethod() {
+    if (savingTransferMethod) return;
+    setSavingTransferMethod(true);
+    try {
+      const res = await fetch(`/api/copilot/clients/${encodeURIComponent(companyId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transfer_method: transferMethodDraft.trim() || null }),
+      });
+      if (res.ok) {
+        setData((prev) =>
+          prev ? { ...prev, transfer_method: transferMethodDraft.trim() || null } : prev
+        );
+        setEditingTransferMethod(false);
+      }
+    } finally {
+      setSavingTransferMethod(false);
+    }
+  }
 
   const riskLabel = useMemo((): "Bajo" | "Medio" | "Alto" => {
     const hint = data?.insights.find((i) => i.id === "riesgo_basico");
@@ -1155,6 +1187,69 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                       </dt>
                       <dd className="mt-1 text-sm text-[var(--copilot-ink)]">
                         {data.summary.industry ?? "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                        Forma de transferencia
+                      </dt>
+                      <dd className="mt-1">
+                        {editingTransferMethod ? (
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              autoFocus
+                              value={transferMethodDraft}
+                              onChange={(e) => setTransferMethodDraft(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") void handleSaveTransferMethod();
+                                if (e.key === "Escape") setEditingTransferMethod(false);
+                              }}
+                              className="flex-1 rounded-lg border border-[var(--copilot-accent)]/40 bg-white px-2 py-1 text-sm text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
+                              placeholder="Ej. Transferencia BROU, Cheque, Efectivo…"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => void handleSaveTransferMethod()}
+                              disabled={savingTransferMethod}
+                              className="rounded-lg p-1.5 text-emerald-600 hover:bg-emerald-50"
+                              title="Guardar"
+                            >
+                              {savingTransferMethod ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Check className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingTransferMethod(false)}
+                              className="rounded-lg p-1.5 text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-border)]"
+                              title="Cancelar"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm text-[var(--copilot-ink)]">
+                              {data.transfer_method || "—"}
+                            </span>
+                            {canWrite ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setTransferMethodDraft(data.transfer_method ?? "");
+                                  setEditingTransferMethod(true);
+                                }}
+                                className="rounded-lg p-1 text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-border)] hover:text-[var(--copilot-accent)]"
+                                title="Editar forma de transferencia"
+                              >
+                                <PenLine className="h-3 w-3" />
+                              </button>
+                            ) : null}
+                          </div>
+                        )}
                       </dd>
                     </div>
                     {data.summary.commercial ? (

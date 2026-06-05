@@ -49,6 +49,12 @@ export type ClientPortfolioRow = {
   overdue_uyu?: number;
   overdue_usd?: number;
   has_mixed_currency?: boolean;
+  /** Días desde el vencimiento de la factura más antigua en mora (UYU). */
+  overdue_days_uyu?: number | null;
+  /** Días desde el vencimiento de la factura más antigua en mora (USD). */
+  overdue_days_usd?: number | null;
+  /** Forma de transferencia registrada en Copilot (no proviene de Zeta). */
+  transfer_method?: string | null;
 };
 
 export type ClientPortfolioContact = {
@@ -101,6 +107,12 @@ export type ClientCompanyDetail = {
   overdue_uyu?: number;
   overdue_usd?: number;
   has_mixed_currency?: boolean;
+  /** Días desde el vencimiento de la factura más antigua en mora (UYU). */
+  overdue_days_uyu?: number | null;
+  /** Días desde el vencimiento de la factura más antigua en mora (USD). */
+  overdue_days_usd?: number | null;
+  /** Forma de transferencia registrada en Copilot (no proviene de Zeta). */
+  transfer_method?: string | null;
 };
 
 export type ClientPortfolioSummary = {
@@ -122,6 +134,7 @@ type CompanyRow = {
   name: unknown;
   industry?: unknown;
   sector?: unknown;
+  transfer_method?: unknown;
 };
 
 type InvoiceRow = {
@@ -206,6 +219,28 @@ function localTodayYmd(): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+/** Days since the oldest overdue invoice due_date for a given currency. null if no overdue invoices. */
+function oldestOverdueDays(
+  invs: readonly InvoiceRow[],
+  currency: "UYU" | "USD",
+  todayYmd: string
+): number | null {
+  let oldest: string | null = null;
+  for (const inv of invs) {
+    if (isCreditNoteFromMetadata(inv.zeta_metadata)) continue;
+    const cur = String(inv.currency_code ?? "").trim().toUpperCase();
+    if (cur !== currency) continue;
+    const pending = num(inv.balance_amount);
+    const d = ymd(inv.due_date);
+    if (pending > 0 && d && d < todayYmd) {
+      if (!oldest || d < oldest) oldest = d;
+    }
+  }
+  if (!oldest) return null;
+  const msPerDay = 86_400_000;
+  return Math.floor((Date.parse(todayYmd) - Date.parse(oldest)) / msPerDay);
 }
 
 function currencyOf(inv: InvoiceRow): "UYU" | "USD" | null {
@@ -455,6 +490,12 @@ export async function getClientPortfolio(
     }
   }
 
+  const companiesById = new Map<string, CompanyRow>();
+  for (const c of companies) {
+    const cid = String(c.id ?? "").trim();
+    if (cid) companiesById.set(cid, c);
+  }
+
   const totalBillingAll = invoices.reduce((s, inv) => s + num(inv.total_amount), 0);
 
   const invoicesByCompany = new Map<string, InvoiceRow[]>();
@@ -536,6 +577,11 @@ export async function getClientPortfolio(
       : legacyRisk;
 
     const { contact_email, contact_phone } = pickPrimaryContactFields(cts);
+    const companyRaw = companiesById.get(company_id);
+    const transferMethod =
+      companyRaw?.transfer_method != null && String(companyRaw.transfer_method).trim()
+        ? String(companyRaw.transfer_method).trim()
+        : null;
 
     const row: ClientPortfolioRow = {
       company_id,
@@ -561,6 +607,9 @@ export async function getClientPortfolio(
       overdue_uyu: overdueUYU,
       overdue_usd: overdueUSD,
       has_mixed_currency: hasMixedCurrency,
+      overdue_days_uyu: overdueUYU > 0 ? oldestOverdueDays(invs, "UYU", todayYmd) : null,
+      overdue_days_usd: overdueUSD > 0 ? oldestOverdueDays(invs, "USD", todayYmd) : null,
+      transfer_method: transferMethod,
     };
     rows.push(row);
 
@@ -624,6 +673,7 @@ export async function getClientPortfolio(
       overdue_uyu: overdueUYU,
       overdue_usd: overdueUSD,
       has_mixed_currency: hasMixedCurrency,
+      transfer_method: transferMethod,
     };
   }
 

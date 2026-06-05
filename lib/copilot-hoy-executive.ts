@@ -78,6 +78,8 @@ export type DebtorCollectionRow = {
   phone?: string | null;
   contact_email?: string | null;
   contact_phone?: string | null;
+  /** Días desde el vencimiento de la factura más antigua en mora para esta moneda. */
+  overdueDays?: number | null;
   flags: {
     hasOverdue: boolean;
     slowCollection: boolean;
@@ -268,6 +270,7 @@ export function buildDebtorCollectionRows(
         deuda: makeMoneyAmount(r.debt_uyu ?? 0, "UYU"),
         vencido: hasOverdue ? makeMoneyAmount(vencidoAmt, "UYU") : null,
         antiguedad,
+        overdueDays: hasOverdue ? (r.overdue_days_uyu ?? null) : null,
         motivo: debtorRowMotivo(hasOverdue, slow),
         riesgo: r.risk,
         accion: debtorAccion(r, hasOverdue),
@@ -291,6 +294,7 @@ export function buildDebtorCollectionRows(
         deuda: makeMoneyAmount(r.debt_usd ?? 0, "USD"),
         vencido: hasOverdue ? makeMoneyAmount(vencidoAmt, "USD") : null,
         antiguedad,
+        overdueDays: hasOverdue ? (r.overdue_days_usd ?? null) : null,
         motivo: debtorRowMotivo(hasOverdue, slow),
         riesgo: r.risk,
         accion: debtorAccion(r, hasOverdue),

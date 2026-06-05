@@ -14,6 +14,7 @@ import {
   Plus,
   RefreshCw,
   ShieldCheck,
+  Trash2,
   UserCheck,
   UserMinus,
   Users,
@@ -31,6 +32,8 @@ import {
 } from "@/components/copilot/copilot-ui";
 import { MODULE_KEYS, accessLevelLabel, type AccessLevel, type ModuleKey } from "@/lib/auth/module-permissions";
 import { ROLE_LABELS, SUPPORTED_ROLES, type SupportedRole } from "@/lib/auth/role-permission-presets";
+
+const SIMPLE_ROLES: Array<"superadmin" | "usuario"> = ["superadmin", "usuario"];
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -193,7 +196,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
                 onChange={(e) => setRole(e.target.value as SupportedRole)}
                 className="w-full appearance-none rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2 pr-8 text-sm text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
               >
-                {SUPPORTED_ROLES.map((r) => (
+                {SIMPLE_ROLES.map((r) => (
                   <option key={r} value={r}>{ROLE_LABELS[r]}</option>
                 ))}
               </select>
@@ -275,6 +278,81 @@ function PinDisplayModal({ pin, onClose }: { pin: string; onClose: () => void })
   );
 }
 
+// ─── Delete User Modal ────────────────────────────────────────────────────────
+
+function DeleteUserModal({
+  user,
+  onClose,
+  onDeleted,
+}: {
+  user: AdminUser;
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const [confirm, setConfirm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const REQUIRED = "ELIMINAR";
+
+  async function handleDelete() {
+    if (confirm !== REQUIRED) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/copilot/admin/users/${user.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setError(data.message ?? "Error al eliminar.");
+        return;
+      }
+      onDeleted();
+    } catch {
+      setError("Error de conexión.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <ModalOverlay onClose={onClose}>
+      <div className="px-5 py-5">
+        <div className="mb-3 flex items-center gap-2">
+          <Trash2 className="h-5 w-5 text-rose-500" />
+          <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">Eliminar usuario</h2>
+        </div>
+        <p className="mb-1 text-xs text-[var(--copilot-ink-muted)]">
+          Se eliminará el acceso de <span className="font-semibold text-[var(--copilot-ink)]">{user.full_name}</span> ({user.email}). Esta acción no se puede deshacer.
+        </p>
+        <p className="mb-4 text-xs text-[var(--copilot-ink-muted)]">
+          Escribí <span className="font-mono font-bold text-rose-700">{REQUIRED}</span> para confirmar.
+        </p>
+        {error && (
+          <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</p>
+        )}
+        <input
+          type="text"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value.toUpperCase())}
+          placeholder={REQUIRED}
+          className="mb-4 w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm font-mono text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-rose-300"
+        />
+        <div className="flex justify-end gap-2">
+          <CopilotGhostButton onClick={onClose} disabled={loading}>Cancelar</CopilotGhostButton>
+          <button
+            type="button"
+            onClick={() => void handleDelete()}
+            disabled={confirm !== REQUIRED || loading}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+            Eliminar usuario
+          </button>
+        </div>
+      </div>
+    </ModalOverlay>
+  );
+}
+
 // ─── Edit Permissions Modal ───────────────────────────────────────────────────
 
 function EditPermissionsModal({
@@ -297,18 +375,17 @@ function EditPermissionsModal({
   const isSuperadmin = user.role === "superadmin";
   const visibleModules = isSuperadmin ? MODULE_KEYS : MODULE_KEYS.filter((k) => k !== "admin");
 
-  const accessOptions: Array<{ value: AccessLevel; label: string }> = isSuperadmin
-    ? [
-        { value: "none", label: "No ver" },
-        { value: "read", label: "Ver" },
-        { value: "write", label: "Modificar" },
-        { value: "admin", label: "Admin" },
-      ]
-    : [
-        { value: "none", label: "No ver" },
-        { value: "read", label: "Ver" },
-        { value: "write", label: "Modificar" },
-      ];
+  function accessLevelToChecks(level: AccessLevel): { canView: boolean; canEdit: boolean } {
+    if (level === "write" || level === "admin") return { canView: true, canEdit: true };
+    if (level === "read") return { canView: true, canEdit: false };
+    return { canView: false, canEdit: false };
+  }
+
+  function checksToAccessLevel(canView: boolean, canEdit: boolean): AccessLevel {
+    if (canEdit) return "write";
+    if (canView) return "read";
+    return "none";
+  }
 
   async function handleSave() {
     setLoading(true);
@@ -352,32 +429,47 @@ function EditPermissionsModal({
           <thead>
             <tr className="border-b border-[var(--copilot-border)]">
               <th className="pb-2 text-left font-semibold text-[var(--copilot-ink-muted)]">Módulo</th>
-              <th className="pb-2 text-left font-semibold text-[var(--copilot-ink-muted)]">Acceso</th>
+              <th className="pb-2 text-center font-semibold text-[var(--copilot-ink-muted)]">Ver</th>
+              <th className="pb-2 text-center font-semibold text-[var(--copilot-ink-muted)]">Modificar</th>
             </tr>
           </thead>
           <tbody>
-            {visibleModules.map((moduleKey) => (
-              <tr key={moduleKey} className="border-b border-[var(--copilot-border)]/50">
-                <td className="py-2 font-medium text-[var(--copilot-ink)]">{MODULE_LABELS[moduleKey]}</td>
-                <td className="py-2">
-                  <div className="relative">
-                    <select
-                      value={perms[moduleKey] ?? "none"}
-                      onChange={(e) =>
-                        setPerms((prev) => ({ ...prev, [moduleKey]: e.target.value as AccessLevel }))
-                      }
-                      disabled={isSuperadmin && moduleKey === "admin"}
-                      className="appearance-none rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1 pr-6 text-xs text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30 disabled:opacity-50"
-                    >
-                      {accessOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-[var(--copilot-ink-muted)]" />
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {visibleModules.map((moduleKey) => {
+              const level = perms[moduleKey] ?? "none";
+              const isLocked = isSuperadmin && moduleKey === "admin";
+              const { canView, canEdit } = accessLevelToChecks(level);
+              return (
+                <tr key={moduleKey} className="border-b border-[var(--copilot-border)]/50">
+                  <td className="py-2 font-medium text-[var(--copilot-ink)]">{MODULE_LABELS[moduleKey]}</td>
+                  <td className="py-2 text-center">
+                    <input
+                      type="checkbox"
+                      checked={canView || isLocked}
+                      disabled={isLocked}
+                      onChange={(e) => {
+                        const nextView = e.target.checked;
+                        const nextEdit = nextView ? canEdit : false;
+                        setPerms((prev) => ({ ...prev, [moduleKey]: checksToAccessLevel(nextView, nextEdit) }));
+                      }}
+                      className="h-3.5 w-3.5 accent-[var(--copilot-accent)] disabled:opacity-50"
+                    />
+                  </td>
+                  <td className="py-2 text-center">
+                    <input
+                      type="checkbox"
+                      checked={canEdit || isLocked}
+                      disabled={isLocked}
+                      onChange={(e) => {
+                        const nextEdit = e.target.checked;
+                        const nextView = nextEdit ? true : canView;
+                        setPerms((prev) => ({ ...prev, [moduleKey]: checksToAccessLevel(nextView, nextEdit) }));
+                      }}
+                      className="h-3.5 w-3.5 accent-[var(--copilot-accent)] disabled:opacity-50"
+                    />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -401,6 +493,7 @@ export default function AdminPanelPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [pendingPin, setPendingPin] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null);
 
   const [actionState, setActionState] = useState<Record<string, "loading" | "done">>({});
   const [roleChanging, setRoleChanging] = useState<string | null>(null);
@@ -492,7 +585,7 @@ export default function AdminPanelPage() {
         <div>
           <h1 className="text-base font-semibold text-[var(--copilot-ink)]">Panel administrativo</h1>
           <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-            Gestioná usuarios, roles y permisos de acceso al workspace.
+            Gestioná usuarios, roles y permisos de acceso a la empresa.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -543,7 +636,7 @@ export default function AdminPanelPage() {
       <CopilotCard className="overflow-hidden p-0">
         <div className="border-b border-[var(--copilot-border)] px-4 py-3">
           <CopilotSectionTitle
-            title="Usuarios del workspace"
+            title="Usuarios de la empresa"
             subtitle={`${users.length} usuario${users.length !== 1 ? "s" : ""} encontrado${users.length !== 1 ? "s" : ""}`}
           />
         </div>
@@ -595,13 +688,16 @@ export default function AdminPanelPage() {
                         ) : (
                           <div className="relative">
                             <select
-                              value={user.role}
+                              value={SIMPLE_ROLES.includes(user.role as "superadmin" | "usuario") ? user.role : user.role}
                               onChange={(e) => void handleRoleChange(user, e.target.value)}
                               className="appearance-none rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1 pr-6 text-xs text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
                             >
-                              {SUPPORTED_ROLES.map((r) => (
+                              {SIMPLE_ROLES.map((r) => (
                                 <option key={r} value={r}>{ROLE_LABELS[r]}</option>
                               ))}
+                              {!SIMPLE_ROLES.includes(user.role as "superadmin" | "usuario") && (
+                                <option value={user.role}>{ROLE_LABELS[user.role as SupportedRole] ?? user.role}</option>
+                              )}
                             </select>
                             <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-[var(--copilot-ink-muted)]" />
                           </div>
@@ -653,6 +749,14 @@ export default function AdminPanelPage() {
                               <KeyRound className="h-3.5 w-3.5" />
                             )}
                           </button>
+                          <button
+                            type="button"
+                            title="Eliminar usuario"
+                            onClick={() => setDeletingUser(user)}
+                            className="rounded-lg p-1.5 text-[var(--copilot-ink-muted)] hover:bg-rose-50 hover:text-rose-700"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -698,6 +802,16 @@ export default function AdminPanelPage() {
           onClose={() => setEditingUser(null)}
           onSaved={() => {
             setEditingUser(null);
+            void loadUsers();
+          }}
+        />
+      )}
+      {deletingUser && (
+        <DeleteUserModal
+          user={deletingUser}
+          onClose={() => setDeletingUser(null)}
+          onDeleted={() => {
+            setDeletingUser(null);
             void loadUsers();
           }}
         />

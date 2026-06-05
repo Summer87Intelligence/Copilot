@@ -284,7 +284,11 @@ function DebtorTable({
                     )}
                   </td>
                   <td className="px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)]">
-                    {row.antiguedad}
+                    {row.flags.hasOverdue && (row.overdueDays ?? 0) > 0
+                      ? `${row.overdueDays} días`
+                      : row.flags.hasOverdue
+                        ? row.antiguedad
+                        : "—"}
                   </td>
                   <td className="px-3 py-1.5">
                     <DebtorRowActions row={row} />
