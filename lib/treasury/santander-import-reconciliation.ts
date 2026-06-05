@@ -42,6 +42,10 @@ export type SantanderMatchHit = {
   confidence: number;
   amountDelta: number;
   dayDelta: number;
+  /** Human-readable match reason, e.g. "Forma de transferencia" */
+  matchReason?: string;
+  /** The raw transfer_method value that produced the match */
+  transferMethodMatched?: string;
 };
 
 export type ZetaReceiptMatchInput = {
@@ -58,6 +62,7 @@ export type ClientMatchInput = {
   name: string;
   debtUyu: number;
   debtUsd: number;
+  transferMethod?: string | null;
 };
 
 export type EnrichedSantanderImportRow = {
@@ -208,6 +213,77 @@ function scoreClientHint(
   };
 }
 
+const GENERIC_BANK_TOKENS = new Set([
+  "banco", "transferencia", "recibida", "recibido", "credito", "debito",
+  "cuenta", "santander", "brou", "itau", "bbva", "pago", "empresa",
+  "del", "los", "las", "por", "con", "sin", "una", "los",
+  "sa", "sas", "srl", "ltda", "spa",
+]);
+
+export function normalizeBankMatchText(value: string): string {
+  return normalizeText(value);
+}
+
+function isTransferMethodUsable(tm: string | null | undefined): tm is string {
+  if (!tm) return false;
+  const norm = normalizeText(tm);
+  if (norm.length < 5) return false;
+  const significantTokens = norm
+    .split(" ")
+    .filter((t) => t.length > 1 && !GENERIC_BANK_TOKENS.has(t));
+  return significantTokens.length >= 1;
+}
+
+function scoreTransferMethodHint(
+  row: SantanderParsedMovement,
+  client: ClientMatchInput
+): SantanderMatchHit | null {
+  if (!isTransferMethodUsable(client.transferMethod)) return null;
+
+  const normDesc = normalizeText(row.description);
+  const normTM = normalizeText(client.transferMethod);
+
+  // Primary: transfer method text is a substring of the bank description
+  if (normDesc.includes(normTM)) {
+    return {
+      source: "client",
+      id: client.id,
+      label: client.name,
+      confidence: 75,
+      amountDelta: 0,
+      dayDelta: 0,
+      matchReason: "Forma de transferencia",
+      transferMethodMatched: client.transferMethod,
+    };
+  }
+
+  // Secondary: significant token overlap excluding generic bank tokens
+  const tmTokens = new Set(
+    normTM.split(" ").filter((t) => t.length > 2 && !GENERIC_BANK_TOKENS.has(t))
+  );
+  const descTokens = new Set(
+    normDesc.split(" ").filter((t) => t.length > 2 && !GENERIC_BANK_TOKENS.has(t))
+  );
+  if (tmTokens.size === 0) return null;
+
+  let hits = 0;
+  for (const t of tmTokens) if (descTokens.has(t)) hits++;
+  if (hits < 2) return null;
+
+  const overlap = hits / Math.max(tmTokens.size, descTokens.size);
+  const confidence = Math.min(70, Math.round(35 + overlap * 50));
+  return {
+    source: "client",
+    id: client.id,
+    label: client.name,
+    confidence,
+    amountDelta: 0,
+    dayDelta: 0,
+    matchReason: "Forma de transferencia",
+    transferMethodMatched: client.transferMethod,
+  };
+}
+
 function bestMatch(matches: SantanderMatchHit[]): SantanderMatchHit | null {
   if (matches.length === 0) return null;
   return [...matches].sort((a, b) => b.confidence - a.confidence)[0] ?? null;
@@ -283,14 +359,20 @@ function resolveStatus(
   }
 
   if ((treasury && treasury.confidence >= 55) || (zeta && zeta.confidence >= 55) || (top && top.source === "client")) {
+    let decisionHint: string;
+    if (top?.source === "client") {
+      decisionHint =
+        top.matchReason === "Forma de transferencia"
+          ? "El cliente coincide por su forma de transferencia registrada; conviene validar manualmente."
+          : "El nombre del cliente aparece en la descripción; conviene validar manualmente.";
+    } else {
+      decisionHint = "Coincidencia parcial por monto, fecha o texto.";
+    }
     return {
       status: "possible",
       statusLabel: SANTANDER_STATUS_LABELS.possible,
       suggestedAction: "Ver detalle",
-      decisionHint:
-        top?.source === "client"
-          ? "El nombre del cliente aparece en la descripción; conviene validar manualmente."
-          : "Coincidencia parcial por monto, fecha o texto.",
+      decisionHint,
       confidence: top?.confidence ?? null,
     };
   }
@@ -335,8 +417,15 @@ export function enrichSantanderImportRows(input: {
       if (hit) matches.push(hit);
     }
     for (const client of input.clients) {
-      const hit = scoreClientHint(row, client);
-      if (hit) matches.push(hit);
+      const nameHit = scoreClientHint(row, client);
+      const tmHit = scoreTransferMethodHint(row, client);
+      if (tmHit && nameHit) {
+        matches.push(tmHit.confidence >= nameHit.confidence ? tmHit : nameHit);
+      } else if (tmHit) {
+        matches.push(tmHit);
+      } else if (nameHit) {
+        matches.push(nameHit);
+      }
     }
 
     const duplicate = input.existingExternalIds.has(row.externalId);

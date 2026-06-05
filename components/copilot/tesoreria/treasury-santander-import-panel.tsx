@@ -537,6 +537,29 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
               </p>
             </div>
 
+            {detailRow.matches.filter((m) => m.matchReason === "Forma de transferencia").map((m) => (
+              <div
+                key={`tm-${m.id}`}
+                className="mt-4 rounded-xl border border-blue-500/30 bg-blue-500/5 p-3"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                  Cliente sugerido por forma de transferencia
+                </p>
+                <p className="mt-1 text-sm font-medium text-[var(--copilot-ink)]">{m.label}</p>
+                {m.transferMethodMatched ? (
+                  <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
+                    Forma registrada: {m.transferMethodMatched}
+                  </p>
+                ) : null}
+                <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
+                  Texto detectado en extracto: {detailRow.description}
+                </p>
+                <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
+                  Confianza: {m.confidence}%
+                </p>
+              </div>
+            ))}
+
             {detailRow.matches.length > 0 ? (
               <div className="mt-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
@@ -554,7 +577,7 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
                           ? "Movimiento Tesorería"
                           : m.source === "zeta_receipt"
                             ? "Recibo Zeta"
-                            : "Cliente"}
+                            : m.matchReason ?? "Cliente"}
                         {" · "}
                         {m.confidence}% · Δ monto {m.amountDelta.toFixed(2)} · Δ días {m.dayDelta}
                       </span>

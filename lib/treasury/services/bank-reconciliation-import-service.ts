@@ -106,18 +106,22 @@ async function loadClients(
 ): Promise<ClientMatchInput[]> {
   const { data, error } = await supabase
     .from("proto_companies")
-    .select("id, name")
+    .select("id, name, transfer_method")
     .eq("workspace_company_id", tenantCompanyId)
     .eq("is_active", true)
     .limit(3000);
   if (error || !data) return [];
   return data.map((row) => {
-    const r = row as { id: string; name: string | null };
+    const r = row as { id: string; name: string | null; transfer_method?: string | null };
+    const tm = typeof r.transfer_method === "string" && r.transfer_method.trim()
+      ? r.transfer_method.trim()
+      : null;
     return {
       id: r.id,
       name: r.name ?? "Cliente",
       debtUyu: 0,
       debtUsd: 0,
+      transferMethod: tm,
     };
   });
 }
