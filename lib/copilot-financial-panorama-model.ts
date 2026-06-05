@@ -313,7 +313,7 @@ export function buildPanoramaExecutiveLines(input: {
   for (const c of input.currencies) {
     const prefix = input.currencies.length > 1 ? `${c.code}: ` : "";
     lines.push(
-      `${prefix}El negocio generó ingresos netos en el período; se cobró ${formatPanoramaRate(c.collectionRate)} del neto.`
+      `${prefix}El negocio generó ventas en el período; se cobró ${formatPanoramaRate(c.collectionRate)} de lo facturado.`
     );
     if (c.pending > 0) {
       lines.push(

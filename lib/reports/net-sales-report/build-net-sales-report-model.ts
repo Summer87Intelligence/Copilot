@@ -1,7 +1,19 @@
+import { dedupeZetaShadowInvoicesForReporting } from "@/lib/copilot-zeta-invoice-report-dedup";
 import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
 import type { DataRow } from "@/lib/data/proto-operational-read-repository";
+import { parseZetaLegacyRegistroIdFromInvoiceNumber } from "@/lib/integrations/zeta/zeta-proto-invoice-registro-match";
 
 export type NetSalesReportCurrency = "UYU" | "USD";
+
+export type NetSalesReportInvoiceRow = {
+  invoiceId: string;
+  issueDate: string;
+  invoiceNumber: string;
+  clientName: string;
+  currency: NetSalesReportCurrency;
+  amount: number;
+  isCreditNote: boolean;
+};
 
 export type NetSalesReportRow = {
   companyId: string;
@@ -29,6 +41,7 @@ export type NetSalesReportModel = {
   period: NetSalesReportPeriod;
   currency: NetSalesReportCurrency;
   rows: NetSalesReportRow[];
+  invoiceRows: NetSalesReportInvoiceRow[];
   totals: {
     clientCount: number;
     invoiceCount: number;
@@ -36,6 +49,7 @@ export type NetSalesReportModel = {
     creditNoteCount: number;
     creditNoteTotal: number;
     netSales: number;
+    invoiceRowsTotal: number;
   };
 };
 
@@ -94,6 +108,65 @@ function isValidInvoice(
   return true;
 }
 
+/** Número legible para PDF: preferir Serie-Número (p. ej. A-2944). */
+export function formatNetSalesInvoiceDisplayNumber(
+  invoiceNumber: string,
+  zetaMetadata: unknown
+): string {
+  if (zetaMetadata !== null && zetaMetadata !== undefined && typeof zetaMetadata === "object" && !Array.isArray(zetaMetadata)) {
+    const v1 = (zetaMetadata as Record<string, unknown>).zeta_customer_voucher_v1;
+    if (v1 !== null && v1 !== undefined && typeof v1 === "object" && !Array.isArray(v1)) {
+      const rec = v1 as Record<string, unknown>;
+      const serie = String(rec.serie ?? "").trim();
+      const numero = String(rec.numero ?? "").trim();
+      if (serie && numero) return `${serie.toUpperCase()}-${numero}`;
+    }
+  }
+
+  const num = invoiceNumber.trim();
+  if (!num) return "—";
+
+  const ccv1Match = /:([A-Za-z]+):0*(\d+)\s*$/.exec(num);
+  if (ccv1Match) return `${ccv1Match[1].toUpperCase()}-${ccv1Match[2]}`;
+
+  const legacyRegistro = parseZetaLegacyRegistroIdFromInvoiceNumber(num);
+  if (legacyRegistro) return legacyRegistro;
+
+  return num;
+}
+
+function buildInvoiceRows(
+  filtered: DataRow[],
+  companyNames: Record<string, string>,
+  currency: NetSalesReportCurrency
+): NetSalesReportInvoiceRow[] {
+  const rows: NetSalesReportInvoiceRow[] = filtered.map((row) => {
+    const companyId = getString(row, "company_id");
+    const rawAmount = getNumber(row, "total_amount");
+    const isNC = isCreditNoteFromMetadata(row.zeta_metadata);
+    return {
+      invoiceId: getString(row, "id"),
+      issueDate: getString(row, "issue_date"),
+      invoiceNumber: formatNetSalesInvoiceDisplayNumber(
+        getString(row, "invoice_number"),
+        row.zeta_metadata
+      ),
+      clientName: companyNames[companyId] ?? "Cliente desconocido",
+      currency,
+      amount: isNC ? -rawAmount : rawAmount,
+      isCreditNote: isNC,
+    };
+  });
+
+  rows.sort((a, b) => {
+    if (a.issueDate !== b.issueDate) return a.issueDate.localeCompare(b.issueDate);
+    if (a.clientName !== b.clientName) return a.clientName.localeCompare(b.clientName, "es");
+    return a.invoiceNumber.localeCompare(b.invoiceNumber, "es");
+  });
+
+  return rows;
+}
+
 export function buildNetSalesReportModel(
   input: BuildNetSalesReportModelInput
 ): NetSalesReportModel {
@@ -101,7 +174,12 @@ export function buildNetSalesReportModel(
   const at = generatedAt ?? new Date();
   const { from, to } = netSalesMonthRange(year, month);
 
-  const filtered = invoices.filter((r) => isValidInvoice(r, from, to, currency));
+  const filtered = dedupeZetaShadowInvoicesForReporting(
+    invoices.filter((r) => isValidInvoice(r, from, to, currency))
+  );
+
+  const invoiceRows = buildInvoiceRows(filtered, companyNames, currency);
+  const invoiceRowsTotal = invoiceRows.reduce((s, r) => s + r.amount, 0);
 
   // Aggregate per client
   type ClientAccum = {
@@ -182,6 +260,7 @@ export function buildNetSalesReportModel(
     },
     currency,
     rows,
+    invoiceRows,
     totals: {
       clientCount: rows.length,
       invoiceCount: rows.reduce((s, r) => s + r.invoiceCount, 0),
@@ -189,6 +268,7 @@ export function buildNetSalesReportModel(
       creditNoteCount: rows.reduce((s, r) => s + r.creditNoteCount, 0),
       creditNoteTotal: totalNC,
       netSales: totalNet,
+      invoiceRowsTotal,
     },
   };
 }

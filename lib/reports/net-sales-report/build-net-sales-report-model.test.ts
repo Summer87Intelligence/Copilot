@@ -172,4 +172,77 @@ describe("buildNetSalesReportModel", () => {
     expect(result.totals.netSales).toBe(0);
     expect(result.totals.clientCount).toBe(0);
   });
+
+  it("deduplica CCV1 + legacy ZETA:{RegistroId} (caso DOBSURA jun-2026)", () => {
+    const companyId = "6e50f5e7-161a-48c2-af38-be209ab6f330";
+    const result = buildNetSalesReportModel({
+      companyNames: { [companyId]: "DOBSURA CORPORATION SA" },
+      year: 2026,
+      month: 6,
+      currency: "USD",
+      invoices: [
+        inv({
+          id: "ccv1",
+          company_id: companyId,
+          issue_date: "2026-06-04",
+          total_amount: 530.7,
+          currency_code: "USD",
+          invoice_number: "ZETA:CCV1:0:33:A:2944",
+          zeta_metadata: { zeta_customer_voucher_v1: { serie: "A", numero: "2944" } },
+        }),
+        inv({
+          id: "legacy",
+          company_id: companyId,
+          issue_date: "2026-06-04",
+          total_amount: 530.7,
+          currency_code: "USD",
+          invoice_number: "ZETA:2748",
+          zeta_metadata: { zeta_reconciliation: { source: "saldos" } },
+        }),
+      ],
+    });
+
+    expect(result.totals.invoiceCount).toBe(1);
+    expect(result.totals.netSales).toBeCloseTo(530.7, 2);
+    expect(result.rows[0]?.clientName).toBe("DOBSURA CORPORATION SA");
+    expect(result.rows[0]?.invoiceCount).toBe(1);
+
+    expect(result.invoiceRows).toHaveLength(1);
+    expect(result.invoiceRows[0]).toMatchObject({
+      issueDate: "2026-06-04",
+      invoiceNumber: "A-2944",
+      clientName: "DOBSURA CORPORATION SA",
+      currency: "USD",
+      amount: 530.7,
+      isCreditNote: false,
+    });
+    expect(result.totals.invoiceRowsTotal).toBeCloseTo(530.7, 2);
+    expect(result.totals.invoiceRowsTotal).toBeCloseTo(result.totals.netSales, 2);
+  });
+
+  it("invoiceRows respeta filtro de mes y moneda", () => {
+    const result = buildNetSalesReportModel({
+      ...BASE,
+      invoices: [
+        inv({ id: "i1", issue_date: "2026-05-10", currency_code: "UYU", total_amount: 100 }),
+        inv({ id: "i2", issue_date: "2026-06-01", currency_code: "UYU", total_amount: 999 }),
+        inv({ id: "i3", issue_date: "2026-05-12", currency_code: "USD", total_amount: 999 }),
+      ],
+    });
+    expect(result.invoiceRows).toHaveLength(1);
+    expect(result.invoiceRows[0]?.invoiceId).toBe("i1");
+  });
+
+  it("invoiceRowsTotal coincide con la suma de importes firmados", () => {
+    const result = buildNetSalesReportModel({
+      ...BASE,
+      invoices: [
+        inv({ id: "i1", total_amount: 1000, zeta_metadata: null }),
+        inv({ id: "i2", total_amount: 200, zeta_metadata: ncMetadata(112) }),
+      ],
+    });
+    const sum = result.invoiceRows.reduce((s, r) => s + r.amount, 0);
+    expect(sum).toBeCloseTo(result.totals.invoiceRowsTotal, 2);
+    expect(result.totals.invoiceRowsTotal).toBeCloseTo(result.totals.netSales, 2);
+  });
 });

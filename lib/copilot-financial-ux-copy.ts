@@ -37,7 +37,7 @@ export const FINANCIAL_UX_COPY = {
     "El rango seleccionado incluye facturación previa al inicio operativo de sincronización (2026-01-01). Algunas cobranzas históricas podrían no estar disponibles en el sistema.",
   historicalPartialBadge: "Histórico parcial",
   kpiIssuedTooltip:
-    "Suma de facturas emitidas dentro del rango seleccionado. Excluye notas de crédito y anuladas.",
+    "Suma de facturas emitidas dentro del rango seleccionado.",
   kpiCollectedTooltip:
     "Pagos registrados en el sistema desde el inicio operativo de sincronización.",
   kpiPendingTooltip:
@@ -47,13 +47,13 @@ export const FINANCIAL_UX_COPY = {
   kpiEffectivenessTooltipPreSync:
     "Relación entre facturación emitida y cobranzas registradas dentro del período. Puede estar subestimado si el período incluye facturas anteriores al inicio operativo de sincronización.",
   kpiGrossIssuedTooltip:
-    "Suma de facturas emitidas en el período. Excluye notas de crédito y anuladas. Base bruta de la cartera del período.",
+    "Suma de facturas emitidas en el período. Base de facturación del período.",
   kpiCreditNotesAppliedTooltip:
-    "Notas de crédito del período. Reducen el AR exigible en Zeta pero no representan ingreso de caja. Son compensaciones contables, no recibos.",
+    "Ajustes de facturación del período. Reducen lo facturado pero no representan ingreso de caja.",
   kpiCollectedAppliedTooltip:
-    "Importe de cartera resuelto dentro del período, derivado de facturación bruta menos notas de crédito y saldo pendiente. No representa necesariamente la suma de recibos.",
+    "Importe de cartera resuelto dentro del período. No representa necesariamente la suma de recibos.",
   kpiNetEffectivenessTooltip:
-    "Cartera resuelta / Facturado neto. Mide qué fracción del AR neto fue resuelta en el período (caja, compensaciones o ajustes Zeta). Las NC no entran en el denominador.",
+    "Cartera resuelta / Facturado. Mide qué fracción de lo facturado fue resuelta en el período.",
   kpiNetEffectivenessTooltipPreSync:
-    "Cartera resuelta / Facturado neto. Puede estar subestimado si el período incluye facturas anteriores al inicio operativo de sincronización.",
+    "Cartera resuelta / Facturado. Puede estar subestimado si el período incluye facturas anteriores al inicio operativo de sincronización.",
 } as const;

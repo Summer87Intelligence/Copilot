@@ -386,7 +386,7 @@ function ContextHint({
 }) {
   const description =
     view === "current_account"
-      ? "Calcula debe/haber con los movimientos sincronizados disponibles. Puede diferir del saldo pendiente por factura si Zeta no expone cobranzas, notas de crédito o imputaciones completas en esta lectura."
+      ? "Calcula debe/haber con los movimientos sincronizados disponibles. Puede diferir del saldo pendiente por factura si Zeta no expone cobranzas, ajustes o imputaciones completas en esta lectura."
       : "Usa el saldo pendiente informado por Zeta en cada factura. Esta es la lectura recomendada para analizar deuda real actual.";
   const tail = (() => {
     if (cutoffMode === "cutoff") {
@@ -806,7 +806,7 @@ function Summary({ block }: { block: AccountStatementByCurrency }) {
       </p>
       {!summary.hasCreditNoteSupport ? (
         <p className="sm:col-span-3 rounded-lg border border-dashed border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-[11px] italic text-[var(--copilot-ink-muted)]">
-          Notas de crédito no detectadas en la metadata sincronizada; no se inventan movimientos.
+          Ajustes no detectados en la metadata sincronizada; no se inventan movimientos.
         </p>
       ) : null}
     </div>
@@ -858,7 +858,7 @@ function MovementsTable({ block }: { block: AccountStatementByCurrency }) {
  * Comprobante (label tipo Zeta) por kind:
  *  - invoice     → "Venta Crédito (CFE)"
  *  - receipt     → "Recibo de Cobro"
- *  - credit_note → "Nota de Crédito"
+ *  - credit_note → "Ajuste"
  *
  * No se mezcla con `describeMovementKind` para no romper otros consumidores
  * que esperan los textos cortos ("Factura" / "Recibo").
@@ -868,6 +868,7 @@ function describeDocumentTypeReport(
 ): string {
   if (m.kind === "invoice") return "Venta Crédito (CFE)";
   if (m.kind === "receipt") return "Recibo de Cobro";
+  if (m.kind === "credit_note") return "Ajuste";
   return describeMovementKind(m.kind);
 }
 

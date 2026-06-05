@@ -43,14 +43,14 @@ export const HOY_COCKPIT = {
 
 /** Labels visibles en bloques UYU/USD. */
 export const CURRENCY_METRIC_LABELS = {
-  billed: "Facturado neto del período",
+  billed: "Facturado del período",
   collected: "Cobrado en el período",
   pending: "Por cobrar",
   overdue30: "Saldo vencido >30 días",
 } as const;
 
 export const CURRENCY_METRIC_HELPERS = {
-  billed: "Facturas emitidas menos notas de crédito.",
+  billed: "Facturas emitidas en el período.",
   collected: "Cobros registrados en el período. Puede incluir facturas de meses anteriores.",
   pending: "Total de deuda abierta al día de hoy.",
   overdue30: "Parte de la deuda abierta con más de 30 días de atraso.",
@@ -71,11 +71,11 @@ export const HOY_COPY = {
   activeDebtorsLabel: "Clientes con deuda",
   overdue30Short: "Saldo vencido >30 días",
   periodActivityTitle: "Actividad del período",
-  periodBilledLabel: "Facturado neto",
-  periodBilledTip: "Facturas emitidas menos notas de crédito en el período.",
+  periodBilledLabel: "Facturado",
+  periodBilledTip: "Facturas emitidas en el período.",
   periodCollectedLabel: "Cobrado",
   periodCollectedTip: "Cobros registrados en el período.",
-  periodCreditNotesLabel: "Notas de crédito",
+  periodCreditNotesLabel: "Ajustes",
   periodManualIncomeLabel: "Ingresos manuales",
   periodManualExpenseLabel: "Egresos manuales",
   periodOperatingResultLabel: "Liquidez operativa",
@@ -132,7 +132,7 @@ export const CURRENCY_METRIC_TONES = {
 
 export type CurrencyMetricToneKey = keyof typeof CURRENCY_METRIC_TONES;
 
-/** UI: cobrado del período puede superar facturado neto (cobros de meses anteriores). */
+/** UI: cobrado del período puede superar facturado (cobros de meses anteriores). */
 export function shouldShowCollectionExceedsBillingNote(
   billedAmount: number | null | undefined,
   collectedAmount: number | null | undefined

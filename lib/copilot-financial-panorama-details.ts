@@ -84,24 +84,19 @@ export function buildNetIncomeDetail(
   ctx?: PanoramaDetailContext
 ): FinancialMetricDetail {
   const rows: FinancialMetricDetailRow[] = [
-    { label: "Bruto facturado", value: fmt(slice.grossInvoiced, slice.code) },
-    { label: "Notas de crédito", value: fmt(slice.creditNotes, slice.code), tone: "danger" },
-    { label: "Neto generado", value: fmt(slice.netIncome, slice.code), tone: "positive" },
+    { label: "Ventas", value: fmt(slice.netIncome, slice.code), tone: "positive" },
   ];
   const inv = countRow("Comprobantes en período", ctx?.metrics?.invoiceCount);
   if (inv) rows.push(inv);
-  const nc = countRow("Notas de crédito (cant.)", ctx?.metrics?.creditNoteCount);
-  if (nc) rows.push(nc);
 
   return {
     id: "net-income",
-    title: `Detalle — Ingresos netos ${slice.code}`,
-    subtitle: "Facturación del período menos notas de crédito.",
+    title: `Detalle — Ventas ${slice.code}`,
+    subtitle: "Facturación del período.",
     periodLabel: periodLabel(ctx),
     currency: slice.code,
-    formula: "Bruto facturado − Notas de crédito = Neto generado",
-    explanation:
-      "Este valor representa lo generado por ventas, descontando notas de crédito.",
+    formula: "Facturas del período en la moneda seleccionada",
+    explanation: "Representa lo facturado en el período.",
     rows,
     sourceLabel: "Fuente: Zeta sincronizado / Cartera",
     cta: { label: "Ver Cartera", href: "/copilot/cartera" },
@@ -113,8 +108,8 @@ export function buildCollectedDetail(
   ctx?: PanoramaDetailContext
 ): FinancialMetricDetail {
   const rows: FinancialMetricDetailRow[] = [
-    { label: "Cobrado aplicado", value: fmt(slice.collectedApplied, slice.code), tone: "positive" },
-    { label: "Ingresos netos", value: fmt(slice.netIncome, slice.code) },
+    { label: "Cobrado", value: fmt(slice.collectedApplied, slice.code), tone: "positive" },
+    { label: "Ventas", value: fmt(slice.netIncome, slice.code) },
     { label: "Tasa de cobranza", value: formatPanoramaRate(slice.collectionRate) },
   ];
   const rec = countRow("Recibos en período", ctx?.metrics?.collectedReceiptCount);
@@ -126,8 +121,8 @@ export function buildCollectedDetail(
     subtitle: "Cobros registrados sobre ventas del período.",
     periodLabel: periodLabel(ctx),
     currency: slice.code,
-    formula: "Cobrado aplicado / Ingresos netos = Tasa de cobranza",
-    explanation: "Mide cuánto del neto generado ya fue cobrado o aplicado.",
+    formula: "Cobrado / Ventas = Tasa de cobranza",
+    explanation: "Mide cuánto de lo facturado ya fue cobrado o aplicado.",
     rows,
     sourceLabel: "Fuente: Recibos / Cartera resuelta",
     cta: { label: "Ver Recibos", href: "/copilot/datos?entity=receipts" },
@@ -250,21 +245,21 @@ export function buildCreditNotesDetail(
   const share =
     slice.grossInvoiced > 0 ? `${Math.round((slice.creditNotes / slice.grossInvoiced) * 100)}%` : "—";
   const rows: FinancialMetricDetailRow[] = [
-    { label: "Total notas de crédito", value: fmt(slice.creditNotes, slice.code), tone: "danger" },
-    { label: "Bruto facturado", value: fmt(slice.grossInvoiced, slice.code) },
-    { label: "% sobre bruto", value: share },
+    { label: "Total ajustes", value: fmt(slice.creditNotes, slice.code), tone: "danger" },
+    { label: "Facturación", value: fmt(slice.grossInvoiced, slice.code) },
+    { label: "% sobre facturación", value: share },
   ];
-  const nc = countRow("Notas de crédito (cant.)", ctx?.metrics?.creditNoteCount);
+  const nc = countRow("Ajustes (cant.)", ctx?.metrics?.creditNoteCount);
   if (nc) rows.push(nc);
 
   return {
     id: "credit-notes",
-    title: `Detalle — Notas de crédito ${slice.code}`,
-    subtitle: "Reducen ingresos netos. No son caja disponible.",
+    title: `Detalle — Ajustes de factura ${slice.code}`,
+    subtitle: "Reducen la facturación del período. No son caja disponible.",
     periodLabel: periodLabel(ctx),
     currency: slice.code,
-    formula: "Notas de crédito / Bruto facturado = % sobre bruto",
-    explanation: "Reducen ingresos netos. No representan caja.",
+    formula: "Ajustes / Facturación = % sobre facturación",
+    explanation: "Reducen ventas del período. No representan caja.",
     rows,
     sourceLabel: "Fuente: Zeta sincronizado / Facturas",
     cta: { label: "Ver Cartera", href: "/copilot/cartera" },

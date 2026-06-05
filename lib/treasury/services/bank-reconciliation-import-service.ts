@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { BankReconciliationImportBody } from "@/lib/api/schemas/treasury-api-bodies";
+import { fetchActiveTransferAliasesByWorkspace } from "@/lib/copilot/client-transfer-aliases-query";
 import { protoCrudResult, type ProtoCrudResult } from "@/lib/copilot-proto-crud-types";
 import { manualCashMovementRepositoryList } from "@/lib/treasury/repositories/manual-cash-movement-repository";
 import {
@@ -21,6 +22,7 @@ import {
   mapDbError,
 } from "@/lib/treasury/treasury-db-helpers";
 import { resolveTreasuryWorkspaceId } from "@/lib/treasury/treasury-tenant";
+import { resolveClientTransferAliasesForMatching } from "@/lib/treasury/client-transfer-alias-matching";
 import type { BankReconciliationMovement, TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
 
 export type BankImportPreviewRow = EnrichedSantanderImportRow;
@@ -106,38 +108,35 @@ async function loadClients(
 ): Promise<ClientMatchInput[]> {
   const { data, error } = await supabase
     .from("proto_companies")
-    .select("id, name")
+    .select("id, name, transfer_method")
     .eq("workspace_company_id", tenantCompanyId)
     .eq("is_active", true)
     .limit(3000);
   if (error || !data) return [];
 
   const companyIds = data.map((r) => (r as { id: string }).id);
-  const aliasMap = new Map<string, string[]>();
-  if (companyIds.length > 0) {
-    const { data: aliasRows } = await supabase
-      .from("client_transfer_aliases")
-      .select("company_id, label")
-      .eq("workspace_id", tenantCompanyId)
-      .eq("is_active", true)
-      .in("company_id", companyIds.slice(0, 500))
-      .order("created_at", { ascending: true })
-      .limit(20000);
-    for (const row of aliasRows ?? []) {
-      const r = row as { company_id: string; label: string };
-      if (!aliasMap.has(r.company_id)) aliasMap.set(r.company_id, []);
-      aliasMap.get(r.company_id)!.push(r.label);
-    }
-  }
+  const { byCompany: aliasMap } = await fetchActiveTransferAliasesByWorkspace(
+    supabase,
+    tenantCompanyId,
+    companyIds
+  );
 
   return data.map((row) => {
-    const r = row as { id: string; name: string | null };
+    const r = row as {
+      id: string;
+      name: string | null;
+      transfer_method: string | null;
+    };
+    const activeAliases = aliasMap.get(r.id) ?? [];
     return {
       id: r.id,
       name: r.name ?? "Cliente",
       debtUyu: 0,
       debtUsd: 0,
-      transferAliases: aliasMap.get(r.id) ?? [],
+      transferAliases: resolveClientTransferAliasesForMatching(
+        activeAliases,
+        r.transfer_method
+      ),
     };
   });
 }

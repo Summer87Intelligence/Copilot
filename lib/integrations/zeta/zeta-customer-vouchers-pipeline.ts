@@ -40,6 +40,7 @@ import {
 } from "@/lib/integrations/zeta/zeta-balance-write-diag";
 import {
   buildZetaComprobanteIdentityV1,
+  findActiveProtoInvoiceIdByZetaLegacyRegistroNumber,
   findActiveProtoInvoiceIdByZetaRegistroMetadata,
   ZETA_METADATA_COMPROBANTE_IDENTITY_V1,
 } from "@/lib/integrations/zeta/zeta-proto-invoice-registro-match";
@@ -314,6 +315,14 @@ async function findActiveInvoiceIdForZetaCustomerVoucher(
       rid
     );
     if (byReg) return byReg.id;
+
+    const byLegacyReg = await findActiveProtoInvoiceIdByZetaLegacyRegistroNumber(
+      client,
+      workspaceCompanyId,
+      protoCompanyId,
+      rid
+    );
+    if (byLegacyReg) return byLegacyReg.id;
   }
 
   const a = await findActiveInvoiceIdByNumber(

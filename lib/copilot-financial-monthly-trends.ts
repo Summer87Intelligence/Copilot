@@ -417,13 +417,13 @@ function buildDashboardInsights(
   const out: string[] = [];
 
   if (best.netSalesPeriod) {
-    out.push(`El mejor período en ventas netas fue ${best.netSalesPeriod.label}.`);
+    out.push(`El mejor período en ventas fue ${best.netSalesPeriod.label}.`);
   }
 
   if (totals.collectionRate !== null) {
     if (totals.collectionRate > 1) {
       out.push(
-        "Los cobros superan las ventas netas del período — puede incluir recuperación de deuda anterior.",
+        "Los cobros superan las ventas del período — puede incluir recuperación de deuda anterior.",
       );
     } else if (totals.collectionRate >= 0.8) {
       out.push(
@@ -439,16 +439,14 @@ function buildDashboardInsights(
   if (previousTotals !== null && deltas.netSalesPct !== null) {
     const sign = deltas.netSalesPct >= 0 ? "+" : "";
     out.push(
-      `Ventas netas ${sign}${Math.round(deltas.netSalesPct * 100)}% vs el período anterior.`,
+      `Ventas ${sign}${Math.round(deltas.netSalesPct * 100)}% vs el período anterior.`,
     );
   }
 
   if (totals.creditNotes > 0 && totals.netSales > 0) {
     const ncRatio = totals.creditNotes / (totals.creditNotes + totals.netSales);
     if (ncRatio > 0.1) {
-      out.push("Las notas de crédito representan más del 10% del bruto — conviene revisar las devoluciones.");
-    } else {
-      out.push("Las notas de crédito se mantienen en niveles bajos.");
+      out.push("Hay ajustes de facturación relevantes en el período — conviene revisar devoluciones.");
     }
   }
 

@@ -765,7 +765,7 @@ function rawKeyIndicators(p: {
   return [
     {
       id: "cash_flow",
-      label: "Cobros netos",
+      label: "Cobros",
       value: cashValueStr,
       subValue: cashSubValue,
       tone: cashTone,

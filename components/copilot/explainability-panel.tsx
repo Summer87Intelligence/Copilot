@@ -251,9 +251,9 @@ function buildItems(
     if (totalCNCount > 0) {
       items.push({
         id: "credit-notes",
-        label: "Notas de crédito aplicadas",
+        label: "Ajustes aplicados",
         description:
-          "Las notas de crédito reducen el saldo pendiente en Zeta, pero no se registran como recibos de caja. Por eso puede existir diferencia entre Facturado, Cobrado registrado y Saldo pendiente.",
+          "Los ajustes de facturación reducen el saldo pendiente en Zeta, pero no se registran como recibos de caja. Por eso puede existir diferencia entre Facturado, Cobrado y Saldo pendiente.",
         status: "info",
         count: totalCNCount,
         icon: SlidersHorizontal,

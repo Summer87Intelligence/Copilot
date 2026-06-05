@@ -40,7 +40,7 @@ export function FinancialExecutiveHeader({
         <div className="min-w-0">
           <h2 className="text-lg font-semibold text-[var(--copilot-ink)]">Panorama financiero</h2>
           <p className="mt-1 text-sm text-[var(--copilot-ink-muted)]">
-            Ventas netas, cobros, deuda, caja y evolución del negocio.
+            Ventas, cobros, deuda, caja y evolución del negocio.
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -254,15 +254,15 @@ export function FinancialCurrencySummary({
           Actividad del período
         </p>
         <p className="text-[10px] text-[var(--copilot-ink-muted)]">
-          Fuente: facturas menos NC y recibos del período actual
+          Fuente: facturas y recibos del período actual
         </p>
         <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {hasPeriodActivity && s ? (
             <>
               <ExecutiveMetricCard
-                label="Ventas netas"
+                label="Ventas"
                 value={fmtMoney(s.netIncome, c)}
-                subcopy="Fuente: facturas menos notas de crédito."
+                subcopy="Fuente: facturas del período."
                 tone="positive"
                 onClick={() => onSelectMetric("net-income", s)}
               />
@@ -273,13 +273,6 @@ export function FinancialCurrencySummary({
                 tone="positive"
                 onClick={() => onSelectMetric("collected", s)}
               />
-              <ExecutiveMetricCard
-                label="Notas de crédito"
-                value={fmtMoney(s.creditNotes, c)}
-                subcopy={s.creditNotes > 0 ? "Reducen ventas netas." : "Sin NC en el período."}
-                tone={s.creditNotes > 0 ? "warning" : "neutral"}
-                onClick={() => onSelectMetric("credit-notes", s)}
-              />
             </>
           ) : (
             <div className={`sm:col-span-2 ${softCalloutClass} px-3 py-2 text-xs text-[var(--copilot-ink)]`}>
@@ -287,7 +280,7 @@ export function FinancialCurrencySummary({
               {panel.lastClosedSnapshot ? (
                 <>
                   {" "}
-                  Último mes cerrado ({panel.lastClosedSnapshot.label}): ventas netas{" "}
+                  Último mes cerrado ({panel.lastClosedSnapshot.label}): ventas{" "}
                   {fmtMoney(panel.lastClosedSnapshot.netSales, c)} · cobros{" "}
                   {fmtMoney(panel.lastClosedSnapshot.collected, c)}.
                 </>
@@ -425,7 +418,7 @@ function ClientTable({
             <tr className="bg-slate-50/80 text-[10px] uppercase tracking-wide text-[var(--copilot-ink-muted)]">
               <th className="px-3 py-2">Cliente</th>
               <th className="px-3 py-2 text-right">
-                {mode === "sales" ? "Ventas netas" : "Deuda"}
+                {mode === "sales" ? "Ventas" : "Deuda"}
               </th>
               <th className="px-3 py-2 text-right">%</th>
               {mode === "sales" ? (
@@ -479,7 +472,7 @@ export function FinancialTopClientsSection({
           <div key={panel.currency} className={mode === "both" ? "grid gap-4 lg:grid-cols-2" : ""}>
             {(mode === "sales" || mode === "both") && (
               <ClientTable
-                title={`Top ventas netas · ${panel.currency}`}
+                title={`Top ventas · ${panel.currency}`}
                 rows={panel.topSalesClients}
                 currency={panel.currency}
                 mode="sales"
@@ -580,16 +573,8 @@ function BreakdownCard({ slice }: { slice: PanoramaCurrencySlice }) {
     <div className="rounded-xl border border-[var(--copilot-border)] bg-white/80 p-4">
       <p className="text-sm font-semibold">{slice.code}</p>
       <dl className="mt-2 space-y-1.5 text-xs">
-        <div className="flex justify-between gap-2">
-          <dt className="text-[var(--copilot-ink-muted)]">Bruto facturado</dt>
-          <dd className="tabular-nums">{fmtMoney(slice.grossInvoiced, slice.code)}</dd>
-        </div>
-        <div className="flex justify-between gap-2">
-          <dt className="text-[var(--copilot-ink-muted)]">Notas de crédito</dt>
-          <dd className="tabular-nums text-rose-700">−{fmtMoney(slice.creditNotes, slice.code)}</dd>
-        </div>
         <div className="flex justify-between gap-2 font-semibold">
-          <dt>Ventas netas</dt>
+          <dt>Ventas</dt>
           <dd className="tabular-nums">{fmtMoney(slice.netIncome, slice.code)}</dd>
         </div>
         <div className="flex justify-between gap-2">

@@ -204,16 +204,9 @@ export function ExecutiveMonthlyPreviewDialog({ open, onClose }: Props) {
               <ReportSummaryCards
                 metrics={[
                   {
-                    label: "Ventas netas",
+                    label: "Ventas",
                     value: formatMoneyCurrency(model.keyMetrics.netSales, model.currency),
                     tone: "positive",
-                  },
-                  {
-                    label: "Notas de crédito",
-                    value: model.keyMetrics.creditNoteTotal > 0
-                      ? `- ${formatMoneyCurrency(model.keyMetrics.creditNoteTotal, model.currency)}`
-                      : "—",
-                    tone: model.keyMetrics.creditNoteTotal > 0 ? "warning" : "neutral",
                   },
                   {
                     label: "Saldo de caja",

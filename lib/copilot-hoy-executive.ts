@@ -435,9 +435,9 @@ export function buildFinancialSituationBlocks(
 
     if (period && billed > 0) {
       metrics.push({
-        label: "Facturado neto",
+        label: "Facturado",
         value: fmtCurrencyAmount(billed, currency),
-        helper: "Facturas menos notas de crédito del período.",
+        helper: "Facturas emitidas en el período.",
         trend: "neutral",
       });
     } else if (snap?.invoiced !== undefined && snap.invoiced > 0) {

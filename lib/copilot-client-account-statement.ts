@@ -511,6 +511,6 @@ export function describeMovementKind(kind: AccountStatementMovementKind): string
     case "receipt":
       return "Recibo";
     case "credit_note":
-      return "Nota de crédito";
+      return "Ajuste";
   }
 }

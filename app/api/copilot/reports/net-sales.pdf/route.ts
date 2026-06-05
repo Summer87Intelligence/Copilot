@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
       error: err instanceof Error ? err.message : String(err),
     });
     return NextResponse.json(
-      { ok: false, error: "No se pudo generar el reporte de ventas netas." },
+      { ok: false, error: "No se pudo generar el reporte de ventas." },
       { status: 500 }
     );
   }

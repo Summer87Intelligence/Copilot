@@ -295,7 +295,7 @@ function GroupedBarChart({
               <title>{tooltip}</title>
             </rect>
 
-            {/* Ventas netas bar */}
+            {/* Ventas bar */}
             {b.netSales > 0 ? (
               <rect
                 x={barX(i, 0)}
@@ -381,7 +381,7 @@ function DetailTable({
       <table className="w-full min-w-[480px] text-left text-[11px]">
         <thead>
           <tr>
-            {["Período", "Estado", "Ventas netas", "Cobros", "NC", "Diferencia"].map((h) => (
+            {["Período", "Estado", "Ventas", "Cobros", "Diferencia"].map((h) => (
               <th
                 key={h}
                 className="border-b border-[var(--copilot-border)] px-2 py-1.5 font-semibold text-[var(--copilot-ink-muted)]"
@@ -407,9 +407,6 @@ function DetailTable({
                 </td>
                 <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 tabular-nums text-sky-700">
                   {b.collections > 0 ? fmt(b.collections, currency) : "—"}
-                </td>
-                <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 tabular-nums text-rose-500">
-                  {b.creditNotes > 0 ? fmt(b.creditNotes, currency) : "—"}
                 </td>
                 <td
                   className={`border-b border-[var(--copilot-border)] px-2 py-1.5 tabular-nums ${
@@ -499,7 +496,7 @@ export function FinancialMonthlyTrends({
         <div>
           <CopilotSectionTitle
             title="Evolución comercial desde enero 2026"
-            subtitle="Compara ventas netas, cobros y notas de crédito por período. No incluye meses anteriores a enero 2026."
+            subtitle="Compara ventas y cobros por período. No incluye meses anteriores a enero 2026."
           />
           <span className="mt-2 inline-flex rounded-full border border-[var(--copilot-border)] bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-[var(--copilot-ink-muted)]">
             Datos disponibles: {periodContext.trendsDataRangeLabel}
@@ -575,9 +572,9 @@ export function FinancialMonthlyTrends({
       ) : (
         <>
           {!executiveView ? (
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
             <KpiCard
-              label="Ventas netas"
+              label="Ventas"
               value={fmt(totals.netSales, currency)}
               delta={<DeltaBadge pct={deltas.netSalesPct} />}
               sub={
@@ -597,16 +594,6 @@ export function FinancialMonthlyTrends({
                   : "Sin comparación previa"
               }
               tone="ok"
-            />
-            <KpiCard
-              label="Notas de crédito"
-              value={totals.creditNotes > 0 ? fmt(totals.creditNotes, currency) : "—"}
-              delta={
-                totals.creditNotes > 0 ? (
-                  <DeltaBadge pct={deltas.creditNotesPct} invertColor />
-                ) : undefined
-              }
-              sub="Anulaciones / descuentos"
             />
             <KpiCard
               label={cobrosSupVentas ? "Cobraste más de lo vendido" : "Quedó por cobrar"}
@@ -635,13 +622,6 @@ export function FinancialMonthlyTrends({
                 Cobros{" "}
                 <DeltaBadge pct={deltas.collectionsPct} />
               </span>
-              {totals.creditNotes > 0 ? (
-                <span className="flex items-center gap-1">
-                  NC <DeltaBadge pct={deltas.creditNotesPct} invertColor />
-                </span>
-              ) : (
-                <span>NC sin cambios</span>
-              )}
               {showRateHint ? (
                 <span className="ml-auto text-[10px] tabular-nums text-[var(--copilot-ink-muted)]">
                   Cobros/ventas:{" "}
@@ -679,15 +659,11 @@ export function FinancialMonthlyTrends({
           <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1.5 text-[11px] text-[var(--copilot-ink-muted)]">
             <span className="flex items-center gap-1.5">
               <span className="h-2.5 w-3 rounded-sm bg-emerald-400/90" aria-hidden />
-              Ventas netas
+              Ventas
             </span>
             <span className="flex items-center gap-1.5">
               <span className="h-2.5 w-3 rounded-sm bg-sky-400/90" aria-hidden />
               Cobros
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-3 rounded-sm bg-rose-300" aria-hidden />
-              Notas de crédito
             </span>
           </div>
 
@@ -734,8 +710,8 @@ export function FinancialMonthlyTrends({
 
       {!executiveView ? (
         <p className="mt-4 text-[11px] leading-relaxed text-[var(--copilot-ink-muted)]">
-          Ventas netas = facturación menos notas de crédito. Cobros = recibos registrados. No es
-          cierre contable formal. UYU y USD se analizan por separado. Se muestran datos desde enero
+          Ventas = facturación del período. Cobros = recibos registrados. No es cierre
+          contable formal. UYU y USD se analizan por separado. Se muestran datos desde enero
           2026.
         </p>
       ) : null}

@@ -184,8 +184,7 @@ export function renderExecutiveMonthlyReportPdf(
     sectionTitle("Indicadores clave del período");
 
     const metrics = [
-      { label: "Ventas netas", value: formatMoney(model.keyMetrics.netSales, model.currency) },
-      { label: "Notas de crédito", value: formatMoney(model.keyMetrics.creditNoteTotal, model.currency) },
+      { label: "Ventas", value: formatMoney(model.keyMetrics.netSales, model.currency) },
       { label: "Saldo de caja", value: formatMoney(model.keyMetrics.cashClosingBalance, model.currency) },
       {
         label: "Variación de caja",

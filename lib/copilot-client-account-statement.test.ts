@@ -454,6 +454,6 @@ describe("describeMovementKind", () => {
   it("etiquetas en español", () => {
     expect(describeMovementKind("invoice")).toBe("Factura");
     expect(describeMovementKind("receipt")).toBe("Recibo");
-    expect(describeMovementKind("credit_note")).toBe("Nota de crédito");
+    expect(describeMovementKind("credit_note")).toBe("Ajuste");
   });
 });

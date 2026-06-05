@@ -67,14 +67,13 @@ describe("copilot-financial-panorama-semaphore", () => {
 });
 
 describe("copilot-financial-panorama-details", () => {
-  it("neto muestra bruto - NC = neto", () => {
+  it("ventas detail muestra total de ventas", () => {
     const d = buildNetIncomeDetail(
       slice({ code: "UYU", grossInvoiced: 100_000, creditNotes: 8_662, netIncome: 91_338 })
     );
-    expect(d.formula).toContain("Bruto");
-    expect(d.rows.some((r) => r.label === "Bruto facturado")).toBe(true);
-    expect(d.rows.some((r) => r.label === "Notas de crédito")).toBe(true);
-    expect(d.rows.some((r) => r.label === "Neto generado")).toBe(true);
+    expect(d.title).toContain("Ventas");
+    expect(d.rows.some((r) => r.label === "Ventas")).toBe(true);
+    expect(d.rows.some((r) => r.label === "Notas de crédito")).toBe(false);
   });
 
   it("caja muestra fuente Tesorería", () => {

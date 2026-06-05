@@ -148,9 +148,8 @@ function buildCurrentMonthInProgress(
     footnote: "No es comparable todavía con un mes completo.",
     layout: "current-only",
     metrics: [
-      { id: "net", label: "Ventas netas acumuladas", current: cur.netSales, previous: null, format: "money" },
+      { id: "net", label: "Ventas acumuladas", current: cur.netSales, previous: null, format: "money" },
       { id: "col", label: "Cobros acumulados", current: cur.collected, previous: null, format: "money" },
-      { id: "nc", label: "Notas de crédito", current: cur.creditNotes, previous: null, format: "money" },
       {
         id: "days",
         label: "Días transcurridos del mes",
@@ -195,7 +194,7 @@ function buildLastClosedMonthComparison(
     metrics: [
       {
         id: "net",
-        label: "Ventas netas",
+        label: "Ventas",
         current: closed.netSales,
         previous: prevClosed.netSales,
         format: "money",
@@ -208,13 +207,6 @@ function buildLastClosedMonthComparison(
         format: "money",
       },
       {
-        id: "nc",
-        label: "Notas de crédito",
-        current: closed.creditNotes,
-        previous: prevClosed.creditNotes,
-        format: "money",
-      },
-      {
         id: "gap",
         label: "Diferencia ventas/cobros",
         current: salesGap,
@@ -223,7 +215,7 @@ function buildLastClosedMonthComparison(
       },
       {
         id: "net_pct",
-        label: "Δ ventas netas",
+        label: "Δ ventas",
         current: netDelta,
         previous: null,
         format: "percent",
@@ -276,7 +268,7 @@ function buildWeekComparison(
     metrics: [
       {
         id: "wn",
-        label: "Ventas netas",
+        label: "Ventas",
         current: dash7.totals.netSales,
         previous: dashPrev.totals.netSales,
         format: "money",
@@ -451,14 +443,14 @@ export function buildExecutiveBullets(input: {
     );
     if (best) {
       lines.push(
-        `${prefix}${monthLabelFromYm(best.ym)} fue el mejor mes cerrado en ventas netas ${panel.currency}.`
+        `${prefix}${monthLabelFromYm(best.ym)} fue el mejor mes cerrado en ventas ${panel.currency}.`
       );
     }
 
     const closed = panel.lastClosedSnapshot;
     if (closed && closed.collected > closed.netSales && closed.netSales > 0) {
       lines.push(
-        `${prefix}Los cobros ${panel.currency} de ${closed.label} superaron las ventas netas; puede incluir recuperación de deuda anterior.`
+        `${prefix}Los cobros ${panel.currency} de ${closed.label} superaron las ventas; puede incluir recuperación de deuda anterior.`
       );
     }
 

@@ -114,7 +114,7 @@ export function FinancialLayeredHeader({
         <div className="min-w-0">
           <h2 className="text-lg font-semibold text-[var(--copilot-ink)]">Panorama financiero</h2>
           <p className="mt-0.5 text-sm text-[var(--copilot-ink-muted)]">
-            Ventas netas, cobros, deuda, caja y evolución del negocio.
+            Ventas, cobros, deuda, caja y evolución del negocio.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -219,7 +219,7 @@ export function FinancialExecutiveSummary({
           tone="positive"
         />
         <SummaryMetric
-          label={`Ventas netas · ${dashboard.periodContext.lastClosedMonthLabel}`}
+          label={`Ventas · ${dashboard.periodContext.lastClosedMonthLabel}`}
           value={closedSales}
         />
         <SummaryMetric

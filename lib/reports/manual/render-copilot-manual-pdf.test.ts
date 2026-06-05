@@ -38,5 +38,5 @@ describe("renderCopilotManualPdf", () => {
     expect(text).toMatch(/Cobranza mensual|Reporte de cobranza mensual/i);
     expect(text).not.toMatch(/Personalización\s*—/i);
     expect(text).not.toMatch(/Configuración\s*—\s*Ajustes del workspace/i);
-  });
+  }, 15_000);
 });

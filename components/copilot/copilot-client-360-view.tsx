@@ -124,7 +124,7 @@ function cleanMovementLabel(label: string): string {
 function cleanInvoiceType(tipo: string): string {
   if (!tipo) return "Factura";
   const lower = tipo.toLowerCase();
-  if (lower.includes("nota de cr") || lower.includes("credit note")) return "Nota de crédito";
+  if (lower.includes("nota de cr") || lower.includes("credit note")) return "Ajuste";
   if (lower.includes("recibo") || lower.includes("receipt")) return "Recibo";
   return "Factura";
 }
@@ -1660,7 +1660,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                 <CopilotCard className={neutralFinancialCardClass}>
                   <CopilotSectionTitle
                     title="Estado de cuenta histórico"
-                    subtitle="Facturas y cobros sincronizados. Puede diferir de la deuda actual si hay notas de crédito, imputaciones o ajustes pendientes de sincronizar."
+                    subtitle="Facturas y cobros sincronizados. Puede diferir de la deuda actual si hay ajustes o imputaciones pendientes de sincronizar."
                   />
                   {data.cuenta.ultimos_movimientos.length === 0 ? (
                     <p className="text-sm text-[var(--copilot-ink-muted)]">

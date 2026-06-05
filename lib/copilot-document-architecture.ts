@@ -183,7 +183,7 @@ export const REGISTRATION_RULES: RegistrationRuleExample[] = [
 
 export const ROADMAP_SENIOR: RoadmapDocumentRow[] = [
   {
-    documento: "Notas de crédito",
+    documento: "Ajustes de factura",
     tablaSugerida: "proto_credit_notes",
     prioridad: "Alta",
     proposito: "Anular o reducir montos de facturas sin borrar el historial.",

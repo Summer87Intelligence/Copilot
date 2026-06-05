@@ -239,14 +239,14 @@ function issuedCard(
   const hasNcs = m.creditNoteAmount > 0;
   return {
     id: `facturado-${code}`,
-    title: `Facturado neto ${code}`,
+    title: `Facturado ${code}`,
     source: "zeta",
     tone: "positive",
     icon: FileText,
     value: m.issuedInPeriodNet,
     format: (n) => formatCarteraMoney(code, n),
     subtitle: hasNcs
-      ? `Bruto ${formatCarteraMoney(code, m.issuedInPeriod)}`
+      ? `Total ${formatCarteraMoney(code, m.issuedInPeriod)}`
       : m.invoiceCount === 0
         ? "Sin facturas en el período"
         : `${formatCarteraInteger(m.invoiceCount)} factura${m.invoiceCount === 1 ? "" : "s"}`,
@@ -261,13 +261,13 @@ function creditNotesCard(
   const m = getCurrencyCardMetrics(index, code);
   return {
     id: `credit-notes-${code}`,
-    title: `Notas de crédito ${code}`,
+    title: `Ajustes ${code}`,
     source: "zeta",
     tone: "danger",
     icon: FileMinus,
     value: m.creditNoteAmount,
     format: (n) => formatCarteraMoney(code, n),
-    subtitle: `${formatCarteraInteger(m.creditNoteCount)} nota${m.creditNoteCount === 1 ? "" : "s"} de crédito`,
+    subtitle: `${formatCarteraInteger(m.creditNoteCount)} ajuste${m.creditNoteCount === 1 ? "" : "s"}`,
     tooltip: FINANCIAL_UX_COPY.kpiCreditNotesAppliedTooltip,
   };
 }
@@ -875,7 +875,7 @@ export function CreditNotesSection({
           </span>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-rose-800">
-              Notas de crédito del período
+              Ajustes del período
             </p>
             <p className="mt-0.5 text-xs text-rose-700/80">{summaryText}</p>
           </div>
@@ -895,22 +895,22 @@ export function CreditNotesSection({
                 className="rounded-xl border border-rose-200/60 bg-white/70 p-4"
               >
                 <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-rose-700">
-                  NC aplicadas {l.code}
+                  Ajustes {l.code}
                 </p>
                 <p className="mt-1.5 text-xl font-semibold tabular-nums text-rose-800">
                   −{formatCarteraMoney(l.code, l.amount)}
                 </p>
                 <p className="mt-1 text-sm text-rose-700/80">
-                  {l.count} nota{l.count === 1 ? "" : "s"} de crédito
+                  {l.count} ajuste{l.count === 1 ? "" : "s"}
                 </p>
                 <p className="mt-0.5 text-[11px] text-rose-600/70">
-                  Facturado bruto: {formatCarteraMoney(l.code, l.issuedBruto)}
+                  Facturado: {formatCarteraMoney(l.code, l.issuedBruto)}
                 </p>
               </div>
             ))}
           </div>
           <p className="mt-3 text-[11px] text-rose-600/60">
-            Las NCs reducen el facturado neto, no el saldo pendiente · Detalle por comprobante disponible en Zeta
+            Los ajustes reducen lo facturado, no el saldo pendiente · Detalle por comprobante disponible en Zeta
           </p>
         </div>
       )}

@@ -14,7 +14,7 @@ export const MOCK_KPIS = [
     id: "sales",
     label: "Ventas del mes",
     value: "$ 18.200.000",
-    hint: "Facturación neta estimada",
+    hint: "Facturación estimada",
     trend: "−2% vs. promedio trimestral",
   },
   {

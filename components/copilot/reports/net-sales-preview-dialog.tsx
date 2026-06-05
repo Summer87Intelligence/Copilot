@@ -16,48 +16,40 @@ import { usePdfDownload } from "./use-pdf-download";
 function nowYear() { return new Date().getFullYear(); }
 function nowMonth() { return new Date().getMonth() + 1; }
 
-type NetSalesRow = NetSalesReportModel["rows"][number];
+type NetSalesInvoiceRow = NetSalesReportModel["invoiceRows"][number];
 
-function getColumns(currency: string): ReportTableColumn<NetSalesRow>[] {
+function getInvoiceColumns(currency: string): ReportTableColumn<NetSalesInvoiceRow>[] {
   return [
+    {
+      header: "Fecha",
+      render: (r) => {
+        const [y, m, d] = r.issueDate.split("-");
+        return y && m && d ? `${d}/${m}/${y}` : r.issueDate;
+      },
+    },
+    {
+      header: "Número de factura",
+      render: (r) => <span className="tabular-nums">{r.invoiceNumber}</span>,
+    },
     {
       header: "Cliente",
       render: (r) => <span className="font-medium">{r.clientName}</span>,
     },
     {
-      header: "Fact.",
-      headerClassName: "text-right",
-      cellClassName: "text-right tabular-nums text-xs text-[var(--copilot-ink-muted)]",
-      render: (r) => String(r.invoiceCount),
-    },
-    {
-      header: "Ventas brutas",
-      headerClassName: "text-right",
-      cellClassName: "text-right tabular-nums text-xs",
-      render: (r) => formatMoneyCurrency(r.grossSales, currency),
-    },
-    {
-      header: "NC",
-      headerClassName: "text-right",
-      cellClassName: "text-right tabular-nums text-xs text-rose-700",
-      render: (r) =>
-        r.creditNoteTotal > 0
-          ? `- ${formatMoneyCurrency(r.creditNoteTotal, currency)}`
-          : "—",
-    },
-    {
-      header: "Ventas netas",
+      header: "Importe",
       headerClassName: "text-right",
       cellClassName: "text-right tabular-nums text-xs font-semibold",
-      render: (r) => formatMoneyCurrency(r.netSales, currency),
-    },
-    {
-      header: "Part. %",
-      headerClassName: "text-right",
-      cellClassName: "text-right tabular-nums text-xs text-[var(--copilot-ink-muted)]",
-      render: (r) => `${r.sharePercent.toFixed(1)}%`,
+      render: (r) => formatMoneyCurrency(r.amount, currency),
     },
   ];
+}
+
+function formatPeriodLabel(from: string, to: string): string {
+  const fmt = (ymd: string) => {
+    const [y, m, d] = ymd.split("-");
+    return y && m && d ? `${d}/${m}/${y}` : ymd;
+  };
+  return `${fmt(from)} – ${fmt(to)}`;
 }
 
 type Props = {
@@ -90,19 +82,19 @@ export function NetSalesPreviewDialog({ open, onClose }: Props) {
     const mm = String(month).padStart(2, "0");
     await download(
       `/api/copilot/reports/net-sales.pdf?year=${year}&month=${month}&currency=${currency}`,
-      `ventas-netas-${year}-${mm}-${currency}.pdf`
+      `ventas-${year}-${mm}-${currency}.pdf`
     );
   }, [year, month, currency, download, clearError]);
 
   const subtitle = model
-    ? `${model.period.label} · ${model.currency === "UYU" ? "Pesos" : "Dólares"}`
+    ? `Período: ${formatPeriodLabel(model.period.from, model.period.to)} · ${model.currency}`
     : undefined;
 
   return (
     <ReportPreviewShell
       open={open}
       onClose={onClose}
-      title="Reporte de ventas netas"
+      title="Reporte de ventas"
       subtitle={subtitle}
       onDownloadPdf={() => void handleDownloadPdf()}
       downloadLoading={dlLoading}
@@ -123,47 +115,31 @@ export function NetSalesPreviewDialog({ open, onClose }: Props) {
         <PreviewLoadingState />
       ) : error ? (
         <PreviewErrorState message={error} />
-      ) : !model || model.rows.length === 0 ? (
+      ) : !model || model.invoiceRows.length === 0 ? (
         <PreviewEmptyState message="Sin facturación registrada para este período." />
       ) : (
         <>
           <ReportSummaryCards
             metrics={[
               {
-                label: "Ventas brutas",
-                value: formatMoneyCurrency(model.totals.grossSales, model.currency),
-                tone: "neutral",
-              },
-              {
-                label: "Notas de crédito",
-                value: model.totals.creditNoteTotal > 0
-                  ? `- ${formatMoneyCurrency(model.totals.creditNoteTotal, model.currency)}`
-                  : "$ 0",
-                tone: model.totals.creditNoteTotal > 0 ? "warning" : "neutral",
-              },
-              {
-                label: "Ventas netas",
-                value: formatMoneyCurrency(model.totals.netSales, model.currency),
-                tone: "positive",
-              },
-              {
-                label: "Clientes",
-                value: String(model.totals.clientCount),
+                label: "Moneda",
+                value: model.currency,
               },
               {
                 label: "Facturas",
-                value: String(model.totals.invoiceCount),
+                value: String(model.invoiceRows.filter((r) => !r.isCreditNote).length),
               },
               {
-                label: "NC",
-                value: String(model.totals.creditNoteCount),
+                label: "Total ventas",
+                value: formatMoneyCurrency(model.totals.invoiceRowsTotal, model.currency),
+                tone: "positive",
               },
             ]}
           />
           <ReportTable
-            columns={getColumns(model.currency)}
-            rows={model.rows}
-            keyExtractor={(r) => r.companyId}
+            columns={getInvoiceColumns(model.currency)}
+            rows={model.invoiceRows}
+            keyExtractor={(r) => r.invoiceId}
             emptyMessage="Sin facturación para este período."
           />
         </>

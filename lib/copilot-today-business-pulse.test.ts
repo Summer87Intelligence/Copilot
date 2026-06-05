@@ -923,13 +923,13 @@ describe("buildTodayBusinessPulse", () => {
       expect(pulse.currencyBlocks.length).toBeGreaterThan(0);
     });
 
-    it("label principal es Facturado neto del período, no bruto", () => {
-      expect(CURRENCY_METRIC_LABELS.billed).toBe("Facturado neto del período");
+    it("label principal es Facturado del período", () => {
+      expect(CURRENCY_METRIC_LABELS.billed).toBe("Facturado del período");
       expect(CURRENCY_METRIC_LABELS.billed.toLowerCase()).not.toContain("bruto");
     });
 
     it("labels: período, Por cobrar, Atrasado +30 (no Crítico ni prioritario)", () => {
-      expect(CURRENCY_METRIC_LABELS.billed).toBe("Facturado neto del período");
+      expect(CURRENCY_METRIC_LABELS.billed).toBe("Facturado del período");
       expect(CURRENCY_METRIC_LABELS.collected).toBe("Cobrado en el período");
       expect(CURRENCY_METRIC_LABELS.pending).toBe("Por cobrar");
       expect(CURRENCY_METRIC_LABELS.overdue30).toBe("Saldo vencido >30 días");

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 /**
  * Datos (/copilot/datos): entidades en acordeón; cada bloque carga `getProto*` solo al expandir.
  * - Sin fetch inicial al entrar; dataset API solo cuando el usuario abre una sección.
@@ -1356,7 +1356,7 @@ function CopilotDatosPageContent() {
                               {([
                                 { key: "all", label: "Todos" },
                                 { key: "with_balance", label: "Con saldo" },
-                                { key: "credit_notes", label: "Notas de crédito" },
+                                { key: "credit_notes", label: "Ajustes" },
                               ] as const).map((f) => (
                                 <button
                                   key={f.key}

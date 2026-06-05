@@ -64,13 +64,12 @@ export const COPILOT_MANUAL_EXTRA_GLOSSARY: Array<{
       "Pago registrado de un cliente (recibo en Zeta). Suma a caja cuando es posterior al saldo cargado.",
   },
   {
-    term: "Venta neta",
-    definition:
-      "Facturación del período menos notas de crédito. No es igual a cobros ni a deuda.",
+    term: "Ventas",
+    definition: "Facturación del período. No es igual a cobros ni a deuda.",
   },
   {
-    term: "Nota de crédito",
-    definition: "Comprobante que reduce la facturación neta del período.",
+    term: "Ajuste de factura",
+    definition: "Comprobante que reduce la facturación del período.",
   },
   {
     term: "Fecha de corte",

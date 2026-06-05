@@ -183,7 +183,7 @@ export function CarteraShell() {
             <CollapsibleSection
               id="ventas"
               title="Ventas del período"
-              subtitle="Facturación, notas de crédito y cobros del rango seleccionado"
+              subtitle="Facturación y cobros del rango seleccionado"
               defaultOpen
             >
               <ExecutiveSummaryCards

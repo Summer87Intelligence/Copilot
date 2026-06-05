@@ -71,13 +71,13 @@ function NetSalesReportTrigger({ className = "" }: { className?: string }) {
       <MonthlyReportDialog
         open={open}
         onClose={() => setOpen(false)}
-        title="Reporte de ventas netas"
-        description="Facturación por cliente menos notas de crédito del período."
+        title="Reporte de ventas"
+        description="Facturas del período con fecha, número, cliente e importe."
         buildUrl={(y, m, cur) =>
           `/api/copilot/reports/net-sales.pdf?year=${y}&month=${m}&currency=${cur}`
         }
         defaultFilename={(y, m, cur) =>
-          `ventas-netas-${y}-${String(m).padStart(2, "0")}-${cur}.pdf`
+          `ventas-${y}-${String(m).padStart(2, "0")}-${cur}.pdf`
         }
       />
     </>
@@ -284,8 +284,8 @@ export default function CopilotReportesPage() {
 
           <ReportCard
             icon={<TrendingUp className="h-5 w-5" aria-hidden />}
-            title="Reporte de ventas netas"
-            description="Facturación del mes por cliente, descontando notas de crédito. Agrupa en una vista limpia."
+            title="Reporte de ventas"
+            description="Detalle de facturas del mes por moneda, con total al pie."
           >
             <div className="flex flex-wrap gap-2">
               <button
@@ -344,7 +344,7 @@ export default function CopilotReportesPage() {
           <ReportCard
             icon={<FileText className="h-5 w-5" aria-hidden />}
             title="Estado de cuenta por cliente"
-            description="Detalle individual de facturas, notas de crédito y recibos. Se genera desde la ficha de cada cliente."
+            description="Detalle individual de facturas, ajustes y recibos. Se genera desde la ficha de cada cliente."
           >
             <CopilotGhostLink
               href="/copilot/clientes"

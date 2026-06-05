@@ -21,6 +21,48 @@ export function buildZetaComprobanteIdentityV1(registroId: string | null | undef
   return { schema_version: 1, registro_id: s || null };
 }
 
+/** Clave legacy del pipeline de saldos: `ZETA:{RegistroId}` (solo dígitos). */
+export function buildZetaLegacyRegistroInvoiceNumber(registroId: string | null | undefined): string | null {
+  const rid = registroId != null ? String(registroId).trim() : "";
+  if (!rid || !/^\d+$/.test(rid)) return null;
+  return `ZETA:${rid}`;
+}
+
+export function parseZetaLegacyRegistroIdFromInvoiceNumber(invoiceNumber: string): string | null {
+  const n = invoiceNumber.trim();
+  if (!n.startsWith("ZETA:") || n.startsWith("ZETA:CCV1:")) return null;
+  const m = /^ZETA:(\d+)$/.exec(n);
+  return m?.[1] ?? null;
+}
+
+export async function findActiveProtoInvoiceIdByZetaLegacyRegistroNumber(
+  supabase: SupabaseClient,
+  workspaceCompanyId: string,
+  protoCompanyId: string,
+  registroId: string
+): Promise<{ id: string; matched_path: string } | null> {
+  const legacyNumber = buildZetaLegacyRegistroInvoiceNumber(registroId);
+  if (!legacyNumber) return null;
+  const wid = workspaceCompanyId.trim();
+  const q = applyProtoActiveListFilter(
+    supabase
+      .from("proto_invoices")
+      .select("id")
+      .eq("workspace_company_id", wid)
+      .eq("company_id", protoCompanyId)
+      .eq("invoice_number", legacyNumber)
+      .limit(1),
+    "active"
+  );
+  const { data, error } = await q;
+  if (error) return null;
+  const row0 = data?.[0] as { id?: string } | undefined;
+  if (row0 && typeof row0.id === "string") {
+    return { id: row0.id, matched_path: "invoice_number:legacy_registro" };
+  }
+  return null;
+}
+
 /**
  * Orden de búsqueda PostgREST: identidad explícita → voucher v1 → histórico en raw_payload.
  */
