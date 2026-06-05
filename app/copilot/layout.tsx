@@ -9,6 +9,7 @@ import {
   COPILOT_SESSION_COOKIE,
   parseCopilotSessionValue,
 } from "@/lib/copilot-session-cookie";
+import { getServerEffectivePermissions } from "@/lib/auth/server-module-permissions";
 
 function createServiceRoleClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -45,6 +46,8 @@ export default async function CopilotModuleLayout({
 
   let isReadOnly = false;
   let readOnlyLabel: string | null = null;
+
+  const modulePermissions = (await getServerEffectivePermissions()) ?? {};
 
   if (parsed) {
     const admin = createServiceRoleClient();
@@ -138,6 +141,7 @@ export default async function CopilotModuleLayout({
         isReadOnly={isReadOnly}
         readOnlyLabel={readOnlyLabel}
         sessionPreview={sessionPreview}
+        modulePermissions={modulePermissions}
       >
         <CopilotMainWithReadingPanel>{children}</CopilotMainWithReadingPanel>
       </CopilotShell>

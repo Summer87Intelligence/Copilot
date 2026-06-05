@@ -3,10 +3,13 @@ import { Suspense } from "react";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { copilotPageMainClass } from "@/components/copilot/copilot-ui";
 import { TesoreriaShell } from "@/components/copilot/tesoreria/tesoreria-shell";
+import { isModuleAccessDenied } from "@/lib/auth/server-module-permissions";
+import { AccessDeniedCard } from "@/components/copilot/access-denied-card";
 
 export const dynamic = "force-dynamic";
 
-export default function TesoreriaPage() {
+export default async function TesoreriaPage() {
+  if (await isModuleAccessDenied("tesoreria")) return <AccessDeniedCard />;
   return (
     <>
       <CopilotPageHeader

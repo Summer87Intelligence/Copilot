@@ -226,3 +226,130 @@ describe("validators", () => {
     expect(isValidModuleKey(undefined)).toBe(false);
   });
 });
+
+// ─── Sidebar filtering por módulo ─────────────────────────────────────────────
+
+import { buildCopilotNavItemGroups } from "@/components/copilot/copilot-nav-config";
+
+describe("buildCopilotNavItemGroups — filtrado por módulo", () => {
+  it("cobranza con tesoreria=none no muestra Tesorería en sidebar", () => {
+    const cobranzaPerms = Object.fromEntries(
+      presetPerms("cobranza").map((p) => [p.moduleKey, p.accessLevel])
+    );
+    const groups = buildCopilotNavItemGroups(false, cobranzaPerms);
+    const allItems = groups.flatMap((g) => g.items);
+    expect(allItems.some((i) => i.href === "/copilot/tesoreria")).toBe(false);
+  });
+
+  it("cobranza ve Acciones y Clientes (write)", () => {
+    const cobranzaPerms = Object.fromEntries(
+      presetPerms("cobranza").map((p) => [p.moduleKey, p.accessLevel])
+    );
+    const groups = buildCopilotNavItemGroups(false, cobranzaPerms);
+    const allItems = groups.flatMap((g) => g.items);
+    expect(allItems.some((i) => i.href === "/copilot/acciones")).toBe(true);
+    expect(allItems.some((i) => i.href === "/copilot/clientes")).toBe(true);
+  });
+
+  it("rol tesoreria ve Tesorería", () => {
+    const tesoPerms = Object.fromEntries(
+      presetPerms("tesoreria").map((p) => [p.moduleKey, p.accessLevel])
+    );
+    const groups = buildCopilotNavItemGroups(false, tesoPerms);
+    const allItems = groups.flatMap((g) => g.items);
+    expect(allItems.some((i) => i.href === "/copilot/tesoreria")).toBe(true);
+  });
+
+  it("rol tesoreria no ve Panel administrativo", () => {
+    const tesoPerms = Object.fromEntries(
+      presetPerms("tesoreria").map((p) => [p.moduleKey, p.accessLevel])
+    );
+    const groups = buildCopilotNavItemGroups(false, tesoPerms);
+    const allItems = groups.flatMap((g) => g.items);
+    expect(allItems.some((i) => i.href === "/copilot/admin")).toBe(false);
+  });
+
+  it("contador ve Reportes y Finanzas", () => {
+    const contPerms = Object.fromEntries(
+      presetPerms("contador").map((p) => [p.moduleKey, p.accessLevel])
+    );
+    const groups = buildCopilotNavItemGroups(false, contPerms);
+    const allItems = groups.flatMap((g) => g.items);
+    expect(allItems.some((i) => i.href === "/copilot/reportes")).toBe(true);
+    expect(allItems.some((i) => i.href === "/copilot/finanzas")).toBe(true);
+  });
+
+  it("usuario ve todos los módulos base excepto admin", () => {
+    const usuPerms = Object.fromEntries(
+      presetPerms("usuario").map((p) => [p.moduleKey, p.accessLevel])
+    );
+    const groups = buildCopilotNavItemGroups(false, usuPerms);
+    const allItems = groups.flatMap((g) => g.items);
+    const moduleHrefs = [
+      "/copilot/hoy", "/copilot/acciones", "/copilot/clientes",
+      "/copilot/cartera", "/copilot/tesoreria", "/copilot/finanzas",
+      "/copilot/reportes", "/copilot/datos", "/copilot/agentes", "/copilot/manual",
+    ];
+    for (const href of moduleHrefs) {
+      expect(allItems.some((i) => i.href === href)).toBe(true);
+    }
+    expect(allItems.some((i) => i.href === "/copilot/admin")).toBe(false);
+  });
+
+  it("demo_readonly ve todos los módulos base excepto admin", () => {
+    const demoPerms = Object.fromEntries(
+      presetPerms("demo_readonly").map((p) => [p.moduleKey, p.accessLevel])
+    );
+    const groups = buildCopilotNavItemGroups(false, demoPerms);
+    const allItems = groups.flatMap((g) => g.items);
+    expect(allItems.some((i) => i.href === "/copilot/admin")).toBe(false);
+    expect(allItems.some((i) => i.href === "/copilot/hoy")).toBe(true);
+  });
+
+  it("superadmin ve todos los módulos incluido admin", () => {
+    const saPerms = Object.fromEntries(
+      presetPerms("superadmin").map((p) => [p.moduleKey, p.accessLevel])
+    );
+    const groups = buildCopilotNavItemGroups(true, saPerms);
+    const allItems = groups.flatMap((g) => g.items);
+    expect(allItems.some((i) => i.href === "/copilot/admin")).toBe(true);
+    expect(allItems.some((i) => i.href === "/copilot/tesoreria")).toBe(true);
+    expect(allItems.some((i) => i.href === "/copilot/finanzas")).toBe(true);
+  });
+
+  it("item con moduleKey=none se oculta, item sin moduleKey siempre visible", () => {
+    const perms: Record<string, string> = {
+      hoy: "none", acciones: "write", clientes: "read",
+      cartera: "read", tesoreria: "none", finanzas: "read",
+      reportes: "read", datos: "read", agentes: "read", manual: "read", admin: "none",
+    };
+    const groups = buildCopilotNavItemGroups(false, perms);
+    const allItems = groups.flatMap((g) => g.items);
+    // moduleKey items con 'none' no aparecen
+    expect(allItems.some((i) => i.href === "/copilot/hoy")).toBe(false);
+    expect(allItems.some((i) => i.href === "/copilot/tesoreria")).toBe(false);
+    // items sin moduleKey (alertas, operacional) siempre visibles
+    expect(allItems.some((i) => i.href === "/copilot/alertas")).toBe(true);
+    expect(allItems.some((i) => i.href === "/copilot/operacional")).toBe(true);
+  });
+
+  it("sin permisos cargados (vacío) muestra todos los items base", () => {
+    const groups = buildCopilotNavItemGroups(false, {});
+    const allItems = groups.flatMap((g) => g.items);
+    expect(allItems.some((i) => i.href === "/copilot/tesoreria")).toBe(true);
+    expect(allItems.some((i) => i.href === "/copilot/acciones")).toBe(true);
+  });
+
+  it("grupo vacío tras filtro no aparece en lista", () => {
+    const perms: Record<string, string> = {
+      hoy: "none", acciones: "none", clientes: "none",
+      cartera: "none", tesoreria: "none", finanzas: "none",
+      reportes: "none", datos: "none", agentes: "none", manual: "none", admin: "none",
+    };
+    const groups = buildCopilotNavItemGroups(false, perms);
+    // Solo deben quedar grupos con items sin moduleKey (Alertas, Operacional)
+    const allItems = groups.flatMap((g) => g.items);
+    const withModuleKey = allItems.filter((i) => i.moduleKey !== undefined);
+    expect(withModuleKey.length).toBe(0);
+  });
+});

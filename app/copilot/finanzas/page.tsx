@@ -37,6 +37,8 @@ import {
   COPILOT_READING_KEY_FINANZAS_COBERTURA,
   COPILOT_READING_KEY_FINANZAS_DEFAULT,
 } from "@/lib/copilot-reading-keys";
+import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
+import { AccessDeniedCard } from "@/components/copilot/access-denied-card";
 import {
   mapTaxObligationStatus,
   mapTaxTypeLabel,
@@ -1624,6 +1626,8 @@ function CopilotFinanzasPageContent() {
 }
 
 export default function CopilotFinanzasPage() {
+  const { modulePermissions } = useCopilotPermissions();
+  if (modulePermissions["finanzas"] === "none") return <AccessDeniedCard />;
   return (
     <Suspense
       fallback={

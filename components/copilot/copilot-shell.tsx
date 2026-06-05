@@ -23,6 +23,7 @@ export function CopilotShell({
   isReadOnly = false,
   readOnlyLabel = null,
   sessionPreview = null,
+  modulePermissions = {},
 }: {
   children: React.ReactNode;
   isSuperadmin: boolean;
@@ -31,15 +32,17 @@ export function CopilotShell({
   /** Texto del badge de solo lectura (null = no mostrar). */
   readOnlyLabel?: string | null;
   sessionPreview?: CopilotSessionPreview | null;
+  /** Mapa module_key → access_level efectivo (preset + overrides DB). */
+  modulePermissions?: Record<string, string>;
 }) {
   const navItemGroups = useMemo(
-    () => buildCopilotNavItemGroups(isSuperadmin),
-    [isSuperadmin]
+    () => buildCopilotNavItemGroups(isSuperadmin, modulePermissions),
+    [isSuperadmin, modulePermissions]
   );
 
   const permissions = useMemo(
-    () => ({ canWrite: !isReadOnly, isReadOnly, readOnlyLabel }),
-    [isReadOnly, readOnlyLabel]
+    () => ({ canWrite: !isReadOnly, isReadOnly, readOnlyLabel, modulePermissions }),
+    [isReadOnly, readOnlyLabel, modulePermissions]
   );
 
   return (

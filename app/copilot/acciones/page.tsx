@@ -59,6 +59,8 @@ import {
   type CollectionAgenda,
   type AgendaClientInfo,
 } from "@/lib/collection/build-collection-agenda";
+import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
+import { AccessDeniedCard } from "@/components/copilot/access-denied-card";
 
 // ── Pipeline helpers ──────────────────────────────────────────────────────────
 
@@ -108,6 +110,8 @@ function matchesFilter(action: CopilotAction, filter: BandejaFilter): boolean {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function CopilotAccionesPage() {
+  const { modulePermissions } = useCopilotPermissions();
+  if (modulePermissions["acciones"] === "none") return <AccessDeniedCard />;
   return (
     <Suspense
       fallback={

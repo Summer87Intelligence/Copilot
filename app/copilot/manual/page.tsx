@@ -31,6 +31,8 @@ import {
   COPILOT_MANUAL_MODULE_CARDS,
   getCopilotManualWebSections,
 } from "@/lib/copilot-manual-content";
+import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
+import { AccessDeniedCard } from "@/components/copilot/access-denied-card";
 
 const C = {
   card: "rounded-2xl border border-[var(--copilot-border)] bg-white/90 shadow-sm",
@@ -255,6 +257,7 @@ function FaqBlock() {
 }
 
 export default function ManualPage() {
+  const { modulePermissions } = useCopilotPermissions();
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
 
   const sections = useMemo<Section[]>(() => {
@@ -307,6 +310,8 @@ export default function ManualPage() {
       return next;
     });
   }
+
+  if (modulePermissions["manual"] === "none") return <AccessDeniedCard />;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

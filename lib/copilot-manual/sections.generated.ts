@@ -240,7 +240,7 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
         type: "subsection",
         title: "Qué significa cada nivel de acceso",
         blocks: [
-          { type: "bullets", items: ["No ver — el módulo no aparece en el menú lateral. Si el usuario entra manualmente, es redirigido a Hoy.","Ver — puede navegar, ver datos y descargar PDFs del módulo.","Modificar — puede leer y también crear, editar o eliminar registros en ese módulo.","Admin — acceso completo incluyendo configuración (solo para superadmin en módulo Admin)."] },
+          { type: "bullets", items: ["No ver — el módulo desaparece del menú lateral y la URL queda bloqueada. Si el usuario intenta entrar manualmente, el sistema lo redirige a Hoy o muestra un mensaje de acceso denegado.","Ver — puede navegar, ver datos y descargar PDFs del módulo.","Modificar — puede leer y también crear, editar o eliminar registros en ese módulo.","Admin — acceso completo incluyendo configuración (solo para superadmin en módulo Admin)."] },
         ],
       },
       {

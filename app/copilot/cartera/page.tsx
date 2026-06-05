@@ -23,10 +23,13 @@ import { Suspense } from "react";
 
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { CarteraShell } from "@/components/copilot/cartera-shell";
+import { isModuleAccessDenied } from "@/lib/auth/server-module-permissions";
+import { AccessDeniedCard } from "@/components/copilot/access-denied-card";
 
 export const dynamic = "force-dynamic";
 
-export default function CarteraPage() {
+export default async function CarteraPage() {
+  if (await isModuleAccessDenied("cartera")) return <AccessDeniedCard />;
   return (
     <>
       <CopilotPageHeader

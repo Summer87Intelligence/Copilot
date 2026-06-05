@@ -1,8 +1,11 @@
 import { Bot } from "lucide-react";
 
 import { AgentesOrchestrationView } from "@/components/copilot/agentes/agentes-orchestration-view";
+import { isModuleAccessDenied } from "@/lib/auth/server-module-permissions";
+import { AccessDeniedCard } from "@/components/copilot/access-denied-card";
 
-export default function AgentesPage() {
+export default async function AgentesPage() {
+  if (await isModuleAccessDenied("agentes")) return <AccessDeniedCard />;
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Hero */}

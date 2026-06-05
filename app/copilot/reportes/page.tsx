@@ -18,6 +18,8 @@ import {
 
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { CopilotCard, CopilotGhostLink, copilotPageMainClass } from "@/components/copilot/copilot-ui";
+import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
+import { AccessDeniedCard } from "@/components/copilot/access-denied-card";
 import { CollectionsReportTrigger } from "@/components/copilot/reports/collections-report-dialog";
 import { DebtorsReportTrigger } from "@/components/copilot/reports/debtors-report-dialog";
 import { MonthlyReportDialog } from "@/components/copilot/reports/monthly-report-dialog";
@@ -167,6 +169,7 @@ type ActivePreview =
   | null;
 
 export default function CopilotReportesPage() {
+  const { modulePermissions } = useCopilotPermissions();
   const [portfolio, setPortfolio] = useState<ClientPortfolioLoad | null>(null);
   const [loading, setLoading] = useState(true);
   const [activePreview, setActivePreview] = useState<ActivePreview>(null);
@@ -189,6 +192,8 @@ export default function CopilotReportesPage() {
   }, []);
 
   const closePreview = () => setActivePreview(null);
+
+  if (modulePermissions["reportes"] === "none") return <AccessDeniedCard />;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

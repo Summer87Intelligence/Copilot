@@ -7,6 +7,36 @@ import {
 } from "@/lib/copilot-session-cookie";
 import { isReadOnlyRole, isSuperAdmin } from "@/lib/auth/permissions";
 import { shouldBlockReadOnlyApiMutation } from "@/lib/auth/read-only-post-allowed";
+import { getDefaultAccessLevel } from "@/lib/auth/role-permission-presets";
+import type { ModuleKey } from "@/lib/auth/module-permissions";
+
+/**
+ * Mapa de prefijos de ruta Copilot a clave de módulo.
+ * Usado para bloquear acceso a módulos con access_level = 'none' según preset del rol.
+ * El guard usa solo el preset (sin DB) para ser Edge-compatible y sin round-trip.
+ * Los DB overrides se manejan en la capa de servidor/cliente.
+ * hoy NO está aquí porque es el destino de redirect — siempre accesible.
+ */
+const COPILOT_MODULE_ROUTE_PREFIXES: Array<[string, string]> = [
+  ["/copilot/tesoreria", "tesoreria"],
+  ["/copilot/acciones", "acciones"],
+  ["/copilot/clientes", "clientes"],
+  ["/copilot/cartera", "cartera"],
+  ["/copilot/finanzas", "finanzas"],
+  ["/copilot/reportes", "reportes"],
+  ["/copilot/datos", "datos"],
+  ["/copilot/agentes", "agentes"],
+  ["/copilot/manual", "manual"],
+];
+
+function getModuleKeyForPath(pathname: string): string | null {
+  for (const [prefix, moduleKey] of COPILOT_MODULE_ROUTE_PREFIXES) {
+    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
+      return moduleKey;
+    }
+  }
+  return null;
+}
 
 /** Rutas del módulo Copilot y APIs (excepto login/logout públicos). */
 function isCopilotProtectedPath(pathname: string): boolean {
@@ -80,6 +110,23 @@ export function middleware(request: NextRequest) {
         redirectUrl.pathname = "/copilot/hoy";
         redirectUrl.searchParams.set("blocked", "admin-access");
         return NextResponse.redirect(redirectUrl);
+      }
+    }
+
+    // Guard de módulo: bloquea rutas con access_level = 'none' según preset del rol.
+    // Solo aplica a páginas (no a APIs — las APIs tienen su propio guard de aplicación).
+    const moduleKey = getModuleKeyForPath(pathname);
+    if (moduleKey && !pathname.startsWith("/api/")) {
+      const parsed = parseCopilotSessionValue(sessionCookieValue);
+      if (parsed && !isSuperAdmin(parsed.role ?? "")) {
+        const role = parsed.role ?? "";
+        const accessLevel = getDefaultAccessLevel(role, moduleKey as ModuleKey);
+        if (accessLevel === "none") {
+          const redirectUrl = request.nextUrl.clone();
+          redirectUrl.pathname = "/copilot/hoy";
+          redirectUrl.searchParams.set("blocked", "module-access");
+          return NextResponse.redirect(redirectUrl);
+        }
       }
     }
   }

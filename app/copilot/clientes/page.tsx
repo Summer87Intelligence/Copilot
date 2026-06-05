@@ -22,6 +22,8 @@ import {
   type ClientCompanyDetail,
   type ClientPortfolioLoad,
 } from "@/lib/copilot-clients-portfolio";
+import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
+import { AccessDeniedCard } from "@/components/copilot/access-denied-card";
 
 // ── Status derivation ────────────────────────────────────────────────────────
 
@@ -194,6 +196,7 @@ function ContactCell({ row }: { row: ClientPortfolioRow }) {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CopilotClientesPage() {
+  const { modulePermissions } = useCopilotPermissions();
   const [load, setLoad] = useState<ClientPortfolioLoad | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -251,6 +254,8 @@ export default function CopilotClientesPage() {
     setSelectedId(companyId);
     setIsEvidenceOpen(true);
   };
+
+  if (modulePermissions["clientes"] === "none") return <AccessDeniedCard />;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

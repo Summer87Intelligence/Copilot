@@ -1,12 +1,15 @@
 import { Suspense } from "react";
 
 import CopilotDatosPageClient from "./datos-client";
+import { isModuleAccessDenied } from "@/lib/auth/server-module-permissions";
+import { AccessDeniedCard } from "@/components/copilot/access-denied-card";
 
 /**
  * Segmento servidor: el `Suspense` debe vivir aquí para `useSearchParams` en el cliente
  * (evita resolución incorrecta de módulos RSC/webpack en `page.tsx` marcado como client).
  */
-export default function CopilotDatosPage() {
+export default async function CopilotDatosPage() {
+  if (await isModuleAccessDenied("datos")) return <AccessDeniedCard />;
   return (
     <Suspense
       fallback={
