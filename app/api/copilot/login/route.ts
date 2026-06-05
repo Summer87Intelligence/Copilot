@@ -46,6 +46,7 @@ type AppUserLoginRow = {
   credential_version: number | null;
   failed_login_count: number | null;
   locked_until: string | null;
+  is_active: boolean | null;
 };
 
 /** Valor literal para `ilike` (sin %): igualdad insensible a mayúsculas; escapa comodines LIKE. */
@@ -169,9 +170,10 @@ export async function POST(request: Request) {
     const { data: row, error } = await admin
       .from("app_users")
       .select(
-        "id, company_id, username, pin, pin_hash, role, credential_version, failed_login_count, locked_until"
+        "id, company_id, username, pin, pin_hash, role, credential_version, failed_login_count, locked_until, is_active"
       )
       .or(`username.ilike.${p},email.ilike.${p}`)
+      .eq("is_active", true)
       .limit(1)
       .maybeSingle();
 
