@@ -615,7 +615,7 @@ describe("buildTodayBusinessPulse", () => {
       expect(pulse.allDebtorRows.map((r) => r.currency).sort()).toEqual(["USD", "UYU"]);
     });
 
-    it("allDebtorRows incluye todos los deudores; UI muestra 8 al inicio", () => {
+    it("allDebtorRows incluye todos los deudores; UI muestra 10 al inicio", () => {
       const pulse = buildTodayBusinessPulse({
         snapshot: null,
         portfolioRows: Array.from({ length: 12 }, (_, i) =>
@@ -627,7 +627,7 @@ describe("buildTodayBusinessPulse", () => {
       expect(pulse.allDebtorRows.length).toBe(12);
       expect(pulse.clientCounts.debtorClients).toBe(12);
       expect(pulse.clientCounts.debtorRows).toBe(12);
-      expect(HOY_UI.initialDebtorTableRows).toBe(8);
+      expect(HOY_UI.initialDebtorTableRows).toBe(10);
     });
 
     it("debtorClients y attentionClients son conceptos distintos", () => {
@@ -940,7 +940,7 @@ describe("buildTodayBusinessPulse", () => {
       expect(HOY_PAGE.title).not.toMatch(/pulso/i);
       expect(HOY_UI.showRecommendedActions).toBe(false);
       expect(HOY_UI.showPendingSection).toBe(false);
-      expect(HOY_UI.initialDebtorTableRows).toBe(8);
+      expect(HOY_UI.initialDebtorTableRows).toBe(10);
     });
 
     it("cobrado mayor que facturado: nota explicativa, no error", () => {
