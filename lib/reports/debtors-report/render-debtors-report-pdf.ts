@@ -164,12 +164,37 @@ export function renderDebtorsReportPdf(
       return;
     }
 
-    y = renderTableHeader(doc, y);
+    if (model.currencyFilter === "all") {
+      // Render two sections: UYU first, then USD — never mix currencies
+      const uyuRows = model.rows.filter((r) => r.currency === "UYU");
+      const usdRows = model.rows.filter((r) => r.currency === "USD");
 
-    for (let i = 0; i < model.rows.length; i++) {
-      const row = model.rows[i]!;
-      ensureSpace(ROW_MIN_H + 4);
-      y = renderDataRow(doc, row, i, y);
+      const renderSection = (rows: typeof model.rows, label: string) => {
+        if (rows.length === 0) return;
+        ensureSpace(30);
+        doc.fillColor(COLORS.accent).font("Helvetica-Bold").fontSize(10)
+          .text(label, PAGE.margin, y + 4);
+        y += 20;
+        doc.moveTo(PAGE.margin, y).lineTo(PAGE.margin + TABLE_W, y)
+          .strokeColor(COLORS.border).lineWidth(0.5).stroke();
+        y += 6;
+        y = renderTableHeader(doc, y);
+        for (let i = 0; i < rows.length; i++) {
+          ensureSpace(ROW_MIN_H + 4);
+          y = renderDataRow(doc, rows[i]!, i, y);
+        }
+        y += 8;
+      };
+
+      renderSection(uyuRows, "Pesos (UYU)");
+      renderSection(usdRows, "Dólares (USD)");
+    } else {
+      y = renderTableHeader(doc, y);
+      for (let i = 0; i < model.rows.length; i++) {
+        const row = model.rows[i]!;
+        ensureSpace(ROW_MIN_H + 4);
+        y = renderDataRow(doc, row, i, y);
+      }
     }
 
     renderFooter(doc, pageNum);

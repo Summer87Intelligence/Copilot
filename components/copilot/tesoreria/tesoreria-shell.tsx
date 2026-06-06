@@ -48,14 +48,15 @@ export function TesoreriaShell() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const sectionFromUrl = searchParams.get("section");
-  const [section, setSection] = useState<TesoreriaSection>(
-    () => parseTesoreriaSection(sectionFromUrl) ?? "caja"
-  );
+  const parsedSection = parseTesoreriaSection(sectionFromUrl) ?? "caja";
+  const [section, setSection] = useState<TesoreriaSection>(parsedSection);
+  const [appliedSectionFromUrl, setAppliedSectionFromUrl] = useState(sectionFromUrl);
 
-  useEffect(() => {
+  if (sectionFromUrl !== appliedSectionFromUrl) {
+    setAppliedSectionFromUrl(sectionFromUrl);
     const next = parseTesoreriaSection(sectionFromUrl) ?? "caja";
     if (next !== section) setSection(next);
-  }, [sectionFromUrl, section]);
+  }
 
   const [draftStart, setDraftStart] = useState("");
   const [draftEnd, setDraftEnd] = useState("");
@@ -84,7 +85,7 @@ export function TesoreriaShell() {
       params.set("section", next);
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },
-    [router, pathname, searchParams, workspace.clearFeedback]
+    [router, pathname, searchParams, workspace]
   );
 
   useEffect(() => {

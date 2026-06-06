@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import type { RefObject } from "react";
 import Link from "next/link";
 import { ChevronDown, ExternalLink, Mail, MessageCircle } from "lucide-react";
@@ -90,6 +90,8 @@ function rowSeverityClass(row: DebtorCollectionRow, highlightRisk: boolean): str
   return "";
 }
 
+const ACTION_BTN = "inline-flex w-[88px] items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold";
+
 function DebtorRowActions({ row }: { row: DebtorCollectionRow }) {
   const { phone, email } = debtorContactFields(row);
   const waDigits = phone ? normalizeWhatsAppDigits(phone) : null;
@@ -101,26 +103,42 @@ function DebtorRowActions({ row }: { row: DebtorCollectionRow }) {
           href={`https://wa.me/${waDigits}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 rounded-md border border-emerald-200/80 bg-emerald-50/80 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-50"
+          className={`${ACTION_BTN} border-emerald-200/80 bg-emerald-50/80 text-emerald-800 hover:bg-emerald-50`}
         >
-          <MessageCircle className="h-3 w-3" aria-hidden />
+          <MessageCircle className="h-3 w-3 shrink-0" aria-hidden />
           {HOY_COPY.debtorWhatsApp}
         </a>
-      ) : null}
+      ) : (
+        <span
+          title="Sin WhatsApp cargado"
+          className={`${ACTION_BTN} cursor-not-allowed border-[var(--copilot-border)]/40 bg-white/40 text-[var(--copilot-ink-muted)]/40`}
+        >
+          <MessageCircle className="h-3 w-3 shrink-0" aria-hidden />
+          WhatsApp
+        </span>
+      )}
       {email ? (
         <a
           href={`mailto:${encodeURIComponent(email)}`}
-          className="inline-flex items-center gap-1 rounded-md border border-[var(--copilot-border)] bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-[var(--copilot-accent)] hover:bg-white"
+          className={`${ACTION_BTN} border-[var(--copilot-border)] bg-white/80 text-[var(--copilot-accent)] hover:bg-white`}
         >
-          <Mail className="h-3 w-3" aria-hidden />
+          <Mail className="h-3 w-3 shrink-0" aria-hidden />
           {HOY_COPY.debtorSendEmail}
         </a>
-      ) : null}
+      ) : (
+        <span
+          title="Sin email cargado"
+          className={`${ACTION_BTN} cursor-not-allowed border-[var(--copilot-border)]/40 bg-white/40 text-[var(--copilot-ink-muted)]/40`}
+        >
+          <Mail className="h-3 w-3 shrink-0" aria-hidden />
+          Email
+        </span>
+      )}
       <Link
         href={row.deepLink}
-        className="inline-flex items-center gap-1 rounded-md border border-[var(--copilot-border)] bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-[var(--copilot-ink)] hover:bg-white"
+        className={`${ACTION_BTN} border-[var(--copilot-border)] bg-white/80 text-[var(--copilot-ink)] hover:bg-white`}
       >
-        <ExternalLink className="h-3 w-3" aria-hidden />
+        <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
         {HOY_COPY.debtorViewProfile}
       </Link>
     </div>
@@ -350,14 +368,13 @@ export function ClientsWithDebtSection({
   const dedupedRows = useMemo(() => dedupeDebtorRows(allRows), [allRows]);
 
   const [visibleCount, setVisibleCount] = useState<number>(initialCount);
+  const visibilityResetKey = `${showAll}|${dedupedRows.length}|${initialCount}`;
+  const [appliedVisibilityResetKey, setAppliedVisibilityResetKey] = useState(visibilityResetKey);
 
-  useEffect(() => {
-    if (showAll) {
-      setVisibleCount(dedupedRows.length);
-    } else {
-      setVisibleCount(initialCount);
-    }
-  }, [showAll, dedupedRows.length, initialCount]);
+  if (appliedVisibilityResetKey !== visibilityResetKey) {
+    setAppliedVisibilityResetKey(visibilityResetKey);
+    setVisibleCount(showAll ? dedupedRows.length : initialCount);
+  }
 
   const visibleRows = useMemo(
     () => dedupedRows.slice(0, visibleCount),

@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { assignOperationalOwnerForTenant } from "@/lib/decision-engine/decision-engine-ownership-service";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true as const, state });
   } catch (error) {
     log.error("de_assign_owner_failed", error);
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json({ ok: false as const, code: "UNEXPECTED", message }, { status: 500 });
+    return copilotInternalErrorResponse({ ok: false as const, code: "UNEXPECTED" });
   }
 }

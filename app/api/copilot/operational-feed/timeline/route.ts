@@ -4,6 +4,7 @@ import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { buildOperationalFeedTimeline } from "@/lib/copilot-operational-feed";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 export async function GET(request: NextRequest) {
   let log = copilotRequestLogger(request);
@@ -42,7 +43,6 @@ export async function GET(request: NextRequest) {
     log.error("copilot_request_unhandled", error, {
       route: "GET /api/copilot/operational-feed/timeline",
     });
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json({ error: message, events: [] }, { status: 500 });
+    return copilotInternalErrorResponse({ events: [] });
   }
 }

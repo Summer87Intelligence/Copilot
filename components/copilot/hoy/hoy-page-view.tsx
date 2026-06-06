@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { RefreshCw, XCircle } from "lucide-react";
@@ -15,7 +15,7 @@ import {
   topDebtorRowsPerCurrency,
 } from "@/lib/copilot-hoy-cockpit-view";
 import type { HoyPeriodRange } from "@/lib/copilot-hoy-period";
-import { HOY_COCKPIT, HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
+import { HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
 import {
   buildTodayBusinessPulse,
   type AttentionClientsSummary,
@@ -169,10 +169,12 @@ export function HoyPageView({
   const [cockpitCard, setCockpitCard] = useState<HoyCockpitCardId | null>(null);
   const [advancedExpanded, setAdvancedExpanded] = useState(false);
   const pathname = usePathname();
+  const [advancedPathname, setAdvancedPathname] = useState(pathname);
 
-  useEffect(() => {
+  if (pathname !== advancedPathname) {
+    setAdvancedPathname(pathname);
     setAdvancedExpanded(false);
-  }, [pathname]);
+  }
 
   const debtorsSectionRef = useRef<HTMLElement>(null);
 

@@ -1,10 +1,12 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 import { NextRequest, NextResponse } from "next/server";
 
 import { COPILOT_MANUAL_PDF_FILENAME } from "@/lib/copilot-manual-content";
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { enforcePdfRateLimit } from "@/lib/security/pdf-rate-limit";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { renderCopilotManualPdf } from "@/lib/reports/manual/render-copilot-manual-pdf";
 
@@ -18,6 +20,9 @@ export async function GET(request: NextRequest) {
       return auth.response;
     }
     log = log.withTenant(auth.ctx.tenantCompanyId);
+
+    const rateLimited = enforcePdfRateLimit(request, "copilot/manual", auth.ctx.appUser.id);
+    if (rateLimited) return rateLimited;
 
     const tenantCompanyId = auth.ctx.tenantCompanyId.trim();
     if (!tenantCompanyId) {

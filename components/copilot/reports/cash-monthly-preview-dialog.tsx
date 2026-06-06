@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { formatMoneyCurrency } from "@/lib/copilot-format-money";
 import type { CashMonthlyReportModel } from "@/lib/reports/cash-monthly-report/build-cash-monthly-report-model";
@@ -85,12 +85,12 @@ export function CashMonthlyPreviewDialog({ open, onClose }: Props) {
 
   const { loading: dlLoading, error: dlError, clearError, download } = usePdfDownload();
 
-  useEffect(() => {
-    if (!open) return;
+  const handleClose = useCallback(() => {
     setYear(nowYear());
     setMonth(nowMonth());
     setCurrency("UYU");
-  }, [open]);
+    onClose();
+  }, [onClose]);
 
   const previewUrl = open
     ? `/api/copilot/reports/cash-monthly.json?year=${year}&month=${month}&currency=${currency}`
@@ -117,7 +117,7 @@ export function CashMonthlyPreviewDialog({ open, onClose }: Props) {
   return (
     <ReportPreviewShell
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       title="Reporte de caja mensual"
       subtitle={subtitle}
       onDownloadPdf={() => void handleDownloadPdf()}

@@ -13,7 +13,6 @@ import type {
   DEOperationalStateRow,
   OperationalMachineState,
   OperationalTask,
-  PortfolioScore,
   QueueGroup,
   QueueGroupKind,
   QueueSection,

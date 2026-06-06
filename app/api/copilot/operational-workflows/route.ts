@@ -8,6 +8,7 @@ import { invalidateOperationalRuntime } from "@/lib/copilot-operational-runtime"
 import { buildCopilotRutasSnapshot } from "@/lib/copilot-rutas-snapshot";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 export async function GET(request: NextRequest) {
   let log = copilotRequestLogger(request);
@@ -66,17 +67,13 @@ export async function GET(request: NextRequest) {
     log.error("copilot_request_unhandled", error, {
       route: "GET /api/copilot/operational-workflows",
     });
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json(
-      {
+    return copilotInternalErrorResponse({
         ok: false as const,
         code: "UNEXPECTED",
-        message,
+        
         workflows: [],
         generatedAt: new Date().toISOString(),
-        health: { status: "degraded", warnings: [{ source: "workflows", code: "UNEXPECTED", message }] },
-      },
-      { status: 500 }
-    );
+        health: { status: "degraded", warnings: [{ source: "workflows", code: "UNEXPECTED" }] },
+      });
   }
 }

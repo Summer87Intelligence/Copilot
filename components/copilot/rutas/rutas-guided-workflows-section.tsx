@@ -16,7 +16,6 @@ import { compareWorkflowPriority } from "@/lib/copilot-operational-workflow-scor
 import type {
   OperationalWorkflowExecution,
   WorkflowExecutionStep,
-  WorkflowSlaStatus,
 } from "@/lib/copilot-operational-workflows-types";
 
 type OperatorMe = {
@@ -85,18 +84,6 @@ function WorkflowStepRow({ step }: { step: WorkflowExecutionStep }) {
       ) : null}
     </li>
   );
-}
-
-function slaTone(status?: WorkflowSlaStatus): "neutral" | "warning" | "danger" | "success" {
-  if (status === "breached") return "danger";
-  if (status === "warning") return "warning";
-  return "success";
-}
-
-function slaLabel(status?: WorkflowSlaStatus): string {
-  if (status === "breached") return "SLA vencido";
-  if (status === "warning") return "SLA en riesgo";
-  return "SLA en plazo";
 }
 
 function GuidedWorkflowCard({

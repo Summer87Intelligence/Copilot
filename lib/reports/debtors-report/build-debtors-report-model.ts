@@ -145,14 +145,14 @@ export function buildDebtorsReportModel(input: BuildDebtorsReportModelInput): De
       currencies.push({
         currency: "UYU",
         debt: row.debt_uyu ?? 0,
-        overdue: row.overdue_uyu ?? (row.debt_usd === 0 ? row.overdue_debt : 0),
+        overdue: row.overdue_uyu ?? 0,
       });
     }
     if ((row.debt_usd ?? 0) > 0) {
       currencies.push({
         currency: "USD",
         debt: row.debt_usd ?? 0,
-        overdue: row.overdue_usd ?? (row.debt_uyu === 0 ? row.overdue_debt : 0),
+        overdue: row.overdue_usd ?? 0,
       });
     }
 

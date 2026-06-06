@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { AlertCircle, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 import { formatMoneyCurrency } from "@/lib/copilot-format-money";
@@ -117,12 +117,12 @@ export function ExecutiveMonthlyPreviewDialog({ open, onClose }: Props) {
 
   const { loading: dlLoading, error: dlError, clearError, download } = usePdfDownload();
 
-  useEffect(() => {
-    if (!open) return;
+  const handleClose = useCallback(() => {
     setYear(nowYear());
     setMonth(nowMonth());
     setCurrency("UYU");
-  }, [open]);
+    onClose();
+  }, [onClose]);
 
   const previewUrl = open
     ? `/api/copilot/reports/executive-monthly.json?year=${year}&month=${month}&currency=${currency}`
@@ -149,7 +149,7 @@ export function ExecutiveMonthlyPreviewDialog({ open, onClose }: Props) {
   return (
     <ReportPreviewShell
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       title="Reporte ejecutivo mensual"
       subtitle={subtitle}
       onDownloadPdf={() => void handleDownloadPdf()}

@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import {
   BarChart2,
-  CalendarClock,
   Eye,
   FileDown,
   FileText,
@@ -13,11 +11,10 @@ import {
   Receipt,
   TrendingUp,
   Trophy,
-  Users,
 } from "lucide-react";
 
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
-import { CopilotCard, CopilotGhostLink, copilotPageMainClass } from "@/components/copilot/copilot-ui";
+import { CopilotCard, copilotPageMainClass } from "@/components/copilot/copilot-ui";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 import { AccessDeniedCard } from "@/components/copilot/access-denied-card";
 import { CollectionsReportTrigger } from "@/components/copilot/reports/collections-report-dialog";
@@ -25,6 +22,8 @@ import { DebtorsReportTrigger } from "@/components/copilot/reports/debtors-repor
 import { MonthlyReportDialog } from "@/components/copilot/reports/monthly-report-dialog";
 import { TopClientsReportTrigger } from "@/components/copilot/reports/top-clients-report-dialog";
 
+import { AccountStatementsPdfTrigger } from "@/components/copilot/reports/account-statements-pdf-dialog";
+import { AccountStatementsPreviewDialog } from "@/components/copilot/reports/account-statements-preview-dialog";
 import { CashMonthlyPreviewDialog } from "@/components/copilot/reports/cash-monthly-preview-dialog";
 import { CollectionsPreviewDialog } from "@/components/copilot/reports/collections-preview-dialog";
 import { DebtorsPreviewDialog } from "@/components/copilot/reports/debtors-preview-dialog";
@@ -166,6 +165,7 @@ type ActivePreview =
   | "netsales"
   | "topclients"
   | "executive"
+  | "account-statements"
   | null;
 
 export default function CopilotReportesPage() {
@@ -344,36 +344,21 @@ export default function CopilotReportesPage() {
           <ReportCard
             icon={<FileText className="h-5 w-5" aria-hidden />}
             title="Estado de cuenta por cliente"
-            description="Detalle individual de facturas, ajustes y recibos. Se genera desde la ficha de cada cliente."
+            description="Saldo pendiente y deuda vencida por cliente, separado por moneda. Ver todos los clientes en pantalla o descargar el PDF masivo."
           >
-            <CopilotGhostLink
-              href="/copilot/clientes"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-white px-3.5 py-2 text-xs font-semibold text-[var(--copilot-accent)] hover:bg-white/90"
-            >
-              <Users className="h-3.5 w-3.5" aria-hidden />
-              Ir a Clientes
-            </CopilotGhostLink>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setActivePreview("account-statements")}
+                className={viewBtnClass}
+              >
+                <Eye className="h-3.5 w-3.5" aria-hidden />
+                Ver reporte
+              </button>
+              <AccountStatementsPdfTrigger className={smallPdfBtnClass} />
+            </div>
           </ReportCard>
         </div>
-
-        {/* ── Próximamente ─────────────────────────────────────── */}
-        <div className="space-y-3">
-          <GroupHeader label="Próximamente" />
-          <ReportCard
-            muted
-            icon={<CalendarClock className="h-5 w-5 opacity-60" aria-hidden />}
-            title="Agenda de cobranza"
-            description="Resumen exportable de seguimientos y promesas."
-          />
-        </div>
-
-        <p className="text-xs text-[var(--copilot-ink-muted)]">
-          También podés generar el reporte de deudores desde{" "}
-          <Link href="/copilot/clientes" className="font-semibold text-[var(--copilot-accent)] hover:underline">
-            Clientes
-          </Link>
-          .
-        </p>
       </div>
 
       {/* ── Preview modals ───────────────────────────────────── */}
@@ -402,6 +387,11 @@ export default function CopilotReportesPage() {
       <ExecutiveMonthlyPreviewDialog
         open={activePreview === "executive"}
         onClose={closePreview}
+      />
+      <AccountStatementsPreviewDialog
+        open={activePreview === "account-statements"}
+        onClose={closePreview}
+        portfolioRows={portfolio?.rows ?? []}
       />
     </div>
   );

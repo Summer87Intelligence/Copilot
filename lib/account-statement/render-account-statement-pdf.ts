@@ -24,7 +24,7 @@ const COLORS = {
 };
 
 const PAGE = { margin: 48, width: 595, height: 842 };
-const FOOTER_RESERVE = 36;
+const FOOTER_RESERVE = 48;  // matches all other PDF renderers; footer at y=766, content ends at y=746
 const MAX_Y = PAGE.height - PAGE.margin - FOOTER_RESERVE;
 
 // Columnas: Fecha | Comprobante | Serie y Nº | Moneda | Debe | Haber | Saldo
@@ -162,7 +162,10 @@ function filterMovements(
 // ── Secciones del PDF ─────────────────────────────────────────────────────────
 
 function renderFooter(doc: PDFKit.PDFDocument, pageNum: number, generatedAt: Date): void {
-  const fy = PAGE.height - PAGE.margin + 6;
+  // fy must be below MAX_Y but within PDFKit's maxY (PAGE.height - PAGE.margin = 794).
+  // Previously used PAGE.height - PAGE.margin + 6 = 800 which exceeded maxY and caused
+  // PDFKit to auto-add pages on every doc.text() call, creating blank/footer-only pages.
+  const fy = PAGE.height - PAGE.margin - 28;  // = 766, safely within bounds
   const mx = PAGE.margin;
   const w = TABLE_W;
   doc.moveTo(mx, fy - 4).lineTo(mx + w, fy - 4).strokeColor(COLORS.border).lineWidth(0.4).stroke();
@@ -429,6 +432,105 @@ function renderFinalBalanceRow(
   return y + 10;
 }
 
+// ── Shared render state ───────────────────────────────────────────────────────
+
+type DocState = {
+  doc: PDFKit.PDFDocument;
+  y: number;
+  pageNum: number;
+  generatedAt: Date;
+};
+
+function breakDocPage(state: DocState): void {
+  renderFooter(state.doc, state.pageNum, state.generatedAt);
+  state.doc.addPage();
+  state.pageNum++;
+  state.y = PAGE.margin;
+}
+
+function ensureDocSpace(state: DocState, needed: number, reTableHeader?: () => void): void {
+  if (state.y + needed > MAX_Y) {
+    breakDocPage(state);
+    if (reTableHeader) {
+      state.y = renderTableHeader(state.doc, state.y);
+    }
+  }
+}
+
+function renderClientCurrencies(
+  state: DocState,
+  opts: {
+    clientInfo: ClientInfo;
+    statement: ClientAccountStatement;
+    currencies: Array<"UYU" | "USD">;
+    from?: string;
+    to?: string;
+    issuer: IssuerInfo;
+    firstClientBlock: boolean;
+  }
+): void {
+  const { clientInfo, statement, currencies, from, to, issuer } = opts;
+  let firstBlock = opts.firstClientBlock;
+
+  for (const currency of currencies) {
+    const rawBlock = currency === "UYU" ? statement.uyu : statement.usd;
+    const previousBalance = getPreviousBalance(rawBlock, from);
+    const block = filterMovements(rawBlock, from, to);
+
+    if (block.movements.length === 0 && previousBalance === 0) continue;
+
+    if (!firstBlock) {
+      state.y += 18;
+      if (state.y > MAX_Y - 120) breakDocPage(state);
+    }
+    firstBlock = false;
+
+    ensureDocSpace(state, 80);
+    state.y = renderPageHeader(state.doc, { from, to, currency, issuer }, state.y);
+
+    ensureDocSpace(state, 46);
+    state.y = renderClientBlock(state.doc, clientInfo, state.y);
+
+    ensureDocSpace(state, 20);
+    state.y = renderTableHeader(state.doc, state.y);
+
+    if (from) {
+      ensureDocSpace(state, 18);
+      state.y = renderSaldoAnteriorRow(state.doc, previousBalance, state.y);
+    }
+
+    const reTable = () => { state.y = renderTableHeader(state.doc, state.y); };
+
+    for (let i = 0; i < block.movements.length; i++) {
+      const mv = block.movements[i];
+      const detailCount =
+        mv.detailLines?.length > 0
+          ? mv.detailLines.length
+          : mv.detail ? 1 : 0;
+      const rowH = ROW_H + 2 + detailCount * DETAIL_LINE_H;
+      ensureDocSpace(state, rowH, reTable);
+      state.y = renderMovementRow(state.doc, mv, currency, i, state.y);
+    }
+
+    const finalBalance =
+      block.movements.length > 0
+        ? block.movements[block.movements.length - 1].runningBalance
+        : previousBalance;
+    ensureDocSpace(state, 35);
+    state.y = renderFinalBalanceRow(state.doc, finalBalance, currency, to, state.y);
+  }
+
+  if (statement.unknownCurrencyCount > 0) {
+    ensureDocSpace(state, 14);
+    state.doc.fillColor(COLORS.muted).font("Helvetica").fontSize(7)
+      .text(
+        `${statement.unknownCurrencyCount} movimiento(s) descartado(s) por moneda no determinable.`,
+        PAGE.margin, state.y
+      );
+    state.y += 12;
+  }
+}
+
 // ── Render principal ──────────────────────────────────────────────────────────
 
 export async function renderAccountStatementPdf(opts: AccountStatementPdfOptions): Promise<Buffer> {
@@ -452,97 +554,71 @@ export async function renderAccountStatementPdf(opts: AccountStatementPdfOptions
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    let pageNum = 1;
-    let y = PAGE.margin;
+    const state: DocState = { doc, y: PAGE.margin, pageNum: 1, generatedAt };
+    renderClientCurrencies(state, { clientInfo, statement, currencies, from, to, issuer, firstClientBlock: true });
 
-    // Rompe página, renderiza footer en la saliente y resetea y
-    function breakPage(): void {
-      renderFooter(doc, pageNum, generatedAt);
-      doc.addPage();
-      pageNum++;
-      y = PAGE.margin;
+    renderFooter(doc, state.pageNum, generatedAt);
+    doc.end();
+  });
+}
+
+// ── Bulk renderer ─────────────────────────────────────────────────────────────
+
+export type BulkAccountStatementEntry = {
+  client: ClientInfo;
+  companyName: string;
+  statement: ClientAccountStatement;
+};
+
+export async function renderBulkAccountStatementsPdf(opts: {
+  entries: BulkAccountStatementEntry[];
+  currencies: Array<"UYU" | "USD">;
+  issuer?: IssuerInfo;
+  generatedAt?: Date;
+}): Promise<Buffer> {
+  const { entries, currencies, issuer = ISSUER_FALLBACK, generatedAt = new Date() } = opts;
+
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: PAGE.margin, size: "A4", autoFirstPage: true });
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    const state: DocState = { doc, y: PAGE.margin, pageNum: 1, generatedAt };
+    let firstEntry = true;
+
+    for (const entry of entries) {
+      const clientInfo: ClientInfo = entry.client;
+
+      // Has data in any of the requested currencies?
+      const hasData = currencies.some((cur) => {
+        const block = cur === "UYU" ? entry.statement.uyu : entry.statement.usd;
+        return block.movements.length > 0 || block.summary.pendingBalance !== 0;
+      });
+      if (!hasData) continue;
+
+      if (!firstEntry) {
+        // Force a new page between clients
+        renderFooter(doc, state.pageNum, generatedAt);
+        doc.addPage();
+        state.pageNum++;
+        state.y = PAGE.margin;
+      }
+      firstEntry = false;
+
+      renderClientCurrencies(state, {
+        clientInfo,
+        statement: entry.statement,
+        currencies,
+        from: undefined,
+        to: undefined,
+        issuer,
+        firstClientBlock: true,
+      });
     }
 
-    // Garantiza espacio; si no alcanza rompe página y re-renderiza header de tabla
-    function ensureSpace(needed: number, reTableHeader?: () => void): void {
-      if (y + needed > MAX_Y) {
-        breakPage();
-        if (reTableHeader) {
-          y = renderTableHeader(doc, y);
-        }
-      }
-    }
-
-    let firstBlock = true;
-
-    for (const currency of currencies) {
-      const rawBlock = currency === "UYU" ? statement.uyu : statement.usd;
-      const previousBalance = getPreviousBalance(rawBlock, from);
-      const block = filterMovements(rawBlock, from, to);
-
-      if (block.movements.length === 0 && previousBalance === 0) continue;
-
-      if (!firstBlock) {
-        y += 18;
-        if (y > MAX_Y - 120) breakPage();
-      }
-      firstBlock = false;
-
-      // Header de página (título, período, moneda, empresa)
-      ensureSpace(80);
-      y = renderPageHeader(doc, { from, to, currency, issuer }, y);
-
-      // Bloque cliente
-      ensureSpace(46);
-      y = renderClientBlock(doc, clientInfo, y);
-
-      // Encabezado de tabla
-      ensureSpace(20);
-      y = renderTableHeader(doc, y);
-
-      // Saldo anterior
-      if (from) {
-        ensureSpace(18);
-        y = renderSaldoAnteriorRow(doc, previousBalance, y);
-      }
-
-      // Movimientos
-      const reTable = () => {
-        y = renderTableHeader(doc, y);
-      };
-
-      for (let i = 0; i < block.movements.length; i++) {
-        const mv = block.movements[i];
-        const detailCount =
-          mv.detailLines?.length > 0
-            ? mv.detailLines.length
-            : mv.detail ? 1 : 0;
-        const rowH = ROW_H + 2 + detailCount * DETAIL_LINE_H;
-        ensureSpace(rowH, reTable);
-        y = renderMovementRow(doc, mv, currency, i, y);
-      }
-
-      // Saldo final
-      const finalBalance =
-        block.movements.length > 0
-          ? block.movements[block.movements.length - 1].runningBalance
-          : previousBalance;
-      ensureSpace(35);
-      y = renderFinalBalanceRow(doc, finalBalance, currency, to, y);
-    }
-
-    // Nota de moneda desconocida (discreta)
-    if (statement.unknownCurrencyCount > 0) {
-      ensureSpace(14);
-      doc.fillColor(COLORS.muted).font("Helvetica").fontSize(7)
-        .text(
-          `${statement.unknownCurrencyCount} movimiento(s) descartado(s) por moneda no determinable.`,
-          PAGE.margin, y
-        );
-      y += 12;
-    }
-
-    renderFooter(doc, pageNum, generatedAt);
+    renderFooter(doc, state.pageNum, generatedAt);
     doc.end();
   });
 }

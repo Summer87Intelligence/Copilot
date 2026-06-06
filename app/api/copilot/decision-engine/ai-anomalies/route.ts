@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { generateOperationalIntelligence } from "@/lib/decision-engine/ai/ai-intelligence-orchestrator";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     log.error("ai_anomalies_route_failed", error);
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json({ ok: false as const, code: "UNEXPECTED", message }, { status: 500 });
+    return copilotInternalErrorResponse({ ok: false as const, code: "UNEXPECTED" });
   }
 }

@@ -11,6 +11,7 @@ import {
   type ProtoDocument,
 } from "@/lib/data/proto-documents-repository";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 /**
  * GET /api/copilot/proto-documents
@@ -90,10 +91,6 @@ export async function GET(request: NextRequest) {
     log.error("copilot_proto_documents_failed", e, {
       route: "GET /api/copilot/proto-documents",
     });
-    const message = e instanceof Error ? e.message : "Error desconocido";
-    return NextResponse.json(
-      { ok: false as const, code: "UNEXPECTED", error: message },
-      { status: 500 }
-    );
+    return copilotInternalErrorResponse({ ok: false as const, code: "UNEXPECTED" });
   }
 }

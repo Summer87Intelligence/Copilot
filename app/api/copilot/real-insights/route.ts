@@ -56,16 +56,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (process.env.NODE_ENV === "development") {
-      console.log("=== COPILOT DEBUG ===");
-      console.log("user:", auth.ctx.authUser?.email);
-      console.log(
-        "company_id:",
-        auth.ctx.appUser?.company_id ?? auth.ctx.tenantCompanyId
-      );
-      console.log("full auth ctx:", auth.ctx);
-    }
-
     // Cliente SSR con cookies (`createServerClient` en `createRouteSupabaseClient`).
     // Si hay JWT de Supabase Auth, las lecturas respetan RLS; si no (sesión solo PIN),
     // `requireCopilotTenantContext` ya expone un cliente operativo adecuado en `auth.ctx`.
@@ -98,7 +88,6 @@ export async function GET(request: NextRequest) {
         {
           ok: false as const,
           code,
-          error: message,
           insights: [],
           validation_report: gate.validation_report,
           confidence: gate.confidence,
@@ -133,7 +122,6 @@ export async function GET(request: NextRequest) {
       {
         ok: false as const,
         code: code === "UNKNOWN" ? "UNEXPECTED" : code,
-        error: message,
         insights: [],
         computedAt: computedAt(),
       },

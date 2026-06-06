@@ -504,7 +504,7 @@ export function CollectionFollowupForm({
         {saved ? (
           <span className="flex items-center gap-1.5 text-[12px] text-emerald-600">
             <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-            Registrado
+            Gestión registrada
           </span>
         ) : null}
         {saveError ? (

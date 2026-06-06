@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { formatMoneyCurrency } from "@/lib/copilot-format-money";
 import type { CollectionsReportModel } from "@/lib/reports/collections-report/build-collections-report-model";
@@ -53,12 +53,12 @@ export function CollectionsPreviewDialog({ open, onClose }: Props) {
 
   const { loading: dlLoading, error: dlError, clearError, download } = usePdfDownload();
 
-  useEffect(() => {
-    if (!open) return;
+  const handleClose = useCallback(() => {
     setYear(nowYear());
     setMonth(nowMonth());
     setCurrency("UYU");
-  }, [open]);
+    onClose();
+  }, [onClose]);
 
   const previewUrl = open
     ? `/api/copilot/reports/collections.json?year=${year}&month=${month}&currency=${currency}`
@@ -82,7 +82,7 @@ export function CollectionsPreviewDialog({ open, onClose }: Props) {
   return (
     <ReportPreviewShell
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       title="Reporte de cobranza"
       subtitle={subtitle}
       onDownloadPdf={() => void handleDownloadPdf()}

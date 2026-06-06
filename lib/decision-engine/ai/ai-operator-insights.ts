@@ -3,7 +3,7 @@
  */
 
 import type { OperationalAnalyticsSnapshot } from "@/lib/decision-engine/de-types";
-import type { AIInsightSeverity, OperatorInsight, OperatorInsightKind } from "@/lib/decision-engine/ai/ai-types";
+import type { AIInsightSeverity, OperatorInsight } from "@/lib/decision-engine/ai/ai-types";
 
 function severityForCriticalLoad(critical: number): AIInsightSeverity {
   if (critical >= 8) return "critical";

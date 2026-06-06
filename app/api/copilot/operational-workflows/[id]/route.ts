@@ -21,6 +21,7 @@ import {
   updateOperationalWorkflowById,
 } from "@/lib/data/operational-workflows-repository";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
+import { copilotInternalErrorResponse, COPILOT_INTERNAL_ERROR_MESSAGE } from "@/lib/api/copilot-request-errors";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -98,7 +99,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     );
     if (existingResult.error) {
       return NextResponse.json(
-        { ok: false as const, code: "DB_ERROR", message: existingResult.error.message },
+        { ok: false as const, code: "DB_ERROR", message: COPILOT_INTERNAL_ERROR_MESSAGE },
         { status: 500 }
       );
     }
@@ -125,7 +126,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     );
     if (updateResult.error) {
       return NextResponse.json(
-        { ok: false as const, code: "DB_ERROR", message: updateResult.error.message },
+        { ok: false as const, code: "DB_ERROR", message: COPILOT_INTERNAL_ERROR_MESSAGE },
         { status: 500 }
       );
     }
@@ -188,10 +189,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     log.error("copilot_request_unhandled", error, {
       route: "PATCH /api/copilot/operational-workflows/[id]",
     });
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json(
-      { ok: false as const, code: "UNEXPECTED", message },
-      { status: 500 }
-    );
+    return copilotInternalErrorResponse({ ok: false as const, code: "UNEXPECTED" });
   }
 }

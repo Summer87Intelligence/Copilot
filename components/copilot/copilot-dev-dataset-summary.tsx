@@ -40,8 +40,8 @@ export function CopilotDevDatasetSummary() {
     if (process.env.NODE_ENV !== "development") return;
 
     let cancelled = false;
-    setState({ status: "loading" });
     void (async () => {
+      setState({ status: "loading" });
       const res = await copilotApiFetch("/api/copilot/dev-dataset-summary");
       const json = (await res.json()) as DevDatasetSummaryOk | DevDatasetSummaryErr;
       if (cancelled) return;

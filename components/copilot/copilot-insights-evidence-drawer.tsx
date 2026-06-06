@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   COPILOT_INSIGHTS_EVIDENCE_MOCK,
@@ -34,10 +34,12 @@ export function CopilotInsightsEvidenceDrawer({
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<DrawerTab>("resumen");
+  const [tabScope, setTabScope] = useState(insightId);
 
-  useEffect(() => {
-    if (isOpen) setTab("resumen");
-  }, [insightId, isOpen]);
+  if (insightId !== tabScope) {
+    setTabScope(insightId);
+    setTab("resumen");
+  }
 
   const data: CopilotInsightEvidenceCase | null = useMemo(() => {
     if (evidenceOverride) return evidenceOverride;

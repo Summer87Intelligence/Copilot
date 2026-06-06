@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   COPILOT_ALERTS_EVIDENCE_MOCK,
@@ -33,10 +33,12 @@ export function CopilotEvidenceDrawer({
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<DrawerTab>("resumen");
+  const [tabScope, setTabScope] = useState(alertId);
 
-  useEffect(() => {
-    if (isOpen) setTab("resumen");
-  }, [alertId, isOpen]);
+  if (alertId !== tabScope) {
+    setTabScope(alertId);
+    setTab("resumen");
+  }
 
   const data: CopilotEvidenceCase | null = useMemo(() => {
     if (!alertId) return null;

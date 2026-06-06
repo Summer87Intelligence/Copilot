@@ -211,14 +211,18 @@ function CopilotAtencionPrioritariaPageContent() {
   const [obligation, setObligation] = useState<ProtoTaxObligation | null>(null);
   const [obligationLoading, setObligationLoading] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [attentionAssembledAt, setAttentionAssembledAt] = useState<string | null>(
-    null
-  );
 
   const primary = useMemo(
     () => pickPrimaryCaseForLevel(allAlerts, attentionLevel),
     [allAlerts, attentionLevel]
   );
+  const attentionAssembledAt = useMemo(() => {
+    if (!primary) return null;
+    if (alertsLoading || snapshotLoading) return null;
+    if (primary.obligationId && obligationLoading) return null;
+    return new Date().toISOString();
+  }, [primary, alertsLoading, snapshotLoading, obligationLoading]);
+
   const content = useMemo(
     () => (primary ? buildAttentionCaseContent(primary) : null),
     [primary]
@@ -226,8 +230,6 @@ function CopilotAtencionPrioritariaPageContent() {
 
   useEffect(() => {
     let cancelled = false;
-    setSnapshotLoading(true);
-    setSnapshotError(null);
     void getFinancialSnapshot()
       .then((s) => {
         if (!cancelled) {
@@ -253,42 +255,25 @@ function CopilotAtencionPrioritariaPageContent() {
 
   useEffect(() => {
     const id = primary?.obligationId;
-    if (!id) {
-      setObligation(null);
-      return;
-    }
+    if (!id) return;
     let cancelled = false;
-    setObligationLoading(true);
-    void getProtoTaxObligationById(id)
-      .then((o) => {
+    void (async () => {
+      setObligationLoading(true);
+      try {
+        const o = await getProtoTaxObligationById(id);
         if (!cancelled) setObligation(o);
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setObligation(null);
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setObligationLoading(false);
-      });
+      }
+    })();
     return () => {
       cancelled = true;
     };
   }, [primary?.obligationId]);
 
-  useEffect(() => {
-    if (!primary) {
-      setAttentionAssembledAt(null);
-      return;
-    }
-    if (alertsLoading || snapshotLoading) return;
-    if (primary.obligationId && obligationLoading) return;
-    setAttentionAssembledAt(new Date().toISOString());
-  }, [
-    primary,
-    alertsLoading,
-    snapshotLoading,
-    obligationLoading,
-    primary?.obligationId,
-  ]);
+  const effectiveObligation = primary?.obligationId ? obligation : null;
 
   const alertasHref =
     primary?.priority === "critical"
@@ -299,8 +284,8 @@ function CopilotAtencionPrioritariaPageContent() {
 
   const planRecomendado = useMemo(() => {
     if (!primary || !content) return null;
-    return buildPlanRecomendado(primary, content, snapshot, obligation);
-  }, [primary, content, snapshot, obligation]);
+    return buildPlanRecomendado(primary, content, snapshot, effectiveObligation);
+  }, [primary, content, snapshot, effectiveObligation]);
 
   const consecuenciasOperativas = useMemo(() => {
     if (!primary || !content) return "";
@@ -308,9 +293,9 @@ function CopilotAtencionPrioritariaPageContent() {
       content.consecuencias,
       primary,
       snapshot,
-      obligation
+      effectiveObligation
     );
-  }, [primary, content, snapshot, obligation]);
+  }, [primary, content, snapshot, effectiveObligation]);
 
   const primaryCta = useMemo(() => {
     if (!primary) return { label: "", href: "" };
@@ -320,9 +305,9 @@ function CopilotAtencionPrioritariaPageContent() {
   const comoSeResuelve = useMemo(() => {
     if (!primary) return [];
     const lines: string[] = [];
-    if (obligation) {
+    if (effectiveObligation) {
       lines.push(
-        `Registrar el pago o la exención aplicable para ${mapTaxTypeLabel(obligation.tax_type)} (${obligation.period_label}) y actualizar el estado en Datos revierte la señal fiscal en cadena: alertas, Finanzas y semáforo.`
+        `Registrar el pago o la exención aplicable para ${mapTaxTypeLabel(effectiveObligation.tax_type)} (${effectiveObligation.period_label}) y actualizar el estado en Datos revierte la señal fiscal en cadena: alertas, Finanzas y semáforo.`
       );
     } else if (primary.type === "fiscalidad") {
       lines.push(
@@ -349,12 +334,12 @@ function CopilotAtencionPrioritariaPageContent() {
         : "Si actuás hoy, evitás que esta alerta suba de prioridad por acumulación con otras del mismo período."
     );
     return lines;
-  }, [primary, snapshot, obligation]);
+  }, [primary, snapshot, effectiveObligation]);
 
   const oportunidades = useMemo(() => {
     type Opp = { titulo: string; texto: string };
     const items: Opp[] = [];
-    if (!snapshot && !obligation) {
+    if (!snapshot && !effectiveObligation) {
       return { items: [] as Opp[], tieneBase: false };
     }
     if (snapshot && snapshotReceivablesRiskWeighted(snapshot) > 0) {
@@ -380,10 +365,10 @@ function CopilotAtencionPrioritariaPageContent() {
           "El colchón es estrecho: confirmar un solo cobro grande o evitar un egreso evitable reduce la probabilidad de caer bajo 1,00× de cobertura.",
       });
     }
-    if (obligation && obligation.status !== "paid") {
+    if (effectiveObligation && effectiveObligation.status !== "paid") {
       items.push({
         titulo: "Fiscal",
-        texto: `Cerrar ${mapTaxTypeLabel(obligation.tax_type)} elimina un egreso explícito del radar y baja el ruido en alertas vinculadas.`,
+        texto: `Cerrar ${mapTaxTypeLabel(effectiveObligation.tax_type)} elimina un egreso explícito del radar y baja el ruido en alertas vinculadas.`,
       });
     }
     if (items.length === 0 && snapshot) {
@@ -395,10 +380,10 @@ function CopilotAtencionPrioritariaPageContent() {
     }
     const tieneBase = items.length > 0;
     return { items: items.slice(0, 4), tieneBase };
-  }, [snapshot, obligation]);
+  }, [snapshot, effectiveObligation]);
 
-  const fechaLimite = obligation
-    ? new Date(obligation.due_date).toLocaleDateString("es-UY", {
+  const fechaLimite = effectiveObligation
+    ? new Date(effectiveObligation.due_date).toLocaleDateString("es-UY", {
         weekday: "long",
         day: "numeric",
         month: "long",
@@ -409,8 +394,8 @@ function CopilotAtencionPrioritariaPageContent() {
       : "Según calendario de egresos del motor financiero (30 días fiscales + pagos operativos futuros).";
 
   const montoComprometido =
-    obligation != null
-      ? formatMoney(obligationAmount(obligation))
+    effectiveObligation != null
+      ? formatMoney(obligationAmount(effectiveObligation))
       : snapshot
         ? formatMoney(snapshotExpectedOutflowsTotal(snapshot))
         : "—";
@@ -502,7 +487,7 @@ function CopilotAtencionPrioritariaPageContent() {
                       trace={traceFromAttentionPrimary({
                         assembledAtIso: attentionAssembledAt,
                         hasSnapshot: snapshot != null,
-                        hasObligationRow: obligation != null,
+                        hasObligationRow: effectiveObligation != null,
                         alertType: primary.type,
                       })}
                       variant="embed"
@@ -721,11 +706,11 @@ function CopilotAtencionPrioritariaPageContent() {
                   Montos multi-moneda (UYU + USD) — desglose pendiente.
                 </p>
               ) : null}
-              {obligation ? (
+              {effectiveObligation ? (
                 <p className="mt-4 text-xs text-[var(--copilot-ink-muted)]">
-                  Obligación: {mapTaxTypeLabel(obligation.tax_type)} ·{" "}
-                  {obligation.period_label} · Estado{" "}
-                  {mapTaxObligationStatus(obligation.status)}
+                  Obligación: {mapTaxTypeLabel(effectiveObligation.tax_type)} ·{" "}
+                  {effectiveObligation.period_label} · Estado{" "}
+                  {mapTaxObligationStatus(effectiveObligation.status)}
                 </p>
               ) : null}
             </CopilotCard>

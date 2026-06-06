@@ -66,6 +66,7 @@ export function CollectionActionModal({ client, onClose, onSuccess, defaultValue
   const [promiseAmount, setPromiseAmount] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   const showPromiseFields = actionType === "payment_promise";
 
@@ -101,7 +102,11 @@ export function CollectionActionModal({ client, onClose, onSuccess, defaultValue
         throw new Error(json.message ?? `HTTP ${res.status}`);
       }
 
-      onSuccess();
+      setSaved(true);
+      window.setTimeout(() => {
+        setSaved(false);
+        onSuccess();
+      }, 900);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al guardar");
     } finally {
@@ -223,6 +228,9 @@ export function CollectionActionModal({ client, onClose, onSuccess, defaultValue
               {error}
             </p>
           )}
+          {saved ? (
+            <p className="text-xs font-medium text-emerald-600">Gestión registrada</p>
+          ) : null}
 
           <div className="flex justify-end gap-2 pt-1">
             <button

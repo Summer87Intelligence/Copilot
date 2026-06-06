@@ -1,13 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
   BadgeCheck,
   Check,
   CheckCircle2,
-  ChevronDown,
   ChevronRight,
   CircleDashed,
   Copy,
@@ -19,11 +18,8 @@ import {
   PenLine,
   Plus,
   RefreshCw,
-  ShieldAlert,
   Trash2,
   TrendingDown,
-  Wallet,
-  X,
   XCircle,
 } from "lucide-react";
 
@@ -137,16 +133,6 @@ function formatRelativeDays(ymd: string): string {
   }
 }
 
-function safeJsonPreview(value: unknown, max = 12_000): string {
-  try {
-    const s = JSON.stringify(value, null, 2);
-    if (s.length <= max) return s;
-    return `${s.slice(0, max)}\n… (${s.length} caracteres; truncado)`;
-  } catch {
-    return String(value);
-  }
-}
-
 // ─── Technical reference cleaners ────────────────────────────────────────────
 
 function cleanMovementLabel(label: string): string {
@@ -227,52 +213,6 @@ function timelineIcon(kind: TimelineEvent["kind"], severity: OperationalHintSeve
   return <CircleDashed className="h-4 w-4 text-slate-400" aria-hidden />;
 }
 
-// ─── CollapsibleSection ───────────────────────────────────────────────────────
-
-function CollapsibleSection({
-  title,
-  subtitle,
-  count,
-  defaultOpen = false,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  count?: number;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-  const titleLabel = count != null && count >= 0 ? `${title} (${count})` : title;
-
-  return (
-    <div className="border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.35)]">
-      <button
-        type="button"
-        onClick={() => setIsOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 px-6 py-3 text-left"
-        aria-expanded={isOpen}
-      >
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-[var(--copilot-ink)]">{titleLabel}</p>
-          {subtitle ? (
-            <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">{subtitle}</p>
-          ) : null}
-        </div>
-        <ChevronDown
-          className={`h-4 w-4 shrink-0 text-[var(--copilot-ink-muted)] transition ${isOpen ? "rotate-180" : ""}`}
-          aria-hidden
-        />
-      </button>
-      {isOpen ? (
-        <div className="space-y-4 border-t border-[var(--copilot-border)] px-6 py-4">
-          {children}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 function debtStatusLabel(data: Client360Payload): { label: string; cls: string } {
   const hasOverdue = data.overdue_uyu > 0 || data.overdue_usd > 0;
   const hasDebt = data.debt_uyu > 0 || data.debt_usd > 0;
@@ -328,39 +268,42 @@ function KpiChip({
   );
 }
 
-// ─── Quick Actions ────────────────────────────────────────────────────────────
+// ─── KPI chip ─────────────────────────────────────────────────────────────────
 
-function QuickActions({ contactEmail }: { contactEmail?: string | null }) {
+function TimelineEventList({ evts }: { evts: TimelineEvent[] }) {
+  if (evts.length === 0) return null;
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {contactEmail ? (
-        <a
-          href={`mailto:${contactEmail}`}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-white/70 px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-white"
-        >
-          <Mail className="h-3.5 w-3.5" aria-hidden />
-          Contactar
-        </a>
-      ) : null}
-      <CopilotGhostLink
-        href="/copilot/cartera"
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs"
-      >
-        <Wallet className="h-3.5 w-3.5" aria-hidden />
-        Ver cartera
-      </CopilotGhostLink>
-      <CopilotGhostLink
-        href="/copilot/alertas"
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs"
-      >
-        <ShieldAlert className="h-3.5 w-3.5" aria-hidden />
-        Ver alertas
-      </CopilotGhostLink>
-    </div>
+    <ol className="relative space-y-0 border-l border-[var(--copilot-border)]">
+      {evts.map((ev) => (
+        <li key={ev.id} className="relative pb-4 pl-6 last:pb-0">
+          <span className="absolute -left-2 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--copilot-card)] ring-2 ring-[var(--copilot-border)]">
+            {timelineIcon(ev.kind, ev.severity)}
+          </span>
+          <div className="flex flex-wrap items-start justify-between gap-1">
+            <div>
+              <p className="text-sm font-medium text-[var(--copilot-ink)]">
+                {cleanTimelineTitle(ev)}
+              </p>
+              {ev.description ? (
+                <p className="text-xs text-[var(--copilot-ink-muted)]">{ev.description}</p>
+              ) : null}
+            </div>
+            <div className="text-right">
+              {ev.amount != null ? (
+                <p className="text-sm tabular-nums font-semibold text-[var(--copilot-ink)]">
+                  {formatMoney(ev.amount, ev.currency)}
+                </p>
+              ) : null}
+              <p className="text-xs text-[var(--copilot-ink-muted)]">
+                {formatDateShort(ev.date)}
+              </p>
+            </div>
+          </div>
+        </li>
+      ))}
+    </ol>
   );
 }
-
-// ─── Timeline ─────────────────────────────────────────────────────────────────
 
 function TimelineBlock({
   events,
@@ -385,41 +328,6 @@ function TimelineBlock({
     );
   }
 
-  function EventList({ evts }: { evts: TimelineEvent[] }) {
-    if (evts.length === 0) return null;
-    return (
-      <ol className="relative space-y-0 border-l border-[var(--copilot-border)]">
-        {evts.map((ev) => (
-          <li key={ev.id} className="relative pb-4 pl-6 last:pb-0">
-            <span className="absolute -left-2 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--copilot-card)] ring-2 ring-[var(--copilot-border)]">
-              {timelineIcon(ev.kind, ev.severity)}
-            </span>
-            <div className="flex flex-wrap items-start justify-between gap-1">
-              <div>
-                <p className="text-sm font-medium text-[var(--copilot-ink)]">
-                  {cleanTimelineTitle(ev)}
-                </p>
-                {ev.description ? (
-                  <p className="text-xs text-[var(--copilot-ink-muted)]">{ev.description}</p>
-                ) : null}
-              </div>
-              <div className="text-right">
-                {ev.amount != null ? (
-                  <p className="text-sm tabular-nums font-semibold text-[var(--copilot-ink)]">
-                    {formatMoney(ev.amount, ev.currency)}
-                  </p>
-                ) : null}
-                <p className="text-xs text-[var(--copilot-ink-muted)]">
-                  {formatDateShort(ev.date)}
-                </p>
-              </div>
-            </div>
-          </li>
-        ))}
-      </ol>
-    );
-  }
-
   return (
     <div className="space-y-4">
       {limitedCommercial.length > 0 ? (
@@ -429,7 +337,7 @@ function TimelineBlock({
               Actividad comercial
             </p>
           ) : null}
-          <EventList evts={limitedCommercial} />
+          <TimelineEventList evts={limitedCommercial} />
         </div>
       ) : null}
       {syncEvents.length > 0 ? (
@@ -437,7 +345,7 @@ function TimelineBlock({
           <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
             Actualización de datos
           </p>
-          <EventList evts={syncEvents} />
+          <TimelineEventList evts={syncEvents} />
         </div>
       ) : null}
     </div>
@@ -527,52 +435,6 @@ function ContactsStrip({
           </div>
         </>
       )}
-    </div>
-  );
-}
-
-// ─── Zeta sync status card ────────────────────────────────────────────────────
-
-function ZetaSyncStatusCard({
-  rows,
-}: {
-  rows: Client360Payload["zeta_sync_rows"];
-}) {
-  if (rows.length === 0) {
-    return (
-      <p className="text-sm text-[var(--copilot-ink-muted)]">
-        Sin informacion de actualizaciones disponible.
-      </p>
-    );
-  }
-  return (
-    <div className="space-y-2">
-      {rows.map((z) => {
-        const lastOk = z.last_success_at
-          ? formatRelativeDays(z.last_success_at.slice(0, 10))
-          : null;
-        const isOk = z.bootstrap_completed && z.last_success_at != null;
-        return (
-          <div
-            key={z.resource_flow}
-            className="flex items-center justify-between gap-3 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] px-4 py-3"
-          >
-            <div className="flex items-center gap-2">
-              {isOk ? (
-                <BadgeCheck className="h-4 w-4 text-emerald-500 shrink-0" aria-hidden />
-              ) : (
-                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" aria-hidden />
-              )}
-              <p className="text-sm font-medium text-[var(--copilot-ink)]">
-                {z.label}
-              </p>
-            </div>
-            <p className="text-xs text-[var(--copilot-ink-muted)] tabular-nums shrink-0">
-              {lastOk ? `Actualizado ${lastOk}` : "Sin actualizar"}
-            </p>
-          </div>
-        );
-      })}
     </div>
   );
 }
@@ -715,10 +577,6 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [editingTransferMethod, setEditingTransferMethod] = useState(false);
-  const [transferMethodDraft, setTransferMethodDraft] = useState("");
-  const [savingTransferMethod, setSavingTransferMethod] = useState(false);
-
   // ── Transfer aliases state ──────────────────────────────────────────────────
   const [aliases, setAliases] = useState<TransferAlias[]>([]);
   const [aliasesReady, setAliasesReady] = useState(false);
@@ -733,12 +591,14 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
   const [deletingAliasId, setDeletingAliasId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [aliasError, setAliasError] = useState<string | null>(null);
+  const [aliasSuccess, setAliasSuccess] = useState<string | null>(null);
 
   const [collectionPrefill, setCollectionPrefill] = useState<import("@/lib/account-statement/build-account-statement-followup-prefill").CollectionFollowupInitialValues | null>(null);
   const [collectionPrefillKey, setCollectionPrefillKey] = useState(0);
 
   // ── Tab state ───────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<SectionNavId>("resumen");
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     try {
@@ -751,6 +611,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
 
   function handleTabChange(id: SectionNavId) {
     setActiveTab(id);
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: "instant" });
     try { sessionStorage.setItem(SESSION_TAB_KEY, id); } catch { /* noop */ }
   }
 
@@ -795,26 +656,6 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
     void load();
   }, [load]);
 
-  async function handleSaveTransferMethod() {
-    if (savingTransferMethod) return;
-    setSavingTransferMethod(true);
-    try {
-      const res = await fetch(`/api/copilot/clients/${encodeURIComponent(companyId)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transfer_method: transferMethodDraft.trim() || null }),
-      });
-      if (res.ok) {
-        setData((prev) =>
-          prev ? { ...prev, transfer_method: transferMethodDraft.trim() || null } : prev
-        );
-        setEditingTransferMethod(false);
-      }
-    } finally {
-      setSavingTransferMethod(false);
-    }
-  }
-
   // ── Alias handlers ──────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -829,6 +670,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
     if (savingAlias) return;
     setSavingAlias(true);
     setAliasError(null);
+    setAliasSuccess(null);
     try {
       const res = await fetch(
         `/api/copilot/clients/${encodeURIComponent(companyId)}/transfer-aliases`,
@@ -847,6 +689,8 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
       setAliasNewLabel("");
       setAliasNewNotes("");
       setAddingAlias(false);
+      setAliasSuccess("Alias agregado");
+      window.setTimeout(() => setAliasSuccess(null), 3000);
     } finally {
       setSavingAlias(false);
     }
@@ -949,12 +793,6 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
   }, [data, riskLabel, hasMixedCurrency]);
 
   const debtStatus = data ? debtStatusLabel(data) : null;
-  const hasDebt = data
-    ? data.debt_uyu > 0 ||
-      data.debt_usd > 0 ||
-      data.overdue_uyu > 0 ||
-      data.overdue_usd > 0
-    : false;
 
   const commercialEvents = timelineEvents.filter((e) => e.kind !== "sync");
 
@@ -983,7 +821,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
         </nav>
       </div>
 
-      <div className="flex-1 overflow-auto">
+      <div ref={scrollContainerRef} className="flex-1 overflow-auto">
         {loading ? (
           <div className="flex items-center gap-2 px-6 py-6 text-sm text-[var(--copilot-ink-muted)]">
             <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
@@ -1537,6 +1375,9 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   {aliasError ? (
                     <p className="mb-3 text-xs text-red-500">{aliasError}</p>
                   ) : null}
+                  {aliasSuccess ? (
+                    <p className="mb-3 text-xs font-medium text-emerald-600">{aliasSuccess}</p>
+                  ) : null}
 
                   {aliasesReady ? (
                     <>
@@ -1672,6 +1513,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                                         }}
                                         className="rounded-lg p-1.5 text-[var(--copilot-ink-muted)] hover:bg-slate-100 hover:text-[var(--copilot-accent)]"
                                         title="Editar"
+                                        aria-label="Editar alias de transferencia"
                                       >
                                         <PenLine className="h-3.5 w-3.5" />
                                       </button>
@@ -1680,6 +1522,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                                         onClick={() => { setConfirmDeleteId(alias.id); setAliasError(null); }}
                                         className="rounded-lg p-1.5 text-[var(--copilot-ink-muted)] hover:bg-red-50 hover:text-red-600"
                                         title="Eliminar"
+                                        aria-label="Eliminar alias de transferencia"
                                       >
                                         <Trash2 className="h-3.5 w-3.5" />
                                       </button>

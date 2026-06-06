@@ -18,7 +18,6 @@ import { DebtorsReportTrigger } from "@/components/copilot/reports/debtors-repor
 import type { ClientPortfolioRow } from "@/lib/copilot-clients-portfolio";
 import { fetchClientPortfolioLoad } from "@/lib/copilot-client-portfolio-fetch";
 import {
-  formatMoneyPortfolio,
   type ClientCompanyDetail,
   type ClientPortfolioLoad,
 } from "@/lib/copilot-clients-portfolio";
@@ -30,9 +29,8 @@ import { AccessDeniedCard } from "@/components/copilot/access-denied-card";
 type ClientStatus = "al_dia" | "pendiente" | "vencido" | "critico";
 
 function deriveClientStatus(row: ClientPortfolioRow): ClientStatus {
-  const hasOverdue =
-    (row.overdue_uyu ?? 0) > 0 || (row.overdue_usd ?? 0) > 0 || row.overdue_debt > 0;
-  const hasDebt = row.debt_uyu > 0 || row.debt_usd > 0 || row.total_debt > 0;
+  const hasOverdue = (row.overdue_uyu ?? 0) > 0 || (row.overdue_usd ?? 0) > 0;
+  const hasDebt = row.debt_uyu > 0 || row.debt_usd > 0;
   if (hasOverdue && row.risk === "Alto") return "critico";
   if (hasOverdue) return "vencido";
   if (hasDebt) return "pendiente";
@@ -85,7 +83,7 @@ function matchesClientFilter(
     if (!nameMatch && !transferMatch && !aliasMatch) return false;
   }
   const status = deriveClientStatus(row);
-  if (filter === "with_debt") return row.debt_uyu > 0 || row.debt_usd > 0 || row.total_debt > 0;
+  if (filter === "with_debt") return row.debt_uyu > 0 || row.debt_usd > 0;
   if (filter === "vencido") return status === "vencido" || status === "critico";
   if (filter === "critico") return status === "critico";
   if (filter === "al_dia") return status === "al_dia" || status === "pendiente";
@@ -102,14 +100,11 @@ function DebtCell({ row }: { row: ClientPortfolioRow }) {
   const overdueUsd = (row.overdue_usd ?? 0) > 0;
 
   if (!hasUyu && !hasUsd) {
-    if (row.total_debt > 0) {
-      return (
-        <span className="tabular-nums text-sm text-[var(--copilot-ink-muted)]">
-          {formatMoneyPortfolio(row.total_debt)}
-        </span>
-      );
-    }
-    return <span className="text-xs text-emerald-700">—</span>;
+    return (
+      <span className="text-xs text-[var(--copilot-ink-muted)]" title="Sin desglose UYU/USD">
+        Sin datos por moneda
+      </span>
+    );
   }
 
   const uyuTitle = overdueUyu
@@ -299,16 +294,23 @@ export default function CopilotClientesPage() {
           <>
             {/* Summary cards — always global, independent of active filter */}
             {(() => {
-              const overdueCount = load.rows.filter(
-                (r) => (r.overdue_uyu ?? 0) > 0 || (r.overdue_usd ?? 0) > 0 || r.overdue_debt > 0
-              ).length;
+              const overdueRows = load.rows.filter(
+                (r) => (r.overdue_uyu ?? 0) > 0 || (r.overdue_usd ?? 0) > 0
+              );
+              const overdueCount = overdueRows.length;
               const criticalCount = load.rows.filter(
                 (r) => deriveClientStatus(r) === "critico"
               ).length;
               const withDebtCount = load.rows.filter(
-                (r) => r.debt_uyu > 0 || r.debt_usd > 0 || r.total_debt > 0
+                (r) => r.debt_uyu > 0 || r.debt_usd > 0
               ).length;
               const noContactCount = load.rows.filter((r) => !r.has_contact_data).length;
+              const overdueNamesLine = (() => {
+                if (overdueRows.length === 0) return "Sin deuda vencida";
+                const names = overdueRows.map((r) => r.name);
+                if (names.length <= 3) return names.join(", ");
+                return `${names.slice(0, 3).join(", ")} y ${names.length - 3} más`;
+              })();
               return (
                 <>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -348,9 +350,7 @@ export default function CopilotClientesPage() {
                     <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
                       {criticalCount > 0
                         ? `${criticalCount} en nivel crítico`
-                        : overdueCount === 0
-                          ? "Sin deuda vencida"
-                          : load.summary.concentration_line}
+                        : overdueNamesLine}
                     </p>
                   </CopilotCard>
                   <CopilotCard

@@ -239,7 +239,7 @@ export async function syncZetaCollectionReceipts(
       let pageDuplicateUpdates = 0;
       let pageFilteredMapper = 0;
       let pageFilteredNoRegistroId = 0;
-      let pageInvalidShape = 0;
+      const pageInvalidShape = 0;
 
       for (const row of res.rows) {
         processed += 1;

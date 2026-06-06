@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   Check,
@@ -9,7 +9,6 @@ import {
   EyeOff,
   KeyRound,
   Loader2,
-  Lock,
   PenLine,
   Plus,
   RefreshCw,
@@ -18,7 +17,6 @@ import {
   UserCheck,
   UserMinus,
   Users,
-  UserX,
 } from "lucide-react";
 
 import {
@@ -30,8 +28,8 @@ import {
   CopilotSectionTitle,
   copilotPageMainClass,
 } from "@/components/copilot/copilot-ui";
-import { MODULE_KEYS, accessLevelLabel, type AccessLevel, type ModuleKey } from "@/lib/auth/module-permissions";
-import { ROLE_LABELS, SUPPORTED_ROLES, type SupportedRole } from "@/lib/auth/role-permission-presets";
+import { MODULE_KEYS, type AccessLevel, type ModuleKey } from "@/lib/auth/module-permissions";
+import { ROLE_LABELS, type SupportedRole } from "@/lib/auth/role-permission-presets";
 
 const SIMPLE_ROLES: Array<"superadmin" | "usuario"> = ["superadmin", "usuario"];
 
@@ -83,12 +81,6 @@ function computeSummary(users: AdminUser[]): AdminSummary {
     superadmins: users.filter((u) => u.is_active && u.role === "superadmin").length,
     inactive: users.filter((u) => !u.is_active).length,
   };
-}
-
-function roleBadgeTone(role: string): "neutral" | "success" | "warning" | "danger" {
-  if (role === "superadmin") return "success";
-  if (role === "demo_readonly") return "warning";
-  return "neutral";
 }
 
 function formatDate(iso: string | null): string {

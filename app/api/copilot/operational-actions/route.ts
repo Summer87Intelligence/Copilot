@@ -10,6 +10,7 @@ import {
   summarizeOperationalSla,
 } from "@/lib/copilot-operational-actions-service";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 function actorFromContext(ctx: {
   authUser: { id: string };
@@ -43,9 +44,21 @@ export async function GET(request: NextRequest) {
       limit
     );
     if (!result.ok) {
+      if (result.code === "DATABASE") {
+        return copilotInternalErrorResponse({
+          actions: [],
+          summary: summarizeOperationalQueue([]),
+          sla_summary: summarizeOperationalSla([]),
+        });
+      }
       return NextResponse.json(
-        { error: result.message, actions: [], summary: summarizeOperationalQueue([]), sla_summary: summarizeOperationalSla([]) },
-        { status: result.code === "DATABASE" ? 500 : 400 }
+        {
+          error: result.message,
+          actions: [],
+          summary: summarizeOperationalQueue([]),
+          sla_summary: summarizeOperationalSla([]),
+        },
+        { status: 400 }
       );
     }
 
@@ -58,11 +71,7 @@ export async function GET(request: NextRequest) {
     log.error("copilot_request_unhandled", error, {
       route: "GET /api/copilot/operational-actions",
     });
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json(
-      { error: message, actions: [], summary: summarizeOperationalQueue([]), sla_summary: summarizeOperationalSla([]) },
-      { status: 500 }
-    );
+    return copilotInternalErrorResponse({ actions: [], summary: summarizeOperationalQueue([]), sla_summary: summarizeOperationalSla([]) });
   }
 }
 
@@ -104,7 +113,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (!result.ok) {
-      return NextResponse.json({ error: result.message }, { status: 500 });
+      return copilotInternalErrorResponse();
     }
 
     return NextResponse.json({ action: result.data, message: result.message });
@@ -112,7 +121,6 @@ export async function POST(request: NextRequest) {
     log.error("copilot_request_unhandled", error, {
       route: "POST /api/copilot/operational-actions",
     });
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return copilotInternalErrorResponse({});
   }
 }

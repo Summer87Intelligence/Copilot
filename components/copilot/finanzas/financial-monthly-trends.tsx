@@ -478,7 +478,7 @@ export function FinancialMonthlyTrends({
     [dashboard.points, period, periodContext],
   );
 
-  const { totals, previousTotals, deltas, best, gap, insights } = dashboard;
+  const { totals, previousTotals, deltas, gap, insights } = dashboard;
 
   const hasAnyData = bars.some((b) => !b.isEmpty);
 

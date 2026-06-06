@@ -16,6 +16,7 @@ import {
 } from "@/lib/data/decision-daily-queue-repository";
 import { loadDailyQueueHydration } from "@/lib/decision-engine/daily-queue-hydration";
 import { recalculateDailyOperationsQueue } from "@/lib/decision-engine/daily-queue-orchestrator";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -112,10 +113,6 @@ export async function GET(request: NextRequest) {
       route: "GET /api/copilot/decision-engine/daily-queue",
       elapsed_ms: Date.now() - t0,
     });
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json(
-      { ok: false as const, code: "UNEXPECTED", message },
-      { status: 500 }
-    );
+    return copilotInternalErrorResponse({ ok: false as const, code: "UNEXPECTED" });
   }
 }

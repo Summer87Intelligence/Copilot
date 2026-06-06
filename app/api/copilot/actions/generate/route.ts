@@ -9,6 +9,7 @@ import {
   selectDecisionsForActionGeneration,
 } from "@/lib/data/engine-repository";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 const SCAN_LIMIT = 80;
 const BATCH_LIMIT = 20;
@@ -30,10 +31,7 @@ export async function POST(request: NextRequest) {
       log.error("copilot_actions_generate_failed", decError, {
         operation: "selectDecisionsForActionGeneration",
       });
-      return NextResponse.json(
-        { error: decError.message, processed: 0, actionsCreated: 0 },
-        { status: 500 }
-      );
+      return copilotInternalErrorResponse({ processed: 0, actionsCreated: 0 });
     }
 
     const decRows = (decisions ?? []) as DecisionInputForAction[];
@@ -50,10 +48,7 @@ export async function POST(request: NextRequest) {
       log.error("copilot_actions_generate_failed", actErr, {
         operation: "selectActionDecisionIdsForDecisions",
       });
-      return NextResponse.json(
-        { error: actErr.message, processed: 0, actionsCreated: 0 },
-        { status: 500 }
-      );
+      return copilotInternalErrorResponse({ processed: 0, actionsCreated: 0 });
     }
 
     const hasAction = new Set(
@@ -79,10 +74,7 @@ export async function POST(request: NextRequest) {
       log.error("copilot_actions_generate_failed", insertError, {
         operation: "insertActions",
       });
-      return NextResponse.json(
-        { error: insertError.message, processed: 0, actionsCreated: 0 },
-        { status: 500 }
-      );
+      return copilotInternalErrorResponse({ processed: 0, actionsCreated: 0 });
     }
 
     const created = inserted?.length ?? 0;
@@ -99,10 +91,6 @@ export async function POST(request: NextRequest) {
     log.error("copilot_request_unhandled", e, {
       route: "POST /api/copilot/actions/generate",
     });
-    const message = e instanceof Error ? e.message : "Error desconocido";
-    return NextResponse.json(
-      { error: message, processed: 0, actionsCreated: 0 },
-      { status: 500 }
-    );
+    return copilotInternalErrorResponse({ processed: 0, actionsCreated: 0 });
   }
 }

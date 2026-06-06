@@ -378,6 +378,62 @@ describe("buildDebtorsReportModel", () => {
     expect(model.totals.clientsCount).toBe(2);
   });
 
+  it("no usa overdue_debt mixto cuando falta overdue_uyu", () => {
+    const model = buildDebtorsReportModel({
+      portfolioRows: [
+        baseRow({
+          debt_uyu: 5000,
+          debt_usd: 0,
+          overdue_uyu: 0,
+          overdue_usd: 0,
+          overdue_debt: 9999,
+        }),
+      ],
+      filters: DEFAULT_DEBTORS_REPORT_FILTERS,
+      emittedAt: EMITTED,
+    });
+    expect(model.rows).toHaveLength(1);
+    expect(model.rows[0]?.overdueAmount).toBe(0);
+  });
+
+  it("no usa overdue_debt mixto cuando falta overdue_usd", () => {
+    const model = buildDebtorsReportModel({
+      portfolioRows: [
+        baseRow({
+          debt_uyu: 0,
+          debt_usd: 800,
+          overdue_uyu: 0,
+          overdue_usd: 0,
+          overdue_debt: 7777,
+        }),
+      ],
+      filters: DEFAULT_DEBTORS_REPORT_FILTERS,
+      emittedAt: EMITTED,
+    });
+    expect(model.rows).toHaveLength(1);
+    expect(model.rows[0]?.overdueAmount).toBe(0);
+  });
+
+  it("usa overdue granular por moneda en cliente dual", () => {
+    const model = buildDebtorsReportModel({
+      portfolioRows: [
+        baseRow({
+          debt_uyu: 1000,
+          debt_usd: 500,
+          overdue_uyu: 200,
+          overdue_usd: 50,
+          overdue_debt: 99999,
+        }),
+      ],
+      filters: DEFAULT_DEBTORS_REPORT_FILTERS,
+      emittedAt: EMITTED,
+    });
+    const uyu = model.rows.find((r) => r.currency === "UYU");
+    const usd = model.rows.find((r) => r.currency === "USD");
+    expect(uyu?.overdueAmount).toBe(200);
+    expect(usd?.overdueAmount).toBe(50);
+  });
+
   it("empty state cuando ningún cliente califica", () => {
     const model = buildDebtorsReportModel({
       portfolioRows: [baseRow({ debt_uyu: 5000 })],

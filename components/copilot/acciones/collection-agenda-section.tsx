@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Calendar, Clock, AlertCircle, CheckCircle2, Loader2, X } from "lucide-react";
+import { CheckCircle2, Loader2, X } from "lucide-react";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 
@@ -36,19 +36,6 @@ const FILTER_LABELS: { id: AgendaFilter; label: string }[] = [
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function severityBadgeCls(severity: CollectionAgendaItem["severity"]): string {
-  switch (severity) {
-    case "critical":
-      return "bg-rose-100 text-rose-800 ring-1 ring-rose-200";
-    case "high":
-      return "bg-amber-100 text-amber-800 ring-1 ring-amber-200";
-    case "medium":
-      return "bg-sky-100 text-sky-800 ring-1 ring-sky-200";
-    default:
-      return "bg-[var(--copilot-accent-soft)] text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)]";
-  }
-}
 
 function typeBadgeCls(type: CollectionAgendaItem["type"]): {
   bg: string;

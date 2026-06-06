@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { formatMoneyCurrency } from "@/lib/copilot-format-money";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
@@ -139,10 +139,10 @@ export function DebtorsPreviewDialog({
 
   const { loading: dlLoading, error: dlError, clearError, download } = usePdfDownload();
 
-  useEffect(() => {
-    if (!open) return;
+  const handleClose = useCallback(() => {
     setFilters(DEFAULT_DEBTORS_REPORT_FILTERS);
-  }, [open]);
+    onClose();
+  }, [onClose]);
 
   const model = useMemo(() => {
     if (!open) return null;
@@ -201,7 +201,7 @@ export function DebtorsPreviewDialog({
   return (
     <ReportPreviewShell
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       title="Reporte de deudores"
       subtitle={subtitle}
       onDownloadPdf={() => void handleDownloadPdf()}

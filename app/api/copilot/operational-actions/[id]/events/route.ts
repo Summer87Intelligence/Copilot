@@ -4,6 +4,7 @@ import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { listOperationalActionEvents } from "@/lib/copilot-operational-actions-service";
 import { mapOperationalActionEventRow } from "@/lib/data/operational-actions-repository";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       limit
     );
     if (!result.ok) {
-      return NextResponse.json({ error: result.message, events: [] }, { status: 500 });
+      return copilotInternalErrorResponse({ events: [] });
     }
 
     const events = (result.data ?? []).map((row) =>
@@ -43,7 +44,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
     log.error("copilot_request_unhandled", error, {
       route: "GET /api/copilot/operational-actions/[id]/events",
     });
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json({ error: message, events: [] }, { status: 500 });
+    return copilotInternalErrorResponse({ events: [] });
   }
 }

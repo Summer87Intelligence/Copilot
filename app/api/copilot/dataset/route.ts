@@ -15,6 +15,7 @@ import {
   listProtoTaxObligations,
   listProtoTaxPayments,
 } from "@/lib/data/proto-operational-read-repository";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 function parseActiveMode(v: string | null): ProtoActiveListMode {
   if (v === "inactive" || v === "all") return v;
@@ -96,14 +97,6 @@ export async function GET(request: NextRequest) {
       rawImports,
     };
 
-    const invoiceSample = invoices.slice(0, 3).map((r) => ({
-      id: String(r.id ?? ""),
-      invoice_number: String(r.invoice_number ?? ""),
-      workspace_company_id: String(r.workspace_company_id ?? ""),
-      company_id: String(r.company_id ?? ""),
-      is_active: r.is_active ?? null,
-      issue_date: String(r.issue_date ?? ""),
-    }));
     log.debug("copilot_dataset_invoices_loaded", {
       table: "proto_invoices",
       active_mode: active,
@@ -114,10 +107,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true as const, data });
   } catch (e) {
     log.error("copilot_dataset_failed", e, { route: "GET /api/copilot/dataset" });
-    const message = e instanceof Error ? e.message : "Error desconocido";
-    return NextResponse.json(
-      { ok: false as const, code: "UNEXPECTED", error: message },
-      { status: 500 }
-    );
+    return copilotInternalErrorResponse({ ok: false as const, code: "UNEXPECTED" });
   }
 }

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { assembleCopilotLlmBriefing } from "@/lib/ai/briefing/assemble-copilot-llm-briefing";
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 /**
  * GET /api/copilot/llm-briefing
@@ -37,7 +38,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ briefing });
   } catch (e) {
     log.error("copilot_llm_briefing_failed", e, { route: "GET /api/copilot/llm-briefing" });
-    const message = e instanceof Error ? e.message : "Error desconocido";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return copilotInternalErrorResponse({});
   }
 }

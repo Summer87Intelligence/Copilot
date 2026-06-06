@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   COPILOT_FINANCE_EVIDENCE_MOCK,
@@ -30,10 +30,12 @@ export function CopilotFinanceEvidenceDrawer({
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<DrawerTab>("resumen");
+  const [tabScope, setTabScope] = useState(indicatorId);
 
-  useEffect(() => {
-    if (isOpen) setTab("resumen");
-  }, [indicatorId, isOpen]);
+  if (indicatorId !== tabScope) {
+    setTabScope(indicatorId);
+    setTab("resumen");
+  }
 
   const data = useMemo(() => {
     if (!indicatorId) return null;

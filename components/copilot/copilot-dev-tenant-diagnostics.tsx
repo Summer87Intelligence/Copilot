@@ -41,15 +41,16 @@ export function CopilotDevTenantDiagnostics({
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") return;
-    if (sessionPreview?.tenantCompanyId) {
-      setMeUser(null);
-      setMeLoaded(true);
-      return;
-    }
 
     let cancelled = false;
-    setMeLoaded(false);
     void (async () => {
+      if (sessionPreview?.tenantCompanyId) {
+        setMeUser(null);
+        setMeLoaded(true);
+        return;
+      }
+
+      setMeLoaded(false);
       const res = await copilotApiFetch("/api/copilot/me");
       if (cancelled) return;
       if (!res.ok) {
@@ -91,28 +92,30 @@ export function CopilotDevTenantDiagnostics({
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") return;
-    if (!companyId) {
-      setCompanyNameFromClient(null);
-      return;
-    }
-    if (sessionPreview?.activeCompanyName) {
-      setCompanyNameFromClient(null);
-      return;
-    }
+
     let cancelled = false;
-    void supabase
-      .from("companies")
-      .select("name")
-      .eq("id", companyId)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error || !data?.name) {
-          setCompanyNameFromClient(null);
-          return;
-        }
-        setCompanyNameFromClient(String(data.name));
-      });
+    void (async () => {
+      if (!companyId) {
+        setCompanyNameFromClient(null);
+        return;
+      }
+      if (sessionPreview?.activeCompanyName) {
+        setCompanyNameFromClient(null);
+        return;
+      }
+      const { data, error } = await supabase
+        .from("companies")
+        .select("name")
+        .eq("id", companyId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error || !data?.name) {
+        setCompanyNameFromClient(null);
+        return;
+      }
+      setCompanyNameFromClient(String(data.name));
+    })();
+
     return () => {
       cancelled = true;
     };

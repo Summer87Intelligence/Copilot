@@ -4,6 +4,7 @@ import type { InitiativeRow } from "@/lib/ai/initiative-types";
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { selectInitiativesOrdered } from "@/lib/data/engine-repository";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 export async function GET(request: NextRequest) {
   let log = copilotRequestLogger(request);
@@ -28,10 +29,7 @@ export async function GET(request: NextRequest) {
         operation: "selectInitiativesOrdered",
         limit,
       });
-      return NextResponse.json(
-        { error: error.message, initiatives: [] as InitiativeRow[] },
-        { status: 500 }
-      );
+      return copilotInternalErrorResponse({ initiatives: [] as InitiativeRow[] });
     }
 
     return NextResponse.json({
@@ -39,10 +37,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (e) {
     log.error("copilot_request_unhandled", e, { route: "GET /api/copilot/initiatives" });
-    const message = e instanceof Error ? e.message : "Error desconocido";
-    return NextResponse.json(
-      { error: message, initiatives: [] as InitiativeRow[] },
-      { status: 500 }
-    );
+    return copilotInternalErrorResponse({ initiatives: [] as InitiativeRow[] });
   }
 }

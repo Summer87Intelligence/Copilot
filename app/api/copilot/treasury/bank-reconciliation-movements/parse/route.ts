@@ -5,6 +5,7 @@ import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import { getBankImportFileType } from "@/lib/treasury/santander-bank-import-file-type";
 import { SantanderStatementParseError } from "@/lib/treasury/santander-bank-import-file-type";
 import { parseSantanderBankStatementPdfBuffer } from "@/lib/treasury/services/santander-bank-statement-parse-service";
+import { COPILOT_INTERNAL_ERROR_MESSAGE } from "@/lib/api/copilot-request-errors";
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
         {
           ok: false as const,
           code: error.code,
-          message: error.message,
+          message: COPILOT_INTERNAL_ERROR_MESSAGE,
         },
         { status: 400 }
       );

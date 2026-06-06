@@ -7,6 +7,7 @@ import {
   getRebuildHealthSummary,
 } from "@/lib/copilot-operational-telemetry";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -69,10 +70,6 @@ export async function GET(request: NextRequest) {
     log.error("copilot_request_unhandled", error, {
       route: "GET /api/copilot/operational-health",
     });
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json(
-      { ok: false as const, code: "UNEXPECTED", message },
-      { status: 500 }
-    );
+    return copilotInternalErrorResponse({ ok: false as const, code: "UNEXPECTED" });
   }
 }

@@ -4,6 +4,7 @@ import type { DecisionRow } from "@/lib/ai/decision-types";
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { selectDecisionsOrdered } from "@/lib/data/engine-repository";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 export async function GET(request: NextRequest) {
   let log = copilotRequestLogger(request);
@@ -28,10 +29,7 @@ export async function GET(request: NextRequest) {
         operation: "selectDecisionsOrdered",
         limit,
       });
-      return NextResponse.json(
-        { error: error.message, decisions: [] as DecisionRow[] },
-        { status: 500 }
-      );
+      return copilotInternalErrorResponse({ decisions: [] as DecisionRow[] });
     }
 
     return NextResponse.json({
@@ -39,10 +37,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (e) {
     log.error("copilot_request_unhandled", e, { route: "GET /api/copilot/decisions" });
-    const message = e instanceof Error ? e.message : "Error desconocido";
-    return NextResponse.json(
-      { error: message, decisions: [] as DecisionRow[] },
-      { status: 500 }
-    );
+    return copilotInternalErrorResponse({ decisions: [] as DecisionRow[] });
   }
 }

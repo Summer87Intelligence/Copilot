@@ -4,6 +4,7 @@ import { loadClientCompany360 } from "@/lib/copilot-client-360";
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 /**
  * GET /api/copilot/client-360?companyId=<uuid>
@@ -53,10 +54,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true as const, payload });
   } catch (e) {
     log.error("copilot_client_360_failed", e, { route: "GET /api/copilot/client-360" });
-    const message = e instanceof Error ? e.message : "Error desconocido";
-    return NextResponse.json(
-      { ok: false as const, code: "UNEXPECTED", error: message },
-      { status: 500 }
-    );
+    return copilotInternalErrorResponse({ ok: false as const, code: "UNEXPECTED" });
   }
 }

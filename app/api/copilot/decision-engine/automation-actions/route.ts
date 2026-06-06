@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { selectAutomationActions } from "@/lib/data/decision-automation-repository";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true as const, actions });
   } catch (error) {
     log.error("de_automation_actions_failed", error);
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json({ ok: false as const, code: "UNEXPECTED", message }, { status: 500 });
+    return copilotInternalErrorResponse({ ok: false as const, code: "UNEXPECTED" });
   }
 }

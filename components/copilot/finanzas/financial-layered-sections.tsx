@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronDown } from "lucide-react";
 
@@ -281,11 +281,16 @@ export function FinancialMainComparison({
 }) {
   const panels = dashboard.currencies;
   const available = panels.map((p) => p.currency);
+  const availableKey = available.join(",");
   const [currency, setCurrency] = useState<"UYU" | "USD">(available[0] ?? "UYU");
+  const [appliedAvailableKey, setAppliedAvailableKey] = useState(availableKey);
 
-  useEffect(() => {
-    if (!available.includes(currency) && available[0]) setCurrency(available[0]);
-  }, [available, currency]);
+  if (appliedAvailableKey !== availableKey) {
+    setAppliedAvailableKey(availableKey);
+    if (!available.includes(currency) && available[0]) {
+      setCurrency(available[0]);
+    }
+  }
 
   const panel = panels.find((p) => p.currency === currency);
   if (!panel) return null;
@@ -379,11 +384,16 @@ export function FinancialCollectionRisk({
   panels: ExecutiveCurrencyPanel[];
 }) {
   const available = panels.map((p) => p.currency);
+  const availableKey = available.join(",");
   const [currency, setCurrency] = useState<"UYU" | "USD">(available[0] ?? "UYU");
+  const [appliedAvailableKey, setAppliedAvailableKey] = useState(availableKey);
 
-  useEffect(() => {
-    if (!available.includes(currency) && available[0]) setCurrency(available[0]);
-  }, [available, currency]);
+  if (appliedAvailableKey !== availableKey) {
+    setAppliedAvailableKey(availableKey);
+    if (!available.includes(currency) && available[0]) {
+      setCurrency(available[0]);
+    }
+  }
 
   const panel = panels.find((p) => p.currency === currency);
   if (!panel) return null;

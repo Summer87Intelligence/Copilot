@@ -20,9 +20,7 @@ import { loadPredictiveFinancialAlertsDatasetRows } from "@/lib/data/proto-analy
 const TAX_HORIZON_DAYS = 30;
 
 /** Reservado para extender el motor (p. ej. filtros por empresa) sin romper la firma. */
-export interface FinancialPredictiveAlertsInput {
-  // Intencionalmente vacío por ahora.
-}
+export type FinancialPredictiveAlertsInput = Record<string, never>;
 
 type PaymentRow = {
   id: unknown;

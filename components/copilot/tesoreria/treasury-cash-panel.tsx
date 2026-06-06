@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowDownCircle, ArrowUpCircle, CalendarClock, Lock, Pencil, Check, X, Plus } from "lucide-react";
 
 import { copilotApiFetch } from "@/lib/copilot-fetch";
@@ -565,9 +565,10 @@ export function TreasuryCashPanel({ workspace }: { workspace: TreasuryWorkspace 
     setShowForm(true);
   };
 
-  useEffect(() => {
-    if (!showForm) setFormPreset(undefined);
-  }, [showForm]);
+  const closeForm = () => {
+    setShowForm(false);
+    setFormPreset(undefined);
+  };
 
   return (
     <div className="space-y-4">
@@ -631,7 +632,7 @@ export function TreasuryCashPanel({ workspace }: { workspace: TreasuryWorkspace 
         <QuickMovementForm
           workspace={workspace}
           initial={formPreset}
-          onClose={() => setShowForm(false)}
+          onClose={closeForm}
         />
       ) : (
         <button

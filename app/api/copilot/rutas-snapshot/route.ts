@@ -13,6 +13,7 @@ import {
 import { buildSnapshotHealth, logSnapshotObservability } from "@/lib/copilot-rutas-snapshot-health";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 function wantsFreshSnapshot(request: NextRequest): boolean {
   return request.nextUrl.searchParams.get("fresh") === "1";
@@ -89,14 +90,9 @@ export async function GET(request: NextRequest) {
     log.error("copilot_request_unhandled", error, {
       route: "GET /api/copilot/rutas-snapshot",
     });
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json(
-      {
-        ok: false as const,
-        code: "UNEXPECTED",
-        message,
-      },
-      { status: 500 }
-    );
+    return copilotInternalErrorResponse({
+      ok: false as const,
+      code: "UNEXPECTED",
+    });
   }
 }

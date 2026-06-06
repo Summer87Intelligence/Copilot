@@ -182,7 +182,9 @@ export default function RutaCajaPage() {
   }, []);
 
   useEffect(() => {
-    void load();
+    void (async () => {
+      await load();
+    })();
   }, [load]);
 
   const windowObs = useMemo(() => obligationsInWindow(agenda), [agenda]);

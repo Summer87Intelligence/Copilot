@@ -4,7 +4,7 @@
  * Puro: sin imports de DB, sin side effects.
  */
 
-import type { AutomationActionRow, AutomationRunRow } from "@/lib/decision-engine/de-types";
+import type { AutomationActionRow } from "@/lib/decision-engine/de-types";
 import type {
   AutomationEffectivenessSnapshot,
   AutomationNoiseLevel,

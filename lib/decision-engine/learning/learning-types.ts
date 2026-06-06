@@ -6,11 +6,6 @@
 import type {
   AutomationActionRow,
   AutomationRunRow,
-  DECollectionAction,
-  DECompany,
-  DEFollowUpRow,
-  DEOperationalStateRow,
-  DERecentReceipt,
   DecisionEngineDataBundle,
   OperationalAnalyticsSnapshot,
 } from "@/lib/decision-engine/de-types";

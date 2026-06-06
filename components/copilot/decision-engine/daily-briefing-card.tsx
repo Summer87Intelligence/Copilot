@@ -18,7 +18,6 @@ import { copilotApiFetch } from "@/lib/copilot-fetch";
 import { rankedClientFromOperationalTask } from "@/lib/decision-engine/operational-task-adapters";
 import {
   resolvePrimaryWorkflow,
-  type WorkflowKind,
 } from "@/lib/decision-engine/client-operational-workflow";
 import {
   buildExecutiveTimeline,
@@ -324,7 +323,7 @@ export function DailyBriefingCard({
     [applyStateToHydration, fetchAnalytics, fetchDailyQueue, fetchOwnershipStats]
   );
 
-  function handleExecuteWorkflow(task: OperationalTask, _kind: WorkflowKind) {
+  function handleExecuteWorkflow(task: OperationalTask) {
     const workflow = resolvePrimaryWorkflow(task);
     setLoadingCustomerId(task.customer_id);
     setActionClient(rankedClientFromOperationalTask(task));

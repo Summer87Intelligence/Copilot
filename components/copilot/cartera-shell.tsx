@@ -74,7 +74,7 @@ export function CarteraShell() {
   const [dismissedPreSyncPeriod, setDismissedPreSyncPeriod] = useState<string | null>(null);
   const [dismissedRowCapPeriod, setDismissedRowCapPeriod] = useState<string | null>(null);
 
-  const { report, meta, loading, error, lastFetchedAt, refetch } = useFinancialReconciliation({
+  const { report, meta, loading, error, refetch } = useFinancialReconciliation({
     mode: "period_only",
     periodStart,
     periodEnd,

@@ -79,7 +79,9 @@ export function CopilotAlertsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    void refresh();
+    void (async () => {
+      await refresh();
+    })();
   }, [refresh]);
 
   const items = useMemo(

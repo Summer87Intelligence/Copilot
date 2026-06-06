@@ -839,8 +839,6 @@ function CopilotFinanzasPageContent() {
   const guidedLinkClass =
     "text-sm font-medium text-[var(--copilot-ink-muted)] underline decoration-[var(--copilot-border)] underline-offset-4 transition hover:text-[var(--copilot-ink)]";
 
-  const riskBand = snapshot ? snapshotRiskBand(snapshot) : null;
-
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader

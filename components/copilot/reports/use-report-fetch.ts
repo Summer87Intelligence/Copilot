@@ -15,40 +15,40 @@ export function useReportFetch<T>(url: string | null): FetchState<T> {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!url) {
-      setData(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
+    if (!url) return;
 
     let cancelled = false;
-    setLoading(true);
-    setError(null);
+    void (async () => {
+      setLoading(true);
+      setError(null);
 
-    void copilotApiFetch(url)
-      .then(async (res) => {
+      try {
+        const res = await copilotApiFetch(url);
         if (cancelled) return;
         if (!res.ok) {
-          const json = await res.json().catch(() => ({})) as { error?: string };
+          const json = (await res.json().catch(() => ({}))) as { error?: string };
           if (!cancelled) setError(json.error ?? "No se pudo cargar el reporte.");
           return;
         }
-        const json = await res.json() as { ok: boolean; model?: T };
+        const json = (await res.json()) as { ok: boolean; model?: T };
         if (!cancelled) setData(json.model ?? null);
-      })
-      .catch((e: unknown) => {
-        if (!cancelled)
+      } catch (e: unknown) {
+        if (!cancelled) {
           setError(e instanceof Error ? e.message : "Error al cargar el reporte.");
-      })
-      .finally(() => {
+        }
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;
     };
   }, [url]);
+
+  if (!url) {
+    return { data: null, loading: false, error: null };
+  }
 
   return { data, loading, error };
 }

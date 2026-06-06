@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : "Error desconocido";
     const status = message.includes("already in progress") ? 409 : 500;
     return NextResponse.json(
-      { ok: false as const, code: status === 409 ? "CONFLICT" : "UNEXPECTED", message },
+      { ok: false as const, code: status === 409 ? "CONFLICT" : "UNEXPECTED" },
       { status }
     );
   }

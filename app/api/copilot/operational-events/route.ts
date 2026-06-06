@@ -9,6 +9,7 @@ import type { OperationalEntityType } from "@/lib/copilot-operational-events-typ
 import { summarizeAutomationFromTimeline } from "@/lib/copilot-operational-automation-rules";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 function parseLimit(request: NextRequest): number {
   const raw = request.nextUrl.searchParams.get("limit");
@@ -60,16 +61,11 @@ export async function GET(request: NextRequest) {
     log.error("copilot_request_unhandled", error, {
       route: "GET /api/copilot/operational-events",
     });
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json(
-      {
-        ok: false as const,
-        code: "UNEXPECTED",
-        message,
-        events: [],
-        computedAt: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    return copilotInternalErrorResponse({
+      ok: false as const,
+      code: "UNEXPECTED",
+      events: [],
+      computedAt: new Date().toISOString(),
+    });
   }
 }

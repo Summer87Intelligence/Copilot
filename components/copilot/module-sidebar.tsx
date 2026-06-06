@@ -38,6 +38,7 @@ export function CopilotModuleSidebar({
   brandTitle: string;
   brandSubtitle: string;
 }) {
+  void brandSubtitle;
   const pathname = usePathname();
   const iconWrapClass =
     "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)]";

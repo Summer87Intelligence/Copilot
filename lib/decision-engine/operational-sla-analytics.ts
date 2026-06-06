@@ -13,7 +13,6 @@ import type {
 } from "@/lib/decision-engine/de-types";
 
 const MS_PER_HOUR = 3_600_000;
-const MS_PER_DAY = 86_400_000;
 
 const INACTIVE_STATES = new Set(["recovered", "paused"]);
 

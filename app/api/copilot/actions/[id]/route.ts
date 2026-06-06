@@ -5,6 +5,7 @@ import { copilotActionPatchBodySchema } from "@/lib/api/schemas/copilot-api-bodi
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { updateActionLoopFields } from "@/lib/data/engine-repository";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -53,7 +54,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         operation: "updateActionLoopFields",
         action_id: actionId,
       });
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return copilotInternalErrorResponse();
     }
     if (!updatedRow) {
       log.warn("copilot_action_loop_not_found", { action_id: actionId });
@@ -72,7 +73,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     log.error("copilot_request_unhandled", e, {
       route: "PATCH /api/copilot/actions/[id]",
     });
-    const message = e instanceof Error ? e.message : "Error desconocido";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return copilotInternalErrorResponse({});
   }
 }

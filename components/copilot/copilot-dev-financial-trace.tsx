@@ -80,9 +80,9 @@ export function CopilotDevFinancialTrace() {
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") return;
     let cancelled = false;
-    setState({ status: "loading" });
-
     void (async () => {
+      setState({ status: "loading" });
+
       const res = await copilotApiFetch("/api/copilot/dev-financial-trace");
       let json: FinancialTraceOk | FinancialTraceErr;
       try {

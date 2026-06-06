@@ -12,6 +12,7 @@ import { readCachedRutasSnapshot } from "@/lib/copilot-rutas-snapshot-cache";
 import { getRebuildHealthSummary } from "@/lib/copilot-operational-telemetry";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -80,14 +81,17 @@ export async function GET(request: NextRequest) {
         }
       );
     } catch (workflowErr) {
-      const msg = workflowErr instanceof Error ? workflowErr.message : "Error desconocido";
-      warnings.push(`Workflows: ${msg}`);
+      log.error("copilot_intelligence_bundle_workflow_failed", workflowErr);
+      warnings.push("Workflows: error interno al generar flujos.");
       workflowsResult = {
         response: {
           workflows: [],
           generatedAt: now.toISOString(),
           hasSuppressedWorkflows: false,
-          health: { status: "degraded", warnings: [{ source: "bundle", code: "WORKFLOW_ERR", message: msg }] },
+          health: {
+            status: "degraded",
+            warnings: [{ source: "bundle", code: "WORKFLOW_ERR", message: "Error interno." }],
+          },
         },
         stats: { generated: 0, deduped: 0, blocked: 0, completed: 0, active: 0, overdue: 0 },
         created: [],
@@ -142,10 +146,6 @@ export async function GET(request: NextRequest) {
     log.error("copilot_request_unhandled", error, {
       route: "GET /api/copilot/intelligence-bundle",
     });
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json(
-      { ok: false as const, code: "UNEXPECTED", message },
-      { status: 500 }
-    );
+    return copilotInternalErrorResponse({ ok: false as const, code: "UNEXPECTED" });
   }
 }

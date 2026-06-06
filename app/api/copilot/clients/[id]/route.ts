@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireCopilotWriteContext } from "@/lib/copilot-api-auth";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,7 @@ export async function PATCH(
     .eq("is_active", true);
 
   if (error) {
-    return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
+    return copilotInternalErrorResponse();
   }
 
   return NextResponse.json({ ok: true });

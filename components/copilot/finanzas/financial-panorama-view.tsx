@@ -62,20 +62,20 @@ export function FinancialPanoramaView() {
 
   useEffect(() => {
     let cancelled = false;
-    setSnapshotLoading(true);
-    void getFinancialSnapshot()
-      .then((s) => {
+    void (async () => {
+      setSnapshotLoading(true);
+      try {
+        const s = await getFinancialSnapshot();
         if (!cancelled) setSnapshot(s);
-      })
-      .catch((e) => {
+      } catch (e) {
         if (!cancelled) {
           setSnapshot(null);
           setSnapshotError(e instanceof Error ? e.message : "Error al cargar proyección");
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setSnapshotLoading(false);
-      });
+      }
+    })();
     return () => {
       cancelled = true;
     };

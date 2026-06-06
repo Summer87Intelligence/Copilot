@@ -4,6 +4,7 @@ import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { loadInsightEngineProtoRows } from "@/lib/data/proto-analytics-read-repository";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 /**
  * GET /api/copilot/insight-engine-dataset
@@ -52,10 +53,6 @@ export async function GET(request: NextRequest) {
     log.error("copilot_insight_engine_dataset_failed", e, {
       route: "GET /api/copilot/insight-engine-dataset",
     });
-    const message = e instanceof Error ? e.message : "Error desconocido";
-    return NextResponse.json(
-      { ok: false as const, code: "UNEXPECTED", error: message },
-      { status: 500 }
-    );
+    return copilotInternalErrorResponse({ ok: false as const, code: "UNEXPECTED" });
   }
 }

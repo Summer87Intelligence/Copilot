@@ -22,7 +22,6 @@ import {
 } from "@/lib/data/decision-operational-state-repository";
 import type {
   AutomationAction,
-  AutomationActionRow,
   AutomationRunResult,
   RiskLevel,
 } from "@/lib/decision-engine/de-types";

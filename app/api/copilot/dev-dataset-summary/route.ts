@@ -4,6 +4,7 @@ import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 type ProtoCountTable =
   | "proto_companies"
@@ -25,7 +26,7 @@ async function countActiveWorkspaceRows(
     .eq("is_active", true);
 
   if (error) {
-    throw new Error(`${table}: ${error.message}`);
+    throw new Error("INTERNAL_QUERY_FAILED");
   }
   return count ?? 0;
 }
@@ -110,10 +111,6 @@ export async function GET(request: NextRequest) {
     log.error("copilot_dev_dataset_summary_failed", e, {
       route: "GET /api/copilot/dev-dataset-summary",
     });
-    const message = e instanceof Error ? e.message : "Error desconocido";
-    return NextResponse.json(
-      { ok: false as const, error: message },
-      { status: 500 }
-    );
+    return copilotInternalErrorResponse({ ok: false as const });
   }
 }

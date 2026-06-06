@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import { requireAdminContext } from "@/lib/auth/admin-api-auth";
 import { hashPin } from "@/lib/security/pin-hash";
 import { getDefaultPermissionsForRole, isValidRole } from "@/lib/auth/role-permission-presets";
-import { isValidModuleKey, isValidAccessLevel } from "@/lib/auth/module-permissions";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     .order("created_at", { ascending: false });
 
   if (usersErr) {
-    return NextResponse.json({ ok: false, message: usersErr.message }, { status: 500 });
+    return copilotInternalErrorResponse();
   }
 
   const rows = (users ?? []) as AppUserRow[];

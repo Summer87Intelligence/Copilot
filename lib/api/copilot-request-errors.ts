@@ -7,6 +7,24 @@ const INVALID_JSON_MSG =
 const INVALID_PAYLOAD_MSG =
   "El cuerpo no cumple el contrato esperado. Revisá los campos requeridos y los tipos.";
 
+export const COPILOT_INTERNAL_ERROR_MESSAGE = "Error interno. Intentá de nuevo.";
+
+/** Respuesta 500 genérica — no expone detalle de excepciones ni errores de DB. */
+export function copilotInternalErrorResponse(
+  extras?: Record<string, unknown>,
+  status = 500
+): NextResponse {
+  return NextResponse.json(
+    {
+      ok: false as const,
+      error: COPILOT_INTERNAL_ERROR_MESSAGE,
+      message: COPILOT_INTERNAL_ERROR_MESSAGE,
+      ...extras,
+    },
+    { status }
+  );
+}
+
 export type CopilotInvalidIssue = {
   path: string;
   message: string;

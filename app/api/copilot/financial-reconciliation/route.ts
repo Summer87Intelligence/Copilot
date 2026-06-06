@@ -22,7 +22,7 @@
  *     → sync, cada una esperando a la anterior).
  *   - Sources opcionales (companies / receipts / sync_state) degradan a `[]`
  *     con warning. Solo `proto_invoices` (crítica) devuelve 500 si falla.
- *   - En dev devolvemos `{stage, requestId, message}` para facilitar debug.
+ *   - En dev devolvemos `{stage, requestId }` para facilitar debug.
  *     En prod solo `requestId` + mensaje seguro.
  */
 
@@ -64,6 +64,7 @@ import {
   fetchAllRows,
   fetchAllRowsSafe,
 } from "@/lib/supabase-pagination";
+import { COPILOT_INTERNAL_ERROR_MESSAGE } from "@/lib/api/copilot-request-errors";
 
 // CRÍTICO: el reporte debe recalcularse en cada request porque depende del
 // `period_start`/`period_end` recibidos por query string. Sin `force-dynamic`
@@ -354,7 +355,6 @@ export async function GET(request: NextRequest) {
           kind: "db_error",
           request_id: requestId,
           table: "proto_invoices",
-          error: message,
           workspace_id: workspaceId,
         })
       );
@@ -430,7 +430,7 @@ export async function GET(request: NextRequest) {
           kind: "db_error_degraded",
           request_id: requestId,
           table: "zeta_sync_state",
-          error: syncRes.error.message,
+          error: COPILOT_INTERNAL_ERROR_MESSAGE,
           workspace_id: workspaceId,
           impact: "sync freshness badges no disponibles",
         })

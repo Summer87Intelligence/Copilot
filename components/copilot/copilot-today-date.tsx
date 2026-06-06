@@ -27,7 +27,7 @@ export function TodayDateDisplay() {
   const [date, setDate] = useState<Date | null>(null);
 
   useEffect(() => {
-    setDate(new Date());
+    void Promise.resolve().then(() => setDate(new Date()));
   }, []);
 
   if (!date) {

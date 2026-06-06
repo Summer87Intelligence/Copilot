@@ -12,6 +12,7 @@ import {
   updateInitiativesProcessingStage,
 } from "@/lib/data/engine-repository";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 const BATCH_LIMIT = 20;
 
@@ -32,10 +33,7 @@ export async function POST(request: NextRequest) {
       log.error("copilot_decisions_generate_failed", fetchError, {
         operation: "selectInitiativesForDecisionBatch",
       });
-      return NextResponse.json(
-        { error: fetchError.message, processed: 0, decisionsCreated: 0 },
-        { status: 500 }
-      );
+      return copilotInternalErrorResponse({ processed: 0, decisionsCreated: 0 });
     }
 
     const rows = (candidates ?? []) as InitiativeForDecision[];
@@ -55,10 +53,7 @@ export async function POST(request: NextRequest) {
       log.error("copilot_decisions_generate_failed", decErr, {
         operation: "selectDecisionInitiativeIdsForInitiatives",
       });
-      return NextResponse.json(
-        { error: decErr.message, processed: 0, decisionsCreated: 0 },
-        { status: 500 }
-      );
+      return copilotInternalErrorResponse({ processed: 0, decisionsCreated: 0 });
     }
 
     const hasDecision = new Set(
@@ -93,10 +88,7 @@ export async function POST(request: NextRequest) {
       log.error("copilot_decisions_generate_failed", insertError, {
         operation: "insertDecisions",
       });
-      return NextResponse.json(
-        { error: insertError.message, processed: 0, decisionsCreated: 0 },
-        { status: 500 }
-      );
+      return copilotInternalErrorResponse({ processed: 0, decisionsCreated: 0 });
     }
 
     const created = inserted?.length ?? 0;
@@ -115,16 +107,12 @@ export async function POST(request: NextRequest) {
       log.error("copilot_decisions_generate_failed", updateError, {
         operation: "updateInitiativesProcessingStage",
       });
-      return NextResponse.json(
-        {
-          error: updateError.message,
+      return copilotInternalErrorResponse({
           processed: 0,
           decisionsCreated: created,
           warning:
             "Decisiones insertadas pero no se pudo actualizar processing_stage.",
-        },
-        { status: 500 }
-      );
+        });
     }
 
     log.info("copilot_decisions_generated", {
@@ -139,10 +127,6 @@ export async function POST(request: NextRequest) {
     log.error("copilot_request_unhandled", e, {
       route: "POST /api/copilot/decisions/generate",
     });
-    const message = e instanceof Error ? e.message : "Error desconocido";
-    return NextResponse.json(
-      { error: message, processed: 0, decisionsCreated: 0 },
-      { status: 500 }
-    );
+    return copilotInternalErrorResponse({ processed: 0, decisionsCreated: 0 });
   }
 }

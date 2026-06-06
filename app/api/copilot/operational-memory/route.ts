@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { buildOperationalMemory } from "@/lib/copilot-operational-memory";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
@@ -29,15 +30,10 @@ export async function GET(request: NextRequest) {
     log.error("copilot_request_unhandled", error, {
       route: "GET /api/copilot/operational-memory",
     });
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json(
-      {
-        error: message,
-        signals: [],
-        generatedAt: new Date().toISOString(),
-        sourceCounts: { actions: 0, events: 0, feedItems: 0, narratives: 0 },
-      },
-      { status: 500 }
-    );
+    return copilotInternalErrorResponse({
+      signals: [],
+      generatedAt: new Date().toISOString(),
+      sourceCounts: { actions: 0, events: 0, feedItems: 0, narratives: 0 },
+    });
   }
 }

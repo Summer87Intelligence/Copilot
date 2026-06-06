@@ -269,6 +269,31 @@ function CopilotAccionesPageContent() {
     Record<string, { notes: string; after: string }>
   >({});
   const [savingLoopId, setSavingLoopId] = useState<string | null>(null);
+  const [loopSaveSuccessId, setLoopSaveSuccessId] = useState<string | null>(null);
+
+  const openEvidenceDrawer = useCallback((a: ActionListItem) => {
+    setSaleExpandId(null);
+    setSaleAmount("");
+    setIsEvidenceOpen(true);
+    setEvidenceAction(a);
+  }, []);
+
+  const toggleSaleExpand = useCallback((a: ActionListItem) => {
+    if (saleExpandId === a.id) {
+      setSaleExpandId(null);
+      setSaleAmount("");
+      return;
+    }
+    setIsEvidenceOpen(false);
+    setEvidenceAction(null);
+    setSaleExpandId(a.id);
+    setSaleAmount("");
+  }, [saleExpandId]);
+
+  const closeEvidenceDrawer = useCallback(() => {
+    setIsEvidenceOpen(false);
+    setEvidenceAction(null);
+  }, []);
 
   const fetchPipelineActions = useCallback(async (opts?: { soft?: boolean }) => {
     setError(null);
@@ -381,6 +406,8 @@ function CopilotAccionesPageContent() {
         return;
       }
       await fetchPipelineActions({ soft: true });
+      setLoopSaveSuccessId(a.id);
+      window.setTimeout(() => setLoopSaveSuccessId(null), 3000);
     } catch {
       setError("Error de red al guardar seguimiento.");
     } finally {
@@ -428,15 +455,13 @@ function CopilotAccionesPageContent() {
 
   const onQuickClick = (a: ActionListItem, kind: OutcomeTypeValue) => {
     if (kind === "sale") {
-      if (saleExpandId === a.id) {
-        setSaleExpandId(null);
-        setSaleAmount("");
-        return;
-      }
-      setSaleExpandId(a.id);
-      setSaleAmount("");
+      toggleSaleExpand(a);
       return;
     }
+    setIsEvidenceOpen(false);
+    setEvidenceAction(null);
+    setSaleExpandId(null);
+    setSaleAmount("");
     void submitOutcome(a, kind);
   };
 
@@ -687,7 +712,17 @@ function CopilotAccionesPageContent() {
         <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)]">
           <button
             type="button"
-            onClick={() => setPipelineExpanded((v) => !v)}
+            onClick={() => {
+              setPipelineExpanded((v) => {
+                const next = !v;
+                if (next) {
+                  closeEvidenceDrawer();
+                  setSaleExpandId(null);
+                  setSaleAmount("");
+                }
+                return next;
+              });
+            }}
             className="flex w-full items-center justify-between px-4 py-3 text-left"
           >
             <div>
@@ -805,10 +840,7 @@ function CopilotAccionesPageContent() {
                               icon="panel"
                               layout="block"
                               className="font-semibold"
-                              onClick={() => {
-                                setEvidenceAction(a);
-                                setIsEvidenceOpen(true);
-                              }}
+                              onClick={() => openEvidenceDrawer(a)}
                             >
                               {a.company_name ?? "Empresa (sin dato)"}
                             </CopilotInteractiveText>
@@ -837,10 +869,7 @@ function CopilotAccionesPageContent() {
                               <CopilotGhostButton
                                 type="button"
                                 className="text-xs"
-                                onClick={() => {
-                                  setEvidenceAction(a);
-                                  setIsEvidenceOpen(true);
-                                }}
+                                onClick={() => openEvidenceDrawer(a)}
                               >
                                 Ver respaldo
                               </CopilotGhostButton>
@@ -927,6 +956,11 @@ function CopilotAccionesPageContent() {
                                   ) : null}
                                   Guardar seguimiento
                                 </CopilotGhostButton>
+                                {loopSaveSuccessId === a.id ? (
+                                  <span className="text-xs font-medium text-emerald-600">
+                                    Seguimiento guardado
+                                  </span>
+                                ) : null}
                               </div>
                             </div>
                           );
@@ -1159,7 +1193,7 @@ function CopilotAccionesPageContent() {
       <CopilotActionsEvidenceDrawer
         action={evidenceAction}
         isOpen={isEvidenceOpen && evidenceAction != null}
-        onClose={() => setIsEvidenceOpen(false)}
+        onClose={closeEvidenceDrawer}
       />
     </div>
   );

@@ -9,6 +9,7 @@ import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { readOperationalAnalyticsSnapshot } from "@/lib/data/decision-operational-analytics-repository";
 import { getOperationalAnalytics } from "@/lib/decision-engine/operational-analytics-orchestrator";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     log.error("de_analytics_unhandled", error);
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json({ ok: false as const, code: "UNEXPECTED", message }, { status: 500 });
+    return copilotInternalErrorResponse({ ok: false as const, code: "UNEXPECTED" });
   }
 }

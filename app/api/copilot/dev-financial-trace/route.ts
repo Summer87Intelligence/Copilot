@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 const LIMIT = 20;
 
@@ -164,9 +165,9 @@ export async function GET(request: NextRequest) {
         .limit(LIMIT),
     ]);
 
-    if (invRes.error) throw new Error(`proto_invoices: ${invRes.error.message}`);
-    if (recRes.error) throw new Error(`proto_receipts: ${recRes.error.message}`);
-    if (payRes.error) throw new Error(`proto_payments: ${payRes.error.message}`);
+    if (invRes.error) throw new Error("INTERNAL_QUERY_FAILED");
+    if (recRes.error) throw new Error("INTERNAL_QUERY_FAILED");
+    if (payRes.error) throw new Error("INTERNAL_QUERY_FAILED");
 
     const invoices: TraceInvoice[] = ((invRes.data ?? []) as Record<string, unknown>[]).map(
       (r) => ({
@@ -241,7 +242,6 @@ export async function GET(request: NextRequest) {
     log.error("copilot_dev_financial_trace_failed", e, {
       route: "GET /api/copilot/dev-financial-trace",
     });
-    const message = e instanceof Error ? e.message : "Error desconocido";
-    return NextResponse.json({ ok: false as const, error: message }, { status: 500 });
+    return copilotInternalErrorResponse({ ok: false as const });
   }
 }

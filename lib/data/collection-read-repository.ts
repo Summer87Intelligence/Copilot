@@ -7,7 +7,6 @@
 import {
   type CollectionAction,
   type CollectionPriority,
-  type CollectionStatus,
   type ClientCollectionSummary,
   type ClientCollectionTimeline,
   COLLECTION_PRIORITIES,

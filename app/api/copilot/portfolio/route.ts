@@ -4,6 +4,7 @@ import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { getClientPortfolio, type ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 /**
  * GET /api/copilot/portfolio
@@ -48,10 +49,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (e) {
     log.error("copilot_portfolio_failed", e, { route: "GET /api/copilot/portfolio" });
-    const message = e instanceof Error ? e.message : "Error desconocido";
-    return NextResponse.json(
-      { ok: false as const, code: "UNEXPECTED", error: message },
-      { status: 500 }
-    );
+    return copilotInternalErrorResponse({ ok: false as const, code: "UNEXPECTED" });
   }
 }

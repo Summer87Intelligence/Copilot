@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { formatMoneyCurrency } from "@/lib/copilot-format-money";
 import type {
@@ -104,13 +104,13 @@ export function TopClientsPreviewDialog({ open, onClose }: Props) {
 
   const { loading: dlLoading, error: dlError, clearError, download } = usePdfDownload();
 
-  useEffect(() => {
-    if (!open) return;
+  const handleClose = useCallback(() => {
     setYear(nowYear());
     setMonth(nowMonth());
     setCurrency("UYU");
     setSortBy("net_sales");
-  }, [open]);
+    onClose();
+  }, [onClose]);
 
   const previewUrl = open
     ? `/api/copilot/reports/top-clients.json?year=${year}&month=${month}&currency=${currency}&sort=${sortBy}`
@@ -159,7 +159,7 @@ export function TopClientsPreviewDialog({ open, onClose }: Props) {
   return (
     <ReportPreviewShell
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       title="Clientes principales"
       subtitle={subtitle}
       onDownloadPdf={() => void handleDownloadPdf()}

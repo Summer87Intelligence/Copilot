@@ -12,6 +12,7 @@ import {
   updateActionExecutionStatus,
 } from "@/lib/data/engine-repository";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 function categoryForOutcomeType(t: OutcomeTypeValue): string {
   switch (t) {
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
       log.error("copilot_engine_query_failed", exErr, {
         operation: "selectOutcomeIdByActionId",
       });
-      return NextResponse.json({ error: exErr.message }, { status: 500 });
+      return copilotInternalErrorResponse();
     }
     if (existing) {
       log.warn("copilot_outcome_conflict", { reason: "outcome_exists_for_action" });
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
       log.error("copilot_engine_query_failed", actErr, {
         operation: "selectActionIdAndInitiative",
       });
-      return NextResponse.json({ error: actErr.message }, { status: 500 });
+      return copilotInternalErrorResponse();
     }
     if (!actionRow) {
       log.warn("copilot_outcome_not_found", { reason: "action_not_found" });
@@ -170,7 +171,7 @@ export async function POST(request: NextRequest) {
       log.error("copilot_outcome_insert_failed", insErr, {
         operation: "insertOutcome",
       });
-      return NextResponse.json({ error: insErr.message }, { status: 500 });
+      return copilotInternalErrorResponse();
     }
 
     const newStatus = executionStatusForOutcome(outcomeType);
@@ -188,7 +189,7 @@ export async function POST(request: NextRequest) {
         operation: "updateActionExecutionStatus",
         outcome_id: insertedId,
       });
-      return NextResponse.json({ error: updErr.message }, { status: 500 });
+      return copilotInternalErrorResponse();
     }
 
     const outcome = mapOutcomeRow(inserted as Record<string, unknown>);
@@ -201,7 +202,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ outcome });
   } catch (e) {
     log.error("copilot_request_unhandled", e, { route: "POST /api/copilot/outcomes" });
-    const message = e instanceof Error ? e.message : "Error desconocido";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return copilotInternalErrorResponse({});
   }
 }

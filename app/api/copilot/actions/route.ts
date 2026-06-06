@@ -12,6 +12,7 @@ import {
   selectOutcomesByActionIds,
 } from "@/lib/data/engine-repository";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 function mapOutcomeRow(row: Record<string, unknown>): ActionOutcomeSummary {
   const rev = row.revenue_amount;
@@ -90,10 +91,7 @@ export async function GET(request: NextRequest) {
         operation: "selectActionsOrdered",
         limit,
       });
-      return NextResponse.json(
-        { error: error.message, actions: [] as ActionListItem[] },
-        { status: 500 }
-      );
+      return copilotInternalErrorResponse({ actions: [] as ActionListItem[] });
     }
 
     const list = rows ?? [];
@@ -148,10 +146,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ actions });
   } catch (e) {
     log.error("copilot_request_unhandled", e, { route: "GET /api/copilot/actions" });
-    const message = e instanceof Error ? e.message : "Error desconocido";
-    return NextResponse.json(
-      { error: message, actions: [] as ActionListItem[] },
-      { status: 500 }
-    );
+    return copilotInternalErrorResponse({ actions: [] as ActionListItem[] });
   }
 }

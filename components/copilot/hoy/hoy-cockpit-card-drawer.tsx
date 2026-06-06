@@ -12,7 +12,7 @@ import {
   type CockpitReceivablesCard,
   type CockpitView,
 } from "@/lib/copilot-hoy-cockpit-view";
-import { HOY_COCKPIT, HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
+import { HOY_COCKPIT } from "@/lib/copilot-hoy-ui-contract";
 import type { DebtorCollectionRow } from "@/lib/copilot-today-business-pulse";
 import { fmtCurrencyAmount } from "@/lib/copilot-today-business-pulse";
 import type { HoyCashPositionBlock, HoyProjection30dBlock } from "@/lib/copilot-hoy-treasury";
@@ -41,7 +41,7 @@ function AmountRows({
   if (amounts.length === 0) {
     return <p className="text-sm text-[var(--copilot-ink-muted)]">—</p>;
   }
-  const sorted = [...amounts].sort((a, b) => (a.currency === "UYU" ? -1 : 1));
+  const sorted = [...amounts].sort((a) => (a.currency === "UYU" ? -1 : 1));
   return (
     <ul className="space-y-2">
       {sorted.map((a) => {

@@ -15,6 +15,7 @@ import {
   readLearningOutcomes,
 } from "@/lib/data/decision-learning-repository";
 import { detectOutcomes } from "@/lib/decision-engine/learning/outcome-detection-engine";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -81,7 +82,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     log.error("detect_outcomes_route_failed", error);
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json({ ok: false as const, code: "UNEXPECTED", message }, { status: 500 });
+    return copilotInternalErrorResponse({ ok: false as const, code: "UNEXPECTED" });
   }
 }

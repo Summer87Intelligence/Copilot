@@ -51,13 +51,11 @@ export function CopilotModuleShell({
   const [hydrated, setHydrated] = useState(false);
 
   useLayoutEffect(() => {
-    const pref = readSidebarPreference(storageKey);
-    if (pref !== null) {
-      setCollapsed(pref);
-    } else {
-      setCollapsed(true);
-    }
-    setHydrated(true);
+    void Promise.resolve().then(() => {
+      const pref = readSidebarPreference(storageKey);
+      setCollapsed(pref !== null ? pref : true);
+      setHydrated(true);
+    });
   }, [storageKey]);
 
   const toggleCollapsed = useCallback(() => {

@@ -6,6 +6,7 @@ import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { createOperationalActionFromAlert } from "@/lib/copilot-operational-actions-service";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import type { FiscalAlertItem } from "@/lib/copilot-tax-alerts";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 function actorFromContext(ctx: {
   authUser: { id: string };
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (!result.ok) {
-      return NextResponse.json({ error: result.message }, { status: 500 });
+      return copilotInternalErrorResponse();
     }
 
     return NextResponse.json({ action: result.data, message: result.message });
@@ -60,7 +61,6 @@ export async function POST(request: NextRequest) {
     log.error("copilot_request_unhandled", error, {
       route: "POST /api/copilot/operational-actions/from-alert",
     });
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return copilotInternalErrorResponse({});
   }
 }

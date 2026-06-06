@@ -704,8 +704,9 @@ export function paymentBehaviorLabelEs(b: PaymentBehaviorLabel): string {
 /**
  * Formatea un monto para la vista de portfolio.
  * Si se pasa `currency`, usa el símbolo correcto (UYU→"$", USD→"U$S").
- * TODO: total_billing / total_debt / overdue_debt son agregados mixtos UYU+USD —
- *       estos callsites no pueden pasar currency hasta que el modelo separe monedas.
+ *
+ * Legacy: total_billing / total_debt / overdue_debt siguen en el modelo por compatibilidad
+ * interna, pero la UI visible no debe mostrarlos (son agregados mixtos UYU+USD).
  */
 export function formatMoneyPortfolio(n: number, currency?: string | null): string {
   return formatMoneyCurrency(n, currency);

@@ -60,7 +60,7 @@ export function DataConfidencePanel() {
   };
 
   useEffect(() => {
-    loadCounts();
+    void Promise.resolve().then(() => loadCounts());
   }, []);
 
   const status = useMemo((): {

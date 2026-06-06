@@ -37,12 +37,6 @@ type CopilotOperationalPulseContextValue = {
   refresh: () => Promise<void>;
 };
 
-const DEFAULT_GATE: BusinessPulseGate = {
-  confidence: "low",
-  coverage: "insufficient",
-  recommendations_enabled: false,
-};
-
 const CopilotOperationalPulseContext =
   createContext<CopilotOperationalPulseContextValue | null>(null);
 

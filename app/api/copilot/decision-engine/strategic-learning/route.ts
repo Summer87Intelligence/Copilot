@@ -22,6 +22,7 @@ import {
 import { generateStrategicLearningSnapshot } from "@/lib/decision-engine/learning/strategic-learning-orchestrator";
 import { PREDICTIVE_SNAPSHOT_TYPE } from "@/lib/decision-engine/predictive/predictive-orchestrator";
 import type { StrategicLearningBundle } from "@/lib/decision-engine/learning/learning-types";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -105,7 +106,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true as const, data: resultBundle, cached: false });
   } catch (error) {
     log.error("strategic_learning_route_failed", error);
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json({ ok: false as const, code: "UNEXPECTED", message }, { status: 500 });
+    return copilotInternalErrorResponse({ ok: false as const, code: "UNEXPECTED" });
   }
 }

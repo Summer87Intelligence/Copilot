@@ -10,6 +10,7 @@ import {
 } from "@/lib/copilot-financial-engine";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 /**
  * GET /api/copilot/rutas-hub
@@ -81,17 +82,12 @@ export async function GET(request: NextRequest) {
     });
   } catch (e) {
     log.error("copilot_rutas_hub_failed", e, { route: "GET /api/copilot/rutas-hub" });
-    const message = e instanceof Error ? e.message : "Error desconocido";
-    return NextResponse.json(
-      {
+    return copilotInternalErrorResponse({
         ok: false as const,
         code: "UNEXPECTED",
-        error: message,
         snapshot: null,
         portfolio: null,
         computedAt: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+      });
   }
 }

@@ -291,7 +291,8 @@ type LoadState =
   | { status: "loaded"; data: StrategicLearningBundle; cached: boolean }
   | { status: "error"; message: string };
 
-export function StrategicLearningPanel(_props: Props) {
+export function StrategicLearningPanel(props: Props) {
+  void props;
   const [state, setState] = useState<LoadState>({ status: "idle" });
   const [detectingOutcomes, setDetectingOutcomes] = useState(false);
   const [detectResult, setDetectResult] = useState<{ count: number; inserted: number } | null>(null);

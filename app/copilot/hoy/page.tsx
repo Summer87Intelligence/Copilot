@@ -241,7 +241,9 @@ export default function CopilotHoyPage() {
   }, [confirmedPeriod]);
 
   useEffect(() => {
-    void load();
+    void (async () => {
+      await load();
+    })();
   }, [load]);
 
   function applyPeriod(range: HoyPeriodRange) {

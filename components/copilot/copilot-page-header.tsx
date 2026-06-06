@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { CopilotSurfaceId } from "@/lib/copilot-surface-status";
 
 // Props kept for backward compatibility — all callers remain unchanged.
-export function CopilotPageHeader(_props: {
+export function CopilotPageHeader(props: {
   eyebrow?: string;
   title: string;
   description?: string;
@@ -11,5 +11,6 @@ export function CopilotPageHeader(_props: {
   surfaceId?: CopilotSurfaceId;
   dense?: boolean;
 }) {
+  void props;
   return null;
 }

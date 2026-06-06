@@ -8,6 +8,7 @@ import {
 } from "@/lib/copilot-operational-governance";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -37,20 +38,16 @@ export async function GET(request: NextRequest) {
     log.error("copilot_request_unhandled", error, {
       route: "GET /api/copilot/automation-governance",
     });
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json(
-      {
+    return copilotInternalErrorResponse({
         ok: false as const,
         code: "UNEXPECTED",
-        message,
+        
         rules: [],
         activeAutomations: [],
         auditEvents: [],
         generatedAt: new Date().toISOString(),
-        health: { status: "partial", warnings: [{ source: "governance", code: "UNEXPECTED", message }] },
-      },
-      { status: 500 }
-    );
+        health: { status: "partial", warnings: [{ source: "governance", code: "UNEXPECTED" }] },
+      });
   }
 }
 
@@ -129,10 +126,6 @@ export async function PATCH(request: NextRequest) {
     log.error("copilot_request_unhandled", error, {
       route: "PATCH /api/copilot/automation-governance",
     });
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json(
-      { ok: false as const, code: "UNEXPECTED", message },
-      { status: 500 }
-    );
+    return copilotInternalErrorResponse({ ok: false as const, code: "UNEXPECTED" });
   }
 }

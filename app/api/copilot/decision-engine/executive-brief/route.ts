@@ -21,6 +21,7 @@ import { selectAutomationActions, selectAutomationRuns } from "@/lib/data/decisi
 import { generateExecutiveBrief } from "@/lib/decision-engine/executive-decision-engine";
 import { PREDICTIVE_SNAPSHOT_TYPE } from "@/lib/decision-engine/predictive/predictive-orchestrator";
 import type { PipelineSignal } from "@/lib/decision-engine/executive-decision-engine";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -127,7 +128,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     log.error("executive_brief_route_failed", error);
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json({ ok: false as const, code: "UNEXPECTED", message }, { status: 500 });
+    return copilotInternalErrorResponse({ ok: false as const, code: "UNEXPECTED" });
   }
 }

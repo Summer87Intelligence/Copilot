@@ -1,5 +1,4 @@
 import type { CommandCenterCurrentUser, CommandCenterFilter, CommandCenterItem, CommandCenterQueueInput, CommandCenterQueueResult, CommandCenterSeverity, CommandCenterStatus } from "@/lib/copilot-command-center-types";
-import type { OperationalAutomationResult } from "@/lib/copilot-operational-automation-types";
 
 const RELEVANT_EVENT_TYPES = new Set([
   "workflow_blocked",

@@ -1,9 +1,11 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { enforcePdfRateLimit } from "@/lib/security/pdf-rate-limit";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
 import {
@@ -32,6 +34,9 @@ export async function GET(
       return auth.response;
     }
     log = log.withTenant(auth.ctx.tenantCompanyId);
+
+    const rateLimited = enforcePdfRateLimit(request, "clientes/account-statement", auth.ctx.appUser.id);
+    if (rateLimited) return rateLimited;
 
     const tenantCompanyId = auth.ctx.tenantCompanyId.trim();
     if (!tenantCompanyId) {

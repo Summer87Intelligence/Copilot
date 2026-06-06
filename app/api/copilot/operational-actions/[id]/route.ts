@@ -6,6 +6,7 @@ import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { patchOperationalAction } from "@/lib/copilot-operational-actions-service";
 import { invalidateOperationalRuntime } from "@/lib/copilot-operational-runtime";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -54,6 +55,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     if (!result.ok) {
       const status = result.code === "NOT_FOUND" ? 404 : 500;
+      if (status === 500) {
+        return copilotInternalErrorResponse();
+      }
       return NextResponse.json({ error: result.message }, { status });
     }
 
@@ -69,7 +73,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     log.error("copilot_request_unhandled", error, {
       route: "PATCH /api/copilot/operational-actions/[id]",
     });
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return copilotInternalErrorResponse({});
   }
 }

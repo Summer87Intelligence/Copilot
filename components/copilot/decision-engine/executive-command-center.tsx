@@ -67,7 +67,6 @@ const URGENCY_LABELS: Record<ExecutiveDecisionUrgency, string> = {
 
 function DecisionCard({
   decision,
-  onGoToClient,
   onGoToQueue,
 }: {
   decision: ExecutiveDecision;

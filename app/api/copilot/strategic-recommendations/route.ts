@@ -4,6 +4,7 @@ import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { buildStrategicRecommendationsForWorkspace } from "@/lib/copilot-strategic-recommendations";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
+import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
 
 export async function GET(request: NextRequest) {
   let log = copilotRequestLogger(request);
@@ -32,14 +33,8 @@ export async function GET(request: NextRequest) {
     log.error("copilot_request_unhandled", error, {
       route: "GET /api/copilot/strategic-recommendations",
     });
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json(
-      {
-        error: message,
-        recommendations: [],
+    return copilotInternalErrorResponse({ recommendations: [],
         generatedAt: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+      });
   }
 }

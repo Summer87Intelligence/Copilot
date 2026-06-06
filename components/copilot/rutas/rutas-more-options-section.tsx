@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import {
   COPILOT_UI_STATE_KEYS,
@@ -14,11 +14,9 @@ type RutasMoreOptionsSectionProps = {
 };
 
 export function RutasMoreOptionsSection({ children }: RutasMoreOptionsSectionProps) {
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    setOpen(readCopilotUiBoolean(COPILOT_UI_STATE_KEYS.rutasMoreOptionsOpen, false));
-  }, []);
+  const [open, setOpen] = useState(() =>
+    readCopilotUiBoolean(COPILOT_UI_STATE_KEYS.rutasMoreOptionsOpen, false)
+  );
 
   const toggleOpen = () => {
     setOpen((prev) => {

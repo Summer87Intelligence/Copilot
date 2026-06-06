@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowDownUp, ChevronDown, ChevronUp } from "lucide-react";
 
 import { CopilotInteractiveText } from "@/components/copilot/copilot-interactive-text";
@@ -175,11 +175,14 @@ export function CopilotDataTable({
   const resolvedDefaultKey = defaultSortKey ?? columns[0]?.key ?? "";
   const [sortKey, setSortKey] = useState<string>(resolvedDefaultKey);
   const [sortDirection, setSortDirection] = useState<SortDirection>(defaultSortDir);
+  const sortResetKey = `${entity}|${columnKeySig}|${defaultSortKey ?? ""}|${defaultSortDir}`;
+  const [appliedSortResetKey, setAppliedSortResetKey] = useState(sortResetKey);
 
-  useEffect(() => {
+  if (appliedSortResetKey !== sortResetKey) {
+    setAppliedSortResetKey(sortResetKey);
     setSortKey(defaultSortKey ?? columns[0]?.key ?? "");
     setSortDirection(defaultSortDir);
-  }, [entity, columnKeySig, columns, defaultSortKey, defaultSortDir]);
+  }
 
   const sortedData = useMemo(() => {
     if (!sortKey) return data;
