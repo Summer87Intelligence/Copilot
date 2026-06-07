@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 /**
  * Auditoría final pre-producción (read-only).
- * node --env-file=.env.local --import tsx scripts/audit-final-preprod.ts
+ *
+ * Ejecución (requiere tsx para resolver alias @/):
+ *   npx tsx --env-file=.env.local scripts/audit-final-preprod.ts
+ *   npm run audit:final-preprod
+ *
+ * NO usar `node scripts/audit-final-preprod.ts` directo — falla en alias @/lib.
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -190,12 +195,12 @@ async function auditFletcher() {
   const targetOp = opDebt.debtUYU;
   const gap = round2(targetOp - ledgerFinal);
 
-  console.log("\n--- Explicación diff 15.340 ---");
+  console.log("\n--- Explicación ledger vs operativa ---");
   console.log(
-    "Ledger (28580) = opening + Σ(debe facturas CCV1 − haber NC − recibos), excl. saldos pendientes."
+    `Ledger (${fmt(ledgerFinal)}) = opening + Σ(debe facturas CCV1 − haber NC − recibos), excl. saldos pendientes.`
   );
   console.log(
-    "Operativa (43920) = Σ(balance_amount) facturas dedupeadas con saldo Zeta vivo."
+    `Operativa (${fmt(targetOp)}) = Σ(balance_amount) facturas dedupeadas con saldo Zeta vivo.`
   );
 
   for (const sel of deduped) {
@@ -505,10 +510,15 @@ function classifyFindings(fletcherGap: number, dupUyu: number, dupUsd: number, s
       item: `DB raw aún tiene pares shadow+CCV1 (${dupUyu} UYU / ${dupUsd} USD en top20); Copilot dedupe los corrige en lectura`,
     });
   }
-  if (Math.abs(fletcherGap - 15340) <= 100 && fletcherGap > TOL) {
+  if (Math.abs(fletcherGap - 700) <= TOL && fletcherGap > TOL) {
+    findings.push({
+      level: "P3",
+      item: `Fletcher gap ${fmt(fletcherGap)} = opening (−700) no incluido en Σ balance_amount operativo (esperado)`,
+    });
+  } else if (fletcherGap > TOL) {
     findings.push({
       level: "P2",
-      item: `Fletcher gap ${fmt(fletcherGap)} = shadow ZETA:2752 duplica A2948 (14.640) + opening no neteado en Σ balance (700)`,
+      item: `Fletcher gap operativa−ledger ${fmt(fletcherGap)} requiere revisión`,
     });
   }
   if (stmtIssues.length > 0) {
