@@ -74,7 +74,7 @@ export const HOY_COPY = {
   periodBilledLabel: "Facturado",
   periodBilledTip: "Facturas emitidas en el período.",
   periodCollectedLabel: "Cobrado",
-  periodCollectedTip: "Cobros registrados en el período.",
+  periodCollectedTip: "Cobrado en el período corresponde a recibos registrados en el período. Puede diferir de Cobrado aplicado en Cartera, que calcula cobros imputados contra facturas del período.",
   periodCreditNotesLabel: "Ajustes",
   periodManualIncomeLabel: "Ingresos manuales",
   periodManualExpenseLabel: "Egresos manuales",
@@ -82,7 +82,15 @@ export const HOY_COPY = {
   periodOperatingResultTip: "Cobrado + ingresos manuales − egresos manuales en el período.",
   debtorsSectionTitle: "Clientes con deuda",
   debtorsSectionSubtitle: "Todos los clientes con saldo pendiente, separados por moneda.",
-  debtorsSectionRiskSubtitle: "Vencidos y al día con seguimiento prioritario.",
+  debtorsSectionRiskSubtitle: "Clientes con saldo pendiente sincronizado desde Zeta. Los vencidos aparecen primero.",
+  /** Tooltip columna "Deuda total" en la tabla de deudores. */
+  debtTotalTip: "Saldo pendiente activo del cliente en esta moneda.",
+  /** Tooltip columna "Deuda vencida". */
+  debtOverdueTip: "Parte del saldo pendiente cuya fecha de vencimiento ya pasó.",
+  /** Tooltip columna "Días de atraso". */
+  debtOverdueDaysTip: "Días desde la factura vencida más antigua.",
+  /** Tooltip columna "Al día" (deuda total − deuda vencida). */
+  debtAtDayTip: "Saldo pendiente todavía dentro del plazo.",
   debtorsViewAllCartera: "Ver toda la cartera",
   debtorContactSectionTitle: "Contacto",
   debtorNoPhone: "Sin teléfono registrado",

@@ -11,6 +11,7 @@ import {
   CircleDashed,
   Copy,
   Download,
+  Eye,
   FileText,
   Loader2,
   Mail,
@@ -20,6 +21,7 @@ import {
   RefreshCw,
   Trash2,
   TrendingDown,
+  X,
   XCircle,
 } from "lucide-react";
 
@@ -441,6 +443,265 @@ function ContactsStrip({
   );
 }
 
+// ─── Account statement preview types ─────────────────────────────────────────
+
+type PreviewMovement = {
+  id: string;
+  date: string;
+  kind: string;
+  number: string;
+  detail: string;
+  currency: "UYU" | "USD";
+  debit: number;
+  credit: number;
+  runningBalance: number;
+};
+
+type PreviewSummary = {
+  totalDebit: number;
+  totalCredit: number;
+  finalBalance: number;
+  movementCount: number;
+  hasNegativeBalance: boolean;
+};
+
+type PreviewBlock = {
+  currency: "UYU" | "USD";
+  previousBalance: number;
+  summary: PreviewSummary;
+  movements: PreviewMovement[];
+};
+
+type PreviewData = {
+  companyName: string;
+  from?: string;
+  to?: string;
+  currencies: Array<"UYU" | "USD">;
+  blocks: PreviewBlock[];
+};
+
+// ─── Preview modal ────────────────────────────────────────────────────────────
+
+function formatPreviewDate(ymd: string): string {
+  if (!ymd || ymd.length < 10) return ymd;
+  const [y, m, d] = ymd.slice(0, 10).split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function formatPreviewAmount(n: number): string {
+  if (!Number.isFinite(n)) return "";
+  return Math.abs(n).toLocaleString("es-UY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function describeKind(kind: string): string {
+  if (kind === "invoice") return "Venta (CFE)";
+  if (kind === "receipt") return "Recibo";
+  if (kind === "credit_note") return "Nota de Crédito";
+  return kind;
+}
+
+function AccountStatementPreviewModal({
+  data,
+  onClose,
+}: {
+  data: PreviewData;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-8"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Revisar estado de cuenta"
+    >
+      <div className="relative w-full max-w-4xl rounded-2xl border border-[var(--copilot-border)] bg-white shadow-xl">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3 border-b border-[var(--copilot-border)] px-5 py-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--copilot-ink-muted)]">
+              Estado de cuenta
+            </p>
+            <p className="mt-0.5 text-sm font-semibold text-[var(--copilot-ink)]">
+              {data.companyName}
+            </p>
+            {(data.from ?? data.to) ? (
+              <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
+                {data.from ? formatPreviewDate(data.from) : "inicio"} —{" "}
+                {data.to ? formatPreviewDate(data.to) : "hoy"}
+              </p>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="mt-0.5 rounded-lg p-1.5 text-[var(--copilot-ink-muted)] hover:bg-slate-100"
+          >
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+
+        {/* Currency blocks */}
+        <div className="divide-y divide-[var(--copilot-border)]">
+          {data.blocks.map((block) => (
+            <div key={block.currency} className="px-5 py-4">
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--copilot-ink-muted)]">
+                {block.currency === "UYU" ? "Pesos uruguayos (UYU)" : "Dólares (USD)"}
+              </p>
+
+              {block.movements.length === 0 ? (
+                <p className="py-4 text-center text-sm text-[var(--copilot-ink-muted)]">
+                  Sin movimientos en el período.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[600px] border-collapse text-[12px]">
+                    <thead>
+                      <tr className="border-b border-[var(--copilot-border)] text-[10px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                        <th className="py-1.5 pr-3 text-left">Fecha</th>
+                        <th className="py-1.5 pr-3 text-left">Comprobante</th>
+                        <th className="py-1.5 pr-3 text-left">Nº</th>
+                        <th className="py-1.5 pr-2 text-right">Debe</th>
+                        <th className="py-1.5 pr-2 text-right">Haber</th>
+                        <th className="py-1.5 text-right">Saldo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* Saldo anterior */}
+                      {data.from ? (
+                        <tr className="border-b border-[var(--copilot-border)]/40 bg-slate-50/60 text-[var(--copilot-ink-muted)]">
+                          <td className="py-1.5 pr-3">{formatPreviewDate(data.from)}</td>
+                          <td className="py-1.5 pr-3 font-medium" colSpan={2}>
+                            Saldo anterior
+                          </td>
+                          <td className="py-1.5 pr-2 text-right" />
+                          <td className="py-1.5 pr-2 text-right" />
+                          <td className="py-1.5 text-right font-semibold">
+                            {formatPreviewAmount(block.previousBalance)}
+                          </td>
+                        </tr>
+                      ) : null}
+
+                      {/* Movements */}
+                      {block.movements.map((mv, i) => (
+                        <tr
+                          key={mv.id}
+                          className={`border-b border-[var(--copilot-border)]/30 ${
+                            i % 2 === 1 ? "bg-slate-50/40" : ""
+                          }`}
+                        >
+                          <td className="py-1.5 pr-3 text-[var(--copilot-ink-muted)]">
+                            {formatPreviewDate(mv.date)}
+                          </td>
+                          <td className="py-1.5 pr-3 text-[var(--copilot-ink)]">
+                            {describeKind(mv.kind)}
+                          </td>
+                          <td className="py-1.5 pr-3 text-[var(--copilot-ink-muted)]">
+                            {mv.number}
+                          </td>
+                          <td className="py-1.5 pr-2 text-right text-[var(--copilot-ink)]">
+                            {mv.debit > 0 ? formatPreviewAmount(mv.debit) : ""}
+                          </td>
+                          <td className="py-1.5 pr-2 text-right text-[var(--copilot-ink)]">
+                            {mv.credit > 0 ? formatPreviewAmount(mv.credit) : ""}
+                          </td>
+                          <td
+                            className={`py-1.5 text-right font-semibold ${
+                              mv.runningBalance < 0
+                                ? "text-rose-600"
+                                : "text-[var(--copilot-ink)]"
+                            }`}
+                          >
+                            {formatPreviewAmount(mv.runningBalance)}
+                          </td>
+                        </tr>
+                      ))}
+
+                      {/* Saldo final */}
+                      <tr className="border-t-2 border-[var(--copilot-border)] bg-slate-50 font-semibold">
+                        <td className="py-2 pr-3 text-[var(--copilot-ink-muted)]">
+                          {data.to ? formatPreviewDate(data.to) : "—"}
+                        </td>
+                        <td className="py-2 pr-3 text-[var(--copilot-ink)]" colSpan={2}>
+                          SALDO {block.currency === "UYU" ? "$" : "U$S"}
+                        </td>
+                        <td className="py-2 pr-2 text-right text-[var(--copilot-ink)]">
+                          {formatPreviewAmount(block.summary.totalDebit)}
+                        </td>
+                        <td className="py-2 pr-2 text-right text-[var(--copilot-ink)]">
+                          {formatPreviewAmount(block.summary.totalCredit)}
+                        </td>
+                        <td
+                          className={`py-2 text-right ${
+                            block.summary.finalBalance < 0 ? "text-rose-600" : "text-[var(--copilot-ink)]"
+                          }`}
+                        >
+                          {formatPreviewAmount(
+                            block.movements[block.movements.length - 1]?.runningBalance ??
+                              block.previousBalance
+                          )}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Summary strip */}
+              <div className="mt-3 flex flex-wrap gap-4 text-[11px] text-[var(--copilot-ink-muted)]">
+                <span>
+                  Debe total:{" "}
+                  <span className="font-semibold text-[var(--copilot-ink)]">
+                    {formatPreviewAmount(block.summary.totalDebit)}
+                  </span>
+                </span>
+                <span>
+                  Haber total:{" "}
+                  <span className="font-semibold text-[var(--copilot-ink)]">
+                    {formatPreviewAmount(block.summary.totalCredit)}
+                  </span>
+                </span>
+                <span>
+                  Saldo:{" "}
+                  <span
+                    className={`font-semibold ${
+                      block.summary.finalBalance < 0
+                        ? "text-rose-600"
+                        : "text-[var(--copilot-ink)]"
+                    }`}
+                  >
+                    {formatPreviewAmount(
+                      block.movements[block.movements.length - 1]?.runningBalance ??
+                        block.previousBalance
+                    )}
+                  </span>
+                </span>
+                <span>
+                  {block.summary.movementCount} movimiento
+                  {block.summary.movementCount !== 1 ? "s" : ""}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="border-t border-[var(--copilot-border)] px-5 py-3">
+          <p className="text-[11px] text-[var(--copilot-ink-muted)]">
+            Vista previa del estado de cuenta. El PDF descargado usa el mismo modelo y datos.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── PDF download card ────────────────────────────────────────────────────────
 
 function AccountStatementPdfCard({ companyId, hasUyu }: { companyId: string; hasUyu: boolean }) {
@@ -450,10 +711,17 @@ function AccountStatementPdfCard({ companyId, hasUyu }: { companyId: string; has
   const [to, setTo] = useState(`${thisYear}-12-31`);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [previewData, setPreviewData] = useState<PreviewData | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
-  function buildUrl() {
+  function buildPdfUrl() {
     const params = new URLSearchParams({ currency, from, to });
     return `/api/copilot/clientes/${encodeURIComponent(companyId)}/account-statement.pdf?${params.toString()}`;
+  }
+
+  function buildJsonUrl() {
+    const params = new URLSearchParams({ currency, from, to });
+    return `/api/copilot/clientes/${encodeURIComponent(companyId)}/account-statement.json?${params.toString()}`;
   }
 
   async function handleDownload() {
@@ -461,7 +729,7 @@ function AccountStatementPdfCard({ companyId, hasUyu }: { companyId: string; has
     setErrorMsg(null);
     setLoading(true);
     try {
-      const res = await fetch(buildUrl());
+      const res = await fetch(buildPdfUrl());
       if (!res.ok) {
         setErrorMsg("No se pudo generar el PDF. Intentá de nuevo.");
         return;
@@ -482,89 +750,136 @@ function AccountStatementPdfCard({ companyId, hasUyu }: { companyId: string; has
     }
   }
 
+  async function handlePreview() {
+    if (previewLoading) return;
+    setErrorMsg(null);
+    setPreviewLoading(true);
+    try {
+      const res = await fetch(buildJsonUrl());
+      if (!res.ok) {
+        setErrorMsg("No se pudo cargar la vista previa. Intentá de nuevo.");
+        return;
+      }
+      const json = (await res.json()) as { ok?: boolean } & PreviewData;
+      if (!json.ok) {
+        setErrorMsg("No se pudo cargar la vista previa. Intentá de nuevo.");
+        return;
+      }
+      setPreviewData(json);
+    } catch {
+      setErrorMsg("No se pudo cargar la vista previa. Intentá de nuevo.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+
   return (
-    <CopilotCard>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-[var(--copilot-ink)]">Estado de cuenta PDF</p>
-          <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-            Descargá un estado de cuenta del cliente para revisar o enviar manualmente. El PDF no se
-            envía solo.
-          </p>
-        </div>
-        <Download className="h-4 w-4 shrink-0 text-[var(--copilot-accent)] mt-0.5" aria-hidden />
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-end gap-3">
-        {/* Currency */}
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-            Moneda
-          </label>
-          <div className="flex rounded-xl overflow-hidden border border-[var(--copilot-border)]">
-            {(["UYU", "USD"] as const).map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCurrency(c)}
-                className={`px-3.5 py-1.5 text-[12px] font-semibold transition-colors ${
-                  currency === c
-                    ? "bg-[var(--copilot-accent)] text-white"
-                    : "bg-white text-[var(--copilot-ink-muted)] hover:bg-slate-50"
-                }`}
-              >
-                {c === "UYU" ? "Pesos" : "Dólares"}
-              </button>
-            ))}
+    <>
+      <CopilotCard>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-[var(--copilot-ink)]">Estado de cuenta PDF</p>
+            <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
+              Descargá un estado de cuenta del cliente para revisar o enviar manualmente. El PDF no se
+              envía solo.
+            </p>
           </div>
+          <Download className="h-4 w-4 shrink-0 text-[var(--copilot-accent)] mt-0.5" aria-hidden />
         </div>
 
-        {/* From */}
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-            Desde
-          </label>
-          <input
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            className="rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-[12px] text-[var(--copilot-ink)] focus:outline-none focus:ring-1 focus:ring-[var(--copilot-accent)]"
-          />
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          {/* Currency */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+              Moneda
+            </label>
+            <div className="flex rounded-xl overflow-hidden border border-[var(--copilot-border)]">
+              {(["UYU", "USD"] as const).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCurrency(c)}
+                  className={`px-3.5 py-1.5 text-[12px] font-semibold transition-colors ${
+                    currency === c
+                      ? "bg-[var(--copilot-accent)] text-white"
+                      : "bg-white text-[var(--copilot-ink-muted)] hover:bg-slate-50"
+                  }`}
+                >
+                  {c === "UYU" ? "Pesos" : "Dólares"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* From */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+              Desde
+            </label>
+            <input
+              type="date"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+              className="rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-[12px] text-[var(--copilot-ink)] focus:outline-none focus:ring-1 focus:ring-[var(--copilot-accent)]"
+            />
+          </div>
+
+          {/* To */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+              Hasta
+            </label>
+            <input
+              type="date"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              className="rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-[12px] text-[var(--copilot-ink)] focus:outline-none focus:ring-1 focus:ring-[var(--copilot-accent)]"
+            />
+          </div>
+
+          {/* Preview button */}
+          <button
+            type="button"
+            onClick={() => void handlePreview()}
+            disabled={previewLoading}
+            className="flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-white/80 px-4 py-2 text-[13px] font-semibold text-[var(--copilot-ink)] transition-colors hover:bg-white disabled:opacity-50"
+          >
+            {previewLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              <Eye className="h-3.5 w-3.5" aria-hidden />
+            )}
+            {previewLoading ? "Cargando…" : "Revisar"}
+          </button>
+
+          {/* Download button */}
+          <button
+            type="button"
+            onClick={() => void handleDownload()}
+            disabled={loading}
+            className="flex items-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {loading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              <Download className="h-3.5 w-3.5" aria-hidden />
+            )}
+            {loading ? "Generando…" : "Descargar PDF"}
+          </button>
         </div>
 
-        {/* To */}
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-            Hasta
-          </label>
-          <input
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            className="rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-[12px] text-[var(--copilot-ink)] focus:outline-none focus:ring-1 focus:ring-[var(--copilot-accent)]"
-          />
-        </div>
+        {errorMsg ? (
+          <p className="mt-2 text-[12px] text-rose-600">{errorMsg}</p>
+        ) : null}
+      </CopilotCard>
 
-        {/* Button */}
-        <button
-          type="button"
-          onClick={() => void handleDownload()}
-          disabled={loading}
-          className="flex items-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-        >
-          {loading ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-          ) : (
-            <Download className="h-3.5 w-3.5" aria-hidden />
-          )}
-          {loading ? "Generando…" : "Descargar PDF"}
-        </button>
-      </div>
-
-      {errorMsg ? (
-        <p className="mt-2 text-[12px] text-rose-600">{errorMsg}</p>
+      {previewData ? (
+        <AccountStatementPreviewModal
+          data={previewData}
+          onClose={() => setPreviewData(null)}
+        />
       ) : null}
-    </CopilotCard>
+    </>
   );
 }
 

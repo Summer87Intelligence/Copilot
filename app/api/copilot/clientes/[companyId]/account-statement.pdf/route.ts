@@ -9,8 +9,8 @@ import { enforcePdfRateLimit } from "@/lib/security/pdf-rate-limit";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
 import {
-  listProtoInvoicesByCompanyId,
-  listProtoReceiptsByCompanyId,
+  listProtoInvoicesByCompanyIdForLedger,
+  listProtoReceiptsByCompanyIdForLedger,
   getProtoCompanyById,
 } from "@/lib/data/proto-operational-read-repository";
 import { buildClientAccountStatement } from "@/lib/copilot-client-account-statement";
@@ -69,8 +69,8 @@ export async function GET(
 
     log.info("account_statement_pdf_fetching", { companyId, from, to, currencies });
     const [invoices, receipts, company, issuerRow] = await Promise.all([
-      listProtoInvoicesByCompanyId(supabase, companyId, "all", tenantCompanyId),
-      listProtoReceiptsByCompanyId(supabase, companyId, "all", tenantCompanyId),
+      listProtoInvoicesByCompanyIdForLedger(supabase, companyId, tenantCompanyId),
+      listProtoReceiptsByCompanyIdForLedger(supabase, companyId, tenantCompanyId),
       getProtoCompanyById(supabase, companyId, tenantCompanyId),
       // Intenta cargar la empresa del workspace como emisor; usa fallback si falla o no existe
       getProtoCompanyById(supabase, tenantCompanyId, tenantCompanyId).catch(() => null),

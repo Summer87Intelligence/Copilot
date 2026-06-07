@@ -388,6 +388,87 @@ export async function listProtoPaymentsByCompanyId(
   );
 }
 
+/**
+ * Obtiene TODAS las facturas de un cliente para construir el ledger del estado de cuenta.
+ *
+ * Diferencias respecto a `listProtoInvoicesByCompanyId`:
+ * - Sin `.limit()`: necesitamos el historial completo para que el saldo acumulado sea correcto.
+ * - Sin filtro de fecha de inicio operacional: el ledger debe arrancar desde la primera factura.
+ * - Orden `issue_date ASC`: la secuencia cronológica es necesaria para el running balance.
+ *
+ * Usar siempre con `buildClientAccountStatement({ ledgerMode: true })`.
+ */
+export async function listProtoInvoicesByCompanyIdForLedger(
+  client: OperationalSupabase,
+  companyId: string,
+  workspaceCompanyId?: string | null
+): Promise<DataRow[]> {
+  const wid = workspaceCompanyId?.trim();
+
+  // issue_date ASC + invoice_number ASC (cronológico; fallback si invoice_number no existe)
+  {
+    let base = client.from("proto_invoices").select("*").eq("company_id", companyId);
+    if (wid) base = base.eq("workspace_company_id", wid);
+    const { data, error } = await base
+      .order("issue_date", { ascending: true })
+      .order("invoice_number", { ascending: true });
+    if (!error) return (data ?? []) as DataRow[];
+  }
+
+  {
+    let base = client.from("proto_invoices").select("*").eq("company_id", companyId);
+    if (wid) base = base.eq("workspace_company_id", wid);
+    const { data, error } = await base.order("issue_date", { ascending: true });
+    if (!error) return (data ?? []) as DataRow[];
+  }
+
+  let fb = client.from("proto_invoices").select("*").eq("company_id", companyId);
+  if (wid) fb = fb.eq("workspace_company_id", wid);
+  const fallback = await fb;
+  if (fallback.error) throw new Error(fallback.error.message);
+  return (fallback.data ?? []) as DataRow[];
+}
+
+/**
+ * Obtiene TODOS los recibos de un cliente para construir el ledger del estado de cuenta.
+ *
+ * Diferencias respecto a `listProtoReceiptsByCompanyId`:
+ * - Sin `.limit()`: historial completo.
+ * - Sin filtro de fecha de inicio operacional.
+ * - Orden `receipt_date ASC + created_at ASC`: secuencia cronológica.
+ *
+ * Usar siempre con `buildClientAccountStatement({ ledgerMode: true })`.
+ */
+export async function listProtoReceiptsByCompanyIdForLedger(
+  client: OperationalSupabase,
+  companyId: string,
+  workspaceCompanyId?: string | null
+): Promise<DataRow[]> {
+  const wid = workspaceCompanyId?.trim();
+
+  {
+    let base = client.from("proto_receipts").select("*").eq("company_id", companyId);
+    if (wid) base = base.eq("workspace_company_id", wid);
+    const { data, error } = await base
+      .order("receipt_date", { ascending: true })
+      .order("created_at", { ascending: true });
+    if (!error) return (data ?? []) as DataRow[];
+  }
+
+  {
+    let base = client.from("proto_receipts").select("*").eq("company_id", companyId);
+    if (wid) base = base.eq("workspace_company_id", wid);
+    const { data, error } = await base.order("receipt_date", { ascending: true });
+    if (!error) return (data ?? []) as DataRow[];
+  }
+
+  let fb = client.from("proto_receipts").select("*").eq("company_id", companyId);
+  if (wid) fb = fb.eq("workspace_company_id", wid);
+  const fallback = await fb;
+  if (fallback.error) throw new Error(fallback.error.message);
+  return (fallback.data ?? []) as DataRow[];
+}
+
 export async function getProtoCompanyById(
   client: OperationalSupabase,
   companyId: string,

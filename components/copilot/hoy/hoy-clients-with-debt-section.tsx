@@ -9,8 +9,14 @@ import { fmtCurrencyAmount } from "@/lib/copilot-today-business-pulse";
 import type { DebtorCollectionRow, MoneyAmount } from "@/lib/copilot-today-business-pulse";
 import type { HoyClientCounts } from "@/lib/copilot-today-business-pulse";
 import { HOY_COPY, HOY_UI } from "@/lib/copilot-hoy-ui-contract";
+import {
+  buildDebtorExpandData,
+  fmtDebtSymbol,
+} from "@/lib/hoy-debtor-expand-helpers";
 
 import { moneyToneClass } from "./hoy-money-value";
+
+export { buildDebtorExpandData } from "@/lib/hoy-debtor-expand-helpers";
 
 export function buildDebtorsSummaryLine(
   counts: HoyClientCounts,
@@ -150,28 +156,152 @@ function DebtorRowActions({ row }: { row: DebtorCollectionRow }) {
 
 function DebtorRowExpandPanel({ row }: { row: DebtorCollectionRow }) {
   const { phone, email } = debtorContactFields(row);
-  const waDigits = phone ? normalizeWhatsAppDigits(phone) : null;
-  const hasOverdue = (row.vencido?.amount ?? 0) > 0;
+  const expand = buildDebtorExpandData(row);
 
   return (
-    <div className="border-t border-[var(--copilot-border)]/60 bg-slate-50/70 px-4 py-3">
-      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--copilot-ink-muted)]">
-        {HOY_COPY.debtorContactSectionTitle}
-      </p>
-      <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="space-y-1 text-xs">
-          <p className="text-[var(--copilot-ink-muted)]">Teléfono</p>
-          <p className="font-medium text-[var(--copilot-ink)]">
-            {phone ?? (
-              <span className="font-normal text-[var(--copilot-ink-muted)]">
-                {HOY_COPY.debtorNoPhone}
-              </span>
+    <div className="space-y-3 border-t border-[var(--copilot-border)]/60 bg-slate-50/70 px-4 py-3">
+
+      {/* ── Financial summary ─────────────────────────────────────────────── */}
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--copilot-ink-muted)]">
+          Resumen de deuda
+        </p>
+        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2.5 sm:grid-cols-4">
+
+          {/* Deuda total */}
+          <div>
+            <p
+              className="text-[10px] text-[var(--copilot-ink-muted)]"
+              title={HOY_COPY.debtTotalTip}
+            >
+              Deuda total
+            </p>
+            <p className="mt-0.5 text-sm font-semibold text-amber-700">
+              {fmtDebtSymbol(expand.deudaTotalAmt, expand.currency)}
+            </p>
+            <p className="mt-0.5 text-[10px] leading-tight text-[var(--copilot-ink-muted)]">
+              Saldo pendiente activo del cliente.
+            </p>
+          </div>
+
+          {/* Deuda vencida */}
+          <div>
+            <p
+              className="text-[10px] text-[var(--copilot-ink-muted)]"
+              title={HOY_COPY.debtOverdueTip}
+            >
+              Deuda vencida
+            </p>
+            {expand.deudaVencidaAmt != null ? (
+              <>
+                <p className="mt-0.5 text-sm font-semibold text-rose-700">
+                  {fmtDebtSymbol(expand.deudaVencidaAmt, expand.currency)}
+                </p>
+                <p className="mt-0.5 text-[10px] leading-tight text-[var(--copilot-ink-muted)]">
+                  Parte del saldo cuya fecha ya pasó.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="mt-0.5 text-sm font-semibold text-emerald-700">—</p>
+                <p className="mt-0.5 text-[10px] leading-tight text-emerald-700">
+                  Sin vencimiento activo.
+                </p>
+              </>
             )}
-          </p>
+          </div>
+
+          {/* Deuda al día */}
+          <div>
+            <p
+              className="text-[10px] text-[var(--copilot-ink-muted)]"
+              title={HOY_COPY.debtAtDayTip}
+            >
+              Al día
+            </p>
+            {expand.deudaAlDia > 0 ? (
+              <>
+                <p className="mt-0.5 text-sm font-semibold text-[var(--copilot-ink)]">
+                  {fmtDebtSymbol(expand.deudaAlDia, expand.currency)}
+                </p>
+                <p className="mt-0.5 text-[10px] leading-tight text-[var(--copilot-ink-muted)]">
+                  Saldo todavía dentro del plazo.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="mt-0.5 text-sm font-semibold text-[var(--copilot-ink-muted)]">—</p>
+                <p className="mt-0.5 text-[10px] leading-tight text-[var(--copilot-ink-muted)]">
+                  Toda la deuda está vencida.
+                </p>
+              </>
+            )}
+          </div>
+
+          {/* Días de atraso */}
+          <div>
+            <p
+              className="text-[10px] text-[var(--copilot-ink-muted)]"
+              title={HOY_COPY.debtOverdueDaysTip}
+            >
+              Días de atraso
+            </p>
+            {expand.overdueDays != null ? (
+              <>
+                <p className="mt-0.5 text-sm font-semibold text-rose-700">
+                  {expand.overdueDays} días
+                </p>
+                <p className="mt-0.5 text-[10px] leading-tight text-[var(--copilot-ink-muted)]">
+                  Desde la factura vencida más antigua.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="mt-0.5 text-sm font-semibold text-[var(--copilot-ink-muted)]">—</p>
+                <p className="mt-0.5 text-[10px] leading-tight text-[var(--copilot-ink-muted)]">
+                  Sin vencimiento registrado.
+                </p>
+              </>
+            )}
+          </div>
         </div>
-        <div className="space-y-1 text-xs">
-          <p className="text-[var(--copilot-ink-muted)]">Email</p>
-          <p className="font-medium text-[var(--copilot-ink)]">
+      </div>
+
+      {/* ── Status message ────────────────────────────────────────────────── */}
+      <div
+        className={`rounded-lg px-3 py-2 text-xs ${
+          expand.hasOverdue
+            ? "bg-rose-50/80 text-rose-800"
+            : "bg-emerald-50/80 text-emerald-800"
+        }`}
+      >
+        <span className="font-semibold">
+          {expand.hasOverdue ? "Requiere seguimiento." : "Deuda al día."}
+        </span>{" "}
+        {expand.expandMessage}
+      </div>
+
+      {/* ── Data source ───────────────────────────────────────────────────── */}
+      <div className="space-y-0.5 text-[10px] text-[var(--copilot-ink-muted)]">
+        <p>
+          <span className="font-semibold">Fuente:</span> facturas y saldos pendientes
+          sincronizados desde Zeta.
+        </p>
+        <p>
+          <span className="font-semibold">Moneda:</span> {row.currency}.
+        </p>
+      </div>
+
+      {/* ── Contact (compact — actions are already in the row) ────────────── */}
+      {(phone ?? email) ? (
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--copilot-ink-muted)]">
+            {HOY_COPY.debtorContactSectionTitle}
+          </p>
+          <div className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1 text-xs">
+            {phone ? (
+              <span className="text-[var(--copilot-ink)]">{phone}</span>
+            ) : null}
             {email ? (
               <a
                 href={`mailto:${encodeURIComponent(email)}`}
@@ -180,50 +310,9 @@ function DebtorRowExpandPanel({ row }: { row: DebtorCollectionRow }) {
               >
                 {email}
               </a>
-            ) : (
-              <span className="font-normal text-[var(--copilot-ink-muted)]">
-                {HOY_COPY.debtorNoEmail}
-              </span>
-            )}
-          </p>
+            ) : null}
+          </div>
         </div>
-        <div className="flex flex-wrap items-end gap-2 sm:col-span-2 lg:col-span-1">
-          {waDigits ? (
-            <a
-              href={`https://wa.me/${waDigits}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100/80"
-            >
-              <MessageCircle className="h-3.5 w-3.5" aria-hidden />
-              {HOY_COPY.debtorWhatsApp}
-            </a>
-          ) : null}
-          {email ? (
-            <a
-              href={`mailto:${encodeURIComponent(email)}`}
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-xs font-semibold text-[var(--copilot-accent)] hover:bg-white"
-            >
-              <Mail className="h-3.5 w-3.5" aria-hidden />
-              {HOY_COPY.debtorSendEmail}
-            </a>
-          ) : null}
-          <Link
-            href={row.deepLink}
-            onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-xs font-semibold text-[var(--copilot-ink)] hover:bg-white"
-          >
-            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-            {HOY_COPY.debtorViewProfile}
-          </Link>
-        </div>
-      </div>
-      {hasOverdue ? (
-        <p className="mt-2.5 text-[11px] text-[var(--copilot-ink-muted)]">
-          <span className="font-semibold text-rose-800">{row.accion}</span>
-        </p>
       ) : null}
     </div>
   );
@@ -257,9 +346,24 @@ function DebtorTable({
           <tr className="bg-[rgba(44,40,37,0.04)] text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
             <th className="px-3 py-1.5">Cliente</th>
             <th className="px-3 py-1.5">Moneda</th>
-            <th className="px-3 py-1.5">Deuda total</th>
-            <th className="px-3 py-1.5">Deuda vencida</th>
-            <th className="px-3 py-1.5">Días de atraso</th>
+            <th
+              className="cursor-help px-3 py-1.5"
+              title={HOY_COPY.debtTotalTip}
+            >
+              Deuda total
+            </th>
+            <th
+              className="cursor-help px-3 py-1.5"
+              title={HOY_COPY.debtOverdueTip}
+            >
+              Deuda vencida
+            </th>
+            <th
+              className="cursor-help px-3 py-1.5"
+              title={HOY_COPY.debtOverdueDaysTip}
+            >
+              Días de atraso
+            </th>
             <th className="px-3 py-1.5">Acción</th>
           </tr>
         </thead>
