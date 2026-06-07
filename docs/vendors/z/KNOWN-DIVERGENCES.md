@@ -430,8 +430,9 @@ Cuando el usuario filtra `/copilot/cartera` por un período **pasado** (ej. `Has
 ## DIV-CONT-004 · `openingBalance` depende de recibos pre-período sincronizados
 
 **Fecha observada:** 2026-05-11
+**Última actualización:** 2026-06-07 — MITIGADO con `ledger_opening_balance_uyu/usd` en `proto_companies`
 **Endpoint origen:** `RESTRecibosCobranzaV2QueryComprobantes` (pipeline de recibos)
-**Estado:** ACEPTADO — limitación dependiente de cobertura de sync
+**Estado:** MITIGADO — override explícito disponible; backfill sigue siendo la solución completa
 
 ### Origen del problema
 
@@ -441,17 +442,33 @@ El motor reconstruye `openingBalance` (saldo anterior al `Desde`) como:
 openingBalance = Σ(invoices.total_amount con issue_date < Desde) − Σ(receipts.amount con receipt_date < Desde)
 ```
 
-Si faltan recibos pre-período (porque el backfill no llegó tan atrás, o porque ese recibo todavía no se sincronizó), `openingBalance` queda **inflado**: el cliente parece tener más deuda anterior de la que realmente tiene.
+Si faltan recibos pre-período (porque el backfill no llegó tan atrás, o porque ese recibo todavía no se sincronizó), `openingBalance` queda **incorrecto**: puede ser 0 cuando debería ser negativo (crédito a favor) o positivo incompleto.
+
+### Caso documentado — Estudio Fletcher SAS
+
+- Período: 01/01/26–31/12/26, moneda UYU.
+- Zeta PDF: saldo anterior -700, saldo final 28.580.
+- Copilot sin fix: saldo anterior 0, saldo final 29.280.
+- Causa: proto_receipts no tenía recibos pre-2026 (la sincronización no cubría ese período).
+
+### Solución implementada (2026-06-07)
+
+`buildClientAccountStatement` ahora acepta `openingBalanceUyu` y `openingBalanceUsd`.
+El valor se almacena en `proto_companies.ledger_opening_balance_uyu` / `ledger_opening_balance_usd`
+(columnas añadidas por `supabase/zeta-12-01-proto-companies-ledger-opening-balance.sql`).
+
+- `buildByCurrency` inicia `running = baseline` en lugar de 0.
+- `getPreviousBalance` retorna `block.baselineBalance` cuando no hay movimientos pre-período en DB.
+- El modelo es idéntico para PDF individual, preview JSON y PDF masivo.
+- Tests en `lib/account-statement/account-statement-opening-balance.test.ts`.
+
+Para fijar el opening balance de un cliente: actualizar `proto_companies.ledger_opening_balance_uyu` con el valor informado por Zeta.
 
 ### Mitigaciones
 
-1. Verificar cobertura de `proto_receipts` para fechas anteriores al `Desde` que el usuario elija.
-2. Para auditorías serias, usar el script `audit-zeta-estado-cuenta.mjs` que muestra todos los movimientos pre-período y permite comparar con el PDF de Zeta.
-3. Si una validación arroja divergencia significativa, ejecutar backfill manual de recibos.
-
-### Solución pendiente
-
-- Telemetría: detectar cuando `openingBalance` parece anormalmente alto y emitir warning en UI ("posible falta de recibos pre-período sincronizados").
+1. **Override explícito**: Fijar `proto_companies.ledger_opening_balance_uyu/usd` con el valor del PDF Zeta.
+2. **Backfill completo**: Ejecutar backfill de recibos pre-período para que el motor lo calcule automáticamente. Cuando los recibos están en DB, `getPreviousBalance()` los usa y el override no es necesario.
+3. Para auditorías, usar el script `audit-zeta-estado-cuenta.mjs`.
 
 ---
 

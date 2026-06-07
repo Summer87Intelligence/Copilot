@@ -13,6 +13,10 @@ import {
 import { loadClientPortfolioSourceRows } from "@/lib/data/proto-analytics-read-repository";
 import { supabase } from "@/lib/supabase-client";
 import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
+import {
+  selectOperationalDebtInvoicesForSummation,
+  type OperationalDebtInvoiceInput,
+} from "@/lib/zeta/zeta-operational-debt-dedup";
 
 export type PaymentBehaviorLabel = "bueno" | "medio" | "lento";
 
@@ -275,8 +279,9 @@ export function computeInvoiceCurrencyBreakdown(
 ): InvoiceCurrencyBreakdown {
   let billingUYU = 0, billingUSD = 0;
   let overdueUYU = 0, overdueUSD = 0;
-  for (const inv of invs) {
-    // NC (CFE tipo 112/181/182): no suman facturación ni vencido cobrable.
+
+  for (const sel of selectOperationalDebtInvoicesForSummation(invs as OperationalDebtInvoiceInput[])) {
+    const inv = sel.invoice;
     if (isCreditNoteFromMetadata(inv.zeta_metadata)) continue;
     const cur = currencyOf(inv as InvoiceRow);
     if (!cur) continue;
@@ -292,6 +297,7 @@ export function computeInvoiceCurrencyBreakdown(
       if (isOverdue) overdueUSD += pending;
     }
   }
+
   return {
     billingUYU,
     billingUSD,
@@ -537,6 +543,14 @@ export async function getClientPortfolio(
       id: String(inv.id ?? ""),
       company_id:
         inv.company_id != null ? String(inv.company_id) : null,
+      invoice_number:
+        (inv as { invoice_number?: unknown }).invoice_number != null
+          ? String((inv as { invoice_number?: unknown }).invoice_number)
+          : null,
+      category:
+        (inv as { category?: unknown }).category != null
+          ? String((inv as { category?: unknown }).category)
+          : null,
       total_amount: inv.total_amount,
       balance_amount: inv.balance_amount,
       status: inv.status != null ? String(inv.status) : null,

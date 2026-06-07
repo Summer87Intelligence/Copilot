@@ -38,6 +38,8 @@
 
 import type { DataRow } from "@/lib/copilot-data";
 import { readInvoiceCurrency } from "@/lib/copilot-datos-invoice-display";
+import { selectOperationalDebtInvoicesForSummation } from "@/lib/zeta/zeta-operational-debt-dedup";
+import type { OperationalDebtInvoiceInput } from "@/lib/zeta/zeta-operational-debt-dedup";
 
 export type CurrentDebtCurrencyCode = "UYU" | "USD";
 
@@ -175,8 +177,13 @@ export function buildClientCurrentDebtSummary(
   for (const inv of input.invoices) {
     if (isVoidedFinancialInvoice(inv)) {
       voidedCount += 1;
-      continue;
     }
+  }
+
+  for (const sel of selectOperationalDebtInvoicesForSummation(
+    input.invoices as OperationalDebtInvoiceInput[]
+  )) {
+    const inv = sel.invoice as DataRow;
     const cur = readFinancialInvoiceCurrency(inv);
     if (!cur) {
       unknownCurrencyCount += 1;

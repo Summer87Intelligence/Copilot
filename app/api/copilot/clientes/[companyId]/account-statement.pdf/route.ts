@@ -21,6 +21,12 @@ import {
 import { renderAccountStatementPdf, type ClientInfo } from "@/lib/account-statement/render-account-statement-pdf";
 import { ISSUER_FALLBACK, type IssuerInfo } from "@/lib/account-statement/issuer-fallback";
 
+function toFiniteOrNull(v: unknown): number | null {
+  if (v == null) return null;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ companyId: string }> }
@@ -80,7 +86,15 @@ export async function GET(
       receiptCount: receipts.length,
     });
 
-    const statement = buildClientAccountStatement({ invoices, receipts, ledgerMode: true });
+    const openingBalanceUyu = toFiniteOrNull((company as Record<string, unknown> | null)?.ledger_opening_balance_uyu);
+    const openingBalanceUsd = toFiniteOrNull((company as Record<string, unknown> | null)?.ledger_opening_balance_usd);
+    const statement = buildClientAccountStatement({
+      invoices,
+      receipts,
+      ledgerMode: true,
+      openingBalanceUyu,
+      openingBalanceUsd,
+    });
     const companyName =
       String(company?.name ?? company?.company_name ?? company?.zeta_client_name ?? "").trim() ||
       "Cliente";

@@ -94,6 +94,37 @@ describe("buildClientsDirectory", () => {
     expect(entries[0]?.company_id).toBe("b");
     expect(entries[0]?.hasDebt).toBe(true);
   });
+
+  it("CCV1 + shadow mismo RegistroId no duplica deuda", () => {
+    const { entries } = buildClientsDirectory({
+      companies: [{ id: "c1", name: "Bloommy", is_active: true }],
+      invoices: [
+        {
+          id: "real",
+          company_id: "c1",
+          invoice_number: "ZETA:CCV1:E:c1:A:1",
+          category: "Zeta / factura cliente",
+          total_amount: 54_900,
+          balance_amount: 54_900,
+          currency_code: "UYU",
+          zeta_metadata: {
+            zeta_comprobante_identity_v1: { schema_version: 1, registro_id: "9001" },
+          },
+        },
+        {
+          id: "shadow",
+          company_id: "c1",
+          invoice_number: "ZETA:9001",
+          category: "Zeta / saldos pendientes",
+          total_amount: 54_900,
+          balance_amount: 54_900,
+          currency_code: "UYU",
+        },
+      ],
+      todayYmd: "2026-06-01",
+    });
+    expect(entries.find((e) => e.company_id === "c1")?.debtUYU).toBe(54_900);
+  });
 });
 
 describe("readInvoiceZetaClientName", () => {

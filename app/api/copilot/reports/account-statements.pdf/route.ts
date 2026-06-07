@@ -23,6 +23,12 @@ import {
 } from "@/lib/account-statement/render-account-statement-pdf";
 import { ISSUER_FALLBACK, type IssuerInfo } from "@/lib/account-statement/issuer-fallback";
 
+function toFiniteOrNull(v: unknown): number | null {
+  if (v == null) return null;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 export async function GET(request: NextRequest) {
   let log = copilotRequestLogger(request);
 
@@ -111,7 +117,15 @@ export async function GET(request: NextRequest) {
 
       const invoices = invoicesByCompany.get(companyIdParam) ?? [];
       const receipts = receiptsByCompany.get(companyIdParam) ?? [];
-      const statement = buildClientAccountStatement({ invoices, receipts, ledgerMode: true });
+      const obUyu = toFiniteOrNull((targetCompany as Record<string, unknown>).ledger_opening_balance_uyu);
+      const obUsd = toFiniteOrNull((targetCompany as Record<string, unknown>).ledger_opening_balance_usd);
+      const statement = buildClientAccountStatement({
+        invoices,
+        receipts,
+        ledgerMode: true,
+        openingBalanceUyu: obUyu,
+        openingBalanceUsd: obUsd,
+      });
 
       const hasData = currencies.some((cur) => {
         const block = cur === "UYU" ? statement.uyu : statement.usd;
@@ -182,8 +196,15 @@ export async function GET(request: NextRequest) {
 
       const invoices = invoicesByCompany.get(companyId) ?? [];
       const receipts = receiptsByCompany.get(companyId) ?? [];
-
-      const statement = buildClientAccountStatement({ invoices, receipts, ledgerMode: true });
+      const obUyu = toFiniteOrNull((company as Record<string, unknown>).ledger_opening_balance_uyu);
+      const obUsd = toFiniteOrNull((company as Record<string, unknown>).ledger_opening_balance_usd);
+      const statement = buildClientAccountStatement({
+        invoices,
+        receipts,
+        ledgerMode: true,
+        openingBalanceUyu: obUyu,
+        openingBalanceUsd: obUsd,
+      });
 
       // Only include clients that have movements in the requested currencies
       const hasData = currencies.some((cur) => {

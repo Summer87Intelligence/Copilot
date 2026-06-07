@@ -5,11 +5,12 @@
  * en `proto_companies` activas — omitía deudores sin fila de empresa o inactivos.
  */
 
-import { readInvoiceFinancial } from "@/lib/copilot-invoice-financial-read";
 import { isVoidedFinancialInvoice } from "@/lib/copilot-client-current-debt-summary";
 import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
-import { readInvoiceCurrency } from "@/lib/copilot-datos-invoice-display";
-import type { CurrentDebtCurrencyCode } from "@/lib/copilot-client-current-debt-summary";
+import {
+  aggregateOperationalDebtForCompany,
+  selectOperationalDebtInvoicesForSummation,
+} from "@/lib/zeta/zeta-operational-debt-dedup";
 
 export type ClientDirectorySource = "contact" | "zeta_invoice" | "merged";
 
@@ -24,6 +25,8 @@ export type ClientDirectoryCompanyInput = {
 export type ClientDirectoryInvoiceInput = {
   id?: string;
   company_id?: string | null;
+  invoice_number?: string | null;
+  category?: string | null;
   total_amount?: unknown;
   balance_amount?: unknown;
   balanceFromFinancialsMap?: Map<string, number>;
@@ -89,28 +92,10 @@ function num(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-function ymd(iso: unknown): string {
-  const s = String(iso ?? "").trim();
-  if (s.length >= 10) return s.slice(0, 10);
-  return "";
-}
-
 function industryOf(c: ClientDirectoryCompanyInput): string {
   const raw = c.industry ?? c.sector ?? "";
   const s = String(raw).trim();
   return s || "—";
-}
-
-function symbolToIso(sym: "$" | "U$S" | null): CurrentDebtCurrencyCode | null {
-  if (sym === "U$S") return "USD";
-  if (sym === "$") return "UYU";
-  return null;
-}
-
-function currencyFromInvoice(inv: ClientDirectoryInvoiceInput): CurrentDebtCurrencyCode | null {
-  const raw = String(inv.currency_code ?? "").trim().toUpperCase();
-  if (raw === "UYU" || raw === "USD") return raw;
-  return symbolToIso(readInvoiceCurrency(inv as Record<string, unknown>));
 }
 
 /** Nombre Zeta en metadata de factura (sin inventar PII). */
@@ -125,20 +110,6 @@ export function readInvoiceZetaClientName(zeta_metadata: unknown): string | null
     if (typeof name === "string" && name.trim()) return name.trim();
   }
   return null;
-}
-
-function pendingAmount(
-  inv: ClientDirectoryInvoiceInput,
-  invoiceBalanceMap?: Map<string, number>
-): number {
-  const id = String(inv.id ?? "").trim();
-  const fin = readInvoiceFinancial({
-    invoiceId: id || "unknown",
-    balancePersisted: inv.balance_amount,
-    totalAmount: inv.total_amount,
-    balanceFromFinancialsMap: inv.balanceFromFinancialsMap ?? invoiceBalanceMap,
-  });
-  return Math.max(0, fin.balance_authoritative);
 }
 
 function shortCompanyLabel(companyId: string): string {
@@ -185,6 +156,7 @@ export function buildClientsDirectory(
 
   const aggByCompany = new Map<string, Agg>();
   const invoiceCompanyIds = new Set<string>();
+  const invoicesByCompany = new Map<string, ClientDirectoryInvoiceInput[]>();
 
   for (const inv of input.invoices) {
     if (isVoidedFinancialInvoice(inv as Record<string, unknown>)) continue;
@@ -193,9 +165,11 @@ export function buildClientsDirectory(
     if (!companyId) continue;
     invoiceCompanyIds.add(companyId);
 
-    const pending = pendingAmount(inv, input.invoiceBalanceMap);
+    const list = invoicesByCompany.get(companyId) ?? [];
+    list.push(inv);
+    invoicesByCompany.set(companyId, list);
+
     const total = num(inv.total_amount);
-    const due = ymd(inv.due_date);
 
     let agg = aggByCompany.get(companyId);
     if (!agg) {
@@ -211,23 +185,40 @@ export function buildClientsDirectory(
       aggByCompany.set(companyId, agg);
     }
 
-    agg.invoiceCount += 1;
     agg.total_billing += total;
-    agg.total_debt += pending;
-    if (pending > PENDING_EPSILON && due && due < todayYmd) {
-      agg.overdue_debt += pending;
-    }
-
-    const code = currencyFromInvoice(inv);
-    if (code === "UYU" && pending > PENDING_EPSILON) {
-      agg.debtUYU = Math.round((agg.debtUYU + pending) * 100) / 100;
-    }
-    if (code === "USD" && pending > PENDING_EPSILON) {
-      agg.debtUSD = Math.round((agg.debtUSD + pending) * 100) / 100;
-    }
 
     const zetaName = readInvoiceZetaClientName(inv.zeta_metadata);
     if (zetaName && !agg.bestName) agg.bestName = zetaName;
+  }
+
+  for (const [companyId, companyInvoices] of invoicesByCompany) {
+    const debtTotals = aggregateOperationalDebtForCompany(companyInvoices, {
+      todayYmd,
+      invoiceBalanceMap: input.invoiceBalanceMap,
+    });
+    const dedupedSelections = selectOperationalDebtInvoicesForSummation(companyInvoices, {
+      invoiceBalanceMap: input.invoiceBalanceMap,
+    });
+
+    let agg = aggByCompany.get(companyId);
+    if (!agg) {
+      agg = {
+        total_billing: 0,
+        total_debt: 0,
+        overdue_debt: 0,
+        debtUYU: 0,
+        debtUSD: 0,
+        invoiceCount: 0,
+        bestName: null,
+      };
+      aggByCompany.set(companyId, agg);
+    }
+
+    agg.debtUYU = debtTotals.debtUYU;
+    agg.debtUSD = debtTotals.debtUSD;
+    agg.total_debt = Math.round((debtTotals.debtUYU + debtTotals.debtUSD) * 100) / 100;
+    agg.overdue_debt = Math.round((debtTotals.overdueUYU + debtTotals.overdueUSD) * 100) / 100;
+    agg.invoiceCount = dedupedSelections.length;
   }
 
   let debtors_missing_company_row = 0;

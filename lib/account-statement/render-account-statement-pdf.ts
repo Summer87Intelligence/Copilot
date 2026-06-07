@@ -121,7 +121,8 @@ function formatEmision(date: Date): string {
 function getPreviousBalance(block: AccountStatementByCurrency, from: string | undefined): number {
   if (!from) return 0;
   const before = block.movements.filter((m) => m.date < from);
-  return before.length > 0 ? before[before.length - 1].runningBalance : 0;
+  // Fallback to baselineBalance (not 0) so that clients with pre-sync history show correct saldo anterior
+  return before.length > 0 ? before[before.length - 1].runningBalance : (block.baselineBalance ?? 0);
 }
 
 function filterMovements(

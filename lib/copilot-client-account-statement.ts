@@ -111,6 +111,13 @@ export type AccountStatementByCurrency = {
   summary: AccountStatementSummary;
   /** Movimientos ordenados ASC por (fecha, kind=invoice antes que receipt, número). */
   movements: AccountStatementMovement[];
+  /**
+   * Saldo base antes del primer movimiento en DB para esta moneda.
+   * Representa historial no sincronizado (e.g. recibos pre-período fuera de cobertura de sync).
+   * Valor positivo = deuda previa; negativo = crédito previo (cliente saldo a favor).
+   * Siempre 0 cuando no se configura (default backward-compatible).
+   */
+  baselineBalance: number;
 };
 
 export type ClientAccountStatement = {
@@ -336,10 +343,11 @@ function compareMovements(a: AccountStatementMovement, b: AccountStatementMoveme
 
 function buildByCurrency(
   currency: AccountStatementCurrency,
-  list: AccountStatementMovement[]
+  list: AccountStatementMovement[],
+  baseline: number = 0
 ): AccountStatementByCurrency {
   const sorted = list.slice().sort(compareMovements);
-  let running = 0;
+  let running = baseline;
   let totalDebit = 0;
   let totalCredit = 0;
   let totalCreditNotes = 0;
@@ -350,12 +358,13 @@ function buildByCurrency(
     totalCredit += m.credit;
     if (m.kind === "credit_note") totalCreditNotes += m.credit;
   }
-  const finalBalance = round2(totalDebit - totalCredit);
+  // finalBalance = baseline + Σ(debit) − Σ(credit) — saldo real incluyendo historial pre-sync
+  const finalBalance = round2(running);
   // hasCreditNoteSupport refleja si se detectaron NCs reales vía CFE tipo 181/182.
-  // Es false cuando ninguna NC fue clasificada (p. ej. modo operacional o tenant sin metadata CFE).
   const hasCreditNoteSupport = totalCreditNotes > 0;
   return {
     currency,
+    baselineBalance: baseline,
     summary: {
       totalDebit: round2(totalDebit),
       totalCredit: round2(totalCredit),
@@ -388,6 +397,20 @@ export type BuildClientAccountStatementInput = {
    *    `getProtoReceiptsByCompanyForLedger` para obtener el dataset completo.
    */
   ledgerMode?: boolean;
+  /**
+   * Saldo UYU anterior al primer movimiento registrado en DB.
+   * Usar cuando Zeta confirma un "saldo anterior" que no se puede reconstruir
+   * desde proto_invoices/proto_receipts (historial pre-sync).
+   * Positivo = deuda previa; negativo = crédito previo.
+   * Se almacena en `proto_companies.ledger_opening_balance_uyu`.
+   */
+  openingBalanceUyu?: number | null;
+  /**
+   * Saldo USD anterior al primer movimiento registrado en DB.
+   * Ídem que `openingBalanceUyu` pero para la moneda USD.
+   * Se almacena en `proto_companies.ledger_opening_balance_usd`.
+   */
+  openingBalanceUsd?: number | null;
 };
 
 /**
@@ -476,8 +499,8 @@ export function buildClientAccountStatement(
   }
 
   return {
-    uyu: buildByCurrency("UYU", uyu),
-    usd: buildByCurrency("USD", usd),
+    uyu: buildByCurrency("UYU", uyu, input.openingBalanceUyu ?? 0),
+    usd: buildByCurrency("USD", usd, input.openingBalanceUsd ?? 0),
     unknownCurrencyCount,
   };
 }

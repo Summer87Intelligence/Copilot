@@ -192,4 +192,25 @@ describe("buildClientCurrentDebtSummary", () => {
     buildClientCurrentDebtSummary({ invoices: [inv] });
     expect(JSON.stringify(inv)).toBe(before);
   });
+
+  it("CCV1 + shadow mismo RegistroId no duplica totalPending", () => {
+    const out = buildClientCurrentDebtSummary({
+      invoices: [
+        {
+          ...invoice({ id: "real", total: 54_900, balance: 54_900, currency: "UYU" }),
+          invoice_number: "ZETA:CCV1:E:c1:A:1",
+          category: "Zeta / factura cliente",
+          zeta_metadata: {
+            zeta_comprobante_identity_v1: { schema_version: 1, registro_id: "9001" },
+          },
+        },
+        {
+          ...invoice({ id: "shadow", total: 54_900, balance: 54_900, currency: "UYU" }),
+          invoice_number: "ZETA:9001",
+          category: "Zeta / saldos pendientes",
+        },
+      ],
+    });
+    expect(out.currencies[0]?.totalPending).toBe(54_900);
+  });
 });

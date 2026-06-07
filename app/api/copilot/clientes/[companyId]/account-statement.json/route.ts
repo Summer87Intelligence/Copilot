@@ -17,12 +17,20 @@ import {
   type AccountStatementMovement,
 } from "@/lib/copilot-client-account-statement";
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function toFiniteOrNull(v: unknown): number | null {
+  if (v == null) return null;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 // ── Inline helpers (mirror of render-account-statement-pdf.ts) ────────────────
 
 function getPreviousBalance(block: AccountStatementByCurrency, from: string | undefined): number {
   if (!from) return 0;
   const before = block.movements.filter((m) => m.date < from);
-  return before.length > 0 ? before[before.length - 1]!.runningBalance : 0;
+  return before.length > 0 ? before[before.length - 1]!.runningBalance : (block.baselineBalance ?? 0);
 }
 
 function filterBlock(
@@ -122,7 +130,15 @@ export async function GET(
       getProtoCompanyById(supabase, companyId, tenantCompanyId),
     ]);
 
-    const statement = buildClientAccountStatement({ invoices, receipts, ledgerMode: true });
+    const openingBalanceUyu = toFiniteOrNull((company as Record<string, unknown> | null)?.ledger_opening_balance_uyu);
+    const openingBalanceUsd = toFiniteOrNull((company as Record<string, unknown> | null)?.ledger_opening_balance_usd);
+    const statement = buildClientAccountStatement({
+      invoices,
+      receipts,
+      ledgerMode: true,
+      openingBalanceUyu,
+      openingBalanceUsd,
+    });
 
     const companyName =
       String(company?.name ?? company?.company_name ?? company?.zeta_client_name ?? "").trim() ||
