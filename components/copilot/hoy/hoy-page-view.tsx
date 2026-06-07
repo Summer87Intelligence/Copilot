@@ -220,11 +220,8 @@ export function HoyPageView({
     [pulse.allDebtorRows]
   );
 
-  // Solo clientes accionables: vencido, cobro lento o señal de riesgo.
-  const riskDebtorRows = useMemo(
-    () => sortedDebtorRows.filter((r) => r.flags.hasOverdue || r.flags.slowCollection),
-    [sortedDebtorRows]
-  );
+  // Todos los clientes con deuda activa, ordenados por riesgo (vencidos primero).
+  const riskDebtorRows = sortedDebtorRows;
 
   const scrollToCriticalClients = () => {
     document.getElementById("clientes-criticos")?.scrollIntoView({
@@ -271,6 +268,7 @@ export function HoyPageView({
         <HoyExecutiveSummaryCard
           hero={cockpit.hero}
           attentionClientsCount={pulse.clientCounts.attentionClients}
+          debtorClientsCount={pulse.clientCounts.debtorClients}
           cashAfterPaymentsCritical={
             cockpit.afterPayments.afterPaymentsAccent === "critical" ||
             pulse.projection30dBlocks.some(
@@ -301,7 +299,7 @@ export function HoyPageView({
           <div className="flex flex-wrap items-center justify-between gap-1.5">
             <div>
               <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">
-                Clientes que explican el riesgo
+                Clientes con deuda activa
               </h2>
               <p className="text-xs text-[var(--copilot-ink-muted)]">
                 {HOY_COPY.debtorsSectionRiskSubtitle}
@@ -337,13 +335,13 @@ export function HoyPageView({
               />
             ) : (
               <p className="py-4 text-center text-sm text-[var(--copilot-ink-muted)]">
-                No hay clientes con deuda vencida ni señales de riesgo activas.
+                Sin clientes con deuda activa.
               </p>
             )}
           </div>
 
           <p className="mt-3 text-[11px] text-[var(--copilot-ink-muted)]">
-            Mostrando clientes con mayor riesgo.{" "}
+            Clientes con deuda activa, priorizando vencidos.{" "}
             <Link
               href="/copilot/cartera"
               className="font-semibold text-[var(--copilot-accent)] hover:underline"

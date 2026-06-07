@@ -64,11 +64,14 @@ const STATUS_CONFIG: Record<PulseStatus, StatusConfig> = {
 export function HoyExecutiveSummaryCard({
   hero,
   attentionClientsCount,
+  debtorClientsCount,
   cashAfterPaymentsCritical,
   onScrollToCriticalClients,
 }: {
   hero: CockpitHero;
   attentionClientsCount: number;
+  /** Total de clientes con cualquier deuda activa (incluye al día). */
+  debtorClientsCount: number;
   cashAfterPaymentsCritical: boolean;
   onScrollToCriticalClients?: () => void;
 }) {
@@ -102,13 +105,14 @@ export function HoyExecutiveSummaryCard({
     if (!agendaLoaded) return null;
     return resolveHoyTodayPriority({
       attentionClientsCount,
+      debtorClientsCount,
       agendaOverdueCount:
         (agenda?.summary.overdueFollowupsCount ?? 0) +
         (agenda?.summary.overduePromisesCount ?? 0),
       agendaDueTodayCount: agenda?.summary.dueTodayCount ?? 0,
       cashAfterPaymentsCritical,
     });
-  }, [agendaLoaded, attentionClientsCount, agenda, cashAfterPaymentsCritical]);
+  }, [agendaLoaded, attentionClientsCount, debtorClientsCount, agenda, cashAfterPaymentsCritical]);
 
   const [showSignals, setShowSignals] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -128,10 +132,16 @@ export function HoyExecutiveSummaryCard({
   const priorities = useMemo((): PriorityItem[] => {
     if (!agendaLoaded) return [];
     const items: PriorityItem[] = [];
-    if (attentionClientsCount > 0) {
+    if (debtorClientsCount > 0 || attentionClientsCount > 0) {
+      const total = debtorClientsCount;
+      const overdue = attentionClientsCount;
+      const motivo =
+        overdue > 0
+          ? `${total} ${total === 1 ? "cliente requiere" : "clientes requieren"} seguimiento · ${overdue} vencido${overdue !== 1 ? "s" : ""}`
+          : `${total} ${total === 1 ? "cliente" : "clientes"} con deuda activa al día`;
       items.push({
-        title: "Clientes vencidos sin contactar",
-        motivo: `${attentionClientsCount} ${attentionClientsCount === 1 ? "cliente requiere" : "clientes requieren"} atención`,
+        title: "Clientes con deuda para gestionar",
+        motivo,
         href: "/copilot/clientes",
         ctaLabel: "Ver clientes",
       });
@@ -158,7 +168,7 @@ export function HoyExecutiveSummaryCard({
       });
     }
     return items.slice(0, 3);
-  }, [agendaLoaded, attentionClientsCount, agenda, cashAfterPaymentsCritical]);
+  }, [agendaLoaded, attentionClientsCount, debtorClientsCount, agenda, cashAfterPaymentsCritical]);
 
   const cfg = STATUS_CONFIG[hero.status];
   const primaryIsScroll = priority?.primaryCta.action.type === "scroll_critical";

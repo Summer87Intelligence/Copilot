@@ -4,6 +4,7 @@
 
 export type HoyTodayPriorityKind =
   | "critical_clients"
+  | "active_debt"
   | "collection_agenda"
   | "treasury_review"
   | "daily_summary";
@@ -21,7 +22,10 @@ export type HoyTodayPriority = {
 };
 
 export type ResolveHoyTodayPriorityInput = {
+  /** Clientes con deuda vencida o señal de demora. */
   attentionClientsCount: number;
+  /** Total de clientes con cualquier deuda activa (incluye al día). */
+  debtorClientsCount: number;
   agendaOverdueCount: number;
   agendaDueTodayCount: number;
   cashAfterPaymentsCritical: boolean;
@@ -30,14 +34,25 @@ export type ResolveHoyTodayPriorityInput = {
 export function resolveHoyTodayPriority(
   input: ResolveHoyTodayPriorityInput
 ): HoyTodayPriority {
-  if (input.attentionClientsCount > 0) {
-    const n = input.attentionClientsCount;
+  const { attentionClientsCount, debtorClientsCount } = input;
+
+  if (attentionClientsCount > 0) {
+    const total = debtorClientsCount;
+    const overdue = attentionClientsCount;
+    const current = Math.max(0, total - overdue);
+    const totalLabel = `${total} ${total === 1 ? "cliente" : "clientes"} con deuda activa`;
+    const overdueLabel = `${overdue} ${overdue === 1 ? "tiene" : "tienen"} deuda vencida`;
+    const currentLabel = `${current} ${current === 1 ? "está" : "están"} al día`;
+    const description =
+      current > 0
+        ? `${totalLabel}. ${overdueLabel} y ${currentLabel}.`
+        : `${totalLabel}. ${overdueLabel}.`;
     return {
       kind: "critical_clients",
-      title: "Contactar clientes vencidos",
-      description: `Empezá por los clientes con deuda vencida. Hay ${n} ${n === 1 ? "caso" : "casos"} que requieren seguimiento.`,
+      title: "Gestionar clientes con deuda",
+      description,
       primaryCta: {
-        label: "Ver clientes críticos",
+        label: "Ver clientes con deuda",
         action: { type: "scroll_critical" },
       },
       secondaryCta: { label: "Ver acciones", href: "/copilot/acciones" },
@@ -53,9 +68,7 @@ export function resolveHoyTodayPriority(
       );
     }
     if (input.agendaDueTodayCount > 0) {
-      parts.push(
-        `${input.agendaDueTodayCount} para hoy`
-      );
+      parts.push(`${input.agendaDueTodayCount} para hoy`);
     }
     return {
       kind: "collection_agenda",
@@ -77,6 +90,19 @@ export function resolveHoyTodayPriority(
       primaryCta: {
         label: "Ver Tesorería",
         action: { type: "link", href: "/copilot/tesoreria" },
+      },
+    };
+  }
+
+  if (debtorClientsCount > 0) {
+    const n = debtorClientsCount;
+    return {
+      kind: "active_debt",
+      title: "Gestionar clientes con deuda",
+      description: `${n} ${n === 1 ? "cliente" : "clientes"} con deuda activa al día. Sin vencimientos pendientes.`,
+      primaryCta: {
+        label: "Ver clientes con deuda",
+        action: { type: "scroll_critical" },
       },
     };
   }

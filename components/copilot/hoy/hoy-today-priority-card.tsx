@@ -18,12 +18,14 @@ import { actionCardClass } from "@/components/copilot/ui/copilot-visual-system";
 
 type HoyTodayPriorityCardProps = {
   attentionClientsCount: number;
+  debtorClientsCount: number;
   cashAfterPaymentsCritical: boolean;
   onScrollToCriticalClients?: () => void;
 };
 
 export function HoyTodayPriorityCard({
   attentionClientsCount,
+  debtorClientsCount,
   cashAfterPaymentsCritical,
   onScrollToCriticalClients,
 }: HoyTodayPriorityCardProps) {
@@ -57,6 +59,7 @@ export function HoyTodayPriorityCard({
     if (!agendaLoaded) return null;
     return resolveHoyTodayPriority({
       attentionClientsCount,
+      debtorClientsCount,
       agendaOverdueCount:
         (agenda?.summary.overdueFollowupsCount ?? 0) +
         (agenda?.summary.overduePromisesCount ?? 0),
@@ -66,6 +69,7 @@ export function HoyTodayPriorityCard({
   }, [
     agendaLoaded,
     attentionClientsCount,
+    debtorClientsCount,
     agenda,
     cashAfterPaymentsCritical,
   ]);

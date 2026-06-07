@@ -80,6 +80,9 @@ function riskChips(row: DebtorCollectionRow): { label: string; className: string
   if (row.riesgo === "Alto") {
     chips.push({ label: "Alto", className: "bg-amber-100/90 text-amber-950" });
   }
+  if (chips.length === 0 && row.deuda.amount > 0) {
+    chips.push({ label: "Deuda al día", className: "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/60" });
+  }
   return chips;
 }
 

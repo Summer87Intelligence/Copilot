@@ -82,7 +82,7 @@ export const HOY_COPY = {
   periodOperatingResultTip: "Cobrado + ingresos manuales − egresos manuales en el período.",
   debtorsSectionTitle: "Clientes con deuda",
   debtorsSectionSubtitle: "Todos los clientes con saldo pendiente, separados por moneda.",
-  debtorsSectionRiskSubtitle: "Vencidos, >30 días o con seguimiento prioritario.",
+  debtorsSectionRiskSubtitle: "Vencidos y al día con seguimiento prioritario.",
   debtorsViewAllCartera: "Ver toda la cartera",
   debtorContactSectionTitle: "Contacto",
   debtorNoPhone: "Sin teléfono registrado",
