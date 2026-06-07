@@ -493,6 +493,13 @@ function formatPreviewAmount(n: number): string {
   return Math.abs(n).toLocaleString("es-UY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function formatPreviewSignedBalance(n: number): string {
+  if (!Number.isFinite(n)) return "";
+  const abs = Math.abs(n).toLocaleString("es-UY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (n === 0) return abs;
+  return n < 0 ? `-${abs}` : abs;
+}
+
 function describeKind(kind: string): string {
   if (kind === "invoice") return "Venta (CFE)";
   if (kind === "receipt") return "Recibo";
@@ -584,7 +591,7 @@ function AccountStatementPreviewModal({
                           <td className="py-1.5 pr-2 text-right" />
                           <td className="py-1.5 pr-2 text-right" />
                           <td className="py-1.5 text-right font-semibold">
-                            {formatPreviewAmount(block.previousBalance)}
+                            {formatPreviewSignedBalance(block.previousBalance)}
                           </td>
                         </tr>
                       ) : null}
@@ -619,7 +626,7 @@ function AccountStatementPreviewModal({
                                 : "text-[var(--copilot-ink)]"
                             }`}
                           >
-                            {formatPreviewAmount(mv.runningBalance)}
+                            {formatPreviewSignedBalance(mv.runningBalance)}
                           </td>
                         </tr>
                       ))}
@@ -643,7 +650,7 @@ function AccountStatementPreviewModal({
                             block.summary.finalBalance < 0 ? "text-rose-600" : "text-[var(--copilot-ink)]"
                           }`}
                         >
-                          {formatPreviewAmount(
+                          {formatPreviewSignedBalance(
                             block.movements[block.movements.length - 1]?.runningBalance ??
                               block.previousBalance
                           )}

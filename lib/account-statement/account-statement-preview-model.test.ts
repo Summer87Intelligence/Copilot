@@ -11,7 +11,10 @@
 
 import { describe, expect, it } from "vitest";
 import { buildClientAccountStatement } from "@/lib/copilot-client-account-statement";
-import type { AccountStatementByCurrency } from "@/lib/copilot-client-account-statement";
+import {
+  getPreviousBalance,
+  filterBlockForPeriod,
+} from "@/lib/account-statement/account-statement-period-model";
 import type { DataRow } from "@/lib/copilot-data";
 
 // ── Factories (minimal, reusables) ────────────────────────────────────────────
@@ -54,48 +57,9 @@ function saldoPendiente(id: string, date: string, total: number): DataRow {
   };
 }
 
-// ── Mirror of JSON endpoint filter logic (must stay in sync) ─────────────────
+// ── Shared period model (same as JSON route + PDF) ────────────────────────────
 
-function getPreviousBalance(block: AccountStatementByCurrency, from: string | undefined): number {
-  if (!from) return 0;
-  const before = block.movements.filter((m) => m.date < from);
-  return before.length > 0 ? before[before.length - 1]!.runningBalance : 0;
-}
-
-function filterBlock(
-  block: AccountStatementByCurrency,
-  from: string | undefined,
-  to: string | undefined
-): AccountStatementByCurrency {
-  if (!from && !to) return block;
-  const mvs = block.movements.filter((m) => {
-    if (from && m.date < from) return false;
-    if (to && m.date > to) return false;
-    return true;
-  });
-  let totalDebit = 0;
-  let totalCredit = 0;
-  for (const m of mvs) {
-    totalDebit += m.debit;
-    totalCredit += m.credit;
-  }
-  const netChange = totalDebit - totalCredit;
-  return {
-    ...block,
-    movements: mvs,
-    summary: {
-      ...block.summary,
-      totalDebit,
-      totalCredit,
-      finalBalance: netChange,
-      totalInvoiced: totalDebit,
-      totalCollected: totalCredit,
-      pendingBalance: netChange,
-      movementCount: mvs.length,
-      hasNegativeBalance: (mvs[mvs.length - 1]?.runningBalance ?? 0) < 0,
-    },
-  };
-}
+const filterBlock = filterBlockForPeriod;
 
 // ── 1. Preview y PDF usan el mismo modelo ─────────────────────────────────────
 

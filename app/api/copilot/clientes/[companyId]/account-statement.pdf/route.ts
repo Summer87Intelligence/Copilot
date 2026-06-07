@@ -8,24 +8,14 @@ import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { enforcePdfRateLimit } from "@/lib/security/pdf-rate-limit";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
-import {
-  listProtoInvoicesByCompanyIdForLedger,
-  listProtoReceiptsByCompanyIdForLedger,
-  getProtoCompanyById,
-} from "@/lib/data/proto-operational-read-repository";
-import { buildClientAccountStatement } from "@/lib/copilot-client-account-statement";
+import { buildAccountStatementApiModel } from "@/lib/account-statement/build-account-statement-api-model";
 import {
   buildAccountStatementDownloadFilename,
   slugifyClientNameForFilename,
 } from "@/lib/account-statement/build-collection-account-statement-attachments";
 import { renderAccountStatementPdf, type ClientInfo } from "@/lib/account-statement/render-account-statement-pdf";
 import { ISSUER_FALLBACK, type IssuerInfo } from "@/lib/account-statement/issuer-fallback";
-
-function toFiniteOrNull(v: unknown): number | null {
-  if (v == null) return null;
-  const n = typeof v === "number" ? v : Number(v);
-  return Number.isFinite(n) ? n : null;
-}
+import { getProtoCompanyById } from "@/lib/data/proto-operational-read-repository";
 
 export async function GET(
   request: NextRequest,
@@ -74,32 +64,21 @@ export async function GET(
       ["UYU", "USD"];
 
     log.info("account_statement_pdf_fetching", { companyId, from, to, currencies });
-    const [invoices, receipts, company, issuerRow] = await Promise.all([
-      listProtoInvoicesByCompanyIdForLedger(supabase, companyId, tenantCompanyId),
-      listProtoReceiptsByCompanyIdForLedger(supabase, companyId, tenantCompanyId),
-      getProtoCompanyById(supabase, companyId, tenantCompanyId),
-      // Intenta cargar la empresa del workspace como emisor; usa fallback si falla o no existe
+    const [model, issuerRow] = await Promise.all([
+      buildAccountStatementApiModel(supabase, companyId, tenantCompanyId, {
+        from,
+        to,
+        currencies,
+      }),
       getProtoCompanyById(supabase, tenantCompanyId, tenantCompanyId).catch(() => null),
     ]);
+    const { statement, companyName, company, openingBalanceUyu, openingBalanceUsd } = model;
     log.info("account_statement_pdf_data_ready", {
-      invoiceCount: invoices.length,
-      receiptCount: receipts.length,
-    });
-
-    const openingBalanceUyu = toFiniteOrNull((company as Record<string, unknown> | null)?.ledger_opening_balance_uyu);
-    const openingBalanceUsd = toFiniteOrNull((company as Record<string, unknown> | null)?.ledger_opening_balance_usd);
-    const statement = buildClientAccountStatement({
-      invoices,
-      receipts,
-      ledgerMode: true,
+      invoiceCount: statement.uyu.movements.length + statement.usd.movements.length,
       openingBalanceUyu,
       openingBalanceUsd,
     });
-    const companyName =
-      String(company?.name ?? company?.company_name ?? company?.zeta_client_name ?? "").trim() ||
-      "Cliente";
 
-    // Datos del cliente para el bloque gris del PDF
     const client: ClientInfo = {
       code: String(company?.external_id ?? "").trim() || undefined,
       name: companyName,

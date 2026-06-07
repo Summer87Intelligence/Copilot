@@ -116,49 +116,11 @@ function formatEmision(date: Date): string {
   return `${d} ${t}`;
 }
 
-// ── Lógica de filtro y saldo anterior ────────────────────────────────────────
-
-function getPreviousBalance(block: AccountStatementByCurrency, from: string | undefined): number {
-  if (!from) return 0;
-  const before = block.movements.filter((m) => m.date < from);
-  // Fallback to baselineBalance (not 0) so that clients with pre-sync history show correct saldo anterior
-  return before.length > 0 ? before[before.length - 1].runningBalance : (block.baselineBalance ?? 0);
-}
-
-function filterMovements(
-  block: AccountStatementByCurrency,
-  from: string | undefined,
-  to: string | undefined
-): AccountStatementByCurrency {
-  if (!from && !to) return block;
-  const mvs = block.movements.filter((m) => {
-    if (from && m.date < from) return false;
-    if (to && m.date > to) return false;
-    return true;
-  });
-  let totalDebit = 0;
-  let totalCredit = 0;
-  for (const m of mvs) {
-    totalDebit += m.debit;
-    totalCredit += m.credit;
-  }
-  const netChange = totalDebit - totalCredit;
-  return {
-    ...block,
-    movements: mvs,
-    summary: {
-      ...block.summary,
-      totalDebit,
-      totalCredit,
-      finalBalance: netChange,
-      totalInvoiced: totalDebit,
-      totalCollected: totalCredit,
-      pendingBalance: netChange,
-      movementCount: mvs.length,
-      hasNegativeBalance: (mvs[mvs.length - 1]?.runningBalance ?? 0) < 0,
-    },
-  };
-}
+import {
+  getPreviousBalance,
+  filterBlockForPeriod,
+  formatSignedBalanceAmount,
+} from "@/lib/account-statement/account-statement-period-model";
 
 // ── Secciones del PDF ─────────────────────────────────────────────────────────
 
@@ -300,8 +262,13 @@ function renderSaldoAnteriorRow(
       { width: COL.description.w - 8, lineBreak: false });
   const neg = previousBalance < 0;
   doc.fillColor(neg ? "#b91c1c" : COLORS.ink).font("Helvetica").fontSize(7.5)
-    .text(formatAmount(previousBalance), colX("balance"), startY + 5,
+    .text(formatSignedBalanceAmount(previousBalance), colX("balance"), startY + 5,
       { width: COL.balance.w - 4, align: "right" });
+  if (neg) {
+    doc.fillColor(COLORS.ink).font("Helvetica").fontSize(7.5)
+      .text(formatAmount(Math.abs(previousBalance)), colX("credit"), startY + 5,
+        { width: COL.credit.w - 4, align: "right" });
+  }
   doc.moveTo(mx, startY + ROW_H).lineTo(mx + TABLE_W, startY + ROW_H)
     .strokeColor(COLORS.border).lineWidth(0.3).stroke();
   return startY + ROW_H;
@@ -387,7 +354,7 @@ function renderMovementRow(
   }
   // Saldo
   doc.fillColor(neg ? "#b91c1c" : COLORS.ink)
-    .text(formatAmount(mv.runningBalance), colX("balance"), y + 5,
+    .text(formatSignedBalanceAmount(mv.runningBalance), colX("balance"), y + 5,
       { width: COL.balance.w - 4, align: "right" });
 
   y += ROW_H;
@@ -425,7 +392,7 @@ function renderFinalBalanceRow(
     .text(label, colX("date") + 4, y, { width: labelW });
   const neg = finalBalance < 0;
   doc.fillColor(neg ? "#b91c1c" : COLORS.ink).font("Helvetica-Bold").fontSize(8)
-    .text(formatAmount(finalBalance), colX("balance"), y,
+    .text(formatSignedBalanceAmount(finalBalance), colX("balance"), y,
       { width: COL.balance.w - 4, align: "right" });
 
   y += 14;
@@ -476,7 +443,7 @@ function renderClientCurrencies(
   for (const currency of currencies) {
     const rawBlock = currency === "UYU" ? statement.uyu : statement.usd;
     const previousBalance = getPreviousBalance(rawBlock, from);
-    const block = filterMovements(rawBlock, from, to);
+    const block = filterBlockForPeriod(rawBlock, from, to);
 
     if (block.movements.length === 0 && previousBalance === 0) continue;
 

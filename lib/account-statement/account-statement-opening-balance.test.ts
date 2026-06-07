@@ -10,7 +10,7 @@
 
 import { describe, expect, it } from "vitest";
 import { buildClientAccountStatement } from "@/lib/copilot-client-account-statement";
-import type { AccountStatementByCurrency } from "@/lib/copilot-client-account-statement";
+import { getPreviousBalance } from "@/lib/account-statement/account-statement-period-model";
 import type { DataRow } from "@/lib/copilot-data";
 
 // ── Factories ─────────────────────────────────────────────────────────────────
@@ -37,12 +37,7 @@ function rec(id: string, date: string, amount: number, currency: "UYU" | "USD" =
   };
 }
 
-// Mirrors getPreviousBalance in render-account-statement-pdf.ts and the JSON route.
-function getPreviousBalance(block: AccountStatementByCurrency, from: string | undefined): number {
-  if (!from) return 0;
-  const before = block.movements.filter((m) => m.date < from);
-  return before.length > 0 ? before[before.length - 1].runningBalance : (block.baselineBalance ?? 0);
-}
+// getPreviousBalance imported from account-statement-period-model.ts
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 

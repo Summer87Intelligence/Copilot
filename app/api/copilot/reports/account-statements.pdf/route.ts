@@ -56,6 +56,8 @@ export async function GET(request: NextRequest) {
     const supabase = !userErr && userData.user ? supabaseFromCookies : auth.ctx.supabase;
 
     const sp = request.nextUrl.searchParams;
+    const from = sp.get("from")?.trim() || undefined;
+    const to = sp.get("to")?.trim() || undefined;
     const currencyParam = sp.get("currency")?.trim().toUpperCase();
     const companyIdParam = sp.get("companyId")?.trim() || null;
     const currencies: Array<"UYU" | "USD"> =
@@ -156,7 +158,15 @@ export async function GET(request: NextRequest) {
 
       log.info("single_account_statement_pdf_building", { companyId: companyIdParam, currencies });
 
-      const pdfBuffer = await renderAccountStatementPdf({ companyName, statement, currencies, issuer, client });
+      const pdfBuffer = await renderAccountStatementPdf({
+        companyName,
+        statement,
+        currencies,
+        from,
+        to,
+        issuer,
+        client,
+      });
 
       const todayYmd = new Date().toISOString().slice(0, 10);
       const currencySlug = currencies.length === 1 ? currencies[0]!.toLowerCase() : "uyu-usd";

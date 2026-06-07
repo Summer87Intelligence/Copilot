@@ -7,77 +7,8 @@ import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
 import {
-  listProtoInvoicesByCompanyIdForLedger,
-  listProtoReceiptsByCompanyIdForLedger,
-  getProtoCompanyById,
-} from "@/lib/data/proto-operational-read-repository";
-import {
-  buildClientAccountStatement,
-  type AccountStatementByCurrency,
-  type AccountStatementMovement,
-} from "@/lib/copilot-client-account-statement";
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function toFiniteOrNull(v: unknown): number | null {
-  if (v == null) return null;
-  const n = typeof v === "number" ? v : Number(v);
-  return Number.isFinite(n) ? n : null;
-}
-
-// ── Inline helpers (mirror of render-account-statement-pdf.ts) ────────────────
-
-function getPreviousBalance(block: AccountStatementByCurrency, from: string | undefined): number {
-  if (!from) return 0;
-  const before = block.movements.filter((m) => m.date < from);
-  return before.length > 0 ? before[before.length - 1]!.runningBalance : (block.baselineBalance ?? 0);
-}
-
-function filterBlock(
-  block: AccountStatementByCurrency,
-  from: string | undefined,
-  to: string | undefined
-): AccountStatementByCurrency {
-  if (!from && !to) return block;
-  const mvs = block.movements.filter((m) => {
-    if (from && m.date < from) return false;
-    if (to && m.date > to) return false;
-    return true;
-  });
-  let totalDebit = 0;
-  let totalCredit = 0;
-  for (const m of mvs) {
-    totalDebit += m.debit;
-    totalCredit += m.credit;
-  }
-  const netChange = totalDebit - totalCredit;
-  return {
-    ...block,
-    movements: mvs,
-    summary: {
-      ...block.summary,
-      totalDebit,
-      totalCredit,
-      finalBalance: netChange,
-      totalInvoiced: totalDebit,
-      totalCollected: totalCredit,
-      pendingBalance: netChange,
-      movementCount: mvs.length,
-      hasNegativeBalance: (mvs[mvs.length - 1]?.runningBalance ?? 0) < 0,
-    },
-  };
-}
-
-/** Strip `raw` DataRow — too heavy for JSON transfer, not needed in preview. */
-function stripRaw(
-  mvs: readonly AccountStatementMovement[]
-): Omit<AccountStatementMovement, "raw">[] {
-  return mvs.map((mv) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { raw: _raw, ...rest } = mv;
-    return rest;
-  });
-}
+  buildAccountStatementApiModel,
+} from "@/lib/account-statement/build-account-statement-api-model";
 
 // ── Route ─────────────────────────────────────────────────────────────────────
 
@@ -124,36 +55,10 @@ export async function GET(
       currencyParam === "USD" ? ["USD"] :
       ["UYU", "USD"];
 
-    const [invoices, receipts, company] = await Promise.all([
-      listProtoInvoicesByCompanyIdForLedger(supabase, companyId, tenantCompanyId),
-      listProtoReceiptsByCompanyIdForLedger(supabase, companyId, tenantCompanyId),
-      getProtoCompanyById(supabase, companyId, tenantCompanyId),
-    ]);
-
-    const openingBalanceUyu = toFiniteOrNull((company as Record<string, unknown> | null)?.ledger_opening_balance_uyu);
-    const openingBalanceUsd = toFiniteOrNull((company as Record<string, unknown> | null)?.ledger_opening_balance_usd);
-    const statement = buildClientAccountStatement({
-      invoices,
-      receipts,
-      ledgerMode: true,
-      openingBalanceUyu,
-      openingBalanceUsd,
-    });
-
-    const companyName =
-      String(company?.name ?? company?.company_name ?? company?.zeta_client_name ?? "").trim() ||
-      "Cliente";
-
-    const blocks = currencies.map((cur) => {
-      const rawBlock = cur === "UYU" ? statement.uyu : statement.usd;
-      const previousBalance = getPreviousBalance(rawBlock, from);
-      const filtered = filterBlock(rawBlock, from, to);
-      return {
-        currency: cur,
-        previousBalance,
-        summary: filtered.summary,
-        movements: stripRaw(filtered.movements),
-      };
+    const model = await buildAccountStatementApiModel(supabase, companyId, tenantCompanyId, {
+      from,
+      to,
+      currencies,
     });
 
     log.info("account_statement_json_done", {
@@ -161,18 +66,19 @@ export async function GET(
       from,
       to,
       currencies,
-      movementCounts: blocks.map((b) => b.movements.length),
+      openingUyu: model.openingBalanceUyu,
+      movementCounts: model.blocks.map((b) => b.movements.length),
     });
 
     return NextResponse.json(
       {
         ok: true,
-        companyName,
+        companyName: model.companyName,
         from,
         to,
         currencies,
-        blocks,
-        unknownCurrencyCount: statement.unknownCurrencyCount,
+        blocks: model.blocks,
+        unknownCurrencyCount: model.statement.unknownCurrencyCount,
       },
       {
         headers: { "Cache-Control": "no-store" },
