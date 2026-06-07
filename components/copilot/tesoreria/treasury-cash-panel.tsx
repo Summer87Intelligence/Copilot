@@ -140,10 +140,14 @@ function BalanceCard({
       </p>
 
       <div className="mt-2 space-y-1 text-[11px] text-[var(--copilot-ink-muted)]">
-        <p>
-          Saldo cargado al {baselineDate ?? "—"}:{" "}
-          {pos ? formatTreasuryMoney(pos.openingBalance, currency) : "—"}
-        </p>
+        {pos && pos.openingConfigured ? (
+          <p>
+            Saldo cargado al {baselineDate ?? "—"}:{" "}
+            {formatTreasuryMoney(pos.openingBalance, currency)}
+          </p>
+        ) : (
+          <p>Saldo cargado al —: —</p>
+        )}
         {pos && pos.collectedFromClients > 0 ? (
           <p className="text-emerald-700">
             + Cobros Zeta posteriores: {formatTreasuryMoney(pos.collectedFromClients, currency)}
@@ -159,6 +163,11 @@ function BalanceCard({
           <p>Ajustes: {formatTreasuryMoney(pos.adjustments, currency)}</p>
         ) : null}
       </div>
+      {pos && !pos.openingConfigured ? (
+        <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+          Saldo no configurado. Ingresá el saldo actual para que la caja sea correcta.
+        </div>
+      ) : null}
 
       {editing ? (
         <div className="mt-3 flex flex-wrap items-center gap-2">

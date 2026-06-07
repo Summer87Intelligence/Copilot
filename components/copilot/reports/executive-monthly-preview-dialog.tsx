@@ -235,7 +235,7 @@ export function ExecutiveMonthlyPreviewDialog({ open, onClose }: Props) {
           {/* Top 5 clients */}
           {model.top5Clients.length > 0 ? (
             <div>
-              <SectionLabel>Top 5 clientes</SectionLabel>
+              <SectionLabel>Top 5 clientes del período</SectionLabel>
               <div className="mt-2">
                 <ReportTable
                   columns={getClientColumns(model.currency)}

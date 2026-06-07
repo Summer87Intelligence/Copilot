@@ -4,7 +4,6 @@ import { buildCashMonthlyReportModel } from "@/lib/reports/cash-monthly-report/b
 import { cashMonthlyMonthRange } from "@/lib/reports/cash-monthly-report/build-cash-monthly-report-model";
 import { buildDebtorsReportModel } from "@/lib/reports/debtors-report/build-debtors-report-model";
 import { buildNetSalesReportModel } from "@/lib/reports/net-sales-report/build-net-sales-report-model";
-import { buildTopClientsReportModel } from "@/lib/reports/top-clients-report/build-top-clients-report-model";
 import type { TreasuryCashOpeningBalanceRow } from "@/lib/treasury/repositories/treasury-cash-opening-balance-repository";
 import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
 
@@ -149,16 +148,6 @@ export function buildExecutiveMonthlyReportModel(
     issuerName,
   });
 
-  const topClientsModel = buildTopClientsReportModel({
-    portfolioRows,
-    year,
-    month,
-    currency,
-    sortBy: "net_sales",
-    generatedAt: at,
-    issuerName,
-  });
-
   const debtorsModel = buildDebtorsReportModel({
     portfolioRows,
     filters: {
@@ -172,8 +161,10 @@ export function buildExecutiveMonthlyReportModel(
     emittedAt: at,
   });
 
-  const top5Clients: ExecutiveTopClient[] = topClientsModel.rows.slice(0, 5).map((r) => ({
-    rank: r.rank,
+  // top5Clients derived from the same invoice source as keyMetrics.netSales
+  // to guarantee period and currency consistency
+  const top5Clients: ExecutiveTopClient[] = netSalesModel.rows.slice(0, 5).map((r, i) => ({
+    rank: i + 1,
     clientName: r.clientName,
     netSales: r.netSales,
     sharePercent: r.sharePercent,
@@ -230,7 +221,7 @@ export function buildExecutiveMonthlyReportModel(
       cashClosingBalance: cashModel.totals.closingBalance,
       totalDebt,
       overdueDebt,
-      activeClients: topClientsModel.totals.clientCount,
+      activeClients: netSalesModel.totals.clientCount,
     },
     top5Clients,
     top5Debtors,

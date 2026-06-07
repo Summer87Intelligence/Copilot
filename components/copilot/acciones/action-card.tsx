@@ -169,6 +169,25 @@ function formatAmount(amount: number, currency?: string | null): string {
   })}`;
 }
 
+function deriveNextStep(action: CopilotAction): string {
+  if (action.type === "treasury") return "Verificar cobertura en Tesorería";
+  if (action.type === "system") return "Revisar estado del sistema";
+  if (action.type === "collection") {
+    const ctx = action.collectionContext;
+    if (!ctx) return "Contactar al cliente y registrar gestión";
+    if (ctx.latestOutcome === "promised_payment" && ctx.promiseDate) {
+      const today = new Date().toISOString().slice(0, 10);
+      return ctx.promiseDate <= today
+        ? "Confirmar si el pago fue realizado"
+        : "Monitorear promesa de pago pendiente";
+    }
+    if (ctx.nextFollowUpAt) return "Registrar resultado del seguimiento programado";
+    const ch = CHANNEL_LABEL[ctx.latestChannel];
+    return ch ? `Contactar al cliente vía ${ch}` : "Contactar al cliente y registrar gestión";
+  }
+  return action.primaryActionLabel;
+}
+
 export function ActionCard({ action }: { action: CopilotAction }) {
   const whatsappHref = action.contactPhone
     ? `https://wa.me/${action.contactPhone.replace(/\D/g, "")}`
@@ -202,9 +221,16 @@ export function ActionCard({ action }: { action: CopilotAction }) {
       <p className="mt-2 text-sm font-semibold text-[var(--copilot-ink)]">
         {action.title}
       </p>
-      <p className="mt-1 text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
-        {action.reason}
-      </p>
+      <div className="mt-1.5 space-y-1.5">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Por qué importa</p>
+          <p className="text-xs leading-relaxed text-[var(--copilot-ink-muted)]">{action.reason}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Siguiente paso</p>
+          <p className="text-xs font-medium text-[var(--copilot-ink)]">{deriveNextStep(action)}</p>
+        </div>
+      </div>
 
       {action.collectionContext ? (
         <CollectionContextBlock ctx={action.collectionContext} />

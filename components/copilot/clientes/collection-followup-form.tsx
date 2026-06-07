@@ -1,31 +1,27 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, ClipboardList, FileText, Mail, MessageCircle, Phone } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { CheckCircle2, ClipboardList, FileText, Mail, MessageCircle, PenLine, Phone, Trash2 } from "lucide-react";
 import type { CollectionFollowupInitialValues } from "@/lib/account-statement/build-account-statement-followup-prefill";
 
 import { useCollectionActions } from "@/hooks/use-collection-actions";
 import type {
   CollectionAction,
+  CollectionActionPatch,
   CollectionActionType,
   CollectionCurrency,
 } from "@/lib/copilot-collection-types";
+import {
+  actionToUiOutcome,
+  outcomeToStatus,
+  type UiOutcome,
+} from "@/lib/collection/collection-history-helpers";
 import {
   formatActionDate,
   formatRelative,
   formatYmd,
 } from "@/lib/collection/collection-date-helpers";
 import { COLLECTION_UX } from "@/lib/copilot-collection-ux-copy";
-
-// ─── Local types ──────────────────────────────────────────────────────────────
-
-type UiOutcome =
-  | "contacted"
-  | "promised_payment"
-  | "no_response"
-  | "wrong_contact"
-  | "disputed"
-  | "needs_followup";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -46,23 +42,6 @@ const OUTCOME_OPTS: { id: UiOutcome; label: string }[] = [
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function outcomeToStatus(
-  outcome: UiOutcome
-): "contacted" | "promised_payment" | "paused" | "disputed" | "pending_review" {
-  switch (outcome) {
-    case "contacted":
-      return "contacted";
-    case "promised_payment":
-      return "promised_payment";
-    case "disputed":
-      return "disputed";
-    case "needs_followup":
-      return "pending_review";
-    default:
-      return "paused";
-  }
-}
 
 function getChannelIcon(type: CollectionActionType) {
   switch (type) {
@@ -158,7 +137,160 @@ function Pill({
 
 // ─── History item ─────────────────────────────────────────────────────────────
 
-function HistoryItem({ action }: { action: CollectionAction }) {
+function HistoryItem({
+  action,
+  onSave,
+  onDelete,
+}: {
+  action: CollectionAction;
+  onSave: (id: string, patch: CollectionActionPatch) => Promise<boolean>;
+  onDelete: (id: string) => Promise<boolean>;
+}) {
+  const [mode, setMode] = useState<"view" | "edit" | "delete">("view");
+  const [editChannel, setEditChannel] = useState<CollectionActionType>(action.actionType);
+  const [editOutcome, setEditOutcome] = useState<UiOutcome>(actionToUiOutcome(action));
+  const [editNote, setEditNote] = useState(action.notes ?? "");
+  const [editNextFollowUp, setEditNextFollowUp] = useState(action.nextActionDate ?? "");
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleEdit = () => {
+    setEditChannel(action.actionType);
+    setEditOutcome(actionToUiOutcome(action));
+    setEditNote(action.notes ?? "");
+    setEditNextFollowUp(action.nextActionDate ?? "");
+    setMode("edit");
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    const ok = await onSave(action.id, {
+      actionType: editChannel,
+      status: outcomeToStatus(editOutcome),
+      notes: editNote.trim() || null,
+      nextActionDate: editNextFollowUp || null,
+      metadata: { ...(action.metadata ?? {}), ui_outcome: editOutcome },
+    });
+    setSaving(false);
+    if (ok) setMode("view");
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    await onDelete(action.id);
+    setDeleting(false);
+  };
+
+  if (mode === "delete") {
+    return (
+      <div className="flex flex-col gap-2 py-3">
+        <p className="text-[12px] text-[var(--copilot-ink)]">
+          ¿Eliminar esta gestión? Esta acción no se puede deshacer.
+        </p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setMode("view")}
+            disabled={deleting}
+            className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50 disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleDelete()}
+            disabled={deleting}
+            className="rounded-lg bg-rose-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
+          >
+            {deleting ? "Eliminando…" : "Eliminar"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === "edit") {
+    return (
+      <div className="space-y-3 py-3">
+        <div>
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Canal</p>
+          <div className="flex flex-wrap gap-1.5">
+            {CHANNEL_OPTS.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setEditChannel(c.id)}
+                className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition ${
+                  editChannel === c.id
+                    ? "border-[var(--copilot-accent)] bg-[var(--copilot-accent)] text-white"
+                    : "border-[var(--copilot-border)] text-[var(--copilot-ink-muted)] hover:border-[var(--copilot-accent)]/40"
+                }`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Resultado</p>
+          <div className="flex flex-wrap gap-1.5">
+            {OUTCOME_OPTS.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => setEditOutcome(o.id)}
+                className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition ${
+                  editOutcome === o.id
+                    ? "border-[var(--copilot-accent)] bg-[var(--copilot-accent)] text-white"
+                    : "border-[var(--copilot-border)] text-[var(--copilot-ink-muted)] hover:border-[var(--copilot-accent)]/40"
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Nota</p>
+          <textarea
+            value={editNote}
+            onChange={(e) => setEditNote(e.target.value)}
+            rows={2}
+            className="w-full rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-[12px] text-[var(--copilot-ink)] focus:border-[var(--copilot-accent)] focus:outline-none"
+            placeholder="Nota de la gestión…"
+          />
+        </div>
+        <div>
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Próx. seguimiento</p>
+          <input
+            type="date"
+            value={editNextFollowUp}
+            onChange={(e) => setEditNextFollowUp(e.target.value)}
+            className="rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-[12px] text-[var(--copilot-ink)] focus:border-[var(--copilot-accent)] focus:outline-none"
+          />
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setMode("view")}
+            disabled={saving}
+            className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50 disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={saving}
+            className="rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-[11px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
+          >
+            {saving ? "Guardando…" : "Guardar"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex gap-3 py-3">
       <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)]">
@@ -217,6 +349,24 @@ function HistoryItem({ action }: { action: CollectionAction }) {
           );
         })() : null}
       </div>
+      <div className="flex shrink-0 gap-1 self-start pt-0.5">
+        <button
+          type="button"
+          onClick={handleEdit}
+          className="rounded-lg p-1 text-[var(--copilot-ink-muted)] hover:bg-slate-100"
+          aria-label="Editar gestión"
+        >
+          <PenLine className="h-3.5 w-3.5" aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("delete")}
+          className="rounded-lg p-1 text-[var(--copilot-ink-muted)] hover:bg-rose-50 hover:text-rose-600"
+          aria-label="Eliminar gestión"
+        >
+          <Trash2 className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      </div>
     </div>
   );
 }
@@ -232,7 +382,20 @@ export function CollectionFollowupForm({
   initialValues?: CollectionFollowupInitialValues | null;
   prefillKey?: string | number;
 }) {
-  const { actions, loading, error, create } = useCollectionActions(companyId);
+  const { actions, loading, error, create, update, archive } = useCollectionActions(companyId);
+
+  const handleHistorySave = useCallback(
+    async (id: string, patch: CollectionActionPatch): Promise<boolean> => {
+      const result = await update(id, patch);
+      return result !== null;
+    },
+    [update]
+  );
+
+  const handleHistoryDelete = useCallback(
+    async (id: string): Promise<boolean> => archive(id),
+    [archive]
+  );
 
   const [channel, setChannel] = useState<CollectionActionType>("whatsapp");
   const [outcome, setOutcome] = useState<UiOutcome>("contacted");
@@ -415,8 +578,8 @@ export function CollectionFollowupForm({
             <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600/70">
               Promesa de pago
             </p>
-            <div className="flex flex-wrap gap-2">
-              <div className="min-w-[140px] flex-1">
+            <div className="flex flex-wrap gap-2 overflow-x-auto">
+              <div className="min-w-[120px] flex-1">
                 <label className="mb-1 block text-[10px] text-[var(--copilot-ink-muted)]">
                   Fecha de promesa
                 </label>
@@ -541,7 +704,12 @@ export function CollectionFollowupForm({
         ) : (
           <div className="divide-y divide-[var(--copilot-border)]/40">
             {actions.slice(0, 20).map((action) => (
-              <HistoryItem key={action.id} action={action} />
+              <HistoryItem
+                key={action.id}
+                action={action}
+                onSave={handleHistorySave}
+                onDelete={handleHistoryDelete}
+              />
             ))}
           </div>
         )}

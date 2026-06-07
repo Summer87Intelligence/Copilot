@@ -183,16 +183,6 @@ function translateReceiptStatus(estado: string): string {
   return map[estado.toLowerCase()] ?? estado;
 }
 
-function cleanTimelineTitle(ev: TimelineEvent): string {
-  if (ev.kind === "sync") {
-    return ev.title.replace(/^Sync Zeta:\s*/i, "Datos actualizados: ");
-  }
-  if (ev.kind === "invoice_issued") {
-    return ev.title.replace(/^Comprobante emitido:\s*/i, "Factura emitida: ");
-  }
-  return ev.title;
-}
-
 // ─── Risk styling ─────────────────────────────────────────────────────────────
 
 function riskTone(r: string) {
@@ -211,6 +201,16 @@ function timelineIcon(kind: TimelineEvent["kind"], severity: OperationalHintSeve
     ? <AlertTriangle className="h-4 w-4 text-amber-500" aria-hidden />
     : <BadgeCheck className="h-4 w-4 text-slate-400" aria-hidden />;
   return <CircleDashed className="h-4 w-4 text-slate-400" aria-hidden />;
+}
+
+function timelineTypeLabel(kind: TimelineEvent["kind"]): string {
+  switch (kind) {
+    case "invoice_issued": return "Factura emitida";
+    case "invoice_overdue": return "Factura vencida";
+    case "receipt": return "Cobro recibido";
+    case "sync": return "Datos actualizados";
+    default: return "Evento";
+  }
 }
 
 function debtStatusLabel(data: Client360Payload): { label: string; cls: string } {
@@ -273,34 +273,36 @@ function KpiChip({
 function TimelineEventList({ evts }: { evts: TimelineEvent[] }) {
   if (evts.length === 0) return null;
   return (
-    <ol className="relative space-y-0 border-l border-[var(--copilot-border)]">
-      {evts.map((ev) => (
-        <li key={ev.id} className="relative pb-4 pl-6 last:pb-0">
-          <span className="absolute -left-2 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--copilot-card)] ring-2 ring-[var(--copilot-border)]">
-            {timelineIcon(ev.kind, ev.severity)}
-          </span>
-          <div className="flex flex-wrap items-start justify-between gap-1">
-            <div>
-              <p className="text-sm font-medium text-[var(--copilot-ink)]">
-                {cleanTimelineTitle(ev)}
-              </p>
-              {ev.description ? (
-                <p className="text-xs text-[var(--copilot-ink-muted)]">{ev.description}</p>
-              ) : null}
-            </div>
-            <div className="text-right">
-              {ev.amount != null ? (
-                <p className="text-sm tabular-nums font-semibold text-[var(--copilot-ink)]">
+    <ol className="space-y-2">
+      {evts.map((ev) => {
+        const medium = ev.kind === "receipt" ? (ev.description ?? null) : null;
+        return (
+          <li key={ev.id} className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs">
+            <span className="shrink-0">{timelineIcon(ev.kind, ev.severity)}</span>
+            <span className="tabular-nums text-[var(--copilot-ink-muted)]">
+              {formatDateShort(ev.date)}
+            </span>
+            <span className="text-[var(--copilot-ink-muted)]" aria-hidden>·</span>
+            <span className="font-medium text-[var(--copilot-ink)]">
+              {timelineTypeLabel(ev.kind)}
+            </span>
+            {ev.amount != null ? (
+              <>
+                <span className="text-[var(--copilot-ink-muted)]" aria-hidden>·</span>
+                <span className="tabular-nums font-semibold text-[var(--copilot-ink)]">
                   {formatMoney(ev.amount, ev.currency)}
-                </p>
-              ) : null}
-              <p className="text-xs text-[var(--copilot-ink-muted)]">
-                {formatDateShort(ev.date)}
-              </p>
-            </div>
-          </div>
-        </li>
-      ))}
+                </span>
+              </>
+            ) : null}
+            {medium ? (
+              <>
+                <span className="text-[var(--copilot-ink-muted)]" aria-hidden>·</span>
+                <span className="text-[var(--copilot-ink-muted)]">{medium}</span>
+              </>
+            ) : null}
+          </li>
+        );
+      })}
     </ol>
   );
 }

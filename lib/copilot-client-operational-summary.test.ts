@@ -193,6 +193,24 @@ describe("buildClientOperationalSummary", () => {
       });
       expect(result.timelineEvents.length).toBe(0);
     });
+
+    it("recibo expone medio en description (usado por timeline inline)", () => {
+      const result = buildClientOperationalSummary(input);
+      const receipt = result.timelineEvents.find((e) => e.kind === "receipt");
+      expect(receipt?.description).toBe("Transferencia");
+    });
+
+    it("recibo expone importe en amount", () => {
+      const result = buildClientOperationalSummary(input);
+      const receipt = result.timelineEvents.find((e) => e.kind === "receipt");
+      expect(receipt?.amount).toBe(20_000);
+    });
+
+    it("factura emitida expone importe en amount", () => {
+      const result = buildClientOperationalSummary(input);
+      const inv = result.timelineEvents.find((e) => e.kind === "invoice_issued");
+      expect(inv?.amount).toBe(50_000);
+    });
   });
 
   describe("suggestedActions no duplica", () => {

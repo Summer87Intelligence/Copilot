@@ -143,14 +143,15 @@ describe("buildExecutiveMonthlyReportModel", () => {
   it("top5Clients limitado a 5 filas", () => {
     const result = buildExecutiveMonthlyReportModel({
       ...BASE,
-      portfolioRows: [
-        portRow({ company_id: "c1", name: "C1", billing_uyu: 1000 }),
-        portRow({ company_id: "c2", name: "C2", billing_uyu: 2000 }),
-        portRow({ company_id: "c3", name: "C3", billing_uyu: 3000 }),
-        portRow({ company_id: "c4", name: "C4", billing_uyu: 4000 }),
-        portRow({ company_id: "c5", name: "C5", billing_uyu: 5000 }),
-        portRow({ company_id: "c6", name: "C6", billing_uyu: 6000 }),
+      invoices: [
+        inv({ id: "i1", company_id: "c1", total_amount: 1000 }),
+        inv({ id: "i2", company_id: "c2", total_amount: 2000 }),
+        inv({ id: "i3", company_id: "c3", total_amount: 3000 }),
+        inv({ id: "i4", company_id: "c4", total_amount: 4000 }),
+        inv({ id: "i5", company_id: "c5", total_amount: 5000 }),
+        inv({ id: "i6", company_id: "c6", total_amount: 6000 }),
       ],
+      companyNames: { c1: "C1", c2: "C2", c3: "C3", c4: "C4", c5: "C5", c6: "C6" },
     });
     expect(result.top5Clients).toHaveLength(5);
     expect(result.top5Clients[0]?.rank).toBe(1);
@@ -223,5 +224,118 @@ describe("buildExecutiveMonthlyReportModel", () => {
     expect(result.top5Clients).toHaveLength(0);
     expect(result.top5Debtors).toHaveLength(0);
     expect(result.riskLevel).toBe("Bajo");
+  });
+
+  // ── Consistencia fuente de datos ──────────────────────────────
+
+  it("top5Clients UYU usa misma fuente periódica que keyMetrics.netSales", () => {
+    const result = buildExecutiveMonthlyReportModel({
+      ...BASE,
+      invoices: [
+        inv({ id: "i1", company_id: "c1", total_amount: 8000 }),
+        inv({ id: "i2", company_id: "c2", total_amount: 5000 }),
+      ],
+      // portfolioRows con billing histórico diferente — no debe influir en top5Clients
+      portfolioRows: [
+        portRow({ company_id: "c1", name: "C1", billing_uyu: 999000 }),
+      ],
+    });
+    expect(result.top5Clients).toHaveLength(2);
+    expect(result.top5Clients[0]?.clientName).toBe("Cliente Uno");
+    expect(result.top5Clients[0]?.netSales).toBe(8000);
+    expect(result.keyMetrics.netSales).toBe(13000);
+  });
+
+  it("top5Clients USD usa facturas USD del período", () => {
+    const result = buildExecutiveMonthlyReportModel({
+      ...BASE,
+      currency: "USD",
+      invoices: [
+        inv({ id: "i1", company_id: "c1", total_amount: 1500, currency_code: "USD" }),
+        inv({ id: "i2", company_id: "c2", total_amount: 1000, currency_code: "USD" }),
+        inv({ id: "i3", company_id: "c1", total_amount: 9000, currency_code: "UYU" }),
+      ],
+      portfolioRows: [],
+    });
+    expect(result.top5Clients).toHaveLength(2);
+    expect(result.top5Clients[0]?.netSales).toBe(1500);
+    expect(result.keyMetrics.netSales).toBe(2500);
+  });
+
+  it("top5Clients no incluye facturas fuera del período reportado", () => {
+    const result = buildExecutiveMonthlyReportModel({
+      ...BASE,
+      // BASE: month=5, year=2026
+      invoices: [
+        inv({ id: "i1", company_id: "c1", total_amount: 9000, issue_date: "2026-05-15" }),
+        inv({ id: "i2", company_id: "c2", total_amount: 7000, issue_date: "2026-04-30" }),
+      ],
+    });
+    expect(result.top5Clients).toHaveLength(1);
+    expect(result.top5Clients[0]?.clientName).toBe("Cliente Uno");
+    expect(result.keyMetrics.netSales).toBe(9000);
+  });
+
+  it("top5Clients UYU no incluye facturas en USD", () => {
+    const result = buildExecutiveMonthlyReportModel({
+      ...BASE,
+      currency: "UYU",
+      invoices: [
+        inv({ id: "i1", company_id: "c1", total_amount: 5000, currency_code: "UYU" }),
+        inv({ id: "i2", company_id: "c2", total_amount: 3000, currency_code: "USD" }),
+      ],
+    });
+    expect(result.top5Clients).toHaveLength(1);
+    expect(result.top5Clients[0]?.clientName).toBe("Cliente Uno");
+    expect(result.keyMetrics.netSales).toBe(5000);
+  });
+
+  it("top5Clients sharePercent es consistente con keyMetrics.netSales", () => {
+    const result = buildExecutiveMonthlyReportModel({
+      ...BASE,
+      invoices: [
+        inv({ id: "i1", company_id: "c1", total_amount: 7500 }),
+        inv({ id: "i2", company_id: "c2", total_amount: 2500 }),
+      ],
+    });
+    const total = result.top5Clients.reduce((s, r) => s + r.sharePercent, 0);
+    expect(total).toBeCloseTo(100, 1);
+    const sumNetSales = result.top5Clients.reduce((s, r) => s + r.netSales, 0);
+    expect(sumNetSales).toBe(result.keyMetrics.netSales);
+  });
+
+  it("activeClients refleja clientes con ventas en el período, no cartera histórica", () => {
+    const result = buildExecutiveMonthlyReportModel({
+      ...BASE,
+      invoices: [
+        inv({ id: "i1", company_id: "c1", total_amount: 5000 }),
+        inv({ id: "i2", company_id: "c2", total_amount: 3000 }),
+      ],
+      // 3 clientes adicionales en cartera pero sin factura en el período
+      portfolioRows: [
+        portRow({ company_id: "c3", name: "C3", billing_uyu: 1000 }),
+        portRow({ company_id: "c4", name: "C4", billing_uyu: 2000 }),
+        portRow({ company_id: "c5", name: "C5", billing_uyu: 3000 }),
+      ],
+    });
+    expect(result.keyMetrics.activeClients).toBe(2);
+  });
+
+  it("portfolioRows no afecta top5Clients", () => {
+    const withPortfolio = buildExecutiveMonthlyReportModel({
+      ...BASE,
+      invoices: [inv({ id: "i1", company_id: "c1", total_amount: 4000 })],
+      portfolioRows: [
+        portRow({ company_id: "c2", name: "C2", billing_uyu: 99999 }),
+        portRow({ company_id: "c3", name: "C3", billing_uyu: 99999 }),
+      ],
+    });
+    const withoutPortfolio = buildExecutiveMonthlyReportModel({
+      ...BASE,
+      invoices: [inv({ id: "i1", company_id: "c1", total_amount: 4000 })],
+      portfolioRows: [],
+    });
+    expect(withPortfolio.top5Clients).toEqual(withoutPortfolio.top5Clients);
+    expect(withPortfolio.keyMetrics.activeClients).toEqual(withoutPortfolio.keyMetrics.activeClients);
   });
 });

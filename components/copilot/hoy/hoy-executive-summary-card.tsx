@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { ChevronDown } from "lucide-react";
 
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import {
@@ -109,6 +110,56 @@ export function HoyExecutiveSummaryCard({
     });
   }, [agendaLoaded, attentionClientsCount, agenda, cashAfterPaymentsCritical]);
 
+  const [showSignals, setShowSignals] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showSignals) return;
+    const handler = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setShowSignals(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showSignals]);
+
+  type PriorityItem = { title: string; motivo: string; href: string; ctaLabel: string };
+  const priorities = useMemo((): PriorityItem[] => {
+    if (!agendaLoaded) return [];
+    const items: PriorityItem[] = [];
+    if (attentionClientsCount > 0) {
+      items.push({
+        title: "Clientes vencidos sin contactar",
+        motivo: `${attentionClientsCount} ${attentionClientsCount === 1 ? "cliente requiere" : "clientes requieren"} atención`,
+        href: "/copilot/clientes",
+        ctaLabel: "Ver clientes",
+      });
+    }
+    const agendaOverdue = (agenda?.summary.overdueFollowupsCount ?? 0) + (agenda?.summary.overduePromisesCount ?? 0);
+    const agendaToday = agenda?.summary.dueTodayCount ?? 0;
+    if (agendaOverdue > 0 || agendaToday > 0) {
+      const parts: string[] = [];
+      if (agendaOverdue > 0) parts.push(`${agendaOverdue} vencido${agendaOverdue !== 1 ? "s" : ""}`);
+      if (agendaToday > 0) parts.push(`${agendaToday} para hoy`);
+      items.push({
+        title: "Agenda de cobranza",
+        motivo: parts.join(" · "),
+        href: "/copilot/acciones?tab=agenda",
+        ctaLabel: "Ver agenda",
+      });
+    }
+    if (cashAfterPaymentsCritical) {
+      items.push({
+        title: "Caja después de pagos ajustada",
+        motivo: "Revisar cobertura antes de confirmar compromisos",
+        href: "/copilot/tesoreria",
+        ctaLabel: "Ver Tesorería",
+      });
+    }
+    return items.slice(0, 3);
+  }, [agendaLoaded, attentionClientsCount, agenda, cashAfterPaymentsCritical]);
+
   const cfg = STATUS_CONFIG[hero.status];
   const primaryIsScroll = priority?.primaryCta.action.type === "scroll_critical";
 
@@ -130,32 +181,99 @@ export function HoyExecutiveSummaryCard({
 
       {/* ── Main row: status + headline + CTAs ── */}
       <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
-        {/* Left: dot + badge + headline + description + metrics */}
-        <div className="flex min-w-0 flex-1 items-start gap-2.5">
-          <span
-            className={`mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full ${cfg.dot}`}
-            aria-hidden
-          />
-          <div className="min-w-0">
-            <span
-              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${cfg.badgeClass}`}
+        {/* Left: status badge (clickable) + headline + description + metrics + priorities */}
+        <div className="min-w-0 flex-1">
+          {/* Status indicator — clickable, shows signals popover */}
+          <div className="relative" ref={popoverRef}>
+            <button
+              type="button"
+              onClick={() => setShowSignals((v) => !v)}
+              className="flex items-center gap-1.5"
+              aria-expanded={showSignals}
+              aria-label="Ver señales del estado del negocio"
             >
-              {cfg.badge}
-            </span>
-            <p className="mt-1.5 text-[15px] font-semibold leading-snug text-[var(--copilot-ink)] sm:text-base">
-              {headline}
-            </p>
-            {description ? (
-              <p className="mt-1 text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
-                {description}
-              </p>
-            ) : null}
-            {metricsLine ? (
-              <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
-                {metricsLine}
-              </p>
+              <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${cfg.dot}`} aria-hidden />
+              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${cfg.badgeClass}`}>
+                {cfg.badge}
+                <ChevronDown className={`h-3 w-3 transition-transform ${showSignals ? "rotate-180" : ""}`} aria-hidden />
+              </span>
+            </button>
+            {showSignals ? (
+              <div className="absolute left-0 top-full z-30 mt-2 w-60 max-w-[calc(100vw-2rem)] rounded-xl border border-[var(--copilot-border)] bg-white p-3 shadow-lg">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Señales detectadas</p>
+                <ul className="mt-2 space-y-1.5">
+                  {attentionClientsCount > 0 ? (
+                    <li className="text-[12px] text-[var(--copilot-ink)]">
+                      • {attentionClientsCount} {attentionClientsCount === 1 ? "cliente requiere" : "clientes requieren"} atención
+                    </li>
+                  ) : null}
+                  {cashAfterPaymentsCritical ? (
+                    <li className="text-[12px] text-[var(--copilot-ink)]">
+                      • Caja después de pagos en zona crítica
+                    </li>
+                  ) : null}
+                  {!attentionClientsCount && !cashAfterPaymentsCritical ? (
+                    <li className="text-[12px] text-[var(--copilot-ink-muted)]">Sin alertas críticas activas</li>
+                  ) : null}
+                </ul>
+                {metricsLine ? (
+                  <p className="mt-2 text-[11px] text-[var(--copilot-ink-muted)]">{metricsLine}</p>
+                ) : null}
+                <div className="mt-3 flex flex-wrap gap-1.5 border-t border-[var(--copilot-border)] pt-2.5">
+                  {attentionClientsCount > 0 ? (
+                    <Link href="/copilot/clientes" onClick={() => setShowSignals(false)} className="rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50">
+                      Ver clientes
+                    </Link>
+                  ) : null}
+                  {cashAfterPaymentsCritical ? (
+                    <Link href="/copilot/tesoreria" onClick={() => setShowSignals(false)} className="rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50">
+                      Ver Tesorería
+                    </Link>
+                  ) : null}
+                  <Link href="/copilot/acciones" onClick={() => setShowSignals(false)} className="rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50">
+                    Ver acciones
+                  </Link>
+                </div>
+              </div>
             ) : null}
           </div>
+          <p className="mt-1.5 text-[15px] font-semibold leading-snug text-[var(--copilot-ink)] sm:text-base">
+            {headline}
+          </p>
+          {description ? (
+            <p className="mt-1 text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
+              {description}
+            </p>
+          ) : null}
+          {metricsLine ? (
+            <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
+              {metricsLine}
+            </p>
+          ) : null}
+          {/* Qué resolver hoy — up to 3 executive priorities */}
+          {priorities.length > 0 ? (
+            <div className="mt-3 border-t border-[var(--copilot-border)]/60 pt-3">
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--copilot-ink-muted)]">
+                Qué resolver hoy
+              </p>
+              <div className="space-y-2">
+                {priorities.map((p) => (
+                  <div key={p.href} className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-semibold text-[var(--copilot-ink)]">{p.title}</p>
+                      <p className="text-[11px] text-[var(--copilot-ink-muted)]">{p.motivo}</p>
+                    </div>
+                    <Link
+                      href={p.href}
+                      className="shrink-0 rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50"
+                    >
+                      {p.ctaLabel}
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {/* Right: CTAs */}
