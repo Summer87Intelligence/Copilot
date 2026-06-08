@@ -34,28 +34,28 @@ const STATUS_CONFIG: Record<PulseStatus, StatusConfig> = {
     dot: "bg-emerald-500",
     badge: "Al día",
     badgeClass: "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200/80",
-    cardBg: "from-white to-slate-50/40",
+    cardBg: "from-[var(--copilot-card-bg)] to-[var(--copilot-tone-neutral-bg)]",
     cardBorder: "border-[var(--copilot-border)]",
     primaryBtn: "bg-[var(--copilot-accent)] text-white hover:opacity-90",
-    secondaryBtn: "border-[var(--copilot-border)] bg-white/80 text-[var(--copilot-ink)] hover:bg-white",
+    secondaryBtn: "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 text-[var(--copilot-ink)] hover:bg-[var(--copilot-panel-bg)]",
   },
   attention: {
     dot: "bg-amber-400",
     badge: "Requiere atención",
     badgeClass: "bg-amber-100 text-amber-800 ring-1 ring-amber-200/80",
-    cardBg: "from-white to-amber-50/45",
+    cardBg: "from-[var(--copilot-card-bg)] to-amber-50/45",
     cardBorder: "border-amber-200/70",
     primaryBtn: "bg-[var(--copilot-accent)] text-white hover:opacity-90",
-    secondaryBtn: "border-amber-200/60 bg-white/80 text-[var(--copilot-ink)] hover:bg-white",
+    secondaryBtn: "border-amber-200/60 bg-[var(--copilot-card-bg)]/80 text-[var(--copilot-ink)] hover:bg-[var(--copilot-panel-bg)]",
   },
   critical: {
     dot: "bg-rose-500",
     badge: "Atención crítica",
     badgeClass: "bg-rose-100 text-rose-800 ring-1 ring-rose-200/80",
-    cardBg: "from-white to-rose-50/35",
+    cardBg: "from-[var(--copilot-card-bg)] to-rose-50/35",
     cardBorder: "border-rose-200/70",
     primaryBtn: "bg-rose-600 text-white hover:opacity-90",
-    secondaryBtn: "border-rose-200/60 bg-white/80 text-[var(--copilot-ink)] hover:bg-white",
+    secondaryBtn: "border-rose-200/60 bg-[var(--copilot-card-bg)]/80 text-[var(--copilot-ink)] hover:bg-[var(--copilot-panel-bg)]",
   },
 };
 
@@ -209,7 +209,7 @@ export function HoyExecutiveSummaryCard({
               </span>
             </button>
             {showSignals ? (
-              <div className="absolute left-0 top-full z-30 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-[var(--copilot-border)] bg-white p-3 shadow-lg">
+              <div className="absolute left-0 top-full z-30 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-3 shadow-lg">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Señales del sistema</p>
                 <ul className="mt-2 space-y-2">
                   {attentionClientsCount > 0 ? (
@@ -248,10 +248,10 @@ export function HoyExecutiveSummaryCard({
                   <p className="mt-2 text-[11px] text-[var(--copilot-ink-muted)]">{metricsLine}</p>
                 ) : null}
                 <div className="mt-3 flex flex-wrap gap-1.5 border-t border-[var(--copilot-border)] pt-2.5">
-                  <Link href="/copilot/finanzas" onClick={() => setShowSignals(false)} className="rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50">
+                  <Link href="/copilot/finanzas" onClick={() => setShowSignals(false)} className="rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-soft-bg)]">
                     Ver Finanzas
                   </Link>
-                  <Link href="/copilot/acciones" onClick={() => setShowSignals(false)} className="rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50">
+                  <Link href="/copilot/acciones" onClick={() => setShowSignals(false)} className="rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-soft-bg)]">
                     Ver acciones
                   </Link>
                 </div>
@@ -286,7 +286,7 @@ export function HoyExecutiveSummaryCard({
                     </div>
                     <Link
                       href={p.href}
-                      className="shrink-0 rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50"
+                      className="shrink-0 rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-soft-bg)]"
                     >
                       {p.ctaLabel}
                     </Link>

@@ -21,7 +21,7 @@ export function RutasSnapshotHealthNotice({ health }: RutasSnapshotHealthNoticeP
     health.status === "error"
       ? "border-rose-200/80 bg-rose-50/80 text-rose-950"
       : health.status === "stale"
-        ? "border-[var(--copilot-border)]/80 bg-white/80 text-[var(--copilot-ink)]"
+        ? "border-[var(--copilot-border)]/80 bg-[var(--copilot-card-bg)]/80 text-[var(--copilot-ink)]"
         : "border-amber-200/80 bg-amber-50/70 text-amber-950";
 
   return (

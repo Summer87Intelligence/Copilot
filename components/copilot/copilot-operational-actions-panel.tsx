@@ -470,7 +470,7 @@ export function CopilotOperationalActionsPanel({
             ].map((metric) => (
               <div
                 key={metric.label}
-                className="rounded-xl border border-[var(--copilot-border)] bg-white/75 px-3 py-2"
+                className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/75 px-3 py-2"
               >
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                   {metric.label}
@@ -491,7 +491,7 @@ export function CopilotOperationalActionsPanel({
             ].map((chip) => (
               <span
                 key={chip.label}
-                className="rounded-full border border-[var(--copilot-border)] bg-white/80 px-2.5 py-1 font-semibold text-[var(--copilot-ink-muted)]"
+                className="rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-2.5 py-1 font-semibold text-[var(--copilot-ink-muted)]"
               >
                 {chip.label}: {chip.value}
               </span>
@@ -502,7 +502,7 @@ export function CopilotOperationalActionsPanel({
             <label className="text-xs font-medium text-[var(--copilot-ink-muted)]">
               Estado
               <select
-                className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm"
+                className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1.5 text-sm"
                 value={statusFilter}
                 onChange={(event) =>
                   setStatusFilter(event.target.value as typeof statusFilter)
@@ -517,7 +517,7 @@ export function CopilotOperationalActionsPanel({
             <label className="text-xs font-medium text-[var(--copilot-ink-muted)]">
               Prioridad
               <select
-                className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm"
+                className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1.5 text-sm"
                 value={priorityFilter}
                 onChange={(event) =>
                   setPriorityFilter(event.target.value as typeof priorityFilter)
@@ -533,7 +533,7 @@ export function CopilotOperationalActionsPanel({
             <label className="text-xs font-medium text-[var(--copilot-ink-muted)]">
               Origen
               <select
-                className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm"
+                className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1.5 text-sm"
                 value={originFilter}
                 onChange={(event) =>
                   setOriginFilter(event.target.value as typeof originFilter)
@@ -551,7 +551,7 @@ export function CopilotOperationalActionsPanel({
             <label className="text-xs font-medium text-[var(--copilot-ink-muted)]">
               Vencimiento
               <select
-                className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm"
+                className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1.5 text-sm"
                 value={slaFilter}
                 onChange={(event) => setSlaFilter(event.target.value as typeof slaFilter)}
               >
@@ -577,7 +577,7 @@ export function CopilotOperationalActionsPanel({
                   <li
                     key={action.id}
                     id={`operational-action-${action.id}`}
-                    className={`rounded-2xl border border-[var(--copilot-border)] bg-white/85 px-3.5 py-3 shadow-sm ${
+                    className={`rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 px-3.5 py-3 shadow-sm ${
                       highlighted ? "ring-2 ring-[rgba(31,107,74,0.22)]" : ""
                     }`}
                   >
@@ -653,7 +653,7 @@ export function CopilotOperationalActionsPanel({
                         <span className="flex items-center gap-2">
                           <input
                             type="date"
-                            className="rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1 text-sm text-[var(--copilot-ink)]"
+                            className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1 text-sm text-[var(--copilot-ink)]"
                             value={dueDrafts[action.id] ?? ""}
                             onChange={(event) =>
                               setDueDrafts((prev) => ({
@@ -700,7 +700,7 @@ export function CopilotOperationalActionsPanel({
                     </div>
 
                     {timelineOpen ? (
-                      <div className="mt-3 rounded-xl border border-[var(--copilot-border)]/90 bg-white/70 px-3 py-3">
+                      <div className="mt-3 rounded-xl border border-[var(--copilot-border)]/90 bg-[var(--copilot-card-bg)]/70 px-3 py-3">
                         {timelineLoading ? (
                           <p className="text-xs text-[var(--copilot-ink-muted)]">
                             Cargando historial…

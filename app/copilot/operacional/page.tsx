@@ -30,7 +30,7 @@ export default function OperacionalPage() {
           <OicHealthPanel />
         </Suspense>
 
-        <CopilotCard className="border-[var(--copilot-border)] bg-white/90">
+        <CopilotCard className="border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/90">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-[var(--copilot-ink)]">Sincronizaciones</p>

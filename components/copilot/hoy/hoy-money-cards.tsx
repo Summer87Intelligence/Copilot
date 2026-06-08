@@ -267,7 +267,7 @@ function CardFooter({
 
   return (
     <p
-      className={`mt-2.5 rounded-lg bg-white/50 px-2.5 py-1.5 text-xs font-medium leading-snug ${toneClass}`}
+      className={`mt-2.5 rounded-lg bg-[var(--copilot-card-bg)]/50 px-2.5 py-1.5 text-xs font-medium leading-snug ${toneClass}`}
     >
       {prefix}
       {text}

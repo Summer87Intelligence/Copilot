@@ -24,7 +24,7 @@ export function ReportTable<T>({
 }: Props<T>) {
   if (rows.length === 0) {
     return (
-      <div className="flex items-center justify-center rounded-xl border border-[var(--copilot-border)] bg-white/60 py-10 text-sm text-[var(--copilot-ink-muted)]">
+      <div className="flex items-center justify-center rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 py-10 text-sm text-[var(--copilot-ink-muted)]">
         {emptyMessage}
       </div>
     );
@@ -49,7 +49,7 @@ export function ReportTable<T>({
           {rows.map((row, i) => (
             <tr
               key={keyExtractor(row, i)}
-              className="border-b border-[var(--copilot-border)]/60 last:border-0 hover:bg-slate-50/60"
+              className="border-b border-[var(--copilot-border)]/60 last:border-0 hover:bg-[var(--copilot-soft-bg)]/60"
             >
               {columns.map((col, j) => (
                 <td

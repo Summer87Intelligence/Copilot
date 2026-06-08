@@ -33,7 +33,7 @@ export function CurrencyExecutiveCard({ block }: { block: CurrencyExecutiveBlock
   const hasAgingDetail = block.expectedIncomeCurrent || block.expectedIncomeAtRisk;
 
   return (
-    <div className="rounded-2xl border border-[var(--copilot-border)] bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-5 shadow-sm">
       <div className="mb-1 flex items-baseline justify-between gap-2 border-b border-[var(--copilot-border)] pb-3">
         <h3 className="text-base font-bold text-[var(--copilot-ink)]">{title}</h3>
         <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">

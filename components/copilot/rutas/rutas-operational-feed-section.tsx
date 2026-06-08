@@ -186,7 +186,7 @@ function FeedQuickActions({
       {item.quickActions?.includes("open") && item.href ? (
         <Link
           href={item.href}
-          className="rounded-md border border-[var(--copilot-border)] bg-white/80 px-2 py-1 text-[11px] font-semibold text-[var(--copilot-ink)] transition hover:bg-white"
+          className="rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-2 py-1 text-[11px] font-semibold text-[var(--copilot-ink)] transition hover:bg-[var(--copilot-panel-bg)]"
         >
           Abrir detalle
         </Link>
@@ -247,7 +247,7 @@ function FeedGroupCard({
   const countBadge = groupCountBadge(group);
 
   return (
-    <CopilotCard className="border border-[var(--copilot-border)]/80 bg-white/75 px-2.5 py-2 shadow-none">
+    <CopilotCard className="border border-[var(--copilot-border)]/80 bg-[var(--copilot-card-bg)]/75 px-2.5 py-2 shadow-none">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -296,7 +296,7 @@ function FeedGroupCard({
           {group.items.map((item) => (
             <li
               key={item.id}
-              className="rounded-md border border-[var(--copilot-border)]/70 bg-white/70 px-2 py-1.5"
+              className="rounded-md border border-[var(--copilot-border)]/70 bg-[var(--copilot-card-bg)]/70 px-2 py-1.5"
             >
               <p className="text-[11px] font-semibold text-[var(--copilot-ink)]">{item.title}</p>
               {item.summary ? (
@@ -358,7 +358,7 @@ function TimelineRow({ event }: { event: OperationalTimelineItem }) {
 
 function EmptyOperationalCenter() {
   return (
-    <CopilotCard className="border border-[var(--copilot-border)]/70 bg-white/70 px-2.5 py-2 shadow-none">
+    <CopilotCard className="border border-[var(--copilot-border)]/70 bg-[var(--copilot-card-bg)]/70 px-2.5 py-2 shadow-none">
       <p className="text-[13px] font-medium text-[var(--copilot-ink)]">Sin seguimientos activos</p>
       <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">
         No hay prioridades abiertas en el centro operativo.
@@ -629,7 +629,7 @@ export function RutasOperationalFeedSection() {
           ) : null}
 
           {loading ? (
-            <CopilotCard className="border border-[var(--copilot-border)]/70 bg-white/60 px-2.5 py-1.5 shadow-none">
+            <CopilotCard className="border border-[var(--copilot-border)]/70 bg-[var(--copilot-card-bg)]/60 px-2.5 py-1.5 shadow-none">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Actividad reciente
               </p>
@@ -639,7 +639,7 @@ export function RutasOperationalFeedSection() {
               </div>
             </CopilotCard>
           ) : timelinePreview.length > 0 ? (
-            <CopilotCard className="border border-[var(--copilot-border)]/70 bg-white/60 px-2.5 py-1.5 shadow-none">
+            <CopilotCard className="border border-[var(--copilot-border)]/70 bg-[var(--copilot-card-bg)]/60 px-2.5 py-1.5 shadow-none">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Actividad reciente
               </p>

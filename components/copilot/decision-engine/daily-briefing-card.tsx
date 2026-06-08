@@ -396,7 +396,7 @@ export function DailyBriefingCard({
           type="button"
           onClick={handleBriefingRefresh}
           disabled={refreshing || queueRefreshing}
-          className="text-xs font-medium text-[var(--copilot-accent)] hover:underline disabled:opacity-50"
+          className="text-xs font-medium text-[var(--copilot-accent)] hover:underline disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
         >
           {refreshing || queueRefreshing ? "Actualizando…" : "Recalcular"}
         </button>

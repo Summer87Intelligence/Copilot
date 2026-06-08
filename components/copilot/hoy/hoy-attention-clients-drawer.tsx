@@ -32,7 +32,7 @@ export function AttentionClientsDrawer({
           <button
             type="button"
             onClick={onViewAllDebtors}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--copilot-border)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--copilot-ink)]"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-2.5 text-sm font-semibold text-[var(--copilot-ink)]"
           >
             {debtorBtn}
           </button>
@@ -51,11 +51,11 @@ export function AttentionClientsDrawer({
       </p>
 
       <div className="mb-4 grid grid-cols-2 gap-2 text-xs">
-        <div className="rounded-lg border border-[var(--copilot-border)] bg-white p-2.5">
+        <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-2.5">
           <p className="text-[var(--copilot-ink-muted)]">Casos</p>
           <p className="text-xl font-bold text-[var(--copilot-ink)]">{data.total}</p>
         </div>
-        <div className="rounded-lg border border-[var(--copilot-border)] bg-white p-2.5">
+        <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-2.5">
           <p className="text-[var(--copilot-ink-muted)]">Vencido UYU</p>
           <MoneyValue
             amount={
@@ -70,7 +70,7 @@ export function AttentionClientsDrawer({
             tone="danger"
           />
         </div>
-        <div className="rounded-lg border border-[var(--copilot-border)] bg-white p-2.5">
+        <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-2.5">
           <p className="text-[var(--copilot-ink-muted)]">Vencido USD</p>
           <MoneyValue
             amount={
@@ -85,7 +85,7 @@ export function AttentionClientsDrawer({
             tone="danger"
           />
         </div>
-        <div className="rounded-lg border border-[var(--copilot-border)] bg-white p-2.5">
+        <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-2.5">
           <p className="text-[var(--copilot-ink-muted)]">Deuda total UYU</p>
           <MoneyValue
             amount={
@@ -100,7 +100,7 @@ export function AttentionClientsDrawer({
             tone="warning"
           />
         </div>
-        <div className="col-span-2 rounded-lg border border-[var(--copilot-border)] bg-white p-2.5">
+        <div className="col-span-2 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-2.5">
           <p className="text-[var(--copilot-ink-muted)]">Deuda total USD</p>
           <MoneyValue
             amount={
@@ -119,7 +119,7 @@ export function AttentionClientsDrawer({
 
       <ul className="space-y-3">
         {data.clients.map((c) => (
-          <li key={c.company_id} className="rounded-xl border border-[var(--copilot-border)] bg-white p-3">
+          <li key={c.company_id} className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-3">
             <div className="flex items-start justify-between gap-2">
               <p className="font-medium text-[var(--copilot-ink)]">{c.name}</p>
               <Link

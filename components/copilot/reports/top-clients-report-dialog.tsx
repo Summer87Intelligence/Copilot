@@ -126,7 +126,7 @@ export function TopClientsReportDialog({ open, onClose }: Props) {
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="rounded-lg p-1 text-[var(--copilot-ink-muted)] hover:bg-black/[0.04] disabled:opacity-50"
+            className="rounded-lg p-1 text-[var(--copilot-ink-muted)] hover:bg-black/[0.04] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
             aria-label="Cerrar"
           >
             <X className="h-5 w-5" aria-hidden />
@@ -140,7 +140,7 @@ export function TopClientsReportDialog({ open, onClose }: Props) {
               <select
                 value={month}
                 onChange={(e) => setMonth(Number(e.target.value))}
-                className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-sm text-[var(--copilot-ink)]"
+                className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-1.5 text-sm text-[var(--copilot-ink)]"
               >
                 {MONTH_NAMES_ES.map((name, i) => (
                   <option key={i + 1} value={i + 1}>
@@ -154,7 +154,7 @@ export function TopClientsReportDialog({ open, onClose }: Props) {
               <select
                 value={year}
                 onChange={(e) => setYear(Number(e.target.value))}
-                className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-sm text-[var(--copilot-ink)]"
+                className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-1.5 text-sm text-[var(--copilot-ink)]"
               >
                 {yearOptions.map((y) => (
                   <option key={y} value={y}>
@@ -178,7 +178,7 @@ export function TopClientsReportDialog({ open, onClose }: Props) {
                   className={`rounded-full px-3 py-1 text-xs font-medium transition ${
                     currency === cur
                       ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]"
-                      : "bg-white/80 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-white"
+                      : "bg-[var(--copilot-card-bg)]/80 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]"
                   }`}
                 >
                   {cur === "UYU" ? "Pesos (UYU)" : "Dólares (USD)"}
@@ -200,7 +200,7 @@ export function TopClientsReportDialog({ open, onClose }: Props) {
                   className={`rounded-full px-3 py-1 text-xs font-medium transition ${
                     sortBy === opt.value
                       ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]"
-                      : "bg-white/80 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-white"
+                      : "bg-[var(--copilot-card-bg)]/80 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]"
                   }`}
                 >
                   {opt.label}
@@ -224,7 +224,7 @@ export function TopClientsReportDialog({ open, onClose }: Props) {
             type="button"
             onClick={() => void handleGenerate()}
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -255,7 +255,7 @@ export function TopClientsReportTrigger({
         onClick={() => setOpen(true)}
         className={
           className ||
-          "inline-flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-white/80 px-3 py-1.5 text-xs font-semibold text-[var(--copilot-accent)] hover:bg-white"
+          "inline-flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 py-1.5 text-xs font-semibold text-[var(--copilot-accent)] hover:bg-[var(--copilot-panel-bg)]"
         }
       >
         <FileDown className="h-3.5 w-3.5" aria-hidden />

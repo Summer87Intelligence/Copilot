@@ -116,7 +116,7 @@ export function OperationalIntelligencePanel() {
           type="button"
           onClick={() => void load(true)}
           disabled={refreshing}
-          className="inline-flex items-center gap-1 text-[10px] font-medium text-[var(--copilot-accent)] hover:underline disabled:opacity-50 shrink-0"
+          className="inline-flex items-center gap-1 text-[10px] font-medium text-[var(--copilot-accent)] hover:underline disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)] shrink-0"
         >
           <RefreshCw className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
           {refreshing ? "Actualizando…" : "Actualizar"}

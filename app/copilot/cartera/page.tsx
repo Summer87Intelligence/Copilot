@@ -49,7 +49,7 @@ export default async function CarteraPage() {
 function CarteraInitialFallback() {
   return (
     <div
-      className="rounded-2xl border border-dashed border-[var(--copilot-border)] bg-white/40 p-8 text-center"
+      className="rounded-2xl border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/40 p-8 text-center"
       aria-live="polite"
     >
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--copilot-ink-muted)]">

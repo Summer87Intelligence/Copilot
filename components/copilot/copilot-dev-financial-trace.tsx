@@ -147,23 +147,23 @@ export function CopilotDevFinancialTrace() {
         <span>
           Empresa: <strong>{data.active_company_name ?? "—"}</strong>
         </span>
-        <code className="rounded bg-white/70 px-1 dark:bg-black/25">
+        <code className="rounded bg-[var(--copilot-card-bg)]/70 px-1 dark:bg-black/25">
           workspace={data.workspace_company_id}
         </code>
         <span>usuario: {data.tenant_user_email ?? "—"}</span>
       </div>
 
       <div className="mt-1 flex flex-wrap gap-1">
-        <span className="rounded border border-cyan-400/40 bg-white/80 px-1.5 py-0.5 dark:bg-cyan-900/40">
+        <span className="rounded border border-cyan-400/40 bg-[var(--copilot-card-bg)]/80 px-1.5 py-0.5 dark:bg-cyan-900/40">
           facturas: <strong>{data.counts.invoices}</strong>
         </span>
-        <span className="rounded border border-cyan-400/40 bg-white/80 px-1.5 py-0.5 dark:bg-cyan-900/40">
+        <span className="rounded border border-cyan-400/40 bg-[var(--copilot-card-bg)]/80 px-1.5 py-0.5 dark:bg-cyan-900/40">
           recibos: <strong>{data.counts.receipts}</strong>
         </span>
-        <span className="rounded border border-cyan-400/40 bg-white/80 px-1.5 py-0.5 dark:bg-cyan-900/40">
+        <span className="rounded border border-cyan-400/40 bg-[var(--copilot-card-bg)]/80 px-1.5 py-0.5 dark:bg-cyan-900/40">
           pagos: <strong>{data.counts.payments}</strong>
         </span>
-        <span className="rounded border border-cyan-400/40 bg-white/80 px-1.5 py-0.5 dark:bg-cyan-900/40">
+        <span className="rounded border border-cyan-400/40 bg-[var(--copilot-card-bg)]/80 px-1.5 py-0.5 dark:bg-cyan-900/40">
           invoice_financials: <strong>{data.counts.invoice_financials}</strong>
         </span>
       </div>
@@ -172,7 +172,7 @@ export function CopilotDevFinancialTrace() {
         <summary className="cursor-pointer font-semibold">Facturas (top {data.limit})</summary>
         <div className="mt-1 space-y-1">
           {data.tables.invoices.map((r: FinancialTraceOk["tables"]["invoices"][number]) => (
-            <div key={r.id} className="rounded border border-cyan-500/25 bg-white/70 px-2 py-1 dark:bg-cyan-950/25">
+            <div key={r.id} className="rounded border border-cyan-500/25 bg-[var(--copilot-card-bg)]/70 px-2 py-1 dark:bg-cyan-950/25">
               {r.invoice_number} · total {money(r.total_amount)} · saldo {money(r.balance_amount)} · due {r.due_date ?? "—"} · company {r.company_id ?? "—"}
             </div>
           ))}
@@ -183,7 +183,7 @@ export function CopilotDevFinancialTrace() {
         <summary className="cursor-pointer font-semibold">Recibos (top {data.limit})</summary>
         <div className="mt-1 space-y-1">
           {data.tables.receipts.map((r: FinancialTraceOk["tables"]["receipts"][number]) => (
-            <div key={r.id} className="rounded border border-cyan-500/25 bg-white/70 px-2 py-1 dark:bg-cyan-950/25">
+            <div key={r.id} className="rounded border border-cyan-500/25 bg-[var(--copilot-card-bg)]/70 px-2 py-1 dark:bg-cyan-950/25">
               {r.receipt_number} · amount {money(r.amount)} · invoice {r.invoice_id ?? "—"} · company {r.company_id ?? "—"}
             </div>
           ))}
@@ -194,7 +194,7 @@ export function CopilotDevFinancialTrace() {
         <summary className="cursor-pointer font-semibold">Pagos (top {data.limit})</summary>
         <div className="mt-1 space-y-1">
           {data.tables.payments.map((r: FinancialTraceOk["tables"]["payments"][number]) => (
-            <div key={r.id} className="rounded border border-cyan-500/25 bg-white/70 px-2 py-1 dark:bg-cyan-950/25">
+            <div key={r.id} className="rounded border border-cyan-500/25 bg-[var(--copilot-card-bg)]/70 px-2 py-1 dark:bg-cyan-950/25">
               {r.payment_number} · amount {money(r.amount)} · invoice {r.invoice_id ?? "—"} · company {r.company_id ?? "—"} · cat {r.category ?? "—"}
             </div>
           ))}
@@ -208,7 +208,7 @@ export function CopilotDevFinancialTrace() {
             (r: FinancialTraceOk["tables"]["invoice_financials"][number], idx: number) => (
             <div
               key={`${r.invoice_id ?? "no-invoice"}-${idx}`}
-              className="rounded border border-cyan-500/25 bg-white/70 px-2 py-1 dark:bg-cyan-950/25"
+              className="rounded border border-cyan-500/25 bg-[var(--copilot-card-bg)]/70 px-2 py-1 dark:bg-cyan-950/25"
             >
               invoice {r.invoice_id ?? "—"} · total {money(r.total_amount)} · payments {money(r.payments)} · balance {money(r.balance)} · ws {r.workspace_company_id ?? "—"}
             </div>

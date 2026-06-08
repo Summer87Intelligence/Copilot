@@ -267,7 +267,7 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
         ) : null}
       </TreasuryFormField>
 
-      <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--copilot-border)] bg-white/50 px-6 py-10 text-center">
+      <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50 px-6 py-10 text-center">
         <Upload className="mb-3 h-8 w-8 text-[var(--copilot-ink-muted)]" />
         <span className="text-sm font-medium text-[var(--copilot-ink)]">
           Subí un extracto bancario
@@ -302,7 +302,7 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
         </p>
       ) : null}
 
-      <div className="rounded-xl border border-[var(--copilot-border)] bg-white/40">
+      <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/40">
         <button
           type="button"
           className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm"
@@ -392,7 +392,7 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
       </p>
 
       {summary ? (
-        <div className="space-y-2 rounded-2xl border border-[var(--copilot-border)] bg-white/50 p-3">
+        <div className="space-y-2 rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50 p-3">
           <p className="text-sm font-medium text-[var(--copilot-ink)]">
             Copilot encontró {summary.matched} coincidencias y {reviewCount} movimientos para
             revisar.
@@ -415,7 +415,7 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
       ) : null}
 
       {displayRows.length > 0 ? (
-        <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-white/50">
+        <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50">
           <table className={TESORERIA_TABLE_CLASS}>
             <thead>
               <tr>

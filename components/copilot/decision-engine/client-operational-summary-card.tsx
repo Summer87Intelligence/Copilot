@@ -389,7 +389,7 @@ export function ClientOperationalSummaryCard({
             type="button"
             disabled={ownershipLoading}
             onClick={() => onTakeOwnership?.(summary.customer_id)}
-            className="inline-flex items-center gap-1 rounded-md border border-[var(--copilot-accent)]/40 bg-[var(--copilot-accent)]/5 px-2 py-1 text-[11px] font-medium text-[var(--copilot-accent)] hover:bg-[var(--copilot-accent)]/10 disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded-md border border-[var(--copilot-accent)]/40 bg-[var(--copilot-accent)]/5 px-2 py-1 text-[11px] font-medium text-[var(--copilot-accent)] hover:bg-[var(--copilot-accent)]/10 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
             title="Atajo: T"
           >
             {ownershipLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserPlus className="h-3 w-3" />}
@@ -401,7 +401,7 @@ export function ClientOperationalSummaryCard({
             type="button"
             disabled={ownershipLoading}
             onClick={() => onReleaseOwnership?.(summary.customer_id)}
-            className="inline-flex items-center gap-1 rounded-md border border-[var(--copilot-border)] px-2 py-1 text-[11px] text-[var(--copilot-text-muted)] hover:bg-[var(--copilot-surface-alt)] disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded-md border border-[var(--copilot-border)] px-2 py-1 text-[11px] text-[var(--copilot-text-muted)] hover:bg-[var(--copilot-surface-alt)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
             title="Atajo: U"
           >
             <UserMinus className="h-3 w-3" />
@@ -413,7 +413,7 @@ export function ClientOperationalSummaryCard({
             type="button"
             disabled={ownershipLoading}
             onClick={() => onAutoAssign(summary.customer_id)}
-            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-[var(--copilot-text-muted)] hover:underline disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-[var(--copilot-text-muted)] hover:underline disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
             title="Atajo: A"
           >
             Auto-asignar
@@ -424,7 +424,7 @@ export function ClientOperationalSummaryCard({
             type="button"
             disabled={actionLoading || completed}
             onClick={() => runWorkflow(workflow.kind)}
-            className="inline-flex items-center gap-1 rounded-md bg-[var(--copilot-accent)] px-2.5 py-1 text-[11px] font-medium text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+            className="inline-flex items-center gap-1 rounded-md bg-[var(--copilot-accent)] px-2.5 py-1 text-[11px] font-medium text-white hover:opacity-90 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)] transition-opacity"
           >
             {actionLoading ? (
               <Loader2 className="h-3 w-3 animate-spin" />

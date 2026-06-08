@@ -86,7 +86,7 @@ export function CarteraPendingDrawer({
             type="button"
             onClick={onClose}
             aria-label="Cerrar"
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--copilot-border)] bg-white/70 transition hover:bg-white"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 transition hover:bg-[var(--copilot-panel-bg)]"
           >
             <X className="h-4 w-4 text-[var(--copilot-ink-muted)]" aria-hidden />
           </button>
@@ -152,7 +152,7 @@ function ClientPendingRow({
   const name = client.companyName?.trim() || client.companyId;
 
   return (
-    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/60 px-4 py-3 transition hover:border-[var(--copilot-accent)]/30 hover:bg-white">
+    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-4 py-3 transition hover:border-[var(--copilot-accent)]/30 hover:bg-[var(--copilot-panel-bg)]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-[var(--copilot-ink)]">

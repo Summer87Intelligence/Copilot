@@ -104,8 +104,8 @@ function CommandCenterRow({
       onClick={onSelect}
       className={`w-full rounded-md border px-2 py-1.5 text-left transition ${
         selected
-          ? "border-[var(--copilot-ink)]/30 bg-white shadow-sm"
-          : "border-[var(--copilot-border)]/70 bg-white/70 hover:bg-white"
+          ? "border-[var(--copilot-ink)]/30 bg-[var(--copilot-card-bg)] shadow-sm"
+          : "border-[var(--copilot-border)]/70 bg-[var(--copilot-card-bg)]/70 hover:bg-[var(--copilot-panel-bg)]"
       }`}
     >
       <div className="flex flex-wrap items-center gap-1.5">
@@ -146,7 +146,7 @@ function CommandCenterDetail({
   onResolve: () => void;
 }) {
   return (
-    <CopilotCard className="border border-[var(--copilot-border)]/80 bg-white/85 px-2.5 py-2 shadow-none">
+    <CopilotCard className="border border-[var(--copilot-border)]/80 bg-[var(--copilot-card-bg)]/85 px-2.5 py-2 shadow-none">
       <p className="text-[12px] font-semibold text-[var(--copilot-ink)]">{item.title}</p>
       <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">{item.summary}</p>
       <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
@@ -413,7 +413,7 @@ export function RutasOperationalCommandCenterSection() {
             </CopilotBadge>
           }
         />
-        <CopilotCard className="border border-[var(--copilot-border)]/70 bg-white/70 px-2.5 py-2 shadow-none">
+        <CopilotCard className="border border-[var(--copilot-border)]/70 bg-[var(--copilot-card-bg)]/70 px-2.5 py-2 shadow-none">
           <p className="text-[11px] text-[var(--copilot-ink-muted)]">{queue.emptyMessage}</p>
         </CopilotCard>
       </section>
@@ -438,7 +438,7 @@ export function RutasOperationalCommandCenterSection() {
       />
 
       {operationalAutomation?.recommendations?.length ? (
-        <CopilotCard className="border border-[var(--copilot-border)]/70 bg-white/70 px-2.5 py-2 shadow-none">
+        <CopilotCard className="border border-[var(--copilot-border)]/70 bg-[var(--copilot-card-bg)]/70 px-2.5 py-2 shadow-none">
           <p className="text-[11px] font-semibold text-[var(--copilot-ink)]">Recomendaciones automáticas</p>
           <ul className="mt-1 space-y-1">
             {operationalAutomation.recommendations.slice(0, 4).map((recommendation) => (
@@ -457,7 +457,7 @@ export function RutasOperationalCommandCenterSection() {
           <CopilotGhostButton
             key={entry.id}
             type="button"
-            className={`px-2 py-1 text-[10px] ${filter === entry.id ? "bg-white" : ""}`}
+            className={`px-2 py-1 text-[10px] ${filter === entry.id ? "bg-[var(--copilot-card-bg)]" : ""}`}
             onClick={() => setFilterPersisted(entry.id)}
           >
             {entry.label}
@@ -569,7 +569,7 @@ export function RutasOperationalCommandCenterSection() {
               }}
             />
           ) : (
-            <CopilotCard className="border border-dashed border-[var(--copilot-border)]/70 bg-white/50 px-2.5 py-2 shadow-none">
+            <CopilotCard className="border border-dashed border-[var(--copilot-border)]/70 bg-[var(--copilot-card-bg)]/50 px-2.5 py-2 shadow-none">
               <p className="text-[11px] text-[var(--copilot-ink-muted)]">
                 Seleccioná un ítem para ver contexto y acciones rápidas.
               </p>

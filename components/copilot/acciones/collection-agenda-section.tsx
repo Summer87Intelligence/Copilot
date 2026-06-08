@@ -102,7 +102,7 @@ function AgendaSummaryCard({
       : tone === "warning" && value > 0
       ? warningFinancialCardClass
       : tone === "info" && value > 0
-      ? "border-sky-200 bg-gradient-to-br from-white to-sky-50/70"
+      ? "border-sky-200 bg-gradient-to-br from-[var(--copilot-card-bg)] to-sky-50/70"
       : neutralFinancialCardClass;
   const valCls =
     tone === "danger" && value > 0
@@ -214,7 +214,7 @@ function AgendaItemCard({
                 type="button"
                 onClick={() => void handleArchive()}
                 disabled={archiving}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50 hover:bg-amber-800"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)] hover:bg-amber-800"
               >
                 {archiving ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : null}
                 {archiving ? "Cancelando…" : "Sí, cancelar"}
@@ -223,7 +223,7 @@ function AgendaItemCard({
             <button
               type="button"
               onClick={() => setConfirming(false)}
-              className="rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-white"
+              className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
             >
               No
             </button>
@@ -239,7 +239,7 @@ function AgendaItemCard({
           </Link>
           <Link
             href={`${item.href}#gestion-cobranza`}
-            className="inline-flex shrink-0 items-center rounded-lg border border-[var(--copilot-border)] bg-white/70 px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-white"
+            className="inline-flex shrink-0 items-center rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
           >
             Gestionar
           </Link>
@@ -249,7 +249,7 @@ function AgendaItemCard({
               onClick={() => setConfirming(true)}
               title="Cancelar seguimiento"
               aria-label="Cancelar seguimiento"
-              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:border-rose-200 hover:bg-rose-50/60 hover:text-rose-700"
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:border-rose-200 hover:bg-rose-50/60 hover:text-rose-700"
             >
               <X className="h-3 w-3" aria-hidden />
               Cancelar
@@ -384,7 +384,7 @@ export function CollectionAgendaSection({
                     className={`rounded-full px-3 py-1 text-xs font-medium transition ${
                       active
                         ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]"
-                        : "bg-white/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-white"
+                        : "bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]"
                     }`}
                   >
                     {f.label}

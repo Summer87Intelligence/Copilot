@@ -194,7 +194,7 @@ export function TreasuryBankReconciliationPanel({
               ]}
             />
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-white/50">
+            <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50">
               <table className={TESORERIA_TABLE_CLASS}>
                 <thead>
                   <tr>
@@ -324,7 +324,7 @@ export function TreasuryBankReconciliationPanel({
               suggestions.map((suggestion) => (
                 <li
                   key={`${suggestion.bankId}-${suggestion.manualId}`}
-                  className={`rounded-xl border border-[var(--copilot-border)] bg-white/60 p-3 text-sm ${suggestion.amountDelta > 0.01 || suggestion.dayDelta > 0 ? "border-amber-300 bg-amber-50/70" : ""}`}
+                  className={`rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 p-3 text-sm ${suggestion.amountDelta > 0.01 || suggestion.dayDelta > 0 ? "border-amber-300 bg-amber-50/70" : ""}`}
                 >
                   <p className="font-medium">Confianza {suggestion.confidence}%</p>
                   <p className="text-xs text-[var(--copilot-ink-muted)]">

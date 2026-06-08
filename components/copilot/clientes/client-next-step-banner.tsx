@@ -107,7 +107,7 @@ export function ClientNextStepBanner({
 
   return (
     <div
-      className="rounded-xl border border-[var(--copilot-border)] bg-white px-4 py-3 shadow-sm"
+      className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-3 shadow-sm"
       aria-labelledby="client-next-step-title"
     >
       <p
@@ -120,7 +120,7 @@ export function ClientNextStepBanner({
         {stepTitle}
       </p>
       {hasDebt ? (
-        <p className="mt-0.5 text-sm font-semibold tabular-nums text-amber-700">
+        <p className="mt-0.5 text-sm font-semibold tabular-nums text-[var(--copilot-badge-warning-text)]">
           {debtLine}
         </p>
       ) : null}
@@ -128,7 +128,7 @@ export function ClientNextStepBanner({
         <button
           type="button"
           onClick={onViewAccountStatement}
-          className="inline-flex items-center rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--copilot-ink)] hover:bg-slate-50 transition-colors"
+          className="inline-flex items-center rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--copilot-ink)] hover:bg-[var(--copilot-soft-bg)] transition-colors"
         >
           Ver estado
         </button>

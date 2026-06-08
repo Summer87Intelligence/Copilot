@@ -65,7 +65,7 @@ export function DataProvenanceBadge({
       {open && (
         <div
           role="tooltip"
-          className="absolute bottom-full left-0 z-50 mb-2 w-72 rounded-xl border border-[var(--copilot-border)] bg-white p-3 shadow-lg"
+          className="absolute bottom-full left-0 z-50 mb-2 w-72 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-3 shadow-lg"
         >
           <ProvenanceDetail provenance={provenance} />
         </div>

@@ -128,7 +128,7 @@ function CashPanel({
             {cashBlocks.map((b) => (
               <div
                 key={b.currency}
-                className="rounded-lg border border-[var(--copilot-border)]/80 bg-white/80 px-3 py-2 text-xs"
+                className="rounded-lg border border-[var(--copilot-border)]/80 bg-[var(--copilot-card-bg)]/80 px-3 py-2 text-xs"
               >
                 <p className="font-semibold text-[var(--copilot-ink)]">{b.currency}</p>
                 <dl className="mt-1.5 space-y-1">
@@ -174,7 +174,7 @@ function CashPanel({
             {recentManual.map((m) => (
               <li
                 key={m.id}
-                className="flex items-baseline justify-between gap-2 rounded-md bg-white/70 px-2 py-1 text-xs"
+                className="flex items-baseline justify-between gap-2 rounded-md bg-[var(--copilot-card-bg)]/70 px-2 py-1 text-xs"
               >
                 <span className="min-w-0 truncate text-[var(--copilot-ink)]">{m.concept}</span>
                 <span className="shrink-0 tabular-nums font-medium">
@@ -216,7 +216,7 @@ function PaymentsPanel({
             {withItems.map((s) => (
               <div
                 key={s.currency}
-                className="rounded-lg border border-[var(--copilot-border)]/80 bg-white/80 px-3 py-2 text-xs"
+                className="rounded-lg border border-[var(--copilot-border)]/80 bg-[var(--copilot-card-bg)]/80 px-3 py-2 text-xs"
               >
                 <p className="font-semibold text-[var(--copilot-ink)]">{s.currency}</p>
                 <ul className="mt-1.5 space-y-1">
@@ -298,7 +298,7 @@ function AfterPaymentsPanel({
               return (
                 <div
                   key={p.currency}
-                  className="rounded-lg border border-[var(--copilot-border)]/80 bg-white/80 px-3 py-2"
+                  className="rounded-lg border border-[var(--copilot-border)]/80 bg-[var(--copilot-card-bg)]/80 px-3 py-2"
                 >
                   <p className="text-xs font-semibold text-[var(--copilot-ink)]">{p.currency}</p>
                   <div className="mt-1.5 space-y-1">
@@ -387,7 +387,7 @@ function ReceivablesPanel({
                     {group.rows.map((row) => (
                       <li
                         key={row.row_id}
-                        className="flex items-baseline justify-between gap-2 rounded-md bg-white/70 px-2 py-1.5 text-xs"
+                        className="flex items-baseline justify-between gap-2 rounded-md bg-[var(--copilot-card-bg)]/70 px-2 py-1.5 text-xs"
                       >
                         <span className="min-w-0 font-medium text-[var(--copilot-ink)]">
                           {row.name}

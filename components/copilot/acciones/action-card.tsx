@@ -21,13 +21,13 @@ import {
 function priorityBadgeClass(priority: CopilotActionPriority): string {
   switch (priority) {
     case "critical":
-      return "bg-rose-100 text-rose-800 ring-1 ring-rose-200";
+      return "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)] ring-1 ring-rose-300/40";
     case "high":
-      return "bg-amber-100 text-amber-800 ring-1 ring-amber-200";
+      return "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-badge-warning-text)] ring-1 ring-amber-300/40";
     case "medium":
-      return "bg-sky-100 text-sky-800 ring-1 ring-sky-200";
+      return "bg-[var(--copilot-soft-bg)] text-[var(--copilot-text)] ring-1 ring-sky-300/30";
     default:
-      return "bg-[var(--copilot-accent-soft)] text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)]";
+      return "bg-[var(--copilot-accent-soft)] text-[var(--copilot-muted)] ring-1 ring-[var(--copilot-border)]";
   }
 }
 
@@ -47,13 +47,13 @@ function priorityLabel(priority: CopilotActionPriority): string {
 function typeBadgeClass(type: CopilotActionType): string {
   switch (type) {
     case "collection":
-      return "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200";
+      return "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-badge-success-text)] ring-1 ring-emerald-300/40";
     case "treasury":
-      return "bg-violet-50 text-violet-800 ring-1 ring-violet-200";
+      return "bg-[var(--copilot-soft-bg)] text-[var(--copilot-text)] ring-1 ring-violet-300/30";
     case "system":
-      return "bg-slate-100 text-slate-700 ring-1 ring-slate-200";
+      return "bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-muted)] ring-1 ring-[var(--copilot-border)]";
     default:
-      return "bg-indigo-50 text-indigo-800 ring-1 ring-indigo-200";
+      return "bg-[var(--copilot-soft-bg)] text-[var(--copilot-text)] ring-1 ring-indigo-300/30";
   }
 }
 
@@ -250,7 +250,7 @@ export function ActionCard({ action }: { action: CopilotAction }) {
             rel="noopener noreferrer"
             title={`WhatsApp ${action.contactPhone}`}
             aria-label={`WhatsApp ${action.contactPhone}`}
-            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-2 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-white"
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
           >
             <MessageCircle className="h-3.5 w-3.5 shrink-0 text-emerald-600" aria-hidden />
             WA
@@ -261,7 +261,7 @@ export function ActionCard({ action }: { action: CopilotAction }) {
             href={mailtoHref}
             title={action.contactEmail ?? "Email"}
             aria-label={`Email ${action.contactEmail}`}
-            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-2 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-white"
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
           >
             <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
             Email

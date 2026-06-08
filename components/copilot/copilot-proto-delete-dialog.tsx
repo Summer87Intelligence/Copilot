@@ -55,7 +55,7 @@ export function CopilotProtoDeleteDialog({
             type="button"
             disabled={loading}
             onClick={onConfirm}
-            className="rounded-xl bg-[var(--copilot-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl bg-[var(--copilot-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             {loading ? "Archivando…" : "Archivar"}
           </button>

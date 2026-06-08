@@ -9,7 +9,7 @@ const PREFIX = {
 } as const;
 
 function insightStyle(item: CockpitQuickInsight): string {
-  const base = "border bg-white/60 text-slate-700";
+  const base = "border bg-[var(--copilot-card-bg)]/60 text-slate-700";
   if (item.id === "attention") {
     return `${base} border-amber-200/50 text-amber-800`;
   }

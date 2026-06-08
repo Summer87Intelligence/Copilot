@@ -77,7 +77,7 @@ function FollowupActionButton({
     ? compact
       ? "w-full justify-center sm:w-auto"
       : "inline-flex"
-    : "rounded-lg border border-[var(--copilot-border)] bg-white/80 px-3 py-1.5 text-xs font-semibold text-[var(--copilot-ink)] transition hover:bg-white";
+    : "rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 py-1.5 text-xs font-semibold text-[var(--copilot-ink)] transition hover:bg-[var(--copilot-panel-bg)]";
 
   return (
     <div className={primary ? undefined : "inline-flex flex-col gap-1"}>
@@ -96,7 +96,7 @@ function FollowupActionButton({
           type="button"
           disabled={busy}
           onClick={() => void onClick()}
-          className={`${className} inline-flex items-center gap-1.5 disabled:opacity-60`}
+          className={`${className} inline-flex items-center gap-1.5 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]`}
         >
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
           {action.label}
@@ -162,7 +162,7 @@ export function CopilotAlertOpsActions({
       <Link
         key={action.id}
         href={action.href}
-        className="rounded-lg border border-[var(--copilot-border)] bg-white/80 px-3 py-1.5 text-xs font-semibold text-[var(--copilot-ink)] transition hover:bg-white"
+        className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 py-1.5 text-xs font-semibold text-[var(--copilot-ink)] transition hover:bg-[var(--copilot-panel-bg)]"
       >
         {action.label}
       </Link>

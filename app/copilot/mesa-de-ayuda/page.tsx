@@ -48,7 +48,7 @@ export default function CopilotMesaDeAyudaPage() {
                   className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
                     kind === id
                       ? "bg-[var(--copilot-ink)] text-white"
-                      : "bg-white/80 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)]"
+                      : "bg-[var(--copilot-card-bg)]/80 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)]"
                   }`}
                 >
                   {label}
@@ -61,7 +61,7 @@ export default function CopilotMesaDeAyudaPage() {
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="Ej.: Quiero ver plazos de cobro en Clientes"
-                className="mt-1 w-full rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm"
               />
             </label>
             <label className="mt-4 block text-sm">
@@ -71,7 +71,7 @@ export default function CopilotMesaDeAyudaPage() {
                 onChange={(e) => setBody(e.target.value)}
                 rows={5}
                 placeholder="Contanos qué pasó, qué esperabas y qué te ayudaría."
-                className="mt-1 w-full rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm"
               />
             </label>
             <div className="mt-5 flex flex-wrap gap-2">
@@ -91,7 +91,7 @@ export default function CopilotMesaDeAyudaPage() {
               {MOCK_TICKETS.map((t) => (
                 <li
                   key={t.id}
-                  className="rounded-xl border border-[var(--copilot-border)] bg-white/75 px-4 py-3"
+                  className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/75 px-4 py-3"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-xs font-mono text-[var(--copilot-ink-muted)]">

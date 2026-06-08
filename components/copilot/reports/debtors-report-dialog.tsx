@@ -80,7 +80,7 @@ function FilterPills<T extends string>({
               className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${
                 active
                   ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]"
-                  : "bg-white/80 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-white"
+                  : "bg-[var(--copilot-card-bg)]/80 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]"
               }`}
             >
               {opt.label}
@@ -201,7 +201,7 @@ export function DebtorsReportDialog({
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="rounded-lg p-1 text-[var(--copilot-ink-muted)] hover:bg-black/[0.04] disabled:opacity-50"
+            className="rounded-lg p-1 text-[var(--copilot-ink-muted)] hover:bg-black/[0.04] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
             aria-label="Cerrar"
           >
             <X className="h-5 w-5" aria-hidden />
@@ -237,7 +237,7 @@ export function DebtorsReportDialog({
                   onChange={(e) =>
                     setPartial({ minUyu: Math.max(0, Number(e.target.value) || 0) })
                   }
-                  className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-sm tabular-nums text-[var(--copilot-ink)]"
+                  className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-1.5 text-sm tabular-nums text-[var(--copilot-ink)]"
                   placeholder="0"
                 />
               </label>
@@ -251,7 +251,7 @@ export function DebtorsReportDialog({
                   onChange={(e) =>
                     setPartial({ minUsd: Math.max(0, Number(e.target.value) || 0) })
                   }
-                  className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-sm tabular-nums text-[var(--copilot-ink)]"
+                  className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-1.5 text-sm tabular-nums text-[var(--copilot-ink)]"
                   placeholder="0"
                 />
               </label>
@@ -260,21 +260,21 @@ export function DebtorsReportDialog({
               <button
                 type="button"
                 onClick={() => setPartial({ minUyu: 20000, minUsd: 0 })}
-                className="rounded-full border border-[var(--copilot-border)] bg-white/80 px-2.5 py-0.5 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-white"
+                className="rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-2.5 py-0.5 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
               >
                 UYU &gt; 20.000
               </button>
               <button
                 type="button"
                 onClick={() => setPartial({ minUyu: 0, minUsd: 1000 })}
-                className="rounded-full border border-[var(--copilot-border)] bg-white/80 px-2.5 py-0.5 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-white"
+                className="rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-2.5 py-0.5 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
               >
                 USD &gt; 1.000
               </button>
               <button
                 type="button"
                 onClick={() => setPartial({ minUyu: 0, minUsd: 0 })}
-                className="rounded-full border border-[var(--copilot-border)] bg-white/80 px-2.5 py-0.5 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-white"
+                className="rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-2.5 py-0.5 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
               >
                 Limpiar mínimos
               </button>
@@ -319,7 +319,7 @@ export function DebtorsReportDialog({
             type="button"
             onClick={() => void handleGenerate()}
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -358,7 +358,7 @@ export function DebtorsReportTrigger({
         onClick={() => setOpen(true)}
         className={
           className ||
-          "inline-flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-white/80 px-3 py-1.5 text-xs font-semibold text-[var(--copilot-accent)] hover:bg-white"
+          "inline-flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 py-1.5 text-xs font-semibold text-[var(--copilot-accent)] hover:bg-[var(--copilot-panel-bg)]"
         }
       >
         <FileDown className="h-3.5 w-3.5" aria-hidden />

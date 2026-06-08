@@ -357,14 +357,14 @@ function SummarySection({
         <button
           type="button"
           onClick={onRegenerate}
-          className="inline-flex items-center gap-1.5 self-start rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-2 text-[12px] font-semibold text-[var(--copilot-ink)] transition-colors hover:bg-[rgba(44,40,37,0.03)]"
+          className="inline-flex items-center gap-1.5 self-start rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-[12px] font-semibold text-[var(--copilot-ink)] transition-colors hover:bg-[rgba(44,40,37,0.03)]"
         >
           <RefreshCw className="h-3.5 w-3.5" aria-hidden />
           Actualizar análisis
         </button>
       </div>
 
-      <div className="rounded-3xl border border-[var(--copilot-border)] bg-white p-5 shadow-sm sm:p-6">
+      <div className="rounded-3xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-5 shadow-sm sm:p-6">
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.9fr)]">
           <div className="space-y-4">
             <div className={`flex items-start gap-3 rounded-2xl border p-4 ${cfg.surfaceCls}`}>
@@ -699,7 +699,7 @@ export function AgentesOrchestrationView() {
   return (
     <div className="space-y-10">
       {phase.kind === "idle" ? (
-        <div className="rounded-3xl border border-[var(--copilot-border)] bg-white p-8 shadow-sm">
+        <div className="rounded-3xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-8 shadow-sm">
           <div className="mx-auto max-w-2xl text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--copilot-accent)]/10">
               <Bot className="h-7 w-7 text-[var(--copilot-accent)]" aria-hidden />
@@ -724,7 +724,7 @@ export function AgentesOrchestrationView() {
       ) : null}
 
       {phase.kind === "loading" ? (
-        <div className="rounded-3xl border border-[var(--copilot-border)] bg-white px-6 py-12 shadow-sm">
+        <div className="rounded-3xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-6 py-12 shadow-sm">
           <div className="flex flex-col items-center gap-4 text-center">
             <Loader2 className="h-8 w-8 animate-spin text-[var(--copilot-accent)]" />
             <div>

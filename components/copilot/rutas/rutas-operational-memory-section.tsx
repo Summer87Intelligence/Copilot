@@ -32,7 +32,7 @@ function MemorySignalCard({ signal }: { signal: OperationalMemorySignal }) {
   const actionId = signal.relatedActionIds?.[0];
 
   return (
-    <CopilotCard className="border border-dashed border-[var(--copilot-border)]/80 bg-white/70 p-2 shadow-none">
+    <CopilotCard className="border border-dashed border-[var(--copilot-border)]/80 bg-[var(--copilot-card-bg)]/70 p-2 shadow-none">
       <div className="flex flex-wrap items-start gap-x-1.5 gap-y-0.5">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
           Arrastre

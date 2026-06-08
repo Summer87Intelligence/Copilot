@@ -72,7 +72,7 @@ export function RutasRecentActivitySection() {
           {events.map((event) => (
             <li
               key={event.id}
-              className="flex items-start gap-2.5 rounded-lg border border-[var(--copilot-border)]/50 bg-white/70 px-2.5 py-2"
+              className="flex items-start gap-2.5 rounded-lg border border-[var(--copilot-border)]/50 bg-[var(--copilot-card-bg)]/70 px-2.5 py-2"
             >
               <span
                 className={`mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full ${severityDot(event.severity)}`}

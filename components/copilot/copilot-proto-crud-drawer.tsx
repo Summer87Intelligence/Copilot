@@ -872,7 +872,7 @@ export function CopilotProtoCrudDrawer({
           ) : null}
 
           {entity === "tax_obligations" && duplicateAwaiting ? (
-            <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-[var(--copilot-border)] bg-white/80 p-3 text-sm text-[var(--copilot-ink)]">
+            <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 p-3 text-sm text-[var(--copilot-ink)]">
               <input
                 type="checkbox"
                 checked={forceDuplicate}
@@ -904,7 +904,7 @@ export function CopilotProtoCrudDrawer({
               saving ||
               (entity === "tax_obligations" && duplicateAwaiting && !forceDuplicate)
             }
-            className="rounded-xl bg-[var(--copilot-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
+            className="rounded-xl bg-[var(--copilot-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             {saving ? "Guardando…" : duplicateAwaiting ? "Confirmar y guardar" : "Guardar"}
           </button>
@@ -932,7 +932,7 @@ function entityLabel(e: ProtoCrudEntity): string {
 }
 
 function fieldClass() {
-  return "mt-1 w-full rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-2 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]";
+  return "mt-1 w-full rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]";
 }
 
 function labelClass() {

@@ -23,7 +23,7 @@ export function RutasAdvancedDetailsSection({ children }: { children: ReactNode 
   };
 
   return (
-    <section className="rounded-xl border border-[var(--copilot-border)]/60 bg-white/40">
+    <section className="rounded-xl border border-[var(--copilot-border)]/60 bg-[var(--copilot-card-bg)]/40">
       <button
         type="button"
         className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left"

@@ -70,7 +70,7 @@ export function HealthIndicator({
     <Link
       href={href}
       scroll={false}
-      className="flex max-w-full items-center gap-2.5 rounded-full border border-[var(--copilot-border)] bg-white/90 px-3 py-1.5 text-left shadow-sm ring-1 ring-[rgba(44,40,37,0.06)] transition-colors duration-200 hover:bg-white hover:ring-[rgba(31,107,74,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]"
+      className="flex max-w-full items-center gap-2.5 rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/90 px-3 py-1.5 text-left shadow-sm ring-1 ring-[rgba(44,40,37,0.06)] transition-colors duration-200 hover:bg-[var(--copilot-panel-bg)] hover:ring-[rgba(31,107,74,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]"
       aria-label={
         counts.critical >= 1 || counts.high >= 1
           ? `Ir a atención prioritaria. Salud: ${health.label}. ${counterLine}`

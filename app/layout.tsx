@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 };
 
 // Blocking script: sets data-theme before first paint to avoid FOUC.
-const themeScript = `(function(){try{var t=localStorage.getItem('copilot-theme');if(t==='dark'||(t!=='light'&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();`;
+const themeScript = `(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){var l=localStorage.getItem('copilot-theme');if(l==='light'||l==='dark'){t=l;localStorage.setItem('theme',l);}}document.documentElement.setAttribute('data-theme',t==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
 
 export default function RootLayout({
   children,

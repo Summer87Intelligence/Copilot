@@ -204,7 +204,7 @@ function PipelineCard({ summary }: { summary: PipelineHealthSummary }) {
   const intervalLabel = INTERVAL_LABELS[summary.pipeline_name] ?? "—";
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
+    <div className="flex flex-col gap-3 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 p-4 shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           {icon}

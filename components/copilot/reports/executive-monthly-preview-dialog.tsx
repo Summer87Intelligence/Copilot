@@ -316,7 +316,7 @@ function PreviewErrorState({ message }: { message: string }) {
 
 function PreviewEmptyState({ message }: { message: string }) {
   return (
-    <div className="flex items-center justify-center rounded-xl border border-[var(--copilot-border)] bg-white/60 py-10 text-sm text-[var(--copilot-ink-muted)]">
+    <div className="flex items-center justify-center rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 py-10 text-sm text-[var(--copilot-ink-muted)]">
       {message}
     </div>
   );

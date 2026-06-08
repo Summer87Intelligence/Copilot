@@ -139,7 +139,7 @@ export function CollectionActionDrawer({
             type="button"
             onClick={onClose}
             aria-label="Cerrar"
-            className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--copilot-border)] bg-white/70 transition hover:bg-white"
+            className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 transition hover:bg-[var(--copilot-panel-bg)]"
           >
             <X className="h-3.5 w-3.5 text-[var(--copilot-ink-muted)]" aria-hidden />
           </button>
@@ -196,7 +196,7 @@ export function CollectionActionDrawer({
                       "inline-flex h-7 items-center rounded-lg border px-3 text-[11px] font-semibold uppercase tracking-[0.08em] transition",
                       priority === p
                         ? priorityActiveCls[p]
-                        : "border-[var(--copilot-border)] bg-white/70 text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]",
+                        : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]",
                     ].join(" ")}
                   >
                     {COLLECTION_PRIORITY_LABELS[p]}
@@ -299,14 +299,14 @@ export function CollectionActionDrawer({
                 type="button"
                 onClick={onClose}
                 disabled={saving}
-                className="flex-1 rounded-xl border border-[var(--copilot-border)] bg-white/70 py-2 text-sm font-medium text-[var(--copilot-ink-muted)] transition hover:bg-white disabled:opacity-50"
+                className="flex-1 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 py-2 text-sm font-medium text-[var(--copilot-ink-muted)] transition hover:bg-[var(--copilot-panel-bg)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--copilot-ink)] py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--copilot-ink)] py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
               >
                 {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
                 {saving ? "Guardando…" : "Registrar acción"}
@@ -344,10 +344,10 @@ function Field({
 }
 
 const inputCls =
-  "w-full rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 py-2 text-sm text-[var(--copilot-ink)] shadow-sm transition placeholder:text-[var(--copilot-ink-muted)] focus:border-[var(--copilot-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/20";
+  "w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 py-2 text-sm text-[var(--copilot-ink)] shadow-sm transition placeholder:text-[var(--copilot-ink-muted)] focus:border-[var(--copilot-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/20";
 
 const selectCls =
-  "w-full rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 py-2 text-sm text-[var(--copilot-ink)] shadow-sm transition focus:border-[var(--copilot-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/20";
+  "w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 py-2 text-sm text-[var(--copilot-ink)] shadow-sm transition focus:border-[var(--copilot-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/20";
 
 const priorityActiveCls: Record<string, string> = {
   low: "border-emerald-300 bg-emerald-50 text-emerald-800",

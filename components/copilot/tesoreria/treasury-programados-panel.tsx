@@ -75,7 +75,7 @@ function NewPaymentForm({
   };
 
   return (
-    <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/90 p-4 shadow-sm">
+    <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/90 p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
         <p className="text-sm font-semibold text-[var(--copilot-ink)]">Nuevo pago programado</p>
         <button type="button" onClick={onClose} className="text-xs text-[var(--copilot-ink-muted)] hover:underline">Cerrar</button>
@@ -113,7 +113,7 @@ function NewPaymentForm({
       <p className="mt-2 text-[11px] text-[var(--copilot-ink-muted)]">
         No afecta caja hasta que lo marcás como pagado.
       </p>
-      <button type="button" onClick={() => void save()} disabled={saving} className="mt-3 w-full rounded-xl bg-[var(--copilot-accent)] py-2 text-sm font-semibold text-white disabled:opacity-50 hover:opacity-90">
+      <button type="button" onClick={() => void save()} disabled={saving} className="mt-3 w-full rounded-xl bg-[var(--copilot-accent)] py-2 text-sm font-semibold text-white disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)] hover:opacity-90">
         {saving ? "Guardando…" : "Crear pago programado"}
       </button>
     </div>
@@ -163,7 +163,7 @@ function EditPaymentRow({
   };
 
   return (
-    <div className="border-t border-[var(--copilot-border)] bg-white/60 px-3 py-3">
+    <div className="border-t border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-3 py-3">
       <div className="grid grid-cols-3 gap-2">
         <label className="col-span-2 block">
           <span className="mb-1 block text-[11px] font-medium text-[var(--copilot-ink-muted)]">Concepto</span>
@@ -180,10 +180,10 @@ function EditPaymentRow({
       </div>
       {error ? <p className="mt-1 text-xs text-rose-600">{error}</p> : null}
       <div className="mt-2 flex gap-2">
-        <button type="button" onClick={() => void save()} disabled={saving} className="rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
+        <button type="button" onClick={() => void save()} disabled={saving} className="rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]">
           {saving ? "Guardando…" : "Guardar"}
         </button>
-        <button type="button" onClick={onClose} className="rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-white">
+        <button type="button" onClick={onClose} className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]">
           Cancelar
         </button>
       </div>
@@ -232,10 +232,10 @@ function MarkPaidConfirm({
         <span className="text-[var(--copilot-ink)]">Registrar egreso en caja automáticamente</span>
       </label>
       <div className="flex gap-2">
-        <button type="button" onClick={() => void confirm()} disabled={saving} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
+        <button type="button" onClick={() => void confirm()} disabled={saving} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]">
           {saving ? "Marcando…" : "Confirmar pago"}
         </button>
-        <button type="button" onClick={onClose} className="rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-white">
+        <button type="button" onClick={onClose} className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]">
           Cancelar
         </button>
       </div>
@@ -275,10 +275,10 @@ function CancelConfirm({
         </p>
       </div>
       <div className="mt-2 flex gap-2">
-        <button type="button" onClick={() => void confirm()} disabled={saving} className="rounded-lg border border-amber-200 bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-900 disabled:opacity-50">
+        <button type="button" onClick={() => void confirm()} disabled={saving} className="rounded-lg border border-amber-200 bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-900 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]">
           {saving ? "Cancelando…" : "Confirmar cancelación"}
         </button>
-        <button type="button" onClick={onClose} className="rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-white">
+        <button type="button" onClick={onClose} className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]">
           No cancelar
         </button>
       </div>
@@ -305,7 +305,7 @@ function ProgramadoRow({
   const isPending = effective !== "paid" && effective !== "cancelled";
 
   return (
-    <li className="rounded-2xl border border-[var(--copilot-border)] bg-white/85 overflow-hidden shadow-sm">
+    <li className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 overflow-hidden shadow-sm">
       <div className="flex items-center justify-between gap-3 px-3 py-2.5">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -326,10 +326,10 @@ function ProgramadoRow({
               <button type="button" onClick={() => setMode(mode === "markPaid" ? "view" : "markPaid")} className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700 hover:bg-emerald-100">
                 Pagar
               </button>
-              <button type="button" onClick={() => setMode(mode === "edit" ? "view" : "edit")} className="rounded-lg border border-[var(--copilot-border)] bg-white/70 px-2 py-1 text-[10px] text-[var(--copilot-ink-muted)] hover:bg-white">
+              <button type="button" onClick={() => setMode(mode === "edit" ? "view" : "edit")} className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2 py-1 text-[10px] text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]">
                 Editar
               </button>
-              <button type="button" onClick={() => setMode(mode === "cancel" ? "view" : "cancel")} className="rounded-lg border border-[var(--copilot-border)] bg-white/70 px-2 py-1 text-[10px] text-[var(--copilot-ink-muted)] hover:bg-white">
+              <button type="button" onClick={() => setMode(mode === "cancel" ? "view" : "cancel")} className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2 py-1 text-[10px] text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]">
                 Cancelar
               </button>
             </div>
@@ -426,7 +426,7 @@ export function TreasuryProgramadosPanel({
       ) : (
         <>
           {pending.length === 0 && !showNew ? (
-            <div className="rounded-xl border border-[var(--copilot-border)] bg-white/60 px-4 py-6 text-center">
+            <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-4 py-6 text-center">
               <p className="text-sm font-medium text-[var(--copilot-ink)]">Sin pagos programados</p>
               <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
                 Programá pagos futuros para verlos en la proyección de caja.

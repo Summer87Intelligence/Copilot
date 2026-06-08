@@ -32,7 +32,7 @@ export function FinancialRiskSummary({ risks }: { risks: FinancialRiskIndicator[
           >
             <div className="flex items-start justify-between gap-2">
               <p className="text-xs font-semibold">{risk.label}</p>
-              <span className="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-semibold">
+              <span className="rounded-full bg-[var(--copilot-card-bg)]/70 px-2 py-0.5 text-[10px] font-semibold">
                 {STATUS_LABEL[risk.status]}
               </span>
             </div>

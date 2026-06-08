@@ -669,7 +669,7 @@ function KpiInfoButton({ tooltip, id }: { tooltip: string; id: string }) {
         <div
           id={`${id}-kpi-tip`}
           role="tooltip"
-          className="pointer-events-none absolute bottom-full left-0 z-50 mb-1.5 w-52 rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-2 text-[11px] leading-relaxed text-[var(--copilot-ink)] shadow-md"
+          className="pointer-events-none absolute bottom-full left-0 z-50 mb-1.5 w-52 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-[11px] leading-relaxed text-[var(--copilot-ink)] shadow-md"
         >
           {tooltip}
         </div>
@@ -720,7 +720,7 @@ function SummaryCardView({ card, showBadge = false }: { card: SummaryCard; showB
       className={[
         "group relative flex flex-col rounded-2xl border border-[rgba(15,23,42,0.10)] bg-[var(--copilot-card)] px-5 py-6 shadow-[0_1px_3px_rgba(15,23,42,0.07)] transition",
         isClickable
-          ? "cursor-pointer hover:border-[var(--copilot-accent)]/25 hover:bg-white/80 hover:shadow-[0_6px_16px_rgba(15,23,42,0.12)]"
+          ? "cursor-pointer hover:border-[var(--copilot-accent)]/25 hover:bg-[var(--copilot-panel-bg)] hover:shadow-[0_6px_16px_rgba(15,23,42,0.12)]"
           : "hover:shadow-[0_4px_12px_rgba(15,23,42,0.10)]",
       ].join(" ")}
     >
@@ -798,7 +798,7 @@ const SOURCE_CLASS: Record<SourceBadge, string> = {
   zeta:
     "border border-emerald-200/70 bg-emerald-50/70 text-emerald-800",
   analytics:
-    "border border-[var(--copilot-border)] bg-white/70 text-[var(--copilot-ink-muted)]",
+    "border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)]",
   recon:
     "border border-amber-200/70 bg-amber-50/60 text-amber-800",
 };
@@ -892,7 +892,7 @@ export function CreditNotesSection({
             {ncLines.map((l) => (
               <div
                 key={l.code}
-                className="rounded-xl border border-rose-200/60 bg-white/70 p-4"
+                className="rounded-xl border border-rose-200/60 bg-[var(--copilot-card-bg)]/70 p-4"
               >
                 <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-rose-700">
                   Ajustes {l.code}

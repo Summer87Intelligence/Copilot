@@ -131,7 +131,7 @@ function SectionErrorStrip({
       <button
         type="button"
         onClick={onRefresh}
-        className="flex shrink-0 items-center gap-1 rounded-lg border border-amber-200 bg-white/70 px-2.5 py-1 font-medium text-amber-700 hover:bg-white"
+        className="flex shrink-0 items-center gap-1 rounded-lg border border-amber-200 bg-[var(--copilot-card-bg)]/70 px-2.5 py-1 font-medium text-amber-700 hover:bg-[var(--copilot-panel-bg)]"
       >
         <RefreshCw className="h-3 w-3" aria-hidden />
         Reintentar
@@ -254,7 +254,7 @@ export function HoyPageView({
           <button
             type="button"
             onClick={onRefresh}
-            className="ml-auto flex items-center gap-1 rounded-lg border border-rose-200 bg-white/70 px-3 py-1.5 text-xs font-medium text-rose-700"
+            className="ml-auto flex items-center gap-1 rounded-lg border border-rose-200 bg-[var(--copilot-card-bg)]/70 px-3 py-1.5 text-xs font-medium text-rose-700"
           >
             <RefreshCw className="h-3.5 w-3.5" aria-hidden />
             Reintentar
@@ -313,7 +313,7 @@ export function HoyPageView({
                   portfolioRows={portfolioRows}
                   defaultFilters={{ status: "overdue", currency: "all", overdueDays: "all" }}
                   hint="Descargá un reporte filtrado de clientes con deuda."
-                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white/80 px-2.5 py-1 text-xs font-semibold text-[var(--copilot-ink)] hover:bg-white"
+                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-2.5 py-1 text-xs font-semibold text-[var(--copilot-ink)] hover:bg-[var(--copilot-panel-bg)]"
                 />
               ) : null}
               {pulse.attentionClients.total > 0 ? (

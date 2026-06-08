@@ -416,7 +416,7 @@ export function StrategicLearningPanel(props: Props) {
           <button
             onClick={handleDetectOutcomes}
             disabled={detectingOutcomes}
-            className="text-[10px] font-semibold px-2 py-1 rounded border border-[var(--copilot-border)] bg-[var(--copilot-surface)] hover:bg-[var(--copilot-surface-hover)] text-[var(--copilot-text)] disabled:opacity-50 flex items-center gap-1"
+            className="text-[10px] font-semibold px-2 py-1 rounded border border-[var(--copilot-border)] bg-[var(--copilot-surface)] hover:bg-[var(--copilot-surface-hover)] text-[var(--copilot-text)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)] flex items-center gap-1"
           >
             {detectingOutcomes && <RefreshCw className="h-3 w-3 animate-spin" />}
             {detectingOutcomes ? "Detectando…" : "Detectar outcomes"}

@@ -127,7 +127,7 @@ function Pill({
       className={`rounded-full border px-3 py-1 text-[12px] font-medium transition ${
         active
           ? "border-[var(--copilot-accent)] bg-[var(--copilot-accent)] text-white"
-          : "border-[var(--copilot-border)] bg-white text-[var(--copilot-ink-muted)] hover:border-[var(--copilot-accent)]/40"
+          : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] text-[var(--copilot-ink-muted)] hover:border-[var(--copilot-accent)]/40"
       }`}
     >
       {label}
@@ -192,7 +192,7 @@ function HistoryItem({
             type="button"
             onClick={() => setMode("view")}
             disabled={deleting}
-            className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50 disabled:opacity-50"
+            className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-soft-bg)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             Cancelar
           </button>
@@ -200,7 +200,7 @@ function HistoryItem({
             type="button"
             onClick={() => void handleDelete()}
             disabled={deleting}
-            className="rounded-lg bg-rose-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
+            className="rounded-lg bg-rose-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:opacity-90 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             {deleting ? "Eliminando…" : "Eliminar"}
           </button>
@@ -256,7 +256,7 @@ function HistoryItem({
             value={editNote}
             onChange={(e) => setEditNote(e.target.value)}
             rows={2}
-            className="w-full rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-[12px] text-[var(--copilot-ink)] focus:border-[var(--copilot-accent)] focus:outline-none"
+            className="w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-1.5 text-[12px] text-[var(--copilot-ink)] focus:border-[var(--copilot-accent)] focus:outline-none"
             placeholder="Nota de la gestión…"
           />
         </div>
@@ -266,7 +266,7 @@ function HistoryItem({
             type="date"
             value={editNextFollowUp}
             onChange={(e) => setEditNextFollowUp(e.target.value)}
-            className="rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-[12px] text-[var(--copilot-ink)] focus:border-[var(--copilot-accent)] focus:outline-none"
+            className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-1.5 text-[12px] text-[var(--copilot-ink)] focus:border-[var(--copilot-accent)] focus:outline-none"
           />
         </div>
         <div className="flex gap-2">
@@ -274,7 +274,7 @@ function HistoryItem({
             type="button"
             onClick={() => setMode("view")}
             disabled={saving}
-            className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50 disabled:opacity-50"
+            className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-soft-bg)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             Cancelar
           </button>
@@ -282,7 +282,7 @@ function HistoryItem({
             type="button"
             onClick={() => void handleSave()}
             disabled={saving}
-            className="rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-[11px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
+            className="rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-[11px] font-semibold text-white hover:opacity-90 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             {saving ? "Guardando…" : "Guardar"}
           </button>
@@ -464,7 +464,7 @@ export function CollectionFollowupForm({
   };
 
   return (
-    <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/70 p-5 shadow-sm">
+    <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-5 shadow-sm">
       {/* Header */}
       <div className="mb-4 flex items-center gap-2">
         <ClipboardList className="h-4 w-4 text-[var(--copilot-accent)]" aria-hidden />
@@ -587,7 +587,7 @@ export function CollectionFollowupForm({
                   type="date"
                   value={promiseDate}
                   onChange={(e) => setPromiseDate(e.target.value)}
-                  className="w-full rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-[12px] text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
+                  className="w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-1.5 text-[12px] text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
                 />
               </div>
               <div className="min-w-[100px] flex-1">
@@ -600,7 +600,7 @@ export function CollectionFollowupForm({
                   onChange={(e) => setPromiseAmount(e.target.value)}
                   placeholder="0"
                   min={0}
-                  className="w-full rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-[12px] text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
+                  className="w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-1.5 text-[12px] text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
                 />
               </div>
               <div>
@@ -610,7 +610,7 @@ export function CollectionFollowupForm({
                 <select
                   value={promiseCurrency}
                   onChange={(e) => setPromiseCurrency(e.target.value as CollectionCurrency)}
-                  className="rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-[12px] text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
+                  className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-1.5 text-[12px] text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
                 >
                   <option value="UYU">$ UYU</option>
                   <option value="USD">U$S USD</option>
@@ -630,7 +630,7 @@ export function CollectionFollowupForm({
             onChange={(e) => setNote(e.target.value.slice(0, 1000))}
             placeholder="Ej: prometió pagar el viernes, llamar nuevamente si no responde."
             rows={3}
-            className="w-full resize-none rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-2.5 text-[12.5px] text-[var(--copilot-ink)] outline-none placeholder:text-[var(--copilot-ink-muted)]/50 focus:border-[var(--copilot-accent)]"
+            className="w-full resize-none rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2.5 text-[12.5px] text-[var(--copilot-ink)] outline-none placeholder:text-[var(--copilot-ink-muted)]/50 focus:border-[var(--copilot-accent)]"
           />
           {note.length > 900 ? (
             <p className="mt-1 text-right text-[10px] text-[var(--copilot-ink-muted)]/60">
@@ -648,7 +648,7 @@ export function CollectionFollowupForm({
             type="date"
             value={nextFollowUp}
             onChange={(e) => setNextFollowUp(e.target.value)}
-            className="rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-2 text-[12px] text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
+            className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-[12px] text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
           />
         </div>
       </div>
@@ -659,7 +659,7 @@ export function CollectionFollowupForm({
           type="button"
           onClick={handleSubmit}
           disabled={saving}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-4 py-2 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-4 py-2 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
         >
           <ClipboardList className="h-3.5 w-3.5" aria-hidden />
           {saving ? "Registrando..." : "Registrar gestión"}

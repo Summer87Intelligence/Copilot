@@ -63,7 +63,7 @@ export function FinancialExecutiveHeader({
         </div>
       </div>
 
-      <div className="grid gap-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 px-4 py-3 text-xs text-[var(--copilot-ink-muted)] sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-4 py-3 text-xs text-[var(--copilot-ink-muted)] sm:grid-cols-2 lg:grid-cols-4">
         <p>
           <span className="font-semibold text-[var(--copilot-ink)]">Fecha de corte:</span>{" "}
           {ctx.asOfLabel}
@@ -94,7 +94,7 @@ export function FinancialExecutiveHeader({
 function ComparisonTable({ block, currency }: { block: PeriodComparisonBlock; currency: "UYU" | "USD" }) {
   const paired = block.layout === "paired";
   return (
-    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3">
       <p className="text-sm font-semibold text-[var(--copilot-ink)]">{block.title}</p>
       {block.subtitle ? (
         <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">{block.subtitle}</p>
@@ -570,7 +570,7 @@ export function FinancialProjection30d({
 
 function BreakdownCard({ slice }: { slice: PanoramaCurrencySlice }) {
   return (
-    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/80 p-4">
+    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 p-4">
       <p className="text-sm font-semibold">{slice.code}</p>
       <dl className="mt-2 space-y-1.5 text-xs">
         <div className="flex justify-between gap-2 font-semibold">
@@ -604,7 +604,7 @@ export function FinancialCurrencyBreakdown({
   const [open, setOpen] = useState(defaultOpen);
   if (model.currencies.length === 0) return null;
   return (
-    <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/50">
+    <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

@@ -362,7 +362,7 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
           ]}
         />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-white/50">
+        <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50">
           <table className={TESORERIA_TABLE_CLASS}>
             <thead>
               <tr>
@@ -445,7 +445,7 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
                           </button>
                           {openMenuId === row.id ? (
                             <div
-                              className="absolute right-0 top-full z-10 mt-1 min-w-[120px] rounded-lg border border-[var(--copilot-border)] bg-white py-1 shadow-lg"
+                              className="absolute right-0 top-full z-10 mt-1 min-w-[120px] rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] py-1 shadow-lg"
                               data-recurring-menu
                             >
                               <button
@@ -485,7 +485,7 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
           onMouseDown={(e) => { if (e.target === e.currentTarget && !submitting) setModal({ type: "none" }); }}
         >
-          <div className="w-full max-w-sm rounded-2xl border border-[var(--copilot-border)] bg-white p-6 shadow-xl">
+          <div className="w-full max-w-sm rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-6 shadow-xl">
             <h3 className="text-sm font-semibold text-[var(--copilot-ink)]">
               Pausar &ldquo;{modal.row.title}&rdquo;
             </h3>
@@ -522,7 +522,7 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
           onMouseDown={(e) => { if (e.target === e.currentTarget && !submitting) setModal({ type: "none" }); }}
         >
-          <div className="w-full max-w-sm rounded-2xl border border-[var(--copilot-border)] bg-white p-6 shadow-xl">
+          <div className="w-full max-w-sm rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-6 shadow-xl">
             <h3 className="text-sm font-semibold text-[var(--copilot-ink)]">
               Reactivar &ldquo;{modal.row.title}&rdquo;
             </h3>
@@ -574,7 +574,7 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
           onMouseDown={(e) => { if (e.target === e.currentTarget && !submitting) setModal({ type: "none" }); }}
         >
-          <div className="w-full max-w-sm rounded-2xl border border-[var(--copilot-border)] bg-white p-6 shadow-xl">
+          <div className="w-full max-w-sm rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-6 shadow-xl">
             <h3 className="text-sm font-semibold text-rose-700">
               Eliminar &ldquo;{modal.row.title}&rdquo;
             </h3>
@@ -604,7 +604,7 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
               <button
                 type="button"
                 disabled={submitting}
-                className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50"
+                className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
                 onClick={() => void confirmDelete(modal.row, modal.cancelPending)}
               >
                 {submitting ? "Eliminando…" : "Eliminar recurrente"}
@@ -627,7 +627,7 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
           className="fixed inset-0 z-50 flex justify-end bg-black/30"
           onMouseDown={(e) => { if (e.target === e.currentTarget) setModal({ type: "none" }); }}
         >
-          <div className="flex h-full w-full max-w-md flex-col bg-white shadow-xl">
+          <div className="flex h-full w-full max-w-md flex-col bg-[var(--copilot-card-bg)] shadow-xl">
             <div className="flex items-center justify-between border-b border-[var(--copilot-border)] px-4 py-3">
               <div>
                 <h3 className="text-sm font-semibold">
@@ -663,7 +663,7 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
           onMouseDown={(e) => { if (e.target === e.currentTarget && !saving) { setDrawerOpen(false); setEditingId(null); } }}
         >
           <form
-            className="flex h-full w-full max-w-md flex-col bg-white shadow-xl"
+            className="flex h-full w-full max-w-md flex-col bg-[var(--copilot-card-bg)] shadow-xl"
             onSubmit={(e) => void handleSubmit(e)}
           >
             <div className="border-b border-[var(--copilot-border)] px-4 py-3">
@@ -895,7 +895,7 @@ function GeneratedPaymentsList({
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="flex-1 overflow-y-auto">
         <table className="w-full text-xs">
-          <thead className="sticky top-0 bg-white">
+          <thead className="sticky top-0 bg-[var(--copilot-card-bg)]">
             <tr className="border-b border-[var(--copilot-border)]">
               <th className="px-4 py-2 text-left font-semibold text-[var(--copilot-ink-muted)]">
                 Fecha

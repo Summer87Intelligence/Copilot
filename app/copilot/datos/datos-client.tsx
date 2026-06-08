@@ -1116,7 +1116,7 @@ function CopilotDatosPageContent() {
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 placeholder={searchPlaceholder(tab.id)}
-                                className="w-full rounded-xl border border-[var(--copilot-border)] bg-white px-9 py-2.5 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
+                                className="w-full rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-9 py-2.5 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
                               />
                             </label>
                             <div className="flex flex-wrap items-center gap-3">
@@ -1127,7 +1127,7 @@ function CopilotDatosPageContent() {
                                   onChange={(e) =>
                                     setListActiveFilter(e.target.value as ProtoActiveListMode)
                                   }
-                                  className="rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm font-medium normal-case text-[var(--copilot-ink)]"
+                                  className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1.5 text-sm font-medium normal-case text-[var(--copilot-ink)]"
                                 >
                                   <option value="active">Activos</option>
                                   <option value="inactive">Inactivos</option>
@@ -1153,7 +1153,7 @@ function CopilotDatosPageContent() {
                                 onChange={(e) =>
                                   setInvoicePeriodMode(e.target.value as "month" | "range" | "all")
                                 }
-                                className="rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-1.5 text-sm text-[var(--copilot-ink)]"
                               >
                                 <option value="month">Mes y año</option>
                                 <option value="range">Rango de fechas</option>
@@ -1164,7 +1164,7 @@ function CopilotDatosPageContent() {
                                   <select
                                     value={invoiceMonth}
                                     onChange={(e) => setInvoiceMonth(Number(e.target.value))}
-                                    className="rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                    className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
                                   >
                                     {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                                       <option key={m} value={m}>
@@ -1175,7 +1175,7 @@ function CopilotDatosPageContent() {
                                   <select
                                     value={invoiceYear}
                                     onChange={(e) => setInvoiceYear(Number(e.target.value))}
-                                    className="rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                    className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
                                   >
                                     {invoiceYearOptions.map((y) => (
                                       <option key={y} value={y}>{y}</option>
@@ -1191,7 +1191,7 @@ function CopilotDatosPageContent() {
                                       type="date"
                                       value={invoiceRangeFrom}
                                       onChange={(e) => setInvoiceRangeFrom(e.target.value)}
-                                      className="rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                      className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
                                     />
                                   </label>
                                   <label className="flex items-center gap-1.5 text-xs text-[var(--copilot-ink-muted)]">
@@ -1200,7 +1200,7 @@ function CopilotDatosPageContent() {
                                       type="date"
                                       value={invoiceRangeTo}
                                       onChange={(e) => setInvoiceRangeTo(e.target.value)}
-                                      className="rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                      className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
                                     />
                                   </label>
                                 </div>
@@ -1245,7 +1245,7 @@ function CopilotDatosPageContent() {
                                 onChange={(e) =>
                                   setReceiptPeriodMode(e.target.value as "month" | "range" | "all")
                                 }
-                                className="rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-1.5 text-sm text-[var(--copilot-ink)]"
                               >
                                 <option value="month">Mes y año</option>
                                 <option value="range">Rango de fechas</option>
@@ -1261,7 +1261,7 @@ function CopilotDatosPageContent() {
                                         const v = e.target.value;
                                         setReceiptYear(v === "all" ? "all" : Number(v));
                                       }}
-                                      className="rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                      className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
                                     >
                                       <option value="all">Todos</option>
                                       {invoiceYearOptions.map((y) => (
@@ -1277,7 +1277,7 @@ function CopilotDatosPageContent() {
                                         const v = e.target.value;
                                         setReceiptMonth(v === "all" ? "all" : Number(v));
                                       }}
-                                      className="rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                      className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
                                     >
                                       <option value="all">Todos</option>
                                       {PERIOD_MONTH_OPTIONS.map((opt) => (
@@ -1295,7 +1295,7 @@ function CopilotDatosPageContent() {
                                       type="date"
                                       value={receiptRangeFrom}
                                       onChange={(e) => setReceiptRangeFrom(e.target.value)}
-                                      className="rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                      className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
                                     />
                                   </label>
                                   <label className="flex items-center gap-1.5 text-xs text-[var(--copilot-ink-muted)]">
@@ -1304,7 +1304,7 @@ function CopilotDatosPageContent() {
                                       type="date"
                                       value={receiptRangeTo}
                                       onChange={(e) => setReceiptRangeTo(e.target.value)}
-                                      className="rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                      className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
                                     />
                                   </label>
                                 </div>
@@ -1421,7 +1421,7 @@ function CopilotDatosPageContent() {
                               <select
                                 value={filterValue}
                                 onChange={(e) => setFilterValue(e.target.value)}
-                                className="rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-1.5 text-sm text-[var(--copilot-ink)]"
                               >
                                 <option value="all">Todos</option>
                                 {filterOptions.map((opt) => (

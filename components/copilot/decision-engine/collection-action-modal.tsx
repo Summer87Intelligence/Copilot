@@ -243,7 +243,7 @@ export function CollectionActionModal({ client, onClose, onSuccess, defaultValue
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--copilot-accent)] text-white text-sm font-medium hover:opacity-90 disabled:opacity-60 transition-opacity"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--copilot-accent)] text-white text-sm font-medium hover:opacity-90 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)] transition-opacity"
             >
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               Guardar acción

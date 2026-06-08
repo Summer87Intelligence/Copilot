@@ -36,7 +36,7 @@ function severityTone(
 
 function NarrativeCard({ narrative }: { narrative: OperationalNarrative }) {
   return (
-    <CopilotCard className="border border-[rgba(31,107,74,0.12)] bg-[rgba(255,255,255,0.92)] p-2 shadow-none">
+    <CopilotCard className="border border-[rgba(31,107,74,0.12)] bg-[var(--copilot-table-header-bg)] p-2 shadow-none">
       <div className="flex flex-wrap items-start gap-x-1.5 gap-y-0.5">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
           Lectura

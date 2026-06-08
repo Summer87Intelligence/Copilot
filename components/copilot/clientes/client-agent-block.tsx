@@ -71,7 +71,7 @@ const TAB_ICON: Record<string, typeof User> = {
 
 function InsightPill({ insight }: { insight: ClientAgentInsight }) {
   return (
-    <div className="flex items-start gap-2 rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-2.5">
+    <div className="flex items-start gap-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2.5">
       <span
         className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${SEVERITY_DOT[insight.severity]}`}
       />
@@ -238,7 +238,7 @@ export function ClientAgentBlock({
   }, [data, latestAction]);
 
   return (
-    <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/60 p-5 shadow-sm">
+    <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 p-5 shadow-sm">
       <AgentResults
         brief={brief}
         onNavigateTab={onNavigateTab}

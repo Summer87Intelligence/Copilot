@@ -140,7 +140,7 @@ function NotifItem({
   return (
     <div
       role="article"
-      className={`cursor-default px-4 py-3.5 transition-colors hover:bg-slate-50 ${
+      className={`cursor-default px-4 py-3.5 transition-colors hover:bg-[var(--copilot-soft-bg)] ${
         unread ? "bg-[rgba(31,107,74,0.035)]" : ""
       }`}
       onClick={() => { if (unread) onRead(n.id); }}

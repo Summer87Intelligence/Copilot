@@ -22,7 +22,7 @@ export function CopilotCollapsiblePanel({
 
   return (
     <div
-      className={`overflow-hidden rounded-2xl border border-[var(--copilot-border)] bg-[rgba(255,255,255,0.55)] ${className}`}
+      className={`overflow-hidden rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] ${className}`}
     >
       <button
         type="button"

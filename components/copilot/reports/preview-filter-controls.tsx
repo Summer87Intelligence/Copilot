@@ -10,13 +10,13 @@ function nowYear() {
 }
 
 const selectClass =
-  "mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-sm text-[var(--copilot-ink)]";
+  "mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-1.5 text-sm text-[var(--copilot-ink)]";
 
 const pillBase = "rounded-full px-3 py-1 text-xs font-medium transition";
 const pillActive =
   "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]";
 const pillIdle =
-  "bg-white/80 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-white";
+  "bg-[var(--copilot-card-bg)]/80 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]";
 
 type Props = {
   year: number;

@@ -19,7 +19,7 @@ export const copilotInteractiveTextGroupAffordance =
   "transition-colors duration-200 group-hover:text-[var(--copilot-accent)] decoration-dotted underline-offset-[3px] group-hover:underline";
 
 const baseButtonClass =
-  "inline-flex max-w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-md border-0 bg-transparent p-0 text-left font-medium text-[var(--copilot-accent)]/95 transition-colors duration-200 hover:text-[var(--copilot-accent)] hover:underline hover:decoration-dotted hover:underline-offset-[3px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)] disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex max-w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-md border-0 bg-transparent p-0 text-left font-medium text-[var(--copilot-accent)]/95 transition-colors duration-200 hover:text-[var(--copilot-accent)] hover:underline hover:decoration-dotted hover:underline-offset-[3px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)] disabled:cursor-not-allowed disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]";
 
 export function CopilotInteractiveText({
   children,

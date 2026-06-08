@@ -22,7 +22,7 @@ export function CopilotOperationalEmptyState({
   footnote,
 }: Props) {
   return (
-    <CopilotCard className="border-dashed border-[var(--copilot-border)] bg-white/70">
+    <CopilotCard className="border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">{title}</h2>
@@ -38,7 +38,7 @@ export function CopilotOperationalEmptyState({
         {metrics.map((metric) => (
           <div
             key={metric.label}
-            className="rounded-xl border border-[var(--copilot-border)] bg-white/80 px-3 py-2"
+            className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 py-2"
           >
             <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
               {metric.label}

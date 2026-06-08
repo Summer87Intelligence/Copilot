@@ -28,7 +28,7 @@ export function FinancialPriorityAlerts({ alerts }: { alerts: FinancialPriorityA
             Señales determinísticas sobre concentración, aging y cobranza.
           </p>
         </div>
-        <span className="rounded-full border border-[var(--copilot-border)] bg-white/70 px-2.5 py-0.5 text-[10px] font-medium text-[var(--copilot-ink-muted)]">
+        <span className="rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2.5 py-0.5 text-[10px] font-medium text-[var(--copilot-ink-muted)]">
           {alerts.length} señal(es)
         </span>
       </div>
@@ -44,7 +44,7 @@ export function FinancialPriorityAlerts({ alerts }: { alerts: FinancialPriorityA
                 <p className="text-xs font-semibold">{alert.title}</p>
                 <p className="mt-1 text-[11px] leading-snug opacity-85">{alert.description}</p>
               </div>
-              <span className="shrink-0 rounded-full bg-white/65 px-2 py-0.5 text-[10px] font-semibold">
+              <span className="shrink-0 rounded-full bg-[var(--copilot-card-bg)]/65 px-2 py-0.5 text-[10px] font-semibold">
                 {SEVERITY_LABEL[alert.severity]}
               </span>
             </div>

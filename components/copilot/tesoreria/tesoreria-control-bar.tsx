@@ -7,7 +7,7 @@ import type { TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
 export type TesoreriaCurrencyFilter = TreasuryCurrencyCode | "all";
 
 const inputClass =
-  "h-9 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 text-sm text-[var(--copilot-ink)] shadow-sm transition focus:border-[var(--copilot-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/20 disabled:opacity-50";
+  "h-9 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 text-sm text-[var(--copilot-ink)] shadow-sm transition focus:border-[var(--copilot-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/20 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]";
 
 type Props = {
   draftStart: string;
@@ -76,7 +76,7 @@ export function TesoreriaControlBar({
           type="button"
           onClick={onConfirmDraft}
           disabled={!hasPendingChanges || draftInvalid}
-          className="inline-flex h-9 items-center gap-2 rounded-lg bg-[var(--copilot-accent)] px-4 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
+          className="inline-flex h-9 items-center gap-2 rounded-lg bg-[var(--copilot-accent)] px-4 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
         >
           <Check className="h-4 w-4" />
           Confirmar
@@ -85,7 +85,7 @@ export function TesoreriaControlBar({
           type="button"
           onClick={onRefresh}
           disabled={!canRefresh || loading}
-          className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-4 text-sm font-medium text-[var(--copilot-ink)] shadow-sm transition hover:bg-white disabled:opacity-50"
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-4 text-sm font-medium text-[var(--copilot-ink)] shadow-sm transition hover:bg-[var(--copilot-panel-bg)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
           Refrescar

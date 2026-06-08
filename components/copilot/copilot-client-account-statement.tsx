@@ -159,7 +159,7 @@ export function CopilotClientAccountStatement({
   return (
     <section
       aria-label="Estado de cuenta del cliente"
-      className="space-y-3 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3"
+      className="space-y-3 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3"
     >
       <ReportHeader
         currency={currency}
@@ -265,7 +265,7 @@ function ReportHeader({
   const clientLine = [clientCode, clientName].filter(Boolean).join(" · ");
   const balanceText = formatStatementAmount(finalBalance, currency);
   return (
-    <header className="space-y-1 rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2">
+    <header className="space-y-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
           Estado de cuenta
@@ -406,7 +406,7 @@ function ContextHint({
   return (
     <div
       role="note"
-      className="space-y-1 rounded-md border border-[var(--copilot-border)] bg-white px-2.5 py-1.5"
+      className="space-y-1 rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-1.5"
     >
       <ViewModeBadge view={view} />
       <p className="text-[11px] leading-snug text-[var(--copilot-ink-muted)]">
@@ -436,7 +436,7 @@ function CompareWithPdfHint({ onCompare }: { onCompare: () => void }) {
       <button
         type="button"
         onClick={onCompare}
-        className="rounded-md border border-indigo-300 bg-white px-2 py-1 text-[11px] font-semibold text-indigo-900 transition hover:bg-indigo-100"
+        className="rounded-md border border-indigo-300 bg-[var(--copilot-card-bg)] px-2 py-1 text-[11px] font-semibold text-indigo-900 transition hover:bg-indigo-100"
       >
         Comparar contra PDF Zeta
       </button>
@@ -472,7 +472,7 @@ function AfterCutoffPanel({
   return (
     <section
       aria-label="Movimientos posteriores al corte"
-      className="overflow-hidden rounded-lg border border-[var(--copilot-border)] bg-white"
+      className="overflow-hidden rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]"
     >
       <button
         type="button"
@@ -581,7 +581,7 @@ function CurrencyPill({ currency }: { currency: AccountStatementCurrency }) {
   return (
     <span
       aria-label={`Moneda activa: ${CURRENCY_LABEL[currency]}`}
-      className="inline-flex items-center gap-1 rounded-full border border-[var(--copilot-border)] bg-white px-2 py-0.5 text-[10px] font-medium text-[var(--copilot-ink-muted)]"
+      className="inline-flex items-center gap-1 rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-0.5 text-[10px] font-medium text-[var(--copilot-ink-muted)]"
     >
       <span aria-hidden="true" className="font-semibold text-[var(--copilot-ink)]">
         {CURRENCY_SYMBOL[currency]}
@@ -606,7 +606,7 @@ function ViewToggle({
     <div
       role="tablist"
       aria-label="Vista del estado de cuenta"
-      className="inline-flex rounded-lg border border-[var(--copilot-border)] bg-white p-0.5 text-[11px]"
+      className="inline-flex rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-0.5 text-[11px]"
     >
       {tabs.map((t) => {
         const active = t.id === current;
@@ -666,7 +666,7 @@ function CurrencyTabs({
     <div
       role="tablist"
       aria-label="Moneda del estado de cuenta"
-      className="inline-flex rounded-lg border border-[var(--copilot-border)] bg-white p-0.5 text-xs"
+      className="inline-flex rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-0.5 text-xs"
     >
       {tabs.map((t) => {
         const active = t.id === current;
@@ -752,7 +752,7 @@ function ReportFooter({
   const sym = CURRENCY_SYMBOL[cur];
   const balance = formatStatementAmount(block.summary.finalBalance, cur);
   return (
-    <div className="flex flex-wrap items-baseline justify-end gap-2 rounded-md border border-dashed border-[var(--copilot-border)] bg-white px-3 py-2 text-[11px]">
+    <div className="flex flex-wrap items-baseline justify-end gap-2 rounded-md border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-[11px]">
       <span className="font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
         SALDO CONTABLE {sym}
         {periodEndLabel ? (
@@ -783,7 +783,7 @@ function Summary({ block }: { block: AccountStatementByCurrency }) {
       {items.map((it) => (
         <div
           key={it.label}
-          className="rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-2"
+          className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-2"
         >
           <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
             {it.label}
@@ -805,7 +805,7 @@ function Summary({ block }: { block: AccountStatementByCurrency }) {
         Saldo contable acumulado = Total debe − Total haber.
       </p>
       {!summary.hasCreditNoteSupport ? (
-        <p className="sm:col-span-3 rounded-lg border border-dashed border-[var(--copilot-border)] bg-white px-2.5 py-1.5 text-[11px] italic text-[var(--copilot-ink-muted)]">
+        <p className="sm:col-span-3 rounded-lg border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-1.5 text-[11px] italic text-[var(--copilot-ink-muted)]">
           Ajustes no detectados en la metadata sincronizada; no se inventan movimientos.
         </p>
       ) : null}
@@ -817,7 +817,7 @@ function EmptyState({ currency }: { currency: AccountStatementCurrency }) {
   return (
     <p
       role="status"
-      className="rounded-lg border border-dashed border-[var(--copilot-border)] bg-white px-3 py-6 text-center text-xs text-[var(--copilot-ink-muted)]"
+      className="rounded-lg border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-6 text-center text-xs text-[var(--copilot-ink-muted)]"
     >
       Sin movimientos en {CURRENCY_LABEL[currency].toLowerCase()} para este cliente.
     </p>
@@ -829,7 +829,7 @@ function MovementsTable({ block }: { block: AccountStatementByCurrency }) {
   const visible = useMemo(() => block.movements.slice().reverse(), [block.movements]);
   const cur = block.currency;
   return (
-    <div className="overflow-hidden rounded-lg border border-[var(--copilot-border)] bg-white">
+    <div className="overflow-hidden rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]">
       <div className="max-h-[320px] overflow-x-auto overflow-y-auto">
         <table className="min-w-full border-collapse text-xs">
           <thead className="sticky top-0 z-10 bg-[var(--copilot-card)]">
@@ -979,7 +979,7 @@ function ByInvoiceView({ block }: { block: InvoiceFocusedByCurrency }) {
       {invoices.length === 0 ? (
         <p
           role="status"
-          className="rounded-lg border border-dashed border-[var(--copilot-border)] bg-white px-3 py-6 text-center text-xs text-[var(--copilot-ink-muted)]"
+          className="rounded-lg border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-6 text-center text-xs text-[var(--copilot-ink-muted)]"
         >
           Sin facturas en {CURRENCY_LABEL[currency].toLowerCase()} para este cliente.
         </p>
@@ -1030,7 +1030,7 @@ function ByInvoiceSummary({ block }: { block: InvoiceFocusedByCurrency }) {
         {amountItems.map((it) => (
           <div
             key={it.label}
-            className="rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-2"
+            className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-2"
           >
             <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
               {it.label}
@@ -1075,7 +1075,7 @@ function ByInvoiceSummary({ block }: { block: InvoiceFocusedByCurrency }) {
 function InvoicesTable({ block }: { block: InvoiceFocusedByCurrency }) {
   const cur = block.currency;
   return (
-    <div className="overflow-hidden rounded-lg border border-[var(--copilot-border)] bg-white">
+    <div className="overflow-hidden rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]">
       <div className="max-h-[280px] overflow-x-auto overflow-y-auto">
         <table className="min-w-full border-collapse text-xs">
           <thead className="sticky top-0 z-10 bg-[var(--copilot-card)]">
@@ -1165,7 +1165,7 @@ function UnmatchedReceiptsPanel({ block }: { block: InvoiceFocusedByCurrency }) 
   const cur = block.currency;
   if (block.unmatchedReceipts.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-[var(--copilot-border)] bg-white px-2.5 py-2 text-[11px] text-[var(--copilot-ink-muted)]">
+      <div className="rounded-lg border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-2 text-[11px] text-[var(--copilot-ink-muted)]">
         Recibos sincronizados sin imputación detectable:{" "}
         <span className="italic">
           ninguno en {CURRENCY_LABEL[cur].toLowerCase()}.
@@ -1174,7 +1174,7 @@ function UnmatchedReceiptsPanel({ block }: { block: InvoiceFocusedByCurrency }) 
     );
   }
   return (
-    <div className="overflow-hidden rounded-lg border border-[var(--copilot-border)] bg-white">
+    <div className="overflow-hidden rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]">
       <div className="border-b border-[var(--copilot-border)] bg-[var(--copilot-card)] px-2.5 py-1.5">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
           Recibos sincronizados sin imputación detectable

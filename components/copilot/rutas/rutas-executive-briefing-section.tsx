@@ -53,7 +53,7 @@ function DoFirstItem({ item }: { item: ExecutiveBriefing["doFirst"][number] }) {
   );
 
   return (
-    <li className="flex items-start gap-2 rounded-lg border border-[var(--copilot-border)]/60 bg-white/80 px-2.5 py-2">
+    <li className="flex items-start gap-2 rounded-lg border border-[var(--copilot-border)]/60 bg-[var(--copilot-card-bg)]/80 px-2.5 py-2">
       <span className="mt-px text-[10px] font-bold text-[var(--copilot-accent)]">→</span>
       <div className="min-w-0 flex-1">{inner}</div>
       {item.href ? (
@@ -102,7 +102,7 @@ function BriefingCard({ briefing }: { briefing: ExecutiveBriefing }) {
           ? "border-rose-200/80 bg-rose-50/30"
           : briefing.status === "warning"
             ? "border-amber-200/70 bg-amber-50/20"
-            : "border-[var(--copilot-border)] bg-white/95"
+            : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/95"
       }
     >
       <div className="flex items-start gap-2">

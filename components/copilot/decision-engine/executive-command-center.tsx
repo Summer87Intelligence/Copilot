@@ -303,7 +303,7 @@ export function ExecutiveCommandCenter({ timelineEvents = [], onGoToQueue }: Pro
               type="button"
               onClick={() => void fetchBrief(true)}
               disabled={loading}
-              className="text-[var(--copilot-text-muted)] hover:text-[var(--copilot-text)] disabled:opacity-40 transition-colors"
+              className="text-[var(--copilot-text-muted)] hover:text-[var(--copilot-text)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)] transition-colors"
               title="Recalcular"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />

@@ -46,13 +46,13 @@ const STATUS_STYLES: Record<AgendaStatus, { border: string; bg: string; badge: s
   },
   normal: {
     border: "border-[var(--copilot-border)]",
-    bg: "bg-white/85",
+    bg: "bg-[var(--copilot-card-bg)]/85",
     badge: "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]",
     badgeText: "Al día",
   },
   empty: {
     border: "border-[var(--copilot-border)]",
-    bg: "bg-white/70",
+    bg: "bg-[var(--copilot-card-bg)]/70",
     badge: "",
     badgeText: "",
   },
@@ -115,7 +115,7 @@ export function CollectionAgendaHoyCard() {
 
   if (loading) {
     return (
-      <div className="animate-pulse rounded-2xl border border-[var(--copilot-border)] bg-white/60 px-4 py-3 h-20" />
+      <div className="animate-pulse rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-4 py-3 h-20" />
     );
   }
 

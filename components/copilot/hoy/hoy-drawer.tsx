@@ -30,7 +30,7 @@ export function HoyDrawer({
         aria-hidden
       />
       <aside
-        className="fixed inset-y-0 right-0 z-40 flex w-full max-w-[420px] flex-col border-l border-[var(--copilot-border)] bg-white shadow-xl sm:w-[420px]"
+        className="fixed inset-y-0 right-0 z-40 flex w-full max-w-[420px] flex-col border-l border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] shadow-xl sm:w-[420px]"
         aria-label={title}
       >
         <div className="flex items-center justify-between border-b border-[var(--copilot-border)] px-5 py-4">

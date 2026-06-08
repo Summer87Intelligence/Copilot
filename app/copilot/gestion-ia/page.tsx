@@ -114,7 +114,7 @@ export default function CopilotGestionIaPage() {
       />
 
       <div className="flex-1 space-y-8 overflow-auto px-6 py-8">
-        <CopilotCard className="border-[var(--copilot-border)] bg-white/85">
+        <CopilotCard className="border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85">
           <p className="text-sm text-[var(--copilot-ink-muted)]">
             Para el resumen del día y el seguimiento operativo, usá{" "}
             <CopilotHoyReturnLink className="inline font-semibold" />. Esta pantalla conserva el
@@ -222,7 +222,7 @@ export default function CopilotGestionIaPage() {
             </div>
           ) : null}
           {briefing ? (
-            <div className="mt-4 space-y-3 rounded-2xl border border-[var(--copilot-border)] bg-white/80 px-4 py-4">
+            <div className="mt-4 space-y-3 rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-4 py-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Cobertura:{" "}
                 <span className="text-[var(--copilot-ink)]">

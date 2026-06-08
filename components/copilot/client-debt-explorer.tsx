@@ -99,14 +99,14 @@ const RISK_BADGE: Record<RiskLevel, { cls: string; label: string }> = {
   medium: { cls: "border-orange-200 bg-orange-50 text-orange-800", label: "Medio" },
   low:    { cls: "border-amber-200 bg-amber-50 text-amber-800",     label: "Bajo" },
   ok:     { cls: "border-emerald-200 bg-emerald-50 text-emerald-800", label: "Mínimo" },
-  none:   { cls: "border-[var(--copilot-border)] bg-white/60 text-[var(--copilot-ink-muted)]", label: "—" },
+  none:   { cls: "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 text-[var(--copilot-ink-muted)]", label: "—" },
 };
 
 const STALE_BADGE: Record<StalenessStatus, { cls: string; label: string }> = {
   ok:           { cls: "border-emerald-200 bg-emerald-50 text-emerald-800",   label: "Al día" },
   warning:      { cls: "border-amber-200 bg-amber-50 text-amber-800",         label: "Alerta" },
   critical:     { cls: "border-rose-200 bg-rose-50 text-rose-800",             label: "Crítico" },
-  never_synced: { cls: "border-[var(--copilot-border)] bg-white/60 text-[var(--copilot-ink-muted)]", label: "—" },
+  never_synced: { cls: "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 text-[var(--copilot-ink-muted)]", label: "—" },
 };
 
 const FILTER_CHIPS: Array<{ id: FilterChip; label: string }> = [
@@ -520,7 +520,7 @@ export function ClientDebtExplorer({
             <h3 className="text-base font-semibold tracking-tight text-[var(--copilot-ink)]">
               Explorador de deuda
               {currencyFilter ? (
-                <span className="ml-2 inline-flex items-center rounded-md border border-[var(--copilot-border)] bg-white/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-ink)] align-middle">
+                <span className="ml-2 inline-flex items-center rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-ink)] align-middle">
                   {currencyFilter}
                 </span>
               ) : null}
@@ -545,7 +545,7 @@ export function ClientDebtExplorer({
             value={rawSearch}
             onChange={handleSearchChange}
             aria-label="Buscar cliente"
-            className="h-9 w-52 rounded-lg border border-[var(--copilot-border)] bg-white/70 pl-8 pr-3 text-sm text-[var(--copilot-ink)] shadow-sm transition placeholder:text-[var(--copilot-ink-muted)] focus:border-[var(--copilot-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/20"
+            className="h-9 w-52 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 pl-8 pr-3 text-sm text-[var(--copilot-ink)] shadow-sm transition placeholder:text-[var(--copilot-ink-muted)] focus:border-[var(--copilot-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/20"
           />
         </div>
       </header>
@@ -561,7 +561,7 @@ export function ClientDebtExplorer({
               "inline-flex h-7 items-center rounded-lg border px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] transition",
               filterChip === chip.id
                 ? "border-[var(--copilot-ink)] bg-[var(--copilot-ink)] text-white"
-                : "border-[var(--copilot-border)] bg-white/70 text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]",
+                : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]",
             ].join(" ")}
           >
             {chip.label}
@@ -577,7 +577,7 @@ export function ClientDebtExplorer({
                 "inline-flex h-7 items-center rounded-lg border px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] transition",
                 showWithoutDebt
                   ? "border-[var(--copilot-ink)] bg-[var(--copilot-ink)] text-white"
-                  : "border-[var(--copilot-border)] bg-white/70 text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]",
+                  : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]",
               ].join(" ")}
             >
               {showWithoutDebt ? "Ocultar sin deuda" : `Sin deuda (${withoutDebtCount})`}
@@ -697,7 +697,7 @@ export function ClientDebtExplorer({
                 "inline-flex h-6 w-8 items-center justify-center rounded-md border text-[11px] font-semibold transition",
                 pageSize === ps
                   ? "border-[var(--copilot-ink)] bg-[var(--copilot-ink)] text-white"
-                  : "border-[var(--copilot-border)] bg-white/70 hover:text-[var(--copilot-ink)]",
+                  : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 hover:text-[var(--copilot-ink)]",
               ].join(" ")}
             >
               {ps}
@@ -714,7 +714,7 @@ export function ClientDebtExplorer({
             type="button"
             disabled={clampedPage === 0}
             onClick={() => setPage((p) => Math.max(0, p - 1))}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--copilot-border)] bg-white/70 transition hover:bg-white disabled:opacity-40"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 transition hover:bg-[var(--copilot-panel-bg)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
             aria-label="Página anterior"
           >
             <ChevronUp className="h-3.5 w-3.5 rotate-[-90deg]" aria-hidden />
@@ -723,7 +723,7 @@ export function ClientDebtExplorer({
             type="button"
             disabled={clampedPage >= totalPages - 1}
             onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--copilot-border)] bg-white/70 transition hover:bg-white disabled:opacity-40"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 transition hover:bg-[var(--copilot-panel-bg)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
             aria-label="Página siguiente"
           >
             <ChevronDown className="h-3.5 w-3.5 rotate-[-90deg]" aria-hidden />
@@ -925,7 +925,7 @@ function ClientRow({
               type="button"
               onClick={(e) => { e.stopPropagation(); onOpenDrawer(); }}
               aria-label={`Registrar acción para ${client.companyName ?? client.companyId}`}
-              className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-[var(--copilot-border)] bg-white/70 transition hover:bg-white hover:border-[var(--copilot-accent)]"
+              className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 transition hover:bg-[var(--copilot-panel-bg)] hover:border-[var(--copilot-accent)]"
             >
               <Plus className="h-2.5 w-2.5 text-[var(--copilot-ink-muted)]" aria-hidden />
             </button>
@@ -939,7 +939,7 @@ function ClientRow({
             onClick={onToggle}
             aria-expanded={expanded}
             aria-label={`${expanded ? "Colapsar" : "Expandir"} ${client.companyName ?? client.companyId}`}
-            className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-[var(--copilot-border)] bg-white/70 transition hover:bg-white"
+            className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 transition hover:bg-[var(--copilot-panel-bg)]"
           >
             {expanded ? (
               <ChevronDown className="h-3 w-3 text-[var(--copilot-ink-muted)]" aria-hidden />
@@ -989,7 +989,7 @@ function ExpandedRow({
       initial={reduce ? false : { opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, ease: "easeOut" }}
-      className="rounded-xl border border-[var(--copilot-border)] bg-white/60 p-4"
+      className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 p-4"
     >
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Saldos pendientes */}
@@ -1076,7 +1076,7 @@ function ExpandedRow({
             {actions.slice(0, 5).map((action) => (
               <li
                 key={action.id}
-                className="flex items-start gap-3 rounded-lg border border-[var(--copilot-border)] bg-white/50 px-3 py-2"
+                className="flex items-start gap-3 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50 px-3 py-2"
               >
                 <span
                   className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold ${priorityDotCls[action.priority]}`}
@@ -1132,13 +1132,13 @@ function CollectionStatusBadge({ action }: { action: CollectionAction }) {
 }
 
 const collectionStatusCls: Record<string, string> = {
-  pending_review:   "border-[var(--copilot-border)] bg-white/60 text-[var(--copilot-ink-muted)]",
+  pending_review:   "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 text-[var(--copilot-ink-muted)]",
   contacted:        "border-blue-200 bg-blue-50 text-blue-800",
   promised_payment: "border-amber-200 bg-amber-50 text-amber-800",
   paid:             "border-emerald-200 bg-emerald-50 text-emerald-800",
   disputed:         "border-orange-200 bg-orange-50 text-orange-800",
   escalated:        "border-rose-200 bg-rose-50 text-rose-800",
-  paused:           "border-[var(--copilot-border)] bg-white/60 text-[var(--copilot-ink-muted)]",
+  paused:           "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 text-[var(--copilot-ink-muted)]",
 };
 
 const priorityDotCls: Record<string, string> = {

@@ -194,7 +194,7 @@ export function TreasuryAccountsPanel({ workspace, embedded = false }: Props) {
           paragraphs={["Creá cuentas de caja o banco para asociar movimientos y calcular la posición."]}
         />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-white/50">
+        <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50">
           <table className={TESORERIA_TABLE_CLASS}>
             <thead>
               <tr>

@@ -38,11 +38,11 @@ export function FinancialActionPriorities({
       </div>
 
       {rows.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-[var(--copilot-border)] bg-white/70 px-3 py-2.5 text-sm text-[var(--copilot-ink-muted)]">
+        <p className="rounded-xl border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 py-2.5 text-sm text-[var(--copilot-ink-muted)]">
           No hay clientes con saldo pendiente para priorizar hoy.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-[var(--copilot-border)] bg-white/90">
+        <div className="overflow-hidden rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/90">
           <table className="w-full text-left text-xs">
             <thead className="bg-[rgba(44,40,37,0.035)] text-[var(--copilot-ink-muted)]">
               <tr>

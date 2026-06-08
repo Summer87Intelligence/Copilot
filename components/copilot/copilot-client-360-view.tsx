@@ -75,7 +75,7 @@ function Client360TabNav({
   onTabChange: (id: SectionNavId) => void;
 }) {
   return (
-    <div className="sticky top-0 z-20 border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.95)] backdrop-blur-sm">
+    <div className="sticky top-0 z-20 border-b border-[var(--copilot-border)] bg-[var(--copilot-tab-bg)] backdrop-blur-sm">
       <nav
         className="flex overflow-x-auto scrollbar-none px-2"
         aria-label="Secciones de la ficha"
@@ -88,8 +88,8 @@ function Client360TabNav({
             aria-current={activeTab === tab.id ? "page" : undefined}
             className={`shrink-0 border-b-2 px-4 py-2.5 text-[13px] transition-colors ${
               activeTab === tab.id
-                ? "border-[var(--copilot-accent)] font-semibold text-[var(--copilot-accent)]"
-                : "border-transparent font-medium text-[var(--copilot-ink-muted)] hover:border-[var(--copilot-border)] hover:text-[var(--copilot-ink)]"
+                ? "border-[var(--copilot-accent)] font-semibold text-[var(--copilot-tab-active-text)]"
+                : "border-transparent font-medium text-[var(--copilot-tab-text)] hover:border-[var(--copilot-border)] hover:text-[var(--copilot-text)]"
             }`}
           >
             {tab.label}
@@ -256,7 +256,7 @@ function KpiChip({
     ok: "text-emerald-700",
   };
   return (
-    <div className="flex flex-col gap-1 rounded-xl border border-[var(--copilot-border)] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+    <div className="flex flex-col gap-1 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
       <span className={subtleLabelClass}>
         {label}
       </span>
@@ -410,7 +410,7 @@ function ContactsStrip({
               <>
                 <a
                   href={`mailto:${email}`}
-                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50"
+                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-soft-bg)]"
                 >
                   <Mail className="h-3 w-3" aria-hidden />
                   Enviar email
@@ -418,7 +418,7 @@ function ContactsStrip({
                 <button
                   type="button"
                   onClick={() => copyEmail(email)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50"
+                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-soft-bg)]"
                 >
                   <Copy className="h-3 w-3" aria-hidden />
                   {copied === email ? "Copiado" : "Copiar email"}
@@ -430,7 +430,7 @@ function ContactsStrip({
                 href={waPhone.waHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50"
+                className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-soft-bg)]"
               >
                 <MessageCircle className="h-3 w-3" aria-hidden />
                 WhatsApp
@@ -528,7 +528,7 @@ function AccountStatementPreviewModal({
       aria-modal="true"
       aria-label="Revisar estado de cuenta"
     >
-      <div className="relative w-full max-w-4xl rounded-2xl border border-[var(--copilot-border)] bg-white shadow-xl">
+      <div className="relative w-full max-w-4xl rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] shadow-xl">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 border-b border-[var(--copilot-border)] px-5 py-4">
           <div>
@@ -549,7 +549,7 @@ function AccountStatementPreviewModal({
             type="button"
             onClick={onClose}
             aria-label="Cerrar"
-            className="mt-0.5 rounded-lg p-1.5 text-[var(--copilot-ink-muted)] hover:bg-slate-100"
+            className="mt-0.5 rounded-lg p-1.5 text-[var(--copilot-muted)] hover:bg-[var(--copilot-soft-bg)]"
           >
             <X className="h-4 w-4" aria-hidden />
           </button>
@@ -809,7 +809,7 @@ function AccountStatementPdfCard({ companyId, hasUyu }: { companyId: string; has
                   className={`px-3.5 py-1.5 text-[12px] font-semibold transition-colors ${
                     currency === c
                       ? "bg-[var(--copilot-accent)] text-white"
-                      : "bg-white text-[var(--copilot-ink-muted)] hover:bg-slate-50"
+                      : "bg-[var(--copilot-card-bg)] text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-soft-bg)]"
                   }`}
                 >
                   {c === "UYU" ? "Pesos" : "Dólares"}
@@ -827,7 +827,7 @@ function AccountStatementPdfCard({ companyId, hasUyu }: { companyId: string; has
               type="date"
               value={from}
               onChange={(e) => setFrom(e.target.value)}
-              className="rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-[12px] text-[var(--copilot-ink)] focus:outline-none focus:ring-1 focus:ring-[var(--copilot-accent)]"
+              className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-1.5 text-[12px] text-[var(--copilot-ink)] focus:outline-none focus:ring-1 focus:ring-[var(--copilot-accent)]"
             />
           </div>
 
@@ -840,7 +840,7 @@ function AccountStatementPdfCard({ companyId, hasUyu }: { companyId: string; has
               type="date"
               value={to}
               onChange={(e) => setTo(e.target.value)}
-              className="rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-[12px] text-[var(--copilot-ink)] focus:outline-none focus:ring-1 focus:ring-[var(--copilot-accent)]"
+              className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-1.5 text-[12px] text-[var(--copilot-ink)] focus:outline-none focus:ring-1 focus:ring-[var(--copilot-accent)]"
             />
           </div>
 
@@ -849,7 +849,7 @@ function AccountStatementPdfCard({ companyId, hasUyu }: { companyId: string; has
             type="button"
             onClick={() => void handlePreview()}
             disabled={previewLoading}
-            className="flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-white/80 px-4 py-2 text-[13px] font-semibold text-[var(--copilot-ink)] transition-colors hover:bg-white disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-4 py-2 text-[13px] font-semibold text-[var(--copilot-ink)] transition-colors hover:bg-[var(--copilot-panel-bg)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             {previewLoading ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
@@ -864,7 +864,7 @@ function AccountStatementPdfCard({ companyId, hasUyu }: { companyId: string; has
             type="button"
             onClick={() => void handleDownload()}
             disabled={loading}
-            className="flex items-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             {loading ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
@@ -1302,7 +1302,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   onNavigateTab={(tab) => handleTabChange(tab as SectionNavId)}
                   onScrollToAssistant={() => handleTabChange("cobranza")}
                 />
-                <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/70 p-4 shadow-sm">
+                <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4 shadow-sm">
                   <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
                     Actividad reciente
                   </p>
@@ -1499,7 +1499,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[720px] border-collapse text-left text-sm">
                       <thead>
-                        <tr className="bg-[rgba(255,255,255,0.65)] text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                        <tr className="bg-[var(--copilot-table-header-bg)] text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                           <th className="px-4 py-2.5">Fecha</th>
                           <th className="px-4 py-2.5">Comprobante</th>
                           <th className="px-4 py-2.5">Tipo</th>
@@ -1519,7 +1519,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                           data.invoices.map((inv, i) => (
                             <tr
                               key={inv.id}
-                              className={i % 2 === 0 ? "bg-[var(--copilot-card)]" : "bg-[rgba(255,255,255,0.5)]"}
+                              className={i % 2 === 0 ? "bg-[var(--copilot-card)]" : "bg-[var(--copilot-soft-bg)]"}
                             >
                               <td className="px-4 py-2.5">{formatDateShort(inv.issue_date)}</td>
                               <td className="px-4 py-2.5 font-medium">{cleanSerieNumero(inv.serie_numero)}</td>
@@ -1562,7 +1562,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[640px] border-collapse text-left text-sm">
                       <thead>
-                        <tr className="bg-[rgba(255,255,255,0.65)] text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                        <tr className="bg-[var(--copilot-table-header-bg)] text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                           <th className="px-4 py-2.5">Fecha</th>
                           <th className="px-4 py-2.5">Importe</th>
                           <th className="px-4 py-2.5">Medio de pago</th>
@@ -1581,7 +1581,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                           data.receipts.map((r, i) => (
                             <tr
                               key={r.id}
-                              className={i % 2 === 0 ? "bg-[var(--copilot-card)]" : "bg-[rgba(255,255,255,0.5)]"}
+                              className={i % 2 === 0 ? "bg-[var(--copilot-card)]" : "bg-[var(--copilot-soft-bg)]"}
                             >
                               <td className="px-4 py-2.5">{formatDateShort(r.receipt_date)}</td>
                               <td className="px-4 py-2.5 tabular-nums font-medium">
@@ -1613,7 +1613,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
             {/* ── Tab: Datos ─────────────────────────────────────────────── */}
             {activeTab === "datos" ? (
               <div className="px-5 py-4">
-                <div className="rounded-2xl border border-[var(--copilot-border)] bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-5 shadow-sm">
                   <p className="mb-4 text-[11px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
                     Información del cliente
                   </p>
@@ -1674,7 +1674,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
             {/* ── Tab: Formas de transferencia ──────────────────────────── */}
             {activeTab === "transferencias" ? (
               <div className="px-5 py-4">
-                <div className="rounded-2xl border border-[var(--copilot-border)] bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-5 shadow-sm">
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-[var(--copilot-ink)]">
@@ -1688,7 +1688,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                       <button
                         type="button"
                         onClick={() => { setAddingAlias(true); setAliasError(null); }}
-                        className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50 hover:text-[var(--copilot-ink)]"
+                        className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-soft-bg)] hover:text-[var(--copilot-ink)]"
                       >
                         <Plus className="h-3 w-3" />
                         Agregar
@@ -1718,7 +1718,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                             }}
                             placeholder="Ej. DOLBY SOCIEDAD ANONIMA"
                             maxLength={300}
-                            className="w-full rounded-lg border border-[var(--copilot-accent)]/40 bg-white px-3 py-1.5 text-sm text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
+                            className="w-full rounded-lg border border-[var(--copilot-accent)]/40 bg-[var(--copilot-card-bg)] px-3 py-1.5 text-sm text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
                           />
                           <input
                             type="text"
@@ -1726,14 +1726,14 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                             onChange={(e) => setAliasNewNotes(e.target.value)}
                             placeholder="Nota opcional (banco, cuenta…)"
                             maxLength={500}
-                            className="w-full rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] focus:outline-none"
+                            className="w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] focus:outline-none"
                           />
                           <div className="flex gap-2">
                             <button
                               type="button"
                               onClick={() => void handleAddAlias()}
                               disabled={savingAlias || aliasNewLabel.trim().length < 3}
-                              className="inline-flex items-center gap-1 rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                              className="inline-flex items-center gap-1 rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
                             >
                               {savingAlias ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                               Guardar
@@ -1741,7 +1741,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                             <button
                               type="button"
                               onClick={() => { setAddingAlias(false); setAliasNewLabel(""); setAliasNewNotes(""); setAliasError(null); }}
-                              className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-slate-50"
+                              className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-soft-bg)]"
                             >
                               Cancelar
                             </button>
@@ -1765,7 +1765,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                                       if (e.key === "Escape") setEditingAliasId(null);
                                     }}
                                     maxLength={300}
-                                    className="w-full rounded-lg border border-[var(--copilot-accent)]/40 bg-white px-3 py-1.5 text-sm text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
+                                    className="w-full rounded-lg border border-[var(--copilot-accent)]/40 bg-[var(--copilot-card-bg)] px-3 py-1.5 text-sm text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
                                   />
                                   <input
                                     type="text"
@@ -1773,14 +1773,14 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                                     onChange={(e) => setEditingAliasNotes(e.target.value)}
                                     placeholder="Nota opcional"
                                     maxLength={500}
-                                    className="w-full rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] focus:outline-none"
+                                    className="w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] focus:outline-none"
                                   />
                                   <div className="flex gap-2">
                                     <button
                                       type="button"
                                       onClick={() => void handleSaveEditAlias(alias.id)}
                                       disabled={savingEditAlias || editingAliasLabel.trim().length < 3}
-                                      className="inline-flex items-center gap-1 rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                                      className="inline-flex items-center gap-1 rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
                                     >
                                       {savingEditAlias ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                                       Guardar
@@ -1788,7 +1788,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                                     <button
                                       type="button"
                                       onClick={() => setEditingAliasId(null)}
-                                      className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-slate-50"
+                                      className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-soft-bg)]"
                                     >
                                       Cancelar
                                     </button>
@@ -1803,7 +1803,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                                       type="button"
                                       onClick={() => void handleDeleteAlias(alias.id)}
                                       disabled={!!deletingAliasId}
-                                      className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                                      className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
                                     >
                                       {deletingAliasId === alias.id ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
                                       Eliminar
@@ -1811,7 +1811,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                                     <button
                                       type="button"
                                       onClick={() => setConfirmDeleteId(null)}
-                                      className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-slate-50"
+                                      className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-soft-bg)]"
                                     >
                                       Cancelar
                                     </button>
@@ -1835,7 +1835,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                                           setEditingAliasNotes(alias.notes ?? "");
                                           setAliasError(null);
                                         }}
-                                        className="rounded-lg p-1.5 text-[var(--copilot-ink-muted)] hover:bg-slate-100 hover:text-[var(--copilot-accent)]"
+                                        className="rounded-lg p-1.5 text-[var(--copilot-muted)] hover:bg-[var(--copilot-soft-bg)] hover:text-[var(--copilot-accent)]"
                                         title="Editar"
                                         aria-label="Editar alias de transferencia"
                                       >

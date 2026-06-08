@@ -265,7 +265,7 @@ function EmptyPeriodState() {
       initial={reduce ? false : { opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.22, ease: "easeOut" }}
-      className="rounded-2xl border border-dashed border-[var(--copilot-border)] bg-gradient-to-br from-white to-slate-50/55 px-6 py-10 text-center shadow-[var(--copilot-shadow)]"
+      className="rounded-2xl border border-dashed border-[var(--copilot-border)] bg-gradient-to-br from-[var(--copilot-card-bg)] to-slate-50/55 px-6 py-10 text-center shadow-[var(--copilot-shadow)]"
     >
       <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-[rgba(44,40,37,0.06)] text-[var(--copilot-ink)]">
         <CalendarRange className="h-5 w-5" aria-hidden />
@@ -335,7 +335,7 @@ function EmptyAgingPlaceholder({ shimmer = false }: { shimmer?: boolean }) {
         {["0-30 días", "31-60 días", "61-90 días", "+90 días"].map((label) => (
           <div
             key={label}
-            className="rounded-xl border border-[var(--copilot-border)] bg-white/55 p-3.5"
+            className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/55 p-3.5"
           >
             <div className="mb-2.5 flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-ink-muted)]">
@@ -504,7 +504,7 @@ function ErrorBlock({ message, onRetry }: { message: string; onRetry: () => void
       <button
         type="button"
         onClick={onRetry}
-        className="inline-flex h-9 items-center rounded-lg border border-rose-300/70 bg-white/80 px-3 text-xs font-semibold text-rose-800 shadow-sm transition hover:bg-white"
+        className="inline-flex h-9 items-center rounded-lg border border-rose-300/70 bg-[var(--copilot-card-bg)]/80 px-3 text-xs font-semibold text-rose-800 shadow-sm transition hover:bg-[var(--copilot-panel-bg)]"
       >
         Reintentar
       </button>

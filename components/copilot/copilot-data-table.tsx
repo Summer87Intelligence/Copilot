@@ -209,7 +209,7 @@ export function CopilotDataTable({
   };
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[var(--copilot-border)] bg-white/80">
+    <div className="overflow-hidden rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80">
       <div className="max-h-[60vh] overflow-auto">
         <table className="min-w-full border-collapse">
           <thead className="sticky top-0 z-10 bg-[var(--copilot-card)]">

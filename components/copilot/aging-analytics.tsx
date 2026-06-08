@@ -125,7 +125,7 @@ export function AgingAnalytics({
           <div
             role="tablist"
             aria-label="Moneda"
-            className="inline-flex items-center rounded-xl border border-[var(--copilot-border)] bg-white/70 p-0.5 shadow-sm"
+            className="inline-flex items-center rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-0.5 shadow-sm"
           >
             {availableCurrencies.map((c) => {
               const active = c === activeCurrency;
@@ -150,7 +150,7 @@ export function AgingAnalytics({
           </div>
         ) : forcedCurrency ? (
           <span
-            className="inline-flex h-8 items-center rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 text-xs font-semibold text-[var(--copilot-ink)] shadow-sm"
+            className="inline-flex h-8 items-center rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 text-xs font-semibold text-[var(--copilot-ink)] shadow-sm"
             aria-label={`Moneda activa ${forcedCurrency}`}
           >
             {forcedCurrency}
@@ -305,7 +305,7 @@ export function AgingAnalyticsSkeleton() {
         {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
-            className="rounded-xl border border-[var(--copilot-border)] bg-white/55 p-3.5"
+            className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/55 p-3.5"
           >
             <div className="mb-2.5 flex items-center justify-between">
               <SkBar className="h-2.5 w-20" reduce={!!reduce} />

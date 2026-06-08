@@ -68,7 +68,10 @@ function getArg(flag: string): string | undefined {
   return idx >= 0 ? args[idx + 1] : undefined;
 }
 
-const workspaceArg = getArg("--workspace") ?? process.env.AUDIT_WORKSPACE_ID;
+const workspaceArg =
+  getArg("--workspace") ??
+  process.env.WORKSPACE_COMPANY_ID ??
+  process.env.AUDIT_WORKSPACE_ID;
 const outputPath =
   getArg("--output") ??
   path.join(process.cwd(), "tmp", "zeta-current-sync-health.csv");
@@ -102,12 +105,20 @@ type HealthRow = {
 
 async function resolveWorkspaceIds(): Promise<string[]> {
   if (workspaceArg) return [workspaceArg];
-  const { data, error } = await sb.from("companies").select("id").limit(200);
+  const { data, error } = await sb
+    .from("proto_invoices")
+    .select("workspace_company_id")
+    .not("workspace_company_id", "is", null)
+    .limit(2000);
   if (error || !data) {
-    console.warn("[warn] No se pudo listar workspaces:", error?.message);
+    console.warn("[warn] No se pudo resolver workspaces:", error?.message);
     return [];
   }
-  return (data as { id: string }[]).map((r) => r.id);
+  return [
+    ...new Set(
+      (data as { workspace_company_id: string }[]).map((r) => r.workspace_company_id)
+    ),
+  ];
 }
 
 // ── Pipeline health ───────────────────────────────────────────────────────────
@@ -187,10 +198,10 @@ async function checkCompletenessAudits(workspaceIds: string[]): Promise<HealthRo
     const { data, error } = await sb
       .from("zeta_completeness_audits")
       .select(
-        "id, entity, audit_scope, period_year, period_month, zeta_count, local_count, missing_registro_ids, severity, notes, created_at"
+        "id, entity, audit_scope, period_year, period_month, zeta_count, local_count, missing_registro_ids, severity, notes, audited_at"
       )
       .eq("workspace_company_id", wid)
-      .order("created_at", { ascending: false })
+      .order("audited_at", { ascending: false })
       .limit(40);
 
     if (error) {
@@ -216,7 +227,7 @@ async function checkCompletenessAudits(workspaceIds: string[]): Promise<HealthRo
       missing_registro_ids: string[] | null;
       severity: string;
       notes: string | null;
-      created_at: string;
+      audited_at: string;
     }[];
 
     if (audits.length === 0) {
@@ -323,16 +334,29 @@ async function checkProtoCounts(workspaceIds: string[]): Promise<HealthRow[]> {
     // VARIOS receipts
     const { data: receipts } = await sb
       .from("proto_receipts")
-      .select("id, zeta_metadata")
+      .select("id, notes")
       .eq("workspace_company_id", wid)
       .limit(5000);
 
     let variosCount = 0;
     for (const r of receipts ?? []) {
-      const meta = r.zeta_metadata as Record<string, unknown> | null;
+      let parsed: Record<string, unknown> = {};
+      if (r.notes) {
+        try {
+          parsed =
+            typeof r.notes === "object"
+              ? (r.notes as Record<string, unknown>)
+              : (JSON.parse(String(r.notes)) as Record<string, unknown>);
+        } catch {
+          parsed = {};
+        }
+      }
+      const v1 = parsed["zeta_collection_receipt_v1"] as Record<string, unknown> | undefined;
+      const raw = (v1?.raw_payload ?? {}) as Record<string, unknown>;
       const cc =
-        (meta?.["cliente_codigo"] as string | undefined) ??
-        (meta?.["ClienteCodigo"] as string | undefined) ??
+        (raw["ClienteCodigo"] as string | undefined) ??
+        (parsed["cliente_codigo"] as string | undefined) ??
+        (parsed["ClienteCodigo"] as string | undefined) ??
         null;
       if (!cc || zetaReciboIsVarios(cc)) variosCount++;
     }
@@ -341,9 +365,9 @@ async function checkProtoCounts(workspaceIds: string[]): Promise<HealthRow[]> {
       rows.push({
         check_category: "proto_counts",
         check_name: "receipts_varios_pending_review",
-        status: "warning",
+        status: "info",
         value: String(variosCount),
-        detail: `${variosCount} recibo(s) con ClienteCodigo VARIOS o sin cliente asignado — requieren revisión manual`,
+        detail: `${variosCount} recibo(s) con ClienteCodigo VARIOS o sin cliente — informativo (parity sink / asignación manual)`,
         workspace_company_id: wid,
       });
     } else {
@@ -413,13 +437,13 @@ async function checkProtoCounts(workspaceIds: string[]): Promise<HealthRow[]> {
     // Clientes sin empresa local
     const { data: companies } = await sb
       .from("proto_companies")
-      .select("external_id")
+      .select("Codigo")
       .eq("workspace_company_id", wid)
       .limit(5000);
 
     const knownCodigos = new Set(
       (companies ?? [])
-        .map((c: { external_id: string | null }) => c.external_id?.trim() ?? "")
+        .map((c: { Codigo: string | null }) => String(c.Codigo ?? "").trim())
         .filter((s) => s.length > 0)
     );
 
@@ -556,29 +580,74 @@ async function checkSkippedVouchers(): Promise<HealthRow[]> {
 
 async function checkLastCronErrors(): Promise<HealthRow[]> {
   const rows: HealthRow[] = [];
+  const CURRENT_WINDOW_MS = 48 * 60 * 60 * 1_000;
+  const now = Date.now();
 
+  // Fetch last 50 runs (any status) to determine pipeline trend
   const { data } = await sb
     .from("zeta_pipeline_runs")
     .select("id, pipeline_name, started_at, status, error_summary")
-    .in("status", ["failed", "partial"])
     .order("started_at", { ascending: false })
-    .limit(20);
+    .limit(50);
 
-  for (const run of (data ?? []) as {
+  if (!data || data.length === 0) return rows;
+
+  type RunRow = {
     id: string;
     pipeline_name: string;
     started_at: string;
     status: string;
     error_summary: string | null;
-  }[]) {
-    rows.push({
-      check_category: "cron_errors",
-      check_name: run.pipeline_name,
-      status: run.status === "failed" ? "error" : "warning",
-      value: run.status,
-      detail: `at=${run.started_at} err=${(run.error_summary ?? "sin detalle").slice(0, 100)}`,
-      workspace_company_id: "fleet",
-    });
+  };
+  const runs = data as RunRow[];
+
+  // Group: most recent run per pipeline + all failed runs per pipeline
+  const latestByPipeline = new Map<string, RunRow>();
+  const failedByPipeline = new Map<string, RunRow[]>();
+
+  for (const run of runs) {
+    if (!latestByPipeline.has(run.pipeline_name)) {
+      latestByPipeline.set(run.pipeline_name, run);
+    }
+    if (run.status === "failed" || run.status === "partial") {
+      const list = failedByPipeline.get(run.pipeline_name) ?? [];
+      list.push(run);
+      failedByPipeline.set(run.pipeline_name, list);
+    }
+  }
+
+  for (const [pname, failedRuns] of failedByPipeline.entries()) {
+    const latestRun = latestByPipeline.get(pname)!;
+    const latestIsFailure =
+      latestRun.status === "failed" || latestRun.status === "partial";
+
+    for (const run of failedRuns) {
+      const runAt = new Date(run.started_at).getTime();
+      const isLatestRun = run.id === latestRun.id;
+      const isRecent = now - runAt < CURRENT_WINDOW_MS;
+
+      let status: HealthRow["status"];
+      let valueSuffix = "";
+
+      if (isLatestRun && latestIsFailure) {
+        status = run.status === "failed" ? "error" : "warning";
+      } else if (!isRecent) {
+        status = "info";
+        valueSuffix = " (histórico)";
+      } else {
+        status = "warning";
+        valueSuffix = " (recuperado)";
+      }
+
+      rows.push({
+        check_category: "cron_errors",
+        check_name: pname,
+        status,
+        value: `${run.status}${valueSuffix}`,
+        detail: `at=${run.started_at} err=${(run.error_summary ?? "sin detalle").slice(0, 100)}`,
+        workspace_company_id: "fleet",
+      });
+    }
   }
 
   return rows;
@@ -618,22 +687,31 @@ function writeCsv(rows: HealthRow[], filePath: string): void {
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 function printSummary(rows: HealthRow[]): void {
-  const errors = rows.filter((r) => r.status === "error");
+  const currentErrors = rows.filter((r) => r.status === "error");
   const warnings = rows.filter((r) => r.status === "warning");
+  const infos = rows.filter((r) => r.status === "info");
   const oks = rows.filter((r) => r.status === "ok");
+  const historicalCron = rows.filter(
+    (r) =>
+      r.check_category === "cron_errors" &&
+      (r.status === "info" || r.status === "warning")
+  );
 
   console.log(`\n${"─".repeat(60)}`);
   console.log(`ZETA SYNC HEALTH — ${new Date().toISOString()}`);
   console.log(`${"─".repeat(60)}`);
-  console.log(`  errors:   ${errors.length}`);
-  console.log(`  warnings: ${warnings.length}`);
-  console.log(`  ok:       ${oks.length}`);
-  console.log(`  info:     ${rows.filter((r) => r.status === "info").length}`);
+  console.log(`  current errors: ${currentErrors.length}`);
+  console.log(`  warnings:       ${warnings.length}`);
+  console.log(`  info:           ${infos.length}`);
+  console.log(`  ok:             ${oks.length}`);
+  if (historicalCron.length > 0) {
+    console.log(`  cron histórico: ${historicalCron.length} (no bloquean exit)`);
+  }
   console.log(`${"─".repeat(60)}`);
 
-  if (errors.length > 0) {
-    console.log("\n🔴 ERRORS:");
-    for (const r of errors) {
+  if (currentErrors.length > 0) {
+    console.log("\n🔴 CURRENT ERRORS:");
+    for (const r of currentErrors) {
       console.log(
         `  [${r.check_category}] ${r.check_name}: ${r.value} — ${r.detail}`
       );
@@ -642,15 +720,18 @@ function printSummary(rows: HealthRow[]): void {
 
   if (warnings.length > 0) {
     console.log("\n🟡 WARNINGS:");
-    for (const r of warnings) {
+    for (const r of warnings.slice(0, 20)) {
       console.log(
         `  [${r.check_category}] ${r.check_name}: ${r.value} — ${r.detail}`
       );
     }
+    if (warnings.length > 20) {
+      console.log(`  … y ${warnings.length - 20} warning(s) más (ver CSV)`);
+    }
   }
 
-  if (errors.length === 0 && warnings.length === 0) {
-    console.log("\n✓ Sync health: OK — sin errores ni advertencias.");
+  if (currentErrors.length === 0) {
+    console.log("\n✓ Sync health: sin errores actuales.");
   }
 
   console.log(`\n[audit] Output: ${outputPath}`);
@@ -694,6 +775,23 @@ async function main(): Promise<void> {
 
   writeCsv(allRows, outputPath);
   printSummary(allRows);
+
+  const currentErrors = allRows.filter((r) => r.status === "error").length;
+  const warnings = allRows.filter((r) => r.status === "warning").length;
+  const infos = allRows.filter((r) => r.status === "info").length;
+
+  console.log(
+    `\n[audit:zeta-sync-health] current errors: ${currentErrors} | WARNING: ${warnings} | INFO: ${infos}`
+  );
+
+  if (currentErrors > 0) {
+    console.error(
+      `[audit:zeta-sync-health] FAIL — ${currentErrors} error(es) actuales requieren acción.`
+    );
+    process.exit(1);
+  }
+
+  console.log("[audit:zeta-sync-health] PASS — sin errores actuales.");
 }
 
 main().catch((err) => {

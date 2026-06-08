@@ -73,7 +73,7 @@ export function RutasTreasuryPressureSection() {
       ) : null}
 
       {!loading && !error && !hasOperationalData ? (
-        <CopilotCard className="mt-2 border-dashed border-[var(--copilot-border)] bg-white/60 px-3 py-2.5">
+        <CopilotCard className="mt-2 border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-3 py-2.5">
           <p className="text-xs text-[var(--copilot-ink-muted)]">
             Sin obligaciones, movimientos ni alertas de caja manual para presionar el día.
           </p>
@@ -84,7 +84,7 @@ export function RutasTreasuryPressureSection() {
       ) : null}
 
       {!loading && !error && hasOperationalData && signals ? (
-        <CopilotCard className="mt-2 border-[rgba(31,107,74,0.14)] bg-white/90 px-3 py-3">
+        <CopilotCard className="mt-2 border-[rgba(31,107,74,0.14)] bg-[var(--copilot-card-bg)]/90 px-3 py-3">
           <div className="flex flex-wrap items-center gap-2">
             <RutasKpiPill
               label="Runway"

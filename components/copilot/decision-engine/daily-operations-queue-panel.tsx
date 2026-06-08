@@ -312,7 +312,7 @@ export function DailyOperationsQueuePanel({
             type="button"
             onClick={() => onRefresh(true)}
             disabled={refreshing}
-            className="inline-flex items-center gap-1 rounded-md border border-[var(--copilot-border)] px-2 py-0.5 text-[10px] font-medium text-[var(--copilot-text-muted)] hover:bg-[var(--copilot-surface)] disabled:opacity-50 shrink-0 transition-colors"
+            className="inline-flex items-center gap-1 rounded-md border border-[var(--copilot-border)] px-2 py-0.5 text-[10px] font-medium text-[var(--copilot-text-muted)] hover:bg-[var(--copilot-surface)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)] shrink-0 transition-colors"
           >
             <RefreshCw className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
             {refreshing ? "…" : "Actualizar"}

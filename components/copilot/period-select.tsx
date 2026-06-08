@@ -13,7 +13,7 @@ export function PeriodSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-2 text-sm font-medium shadow-sm outline-none ring-0 focus:border-[rgba(31,107,74,0.35)]"
+        className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm font-medium shadow-sm outline-none ring-0 focus:border-[rgba(31,107,74,0.35)]"
       >
         <option value="mar-2026">Marzo 2026</option>
         <option value="feb-2026">Febrero 2026</option>

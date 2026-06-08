@@ -38,7 +38,7 @@ export function PermissionButton({
         title={lockedLabel}
         className={
           lockedClassName ??
-          "inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-white/50 px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] opacity-60"
+          "inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50 px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] opacity-60"
         }
       >
         <Lock className="h-3 w-3 shrink-0" aria-hidden />

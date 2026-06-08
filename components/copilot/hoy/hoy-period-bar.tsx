@@ -6,7 +6,7 @@ import { HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
 import type { HoyPeriodRange } from "@/lib/copilot-hoy-period";
 
 const inputClass =
-  "h-9 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 text-sm text-[var(--copilot-ink)] shadow-sm transition focus:border-[var(--copilot-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/20";
+  "h-9 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 text-sm text-[var(--copilot-ink)] shadow-sm transition focus:border-[var(--copilot-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/20";
 
 type Props = {
   draftFrom: string;
@@ -38,7 +38,7 @@ export function HoyPeriodBar({
   const draftInvalid = draftFrom !== "" && draftTo !== "" && draftFrom > draftTo;
 
   return (
-    <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/60 px-4 py-3 shadow-sm">
+    <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-4 py-3 shadow-sm">
       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
         {HOY_COPY.periodBarTitle}
       </p>
@@ -69,7 +69,7 @@ export function HoyPeriodBar({
           type="button"
           onClick={onConfirm}
           disabled={!hasPendingChanges || draftInvalid || loading}
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[var(--copilot-accent)] px-3 text-sm font-semibold text-white disabled:opacity-50"
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[var(--copilot-accent)] px-3 text-sm font-semibold text-white disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
         >
           <Check className="h-4 w-4" aria-hidden />
           Confirmar
@@ -78,7 +78,7 @@ export function HoyPeriodBar({
           type="button"
           onClick={onMonthToDate}
           disabled={loading}
-          className="inline-flex h-9 items-center rounded-lg border border-[var(--copilot-border)] bg-white/80 px-3 text-xs font-medium text-[var(--copilot-ink)]"
+          className="inline-flex h-9 items-center rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 text-xs font-medium text-[var(--copilot-ink)]"
         >
           Mes actual
         </button>
@@ -86,7 +86,7 @@ export function HoyPeriodBar({
           type="button"
           onClick={onLast30Days}
           disabled={loading}
-          className="inline-flex h-9 items-center rounded-lg border border-[var(--copilot-border)] bg-white/80 px-3 text-xs font-medium text-[var(--copilot-ink)]"
+          className="inline-flex h-9 items-center rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 text-xs font-medium text-[var(--copilot-ink)]"
         >
           Últimos 30 días
         </button>
@@ -94,7 +94,7 @@ export function HoyPeriodBar({
           type="button"
           onClick={onRefresh}
           disabled={loading}
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-white/80 px-3 text-xs font-medium text-[var(--copilot-ink)]"
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 text-xs font-medium text-[var(--copilot-ink)]"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
           Refrescar

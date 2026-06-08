@@ -90,7 +90,7 @@ export function HoyTodayPriorityCard({
 
   return (
     <section
-      className={`${actionCardClass} border-[rgba(31,107,74,0.22)] bg-gradient-to-br from-white to-[rgba(31,107,74,0.06)] px-4 py-3.5 sm:px-5`}
+      className={`${actionCardClass} border-[rgba(31,107,74,0.22)] bg-gradient-to-br from-[var(--copilot-card-bg)] to-[rgba(31,107,74,0.06)] px-4 py-3.5 sm:px-5`}
       aria-labelledby="hoy-today-priority-title"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -134,7 +134,7 @@ export function HoyTodayPriorityCard({
           {priority.secondaryCta ? (
             <Link
               href={priority.secondaryCta.href}
-              className="inline-flex items-center justify-center rounded-xl border border-[var(--copilot-border)] bg-white/80 px-3 py-2 text-xs font-semibold text-[var(--copilot-ink)] hover:bg-white"
+              className="inline-flex items-center justify-center rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 py-2 text-xs font-semibold text-[var(--copilot-ink)] hover:bg-[var(--copilot-panel-bg)]"
             >
               {priority.secondaryCta.label}
             </Link>

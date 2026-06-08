@@ -705,7 +705,7 @@ function RowActionsCell({
       {menuOpen && menuPos ? (
         <div
           ref={menuRef}
-          className="fixed z-[80] min-w-[160px] overflow-hidden rounded-xl border border-[var(--copilot-border)] bg-white shadow-lg"
+          className="fixed z-[80] min-w-[160px] overflow-hidden rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] shadow-lg"
           style={{ top: menuPos.top, right: menuPos.right }}
         >
           {menuItems.map((item) => (
@@ -862,7 +862,7 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
         {summaries.map((s) => (
           <div
             key={s.currency}
-            className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4"
+            className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4"
           >
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
               {s.currency}
@@ -911,7 +911,7 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
             className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
               view === id
                 ? "bg-[var(--copilot-accent)] text-white"
-                : "border border-[var(--copilot-border)] bg-white text-[var(--copilot-ink-muted)] hover:bg-[rgba(44,40,37,0.03)]"
+                : "border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] text-[var(--copilot-ink-muted)] hover:bg-[rgba(44,40,37,0.03)]"
             }`}
           >
             {label}
@@ -941,7 +941,7 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
           paragraphs={["Planificá BPS, impuestos, sueldos y otros compromisos de caja."]}
         />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-white/50">
+        <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50">
           <table className={TESORERIA_TABLE_CLASS}>
             <thead>
               <tr>

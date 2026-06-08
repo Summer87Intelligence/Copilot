@@ -66,7 +66,7 @@ function stepStatusLabel(status: WorkflowExecutionStep["status"]): string {
 
 function WorkflowStepRow({ step }: { step: WorkflowExecutionStep }) {
   return (
-    <li className="rounded-md border border-[var(--copilot-border)]/70 bg-white/70 px-2 py-1.5 text-[11px]">
+    <li className="rounded-md border border-[var(--copilot-border)]/70 bg-[var(--copilot-card-bg)]/70 px-2 py-1.5 text-[11px]">
       <div className="flex flex-wrap items-center gap-1.5">
         <CopilotBadge tone="neutral">{stepStatusLabel(step.status)}</CopilotBadge>
         <span className="font-medium text-[var(--copilot-ink)]">{step.title}</span>
@@ -113,7 +113,7 @@ function GuidedWorkflowCard({
     workflow.steps.find((step) => step.stepId === workflow.currentStepId)?.metadata?.href;
 
   return (
-    <CopilotCard className="border border-[var(--copilot-border)]/80 bg-white/80 px-2.5 py-2 shadow-none">
+    <CopilotCard className="border border-[var(--copilot-border)]/80 bg-[var(--copilot-card-bg)]/80 px-2.5 py-2 shadow-none">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">

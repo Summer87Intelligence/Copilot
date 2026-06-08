@@ -52,7 +52,7 @@ export type FinancialControlBarProps = {
 };
 
 const inputClass =
-  "h-9 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 text-sm text-[var(--copilot-ink)] shadow-sm transition focus:border-[var(--copilot-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/20 disabled:opacity-50";
+  "h-9 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 text-sm text-[var(--copilot-ink)] shadow-sm transition focus:border-[var(--copilot-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/20 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]";
 
 function normalizeDateInput(value: string | null | undefined): string {
   return (value ?? "").slice(0, 10);
@@ -92,7 +92,7 @@ export function FinancialControlBar({
   }
 
   return (
-    <div className="sticky top-0 z-30 -mx-6 mb-6 border-b border-[var(--copilot-border)] bg-white/70 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/55">
+    <div className="sticky top-0 z-30 -mx-6 mb-6 border-b border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-[var(--copilot-card-bg)]/55">
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex items-center gap-1.5 text-xs font-medium text-[var(--copilot-ink-muted)]">
           Desde
@@ -146,7 +146,7 @@ export function FinancialControlBar({
           className={[
             "inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold shadow-sm transition",
             confirmDisabled
-              ? "border border-[var(--copilot-border)] bg-white/60 text-[var(--copilot-ink-muted)] opacity-60"
+              ? "border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 text-[var(--copilot-ink-muted)] opacity-60"
               : "border border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600",
           ].join(" ")}
         >
@@ -161,7 +161,7 @@ export function FinancialControlBar({
             onClick={onRefresh}
             disabled={loading || !canRefresh}
             title="Actualiza la vista con los últimos datos disponibles."
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 text-xs font-semibold text-[var(--copilot-ink)] shadow-sm transition hover:bg-white disabled:opacity-60"
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 text-xs font-semibold text-[var(--copilot-ink)] shadow-sm transition hover:bg-[var(--copilot-panel-bg)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             {loading ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />

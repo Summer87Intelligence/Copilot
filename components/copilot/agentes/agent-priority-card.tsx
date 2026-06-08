@@ -57,7 +57,7 @@ export function AgentPriorityCard({
   const style = SEVERITY_STYLES[priority.severity];
 
   return (
-    <div className="flex gap-3 rounded-xl border border-[var(--copilot-border)] bg-white p-3.5 transition-shadow hover:shadow-sm sm:p-4">
+    <div className="flex gap-3 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-3.5 transition-shadow hover:shadow-sm sm:p-4">
       {/* Severity bar + number */}
       <div className="flex flex-col items-center gap-1 pt-0.5">
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[rgba(44,40,37,0.06)] text-[11px] font-bold text-[var(--copilot-ink-muted)]">

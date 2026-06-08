@@ -184,7 +184,7 @@ function ContactCell({ row }: { row: ClientPortfolioRow }) {
           href={`mailto:${row.contact_email}`}
           title={row.contact_email}
           onClick={(e) => e.stopPropagation()}
-          className="flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-2 py-1 text-[10px] font-medium text-[var(--copilot-ink-muted)] hover:bg-white"
+          className="flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2 py-1 text-[10px] font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
         >
           <Mail className="h-3 w-3" aria-hidden />
           Email
@@ -275,7 +275,7 @@ export default function CopilotClientesPage() {
           description="Cartera comercial activa: deuda por moneda, estado de cobranza y contacto directo."
         />
         {!loading && !error && load && hasActiveFilter ? (
-          <span className="inline-flex shrink-0 items-center rounded-full border border-[var(--copilot-border)] bg-white/80 px-2.5 py-0.5 text-[10px] font-medium text-[var(--copilot-ink-muted)]">
+          <span className="inline-flex shrink-0 items-center rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-2.5 py-0.5 text-[10px] font-medium text-[var(--copilot-ink-muted)]">
             Resumen global · filtro activo
           </span>
         ) : null}
@@ -397,12 +397,12 @@ export default function CopilotClientesPage() {
                     portfolioRows={load.rows}
                     portfolioDetails={load.details}
                     defaultFilters={{ status: "all", currency: "all" }}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--copilot-accent)] shadow-sm hover:bg-[rgba(31,107,74,0.04)]"
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--copilot-accent)] shadow-sm hover:bg-[rgba(31,107,74,0.04)]"
                   />
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   {/* Search */}
-                  <div className="flex items-center gap-1.5 rounded-full border border-[var(--copilot-border)] bg-white/80 px-3 py-1">
+                  <div className="flex items-center gap-1.5 rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 py-1">
                     <Search className="h-3.5 w-3.5 shrink-0 text-[var(--copilot-ink-muted)]" aria-hidden />
                     <input
                       type="text"
@@ -424,7 +424,7 @@ export default function CopilotClientesPage() {
                           "rounded-full px-3 py-1 text-xs font-medium transition",
                           active
                             ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]"
-                            : "bg-white/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-white",
+                            : "bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]",
                         ].join(" ")}
                       >
                         {opt.label}
@@ -469,7 +469,7 @@ export default function CopilotClientesPage() {
                             className={`border-b border-[var(--copilot-border)] transition last:border-b-0 hover:bg-[var(--copilot-accent-soft)]/50 ${
                               i % 2 === 0
                                 ? "bg-[var(--copilot-card)]"
-                                : "bg-[rgba(255,255,255,0.5)]"
+                                : "bg-[var(--copilot-soft-bg)]"
                             } ${evidenceOpenForRow ? "ring-1 ring-inset ring-[rgba(31,107,74,0.25)]" : ""}`}
                           >
                             {/* Cliente */}

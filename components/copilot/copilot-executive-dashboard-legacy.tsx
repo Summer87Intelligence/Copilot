@@ -415,7 +415,7 @@ La prospección y generación de leads la realizás en Summer87 Leads.`}
             ) : null}
             {!financialLoading && !financialError && financialSnapshot ? (
               <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
+                <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 p-4 shadow-sm">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                     Caja disponible
                   </p>
@@ -423,7 +423,7 @@ La prospección y generación de leads la realizás en Summer87 Leads.`}
                     {formatMoneyHome(snapshotCashNet(financialSnapshot))}
                   </p>
                 </div>
-                <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
+                <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 p-4 shadow-sm">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                     Cobertura
                   </p>
@@ -431,7 +431,7 @@ La prospección y generación de leads la realizás en Summer87 Leads.`}
                     {formatCoverageHome(snapshotCoverageRatio(financialSnapshot))}
                   </p>
                 </div>
-                <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
+                <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 p-4 shadow-sm">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                     Balance proyectado
                   </p>
@@ -439,7 +439,7 @@ La prospección y generación de leads la realizás en Summer87 Leads.`}
                     {formatMoneyHome(snapshotLiquidityBalance(financialSnapshot))}
                   </p>
                 </div>
-                <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
+                <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 p-4 shadow-sm">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                     Egresos esperados
                   </p>
@@ -584,7 +584,7 @@ La prospección y generación de leads la realizás en Summer87 Leads.`}
                                     ? "border-amber-200/95 bg-amber-50/45 ring-1 ring-amber-200/50"
                                     : urgent
                                       ? "border-rose-200/90 bg-rose-50/50 ring-1 ring-rose-200/60"
-                                      : "border-[var(--copilot-border)] bg-white/85"
+                                      : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85"
                               } ${openDrawer ? "ring-2 ring-[rgba(31,107,74,0.22)]" : ""}`}
                             >
                               <div className="min-w-0 flex-1 space-y-2">
@@ -705,7 +705,7 @@ La prospección y generación de leads la realizás en Summer87 Leads.`}
                 </div>
               </div>
               {featuredFiscal ? (
-                <div className="mt-5 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
+                <div className="mt-5 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                     Destacada (fiscal)
                   </p>

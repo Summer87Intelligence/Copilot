@@ -112,7 +112,7 @@ export function FinancialMetricDetailDialog({
             </dl>
           </div>
 
-          <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 px-4 py-3">
+          <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
               Fuente del dato
             </p>

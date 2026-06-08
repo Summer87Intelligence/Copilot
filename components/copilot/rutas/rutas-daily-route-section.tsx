@@ -142,7 +142,7 @@ export function RutasDailyRouteSection() {
               className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 transition ${
                 done
                   ? "border-emerald-200/60 bg-emerald-50/30 opacity-70"
-                  : "border-[var(--copilot-border)]/70 bg-white/80"
+                  : "border-[var(--copilot-border)]/70 bg-[var(--copilot-card-bg)]/80"
               }`}
             >
               <button
@@ -152,7 +152,7 @@ export function RutasDailyRouteSection() {
                 className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition ${
                   done
                     ? "border-emerald-400 bg-emerald-400 text-white"
-                    : "border-[var(--copilot-border)] bg-white hover:border-[var(--copilot-accent)]"
+                    : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] hover:border-[var(--copilot-accent)]"
                 }`}
               >
                 {done ? <Check className="h-3 w-3" aria-hidden /> : (

@@ -37,7 +37,7 @@ export function ExportDisclaimerModal({
           <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
             {FINANCIAL_UX_COPY.exportModalBody}
           </p>
-          <label className="mt-4 flex items-start gap-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3 text-sm text-[var(--copilot-ink)]">
+          <label className="mt-4 flex items-start gap-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3 text-sm text-[var(--copilot-ink)]">
             <input
               type="checkbox"
               checked={ack}

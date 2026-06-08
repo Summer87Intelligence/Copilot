@@ -107,7 +107,7 @@ export function CopilotDevDatasetSummary() {
         <span className="text-slate-700 dark:text-slate-200">
           Empresa: <strong>{company}</strong>
         </span>
-        <code className="rounded bg-white/70 px-1 text-[9px] dark:bg-black/30">
+        <code className="rounded bg-[var(--copilot-card-bg)]/70 px-1 text-[9px] dark:bg-black/30">
           workspace_company_id={data.workspace_company_id}
         </code>
       </div>
@@ -117,7 +117,7 @@ export function CopilotDevDatasetSummary() {
           return (
             <span
               key={key}
-              className="inline-flex items-center gap-0.5 rounded border border-slate-400/40 bg-white/80 px-1.5 py-0.5 text-[9px] dark:border-slate-500/40 dark:bg-slate-800/60"
+              className="inline-flex items-center gap-0.5 rounded border border-slate-400/40 bg-[var(--copilot-card-bg)]/80 px-1.5 py-0.5 text-[9px] dark:border-slate-500/40 dark:bg-slate-800/60"
               title={key}
             >
               <span className="text-slate-500 dark:text-slate-400">{short}</span>

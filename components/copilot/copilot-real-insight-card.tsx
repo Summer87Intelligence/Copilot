@@ -30,7 +30,7 @@ const typeLabel: Record<CopilotRealInsight["type"], string> = {
 
 export function CopilotRealInsightCard({ insight }: { insight: CopilotRealInsight }) {
   return (
-    <CopilotCard className="space-y-2 border-[var(--copilot-border)] bg-white/90 py-3">
+    <CopilotCard className="space-y-2 border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/90 py-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">

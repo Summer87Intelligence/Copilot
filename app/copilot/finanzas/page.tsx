@@ -926,7 +926,7 @@ function CopilotFinanzasPageContent() {
               id="copilot-finanzas-cobertura-acciones"
               className="scroll-mt-36 sm:scroll-mt-40"
             >
-              <CopilotCard className="mt-4 border-[rgba(31,107,74,0.2)] bg-white/90">
+              <CopilotCard className="mt-4 border-[rgba(31,107,74,0.2)] bg-[var(--copilot-card-bg)]/90">
                 {coberturaSinPalancasInternas ? (
                   <>
                     <CopilotSectionTitle
@@ -1276,27 +1276,27 @@ function CopilotFinanzasPageContent() {
                     <span>{METRIC_MIXED_CURRENCY_DISCLAIMER}</span>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
+                    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 p-4 shadow-sm">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Neto acumulado</p>
                       <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-ink)]">{formatMoneyCompact(snapshotCashNet(snapshot))}</p>
                       <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">Cobros registrados − pagos registrados.</p>
                     </div>
-                    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
+                    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 p-4 shadow-sm">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Cobranza esperada</p>
                       <p className="mt-2 text-xl font-semibold tabular-nums text-emerald-700">{formatMoneyCompact(snapshotReceivablesRiskWeighted(snapshot))}</p>
                       <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">Facturas abiertas ponderadas por probabilidad de cobro.</p>
                     </div>
-                    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
+                    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 p-4 shadow-sm">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Egresos proyectados</p>
                       <p className="mt-2 text-xl font-semibold tabular-nums text-red-600">{formatMoneyCompact(snapshotExpectedOutflowsTotal(snapshot))}</p>
                       <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">Pagos operativos y obligaciones fiscales próximas.</p>
                     </div>
-                    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
+                    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 p-4 shadow-sm">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Balance proyectado</p>
                       <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-ink)]">{formatMoneyCompact(snapshotLiquidityBalance(snapshot))}</p>
                       <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">Neto + cobranza esperada − egresos proyectados.</p>
                     </div>
-                    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm sm:col-span-2 lg:col-span-2">
+                    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 p-4 shadow-sm sm:col-span-2 lg:col-span-2">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Cobertura de pagos</p>
                       <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-ink)]">{coverageRatioDisplay(snapshot).value}</p>
                       <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
@@ -1309,20 +1309,20 @@ function CopilotFinanzasPageContent() {
                   <div className="flex justify-end">
                     <Link
                       href="/copilot/tesoreria"
-                      className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white/80 px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink)] hover:bg-white"
+                      className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink)] hover:bg-[var(--copilot-panel-bg)]"
                     >
                       Ver caja y pagos en Tesorería →
                     </Link>
                   </div>
                   {snapshot.by_currency ? (
-                    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/60 p-4">
+                    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 p-4">
                       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Desglose por moneda</p>
                       <div className="mt-3 grid gap-3 sm:grid-cols-2">
                         {(["UYU", "USD"] as const).map((cur) => {
                           const totals = snapshot.by_currency![cur];
                           if (!totals) return null;
                           return (
-                            <div key={cur} className="rounded-lg border border-[var(--copilot-border)] bg-white/70 p-3">
+                            <div key={cur} className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3">
                               <p className="text-xs font-semibold text-[var(--copilot-ink)]">{cur}</p>
                               <dl className="mt-2 space-y-1 text-xs text-[var(--copilot-ink-muted)]">
                                 {totals.invoiced !== undefined ? (
@@ -1343,7 +1343,7 @@ function CopilotFinanzasPageContent() {
                   ) : snapshot.meta.currency === "unspecified" || snapshot.meta.currency === "mixed" ? (
                     <p className="text-[11px] text-[var(--copilot-ink-muted)]">Montos multi-moneda (UYU + USD) — desglose por moneda pendiente.</p>
                   ) : null}
-                  <div id="copilot-finanzas-cobranza" className="scroll-mt-28 space-y-3 rounded-xl border border-[var(--copilot-border)] bg-white/60 p-4">
+                  <div id="copilot-finanzas-cobranza" className="scroll-mt-28 space-y-3 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 p-4">
                     <p className="text-xs font-semibold text-[var(--copilot-ink)]">Flujo proyectado de caja</p>
                     <p className="text-[10px] text-[var(--copilot-ink-muted)]">Lectura forward-looking basada en datos Zeta y obligaciones próximas. Estimación combinada UYU+USD.</p>
                     <FlowBar label="Cobranza esperada (facturas × prob. de cobro)" value={snapshotReceivablesRiskWeighted(snapshot)} max={flowMax} flow="in" />
@@ -1420,7 +1420,7 @@ function CopilotFinanzasPageContent() {
                     {prioritaryWhy}
                   </p>
 
-                  <div className="mt-5 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
+                  <div className="mt-5 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4">
                     <p className="text-xs font-semibold text-[var(--copilot-ink)]">
                       Próximos pasos posibles
                     </p>
@@ -1523,7 +1523,7 @@ function CopilotFinanzasPageContent() {
               {!taxLoading && !taxError ? (
                 <>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/80 p-4 shadow-sm">
+                    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 p-4 shadow-sm">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                         Próximas (45 días)
                       </p>
@@ -1539,7 +1539,7 @@ function CopilotFinanzasPageContent() {
                         {overdueCount}
                       </p>
                     </div>
-                    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/80 p-4 shadow-sm">
+                    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 p-4 shadow-sm">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                         Pagadas (cerradas)
                       </p>
@@ -1547,7 +1547,7 @@ function CopilotFinanzasPageContent() {
                         {paidObligationsCount}
                       </p>
                     </div>
-                    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/80 p-4 shadow-sm">
+                    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 p-4 shadow-sm">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                         Estimado próx. 30 días
                       </p>
@@ -1575,7 +1575,7 @@ function CopilotFinanzasPageContent() {
                           return (
                             <li
                               key={o.id}
-                              className={`flex flex-wrap items-end justify-between gap-3 rounded-xl border border-[var(--copilot-border)] bg-white/90 px-4 py-3 text-sm ${
+                              className={`flex flex-wrap items-end justify-between gap-3 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/90 px-4 py-3 text-sm ${
                                 activeDrawer
                                   ? "ring-2 ring-[rgba(31,107,74,0.22)]"
                                   : ""

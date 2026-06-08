@@ -27,7 +27,7 @@ const pillBase = "rounded-full px-3 py-1 text-xs font-medium transition";
 const pillActive =
   "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]";
 const pillIdle =
-  "bg-white/80 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-white";
+  "bg-[var(--copilot-card-bg)]/80 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]";
 
 const RISK_COLORS: Record<string, string> = {
   Alto: "text-rose-700 font-semibold",
@@ -226,7 +226,7 @@ export function AccountStatementsPreviewDialog({ open, onClose, portfolioRows }:
       filterSlot={filterSlot}
     >
       {isEmpty ? (
-        <div className="flex items-center justify-center rounded-xl border border-[var(--copilot-border)] bg-white/60 py-10 text-sm text-[var(--copilot-ink-muted)]">
+        <div className="flex items-center justify-center rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 py-10 text-sm text-[var(--copilot-ink-muted)]">
           Sin clientes con saldo para la moneda seleccionada.
         </div>
       ) : (

@@ -177,7 +177,7 @@ function BalanceCard({
             step="1"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            className="w-32 rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1.5 text-sm focus:border-[var(--copilot-accent)] focus:outline-none"
+            className="w-32 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1.5 text-sm focus:border-[var(--copilot-accent)] focus:outline-none"
             placeholder="0"
             autoFocus
             onKeyDown={(e) => {
@@ -189,7 +189,7 @@ function BalanceCard({
             type="button"
             onClick={() => void save()}
             disabled={saving}
-            className="inline-flex items-center gap-1 rounded-lg bg-[var(--copilot-accent)] px-2.5 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded-lg bg-[var(--copilot-accent)] px-2.5 py-1.5 text-xs font-semibold text-white disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             <Check className="h-3 w-3" aria-hidden />
             {saving ? "…" : "OK"}
@@ -197,7 +197,7 @@ function BalanceCard({
           <button
             type="button"
             onClick={() => setEditing(false)}
-            className="rounded-lg border border-[var(--copilot-border)] bg-white/70 px-2.5 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-white"
+            className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2.5 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
           >
             <X className="h-3 w-3" aria-hidden />
           </button>
@@ -310,7 +310,7 @@ export function QuickMovementForm({
   };
 
   return (
-    <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/90 p-4 shadow-sm">
+    <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/90 p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
         <p className="text-sm font-semibold text-[var(--copilot-ink)]">Registrar movimiento</p>
         <button type="button" onClick={onClose} className="text-xs text-[var(--copilot-ink-muted)] hover:underline">
@@ -328,7 +328,7 @@ export function QuickMovementForm({
             className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
               form.mode === m
                 ? "bg-[var(--copilot-accent)] text-white"
-                : "border border-[var(--copilot-border)] bg-white/70 text-[var(--copilot-ink-muted)] hover:bg-white"
+                : "border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
             }`}
           >
             {m === "now" ? "Confirmar ahora" : "Programar"}
@@ -348,7 +348,7 @@ export function QuickMovementForm({
                 ? t === "income"
                   ? "bg-emerald-600 text-white"
                   : "bg-rose-600 text-white"
-                : "border border-[var(--copilot-border)] bg-white/70 text-[var(--copilot-ink-muted)] hover:bg-white"
+                : "border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
             }`}
           >
             {t === "income" ? "Ingreso" : "Egreso"}
@@ -439,7 +439,7 @@ export function QuickMovementForm({
         type="button"
         onClick={() => void handleSubmit()}
         disabled={saving}
-        className="mt-3 w-full rounded-xl bg-[var(--copilot-accent)] py-2 text-sm font-semibold text-white disabled:opacity-50 hover:opacity-90"
+        className="mt-3 w-full rounded-xl bg-[var(--copilot-accent)] py-2 text-sm font-semibold text-white disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)] hover:opacity-90"
       >
         {saving ? "Guardando…" : form.mode === "now" ? "Registrar movimiento" : "Programar pago"}
       </button>
@@ -477,7 +477,7 @@ function RecentMovements({ workspace }: { workspace: TreasuryWorkspace }) {
         {active.map((m) => (
           <div
             key={m.id}
-            className="flex items-center justify-between rounded-xl border border-[var(--copilot-border)] bg-white/70 px-3 py-2"
+            className="flex items-center justify-between rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 py-2"
           >
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-medium text-[var(--copilot-ink)]">{m.concept}</p>
@@ -536,7 +536,7 @@ function TreasuryMovementGuide({
   ] as const;
 
   return (
-    <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
+    <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 p-4 shadow-sm">
       <p className="text-sm font-semibold text-[var(--copilot-ink)]">¿Qué querés registrar?</p>
       <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
         Elegí el tipo de movimiento. Los pagos futuros no afectan caja hasta confirmarse.
@@ -549,7 +549,7 @@ function TreasuryMovementGuide({
               key={g.id}
               type="button"
               onClick={g.onClick}
-              className="flex flex-col items-start gap-1 rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-2.5 text-left transition hover:border-[var(--copilot-accent)]/40 hover:bg-[var(--copilot-accent-soft)]/30"
+              className="flex flex-col items-start gap-1 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2.5 text-left transition hover:border-[var(--copilot-accent)]/40 hover:bg-[var(--copilot-accent-soft)]/30"
             >
               <Icon className="h-4 w-4 text-[var(--copilot-accent)]" aria-hidden />
               <span className="text-xs font-semibold text-[var(--copilot-ink)]">{g.label}</span>
@@ -593,7 +593,7 @@ export function TreasuryCashPanel({ workspace }: { workspace: TreasuryWorkspace 
           onScheduled={() => openForm({ movementType: "expense", mode: "scheduled" })}
         />
       ) : (
-        <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
+        <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 p-4 shadow-sm">
           <p className="text-sm font-semibold text-[var(--copilot-ink)]">¿Qué querés registrar?</p>
           <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
             Elegí el tipo de movimiento. Los pagos futuros no afectan caja hasta confirmarse.
@@ -611,7 +611,7 @@ export function TreasuryCashPanel({ workspace }: { workspace: TreasuryWorkspace 
                 <div
                   key={g.id}
                   title="Solo disponible para superadmin."
-                  className="flex cursor-not-allowed flex-col items-start gap-1 rounded-xl border border-[var(--copilot-border)] bg-white/60 px-3 py-2.5 opacity-60"
+                  className="flex cursor-not-allowed flex-col items-start gap-1 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-3 py-2.5 opacity-60"
                 >
                   <div className="flex items-center gap-1.5">
                     <Icon className="h-4 w-4 text-[var(--copilot-ink-muted)]" aria-hidden />
@@ -647,7 +647,7 @@ export function TreasuryCashPanel({ workspace }: { workspace: TreasuryWorkspace 
         <button
           type="button"
           onClick={() => setShowForm(true)}
-          className="w-full rounded-2xl border border-dashed border-emerald-200 bg-gradient-to-br from-white to-emerald-50/50 px-4 py-4 text-left shadow-sm transition-colors hover:from-white hover:to-emerald-50"
+          className="w-full rounded-2xl border border-dashed border-emerald-200 bg-gradient-to-br from-[var(--copilot-card-bg)] to-emerald-50/50 px-4 py-4 text-left shadow-sm transition-colors hover:from-[var(--copilot-card-bg)] hover:to-emerald-50"
         >
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100">

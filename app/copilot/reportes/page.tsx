@@ -108,10 +108,10 @@ function ExecutiveMonthlyReportTrigger({ className = "" }: { className?: string 
 }
 
 const viewBtnClass =
-  "inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-accent)] bg-white px-3.5 py-2 text-xs font-semibold text-[var(--copilot-accent)] hover:bg-[var(--copilot-accent-soft)]";
+  "inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-accent)] bg-[var(--copilot-card-bg)] px-3.5 py-2 text-xs font-semibold text-[var(--copilot-accent)] hover:bg-[var(--copilot-accent-soft)]";
 
 const smallPdfBtnClass =
-  "inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-white/80 px-3 py-2 text-xs font-semibold text-[var(--copilot-ink-muted)] hover:bg-white";
+  "inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 py-2 text-xs font-semibold text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]";
 
 // ── Layout components ─────────────────────────────────────────────────────────
 

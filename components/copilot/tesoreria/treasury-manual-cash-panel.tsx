@@ -217,7 +217,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
             className={`rounded-full px-3 py-1 text-xs font-medium transition ${
               currencyFilter === c
                 ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]"
-                : "bg-white/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-white"
+                : "bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]"
             }`}
           >
             {c === "all" ? "Todos" : c}
@@ -235,7 +235,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
             className={`rounded-full px-3 py-1 text-xs font-medium transition ${
               typeFilter === t
                 ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]"
-                : "bg-white/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-white"
+                : "bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]"
             }`}
           >
             {t === "all" ? "Todos" : TYPE_LABELS[t]}
@@ -269,7 +269,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
           ]}
         />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-white/50">
+        <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50">
           <table className={TESORERIA_TABLE_CLASS}>
             <thead>
               <tr>

@@ -17,7 +17,7 @@ export default function OperacionalLayout({ children }: { children: ReactNode })
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Sub-nav */}
-      <nav className="flex gap-1 border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.55)] px-6 py-1.5">
+      <nav className="flex gap-1 border-b border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] px-6 py-1.5">
         {NAV_ITEMS.map((item) => (
           <Link
             key={item.href}

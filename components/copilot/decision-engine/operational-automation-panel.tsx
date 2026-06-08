@@ -114,7 +114,7 @@ export function OperationalAutomationPanel() {
             type="button"
             disabled={running}
             onClick={() => void runAutomation(true)}
-            className="inline-flex items-center gap-1 rounded-md border border-[var(--copilot-border)] px-2 py-1 text-[10px] font-medium hover:bg-[var(--copilot-surface-alt)] disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded-md border border-[var(--copilot-border)] px-2 py-1 text-[10px] font-medium hover:bg-[var(--copilot-surface-alt)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             {running ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
             Dry-run
@@ -123,7 +123,7 @@ export function OperationalAutomationPanel() {
             type="button"
             disabled={running}
             onClick={() => void runAutomation(false)}
-            className="inline-flex items-center gap-1 rounded-md bg-[var(--copilot-accent)] px-2 py-1 text-[10px] font-medium text-white hover:opacity-90 disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded-md bg-[var(--copilot-accent)] px-2 py-1 text-[10px] font-medium text-white hover:opacity-90 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             <Play className="h-3 w-3" />
             Ejecutar

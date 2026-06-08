@@ -21,7 +21,7 @@ export function isNavActiveForBase(pathname: string, href: string, basePath: str
 }
 
 const toggleBtnClass =
-  "rounded-lg p-2 text-[var(--copilot-ink-muted)] transition hover:bg-white/70 hover:text-[var(--copilot-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]";
+  "rounded-lg p-2 text-[var(--copilot-ink-muted)] transition hover:bg-[var(--copilot-panel-bg)] hover:text-[var(--copilot-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]";
 
 export function CopilotModuleSidebar({
   collapsed,
@@ -133,7 +133,7 @@ export function CopilotModuleSidebar({
               const tooltip = item.description
                 ? `${item.label} — ${item.description}`
                 : item.label;
-              const activeRing = "ring-[rgba(44,40,37,0.08)] bg-white shadow-sm";
+              const activeRing = "ring-[rgba(44,40,37,0.08)] bg-[var(--copilot-card-bg)] shadow-sm";
               const accentActive = "text-[var(--copilot-accent)]";
               return (
                 <Link
@@ -143,7 +143,7 @@ export function CopilotModuleSidebar({
                   className={`group flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[13px] font-medium leading-tight transition-colors ${
                     active
                       ? `text-[var(--copilot-ink)] ring-1 ${activeRing}`
-                      : "text-[var(--copilot-ink-muted)] hover:bg-white/60 hover:text-[var(--copilot-ink)]"
+                      : "text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]/60 hover:text-[var(--copilot-ink)]"
                   } ${collapsed ? "min-h-7 justify-center px-0" : item.description ? "min-h-9 py-1.5" : "min-h-7"}`}
                 >
                   <Icon

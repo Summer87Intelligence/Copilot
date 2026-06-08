@@ -39,9 +39,9 @@ const NAV_BTN_BASE =
 const NAV_BTN_ACTIVE =
   "bg-[var(--copilot-accent)] text-white shadow-sm";
 const NAV_BTN_IDLE =
-  "border border-[var(--copilot-border)] bg-white/70 text-[var(--copilot-ink)] hover:bg-[rgba(44,40,37,0.04)]";
+  "border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink)] hover:bg-[rgba(44,40,37,0.04)]";
 const NAV_BTN_CONFIG_IDLE =
-  "border border-[var(--copilot-border)] bg-white/50 text-[var(--copilot-ink-muted)] text-[11px] hover:bg-[rgba(44,40,37,0.04)]";
+  "border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50 text-[var(--copilot-ink-muted)] text-[11px] hover:bg-[rgba(44,40,37,0.04)]";
 
 export function TesoreriaShell() {
   const router = useRouter();

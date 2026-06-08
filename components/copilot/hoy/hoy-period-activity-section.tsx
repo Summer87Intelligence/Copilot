@@ -43,7 +43,7 @@ function ActivityCurrencyCard({ block }: { block: HoyPeriodActivityBlock }) {
   const showNote = shouldShowCollectionExceedsBillingNote(block.billedNet, block.collectedInPeriod);
 
   return (
-    <div className="rounded-xl border border-[var(--copilot-border)] bg-white p-4">
+    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-4">
       <p className="text-sm font-semibold text-[var(--copilot-ink)]">{title}</p>
       <div className="mt-3 space-y-1.5 text-[var(--copilot-ink-muted)]">
         <DetailMetric

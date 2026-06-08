@@ -507,7 +507,7 @@ function CopilotAtencionPrioritariaPageContent() {
               </CopilotPrimaryLink>
             </div>
 
-            <CopilotCard className="border-[var(--copilot-border)] bg-white/90">
+            <CopilotCard className="border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/90">
               <CopilotSectionTitle
                 title="Contexto mínimo"
                 subtitle="Atajos para informar la decisión — no sustituyen el paso principal de arriba."
@@ -564,7 +564,7 @@ function CopilotAtencionPrioritariaPageContent() {
                   </div>
                 </li>
                 <li className="flex gap-3">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[var(--copilot-border)] bg-white/90 text-xs font-bold text-[var(--copilot-ink)]">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/90 text-xs font-bold text-[var(--copilot-ink)]">
                     2
                   </span>
                   <div>
@@ -590,7 +590,7 @@ function CopilotAtencionPrioritariaPageContent() {
 
             <CopilotCollapsiblePanel title="Qué está pasando y riesgo si no actuás" defaultOpen={false}>
               <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-xl border border-[var(--copilot-border)] bg-white/80 p-4">
+                <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                     Qué está pasando
                   </p>
@@ -624,7 +624,7 @@ function CopilotAtencionPrioritariaPageContent() {
                 <p className="mt-3 text-sm text-amber-800">{snapshotError}</p>
               ) : snapshot ? (
                 <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 px-4 py-3">
+                  <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-4 py-3">
                     <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                       Caja disponible (referencia)
                     </dt>
@@ -632,7 +632,7 @@ function CopilotAtencionPrioritariaPageContent() {
                       {formatMoney(snapshotCashNet(snapshot))}
                     </dd>
                   </div>
-                  <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 px-4 py-3">
+                  <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-4 py-3">
                     <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                       Egresos esperados (motor)
                     </dt>
@@ -640,7 +640,7 @@ function CopilotAtencionPrioritariaPageContent() {
                       {formatMoney(snapshotExpectedOutflowsTotal(snapshot))}
                     </dd>
                   </div>
-                  <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 px-4 py-3">
+                  <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-4 py-3">
                     <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                       Monto comprometido / foco
                     </dt>
@@ -654,7 +654,7 @@ function CopilotAtencionPrioritariaPageContent() {
                       ) : null}
                     </dd>
                   </div>
-                  <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 px-4 py-3">
+                  <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-4 py-3">
                     <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                       Fecha límite / horizonte
                     </dt>
@@ -662,7 +662,7 @@ function CopilotAtencionPrioritariaPageContent() {
                       {fechaLimite}
                     </dd>
                   </div>
-                  <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 px-4 py-3">
+                  <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-4 py-3">
                     <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                       Déficit o margen proyectado
                     </dt>
@@ -670,7 +670,7 @@ function CopilotAtencionPrioritariaPageContent() {
                       {deficitOMargen}
                     </dd>
                   </div>
-                  <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 px-4 py-3">
+                  <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-4 py-3">
                     <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                       Cobertura (caja + cobranza / egresos)
                     </dt>
@@ -777,7 +777,7 @@ function CopilotAtencionPrioritariaPageContent() {
             </CopilotCollapsiblePanel>
 
             <CopilotCollapsiblePanel title="Cómo usar esta pantalla (capacitación)" defaultOpen={false}>
-            <CopilotCard className="border-dashed border-[var(--copilot-border)] bg-white/50">
+            <CopilotCard className="border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50">
               <CopilotSectionTitle
                 title="Cómo usar esta pantalla"
                 subtitle="Capacitación express — pensada para decisiones bajo presión."

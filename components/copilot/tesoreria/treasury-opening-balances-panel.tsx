@@ -119,7 +119,7 @@ export function TreasuryOpeningBalancesPanel({ workspace, embedded = false }: Pr
           {rows.map((row) => (
             <div
               key={row.currencyCode}
-              className="rounded-xl border border-[var(--copilot-border)] bg-white/80 p-4"
+              className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 p-4"
             >
               <p className="text-sm font-semibold text-[var(--copilot-ink)]">
                 Caja inicial {row.currencyCode}

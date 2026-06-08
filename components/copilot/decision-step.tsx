@@ -16,7 +16,7 @@ const variantBox: Record<SemanticVariant, string> = {
   success:
     "border-emerald-300/90 bg-emerald-50/95 text-emerald-950 ring-1 ring-emerald-200/70",
   neutral:
-    "border-[var(--copilot-border)] bg-white/80 text-[var(--copilot-ink)] ring-1 ring-[rgba(44,40,37,0.06)]",
+    "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 text-[var(--copilot-ink)] ring-1 ring-[rgba(44,40,37,0.06)]",
 };
 
 const riskBar: Record<SemanticVariant, string> = {

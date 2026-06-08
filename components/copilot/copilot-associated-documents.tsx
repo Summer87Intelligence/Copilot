@@ -3,7 +3,7 @@
 import type { ProtoDocument } from "@/lib/copilot-documents-data";
 
 const ghostDocLinkClass =
-  "inline-flex items-center justify-center rounded-xl border border-[var(--copilot-border)] bg-white/60 px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink)] shadow-sm transition hover:bg-white whitespace-nowrap";
+  "inline-flex items-center justify-center rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink)] shadow-sm transition hover:bg-[var(--copilot-panel-bg)] whitespace-nowrap";
 
 function formatIssueDate(iso: string | null): string {
   if (!iso) return "—";
@@ -39,7 +39,7 @@ export function CopilotAssociatedDocumentsSection({
     <section
       className={
         showHeader
-          ? "rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4"
+          ? "rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4"
           : "space-y-3"
       }
     >
@@ -76,7 +76,7 @@ export function CopilotAssociatedDocumentsSection({
           {documents.map((doc) => (
             <li
               key={doc.id}
-              className="rounded-lg border border-[var(--copilot-border)] bg-white/90 px-3 py-3 text-sm"
+              className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/90 px-3 py-3 text-sm"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0 flex-1 space-y-1">

@@ -149,7 +149,7 @@ export function CopilotActionsEvidenceDrawer({
                 className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
                   tab === item.id
                     ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]"
-                    : "bg-white/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-white"
+                    : "bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]"
                 }`}
               >
                 {item.label}
@@ -163,7 +163,7 @@ export function CopilotActionsEvidenceDrawer({
             <div className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
                 <KpiPill label="Tipo de acción" value={data.summary.actionTypeLabel} />
-                <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
+                <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                     Prioridad
                   </p>
@@ -175,7 +175,7 @@ export function CopilotActionsEvidenceDrawer({
                   </div>
                 </div>
                 <KpiPill label="Canal" value={data.summary.channel} />
-                <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4 sm:col-span-2">
+                <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4 sm:col-span-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                     Objetivo
                   </p>
@@ -197,7 +197,7 @@ export function CopilotActionsEvidenceDrawer({
               <SectionBlock title="Iniciativa / decisión" content={data.origin.initiative} />
               <SectionBlock title="Disparador (trigger)" content={data.origin.trigger} />
               {data.origin.score ? (
-                <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
+                <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h4 className="text-sm font-semibold text-[var(--copilot-ink)]">Score</h4>
                     <CopilotSeverityBadge severity={data.origin.scoreSeverity} compact />
@@ -205,7 +205,7 @@ export function CopilotActionsEvidenceDrawer({
                   <p className="mt-2 text-sm text-[var(--copilot-ink-muted)]">{data.origin.score}</p>
                 </div>
               ) : null}
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4">
                 <span className="text-sm font-semibold text-[var(--copilot-ink)]">
                   Criticidad del origen
                 </span>
@@ -222,14 +222,14 @@ export function CopilotActionsEvidenceDrawer({
 
           {tab === "contexto" ? (
             <div className="space-y-4">
-              <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
+              <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                   Empresa
                 </p>
                 <p className="mt-2 text-sm font-semibold text-[var(--copilot-ink)]">{company}</p>
               </div>
               <SectionBlock title="Situación comercial o financiera" content={data.context.situation} />
-              <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
+              <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h4 className="text-sm font-semibold text-[var(--copilot-ink)]">Dato clave</h4>
                   <CopilotSeverityBadge severity={data.context.contextSeverity} compact />
@@ -243,7 +243,7 @@ export function CopilotActionsEvidenceDrawer({
 
           {tab === "ejecucion" ? (
             <div className="space-y-4">
-              <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
+              <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                   Mensaje / payload (vivo)
                 </p>
@@ -258,7 +258,7 @@ export function CopilotActionsEvidenceDrawer({
                 <KpiPill label="Canal" value={mapActionChannel(action.channel)} />
                 <KpiPill label="Creada" value={formatDateShort(action.created_at)} />
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4">
                 <span className="text-sm font-semibold text-[var(--copilot-ink)]">Estado</span>
                 <div className="flex flex-wrap items-center gap-2">
                   <CopilotBadgeInline>
@@ -270,7 +270,7 @@ export function CopilotActionsEvidenceDrawer({
               {action.assignee_name?.trim() ||
               action.expected_result?.trim() ||
               action.before_note?.trim() ? (
-                <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
+                <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4">
                   <h4 className="text-sm font-semibold text-[var(--copilot-ink)]">
                     Seguimiento (persistido)
                   </h4>
@@ -301,7 +301,7 @@ export function CopilotActionsEvidenceDrawer({
                 </div>
               ) : null}
               {action.outcome ? (
-                <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
+                <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4">
                   <h4 className="text-sm font-semibold text-[var(--copilot-ink)]">
                     Resultado registrado
                   </h4>
@@ -348,7 +348,7 @@ export function CopilotActionsEvidenceDrawer({
                 </p>
               )}
               {isExecuted && data.executionTemplate.outcomeWhenExecuted ? (
-                <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
+                <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h4 className="text-sm font-semibold text-[var(--copilot-ink)]">Resultado</h4>
                     <CopilotSeverityBadge
@@ -394,7 +394,7 @@ export function CopilotActionsEvidenceDrawer({
 
 function KpiPill({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
+    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4">
       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
         {label}
       </p>
@@ -405,7 +405,7 @@ function KpiPill({ label, value }: { label: string; value: string }) {
 
 function SectionBlock({ title, content }: { title: string; content: string }) {
   return (
-    <section className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
+    <section className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4">
       <h4 className="text-sm font-semibold text-[var(--copilot-ink)]">{title}</h4>
       <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink-muted)]">{content}</p>
     </section>

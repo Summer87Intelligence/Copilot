@@ -73,7 +73,7 @@ export function ReportPreviewShell({
             type="button"
             onClick={onClose}
             disabled={downloadLoading}
-            className="shrink-0 rounded-lg p-1 text-[var(--copilot-ink-muted)] hover:bg-black/[0.04] disabled:opacity-50"
+            className="shrink-0 rounded-lg p-1 text-[var(--copilot-ink-muted)] hover:bg-black/[0.04] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
             aria-label="Cerrar"
           >
             <X className="h-5 w-5" aria-hidden />
@@ -106,7 +106,7 @@ export function ReportPreviewShell({
             type="button"
             onClick={onDownloadPdf}
             disabled={downloadLoading}
-            className="inline-flex items-center gap-2 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             {downloadLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />

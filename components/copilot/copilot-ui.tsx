@@ -1,14 +1,19 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+import {
+  copilotDisabledStateClass,
+  copilotGhostButtonClass,
+} from "@/components/copilot/ui/copilot-visual-system";
+
 const primaryBtnClass =
-  "inline-flex items-center justify-center rounded-xl bg-[var(--copilot-accent)] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]";
+  `inline-flex items-center justify-center rounded-xl bg-[var(--copilot-accent)] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)] ${copilotDisabledStateClass}`;
 
 export const copilotPageMainClass =
   "flex-1 space-y-6 overflow-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8";
 
-const ink = "text-[var(--copilot-ink)]";
-const muted = "text-[var(--copilot-ink-muted)]";
+const ink = "text-[var(--copilot-text)]";
+const muted = "text-[var(--copilot-muted)]";
 
 export function CopilotCard({
   children,
@@ -19,7 +24,7 @@ export function CopilotCard({
 }) {
   return (
     <div
-      className={`rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] p-4 shadow-[var(--copilot-shadow)] ${className}`}
+      className={`rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-4 shadow-[var(--copilot-shadow)] ${className}`}
     >
       {children}
     </div>
@@ -58,10 +63,14 @@ export function CopilotBadge({
   tone?: "neutral" | "warning" | "danger" | "success";
 }) {
   const tones: Record<typeof tone, string> = {
-    neutral: "bg-[rgba(44,40,37,0.06)] text-[var(--copilot-ink)]",
-    warning: "bg-amber-100/80 text-amber-900",
-    danger: "bg-rose-100/80 text-rose-900",
-    success: "bg-emerald-100/70 text-emerald-900",
+    neutral:
+      "bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-text)]",
+    warning:
+      "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-badge-warning-text)]",
+    danger:
+      "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)]",
+    success:
+      "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-badge-success-text)]",
   };
   return (
     <span
@@ -97,9 +106,6 @@ export function CopilotPrimaryButton({
   );
 }
 
-const ghostBtnClass =
-  "inline-flex items-center justify-center rounded-xl border border-[var(--copilot-border)] bg-white/60 px-3.5 py-2 text-sm font-medium text-[var(--copilot-ink)] shadow-sm transition hover:bg-white";
-
 export function CopilotGhostLink({
   href,
   children,
@@ -107,7 +113,11 @@ export function CopilotGhostLink({
   ...rest
 }: React.ComponentProps<typeof Link>) {
   return (
-    <Link href={href} className={`${ghostBtnClass} ${className}`} {...rest}>
+    <Link
+      href={href}
+      className={`${copilotGhostButtonClass} ${copilotDisabledStateClass} ${className}`}
+      {...rest}
+    >
       {children}
     </Link>
   );
@@ -119,7 +129,11 @@ export function CopilotGhostButton({
   ...rest
 }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button type="button" className={`${ghostBtnClass} ${className}`} {...rest}>
+    <button
+      type="button"
+      className={`${copilotGhostButtonClass} ${copilotDisabledStateClass} ${className}`}
+      {...rest}
+    >
       {children}
     </button>
   );
@@ -144,7 +158,7 @@ export function CopilotKpiCard({
       <p className={`text-xl font-semibold tracking-tight ${ink}`}>{value}</p>
       {hint ? <p className={`text-xs ${muted}`}>{hint}</p> : null}
       {trend ? (
-        <p className="text-xs font-medium text-[rgba(44,40,37,0.5)]"> {trend}</p>
+        <p className="text-xs font-medium text-[var(--copilot-subtle)]"> {trend}</p>
       ) : null}
     </CopilotCard>
   );

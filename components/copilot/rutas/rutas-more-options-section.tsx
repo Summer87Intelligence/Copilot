@@ -27,7 +27,7 @@ export function RutasMoreOptionsSection({ children }: RutasMoreOptionsSectionPro
   };
 
   return (
-    <section className="rounded-xl border border-[var(--copilot-border)]/70 bg-white/50">
+    <section className="rounded-xl border border-[var(--copilot-border)]/70 bg-[var(--copilot-card-bg)]/50">
       <button
         type="button"
         className="flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left"

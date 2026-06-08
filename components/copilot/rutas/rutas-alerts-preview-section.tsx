@@ -44,7 +44,7 @@ export function RutasAlertsPreviewSection() {
           Cargando alertas…
         </div>
       ) : preview.length === 0 ? (
-        <CopilotCard className="mt-2 border-dashed border-[var(--copilot-border)] bg-white/70 px-3 py-3">
+        <CopilotCard className="mt-2 border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 py-3">
           <p className="text-sm font-medium text-[var(--copilot-ink)]">Sin alertas activas</p>
           <p className="mt-1 text-sm text-[var(--copilot-ink-muted)]">
             Revisá Hoy o Finanzas si esperabas tensión de caja.
@@ -59,7 +59,7 @@ export function RutasAlertsPreviewSection() {
             const ops = buildCopilotAlertOpsContext(alert);
             return (
             <li key={alert.id}>
-              <CopilotCard className="border-[var(--copilot-border)] bg-white/90 px-3 py-3">
+              <CopilotCard className="border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/90 px-3 py-3">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">

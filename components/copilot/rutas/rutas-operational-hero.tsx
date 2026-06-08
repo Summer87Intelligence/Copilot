@@ -42,7 +42,7 @@ export function RutasOperationalHero() {
 
   if (loading && !executiveBriefing) {
     return (
-      <div className="rounded-2xl border border-[var(--copilot-border)]/40 bg-white/60 px-4 py-5">
+      <div className="rounded-2xl border border-[var(--copilot-border)]/40 bg-[var(--copilot-card-bg)]/60 px-4 py-5">
         <div className="h-3 w-28 animate-pulse rounded-full bg-[var(--copilot-border)]/25" />
         <div className="mt-3 h-5 w-3/4 animate-pulse rounded-full bg-[var(--copilot-border)]/20" />
         <div className="mt-2 h-4 w-1/2 animate-pulse rounded-full bg-[var(--copilot-border)]/15" />
@@ -76,7 +76,7 @@ export function RutasOperationalHero() {
       </p>
 
       {mainAction ? (
-        <div className="mt-4 rounded-xl border border-[var(--copilot-border)]/50 bg-white/75 px-3 py-3">
+        <div className="mt-4 rounded-xl border border-[var(--copilot-border)]/50 bg-[var(--copilot-card-bg)]/75 px-3 py-3">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
             Tu siguiente paso
           </p>

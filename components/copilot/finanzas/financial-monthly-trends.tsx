@@ -172,7 +172,7 @@ function KpiCard({
         ? "text-amber-800"
         : "text-[var(--copilot-ink)]";
   return (
-    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/70 px-3 py-2.5">
+    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 py-2.5">
       <p className="truncate text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
         {label}
       </p>
@@ -395,7 +395,7 @@ function DetailTable({
           {rows.map((b) => {
             const diff = b.netSales - b.collections;
             return (
-              <tr key={b.key} className="hover:bg-slate-50/60">
+              <tr key={b.key} className="hover:bg-[var(--copilot-soft-bg)]/60">
                 <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 font-medium text-[var(--copilot-ink)]">
                   {b.label}
                 </td>
@@ -521,7 +521,7 @@ export function FinancialMonthlyTrends({
                 onClick={() => setPeriod(p.id)}
                 className={`rounded-lg px-2.5 py-1 text-[10px] font-semibold transition ${
                   period === p.id
-                    ? "bg-white text-[var(--copilot-ink)] shadow-sm ring-1 ring-[var(--copilot-border)]"
+                    ? "bg-[var(--copilot-card-bg)] text-[var(--copilot-ink)] shadow-sm ring-1 ring-[var(--copilot-border)]"
                     : "text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]"
                 }`}
               >
@@ -550,7 +550,7 @@ export function FinancialMonthlyTrends({
                     onClick={() => has && setCurrency(c)}
                     className={`min-w-[44px] rounded-lg px-2.5 py-1 text-[10px] font-semibold transition ${
                       active
-                        ? "bg-white text-[var(--copilot-ink)] shadow-sm ring-1 ring-[var(--copilot-border)]"
+                        ? "bg-[var(--copilot-card-bg)] text-[var(--copilot-ink)] shadow-sm ring-1 ring-[var(--copilot-border)]"
                         : has
                           ? "text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]"
                           : "cursor-not-allowed text-slate-300"
@@ -649,7 +649,7 @@ export function FinancialMonthlyTrends({
             </div>
           ) : null}
 
-          <div className={`${executiveView ? "mt-3" : "mt-4"} overflow-x-auto rounded-xl border border-[var(--copilot-border)] bg-white/60 px-3 pb-2 pt-3`}>
+          <div className={`${executiveView ? "mt-3" : "mt-4"} overflow-x-auto rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-3 pb-2 pt-3`}>
             <div style={{ minWidth: Math.max(bars.length * 44, 280) }}>
               <GroupedBarChart bars={bars} currency={currency} />
             </div>

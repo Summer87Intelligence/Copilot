@@ -20,14 +20,14 @@ function statusStyle(s: PulseStatus): StatusStyle {
   if (s === "attention")
     return {
       dot: "bg-amber-400",
-      bg: "bg-white",
+      bg: "bg-[var(--copilot-card-bg)]",
       border: "border-[var(--copilot-border)]",
       label: "Requiere atención",
       labelClass: "text-amber-800",
     };
   return {
     dot: "bg-emerald-500",
-    bg: "bg-white",
+    bg: "bg-[var(--copilot-card-bg)]",
     border: "border-[var(--copilot-border)]",
     label: "Saludable",
     labelClass: "text-emerald-700",
@@ -74,7 +74,7 @@ export function PulseHero({
         <button
           type="button"
           onClick={onRefresh}
-          className="flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] shadow-sm hover:bg-[rgba(44,40,37,0.02)]"
+          className="flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] shadow-sm hover:bg-[rgba(44,40,37,0.02)]"
         >
           <RefreshCw className="h-3.5 w-3.5" aria-hidden />
           Actualizar
@@ -108,7 +108,7 @@ export function AttentionFollowUpStrip({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--copilot-border)] bg-white px-4 py-3 text-left shadow-sm transition hover:bg-[rgba(44,40,37,0.02)]"
+      className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-3 text-left shadow-sm transition hover:bg-[rgba(44,40,37,0.02)]"
     >
       <p className="text-sm font-semibold text-[var(--copilot-ink)]">
         {attentionCount} de {total} deudores tienen atraso o señales de demora

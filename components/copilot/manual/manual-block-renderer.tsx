@@ -139,7 +139,7 @@ function ManualBlock({
         <div className="space-y-3">
           {block.entries.map(({ term, definition }) => (
             <div key={term} className="flex gap-3 text-sm">
-              <span className="mt-0.5 inline-flex shrink-0 rounded-md border border-[var(--copilot-border)] bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-[var(--copilot-ink)]">
+              <span className="mt-0.5 inline-flex shrink-0 rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-2 py-0.5 text-[11px] font-semibold text-[var(--copilot-ink)]">
                 {term}
               </span>
               <span className="text-[var(--copilot-ink-muted)]">{definition}</span>

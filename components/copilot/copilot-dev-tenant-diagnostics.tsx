@@ -154,7 +154,7 @@ export function CopilotDevTenantDiagnostics({
       <span className="text-amber-900/90 dark:text-amber-100/90">
         Empresa: <strong>{companyName}</strong>
         {" · "}
-        <code className="rounded bg-white/60 px-1 dark:bg-black/25">
+        <code className="rounded bg-[var(--copilot-card-bg)]/60 px-1 dark:bg-black/25">
           company_id={companyId || "—"}
         </code>
         {" · "}

@@ -5,7 +5,7 @@ export function EnvironmentBannerLeft() {
   return (
     <span className="inline-flex min-w-0 flex-wrap items-center gap-2 font-semibold">
       <Rocket className="h-4 w-4 shrink-0 text-[var(--copilot-accent)]" aria-hidden />
-      <span className="rounded-md bg-white/80 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-[var(--copilot-accent)]">
+      <span className="rounded-md bg-[var(--copilot-card-bg)]/80 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-[var(--copilot-accent)]">
         Prototipo
       </span>
       <span className="text-[var(--copilot-ink)]/90">

@@ -20,7 +20,7 @@ export function CopilotSkeletonCard({
 }) {
   return (
     <div
-      className={`rounded-2xl border border-[var(--copilot-border)] bg-white/70 p-4 ${className}`}
+      className={`rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4 ${className}`}
       aria-hidden
     >
       <CopilotSkeletonLine className="h-2.5 w-24" />
@@ -45,7 +45,7 @@ export function CopilotSkeletonKpiRow({
       {Array.from({ length: count }).map((_, index) => (
         <div
           key={index}
-          className="rounded-2xl border border-[var(--copilot-border)] bg-white/70 p-3"
+          className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3"
         >
           <CopilotSkeletonLine className="h-2 w-16" />
           <CopilotSkeletonLine className="mt-2 h-6 w-12" />
@@ -64,7 +64,7 @@ export function CopilotSkeletonTable({
 }) {
   return (
     <div
-      className="overflow-hidden rounded-2xl border border-[var(--copilot-border)] bg-white/70"
+      className="overflow-hidden rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70"
       aria-hidden
     >
       <div className="border-b border-[var(--copilot-border)] px-3 py-2">

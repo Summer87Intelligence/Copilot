@@ -330,7 +330,7 @@ function InvoiceLineasSection({ row }: { row: DataRow }) {
   const lineas = readInvoiceLineas(row);
   if (lineas.length === 0) return null;
   return (
-    <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+    <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3">
       <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
         Líneas del comprobante ({lineas.length})
       </h4>
@@ -344,7 +344,7 @@ function InvoiceLineasSection({ row }: { row: DataRow }) {
           return (
             <li
               key={i}
-              className="rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-2"
+              className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-2"
             >
               <p className="text-sm font-medium text-[var(--copilot-ink)]">{concepto}</p>
               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-[var(--copilot-ink-muted)]">
@@ -383,13 +383,13 @@ function ReceiptCobroSection({ row }: { row: DataRow }) {
   ].filter(Boolean) as Array<{ label: string; value: string }>;
 
   return (
-    <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+    <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3">
       <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
         Datos de cobro
       </h4>
       <div className="grid gap-2 sm:grid-cols-2">
         {items.map(({ label, value }) => (
-          <div key={label} className="rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-2">
+          <div key={label} className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-2">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
               {label}
             </p>
@@ -428,7 +428,7 @@ function CompactList({
   const showRange =
     typeof totalCount === "number" && totalCount > rows.length;
   return (
-    <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+    <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3">
       <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
         {title} ({showRange ? `${rows.length} de ${totalCount}` : rows.length})
         {periodSuffix ? (
@@ -444,7 +444,7 @@ function CompactList({
           {rows.slice(0, 10).map((r, i) => (
             <li
               key={String(r.id ?? i)}
-              className="space-y-1 rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-2 text-sm text-[var(--copilot-ink)]"
+              className="space-y-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-2 text-sm text-[var(--copilot-ink)]"
             >
               <p className="font-medium">{rowTitle(r, rowEntity)}</p>
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--copilot-ink-muted)]">
@@ -479,7 +479,7 @@ function CompactList({
 
 function ContactsBlock({ contacts }: { contacts: DataRow[] }) {
   return (
-    <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+    <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3">
       <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
         Contactos ({contacts.length})
       </h4>
@@ -499,7 +499,7 @@ function ContactsBlock({ contacts }: { contacts: DataRow[] }) {
             return (
               <li
                 key={String(ct.id ?? i)}
-                className="space-y-1 rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-2 text-sm text-[var(--copilot-ink)]"
+                className="space-y-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-2 text-sm text-[var(--copilot-ink)]"
               >
                 <p className="font-medium">{name}</p>
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-[var(--copilot-ink-muted)]">
@@ -978,13 +978,13 @@ export function CopilotDataSidebar({
             />
           ) : null}
 
-          <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+          <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3">
             <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
               Datos básicos
             </h4>
             <div className="grid gap-2 sm:grid-cols-2">
               {baseFields.map(([k, v]) => (
-                <div key={k} className="rounded-lg border border-[var(--copilot-border)] bg-white px-2.5 py-2">
+                <div key={k} className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-2">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                     {entity === "invoices"
                       ? (INVOICE_SIDEBAR_LABELS[k] ?? k)
@@ -1107,7 +1107,7 @@ export function CopilotDataSidebar({
               />
               <ContactsBlock contacts={contacts} />
               {isPanelFiltered && filteredInvoices.length === 0 ? (
-                <section className="space-y-2 rounded-xl border border-dashed border-[var(--copilot-border)] bg-white/70 p-3">
+                <section className="space-y-2 rounded-xl border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3">
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                     Facturas relacionadas (0 de {invoices.length}){" "}
                     <span className="font-normal normal-case text-[var(--copilot-ink-muted)]">
@@ -1145,7 +1145,7 @@ export function CopilotDataSidebar({
           {entity === "invoices" ? (
             <>
               <InvoiceOperationalCallout row={row} />
-              <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+              <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3">
                 <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                   Cliente
                 </h4>
@@ -1159,7 +1159,7 @@ export function CopilotDataSidebar({
           ) : null}
 
           {entity === "payments" ? (
-            <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+            <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3">
               <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Cliente
               </h4>
@@ -1170,7 +1170,7 @@ export function CopilotDataSidebar({
           ) : null}
 
           {entity === "contacts" ? (
-            <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+            <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3">
               <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Cliente
               </h4>
@@ -1182,7 +1182,7 @@ export function CopilotDataSidebar({
 
           {entity === "receipts" ? (
             <>
-              <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+              <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3">
                 <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                   Cliente
                 </h4>
@@ -1192,7 +1192,7 @@ export function CopilotDataSidebar({
               </section>
               <ReceiptCobroSection row={row} />
               {invoice ? (
-                <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3">
+                <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3">
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                     Factura asociada
                   </h4>
@@ -1218,7 +1218,7 @@ export function CopilotDataSidebar({
                   type="button"
                   disabled={restoreBusy}
                   onClick={onRestore}
-                  className="rounded-xl border border-[rgba(31,107,74,0.35)] bg-[var(--copilot-accent-soft)] px-3 py-2 text-sm font-semibold text-[var(--copilot-accent)] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-xl border border-[rgba(31,107,74,0.35)] bg-[var(--copilot-accent-soft)] px-3 py-2 text-sm font-semibold text-[var(--copilot-accent)] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
                 >
                   {restoreBusy ? "Reactivando…" : "Reactivar"}
                 </button>
@@ -1227,7 +1227,7 @@ export function CopilotDataSidebar({
                 <button
                   type="button"
                   onClick={onDelete}
-                  className="rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--copilot-ink)] transition hover:bg-white/80"
+                  className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm font-semibold text-[var(--copilot-ink)] transition hover:bg-[var(--copilot-panel-bg)]"
                 >
                   Archivar
                 </button>
@@ -1307,7 +1307,7 @@ function ClientPanelFilters({
   return (
     <section
       aria-label="Filtros del detalle del cliente"
-      className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3"
+      className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3"
     >
       <ModeTabs mode={mode} onChange={onModeChange} />
 
@@ -1321,7 +1321,7 @@ function ClientPanelFilters({
                 const v = e.target.value;
                 onYearChange(v === "all" ? "all" : Number(v));
               }}
-              className="rounded-md border border-[var(--copilot-border)] bg-white px-2 py-1 text-xs text-[var(--copilot-ink)]"
+              className="rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1 text-xs text-[var(--copilot-ink)]"
             >
               <option value="all">Todos</option>
               {availableYears.map((y) => (
@@ -1339,7 +1339,7 @@ function ClientPanelFilters({
                 const v = e.target.value;
                 onMonthChange(v === "all" ? "all" : Number(v));
               }}
-              className="rounded-md border border-[var(--copilot-border)] bg-white px-2 py-1 text-xs text-[var(--copilot-ink)]"
+              className="rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1 text-xs text-[var(--copilot-ink)]"
             >
               <option value="all">Todos</option>
               {PERIOD_MONTH_OPTIONS.map((opt) => (
@@ -1369,7 +1369,7 @@ function ClientPanelFilters({
                 type="date"
                 value={from}
                 onChange={(e) => onFromChange(e.target.value)}
-                className="rounded-md border border-[var(--copilot-border)] bg-white px-2 py-1 text-xs text-[var(--copilot-ink)]"
+                className="rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1 text-xs text-[var(--copilot-ink)]"
               />
             </label>
             <label className="flex flex-col gap-1 text-[11px] font-medium text-[var(--copilot-ink-muted)]">
@@ -1378,7 +1378,7 @@ function ClientPanelFilters({
                 type="date"
                 value={to}
                 onChange={(e) => onToChange(e.target.value)}
-                className="rounded-md border border-[var(--copilot-border)] bg-white px-2 py-1 text-xs text-[var(--copilot-ink)]"
+                className="rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1 text-xs text-[var(--copilot-ink)]"
               />
             </label>
           </div>
@@ -1390,7 +1390,7 @@ function ClientPanelFilters({
           <button
             type="button"
             onClick={onClear}
-            className="rounded-md border border-[var(--copilot-border)] bg-white px-2 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] transition hover:text-[var(--copilot-ink)]"
+            className="rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] transition hover:text-[var(--copilot-ink)]"
           >
             Limpiar filtros
           </button>
@@ -1422,7 +1422,7 @@ function ModeTabs({
     <div
       role="tablist"
       aria-label="Modo de filtro del panel"
-      className="inline-flex rounded-lg border border-[var(--copilot-border)] bg-white p-0.5 text-[11px]"
+      className="inline-flex rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-0.5 text-[11px]"
     >
       {tabs.map((t) => {
         const active = t.id === mode;

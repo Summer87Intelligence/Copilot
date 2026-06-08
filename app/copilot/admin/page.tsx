@@ -105,7 +105,7 @@ function ModalOverlay({ onClose, children }: { onClose: () => void; children: Re
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-2xl border border-[var(--copilot-border)] bg-white shadow-2xl"
+        className="w-full max-w-lg rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -165,7 +165,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2 text-sm text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
+              className="w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
               placeholder="usuario@empresa.com"
             />
           </label>
@@ -176,7 +176,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
               required
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="w-full rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2 text-sm text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
+              className="w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
               placeholder="Juan Pérez"
             />
           </label>
@@ -186,7 +186,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as SupportedRole)}
-                className="w-full appearance-none rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2 pr-8 text-sm text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
+                className="w-full appearance-none rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 pr-8 text-sm text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
               >
                 {SIMPLE_ROLES.map((r) => (
                   <option key={r} value={r}>{ROLE_LABELS[r]}</option>
@@ -202,7 +202,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
               value={pin}
               onChange={(e) => setPin(e.target.value.toUpperCase())}
               maxLength={12}
-              className="w-full rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2 text-sm font-mono text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
+              className="w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm font-mono text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
               placeholder="Auto-generado"
             />
           </label>
@@ -326,7 +326,7 @@ function DeleteUserModal({
           value={confirm}
           onChange={(e) => setConfirm(e.target.value.toUpperCase())}
           placeholder={REQUIRED}
-          className="mb-4 w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm font-mono text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-rose-300"
+          className="mb-4 w-full rounded-lg border border-rose-200 bg-[var(--copilot-card-bg)] px-3 py-2 text-sm font-mono text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-rose-300"
         />
         <div className="flex justify-end gap-2">
           <CopilotGhostButton onClick={onClose} disabled={loading}>Cancelar</CopilotGhostButton>
@@ -334,7 +334,7 @@ function DeleteUserModal({
             type="button"
             onClick={() => void handleDelete()}
             disabled={confirm !== REQUIRED || loading}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
             Eliminar usuario
@@ -443,7 +443,7 @@ function EditPermissionsModal({
                         const nextEdit = nextView ? canEdit : false;
                         setPerms((prev) => ({ ...prev, [moduleKey]: checksToAccessLevel(nextView, nextEdit) }));
                       }}
-                      className="h-3.5 w-3.5 accent-[var(--copilot-accent)] disabled:opacity-50"
+                      className="h-3.5 w-3.5 accent-[var(--copilot-accent)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
                     />
                   </td>
                   <td className="py-2 text-center">
@@ -456,7 +456,7 @@ function EditPermissionsModal({
                         const nextView = nextEdit ? true : canView;
                         setPerms((prev) => ({ ...prev, [moduleKey]: checksToAccessLevel(nextView, nextEdit) }));
                       }}
-                      className="h-3.5 w-3.5 accent-[var(--copilot-accent)] disabled:opacity-50"
+                      className="h-3.5 w-3.5 accent-[var(--copilot-accent)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
                     />
                   </td>
                 </tr>
@@ -682,7 +682,7 @@ export default function AdminPanelPage() {
                             <select
                               value={SIMPLE_ROLES.includes(user.role as "superadmin" | "usuario") ? user.role : user.role}
                               onChange={(e) => void handleRoleChange(user, e.target.value)}
-                              className="appearance-none rounded-lg border border-[var(--copilot-border)] bg-white px-2 py-1 pr-6 text-xs text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
+                              className="appearance-none rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1 pr-6 text-xs text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
                             >
                               {SIMPLE_ROLES.map((r) => (
                                 <option key={r} value={r}>{ROLE_LABELS[r]}</option>

@@ -125,7 +125,7 @@ export function CopilotInsightsClient({ insights }: { insights: CopilotInsightIt
                 const evidenceActive = isEvidenceOpen && selectedId === item.id;
                 return (
                   <li key={item.id} className="relative flex gap-3 pl-1.5">
-                    <div className="relative z-[1] mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white ring-2 ring-[var(--copilot-border)]">
+                    <div className="relative z-[1] mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--copilot-card-bg)] ring-2 ring-[var(--copilot-border)]">
                       <span className="h-2 w-2 rounded-full bg-[var(--copilot-accent)]" />
                     </div>
                     <CopilotCard

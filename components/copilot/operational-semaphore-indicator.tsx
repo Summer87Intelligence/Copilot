@@ -92,7 +92,7 @@ export function OperationalSemaphoreIndicator() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex max-w-full items-center gap-2.5 rounded-full border border-[var(--copilot-border)] bg-white/90 px-3 py-1.5 text-left shadow-sm ring-1 ring-[rgba(44,40,37,0.06)] transition-colors duration-200 hover:bg-white hover:ring-[rgba(31,107,74,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]"
+        className="flex max-w-full items-center gap-2.5 rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/90 px-3 py-1.5 text-left shadow-sm ring-1 ring-[rgba(44,40,37,0.06)] transition-colors duration-200 hover:bg-[var(--copilot-panel-bg)] hover:ring-[rgba(31,107,74,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]"
         aria-expanded={open}
         aria-controls={panelId}
         aria-label={`Estado operacional: ${semaphore.statusLabel}. ${semaphore.counterLine}`}
@@ -121,7 +121,7 @@ export function OperationalSemaphoreIndicator() {
           id={panelId}
           role="dialog"
           aria-label="Estado operacional"
-          className={`absolute right-0 top-full z-[80] mt-2 w-[min(100vw-2rem,20rem)] rounded-xl border bg-white p-3 shadow-xl ${theme.panelBorder}`}
+          className={`absolute right-0 top-full z-[80] mt-2 w-[min(100vw-2rem,20rem)] rounded-xl border bg-[var(--copilot-card-bg)] p-3 shadow-xl ${theme.panelBorder}`}
         >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">

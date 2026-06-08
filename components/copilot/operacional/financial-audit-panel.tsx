@@ -32,20 +32,20 @@ function PeriodBar({
 }) {
   const dirty = start !== appliedStart || end !== appliedEnd;
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 px-3 py-2">
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 py-2">
       <span className="text-xs text-[var(--copilot-ink-muted)]">Período:</span>
       <input
         type="date"
         value={start}
         onChange={(e) => onStartChange(e.target.value)}
-        className="rounded-lg border border-[var(--copilot-border)] bg-white/80 px-2 py-1 text-xs text-[var(--copilot-ink)]"
+        className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-2 py-1 text-xs text-[var(--copilot-ink)]"
       />
       <span className="text-xs text-[var(--copilot-ink-muted)]">–</span>
       <input
         type="date"
         value={end}
         onChange={(e) => onEndChange(e.target.value)}
-        className="rounded-lg border border-[var(--copilot-border)] bg-white/80 px-2 py-1 text-xs text-[var(--copilot-ink)]"
+        className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-2 py-1 text-xs text-[var(--copilot-ink)]"
       />
       {dirty ? (
         <CopilotGhostButton onClick={onApply} className="text-xs">

@@ -41,7 +41,7 @@ export function CopilotFinancialDashboard({
     return (
       <p
         role="status"
-        className="rounded-xl border border-dashed border-[var(--copilot-border)] bg-white/70 px-4 py-3 text-sm text-[var(--copilot-ink-muted)]"
+        className="rounded-xl border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-4 py-3 text-sm text-[var(--copilot-ink-muted)]"
       >
         Aún no hay facturas financieras válidas para construir métricas ejecutivas.
         Sincronizá Zeta o cargá `proto_invoices` para alimentar este bloque.
@@ -101,7 +101,7 @@ function CashConversionCard({ metrics, symbol }: { metrics: CurrencyMetrics; sym
   return (
     <article
       aria-label={`Conversión de caja · ${label}`}
-      className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm"
+      className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 p-4 shadow-sm"
     >
       <header className="flex items-baseline justify-between gap-2">
         <h5 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
@@ -141,7 +141,7 @@ function KpiSection({ currencies }: { currencies: CurrencyMetrics[] }) {
         {currencies.map((currency) => (
           <article
             key={currency.currencyCode}
-            className="space-y-3 rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm"
+            className="space-y-3 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 p-4 shadow-sm"
           >
             <CurrencyHeader metrics={currency} />
             <KpiStrip
@@ -284,7 +284,7 @@ function AgingView({
   symbol: string;
 }) {
   return (
-    <article className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
+    <article className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 p-4 shadow-sm">
       <header className="flex items-baseline justify-between gap-2">
         <h5 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
           {CURRENCY_SHORT_LABELS[metrics.currencyCode] ?? metrics.currencyCode} · {metrics.currencyCode}
@@ -293,7 +293,7 @@ function AgingView({
           calculado sobre fecha de emisión
         </span>
       </header>
-      <div className="space-y-1.5 rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2.5">
+      <div className="space-y-1.5 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2.5">
         {aging.map((bucket) => {
           const pct = totalPending > 0 ? Math.min(100, (bucket.amount / totalPending) * 100) : 0;
           return (
@@ -349,11 +349,11 @@ function TopDebtorsTable({ metrics, symbol }: { metrics: CurrencyMetrics; symbol
         </span>
       </header>
       {metrics.topDebtors.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-[var(--copilot-border)] bg-white px-3 py-2.5 text-[11px] text-[var(--copilot-ink-muted)]">
+        <p className="rounded-lg border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2.5 text-[11px] text-[var(--copilot-ink-muted)]">
           No hay clientes con saldo pendiente en esta moneda.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-[var(--copilot-border)] bg-white">
+        <div className="overflow-hidden rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]">
           <table className="w-full text-left text-[11px]">
             <thead className="bg-[rgba(44,40,37,0.035)] text-[var(--copilot-ink-muted)]">
               <tr>

@@ -52,7 +52,7 @@ export function RutasExecutiveRail({
 
   return (
     <aside className="w-full shrink-0 lg:sticky lg:top-4 lg:w-[220px] xl:w-[232px]">
-      <CopilotCard className="border-[var(--copilot-border)]/80 bg-white/85 p-2.5 shadow-sm">
+      <CopilotCard className="border-[var(--copilot-border)]/80 bg-[var(--copilot-card-bg)]/85 p-2.5 shadow-sm">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
           Pulso del día
         </p>

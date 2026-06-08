@@ -68,7 +68,10 @@ function getArg(flag: string): string | undefined {
   return idx >= 0 ? args[idx + 1] : undefined;
 }
 
-const workspaceArg = getArg("--workspace") ?? process.env.AUDIT_WORKSPACE_ID;
+const workspaceArg =
+  getArg("--workspace") ??
+  process.env.WORKSPACE_COMPANY_ID ??
+  process.env.AUDIT_WORKSPACE_ID;
 const outputPath = getArg("--output") ?? path.join(process.cwd(), "tmp", "zeta-api-contract-drift.csv");
 
 // ── Supabase ──────────────────────────────────────────────────────────────────
@@ -89,6 +92,7 @@ const sb = createClient(supabaseUrl, serviceKey, {
 
 type DriftRow = {
   drift_type: string;
+  severity: "BLOCKER" | "WARNING" | "INFO";
   table_name: string;
   row_id: string;
   workspace_company_id: string;
@@ -98,6 +102,47 @@ type DriftRow = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Facturas CCV1 con clave en invoice_number — sin RegistroId Zeta pero trazables localmente. */
+function hasSyntheticInvoiceIdentity(invoiceNumber: string): boolean {
+  const n = invoiceNumber.trim();
+  return n.startsWith("ZETA:CCV1:") || n.startsWith("ZETA:CCV1:NOSER:");
+}
+
+function parseReceiptNotes(notes: unknown): Record<string, unknown> {
+  if (!notes) return {};
+  if (typeof notes === "object") return notes as Record<string, unknown>;
+  try {
+    return JSON.parse(String(notes)) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+function readReceiptClienteCodigo(notes: unknown): string | null {
+  const parsed = parseReceiptNotes(notes);
+  const v1 = parsed["zeta_collection_receipt_v1"] as Record<string, unknown> | undefined;
+  const raw = (v1?.raw_payload ?? {}) as Record<string, unknown>;
+  const cc =
+    (raw["ClienteCodigo"] as string | undefined) ??
+    (parsed["cliente_codigo"] as string | undefined) ??
+    (parsed["ClienteCodigo"] as string | undefined) ??
+    null;
+  return cc?.trim() || null;
+}
+
+function readReceiptMonedaCodigo(notes: unknown): string | null {
+  const parsed = parseReceiptNotes(notes);
+  const v1 = parsed["zeta_collection_receipt_v1"] as Record<string, unknown> | undefined;
+  const raw = (v1?.raw_payload ?? {}) as Record<string, unknown>;
+  const mc =
+    (v1?.moneda_codigo as string | undefined) ??
+    (raw["MonedaCodigo"] as string | number | undefined) ??
+    (parsed["moneda_codigo"] as string | undefined) ??
+    null;
+  if (mc == null) return null;
+  return String(mc).trim() || null;
+}
 
 function readMetaRegistroId(zeta_metadata: unknown): string | null {
   if (!zeta_metadata || typeof zeta_metadata !== "object") return null;
@@ -150,12 +195,20 @@ function readMetaComprobanteCodigo(zeta_metadata: unknown): string | null {
 
 async function resolveWorkspaceIds(): Promise<string[]> {
   if (workspaceArg) return [workspaceArg];
-  const { data, error } = await sb.from("companies").select("id").limit(200);
+  const { data, error } = await sb
+    .from("proto_invoices")
+    .select("workspace_company_id")
+    .not("workspace_company_id", "is", null)
+    .limit(2000);
   if (error || !data) {
-    console.warn("[warn] No se pudo listar workspaces:", error?.message);
+    console.warn("[warn] No se pudo resolver workspaces:", error?.message);
     return [];
   }
-  return (data as { id: string }[]).map((r) => r.id);
+  return [
+    ...new Set(
+      (data as { workspace_company_id: string }[]).map((r) => r.workspace_company_id)
+    ),
+  ];
 }
 
 // ── Audit functions ───────────────────────────────────────────────────────────
@@ -166,7 +219,7 @@ async function auditProtoInvoices(workspaceIds: string[]): Promise<DriftRow[]> {
   for (const wid of workspaceIds) {
     const { data, error } = await sb
       .from("proto_invoices")
-      .select("id, invoice_number, category, zeta_metadata, currency_code, workspace_company_id")
+      .select("id, invoice_number, category, zeta_metadata, currency_code, balance_amount, workspace_company_id")
       .eq("workspace_company_id", wid)
       .limit(5000);
 
@@ -182,6 +235,7 @@ async function auditProtoInvoices(workspaceIds: string[]): Promise<DriftRow[]> {
       category: string;
       zeta_metadata: unknown;
       currency_code: string | null;
+      balance_amount: number | null;
       workspace_company_id: string;
     }[];
 
@@ -199,16 +253,25 @@ async function auditProtoInvoices(workspaceIds: string[]): Promise<DriftRow[]> {
     for (const row of ccv1Rows) {
       const rid = readMetaRegistroId(row.zeta_metadata);
 
-      // Factura sin RegistroId
+      // Factura sin RegistroId — BLOCKER solo si balance activo y sin identidad sintética CCV1
       if (!rid) {
+        const hasActiveBalance = (row.balance_amount ?? 0) > 0;
+        const synthetic = hasSyntheticInvoiceIdentity(row.invoice_number);
+        const severity: DriftRow["severity"] =
+          hasActiveBalance && !synthetic
+            ? "BLOCKER"
+            : hasActiveBalance && synthetic
+              ? "WARNING"
+              : "WARNING";
         drift.push({
           drift_type: "INVOICE_MISSING_REGISTRO_ID",
+          severity,
           table_name: "proto_invoices",
           row_id: row.id,
           workspace_company_id: wid,
           field_name: "RegistroId",
           field_value: "null",
-          detail: `invoice_number=${row.invoice_number} category=${row.category}`,
+          detail: `invoice_number=${row.invoice_number} category=${row.category} balance=${row.balance_amount ?? 0}${synthetic ? " synthetic_ccv1_key" : ""}`,
         });
       }
 
@@ -219,6 +282,7 @@ async function auditProtoInvoices(workspaceIds: string[]): Promise<DriftRow[]> {
         if (iso === null) {
           drift.push({
             drift_type: "UNKNOWN_MONEDA_CODIGO",
+            severity: "WARNING",
             table_name: "proto_invoices",
             row_id: row.id,
             workspace_company_id: wid,
@@ -234,6 +298,7 @@ async function auditProtoInvoices(workspaceIds: string[]): Promise<DriftRow[]> {
       if (cfeTipo !== null && cfeTipo !== 0 && !CFE_TIPOS_DGI_ALL.has(cfeTipo)) {
         drift.push({
           drift_type: "UNKNOWN_CFE_TIPO",
+          severity: "WARNING",
           table_name: "proto_invoices",
           row_id: row.id,
           workspace_company_id: wid,
@@ -248,6 +313,7 @@ async function auditProtoInvoices(workspaceIds: string[]): Promise<DriftRow[]> {
       if (cc && !KNOWN_COMPROBANTE_CODIGOS.has(cc)) {
         drift.push({
           drift_type: "UNKNOWN_COMPROBANTE_CODIGO",
+          severity: "INFO",
           table_name: "proto_invoices",
           row_id: row.id,
           workspace_company_id: wid,
@@ -262,16 +328,17 @@ async function auditProtoInvoices(workspaceIds: string[]): Promise<DriftRow[]> {
     for (const row of shadowRows) {
       const rid = readMetaRegistroId(row.zeta_metadata);
 
-      // Saldo pendiente sin RegistroId
+      // Saldo pendiente sin RegistroId — shadow rows excluidos del dedup activo → WARNING
       if (!rid) {
         drift.push({
           drift_type: "SALDO_MISSING_REGISTRO_ID",
+          severity: "WARNING",
           table_name: "proto_invoices",
           row_id: row.id,
           workspace_company_id: wid,
           field_name: "RegistroId",
           field_value: "null",
-          detail: `invoice_number=${row.invoice_number} category=saldos_pendientes`,
+          detail: `invoice_number=${row.invoice_number} category=saldos_pendientes balance=${row.balance_amount ?? 0}`,
         });
         continue;
       }
@@ -279,6 +346,7 @@ async function auditProtoInvoices(workspaceIds: string[]): Promise<DriftRow[]> {
       if (ccv1RegistroIds.has(rid)) {
         drift.push({
           drift_type: "SHADOW_DUPLICATE_REGISTRO_ID",
+          severity: "WARNING",
           table_name: "proto_invoices",
           row_id: row.id,
           workspace_company_id: wid,
@@ -299,7 +367,7 @@ async function auditProtoReceipts(workspaceIds: string[]): Promise<DriftRow[]> {
   for (const wid of workspaceIds) {
     const { data, error } = await sb
       .from("proto_receipts")
-      .select("id, receipt_number, zeta_metadata, currency_code, company_id, workspace_company_id")
+      .select("id, receipt_number, notes, currency_code, company_id, workspace_company_id")
       .eq("workspace_company_id", wid)
       .limit(5000);
 
@@ -312,22 +380,20 @@ async function auditProtoReceipts(workspaceIds: string[]): Promise<DriftRow[]> {
     const rows = data as {
       id: string;
       receipt_number: string;
-      zeta_metadata: unknown;
+      notes: unknown;
       currency_code: string | null;
       company_id: string | null;
       workspace_company_id: string;
     }[];
 
     for (const row of rows) {
-      const meta = row.zeta_metadata as Record<string, unknown> | null;
-      const clienteCodigo =
-        (meta?.["cliente_codigo"] as string | undefined) ??
-        (meta?.["ClienteCodigo"] as string | undefined) ?? null;
+      const clienteCodigo = readReceiptClienteCodigo(row.notes);
 
       // Recibo sin cliente válido (VARIOS o null)
       if (!clienteCodigo || zetaReciboIsVarios(clienteCodigo)) {
         drift.push({
           drift_type: "RECEIPT_VARIOS_USD",
+          severity: "INFO",
           table_name: "proto_receipts",
           row_id: row.id,
           workspace_company_id: wid,
@@ -338,12 +404,13 @@ async function auditProtoReceipts(workspaceIds: string[]): Promise<DriftRow[]> {
       }
 
       // MonedaCodigo desconocido en recibo
-      const monedaCodigo = (meta?.["moneda_codigo"] as string | undefined) ?? null;
+      const monedaCodigo = readReceiptMonedaCodigo(row.notes);
       if (monedaCodigo) {
         const iso = resolveMonedaCodigo(monedaCodigo);
         if (iso === null) {
           drift.push({
             drift_type: "UNKNOWN_MONEDA_CODIGO",
+            severity: "WARNING",
             table_name: "proto_receipts",
             row_id: row.id,
             workspace_company_id: wid,
@@ -366,13 +433,13 @@ async function auditClienteCodigoVsCompanies(workspaceIds: string[]): Promise<Dr
     // Build known ClienteCodigos from proto_companies
     const { data: companies } = await sb
       .from("proto_companies")
-      .select("id, external_id")
+      .select("id, Codigo")
       .eq("workspace_company_id", wid)
       .limit(5000);
 
     const knownCodigos = new Set<string>(
       (companies ?? [])
-        .map((c: { external_id: string | null }) => c.external_id?.trim() ?? "")
+        .map((c: { Codigo: string | null }) => String(c.Codigo ?? "").trim())
         .filter((s) => s.length > 0)
     );
 
@@ -399,12 +466,13 @@ async function auditClienteCodigoVsCompanies(workspaceIds: string[]): Promise<Dr
       if (clienteCodigo && !knownCodigos.has(clienteCodigo) && !zetaReciboIsVarios(clienteCodigo)) {
         drift.push({
           drift_type: "CLIENTE_CODIGO_NO_MATCH_COMPANY",
+          severity: "WARNING",
           table_name: "proto_invoices",
           row_id: row.id,
           workspace_company_id: wid,
           field_name: "ClienteCodigo",
           field_value: clienteCodigo,
-          detail: `invoice_number=${row.invoice_number} no matchea proto_companies.external_id`,
+          detail: `invoice_number=${row.invoice_number} no matchea proto_companies.Codigo`,
         });
       }
     }
@@ -426,10 +494,11 @@ function writeCsv(rows: DriftRow[], filePath: string): void {
   const dir = path.dirname(filePath);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-  const header = "drift_type,table_name,row_id,workspace_company_id,field_name,field_value,detail";
+  const header = "drift_type,severity,table_name,row_id,workspace_company_id,field_name,field_value,detail";
   const lines = rows.map((r) =>
     [
       r.drift_type,
+      r.severity,
       r.table_name,
       r.row_id,
       r.workspace_company_id,
@@ -452,29 +521,74 @@ function printSummary(rows: DriftRow[]): void {
     return;
   }
 
-  const byType = new Map<string, number>();
+  const blockers = rows.filter((r) => r.severity === "BLOCKER");
+  const warnings = rows.filter((r) => r.severity === "WARNING");
+  const infos = rows.filter((r) => r.severity === "INFO");
+
+  const byType = new Map<string, { blocker: number; warning: number; info: number }>();
   for (const r of rows) {
-    byType.set(r.drift_type, (byType.get(r.drift_type) ?? 0) + 1);
+    const entry = byType.get(r.drift_type) ?? { blocker: 0, warning: 0, info: 0 };
+    if (r.severity === "BLOCKER") entry.blocker++;
+    else if (r.severity === "WARNING") entry.warning++;
+    else entry.info++;
+    byType.set(r.drift_type, entry);
   }
 
-  console.log(`\n⚠ Drift detectado: ${rows.length} fila(s) con problemas\n`);
-  for (const [type, count] of [...byType.entries()].sort()) {
-    console.log(`  ${type.padEnd(40)} ${count}`);
+  console.log(`\n⚠ Drift detectado: ${rows.length} fila(s)`);
+  console.log(`  🔴 BLOCKER: ${blockers.length}  🟡 WARNING: ${warnings.length}  ⚪ INFO: ${infos.length}\n`);
+
+  for (const [type, counts] of [...byType.entries()].sort()) {
+    const parts: string[] = [];
+    if (counts.blocker > 0) parts.push(`BLOCKER=${counts.blocker}`);
+    if (counts.warning > 0) parts.push(`WARNING=${counts.warning}`);
+    if (counts.info > 0) parts.push(`INFO=${counts.info}`);
+    console.log(`  ${type.padEnd(40)} ${parts.join(" | ")}`);
+  }
+
+  // List unknown comprobante codes
+  const unknownCodes = [...new Set(
+    rows
+      .filter((r) => r.drift_type === "UNKNOWN_COMPROBANTE_CODIGO")
+      .map((r) => r.field_value)
+  )].sort();
+  if (unknownCodes.length > 0) {
+    console.log(`\n  UNKNOWN_COMPROBANTE_CODIGO (${unknownCodes.length} códigos únicos): ${unknownCodes.join(", ")}`);
+    console.log("  → Agregar a KNOWN_COMPROBANTE_CODIGOS si son válidos para este tenant.");
+  }
+
+  // List BLOCKER invoice IDs
+  const blockerInvoices = blockers.filter((r) => r.drift_type === "INVOICE_MISSING_REGISTRO_ID");
+  if (blockerInvoices.length > 0) {
+    console.log(
+      `\n  INVOICE_MISSING_REGISTRO_ID BLOCKERs (balance > 0, sin clave CCV1): ${blockerInvoices.length} facturas`
+    );
+    console.log("  → Ejecutar resync para recuperar RegistroId desde Zeta.");
+  }
+
+  const ccv1Warnings = warnings.filter(
+    (r) =>
+      r.drift_type === "INVOICE_MISSING_REGISTRO_ID" &&
+      r.detail.includes("synthetic_ccv1_key")
+  );
+  if (ccv1Warnings.length > 0) {
+    console.log(
+      `\n  INVOICE_MISSING_REGISTRO_ID WARNINGs (CCV1 synthetic key): ${ccv1Warnings.length} — legacy pre-RegistroId, no bloquean.`
+    );
   }
 
   console.log("\nAcciones recomendadas:");
   if (byType.has("UNKNOWN_CFE_TIPO"))
     console.log("  - UNKNOWN_CFE_TIPO: revisar catálogo DGI, actualizar CFE_TIPOS_DGI_ALL si Zeta introdujo nuevos tipos.");
   if (byType.has("UNKNOWN_COMPROBANTE_CODIGO"))
-    console.log("  - UNKNOWN_COMPROBANTE_CODIGO: agregar código a KNOWN_COMPROBANTE_CODIGOS si es válido para este tenant.");
+    console.log("  - UNKNOWN_COMPROBANTE_CODIGO: ver lista de códigos arriba; agregar válidos a KNOWN_COMPROBANTE_CODIGOS.");
   if (byType.has("UNKNOWN_MONEDA_CODIGO"))
     console.log("  - UNKNOWN_MONEDA_CODIGO: verificar configuración del tenant, solo UYU/USD esperado.");
   if (byType.has("RECEIPT_VARIOS_USD"))
     console.log("  - RECEIPT_VARIOS_USD: recibos en pending_review requieren asignación manual de cliente.");
   if (byType.has("INVOICE_MISSING_REGISTRO_ID"))
-    console.log("  - INVOICE_MISSING_REGISTRO_ID: ejecutar resync para recuperar RegistroId desde Zeta.");
+    console.log("  - INVOICE_MISSING_REGISTRO_ID: ejecutar resync para recuperar RegistroId desde Zeta (BLOCKERs = balance activo).");
   if (byType.has("SALDO_MISSING_REGISTRO_ID"))
-    console.log("  - SALDO_MISSING_REGISTRO_ID: fila de saldo sin identidad, no puede deduplicarse.");
+    console.log("  - SALDO_MISSING_REGISTRO_ID: fila shadow sin identidad, excluida del dedup activo (WARNING).");
   if (byType.has("SHADOW_DUPLICATE_REGISTRO_ID"))
     console.log("  - SHADOW_DUPLICATE_REGISTRO_ID: pipeline de saldos insertó fila duplicada; revisar guard buildSaldosDueDatePatch.");
   if (byType.has("CLIENTE_CODIGO_NO_MATCH_COMPANY"))
@@ -506,6 +620,19 @@ async function main(): Promise<void> {
   console.log(`\n[audit] Output: ${outputPath} (${allDrift.length} filas)`);
 
   printSummary(allDrift);
+
+  const blockers = allDrift.filter((r) => r.severity === "BLOCKER").length;
+  const warnings = allDrift.filter((r) => r.severity === "WARNING").length;
+  const infos = allDrift.filter((r) => r.severity === "INFO").length;
+
+  console.log(`\n[audit:zeta-contract] BLOCKER: ${blockers} | WARNING: ${warnings} | INFO: ${infos}`);
+
+  if (blockers > 0) {
+    console.error(`[audit:zeta-contract] FAIL — ${blockers} BLOCKER(s) requieren acción.`);
+    process.exit(1);
+  }
+
+  console.log("[audit:zeta-contract] PASS — sin BLOCKERs (solo WARNING/INFO aceptables).");
 }
 
 main().catch((err) => {

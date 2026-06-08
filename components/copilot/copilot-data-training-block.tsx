@@ -62,7 +62,7 @@ export function CopilotDataDeleteRiskLegend() {
       {items.map((item) => (
         <li
           key={item.severity}
-          className="flex flex-wrap items-start gap-2 rounded-lg border border-[var(--copilot-border)] bg-white/80 px-3 py-2"
+          className="flex flex-wrap items-start gap-2 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 py-2"
         >
           <CopilotSeverityBadge severity={item.severity} compact />
           <div className="min-w-0 flex-1 text-xs text-[var(--copilot-ink-muted)]">

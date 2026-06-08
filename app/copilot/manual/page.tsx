@@ -35,7 +35,7 @@ import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 import { AccessDeniedCard } from "@/components/copilot/access-denied-card";
 
 const C = {
-  card: "rounded-2xl border border-[var(--copilot-border)] bg-white/90 shadow-sm",
+  card: "rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/90 shadow-sm",
   ink: "text-[var(--copilot-ink)]",
   muted: "text-[var(--copilot-ink-muted)]",
   accent: "text-[var(--copilot-accent)]",
@@ -187,13 +187,13 @@ function Accordion({
         return (
           <div
             key={s.id}
-            className={`overflow-hidden rounded-2xl border ${C.border} bg-white/90`}
+            className={`overflow-hidden rounded-2xl border ${C.border} bg-[var(--copilot-card-bg)]/90`}
           >
             <button
               type="button"
               onClick={() => onToggle(s.id)}
               aria-expanded={open}
-              className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-slate-50/60"
+              className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-[var(--copilot-soft-bg)]/60"
             >
               <div className="flex items-center gap-3">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[rgba(31,107,74,0.08)] text-[var(--copilot-accent)]">
@@ -227,13 +227,13 @@ function FaqBlock() {
       {COPILOT_MANUAL_FAQ.map((item, i) => (
         <div
           key={i}
-          className={`overflow-hidden rounded-2xl border ${C.border} bg-white/90`}
+          className={`overflow-hidden rounded-2xl border ${C.border} bg-[var(--copilot-card-bg)]/90`}
         >
           <button
             type="button"
             onClick={() => setOpen(open === i ? null : i)}
             aria-expanded={open === i}
-            className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-slate-50/60"
+            className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-[var(--copilot-soft-bg)]/60"
           >
             <span className="text-sm font-semibold text-[var(--copilot-ink)]">
               {item.q}
@@ -315,11 +315,11 @@ export default function ManualPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="border-b border-[var(--copilot-border)] bg-white/60 px-4 py-6 sm:px-6">
+      <div className="border-b border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-4 py-6 sm:px-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div className="mb-2 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--copilot-border)] bg-white px-2.5 py-0.5 text-[11px] font-semibold text-[var(--copilot-ink-muted)]">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--copilot-ink-muted)]">
                 <BookMarked className="h-3 w-3" aria-hidden />
                 Guía para usuarios
               </span>
@@ -336,7 +336,7 @@ export default function ManualPage() {
             href="/api/copilot/manual.pdf"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-[var(--copilot-border)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--copilot-ink)] shadow-sm transition hover:bg-[rgba(31,107,74,0.04)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]"
+            className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-2.5 text-sm font-semibold text-[var(--copilot-ink)] shadow-sm transition hover:bg-[rgba(31,107,74,0.04)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]"
           >
             <FileDown className="h-4 w-4 text-[var(--copilot-accent)]" aria-hidden />
             Descargar PDF
@@ -403,7 +403,7 @@ export default function ManualPage() {
                 <Link
                   key={row.step}
                   href={row.href}
-                  className={`flex items-center gap-4 rounded-xl border ${C.border} bg-white/60 px-4 py-3 transition hover:bg-white hover:shadow-sm`}
+                  className={`flex items-center gap-4 rounded-xl border ${C.border} bg-[var(--copilot-card-bg)]/60 px-4 py-3 transition hover:bg-[var(--copilot-panel-bg)] hover:shadow-sm`}
                 >
                   <span
                     className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${DAILY_FLOW_COLORS[i] ?? "bg-slate-100 text-slate-800"}`}

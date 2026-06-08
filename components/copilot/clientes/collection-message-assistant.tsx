@@ -70,7 +70,7 @@ function Pill({
       className={`rounded-full border px-3 py-1 text-[12px] font-medium transition ${
         active
           ? "border-[var(--copilot-accent)] bg-[var(--copilot-accent)] text-white"
-          : "border-[var(--copilot-border)] bg-white text-[var(--copilot-ink-muted)] hover:border-[var(--copilot-accent)]/40"
+          : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] text-[var(--copilot-ink-muted)] hover:border-[var(--copilot-accent)]/40"
       }`}
     >
       {label}
@@ -147,7 +147,7 @@ export function CollectionMessageAssistant({
   };
 
   return (
-    <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/70 p-4 shadow-sm">
+    <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4 shadow-sm">
       {/* Header */}
       <div className="mb-3 flex items-center gap-2">
         <MessageCircle className="h-4 w-4 text-[var(--copilot-accent)]" aria-hidden />
@@ -249,7 +249,7 @@ export function CollectionMessageAssistant({
             <button
               type="button"
               onClick={copyMessage}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-[12px] font-medium text-[var(--copilot-ink-muted)] transition hover:bg-slate-50"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-1.5 text-[12px] font-medium text-[var(--copilot-ink-muted)] transition hover:bg-[var(--copilot-soft-bg)]"
             >
               {copied ? (
                 <>
@@ -269,13 +269,13 @@ export function CollectionMessageAssistant({
               contactEmail ? (
                 <a
                   href={buildMailtoHref(contactEmail, suggestion)}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-[12px] font-medium text-[var(--copilot-ink-muted)] transition hover:bg-slate-50"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-1.5 text-[12px] font-medium text-[var(--copilot-ink-muted)] transition hover:bg-[var(--copilot-soft-bg)]"
                 >
                   <Mail className="h-3.5 w-3.5" aria-hidden />
                   Enviar email
                 </a>
               ) : (
-                <span className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)]/50 bg-white/50 px-3 py-1.5 text-[12px] text-[var(--copilot-ink-muted)]/50">
+                <span className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)]/50 bg-[var(--copilot-card-bg)]/50 px-3 py-1.5 text-[12px] text-[var(--copilot-ink-muted)]/50">
                   <Mail className="h-3.5 w-3.5" aria-hidden />
                   Sin email cargado
                 </span>
@@ -289,18 +289,18 @@ export function CollectionMessageAssistant({
                   href={buildWhatsAppHref(waPhone.digits, suggestion.body)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-1.5 text-[12px] font-medium text-[var(--copilot-ink-muted)] transition hover:bg-slate-50"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-1.5 text-[12px] font-medium text-[var(--copilot-ink-muted)] transition hover:bg-[var(--copilot-soft-bg)]"
                 >
                   <MessageCircle className="h-3.5 w-3.5" aria-hidden />
                   Abrir WhatsApp
                 </a>
               ) : waPhone ? (
-                <span className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)]/50 bg-white/50 px-3 py-1.5 text-[12px] text-[var(--copilot-ink-muted)]/50">
+                <span className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)]/50 bg-[var(--copilot-card-bg)]/50 px-3 py-1.5 text-[12px] text-[var(--copilot-ink-muted)]/50">
                   <MessageCircle className="h-3.5 w-3.5" aria-hidden />
                   Teléfono no utilizable para WhatsApp
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)]/50 bg-white/50 px-3 py-1.5 text-[12px] text-[var(--copilot-ink-muted)]/50">
+                <span className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-border)]/50 bg-[var(--copilot-card-bg)]/50 px-3 py-1.5 text-[12px] text-[var(--copilot-ink-muted)]/50">
                   <MessageCircle className="h-3.5 w-3.5" aria-hidden />
                   Sin teléfono cargado
                 </span>

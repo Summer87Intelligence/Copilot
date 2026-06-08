@@ -45,7 +45,7 @@ export function RutasActiveAutomationsSection() {
   if (loading && !governance) return null;
 
   return (
-    <CopilotCard className="border border-[var(--copilot-border)]/60 bg-white/60 px-2.5 py-2 shadow-none">
+    <CopilotCard className="border border-[var(--copilot-border)]/60 bg-[var(--copilot-card-bg)]/60 px-2.5 py-2 shadow-none">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <HeaderCopy
           activeRuleCount={activeRuleCount}

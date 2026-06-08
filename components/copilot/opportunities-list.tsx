@@ -28,7 +28,7 @@ export function OpportunitiesList({
 }) {
   if (items.length === 0) {
     return (
-      <p className="rounded-2xl border border-dashed border-[var(--copilot-border)] bg-white/60 px-5 py-8 text-center text-sm text-[var(--copilot-ink-muted)]">
+      <p className="rounded-2xl border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-5 py-8 text-center text-sm text-[var(--copilot-ink-muted)]">
         {emptyMessage}
       </p>
     );
@@ -39,7 +39,7 @@ export function OpportunitiesList({
       {items.map((row) => (
         <li
           key={row.id}
-          className="rounded-2xl border border-[var(--copilot-border)] bg-white/85 px-4 py-4 shadow-sm sm:px-5"
+          className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 px-4 py-4 shadow-sm sm:px-5"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">

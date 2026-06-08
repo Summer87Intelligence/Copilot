@@ -106,12 +106,12 @@ export function CopilotEvidenceDrawer({
                   className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition ${
                     active
                       ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]"
-                      : "bg-white/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-white"
+                      : "bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]"
                   }`}
                 >
                   {item.label}
                   {count != null ? (
-                    <span className="rounded-full bg-white/90 px-2 py-0.5 text-xs font-semibold text-[var(--copilot-ink)]">
+                    <span className="rounded-full bg-[var(--copilot-card-bg)]/90 px-2 py-0.5 text-xs font-semibold text-[var(--copilot-ink)]">
                       {count}
                     </span>
                   ) : null}
@@ -136,7 +136,7 @@ export function CopilotEvidenceDrawer({
               {data.evidence.map((item) => (
                 <div
                   key={item.id}
-                  className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4"
+                  className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-1">
@@ -163,7 +163,7 @@ export function CopilotEvidenceDrawer({
               {data.movements.map((item) => (
                 <div
                   key={item.id}
-                  className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4"
+                  className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -183,7 +183,7 @@ export function CopilotEvidenceDrawer({
               {data.documents.map((item) => (
                 <div
                   key={item.id}
-                  className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4"
+                  className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-1">
@@ -223,7 +223,7 @@ export function CopilotEvidenceDrawer({
 
 function SectionBlock({ title, content }: { title: string; content: string }) {
   return (
-    <section className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4">
+    <section className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4">
       <h4 className="text-sm font-semibold text-[var(--copilot-ink)]">{title}</h4>
       <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink-muted)]">{content}</p>
     </section>

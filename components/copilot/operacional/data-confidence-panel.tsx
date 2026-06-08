@@ -127,7 +127,7 @@ export function DataConfidencePanel() {
         : "border-amber-200/80 bg-amber-50/50 text-amber-950";
 
   return (
-    <CopilotCard className="border-[var(--copilot-border)] bg-white/95">
+    <CopilotCard className="border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/95">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">

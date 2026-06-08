@@ -37,7 +37,7 @@ export function ClientCurrentDebtSummary({
   return (
     <section
       aria-label="Deuda actual del cliente"
-      className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-3"
+      className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3"
     >
       <header className="space-y-0.5">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink)]">
@@ -52,7 +52,7 @@ export function ClientCurrentDebtSummary({
       {!hasInvoices ? (
         <p
           role="status"
-          className="rounded-md border border-dashed border-[var(--copilot-border)] bg-white px-2.5 py-2 text-[11px] text-[var(--copilot-ink-muted)]"
+          className="rounded-md border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2.5 py-2 text-[11px] text-[var(--copilot-ink-muted)]"
         >
           Aún no hay facturas sincronizadas para este cliente.
         </p>
@@ -115,7 +115,7 @@ function CurrencyDebtCard({ block }: { block: CurrentDebtCurrencySummary }) {
   return (
     <article
       aria-label={`Deuda actual en ${label}`}
-      className="space-y-2 rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2"
+      className="space-y-2 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2"
     >
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">

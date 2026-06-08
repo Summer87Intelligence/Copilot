@@ -223,7 +223,7 @@ function MetricCard({
     },
     neutral: {
       border: "border-[var(--copilot-border)]",
-      bg: "bg-white/60",
+      bg: "bg-[var(--copilot-card-bg)]/60",
       label: "text-[var(--copilot-ink-muted)]",
       value: "text-[var(--copilot-ink)]",
     },
@@ -261,7 +261,7 @@ function NotificationCard({
       className={`rounded-xl border p-4 transition-colors ${
         unread
           ? "border-[rgba(31,107,74,0.22)] bg-[rgba(31,107,74,0.028)] shadow-sm"
-          : "border-[var(--copilot-border)] bg-white/70"
+          : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70"
       }`}
     >
       <div className="flex items-start gap-3">
@@ -352,7 +352,7 @@ function NotifSkeleton() {
       {[0, 1, 2, 3].map((i) => (
         <div
           key={i}
-          className="flex gap-3 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4"
+          className="flex gap-3 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4"
         >
           <div className="h-9 w-9 animate-pulse rounded-xl bg-[var(--copilot-border)]" />
           <div className="flex-1 space-y-2.5 pt-1">
@@ -518,7 +518,7 @@ export default function CopilotAlertasPage() {
                     className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition ${
                       active
                         ? "bg-[var(--copilot-ink)] text-white shadow-sm"
-                        : "bg-white/80 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-white"
+                        : "bg-[var(--copilot-card-bg)]/80 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]"
                     }`}
                   >
                     {label}
@@ -526,7 +526,7 @@ export default function CopilotAlertasPage() {
                       <span
                         className={`rounded-full px-1.5 py-px text-[10px] font-bold leading-none ${
                           active
-                            ? "bg-white/20 text-white"
+                            ? "bg-[var(--copilot-card-bg)]/20 text-white"
                             : "bg-[var(--copilot-border)] text-[var(--copilot-ink-muted)]"
                         }`}
                       >
@@ -568,7 +568,7 @@ export default function CopilotAlertasPage() {
             <button
               type="button"
               onClick={() => void refetch()}
-              className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-[13px] font-semibold text-[var(--copilot-ink)] ring-1 ring-[var(--copilot-border)] transition-opacity hover:opacity-70"
+              className="flex items-center gap-1.5 rounded-xl bg-[var(--copilot-card-bg)] px-4 py-2 text-[13px] font-semibold text-[var(--copilot-ink)] ring-1 ring-[var(--copilot-border)] transition-opacity hover:opacity-70"
             >
               <RefreshCw className="h-3.5 w-3.5" aria-hidden />
               Reintentar
@@ -577,7 +577,7 @@ export default function CopilotAlertasPage() {
         ) : loading && notifications.length === 0 ? (
           <NotifSkeleton />
         ) : totalFiltered === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--copilot-border)] bg-white/50 px-6 py-16 text-center">
+          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50 px-6 py-16 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
               <Bell className="h-6 w-6 text-slate-300" aria-hidden />
             </div>

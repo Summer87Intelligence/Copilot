@@ -50,7 +50,7 @@ function PrimaryInsightCard({ insight }: { insight: OperationalIntelligenceInsig
   const [showEvidence, setShowEvidence] = useState(false);
 
   return (
-    <CopilotCard className="border-l-[3px] border-l-[var(--copilot-accent)] bg-white/95 p-3 shadow-sm">
+    <CopilotCard className="border-l-[3px] border-l-[var(--copilot-accent)] bg-[var(--copilot-card-bg)]/95 p-3 shadow-sm">
       <div className="flex flex-wrap items-center gap-1.5">
         <CopilotBadge tone={severityTone(insight.severity)}>
           {severityLabel(insight.severity)}
@@ -126,7 +126,7 @@ function PrimaryInsightCard({ insight }: { insight: OperationalIntelligenceInsig
 
 function SecondaryInsightRow({ insight }: { insight: OperationalIntelligenceInsight }) {
   return (
-    <div className="flex items-start gap-2 rounded-lg border border-[var(--copilot-border)]/50 bg-white/70 px-2.5 py-2">
+    <div className="flex items-start gap-2 rounded-lg border border-[var(--copilot-border)]/50 bg-[var(--copilot-card-bg)]/70 px-2.5 py-2">
       <CopilotBadge tone={severityTone(insight.severity)}>
         {severityLabel(insight.severity)}
       </CopilotBadge>

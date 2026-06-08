@@ -331,7 +331,7 @@ export default function RutaCajaPage() {
                     return (
                       <li
                         key={o.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--copilot-border)] bg-white/80 px-3 py-3"
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 py-3"
                       >
                         <div className="min-w-0">
                           <p className="text-xs text-[var(--copilot-ink-muted)]">
@@ -393,7 +393,7 @@ export default function RutaCajaPage() {
                   {topClients.map((c) => (
                     <li
                       key={c.companyId}
-                      className="flex flex-wrap items-baseline justify-between gap-2 rounded-lg border border-[var(--copilot-border)] bg-white/70 px-3 py-2"
+                      className="flex flex-wrap items-baseline justify-between gap-2 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 py-2"
                     >
                       <span className="font-medium text-[var(--copilot-ink)]">{c.name}</span>
                       <span className="text-sm tabular-nums text-[var(--copilot-ink)]">
@@ -453,7 +453,7 @@ export default function RutaCajaPage() {
                 {step4Bullets.map((line, i) => (
                   <li
                     key={i}
-                    className="flex gap-3 rounded-xl border border-[var(--copilot-border)] bg-white/85 px-4 py-3 text-sm font-medium leading-snug text-[var(--copilot-ink)]"
+                    className="flex gap-3 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 px-4 py-3 text-sm font-medium leading-snug text-[var(--copilot-ink)]"
                   >
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--copilot-accent-soft)] text-xs font-bold text-[var(--copilot-accent)]">
                       {i + 1}

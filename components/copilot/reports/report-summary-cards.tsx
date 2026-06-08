@@ -11,7 +11,7 @@ const TONE_CLASSES: Record<NonNullable<SummaryMetric["tone"]>, string> = {
   positive: "border-emerald-100 bg-emerald-50/60",
   warning: "border-amber-100 bg-amber-50/60",
   danger: "border-rose-100 bg-rose-50/60",
-  neutral: "border-[var(--copilot-border)] bg-white/60",
+  neutral: "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60",
 };
 
 type Props = {

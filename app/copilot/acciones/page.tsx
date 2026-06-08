@@ -503,7 +503,7 @@ function CopilotAccionesPageContent() {
 
       <div className={copilotPageMainClass}>
         {provenanceLabel ? (
-          <CopilotCard className="border-[var(--copilot-border)] bg-white/85">
+          <CopilotCard className="border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85">
             <div className="flex flex-wrap items-start gap-3">
               {provenanceSourceLabel ? (
                 <CopilotBadge tone={provenanceBadgeTone(provenance.priority)}>
@@ -534,7 +534,7 @@ function CopilotAccionesPageContent() {
         ) : null}
 
         {/* ── Tab bar ────────────────────────────────────────────────────── */}
-        <div className="flex gap-1 rounded-xl border border-[var(--copilot-border)] bg-white/70 p-1">
+        <div className="flex gap-1 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-1">
           {(
             [
               { id: "acciones" as const, label: "Prioridades", hint: "Qué resolver" },
@@ -549,7 +549,7 @@ function CopilotAccionesPageContent() {
               className={`flex-1 rounded-lg px-2 py-2 text-center transition ${
                 activeTab === tab.id
                   ? "bg-[var(--copilot-accent)] text-white shadow-sm"
-                  : "text-[var(--copilot-ink-muted)] hover:bg-white"
+                  : "text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
               }`}
             >
               <span className="block text-xs font-semibold">{tab.label}</span>
@@ -589,7 +589,7 @@ function CopilotAccionesPageContent() {
                 {inboxNotifications.slice(0, 8).map((n) => (
                   <li
                     key={n.id}
-                    className="rounded-xl border border-[var(--copilot-border)] bg-white/80 px-3 py-2.5"
+                    className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 py-2.5"
                   >
                     <p className="text-sm font-medium text-[var(--copilot-ink)]">{n.title}</p>
                     {n.body ? (
@@ -629,7 +629,7 @@ function CopilotAccionesPageContent() {
               type="button"
               onClick={() => void loadBandeja()}
               disabled={bandejaLoading}
-              className="text-xs font-medium text-[var(--copilot-accent)] hover:underline disabled:opacity-50"
+              className="text-xs font-medium text-[var(--copilot-accent)] hover:underline disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
             >
               {bandejaLoading ? "Actualizando…" : "Actualizar"}
             </button>
@@ -658,7 +658,7 @@ function CopilotAccionesPageContent() {
                     className={`rounded-full px-3 py-1 text-xs font-medium transition ${
                       active
                         ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]"
-                        : "bg-white/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-white"
+                        : "bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]"
                     }`}
                   >
                     {f.label}
@@ -671,7 +671,7 @@ function CopilotAccionesPageContent() {
           {bandejaLoading ? (
             <CopilotSkeletonKpiRow count={3} className="py-1" />
           ) : bandejaActions.length === 0 ? (
-            <div className="rounded-xl border border-[var(--copilot-border)] bg-white/60 px-4 py-6 text-center">
+            <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-4 py-6 text-center">
               <p className="text-sm font-medium text-[var(--copilot-ink)]">
                 Sin acciones pendientes
               </p>
@@ -795,7 +795,7 @@ function CopilotAccionesPageContent() {
                       Generar acciones
                     </CopilotPrimaryButton>
                   </div>
-                  <CopilotCard className="h-fit border-[var(--copilot-border)] bg-white/80">
+                  <CopilotCard className="h-fit border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                       Siguientes pasos
                     </p>
@@ -828,7 +828,7 @@ function CopilotAccionesPageContent() {
                     return (
                       <li
                         key={a.id}
-                        className={`rounded-2xl border border-[var(--copilot-border)] bg-white/85 px-3.5 py-3 shadow-sm ${
+                        className={`rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 px-3.5 py-3 shadow-sm ${
                           evidenceActive
                             ? "ring-2 ring-[rgba(31,107,74,0.22)]"
                             : ""
@@ -898,7 +898,7 @@ function CopilotAccionesPageContent() {
                                   </span>
                                   <input
                                     type="text"
-                                    className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
+                                    className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
                                     placeholder="Nombre o rol"
                                     value={ld.assignee}
                                     onChange={(e) =>
@@ -915,7 +915,7 @@ function CopilotAccionesPageContent() {
                                   </span>
                                   <textarea
                                     rows={2}
-                                    className="mt-1 w-full resize-y rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
+                                    className="mt-1 w-full resize-y rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
                                     placeholder="Qué debería pasar si la acción sale bien"
                                     value={ld.expected}
                                     onChange={(e) =>
@@ -932,7 +932,7 @@ function CopilotAccionesPageContent() {
                                   </span>
                                   <textarea
                                     rows={2}
-                                    className="mt-1 w-full resize-y rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
+                                    className="mt-1 w-full resize-y rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
                                     placeholder="Situación o métrica antes de ejecutar"
                                     value={ld.before}
                                     onChange={(e) =>
@@ -984,7 +984,7 @@ function CopilotAccionesPageContent() {
                                 </span>
                                 <textarea
                                   rows={2}
-                                  className="mt-1 w-full resize-y rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2 text-sm"
+                                  className="mt-1 w-full resize-y rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm"
                                   placeholder="Qué pasó en la práctica"
                                   value={(outcomeDrafts[a.id] ?? { notes: "", after: "" }).notes}
                                   onChange={(e) =>
@@ -1004,7 +1004,7 @@ function CopilotAccionesPageContent() {
                                 </span>
                                 <textarea
                                   rows={2}
-                                  className="mt-1 w-full resize-y rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2 text-sm"
+                                  className="mt-1 w-full resize-y rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm"
                                   placeholder="Lectura breve después de la interacción"
                                   value={(outcomeDrafts[a.id] ?? { notes: "", after: "" }).after}
                                   onChange={(e) =>
@@ -1059,7 +1059,7 @@ function CopilotAccionesPageContent() {
                             </div>
 
                             {saleExpandId === a.id ? (
-                              <div className="mt-3 flex flex-wrap items-end gap-2 rounded-xl border border-dashed border-[var(--copilot-border)] bg-white/70 px-3 py-3">
+                              <div className="mt-3 flex flex-wrap items-end gap-2 rounded-xl border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 py-3">
                                 <label className="flex min-w-[140px] flex-1 flex-col gap-1">
                                   <span className="text-xs font-medium text-[var(--copilot-ink-muted)]">
                                     Monto (venta)
@@ -1070,7 +1070,7 @@ function CopilotAccionesPageContent() {
                                     placeholder="0"
                                     value={saleAmount}
                                     onChange={(e) => setSaleAmount(e.target.value)}
-                                    className="rounded-lg border border-[var(--copilot-border)] bg-white px-3 py-2 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
+                                    className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
                                     autoFocus
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter") {
@@ -1213,7 +1213,7 @@ function SummaryPill({
       className={`rounded-xl border px-3 py-2 ${
         highlight && value > 0
           ? "border-rose-200 bg-rose-50/80"
-          : "border-[var(--copilot-border)] bg-white/70"
+          : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70"
       }`}
     >
       <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">

@@ -134,7 +134,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
               return (
                 <div
                   key={cur}
-                  className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4"
+                  className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4"
                 >
                   <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                     {cur}
@@ -196,7 +196,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
           ).map(({ label, totals, textColor }) => (
             <div
               key={label}
-              className="rounded-xl border border-[var(--copilot-border)] bg-white/70 p-4"
+              className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4"
             >
               <p className="text-xs font-semibold text-[var(--copilot-ink-muted)]">{label}</p>
               <dl className="mt-2 space-y-1 text-sm">
@@ -237,7 +237,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
                   className={`rounded-xl border p-4 ${
                     negative
                       ? "border-rose-200 bg-rose-50/70"
-                      : "border-[var(--copilot-border)] bg-white/70"
+                      : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70"
                   }`}
                 >
                   <p
@@ -276,7 +276,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
               </CopilotGhostButton>
             }
           />
-          <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-white/50">
+          <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--copilot-border)] text-xs text-[var(--copilot-ink-muted)]">
@@ -360,7 +360,7 @@ function TesoreriaDashboardSkeleton() {
           {[0, 1].map((i) => (
             <div
               key={i}
-              className="h-28 animate-pulse rounded-xl border border-[var(--copilot-border)] bg-white/50"
+              className="h-28 animate-pulse rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50"
             />
           ))}
         </div>
@@ -371,7 +371,7 @@ function TesoreriaDashboardSkeleton() {
           {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="h-20 animate-pulse rounded-xl border border-[var(--copilot-border)] bg-white/50"
+              className="h-20 animate-pulse rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50"
             />
           ))}
         </div>
@@ -382,7 +382,7 @@ function TesoreriaDashboardSkeleton() {
           {[0, 1].map((i) => (
             <div
               key={i}
-              className="h-24 animate-pulse rounded-xl border border-[var(--copilot-border)] bg-white/50"
+              className="h-24 animate-pulse rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50"
             />
           ))}
         </div>

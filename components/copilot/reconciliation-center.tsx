@@ -226,9 +226,9 @@ type Tone = "positive" | "info" | "warning" | "neutral";
 
 const TILE_TONE: Record<Tone, string> = {
   positive: "border-emerald-200/70 bg-emerald-50/40 text-emerald-900",
-  info: "border-[var(--copilot-border)] bg-white/65 text-[var(--copilot-ink)]",
+  info: "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/65 text-[var(--copilot-ink)]",
   warning: "border-amber-200/70 bg-amber-50/55 text-amber-900",
-  neutral: "border-dashed border-[var(--copilot-border)] bg-white/40 text-[var(--copilot-ink-muted)]",
+  neutral: "border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/40 text-[var(--copilot-ink-muted)]",
 };
 
 function MetricTile({
@@ -269,7 +269,7 @@ function SyncHealth({ syncStates }: { syncStates: readonly SyncStateSummary[] })
       {syncStates.length === 0 ? (
         <EmptyRow icon={ServerCog} text="Sin estados de sincronización registrados." />
       ) : (
-        <ul className="divide-y divide-[var(--copilot-border)] overflow-hidden rounded-xl border border-[var(--copilot-border)] bg-white/55">
+        <ul className="divide-y divide-[var(--copilot-border)] overflow-hidden rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/55">
           {syncStates.map((s) => (
             <SyncRow key={s.resource_flow} state={s} />
           ))}
@@ -440,7 +440,7 @@ const CHECK_BADGE_CLASS: Record<CheckStatus, string> = {
   warn: "border-amber-200 bg-amber-50 text-amber-800",
   critical: "border-rose-200 bg-rose-50 text-rose-800",
   pending:
-    "border-dashed border-[var(--copilot-border)] bg-white/60 text-[var(--copilot-ink-muted)]",
+    "border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 text-[var(--copilot-ink-muted)]",
 };
 
 const CHECK_BADGE_LABEL: Record<CheckStatus, string> = {
@@ -485,7 +485,7 @@ function CheckItem({ check }: { check: ReconCheck }) {
         hidden: { opacity: 0, x: 4 },
         visible: { opacity: 1, x: 0, transition: { duration: 0.2, ease: "easeOut" } },
       }}
-      className="grid grid-cols-[18px_minmax(0,1fr)_auto] items-start gap-3 rounded-lg border border-[var(--copilot-border)] bg-white/55 px-3 py-2.5"
+      className="grid grid-cols-[18px_minmax(0,1fr)_auto] items-start gap-3 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/55 px-3 py-2.5"
     >
       <span className="mt-0.5">
         <StatusGlyph status={check.status} />
@@ -529,7 +529,7 @@ function SubsectionHeader({ title, subtitle }: { title: string; subtitle: string
 
 function EmptyRow({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-dashed border-[var(--copilot-border)] bg-white/40 px-3 py-2.5 text-sm text-[var(--copilot-ink-muted)]">
+    <div className="flex items-center gap-2 rounded-xl border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/40 px-3 py-2.5 text-sm text-[var(--copilot-ink-muted)]">
       <Icon className="h-4 w-4" aria-hidden />
       {text}
     </div>
@@ -574,7 +574,7 @@ export function ReconciliationCenterSkeleton() {
               {Array.from({ length: 4 }).map((_, i) => (
                 <div
                   key={i}
-                  className="rounded-xl border border-[var(--copilot-border)] bg-white/55 p-3"
+                  className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/55 p-3"
                 >
                   <SkBar className="h-2 w-14" />
                   <SkBar className="mt-2 h-5 w-16" />
@@ -585,7 +585,7 @@ export function ReconciliationCenterSkeleton() {
           </div>
           <div className="space-y-2">
             <SkBar className="h-2.5 w-24" />
-            <div className="overflow-hidden rounded-xl border border-[var(--copilot-border)] bg-white/55">
+            <div className="overflow-hidden rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/55">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div
                   key={i}
@@ -608,7 +608,7 @@ export function ReconciliationCenterSkeleton() {
             {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={i}
-                className="grid grid-cols-[18px_minmax(0,1fr)_auto] items-start gap-3 rounded-lg border border-[var(--copilot-border)] bg-white/55 px-3 py-2.5"
+                className="grid grid-cols-[18px_minmax(0,1fr)_auto] items-start gap-3 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/55 px-3 py-2.5"
               >
                 <div className="mt-0.5 h-4 w-4 rounded-sm bg-[rgba(44,40,37,0.08)]" />
                 <div className="space-y-1.5">

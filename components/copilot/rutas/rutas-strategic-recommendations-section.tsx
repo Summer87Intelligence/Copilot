@@ -40,7 +40,7 @@ function StrategicRecommendationCard({
   recommendation: StrategicRecommendation;
 }) {
   return (
-    <CopilotCard className="border-l-[3px] border-l-[var(--copilot-accent)] bg-white/95 p-2 shadow-sm">
+    <CopilotCard className="border-l-[3px] border-l-[var(--copilot-accent)] bg-[var(--copilot-card-bg)]/95 p-2 shadow-sm">
       <div className="flex flex-wrap items-start gap-x-1.5 gap-y-0.5">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-accent)]">
           Decisión

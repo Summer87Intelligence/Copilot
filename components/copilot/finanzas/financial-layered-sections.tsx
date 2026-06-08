@@ -60,7 +60,7 @@ function CurrencyToggle({
             onClick={() => has && onChange(c)}
             className={`min-w-[44px] rounded-lg px-2.5 py-1 text-[10px] font-semibold transition ${
               value === c
-                ? "bg-white text-[var(--copilot-ink)] shadow-sm ring-1 ring-[var(--copilot-border)]"
+                ? "bg-[var(--copilot-card-bg)] text-[var(--copilot-ink)] shadow-sm ring-1 ring-[var(--copilot-border)]"
                 : has
                   ? "text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]"
                   : "cursor-not-allowed text-slate-300"
@@ -135,7 +135,7 @@ export function FinancialLayeredHeader({
         </div>
       </div>
 
-      <p className="rounded-lg border border-[var(--copilot-border)] bg-white/60 px-3 py-2 text-xs text-[var(--copilot-ink-muted)]">
+      <p className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-3 py-2 text-xs text-[var(--copilot-ink-muted)]">
         <span className="font-medium text-[var(--copilot-ink)]">Corte:</span> {ctx.asOfLabel}
         <span className="mx-1.5 text-slate-300">·</span>
         <span className="font-medium text-[var(--copilot-ink)]">Mes en curso:</span> {monthShort}
@@ -176,7 +176,7 @@ function SummaryMetric({
           ? "text-amber-800"
           : "text-[var(--copilot-ink)]";
   return (
-    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/80 px-3 py-2.5">
+    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 py-2.5">
       <p className={subtleLabelClass}>{label}</p>
       <p className={`mt-1 text-sm font-bold tabular-nums leading-snug ${valueClass}`}>{value}</p>
     </div>
@@ -524,7 +524,7 @@ function WeekComparisonMini({ panel }: { panel: ExecutiveCurrencyPanel }) {
   const block = panel.weekVsPrevious;
   const paired = block.metrics.slice(0, 3);
   return (
-    <div className="rounded-xl border border-[var(--copilot-border)] bg-white/60 p-3">
+    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 p-3">
       <p className="text-xs font-semibold text-[var(--copilot-ink)]">
         Semana · {panel.currency}
       </p>
@@ -562,7 +562,7 @@ export function FinancialAdvancedDetail({
   const panel = panels.find((p) => p.currency === currency);
 
   return (
-    <div className="rounded-2xl border border-[var(--copilot-border)] bg-white/40">
+    <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/40">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -596,7 +596,7 @@ export function FinancialAdvancedDetail({
                       onClick={() => setClientTab(t)}
                       className={`rounded-md px-2 py-0.5 font-semibold ${
                         clientTab === t
-                          ? "bg-white text-[var(--copilot-ink)] shadow-sm"
+                          ? "bg-[var(--copilot-card-bg)] text-[var(--copilot-ink)] shadow-sm"
                           : "text-[var(--copilot-ink-muted)]"
                       }`}
                     >

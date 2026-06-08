@@ -192,7 +192,7 @@ export function AccountStatementsPdfDialog({ open, onClose }: Props) {
             type="button"
             onClick={handleClose}
             disabled={loading}
-            className="rounded-lg p-1 text-[var(--copilot-ink-muted)] hover:bg-black/[0.04] disabled:opacity-50"
+            className="rounded-lg p-1 text-[var(--copilot-ink-muted)] hover:bg-black/[0.04] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
             aria-label="Cerrar"
           >
             <X className="h-5 w-5" aria-hidden />
@@ -214,7 +214,7 @@ export function AccountStatementsPdfDialog({ open, onClose }: Props) {
                   className={`flex-1 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
                     scope === s
                       ? "border-[var(--copilot-accent)] bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)]"
-                      : "border-[var(--copilot-border)] bg-white/80 text-[var(--copilot-ink-muted)] hover:bg-white"
+                      : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
                   }`}
                 >
                   {s === "all" ? "Todos los clientes" : "Cliente específico"}
@@ -261,7 +261,7 @@ export function AccountStatementsPdfDialog({ open, onClose }: Props) {
                 </div>
               ) : (
                 <div className="relative">
-                  <div className="flex items-center gap-2 rounded-xl border border-[var(--copilot-border)] bg-white px-3 py-2 focus-within:border-[var(--copilot-accent)]">
+                  <div className="flex items-center gap-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 focus-within:border-[var(--copilot-accent)]">
                     {clientsLoading ? (
                       <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[var(--copilot-ink-muted)]" aria-hidden />
                     ) : (
@@ -282,7 +282,7 @@ export function AccountStatementsPdfDialog({ open, onClose }: Props) {
                     />
                   </div>
                   {showDropdown && search.trim() && (
-                    <div className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-[var(--copilot-border)] bg-white shadow-lg">
+                    <div className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] shadow-lg">
                       {filteredClients.length === 0 ? (
                         <p className="px-3 py-2 text-xs text-[var(--copilot-ink-muted)]">
                           Sin resultados.
@@ -334,7 +334,7 @@ export function AccountStatementsPdfDialog({ open, onClose }: Props) {
                     className={`flex items-start gap-3 rounded-xl border px-3.5 py-2.5 text-left transition ${
                       active
                         ? "border-[var(--copilot-accent)] bg-[var(--copilot-accent-soft)]"
-                        : "border-[var(--copilot-border)] bg-white/80 hover:bg-white"
+                        : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 hover:bg-[var(--copilot-panel-bg)]"
                     }`}
                   >
                     <span
@@ -382,7 +382,7 @@ export function AccountStatementsPdfDialog({ open, onClose }: Props) {
             type="button"
             onClick={() => void handleGenerate()}
             disabled={loading || !canGenerate}
-            className="inline-flex items-center gap-2 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
