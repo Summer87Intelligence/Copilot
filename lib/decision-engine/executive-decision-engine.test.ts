@@ -8,7 +8,6 @@ import {
   type ExecutiveDecisionEngineInput,
 } from "./executive-decision-engine";
 import type { PortfolioScore, OperationalAnalyticsSnapshot } from "./de-types";
-import type { PredictiveSnapshot } from "./predictive/predictive-types";
 import type {
   AutomationRunRow,
   RankedClient,

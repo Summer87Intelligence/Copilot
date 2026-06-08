@@ -125,7 +125,6 @@ export type RutasVisibility = {
 
 export function buildRutasVisibility(data: RutasHubData): RutasVisibility {
   const overdue = sumPortfolioOverdueDebt(data.portfolio);
-  const alerts = data.fiscalAlerts.length;
   const pending = data.pendingDecisions;
 
   return {

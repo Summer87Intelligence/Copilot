@@ -57,7 +57,6 @@ type ProtoInvoiceRow = {
   currency_code: string | null;
 };
 
-type RowOutcome = "updated" | "skipped" | "not_matched" | "error";
 
 // ---------------------------------------------------------------------------
 // Helpers

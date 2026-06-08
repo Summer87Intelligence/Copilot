@@ -13,7 +13,6 @@ import {
 import {
   buildFinancialPeriodContext,
   monthLabelFromYm,
-  prevYm,
   type FinancialPeriodContext,
 } from "@/lib/copilot-financial-period-context";
 import {

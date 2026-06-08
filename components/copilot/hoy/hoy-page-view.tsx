@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { RefreshCw, XCircle } from "lucide-react";
 
 import { CopilotCard } from "@/components/copilot/copilot-ui";
-import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
+import type { ClientCompanyDetail, ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import type { FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
 import type { CarteraCurrencyTotals } from "@/lib/copilot-cartera-aging-totals";
 import {
@@ -57,6 +57,7 @@ type HoyPageViewProps = {
   today: string;
   snapshot: FinancialSnapshotApiV1 | null;
   portfolioRows: ClientPortfolioLoad["rows"] | null;
+  portfolioDetails?: Record<string, ClientCompanyDetail>;
   gate: BusinessPulseGate;
   carteraAgingOverdue?: CarteraCurrencyTotals;
   carteraAgingCurrent?: CarteraCurrencyTotals;
@@ -144,6 +145,7 @@ export function HoyPageView({
   today,
   snapshot,
   portfolioRows,
+  portfolioDetails,
   gate,
   carteraAgingOverdue,
   carteraAgingCurrent,
@@ -332,6 +334,7 @@ export function HoyPageView({
                 sectionRef={debtorsSectionRef}
                 allRows={riskDebtorRows}
                 highlightRisk
+                portfolioDetails={portfolioDetails}
               />
             ) : (
               <p className="py-4 text-center text-sm text-[var(--copilot-ink-muted)]">

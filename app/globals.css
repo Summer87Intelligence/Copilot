@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Tailwind v4: enables `dark:` utility prefix scoped to [data-theme="dark"] */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -13,6 +16,31 @@
   --copilot-accent-soft: rgba(31, 107, 74, 0.12);
   --copilot-card: #faf8f5;
   --copilot-shadow: 0 2px 14px rgba(44, 40, 37, 0.06);
+  /* UI surface tokens */
+  --copilot-header-bg: rgba(255, 255, 255, 0.80);
+  --copilot-dropdown-bg: #ffffff;
+  --copilot-sticky-bg: rgba(255, 255, 255, 0.95);
+  --copilot-hover-bg: rgba(44, 40, 37, 0.08);
+  --copilot-surface-muted: #f1f5f9;
+}
+
+[data-theme="dark"] {
+  --background: #0f0d0b;
+  --foreground: #e8e3db;
+  --copilot-canvas: #1a1714;
+  --copilot-ink: #e8e3db;
+  --copilot-ink-muted: rgba(232, 227, 219, 0.55);
+  --copilot-border: rgba(232, 227, 219, 0.12);
+  --copilot-sidebar: #1e1b18;
+  --copilot-accent: #2d9b6b;
+  --copilot-accent-soft: rgba(45, 155, 107, 0.18);
+  --copilot-card: #211e1b;
+  --copilot-shadow: 0 2px 14px rgba(0, 0, 0, 0.30);
+  --copilot-header-bg: rgba(26, 23, 20, 0.85);
+  --copilot-dropdown-bg: #1e1b18;
+  --copilot-sticky-bg: rgba(26, 23, 20, 0.95);
+  --copilot-hover-bg: rgba(232, 227, 219, 0.10);
+  --copilot-surface-muted: #2a2520;
 }
 
 @theme inline {
@@ -23,13 +51,6 @@
   --color-copilot-canvas: var(--copilot-canvas);
   --color-copilot-ink: var(--copilot-ink);
   --color-copilot-accent: var(--copilot-accent);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {

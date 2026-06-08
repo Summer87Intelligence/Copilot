@@ -40,10 +40,6 @@ function inv(id: string, date: string, total: number, currency: "UYU" | "USD" = 
   return { id, invoice_number: `INV-${id}`, issue_date: date, total_amount: total, currency_code: currency, is_active: true };
 }
 
-function rec(id: string, date: string, amount: number, currency: "UYU" | "USD" = "UYU"): DataRow {
-  return { id, receipt_number: `REC-${id}`, receipt_date: date, amount, currency_code: currency, is_active: true };
-}
-
 function clientInfo(name: string): ClientInfo {
   return { name };
 }

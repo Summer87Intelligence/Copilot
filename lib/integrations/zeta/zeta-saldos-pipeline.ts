@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { serializeError } from "@/lib/copilot-structured-logger";
 import { createLogger } from "@/lib/observability/logger";
 import { sanitizeError, sanitizeLogPayload } from "@/lib/observability/sanitize";
 import { applyProtoActiveListFilter } from "@/lib/copilot-proto-active";
@@ -57,7 +56,6 @@ import {
 } from "@/lib/integrations/zeta/zeta-pipeline-types";
 import { normalizeZetaCurrency } from "@/lib/integrations/zeta/zeta-currency-normalize";
 import {
-  sumOpenInstallmentSaldoForInvoice,
   INSTALLMENT_SALDO_EPSILON,
 } from "@/lib/integrations/zeta/zeta-installment-guard";
 import {

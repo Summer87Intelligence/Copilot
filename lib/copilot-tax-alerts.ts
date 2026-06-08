@@ -110,7 +110,6 @@ export function classifyFiscalAlertPriority(
   if (st === "paid") return null;
 
   const due = o.due_date.slice(0, 10);
-  const t0 = ymd(today);
   const throughTomorrow = ymd(addCalendarDays(today, 1));
   const throughWeek = ymd(addCalendarDays(today, 7));
   const horizonEnd = ymd(addCalendarDays(today, MEDIUM_HORIZON_DAYS));

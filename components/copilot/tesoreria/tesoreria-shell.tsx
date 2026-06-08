@@ -92,6 +92,7 @@ export function TesoreriaShell() {
     if (!workspace.feedback) return;
     const timer = setTimeout(() => workspace.clearFeedback(), 5000);
     return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: subscribing to feedback/clearFeedback properties avoids re-running on unrelated workspace changes
   }, [workspace.feedback, workspace.clearFeedback]);
 
   const hasPendingChanges =

@@ -228,6 +228,7 @@ export function buildInstallmentCoverageDiagnostics(opts: {
 }
 
 /** Default para scripts Node (`tsx` + `.mjs`): named ESM no se re-exportan desde `.ts`. */
-export default {
+const installmentCoverageDefault = {
   buildInstallmentCoverageDiagnostics,
 };
+export default installmentCoverageDefault;

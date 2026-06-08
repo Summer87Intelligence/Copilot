@@ -98,7 +98,6 @@ function createSupabaseStub(opts: {
     let isSelect = false;
 
     const q: Record<string, unknown> = {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       select(_cols: string) {
         isSelect = true;
         return q;

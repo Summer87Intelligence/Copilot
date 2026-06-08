@@ -236,8 +236,9 @@ export function computeInstallmentAging(
 }
 
 /** Default para scripts Node (`tsx` + `.mjs`): named ESM no se re-exportan desde `.ts`. */
-export default {
+const installmentAgingDefault = {
   classifyInstallmentAgingRange,
   computeInstallmentAging,
   daysPastDueFromVencimiento,
 };
+export default installmentAgingDefault;

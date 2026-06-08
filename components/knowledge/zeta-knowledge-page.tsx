@@ -141,6 +141,7 @@ export function ZetaKnowledgePage() {
     setMode(p.mode);
     setActivePath(p.doc);
     setBranchFilter(coerceZetaBranchFilter(p.branchRaw, indexRows));
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: indexRows intentionally omitted; coercion on URL change only to avoid feedback loop with the write effect below
   }, [searchSig, searchParams]);
 
   /** Revalidar rama cuando llega el índice (sin depender solo de cambios de URL). */
@@ -168,6 +169,7 @@ export function ZetaKnowledgePage() {
     lastWrittenPickRef.current = norm;
     const href = built ? `${pathname}?${built}` : pathname;
     router.replace(href, { scroll: false });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: searchParams omitted to avoid infinite loop (this effect writes the URL which changes searchParams)
   }, [branchFilter, activePath, debouncedQuery, mode, pathname, router, searchSig]);
 
   useEffect(() => {

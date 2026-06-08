@@ -127,7 +127,6 @@ export function stripMovementRaw(
   mvs: readonly AccountStatementMovement[]
 ): Omit<AccountStatementMovement, "raw">[] {
   return mvs.map((mv) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { raw: _raw, ...rest } = mv;
     return rest;
   });

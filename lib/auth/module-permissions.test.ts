@@ -5,7 +5,6 @@ import {
   canAdminModule,
   canReadModule,
   canWriteModule,
-  getModuleAccessLevel,
   isValidAccessLevel,
   isValidModuleKey,
   resolveEffectivePermissions,

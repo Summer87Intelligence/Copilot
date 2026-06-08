@@ -118,7 +118,7 @@ function getIconConfig(type: string, severity: string): IconConfig {
   if (type === "notification_digest")
     return { bg: "bg-blue-50", icon: <Bell className={`${sz} text-blue-500`} aria-hidden /> };
 
-  return { bg: "bg-slate-100", icon: <Bell className={`${sz} text-slate-400`} aria-hidden /> };
+  return { bg: "bg-[var(--copilot-surface-muted)]", icon: <Bell className={`${sz} text-[var(--copilot-ink-muted)]`} aria-hidden /> };
 }
 
 // ─── Single notification row ──────────────────────────────────────────────────
@@ -276,7 +276,7 @@ export function CopilotNotificationBell() {
             : "Notificaciones"
         }
         aria-expanded={open}
-        className="relative flex h-8 w-8 items-center justify-center rounded-full text-[var(--copilot-ink-muted)] transition hover:bg-[rgba(44,40,37,0.08)] hover:text-[var(--copilot-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--copilot-accent)]"
+        className="relative flex h-8 w-8 items-center justify-center rounded-full text-[var(--copilot-ink-muted)] transition hover:bg-[var(--copilot-hover-bg)] hover:text-[var(--copilot-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--copilot-accent)]"
       >
         <Bell className="h-[17px] w-[17px]" aria-hidden />
         {badge > 0 ? (
@@ -293,7 +293,7 @@ export function CopilotNotificationBell() {
       {open ? (
         <div
           ref={panelRef}
-          className="absolute right-0 top-full z-[80] mt-2 flex w-[420px] max-w-[calc(100vw-20px)] flex-col overflow-hidden rounded-2xl border border-[var(--copilot-border)] bg-white shadow-2xl"
+          className="absolute right-0 top-full z-[80] mt-2 flex w-[420px] max-w-[calc(100vw-20px)] flex-col overflow-hidden rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-dropdown-bg)] shadow-2xl"
           style={{ maxHeight: "min(560px, calc(100vh - 80px))" }}
         >
           {/* Header */}
@@ -326,7 +326,7 @@ export function CopilotNotificationBell() {
               <NotifSkeleton />
             ) : groups.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--copilot-surface-muted)]">
                   <Bell className="h-5 w-5 text-slate-300" aria-hidden />
                 </div>
                 <p className="text-[13px] font-semibold text-[var(--copilot-ink)]">
@@ -341,7 +341,7 @@ export function CopilotNotificationBell() {
                 {groups.map((group, gi) => (
                   <div key={group.key} className={gi > 0 ? "border-t border-[var(--copilot-border)]/60" : ""}>
                     {/* Sticky section header */}
-                    <div className="sticky top-0 z-10 bg-[rgba(255,255,255,0.95)] px-4 pb-1.5 pt-2.5 backdrop-blur-sm">
+                    <div className="sticky top-0 z-10 bg-[var(--copilot-sticky-bg)] px-4 pb-1.5 pt-2.5 backdrop-blur-sm">
                       <p className="text-[10.5px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/60">
                         {group.label}
                       </p>

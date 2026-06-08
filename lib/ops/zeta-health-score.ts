@@ -61,7 +61,7 @@ function statusFromScore(score: number): HealthStatus {
 
 async function scorePipelineHealth(
   supabase: SupabaseClient,
-  workspaceId: string
+  _workspaceId: string
 ): Promise<DimensionScore> {
   const issues: string[] = [];
   const STALE_THRESHOLD_HOURS = 26; // allow 2h overrun on 24h crons
@@ -108,7 +108,7 @@ async function scorePipelineHealth(
 
 async function scoreSyncFreshness(
   supabase: SupabaseClient,
-  workspaceId: string
+  _workspaceId: string
 ): Promise<DimensionScore> {
   const issues: string[] = [];
 

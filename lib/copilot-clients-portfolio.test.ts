@@ -22,7 +22,7 @@ describe("paymentBehaviorForInvoices", () => {
   });
 
   it("cartera mayormente al día y pocas vencidas → bueno", () => {
-    const invoices = Array.from({ length: 10 }, (_, i) => ({
+    const invoices = Array.from({ length: 10 }, () => ({
       balance_amount: 0,
       status: "paid",
       due_date: "2025-01-01",

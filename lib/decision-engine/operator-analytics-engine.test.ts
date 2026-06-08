@@ -5,9 +5,7 @@ import {
   operationalRiskWeight,
 } from "@/lib/decision-engine/operator-analytics-engine";
 import type {
-  DECollectionAction,
   DEOperationalStateRow,
-  DEFollowUpRow,
   OperatorAnalyticsInput,
 } from "@/lib/decision-engine/de-types";
 

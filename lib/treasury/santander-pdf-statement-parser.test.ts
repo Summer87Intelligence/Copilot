@@ -12,7 +12,6 @@ import {
 } from "@/lib/treasury/fixtures/santander-pdf-uyu-text.fixture";
 import {
   isSantanderPdfStatementText,
-  parseSantanderPdfMetadata,
   parseSantanderPdfMovements,
   parseSantanderPdfStatementText,
 } from "@/lib/treasury/santander-pdf-statement-parser";

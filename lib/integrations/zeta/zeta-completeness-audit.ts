@@ -73,6 +73,7 @@ function readRegistroId(row: Record<string, unknown>): string | null {
   return null;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function extractLocalRegistroIdFromMeta(meta: Record<string, unknown> | null): string | null {
   if (!meta) return null;
   const v1 = meta["zeta_customer_voucher_v1"] as Record<string, unknown> | undefined;

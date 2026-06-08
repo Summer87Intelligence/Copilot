@@ -356,6 +356,7 @@ export function CopilotProtoCrudDrawer({
       payObligationManualOverrideRef.current = true;
       setAutoObligationHint(null);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: optional chaining on initialRow avoids stale closure; full object dep would cause extra runs
   }, [open, entity, mode, initialRow?.id, initialRow?.obligation_id]);
 
   useEffect(() => {

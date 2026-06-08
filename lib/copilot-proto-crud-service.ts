@@ -1,12 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { applyProtoActiveListFilter } from "@/lib/copilot-proto-active";
-import { DOCUMENT_RELATED_TABLE } from "@/lib/copilot-documents-data";
 import {
   invoiceTotalBelowApplied,
   MSG_DB_USER,
   MSG_DUPLICATE_TAX,
-  MSG_INTEGRITY,
   MSG_SUCCESS,
   MSG_WARNING_DUPLICATE_TAX,
   receiptExceedsInvoiceCap,
@@ -197,6 +195,7 @@ function allowedStatus(
   return allowed.includes(v) ? v : fallback;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function countDocumentsForRow(
   supabase: SupabaseClient,
   relatedTable: string,
@@ -220,6 +219,7 @@ async function countDocumentsForRow(
   return count ?? 0;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function countReceiptsForInvoice(
   supabase: SupabaseClient,
   invoiceId: string,
@@ -266,6 +266,7 @@ async function sumReceiptAmountsForInvoice(
   return sum;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function countTaxPaymentsForObligation(
   supabase: SupabaseClient,
   obligationId: string,
@@ -289,6 +290,7 @@ async function countTaxPaymentsForObligation(
   return count ?? 0;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function countRowsEq(
   supabase: SupabaseClient,
   table: string,

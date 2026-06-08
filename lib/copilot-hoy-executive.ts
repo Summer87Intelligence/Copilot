@@ -251,7 +251,7 @@ function sortScore(vencido: number, deuda: number, slow: boolean): number {
 
 export function buildDebtorCollectionRows(
   rows: ClientPortfolioRow[],
-  critical30ByClient?: never
+  _critical30ByClient?: never
 ): DebtorCollectionRow[] {
   const out: DebtorCollectionRow[] = [];
 

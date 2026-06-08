@@ -4,7 +4,6 @@ const PDFDocument = require("pdfkit/js/pdfkit.standalone.js") as new (
 ) => PDFKit.PDFDocument;
 
 import type {
-  AccountStatementByCurrency,
   ClientAccountStatement,
   AccountStatementMovement,
   MovementDetailLine,

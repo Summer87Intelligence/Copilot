@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { HoyPageView, type HoySectionErrors } from "@/components/copilot/hoy/hoy-page-view";
-import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
+import type { ClientCompanyDetail, ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import type { FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
 import type { FinancialConsistencyReport } from "@/lib/copilot-financial-reconciliation";
@@ -49,6 +49,7 @@ export default function CopilotHoyPage() {
   const [loading, setLoading] = useState(true);
   const [snapshot, setSnapshot] = useState<FinancialSnapshotApiV1 | null>(null);
   const [portfolioRows, setPortfolioRows] = useState<ClientPortfolioLoad["rows"] | null>(null);
+  const [portfolioDetails, setPortfolioDetails] = useState<Record<string, ClientCompanyDetail> | null>(null);
   const [gate, setGate] = useState<BusinessPulseGate>(DEFAULT_GATE);
   const [carteraAgingOverdue, setCarteraAgingOverdue] = useState<CarteraCurrencyTotals | undefined>(
     undefined
@@ -120,7 +121,9 @@ export default function CopilotHoyPage() {
       const hub = json ?? {};
       const meta = toRutasGateMeta(hub);
       setSnapshot((hub.snapshot as FinancialSnapshotApiV1 | null) ?? null);
-      setPortfolioRows(((hub.portfolio as ClientPortfolioLoad | null)?.rows) ?? null);
+      const hubPortfolio = (hub.portfolio as ClientPortfolioLoad | null) ?? null;
+      setPortfolioRows(hubPortfolio?.rows ?? null);
+      setPortfolioDetails(hubPortfolio?.details ?? null);
       setGate({
         confidence: meta.confidence,
         coverage: meta.coverage,
@@ -131,6 +134,7 @@ export default function CopilotHoyPage() {
       newErrors.hub = "No se pudo cargar el panorama principal.";
       setSnapshot(null);
       setPortfolioRows(null);
+      setPortfolioDetails(null);
       setGate(DEFAULT_GATE);
     }
 
@@ -264,6 +268,7 @@ export default function CopilotHoyPage() {
         today={today}
         snapshot={snapshot}
         portfolioRows={portfolioRows}
+        portfolioDetails={portfolioDetails ?? undefined}
         gate={gate}
         carteraAgingOverdue={carteraAgingOverdue}
         carteraAgingCurrent={carteraAgingCurrent}

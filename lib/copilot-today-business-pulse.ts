@@ -597,6 +597,7 @@ export function buildHeroSubline(
 }
 
 /** @deprecated Preferir buildExecutiveHeadline en /copilot/hoy. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function buildHeadline(
   status: PulseStatus,
   overdueCount: number,
@@ -688,6 +689,7 @@ function buildOperationalIndicators(p: {
     .map((ind) => ({ ...ind, tone: cappedTone(ind.tone, p.overallStatus) }));
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function buildKeyIndicators(p: {
   cashNet: number;
   snapCurrency: SnapCurrency;
@@ -860,6 +862,7 @@ function rawKeyIndicators(p: {
 
 // ─── Priority collections ─────────────────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function buildPriorityCollections(
   rows: ClientPortfolioRow[],
   overdueSemantics: OverdueDisplaySemantics
@@ -1136,6 +1139,7 @@ export function buildTodayBusinessPulse(input: BusinessPulseInput): TodayBusines
   const overdueSemantics = resolveOverdueDisplaySemantics(input);
 
   // Snapshot metrics
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const cashNet = input.snapshot ? snapshotCashNet(input.snapshot) : 0;
   const coverageRatio = input.snapshot ? snapshotCoverageRatio(input.snapshot) : 0;
   const riskBand: string = input.snapshot ? snapshotRiskBand(input.snapshot) : "low";
@@ -1144,6 +1148,7 @@ export function buildTodayBusinessPulse(input: BusinessPulseInput): TodayBusines
   // Portfolio totals per currency (nunca se suman UYU + USD)
   const totalDebtUYU = rows.reduce((s, r) => s + (r.debt_uyu ?? 0), 0);
   const totalDebtUSD = rows.reduce((s, r) => s + (r.debt_usd ?? 0), 0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const debtBreakdown = buildBreakdown(totalDebtUYU, totalDebtUSD);
 
   // Portfolio counts

@@ -170,7 +170,7 @@ export function CopilotUserBar({
       </button>
 
       {menuOpen ? (
-        <div className="absolute right-0 top-full z-[80] mt-2 w-56 overflow-hidden rounded-xl border border-[var(--copilot-border)] bg-white shadow-xl">
+        <div className="absolute right-0 top-full z-[80] mt-2 w-56 overflow-hidden rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-dropdown-bg)] shadow-xl">
           {displayEmail || displayRole ? (
             <div className="border-b border-[var(--copilot-border)] px-4 py-3">
               {displayEmail ? (
@@ -189,7 +189,7 @@ export function CopilotUserBar({
             <button
               type="button"
               onClick={() => void handleSignOut()}
-              className="w-full px-4 py-2 text-left text-sm text-rose-600 transition hover:bg-rose-50"
+              className="w-full px-4 py-2 text-left text-sm text-rose-600 transition hover:bg-[var(--copilot-hover-bg)]"
             >
               Cerrar sesión
             </button>

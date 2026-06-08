@@ -199,7 +199,6 @@ function buildReceivablesCard(
 function buildInsights(pulse: TodayBusinessPulse): CockpitQuickInsight[] {
   const insights: CockpitQuickInsight[] = [];
   const configured = pulse.projection30dBlocks.filter((b) => b.hasConfiguredPayments);
-  const allCover = configured.length > 0 && configured.every((b) => b.safeCash30d >= 0);
   const anyDeficit = configured.some((b) => b.safeCash30d < 0);
 
   if (configured.length > 0) {

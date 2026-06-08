@@ -1,6 +1,25 @@
 #!/usr/bin/env node
 /**
- * Auditoría: PDF real Zeta (Estados de Cuenta Clientes) vs modelo ledger Copilot.
+ * Auditoría PDF PARITY — SNAPSHOT (Nivel 3).
+ *
+ * Compara el modelo ledger Copilot contra PDFs de Estado de Cuenta exportados de Zeta.
+ *
+ * ⚠️ RESTRICCIÓN: este script es válido SOLO cuando el corte temporal del PDF coincide
+ * con el período consultado en Copilot. NO ejecutar como gate diario contra PDFs viejos.
+ *
+ * Casos de uso correctos:
+ *  - Cierre mensual: exportar PDFs frescos desde Zeta del período cerrado, luego correr.
+ *  - Validación post-fix: exportar PDF nuevo después de corregir un estado de cuenta.
+ *  - Reporte de diferencia específica informada por la contadora.
+ *
+ * Casos de uso incorrectos:
+ *  - Ejecutar con PDFs de semanas/meses anteriores (falsos positivos garantizados).
+ *  - Usar como verificación diaria automática.
+ *  - Comparar Copilot actual contra PDF exportado hace >24h con actividad Zeta de por medio.
+ *
+ * Ver runbook: docs/integrations/zeta-audit-runbook.md — Nivel 3.
+ *
+ * Para auditoría diaria usar: npm run audit:zeta-sync-health
  *
  * Ejecución vía wrapper .mjs o directo:
  *   node scripts/audit-zeta-pdf-vs-copilot-account-statements.mjs

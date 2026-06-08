@@ -62,7 +62,6 @@ export function dedupeZetaShadowInvoicesForReporting(invoices: DataRow[]): DataR
   const droppedIds = new Set<string>();
 
   for (const row of invoices) {
-    const id = getString(row, "id");
     const companyId = getString(row, "company_id");
     const registroId = resolveRegistroReportingKey(row);
 

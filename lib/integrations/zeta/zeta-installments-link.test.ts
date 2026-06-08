@@ -43,7 +43,7 @@ function createLinkStub(opts: {
 }) {
   const eqFilters: Array<[string, unknown]> = [];
 
-  function buildFrom(table: string) {
+  function buildFrom(_table: string) {
     const state: {
       cols: string;
       path: string | null;
