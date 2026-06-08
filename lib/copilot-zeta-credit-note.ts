@@ -12,9 +12,7 @@
  *
  *   102 — e-Factura Nota de Crédito
  *   112 — e-Boleta de Contado Nota de Crédito
- *   122 — e-Ticket Nota de Crédito
- *   132 — e-Remito Nota de Crédito (raro)
- *   142 — e-Resguardo Nota de Crédito
+ *   181 — e-Nota de Crédito de e-Factura
  *   182 — e-Factura de Exportación Nota de Crédito
  *   202, 212, 222, 232, 242, 282 — variantes de Contingencia
  *
@@ -44,6 +42,7 @@ export const CFE_NC_TIPOS_DGI: ReadonlySet<number> = new Set([
   122,
   132,
   142,
+  181,
   182,
   202,
   212,
@@ -76,15 +75,25 @@ export function readCfeTipoFromZetaMetadata(metadata: unknown): number | null {
   }
   const v1 = v1raw as Record<string, unknown>;
   const raw = v1.cfe_tipo ?? v1.cfeTipo ?? v1.CFETipo;
-  if (raw === null || raw === undefined || raw === "") return null;
-  if (typeof raw === "number") {
-    return Number.isFinite(raw) ? Math.trunc(raw) : null;
+  if (raw !== null && raw !== undefined && raw !== "") {
+    if (typeof raw === "number") {
+      return Number.isFinite(raw) ? Math.trunc(raw) : null;
+    }
+    if (typeof raw === "string") {
+      const s = raw.trim();
+      if (s) {
+        const n = parseInt(s, 10);
+        if (Number.isFinite(n)) return n;
+      }
+    }
   }
-  if (typeof raw === "string") {
-    const s = raw.trim();
-    if (!s) return null;
-    const n = parseInt(s, 10);
-    return Number.isFinite(n) ? n : null;
+  const payload = v1.raw_payload;
+  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    const rawCfe = (payload as Record<string, unknown>).CFETipo;
+    if (rawCfe != null && rawCfe !== "") {
+      const n = typeof rawCfe === "number" ? rawCfe : parseInt(String(rawCfe).trim(), 10);
+      if (Number.isFinite(n)) return n;
+    }
   }
   return null;
 }

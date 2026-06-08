@@ -23,7 +23,9 @@
     "verify:copilot": "node scripts/verify-copilot.mjs",
     "verify:copilot:quick": "node scripts/verify-copilot-quick.mjs",
     "audit:final-preprod": "node --env-file=.env.local --import tsx scripts/audit-final-preprod.ts",
-    "audit:account-statements": "node scripts/audit-zeta-vs-copilot-account-statements.mjs"
+    "audit:account-statements": "node scripts/audit-zeta-vs-copilot-account-statements.mjs",
+    "audit:zeta-pdf-parity": "node scripts/audit-zeta-pdf-vs-copilot-account-statements.mjs",
+    "audit:apply-opening-backfill": "node --env-file=.env.local --import tsx scripts/apply-ledger-opening-backfill.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",

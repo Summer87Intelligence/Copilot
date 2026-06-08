@@ -19,6 +19,7 @@ describe("CFE_NC_TIPOS_DGI", () => {
     expect(CFE_NC_TIPOS_DGI.has(102)).toBe(true); // e-Factura NC
     expect(CFE_NC_TIPOS_DGI.has(112)).toBe(true); // e-Boleta NC
     expect(CFE_NC_TIPOS_DGI.has(122)).toBe(true); // e-Ticket NC
+    expect(CFE_NC_TIPOS_DGI.has(181)).toBe(true); // e-NC de e-Factura
   });
 
   it("incluye contingencias NC", () => {
@@ -28,7 +29,7 @@ describe("CFE_NC_TIPOS_DGI", () => {
   });
 
   it("NO incluye facturas regulares", () => {
-    for (const c of [101, 111, 121, 131, 141, 181, 201, 211, 221, 231, 241, 281]) {
+    for (const c of [101, 111, 121, 131, 141, 201, 211, 221, 231, 241, 281]) {
       expect(CFE_NC_TIPOS_DGI.has(c)).toBe(false);
     }
   });

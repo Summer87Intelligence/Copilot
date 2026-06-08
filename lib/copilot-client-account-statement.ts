@@ -37,6 +37,7 @@ import type { DataRow } from "@/lib/copilot-data";
 import { readInvoiceCurrency } from "@/lib/copilot-datos-invoice-display";
 import { readReceiptCurrency } from "@/lib/copilot-datos-receipt-display";
 import { parseRowYmd } from "@/lib/copilot-datos-period-filter";
+import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
 
 export type AccountStatementCurrency = "UYU" | "USD";
 
@@ -282,47 +283,51 @@ function isSaldosPendientesRow(row: DataRow): boolean {
   return row.category === "Zeta / saldos pendientes";
 }
 
-/**
- * Lee el código CFE tipo desde dos fuentes en orden de prioridad:
- *   1. `zeta_customer_voucher_v1.cfe_tipo` (string, puesto por el mapper)
- *   2. `zeta_customer_voucher_v1.raw_payload.CFETipo` (entero PascalCase del API Zeta)
- *
- * Datos reales (tenant El País S.A.): invoices → 111, NC → 112.
- */
-function readInvoiceCfeTipo(row: DataRow): number | null {
-  const zm = row.zeta_metadata;
-  if (!zm || typeof zm !== "object") return null;
-  const v1 = (zm as Record<string, unknown>).zeta_customer_voucher_v1;
-  if (!v1 || typeof v1 !== "object") return null;
-  // Fuente primaria: campo normalizado por el mapper
-  const raw = (v1 as Record<string, unknown>).cfe_tipo;
-  if (raw != null && raw !== "") {
-    const n = parseInt(String(raw), 10);
-    if (Number.isFinite(n)) return n;
-  }
-  // Fuente secundaria: campo PascalCase en raw_payload (API Zeta directo)
-  const payload = (v1 as Record<string, unknown>).raw_payload;
-  if (payload && typeof payload === "object") {
-    const rawCfe = (payload as Record<string, unknown>).CFETipo;
-    if (rawCfe != null) {
-      const n = parseInt(String(rawCfe), 10);
-      if (Number.isFinite(n)) return n;
-    }
-  }
-  return null;
+/** Clave estable para emparejar CCV1 vs shadow saldos pendientes en ledger. */
+function ledgerInvoiceMatchParts(row: DataRow): { cur: string; date: string; total: number } | null {
+  const date = ymdToString(parseRowYmd(row, "issue_date"), row.issue_date);
+  const total = round2(parseAmount(row.total_amount));
+  const cur = symbolToIso(readInvoiceCurrency(row));
+  if (!date || !(total > 0) || !cur) return null;
+  return { cur, date, total };
 }
 
+function buildCcv1LedgerMatchEntries(
+  invoices: readonly DataRow[]
+): Array<{ cur: string; date: string; total: number }> {
+  const entries: Array<{ cur: string; date: string; total: number }> = [];
+  for (const inv of invoices) {
+    if (isSaldosPendientesRow(inv)) continue;
+    const parts = ledgerInvoiceMatchParts(inv);
+    if (parts) entries.push(parts);
+  }
+  return entries;
+}
+
+const LEDGER_AMOUNT_PAIR_TOL = 1.0;
+
 /**
- * Detecta notas de crédito por código CFE DGI (Uruguay):
- *   112 = e-Nota de Crédito de e-Boleta de Contado  ← tenant real (confirmado A391, El País S.A.)
- *   181 = e-Nota de Crédito de e-Factura
- *   182 = e-Nota de Débito / NC variante e-Boleta
- *
- * Solo se usa en `ledgerMode: true` (estado de cuenta contable).
+ * Shadow saldos pendientes sin par CCV1 (misma fecha/moneda/importe ±tol) — incluir en ledger.
  */
+function isOrphanSaldosPendientesForLedger(
+  row: DataRow,
+  ccv1Entries: readonly { cur: string; date: string; total: number }[]
+): boolean {
+  if (!isSaldosPendientesRow(row)) return false;
+  const parts = ledgerInvoiceMatchParts(row);
+  if (!parts) return false;
+  const hasPair = ccv1Entries.some(
+    (e) =>
+      e.cur === parts.cur &&
+      e.date === parts.date &&
+      Math.abs(e.total - parts.total) <= LEDGER_AMOUNT_PAIR_TOL
+  );
+  return !hasPair;
+}
+
+/** Detecta NC por `cfe_tipo` persistido (catálogo completo en copilot-zeta-credit-note). */
 function invoiceIsCfeCreditNote(row: DataRow): boolean {
-  const tipo = readInvoiceCfeTipo(row);
-  return tipo === 112 || tipo === 181 || tipo === 182;
+  return isCreditNoteFromMetadata(row.zeta_metadata);
 }
 
 /** Orden ASC: fecha, kind (invoice antes que receipt mismo día), número. */
@@ -431,13 +436,18 @@ export function buildClientAccountStatement(
   const uyu: AccountStatementMovement[] = [];
   const usd: AccountStatementMovement[] = [];
   let unknownCurrencyCount = 0;
+  const ccv1LedgerEntries = ledgerMode ? buildCcv1LedgerMatchEntries(input.invoices) : [];
 
   for (const inv of input.invoices) {
     if (!ledgerMode && inv.is_active === false) continue;
-    // En modo ledger: excluir registros del pipeline de saldos pendientes.
-    // Representan el saldo vivo sincronizado, no comprobantes contables reales;
-    // duplicarían movimientos ya presentes via comprobantes CCV1.
-    if (ledgerMode && isSaldosPendientesRow(inv)) continue;
+    // En modo ledger: excluir shadows duplicados de CCV1; incluir huérfanos sin par.
+    if (
+      ledgerMode &&
+      isSaldosPendientesRow(inv) &&
+      !isOrphanSaldosPendientesForLedger(inv, ccv1LedgerEntries)
+    ) {
+      continue;
+    }
 
     const cur = symbolToIso(readInvoiceCurrency(inv));
     if (!cur) {

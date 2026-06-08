@@ -231,6 +231,50 @@ describe("saldos pendientes", () => {
     expect(stmt.uyu.movements[0].id).toBe("real");
   });
 
+  it("shadow huérfano sin CCV1 se incluye en ledger", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [
+        invoice({
+          id: "orphan",
+          number: "ZETA:2746",
+          date: "2026-06-04",
+          total: 68320,
+          category: "Zeta / saldos pendientes",
+        }),
+      ],
+      receipts: [],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements).toHaveLength(1);
+    expect(stmt.uyu.movements[0].id).toBe("orphan");
+    expect(stmt.uyu.movements[0].debit).toBe(68320);
+  });
+
+  it("shadow con par CCV1 mismo día e importe ±tol se excluye del ledger", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [
+        invoice({
+          id: "ccv1",
+          number: "ZETA:CCV1:0:107:A:2970",
+          date: "2026-06-04",
+          total: 96623.88,
+          cfeTipo: "101",
+        }),
+        invoice({
+          id: "shadow",
+          number: "ZETA:2776",
+          date: "2026-06-04",
+          total: 96624,
+          category: "Zeta / saldos pendientes",
+        }),
+      ],
+      receipts: [],
+      ledgerMode: true,
+    });
+    expect(stmt.uyu.movements).toHaveLength(1);
+    expect(stmt.uyu.movements[0].id).toBe("ccv1");
+  });
+
   it("se incluyen en modo operacional (ledgerMode: false) si están activos", () => {
     const stmt = buildClientAccountStatement({
       invoices: [
@@ -259,6 +303,18 @@ describe("credit_note detection", () => {
     const m = stmt.uyu.movements[0];
     expect(m.kind).toBe("credit_note");
     expect(m.credit).toBe(5000);
+    expect(m.debit).toBe(0);
+  });
+
+  it("CFE 102 → credit_note / Haber (e-Factura NC, Petrovic)", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [invoice({ id: "nc102", date: "2026-01-19", total: 484, cfeTipo: "102" })],
+      receipts: [],
+      ledgerMode: true,
+    });
+    const m = stmt.uyu.movements[0];
+    expect(m.kind).toBe("credit_note");
+    expect(m.credit).toBe(484);
     expect(m.debit).toBe(0);
   });
 
