@@ -274,10 +274,11 @@ export function buildFinancialDashboardMetrics(
     const { totalAmount, pendingAmount, paidAmount } = calculateFinancialInvoiceAmounts(inv);
     if (!(totalAmount > 0)) continue;
     const companyId = String(inv.company_id ?? "").trim();
-    const issued = parseRowYmd(inv, "issue_date");
-    const ageDays = issued
-      ? Math.max(0, Math.floor((todayUtc - ymdUtcDay(issued)) / DAY_MS))
-      : 0;
+    const dueDate = parseRowYmd(inv, "due_date");
+    // null → no due_date: invoice is not counted in aging buckets (not overdue)
+    const ageDays = dueDate
+      ? Math.max(0, Math.floor((todayUtc - ymdUtcDay(dueDate)) / DAY_MS))
+      : null;
 
     if (companyId) {
       const debtors = debtorsByCurrency[currency];
@@ -295,8 +296,8 @@ export function buildFinancialDashboardMetrics(
       if (pendingAmount > 0) {
         current.pendingAmount = roundFinancial2(current.pendingAmount + pendingAmount);
         current.invoiceCount += 1;
-        current.oldestAgeDays = Math.max(current.oldestAgeDays, ageDays);
-        if (issued) {
+        if (ageDays !== null) {
+          current.oldestAgeDays = Math.max(current.oldestAgeDays, ageDays);
           const debtorBucket = current.aging[agingIndex(ageDays)];
           debtorBucket.amount = roundFinancial2(debtorBucket.amount + pendingAmount);
           debtorBucket.invoiceCount += 1;
@@ -306,7 +307,7 @@ export function buildFinancialDashboardMetrics(
     }
 
     if (!(pendingAmount > 0)) continue;
-    if (!issued) continue;
+    if (ageDays === null) continue;
     const bucket = baseByCurrency.get(currency)?.aging[agingIndex(ageDays)];
     if (!bucket) continue;
     bucket.amount = roundFinancial2(bucket.amount + pendingAmount);

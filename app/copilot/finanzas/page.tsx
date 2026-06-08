@@ -1317,6 +1317,7 @@ function CopilotFinanzasPageContent() {
                   {snapshot.by_currency ? (
                     <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 p-4">
                       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Desglose por moneda</p>
+                      <p className="mt-0.5 text-[10px] text-[var(--copilot-ink-muted)]/70">Vista de posición total, sin filtro de período.</p>
                       <div className="mt-3 grid gap-3 sm:grid-cols-2">
                         {(["UYU", "USD"] as const).map((cur) => {
                           const totals = snapshot.by_currency![cur];
@@ -1326,7 +1327,7 @@ function CopilotFinanzasPageContent() {
                               <p className="text-xs font-semibold text-[var(--copilot-ink)]">{cur}</p>
                               <dl className="mt-2 space-y-1 text-xs text-[var(--copilot-ink-muted)]">
                                 {totals.invoiced !== undefined ? (
-                                  <div className="flex justify-between gap-2"><dt>Facturado</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{totals.invoiced.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>
+                                  <div className="flex justify-between gap-2"><dt title="Incluye todas las facturas activas históricas. Puede diferir del Facturado del período porque no aplica el rango Desde/Hasta." className="cursor-help underline decoration-dotted">Facturado histórico</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{totals.invoiced.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>
                                 ) : null}
                                 {totals.pending !== undefined ? (
                                   <div className="flex justify-between gap-2"><dt>Pendiente</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{totals.pending.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>

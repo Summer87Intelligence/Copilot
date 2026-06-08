@@ -489,10 +489,17 @@ export default function CopilotAlertasPage() {
         {/* ── Overdue clients CTA — shown when there are client_overdue alerts ── */}
         {tabCounts.clientes > 0 ? (
           <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-2.5">
-            <p className="text-[13px] text-amber-900">
-              <span className="font-semibold">{tabCounts.clientes}</span>{" "}
-              {tabCounts.clientes === 1 ? "alerta de cliente vencido" : "alertas de clientes vencidos"}
-            </p>
+            <div>
+              <p className="text-[13px] text-amber-900">
+                <span className="font-semibold">{tabCounts.clientes}</span>{" "}
+                {tabCounts.clientes === 1
+                  ? "evento generado por cliente vencido"
+                  : "eventos generados por clientes vencidos"}
+              </p>
+              <p className="text-[11px] text-amber-700/70">
+                Eventos históricos del motor de alertas · Ver Cartera para el estado actual
+              </p>
+            </div>
             <Link
               href="/copilot/cartera?filter=overdue"
               className="shrink-0 text-[12px] font-semibold text-amber-800 hover:underline"

@@ -788,7 +788,8 @@ describe("buildTodayBusinessPulse", () => {
       ];
       const period = carteraPeriodMetricsFromReport(currencies);
       const toDate = carteraCollectedToDateFromReport(currencies);
-      expect(period.collected.UYU).toBe(420_000);
+      // period.collected = collectedInPeriod (real receipts), not portfolioResolvedAmount
+      expect(period.collected.UYU).toBe(900_000);
       expect(toDate.UYU).toBe(900_000);
 
       const pulse = buildTodayBusinessPulse({
@@ -822,7 +823,8 @@ describe("buildTodayBusinessPulse", () => {
       expect(cash?.availableCash).toBe(10_000);
     });
 
-    it("cobrado aplicado alineado con Cartera (portfolioResolved, no collectedInPeriod bruto)", () => {
+    it("cobrado del período alineado con Cartera (collectedInPeriod bruto de recibos)", () => {
+      // collected = collectedInPeriod (real receipts), not portfolioResolvedAmount (derived residual)
       const metrics = carteraPeriodMetricsFromReport([
         {
           currencyCode: "UYU",
@@ -841,8 +843,9 @@ describe("buildTodayBusinessPulse", () => {
       ]);
       expect(metrics.billed.UYU).toBeCloseTo(3_367_605.43, 0);
       expect(metrics.billed.USD).toBeCloseTo(63_729.6, 0);
-      expect(metrics.collected.UYU).toBeCloseTo(3_196_661.43, 0);
-      expect(metrics.collected.USD).toBeCloseTo(57_004.39, 0);
+      // now uses collectedInPeriod directly
+      expect(metrics.collected.UYU).toBeCloseTo(3_407_298, 0);
+      expect(metrics.collected.USD).toBeCloseTo(57_151, 0);
       expect(metrics.pending.UYU).toBeCloseTo(170_944, 0);
       expect(metrics.pending.USD).toBeCloseTo(6_725.21, 0);
 
@@ -856,25 +859,28 @@ describe("buildTodayBusinessPulse", () => {
       });
       const uyu = blockFor(pulse, "UYU");
       const usd = blockFor(pulse, "USD");
-      expect(uyu?.collectedPeriod?.amount).toBeCloseTo(3_196_661.43, 0);
-      expect(usd?.collectedPeriod?.amount).toBeCloseTo(57_004.39, 0);
-      expect(uyu?.collectionRate).toBeCloseTo(0.949, 2);
-      expect(usd?.collectionRate).toBeCloseTo(0.894, 2);
+      expect(uyu?.collectedPeriod?.amount).toBeCloseTo(3_407_298, 0);
+      expect(usd?.collectedPeriod?.amount).toBeCloseTo(57_151, 0);
+      // collectionRate capped at 1.0: UYU collected (3_407_298) > billed net (3_367_605)
+      expect(uyu?.collectionRate).toBeCloseTo(1.0, 2);
+      expect(usd?.collectionRate).toBeCloseTo(0.897, 2);
+      // UYU: real receipts exceed billed net → note shows; USD: does not exceed
       expect(shouldShowCollectionExceedsBillingNote(uyu?.billedPeriod?.amount, uyu?.collectedPeriod?.amount)).toBe(
-        false
+        true
       );
       expect(shouldShowCollectionExceedsBillingNote(usd?.billedPeriod?.amount, usd?.collectedPeriod?.amount)).toBe(
         false
       );
     });
 
-    it("facturado/cobrado del período vienen de carteraPeriodMetrics (cobrado aplicado)", () => {
+    it("facturado/cobrado del período vienen de carteraPeriodMetrics (collectedInPeriod)", () => {
       const metrics = carteraPeriodMetricsFromReport([
         { currencyCode: "UYU", issuedInPeriod: 500_000, collectedInPeriod: 120_000, pendingAtCutoff: 80_000 },
         { currencyCode: "USD", issuedInPeriod: 20_000, collectedInPeriod: 8_000, pendingAtCutoff: 5_000 },
       ]);
-      expect(metrics.collected.UYU).toBe(420_000);
-      expect(metrics.collected.USD).toBe(15_000);
+      // collected = collectedInPeriod (real receipts), not portfolioResolvedAmount
+      expect(metrics.collected.UYU).toBe(120_000);
+      expect(metrics.collected.USD).toBe(8_000);
       const pulse = buildTodayBusinessPulse({
         snapshot: null,
         portfolioRows: [
@@ -884,8 +890,8 @@ describe("buildTodayBusinessPulse", () => {
         carteraPeriodMetrics: metrics,
       });
       expect(blockFor(pulse, "UYU")?.billedPeriod?.amount).toBe(500_000);
-      expect(blockFor(pulse, "UYU")?.collectedPeriod?.amount).toBe(420_000);
-      expect(blockFor(pulse, "USD")?.collectedPeriod?.amount).toBe(15_000);
+      expect(blockFor(pulse, "UYU")?.collectedPeriod?.amount).toBe(120_000);
+      expect(blockFor(pulse, "USD")?.collectedPeriod?.amount).toBe(8_000);
     });
 
     it("montos formateados con prefijo de moneda explícito", () => {

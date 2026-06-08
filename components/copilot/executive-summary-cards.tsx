@@ -301,7 +301,10 @@ function effectivenessCard(
 ): SummaryCard {
   const m = getCurrencyCardMetrics(index, code);
   const netIssued = Math.max(0, m.issuedInPeriod - m.creditNoteAmount);
-  const rawRatio = netIssued > 0 ? m.portfolioResolvedAmount / netIssued : null;
+  // Use real receipts (collectedInPeriod) as primary effectiveness numerator.
+  // Show "—" when no receipt data is available (collectedDataMissing).
+  const rawRatio =
+    netIssued > 0 && !m.collectedDataMissing ? m.collectedInPeriod / netIssued : null;
   // Clamp to [0, 9.99] — avoids absurd % from advances/overpayments while
   // still surfacing anomalies above 100%.
   const ratio = rawRatio !== null ? Math.max(0, Math.min(rawRatio, 9.99)) : null;

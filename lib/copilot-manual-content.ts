@@ -56,6 +56,7 @@ export const COPILOT_MANUAL_TOC_ORDER: Array<{ id: string; title: string }> = [
   { id: "roles-permisos", title: "Roles y permisos" },
   { id: "admin", title: "Panel administrativo" },
   { id: "hoy", title: "Hoy" },
+  { id: "dashboard", title: "Dashboard Resumen" },
   { id: "acciones", title: "Acciones" },
   { id: "alertas", title: "Alertas" },
   { id: "clientes", title: "Clientes" },
@@ -96,6 +97,7 @@ export const COPILOT_MANUAL_WEB_SECTION_IDS = [
   "copilot",
   "navegacion",
   "hoy",
+  "dashboard",
   "acciones",
   "alertas",
   "clientes",
@@ -126,6 +128,7 @@ export function getCopilotManualWebSections() {
 
 export const COPILOT_MANUAL_MODULE_CARDS = [
   { label: "Hoy", href: "/copilot/hoy", color: "text-emerald-600 bg-emerald-50" },
+  { label: "Dashboard Resumen", href: "/copilot/dashboard", color: "text-sky-600 bg-sky-50" },
   { label: "Acciones", href: "/copilot/acciones", color: "text-blue-600 bg-blue-50" },
   { label: "Alertas", href: "/copilot/alertas", color: "text-amber-600 bg-amber-50" },
   { label: "Clientes", href: "/copilot/clientes", color: "text-violet-600 bg-violet-50" },

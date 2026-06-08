@@ -2,6 +2,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Activity,
+  BarChart3,
   BookMarked,
   BookOpen,
   Bot,
@@ -45,6 +46,13 @@ const COPILOT_NAV_INICIO: CopilotNavGroup = {
       description: "Resumen y prioridad diaria",
       icon: ListTodo,
       moduleKey: "hoy",
+    },
+    {
+      href: "/copilot/dashboard",
+      label: "Dashboard Resumen",
+      description: "Análisis ejecutivo consolidado",
+      icon: BarChart3,
+      moduleKey: "dashboard",
     },
   ],
 };

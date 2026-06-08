@@ -14,6 +14,7 @@ function invoice(opts: {
   balance?: number | null;
   currency?: "USD" | "UYU" | null;
   issueDate?: string;
+  dueDate?: string | null;
   status?: string;
   active?: boolean;
 }): DataRow {
@@ -22,6 +23,7 @@ function invoice(opts: {
     company_id: opts.companyId,
     invoice_number: `INV-${opts.id}`,
     issue_date: opts.issueDate ?? "2026-05-01",
+    due_date: opts.dueDate !== undefined ? opts.dueDate : null,
     total_amount: opts.total,
     balance_amount: opts.balance ?? 0,
     currency_code: opts.currency === undefined ? "UYU" : opts.currency,
@@ -85,7 +87,7 @@ describe("buildFinancialDashboardMetrics", () => {
     });
   });
 
-  it("arma aging por issue_date sólo con balance pendiente", () => {
+  it("arma aging por due_date sólo con balance pendiente", () => {
     const out = buildFinancialDashboardMetrics({
       today: "2026-05-31",
       invoices: [
@@ -96,6 +98,7 @@ describe("buildFinancialDashboardMetrics", () => {
           balance: 100,
           currency: "USD",
           issueDate: "2026-05-10",
+          dueDate: "2026-05-10",
         }),
         invoice({
           id: "a2",
@@ -104,6 +107,7 @@ describe("buildFinancialDashboardMetrics", () => {
           balance: 200,
           currency: "USD",
           issueDate: "2026-04-15",
+          dueDate: "2026-04-15",
         }),
         invoice({
           id: "a3",
@@ -112,6 +116,7 @@ describe("buildFinancialDashboardMetrics", () => {
           balance: 300,
           currency: "USD",
           issueDate: "2026-03-15",
+          dueDate: "2026-03-15",
         }),
         invoice({
           id: "a4",
@@ -120,7 +125,9 @@ describe("buildFinancialDashboardMetrics", () => {
           balance: 400,
           currency: "USD",
           issueDate: "2026-01-01",
+          dueDate: "2026-01-01",
         }),
+        // paid invoice: balance=0, never enters aging regardless of due_date
         invoice({
           id: "paid",
           companyId: "c4",
@@ -128,6 +135,16 @@ describe("buildFinancialDashboardMetrics", () => {
           balance: 0,
           currency: "USD",
           issueDate: "2026-01-01",
+        }),
+        // no due_date: pending invoice excluded from aging buckets
+        invoice({
+          id: "noduedate",
+          companyId: "c5",
+          total: 500,
+          balance: 500,
+          currency: "USD",
+          issueDate: "2026-01-01",
+          dueDate: null,
         }),
       ],
     });

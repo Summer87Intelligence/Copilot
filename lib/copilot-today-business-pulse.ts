@@ -271,9 +271,10 @@ export type BusinessPulseInput = {
 /**
  * Métricas por moneda desde `report.currencies` — mismo normalizador que Cartera.
  *
- * `collected` = **Cobrado aplicado** (`portfolioResolvedAmount` en Cartera), no
- * `collectedInPeriod` (suma bruta de recibos en período). Fórmula:
- * max(0, issuedInPeriod − creditNoteAmount − pendingAtCutoff).
+ * `collected` = **Cobrado en período** (`collectedInPeriod`), suma real de recibos
+ * sincronizados con `receipt_date` dentro del período. Fuente canónica: proto_receipts.
+ * El residuo derivado (`portfolioResolvedAmount`) se mantiene solo en la card
+ * "Cobrado aplicado" de Cartera como métrica secundaria.
  */
 export function carteraPeriodMetricsFromReport(currencies: unknown): CarteraPeriodMetrics {
   const billed: CarteraCurrencyTotals = { UYU: 0, USD: 0 };
@@ -285,7 +286,7 @@ export function carteraPeriodMetricsFromReport(currencies: unknown): CarteraPeri
     const m = index.get(code);
     if (!m) continue;
     billed[code] = Math.round(m.issuedInPeriodNet * 100) / 100;
-    collected[code] = Math.round(m.portfolioResolvedAmount * 100) / 100;
+    collected[code] = Math.round(m.collectedInPeriod * 100) / 100;
     pending[code] = Math.round(m.pendingAtCutoff * 100) / 100;
   }
 

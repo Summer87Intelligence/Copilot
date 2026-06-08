@@ -341,7 +341,7 @@ describe("buildCopilotNavItemGroups — filtrado por módulo", () => {
 
   it("grupo vacío tras filtro no aparece en lista", () => {
     const perms: Record<string, string> = {
-      hoy: "none", acciones: "none", clientes: "none",
+      hoy: "none", dashboard: "none", acciones: "none", clientes: "none",
       cartera: "none", tesoreria: "none", finanzas: "none",
       reportes: "none", datos: "none", agentes: "none", manual: "none", admin: "none",
     };

@@ -53,7 +53,7 @@ export const FINANCIAL_UX_COPY = {
   kpiCollectedAppliedTooltip:
     "Importe de cartera resuelto dentro del período. No representa necesariamente la suma de recibos.",
   kpiNetEffectivenessTooltip:
-    "Cartera resuelta / Facturado. Mide qué fracción de lo facturado fue resuelta en el período.",
+    "Recibos cobrados / Facturado neto. Mide qué fracción de lo facturado fue cobrada en el período según recibos sincronizados de Zeta.",
   kpiNetEffectivenessTooltipPreSync:
-    "Cartera resuelta / Facturado. Puede estar subestimado si el período incluye facturas anteriores al inicio operativo de sincronización.",
+    "Recibos cobrados / Facturado neto. Puede estar subestimado si el período incluye facturas anteriores al inicio operativo de sincronización.",
 } as const;
