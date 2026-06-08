@@ -18,6 +18,10 @@ import {
   parseZetaEstadoCuentaPdfText,
   type ZetaPdfClientStatement,
 } from "@/lib/account-statement/parse-zeta-estado-cuenta-pdf-text";
+import {
+  classifyZetaPdfParity,
+  type ZetaPdfParityAuditStatus,
+} from "@/lib/account-statement/zeta-pdf-parity-classify";
 
 const require = createRequire(import.meta.url);
 const { PDFParse } = require("pdf-parse") as { PDFParse: new (opts: { data: Buffer }) => {
@@ -55,16 +59,7 @@ const PRIORITY_FRAGMENTS = [
   "DOLBY",
 ];
 
-type AuditStatus =
-  | "OK"
-  | "ROUNDING_OK"
-  | "DIFF_OPENING"
-  | "DIFF_DEBE"
-  | "DIFF_HABER"
-  | "DIFF_FINAL"
-  | "CLIENT_NOT_FOUND"
-  | "PARSE_WARNING"
-  | "DATA_GAP";
+type AuditStatus = ZetaPdfParityAuditStatus;
 
 type MovementRef = {
   date: string;
@@ -190,7 +185,13 @@ async function extractPdfText(relativePath: string): Promise<string> {
   }
 }
 
-const ROUNDING_TOL = 1.0;
+const ROUNDING_TOL_USD = 1.0;
+/** Centavos en micro-facturas UYU vs enteros en PDF parseado (p. ej. Dolby 187). */
+const ROUNDING_TOL_UYU = 1.5;
+
+function roundingTolerance(currency: "UYU" | "USD"): number {
+  return currency === "UYU" ? ROUNDING_TOL_UYU : ROUNDING_TOL_USD;
+}
 
 function zetaDateToIso(d: string): string {
   const m = d.match(/^(\d{2})\/(\d{2})\/(\d{2})$/);
@@ -364,35 +365,13 @@ function classify(
   zeta: ZetaPdfClientStatement,
   copilot: CopilotSnapshot | null
 ): AuditStatus {
-  if (zeta.parseWarnings.includes("final_missing_used_last_running_balance")) {
-    return "PARSE_WARNING";
-  }
-
-  if (!copilot) return "CLIENT_NOT_FOUND";
-
-  if (zeta.openingBalance == null) return "PARSE_WARNING";
-
-  const openingOk = near(zeta.openingBalance, copilot.opening);
-  const debeOk = near(zeta.totalDebit, copilot.totalDebit);
-  const haberOk = near(zeta.totalCredit, copilot.totalCredit);
-  const finalOk =
-    zeta.finalBalance != null && near(zeta.finalBalance, copilot.finalBalance);
-
-  if (!openingOk) return "DIFF_OPENING";
-
-  const debeRound = !debeOk && near(zeta.totalDebit, copilot.totalDebit, ROUNDING_TOL);
-  const haberRound = !haberOk && near(zeta.totalCredit, copilot.totalCredit, ROUNDING_TOL);
-  const finalRound =
-    zeta.finalBalance != null &&
-    !finalOk &&
-    near(zeta.finalBalance, copilot.finalBalance, ROUNDING_TOL);
-
-  if (!debeOk && !debeRound) return "DIFF_DEBE";
-  if (!haberOk && !haberRound) return "DIFF_HABER";
-  if (zeta.finalBalance != null && !finalOk && !finalRound) return "DIFF_FINAL";
-
-  if (debeRound || haberRound || finalRound) return "ROUNDING_OK";
-  return "OK";
+  if (!copilot) return classifyZetaPdfParity(zeta, null);
+  return classifyZetaPdfParity(zeta, {
+    opening: copilot.opening,
+    totalDebit: copilot.totalDebit,
+    totalCredit: copilot.totalCredit,
+    finalBalance: copilot.finalBalance,
+  });
 }
 
 function buildNotes(

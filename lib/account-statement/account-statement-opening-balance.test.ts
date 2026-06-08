@@ -10,7 +10,10 @@
 
 import { describe, expect, it } from "vitest";
 import { buildClientAccountStatement } from "@/lib/copilot-client-account-statement";
-import { getPreviousBalance } from "@/lib/account-statement/account-statement-period-model";
+import {
+  filterBlockForPeriod,
+  getPreviousBalance,
+} from "@/lib/account-statement/account-statement-period-model";
 import type { DataRow } from "@/lib/copilot-data";
 
 // ── Factories ─────────────────────────────────────────────────────────────────
@@ -68,8 +71,7 @@ describe("openingBalance — saldo anterior negativo (crédito preexistente)", (
     expect(getPreviousBalance(stmt.uyu, "2026-01-01")).toBe(-700);
   });
 
-  it("getPreviousBalance returns last pre-period runningBalance when movements exist before from", () => {
-    // Add a pre-period invoice to verify last.runningBalance is used (not baseline)
+  it("getPreviousBalance ignores pre-period movements when ledger opening is set", () => {
     const invPre = inv("pre", "2025-12-20", 500);
     const stmtWithPre = buildClientAccountStatement({
       invoices: [invPre, invoices[0]],
@@ -77,8 +79,7 @@ describe("openingBalance — saldo anterior negativo (crédito preexistente)", (
       ledgerMode: true,
       openingBalanceUyu: -700,
     });
-    // pre-period invoice: running = -700 + 500 = -200
-    expect(getPreviousBalance(stmtWithPre.uyu, "2026-01-01")).toBe(-200);
+    expect(getPreviousBalance(stmtWithPre.uyu, "2026-01-01")).toBe(-700);
   });
 
   it("summary.pendingBalance coincide con finalBalance", () => {
@@ -244,16 +245,15 @@ describe("openingBalance — preview = PDF (consistencia de modelo)", () => {
     openingBalanceUyu: -100,
   });
 
-  it("saldo anterior al 2026-01-01 = baseline + pre-period net = -100 + 1000 - 800 = 100", () => {
-    expect(getPreviousBalance(stmt.uyu, "2026-01-01")).toBe(100);
+  it("saldo anterior al 2026-01-01 = ledger opening (-100), sin sumar pre-período", () => {
+    expect(getPreviousBalance(stmt.uyu, "2026-01-01")).toBe(-100);
   });
 
-  it("último movimiento del período tiene runningBalance = previousBalance + period_net", () => {
-    const prevBal = getPreviousBalance(stmt.uyu, "2026-01-01");
-    const inPeriod = stmt.uyu.movements.filter((m) => m.date >= "2026-01-01");
-    const periodNet = inPeriod.reduce((s, m) => s + m.debit - m.credit, 0);
-    const lastMv = inPeriod[inPeriod.length - 1];
-    expect(lastMv.runningBalance).toBe(prevBal + periodNet);
+  it("bloque de período recalcula running desde opening + movimientos en rango", () => {
+    const filtered = filterBlockForPeriod(stmt.uyu, "2026-01-01", "2026-12-31");
+    const periodNet = filtered.movements.reduce((s, m) => s + m.debit - m.credit, 0);
+    const lastMv = filtered.movements[filtered.movements.length - 1];
+    expect(lastMv?.runningBalance).toBe(-100 + periodNet);
   });
 
   it("modelo es determinista — segunda llamada produce el mismo resultado", () => {
@@ -371,6 +371,73 @@ describe("Caso real — ACQUAGARDEN USD (backfill 30.35)", () => {
     });
     expect(stmt.uyu.baselineBalance).toBe(0);
     expect(stmt.uyu.summary.finalBalance).toBe(0);
+  });
+});
+
+describe("ledger opening autoritativo — sin doble conteo pre-período", () => {
+  const FROM = "2026-01-01";
+
+  it("con opening y factura pre-período → previousBalance = opening (no opening + factura)", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [inv("pre", "2025-05-16", 9760), inv("p", "2026-02-01", 1000)],
+      receipts: [],
+      ledgerMode: true,
+      openingBalanceUyu: 4880,
+    });
+    expect(getPreviousBalance(stmt.uyu, FROM)).toBe(4880);
+    const filtered = filterBlockForPeriod(stmt.uyu, FROM, "2026-12-31");
+    expect(filtered.movements).toHaveLength(1);
+    expect(filtered.movements[0]!.runningBalance).toBe(5880);
+  });
+
+  it("sin opening y factura pre-período → previousBalance desde historial", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [inv("pre", "2025-05-16", 9760)],
+      receipts: [],
+      ledgerMode: true,
+    });
+    expect(getPreviousBalance(stmt.uyu, FROM)).toBe(9760);
+  });
+
+  it("MORAES (cod 85): opening 4880, sin mov 2026, final = opening", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [inv("pre", "2025-05-16", 9760)],
+      receipts: [],
+      ledgerMode: true,
+      openingBalanceUyu: 4880,
+    });
+    const block = filterBlockForPeriod(stmt.uyu, FROM, "2026-12-31");
+    expect(getPreviousBalance(stmt.uyu, FROM)).toBe(4880);
+    expect(block.movements).toHaveLength(0);
+    expect(block.summary.finalBalance).toBe(4880);
+  });
+
+  it("Barraca (cod 151): opening 42944, pre-período ignorado en período vacío", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [
+        inv("p1", "2025-06-06", 26840),
+        inv("p2", "2025-06-06", 16104),
+      ],
+      receipts: [],
+      ledgerMode: true,
+      openingBalanceUyu: 42944,
+    });
+    expect(getPreviousBalance(stmt.uyu, FROM)).toBe(42944);
+    expect(filterBlockForPeriod(stmt.uyu, FROM, "2026-12-31").summary.finalBalance).toBe(
+      42944
+    );
+  });
+
+  it("ALKITODO (cod 174): opening 14640 con actividad 2026", () => {
+    const stmt = buildClientAccountStatement({
+      invoices: [inv("pre", "2025-12-01", 5000), inv("n", "2026-03-01", 87840)],
+      receipts: [rec("r", "2026-03-20", 87840)],
+      ledgerMode: true,
+      openingBalanceUyu: 14640,
+    });
+    expect(getPreviousBalance(stmt.uyu, FROM)).toBe(14640);
+    const filtered = filterBlockForPeriod(stmt.uyu, FROM, "2026-12-31");
+    expect(filtered.summary.finalBalance).toBe(14640);
   });
 });
 

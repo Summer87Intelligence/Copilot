@@ -7,6 +7,9 @@
 
 import type { ZetaCustomerVoucherRecord } from "@/lib/integrations/zeta/contracts/zeta-customer-vouchers.contract";
 
+/** Recibo de cobranza Zeta (`RESTRecibosCobranzaV2` / comprobante cliente cobro). */
+const ZETA_COMPROBANTE_CODIGO_RECOBRO = new Set(["5"]);
+
 function readOwn(row: ZetaCustomerVoucherRecord, names: readonly string[]): unknown {
   for (const n of names) {
     if (Object.prototype.hasOwnProperty.call(row, n)) return row[n];
@@ -33,6 +36,54 @@ const CFE_TIPOS_DGI_FACTURA_O_DOCUMENTO_FISCAL = new Set([
   241, 242, 243,
   281, 282,
 ]);
+
+function readComprobanteCodigo(row: ZetaCustomerVoucherRecord): string | null {
+  const raw = readOwn(row, ["ComprobanteCodigo", "comprobanteCodigo"]);
+  if (raw === null || raw === undefined) return null;
+  const s = String(raw).trim();
+  return s.length > 0 ? s : null;
+}
+
+/** Comprobante de cobro por código Zeta (p. ej. 5 = Recibo de Cobro). */
+export function zetaCustomerVoucherRowIsReciboComprobanteCodigo(
+  row: ZetaCustomerVoucherRecord
+): boolean {
+  const cc = readComprobanteCodigo(row);
+  return cc != null && ZETA_COMPROBANTE_CODIGO_RECOBRO.has(cc);
+}
+
+function parseLineTotal(line: unknown): number {
+  if (!line || typeof line !== "object") return 0;
+  const rec = line as Record<string, unknown>;
+  for (const k of ["Total", "total", "SubTotal", "subtotal"]) {
+    const raw = rec[k];
+    if (raw === null || raw === undefined) continue;
+    const n = typeof raw === "number" ? raw : Number(String(raw).replace(",", "."));
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return 0;
+}
+
+/**
+ * Factura interna Zeta con líneas de venta (p. ej. PRESTIS mar/2026: CFETipo=0, Numero=0, ComprobanteCodigo=701).
+ */
+export function zetaCustomerVoucherRowHasInvoiceLineas(row: ZetaCustomerVoucherRecord): boolean {
+  const lineas = readOwn(row, ["Lineas", "lineas"]);
+  if (!Array.isArray(lineas) || lineas.length === 0) return false;
+  return lineas.some((line) => parseLineTotal(line) > 0);
+}
+
+function zetaCustomerVoucherRowHasFormasPago(row: ZetaCustomerVoucherRecord): boolean {
+  const fp = readOwn(row, ["FormasPago", "formasPago"]);
+  return Array.isArray(fp) && fp.length > 0;
+}
+
+function zetaCustomerVoucherRowTotalReciboPositive(row: ZetaCustomerVoucherRecord): boolean {
+  const raw = readOwn(row, ["TotalRecibo", "totalRecibo"]);
+  if (raw === null || raw === undefined || raw === "") return false;
+  const n = typeof raw === "number" ? raw : Number(String(raw).replace(",", "."));
+  return Number.isFinite(n) && n > 0;
+}
 
 export function parseZetaCfeTipoCodigo(row: ZetaCustomerVoucherRecord): number | null {
   const raw = readOwn(row, ["CFETipo", "cfeTipo", "CfeTipo", "TipoCFE", "tipoCFE", "TipoCfe"]);
@@ -83,8 +134,17 @@ export function zetaCustomerVoucherClassifierRejectReason(
   if (zetaCustomerVoucherRowLooksLikeReciboCobranza(row)) {
     return { code: "recibo_text" };
   }
+  if (zetaCustomerVoucherRowIsReciboComprobanteCodigo(row)) {
+    return { code: "recibo_text" };
+  }
+  if (zetaCustomerVoucherRowHasFormasPago(row) || zetaCustomerVoucherRowTotalReciboPositive(row)) {
+    return { code: "recibo_text" };
+  }
   const cfe = parseZetaCfeTipoCodigo(row);
   if (cfe == null) {
+    return null;
+  }
+  if (cfe === 0 && zetaCustomerVoucherRowHasInvoiceLineas(row)) {
     return null;
   }
   if (!CFE_TIPOS_DGI_FACTURA_O_DOCUMENTO_FISCAL.has(cfe)) {

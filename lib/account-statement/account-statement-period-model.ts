@@ -24,19 +24,47 @@ export function resolveLedgerOpeningBalances(
   };
 }
 
+function round2(n: number): number {
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100) / 100;
+}
+
+/** Opening ledger autoritativo para la moneda (null = derivar del historial). */
+export function resolveAuthoritativeLedgerOpening(
+  block: AccountStatementByCurrency
+): number | null {
+  return block.ledgerOpeningBalance;
+}
+
 /**
  * Saldo anterior al inicio del período (`from`).
- * Si no hay movimientos previos al `from`, usa `baselineBalance` (opening ledger).
+ * Con `ledgerOpeningBalance` configurado: devuelve ese valor (no suma pre-período).
+ * Sin opening ledger: último running balance pre-`from`, o baseline si no hay movimientos previos.
  */
 export function getPreviousBalance(
   block: AccountStatementByCurrency,
   from: string | undefined
 ): number {
+  const ledgerOpening = resolveAuthoritativeLedgerOpening(block);
+  if (ledgerOpening != null) {
+    return ledgerOpening;
+  }
   if (!from) return block.baselineBalance ?? 0;
   const before = block.movements.filter((m) => m.date < from);
   return before.length > 0
     ? before[before.length - 1]!.runningBalance
     : (block.baselineBalance ?? 0);
+}
+
+function recomputeRunningBalancesFromOpening(
+  movements: AccountStatementMovement[],
+  opening: number
+): AccountStatementMovement[] {
+  let running = opening;
+  return movements.map((m) => {
+    running = round2(running + m.debit - m.credit);
+    return { ...m, runningBalance: running };
+  });
 }
 
 export function filterBlockForPeriod(
@@ -45,32 +73,44 @@ export function filterBlockForPeriod(
   to: string | undefined
 ): AccountStatementByCurrency {
   if (!from && !to) return block;
-  const mvs = block.movements.filter((m) => {
+  let mvs = block.movements.filter((m) => {
     if (from && m.date < from) return false;
     if (to && m.date > to) return false;
     return true;
   });
+
+  const ledgerOpening = resolveAuthoritativeLedgerOpening(block);
+  const previousBalance = getPreviousBalance(block, from);
+
+  if (ledgerOpening != null) {
+    mvs = recomputeRunningBalancesFromOpening(mvs, ledgerOpening);
+  }
+
   let totalDebit = 0;
   let totalCredit = 0;
   for (const m of mvs) {
     totalDebit += m.debit;
     totalCredit += m.credit;
   }
-  const netChange = totalDebit - totalCredit;
-  const lastRunning = mvs[mvs.length - 1]?.runningBalance;
+
+  const finalBalance =
+    mvs.length > 0
+      ? mvs[mvs.length - 1]!.runningBalance
+      : previousBalance;
+
   return {
     ...block,
     movements: mvs,
     summary: {
       ...block.summary,
-      totalDebit,
-      totalCredit,
-      finalBalance: lastRunning ?? getPreviousBalance(block, from),
-      totalInvoiced: totalDebit,
-      totalCollected: totalCredit,
-      pendingBalance: lastRunning ?? getPreviousBalance(block, from),
+      totalDebit: round2(totalDebit),
+      totalCredit: round2(totalCredit),
+      finalBalance,
+      totalInvoiced: round2(totalDebit),
+      totalCollected: round2(totalCredit),
+      pendingBalance: finalBalance,
       movementCount: mvs.length,
-      hasNegativeBalance: (lastRunning ?? getPreviousBalance(block, from)) < 0,
+      hasNegativeBalance: finalBalance < 0,
     },
   };
 }
@@ -101,12 +141,9 @@ export function buildAccountStatementPeriodBlocks(
 ): AccountStatementPeriodBlock[] {
   return currencies.map((cur) => {
     const rawBlock = cur === "UYU" ? statement.uyu : statement.usd;
-    const previousBalance = getPreviousBalance(rawBlock, from);
     const filtered = filterBlockForPeriod(rawBlock, from, to);
-    const finalBalance =
-      filtered.movements.length > 0
-        ? filtered.movements[filtered.movements.length - 1]!.runningBalance
-        : previousBalance;
+    const previousBalance = getPreviousBalance(rawBlock, from);
+    const finalBalance = filtered.summary.finalBalance;
     return {
       currency: cur,
       previousBalance,

@@ -119,6 +119,12 @@ export type AccountStatementByCurrency = {
    * Siempre 0 cuando no se configura (default backward-compatible).
    */
   baselineBalance: number;
+  /**
+   * `ledger_opening_balance_*` persistido en proto_companies cuando está configurado.
+   * `null` = sin opening ledger → previousBalance se deriva del historial pre-período.
+   * Incluye 0 explícito (distinto de ausencia de opening).
+   */
+  ledgerOpeningBalance: number | null;
 };
 
 export type ClientAccountStatement = {
@@ -349,7 +355,8 @@ function compareMovements(a: AccountStatementMovement, b: AccountStatementMoveme
 function buildByCurrency(
   currency: AccountStatementCurrency,
   list: AccountStatementMovement[],
-  baseline: number = 0
+  baseline: number = 0,
+  ledgerOpening: number | null = null
 ): AccountStatementByCurrency {
   const sorted = list.slice().sort(compareMovements);
   let running = baseline;
@@ -370,6 +377,7 @@ function buildByCurrency(
   return {
     currency,
     baselineBalance: baseline,
+    ledgerOpeningBalance: ledgerOpening,
     summary: {
       totalDebit: round2(totalDebit),
       totalCredit: round2(totalCredit),
@@ -508,9 +516,14 @@ export function buildClientAccountStatement(
     (cur === "USD" ? usd : uyu).push(movement);
   }
 
+  const openingUyu =
+    input.openingBalanceUyu != null ? input.openingBalanceUyu : null;
+  const openingUsd =
+    input.openingBalanceUsd != null ? input.openingBalanceUsd : null;
+
   return {
-    uyu: buildByCurrency("UYU", uyu, input.openingBalanceUyu ?? 0),
-    usd: buildByCurrency("USD", usd, input.openingBalanceUsd ?? 0),
+    uyu: buildByCurrency("UYU", uyu, openingUyu ?? 0, openingUyu),
+    usd: buildByCurrency("USD", usd, openingUsd ?? 0, openingUsd),
     unknownCurrencyCount,
   };
 }
