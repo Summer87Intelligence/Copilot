@@ -49,6 +49,7 @@ import {
   getPrimaryObligationState,
 } from "@/lib/copilot-obligation-primary-state";
 import { getFinancialPredictiveAlerts } from "@/lib/copilot-financial-alerts";
+import { METRIC_MIXED_CURRENCY_DISCLAIMER } from "@/lib/copilot-financial-metrics-contract";
 import {
   financialEngineLocalTodayYmd,
   getFinancialSnapshot,
@@ -1270,9 +1271,10 @@ function CopilotFinanzasPageContent() {
               ) : null}
               {!snapshotLoading && !snapshotError && snapshot ? (
                 <div className="mt-6 space-y-6">
-                  <p className="text-[10px] text-[var(--copilot-ink-muted)]">
-                    Estimación operativa — los montos combinan UYU y USD sin conversión. Ver desglose por moneda.
-                  </p>
+                  <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50/80 px-3 py-2 text-xs text-blue-800">
+                    <span className="mt-px shrink-0">ℹ️</span>
+                    <span>{METRIC_MIXED_CURRENCY_DISCLAIMER}</span>
+                  </div>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <div className="rounded-xl border border-[var(--copilot-border)] bg-white/85 p-4 shadow-sm">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Neto acumulado</p>
@@ -1303,6 +1305,14 @@ function CopilotFinanzasPageContent() {
                           : "Capacidad estimada para cubrir egresos proyectados."}
                       </p>
                     </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Link
+                      href="/copilot/tesoreria"
+                      className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-white/80 px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink)] hover:bg-white"
+                    >
+                      Ver caja y pagos en Tesorería →
+                    </Link>
                   </div>
                   {snapshot.by_currency ? (
                     <div className="rounded-xl border border-[var(--copilot-border)] bg-white/60 p-4">

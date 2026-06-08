@@ -209,17 +209,35 @@ export function HoyExecutiveSummaryCard({
               </span>
             </button>
             {showSignals ? (
-              <div className="absolute left-0 top-full z-30 mt-2 w-60 max-w-[calc(100vw-2rem)] rounded-xl border border-[var(--copilot-border)] bg-white p-3 shadow-lg">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Señales detectadas</p>
-                <ul className="mt-2 space-y-1.5">
+              <div className="absolute left-0 top-full z-30 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-[var(--copilot-border)] bg-white p-3 shadow-lg">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Señales del sistema</p>
+                <ul className="mt-2 space-y-2">
                   {attentionClientsCount > 0 ? (
-                    <li className="text-[12px] text-[var(--copilot-ink)]">
-                      • {attentionClientsCount} {attentionClientsCount === 1 ? "cliente requiere" : "clientes requieren"} atención
+                    <li className="flex items-center justify-between gap-2">
+                      <span className="text-[12px] text-[var(--copilot-ink)]">
+                        Deuda vencida — {attentionClientsCount} {attentionClientsCount === 1 ? "cliente" : "clientes"}
+                      </span>
+                      <Link
+                        href="/copilot/cartera"
+                        onClick={() => setShowSignals(false)}
+                        className="shrink-0 text-[11px] font-semibold text-[var(--copilot-accent)] hover:underline"
+                      >
+                        Ver Cartera
+                      </Link>
                     </li>
                   ) : null}
                   {cashAfterPaymentsCritical ? (
-                    <li className="text-[12px] text-[var(--copilot-ink)]">
-                      • Caja después de pagos en zona crítica
+                    <li className="flex items-center justify-between gap-2">
+                      <span className="text-[12px] text-[var(--copilot-ink)]">
+                        Caja después de pagos ajustada
+                      </span>
+                      <Link
+                        href="/copilot/tesoreria"
+                        onClick={() => setShowSignals(false)}
+                        className="shrink-0 text-[11px] font-semibold text-[var(--copilot-accent)] hover:underline"
+                      >
+                        Ver Tesorería
+                      </Link>
                     </li>
                   ) : null}
                   {!attentionClientsCount && !cashAfterPaymentsCritical ? (
@@ -230,16 +248,9 @@ export function HoyExecutiveSummaryCard({
                   <p className="mt-2 text-[11px] text-[var(--copilot-ink-muted)]">{metricsLine}</p>
                 ) : null}
                 <div className="mt-3 flex flex-wrap gap-1.5 border-t border-[var(--copilot-border)] pt-2.5">
-                  {attentionClientsCount > 0 ? (
-                    <Link href="/copilot/clientes" onClick={() => setShowSignals(false)} className="rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50">
-                      Ver clientes
-                    </Link>
-                  ) : null}
-                  {cashAfterPaymentsCritical ? (
-                    <Link href="/copilot/tesoreria" onClick={() => setShowSignals(false)} className="rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50">
-                      Ver Tesorería
-                    </Link>
-                  ) : null}
+                  <Link href="/copilot/finanzas" onClick={() => setShowSignals(false)} className="rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50">
+                    Ver Finanzas
+                  </Link>
                   <Link href="/copilot/acciones" onClick={() => setShowSignals(false)} className="rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-slate-50">
                     Ver acciones
                   </Link>

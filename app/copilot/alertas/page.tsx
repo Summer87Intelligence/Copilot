@@ -49,6 +49,7 @@ function dateBucket(isoString: string): "hoy" | "ayer" | "anterior" {
 function actionLabel(href: string): string {
   if (href.includes("clientes-criticos")) return "Ver clientes críticos";
   if (href.includes("/clientes/")) return "Ver cliente";
+  if (href.includes("filter=overdue")) return "Ver clientes vencidos";
   if (href.includes("/cartera")) return "Ver cartera";
   if (href.includes("section=pagos")) return "Ver pagos";
   if (href.includes("/tesoreria")) return "Ver Tesorería";
@@ -484,6 +485,22 @@ export default function CopilotAlertasPage() {
             tone={metrics.cobros > 0 ? "positive" : "neutral"}
           />
         </div>
+
+        {/* ── Overdue clients CTA — shown when there are client_overdue alerts ── */}
+        {tabCounts.clientes > 0 ? (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-2.5">
+            <p className="text-[13px] text-amber-900">
+              <span className="font-semibold">{tabCounts.clientes}</span>{" "}
+              {tabCounts.clientes === 1 ? "alerta de cliente vencido" : "alertas de clientes vencidos"}
+            </p>
+            <Link
+              href="/copilot/cartera?filter=overdue"
+              className="shrink-0 text-[12px] font-semibold text-amber-800 hover:underline"
+            >
+              Ver clientes vencidos →
+            </Link>
+          </div>
+        ) : null}
 
         {/* ── Filters ─────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-3">

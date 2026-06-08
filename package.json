@@ -27,7 +27,8 @@
     "audit:zeta-pdf-parity": "node scripts/audit-zeta-pdf-vs-copilot-account-statements.mjs",
     "audit:apply-opening-backfill": "node --env-file=.env.local --import tsx scripts/apply-ledger-opening-backfill.ts",
     "audit:zeta-contract": "node --env-file=.env.local --import tsx scripts/audit-zeta-api-contract-drift.ts",
-    "audit:zeta-sync-health": "node --env-file=.env.local --import tsx scripts/audit-zeta-current-sync-health.ts"
+    "audit:zeta-sync-health": "node --env-file=.env.local --import tsx scripts/audit-zeta-current-sync-health.ts",
+    "audit:copilot-system-consistency": "node --env-file=.env.local --import tsx scripts/audit-copilot-system-consistency.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
