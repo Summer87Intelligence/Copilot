@@ -8,16 +8,16 @@ import type { TodayBusinessPulse } from "@/lib/copilot-today-business-pulse";
 /** Qué campo alimenta cada card del cockpit (trazabilidad para dev/ops). */
 export const HOY_MONEY_FIELD_SOURCES = {
   moneyAvailable: {
-    card: "Dinero disponible",
+    card: "Caja disponible",
     field: "currentStateBlocks[].cashAvailable",
     origin:
       "HoyCashPositionBlock.availableCash — caja/tesorería (saldo actual cargado + movimientos confirmados). Sin cartera/facturación.",
     mustNotInclude: ["pendingReceivables", "por cobrar de Cartera"],
   },
   receivables: {
-    card: "Por cobrar",
+    card: "Deuda actual",
     field: "currentStateBlocks[].pendingReceivables",
-    origin: "Saldo pendiente de clientes (Cartera / portfolio pending), por moneda",
+    origin: "Deuda actual de clientes (Cartera / portfolio pending), por moneda",
     mustNotInclude: ["cashAvailable", "availableCash"],
   },
   payments: {
@@ -26,7 +26,7 @@ export const HOY_MONEY_FIELD_SOURCES = {
     origin: "Obligaciones de tesorería en horizonte 30 días",
   },
   afterPayments: {
-    card: "Después de pagos",
+    card: "Caja proyectada",
     field: "projection30dBlocks[].safeCash30d",
     formula: "caja disponible − pagos programados (sin sumar por cobrar)",
   },
@@ -46,7 +46,7 @@ export const HOY_MONEY_FIELD_SOURCES = {
  * 4. Recibo registrado sin impacto en caja aún → no inflar «Dinero disponible» artificialmente.
  */
 export const HOY_COLLECTION_SYNC_BEHAVIOR = [
-  "Cartera pending ↓ ⇒ cockpit Por cobrar ↓",
+  "Cartera pending ↓ ⇒ cockpit Deuda actual ↓",
   "Tesorería/caja ↑ solo con cobro en posición disponible ⇒ Dinero disponible ↑",
   "safeCash30d = caja − pagos (sin mezclar por cobrar en Dinero disponible)",
   "expectedCash30d = caja + por cobrar − pagos (escenario, no caja hoy)",

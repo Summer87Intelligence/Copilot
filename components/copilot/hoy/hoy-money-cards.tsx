@@ -416,18 +416,31 @@ function ReceivablesCard({
         <div
           className="mt-2.5 border-t border-amber-200/45 pt-2.5"
           role="group"
-          aria-label={`${HOY_COCKPIT.receivablesIncludedInTotal}: ${HOY_COCKPIT.receivablesOverdue30}`}
+          aria-label={`${HOY_COCKPIT.receivablesIncludedInTotal}: ${HOY_COCKPIT.receivablesOverdueTotal}`}
         >
           <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-rose-700/75">
             {HOY_COCKPIT.receivablesIncludedInTotal}
           </p>
           <div className="mt-1">
             <ReceivablesSection
-              label={HOY_COCKPIT.receivablesOverdue30}
-              amounts={card.overdue30}
+              label={HOY_COCKPIT.receivablesOverdueTotal}
+              amounts={card.overdueTotal}
               labelClass="text-rose-700/90"
               amountPrimaryClass="text-rose-800"
               amountSecondaryClass="text-rose-700/70"
+              size="nested"
+            />
+          </div>
+          <p className="mt-1.5 text-[10px] leading-snug text-rose-700/65">
+            {HOY_COCKPIT.receivablesOverdueTotalHint}
+          </p>
+          <div className="mt-2 border-t border-rose-200/35 pt-2">
+            <ReceivablesSection
+              label={HOY_COCKPIT.receivablesOverdue30}
+              amounts={card.overdue30}
+              labelClass="text-rose-700/80"
+              amountPrimaryClass="text-rose-800/90"
+              amountSecondaryClass="text-rose-700/60"
               size="nested"
             />
           </div>

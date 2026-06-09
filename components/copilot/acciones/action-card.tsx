@@ -169,6 +169,19 @@ function formatAmount(amount: number, currency?: string | null): string {
   })}`;
 }
 
+function riskLabel(priority: CopilotActionPriority): string {
+  switch (priority) {
+    case "critical":
+      return "Riesgo alto: puede afectar caja o cobranza esta semana.";
+    case "high":
+      return "Riesgo medio-alto: conviene resolver antes del cierre del día.";
+    case "medium":
+      return "Riesgo moderado: monitorear para que no escale.";
+    default:
+      return "Riesgo bajo: seguimiento preventivo.";
+  }
+}
+
 function deriveNextStep(action: CopilotAction): string {
   if (action.type === "treasury") return "Verificar cobertura en Tesorería";
   if (action.type === "system") return "Revisar estado del sistema";
@@ -223,11 +236,15 @@ export function ActionCard({ action }: { action: CopilotAction }) {
       </p>
       <div className="mt-1.5 space-y-1.5">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Por qué importa</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Qué pasó</p>
           <p className="text-xs leading-relaxed text-[var(--copilot-ink-muted)]">{action.reason}</p>
         </div>
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Siguiente paso</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Qué riesgo tiene</p>
+          <p className="text-xs leading-relaxed text-[var(--copilot-ink-muted)]">{riskLabel(action.priority)}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Qué hacer ahora</p>
           <p className="text-xs font-medium text-[var(--copilot-ink)]">{deriveNextStep(action)}</p>
         </div>
       </div>

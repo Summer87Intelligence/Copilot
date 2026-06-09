@@ -45,6 +45,8 @@ describe("buildCockpitView", () => {
     expect(view.moneyAvailable.amounts.some((a) => a.currency === "UYU")).toBe(true);
     expect(view.afterPayments.amounts.some((a) => a.currency === "UYU")).toBe(true);
     expect(view.receivables.totalPending.some((a) => a.currency === "UYU")).toBe(true);
+    expect(view.receivables.overdueTotal).toBeDefined();
+    expect(view.receivables.overdue30).toBeDefined();
     expect(view.insights.length).toBeLessThanOrEqual(3);
     expect(view.hero.statusLabel).toMatch(/ESTABLE|REQUIERE ATENCIÓN|ATENCIÓN CRÍTICA/);
     expect(view.hero.headline.length).toBeGreaterThan(0);

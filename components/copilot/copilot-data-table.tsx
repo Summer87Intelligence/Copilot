@@ -17,6 +17,49 @@ import {
 } from "@/lib/copilot-datos-invoice-display";
 import { formatReceiptAmountWithCurrency } from "@/lib/copilot-datos-receipt-display";
 import { INVOICE_CLIENT_CODIGO_KEY, INVOICE_CLIENT_RAZON_KEY } from "@/lib/copilot-datos-invoices-ui";
+import { CopilotPremiumEmptyState } from "@/components/copilot/copilot-premium-empty-state";
+
+const ENTITY_EMPTY_COPY: Record<
+  DataEntity,
+  { title: string; why: string; whatToDo: string; whatHappens: string }
+> = {
+  companies: {
+    title: "No hay clientes en esta vista",
+    why: "El filtro activo o la sincronización aún no trajo empresas para listar.",
+    whatToDo: "Ampliá el filtro (Activos/Todos) o verificá la sincronización con Zeta.",
+    whatHappens: "Cuando haya clientes, vas a ver razón social, código y estado acá.",
+  },
+  contacts: {
+    title: "No hay contactos en esta vista",
+    why: "Todavía no hay contactos cargados o el filtro los oculta.",
+    whatToDo: "Revisá clientes en Zeta o agregá contactos desde la ficha del cliente.",
+    whatHappens: "Aparecerán emails y teléfonos útiles para cobranza.",
+  },
+  invoices: {
+    title: "No hay facturas en esta vista",
+    why: "El período o filtros elegidos no tienen comprobantes pendientes.",
+    whatToDo: "Probá «Mes actual», otro rango de fechas o quitá filtros de saldo.",
+    whatHappens: "Verás facturas con saldo, moneda y antigüedad para conciliar cobranza.",
+  },
+  receipts: {
+    title: "No hay recibos en esta vista",
+    why: "No hay cobros registrados en el período o filtro seleccionado.",
+    whatToDo: "Ampliá el rango de fechas o sincronizá recibos desde Zeta.",
+    whatHappens: "Los cobros del período aparecerán con cliente, importe y medio de pago.",
+  },
+  payments: {
+    title: "No hay pagos en esta vista",
+    why: "No hay egresos registrados con los filtros actuales.",
+    whatToDo: "Revisá Tesorería o ampliá el rango si esperás movimientos.",
+    whatHappens: "Los pagos cargados se listarán con fecha, concepto e importe.",
+  },
+  tax_obligations: {
+    title: "No hay obligaciones fiscales en esta vista",
+    why: "El calendario fiscal aún no tiene vencimientos para mostrar.",
+    whatToDo: "Configurá obligaciones fiscales o importá el calendario correspondiente.",
+    whatHappens: "Verás vencimientos, montos estimados y estado de cumplimiento.",
+  },
+};
 
 function sortableCellValue(entity: DataEntity, row: DataRow, colKey: string): unknown {
   if (entity === "invoices" && colKey === "invoice_number") {
@@ -257,10 +300,10 @@ export function CopilotDataTable({
             {sortedData.length === 0 ? (
               <tr>
                 <td
-                  className="px-3 py-6 text-center text-sm text-[var(--copilot-ink-muted)]"
+                  className="px-3 py-4"
                   colSpan={((inactiveBadge && entity !== "invoices") ? 1 : 0) + (columns.length || 1)}
                 >
-                  No hay registros para esta vista.
+                  <CopilotPremiumEmptyState {...ENTITY_EMPTY_COPY[entity]} />
                 </td>
               </tr>
             ) : null}

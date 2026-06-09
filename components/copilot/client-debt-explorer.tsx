@@ -1001,7 +1001,7 @@ function ExpandedRow({
           pendingCurrencies.map((c) => (
             <div key={c}>
               <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--copilot-ink-muted)]/90">
-                Saldo pendiente {c}
+                Deuda actual {c}
               </p>
               <p className="mt-0.5 text-lg font-semibold tabular-nums text-[var(--copilot-ink)]">
                 {formatCarteraMoney(c, client.pendingByCurrency[c] ?? 0, {
@@ -1013,7 +1013,7 @@ function ExpandedRow({
         ) : (
           <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--copilot-ink-muted)]/90">
-              Saldo pendiente
+              Deuda actual
             </p>
             <p className="mt-0.5 text-sm text-emerald-800">Sin deuda activa</p>
           </div>

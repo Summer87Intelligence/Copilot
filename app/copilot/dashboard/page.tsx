@@ -43,6 +43,8 @@ import {
   type DashboardState,
 } from "@/lib/copilot-dashboard-summary";
 import { METRIC_LABEL } from "@/lib/copilot-financial-metrics-contract";
+import { CopilotDataProvenanceStrip } from "@/components/copilot/copilot-data-provenance-strip";
+import { CopilotPremiumEmptyState } from "@/components/copilot/copilot-premium-empty-state";
 import {
   consolidateToUsd,
   formatExchangeRateLabel,
@@ -692,7 +694,7 @@ function ActiveDebtClientsTable({
     return (
       <div className="rounded-xl border border-dashed border-[var(--copilot-border)] p-6 text-center">
         <CheckCircle className="mx-auto h-5 w-5 text-emerald-600 mb-2" />
-        <p className={`text-sm ${C.muted}`}>No hay clientes con deuda activa.</p>
+        <p className={`text-sm ${C.muted}`}>No hay clientes con deuda actual.</p>
       </div>
     );
   }
@@ -706,7 +708,7 @@ function ActiveDebtClientsTable({
               {[
                 "Cliente",
                 "Moneda",
-                "Deuda activa",
+                METRIC_LABEL.deuda_activa,
                 "Deuda vencida",
                 "Días atraso",
                 "Estado",
@@ -849,7 +851,7 @@ function RecentMovementsTable({
                 "Debe",
                 "Haber",
                 ...(showEquiv ? ["Equiv. USD"] : []),
-                "Saldo pendiente",
+                "Saldo",
               ].map((h) => (
                 <th
                   key={h}
@@ -1157,7 +1159,20 @@ export default function DashboardPage() {
           usd: roundUsd(consolidateToUsd(b.uyu ?? 0, b.usd ?? 0, exchangeRate!)),
         }))
       : bars;
-  const pdfCurrency = selectedCurrency;
+  const isDashboardQuiet = useMemo(() => {
+    if (loading) return false;
+    const noPortfolio = portfolioRows.length === 0;
+    const noMoney =
+      currencyData.length === 0 ||
+      currencyData.every(
+        (d) =>
+          Math.abs(d.facturado) < 0.01 &&
+          Math.abs(d.cobrado) < 0.01 &&
+          Math.abs(d.deudaActiva) < 0.01 &&
+          Math.abs(d.cajaDisponible) < 0.01
+      );
+    return noPortfolio && noMoney;
+  }, [loading, portfolioRows.length, currencyData]);
 
   const consolidatedCurrencyData = useMemo((): DashboardCurrencyData => {
     const tc = exchangeRate ?? 1;
@@ -1391,17 +1406,28 @@ export default function DashboardPage() {
               <h1 className={`text-sm font-bold ${C.ink}`}>Dashboard Resumen</h1>
             </div>
             <p className={`mt-0.5 text-[11px] ${C.muted}`}>
-              Análisis ejecutivo de ventas, cobros, deuda, clientes y caja.
+              Análisis y reportes: ventas, cobros, deuda y evolución del negocio.
             </p>
+            {lastUpdated && !loading ? (
+              <CopilotDataProvenanceStrip
+                updatedAt={lastUpdated}
+                periodFrom={confirmedFrom}
+                periodTo={confirmedTo}
+                className="mt-1.5 sm:hidden"
+              />
+            ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {lastUpdated && !loading && (
-              <p className={`text-[10px] ${C.muted}`}>
-                Actualizado {lastUpdated.toLocaleTimeString("es-UY", { hour: "2-digit", minute: "2-digit" })}
-              </p>
+              <CopilotDataProvenanceStrip
+                updatedAt={lastUpdated}
+                periodFrom={confirmedFrom}
+                periodTo={confirmedTo}
+                className="hidden sm:block"
+              />
             )}
             <a
-              href={`/api/copilot/dashboard/summary.pdf?from=${confirmedFrom}&to=${confirmedTo}&currency=${pdfCurrency}`}
+              href={`/api/copilot/dashboard/summary.pdf?from=${confirmedFrom}&to=${confirmedTo}&currency=${selectedCurrency}`}
               target="_blank"
               rel="noopener noreferrer"
               className={C.btnGhost}
@@ -1544,6 +1570,17 @@ export default function DashboardPage() {
           />
         )}
 
+        {!loading && isDashboardQuiet ? (
+          <CopilotPremiumEmptyState
+            title="Todavía no hay datos para analizar en este período"
+            why="No encontramos ventas, cobros, deuda ni caja en el rango seleccionado."
+            whatToDo="Verificá que Zeta esté sincronizado y ampliá el período si recién empezás a operar."
+            whatHappens="Cuando haya facturas, recibos o saldos cargados, vas a ver KPIs, gráficos y tablas acá."
+            cta={{ label: "Ir a Datos", href: "/copilot/datos" }}
+            className="mb-4"
+          />
+        ) : null}
+
         {/* KPI grid */}
         <section aria-label="Indicadores clave">
           <h2 className={`mb-3 text-xs font-semibold uppercase tracking-wide ${C.muted}`}>
@@ -1670,7 +1707,7 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-emerald-400" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
                     {uyu?.efectividad != null && (
                       <span className={`ml-auto text-[10px] font-semibold ${uyu.efectividad >= 0.8 ? "text-emerald-700" : "text-amber-700"}`}>
-                        Cobranza: {Math.round(uyu.efectividad * 100)}% · Pendiente: {Math.round(Math.max(0, 1 - uyu.efectividad) * 100)}%
+                        Cobranza: {Math.round(uyu.efectividad * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - uyu.efectividad) * 100)}%
                       </span>
                     )}
                   </div>
@@ -1686,7 +1723,7 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-emerald-400" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
                     {usd?.efectividad != null && (
                       <span className={`ml-auto text-[10px] font-semibold ${usd.efectividad >= 0.8 ? "text-emerald-700" : "text-amber-700"}`}>
-                        Cobranza: {Math.round(usd.efectividad * 100)}% · Pendiente: {Math.round(Math.max(0, 1 - usd.efectividad) * 100)}%
+                        Cobranza: {Math.round(usd.efectividad * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - usd.efectividad) * 100)}%
                       </span>
                     )}
                   </div>
@@ -1749,7 +1786,7 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-emerald-400" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
                         {eff != null && (
                           <span className={`ml-auto text-[10px] font-semibold ${eff >= 0.8 ? "text-emerald-700" : "text-amber-700"}`}>
-                            Cobranza: {Math.round(eff * 100)}% · Pendiente: {Math.round(Math.max(0, 1 - eff) * 100)}%
+                            Cobranza: {Math.round(eff * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - eff) * 100)}%
                           </span>
                         )}
                       </div>
@@ -1833,7 +1870,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <ChartCard
                 title="[5] Top 10 deudores UYU"
-                subtitle={uyuTop10Pct != null ? `Concentran el ${uyuTop10Pct}% de la deuda UYU total · Clic para ver ficha` : "Deuda activa UYU · Clic para ver ficha"}
+                subtitle={uyuTop10Pct != null ? `Concentran el ${uyuTop10Pct}% de la deuda UYU total · Clic para ver ficha` : "Deuda actual UYU · Clic para ver ficha"}
               >
                 {loading ? (
                   <div className="space-y-2">
@@ -1852,7 +1889,7 @@ export default function DashboardPage() {
               </ChartCard>
               <ChartCard
                 title="[5] Top 10 deudores USD"
-                subtitle={usdTop10Pct != null ? `Concentran el ${usdTop10Pct}% de la deuda USD total · Clic para ver ficha` : "Deuda activa USD · Clic para ver ficha"}
+                subtitle={usdTop10Pct != null ? `Concentran el ${usdTop10Pct}% de la deuda USD total · Clic para ver ficha` : "Deuda actual USD · Clic para ver ficha"}
               >
                 {loading ? (
                   <div className="space-y-2">
@@ -1924,10 +1961,10 @@ export default function DashboardPage() {
                 title="[5] Top 10 clientes deudores"
                 subtitle={
                   isConsolidated
-                    ? "Deuda activa consolidada en USD · Clic para ver ficha"
+                    ? "Deuda actual consolidada en USD · Clic para ver ficha"
                     : (effectiveCurrency === "USD" ? usdTop10Pct : uyuTop10Pct) != null
                     ? `Concentran el ${effectiveCurrency === "USD" ? usdTop10Pct : uyuTop10Pct}% de la deuda ${effectiveCurrency} total · Clic para ver ficha`
-                    : `Deuda activa ${effectiveCurrency} · Clic para ver ficha`
+                    : `Deuda actual ${effectiveCurrency} · Clic para ver ficha`
                 }
               >
                 {loading ? (
@@ -2012,7 +2049,7 @@ export default function DashboardPage() {
                     {isConsolidated ? (
                       <>
                         <div>
-                          <p className={`text-[10px] ${C.muted}`}>Deuda activa (USD cons.)</p>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda actual (USD cons.)</p>
                           <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(consolidatedCurrencyData.deudaActiva, "USD")}</p>
                         </div>
                         <div>
@@ -2023,7 +2060,7 @@ export default function DashboardPage() {
                     ) : effectiveCurrency === "USD" ? (
                       <>
                         <div>
-                          <p className={`text-[10px] ${C.muted}`}>Deuda activa USD</p>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda actual USD</p>
                           <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(usd?.deudaActiva ?? 0, "USD")}</p>
                         </div>
                         <div>
@@ -2034,7 +2071,7 @@ export default function DashboardPage() {
                     ) : effectiveCurrency === "UYU" ? (
                       <>
                         <div>
-                          <p className={`text-[10px] ${C.muted}`}>Deuda activa UYU</p>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda actual UYU</p>
                           <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(uyu?.deudaActiva ?? 0, "UYU")}</p>
                         </div>
                         <div>
@@ -2045,11 +2082,11 @@ export default function DashboardPage() {
                     ) : (
                       <>
                         <div>
-                          <p className={`text-[10px] ${C.muted}`}>Deuda activa UYU</p>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda actual UYU</p>
                           <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(uyu?.deudaActiva ?? 0, "UYU")}</p>
                         </div>
                         <div>
-                          <p className={`text-[10px] ${C.muted}`}>Deuda activa USD</p>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda actual USD</p>
                           <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(usd?.deudaActiva ?? 0, "USD")}</p>
                         </div>
                       </>

@@ -43,14 +43,14 @@ const COPILOT_NAV_INICIO: CopilotNavGroup = {
     {
       href: "/copilot/hoy",
       label: "Hoy",
-      description: "Resumen y prioridad diaria",
+      description: "Operación diaria: caja, cobros y prioridad",
       icon: ListTodo,
       moduleKey: "hoy",
     },
     {
       href: "/copilot/dashboard",
       label: "Dashboard Resumen",
-      description: "Análisis ejecutivo consolidado",
+      description: "Análisis y reportes ejecutivos",
       icon: BarChart3,
       moduleKey: "dashboard",
     },
@@ -63,7 +63,7 @@ const COPILOT_NAV_OPERAR: CopilotNavGroup = {
     {
       href: "/copilot/acciones",
       label: "Acciones",
-      description: "Tareas operativas",
+      description: "Operación diaria: prioridad del día y tareas concretas",
       icon: CheckSquare,
       moduleKey: "acciones",
     },

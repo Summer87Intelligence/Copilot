@@ -40,7 +40,7 @@ export function resolveHoyTodayPriority(
     const total = debtorClientsCount;
     const overdue = attentionClientsCount;
     const current = Math.max(0, total - overdue);
-    const totalLabel = `${total} ${total === 1 ? "cliente" : "clientes"} con deuda activa`;
+    const totalLabel = `${total} ${total === 1 ? "cliente" : "clientes"} con deuda actual`;
     const overdueLabel = `${overdue} ${overdue === 1 ? "tiene" : "tienen"} deuda vencida`;
     const currentLabel = `${current} ${current === 1 ? "está" : "están"} al día`;
     const description =
@@ -99,7 +99,7 @@ export function resolveHoyTodayPriority(
     return {
       kind: "active_debt",
       title: "Gestionar clientes con deuda",
-      description: `${n} ${n === 1 ? "cliente" : "clientes"} con deuda activa al día. Sin vencimientos pendientes.`,
+      description: `${n} ${n === 1 ? "cliente" : "clientes"} con deuda actual al día. Sin vencimientos pendientes.`,
       primaryCta: {
         label: "Ver clientes con deuda",
         action: { type: "scroll_critical" },

@@ -164,7 +164,7 @@ function KpiGlossary() {
         <dd className="inline"> = total facturado en el período.</dd>
       </div>
       <div>
-        <dt className="inline font-semibold text-[var(--copilot-ink)]">Pendiente de cobro</dt>
+        <dt className="inline font-semibold text-[var(--copilot-ink)]">Deuda actual</dt>
         <dd className="inline"> = saldo abierto informado por Zeta.</dd>
       </div>
       <div>
@@ -212,7 +212,7 @@ function KpiStrip({ metrics, symbol }: { metrics: CurrencyMetrics; symbol: strin
     { label: "Emitido", value: money(symbol, metrics.totalInvoiced), tone: "neutral" },
     { label: "Cobrado", value: money(symbol, metrics.totalCollected), tone: "paid" },
     {
-      label: "Pendiente de cobro",
+      label: "Deuda actual",
       value: money(symbol, metrics.totalPending),
       tone: "pending",
     },
@@ -358,7 +358,7 @@ function TopDebtorsTable({ metrics, symbol }: { metrics: CurrencyMetrics; symbol
             <thead className="bg-[rgba(44,40,37,0.035)] text-[var(--copilot-ink-muted)]">
               <tr>
                 <th className="px-2.5 py-1.5 font-semibold">Cliente</th>
-                <th className="px-2.5 py-1.5 text-right font-semibold">Pendiente de cobro</th>
+                <th className="px-2.5 py-1.5 text-right font-semibold">Deuda actual</th>
                 <th className="px-2.5 py-1.5 text-right font-semibold">Fact.</th>
                 <th className="px-2.5 py-1.5 text-right font-semibold">Aging</th>
                 <th className="px-2.5 py-1.5 text-right font-semibold">Cobranza ef.</th>

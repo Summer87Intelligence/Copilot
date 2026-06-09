@@ -70,6 +70,7 @@ export type CockpitHero = {
 
 export type CockpitReceivablesCard = {
   totalPending: CockpitCurrencyAmount[];
+  overdueTotal: CockpitCurrencyAmount[];
   overdue30: CockpitCurrencyAmount[];
 };
 
@@ -185,14 +186,16 @@ function buildAfterPaymentsBlock(pulse: TodayBusinessPulse): CockpitMoneyBlock {
 
 function buildReceivablesCard(
   pulse: TodayBusinessPulse,
-  overdueCritical: CarteraCurrencyTotals
+  overdueTotal: CarteraCurrencyTotals,
+  overdue30: CarteraCurrencyTotals
 ): CockpitReceivablesCard {
   return {
     totalPending: amountsFromBlocks((c) => {
       const block = pulse.currentStateBlocks.find((b) => b.currency === c);
       return block?.pendingReceivables ?? 0;
     }),
-    overdue30: amountsFromBlocks((c) => overdueCritical[c] ?? 0),
+    overdueTotal: amountsFromBlocks((c) => overdueTotal[c] ?? 0),
+    overdue30: amountsFromBlocks((c) => overdue30[c] ?? 0),
   };
 }
 
@@ -247,7 +250,8 @@ function buildInsights(pulse: TodayBusinessPulse): CockpitQuickInsight[] {
 
 export function buildCockpitView(
   pulse: TodayBusinessPulse,
-  overdueCritical: CarteraCurrencyTotals = { UYU: 0, USD: 0 }
+  overdueTotal: CarteraCurrencyTotals = { UYU: 0, USD: 0 },
+  overdue30: CarteraCurrencyTotals = { UYU: 0, USD: 0 }
 ): CockpitView {
   const moneyAvailable = amountsFromBlocks((c) => {
     const block = pulse.currentStateBlocks.find((b) => b.currency === c);
@@ -283,7 +287,7 @@ export function buildCockpitView(
   return {
     hero: buildCockpitHero(pulse),
     moneyAvailable: { amounts: moneyAvailable, footnote: moneyFootnote },
-    receivables: buildReceivablesCard(pulse, overdueCritical),
+    receivables: buildReceivablesCard(pulse, overdueTotal, overdue30),
     payments: { amounts: paymentsAmounts, footnote: paymentsFootnote },
     afterPayments: buildAfterPaymentsBlock(pulse),
     insights: buildInsights(pulse),

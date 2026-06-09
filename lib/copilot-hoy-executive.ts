@@ -451,15 +451,15 @@ export function buildFinancialSituationBlocks(
 
     if (pending > 0) {
       metrics.push({
-        label: "Saldo pendiente",
+        label: "Deuda actual",
         value: fmtCurrencyAmount(pending, currency),
-        helper: "Deuda activa al día de hoy.",
+        helper: "Deuda actual al día de hoy.",
         trend: "neutral",
       });
       metrics.push({
         label: "Ingreso esperado",
         value: fmtCurrencyAmount(pending, currency),
-        helper: "Según deuda activa actual cobrable.",
+        helper: "Según deuda actual cobrable.",
         trend: "up",
       });
     }
@@ -558,7 +558,7 @@ function debtorRowMotivo(hasOverdue: boolean, slow: boolean): string {
   if (hasOverdue && slow) return "Deuda vencida · Cobro lento";
   if (hasOverdue) return "Deuda vencida";
   if (slow) return "Cobro lento";
-  return "Deuda activa";
+  return "Deuda actual";
 }
 
 export function extractAgingTotals(

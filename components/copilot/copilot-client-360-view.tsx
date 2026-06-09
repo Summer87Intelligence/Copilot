@@ -36,6 +36,7 @@ import { CollectionMessageAssistant } from "@/components/copilot/clientes/collec
 import { CollectionFollowupForm } from "@/components/copilot/clientes/collection-followup-form";
 import { ClientAgentBlock } from "@/components/copilot/clientes/client-agent-block";
 import { ClientNextStepBanner } from "@/components/copilot/clientes/client-next-step-banner";
+import { CopilotDataProvenanceStrip } from "@/components/copilot/copilot-data-provenance-strip";
 import { AccountStatementSendCard } from "@/components/copilot/clientes/account-statement-send-card";
 import type { Client360Payload, TransferAlias } from "@/lib/copilot-client-360";
 import { normalizeUruguayPhoneForWhatsApp } from "@/lib/phone/normalize-phone-for-whatsapp";
@@ -1304,6 +1305,10 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
             {/* ── Tab: Resumen ───────────────────────────────────────────── */}
             {activeTab === "resumen" ? (
               <div className="space-y-4 px-5 py-4">
+                <CopilotDataProvenanceStrip
+                  updatedAt={data.last_sync_at}
+                  periodLabel="estado actual del cliente"
+                />
                 <ClientAgentBlock
                   data={data}
                   onNavigateTab={(tab) => handleTabChange(tab as SectionNavId)}

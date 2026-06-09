@@ -44,6 +44,7 @@ import {
   type NormalizedCurrencyMetrics,
 } from "@/lib/copilot-cartera-cards-source";
 import { FINANCIAL_UX_COPY } from "@/lib/copilot-financial-ux-copy";
+import { METRIC_LABEL } from "@/lib/copilot-financial-metrics-contract";
 import { buildCurrentDebtSnapshot } from "@/lib/copilot-cartera-pending-debt-snapshot";
 import { CarteraPendingDrawer } from "@/components/copilot/cartera-pending-drawer";
 
@@ -215,11 +216,11 @@ function pendingCollectionCard(
 
   const subtitle = !hasAnyDebt
     ? "Sin deuda en cartera"
-    : "Deuda total";
+    : METRIC_LABEL.deuda_activa;
 
   return {
     id: `cartera-${code}`,
-    title: `Saldo pendiente ${code}`,
+    title: `${METRIC_LABEL.deuda_activa} ${code}`,
     source: "zeta",
     tone: hasAnyDebt ? "danger" : "positive",
     icon: CircleDollarSign,
@@ -239,7 +240,7 @@ function issuedCard(
   const hasNcs = m.creditNoteAmount > 0;
   return {
     id: `facturado-${code}`,
-    title: `Facturado ${code}`,
+    title: `${METRIC_LABEL.facturado_periodo} ${code}`,
     source: "zeta",
     tone: "positive",
     icon: FileText,

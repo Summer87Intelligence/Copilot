@@ -18,7 +18,7 @@ const gate: BusinessPulseGate = {
 };
 
 describe("auditHoyMoneyFieldSources", () => {
-  it("confirma que Dinero disponible y Por cobrar usan campos distintos", () => {
+  it("confirma que Caja disponible y Deuda actual usan campos distintos", () => {
     const pulse = buildTodayBusinessPulse({
       snapshot: null,
       portfolioRows: [
@@ -76,8 +76,8 @@ describe("auditHoyMoneyFieldSources", () => {
     expect(audit.ok).toBe(true);
     expect(audit.violations).toHaveLength(0);
 
-    const cashRow = audit.rows.find((r) => r.metric === "Dinero disponible");
-    const recvRow = audit.rows.find((r) => r.metric === "Por cobrar");
+    const cashRow = audit.rows.find((r) => r.metric === "Caja disponible");
+    const recvRow = audit.rows.find((r) => r.metric === "Deuda actual");
     expect(cashRow?.uyu).toBe(120_000);
     expect(recvRow?.uyu).toBe(78_443);
     expect(cashRow?.includesReceivablesInCash).toBe(false);
@@ -90,8 +90,8 @@ describe("auditHoyMoneyFieldSources", () => {
     }
 
     const report = formatHoyMoneySourcesAuditReport(audit);
-    expect(report).toContain("Dinero disponible");
-    expect(report).toContain("Por cobrar");
+    expect(report).toContain("Caja disponible");
+    expect(report).toContain("Deuda actual");
     expect(HOY_COLLECTION_SYNC_BEHAVIOR.length).toBeGreaterThan(0);
   });
 });

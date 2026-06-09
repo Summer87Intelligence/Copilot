@@ -1021,7 +1021,7 @@ function CopilotFinanzasPageContent() {
                   <>
                     <CopilotSectionTitle
                       title="Cómo cubrir el déficit ahora"
-                      subtitle="Tres palancas reales. Si falta data en Supabase, lo decimos sin inventar números."
+                      subtitle="Tres palancas reales. Si falta información fiscal cargada, lo decimos sin inventar números."
                     />
 
                     <div className="mt-5 space-y-5">
@@ -1330,10 +1330,10 @@ function CopilotFinanzasPageContent() {
                                   <div className="flex justify-between gap-2"><dt title="Incluye todas las facturas activas históricas. Puede diferir del Facturado del período porque no aplica el rango Desde/Hasta." className="cursor-help underline decoration-dotted">Facturado histórico</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{totals.invoiced.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>
                                 ) : null}
                                 {totals.pending !== undefined ? (
-                                  <div className="flex justify-between gap-2"><dt>Pendiente</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{totals.pending.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>
+                                  <div className="flex justify-between gap-2"><dt>Deuda actual</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{totals.pending.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>
                                 ) : null}
                                 {totals.overdue !== undefined && totals.overdue > 0 ? (
-                                  <div className="flex justify-between gap-2"><dt>Vencido</dt><dd className="tabular-nums font-semibold text-amber-900">{totals.overdue.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>
+                                  <div className="flex justify-between gap-2"><dt>Deuda vencida</dt><dd className="tabular-nums font-semibold text-amber-900">{totals.overdue.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>
                                 ) : null}
                               </dl>
                             </div>
@@ -1517,8 +1517,7 @@ function CopilotFinanzasPageContent() {
               ) : null}
               {taxError ? (
                 <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
-                  {taxError} · Ejecutá el SQL de capa fiscal en Supabase si aún no migraste las
-                  tablas proto.
+                  {taxError} · Contactá al administrador si el calendario fiscal aún no está configurado.
                 </div>
               ) : null}
               {!taxLoading && !taxError ? (

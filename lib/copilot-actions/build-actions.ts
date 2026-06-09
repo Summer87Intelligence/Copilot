@@ -206,7 +206,7 @@ export function buildActionsFromPortfolioRows(
 
     const reason = hasOverdue
       ? `Deuda vencida de ${row.name}. Riesgo ${row.risk}.`
-      : `Saldo pendiente de ${row.name}.`;
+      : `Deuda actual de ${row.name}.`;
 
     actions.push({
       id: `portfolio-${row.company_id}`,

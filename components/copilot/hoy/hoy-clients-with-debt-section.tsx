@@ -347,13 +347,13 @@ function DebtorRowExpandPanel({
               className="text-[10px] text-[var(--copilot-ink-muted)]"
               title={HOY_COPY.debtTotalTip}
             >
-              Deuda total
+              Deuda actual
             </p>
             <p className="mt-0.5 text-sm font-semibold text-amber-700">
               {fmtDebtSymbol(expand.deudaTotalAmt, expand.currency)}
             </p>
             <p className="mt-0.5 text-[10px] leading-tight text-[var(--copilot-ink-muted)]">
-              Saldo pendiente activo del cliente.
+              Deuda actual del cliente.
             </p>
           </div>
 
@@ -549,7 +549,7 @@ function DebtorTable({
               className="cursor-help px-3 py-1.5"
               title={HOY_COPY.debtTotalTip}
             >
-              Deuda total
+              Deuda actual
             </th>
             <th
               className="cursor-help px-3 py-1.5"
@@ -725,25 +725,25 @@ export function ClientsWithDebtSection({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-xs text-[var(--copilot-ink-muted)]">
         {uyuDebt > 0 && (
           <span>
-            Deuda activa UYU{" "}
+            Deuda actual UYU{" "}
             <span className="font-semibold text-amber-700">{fmtCurrencyAmount(uyuDebt, "UYU")}</span>
           </span>
         )}
         {usdDebt > 0 && (
           <span>
-            Deuda activa USD{" "}
+            Deuda actual USD{" "}
             <span className="font-semibold text-amber-700">{fmtCurrencyAmount(usdDebt, "USD")}</span>
           </span>
         )}
         {uyuOverdue > 0 && (
           <span>
-            Vencido UYU{" "}
+            Deuda vencida UYU{" "}
             <span className="font-semibold text-rose-700">{fmtCurrencyAmount(uyuOverdue, "UYU")}</span>
           </span>
         )}
         {usdOverdue > 0 && (
           <span>
-            Vencido USD{" "}
+            Deuda vencida USD{" "}
             <span className="font-semibold text-rose-700">{fmtCurrencyAmount(usdOverdue, "USD")}</span>
           </span>
         )}
@@ -755,7 +755,7 @@ export function ClientsWithDebtSection({
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <p className="text-[11px] text-[var(--copilot-ink-muted)]">
             {sortedRows.length === 0
-              ? "Sin clientes con deuda activa"
+              ? "Sin clientes con deuda actual"
               : `Mostrando ${pageStart + 1}–${pageEnd} de ${sortedRows.length} clientes`}
           </p>
           <div className="flex flex-wrap items-center gap-2">

@@ -9,6 +9,7 @@ import { ActionCard } from "@/components/copilot/acciones/action-card";
 import { CopilotActionsEvidenceDrawer } from "@/components/copilot/copilot-actions-evidence-drawer";
 import { CopilotOperationalActionsPanel } from "@/components/copilot/copilot-operational-actions-panel";
 import { CopilotOperationalEmptyState } from "@/components/copilot/copilot-operational-empty-state";
+import { CopilotPremiumEmptyState } from "@/components/copilot/copilot-premium-empty-state";
 import { CopilotSkeletonKpiRow } from "@/components/copilot/copilot-loading-skeleton";
 import { CopilotTraceMeta } from "@/components/copilot/copilot-trace-meta";
 import { CopilotInteractiveText } from "@/components/copilot/copilot-interactive-text";
@@ -671,18 +672,20 @@ function CopilotAccionesPageContent() {
           {bandejaLoading ? (
             <CopilotSkeletonKpiRow count={3} className="py-1" />
           ) : bandejaActions.length === 0 ? (
-            <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-4 py-6 text-center">
-              <p className="text-sm font-medium text-[var(--copilot-ink)]">
-                Sin acciones pendientes
-              </p>
-              <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
-                No hay alertas activas ni deuda vencida en cartera.
-              </p>
-            </div>
+            <CopilotPremiumEmptyState
+              title="Sin prioridades pendientes"
+              why="No hay clientes, pagos ni alertas que requieran acción inmediata en este momento."
+              whatToDo="Revisá Hoy para la lectura del día o ampliá filtros si esperás ver tareas."
+              whatHappens="Cuando haya deuda vencida, pagos próximos o alertas activas, aparecerán acá ordenadas por urgencia."
+              cta={{ label: "Ir a Hoy", href: "/copilot/hoy" }}
+            />
           ) : filteredBandeja.length === 0 ? (
-            <p className="py-4 text-center text-sm text-[var(--copilot-ink-muted)]">
-              Sin acciones en este filtro.
-            </p>
+            <CopilotPremiumEmptyState
+              title="Nada coincide con este filtro"
+              why={`Hay ${bandejaActions.length} acciones, pero ninguna entra en «${FILTER_LABELS.find((f) => f.id === bandejaFilter)?.label ?? bandejaFilter}».`}
+              whatToDo="Probá el filtro «Todas» o cambiá la categoría."
+              whatHappens="Las acciones filtradas se listan con qué pasó, qué riesgo tiene y qué hacer ahora."
+            />
           ) : (
             <>
             {bandejaFilter !== "all" || filteredBandeja.length < bandejaActions.length ? (
@@ -727,10 +730,10 @@ function CopilotAccionesPageContent() {
           >
             <div>
               <p className="text-sm font-semibold text-[var(--copilot-ink)]">
-                Seguimiento de resultados
+                Historial de gestiones
               </p>
               <p className="text-xs text-[var(--copilot-ink-muted)]">
-                Acciones persistidas con seguimiento y cierre de loop
+                Qué pasó, qué riesgo tiene y qué registrar como resultado
               </p>
             </div>
             {pipelineExpanded ? (
@@ -757,12 +760,12 @@ function CopilotAccionesPageContent() {
                   {generating ? (
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                   ) : null}
-                  Generar acciones
+                  Buscar sugerencias
                 </CopilotPrimaryButton>
               </div>
 
               <CopilotSectionTitle
-                title="Acciones del pipeline"
+                title="Acciones de seguimiento"
                 subtitle="Orden: más recientes primero. Resultado: una vez por acción."
               />
 
@@ -781,7 +784,7 @@ function CopilotAccionesPageContent() {
                         { label: "Resueltas hoy", value: actionMetrics.resolvedToday },
                         { label: "Total", value: actionMetrics.total },
                       ]}
-                      footnote="Generá acciones desde decisiones o abrí un seguimiento desde alertas."
+                      footnote="Usá «Buscar sugerencias» o abrí alertas para registrar qué pasó y qué hiciste."
                     />
                     <CopilotPrimaryButton
                       type="button"
@@ -792,7 +795,7 @@ function CopilotAccionesPageContent() {
                       {generating ? (
                         <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                       ) : null}
-                      Generar acciones
+                      Buscar sugerencias
                     </CopilotPrimaryButton>
                   </div>
                   <CopilotCard className="h-fit border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80">
@@ -1109,7 +1112,7 @@ function CopilotAccionesPageContent() {
                         ) : (
                           <div className="mt-4 space-y-3 border-t border-[var(--copilot-border)] pt-4">
                             <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                              Cierre del loop
+                              Registrar resultado
                             </p>
                             {a.outcome ? (
                               <div className="space-y-2 text-sm text-[var(--copilot-ink)]">

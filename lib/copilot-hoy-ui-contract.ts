@@ -4,28 +4,30 @@
 export const HOY_UI = {
   showFinancialSituation: false,
   showPendingSection: false,
-  showRecommendedActions: false,
+  showRecommendedActions: true,
   debtorPageSizeOptions: [25, 50, 100] as const,
   defaultDebtorPageSize: 25,
 } as const;
 
 export const HOY_PAGE = {
   title: "Copilot · Hoy",
-  description: "Caja, cobros y pagos al instante.",
+  description: "Operación diaria: caja, cobros urgentes y prioridad del día.",
 } as const;
 
 /** Cockpit financiero — bloques principales. */
 export const HOY_COCKPIT = {
   moneyAvailable: "Caja disponible",
-  receivables: "Clientes por cobrar",
+  receivables: "Deuda de clientes",
   payments: "Pagos próximos",
-  afterPayments: "Caja después de pagos",
-  receivablesTotalPending: "Deuda total",
-  receivablesIncludedInTotal: "Incluido en ese total",
-  receivablesOverdue30: "Vencido >30 días",
-  /** Vencido >30 forma parte del total pendiente; no es un monto adicional. */
+  afterPayments: "Caja proyectada",
+  receivablesTotalPending: "Deuda actual",
+  receivablesOverdueTotal: "Deuda vencida",
+  receivablesIncludedInTotal: "Incluido en Deuda actual",
+  receivablesOverdue30: "Deuda vencida >30 días",
+  receivablesOverdueTotalHint:
+    "Facturas con vencimiento anterior a hoy; ya incluida en Deuda actual.",
   receivablesOverdue30Hint:
-    "Ya está incluido en el total pendiente; no se suma aparte.",
+    "Subconjunto con más de 30 días de atraso; no se suma aparte.",
   drawerClientsUyu: "Clientes en UYU",
   drawerClientsUsd: "Clientes en USD",
   criticalClients: "Clientes críticos",
@@ -43,17 +45,17 @@ export const HOY_COCKPIT = {
 
 /** Labels visibles en bloques UYU/USD. */
 export const CURRENCY_METRIC_LABELS = {
-  billed: "Facturado del período",
-  collected: "Cobrado en el período",
-  pending: "Por cobrar",
-  overdue30: "Saldo vencido >30 días",
+  billed: "Ventas del período",
+  collected: "Cobrado del período",
+  pending: "Deuda actual",
+  overdue30: "Deuda vencida >30 días",
 } as const;
 
 export const CURRENCY_METRIC_HELPERS = {
   billed: "Facturas emitidas en el período.",
   collected: "Cobros registrados en el período. Puede incluir facturas de meses anteriores.",
   pending: "Total de deuda abierta al día de hoy.",
-  overdue30: "Parte de la deuda abierta con más de 30 días de atraso.",
+  overdue30: "Parte de la deuda vencida con más de 30 días de atraso.",
 } as const;
 
 export const COLLECTION_EXCEEDS_BILLING_NOTE =
@@ -66,32 +68,32 @@ export const HOY_COPY = {
   scopeBadgePeriod: "Actividad del período",
   scopeBadgeProjection: "Proyección · Próximos 30 días",
   currentStateTitle: "Estado actual · Hoy",
-  currentReceivablesLabel: "Por cobrar",
+  currentReceivablesLabel: "Deuda actual",
   currentReceivablesTip: "Deuda de clientes todavía no cobrada.",
   activeDebtorsLabel: "Clientes con deuda",
-  overdue30Short: "Saldo vencido >30 días",
+  overdue30Short: "Deuda vencida >30 días",
   periodActivityTitle: "Actividad del período",
-  periodBilledLabel: "Facturado",
+  periodBilledLabel: "Ventas del período",
   periodBilledTip: "Facturas emitidas en el período.",
-  periodCollectedLabel: "Cobrado",
+  periodCollectedLabel: "Cobrado del período",
   periodCollectedTip: "Cobrado en el período corresponde a recibos registrados en el período. Puede diferir de Cobrado aplicado en Cartera, que calcula cobros imputados contra facturas del período.",
   periodCreditNotesLabel: "Ajustes",
   periodManualIncomeLabel: "Ingresos manuales",
   periodManualExpenseLabel: "Egresos manuales",
   periodOperatingResultLabel: "Liquidez operativa",
   periodOperatingResultTip: "Cobrado + ingresos manuales − egresos manuales en el período.",
-  debtorsSectionTitle: "Clientes con deuda activa",
+  debtorsSectionTitle: "Clientes con deuda",
   debtorsSectionSubtitle:
-    "Todos los clientes con saldo pendiente, separados por moneda. Los totales superiores son la deuda activa total del negocio.",
-  debtorsSectionRiskSubtitle: "Clientes con saldo pendiente sincronizado desde Zeta. Ordenados por antigüedad de mora.",
-  /** Tooltip columna "Deuda total" en la tabla de deudores. */
-  debtTotalTip: "Saldo pendiente activo del cliente en esta moneda.",
+    "Todos los clientes con deuda actual, separados por moneda. Los totales superiores son la deuda actual total del negocio.",
+  debtorsSectionRiskSubtitle: "Clientes con deuda sincronizada desde Zeta. Ordenados por antigüedad de mora.",
+  /** Tooltip columna "Deuda actual" en la tabla de deudores. */
+  debtTotalTip: "Deuda actual del cliente en esta moneda.",
   /** Tooltip columna "Deuda vencida". */
-  debtOverdueTip: "Parte del saldo pendiente cuya fecha de vencimiento ya pasó.",
+  debtOverdueTip: "Parte de la deuda actual cuya fecha de vencimiento ya pasó.",
   /** Tooltip columna "Días de atraso". */
   debtOverdueDaysTip: "Días desde la factura vencida más antigua.",
   /** Tooltip columna "Al día" (deuda total − deuda vencida). */
-  debtAtDayTip: "Saldo pendiente todavía dentro del plazo.",
+  debtAtDayTip: "Deuda actual todavía dentro del plazo.",
   debtorsViewAllCartera: "Ver toda la cartera",
   debtorContactSectionTitle: "Contacto",
   debtorNoPhone: "Sin teléfono registrado",
@@ -122,7 +124,7 @@ export const HOY_COPY = {
   scheduledPaymentsLabel: "Pagos programados",
   safeCash30Label: "Cobertura 30 días",
   safeCash30Tip: "Caja disponible menos pagos programados. Sin deuda pendiente.",
-  pendingReceivablesLabel: "Por cobrar",
+  pendingReceivablesLabel: "Deuda actual",
   pendingReceivablesTip: "Deuda de clientes todavía no cobrada.",
   expectedCash30Label: "Escenario de cobranza",
   expectedCash30Tip: "Caja disponible + por cobrar − pagos programados.",

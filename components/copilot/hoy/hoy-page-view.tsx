@@ -14,7 +14,7 @@ import {
   topDebtorRowsPerCurrency,
 } from "@/lib/copilot-hoy-cockpit-view";
 import type { HoyPeriodRange } from "@/lib/copilot-hoy-period";
-import { HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
+import { HOY_COPY, HOY_UI } from "@/lib/copilot-hoy-ui-contract";
 import {
   buildTodayBusinessPulse,
   type AttentionClientsSummary,
@@ -41,6 +41,8 @@ import { HoyProjection30dSection } from "./hoy-projection-30d-section";
 import { HOY_PAGE_SHELL } from "./hoy-layout";
 import { HoyQuickInsights } from "./hoy-quick-insights";
 import { DebtorsReportTrigger } from "@/components/copilot/reports/debtors-report-dialog";
+import { CopilotDataProvenanceStrip } from "@/components/copilot/copilot-data-provenance-strip";
+import { HoyRecommendedActionsSection } from "./hoy-recommended-actions-section";
 
 export type HoySectionErrors = {
   hub?: string;
@@ -227,8 +229,13 @@ export function HoyPageView({
   }, [outstandingReportCurrencies, portfolioRows]);
 
   const cockpit = useMemo(
-    () => buildCockpitView(pulse, carteraAgingOverdue),
-    [pulse, carteraAgingOverdue]
+    () =>
+      buildCockpitView(
+        pulse,
+        canonicalDebtTotals.overdue,
+        carteraAgingOverdue ?? { UYU: 0, USD: 0 }
+      ),
+    [pulse, canonicalDebtTotals.overdue, carteraAgingOverdue]
   );
 
   const riskDebtorRows = pulse.allDebtorRows;
@@ -250,6 +257,8 @@ export function HoyPageView({
       setDrawer({ kind: "attention", data: pulse.attentionClients });
     }
   };
+
+  const dataLoadedAt = useMemo(() => (loading ? null : new Date()), [loading]);
 
   if (loading) return <LoadingSkeleton />;
 
@@ -275,6 +284,13 @@ export function HoyPageView({
   return (
     <>
       <div className={HOY_PAGE_SHELL}>
+        <CopilotDataProvenanceStrip
+          updatedAt={dataLoadedAt}
+          periodFrom={confirmedPeriod.from}
+          periodTo={confirmedPeriod.to}
+          className="-mt-1 mb-1"
+        />
+
         <HoyExecutiveSummaryCard
           hero={cockpit.hero}
           attentionClientsCount={pulse.clientCounts.attentionClients}
@@ -302,6 +318,10 @@ export function HoyPageView({
         )}
 
         <HoyQuickInsights insights={cockpit.insights} />
+
+        {HOY_UI.showRecommendedActions && pulse.recommendedActions.length > 0 ? (
+          <HoyRecommendedActionsSection actions={pulse.recommendedActions} />
+        ) : null}
 
         <CollectionAgendaHoyCard />
 

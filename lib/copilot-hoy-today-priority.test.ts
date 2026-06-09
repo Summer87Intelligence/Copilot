@@ -40,7 +40,7 @@ describe("resolveHoyTodayPriority", () => {
       debtorClientsCount: 19,
     });
     expect(p.kind).toBe("critical_clients");
-    expect(p.description).toContain("19 clientes con deuda activa");
+    expect(p.description).toContain("19 clientes con deuda actual");
     expect(p.description).toContain("12 tienen deuda vencida");
     expect(p.description).toContain("7 están al día");
   });
@@ -52,7 +52,7 @@ describe("resolveHoyTodayPriority", () => {
       debtorClientsCount: 5,
     });
     expect(p.kind).toBe("critical_clients");
-    expect(p.description).toContain("5 clientes con deuda activa");
+    expect(p.description).toContain("5 clientes con deuda actual");
     expect(p.description).toContain("5 tienen deuda vencida");
     expect(p.description).not.toContain("al día");
   });
@@ -94,7 +94,7 @@ describe("resolveHoyTodayPriority", () => {
     });
     expect(p.kind).toBe("active_debt");
     expect(p.title).toBe("Gestionar clientes con deuda");
-    expect(p.description).toContain("7 clientes con deuda activa al día");
+    expect(p.description).toContain("7 clientes con deuda actual al día");
     expect(p.description).toContain("Sin vencimientos");
     expect(p.primaryCta.action.type).toBe("scroll_critical");
   });
@@ -105,7 +105,7 @@ describe("resolveHoyTodayPriority", () => {
       debtorClientsCount: 1,
     });
     expect(p.kind).toBe("active_debt");
-    expect(p.description).toContain("1 cliente con deuda activa al día");
+    expect(p.description).toContain("1 cliente con deuda actual al día");
   });
 
   it("active_debt no se activa si hay vencidos (critical_clients tiene precedencia)", () => {

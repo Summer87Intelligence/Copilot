@@ -42,32 +42,30 @@ export type MetricId = (typeof METRIC_ID)[keyof typeof METRIC_ID];
 // ---------------------------------------------------------------------------
 
 export const METRIC_LABEL: Record<MetricId, string> = {
-  deuda_activa: "Cartera pendiente actual",
+  deuda_activa: "Deuda actual",
   deuda_vencida: "Deuda vencida",
-  deuda_periodo: "Por cobrar al cierre del período",
+  deuda_periodo: "Pendiente al corte del período",
   pendiente_periodo: "Pendiente del período",
-  facturado_periodo: "Facturado del período",
-  cobrado_periodo: "Cobrado en el período",
+  facturado_periodo: "Ventas del período",
+  cobrado_periodo: "Cobrado del período",
   cobrado_aplicado: "Cobrado aplicado",
   caja_disponible: "Caja disponible",
   caja_despues_pagos: "Caja proyectada",
   estado_global: "Estado del sistema",
 };
 
+/** Submétrica de deuda_vencida — mora superior a 30 días (no confundir con deuda vencida total). */
+export const METRIC_LABEL_OVERDUE_30D = "Deuda vencida >30 días";
+
 /** Labels visibles permitidos — cada módulo puede usar alias siempre que no
  *  sean confusos con otra métrica canónica. */
 export const METRIC_ALIASES: Record<MetricId, readonly string[]> = {
-  deuda_activa: ["Cartera pendiente actual", "Por cobrar total", "Clientes por cobrar", "Deuda total", "Saldo pendiente activo"],
-  deuda_vencida: [
-    "Deuda vencida",
-    "Saldo vencido >30 días",
-    "Vencido >30 días",
-    "Deuda crítica +30 días",
-  ],
-  deuda_periodo: ["Por cobrar al cierre del período", "Pendiente al corte del rango"],
-  pendiente_periodo: ["Pendiente del período", "Por cobrar del período"],
-  facturado_periodo: ["Facturado del período", "Facturado"],
-  cobrado_periodo: ["Cobrado en el período", "Cobrado"],
+  deuda_activa: ["Deuda actual"],
+  deuda_vencida: ["Deuda vencida"],
+  deuda_periodo: ["Pendiente al corte del período"],
+  pendiente_periodo: ["Pendiente del período"],
+  facturado_periodo: ["Ventas del período"],
+  cobrado_periodo: ["Cobrado del período"],
   cobrado_aplicado: ["Cobrado aplicado"],
   caja_disponible: ["Caja disponible", "Dinero disponible"],
   caja_despues_pagos: ["Caja proyectada", "Caja después de pagos", "Cobertura 30 días"],
@@ -80,6 +78,14 @@ export const METRIC_PROHIBITED_LABELS: readonly string[] = [
   "Cobrado total", // ambiguo: no distingue cobrado_periodo vs cobrado_aplicado
   "Caja neta", // confundible con snapshot cashNet (diferente a caja_disponible)
   "Neto disponible", // ídem
+  "Por cobrar", // ambiguo: puede ser deuda_activa o pendiente_periodo
+  "Deuda activa", // reemplazado por Deuda actual
+  "Saldo pendiente", // ambiguo sin contexto
+  "Deuda total", // reemplazado por Deuda actual
+  "Clientes por cobrar", // reemplazado por Deuda actual
+  "Pendiente", // solo — usar Pendiente del período o Deuda actual
+  "Facturado del período", // reemplazado por Ventas del período
+  "Cobrado en el período", // reemplazado por Cobrado del período
 ];
 
 // ---------------------------------------------------------------------------

@@ -351,13 +351,26 @@ function ReceivablesPanel({
           {HOY_COCKPIT.receivablesIncludedInTotal}
         </p>
         <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-rose-700/90">
+          {HOY_COCKPIT.receivablesOverdueTotal}
+        </p>
+        <div className="mt-1.5">
+          <AmountRows
+            amounts={card.overdueTotal}
+            primaryClass="text-rose-800"
+            secondaryClass="text-rose-700/80"
+          />
+        </div>
+        <p className="mt-2 text-[11px] leading-snug text-rose-700/70">
+          {HOY_COCKPIT.receivablesOverdueTotalHint}
+        </p>
+        <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.12em] text-rose-700/80">
           {HOY_COCKPIT.receivablesOverdue30}
         </p>
         <div className="mt-1.5">
           <AmountRows
             amounts={card.overdue30}
-            primaryClass="text-rose-800"
-            secondaryClass="text-rose-700/80"
+            primaryClass="text-rose-800/90"
+            secondaryClass="text-rose-700/70"
           />
         </div>
         <p className="mt-2 text-[11px] leading-snug text-rose-700/70">

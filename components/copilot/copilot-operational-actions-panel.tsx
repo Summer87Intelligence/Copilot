@@ -166,7 +166,7 @@ export function CopilotOperationalActionsPanel({
         error?: string;
       };
       if (!res.ok) {
-        onError?.(json.error ?? "No se pudo cargar la cola operativa.");
+        onError?.(json.error ?? "No se pudo cargar el seguimiento operativo.");
         setActions([]);
         setSummary(EMPTY_SUMMARY);
         setSlaSummary(EMPTY_SLA);
@@ -184,7 +184,7 @@ export function CopilotOperationalActionsPanel({
         return next;
       });
     } catch {
-      onError?.("Error de red al cargar la cola operativa.");
+      onError?.("Error de red al cargar el seguimiento operativo.");
       setActions([]);
       setSummary(EMPTY_SUMMARY);
       setSlaSummary(EMPTY_SLA);
@@ -428,8 +428,8 @@ export function CopilotOperationalActionsPanel({
   return (
     <CopilotCard>
       <CopilotSectionTitle
-        title="Cola operativa"
-        subtitle="Responsable, vencimiento y SLA sobre acciones persistidas."
+        title="Seguimiento operativo"
+        subtitle="Responsable, vencimiento y plazos sobre acciones registradas."
       />
       {bootstrapMessage ? (
         <p className="mb-3 text-sm text-[var(--copilot-ink-muted)]">{bootstrapMessage}</p>
@@ -448,7 +448,7 @@ export function CopilotOperationalActionsPanel({
         <CopilotSkeletonKpiRow count={4} className="py-1" />
       ) : openActions.length === 0 && resolvedToday.length === 0 ? (
         <CopilotOperationalEmptyState
-          title="Cola operativa"
+          title="Seguimiento operativo"
           status="Sin acciones abiertas en esta carga"
           statusTone="info"
           metrics={[

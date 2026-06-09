@@ -947,22 +947,22 @@ describe("buildTodayBusinessPulse", () => {
       expect(pulse.currencyBlocks.length).toBeGreaterThan(0);
     });
 
-    it("label principal es Facturado del período", () => {
-      expect(CURRENCY_METRIC_LABELS.billed).toBe("Facturado del período");
+    it("label principal es Ventas del período", () => {
+      expect(CURRENCY_METRIC_LABELS.billed).toBe("Ventas del período");
       expect(CURRENCY_METRIC_LABELS.billed.toLowerCase()).not.toContain("bruto");
     });
 
-    it("labels: período, Por cobrar, Atrasado +30 (no Crítico ni prioritario)", () => {
-      expect(CURRENCY_METRIC_LABELS.billed).toBe("Facturado del período");
-      expect(CURRENCY_METRIC_LABELS.collected).toBe("Cobrado en el período");
-      expect(CURRENCY_METRIC_LABELS.pending).toBe("Por cobrar");
-      expect(CURRENCY_METRIC_LABELS.overdue30).toBe("Saldo vencido >30 días");
+    it("labels: período, Deuda actual, Deuda vencida >30d (no Crítico ni prioritario)", () => {
+      expect(CURRENCY_METRIC_LABELS.billed).toBe("Ventas del período");
+      expect(CURRENCY_METRIC_LABELS.collected).toBe("Cobrado del período");
+      expect(CURRENCY_METRIC_LABELS.pending).toBe("Deuda actual");
+      expect(CURRENCY_METRIC_LABELS.overdue30).toBe("Deuda vencida >30 días");
       expect(CURRENCY_METRIC_LABELS.billed).not.toMatch(/bruto/i);
-      expect(HOY_COPY.debtorsSectionTitle).toBe("Clientes con deuda activa");
+      expect(HOY_COPY.debtorsSectionTitle).toBe("Clientes con deuda");
       expect(HOY_COPY.debtorsSectionTitle.toLowerCase()).not.toContain("prioritario");
       expect(HOY_PAGE.title).toBe("Copilot · Hoy");
       expect(HOY_PAGE.title).not.toMatch(/pulso/i);
-      expect(HOY_UI.showRecommendedActions).toBe(false);
+      expect(HOY_UI.showRecommendedActions).toBe(true);
       expect(HOY_UI.showPendingSection).toBe(false);
       expect(HOY_UI.defaultDebtorPageSize).toBe(25);
       expect(HOY_UI.debtorPageSizeOptions).toEqual([25, 50, 100]);
