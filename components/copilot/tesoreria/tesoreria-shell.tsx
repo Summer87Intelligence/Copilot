@@ -159,13 +159,17 @@ export function TesoreriaShell() {
       {section === "caja" ? <TreasuryCashPanel workspace={workspace} /> : null}
 
       {section === "programados" ? (
-        <div className="space-y-6">
-          <TreasuryProgramadosPanel workspace={workspace} asOfDate={asOfDate} />
+        <div className="space-y-8">
+          <TreasuryObligationsPanel workspace={workspace} asOfDate={asOfDate} />
           <TreasuryRecurringPaymentsPanel
             workspace={workspace}
             onGoToPagos={() => setSectionWithUrl("programados")}
           />
-          <TreasuryObligationsPanel workspace={workspace} asOfDate={asOfDate} />
+          <TreasuryProgramadosPanel
+            workspace={workspace}
+            asOfDate={asOfDate}
+            historialOnly
+          />
         </div>
       ) : null}
 

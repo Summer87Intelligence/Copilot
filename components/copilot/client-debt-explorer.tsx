@@ -67,7 +67,7 @@ type SortField =
   | "invoices"
   | "lastSync";
 type SortDir = "asc" | "desc";
-type FilterChip = "all" | "stale" | "0_30" | "31_60" | "61_90" | "90_plus" | "no_aging";
+type FilterChip = "all" | "overdue" | "stale" | "0_30" | "31_60" | "61_90" | "90_plus" | "no_aging";
 type PageSize = 25 | 50 | 100;
 type RiskLevel = "high" | "medium" | "low" | "ok" | "none";
 type CollectionActionsByCompany = Map<string, CollectionAction[]>;
@@ -111,6 +111,7 @@ const STALE_BADGE: Record<StalenessStatus, { cls: string; label: string }> = {
 
 const FILTER_CHIPS: Array<{ id: FilterChip; label: string }> = [
   { id: "all",      label: "Todos" },
+  { id: "overdue",  label: "Vencidos" },
   { id: "stale",    label: "Desactualizado" },
   { id: "90_plus",  label: "+90 d" },
   { id: "61_90",    label: "61–90 d" },
@@ -145,6 +146,7 @@ const AGING_SORT_ORDER: Record<AgingRange, number> = {
 
 function matchesFilter(client: ClientStaleness, chip: FilterChip): boolean {
   if (chip === "all") return true;
+  if (chip === "overdue") return client.dominantAgingRange !== null;
   if (chip === "stale") return client.status !== "ok";
   if (chip === "no_aging") return client.dominantAgingRange === null;
   return client.dominantAgingRange === chip;
@@ -211,13 +213,15 @@ function isLikelyMobile(): boolean {
 export function ClientDebtExplorer({
   report,
   selectedCurrency = "all",
+  initialFilterChip = "all",
 }: {
   report: FinancialConsistencyReport;
   selectedCurrency?: CurrencyFilter;
+  initialFilterChip?: FilterChip;
 }) {
   const [rawSearch, setRawSearch] = useState("");
   const search = useDeferredValue(rawSearch);
-  const [filterChip, setFilterChip] = useState<FilterChip>("all");
+  const [filterChip, setFilterChip] = useState<FilterChip>(initialFilterChip);
   const [sort, setSort] = useState<{ field: SortField; dir: SortDir }>({
     field: "risk",
     dir: "asc",

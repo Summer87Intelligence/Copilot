@@ -120,5 +120,5 @@ export function formatReceiptAmountWithCurrency(row: DataRow, v: unknown): strin
   if (n == null) return "—";
   const cur = readReceiptCurrency(row);
   const formatted = n.toLocaleString("es-UY", { maximumFractionDigits: 2 });
-  return cur ? `${cur} ${formatted}` : formatted;
+  return cur ? `${cur} ${formatted}` : `${formatted} · sin moneda`;
 }

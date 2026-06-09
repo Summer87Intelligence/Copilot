@@ -68,6 +68,8 @@ import {
   INVOICE_CLIENT_CODIGO_KEY,
   INVOICE_CLIENT_RAZON_KEY,
   INVOICE_IS_NC_KEY,
+  INVOICE_TIPO_DISPLAY_KEY,
+  INVOICE_SOURCE_KEY,
   invoiceIssueInCalendarMonth,
   invoiceIssueInClosedRange,
 } from "@/lib/copilot-datos-invoices-ui";
@@ -75,6 +77,7 @@ import {
   enrichReceiptRowsForDatos,
   RECEIPT_REF_DISPLAY_KEY,
   RECEIPT_CLIENT_NAME_KEY,
+  RECEIPT_SOURCE_KEY,
 } from "@/lib/copilot-datos-receipts-ui";
 import {
   filterRowsByPeriod,
@@ -133,6 +136,8 @@ const columnsByEntity: Record<DataEntity, DataColumn[]> = {
   ],
   invoices: [
     { key: "invoice_number", label: "Factura" },
+    { key: INVOICE_TIPO_DISPLAY_KEY, label: "Tipo" },
+    { key: INVOICE_SOURCE_KEY, label: "Origen" },
     { key: INVOICE_CLIENT_CODIGO_KEY, label: "Cliente (código)" },
     { key: INVOICE_CLIENT_RAZON_KEY, label: "Cliente (nombre)" },
     { key: "issue_date", label: "Emisión" },
@@ -142,6 +147,7 @@ const columnsByEntity: Record<DataEntity, DataColumn[]> = {
   ],
   receipts: [
     { key: RECEIPT_REF_DISPLAY_KEY, label: "Número" },
+    { key: RECEIPT_SOURCE_KEY, label: "Origen" },
     { key: RECEIPT_CLIENT_NAME_KEY, label: "Cliente" },
     { key: "receipt_date", label: "Fecha" },
     { key: "amount", label: "Monto" },
@@ -233,13 +239,15 @@ const CRUD_ENTITIES: readonly ProtoCrudEntity[] = [
   "tax_obligations",
 ] as const;
 
-/** Etiqueta del botón de alta. Companies se omite: los clientes vienen de Zeta. */
+/** Etiqueta del botón de alta. Companies se omite: los clientes vienen de Zeta. Payments se omite: crear pagos es exclusivo de Tesorería. */
 const NEW_RECORD_LABEL: Partial<Record<DataEntity, string>> = {
   invoices: "Nueva factura",
   receipts: "Nuevo recibo",
-  payments: "Nuevo pago",
   tax_obligations: "Nueva obligación",
 };
+
+/** Entidades de solo lectura en copilot/datos. Pagos se crean/editan/borran únicamente en Tesorería. */
+const DATOS_READ_ONLY_ENTITIES = new Set<DataEntity>(["payments"]);
 
 function isProtoCrudEntity(e: DataEntity): e is ProtoCrudEntity {
   return (CRUD_ENTITIES as readonly string[]).includes(e);
@@ -354,7 +362,13 @@ function CopilotDatosPageContent() {
   const [receiptRangeTo, setReceiptRangeTo] = useState("");
   const [invoiceCurrencyFilter, setInvoiceCurrencyFilter] = useState<"all" | "UYU" | "USD">("all");
   const [receiptCurrencyFilter, setReceiptCurrencyFilter] = useState<"all" | "UYU" | "USD">("all");
-  const [invoiceQuickFilter, setInvoiceQuickFilter] = useState<"all" | "with_balance" | "credit_notes">("all");
+  const [invoiceQuickFilter, setInvoiceQuickFilter] = useState<"all" | "with_balance" | "credit_notes" | "overdue" | "paid">("all");
+  const [invoiceClientFilter, setInvoiceClientFilter] = useState<string>("all");
+  const [receiptClientFilter, setReceiptClientFilter] = useState<string>("all");
+  const [paymentRangeFrom, setPaymentRangeFrom] = useState("");
+  const [paymentRangeTo, setPaymentRangeTo] = useState("");
+  const [obligationRangeFrom, setObligationRangeFrom] = useState("");
+  const [obligationRangeTo, setObligationRangeTo] = useState("");
   const [paymentPrefillRow, setPaymentPrefillRow] = useState<DataRow | null>(
     null
   );
@@ -579,6 +593,12 @@ function CopilotDatosPageContent() {
     setInvoiceCurrencyFilter("all");
     setReceiptCurrencyFilter("all");
     setInvoiceQuickFilter("all");
+    setInvoiceClientFilter("all");
+    setReceiptClientFilter("all");
+    setPaymentRangeFrom("");
+    setPaymentRangeTo("");
+    setObligationRangeFrom("");
+    setObligationRangeTo("");
 
     const intent = searchParams.get("intent");
     const eParam = searchParams.get("entity");
@@ -620,6 +640,12 @@ function CopilotDatosPageContent() {
       setInvoiceCurrencyFilter("all");
       setReceiptCurrencyFilter("all");
       setInvoiceQuickFilter("all");
+      setInvoiceClientFilter("all");
+      setReceiptClientFilter("all");
+      setPaymentRangeFrom("");
+      setPaymentRangeTo("");
+      setObligationRangeFrom("");
+      setObligationRangeTo("");
       setSelectedRow(null);
       setSidebarOpen(false);
       return id;
@@ -636,6 +662,12 @@ function CopilotDatosPageContent() {
       setInvoiceCurrencyFilter("all");
       setReceiptCurrencyFilter("all");
       setInvoiceQuickFilter("all");
+      setInvoiceClientFilter("all");
+      setReceiptClientFilter("all");
+      setPaymentRangeFrom("");
+      setPaymentRangeTo("");
+      setObligationRangeFrom("");
+      setObligationRangeTo("");
       setSelectedRow(null);
       setSidebarOpen(false);
       return id;
@@ -683,6 +715,14 @@ function CopilotDatosPageContent() {
       }
       return filterRowsByPeriod(baseRows, "receipt_date", receiptYear, receiptMonth);
     }
+    if (expandedEntity === "payments") {
+      if (!paymentRangeFrom && !paymentRangeTo) return baseRows;
+      return filterRowsByDateRange(baseRows, "payment_date", paymentRangeFrom || null, paymentRangeTo || null);
+    }
+    if (expandedEntity === "tax_obligations") {
+      if (!obligationRangeFrom && !obligationRangeTo) return baseRows;
+      return filterRowsByDateRange(baseRows, "due_date", obligationRangeFrom || null, obligationRangeTo || null);
+    }
     return baseRows;
   }, [
     expandedEntity,
@@ -697,6 +737,10 @@ function CopilotDatosPageContent() {
     receiptPeriodMode,
     receiptRangeFrom,
     receiptRangeTo,
+    paymentRangeFrom,
+    paymentRangeTo,
+    obligationRangeFrom,
+    obligationRangeTo,
   ]);
 
   const filteredRows = useMemo(() => {
@@ -720,10 +764,24 @@ function CopilotDatosPageContent() {
         if (expandedEntity === "invoices") {
           if (invoiceQuickFilter === "with_balance") return Number(row.balance_amount ?? 0) > 0;
           if (invoiceQuickFilter === "credit_notes") return row[INVOICE_IS_NC_KEY] === true;
+          if (invoiceQuickFilter === "overdue") {
+            const today = new Date().toISOString().split("T")[0];
+            return Number(row.balance_amount ?? 0) > 0 && String(row.due_date ?? "") < today;
+          }
+          if (invoiceQuickFilter === "paid") return Number(row.balance_amount ?? 0) <= 0;
+        }
+        return true;
+      })
+      .filter((row) => {
+        if (expandedEntity === "invoices" && invoiceClientFilter !== "all") {
+          return String(row.company_id ?? "") === invoiceClientFilter;
+        }
+        if (expandedEntity === "receipts" && receiptClientFilter !== "all") {
+          return String(row.company_id ?? "") === receiptClientFilter;
         }
         return true;
       });
-  }, [periodFilteredRows, expandedEntity, search, filterValue, invoiceCurrencyFilter, receiptCurrencyFilter, invoiceQuickFilter]);
+  }, [periodFilteredRows, expandedEntity, search, filterValue, invoiceCurrencyFilter, receiptCurrencyFilter, invoiceQuickFilter, invoiceClientFilter, receiptClientFilter]);
 
   const invoiceYearOptions = useMemo(() => {
     const y = new Date().getFullYear();
@@ -731,6 +789,16 @@ function CopilotDatosPageContent() {
     for (let i = y + 1; i >= y - 15; i -= 1) list.push(i);
     return list;
   }, []);
+
+  const clientSelectOptions = useMemo(() => {
+    return companies
+      .map((c) => ({
+        id: String(c.id ?? ""),
+        label: String(c.RazonSocial ?? c.Nombre ?? c.id ?? ""),
+      }))
+      .filter((o) => o.id)
+      .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
+  }, [companies]);
 
   const selectedRowId = selectedRow ? String(selectedRow.id ?? "") : null;
 
@@ -753,6 +821,7 @@ function CopilotDatosPageContent() {
 
   const openEdit = () => {
     if (!selectedRow || !expandedEntity || !isProtoCrudEntity(expandedEntity)) return;
+    if (DATOS_READ_ONLY_ENTITIES.has(expandedEntity)) return;
     setCrudCreateTitle(undefined);
     setCrudEntity(expandedEntity);
     setCrudMode("edit");
@@ -761,6 +830,7 @@ function CopilotDatosPageContent() {
   };
 
   const openDelete = () => {
+    if (expandedEntity && DATOS_READ_ONLY_ENTITIES.has(expandedEntity)) return;
     setDeleteError(null);
     setDeleteDialogKey((k) => k + 1);
     setDeleteOpen(true);
@@ -1354,8 +1424,10 @@ function CopilotDatosPageContent() {
                           {tab.id === "invoices" ? (
                             <div className="flex flex-wrap items-center gap-2">
                               {([
-                                { key: "all", label: "Todos" },
+                                { key: "all", label: "Todas" },
                                 { key: "with_balance", label: "Con saldo" },
+                                { key: "overdue", label: "Vencidas" },
+                                { key: "paid", label: "Pagadas" },
                                 { key: "credit_notes", label: "Ajustes" },
                               ] as const).map((f) => (
                                 <button
@@ -1389,6 +1461,34 @@ function CopilotDatosPageContent() {
                             </div>
                           ) : null}
 
+                          {/* Fila 4 (Facturas): Filtro cliente */}
+                          {tab.id === "invoices" && clientSelectOptions.length > 0 ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                                Cliente:
+                              </span>
+                              <select
+                                value={invoiceClientFilter}
+                                onChange={(e) => setInvoiceClientFilter(e.target.value)}
+                                className="max-w-xs rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-1.5 text-sm text-[var(--copilot-ink)]"
+                              >
+                                <option value="all">Todos los clientes</option>
+                                {clientSelectOptions.map((o) => (
+                                  <option key={o.id} value={o.id}>{o.label}</option>
+                                ))}
+                              </select>
+                              {invoiceClientFilter !== "all" ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setInvoiceClientFilter("all")}
+                                  className="rounded-full border border-[var(--copilot-border)] px-3 py-1 text-xs font-medium text-[var(--copilot-ink-muted)] transition hover:border-[var(--copilot-accent)] hover:text-[var(--copilot-accent)]"
+                                >
+                                  Limpiar
+                                </button>
+                              ) : null}
+                            </div>
+                          ) : null}
+
                           {/* Fila 3 (Recibos): Moneda */}
                           {tab.id === "receipts" ? (
                             <div className="flex flex-wrap items-center gap-2">
@@ -1409,6 +1509,106 @@ function CopilotDatosPageContent() {
                                   {c === "all" ? "Todas" : c === "UYU" ? "Pesos" : "Dólares"}
                                 </button>
                               ))}
+                            </div>
+                          ) : null}
+
+                          {/* Fila 4 (Recibos): Filtro cliente */}
+                          {tab.id === "receipts" && clientSelectOptions.length > 0 ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                                Cliente:
+                              </span>
+                              <select
+                                value={receiptClientFilter}
+                                onChange={(e) => setReceiptClientFilter(e.target.value)}
+                                className="max-w-xs rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-1.5 text-sm text-[var(--copilot-ink)]"
+                              >
+                                <option value="all">Todos los clientes</option>
+                                {clientSelectOptions.map((o) => (
+                                  <option key={o.id} value={o.id}>{o.label}</option>
+                                ))}
+                              </select>
+                              {receiptClientFilter !== "all" ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setReceiptClientFilter("all")}
+                                  className="rounded-full border border-[var(--copilot-border)] px-3 py-1 text-xs font-medium text-[var(--copilot-ink-muted)] transition hover:border-[var(--copilot-accent)] hover:text-[var(--copilot-accent)]"
+                                >
+                                  Limpiar
+                                </button>
+                              ) : null}
+                            </div>
+                          ) : null}
+
+                          {/* Fila fecha (Pagos) */}
+                          {tab.id === "payments" ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                                Período:
+                              </span>
+                              <label className="flex items-center gap-1.5 text-xs text-[var(--copilot-ink-muted)]">
+                                Desde
+                                <input
+                                  type="date"
+                                  value={paymentRangeFrom}
+                                  onChange={(e) => setPaymentRangeFrom(e.target.value)}
+                                  className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                />
+                              </label>
+                              <label className="flex items-center gap-1.5 text-xs text-[var(--copilot-ink-muted)]">
+                                Hasta
+                                <input
+                                  type="date"
+                                  value={paymentRangeTo}
+                                  onChange={(e) => setPaymentRangeTo(e.target.value)}
+                                  className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                />
+                              </label>
+                              {(paymentRangeFrom || paymentRangeTo) ? (
+                                <CopilotGhostButton
+                                  type="button"
+                                  className="px-3 py-1.5 text-xs"
+                                  onClick={() => { setPaymentRangeFrom(""); setPaymentRangeTo(""); }}
+                                >
+                                  Limpiar
+                                </CopilotGhostButton>
+                              ) : null}
+                            </div>
+                          ) : null}
+
+                          {/* Fila fecha (Obligaciones fiscales) */}
+                          {tab.id === "tax_obligations" ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                                Vencimiento:
+                              </span>
+                              <label className="flex items-center gap-1.5 text-xs text-[var(--copilot-ink-muted)]">
+                                Desde
+                                <input
+                                  type="date"
+                                  value={obligationRangeFrom}
+                                  onChange={(e) => setObligationRangeFrom(e.target.value)}
+                                  className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                />
+                              </label>
+                              <label className="flex items-center gap-1.5 text-xs text-[var(--copilot-ink-muted)]">
+                                Hasta
+                                <input
+                                  type="date"
+                                  value={obligationRangeTo}
+                                  onChange={(e) => setObligationRangeTo(e.target.value)}
+                                  className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1.5 text-sm text-[var(--copilot-ink)]"
+                                />
+                              </label>
+                              {(obligationRangeFrom || obligationRangeTo) ? (
+                                <CopilotGhostButton
+                                  type="button"
+                                  className="px-3 py-1.5 text-xs"
+                                  onClick={() => { setObligationRangeFrom(""); setObligationRangeTo(""); }}
+                                >
+                                  Limpiar
+                                </CopilotGhostButton>
+                              ) : null}
                             </div>
                           ) : null}
 
@@ -1484,17 +1684,17 @@ function CopilotDatosPageContent() {
         isOpen={!isQuickAddForm && sidebarOpen && selectedRow != null}
         onClose={() => setSidebarOpen(false)}
         onEdit={
-          expandedEntity && isProtoCrudEntity(expandedEntity)
+          expandedEntity && isProtoCrudEntity(expandedEntity) && !DATOS_READ_ONLY_ENTITIES.has(expandedEntity)
             ? openEdit
             : undefined
         }
         onDelete={
-          expandedEntity && isProtoCrudEntity(expandedEntity)
+          expandedEntity && isProtoCrudEntity(expandedEntity) && !DATOS_READ_ONLY_ENTITIES.has(expandedEntity)
             ? openDelete
             : undefined
         }
         onRestore={
-          expandedEntity && isProtoCrudEntity(expandedEntity)
+          expandedEntity && isProtoCrudEntity(expandedEntity) && !DATOS_READ_ONLY_ENTITIES.has(expandedEntity)
             ? () => void confirmRestore()
             : undefined
         }

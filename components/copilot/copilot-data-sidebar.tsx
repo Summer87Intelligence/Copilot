@@ -1191,14 +1191,18 @@ export function CopilotDataSidebar({
                 </p>
               </section>
               <ReceiptCobroSection row={row} />
-              {invoice ? (
-                <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                    Factura asociada
-                  </h4>
+              <section className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3">
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                  Factura asociada
+                </h4>
+                {invoice ? (
                   <p className="text-sm text-[var(--copilot-ink)]">{rowTitle(invoice)}</p>
-                </section>
-              ) : null}
+                ) : (
+                  <p className="text-sm italic text-[var(--copilot-ink-muted)]">
+                    Vinculación no disponible (Zeta)
+                  </p>
+                )}
+              </section>
             </>
           ) : null}
 

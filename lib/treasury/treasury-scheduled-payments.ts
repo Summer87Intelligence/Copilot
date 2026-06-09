@@ -53,6 +53,7 @@ export type ScheduledPaymentCategory =
   | "Alquiler"
   | "Préstamos"
   | "Servicios"
+  | "Suscripciones"
   | "Otros";
 
 export const SCHEDULED_PAYMENT_CATEGORIES: ScheduledPaymentCategory[] = [
@@ -63,6 +64,7 @@ export const SCHEDULED_PAYMENT_CATEGORIES: ScheduledPaymentCategory[] = [
   "Alquiler",
   "Préstamos",
   "Servicios",
+  "Suscripciones",
   "Otros",
 ];
 
@@ -124,6 +126,7 @@ const CATEGORY_TO_TYPE: Record<ScheduledPaymentCategory, PlannedObligationType> 
   Alquiler: "rent",
   Préstamos: "loan",
   Servicios: "service",
+  Suscripciones: "service",
   Otros: "other",
 };
 

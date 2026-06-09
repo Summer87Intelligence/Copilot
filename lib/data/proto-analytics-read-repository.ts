@@ -153,7 +153,7 @@ export async function loadFinancialFactsBundle(
       copilotProtoQueryDebugLog("proto_receipts", wid, Boolean(wid));
       let q = client
         .from("proto_receipts")
-        .select("amount,invoice_id,receipt_date,company_id")
+        .select("amount,invoice_id,receipt_date,company_id,currency_code")
         .eq("is_active", true)
         .gte("receipt_date", COPILOT_OPERATIONAL_START_DATE);
       if (wid) q = q.eq("workspace_company_id", wid);
@@ -310,7 +310,7 @@ export async function loadFinancialSnapshotRows(
 ) {
   const bundle = await loadFinancialFactsBundle(client, workspaceCompanyId);
   return {
-    receipts: bundle.receipts.map((r) => ({ amount: r.amount })),
+    receipts: bundle.receipts.map((r) => ({ amount: r.amount, currency_code: r.currency_code })),
     payments: bundle.payments.map((p) => ({
       amount: p.amount,
       payment_date: p.payment_date,

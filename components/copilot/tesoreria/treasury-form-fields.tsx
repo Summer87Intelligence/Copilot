@@ -14,7 +14,7 @@ type Props = {
 export function TreasuryFormField({ label, htmlFor, error, children }: Props) {
   return (
     <label className="block text-sm" htmlFor={htmlFor}>
-      <span className="mb-1 block text-[var(--copilot-ink)]">{label}</span>
+      <span className="mb-1 block text-sm font-medium text-[var(--copilot-ink)]">{label}</span>
       {children}
       {error ? (
         <span className="mt-1 block text-xs text-rose-700" role="alert">

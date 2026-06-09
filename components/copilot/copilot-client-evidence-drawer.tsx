@@ -102,14 +102,20 @@ export function CopilotClientEvidenceDrawer({
   if (!isOpen || !detail) return null;
 
   const riskSev = clientRiskToCopilotSeverity(detail.risk);
-  // TODO: total_billing / total_debt / overdue_debt son agregados mixtos UYU+USD —
-  //       no se puede mostrar un símbolo único hasta que el modelo separe monedas por cliente.
+  const billingUyu = detail.billing_uyu ?? 0;
+  const billingUsd = detail.billing_usd ?? 0;
+  const debtUyu = detail.debt_uyu ?? 0;
+  const debtUsd = detail.debt_usd ?? 0;
+  const overdueUyu = detail.overdue_uyu ?? 0;
+  const overdueUsd = detail.overdue_usd ?? 0;
+  const hasAnyOverdue = overdueUyu > 0 || overdueUsd > 0;
+  const hasAnyDebt = debtUyu > 0 || debtUsd > 0;
   const narrative = [
-    `Facturación acumulada ${formatMoneyPortfolio(detail.total_billing)} con participación ${(detail.share_pct * 100).toLocaleString("es-AR", { maximumFractionDigits: 1 })}% del total cargado.`,
-    detail.overdue_debt > 0
-      ? `Deuda vencida: ${formatMoneyPortfolio(detail.overdue_debt)} sobre saldo total ${formatMoneyPortfolio(detail.total_debt)}.`
-      : detail.total_debt > 0
-        ? `Saldo pendiente sin vencer (o al día según vencimientos): ${formatMoneyPortfolio(detail.total_debt)}.`
+    `Facturación acumulada ${fmtCurrencyPair(billingUyu, billingUsd)} con participación ${(detail.share_pct * 100).toLocaleString("es-AR", { maximumFractionDigits: 1 })}% del total cargado.`,
+    hasAnyOverdue
+      ? `Deuda vencida: ${fmtCurrencyPair(overdueUyu, overdueUsd)} sobre saldo total ${fmtCurrencyPair(debtUyu, debtUsd)}.`
+      : hasAnyDebt
+        ? `Saldo pendiente sin vencer (o al día según vencimientos): ${fmtCurrencyPair(debtUyu, debtUsd)}.`
         : "Sin saldo pendiente en facturas con balance.",
     `Comportamiento de pago estimado: ${paymentBehaviorLabelEs(detail.payment_behavior).toLowerCase()}, según mix de facturas pagadas, parciales y vencidas.`,
   ].join(" ");
@@ -120,9 +126,9 @@ export function CopilotClientEvidenceDrawer({
         type="button"
         aria-label="Cerrar respaldo"
         onClick={onClose}
-        className="fixed inset-0 z-30 bg-[rgba(19,23,22,0.28)]"
+        className="fixed inset-x-0 top-[56px] bottom-0 z-30 bg-[rgba(19,23,22,0.28)]"
       />
-      <aside className="fixed inset-y-0 right-0 z-40 flex w-full max-w-2xl flex-col border-l border-[var(--copilot-border)] bg-[var(--copilot-card)] shadow-2xl">
+      <aside className="fixed top-[56px] bottom-0 right-0 z-40 flex w-full max-w-2xl flex-col border-l border-[var(--copilot-border)] bg-[var(--copilot-card)] shadow-2xl">
         <div className="border-b border-[var(--copilot-border)] px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
@@ -193,15 +199,9 @@ export function CopilotClientEvidenceDrawer({
                 Basado en facturas y cobros registrados en Copilot.
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
-                <KpiPill
-                  label="Facturación total"
-                  value={formatMoneyPortfolio(detail.total_billing)}
-                />
-                <KpiPill label="Saldo pendiente" value={formatMoneyPortfolio(detail.total_debt)} />
-                <KpiPill
-                  label="Deuda vencida"
-                  value={formatMoneyPortfolio(detail.overdue_debt)}
-                />
+                <KpiPillMoney label="Facturación total" uyu={detail.billing_uyu} usd={detail.billing_usd} />
+                <KpiPillMoney label="Saldo pendiente" uyu={detail.debt_uyu} usd={detail.debt_usd} />
+                <KpiPillMoney label="Deuda vencida" uyu={detail.overdue_uyu} usd={detail.overdue_usd} />
                 <KpiPill
                   label="Concentración"
                   value={`${(detail.share_pct * 100).toLocaleString("es-AR", { maximumFractionDigits: 1 })}%`}
@@ -276,13 +276,21 @@ export function CopilotClientEvidenceDrawer({
                         {formatDateShort(inv.due_date)}
                       </p>
                       <p className="mt-2 tabular-nums text-[var(--copilot-ink)]">
-                        Total {formatMoneyPortfolio(inv.total_amount, inv.currency_code)} · Saldo{" "}
+                        Total{" "}
+                        {inv.currency_code
+                          ? formatMoneyPortfolio(inv.total_amount, inv.currency_code)
+                          : <span>{inv.total_amount.toLocaleString("es-UY")} <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-semibold text-amber-700">sin moneda</span></span>
+                        }{" "}
+                        · Saldo{" "}
                         <span
                           className={
                             inv.balance_amount > 0 ? "font-semibold text-amber-900" : ""
                           }
                         >
-                          {formatMoneyPortfolio(inv.balance_amount, inv.currency_code)}
+                          {inv.currency_code
+                            ? formatMoneyPortfolio(inv.balance_amount, inv.currency_code)
+                            : <span>{inv.balance_amount.toLocaleString("es-UY")} <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-semibold text-amber-700">sin moneda</span></span>
+                          }
                         </span>
                       </p>
                     </li>
@@ -306,11 +314,16 @@ export function CopilotClientEvidenceDrawer({
                       className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4 text-sm"
                     >
                       <p className="font-semibold tabular-nums text-emerald-800">
-                        {formatMoneyPortfolio(r.amount, r.currency_code ?? undefined)}
+                        {r.currency_code
+                          ? formatMoneyPortfolio(r.amount, r.currency_code)
+                          : <span>{r.amount.toLocaleString("es-UY")} <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-semibold text-amber-700">sin moneda</span></span>
+                        }
                       </p>
                       <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
                         Fecha {formatDateShort(r.receipt_date)}
-                        {r.invoice_id ? ` · Factura ${r.invoice_id.slice(0, 8)}…` : ""}
+                        {r.invoice_id
+                          ? ` · Factura ${r.invoice_id.slice(0, 8)}…`
+                          : <span className="ml-1 italic">· vinculación no disponible (Zeta)</span>}
                       </p>
                     </li>
                   ))}
@@ -357,6 +370,14 @@ export function CopilotClientEvidenceDrawer({
   );
 }
 
+// Rule: UYU-only → "$ X" | USD-only → "U$S X" | mixed → "$ X · U$S Y"
+function fmtCurrencyPair(uyu: number, usd: number): string {
+  if (uyu > 0 && usd > 0)
+    return `${formatMoneyPortfolio(uyu, "UYU")} · ${formatMoneyPortfolio(usd, "USD")}`;
+  if (usd > 0) return formatMoneyPortfolio(usd, "USD");
+  return formatMoneyPortfolio(uyu, "UYU");
+}
+
 function KpiPill({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4">
@@ -364,6 +385,38 @@ function KpiPill({ label, value }: { label: string; value: string }) {
         {label}
       </p>
       <p className="mt-2 text-sm font-semibold text-[var(--copilot-ink)]">{value}</p>
+    </div>
+  );
+}
+
+function KpiPillMoney({
+  label,
+  uyu,
+  usd,
+}: {
+  label: string;
+  uyu?: number | null;
+  usd?: number | null;
+}) {
+  const uyuAmt = uyu ?? 0;
+  const usdAmt = usd ?? 0;
+  const mixed = uyuAmt > 0 && usdAmt > 0;
+  const usdOnly = usdAmt > 0 && uyuAmt === 0;
+  return (
+    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+        {label}
+      </p>
+      {!usdOnly && (
+        <p className="mt-2 text-sm font-semibold text-[var(--copilot-ink)]">
+          {formatMoneyPortfolio(uyuAmt, "UYU")}
+        </p>
+      )}
+      {usdAmt > 0 && (
+        <p className={`${mixed ? "mt-0.5" : "mt-2"} text-sm font-semibold text-amber-900`}>
+          {formatMoneyPortfolio(usdAmt, "USD")}
+        </p>
+      )}
     </div>
   );
 }

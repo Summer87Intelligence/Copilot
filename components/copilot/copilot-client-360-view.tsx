@@ -1171,6 +1171,13 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
 
         {!loading && !error && data ? (
           <>
+            {/* ── Banner: cliente inactivo ─────────────────────────────── */}
+            {data.summary.is_active === false ? (
+              <div className="border-b border-amber-200 bg-amber-50 px-6 py-3 text-sm font-medium text-amber-900">
+                Este cliente está inactivo (archivado). La ficha es de solo lectura.
+              </div>
+            ) : null}
+
             {/* ── Client header card ───────────────────────────────────── */}
             <div className="border-b border-[var(--copilot-border)] bg-[var(--copilot-card)]">
             <div className="px-5 pt-4 pb-2">
@@ -1328,21 +1335,29 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
             {/* ── Tab: Cobranza ──────────────────────────────────────────── */}
             {activeTab === "cobranza" ? (
               <div className="space-y-4 px-5 py-4">
-                <CollectionMessageAssistant
-                  companyId={data.summary.company_id}
-                  clientName={data.summary.nombre_visible}
-                  debtUyu={data.debt_uyu}
-                  debtUsd={data.debt_usd}
-                  overdueUyu={data.overdue_uyu}
-                  overdueUsd={data.overdue_usd}
-                  contactEmail={data.contacts.find((c) => c.email != null)?.email ?? null}
-                  phone={data.summary.phone}
-                />
-                <CollectionFollowupForm
-                  companyId={data.summary.company_id}
-                  initialValues={collectionPrefill}
-                  prefillKey={collectionPrefillKey}
-                />
+                {data.summary.is_active === false ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    Cliente inactivo: acciones operativas deshabilitadas.
+                  </div>
+                ) : (
+                  <>
+                    <CollectionMessageAssistant
+                      companyId={data.summary.company_id}
+                      clientName={data.summary.nombre_visible}
+                      debtUyu={data.debt_uyu}
+                      debtUsd={data.debt_usd}
+                      overdueUyu={data.overdue_uyu}
+                      overdueUsd={data.overdue_usd}
+                      contactEmail={data.contacts.find((c) => c.email != null)?.email ?? null}
+                      phone={data.summary.phone}
+                    />
+                    <CollectionFollowupForm
+                      companyId={data.summary.company_id}
+                      initialValues={collectionPrefill}
+                      prefillKey={collectionPrefillKey}
+                    />
+                  </>
+                )}
               </div>
             ) : null}
 
@@ -1825,7 +1840,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                                       <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">{alias.notes}</p>
                                     ) : null}
                                   </div>
-                                  {canWrite ? (
+                                  {canWrite && data.summary.is_active !== false ? (
                                     <div className="flex shrink-0 gap-1">
                                       <button
                                         type="button"

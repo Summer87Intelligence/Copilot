@@ -3,6 +3,14 @@ import { companyPrimaryLabel } from "@/lib/copilot-datos-company-display";
 
 export const RECEIPT_REF_DISPLAY_KEY = "receipt_ref_display" as const;
 export const RECEIPT_CLIENT_NAME_KEY = "receipt_client_name_display" as const;
+export const RECEIPT_SOURCE_KEY = "_receipt_source" as const;
+
+function detectReceiptSource(rec: DataRow): string {
+  const num = String(rec.receipt_number ?? "").trim();
+  if (num.startsWith("ZETA:")) return "Zeta";
+  if (rec.zeta_metadata != null) return "Zeta";
+  return "Manual";
+}
 
 export function enrichReceiptRowsForDatos(receipts: DataRow[], companies: DataRow[]): DataRow[] {
   const byId = new Map<string, DataRow>();
@@ -20,6 +28,7 @@ export function enrichReceiptRowsForDatos(receipts: DataRow[], companies: DataRo
       ...rec,
       [RECEIPT_REF_DISPLAY_KEY]: refDisplay,
       [RECEIPT_CLIENT_NAME_KEY]: clientName,
+      [RECEIPT_SOURCE_KEY]: detectReceiptSource(rec),
     };
   });
 }

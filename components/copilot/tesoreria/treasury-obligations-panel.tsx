@@ -14,7 +14,9 @@ import {
 import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
 import {
   TESORERIA_FIELD_CLASS,
+  TESORERIA_FORM_LABEL_CLASS,
   TESORERIA_PAGE_SIZE,
+  TESORERIA_PAYMENT_FIELD,
   TESORERIA_TABLE_CLASS,
   TESORERIA_TD_CLASS,
   TESORERIA_TH_CLASS,
@@ -276,7 +278,7 @@ function EditModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim()) { setError("El título es requerido."); return; }
+    if (!title.trim()) { setError("El concepto es requerido."); return; }
     if (!validAmount) { setError("El monto debe ser mayor a 0."); return; }
     if (!dueDate) { setError("La fecha de vencimiento es requerida."); return; }
     setError("");
@@ -298,7 +300,7 @@ function EditModal({
     <BaseModal title="Editar pago" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-3">
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-[var(--copilot-ink)]">Título</span>
+          <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.concepto}</span>
           <input
             className={TESORERIA_FIELD_CLASS}
             value={title}
@@ -308,7 +310,7 @@ function EditModal({
         </label>
 
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-[var(--copilot-ink)]">Categoría</span>
+          <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.categoria}</span>
           <select
             className={TESORERIA_FIELD_CLASS}
             value={obligationType}
@@ -324,7 +326,18 @@ function EditModal({
 
         <div className="grid grid-cols-2 gap-3">
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-[var(--copilot-ink)]">Monto</span>
+            <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.moneda}</span>
+            <select
+              className={TESORERIA_FIELD_CLASS}
+              value={currencyCode}
+              onChange={(e) => setCurrencyCode(e.target.value as "UYU" | "USD")}
+            >
+              <option value="UYU">UYU</option>
+              <option value="USD">USD</option>
+            </select>
+          </label>
+          <label className="block text-sm">
+            <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.monto}</span>
             <input
               type="number"
               min="0.01"
@@ -335,22 +348,11 @@ function EditModal({
               required
             />
           </label>
-          <label className="block text-sm">
-            <span className="mb-1 block font-medium text-[var(--copilot-ink)]">Moneda</span>
-            <select
-              className={TESORERIA_FIELD_CLASS}
-              value={currencyCode}
-              onChange={(e) => setCurrencyCode(e.target.value as "UYU" | "USD")}
-            >
-              <option value="UYU">UYU</option>
-              <option value="USD">USD</option>
-            </select>
-          </label>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-[var(--copilot-ink)]">Vencimiento</span>
+            <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.vencimiento}</span>
             <input
               type="date"
               className={TESORERIA_FIELD_CLASS}
@@ -844,18 +846,9 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
 
   return (
     <section className="space-y-4">
-      <CopilotSectionTitle
-        title="Pagos futuros"
-        subtitle="Egresos programados por moneda: impuestos, sueldos, proveedores y más."
-        action={
-          canWrite ? (
-            <CopilotPrimaryButton type="button" onClick={() => setDrawerOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo pago
-            </CopilotPrimaryButton>
-          ) : null
-        }
-      />
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+        Resumen próximos 30 días
+      </p>
 
       {/* KPI cards by currency */}
       <div className="grid gap-3 sm:grid-cols-2">
@@ -890,6 +883,19 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
           </div>
         ))}
       </div>
+
+      <CopilotSectionTitle
+        title="Próximos pagos"
+        subtitle="Egresos programados por moneda: impuestos, sueldos, proveedores y más. No afectan caja hasta confirmarse."
+        action={
+          canWrite ? (
+            <CopilotPrimaryButton type="button" onClick={() => setDrawerOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nuevo pago
+            </CopilotPrimaryButton>
+          ) : null
+        }
+      />
 
       {/* View filter tabs */}
       <div className="flex flex-wrap gap-2">
@@ -945,10 +951,11 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
           <table className={TESORERIA_TABLE_CLASS}>
             <thead>
               <tr>
-                <th className={TESORERIA_TH_CLASS}>Título</th>
-                <th className={TESORERIA_TH_CLASS}>Tipo</th>
-                <th className={TESORERIA_TH_CLASS}>Monto</th>
-                <th className={TESORERIA_TH_CLASS}>Vence</th>
+                <th className={TESORERIA_TH_CLASS}>{TESORERIA_PAYMENT_FIELD.concepto}</th>
+                <th className={TESORERIA_TH_CLASS}>{TESORERIA_PAYMENT_FIELD.categoria}</th>
+                <th className={TESORERIA_TH_CLASS}>{TESORERIA_PAYMENT_FIELD.moneda}</th>
+                <th className={TESORERIA_TH_CLASS}>{TESORERIA_PAYMENT_FIELD.monto}</th>
+                <th className={TESORERIA_TH_CLASS}>{TESORERIA_PAYMENT_FIELD.vencimiento}</th>
                 <th className={TESORERIA_TH_CLASS}>Estado</th>
                 <th className={TESORERIA_TH_CLASS}>Acciones</th>
               </tr>
@@ -965,6 +972,7 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
                     ) : null}
                   </td>
                   <td className={TESORERIA_TD_CLASS}>{obligationCategoryLabel(row)}</td>
+                  <td className={TESORERIA_TD_CLASS}>{row.currencyCode}</td>
                   <td className={`${TESORERIA_TD_CLASS} tabular-nums`}>
                     {formatTreasuryMoney(row.amountEstimated, row.currencyCode)}
                   </td>
@@ -1025,7 +1033,7 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
         <div className="fixed inset-0 z-40 flex justify-end bg-black/30">
           <div className="h-full w-full max-w-lg overflow-y-auto bg-[var(--copilot-card)] p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-[var(--copilot-ink)]">Nueva obligación</h3>
+              <h3 className="text-lg font-semibold text-[var(--copilot-ink)]">Nuevo pago</h3>
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
@@ -1037,7 +1045,21 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
             </div>
             <form className="space-y-3" onSubmit={handleCreate}>
               <label className="block text-sm">
-                Plantilla
+                <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.concepto}</span>
+                <input
+                  className={TESORERIA_FIELD_CLASS}
+                  value={form.title}
+                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                  required
+                />
+                {errors.title ? (
+                  <span className="mt-1 block text-xs text-rose-700" role="alert">
+                    {errors.title}
+                  </span>
+                ) : null}
+              </label>
+              <label className="block text-sm">
+                <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.categoria}</span>
                 <select
                   className={TESORERIA_FIELD_CLASS}
                   value={form.obligationType}
@@ -1057,35 +1079,9 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
                   ))}
                 </select>
               </label>
-              <label className="block text-sm">
-                Título
-                <input
-                  className={TESORERIA_FIELD_CLASS}
-                  value={form.title}
-                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  required
-                />
-                {errors.title ? (
-                  <span className="mt-1 block text-xs text-rose-700" role="alert">
-                    {errors.title}
-                  </span>
-                ) : null}
-              </label>
               <div className="grid grid-cols-2 gap-3">
                 <label className="block text-sm">
-                  Monto estimado
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className={TESORERIA_FIELD_CLASS}
-                    value={form.amountEstimated}
-                    onChange={(e) => setForm((f) => ({ ...f, amountEstimated: e.target.value }))}
-                    required
-                  />
-                </label>
-                <label className="block text-sm">
-                  Moneda
+                  <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.moneda}</span>
                   <select
                     className={TESORERIA_FIELD_CLASS}
                     value={form.currencyCode}
@@ -1097,10 +1093,22 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
                     <option value="USD">USD</option>
                   </select>
                 </label>
+                <label className="block text-sm">
+                  <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.monto}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className={TESORERIA_FIELD_CLASS}
+                    value={form.amountEstimated}
+                    onChange={(e) => setForm((f) => ({ ...f, amountEstimated: e.target.value }))}
+                    required
+                  />
+                </label>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <label className="block text-sm">
-                  Vencimiento
+                  <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.vencimiento}</span>
                   <input
                     type="date"
                     className={TESORERIA_FIELD_CLASS}

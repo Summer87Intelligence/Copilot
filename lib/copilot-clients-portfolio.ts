@@ -282,6 +282,7 @@ export function computeInvoiceCurrencyBreakdown(
 ): InvoiceCurrencyBreakdown {
   let billingUYU = 0, billingUSD = 0;
   let overdueUYU = 0, overdueUSD = 0;
+  let debtUYU = 0, debtUSD = 0;
 
   for (const sel of selectOperationalDebtInvoicesForSummation(invs as OperationalDebtInvoiceInput[])) {
     const inv = sel.invoice;
@@ -294,9 +295,11 @@ export function computeInvoiceCurrencyBreakdown(
     const isOverdue = pending > 0 && d !== "" && d < todayYmd;
     if (cur === "UYU") {
       billingUYU += total;
+      if (pending > 0) debtUYU += pending;
       if (isOverdue) overdueUYU += pending;
     } else {
       billingUSD += total;
+      if (pending > 0) debtUSD += pending;
       if (isOverdue) overdueUSD += pending;
     }
   }
@@ -306,7 +309,7 @@ export function computeInvoiceCurrencyBreakdown(
     billingUSD,
     overdueUYU,
     overdueUSD,
-    hasMixedCurrency: billingUYU > 0 && billingUSD > 0,
+    hasMixedCurrency: (billingUYU > 0 && billingUSD > 0) || (debtUYU > 0 && debtUSD > 0),
   };
 }
 

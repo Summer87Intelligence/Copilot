@@ -3,16 +3,14 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 
+import { CopilotSectionTitle } from "@/components/copilot/copilot-ui";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
 import { effectivePlannedObligationStatus } from "@/lib/treasury/treasury-obligation-status";
-import { SCHEDULED_PAYMENT_CATEGORIES } from "@/lib/treasury/treasury-scheduled-payments";
 import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
-import type { PlannedCashObligation, TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
-import { TESORERIA_FIELD_CLASS } from "./tesoreria-ui";
-
-const TODAY = () => new Date().toISOString().slice(0, 10);
+import type { PlannedCashObligation } from "@/lib/treasury/treasury-types";
+import { TESORERIA_FIELD_CLASS, TESORERIA_FORM_LABEL_CLASS, TESORERIA_PAYMENT_FIELD } from "./tesoreria-ui";
 
 const STATUS_LABEL: Record<string, string> = {
   planned: "Pendiente",
@@ -29,98 +27,6 @@ const STATUS_CLS: Record<string, string> = {
   paid: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
   cancelled: "bg-[var(--copilot-accent-soft)] text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)]",
 };
-
-// ─── New payment form ──────────────────────────────────────────────────────────
-
-function NewPaymentForm({
-  workspace,
-  onClose,
-}: {
-  workspace: TreasuryWorkspace;
-  onClose: () => void;
-}) {
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState("Otros");
-  const [currency, setCurrency] = useState<TreasuryCurrencyCode>("UYU");
-  const [amount, setAmount] = useState("");
-  const [dueDate, setDueDate] = useState(TODAY());
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const save = async () => {
-    setError(null);
-    const amt = parseFloat(amount.replace(",", "."));
-    if (!Number.isFinite(amt) || amt <= 0) { setError("El monto debe ser > 0."); return; }
-    if (!name.trim()) { setError("El concepto es requerido."); return; }
-    if (!dueDate || !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) { setError("Fecha inválida."); return; }
-
-    setSaving(true);
-    try {
-      const res = await copilotApiFetch("/api/copilot/treasury/scheduled-payments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), category, currency, amount: amt, due_date: dueDate, recurrence: "none" }),
-      });
-      const json = (await res.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
-      if (json?.ok) {
-        workspace.notify("success", "Pago programado creado.");
-        void workspace.refetch();
-        onClose();
-      } else {
-        setError(json?.message ?? "Error al crear pago.");
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/90 p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm font-semibold text-[var(--copilot-ink)]">Nuevo pago programado</p>
-        <button type="button" onClick={onClose} className="text-xs text-[var(--copilot-ink-muted)] hover:underline">Cerrar</button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <label className="col-span-2 block">
-          <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Concepto</span>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={TESORERIA_FIELD_CLASS} placeholder="Ej. DGI IRAE mayo" />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Categoría</span>
-          <select value={category} onChange={(e) => setCategory(e.target.value)} className={TESORERIA_FIELD_CLASS}>
-            {SCHEDULED_PAYMENT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Moneda</span>
-          <select value={currency} onChange={(e) => setCurrency(e.target.value as TreasuryCurrencyCode)} className={TESORERIA_FIELD_CLASS}>
-            <option value="UYU">UYU</option>
-            <option value="USD">USD</option>
-          </select>
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Monto</span>
-          <input type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className={TESORERIA_FIELD_CLASS} placeholder="0" />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Vencimiento</span>
-          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={TESORERIA_FIELD_CLASS} />
-        </label>
-      </div>
-
-      {error ? <p className="mt-2 text-xs text-rose-600">{error}</p> : null}
-      <p className="mt-2 text-[11px] text-[var(--copilot-ink-muted)]">
-        No afecta caja hasta que lo marcás como pagado.
-      </p>
-      <button type="button" onClick={() => void save()} disabled={saving} className="mt-3 w-full rounded-xl bg-[var(--copilot-accent)] py-2 text-sm font-semibold text-white disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)] hover:opacity-90">
-        {saving ? "Guardando…" : "Crear pago programado"}
-      </button>
-    </div>
-  );
-}
-
-// ─── Edit payment form (inline) ────────────────────────────────────────────────
 
 function EditPaymentRow({
   obl,
@@ -166,16 +72,16 @@ function EditPaymentRow({
     <div className="border-t border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-3 py-3">
       <div className="grid grid-cols-3 gap-2">
         <label className="col-span-2 block">
-          <span className="mb-1 block text-[11px] font-medium text-[var(--copilot-ink-muted)]">Concepto</span>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={`${TESORERIA_FIELD_CLASS} text-xs`} />
+          <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.concepto}</span>
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={TESORERIA_FIELD_CLASS} />
         </label>
         <label className="block">
-          <span className="mb-1 block text-[11px] font-medium text-[var(--copilot-ink-muted)]">Monto</span>
-          <input type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className={`${TESORERIA_FIELD_CLASS} text-xs`} />
+          <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.monto}</span>
+          <input type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className={TESORERIA_FIELD_CLASS} />
         </label>
         <label className="block">
-          <span className="mb-1 block text-[11px] font-medium text-[var(--copilot-ink-muted)]">Vencimiento</span>
-          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={`${TESORERIA_FIELD_CLASS} text-xs`} />
+          <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.vencimiento}</span>
+          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={TESORERIA_FIELD_CLASS} />
         </label>
       </div>
       {error ? <p className="mt-1 text-xs text-rose-600">{error}</p> : null}
@@ -190,8 +96,6 @@ function EditPaymentRow({
     </div>
   );
 }
-
-// ─── Mark paid confirm ─────────────────────────────────────────────────────────
 
 function MarkPaidConfirm({
   obl,
@@ -224,8 +128,10 @@ function MarkPaidConfirm({
     <div className="border-t border-emerald-100 bg-emerald-50/60 px-3 py-3">
       <p className="mb-2 text-xs font-semibold text-emerald-900">Marcar como pagado</p>
       <label className="mb-2 block">
-        <span className="mb-1 block text-[11px] font-medium text-[var(--copilot-ink-muted)]">Monto final pagado ({obl.currencyCode})</span>
-        <input type="number" min="0.01" step="0.01" value={amountFinal} onChange={(e) => setAmountFinal(e.target.value)} className={`${TESORERIA_FIELD_CLASS} w-36 text-xs`} />
+        <span className={TESORERIA_FORM_LABEL_CLASS}>
+          {TESORERIA_PAYMENT_FIELD.monto} final ({obl.currencyCode})
+        </span>
+        <input type="number" min="0.01" step="0.01" value={amountFinal} onChange={(e) => setAmountFinal(e.target.value)} className={`${TESORERIA_FIELD_CLASS} w-36`} />
       </label>
       <label className="mb-3 flex items-center gap-2 text-xs">
         <input type="checkbox" checked={registerMovement} onChange={(e) => setRegisterMovement(e.target.checked)} className="h-3.5 w-3.5" />
@@ -242,8 +148,6 @@ function MarkPaidConfirm({
     </div>
   );
 }
-
-// ─── Cancel confirm ────────────────────────────────────────────────────────────
 
 function CancelConfirm({
   obl,
@@ -286,8 +190,6 @@ function CancelConfirm({
   );
 }
 
-// ─── Scheduled payment row ─────────────────────────────────────────────────────
-
 function ProgramadoRow({
   obl,
   workspace,
@@ -305,7 +207,7 @@ function ProgramadoRow({
   const isPending = effective !== "paid" && effective !== "cancelled";
 
   return (
-    <li className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 overflow-hidden shadow-sm">
+    <li className="overflow-hidden rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 shadow-sm">
       <div className="flex items-center justify-between gap-3 px-3 py-2.5">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -313,7 +215,9 @@ function ProgramadoRow({
               {STATUS_LABEL[effective] ?? effective}
             </span>
             <span className="text-[10px] text-[var(--copilot-ink-muted)]">{obl.currencyCode}</span>
-            <span className="text-[10px] text-[var(--copilot-ink-muted)]">Vence: {obl.dueDate}</span>
+            <span className="text-[10px] text-[var(--copilot-ink-muted)]">
+              {TESORERIA_PAYMENT_FIELD.vencimiento}: {obl.dueDate}
+            </span>
           </div>
           <p className="mt-0.5 truncate text-xs font-medium text-[var(--copilot-ink)]">{obl.title}</p>
         </div>
@@ -350,33 +254,20 @@ function ProgramadoRow({
   );
 }
 
-// ─── Main export ───────────────────────────────────────────────────────────────
-
 export function TreasuryProgramadosPanel({
   workspace,
   asOfDate,
+  historialOnly = false,
 }: {
   workspace: TreasuryWorkspace;
   asOfDate: string;
+  historialOnly?: boolean;
 }) {
-  const { canWrite } = useCopilotPermissions();
-  const [showNew, setShowNew] = useState(false);
-  const [showPaid, setShowPaid] = useState(false);
+  const [showPaid, setShowPaid] = useState(true);
 
   const outflows = useMemo(
     () => workspace.obligations.filter((o) => o.direction === "outflow"),
     [workspace.obligations]
-  );
-
-  const pending = useMemo(
-    () =>
-      outflows
-        .filter((o) => {
-          const s = effectivePlannedObligationStatus(o.status, o.dueDate, asOfDate);
-          return s !== "paid" && s !== "cancelled";
-        })
-        .sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
-    [outflows, asOfDate]
   );
 
   const paid = useMemo(
@@ -393,29 +284,16 @@ export function TreasuryProgramadosPanel({
 
   const loading = workspace.loading && workspace.lastFetchedAt == null;
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">Pagos programados</h2>
-          <p className="text-xs text-[var(--copilot-ink-muted)]">
-            Pagos con fecha futura. No afectan caja hasta confirmarse como pagados.
-          </p>
-        </div>
-        {canWrite ? (
-          <button
-            type="button"
-            onClick={() => setShowNew((v) => !v)}
-            className="shrink-0 rounded-xl bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
-          >
-            + Nuevo
-          </button>
-        ) : null}
-      </div>
+  if (!historialOnly) {
+    return null;
+  }
 
-      {showNew ? (
-        <NewPaymentForm workspace={workspace} onClose={() => setShowNew(false)} />
-      ) : null}
+  return (
+    <section className="space-y-4">
+      <CopilotSectionTitle
+        title="Historial"
+        subtitle="Pagos pagados o cancelados recientes. No afectan la proyección de caja."
+      />
 
       {loading ? (
         <div className="space-y-2">
@@ -423,43 +301,31 @@ export function TreasuryProgramadosPanel({
             <div key={i} className="h-14 animate-pulse rounded-2xl bg-[rgba(44,40,37,0.07)]" />
           ))}
         </div>
+      ) : paid.length === 0 ? (
+        <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-4 py-6 text-center">
+          <p className="text-sm font-medium text-[var(--copilot-ink)]">Sin historial reciente</p>
+          <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
+            Los pagos confirmados o cancelados aparecerán acá.
+          </p>
+        </div>
       ) : (
         <>
-          {pending.length === 0 && !showNew ? (
-            <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-4 py-6 text-center">
-              <p className="text-sm font-medium text-[var(--copilot-ink)]">Sin pagos programados</p>
-              <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
-                Programá pagos futuros para verlos en la proyección de caja.
-              </p>
-            </div>
-          ) : (
+          <button
+            type="button"
+            onClick={() => setShowPaid((v) => !v)}
+            className="text-xs font-medium text-[var(--copilot-ink-muted)] hover:underline"
+          >
+            {showPaid ? "Ocultar" : "Ver"} historial ({paid.length})
+          </button>
+          {showPaid ? (
             <ul className="space-y-2">
-              {pending.map((o) => (
+              {paid.map((o) => (
                 <ProgramadoRow key={o.id} obl={o} workspace={workspace} asOfDate={asOfDate} />
               ))}
             </ul>
-          )}
-
-          {paid.length > 0 ? (
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowPaid((v) => !v)}
-                className="text-xs font-medium text-[var(--copilot-ink-muted)] hover:underline"
-              >
-                {showPaid ? "Ocultar" : "Ver"} historial ({paid.length})
-              </button>
-              {showPaid ? (
-                <ul className="mt-2 space-y-2">
-                  {paid.map((o) => (
-                    <ProgramadoRow key={o.id} obl={o} workspace={workspace} asOfDate={asOfDate} />
-                  ))}
-                </ul>
-              ) : null}
-            </div>
           ) : null}
         </>
       )}
-    </div>
+    </section>
   );
 }

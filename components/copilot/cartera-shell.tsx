@@ -27,6 +27,7 @@
  */
 
 import { useCallback, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { AlertOctagon, CalendarRange, Info, X } from "lucide-react";
 import { getCurrentMonthToTodayRange } from "@/lib/copilot-date-range-defaults";
@@ -59,6 +60,9 @@ function normalizeDateInput(value: string | null | undefined): string {
 }
 
 export function CarteraShell() {
+  const searchParams = useSearchParams();
+  const overdueFilter = searchParams.get("filter") === "overdue";
+
   const [periodStart, setPeriodStart] = useState<string | null>(null);
   const [periodEnd, setPeriodEnd] = useState<string | null>(null);
   const [draftStart, setDraftStart] = useState(
@@ -239,10 +243,14 @@ export function CarteraShell() {
                 id="explorador"
                 title="Explorador de deuda"
                 subtitle="Clientes con deuda activa al día de hoy · no limitado al rango seleccionado"
-                defaultOpen={false}
+                defaultOpen={overdueFilter}
                 variant="secondary"
               >
-                <ClientDebtExplorer report={report} selectedCurrency="all" />
+                <ClientDebtExplorer
+                  report={report}
+                  selectedCurrency="all"
+                  initialFilterChip={overdueFilter ? "overdue" : "all"}
+                />
               </CollapsibleSection>
             </CollapsibleSection>
 

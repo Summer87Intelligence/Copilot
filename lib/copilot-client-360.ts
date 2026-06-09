@@ -77,6 +77,8 @@ export type Client360Summary = {
   industry: string | null;
   phone: string | null;
   commercial: Client360CommercialBlock | null;
+  /** false cuando el cliente está inactivo (archivado). La ficha se muestra en modo lectura. */
+  is_active: boolean;
 };
 
 export type Client360InvoiceRow = {
@@ -319,7 +321,6 @@ export async function loadClientCompany360(
     .select("*")
     .eq("id", cid)
     .eq("workspace_company_id", wid)
-    .eq("is_active", true)
     .maybeSingle();
 
   if (cErr || !company) return null;
@@ -478,6 +479,7 @@ export async function loadClientCompany360(
     industry: str(crow.industry) || str(crow.sector) || null,
     phone: str(crow.Celular) || str(crow.Telefono) || null,
     commercial: parseCommercialBlock(crow.zeta_metadata),
+    is_active: crow.is_active !== false,
   };
 
   const cuenta: Client360AccountBlock = {

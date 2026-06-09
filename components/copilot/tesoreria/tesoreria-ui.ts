@@ -12,6 +12,18 @@ export const TESORERIA_TD_CLASS =
 
 export const TESORERIA_PAGE_SIZE = 10;
 
+/** Labels unificados — formularios Pagos próximos / recurrentes. */
+export const TESORERIA_FORM_LABEL_CLASS =
+  "mb-1 block text-sm font-medium text-[var(--copilot-ink)]";
+
+export const TESORERIA_PAYMENT_FIELD = {
+  concepto: "Concepto",
+  categoria: "Categoría",
+  moneda: "Moneda",
+  monto: "Monto",
+  vencimiento: "Vencimiento",
+} as const;
+
 export type TesoreriaSection =
   // Nuevas tabs principales (Fase 2)
   | "caja"

@@ -44,9 +44,16 @@ import {
 import { traceFromAttentionPrimary } from "@/lib/copilot-trace-meta";
 import { formatMoneyCurrency } from "@/lib/copilot-format-money";
 
-// TODO: snapshot amounts are mixed UYU+USD aggregates — pending currency-aware rendering
+/** Formatea montos de obligaciones fiscales (siempre UYU en Uruguay). */
+function formatObligationMoney(n: number): string {
+  if (!Number.isFinite(n)) return "—";
+  return formatMoneyCurrency(n, "UYU");
+}
+
+/** Formatea agregados mixtos UYU+USD sin símbolo de moneda (no se asume UYU). */
 function formatMoney(n: number): string {
-  return formatMoneyCurrency(n);
+  if (!Number.isFinite(n)) return "—";
+  return n.toLocaleString("es-UY", { maximumFractionDigits: 0 });
 }
 
 function formatRatio(r: number): string {
@@ -82,7 +89,7 @@ function buildPlanRecomendado(
       month: "short",
       year: "numeric",
     });
-    primero = `Confirmar monto y vencimiento de ${mapTaxTypeLabel(obligation.tax_type)} (${formatMoney(obligationAmount(obligation))}) y ejecutar el pago o acreditación antes del ${due}; registrar el resultado en Datos para que baje la alerta.`;
+    primero = `Confirmar monto y vencimiento de ${mapTaxTypeLabel(obligation.tax_type)} (${formatObligationMoney(obligationAmount(obligation))}) y ejecutar el pago o acreditación antes del ${due}; registrar el resultado en Datos para que baje la alerta.`;
     despues =
       steps[1] ??
       "Abrir respaldo documental y dejar evidencia alineada con lo informado a organismos.";

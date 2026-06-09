@@ -50,7 +50,7 @@ function formatInvoiceAmountWithCurrency(row: DataRow, v: unknown): string {
   if (n == null) return "—";
   const cur = readInvoiceCurrency(row);
   const formatted = n.toLocaleString("es-UY", { maximumFractionDigits: 2 });
-  return cur ? `${cur} ${formatted}` : formatted;
+  return cur ? `${cur} ${formatted}` : `${formatted} · sin moneda`;
 }
 
 function normalizeCollectionProbabilityToScale10(v: unknown): number | null {

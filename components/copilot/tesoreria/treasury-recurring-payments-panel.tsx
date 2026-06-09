@@ -13,6 +13,8 @@ import {
 import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
 import {
   TESORERIA_FIELD_CLASS,
+  TESORERIA_FORM_LABEL_CLASS,
+  TESORERIA_PAYMENT_FIELD,
   TESORERIA_TABLE_CLASS,
   TESORERIA_TD_CLASS,
   TESORERIA_TH_CLASS,
@@ -341,10 +343,10 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
         subtitle="Copilot genera pagos futuros automáticamente en cada período. Pausar suspende sin borrar historial."
         action={
           canWrite ? (
-            <CopilotPrimaryButton type="button" onClick={openCreate}>
+            <CopilotGhostButton type="button" onClick={openCreate}>
               <Plus className="mr-2 h-4 w-4" />
               Nuevo recurrente
-            </CopilotPrimaryButton>
+            </CopilotGhostButton>
           ) : null
         }
       />
@@ -358,7 +360,7 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
         <CopilotEmptyPanel
           title="Sin pagos recurrentes"
           paragraphs={[
-            "Creá reglas para suscripciones, servicios o sueldos. Cada vencimiento aparece en Pagos futuros sin duplicar.",
+            "Creá reglas para suscripciones, servicios o sueldos. Cada vencimiento aparece en Pagos próximos sin duplicar.",
           ]}
         />
       ) : (
@@ -366,7 +368,7 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
           <table className={TESORERIA_TABLE_CLASS}>
             <thead>
               <tr>
-                <th className={TESORERIA_TH_CLASS}>Nombre</th>
+                <th className={TESORERIA_TH_CLASS}>Concepto</th>
                 <th className={TESORERIA_TH_CLASS}>Categoría</th>
                 <th className={TESORERIA_TH_CLASS}>Monto</th>
                 <th className={TESORERIA_TH_CLASS}>Frecuencia</th>
@@ -677,19 +679,19 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
               </p>
             </div>
             <div className="flex-1 space-y-3 overflow-auto p-4">
-              <label className="block text-xs">
-                Nombre
+              <label className="block text-sm">
+                <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.concepto}</span>
                 <input
-                  className={`${TESORERIA_FIELD_CLASS} mt-1`}
+                  className={TESORERIA_FIELD_CLASS}
                   value={form.title}
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                   placeholder="Netflix"
                 />
               </label>
-              <label className="block text-xs">
-                Tipo
+              <label className="block text-sm">
+                <span className={TESORERIA_FORM_LABEL_CLASS}>Tipo</span>
                 <select
-                  className={`${TESORERIA_FIELD_CLASS} mt-1`}
+                  className={TESORERIA_FIELD_CLASS}
                   value={form.direction}
                   onChange={(e) =>
                     setForm((f) => ({
@@ -702,10 +704,10 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
                   <option value="income">Ingreso</option>
                 </select>
               </label>
-              <label className="block text-xs">
-                Categoría
+              <label className="block text-sm">
+                <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.categoria}</span>
                 <select
-                  className={`${TESORERIA_FIELD_CLASS} mt-1`}
+                  className={TESORERIA_FIELD_CLASS}
                   value={form.category}
                   onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
                 >
@@ -717,10 +719,10 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
                 </select>
               </label>
               <div className="grid grid-cols-2 gap-2">
-                <label className="block text-xs">
-                  Moneda
+                <label className="block text-sm">
+                  <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.moneda}</span>
                   <select
-                    className={`${TESORERIA_FIELD_CLASS} mt-1`}
+                    className={TESORERIA_FIELD_CLASS}
                     value={form.currency}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, currency: e.target.value as "UYU" | "USD" }))
@@ -730,10 +732,10 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
                     <option value="USD">USD</option>
                   </select>
                 </label>
-                <label className="block text-xs">
-                  Monto
+                <label className="block text-sm">
+                  <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.monto}</span>
                   <input
-                    className={`${TESORERIA_FIELD_CLASS} mt-1`}
+                    className={TESORERIA_FIELD_CLASS}
                     value={form.amount}
                     onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
                   />
