@@ -20,6 +20,7 @@ import {
   snapshotRiskBand,
 } from "@/lib/copilot-financial-snapshot-selectors";
 import { buildCurrencyIndex } from "@/lib/copilot-cartera-cards-source";
+import { resolveCanonicalActiveDebt } from "@/lib/financial/canonical-debt-metrics";
 import type { ClientPortfolioRow } from "@/lib/copilot-clients-portfolio";
 import type { HoyPeriodRange } from "@/lib/copilot-hoy-period";
 import {
@@ -251,6 +252,11 @@ export type BusinessPulseInput = {
   periodRange?: HoyPeriodRange;
   /** `report.currencies` de reconciliación `mode=period_only`. */
   periodReportCurrencies?: unknown;
+  /**
+   * `report.currencies` de reconciliación `mode=all_outstanding`.
+   * Fuente canónica de deuda activa total (pendingAtCutoff) — mismo rollup que Cartera/Dashboard.
+   */
+  outstandingReportCurrencies?: unknown;
   /** Movimientos manuales para ingresos/egresos del período. */
   manualCashMovements?: readonly ManualCashMovement[];
   /**
@@ -1146,11 +1152,11 @@ export function buildTodayBusinessPulse(input: BusinessPulseInput): TodayBusines
   const riskBand: string = input.snapshot ? snapshotRiskBand(input.snapshot) : "low";
   const isTruncated = input.snapshot ? snapshotIsTruncated(input.snapshot) : false;
 
-  // Portfolio totals per currency (nunca se suman UYU + USD)
-  const totalDebtUYU = rows.reduce((s, r) => s + (r.debt_uyu ?? 0), 0);
-  const totalDebtUSD = rows.reduce((s, r) => s + (r.debt_usd ?? 0), 0);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const debtBreakdown = buildBreakdown(totalDebtUYU, totalDebtUSD);
+  // Portfolio totals per currency — rollup canónico si hay reporte all_outstanding
+  const portfolioPending = resolveCanonicalActiveDebt({
+    outstandingReportCurrencies: input.outstandingReportCurrencies,
+    portfolioRows: rows,
+  });
 
   // Portfolio counts
   const highRiskClients = rows.filter((r) => r.risk === "Alto");
@@ -1171,10 +1177,6 @@ export function buildTodayBusinessPulse(input: BusinessPulseInput): TodayBusines
     overdueCount: overdueSignalCount,
   });
 
-  const portfolioPending: CarteraCurrencyTotals = {
-    UYU: totalDebtUYU,
-    USD: totalDebtUSD,
-  };
   const aging = extractAgingTotals(undefined, input.carteraAgingOverdue);
   const agingCurrent = input.carteraAgingCurrent ?? aging.current;
 

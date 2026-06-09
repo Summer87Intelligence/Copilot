@@ -42,7 +42,7 @@ function sumBuckets(
 }
 
 /**
- * Deuda vencida según Aging de Cartera: suma 31–60 + 61–90 + +90 días.
+ * Deuda vencida según Aging de Cartera: suma 31–60 + 61–90 + +90 días (>30d).
  * Mismo criterio que `legacy_overdue_total` en `buildAgingComparativeDiagnostics`.
  */
 export function sumCarteraAgingOverdue(
@@ -51,6 +51,16 @@ export function sumCarteraAgingOverdue(
   return {
     UYU: sumBuckets(agingByCurrency.UYU, CARTERA_AGING_OVERDUE_RANGES),
     USD: sumBuckets(agingByCurrency.USD, CARTERA_AGING_OVERDUE_RANGES),
+  };
+}
+
+/** Deuda vencida total: due_date < hoy (incluye mora 1–30 días). Fuente: portfolio.overdue_uyu/usd. */
+export function sumPortfolioOverdueDebt(
+  rows: readonly { overdue_uyu?: number; overdue_usd?: number }[]
+): CarteraCurrencyTotals {
+  return {
+    UYU: round2(rows.reduce((s, r) => s + (r.overdue_uyu ?? 0), 0)),
+    USD: round2(rows.reduce((s, r) => s + (r.overdue_usd ?? 0), 0)),
   };
 }
 

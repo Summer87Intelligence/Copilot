@@ -627,7 +627,8 @@ describe("buildTodayBusinessPulse", () => {
       expect(pulse.allDebtorRows.length).toBe(12);
       expect(pulse.clientCounts.debtorClients).toBe(12);
       expect(pulse.clientCounts.debtorRows).toBe(12);
-      expect(HOY_UI.initialDebtorTableRows).toBe(10);
+      expect(HOY_UI.defaultDebtorPageSize).toBe(25);
+      expect(HOY_UI.debtorPageSizeOptions).toEqual([25, 50, 100]);
     });
 
     it("debtorClients y attentionClients son conceptos distintos", () => {
@@ -749,6 +750,23 @@ describe("buildTodayBusinessPulse", () => {
       ];
       const pulse = buildTodayBusinessPulse({ snapshot: null, portfolioRows: rows, gate: GATE_HIGH });
       expect(blockFor(pulse, "UYU")?.pendingCurrent?.amount).toBe(150_000);
+    });
+
+    it("pendiente UYU usa pendingAtCutoff canónico cuando hay outstandingReportCurrencies", () => {
+      const rows = [
+        makeRow({ company_id: "c1", debt_uyu: 473_587, debt_usd: 0, total_debt: 473_587 }),
+      ];
+      const pulse = buildTodayBusinessPulse({
+        snapshot: null,
+        portfolioRows: rows,
+        gate: GATE_HIGH,
+        outstandingReportCurrencies: [
+          { currencyCode: "UYU", pendingAtCutoff: 1_079_497 },
+          { currencyCode: "USD", pendingAtCutoff: 11_792 },
+        ],
+      });
+      const uyu = pulse.currentStateBlocks.find((b) => b.currency === "UYU");
+      expect(uyu?.pendingReceivables).toBe(1_079_497);
     });
 
     it("pendiente USD en bloque = Σ debt_usd portfolio", () => {
@@ -940,13 +958,14 @@ describe("buildTodayBusinessPulse", () => {
       expect(CURRENCY_METRIC_LABELS.pending).toBe("Por cobrar");
       expect(CURRENCY_METRIC_LABELS.overdue30).toBe("Saldo vencido >30 días");
       expect(CURRENCY_METRIC_LABELS.billed).not.toMatch(/bruto/i);
-      expect(HOY_COPY.debtorsSectionTitle).toBe("Clientes con deuda");
+      expect(HOY_COPY.debtorsSectionTitle).toBe("Clientes con deuda activa");
       expect(HOY_COPY.debtorsSectionTitle.toLowerCase()).not.toContain("prioritario");
       expect(HOY_PAGE.title).toBe("Copilot · Hoy");
       expect(HOY_PAGE.title).not.toMatch(/pulso/i);
       expect(HOY_UI.showRecommendedActions).toBe(false);
       expect(HOY_UI.showPendingSection).toBe(false);
-      expect(HOY_UI.initialDebtorTableRows).toBe(10);
+      expect(HOY_UI.defaultDebtorPageSize).toBe(25);
+      expect(HOY_UI.debtorPageSizeOptions).toEqual([25, 50, 100]);
     });
 
     it("cobrado mayor que facturado: nota explicativa, no error", () => {

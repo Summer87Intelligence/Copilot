@@ -5,8 +5,8 @@ export const HOY_UI = {
   showFinancialSituation: false,
   showPendingSection: false,
   showRecommendedActions: false,
-  initialDebtorTableRows: 10,
-  debtorPageStep: 10,
+  debtorPageSizeOptions: [25, 50, 100] as const,
+  defaultDebtorPageSize: 25,
 } as const;
 
 export const HOY_PAGE = {
@@ -80,9 +80,10 @@ export const HOY_COPY = {
   periodManualExpenseLabel: "Egresos manuales",
   periodOperatingResultLabel: "Liquidez operativa",
   periodOperatingResultTip: "Cobrado + ingresos manuales − egresos manuales en el período.",
-  debtorsSectionTitle: "Clientes con deuda",
-  debtorsSectionSubtitle: "Todos los clientes con saldo pendiente, separados por moneda.",
-  debtorsSectionRiskSubtitle: "Clientes con saldo pendiente sincronizado desde Zeta. Los vencidos aparecen primero.",
+  debtorsSectionTitle: "Clientes con deuda activa",
+  debtorsSectionSubtitle:
+    "Todos los clientes con saldo pendiente, separados por moneda. Los totales superiores son la deuda activa total del negocio.",
+  debtorsSectionRiskSubtitle: "Clientes con saldo pendiente sincronizado desde Zeta. Ordenados por antigüedad de mora.",
   /** Tooltip columna "Deuda total" en la tabla de deudores. */
   debtTotalTip: "Saldo pendiente activo del cliente en esta moneda.",
   /** Tooltip columna "Deuda vencida". */

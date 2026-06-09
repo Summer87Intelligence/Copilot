@@ -81,6 +81,7 @@ export type ClientPortfolioInvoice = {
   currency_code?: string | null;
   /** proto_invoices.category — used to detect shadow `Zeta / saldos pendientes` rows. */
   category?: string | null;
+  zeta_metadata?: unknown;
 };
 
 export type ClientPortfolioReceipt = {
@@ -657,6 +658,7 @@ export async function getClientPortfolio(
         category: (inv as { category?: unknown }).category != null
           ? String((inv as { category?: unknown }).category)
           : null,
+        zeta_metadata: (inv as { zeta_metadata?: unknown }).zeta_metadata,
       }));
 
     const recOut: ClientPortfolioReceipt[] = [...recs]

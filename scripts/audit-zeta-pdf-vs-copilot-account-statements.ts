@@ -52,6 +52,32 @@ const AMOUNT_TOL = 0.02;
 const PERIOD_FROM = "2026-01-01";
 const PERIOD_TO = "2026-12-31";
 
+// ---------------------------------------------------------------------------
+// PDF export timestamp (para detección SNAPSHOT_STALE)
+// ---------------------------------------------------------------------------
+
+/**
+ * Parsea el timestamp de exportación desde el nombre del archivo PDF.
+ * Formato esperado: ...YYYY-MM-DD-HH-mm-ss-NONCE.pdf
+ * Zona horaria: Uruguay UTC-3.
+ */
+function parsePdfExportTimestamp(pdfPath: string): Date | null {
+  const m = pdfPath.match(/(\d{4}-\d{2}-\d{2})-(\d{2})-(\d{2})-(\d{2})-\d+\.pdf/);
+  if (!m) return null;
+  const [, date, hh, mm, ss] = m;
+  // UY = UTC-3
+  return new Date(`${date}T${hh}:${mm}:${ss}-03:00`);
+}
+
+/** Timestamp del PDF más reciente entre todos los definidos en ZETA_PDFS (corte de frescura). */
+function computePdfCutoff(pdfs: Array<{ path: string }>): Date {
+  const ts = pdfs
+    .map((p) => parsePdfExportTimestamp(p.path))
+    .filter((d): d is Date => d !== null);
+  if (ts.length === 0) return new Date(0);
+  return new Date(Math.max(...ts.map((d) => d.getTime())));
+}
+
 const ZETA_PDFS = [
   {
     path: "audits/zeta/250218923-U1-EstadosCuentaClientes-2026-06-07-20-41-38-11888.pdf",
@@ -78,7 +104,8 @@ const PRIORITY_FRAGMENTS = [
   "DOLBY",
 ];
 
-type AuditStatus = ZetaPdfParityAuditStatus;
+/** Extensión local del status — añade SNAPSHOT_STALE y REAL_DIFF al contrato del clasificador. */
+type AuditStatus = ZetaPdfParityAuditStatus | "SNAPSHOT_STALE" | "REAL_DIFF";
 
 type MovementRef = {
   date: string;
@@ -138,6 +165,7 @@ type AuditRow = {
   missingReceipts: string;
   extraReceipts: string;
   recommendedAction: string;
+  snapshotStaleReason: string;
 };
 
 function loadEnvLocal() {
@@ -281,6 +309,395 @@ function compareMovements(
   return empty;
 }
 
+/**
+ * Excluye facturas/NC "extra" que también figuran como missing con el mismo
+ * comprobante (p. ej. redondeo A1230 D=458 vs D=457.5). Solo deben evaluarse
+ * para SNAPSHOT_STALE los comprobantes realmente nuevos en Copilot.
+ */
+function filterSnapshotStaleExtraInvoices(
+  extraInvoices: string[],
+  missingInvoices: string[]
+): string[] {
+  const missingNumbers = new Set(
+    missingInvoices
+      .map(parseExtraInvoiceDisplayNumber)
+      .filter((n): n is string => n != null)
+  );
+  return extraInvoices.filter((line) => {
+    const num = parseExtraInvoiceDisplayNumber(line);
+    if (!num) return true;
+    return !missingNumbers.has(num);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// SNAPSHOT_STALE reclassification
+// ---------------------------------------------------------------------------
+
+const DEBUG_SNAPSHOT_STALE =
+  process.env.DEBUG_SNAPSHOT_STALE === "1" ||
+  process.env.DEBUG_SNAPSHOT_STALE === "true";
+
+function snapshotStaleDebug(codigo: string, msg: string, payload?: unknown) {
+  if (!DEBUG_SNAPSHOT_STALE) return;
+  console.log(`[SNAPSHOT_STALE debug cod=${codigo}] ${msg}`);
+  if (payload !== undefined) console.log(JSON.stringify(payload, null, 2));
+}
+
+/** Normaliza referencia visible del recibo: A-781 → A781; rechaza ZETA:COB:*. */
+function normalizeReceiptDisplayRef(raw: string): string | null {
+  const s = raw.trim().toUpperCase();
+  if (!s || s.includes(":")) return null;
+  return s.replace(/^([A-Z]+)-(\d+)$/, "$1$2");
+}
+
+/** Variantes para lookup en proto_receipts.reference. */
+function referenceLookupVariants(displayRef: string): string[] {
+  const n = displayRef.trim().toUpperCase();
+  if (n.includes(":")) return [n];
+  const m = n.match(/^([A-Z]+)(\d+)$/);
+  if (m) return [n, `${m[1]}-${m[2]}`];
+  return [n];
+}
+
+function parseExtraReceiptDisplayNumber(extraLine: string): string | null {
+  const m = extraLine.match(/\s+([A-Za-z0-9:_-]+)\s+H=/);
+  if (!m?.[1]) return null;
+  const raw = m[1].trim().toUpperCase();
+  if (raw.includes(":")) return raw;
+  return normalizeReceiptDisplayRef(raw) ?? raw;
+}
+
+/** Parsea "2026-06-08 A393 D=0 NC" → A393 */
+function parseExtraInvoiceDisplayNumber(extraLine: string): string | null {
+  const m = extraLine.match(/\s+([A-Za-z0-9:_-]+)\s+D=/);
+  if (!m?.[1]) return null;
+  const raw = m[1].trim().toUpperCase();
+  if (raw.includes(":")) return raw;
+  return normalizeReceiptDisplayRef(raw) ?? raw;
+}
+
+function invoiceNumberSuffixPatterns(displayKey: string): string[] {
+  const n = displayKey.trim().toUpperCase();
+  if (n.includes(":")) return [n];
+  const m = n.match(/^([A-Z]+)(\d+)$/);
+  if (!m) return [n];
+  const [, serie, num] = m;
+  return [`%:${serie}:${num}`, `%:${num}`];
+}
+
+function readInvoiceCfeTipo(zetaMetadata: unknown): number | null {
+  if (!zetaMetadata || typeof zetaMetadata !== "object") return null;
+  const meta = zetaMetadata as Record<string, unknown>;
+  const ccv1 = meta["zeta_customer_voucher_v1"] as Record<string, unknown> | undefined;
+  const raw = ccv1?.cfe_tipo ?? (ccv1?.raw_payload as Record<string, unknown> | undefined)?.CFETipo;
+  if (raw == null) return null;
+  const n = typeof raw === "number" ? raw : parseInt(String(raw), 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+function isCreditNoteInvoice(zetaMetadata: unknown, extraLine: string): boolean {
+  if (/\bNC\b/i.test(extraLine)) return true;
+  const cfe = readInvoiceCfeTipo(zetaMetadata);
+  return cfe === 181 || cfe === 182 || cfe === 112;
+}
+
+function invoiceDisplayKeyFromRow(
+  invoiceNumber: string,
+  zetaMetadata: unknown
+): string | null {
+  const meta = zetaMetadata as Record<string, unknown> | null;
+  const ccv1 = meta?.["zeta_customer_voucher_v1"] as Record<string, unknown> | undefined;
+  const serie = String(ccv1?.serie ?? "").trim().toUpperCase();
+  const numero = String(ccv1?.numero ?? "").trim();
+  if (serie && numero) {
+    return normalizeReceiptDisplayRef(`${serie}${numero}`) ?? `${serie}${numero}`;
+  }
+  const tail = invoiceNumber.match(/:([A-Z]):(\d+)$/i);
+  if (tail) {
+    return normalizeReceiptDisplayRef(`${tail[1]}${tail[2]}`) ?? `${tail[1]}${tail[2]}`.toUpperCase();
+  }
+  return null;
+}
+
+type ExtraInvoiceLookup = {
+  displayKey: string;
+  syncedAt: Date | null;
+  invoiceNumber: string | null;
+  isCreditNote: boolean;
+  cfeTipo: number | null;
+  extraLine: string;
+};
+
+async function lookupExtraInvoicesOrCreditNotes(
+  extraLines: string[],
+  displayKeys: string[]
+): Promise<Map<string, ExtraInvoiceLookup>> {
+  const lineByKey = new Map<string, string>();
+  for (let i = 0; i < displayKeys.length; i++) {
+    lineByKey.set(displayKeys[i]!, extraLines[i] ?? "");
+  }
+
+  const result = new Map<string, ExtraInvoiceLookup>();
+  for (const key of displayKeys) {
+    result.set(key, {
+      displayKey: key,
+      syncedAt: null,
+      invoiceNumber: null,
+      isCreditNote: false,
+      cfeTipo: null,
+      extraLine: lineByKey.get(key) ?? "",
+    });
+  }
+
+  const orParts = new Set<string>();
+  for (const key of displayKeys) {
+    if (key.includes(":")) {
+      orParts.add(`invoice_number.eq.${key}`);
+    } else {
+      for (const pat of invoiceNumberSuffixPatterns(key)) {
+        orParts.add(`invoice_number.ilike.${pat}`);
+      }
+    }
+  }
+
+  if (orParts.size === 0) return result;
+
+  const { data, error } = await supabase
+    .from("proto_invoices")
+    .select("invoice_number, created_at, zeta_metadata")
+    .eq("workspace_company_id", workspaceId!)
+    .or([...orParts].join(","));
+
+  if (error || !data) return result;
+
+  for (const row of data) {
+    const invoiceNumber = String(row.invoice_number ?? "");
+    const syncedAt = new Date(String(row.created_at));
+    const displayKey = invoiceDisplayKeyFromRow(invoiceNumber, row.zeta_metadata);
+    if (!displayKey) continue;
+
+    const entry = result.get(displayKey);
+    if (!entry) continue;
+
+    entry.syncedAt = syncedAt;
+    entry.invoiceNumber = invoiceNumber;
+    entry.cfeTipo = readInvoiceCfeTipo(row.zeta_metadata);
+    entry.isCreditNote = isCreditNoteInvoice(row.zeta_metadata, entry.extraLine);
+  }
+
+  return result;
+}
+
+type ExtraReceiptLookup = {
+  displayKey: string;
+  syncedAt: Date | null;
+  receiptNumber: string | null;
+  reference: string | null;
+};
+
+async function lookupExtraReceipts(
+  displayKeys: string[]
+): Promise<Map<string, ExtraReceiptLookup>> {
+  const result = new Map<string, ExtraReceiptLookup>();
+  for (const key of displayKeys) {
+    result.set(key, {
+      displayKey: key,
+      syncedAt: null,
+      receiptNumber: null,
+      reference: null,
+    });
+  }
+
+  const zetaIds = displayKeys.filter((k) => k.includes(":"));
+  const refVariants = new Set<string>();
+  for (const key of displayKeys) {
+    if (!key.includes(":")) {
+      for (const v of referenceLookupVariants(key)) refVariants.add(v);
+    }
+  }
+
+  const orParts: string[] = [];
+  for (const z of zetaIds) orParts.push(`receipt_number.eq.${z}`);
+  for (const r of refVariants) orParts.push(`reference.eq.${r}`);
+
+  if (orParts.length === 0) return result;
+
+  const { data, error } = await supabase
+    .from("proto_receipts")
+    .select("receipt_number, reference, created_at")
+    .eq("workspace_company_id", workspaceId!)
+    .or(orParts.join(","));
+
+  if (error || !data) return result;
+
+  for (const row of data) {
+    const syncedAt = new Date(String(row.created_at));
+    const receiptNumber = String(row.receipt_number ?? "");
+    const reference = row.reference == null ? null : String(row.reference);
+
+    if (receiptNumber.includes(":")) {
+      const entry = result.get(receiptNumber);
+      if (entry) {
+        entry.syncedAt = syncedAt;
+        entry.receiptNumber = receiptNumber;
+        entry.reference = reference;
+      }
+    }
+
+    const refNorm = reference ? normalizeReceiptDisplayRef(reference) : null;
+    if (refNorm) {
+      const entry = result.get(refNorm);
+      if (entry) {
+        entry.syncedAt = syncedAt;
+        entry.receiptNumber = receiptNumber;
+        entry.reference = reference;
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Para rows DIFF_* con movimientos extra en Copilot (recibos y/o facturas/NC),
+ * verifica si todos fueron sincronizados DESPUÉS del PDF export cutoff.
+ */
+async function reclassifyIfSnapshotStale(
+  codigo: string,
+  initialStatus: ZetaPdfParityAuditStatus,
+  extraReceiptStrings: string[],
+  extraInvoiceStrings: string[],
+  pdfCutoff: Date
+): Promise<{ newStatus: "SNAPSHOT_STALE" | "REAL_DIFF"; reason: string } | null> {
+  const DIFF_STATUSES: ZetaPdfParityAuditStatus[] = [
+    "DIFF_HABER",
+    "DIFF_FINAL",
+    "DIFF_DEBE",
+  ];
+  if (!DIFF_STATUSES.includes(initialStatus)) return null;
+  if (extraReceiptStrings.length === 0 && extraInvoiceStrings.length === 0) return null;
+
+  const receiptKeys = extraReceiptStrings
+    .map(parseExtraReceiptDisplayNumber)
+    .filter((n): n is string => n != null);
+  const invoiceKeys = extraInvoiceStrings
+    .map(parseExtraInvoiceDisplayNumber)
+    .filter((n): n is string => n != null);
+
+  snapshotStaleDebug(codigo, "initialStatus", initialStatus);
+  snapshotStaleDebug(codigo, "extraReceipts", extraReceiptStrings);
+  snapshotStaleDebug(codigo, "extraInvoices", extraInvoiceStrings);
+  snapshotStaleDebug(codigo, "receiptKeys parsed", receiptKeys);
+  snapshotStaleDebug(codigo, "invoiceKeys parsed", invoiceKeys);
+  snapshotStaleDebug(codigo, "pdfCutoff", pdfCutoff.toISOString());
+
+  const expectedReceipts = extraReceiptStrings.length;
+  const expectedInvoices = extraInvoiceStrings.length;
+  if (receiptKeys.length !== expectedReceipts || invoiceKeys.length !== expectedInvoices) {
+    snapshotStaleDebug(codigo, "abort: unparsable extra movement lines");
+    return {
+      newStatus: "REAL_DIFF",
+      reason: "Movimientos extra sin comprobante parseable en diff",
+    };
+  }
+
+  const [receiptLookups, invoiceLookups] = await Promise.all([
+    receiptKeys.length > 0 ? lookupExtraReceipts(receiptKeys) : Promise.resolve(new Map()),
+    invoiceKeys.length > 0
+      ? lookupExtraInvoicesOrCreditNotes(extraInvoiceStrings, invoiceKeys)
+      : Promise.resolve(new Map()),
+  ]);
+
+  snapshotStaleDebug(
+    codigo,
+    "proto_receipts query result",
+    Object.fromEntries(
+      [...receiptLookups.entries()].map(([k, v]) => [
+        k,
+        {
+          syncedAt: v.syncedAt?.toISOString() ?? null,
+          receiptNumber: v.receiptNumber,
+          reference: v.reference,
+        },
+      ])
+    )
+  );
+  snapshotStaleDebug(
+    codigo,
+    "proto_invoices query result",
+    Object.fromEntries(
+      [...invoiceLookups.entries()].map(([k, v]) => [
+        k,
+        {
+          syncedAt: v.syncedAt?.toISOString() ?? null,
+          invoiceNumber: v.invoiceNumber,
+          isCreditNote: v.isCreditNote,
+          cfeTipo: v.cfeTipo,
+        },
+      ])
+    )
+  );
+
+  type ExtraSyncRef = { label: string; syncedAt: Date | null };
+
+  const extras: ExtraSyncRef[] = [
+    ...receiptKeys.map((key) => {
+      const row = receiptLookups.get(key);
+      return {
+        label: row?.reference ?? key,
+        syncedAt: row?.syncedAt ?? null,
+      };
+    }),
+    ...invoiceKeys.map((key) => {
+      const row = invoiceLookups.get(key);
+      const kind = row?.isCreditNote ? "NC" : "factura";
+      return {
+        label: `${key} (${kind})`,
+        syncedAt: row?.syncedAt ?? null,
+      };
+    }),
+  ];
+
+  const unresolved = extras.filter((e) => e.syncedAt == null).map((e) => e.label);
+  if (unresolved.length > 0) {
+    snapshotStaleDebug(codigo, "abort: unresolved in DB", unresolved);
+    return {
+      newStatus: "REAL_DIFF",
+      reason: `Movimientos extra no encontrados en DB: ${unresolved.join("; ")}`,
+    };
+  }
+
+  const beforePdf = extras.filter((e) => e.syncedAt! <= pdfCutoff).map((e) => e.label);
+  if (beforePdf.length > 0) {
+    snapshotStaleDebug(codigo, "→ REAL_DIFF (synced before PDF)", beforePdf);
+    return {
+      newStatus: "REAL_DIFF",
+      reason: `Movimientos no explicados por edad del PDF: ${beforePdf.join("; ")}`,
+    };
+  }
+
+  const receiptDetails = receiptKeys.map((key) => {
+    const row = receiptLookups.get(key)!;
+    return `recibo ${row.reference ?? key} (${row.receiptNumber}) synced ${row.syncedAt!.toISOString().slice(0, 16)}`;
+  });
+  const invoiceDetails = invoiceKeys.map((key) => {
+    const row = invoiceLookups.get(key)!;
+    const kind = row.isCreditNote ? "NC" : "factura";
+    if (row.isCreditNote) {
+      return `NC ${key} (${row.invoiceNumber}) synced ${row.syncedAt!.toISOString().slice(0, 16)} — Copilot contiene comprobante posterior al PDF; snapshot PDF desactualizado`;
+    }
+    return `${kind} ${key} (${row.invoiceNumber}) synced ${row.syncedAt!.toISOString().slice(0, 16)}`;
+  });
+
+  const details = [...receiptDetails, ...invoiceDetails].join("; ");
+  snapshotStaleDebug(codigo, "→ SNAPSHOT_STALE", details);
+  return {
+    newStatus: "SNAPSHOT_STALE",
+    reason: `PDF exportado ${pdfCutoff.toISOString().slice(0, 16)}Z — movimientos nuevos: ${details}`,
+  };
+}
+
 function suggestedOpening(zeta: ZetaPdfClientStatement): number | null {
   if (zeta.openingBalance == null) return null;
   return zeta.openingBalance;
@@ -293,7 +710,7 @@ function buildRecommendedAction(
   diff: MovementDiff,
   dbOpening: number | null
 ): string {
-  if (status === "OK" || status === "ROUNDING_OK") return "none";
+  if (status === "OK" || status === "ROUNDING_OK" || status === "SNAPSHOT_STALE") return "none";
   if (status === "CLIENT_NOT_FOUND") return "crear/vincular proto_company por Codigo Zeta";
   if (status === "PARSE_WARNING") return "revisar parse PDF Zeta";
 
@@ -383,7 +800,7 @@ async function buildCopilotSnapshot(
 function classify(
   zeta: ZetaPdfClientStatement,
   copilot: CopilotSnapshot | null
-): AuditStatus {
+): ZetaPdfParityAuditStatus {
   if (!copilot) return classifyZetaPdfParity(zeta, null);
   return classifyZetaPdfParity(zeta, {
     opening: copilot.opening,
@@ -481,6 +898,7 @@ function toCsvRow(row: AuditRow): string {
     row.recommendedAction,
     row.parseWarnings,
     row.notes,
+    row.snapshotStaleReason,
   ]
     .map(csvEscape)
     .join(",");
@@ -502,11 +920,16 @@ function printClientResult(label: string, rows: AuditRow[]) {
   );
 }
 
+const PASS_STATUSES: AuditStatus[] = ["OK", "ROUNDING_OK", "SNAPSHOT_STALE"];
+
 async function main() {
   console.log("=".repeat(72));
   console.log("AUDITORÍA PDF ZETA vs COPILOT — Estado de cuenta ledger");
   console.log(`Período: ${PERIOD_FROM} .. ${PERIOD_TO}`);
   console.log("=".repeat(72));
+
+  const pdfCutoff = computePdfCutoff(ZETA_PDFS);
+  console.log(`\nPDF export cutoff: ${pdfCutoff.toISOString()} (timestamp más reciente de los PDFs)`);
 
   const companiesByCodigo = await fetchCompaniesByCodigo();
   const zetaClients: ZetaPdfClientStatement[] = [];
@@ -539,11 +962,26 @@ async function main() {
       }
     }
 
-    const status = classify(zeta, copilot);
+    const initialStatus = classify(zeta, copilot);
     const notes = buildNotes(zeta, copilot);
     const movDiff = compareMovements(zeta, copilot);
     const dbOpening =
       zeta.currency === "UYU" ? (company?.obUyu ?? null) : (company?.obUsd ?? null);
+
+    // Reclassify DIFF_* → SNAPSHOT_STALE or REAL_DIFF
+    const staleExtraInvoices = filterSnapshotStaleExtraInvoices(
+      movDiff.extraInvoices,
+      movDiff.missingInvoices
+    );
+    const reclass = await reclassifyIfSnapshotStale(
+      zeta.codigo,
+      initialStatus,
+      movDiff.extraReceipts,
+      staleExtraInvoices,
+      pdfCutoff
+    );
+    const status: AuditStatus = reclass?.newStatus ?? initialStatus;
+    const snapshotStaleReason = reclass?.reason ?? "";
 
     auditRows.push({
       status,
@@ -575,6 +1013,7 @@ async function main() {
       recommendedAction: buildRecommendedAction(status, zeta, copilot, movDiff, dbOpening),
       parseWarnings: zeta.parseWarnings.join("|"),
       notes,
+      snapshotStaleReason,
     });
   }
 
@@ -590,11 +1029,12 @@ async function main() {
   mkdirSync(outDir, { recursive: true });
   const outPath = resolve(outDir, "zeta-pdf-vs-copilot-account-statements.csv");
   const header =
-    "status,currency,codigo_zeta,zeta_name,copilot_name,zeta_opening,copilot_opening,zeta_debe,copilot_debe,zeta_haber,copilot_haber,zeta_final,copilot_final,zeta_movements,copilot_movements,zeta_cfe,copilot_cfe,zeta_receipts,copilot_receipts,expected_opening_zeta,current_ledger_opening_db,suggested_ledger_opening,missing_invoices,extra_invoices,missing_receipts,extra_receipts,recommended_action,parse_warnings,notes";
+    "status,currency,codigo_zeta,zeta_name,copilot_name,zeta_opening,copilot_opening,zeta_debe,copilot_debe,zeta_haber,copilot_haber,zeta_final,copilot_final,zeta_movements,copilot_movements,zeta_cfe,copilot_cfe,zeta_receipts,copilot_receipts,expected_opening_zeta,current_ledger_opening_db,suggested_ledger_opening,missing_invoices,extra_invoices,missing_receipts,extra_receipts,recommended_action,parse_warnings,notes,snapshot_stale_reason";
   writeFileSync(outPath, [header, ...auditRows.map(toCsvRow)].join("\n") + "\n", "utf8");
 
-  const okCount = auditRows.filter((r) => r.status === "OK" || r.status === "ROUNDING_OK").length;
-  const diffRows = auditRows.filter((r) => r.status !== "OK" && r.status !== "ROUNDING_OK");
+  const passRows = auditRows.filter((r) => PASS_STATUSES.includes(r.status));
+  const staleRows = auditRows.filter((r) => r.status === "SNAPSHOT_STALE");
+  const realDiffRows = auditRows.filter((r) => !PASS_STATUSES.includes(r.status));
 
   console.log("\n" + "=".repeat(72));
   console.log("RESUMEN");
@@ -602,8 +1042,9 @@ async function main() {
   console.log(`Clientes parseados UYU: ${uyuCount}`);
   console.log(`Clientes parseados USD: ${usdCount}`);
   console.log(`Total filas: ${auditRows.length}`);
-  console.log(`OK: ${okCount}`);
-  console.log(`Con diferencias / warnings: ${diffRows.length}`);
+  console.log(`✅ PASS (OK + ROUNDING_OK + SNAPSHOT_STALE): ${passRows.length}`);
+  console.log(`📸 SNAPSHOT_STALE (documentado, no bloquea): ${staleRows.length}`);
+  console.log(`❌ REAL_DIFF (requiere acción): ${realDiffRows.length}`);
 
   const byStatus = new Map<string, number>();
   for (const r of auditRows) {
@@ -614,14 +1055,24 @@ async function main() {
     console.log(`  ${st}: ${n}`);
   }
 
-  console.log("\nTop diferencias (no OK):");
-  for (const r of diffRows.slice(0, 15)) {
-    console.log(
-      `  [${r.status}] ${r.currency} ${r.codigo} ${r.zetaName}` +
-        ` | zeta ${fmt(r.zetaOpening)}/${fmt(r.zetaDebe)}/${fmt(r.zetaHaber)}/${fmt(r.zetaFinal)}` +
-        ` vs copilot ${fmt(r.copilotOpening)}/${fmt(r.copilotDebe)}/${fmt(r.copilotHaber)}/${fmt(r.copilotFinal)}` +
-        (r.notes ? ` (${r.notes})` : "")
-    );
+  if (staleRows.length > 0) {
+    console.log("\nSNAPSHOT_STALE (Copilot más actualizado que el PDF):");
+    for (const r of staleRows) {
+      console.log(`  [SNAPSHOT_STALE] ${r.currency} ${r.codigo} ${r.zetaName}`);
+      console.log(`    ${r.snapshotStaleReason}`);
+    }
+  }
+
+  if (realDiffRows.length > 0) {
+    console.log("\nREAL_DIFF (diferencias reales no explicadas por frescura del PDF):");
+    for (const r of realDiffRows.slice(0, 15)) {
+      console.log(
+        `  [${r.status}] ${r.currency} ${r.codigo} ${r.zetaName}` +
+          ` | zeta ${fmt(r.zetaOpening)}/${fmt(r.zetaDebe)}/${fmt(r.zetaHaber)}/${fmt(r.zetaFinal)}` +
+          ` vs copilot ${fmt(r.copilotOpening)}/${fmt(r.copilotDebe)}/${fmt(r.copilotHaber)}/${fmt(r.copilotFinal)}` +
+          (r.notes ? ` (${r.notes})` : "")
+      );
+    }
   }
 
   console.log("\nClientes prioritarios:");
@@ -636,6 +1087,15 @@ async function main() {
 
   console.log(`\nCSV: ${outPath}`);
   console.log("\n(No commit / no push — auditoría read-only)");
+
+  if (realDiffRows.length > 0) {
+    console.log(`\n❌ Gate FAIL — ${realDiffRows.length} REAL_DIFF requieren corrección.`);
+    process.exit(1);
+  } else {
+    const staleNote = staleRows.length > 0 ? `${staleRows.length} SNAPSHOT_STALE documentados, ` : "";
+    console.log(`\n✅ Gate PASS — ${staleNote}sin REAL_DIFF.`);
+    process.exit(0);
+  }
 }
 
 main().catch((err) => {

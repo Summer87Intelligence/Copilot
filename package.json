@@ -29,7 +29,9 @@
     "audit:zeta-contract": "node --env-file=.env.local --import tsx scripts/audit-zeta-api-contract-drift.ts",
     "audit:zeta-sync-health": "node --env-file=.env.local --import tsx scripts/audit-zeta-current-sync-health.ts",
     "audit:copilot-system-consistency": "node --env-file=.env.local --import tsx scripts/audit-copilot-system-consistency.ts",
-    "audit:dashboard-summary-consistency": "node --env-file=.env.local --import tsx scripts/audit-dashboard-summary-consistency.ts"
+    "audit:dashboard-summary-consistency": "node --env-file=.env.local --import tsx scripts/audit-dashboard-summary-consistency.ts",
+    "audit:debt-rollup-consistency": "node --env-file=.env.local --import tsx scripts/audit-debt-rollup-consistency.ts",
+    "audit:treasury-hoy-dashboard": "node --env-file=.env.local --import tsx scripts/audit-treasury-hoy-dashboard-consistency.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",

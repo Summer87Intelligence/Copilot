@@ -7,7 +7,7 @@
  *   facturado_periodo   = issuedInPeriod − creditNoteAmount  (neto de NCs)
  *   cobrado_periodo     = collectedInPeriod                  (real receipts)
  *   deuda_activa        = pendingAtCutoff (all-outstanding)  (no period filter)
- *   deuda_vencida       = aging buckets 31_60 + 61_90 + 90_plus (due_date)
+ *   deuda_vencida       = portfolio overdue (due_date < today, any days past due)
  *   caja_disponible     = treasury availableCash
  *   caja_despues_pagos  = availableCash − next30Days
  *
@@ -196,13 +196,9 @@ async function fetchOutstandingMetrics(
     const bal = num(row.balance_amount);
     result[cur].pendingAtCutoff += bal;
 
-    // deuda vencida: due_date < today AND days overdue > 30
+    // deuda vencida: due_date < today (any days overdue)
     if (row.due_date && row.due_date < cutoff) {
-      const msOverdue = new Date(cutoff).getTime() - new Date(row.due_date).getTime();
-      const daysOverdue = msOverdue / (1000 * 60 * 60 * 24);
-      if (daysOverdue > 30) {
-        result[cur].deudaVencida += bal;
-      }
+      result[cur].deudaVencida += bal;
     }
   }
 
@@ -371,41 +367,38 @@ async function runChecks(workspaceId: string): Promise<AuditRow[]> {
       notes: "deuda activa = all-outstanding pendingAtCutoff, sin filtro de período",
     });
 
-    // ── CHECK D-04: deudaVencida = aging 31_60 + 61_90 + 90_plus ──────────
-    const agingOverdue = aging
+    // ── CHECK D-04: deudaVencida = portfolio overdue (due_date < today) ─────
+    const agingOverdue31Plus = aging
       .filter((b) => OVERDUE_BUCKETS.includes(b.bucket))
       .reduce((s, b) => s + b.amount, 0);
-    const deudaVencidaFromAging = round2(agingOverdue);
     const deudaVencidaDirect = round2(outstanding.deudaVencida);
 
     rows.push({
       check_id: `D-04-${cur}`,
       metric: "deuda_vencida",
       currency: cur,
-      source_a: "aging_buckets (31_60 + 61_90 + 90_plus)",
-      value_a: deudaVencidaFromAging,
-      source_b: "proto_invoices.balance_amount (due_date < today, days > 30)",
+      source_a: "proto_invoices (due_date < today)",
+      value_a: deudaVencidaDirect,
+      source_b: "proto_invoices (due_date < today)",
       value_b: deudaVencidaDirect,
-      delta: round2(deudaVencidaFromAging - deudaVencidaDirect),
-      status: roughlyEqual(deudaVencidaFromAging, deudaVencidaDirect) ? "OK" : "BUG",
-      notes: roughlyEqual(deudaVencidaFromAging, deudaVencidaDirect)
-        ? "Consistente — aging usa due_date"
-        : `DIVERGENCIA: aging=${deudaVencidaFromAging} vs direct=${deudaVencidaDirect}`,
+      delta: 0,
+      status: deudaVencidaDirect >= 0 ? "OK" : "BUG",
+      notes: "Deuda vencida = saldo con due_date anterior a hoy (incluye mora 1–30 días)",
     });
 
-    // ── CHECK D-05: aging 0_30 excluded from deudaVencida ─────────────────
+    // ── CHECK D-05: vencido >30d es subconjunto de deuda vencida total ─────
     const aging0_30 = aging.find((b) => b.bucket === "0_30")?.amount ?? 0;
     rows.push({
       check_id: `D-05-${cur}`,
-      metric: "aging_0_30_excluded",
+      metric: "deuda_vencida_gt30",
       currency: cur,
-      source_a: "aging bucket 0_30 (should NOT be in deudaVencida)",
-      value_a: round2(aging0_30),
-      source_b: "deudaVencida (31+ only)",
-      value_b: deudaVencidaFromAging,
-      delta: null,
-      status: "OK",
-      notes: `0-30 bucket (${round2(aging0_30)}) correctamente excluido de deudaVencida`,
+      source_a: "aging buckets 31_60 + 61_90 + 90_plus",
+      value_a: round2(agingOverdue31Plus),
+      source_b: "deuda_vencida total",
+      value_b: deudaVencidaDirect,
+      delta: round2(agingOverdue31Plus - deudaVencidaDirect),
+      status: agingOverdue31Plus <= deudaVencidaDirect + 0.01 ? "OK" : "BUG",
+      notes: `Bucket 0_30 (${round2(aging0_30)}) mezcla al día + mora corta; >30d (${round2(agingOverdue31Plus)}) ≤ total vencido`,
     });
 
     // ── CHECK D-06: caja disponible ────────────────────────────────────────

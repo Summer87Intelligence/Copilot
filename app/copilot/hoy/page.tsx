@@ -23,8 +23,10 @@ import type { CarteraCurrencyTotals } from "@/lib/copilot-cartera-aging-totals";
 import { toRutasGateMeta } from "@/lib/copilot-rutas-gate";
 import { HOY_PAGE } from "@/lib/copilot-hoy-ui-contract";
 import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
+import { parseTreasuryCashPositionJson } from "@/lib/treasury/treasury-api-parse";
 import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
 import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
+import { parseTreasuryScheduledSummaryJson } from "@/lib/treasury/treasury-api-parse";
 
 const DEFAULT_GATE: BusinessPulseGate = {
   confidence: "low",
@@ -57,6 +59,7 @@ export default function CopilotHoyPage() {
   const [carteraCollectedToDate, setCarteraCollectedToDate] = useState<
     CarteraCurrencyTotals | undefined
   >(undefined);
+  const [outstandingReportCurrencies, setOutstandingReportCurrencies] = useState<unknown>(undefined);
   const [carteraAgingCurrent, setCarteraAgingCurrent] = useState<
     CarteraCurrencyTotals | undefined
   >(undefined);
@@ -152,10 +155,12 @@ export default function CopilotHoyPage() {
         setCarteraCollectedToDate(
           carteraCollectedToDateFromReport(reconCurrentJson.report.currencies)
         );
+        setOutstandingReportCurrencies(reconCurrentJson.report.currencies);
       } else {
         setCarteraAgingOverdue(undefined);
         setCarteraAgingCurrent(undefined);
         setCarteraCollectedToDate(undefined);
+        setOutstandingReportCurrencies(undefined);
       }
     } else {
       devWarn("cartera-current-recon", reconCurrentResult.reason);
@@ -163,6 +168,7 @@ export default function CopilotHoyPage() {
       setCarteraAgingOverdue(undefined);
       setCarteraAgingCurrent(undefined);
       setCarteraCollectedToDate(undefined);
+      setOutstandingReportCurrencies(undefined);
     }
 
     // ── Cartera — actividad del período ─────────────────────────────────────
@@ -184,12 +190,9 @@ export default function CopilotHoyPage() {
 
     // ── Tesorería — pagos programados ───────────────────────────────────────
     if (treasuryResult.status === "fulfilled") {
-      const treasuryJson = (await treasuryResult.value.json().catch(() => null)) as {
-        ok?: boolean;
-        data?: { summary?: TreasuryOutflowSummary[] };
-      } | null;
-      if (treasuryResult.value.ok && treasuryJson?.ok && treasuryJson.data?.summary) {
-        setTreasuryOutflowSummaries(treasuryJson.data.summary);
+      const treasuryJson = await treasuryResult.value.json().catch(() => null);
+      if (treasuryResult.value.ok) {
+        setTreasuryOutflowSummaries(parseTreasuryScheduledSummaryJson(treasuryJson));
       } else {
         setTreasuryOutflowSummaries([]);
       }
@@ -201,12 +204,9 @@ export default function CopilotHoyPage() {
 
     // ── Tesorería — posición de caja ────────────────────────────────────────
     if (cashResult.status === "fulfilled") {
-      const cashJson = (await cashResult.value.json().catch(() => null)) as {
-        ok?: boolean;
-        data?: { positions?: CashPositionByCurrency[] };
-      } | null;
-      if (cashResult.value.ok && cashJson?.ok && cashJson.data?.positions) {
-        setTreasuryCashPositions(cashJson.data.positions);
+      const cashJson = await cashResult.value.json().catch(() => null);
+      if (cashResult.value.ok) {
+        setTreasuryCashPositions(parseTreasuryCashPositionJson(cashJson));
       } else {
         setTreasuryCashPositions([]);
       }
@@ -273,6 +273,7 @@ export default function CopilotHoyPage() {
         carteraAgingOverdue={carteraAgingOverdue}
         carteraAgingCurrent={carteraAgingCurrent}
         carteraCollectedToDate={carteraCollectedToDate}
+        outstandingReportCurrencies={outstandingReportCurrencies}
         periodReportCurrencies={periodReportCurrencies}
         manualCashMovements={manualCashMovements}
         confirmedPeriod={confirmedPeriod}

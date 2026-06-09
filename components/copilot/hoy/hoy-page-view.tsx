@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { RefreshCw, XCircle } from "lucide-react";
 
@@ -9,9 +8,9 @@ import { CopilotCard } from "@/components/copilot/copilot-ui";
 import type { ClientCompanyDetail, ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import type { FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
 import type { CarteraCurrencyTotals } from "@/lib/copilot-cartera-aging-totals";
+import { resolveCanonicalActiveDebt, resolveCanonicalOverdueDebt } from "@/lib/financial/canonical-debt-metrics";
 import {
   buildCockpitView,
-  sortDebtorRowsForCockpit,
   topDebtorRowsPerCurrency,
 } from "@/lib/copilot-hoy-cockpit-view";
 import type { HoyPeriodRange } from "@/lib/copilot-hoy-period";
@@ -62,6 +61,7 @@ type HoyPageViewProps = {
   carteraAgingOverdue?: CarteraCurrencyTotals;
   carteraAgingCurrent?: CarteraCurrencyTotals;
   carteraCollectedToDate?: CarteraCurrencyTotals;
+  outstandingReportCurrencies?: unknown;
   periodReportCurrencies: unknown;
   manualCashMovements: readonly ManualCashMovement[];
   confirmedPeriod: HoyPeriodRange;
@@ -150,6 +150,7 @@ export function HoyPageView({
   carteraAgingOverdue,
   carteraAgingCurrent,
   carteraCollectedToDate,
+  outstandingReportCurrencies,
   periodReportCurrencies,
   manualCashMovements,
   confirmedPeriod,
@@ -189,6 +190,7 @@ export function HoyPageView({
         carteraAgingOverdue,
         carteraAgingCurrent,
         carteraCollectedToDate,
+        outstandingReportCurrencies,
         periodRange: confirmedPeriod,
         periodReportCurrencies,
         manualCashMovements,
@@ -203,6 +205,7 @@ export function HoyPageView({
       carteraAgingOverdue,
       carteraAgingCurrent,
       carteraCollectedToDate,
+      outstandingReportCurrencies,
       confirmedPeriod,
       periodReportCurrencies,
       manualCashMovements,
@@ -212,18 +215,23 @@ export function HoyPageView({
     ]
   );
 
+  const canonicalDebtTotals = useMemo(() => {
+    const rows = portfolioRows ?? [];
+    return {
+      active: resolveCanonicalActiveDebt({
+        outstandingReportCurrencies,
+        portfolioRows: rows,
+      }),
+      overdue: resolveCanonicalOverdueDebt({ portfolioRows: rows }),
+    };
+  }, [outstandingReportCurrencies, portfolioRows]);
+
   const cockpit = useMemo(
     () => buildCockpitView(pulse, carteraAgingOverdue),
     [pulse, carteraAgingOverdue]
   );
 
-  const sortedDebtorRows = useMemo(
-    () => sortDebtorRowsForCockpit(pulse.allDebtorRows),
-    [pulse.allDebtorRows]
-  );
-
-  // Todos los clientes con deuda activa, ordenados por riesgo (vencidos primero).
-  const riskDebtorRows = sortedDebtorRows;
+  const riskDebtorRows = pulse.allDebtorRows;
 
   const scrollToCriticalClients = () => {
     document.getElementById("clientes-criticos")?.scrollIntoView({
@@ -233,8 +241,8 @@ export function HoyPageView({
   };
 
   const topCriticalClients = useMemo(
-    () => topDebtorRowsPerCurrency(sortedDebtorRows, 5),
-    [sortedDebtorRows]
+    () => topDebtorRowsPerCurrency(pulse.allDebtorRows, 5),
+    [pulse.allDebtorRows]
   );
 
   const openAttentionDrawer = () => {
@@ -301,7 +309,7 @@ export function HoyPageView({
           <div className="flex flex-wrap items-center justify-between gap-1.5">
             <div>
               <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">
-                Clientes con deuda activa
+                {HOY_COPY.debtorsSectionTitle}
               </h2>
               <p className="text-xs text-[var(--copilot-ink-muted)]">
                 {HOY_COPY.debtorsSectionRiskSubtitle}
@@ -335,6 +343,7 @@ export function HoyPageView({
                 allRows={riskDebtorRows}
                 highlightRisk
                 portfolioDetails={portfolioDetails}
+                canonicalTotals={canonicalDebtTotals}
               />
             ) : (
               <p className="py-4 text-center text-sm text-[var(--copilot-ink-muted)]">
@@ -342,17 +351,6 @@ export function HoyPageView({
               </p>
             )}
           </div>
-
-          <p className="mt-3 text-[11px] text-[var(--copilot-ink-muted)]">
-            Clientes con deuda activa, priorizando vencidos.{" "}
-            <Link
-              href="/copilot/cartera"
-              className="font-semibold text-[var(--copilot-accent)] hover:underline"
-            >
-              {HOY_COPY.debtorsViewAllCartera}
-            </Link>{" "}
-            para ver todos los deudores.
-          </p>
         </CopilotCard>
 
         <HoyAdvancedDetail expanded={advancedExpanded} onExpandedChange={setAdvancedExpanded}>

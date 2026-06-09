@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  extractActiveDebtClientRows,
   extractClientStates,
   extractDashboardCurrencyData,
   extractMonthlyPoint,
   extractRecentMovements,
   extractTopBilling,
+  extractTopBillingForCurrency,
   extractTopDebtors,
+  extractTopDebtorsForCurrency,
   getLastNMonthRanges,
+  getMonthRangesForPeriod,
   determineDashboardState,
 } from "./copilot-dashboard-summary";
 import type { ClientPortfolioRow } from "./copilot-clients-portfolio";
@@ -205,7 +209,26 @@ describe("extractDashboardCurrencyData", () => {
     expect(uyu?.deudaActiva).toBe(9000);
   });
 
-  it("deuda vencida es la suma de buckets 31_60 + 61_90 + 90_plus (due_date)", () => {
+  it("deuda vencida usa portfolio overdue (due_date < hoy), incluye mora 1-30d", () => {
+    const outstanding = makeReport({
+      pendingUYU: 1000,
+      agingUYU: [100, 200, 300, 400],
+    });
+    const portfolioRows: ClientPortfolioRow[] = [
+      makePortfolioRow({ overdue_uyu: 40928, debt_uyu: 50000 }),
+    ];
+    const out = extractDashboardCurrencyData({
+      periodReport: null,
+      outstandingReport: outstanding,
+      cashPositions: [],
+      outflowSummaries: [],
+      portfolioRows,
+    });
+    const uyu = out.find((d) => d.currency === "UYU");
+    expect(uyu?.deudaVencida).toBe(40928);
+  });
+
+  it("deuda vencida fallback aging 31+ sin portfolio", () => {
     const outstanding = makeReport({
       pendingUYU: 1000,
       agingUYU: [100, 200, 300, 400],
@@ -217,7 +240,6 @@ describe("extractDashboardCurrencyData", () => {
       outflowSummaries: [],
     });
     const uyu = out.find((d) => d.currency === "UYU");
-    // 200 + 300 + 400 = 900 (excluye bucket 0_30)
     expect(uyu?.deudaVencida).toBe(900);
   });
 
@@ -400,6 +422,65 @@ describe("extractRecentMovements", () => {
     const movements = extractRecentMovements(details, "2026-06-01", "2026-06-08");
     expect(movements).toHaveLength(0);
   });
+
+  it("incluye notas de crédito como haber", () => {
+    const details = {
+      c1: {
+        company_name: "Gamma",
+        invoices: [
+          {
+            id: "nc1",
+            invoice_number: "NC-001",
+            issue_date: "2026-06-03",
+            total_amount: 200,
+            balance_amount: 0,
+            currency_code: "UYU",
+            zeta_metadata: { zeta_customer_voucher_v1: { cfe_tipo: 102 } },
+          },
+        ],
+        receipts: [],
+      },
+    };
+    const movements = extractRecentMovements(details, "2026-06-01", "2026-06-08");
+    expect(movements).toHaveLength(1);
+    expect(movements[0]?.type).toBe("nota_credito");
+    expect(movements[0]?.amount).toBe(200);
+  });
+});
+
+describe("extractActiveDebtClientRows", () => {
+  it("expone una fila por moneda con deuda", () => {
+    const rows: ClientPortfolioRow[] = [
+      makePortfolioRow({ company_id: "c1", name: "Multi", debt_uyu: 1000, debt_usd: 500 }),
+    ];
+    const result = extractActiveDebtClientRows(rows);
+    expect(result).toHaveLength(2);
+    expect(result.map((r) => r.currency)).toEqual(["UYU", "USD"]);
+  });
+});
+
+describe("extractTopDebtorsForCurrency", () => {
+  it("ordena por deuda de la moneda sin mezclar", () => {
+    const rows: ClientPortfolioRow[] = [
+      makePortfolioRow({ company_id: "c1", name: "A", debt_uyu: 100, debt_usd: 900 }),
+      makePortfolioRow({ company_id: "c2", name: "B", debt_uyu: 500, debt_usd: 50 }),
+    ];
+    const uyu = extractTopDebtorsForCurrency(rows, "UYU", 10);
+    const usd = extractTopDebtorsForCurrency(rows, "USD", 10);
+    expect(uyu.map((r) => r.name)).toEqual(["B", "A"]);
+    expect(usd.map((r) => r.name)).toEqual(["A", "B"]);
+  });
+});
+
+describe("extractTopBillingForCurrency", () => {
+  it("ordena facturación histórica por moneda", () => {
+    const rows: ClientPortfolioRow[] = [
+      makePortfolioRow({ company_id: "c1", name: "A", billing_uyu: 100, billing_usd: 900 }),
+      makePortfolioRow({ company_id: "c2", name: "B", billing_uyu: 500, billing_usd: 50 }),
+    ];
+    const uyu = extractTopBillingForCurrency(rows, "UYU", 10);
+    expect(uyu[0]?.name).toBe("B");
+  });
 });
 
 describe("getLastNMonthRanges", () => {
@@ -422,6 +503,47 @@ describe("getLastNMonthRanges", () => {
     const ranges = getLastNMonthRanges("2026-06-08", 1);
     expect(ranges[0].from).toBe("2026-05-01");
     expect(ranges[0].to).toBe("2026-05-31");
+  });
+});
+
+describe("getMonthRangesForPeriod", () => {
+  it("genera 7 buckets jun..dic para 01/06/2026..31/12/2026", () => {
+    const ranges = getMonthRangesForPeriod("2026-06-01", "2026-12-31");
+    expect(ranges).toHaveLength(7);
+    expect(ranges.map((r) => r.yearMonth)).toEqual([
+      "2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12",
+    ]);
+  });
+
+  it("datos de junio quedan en jun (monthLabel correcto)", () => {
+    const ranges = getMonthRangesForPeriod("2026-06-01", "2026-12-31");
+    const labels = ranges.map((r) => extractMonthlyPoint(null, r.yearMonth).monthLabel);
+    expect(labels).toEqual(["jun", "jul", "ago", "sep", "oct", "nov", "dic"]);
+  });
+
+  it("rango de un mes genera un bucket", () => {
+    const ranges = getMonthRangesForPeriod("2026-06-01", "2026-06-30");
+    expect(ranges).toHaveLength(1);
+    expect(ranges[0]!.yearMonth).toBe("2026-06");
+    expect(ranges[0]!.from).toBe("2026-06-01");
+    expect(ranges[0]!.to).toBe("2026-06-30");
+  });
+
+  it("respeta maxMonths", () => {
+    const ranges = getMonthRangesForPeriod("2026-01-01", "2030-12-31", 6);
+    expect(ranges).toHaveLength(6);
+  });
+
+  it("maneja cruce de año", () => {
+    const ranges = getMonthRangesForPeriod("2025-11-01", "2026-02-28");
+    expect(ranges.map((r) => r.yearMonth)).toEqual([
+      "2025-11", "2025-12", "2026-01", "2026-02",
+    ]);
+  });
+
+  it("el from de cada mes es siempre el día 01", () => {
+    const ranges = getMonthRangesForPeriod("2026-03-01", "2026-05-31");
+    expect(ranges.every((r) => r.from.endsWith("-01"))).toBe(true);
   });
 });
 

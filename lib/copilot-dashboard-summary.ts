@@ -8,7 +8,7 @@
  *  - facturado_periodo   → CurrencyReconciliation.issuedInPeriod − creditNoteAmount
  *  - cobrado_periodo     → CurrencyReconciliation.collectedInPeriod (real receipts)
  *  - deuda_activa        → outstanding CurrencyReconciliation.pendingAtCutoff
- *  - deuda_vencida       → aging buckets 31_60 + 61_90 + 90_plus (due_date based)
+ *  - deuda_vencida       → portfolio overdue (due_date < today) o aging 31+ fallback
  *  - caja_disponible     → CashPositionByCurrency.availableCash
  *  - caja_despues_pagos  → availableCash − TreasuryOutflowSummary.next30Days
  */
@@ -21,8 +21,10 @@ import type {
   ReconciliationCurrencyCode,
 } from "./copilot-financial-reconciliation";
 import type { ClientPortfolioRow } from "./copilot-clients-portfolio";
+import { sumPortfolioOverdueDebt } from "./copilot-cartera-aging-totals";
 import type { CashPositionByCurrency } from "./treasury/treasury-cash-position";
 import type { TreasuryOutflowSummary } from "./treasury/treasury-scheduled-payments";
+import { isCreditNoteFromMetadata } from "./copilot-zeta-credit-note";
 
 // ---------------------------------------------------------------------------
 // Output types
@@ -38,6 +40,18 @@ export type DashboardCurrencyData = {
   aging: { label: string; amount: number; range: AgingRange }[];
   cajaDisponible: number;
   cajaDespPagos: number;
+};
+
+export type DashboardActiveDebtRow = {
+  rowId: string;
+  companyId: string;
+  name: string;
+  currency: "UYU" | "USD";
+  activeDebt: number;
+  overdueDebt: number;
+  overdueDays: number | null;
+  status: string;
+  risk: string;
 };
 
 export type DashboardTopDebtor = {
@@ -80,7 +94,7 @@ export type DashboardState = "ok" | "attention" | "critical";
 
 export type DashboardRecentMovement = {
   date: string;
-  type: "factura" | "recibo";
+  type: "factura" | "recibo" | "nota_credito";
   clientName: string;
   companyId: string;
   reference: string;
@@ -102,6 +116,14 @@ const AGING_LABELS: Record<AgingRange, string> = {
 
 const OVERDUE_RANGES: AgingRange[] = ["31_60", "61_90", "90_plus"];
 
+function overdueFromAging31Plus(buckets: AgingBucket[]): number {
+  return r2(
+    buckets
+      .filter((b) => OVERDUE_RANGES.includes(b.range as AgingRange))
+      .reduce((s, b) => s + b.amount, 0)
+  );
+}
+
 const MONTH_LABELS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
 function r2(n: number): number {
@@ -121,12 +143,18 @@ export function extractDashboardCurrencyData({
   outstandingReport,
   cashPositions,
   outflowSummaries,
+  portfolioRows,
 }: {
   periodReport: FinancialConsistencyReport | null;
   outstandingReport: FinancialConsistencyReport | null;
   cashPositions: CashPositionByCurrency[];
   outflowSummaries: TreasuryOutflowSummary[];
+  portfolioRows?: readonly ClientPortfolioRow[];
 }): DashboardCurrencyData[] {
+  const portfolioOverdue =
+    portfolioRows && portfolioRows.length > 0
+      ? sumPortfolioOverdueDebt(portfolioRows)
+      : null;
   const codes: ReconciliationCurrencyCode[] = ["UYU", "USD"];
   return codes
     .map((cur): DashboardCurrencyData => {
@@ -158,12 +186,11 @@ export function extractDashboardCurrencyData({
       // deuda_activa = all-outstanding pendingAtCutoff
       const deudaActiva = r2(outstanding?.pendingAtCutoff ?? 0);
 
-      // deuda_vencida = aging 31+ (uses due_date)
-      const deudaVencida = r2(
-        agingBuckets
-          .filter((b) => OVERDUE_RANGES.includes(b.range as AgingRange))
-          .reduce((s, b) => s + b.amount, 0)
-      );
+      // deuda_vencida = due_date < hoy (portfolio); fallback aging 31+
+      const deudaVencida =
+        portfolioOverdue != null
+          ? r2(portfolioOverdue[cur])
+          : overdueFromAging31Plus(agingBuckets);
 
       const cajaDisponible = r2(cash?.availableCash ?? 0);
       const cajaDespPagos = outflow
@@ -189,6 +216,103 @@ export function extractDashboardCurrencyData({
     .filter(
       (d) => d.facturado > 0 || d.deudaActiva > 0 || d.cajaDisponible !== 0
     );
+}
+
+function activeDebtSortRank(row: DashboardActiveDebtRow): number {
+  if (row.overdueDebt <= 0) return 5;
+  const days = row.overdueDays ?? 0;
+  if (days > 90) return 1;
+  if (days > 60) return 2;
+  if (days > 30) return 3;
+  return 4;
+}
+
+function activeDebtStatus(overdueDebt: number, risk: string): string {
+  if (risk === "Alto") return "Riesgo alto";
+  if (overdueDebt > 0) return "Vencido";
+  return "Al día";
+}
+
+export function extractActiveDebtClientRows(
+  rows: ClientPortfolioRow[]
+): DashboardActiveDebtRow[] {
+  const result: DashboardActiveDebtRow[] = [];
+  for (const r of rows) {
+    if (r.debt_uyu > 0) {
+      const overdueDebt = r.overdue_uyu ?? 0;
+      result.push({
+        rowId: `${r.company_id}|UYU`,
+        companyId: r.company_id,
+        name: r.name,
+        currency: "UYU",
+        activeDebt: r.debt_uyu,
+        overdueDebt,
+        overdueDays: r.overdue_days_uyu ?? null,
+        status: activeDebtStatus(overdueDebt, r.risk),
+        risk: r.risk,
+      });
+    }
+    if (r.debt_usd > 0) {
+      const overdueDebt = r.overdue_usd ?? 0;
+      result.push({
+        rowId: `${r.company_id}|USD`,
+        companyId: r.company_id,
+        name: r.name,
+        currency: "USD",
+        activeDebt: r.debt_usd,
+        overdueDebt,
+        overdueDays: r.overdue_days_usd ?? null,
+        status: activeDebtStatus(overdueDebt, r.risk),
+        risk: r.risk,
+      });
+    }
+  }
+  return result.sort((a, b) => {
+    const rankDiff = activeDebtSortRank(a) - activeDebtSortRank(b);
+    if (rankDiff !== 0) return rankDiff;
+    if (b.overdueDebt !== a.overdueDebt) return b.overdueDebt - a.overdueDebt;
+    if (b.activeDebt !== a.activeDebt) return b.activeDebt - a.activeDebt;
+    if (a.currency !== b.currency) return a.currency === "UYU" ? -1 : 1;
+    return a.name.localeCompare(b.name, "es");
+  });
+}
+
+export function extractTopDebtorsForCurrency(
+  rows: ClientPortfolioRow[],
+  currency: "UYU" | "USD",
+  limit = 10
+): { companyId: string; name: string; value: number }[] {
+  return rows
+    .filter((r) => (currency === "UYU" ? r.debt_uyu : r.debt_usd) > 0)
+    .sort((a, b) =>
+      currency === "UYU" ? b.debt_uyu - a.debt_uyu : b.debt_usd - a.debt_usd
+    )
+    .slice(0, limit)
+    .map((r) => ({
+      companyId: r.company_id,
+      name: r.name,
+      value: currency === "UYU" ? r.debt_uyu : r.debt_usd,
+    }));
+}
+
+export function extractTopBillingForCurrency(
+  rows: ClientPortfolioRow[],
+  currency: "UYU" | "USD",
+  limit = 10
+): { companyId: string; name: string; value: number }[] {
+  return rows
+    .filter((r) => ((currency === "UYU" ? r.billing_uyu : r.billing_usd) ?? 0) > 0)
+    .sort((a, b) =>
+      currency === "UYU"
+        ? (b.billing_uyu ?? 0) - (a.billing_uyu ?? 0)
+        : (b.billing_usd ?? 0) - (a.billing_usd ?? 0)
+    )
+    .slice(0, limit)
+    .map((r) => ({
+      companyId: r.company_id,
+      name: r.name,
+      value: currency === "UYU" ? (r.billing_uyu ?? 0) : (r.billing_usd ?? 0),
+    }));
 }
 
 export function extractTopDebtors(
@@ -316,6 +440,7 @@ export function extractRecentMovements(
         total_amount: number;
         balance_amount: number;
         currency_code?: string | null;
+        zeta_metadata?: unknown;
       }[];
       receipts: {
         id: string;
@@ -327,17 +452,34 @@ export function extractRecentMovements(
   >,
   periodFrom: string,
   periodTo: string,
-  limit = 20
+  limit?: number
 ): DashboardRecentMovement[] {
   const movements: DashboardRecentMovement[] = [];
 
   for (const [companyId, detail] of Object.entries(details)) {
     for (const inv of detail.invoices) {
-      if (
-        inv.issue_date >= periodFrom &&
-        inv.issue_date <= periodTo &&
-        inv.total_amount > 0
-      ) {
+      if (inv.issue_date < periodFrom || inv.issue_date > periodTo) continue;
+
+      const isCreditNote =
+        inv.zeta_metadata != null && isCreditNoteFromMetadata(inv.zeta_metadata);
+      if (isCreditNote) {
+        const amount = Math.abs(inv.total_amount);
+        if (amount > 0) {
+          movements.push({
+            date: inv.issue_date,
+            type: "nota_credito",
+            clientName: detail.company_name,
+            companyId,
+            reference: inv.invoice_number,
+            currency: inv.currency_code ?? "?",
+            amount,
+            balance: 0,
+          });
+        }
+        continue;
+      }
+
+      if (inv.total_amount > 0) {
         movements.push({
           date: inv.issue_date,
           type: "factura",
@@ -370,9 +512,41 @@ export function extractRecentMovements(
     }
   }
 
-  return movements
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, limit);
+  const sorted = movements.sort((a, b) => b.date.localeCompare(a.date));
+  return limit != null ? sorted.slice(0, limit) : sorted;
+}
+
+/**
+ * Generate month ranges for a given period [from..to].
+ * Returns one bucket per calendar month, capped at maxMonths.
+ * Used for period-aligned monthly trend charts.
+ */
+export function getMonthRangesForPeriod(
+  from: string,
+  to: string,
+  maxMonths = 12
+): { from: string; to: string; yearMonth: string }[] {
+  const result: { from: string; to: string; yearMonth: string }[] = [];
+  const [fromYearStr, fromMonthStr] = from.split("-");
+  const [toYearStr, toMonthStr] = to.split("-");
+  let y = parseInt(fromYearStr!, 10);
+  let m = parseInt(fromMonthStr!, 10);
+  const toY = parseInt(toYearStr!, 10);
+  const toM = parseInt(toMonthStr!, 10);
+
+  while (result.length < maxMonths) {
+    const mm = String(m).padStart(2, "0");
+    const lastDay = new Date(y, m, 0).getDate();
+    result.push({
+      from: `${y}-${mm}-01`,
+      to: `${y}-${mm}-${String(lastDay).padStart(2, "0")}`,
+      yearMonth: `${y}-${mm}`,
+    });
+    if (y === toY && m === toM) break;
+    m++;
+    if (m > 12) { m = 1; y++; }
+  }
+  return result;
 }
 
 /**

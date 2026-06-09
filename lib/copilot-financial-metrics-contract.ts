@@ -40,7 +40,7 @@ export type MetricId = (typeof METRIC_ID)[keyof typeof METRIC_ID];
 // ---------------------------------------------------------------------------
 
 export const METRIC_LABEL: Record<MetricId, string> = {
-  deuda_activa: "Clientes por cobrar",
+  deuda_activa: "Por cobrar total",
   deuda_vencida: "Deuda vencida",
   deuda_periodo: "Por cobrar al cierre del período",
   facturado_periodo: "Facturado del período",
@@ -54,7 +54,7 @@ export const METRIC_LABEL: Record<MetricId, string> = {
 /** Labels visibles permitidos — cada módulo puede usar alias siempre que no
  *  sean confusos con otra métrica canónica. */
 export const METRIC_ALIASES: Record<MetricId, readonly string[]> = {
-  deuda_activa: ["Clientes por cobrar", "Deuda total", "Saldo pendiente activo"],
+  deuda_activa: ["Por cobrar total", "Clientes por cobrar", "Deuda total", "Saldo pendiente activo"],
   deuda_vencida: [
     "Deuda vencida",
     "Saldo vencido >30 días",
@@ -141,9 +141,9 @@ export const CANONICAL_METRICS: Record<MetricId, CanonicalMetricDef> = {
     id: "deuda_vencida",
     label: METRIC_LABEL.deuda_vencida,
     definition:
-      "Subset de deuda activa cuya fecha de vencimiento (due_date) ya pasó. Fuente primaria: aging Cartera (buckets 31–60 + 61–90 + 90+ días); secundaria: portfolio.overdue_uyu/overdue_usd.",
+      "Subset de deuda activa cuya fecha de vencimiento (due_date) ya pasó — incluye mora de 1 a 30 días y más. Fuente primaria: portfolio.overdue_uyu/overdue_usd (suma por factura vencida).",
     formula:
-      "sumCarteraAgingOverdue(agingByCurrency) — suma buckets 31_60 + 61_90 + 90_plus. Fallback: portfolio.overdue_uyu + portfolio.overdue_usd si aging no disponible.",
+      "sumPortfolioOverdueDebt(portfolioRows) — Σ balance_amount donde due_date < hoy. Métrica separada >30d: sumCarteraAgingOverdue (buckets 31_60 + 61_90 + 90_plus).",
     source: "cartera_aging",
     currency: "per_currency",
     scope: "current",

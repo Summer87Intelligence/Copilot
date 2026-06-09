@@ -7,7 +7,6 @@ import {
   ArrowRight,
   BarChart3,
   CheckCircle,
-  Download,
   Info,
   RefreshCw,
   TrendingDown,
@@ -22,23 +21,29 @@ import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
 import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
 import {
+  parseTreasuryCashPositionJson,
+  parseTreasuryScheduledSummaryJson,
+} from "@/lib/treasury/treasury-api-parse";
+import {
   determineDashboardState,
+  extractActiveDebtClientRows,
   extractClientStates,
   extractDashboardCurrencyData,
   extractMonthlyPoint,
   extractRecentMovements,
-  extractTopBilling,
-  extractTopDebtors,
-  getLastNMonthRanges,
+  extractTopBillingForCurrency,
+  extractTopDebtorsForCurrency,
+  getMonthRangesForPeriod,
+  type DashboardActiveDebtRow,
   type DashboardCurrencyData,
   type DashboardClientStates,
   type DashboardMonthlyPoint,
   type DashboardRecentMovement,
-  type DashboardTopBilling,
-  type DashboardTopDebtor,
   type DashboardState,
 } from "@/lib/copilot-dashboard-summary";
 import { METRIC_LABEL } from "@/lib/copilot-financial-metrics-contract";
+
+const TABLE_INITIAL_ROWS = 10;
 
 // ---------------------------------------------------------------------------
 // CSS helpers
@@ -88,7 +93,7 @@ type BarData = { label: string; uyu?: number; usd?: number };
 function VerticalBarChart({
   data,
   selectedCurrency,
-  height = 100,
+  height = 120,
   emptyText = "Sin datos",
 }: {
   data: BarData[];
@@ -108,7 +113,11 @@ function VerticalBarChart({
     );
   }
 
-  const barH = height - 18;
+  const valueH = 24;
+  const labelH = 14;
+  const barH = height - valueH - labelH;
+  const valueClass = `block w-full truncate text-center text-[9px] font-semibold leading-tight ${C.ink}`;
+
   return (
     <div className="flex items-end gap-0.5 overflow-hidden" style={{ height }}>
       {data.map((d, i) => {
@@ -120,6 +129,8 @@ function VerticalBarChart({
           selectedCurrency !== "UYU"
             ? Math.max(1, ((d.usd ?? 0) / maxVal) * barH)
             : 0;
+        const showUyu = selectedCurrency !== "USD" && (d.uyu ?? 0) > 0;
+        const showUsd = selectedCurrency !== "UYU" && (d.usd ?? 0) > 0;
         return (
           <div
             key={i}
@@ -128,24 +139,35 @@ function VerticalBarChart({
           >
             <div
               className="flex w-full items-end gap-px"
-              style={{ height: barH }}
+              style={{ height: valueH + barH }}
             >
-              {selectedCurrency !== "USD" && (d.uyu ?? 0) > 0 ? (
-                <div
-                  title={`UYU ${fmtCompact(d.uyu ?? 0)}`}
-                  className="flex-1 rounded-t bg-[var(--copilot-accent)] opacity-90"
-                  style={{ height: uyuH }}
-                />
+              {showUyu ? (
+                <div className="flex min-w-0 flex-1 flex-col items-center justify-end" style={{ height: valueH + barH }}>
+                  <span className={valueClass} aria-hidden={false}>
+                    {fmtCompact(d.uyu ?? 0, "UYU")}
+                  </span>
+                  <div
+                    className="mt-0.5 w-full rounded-t bg-[var(--copilot-accent)] opacity-90"
+                    style={{ height: uyuH }}
+                  />
+                </div>
               ) : null}
-              {selectedCurrency !== "UYU" && (d.usd ?? 0) > 0 ? (
-                <div
-                  title={`USD ${fmtCompact(d.usd ?? 0, "USD")}`}
-                  className="flex-1 rounded-t bg-blue-500 opacity-80"
-                  style={{ height: usdH }}
-                />
+              {showUsd ? (
+                <div className="flex min-w-0 flex-1 flex-col items-center justify-end" style={{ height: valueH + barH }}>
+                  <span className={valueClass} aria-hidden={false}>
+                    {fmtCompact(d.usd ?? 0, "USD")}
+                  </span>
+                  <div
+                    className="mt-0.5 w-full rounded-t bg-blue-500 opacity-80"
+                    style={{ height: usdH }}
+                  />
+                </div>
               ) : null}
-              {(d.uyu ?? 0) === 0 && (d.usd ?? 0) === 0 ? (
-                <div className="flex-1 rounded-t bg-[var(--copilot-border)]" style={{ height: 2 }} />
+              {!showUyu && !showUsd ? (
+                <div className="flex flex-1 flex-col justify-end" style={{ height: valueH + barH }}>
+                  <span className={`${valueClass} text-[var(--copilot-ink-muted)]`}>0</span>
+                  <div className="mt-0.5 w-full rounded-t bg-[var(--copilot-border)]" style={{ height: 2 }} />
+                </div>
               ) : null}
             </div>
             <p
@@ -166,13 +188,17 @@ function VerticalBarChart({
 
 function GroupedBarChart({
   groups,
-  height = 100,
+  height = 120,
 }: {
   groups: { label: string; a: number; b: number; aLabel: string; bLabel: string }[];
   height?: number;
 }) {
   const maxVal = Math.max(...groups.flatMap((g) => [g.a, g.b]), 1);
-  const barH = height - 18;
+  const valueH = 24;
+  const labelH = 14;
+  const barH = height - valueH - labelH;
+  const valueClass = `block w-full truncate text-center text-[9px] font-semibold leading-tight ${C.ink}`;
+
   return (
     <div className="flex items-end gap-1 overflow-hidden" style={{ height }}>
       {groups.map((g, i) => (
@@ -181,17 +207,21 @@ function GroupedBarChart({
           className="flex min-w-0 flex-1 flex-col items-center justify-end"
           style={{ height }}
         >
-          <div className="flex w-full items-end gap-0.5" style={{ height: barH }}>
-            <div
-              title={`${g.aLabel}: ${fmtCompact(g.a)}`}
-              className="flex-1 rounded-t bg-[var(--copilot-accent)] opacity-90"
-              style={{ height: Math.max(1, (g.a / maxVal) * barH) }}
-            />
-            <div
-              title={`${g.bLabel}: ${fmtCompact(g.b)}`}
-              className="flex-1 rounded-t bg-emerald-400"
-              style={{ height: Math.max(1, (g.b / maxVal) * barH) }}
-            />
+          <div className="flex w-full items-end gap-0.5" style={{ height: valueH + barH }}>
+            <div className="flex min-w-0 flex-1 flex-col items-center justify-end" style={{ height: valueH + barH }}>
+              <span className={valueClass}>{fmtCompact(g.a, g.label === "USD" ? "USD" : "UYU")}</span>
+              <div
+                className="mt-0.5 w-full rounded-t bg-[var(--copilot-accent)] opacity-90"
+                style={{ height: Math.max(1, (g.a / maxVal) * barH) }}
+              />
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col items-center justify-end" style={{ height: valueH + barH }}>
+              <span className={valueClass}>{fmtCompact(g.b, g.label === "USD" ? "USD" : "UYU")}</span>
+              <div
+                className="mt-0.5 w-full rounded-t bg-emerald-400"
+                style={{ height: Math.max(1, (g.b / maxVal) * barH) }}
+              />
+            </div>
           </div>
           <p className={`mt-0.5 truncate text-[9px] leading-tight ${C.muted}`}>
             {g.label}
@@ -210,10 +240,12 @@ function HorizontalBarChart({
   items,
   color = "var(--copilot-accent)",
   href,
+  currency = "UYU",
 }: {
   items: { label: string; value: number; id?: string }[];
   color?: string;
   href?: (id: string) => string;
+  currency?: "UYU" | "USD";
 }) {
   const maxVal = Math.max(...items.map((i) => i.value), 1);
   if (items.length === 0) {
@@ -228,14 +260,14 @@ function HorizontalBarChart({
             <p className={`w-24 shrink-0 truncate text-[10px] leading-tight ${C.muted}`} title={item.label}>
               {item.label}
             </p>
-            <div className="relative flex-1 h-3 rounded-full overflow-hidden bg-[var(--copilot-border)]">
+            <div className="relative flex-1 h-3.5 rounded-full overflow-hidden bg-[var(--copilot-border)]">
               <div
                 className="absolute inset-y-0 left-0 rounded-full"
                 style={{ width: `${pct}%`, backgroundColor: color }}
               />
             </div>
-            <p className={`w-14 shrink-0 text-right text-[10px] font-medium ${C.ink}`}>
-              {fmtCompact(item.value)}
+            <p className={`w-[4.5rem] shrink-0 text-right text-[10px] font-semibold tabular-nums ${C.ink}`}>
+              {fmtAmount(item.value, currency)}
             </p>
           </div>
         );
@@ -248,70 +280,6 @@ function HorizontalBarChart({
         }
         return <div key={i}>{inner}</div>;
       })}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Chart: Donut (SVG)
-// ---------------------------------------------------------------------------
-
-function DonutChart({
-  segments,
-  size = 72,
-}: {
-  segments: { label: string; value: number; color: string }[];
-  size?: number;
-}) {
-  const total = segments.reduce((s, seg) => s + seg.value, 0);
-  if (total === 0) {
-    return <p className={`py-4 text-center text-xs ${C.muted}`}>Sin datos</p>;
-  }
-  const R = size * 0.38;
-  const cx = size / 2;
-  const cy = size / 2;
-  const segAngles = segments.map((seg) => (seg.value / total) * 2 * Math.PI);
-  const paths = segments.map((seg, i) => {
-    const startAngle = segAngles.slice(0, i).reduce((s, a) => s + a, -Math.PI / 2);
-    const angle = segAngles[i]!;
-    const endAngle = startAngle + angle;
-    const x1 = cx + R * Math.cos(startAngle);
-    const y1 = cy + R * Math.sin(startAngle);
-    const x2 = cx + R * Math.cos(endAngle);
-    const y2 = cy + R * Math.sin(endAngle);
-    const large = angle > Math.PI ? 1 : 0;
-    return { d: `M ${cx} ${cy} L ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2} Z`, color: seg.color };
-  });
-
-  return (
-    <div className="flex items-center gap-4">
-      <svg
-        width={size}
-        height={size}
-        viewBox={`0 0 ${size} ${size}`}
-        className="shrink-0"
-      >
-        {paths.map((p, i) => (
-          <path key={i} d={p.d} fill={p.color} />
-        ))}
-        <circle cx={cx} cy={cy} r={R * 0.52} fill="var(--copilot-card-bg)" />
-      </svg>
-      <div className="min-w-0 flex-1 space-y-1">
-        {segments.map((seg, i) => (
-          <div key={i} className="flex items-center gap-1.5 min-w-0">
-            <div
-              className="h-2 w-2 shrink-0 rounded-full"
-              style={{ backgroundColor: seg.color }}
-            />
-            <p className={`min-w-0 truncate text-[10px] leading-tight ${C.muted}`}>
-              {seg.label}
-            </p>
-            <p className={`ml-auto shrink-0 text-[10px] font-semibold ${C.ink}`}>
-              {seg.value}
-            </p>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -573,10 +541,10 @@ function ExecutiveSummaryCard({
 
   const stateConfig = {
     ok: {
-      label: "OK",
+      label: "Estable",
       icon: <CheckCircle className="h-4 w-4" />,
       bg: "bg-emerald-50 border-emerald-200",
-      text: "text-emerald-800",
+      text: "text-emerald-900",
       badge: "bg-emerald-100 text-emerald-800",
     },
     attention: {
@@ -595,8 +563,15 @@ function ExecutiveSummaryCard({
     },
   }[state];
 
-  const totalVencida =
-    (uyu?.deudaVencida ?? 0) + (usd?.deudaVencida ?? 0);
+  const kpiRows = [
+    { label: "Facturado del período", uyuVal: uyu?.facturado, usdVal: usd?.facturado },
+    { label: "Cobrado del período",   uyuVal: uyu?.cobrado,   usdVal: usd?.cobrado },
+    { label: "Por cobrar",            uyuVal: uyu?.deudaActiva, usdVal: usd?.deudaActiva },
+    { label: "Vencido",               uyuVal: uyu?.deudaVencida, usdVal: usd?.deudaVencida, warn: true },
+    { label: "Caja disponible",       uyuVal: uyu?.cajaDisponible, usdVal: usd?.cajaDisponible },
+  ];
+
+  const totalVencida = (uyu?.deudaVencida ?? 0) + (usd?.deudaVencida ?? 0);
   const mainRisk =
     state === "critical"
       ? clientStates.riesgoAlto > 0
@@ -604,91 +579,83 @@ function ExecutiveSummaryCard({
         : "Caja insuficiente para cubrir pagos próximos"
       : state === "attention"
       ? totalVencida > 0
-        ? `Deuda vencida activa en cartera`
+        ? "Deuda vencida activa en cartera"
         : `${clientStates.conDeudaVencida} cliente${clientStates.conDeudaVencida > 1 ? "s" : ""} con deuda vencida`
       : null;
 
   const bestSignal =
     (uyu?.efectividad ?? 0) >= 0.8 || (usd?.efectividad ?? 0) >= 0.8
-      ? "Efectividad de cobros superior al 80%"
+      ? "Efectividad de cobros >80%"
       : clientStates.sinDeuda > clientStates.conDeudaVencida
       ? "Mayoría de clientes sin deuda activa"
       : null;
 
   const suggestedAction =
     state === "critical"
-      ? "Revisar clientes críticos y cobertura de caja en Tesorería"
+      ? "Revisar clientes críticos y caja en Tesorería"
       : state === "attention"
-      ? "Gestionar deuda vencida en Cartera → clientes pendientes"
-      : "Mantener seguimiento de agenda de cobranza";
+      ? "Gestionar deuda vencida en Cartera"
+      : "Mantener seguimiento de cobranza";
 
   return (
-    <div className={`rounded-2xl border p-5 ${stateConfig.bg}`}>
-      <div className="flex flex-wrap items-start gap-3">
+    <div className={`rounded-2xl border p-4 ${stateConfig.bg}`}>
+      {/* Header: estado + período */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className={`flex items-center gap-1.5 ${stateConfig.text}`}>
           {stateConfig.icon}
-          <span
-            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${stateConfig.badge}`}
-          >
-            {stateConfig.label}
+          <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${stateConfig.badge}`}>
+            Estado financiero: {stateConfig.label}
           </span>
         </div>
-        <p className={`text-sm font-semibold ${stateConfig.text}`}>
+        <p className={`text-[11px] font-medium opacity-75 ${stateConfig.text}`}>
           Resumen ejecutivo — {periodLabel}
         </p>
       </div>
 
-      <div className={`mt-3 space-y-1 text-xs leading-relaxed ${stateConfig.text}`}>
-        {uyu && (
-          <p>
-            En el período se facturaron{" "}
-            <strong>{fmtAmount(uyu.facturado, "UYU")}</strong> UYU
-            {usd ? ` y ${fmtAmount(usd.facturado, "USD")} USD.` : "."}
-          </p>
-        )}
-        {uyu && (
-          <p>
-            Se cobraron <strong>{fmtAmount(uyu.cobrado, "UYU")}</strong> UYU
-            {usd ? ` y ${fmtAmount(usd.cobrado, "USD")} USD.` : "."}
-          </p>
-        )}
-        <p>
-          La deuda activa actual es{" "}
-          {uyu ? <strong>{fmtAmount(uyu.deudaActiva, "UYU")} UYU</strong> : null}
-          {uyu && usd ? " y " : null}
-          {usd ? <strong>{fmtAmount(usd.deudaActiva, "USD")} USD</strong> : null}.
-        </p>
-        <p>
-          Hay <strong>{clientStates.total - clientStates.sinDeuda}</strong>{" "}
-          cliente{clientStates.total - clientStates.sinDeuda !== 1 ? "s" : ""} con
-          deuda activa; <strong>{clientStates.conDeudaVencida + clientStates.riesgoAlto}</strong>{" "}
-          tienen deuda vencida.
-        </p>
-        {uyu?.cajaDespPagos !== undefined && (
-          <p>
-            La caja después de pagos se mantiene{" "}
-            <strong>
-              {uyu.cajaDespPagos >= 0 ? "positiva" : "negativa"}
-            </strong>{" "}
-            en UYU.
-          </p>
-        )}
+      {/* Compact KPI table */}
+      <div className={`mt-3 divide-y divide-current/10 ${stateConfig.text}`}>
+        {kpiRows.map((row) => {
+          const showUyu = (row.uyuVal ?? 0) > 0;
+          const showUsd = (row.usdVal ?? 0) > 0;
+          if (!showUyu && !showUsd) return null;
+          const warnCls = row.warn ? "font-bold" : "font-semibold";
+          return (
+            <div key={row.label} className="flex items-baseline justify-between gap-3 py-1.5">
+              <span className="shrink-0 text-[11px] opacity-70">{row.label}</span>
+              <div className="flex flex-wrap justify-end gap-x-4 gap-y-0.5 text-xs tabular-nums">
+                {showUyu && (
+                  <span className={warnCls}>
+                    {fmtAmount(row.uyuVal!, "UYU")}{" "}
+                    <span className="text-[10px] font-normal opacity-50">UYU</span>
+                  </span>
+                )}
+                {showUsd && (
+                  <span className={warnCls}>
+                    {fmtAmount(row.usdVal!, "USD")}{" "}
+                    <span className="text-[10px] font-normal opacity-50">USD</span>
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      {/* Chips — max 3 */}
+      <div className="mt-3 flex flex-wrap gap-1.5">
         {mainRisk && (
-          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold ${stateConfig.badge}`}>
+          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${stateConfig.badge}`}>
             <AlertTriangle className="h-3 w-3" />
-            Riesgo principal: {mainRisk}
+            {mainRisk}
           </span>
         )}
         {bestSignal && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-semibold text-emerald-800">
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
             <TrendingUp className="h-3 w-3" />
             {bestSignal}
           </span>
         )}
-        <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-semibold text-blue-800">
+        <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-800">
           <ArrowRight className="h-3 w-3" />
           {suggestedAction}
         </span>
@@ -698,93 +665,124 @@ function ExecutiveSummaryCard({
 }
 
 // ---------------------------------------------------------------------------
-// Critical clients table
+// Active debt clients table
 // ---------------------------------------------------------------------------
 
-function CriticalClientsTable({
-  debtors,
+function ActiveDebtClientsTable({
+  rows,
   selectedCurrency,
 }: {
-  debtors: DashboardTopDebtor[];
+  rows: DashboardActiveDebtRow[];
   selectedCurrency: "all" | "UYU" | "USD";
 }) {
-  const filtered = debtors
-    .filter((d) =>
-      selectedCurrency === "USD"
-        ? d.debtUSD > 0
-        : selectedCurrency === "UYU"
-        ? d.debtUYU > 0
-        : d.debtUYU + d.debtUSD > 0
-    )
-    .filter((d) => d.overdueUYU > 0 || d.overdueUSD > 0 || d.risk === "Alto")
-    .slice(0, 10);
+  const [showAll, setShowAll] = useState(false);
+
+  const filtered = useMemo(
+    () =>
+      rows.filter((r) =>
+        selectedCurrency === "all" ? true : r.currency === selectedCurrency
+      ),
+    [rows, selectedCurrency]
+  );
+
+  const visible = showAll ? filtered : filtered.slice(0, TABLE_INITIAL_ROWS);
+  const canToggle = filtered.length > TABLE_INITIAL_ROWS;
 
   if (filtered.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-[var(--copilot-border)] p-6 text-center">
         <CheckCircle className="mx-auto h-5 w-5 text-emerald-600 mb-2" />
-        <p className={`text-sm ${C.muted}`}>No hay clientes críticos en este período.</p>
+        <p className={`text-sm ${C.muted}`}>No hay clientes con deuda activa.</p>
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-[var(--copilot-border)]">
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="border-b border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)]">
-            {["Cliente", "Deuda UYU", "Deuda USD", "Vencido UYU", "Vencido USD", "Atraso", "Acciones"].map(
-              (h) => (
+    <div>
+      <div className="overflow-x-auto rounded-xl border border-[var(--copilot-border)]">
+        <table className="w-full min-w-[720px] text-xs">
+          <thead>
+            <tr className="border-b border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)]">
+              {[
+                "Cliente",
+                "Moneda",
+                "Deuda activa",
+                "Deuda vencida",
+                "Días atraso",
+                "Estado",
+                "Acciones",
+              ].map((h) => (
                 <th
                   key={h}
                   className={`px-3 py-2 text-left font-semibold tracking-wide ${C.muted}`}
                 >
                   {h}
                 </th>
-              )
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {filtered.map((d, i) => (
-            <tr
-              key={d.companyId}
-              className={`border-b border-[var(--copilot-border)] ${i % 2 === 0 ? "bg-[var(--copilot-card-bg)]" : "bg-[var(--copilot-table-row-alt-bg)]"} hover:bg-[var(--copilot-table-row-hover-bg)]`}
-            >
-              <td className={`px-3 py-2 font-medium ${C.ink}`}>{d.name}</td>
-              <td className="px-3 py-2 tabular-nums">{fmtCompact(d.debtUYU)}</td>
-              <td className="px-3 py-2 tabular-nums">{fmtCompact(d.debtUSD, "USD")}</td>
-              <td className={`px-3 py-2 tabular-nums ${d.overdueUYU > 0 ? "font-semibold text-amber-700" : C.muted}`}>
-                {d.overdueUYU > 0 ? fmtCompact(d.overdueUYU) : "—"}
-              </td>
-              <td className={`px-3 py-2 tabular-nums ${d.overdueUSD > 0 ? "font-semibold text-amber-700" : C.muted}`}>
-                {d.overdueUSD > 0 ? fmtCompact(d.overdueUSD, "USD") : "—"}
-              </td>
-              <td className={`px-3 py-2 ${C.muted}`}>
-                {Math.max(d.overdueDaysUYU ?? 0, d.overdueDaysUSD ?? 0) > 0
-                  ? `${Math.max(d.overdueDaysUYU ?? 0, d.overdueDaysUSD ?? 0)}d`
-                  : "—"}
-              </td>
-              <td className="px-3 py-2">
-                <div className="flex gap-2">
-                  <Link
-                    href={`/copilot/clientes/${d.companyId}`}
-                    className={`hover:underline ${C.accent}`}
-                  >
-                    Ver ficha
-                  </Link>
-                  <Link
-                    href={`/copilot/clientes/${d.companyId}?tab=estado-cuenta`}
-                    className={`hover:underline ${C.muted}`}
-                  >
-                    Estado
-                  </Link>
-                </div>
-              </td>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {visible.map((r, i) => (
+              <tr
+                key={r.rowId}
+                className={`border-b border-[var(--copilot-border)] ${i % 2 === 0 ? "bg-[var(--copilot-card-bg)]" : "bg-[var(--copilot-table-row-alt-bg)]"} hover:bg-[var(--copilot-table-row-hover-bg)]`}
+              >
+                <td className={`px-3 py-2 font-medium ${C.ink}`}>{r.name}</td>
+                <td className={`px-3 py-2 font-semibold uppercase ${C.muted}`}>{r.currency}</td>
+                <td className="px-3 py-2 tabular-nums font-medium text-amber-700">
+                  {fmtAmount(r.activeDebt, r.currency)}
+                </td>
+                <td className={`px-3 py-2 tabular-nums ${r.overdueDebt > 0 ? "font-semibold text-rose-700" : C.muted}`}>
+                  {r.overdueDebt > 0 ? fmtAmount(r.overdueDebt, r.currency) : "—"}
+                </td>
+                <td className={`px-3 py-2 tabular-nums ${C.muted}`}>
+                  {r.overdueDebt > 0 && (r.overdueDays ?? 0) > 0 ? `${r.overdueDays}d` : "—"}
+                </td>
+                <td className="px-3 py-2">
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                      r.status === "Riesgo alto"
+                        ? "bg-rose-100 text-rose-800"
+                        : r.status === "Vencido"
+                          ? "bg-amber-100 text-amber-900"
+                          : "bg-emerald-50 text-emerald-800"
+                    }`}
+                  >
+                    {r.status}
+                  </span>
+                </td>
+                <td className="px-3 py-2">
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/copilot/clientes/${r.companyId}`}
+                      className={`hover:underline ${C.accent}`}
+                    >
+                      Ver ficha
+                    </Link>
+                    <Link
+                      href={`/copilot/clientes/${r.companyId}?tab=estado-cuenta`}
+                      className={`hover:underline ${C.muted}`}
+                    >
+                      Estado
+                    </Link>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {canToggle && (
+        <div className="mt-3 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setShowAll((v) => !v)}
+            className={`rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-dropdown-bg)] px-3 py-1.5 text-xs font-semibold ${C.accent} hover:bg-[var(--copilot-hover-bg)]`}
+          >
+            {showAll ? "Mostrar menos" : "Ver todos"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -793,71 +791,132 @@ function CriticalClientsTable({
 // Recent movements table
 // ---------------------------------------------------------------------------
 
+function movementTypeLabel(type: DashboardRecentMovement["type"]): string {
+  if (type === "factura") return "Factura";
+  if (type === "recibo") return "Recibo";
+  return "Nota crédito";
+}
+
+function movementTypeBadgeClass(type: DashboardRecentMovement["type"]): string {
+  if (type === "factura") return "bg-blue-50 text-blue-700";
+  if (type === "recibo") return "bg-emerald-50 text-emerald-700";
+  return "bg-violet-50 text-violet-700";
+}
+
 function RecentMovementsTable({
   movements,
+  selectedCurrency,
 }: {
   movements: DashboardRecentMovement[];
+  selectedCurrency: "all" | "UYU" | "USD";
 }) {
-  if (movements.length === 0) {
+  const [showAll, setShowAll] = useState(false);
+
+  const filtered = useMemo(
+    () =>
+      movements.filter((m) =>
+        selectedCurrency === "all" ? true : m.currency === selectedCurrency
+      ),
+    [movements, selectedCurrency]
+  );
+
+  const visible = showAll ? filtered : filtered.slice(0, TABLE_INITIAL_ROWS);
+  const canToggle = filtered.length > TABLE_INITIAL_ROWS;
+
+  if (filtered.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-[var(--copilot-border)] p-6 text-center">
-        <p className={`text-sm ${C.muted}`}>No hay movimientos recientes en este período.</p>
+        <p className={`text-sm ${C.muted}`}>No hay movimientos en este período.</p>
       </div>
     );
   }
+
   return (
-    <div className="overflow-x-auto rounded-xl border border-[var(--copilot-border)]">
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="border-b border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)]">
-            {["Fecha", "Tipo", "Cliente", "Comprobante", "Moneda", "Importe", "Saldo"].map(
-              (h) => (
+    <div>
+      <div className="overflow-x-auto rounded-xl border border-[var(--copilot-border)]">
+        <table className="w-full min-w-[880px] text-xs">
+          <thead>
+            <tr className="border-b border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)]">
+              {[
+                "Fecha",
+                "Tipo",
+                "Cliente",
+                "Comprobante",
+                "Moneda",
+                "Debe",
+                "Haber",
+                "Saldo pendiente",
+              ].map((h) => (
                 <th
                   key={h}
                   className={`px-3 py-2 text-left font-semibold tracking-wide ${C.muted}`}
                 >
                   {h}
                 </th>
-              )
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {movements.map((m, i) => (
-            <tr
-              key={i}
-              className={`border-b border-[var(--copilot-border)] ${i % 2 === 0 ? "bg-[var(--copilot-card-bg)]" : "bg-[var(--copilot-table-row-alt-bg)]"} hover:bg-[var(--copilot-table-row-hover-bg)]`}
-            >
-              <td className={`px-3 py-2 tabular-nums ${C.muted}`}>{fmtDate(m.date)}</td>
-              <td className="px-3 py-2">
-                <span
-                  className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${m.type === "factura" ? "bg-blue-50 text-blue-700" : "bg-emerald-50 text-emerald-700"}`}
-                >
-                  {m.type === "factura" ? "Factura" : "Recibo"}
-                </span>
-              </td>
-              <td className={`px-3 py-2 ${C.ink}`}>
-                <Link
-                  href={`/copilot/clientes/${m.companyId}`}
-                  className="hover:underline"
-                >
-                  {m.clientName}
-                </Link>
-              </td>
-              <td className={`px-3 py-2 ${C.muted}`}>{m.reference}</td>
-              <td className={`px-3 py-2 ${C.muted}`}>{m.currency}</td>
-              <td className={`px-3 py-2 tabular-nums font-medium ${C.ink}`}>
-                {fmtAmount(m.amount, m.currency)}
-              </td>
-              <td
-                className={`px-3 py-2 tabular-nums ${m.balance > 0 ? "text-amber-700" : C.muted}`}
-              >
-                {m.balance > 0 ? fmtAmount(m.balance, m.currency) : "—"}
-              </td>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {visible.map((m, i) => {
+              const debe =
+                m.type === "factura" ? fmtAmount(m.amount, m.currency) : "—";
+              const haber =
+                m.type === "recibo" || m.type === "nota_credito"
+                  ? fmtAmount(m.amount, m.currency)
+                  : "—";
+              const saldo =
+                m.type === "factura" && m.balance > 0
+                  ? fmtAmount(m.balance, m.currency)
+                  : "—";
+              return (
+                <tr
+                  key={`${m.companyId}-${m.date}-${m.reference}-${i}`}
+                  className={`border-b border-[var(--copilot-border)] ${i % 2 === 0 ? "bg-[var(--copilot-card-bg)]" : "bg-[var(--copilot-table-row-alt-bg)]"} hover:bg-[var(--copilot-table-row-hover-bg)]`}
+                >
+                  <td className={`px-3 py-2 tabular-nums ${C.muted}`}>{fmtDate(m.date)}</td>
+                  <td className="px-3 py-2">
+                    <span
+                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${movementTypeBadgeClass(m.type)}`}
+                    >
+                      {movementTypeLabel(m.type)}
+                    </span>
+                  </td>
+                  <td className={`px-3 py-2 ${C.ink}`}>
+                    <Link
+                      href={`/copilot/clientes/${m.companyId}`}
+                      className="hover:underline"
+                    >
+                      {m.clientName}
+                    </Link>
+                  </td>
+                  <td className={`px-3 py-2 ${C.muted}`}>{m.reference}</td>
+                  <td className={`px-3 py-2 uppercase ${C.muted}`}>{m.currency}</td>
+                  <td className={`px-3 py-2 tabular-nums ${debe === "—" ? C.muted : C.ink}`}>{debe}</td>
+                  <td className={`px-3 py-2 tabular-nums ${haber === "—" ? C.muted : "text-emerald-700"}`}>
+                    {haber}
+                  </td>
+                  <td
+                    className={`px-3 py-2 tabular-nums ${saldo === "—" ? C.muted : "font-medium text-amber-700"}`}
+                  >
+                    {saldo}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {canToggle && (
+        <div className="mt-3 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setShowAll((v) => !v)}
+            className={`rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-dropdown-bg)] px-3 py-1.5 text-xs font-semibold ${C.accent} hover:bg-[var(--copilot-hover-bg)]`}
+          >
+            {showAll ? "Mostrar menos" : "Ver todos"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -882,8 +941,7 @@ export default function DashboardPage() {
 
   // Data state
   const [currencyData, setCurrencyData] = useState<DashboardCurrencyData[]>([]);
-  const [topDebtors, setTopDebtors] = useState<DashboardTopDebtor[]>([]);
-  const [topBilling, setTopBilling] = useState<DashboardTopBilling[]>([]);
+  const [portfolioRows, setPortfolioRows] = useState<ClientPortfolioLoad["rows"]>([]);
   const [clientStates, setClientStates] = useState<DashboardClientStates>({
     sinDeuda: 0, conDeudaAlDia: 0, conDeudaVencida: 0, riesgoAlto: 0, total: 0,
   });
@@ -907,8 +965,8 @@ export default function DashboardPage() {
         period_end: confirmedTo,
       });
 
-      const pastMonths = getLastNMonthRanges(today, 5);
-      const monthQueries = pastMonths.map((m) =>
+      const monthRanges = getMonthRangesForPeriod(confirmedFrom, confirmedTo, 12);
+      const monthQueries = monthRanges.map((m) =>
         new URLSearchParams({
           mode: "period_only",
           period_start: m.from,
@@ -959,24 +1017,28 @@ export default function DashboardPage() {
         periodReport = j?.report ?? null;
       }
 
-      // ── Treasury ──
+      // ── Treasury (mismo contrato JSON que /copilot/hoy) ──
       let cashPositions: CashPositionByCurrency[] = [];
       let outflowSummaries: TreasuryOutflowSummary[] = [];
 
       if (cashRes.status === "fulfilled") {
-        const j = (await cashRes.value.json().catch(() => null)) as { positions?: CashPositionByCurrency[] } | null;
-        cashPositions = j?.positions ?? (Array.isArray(j) ? (j as CashPositionByCurrency[]) : []);
+        const j = await cashRes.value.json().catch(() => null);
+        if (cashRes.value.ok) {
+          cashPositions = parseTreasuryCashPositionJson(j);
+        }
       }
       if (outflowRes.status === "fulfilled") {
-        const j = (await outflowRes.value.json().catch(() => null)) as { summaries?: TreasuryOutflowSummary[]; summary?: TreasuryOutflowSummary[] } | null;
-        outflowSummaries = j?.summaries ?? j?.summary ?? [];
+        const j = await outflowRes.value.json().catch(() => null);
+        if (outflowRes.value.ok) {
+          outflowSummaries = parseTreasuryScheduledSummaryJson(j);
+        }
       }
 
-      // ── Monthly trend ──
+      // ── Monthly trend (one bucket per calendar month in selected period) ──
       const parsedMonthly: DashboardMonthlyPoint[] = [];
       for (let i = 0; i < monthlyRes.length; i++) {
         const res = monthlyRes[i];
-        const meta = pastMonths[i];
+        const meta = monthRanges[i];
         if (!meta) continue;
         let report: FinancialConsistencyReport | null = null;
         if (res?.status === "fulfilled") {
@@ -985,9 +1047,6 @@ export default function DashboardPage() {
         }
         parsedMonthly.push(extractMonthlyPoint(report, meta.yearMonth));
       }
-      // Add current period as the last point
-      const currentYearMonth = confirmedTo.slice(0, 7);
-      parsedMonthly.push(extractMonthlyPoint(periodReport, currentYearMonth));
 
       // ── Derived data ──
       const newCurrData = extractDashboardCurrencyData({
@@ -995,12 +1054,12 @@ export default function DashboardPage() {
         outstandingReport,
         cashPositions,
         outflowSummaries,
+        portfolioRows,
       });
 
       if (sig.aborted) return;
       setCurrencyData(newCurrData);
-      setTopDebtors(extractTopDebtors(portfolioRows));
-      setTopBilling(extractTopBilling(portfolioRows));
+      setPortfolioRows(portfolioRows);
       setClientStates(extractClientStates(portfolioRows));
       setMonthlyData(parsedMonthly);
       setRecentMovements(
@@ -1040,43 +1099,78 @@ export default function DashboardPage() {
       : []),
   ];
 
-  // Aging (all outstanding)
+  // Aging (all outstanding) — display labels use readable names
   const agingUYU = uyu?.aging ?? [];
   const agingUSD = usd?.aging ?? [];
-  const agingLabels = ["0-30", "31-60", "61-90", "90+"];
-  const agingBars: BarData[] = agingLabels.map((lbl) => ({
-    label: lbl,
-    uyu: agingUYU.find((b) => b.label === lbl)?.amount ?? 0,
-    usd: agingUSD.find((b) => b.label === lbl)?.amount ?? 0,
+  const AGING_KEYS = ["0-30", "31-60", "61-90", "90+"] as const;
+  const AGING_DISPLAY: Record<string, string> = {
+    "0-30": "0–30d", "31-60": "31–60d", "61-90": "61–90d", "90+": "+90d",
+  };
+  const agingBars: BarData[] = AGING_KEYS.map((key) => ({
+    label: AGING_DISPLAY[key]!,
+    uyu: agingUYU.find((b) => b.label === key)?.amount ?? 0,
+    usd: agingUSD.find((b) => b.label === key)?.amount ?? 0,
   }));
 
-  // Top debtors
-  const debtorItems = topDebtors.map((d) => ({
-    label: d.name,
-    value: selectedCurrency === "USD" ? d.debtUSD : d.debtUYU,
-    id: d.companyId,
-  })).filter((d) => d.value > 0);
+  // noPagos — detect when caja después de pagos = caja disponible (no scheduled payments)
+  const noPagosUYU = Math.abs((uyu?.cajaDespPagos ?? 0) - (uyu?.cajaDisponible ?? 0)) < 0.01;
+  const noPagosUSD = Math.abs((usd?.cajaDespPagos ?? 0) - (usd?.cajaDisponible ?? 0)) < 0.01;
+  const noPagos = noPagosUYU && noPagosUSD;
 
-  // Top billing
-  const billingItems = topBilling.map((d) => ({
-    label: d.name,
-    value: selectedCurrency === "USD" ? d.billingUSD : d.billingUYU,
-    id: d.companyId,
-  })).filter((d) => d.value > 0);
+  // Top debtors / billing (por moneda, sin mezclar)
+  const debtorItemsUYU = useMemo(
+    () =>
+      extractTopDebtorsForCurrency(portfolioRows, "UYU").map((d) => ({
+        label: d.name,
+        value: d.value,
+        id: d.companyId,
+      })),
+    [portfolioRows]
+  );
+  const debtorItemsUSD = useMemo(
+    () =>
+      extractTopDebtorsForCurrency(portfolioRows, "USD").map((d) => ({
+        label: d.name,
+        value: d.value,
+        id: d.companyId,
+      })),
+    [portfolioRows]
+  );
+  const billingItemsUYU = useMemo(
+    () =>
+      extractTopBillingForCurrency(portfolioRows, "UYU").map((d) => ({
+        label: d.name,
+        value: d.value,
+        id: d.companyId,
+      })),
+    [portfolioRows]
+  );
+  const billingItemsUSD = useMemo(
+    () =>
+      extractTopBillingForCurrency(portfolioRows, "USD").map((d) => ({
+        label: d.name,
+        value: d.value,
+        id: d.companyId,
+      })),
+    [portfolioRows]
+  );
+  const activeDebtRows = useMemo(
+    () => extractActiveDebtClientRows(portfolioRows),
+    [portfolioRows]
+  );
 
-  // Client states donut
-  const clientDonutSegments = [
-    { label: "Sin deuda", value: clientStates.sinDeuda, color: "#d1fae5" },
-    { label: "Deuda al día", value: clientStates.conDeudaAlDia, color: "#10b981" },
-    { label: "Deuda vencida", value: clientStates.conDeudaVencida, color: "#f59e0b" },
-    { label: "Riesgo alto", value: clientStates.riesgoAlto, color: "#ef4444" },
-  ].filter((s) => s.value > 0);
+  const debtorItems = selectedCurrency === "USD" ? debtorItemsUSD : debtorItemsUYU;
+  const billingItems = selectedCurrency === "USD" ? billingItemsUSD : billingItemsUYU;
 
-  // Currency distribution donut (by debt)
-  const currDistSegments = [
-    { label: `UYU ${fmtCompact(uyu?.deudaActiva ?? 0)}`, value: Math.round(uyu?.deudaActiva ?? 0), color: "var(--copilot-accent)" },
-    { label: `USD ${fmtCompact(usd?.deudaActiva ?? 0, "USD")}`, value: Math.round(usd?.deudaActiva ?? 0), color: "#3b82f6" },
-  ].filter((s) => s.value > 0);
+  // Top-10 as % of total debt per currency
+  const uyuTop10Sum = debtorItemsUYU.reduce((s, d) => s + d.value, 0);
+  const usdTop10Sum = debtorItemsUSD.reduce((s, d) => s + d.value, 0);
+  const uyuTop10Pct = (uyu?.deudaActiva ?? 0) > 0
+    ? Math.round((uyuTop10Sum / uyu!.deudaActiva) * 100)
+    : null;
+  const usdTop10Pct = (usd?.deudaActiva ?? 0) > 0
+    ? Math.round((usdTop10Sum / usd!.deudaActiva) * 100)
+    : null;
 
   // Cash projection (area chart)
   const cashProjectionPoints = [
@@ -1120,15 +1214,6 @@ export default function DashboardPage() {
             >
               <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
               {loading ? "Cargando…" : "Actualizar"}
-            </button>
-            <button
-              type="button"
-              disabled
-              title="Exportar PDF — Próximamente"
-              className={`${C.btnGhost} opacity-50 cursor-not-allowed`}
-            >
-              <Download className="h-3 w-3" />
-              Exportar PDF
             </button>
           </div>
         </div>
@@ -1211,7 +1296,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
               <KpiCard
                 title={METRIC_LABEL.facturado_periodo}
-                tooltip="Facturas emitidas en el período, neto de notas de crédito. Fuente: reconciliación financiera."
+                tooltip="Ventas/facturas emitidas dentro del rango seleccionado."
                 uyuValue={uyu?.facturado ?? 0}
                 usdValue={usd?.facturado ?? 0}
                 selectedCurrency={selectedCurrency}
@@ -1219,7 +1304,7 @@ export default function DashboardPage() {
               />
               <KpiCard
                 title={METRIC_LABEL.cobrado_periodo}
-                tooltip="Recibos registrados en el período (recibos reales de Zeta). Fuente: reconciliación financiera."
+                tooltip="Recibos registrados en Zeta dentro del rango seleccionado."
                 uyuValue={uyu?.cobrado ?? 0}
                 usdValue={usd?.cobrado ?? 0}
                 selectedCurrency={selectedCurrency}
@@ -1227,16 +1312,16 @@ export default function DashboardPage() {
               />
               <KpiCard
                 title={METRIC_LABEL.deuda_activa}
-                tooltip="Saldo pendiente activo de clientes (dedupeado, sin filas shadow Zeta). Valor al momento actual, sin filtro de período."
+                tooltip="Deuda activa actual de clientes. No depende del rango seleccionado."
                 uyuValue={uyu?.deudaActiva ?? 0}
                 usdValue={usd?.deudaActiva ?? 0}
                 selectedCurrency={selectedCurrency}
                 href="/copilot/cartera"
-                secondary="Deuda activa actual — no depende del período seleccionado."
+                secondary="No depende del período seleccionado."
               />
               <KpiCard
                 title={METRIC_LABEL.deuda_vencida}
-                tooltip="Saldo vencido: buckets 31-60 + 61-90 + 90+ días desde due_date. Sin filtro de período."
+                tooltip="Parte de la deuda activa cuya fecha de vencimiento ya pasó. No depende del rango seleccionado."
                 uyuValue={uyu?.deudaVencida ?? 0}
                 usdValue={usd?.deudaVencida ?? 0}
                 selectedCurrency={selectedCurrency}
@@ -1245,7 +1330,7 @@ export default function DashboardPage() {
               />
               <KpiCard
                 title={METRIC_LABEL.caja_disponible}
-                tooltip="Dinero disponible en Tesorería: apertura + cobros + movimientos manuales."
+                tooltip="Dinero disponible actual en Tesorería."
                 uyuValue={uyu?.cajaDisponible ?? 0}
                 usdValue={usd?.cajaDisponible ?? 0}
                 selectedCurrency={selectedCurrency}
@@ -1253,103 +1338,192 @@ export default function DashboardPage() {
               />
               <KpiCard
                 title={METRIC_LABEL.caja_despues_pagos}
-                tooltip="Caja disponible menos pagos programados en los próximos 30 días. Negativo = déficit."
+                tooltip={noPagos
+                  ? "Sin pagos programados en los próximos 30 días. Coincide con la caja disponible."
+                  : "Caja disponible menos pagos programados próximos."}
                 uyuValue={uyu?.cajaDespPagos ?? 0}
                 usdValue={usd?.cajaDespPagos ?? 0}
                 selectedCurrency={selectedCurrency}
                 href="/copilot/tesoreria"
                 negative
+                secondary={noPagos
+                  ? "Sin pagos programados próximos."
+                  : "Descuenta pagos próximos programados."}
               />
             </div>
           )}
         </section>
 
-        {/* Charts row 1: monthly trends */}
+        {/* Charts row 1: monthly trends — split by currency when "all" */}
         <section aria-label="Tendencia mensual">
-          <h2 className={`mb-3 text-xs font-semibold uppercase tracking-wide ${C.muted}`}>
-            Tendencia mensual (últimos 6 meses)
-          </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <ChartCard
-              title="[1] Ventas por mes"
-              subtitle="Facturado del período por moneda"
-              badge={<ChartLegend selectedCurrency={selectedCurrency} />}
-            >
-              {loading ? (
-                <Skeleton className="h-28" />
-              ) : (
-                <VerticalBarChart
-                  data={monthlyIssued}
-                  selectedCurrency={selectedCurrency}
-                  height={110}
-                  emptyText="Sin facturación en este rango"
-                />
-              )}
-            </ChartCard>
+          <div className="mb-3 flex flex-wrap items-baseline gap-2">
+            <h2 className={`text-xs font-semibold uppercase tracking-wide ${C.muted}`}>
+              Tendencia mensual del período
+            </h2>
+            <span className={`text-[10px] ${C.muted}`}>
+              Rango: {fmtDate(confirmedFrom)} → {fmtDate(confirmedTo)}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-2">
+            {selectedCurrency === "all" ? (
+              <>
+                <ChartCard title="[1] Ventas por mes UYU" subtitle="Facturado UYU · escala independiente">
+                  {loading ? <Skeleton className="h-28" /> : (
+                    <VerticalBarChart data={monthlyIssued} selectedCurrency="UYU" height={140} emptyText="Sin facturación UYU" />
+                  )}
+                </ChartCard>
+                <ChartCard title="[1] Ventas por mes USD" subtitle="Facturado USD · escala independiente">
+                  {loading ? <Skeleton className="h-28" /> : (
+                    <VerticalBarChart data={monthlyIssued} selectedCurrency="USD" height={140} emptyText="Sin facturación USD" />
+                  )}
+                </ChartCard>
+                <ChartCard title="[2] Cobros por mes UYU" subtitle="Recibos UYU · escala independiente">
+                  {loading ? <Skeleton className="h-28" /> : (
+                    <VerticalBarChart data={monthlyCollected} selectedCurrency="UYU" height={140} emptyText="Sin cobros UYU" />
+                  )}
+                </ChartCard>
+                <ChartCard title="[2] Cobros por mes USD" subtitle="Recibos USD · escala independiente">
+                  {loading ? <Skeleton className="h-28" /> : (
+                    <VerticalBarChart data={monthlyCollected} selectedCurrency="USD" height={140} emptyText="Sin cobros USD" />
+                  )}
+                </ChartCard>
+                {/* [3] Ventas vs Cobros — per currency with % chips */}
+                <ChartCard title="[3] Ventas vs Cobros UYU" subtitle="Período seleccionado · Verde = cobrado">
+                  {loading ? <Skeleton className="h-28" /> : (uyu?.facturado ?? 0) + (uyu?.cobrado ?? 0) > 0 ? (
+                    <GroupedBarChart groups={[{ label: "UYU", a: uyu?.facturado ?? 0, b: uyu?.cobrado ?? 0, aLabel: "Facturado", bLabel: "Cobrado" }]} height={140} />
+                  ) : (
+                    <p className={`py-6 text-center text-xs ${C.muted}`}>Sin datos UYU en el período</p>
+                  )}
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-accent)]" /><p className={`text-[10px] ${C.muted}`}>Facturado</p></div>
+                    <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-emerald-400" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
+                    {uyu?.efectividad != null && (
+                      <span className={`ml-auto text-[10px] font-semibold ${uyu.efectividad >= 0.8 ? "text-emerald-700" : "text-amber-700"}`}>
+                        Cobranza: {Math.round(uyu.efectividad * 100)}% · Pendiente: {Math.round(Math.max(0, 1 - uyu.efectividad) * 100)}%
+                      </span>
+                    )}
+                  </div>
+                </ChartCard>
+                <ChartCard title="[3] Ventas vs Cobros USD" subtitle="Período seleccionado · Verde = cobrado">
+                  {loading ? <Skeleton className="h-28" /> : (usd?.facturado ?? 0) + (usd?.cobrado ?? 0) > 0 ? (
+                    <GroupedBarChart groups={[{ label: "USD", a: usd?.facturado ?? 0, b: usd?.cobrado ?? 0, aLabel: "Facturado", bLabel: "Cobrado" }]} height={140} />
+                  ) : (
+                    <p className={`py-6 text-center text-xs ${C.muted}`}>Sin datos USD en el período</p>
+                  )}
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-accent)]" /><p className={`text-[10px] ${C.muted}`}>Facturado</p></div>
+                    <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-emerald-400" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
+                    {usd?.efectividad != null && (
+                      <span className={`ml-auto text-[10px] font-semibold ${usd.efectividad >= 0.8 ? "text-emerald-700" : "text-amber-700"}`}>
+                        Cobranza: {Math.round(usd.efectividad * 100)}% · Pendiente: {Math.round(Math.max(0, 1 - usd.efectividad) * 100)}%
+                      </span>
+                    )}
+                  </div>
+                </ChartCard>
+              </>
+            ) : (
+              <>
+                <ChartCard
+                  title="[1] Ventas por mes"
+                  subtitle={`Facturado del período · ${selectedCurrency}`}
+                  badge={<ChartLegend selectedCurrency={selectedCurrency} />}
+                >
+                  {loading ? (
+                    <Skeleton className="h-28" />
+                  ) : (
+                    <VerticalBarChart
+                      data={monthlyIssued}
+                      selectedCurrency={selectedCurrency}
+                      height={140}
+                      emptyText="Sin facturación en este rango"
+                    />
+                  )}
+                </ChartCard>
 
-            <ChartCard
-              title="[2] Cobros por mes"
-              subtitle="Recibos registrados por moneda"
-              badge={<ChartLegend selectedCurrency={selectedCurrency} />}
-            >
-              {loading ? (
-                <Skeleton className="h-28" />
-              ) : (
-                <VerticalBarChart
-                  data={monthlyCollected}
-                  selectedCurrency={selectedCurrency}
-                  height={110}
-                  emptyText="Sin cobros registrados"
-                />
-              )}
-            </ChartCard>
+                <ChartCard
+                  title="[2] Cobros por mes"
+                  subtitle={`Recibos registrados · ${selectedCurrency}`}
+                  badge={<ChartLegend selectedCurrency={selectedCurrency} />}
+                >
+                  {loading ? (
+                    <Skeleton className="h-28" />
+                  ) : (
+                    <VerticalBarChart
+                      data={monthlyCollected}
+                      selectedCurrency={selectedCurrency}
+                      height={140}
+                      emptyText="Sin cobros registrados"
+                    />
+                  )}
+                </ChartCard>
 
-            <ChartCard
-              title="[3] Ventas vs Cobros"
-              subtitle="Período seleccionado · Verde = cobrado"
-            >
-              {loading ? (
-                <Skeleton className="h-28" />
-              ) : vsGroups.length > 0 ? (
-                <GroupedBarChart groups={vsGroups} height={110} />
-              ) : (
-                <p className={`py-6 text-center text-xs ${C.muted}`}>
-                  Sin datos en el período
-                </p>
-              )}
-              <div className="mt-2 flex gap-3">
-                <div className="flex items-center gap-1">
-                  <div className="h-2 w-3 rounded-sm bg-[var(--copilot-accent)]" />
-                  <p className={`text-[10px] ${C.muted}`}>Facturado</p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="h-2 w-3 rounded-sm bg-emerald-400" />
-                  <p className={`text-[10px] ${C.muted}`}>Cobrado</p>
-                </div>
-              </div>
-            </ChartCard>
+                <ChartCard
+                  title="[3] Ventas vs Cobros"
+                  subtitle={`Período seleccionado · ${selectedCurrency} · Verde = cobrado`}
+                >
+                  {loading ? (
+                    <Skeleton className="h-28" />
+                  ) : vsGroups.length > 0 ? (
+                    <GroupedBarChart groups={vsGroups} height={140} />
+                  ) : (
+                    <p className={`py-6 text-center text-xs ${C.muted}`}>
+                      Sin datos en el período
+                    </p>
+                  )}
+                  {(() => {
+                    const eff = selectedCurrency === "USD" ? usd?.efectividad : uyu?.efectividad;
+                    return (
+                      <div className="mt-2 flex flex-wrap items-center gap-3">
+                        <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-accent)]" /><p className={`text-[10px] ${C.muted}`}>Facturado</p></div>
+                        <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-emerald-400" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
+                        {eff != null && (
+                          <span className={`ml-auto text-[10px] font-semibold ${eff >= 0.8 ? "text-emerald-700" : "text-amber-700"}`}>
+                            Cobranza: {Math.round(eff * 100)}% · Pendiente: {Math.round(Math.max(0, 1 - eff) * 100)}%
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </ChartCard>
+              </>
+            )}
           </div>
         </section>
 
         {/* Charts row 2: aging + effectiveness */}
         <section aria-label="Antigüedad y efectividad">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <ChartCard
-              title="[4] Deuda por antigüedad"
-              subtitle="Basado en due_date · Estado actual, sin filtro de período"
-              badge={<ChartLegend selectedCurrency={selectedCurrency} />}
-            >
-              {loading ? (
-                <Skeleton className="h-28" />
-              ) : (
-                <VerticalBarChart
-                  data={agingBars}
-                  selectedCurrency={selectedCurrency}
-                  height={110}
-                  emptyText="Sin deuda vencida"
-                />
-              )}
-            </ChartCard>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-2">
+            {selectedCurrency === "all" ? (
+              <>
+                <ChartCard title="[4] Deuda por antigüedad UYU" subtitle="Basado en fecha de vencimiento · Estado actual">
+                  {loading ? <Skeleton className="h-28" /> : (
+                    <VerticalBarChart data={agingBars} selectedCurrency="UYU" height={140} emptyText="Sin deuda vencida UYU" />
+                  )}
+                </ChartCard>
+                <ChartCard title="[4] Deuda por antigüedad USD" subtitle="Basado en fecha de vencimiento · Estado actual">
+                  {loading ? <Skeleton className="h-28" /> : (
+                    <VerticalBarChart data={agingBars} selectedCurrency="USD" height={140} emptyText="Sin deuda vencida USD" />
+                  )}
+                </ChartCard>
+              </>
+            ) : (
+              <ChartCard
+                title="[4] Deuda por antigüedad"
+                subtitle={`Basado en fecha de vencimiento · Estado actual · ${selectedCurrency}`}
+                badge={<ChartLegend selectedCurrency={selectedCurrency} />}
+              >
+                {loading ? (
+                  <Skeleton className="h-28" />
+                ) : (
+                  <VerticalBarChart
+                    data={agingBars}
+                    selectedCurrency={selectedCurrency}
+                    height={140}
+                    emptyText="Sin deuda vencida"
+                  />
+                )}
+              </ChartCard>
+            )}
 
             <ChartCard
               title="[10] Efectividad de cobros"
@@ -1384,91 +1558,203 @@ export default function DashboardPage() {
 
         {/* Charts row 3: top debtors + top billing */}
         <section aria-label="Top clientes">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <ChartCard
-              title="[5] Top 10 clientes deudores"
-              subtitle={`Deuda activa ${selectedCurrency === "all" ? "UYU" : selectedCurrency} · Clic para ver ficha`}
-            >
-              {loading ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-5" />
-                  ))}
-                </div>
-              ) : (
-                <HorizontalBarChart
-                  items={debtorItems.slice(0, 10)}
-                  color="var(--copilot-accent)"
-                  href={(id) => `/copilot/clientes/${id}`}
-                />
-              )}
-            </ChartCard>
+          {selectedCurrency === "all" ? (
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <ChartCard
+                title="[5] Top 10 deudores UYU"
+                subtitle={uyuTop10Pct != null ? `Concentran el ${uyuTop10Pct}% de la deuda UYU total · Clic para ver ficha` : "Deuda activa UYU · Clic para ver ficha"}
+              >
+                {loading ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Skeleton key={i} className="h-5" />
+                    ))}
+                  </div>
+                ) : (
+                  <HorizontalBarChart
+                    items={debtorItemsUYU}
+                    color="var(--copilot-accent)"
+                    href={(id) => `/copilot/clientes/${id}`}
+                    currency="UYU"
+                  />
+                )}
+              </ChartCard>
+              <ChartCard
+                title="[5] Top 10 deudores USD"
+                subtitle={usdTop10Pct != null ? `Concentran el ${usdTop10Pct}% de la deuda USD total · Clic para ver ficha` : "Deuda activa USD · Clic para ver ficha"}
+              >
+                {loading ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Skeleton key={i} className="h-5" />
+                    ))}
+                  </div>
+                ) : (
+                  <HorizontalBarChart
+                    items={debtorItemsUSD}
+                    color="#3b82f6"
+                    href={(id) => `/copilot/clientes/${id}`}
+                    currency="USD"
+                  />
+                )}
+              </ChartCard>
+              <ChartCard
+                title="[6] Top facturación histórica UYU"
+                subtitle="Facturación total activa · Histórico total"
+                badge={
+                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[9px] text-amber-700">
+                    Histórico total
+                  </span>
+                }
+              >
+                {loading ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Skeleton key={i} className="h-5" />
+                    ))}
+                  </div>
+                ) : (
+                  <HorizontalBarChart
+                    items={billingItemsUYU}
+                    color="var(--copilot-accent)"
+                    href={(id) => `/copilot/clientes/${id}`}
+                    currency="UYU"
+                  />
+                )}
+              </ChartCard>
+              <ChartCard
+                title="[6] Top facturación histórica USD"
+                subtitle="Facturación total activa · Histórico total"
+                badge={
+                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[9px] text-amber-700">
+                    Histórico total
+                  </span>
+                }
+              >
+                {loading ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Skeleton key={i} className="h-5" />
+                    ))}
+                  </div>
+                ) : (
+                  <HorizontalBarChart
+                    items={billingItemsUSD}
+                    color="#3b82f6"
+                    href={(id) => `/copilot/clientes/${id}`}
+                    currency="USD"
+                  />
+                )}
+              </ChartCard>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <ChartCard
+                title="[5] Top 10 clientes deudores"
+                subtitle={
+                  (selectedCurrency === "USD" ? usdTop10Pct : uyuTop10Pct) != null
+                    ? `Concentran el ${selectedCurrency === "USD" ? usdTop10Pct : uyuTop10Pct}% de la deuda ${selectedCurrency} total · Clic para ver ficha`
+                    : `Deuda activa ${selectedCurrency} · Clic para ver ficha`
+                }
+              >
+                {loading ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Skeleton key={i} className="h-5" />
+                    ))}
+                  </div>
+                ) : (
+                  <HorizontalBarChart
+                    items={debtorItems}
+                    color="var(--copilot-accent)"
+                    href={(id) => `/copilot/clientes/${id}`}
+                    currency={selectedCurrency}
+                  />
+                )}
+              </ChartCard>
 
-            <ChartCard
-              title="[6] Top 10 por facturación histórica"
-              subtitle="Facturación total activa · No filtrable por período desde esta vista"
-              badge={
-                <span
-                  title="Este gráfico usa facturación histórica total (all-time) porque no existe API por cliente para el período seleccionado."
-                  className={`cursor-help rounded-full bg-amber-50 px-2 py-0.5 text-[9px] text-amber-700`}
-                >
-                  Histórico total
-                </span>
-              }
-            >
-              {loading ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-5" />
-                  ))}
-                </div>
-              ) : (
-                <HorizontalBarChart
-                  items={billingItems.slice(0, 10)}
-                  color="#3b82f6"
-                  href={(id) => `/copilot/clientes/${id}`}
-                />
-              )}
-            </ChartCard>
-          </div>
+              <ChartCard
+                title="[6] Top 10 por facturación histórica"
+                subtitle="Facturación total activa · No filtrable por período desde esta vista"
+                badge={
+                  <span
+                    title="Este gráfico usa facturación histórica total (all-time) porque no existe API por cliente para el período seleccionado."
+                    className={`cursor-help rounded-full bg-amber-50 px-2 py-0.5 text-[9px] text-amber-700`}
+                  >
+                    Histórico total
+                  </span>
+                }
+              >
+                {loading ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Skeleton key={i} className="h-5" />
+                    ))}
+                  </div>
+                ) : (
+                  <HorizontalBarChart
+                    items={billingItems}
+                    color="#3b82f6"
+                    href={(id) => `/copilot/clientes/${id}`}
+                    currency={selectedCurrency}
+                  />
+                )}
+              </ChartCard>
+            </div>
+          )}
         </section>
 
-        {/* Charts row 4: client states + currency distribution + cash projection */}
-        <section aria-label="Distribución y proyección">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Charts row 4: portfolio state card + cash projection */}
+        <section aria-label="Estado de cartera y proyección">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-2">
             <ChartCard
-              title="[7] Clientes por estado"
-              subtitle="Estado actual de la cartera comercial"
+              title="[7] Estado de cartera"
+              subtitle="Los clientes se cuentan una sola vez aunque tengan deuda en más de una moneda."
             >
               {loading ? (
-                <Skeleton className="h-20" />
+                <Skeleton className="h-40" />
               ) : (
-                <DonutChart segments={clientDonutSegments} />
-              )}
-              <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
-                <Link href="/copilot/clientes" className={`text-[10px] ${C.accent} hover:underline flex items-center gap-1`}>
-                  <Users className="h-3 w-3" />
-                  Ver clientes
-                </Link>
-                <Link href="/copilot/cartera?filter=overdue" className={`text-[10px] ${C.muted} hover:underline`}>
-                  Ver vencidos →
-                </Link>
-              </div>
-            </ChartCard>
-
-            <ChartCard
-              title="[8] Distribución por moneda"
-              subtitle="Deuda activa — UYU vs USD (sin conversión)"
-            >
-              {loading ? (
-                <Skeleton className="h-20" />
-              ) : (
-                <>
-                  <DonutChart segments={currDistSegments} />
-                  <p className={`mt-2 text-[9px] ${C.muted}`}>
-                    Sin conversión de tipo de cambio. Los valores no son comparables entre monedas.
-                  </p>
-                </>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg border border-[var(--copilot-border)] p-3">
+                      <p className={`text-[10px] leading-tight ${C.muted}`}>Clientes activos</p>
+                      <p className={`mt-1 text-2xl font-bold tabular-nums ${C.ink}`}>{clientStates.total}</p>
+                    </div>
+                    <div className="rounded-lg border border-[var(--copilot-border)] p-3">
+                      <p className={`text-[10px] leading-tight ${C.muted}`}>Con deuda activa</p>
+                      <p className={`mt-1 text-2xl font-bold tabular-nums ${C.ink}`}>{clientStates.total - clientStates.sinDeuda}</p>
+                    </div>
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                      <p className={`text-[10px] leading-tight text-amber-700`}>Con deuda vencida</p>
+                      <p className={`mt-1 text-2xl font-bold tabular-nums text-amber-800`}>
+                        {clientStates.conDeudaVencida + clientStates.riesgoAlto}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                      <p className={`text-[10px] leading-tight text-emerald-700`}>Al día</p>
+                      <p className={`mt-1 text-2xl font-bold tabular-nums text-emerald-800`}>{clientStates.conDeudaAlDia}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 border-t border-[var(--copilot-border)] pt-2">
+                    <div>
+                      <p className={`text-[10px] ${C.muted}`}>Deuda activa UYU</p>
+                      <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(uyu?.deudaActiva ?? 0, "UYU")}</p>
+                    </div>
+                    <div>
+                      <p className={`text-[10px] ${C.muted}`}>Deuda activa USD</p>
+                      <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(usd?.deudaActiva ?? 0, "USD")}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1">
+                    <Link href="/copilot/clientes" className={`text-[10px] ${C.accent} hover:underline flex items-center gap-1`}>
+                      <Users className="h-3 w-3" />
+                      Ver clientes
+                    </Link>
+                    <Link href="/copilot/cartera?filter=overdue" className={`text-[10px] ${C.muted} hover:underline`}>
+                      Ver vencidos →
+                    </Link>
+                  </div>
+                </div>
               )}
             </ChartCard>
 
@@ -1517,7 +1803,7 @@ export default function DashboardPage() {
             <div>
               <div className="mb-3 flex items-center justify-between">
                 <h2 className={`text-xs font-semibold uppercase tracking-wide ${C.muted}`}>
-                  Clientes críticos
+                  Clientes con deuda activa
                 </h2>
                 <Link
                   href="/copilot/cartera"
@@ -1529,8 +1815,8 @@ export default function DashboardPage() {
               {loading ? (
                 <Skeleton className="h-40" />
               ) : (
-                <CriticalClientsTable
-                  debtors={topDebtors}
+                <ActiveDebtClientsTable
+                  rows={activeDebtRows}
                   selectedCurrency={selectedCurrency}
                 />
               )}
@@ -1539,7 +1825,7 @@ export default function DashboardPage() {
             <div>
               <div className="mb-3 flex items-center justify-between">
                 <h2 className={`text-xs font-semibold uppercase tracking-wide ${C.muted}`}>
-                  Movimientos recientes
+                  Movimientos recientes del período
                 </h2>
                 <Link
                   href="/copilot/datos"
@@ -1551,27 +1837,14 @@ export default function DashboardPage() {
               {loading ? (
                 <Skeleton className="h-40" />
               ) : (
-                <RecentMovementsTable movements={recentMovements} />
+                <RecentMovementsTable
+                  movements={recentMovements}
+                  selectedCurrency={selectedCurrency}
+                />
               )}
             </div>
           </div>
         </section>
-
-        {/* Disclaimer */}
-        <div className={`rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)]/60 p-3 text-[10px] ${C.muted}`}>
-          <p>
-            <strong className={C.ink}>Fuentes:</strong>{" "}
-            Facturado / Cobrado: reconciliación financiera (recibos reales Zeta, período seleccionado) ·
-            Deuda activa / Vencida: estado actual, sin filtro de período ·
-            Aging: basado en due_date ·
-            Caja: Tesorería manual ·
-            Facturación histórica por cliente: all-time, no filtrable por período desde esta vista.
-          </p>
-          <p className="mt-1">
-            Este dashboard es operativo. Para decisiones de cierre financiero, validá con el export
-            oficial de Zeta.
-          </p>
-        </div>
       </div>
     </div>
   );

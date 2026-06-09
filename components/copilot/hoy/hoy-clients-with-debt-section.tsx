@@ -9,11 +9,13 @@ import { fmtCurrencyAmount } from "@/lib/copilot-today-business-pulse";
 import type { DebtorCollectionRow, MoneyAmount } from "@/lib/copilot-today-business-pulse";
 import type { HoyClientCounts } from "@/lib/copilot-today-business-pulse";
 import type { ClientCompanyDetail, ClientPortfolioInvoice } from "@/lib/copilot-clients-portfolio";
+import type { CarteraCurrencyTotals } from "@/lib/copilot-cartera-aging-totals";
 import { HOY_COPY, HOY_UI } from "@/lib/copilot-hoy-ui-contract";
 import {
   buildDebtorExpandData,
   fmtDebtSymbol,
 } from "@/lib/hoy-debtor-expand-helpers";
+import { sortDebtorRowsByAging } from "@/lib/hoy-debtor-sort";
 import {
   buildDebtBreakdown,
   fmtDateShort,
@@ -650,50 +652,58 @@ function dedupeDebtorRows(rows: DebtorCollectionRow[]): DebtorCollectionRow[] {
       if (scoreB > scoreA) map.set(key, row);
     }
   }
-  return [...map.values()].sort((a, b) => {
-    const vA = a.vencido?.amount ?? 0;
-    const vB = b.vencido?.amount ?? 0;
-    if (vB !== vA) return vB - vA;
-    if (b.deuda.amount !== a.deuda.amount) return b.deuda.amount - a.deuda.amount;
-    return a.name.localeCompare(b.name, "es");
-  });
+  return sortDebtorRowsByAging([...map.values()]);
 }
 
 export function ClientsWithDebtSection({
   allRows,
-  showAll,
   sectionRef,
   highlightRisk = false,
   portfolioDetails,
+  canonicalTotals,
 }: {
   allRows: DebtorCollectionRow[];
-  /** Cuando es true (disparado desde drawer externo) muestra todas las filas. */
-  showAll?: boolean;
   sectionRef?: RefObject<HTMLElement | null>;
   highlightRisk?: boolean;
   portfolioDetails?: Record<string, ClientCompanyDetail>;
+  /** Rollup canónico (pendingAtCutoff / aging) — no sumar solo filas visibles. */
+  canonicalTotals?: { active: CarteraCurrencyTotals; overdue: CarteraCurrencyTotals };
 }) {
-  const initialCount = HOY_UI.initialDebtorTableRows;
-  const pageStep = HOY_UI.debtorPageStep;
-  const dedupedRows = useMemo(() => dedupeDebtorRows(allRows), [allRows]);
+  const pageSizeOptions = HOY_UI.debtorPageSizeOptions;
+  const defaultPageSize = HOY_UI.defaultDebtorPageSize;
+  const sortedRows = useMemo(() => dedupeDebtorRows(allRows), [allRows]);
 
-  const [visibleCount, setVisibleCount] = useState<number>(initialCount);
-  const visibilityResetKey = `${showAll}|${dedupedRows.length}|${initialCount}`;
-  const [appliedVisibilityResetKey, setAppliedVisibilityResetKey] = useState(visibilityResetKey);
+  const [pageSize, setPageSize] = useState<number>(defaultPageSize);
+  const [pageIndex, setPageIndex] = useState(0);
 
-  if (appliedVisibilityResetKey !== visibilityResetKey) {
-    setAppliedVisibilityResetKey(visibilityResetKey);
-    setVisibleCount(showAll ? dedupedRows.length : initialCount);
+  const paginationResetKey = `${sortedRows.length}|${pageSize}`;
+  const [appliedPaginationResetKey, setAppliedPaginationResetKey] = useState(paginationResetKey);
+
+  if (appliedPaginationResetKey !== paginationResetKey) {
+    setAppliedPaginationResetKey(paginationResetKey);
+    setPageIndex(0);
   }
 
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
+  const safePageIndex = Math.min(pageIndex, totalPages - 1);
+  const pageStart = safePageIndex * pageSize;
+  const pageEnd = Math.min(pageStart + pageSize, sortedRows.length);
   const visibleRows = useMemo(
-    () => dedupedRows.slice(0, visibleCount),
-    [dedupedRows, visibleCount]
+    () => sortedRows.slice(pageStart, pageEnd),
+    [sortedRows, pageStart, pageEnd]
   );
 
   const { uyuDebt, usdDebt, uyuOverdue, usdOverdue } = useMemo(() => {
+    if (canonicalTotals) {
+      return {
+        uyuDebt: canonicalTotals.active.UYU,
+        usdDebt: canonicalTotals.active.USD,
+        uyuOverdue: canonicalTotals.overdue.UYU,
+        usdOverdue: canonicalTotals.overdue.USD,
+      };
+    }
     let uyuDebt = 0, usdDebt = 0, uyuOverdue = 0, usdOverdue = 0;
-    for (const r of dedupedRows) {
+    for (const r of sortedRows) {
       if (r.currency === "UYU") {
         uyuDebt += r.deuda.amount;
         uyuOverdue += r.vencido?.amount ?? 0;
@@ -703,18 +713,11 @@ export function ClientsWithDebtSection({
       }
     }
     return { uyuDebt, usdDebt, uyuOverdue, usdOverdue };
-  }, [dedupedRows]);
+  }, [canonicalTotals, sortedRows]);
 
-  const canShowMore = visibleCount < dedupedRows.length;
-  const canShowLess = visibleCount > initialCount;
-  const remaining = dedupedRows.length - visibleCount;
-
-  function handleShowMore() {
-    setVisibleCount((c) => Math.min(c + pageStep, dedupedRows.length));
-  }
-
-  function handleShowLess() {
-    setVisibleCount(initialCount);
+  function handlePageSizeChange(nextSize: number) {
+    setPageSize(nextSize);
+    setPageIndex(0);
   }
 
   return (
@@ -722,13 +725,13 @@ export function ClientsWithDebtSection({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-xs text-[var(--copilot-ink-muted)]">
         {uyuDebt > 0 && (
           <span>
-            Deuda UYU{" "}
+            Deuda activa UYU{" "}
             <span className="font-semibold text-amber-700">{fmtCurrencyAmount(uyuDebt, "UYU")}</span>
           </span>
         )}
         {usdDebt > 0 && (
           <span>
-            Deuda USD{" "}
+            Deuda activa USD{" "}
             <span className="font-semibold text-amber-700">{fmtCurrencyAmount(usdDebt, "USD")}</span>
           </span>
         )}
@@ -748,26 +751,50 @@ export function ClientsWithDebtSection({
       <div className="mt-2">
         <DebtorTable rows={visibleRows} highlightRisk={highlightRisk} portfolioDetails={portfolioDetails} />
       </div>
-      {(canShowMore || canShowLess) && (
-        <div className="mt-3 flex items-center gap-2">
-          {canShowMore && (
-            <button
-              type="button"
-              onClick={handleShowMore}
-              className="flex-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-dropdown-bg)] py-2 text-xs font-semibold text-[var(--copilot-accent)] hover:bg-[var(--copilot-hover-bg)]"
-            >
-              {`Mostrar ${Math.min(pageStep, remaining)} más`}
-            </button>
-          )}
-          {canShowLess && (
-            <button
-              type="button"
-              onClick={handleShowLess}
-              className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-dropdown-bg)] px-4 py-2 text-xs font-semibold text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-hover-bg)]"
-            >
-              Mostrar menos
-            </button>
-          )}
+      {sortedRows.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[11px] text-[var(--copilot-ink-muted)]">
+            {sortedRows.length === 0
+              ? "Sin clientes con deuda activa"
+              : `Mostrando ${pageStart + 1}–${pageEnd} de ${sortedRows.length} clientes`}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-1.5 text-[11px] text-[var(--copilot-ink-muted)]">
+              <span>Por página</span>
+              <select
+                value={pageSize}
+                onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                className="rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-dropdown-bg)] px-2 py-1 text-[11px] font-semibold text-[var(--copilot-ink)]"
+              >
+                {pageSizeOptions.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={safePageIndex === 0}
+                onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+                className="rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-dropdown-bg)] px-2.5 py-1 text-[11px] font-semibold text-[var(--copilot-ink)] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Anterior
+              </button>
+              <span className="px-1 text-[11px] tabular-nums text-[var(--copilot-ink-muted)]">
+                {safePageIndex + 1} / {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={safePageIndex >= totalPages - 1}
+                onClick={() => setPageIndex((p) => Math.min(totalPages - 1, p + 1))}
+                className="rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-dropdown-bg)] px-2.5 py-1 text-[11px] font-semibold text-[var(--copilot-ink)] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </section>
