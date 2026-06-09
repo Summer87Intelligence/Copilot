@@ -9,17 +9,17 @@
  *  - ExecutiveSummaryCards + ReconciliationCenter (Bloques 3 y 4).
  *  - Placeholder temporal para Bloque 5+ (aging / explorer / explainability).
  *
- * No realiza ningÃºn recÃ¡lculo financiero. Solo:
+ * No realiza ningún recálculo financiero. Solo:
  *  - Mantiene estado UI (rango confirmado, refresh tick).
  *  - Pasa el reporte intacto a los componentes hijos.
  *  - Muestra skeletons reales mientras `loading && !report`.
- *  - Si hay un reporte previo y se estÃ¡ re-fetcheando, mantiene el contenido y
+ *  - Si hay un reporte previo y se está re-fetcheando, mantiene el contenido y
  *    deja al control bar mostrar el spinner (evita flicker entre estados).
  *
  * Decisiones de UX (mayo 2026):
  *  - `mode` queda fijo en `period_only`. El selector visible "Todo el historial"
- *    fue removido porque aÃ±o + rango de fechas cubren todos los casos operativos
- *    y la opciÃ³n histÃ³rica generaba confusiÃ³n.
+ *    fue removido porque año + rango de fechas cubren todos los casos operativos
+ *    y la opción histórica generaba confusión.
  *  - La pantalla no hace fetch al montar. El usuario debe confirmar un rango
  *    Desde/Hasta para habilitar el hook y cargar el reporte.
  *  - Al montar, Desde/Hasta se precargan con mes actual â†’ hoy (calendario local).
@@ -73,7 +73,7 @@ export function CarteraShell() {
   const [confirmedDraftStart, setConfirmedDraftStart] = useState(initialMonthRange.from);
   const [confirmedDraftEnd, setConfirmedDraftEnd] = useState(initialMonthRange.to);
   const [hasConfirmedRange, setHasConfirmedRange] = useState(true);
-  // Dismissal keyed por perÃ­odo confirmado: se resetea automÃ¡ticamente al cambiar rango
+  // Dismissal keyed por período confirmado: se resetea automáticamente al cambiar rango
   const [dismissedPreSyncPeriod, setDismissedPreSyncPeriod] = useState<string | null>(null);
   const [dismissedRowCapPeriod, setDismissedRowCapPeriod] = useState<string | null>(null);
 
@@ -87,7 +87,7 @@ export function CarteraShell() {
   const isPreSync =
     !!periodStart && periodStart < COPILOT_OPERATIONAL_START_DATE;
 
-  // Clave Ãºnica del perÃ­odo confirmado para comparar dismissals
+  // Clave única del período confirmado para comparar dismissals
   const confirmedPeriodKey =
     periodStart && periodEnd ? `${periodStart}|${periodEnd}` : null;
   const preSyncDismissed =
@@ -98,7 +98,7 @@ export function CarteraShell() {
   const isTruncated = meta?.truncated === true;
 
   // Gap estructural por moneda: emitido - cobrado - pendiente
-  // Solo relevante cuando el perÃ­odo incluye facturas pre-sync sin recibos disponibles
+  // Solo relevante cuando el período incluye facturas pre-sync sin recibos disponibles
   const structuralGaps = useMemo(() => {
     if (!report || !isPreSync) return [] as Array<{ currency: "UYU" | "USD"; amount: number }>;
     const index = buildCurrencyIndex(report.currencies);
@@ -191,11 +191,11 @@ export function CarteraShell() {
                 }
               />
             )}
-            {/* Bloque A â€” Ventas del perÃ­odo (arriba, abierto por defecto) */}
+            {/* Bloque A — Ventas del período (arriba, abierto por defecto) */}
             <CollapsibleSection
               id="ventas"
-              title="Ventas del perÃ­odo"
-              subtitle="FacturaciÃ³n y cobros del rango seleccionado"
+              title="Ventas del período"
+              subtitle="Facturación y cobros del rango seleccionado"
               defaultOpen
             >
               <ExecutiveSummaryCards
@@ -207,7 +207,7 @@ export function CarteraShell() {
               <CreditNotesSection report={report} selectedCurrency="all" />
             </CollapsibleSection>
 
-            {/* Bloque â€” Resumen financiero (cobrado aplicado + saldo pendiente) */}
+            {/* Bloque — Resumen financiero (cobrado aplicado + saldo pendiente) */}
             <CollapsibleSection
               id="summary"
               title="Resumen financiero"
@@ -222,7 +222,7 @@ export function CarteraShell() {
               />
             </CollapsibleSection>
 
-            {/* Bloque B â€” Cobranza y deuda activa */}
+            {/* Bloque B — Cobranza y deuda activa */}
             <CollapsibleSection
               id="cobranza"
               title="Cobranza"
@@ -240,8 +240,8 @@ export function CarteraShell() {
               )}
               <CollapsibleSection
                 id="aging"
-                title="AntigÃ¼edad de cartera"
-                subtitle="Deuda viva agrupada por antigÃ¼edad Â· todos los saldos activos al dÃ­a de hoy"
+                title="Antigüedad de cartera"
+                subtitle="Deuda viva agrupada por antigüedad · todos los saldos activos al día de hoy"
                 defaultOpen={false}
                 variant="secondary"
               >
@@ -250,7 +250,7 @@ export function CarteraShell() {
               <CollapsibleSection
                 id="explorador"
                 title="Explorador de deuda"
-                subtitle="Clientes con deuda activa al dÃ­a de hoy Â· no limitado al rango seleccionado"
+                subtitle="Clientes con deuda activa al día de hoy · no limitado al rango seleccionado"
                 defaultOpen={overdueFilter}
                 variant="secondary"
               >
@@ -321,10 +321,10 @@ function EmptySummaryPlaceholders({ shimmer = false }: { shimmer?: boolean }) {
             </p>
           </div>
           <p className="text-2xl font-semibold leading-tight tabular-nums text-[var(--copilot-ink-muted)]">
-            â€”
+            —
           </p>
           <p className="mt-1.5 text-sm text-[var(--copilot-ink-muted)]">
-            Sin perÃ­odo confirmado
+            Sin período confirmado
           </p>
         </article>
       ))}
@@ -337,14 +337,14 @@ function EmptyAgingPlaceholder({ shimmer = false }: { shimmer?: boolean }) {
     <section className={`rounded-2xl border shadow-[var(--copilot-shadow)] ${neutralFinancialCardClass}`}>
       <header className="border-b border-[var(--copilot-border)] px-5 py-4">
         <h3 className="text-base font-semibold tracking-tight text-[var(--copilot-ink)]">
-          AntigÃ¼edad de cartera
+          Antigüedad de cartera
         </h3>
         <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-          Sin perÃ­odo confirmado Â· montos y porcentajes pendientes
+          Sin período confirmado · montos y porcentajes pendientes
         </p>
       </header>
       <div className="space-y-3 p-5">
-        {["0-30 dÃ­as", "31-60 dÃ­as", "61-90 dÃ­as", "+90 dÃ­as"].map((label) => (
+        {["0-30 días", "31-60 días", "61-90 días", "+90 días"].map((label) => (
           <div
             key={label}
             className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/55 p-3.5"
@@ -353,13 +353,13 @@ function EmptyAgingPlaceholder({ shimmer = false }: { shimmer?: boolean }) {
               <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-ink-muted)]">
                 {label}
               </span>
-              <span className="text-[10px] font-semibold text-[var(--copilot-ink-muted)]">â€”</span>
+              <span className="text-[10px] font-semibold text-[var(--copilot-ink-muted)]">—</span>
             </div>
             <PlaceholderBlock className="mb-3 h-2.5 w-full rounded-full" shimmer={shimmer} />
             <div className="flex gap-4 text-[12px] text-[var(--copilot-ink-muted)]">
-              <span>â€”</span>
-              <span>â€” fact.</span>
-              <span>â€” clientes</span>
+              <span>—</span>
+              <span>— fact.</span>
+              <span>— clientes</span>
             </div>
           </div>
         ))}
@@ -376,7 +376,7 @@ function EmptyDebtExplorerPlaceholder({ shimmer = false }: { shimmer?: boolean }
           Explorador de deuda
         </h3>
         <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-          La tabla se cargarÃ¡ despuÃ©s de confirmar un rango.
+          La tabla se cargará después de confirmar un rango.
         </p>
       </header>
       <div className="space-y-2 p-5">
@@ -478,9 +478,9 @@ function HistoricalGapNote({
         <span key={currency} className="inline-flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" aria-hidden />
           <span>
-            <span className="font-semibold">Î” sin reconciliar {currency}:</span>{" "}
-            {formatCarteraMoney(currency, amount)} â€” pagos anteriores al inicio de
-            sincronizaciÃ³n (2026-01-01) no disponibles en el sistema
+            <span className="font-semibold">Δ sin reconciliar {currency}:</span>{" "}
+            {formatCarteraMoney(currency, amount)} — pagos anteriores al inicio de
+            sincronización (2026-01-01) no disponibles en el sistema
           </span>
         </span>
       ))}
