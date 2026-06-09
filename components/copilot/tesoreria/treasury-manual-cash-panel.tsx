@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Loader2, Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CheckCircle2, Loader2, Plus, XCircle } from "lucide-react";
 
 import type { TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
 
 import { CopilotBadge, CopilotGhostButton, CopilotPrimaryButton, CopilotSectionTitle } from "@/components/copilot/copilot-ui";
+import { CopilotPagination } from "@/components/copilot/ui/copilot-pagination";
+import { copilotApiFetch } from "@/lib/copilot-fetch";
+import type { TreasuryMovementAccounting, TreasuryMovementAccountingMatchStatus } from "@/lib/treasury/treasury-types";
 import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
 import {
   TESORERIA_FIELD_CLASS,
@@ -22,7 +25,6 @@ import {
   zodFieldErrors,
 } from "@/lib/treasury/treasury-form-schemas";
 import { isManualCashMovementDeletable } from "@/lib/treasury/treasury-manual-cash-movements";
-import { manualMovementAffectsCurrentCash } from "@/lib/treasury/treasury-cash-position";
 import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 
@@ -46,6 +48,42 @@ type FormState = {
 
 type CurrencyFilter = "all" | TreasuryCurrencyCode;
 type TypeFilter = "all" | "income" | "expense" | "adjustment";
+type AccountingFilter =
+  | "all"
+  | "sin_contabilizar"
+  | "contabilizados"
+  | "coincide"
+  | "no_coincide"
+  | "requiere_revision";
+
+const ACCOUNTING_FILTER_LABELS: Record<AccountingFilter, string> = {
+  all: "Todos",
+  sin_contabilizar: "Sin contabilizar",
+  contabilizados: "Contabilizados",
+  coincide: "Asiento coincide",
+  no_coincide: "No coincide",
+  requiere_revision: "Requiere revisión",
+};
+
+const MATCH_STATUS_LABELS: Record<TreasuryMovementAccountingMatchStatus, string> = {
+  pending: "Pendiente",
+  matched: "Coincide",
+  amount_mismatch: "Dif. importe",
+  currency_mismatch: "Dif. moneda",
+  date_mismatch: "Dif. fecha",
+  missing_zeta_entry: "Sin asiento",
+  manually_confirmed: "Confirmado",
+};
+
+const MATCH_STATUS_BADGE_CLASS: Record<TreasuryMovementAccountingMatchStatus, string> = {
+  pending: "bg-gray-100 text-gray-600",
+  matched: "bg-emerald-100 text-emerald-800",
+  amount_mismatch: "bg-amber-100 text-amber-800",
+  currency_mismatch: "bg-amber-100 text-amber-800",
+  date_mismatch: "bg-amber-100 text-amber-800",
+  missing_zeta_entry: "bg-rose-100 text-rose-700",
+  manually_confirmed: "bg-blue-100 text-blue-700",
+};
 
 const TYPE_LABELS: Record<string, string> = {
   income: "Ingreso",
@@ -79,12 +117,68 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [accountingFilter, setAccountingFilter] = useState<AccountingFilter>("all");
+  const [accountingMap, setAccountingMap] = useState<Map<string, TreasuryMovementAccounting>>(new Map());
+  const [accountingLoading, setAccountingLoading] = useState(false);
+  const [savingAccountingId, setSavingAccountingId] = useState<string | null>(null);
+
+  const loadAccounting = useCallback(async () => {
+    if (workspace.manualMovements.length === 0) return;
+    setAccountingLoading(true);
+    try {
+      const ids = workspace.manualMovements.map((m) => m.id).join(",");
+      const res = await copilotApiFetch(`/api/copilot/treasury/accounting?movement_ids=${ids}`);
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; records?: TreasuryMovementAccounting[] } | null;
+      if (json?.ok && json.records) {
+        const map = new Map<string, TreasuryMovementAccounting>();
+        for (const r of json.records) map.set(r.movementId, r);
+        setAccountingMap(map);
+      }
+    } finally {
+      setAccountingLoading(false);
+    }
+  }, [workspace.manualMovements]);
+
+  useEffect(() => {
+    void loadAccounting();
+  }, [loadAccounting]);
+
+  async function togglePosted(movementId: string, current: boolean) {
+    setSavingAccountingId(movementId);
+    try {
+      const res = await copilotApiFetch(`/api/copilot/treasury/movements/${movementId}/accounting`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accounting_posted: !current }),
+      });
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; data?: { record: TreasuryMovementAccounting } } | null;
+      if (json?.ok && json.data?.record) {
+        setAccountingMap((prev) => new Map(prev).set(movementId, json.data!.record));
+      }
+    } finally {
+      setSavingAccountingId(null);
+    }
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return workspace.manualMovements
       .filter((m) => currencyFilter === "all" || m.currencyCode === currencyFilter)
       .filter((m) => typeFilter === "all" || m.movementType === typeFilter)
+      .filter((m) => {
+        if (accountingFilter === "all") return true;
+        const acc = accountingMap.get(m.id);
+        if (accountingFilter === "sin_contabilizar") return !acc?.accountingPosted;
+        if (accountingFilter === "contabilizados") return acc?.accountingPosted === true;
+        if (accountingFilter === "coincide") return acc?.accountingMatchStatus === "matched";
+        if (accountingFilter === "no_coincide") {
+          return acc != null && ["amount_mismatch", "currency_mismatch", "date_mismatch"].includes(acc.accountingMatchStatus);
+        }
+        if (accountingFilter === "requiere_revision") {
+          return !acc?.accountingPosted || acc?.accountingMatchStatus === "pending" || acc?.accountingMatchStatus === "missing_zeta_entry";
+        }
+        return true;
+      })
       .filter((m) => {
         if (!q) return true;
         return (
@@ -97,7 +191,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
         (a, b) =>
           b.movementDate.localeCompare(a.movementDate) || b.createdAt.localeCompare(a.createdAt)
       );
-  }, [workspace.manualMovements, search, currencyFilter, typeFilter]);
+  }, [workspace.manualMovements, search, currencyFilter, typeFilter, accountingFilter, accountingMap]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / TESORERIA_PAGE_SIZE));
   const pageItems = filtered.slice(page * TESORERIA_PAGE_SIZE, (page + 1) * TESORERIA_PAGE_SIZE);
@@ -243,6 +337,26 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
         ))}
       </div>
 
+      {/* Accounting filter */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-[11px] font-medium text-[var(--copilot-ink-muted)]">Contabilidad:</span>
+        {(Object.keys(ACCOUNTING_FILTER_LABELS) as AccountingFilter[]).map((f) => (
+          <button
+            key={f}
+            type="button"
+            onClick={() => { setAccountingFilter(f); setPage(0); }}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+              accountingFilter === f
+                ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]"
+                : "bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]"
+            }`}
+          >
+            {ACCOUNTING_FILTER_LABELS[f]}
+          </button>
+        ))}
+        {accountingLoading && <Loader2 className="h-3 w-3 animate-spin text-[var(--copilot-ink-muted)]" />}
+      </div>
+
       <div className="flex flex-wrap items-center gap-3">
         <input
           value={search}
@@ -280,8 +394,9 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                 <th className={TESORERIA_TH_CLASS}>Monto</th>
                 <th className={TESORERIA_TH_CLASS}>Cuenta</th>
                 <th className={TESORERIA_TH_CLASS}>Estado</th>
-                <th className={TESORERIA_TH_CLASS}>Afecta caja</th>
-                <th className={TESORERIA_TH_CLASS}>Conciliado</th>
+                <th className={TESORERIA_TH_CLASS}>Contabilizado</th>
+                <th className={TESORERIA_TH_CLASS}>Asiento Zeta</th>
+                <th className={TESORERIA_TH_CLASS}>Coincidencia</th>
                 <th className={TESORERIA_TH_CLASS}>Acciones</th>
               </tr>
             </thead>
@@ -305,13 +420,56 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                       {row.status === "active" ? "Activo" : "Archivado"}
                     </CopilotBadge>
                   </td>
+                  {/* Contabilizado */}
                   <td className={TESORERIA_TD_CLASS}>
-                    {manualMovementAffectsCurrentCash(row, workspace.manualMovements)
-                      ? "Sí"
-                      : "No"}
+                    <button
+                      type="button"
+                      disabled={savingAccountingId === row.id}
+                      onClick={() => void togglePosted(row.id, accountingMap.get(row.id)?.accountingPosted ?? false)}
+                      className="flex items-center gap-1 text-xs"
+                      title="Marcar / desmarcar como contabilizado en Zeta"
+                    >
+                      {savingAccountingId === row.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-[var(--copilot-ink-muted)]" />
+                      ) : accountingMap.get(row.id)?.accountingPosted ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-[var(--copilot-ink-muted)]" />
+                      )}
+                      <span className={accountingMap.get(row.id)?.accountingPosted ? "text-emerald-700 font-medium" : "text-[var(--copilot-ink-muted)]"}>
+                        {accountingMap.get(row.id)?.accountingPosted ? "Sí" : "No"}
+                      </span>
+                    </button>
                   </td>
+                  {/* Asiento Zeta */}
                   <td className={TESORERIA_TD_CLASS}>
-                    {row.reconciled ? "Sí" : "No"}
+                    {(() => {
+                      const acc = accountingMap.get(row.id);
+                      if (!acc?.zetaAccountingEntryNumber) return <span className="text-[var(--copilot-ink-muted)]">—</span>;
+                      return (
+                        <span className="text-xs font-medium text-[var(--copilot-ink)]">
+                          {acc.zetaAccountingEntryNumber}
+                          {acc.zetaAccountingEntryDate && (
+                            <span className="ml-1 text-[var(--copilot-ink-muted)]">
+                              · {acc.zetaAccountingEntryDate.slice(5).replace("-", "/")}
+                            </span>
+                          )}
+                        </span>
+                      );
+                    })()}
+                  </td>
+                  {/* Coincidencia */}
+                  <td className={TESORERIA_TD_CLASS}>
+                    {(() => {
+                      const acc = accountingMap.get(row.id);
+                      if (!acc) return <span className="text-[var(--copilot-ink-muted)]">—</span>;
+                      const cls = MATCH_STATUS_BADGE_CLASS[acc.accountingMatchStatus];
+                      return (
+                        <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${cls}`}>
+                          {MATCH_STATUS_LABELS[acc.accountingMatchStatus]}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className={TESORERIA_TD_CLASS}>
                     {canWrite ? (
@@ -363,22 +521,12 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
       )}
 
       {filtered.length > TESORERIA_PAGE_SIZE ? (
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-[var(--copilot-ink-muted)]">
-            Página {page + 1} de {pageCount}
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-[var(--copilot-ink-muted)]">
+            {filtered.length} movimiento{filtered.length !== 1 ? "s" : ""}
+            {pageCount > 1 && ` · Página ${page + 1} de ${pageCount}`}
           </span>
-          <div className="flex gap-2">
-            <CopilotGhostButton type="button" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
-              Anterior
-            </CopilotGhostButton>
-            <CopilotGhostButton
-              type="button"
-              disabled={page + 1 >= pageCount}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Siguiente
-            </CopilotGhostButton>
-          </div>
+          <CopilotPagination page={page} pageCount={pageCount} onPageChange={setPage} />
         </div>
       ) : null}
 

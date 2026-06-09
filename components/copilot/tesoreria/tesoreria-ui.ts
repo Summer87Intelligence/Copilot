@@ -17,6 +17,7 @@ export type TesoreriaSection =
   | "caja"
   | "programados"
   | "movimientos"
+  | "cobranza"
   | "avanzado"
   // Secciones legacy (mantenidas para backward-compat por URL aliases)
   | "resumen"
@@ -48,10 +49,8 @@ export const TESORERIA_SECTIONS_MAIN: { id: TesoreriaSection; label: string }[] 
   { id: "caja", label: "Caja" },
   { id: "programados", label: "Pagos próximos" },
   { id: "movimientos", label: "Movimientos" },
+  { id: "cobranza", label: "Cobranza del mes" },
 ];
-
-/** Secciones de configuración legacy — ya no aparecen en nav principal. */
-export const TESORERIA_SECTIONS_CONFIG: { id: TesoreriaSection; label: string }[] = [];
 
 /** Todas las secciones (para parseo de URL). */
 export const TESORERIA_SECTIONS: { id: TesoreriaSection; label: string }[] = [

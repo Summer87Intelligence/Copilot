@@ -2,7 +2,7 @@
  * Contrato canónico de métricas financieras de Copilot.
  *
  * Define IDs, nombres visibles, fuentes y reglas de integridad para las
- * 9 métricas operativas centrales. Los módulos deben derivar sus etiquetas
+ * 10 métricas operativas centrales. Los módulos deben derivar sus etiquetas
  * de este contrato — no inventar labels ad-hoc.
  *
  * NO contiene lógica de cálculo (evitar importar funciones que hagan I/O).
@@ -19,6 +19,8 @@ export const METRIC_ID = {
   DEUDA_VENCIDA: "deuda_vencida",
   /** Facturas emitidas en el rango de fechas que siguen pendientes. */
   DEUDA_PERIODO: "deuda_periodo",
+  /** Facturado del período menos cobrado del período. Métrica derivada de período. */
+  PENDIENTE_PERIODO: "pendiente_periodo",
   /** Facturas emitidas en el rango (neto de notas de crédito). */
   FACTURADO_PERIODO: "facturado_periodo",
   /** Recibos registrados en el rango. */
@@ -40,21 +42,22 @@ export type MetricId = (typeof METRIC_ID)[keyof typeof METRIC_ID];
 // ---------------------------------------------------------------------------
 
 export const METRIC_LABEL: Record<MetricId, string> = {
-  deuda_activa: "Por cobrar total",
+  deuda_activa: "Cartera pendiente actual",
   deuda_vencida: "Deuda vencida",
   deuda_periodo: "Por cobrar al cierre del período",
+  pendiente_periodo: "Pendiente del período",
   facturado_periodo: "Facturado del período",
   cobrado_periodo: "Cobrado en el período",
   cobrado_aplicado: "Cobrado aplicado",
   caja_disponible: "Caja disponible",
-  caja_despues_pagos: "Caja después de pagos",
+  caja_despues_pagos: "Caja proyectada",
   estado_global: "Estado del sistema",
 };
 
 /** Labels visibles permitidos — cada módulo puede usar alias siempre que no
  *  sean confusos con otra métrica canónica. */
 export const METRIC_ALIASES: Record<MetricId, readonly string[]> = {
-  deuda_activa: ["Por cobrar total", "Clientes por cobrar", "Deuda total", "Saldo pendiente activo"],
+  deuda_activa: ["Cartera pendiente actual", "Por cobrar total", "Clientes por cobrar", "Deuda total", "Saldo pendiente activo"],
   deuda_vencida: [
     "Deuda vencida",
     "Saldo vencido >30 días",
@@ -62,11 +65,12 @@ export const METRIC_ALIASES: Record<MetricId, readonly string[]> = {
     "Deuda crítica +30 días",
   ],
   deuda_periodo: ["Por cobrar al cierre del período", "Pendiente al corte del rango"],
+  pendiente_periodo: ["Pendiente del período", "Por cobrar del período"],
   facturado_periodo: ["Facturado del período", "Facturado"],
   cobrado_periodo: ["Cobrado en el período", "Cobrado"],
   cobrado_aplicado: ["Cobrado aplicado"],
   caja_disponible: ["Caja disponible", "Dinero disponible"],
-  caja_despues_pagos: ["Caja después de pagos", "Cobertura 30 días"],
+  caja_despues_pagos: ["Caja proyectada", "Caja después de pagos", "Cobertura 30 días"],
   estado_global: ["Estado del sistema", "Estado", "Salud del negocio"],
 };
 
@@ -184,6 +188,34 @@ export const CANONICAL_METRICS: Record<MetricId, CanonicalMetricDef> = {
     ],
   },
 
+  pendiente_periodo: {
+    id: "pendiente_periodo",
+    label: METRIC_LABEL.pendiente_periodo,
+    definition:
+      "Diferencia entre lo facturado neto del período y lo cobrado en el mismo rango. Puede ser negativo si hubo cobros de facturas anteriores.",
+    formula:
+      "(issuedInPeriod - creditNoteAmount) - collectedInPeriod = facturado_periodo - cobrado_periodo",
+    source: "derived",
+    currency: "per_currency",
+    scope: "period",
+    consumers: [
+      "dashboard/kpi-cards (Pendiente del período)",
+      "dashboard/summary-pdf",
+    ],
+    divergesFrom: [
+      {
+        metricId: "deuda_activa",
+        reason:
+          "pendiente_periodo mide el flujo neto del rango; deuda_activa es el stock total al día de hoy.",
+      },
+      {
+        metricId: "deuda_periodo",
+        reason:
+          "deuda_periodo es el saldo pendiente de facturas del rango al cierre; pendiente_periodo es facturado menos cobrado (derivada).",
+      },
+    ],
+  },
+
   facturado_periodo: {
     id: "facturado_periodo",
     label: METRIC_LABEL.facturado_periodo,
@@ -274,7 +306,7 @@ export const CANONICAL_METRICS: Record<MetricId, CanonicalMetricDef> = {
     id: "caja_despues_pagos",
     label: METRIC_LABEL.caja_despues_pagos,
     definition:
-      "Caja disponible menos pagos programados en los próximos 30 días. Negativo indica déficit.",
+      "Proyección operativa: caja disponible menos pagos programados en los próximos 30 días. No es saldo bancario actual.",
     formula:
       "safeCash30d = CashPositionByCurrency.availableCash - TreasuryOutflowSummary.next30Days (por moneda)",
     source: "treasury",
@@ -283,6 +315,7 @@ export const CANONICAL_METRICS: Record<MetricId, CanonicalMetricDef> = {
     consumers: [
       "hoy/hoy-money-cards (Caja después de pagos — card inferior derecha)",
       "hoy/hoy-projection-30d-section (bloque proyección)",
+      "dashboard/kpi-cards (Caja proyectada)",
       "copilot-today-business-pulse (cashAfterPaymentsCritical flag)",
     ],
     divergesFrom: [

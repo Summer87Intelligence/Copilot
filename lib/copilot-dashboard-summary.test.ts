@@ -196,6 +196,18 @@ describe("extractDashboardCurrencyData", () => {
     expect(uyu?.facturado).toBe(800);
   });
 
+  it("pendiente del período = facturado - cobrado", () => {
+    const period = makeReport({ issuedUYU: 1000, creditNotesUYU: 200, collectedUYU: 300 });
+    const out = extractDashboardCurrencyData({
+      periodReport: period,
+      outstandingReport: null,
+      cashPositions: [],
+      outflowSummaries: [],
+    });
+    const uyu = out.find((d) => d.currency === "UYU");
+    expect(uyu?.pendientePeriodo).toBe(500);
+  });
+
   it("deuda activa viene del all_outstanding report (no del período)", () => {
     const period = makeReport({ issuedUYU: 500, pendingUYU: 100 });
     const outstanding = makeReport({ pendingUYU: 9000 });

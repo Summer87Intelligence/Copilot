@@ -31,7 +31,9 @@
     "audit:copilot-system-consistency": "node --env-file=.env.local --import tsx scripts/audit-copilot-system-consistency.ts",
     "audit:dashboard-summary-consistency": "node --env-file=.env.local --import tsx scripts/audit-dashboard-summary-consistency.ts",
     "audit:debt-rollup-consistency": "node --env-file=.env.local --import tsx scripts/audit-debt-rollup-consistency.ts",
-    "audit:treasury-hoy-dashboard": "node --env-file=.env.local --import tsx scripts/audit-treasury-hoy-dashboard-consistency.ts"
+    "audit:treasury-hoy-dashboard": "node --env-file=.env.local --import tsx scripts/audit-treasury-hoy-dashboard-consistency.ts",
+    "audit:treasury-accounting-reconciliation": "node --env-file=.env.local --import tsx scripts/audit-treasury-accounting-reconciliation.ts",
+    "audit:dashboard-usd-consolidated": "node --env-file=.env.local --import tsx scripts/audit-dashboard-usd-consolidated.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",

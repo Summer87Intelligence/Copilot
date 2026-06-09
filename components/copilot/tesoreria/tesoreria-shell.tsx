@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { TesoreriaControlBar } from "@/components/copilot/tesoreria/tesoreria-control-bar";
 import { TreasuryAdvancedToolsPanel } from "@/components/copilot/tesoreria/treasury-advanced-tools-panel";
+import { TreasuryReceiptsPanel } from "@/components/copilot/tesoreria/treasury-receipts-panel";
 import { TreasuryCashPanel } from "@/components/copilot/tesoreria/treasury-cash-panel";
 import { TreasuryFeedbackBanner } from "@/components/copilot/tesoreria/treasury-feedback-banner";
 import { TreasuryManualCashPanel } from "@/components/copilot/tesoreria/treasury-manual-cash-panel";
@@ -14,7 +15,6 @@ import { TreasuryObligationsPanel } from "@/components/copilot/tesoreria/treasur
 import {
   TESORERIA_SECTION_ALIASES,
   TESORERIA_SECTIONS,
-  TESORERIA_SECTIONS_CONFIG,
   TESORERIA_SECTIONS_MAIN,
   TESORERIA_SECTIONS_WITH_CONTROL_BAR,
   type TesoreriaSection,
@@ -40,8 +40,6 @@ const NAV_BTN_ACTIVE =
   "bg-[var(--copilot-accent)] text-white shadow-sm";
 const NAV_BTN_IDLE =
   "border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink)] hover:bg-[rgba(44,40,37,0.04)]";
-const NAV_BTN_CONFIG_IDLE =
-  "border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50 text-[var(--copilot-ink-muted)] text-[11px] hover:bg-[rgba(44,40,37,0.04)]";
 
 export function TesoreriaShell() {
   const router = useRouter();
@@ -156,26 +154,6 @@ export function TesoreriaShell() {
           ))}
         </nav>
 
-        {TESORERIA_SECTIONS_CONFIG.length > 0 ? (
-          <div
-            className="flex items-center gap-1.5 border-l border-[var(--copilot-border)] pl-2"
-            aria-label="Configuración"
-          >
-            <span className="text-[10px] uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-              Config
-            </span>
-            {TESORERIA_SECTIONS_CONFIG.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setSectionWithUrl(item.id)}
-                className={`${NAV_BTN_BASE} ${section === item.id ? NAV_BTN_ACTIVE : NAV_BTN_CONFIG_IDLE}`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
       </div>
 
       {section === "caja" ? <TreasuryCashPanel workspace={workspace} /> : null}
@@ -197,6 +175,8 @@ export function TesoreriaShell() {
           <TreasuryAdvancedToolsPanel workspace={workspace} />
         </div>
       ) : null}
+
+      {section === "cobranza" ? <TreasuryReceiptsPanel /> : null}
     </div>
   );
 }

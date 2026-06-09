@@ -31,6 +31,7 @@ import { ExecutiveMonthlyPreviewDialog } from "@/components/copilot/reports/exec
 import { NetSalesPreviewDialog } from "@/components/copilot/reports/net-sales-preview-dialog";
 import { TopClientsPreviewDialog } from "@/components/copilot/reports/top-clients-preview-dialog";
 
+import { defaultHoyPeriodRange } from "@/lib/copilot-hoy-period";
 import { fetchClientPortfolioLoad } from "@/lib/copilot-client-portfolio-fetch";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import { actionCardClass } from "@/components/copilot/ui/copilot-visual-system";
@@ -103,6 +104,93 @@ function ExecutiveMonthlyReportTrigger({ className = "" }: { className?: string 
           `ejecutivo-${y}-${String(m).padStart(2, "0")}-${cur}.pdf`
         }
       />
+    </>
+  );
+}
+
+function DashboardSummaryReportTrigger({ className = "" }: { className?: string }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const defaults = defaultHoyPeriodRange(today);
+  const [open, setOpen] = useState(false);
+  const [from, setFrom] = useState(defaults.from);
+  const [to, setTo] = useState(today);
+  const [currency, setCurrency] = useState<"all" | "UYU" | "USD">("all");
+
+  const pdfUrl = `/api/copilot/dashboard/summary.pdf?from=${from}&to=${to}&currency=${currency}`;
+  const filename = `dashboard-resumen-${from}-${to}-${currency}.pdf`;
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} className={className || smallPdfBtnClass}>
+        <FileDown className="h-3.5 w-3.5" aria-hidden />
+        PDF
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setOpen(false)}>
+          <div
+            className="w-full max-w-sm rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-sm font-bold text-[var(--copilot-ink)]">Dashboard Resumen Ejecutivo — PDF</h3>
+            <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">Seleccioná el período y la moneda para generar el reporte.</p>
+            <div className="mt-4 space-y-3">
+              <label className="block text-xs font-medium text-[var(--copilot-ink-muted)]">
+                Desde
+                <input
+                  type="date"
+                  value={from}
+                  max={to}
+                  onChange={(e) => setFrom(e.target.value)}
+                  className="mt-1 block w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] px-3 py-1.5 text-xs text-[var(--copilot-ink)] focus:outline-none focus:ring-1 focus:ring-[var(--copilot-accent)]"
+                />
+              </label>
+              <label className="block text-xs font-medium text-[var(--copilot-ink-muted)]">
+                Hasta
+                <input
+                  type="date"
+                  value={to}
+                  min={from}
+                  max={today}
+                  onChange={(e) => setTo(e.target.value)}
+                  className="mt-1 block w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] px-3 py-1.5 text-xs text-[var(--copilot-ink)] focus:outline-none focus:ring-1 focus:ring-[var(--copilot-accent)]"
+                />
+              </label>
+              <label className="block text-xs font-medium text-[var(--copilot-ink-muted)]">
+                Moneda
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value as "all" | "UYU" | "USD")}
+                  className="mt-1 block w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] px-3 py-1.5 text-xs text-[var(--copilot-ink)] focus:outline-none focus:ring-1 focus:ring-[var(--copilot-accent)]"
+                >
+                  <option value="all">Todas las monedas</option>
+                  <option value="UYU">Solo UYU</option>
+                  <option value="USD">Solo USD</option>
+                </select>
+              </label>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
+              >
+                Cancelar
+              </button>
+              <a
+                href={pdfUrl}
+                download={filename}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setOpen(false)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+              >
+                <FileDown className="h-3.5 w-3.5" aria-hidden />
+                Descargar PDF
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -315,6 +403,16 @@ export default function CopilotReportesPage() {
                 Ver reporte
               </button>
               <ExecutiveMonthlyReportTrigger className={smallPdfBtnClass} />
+            </div>
+          </ReportCard>
+
+          <ReportCard
+            icon={<BarChart2 className="h-5 w-5" aria-hidden />}
+            title="Dashboard Resumen Ejecutivo"
+            description="Resumen ejecutivo por período personalizado: estado financiero, KPIs, tendencia mensual, deuda por antigüedad, top deudores, top facturación, cartera y movimientos."
+          >
+            <div className="flex flex-wrap gap-2">
+              <DashboardSummaryReportTrigger className={smallPdfBtnClass} />
             </div>
           </ReportCard>
         </div>

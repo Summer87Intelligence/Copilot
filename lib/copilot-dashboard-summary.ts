@@ -7,6 +7,7 @@
  * Metric sources (per canonical contract lib/copilot-financial-metrics-contract.ts):
  *  - facturado_periodo   → CurrencyReconciliation.issuedInPeriod − creditNoteAmount
  *  - cobrado_periodo     → CurrencyReconciliation.collectedInPeriod (real receipts)
+ *  - pendiente_periodo   → facturado_periodo − cobrado_periodo (derivada)
  *  - deuda_activa        → outstanding CurrencyReconciliation.pendingAtCutoff
  *  - deuda_vencida       → portfolio overdue (due_date < today) o aging 31+ fallback
  *  - caja_disponible     → CashPositionByCurrency.availableCash
@@ -34,6 +35,7 @@ export type DashboardCurrencyData = {
   currency: "UYU" | "USD";
   facturado: number;
   cobrado: number;
+  pendientePeriodo: number;
   efectividad: number | null; // [0..1]
   deudaActiva: number;
   deudaVencida: number;
@@ -179,6 +181,9 @@ export function extractDashboardCurrencyData({
       // cobrado_periodo = collectedInPeriod (real receipts — canonical)
       const cobrado = r2(period?.collectedInPeriod ?? 0);
 
+      // pendiente_periodo = facturado − cobrado (derivada del período)
+      const pendientePeriodo = r2(facturado - cobrado);
+
       // efectividad = cobrado / facturado, capped at 1.0
       const efectividad =
         facturado > 0 ? Math.min(1, r2(cobrado / facturado)) : null;
@@ -201,6 +206,7 @@ export function extractDashboardCurrencyData({
         currency: cur,
         facturado,
         cobrado,
+        pendientePeriodo,
         efectividad,
         deudaActiva,
         deudaVencida,

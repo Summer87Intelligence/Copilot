@@ -1,12 +1,13 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
   ArrowRight,
   BarChart3,
   CheckCircle,
+  FileDown,
   Info,
   RefreshCw,
   TrendingDown,
@@ -42,6 +43,11 @@ import {
   type DashboardState,
 } from "@/lib/copilot-dashboard-summary";
 import { METRIC_LABEL } from "@/lib/copilot-financial-metrics-contract";
+import {
+  consolidateToUsd,
+  formatExchangeRateLabel,
+  roundUsd,
+} from "@/lib/finance/currency-conversion";
 
 const TABLE_INITIAL_ROWS = 10;
 
@@ -66,13 +72,6 @@ const C = {
 // ---------------------------------------------------------------------------
 // Number formatters
 // ---------------------------------------------------------------------------
-
-function fmtCompact(n: number, currency?: string): string {
-  const prefix = currency === "USD" ? "U$S " : currency === "UYU" ? "$ " : "";
-  if (Math.abs(n) >= 1_000_000) return `${prefix}${(n / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(n) >= 1_000) return `${prefix}${(n / 1_000).toFixed(1)}K`;
-  return `${prefix}${n.toFixed(0)}`;
-}
 
 function fmtAmount(n: number, currency: string): string {
   const prefix = currency === "USD" ? "U$S " : "$ ";
@@ -143,8 +142,8 @@ function VerticalBarChart({
             >
               {showUyu ? (
                 <div className="flex min-w-0 flex-1 flex-col items-center justify-end" style={{ height: valueH + barH }}>
-                  <span className={valueClass} aria-hidden={false}>
-                    {fmtCompact(d.uyu ?? 0, "UYU")}
+                  <span className={valueClass} title={fmtAmount(d.uyu ?? 0, "UYU")} aria-hidden={false}>
+                    {fmtAmount(d.uyu ?? 0, "UYU")}
                   </span>
                   <div
                     className="mt-0.5 w-full rounded-t bg-[var(--copilot-accent)] opacity-90"
@@ -154,8 +153,8 @@ function VerticalBarChart({
               ) : null}
               {showUsd ? (
                 <div className="flex min-w-0 flex-1 flex-col items-center justify-end" style={{ height: valueH + barH }}>
-                  <span className={valueClass} aria-hidden={false}>
-                    {fmtCompact(d.usd ?? 0, "USD")}
+                  <span className={valueClass} title={fmtAmount(d.usd ?? 0, "USD")} aria-hidden={false}>
+                    {fmtAmount(d.usd ?? 0, "USD")}
                   </span>
                   <div
                     className="mt-0.5 w-full rounded-t bg-blue-500 opacity-80"
@@ -209,14 +208,14 @@ function GroupedBarChart({
         >
           <div className="flex w-full items-end gap-0.5" style={{ height: valueH + barH }}>
             <div className="flex min-w-0 flex-1 flex-col items-center justify-end" style={{ height: valueH + barH }}>
-              <span className={valueClass}>{fmtCompact(g.a, g.label === "USD" ? "USD" : "UYU")}</span>
+              <span className={valueClass} title={fmtAmount(g.a, g.label.startsWith("USD") ? "USD" : "UYU")}>{fmtAmount(g.a, g.label.startsWith("USD") ? "USD" : "UYU")}</span>
               <div
                 className="mt-0.5 w-full rounded-t bg-[var(--copilot-accent)] opacity-90"
                 style={{ height: Math.max(1, (g.a / maxVal) * barH) }}
               />
             </div>
             <div className="flex min-w-0 flex-1 flex-col items-center justify-end" style={{ height: valueH + barH }}>
-              <span className={valueClass}>{fmtCompact(g.b, g.label === "USD" ? "USD" : "UYU")}</span>
+              <span className={valueClass} title={fmtAmount(g.b, g.label.startsWith("USD") ? "USD" : "UYU")}>{fmtAmount(g.b, g.label.startsWith("USD") ? "USD" : "UYU")}</span>
               <div
                 className="mt-0.5 w-full rounded-t bg-emerald-400"
                 style={{ height: Math.max(1, (g.b / maxVal) * barH) }}
@@ -564,11 +563,12 @@ function ExecutiveSummaryCard({
   }[state];
 
   const kpiRows = [
-    { label: "Facturado del período", uyuVal: uyu?.facturado, usdVal: usd?.facturado },
-    { label: "Cobrado del período",   uyuVal: uyu?.cobrado,   usdVal: usd?.cobrado },
-    { label: "Por cobrar",            uyuVal: uyu?.deudaActiva, usdVal: usd?.deudaActiva },
-    { label: "Vencido",               uyuVal: uyu?.deudaVencida, usdVal: usd?.deudaVencida, warn: true },
-    { label: "Caja disponible",       uyuVal: uyu?.cajaDisponible, usdVal: usd?.cajaDisponible },
+    { label: METRIC_LABEL.facturado_periodo, uyuVal: uyu?.facturado, usdVal: usd?.facturado },
+    { label: METRIC_LABEL.cobrado_periodo,   uyuVal: uyu?.cobrado,   usdVal: usd?.cobrado },
+    { label: METRIC_LABEL.pendiente_periodo, uyuVal: uyu?.pendientePeriodo, usdVal: usd?.pendientePeriodo },
+    { label: METRIC_LABEL.deuda_activa,      uyuVal: uyu?.deudaActiva, usdVal: usd?.deudaActiva },
+    { label: METRIC_LABEL.deuda_vencida, uyuVal: uyu?.deudaVencida, usdVal: usd?.deudaVencida, warn: true },
+    { label: METRIC_LABEL.caja_disponible, uyuVal: uyu?.cajaDisponible, usdVal: usd?.cajaDisponible },
   ];
 
   const totalVencida = (uyu?.deudaVencida ?? 0) + (usd?.deudaVencida ?? 0);
@@ -806,11 +806,14 @@ function movementTypeBadgeClass(type: DashboardRecentMovement["type"]): string {
 function RecentMovementsTable({
   movements,
   selectedCurrency,
+  exchangeRate,
 }: {
   movements: DashboardRecentMovement[];
   selectedCurrency: "all" | "UYU" | "USD";
+  exchangeRate?: number | null;
 }) {
   const [showAll, setShowAll] = useState(false);
+  const showEquiv = !!exchangeRate;
 
   const filtered = useMemo(
     () =>
@@ -834,7 +837,7 @@ function RecentMovementsTable({
   return (
     <div>
       <div className="overflow-x-auto rounded-xl border border-[var(--copilot-border)]">
-        <table className="w-full min-w-[880px] text-xs">
+        <table className={`w-full text-xs ${showEquiv ? "min-w-[1020px]" : "min-w-[880px]"}`}>
           <thead>
             <tr className="border-b border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)]">
               {[
@@ -842,9 +845,10 @@ function RecentMovementsTable({
                 "Tipo",
                 "Cliente",
                 "Comprobante",
-                "Moneda",
+                "Moneda orig.",
                 "Debe",
                 "Haber",
+                ...(showEquiv ? ["Equiv. USD"] : []),
                 "Saldo pendiente",
               ].map((h) => (
                 <th
@@ -868,6 +872,12 @@ function RecentMovementsTable({
                 m.type === "factura" && m.balance > 0
                   ? fmtAmount(m.balance, m.currency)
                   : "—";
+              const equivUsd = showEquiv && exchangeRate
+                ? fmtAmount(
+                    m.currency === "USD" ? m.amount : roundUsd(m.amount / exchangeRate),
+                    "USD"
+                  )
+                : null;
               return (
                 <tr
                   key={`${m.companyId}-${m.date}-${m.reference}-${i}`}
@@ -895,6 +905,11 @@ function RecentMovementsTable({
                   <td className={`px-3 py-2 tabular-nums ${haber === "—" ? C.muted : "text-emerald-700"}`}>
                     {haber}
                   </td>
+                  {showEquiv && (
+                    <td className={`px-3 py-2 tabular-nums text-[10px] ${C.muted}`}>
+                      {equivUsd ?? "—"}
+                    </td>
+                  )}
                   <td
                     className={`px-3 py-2 tabular-nums ${saldo === "—" ? C.muted : "font-medium text-amber-700"}`}
                   >
@@ -933,7 +948,17 @@ export default function DashboardPage() {
   const [draftTo, setDraftTo] = useState(defaultPeriod.to);
   const [confirmedFrom, setConfirmedFrom] = useState(defaultPeriod.from);
   const [confirmedTo, setConfirmedTo] = useState(defaultPeriod.to);
-  const [selectedCurrency, setSelectedCurrency] = useState<"all" | "UYU" | "USD">("all");
+  const [selectedCurrency, setSelectedCurrency] = useState<"all" | "UYU" | "USD" | "USD_consolidated">("all");
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [editingTc, setEditingTc] = useState(false);
+  const [tcInputDraft, setTcInputDraft] = useState("");
+  const [tcSaving, setTcSaving] = useState(false);
+
+  useEffect(() => {
+    if (selectedCurrency !== "USD_consolidated") {
+      setEditingTc(false);
+    }
+  }, [selectedCurrency]);
 
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -948,6 +973,26 @@ export default function DashboardPage() {
   const [monthlyData, setMonthlyData] = useState<DashboardMonthlyPoint[]>([]);
   const [recentMovements, setRecentMovements] = useState<DashboardRecentMovement[]>([]);
   const abortRef = useRef<AbortController | null>(null);
+
+  const handleSaveTc = useCallback(async () => {
+    const val = parseFloat(tcInputDraft);
+    if (isNaN(val) || val <= 0 || val >= 1000) return;
+    setTcSaving(true);
+    try {
+      const res = await copilotApiFetch("/api/copilot/treasury/exchange-rates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uyu_per_usd: val }),
+      });
+      if (res.ok) {
+        const j = await res.json().catch(() => null);
+        setExchangeRate((j?.ok && j.data?.rate?.uyuPerUsd) ? (j.data.rate.uyuPerUsd as number) : val);
+        setEditingTc(false);
+      }
+    } finally {
+      setTcSaving(false);
+    }
+  }, [tcInputDraft]);
 
   const periodLabel = `${confirmedFrom} — ${confirmedTo}`;
 
@@ -980,6 +1025,7 @@ export default function DashboardPage() {
         reconPeriodRes,
         cashRes,
         outflowRes,
+        tcRes,
         ...monthlyRes
       ] = await Promise.allSettled([
         copilotApiFetch("/api/copilot/rutas-hub", { signal: sig }),
@@ -987,6 +1033,7 @@ export default function DashboardPage() {
         copilotApiFetch(`/api/copilot/financial-reconciliation?${periodQ}`, { signal: sig }),
         copilotApiFetch("/api/copilot/treasury/cash-position", { signal: sig }),
         copilotApiFetch("/api/copilot/treasury/scheduled-payments?include_summary=1&horizon_days=30", { signal: sig }),
+        copilotApiFetch("/api/copilot/treasury/exchange-rates", { signal: sig }),
         ...monthQueries.map((q) =>
           copilotApiFetch(`/api/copilot/financial-reconciliation?${q}`, { signal: sig })
         ),
@@ -1034,6 +1081,14 @@ export default function DashboardPage() {
         }
       }
 
+      // ── Exchange rate ──
+      if (tcRes.status === "fulfilled") {
+        const j = await tcRes.value.json().catch(() => null);
+        if (tcRes.value.ok && j?.ok && j.data?.rate?.uyuPerUsd) {
+          setExchangeRate(j.data.rate.uyuPerUsd as number);
+        }
+      }
+
       // ── Monthly trend (one bucket per calendar month in selected period) ──
       const parsedMonthly: DashboardMonthlyPoint[] = [];
       for (let i = 0; i < monthlyRes.length; i++) {
@@ -1077,27 +1132,81 @@ export default function DashboardPage() {
   const usd = currencyData.find((d) => d.currency === "USD");
   const dashState = determineDashboardState(currencyData, clientStates);
 
+  // USD consolidado helpers
+  const isConsolidated = selectedCurrency === "USD_consolidated" && exchangeRate !== null;
+  const showTcControls = selectedCurrency === "USD_consolidated";
+  const effectiveCurrency: "all" | "UYU" | "USD" = isConsolidated
+    ? "USD"
+    : selectedCurrency === "USD_consolidated"
+    ? "all"
+    : (selectedCurrency as "all" | "UYU" | "USD");
+  const effectiveCurrencyForTables: "all" | "UYU" | "USD" = isConsolidated ? "all" : effectiveCurrency;
+  const currencyModeLabel = isConsolidated
+    ? "USD consolidado"
+    : effectiveCurrency === "all"
+      ? "UYU + USD (separado)"
+      : effectiveCurrency;
+  const consUyu = (val: number) => (isConsolidated ? 0 : val);
+  const consUsd = (uyuVal: number, usdVal: number) =>
+    isConsolidated ? roundUsd(consolidateToUsd(uyuVal, usdVal, exchangeRate!)) : usdVal;
+  const consBarData = (bars: BarData[]): BarData[] =>
+    isConsolidated
+      ? bars.map((b) => ({
+          label: b.label,
+          uyu: 0,
+          usd: roundUsd(consolidateToUsd(b.uyu ?? 0, b.usd ?? 0, exchangeRate!)),
+        }))
+      : bars;
+  const pdfCurrency = selectedCurrency;
+
+  const consolidatedCurrencyData = useMemo((): DashboardCurrencyData => {
+    const tc = exchangeRate ?? 1;
+    const c = (uyuVal: number, usdVal: number) => roundUsd(consolidateToUsd(uyuVal, usdVal, tc));
+    const cf = c(uyu?.facturado ?? 0, usd?.facturado ?? 0);
+    const cc = c(uyu?.cobrado ?? 0, usd?.cobrado ?? 0);
+    return {
+      currency: "USD",
+      facturado: cf,
+      cobrado: cc,
+      pendientePeriodo: roundUsd(cf - cc),
+      efectividad: cf > 0 ? Math.min(cc / cf, 2) : null,
+      deudaActiva: c(uyu?.deudaActiva ?? 0, usd?.deudaActiva ?? 0),
+      deudaVencida: c(uyu?.deudaVencida ?? 0, usd?.deudaVencida ?? 0),
+      aging: [],
+      cajaDisponible: c(uyu?.cajaDisponible ?? 0, usd?.cajaDisponible ?? 0),
+      cajaDespPagos: c(uyu?.cajaDespPagos ?? 0, usd?.cajaDespPagos ?? 0),
+    };
+  }, [uyu, usd, exchangeRate]);
+
+  const effectiveCurrencyData = useMemo((): DashboardCurrencyData[] => {
+    if (isConsolidated) return [consolidatedCurrencyData];
+    if (effectiveCurrency === "all") return currencyData;
+    return currencyData.filter((d) => d.currency === effectiveCurrency);
+  }, [isConsolidated, consolidatedCurrencyData, effectiveCurrency, currencyData]);
+
   // Prepare monthly chart data
-  const monthlyIssued: BarData[] = monthlyData.map((p) => ({
+  const monthlyIssued: BarData[] = consBarData(monthlyData.map((p) => ({
     label: p.monthLabel,
     uyu: p.issuedUYU,
     usd: p.issuedUSD,
-  }));
-  const monthlyCollected: BarData[] = monthlyData.map((p) => ({
+  })));
+  const monthlyCollected: BarData[] = consBarData(monthlyData.map((p) => ({
     label: p.monthLabel,
     uyu: p.collectedUYU,
     usd: p.collectedUSD,
-  }));
+  })));
 
   // Ventas vs Cobros (current period)
-  const vsGroups = [
-    ...(selectedCurrency !== "USD" && (uyu?.facturado ?? 0) + (uyu?.cobrado ?? 0) > 0
-      ? [{ label: "UYU", a: uyu?.facturado ?? 0, b: uyu?.cobrado ?? 0, aLabel: "Facturado", bLabel: "Cobrado" }]
-      : []),
-    ...(selectedCurrency !== "UYU" && (usd?.facturado ?? 0) + (usd?.cobrado ?? 0) > 0
-      ? [{ label: "USD", a: usd?.facturado ?? 0, b: usd?.cobrado ?? 0, aLabel: "Facturado", bLabel: "Cobrado" }]
-      : []),
-  ];
+  const vsGroups = isConsolidated
+    ? [{ label: "USD (cons.)", a: roundUsd(consolidateToUsd(uyu?.facturado ?? 0, usd?.facturado ?? 0, exchangeRate!)), b: roundUsd(consolidateToUsd(uyu?.cobrado ?? 0, usd?.cobrado ?? 0, exchangeRate!)), aLabel: "Facturado", bLabel: "Cobrado" }]
+    : [
+        ...(effectiveCurrency !== "USD" && (uyu?.facturado ?? 0) + (uyu?.cobrado ?? 0) > 0
+          ? [{ label: "UYU", a: uyu?.facturado ?? 0, b: uyu?.cobrado ?? 0, aLabel: "Facturado", bLabel: "Cobrado" }]
+          : []),
+        ...(effectiveCurrency !== "UYU" && (usd?.facturado ?? 0) + (usd?.cobrado ?? 0) > 0
+          ? [{ label: "USD", a: usd?.facturado ?? 0, b: usd?.cobrado ?? 0, aLabel: "Facturado", bLabel: "Cobrado" }]
+          : []),
+      ];
 
   // Aging (all outstanding) — display labels use readable names
   const agingUYU = uyu?.aging ?? [];
@@ -1106,16 +1215,22 @@ export default function DashboardPage() {
   const AGING_DISPLAY: Record<string, string> = {
     "0-30": "0–30d", "31-60": "31–60d", "61-90": "61–90d", "90+": "+90d",
   };
-  const agingBars: BarData[] = AGING_KEYS.map((key) => ({
+  const agingBars: BarData[] = consBarData(AGING_KEYS.map((key) => ({
     label: AGING_DISPLAY[key]!,
     uyu: agingUYU.find((b) => b.label === key)?.amount ?? 0,
     usd: agingUSD.find((b) => b.label === key)?.amount ?? 0,
-  }));
+  })));
 
   // noPagos — detect when caja después de pagos = caja disponible (no scheduled payments)
   const noPagosUYU = Math.abs((uyu?.cajaDespPagos ?? 0) - (uyu?.cajaDisponible ?? 0)) < 0.01;
   const noPagosUSD = Math.abs((usd?.cajaDespPagos ?? 0) - (usd?.cajaDisponible ?? 0)) < 0.01;
-  const noPagos = noPagosUYU && noPagosUSD;
+  const noPagos = isConsolidated
+    ? Math.abs(consolidatedCurrencyData.cajaDespPagos - consolidatedCurrencyData.cajaDisponible) < 0.01
+    : effectiveCurrency === "USD"
+    ? noPagosUSD
+    : effectiveCurrency === "UYU"
+    ? noPagosUYU
+    : noPagosUYU && noPagosUSD;
 
   // Top debtors / billing (por moneda, sin mezclar)
   const debtorItemsUYU = useMemo(
@@ -1159,8 +1274,82 @@ export default function DashboardPage() {
     [portfolioRows]
   );
 
-  const debtorItems = selectedCurrency === "USD" ? debtorItemsUSD : debtorItemsUYU;
-  const billingItems = selectedCurrency === "USD" ? billingItemsUSD : billingItemsUYU;
+  const consolidatedActiveDebtRows = useMemo((): DashboardActiveDebtRow[] => {
+    if (!isConsolidated) return [];
+    const tc = exchangeRate!;
+    const byCompany = new Map<string, { name: string; active: number; overdue: number; overdueDays: number | null; status: string; risk: string }>();
+    for (const row of activeDebtRows) {
+      const toUsd = (v: number) => roundUsd(row.currency === "UYU" ? v / tc : v);
+      const prev = byCompany.get(row.companyId);
+      if (!prev) {
+        byCompany.set(row.companyId, {
+          name: row.name,
+          active: toUsd(row.activeDebt),
+          overdue: toUsd(row.overdueDebt),
+          overdueDays: row.overdueDays,
+          status: row.status,
+          risk: row.risk,
+        });
+      } else {
+        byCompany.set(row.companyId, {
+          name: row.name,
+          active: prev.active + toUsd(row.activeDebt),
+          overdue: prev.overdue + toUsd(row.overdueDebt),
+          overdueDays: row.overdueDays != null && (prev.overdueDays == null || row.overdueDays > prev.overdueDays)
+            ? row.overdueDays
+            : prev.overdueDays,
+          status: prev.status,
+          risk: prev.risk === "alto" || row.risk === "alto" ? "alto" : prev.risk === "medio" || row.risk === "medio" ? "medio" : prev.risk,
+        });
+      }
+    }
+    return Array.from(byCompany.entries())
+      .map(([companyId, d]): DashboardActiveDebtRow => ({
+        rowId: `cons-${companyId}`,
+        companyId,
+        name: d.name,
+        currency: "USD",
+        activeDebt: d.active,
+        overdueDebt: d.overdue,
+        overdueDays: d.overdueDays,
+        status: d.status,
+        risk: d.risk,
+      }))
+      .sort((a, b) => b.activeDebt - a.activeDebt);
+  }, [isConsolidated, activeDebtRows, exchangeRate]);
+
+  const consolidatedDebtorItems = useMemo(
+    () =>
+      isConsolidated
+        ? portfolioRows
+            .filter((r) => r.debt_uyu > 0 || r.debt_usd > 0)
+            .map((r) => ({
+              label: r.name,
+              value: roundUsd(consolidateToUsd(r.debt_uyu, r.debt_usd, exchangeRate!)),
+              id: r.company_id,
+            }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 10)
+        : [],
+    [isConsolidated, portfolioRows, exchangeRate]
+  );
+  const consolidatedBillingItems = useMemo(
+    () =>
+      isConsolidated
+        ? portfolioRows
+            .filter((r) => (r.billing_uyu ?? 0) > 0 || (r.billing_usd ?? 0) > 0)
+            .map((r) => ({
+              label: r.name,
+              value: roundUsd(consolidateToUsd(r.billing_uyu ?? 0, r.billing_usd ?? 0, exchangeRate!)),
+              id: r.company_id,
+            }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 10)
+        : [],
+    [isConsolidated, portfolioRows, exchangeRate]
+  );
+  const debtorItems = isConsolidated ? consolidatedDebtorItems : effectiveCurrency === "USD" ? debtorItemsUSD : debtorItemsUYU;
+  const billingItems = isConsolidated ? consolidatedBillingItems : effectiveCurrency === "USD" ? billingItemsUSD : billingItemsUYU;
 
   // Top-10 as % of total debt per currency
   const uyuTop10Sum = debtorItemsUYU.reduce((s, d) => s + d.value, 0);
@@ -1172,15 +1361,21 @@ export default function DashboardPage() {
     ? Math.round((usdTop10Sum / usd!.deudaActiva) * 100)
     : null;
 
-  // Cash projection (area chart)
-  const cashProjectionPoints = [
-    ...(uyu?.cajaDisponible !== undefined
-      ? [
-          { label: "Hoy", value: uyu.cajaDisponible },
-          { label: "−pagos", value: uyu.cajaDespPagos },
-        ]
-      : []),
-  ];
+  // Cash projection (area chart) — mode-aware
+  const cashProjectionPoints = useMemo(() => {
+    if (isConsolidated) {
+      const disp = consolidatedCurrencyData.cajaDisponible;
+      const desp = consolidatedCurrencyData.cajaDespPagos;
+      if (disp === 0 && desp === 0) return [];
+      return [{ label: "Hoy", value: disp }, { label: "−pagos", value: desp }];
+    }
+    if (effectiveCurrency === "USD") {
+      if (usd?.cajaDisponible === undefined) return [];
+      return [{ label: "Hoy", value: usd.cajaDisponible }, { label: "−pagos", value: usd.cajaDespPagos }];
+    }
+    if (uyu?.cajaDisponible === undefined) return [];
+    return [{ label: "Hoy", value: uyu.cajaDisponible }, { label: "−pagos", value: uyu.cajaDespPagos }];
+  }, [isConsolidated, effectiveCurrency, consolidatedCurrencyData, uyu, usd]);
 
   const hasPendingChanges =
     draftFrom !== confirmedFrom || draftTo !== confirmedTo;
@@ -1205,6 +1400,16 @@ export default function DashboardPage() {
                 Actualizado {lastUpdated.toLocaleTimeString("es-UY", { hour: "2-digit", minute: "2-digit" })}
               </p>
             )}
+            <a
+              href={`/api/copilot/dashboard/summary.pdf?from=${confirmedFrom}&to=${confirmedTo}&currency=${pdfCurrency}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={C.btnGhost}
+              title="Descargar PDF del período actual"
+            >
+              <FileDown className="h-3 w-3" />
+              Descargar PDF
+            </a>
             <button
               type="button"
               onClick={() => setReloadTick((t) => t + 1)}
@@ -1243,14 +1448,72 @@ export default function DashboardPage() {
           </label>
           <select
             value={selectedCurrency}
-            onChange={(e) => setSelectedCurrency(e.target.value as "all" | "UYU" | "USD")}
+            onChange={(e) => setSelectedCurrency(e.target.value as "all" | "UYU" | "USD" | "USD_consolidated")}
             className={C.input}
             aria-label="Filtrar por moneda"
           >
-            <option value="all">Todas las monedas</option>
+            <option value="all">UYU + USD (separado)</option>
             <option value="UYU">Solo UYU</option>
             <option value="USD">Solo USD</option>
+            <option value="USD_consolidated">
+              {exchangeRate === null ? "USD consolidado (configurar TC)" : "USD consolidado"}
+            </option>
           </select>
+          {showTcControls && (
+            editingTc ? (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className={`text-[10px] font-medium ${C.muted}`}>TC UYU/USD</span>
+                <input
+                  type="number"
+                  min="0.01"
+                  max="999.99"
+                  step="0.01"
+                  placeholder="Ej: 43.50"
+                  value={tcInputDraft}
+                  onChange={(e) => setTcInputDraft(e.target.value)}
+                  className={`${C.input} w-28`}
+                  aria-label="Tipo de cambio pesos por dólar"
+                />
+                <button type="button" onClick={handleSaveTc} disabled={tcSaving} className={C.btn}>
+                  {tcSaving ? "Guardando…" : "Guardar TC"}
+                </button>
+                <button type="button" onClick={() => setEditingTc(false)} className={C.btnGhost}>
+                  Cancelar
+                </button>
+              </div>
+            ) : exchangeRate !== null ? (
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700 ring-1 ring-blue-200">
+                  {formatExchangeRateLabel(exchangeRate)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setTcInputDraft(String(exchangeRate)); setEditingTc(true); }}
+                  className={C.btnGhost}
+                >
+                  Editar TC
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <input
+                  type="number"
+                  min="0.01"
+                  max="999.99"
+                  step="0.01"
+                  placeholder="TC UYU/USD  (ej: 43.50)"
+                  value={tcInputDraft}
+                  onChange={(e) => setTcInputDraft(e.target.value)}
+                  className={`${C.input} w-36`}
+                  aria-label="Tipo de cambio pesos por dólar"
+                />
+                <button type="button" onClick={handleSaveTc} disabled={tcSaving} className={C.btn}>
+                  {tcSaving ? "Guardando…" : "Guardar TC"}
+                </button>
+                <span className={`text-[10px] ${C.muted}`}>Necesario para usar USD consolidado.</span>
+              </div>
+            )
+          )}
           {hasPendingChanges && (
             <button
               type="button"
@@ -1275,7 +1538,7 @@ export default function DashboardPage() {
         ) : (
           <ExecutiveSummaryCard
             state={dashState}
-            currencyData={currencyData}
+            currencyData={effectiveCurrencyData}
             clientStates={clientStates}
             periodLabel={periodLabel}
           />
@@ -1287,68 +1550,76 @@ export default function DashboardPage() {
             Indicadores del período
           </h2>
           {loading ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-              {Array.from({ length: 6 }).map((_, i) => (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+              {Array.from({ length: 7 }).map((_, i) => (
                 <Skeleton key={i} className="h-36" />
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
               <KpiCard
                 title={METRIC_LABEL.facturado_periodo}
                 tooltip="Ventas/facturas emitidas dentro del rango seleccionado."
-                uyuValue={uyu?.facturado ?? 0}
-                usdValue={usd?.facturado ?? 0}
-                selectedCurrency={selectedCurrency}
+                uyuValue={consUyu(uyu?.facturado ?? 0)}
+                usdValue={consUsd(uyu?.facturado ?? 0, usd?.facturado ?? 0)}
+                selectedCurrency={effectiveCurrency}
                 href="/copilot/cartera"
               />
               <KpiCard
                 title={METRIC_LABEL.cobrado_periodo}
                 tooltip="Recibos registrados en Zeta dentro del rango seleccionado."
-                uyuValue={uyu?.cobrado ?? 0}
-                usdValue={usd?.cobrado ?? 0}
-                selectedCurrency={selectedCurrency}
+                uyuValue={consUyu(uyu?.cobrado ?? 0)}
+                usdValue={consUsd(uyu?.cobrado ?? 0, usd?.cobrado ?? 0)}
+                selectedCurrency={effectiveCurrency}
+                href="/copilot/cartera"
+              />
+              <KpiCard
+                title={METRIC_LABEL.pendiente_periodo}
+                tooltip="Facturado menos cobrado dentro del rango seleccionado."
+                uyuValue={consUyu(uyu?.pendientePeriodo ?? 0)}
+                usdValue={consUsd(uyu?.pendientePeriodo ?? 0, usd?.pendientePeriodo ?? 0)}
+                selectedCurrency={effectiveCurrency}
                 href="/copilot/cartera"
               />
               <KpiCard
                 title={METRIC_LABEL.deuda_activa}
-                tooltip="Deuda activa actual de clientes. No depende del rango seleccionado."
-                uyuValue={uyu?.deudaActiva ?? 0}
-                usdValue={usd?.deudaActiva ?? 0}
-                selectedCurrency={selectedCurrency}
+                tooltip="Suma de todas las facturas pendientes al día de hoy. No está limitada por el rango de fechas seleccionado."
+                uyuValue={consUyu(uyu?.deudaActiva ?? 0)}
+                usdValue={consUsd(uyu?.deudaActiva ?? 0, usd?.deudaActiva ?? 0)}
+                selectedCurrency={effectiveCurrency}
                 href="/copilot/cartera"
                 secondary="No depende del período seleccionado."
               />
               <KpiCard
                 title={METRIC_LABEL.deuda_vencida}
-                tooltip="Parte de la deuda activa cuya fecha de vencimiento ya pasó. No depende del rango seleccionado."
-                uyuValue={uyu?.deudaVencida ?? 0}
-                usdValue={usd?.deudaVencida ?? 0}
-                selectedCurrency={selectedCurrency}
+                tooltip="Parte de la cartera pendiente actual cuya fecha de vencimiento ya pasó. No depende del rango seleccionado."
+                uyuValue={consUyu(uyu?.deudaVencida ?? 0)}
+                usdValue={consUsd(uyu?.deudaVencida ?? 0, usd?.deudaVencida ?? 0)}
+                selectedCurrency={effectiveCurrency}
                 href="/copilot/cartera"
                 negative
               />
               <KpiCard
                 title={METRIC_LABEL.caja_disponible}
                 tooltip="Dinero disponible actual en Tesorería."
-                uyuValue={uyu?.cajaDisponible ?? 0}
-                usdValue={usd?.cajaDisponible ?? 0}
-                selectedCurrency={selectedCurrency}
+                uyuValue={consUyu(uyu?.cajaDisponible ?? 0)}
+                usdValue={consUsd(uyu?.cajaDisponible ?? 0, usd?.cajaDisponible ?? 0)}
+                selectedCurrency={effectiveCurrency}
                 href="/copilot/tesoreria"
               />
               <KpiCard
                 title={METRIC_LABEL.caja_despues_pagos}
                 tooltip={noPagos
-                  ? "Sin pagos programados en los próximos 30 días. Coincide con la caja disponible."
-                  : "Caja disponible menos pagos programados próximos."}
-                uyuValue={uyu?.cajaDespPagos ?? 0}
-                usdValue={usd?.cajaDespPagos ?? 0}
-                selectedCurrency={selectedCurrency}
+                  ? "Sin pagos programados en los próximos 30 días. La proyección coincide con la caja disponible."
+                  : "Saldo estimado luego de descontar pagos programados próximos."}
+                uyuValue={consUyu(uyu?.cajaDespPagos ?? 0)}
+                usdValue={consUsd(uyu?.cajaDespPagos ?? 0, usd?.cajaDespPagos ?? 0)}
+                selectedCurrency={effectiveCurrency}
                 href="/copilot/tesoreria"
                 negative
                 secondary={noPagos
-                  ? "Sin pagos programados próximos."
-                  : "Descuenta pagos próximos programados."}
+                  ? "Proyección operativa. Sin pagos programados próximos."
+                  : "Proyección operativa, no saldo bancario."}
               />
             </div>
           )}
@@ -1365,7 +1636,7 @@ export default function DashboardPage() {
             </span>
           </div>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-2">
-            {selectedCurrency === "all" ? (
+            {effectiveCurrency === "all" ? (
               <>
                 <ChartCard title="[1] Ventas por mes UYU" subtitle="Facturado UYU · escala independiente">
                   {loading ? <Skeleton className="h-28" /> : (
@@ -1425,15 +1696,15 @@ export default function DashboardPage() {
               <>
                 <ChartCard
                   title="[1] Ventas por mes"
-                  subtitle={`Facturado del período · ${selectedCurrency}`}
-                  badge={<ChartLegend selectedCurrency={selectedCurrency} />}
+                  subtitle={`Facturado del período · ${currencyModeLabel}`}
+                  badge={<ChartLegend selectedCurrency={effectiveCurrency} />}
                 >
                   {loading ? (
                     <Skeleton className="h-28" />
                   ) : (
                     <VerticalBarChart
                       data={monthlyIssued}
-                      selectedCurrency={selectedCurrency}
+                      selectedCurrency={effectiveCurrency}
                       height={140}
                       emptyText="Sin facturación en este rango"
                     />
@@ -1442,15 +1713,15 @@ export default function DashboardPage() {
 
                 <ChartCard
                   title="[2] Cobros por mes"
-                  subtitle={`Recibos registrados · ${selectedCurrency}`}
-                  badge={<ChartLegend selectedCurrency={selectedCurrency} />}
+                  subtitle={`Recibos registrados · ${currencyModeLabel}`}
+                  badge={<ChartLegend selectedCurrency={effectiveCurrency} />}
                 >
                   {loading ? (
                     <Skeleton className="h-28" />
                   ) : (
                     <VerticalBarChart
                       data={monthlyCollected}
-                      selectedCurrency={selectedCurrency}
+                      selectedCurrency={effectiveCurrency}
                       height={140}
                       emptyText="Sin cobros registrados"
                     />
@@ -1459,7 +1730,7 @@ export default function DashboardPage() {
 
                 <ChartCard
                   title="[3] Ventas vs Cobros"
-                  subtitle={`Período seleccionado · ${selectedCurrency} · Verde = cobrado`}
+                  subtitle={`Período seleccionado · ${currencyModeLabel} · Verde = cobrado`}
                 >
                   {loading ? (
                     <Skeleton className="h-28" />
@@ -1471,7 +1742,7 @@ export default function DashboardPage() {
                     </p>
                   )}
                   {(() => {
-                    const eff = selectedCurrency === "USD" ? usd?.efectividad : uyu?.efectividad;
+                    const eff = isConsolidated ? null : effectiveCurrency === "USD" ? usd?.efectividad : uyu?.efectividad;
                     return (
                       <div className="mt-2 flex flex-wrap items-center gap-3">
                         <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-accent)]" /><p className={`text-[10px] ${C.muted}`}>Facturado</p></div>
@@ -1493,7 +1764,7 @@ export default function DashboardPage() {
         {/* Charts row 2: aging + effectiveness */}
         <section aria-label="Antigüedad y efectividad">
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-2">
-            {selectedCurrency === "all" ? (
+            {effectiveCurrency === "all" ? (
               <>
                 <ChartCard title="[4] Deuda por antigüedad UYU" subtitle="Basado en fecha de vencimiento · Estado actual">
                   {loading ? <Skeleton className="h-28" /> : (
@@ -1509,15 +1780,15 @@ export default function DashboardPage() {
             ) : (
               <ChartCard
                 title="[4] Deuda por antigüedad"
-                subtitle={`Basado en fecha de vencimiento · Estado actual · ${selectedCurrency}`}
-                badge={<ChartLegend selectedCurrency={selectedCurrency} />}
+                subtitle={`Basado en fecha de vencimiento · Estado actual · ${currencyModeLabel}`}
+                badge={<ChartLegend selectedCurrency={effectiveCurrency} />}
               >
                 {loading ? (
                   <Skeleton className="h-28" />
                 ) : (
                   <VerticalBarChart
                     data={agingBars}
-                    selectedCurrency={selectedCurrency}
+                    selectedCurrency={effectiveCurrency}
                     height={140}
                     emptyText="Sin deuda vencida"
                   />
@@ -1534,14 +1805,14 @@ export default function DashboardPage() {
                   <Skeleton className="h-6" />
                   <Skeleton className="h-6" />
                 </div>
-              ) : currencyData.length === 0 ? (
+              ) : effectiveCurrencyData.length === 0 ? (
                 <p className={`py-4 text-center text-xs ${C.muted}`}>Sin datos</p>
               ) : (
                 <div className="space-y-4">
-                  {currencyData.map((d) => (
+                  {effectiveCurrencyData.map((d) => (
                     <GaugeRow
                       key={d.currency}
-                      label="Efectividad"
+                      label={isConsolidated ? "Efectividad (USD cons.)" : "Efectividad"}
                       value={d.efectividad}
                       currency={d.currency}
                     />
@@ -1558,7 +1829,7 @@ export default function DashboardPage() {
 
         {/* Charts row 3: top debtors + top billing */}
         <section aria-label="Top clientes">
-          {selectedCurrency === "all" ? (
+          {effectiveCurrency === "all" ? (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <ChartCard
                 title="[5] Top 10 deudores UYU"
@@ -1652,9 +1923,11 @@ export default function DashboardPage() {
               <ChartCard
                 title="[5] Top 10 clientes deudores"
                 subtitle={
-                  (selectedCurrency === "USD" ? usdTop10Pct : uyuTop10Pct) != null
-                    ? `Concentran el ${selectedCurrency === "USD" ? usdTop10Pct : uyuTop10Pct}% de la deuda ${selectedCurrency} total · Clic para ver ficha`
-                    : `Deuda activa ${selectedCurrency} · Clic para ver ficha`
+                  isConsolidated
+                    ? "Deuda activa consolidada en USD · Clic para ver ficha"
+                    : (effectiveCurrency === "USD" ? usdTop10Pct : uyuTop10Pct) != null
+                    ? `Concentran el ${effectiveCurrency === "USD" ? usdTop10Pct : uyuTop10Pct}% de la deuda ${effectiveCurrency} total · Clic para ver ficha`
+                    : `Deuda activa ${effectiveCurrency} · Clic para ver ficha`
                 }
               >
                 {loading ? (
@@ -1668,7 +1941,7 @@ export default function DashboardPage() {
                     items={debtorItems}
                     color="var(--copilot-accent)"
                     href={(id) => `/copilot/clientes/${id}`}
-                    currency={selectedCurrency}
+                    currency={effectiveCurrency as "UYU" | "USD"}
                   />
                 )}
               </ChartCard>
@@ -1696,7 +1969,7 @@ export default function DashboardPage() {
                     items={billingItems}
                     color="#3b82f6"
                     href={(id) => `/copilot/clientes/${id}`}
-                    currency={selectedCurrency}
+                    currency={effectiveCurrency as "UYU" | "USD"}
                   />
                 )}
               </ChartCard>
@@ -1736,14 +2009,51 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2 border-t border-[var(--copilot-border)] pt-2">
-                    <div>
-                      <p className={`text-[10px] ${C.muted}`}>Deuda activa UYU</p>
-                      <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(uyu?.deudaActiva ?? 0, "UYU")}</p>
-                    </div>
-                    <div>
-                      <p className={`text-[10px] ${C.muted}`}>Deuda activa USD</p>
-                      <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(usd?.deudaActiva ?? 0, "USD")}</p>
-                    </div>
+                    {isConsolidated ? (
+                      <>
+                        <div>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda activa (USD cons.)</p>
+                          <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(consolidatedCurrencyData.deudaActiva, "USD")}</p>
+                        </div>
+                        <div>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda vencida (USD cons.)</p>
+                          <p className={`text-sm font-semibold tabular-nums text-amber-700`}>{fmtAmount(consolidatedCurrencyData.deudaVencida, "USD")}</p>
+                        </div>
+                      </>
+                    ) : effectiveCurrency === "USD" ? (
+                      <>
+                        <div>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda activa USD</p>
+                          <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(usd?.deudaActiva ?? 0, "USD")}</p>
+                        </div>
+                        <div>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda vencida USD</p>
+                          <p className={`text-sm font-semibold tabular-nums text-amber-700`}>{fmtAmount(usd?.deudaVencida ?? 0, "USD")}</p>
+                        </div>
+                      </>
+                    ) : effectiveCurrency === "UYU" ? (
+                      <>
+                        <div>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda activa UYU</p>
+                          <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(uyu?.deudaActiva ?? 0, "UYU")}</p>
+                        </div>
+                        <div>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda vencida UYU</p>
+                          <p className={`text-sm font-semibold tabular-nums text-amber-700`}>{fmtAmount(uyu?.deudaVencida ?? 0, "UYU")}</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda activa UYU</p>
+                          <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(uyu?.deudaActiva ?? 0, "UYU")}</p>
+                        </div>
+                        <div>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda activa USD</p>
+                          <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(usd?.deudaActiva ?? 0, "USD")}</p>
+                        </div>
+                      </>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
                     <Link href="/copilot/clientes" className={`text-[10px] ${C.accent} hover:underline flex items-center gap-1`}>
@@ -1760,7 +2070,7 @@ export default function DashboardPage() {
 
             <ChartCard
               title="[9] Caja proyectada 30 días"
-              subtitle="UYU · Disponible hoy y después de pagos programados"
+              subtitle={`${currencyModeLabel} · Caja disponible hoy y proyección a 30 días`}
             >
               {loading ? (
                 <Skeleton className="h-20" />
@@ -1771,13 +2081,13 @@ export default function DashboardPage() {
                     <div>
                       <p className={`text-[10px] ${C.muted}`}>Disponible hoy</p>
                       <p className={`text-xs font-semibold ${C.ink}`}>
-                        {fmtCompact(uyu?.cajaDisponible ?? 0)}
+                        {fmtAmount(cashProjectionPoints[0]!.value, isConsolidated || effectiveCurrency === "USD" ? "USD" : "UYU")}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className={`text-[10px] ${C.muted}`}>Después de pagos</p>
-                      <p className={`text-xs font-semibold ${(uyu?.cajaDespPagos ?? 0) < 0 ? "text-red-600" : C.ink}`}>
-                        {fmtCompact(uyu?.cajaDespPagos ?? 0)}
+                      <p className={`text-xs font-semibold ${cashProjectionPoints[1]!.value < 0 ? "text-red-600" : C.ink}`}>
+                        {fmtAmount(cashProjectionPoints[1]!.value, isConsolidated || effectiveCurrency === "USD" ? "USD" : "UYU")}
                       </p>
                     </div>
                   </div>
@@ -1816,8 +2126,8 @@ export default function DashboardPage() {
                 <Skeleton className="h-40" />
               ) : (
                 <ActiveDebtClientsTable
-                  rows={activeDebtRows}
-                  selectedCurrency={selectedCurrency}
+                  rows={isConsolidated ? consolidatedActiveDebtRows : activeDebtRows}
+                  selectedCurrency={isConsolidated ? "USD" : effectiveCurrencyForTables}
                 />
               )}
             </div>
@@ -1839,7 +2149,8 @@ export default function DashboardPage() {
               ) : (
                 <RecentMovementsTable
                   movements={recentMovements}
-                  selectedCurrency={selectedCurrency}
+                  selectedCurrency={effectiveCurrencyForTables}
+                  exchangeRate={isConsolidated ? exchangeRate : null}
                 />
               )}
             </div>

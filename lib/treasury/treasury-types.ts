@@ -353,3 +353,75 @@ export type TreasuryProjectionSnapshot = {
   asOfDate: string;
   buckets: TreasuryProjectionCurrencyBucket[];
 };
+
+// ---------------------------------------------------------------------------
+// Exchange rate (tipo de cambio UYU/USD)
+// ---------------------------------------------------------------------------
+
+export const TREASURY_EXCHANGE_RATE_SOURCES = ["manual", "zeta", "bcr", "config"] as const;
+export type TreasuryExchangeRateSource = (typeof TREASURY_EXCHANGE_RATE_SOURCES)[number];
+
+export type TreasuryExchangeRate = {
+  id: string;
+  workspaceId: string;
+  uyuPerUsd: number;
+  effectiveDate: string;
+  source: TreasuryExchangeRateSource;
+  notes: string | null;
+  createdBy: string | null;
+  createdAt: string;
+};
+
+export type TreasuryExchangeRateInput = {
+  uyuPerUsd: number;
+  effectiveDate?: string;
+  source?: TreasuryExchangeRateSource;
+  notes?: string | null;
+};
+
+// ---------------------------------------------------------------------------
+// Movement accounting reconciliation (conciliación contable de egresos)
+// ---------------------------------------------------------------------------
+
+export const TREASURY_MOVEMENT_ACCOUNTING_MATCH_STATUSES = [
+  "pending",
+  "matched",
+  "amount_mismatch",
+  "currency_mismatch",
+  "date_mismatch",
+  "missing_zeta_entry",
+  "manually_confirmed",
+] as const;
+export type TreasuryMovementAccountingMatchStatus =
+  (typeof TREASURY_MOVEMENT_ACCOUNTING_MATCH_STATUSES)[number];
+
+export type TreasuryMovementAccounting = {
+  id: string;
+  workspaceId: string;
+  movementId: string;
+  accountingPosted: boolean;
+  accountingChecked: boolean;
+  zetaAccountingEntryId: string | null;
+  zetaAccountingEntryNumber: string | null;
+  zetaAccountingEntryDate: string | null;
+  zetaAccountingEntryAmount: number | null;
+  zetaAccountingEntryCurrency: string | null;
+  accountingMatchStatus: TreasuryMovementAccountingMatchStatus;
+  accountingNotes: string | null;
+  accountingCheckedAt: string | null;
+  accountingCheckedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TreasuryMovementAccountingInput = {
+  accountingPosted?: boolean;
+  accountingChecked?: boolean;
+  zetaAccountingEntryId?: string | null;
+  zetaAccountingEntryNumber?: string | null;
+  zetaAccountingEntryDate?: string | null;
+  zetaAccountingEntryAmount?: number | null;
+  zetaAccountingEntryCurrency?: string | null;
+  accountingMatchStatus?: TreasuryMovementAccountingMatchStatus;
+  accountingNotes?: string | null;
+};

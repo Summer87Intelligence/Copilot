@@ -16,19 +16,20 @@ import {
 const ALL_METRIC_IDS = Object.values(METRIC_ID) as MetricId[];
 
 describe("METRIC_ID", () => {
-  it("contiene exactamente 9 métricas canónicas", () => {
-    expect(ALL_METRIC_IDS).toHaveLength(9);
+  it("contiene exactamente 10 métricas canónicas", () => {
+    expect(ALL_METRIC_IDS).toHaveLength(10);
   });
 
   it("todos los IDs son únicos", () => {
     expect(new Set(ALL_METRIC_IDS).size).toBe(ALL_METRIC_IDS.length);
   });
 
-  it("los 9 IDs canónicos están presentes", () => {
+  it("los 10 IDs canónicos están presentes", () => {
     const expected = [
       "deuda_activa",
       "deuda_vencida",
       "deuda_periodo",
+      "pendiente_periodo",
       "facturado_periodo",
       "cobrado_periodo",
       "cobrado_aplicado",
