@@ -3,11 +3,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GET as predictiveGet } from "@/app/api/copilot/decision-engine/predictive/route";
 import { GET as recoveryOpportunitiesGet } from "@/app/api/copilot/decision-engine/recovery-opportunities/route";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import {
+  requireCopilotModuleAccess,
+  requireCopilotModuleWriteAccess,
+} from "@/lib/auth/copilot-module-api-auth";
 import { generatePredictiveSnapshot } from "@/lib/decision-engine/predictive/predictive-orchestrator";
 
-vi.mock("@/lib/copilot-api-auth", () => ({
-  requireCopilotTenantContext: vi.fn(),
+const authMocks = vi.hoisted(() => ({
+  requireCopilotModuleAccess: vi.fn(),
+  requireCopilotModuleWriteAccess: vi.fn(),
+}));
+
+vi.mock("@/lib/auth/copilot-module-api-auth", () => ({
+  requireCopilotModuleAccess: authMocks.requireCopilotModuleAccess,
+  requireCopilotModuleWriteAccess: authMocks.requireCopilotModuleWriteAccess,
 }));
 
 vi.mock("@/lib/copilot-structured-logger", () => ({
@@ -33,7 +42,7 @@ vi.mock("@/lib/decision-engine/predictive/predictive-orchestrator", () => ({
   getRecoveryLikelihoodForCustomer: vi.fn(),
 }));
 
-const mockAuth = vi.mocked(requireCopilotTenantContext);
+const mockAuth = authMocks.requireCopilotModuleAccess;
 const mockGenerate = vi.mocked(generatePredictiveSnapshot);
 
 const TENANT = "tenant-1";

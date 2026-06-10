@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import { manualCashMovementArchive } from "@/lib/treasury/services/manual-cash-movement-service";
 import { nextResponseFromTreasuryCrud } from "@/lib/treasury/treasury-http";
@@ -10,7 +10,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleWriteAccess(request, "tesoreria");
     if (!auth.ok) return auth.response;
 
     const { id } = await params;

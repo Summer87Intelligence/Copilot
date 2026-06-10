@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { collectionUpdateAction } from "@/lib/copilot-collection-service";
 import {
   COLLECTION_ACTION_TYPES,
@@ -16,7 +16,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleWriteAccess(request, "datos");
     if (!auth.ok) return auth.response;
 
     const { supabase, tenantCompanyId } = auth.ctx;

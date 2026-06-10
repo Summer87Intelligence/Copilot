@@ -10,7 +10,7 @@ import { performance } from "node:perf_hooks";
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { parseJsonBody } from "@/lib/api/parse-json-body";
 import { collectionGetByCompanies } from "@/lib/copilot-collection-service";
 
@@ -32,7 +32,7 @@ function readCompanyIds(value: unknown): string[] {
 
 export async function POST(request: NextRequest) {
   const started = performance.now();
-  const auth = await requireCopilotTenantContext(request);
+  const auth = await requireCopilotModuleWriteAccess(request, "cartera");
   if (!auth.ok) return auth.response;
 
   const parsed = await parseJsonBody(request);

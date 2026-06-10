@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireZetaSuperAdminAuth } from "@/lib/integrations/zeta/zeta-api-auth";
 import { fetchZetaClients } from "@/lib/integrations/zeta/zeta-clients";
 import { mapZetaClientToProtoCompanyPreview } from "@/lib/integrations/zeta/zeta-client-mapper";
 
@@ -22,6 +23,9 @@ type TestClientsMappedBody = {
 export async function GET(
   request: NextRequest
 ): Promise<NextResponse<TestClientsMappedBody>> {
+  const auth = await requireZetaSuperAdminAuth(request);
+  if (!auth.ok) return auth.response as NextResponse<TestClientsMappedBody>;
+
   const sp = request.nextUrl.searchParams;
   const page = sp.get("page") ?? undefined;
   const esCliente = sp.get("esCliente") ?? undefined;

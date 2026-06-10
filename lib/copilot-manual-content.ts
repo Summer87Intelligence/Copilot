@@ -1,7 +1,8 @@
 /**
- * Fuente de verdad del Manual de uso Copilot (web + PDF).
- * Secciones generadas desde app/copilot/manual/page.tsx vía:
- *   node scripts/generate-copilot-manual-content.mjs
+ * Wiring del Manual de uso Copilot (web + PDF).
+ * Contenido editable en lib/copilot-manual/sections.generated.ts (UTF-8).
+ * Glosario extra: lib/copilot-manual/glossary-extra.ts
+ * Validar antes de commit: node scripts/generate-copilot-manual-content.mjs --check
  */
 
 export type {

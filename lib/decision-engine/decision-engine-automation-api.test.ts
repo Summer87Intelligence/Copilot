@@ -3,12 +3,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST } from "@/app/api/copilot/decision-engine/run-automation/route";
 import { GET as runsGet } from "@/app/api/copilot/decision-engine/automation-runs/route";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import {
+  requireCopilotModuleAccess,
+  requireCopilotModuleWriteAccess,
+} from "@/lib/auth/copilot-module-api-auth";
 import { runOperationalAutomation } from "@/lib/decision-engine/operational-automation-runner";
 import { selectAutomationRuns } from "@/lib/data/decision-automation-repository";
 
-vi.mock("@/lib/copilot-api-auth", () => ({
-  requireCopilotTenantContext: vi.fn(),
+const authMocks = vi.hoisted(() => ({
+  requireCopilotModuleAccess: vi.fn(),
+  requireCopilotModuleWriteAccess: vi.fn(),
+}));
+
+vi.mock("@/lib/auth/copilot-module-api-auth", () => ({
+  requireCopilotModuleAccess: authMocks.requireCopilotModuleAccess,
+  requireCopilotModuleWriteAccess: authMocks.requireCopilotModuleWriteAccess,
 }));
 
 vi.mock("@/lib/copilot-structured-logger", () => ({
@@ -31,7 +40,8 @@ vi.mock("@/lib/data/decision-automation-repository", () => ({
   selectAutomationRuns: vi.fn(),
 }));
 
-const mockAuth = vi.mocked(requireCopilotTenantContext);
+const mockAuth = authMocks.requireCopilotModuleAccess;
+const mockWriteAuth = authMocks.requireCopilotModuleWriteAccess;
 const mockRun = vi.mocked(runOperationalAutomation);
 const mockRuns = vi.mocked(selectAutomationRuns);
 
@@ -41,8 +51,8 @@ const mockSupabase = {} as never;
 describe("decision-engine automation API", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockAuth.mockResolvedValue({
-      ok: true,
+    const authSuccess = {
+      ok: true as const,
       ctx: {
         supabase: mockSupabase,
         tenantCompanyId: TENANT,
@@ -56,7 +66,9 @@ describe("decision-engine automation API", () => {
         },
         authUser: { id: "auth-1" } as never,
       },
-    });
+    };
+    mockAuth.mockResolvedValue(authSuccess);
+    mockWriteAuth.mockResolvedValue(authSuccess);
   });
 
   it("POST run-automation tenant-safe dry_run", async () => {

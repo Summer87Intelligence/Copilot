@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { OutcomeRow, OutcomeTypeValue } from "@/lib/ai/outcome-types";
 import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
 import { copilotOutcomePostBodySchema } from "@/lib/api/schemas/copilot-api-bodies";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import {
   deleteOutcomeById,
   insertOutcome,
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
   const body = validated.data;
 
   try {
-    const auth = await requireCopilotTenantContext(request, body);
+    const auth = await requireCopilotModuleWriteAccess(request, "acciones", body);
     if (!auth.ok) {
       log.warn("copilot_auth_failed", { phase: "require_copilot_tenant" });
       return auth.response;

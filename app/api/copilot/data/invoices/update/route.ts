@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
 import { protoInvoiceUpdateBodySchema } from "@/lib/api/schemas/copilot-api-bodies";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import { nextResponseFromProtoCrud } from "@/lib/copilot-proto-crud-http";
 import { protoUpdateInvoice } from "@/lib/copilot-proto-crud-service";
@@ -16,8 +16,7 @@ export async function PATCH(request: NextRequest) {
     if (!pv.ok) return pv.response;
 
     const { id, ...patch } = pv.data;
-    const auth = await requireCopilotTenantContext(
-      request,
+    const auth = await requireCopilotModuleWriteAccess(request, "datos",
       pv.data as Record<string, unknown>
     );
     if (!auth.ok) return auth.response;

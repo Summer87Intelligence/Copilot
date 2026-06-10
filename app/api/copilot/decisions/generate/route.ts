@@ -4,7 +4,7 @@ import {
   generateDecisionsForInitiatives,
   type InitiativeForDecision,
 } from "@/lib/ai/decisionEngine";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import {
   insertDecisions,
   selectDecisionInitiativeIdsForInitiatives,
@@ -19,7 +19,7 @@ const BATCH_LIMIT = 20;
 export async function POST(request: NextRequest) {
   let log = copilotRequestLogger(request);
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleWriteAccess(request, "acciones");
     if (!auth.ok) {
       log.warn("copilot_auth_failed", { phase: "require_copilot_tenant" });
       return auth.response;

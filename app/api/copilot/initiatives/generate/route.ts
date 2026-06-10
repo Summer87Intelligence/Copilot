@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 
 /**
@@ -11,7 +11,7 @@ import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
  */
 export async function POST(request: NextRequest) {
   let log = copilotRequestLogger(request);
-  const auth = await requireCopilotTenantContext(request);
+  const auth = await requireCopilotModuleWriteAccess(request, "acciones");
   if (!auth.ok) {
     log.warn("copilot_auth_failed", { phase: "require_copilot_tenant" });
     return auth.response;

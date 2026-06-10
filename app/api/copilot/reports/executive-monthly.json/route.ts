@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 
 import { ISSUER_FALLBACK } from "@/lib/account-statement/issuer-fallback";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import { getClientPortfolio } from "@/lib/copilot-clients-portfolio";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import {
@@ -24,7 +24,7 @@ import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
 export async function GET(request: NextRequest) {
   let log = copilotRequestLogger(request);
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleAccess(request, "reportes");
     if (!auth.ok) {
       log.warn("copilot_auth_failed", { phase: "executive_monthly_report_json" });
       return auth.response;

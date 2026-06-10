@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import {
   applyWorkflowMutation,
   buildOperationalWorkflows,
@@ -69,7 +69,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   let log = copilotRequestLogger(request);
   const { id } = await context.params;
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleWriteAccess(request, "hoy");
     if (!auth.ok) {
       log.warn("copilot_auth_failed", { phase: "require_copilot_tenant" });
       return auth.response;

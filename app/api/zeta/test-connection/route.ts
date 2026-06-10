@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
+import { requireZetaSuperAdminAuth } from "@/lib/integrations/zeta/zeta-api-auth";
 import {
   buildZetaConnectionBlock,
   ZetaConfigurationError,
@@ -64,7 +65,12 @@ function buildBody(connection: ReturnType<typeof buildZetaConnectionBlock>) {
   };
 }
 
-export async function GET(): Promise<NextResponse<ZetaTestConnectionBody>> {
+export async function GET(
+  request: NextRequest
+): Promise<NextResponse<ZetaTestConnectionBody>> {
+  const auth = await requireZetaSuperAdminAuth(request);
+  if (!auth.ok) return auth.response as NextResponse<ZetaTestConnectionBody>;
+
   const configErrors = collectConfigErrors();
   if (configErrors.length > 0) {
     return NextResponse.json(

@@ -6,6 +6,7 @@ import {
   COPILOT_SESSION_COOKIE,
   serializeCopilotSessionValue,
 } from "@/lib/copilot-session-cookie";
+import { CopilotSessionSigningSecretMissingError } from "@/lib/copilot-session-signing";
 import {
   insertAuthLoginEvent,
   logAuthStructured,
@@ -299,12 +300,24 @@ export async function POST(request: Request) {
 
     const role = String(u.role ?? "").trim() || "user";
     const companyId = u.company_id.trim();
-    const cookieValue = serializeCopilotSessionValue(
-      u.id,
-      role,
-      companyId,
-      credentialVersion
-    );
+    let cookieValue: string;
+    try {
+      cookieValue = serializeCopilotSessionValue(
+        u.id,
+        role,
+        companyId,
+        credentialVersion
+      );
+    } catch (e) {
+      if (e instanceof CopilotSessionSigningSecretMissingError) {
+        logAuthStructured("login_signing_secret_missing", { user_id: u.id });
+        return NextResponse.json(
+          { ok: false as const, message: "Error de configuración del servidor." },
+          { status: 500 }
+        );
+      }
+      throw e;
+    }
 
     void insertAuthLoginEvent(admin, {
       userId: u.id,

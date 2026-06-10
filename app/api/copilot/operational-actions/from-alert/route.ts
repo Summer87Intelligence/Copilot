@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
 import { operationalActionFromAlertBodySchema } from "@/lib/api/schemas/copilot-api-bodies";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { createOperationalActionFromAlert } from "@/lib/copilot-operational-actions-service";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import type { FiscalAlertItem } from "@/lib/copilot-tax-alerts";
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
   if (!validated.ok) return validated.response;
 
   try {
-    const auth = await requireCopilotTenantContext(request, validated.data);
+    const auth = await requireCopilotModuleWriteAccess(request, "acciones", validated.data);
     if (!auth.ok) {
       log.warn("copilot_auth_failed", { phase: "require_copilot_tenant" });
       return auth.response;

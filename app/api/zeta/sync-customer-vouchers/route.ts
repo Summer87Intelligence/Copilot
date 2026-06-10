@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireZetaCopilotAuth } from "@/lib/integrations/zeta/zeta-api-auth";
 import { syncZetaCustomerVouchers } from "@/lib/integrations/zeta/zeta-customer-vouchers-pipeline";
 
 const bodySchema = z
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   const pv = await parseAndValidateJsonBody(request, bodySchema);
   if (!pv.ok) return pv.response;
 
-  const auth = await requireCopilotTenantContext(request, pv.data as Record<string, unknown>);
+  const auth = await requireZetaCopilotAuth(request, pv.data as Record<string, unknown>);
   if (!auth.ok) return auth.response;
 
   const tenantId = auth.ctx.tenantCompanyId?.trim();

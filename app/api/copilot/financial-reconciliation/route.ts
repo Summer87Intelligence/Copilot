@@ -31,10 +31,11 @@ import { performance } from "node:perf_hooks";
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import { readInvoiceZetaClientName } from "@/lib/copilot-clients-directory";
 import {
   generateFinancialConsistencyReport,
+  invoiceInputFromProtoRow,
   type CompanyInput,
   type InvoiceInput,
   type ReceiptInput,
@@ -47,7 +48,6 @@ import {
   MIN_FINANCIAL_DATE,
 } from "@/lib/copilot-operational-period";
 import { toSafeNumber } from "@/lib/copilot-numeric-parse";
-import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
 import { mergeZetaSyncStateRows } from "@/lib/integrations/zeta/zeta-sync-resource-keys";
 import { buildInstallmentCoverageDiagnostics } from "@/lib/copilot-installment-coverage";
 import { buildFinancialReconciliationDatasetCaps } from "@/lib/copilot-financial-reconciliation-dataset-caps";
@@ -163,7 +163,7 @@ export async function GET(request: NextRequest) {
 
   try {
     stage = "auth";
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleAccess(request, "finanzas");
     if (!auth.ok) {
       mark("auth_ms");
       emitTiming({ auth_ok: false });
@@ -288,7 +288,7 @@ export async function GET(request: NextRequest) {
             supabase
               .from("proto_invoices")
               .select(
-                "id, company_id, currency_code, total_amount, balance_amount, status, updated_at, issue_date, due_date, due_date_source, zeta_metadata"
+                "id, company_id, currency_code, total_amount, balance_amount, status, updated_at, issue_date, due_date, due_date_source, category, invoice_number, zeta_metadata"
               )
               .eq("workspace_company_id", workspaceId)
               .eq("is_active", true)
@@ -467,21 +467,10 @@ export async function GET(request: NextRequest) {
     ).map((r) => {
       if (typeof r.total_amount === "string") rawStringAmounts++;
       if (typeof r.balance_amount === "string") rawStringBalances++;
-      const isCreditNote = isCreditNoteFromMetadata(r.zeta_metadata);
-      if (isCreditNote) creditNoteCount++;
+      const mapped = invoiceInputFromProtoRow(r);
+      if (mapped.is_credit_note) creditNoteCount++;
       return {
-        id: String(r.id ?? ""),
-        company_id: r.company_id != null ? String(r.company_id) : null,
-        currency_code: r.currency_code != null ? String(r.currency_code) : null,
-        total_amount: toSafeNumber(r.total_amount),
-        balance_amount: toSafeNumber(r.balance_amount),
-        status: r.status != null ? String(r.status) : null,
-        updated_at: r.updated_at != null ? String(r.updated_at) : null,
-        issue_date: r.issue_date != null ? String(r.issue_date) : null,
-        due_date: r.due_date != null ? String(r.due_date) : null,
-        due_date_source:
-          r.due_date_source != null ? String(r.due_date_source) : null,
-        is_credit_note: isCreditNote,
+        ...mapped,
         zeta_client_name: readInvoiceZetaClientName(r.zeta_metadata),
         reconciliation_missing_count: (() => {
           try {

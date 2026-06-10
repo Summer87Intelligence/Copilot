@@ -4,7 +4,7 @@ import {
   recurringObligationGenerateBodySchema,
   recurringObligationTemplateCreateBodySchema,
 } from "@/lib/api/schemas/treasury-api-bodies";
-import { requireCopilotTenantContext, requireCopilotWriteContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import {
   recurringObligationGenerate,
@@ -18,7 +18,7 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleAccess(request, "tesoreria");
     if (!auth.ok) return auth.response;
 
     const activeOnly = request.nextUrl.searchParams.get("active_only") === "true";
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireCopilotWriteContext(request);
+    const auth = await requireCopilotModuleWriteAccess(request, "tesoreria");
     if (!auth.ok) return auth.response;
 
     const json = await request.json();

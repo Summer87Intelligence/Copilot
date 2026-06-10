@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
 import { listProtoCompanies } from "@/lib/data/proto-operational-read-repository";
 
@@ -16,7 +16,7 @@ export type AccountStatementClientItem = {
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleAccess(request, "reportes");
     if (!auth.ok) return auth.response;
 
     const tenantCompanyId = auth.ctx.tenantCompanyId.trim();

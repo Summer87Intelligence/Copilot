@@ -4,7 +4,7 @@ export const maxDuration = 120;
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import { enforcePdfRateLimit } from "@/lib/security/pdf-rate-limit";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
   let log = copilotRequestLogger(request);
 
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleAccess(request, "reportes");
     if (!auth.ok) {
       log.warn("copilot_auth_failed", { phase: "bulk_account_statements_pdf" });
       return auth.response;

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
 import { treasuryAccountCreateBodySchema } from "@/lib/api/schemas/treasury-api-bodies";
-import { requireCopilotTenantContext, requireCopilotWriteContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import {
   treasuryAccountCreate,
@@ -13,7 +13,7 @@ import { parseTreasuryAccountListQuery } from "@/lib/treasury/treasury-list-quer
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleAccess(request, "tesoreria");
     if (!auth.ok) return auth.response;
 
     const filters = parseTreasuryAccountListQuery(request);
@@ -40,8 +40,7 @@ export async function POST(request: NextRequest) {
     const parsed = await parseAndValidateJsonBody(request, treasuryAccountCreateBodySchema);
     if (!parsed.ok) return parsed.response;
 
-    const auth = await requireCopilotWriteContext(
-      request,
+    const auth = await requireCopilotModuleWriteAccess(request, "tesoreria",
       parsed.data as Record<string, unknown>
     );
     if (!auth.ok) return auth.response;

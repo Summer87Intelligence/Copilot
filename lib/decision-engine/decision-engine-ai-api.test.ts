@@ -5,14 +5,23 @@ import { GET as aiBriefingGet } from "@/app/api/copilot/decision-engine/ai-brief
 import { GET as aiAnomaliesGet } from "@/app/api/copilot/decision-engine/ai-anomalies/route";
 import { GET as aiOperatorInsightsGet } from "@/app/api/copilot/decision-engine/ai-operator-insights/route";
 import { GET as aiRiskSummaryGet } from "@/app/api/copilot/decision-engine/ai-risk-summary/route";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import {
+  requireCopilotModuleAccess,
+  requireCopilotModuleWriteAccess,
+} from "@/lib/auth/copilot-module-api-auth";
 import {
   buildRiskSummaryForCustomer,
   generateOperationalIntelligence,
 } from "@/lib/decision-engine/ai/ai-intelligence-orchestrator";
 
-vi.mock("@/lib/copilot-api-auth", () => ({
-  requireCopilotTenantContext: vi.fn(),
+const authMocks = vi.hoisted(() => ({
+  requireCopilotModuleAccess: vi.fn(),
+  requireCopilotModuleWriteAccess: vi.fn(),
+}));
+
+vi.mock("@/lib/auth/copilot-module-api-auth", () => ({
+  requireCopilotModuleAccess: authMocks.requireCopilotModuleAccess,
+  requireCopilotModuleWriteAccess: authMocks.requireCopilotModuleWriteAccess,
 }));
 
 vi.mock("@/lib/copilot-structured-logger", () => ({
@@ -38,7 +47,7 @@ vi.mock("@/lib/decision-engine/ai/ai-intelligence-orchestrator", () => ({
   buildRiskSummaryForCustomer: vi.fn(),
 }));
 
-const mockAuth = vi.mocked(requireCopilotTenantContext);
+const mockAuth = authMocks.requireCopilotModuleAccess;
 const mockGenerate = vi.mocked(generateOperationalIntelligence);
 const mockRisk = vi.mocked(buildRiskSummaryForCustomer);
 

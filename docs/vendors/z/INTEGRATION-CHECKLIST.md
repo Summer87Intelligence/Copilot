@@ -63,7 +63,9 @@ Marcar cada item antes de considerar la tarea lista.
 
 - [ ] Credenciales de Zeta solo en variables de entorno server-side
 - [ ] No loguear el bloque `Connection` completo (usuario/clave)
-- [ ] Endpoint de sync protegido con `requireCopilotTenantContext`
+- [ ] Endpoint de sync protegido con `requireZetaCopilotAuth` (ver `docs/vendors/z/api-auth-matrix.md`)
+- [ ] Endpoints de diagnóstico protegidos con `requireZetaSuperAdminAuth`
+- [ ] Rutas cron con `Bearer CRON_SECRET` — nunca acceso anónimo
 - [ ] RLS activo o equivalente en tablas destino (`workspace_company_id` scoped)
 - [ ] No mezclar datos entre tenants
 

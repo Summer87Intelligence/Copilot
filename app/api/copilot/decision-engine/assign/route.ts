@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { assignOperationalOwnerForTenant } from "@/lib/decision-engine/decision-engine-ownership-service";
 import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
@@ -20,7 +20,7 @@ type AssignBody = {
 export async function POST(request: NextRequest) {
   let log = copilotRequestLogger(request);
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleWriteAccess(request, "acciones");
     if (!auth.ok) return auth.response;
     log = log.withTenant(auth.ctx.tenantCompanyId);
 

@@ -32,6 +32,7 @@ import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+import { requireZetaCronAuth } from "@/lib/integrations/zeta/zeta-api-auth";
 import { runZetaInstallmentsPipeline } from "@/lib/integrations/zeta/zeta-installments-pipeline";
 import { withZetaRetry } from "@/lib/integrations/zeta/zeta-retry";
 
@@ -39,12 +40,6 @@ const DEFAULT_MAX_CLIENTS = 50;
 const DEFAULT_PAGE_DELAY_MS = 400;
 const DEFAULT_CLIENT_DELAY_MS = 600;
 const DEFAULT_MAX_PAGES = 5;
-
-function isAuthorized(request: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  return request.headers.get("authorization") === `Bearer ${secret}`;
-}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -62,9 +57,8 @@ type BackfillBody = {
 };
 
 export async function POST(request: NextRequest) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ ok: false, code: "UNAUTHORIZED" }, { status: 401 });
-  }
+  const cronAuth = requireZetaCronAuth(request);
+  if (!cronAuth.ok) return cronAuth.response;
 
   let body: BackfillBody;
   try {

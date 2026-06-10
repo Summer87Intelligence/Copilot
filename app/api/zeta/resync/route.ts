@@ -15,7 +15,7 @@
  * }
  *
  * Protecciones:
- * - Autenticación de tenant via requireCopilotTenantContext()
+ * - Autenticación de tenant via requireZetaCopilotAuth()
  * - Idempotente: re-ejecutar para el mismo período no duplica datos
  * - dry_run: registra job pero no ejecuta sync
  * - Nunca modifica datos en Zeta (solo read)
@@ -29,7 +29,7 @@ import { z } from "zod";
 import { randomUUID } from "node:crypto";
 
 import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireZetaCopilotAuth } from "@/lib/integrations/zeta/zeta-api-auth";
 import {
   createResyncJob,
   updateResyncJob,
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
   if (!pv.ok) return pv.response;
 
   // ── Auth + tenant context ─────────────────────────────────────────────────
-  const auth = await requireCopilotTenantContext(request, pv.data as Record<string, unknown>);
+  const auth = await requireZetaCopilotAuth(request, pv.data as Record<string, unknown>);
   if (!auth.ok) return auth.response;
 
   const workspaceId = auth.ctx.tenantCompanyId?.trim();

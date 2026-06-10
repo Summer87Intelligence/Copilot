@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import type { DEFollowUpRow } from "@/lib/decision-engine/de-types";
 import { loadDecisionEngineBundle } from "@/lib/data/decision-engine-data-loader";
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   let log = copilotRequestLogger(request);
 
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleWriteAccess(request, "acciones");
     if (!auth.ok) return auth.response;
     log = log.withTenant(auth.ctx.tenantCompanyId);
 

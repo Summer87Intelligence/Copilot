@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import { buildExecutiveBriefing } from "@/lib/copilot-executive-briefing";
 import { listOperationalTimeline } from "@/lib/copilot-operational-events";
 import { buildAutomationGovernanceResponse } from "@/lib/copilot-operational-governance";
@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   let log = copilotRequestLogger(request);
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleAccess(request, "finanzas");
     if (!auth.ok) {
       log.warn("copilot_auth_failed", { phase: "require_copilot_tenant" });
       return auth.response;

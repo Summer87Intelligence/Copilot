@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
 import { scheduledPaymentUpdateBodySchema } from "@/lib/api/schemas/treasury-scheduled-payment-bodies";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import { nextResponseFromTreasuryCrud } from "@/lib/treasury/treasury-http";
 import {
@@ -22,7 +22,7 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
       );
     }
 
-    const auth = await requireCopilotTenantContext(_request);
+    const auth = await requireCopilotModuleWriteAccess(_request, "tesoreria");
     if (!auth.ok) return auth.response;
 
     const result = await deleteScheduledPayment(
@@ -45,10 +45,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const parsed = await parseAndValidateJsonBody(request, scheduledPaymentUpdateBodySchema);
     if (!parsed.ok) return parsed.response;
 
-    const auth = await requireCopilotTenantContext(
-      request,
-      parsed.data as Record<string, unknown>
-    );
+    const auth = await requireCopilotModuleWriteAccess(request, "tesoreria", parsed.data);
     if (!auth.ok) return auth.response;
 
     const result = await updateScheduledPayment(

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
 import { copilotActionPatchBodySchema } from "@/lib/api/schemas/copilot-api-bodies";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { updateActionLoopFields } from "@/lib/data/engine-repository";
 import { copilotInternalErrorResponse } from "@/lib/api/copilot-request-errors";
@@ -27,7 +27,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const body = validated.data;
 
   try {
-    const auth = await requireCopilotTenantContext(request, body);
+    const auth = await requireCopilotModuleWriteAccess(request, "acciones", body);
     if (!auth.ok) {
       log.warn("copilot_auth_failed", { phase: "require_copilot_tenant" });
       return auth.response;

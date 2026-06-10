@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import { listOperationalActionEvents } from "@/lib/copilot-operational-actions-service";
 import { mapOperationalActionEventRow } from "@/lib/data/operational-actions-repository";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const { id } = await context.params;
 
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleAccess(request, "acciones");
     if (!auth.ok) {
       log.warn("copilot_auth_failed", { phase: "require_copilot_tenant" });
       return auth.response;

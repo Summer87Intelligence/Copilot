@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
 import { operationalActionCreateBodySchema } from "@/lib/api/schemas/copilot-api-bodies";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import {
   createOperationalAction,
   listOperationalActions,
@@ -25,7 +25,7 @@ function actorFromContext(ctx: {
 export async function GET(request: NextRequest) {
   let log = copilotRequestLogger(request);
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleAccess(request, "acciones");
     if (!auth.ok) {
       log.warn("copilot_auth_failed", { phase: "require_copilot_tenant" });
       return auth.response;
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
   if (!validated.ok) return validated.response;
 
   try {
-    const auth = await requireCopilotTenantContext(request, validated.data);
+    const auth = await requireCopilotModuleWriteAccess(request, "acciones", validated.data);
     if (!auth.ok) {
       log.warn("copilot_auth_failed", { phase: "require_copilot_tenant" });
       return auth.response;

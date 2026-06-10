@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
 import { scheduledPaymentCreateBodySchema } from "@/lib/api/schemas/treasury-scheduled-payment-bodies";
-import { requireCopilotTenantContext, requireCopilotWriteContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import { parseYmdQuery } from "@/lib/treasury/treasury-db-helpers";
 import { nextResponseFromTreasuryCrud, treasuryCreatedResponse } from "@/lib/treasury/treasury-http";
@@ -35,7 +35,7 @@ function parseScheduledListQuery(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleAccess(request, "tesoreria");
     if (!auth.ok) return auth.response;
 
     const q = parseScheduledListQuery(request);
@@ -93,8 +93,7 @@ export async function POST(request: NextRequest) {
     const parsed = await parseAndValidateJsonBody(request, scheduledPaymentCreateBodySchema);
     if (!parsed.ok) return parsed.response;
 
-    const auth = await requireCopilotWriteContext(
-      request,
+    const auth = await requireCopilotModuleWriteAccess(request, "tesoreria",
       parsed.data as Record<string, unknown>
     );
     if (!auth.ok) return auth.response;

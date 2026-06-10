@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireZetaCopilotAuth } from "@/lib/integrations/zeta/zeta-api-auth";
 import { syncZetaContactsIncremental } from "@/lib/integrations/zeta/zeta-contacts-pipeline";
 
 /**
@@ -8,7 +8,7 @@ import { syncZetaContactsIncremental } from "@/lib/integrations/zeta/zeta-contac
  * Ejecuta sync paginado Zeta → proto_contacts con trazabilidad en zeta_sync_*.
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireCopilotTenantContext(request);
+  const auth = await requireZetaCopilotAuth(request);
   if (!auth.ok) return auth.response;
 
   const tenantId = auth.ctx.tenantCompanyId?.trim();

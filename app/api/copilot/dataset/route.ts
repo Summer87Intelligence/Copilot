@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import type { CopilotDatasetPayload } from "@/lib/copilot-dataset-types";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
   let log = copilotRequestLogger(request);
 
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleAccess(request, "datos");
     if (!auth.ok) {
       log.warn("copilot_auth_failed", { phase: "require_copilot_tenant_dataset" });
       return auth.response;

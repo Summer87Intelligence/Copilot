@@ -4,15 +4,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "@/app/api/copilot/proto-documents/route";
 import { POST as POSTArchive } from "@/app/api/copilot/data/documents/archive/route";
 import { POST as POSTRestore } from "@/app/api/copilot/data/documents/restore/route";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import * as protoDocumentsRepo from "@/lib/data/proto-documents-repository";
 import { protoArchiveDocument, protoRestoreDocument } from "@/lib/copilot-proto-crud-service";
 import { getFiscalAlerts } from "@/lib/copilot-tax-alerts";
 import { getDocumentsByRelatedTableForClient } from "@/lib/copilot-documents-data";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
 
-vi.mock("@/lib/copilot-api-auth", () => ({
-  requireCopilotTenantContext: vi.fn(),
+const mocks = vi.hoisted(() => ({
+  requireCopilotModuleAccess: vi.fn(),
+  requireCopilotModuleWriteAccess: vi.fn(),
+}));
+
+vi.mock("@/lib/auth/copilot-module-api-auth", () => ({
+  requireCopilotModuleAccess: mocks.requireCopilotModuleAccess,
+  requireCopilotModuleWriteAccess: mocks.requireCopilotModuleWriteAccess,
 }));
 
 vi.mock("@/lib/copilot-structured-logger", () => ({
@@ -79,7 +85,8 @@ vi.mock("@/lib/copilot-financial-engine", () => {
   };
 });
 
-const mockAuth = vi.mocked(requireCopilotTenantContext);
+const mockAuth = vi.mocked(requireCopilotModuleAccess);
+const mockWriteAuth = vi.mocked(requireCopilotModuleWriteAccess);
 const mockListActive = vi.mocked(protoDocumentsRepo.listActiveProtoDocuments);
 const mockGetDocumentById = vi.mocked(protoDocumentsRepo.getDocumentById);
 
@@ -194,10 +201,20 @@ describe("GET /api/copilot/proto-documents", () => {
 describe("POST /api/copilot/data/documents/archive y restore", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    const authOk = {
+      ok: true as const,
+      ctx: {
+        tenantCompanyId: "tenant-a",
+        supabase: {} as never,
+        appUser: {} as never,
+        authUser: {} as never,
+      },
+    };
+    mockWriteAuth.mockResolvedValue(authOk);
   });
 
   it("archive: 403 sin contexto de tenant", async () => {
-    mockAuth.mockResolvedValue({
+    mockWriteAuth.mockResolvedValue({
       ok: false,
       response: NextResponse.json({ ok: false }, { status: 403 }),
     });
@@ -226,7 +243,7 @@ describe("POST /api/copilot/data/documents/archive y restore", () => {
       })),
     };
 
-    mockAuth.mockResolvedValue({
+    mockWriteAuth.mockResolvedValue({
       ok: true,
       ctx: {
         tenantCompanyId: "tenant-a",
@@ -276,7 +293,7 @@ describe("POST /api/copilot/data/documents/archive y restore", () => {
       }),
     };
 
-    mockAuth.mockResolvedValue({
+    mockWriteAuth.mockResolvedValue({
       ok: true,
       ctx: {
         tenantCompanyId: "tenant-a",
@@ -298,7 +315,7 @@ describe("POST /api/copilot/data/documents/archive y restore", () => {
   });
 
   it("restore: 403 sin contexto de tenant", async () => {
-    mockAuth.mockResolvedValue({
+    mockWriteAuth.mockResolvedValue({
       ok: false,
       response: NextResponse.json({ ok: false }, { status: 403 }),
     });
@@ -340,7 +357,7 @@ describe("POST /api/copilot/data/documents/archive y restore", () => {
       }),
     };
 
-    mockAuth.mockResolvedValue({
+    mockWriteAuth.mockResolvedValue({
       ok: true,
       ctx: {
         tenantCompanyId: "tenant-a",

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import {
   treasuryExchangeRateCreate,
@@ -10,7 +10,7 @@ import { nextResponseFromTreasuryCrud } from "@/lib/treasury/treasury-http";
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleAccess(request, "tesoreria");
     if (!auth.ok) return auth.response;
 
     const result = await treasuryExchangeRateGet(auth.ctx.supabase, auth.ctx.tenantCompanyId);
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleWriteAccess(request, "tesoreria");
     if (!auth.ok) return auth.response;
 
     const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;

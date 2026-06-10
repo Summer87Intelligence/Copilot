@@ -13,7 +13,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import {
   getLatestCompletenessAudits,
   getOpenIntegrityViolations,
@@ -60,7 +60,7 @@ function deriveEntityHealth(
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireCopilotTenantContext(request, {});
+  const auth = await requireCopilotModuleAccess(request, "hoy", {});
   if (!auth.ok) return auth.response;
 
   const workspaceId = auth.ctx.tenantCompanyId?.trim();

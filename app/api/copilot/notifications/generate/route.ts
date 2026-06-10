@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import { generateOperationalNotificationsForWorkspace } from "@/lib/copilot-notifications/generate-operational-notifications";
 import {
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       }
       tenantCompanyId = id;
     } else {
-      const auth = await requireCopilotTenantContext(request);
+      const auth = await requireCopilotModuleWriteAccess(request, "hoy");
       if (!auth.ok) return auth.response;
       tenantCompanyId = auth.ctx.tenantCompanyId;
     }

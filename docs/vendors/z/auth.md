@@ -51,6 +51,17 @@ No guardar secrets en PROJECT_CONTEXT.md, TASKS.md ni ROADMAP.md.
 Usar variables de entorno server-side o tabla segura según arquitectura.
 Rotar credenciales si hay sospecha de exposición.
 
+## Auth HTTP Copilot (`/api/zeta/*`)
+
+Matriz de guards (middleware + handlers): ver `docs/vendors/z/api-auth-matrix.md`.
+
+Resumen:
+
+- Diagnóstico → superadmin autenticado.
+- Sync manual → `requireZetaCopilotAuth` (tenant desde sesión).
+- Cron operador → `Bearer CRON_SECRET`.
+- Acceso anónimo prohibido.
+
 Bloqueos / dudas
 Confirmar si UsuarioCodigo y UsuarioClave son obligatorios para todos los endpoints.
 Confirmar lifecycle/rotación de claves.

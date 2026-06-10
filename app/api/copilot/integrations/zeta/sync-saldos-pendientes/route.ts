@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
 import { zetaSyncSaldosPendientesBodySchema } from "@/lib/api/schemas/copilot-api-bodies";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { runZetaSaldosPendientesPipeline } from "@/lib/integrations/zeta/zeta-saldos-pipeline";
 import type { ZetaSaldosPipelineResult } from "@/lib/integrations/zeta/zeta-pipeline-types";
 
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
   const pv = await parseAndValidateJsonBody(request, zetaSyncSaldosPendientesBodySchema);
   if (!pv.ok) return pv.response;
 
-  const auth = await requireCopilotTenantContext(request, pv.data as Record<string, unknown>);
+  const auth = await requireCopilotModuleWriteAccess(request, "datos", pv.data as Record<string, unknown>);
   if (!auth.ok) return auth.response;
 
   const body = pv.data;

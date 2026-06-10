@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireZetaSuperAdminAuth } from "@/lib/integrations/zeta/zeta-api-auth";
 import { fetchZetaClients } from "@/lib/integrations/zeta/zeta-clients";
 
 const FULL_PAYLOAD_MAX_CHARS = 12_000;
@@ -28,6 +29,9 @@ type TestClientsBody = {
 export async function GET(
   request: NextRequest
 ): Promise<NextResponse<TestClientsBody>> {
+  const auth = await requireZetaSuperAdminAuth(request);
+  if (!auth.ok) return auth.response as NextResponse<TestClientsBody>;
+
   const sp = request.nextUrl.searchParams;
   const page = sp.get("page") ?? undefined;
   const esCliente = sp.get("esCliente") ?? undefined;

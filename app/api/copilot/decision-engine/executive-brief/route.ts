@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import {
   isExecutiveBriefingFresh,
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   const t0 = Date.now();
 
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleAccess(request, "acciones");
     if (!auth.ok) return auth.response;
     log = log.withTenant(auth.ctx.tenantCompanyId);
 

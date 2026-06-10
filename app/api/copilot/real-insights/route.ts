@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import { runFinancialDatasetValidation } from "@/lib/copilot-financial-context-validation";
 import {
   computeCopilotRealInsights,
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   const computedAt = () => new Date().toISOString();
 
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleAccess(request, "finanzas");
     if (!auth.ok) {
       log.warn("copilot_auth_failed", { phase: "require_copilot_tenant" });
       return auth.response;

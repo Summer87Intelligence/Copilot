@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireZetaCopilotAuth } from "@/lib/integrations/zeta/zeta-api-auth";
 import { syncZetaCommercialDataClient } from "@/lib/integrations/zeta/zeta-commercial-data-client-pipeline";
 
 /**
@@ -8,7 +8,7 @@ import { syncZetaCommercialDataClient } from "@/lib/integrations/zeta/zeta-comme
  * Enriquece `proto_companies.zeta_metadata.commercial_client_v1` desde Zeta (Query datos comerciales).
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireCopilotTenantContext(request);
+  const auth = await requireZetaCopilotAuth(request);
   if (!auth.ok) return auth.response;
 
   const tenantId = auth.ctx.tenantCompanyId?.trim();

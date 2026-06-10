@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import { markAllNotificationsRead } from "@/lib/copilot-notifications/notification-service";
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleWriteAccess(request, "hoy");
     if (!auth.ok) return auth.response;
 
     const ok = await markAllNotificationsRead(auth.ctx.supabase, auth.ctx.tenantCompanyId);

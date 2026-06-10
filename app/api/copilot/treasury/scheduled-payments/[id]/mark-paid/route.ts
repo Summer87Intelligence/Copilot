@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { parseJsonBody } from "@/lib/api/parse-json-body";
 import { scheduledPaymentMarkPaidBodySchema } from "@/lib/api/schemas/treasury-scheduled-payment-bodies";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { copilotInvalidPayloadResponse } from "@/lib/api/copilot-request-errors";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import { nextResponseFromTreasuryCrud } from "@/lib/treasury/treasury-http";
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       body = parsed.data;
     }
 
-    const auth = await requireCopilotTenantContext(request, body as Record<string, unknown>);
+    const auth = await requireCopilotModuleWriteAccess(request, "tesoreria", body as Record<string, unknown>);
     if (!auth.ok) return auth.response;
 
     const result = await markScheduledPaymentAsPaid(

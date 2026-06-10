@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import { getClientPortfolio } from "@/lib/copilot-clients-portfolio";
 import { runFinancialDatasetValidation } from "@/lib/copilot-financial-context-validation";
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   let log = copilotRequestLogger(request);
 
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleAccess(request, "finanzas");
     if (!auth.ok) {
       log.warn("copilot_auth_failed", { phase: "require_copilot_tenant_rutas_hub" });
       return auth.response;

@@ -1,0 +1,166 @@
+import { NextRequest, NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import {
+  requireCopilotTenantContext,
+  type CopilotAuthResult,
+  type CopilotTenantContext,
+} from "@/lib/copilot-api-auth";
+import { resolveCopilotApiModuleKey } from "@/lib/auth/copilot-api-module-map";
+import {
+  canReadModule,
+  canWriteModule,
+  resolveEffectivePermissions,
+  type AccessLevel,
+  type ModuleKey,
+  type ModulePermission,
+} from "@/lib/auth/module-permissions";
+import { getDefaultPermissionsForRole } from "@/lib/auth/role-permission-presets";
+import { isReadOnlyRole } from "@/lib/auth/permissions";
+import type { AppUser } from "@/types/app-user";
+
+export type CopilotModuleAccessOptions = {
+  /** Nivel mínimo requerido. Default: read (bloquea none). */
+  minAccess?: "read" | "write";
+};
+
+function moduleForbiddenResponse(moduleKey: ModuleKey, minAccess: "read" | "write") {
+  return NextResponse.json(
+    {
+      ok: false as const,
+      code: "FORBIDDEN_MODULE" as const,
+      message:
+        minAccess === "write"
+          ? "No tenés permiso de modificación en este módulo."
+          : "No tenés acceso a este módulo.",
+      moduleKey,
+    },
+    { status: 403 }
+  );
+}
+
+/** Carga preset + overrides DB para el usuario (fuente server-side, no cookie). */
+export async function loadEffectiveModulePermissionsForAppUser(
+  supabase: SupabaseClient,
+  appUser: AppUser
+): Promise<ModulePermission[]> {
+  const role = String(appUser.role ?? "").trim();
+  const workspaceId = String(appUser.company_id ?? "").trim();
+  const presets = getDefaultPermissionsForRole(role);
+
+  if (!workspaceId) {
+    return resolveEffectivePermissions(role, presets, []);
+  }
+
+  const { data: overrideRows } = await supabase
+    .from("app_user_permissions")
+    .select("module_key, access_level")
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", appUser.id);
+
+  const overrides: ModulePermission[] = ((overrideRows ?? []) as Array<{
+    module_key: string;
+    access_level: string;
+  }>)
+    .filter((row) => typeof row.module_key === "string" && typeof row.access_level === "string")
+    .map((row) => ({
+      moduleKey: row.module_key as ModuleKey,
+      accessLevel: row.access_level as AccessLevel,
+    }));
+
+  return resolveEffectivePermissions(role, presets, overrides);
+}
+
+function assertModuleAccess(
+  ctx: CopilotTenantContext,
+  effective: ModulePermission[],
+  moduleKey: ModuleKey,
+  minAccess: "read" | "write"
+): NextResponse | null {
+  const role = ctx.appUser.role ?? "";
+  if (role.trim().toLowerCase() === "superadmin") return null;
+
+  const allowed =
+    minAccess === "write"
+      ? canWriteModule(role, effective, moduleKey)
+      : canReadModule(role, effective, moduleKey);
+
+  if (!allowed) {
+    return moduleForbiddenResponse(moduleKey, minAccess);
+  }
+  return null;
+}
+
+/**
+ * Auth tenant + RBAC por módulo (preset + app_user_permissions en DB).
+ * - 401/403 membresía: requireCopilotTenantContext
+ * - 403 FORBIDDEN_MODULE: access_level none o por debajo de minAccess
+ * - superadmin: bypass
+ */
+export async function requireCopilotModuleAccess(
+  request: NextRequest,
+  moduleKey: ModuleKey,
+  body?: unknown,
+  options?: CopilotModuleAccessOptions
+): Promise<CopilotAuthResult> {
+  const minAccess = options?.minAccess ?? "read";
+  const auth = await requireCopilotTenantContext(request, body);
+  if (!auth.ok) return auth;
+
+  const role = auth.ctx.appUser.role?.trim().toLowerCase() ?? "";
+  if (role === "superadmin") {
+    return auth;
+  }
+
+  const effective = await loadEffectiveModulePermissionsForAppUser(
+    auth.ctx.supabase,
+    auth.ctx.appUser
+  );
+  const denied = assertModuleAccess(auth.ctx, effective, moduleKey, minAccess);
+  if (denied) {
+    return { ok: false, response: denied };
+  }
+
+  return auth;
+}
+
+/** RBAC write: minAccess write + bloqueo demo_readonly (misma regla que requireCopilotWriteContext). */
+export async function requireCopilotModuleWriteAccess(
+  request: NextRequest,
+  moduleKey: ModuleKey,
+  body?: unknown
+): Promise<CopilotAuthResult> {
+  const auth = await requireCopilotModuleAccess(request, moduleKey, body, {
+    minAccess: "write",
+  });
+  if (!auth.ok) return auth;
+
+  if (isReadOnlyRole(auth.ctx.appUser.role)) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          ok: false,
+          error: "READ_ONLY_USER",
+          message: "Este usuario es solo lectura. Solo un superadmin puede modificar datos.",
+        },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return auth;
+}
+
+/** Resuelve module_key desde pathname y aplica RBAC (null → solo tenant auth). */
+export async function requireCopilotApiModuleAccess(
+  request: NextRequest,
+  body?: unknown,
+  options?: CopilotModuleAccessOptions
+): Promise<CopilotAuthResult> {
+  const moduleKey = resolveCopilotApiModuleKey(request.nextUrl.pathname);
+  if (!moduleKey) {
+    return requireCopilotTenantContext(request, body);
+  }
+  return requireCopilotModuleAccess(request, moduleKey, body, options);
+}

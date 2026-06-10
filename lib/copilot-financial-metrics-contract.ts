@@ -377,9 +377,16 @@ export const CURRENCY_INTEGRITY_RULES = [
   "Un cliente con deuda en UYU y USD genera dos filas en la tabla de deudores — el conteo de clientes se deduplica.",
 ] as const;
 
-/** Disclaimer obligatorio cuando se muestran métricas combinadas UYU+USD. */
-export const METRIC_MIXED_CURRENCY_DISCLAIMER =
-  "Estimación operativa — combina UYU y USD sin conversión de tipo de cambio.";
+/** Disclaimer cuando UYU y USD se muestran por separado (sin conversión). */
+export const METRIC_SEPARATED_CURRENCY_DISCLAIMER =
+  "Estimación operativa. UYU y USD se muestran por separado; pueden diferir de extractos o contabilidad formal.";
+
+/** Disclaimer cuando los importes se consolidan a USD con tipo de cambio configurable. */
+export const METRIC_USD_CONSOLIDATED_DISCLAIMER =
+  "Estimación operativa. Los importes consolidados usan TC configurable y pueden diferir de extractos o contabilidad formal.";
+
+/** Alias legacy — Panorama financiero y vistas multimoneda separada. */
+export const METRIC_MIXED_CURRENCY_DISCLAIMER = METRIC_SEPARATED_CURRENCY_DISCLAIMER;
 
 // ---------------------------------------------------------------------------
 // Reglas de navegación entre módulos

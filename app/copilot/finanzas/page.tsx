@@ -1327,7 +1327,7 @@ function CopilotFinanzasPageContent() {
                               <p className="text-xs font-semibold text-[var(--copilot-ink)]">{cur}</p>
                               <dl className="mt-2 space-y-1 text-xs text-[var(--copilot-ink-muted)]">
                                 {totals.invoiced !== undefined ? (
-                                  <div className="flex justify-between gap-2"><dt title="Incluye todas las facturas activas históricas. Puede diferir del Facturado del período porque no aplica el rango Desde/Hasta." className="cursor-help underline decoration-dotted">Facturado histórico</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{totals.invoiced.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>
+                                  <div className="flex justify-between gap-2"><dt title="Incluye todas las facturas activas históricas. Puede diferir de Ventas del período porque no aplica el rango Desde/Hasta." className="cursor-help underline decoration-dotted">Facturado histórico</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{totals.invoiced.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>
                                 ) : null}
                                 {totals.pending !== undefined ? (
                                   <div className="flex justify-between gap-2"><dt>Deuda actual</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{totals.pending.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireZetaSuperAdminAuth } from "@/lib/integrations/zeta/zeta-api-auth";
 import {
   buildZetaConnectionBlock,
   ZetaConfigurationError,
@@ -60,6 +61,9 @@ function buildQueryBody(
  * Query opcionales: `page` (default 1), `search` (nombre/razón social), `esCliente` (default S).
  */
 export async function GET(request: NextRequest): Promise<NextResponse<ZetaClientsResponse>> {
+  const auth = await requireZetaSuperAdminAuth(request);
+  if (!auth.ok) return auth.response as NextResponse<ZetaClientsResponse>;
+
   const envErrors = collectEnvErrors();
   if (envErrors.length > 0) {
     return NextResponse.json(

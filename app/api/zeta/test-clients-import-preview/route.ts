@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireZetaSuperAdminAuth } from "@/lib/integrations/zeta/zeta-api-auth";
 import {
   PROTO_COMPANIES_FETCH_CAP,
   classifyZetaImportDryRun,
@@ -45,7 +45,7 @@ type ImportPreviewResponse = {
  * Dry-run tenant-scoped: Zeta → mapping → comparación con `proto_companies` del workspace (sin INSERT/UPDATE).
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireCopilotTenantContext(request);
+  const auth = await requireZetaSuperAdminAuth(request);
   if (!auth.ok) return auth.response;
 
   const tenantId = auth.ctx.tenantCompanyId;

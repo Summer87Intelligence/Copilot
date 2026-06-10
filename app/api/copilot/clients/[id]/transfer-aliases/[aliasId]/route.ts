@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotWriteContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 
 type RouteContext = { params: Promise<{ id: string; aliasId: string }> };
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
-    const auth = await requireCopilotWriteContext(request);
+    const auth = await requireCopilotModuleWriteAccess(request, "clientes");
     if (!auth.ok) return auth.response;
     const { supabase, tenantCompanyId } = auth.ctx;
 
@@ -88,7 +88,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
 export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
-    const auth = await requireCopilotWriteContext(request);
+    const auth = await requireCopilotModuleWriteAccess(request, "clientes");
     if (!auth.ok) return auth.response;
     const { supabase, tenantCompanyId } = auth.ctx;
 

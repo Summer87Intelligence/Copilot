@@ -17,9 +17,25 @@ if (fs.existsSync(envPath)) {
   }
 }
 
-const SUPABASE_URL = 'https://erzdifkvvailxnwdukzf.supabase.co';
-const SUPABASE_SERVICE_ROLE_KEY = 'sb_secret_voboW4ydjcjw1d8tdaxI5Q_DuXhtIni';
-const WID = '040321ff-10fd-4da3-aeca-f1865f879986';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+const WID =
+  process.env.COPILOT_WORKSPACE_COMPANY_ID?.trim() ??
+  process.env.WORKSPACE_COMPANY_ID?.trim();
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error(
+    "Faltan NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY. Usá node --env-file=.env.local …"
+  );
+  process.exit(1);
+}
+
+if (!WID) {
+  console.error(
+    "Falta COPILOT_WORKSPACE_COMPANY_ID (o WORKSPACE_COMPANY_ID) para acotar el tenant del audit."
+  );
+  process.exit(1);
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },

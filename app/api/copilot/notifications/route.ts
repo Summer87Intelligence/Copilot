@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import { listNotifications } from "@/lib/copilot-notifications/notification-service";
 
@@ -19,7 +19,7 @@ const EMPTY_RESULT = { ok: true, notifications: [], unreadCount: 0 } as const;
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleAccess(request, "hoy");
     if (!auth.ok) return auth.response;
 
     const url = new URL(request.url);

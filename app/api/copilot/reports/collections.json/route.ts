@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import {
   getProtoCompanyById,
@@ -18,7 +18,7 @@ import { ISSUER_FALLBACK } from "@/lib/account-statement/issuer-fallback";
 export async function GET(request: NextRequest) {
   let log = copilotRequestLogger(request);
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleAccess(request, "reportes");
     if (!auth.ok) {
       log.warn("copilot_auth_failed", { phase: "collections_report_json" });
       return auth.response;

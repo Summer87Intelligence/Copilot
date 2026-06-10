@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
 import { bankReconciliationMatchBodySchema } from "@/lib/api/schemas/treasury-api-bodies";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import { bankReconciliationMovementMarkMatched } from "@/lib/treasury/services/bank-reconciliation-movement-service";
 import { nextResponseFromTreasuryCrud } from "@/lib/treasury/treasury-http";
@@ -23,8 +23,7 @@ export async function POST(
     const parsed = await parseAndValidateJsonBody(request, bankReconciliationMatchBodySchema);
     if (!parsed.ok) return parsed.response;
 
-    const auth = await requireCopilotTenantContext(
-      request,
+    const auth = await requireCopilotModuleWriteAccess(request, "tesoreria",
       parsed.data as Record<string, unknown>
     );
     if (!auth.ok) return auth.response;

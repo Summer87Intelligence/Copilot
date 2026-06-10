@@ -5,15 +5,15 @@ import { resolveBankImportAuthMode } from "@/lib/auth/bank-import-auth-mode";
 import { shouldBlockReadOnlyApiMutation } from "@/lib/auth/read-only-post-allowed";
 
 const mocks = vi.hoisted(() => ({
-  requireCopilotTenantContext: vi.fn(),
-  requireCopilotWriteContext: vi.fn(),
+  requireCopilotModuleAccess: vi.fn(),
+  requireCopilotModuleWriteAccess: vi.fn(),
   bankReconciliationImportSantander: vi.fn(),
   parseSantanderBankStatementPdfBuffer: vi.fn(),
 }));
 
-vi.mock("@/lib/copilot-api-auth", () => ({
-  requireCopilotTenantContext: mocks.requireCopilotTenantContext,
-  requireCopilotWriteContext: mocks.requireCopilotWriteContext,
+vi.mock("@/lib/auth/copilot-module-api-auth", () => ({
+  requireCopilotModuleAccess: mocks.requireCopilotModuleAccess,
+  requireCopilotModuleWriteAccess: mocks.requireCopilotModuleWriteAccess,
 }));
 
 vi.mock("@/lib/treasury/services/bank-reconciliation-import-service", () => ({
@@ -25,8 +25,8 @@ vi.mock("@/lib/treasury/services/santander-bank-statement-parse-service", () => 
 }));
 
 const {
-  requireCopilotTenantContext,
-  requireCopilotWriteContext,
+  requireCopilotModuleAccess,
+  requireCopilotModuleWriteAccess,
   bankReconciliationImportSantander,
   parseSantanderBankStatementPdfBuffer,
 } = mocks;
@@ -81,8 +81,8 @@ describe("Santander import/parse API RBAC", () => {
     });
   });
 
-  it("demo_readonly POST parse => 200 con tenant context", async () => {
-    requireCopilotTenantContext.mockResolvedValue({ ok: true, ctx: tenantCtx });
+  it("demo_readonly POST parse => 200 con module read access", async () => {
+    requireCopilotModuleAccess.mockResolvedValue({ ok: true, ctx: tenantCtx });
     const file = new File(["%PDF"], "extracto.pdf", { type: "application/pdf" });
     const form = new FormData();
     form.append("file", file);
@@ -93,11 +93,11 @@ describe("Santander import/parse API RBAC", () => {
       )
     );
     expect(res.status).toBe(200);
-    expect(requireCopilotWriteContext).not.toHaveBeenCalled();
+    expect(requireCopilotModuleWriteAccess).not.toHaveBeenCalled();
   });
 
   it("demo_readonly POST import apply=false => 200", async () => {
-    requireCopilotTenantContext.mockResolvedValue({ ok: true, ctx: tenantCtx });
+    requireCopilotModuleAccess.mockResolvedValue({ ok: true, ctx: tenantCtx });
     const res = await postImport(
       new NextRequest(
         "https://example.test/api/copilot/treasury/bank-reconciliation-movements/import",
@@ -109,12 +109,12 @@ describe("Santander import/parse API RBAC", () => {
       )
     );
     expect(res.status).toBe(200);
-    expect(requireCopilotTenantContext).toHaveBeenCalled();
-    expect(requireCopilotWriteContext).not.toHaveBeenCalled();
+    expect(requireCopilotModuleAccess).toHaveBeenCalled();
+    expect(requireCopilotModuleWriteAccess).not.toHaveBeenCalled();
   });
 
   it("demo_readonly POST import apply=true => 403", async () => {
-    requireCopilotWriteContext.mockResolvedValue({
+    requireCopilotModuleWriteAccess.mockResolvedValue({
       ok: false,
       response: Response.json(
         { ok: false, error: "READ_ONLY_USER", message: "solo lectura" },
@@ -140,7 +140,7 @@ describe("Santander import/parse API RBAC", () => {
   });
 
   it("superadmin POST import apply=true usa write context", async () => {
-    requireCopilotWriteContext.mockResolvedValue({
+    requireCopilotModuleWriteAccess.mockResolvedValue({
       ok: true,
       ctx: { ...tenantCtx, appUser: { role: "superadmin" } },
     });
@@ -159,7 +159,7 @@ describe("Santander import/parse API RBAC", () => {
       )
     );
     expect(res.status).toBe(200);
-    expect(requireCopilotWriteContext).toHaveBeenCalled();
+    expect(requireCopilotModuleWriteAccess).toHaveBeenCalled();
   });
 
   it("middleware bloquea manual cash POST para read-only", () => {

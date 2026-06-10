@@ -2,11 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GET as analyticsGet } from "@/app/api/copilot/decision-engine/analytics/route";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import {
+  requireCopilotModuleAccess,
+  requireCopilotModuleWriteAccess,
+} from "@/lib/auth/copilot-module-api-auth";
 import { getOperationalAnalytics } from "@/lib/decision-engine/operational-analytics-orchestrator";
 
-vi.mock("@/lib/copilot-api-auth", () => ({
-  requireCopilotTenantContext: vi.fn(),
+const authMocks = vi.hoisted(() => ({
+  requireCopilotModuleAccess: vi.fn(),
+  requireCopilotModuleWriteAccess: vi.fn(),
+}));
+
+vi.mock("@/lib/auth/copilot-module-api-auth", () => ({
+  requireCopilotModuleAccess: authMocks.requireCopilotModuleAccess,
+  requireCopilotModuleWriteAccess: authMocks.requireCopilotModuleWriteAccess,
 }));
 
 vi.mock("@/lib/copilot-structured-logger", () => ({
@@ -30,7 +39,7 @@ vi.mock("@/lib/decision-engine/operational-analytics-orchestrator", () => ({
   getOperationalAnalytics: vi.fn(),
 }));
 
-const mockAuth = vi.mocked(requireCopilotTenantContext);
+const mockAuth = authMocks.requireCopilotModuleAccess;
 const mockGet = vi.mocked(getOperationalAnalytics);
 
 const TENANT = "tenant-1";

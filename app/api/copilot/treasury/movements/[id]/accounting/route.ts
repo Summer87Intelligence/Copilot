@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import { tmacGet, tmacUpsert } from "@/lib/treasury/services/treasury-movement-accounting-service";
 import type { TreasuryMovementAccountingInput } from "@/lib/treasury/treasury-types";
@@ -10,7 +10,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleAccess(request, "tesoreria");
     if (!auth.ok) return auth.response;
 
     const { id } = await context.params;
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 export async function PUT(request: NextRequest, context: RouteContext) {
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleWriteAccess(request, "tesoreria");
     if (!auth.ok) return auth.response;
 
     const { id } = await context.params;

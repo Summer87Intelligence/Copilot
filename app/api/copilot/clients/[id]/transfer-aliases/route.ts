@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import {
-  requireCopilotTenantContext,
-  requireCopilotWriteContext,
-} from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleAccess(request, "clientes");
     if (!auth.ok) return auth.response;
     const { supabase, tenantCompanyId } = auth.ctx;
 
@@ -38,7 +35,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
-    const auth = await requireCopilotWriteContext(request);
+    const auth = await requireCopilotModuleWriteAccess(request, "clientes");
     if (!auth.ok) return auth.response;
     const { supabase, tenantCompanyId } = auth.ctx;
 

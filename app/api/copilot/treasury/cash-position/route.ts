@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import { treasuryCashPositionGet } from "@/lib/treasury/services/treasury-cash-opening-balance-service";
 import { nextResponseFromTreasuryCrud } from "@/lib/treasury/treasury-http";
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleAccess(request, "tesoreria");
     if (!auth.ok) return auth.response;
 
     const result = await treasuryCashPositionGet(

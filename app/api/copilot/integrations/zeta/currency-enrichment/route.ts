@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { runCurrencyEnrichmentPipeline } from "@/lib/integrations/zeta/zeta-currency-enrichment-pipeline";
 
 /**
@@ -15,7 +15,7 @@ import { runCurrencyEnrichmentPipeline } from "@/lib/integrations/zeta/zeta-curr
  * NO toca montos, fechas ni clientes.
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireCopilotTenantContext(request, {});
+  const auth = await requireCopilotModuleWriteAccess(request, "datos", {});
   if (!auth.ok) return auth.response;
 
   let mes: string;

@@ -42,7 +42,11 @@ import {
   type DashboardRecentMovement,
   type DashboardState,
 } from "@/lib/copilot-dashboard-summary";
-import { METRIC_LABEL } from "@/lib/copilot-financial-metrics-contract";
+import {
+  METRIC_LABEL,
+  METRIC_SEPARATED_CURRENCY_DISCLAIMER,
+  METRIC_USD_CONSOLIDATED_DISCLAIMER,
+} from "@/lib/copilot-financial-metrics-contract";
 import { CopilotDataProvenanceStrip } from "@/components/copilot/copilot-data-provenance-strip";
 import { CopilotPremiumEmptyState } from "@/components/copilot/copilot-premium-empty-state";
 import {
@@ -1577,6 +1581,17 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {(selectedCurrency === "all" || isConsolidated) && (
+        <div className="mx-4 mb-0 flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50/80 px-3 py-2 text-xs text-blue-800 sm:mx-6 lg:mx-8">
+          <Info className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span>
+            {isConsolidated
+              ? METRIC_USD_CONSOLIDATED_DISCLAIMER
+              : METRIC_SEPARATED_CURRENCY_DISCLAIMER}
+          </span>
+        </div>
+      )}
+
       {/* ── Content ───────────────────────────────────────────────────── */}
       <div className="space-y-6 px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
 
@@ -1634,7 +1649,7 @@ export default function DashboardPage() {
               />
               <KpiCard
                 title={METRIC_LABEL.pendiente_periodo}
-                tooltip="Facturado menos cobrado dentro del rango seleccionado."
+                tooltip="Ventas del período menos cobrado dentro del rango seleccionado."
                 uyuValue={consUyu(uyu?.pendientePeriodo ?? 0)}
                 usdValue={consUsd(uyu?.pendientePeriodo ?? 0, usd?.pendientePeriodo ?? 0)}
                 selectedCurrency={effectiveCurrency}
@@ -1697,7 +1712,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-2">
             {effectiveCurrency === "all" ? (
               <>
-                <ChartCard title="[1] Ventas por mes UYU" subtitle="Facturado UYU · escala independiente">
+                <ChartCard title="[1] Ventas por mes UYU" subtitle="Ventas UYU · escala independiente">
                   {loading ? <Skeleton className="h-28" /> : (
                     <VerticalBarChart data={monthlyIssued} selectedCurrency="UYU" height={140} />
                   )}
@@ -1755,7 +1770,7 @@ export default function DashboardPage() {
               <>
                 <ChartCard
                   title="[1] Ventas por mes"
-                  subtitle={`Facturado del período · ${currencyModeLabel}`}
+                  subtitle={`${METRIC_LABEL.facturado_periodo} · ${currencyModeLabel}`}
                   badge={<ChartLegend selectedCurrency={effectiveCurrency} />}
                 >
                   {loading ? (

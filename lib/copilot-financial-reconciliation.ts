@@ -27,6 +27,9 @@ import {
   isStaleOrphanMetadata,
 } from "@/lib/integrations/zeta/zeta-orphan-auto-repair";
 import { stalenessFromHoursForResourceFlow } from "@/lib/integrations/zeta/zeta-sync-staleness";
+import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
+import { toSafeNumber } from "@/lib/copilot-numeric-parse";
+import { selectOperationalDebtInvoicesForSummation } from "@/lib/zeta/zeta-operational-debt-dedup";
 import type { AgingComparativeDiagnostics } from "@/lib/copilot-installment-aging-delta";
 import type { InstallmentAgingObservationDiagnostics } from "@/lib/copilot-installment-aging-observation";
 
@@ -103,6 +106,10 @@ export type InvoiceInput = {
   is_credit_note?: boolean;
   /** Desde zeta_metadata (solo lectura para búsqueda / display). */
   zeta_client_name?: string | null;
+  /** Categoría proto_invoices — requerida para dedupe shadow vs CCV1. */
+  category?: string | null;
+  invoice_number?: string | null;
+  zeta_metadata?: unknown;
 };
 
 /**
@@ -588,6 +595,29 @@ function resolveAging(
   return null;
 }
 
+/**
+ * Mapeo estándar de fila `proto_invoices` → `InvoiceInput` (API, audits, report fetchers).
+ * Incluye campos mínimos para dedupe operacional Zeta en reconciliación.
+ */
+export function invoiceInputFromProtoRow(r: Record<string, unknown>): InvoiceInput {
+  return {
+    id: String(r.id ?? ""),
+    company_id: r.company_id != null ? String(r.company_id) : null,
+    currency_code: r.currency_code != null ? String(r.currency_code) : null,
+    total_amount: toSafeNumber(r.total_amount),
+    balance_amount: toSafeNumber(r.balance_amount),
+    status: r.status != null ? String(r.status) : null,
+    updated_at: r.updated_at != null ? String(r.updated_at) : null,
+    issue_date: r.issue_date != null ? String(r.issue_date) : null,
+    due_date: r.due_date != null ? String(r.due_date) : null,
+    due_date_source: r.due_date_source != null ? String(r.due_date_source) : null,
+    is_credit_note: isCreditNoteFromMetadata(r.zeta_metadata),
+    category: r.category != null ? String(r.category) : null,
+    invoice_number: r.invoice_number != null ? String(r.invoice_number) : null,
+    zeta_metadata: r.zeta_metadata ?? null,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Core function
 // ---------------------------------------------------------------------------
@@ -647,6 +677,18 @@ export function generateFinancialConsistencyReport(
       continue;
     }
     invoices.push(inv);
+  }
+
+  /** IDs que cuentan para deuda operativa (misma regla que Cartera / Ficha 360). */
+  const operationalDebtInvoiceIds = new Set(
+    selectOperationalDebtInvoicesForSummation(invoices)
+      .map((s) => String(s.invoice.id ?? "").trim())
+      .filter(Boolean)
+  );
+
+  function countsTowardOperationalPending(inv: InvoiceInput): boolean {
+    const id = String(inv.id ?? "").trim();
+    return id !== "" && operationalDebtInvoiceIds.has(id);
   }
 
   const receiptsProvided = input.receipts !== undefined;
@@ -810,9 +852,11 @@ export function generateFinancialConsistencyReport(
       b.creditNoteCount++;
     } else {
       b.totalInvoiced = round2(b.totalInvoiced + totalAmount);
-      b.totalPending = round2(b.totalPending + pendingAmount);
       b.invoiceCount++;
-      if (pendingAmount > 0) b.pendingInvoiceCount++;
+      if (countsTowardOperationalPending(inv)) {
+        b.totalPending = round2(b.totalPending + pendingAmount);
+        if (pendingAmount > 0) b.pendingInvoiceCount++;
+      }
     }
     buckets[code] = b;
   }
@@ -903,7 +947,7 @@ export function generateFinancialConsistencyReport(
       );
       const rawBal = inv.balance_amount;
       const pending = rawBal == null ? total : round2(Math.max(0, safeNum(rawBal)));
-      if (pending > 0) {
+      if (pending > 0 && countsTowardOperationalPending(inv)) {
         pendingPrePeriodByCurrency[cc] = round2(
           (pendingPrePeriodByCurrency[cc] ?? 0) + pending
         );
@@ -949,6 +993,8 @@ export function generateFinancialConsistencyReport(
       portRawBal == null
         ? portTotal
         : round2(Math.max(0, safeNum(portRawBal)));
+
+    if (!countsTowardOperationalPending(inv)) continue;
 
     if (companyId) {
       const cur = clientPendingByCurrency.get(companyId) ?? {};

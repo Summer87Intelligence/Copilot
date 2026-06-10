@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import { getBankImportFileType } from "@/lib/treasury/santander-bank-import-file-type";
 import { SantanderStatementParseError } from "@/lib/treasury/santander-bank-import-file-type";
@@ -9,7 +9,7 @@ import { COPILOT_INTERNAL_ERROR_MESSAGE } from "@/lib/api/copilot-request-errors
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireCopilotTenantContext(request, {});
+    const auth = await requireCopilotModuleAccess(request, "tesoreria", {});
     if (!auth.ok) return auth.response;
 
     const formData = await request.formData();

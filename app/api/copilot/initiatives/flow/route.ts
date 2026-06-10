@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import type { InitiativeFlowItem } from "@/lib/ai/initiative-flow-types";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 
 /**
@@ -12,7 +12,7 @@ import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
  */
 export async function GET(request: NextRequest) {
   let log = copilotRequestLogger(request);
-  const auth = await requireCopilotTenantContext(request);
+  const auth = await requireCopilotModuleAccess(request, "acciones");
   if (!auth.ok) {
     log.warn("copilot_auth_failed", { phase: "require_copilot_tenant" });
     return auth.response;

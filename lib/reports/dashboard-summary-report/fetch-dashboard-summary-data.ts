@@ -11,6 +11,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { readInvoiceZetaClientName } from "@/lib/copilot-clients-directory";
 import {
   generateFinancialConsistencyReport,
+  invoiceInputFromProtoRow,
   type CompanyInput,
   type FinancialConsistencyReport,
   type InvoiceInput,
@@ -18,7 +19,6 @@ import {
 } from "@/lib/copilot-financial-reconciliation";
 import { MIN_FINANCIAL_DATE } from "@/lib/copilot-operational-period";
 import { toSafeNumber } from "@/lib/copilot-numeric-parse";
-import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
 import {
   determineDashboardState,
   extractActiveDebtClientRows,
@@ -59,6 +59,17 @@ export type DashboardSummaryFetchedData = {
   top10BillingUSD: { name: string; value: number }[];
 };
 
+/** Mapeo canónico proto_invoices → InvoiceInput (incluye campos dedupe Zeta). */
+export function mapDashboardSummaryInvoiceRows(
+  rows: readonly Record<string, unknown>[]
+): InvoiceInput[] {
+  return rows.map((r) => ({
+    ...invoiceInputFromProtoRow(r),
+    zeta_client_name: readInvoiceZetaClientName(r.zeta_metadata),
+    reconciliation_missing_count: null,
+  }));
+}
+
 export async function fetchDashboardSummaryData(
   supabase: SupabaseClient,
   workspaceId: string,
@@ -77,7 +88,7 @@ export async function fetchDashboardSummaryData(
           supabase
             .from("proto_invoices")
             .select(
-              "id, company_id, currency_code, total_amount, balance_amount, status, updated_at, issue_date, due_date, due_date_source, zeta_metadata"
+              "id, company_id, currency_code, total_amount, balance_amount, status, updated_at, issue_date, due_date, due_date_source, category, invoice_number, zeta_metadata"
             )
             .eq("workspace_company_id", workspaceId)
             .eq("is_active", true)
@@ -117,21 +128,7 @@ export async function fetchDashboardSummaryData(
     ]);
 
   // ── Map raw rows to typed inputs ───────────────────────────────────────────
-  const invoices: InvoiceInput[] = (invoiceFetch.rows ?? []).map((r) => ({
-    id: String(r.id ?? ""),
-    company_id: r.company_id != null ? String(r.company_id) : null,
-    currency_code: r.currency_code != null ? String(r.currency_code) : null,
-    total_amount: toSafeNumber(r.total_amount),
-    balance_amount: toSafeNumber(r.balance_amount),
-    status: r.status != null ? String(r.status) : null,
-    updated_at: r.updated_at != null ? String(r.updated_at) : null,
-    issue_date: r.issue_date != null ? String(r.issue_date) : null,
-    due_date: r.due_date != null ? String(r.due_date) : null,
-    due_date_source: r.due_date_source != null ? String(r.due_date_source) : null,
-    is_credit_note: isCreditNoteFromMetadata(r.zeta_metadata),
-    zeta_client_name: readInvoiceZetaClientName(r.zeta_metadata),
-    reconciliation_missing_count: null,
-  }));
+  const invoices = mapDashboardSummaryInvoiceRows(invoiceFetch.rows ?? []);
 
   const companies: CompanyInput[] = (!companyFetch.fetchError ? companyFetch.rows : []).map((r) => ({
     id: String(r.id ?? ""),

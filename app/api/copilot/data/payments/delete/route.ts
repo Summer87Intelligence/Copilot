@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import { nextResponseFromProtoCrud } from "@/lib/copilot-proto-crud-http";
 import { protoDeletePayment } from "@/lib/copilot-proto-crud-service";
 
 export async function DELETE(request: NextRequest) {
   try {
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleWriteAccess(request, "datos");
     if (!auth.ok) return auth.response;
 
     const id = request.nextUrl.searchParams.get("id")?.trim() ?? "";

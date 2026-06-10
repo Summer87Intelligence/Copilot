@@ -164,8 +164,9 @@ describe("METRIC_MIXED_CURRENCY_DISCLAIMER", () => {
     expect(typeof METRIC_MIXED_CURRENCY_DISCLAIMER).toBe("string");
   });
 
-  it("menciona la ausencia de conversión de tipo de cambio", () => {
-    expect(METRIC_MIXED_CURRENCY_DISCLAIMER.toLowerCase()).toMatch(/tipo de cambio|conversión/);
+  it("menciona monedas separadas sin conversión implícita", () => {
+    const lower = METRIC_MIXED_CURRENCY_DISCLAIMER.toLowerCase();
+    expect(lower).toMatch(/uyu y usd|por separado/);
   });
 });
 

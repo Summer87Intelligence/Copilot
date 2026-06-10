@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
 import { manualCashMovementUpdateBodySchema } from "@/lib/api/schemas/treasury-api-bodies";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import {
   manualCashMovementDelete,
@@ -23,7 +23,7 @@ export async function DELETE(
       );
     }
 
-    const auth = await requireCopilotTenantContext(request);
+    const auth = await requireCopilotModuleWriteAccess(request, "tesoreria");
     if (!auth.ok) return auth.response;
 
     const result = await manualCashMovementDelete(
@@ -56,8 +56,7 @@ export async function PATCH(
     const parsed = await parseAndValidateJsonBody(request, manualCashMovementUpdateBodySchema);
     if (!parsed.ok) return parsed.response;
 
-    const auth = await requireCopilotTenantContext(
-      request,
+    const auth = await requireCopilotModuleWriteAccess(request, "tesoreria",
       parsed.data as Record<string, unknown>
     );
     if (!auth.ok) return auth.response;

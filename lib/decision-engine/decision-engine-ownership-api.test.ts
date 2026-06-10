@@ -3,14 +3,23 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST as assignPost } from "@/app/api/copilot/decision-engine/assign/route";
 import { GET as statsGet } from "@/app/api/copilot/decision-engine/ownership-stats/route";
-import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
+import {
+  requireCopilotModuleAccess,
+  requireCopilotModuleWriteAccess,
+} from "@/lib/auth/copilot-module-api-auth";
 import {
   assignOperationalOwnerForTenant,
   getOperationalOwnershipStatsForTenant,
 } from "@/lib/decision-engine/decision-engine-ownership-service";
 
-vi.mock("@/lib/copilot-api-auth", () => ({
-  requireCopilotTenantContext: vi.fn(),
+const authMocks = vi.hoisted(() => ({
+  requireCopilotModuleAccess: vi.fn(),
+  requireCopilotModuleWriteAccess: vi.fn(),
+}));
+
+vi.mock("@/lib/auth/copilot-module-api-auth", () => ({
+  requireCopilotModuleAccess: authMocks.requireCopilotModuleAccess,
+  requireCopilotModuleWriteAccess: authMocks.requireCopilotModuleWriteAccess,
 }));
 
 vi.mock("@/lib/copilot-structured-logger", () => ({
@@ -31,7 +40,8 @@ vi.mock("@/lib/decision-engine/decision-engine-ownership-service", () => ({
   getOperationalOwnershipStatsForTenant: vi.fn(),
 }));
 
-const mockAuth = vi.mocked(requireCopilotTenantContext);
+const mockAuth = authMocks.requireCopilotModuleAccess;
+const mockWriteAuth = authMocks.requireCopilotModuleWriteAccess;
 const mockAssign = vi.mocked(assignOperationalOwnerForTenant);
 const mockStats = vi.mocked(getOperationalOwnershipStatsForTenant);
 
@@ -41,8 +51,8 @@ const mockSupabase = {} as never;
 describe("decision-engine ownership API", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockAuth.mockResolvedValue({
-      ok: true,
+    const authSuccess = {
+      ok: true as const,
       ctx: {
         supabase: mockSupabase,
         tenantCompanyId: TENANT,
@@ -56,11 +66,13 @@ describe("decision-engine ownership API", () => {
         },
         authUser: { id: "auth-1" } as never,
       },
-    });
+    };
+    mockAuth.mockResolvedValue(authSuccess);
+    mockWriteAuth.mockResolvedValue(authSuccess);
   });
 
   it("POST assign requiere tenant auth", async () => {
-    mockAuth.mockResolvedValueOnce({
+    mockWriteAuth.mockResolvedValueOnce({
       ok: false,
       response: NextResponse.json({ ok: false, code: "UNAUTHENTICATED" }, { status: 401 }),
     });
