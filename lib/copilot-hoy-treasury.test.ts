@@ -331,8 +331,8 @@ describe("Hoy × Tesorería — fórmulas de caja", () => {
       ],
       gate: GATE,
       periodReportCurrencies: [
-        { currencyCode: "UYU", issuedInPeriod: 500_000, collectedInPeriod: 420_000 },
-        { currencyCode: "USD", issuedInPeriod: 20_000, collectedInPeriod: 15_000 },
+        { currencyCode: "UYU", issuedInPeriod: 500_000, pendingAtCutoff: 80_000, collectedInPeriod: 420_000 },
+        { currencyCode: "USD", issuedInPeriod: 20_000, pendingAtCutoff: 5_000, collectedInPeriod: 15_000 },
       ],
       periodRange: { from: "2026-05-01", to: "2026-05-21" },
       carteraCollectedToDate: { UYU: 900_000, USD: 50_000 },

@@ -46,21 +46,21 @@ export const HOY_COCKPIT = {
 /** Labels visibles en bloques UYU/USD. */
 export const CURRENCY_METRIC_LABELS = {
   billed: "Ventas del período",
-  collected: "Cobrado del período",
+  collected: "Cobrado aplicado",
   pending: "Deuda actual",
   overdue30: "Deuda vencida >30 días",
 } as const;
 
 export const CURRENCY_METRIC_HELPERS = {
-  billed: "Facturas emitidas en el período.",
+  billed: "Facturas emitidas en el período, neto de notas de crédito.",
   collected:
-    "Importe cobrado en el período según criterio del Dashboard. Puede incluir cobros de facturas anteriores.",
-  pending: "Total de deuda abierta al día de hoy.",
+    "Parte de las ventas del período ya saldada al cierre del rango. Misma fuente que Cartera y Dashboard (no es la suma de recibos por fecha).",
+  pending: "Saldo pendiente de facturas del período al cierre (= ventas − cobrado aplicado).",
   overdue30: "Parte de la deuda vencida con más de 30 días de atraso.",
 } as const;
 
 export const COLLECTION_EXCEEDS_BILLING_NOTE =
-  "Cobraste más de lo facturado en el período porque hay cobros de facturas anteriores.";
+  "El cobrado aplicado supera lo facturado en el rango; revisá ajustes o imputaciones del período.";
 
 /** Copy de secciones y CTAs (tests de contrato visible). */
 export const HOY_COPY = {
@@ -76,9 +76,9 @@ export const HOY_COPY = {
   periodActivityTitle: "Actividad del período",
   periodBilledLabel: "Ventas del período",
   periodBilledTip: "Facturas emitidas en el período.",
-  periodCollectedLabel: "Cobrado del período",
+  periodCollectedLabel: "Cobrado aplicado",
   periodCollectedTip:
-    "Importe cobrado dentro del período seleccionado según el criterio financiero del Dashboard. Puede diferir de Cobros aplicados a facturas en Cartera.",
+    "Cobros imputados contra facturas del período: ventas netas menos saldo pendiente al cierre. No es la suma de recibos por fecha de cobro.",
   periodCreditNotesLabel: "Ajustes",
   periodManualIncomeLabel: "Ingresos manuales",
   periodManualExpenseLabel: "Egresos manuales",

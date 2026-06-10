@@ -5,7 +5,8 @@
  * canónicas definidas en lib/copilot-financial-metrics-contract.ts:
  *
  *   facturado_periodo   = issuedInPeriod − creditNoteAmount  (neto de NCs)
- *   cobrado_periodo     = collectedInPeriod                  (real receipts)
+ *   cobrado_aplicado    = portfolioResolvedAmount          (alineado con Cartera)
+ *   pendiente_periodo   = pendingAtCutoff                  (= facturado − cobrado aplicado)
  *   deuda_activa        = pendingAtCutoff (all-outstanding)  (no period filter)
  *   deuda_vencida       = portfolio overdue (due_date < today, any days past due)
  *   caja_disponible     = treasury availableCash
@@ -337,19 +338,25 @@ async function runChecks(workspaceId: string): Promise<AuditRow[]> {
           : "Sin NCs en el período",
     });
 
-    // ── CHECK D-02: cobrado = collectedInPeriod (real receipts) ────────────
-    const cobradoCanonical = round2(period.collected);
+    // ── CHECK D-02: Dashboard cobrado = cobrado aplicado (portfolioResolved) ─
+    const facturadoNet = round2(Math.max(0, period.issued - period.creditNotes));
+    const cobradoAplicado = round2(Math.max(0, facturadoNet - outstanding.pendingAtCutoff));
+    const cobradoRecibos = round2(period.collected);
     rows.push({
       check_id: `D-02-${cur}`,
-      metric: "cobrado_periodo",
+      metric: "cobrado_aplicado",
       currency: cur,
-      source_a: "proto_receipts.amount (collectedInPeriod)",
-      value_a: cobradoCanonical,
-      source_b: "proto_receipts.amount",
-      value_b: cobradoCanonical,
-      delta: 0,
-      status: cobradoCanonical >= 0 ? "OK" : "BUG",
-      notes: "cobrado = recibos reales — fuente única, sin estimación",
+      source_a: "issuedNet - pendingAtCutoff (Dashboard/Cartera)",
+      value_a: cobradoAplicado,
+      source_b: "proto_receipts.amount (cobrado_periodo bruto)",
+      value_b: cobradoRecibos,
+      delta: round2(cobradoAplicado - cobradoRecibos),
+      status:
+        Math.abs(cobradoAplicado - cobradoRecibos) < 0.01
+          ? "OK"
+          : "EXPLAINED_DIFF",
+      notes:
+        "Dashboard y Cartera usan cobrado aplicado; recibos brutos pueden diferir si hay cobros de facturas anteriores",
     });
 
     // ── CHECK D-03: deudaActiva = all-outstanding pendingAtCutoff ──────────

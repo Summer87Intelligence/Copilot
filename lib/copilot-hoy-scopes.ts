@@ -73,7 +73,7 @@ function emptyTotals(): CarteraCurrencyTotals {
   return { UYU: 0, USD: 0 };
 }
 
-/** Métricas de Cartera del período (`mode=period_only`) — cobrado = suma recibos en período. */
+/** Métricas de Cartera del período (`mode=period_only`) — cobrado = cobrado aplicado (portfolio). */
 export function carteraPeriodActivityFromReport(currencies: unknown): {
   billedNet: CarteraCurrencyTotals;
   collectedInPeriod: CarteraCurrencyTotals;
@@ -87,7 +87,7 @@ export function carteraPeriodActivityFromReport(currencies: unknown): {
     const m = index.get(code);
     if (!m) continue;
     billedNet[code] = round2(m.issuedInPeriodNet);
-    collectedInPeriod[code] = round2(m.collectedInPeriod);
+    collectedInPeriod[code] = round2(m.portfolioResolvedAmount);
     creditNoteAmount[code] = round2(m.creditNoteAmount);
   }
   return { billedNet, collectedInPeriod, creditNoteAmount };

@@ -21,6 +21,7 @@ export const ORPHAN_RESOLVED_REASONS = {
   BALANCE_ZERO: "balance_zero",
   ALREADY_PAID: "already_paid",
   SHADOW_SUPERSEDED_BY_CCV1: "shadow_superseded_by_ccv1",
+  SHADOW_DUPLICATE_OF_OPEN_CCV1: "shadow_duplicate_of_open_ccv1",
 } as const;
 
 export type OrphanResolvedReason =

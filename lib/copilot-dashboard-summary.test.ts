@@ -174,7 +174,7 @@ function makePortfolioRow(
 // ---------------------------------------------------------------------------
 
 describe("extractDashboardCurrencyData", () => {
-  it("usa collectedInPeriod como cobrado — no totalCollected", () => {
+  it("usa portfolioResolvedAmount (cobrado aplicado) — alineado con Cartera", () => {
     const period = makeReport({ issuedUYU: 1000, collectedUYU: 800, pendingUYU: 200 });
     const out = extractDashboardCurrencyData({
       periodReport: period,
@@ -184,6 +184,25 @@ describe("extractDashboardCurrencyData", () => {
     });
     const uyu = out.find((d) => d.currency === "UYU");
     expect(uyu?.cobrado).toBe(800);
+  });
+
+  it("no usa collectedInPeriod bruto cuando difiere del cobrado aplicado", () => {
+    const period = makeReport({
+      issuedUYU: 1_303_047.5,
+      collectedUYU: 140_166,
+      pendingUYU: 599_425,
+    });
+    const out = extractDashboardCurrencyData({
+      periodReport: period,
+      outstandingReport: makeReport({ pendingUYU: 599_425 }),
+      cashPositions: [],
+      outflowSummaries: [],
+    });
+    const uyu = out.find((d) => d.currency === "UYU");
+    expect(uyu?.facturado).toBe(1_303_047.5);
+    expect(uyu?.cobrado).toBe(703_622.5);
+    expect(uyu?.pendientePeriodo).toBe(599_425);
+    expect(uyu?.facturado! - uyu?.cobrado!).toBeCloseTo(uyu?.pendientePeriodo!, 2);
   });
 
   it("facturado del período es neto de notas de crédito", () => {
@@ -198,8 +217,13 @@ describe("extractDashboardCurrencyData", () => {
     expect(uyu?.facturado).toBe(800);
   });
 
-  it("pendiente del período = facturado - cobrado", () => {
-    const period = makeReport({ issuedUYU: 1000, creditNotesUYU: 200, collectedUYU: 300 });
+  it("pendiente del período = facturado - cobrado aplicado (= pendingAtCutoff)", () => {
+    const period = makeReport({
+      issuedUYU: 1000,
+      creditNotesUYU: 200,
+      collectedUYU: 300,
+      pendingUYU: 500,
+    });
     const out = extractDashboardCurrencyData({
       periodReport: period,
       outstandingReport: null,
@@ -292,9 +316,8 @@ describe("extractDashboardCurrencyData", () => {
     expect(out.every((d) => d.currency === "UYU")).toBe(true);
   });
 
-  it("efectividad usa collectedInPeriod / facturado neto, capped a 1.0", () => {
-    // collected > issued → should cap at 1.0
-    const period = makeReport({ issuedUYU: 1000, collectedUYU: 1500 });
+  it("efectividad usa cobrado aplicado / facturado neto, capped a 1.0", () => {
+    const period = makeReport({ issuedUYU: 1000, pendingUYU: 0 });
     const out = extractDashboardCurrencyData({
       periodReport: period,
       outstandingReport: null,
@@ -354,12 +377,12 @@ describe("extractClientStates", () => {
 });
 
 describe("extractMonthlyPoint", () => {
-  it("extrae issuedInPeriod y collectedInPeriod por moneda", () => {
+  it("extrae facturado neto y cobrado aplicado por moneda", () => {
     const report = makeReport({
       issuedUYU: 2000,
-      collectedUYU: 1500,
+      pendingUYU: 500,
       issuedUSD: 300,
-      collectedUSD: 200,
+      pendingUSD: 100,
     });
     const point = extractMonthlyPoint(report, "2026-03");
     expect(point.issuedUYU).toBe(2000);

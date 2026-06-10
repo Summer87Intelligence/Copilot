@@ -6,8 +6,8 @@
  *
  * Metric sources (per canonical contract lib/copilot-financial-metrics-contract.ts):
  *  - facturado_periodo   → CurrencyReconciliation.issuedInPeriod − creditNoteAmount
- *  - cobrado_periodo     → CurrencyReconciliation.collectedInPeriod (real receipts)
- *  - pendiente_periodo   → facturado_periodo − cobrado_periodo (derivada)
+ *  - cobrado_periodo     → portfolioResolvedAmount (cobrado_aplicado — alineado con Cartera)
+ *  - pendiente_periodo   → pendingAtCutoff del período (= facturado − cobrado aplicado)
  *  - deuda_activa        → outstanding CurrencyReconciliation.pendingAtCutoff
  *  - deuda_vencida       → portfolio overdue (due_date < today) o aging 31+ fallback
  *  - caja_disponible     → CashPositionByCurrency.availableCash
@@ -21,6 +21,7 @@ import type {
   FinancialConsistencyReport,
   ReconciliationCurrencyCode,
 } from "./copilot-financial-reconciliation";
+import { buildCurrencyIndex } from "./copilot-cartera-cards-source";
 import type { ClientPortfolioRow } from "./copilot-clients-portfolio";
 import { sumPortfolioOverdueDebt } from "./copilot-cartera-aging-totals";
 import type { CashPositionByCurrency } from "./treasury/treasury-cash-position";
@@ -265,11 +266,11 @@ export function extractDashboardCurrencyData({
     portfolioRows && portfolioRows.length > 0
       ? sumPortfolioOverdueDebt(portfolioRows)
       : null;
+  const periodIndex = buildCurrencyIndex(periodReport?.currencies);
   const codes: ReconciliationCurrencyCode[] = ["UYU", "USD"];
   return codes
     .map((cur): DashboardCurrencyData => {
-      const period: CurrencyReconciliation | undefined =
-        periodReport?.currencies?.find((c) => c.currencyCode === cur);
+      const periodMetrics = periodIndex.get(cur);
       const outstanding: CurrencyReconciliation | undefined =
         outstandingReport?.currencies?.find((c) => c.currencyCode === cur);
 
@@ -281,18 +282,13 @@ export function extractDashboardCurrencyData({
       const cash = cashPositions.find((c) => c.currency === cur);
       const outflow = outflowSummaries.find((o) => o.currency === cur);
 
-      // facturado_periodo = issuedInPeriod − creditNoteAmount (neto de NCs)
-      const issued = period?.issuedInPeriod ?? 0;
-      const creditNotes = period?.creditNoteAmount ?? 0;
-      const facturado = r2(Math.max(0, issued - creditNotes));
+      // Misma normalización que Cartera (buildCurrencyIndex).
+      const facturado = r2(periodMetrics?.issuedInPeriodNet ?? 0);
+      const cobrado = r2(periodMetrics?.portfolioResolvedAmount ?? 0);
+      const pendientePeriodo = r2(
+        periodMetrics?.pendingAtCutoff ?? Math.max(0, facturado - cobrado)
+      );
 
-      // cobrado_periodo = collectedInPeriod (real receipts — canonical)
-      const cobrado = r2(period?.collectedInPeriod ?? 0);
-
-      // pendiente_periodo = facturado − cobrado (derivada del período)
-      const pendientePeriodo = r2(facturado - cobrado);
-
-      // efectividad = cobrado / facturado, capped at 1.0
       const efectividad =
         facturado > 0 ? Math.min(1, r2(cobrado / facturado)) : null;
 
@@ -504,15 +500,16 @@ export function extractMonthlyPoint(
   const [, monthStr] = yearMonth.split("-");
   const monthIdx = parseInt(monthStr ?? "1", 10) - 1;
   const monthLabel = MONTH_LABELS[monthIdx] ?? yearMonth;
-  const uyu = report?.currencies?.find((c) => c.currencyCode === "UYU");
-  const usd = report?.currencies?.find((c) => c.currencyCode === "USD");
+  const index = buildCurrencyIndex(report?.currencies);
+  const uyu = index.get("UYU");
+  const usd = index.get("USD");
   return {
     monthLabel,
     yearMonth,
-    issuedUYU: uyu?.issuedInPeriod ?? 0,
-    issuedUSD: usd?.issuedInPeriod ?? 0,
-    collectedUYU: uyu?.collectedInPeriod ?? 0,
-    collectedUSD: usd?.collectedInPeriod ?? 0,
+    issuedUYU: uyu?.issuedInPeriodNet ?? 0,
+    issuedUSD: usd?.issuedInPeriodNet ?? 0,
+    collectedUYU: uyu?.portfolioResolvedAmount ?? 0,
+    collectedUSD: usd?.portfolioResolvedAmount ?? 0,
   };
 }
 

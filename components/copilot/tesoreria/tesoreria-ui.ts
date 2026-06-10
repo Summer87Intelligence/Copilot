@@ -1,5 +1,9 @@
 export const TESORERIA_FIELD_CLASS =
-  "w-full rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 py-2 text-sm text-[var(--copilot-ink)] shadow-sm transition focus:border-[var(--copilot-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/20 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]";
+  "w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-[var(--copilot-ink)] shadow-sm transition focus:border-[var(--copilot-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/20 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]";
+
+/** Selects y filtros — fondo sólido y borde visible. */
+export const TESORERIA_SELECT_CLASS =
+  "w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-[var(--copilot-ink)] shadow-sm transition focus:border-[var(--copilot-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/20";
 
 export const TESORERIA_TABLE_CLASS =
   "w-full min-w-[720px] border-separate border-spacing-0 text-left text-sm";
@@ -14,9 +18,9 @@ export const TESORERIA_TD_CLASS =
 export const TESORERIA_FILTER_CHIP_ACTIVE =
   "bg-[var(--copilot-accent)] text-white shadow-sm";
 export const TESORERIA_FILTER_CHIP_IDLE =
-  "border border-neutral-200 bg-white text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-accent-soft)] hover:text-[var(--copilot-ink)]";
+  "border border-neutral-300 bg-white text-[var(--copilot-ink)] shadow-sm hover:border-[var(--copilot-accent)]/40 hover:bg-[var(--copilot-accent-soft)]";
 
-export const TESORERIA_PAGE_SIZE = 10;
+export const TESORERIA_PAGE_SIZE = 15;
 
 /** Labels unificados — formularios Pagos próximos / recurrentes. */
 export const TESORERIA_FORM_LABEL_CLASS =

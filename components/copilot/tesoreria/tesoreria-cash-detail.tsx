@@ -1,15 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, Pencil, X } from "lucide-react";
 
 import { CopilotButton } from "@/components/copilot/ui/copilot-button";
+import { CopilotPagination } from "@/components/copilot/ui/copilot-pagination";
 import { premiumCardClass } from "@/components/copilot/ui/copilot-visual-system";
+import {
+  TESORERIA_FIELD_CLASS,
+  TESORERIA_PAGE_SIZE,
+  TESORERIA_SELECT_CLASS,
+} from "@/components/copilot/tesoreria/tesoreria-ui";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
 import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
 import type { ManualCashMovement, TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
+
+type MovementTypeFilter = "all" | "income" | "expense";
+type CurrencyFilter = "all" | TreasuryCurrencyCode;
 
 const CURRENCIES: TreasuryCurrencyCode[] = ["UYU", "USD"];
 
@@ -203,45 +212,140 @@ function CashCompositionBlock({
 }
 
 function RecentMovements({ workspace }: { workspace: TreasuryWorkspace }) {
-  const active = workspace.manualMovements
-    .filter((m) => m.status === "active" && m.affectsCashflow && !isOpeningBalanceProxy(m))
-    .sort((a, b) => {
-      if (b.movementDate !== a.movementDate) return b.movementDate.localeCompare(a.movementDate);
-      return b.createdAt.localeCompare(a.createdAt);
-    })
-    .slice(0, 8);
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [currency, setCurrency] = useState<CurrencyFilter>("all");
+  const [typeFilter, setTypeFilter] = useState<MovementTypeFilter>("all");
+  const [page, setPage] = useState(0);
 
-  if (active.length === 0) {
-    return (
-      <p className="text-sm text-[var(--copilot-ink-muted)]">
-        Sin movimientos recientes. Usá las acciones rápidas para cargar ingresos o egresos.
-      </p>
-    );
-  }
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return workspace.manualMovements
+      .filter((m) => m.status === "active" && m.affectsCashflow && !isOpeningBalanceProxy(m))
+      .filter((m) => currency === "all" || m.currencyCode === currency)
+      .filter((m) => {
+        if (typeFilter === "all") return true;
+        return m.movementType === typeFilter;
+      })
+      .filter((m) => {
+        if (dateFrom && m.movementDate < dateFrom) return false;
+        if (dateTo && m.movementDate > dateTo) return false;
+        if (!q) return true;
+        return (
+          m.concept.toLowerCase().includes(q) ||
+          (m.category ?? "").toLowerCase().includes(q) ||
+          (m.notes ?? "").toLowerCase().includes(q)
+        );
+      })
+      .sort((a, b) => {
+        if (b.movementDate !== a.movementDate) return b.movementDate.localeCompare(a.movementDate);
+        return b.createdAt.localeCompare(a.createdAt);
+      });
+  }, [workspace.manualMovements, search, dateFrom, dateTo, currency, typeFilter]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / TESORERIA_PAGE_SIZE));
+  const pageItems = filtered.slice(page * TESORERIA_PAGE_SIZE, (page + 1) * TESORERIA_PAGE_SIZE);
+
+  useEffect(() => {
+    setPage(0);
+  }, [search, dateFrom, dateTo, currency, typeFilter]);
 
   return (
-    <div className="space-y-2">
-      {active.map((m) => (
-        <div
-          key={m.id}
-          className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white px-3 py-2.5 shadow-sm"
-        >
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-[var(--copilot-ink)]">{m.concept}</p>
-            <p className="text-xs text-[var(--copilot-ink-muted)]">
-              {m.movementDate} · {m.currencyCode} · {m.movementType === "income" ? "Ingreso" : m.movementType === "expense" ? "Egreso" : m.movementType}
-            </p>
-          </div>
-          <span
-            className={`ml-3 shrink-0 text-sm font-semibold tabular-nums ${
-              m.movementType === "income" ? "text-emerald-700" : "text-rose-700"
-            }`}
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <label className="block text-sm">
+          <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Desde</span>
+          <input
+            type="date"
+            className={TESORERIA_FIELD_CLASS}
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+          />
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Hasta</span>
+          <input
+            type="date"
+            className={TESORERIA_FIELD_CLASS}
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+          />
+        </label>
+        <label className="block text-sm sm:col-span-2 lg:col-span-1">
+          <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Buscar</span>
+          <input
+            type="search"
+            className={TESORERIA_FIELD_CLASS}
+            placeholder="Concepto o notas"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Moneda</span>
+          <select
+            className={TESORERIA_SELECT_CLASS}
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value as CurrencyFilter)}
           >
-            {m.movementType === "income" ? "+" : "−"}
-            {formatTreasuryMoney(m.amount, m.currencyCode)}
-          </span>
-        </div>
-      ))}
+            <option value="all">Todas</option>
+            <option value="UYU">UYU</option>
+            <option value="USD">USD</option>
+          </select>
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Tipo</span>
+          <select
+            className={TESORERIA_SELECT_CLASS}
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value as MovementTypeFilter)}
+          >
+            <option value="all">Todos</option>
+            <option value="income">Ingreso</option>
+            <option value="expense">Egreso</option>
+          </select>
+        </label>
+      </div>
+
+      {filtered.length === 0 ? (
+        <p className="text-sm text-[var(--copilot-ink-muted)]">
+          Sin movimientos con esos filtros. Usá los botones superiores para cargar ingresos o egresos.
+        </p>
+      ) : (
+        <>
+          <div className="space-y-2">
+            {pageItems.map((m) => (
+              <div
+                key={m.id}
+                className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white px-3 py-2.5 shadow-sm"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-[var(--copilot-ink)]">{m.concept}</p>
+                  <p className="text-xs text-[var(--copilot-ink-muted)]">
+                    {m.movementDate} · {m.currencyCode} ·{" "}
+                    {m.movementType === "income" ? "Ingreso" : m.movementType === "expense" ? "Egreso" : m.movementType}
+                  </p>
+                </div>
+                <span
+                  className={`ml-3 shrink-0 text-sm font-semibold tabular-nums ${
+                    m.movementType === "income" ? "text-emerald-700" : "text-rose-700"
+                  }`}
+                >
+                  {m.movementType === "income" ? "+" : "−"}
+                  {formatTreasuryMoney(m.amount, m.currencyCode)}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-col items-center gap-2 pt-1">
+            <span className="text-xs text-[var(--copilot-ink-muted)]">
+              {filtered.length} registro{filtered.length === 1 ? "" : "s"} · página {page + 1} de {pageCount}
+            </span>
+            <CopilotPagination page={page} pageCount={pageCount} onPageChange={setPage} />
+          </div>
+        </>
+      )}
     </div>
   );
 }

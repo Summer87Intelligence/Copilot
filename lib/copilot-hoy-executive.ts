@@ -419,9 +419,9 @@ export function buildFinancialSituationBlocks(
 
     if (period && collected > 0) {
       metrics.push({
-        label: "Cobrado del período",
+        label: "Cobrado aplicado",
         value: fmtCurrencyAmount(collected, currency),
-        helper: "Según el mismo período operativo que Cartera.",
+        helper: "Parte de las ventas del período ya saldada — misma reconciliación que Cartera y Dashboard.",
         trend: "up",
       });
     } else if (snap?.collected !== undefined && snap.collected > 0) {

@@ -113,6 +113,8 @@ const initialForm: FormState = {
 export function TreasuryManualCashPanel({ workspace }: Props) {
   const { canWrite } = useCopilotPermissions();
   const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [currencyFilter, setCurrencyFilter] = useState<CurrencyFilter>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [page, setPage] = useState(0);
@@ -184,6 +186,8 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
         return true;
       })
       .filter((m) => {
+        if (dateFrom && m.movementDate < dateFrom) return false;
+        if (dateTo && m.movementDate > dateTo) return false;
         if (!q) return true;
         return (
           m.concept.toLowerCase().includes(q) ||
@@ -195,7 +199,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
         (a, b) =>
           b.movementDate.localeCompare(a.movementDate) || b.createdAt.localeCompare(a.createdAt)
       );
-  }, [workspace.manualMovements, search, currencyFilter, typeFilter, accountingFilter, accountingMap]);
+  }, [workspace.manualMovements, search, dateFrom, dateTo, currencyFilter, typeFilter, accountingFilter, accountingMap]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / TESORERIA_PAGE_SIZE));
   const pageItems = filtered.slice(page * TESORERIA_PAGE_SIZE, (page + 1) * TESORERIA_PAGE_SIZE);
@@ -355,17 +359,44 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
         {accountingLoading && <Loader2 className="h-3 w-3 animate-spin text-[var(--copilot-ink-muted)]" />}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <input
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(0);
-          }}
-          placeholder="Buscar concepto, categoría o notas"
-          className={TESORERIA_FIELD_CLASS}
-          aria-label="Buscar movimientos"
-        />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <label className="block text-sm">
+          <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Desde</span>
+          <input
+            type="date"
+            className={TESORERIA_FIELD_CLASS}
+            value={dateFrom}
+            onChange={(e) => {
+              setDateFrom(e.target.value);
+              setPage(0);
+            }}
+          />
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Hasta</span>
+          <input
+            type="date"
+            className={TESORERIA_FIELD_CLASS}
+            value={dateTo}
+            onChange={(e) => {
+              setDateTo(e.target.value);
+              setPage(0);
+            }}
+          />
+        </label>
+        <label className="block text-sm sm:col-span-2 lg:col-span-1">
+          <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Buscar</span>
+          <input
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(0);
+            }}
+            placeholder="Concepto, categoría o notas"
+            className={TESORERIA_FIELD_CLASS}
+            aria-label="Buscar movimientos"
+          />
+        </label>
       </div>
 
       {workspace.loading && workspace.manualMovements.length === 0 ? (

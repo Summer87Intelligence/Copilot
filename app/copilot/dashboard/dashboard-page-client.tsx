@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -603,7 +603,7 @@ function ExecutiveSummaryCard({
 
   const kpiRows = [
     { label: METRIC_LABEL.facturado_periodo, uyuVal: uyu?.facturado, usdVal: usd?.facturado },
-    { label: METRIC_LABEL.cobrado_periodo,   uyuVal: uyu?.cobrado,   usdVal: usd?.cobrado },
+    { label: METRIC_LABEL.cobrado_aplicado,   uyuVal: uyu?.cobrado,   usdVal: usd?.cobrado },
     { label: METRIC_LABEL.pendiente_periodo, uyuVal: uyu?.pendientePeriodo, usdVal: usd?.pendientePeriodo },
     { label: METRIC_LABEL.deuda_activa,      uyuVal: uyu?.deudaActiva, usdVal: usd?.deudaActiva },
     { label: METRIC_LABEL.deuda_vencida, uyuVal: uyu?.deudaVencida, usdVal: usd?.deudaVencida, warn: true },
@@ -1664,8 +1664,8 @@ export default function DashboardPageClient() {
                 href="/copilot/cartera"
               />
               <KpiCard
-                title={METRIC_LABEL.cobrado_periodo}
-                tooltip={FINANCIAL_UX_COPY.dashboardCobradoPeriodoTooltip}
+                title={METRIC_LABEL.cobrado_aplicado}
+                tooltip={FINANCIAL_UX_COPY.kpiCollectedAppliedTooltip}
                 uyuValue={consUyu(uyu?.cobrado ?? 0)}
                 usdValue={consUsd(uyu?.cobrado ?? 0, usd?.cobrado ?? 0)}
                 selectedCurrency={effectiveCurrency}
@@ -1673,7 +1673,7 @@ export default function DashboardPageClient() {
               />
               <KpiCard
                 title={METRIC_LABEL.pendiente_periodo}
-                tooltip="Ventas del período menos cobrado dentro del rango seleccionado."
+                tooltip="Ventas del período menos cobros aplicados a facturas del período (= saldo pendiente al cierre del rango)."
                 uyuValue={consUyu(uyu?.pendientePeriodo ?? 0)}
                 usdValue={consUsd(uyu?.pendientePeriodo ?? 0, usd?.pendientePeriodo ?? 0)}
                 selectedCurrency={effectiveCurrency}

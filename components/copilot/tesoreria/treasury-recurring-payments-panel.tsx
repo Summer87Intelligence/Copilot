@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Loader2, MoreHorizontal, Plus, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CopilotPagination } from "@/components/copilot/ui/copilot-pagination";
+import { Loader2, MoreHorizontal, X } from "lucide-react";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 
 import {
@@ -15,6 +16,7 @@ import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
 import {
   TESORERIA_FIELD_CLASS,
   TESORERIA_FORM_LABEL_CLASS,
+  TESORERIA_PAGE_SIZE,
   TESORERIA_PAYMENT_FIELD,
   TESORERIA_TABLE_CLASS,
   TESORERIA_TD_CLASS,
@@ -40,8 +42,9 @@ import type { PlannedCashObligation } from "@/lib/treasury/treasury-types";
 type Props = {
   workspace: TreasuryWorkspace;
   onGoToPagos?: () => void;
-  /** Incrementar para abrir el drawer de nuevo recurrente desde acciones rápidas. */
-  openCreateRequest?: number;
+  hideCreate?: boolean;
+  filterSearch?: string;
+  filterCurrency?: "all" | "UYU" | "USD";
 };
 
 type FormState = {
@@ -116,7 +119,9 @@ function obligationStatusTone(
 export function TreasuryRecurringPaymentsPanel({
   workspace,
   onGoToPagos,
-  openCreateRequest = 0,
+  hideCreate = false,
+  filterSearch = "",
+  filterCurrency = "all",
 }: Props) {
   const { canWrite } = useCopilotPermissions();
   const [items, setItems] = useState<TreasuryRecurringPayment[]>([]);
@@ -128,16 +133,30 @@ export function TreasuryRecurringPaymentsPanel({
   const [submitting, setSubmitting] = useState(false);
   const [modal, setModal] = useState<ModalKind>({ type: "none" });
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
 
   const editingItem = editingId ? items.find((i) => i.id === editingId) ?? null : null;
 
-  useEffect(() => {
-    if (openCreateRequest > 0 && canWrite) {
-      setEditingId(null);
-      setForm(initialForm);
-      setDrawerOpen(true);
-    }
-  }, [openCreateRequest, canWrite]);
+  const visibleItems = useMemo(() => {
+    const q = filterSearch.trim().toLowerCase();
+    return items.filter((row) => {
+      if (filterCurrency !== "all" && row.currency !== filterCurrency) return false;
+      if (
+        q &&
+        !row.title.toLowerCase().includes(q) &&
+        !row.category.toLowerCase().includes(q)
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [items, filterSearch, filterCurrency]);
+
+  const pageCount = Math.max(1, Math.ceil(visibleItems.length / TESORERIA_PAGE_SIZE));
+  const pageItems = visibleItems.slice(
+    page * TESORERIA_PAGE_SIZE,
+    (page + 1) * TESORERIA_PAGE_SIZE
+  );
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -182,11 +201,9 @@ export function TreasuryRecurringPaymentsPanel({
     void load();
   }, [load]);
 
-  function openCreate() {
-    setEditingId(null);
-    setForm(initialForm);
-    setDrawerOpen(true);
-  }
+  useEffect(() => {
+    setPage(0);
+  }, [filterSearch, filterCurrency]);
 
   function openEdit(row: TreasuryRecurringPayment) {
     const meta = row.metadata ?? {};
@@ -354,16 +371,8 @@ export function TreasuryRecurringPaymentsPanel({
   return (
     <section className="space-y-4">
       <CopilotSectionTitle
-        title="Recurrentes"
-        subtitle="Pago que se repite automáticamente. Ejemplo: Netflix todos los 1 del mes. Frecuencia: mensual, semanal o anual."
-        action={
-          canWrite ? (
-            <CopilotButton type="button" size="sm" onClick={openCreate}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo recurrente
-            </CopilotButton>
-          ) : null
-        }
+        title="Pagos recurrentes"
+        subtitle="Reglas que generan vencimientos automáticos en la lista de pagos programados."
       />
 
       {loading ? (
@@ -371,7 +380,7 @@ export function TreasuryRecurringPaymentsPanel({
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
           Cargando…
         </p>
-      ) : items.length === 0 ? (
+      ) : visibleItems.length === 0 ? (
         <CopilotEmptyPanel
           title="Sin pagos recurrentes"
           paragraphs={[
@@ -393,7 +402,7 @@ export function TreasuryRecurringPaymentsPanel({
               </tr>
             </thead>
             <tbody>
-              {items.map((row) => (
+              {pageItems.map((row) => (
                 <tr key={row.id}>
                   <td className={TESORERIA_TD_CLASS}>
                     <span className="font-medium">{row.title}</span>
@@ -495,6 +504,15 @@ export function TreasuryRecurringPaymentsPanel({
           </table>
         </div>
       )}
+
+      {visibleItems.length > TESORERIA_PAGE_SIZE ? (
+        <div className="mt-4 flex flex-col items-center gap-2">
+          <span className="text-xs text-[var(--copilot-ink-muted)]">
+            {visibleItems.length} registro{visibleItems.length === 1 ? "" : "s"} · página {page + 1} de {pageCount}
+          </span>
+          <CopilotPagination page={page} pageCount={pageCount} onPageChange={setPage} />
+        </div>
+      ) : null}
 
       {/* ── Modal: Pausar ── */}
       {modal.type === "pause" ? (
@@ -674,7 +692,7 @@ export function TreasuryRecurringPaymentsPanel({
       ) : null}
 
       {/* ── Drawer: Crear / Editar ── */}
-      {drawerOpen ? (
+      {drawerOpen && editingId ? (
         <div
           className="fixed inset-0 z-50 flex justify-end bg-black/30"
           onMouseDown={(e) => { if (e.target === e.currentTarget && !saving) { setDrawerOpen(false); setEditingId(null); } }}

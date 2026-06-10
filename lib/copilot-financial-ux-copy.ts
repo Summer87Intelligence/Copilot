@@ -52,11 +52,9 @@ export const FINANCIAL_UX_COPY = {
     "Ajustes de facturación del período. Reducen lo facturado pero no representan ingreso de caja.",
   kpiCollectedAppliedLabel: "Cobros aplicados a facturas",
   kpiCollectedAppliedTooltip:
-    "Importe de cobros aplicados a facturas dentro del período seleccionado. No representa necesariamente el total cobrado mostrado en Dashboard.",
+    "Cobros imputados contra facturas emitidas en el período: facturado neto menos saldo pendiente al cierre del rango. Misma fuente que Cartera.",
   carteraResumenFinancieroHelp:
-    "Las métricas de Cartera muestran deuda y cobros aplicados a facturas. Pueden diferir de los indicadores operativos mostrados en Dashboard.",
-  dashboardCobradoPeriodoTooltip:
-    "Importe cobrado dentro del período seleccionado según el criterio financiero del Dashboard.",
+    "Las métricas de Cartera y Dashboard Resumen usan la misma reconciliación de ventas, cobros aplicados y deuda para el rango seleccionado.",
   kpiNetEffectivenessTooltip:
     "Recibos cobrados / Facturado neto. Mide qué fracción de lo facturado fue cobrada en el período según recibos sincronizados de Zeta.",
   kpiNetEffectivenessTooltipPreSync:

@@ -19,6 +19,7 @@ import { INSTALLMENT_SALDO_EPSILON } from "@/lib/integrations/zeta/zeta-installm
 import {
   buildOrphanResolvedMetadataPatch,
   ORPHAN_RESOLVED_REASONS,
+  type OrphanResolvedReason,
 } from "@/lib/integrations/zeta/zeta-orphan-auto-repair";
 import {
   extractRegistroIdsFromInvoiceZetaMetadata,
@@ -31,6 +32,7 @@ import {
 import {
   isZetaSaldosPendientesShadowRow,
   readOperationalDebtInvoiceCurrency,
+  selectOperationalDebtInvoicesForSummation,
   type OperationalDebtInvoiceInput,
 } from "@/lib/zeta/zeta-operational-debt-dedup";
 
@@ -61,7 +63,13 @@ export type ShadowPairSkipReason =
   | "blocked_by_installments"
   | "blocked_by_open_zeta_cuota"
   | "feature_disabled"
-  | "dry_run";
+  | "dry_run"
+  | "not_ccv1_still_open"
+  | "balance_mismatch"
+  | "date_incompatible"
+  | "registro_metadata_missing"
+  | "dedupe_includes_shadow"
+  | "currency_mismatch";
 
 export type ShadowPairResult = {
   shadow: OperationalDebtInvoiceInput;
@@ -96,6 +104,36 @@ export function isZetaSaldosShadowReconcileEnabled(): boolean {
   if (raw === "0" || raw?.toLowerCase() === "false") return false;
   return true;
 }
+
+export function isZetaSaldosShadowReconcilePhase2Enabled(): boolean {
+  const raw = process.env.ZETA_SALDOS_SHADOW_RECONCILE_PHASE2?.trim();
+  if (raw === "0" || raw?.toLowerCase() === "false") return false;
+  return raw === "1" || raw?.toLowerCase() === "true";
+}
+
+export type Phase2SkipReason =
+  | "not_ccv1_still_open"
+  | "balance_mismatch"
+  | "date_incompatible"
+  | "registro_metadata_missing"
+  | "dedupe_includes_shadow"
+  | "ambiguous_fallback"
+  | "ambiguous_registro"
+  | "ambiguous_balance"
+  | "no_ccv1_pair"
+  | "shadow_ineligible"
+  | "ccv1_void"
+  | "currency_mismatch"
+  | "feature_disabled";
+
+export type Phase2ShadowCandidate = ShadowReconcileCandidate & {
+  shadow_issue_date: string;
+  ccv1_issue_date: string;
+  balance_delta: number;
+  registro_id: string | null;
+  registro_proof: string;
+  dedupe_excludes_shadow: boolean;
+};
 
 function num(v: unknown): number {
   if (v == null || v === "") return 0;
@@ -254,6 +292,161 @@ export function classifyShadowCandidatesForCompany(
   return { candidates, skipped };
 }
 
+function balancesMatchExact(a: number, b: number): boolean {
+  return Math.abs(a - b) <= SHADOW_RECONCILE_EPSILON;
+}
+
+/** ¿El dedupe operativo ya elige CCV1 y excluye el shadow? */
+export function operationalDedupeExcludesShadow(
+  companyInvoices: readonly OperationalDebtInvoiceInput[],
+  ccv1Id: string,
+  shadowId: string
+): boolean {
+  const selections = selectOperationalDebtInvoicesForSummation(companyInvoices);
+  const ccv1Sel = selections.find((s) => String(s.invoice.id ?? "") === ccv1Id);
+  if (ccv1Sel?.skippedShadowIds.includes(shadowId)) return true;
+
+  const shadowSel = selections.find((s) => String(s.invoice.id ?? "") === shadowId);
+  if (!shadowSel) return true;
+
+  return false;
+}
+
+export function evaluatePhase2OpenCcv1DuplicateShadow(
+  shadow: OperationalDebtInvoiceInput,
+  reals: readonly OperationalDebtInvoiceInput[],
+  companyInvoices: readonly OperationalDebtInvoiceInput[]
+): {
+  candidate: Phase2ShadowCandidate | null;
+  skip_reason: Phase2SkipReason | null;
+} {
+  const pair = pairShadowToRealStrict(shadow, [...reals]);
+
+  if (pair.skip_reason === "ambiguous_fallback") {
+    return { candidate: null, skip_reason: "ambiguous_fallback" };
+  }
+  if (pair.skip_reason === "ambiguous_registro") {
+    return { candidate: null, skip_reason: "ambiguous_registro" };
+  }
+  if (pair.skip_reason === "ambiguous_balance") {
+    return { candidate: null, skip_reason: "ambiguous_balance" };
+  }
+  if (pair.skip_reason === "no_ccv1_pair" || pair.skip_reason === "shadow_ineligible") {
+    return { candidate: null, skip_reason: pair.skip_reason };
+  }
+  if (pair.skip_reason === "ccv1_void") {
+    return { candidate: null, skip_reason: "ccv1_void" };
+  }
+  if (pair.skip_reason !== "ccv1_still_open" || !pair.real || !pair.pair_reason) {
+    return { candidate: null, skip_reason: "not_ccv1_still_open" };
+  }
+
+  const ccv1 = pair.real;
+  const shadowBal = roundShadowAmount(pendingBalance(shadow));
+  const ccv1Bal = roundShadowAmount(pendingBalance(ccv1));
+  const shadowIssue = ymd(shadow.issue_date);
+  const ccv1Issue = ymd(ccv1.issue_date);
+  const shadowCur = readOperationalDebtInvoiceCurrency(shadow);
+  const ccv1Cur = readOperationalDebtInvoiceCurrency(ccv1);
+
+  if (!shadowCur || !ccv1Cur || shadowCur !== ccv1Cur) {
+    return { candidate: null, skip_reason: "currency_mismatch" };
+  }
+
+  const registroId = parseZetaLegacyRegistroIdFromInvoiceNumber(String(shadow.invoice_number ?? ""));
+  const ccv1RegIds = extractRegistroIdsFromInvoiceZetaMetadata(ccv1.zeta_metadata);
+  const ccv1HasRegistroMeta = ccv1RegIds.length > 0;
+  const registroOk =
+    !ccv1HasRegistroMeta
+      ? pair.pair_reason === "registro_metadata" ||
+        pair.pair_reason === "registro_fallback" ||
+        pair.pair_reason === "balance_unique"
+      : registroId != null && ccv1RegIds.includes(registroId);
+  const registroProof = ccv1HasRegistroMeta
+    ? registroId != null && ccv1RegIds.includes(registroId)
+      ? "registro_metadata_match"
+      : "registro_metadata_mismatch"
+    : pair.pair_reason === "registro_fallback"
+      ? "shadow_registro_id_via_invoice_number_fallback"
+      : pair.pair_reason;
+
+  const balanceOk = balancesMatchExact(shadowBal, ccv1Bal);
+  const dateOk =
+    (shadowIssue !== "" && shadowIssue === ccv1Issue) ||
+    pair.pair_reason === "registro_metadata" ||
+    (pair.pair_reason === "registro_fallback" && shadowIssue === ccv1Issue);
+  const dedupeOk = operationalDedupeExcludesShadow(
+    companyInvoices,
+    String(ccv1.id ?? ""),
+    String(shadow.id ?? "")
+  );
+
+  if (!balanceOk) return { candidate: null, skip_reason: "balance_mismatch" };
+  if (!dateOk) return { candidate: null, skip_reason: "date_incompatible" };
+  if (!registroOk) return { candidate: null, skip_reason: "registro_metadata_missing" };
+  if (!dedupeOk) return { candidate: null, skip_reason: "dedupe_includes_shadow" };
+
+  return {
+    candidate: {
+      shadow_id: String(shadow.id),
+      shadow_invoice_number: String(shadow.invoice_number ?? ""),
+      shadow_balance: shadowBal,
+      shadow_currency: shadowCur,
+      company_id: String(shadow.company_id ?? ""),
+      ccv1_id: String(ccv1.id),
+      ccv1_invoice_number: String(ccv1.invoice_number ?? ""),
+      ccv1_balance: ccv1Bal,
+      pair_reason: pair.pair_reason,
+      shadow_issue_date: shadowIssue,
+      ccv1_issue_date: ccv1Issue,
+      balance_delta: roundShadowAmount(Math.abs(shadowBal - ccv1Bal)),
+      registro_id: registroId,
+      registro_proof: String(registroProof),
+      dedupe_excludes_shadow: dedupeOk,
+    },
+    skip_reason: null,
+  };
+}
+
+export function classifyPhase2OpenCcv1DuplicateShadows(
+  companyInvoices: readonly OperationalDebtInvoiceInput[]
+): {
+  candidates: Phase2ShadowCandidate[];
+  skipped: { shadow_id: string; invoice_number: string; reason: Phase2SkipReason }[];
+} {
+  const shadows = companyInvoices.filter(
+    (inv) =>
+      isZetaSaldosPendientesShadowRow(inv) &&
+      pendingBalance(inv) > SHADOW_RECONCILE_EPSILON &&
+      !isCreditNoteFromMetadata(inv.zeta_metadata)
+  );
+  const reals = companyInvoices.filter((inv) => isRealCcv1(inv));
+  const candidates: Phase2ShadowCandidate[] = [];
+  const skipped: { shadow_id: string; invoice_number: string; reason: Phase2SkipReason }[] = [];
+
+  for (const shadow of shadows) {
+    const st = String(shadow.status ?? "").trim().toLowerCase();
+    if (VOIDED_STATUSES.has(st)) continue;
+
+    const { candidate, skip_reason } = evaluatePhase2OpenCcv1DuplicateShadow(
+      shadow,
+      reals,
+      companyInvoices
+    );
+    if (candidate) {
+      candidates.push(candidate);
+    } else if (skip_reason) {
+      skipped.push({
+        shadow_id: String(shadow.id ?? ""),
+        invoice_number: String(shadow.invoice_number ?? ""),
+        reason: skip_reason,
+      });
+    }
+  }
+
+  return { candidates, skipped };
+}
+
 export function computeWorkspacePendingAtCutoff(
   invoices: readonly InvoiceInput[],
   workspaceId = "shadow-reconcile"
@@ -283,6 +476,8 @@ async function closeShadowInvoice(
     tenantId?: string;
     touchedInvoiceIds?: Set<string>;
     now?: string;
+    resolvedReason?: OrphanResolvedReason;
+    writerProcess?: string;
   }
 ): Promise<{ ok: boolean; skip_reason?: ShadowPairSkipReason }> {
   const wid = workspaceCompanyId.trim();
@@ -326,11 +521,9 @@ async function closeShadowInvoice(
   }
 
   const now = opts.now ?? new Date().toISOString();
-  const closedMeta = buildOrphanResolvedMetadataPatch(
-    shadow.zeta_metadata,
-    ORPHAN_RESOLVED_REASONS.SHADOW_SUPERSEDED_BY_CCV1,
-    now
-  );
+  const resolvedReason =
+    opts.resolvedReason ?? ORPHAN_RESOLVED_REASONS.SHADOW_SUPERSEDED_BY_CCV1;
+  const closedMeta = buildOrphanResolvedMetadataPatch(shadow.zeta_metadata, resolvedReason, now);
 
   const { error: metaErr } = await supabase
     .from("proto_invoices")
@@ -364,7 +557,7 @@ async function closeShadowInvoice(
 
   await maybeLogZetaBalanceWriteAfterUpdate(supabase, wid, shadowId, invoiceNumber, {
     source: "saldos_shadow_reconcile",
-    writer_process: "reconcileStaleSaldosShadowsForClient",
+    writer_process: opts.writerProcess ?? "reconcileStaleSaldosShadowsForClient",
     balance_payload: 0,
     beforeSnap: {
       balance_amount: prevBal,
@@ -471,6 +664,89 @@ export async function reconcileStaleSaldosShadowsForClient(
     const shadow = shadowById.get(candidate.shadow_id);
     if (!shadow) continue;
     const close = await closeShadowInvoice(supabase, workspaceCompanyId, shadow, candidate, opts);
+    if (close.ok) {
+      result.closed.push(candidate);
+      result.closed_count += 1;
+    } else if (close.skip_reason) {
+      result.skipped.push({
+        shadow_id: candidate.shadow_id,
+        invoice_number: candidate.shadow_invoice_number,
+        reason: close.skip_reason,
+      });
+    } else {
+      result.db_errors += 1;
+    }
+  }
+
+  return result;
+}
+
+export async function reconcileOpenCcv1DuplicateShadowsForClient(
+  supabase: SupabaseClient,
+  workspaceCompanyId: string,
+  protoCompanyId: string,
+  companyInvoices?: readonly OperationalDebtInvoiceInput[],
+  opts: {
+    syncRunId?: string;
+    requestId?: string;
+    clienteCodigo?: string;
+    tenantId?: string;
+    touchedInvoiceIds?: Set<string>;
+    dryRun?: boolean;
+    now?: string;
+  } = {}
+): Promise<ShadowReconcileRunResult> {
+  const result: ShadowReconcileRunResult = {
+    shadows_scanned: 0,
+    closed_count: 0,
+    closed: [],
+    skipped: [],
+    db_errors: 0,
+    dry_run: Boolean(opts.dryRun),
+  };
+
+  if (!isZetaSaldosShadowReconcilePhase2Enabled()) {
+    return result;
+  }
+
+  const loaded =
+    companyInvoices && companyInvoices.length > 0
+      ? [...companyInvoices]
+      : await loadCompanyOperationalInvoices(supabase, workspaceCompanyId, protoCompanyId);
+
+  const scoped = loaded.filter(
+    (inv) => String(inv.company_id ?? "").trim() === protoCompanyId.trim()
+  );
+  const { candidates, skipped } = classifyPhase2OpenCcv1DuplicateShadows(scoped);
+  result.shadows_scanned = scoped.filter(
+    (inv) =>
+      isZetaSaldosPendientesShadowRow(inv) && pendingBalance(inv) > SHADOW_RECONCILE_EPSILON
+  ).length;
+
+  for (const s of skipped) {
+    result.skipped.push({
+      shadow_id: s.shadow_id,
+      invoice_number: s.invoice_number,
+      reason: s.reason,
+    });
+  }
+
+  if (opts.dryRun) {
+    result.closed = candidates;
+    result.closed_count = candidates.length;
+    return result;
+  }
+
+  const shadowById = new Map(scoped.map((inv) => [String(inv.id ?? ""), inv] as const));
+
+  for (const candidate of candidates) {
+    const shadow = shadowById.get(candidate.shadow_id);
+    if (!shadow) continue;
+    const close = await closeShadowInvoice(supabase, workspaceCompanyId, shadow, candidate, {
+      ...opts,
+      resolvedReason: ORPHAN_RESOLVED_REASONS.SHADOW_DUPLICATE_OF_OPEN_CCV1,
+      writerProcess: "reconcileOpenCcv1DuplicateShadowsForClient",
+    });
     if (close.ok) {
       result.closed.push(candidate);
       result.closed_count += 1;

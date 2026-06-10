@@ -9,13 +9,12 @@ import { TreasuryReceiptsPanel } from "@/components/copilot/tesoreria/treasury-r
 import { TreasuryCashPanel } from "@/components/copilot/tesoreria/treasury-cash-panel";
 import { TreasuryFeedbackBanner } from "@/components/copilot/tesoreria/treasury-feedback-banner";
 import { TreasuryManualCashPanel } from "@/components/copilot/tesoreria/treasury-manual-cash-panel";
-import { TreasuryProgramadosPanel } from "@/components/copilot/tesoreria/treasury-programados-panel";
-import { TreasuryRecurringPaymentsPanel } from "@/components/copilot/tesoreria/treasury-recurring-payments-panel";
-import { TreasuryObligationsPanel } from "@/components/copilot/tesoreria/treasury-obligations-panel";
+import { TesoreriaPagosProximosTab } from "@/components/copilot/tesoreria/tesoreria-pagos-proximos-tab";
 import {
   TesoreriaPageHeader,
   type TesoreriaQuickAction,
 } from "@/components/copilot/tesoreria/tesoreria-page-header";
+import { TesoreriaUnifiedActionForm } from "@/components/copilot/tesoreria/tesoreria-unified-action-form";
 import {
   TESORERIA_SECTION_ALIASES,
   TESORERIA_SECTIONS,
@@ -41,16 +40,7 @@ export function TesoreriaShell() {
   const parsedSection = parseTesoreriaSection(sectionFromUrl) ?? "caja";
   const [section, setSection] = useState<TesoreriaSection>(parsedSection);
   const [appliedSectionFromUrl, setAppliedSectionFromUrl] = useState(sectionFromUrl);
-
-  const [cashFormRequest, setCashFormRequest] = useState<{
-    key: number;
-    preset?: Partial<{
-      movementType: "income" | "expense";
-      mode: "now" | "scheduled";
-    }>;
-  } | null>(null);
-  const [obligationCreateRequest, setObligationCreateRequest] = useState(0);
-  const [recurringCreateRequest, setRecurringCreateRequest] = useState(0);
+  const [activeForm, setActiveForm] = useState<TesoreriaQuickAction | null>(null);
 
   if (sectionFromUrl !== appliedSectionFromUrl) {
     setAppliedSectionFromUrl(sectionFromUrl);
@@ -66,7 +56,6 @@ export function TesoreriaShell() {
     (next: TesoreriaSection) => {
       setSection(next);
       workspace.clearFeedback();
-      window.scrollTo(0, 0);
       const params = new URLSearchParams(searchParams.toString());
       params.set("section", next);
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
@@ -74,35 +63,23 @@ export function TesoreriaShell() {
     [router, pathname, searchParams, workspace]
   );
 
-  const handleQuickAction = useCallback(
-    (action: TesoreriaQuickAction) => {
-      if (action === "recurring") {
-        setSectionWithUrl("programados");
-        setRecurringCreateRequest((n) => n + 1);
-        return;
-      }
-      if (action === "scheduled") {
-        setSectionWithUrl("programados");
-        setObligationCreateRequest((n) => n + 1);
-        return;
-      }
+  const handleQuickAction = useCallback((action: TesoreriaQuickAction) => {
+    if (action === "scheduled" || action === "recurring") {
+      setSectionWithUrl("programados");
+    } else {
       setSectionWithUrl("caja");
-      setCashFormRequest({
-        key: Date.now(),
-        preset: {
-          movementType: action,
-          mode: "now",
-        },
-      });
-    },
-    [setSectionWithUrl]
-  );
+    }
+    setActiveForm(action);
+    requestAnimationFrame(() => {
+      document.getElementById("tesoreria-action-form")?.scrollIntoView({ block: "nearest" });
+    });
+  }, [setSectionWithUrl]);
 
   useEffect(() => {
     if (!workspace.feedback) return;
     const timer = setTimeout(() => workspace.clearFeedback(), 5000);
     return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: subscribing to feedback/clearFeedback properties avoids re-running on unrelated workspace changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspace.feedback, workspace.clearFeedback]);
 
   return (
@@ -112,6 +89,15 @@ export function TesoreriaShell() {
         onQuickAction={handleQuickAction}
         onRefresh={() => void workspace.refetch()}
       />
+
+      {activeForm ? (
+        <TesoreriaUnifiedActionForm
+          action={activeForm}
+          workspace={workspace}
+          onClose={() => setActiveForm(null)}
+          onSuccess={() => void workspace.refetch()}
+        />
+      ) : null}
 
       {workspace.feedback ? (
         <TreasuryFeedbackBanner
@@ -151,29 +137,11 @@ export function TesoreriaShell() {
       </nav>
 
       {section === "caja" ? (
-        <TreasuryCashPanel
-          workspace={workspace}
-          asOfDate={asOfDate}
-          formRequest={cashFormRequest}
-          onFormRequestHandled={() => setCashFormRequest(null)}
-        />
+        <TreasuryCashPanel workspace={workspace} asOfDate={asOfDate} />
       ) : null}
 
       {section === "programados" ? (
-        <div className="space-y-8">
-          <TreasuryObligationsPanel
-            workspace={workspace}
-            asOfDate={asOfDate}
-            hideSummary
-            openCreateRequest={obligationCreateRequest}
-          />
-          <TreasuryRecurringPaymentsPanel
-            workspace={workspace}
-            onGoToPagos={() => setSectionWithUrl("programados")}
-            openCreateRequest={recurringCreateRequest}
-          />
-          <TreasuryProgramadosPanel workspace={workspace} asOfDate={asOfDate} historialOnly />
-        </div>
+        <TesoreriaPagosProximosTab workspace={workspace} asOfDate={asOfDate} />
       ) : null}
 
       {section === "movimientos" ? (

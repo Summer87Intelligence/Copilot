@@ -167,7 +167,7 @@ export function renderDashboardSummaryPdf(model: DashboardSummaryPdfModel): Prom
 
     const kpiRows = [
       { label: METRIC_LABEL.facturado_periodo, uyuVal: uyu?.facturado, usdVal: usd?.facturado },
-      { label: METRIC_LABEL.cobrado_periodo,   uyuVal: uyu?.cobrado,   usdVal: usd?.cobrado },
+      { label: METRIC_LABEL.cobrado_aplicado,   uyuVal: uyu?.cobrado,   usdVal: usd?.cobrado },
       { label: METRIC_LABEL.pendiente_periodo, uyuVal: uyu?.pendientePeriodo, usdVal: usd?.pendientePeriodo },
       { label: METRIC_LABEL.deuda_activa,      uyuVal: uyu?.deudaActiva, usdVal: usd?.deudaActiva },
       { label: METRIC_LABEL.deuda_vencida,     uyuVal: uyu?.deudaVencida, usdVal: usd?.deudaVencida, warn: true },

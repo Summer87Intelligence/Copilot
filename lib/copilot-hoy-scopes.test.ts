@@ -88,8 +88,8 @@ describe("copilot-hoy-scopes — aislamiento período vs actual", () => {
       manual({ movementType: "income", amount: 5_000, movementDate: "2026-05-05" }),
       manual({ movementType: "expense", amount: 2_000, movementDate: "2026-05-08" }),
     ]);
-    expect(activity.operatingResultByCurrency.UYU).toBe(123_000);
-    expect(activity.collectedInPeriodByCurrency.UYU).toBe(120_000);
+    expect(activity.operatingResultByCurrency.UYU).toBe(423_000);
+    expect(activity.collectedInPeriodByCurrency.UYU).toBe(420_000);
     expect(activity.manualIncomeByCurrency.UYU).toBe(5_000);
     expect(activity.manualExpenseByCurrency.UYU).toBe(2_000);
   });
@@ -97,12 +97,12 @@ describe("copilot-hoy-scopes — aislamiento período vs actual", () => {
   it("cambiar período cambia facturado/cobrado del período", () => {
     const narrow = buildHoyPeriodActivity(
       { from: "2026-05-01", to: "2026-05-10" },
-      [{ currencyCode: "UYU", issuedInPeriod: 100_000, collectedInPeriod: 10_000 }],
+      [{ currencyCode: "UYU", issuedInPeriod: 100_000, pendingAtCutoff: 40_000, collectedInPeriod: 10_000 }],
       []
     );
     const wide = buildHoyPeriodActivity(
       { from: "2026-05-01", to: "2026-05-21" },
-      [{ currencyCode: "UYU", issuedInPeriod: 500_000, collectedInPeriod: 120_000 }],
+      [{ currencyCode: "UYU", issuedInPeriod: 500_000, pendingAtCutoff: 80_000, collectedInPeriod: 120_000 }],
       []
     );
     expect(wide.billedNetByCurrency.UYU).toBeGreaterThan(narrow.billedNetByCurrency.UYU);
@@ -173,7 +173,9 @@ describe("copilot-hoy-scopes — aislamiento período vs actual", () => {
       gate: GATE,
       carteraCollectedToDate: { UYU: 900_000, USD: 0 },
       periodRange: { from: "2026-05-01", to: "2026-05-10" },
-      periodReportCurrencies: [{ currencyCode: "UYU", issuedInPeriod: 50_000, collectedInPeriod: 5_000 }],
+      periodReportCurrencies: [
+        { currencyCode: "UYU", issuedInPeriod: 50_000, pendingAtCutoff: 45_000, collectedInPeriod: 5_000 },
+      ],
       manualCashMovements: [],
       treasuryCashPositions: [
         {
@@ -218,7 +220,7 @@ describe("copilot-hoy-scopes — aislamiento período vs actual", () => {
       carteraCollectedToDate: { UYU: 900_000, USD: 0 },
       periodRange: { from: "2026-05-01", to: "2026-05-21" },
       periodReportCurrencies: [
-        { currencyCode: "UYU", issuedInPeriod: 500_000, collectedInPeriod: 120_000 },
+        { currencyCode: "UYU", issuedInPeriod: 500_000, pendingAtCutoff: 380_000, collectedInPeriod: 120_000 },
       ],
       manualCashMovements: [],
       treasuryCashPositions: treasuryCash,

@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { Loader2, MoreHorizontal, Plus, X } from "lucide-react";
+import { Loader2, MoreHorizontal, X } from "lucide-react";
+import { CopilotPagination } from "@/components/copilot/ui/copilot-pagination";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 
 import {
@@ -31,11 +32,6 @@ import {
   addDaysYmd,
   summarizeScheduledOutflows,
 } from "@/lib/treasury/treasury-scheduled-payments";
-import {
-  obligationFormSchema,
-  parseMoneyInput,
-  zodFieldErrors,
-} from "@/lib/treasury/treasury-form-schemas";
 import { isRecurringGeneratedObligation } from "@/lib/treasury/treasury-recurring-payments";
 import type { PlannedCashObligation, PlannedObligationType } from "@/lib/treasury/treasury-types";
 import {
@@ -92,8 +88,13 @@ type Props = {
   asOfDate: string;
   /** Oculta el bloque de resumen cuando ya está en la tab Caja. */
   hideSummary?: boolean;
-  /** Incrementar para abrir el drawer de nuevo pago desde acciones rápidas. */
-  openCreateRequest?: number;
+  /** Oculta CTA y drawer de creación (usar acciones rápidas del header). */
+  hideCreate?: boolean;
+  filterSearch?: string;
+  filterDateFrom?: string;
+  filterDateTo?: string;
+  filterCurrency?: "all" | "UYU" | "USD";
+  filterStatus?: "all" | "pending" | "paid" | "cancelled" | "overdue";
 };
 
 // ─── BaseModal ───────────────────────────────────────────────────────────────
@@ -744,27 +745,18 @@ export function TreasuryObligationsPanel({
   workspace,
   asOfDate,
   hideSummary = false,
-  openCreateRequest = 0,
+  hideCreate = false,
+  filterSearch,
+  filterDateFrom = "",
+  filterDateTo = "",
+  filterCurrency = "all",
+  filterStatus = "all",
 }: Props) {
   const { canWrite } = useCopilotPermissions();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(filterSearch ?? "");
   const [view, setView] = useState<ObligationView>("next30");
   const [page, setPage] = useState(0);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
-  const [form, setForm] = useState({
-    title: "",
-    obligationType: "bps" as PlannedObligationType,
-    amountEstimated: "",
-    currencyCode: "UYU" as "UYU" | "USD",
-    dueDate: new Date().toISOString().slice(0, 10),
-    dueTime: "",
-    recurrence: "none",
-    priority: "medium",
-    notes: "",
-  });
 
   const horizonEnd = addDaysYmd(asOfDate, 30);
   const summaries = useMemo(() => {
@@ -777,28 +769,48 @@ export function TreasuryObligationsPanel({
     );
   }, [workspace.overdue, workspace.upcoming30, workspace.obligations, asOfDate, horizonEnd]);
 
+  const effectiveSearch = filterSearch ?? search;
+  const externalFilters = filterSearch !== undefined;
+
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = effectiveSearch.trim().toLowerCase();
     let base = workspace.obligations;
-    if (view === "next7") base = workspace.upcoming7;
-    else if (view === "next30") base = workspace.upcoming30;
-    else if (view === "overdue") base = workspace.overdue;
+    if (!externalFilters) {
+      if (view === "next7") base = workspace.upcoming7;
+      else if (view === "next30") base = workspace.upcoming30;
+      else if (view === "overdue") base = workspace.overdue;
+    }
     return base.filter((o) => {
-      if (!q) return true;
-      return (
-        o.title.toLowerCase().includes(q) || (o.notes ?? "").toLowerCase().includes(q)
-      );
+      if (q && !o.title.toLowerCase().includes(q) && !(o.notes ?? "").toLowerCase().includes(q)) {
+        return false;
+      }
+      if (filterCurrency !== "all" && o.currencyCode !== filterCurrency) return false;
+      if (filterDateFrom && o.dueDate < filterDateFrom) return false;
+      if (filterDateTo && o.dueDate > filterDateTo) return false;
+      const st = effectivePlannedObligationStatus(o.status, o.dueDate, asOfDate);
+      if (filterStatus === "pending" && !["planned", "confirmed"].includes(st)) return false;
+      if (filterStatus === "overdue" && st !== "overdue") return false;
+      if (filterStatus === "paid" && st !== "paid") return false;
+      if (filterStatus === "cancelled" && st !== "cancelled") return false;
+      return true;
     });
-  }, [workspace.obligations, workspace.upcoming7, workspace.upcoming30, workspace.overdue, search, view]);
+  }, [
+    workspace.obligations,
+    workspace.upcoming7,
+    workspace.upcoming30,
+    workspace.overdue,
+    effectiveSearch,
+    view,
+    externalFilters,
+    filterCurrency,
+    filterDateFrom,
+    filterDateTo,
+    filterStatus,
+    asOfDate,
+  ]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / TESORERIA_PAGE_SIZE));
   const pageItems = filtered.slice(page * TESORERIA_PAGE_SIZE, (page + 1) * TESORERIA_PAGE_SIZE);
-
-  useEffect(() => {
-    if (openCreateRequest > 0 && canWrite) {
-      setDrawerOpen(true);
-    }
-  }, [openCreateRequest, canWrite]);
 
   function statusBadgeTone(
     row: PlannedCashObligation
@@ -812,54 +824,6 @@ export function TreasuryObligationsPanel({
       return currentHHMM() >= dueTime ? "danger" : "warning";
     }
     return "neutral";
-  }
-
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    const parsed = obligationFormSchema.safeParse({
-      title: form.title,
-      obligationType: form.obligationType,
-      amountEstimated: form.amountEstimated,
-      currencyCode: form.currencyCode,
-      dueDate: form.dueDate,
-      recurrence: form.recurrence,
-      priority: form.priority,
-      notes: form.notes,
-    });
-    if (!parsed.success) {
-      setErrors(zodFieldErrors(parsed.error));
-      return;
-    }
-    setSaving(true);
-    const result = await workspace.createObligation({
-      title: parsed.data.title,
-      obligation_type: parsed.data.obligationType,
-      direction: "outflow",
-      affects_cashflow: true,
-      amount_estimated: parseMoneyInput(parsed.data.amountEstimated),
-      currency_code: parsed.data.currencyCode,
-      due_date: parsed.data.dueDate,
-      recurrence: parsed.data.recurrence,
-      priority: parsed.data.priority,
-      notes: parsed.data.notes?.trim() || null,
-      metadata: buildMetaWithDueTime(null, form.dueTime || null),
-    });
-    setSaving(false);
-    if (result) {
-      setDrawerOpen(false);
-      setErrors({});
-      setForm({
-        title: "",
-        obligationType: "bps",
-        amountEstimated: "",
-        currencyCode: "UYU",
-        dueDate: new Date().toISOString().slice(0, 10),
-        dueTime: "",
-        recurrence: "none",
-        priority: "medium",
-        notes: "",
-      });
-    }
   }
 
   return (
@@ -905,54 +869,49 @@ export function TreasuryObligationsPanel({
       ) : null}
 
       <CopilotSectionTitle
-        title="Pagos próximos"
-        subtitle="Pagos futuros puntuales. Pago único con fecha futura — ejemplo: BPS Mayo. No afectan caja hasta confirmarse."
-        action={
-          canWrite ? (
-            <CopilotButton type="button" size="sm" onClick={() => setDrawerOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo pago
-            </CopilotButton>
-          ) : null
-        }
+        title="Pagos programados"
+        subtitle="Pagos futuros puntuales. No afectan caja hasta confirmarse."
       />
 
-      {/* View filter tabs */}
-      <div className="flex flex-wrap gap-2">
-        {(
-          [
-            ["next7", "Próximos 7 días"],
-            ["next30", "Próximos 30 días"],
-            ["overdue", "Vencidos"],
-            ["all", "Todos"],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => {
-              setView(id);
-              setPage(0);
-            }}
-            className={`${copilotButtonClassName({ variant: "ghost", size: "sm" })} ${
-              view === id ? TESORERIA_FILTER_CHIP_ACTIVE : TESORERIA_FILTER_CHIP_IDLE
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {!externalFilters ? (
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              ["next7", "Próximos 7 días"],
+              ["next30", "Próximos 30 días"],
+              ["overdue", "Vencidos"],
+              ["all", "Todos"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => {
+                setView(id);
+                setPage(0);
+              }}
+              className={`${copilotButtonClassName({ variant: "ghost", size: "sm" })} ${
+                view === id ? TESORERIA_FILTER_CHIP_ACTIVE : TESORERIA_FILTER_CHIP_IDLE
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
-      <input
-        value={search}
-        onChange={(e) => {
-          setSearch(e.target.value);
-          setPage(0);
-        }}
-        placeholder="Buscar título o notas"
-        className={TESORERIA_FIELD_CLASS}
-        aria-label="Buscar obligaciones"
-      />
+      {filterSearch == null ? (
+        <input
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(0);
+          }}
+          placeholder="Buscar título o notas"
+          className={TESORERIA_FIELD_CLASS}
+          aria-label="Buscar obligaciones"
+        />
+      ) : null}
 
       {workspace.loading && workspace.obligations.length === 0 ? (
         <div className="flex items-center gap-2 text-sm text-[var(--copilot-ink-muted)]">
@@ -1022,175 +981,12 @@ export function TreasuryObligationsPanel({
         </div>
       )}
 
-      {filtered.length > TESORERIA_PAGE_SIZE ? (
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-[var(--copilot-ink-muted)]">
-            Página {page + 1} de {pageCount}
+      {filtered.length > 0 ? (
+        <div className="flex flex-col items-center gap-2 pt-2">
+          <span className="text-xs text-[var(--copilot-ink-muted)]">
+            {filtered.length} registro{filtered.length === 1 ? "" : "s"} · página {page + 1} de {pageCount}
           </span>
-          <div className="flex gap-2">
-            <CopilotGhostButton
-              type="button"
-              disabled={page === 0}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              Anterior
-            </CopilotGhostButton>
-            <CopilotGhostButton
-              type="button"
-              disabled={page + 1 >= pageCount}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Siguiente
-            </CopilotGhostButton>
-          </div>
-        </div>
-      ) : null}
-
-      {/* Create drawer */}
-      {drawerOpen ? (
-        <div className="fixed inset-0 z-40 flex justify-end bg-black/30">
-          <div className="h-full w-full max-w-lg overflow-y-auto bg-[var(--copilot-card)] p-6 shadow-2xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-[var(--copilot-ink)]">Nuevo pago</h3>
-              <button
-                type="button"
-                onClick={() => setDrawerOpen(false)}
-                className="rounded-lg p-1 text-[var(--copilot-ink-muted)] hover:bg-[rgba(44,40,37,0.06)]"
-                aria-label="Cerrar"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <form className="space-y-3" onSubmit={handleCreate}>
-              <label className="block text-sm">
-                <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.concepto}</span>
-                <input
-                  className={TESORERIA_FIELD_CLASS}
-                  value={form.title}
-                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  required
-                />
-                {errors.title ? (
-                  <span className="mt-1 block text-xs text-rose-700" role="alert">
-                    {errors.title}
-                  </span>
-                ) : null}
-              </label>
-              <label className="block text-sm">
-                <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.categoria}</span>
-                <select
-                  className={TESORERIA_FIELD_CLASS}
-                  value={form.obligationType}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      obligationType: e.target.value as PlannedObligationType,
-                      title:
-                        f.title || OBLIGATION_PRESETS.find((p) => p.type === e.target.value)?.label || "",
-                    }))
-                  }
-                >
-                  {OBLIGATION_PRESETS.map((p) => (
-                    <option key={p.type} value={p.type}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block text-sm">
-                  <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.moneda}</span>
-                  <select
-                    className={TESORERIA_FIELD_CLASS}
-                    value={form.currencyCode}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, currencyCode: e.target.value as "UYU" | "USD" }))
-                    }
-                  >
-                    <option value="UYU">UYU</option>
-                    <option value="USD">USD</option>
-                  </select>
-                </label>
-                <label className="block text-sm">
-                  <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.monto}</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className={TESORERIA_FIELD_CLASS}
-                    value={form.amountEstimated}
-                    onChange={(e) => setForm((f) => ({ ...f, amountEstimated: e.target.value }))}
-                    required
-                  />
-                </label>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block text-sm">
-                  <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.vencimiento}</span>
-                  <input
-                    type="date"
-                    className={TESORERIA_FIELD_CLASS}
-                    value={form.dueDate}
-                    onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
-                    required
-                  />
-                </label>
-                <label className="block text-sm">
-                  Hora (opcional)
-                  <input
-                    type="time"
-                    className={TESORERIA_FIELD_CLASS}
-                    value={form.dueTime}
-                    onChange={(e) => setForm((f) => ({ ...f, dueTime: e.target.value }))}
-                  />
-                </label>
-              </div>
-              <label className="block text-sm">
-                Recurrencia
-                <select
-                  className={TESORERIA_FIELD_CLASS}
-                  value={form.recurrence}
-                  onChange={(e) => setForm((f) => ({ ...f, recurrence: e.target.value }))}
-                >
-                  <option value="none">Ninguna</option>
-                  <option value="weekly">Semanal</option>
-                  <option value="monthly">Mensual</option>
-                  <option value="quarterly">Trimestral</option>
-                  <option value="yearly">Anual</option>
-                </select>
-              </label>
-              <label className="block text-sm">
-                Prioridad
-                <select
-                  className={TESORERIA_FIELD_CLASS}
-                  value={form.priority}
-                  onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
-                >
-                  <option value="low">Baja</option>
-                  <option value="medium">Media</option>
-                  <option value="high">Alta</option>
-                  <option value="critical">Crítica</option>
-                </select>
-              </label>
-              <label className="block text-sm">
-                Notas
-                <textarea
-                  className={TESORERIA_FIELD_CLASS}
-                  rows={3}
-                  value={form.notes}
-                  onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                />
-              </label>
-              <div className="flex gap-2 pt-2">
-                <CopilotPrimaryButton type="submit" disabled={saving}>
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Guardar"}
-                </CopilotPrimaryButton>
-                <CopilotGhostButton type="button" onClick={() => setDrawerOpen(false)}>
-                  Cancelar
-                </CopilotGhostButton>
-              </div>
-            </form>
-          </div>
+          <CopilotPagination page={page} pageCount={pageCount} onPageChange={setPage} />
         </div>
       ) : null}
 

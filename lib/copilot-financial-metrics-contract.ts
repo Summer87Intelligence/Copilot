@@ -198,9 +198,9 @@ export const CANONICAL_METRICS: Record<MetricId, CanonicalMetricDef> = {
     id: "pendiente_periodo",
     label: METRIC_LABEL.pendiente_periodo,
     definition:
-      "Diferencia entre lo facturado neto del período y lo cobrado en el mismo rango. Puede ser negativo si hubo cobros de facturas anteriores.",
+      "Saldo pendiente de facturas del período al cierre del rango. Equivale a facturado neto menos cobros aplicados.",
     formula:
-      "(issuedInPeriod - creditNoteAmount) - collectedInPeriod = facturado_periodo - cobrado_periodo",
+      "pendingAtCutoff = issuedInPeriodNet - portfolioResolvedAmount = facturado_periodo - cobrado_aplicado",
     source: "derived",
     currency: "per_currency",
     scope: "period",
@@ -271,6 +271,8 @@ export const CANONICAL_METRICS: Record<MetricId, CanonicalMetricDef> = {
     currency: "per_currency",
     scope: "period",
     consumers: [
+      "dashboard/kpi-cards (Cobrado aplicado)",
+      "dashboard/summary-pdf",
       "hoy/hoy-currency-executive-card (operatingResult implícito)",
       "copilot/cartera (sección Reconciliación)",
     ],
