@@ -220,6 +220,9 @@ export function CarteraShell() {
                 isPreSync={isPreSync}
                 block="executive"
               />
+              <p className="mt-3 text-xs text-[var(--copilot-ink-muted)]">
+                {FINANCIAL_UX_COPY.carteraResumenFinancieroHelp}
+              </p>
             </CollapsibleSection>
 
             {/* Bloque B — Cobranza y deuda activa */}

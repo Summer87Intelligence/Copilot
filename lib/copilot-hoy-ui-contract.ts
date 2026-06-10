@@ -53,7 +53,8 @@ export const CURRENCY_METRIC_LABELS = {
 
 export const CURRENCY_METRIC_HELPERS = {
   billed: "Facturas emitidas en el período.",
-  collected: "Cobros registrados en el período. Puede incluir facturas de meses anteriores.",
+  collected:
+    "Importe cobrado en el período según criterio del Dashboard. Puede incluir cobros de facturas anteriores.",
   pending: "Total de deuda abierta al día de hoy.",
   overdue30: "Parte de la deuda vencida con más de 30 días de atraso.",
 } as const;
@@ -76,7 +77,8 @@ export const HOY_COPY = {
   periodBilledLabel: "Ventas del período",
   periodBilledTip: "Facturas emitidas en el período.",
   periodCollectedLabel: "Cobrado del período",
-  periodCollectedTip: "Cobrado en el período corresponde a recibos registrados en el período. Puede diferir de Cobrado aplicado en Cartera, que calcula cobros imputados contra facturas del período.",
+  periodCollectedTip:
+    "Importe cobrado dentro del período seleccionado según el criterio financiero del Dashboard. Puede diferir de Cobros aplicados a facturas en Cartera.",
   periodCreditNotesLabel: "Ajustes",
   periodManualIncomeLabel: "Ingresos manuales",
   periodManualExpenseLabel: "Egresos manuales",

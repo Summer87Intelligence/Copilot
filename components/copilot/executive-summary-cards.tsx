@@ -280,7 +280,7 @@ function collectedAppliedCard(
   const m = getCurrencyCardMetrics(index, code);
   return {
     id: `collected-applied-${code}`,
-    title: `Cobrado aplicado ${code}`,
+    title: `${FINANCIAL_UX_COPY.kpiCollectedAppliedLabel} ${code}`,
     source: "zeta",
     tone: m.portfolioResolvedAmount > 0 ? "positive" : "neutral",
     icon: CircleCheckBig,

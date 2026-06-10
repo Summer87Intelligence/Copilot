@@ -50,8 +50,13 @@ export const FINANCIAL_UX_COPY = {
     "Suma de facturas emitidas en el período. Base de facturación del período.",
   kpiCreditNotesAppliedTooltip:
     "Ajustes de facturación del período. Reducen lo facturado pero no representan ingreso de caja.",
+  kpiCollectedAppliedLabel: "Cobros aplicados a facturas",
   kpiCollectedAppliedTooltip:
-    "Importe de cartera resuelto dentro del período. No representa necesariamente la suma de recibos.",
+    "Importe de cobros aplicados a facturas dentro del período seleccionado. No representa necesariamente el total cobrado mostrado en Dashboard.",
+  carteraResumenFinancieroHelp:
+    "Las métricas de Cartera muestran deuda y cobros aplicados a facturas. Pueden diferir de los indicadores operativos mostrados en Dashboard.",
+  dashboardCobradoPeriodoTooltip:
+    "Importe cobrado dentro del período seleccionado según el criterio financiero del Dashboard.",
   kpiNetEffectivenessTooltip:
     "Recibos cobrados / Facturado neto. Mide qué fracción de lo facturado fue cobrada en el período según recibos sincronizados de Zeta.",
   kpiNetEffectivenessTooltipPreSync:

@@ -47,6 +47,7 @@ import {
   METRIC_SEPARATED_CURRENCY_DISCLAIMER,
   METRIC_USD_CONSOLIDATED_DISCLAIMER,
 } from "@/lib/copilot-financial-metrics-contract";
+import { FINANCIAL_UX_COPY } from "@/lib/copilot-financial-ux-copy";
 import { CopilotDataProvenanceStrip } from "@/components/copilot/copilot-data-provenance-strip";
 import { CopilotPremiumEmptyState } from "@/components/copilot/copilot-premium-empty-state";
 import {
@@ -1641,7 +1642,7 @@ export default function DashboardPage() {
               />
               <KpiCard
                 title={METRIC_LABEL.cobrado_periodo}
-                tooltip="Recibos registrados en Zeta dentro del rango seleccionado."
+                tooltip={FINANCIAL_UX_COPY.dashboardCobradoPeriodoTooltip}
                 uyuValue={consUyu(uyu?.cobrado ?? 0)}
                 usdValue={consUsd(uyu?.cobrado ?? 0, usd?.cobrado ?? 0)}
                 selectedCurrency={effectiveCurrency}
