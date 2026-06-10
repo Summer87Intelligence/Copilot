@@ -54,8 +54,8 @@ describe("copilot-financial-panorama-model", () => {
       },
       snapshot: null,
       cashPositions: [
-        { currency: "UYU", availableCash: 100, currentCash: 100, openingConfigured: true, openingBalance: 0, collectedFromClients: 0, manualIncome: 0, manualExpense: 0, adjustments: 0, transfersNet: 0, movementsCount: 0, lastMovement: null },
-        { currency: "USD", availableCash: 50, currentCash: 50, openingConfigured: true, openingBalance: 0, collectedFromClients: 0, manualIncome: 0, manualExpense: 0, adjustments: 0, transfersNet: 0, movementsCount: 0, lastMovement: null },
+        { currency: "UYU", availableCash: 100, currentCash: 100, openingConfigured: true, openingBalance: 0, collectedFromClients: 0, manualIncome: 0, manualExpense: 0, adjustments: 0, transfersNet: 0, movementsCount: 0, lastMovement: null, lastIncome: null, lastExpense: null },
+        { currency: "USD", availableCash: 50, currentCash: 50, openingConfigured: true, openingBalance: 0, collectedFromClients: 0, manualIncome: 0, manualExpense: 0, adjustments: 0, transfersNet: 0, movementsCount: 0, lastMovement: null, lastIncome: null, lastExpense: null },
       ],
       portfolioRows: [],
       fiscal: { upcomingCount: 0, overdueCount: 0, paidCount: 0, estimated30: 0, isEmpty: true },
@@ -109,7 +109,7 @@ describe("copilot-financial-panorama-model", () => {
       metricsByCode: { UYU: metrics({ currencyCode: "UYU" }) },
       snapshot: null,
       cashPositions: [
-        { currency: "UYU", availableCash: 262_479, currentCash: 262_479, openingConfigured: true, openingBalance: 0, collectedFromClients: 0, manualIncome: 0, manualExpense: 0, adjustments: 0, transfersNet: 0, movementsCount: 0, lastMovement: null },
+        { currency: "UYU", availableCash: 262_479, currentCash: 262_479, openingConfigured: true, openingBalance: 0, collectedFromClients: 0, manualIncome: 0, manualExpense: 0, adjustments: 0, transfersNet: 0, movementsCount: 0, lastMovement: null, lastIncome: null, lastExpense: null },
       ],
       portfolioRows: [],
       fiscal: { upcomingCount: 0, overdueCount: 0, paidCount: 0, estimated30: 0, isEmpty: true },

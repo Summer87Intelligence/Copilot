@@ -1,7 +1,6 @@
 /** Navegación del módulo Copilot. */
 import type { LucideIcon } from "lucide-react";
 import {
-  Activity,
   BarChart3,
   BookMarked,
   BookOpen,
@@ -12,6 +11,7 @@ import {
   FileText,
   Landmark,
   ListTodo,
+  Settings,
   ShieldCheck,
   TriangleAlert,
   Users,
@@ -29,6 +29,11 @@ export type CopilotNavItem = {
   icon: LucideIcon;
   /** Clave de módulo para filtrar por permisos efectivos. Undefined = siempre visible. */
   moduleKey?: string;
+  /**
+   * Rutas secundarias / legacy: siguen activas por URL pero no aparecen en el menú lateral.
+   * Ver manual — sección «Cómo moverse por Copilot».
+   */
+  sidebarHidden?: boolean;
 };
 
 /** Bloque del sidebar: título opcional (mayúsculas pequeñas en UI) + enlaces. */
@@ -49,7 +54,8 @@ const COPILOT_NAV_INICIO: CopilotNavGroup = {
     },
     {
       href: "/copilot/dashboard",
-      label: "Dashboard Resumen",
+      label: "Dashboard",
+      shortLabel: "Dashboard",
       description: "Análisis y reportes ejecutivos",
       icon: BarChart3,
       moduleKey: "dashboard",
@@ -57,16 +63,9 @@ const COPILOT_NAV_INICIO: CopilotNavGroup = {
   ],
 };
 
-const COPILOT_NAV_OPERAR: CopilotNavGroup = {
-  sectionTitle: "Operar",
+const COPILOT_NAV_OPERACION: CopilotNavGroup = {
+  sectionTitle: "Operación",
   items: [
-    {
-      href: "/copilot/acciones",
-      label: "Acciones",
-      description: "Operación diaria: prioridad del día y tareas concretas",
-      icon: CheckSquare,
-      moduleKey: "acciones",
-    },
     {
       href: "/copilot/clientes",
       label: "Clientes",
@@ -88,32 +87,19 @@ const COPILOT_NAV_OPERAR: CopilotNavGroup = {
       icon: Banknote,
       moduleKey: "tesoreria",
     },
-  ],
-};
-
-const COPILOT_NAV_IA: CopilotNavGroup = {
-  sectionTitle: "IA",
-  items: [
     {
-      href: "/copilot/agentes",
-      label: "Agentes IA",
-      description: "Análisis de tendencias",
-      icon: Bot,
-      moduleKey: "agentes",
+      href: "/copilot/acciones",
+      label: "Acciones",
+      description: "Prioridad del día y tareas concretas",
+      icon: CheckSquare,
+      moduleKey: "acciones",
     },
   ],
 };
 
-const COPILOT_NAV_CONSULTAR: CopilotNavGroup = {
-  sectionTitle: "Consultar",
+const COPILOT_NAV_ANALISIS: CopilotNavGroup = {
+  sectionTitle: "Análisis",
   items: [
-    {
-      href: "/copilot/datos",
-      label: "Datos",
-      description: "Consulta de registros",
-      icon: Database,
-      moduleKey: "datos",
-    },
     {
       href: "/copilot/reportes",
       label: "Reportes",
@@ -123,18 +109,46 @@ const COPILOT_NAV_CONSULTAR: CopilotNavGroup = {
     },
     {
       href: "/copilot/finanzas",
-      label: "Panorama financiero",
+      label: "Finanzas",
       shortLabel: "Finanzas",
-      description: "Lectura general",
+      description: "Panorama financiero",
       icon: Wallet,
       moduleKey: "finanzas",
+    },
+    {
+      href: "/copilot/agentes",
+      label: "Agentes IA",
+      shortLabel: "Agentes",
+      description: "Análisis y briefings",
+      icon: Bot,
+      moduleKey: "agentes",
     },
   ],
 };
 
-const COPILOT_NAV_AYUDA: CopilotNavGroup = {
-  sectionTitle: "Ayuda",
+const COPILOT_NAV_SISTEMA: CopilotNavGroup = {
+  sectionTitle: "Sistema",
   items: [
+    {
+      href: "/copilot/datos",
+      label: "Datos",
+      description: "Consulta de registros",
+      icon: Database,
+      moduleKey: "datos",
+    },
+    {
+      href: "/copilot/alertas",
+      label: "Alertas",
+      description: "Avisos y novedades",
+      icon: TriangleAlert,
+    },
+    {
+      href: "/copilot/admin",
+      label: "Configuración",
+      description: "Usuarios, permisos y ajustes",
+      icon: Settings,
+      moduleKey: "admin",
+    },
     {
       href: "/copilot/manual",
       label: "Manual de uso",
@@ -146,24 +160,23 @@ const COPILOT_NAV_AYUDA: CopilotNavGroup = {
   ],
 };
 
-const COPILOT_NAV_SISTEMA: CopilotNavGroup = {
-  sectionTitle: "Sistema",
-  items: [
-    {
-      href: "/copilot/alertas",
-      label: "Alertas",
-      description: "Avisos y novedades",
-      icon: TriangleAlert,
-    },
-    {
-      href: "/copilot/operacional",
-      label: "Estado del sistema",
-      shortLabel: "Sistema",
-      description: "Integraciones y salud técnica",
-      icon: Activity,
-    },
-  ],
-};
+/**
+ * Rutas técnicas / secundarias — no en sidebar; accesibles por URL o enlaces internos.
+ */
+export const COPILOT_NAV_LEGACY_HIDDEN: CopilotNavItem[] = [
+  {
+    href: "/copilot/decisiones",
+    label: "Decisiones",
+    icon: CheckSquare,
+    sidebarHidden: true,
+  },
+  {
+    href: "/copilot/configuracion",
+    label: "Configuración (redirect)",
+    icon: Settings,
+    sidebarHidden: true,
+  },
+];
 
 /** Panel superadmin (se concatena si `isSuperadmin` viene true desde el layout servidor). */
 export const COPILOT_NAV_ADMIN_GROUP: CopilotNavGroup = {
@@ -176,6 +189,7 @@ export const COPILOT_NAV_ADMIN_GROUP: CopilotNavGroup = {
       description: "Usuarios, roles y permisos",
       icon: ShieldCheck,
       moduleKey: "admin",
+      sidebarHidden: true,
     },
     {
       href: "/admin/companies",
@@ -193,15 +207,20 @@ export const COPILOT_NAV_ADMIN_GROUP: CopilotNavGroup = {
   ],
 };
 
-/** Grupos base del menú lateral. */
+/** Grupos base del menú lateral (solo rutas visibles para dirección). */
 export const COPILOT_NAV_BASE_GROUPS: CopilotNavGroup[] = [
   COPILOT_NAV_INICIO,
-  COPILOT_NAV_OPERAR,
-  COPILOT_NAV_IA,
-  COPILOT_NAV_CONSULTAR,
-  COPILOT_NAV_AYUDA,
+  COPILOT_NAV_OPERACION,
+  COPILOT_NAV_ANALISIS,
   COPILOT_NAV_SISTEMA,
 ];
+
+function filterSidebarItems(group: CopilotNavGroup): CopilotNavGroup {
+  return {
+    ...group,
+    items: group.items.filter((item) => !item.sidebarHidden),
+  };
+}
 
 /**
  * Menú lateral completo según rol y permisos efectivos.
@@ -216,10 +235,11 @@ export function buildCopilotNavItemGroups(
   const hasPermissions = Object.keys(modulePermissions).length > 0;
 
   function filterItems(group: CopilotNavGroup): CopilotNavGroup {
-    if (!hasPermissions) return group;
+    const visible = filterSidebarItems(group);
+    if (!hasPermissions) return visible;
     return {
-      ...group,
-      items: group.items.filter((item) => {
+      ...visible,
+      items: visible.items.filter((item) => {
         if (!item.moduleKey) return true;
         const level = modulePermissions[item.moduleKey];
         return level !== "none";
@@ -237,6 +257,8 @@ export function buildCopilotNavItemGroups(
   return nonEmpty(adminGroup) ? [...baseGroups, adminGroup] : baseGroups;
 }
 
-/** Lista plana del módulo Copilot (sin rutas admin). */
-export const COPILOT_NAV_ITEMS: CopilotNavItem[] =
-  COPILOT_NAV_BASE_GROUPS.flatMap((g) => g.items);
+/** Lista plana del módulo Copilot (sidebar + legacy ocultas, sin rutas admin globales). */
+export const COPILOT_NAV_ITEMS: CopilotNavItem[] = [
+  ...COPILOT_NAV_BASE_GROUPS.flatMap((g) => g.items),
+  ...COPILOT_NAV_LEGACY_HIDDEN,
+];

@@ -18,7 +18,6 @@
     "check:unit": "node scripts/check-unit-critical.mjs",
     "check-unit-critical": "node scripts/check-unit-critical.mjs",
     "check:build": "npm run build",
-    "check:smoke:rutas": "node scripts/check-smoke-rutas.mjs",
     "check:deploy": "node scripts/check-working-tree-clean.mjs && npm run check:types && npm run check:unit && npm run check:build",
     "verify:copilot": "node scripts/verify-copilot.mjs",
     "verify:copilot:quick": "node scripts/verify-copilot-quick.mjs",

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { calculateCashPosition } from "@/lib/treasury/treasury-cash-position";
 import {
   filterAndSumZetaReceipts,
+  findLatestZetaReceipts,
   type ZetaReceiptRow,
 } from "@/lib/treasury/treasury-zeta-collections";
 import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
@@ -14,6 +15,7 @@ function rcpt(partial: Partial<ZetaReceiptRow> = {}): ZetaReceiptRow {
     currency_code: partial.currency_code ?? "UYU",
     amount: partial.amount ?? 1000,
     receipt_date: partial.receipt_date ?? "2026-05-29",
+    receipt_number: partial.receipt_number ?? null,
     status: partial.status ?? null,
   };
 }
@@ -297,5 +299,20 @@ describe("filterAndSumZetaReceipts — edge cases adicionales", () => {
     );
     expect(result.USD).toBe(200);
     expect(result.UYU).toBe(5_000);
+  });
+});
+
+describe("findLatestZetaReceipts", () => {
+  it("devuelve el recibo más reciente por moneda post-baseline", () => {
+    const latest = findLatestZetaReceipts(
+      [
+        rcpt({ receipt_date: "2026-05-29", amount: 1_000, receipt_number: "RC-1" }),
+        rcpt({ receipt_date: "2026-05-31", amount: 500, receipt_number: "RC-2" }),
+        rcpt({ currency_code: "USD", receipt_date: "2026-06-01", amount: 100, receipt_number: "RC-USD" }),
+      ],
+      { UYU: BASELINE, USD: "2026-05-01" }
+    );
+    expect(latest.UYU).toEqual({ date: "2026-05-31", concept: "Recibo RC-2" });
+    expect(latest.USD).toEqual({ date: "2026-06-01", concept: "Recibo RC-USD" });
   });
 });

@@ -77,6 +77,37 @@ describe("calculateCashPosition — caja disponible estimada", () => {
     expect(positions.find((p) => p.currency === "USD")?.availableCash).toBe(440);
   });
 
+  it("expone último ingreso y último egreso por separado", () => {
+    const positions = calculateCashPosition({
+      manualCashMovements: [
+        manual({
+          id: "i-old",
+          movementType: "income",
+          amount: 100,
+          movementDate: "2026-05-01",
+          concept: "Ingreso viejo",
+        }),
+        manual({
+          id: "i-new",
+          movementType: "income",
+          amount: 200,
+          movementDate: "2026-05-10",
+          concept: "Ingreso nuevo",
+        }),
+        manual({
+          id: "e1",
+          movementType: "expense",
+          amount: 50,
+          movementDate: "2026-05-08",
+          concept: "Egreso único",
+        }),
+      ],
+    });
+    const uyu = positions.find((p) => p.currency === "UYU");
+    expect(uyu?.lastIncome).toEqual({ date: "2026-05-10", concept: "Ingreso nuevo" });
+    expect(uyu?.lastExpense).toEqual({ date: "2026-05-08", concept: "Egreso único" });
+  });
+
   it("archived no afecta caja", () => {
     const positions = calculateCashPosition({
       manualCashMovements: [

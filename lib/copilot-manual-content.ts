@@ -144,7 +144,7 @@ export const COPILOT_MANUAL_MODULE_CARDS = [
   { label: "Agentes IA", href: "/copilot/agentes", color: "text-purple-600 bg-purple-50" },
   {
     label: "Estado del sistema",
-    href: "/copilot/operacional",
+    href: "/copilot/alertas",
     color: "text-rose-600 bg-rose-50",
   },
 ] as const;

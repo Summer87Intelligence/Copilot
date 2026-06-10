@@ -20,7 +20,12 @@ import {
   type CashPositionByCurrency,
   type CollectedFromClientsInput,
 } from "@/lib/treasury/treasury-cash-position";
-import { filterAndSumZetaReceipts } from "@/lib/treasury/treasury-zeta-collections";
+import {
+  filterAndSumZetaReceipts,
+  findLatestZetaReceipts,
+  type ZetaReceiptRow,
+} from "@/lib/treasury/treasury-zeta-collections";
+import { mergeCashIncomeEvents } from "@/lib/treasury/treasury-cash-position";
 import { resolveTreasuryWorkspaceId } from "@/lib/treasury/treasury-tenant";
 import type { TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
 
@@ -44,17 +49,36 @@ async function sumZetaCollectionsAfterBaseline(
 
   const { data, error } = await supabase
     .from("proto_receipts")
-    .select("currency_code, amount, receipt_date, status")
+    .select("currency_code, amount, receipt_date, receipt_number, status")
     .eq("workspace_company_id", workspaceId)
     .eq("is_active", true)
     .gte("receipt_date", earliestBaseline);
 
   if (error || !data) return {};
 
-  return filterAndSumZetaReceipts(
-    data as { currency_code: string | null; amount: number | null; receipt_date: string | null; status?: string | null }[],
-    baselineDates
-  );
+  return filterAndSumZetaReceipts(data as ZetaReceiptRow[], baselineDates);
+}
+
+async function latestZetaReceiptsAfterBaseline(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  baselineDates: Partial<Record<TreasuryCurrencyCode, string>>
+): Promise<Partial<Record<TreasuryCurrencyCode, { date: string; concept: string }>>> {
+  const currencies = (["UYU", "USD"] as const).filter((c) => baselineDates[c]);
+  if (currencies.length === 0) return {};
+
+  const earliestBaseline = currencies.map((c) => baselineDates[c]!).sort()[0]!;
+
+  const { data, error } = await supabase
+    .from("proto_receipts")
+    .select("currency_code, amount, receipt_date, receipt_number, status")
+    .eq("workspace_company_id", workspaceId)
+    .eq("is_active", true)
+    .gte("receipt_date", earliestBaseline);
+
+  if (error || !data) return {};
+
+  return findLatestZetaReceipts(data as ZetaReceiptRow[], baselineDates);
 }
 
 export type TreasuryOpeningBalanceUpsertBody = {
@@ -140,11 +164,10 @@ export async function treasuryCashPositionGet(
   // Phase 2: sum Zeta client receipts after each currency's baseline.
   // Only counted when a baseline is configured — prevents double-counting receipts
   // already baked into the user's loaded balance.
-  const zetaCollections = await sumZetaCollectionsAfterBaseline(
-    supabase,
-    workspaceId,
-    baselineDates
-  );
+  const [zetaCollections, zetaLatestReceipts] = await Promise.all([
+    sumZetaCollectionsAfterBaseline(supabase, workspaceId, baselineDates),
+    latestZetaReceiptsAfterBaseline(supabase, workspaceId, baselineDates),
+  ]);
 
   // Build collectedFromClients input — one entry per currency that has Zeta data.
   const collectedFromClients: CollectedFromClientsInput[] = (
@@ -167,6 +190,7 @@ export async function treasuryCashPositionGet(
     collectedFromClients,
   }).map((p) => ({
     ...p,
+    lastIncome: mergeCashIncomeEvents(p.lastIncome, zetaLatestReceipts[p.currency]),
     manualExpenseInRange: sumManualExpenseInRange(items, p.currency, rangeStart, asOf),
   }));
 

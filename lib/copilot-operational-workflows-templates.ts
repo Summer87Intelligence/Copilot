@@ -8,7 +8,7 @@ const CRITICAL_CASH_STEPS = [
   { id: "contact-priority-clients", title: "Contactar clientes prioritarios", href: "/copilot/acciones" },
   { id: "review-non-critical-payments", title: "Revisar pagos no críticos", href: "/copilot/tesoreria" },
   { id: "adjust-outflows", title: "Ajustar egresos", href: "/copilot/tesoreria" },
-  { id: "confirm-stabilization", title: "Confirmar estabilización", href: "/copilot/rutas" },
+  { id: "confirm-stabilization", title: "Confirmar estabilización", href: "/copilot/hoy" },
 ] as const;
 
 const PRIORITY_COLLECTIONS_STEPS = [
@@ -24,7 +24,7 @@ const BLOCKED_FOLLOWUP_STEPS = [
   { id: "validate-dependency", title: "Validar dependencia", href: "/copilot/acciones" },
   { id: "assign-resolution", title: "Asignar resolución", href: "/copilot/acciones" },
   { id: "confirm-unblock", title: "Confirmar desbloqueo", href: "/copilot/acciones" },
-  { id: "resume-execution", title: "Retomar ejecución", href: "/copilot/rutas" },
+  { id: "resume-execution", title: "Retomar ejecución", href: "/copilot/hoy" },
 ] as const;
 
 function buildTemplate(

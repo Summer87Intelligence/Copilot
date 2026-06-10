@@ -12,6 +12,8 @@ import {
   getLastNMonthRanges,
   getMonthRangesForPeriod,
   determineDashboardState,
+  buildExecutiveSummaryMainRiskChip,
+  hasExecutiveOverdueDebtForMode,
 } from "./copilot-dashboard-summary";
 import type { ClientPortfolioRow } from "./copilot-clients-portfolio";
 import type {
@@ -126,7 +128,7 @@ function makeCash(currency: "UYU" | "USD", available: number): CashPositionByCur
     availableCash: available,
     currentCash: available,
     movementsCount: 0,
-    lastMovement: null,
+    lastMovement: null, lastIncome: null, lastExpense: null,
   };
 }
 
@@ -571,5 +573,80 @@ describe("extractTopBilling (all-time histórico, no período)", () => {
     expect(result[0].billingUYU).toBe(10000);
     expect(result[1].name).toBe("Beta");
     expect(result[2].name).toBe("Gamma");
+  });
+});
+
+describe("buildExecutiveSummaryMainRiskChip — D-09 multimoneda", () => {
+  const baseClients = { riesgoAlto: 0, conDeudaVencida: 0 };
+
+  it("modo UYU + USD separado no suma numéricamente UYU y USD", () => {
+    const chip = buildExecutiveSummaryMainRiskChip({
+      state: "attention",
+      currencyMode: "all",
+      deudaVencidaUyu: 100_000,
+      deudaVencidaUsd: 500,
+      clientStates: baseClients,
+    });
+    expect(chip).toContain("UYU");
+    expect(chip).toContain("USD");
+    expect(chip).toMatch(/\$ 100\.000 UYU/);
+    expect(chip).toMatch(/U\$S 500 USD/);
+    expect(chip).not.toContain("100.500");
+    expect(chip).not.toContain("100500");
+  });
+
+  it("modo solo USD muestra solo importe USD", () => {
+    const chip = buildExecutiveSummaryMainRiskChip({
+      state: "attention",
+      currencyMode: "USD",
+      deudaVencidaUyu: 99_999,
+      deudaVencidaUsd: 1_200,
+      clientStates: baseClients,
+    });
+    expect(chip).toMatch(/U\$S 1\.200 USD/);
+    expect(chip).not.toContain("UYU");
+    expect(chip).not.toContain("99");
+  });
+
+  it("modo solo UYU muestra solo importe UYU", () => {
+    const chip = buildExecutiveSummaryMainRiskChip({
+      state: "attention",
+      currencyMode: "UYU",
+      deudaVencidaUyu: 45_000,
+      deudaVencidaUsd: 9_999,
+      clientStates: baseClients,
+    });
+    expect(chip).toMatch(/\$ 45\.000 UYU/);
+    expect(chip).not.toContain("USD");
+    expect(chip).not.toContain("9");
+  });
+
+  it("modo USD consolidado usa TC y marca (cons.)", () => {
+    const chip = buildExecutiveSummaryMainRiskChip({
+      state: "attention",
+      currencyMode: "USD_consolidated",
+      deudaVencidaUyu: 40_000,
+      deudaVencidaUsd: 500,
+      exchangeRate: 40,
+      clientStates: baseClients,
+    });
+    expect(chip).toBe("Vencido: U$S 1.500 USD (cons.)");
+  });
+
+  it("hasExecutiveOverdueDebtForMode en modo all usa OR, no suma", () => {
+    expect(
+      hasExecutiveOverdueDebtForMode({
+        currencyMode: "all",
+        deudaVencidaUyu: 0,
+        deudaVencidaUsd: 100,
+      })
+    ).toBe(true);
+    expect(
+      hasExecutiveOverdueDebtForMode({
+        currencyMode: "all",
+        deudaVencidaUyu: 0,
+        deudaVencidaUsd: 0,
+      })
+    ).toBe(false);
   });
 });

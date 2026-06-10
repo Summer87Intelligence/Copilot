@@ -1,6 +1,6 @@
 # Checklist de deploy Copilot
 
-Checklist operativo para evitar deploys rotos por archivos sin trackear, imports inválidos, build fallido o smoke básico fallando en `/copilot/rutas`.
+Checklist operativo para evitar deploys rotos por archivos sin trackear, imports inválidos, build fallido o regresiones en rutas canónicas (`/copilot/hoy`, `/copilot/dashboard`, `/copilot/alertas`).
 
 ## Antes de push
 
@@ -8,33 +8,39 @@ Checklist operativo para evitar deploys rotos por archivos sin trackear, imports
 - `npm run check:deploy` en verde.
 - Si hay SQL nuevo en `supabase/`, aplicar migraciones en el entorno objetivo antes de confiar en runtime en producción.
 - Revisar que el deploy en Vercel quede en **Ready** sin errores de build.
-- Smoke manual o automatizado de producción en `/copilot/rutas` (comando operativo, filtros, panel lateral y acciones rápidas).
+- Smoke manual rápido en producción: `/copilot/hoy`, `/copilot/dashboard`, `/copilot/alertas` y un redirect legacy (`/copilot/rutas` → Hoy).
 
 ## Comandos de validación
 
 | Comando | Qué valida |
 | --- | --- |
 | `npm run check:types` | TypeScript sin emitir (`tsc --noEmit`). |
-| `npm run check:unit` | Suite unitaria crítica del core operacional. |
+| `npm run test` | Suite Vitest completa del repo. |
+| `npm run check:unit` | Subconjunto unitario crítico del core operacional. |
 | `npm run check:build` | Build de producción Next.js. |
-| `npm run check:smoke:rutas` | Playwright smoke de `/copilot/rutas` (FASE 6.5). |
 | `npm run check:deploy` | Working tree limpio + types + unit + build. |
 
-## Smoke de rutas (Playwright)
-
-El smoke vive en `e2e/rutas-command-center-65.spec.ts`.
-
-- Usa `PLAYWRIGHT_BASE_URL` si está definido.
-- Si no está definido, Playwright intenta `http://127.0.0.1:3000` y puede levantar `next dev` automáticamente.
-- Para un smoke estable en local, preferí build de producción:
+Flujo recomendado antes de merge:
 
 ```bash
+npm run check:types
+npm run test
 npm run build
-npx next start --port 3005
-PLAYWRIGHT_BASE_URL=http://127.0.0.1:3005 npm run check:smoke:rutas
+node scripts/check-copilot-manual-encoding.mjs
+node scripts/generate-copilot-manual-content.mjs --check
 ```
 
-No commitees credenciales. La sesión de smoke puede resolverse con `PLAYWRIGHT_COPILOT_SESSION` o `PLAYWRIGHT_COPILOT_USER` / `PLAYWRIGHT_COPILOT_PIN` solo en tu entorno local.
+## Redirects legacy (post CLEANUP-LEGACY)
+
+Enlaces antiguos siguen resolviendo vía `next.config.ts`:
+
+| Origen | Destino |
+| --- | --- |
+| `/copilot/insights` | `/copilot/dashboard` |
+| `/copilot/gestion-ia` | `/copilot/agentes` |
+| `/copilot/rutas` (+ subrutas) | `/copilot/hoy` |
+| `/copilot/personalizacion` | `/copilot/hoy` |
+| `/copilot/operacional` (+ subrutas) | `/copilot/alertas` |
 
 ## CI en GitHub
 
@@ -43,8 +49,6 @@ El workflow `.github/workflows/copilot-ci.yml` corre en `push` y `pull_request` 
 - `npm run check:types`
 - `npm run check:unit`
 - `npm run check:build`
-
-El smoke Playwright queda fuera del CI por defecto (requiere app levantada y sesión válida). Ejecutalo localmente o en un job manual cuando tengas `PLAYWRIGHT_BASE_URL` y servidor disponibles.
 
 ## Pre-push opcional
 

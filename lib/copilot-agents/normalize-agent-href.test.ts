@@ -122,8 +122,8 @@ describe("normalizeAgentHref", () => {
     expect(normalizeAgentHref(href)).toBe(href);
   });
 
-  it('"/copilot/operacional" → same', () => {
-    expect(normalizeAgentHref("/copilot/operacional")).toBe("/copilot/operacional");
+  it('"/copilot/alertas" → same', () => {
+    expect(normalizeAgentHref("/copilot/alertas")).toBe("/copilot/alertas");
   });
 
   it('"/copilot/finanzas" → same', () => {

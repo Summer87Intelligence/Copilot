@@ -34,7 +34,7 @@ import { getCurrentMonthToTodayRange } from "@/lib/copilot-date-range-defaults";
 import { COPILOT_OPERATIONAL_START_DATE } from "@/lib/copilot-operational-period";
 import { buildCurrencyIndex } from "@/lib/copilot-cartera-cards-source";
 import { FINANCIAL_UX_COPY } from "@/lib/copilot-financial-ux-copy";
-import { formatCarteraMoney } from "@/lib/copilot-cartera-format";
+import { formatCarteraMoney, formatCarteraPeriodRange } from "@/lib/copilot-cartera-format";
 import {
   dangerFinancialCardClass,
   neutralFinancialCardClass,
@@ -135,6 +135,9 @@ export function CarteraShell() {
   const initialLoading = loading && report === null && error === null;
   const showError = error !== null && report === null;
 
+  const periodRangeLabel =
+    periodStart && periodEnd ? formatCarteraPeriodRange(periodStart, periodEnd) : undefined;
+
   return (
     <>
       <FinancialControlBar
@@ -203,8 +206,13 @@ export function CarteraShell() {
                 selectedCurrency="all"
                 isPreSync={isPreSync}
                 block="ventas"
+                periodRangeLabel={periodRangeLabel}
               />
-              <CreditNotesSection report={report} selectedCurrency="all" />
+              <CreditNotesSection
+                report={report}
+                selectedCurrency="all"
+                periodRangeLabel={periodRangeLabel}
+              />
             </CollapsibleSection>
 
             {/* Bloque — Resumen financiero (cobrado aplicado + saldo pendiente) */}
@@ -219,6 +227,7 @@ export function CarteraShell() {
                 selectedCurrency="all"
                 isPreSync={isPreSync}
                 block="executive"
+                periodRangeLabel={periodRangeLabel}
               />
               <p className="mt-3 text-xs text-[var(--copilot-ink-muted)]">
                 {FINANCIAL_UX_COPY.carteraResumenFinancieroHelp}

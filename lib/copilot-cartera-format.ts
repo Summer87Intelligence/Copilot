@@ -30,6 +30,16 @@ const CURRENCY_SHORT_LABEL: Record<ReconciliationCurrencyCode, string> = {
   USD: "Dólares",
 };
 
+/** Rango de fechas para cards de Cartera: Período: DD/MM/YYYY — DD/MM/YYYY */
+export function formatCarteraPeriodRange(fromYmd: string, toYmd: string): string {
+  const fmt = (ymd: string) => {
+    const [y, m, d] = ymd.slice(0, 10).split("-");
+    if (!y || !m || !d) return ymd;
+    return `${d}/${m}/${y}`;
+  };
+  return `Período: ${fmt(fromYmd)} — ${fmt(toYmd)}`;
+}
+
 export function currencySymbolFor(code: ReconciliationCurrencyCode | string): string {
   if (code === "UYU" || code === "USD") return CURRENCY_SYMBOL[code];
   return code;

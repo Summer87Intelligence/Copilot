@@ -28,14 +28,6 @@ export const COPILOT_READING_KEY_FINANZAS_COBERTURA: CopilotReadingKeyEntry = {
 };
 
 export const COPILOT_READING_KEYS: Record<string, CopilotReadingKeyEntry> = {
-  "/copilot/rutas": {
-    title: "Clave de lectura",
-    lines: [
-      "Un paso a la vez.",
-      "Cada botón me lleva adelante.",
-      "Termino en una acción concreta.",
-    ],
-  },
   "/copilot": {
     title: "Clave de lectura",
     lines: ["Acá empieza todo.", "Entiendo el sistema.", "Sé por dónde avanzar."],
@@ -46,14 +38,6 @@ export const COPILOT_READING_KEYS: Record<string, CopilotReadingKeyEntry> = {
       "Acá están los datos reales.",
       "Puedo validar cada decisión.",
       "Puedo bajar al detalle cuando quiero.",
-    ],
-  },
-  "/copilot/gestion-ia": {
-    title: "Clave de lectura",
-    lines: [
-      "Acá ves primero las acciones que más pueden impactar en tu caja.",
-      "Entrá en una por vez y seguí la recomendación.",
-      "Cada alerta se traduce en una próxima acción concreta.",
     ],
   },
   "/copilot/atencion-prioritaria": {
@@ -107,14 +91,6 @@ export const COPILOT_READING_KEYS: Record<string, CopilotReadingKeyEntry> = {
       "Tengo un canal directo.",
       "Pido ayuda sin fricción.",
       "Mi voz cuenta para mejorar el producto.",
-    ],
-  },
-  "/copilot/insights": {
-    title: "Clave de lectura",
-    lines: [
-      "Acá están las lecturas que importan.",
-      "Conecto causa y efecto.",
-      "Me ayuda a decidir con criterio.",
     ],
   },
 };

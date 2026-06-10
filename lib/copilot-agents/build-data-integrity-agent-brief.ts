@@ -10,7 +10,7 @@
  * E) sync_failed informativo            → severity: medium
  *
  * NO modifica datos. NO reinicia crons. NO toca Zeta.
- * Solo lee señales y guía al usuario a /copilot/operacional.
+ * Solo lee señales y guía al usuario a /copilot/alertas.
  */
 
 import type { CopilotNotification } from "@/lib/copilot-notifications/notification-types";
@@ -76,8 +76,8 @@ export function buildDataIntegrityAgentBrief(
           : "Revisar datos pendientes de actualización",
       reason,
       severity,
-      href: "/copilot/operacional",
-      ctaLabel: "Ver operacional",
+      href: "/copilot/alertas",
+      ctaLabel: "Ver alertas",
     });
   }
 
@@ -91,8 +91,8 @@ export function buildDataIntegrityAgentBrief(
         title: "Revisar proceso de actualización",
         reason: "Una fuente de datos no se actualizó dentro de la ventana esperada.",
         severity: "critical",
-        href: "/copilot/operacional",
-        ctaLabel: "Ver operacional",
+        href: "/copilot/alertas",
+        ctaLabel: "Ver alertas",
       });
     } else if (oicSev === "degraded") {
       priorities.push({
@@ -101,8 +101,8 @@ export function buildDataIntegrityAgentBrief(
         title: "Revisar proceso de actualización",
         reason: "Una fuente de datos no se actualizó dentro de la ventana esperada.",
         severity: "high",
-        href: "/copilot/operacional",
-        ctaLabel: "Ver operacional",
+        href: "/copilot/alertas",
+        ctaLabel: "Ver alertas",
       });
     } else if (oicSev === "warning") {
       priorities.push({
@@ -111,8 +111,8 @@ export function buildDataIntegrityAgentBrief(
         title: "Revisar datos pendientes de actualización",
         reason: "Algunas lecturas pueden estar usando la última información disponible.",
         severity: "medium",
-        href: "/copilot/operacional",
-        ctaLabel: "Ver operacional",
+        href: "/copilot/alertas",
+        ctaLabel: "Ver alertas",
       });
     }
   }
@@ -129,8 +129,8 @@ export function buildDataIntegrityAgentBrief(
           ? "Hay una inconsistencia detectada en los datos."
           : `Hay ${v} inconsistencias detectadas en los datos.`,
       severity: v > 5 ? "high" : "medium",
-      href: "/copilot/operacional",
-      ctaLabel: "Ver operacional",
+      href: "/copilot/alertas",
+      ctaLabel: "Ver alertas",
     });
   }
 
@@ -152,7 +152,7 @@ export function buildDataIntegrityAgentBrief(
     status,
     summary: buildDataIntegritySummary(status, topPriorities),
     priorities: topPriorities,
-    nextBestAction: { label: "Ver operacional", href: "/copilot/operacional" },
+    nextBestAction: { label: "Ver alertas", href: "/copilot/alertas" },
   };
 }
 

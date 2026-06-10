@@ -180,8 +180,8 @@ export function deriveOperationalSemaphore(input: {
     ctaHref = "/copilot/tesoreria";
     ctaLabel = "Ver tesorería";
   } else {
-    ctaHref = "/copilot/operacional";
-    ctaLabel = "Ver Operacional";
+    ctaHref = "/copilot/alertas";
+    ctaLabel = "Ver alertas";
   }
 
   return {

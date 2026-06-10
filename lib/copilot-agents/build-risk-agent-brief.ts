@@ -178,8 +178,8 @@ function dataPriority(
       title: "Validar datos antes de decidir",
       reason: "Hay señales de actualización de datos para revisar antes de decidir.",
       severity: "critical",
-      href: "/copilot/operacional",
-      ctaLabel: "Ver Operacional",
+      href: "/copilot/alertas",
+      ctaLabel: "Ver alertas",
     };
   }
 
@@ -190,8 +190,8 @@ function dataPriority(
       title: "Validar datos antes de decidir",
       reason: "Hay señales de datos que conviene revisar antes de actuar.",
       severity: "high",
-      href: "/copilot/operacional",
-      ctaLabel: "Ver Operacional",
+      href: "/copilot/alertas",
+      ctaLabel: "Ver alertas",
     };
   }
 

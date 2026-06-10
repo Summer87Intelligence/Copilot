@@ -46,7 +46,12 @@ export type CashPositionByCurrency = {
   /** @deprecated Usar `availableCash`. */
   currentCash: number;
   movementsCount: number;
+  /** @deprecated Usar `lastIncome` / `lastExpense`. */
   lastMovement: { date: string; concept: string } | null;
+  /** Último ingreso manual registrado (movementType=income). */
+  lastIncome: { date: string; concept: string } | null;
+  /** Último egreso manual registrado (movementType=expense). */
+  lastExpense: { date: string; concept: string } | null;
   manualExpenseInRange?: number;
 };
 
@@ -119,6 +124,23 @@ export function calculateCashPosition(
     let transfersNet = 0;
     let movementsCount = 0;
     let lastMovement: { date: string; concept: string } | null = null;
+    let lastIncome: { date: string; concept: string } | null = null;
+    let lastExpense: { date: string; concept: string } | null = null;
+
+    const considerEvent = (
+      current: { date: string; concept: string } | null,
+      date: string,
+      concept: string
+    ): { date: string; concept: string } => {
+      if (
+        !current ||
+        date > current.date ||
+        (date === current.date && concept > current.concept)
+      ) {
+        return { date, concept };
+      }
+      return current;
+    };
 
     for (const m of movements) {
       if (m.currencyCode !== currency) continue;
@@ -135,20 +157,16 @@ export function calculateCashPosition(
       });
       movementsCount += 1;
 
-      if (
-        !lastMovement ||
-        m.movementDate > lastMovement.date ||
-        (m.movementDate === lastMovement.date && m.concept > lastMovement.concept)
-      ) {
-        lastMovement = { date: m.movementDate, concept: m.concept };
-      }
+      lastMovement = considerEvent(lastMovement, m.movementDate, m.concept);
 
       switch (m.movementType) {
         case "income":
           manualIncome += signed;
+          lastIncome = considerEvent(lastIncome, m.movementDate, m.concept);
           break;
         case "expense":
           manualExpense += Math.abs(signed);
+          lastExpense = considerEvent(lastExpense, m.movementDate, m.concept);
           break;
         case "adjustment":
           adjustments += signed;
@@ -189,8 +207,22 @@ export function calculateCashPosition(
       currentCash: availableCash,
       movementsCount,
       lastMovement,
+      lastIncome,
+      lastExpense,
     };
   });
+}
+
+export function mergeCashIncomeEvents(
+  manual: { date: string; concept: string } | null | undefined,
+  zeta: { date: string; concept: string } | null | undefined
+): { date: string; concept: string } | null {
+  if (!manual && !zeta) return null;
+  if (!manual) return zeta ?? null;
+  if (!zeta) return manual;
+  if (zeta.date > manual.date) return zeta;
+  if (zeta.date < manual.date) return manual;
+  return zeta.concept.localeCompare(manual.concept) > 0 ? zeta : manual;
 }
 
 /** Caja proyectada 30d = caja actual + por cobrar − pagos futuros (misma moneda). */

@@ -35,6 +35,8 @@ import {
   extractTopBillingForCurrency,
   extractTopDebtorsForCurrency,
   getMonthRangesForPeriod,
+  buildExecutiveSummaryMainRiskChip,
+  type DashboardExecutiveCurrencyMode,
   type DashboardActiveDebtRow,
   type DashboardCurrencyData,
   type DashboardClientStates,
@@ -558,11 +560,19 @@ function ExecutiveSummaryCard({
   currencyData,
   clientStates,
   periodLabel,
+  currencyMode,
+  deudaVencidaUyu,
+  deudaVencidaUsd,
+  exchangeRate,
 }: {
   state: DashboardState;
   currencyData: DashboardCurrencyData[];
   clientStates: DashboardClientStates;
   periodLabel: string;
+  currencyMode: DashboardExecutiveCurrencyMode;
+  deudaVencidaUyu: number;
+  deudaVencidaUsd: number;
+  exchangeRate?: number | null;
 }) {
   const uyu = currencyData.find((d) => d.currency === "UYU");
   const usd = currencyData.find((d) => d.currency === "USD");
@@ -600,17 +610,14 @@ function ExecutiveSummaryCard({
     { label: METRIC_LABEL.caja_disponible, uyuVal: uyu?.cajaDisponible, usdVal: usd?.cajaDisponible },
   ];
 
-  const totalVencida = (uyu?.deudaVencida ?? 0) + (usd?.deudaVencida ?? 0);
-  const mainRisk =
-    state === "critical"
-      ? clientStates.riesgoAlto > 0
-        ? `${clientStates.riesgoAlto} cliente${clientStates.riesgoAlto > 1 ? "s" : ""} de riesgo alto`
-        : "Caja insuficiente para cubrir pagos próximos"
-      : state === "attention"
-      ? totalVencida > 0
-        ? "Deuda vencida activa en cartera"
-        : `${clientStates.conDeudaVencida} cliente${clientStates.conDeudaVencida > 1 ? "s" : ""} con deuda vencida`
-      : null;
+  const mainRisk = buildExecutiveSummaryMainRiskChip({
+    state,
+    currencyMode,
+    deudaVencidaUyu,
+    deudaVencidaUsd,
+    exchangeRate,
+    clientStates,
+  });
 
   const bestSignal =
     (uyu?.efectividad ?? 0) >= 0.8 || (usd?.efectividad ?? 0) >= 0.8
@@ -1175,6 +1182,13 @@ export default function DashboardPage() {
     : effectiveCurrency === "all"
       ? "UYU + USD (separado)"
       : effectiveCurrency;
+  const executiveCurrencyMode: DashboardExecutiveCurrencyMode = isConsolidated
+    ? "USD_consolidated"
+    : selectedCurrency === "all"
+      ? "all"
+      : selectedCurrency === "USD"
+        ? "USD"
+        : "UYU";
   const consUyu = (val: number) => (isConsolidated ? 0 : val);
   const consUsd = (uyuVal: number, usdVal: number) =>
     isConsolidated ? roundUsd(consolidateToUsd(uyuVal, usdVal, exchangeRate!)) : usdVal;
@@ -1605,6 +1619,10 @@ export default function DashboardPage() {
             currencyData={effectiveCurrencyData}
             clientStates={clientStates}
             periodLabel={periodLabel}
+            currencyMode={executiveCurrencyMode}
+            deudaVencidaUyu={uyu?.deudaVencida ?? 0}
+            deudaVencidaUsd={usd?.deudaVencida ?? 0}
+            exchangeRate={isConsolidated ? exchangeRate : null}
           />
         )}
 
@@ -1619,19 +1637,24 @@ export default function DashboardPage() {
           />
         ) : null}
 
-        {/* KPI grid */}
-        <section aria-label="Indicadores clave">
-          <h2 className={`mb-3 text-xs font-semibold uppercase tracking-wide ${C.muted}`}>
-            Indicadores del período
-          </h2>
+        {/* KPI grid — bloque 1: período */}
+        <section aria-label="Resultado del período" className="space-y-3">
+          <div>
+            <h2 className={`text-xs font-semibold uppercase tracking-wide ${C.ink}`}>
+              Resultado del período
+            </h2>
+            <p className={`mt-0.5 text-[11px] ${C.muted}`}>
+              Corresponde al rango seleccionado.
+            </p>
+          </div>
           {loading ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
-              {Array.from({ length: 7 }).map((_, i) => (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
                 <Skeleton key={i} className="h-36" />
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <KpiCard
                 title={METRIC_LABEL.facturado_periodo}
                 tooltip="Ventas/facturas emitidas dentro del rango seleccionado."
@@ -1656,14 +1679,35 @@ export default function DashboardPage() {
                 selectedCurrency={effectiveCurrency}
                 href="/copilot/cartera"
               />
+            </div>
+          )}
+        </section>
+
+        {/* KPI grid — bloque 2: situación actual */}
+        <section aria-label="Situación actual" className="space-y-3">
+          <div>
+            <h2 className={`text-xs font-semibold uppercase tracking-wide ${C.ink}`}>
+              Situación actual
+            </h2>
+            <p className={`mt-0.5 text-[11px] ${C.muted}`}>
+              Foto actual del negocio. No depende del rango seleccionado.
+            </p>
+          </div>
+          {loading ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-36" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <KpiCard
-                title={METRIC_LABEL.deuda_activa}
-                tooltip="Suma de todas las facturas pendientes al día de hoy. No está limitada por el rango de fechas seleccionado."
+                title="Deuda actual total"
+                tooltip="Total adeudado actualmente por clientes, incluyendo saldos de períodos anteriores. No se calcula solo con el rango seleccionado."
                 uyuValue={consUyu(uyu?.deudaActiva ?? 0)}
                 usdValue={consUsd(uyu?.deudaActiva ?? 0, usd?.deudaActiva ?? 0)}
                 selectedCurrency={effectiveCurrency}
                 href="/copilot/cartera"
-                secondary="No depende del período seleccionado."
               />
               <KpiCard
                 title={METRIC_LABEL.deuda_vencida}

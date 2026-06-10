@@ -53,7 +53,7 @@ describe("auditHoyMoneyFieldSources", () => {
           openingConfigured: false,
           openingBalance: 0,
           movementsCount: 2,
-          lastMovement: null,
+          lastMovement: null, lastIncome: null, lastExpense: null,
         },
         {
           currency: "USD",
@@ -67,7 +67,7 @@ describe("auditHoyMoneyFieldSources", () => {
           openingConfigured: false,
           openingBalance: 0,
           movementsCount: 1,
-          lastMovement: null,
+          lastMovement: null, lastIncome: null, lastExpense: null,
         },
       ],
     });

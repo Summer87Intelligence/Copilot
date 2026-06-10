@@ -119,8 +119,8 @@ export function buildCfoAgentBrief(
       reason:
         "Hay señales de actualización de datos que pueden afectar la lectura financiera.",
       severity: hasCritical ? "high" : "medium",
-      href: "/copilot/operacional",
-      ctaLabel: "Ver Operacional",
+      href: "/copilot/alertas",
+      ctaLabel: "Ver alertas",
     });
   }
 

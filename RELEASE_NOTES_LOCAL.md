@@ -85,10 +85,23 @@ Enfoque: claridad para dueño/contador/operador — sin cambios de schema, sync 
 - Evolución mensual (facturas/recibos, UYU/USD separados).
 - Escenario estimado 30d distinguido de caja real.
 
-### Datos / Operacional / Manual
+### Datos / Alertas / Manual
 - Filtros Datos estandarizados; copy de facturas/recibos.
-- Estado del sistema: confianza del dato.
+- Estado del sistema y salud de sync: **Alertas** (+ tablas en **Datos**).
 - Manual actualizado (caja, panorama, reportes, acciones).
+
+### Rutas legacy retiradas del sidebar (2026-06-10, CLEANUP-LEGACY)
+Las pantallas **Operacional**, **Rutas** y **Personalización** ya no están en el menú ni como páginas dedicadas. Los bookmarks antiguos resuelven con redirects permanentes:
+
+| URL antigua | Reemplazo canónico |
+|-------------|-------------------|
+| `/copilot/operacional` (+ subrutas) | `/copilot/alertas` |
+| `/copilot/rutas` (+ subrutas) | `/copilot/hoy` |
+| `/copilot/personalizacion` | `/copilot/hoy` |
+| `/copilot/insights` | `/copilot/dashboard` |
+| `/copilot/gestion-ia` | `/copilot/agentes` |
+
+APIs de motor (`/api/operacional/*`, `/api/copilot/rutas-hub`, etc.) siguen activas para Hoy, Dashboard y agentes.
 
 ### Infra local
 - `npm run verify:copilot` — suite crítica (treasury, hoy, collection, agents, debtors, account-statement, tsc, build).
@@ -141,7 +154,9 @@ Validaciones de sesiones previas + cobertura por tests unitarios:
 | `/copilot/acciones` | OK (UX) | manual + inbox tabs |
 | `/copilot/agentes` | OK (tests) | copilot-agents 125 |
 | `/copilot/datos` | OK | dataset routes en build |
-| `/copilot/operacional` | OK | confianza del dato UX |
+| `/copilot/alertas` | OK | salud de sync / confianza del dato (reemplaza Operacional) |
+| Redirect `/copilot/operacional` → Alertas | OK | `next.config.ts` |
+| Redirect `/copilot/rutas` → Hoy | OK | `next.config.ts` |
 | `/copilot/finanzas` | OK | panorama + semaphore tests |
 | `/copilot/manual` | OK | secciones actualizadas |
 | Sidebar / mobile | P2 pendiente smoke visual | recomendado pre-prod |

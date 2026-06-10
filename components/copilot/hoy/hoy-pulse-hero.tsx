@@ -39,7 +39,7 @@ export function PulseHero({
   headline,
   subline,
   dataNotice,
-  operacionalHref = "/copilot/operacional",
+  operacionalHref = "/copilot/alertas",
   onRefresh,
 }: {
   status: PulseStatus;
@@ -85,7 +85,7 @@ export function PulseHero({
         <p className="mt-3 text-[11px] leading-relaxed text-[var(--copilot-ink-muted)]">
           {dataNotice}{" "}
           <Link href={operacionalHref} className="font-semibold text-[var(--copilot-accent)] hover:underline">
-            Ver estado operacional
+            Ver alertas
           </Link>
         </p>
       ) : null}

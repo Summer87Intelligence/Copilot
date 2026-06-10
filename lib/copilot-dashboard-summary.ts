@@ -26,6 +26,7 @@ import { sumPortfolioOverdueDebt } from "./copilot-cartera-aging-totals";
 import type { CashPositionByCurrency } from "./treasury/treasury-cash-position";
 import type { TreasuryOutflowSummary } from "./treasury/treasury-scheduled-payments";
 import { isCreditNoteFromMetadata } from "./copilot-zeta-credit-note";
+import { consolidateToUsd, roundUsd } from "./finance/currency-conversion";
 
 // ---------------------------------------------------------------------------
 // Output types
@@ -93,6 +94,113 @@ export type DashboardMonthlyPoint = {
 };
 
 export type DashboardState = "ok" | "attention" | "critical";
+
+/** Modo de moneda del banner ejecutivo (alineado al selector del Dashboard). */
+export type DashboardExecutiveCurrencyMode = "all" | "UYU" | "USD" | "USD_consolidated";
+
+export type BuildExecutiveSummaryMainRiskChipInput = {
+  state: DashboardState;
+  currencyMode: DashboardExecutiveCurrencyMode;
+  deudaVencidaUyu: number;
+  deudaVencidaUsd: number;
+  exchangeRate?: number | null;
+  clientStates: Pick<DashboardClientStates, "riesgoAlto" | "conDeudaVencida">;
+};
+
+function formatExecutiveOverdueChipAmount(
+  amount: number,
+  currency: "UYU" | "USD"
+): string {
+  const prefix = currency === "USD" ? "U$S " : "$ ";
+  return `${prefix}${amount.toLocaleString("es-AR", { maximumFractionDigits: 0 })} ${currency}`;
+}
+
+function buildExecutiveOverdueRiskLabel(input: {
+  currencyMode: DashboardExecutiveCurrencyMode;
+  deudaVencidaUyu: number;
+  deudaVencidaUsd: number;
+  exchangeRate?: number | null;
+}): string | null {
+  const { currencyMode, deudaVencidaUyu, deudaVencidaUsd, exchangeRate } = input;
+
+  if (currencyMode === "all") {
+    const hasUyu = deudaVencidaUyu > 0;
+    const hasUsd = deudaVencidaUsd > 0;
+    if (!hasUyu && !hasUsd) return null;
+    if (hasUyu && hasUsd) {
+      return `Vencido: ${formatExecutiveOverdueChipAmount(deudaVencidaUyu, "UYU")} · ${formatExecutiveOverdueChipAmount(deudaVencidaUsd, "USD")}`;
+    }
+    if (hasUyu) {
+      return `Vencido: ${formatExecutiveOverdueChipAmount(deudaVencidaUyu, "UYU")}`;
+    }
+    return `Vencido: ${formatExecutiveOverdueChipAmount(deudaVencidaUsd, "USD")}`;
+  }
+
+  if (currencyMode === "UYU") {
+    if (deudaVencidaUyu <= 0) return null;
+    return `Vencido: ${formatExecutiveOverdueChipAmount(deudaVencidaUyu, "UYU")}`;
+  }
+
+  if (currencyMode === "USD") {
+    if (deudaVencidaUsd <= 0) return null;
+    return `Vencido: ${formatExecutiveOverdueChipAmount(deudaVencidaUsd, "USD")}`;
+  }
+
+  const tc = exchangeRate;
+  if (!tc || tc <= 0) return null;
+  const consolidated = roundUsd(
+    consolidateToUsd(deudaVencidaUyu, deudaVencidaUsd, tc)
+  );
+  if (consolidated <= 0) return null;
+  return `Vencido: ${formatExecutiveOverdueChipAmount(consolidated, "USD")} (cons.)`;
+}
+
+/**
+ * Copy del chip de riesgo principal del banner ejecutivo.
+ * Presentación únicamente — no altera métricas canónicas ni estado del dashboard.
+ */
+export function buildExecutiveSummaryMainRiskChip(
+  input: BuildExecutiveSummaryMainRiskChipInput
+): string | null {
+  const { state, clientStates } = input;
+
+  if (state === "critical") {
+    if (clientStates.riesgoAlto > 0) {
+      const n = clientStates.riesgoAlto;
+      return `${n} cliente${n > 1 ? "s" : ""} de riesgo alto`;
+    }
+    return "Caja insuficiente para cubrir pagos próximos";
+  }
+
+  if (state === "attention") {
+    const overdueLabel = buildExecutiveOverdueRiskLabel(input);
+    if (overdueLabel) return overdueLabel;
+    if (clientStates.conDeudaVencida > 0) {
+      const n = clientStates.conDeudaVencida;
+      return `${n} cliente${n > 1 ? "s" : ""} con deuda vencida`;
+    }
+  }
+
+  return null;
+}
+
+/** Indica si hay deuda vencida según el modo visible, sin sumar UYU+USD en modo separado. */
+export function hasExecutiveOverdueDebtForMode(input: {
+  currencyMode: DashboardExecutiveCurrencyMode;
+  deudaVencidaUyu: number;
+  deudaVencidaUsd: number;
+  exchangeRate?: number | null;
+}): boolean {
+  const { currencyMode, deudaVencidaUyu, deudaVencidaUsd, exchangeRate } = input;
+  if (currencyMode === "all") {
+    return deudaVencidaUyu > 0 || deudaVencidaUsd > 0;
+  }
+  if (currencyMode === "UYU") return deudaVencidaUyu > 0;
+  if (currencyMode === "USD") return deudaVencidaUsd > 0;
+  const tc = exchangeRate;
+  if (!tc || tc <= 0) return false;
+  return roundUsd(consolidateToUsd(deudaVencidaUyu, deudaVencidaUsd, tc)) > 0;
+}
 
 export type DashboardRecentMovement = {
   date: string;

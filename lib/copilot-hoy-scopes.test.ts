@@ -125,7 +125,7 @@ describe("copilot-hoy-scopes — aislamiento período vs actual", () => {
         availableCash: 50_000,
         currentCash: 50_000,
         movementsCount: 1,
-        lastMovement: null,
+        lastMovement: null, lastIncome: null, lastExpense: null,
       },
     ];
     const pending = { UYU: 170_944, USD: 0 };
@@ -188,7 +188,7 @@ describe("copilot-hoy-scopes — aislamiento período vs actual", () => {
           availableCash: 910_000,
           currentCash: 910_000,
           movementsCount: 0,
-          lastMovement: null,
+          lastMovement: null, lastIncome: null, lastExpense: null,
         },
       ],
       today: "2026-05-21",
@@ -208,7 +208,7 @@ describe("copilot-hoy-scopes — aislamiento período vs actual", () => {
         availableCash: 910_000,
         currentCash: 910_000,
         movementsCount: 0,
-        lastMovement: null,
+        lastMovement: null, lastIncome: null, lastExpense: null,
       },
     ];
     const pulseB = buildTodayBusinessPulse({

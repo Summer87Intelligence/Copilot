@@ -7,6 +7,45 @@ import type { NextConfig } from "next";
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      {
+        source: "/copilot/insights",
+        destination: "/copilot/dashboard",
+        permanent: true,
+      },
+      {
+        source: "/copilot/gestion-ia",
+        destination: "/copilot/agentes",
+        permanent: true,
+      },
+      {
+        source: "/copilot/rutas",
+        destination: "/copilot/hoy",
+        permanent: true,
+      },
+      {
+        source: "/copilot/rutas/:path*",
+        destination: "/copilot/hoy",
+        permanent: true,
+      },
+      {
+        source: "/copilot/personalizacion",
+        destination: "/copilot/hoy",
+        permanent: true,
+      },
+      {
+        source: "/copilot/operacional",
+        destination: "/copilot/alertas",
+        permanent: true,
+      },
+      {
+        source: "/copilot/operacional/:path*",
+        destination: "/copilot/alertas",
+        permanent: true,
+      },
+    ];
+  },
   /** Alineado con turbopack.root — requerido en monorepos / Vercel adapter. */
   outputFileTracingRoot: projectRoot,
   serverExternalPackages: ["pdf-parse", "pdfjs-dist"],

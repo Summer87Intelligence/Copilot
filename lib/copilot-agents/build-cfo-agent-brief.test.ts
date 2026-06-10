@@ -138,7 +138,7 @@ describe("buildCfoAgentBrief", () => {
     const p = result.priorities.find((x) => x.id === "cfo-data-integrity");
     expect(p).toBeDefined();
     expect(p!.severity).toBe("high");
-    expect(p!.href).toBe("/copilot/operacional");
+    expect(p!.href).toBe("/copilot/alertas");
   });
 
   it("sync_failed warning → prioridad validar datos severity medium", () => {

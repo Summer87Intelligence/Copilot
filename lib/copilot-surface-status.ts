@@ -17,18 +17,14 @@ export type CopilotSurfaceKind = "real" | "partial" | "demo";
 export const COPILOT_SURFACE_IDS = [
   "copilot.home",
   "copilot.datos",
-  "copilot.gestion-ia",
-  "copilot.rutas",
   "copilot.acciones",
   "copilot.finanzas",
   "copilot.alertas",
-  "copilot.insights",
   "copilot.clientes",
   "copilot.escenarios",
   "copilot.mesa-ayuda",
   "copilot.agentes",
   "copilot.configuracion",
-  "copilot.personalizacion",
   "copilot.atencion-prioritaria",
   "copilot.hoy",
 ] as const;
@@ -55,18 +51,6 @@ export const COPILOT_SURFACE_INDEX: Record<CopilotSurfaceId, CopilotSurfaceMeta>
     rationale:
       "CRUD operativo sobre `proto_*` mediante `copilotApiFetch` y APIs `/api/copilot/data/*`.",
   },
-  "copilot.gestion-ia": {
-    id: "copilot.gestion-ia",
-    kind: "partial",
-    rationale:
-      "`/api/copilot/real-insights` calcula sobre datos reales; el copy reconoce prototipo y las reglas de insight no cubren todo el negocio.",
-  },
-  "copilot.rutas": {
-    id: "copilot.rutas",
-    kind: "partial",
-    rationale:
-      "Hub mezcla motor financiero, cartera, agenda fiscal y conteo de insights; agregaciones y visibilidad son reglas de producto simplificadas.",
-  },
   "copilot.acciones": {
     id: "copilot.acciones",
     kind: "partial",
@@ -84,12 +68,6 @@ export const COPILOT_SURFACE_INDEX: Record<CopilotSurfaceId, CopilotSurfaceMeta>
     kind: "partial",
     rationale:
       "Alertas fiscales y predictivas desde motor real (`useCopilotAlerts`); drawer de evidencia puede recurrir a casos mock por id.",
-  },
-  "copilot.insights": {
-    id: "copilot.insights",
-    kind: "partial",
-    rationale:
-      "`generateInsightsFromBatch` consume datos vía `GET /api/copilot/insight-engine-dataset` (tenant); cada insight adjunta evidencia tipo mock (`copilot-insights-evidence-mock`).",
   },
   "copilot.clientes": {
     id: "copilot.clientes",
@@ -120,12 +98,6 @@ export const COPILOT_SURFACE_INDEX: Record<CopilotSurfaceId, CopilotSurfaceMeta>
     kind: "partial",
     rationale:
       "Contenido mayormente documental / roadmap (`copilot-document-architecture`), no un panel de configuración persistida end-to-end.",
-  },
-  "copilot.personalizacion": {
-    id: "copilot.personalizacion",
-    kind: "demo",
-    rationale:
-      "Preferencias en estado local de React; no hay guardado en servidor en esta pantalla.",
   },
   "copilot.atencion-prioritaria": {
     id: "copilot.atencion-prioritaria",

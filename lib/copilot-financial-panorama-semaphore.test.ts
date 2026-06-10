@@ -89,7 +89,7 @@ describe("copilot-financial-panorama-details", () => {
       availableCash: 15_500,
       currentCash: 15_500,
       movementsCount: 3,
-      lastMovement: null,
+      lastMovement: null, lastIncome: null, lastExpense: null,
     });
     expect(d.sourceLabel).toContain("Tesorería");
     expect(d.cta?.href).toBe("/copilot/tesoreria");

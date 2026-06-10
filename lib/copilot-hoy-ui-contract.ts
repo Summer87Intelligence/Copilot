@@ -119,6 +119,10 @@ export const HOY_COPY = {
   availableCashLabel: "Caja disponible",
   availableCashEstimatedLabel: "Caja disponible",
   cashOpeningNote: "Configurá tu saldo actual en Tesorería para ver el dinero disponible.",
+  lastIncomeLabel: "Último ingreso",
+  lastExpenseLabel: "Último egreso",
+  noIncomeRegistered: "No hay ingresos registrados",
+  noExpenseRegistered: "No hay egresos registrados",
   projection30Title: "Próximos 30 días",
   projection30Tip: "Caja actual, pagos cargados y escenario si cobrás lo pendiente.",
   /** @deprecated Usar `availableCashLabel`. */

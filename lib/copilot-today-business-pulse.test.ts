@@ -831,7 +831,7 @@ describe("buildTodayBusinessPulse", () => {
             availableCash: 10_000,
             currentCash: 10_000,
             movementsCount: 1,
-            lastMovement: null,
+            lastMovement: null, lastIncome: null, lastExpense: null,
           },
         ],
       });

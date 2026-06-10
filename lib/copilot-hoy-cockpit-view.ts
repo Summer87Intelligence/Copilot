@@ -114,7 +114,7 @@ function buildCockpitHero(pulse: TodayBusinessPulse): CockpitHero {
     statusLabel,
     headline,
     metricsLine: pulse.heroSubline,
-    operacionalHref: "/copilot/operacional",
+    operacionalHref: "/copilot/alertas",
   };
 }
 

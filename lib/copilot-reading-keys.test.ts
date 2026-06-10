@@ -10,7 +10,7 @@ describe("copilot-reading-keys", () => {
     expect(isCopilotReadingKeySuppressed("/copilot/hoy")).toBe(true);
     expect(isCopilotReadingKeySuppressed("/copilot/hoy/")).toBe(true);
     expect(isCopilotReadingKeySuppressed("/copilot/cartera")).toBe(false);
-    expect(isCopilotReadingKeySuppressed("/copilot/rutas")).toBe(false);
+    expect(isCopilotReadingKeySuppressed("/copilot/alertas")).toBe(false);
   });
 
   it("otras rutas siguen teniendo entrada de lectura", () => {

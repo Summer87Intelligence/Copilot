@@ -126,9 +126,11 @@ const SECTION_NAV: Record<string, Array<{ href: string; label: string; ghost?: b
   datos: [{ href: "/copilot/datos", label: "Ir a Datos" }],
   agentes: [{ href: "/copilot/agentes", label: "Ir a Agentes IA" }],
   reportes: [{ href: "/copilot/reportes", label: "Ir a Reportes" }],
-  operacional: [{ href: "/copilot/operacional", label: "Ir a Operacional" }],
+  operacional: [
+    { href: "/copilot/alertas", label: "Ir a Alertas" },
+    { href: "/copilot/datos", label: "Ir a Datos", ghost: true },
+  ],
   estado: [
-    { href: "/copilot/operacional", label: "Ver Operacional", ghost: true },
     { href: "/copilot/alertas", label: "Ver Alertas", ghost: true },
     { href: "/copilot/acciones", label: "Ver Acciones", ghost: true },
   ],
@@ -136,7 +138,7 @@ const SECTION_NAV: Record<string, Array<{ href: string; label: string; ghost?: b
   problemas: [
     { href: "/copilot/alertas", label: "Ir a Alertas", ghost: true },
     { href: "/copilot/acciones", label: "Ir a Acciones", ghost: true },
-    { href: "/copilot/operacional", label: "Ir a Operacional", ghost: true },
+    { href: "/copilot/datos", label: "Ir a Datos", ghost: true },
   ],
 };
 
@@ -299,7 +301,7 @@ export default function ManualPage() {
           { step: 5, label: "Clientes / Cartera", description: "Gestioná cobros vencidos.", href: "/copilot/cartera" },
           { step: 6, label: "Tesorería", description: "Confirmá pagos próximos.", href: "/copilot/tesoreria" },
           { step: 7, label: "Finanzas", description: "Revisá la mirada general si cambiaron cosas.", href: "/copilot/finanzas" },
-          { step: 8, label: "Operacional", description: "Solo si algo parece desactualizado.", href: "/copilot/operacional" },
+          { step: 8, label: "Alertas / Datos", description: "Solo si algo parece desactualizado.", href: "/copilot/alertas" },
         ];
 
   function toggleSection(id: string) {

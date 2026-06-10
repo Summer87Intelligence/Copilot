@@ -78,6 +78,8 @@ type SummaryCard = {
   clickable?: boolean;
   onClick?: () => void;
   actionLabel?: string;
+  /** Rango confirmado (solo métricas de período). */
+  periodNote?: string;
   /**
    * Opcional: desglose de 2 líneas bajo el subtitle.
    * Usado en cards de saldo pendiente para mostrar período / anterior.
@@ -471,6 +473,7 @@ export function ExecutiveSummaryCards({
   isPreSync = false,
   block,
   showBadges = false,
+  periodRangeLabel,
 }: {
   report: FinancialConsistencyReport;
   selectedCurrency?: CurrencyFilter;
@@ -480,6 +483,8 @@ export function ExecutiveSummaryCards({
   block?: "executive" | "cobranza" | "ventas" | "auditoria";
   /** Ocultar badges de fuente (Zeta / Analytics / Recon). Útil en el resumen ejecutivo compacto. */
   showBadges?: boolean;
+  /** Ej. Período: 01/06/2026 — 10/06/2026 — en cards de actividad del período. */
+  periodRangeLabel?: string;
 }) {
   const reduce = useReducedMotion();
   const [pendingDrawerCurrency, setPendingDrawerCurrency] =
@@ -598,8 +603,21 @@ export function ExecutiveSummaryCards({
       list = list.filter((c) => c.id === "orphans");
     }
 
+    if (periodRangeLabel) {
+      list = list.map((card) => {
+        if (
+          card.id.startsWith("facturado-") ||
+          card.id.startsWith("collected-applied-") ||
+          card.id.startsWith("credit-notes-")
+        ) {
+          return { ...card, periodNote: periodRangeLabel };
+        }
+        return card;
+      });
+    }
+
     return list;
-  }, [report, selectedCurrency, currencyIndex, isPreSync, block]);
+  }, [report, selectedCurrency, currencyIndex, isPreSync, block, periodRangeLabel]);
 
   const showBadge = showBadges;
 
@@ -759,8 +777,14 @@ function SummaryCardView({ card, showBadge = false }: { card: SummaryCard; showB
         <CarteraCountUp value={card.value} format={card.format} />
       </p>
 
+      {card.periodNote ? (
+        <p className="mt-2 text-[11px] font-medium leading-snug text-[var(--copilot-ink-muted)]">
+          {card.periodNote}
+        </p>
+      ) : null}
+
       {/* Descriptor line */}
-      <p className="mt-2 text-[12px] leading-snug text-[var(--copilot-ink-muted)]/85">
+      <p className={`text-[12px] leading-snug text-[var(--copilot-ink-muted)]/85 ${card.periodNote ? "mt-1" : "mt-2"}`}>
         {card.subtitle}
       </p>
 
@@ -828,9 +852,11 @@ function SourceBadgeView({ source }: { source: SourceBadge }) {
 export function CreditNotesSection({
   report,
   selectedCurrency = "all",
+  periodRangeLabel,
 }: {
   report: FinancialConsistencyReport;
   selectedCurrency?: CurrencyFilter;
+  periodRangeLabel?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const currencyIndex = useMemo(
@@ -881,6 +907,9 @@ export function CreditNotesSection({
             <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-rose-800">
               Ajustes del período
             </p>
+            {periodRangeLabel ? (
+              <p className="mt-0.5 text-[11px] font-medium text-rose-800/90">{periodRangeLabel}</p>
+            ) : null}
             <p className="mt-0.5 text-xs text-rose-700/80">{summaryText}</p>
           </div>
         </div>

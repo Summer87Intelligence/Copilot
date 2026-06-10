@@ -71,14 +71,14 @@ export function buildDailyExecutiveBrief(
   if (syncFailed.length > 0 || briefing?.status === "critical") {
     priorities.push({
       id: "op-critical",
-      title: "Revisar estado operacional",
+      title: "Revisar alertas",
       reason:
         syncFailed.length > 0
           ? "Hay un problema con la sincronización de datos. Puede afectar la información que ves."
           : briefing?.headline ?? "Hay señales críticas en la operación que requieren atención.",
       severity: "critical",
-      href: "/copilot/operacional",
-      ctaLabel: "Ver operacional",
+      href: "/copilot/alertas",
+      ctaLabel: "Ver alertas",
     });
   }
 
@@ -283,7 +283,7 @@ function buildNextBestAction(
 ): DailyExecutiveBrief["nextBestAction"] {
   if (status === "critical") {
     const op = priorities.find((p) => p.id === "op-critical");
-    if (op) return { label: "Revisar estado operacional", href: op.href };
+    if (op) return { label: "Revisar alertas", href: op.href };
     const cash = priorities.find((p) => p.id === "cash-risk");
     if (cash) return { label: "Ver pagos", href: cash.href };
   }

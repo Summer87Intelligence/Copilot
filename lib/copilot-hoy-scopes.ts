@@ -181,7 +181,8 @@ export function buildHoyCurrentStateBlocks(
       (cash?.collectedFromClients ?? 0) > 0 ||
       (cash?.manualIncome ?? 0) > 0 ||
       (cash?.manualExpense ?? 0) > 0 ||
-      cash?.lastMovement != null ||
+      cash?.lastIncome != null ||
+      cash?.lastExpense != null ||
       scope.currentReceivablesByCurrency[currency] > 0 ||
       scope.overdue30ByCurrency[currency] > 0 ||
       scope.debtorClientsByCurrency[currency] > 0;

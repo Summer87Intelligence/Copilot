@@ -128,8 +128,8 @@ export function buildActionsFromNotifications(
         priority = "high";
         title = n.title;
         reason = n.body ?? "Sincronización fallida — revisar integración.";
-        primaryActionLabel = "Ver operacional";
-        href = n.action_href ?? "/copilot/operacional";
+        primaryActionLabel = "Ver alertas";
+        href = n.action_href ?? "/copilot/alertas";
         break;
       }
       case "new_debtor": {

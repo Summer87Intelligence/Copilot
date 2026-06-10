@@ -28,8 +28,57 @@ export type ZetaReceiptRow = {
   currency_code: string | null;
   amount: number | null;
   receipt_date: string | null;
+  receipt_number?: string | null;
   status?: string | null;
 };
+
+export type ZetaCashEvent = {
+  date: string;
+  concept: string;
+};
+
+function isValidPostBaselineReceipt(
+  row: ZetaReceiptRow,
+  baselineDates: Partial<Record<TreasuryCurrencyCode, string>>
+): { currency: TreasuryCurrencyCode; date: string } | null {
+  const code = String(row.currency_code ?? "")
+    .trim()
+    .toUpperCase();
+  if (code !== "UYU" && code !== "USD") return null;
+
+  const currency = code as TreasuryCurrencyCode;
+  const baseline = baselineDates[currency];
+  if (!baseline) return null;
+
+  const rDate = String(row.receipt_date ?? "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(rDate) || rDate < baseline) return null;
+
+  const status = String(row.status ?? "")
+    .trim()
+    .toLowerCase();
+  if (status && VOIDED_RECEIPT_STATUSES.has(status)) return null;
+
+  const amount = typeof row.amount === "number" ? row.amount : 0;
+  if (amount <= 0) return null;
+
+  return { currency, date: rDate };
+}
+
+function receiptConcept(row: ZetaReceiptRow): string {
+  const number = String(row.receipt_number ?? "").trim();
+  return number ? `Recibo ${number}` : "Cobro Zeta";
+}
+
+function pickLaterCashEvent(
+  current: ZetaCashEvent | null | undefined,
+  candidate: ZetaCashEvent | null | undefined
+): ZetaCashEvent | null {
+  if (!candidate) return current ?? null;
+  if (!current) return candidate;
+  if (candidate.date > current.date) return candidate;
+  if (candidate.date < current.date) return current;
+  return candidate.concept.localeCompare(current.concept) > 0 ? candidate : current;
+}
 
 /**
  * Filter and sum Zeta receipts by currency for the post-baseline period.
@@ -50,27 +99,34 @@ export function filterAndSumZetaReceipts(
   const result: Partial<Record<TreasuryCurrencyCode, number>> = {};
 
   for (const row of receipts) {
-    const code = String(row.currency_code ?? "")
-      .trim()
-      .toUpperCase();
-    if (code !== "UYU" && code !== "USD") continue;
-
-    const currency = code as TreasuryCurrencyCode;
-    const baseline = baselineDates[currency];
-    if (!baseline) continue; // no baseline → unknown overlap, skip conservatively
-
-    const rDate = String(row.receipt_date ?? "").slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(rDate) || rDate < baseline) continue;
-
-    const status = String(row.status ?? "")
-      .trim()
-      .toLowerCase();
-    if (status && VOIDED_RECEIPT_STATUSES.has(status)) continue;
+    const valid = isValidPostBaselineReceipt(row, baselineDates);
+    if (!valid) continue;
 
     const amount = typeof row.amount === "number" ? row.amount : 0;
-    if (amount <= 0) continue;
+    result[valid.currency] = Math.round(((result[valid.currency] ?? 0) + amount) * 100) / 100;
+  }
 
-    result[currency] = Math.round(((result[currency] ?? 0) + amount) * 100) / 100;
+  return result;
+}
+
+/**
+ * Último recibo/cobro Zeta post-baseline por moneda (solo display; no altera montos).
+ */
+export function findLatestZetaReceipts(
+  receipts: readonly ZetaReceiptRow[],
+  baselineDates: Partial<Record<TreasuryCurrencyCode, string>>
+): Partial<Record<TreasuryCurrencyCode, ZetaCashEvent>> {
+  const result: Partial<Record<TreasuryCurrencyCode, ZetaCashEvent>> = {};
+
+  for (const row of receipts) {
+    const valid = isValidPostBaselineReceipt(row, baselineDates);
+    if (!valid) continue;
+
+    const candidate: ZetaCashEvent = {
+      date: valid.date,
+      concept: receiptConcept(row),
+    };
+    result[valid.currency] = pickLaterCashEvent(result[valid.currency], candidate) ?? candidate;
   }
 
   return result;

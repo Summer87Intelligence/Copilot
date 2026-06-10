@@ -327,9 +327,9 @@ describe("buildCopilotNavItemGroups — filtrado por módulo", () => {
     // moduleKey items con 'none' no aparecen
     expect(allItems.some((i) => i.href === "/copilot/hoy")).toBe(false);
     expect(allItems.some((i) => i.href === "/copilot/tesoreria")).toBe(false);
-    // items sin moduleKey (alertas, operacional) siempre visibles
+    // items sin moduleKey (alertas) siempre visibles
     expect(allItems.some((i) => i.href === "/copilot/alertas")).toBe(true);
-    expect(allItems.some((i) => i.href === "/copilot/operacional")).toBe(true);
+    expect(allItems.some((i) => i.href === "/copilot/operacional")).toBe(false);
   });
 
   it("sin permisos cargados (vacío) muestra todos los items base", () => {
@@ -346,7 +346,7 @@ describe("buildCopilotNavItemGroups — filtrado por módulo", () => {
       reportes: "none", datos: "none", agentes: "none", manual: "none", admin: "none",
     };
     const groups = buildCopilotNavItemGroups(false, perms);
-    // Solo deben quedar grupos con items sin moduleKey (Alertas, Operacional)
+    // Solo deben quedar grupos con items sin moduleKey (Alertas)
     const allItems = groups.flatMap((g) => g.items);
     const withModuleKey = allItems.filter((i) => i.moduleKey !== undefined);
     expect(withModuleKey.length).toBe(0);

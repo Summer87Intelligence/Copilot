@@ -5,6 +5,37 @@ import type { HoyCashPositionBlock } from "@/lib/copilot-today-business-pulse";
 import { HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
 import { fmtCurrencyAmount } from "@/lib/copilot-today-business-pulse";
 
+function formatCashEventDate(ymd: string): string {
+  const [y, m, d] = ymd.split("-");
+  if (!y || !m || !d) return ymd;
+  return `${d}/${m}/${y}`;
+}
+
+function CashEventLine({
+  label,
+  event,
+  emptyLabel,
+}: {
+  label: string;
+  event: { date: string; concept: string } | null;
+  emptyLabel: string;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <span className="text-[var(--copilot-ink-muted)]">{label}</span>
+      {event ? (
+        <span className="max-w-[55%] truncate text-right text-xs text-[var(--copilot-ink)]">
+          {formatCashEventDate(event.date)} · {event.concept}
+        </span>
+      ) : (
+        <span className="max-w-[55%] truncate text-right text-xs text-[var(--copilot-ink-muted)]">
+          {emptyLabel}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function CashCurrencyBlock({ block }: { block: HoyCashPositionBlock }) {
   const title = block.currency === "USD" ? "Dólares (USD)" : "Pesos (UYU)";
 
@@ -38,16 +69,16 @@ function CashCurrencyBlock({ block }: { block: HoyCashPositionBlock }) {
             {fmtCurrencyAmount(block.availableCash, block.currency)}
           </span>
         </div>
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="text-[var(--copilot-ink-muted)]">Último movimiento</span>
-          {block.lastMovement ? (
-            <span className="max-w-[55%] truncate text-right text-xs text-[var(--copilot-ink)]">
-              {block.lastMovement.date} · {block.lastMovement.concept}
-            </span>
-          ) : (
-            <span className="text-xs text-[var(--copilot-ink-muted)]">—</span>
-          )}
-        </div>
+        <CashEventLine
+          label={HOY_COPY.lastIncomeLabel}
+          event={block.lastIncome}
+          emptyLabel={HOY_COPY.noIncomeRegistered}
+        />
+        <CashEventLine
+          label={HOY_COPY.lastExpenseLabel}
+          event={block.lastExpense}
+          emptyLabel={HOY_COPY.noExpenseRegistered}
+        />
       </div>
       {!block.openingConfigured ? (
         <p className="mt-2 text-[10px] leading-relaxed text-[var(--copilot-ink-muted)]">

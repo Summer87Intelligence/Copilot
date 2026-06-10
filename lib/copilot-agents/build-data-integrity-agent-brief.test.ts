@@ -17,7 +17,7 @@ function makeNotif(overrides: Partial<CopilotNotification>): CopilotNotification
     entity_id: null,
     amount: null,
     currency: null,
-    action_href: "/copilot/operacional",
+    action_href: "/copilot/alertas",
     dedup_key: null,
     metadata: {},
     read_at: null,
@@ -49,17 +49,17 @@ describe("buildDataIntegrityAgentBrief", () => {
     expect(result.status).toBe("stable");
     expect(result.priorities).toHaveLength(0);
     expect(result.summary).toContain("actualizados");
-    expect(result.nextBestAction!.href).toBe("/copilot/operacional");
+    expect(result.nextBestAction!.href).toBe("/copilot/alertas");
   });
 
-  it("sync_failed critical → brief critical + prioridad Ver operacional", () => {
+  it("sync_failed critical → brief critical + prioridad Ver alertas", () => {
     const n = makeNotif({ id: "sf1", severity: "critical" });
     const result = buildDataIntegrityAgentBrief({ notifications: [n] });
     expect(result.status).toBe("critical");
     expect(result.priorities).toHaveLength(1);
     expect(result.priorities[0].severity).toBe("critical");
-    expect(result.priorities[0].ctaLabel).toBe("Ver operacional");
-    expect(result.priorities[0].href).toBe("/copilot/operacional");
+    expect(result.priorities[0].ctaLabel).toBe("Ver alertas");
+    expect(result.priorities[0].href).toBe("/copilot/alertas");
   });
 
   it("sync_failed warning → brief attention con prioridad high", () => {
@@ -120,14 +120,14 @@ describe("buildDataIntegrityAgentBrief", () => {
     expect(result.summary).not.toContain("unique violation");
   });
 
-  it("CTA siempre apunta a /copilot/operacional", () => {
+  it("CTA siempre apunta a /copilot/alertas (estado del sistema)", () => {
     const n = makeNotif({ id: "sf7", severity: "critical" });
     const result = buildDataIntegrityAgentBrief({ notifications: [n] });
     for (const p of result.priorities) {
-      expect(p.href).toBe("/copilot/operacional");
-      expect(p.ctaLabel).toBe("Ver operacional");
+      expect(p.href).toBe("/copilot/alertas");
+      expect(p.ctaLabel).toBe("Ver alertas");
     }
-    expect(result.nextBestAction!.href).toBe("/copilot/operacional");
+    expect(result.nextBestAction!.href).toBe("/copilot/alertas");
   });
 
   it("operationalHealth critical → prioridad crítica sin notificaciones", () => {
@@ -135,7 +135,7 @@ describe("buildDataIntegrityAgentBrief", () => {
     const result = buildDataIntegrityAgentBrief({ operationalHealth: health });
     expect(result.status).toBe("critical");
     expect(result.priorities[0].severity).toBe("critical");
-    expect(result.priorities[0].href).toBe("/copilot/operacional");
+    expect(result.priorities[0].href).toBe("/copilot/alertas");
   });
 
   it("operationalHealth degraded → prioridad high", () => {

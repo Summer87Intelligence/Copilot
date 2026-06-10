@@ -37,7 +37,7 @@ describe("buildCockpitView", () => {
           openingConfigured: false,
           openingBalance: 0,
           movementsCount: 1,
-          lastMovement: null,
+          lastMovement: null, lastIncome: null, lastExpense: null,
         },
       ],
     });
@@ -50,6 +50,6 @@ describe("buildCockpitView", () => {
     expect(view.insights.length).toBeLessThanOrEqual(3);
     expect(view.hero.statusLabel).toMatch(/ESTABLE|REQUIERE ATENCIÓN|ATENCIÓN CRÍTICA/);
     expect(view.hero.headline.length).toBeGreaterThan(0);
-    expect(view.hero.operacionalHref).toBe("/copilot/operacional");
+    expect(view.hero.operacionalHref).toBe("/copilot/alertas");
   });
 });

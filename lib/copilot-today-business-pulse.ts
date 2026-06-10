@@ -855,7 +855,7 @@ function rawKeyIndicators(p: {
       value: dataValue,
       tone: dataTone,
       helperText: "Actualización de la información al día de hoy",
-      deepLink: "/copilot/operacional",
+      deepLink: "/copilot/alertas",
       detailTitle: "Estado de la información",
       detailBody:
         p.confidence === "high"
@@ -1030,8 +1030,8 @@ function buildPendingItems(p: {
             id: "data_quality",
             title: "Revisar actualización de datos",
             impacto: "Información secundaria pendiente de actualizar",
-            accion: "Ver estado operacional",
-            deepLink: "/copilot/operacional",
+            accion: "Ver alertas",
+            deepLink: "/copilot/alertas",
             urgency: "baja" as const,
           },
         ]
@@ -1120,7 +1120,7 @@ function buildRecommendedActions(p: {
     actions.push({
       id: "update_data",
       label: "Actualizar información",
-      deepLink: "/copilot/operacional",
+      deepLink: "/copilot/alertas",
       tone: "neutral",
     });
   }

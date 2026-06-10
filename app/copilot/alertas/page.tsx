@@ -53,7 +53,7 @@ function actionLabel(href: string): string {
   if (href.includes("/cartera")) return "Ver cartera";
   if (href.includes("section=pagos")) return "Ver pagos";
   if (href.includes("/tesoreria")) return "Ver Tesorería";
-  if (href.includes("/operacional")) return "Ver operacional";
+  if (href.includes("/alertas")) return "Ver alertas";
   if (href.includes("/acciones")) return "Ver acciones";
   if (href.includes("/hoy")) return "Ver hoy";
   return "Ver detalle";

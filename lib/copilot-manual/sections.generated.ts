@@ -18,12 +18,13 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
     title: "Cómo moverse por Copilot",
     includeInToc: true,
     blocks: [
-      { type: "paragraph", text: "El menú lateral está organizado para que sepas dónde empezar, dónde operar y dónde consultar sin perder rutas ni funciones." },
-      { type: "callout", variant: "tip", text: "Acciones vs. Alertas: Alertas cuenta qué pasó; Acciones dice qué hacer. Ambas siguen disponibles; Alertas está en Sistema para no competir con el flujo diario." },
-      { type: "bullets", items: ["Hoy — operación diaria: prioridad del día, caja y cobros urgentes."] },
-      { type: "bullets", items: ["Acciones — tareas y agenda de cobranza.","Clientes — ficha 360, cobranza y contacto.","Cartera — deuda por período y reportes.","Tesorería — caja, pagos próximos y movimientos."] },
-      { type: "bullets", items: ["Datos — facturas, recibos y registros en tabla.","Reportes — cada reporte puede verse en pantalla o descargarse como PDF. Cubre cobranza, caja, ventas, ejecutivo mensual, ranking de clientes y descarga masiva de estados de cuenta.","Panorama financiero — lectura general (no reemplaza Tesorería ni Cartera).","Agentes IA — briefings de lectura; no modifican datos."] },
-      { type: "bullets", items: ["Manual de uso — esta guía.","Alertas — qué pasó en el negocio (inbox de avisos).","Estado del sistema — integraciones, sincronización y salud técnica."] },
+      { type: "paragraph", text: "El menú lateral está organizado en cuatro bloques para dirección: Inicio, Operación, Análisis y Sistema." },
+      { type: "callout", variant: "tip", text: "Período vs. situación actual — en Dashboard y Cartera distinguimos métricas del rango seleccionado (ventas, cobrado, pendiente del período) de la foto de hoy (deuda actual, caja, proyección). No mezcles ambos al leer un número." },
+      { type: "bullets", items: ["Inicio — Hoy (operación diaria) y Dashboard (análisis ejecutivo)."] },
+      { type: "bullets", items: ["Operación — Clientes, Cartera, Tesorería y Acciones (tareas concretas del día)."] },
+      { type: "bullets", items: ["Análisis — Reportes (PDFs), Finanzas (panorama) y Agentes IA (briefings de lectura)."] },
+      { type: "bullets", items: ["Sistema — Datos (tablas), Alertas (inbox), Configuración (usuarios y permisos, según rol) y Manual de uso."] },
+      { type: "callout", variant: "info", text: "Enlaces guardados — redirects permanentes: /copilot/insights → Dashboard; /copilot/gestion-ia → Agentes IA; /copilot/rutas y /copilot/personalizacion → Hoy; /copilot/operacional → Alertas." },
     ],
   },
   {
@@ -38,7 +39,7 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
       { type: "bullets", items: ["Tu día en una frase — la acción concreta sugerida con un CTA (clientes con deuda, agenda, Tesorería o acciones).","Estado del día (semáforo) — el badge Al día / Requiere atención / Atención crítica es clicable. Al tocarlo aparece un popover con las señales detectadas: clientes que requieren atención, caja post-pagos y métricas de cartera. Incluye accesos rápidos a Clientes, Tesorería y Acciones.","Qué resolver hoy — hasta 3 prioridades ejecutivas con título, motivo y CTA directo: clientes con deuda para gestionar (vencidos y al día), agenda de cobranza pendiente y caja ajustada. Solo aparece cuando hay señales activas.","Caja disponible — dinero en Tesorería ahora. No es facturación ni deuda de clientes.","Deuda de clientes — Deuda actual (facturas abiertas). Es deuda de clientes, no plata en caja.","Pagos próximos — qué salidas están cargadas en Tesorería para los próximos días.","Caja proyectada — cuánto queda si se pagan todos los compromisos cargados.","Clientes con deuda activa — todos los clientes con saldo pendiente, separados por moneda y ordenados por antigüedad de mora. Paginación 25/50/100. Los totales superiores reflejan toda la deuda activa sincronizada desde Zeta.","Detalle financiero del período — facturación, cobros y proyección del período seleccionado.","Próximos 30 días — escenario operativo con caja, pagos y lo que podrías cobrar.","Generar PDF — en Clientes podés descargar el reporte de deudores."] },
       { type: "callout", variant: "info", text: "Clientes con deuda — la tabla lista todos los deudores con paginación; los totales superiores (Deuda actual UYU/USD) son el rollup completo del negocio, igual que Cartera y Dashboard. Hacé clic en cualquier fila para ver el desglose por factura." },
       { type: "bullets", items: ["Deuda actual — saldo abierto del cliente en esa moneda. Viene de las facturas abiertas sincronizadas desde Zeta.","Deuda vencida — facturas con vencimiento anterior a hoy (incluye mora de 1 a 30 días). Deuda vencida >30 días es un subconjunto con más de 30 días de atraso. Si es 0, el cliente tiene deuda pero todavía está dentro del plazo.","Deuda al día — diferencia entre deuda actual y deuda vencida. Saldo pendiente todavía dentro del plazo.","Días de atraso — días desde la factura vencida más antigua. Aparece solo cuando hay deuda vencida registrada.","Fila expandida — hacé clic en una fila para ver el resumen completo: montos, estado (al día / requiere seguimiento), fuente del dato, moneda y datos de contacto.","Badge 'Deuda al día' — el cliente tiene deuda actual pero ninguna factura venció todavía.","Badge 'Vencido' — hay al menos una factura cuya fecha de vencimiento ya pasó."] },
-      { type: "bullets", items: ["Saldo actual cargado — el punto de partida. Lo cargás vos en Tesorería con la plata real que tenés en caja o cuenta.","Cobros Zeta posteriores — si un cliente paga después de que cargaste el saldo, Copilot lo suma automáticamente cuando aparece en Zeta. No tenés que registrarlo a mano.","Registros manuales — plata que ingresa o egresa pero no viene de Zeta (transferencias, adelantos, pagos realizados). Se registra en Tesorería.","Pagos programados sin confirmar — no restan hasta que los marcás como ejecutados."] },
+      { type: "bullets", items: ["Saldo actual cargado — el punto de partida. Lo cargás vos en Tesorería con la plata real que tenés en caja o cuenta.","Cobros Zeta posteriores — si un cliente paga después de que cargaste el saldo, Copilot lo suma automáticamente cuando aparece en Zeta. No tenés que registrarlo a mano.","Registros manuales — plata que ingresa o egresa pero no viene de Zeta (transferencias, adelantos, pagos realizados). Se registra en Tesorería.","Último ingreso — el recibo/cobro más reciente (Zeta o ingreso manual). Si no hay ninguno: «No hay ingresos registrados».","Último egreso — el egreso manual más reciente. Si no hay ninguno: «No hay egresos registrados». Ingreso y egreso se muestran en líneas separadas.","Pagos programados sin confirmar — no restan hasta que los marcás como ejecutados."] },
       { type: "bullets", items: ["Si hay clientes con deuda vencida — abrí su ficha y contactá por WhatsApp o email.","Si hay pagos próximos — entrá a Tesorería para confirmar que estén cubiertos.","Si la caja después de pagos queda baja — revisá saldo y pagos en Tesorería.","Si la caja disponible parece incorrecta — verificá que el saldo en Tesorería esté actualizado.","Para ver el detalle de facturación y cobros — abrí 'Detalle financiero del período'.","Para ver escenario a 30 días — abrí 'Próximos 30 días' dentro del mismo detalle."] },
     ],
   },
@@ -183,7 +184,7 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
     title: "Estado del sistema — Sincronización y salud técnica",
     includeInToc: true,
     blocks: [
-      { type: "paragraph", text: "Estado del sistema (antes Operacional) muestra si los datos se están actualizando correctamente y la salud de la integración con Zeta." },
+      { type: "paragraph", text: "El estado del sistema y la salud de los datos se consultan en Alertas (avisos de sincronización) y en Datos (tablas y registros). Ya no hay una pantalla Operacional separada." },
       { type: "callout", variant: "info", text: "Al entrar verás Confianza del dato: última actualización, cantidad de clientes/facturas/recibos sincronizados y si hay conflictos." },
       { type: "bullets", items: ["Cuándo fue la última actualización de datos.","Si la conexión con el sistema contable está funcionando.","Cuántas actualizaciones salieron bien y cuántas fallaron.","El estado general de los flujos de datos."] },
     ],
@@ -193,7 +194,7 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
     title: "Estado: Atención / Estable / Crítico",
     includeInToc: true,
     blocks: [
-      { type: "paragraph", text: "El estado del negocio aparece en la parte superior de la pantalla y en algunas páginas como Hoy y Operacional. Te indica de un vistazo si todo está bien o si hay algo para atender." },
+      { type: "paragraph", text: "El estado del negocio aparece en la parte superior de la pantalla y en páginas como Hoy y Alertas. Te indica de un vistazo si todo está bien o si hay algo para atender." },
       { type: "callout", variant: "tip", text: "Al tocar o hacer clic sobre el estado se despliega el detalle: qué alertas están activas, cuáles son críticas y cuáles son solo informativas." },
       { type: "status", entries: [{"level":"ok","title":"Estable","description":"Todo está dentro de lo esperado. Podés operar con normalidad."},{"level":"warning","title":"Atención","description":"Hay algo para revisar. No es urgente, pero conviene no ignorarlo. Tocar el estado muestra el detalle."},{"level":"critical","title":"Crítico","description":"Hay algo importante que puede afectar caja, pagos o la calidad de los datos. Revisarlo pronto."}] },
     ],
@@ -360,7 +361,7 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
         type: "subsection",
         title: "¿Qué pasa si el sistema contable falla?",
         blocks: [
-          { type: "paragraph", text: "Copilot usa los últimos datos disponibles y muestra el problema en Operacional. Los datos anteriores siguen siendo válidos. El sistema se recupera solo cuando la conexión vuelve." },
+          { type: "paragraph", text: "Copilot usa los últimos datos disponibles y muestra el problema en Alertas. Los datos anteriores siguen siendo válidos. El sistema se recupera solo cuando la conexión vuelve." },
         ],
       },
       {
@@ -402,7 +403,7 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
         type: "subsection",
         title: "¿Dónde veo si los datos están actualizados?",
         blocks: [
-          { type: "paragraph", text: "En Operacional (/copilot/operacional)." },
+          { type: "paragraph", text: "En Alertas (/copilot/alertas) y Datos (/copilot/datos)." },
         ],
       },
       {
@@ -423,7 +424,7 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
         type: "subsection",
         title: "¿Qué pasa si Zeta falla y uso el agente?",
         blocks: [
-          { type: "paragraph", text: "El agente puede mostrar información con los últimos datos disponibles y recomendar revisar Operacional. No inventa datos nuevos." },
+          { type: "paragraph", text: "El agente puede mostrar información con los últimos datos disponibles y recomendar revisar Alertas. No inventa datos nuevos." },
         ],
       },
       {
@@ -472,13 +473,13 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
       { type: "callout", variant: "info", text: "Fuente y trazabilidad — misma tira compacta que Hoy: Fuente Zeta, última actualización relativa y período seleccionado." },
       { type: "callout", variant: "tip", text: "Si el período no tiene movimiento, un estado vacío explica por qué, qué hacer y qué verás cuando haya datos." },
       { type: "callout", variant: "tip", text: "Usá el filtro de moneda (UYU / USD / UYU + USD separado / USD consolidado) y el selector de período para ajustar la lectura. Los gráficos de tendencia muestran un bucket por mes para cada mes del período seleccionado." },
-      { type: "bullets", items: ["Ventas del período — facturas emitidas dentro del rango seleccionado, neto de notas de crédito. Depende del período.","Cobrado del período — recibos registrados en Zeta dentro del rango seleccionado. Depende del período.","Pendiente del período — ventas del período menos cobrado dentro del rango seleccionado. No es deuda acumulada ni cartera pendiente actual. Puede ser negativo si hubo cobros de facturas anteriores.","Cartera pendiente actual — suma de todas las facturas pendientes al día de hoy. No está limitada por el rango de fechas seleccionado.","Deuda vencida total — parte de la cartera pendiente cuya fecha de vencimiento ya pasó. No depende del período seleccionado.","Caja disponible — dinero disponible actual en Tesorería. Es el saldo operativo registrado, no una proyección.","Caja proyectada — saldo estimado luego de descontar pagos programados próximos. Proyección operativa, no saldo bancario actual. Si no hay pagos programados, coincide con la caja disponible."] },
+      { type: "bullets", items: ["Resultado del período — bloque superior con tres cards: Ventas del período, Cobrado del período y Pendiente del período. Todas dependen del rango Desde/Hasta.","Situación actual — bloque inferior con cuatro cards: Deuda actual total, Deuda vencida, Caja disponible y Caja proyectada. Son foto al día de hoy; no se recalculan solo con el rango seleccionado.","Ventas del período — facturas emitidas dentro del rango, neto de notas de crédito.","Cobrado del período — recibos registrados en Zeta dentro del rango.","Pendiente del período — ventas del período menos cobrado del período. Puede ser negativo si hubo cobros de facturas anteriores.","Deuda actual total — total adeudado por clientes, incluyendo saldos de períodos anteriores.","Deuda vencida — parte de la deuda actual con vencimiento ya superado.","Caja disponible — dinero operativo en Tesorería ahora.","Caja proyectada — caja disponible menos pagos programados próximos (proyección operativa, no saldo bancario)."] },
       { type: "callout", variant: "info", text: "UYU y USD nunca se suman ni se convierten sin TC explícito. Con 'UYU + USD (separado)', cada gráfico se muestra en dos bloques independientes (UYU y USD), cada uno con su propia escala. Con 'USD consolidado', todos los valores se convierten a USD usando el TC configurado." },
       { type: "callout", variant: "warning", text: "Estimación operativa. En modo UYU + USD (separado) o USD consolidado con TC, el Dashboard muestra un aviso visible: los importes consolidados usan TC configurable (cuando aplica) y pueden diferir de extractos o contabilidad formal." },
       { type: "bullets", items: ["USD consolidado — convierte todos los KPIs y gráficos a USD usando la fórmula: USD + UYU ÷ TC. Al seleccionar este modo aparecen el chip de TC y el botón 'Editar TC'. Si aún no hay TC guardado, se muestra un input inline para configurarlo.","Tipo de cambio (TC) — visible solo en modo 'USD consolidado'. Representa pesos por 1 dólar (ej. 43,50 — 1 USD = 43,50 UYU). Debe ser un número entre 0,01 y 999,99. En modos UYU + USD (separado), UYU o USD el chip y botón de TC no se muestran — esos modos no convierten valores.","USD consolidado — widgets en este modo: una sola columna USD en resumen ejecutivo, KPI cards en U$S, gráficos de tendencia con una sola serie, ranking de deudores y facturación mergeado por cliente, estado de cartera con cartera pendiente/vencida consolidada, caja proyectada en USD consolidado, tabla de deuda activa con una fila por cliente (UYU+USD mergeados).","Movimientos recientes en USD consolidado — la tabla mantiene la moneda original para trazabilidad contable y agrega una columna 'Equiv. USD' con el equivalente calculado (monto_uyu ÷ TC para UYU, monto_usd para USD). No se pierde el Debe/Haber original.","PDF — el tipo de cambio solo aparece en la portada cuando el reporte se genera en modo USD consolidado. En PDFs UYU, USD o UYU + USD (separado) no se muestra TC."] },
       { type: "bullets", items: ["[1] Ventas por mes — evolución mensual de facturación neta del período seleccionado. Con 'UYU + USD (separado)': dos gráficos separados (UYU y USD) con escalas independientes.","[2] Cobros por mes — evolución mensual de cobros reales. Mismo comportamiento que [1].","[3] Ventas vs Cobros — facturado vs cobrado para el período. Incluye el chip 'Cobranza: X% · Pendiente del período: Y%'. Con 'UYU + USD (separado)': dos gráficos separados (UYU y USD).","[4] Deuda por antigüedad — distribución del saldo vencido por bucket basado en fecha de vencimiento: 0—30d, 31—60d, 61—90d, +90d. Con 'UYU + USD (separado)': dos gráficos separados.","[5] Top 10 deudores — con moneda 'UYU + USD (separado)' se muestran dos bloques (UYU y USD). El subtítulo indica qué porcentaje del total de deuda de esa moneda concentran los top 10.","[6] Top 10 facturación histórica — con 'UYU + USD (separado)', dos bloques UYU/USD. Histórico total por cliente.","[7] Estado de cartera — 4 indicadores de clientes: Clientes activos, Con deuda activa, Con deuda vencida (ámbar), Al día (verde). Los clientes se cuentan una sola vez aunque tengan deuda en más de una moneda. También muestra cartera pendiente UYU y USD por separado.","[9] Caja proyectada 30 días — línea de caja disponible hoy y proyección después de pagos programados.","[10] Efectividad de cobros — porcentaje de lo facturado que fue cobrado en el período (cobrado / facturado)."] },
       { type: "callout", variant: "warning", text: "El gráfico [6] 'Top 10 facturación' usa facturación histórica total del portafolio porque no hay API por período por cliente. El badge 'Histórico total' lo indica. Para facturación del período usá Reportes — Ventas." },
-      { type: "bullets", items: ["Resumen ejecutivo — banner coloreado con estado del negocio: 'Estado financiero: Estable / Atención / Crítico'. Incluye una tabla compacta de KPIs (facturado, cobrado, pendiente del período, cartera pendiente actual, deuda vencida, caja disponible) con valores UYU y USD en la misma fila. Máximo 3 chips: riesgo principal, señal positiva y acción sugerida.","Estado Estable — sin deuda vencida, sin clientes de riesgo alto y caja positiva después de pagos.","Estado Atención — hay al menos un cliente de riesgo alto, o hay deuda vencida, o la caja proyectada baja respecto a la caja disponible.","Estado Crítico — 3 o más clientes de riesgo alto, o la caja proyectada queda negativa."] },
+      { type: "bullets", items: ["Resumen ejecutivo — banner coloreado con estado del negocio: 'Estado financiero: Estable / Atención / Crítico'. Incluye una tabla compacta de KPIs (facturado, cobrado, pendiente del período, cartera pendiente actual, deuda vencida, caja disponible) con valores UYU y USD en la misma fila. Máximo 3 chips: riesgo principal, señal positiva y acción sugerida.","Chip de deuda vencida — en modo UYU + USD (separado) muestra importes por moneda (ej. 'Vencido: $ X UYU · U$S Y USD') sin sumar UYU y USD. En solo UYU o solo USD muestra una moneda. En USD consolidado usa el TC visible y el sufijo '(cons.)'.","Estado Estable — sin deuda vencida, sin clientes de riesgo alto y caja positiva después de pagos.","Estado Atención — hay al menos un cliente de riesgo alto, o hay deuda vencida, o la caja proyectada baja respecto a la caja disponible.","Estado Crítico — 3 o más clientes de riesgo alto, o la caja proyectada queda negativa."] },
       { type: "bullets", items: ["Clientes con deuda activa — todos los clientes con saldo pendiente, una fila por moneda. Columnas: cliente, moneda, deuda activa, deuda vencida, días de atraso, estado y acciones. Muestra los 10 primeros; 'Ver todos' expande la lista completa.","Movimientos recientes del período — facturas, recibos y notas de crédito del período seleccionado. Columnas: fecha, tipo, cliente, comprobante, moneda, debe, haber y saldo pendiente. Respeta el filtro de moneda. Muestra los 10 últimos; 'Ver todos' expande."] },
       { type: "bullets", items: ["Período — elegís el rango de fechas. Por defecto muestra el mes actual al día de hoy. Si cambiás el período, los KPIs facturado, cobrado y pendiente del período se recalculan para ese rango. La sección de tendencia mensual muestra el rango completo seleccionado.","Moneda — 'UYU + USD (separado)' muestra UYU y USD por separado en cada card y gráfico, sin conversión ni suma. 'Solo UYU' o 'Solo USD' filtran a una moneda. 'USD consolidado' convierte todo a USD con TC.","Los filtros no afectan Cartera pendiente actual (que siempre es all-outstanding al corte) ni el gráfico [6] (histórico total)."] },
       { type: "bullets", items: ["Descargar PDF — el botón en el encabezado del Dashboard genera un PDF del período actualmente seleccionado. La moneda del PDF coincide con la seleccionada en pantalla. El tipo de cambio solo se imprime en PDFs generados en modo USD consolidado. El mismo PDF puede generarse desde Reportes — Dashboard Resumen Ejecutivo."] },
@@ -520,7 +521,7 @@ export const COPILOT_MANUAL_FAQ: Array<{ q: string; a: string }> = [
   },
   {
     "q": "¿Qué pasa si el sistema contable falla?",
-    "a": "Copilot usa los últimos datos disponibles y muestra el problema en Operacional. Los datos anteriores siguen siendo válidos. El sistema se recupera solo cuando la conexión vuelve."
+    "a": "Copilot usa los últimos datos disponibles y muestra el problema en Alertas. Los datos anteriores siguen siendo válidos. El sistema se recupera solo cuando la conexión vuelve."
   },
   {
     "q": "¿Cada cuánto se actualizan los datos?",
@@ -544,7 +545,7 @@ export const COPILOT_MANUAL_FAQ: Array<{ q: string; a: string }> = [
   },
   {
     "q": "¿Dónde veo si los datos están actualizados?",
-    "a": "En Operacional (/copilot/operacional)."
+    "a": "En Alertas (/copilot/alertas) y Datos (/copilot/datos)."
   },
   {
     "q": "¿Los agentes pueden modificar datos?",
@@ -556,7 +557,7 @@ export const COPILOT_MANUAL_FAQ: Array<{ q: string; a: string }> = [
   },
   {
     "q": "¿Qué pasa si Zeta falla y uso el agente?",
-    "a": "El agente puede mostrar información con los últimos datos disponibles y recomendar revisar Operacional. No inventa datos nuevos."
+    "a": "El agente puede mostrar información con los últimos datos disponibles y recomendar revisar Alertas. No inventa datos nuevos."
   },
   {
     "q": "Copié o envié un mensaje al cliente. ¿Qué hago ahora?",

@@ -177,11 +177,11 @@ export function OperationalSemaphoreIndicator() {
             </Link>
             {semaphore.level !== "ok" ? (
               <Link
-                href="/copilot/operacional"
+                href="/copilot/alertas"
                 onClick={close}
                 className="inline-flex w-full items-center justify-center rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-[rgba(44,40,37,0.04)]"
               >
-                Ver Operacional
+                Ver alertas
               </Link>
             ) : null}
           </div>
