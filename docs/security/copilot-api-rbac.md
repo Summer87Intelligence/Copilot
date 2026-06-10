@@ -80,7 +80,7 @@ Fuente de verdad: `lib/auth/copilot-api-module-map.ts` + clasificación en `lib/
 
 | `/api/copilot/treasury/*` | `tesoreria` | Caja, pagos, conciliación Santander |
 
-| `/api/copilot/dashboard/*` | `hoy` | Dashboard Resumen (PDF) |
+| `/api/copilot/dashboard/*` | `dashboard` | Dashboard Resumen (PDF) |
 
 | `/api/copilot/reports/*` | `reportes` | PDFs/JSON operativos |
 
@@ -182,7 +182,7 @@ Resolución automática: `resolveCopilotApiModuleKey(pathname)` en `lib/auth/cop
 
 | `/api/copilot/logout` | **pública** | Cierre de sesión |
 
-| `/api/copilot/admin/*` | **admin** | `requireAdminContext` + middleware superadmin |
+| `/api/copilot/admin/*` | **admin** | `requireAdminContext` + guard superadmin en `proxy.ts` |
 
 | `/api/copilot/me` | **tenant only** | Identidad/sesión — solo `appUser` de la sesión |
 
@@ -218,7 +218,7 @@ Resolución automática: `resolveCopilotApiModuleKey(pathname)` en `lib/auth/cop
 
 
 
-## Middleware vs API
+## Proxy Edge vs API
 
 
 
@@ -226,7 +226,7 @@ Resolución automática: `resolveCopilotApiModuleKey(pathname)` en `lib/auth/cop
 
 |------|------------|
 
-| `middleware.ts` (páginas `/copilot/*`) | Preset del rol en cookie (Edge, sin DB overrides) |
+| `proxy.ts` (convención Next.js 16; páginas `/copilot/*`) | Preset del rol en cookie (proxy Edge, sin DB overrides) |
 
 | **API handlers** | Preset + **`app_user_permissions`** vía helper |
 
@@ -333,8 +333,6 @@ El test `copilot-api-rbac-coverage.test.ts` escanea `app/api/copilot/**/route.ts
 ## Riesgos restantes
 
 
-
-- **Nav UI `dashboard` vs API `hoy`**: el sidebar puede usar `moduleKey: "dashboard"` mientras las APIs de dashboard resuelven `hoy`. Alinear en fase UI futura.
 
 - **Cron en `/notifications/generate`**: bypass con `CRON_SECRET`; usuarios autenticados pasan por RBAC `hoy` write.
 

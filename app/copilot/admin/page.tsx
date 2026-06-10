@@ -60,6 +60,7 @@ type AdminSummary = {
 
 const MODULE_LABELS: Record<ModuleKey, string> = {
   hoy: "Hoy",
+  dashboard: "Dashboard",
   acciones: "Acciones",
   clientes: "Clientes",
   cartera: "Cartera",

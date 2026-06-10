@@ -11,6 +11,7 @@ type RolePreset = Record<ModuleKey, AccessLevel>;
 
 const SUPERADMIN_PRESET: RolePreset = {
   hoy: "admin",
+  dashboard: "admin",
   acciones: "admin",
   clientes: "admin",
   cartera: "admin",
@@ -25,6 +26,7 @@ const SUPERADMIN_PRESET: RolePreset = {
 
 const USUARIO_PRESET: RolePreset = {
   hoy: "read",
+  dashboard: "read",
   acciones: "read",
   clientes: "read",
   cartera: "read",
@@ -39,6 +41,7 @@ const USUARIO_PRESET: RolePreset = {
 
 const COBRANZA_PRESET: RolePreset = {
   hoy: "read",
+  dashboard: "read",
   acciones: "write",
   clientes: "write",
   cartera: "read",
@@ -53,6 +56,7 @@ const COBRANZA_PRESET: RolePreset = {
 
 const TESORERIA_PRESET: RolePreset = {
   hoy: "read",
+  dashboard: "read",
   acciones: "read",
   clientes: "read",
   cartera: "read",
@@ -67,6 +71,7 @@ const TESORERIA_PRESET: RolePreset = {
 
 const CONTADOR_PRESET: RolePreset = {
   hoy: "read",
+  dashboard: "read",
   acciones: "read",
   clientes: "read",
   cartera: "read",

@@ -10,6 +10,7 @@
 
 export const MODULE_KEYS = [
   "hoy",
+  "dashboard",
   "acciones",
   "clientes",
   "cartera",

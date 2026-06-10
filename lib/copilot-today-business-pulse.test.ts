@@ -960,6 +960,18 @@ describe("buildTodayBusinessPulse", () => {
       expect(CURRENCY_METRIC_LABELS.billed).not.toMatch(/bruto/i);
       expect(HOY_COPY.debtorsSectionTitle).toBe("Clientes con deuda");
       expect(HOY_COPY.debtorsSectionTitle.toLowerCase()).not.toContain("prioritario");
+      expect(HOY_COPY.monthEndProjectionTitle).toBe("Caja proyectada al cierre del mes");
+      expect(HOY_COPY.monthEndMvpBadge).toBe("Estimación inicial");
+      expect(HOY_COPY.monthEndScenarioSubtitle.expected).toContain("Escenario esperado");
+      expect(HOY_COPY.monthEndDrawerScenariosNote).toContain("50%");
+      expect(HOY_COPY.monthEndDrawerScenariosNote).toContain("75%");
+      expect(HOY_COPY.monthEndDrawerScenariosNote).toContain("100%");
+      expect(HOY_COPY.monthEndDrawerRisksTitle).toBe("Riesgos detectados");
+      expect(HOY_COPY.monthEndRiskNoteCritical).toBe("Caja negativa");
+      expect(HOY_COPY.monthEndRiskNoteAttention).toBe("Margen bajo");
+      expect(HOY_COPY.monthEndOverallCritical.toLowerCase()).not.toContain("alarma");
+      expect(HOY_COPY.monthEndFridaysTip.toLowerCase()).not.toContain("inteligente");
+      expect(HOY_COPY.monthEndFridaysTip.toLowerCase()).not.toContain("predicción");
       expect(HOY_PAGE.title).toBe("Copilot · Hoy");
       expect(HOY_PAGE.title).not.toMatch(/pulso/i);
       expect(HOY_UI.showRecommendedActions).toBe(true);

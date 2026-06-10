@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
   let log = copilotRequestLogger(request);
 
   try {
-    const auth = await requireCopilotModuleAccess(request, "hoy");
+    const auth = await requireCopilotModuleAccess(request, "dashboard");
     if (!auth.ok) {
       log.warn("copilot_auth_failed", { phase: "dashboard_summary_pdf" });
       return auth.response;

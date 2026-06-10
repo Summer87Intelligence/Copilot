@@ -1,8 +1,19 @@
 import fs from "fs/promises";
 import path from "path";
+import { fileURLToPath } from "node:url";
 
-const MARKDOWN_ROOT = path.resolve(process.cwd(), "docs", "zeta", "markdown");
+/**
+ * Raíz del repo anclada a este módulo (lib/knowledge → ../..).
+ * Evita `process.cwd()` en rutas API: Turbopack NFT deja de trazar el proyecto entero.
+ */
+const PROJECT_ROOT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  ".."
+);
+const MARKDOWN_ROOT = path.join(PROJECT_ROOT, "docs", "zeta", "markdown");
 const INDEX_PATH = path.join(MARKDOWN_ROOT, "index.json");
+const MARKDOWN_REL_PREFIX = "docs/zeta/markdown/";
 
 export type ZetaKnowledgeIndexRow = {
   source_html: string;
@@ -35,10 +46,10 @@ export async function readZetaKnowledgeMarkdownByOutputPath(
   outputMdRelative: string
 ): Promise<string> {
   const rel = outputMdRelative.replace(/^\//, "");
-  if (!rel.startsWith("docs/zeta/markdown/")) {
+  if (!rel.startsWith(MARKDOWN_REL_PREFIX)) {
     throw new Error("Ruta de markdown inválida");
   }
-  const abs = path.resolve(process.cwd(), rel);
+  const abs = path.resolve(PROJECT_ROOT, rel);
   assertUnderMarkdownRoot(abs);
   return fs.readFile(abs, "utf8");
 }

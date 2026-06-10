@@ -23,6 +23,7 @@ import {
  * hoy NO está aquí porque es el destino de redirect — siempre accesible.
  */
 const COPILOT_MODULE_ROUTE_PREFIXES: Array<[string, string]> = [
+  ["/copilot/dashboard", "dashboard"],
   ["/copilot/tesoreria", "tesoreria"],
   ["/copilot/acciones", "acciones"],
   ["/copilot/clientes", "clientes"],
@@ -75,7 +76,7 @@ function isAuthPublicPath(pathname: string): boolean {
  * Protege `/copilot` y `/api/copilot/*` con cookie HttpOnly `copilot_session`
  * firmada (HMAC-SHA256); sin Supabase Auth en Edge).
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   if (isAuthPublicPath(pathname)) {
@@ -172,4 +173,3 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
-

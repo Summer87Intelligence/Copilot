@@ -26,7 +26,11 @@ import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-positi
 import { parseTreasuryCashPositionJson } from "@/lib/treasury/treasury-api-parse";
 import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
 import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
-import { parseTreasuryScheduledSummaryJson } from "@/lib/treasury/treasury-api-parse";
+import {
+  parseTreasuryScheduledItemsJson,
+  parseTreasuryScheduledSummaryJson,
+} from "@/lib/treasury/treasury-api-parse";
+import type { TreasuryScheduledPayment } from "@/lib/treasury/treasury-scheduled-payments";
 
 const DEFAULT_GATE: BusinessPulseGate = {
   confidence: "low",
@@ -68,6 +72,9 @@ export default function CopilotHoyPage() {
   const [treasuryOutflowSummaries, setTreasuryOutflowSummaries] = useState<
     TreasuryOutflowSummary[] | undefined
   >(undefined);
+  const [treasuryScheduledPayments, setTreasuryScheduledPayments] = useState<
+    TreasuryScheduledPayment[]
+  >([]);
   const [treasuryCashPositions, setTreasuryCashPositions] = useState<
     CashPositionByCurrency[] | undefined
   >(undefined);
@@ -193,13 +200,16 @@ export default function CopilotHoyPage() {
       const treasuryJson = await treasuryResult.value.json().catch(() => null);
       if (treasuryResult.value.ok) {
         setTreasuryOutflowSummaries(parseTreasuryScheduledSummaryJson(treasuryJson));
+        setTreasuryScheduledPayments(parseTreasuryScheduledItemsJson(treasuryJson));
       } else {
         setTreasuryOutflowSummaries([]);
+        setTreasuryScheduledPayments([]);
       }
     } else {
       devWarn("treasury-scheduled-payments", treasuryResult.reason);
       newErrors.treasury = "No se pudo cargar los pagos programados.";
       setTreasuryOutflowSummaries([]);
+      setTreasuryScheduledPayments([]);
     }
 
     // ── Tesorería — posición de caja ────────────────────────────────────────
@@ -290,6 +300,7 @@ export default function CopilotHoyPage() {
         onMonthToDate={() => applyPeriod(monthToDatePeriodRange(today))}
         onLast30Days={() => applyPeriod(last30DaysPeriodRange(today))}
         treasuryOutflowSummaries={treasuryOutflowSummaries}
+        treasuryScheduledPayments={treasuryScheduledPayments}
         treasuryCashPositions={treasuryCashPositions}
         error={error}
         sectionErrors={sectionErrors}

@@ -57,6 +57,10 @@ const nextConfig: NextConfig = {
       "./node_modules/pdf-parse/**/*",
       "./node_modules/pdfjs-dist/**/*",
     ],
+    "/api/knowledge/zeta/docs": ["./docs/zeta/markdown/**/*"],
+    "/api/knowledge/zeta/doc": ["./docs/zeta/markdown/**/*"],
+    "/api/knowledge/zeta/search": ["./docs/zeta/markdown/**/*"],
+    "/api/knowledge/zeta/ask": ["./docs/zeta/markdown/**/*"],
   },
   turbopack: {
     root: projectRoot,

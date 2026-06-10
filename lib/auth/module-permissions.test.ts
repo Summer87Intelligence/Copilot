@@ -215,12 +215,13 @@ describe("validators", () => {
 
   it("isValidModuleKey acepta módulos válidos", () => {
     expect(isValidModuleKey("hoy")).toBe(true);
+    expect(isValidModuleKey("dashboard")).toBe(true);
     expect(isValidModuleKey("tesoreria")).toBe(true);
     expect(isValidModuleKey("admin")).toBe(true);
   });
 
   it("isValidModuleKey rechaza inválidos", () => {
-    expect(isValidModuleKey("dashboard")).toBe(false);
+    expect(isValidModuleKey("insights")).toBe(false);
     expect(isValidModuleKey("")).toBe(false);
     expect(isValidModuleKey(undefined)).toBe(false);
   });
@@ -231,6 +232,17 @@ describe("validators", () => {
 import { buildCopilotNavItemGroups } from "@/components/copilot/copilot-nav-config";
 
 describe("buildCopilotNavItemGroups — filtrado por módulo", () => {
+  it("dashboard=none oculta Dashboard en sidebar", () => {
+    const perms: Record<string, string> = Object.fromEntries(
+      presetPerms("usuario").map((p) => [p.moduleKey, p.accessLevel])
+    );
+    perms.dashboard = "none";
+    const groups = buildCopilotNavItemGroups(false, perms);
+    const allItems = groups.flatMap((g) => g.items);
+    expect(allItems.some((i) => i.href === "/copilot/dashboard")).toBe(false);
+    expect(allItems.some((i) => i.href === "/copilot/hoy")).toBe(true);
+  });
+
   it("cobranza con tesoreria=none no muestra Tesorería en sidebar", () => {
     const cobranzaPerms = Object.fromEntries(
       presetPerms("cobranza").map((p) => [p.moduleKey, p.accessLevel])
@@ -341,9 +353,18 @@ describe("buildCopilotNavItemGroups — filtrado por módulo", () => {
 
   it("grupo vacío tras filtro no aparece en lista", () => {
     const perms: Record<string, string> = {
-      hoy: "none", dashboard: "none", acciones: "none", clientes: "none",
-      cartera: "none", tesoreria: "none", finanzas: "none",
-      reportes: "none", datos: "none", agentes: "none", manual: "none", admin: "none",
+      hoy: "none",
+      dashboard: "none",
+      acciones: "none",
+      clientes: "none",
+      cartera: "none",
+      tesoreria: "none",
+      finanzas: "none",
+      reportes: "none",
+      datos: "none",
+      agentes: "none",
+      manual: "none",
+      admin: "none",
     };
     const groups = buildCopilotNavItemGroups(false, perms);
     // Solo deben quedar grupos con items sin moduleKey (Alertas)

@@ -53,7 +53,7 @@ Rotar credenciales si hay sospecha de exposición.
 
 ## Auth HTTP Copilot (`/api/zeta/*`)
 
-Matriz de guards (middleware + handlers): ver `docs/vendors/z/api-auth-matrix.md`.
+Matriz de guards (proxy Edge + handlers): ver `docs/vendors/z/api-auth-matrix.md`.
 
 Resumen:
 

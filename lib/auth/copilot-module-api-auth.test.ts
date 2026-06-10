@@ -43,7 +43,7 @@ const tenantCtx = {
 describe("resolveCopilotApiModuleKey", () => {
   it("mapea prefijos críticos", () => {
     expect(resolveCopilotApiModuleKey("/api/copilot/treasury/cash-position")).toBe("tesoreria");
-    expect(resolveCopilotApiModuleKey("/api/copilot/dashboard/summary.pdf")).toBe("hoy");
+    expect(resolveCopilotApiModuleKey("/api/copilot/dashboard/summary.pdf")).toBe("dashboard");
     expect(resolveCopilotApiModuleKey("/api/copilot/reports/debtors.pdf")).toBe("reportes");
     expect(resolveCopilotApiModuleKey("/api/copilot/financial-snapshot")).toBe("finanzas");
     expect(resolveCopilotApiModuleKey("/api/copilot/me")).toBeNull();
@@ -60,6 +60,75 @@ describe("resolveCopilotApiModuleKey", () => {
       "datos"
     );
     expect(resolveCopilotApiModuleKey("/api/copilot/transfer-aliases")).toBe("clientes");
+  });
+});
+
+describe("requireCopilotModuleAccess — dashboard", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    tenantCtx.supabase = mockPermissionsSupabase();
+    requireCopilotTenantContext.mockResolvedValue({
+      ok: true,
+      ctx: {
+        ...tenantCtx,
+        appUser: { ...tenantCtx.appUser, role: "usuario" },
+      },
+    });
+  });
+
+  it("401 anónimo en summary.pdf (sin sesión)", async () => {
+    requireCopilotTenantContext.mockResolvedValue({
+      ok: false,
+      response: new Response(JSON.stringify({ code: "UNAUTHENTICATED" }), { status: 401 }),
+    });
+    const req = new NextRequest("http://localhost/api/copilot/dashboard/summary.pdf");
+    const auth = await requireCopilotModuleAccess(req, "dashboard");
+    expect(auth.ok).toBe(false);
+    if (!auth.ok) expect(auth.response.status).toBe(401);
+  });
+
+  it("403 cuando dashboard=none y hoy=read (override)", async () => {
+    const supabase = mockPermissionsSupabase([
+      { module_key: "dashboard", access_level: "none" },
+    ]);
+    requireCopilotTenantContext.mockResolvedValue({
+      ok: true,
+      ctx: {
+        ...tenantCtx,
+        supabase,
+        appUser: { ...tenantCtx.appUser, role: "usuario" },
+      },
+    });
+    const req = new NextRequest("http://localhost/api/copilot/dashboard/summary.pdf");
+    const auth = await requireCopilotModuleAccess(req, "dashboard");
+    expect(auth.ok).toBe(false);
+    if (!auth.ok) {
+      expect(auth.response.status).toBe(403);
+      const body = await auth.response.json();
+      expect(body.code).toBe("FORBIDDEN_MODULE");
+      expect(body.moduleKey).toBe("dashboard");
+    }
+  });
+
+  it("permite GET summary.pdf con dashboard=read (rol usuario)", async () => {
+    tenantCtx.supabase = mockPermissionsSupabase();
+    const req = new NextRequest("http://localhost/api/copilot/dashboard/summary.pdf");
+    const auth = await requireCopilotModuleAccess(req, "dashboard");
+    expect(auth.ok).toBe(true);
+  });
+
+  it("superadmin bypass en dashboard", async () => {
+    requireCopilotTenantContext.mockResolvedValue({
+      ok: true,
+      ctx: {
+        ...tenantCtx,
+        appUser: { ...tenantCtx.appUser, role: "superadmin" },
+      },
+    });
+    const req = new NextRequest("http://localhost/api/copilot/dashboard/summary.pdf");
+    const auth = await requireCopilotModuleAccess(req, "dashboard");
+    expect(auth.ok).toBe(true);
+    expect(tenantCtx.supabase.from).not.toHaveBeenCalled();
   });
 });
 

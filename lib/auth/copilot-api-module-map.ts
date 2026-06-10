@@ -6,7 +6,7 @@ import type { ModuleKey } from "@/lib/auth/module-permissions";
  */
 export const COPILOT_API_MODULE_PREFIXES: ReadonlyArray<readonly [string, ModuleKey]> = [
   ["/api/copilot/treasury", "tesoreria"],
-  ["/api/copilot/dashboard", "hoy"],
+  ["/api/copilot/dashboard", "dashboard"],
   ["/api/copilot/reports", "reportes"],
   ["/api/copilot/data", "datos"],
   ["/api/copilot/financial-reconciliation", "finanzas"],

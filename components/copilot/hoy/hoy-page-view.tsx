@@ -22,7 +22,12 @@ import {
 } from "@/lib/copilot-today-business-pulse";
 import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
 import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
-import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
+import type {
+  TreasuryOutflowSummary,
+  TreasuryScheduledPayment,
+} from "@/lib/treasury/treasury-scheduled-payments";
+import { HoyCashCurrentSection } from "./hoy-cash-current-section";
+import { HoyMonthEndProjectionSection } from "./hoy-month-end-projection-section";
 
 import { AttentionClientsDrawer } from "./hoy-attention-clients-drawer";
 import { CollectionAgendaHoyCard } from "./collection-agenda-hoy-card";
@@ -76,6 +81,7 @@ type HoyPageViewProps = {
   onMonthToDate: () => void;
   onLast30Days: () => void;
   treasuryOutflowSummaries?: TreasuryOutflowSummary[];
+  treasuryScheduledPayments?: TreasuryScheduledPayment[];
   treasuryCashPositions?: CashPositionByCurrency[];
   error: string | null;
   sectionErrors?: HoySectionErrors;
@@ -165,12 +171,14 @@ export function HoyPageView({
   onMonthToDate,
   onLast30Days,
   treasuryOutflowSummaries,
+  treasuryScheduledPayments,
   treasuryCashPositions,
   error,
   sectionErrors,
   onRefresh,
 }: HoyPageViewProps) {
   const [drawer, setDrawer] = useState<DrawerState>({ kind: "closed" });
+  const [monthEndDrawerOpen, setMonthEndDrawerOpen] = useState(false);
   const [cockpitCard, setCockpitCard] = useState<HoyCockpitCardId | null>(null);
   const [advancedExpanded, setAdvancedExpanded] = useState(false);
   const pathname = usePathname();
@@ -197,6 +205,7 @@ export function HoyPageView({
         periodReportCurrencies,
         manualCashMovements,
         treasuryOutflowSummaries,
+        treasuryScheduledPayments: treasuryScheduledPayments ?? [],
         treasuryCashPositions,
         today,
       }),
@@ -212,6 +221,7 @@ export function HoyPageView({
       periodReportCurrencies,
       manualCashMovements,
       treasuryOutflowSummaries,
+      treasuryScheduledPayments,
       treasuryCashPositions,
       today,
     ]
@@ -311,6 +321,15 @@ export function HoyPageView({
           receivables={cockpit.receivables}
           onCardClick={setCockpitCard}
           activeCard={cockpitCard}
+        />
+
+        <HoyCashCurrentSection blocks={pulse.cashPositionBlocks} />
+
+        <HoyMonthEndProjectionSection
+          scenarioProjections={pulse.monthEndScenarioProjections}
+          drawerOpen={monthEndDrawerOpen}
+          onOpenDrawer={() => setMonthEndDrawerOpen(true)}
+          onCloseDrawer={() => setMonthEndDrawerOpen(false)}
         />
 
         {sectionErrors && (

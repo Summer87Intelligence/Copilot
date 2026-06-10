@@ -22,7 +22,7 @@ const TARGETS = [
   { dir: "app/api/copilot/treasury", moduleKey: "tesoreria" },
   { dir: "app/api/copilot/reports", moduleKey: "reportes" },
   { dir: "app/api/copilot/data", moduleKey: "datos" },
-  { dir: "app/api/copilot/dashboard", moduleKey: "hoy" },
+  { dir: "app/api/copilot/dashboard", moduleKey: "dashboard" },
   { dir: "app/api/copilot/collection-actions", moduleKey: "cartera" },
   { dir: "app/api/copilot/clients", moduleKey: "clientes" },
   { dir: "app/api/copilot/clientes", moduleKey: "clientes" },

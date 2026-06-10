@@ -4,7 +4,10 @@
  */
 
 import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
-import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
+import type {
+  TreasuryOutflowSummary,
+  TreasuryScheduledPayment,
+} from "@/lib/treasury/treasury-scheduled-payments";
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return v != null && typeof v === "object";
@@ -22,6 +25,13 @@ export function parseTreasuryScheduledSummaryJson(json: unknown): TreasuryOutflo
   if (!isRecord(json) || json.ok !== true || !isRecord(json.data)) return [];
   const summary = json.data.summary;
   return Array.isArray(summary) ? (summary as TreasuryOutflowSummary[]) : [];
+}
+
+/** GET /api/copilot/treasury/scheduled-payments?include_summary=1 → data.items[] */
+export function parseTreasuryScheduledItemsJson(json: unknown): TreasuryScheduledPayment[] {
+  if (!isRecord(json) || json.ok !== true || !isRecord(json.data)) return [];
+  const items = json.data.items;
+  return Array.isArray(items) ? (items as TreasuryScheduledPayment[]) : [];
 }
 
 export type CanonicalTreasuryRollup = {

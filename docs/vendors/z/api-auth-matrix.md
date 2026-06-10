@@ -4,7 +4,7 @@ Actualizado: hardening FASE 1 (P0-001, P1-011).
 
 ## Regla general
 
-Toda ruta bajo `/api/zeta/*` exige **una** de estas credenciales en el edge (middleware):
+Toda ruta bajo `/api/zeta/*` exige **una** de estas credenciales en el proxy Edge (`proxy.ts`, convención Next.js 16):
 
 1. Cookie `copilot_session` válida (formato UUID), **o**
 2. Header `Authorization: Bearer <CRON_SECRET>` (solo rutas cron explícitas)
@@ -13,7 +13,7 @@ Acceso anónimo → **401 JSON** (`UNAUTHENTICATED`).
 
 Los handlers aplican auth adicional según la categoría.
 
-Implementación: `lib/integrations/zeta/zeta-api-auth.ts` + `middleware.ts`.
+Implementación Edge: `lib/integrations/zeta/zeta-api-auth-edge.ts` + `proxy.ts`. Handlers: `lib/integrations/zeta/zeta-api-auth.ts`.
 
 ---
 
@@ -72,5 +72,5 @@ Sin secret o Bearer incorrecto → **401** (`UNAUTHORIZED`).
 
 1. Clasificar: diagnóstico / sync manual / cron.
 2. Usar el helper correspondiente en `zeta-api-auth.ts`.
-3. Confirmar que middleware bloquea anónimos.
+3. Confirmar que el proxy Edge bloquea anónimos.
 4. Agregar test en `zeta-api-routes-auth.test.ts` o `zeta-api-auth.test.ts`.

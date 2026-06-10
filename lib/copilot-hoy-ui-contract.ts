@@ -137,6 +137,41 @@ export const HOY_COPY = {
   scheduledOutflowsLabel: "Pagos programados",
   treasuryCta: "Configurar pagos futuros",
   treasuryNoOutflows: "Sin egresos configurados",
+  monthEndProjectionTitle: "Caja proyectada al cierre del mes",
+  monthEndMvpBadge: "Estimación inicial",
+  monthEndScenarioSubtitle: {
+    conservative:
+      "Escenario conservador: asume cobro parcial (50%) de la deuda pendiente y pagos programados cargados.",
+    expected:
+      "Escenario esperado: asume cobro parcial de la deuda pendiente y pagos programados cargados.",
+    optimistic:
+      "Escenario optimista: asume cobro total (100%) de la deuda pendiente y pagos programados cargados.",
+  },
+  monthEndProjectionTip:
+    "Caja disponible + cobros estimados del escenario − pagos programados hasta fin de mes.",
+  monthEndFridaysTitle: "Próximos viernes",
+  monthEndFridaysTip:
+    "Los cobros se distribuyen de forma pareja en esta versión inicial (MVP). Más adelante se ajustará al comportamiento real de pago de cada cliente.",
+  monthEndDrawerCta: "Ver cómo se calcula",
+  monthEndDrawerTitle: "Cómo se calcula la caja del mes",
+  monthEndDrawerScenariosNote:
+    "Los escenarios usan porcentajes fijos como MVP: 50%, 75% y 100%. La siguiente versión usará comportamiento histórico de clientes.",
+  monthEndDrawerLinearNote:
+    "Los cobros estimados se reparten de forma lineal hasta fin de mes dentro de cada escenario.",
+  monthEndRiskStable: "Estable",
+  monthEndRiskAttention: "Atención",
+  monthEndRiskCritical: "Crítico",
+  monthEndRiskNoteStable: "Sin alerta",
+  monthEndRiskNoteAttention: "Margen bajo",
+  monthEndRiskNoteCritical: "Caja negativa",
+  monthEndDrawerRisksTitle: "Riesgos detectados",
+  monthEndOverallStable:
+    "La estimación al cierre del mes se ve estable con los datos cargados.",
+  monthEndOverallAttention:
+    "La estimación muestra margen bajo en alguna moneda. Revisá cobros y pagos programados.",
+  monthEndOverallCritical:
+    "La estimación proyecta caja negativa en alguna moneda antes o al cierre del mes.",
+  monthEndTreasuryCta: "Ver Tesorería",
 } as const;
 
 /** Semántica de color ejecutiva por métrica. */
