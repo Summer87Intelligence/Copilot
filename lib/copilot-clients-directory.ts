@@ -160,14 +160,16 @@ export function buildClientsDirectory(
 
   for (const inv of input.invoices) {
     if (isVoidedFinancialInvoice(inv as Record<string, unknown>)) continue;
-    if (isCreditNoteFromMetadata(inv.zeta_metadata)) continue;
     const companyId = String(inv.company_id ?? "").trim();
     if (!companyId) continue;
+    const isNc = isCreditNoteFromMetadata(inv.zeta_metadata);
     invoiceCompanyIds.add(companyId);
 
-    const list = invoicesByCompany.get(companyId) ?? [];
-    list.push(inv);
-    invoicesByCompany.set(companyId, list);
+    if (!isNc) {
+      const list = invoicesByCompany.get(companyId) ?? [];
+      list.push(inv);
+      invoicesByCompany.set(companyId, list);
+    }
 
     const total = num(inv.total_amount);
 
@@ -185,7 +187,8 @@ export function buildClientsDirectory(
       aggByCompany.set(companyId, agg);
     }
 
-    agg.total_billing += total;
+    if (isNc) agg.total_billing -= total;
+    else agg.total_billing += total;
 
     const zetaName = readInvoiceZetaClientName(inv.zeta_metadata);
     if (zetaName && !agg.bestName) agg.bestName = zetaName;

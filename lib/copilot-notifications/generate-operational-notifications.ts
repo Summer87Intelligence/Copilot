@@ -1,13 +1,22 @@
 import { createClient } from "@supabase/supabase-js";
 
 import {
-  notifyClientOverdue,
+  notifyClientDebtSettled,
   notifyCollectionReceived,
   notifyDebtFollowupSummary,
+  notifyInvoiceOverdue,
+  notifyNewDebtor,
   notifyTreasuryPaymentDue,
   notifyTreasuryPaymentOverdue,
 } from "./notification-events";
 import { businessDateYmd } from "./business-date";
+import {
+  buildDebtLifecycleStateMap,
+  resolveCollectionPaymentOutcome,
+  resolveDebtLifecycleForClientCurrency,
+  shouldNotifyNewDebtor,
+  sumInvoiceBalances,
+} from "./notification-financial-events";
 
 // Lookback window for "collection received" notifications.
 // Override via env for staging/testing without touching code.
@@ -18,6 +27,15 @@ export const COLLECTION_RECEIVED_LOOKBACK_HOURS = (() => {
     if (Number.isFinite(parsed) && parsed > 0) return parsed;
   }
   return 72;
+})();
+
+export const NEW_DEBT_LOOKBACK_HOURS = (() => {
+  const raw = process.env.COPILOT_NOTIFICATIONS_NEW_DEBT_LOOKBACK_HOURS?.trim();
+  if (raw) {
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  return COLLECTION_RECEIVED_LOOKBACK_HOURS;
 })();
 
 type NotifResult = { ok: boolean; created: boolean };
@@ -232,7 +250,52 @@ async function generateTreasuryOverdueNotifications(
 
 // ─── Portfolio generators ─────────────────────────────────────────────────────
 
-async function generateClientOverdueNotifications(
+const OPEN_INVOICE_LIMIT = 2000;
+
+async function loadCompanyNameMap(
+  admin: AdminClient,
+  tenantCompanyId: string,
+  companyIds: string[]
+): Promise<Map<string, string>> {
+  const nameMap = new Map<string, string>();
+  if (companyIds.length === 0) return nameMap;
+
+  const { data: companies } = await admin
+    .from("proto_companies")
+    .select("id, name")
+    .eq("workspace_company_id", tenantCompanyId)
+    .in("id", companyIds.slice(0, 500));
+
+  for (const c of (companies ?? []) as Record<string, unknown>[]) {
+    nameMap.set(String(c.id), String(c.name ?? "Cliente"));
+  }
+  return nameMap;
+}
+
+async function loadClientOpenInvoiceBalances(
+  admin: AdminClient,
+  tenantCompanyId: string,
+  companyId: string,
+  currency?: string
+): Promise<number> {
+  let query = admin
+    .from("proto_invoices")
+    .select("balance_amount")
+    .eq("workspace_company_id", tenantCompanyId)
+    .eq("company_id", companyId)
+    .in("status", ["pending", "overdue", "partial"])
+    .limit(500);
+
+  if (currency) {
+    query = query.eq("currency_code", currency);
+  }
+
+  const { data, error } = await query;
+  if (error || !data) return 0;
+  return sumInvoiceBalances(data as Record<string, unknown>[]);
+}
+
+async function generateInvoiceOverdueNotifications(
   admin: AdminClient,
   tenantCompanyId: string,
   now: Date,
@@ -240,92 +303,160 @@ async function generateClientOverdueNotifications(
 ) {
   const today = todayYmd(now);
 
-  const { data: companies, error: cErr } = await admin
-    .from("proto_companies")
-    .select("id, name")
-    .eq("workspace_company_id", tenantCompanyId)
-    .eq("is_active", true)
-    .limit(500);
-
-  if (cErr || !companies?.length) return;
-
-  const OVERDUE_INVOICE_LIMIT = 2000;
   const { data: invoices, error: iErr } = await admin
     .from("proto_invoices")
-    .select("company_id, balance_amount, due_date, currency_code, status")
+    .select("id, company_id, balance_amount, due_date, currency_code, status")
     .eq("workspace_company_id", tenantCompanyId)
     .in("status", ["pending", "overdue", "partial"])
-    .limit(OVERDUE_INVOICE_LIMIT);
+    .limit(OPEN_INVOICE_LIMIT);
 
   if (iErr || !invoices) return;
 
-  if (invoices.length >= OVERDUE_INVOICE_LIMIT) {
+  if (invoices.length >= OPEN_INVOICE_LIMIT) {
     console.warn(
-      `[generate-notifications] generateClientOverdueNotifications hit invoice limit (${OVERDUE_INVOICE_LIMIT}) for workspace ${tenantCompanyId} — aggregation may be incomplete`
+      `[generate-notifications] generateInvoiceOverdueNotifications hit invoice limit (${OPEN_INVOICE_LIMIT}) for workspace ${tenantCompanyId}`
     );
   }
 
-  // Track both aggregated balance and the maximum daysOverdue per company+currency.
-  type OverdueAgg = {
-    uyu: number; usd: number; other: number;
-    maxDaysUyu: number; maxDaysUsd: number; maxDaysOther: number;
-  };
-  const overdueByCompany = new Map<string, OverdueAgg>();
+  const companyIds = [
+    ...new Set(
+      (invoices as Record<string, unknown>[])
+        .map((inv) => String(inv.company_id ?? "").trim())
+        .filter(Boolean)
+    ),
+  ];
+  const nameMap = await loadCompanyNameMap(admin, tenantCompanyId, companyIds);
 
   for (const inv of invoices as Record<string, unknown>[]) {
+    const invoiceId = String(inv.id ?? "").trim();
     const companyId = String(inv.company_id ?? "").trim();
     const dueDate = String(inv.due_date ?? "").trim();
-    if (!companyId || !dueDate || dueDate >= today) continue;
+    if (!invoiceId || !companyId || !dueDate || dueDate >= today) continue;
+
     const balance = Number(inv.balance_amount ?? 0);
     if (balance <= 0) continue;
-    const currency = String(inv.currency_code ?? "UYU").toUpperCase();
-    const days = Math.max(0, daysBetween(dueDate, today));
 
-    if (!overdueByCompany.has(companyId)) {
-      overdueByCompany.set(companyId, {
-        uyu: 0, usd: 0, other: 0,
-        maxDaysUyu: 0, maxDaysUsd: 0, maxDaysOther: 0,
+    const currency = String(inv.currency_code ?? "UYU").toUpperCase();
+    const daysOverdue = Math.max(0, daysBetween(dueDate, today));
+    const r = await notifyInvoiceOverdue({
+      tenantCompanyId,
+      invoiceId,
+      clientId: companyId,
+      clientName: nameMap.get(companyId) ?? "Cliente",
+      amount: balance,
+      currency,
+      dueDate,
+      daysOverdue,
+    });
+    tally(acc, "client_overdue", r);
+  }
+}
+
+async function loadDebtLifecycleState(
+  admin: AdminClient,
+  tenantCompanyId: string
+) {
+  const { data, error } = await admin
+    .from("copilot_notifications")
+    .select("type, dedup_key, created_at, metadata")
+    .eq("workspace_company_id", tenantCompanyId)
+    .in("type", ["new_debtor", "client_debt_settled"])
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  if (error || !data) return new Map();
+  return buildDebtLifecycleStateMap(
+    data as Array<{
+      type: string;
+      dedup_key: string | null;
+      created_at: string;
+      metadata?: Record<string, unknown> | null;
+    }>
+  );
+}
+
+async function generateNewDebtorNotifications(
+  admin: AdminClient,
+  tenantCompanyId: string,
+  now: Date,
+  acc: GenerateResult
+) {
+  const today = todayYmd(now);
+  const sinceLookback = new Date(
+    now.getTime() - NEW_DEBT_LOOKBACK_HOURS * 3_600_000
+  ).toISOString();
+
+  const [invoicesRes, lifecycleMap] = await Promise.all([
+    admin
+      .from("proto_invoices")
+      .select("id, company_id, balance_amount, currency_code, status, created_at, updated_at")
+      .eq("workspace_company_id", tenantCompanyId)
+      .in("status", ["pending", "overdue", "partial"])
+      .limit(OPEN_INVOICE_LIMIT),
+    loadDebtLifecycleState(admin, tenantCompanyId),
+  ]);
+
+  if (invoicesRes.error || !invoicesRes.data) return;
+  const invoices = invoicesRes.data as Record<string, unknown>[];
+
+  type DebtAgg = {
+    totalBalance: number;
+    hasRecentInvoiceActivity: boolean;
+    sampleInvoiceId: string | null;
+  };
+  const debtByClientCurrency = new Map<string, DebtAgg>();
+
+  for (const inv of invoices) {
+    const companyId = String(inv.company_id ?? "").trim();
+    const balance = Number(inv.balance_amount ?? 0);
+    if (!companyId || balance <= 0) continue;
+
+    const currency = String(inv.currency_code ?? "UYU").toUpperCase();
+    const key = `${companyId}:${currency}`;
+    const createdAt = String(inv.created_at ?? "");
+    const recent = Boolean(createdAt && createdAt >= sinceLookback);
+
+    if (!debtByClientCurrency.has(key)) {
+      debtByClientCurrency.set(key, {
+        totalBalance: 0,
+        hasRecentInvoiceActivity: false,
+        sampleInvoiceId: null,
       });
     }
-    const agg = overdueByCompany.get(companyId)!;
-    if (currency === "USD") {
-      agg.usd += balance;
-      if (days > agg.maxDaysUsd) agg.maxDaysUsd = days;
-    } else if (currency === "UYU") {
-      agg.uyu += balance;
-      if (days > agg.maxDaysUyu) agg.maxDaysUyu = days;
-    } else {
-      agg.other += balance;
-      if (days > agg.maxDaysOther) agg.maxDaysOther = days;
-    }
+    const agg = debtByClientCurrency.get(key)!;
+    agg.totalBalance += balance;
+    if (recent) agg.hasRecentInvoiceActivity = true;
+    if (!agg.sampleInvoiceId) agg.sampleInvoiceId = String(inv.id ?? "").trim() || null;
   }
 
-  const nameMap = new Map<string, string>();
-  for (const c of companies as Record<string, unknown>[]) {
-    nameMap.set(String(c.id), String(c.name ?? "Cliente"));
-  }
+  const companyIds = [...new Set([...debtByClientCurrency.keys()].map((k) => k.split(":")[0]!))];
+  const nameMap = await loadCompanyNameMap(admin, tenantCompanyId, companyIds);
 
-  for (const [companyId, agg] of overdueByCompany.entries()) {
-    const name = nameMap.get(companyId) ?? "Cliente";
+  for (const [key, agg] of debtByClientCurrency.entries()) {
+    const [clientId, currency] = key.split(":");
+    if (!clientId || !currency) continue;
 
-    if (agg.uyu > 0) {
-      tally(acc, "client_overdue", await notifyClientOverdue({
-        tenantCompanyId, clientId: companyId, clientName: name,
-        amount: agg.uyu, currency: "UYU", daysOverdue: agg.maxDaysUyu,
-      }));
+    const lifecycle = resolveDebtLifecycleForClientCurrency(lifecycleMap, clientId, currency);
+    if (
+      !shouldNotifyNewDebtor({
+        totalBalance: agg.totalBalance,
+        hasRecentInvoiceActivity: agg.hasRecentInvoiceActivity,
+        lifecycle,
+      })
+    ) {
+      continue;
     }
-    if (agg.usd > 0) {
-      tally(acc, "client_overdue", await notifyClientOverdue({
-        tenantCompanyId, clientId: companyId, clientName: name,
-        amount: agg.usd, currency: "USD", daysOverdue: agg.maxDaysUsd,
-      }));
-    }
-    if (agg.other > 0 && agg.uyu === 0 && agg.usd === 0) {
-      tally(acc, "client_overdue", await notifyClientOverdue({
-        tenantCompanyId, clientId: companyId, clientName: name,
-        amount: agg.other, currency: "UYU", daysOverdue: agg.maxDaysOther,
-      }));
-    }
+
+    const r = await notifyNewDebtor({
+      tenantCompanyId,
+      clientId,
+      clientName: nameMap.get(clientId) ?? "Cliente",
+      amount: agg.totalBalance,
+      currency,
+      dateBucket: today,
+      invoiceId: agg.sampleInvoiceId,
+    });
+    tally(acc, "new_debtor", r);
   }
 }
 
@@ -386,6 +517,8 @@ async function generateRecentCollectionNotifications(
     }
   }
 
+  const today = todayYmd(now);
+
   for (const rec of receipts as Record<string, unknown>[]) {
     const receiptId = String(rec.id ?? "").trim();
     if (!receiptId) continue;
@@ -395,13 +528,34 @@ async function generateRecentCollectionNotifications(
     const currency = String(rec.currency_code ?? "UYU").toUpperCase();
     const rawDate = String(rec.receipt_date ?? "").slice(0, 10);
     const receiptDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : null;
+    const clientName = nameMap.get(companyId) ?? "Cliente";
+
+    const remainingTotalBalance = companyId
+      ? await loadClientOpenInvoiceBalances(admin, tenantCompanyId, companyId)
+      : 0;
+    const outcome = resolveCollectionPaymentOutcome(remainingTotalBalance);
+
+    if (outcome === "settled" && companyId) {
+      const settled = await notifyClientDebtSettled({
+        tenantCompanyId,
+        clientId: companyId,
+        clientName,
+        currency,
+        receiptId,
+        dateBucket: today,
+      });
+      tally(acc, "client_debt_settled", settled);
+      continue;
+    }
+
     const r = await notifyCollectionReceived({
       tenantCompanyId,
       receiptId,
-      clientName: nameMap.get(companyId) ?? "Cliente",
+      clientName,
       amount,
       currency,
       clientId: companyId || null,
+      remainingBalance: outcome === "partial" ? remainingTotalBalance : null,
       receiptDate,
       treasuryBaselineDate: baselineByCurrency[currency] ?? null,
     });
@@ -463,13 +617,11 @@ async function generateDebtFollowupSummaryNotification(
 }
 
 // ─── Not yet implemented generators ──────────────────────────────────────────
-// TODO: notifyNewDebtor — requires a reliable historical snapshot to detect
-//   when a company transitions from "no overdue" to "has overdue" for the first
-//   time in a period. Cannot be derived safely from a single-pass query.
-//
 // TODO: notifySyncChangesDetected — requires the sync job to emit a structured
 //   summary (added/updated/removed counts) and pass it to this generator.
-//   Until the sync job exposes that data, this type is intentionally unused.
+//
+// TODO: cash_risk_detected — requiere modelo de umbral de caja y eventos de
+//   movimiento en tiempo real; fuera de alcance de este ticket.
 
 // ─── Public entry point ───────────────────────────────────────────────────────
 
@@ -495,7 +647,8 @@ export async function generateOperationalNotificationsForWorkspace({
   await Promise.allSettled([
     generateTreasuryDueNotifications(admin, workspaceCompanyId, now, inactiveTemplateIds, acc),
     generateTreasuryOverdueNotifications(admin, workspaceCompanyId, now, inactiveTemplateIds, acc),
-    generateClientOverdueNotifications(admin, workspaceCompanyId, now, acc),
+    generateInvoiceOverdueNotifications(admin, workspaceCompanyId, now, acc),
+    generateNewDebtorNotifications(admin, workspaceCompanyId, now, acc),
     generateRecentCollectionNotifications(admin, workspaceCompanyId, now, acc),
     generateDebtFollowupSummaryNotification(admin, workspaceCompanyId, now, acc),
   ]);

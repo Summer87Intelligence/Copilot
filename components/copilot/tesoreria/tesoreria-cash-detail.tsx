@@ -15,6 +15,7 @@ import { copilotApiFetch } from "@/lib/copilot-fetch";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
 import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
+import { sortManualCashMovementsNewestFirst } from "@/lib/treasury/treasury-manual-cash-movements";
 import type { ManualCashMovement, TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
 
 type MovementTypeFilter = "all" | "income" | "expense";
@@ -221,7 +222,7 @@ function RecentMovements({ workspace }: { workspace: TreasuryWorkspace }) {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return workspace.manualMovements
+    const rows = workspace.manualMovements
       .filter((m) => m.status === "active" && m.affectsCashflow && !isOpeningBalanceProxy(m))
       .filter((m) => currency === "all" || m.currencyCode === currency)
       .filter((m) => {
@@ -237,11 +238,8 @@ function RecentMovements({ workspace }: { workspace: TreasuryWorkspace }) {
           (m.category ?? "").toLowerCase().includes(q) ||
           (m.notes ?? "").toLowerCase().includes(q)
         );
-      })
-      .sort((a, b) => {
-        if (b.movementDate !== a.movementDate) return b.movementDate.localeCompare(a.movementDate);
-        return b.createdAt.localeCompare(a.createdAt);
       });
+    return sortManualCashMovementsNewestFirst(rows);
   }, [workspace.manualMovements, search, dateFrom, dateTo, currency, typeFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / TESORERIA_PAGE_SIZE));

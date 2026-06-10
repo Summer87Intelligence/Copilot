@@ -24,6 +24,29 @@ import type {
 
 export type { ManualCashListFilters };
 
+type ManualCashMovementSortKey = Pick<
+  ManualCashMovement,
+  "movementDate" | "createdAt" | "id"
+>;
+
+/** Más reciente primero: fecha ↓, created_at ↓, id ↓. */
+export function compareManualCashMovementsNewestFirst(
+  a: ManualCashMovementSortKey,
+  b: ManualCashMovementSortKey
+): number {
+  const dateCmp = b.movementDate.localeCompare(a.movementDate);
+  if (dateCmp !== 0) return dateCmp;
+  const createdCmp = b.createdAt.localeCompare(a.createdAt);
+  if (createdCmp !== 0) return createdCmp;
+  return b.id.localeCompare(a.id);
+}
+
+export function sortManualCashMovementsNewestFirst<T extends ManualCashMovementSortKey>(
+  movements: readonly T[]
+): T[] {
+  return [...movements].sort(compareManualCashMovementsNewestFirst);
+}
+
 /** Solo movimientos creados desde Caja manual (`source = manual`) son editables/eliminables en UI. */
 export function isManualCashMovementEditable(
   row: Pick<ManualCashMovement, "source">

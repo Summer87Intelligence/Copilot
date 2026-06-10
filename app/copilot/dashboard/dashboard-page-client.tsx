@@ -1947,11 +1947,11 @@ export default function DashboardPageClient() {
                 )}
               </ChartCard>
               <ChartCard
-                title="Top facturación histórica UYU"
-                subtitle="Facturación total activa · Histórico total"
+                title="Top facturación neta histórica UYU"
+                subtitle="Facturas activas menos notas de crédito · desde enero 2026"
                 badge={
                   <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[9px] text-amber-700">
-                    Histórico total
+                    Histórico neto
                   </span>
                 }
               >
@@ -1971,11 +1971,11 @@ export default function DashboardPageClient() {
                 )}
               </ChartCard>
               <ChartCard
-                title="Top facturación histórica USD"
-                subtitle="Facturación total activa · Histórico total"
+                title="Top facturación neta histórica USD"
+                subtitle="Facturas activas menos notas de crédito · desde enero 2026"
                 badge={
                   <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[9px] text-amber-700">
-                    Histórico total
+                    Histórico neto
                   </span>
                 }
               >
@@ -2024,14 +2024,14 @@ export default function DashboardPageClient() {
               </ChartCard>
 
               <ChartCard
-                title="Top 10 por facturación histórica"
-                subtitle="Facturación total activa · No filtrable por período desde esta vista"
+                title="Top 10 por facturación neta histórica"
+                subtitle="Facturas activas menos notas de crédito · desde enero 2026"
                 badge={
                   <span
-                    title="Este gráfico usa facturación histórica total (all-time) porque no existe API por cliente para el período seleccionado."
+                    title="Facturación neta histórica por cliente (no filtrable por período desde esta vista)."
                     className={`cursor-help rounded-full bg-amber-50 px-2 py-0.5 text-[9px] text-amber-700`}
                   >
-                    Histórico total
+                    Histórico neto
                   </span>
                 }
               >

@@ -510,13 +510,36 @@ describe("extractTopDebtorsForCurrency", () => {
 });
 
 describe("extractTopBillingForCurrency", () => {
-  it("ordena facturación histórica por moneda", () => {
+  it("ordena facturación neta histórica por moneda", () => {
     const rows: ClientPortfolioRow[] = [
       makePortfolioRow({ company_id: "c1", name: "A", billing_uyu: 100, billing_usd: 900 }),
       makePortfolioRow({ company_id: "c2", name: "B", billing_uyu: 500, billing_usd: 50 }),
     ];
     const uyu = extractTopBillingForCurrency(rows, "UYU", 10);
     expect(uyu[0]?.name).toBe("B");
+  });
+
+  it("excluye clientes con facturación neta <= 0 del top USD", () => {
+    const rows: ClientPortfolioRow[] = [
+      makePortfolioRow({ company_id: "c1", name: "Dolby", billing_usd: 3_342.04 }),
+      makePortfolioRow({ company_id: "c2", name: "NetoCero", billing_usd: 0 }),
+      makePortfolioRow({ company_id: "c3", name: "NetoNeg", billing_usd: -500 }),
+      makePortfolioRow({ company_id: "c4", name: "Vilcabamba", billing_usd: 8_125.2 }),
+    ];
+    const usd = extractTopBillingForCurrency(rows, "USD", 10);
+    expect(usd.map((r) => r.name)).toEqual(["Vilcabamba", "Dolby"]);
+    expect(usd.find((r) => r.name === "NetoCero")).toBeUndefined();
+    expect(usd.find((r) => r.name === "NetoNeg")).toBeUndefined();
+  });
+
+  it("excluye clientes con facturación neta <= 0 del top UYU", () => {
+    const rows: ClientPortfolioRow[] = [
+      makePortfolioRow({ company_id: "c1", name: "Positivo", billing_uyu: 1000 }),
+      makePortfolioRow({ company_id: "c2", name: "Cero", billing_uyu: 0 }),
+    ];
+    const uyu = extractTopBillingForCurrency(rows, "UYU", 10);
+    expect(uyu).toHaveLength(1);
+    expect(uyu[0]?.name).toBe("Positivo");
   });
 });
 

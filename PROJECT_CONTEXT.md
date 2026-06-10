@@ -74,6 +74,7 @@ npx vitest run lib/copilot-manual/copilot-manual-encoding.test.ts
 **Generador legacy retirado:** `scripts/generate-copilot-manual-content.mjs` ya no lee `page.tsx` ni sobrescribe archivos. Flags `--write` / `--generate` fallan a propósito. Default y `--dry-run` solo validan.
 
 ## Últimos cambios
+- 2026-06-10: **FIX-TOP-FACTURACION-NETA-USD-001 — ranking facturación neta histórica**. `billing_uyu`/`billing_usd` en portfolio = Σ facturas positivas − Σ NC (anuladas excluidas, dedupe operativo, desde 2026-01-01). Dashboard/PDF: labels «Top facturación neta histórica». Validado Dolby USD 3342,04 (antes 18592). Tests 3246/3246. Sin commit.
 - 2026-06-10: **UI-PREDEPLOY-001 — ajustes visuales pre-deploy (solo layout)**. Finanzas: 3 niveles (foto actual 4 KPIs hero, actividad comercial agrupada, nivel 3 colapsable). Dashboard: eliminada tabla KPI duplicada en resumen ejecutivo. Hoy: cards más compactas, caja detallada y proyección fin de mes colapsadas por defecto. Sin cambios de cálculo, copy financiero ni navegación. Tests 3240/3240, `tsc` OK. Sin commit.
 - 2026-06-10: **ZETA-SHADOW-RECONCILE FASE 1 — 8 shadows cerrados (Summer87)**. Módulo `lib/integrations/zeta/zeta-saldos-shadow-reconciliation.ts`: cierre automático cuando shadow balance>0, CCV1 emparejado único y balance≤0.005, con guard de cuotas. Feature flag `ZETA_SALDOS_SHADOW_RECONCILE=1` (opt-out `0`). Hook preventivo en `zeta-saldos-pipeline.ts` (`maybeCloseShadowSupersededByCcv1`). Scripts: `reconcile-zeta-saldos-shadows-dry-run.ts`, `reconcile-zeta-saldos-shadows-apply.ts` (snapshot rollback en `tmp/shadow-reconcile-snapshot-2026-06-10.json`). Apply ejecutado: 8/8 cerrados; `pendingAtCutoff` antes/después UYU 599.425 / USD 8.152,06 (Δ=0). Shadows restantes: 31 (28 `ccv1_still_open`, 3 `ambiguous_fallback`) → backlog FASE 2 en `tmp/shadow-reconcile-fase2-backlog-2026-06-10.json`. Audits post-apply: live-pending OK=56/saldo_mal=0, debt-rollup 10/10, sync-health PASS. Sin cambios a dedupe/cartera/dashboard/Hoy/aging. Sin commit.
 - 2026-06-10: **UX-TRUST-001 — auditoría global de copy ejecutivo**. Reescritura de textos defensivos en Hoy, Dashboard, Cartera, Tesorería, Finanzas, Clientes, Reportes y manual: lenguaje de confianza (actual, vigente, registrado, al corte) sin cambios de cálculo. Constantes en `copilot-financial-ux-copy`, `copilot-hoy-ui-contract`, `copilot-financial-metrics-contract`. Tests 3240/3240. Sin commit.
@@ -229,6 +230,14 @@ npx vitest run lib/copilot-manual/copilot-manual-encoding.test.ts
 **Validado:** `tsc --noEmit` exit 0 · `vitest run` 1392/1392 verdes · `npm run build` limpio.
 
 **Pendiente operativo:** aplicar `supabase/de-11-executive-briefings.sql` en Supabase para activar persistencia del executive brief.
+
+## TREASURY-NOTIFICATIONS-001 (2026-06-10)
+
+**Tesorería / Movimientos:** orden descendente (fecha → `created_at` → `id`) en `sortManualCashMovementsNewestFirst` + repo query; botón "Nuevo movimiento" removido del tab Movimientos (lógica create/edit interna intacta).
+
+**Campana (NOTIFICATIONS-FINANCIAL-EVENTS-001):** generación ampliada en `generate-operational-notifications.ts` — `new_debtor` (actividad reciente + lifecycle), `collection_received` parcial, `client_debt_settled`, `client_overdue` por factura (`invoice_overdue:*` dedup). Sin realtime; dedup por sync. Fuera de alcance: `cash_risk_detected`, `sync_changes_detected`.
+
+**Validado:** suite completa + `tsc --noEmit` OK.
 
 ## Próximo paso recomendado
 - **Ejecutar saldos pipeline para abril 2026** para corregir los 44 status=issued que deberían estar paid (invocar `POST /api/zeta/sync-saldos-all-clients` o equivalente con mes=4, anio=2026). Confirmar post-run: paid_active debe subir de 18 a ~62, issued_active bajar a los reales emitidos.

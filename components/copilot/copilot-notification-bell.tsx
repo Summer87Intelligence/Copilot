@@ -96,6 +96,8 @@ function getIconConfig(type: string, severity: string): IconConfig {
 
   if (type === "collection_received")
     return { bg: "bg-emerald-50", icon: <TrendingUp className={`${sz} text-emerald-600`} aria-hidden /> };
+  if (type === "client_debt_settled")
+    return { bg: "bg-emerald-50", icon: <CheckCheck className={`${sz} text-emerald-600`} aria-hidden /> };
   if (type === "new_debtor")
     return { bg: "bg-amber-50", icon: <Users className={`${sz} text-amber-600`} aria-hidden /> };
   if (type === "client_overdue")

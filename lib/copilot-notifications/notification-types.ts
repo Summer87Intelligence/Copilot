@@ -1,5 +1,6 @@
 export const NOTIFICATION_TYPES = [
   "collection_received",
+  "client_debt_settled",
   "new_debtor",
   "client_overdue",
   "debt_followup_summary",

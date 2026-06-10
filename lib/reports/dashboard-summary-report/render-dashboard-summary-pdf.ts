@@ -400,7 +400,7 @@ export function renderDashboardSummaryPdf(model: DashboardSummaryPdfModel): Prom
     renderTopDebtorsBlock("Top 10 deudores UYU", model.top10DebtorsUYU, "UYU", model.uyuTop10Pct);
     renderTopDebtorsBlock("Top 10 deudores USD", model.top10DebtorsUSD, "USD", model.usdTop10Pct);
 
-    // ── [7] Top 10 facturación histórica ──────────────────────────────────────
+    // ── [7] Top 10 facturación neta histórica ─────────────────────────────────
     const renderTopBillingBlock = (
       label: string,
       items: { name: string; value: number }[],
@@ -410,7 +410,7 @@ export function renderDashboardSummaryPdf(model: DashboardSummaryPdfModel): Prom
       ensureSpace(30 + items.length * 18 + 20);
       sectionTitle(label);
       doc.fillColor(COLORS.muted).font("Helvetica").fontSize(7.5)
-        .text("Facturación histórica total por cliente (no filtrable por período desde esta vista).", PAGE.margin, y);
+        .text("Facturas activas menos notas de crédito · desde enero 2026.", PAGE.margin, y);
       y += 11;
 
       const colW = { rank: 24, client: 320, billing: CONTENT_W - 24 - 320 };
@@ -443,8 +443,8 @@ export function renderDashboardSummaryPdf(model: DashboardSummaryPdfModel): Prom
       y += 10;
     };
 
-    renderTopBillingBlock("Top 10 facturación histórica UYU", model.top10BillingUYU, "UYU");
-    renderTopBillingBlock("Top 10 facturación histórica USD", model.top10BillingUSD, "USD");
+    renderTopBillingBlock("Top 10 facturación neta histórica UYU", model.top10BillingUYU, "UYU");
+    renderTopBillingBlock("Top 10 facturación neta histórica USD", model.top10BillingUSD, "USD");
 
     // ── [8] Estado de cartera ─────────────────────────────────────────────────
     ensureSpace(60);

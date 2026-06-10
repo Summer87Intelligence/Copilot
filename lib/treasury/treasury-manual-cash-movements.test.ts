@@ -3,8 +3,10 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import * as manualRepo from "@/lib/treasury/repositories/manual-cash-movement-repository";
 import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
 import {
+  compareManualCashMovementsNewestFirst,
   deleteManualCashMovement,
   isManualCashMovementDeletable,
+  sortManualCashMovementsNewestFirst,
   updateManualCashMovement,
 } from "@/lib/treasury/treasury-manual-cash-movements";
 
@@ -39,12 +41,29 @@ function makeMovement(
     bankReconciliationId: null,
     status: partial.status ?? "active",
     createdBy: null,
-    createdAt: "2026-01-01T00:00:00Z",
-    updatedAt: "2026-01-01T00:00:00Z",
+    createdAt: partial.createdAt ?? "2026-01-01T00:00:00Z",
+    updatedAt: partial.updatedAt ?? "2026-01-01T00:00:00Z",
     rawPayload: null,
     metadata: null,
   };
 }
+
+describe("compareManualCashMovementsNewestFirst", () => {
+  it("ordena por fecha descendente, luego created_at, luego id", () => {
+    const sorted = sortManualCashMovementsNewestFirst([
+      makeMovement({ id: "a", movementDate: "2026-05-01", createdAt: "2026-05-01T10:00:00Z" }),
+      makeMovement({ id: "c", movementDate: "2026-06-10", createdAt: "2026-06-10T08:00:00Z" }),
+      makeMovement({ id: "b", movementDate: "2026-06-10", createdAt: "2026-06-10T12:00:00Z" }),
+    ]);
+    expect(sorted.map((m) => m.id)).toEqual(["b", "c", "a"]);
+    expect(
+      compareManualCashMovementsNewestFirst(
+        makeMovement({ id: "z", movementDate: "2026-06-01", createdAt: "2026-06-01T00:00:00Z" }),
+        makeMovement({ id: "y", movementDate: "2026-06-01", createdAt: "2026-06-01T00:00:00Z" })
+      )
+    ).toBeLessThan(0);
+  });
+});
 
 describe("isManualCashMovementDeletable", () => {
   it("solo source manual es editable/eliminable", () => {

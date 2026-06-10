@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { isVoidedFinancialInvoice } from "@/lib/copilot-client-current-debt-summary";
 import { formatMoneyCurrency } from "@/lib/copilot-format-money";
 import {
   buildClientsDirectory,
@@ -275,7 +276,11 @@ export type InvoiceCurrencyBreakdown = {
   hasMixedCurrency: boolean;
 };
 
-/** Desagrega facturación y vencidos por moneda a partir de facturas con currency_code conocido. */
+function roundBilling2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/** Desagrega facturación neta y vencidos por moneda a partir de facturas con currency_code conocido. */
 export function computeInvoiceCurrencyBreakdown(
   invs: readonly InvoiceCurrencyBreakdownInput[],
   todayYmd: string
@@ -286,7 +291,6 @@ export function computeInvoiceCurrencyBreakdown(
 
   for (const sel of selectOperationalDebtInvoicesForSummation(invs as OperationalDebtInvoiceInput[])) {
     const inv = sel.invoice;
-    if (isCreditNoteFromMetadata(inv.zeta_metadata)) continue;
     const cur = currencyOf(inv as InvoiceRow);
     if (!cur) continue;
     const total = num(inv.total_amount);
@@ -304,12 +308,26 @@ export function computeInvoiceCurrencyBreakdown(
     }
   }
 
+  for (const inv of invs) {
+    if (isVoidedFinancialInvoice(inv as Record<string, unknown>)) continue;
+    if (!isCreditNoteFromMetadata(inv.zeta_metadata)) continue;
+    const cur = currencyOf(inv as InvoiceRow);
+    if (!cur) continue;
+    const total = num(inv.total_amount);
+    if (cur === "UYU") billingUYU -= total;
+    else billingUSD -= total;
+  }
+
+  billingUYU = roundBilling2(billingUYU);
+  billingUSD = roundBilling2(billingUSD);
+
   return {
     billingUYU,
     billingUSD,
     overdueUYU,
     overdueUSD,
-    hasMixedCurrency: (billingUYU > 0 && billingUSD > 0) || (debtUYU > 0 && debtUSD > 0),
+    hasMixedCurrency:
+      (billingUYU > 0 && billingUSD > 0) || (debtUYU > 0 && debtUSD > 0),
   };
 }
 

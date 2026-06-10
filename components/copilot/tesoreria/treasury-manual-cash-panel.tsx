@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Loader2, Plus, XCircle } from "lucide-react";
+import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 
 import type { TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
 
@@ -28,7 +28,10 @@ import {
   parseMoneyInput,
   zodFieldErrors,
 } from "@/lib/treasury/treasury-form-schemas";
-import { isManualCashMovementDeletable } from "@/lib/treasury/treasury-manual-cash-movements";
+import {
+  isManualCashMovementDeletable,
+  sortManualCashMovementsNewestFirst,
+} from "@/lib/treasury/treasury-manual-cash-movements";
 import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 
@@ -168,7 +171,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return workspace.manualMovements
+    const rows = workspace.manualMovements
       .filter((m) => currencyFilter === "all" || m.currencyCode === currencyFilter)
       .filter((m) => typeFilter === "all" || m.movementType === typeFilter)
       .filter((m) => {
@@ -194,11 +197,8 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
           (m.category ?? "").toLowerCase().includes(q) ||
           (m.notes ?? "").toLowerCase().includes(q)
         );
-      })
-      .sort(
-        (a, b) =>
-          b.movementDate.localeCompare(a.movementDate) || b.createdAt.localeCompare(a.createdAt)
-      );
+      });
+    return sortManualCashMovementsNewestFirst(rows);
   }, [workspace.manualMovements, search, dateFrom, dateTo, currencyFilter, typeFilter, accountingFilter, accountingMap]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / TESORERIA_PAGE_SIZE));
@@ -297,14 +297,6 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
       <CopilotSectionTitle
         title="Movimientos de caja"
         subtitle="Ingresos, egresos y ajustes confirmados que impactan la caja."
-        action={
-          canWrite ? (
-            <CopilotButton type="button" onClick={openCreate}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo movimiento
-            </CopilotButton>
-          ) : null
-        }
       />
 
       <div className="flex flex-wrap items-center gap-2">

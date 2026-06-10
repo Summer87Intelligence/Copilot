@@ -502,8 +502,8 @@ function ncMetadata(cfeTipo: string | number) {
   return { zeta_customer_voucher_v1: { cfe_tipo: String(cfeTipo) } };
 }
 
-describe("computeInvoiceCurrencyBreakdown — guard Notas de Crédito", () => {
-  it("NC CFE 112 no suma al billingUYU", () => {
+describe("computeInvoiceCurrencyBreakdown — facturación neta (Notas de Crédito restan)", () => {
+  it("NC CFE 112 resta del billingUYU", () => {
     const result = computeInvoiceCurrencyBreakdown(
       [
         // NC A391 (tipo real del tenant El País S.A.)
@@ -514,7 +514,7 @@ describe("computeInvoiceCurrencyBreakdown — guard Notas de Crédito", () => {
       ],
       TODAY_NC
     );
-    expect(result.billingUYU).toBe(17_080); // NC excluida del billing
+    expect(result.billingUYU).toBe(8_418);
     expect(result.billingUSD).toBe(0);
   });
 
@@ -529,10 +529,10 @@ describe("computeInvoiceCurrencyBreakdown — guard Notas de Crédito", () => {
       TODAY_NC
     );
     expect(result.overdueUYU).toBe(17_080); // Solo la factura real vencida
-    expect(result.billingUYU).toBe(17_080); // NC excluida del billing
+    expect(result.billingUYU).toBe(8_418);
   });
 
-  it("NC CFE 102 (e-NC de e-Factura) tampoco suma a billing ni overdue", () => {
+  it("NC CFE 102 (e-NC de e-Factura) resta del billing y no suma a overdue", () => {
     const result = computeInvoiceCurrencyBreakdown(
       [
         { currency_code: "UYU", total_amount: 5_000, balance_amount: 5_000, due_date: "2026-01-01",
@@ -541,11 +541,11 @@ describe("computeInvoiceCurrencyBreakdown — guard Notas de Crédito", () => {
       ],
       TODAY_NC
     );
-    expect(result.billingUYU).toBe(10_000);
+    expect(result.billingUYU).toBe(5_000);
     expect(result.overdueUYU).toBe(10_000);
   });
 
-  it("NC USD no contamina overdueUSD", () => {
+  it("NC USD resta del billingUSD y no contamina overdueUSD", () => {
     const result = computeInvoiceCurrencyBreakdown(
       [
         { currency_code: "USD", total_amount: 500, balance_amount: 500, due_date: "2026-01-01",
@@ -555,7 +555,53 @@ describe("computeInvoiceCurrencyBreakdown — guard Notas de Crédito", () => {
       TODAY_NC
     );
     expect(result.overdueUSD).toBe(1_000);
-    expect(result.billingUSD).toBe(1_000);
+    expect(result.billingUSD).toBe(500);
+  });
+
+  it("escenario Dolby: bruto USD menos NC grande → neto histórico", () => {
+    const result = computeInvoiceCurrencyBreakdown(
+      [
+        { currency_code: "USD", total_amount: 18_592.04, balance_amount: 0, due_date: "2026-04-01" },
+        { currency_code: "USD", total_amount: 15_250, balance_amount: 0, due_date: "2026-05-01",
+          zeta_metadata: ncMetadata("112") },
+      ],
+      TODAY_NC
+    );
+    expect(result.billingUSD).toBe(3_342.04);
+  });
+
+  it("escenario Consumidor Final: bruto USD menos NC parcial", () => {
+    const result = computeInvoiceCurrencyBreakdown(
+      [
+        { currency_code: "USD", total_amount: 5_386.5, balance_amount: 0, due_date: "2026-03-01" },
+        { currency_code: "USD", total_amount: 457.5, balance_amount: 0, due_date: "2026-04-01",
+          zeta_metadata: ncMetadata("112") },
+      ],
+      TODAY_NC
+    );
+    expect(result.billingUSD).toBe(4_929);
+  });
+
+  it("cliente sin NC mantiene bruto como neto", () => {
+    const result = computeInvoiceCurrencyBreakdown(
+      [
+        { currency_code: "USD", total_amount: 8_125.2, balance_amount: 0, due_date: "2026-02-01" },
+      ],
+      TODAY_NC
+    );
+    expect(result.billingUSD).toBe(8_125.2);
+  });
+
+  it("neto <= 0 cuando NC supera facturas positivas", () => {
+    const result = computeInvoiceCurrencyBreakdown(
+      [
+        { currency_code: "UYU", total_amount: 1_000, balance_amount: 0, due_date: "2026-01-01" },
+        { currency_code: "UYU", total_amount: 2_000, balance_amount: 0, due_date: "2026-02-01",
+          zeta_metadata: ncMetadata("112") },
+      ],
+      TODAY_NC
+    );
+    expect(result.billingUYU).toBe(-1_000);
   });
 
   it("factura sin zeta_metadata (no NC) sigue sumando normalmente", () => {
@@ -569,7 +615,7 @@ describe("computeInvoiceCurrencyBreakdown — guard Notas de Crédito", () => {
     expect(result.overdueUYU).toBe(25_742);
   });
 
-  it("fixture El País S.A.: facturas + NC + recibo → billing solo facturas reales", () => {
+  it("fixture El País S.A.: facturas + NC → billing neto histórico", () => {
     // Facturas reales del tenant
     const elpais = [
       { currency_code: "UYU", total_amount: 17_080, balance_amount: 17_080, due_date: "2026-03-13" },
@@ -581,8 +627,7 @@ describe("computeInvoiceCurrencyBreakdown — guard Notas de Crédito", () => {
         zeta_metadata: ncMetadata("112") },
     ];
     const result = computeInvoiceCurrencyBreakdown(elpais, TODAY_NC);
-    // Billing = suma de facturas reales únicamente (NC excluida)
-    expect(result.billingUYU).toBe(17_080 + 41_480 + 8_662 + 8_662); // 75_884
+    expect(result.billingUYU).toBe(67_222);
     // Overdue = facturas reales vencidas con balance > 0
     expect(result.overdueUYU).toBe(17_080 + 8_662 + 8_662); // 34_404
   });

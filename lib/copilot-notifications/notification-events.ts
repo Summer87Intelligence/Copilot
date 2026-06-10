@@ -1,9 +1,18 @@
 /**
- * Generadores de eventos de notificación para los 5 tipos iniciales.
+ * Generadores de eventos de notificación operacionales.
  * Todos son idempotentes: pueden llamarse desde crons sin crear duplicados.
  */
 import { createNotificationIfNotExists } from "./create-notification";
 import { businessMonthYm } from "./business-date";
+import {
+  buildClientDebtSettledDedupKey,
+  buildInvoiceOverdueBody,
+  buildInvoiceOverdueDedupKey,
+  buildNewDebtorBody,
+  buildNewDebtorDedupKey,
+  buildPartialCollectionBody,
+  formatNotificationMoney,
+} from "./notification-financial-events";
 
 // ─── Pure helpers (exported for testing) ─────────────────────────────────────
 
@@ -40,24 +49,55 @@ type CollectionReceivedOpts = {
   amount: number;
   currency: string;
   clientId?: string | null;
+  /** Saldo pendiente tras el cobro (solo cobros parciales). */
+  remainingBalance?: number | null;
   /** YYYY-MM-DD — fecha real del recibo en Zeta. */
   receiptDate?: string | null;
   /** YYYY-MM-DD — baseline de tesorería para la moneda del recibo. */
   treasuryBaselineDate?: string | null;
 };
 
-export async function notifyCollectionReceived(opts: CollectionReceivedOpts) {
-  const amountStr = opts.amount.toLocaleString("es-AR", { maximumFractionDigits: 0 });
-
-  const meta: Record<string, unknown> = {};
+function buildCollectionMetadata(
+  opts: CollectionReceivedOpts,
+  eventKey: string,
+  extra?: Record<string, unknown>
+): Record<string, unknown> {
+  const meta: Record<string, unknown> = {
+    event_key: eventKey,
+    client_name: opts.clientName,
+    currency: opts.currency,
+    amount: opts.amount,
+    ...(opts.clientId ? { client_id: opts.clientId } : {}),
+    receipt_id: opts.receiptId,
+    ...extra,
+  };
   if (opts.receiptDate) meta.receipt_date = opts.receiptDate;
   if (opts.treasuryBaselineDate) meta.treasury_baseline_date = opts.treasuryBaselineDate;
+  if (opts.remainingBalance != null && opts.remainingBalance > 0) {
+    meta.remaining_balance = opts.remainingBalance;
+    meta.status = "partial";
+  }
+  return meta;
+}
+
+export async function notifyCollectionReceived(opts: CollectionReceivedOpts) {
+  const isPartial = (opts.remainingBalance ?? 0) > 0;
+  const dedupKey = `collection_received:${opts.receiptId}`;
+  const title = isPartial ? "Cobro parcial recibido" : "Cobro recibido";
+  const body = isPartial
+    ? buildPartialCollectionBody(
+        opts.clientName,
+        opts.amount,
+        opts.currency,
+        opts.remainingBalance!
+      )
+    : `${opts.clientName} pagó ${formatNotificationMoney(opts.amount, opts.currency)}.`;
 
   return createNotificationIfNotExists(opts.tenantCompanyId, {
     type: "collection_received",
     severity: "info",
-    title: "Cobro recibido",
-    body: `${opts.clientName} pagó ${opts.currency} ${amountStr}`,
+    title,
+    body,
     entity_type: "collection_receipt",
     entity_id: opts.receiptId,
     amount: opts.amount,
@@ -65,8 +105,43 @@ export async function notifyCollectionReceived(opts: CollectionReceivedOpts) {
     action_href: opts.clientId
       ? `/copilot/clientes/${opts.clientId}`
       : "/copilot/cartera",
-    dedup_key: `collection_received:${opts.receiptId}`,
-    metadata: Object.keys(meta).length > 0 ? meta : undefined,
+    dedup_key: dedupKey,
+    metadata: buildCollectionMetadata(opts, dedupKey),
+  });
+}
+
+type ClientDebtSettledOpts = {
+  tenantCompanyId: string;
+  clientId: string;
+  clientName: string;
+  currency: string;
+  receiptId?: string | null;
+  /** YYYY-MM-DD — bucket diario de dedupe. */
+  dateBucket: string;
+};
+
+export async function notifyClientDebtSettled(opts: ClientDebtSettledOpts) {
+  const dedupKey = buildClientDebtSettledDedupKey(opts.clientId, opts.dateBucket);
+  return createNotificationIfNotExists(opts.tenantCompanyId, {
+    type: "client_debt_settled",
+    severity: "info",
+    title: "Cliente saldó su deuda",
+    body: `${opts.clientName} canceló su saldo pendiente.`,
+    entity_type: "company",
+    entity_id: opts.clientId,
+    currency: opts.currency,
+    action_href: `/copilot/clientes/${opts.clientId}`,
+    dedup_key: dedupKey,
+    metadata: {
+      event_key: dedupKey,
+      client_id: opts.clientId,
+      client_name: opts.clientName,
+      currency: opts.currency,
+      amount: 0,
+      remaining_balance: 0,
+      ...(opts.receiptId ? { receipt_id: opts.receiptId } : {}),
+      status: "settled",
+    },
   });
 }
 
@@ -76,22 +151,31 @@ type NewDebtorOpts = {
   clientName: string;
   amount: number;
   currency: string;
-  dateBucket: string; // YYYY-MM-DD — limita 1 notif por cliente por día
+  dateBucket: string; // YYYY-MM-DD — limita 1 notif por cliente+moneda por día
+  invoiceId?: string | null;
 };
 
 export async function notifyNewDebtor(opts: NewDebtorOpts) {
-  const amountStr = opts.amount.toLocaleString("es-AR", { maximumFractionDigits: 0 });
+  const dedupKey = buildNewDebtorDedupKey(opts.clientId, opts.currency, opts.dateBucket);
   return createNotificationIfNotExists(opts.tenantCompanyId, {
     type: "new_debtor",
     severity: "warning",
-    title: "Nuevo cliente con deuda",
-    body: `${opts.clientName} tiene ${opts.currency} ${amountStr} pendiente`,
+    title: "Nueva deuda detectada",
+    body: buildNewDebtorBody(opts.clientName, opts.amount, opts.currency),
     entity_type: "company",
     entity_id: opts.clientId,
     amount: opts.amount,
     currency: opts.currency,
     action_href: `/copilot/clientes/${opts.clientId}`,
-    dedup_key: `new_debtor:${opts.clientId}:${opts.dateBucket}`,
+    dedup_key: dedupKey,
+    metadata: {
+      event_key: dedupKey,
+      client_id: opts.clientId,
+      client_name: opts.clientName,
+      currency: opts.currency,
+      amount: opts.amount,
+      ...(opts.invoiceId ? { invoice_id: opts.invoiceId } : {}),
+    },
   });
 }
 
@@ -118,18 +202,66 @@ export async function notifyClientOverdue(opts: ClientOverdueOpts) {
   const bucket = computeClientOverdueBucket(opts.daysOverdue);
   // Month bucket prevents re-notifying daily while allowing a fresh alert each month.
   const yyyyMm = businessMonthYm(new Date());
-  const amountStr = opts.amount.toLocaleString("es-AR", { maximumFractionDigits: 0 });
+  const dedupKey = `client_overdue:${opts.clientId}:${opts.currency}:${bucket}:${yyyyMm}`;
   return createNotificationIfNotExists(opts.tenantCompanyId, {
     type: "client_overdue",
     severity: opts.daysOverdue >= 60 ? "critical" : "warning",
     title: "Cliente vencido",
-    body: `${opts.clientName} tiene ${opts.currency} ${amountStr} vencido`,
+    body: buildInvoiceOverdueBody(opts.clientName, opts.amount, opts.currency),
     entity_type: "company",
     entity_id: opts.clientId,
     amount: opts.amount,
     currency: opts.currency,
     action_href: `/copilot/clientes/${opts.clientId}`,
-    dedup_key: `client_overdue:${opts.clientId}:${opts.currency}:${bucket}:${yyyyMm}`,
+    dedup_key: dedupKey,
+    metadata: {
+      event_key: dedupKey,
+      client_id: opts.clientId,
+      client_name: opts.clientName,
+      currency: opts.currency,
+      amount: opts.amount,
+    },
+  });
+}
+
+type InvoiceOverdueOpts = {
+  tenantCompanyId: string;
+  invoiceId: string;
+  clientId: string;
+  clientName: string;
+  amount: number;
+  currency: string;
+  dueDate: string;
+  daysOverdue: number;
+};
+
+export async function notifyInvoiceOverdue(opts: InvoiceOverdueOpts) {
+  const dedupKey = buildInvoiceOverdueDedupKey(
+    opts.invoiceId,
+    opts.clientId,
+    opts.currency,
+    opts.dueDate
+  );
+  return createNotificationIfNotExists(opts.tenantCompanyId, {
+    type: "client_overdue",
+    severity: opts.daysOverdue >= 60 ? "critical" : "warning",
+    title: "Factura vencida",
+    body: buildInvoiceOverdueBody(opts.clientName, opts.amount, opts.currency),
+    entity_type: "invoice",
+    entity_id: opts.invoiceId,
+    amount: opts.amount,
+    currency: opts.currency,
+    action_href: `/copilot/clientes/${opts.clientId}`,
+    dedup_key: dedupKey,
+    metadata: {
+      event_key: dedupKey,
+      client_id: opts.clientId,
+      client_name: opts.clientName,
+      currency: opts.currency,
+      amount: opts.amount,
+      invoice_id: opts.invoiceId,
+      due_date: opts.dueDate,
+    },
   });
 }
 

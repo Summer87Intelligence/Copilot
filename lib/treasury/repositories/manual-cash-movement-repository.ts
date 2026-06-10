@@ -15,6 +15,7 @@ export async function manualCashMovementRepositoryList(
   let qb = eqTreasuryWorkspace(supabase.from(TABLE).select("*"), workspaceId)
     .order("movement_date", { ascending: false })
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(limit);
 
   if (filters.currencyCode) qb = qb.eq("currency_code", filters.currencyCode);
