@@ -1,9 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
+import { CopilotButtonLink } from "@/components/copilot/ui/copilot-button";
 import { HoyDrawer } from "@/components/copilot/hoy/hoy-drawer";
 import { formatMoneySymbolOnly } from "@/components/copilot/hoy/hoy-clients-with-debt-section";
 import {
@@ -82,13 +82,10 @@ function FootnoteLine({ footnote }: { footnote: CockpitMoneyBlock["footnote"] })
 
 function TreasuryCta({ href, label }: { href: string; label: string }) {
   return (
-    <Link
-      href={href}
-      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-white"
-    >
+    <CopilotButtonLink href={href} fullWidth>
       {label}
       <ArrowRight className="h-4 w-4" aria-hidden />
-    </Link>
+    </CopilotButtonLink>
   );
 }
 

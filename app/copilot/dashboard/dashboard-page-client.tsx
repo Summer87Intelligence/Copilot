@@ -73,9 +73,9 @@ const C = {
   border: "border-[var(--copilot-border)]",
   input:
     "rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] px-3 py-1.5 text-xs text-[var(--copilot-ink)] focus:outline-none focus:ring-1 focus:ring-[var(--copilot-accent)]",
-  btn: "inline-flex items-center gap-1.5 rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 transition",
+  btn: "inline-flex h-8 items-center gap-1.5 rounded-xl border border-[var(--copilot-accent)] bg-[var(--copilot-accent)] px-3 text-xs font-semibold text-white shadow-sm transition hover:border-[#185a3d] hover:bg-[#185a3d]",
   btnGhost:
-    "inline-flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)] transition",
+    "inline-flex h-8 items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 text-xs font-semibold text-[var(--copilot-accent)] shadow-sm transition hover:bg-[var(--copilot-accent-soft)]",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1757,28 +1757,28 @@ export default function DashboardPageClient() {
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-2">
             {effectiveCurrency === "all" ? (
               <>
-                <ChartCard title="[1] Ventas por mes UYU" subtitle="Ventas UYU · escala independiente">
+                <ChartCard title="Ventas por mes UYU" subtitle="Ventas UYU · escala independiente">
                   {loading ? <Skeleton className="h-28" /> : (
                     <VerticalBarChart data={monthlyIssued} selectedCurrency="UYU" height={140} />
                   )}
                 </ChartCard>
-                <ChartCard title="[1] Ventas por mes USD" subtitle="Facturado USD · escala independiente">
+                <ChartCard title="Ventas por mes USD" subtitle="Facturado USD · escala independiente">
                   {loading ? <Skeleton className="h-28" /> : (
                     <VerticalBarChart data={monthlyIssued} selectedCurrency="USD" height={140} />
                   )}
                 </ChartCard>
-                <ChartCard title="[2] Cobros por mes UYU" subtitle="Recibos UYU · escala independiente">
+                <ChartCard title="Cobros por mes UYU" subtitle="Recibos UYU · escala independiente">
                   {loading ? <Skeleton className="h-28" /> : (
                     <VerticalBarChart data={monthlyCollected} selectedCurrency="UYU" height={140} />
                   )}
                 </ChartCard>
-                <ChartCard title="[2] Cobros por mes USD" subtitle="Recibos USD · escala independiente">
+                <ChartCard title="Cobros por mes USD" subtitle="Recibos USD · escala independiente">
                   {loading ? <Skeleton className="h-28" /> : (
                     <VerticalBarChart data={monthlyCollected} selectedCurrency="USD" height={140} />
                   )}
                 </ChartCard>
                 {/* [3] Ventas vs Cobros — per currency with % chips */}
-                <ChartCard title="[3] Ventas vs Cobros UYU" subtitle="Período seleccionado · Verde = cobrado">
+                <ChartCard title="Ventas vs Cobros UYU" subtitle="Período seleccionado · Verde = cobrado">
                   {loading ? <Skeleton className="h-28" /> : (uyu?.facturado ?? 0) + (uyu?.cobrado ?? 0) > 0 ? (
                     <GroupedBarChart groups={[{ label: "UYU", a: uyu?.facturado ?? 0, b: uyu?.cobrado ?? 0, aLabel: "Facturado", bLabel: "Cobrado" }]} height={140} />
                   ) : (
@@ -1794,7 +1794,7 @@ export default function DashboardPageClient() {
                     )}
                   </div>
                 </ChartCard>
-                <ChartCard title="[3] Ventas vs Cobros USD" subtitle="Período seleccionado · Verde = cobrado">
+                <ChartCard title="Ventas vs Cobros USD" subtitle="Período seleccionado · Verde = cobrado">
                   {loading ? <Skeleton className="h-28" /> : (usd?.facturado ?? 0) + (usd?.cobrado ?? 0) > 0 ? (
                     <GroupedBarChart groups={[{ label: "USD", a: usd?.facturado ?? 0, b: usd?.cobrado ?? 0, aLabel: "Facturado", bLabel: "Cobrado" }]} height={140} />
                   ) : (
@@ -1814,7 +1814,7 @@ export default function DashboardPageClient() {
             ) : (
               <>
                 <ChartCard
-                  title="[1] Ventas por mes"
+                  title="Ventas por mes"
                   subtitle={`${METRIC_LABEL.facturado_periodo} · ${currencyModeLabel}`}
                   badge={<ChartLegend selectedCurrency={effectiveCurrency} />}
                 >
@@ -1830,7 +1830,7 @@ export default function DashboardPageClient() {
                 </ChartCard>
 
                 <ChartCard
-                  title="[2] Cobros por mes"
+                  title="Cobros por mes"
                   subtitle={`Recibos registrados · ${currencyModeLabel}`}
                   badge={<ChartLegend selectedCurrency={effectiveCurrency} />}
                 >
@@ -1846,7 +1846,7 @@ export default function DashboardPageClient() {
                 </ChartCard>
 
                 <ChartCard
-                  title="[3] Ventas vs Cobros"
+                  title="Ventas vs Cobros"
                   subtitle={`Período seleccionado · ${currencyModeLabel} · Verde = cobrado`}
                 >
                   {loading ? (
@@ -1881,12 +1881,12 @@ export default function DashboardPageClient() {
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-2">
             {effectiveCurrency === "all" ? (
               <>
-                <ChartCard title="[4] Deuda por antigüedad UYU" subtitle="Basado en fecha de vencimiento · Estado actual">
+                <ChartCard title="Deuda por antigüedad UYU" subtitle="Basado en fecha de vencimiento · Estado actual">
                   {loading ? <Skeleton className="h-28" /> : (
                     <VerticalBarChart data={agingBars} selectedCurrency="UYU" height={140} emptyText="Sin deuda vencida UYU" />
                   )}
                 </ChartCard>
-                <ChartCard title="[4] Deuda por antigüedad USD" subtitle="Basado en fecha de vencimiento · Estado actual">
+                <ChartCard title="Deuda por antigüedad USD" subtitle="Basado en fecha de vencimiento · Estado actual">
                   {loading ? <Skeleton className="h-28" /> : (
                     <VerticalBarChart data={agingBars} selectedCurrency="USD" height={140} emptyText="Sin deuda vencida USD" />
                   )}
@@ -1894,7 +1894,7 @@ export default function DashboardPageClient() {
               </>
             ) : (
               <ChartCard
-                title="[4] Deuda por antigüedad"
+                title="Deuda por antigüedad"
                 subtitle={`Basado en fecha de vencimiento · Estado actual · ${currencyModeLabel}`}
                 badge={<ChartLegend selectedCurrency={effectiveCurrency} />}
               >
@@ -1912,7 +1912,7 @@ export default function DashboardPageClient() {
             )}
 
             <ChartCard
-              title="[10] Efectividad de cobros"
+              title="Efectividad de cobros"
               subtitle="Cobrado del período / Facturado neto · Por moneda"
             >
               {loading ? (
@@ -1947,7 +1947,7 @@ export default function DashboardPageClient() {
           {effectiveCurrency === "all" ? (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <ChartCard
-                title="[5] Top 10 deudores UYU"
+                title="Top 10 deudores UYU"
                 subtitle={uyuTop10Pct != null ? `Concentran el ${uyuTop10Pct}% de la deuda UYU total · Clic para ver ficha` : "Deuda actual UYU · Clic para ver ficha"}
               >
                 {loading ? (
@@ -1966,7 +1966,7 @@ export default function DashboardPageClient() {
                 )}
               </ChartCard>
               <ChartCard
-                title="[5] Top 10 deudores USD"
+                title="Top 10 deudores USD"
                 subtitle={usdTop10Pct != null ? `Concentran el ${usdTop10Pct}% de la deuda USD total · Clic para ver ficha` : "Deuda actual USD · Clic para ver ficha"}
               >
                 {loading ? (
@@ -1985,7 +1985,7 @@ export default function DashboardPageClient() {
                 )}
               </ChartCard>
               <ChartCard
-                title="[6] Top facturación histórica UYU"
+                title="Top facturación histórica UYU"
                 subtitle="Facturación total activa · Histórico total"
                 badge={
                   <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[9px] text-amber-700">
@@ -2009,7 +2009,7 @@ export default function DashboardPageClient() {
                 )}
               </ChartCard>
               <ChartCard
-                title="[6] Top facturación histórica USD"
+                title="Top facturación histórica USD"
                 subtitle="Facturación total activa · Histórico total"
                 badge={
                   <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[9px] text-amber-700">
@@ -2036,7 +2036,7 @@ export default function DashboardPageClient() {
           ) : (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <ChartCard
-                title="[5] Top 10 clientes deudores"
+                title="Top 10 clientes deudores"
                 subtitle={
                   isConsolidated
                     ? "Deuda actual consolidada en USD · Clic para ver ficha"
@@ -2062,7 +2062,7 @@ export default function DashboardPageClient() {
               </ChartCard>
 
               <ChartCard
-                title="[6] Top 10 por facturación histórica"
+                title="Top 10 por facturación histórica"
                 subtitle="Facturación total activa · No filtrable por período desde esta vista"
                 badge={
                   <span
@@ -2096,7 +2096,7 @@ export default function DashboardPageClient() {
         <section aria-label="Estado de cartera y proyección">
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-2">
             <ChartCard
-              title="[7] Estado de cartera"
+              title="Estado de cartera"
               subtitle="Los clientes se cuentan una sola vez aunque tengan deuda en más de una moneda."
             >
               {loading ? (
@@ -2184,7 +2184,7 @@ export default function DashboardPageClient() {
             </ChartCard>
 
             <ChartCard
-              title="[9] Caja proyectada 30 días"
+              title="Caja proyectada 30 días"
               subtitle={`${currencyModeLabel} · Caja disponible hoy y proyección a 30 días`}
             >
               {loading ? (

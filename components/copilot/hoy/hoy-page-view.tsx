@@ -101,10 +101,10 @@ function LoadingSkeleton() {
     <div className={HOY_PAGE_SHELL}>
       <Skeleton className="h-14 w-full" />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Skeleton className="min-h-[190px]" />
-        <Skeleton className="min-h-[190px]" />
-        <Skeleton className="min-h-[190px]" />
-        <Skeleton className="min-h-[190px]" />
+        <Skeleton className="min-h-[260px]" />
+        <Skeleton className="min-h-[260px]" />
+        <Skeleton className="min-h-[260px]" />
+        <Skeleton className="min-h-[260px]" />
       </div>
       <Skeleton className="h-9 w-full" />
       <Skeleton className="h-64 w-full" />

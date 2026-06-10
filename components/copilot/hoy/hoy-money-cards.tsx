@@ -1,8 +1,9 @@
 "use client";
 
 import type { KeyboardEvent } from "react";
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+
+import { CopilotButtonLink } from "@/components/copilot/ui/copilot-button";
 
 import type { HoyCockpitCardId } from "@/components/copilot/hoy/hoy-cockpit-card-drawer";
 import type {
@@ -188,11 +189,13 @@ function CurrencyStack({
   amountPrimaryClass,
   amountSecondaryClass,
   size = "primary",
+  layout = "row",
 }: {
   amounts: CockpitMoneyBlock["amounts"];
   amountPrimaryClass: string;
   amountSecondaryClass: string;
   size?: AmountSize;
+  layout?: "row" | "kpi";
 }) {
   const s = AMOUNT_SIZE[size];
   if (amounts.length === 0) {
@@ -200,6 +203,31 @@ function CurrencyStack({
   }
 
   const sorted = sortAmounts(amounts);
+
+  if (layout === "kpi") {
+    return (
+      <div className="flex w-full flex-col items-center justify-center gap-3 text-center">
+        {sorted.map((a, index) => {
+          const isPrimary = a.currency === "UYU";
+          return (
+            <div key={a.currency} className="w-full">
+              {index > 0 ? <div className="mb-3 border-t border-black/[0.06]" aria-hidden /> : null}
+              <p
+                className={`font-semibold uppercase tracking-[0.16em] text-[var(--copilot-ink-muted)] ${isPrimary ? s.labelPrimary : s.labelSecondary}`}
+              >
+                {a.currency}
+              </p>
+              <p
+                className={`mt-1 whitespace-nowrap tracking-tight ${metricValueClass} ${isPrimary ? `${s.uyu} ${amountPrimaryClass}` : `${s.usd} ${amountSecondaryClass}`}`}
+              >
+                {amountDisplayLine(a)}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -309,36 +337,41 @@ function MoneyCard({
       tabIndex={interactive ? 0 : undefined}
       onClick={interactive ? () => onCardClick?.(cardId) : undefined}
       onKeyDown={interactive ? (e) => cardActivateKey(e, () => onCardClick?.(cardId)) : undefined}
-      className={`flex min-h-[190px] flex-col rounded-3xl border p-5 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${theme.shell}`}
+      className={`flex min-h-[260px] flex-col rounded-2xl border p-5 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${theme.shell}`}
     >
-      <header>
+      <header className="shrink-0">
         <CardHeader theme={theme} title={title} subtitle={subtitle} />
       </header>
 
       {isEmptyPayments ? (
-        <div className="mt-3 flex flex-1 flex-col justify-center">
+        <div className="flex flex-1 flex-col items-center justify-center text-center">
           <p className="text-sm text-[var(--copilot-ink-muted)]">No hay pagos próximos cargados.</p>
-          <Link
+          <CopilotButtonLink
             href="/copilot/tesoreria?section=obligations"
+            variant="ghost"
+            size="sm"
             onClick={(e) => e.stopPropagation()}
-            className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
+            className="mt-2"
           >
             Agregar pago programado
             <ArrowRight className="h-3 w-3" aria-hidden />
-          </Link>
+          </CopilotButtonLink>
         </div>
       ) : (
-        <div className="mt-2 flex flex-1 flex-col justify-center">
+        <div className="flex flex-1 flex-col items-center justify-center py-2">
           <CurrencyStack
             amounts={block.amounts}
             amountPrimaryClass={theme.amountPrimary}
             amountSecondaryClass={theme.amountSecondary}
+            layout="kpi"
           />
         </div>
       )}
 
       {!isEmptyPayments && (
-        <CardFooter theme={theme} tone={block.footnote.tone} text={block.footnote.text} />
+        <footer className="mt-auto shrink-0">
+          <CardFooter theme={theme} tone={block.footnote.tone} text={block.footnote.text} />
+        </footer>
       )}
     </article>
   );
@@ -361,7 +394,9 @@ function ReceivablesSection({
 }) {
   return (
     <div className="space-y-0.5">
-      <p className={`text-[10px] font-bold uppercase tracking-[0.12em] ${labelClass}`}>{label}</p>
+      {label ? (
+        <p className={`text-[10px] font-bold uppercase tracking-[0.12em] ${labelClass}`}>{label}</p>
+      ) : null}
       {amounts.length === 0 ? (
         <p className="text-xs text-slate-500">—</p>
       ) : (
@@ -398,57 +433,62 @@ function ReceivablesCard({
       onKeyDown={
         interactive ? (e) => cardActivateKey(e, () => onCardClick?.("receivables")) : undefined
       }
-      className={`flex min-h-[190px] flex-col rounded-3xl border p-5 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${shell.shell}`}
+      className={`flex min-h-[260px] flex-col rounded-2xl border p-5 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${shell.shell}`}
     >
-      <header>
+      <header className="shrink-0">
         <CardHeader theme={shell} title={HOY_COCKPIT.receivables} subtitle={subtitle} />
       </header>
 
-      <div className="mt-3 flex flex-1 flex-col justify-center">
-        <ReceivablesSection
-          label={HOY_COCKPIT.receivablesTotalPending}
-          amounts={card.totalPending}
-          labelClass="text-amber-800"
-          amountPrimaryClass="text-amber-900"
-          amountSecondaryClass="text-amber-800/80"
-          size="primary"
-        />
-        <div
-          className="mt-2.5 border-t border-amber-200/45 pt-2.5"
-          role="group"
-          aria-label={`${HOY_COCKPIT.receivablesIncludedInTotal}: ${HOY_COCKPIT.receivablesOverdueTotal}`}
-        >
-          <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-rose-700/75">
-            {HOY_COCKPIT.receivablesIncludedInTotal}
-          </p>
-          <div className="mt-1">
-            <ReceivablesSection
-              label={HOY_COCKPIT.receivablesOverdueTotal}
-              amounts={card.overdueTotal}
-              labelClass="text-rose-700/90"
-              amountPrimaryClass="text-rose-800"
-              amountSecondaryClass="text-rose-700/70"
-              size="nested"
+      <div className="flex flex-1 flex-col items-center justify-center py-2 text-center">
+        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-amber-800">
+          {HOY_COCKPIT.receivablesTotalPending}
+        </p>
+        {card.totalPending.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-500">—</p>
+        ) : (
+          <div className="mt-2 w-full">
+            <CurrencyStack
+              amounts={card.totalPending}
+              amountPrimaryClass="text-amber-900"
+              amountSecondaryClass="text-amber-800/80"
+              layout="kpi"
             />
           </div>
-          <p className="mt-1.5 text-[10px] leading-snug text-rose-700/65">
-            {HOY_COCKPIT.receivablesOverdueTotalHint}
-          </p>
-          <div className="mt-2 border-t border-rose-200/35 pt-2">
-            <ReceivablesSection
-              label={HOY_COCKPIT.receivablesOverdue30}
-              amounts={card.overdue30}
-              labelClass="text-rose-700/80"
-              amountPrimaryClass="text-rose-800/90"
-              amountSecondaryClass="text-rose-700/60"
-              size="nested"
-            />
-          </div>
-          <p className="mt-1.5 text-[10px] leading-snug text-rose-700/65">
-            {HOY_COCKPIT.receivablesOverdue30Hint}
-          </p>
-        </div>
+        )}
       </div>
+
+      <footer
+        className="mt-auto shrink-0 space-y-2 border-t border-amber-200/40 pt-3"
+        role="group"
+        aria-label={`${HOY_COCKPIT.receivablesIncludedInTotal}: ${HOY_COCKPIT.receivablesOverdueTotal}`}
+      >
+        <div className="rounded-xl bg-rose-50/60 px-2.5 py-2">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-rose-700/80">
+            {HOY_COCKPIT.receivablesOverdueTotal}
+          </p>
+          <ReceivablesSection
+            label=""
+            amounts={card.overdueTotal}
+            labelClass="sr-only"
+            amountPrimaryClass="text-rose-800"
+            amountSecondaryClass="text-rose-700/70"
+            size="compact"
+          />
+        </div>
+        <div className="rounded-xl bg-rose-50/40 px-2.5 py-2">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-rose-700/75">
+            {HOY_COCKPIT.receivablesOverdue30}
+          </p>
+          <ReceivablesSection
+            label=""
+            amounts={card.overdue30}
+            labelClass="sr-only"
+            amountPrimaryClass="text-rose-800/90"
+            amountSecondaryClass="text-rose-700/60"
+            size="nested"
+          />
+        </div>
+      </footer>
     </article>
   );
 }

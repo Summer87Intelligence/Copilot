@@ -11,9 +11,12 @@ import {
   CopilotPrimaryButton,
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
+import { CopilotButton, copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
 import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
 import {
   TESORERIA_FIELD_CLASS,
+  TESORERIA_FILTER_CHIP_ACTIVE,
+  TESORERIA_FILTER_CHIP_IDLE,
   TESORERIA_FORM_LABEL_CLASS,
   TESORERIA_PAGE_SIZE,
   TESORERIA_PAYMENT_FIELD,
@@ -87,6 +90,10 @@ type ActiveModal =
 type Props = {
   workspace: TreasuryWorkspace;
   asOfDate: string;
+  /** Oculta el bloque de resumen cuando ya está en la tab Caja. */
+  hideSummary?: boolean;
+  /** Incrementar para abrir el drawer de nuevo pago desde acciones rápidas. */
+  openCreateRequest?: number;
 };
 
 // ─── BaseModal ───────────────────────────────────────────────────────────────
@@ -733,7 +740,12 @@ function RowActionsCell({
 
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
-export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
+export function TreasuryObligationsPanel({
+  workspace,
+  asOfDate,
+  hideSummary = false,
+  openCreateRequest = 0,
+}: Props) {
   const { canWrite } = useCopilotPermissions();
   const [search, setSearch] = useState("");
   const [view, setView] = useState<ObligationView>("next30");
@@ -781,6 +793,12 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / TESORERIA_PAGE_SIZE));
   const pageItems = filtered.slice(page * TESORERIA_PAGE_SIZE, (page + 1) * TESORERIA_PAGE_SIZE);
+
+  useEffect(() => {
+    if (openCreateRequest > 0 && canWrite) {
+      setDrawerOpen(true);
+    }
+  }, [openCreateRequest, canWrite]);
 
   function statusBadgeTone(
     row: PlannedCashObligation
@@ -846,53 +864,55 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
 
   return (
     <section className="space-y-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-        Resumen próximos 30 días
-      </p>
-
-      {/* KPI cards by currency */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        {summaries.map((s) => (
-          <div
-            key={s.currency}
-            className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4"
-          >
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-              {s.currency}
-            </p>
-            <dl className="mt-2 space-y-1 text-sm">
-              <div className="flex justify-between gap-2">
-                <dt className="text-[var(--copilot-ink-muted)]">Egresos próx. 30 días</dt>
-                <dd className="font-semibold tabular-nums text-[var(--copilot-ink)]">
-                  {formatTreasuryMoney(s.next30Days, s.currency)}
-                </dd>
+      {!hideSummary ? (
+        <>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+            Resumen próximos 30 días
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {summaries.map((s) => (
+              <div
+                key={s.currency}
+                className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                  {s.currency}
+                </p>
+                <dl className="mt-2 space-y-1 text-sm">
+                  <div className="flex justify-between gap-2">
+                    <dt className="text-[var(--copilot-ink-muted)]">Egresos próx. 30 días</dt>
+                    <dd className="font-semibold tabular-nums text-[var(--copilot-ink)]">
+                      {formatTreasuryMoney(s.next30Days, s.currency)}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <dt className="text-[var(--copilot-ink-muted)]">Vencidos</dt>
+                    <dd className="font-semibold tabular-nums text-rose-700">
+                      {formatTreasuryMoney(s.overdue, s.currency)}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <dt className="text-[var(--copilot-ink-muted)]">Pagados del período</dt>
+                    <dd className="font-semibold tabular-nums text-emerald-700">
+                      {formatTreasuryMoney(s.paidInPeriod, s.currency)}
+                    </dd>
+                  </div>
+                </dl>
               </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-[var(--copilot-ink-muted)]">Vencidos</dt>
-                <dd className="font-semibold tabular-nums text-rose-700">
-                  {formatTreasuryMoney(s.overdue, s.currency)}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-[var(--copilot-ink-muted)]">Pagados del período</dt>
-                <dd className="font-semibold tabular-nums text-emerald-700">
-                  {formatTreasuryMoney(s.paidInPeriod, s.currency)}
-                </dd>
-              </div>
-            </dl>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      ) : null}
 
       <CopilotSectionTitle
-        title="Próximos pagos"
-        subtitle="Egresos programados por moneda: impuestos, sueldos, proveedores y más. No afectan caja hasta confirmarse."
+        title="Pagos próximos"
+        subtitle="Pagos futuros puntuales. Pago único con fecha futura — ejemplo: BPS Mayo. No afectan caja hasta confirmarse."
         action={
           canWrite ? (
-            <CopilotPrimaryButton type="button" onClick={() => setDrawerOpen(true)}>
+            <CopilotButton type="button" size="sm" onClick={() => setDrawerOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Nuevo pago
-            </CopilotPrimaryButton>
+            </CopilotButton>
           ) : null
         }
       />
@@ -914,10 +934,8 @@ export function TreasuryObligationsPanel({ workspace, asOfDate }: Props) {
               setView(id);
               setPage(0);
             }}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-              view === id
-                ? "bg-[var(--copilot-accent)] text-white"
-                : "border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] text-[var(--copilot-ink-muted)] hover:bg-[rgba(44,40,37,0.03)]"
+            className={`${copilotButtonClassName({ variant: "ghost", size: "sm" })} ${
+              view === id ? TESORERIA_FILTER_CHIP_ACTIVE : TESORERIA_FILTER_CHIP_IDLE
             }`}
           >
             {label}

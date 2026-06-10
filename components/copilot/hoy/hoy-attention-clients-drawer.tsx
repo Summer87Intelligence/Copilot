@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
+import { CopilotButton, CopilotButtonLink } from "@/components/copilot/ui/copilot-button";
+
 import { HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
 import type { AttentionClientsSummary } from "@/lib/copilot-today-business-pulse";
 
@@ -29,20 +31,13 @@ export function AttentionClientsDrawer({
       onClose={onClose}
       footer={
         <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={onViewAllDebtors}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-2.5 text-sm font-semibold text-[var(--copilot-ink)]"
-          >
+          <CopilotButton type="button" onClick={onViewAllDebtors} variant="secondary" fullWidth>
             {debtorBtn}
-          </button>
-          <Link
-            href="/copilot/cartera"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-white"
-          >
+          </CopilotButton>
+          <CopilotButtonLink href="/copilot/cartera" fullWidth>
             Ver cartera completa
             <ArrowRight className="h-4 w-4" aria-hidden />
-          </Link>
+          </CopilotButtonLink>
         </div>
       }
     >

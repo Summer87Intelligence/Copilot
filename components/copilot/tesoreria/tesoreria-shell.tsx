@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { TesoreriaControlBar } from "@/components/copilot/tesoreria/tesoreria-control-bar";
+import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
 import { TreasuryAdvancedToolsPanel } from "@/components/copilot/tesoreria/treasury-advanced-tools-panel";
 import { TreasuryReceiptsPanel } from "@/components/copilot/tesoreria/treasury-receipts-panel";
 import { TreasuryCashPanel } from "@/components/copilot/tesoreria/treasury-cash-panel";
@@ -13,17 +13,16 @@ import { TreasuryProgramadosPanel } from "@/components/copilot/tesoreria/treasur
 import { TreasuryRecurringPaymentsPanel } from "@/components/copilot/tesoreria/treasury-recurring-payments-panel";
 import { TreasuryObligationsPanel } from "@/components/copilot/tesoreria/treasury-obligations-panel";
 import {
+  TesoreriaPageHeader,
+  type TesoreriaQuickAction,
+} from "@/components/copilot/tesoreria/tesoreria-page-header";
+import {
   TESORERIA_SECTION_ALIASES,
   TESORERIA_SECTIONS,
   TESORERIA_SECTIONS_MAIN,
-  TESORERIA_SECTIONS_WITH_CONTROL_BAR,
   type TesoreriaSection,
 } from "@/components/copilot/tesoreria/tesoreria-ui";
 import { useTreasuryWorkspace } from "@/hooks/use-treasury-workspace";
-
-function normalizeDateInput(value: string): string {
-  return value.slice(0, 10);
-}
 
 function parseTesoreriaSection(raw: string | null): TesoreriaSection | null {
   if (!raw) return null;
@@ -34,13 +33,6 @@ function parseTesoreriaSection(raw: string | null): TesoreriaSection | null {
     : null;
 }
 
-const NAV_BTN_BASE =
-  "rounded-lg px-3 py-1.5 text-xs font-medium transition";
-const NAV_BTN_ACTIVE =
-  "bg-[var(--copilot-accent)] text-white shadow-sm";
-const NAV_BTN_IDLE =
-  "border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink)] hover:bg-[rgba(44,40,37,0.04)]";
-
 export function TesoreriaShell() {
   const router = useRouter();
   const pathname = usePathname();
@@ -50,27 +42,23 @@ export function TesoreriaShell() {
   const [section, setSection] = useState<TesoreriaSection>(parsedSection);
   const [appliedSectionFromUrl, setAppliedSectionFromUrl] = useState(sectionFromUrl);
 
+  const [cashFormRequest, setCashFormRequest] = useState<{
+    key: number;
+    preset?: Partial<{
+      movementType: "income" | "expense";
+      mode: "now" | "scheduled";
+    }>;
+  } | null>(null);
+  const [obligationCreateRequest, setObligationCreateRequest] = useState(0);
+  const [recurringCreateRequest, setRecurringCreateRequest] = useState(0);
+
   if (sectionFromUrl !== appliedSectionFromUrl) {
     setAppliedSectionFromUrl(sectionFromUrl);
     const next = parseTesoreriaSection(sectionFromUrl) ?? "caja";
     if (next !== section) setSection(next);
   }
 
-  const [draftStart, setDraftStart] = useState("");
-  const [draftEnd, setDraftEnd] = useState("");
-  const [confirmedStart, setConfirmedStart] = useState("");
-  const [confirmedEnd, setConfirmedEnd] = useState("");
-  const [currency, setCurrency] = useState<"all" | "UYU" | "USD">("all");
-
-  const filters = useMemo(
-    () => ({
-      currencyCode: currency === "all" ? undefined : currency,
-      fromDate: confirmedStart || undefined,
-      toDate: confirmedEnd || undefined,
-    }),
-    [currency, confirmedStart, confirmedEnd]
-  );
-
+  const filters = useMemo(() => ({}), []);
   const workspace = useTreasuryWorkspace(filters);
   const asOfDate = new Date().toISOString().slice(0, 10);
 
@@ -86,6 +74,30 @@ export function TesoreriaShell() {
     [router, pathname, searchParams, workspace]
   );
 
+  const handleQuickAction = useCallback(
+    (action: TesoreriaQuickAction) => {
+      if (action === "recurring") {
+        setSectionWithUrl("programados");
+        setRecurringCreateRequest((n) => n + 1);
+        return;
+      }
+      if (action === "scheduled") {
+        setSectionWithUrl("programados");
+        setObligationCreateRequest((n) => n + 1);
+        return;
+      }
+      setSectionWithUrl("caja");
+      setCashFormRequest({
+        key: Date.now(),
+        preset: {
+          movementType: action,
+          mode: "now",
+        },
+      });
+    },
+    [setSectionWithUrl]
+  );
+
   useEffect(() => {
     if (!workspace.feedback) return;
     const timer = setTimeout(() => workspace.clearFeedback(), 5000);
@@ -93,37 +105,13 @@ export function TesoreriaShell() {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: subscribing to feedback/clearFeedback properties avoids re-running on unrelated workspace changes
   }, [workspace.feedback, workspace.clearFeedback]);
 
-  const hasPendingChanges =
-    normalizeDateInput(draftStart) !== normalizeDateInput(confirmedStart) ||
-    normalizeDateInput(draftEnd) !== normalizeDateInput(confirmedEnd);
-
-  const handleConfirmDraft = useCallback(() => {
-    const nextStart = normalizeDateInput(draftStart);
-    const nextEnd = normalizeDateInput(draftEnd);
-    if (nextStart && nextEnd && nextStart > nextEnd) return;
-    setConfirmedStart(nextStart);
-    setConfirmedEnd(nextEnd);
-  }, [draftStart, draftEnd]);
-
-  const showControlBar = TESORERIA_SECTIONS_WITH_CONTROL_BAR.has(section);
-
   return (
-    <div className="space-y-3">
-      {showControlBar ? (
-        <TesoreriaControlBar
-          draftStart={draftStart}
-          draftEnd={draftEnd}
-          currency={currency}
-          onDraftStartChange={setDraftStart}
-          onDraftEndChange={setDraftEnd}
-          onCurrencyChange={setCurrency}
-          hasPendingChanges={hasPendingChanges}
-          onConfirmDraft={handleConfirmDraft}
-          onRefresh={() => void workspace.refetch()}
-          loading={workspace.loading}
-          canRefresh
-        />
-      ) : null}
+    <div className="space-y-6">
+      <TesoreriaPageHeader
+        workspace={workspace}
+        onQuickAction={handleQuickAction}
+        onRefresh={() => void workspace.refetch()}
+      />
 
       {workspace.feedback ? (
         <TreasuryFeedbackBanner
@@ -139,37 +127,52 @@ export function TesoreriaShell() {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-1.5">
-        {/* Tabs principales */}
-        <nav className="flex flex-wrap gap-1.5" aria-label="Secciones de tesorería">
-          {TESORERIA_SECTIONS_MAIN.map((item) => (
+      <nav
+        className="flex flex-wrap gap-2 rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-sm"
+        aria-label="Secciones de tesorería"
+      >
+        {TESORERIA_SECTIONS_MAIN.map((item) => {
+          const active = section === item.id;
+          return (
             <button
               key={item.id}
               type="button"
               onClick={() => setSectionWithUrl(item.id)}
-              className={`${NAV_BTN_BASE} ${section === item.id ? NAV_BTN_ACTIVE : NAV_BTN_IDLE}`}
+              className={copilotButtonClassName({
+                variant: active ? "primary" : "ghost",
+                size: "sm",
+                className: active ? "" : "!border-transparent",
+              })}
             >
               {item.label}
             </button>
-          ))}
-        </nav>
+          );
+        })}
+      </nav>
 
-      </div>
-
-      {section === "caja" ? <TreasuryCashPanel workspace={workspace} /> : null}
+      {section === "caja" ? (
+        <TreasuryCashPanel
+          workspace={workspace}
+          asOfDate={asOfDate}
+          formRequest={cashFormRequest}
+          onFormRequestHandled={() => setCashFormRequest(null)}
+        />
+      ) : null}
 
       {section === "programados" ? (
         <div className="space-y-8">
-          <TreasuryObligationsPanel workspace={workspace} asOfDate={asOfDate} />
+          <TreasuryObligationsPanel
+            workspace={workspace}
+            asOfDate={asOfDate}
+            hideSummary
+            openCreateRequest={obligationCreateRequest}
+          />
           <TreasuryRecurringPaymentsPanel
             workspace={workspace}
             onGoToPagos={() => setSectionWithUrl("programados")}
+            openCreateRequest={recurringCreateRequest}
           />
-          <TreasuryProgramadosPanel
-            workspace={workspace}
-            asOfDate={asOfDate}
-            historialOnly
-          />
+          <TreasuryProgramadosPanel workspace={workspace} asOfDate={asOfDate} historialOnly />
         </div>
       ) : null}
 

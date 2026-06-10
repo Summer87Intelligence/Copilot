@@ -16,6 +16,7 @@ export type ZetaBalanceWriteSource =
   | "vouchers"
   | "saldos"
   | "saldos_zero_pass"
+  | "saldos_shadow_reconcile"
   | "reconciliation";
 
 export type ZetaBalanceWriteDiagPayload = {

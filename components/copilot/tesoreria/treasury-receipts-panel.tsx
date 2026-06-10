@@ -3,14 +3,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 
-import {
-  CopilotGhostButton,
-  CopilotSectionTitle,
-} from "@/components/copilot/copilot-ui";
+import { CopilotSectionTitle } from "@/components/copilot/copilot-ui";
+import { CopilotButton, copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
 import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
 import { CopilotPagination } from "@/components/copilot/ui/copilot-pagination";
 import {
   TESORERIA_FIELD_CLASS,
+  TESORERIA_FILTER_CHIP_ACTIVE,
+  TESORERIA_FILTER_CHIP_IDLE,
   TESORERIA_PAGE_SIZE,
   TESORERIA_TABLE_CLASS,
   TESORERIA_TD_CLASS,
@@ -115,9 +115,10 @@ export function TreasuryReceiptsPanel() {
         title="Cobranza del mes"
         subtitle="Recibos registrados en Zeta por período. Solo lectura."
         action={
-          <CopilotGhostButton type="button" onClick={() => void load()} disabled={loading}>
+          <CopilotButton type="button" variant="secondary" size="sm" onClick={() => void load()} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </CopilotGhostButton>
+            Refrescar
+          </CopilotButton>
         }
       />
 
@@ -149,10 +150,8 @@ export function TreasuryReceiptsPanel() {
             key={c}
             type="button"
             onClick={() => { setCurrency(c); setPage(0); }}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-              currency === c
-                ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]"
-                : "bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]"
+            className={`${copilotButtonClassName({ variant: "ghost", size: "sm" })} !rounded-full ${
+              currency === c ? TESORERIA_FILTER_CHIP_ACTIVE : TESORERIA_FILTER_CHIP_IDLE
             }`}
           >
             {c === "all" ? "Todas" : c}

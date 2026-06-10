@@ -17,7 +17,15 @@ export const copilotInputClass =
   "rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] px-3 py-2 text-sm text-[var(--copilot-text)] shadow-sm transition placeholder:text-[var(--copilot-muted)] focus:border-[var(--copilot-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/20";
 
 export const copilotGhostButtonClass =
-  "inline-flex items-center justify-center rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] px-3.5 py-2 text-sm font-medium text-[var(--copilot-text)] shadow-sm transition hover:bg-[var(--copilot-panel-bg)]";
+  "inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-transparent bg-transparent px-4 text-sm font-semibold text-[var(--copilot-accent)] transition hover:bg-[var(--copilot-accent-soft)]";
+
+/** Section wrapper — white card with soft border and padding. */
+export const copilotSectionCardClass =
+  "rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6";
+
+/** Uniform status / scope chips. */
+export const copilotChipClass =
+  "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold";
 
 export const copilotDisabledStateClass =
   "disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)] disabled:opacity-100 disabled:cursor-not-allowed";

@@ -8,7 +8,13 @@ export const TESORERIA_TH_CLASS =
   "sticky top-0 z-10 border-b border-[var(--copilot-border)] bg-[var(--copilot-table-header-bg)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] backdrop-blur";
 
 export const TESORERIA_TD_CLASS =
-  "border-b border-[var(--copilot-border)] px-3 py-2 align-middle text-sm text-[var(--copilot-ink)]";
+  "border-b border-[var(--copilot-border)] px-3 py-1.5 align-middle text-sm text-[var(--copilot-ink)]";
+
+/** Filtros tipo pill — tabs y chips de tesorería. */
+export const TESORERIA_FILTER_CHIP_ACTIVE =
+  "bg-[var(--copilot-accent)] text-white shadow-sm";
+export const TESORERIA_FILTER_CHIP_IDLE =
+  "border border-neutral-200 bg-white text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-accent-soft)] hover:text-[var(--copilot-ink)]";
 
 export const TESORERIA_PAGE_SIZE = 10;
 

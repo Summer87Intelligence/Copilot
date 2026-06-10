@@ -5,13 +5,17 @@ import { CheckCircle2, Loader2, Plus, XCircle } from "lucide-react";
 
 import type { TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
 
-import { CopilotBadge, CopilotGhostButton, CopilotPrimaryButton, CopilotSectionTitle } from "@/components/copilot/copilot-ui";
+import { CopilotBadge, CopilotSectionTitle } from "@/components/copilot/copilot-ui";
+import { CopilotButton } from "@/components/copilot/ui/copilot-button";
+import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
 import { CopilotPagination } from "@/components/copilot/ui/copilot-pagination";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import type { TreasuryMovementAccounting, TreasuryMovementAccountingMatchStatus } from "@/lib/treasury/treasury-types";
 import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
 import {
   TESORERIA_FIELD_CLASS,
+  TESORERIA_FILTER_CHIP_ACTIVE,
+  TESORERIA_FILTER_CHIP_IDLE,
   TESORERIA_PAGE_SIZE,
   TESORERIA_TABLE_CLASS,
   TESORERIA_TD_CLASS,
@@ -291,10 +295,10 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
         subtitle="Ingresos, egresos y ajustes confirmados que impactan la caja."
         action={
           canWrite ? (
-            <CopilotPrimaryButton type="button" onClick={openCreate}>
+            <CopilotButton type="button" onClick={openCreate}>
               <Plus className="mr-2 h-4 w-4" />
               Nuevo movimiento
-            </CopilotPrimaryButton>
+            </CopilotButton>
           ) : null
         }
       />
@@ -308,10 +312,8 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
               setCurrencyFilter(c);
               setPage(0);
             }}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-              currencyFilter === c
-                ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]"
-                : "bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]"
+            className={`${copilotButtonClassName({ variant: "ghost", size: "sm" })} !rounded-full ${
+              currencyFilter === c ? TESORERIA_FILTER_CHIP_ACTIVE : TESORERIA_FILTER_CHIP_IDLE
             }`}
           >
             {c === "all" ? "Todos" : c}
@@ -326,10 +328,8 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
               setTypeFilter(t);
               setPage(0);
             }}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-              typeFilter === t
-                ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]"
-                : "bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]"
+            className={`${copilotButtonClassName({ variant: "ghost", size: "sm" })} !rounded-full ${
+              typeFilter === t ? TESORERIA_FILTER_CHIP_ACTIVE : TESORERIA_FILTER_CHIP_IDLE
             }`}
           >
             {t === "all" ? "Todos" : TYPE_LABELS[t]}
@@ -345,10 +345,8 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
             key={f}
             type="button"
             onClick={() => { setAccountingFilter(f); setPage(0); }}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-              accountingFilter === f
-                ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]"
-                : "bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]"
+            className={`${copilotButtonClassName({ variant: "ghost", size: "sm" })} !rounded-full ${
+              accountingFilter === f ? TESORERIA_FILTER_CHIP_ACTIVE : TESORERIA_FILTER_CHIP_IDLE
             }`}
           >
             {ACCOUNTING_FILTER_LABELS[f]}
@@ -474,8 +472,10 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                   <td className={TESORERIA_TD_CLASS}>
                     {canWrite ? (
                       <div className="flex flex-wrap gap-2">
-                        <CopilotGhostButton
+                        <CopilotButton
                           type="button"
+                          variant="secondary"
+                          size="sm"
                           onClick={() => openEdit(row)}
                           disabled={!isManualCashMovementDeletable(row)}
                           title={
@@ -485,11 +485,12 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                           }
                         >
                           Editar
-                        </CopilotGhostButton>
+                        </CopilotButton>
                         {isManualCashMovementDeletable(row) ? (
-                          <CopilotGhostButton
+                          <CopilotButton
                             type="button"
-                            className="!text-rose-700 hover:!bg-rose-50/80"
+                            variant="danger"
+                            size="sm"
                             onClick={() => {
                               const msg = row.reconciled
                                 ? "Este movimiento está conciliado. Eliminarlo puede afectar la conciliación.\n\n¿Eliminar este movimiento de caja? Esta acción no se puede deshacer."
@@ -498,15 +499,17 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                             }}
                           >
                             Eliminar
-                          </CopilotGhostButton>
+                          </CopilotButton>
                         ) : null}
                         {row.status === "active" && isManualCashMovementDeletable(row) ? (
-                          <CopilotGhostButton
+                          <CopilotButton
                             type="button"
+                            variant="danger"
+                            size="sm"
                             onClick={() => void workspace.archiveManual(row.id)}
                           >
                             Anular
-                          </CopilotGhostButton>
+                          </CopilotButton>
                         ) : null}
                       </div>
                     ) : (
@@ -667,12 +670,12 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                 />
               </label>
               <div className="flex gap-2 pt-2">
-                <CopilotPrimaryButton type="submit" disabled={saving}>
+                <CopilotButton type="submit" disabled={saving}>
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Guardar"}
-                </CopilotPrimaryButton>
-                <CopilotGhostButton type="button" onClick={() => setDrawerOpen(false)}>
+                </CopilotButton>
+                <CopilotButton type="button" variant="secondary" onClick={() => setDrawerOpen(false)}>
                   Cancelar
-                </CopilotGhostButton>
+                </CopilotButton>
               </div>
             </form>
           </div>

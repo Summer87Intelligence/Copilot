@@ -20,6 +20,7 @@ export const ORPHAN_RESOLVED_REASONS = {
   STALE_METADATA_REPAIR: "stale_metadata_repair",
   BALANCE_ZERO: "balance_zero",
   ALREADY_PAID: "already_paid",
+  SHADOW_SUPERSEDED_BY_CCV1: "shadow_superseded_by_ccv1",
 } as const;
 
 export type OrphanResolvedReason =

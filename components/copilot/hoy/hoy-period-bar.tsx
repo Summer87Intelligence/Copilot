@@ -2,6 +2,7 @@
 
 import { Check, Loader2, RefreshCw } from "lucide-react";
 
+import { CopilotButton } from "@/components/copilot/ui/copilot-button";
 import { HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
 import type { HoyPeriodRange } from "@/lib/copilot-hoy-period";
 
@@ -65,40 +66,25 @@ export function HoyPeriodBar({
             className={inputClass}
           />
         </label>
-        <button
+        <CopilotButton
           type="button"
           onClick={onConfirm}
           disabled={!hasPendingChanges || draftInvalid || loading}
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[var(--copilot-accent)] px-3 text-sm font-semibold text-white disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
+          size="sm"
         >
           <Check className="h-4 w-4" aria-hidden />
           Confirmar
-        </button>
-        <button
-          type="button"
-          onClick={onMonthToDate}
-          disabled={loading}
-          className="inline-flex h-9 items-center rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 text-xs font-medium text-[var(--copilot-ink)]"
-        >
+        </CopilotButton>
+        <CopilotButton type="button" onClick={onMonthToDate} disabled={loading} variant="secondary" size="sm">
           Mes actual
-        </button>
-        <button
-          type="button"
-          onClick={onLast30Days}
-          disabled={loading}
-          className="inline-flex h-9 items-center rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 text-xs font-medium text-[var(--copilot-ink)]"
-        >
+        </CopilotButton>
+        <CopilotButton type="button" onClick={onLast30Days} disabled={loading} variant="secondary" size="sm">
           Últimos 30 días
-        </button>
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={loading}
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 text-xs font-medium text-[var(--copilot-ink)]"
-        >
+        </CopilotButton>
+        <CopilotButton type="button" onClick={onRefresh} disabled={loading} variant="secondary" size="sm">
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
           Refrescar
-        </button>
+        </CopilotButton>
       </div>
       <p className="mt-2 text-[10px] text-[var(--copilot-ink-muted)]">
         Activo: {confirmed.from} → {confirmed.to}

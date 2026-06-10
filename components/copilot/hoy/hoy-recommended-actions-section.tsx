@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { CopilotButtonLink } from "@/components/copilot/ui/copilot-button";
 import type { RecommendedAction } from "@/lib/copilot-today-business-pulse";
 
 const IMPACT_BY_ID: Record<string, string> = {
@@ -67,12 +67,9 @@ export function HoyRecommendedActionsSection({
             <p className="mt-0.5 text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
               {IMPACT_BY_ID[action.id] ?? "Mejorás el control operativo del día."}
             </p>
-            <Link
-              href={action.deepLink}
-              className="mt-3 inline-flex items-center rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
-            >
+            <CopilotButtonLink href={action.deepLink} size="sm" className="mt-3">
               {CTA_BY_ID[action.id] ?? "Ver detalle"}
-            </Link>
+            </CopilotButtonLink>
           </li>
         ))}
       </ol>

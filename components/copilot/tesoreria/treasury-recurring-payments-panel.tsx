@@ -10,6 +10,7 @@ import {
   CopilotPrimaryButton,
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
+import { CopilotButton } from "@/components/copilot/ui/copilot-button";
 import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
 import {
   TESORERIA_FIELD_CLASS,
@@ -39,6 +40,8 @@ import type { PlannedCashObligation } from "@/lib/treasury/treasury-types";
 type Props = {
   workspace: TreasuryWorkspace;
   onGoToPagos?: () => void;
+  /** Incrementar para abrir el drawer de nuevo recurrente desde acciones rápidas. */
+  openCreateRequest?: number;
 };
 
 type FormState = {
@@ -110,7 +113,11 @@ function obligationStatusTone(
   }
 }
 
-export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props) {
+export function TreasuryRecurringPaymentsPanel({
+  workspace,
+  onGoToPagos,
+  openCreateRequest = 0,
+}: Props) {
   const { canWrite } = useCopilotPermissions();
   const [items, setItems] = useState<TreasuryRecurringPayment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,6 +130,14 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const editingItem = editingId ? items.find((i) => i.id === editingId) ?? null : null;
+
+  useEffect(() => {
+    if (openCreateRequest > 0 && canWrite) {
+      setEditingId(null);
+      setForm(initialForm);
+      setDrawerOpen(true);
+    }
+  }, [openCreateRequest, canWrite]);
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -340,13 +355,13 @@ export function TreasuryRecurringPaymentsPanel({ workspace, onGoToPagos }: Props
     <section className="space-y-4">
       <CopilotSectionTitle
         title="Recurrentes"
-        subtitle="Copilot genera pagos futuros automáticamente en cada período. Pausar suspende sin borrar historial."
+        subtitle="Pago que se repite automáticamente. Ejemplo: Netflix todos los 1 del mes. Frecuencia: mensual, semanal o anual."
         action={
           canWrite ? (
-            <CopilotGhostButton type="button" onClick={openCreate}>
+            <CopilotButton type="button" size="sm" onClick={openCreate}>
               <Plus className="mr-2 h-4 w-4" />
               Nuevo recurrente
-            </CopilotGhostButton>
+            </CopilotButton>
           ) : null
         }
       />

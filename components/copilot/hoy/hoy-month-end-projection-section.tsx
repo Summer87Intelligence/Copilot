@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState, type ReactNode } from "react";
 import { ArrowRight, Info } from "lucide-react";
 
 import { CopilotCard } from "@/components/copilot/copilot-ui";
+import { CopilotButton, CopilotButtonLink } from "@/components/copilot/ui/copilot-button";
+import { copilotChipClass, metricValueClass, premiumCardClass } from "@/components/copilot/ui/copilot-visual-system";
 import { HoyDrawer } from "@/components/copilot/hoy/hoy-drawer";
 import { HoyMetricLabel } from "@/components/copilot/hoy/hoy-metric-label";
 import { HoyScopeBadge } from "@/components/copilot/hoy/hoy-scope-badge";
@@ -42,12 +43,6 @@ function riskLabel(risk: MonthEndRiskLevel): string {
   return HOY_COPY.monthEndRiskStable;
 }
 
-function riskShortNote(risk: MonthEndRiskLevel): string {
-  if (risk === "critical") return HOY_COPY.monthEndRiskNoteCritical;
-  if (risk === "attention") return HOY_COPY.monthEndRiskNoteAttention;
-  return HOY_COPY.monthEndRiskNoteStable;
-}
-
 function formatRiskFindingLine(finding: HoyMonthEndRiskFinding): string {
   return `${finding.currency} · ${finding.dateLabel} · ${monthEndRiskLevelLabel(finding.level)} — ${finding.reason}.`;
 }
@@ -70,7 +65,7 @@ function ScenarioSelector({
 }) {
   return (
     <div
-      className="inline-flex rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)]/60 p-0.5"
+      className="inline-flex flex-wrap gap-1 rounded-xl border border-neutral-200 bg-neutral-50/80 p-1"
       role="tablist"
       aria-label="Escenario de caja al cierre del mes"
     >
@@ -83,16 +78,35 @@ function ScenarioSelector({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(scenario)}
-            className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
               active
-                ? "bg-[var(--copilot-card-bg)] text-[var(--copilot-ink)] shadow-sm"
-                : "text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]"
+                ? "bg-[var(--copilot-accent)] text-white shadow-sm"
+                : "text-[var(--copilot-ink-muted)] hover:bg-white hover:text-[var(--copilot-ink)]"
             }`}
           >
             {MONTH_END_SCENARIO_LABEL[scenario]}
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function ProjectionDetailRow({
+  label,
+  value,
+  valueClass = "text-[var(--copilot-ink)]",
+  labelNode,
+}: {
+  label?: string;
+  value: ReactNode;
+  valueClass?: string;
+  labelNode?: ReactNode;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 py-1.5 text-sm">
+      {labelNode ?? <span className="text-[var(--copilot-ink-muted)]">{label}</span>}
+      <span className={`shrink-0 tabular-nums font-medium ${valueClass}`}>{value}</span>
     </div>
   );
 }
@@ -107,61 +121,68 @@ function CurrencyMonthEndBlock({
   const title = block.currency === "USD" ? "Dólares (USD)" : "Pesos (UYU)";
 
   return (
-    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-4">
-      <div className="flex items-center justify-between gap-2">
+    <div className={`flex min-h-[300px] flex-col ${premiumCardClass} p-5`}>
+      <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-semibold text-[var(--copilot-ink)]">{title}</p>
-        <span
-          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${riskBadgeClass(block.risk)}`}
-        >
+        <span className={`${copilotChipClass} uppercase tracking-wide ${riskBadgeClass(block.risk)}`}>
           {riskLabel(block.risk)}
         </span>
       </div>
-      <div className="mt-3 space-y-2 text-sm">
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="text-[var(--copilot-ink-muted)]">{HOY_COPY.availableCashLabel}</span>
-          <span className="tabular-nums text-[var(--copilot-ink)]">
-            {fmtCurrencyAmount(block.availableCash, block.currency)}
-          </span>
-        </div>
-        <div className="flex items-baseline justify-between gap-2">
-          <HoyMetricLabel
-            label={HOY_COPY.pendingReceivablesLabel}
-            tip={HOY_COPY.pendingReceivablesTip}
-          />
-          <span className={`tabular-nums ${moneyToneClass(block.pendingReceivables > 0 ? "warning" : "neutral")}`}>
-            {block.pendingReceivables > 0
-              ? fmtCurrencyAmount(block.pendingReceivables, block.currency)
-              : "—"}
-          </span>
-        </div>
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="text-[var(--copilot-ink-muted)]">Cobros estimados ({collectionRatePct}%)</span>
-          <span className={`tabular-nums ${moneyToneClass(block.estimatedCollectionsMonth > 0 ? "positive" : "neutral")}`}>
-            {block.estimatedCollectionsMonth > 0
-              ? fmtCurrencyAmount(block.estimatedCollectionsMonth, block.currency)
-              : "—"}
-          </span>
-        </div>
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="text-[var(--copilot-ink-muted)]">Pagos hasta fin de mes</span>
-          {block.hasConfiguredPayments ? (
-            <span className={`tabular-nums ${moneyToneClass("warning")}`}>
-              {fmtCurrencyAmount(block.scheduledOutflowsMonth, block.currency)}
-            </span>
-          ) : (
-            <span className="text-xs text-[var(--copilot-ink-muted)]">{HOY_COPY.treasuryNoOutflows}</span>
-          )}
-        </div>
-        <div className="flex items-baseline justify-between gap-2 border-t border-dashed border-[var(--copilot-border)] pt-2">
-          <span className="font-medium text-[var(--copilot-ink)]">Caja al cierre</span>
-          <span className={`font-semibold tabular-nums ${moneyToneClass(riskTone(block.risk))}`}>
-            {fmtCurrencyAmount(block.monthEndCash, block.currency)}
-          </span>
-        </div>
-        <p className="text-xs text-[var(--copilot-ink-muted)]">
+
+      <div className="mt-4 flex flex-col items-center justify-center py-2 text-center">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--copilot-ink-muted)]">
+          Caja al cierre
+        </p>
+        <p className={`mt-1 text-[1.85rem] leading-none tracking-tight ${metricValueClass} ${moneyToneClass(riskTone(block.risk))}`}>
+          {fmtCurrencyAmount(block.monthEndCash, block.currency)}
+        </p>
+        <p className="mt-2 text-xs text-[var(--copilot-ink-muted)]">
           {block.deltaVsToday >= 0 ? "▲" : "▼"}{" "}
           {fmtCurrencyAmount(Math.abs(block.deltaVsToday), block.currency)} vs caja hoy
         </p>
+      </div>
+
+      <div className="mt-auto space-y-0.5 border-t border-neutral-100 pt-3 text-sm">
+        <ProjectionDetailRow
+          label={HOY_COPY.availableCashLabel}
+          value={fmtCurrencyAmount(block.availableCash, block.currency)}
+        />
+        <ProjectionDetailRow
+          labelNode={
+            <HoyMetricLabel
+              label={HOY_COPY.pendingReceivablesLabel}
+              tip={HOY_COPY.pendingReceivablesTip}
+            />
+          }
+          value={
+            block.pendingReceivables > 0
+              ? fmtCurrencyAmount(block.pendingReceivables, block.currency)
+              : "—"
+          }
+          valueClass={moneyToneClass(block.pendingReceivables > 0 ? "warning" : "neutral")}
+        />
+        <ProjectionDetailRow
+          label={`Cobros estimados (${collectionRatePct}%)`}
+          value={
+            block.estimatedCollectionsMonth > 0
+              ? fmtCurrencyAmount(block.estimatedCollectionsMonth, block.currency)
+              : "—"
+          }
+          valueClass={moneyToneClass(block.estimatedCollectionsMonth > 0 ? "positive" : "neutral")}
+        />
+        <ProjectionDetailRow
+          label="Pagos hasta fin de mes"
+          value={
+            block.hasConfiguredPayments ? (
+              fmtCurrencyAmount(block.scheduledOutflowsMonth, block.currency)
+            ) : (
+              <span className="text-xs font-normal text-[var(--copilot-ink-muted)]">
+                {HOY_COPY.treasuryNoOutflows}
+              </span>
+            )
+          }
+          valueClass={block.hasConfiguredPayments ? moneyToneClass("warning") : ""}
+        />
       </div>
     </div>
   );
@@ -184,46 +205,36 @@ function FridaysStrip({
           tip={HOY_COPY.monthEndFridaysTip}
           className="text-sm font-semibold text-[var(--copilot-ink)]"
         />
-        <button
-          type="button"
-          onClick={onOpenDrawer}
-          className="text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
-        >
+        <CopilotButton type="button" variant="ghost" size="sm" onClick={onOpenDrawer}>
           {HOY_COPY.monthEndDrawerCta}
-        </button>
+        </CopilotButton>
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {projection.fridayStrip.map((cell) => (
           <button
             key={cell.date}
             type="button"
             onClick={onOpenDrawer}
-            className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)]/50 px-3 py-2.5 text-left transition hover:border-[var(--copilot-accent)]/40"
+            className={`flex min-h-[132px] flex-col rounded-2xl border border-neutral-200 bg-white p-3 text-center shadow-sm transition hover:border-[var(--copilot-accent)]/35 hover:shadow-md`}
           >
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--copilot-ink-muted)]">
               {cell.label}
             </p>
-            <div className="mt-1.5 space-y-2">
+            <div className="mt-2 flex flex-1 flex-col justify-center gap-3">
               {projection.currencyBlocks.map((block) => {
                 const amount = cell.closingCash[block.currency];
                 const risk = cell.riskByCurrency[block.currency];
                 return (
-                  <div key={block.currency}>
-                    <div className="flex items-center justify-between gap-1">
-                      <p
-                        className={`text-sm font-semibold tabular-nums ${moneyToneClass(riskTone(risk))}`}
-                      >
-                        {fmtCurrencyAmount(amount, block.currency)}
-                      </p>
-                      <span
-                        className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${riskBadgeClass(risk)}`}
-                      >
-                        {riskLabel(risk)}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 text-[10px] text-[var(--copilot-ink-muted)]">
-                      {block.currency} · {riskShortNote(risk)}
+                  <div key={block.currency} className="space-y-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                      {block.currency}
                     </p>
+                    <p className={`text-base font-semibold tabular-nums leading-tight ${moneyToneClass(riskTone(risk))}`}>
+                      {fmtCurrencyAmount(amount, block.currency)}
+                    </p>
+                    <span className={`${copilotChipClass} uppercase tracking-wide ${riskBadgeClass(risk)}`}>
+                      {riskLabel(risk)}
+                    </span>
                   </div>
                 );
               })}
@@ -247,13 +258,10 @@ function MonthEndProjectionDrawer({
       title={HOY_COPY.monthEndDrawerTitle}
       onClose={onClose}
       footer={
-        <Link
-          href="/copilot/tesoreria"
-          className="inline-flex w-full items-center justify-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] px-3 py-2 text-sm font-semibold text-[var(--copilot-ink)] hover:bg-[var(--copilot-card-bg)]"
-        >
+        <CopilotButtonLink href="/copilot/tesoreria" variant="secondary" fullWidth>
           {HOY_COPY.monthEndTreasuryCta}
           <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-        </Link>
+        </CopilotButtonLink>
       }
     >
       <p className="text-sm leading-relaxed text-[var(--copilot-ink)]">{projection.drawer.headline}</p>
@@ -361,11 +369,11 @@ export function HoyMonthEndProjectionSection({
 
   return (
     <>
-      <CopilotCard className="w-full">
-        <div className="flex flex-wrap items-start justify-between gap-2">
+      <CopilotCard className="w-full p-5 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">
+              <h2 className="text-base font-semibold text-[var(--copilot-ink)]">
                 {HOY_COPY.monthEndProjectionTitle}
               </h2>
               <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
@@ -393,18 +401,14 @@ export function HoyMonthEndProjectionSection({
               ))}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onOpenDrawer}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
-          >
+          <CopilotButton type="button" variant="ghost" size="sm" onClick={onOpenDrawer}>
             {HOY_COPY.monthEndDrawerCta}
             <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-          </button>
+          </CopilotButton>
         </div>
 
         <div
-          className={`mt-3 grid grid-cols-1 gap-3 ${projection.currencyBlocks.length > 1 ? "md:grid-cols-2" : ""}`}
+          className={`mt-4 grid grid-cols-1 gap-4 ${projection.currencyBlocks.length > 1 ? "md:grid-cols-2" : ""}`}
         >
           {projection.currencyBlocks.map((block) => (
             <CurrencyMonthEndBlock

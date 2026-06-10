@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { ChevronDown } from "lucide-react";
+
+import { CopilotButton, CopilotButtonLink } from "@/components/copilot/ui/copilot-button";
 
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import {
@@ -25,9 +26,11 @@ type StatusConfig = {
   badgeClass: string;
   cardBg: string;
   cardBorder: string;
-  primaryBtn: string;
-  secondaryBtn: string;
 };
+
+function primaryCtaVariant(status: PulseStatus): "primary" | "danger" {
+  return status === "critical" ? "danger" : "primary";
+}
 
 const STATUS_CONFIG: Record<PulseStatus, StatusConfig> = {
   healthy: {
@@ -36,8 +39,6 @@ const STATUS_CONFIG: Record<PulseStatus, StatusConfig> = {
     badgeClass: "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200/80",
     cardBg: "from-[var(--copilot-card-bg)] to-[var(--copilot-tone-neutral-bg)]",
     cardBorder: "border-[var(--copilot-border)]",
-    primaryBtn: "bg-[var(--copilot-accent)] text-white hover:opacity-90",
-    secondaryBtn: "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 text-[var(--copilot-ink)] hover:bg-[var(--copilot-panel-bg)]",
   },
   attention: {
     dot: "bg-amber-400",
@@ -45,8 +46,6 @@ const STATUS_CONFIG: Record<PulseStatus, StatusConfig> = {
     badgeClass: "bg-amber-100 text-amber-800 ring-1 ring-amber-200/80",
     cardBg: "from-[var(--copilot-card-bg)] to-amber-50/45",
     cardBorder: "border-amber-200/70",
-    primaryBtn: "bg-[var(--copilot-accent)] text-white hover:opacity-90",
-    secondaryBtn: "border-amber-200/60 bg-[var(--copilot-card-bg)]/80 text-[var(--copilot-ink)] hover:bg-[var(--copilot-panel-bg)]",
   },
   critical: {
     dot: "bg-rose-500",
@@ -54,8 +53,6 @@ const STATUS_CONFIG: Record<PulseStatus, StatusConfig> = {
     badgeClass: "bg-rose-100 text-rose-800 ring-1 ring-rose-200/80",
     cardBg: "from-[var(--copilot-card-bg)] to-rose-50/35",
     cardBorder: "border-rose-200/70",
-    primaryBtn: "bg-rose-600 text-white hover:opacity-90",
-    secondaryBtn: "border-rose-200/60 bg-[var(--copilot-card-bg)]/80 text-[var(--copilot-ink)] hover:bg-[var(--copilot-panel-bg)]",
   },
 };
 
@@ -217,13 +214,15 @@ export function HoyExecutiveSummaryCard({
                       <span className="text-[12px] text-[var(--copilot-ink)]">
                         Deuda vencida — {attentionClientsCount} {attentionClientsCount === 1 ? "cliente" : "clientes"}
                       </span>
-                      <Link
+                      <CopilotButtonLink
                         href="/copilot/cartera"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setShowSignals(false)}
-                        className="shrink-0 text-[11px] font-semibold text-[var(--copilot-accent)] hover:underline"
+                        className="shrink-0 !h-auto !px-2 !py-1"
                       >
                         Ver Cartera
-                      </Link>
+                      </CopilotButtonLink>
                     </li>
                   ) : null}
                   {cashAfterPaymentsCritical ? (
@@ -231,13 +230,15 @@ export function HoyExecutiveSummaryCard({
                       <span className="text-[12px] text-[var(--copilot-ink)]">
                         Caja proyectada ajustada
                       </span>
-                      <Link
+                      <CopilotButtonLink
                         href="/copilot/tesoreria"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setShowSignals(false)}
-                        className="shrink-0 text-[11px] font-semibold text-[var(--copilot-accent)] hover:underline"
+                        className="shrink-0 !h-auto !px-2 !py-1"
                       >
                         Ver Tesorería
-                      </Link>
+                      </CopilotButtonLink>
                     </li>
                   ) : null}
                   {!attentionClientsCount && !cashAfterPaymentsCritical ? (
@@ -248,12 +249,12 @@ export function HoyExecutiveSummaryCard({
                   <p className="mt-2 text-[11px] text-[var(--copilot-ink-muted)]">{metricsLine}</p>
                 ) : null}
                 <div className="mt-3 flex flex-wrap gap-1.5 border-t border-[var(--copilot-border)] pt-2.5">
-                  <Link href="/copilot/finanzas" onClick={() => setShowSignals(false)} className="rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-soft-bg)]">
+                  <CopilotButtonLink href="/copilot/finanzas" variant="ghost" size="sm" onClick={() => setShowSignals(false)}>
                     Ver Finanzas
-                  </Link>
-                  <Link href="/copilot/acciones" onClick={() => setShowSignals(false)} className="rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-soft-bg)]">
+                  </CopilotButtonLink>
+                  <CopilotButtonLink href="/copilot/acciones" variant="ghost" size="sm" onClick={() => setShowSignals(false)}>
                     Ver acciones
-                  </Link>
+                  </CopilotButtonLink>
                 </div>
               </div>
             ) : null}
@@ -284,12 +285,9 @@ export function HoyExecutiveSummaryCard({
                       <p className="text-[12px] font-semibold text-[var(--copilot-ink)]">{p.title}</p>
                       <p className="text-[11px] text-[var(--copilot-ink-muted)]">{p.motivo}</p>
                     </div>
-                    <Link
-                      href={p.href}
-                      className="shrink-0 rounded-lg border border-[var(--copilot-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-soft-bg)]"
-                    >
+                    <CopilotButtonLink href={p.href} variant="ghost" size="sm" className="shrink-0">
                       {p.ctaLabel}
-                    </Link>
+                    </CopilotButtonLink>
                   </div>
                 ))}
               </div>
@@ -301,28 +299,27 @@ export function HoyExecutiveSummaryCard({
         {priority ? (
           <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:flex-col sm:items-end">
             {primaryIsScroll ? (
-              <button
+              <CopilotButton
                 type="button"
+                variant={primaryCtaVariant(hero.status)}
+                size="sm"
                 onClick={onScrollToCriticalClients}
-                className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-xs font-semibold shadow-sm transition ${cfg.primaryBtn}`}
               >
                 {priority.primaryCta.label}
-              </button>
+              </CopilotButton>
             ) : priority.primaryCta.action.type === "link" ? (
-              <Link
+              <CopilotButtonLink
                 href={priority.primaryCta.action.href}
-                className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-xs font-semibold shadow-sm transition ${cfg.primaryBtn}`}
+                variant={primaryCtaVariant(hero.status)}
+                size="sm"
               >
                 {priority.primaryCta.label}
-              </Link>
+              </CopilotButtonLink>
             ) : null}
             {priority.secondaryCta ? (
-              <Link
-                href={priority.secondaryCta.href}
-                className={`inline-flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-semibold transition ${cfg.secondaryBtn}`}
-              >
+              <CopilotButtonLink href={priority.secondaryCta.href} variant="secondary" size="sm">
                 {priority.secondaryCta.label}
-              </Link>
+              </CopilotButtonLink>
             ) : null}
           </div>
         ) : (

@@ -2,12 +2,12 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 
 import {
-  copilotDisabledStateClass,
-  copilotGhostButtonClass,
-} from "@/components/copilot/ui/copilot-visual-system";
-
-const primaryBtnClass =
-  `inline-flex items-center justify-center rounded-xl bg-[var(--copilot-accent)] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)] ${copilotDisabledStateClass}`;
+  CopilotButton,
+  CopilotButtonLink,
+  copilotButtonClassName,
+  type CopilotButtonSize,
+  type CopilotButtonVariant,
+} from "@/components/copilot/ui/copilot-button";
 
 export const copilotPageMainClass =
   "flex-1 space-y-6 overflow-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8";
@@ -85,24 +85,26 @@ export function CopilotPrimaryLink({
   href,
   children,
   className = "",
+  size,
   ...rest
-}: React.ComponentProps<typeof Link>) {
+}: React.ComponentProps<typeof Link> & { size?: CopilotButtonSize }) {
   return (
-    <Link href={href} className={`${primaryBtnClass} ${className}`} {...rest}>
+    <CopilotButtonLink href={href} variant="primary" size={size} className={className} {...rest}>
       {children}
-    </Link>
+    </CopilotButtonLink>
   );
 }
 
 export function CopilotPrimaryButton({
   children,
   className = "",
+  size,
   ...rest
-}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { size?: CopilotButtonSize }) {
   return (
-    <button type="button" className={`${primaryBtnClass} ${className}`} {...rest}>
+    <CopilotButton variant="primary" size={size} className={className} {...rest}>
       {children}
-    </button>
+    </CopilotButton>
   );
 }
 
@@ -110,34 +112,36 @@ export function CopilotGhostLink({
   href,
   children,
   className = "",
+  size,
   ...rest
-}: React.ComponentProps<typeof Link>) {
+}: React.ComponentProps<typeof Link> & { size?: CopilotButtonSize }) {
   return (
-    <Link
-      href={href}
-      className={`${copilotGhostButtonClass} ${copilotDisabledStateClass} ${className}`}
-      {...rest}
-    >
+    <CopilotButtonLink href={href} variant="ghost" size={size} className={className} {...rest}>
       {children}
-    </Link>
+    </CopilotButtonLink>
   );
 }
 
 export function CopilotGhostButton({
   children,
   className = "",
+  size,
   ...rest
-}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { size?: CopilotButtonSize }) {
   return (
-    <button
-      type="button"
-      className={`${copilotGhostButtonClass} ${copilotDisabledStateClass} ${className}`}
-      {...rest}
-    >
+    <CopilotButton variant="ghost" size={size} className={className} {...rest}>
       {children}
-    </button>
+    </CopilotButton>
   );
 }
+
+export {
+  CopilotButton,
+  CopilotButtonLink,
+  copilotButtonClassName,
+  type CopilotButtonVariant,
+  type CopilotButtonSize,
+};
 
 export function CopilotKpiCard({
   label,

@@ -10,6 +10,11 @@ import {
   protoUpdateInvoice,
 } from "@/lib/copilot-proto-crud-service";
 import { reconcileMissingPendingInvoices, type ReconciliationRunResult } from "@/lib/integrations/zeta/zeta-saldos-reconciliation";
+import {
+  maybeCloseShadowSupersededByCcv1,
+  reconcileStaleSaldosShadowsForClient,
+  SHADOW_RECONCILE_EPSILON,
+} from "@/lib/integrations/zeta/zeta-saldos-shadow-reconciliation";
 import type { ProtoInvoiceInput } from "@/lib/copilot-proto-crud-types";
 import {
   insertZetaSyncRawPayload,
@@ -791,6 +796,30 @@ async function persistZetaInvoice(
       });
     }
     touchedInvoiceIds.add(regHit.id);
+    if (bal <= SHADOW_RECONCILE_EPSILON) {
+      void maybeCloseShadowSupersededByCcv1(
+        supabase,
+        wid,
+        inv.companyId,
+        {
+          id: regHit.id,
+          company_id: inv.companyId,
+          invoice_number: invNumRegEarly,
+          balance_amount: bal,
+          total_amount: inv.totalAmount,
+          currency_code: currencyCode,
+          status,
+          zeta_metadata: null,
+        },
+        {
+          syncRunId,
+          requestId,
+          clienteCodigo: zetaClienteCodigo,
+          tenantId: wid,
+          touchedInvoiceIds,
+        }
+      ).catch(() => undefined);
+    }
     return "update";
   }
 
@@ -860,6 +889,30 @@ async function persistZetaInvoice(
         });
       }
       touchedInvoiceIds.add(ccv1Target);
+      if (bal <= SHADOW_RECONCILE_EPSILON) {
+        void maybeCloseShadowSupersededByCcv1(
+          supabase,
+          wid,
+          inv.companyId,
+          {
+            id: ccv1Target,
+            company_id: inv.companyId,
+            invoice_number: ccv1,
+            balance_amount: bal,
+            total_amount: inv.totalAmount,
+            currency_code: currencyCode,
+            status,
+            zeta_metadata: null,
+          },
+          {
+            syncRunId,
+            requestId,
+            clienteCodigo: zetaClienteCodigo,
+            tenantId: wid,
+            touchedInvoiceIds,
+          }
+        ).catch(() => undefined);
+      }
       return "update";
     }
   }
@@ -1527,6 +1580,38 @@ export async function runZetaSaldosPendientesPipeline(
           tenant_id: tenantCompanyId,
           cleared_count: cleared,
         });
+
+        try {
+          const shadowReconcile = await reconcileStaleSaldosShadowsForClient(
+            supabase,
+            wid,
+            opts.protoCompanyId,
+            undefined,
+            {
+              syncRunId: runId,
+              requestId,
+              clienteCodigo: opts.clienteCodigo,
+              tenantId: tenantCompanyId,
+              touchedInvoiceIds,
+            }
+          );
+          if (shadowReconcile.closed_count > 0) {
+            pipelineEmit("info", "zeta_saldos_shadow_reconciled", {
+              request_id: requestId,
+              sync_run_id: runId,
+              tenant_id: tenantCompanyId,
+              cliente_codigo: opts.clienteCodigo,
+              closed_count: shadowReconcile.closed_count,
+            });
+          }
+        } catch (shadowErr) {
+          pipelineEmit("warn", "zeta_saldos_shadow_reconcile_error", {
+            request_id: requestId,
+            sync_run_id: runId,
+            tenant_id: tenantCompanyId,
+            cliente_codigo: opts.clienteCodigo,
+          }, shadowErr);
+        }
 
         // Alinear status de facturas con balance=0 que no son CCV1 (formato legacy
         // ZETA:{id}) o que el zero pass no alcanzó. Protege statuses terminales.

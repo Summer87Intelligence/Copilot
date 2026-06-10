@@ -5,6 +5,7 @@ import type { RefObject } from "react";
 import Link from "next/link";
 import { AlertTriangle, ChevronDown, ExternalLink, FileText, Mail, MessageCircle } from "lucide-react";
 
+import { CopilotButtonLink, copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
 import { fmtCurrencyAmount } from "@/lib/copilot-today-business-pulse";
 import type { DebtorCollectionRow, MoneyAmount } from "@/lib/copilot-today-business-pulse";
 import type { HoyClientCounts } from "@/lib/copilot-today-business-pulse";
@@ -108,7 +109,7 @@ function rowSeverityClass(row: DebtorCollectionRow, highlightRisk: boolean): str
   return "";
 }
 
-const ACTION_BTN = "inline-flex w-[88px] items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold";
+const ACTION_BTN = `${copilotButtonClassName({ variant: "secondary", size: "sm" })} !h-7 !w-[88px] !px-2 !text-[11px]`;
 
 function DebtorRowActions({ row }: { row: DebtorCollectionRow }) {
   const { phone, email } = debtorContactFields(row);
@@ -447,20 +448,14 @@ function DebtorRowExpandPanel({
 
       {/* ── CTA row ───────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-2 pt-0.5" onClick={(e) => e.stopPropagation()}>
-        <Link
-          href={row.deepLink}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-dropdown-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--copilot-accent)] hover:bg-[var(--copilot-hover-bg)] transition-colors"
-        >
+        <CopilotButtonLink href={row.deepLink} variant="secondary" size="sm">
           <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
           Ver estado de cuenta
-        </Link>
-        <Link
-          href={row.deepLink}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-dropdown-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--copilot-ink)] hover:bg-[var(--copilot-hover-bg)] transition-colors"
-        >
+        </CopilotButtonLink>
+        <CopilotButtonLink href={row.deepLink} variant="ghost" size="sm">
           <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
           Ver ficha
-        </Link>
+        </CopilotButtonLink>
       </div>
 
       {/* ── Status message ────────────────────────────────────────────────── */}

@@ -133,18 +133,17 @@ export function CopilotModuleSidebar({
               const tooltip = item.description
                 ? `${item.label} — ${item.description}`
                 : item.label;
-              const activeRing = "ring-[rgba(44,40,37,0.08)] bg-[var(--copilot-card-bg)] shadow-sm";
               const accentActive = "text-[var(--copilot-accent)]";
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   title={tooltip}
-                  className={`group flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[13px] font-medium leading-tight transition-colors ${
+                  className={`group flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-[13px] font-medium leading-tight transition-colors ${
                     active
-                      ? `text-[var(--copilot-ink)] ring-1 ${activeRing}`
-                      : "text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]/60 hover:text-[var(--copilot-ink)]"
-                  } ${collapsed ? "min-h-7 justify-center px-0" : item.description ? "min-h-9 py-1.5" : "min-h-7"}`}
+                      ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-ink)] shadow-sm ring-1 ring-[var(--copilot-accent)]/15"
+                      : "text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]/70 hover:text-[var(--copilot-ink)]"
+                  } ${collapsed ? "min-h-8 justify-center px-0" : item.description ? "min-h-10 py-2" : "min-h-8"}`}
                 >
                   <Icon
                     className={`h-4 w-4 shrink-0 ${active ? accentActive : ""}`}
