@@ -109,9 +109,9 @@ export function resolveOperationalEventHref(record: OperationalEventRecord): str
     return buildOperationalActionHref(record.actionId ?? record.entityId);
   }
   if (record.entityType === "workflow" || record.entityType === "workflow_step" || record.workflowId) {
-    return "/copilot/rutas";
+    return "/copilot/acciones";
   }
-  if (record.entityType === "snapshot") return "/copilot/rutas";
+  if (record.entityType === "snapshot") return "/copilot/hoy";
   return null;
 }
 

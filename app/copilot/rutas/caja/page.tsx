@@ -384,7 +384,7 @@ export default function RutaCajaPage() {
             }
             subtitle={
               topClients.length > 0
-                ? "Saldo pendiente ponderado por probabilidad de cobro (facturas activas)."
+                ? "Deuda actual ponderada por probabilidad de cobro (facturas activas)."
                 : "No hay facturas con saldo y probabilidad cargada para estimar cobros."
             }
             dataList={

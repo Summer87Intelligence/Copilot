@@ -21,7 +21,7 @@ function nowMonth() { return new Date().getMonth() + 1; }
 
 const SORT_OPTIONS: Array<{ value: TopClientsReportSortBy; label: string }> = [
   { value: "net_sales", label: "Facturación" },
-  { value: "debt", label: "Deuda total" },
+  { value: "debt", label: "Deuda actual" },
   { value: "overdue", label: "Deuda vencida" },
 ];
 
@@ -58,7 +58,7 @@ function getColumns(currency: string): ReportTableColumn<TopClientRow>[] {
         r.netSales > 0 ? formatMoneyCurrency(r.netSales, currency) : "—",
     },
     {
-      header: "Deuda total",
+      header: "Deuda actual",
       headerClassName: "text-right",
       cellClassName: "text-right tabular-nums text-xs",
       render: (r) =>
@@ -198,7 +198,7 @@ export function TopClientsPreviewDialog({ open, onClose }: Props) {
                 tone: "positive",
               },
               {
-                label: "Deuda total",
+                label: "Deuda actual",
                 value: formatMoneyCurrency(model.totals.totalDebt, model.currency),
                 tone: model.totals.totalDebt > 0 ? "warning" : "neutral",
               },

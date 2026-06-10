@@ -7,7 +7,7 @@ export default function PipelinesPage() {
       <CopilotPageHeader
         eyebrow="Operacional"
         title="Pipelines"
-        description="Estado de sincronización Zeta en tiempo real. Salud de todos los pipelines operativos."
+        description="Estado de sincronización Zeta en tiempo real. Salud de las integraciones operativas."
       />
       <div className="px-6 py-6">
         <PipelinesOverview />

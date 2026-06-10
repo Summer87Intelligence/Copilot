@@ -52,7 +52,7 @@ const COLUMNS: ReportTableColumn<StatementRow>[] = [
     render: (r) => r.currency,
   },
   {
-    header: "Saldo pendiente",
+    header: "Deuda actual",
     headerClassName: "text-right",
     cellClassName: "text-right tabular-nums text-xs",
     render: (r) => formatMoneyCurrency(r.balance, r.currency),

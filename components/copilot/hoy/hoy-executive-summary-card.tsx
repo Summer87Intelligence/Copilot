@@ -161,7 +161,7 @@ export function HoyExecutiveSummaryCard({
     }
     if (cashAfterPaymentsCritical) {
       items.push({
-        title: "Caja después de pagos ajustada",
+        title: "Caja proyectada ajustada",
         motivo: "Revisar cobertura antes de confirmar compromisos",
         href: "/copilot/tesoreria",
         ctaLabel: "Ver Tesorería",
@@ -229,7 +229,7 @@ export function HoyExecutiveSummaryCard({
                   {cashAfterPaymentsCritical ? (
                     <li className="flex items-center justify-between gap-2">
                       <span className="text-[12px] text-[var(--copilot-ink)]">
-                        Caja después de pagos ajustada
+                        Caja proyectada ajustada
                       </span>
                       <Link
                         href="/copilot/tesoreria"

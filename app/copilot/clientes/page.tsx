@@ -452,7 +452,7 @@ export default function CopilotClientesPage() {
                       <tr className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                         <th className="px-4 py-2">Cliente</th>
                         <th className="px-4 py-2">Estado</th>
-                        <th className="px-4 py-2">Deuda total</th>
+                        <th className="px-4 py-2">Deuda actual</th>
                         <th className="px-4 py-2">Riesgo</th>
                         <th className="px-4 py-2">Contacto</th>
                         <th className="px-4 py-2 text-right">Acciones</th>

@@ -341,7 +341,7 @@ function DebtorRowExpandPanel({
         </p>
         <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2.5 sm:grid-cols-4">
 
-          {/* Deuda total */}
+          {/* Deuda actual */}
           <div>
             <p
               className="text-[10px] text-[var(--copilot-ink-muted)]"

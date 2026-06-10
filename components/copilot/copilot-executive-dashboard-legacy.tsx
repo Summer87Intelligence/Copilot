@@ -346,7 +346,7 @@ export function CopilotExecutiveDashboardLegacy() {
         description={`Gestioná tus clientes y tomá decisiones con información clara.
 La prospección y generación de leads la realizás en Summer87 Leads.`}
         right={
-          <CopilotPrimaryLink href="/copilot/gestion-ia" className="gap-2 whitespace-nowrap">
+          <CopilotPrimaryLink href="/copilot/agentes" className="gap-2 whitespace-nowrap">
             Ver acciones recomendadas
           </CopilotPrimaryLink>
         }
@@ -779,7 +779,7 @@ La prospección y generación de leads la realizás en Summer87 Leads.`}
                 <span>
                   Acciones sugeridas por el copiloto en{" "}
                   <Link
-                    href="/copilot/gestion-ia"
+                    href="/copilot/agentes"
                     className="font-semibold text-[var(--copilot-accent)] hover:underline"
                   >
                     Acciones recomendadas

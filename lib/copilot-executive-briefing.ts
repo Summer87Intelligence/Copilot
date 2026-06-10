@@ -188,7 +188,7 @@ function deriveDoFirst(input: ExecutiveBriefingInput): ExecutiveBriefingDoFirst[
       title: w.title,
       reason,
       actionLabel: isBlocked(w) ? "Desbloquear" : "Revisar SLA",
-      href: `/copilot/rutas`,
+      href: `/copilot/acciones`,
     });
   }
 
@@ -203,7 +203,7 @@ function deriveDoFirst(input: ExecutiveBriefingInput): ExecutiveBriefingDoFirst[
         title: w.title,
         reason: "SLA vencido.",
         actionLabel: "Revisar",
-        href: `/copilot/rutas`,
+        href: `/copilot/acciones`,
       });
     }
   }
@@ -220,7 +220,7 @@ function deriveDoFirst(input: ExecutiveBriefingInput): ExecutiveBriefingDoFirst[
         title: esc.title,
         reason: esc.detail,
         actionLabel: "Asignar responsable",
-        href: `/copilot/rutas`,
+        href: `/copilot/acciones`,
       });
     }
   }

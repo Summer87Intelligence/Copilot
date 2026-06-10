@@ -460,7 +460,7 @@ export const SYSTEM_STATE_SIGNALS: readonly SystemStateSignal[] = [
   },
   {
     id: "cash_after_payments",
-    label: "Caja después de pagos próximos",
+    label: "Caja proyectada",
     source: "treasury",
     ctaHref: "/copilot/tesoreria",
     ctaLabel: "Ver Tesorería",
@@ -476,7 +476,7 @@ export const SYSTEM_STATE_SIGNALS: readonly SystemStateSignal[] = [
     id: "high_risk_clients",
     label: "Clientes de alto riesgo",
     source: "portfolio",
-    ctaHref: "/copilot/rutas/clientes-riesgo",
+    ctaHref: "/copilot/cartera",
     ctaLabel: "Ver clientes críticos",
   },
 ] as const;

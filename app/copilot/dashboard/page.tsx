@@ -85,6 +85,21 @@ function fmtDate(d: string): string {
   return `${day}/${m}/${y}`;
 }
 
+function ChartPeriodEmpty({
+  primary = "No hay datos para este período.",
+  hint = "Probá cambiar el rango de fechas.",
+}: {
+  primary?: string;
+  hint?: string;
+}) {
+  return (
+    <div className={`py-6 text-center text-xs ${C.muted}`}>
+      <p>{primary}</p>
+      <p className="mt-1">{hint}</p>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Chart: Vertical bar (CSS flex)
 // ---------------------------------------------------------------------------
@@ -95,7 +110,7 @@ function VerticalBarChart({
   data,
   selectedCurrency,
   height = 120,
-  emptyText = "Sin datos",
+  emptyText,
 }: {
   data: BarData[];
   selectedCurrency: "all" | "UYU" | "USD";
@@ -109,8 +124,10 @@ function VerticalBarChart({
   const maxVal = Math.max(...vals, 1);
 
   if (maxVal === 0) {
-    return (
+    return emptyText ? (
       <p className={`py-6 text-center text-xs ${C.muted}`}>{emptyText}</p>
+    ) : (
+      <ChartPeriodEmpty />
     );
   }
 
@@ -250,7 +267,7 @@ function HorizontalBarChart({
 }) {
   const maxVal = Math.max(...items.map((i) => i.value), 1);
   if (items.length === 0) {
-    return <p className={`py-4 text-center text-xs ${C.muted}`}>Sin datos</p>;
+    return <ChartPeriodEmpty />;
   }
   return (
     <div className="space-y-1.5">
@@ -342,7 +359,12 @@ function AreaSparkline({
   height?: number;
 }) {
   if (points.length < 2) {
-    return <p className={`py-4 text-center text-xs ${C.muted}`}>Sin datos de proyección</p>;
+    return (
+      <ChartPeriodEmpty
+        primary="No hay proyección para este período."
+        hint="Probá cambiar el rango de fechas o revisá los pagos programados."
+      />
+    );
   }
   const W = 260;
   const H = height;
@@ -1677,22 +1699,22 @@ export default function DashboardPage() {
               <>
                 <ChartCard title="[1] Ventas por mes UYU" subtitle="Facturado UYU · escala independiente">
                   {loading ? <Skeleton className="h-28" /> : (
-                    <VerticalBarChart data={monthlyIssued} selectedCurrency="UYU" height={140} emptyText="Sin facturación UYU" />
+                    <VerticalBarChart data={monthlyIssued} selectedCurrency="UYU" height={140} />
                   )}
                 </ChartCard>
                 <ChartCard title="[1] Ventas por mes USD" subtitle="Facturado USD · escala independiente">
                   {loading ? <Skeleton className="h-28" /> : (
-                    <VerticalBarChart data={monthlyIssued} selectedCurrency="USD" height={140} emptyText="Sin facturación USD" />
+                    <VerticalBarChart data={monthlyIssued} selectedCurrency="USD" height={140} />
                   )}
                 </ChartCard>
                 <ChartCard title="[2] Cobros por mes UYU" subtitle="Recibos UYU · escala independiente">
                   {loading ? <Skeleton className="h-28" /> : (
-                    <VerticalBarChart data={monthlyCollected} selectedCurrency="UYU" height={140} emptyText="Sin cobros UYU" />
+                    <VerticalBarChart data={monthlyCollected} selectedCurrency="UYU" height={140} />
                   )}
                 </ChartCard>
                 <ChartCard title="[2] Cobros por mes USD" subtitle="Recibos USD · escala independiente">
                   {loading ? <Skeleton className="h-28" /> : (
-                    <VerticalBarChart data={monthlyCollected} selectedCurrency="USD" height={140} emptyText="Sin cobros USD" />
+                    <VerticalBarChart data={monthlyCollected} selectedCurrency="USD" height={140} />
                   )}
                 </ChartCard>
                 {/* [3] Ventas vs Cobros — per currency with % chips */}
@@ -1700,7 +1722,7 @@ export default function DashboardPage() {
                   {loading ? <Skeleton className="h-28" /> : (uyu?.facturado ?? 0) + (uyu?.cobrado ?? 0) > 0 ? (
                     <GroupedBarChart groups={[{ label: "UYU", a: uyu?.facturado ?? 0, b: uyu?.cobrado ?? 0, aLabel: "Facturado", bLabel: "Cobrado" }]} height={140} />
                   ) : (
-                    <p className={`py-6 text-center text-xs ${C.muted}`}>Sin datos UYU en el período</p>
+                    <ChartPeriodEmpty />
                   )}
                   <div className="mt-2 flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-accent)]" /><p className={`text-[10px] ${C.muted}`}>Facturado</p></div>
@@ -1716,7 +1738,7 @@ export default function DashboardPage() {
                   {loading ? <Skeleton className="h-28" /> : (usd?.facturado ?? 0) + (usd?.cobrado ?? 0) > 0 ? (
                     <GroupedBarChart groups={[{ label: "USD", a: usd?.facturado ?? 0, b: usd?.cobrado ?? 0, aLabel: "Facturado", bLabel: "Cobrado" }]} height={140} />
                   ) : (
-                    <p className={`py-6 text-center text-xs ${C.muted}`}>Sin datos USD en el período</p>
+                    <ChartPeriodEmpty />
                   )}
                   <div className="mt-2 flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-accent)]" /><p className={`text-[10px] ${C.muted}`}>Facturado</p></div>
@@ -1743,7 +1765,6 @@ export default function DashboardPage() {
                       data={monthlyIssued}
                       selectedCurrency={effectiveCurrency}
                       height={140}
-                      emptyText="Sin facturación en este rango"
                     />
                   )}
                 </ChartCard>
@@ -1760,7 +1781,6 @@ export default function DashboardPage() {
                       data={monthlyCollected}
                       selectedCurrency={effectiveCurrency}
                       height={140}
-                      emptyText="Sin cobros registrados"
                     />
                   )}
                 </ChartCard>
@@ -1774,9 +1794,7 @@ export default function DashboardPage() {
                   ) : vsGroups.length > 0 ? (
                     <GroupedBarChart groups={vsGroups} height={140} />
                   ) : (
-                    <p className={`py-6 text-center text-xs ${C.muted}`}>
-                      Sin datos en el período
-                    </p>
+                    <ChartPeriodEmpty />
                   )}
                   {(() => {
                     const eff = isConsolidated ? null : effectiveCurrency === "USD" ? usd?.efectividad : uyu?.efectividad;
@@ -1843,7 +1861,7 @@ export default function DashboardPage() {
                   <Skeleton className="h-6" />
                 </div>
               ) : effectiveCurrencyData.length === 0 ? (
-                <p className={`py-4 text-center text-xs ${C.muted}`}>Sin datos</p>
+                <ChartPeriodEmpty />
               ) : (
                 <div className="space-y-4">
                   {effectiveCurrencyData.map((d) => (

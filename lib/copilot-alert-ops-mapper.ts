@@ -125,7 +125,7 @@ function actionsForType(alert: FiscalAlertItem): {
   const hoy = {
     id: "hoy",
     label: "Volver a Hoy",
-    href: "/copilot/rutas",
+    href: "/copilot/hoy",
     kind: "hoy" as const,
   };
 

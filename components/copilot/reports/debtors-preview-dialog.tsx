@@ -86,7 +86,7 @@ const COLUMNS: ReportTableColumn<DebtorsReportRow>[] = [
     render: (r) => r.currency,
   },
   {
-    header: "Deuda total",
+    header: "Deuda actual",
     headerClassName: "text-right",
     cellClassName: "text-right tabular-nums text-xs font-medium",
     render: (r) => formatMoneyCurrency(r.debtAmount, r.currency),

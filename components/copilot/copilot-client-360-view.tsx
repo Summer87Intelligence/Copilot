@@ -1399,7 +1399,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   <CopilotCard className={warningFinancialCardClass}>
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        Deuda total en pesos (UYU)
+                        Deuda actual en pesos (UYU)
                       </p>
                       {data.overdue_uyu > 0 ? (
                         <TrendingDown className="h-4 w-4 text-rose-500 shrink-0" aria-hidden />
@@ -1428,7 +1428,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   <CopilotCard className={warningFinancialCardClass}>
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        Deuda total en dólares (USD)
+                        Deuda actual en dólares (USD)
                       </p>
                       {data.overdue_usd > 0 ? (
                         <TrendingDown className="h-4 w-4 text-rose-500 shrink-0" aria-hidden />

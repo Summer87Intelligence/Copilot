@@ -226,7 +226,7 @@ export function FinancialExecutiveSummary({
           label={`Cobros · ${dashboard.periodContext.lastClosedMonthLabel}`}
           value={closedColl}
         />
-        <SummaryMetric label="Deuda total actual" value={debtTotal} />
+        <SummaryMetric label="Deuda actual" value={debtTotal} />
         <SummaryMetric
           label="Deuda vencida actual"
           value={debtOverdue}
@@ -411,7 +411,7 @@ export function FinancialCollectionRisk({
       </div>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
-        <SummaryMetric label="Deuda total" value={fmtMoney(cd.totalDebt, currency)} />
+        <SummaryMetric label="Deuda actual" value={fmtMoney(cd.totalDebt, currency)} />
         <SummaryMetric
           label="Deuda vencida"
           value={fmtMoney(cd.overdueDebt, currency)}

@@ -77,7 +77,7 @@ export function deriveOperationalSemaphore(input: {
 
   const criticalItems: string[] = criticalAlerts.map((a) => a.title);
   if (cashDeficit) {
-    criticalItems.push("Caja después de pagos en negativo");
+    criticalItems.push("Caja proyectada en negativo");
   }
 
   // Real alert items — no business signals mixed in.

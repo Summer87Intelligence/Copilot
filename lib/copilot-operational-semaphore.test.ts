@@ -184,7 +184,7 @@ describe("cashDeficit → nivel critical", () => {
     const pulse = makePulse({ safeCash30d: -1_000, hasConfiguredPayments: true, scheduledPayments: 5_000 });
     const r = deriveOperationalSemaphore({ alerts: NO_ALERTS, pulse });
     expect(r.level).toBe("critical");
-    expect(r.criticalItems).toContain("Caja después de pagos en negativo");
+    expect(r.criticalItems).toContain("Caja proyectada en negativo");
   });
 
   it("safeCash30d < 0 pero sin pagos configurados → no critical", () => {

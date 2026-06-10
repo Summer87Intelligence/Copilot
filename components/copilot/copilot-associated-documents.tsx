@@ -47,9 +47,7 @@ export function CopilotAssociatedDocumentsSection({
         <>
           <h4 className="text-sm font-semibold text-[var(--copilot-ink)]">Documentos asociados</h4>
           <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
-            Registros en{" "}
-            <code className="rounded bg-[rgba(44,40,37,0.06)] px-1">proto_documents</code>{" "}
-            vinculados a este caso.
+            Archivos y comprobantes vinculados a este cliente o gestión.
           </p>
         </>
       ) : null}

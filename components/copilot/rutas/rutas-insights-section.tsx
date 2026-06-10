@@ -42,7 +42,7 @@ export function RutasInsightsSection({
         title="Acciones recomendadas"
         subtitle="Lecturas respaldadas por facturas, obligaciones fiscales y caja del prototipo."
         action={
-          <CopilotGhostLink href="/copilot/gestion-ia" className="font-semibold">
+          <CopilotGhostLink href="/copilot/agentes" className="font-semibold">
             Ver todas
           </CopilotGhostLink>
         }
@@ -135,7 +135,7 @@ export function RutasInsightsSection({
               <CopilotGhostLink href="/copilot/acciones" className="font-semibold">
                 Seguimiento en Acciones
               </CopilotGhostLink>
-              <CopilotGhostLink href="/copilot/gestion-ia" className="font-semibold">
+              <CopilotGhostLink href="/copilot/agentes" className="font-semibold">
                 Abrir recomendaciones
               </CopilotGhostLink>
             </div>

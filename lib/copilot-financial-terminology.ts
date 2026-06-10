@@ -39,7 +39,7 @@ export const FT = {
   facturado:           "Facturado",
   cobrado:             "Cobrado",
   pendiente:           "Pendiente",
-  saldoPendiente:      "Saldo pendiente",
+  saldoPendiente:      "Deuda actual",
   saldoOperativo:      "Saldo operativo",
   deudaHistorica:      "Deuda histórica",
   carteraActiva:       "Cartera activa",

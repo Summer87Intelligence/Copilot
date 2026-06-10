@@ -10,7 +10,7 @@ function evidenceBlock(insight: CopilotRealInsight): string {
     case "concentracion_deuda":
       return `Vencido total: $ ${insight.evidence.total_overdue.toLocaleString("es-AR", { maximumFractionDigits: 0 })} · Top 2: $ ${insight.evidence.top2_amount.toLocaleString("es-AR", { maximumFractionDigits: 0 })} (${(insight.evidence.top2_share_pct * 100).toLocaleString("es-AR", { maximumFractionDigits: 1 })}%)`;
     case "obl_fiscal_vencida":
-      return `Saldo pendiente: $ ${insight.evidence.amount.toLocaleString("es-AR", { maximumFractionDigits: 0 })} · Venció el ${insight.evidence.due_date} (${insight.evidence.days_overdue} días) · ${insight.evidence.tax_type} · ${insight.evidence.period_label}`;
+      return `Deuda actual: $ ${insight.evidence.amount.toLocaleString("es-AR", { maximumFractionDigits: 0 })} · Venció el ${insight.evidence.due_date} (${insight.evidence.days_overdue} días) · ${insight.evidence.tax_type} · ${insight.evidence.period_label}`;
     case "desbalance_caja":
       return `Caja disponible: $ ${insight.evidence.available_cash.toLocaleString("es-AR", { maximumFractionDigits: 0 })} · Cobranzas esperadas: $ ${insight.evidence.expected_inflows.toLocaleString("es-AR", { maximumFractionDigits: 0 })} · Egresos esperados: $ ${insight.evidence.expected_outflows.toLocaleString("es-AR", { maximumFractionDigits: 0 })} · Balance proyectado: $ ${insight.evidence.projected_balance.toLocaleString("es-AR", { maximumFractionDigits: 0 })} · Riesgo: ${insight.evidence.risk_level}`;
     case "atraso_historico":

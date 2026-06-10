@@ -24,7 +24,7 @@ const MAX_Y = PAGE.height - PAGE.margin - FOOTER_RESERVE;
 const ROW_H = 22;
 const ROW_PAD_V = 6;
 
-// # | Cliente | Ventas | Deuda total | Deuda vencida | Part.% | Riesgo
+// # | Cliente | Ventas | Deuda actual | Deuda vencida | Part.% | Riesgo
 // Total: 499px (595 - 48 - 48)
 const COL = {
   rank: { w: 22 },
@@ -171,7 +171,7 @@ export function renderTopClientsReportPdf(
     const summaryLines = [
       `Clientes activos: ${model.totals.clientCount}`,
       `Facturación total ${model.currency}: ${formatMoney(model.totals.netSales, model.currency)}`,
-      `Deuda total ${model.currency}: ${formatMoney(model.totals.totalDebt, model.currency)}`,
+      `Deuda actual ${model.currency}: ${formatMoney(model.totals.totalDebt, model.currency)}`,
       `Deuda vencida ${model.currency}: ${formatMoney(model.totals.overdueDebt, model.currency)}`,
     ];
     const summaryH = 14 + summaryLines.length * 13;
@@ -223,7 +223,7 @@ export function renderTopClientsReportPdf(
     y += 5;
     doc.fillColor(COLORS.accent).font("Helvetica-Bold").fontSize(8);
     doc.text(
-      `Deuda total: ${formatMoney(model.totals.totalDebt, model.currency)}`,
+      `Deuda actual: ${formatMoney(model.totals.totalDebt, model.currency)}`,
       PAGE.margin,
       y,
       { width: TABLE_W - 8, align: "right" }
@@ -250,7 +250,7 @@ function renderTableHeader(doc: PDFKit.PDFDocument, y: number): number {
     ["rank", "#", "center"],
     ["client", "Cliente", "left"],
     ["sales", "Facturación", "right"],
-    ["debt", "Deuda total", "right"],
+    ["debt", "Deuda actual", "right"],
     ["overdue", "Vencida", "right"],
     ["share", "Part.%", "right"],
     ["risk", "Riesgo", "center"],

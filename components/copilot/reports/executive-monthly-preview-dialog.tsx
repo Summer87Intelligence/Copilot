@@ -214,7 +214,7 @@ export function ExecutiveMonthlyPreviewDialog({ open, onClose }: Props) {
                     tone: model.keyMetrics.cashClosingBalance >= 0 ? "positive" : "danger",
                   },
                   {
-                    label: "Deuda total",
+                    label: "Deuda actual",
                     value: formatMoneyCurrency(model.keyMetrics.totalDebt, model.currency),
                     tone: model.keyMetrics.totalDebt > 0 ? "warning" : "neutral",
                   },

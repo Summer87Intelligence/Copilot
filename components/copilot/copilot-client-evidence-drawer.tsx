@@ -115,8 +115,8 @@ export function CopilotClientEvidenceDrawer({
     hasAnyOverdue
       ? `Deuda vencida: ${fmtCurrencyPair(overdueUyu, overdueUsd)} sobre saldo total ${fmtCurrencyPair(debtUyu, debtUsd)}.`
       : hasAnyDebt
-        ? `Saldo pendiente sin vencer (o al día según vencimientos): ${fmtCurrencyPair(debtUyu, debtUsd)}.`
-        : "Sin saldo pendiente en facturas con balance.",
+        ? `Deuda actual sin vencer (o al día según vencimientos): ${fmtCurrencyPair(debtUyu, debtUsd)}.`
+        : "Sin deuda actual en facturas con balance.",
     `Comportamiento de pago estimado: ${paymentBehaviorLabelEs(detail.payment_behavior).toLowerCase()}, según mix de facturas pagadas, parciales y vencidas.`,
   ].join(" ");
 
@@ -200,7 +200,7 @@ export function CopilotClientEvidenceDrawer({
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <KpiPillMoney label="Facturación total" uyu={detail.billing_uyu} usd={detail.billing_usd} />
-                <KpiPillMoney label="Saldo pendiente" uyu={detail.debt_uyu} usd={detail.debt_usd} />
+                <KpiPillMoney label="Deuda actual" uyu={detail.debt_uyu} usd={detail.debt_usd} />
                 <KpiPillMoney label="Deuda vencida" uyu={detail.overdue_uyu} usd={detail.overdue_usd} />
                 <KpiPill
                   label="Concentración"

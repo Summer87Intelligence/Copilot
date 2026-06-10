@@ -225,7 +225,7 @@ export function FinancialCurrencySummary({
           {s ? (
             <>
               <ExecutiveMetricCard
-                label="Deuda total"
+                label="Deuda actual"
                 value={fmtMoney(s.pending, c)}
                 subcopy="Fuente: Cartera (saldo pendiente al corte)."
                 tone="neutral"
@@ -316,7 +316,7 @@ export function FinancialCollectionDebtSection({
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <ExecutiveMetricCard
-          label="Deuda total"
+          label="Deuda actual"
           value={fmtMoney(cd.totalDebt, c)}
           subcopy="Fuente: Cartera."
           tone="neutral"
@@ -582,7 +582,7 @@ function BreakdownCard({ slice }: { slice: PanoramaCurrencySlice }) {
           <dd className="tabular-nums">{fmtMoney(slice.collectedApplied, slice.code)}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-[var(--copilot-ink-muted)]">Deuda total</dt>
+          <dt className="text-[var(--copilot-ink-muted)]">Deuda actual</dt>
           <dd className="tabular-nums">{fmtMoney(slice.pending, slice.code)}</dd>
         </div>
         <div className="flex justify-between gap-2">

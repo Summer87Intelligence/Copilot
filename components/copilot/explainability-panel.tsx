@@ -131,7 +131,7 @@ function buildItems(
       label: "Saldo stale bajo observación",
       description: `${formatCarteraInteger(gaps.clientsWithStaleData)} cliente${
         gaps.clientsWithStaleData === 1 ? "" : "s"
-      } con datos atrasados. Saldo pendiente estimado: ${stalePendingStr}. Puede no reflejar el estado real.`,
+      } con datos atrasados. Deuda actual estimada: ${stalePendingStr}. Puede no reflejar el estado real.`,
       status: "warn",
       count: gaps.clientsWithStaleData,
       icon: Clock,
@@ -253,7 +253,7 @@ function buildItems(
         id: "credit-notes",
         label: "Ajustes aplicados",
         description:
-          "Los ajustes de facturación reducen el saldo pendiente en Zeta, pero no se registran como recibos de caja. Por eso puede existir diferencia entre Facturado, Cobrado y Saldo pendiente.",
+          "Los ajustes de facturación reducen la deuda actual en Zeta, pero no se registran como recibos de caja. Por eso puede existir diferencia entre Ventas del período, Cobrado del período y Deuda actual.",
         status: "info",
         count: totalCNCount,
         icon: SlidersHorizontal,

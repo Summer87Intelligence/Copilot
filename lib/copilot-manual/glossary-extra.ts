@@ -4,7 +4,7 @@ export const COPILOT_MANUAL_EXTRA_GLOSSARY: Array<{
   definition: string;
 }> = [
   {
-    term: "Deuda total",
+    term: "Deuda actual",
     definition:
       "Todo lo que el cliente debe hasta hoy, sin importar si ya venció o no. Es la suma de deuda vencida + deuda al día.",
   },

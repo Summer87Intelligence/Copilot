@@ -33,7 +33,7 @@ describe("renderCopilotManualPdf", () => {
     expect(text).toContain("Guardar requiere superadmin");
     expect(text).toContain("Fecha de corte");
     expect(text).toContain("Último mes cerrado");
-    expect(text).toContain("Deuda total");
+    expect(text).toContain("Deuda actual");
     expect(text).toContain("Deuda vencida");
     expect(text).toMatch(/Cobranza mensual|Reporte de cobranza mensual/i);
     expect(text).not.toMatch(/Personalización\s*—/i);

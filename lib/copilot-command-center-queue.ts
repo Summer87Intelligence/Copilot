@@ -123,7 +123,7 @@ export function buildCommandCenterQueue(input: CommandCenterQueueInput): Command
       ownerLabel: workflow.ownerLabel ?? undefined,
       dueLabel: formatDueLabel(workflow.slaDueAt),
       urgencyScore: workflow.urgencyScore ?? 0,
-      cta: { label: "Abrir ejecución", href: "/copilot/rutas" },
+      cta: { label: "Abrir ejecución", href: "/copilot/acciones" },
       metadata: {
         workflowId: workflow.id,
         currentStepId: workflow.currentStepId,
@@ -179,7 +179,7 @@ export function buildCommandCenterQueue(input: CommandCenterQueueInput): Command
       title: signal.title,
       summary: signal.summary,
       urgencyScore: signal.score,
-      cta: { label: "Ver memoria", href: "/copilot/rutas" },
+      cta: { label: "Ver memoria", href: "/copilot/hoy" },
       metadata: {
         memoryType: signal.type,
         recurring: signal.type === "recurring_issue",
@@ -201,7 +201,7 @@ export function buildCommandCenterQueue(input: CommandCenterQueueInput): Command
       urgencyScore: event.eventType === "workflow_sla_breached" ? 90 : 40,
       cta: {
         label: "Abrir",
-        href: event.href ?? "/copilot/rutas",
+        href: event.href ?? "/copilot/hoy",
       },
       metadata: {
         eventType: event.eventType,

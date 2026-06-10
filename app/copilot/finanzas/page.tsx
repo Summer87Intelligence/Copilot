@@ -969,10 +969,10 @@ function CopilotFinanzasPageContent() {
                         <p className="mt-1 text-sm text-[var(--copilot-ink-muted)]">
                           Revisá lecturas comerciales y prioridades en{" "}
                           <Link
-                            href="/copilot/insights"
+                            href="/copilot/dashboard"
                             className="font-semibold text-[var(--copilot-accent)] underline-offset-2 hover:underline"
                           >
-                            Insights
+                            Dashboard Resumen
                           </Link>{" "}
                           (no sustituye un CRM de ventas, pero concentra señales con la base
                           actual).
@@ -1006,8 +1006,8 @@ function CopilotFinanzasPageContent() {
                       <Link href="/copilot/datos" className={guidedLinkClass}>
                         Abrir Datos (contactos y facturas)
                       </Link>
-                      <Link href="/copilot/insights" className={guidedLinkClass}>
-                        Ir a Insights
+                      <Link href="/copilot/acciones" className={guidedLinkClass}>
+                        Ir a Acciones
                       </Link>
                       <Link
                         href={`${FINANZAS_COBERTURA_QUERY}#copilot-finanzas-fiscal`}

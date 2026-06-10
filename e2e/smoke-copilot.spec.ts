@@ -30,7 +30,7 @@ test.describe("Copilot smoke", () => {
     severe.assertClean();
   });
 
-  test("navegación lateral a Datos, Gestión IA y Hoy (sin asserts de negocio)", async ({
+  test("navegación lateral a Datos, Agentes IA y Hoy (sin asserts de negocio)", async ({
     page,
   }) => {
     const severe = createSevereCollector();
@@ -43,12 +43,12 @@ test.describe("Copilot smoke", () => {
     await expect(page).toHaveURL(/\/copilot\/datos$/);
     await expect(page.getByRole("heading", { level: 1, name: "Datos" })).toBeVisible();
 
-    await page.locator('aside nav a[href="/copilot/gestion-ia"]').click();
-    await expect(page).toHaveURL(/\/copilot\/gestion-ia$/);
+    await page.locator('aside nav a[href="/copilot/agentes"]').click();
+    await expect(page).toHaveURL(/\/copilot\/agentes$/);
     await expect(
       page.getByRole("heading", {
         level: 1,
-        name: "Acciones recomendadas hoy",
+        name: "Agentes IA",
       })
     ).toBeVisible();
 

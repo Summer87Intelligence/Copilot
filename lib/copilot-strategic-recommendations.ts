@@ -189,7 +189,7 @@ function buildRecurringRootCauseRecommendation(
     "this_week",
     3_400,
     {
-      cta: { label: "Ver seguimiento", href: "/copilot/rutas" },
+      cta: { label: "Ver seguimiento", href: "/copilot/acciones" },
       relatedMemoryIds: recurringMemory ? [recurringMemory.id] : undefined,
       relatedNarrativeIds: undefined,
       dedupeKey: "risk:recurring",

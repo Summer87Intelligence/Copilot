@@ -112,7 +112,7 @@ function contextHref(action: OperationalActionListItem): string | null {
   if (action.origin === "treasury") return "/copilot/tesoreria";
   if (action.origin === "finance") return "/copilot/finanzas";
   if (action.origin === "customer") return "/copilot/clientes";
-  if (action.origin === "insight") return "/copilot/insights";
+  if (action.origin === "insight") return "/copilot/acciones";
   return null;
 }
 

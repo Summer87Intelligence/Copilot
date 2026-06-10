@@ -66,13 +66,13 @@ export function CarteraPendingDrawer({
       <aside
         role="dialog"
         aria-modal="true"
-        aria-label={`Deuda total ${currency}`}
+        aria-label={`Deuda actual ${currency}`}
         className="fixed inset-y-0 right-0 z-50 flex h-full w-full max-w-none flex-col border-l border-[var(--copilot-border)] bg-[var(--copilot-card)] shadow-2xl md:w-[min(520px,100vw)] md:min-w-[420px]"
       >
         <header className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--copilot-border)] px-5 py-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-ink-muted)]">
-              Deuda total {currency}
+              Deuda actual {currency}
             </p>
             <p className="mt-1 text-2xl font-bold tabular-nums text-rose-600">
               {formatCarteraMoney(currency, totalPending)}

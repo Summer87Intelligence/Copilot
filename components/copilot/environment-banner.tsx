@@ -9,7 +9,7 @@ export function EnvironmentBannerLeft() {
         Prototipo
       </span>
       <span className="text-[var(--copilot-ink)]/90">
-        Entorno operativo · conectado a datos reales / Supabase
+        Entorno operativo · conectado a datos reales del negocio
       </span>
     </span>
   );
