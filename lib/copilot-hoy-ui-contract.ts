@@ -60,7 +60,7 @@ export const CURRENCY_METRIC_HELPERS = {
 } as const;
 
 export const COLLECTION_EXCEEDS_BILLING_NOTE =
-  "El cobrado aplicado supera lo facturado en el rango; revisá ajustes o imputaciones del período.";
+  "El cobrado aplicado supera las ventas del período; puede incluir imputaciones de facturas anteriores.";
 
 /** Copy de secciones y CTAs (tests de contrato visible). */
 export const HOY_COPY = {
@@ -108,7 +108,7 @@ export const HOY_COPY = {
   attentionDrawerSubtitle:
     "Clientes con deuda vencida, cobro lento o datos pendientes.",
   dataNotice:
-    "Algunos datos secundarios están pendientes de actualización. Los saldos principales están disponibles.",
+    "Los saldos principales están actualizados. Algunos detalles secundarios pueden actualizarse en el próximo sync.",
   agingDetailTitle: "Detalle de deuda por antigüedad",
   agingCurrentLabel: "Al día / hasta 30 días",
   agingOverdueLabel: "Atrasado +30 días",
@@ -138,7 +138,7 @@ export const HOY_COPY = {
   treasuryCta: "Configurar pagos futuros",
   treasuryNoOutflows: "Sin egresos configurados",
   monthEndProjectionTitle: "Caja proyectada al cierre del mes",
-  monthEndMvpBadge: "Estimación inicial",
+  monthEndMvpBadge: "Proyección al cierre",
   monthEndScenarioSubtitle: {
     conservative:
       "Escenario conservador: asume cobro parcial (50%) de la deuda pendiente y pagos programados cargados.",
@@ -148,16 +148,16 @@ export const HOY_COPY = {
       "Escenario optimista: asume cobro total (100%) de la deuda pendiente y pagos programados cargados.",
   },
   monthEndProjectionTip:
-    "Caja disponible + cobros estimados del escenario − pagos programados hasta fin de mes.",
+    "Caja disponible + cobros del escenario − pagos programados hasta fin de mes.",
   monthEndFridaysTitle: "Próximos viernes",
   monthEndFridaysTip:
-    "Los cobros se distribuyen de forma pareja en esta versión inicial (MVP). Más adelante se ajustará al comportamiento real de pago de cada cliente.",
+    "Los cobros del escenario se reparten de forma pareja hasta fin de mes.",
   monthEndDrawerCta: "Ver cómo se calcula",
   monthEndDrawerTitle: "Cómo se calcula la caja del mes",
   monthEndDrawerScenariosNote:
-    "Los escenarios usan porcentajes fijos como MVP: 50%, 75% y 100%. La siguiente versión usará comportamiento histórico de clientes.",
+    "Escenarios conservador (50%), esperado (75%) y optimista (100%) sobre la deuda pendiente.",
   monthEndDrawerLinearNote:
-    "Los cobros estimados se reparten de forma lineal hasta fin de mes dentro de cada escenario.",
+    "Los cobros del escenario se reparten de forma lineal hasta fin de mes.",
   monthEndRiskStable: "Estable",
   monthEndRiskAttention: "Atención",
   monthEndRiskCritical: "Crítico",
@@ -166,11 +166,11 @@ export const HOY_COPY = {
   monthEndRiskNoteCritical: "Caja negativa",
   monthEndDrawerRisksTitle: "Riesgos detectados",
   monthEndOverallStable:
-    "La estimación al cierre del mes se ve estable con los datos cargados.",
+    "La proyección al cierre del mes se ve estable con los datos cargados.",
   monthEndOverallAttention:
-    "La estimación muestra margen bajo en alguna moneda. Revisá cobros y pagos programados.",
+    "La proyección muestra margen bajo en alguna moneda. Revisá cobros y pagos programados.",
   monthEndOverallCritical:
-    "La estimación proyecta caja negativa en alguna moneda antes o al cierre del mes.",
+    "La proyección indica caja negativa en alguna moneda antes o al cierre del mes.",
   monthEndTreasuryCta: "Ver Tesorería",
 } as const;
 

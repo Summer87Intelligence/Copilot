@@ -1,5 +1,8 @@
 "use client";
 
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
+
 import { CopilotCard } from "@/components/copilot/copilot-ui";
 import { metricValueClass, premiumCardClass } from "@/components/copilot/ui/copilot-visual-system";
 import type { HoyCashPositionBlock } from "@/lib/copilot-today-business-pulse";
@@ -57,14 +60,14 @@ function CashCurrencyBlock({ block }: { block: HoyCashPositionBlock }) {
   const title = block.currency === "USD" ? "Dólares (USD)" : "Pesos (UYU)";
 
   return (
-    <div className={`flex min-h-[280px] flex-col ${premiumCardClass} p-5`}>
+    <div className={`flex min-h-[200px] flex-col ${premiumCardClass} p-4`}>
       <p className="text-sm font-semibold text-[var(--copilot-ink)]">{title}</p>
 
       <div className="mt-4 flex flex-1 flex-col items-center justify-center text-center">
         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--copilot-ink-muted)]">
           {HOY_COPY.availableCashLabel}
         </p>
-        <p className={`mt-1 text-[2rem] leading-none tracking-tight xl:text-[2.15rem] ${metricValueClass}`}>
+        <p className={`mt-1 text-[1.65rem] leading-none tracking-tight xl:text-[1.85rem] ${metricValueClass}`}>
           {fmtCurrencyAmount(block.availableCash, block.currency)}
         </p>
       </div>
@@ -117,21 +120,44 @@ export function HoyCashCurrentSection({
 }: {
   blocks: HoyCashPositionBlock[];
 }) {
+  const [open, setOpen] = useState(false);
+
   if (blocks.length === 0) return null;
 
+  const summary = blocks
+    .map((block) => `${block.currency} ${fmtCurrencyAmount(block.availableCash, block.currency)}`)
+    .join(" · ");
+
   return (
-    <CopilotCard className="p-5 sm:p-6">
-      <div className="mb-4">
-        <h2 className="text-base font-semibold text-[var(--copilot-ink)]">{HOY_COPY.cashCurrentTitle}</h2>
-        <p className="mt-0.5 text-sm text-[var(--copilot-ink-muted)]" title={HOY_COPY.cashCurrentTip}>
-          Sin deuda pendiente en caja disponible.
-        </p>
-      </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        {blocks.map((block) => (
-          <CashCurrencyBlock key={block.currency} block={block} />
-        ))}
-      </div>
+    <CopilotCard className="overflow-hidden p-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left sm:px-5"
+      >
+        <span className="min-w-0">
+          <span className="block text-base font-semibold text-[var(--copilot-ink)]">
+            {HOY_COPY.cashCurrentTitle}
+          </span>
+          <span className="mt-0.5 block text-xs text-[var(--copilot-ink-muted)]" title={HOY_COPY.cashCurrentTip}>
+            {open
+              ? "Sin deuda pendiente en caja disponible."
+              : summary || "Sin deuda pendiente en caja disponible."}
+          </span>
+        </span>
+        <ChevronDown
+          className={`mt-0.5 h-4 w-4 shrink-0 text-[var(--copilot-ink-muted)] transition ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open ? (
+        <div className="border-t border-[var(--copilot-border)] px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
+          <div className="grid gap-3 lg:grid-cols-2">
+            {blocks.map((block) => (
+              <CashCurrencyBlock key={block.currency} block={block} />
+            ))}
+          </div>
+        </div>
+      ) : null}
     </CopilotCard>
   );
 }

@@ -11,6 +11,7 @@ import {
   type MonthlyTrendReceiptInput,
 } from "@/lib/copilot-financial-monthly-trends";
 import { buildFinancialPeriodContext } from "@/lib/copilot-financial-period-context";
+import { FINANZAS_COPY } from "@/lib/copilot-financial-ux-copy";
 import { formatMoneyCurrency } from "@/lib/copilot-format-money";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -24,7 +25,7 @@ type BarPoint = {
   collections: number;
   creditNotes: number;
   isEmpty: boolean;
-  status?: "Cerrado" | "En curso" | "Sin datos";
+  status?: "Cerrado" | "En curso" | "Sin movimientos";
 };
 
 const PERIOD_OPTIONS_FULL: { id: Period; label: string }[] = [
@@ -85,12 +86,12 @@ function periodStatus(
   key: string,
   period: Period,
   ctx: ReturnType<typeof buildFinancialPeriodContext>
-): "Cerrado" | "En curso" | "Sin datos" {
+): "Cerrado" | "En curso" | "Sin movimientos" {
   if (period === "7d" || period === "1m") {
     return key === ctx.asOfYmd ? "En curso" : "Cerrado";
   }
   if (key === ctx.currentMonthYm && ctx.isCurrentMonthPartial) return "En curso";
-  if (key > ctx.currentMonthYm) return "Sin datos";
+  if (key > ctx.currentMonthYm) return "Sin movimientos";
   return "Cerrado";
 }
 
@@ -435,12 +436,15 @@ export function FinancialMonthlyTrends({
   receipts,
   asOfYmd,
   executiveView = false,
+  embedded = false,
 }: {
   invoices: readonly MonthlyTrendInvoiceInput[];
   receipts: readonly MonthlyTrendReceiptInput[];
   asOfYmd: string;
   /** Vista principal Finanzas: gráfico protagonista, menos KPIs. */
   executiveView?: boolean;
+  /** Sin card exterior; para agrupar en nivel 2 de Finanzas. */
+  embedded?: boolean;
 }) {
   const [period, setPeriod] = useState<Period>("6m");
   const periodOptions = executiveView ? PERIOD_OPTIONS_EXECUTIVE : PERIOD_OPTIONS_FULL;
@@ -489,15 +493,38 @@ export function FinancialMonthlyTrends({
   const collRate = totals.collectionRate;
   const showRateHint = collRate !== null && collRate > 0;
 
-  return (
-    <CopilotCard>
+  const body = (
+    <>
       {/* ── Header ── */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <CopilotSectionTitle
-            title="Evolución comercial desde enero 2026"
-            subtitle="Compara ventas y cobros por período. No incluye meses anteriores a enero 2026."
-          />
+          {embedded ? (
+            <div>
+              <p className="text-sm font-semibold text-[var(--copilot-ink)]">
+                {executiveView
+                  ? FINANZAS_COPY.evolutionTitle
+                  : "Evolución comercial desde enero 2026"}
+              </p>
+              <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
+                {executiveView
+                  ? FINANZAS_COPY.evolutionSubtitle
+                  : "Compara ventas y cobros por período. No incluye meses anteriores a enero 2026."}
+              </p>
+            </div>
+          ) : (
+            <CopilotSectionTitle
+              title={
+                executiveView
+                  ? FINANZAS_COPY.evolutionTitle
+                  : "Evolución comercial desde enero 2026"
+              }
+              subtitle={
+                executiveView
+                  ? FINANZAS_COPY.evolutionSubtitle
+                  : "Compara ventas y cobros por período. No incluye meses anteriores a enero 2026."
+              }
+            />
+          )}
           <span className="mt-2 inline-flex rounded-full border border-[var(--copilot-border)] bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-[var(--copilot-ink-muted)]">
             Datos disponibles: {periodContext.trendsDataRangeLabel}
           </span>
@@ -585,7 +612,7 @@ export function FinancialMonthlyTrends({
               tone="ok"
             />
             <KpiCard
-              label="Cobros"
+              label={FINANZAS_COPY.labelCobrosRegistrados}
               value={fmt(totals.collections, currency)}
               delta={<DeltaBadge pct={deltas.collectionsPct} />}
               sub={
@@ -600,9 +627,9 @@ export function FinancialMonthlyTrends({
               value={fmt(Math.abs(gap.salesMinusCollections), currency)}
               sub={
                 cobrosSupVentas
-                  ? "Puede incluir deuda anterior"
+                  ? "Puede incluir facturas de meses anteriores"
                   : ventasSupCobros
-                    ? "Diferencia entre ventas y cobros"
+                    ? "Diferencia operativa del período"
                     : "Ventas al día"
               }
               tone={cobrosSupVentas ? "ok" : ventasSupCobros ? "warn" : "neutral"}
@@ -641,7 +668,7 @@ export function FinancialMonthlyTrends({
           {/* Alert banners */}
           {!executiveView && cobrosSupVentas ? (
             <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-              Cobraste más de lo vendido en este período. Puede incluir recuperación de deuda anterior.
+              Los cobros registrados superan las ventas del período; pueden incluir facturas de meses anteriores.
             </div>
           ) : !executiveView && ventasSupCobros && gap.salesMinusCollections > totals.netSales * 0.3 ? (
             <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -663,12 +690,12 @@ export function FinancialMonthlyTrends({
             </span>
             <span className="flex items-center gap-1.5">
               <span className="h-2.5 w-3 rounded-sm bg-sky-400/90" aria-hidden />
-              Cobros
+              {FINANZAS_COPY.labelCobrosRegistrados}
             </span>
           </div>
 
           {/* ── Lectura rápida ── */}
-          {insights.length > 0 ? (
+          {insights.length > 0 || (executiveView && periodContext.isCurrentMonthPartial) ? (
             <div className="mt-4 rounded-xl border border-[var(--copilot-border)] bg-slate-50/70 px-4 py-3">
               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Lectura rápida
@@ -680,6 +707,13 @@ export function FinancialMonthlyTrends({
                     {ins}
                   </li>
                 ))}
+                {executiveView && periodContext.isCurrentMonthPartial ? (
+                  <li className="flex items-start gap-2 text-xs text-[var(--copilot-ink)]">
+                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--copilot-accent)]" />
+                    {periodContext.currentMonthLabel} está en curso; no compararlo contra meses
+                    cerrados.
+                  </li>
+                ) : null}
               </ul>
             </div>
           ) : null}
@@ -710,11 +744,17 @@ export function FinancialMonthlyTrends({
 
       {!executiveView ? (
         <p className="mt-4 text-[11px] leading-relaxed text-[var(--copilot-ink-muted)]">
-          Ventas = facturación del período. Cobros = recibos registrados. No es cierre
-          contable formal. UYU y USD se analizan por separado. Se muestran datos desde enero
-          2026.
+          Ventas = facturación del período. {FINANZAS_COPY.labelCobrosRegistrados} = recibos por
+          fecha. UYU y USD se analizan por separado. Datos desde enero 2026.
         </p>
-      ) : null}
-    </CopilotCard>
+      ) : (
+        <p className="mt-4 text-[11px] leading-relaxed text-[var(--copilot-ink-muted)]">
+          {FINANZAS_COPY.evolutionSubtitle} La diferencia mensual no representa deuda pendiente.
+        </p>
+      )}
+    </>
   );
+
+  if (embedded) return body;
+  return <CopilotCard>{body}</CopilotCard>;
 }

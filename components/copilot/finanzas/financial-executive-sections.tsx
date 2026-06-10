@@ -22,6 +22,7 @@ import type {
   PeriodComparisonBlock,
 } from "@/lib/copilot-financial-executive-dashboard";
 import { riskBadgeTone, trendDirectionLabel } from "@/lib/copilot-financial-executive-dashboard";
+import { FINANZAS_COPY } from "@/lib/copilot-financial-ux-copy";
 import { formatPanoramaRate } from "@/lib/copilot-financial-panorama-model";
 import type { FinancialPanoramaModel, PanoramaCurrencySlice } from "@/lib/copilot-financial-panorama-model";
 import type { PanoramaMetricId } from "@/lib/copilot-financial-panorama-details";
@@ -219,7 +220,7 @@ export function FinancialCurrencySummary({
           <ExecutiveMetricCard
             label="Caja disponible"
             value={fmtMoney(panel.cashToday, c)}
-            subcopy="Fuente: Tesorería. No es saldo bancario certificado."
+            subcopy="Fuente: Tesorería al corte."
             tone={panel.cashToday > 0 ? "positive" : "neutral"}
           />
           {s ? (
@@ -519,7 +520,7 @@ export function FinancialProjection30d({
     <CopilotCard>
       <CopilotSectionTitle
         title="Próximos 30 días"
-        subtitle="Estimación operativa: caja actual + cobros esperados − pagos cargados."
+        subtitle="Proyección: caja actual + cobros esperados − pagos registrados."
       />
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <ExecutiveMetricCard
@@ -547,15 +548,15 @@ export function FinancialProjection30d({
           tone={p.hasOutflows ? "warning" : "neutral"}
         />
         <ExecutiveMetricCard
-          label="Escenario estimado"
+          label="Caja proyectada"
           value={fmtMoney(p.estimatedCash30d, null)}
-          subcopy="No es saldo bancario ni cierre contable."
+          subcopy="Caja disponible + cobros esperados − pagos próximos."
           tone={p.estimatedCash30d < 0 ? "danger" : "positive"}
         />
       </div>
       {!p.hasOutflows ? (
         <div className={`mt-3 ${softCalloutClass} px-3 py-2 text-sm text-[var(--copilot-ink-muted)]`}>
-          No hay pagos próximos cargados. La proyección puede estar incompleta.{" "}
+          Cargá pagos próximos para completar la proyección.{" "}
           <Link
             href="/copilot/tesoreria?section=programados"
             className="font-semibold text-[var(--copilot-accent)] hover:underline"
@@ -578,7 +579,7 @@ function BreakdownCard({ slice }: { slice: PanoramaCurrencySlice }) {
           <dd className="tabular-nums">{fmtMoney(slice.netIncome, slice.code)}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-[var(--copilot-ink-muted)]">Cobrado</dt>
+          <dt className="text-[var(--copilot-ink-muted)]">{FINANZAS_COPY.labelCobradoAplicado}</dt>
           <dd className="tabular-nums">{fmtMoney(slice.collectedApplied, slice.code)}</dd>
         </div>
         <div className="flex justify-between gap-2">
@@ -597,12 +598,26 @@ function BreakdownCard({ slice }: { slice: PanoramaCurrencySlice }) {
 export function FinancialCurrencyBreakdown({
   model,
   defaultOpen = false,
+  flat = false,
 }: {
   model: FinancialPanoramaModel;
   defaultOpen?: boolean;
+  /** Contenido directo sin acordeón propio (p. ej. dentro de nivel 3 colapsable). */
+  flat?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   if (model.currencies.length === 0) return null;
+
+  if (flat) {
+    return (
+      <div className="grid gap-3 sm:grid-cols-2">
+        {model.currencies.map((c) => (
+          <BreakdownCard key={c.code} slice={c} />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50">
       <button

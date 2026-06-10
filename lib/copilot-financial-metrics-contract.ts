@@ -314,7 +314,7 @@ export const CANONICAL_METRICS: Record<MetricId, CanonicalMetricDef> = {
     id: "caja_despues_pagos",
     label: METRIC_LABEL.caja_despues_pagos,
     definition:
-      "Proyección operativa: caja disponible menos pagos programados en los próximos 30 días. No es saldo bancario actual.",
+      "Caja disponible menos pagos programados en los próximos 30 días.",
     formula:
       "safeCash30d = CashPositionByCurrency.availableCash - TreasuryOutflowSummary.next30Days (por moneda)",
     source: "treasury",
@@ -381,11 +381,11 @@ export const CURRENCY_INTEGRITY_RULES = [
 
 /** Disclaimer cuando UYU y USD se muestran por separado (sin conversión). */
 export const METRIC_SEPARATED_CURRENCY_DISCLAIMER =
-  "Estimación operativa. UYU y USD se muestran por separado; pueden diferir de extractos o contabilidad formal.";
+  "Vista actualizada desde Zeta. UYU y USD se analizan por separado.";
 
 /** Disclaimer cuando los importes se consolidan a USD con tipo de cambio configurable. */
 export const METRIC_USD_CONSOLIDATED_DISCLAIMER =
-  "Estimación operativa. Los importes consolidados usan TC configurable y pueden diferir de extractos o contabilidad formal.";
+  "Vista consolidada en USD con el tipo de cambio configurado. UYU y USD no se mezclan sin conversión explícita.";
 
 /** Alias legacy — Panorama financiero y vistas multimoneda separada. */
 export const METRIC_MIXED_CURRENCY_DISCLAIMER = METRIC_SEPARATED_CURRENCY_DISCLAIMER;

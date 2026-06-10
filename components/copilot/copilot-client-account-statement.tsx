@@ -386,8 +386,8 @@ function ContextHint({
 }) {
   const description =
     view === "current_account"
-      ? "Calcula debe/haber con los movimientos sincronizados disponibles. Puede diferir del saldo pendiente por factura si Zeta no expone cobranzas, ajustes o imputaciones completas en esta lectura."
-      : "Usa el saldo pendiente informado por Zeta en cada factura. Esta es la lectura recomendada para analizar deuda real actual.";
+      ? "Debe y haber con movimientos sincronizados. Para saldo por factura usá la vista por saldo pendiente."
+      : "Saldo pendiente informado por Zeta en cada factura. Lectura recomendada para deuda actual.";
   const tail = (() => {
     if (cutoffMode === "cutoff") {
       if (cutoffFromYmd && cutoffToYmd) {

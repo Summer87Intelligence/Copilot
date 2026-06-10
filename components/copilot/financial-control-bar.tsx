@@ -240,7 +240,7 @@ function AutoSyncIndicator({
         {lastSyncRel ? (
           <>Última actualización: {lastSyncRel}</>
         ) : (
-          <>Última actualización: no disponible</>
+          <>Última actualización: pendiente de sync</>
         )}
       </div>
       <div className="tabular-nums">Próxima actualización: {nextHHmm}</div>

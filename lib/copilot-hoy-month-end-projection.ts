@@ -571,7 +571,7 @@ export function buildHoyMonthEndProjection(
     drawer: {
       headline: scenarioHeadline(monthName, scenario, collectionRatePct),
       disclaimer:
-        "Estimación operativa para planificar. No es saldo bancario ni garantía de cobro.",
+        "Proyección basada en caja actual, cobros del escenario y pagos programados hasta fin de mes.",
       lines: drawerLines,
       causes: buildDrawerCauses({ blocks: currencyBlocks, summaries, collectionRatePct }),
       riskFindings: buildRiskFindings(currencyBlocks, fridayStrip, monthEnd),

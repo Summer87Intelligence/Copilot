@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -601,15 +601,6 @@ function ExecutiveSummaryCard({
     },
   }[state];
 
-  const kpiRows = [
-    { label: METRIC_LABEL.facturado_periodo, uyuVal: uyu?.facturado, usdVal: usd?.facturado },
-    { label: METRIC_LABEL.cobrado_aplicado,   uyuVal: uyu?.cobrado,   usdVal: usd?.cobrado },
-    { label: METRIC_LABEL.pendiente_periodo, uyuVal: uyu?.pendientePeriodo, usdVal: usd?.pendientePeriodo },
-    { label: METRIC_LABEL.deuda_activa,      uyuVal: uyu?.deudaActiva, usdVal: usd?.deudaActiva },
-    { label: METRIC_LABEL.deuda_vencida, uyuVal: uyu?.deudaVencida, usdVal: usd?.deudaVencida, warn: true },
-    { label: METRIC_LABEL.caja_disponible, uyuVal: uyu?.cajaDisponible, usdVal: usd?.cajaDisponible },
-  ];
-
   const mainRisk = buildExecutiveSummaryMainRiskChip({
     state,
     currencyMode,
@@ -646,35 +637,6 @@ function ExecutiveSummaryCard({
         <p className={`text-[11px] font-medium opacity-75 ${stateConfig.text}`}>
           Resumen ejecutivo — {periodLabel}
         </p>
-      </div>
-
-      {/* Compact KPI table */}
-      <div className={`mt-3 divide-y divide-current/10 ${stateConfig.text}`}>
-        {kpiRows.map((row) => {
-          const showUyu = (row.uyuVal ?? 0) > 0;
-          const showUsd = (row.usdVal ?? 0) > 0;
-          if (!showUyu && !showUsd) return null;
-          const warnCls = row.warn ? "font-bold" : "font-semibold";
-          return (
-            <div key={row.label} className="flex items-baseline justify-between gap-3 py-1.5">
-              <span className="shrink-0 text-[11px] opacity-70">{row.label}</span>
-              <div className="flex flex-wrap justify-end gap-x-4 gap-y-0.5 text-xs tabular-nums">
-                {showUyu && (
-                  <span className={warnCls}>
-                    {fmtAmount(row.uyuVal!, "UYU")}{" "}
-                    <span className="text-[10px] font-normal opacity-50">UYU</span>
-                  </span>
-                )}
-                {showUsd && (
-                  <span className={warnCls}>
-                    {fmtAmount(row.usdVal!, "USD")}{" "}
-                    <span className="text-[10px] font-normal opacity-50">USD</span>
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
       </div>
 
       {/* Chips — max 3 */}
@@ -1730,15 +1692,15 @@ export default function DashboardPageClient() {
                 title={METRIC_LABEL.caja_despues_pagos}
                 tooltip={noPagos
                   ? "Sin pagos programados en los próximos 30 días. La proyección coincide con la caja disponible."
-                  : "Saldo estimado luego de descontar pagos programados próximos."}
+                  : "Caja disponible menos pagos programados en los próximos 30 días."}
                 uyuValue={consUyu(uyu?.cajaDespPagos ?? 0)}
                 usdValue={consUsd(uyu?.cajaDespPagos ?? 0, usd?.cajaDespPagos ?? 0)}
                 selectedCurrency={effectiveCurrency}
                 href="/copilot/tesoreria"
                 negative
                 secondary={noPagos
-                  ? "Proyección operativa. Sin pagos programados próximos."
-                  : "Proyección operativa, no saldo bancario."}
+                  ? "Sin pagos programados próximos."
+                  : "Proyección con pagos cargados en Tesorería."}
               />
             </div>
           )}

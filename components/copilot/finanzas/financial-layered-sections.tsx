@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronDown } from "lucide-react";
 
@@ -11,22 +11,18 @@ import {
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
 import { fmtMoney } from "@/components/copilot/finanzas/financial-executive-shared";
-import {
-  statusBadgeVariants,
-  softCalloutClass,
-  subtleLabelClass,
-} from "@/components/copilot/ui/copilot-visual-system";
+import { softCalloutClass, subtleLabelClass } from "@/components/copilot/ui/copilot-visual-system";
 import type {
   ComparisonMetric,
   ExecutiveCurrencyPanel,
   FinancialExecutiveDashboard,
 } from "@/lib/copilot-financial-executive-dashboard";
 import { riskBadgeTone } from "@/lib/copilot-financial-executive-dashboard";
+import { FINANCIAL_UX_COPY, FINANZAS_COPY } from "@/lib/copilot-financial-ux-copy";
 import { formatPanoramaRate } from "@/lib/copilot-financial-panorama-model";
 import type { FinancialPanoramaModel, PanoramaCurrencySlice } from "@/lib/copilot-financial-panorama-model";
 import type { PanoramaMetricId } from "@/lib/copilot-financial-panorama-details";
 import {
-  FinancialCurrencyBreakdown,
   FinancialTopClientsSection,
 } from "@/components/copilot/finanzas/financial-executive-sections";
 
@@ -87,6 +83,14 @@ function dualLine(
   return parts.length > 0 ? parts.join(" · ") : "—";
 }
 
+function dualLineAll(
+  panels: ExecutiveCurrencyPanel[],
+  pick: (p: ExecutiveCurrencyPanel) => number
+): string {
+  if (panels.length === 0) return "—";
+  return panels.map((p) => fmtMoney(pick(p), p.currency)).join(" · ");
+}
+
 function pctVar(current: number | null, previous: number | null): string {
   if (current == null || previous == null || previous === 0) return "—";
   const pct = Math.round(((current - previous) / previous) * 100);
@@ -101,8 +105,7 @@ export function FinancialLayeredHeader({
 }: {
   dashboard: FinancialExecutiveDashboard;
 }) {
-  const { panorama, periodContext: ctx } = dashboard;
-  const tone = riskBadgeTone(panorama.risk.level);
+  const { periodContext: ctx } = dashboard;
   const monthShort = ctx.currentMonthLabel.split(" ")[0]?.toLowerCase() ?? "mes actual";
   const closedShort = ctx.lastClosedMonthLabel.split(" ")[0]?.toLowerCase() ?? "mes cerrado";
   const prevClosedShort =
@@ -114,15 +117,10 @@ export function FinancialLayeredHeader({
         <div className="min-w-0">
           <h2 className="text-lg font-semibold text-[var(--copilot-ink)]">Panorama financiero</h2>
           <p className="mt-0.5 text-sm text-[var(--copilot-ink-muted)]">
-            Ventas, cobros, deuda, caja y evolución del negocio.
+            {FINANZAS_COPY.heroSubtitle}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusBadgeVariants[tone]}`}
-          >
-            Riesgo {panorama.risk.label}
-          </span>
           <CopilotGhostLink href="/copilot/reportes" className="text-xs">
             Reportes
           </CopilotGhostLink>
@@ -146,6 +144,10 @@ export function FinancialLayeredHeader({
         UYU/USD separados
       </p>
 
+      <p className="text-[11px] leading-relaxed text-[var(--copilot-ink-muted)]">
+        {FINANZAS_COPY.heroRiskNote}
+      </p>
+
       {ctx.isCurrentMonthPartial ? (
         <p className="text-[11px] leading-relaxed text-[var(--copilot-ink-muted)]">
           {monthShort.charAt(0).toUpperCase() + monthShort.slice(1)} está en curso. Para comparar
@@ -162,10 +164,14 @@ function SummaryMetric({
   label,
   value,
   tone = "neutral",
+  tooltip,
+  hero = false,
 }: {
   label: string;
   value: string;
   tone?: "positive" | "danger" | "neutral" | "warning";
+  tooltip?: string;
+  hero?: boolean;
 }) {
   const valueClass =
     tone === "positive"
@@ -176,9 +182,54 @@ function SummaryMetric({
           ? "text-amber-800"
           : "text-[var(--copilot-ink)]";
   return (
-    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 py-2.5">
+    <div
+      className={`rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 ${
+        hero ? "px-4 py-3.5" : "px-3 py-2.5"
+      }`}
+      title={tooltip}
+    >
       <p className={subtleLabelClass}>{label}</p>
-      <p className={`mt-1 text-sm font-bold tabular-nums leading-snug ${valueClass}`}>{value}</p>
+      <p
+        className={`mt-1 tabular-nums leading-snug ${
+          hero ? "text-lg font-bold sm:text-xl" : "text-sm font-bold"
+        } ${valueClass}`}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+export function FinancialCollapsibleSection({
+  title,
+  subtitle,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/40">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <span>
+          <span className="block text-sm font-semibold text-[var(--copilot-ink)]">{title}</span>
+          {subtitle ? (
+            <span className="mt-0.5 block text-xs text-[var(--copilot-ink-muted)]">{subtitle}</span>
+          ) : null}
+        </span>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-[var(--copilot-ink-muted)] transition ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open ? <div className="border-t border-[var(--copilot-border)] px-4 py-4">{children}</div> : null}
     </div>
   );
 }
@@ -197,10 +248,11 @@ export function FinancialExecutiveSummary({
   const cashUyu = panorama.projection.cashTodayUyu;
   const cashUsd = panorama.projection.cashTodayUsd;
 
-  const closedSales = dualLine(panels, (p) => p.lastClosedSnapshot?.netSales ?? 0);
-  const closedColl = dualLine(panels, (p) => p.lastClosedSnapshot?.collected ?? 0);
-  const debtTotal = dualLine(panels, (p) => p.slice?.pending ?? 0);
-  const debtOverdue = dualLine(panels, (p) => p.slice?.overdue ?? 0);
+  const debtTotal = dualLineAll(panels, (p) => p.slice?.pending ?? 0);
+  const debtOverdue = dualLineAll(
+    panels,
+    (p) => p.collectionDebt.overdueDebt
+  );
 
   const cashParts: string[] = [];
   if (cashUyu !== 0) cashParts.push(fmtMoney(cashUyu, "UYU"));
@@ -209,33 +261,36 @@ export function FinancialExecutiveSummary({
   return (
     <CopilotCard className="border-[rgba(31,107,74,0.14)] bg-[rgba(31,107,74,0.02)]">
       <CopilotSectionTitle
-        title="Resumen ejecutivo"
-        subtitle="Fuentes: Tesorería, Cartera, facturas y recibos."
+        title="Foto actual"
+        subtitle="Caja, deuda y riesgo al corte de hoy."
       />
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryMetric
-          label="Caja disponible"
+          label={FINANZAS_COPY.labelCajaHoy}
           value={cashParts.length > 0 ? cashParts.join(" · ") : "Consultar Tesorería"}
           tone="positive"
+          tooltip={FINANZAS_COPY.summaryCajaTooltip}
+          hero
         />
         <SummaryMetric
-          label={`Ventas · ${dashboard.periodContext.lastClosedMonthLabel}`}
-          value={closedSales}
+          label={FINANZAS_COPY.labelDeudaHoy}
+          value={debtTotal}
+          tooltip={FINANZAS_COPY.summaryDeudaTooltip}
+          hero
         />
         <SummaryMetric
-          label={`Cobros · ${dashboard.periodContext.lastClosedMonthLabel}`}
-          value={closedColl}
-        />
-        <SummaryMetric label="Deuda actual" value={debtTotal} />
-        <SummaryMetric
-          label="Deuda vencida actual"
+          label={FINANZAS_COPY.labelDeudaVencidaHoy}
           value={debtOverdue}
-          tone={panels.some((p) => (p.slice?.overdue ?? 0) > 0) ? "danger" : "neutral"}
+          tone={panels.some((p) => p.collectionDebt.overdueDebt > 0) ? "danger" : "neutral"}
+          tooltip={FINANZAS_COPY.summaryDeudaVencidaTooltip}
+          hero
         />
         <SummaryMetric
-          label="Estado general"
+          label="Riesgo financiero"
           value={panorama.risk.label}
           tone={tone === "critical" ? "danger" : tone === "attention" ? "warning" : "positive"}
+          tooltip={FINANZAS_COPY.summaryEstadoTooltip}
+          hero
         />
       </div>
 
@@ -276,8 +331,10 @@ export function FinancialExecutiveSummary({
 
 export function FinancialMainComparison({
   dashboard,
+  embedded = false,
 }: {
   dashboard: FinancialExecutiveDashboard;
+  embedded?: boolean;
 }) {
   const panels = dashboard.currencies;
   const available = panels.map((p) => p.currency);
@@ -319,17 +376,28 @@ export function FinancialMainComparison({
   const ctx = dashboard.periodContext;
   const monthName = ctx.currentMonthLabel.split(" ")[0] ?? "Mes";
 
-  return (
-    <CopilotCard>
+  const body = (
+    <>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <CopilotSectionTitle
-          title="Comparación principal"
-          subtitle="Meses cerrados por fecha de comprobante/recibo."
-        />
+        {embedded ? (
+          <div>
+            <p className="text-sm font-semibold text-[var(--copilot-ink)]">
+              {FINANZAS_COPY.comparisonTitle}
+            </p>
+            <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
+              {FINANZAS_COPY.comparisonSubtitle}
+            </p>
+          </div>
+        ) : (
+          <CopilotSectionTitle
+            title={FINANZAS_COPY.comparisonTitle}
+            subtitle={FINANZAS_COPY.comparisonSubtitle}
+          />
+        )}
         <CurrencyToggle value={currency} onChange={setCurrency} available={available} />
       </div>
 
-      <div className="mt-3 overflow-x-auto rounded-xl border border-[var(--copilot-border)]">
+      <div className={`${embedded ? "mt-3" : "mt-3"} overflow-x-auto rounded-xl border border-[var(--copilot-border)]`}>
         <table className="w-full min-w-[360px] text-left text-xs">
           <thead>
             <tr className="bg-slate-50/80 text-[10px] uppercase tracking-wide text-[var(--copilot-ink-muted)]">
@@ -341,7 +409,11 @@ export function FinancialMainComparison({
           </thead>
           <tbody>
             {rows.map((m) => (
-              <tr key={m.id} className="border-t border-[var(--copilot-border)]/60">
+              <tr
+                key={m.id}
+                className="border-t border-[var(--copilot-border)]/60"
+                title={m.id === "gap" ? FINANZAS_COPY.comparisonGapTooltip : undefined}
+              >
                 <td className="px-3 py-2 text-[var(--copilot-ink-muted)]">{m.label}</td>
                 <td className="px-3 py-2 text-right tabular-nums font-medium">{fmtCell(m, "current")}</td>
                 <td className="px-3 py-2 text-right tabular-nums text-[var(--copilot-ink-muted)]">
@@ -362,7 +434,7 @@ export function FinancialMainComparison({
           {netInProgress?.current != null && netInProgress.current > 0
             ? fmtMoney(netInProgress.current, currency)
             : "—"}
-          , cobros{" "}
+          , {FINANZAS_COPY.labelCobrosRegistrados.toLowerCase()}{" "}
           {colInProgress?.current != null && colInProgress.current > 0
             ? fmtMoney(colInProgress.current, currency)
             : "—"}
@@ -372,16 +444,21 @@ export function FinancialMainComparison({
           .
         </p>
       ) : null}
-    </CopilotCard>
+    </>
   );
+
+  if (embedded) return body;
+  return <CopilotCard>{body}</CopilotCard>;
 }
 
 // ─── E. Riesgo de cobranza ────────────────────────────────────────────────────
 
 export function FinancialCollectionRisk({
   panels,
+  embedded = false,
 }: {
   panels: ExecutiveCurrencyPanel[];
+  embedded?: boolean;
 }) {
   const available = panels.map((p) => p.currency);
   const availableKey = available.join(",");
@@ -400,17 +477,23 @@ export function FinancialCollectionRisk({
 
   const cd = panel.collectionDebt;
 
-  return (
-    <CopilotCard>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <CopilotSectionTitle
-          title="Riesgo de cobranza"
-          subtitle="Fuente: Cartera actual."
-        />
-        <CurrencyToggle value={currency} onChange={setCurrency} available={available} />
-      </div>
+  const body = (
+    <>
+      {!embedded ? (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <CopilotSectionTitle
+            title={FINANZAS_COPY.collectionRiskTitle}
+            subtitle={FINANZAS_COPY.collectionRiskSubtitle}
+          />
+          <CurrencyToggle value={currency} onChange={setCurrency} available={available} />
+        </div>
+      ) : (
+        <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
+          <CurrencyToggle value={currency} onChange={setCurrency} available={available} />
+        </div>
+      )}
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+      <div className={`${embedded ? "" : "mt-3"} grid gap-2 sm:grid-cols-3`}>
         <SummaryMetric label="Deuda actual" value={fmtMoney(cd.totalDebt, currency)} />
         <SummaryMetric
           label="Deuda vencida"
@@ -464,16 +547,21 @@ export function FinancialCollectionRisk({
         <CopilotGhostLink href="/copilot/cartera">Ver clientes vencidos</CopilotGhostLink>
         <CopilotGhostLink href="/copilot/reportes">Generar reporte de deudores</CopilotGhostLink>
       </div>
-    </CopilotCard>
+    </>
   );
+
+  if (embedded) return body;
+  return <CopilotCard>{body}</CopilotCard>;
 }
 
 // ─── F. Proyección 30 días (compacta) ─────────────────────────────────────────
 
 export function FinancialProjectionCompact({
   model,
+  embedded = false,
 }: {
   model: FinancialPanoramaModel;
+  embedded?: boolean;
 }) {
   const p = model.projection;
   const cash =
@@ -483,39 +571,51 @@ export function FinancialProjectionCompact({
           .join(" · ")
       : "—";
 
-  return (
-    <CopilotCard>
-      <CopilotSectionTitle
-        title="Próximos 30 días"
-        subtitle="Estimación operativa. No es saldo bancario ni cierre contable."
-      />
-      <p className="mt-0.5 text-[10px] text-[var(--copilot-ink-muted)]">
-        Fuente: Tesorería + cartera ponderada.
-      </p>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+  const body = (
+    <>
+      {!embedded ? (
+        <>
+          <CopilotSectionTitle
+            title="Próximos 30 días"
+            subtitle={FINANCIAL_UX_COPY.projection30Subtitle}
+          />
+          <p className="mt-0.5 text-[10px] text-[var(--copilot-ink-muted)]">
+            Fuente: Tesorería + cartera ponderada.
+          </p>
+        </>
+      ) : null}
+      <div className={`${embedded ? "" : "mt-3"} grid gap-2 sm:grid-cols-2 lg:grid-cols-4`}>
         <SummaryMetric label="Caja disponible" value={cash} tone="positive" />
-        <SummaryMetric label="Cobros esperados" value={fmtMoney(p.expectedCollections, null)} />
+        <SummaryMetric
+          label="Cobros esperados"
+          value={fmtMoney(p.expectedCollections, null)}
+          tooltip={FINANZAS_COPY.projectionExpectedCollectionsTooltip}
+        />
         <SummaryMetric
           label="Pagos próximos"
           value={p.hasOutflows ? fmtMoney(p.upcomingOutflows, null) : "—"}
           tone={p.hasOutflows ? "warning" : "neutral"}
         />
         <SummaryMetric
-          label="Escenario estimado"
+          label={FINANCIAL_UX_COPY.projectionScenarioLabel}
           value={fmtMoney(p.estimatedCash30d, null)}
           tone={p.estimatedCash30d < 0 ? "danger" : "positive"}
+          tooltip={FINANZAS_COPY.projectionScenarioTooltip}
         />
       </div>
       {!p.hasOutflows ? (
         <p className="mt-2 text-[11px] text-amber-800/90">
-          Sin pagos cargados; la proyección puede estar incompleta.{" "}
+          {FINANCIAL_UX_COPY.projectionMissingPaymentsCta}{" "}
           <Link href="/copilot/tesoreria?section=programados" className="font-semibold underline">
-            Cargar pago
+            Ir a pagos próximos
           </Link>
         </p>
       ) : null}
-    </CopilotCard>
+    </>
   );
+
+  if (embedded) return body;
+  return <CopilotCard>{body}</CopilotCard>;
 }
 
 // ─── G. Detalle avanzado ──────────────────────────────────────────────────────
@@ -573,7 +673,7 @@ export function FinancialAdvancedDetail({
             Detalle avanzado
           </span>
           <span className="mt-0.5 block text-xs text-[var(--copilot-ink-muted)]">
-            Tablas para análisis contable, concentración y auditoría.
+            {FINANZAS_COPY.advancedDetailSubtitle}
           </span>
         </span>
         <ChevronDown
@@ -610,8 +710,6 @@ export function FinancialAdvancedDetail({
               <FinancialTopClientsSection panels={[panel]} mode={clientTab} embedded />
             ) : null}
           </div>
-
-          <FinancialCurrencyBreakdown model={dashboard.panorama} defaultOpen />
 
           <p className="text-xs text-[var(--copilot-ink-muted)]">
             La tabla período a período está en «Ver tabla de evolución» dentro de Evolución

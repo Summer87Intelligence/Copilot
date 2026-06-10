@@ -1462,7 +1462,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                 <CopilotCard className={neutralFinancialCardClass}>
                   <CopilotSectionTitle
                     title="Estado de cuenta histórico"
-                    subtitle="Facturas y cobros sincronizados. Puede diferir de la deuda actual si hay ajustes o imputaciones pendientes de sincronizar."
+                    subtitle="Facturas y cobros sincronizados desde Zeta. La deuda actual refleja saldos pendientes al corte."
                   />
                   {data.cuenta.ultimos_movimientos.length === 0 ? (
                     <p className="text-sm text-[var(--copilot-ink-muted)]">
@@ -1905,7 +1905,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
         ) : null}
 
         {!loading && !error && !data ? (
-          <p className="text-sm text-[var(--copilot-ink-muted)]">Sin datos.</p>
+          <p className="text-sm text-[var(--copilot-ink-muted)]">Sin registros en esta sección.</p>
         ) : null}
       </div>
     </div>

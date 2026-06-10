@@ -20,7 +20,7 @@ export function ReportTable<T>({
   columns,
   rows,
   keyExtractor,
-  emptyMessage = "Sin datos para este período.",
+  emptyMessage = "No hay movimientos para el período seleccionado.",
 }: Props<T>) {
   if (rows.length === 0) {
     return (

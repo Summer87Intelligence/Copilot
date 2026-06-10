@@ -318,7 +318,7 @@ function EmptySummaryPlaceholders({ shimmer = false }: { shimmer?: boolean }) {
 
   return (
     <section
-      aria-label="Resumen ejecutivo sin datos"
+      aria-label="Resumen ejecutivo pendiente de período"
       className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4"
     >
       {cards.map((title) => (

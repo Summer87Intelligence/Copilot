@@ -328,7 +328,7 @@ function effectivenessCard(
           })}%`,
     subtitle:
       m.invoiceCount === 0
-        ? "Sin datos en el período"
+        ? "Sin facturas en el período"
         : `${formatCarteraInteger(m.invoiceCount)} factura${m.invoiceCount === 1 ? "" : "s"} emitida${m.invoiceCount === 1 ? "" : "s"}`,
     tooltip: FINANCIAL_UX_COPY.kpiNetEffectivenessTooltip,
   };
@@ -377,7 +377,7 @@ function staleCardAll(report: FinancialConsistencyReport): SummaryCard {
   const breakdown: string[] = [];
   if (critical > 0) breakdown.push(`${critical} crítico${critical === 1 ? "" : "s"}`);
   if (warning > 0) breakdown.push(`${warning} con alerta`);
-  if (neverSynced > 0) breakdown.push(`${neverSynced} sin datos`);
+  if (neverSynced > 0) breakdown.push(`${neverSynced} sin sync`);
   return {
     id: "stale",
     title: "Clientes en riesgo",
@@ -420,7 +420,7 @@ function staleCardForCurrency(
   }
   if (warning > 0) breakdown.push(`${warning} con alerta`);
   if (critical > 0) breakdown.push(`${critical} crítico${critical === 1 ? "" : "s"}`);
-  if (neverSynced > 0) breakdown.push(`${neverSynced} sin datos`);
+  if (neverSynced > 0) breakdown.push(`${neverSynced} sin sync`);
 
   const total = atRisk.length;
 

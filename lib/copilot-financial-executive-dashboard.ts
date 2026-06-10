@@ -25,6 +25,8 @@ import type { NormalizedCurrencyMetrics } from "@/lib/copilot-cartera-cards-sour
 import type { FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
 import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
 import type { AgingBucket } from "@/lib/copilot-financial-reconciliation";
+import { sumPortfolioOverdueDebt } from "@/lib/copilot-cartera-aging-totals";
+import { FINANZAS_COPY } from "@/lib/copilot-financial-ux-copy";
 
 export type ExecutiveCurrencyCode = "UYU" | "USD";
 
@@ -148,7 +150,13 @@ function buildCurrentMonthInProgress(
     layout: "current-only",
     metrics: [
       { id: "net", label: "Ventas acumuladas", current: cur.netSales, previous: null, format: "money" },
-      { id: "col", label: "Cobros acumulados", current: cur.collected, previous: null, format: "money" },
+      {
+        id: "col",
+        label: `${FINANZAS_COPY.labelCobrosRegistrados} acumulados`,
+        current: cur.collected,
+        previous: null,
+        format: "money",
+      },
       {
         id: "days",
         label: "Días transcurridos del mes",
@@ -188,7 +196,7 @@ function buildLastClosedMonthComparison(
     title: `${ctx.lastClosedMonthLabel} vs ${ctx.previousClosedMonthLabel}`,
     subtitle: empty
       ? "Sin movimientos registrados en estos meses cerrados."
-      : "Comparación de meses completos (ventas y cobros por fecha de comprobante/recibo).",
+      : "Meses cerrados por fecha de comprobante y fecha de recibo. No representa deuda pendiente.",
     layout: "paired",
     metrics: [
       {
@@ -200,14 +208,14 @@ function buildLastClosedMonthComparison(
       },
       {
         id: "col",
-        label: "Cobros",
+        label: FINANZAS_COPY.labelCobrosRegistrados,
         current: closed.collected,
         previous: prevClosed.collected,
         format: "money",
       },
       {
         id: "gap",
-        label: "Diferencia ventas/cobros",
+        label: FINANZAS_COPY.labelDiferenciaOperativa,
         current: salesGap,
         previous: prevGap,
         format: "money",
@@ -274,14 +282,14 @@ function buildWeekComparison(
       },
       {
         id: "wc",
-        label: "Cobros",
+        label: FINANZAS_COPY.labelCobrosRegistrados,
         current: dash7.totals.collections,
         previous: dashPrev.totals.collections,
         format: "money",
       },
       {
         id: "wg",
-        label: "Diferencia ventas/cobros",
+        label: FINANZAS_COPY.labelDiferenciaOperativa,
         current: salesGap,
         previous: dashPrev.totals.netSales - dashPrev.totals.collections,
         format: "money",
@@ -502,6 +510,8 @@ export function buildFinancialExecutiveDashboard(input: {
 }): FinancialExecutiveDashboard {
   const periodContext = buildFinancialPeriodContext(input.asOfYmd);
 
+  const portfolioOverdue = sumPortfolioOverdueDebt(input.portfolioRows);
+
   const panorama = buildFinancialPanoramaModel({
     periodLabel: input.periodLabel,
     metricsByCode: input.metricsByCode,
@@ -525,7 +535,7 @@ export function buildFinancialExecutiveDashboard(input: {
     const currentYm = input.asOfYmd.slice(0, 7);
     const periodCollections = sumMonth(input.invoices, input.receipts, currentYm, code).collected;
     const totalDebt = slice?.pending ?? 0;
-    const overdueDebt = slice?.overdue ?? 0;
+    const overdueDebt = code === "UYU" ? portfolioOverdue.UYU : portfolioOverdue.USD;
     const netSales = slice?.netIncome ?? 0;
 
     const closedYm = periodContext.lastClosedMonthYm;
@@ -617,6 +627,6 @@ export function trendDirectionLabel(dir: TrendDirection): string {
     case "stable":
       return "Estable";
     default:
-      return "Sin datos suficientes";
+      return "Sin movimientos en el período";
   }
 }

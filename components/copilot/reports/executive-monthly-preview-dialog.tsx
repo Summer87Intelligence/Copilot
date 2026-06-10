@@ -172,7 +172,7 @@ export function ExecutiveMonthlyPreviewDialog({ open, onClose }: Props) {
       ) : error ? (
         <PreviewErrorState message={error} />
       ) : !model ? (
-        <PreviewEmptyState message="Sin datos para este período." />
+        <PreviewEmptyState message="No hay movimientos para el período seleccionado." />
       ) : (
         <>
           {/* Risk banner */}
@@ -241,7 +241,7 @@ export function ExecutiveMonthlyPreviewDialog({ open, onClose }: Props) {
                   columns={getClientColumns(model.currency)}
                   rows={model.top5Clients}
                   keyExtractor={(r) => String(r.rank)}
-                  emptyMessage="Sin datos de clientes."
+                  emptyMessage="No hay clientes con movimiento en este período."
                 />
               </div>
             </div>

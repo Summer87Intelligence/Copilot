@@ -192,7 +192,7 @@ function buildDeficitGuidedCopy(
   const balance = snapshotLiquidityBalance(snapshot);
   const ratio = snapshotCoverageRatio(snapshot);
   if (balance < 0) {
-    return `Hay un déficit proyectado de ${formatMoneyCompact(balance)} (estimación combinada UYU+USD): caja más cobranza esperada no cubre los egresos modelados en la ventana del motor.`;
+    return `Déficit proyectado de ${formatMoneyCompact(balance)} (UYU+USD): la caja más cobros esperados no cubre los pagos cargados en el horizonte.`;
   }
   if (ratio < 1 && Number.isFinite(ratio)) {
     return `La cobertura está por debajo de 1,00× (${formatCoverageRatio(ratio)}): el colchón es insuficiente frente a salidas ya comprometidas.`;
@@ -859,7 +859,7 @@ function CopilotFinanzasPageContent() {
               <FinancialStatusBadge flags={financialFlags} />
               <span className="text-xs text-[var(--copilot-ink-muted)]">
                 {financialFlags.open_invoices_count > 0
-                  ? `${financialFlags.open_invoices_count} factura(s) con saldo operativo abierto.`
+                  ? `${financialFlags.open_invoices_count} factura(s) con saldo pendiente.`
                   : FINANCIAL_UX_COPY.noOpenBalanceInActiveInvoices}
               </span>
             </div>
@@ -1346,7 +1346,7 @@ function CopilotFinanzasPageContent() {
                   ) : null}
                   <div id="copilot-finanzas-cobranza" className="scroll-mt-28 space-y-3 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 p-4">
                     <p className="text-xs font-semibold text-[var(--copilot-ink)]">Flujo proyectado de caja</p>
-                    <p className="text-[10px] text-[var(--copilot-ink-muted)]">Lectura forward-looking basada en datos Zeta y obligaciones próximas. Estimación combinada UYU+USD.</p>
+                    <p className="text-[10px] text-[var(--copilot-ink-muted)]">Proyección con datos Zeta y pagos próximos cargados. UYU y USD por separado.</p>
                     <FlowBar label="Cobranza esperada (facturas × prob. de cobro)" value={snapshotReceivablesRiskWeighted(snapshot)} max={flowMax} flow="in" />
                     <FlowBar label="Egresos proyectados (operativos + fiscal 30 d)" value={snapshotExpectedOutflowsTotal(snapshot)} max={flowMax} flow="out" />
                   </div>

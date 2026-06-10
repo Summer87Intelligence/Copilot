@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { ArrowRight, Info } from "lucide-react";
+import { ArrowRight, ChevronDown, Info } from "lucide-react";
 
 import { CopilotCard } from "@/components/copilot/copilot-ui";
 import { CopilotButton, CopilotButtonLink } from "@/components/copilot/ui/copilot-button";
@@ -121,7 +121,7 @@ function CurrencyMonthEndBlock({
   const title = block.currency === "USD" ? "Dólares (USD)" : "Pesos (UYU)";
 
   return (
-    <div className={`flex min-h-[300px] flex-col ${premiumCardClass} p-5`}>
+    <div className={`flex min-h-[200px] flex-col ${premiumCardClass} p-4`}>
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-semibold text-[var(--copilot-ink)]">{title}</p>
         <span className={`${copilotChipClass} uppercase tracking-wide ${riskBadgeClass(block.risk)}`}>
@@ -162,7 +162,7 @@ function CurrencyMonthEndBlock({
           valueClass={moneyToneClass(block.pendingReceivables > 0 ? "warning" : "neutral")}
         />
         <ProjectionDetailRow
-          label={`Cobros estimados (${collectionRatePct}%)`}
+          label={`Cobros esperados del escenario (${collectionRatePct}%)`}
           value={
             block.estimatedCollectionsMonth > 0
               ? fmtCurrencyAmount(block.estimatedCollectionsMonth, block.currency)
@@ -357,6 +357,7 @@ export function HoyMonthEndProjectionSection({
   onOpenDrawer,
   onCloseDrawer,
 }: Props) {
+  const [open, setOpen] = useState(false);
   const [scenario, setScenario] = useState<MonthEndScenario>(
     scenarioProjections.defaultScenario ?? DEFAULT_MONTH_END_SCENARIO
   );
@@ -369,19 +370,52 @@ export function HoyMonthEndProjectionSection({
 
   return (
     <>
-      <CopilotCard className="w-full p-5 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base font-semibold text-[var(--copilot-ink)]">
-                {HOY_COPY.monthEndProjectionTitle}
-              </h2>
-              <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
-                {HOY_COPY.monthEndMvpBadge}
+      <CopilotCard className="w-full overflow-hidden p-0">
+        <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 sm:px-5">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="flex min-w-0 flex-1 items-start justify-between gap-3 text-left"
+          >
+            <span className="min-w-0">
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="text-base font-semibold text-[var(--copilot-ink)]">
+                  {HOY_COPY.monthEndProjectionTitle}
+                </span>
+                <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
+                  {HOY_COPY.monthEndMvpBadge}
+                </span>
+                <HoyScopeBadge label={`${HOY_COPY.scopeBadgeProjection} · Fin de mes`} />
               </span>
-              <HoyScopeBadge label={`${HOY_COPY.scopeBadgeProjection} · Fin de mes`} />
-            </div>
-            <p className="mt-2">
+              <span className="mt-1.5 flex flex-wrap gap-2">
+                {projection.currencyBlocks.map((block) => (
+                  <span
+                    key={block.currency}
+                    className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ${riskBadgeClass(block.risk)}`}
+                  >
+                    {block.currency} — {riskLabel(block.risk)}
+                  </span>
+                ))}
+              </span>
+              {!open ? (
+                <span className="mt-1 block text-xs text-[var(--copilot-ink-muted)]">
+                  {subtitle} · Cierre de {projection.monthLabel}
+                </span>
+              ) : null}
+            </span>
+            <ChevronDown
+              className={`mt-0.5 h-4 w-4 shrink-0 text-[var(--copilot-ink-muted)] transition ${open ? "rotate-180" : ""}`}
+            />
+          </button>
+          <CopilotButton type="button" variant="ghost" size="sm" onClick={onOpenDrawer}>
+            {HOY_COPY.monthEndDrawerCta}
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+          </CopilotButton>
+        </div>
+
+        {open ? (
+          <div className="border-t border-[var(--copilot-border)] px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
+            <p className="mt-1">
               <ScenarioSelector value={scenario} onChange={setScenario} />
             </p>
             <p className="mt-2 text-xs font-medium leading-relaxed text-[var(--copilot-ink)]">
@@ -390,52 +424,38 @@ export function HoyMonthEndProjectionSection({
             <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">
               Cierre de {projection.monthLabel}. {HOY_COPY.monthEndProjectionTip}
             </p>
-            <div className="mt-2 flex flex-wrap gap-2">
+
+            <div
+              className={`mt-3 grid grid-cols-1 gap-3 ${projection.currencyBlocks.length > 1 ? "md:grid-cols-2" : ""}`}
+            >
               {projection.currencyBlocks.map((block) => (
-                <span
+                <CurrencyMonthEndBlock
                   key={block.currency}
-                  className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ${riskBadgeClass(block.risk)}`}
-                >
-                  {block.currency} — {riskLabel(block.risk)}
-                </span>
+                  block={block}
+                  collectionRatePct={projection.collectionRatePct}
+                />
               ))}
             </div>
+
+            <FridaysStrip projection={projection} onOpenDrawer={onOpenDrawer} />
+
+            <p
+              className={`mt-3 rounded-lg px-2.5 py-1.5 text-xs font-medium ${
+                overallRisk === "critical"
+                  ? "bg-rose-50 text-rose-900"
+                  : overallRisk === "attention"
+                    ? "bg-amber-50 text-amber-900"
+                    : "bg-emerald-50 text-emerald-900"
+              }`}
+            >
+              {overallRisk === "critical"
+                ? HOY_COPY.monthEndOverallCritical
+                : overallRisk === "attention"
+                  ? HOY_COPY.monthEndOverallAttention
+                  : HOY_COPY.monthEndOverallStable}
+            </p>
           </div>
-          <CopilotButton type="button" variant="ghost" size="sm" onClick={onOpenDrawer}>
-            {HOY_COPY.monthEndDrawerCta}
-            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-          </CopilotButton>
-        </div>
-
-        <div
-          className={`mt-4 grid grid-cols-1 gap-4 ${projection.currencyBlocks.length > 1 ? "md:grid-cols-2" : ""}`}
-        >
-          {projection.currencyBlocks.map((block) => (
-            <CurrencyMonthEndBlock
-              key={block.currency}
-              block={block}
-              collectionRatePct={projection.collectionRatePct}
-            />
-          ))}
-        </div>
-
-        <FridaysStrip projection={projection} onOpenDrawer={onOpenDrawer} />
-
-        <p
-          className={`mt-3 rounded-lg px-2.5 py-1.5 text-xs font-medium ${
-            overallRisk === "critical"
-              ? "bg-rose-50 text-rose-900"
-              : overallRisk === "attention"
-                ? "bg-amber-50 text-amber-900"
-                : "bg-emerald-50 text-emerald-900"
-          }`}
-        >
-          {overallRisk === "critical"
-            ? HOY_COPY.monthEndOverallCritical
-            : overallRisk === "attention"
-              ? HOY_COPY.monthEndOverallAttention
-              : HOY_COPY.monthEndOverallStable}
-        </p>
+        ) : null}
       </CopilotCard>
 
       {drawerOpen ? (

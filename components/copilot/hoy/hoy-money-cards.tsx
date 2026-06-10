@@ -337,7 +337,7 @@ function MoneyCard({
       tabIndex={interactive ? 0 : undefined}
       onClick={interactive ? () => onCardClick?.(cardId) : undefined}
       onKeyDown={interactive ? (e) => cardActivateKey(e, () => onCardClick?.(cardId)) : undefined}
-      className={`flex min-h-[260px] flex-col rounded-2xl border p-5 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${theme.shell}`}
+      className={`flex min-h-[200px] flex-col rounded-2xl border p-4 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${theme.shell}`}
     >
       <header className="shrink-0">
         <CardHeader theme={theme} title={title} subtitle={subtitle} />
@@ -433,7 +433,7 @@ function ReceivablesCard({
       onKeyDown={
         interactive ? (e) => cardActivateKey(e, () => onCardClick?.("receivables")) : undefined
       }
-      className={`flex min-h-[260px] flex-col rounded-2xl border p-5 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${shell.shell}`}
+      className={`flex min-h-[200px] flex-col rounded-2xl border p-4 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${shell.shell}`}
     >
       <header className="shrink-0">
         <CardHeader theme={shell} title={HOY_COCKPIT.receivables} subtitle={subtitle} />

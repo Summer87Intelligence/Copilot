@@ -102,7 +102,7 @@ function DebtCell({ row }: { row: ClientPortfolioRow }) {
   if (!hasUyu && !hasUsd) {
     return (
       <span className="text-xs text-[var(--copilot-ink-muted)]" title="Sin desglose UYU/USD">
-        Sin datos por moneda
+        Sin clientes con deuda en esta moneda
       </span>
     );
   }

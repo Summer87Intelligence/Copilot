@@ -222,7 +222,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
         />
         {cashPositionFailed ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-800">
-            No se pudo calcular la caja proyectada sin datos de caja disponible.
+            Configurá el saldo en Caja para ver la proyección.
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">

@@ -1,40 +1,38 @@
 export const FINANCIAL_UX_COPY = {
-  warningTitle: "Saldo operativo, no cierre financiero",
-  warningBody:
-    "Estos datos reflejan saldos operativos de Zeta (saldos pendientes). Para confirmar cierre financiero del período, validá con el export oficial de Zeta.",
-  reportWarningBody:
-    "Los totales mostrados son operativos. No usar este reporte como certificación de cierre financiero sin conciliación con export oficial de Zeta.",
+  warningTitle: "Datos consolidados desde Zeta",
+  warningBody: "Saldos y movimientos al corte según la última sincronización con Zeta.",
+  reportWarningBody: "Reporte con datos de Zeta al momento de la exportación.",
   sourceInfoTitle: "Fuente del dato",
-  sourceInfoBody:
-    "Saldo operativo: Zeta saldos pendientes. Cierre financiero: export oficial de Zeta.",
-  invoiceOpenTitle: "Factura con saldo operativo pendiente",
-  invoiceOpenBody:
-    "Esta factura figura abierta en saldos pendientes de Zeta. No interpretar como cierre/no cierre contable definitivo sin export oficial.",
-  notClosed: "Período no cerrado",
-  /** Sin facturas con saldo operativo pendiente; no implica cierre financiero validado. */
-  noOpenBalanceNotValidated: "Sin saldo (no validado)",
-  noOpenBalanceInActiveInvoices: "Sin saldo (no validado) en facturas activas.",
-  pendingValidation: "Pendiente validación externa",
-  externalValidationRegisteredBadge: "Validación externa registrada",
+  sourceInfoBody: "Saldos pendientes y movimientos sincronizados desde Zeta.",
+  invoiceOpenTitle: "Factura con saldo pendiente",
+  invoiceOpenBody: "Saldo pendiente registrado en Zeta al último sync.",
+  notClosed: "Período en curso",
+  noOpenBalanceNotValidated: "Sin saldo pendiente",
+  noOpenBalanceInActiveInvoices: "Sin saldo pendiente en facturas activas.",
+  pendingValidation: "Pendiente de conciliación",
+  externalValidationRegisteredBadge: "Conciliación registrada",
   externalValidationWithOpenAux:
-    "Existe validación externa, pero aún hay saldo operativo abierto en esta vista.",
-  closedValidated: "Cerrado validado",
+    "Hay conciliación registrada y saldo pendiente visible en esta vista.",
+  closedValidated: "Período cerrado",
   freshnessFresh: "Datos al día",
-  freshnessWarning: "Datos con posible desfase",
+  freshnessWarning: "Última sync hace más de lo habitual",
   freshnessStale: "Datos desactualizados",
-  exportModalTitle: "Antes de exportar",
-  exportModalBody:
-    "Estás exportando un reporte operativo. Para decisiones de cierre financiero, debés validarlo con export oficial de Zeta.",
-  exportModalAcknowledge:
-    "Entiendo que este reporte no certifica cierre financiero.",
+  exportModalTitle: "Exportar reporte",
+  exportModalBody: "El PDF refleja el período y moneda seleccionados en pantalla.",
+  exportModalAcknowledge: "Confirmo la exportación del reporte.",
   exportModalCancel: "Cancelar",
-  exportModalConfirm: "Exportar reporte operativo",
-  rowCapWarningTitle: "Datos potencialmente incompletos",
+  exportModalConfirm: "Exportar reporte",
+  rowCapWarningTitle: "Límite de filas alcanzado",
   rowCapWarningBody:
-    "Los datos pueden estar incompletos porque se alcanzó el límite máximo de filas procesadas. Los KPIs financieros pueden estar subestimados. Contactá soporte para ampliar la ventana de datos.",
+    "Se procesó el máximo de filas permitido. Contactá soporte si necesitás ampliar la ventana de datos.",
   preSyncBannerTitle: "Período histórico parcial",
   preSyncBannerBody:
-    "El rango seleccionado incluye facturación previa al inicio operativo de sincronización (2026-01-01). Algunas cobranzas históricas podrían no estar disponibles en el sistema.",
+    "El rango incluye facturación anterior al inicio de sincronización (2026-01-01). Los cobros de ese tramo pueden no estar cargados.",
+  projection30Subtitle:
+    "Proyección basada en caja actual, cobros esperados y pagos registrados.",
+  projectionScenarioLabel: "Caja proyectada",
+  projectionMissingPaymentsCta: "Cargá pagos próximos para completar la proyección.",
+  emptyPeriodMovements: "No hay movimientos para el período seleccionado.",
   historicalPartialBadge: "Histórico parcial",
   kpiIssuedTooltip:
     "Suma de facturas emitidas dentro del rango seleccionado.",
@@ -45,7 +43,7 @@ export const FINANCIAL_UX_COPY = {
   kpiEffectivenessTooltip:
     "Relación entre facturación emitida y cobranzas registradas dentro del período.",
   kpiEffectivenessTooltipPreSync:
-    "Relación entre facturación emitida y cobranzas registradas dentro del período. Puede estar subestimado si el período incluye facturas anteriores al inicio operativo de sincronización.",
+    "Relación entre facturación emitida y cobranzas registradas dentro del período. El tramo previo a 2026-01-01 puede tener cobros históricos fuera del sync.",
   kpiGrossIssuedTooltip:
     "Suma de facturas emitidas en el período. Base de facturación del período.",
   kpiCreditNotesAppliedTooltip:
@@ -58,5 +56,47 @@ export const FINANCIAL_UX_COPY = {
   kpiNetEffectivenessTooltip:
     "Recibos cobrados / Facturado neto. Mide qué fracción de lo facturado fue cobrada en el período según recibos sincronizados de Zeta.",
   kpiNetEffectivenessTooltipPreSync:
-    "Recibos cobrados / Facturado neto. Puede estar subestimado si el período incluye facturas anteriores al inicio operativo de sincronización.",
+    "Recibos cobrados / Facturado neto. El tramo previo a 2026-01-01 puede tener cobros históricos fuera del sync.",
+} as const;
+
+/** Copy específico de /copilot/finanzas — panorama ejecutivo. */
+export const FINANZAS_COPY = {
+  heroSubtitle:
+    "Esta vista combina foto actual de caja/deuda con evolución mensual por fecha de comprobante y recibo.",
+  heroRiskNote:
+    "Estado operativo (Hoy) = señales de trabajo pendiente. Riesgo financiero (Finanzas) = lectura de caja y deuda.",
+  summaryVentasTooltip: "Facturas emitidas en el mes cerrado seleccionado.",
+  summaryCobrosTooltip:
+    "Recibos con fecha dentro del mes. Los cobros registrados pueden corresponder a facturas de meses anteriores.",
+  summaryDeudaTooltip:
+    "Saldo pendiente actual de clientes, incluyendo todos los períodos.",
+  summaryDeudaVencidaTooltip:
+    "Parte de la deuda actual que ya superó su vencimiento.",
+  summaryEstadoTooltip:
+    "Lectura de caja, deuda y cobranza. Distinto del estado operativo del día en Hoy.",
+  summaryCajaTooltip: "Caja disponible registrada en Tesorería al corte.",
+  comparisonTitle: "Ventas vs cobros registrados",
+  comparisonSubtitle:
+    "Meses cerrados por fecha de comprobante y fecha de recibo. No representa deuda pendiente.",
+  comparisonGapTooltip:
+    "No equivale a deuda. Los cobros pueden corresponder a facturas de otros meses.",
+  evolutionTitle: "Evolución mensual de ventas y cobros registrados",
+  evolutionSubtitle: "Ventas por fecha de factura y cobros por fecha de recibo.",
+  evolutionCollectionsExceed:
+    "Los cobros registrados superan las ventas del período; pueden incluir facturas de meses anteriores.",
+  evolutionPartialMonth:
+    "El mes en curso está parcial; no compararlo contra meses cerrados.",
+  collectionRiskTitle: "Riesgo de cobranza actual",
+  collectionRiskSubtitle: "Fuente: cartera actual. Incluye saldos pendientes vigentes.",
+  projectionExpectedCollectionsTooltip:
+    "Cobros esperados según deuda vigente y plazos de cobro registrados.",
+  projectionScenarioTooltip: "Caja disponible + cobros esperados − pagos próximos.",
+  advancedDetailSubtitle:
+    "Clientes, moneda y evolución para revisión ejecutiva.",
+  labelCobrosRegistrados: "Cobros registrados",
+  labelCobradoAplicado: "Cobrado aplicado",
+  labelDiferenciaOperativa: "Diferencia operativa del mes",
+  labelDeudaHoy: "Deuda actual · hoy",
+  labelDeudaVencidaHoy: "Deuda vencida · hoy",
+  labelCajaHoy: "Caja disponible · hoy",
 } as const;

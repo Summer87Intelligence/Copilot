@@ -1088,7 +1088,7 @@ function buildLast30DaysSummary(
       label: "Balance proyectado",
       value: fmtSnapAmount(liquidity, snapCurrency),
       trend: liquidity > 0 ? "up" : liquidity < 0 ? "down" : "neutral",
-      description: "Estimación: cobros esperados menos pagos programados" + mixedNote,
+      description: "Caja disponible + cobros esperados − pagos programados" + mixedNote,
     },
   ];
 }

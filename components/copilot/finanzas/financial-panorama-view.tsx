@@ -3,17 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 
-import { CopilotCard } from "@/components/copilot/copilot-ui";
+import { CopilotCard, CopilotSectionTitle } from "@/components/copilot/copilot-ui";
 import { FinancialMetricDetailDialog } from "@/components/copilot/finanzas/financial-metric-detail-dialog";
 import { FinancialMonthlyTrends } from "@/components/copilot/finanzas/financial-monthly-trends";
+import { FinancialCurrencyBreakdown } from "@/components/copilot/finanzas/financial-executive-sections";
 import {
   FinancialAdvancedDetail,
+  FinancialCollapsibleSection,
   FinancialCollectionRisk,
   FinancialExecutiveSummary,
   FinancialLayeredHeader,
   FinancialMainComparison,
   FinancialProjectionCompact,
 } from "@/components/copilot/finanzas/financial-layered-sections";
+import { FINANCIAL_UX_COPY, FINANZAS_COPY } from "@/lib/copilot-financial-ux-copy";
 import { useFinancialReconciliation } from "@/hooks/use-financial-reconciliation";
 import { buildCurrencyIndex } from "@/lib/copilot-cartera-cards-source";
 import { fetchClientPortfolioLoad } from "@/lib/copilot-client-portfolio-fetch";
@@ -238,7 +241,7 @@ export function FinancialPanoramaView() {
 
   return (
     <>
-      <div className="space-y-5">
+      <div className="space-y-4">
         <FinancialLayeredHeader dashboard={dashboard} />
 
         <FinancialExecutiveSummary
@@ -248,18 +251,45 @@ export function FinancialPanoramaView() {
           }
         />
 
-        <FinancialMainComparison dashboard={dashboard} />
+        <CopilotCard>
+          <CopilotSectionTitle
+            title="Actividad comercial"
+            subtitle="Comparación de períodos y evolución mensual."
+          />
+          <div className="mt-4 space-y-5">
+            <FinancialMainComparison dashboard={dashboard} embedded />
+            <div className="border-t border-[var(--copilot-border)] pt-5">
+              <FinancialMonthlyTrends
+                invoices={invoices}
+                receipts={receipts}
+                asOfYmd={today}
+                executiveView
+                embedded
+              />
+            </div>
+          </div>
+        </CopilotCard>
 
-        <FinancialMonthlyTrends
-          invoices={invoices}
-          receipts={receipts}
-          asOfYmd={today}
-          executiveView
-        />
+        <FinancialCollapsibleSection
+          title={FINANZAS_COPY.collectionRiskTitle}
+          subtitle={FINANZAS_COPY.collectionRiskSubtitle}
+        >
+          <FinancialCollectionRisk panels={dashboard.currencies} embedded />
+        </FinancialCollapsibleSection>
 
-        <FinancialCollectionRisk panels={dashboard.currencies} />
+        <FinancialCollapsibleSection
+          title="Próximos 30 días"
+          subtitle={FINANCIAL_UX_COPY.projection30Subtitle}
+        >
+          <FinancialProjectionCompact model={dashboard.panorama} embedded />
+        </FinancialCollapsibleSection>
 
-        <FinancialProjectionCompact model={dashboard.panorama} />
+        <FinancialCollapsibleSection
+          title="Desglose por moneda"
+          subtitle="Bruto solo como detalle. Las métricas principales usan neto."
+        >
+          <FinancialCurrencyBreakdown model={dashboard.panorama} flat />
+        </FinancialCollapsibleSection>
 
         <FinancialAdvancedDetail dashboard={dashboard} />
       </div>

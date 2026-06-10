@@ -513,7 +513,7 @@ export function buildFinancialSituationBlocks(
         {
           label: "Balance proyectado",
           value: fmtCurrencyAmount(liquidity, c),
-          helper: "Estimación: cobros esperados menos pagos programados.",
+          helper: "Caja disponible + cobros esperados − pagos programados.",
           trend: liquidity >= 0 ? "up" : "down",
         },
       ],

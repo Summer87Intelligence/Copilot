@@ -969,7 +969,7 @@ describe("buildTodayBusinessPulse", () => {
       expect(HOY_COPY.debtorsSectionTitle).toBe("Clientes con deuda");
       expect(HOY_COPY.debtorsSectionTitle.toLowerCase()).not.toContain("prioritario");
       expect(HOY_COPY.monthEndProjectionTitle).toBe("Caja proyectada al cierre del mes");
-      expect(HOY_COPY.monthEndMvpBadge).toBe("Estimación inicial");
+      expect(HOY_COPY.monthEndMvpBadge).toBe("Proyección al cierre");
       expect(HOY_COPY.monthEndScenarioSubtitle.expected).toContain("Escenario esperado");
       expect(HOY_COPY.monthEndDrawerScenariosNote).toContain("50%");
       expect(HOY_COPY.monthEndDrawerScenariosNote).toContain("75%");
