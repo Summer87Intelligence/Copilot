@@ -24,27 +24,29 @@ import { AgentPriorityCard } from "./agent-priority-card";
 
 // ─── Status banner ────────────────────────────────────────────────────────────
 
+// Banner premium: card neutra con acento sólo en borde + ícono + badge.
+// Evita teñir grandes superficies (sensación SaaS B2B).
 const STATUS_CONFIG = {
   stable: {
     icon: CheckCircle2,
-    iconCls: "text-emerald-600",
+    iconCls: "text-[var(--copilot-success-text)]",
     label: "Estable",
-    badgeCls: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-    bannerCls: "bg-emerald-50 border-emerald-200",
+    badgeCls: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border border-[var(--copilot-success-border)]",
+    bannerCls: "bg-[var(--copilot-card-bg)] border-[var(--copilot-success-border)]",
   },
   attention: {
     icon: CircleDot,
-    iconCls: "text-amber-600",
+    iconCls: "text-[var(--copilot-warning-text)]",
     label: "En atención",
-    badgeCls: "bg-amber-50 text-amber-700 border border-amber-200",
-    bannerCls: "bg-amber-50 border-amber-200",
+    badgeCls: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border border-[var(--copilot-warning-border)]",
+    bannerCls: "bg-[var(--copilot-card-bg)] border-[var(--copilot-warning-border)]",
   },
   critical: {
     icon: TriangleAlert,
-    iconCls: "text-rose-600",
+    iconCls: "text-[var(--copilot-danger-text)]",
     label: "Crítico",
-    badgeCls: "bg-rose-50 text-rose-700 border border-rose-200",
-    bannerCls: "bg-rose-50 border-rose-200",
+    badgeCls: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border border-[var(--copilot-danger-border)]",
+    bannerCls: "bg-[var(--copilot-card-bg)] border-[var(--copilot-danger-border)]",
   },
 };
 
@@ -223,7 +225,7 @@ export function DailyExecutiveAgent() {
       {/* Error */}
       {state.phase === "error" ? (
         <div className="space-y-3 text-center">
-          <p className="text-[12.5px] text-rose-600">{state.message}</p>
+          <p className="text-[12.5px] text-[var(--copilot-danger-text)]">{state.message}</p>
           <button
             type="button"
             onClick={generate}

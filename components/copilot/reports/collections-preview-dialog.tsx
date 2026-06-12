@@ -151,7 +151,7 @@ function PreviewLoadingState() {
 
 function PreviewErrorState({ message }: { message: string }) {
   return (
-    <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+    <div className="rounded-xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] px-4 py-3 text-sm text-[var(--copilot-danger-text-strong)]">
       No pudimos cargar este reporte. {message}
     </div>
   );

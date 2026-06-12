@@ -40,7 +40,7 @@ function getColumns(currency: string): ReportTableColumn<CashRow>[] {
       cellClassName: "text-right tabular-nums text-xs",
       render: (r) =>
         r.income > 0 ? (
-          <span className="font-medium text-emerald-700">
+          <span className="font-medium text-[var(--copilot-success-text)]">
             {formatMoneyCurrency(r.income, currency)}
           </span>
         ) : (
@@ -53,7 +53,7 @@ function getColumns(currency: string): ReportTableColumn<CashRow>[] {
       cellClassName: "text-right tabular-nums text-xs",
       render: (r) =>
         r.expense > 0 ? (
-          <span className="font-medium text-rose-700">
+          <span className="font-medium text-[var(--copilot-danger-text)]">
             {formatMoneyCurrency(r.expense, currency)}
           </span>
         ) : (
@@ -65,7 +65,7 @@ function getColumns(currency: string): ReportTableColumn<CashRow>[] {
       headerClassName: "text-right",
       cellClassName: "text-right tabular-nums text-xs font-semibold",
       render: (r) => (
-        <span className={r.runningBalance >= 0 ? "text-emerald-700" : "text-rose-700"}>
+        <span className={r.runningBalance >= 0 ? "text-[var(--copilot-success-text)]" : "text-[var(--copilot-danger-text)]"}>
           {formatMoneyCurrency(r.runningBalance, currency)}
         </span>
       ),
@@ -197,7 +197,7 @@ function PreviewLoadingState() {
 
 function PreviewErrorState({ message }: { message: string }) {
   return (
-    <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+    <div className="rounded-xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] px-4 py-3 text-sm text-[var(--copilot-danger-text-strong)]">
       No pudimos cargar este reporte. {message}
     </div>
   );

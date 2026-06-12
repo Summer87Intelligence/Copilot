@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
+import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
 import { generateOperationalNotificationsForWorkspace } from "@/lib/copilot-notifications/generate-operational-notifications";
 import {
@@ -8,6 +8,18 @@ import {
   shouldThrottleGeneration,
 } from "@/lib/copilot-notifications/generation-throttle";
 
+/**
+ * POST /api/copilot/notifications/generate
+ *
+ * Genera notificaciones operacionales para el tenant del solicitante.
+ * Side-effect del sistema (no es una escritura del usuario), por eso solo
+ * exige sesión válida del tenant — incluye roles read-only. Para multi-tenant
+ * y read-only-only-tenants existe además el cron
+ * `/api/cron/notifications-generate-all-tenants` que itera todos los workspaces.
+ *
+ * Idempotente: cada emit usa dedup_key. Throttle in-memory por instancia
+ * para evitar disparos repetidos (no es boundary de seguridad).
+ */
 export async function POST(request: NextRequest) {
   try {
     // Allow both user-authenticated requests and cron calls
@@ -28,7 +40,9 @@ export async function POST(request: NextRequest) {
       }
       tenantCompanyId = id;
     } else {
-      const auth = await requireCopilotModuleWriteAccess(request, "hoy");
+      // Cualquier usuario autenticado del tenant puede dispararlo (incluye read-only).
+      // La generación es side-effect del sistema, no una escritura del usuario.
+      const auth = await requireCopilotTenantContext(request);
       if (!auth.ok) return auth.response;
       tenantCompanyId = auth.ctx.tenantCompanyId;
     }

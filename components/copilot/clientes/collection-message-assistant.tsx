@@ -163,7 +163,7 @@ export function CollectionMessageAssistant({
       {/* Controls */}
       <div className="space-y-2">
         <div>
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
+          <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
             Canal
           </p>
           <div className="flex flex-wrap gap-2">
@@ -181,7 +181,7 @@ export function CollectionMessageAssistant({
         </div>
 
         <div>
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
+          <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
             Tono
           </p>
           <div className="flex flex-wrap gap-2">
@@ -227,7 +227,7 @@ export function CollectionMessageAssistant({
           <div className="rounded-xl border border-[var(--copilot-border)] bg-[rgba(44,40,37,0.02)] p-4">
             {suggestion.subject && (
               <div className="mb-3 border-b border-[var(--copilot-border)]/60 pb-2">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
                   Asunto
                 </p>
                 <p className="mt-0.5 text-[12.5px] font-medium text-[var(--copilot-ink)]">
@@ -235,7 +235,7 @@ export function CollectionMessageAssistant({
                 </p>
               </div>
             )}
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
+            <p className="text-xs font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
               Mensaje
             </p>
             <p className="mt-0.5 whitespace-pre-wrap text-[12.5px] leading-relaxed text-[var(--copilot-ink)]">
@@ -253,8 +253,8 @@ export function CollectionMessageAssistant({
             >
               {copied ? (
                 <>
-                  <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
-                  <span className="text-emerald-600">Copiado</span>
+                  <Check className="h-3.5 w-3.5 text-[var(--copilot-success-text)]" aria-hidden />
+                  <span className="text-[var(--copilot-success-text)]">Copiado</span>
                 </>
               ) : (
                 <>

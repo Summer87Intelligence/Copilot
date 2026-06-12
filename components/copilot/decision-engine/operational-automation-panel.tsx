@@ -11,14 +11,14 @@ import type {
 } from "@/lib/decision-engine/de-types";
 
 const ACTION_BADGE: Record<AutomationActionType, { label: string; className: string }> = {
-  create_follow_up: { label: "AUTOMÁTICO", className: "bg-blue-50 text-blue-800 border-blue-200" },
-  escalate_case: { label: "ESCALADO", className: "bg-rose-50 text-rose-800 border-rose-200" },
+  create_follow_up: { label: "AUTOMÁTICO", className: "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)] border-[var(--copilot-border)]" },
+  escalate_case: { label: "ESCALADO", className: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]" },
   auto_assign: { label: "AUTO-ASIGNADO", className: "bg-violet-50 text-violet-800 border-violet-200" },
-  increase_priority: { label: "SLA", className: "bg-amber-50 text-amber-800 border-amber-200" },
+  increase_priority: { label: "SLA", className: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]" },
   create_operational_alert: { label: "ALERTA", className: "bg-orange-50 text-orange-800 border-orange-200" },
-  mark_overdue: { label: "SLA", className: "bg-amber-50 text-amber-800 border-amber-200" },
-  suggest_payment_plan: { label: "AUTOMÁTICO", className: "bg-slate-50 text-slate-700 border-slate-200" },
-  trigger_manual_review: { label: "ESCALADO", className: "bg-rose-50 text-rose-800 border-rose-200" },
+  mark_overdue: { label: "SLA", className: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]" },
+  suggest_payment_plan: { label: "AUTOMÁTICO", className: "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink)] border-[var(--copilot-border)]" },
+  trigger_manual_review: { label: "ESCALADO", className: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]" },
 };
 
 type RunResponse =
@@ -133,7 +133,7 @@ export function OperationalAutomationPanel() {
 
       <div className="p-3 space-y-3">
         {error && (
-          <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-100 rounded-md px-2 py-1">
+          <p className="text-[11px] text-[var(--copilot-warning-text-strong)] bg-[var(--copilot-tone-warning-bg)] border border-amber-100 rounded-md px-2 py-1">
             {error}
           </p>
         )}
@@ -178,7 +178,7 @@ export function OperationalAutomationPanel() {
                         {r.dry_run ? "Preview" : "Live"} · {r.actions_generated} gen ·{" "}
                         {r.actions_executed} ejec
                       </span>
-                      <span className={r.status === "failed" ? "text-rose-600" : ""}>{r.status}</span>
+                      <span className={r.status === "failed" ? "text-[var(--copilot-danger-text)]" : ""}>{r.status}</span>
                     </li>
                   ))}
                 </ul>
@@ -199,7 +199,7 @@ export function OperationalAutomationPanel() {
                         className="flex items-start gap-1.5 text-[10px] border-b border-[var(--copilot-border)]/40 pb-1"
                       >
                         <span
-                          className={`shrink-0 rounded border px-1 py-px text-[8px] font-bold uppercase ${badge.className}`}
+                          className={`shrink-0 rounded border px-1 py-px text-[10px] font-bold uppercase ${badge.className}`}
                         >
                           {badge.label}
                         </span>

@@ -205,7 +205,7 @@ export function CopilotClientAccountStatement({
       {statement.unknownCurrencyCount > 0 ? (
         <p
           role="status"
-          className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-900"
+          className="rounded-md border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-2.5 py-1.5 text-[11px] text-[var(--copilot-warning-text-strong)]"
         >
           {statement.unknownCurrencyCount} movimiento(s) descartado(s) por moneda no
           determinable. No se asume UYU por defecto.
@@ -309,8 +309,8 @@ function ReportHeader({
 function ModeBadge({ cutoffMode }: { cutoffMode: "current" | "cutoff" }) {
   const cls =
     cutoffMode === "cutoff"
-      ? "border-indigo-200 bg-indigo-50 text-indigo-900"
-      : "border-slate-200 bg-slate-50 text-slate-700";
+      ? "border-[var(--copilot-border-strong)] bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-ink)]"
+      : "border-[var(--copilot-border)] bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink-muted)]";
   const label = cutoffMode === "cutoff" ? "Corte histórico" : "Estado actual";
   return (
     <span
@@ -339,8 +339,8 @@ function ModeBadge({ cutoffMode }: { cutoffMode: "current" | "cutoff" }) {
 function ViewModeBadge({ view }: { view: ViewMode }) {
   const isCurrent = view === "current_account";
   const cls = isCurrent
-    ? "border-slate-200 bg-slate-50 text-slate-700"
-    : "border-emerald-200 bg-emerald-50 text-emerald-900";
+    ? "border-[var(--copilot-border)] bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink-muted)]"
+    : "border-[var(--copilot-accent)]/30 bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-badge-success-text)]";
   const label = isCurrent ? "Lectura contable histórica" : "Deuda operativa actual";
   return (
     <span
@@ -969,7 +969,7 @@ function ByInvoiceView({ block }: { block: InvoiceFocusedByCurrency }) {
       {allPaid ? (
         <p
           role="status"
-          className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-center text-[11px] text-emerald-900"
+          className="rounded-lg border border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] px-3 py-2 text-center text-[11px] text-[var(--copilot-success-text-strong)]"
         >
           Sin saldo pendiente: todas las facturas en {CURRENCY_LABEL[currency].toLowerCase()}{" "}
           figuran cobradas según Zeta.
@@ -1051,10 +1051,10 @@ function ByInvoiceSummary({ block }: { block: InvoiceFocusedByCurrency }) {
         {countItems.map((it) => {
           const cls =
             it.tone === "paid"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+              ? "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]"
               : it.tone === "partial"
-                ? "border-amber-200 bg-amber-50 text-amber-900"
-                : "border-slate-200 bg-slate-50 text-slate-700";
+                ? "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]"
+                : "border-[var(--copilot-border)] bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink-muted)]";
           return (
             <div
               key={it.label}
@@ -1148,10 +1148,10 @@ function StatusBadge({ status }: { status: InvoiceFocusedStatus }) {
   //  - pending → slate (informativo, deuda no urgente)
   const cls =
     status === "paid"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+      ? "border-[var(--copilot-border)] bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-badge-success-text)]"
       : status === "partial"
-        ? "border-amber-200 bg-amber-50 text-amber-900"
-        : "border-slate-200 bg-slate-50 text-slate-700";
+        ? "border-[var(--copilot-border)] bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-badge-warning-text)]"
+        : "border-[var(--copilot-border)] bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink-muted)]";
   return (
     <span
       className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${cls}`}

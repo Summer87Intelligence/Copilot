@@ -138,7 +138,7 @@ function DeltaBadge({
   if (val == null) return null;
   const isUp = val >= 0;
   const positive = invertColor ? !isUp : isUp;
-  const cls = positive ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700";
+  const cls = positive ? "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text)]" : "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text)]";
   const arrow = isUp ? "↑" : "↓";
   const text =
     pct != null
@@ -168,9 +168,9 @@ function KpiCard({
 }) {
   const valueColor =
     tone === "ok"
-      ? "text-emerald-800"
+      ? "text-[var(--copilot-success-text-strong)]"
       : tone === "warn"
-        ? "text-amber-800"
+        ? "text-[var(--copilot-warning-text-strong)]"
         : "text-[var(--copilot-ink)]";
   return (
     <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 py-2.5">
@@ -403,7 +403,7 @@ function DetailTable({
                 <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 text-[var(--copilot-ink-muted)]">
                   {b.status ?? "—"}
                 </td>
-                <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 tabular-nums text-emerald-700">
+                <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 tabular-nums text-[var(--copilot-success-text)]">
                   {b.netSales > 0 ? fmt(b.netSales, currency) : "—"}
                 </td>
                 <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 tabular-nums text-sky-700">
@@ -412,9 +412,9 @@ function DetailTable({
                 <td
                   className={`border-b border-[var(--copilot-border)] px-2 py-1.5 tabular-nums ${
                     diff > 0
-                      ? "text-amber-700"
+                      ? "text-[var(--copilot-warning-text)]"
                       : diff < 0
-                        ? "text-emerald-700"
+                        ? "text-[var(--copilot-success-text)]"
                         : "text-[var(--copilot-ink-muted)]"
                   }`}
                 >
@@ -525,7 +525,7 @@ export function FinancialMonthlyTrends({
               }
             />
           )}
-          <span className="mt-2 inline-flex rounded-full border border-[var(--copilot-border)] bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-[var(--copilot-ink-muted)]">
+          <span className="mt-2 inline-flex rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-tone-neutral-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--copilot-ink-muted)]">
             Datos disponibles: {periodContext.trendsDataRangeLabel}
           </span>
           <p className="mt-1 text-[10px] text-[var(--copilot-ink-muted)]">
@@ -535,7 +535,7 @@ export function FinancialMonthlyTrends({
         <div className="flex flex-wrap items-center gap-2">
           {/* Period selector */}
           <div
-            className="inline-flex rounded-xl border border-[var(--copilot-border)] bg-slate-50/80 p-0.5"
+            className="inline-flex rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] p-0.5"
             role="tablist"
             aria-label="Período"
           >
@@ -560,7 +560,7 @@ export function FinancialMonthlyTrends({
           {/* Currency selector */}
           {(hasUyu || hasUsd) ? (
             <div
-              className="inline-flex rounded-xl border border-[var(--copilot-border)] bg-slate-50/80 p-0.5"
+              className="inline-flex rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] p-0.5"
               role="tablist"
               aria-label="Moneda"
             >
@@ -580,7 +580,7 @@ export function FinancialMonthlyTrends({
                         ? "bg-[var(--copilot-card-bg)] text-[var(--copilot-ink)] shadow-sm ring-1 ring-[var(--copilot-border)]"
                         : has
                           ? "text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]"
-                          : "cursor-not-allowed text-slate-300"
+                          : "cursor-not-allowed text-[var(--copilot-subtle)]"
                     }`}
                   >
                     {c}
@@ -652,7 +652,7 @@ export function FinancialMonthlyTrends({
               {showRateHint ? (
                 <span className="ml-auto text-[10px] tabular-nums text-[var(--copilot-ink-muted)]">
                   Cobros/ventas:{" "}
-                  <span className={collRate! > 1 ? "text-amber-700" : ""}>
+                  <span className={collRate! > 1 ? "text-[var(--copilot-warning-text)]" : ""}>
                     {fmtPct(collRate!)}
                     {collRate! > 1 ? " — incluye deuda anterior" : ""}
                   </span>
@@ -667,11 +667,11 @@ export function FinancialMonthlyTrends({
 
           {/* Alert banners */}
           {!executiveView && cobrosSupVentas ? (
-            <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+            <div className="mt-3 rounded-lg border border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] px-3 py-2 text-xs text-[var(--copilot-success-text-strong)]">
               Los cobros registrados superan las ventas del período; pueden incluir facturas de meses anteriores.
             </div>
           ) : !executiveView && ventasSupCobros && gap.salesMinusCollections > totals.netSales * 0.3 ? (
-            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <div className="mt-3 rounded-lg border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-3 py-2 text-xs text-[var(--copilot-warning-text-strong)]">
               Vendiste más de lo cobrado en este período. Revisá la deuda de clientes.
             </div>
           ) : null}
@@ -685,7 +685,7 @@ export function FinancialMonthlyTrends({
           {/* Legend */}
           <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1.5 text-[11px] text-[var(--copilot-ink-muted)]">
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-3 rounded-sm bg-emerald-400/90" aria-hidden />
+              <span className="h-2.5 w-3 rounded-sm bg-[var(--copilot-status-ok-dot)]" aria-hidden />
               Ventas
             </span>
             <span className="flex items-center gap-1.5">
@@ -696,7 +696,7 @@ export function FinancialMonthlyTrends({
 
           {/* ── Lectura rápida ── */}
           {insights.length > 0 || (executiveView && periodContext.isCurrentMonthPartial) ? (
-            <div className="mt-4 rounded-xl border border-[var(--copilot-border)] bg-slate-50/70 px-4 py-3">
+            <div className="mt-4 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] px-4 py-3">
               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Lectura rápida
               </p>
@@ -749,7 +749,7 @@ export function FinancialMonthlyTrends({
         </p>
       ) : (
         <p className="mt-4 text-[11px] leading-relaxed text-[var(--copilot-ink-muted)]">
-          {FINANZAS_COPY.evolutionSubtitle} La diferencia mensual no representa deuda pendiente.
+          {FINANZAS_COPY.evolutionSubtitle}
         </p>
       )}
     </>

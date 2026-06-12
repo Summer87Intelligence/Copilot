@@ -2,6 +2,7 @@
 
 import {
   buildCopilotProvenanceLine,
+  formatCopilotRelativeUpdated,
   type CopilotDataProvenanceInput,
 } from "@/lib/copilot-data-provenance";
 
@@ -16,7 +17,11 @@ export function CopilotDataProvenanceStrip({
   periodLabel,
   syncStates,
   className = "",
-}: CopilotDataProvenanceInput & { className?: string }) {
+  variant = "full",
+}: CopilotDataProvenanceInput & {
+  className?: string;
+  variant?: "full" | "compact";
+}) {
   const line = buildCopilotProvenanceLine({
     source,
     updatedAt,
@@ -25,6 +30,27 @@ export function CopilotDataProvenanceStrip({
     periodLabel,
     syncStates,
   });
+
+  if (variant === "compact") {
+    const updatedShort = formatCopilotRelativeUpdated(updatedAt ?? null);
+    const period = line.periodLabel ?? "período activo";
+    const tooltip = [
+      `Fuente: ${line.source}`,
+      `Actualizado: ${line.updatedLabel}`,
+      line.periodLabel ? `Período: ${line.periodLabel}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    return (
+      <p
+        title={tooltip}
+        className={`truncate text-[10px] leading-snug text-[var(--copilot-ink-muted)] ${className}`.trim()}
+      >
+        Datos {updatedShort} · {period}
+      </p>
+    );
+  }
 
   return (
     <p

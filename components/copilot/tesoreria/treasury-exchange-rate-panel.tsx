@@ -189,10 +189,10 @@ export function TreasuryExchangeRatePanel() {
           </div>
 
           {error && (
-            <p className="mt-2 text-xs font-medium text-rose-700">{error}</p>
+            <p className="mt-2 text-xs font-medium text-[var(--copilot-danger-text)]">{error}</p>
           )}
           {success && (
-            <p className="mt-2 text-xs font-medium text-emerald-700">{success}</p>
+            <p className="mt-2 text-xs font-medium text-[var(--copilot-success-text)]">{success}</p>
           )}
 
           <div className="mt-3 flex justify-end">

@@ -68,7 +68,7 @@ describe("mapDashboardSummaryInvoiceRows + generateFinancialConsistencyReport", 
     expect(uyuOutstanding?.totalPending).toBe(balance);
   });
 
-  it("mismo fixture → totalInvoiced del período NO deduplica (ventas/cobros intactos)", () => {
+  it("mismo fixture → issuedInPeriod dedupeado por guardrail shadow/CCV1 (ventas no infladas)", () => {
     const balance = 54_900;
     const invoices = mapDashboardSummaryInvoiceRows([
       ccv1Row("real-1", "9001", balance),
@@ -89,8 +89,9 @@ describe("mapDashboardSummaryInvoiceRows + generateFinancialConsistencyReport", 
 
     const uyuPeriod = period.currencies.find((c) => c.currencyCode === "UYU");
     expect(uyuPeriod?.pendingAtCutoff).toBe(balance);
-    expect(uyuPeriod?.issuedInPeriod).toBe(balance * 2);
-    expect(uyuPeriod?.totalInvoiced).toBe(balance * 2);
+    // Guardrail dedupZetaSaldosShadowsAgainstCcv1 descarta la sombra antes del period pass.
+    expect(uyuPeriod?.issuedInPeriod).toBe(balance);
+    expect(uyuPeriod?.totalInvoiced).toBe(balance);
   });
 
   it("sin category/invoice_number en select el pending se inflaba (riesgo real pre-2B)", () => {

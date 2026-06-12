@@ -40,22 +40,22 @@ export function HealthIndicator({
   const health = useMemo(() => {
     if (counts.critical >= 1) {
       return {
-        dotClass: "bg-rose-500 shadow-[0_0_0_2px_rgba(244,63,94,0.25)]",
+        dotClass: "bg-[var(--copilot-danger-text)] shadow-[0_0_0_2px_rgba(244,63,94,0.25)]",
         label: "Crítica",
-        labelClass: "text-rose-950",
+        labelClass: "text-[var(--copilot-danger-text-strong)]",
       };
     }
     if (counts.high >= 1) {
       return {
-        dotClass: "bg-amber-400 shadow-[0_0_0_2px_rgba(251,191,36,0.35)]",
+        dotClass: "bg-[var(--copilot-warning-text)] shadow-[0_0_0_2px_rgba(251,191,36,0.35)]",
         label: "Riesgo",
-        labelClass: "text-amber-950",
+        labelClass: "text-[var(--copilot-warning-text-strong)]",
       };
     }
     return {
-      dotClass: "bg-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.25)]",
+      dotClass: "bg-[var(--copilot-success-text)] shadow-[0_0_0_2px_rgba(16,185,129,0.25)]",
       label: "OK",
-      labelClass: "text-emerald-900",
+      labelClass: "text-[var(--copilot-success-text-strong)]",
     };
   }, [counts]);
 
@@ -79,7 +79,7 @@ export function HealthIndicator({
     >
       <span
         className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-          loading ? "animate-pulse bg-slate-300 shadow-none" : health.dotClass
+          loading ? "animate-pulse bg-[var(--copilot-border)] shadow-none" : health.dotClass
         }`}
         aria-hidden
       />

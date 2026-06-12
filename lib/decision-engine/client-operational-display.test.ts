@@ -61,16 +61,16 @@ function summary(overrides: Partial<ClientOperationalSummary> = {}): ClientOpera
 describe("client-operational-display", () => {
   it("badges separados — severidad, máquina, SLA, aging", () => {
     const badges = buildOperationalBadges(summary());
-    expect(severityBadge("critical").label).toBe("CRÍTICO");
+    expect(severityBadge("critical").label).toBe("Prioridad crítica");
     expect(badges.some((b) => b.label === "ESCALADO")).toBe(true);
-    expect(badges.some((b) => b.label === "SLA VENCIDO")).toBe(true);
-    expect(badges.some((b) => b.label === "+90D")).toBe(true);
+    expect(badges.some((b) => b.label === "SLA atrasado")).toBe(true);
+    expect(badges.some((b) => b.label === "+90 días")).toBe(true);
     expect(badges.find((b) => b.label.includes("·"))).toBeUndefined();
   });
 
   it("chips compactos de razones", () => {
     const chips = compactReasonChips(summary());
-    expect(chips.some((c) => c.label === "90D")).toBe(true);
+    expect(chips.some((c) => c.label === "+90 días")).toBe(true);
     expect(chips.some((c) => c.label.includes("Conc"))).toBe(true);
   });
 
@@ -82,6 +82,6 @@ describe("client-operational-display", () => {
   });
 
   it("sla ok cuando no breach", () => {
-    expect(slaBadge(false, false).label).toBe("SLA OK");
+    expect(slaBadge(false, false).label).toBe("SLA al día");
   });
 });

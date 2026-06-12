@@ -9,28 +9,29 @@ import type { PulseStatus } from "@/lib/copilot-today-business-pulse";
 type StatusStyle = { dot: string; bg: string; border: string; label: string; labelClass: string };
 
 function statusStyle(s: PulseStatus): StatusStyle {
+  // Hero neutro (bg de card normal) con dot semáforo coherente con el resto del producto.
   if (s === "critical")
     return {
-      dot: "bg-rose-500",
-      bg: "bg-rose-50/40",
-      border: "border-rose-200/50",
+      dot: "bg-[var(--copilot-status-critical-dot)]",
+      bg: "bg-[var(--copilot-card-bg)]",
+      border: "border-[var(--copilot-danger-border)]/40",
       label: "Atención urgente",
-      labelClass: "text-rose-700",
+      labelClass: "text-[var(--copilot-danger-text)]",
     };
   if (s === "attention")
     return {
-      dot: "bg-amber-400",
+      dot: "bg-[var(--copilot-status-warn-dot)]",
       bg: "bg-[var(--copilot-card-bg)]",
       border: "border-[var(--copilot-border)]",
       label: "Requiere atención",
-      labelClass: "text-amber-800",
+      labelClass: "text-[var(--copilot-warning-text-strong)]",
     };
   return {
-    dot: "bg-emerald-500",
+    dot: "bg-[var(--copilot-status-ok-dot)]",
     bg: "bg-[var(--copilot-card-bg)]",
     border: "border-[var(--copilot-border)]",
     label: "Saludable",
-    labelClass: "text-emerald-700",
+    labelClass: "text-[var(--copilot-success-text)]",
   };
 }
 

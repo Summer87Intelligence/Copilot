@@ -70,8 +70,8 @@ function FilterPills<T extends string>({
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  Crítico: "text-rose-700 font-semibold",
-  Vencido: "text-amber-700",
+  Crítico: "text-[var(--copilot-danger-text)] font-semibold",
+  Vencido: "text-[var(--copilot-warning-text)]",
   Pendiente: "text-[var(--copilot-ink-muted)]",
 };
 
@@ -97,7 +97,7 @@ const COLUMNS: ReportTableColumn<DebtorsReportRow>[] = [
     cellClassName: "text-right tabular-nums text-xs",
     render: (r) =>
       r.overdueAmount > 0 ? (
-        <span className="text-rose-700">{formatMoneyCurrency(r.overdueAmount, r.currency)}</span>
+        <span className="text-[var(--copilot-danger-text)]">{formatMoneyCurrency(r.overdueAmount, r.currency)}</span>
       ) : (
         "—"
       ),

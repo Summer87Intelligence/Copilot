@@ -32,27 +32,32 @@ function primaryCtaVariant(status: PulseStatus): "primary" | "danger" {
   return status === "critical" ? "danger" : "primary";
 }
 
+// Card de "Resumen del día" premium: fondo neutro siempre.
+// El estado se transmite con: dot semáforo + badge + borde sutil acentuado.
 const STATUS_CONFIG: Record<PulseStatus, StatusConfig> = {
   healthy: {
-    dot: "bg-emerald-500",
+    dot: "bg-[var(--copilot-status-ok-dot)]",
     badge: "Al día",
-    badgeClass: "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200/80",
-    cardBg: "from-[var(--copilot-card-bg)] to-[var(--copilot-tone-neutral-bg)]",
+    badgeClass:
+      "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-badge-success-text)] ring-1 ring-[var(--copilot-border)]",
+    cardBg: "from-[var(--copilot-card-bg)] to-[var(--copilot-card-bg)]",
     cardBorder: "border-[var(--copilot-border)]",
   },
   attention: {
-    dot: "bg-amber-400",
+    dot: "bg-[var(--copilot-status-warn-dot)]",
     badge: "Requiere atención",
-    badgeClass: "bg-amber-100 text-amber-800 ring-1 ring-amber-200/80",
-    cardBg: "from-[var(--copilot-card-bg)] to-amber-50/45",
-    cardBorder: "border-amber-200/70",
+    badgeClass:
+      "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-badge-warning-text)] ring-1 ring-[var(--copilot-border)]",
+    cardBg: "from-[var(--copilot-card-bg)] to-[var(--copilot-card-bg)]",
+    cardBorder: "border-[var(--copilot-warning-border)]",
   },
   critical: {
-    dot: "bg-rose-500",
+    dot: "bg-[var(--copilot-status-critical-dot)]",
     badge: "Atención crítica",
-    badgeClass: "bg-rose-100 text-rose-800 ring-1 ring-rose-200/80",
-    cardBg: "from-[var(--copilot-card-bg)] to-rose-50/35",
-    cardBorder: "border-rose-200/70",
+    badgeClass:
+      "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)] ring-1 ring-[var(--copilot-border)]",
+    cardBg: "from-[var(--copilot-card-bg)] to-[var(--copilot-card-bg)]",
+    cardBorder: "border-[var(--copilot-danger-border)]",
   },
 };
 
@@ -125,48 +130,6 @@ export function HoyExecutiveSummaryCard({
     return () => document.removeEventListener("mousedown", handler);
   }, [showSignals]);
 
-  type PriorityItem = { title: string; motivo: string; href: string; ctaLabel: string };
-  const priorities = useMemo((): PriorityItem[] => {
-    if (!agendaLoaded) return [];
-    const items: PriorityItem[] = [];
-    if (debtorClientsCount > 0 || attentionClientsCount > 0) {
-      const total = debtorClientsCount;
-      const overdue = attentionClientsCount;
-      const motivo =
-        overdue > 0
-          ? `${total} ${total === 1 ? "cliente requiere" : "clientes requieren"} seguimiento · ${overdue} vencido${overdue !== 1 ? "s" : ""}`
-          : `${total} ${total === 1 ? "cliente" : "clientes"} con deuda activa al día`;
-      items.push({
-        title: "Clientes con deuda para gestionar",
-        motivo,
-        href: "/copilot/clientes",
-        ctaLabel: "Ver clientes",
-      });
-    }
-    const agendaOverdue = (agenda?.summary.overdueFollowupsCount ?? 0) + (agenda?.summary.overduePromisesCount ?? 0);
-    const agendaToday = agenda?.summary.dueTodayCount ?? 0;
-    if (agendaOverdue > 0 || agendaToday > 0) {
-      const parts: string[] = [];
-      if (agendaOverdue > 0) parts.push(`${agendaOverdue} vencido${agendaOverdue !== 1 ? "s" : ""}`);
-      if (agendaToday > 0) parts.push(`${agendaToday} para hoy`);
-      items.push({
-        title: "Agenda de cobranza",
-        motivo: parts.join(" · "),
-        href: "/copilot/acciones?tab=agenda",
-        ctaLabel: "Ver agenda",
-      });
-    }
-    if (cashAfterPaymentsCritical) {
-      items.push({
-        title: "Caja proyectada ajustada",
-        motivo: "Revisar cobertura antes de confirmar compromisos",
-        href: "/copilot/tesoreria",
-        ctaLabel: "Ver Tesorería",
-      });
-    }
-    return items.slice(0, 3);
-  }, [agendaLoaded, attentionClientsCount, debtorClientsCount, agenda, cashAfterPaymentsCritical]);
-
   const cfg = STATUS_CONFIG[hero.status];
   const primaryIsScroll = priority?.primaryCta.action.type === "scroll_critical";
 
@@ -179,15 +142,14 @@ export function HoyExecutiveSummaryCard({
   return (
     <section
       aria-label="Resumen del día"
-      className={`rounded-2xl border bg-gradient-to-br px-5 py-4 shadow-sm ${cfg.cardBg} ${cfg.cardBorder}`}
+      className={`rounded-xl border bg-[var(--copilot-card-bg)] px-3 py-2 shadow-sm ${cfg.cardBorder}`}
     >
       {/* ── Eyebrow ── */}
-      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--copilot-ink-muted)]">
+      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--copilot-ink-muted)]">
         Resumen del día
       </p>
 
-      {/* ── Main row: status + headline + CTAs ── */}
-      <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+      <div className="mt-1.5 flex flex-wrap items-start justify-between gap-2">
         {/* Left: status badge (clickable) + headline + description + metrics + priorities */}
         <div className="min-w-0 flex-1">
           {/* Status indicator — clickable, shows signals popover */}
@@ -212,7 +174,7 @@ export function HoyExecutiveSummaryCard({
                   {attentionClientsCount > 0 ? (
                     <li className="flex items-center justify-between gap-2">
                       <span className="text-[12px] text-[var(--copilot-ink)]">
-                        Deuda vencida — {attentionClientsCount} {attentionClientsCount === 1 ? "cliente" : "clientes"}
+                        Atrasado — {attentionClientsCount} {attentionClientsCount === 1 ? "cliente" : "clientes"}
                       </span>
                       <CopilotButtonLink
                         href="/copilot/cartera"
@@ -273,26 +235,6 @@ export function HoyExecutiveSummaryCard({
             </p>
           ) : null}
           {/* Qué resolver hoy — up to 3 executive priorities */}
-          {priorities.length > 0 ? (
-            <div className="mt-3 border-t border-[var(--copilot-border)]/60 pt-3">
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--copilot-ink-muted)]">
-                Qué resolver hoy
-              </p>
-              <div className="space-y-2">
-                {priorities.map((p) => (
-                  <div key={p.href} className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-[12px] font-semibold text-[var(--copilot-ink)]">{p.title}</p>
-                      <p className="text-[11px] text-[var(--copilot-ink-muted)]">{p.motivo}</p>
-                    </div>
-                    <CopilotButtonLink href={p.href} variant="ghost" size="sm" className="shrink-0">
-                      {p.ctaLabel}
-                    </CopilotButtonLink>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
         </div>
 
         {/* Right: CTAs */}
@@ -325,7 +267,7 @@ export function HoyExecutiveSummaryCard({
         ) : (
           // Skeleton while agenda loads
           <div className="flex flex-col items-end gap-2">
-            <div className="h-8 w-32 animate-pulse rounded-xl bg-[rgba(44,40,37,0.08)]" />
+            <div className="h-8 w-32 animate-pulse rounded-xl bg-[var(--copilot-soft-bg)]" />
           </div>
         )}
       </div>

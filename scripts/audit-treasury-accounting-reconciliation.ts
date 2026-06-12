@@ -198,7 +198,7 @@ async function runAudit(): Promise<AuditRow[]> {
     let qbMov = db
       .from("manual_cash_movements")
       .select("id", { count: "exact", head: true })
-      .eq("is_active", true);
+      .eq("status", "active");
     if (WID) qbMov = qbMov.eq("workspace_id", WID);
     const { count: totalMov, error: errMov } = await qbMov;
 

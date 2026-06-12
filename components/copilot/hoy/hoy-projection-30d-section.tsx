@@ -4,8 +4,10 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { CopilotCard } from "@/components/copilot/copilot-ui";
+import { PaymentBehaviorCompactLine } from "@/components/copilot/payment-behavior/payment-behavior-summary-card";
 import type { CarteraCurrencyTotals } from "@/lib/copilot-cartera-aging-totals";
 import type { HoyProjection30dBlock, HoyTreasuryAlert } from "@/lib/copilot-today-business-pulse";
+import type { PaymentProjectionSummary } from "@/lib/payment-behavior/payment-behavior-engine";
 import {
   projectionCurrencySummaryLine,
   selectHoyProjectionUiAlerts,
@@ -100,11 +102,15 @@ export function HoyProjection30dSection({
   alerts,
   configured,
   overdueCritical30,
+  paymentBehaviorSummaries,
+  paymentBehaviorLoading,
 }: {
   blocks: HoyProjection30dBlock[];
   alerts: HoyTreasuryAlert[];
   configured: boolean;
   overdueCritical30?: CarteraCurrencyTotals;
+  paymentBehaviorSummaries?: PaymentProjectionSummary[];
+  paymentBehaviorLoading?: boolean;
 }) {
   if (blocks.length === 0) return null;
 
@@ -145,6 +151,18 @@ export function HoyProjection30dSection({
         ))}
       </div>
 
+      {(paymentBehaviorLoading || (paymentBehaviorSummaries && paymentBehaviorSummaries.length > 0)) ? (
+        <div className="mt-4 border-t border-dashed border-[var(--copilot-border)] pt-3">
+          <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
+            Cobros probables (historial cliente)
+          </p>
+          <PaymentBehaviorCompactLine
+            summaries={paymentBehaviorSummaries ?? []}
+            loading={paymentBehaviorLoading ?? false}
+          />
+        </div>
+      ) : null}
+
       {uiAlerts.length > 0 ? (
         <ul className="mt-4 space-y-2">
           {uiAlerts.map((a) => (
@@ -152,10 +170,10 @@ export function HoyProjection30dSection({
               key={a.id}
               className={`rounded-lg px-3 py-2 text-xs leading-snug ${
                 a.tone === "critical"
-                  ? "bg-rose-50/80 text-rose-900"
+                  ? "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]"
                   : a.tone === "attention"
-                    ? "bg-amber-50/60 text-amber-950"
-                    : "bg-emerald-50/60 text-emerald-900"
+                    ? "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]"
+                    : "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]"
               }`}
             >
               {a.message}

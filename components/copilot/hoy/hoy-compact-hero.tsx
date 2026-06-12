@@ -4,15 +4,15 @@ import type { CockpitHero } from "@/lib/copilot-hoy-cockpit-view";
 import type { PulseStatus } from "@/lib/copilot-today-business-pulse";
 
 const STATUS_DOT: Record<PulseStatus, string> = {
-  healthy: "bg-emerald-500",
-  attention: "bg-amber-400",
-  critical: "bg-rose-500",
+  healthy: "bg-[var(--copilot-status-ok-dot)]",
+  attention: "bg-[var(--copilot-status-warn-dot)]",
+  critical: "bg-[var(--copilot-status-critical-dot)]",
 };
 
 const STATUS_LABEL: Record<PulseStatus, string> = {
-  healthy: "text-emerald-700",
-  attention: "text-amber-700",
-  critical: "text-rose-700",
+  healthy: "text-[var(--copilot-success-text)]",
+  attention: "text-[var(--copilot-warning-text)]",
+  critical: "text-[var(--copilot-danger-text)]",
 };
 
 export function HoyCompactHero({ hero }: { hero: CockpitHero }) {

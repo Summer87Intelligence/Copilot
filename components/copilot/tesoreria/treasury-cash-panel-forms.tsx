@@ -124,7 +124,7 @@ export function QuickMovementForm({
   };
 
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
+    <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-5 shadow-sm sm:p-6">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-base font-semibold text-[var(--copilot-ink)]">
@@ -242,13 +242,13 @@ export function QuickMovementForm({
       </div>
 
       {isBeforeBaseline ? (
-        <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
+        <p className="mt-2 rounded-lg bg-[var(--copilot-tone-warning-bg)] px-3 py-2 text-[11px] text-[var(--copilot-warning-text)]">
           La fecha ingresada es anterior al corte del saldo cargado ({baselineForCurrency}). Este movimiento
           NO afectará la caja — ya está reflejado en el saldo actual.
         </p>
       ) : null}
 
-      {error ? <p className="mt-2 text-xs text-rose-600">{error}</p> : null}
+      {error ? <p className="mt-2 text-xs text-[var(--copilot-danger-text)]">{error}</p> : null}
 
       <CopilotButton
         type="button"

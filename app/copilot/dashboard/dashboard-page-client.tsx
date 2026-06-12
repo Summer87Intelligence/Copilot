@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -47,16 +47,19 @@ import {
 import {
   METRIC_LABEL,
   METRIC_SEPARATED_CURRENCY_DISCLAIMER,
-  METRIC_USD_CONSOLIDATED_DISCLAIMER,
 } from "@/lib/copilot-financial-metrics-contract";
 import { FINANCIAL_UX_COPY } from "@/lib/copilot-financial-ux-copy";
 import { CopilotDataProvenanceStrip } from "@/components/copilot/copilot-data-provenance-strip";
 import { CopilotPremiumEmptyState } from "@/components/copilot/copilot-premium-empty-state";
 import {
-  consolidateToUsd,
-  formatExchangeRateLabel,
+  consolidateToUsdEquivalent,
+  DASHBOARD_USD_CONSOLIDATED_DISCLAIMER,
+  formatDashboardFxRateCompact,
+  parseDashboardFxRate,
+  readDashboardFxRateFromStorage,
   roundUsd,
-} from "@/lib/finance/currency-conversion";
+  writeDashboardFxRateToStorage,
+} from "@/lib/copilot-currency-conversion";
 
 const TABLE_INITIAL_ROWS = 10;
 
@@ -73,9 +76,9 @@ const C = {
   border: "border-[var(--copilot-border)]",
   input:
     "rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] px-3 py-1.5 text-xs text-[var(--copilot-ink)] focus:outline-none focus:ring-1 focus:ring-[var(--copilot-accent)]",
-  btn: "inline-flex h-8 items-center gap-1.5 rounded-xl border border-[var(--copilot-accent)] bg-[var(--copilot-accent)] px-3 text-xs font-semibold text-white shadow-sm transition hover:border-[#185a3d] hover:bg-[#185a3d]",
+  btn: "inline-flex h-8 items-center gap-1.5 rounded-xl border border-[var(--copilot-accent)] bg-[var(--copilot-accent)] px-3 text-xs font-semibold text-[var(--copilot-on-accent)] shadow-sm transition hover:border-[var(--copilot-accent-hover)] hover:bg-[var(--copilot-accent-hover)]",
   btnGhost:
-    "inline-flex h-8 items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 text-xs font-semibold text-[var(--copilot-accent)] shadow-sm transition hover:bg-[var(--copilot-accent-soft)]",
+    "inline-flex h-8 items-center gap-1.5 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] px-3 text-xs font-semibold text-[var(--copilot-accent)] shadow-sm transition hover:bg-[var(--copilot-accent-soft)]",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -141,7 +144,7 @@ function VerticalBarChart({
   const valueH = 24;
   const labelH = 14;
   const barH = height - valueH - labelH;
-  const valueClass = `block w-full truncate text-center text-[9px] font-semibold leading-tight ${C.ink}`;
+  const valueClass = `block w-full truncate text-center text-[10px] font-semibold leading-tight ${C.ink}`;
 
   return (
     <div className="flex items-end gap-0.5 overflow-hidden" style={{ height }}>
@@ -183,7 +186,7 @@ function VerticalBarChart({
                     {fmtAmount(d.usd ?? 0, "USD")}
                   </span>
                   <div
-                    className="mt-0.5 w-full rounded-t bg-blue-500 opacity-80"
+                    className="mt-0.5 w-full rounded-t bg-[var(--copilot-accent)] opacity-80"
                     style={{ height: usdH }}
                   />
                 </div>
@@ -196,7 +199,7 @@ function VerticalBarChart({
               ) : null}
             </div>
             <p
-              className={`mt-0.5 w-full truncate text-center text-[9px] leading-tight ${C.muted}`}
+              className={`mt-0.5 w-full truncate text-center text-[10px] leading-tight ${C.muted}`}
             >
               {d.label}
             </p>
@@ -222,7 +225,7 @@ function GroupedBarChart({
   const valueH = 24;
   const labelH = 14;
   const barH = height - valueH - labelH;
-  const valueClass = `block w-full truncate text-center text-[9px] font-semibold leading-tight ${C.ink}`;
+  const valueClass = `block w-full truncate text-center text-[10px] font-semibold leading-tight ${C.ink}`;
 
   return (
     <div className="flex items-end gap-1 overflow-hidden" style={{ height }}>
@@ -243,12 +246,12 @@ function GroupedBarChart({
             <div className="flex min-w-0 flex-1 flex-col items-center justify-end" style={{ height: valueH + barH }}>
               <span className={valueClass} title={fmtAmount(g.b, g.label.startsWith("USD") ? "USD" : "UYU")}>{fmtAmount(g.b, g.label.startsWith("USD") ? "USD" : "UYU")}</span>
               <div
-                className="mt-0.5 w-full rounded-t bg-emerald-400"
+                className="mt-0.5 w-full rounded-t bg-[var(--copilot-status-ok-dot)]"
                 style={{ height: Math.max(1, (g.b / maxVal) * barH) }}
               />
             </div>
           </div>
-          <p className={`mt-0.5 truncate text-[9px] leading-tight ${C.muted}`}>
+          <p className={`mt-0.5 truncate text-[10px] leading-tight ${C.muted}`}>
             {g.label}
           </p>
         </div>
@@ -411,7 +414,7 @@ function AreaSparkline({
       </svg>
       <div className="mt-1 flex justify-between">
         {points.map((p, i) => (
-          <p key={i} className={`text-[9px] ${C.muted}`}>
+          <p key={i} className={`text-[10px] ${C.muted}`}>
             {p.label}
           </p>
         ))}
@@ -464,7 +467,7 @@ function KpiCard({
         {showUSD && (
           <p className={`text-base font-semibold leading-tight tabular-nums ${negative && usdValue < 0 ? "text-red-600" : C.muted}`}>
             {fmtAmount(usdValue, "USD")}
-            <span className={`ml-1 text-[9px] font-normal ${C.muted}`}>USD</span>
+            <span className={`ml-1 text-[10px] font-normal ${C.muted}`}>USD</span>
           </p>
         )}
       </div>
@@ -531,7 +534,7 @@ function ChartLegend({
       )}
       {selectedCurrency !== "UYU" && (
         <div className="flex items-center gap-1">
-          <div className="h-2 w-3 rounded-sm bg-blue-500" />
+          <div className="h-2 w-3 rounded-sm bg-[var(--copilot-accent)]" />
           <p className={`text-[10px] ${C.muted}`}>USD</p>
         </div>
       )}
@@ -577,27 +580,28 @@ function ExecutiveSummaryCard({
   const uyu = currencyData.find((d) => d.currency === "UYU");
   const usd = currencyData.find((d) => d.currency === "USD");
 
+  // Banner ejecutivo premium: card neutra + borde acentuado + badge tonal.
   const stateConfig = {
     ok: {
       label: "Estable",
       icon: <CheckCircle className="h-4 w-4" />,
-      bg: "bg-emerald-50 border-emerald-200",
-      text: "text-emerald-900",
-      badge: "bg-emerald-100 text-emerald-800",
+      bg: "bg-[var(--copilot-card-bg)] border-[var(--copilot-success-border)]",
+      text: "text-[var(--copilot-success-text-strong)]",
+      badge: "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-success-text-strong)]",
     },
     attention: {
       label: "Atención",
       icon: <AlertTriangle className="h-4 w-4" />,
-      bg: "bg-amber-50 border-amber-200",
-      text: "text-amber-900",
-      badge: "bg-amber-100 text-amber-900",
+      bg: "bg-[var(--copilot-card-bg)] border-[var(--copilot-warning-border)]",
+      text: "text-[var(--copilot-warning-text-strong)]",
+      badge: "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-warning-text-strong)]",
     },
     critical: {
       label: "Crítico",
       icon: <TrendingDown className="h-4 w-4" />,
-      bg: "bg-red-50 border-red-200",
-      text: "text-red-900",
-      badge: "bg-red-100 text-red-900",
+      bg: "bg-[var(--copilot-card-bg)] border-[var(--copilot-danger-border)]",
+      text: "text-[var(--copilot-danger-text-strong)]",
+      badge: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-danger-text-strong)]",
     },
   }[state];
 
@@ -635,11 +639,11 @@ function ExecutiveSummaryCard({
           </span>
         </div>
         <p className={`text-[11px] font-medium opacity-75 ${stateConfig.text}`}>
-          Resumen ejecutivo — {periodLabel}
+          Resumen ejecutivo – {periodLabel}
         </p>
       </div>
 
-      {/* Chips — max 3 */}
+      {/* Chips ? max 3 */}
       <div className="mt-3 flex flex-wrap gap-1.5">
         {mainRisk && (
           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${stateConfig.badge}`}>
@@ -648,12 +652,12 @@ function ExecutiveSummaryCard({
           </span>
         )}
         {bestSignal && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--copilot-badge-success-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--copilot-success-text-strong)]">
             <TrendingUp className="h-3 w-3" />
             {bestSignal}
           </span>
         )}
-        <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-800">
+        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--copilot-tone-neutral-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--copilot-accent)]">
           <ArrowRight className="h-3 w-3" />
           {suggestedAction}
         </span>
@@ -689,7 +693,7 @@ function ActiveDebtClientsTable({
   if (filtered.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-[var(--copilot-border)] p-6 text-center">
-        <CheckCircle className="mx-auto h-5 w-5 text-emerald-600 mb-2" />
+        <CheckCircle className="mx-auto h-5 w-5 text-[var(--copilot-success-text)] mb-2" />
         <p className={`text-sm ${C.muted}`}>No hay clientes con deuda actual.</p>
       </div>
     );
@@ -727,23 +731,23 @@ function ActiveDebtClientsTable({
               >
                 <td className={`px-3 py-2 font-medium ${C.ink}`}>{r.name}</td>
                 <td className={`px-3 py-2 font-semibold uppercase ${C.muted}`}>{r.currency}</td>
-                <td className="px-3 py-2 tabular-nums font-medium text-amber-700">
+                <td className="px-3 py-2 tabular-nums font-medium text-[var(--copilot-warning-text)]">
                   {fmtAmount(r.activeDebt, r.currency)}
                 </td>
-                <td className={`px-3 py-2 tabular-nums ${r.overdueDebt > 0 ? "font-semibold text-rose-700" : C.muted}`}>
-                  {r.overdueDebt > 0 ? fmtAmount(r.overdueDebt, r.currency) : "—"}
+                <td className={`px-3 py-2 tabular-nums ${r.overdueDebt > 0 ? "font-semibold text-[var(--copilot-danger-text)]" : C.muted}`}>
+                  {r.overdueDebt > 0 ? fmtAmount(r.overdueDebt, r.currency) : "?"}
                 </td>
                 <td className={`px-3 py-2 tabular-nums ${C.muted}`}>
-                  {r.overdueDebt > 0 && (r.overdueDays ?? 0) > 0 ? `${r.overdueDays}d` : "—"}
+                  {r.overdueDebt > 0 && (r.overdueDays ?? 0) > 0 ? `${r.overdueDays}d` : "?"}
                 </td>
                 <td className="px-3 py-2">
                   <span
                     className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
                       r.status === "Riesgo alto"
-                        ? "bg-rose-100 text-rose-800"
+                        ? "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-danger-text-strong)]"
                         : r.status === "Vencido"
-                          ? "bg-amber-100 text-amber-900"
-                          : "bg-emerald-50 text-emerald-800"
+                          ? "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-warning-text-strong)]"
+                          : "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]"
                     }`}
                   >
                     {r.status}
@@ -796,8 +800,8 @@ function movementTypeLabel(type: DashboardRecentMovement["type"]): string {
 }
 
 function movementTypeBadgeClass(type: DashboardRecentMovement["type"]): string {
-  if (type === "factura") return "bg-blue-50 text-blue-700";
-  if (type === "recibo") return "bg-emerald-50 text-emerald-700";
+  if (type === "factura") return "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)]";
+  if (type === "recibo") return "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text)]";
   return "bg-violet-50 text-violet-700";
 }
 
@@ -861,15 +865,15 @@ function RecentMovementsTable({
           <tbody>
             {visible.map((m, i) => {
               const debe =
-                m.type === "factura" ? fmtAmount(m.amount, m.currency) : "—";
+                m.type === "factura" ? fmtAmount(m.amount, m.currency) : "?";
               const haber =
                 m.type === "recibo" || m.type === "nota_credito"
                   ? fmtAmount(m.amount, m.currency)
-                  : "—";
+                  : "?";
               const saldo =
                 m.type === "factura" && m.balance > 0
                   ? fmtAmount(m.balance, m.currency)
-                  : "—";
+                  : "?";
               const equivUsd = showEquiv && exchangeRate
                 ? fmtAmount(
                     m.currency === "USD" ? m.amount : roundUsd(m.amount / exchangeRate),
@@ -899,17 +903,17 @@ function RecentMovementsTable({
                   </td>
                   <td className={`px-3 py-2 ${C.muted}`}>{m.reference}</td>
                   <td className={`px-3 py-2 uppercase ${C.muted}`}>{m.currency}</td>
-                  <td className={`px-3 py-2 tabular-nums ${debe === "—" ? C.muted : C.ink}`}>{debe}</td>
-                  <td className={`px-3 py-2 tabular-nums ${haber === "—" ? C.muted : "text-emerald-700"}`}>
+                  <td className={`px-3 py-2 tabular-nums ${debe === "?" ? C.muted : C.ink}`}>{debe}</td>
+                  <td className={`px-3 py-2 tabular-nums ${haber === "?" ? C.muted : "text-[var(--copilot-success-text)]"}`}>
                     {haber}
                   </td>
                   {showEquiv && (
                     <td className={`px-3 py-2 tabular-nums text-[10px] ${C.muted}`}>
-                      {equivUsd ?? "—"}
+                      {equivUsd ?? "?"}
                     </td>
                   )}
                   <td
-                    className={`px-3 py-2 tabular-nums ${saldo === "—" ? C.muted : "font-medium text-amber-700"}`}
+                    className={`px-3 py-2 tabular-nums ${saldo === "?" ? C.muted : "font-medium text-[var(--copilot-warning-text)]"}`}
                   >
                     {saldo}
                   </td>
@@ -947,16 +951,23 @@ export default function DashboardPageClient() {
   const [confirmedFrom, setConfirmedFrom] = useState(defaultPeriod.from);
   const [confirmedTo, setConfirmedTo] = useState(defaultPeriod.to);
   const [selectedCurrency, setSelectedCurrency] = useState<"all" | "UYU" | "USD" | "USD_consolidated">("all");
-  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
-  const [editingTc, setEditingTc] = useState(false);
-  const [tcInputDraft, setTcInputDraft] = useState("");
-  const [tcSaving, setTcSaving] = useState(false);
+  const [exchangeRate, setExchangeRate] = useState<number>(() => readDashboardFxRateFromStorage());
+  const [fxInputDraft, setFxInputDraft] = useState<string>(() => String(readDashboardFxRateFromStorage()));
 
   useEffect(() => {
-    if (selectedCurrency !== "USD_consolidated") {
-      setEditingTc(false);
-    }
-  }, [selectedCurrency]);
+    const stored = readDashboardFxRateFromStorage();
+    setExchangeRate(stored);
+    setFxInputDraft(String(stored));
+  }, []);
+
+  const persistFxRate = useCallback((raw: string) => {
+    const parsed = parseDashboardFxRate(raw);
+    if (parsed == null) return false;
+    writeDashboardFxRateToStorage(parsed);
+    setExchangeRate(parsed);
+    setFxInputDraft(String(parsed));
+    return true;
+  }, []);
 
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -972,27 +983,7 @@ export default function DashboardPageClient() {
   const [recentMovements, setRecentMovements] = useState<DashboardRecentMovement[]>([]);
   const abortRef = useRef<AbortController | null>(null);
 
-  const handleSaveTc = useCallback(async () => {
-    const val = parseFloat(tcInputDraft);
-    if (isNaN(val) || val <= 0 || val >= 1000) return;
-    setTcSaving(true);
-    try {
-      const res = await copilotApiFetch("/api/copilot/treasury/exchange-rates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uyu_per_usd: val }),
-      });
-      if (res.ok) {
-        const j = await res.json().catch(() => null);
-        setExchangeRate((j?.ok && j.data?.rate?.uyuPerUsd) ? (j.data.rate.uyuPerUsd as number) : val);
-        setEditingTc(false);
-      }
-    } finally {
-      setTcSaving(false);
-    }
-  }, [tcInputDraft]);
-
-  const periodLabel = `${confirmedFrom} — ${confirmedTo}`;
+  const periodLabel = `${confirmedFrom} – ${confirmedTo}`;
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -1023,7 +1014,6 @@ export default function DashboardPageClient() {
         reconPeriodRes,
         cashRes,
         outflowRes,
-        tcRes,
         ...monthlyRes
       ] = await Promise.allSettled([
         copilotApiFetch("/api/copilot/rutas-hub", { signal: sig }),
@@ -1031,7 +1021,6 @@ export default function DashboardPageClient() {
         copilotApiFetch(`/api/copilot/financial-reconciliation?${periodQ}`, { signal: sig }),
         copilotApiFetch("/api/copilot/treasury/cash-position", { signal: sig }),
         copilotApiFetch("/api/copilot/treasury/scheduled-payments?include_summary=1&horizon_days=30", { signal: sig }),
-        copilotApiFetch("/api/copilot/treasury/exchange-rates", { signal: sig }),
         ...monthQueries.map((q) =>
           copilotApiFetch(`/api/copilot/financial-reconciliation?${q}`, { signal: sig })
         ),
@@ -1039,7 +1028,7 @@ export default function DashboardPageClient() {
 
       if (sig.aborted) return;
 
-      // ── Portfolio (hub) ──
+      // -- Portfolio (hub) --
       let portfolioRows: ClientPortfolioLoad["rows"] = [];
       let portfolioDetails: ClientPortfolioLoad["details"] = {};
       if (hubRes.status === "fulfilled") {
@@ -1049,7 +1038,7 @@ export default function DashboardPageClient() {
         portfolioDetails = portfolio?.details ?? {};
       }
 
-      // ── Reconciliation ──
+      // -- Reconciliation --
       let outstandingReport: FinancialConsistencyReport | null = null;
       let periodReport: FinancialConsistencyReport | null = null;
 
@@ -1062,7 +1051,7 @@ export default function DashboardPageClient() {
         periodReport = j?.report ?? null;
       }
 
-      // ── Treasury (mismo contrato JSON que /copilot/hoy) ──
+      // -- Treasury (mismo contrato JSON que /copilot/hoy) --
       let cashPositions: CashPositionByCurrency[] = [];
       let outflowSummaries: TreasuryOutflowSummary[] = [];
 
@@ -1079,15 +1068,9 @@ export default function DashboardPageClient() {
         }
       }
 
-      // ── Exchange rate ──
-      if (tcRes.status === "fulfilled") {
-        const j = await tcRes.value.json().catch(() => null);
-        if (tcRes.value.ok && j?.ok && j.data?.rate?.uyuPerUsd) {
-          setExchangeRate(j.data.rate.uyuPerUsd as number);
-        }
-      }
+      // -- Exchange rate: solo localStorage (visual Dashboard) --
 
-      // ── Monthly trend (one bucket per calendar month in selected period) ──
+      // -- Monthly trend (one bucket per calendar month in selected period) --
       const parsedMonthly: DashboardMonthlyPoint[] = [];
       for (let i = 0; i < monthlyRes.length; i++) {
         const res = monthlyRes[i];
@@ -1101,7 +1084,7 @@ export default function DashboardPageClient() {
         parsedMonthly.push(extractMonthlyPoint(report, meta.yearMonth));
       }
 
-      // ── Derived data ──
+      // -- Derived data --
       const newCurrData = extractDashboardCurrencyData({
         periodReport,
         outstandingReport,
@@ -1130,19 +1113,17 @@ export default function DashboardPageClient() {
   const usd = currencyData.find((d) => d.currency === "USD");
   const dashState = determineDashboardState(currencyData, clientStates);
 
-  // USD consolidado helpers
-  const isConsolidated = selectedCurrency === "USD_consolidated" && exchangeRate !== null;
-  const showTcControls = selectedCurrency === "USD_consolidated";
+  // USD consolidado helpers (solo visual — TC en localStorage)
+  const isConsolidated = selectedCurrency === "USD_consolidated";
+  const showTcControls = isConsolidated;
   const effectiveCurrency: "all" | "UYU" | "USD" = isConsolidated
     ? "USD"
-    : selectedCurrency === "USD_consolidated"
-    ? "all"
-    : (selectedCurrency as "all" | "UYU" | "USD");
+    : selectedCurrency;
   const effectiveCurrencyForTables: "all" | "UYU" | "USD" = isConsolidated ? "all" : effectiveCurrency;
   const currencyModeLabel = isConsolidated
-    ? "USD consolidado"
+    ? "Todo en USD"
     : effectiveCurrency === "all"
-      ? "UYU + USD (separado)"
+      ? "UYU + USD"
       : effectiveCurrency;
   const executiveCurrencyMode: DashboardExecutiveCurrencyMode = isConsolidated
     ? "USD_consolidated"
@@ -1153,13 +1134,13 @@ export default function DashboardPageClient() {
         : "UYU";
   const consUyu = (val: number) => (isConsolidated ? 0 : val);
   const consUsd = (uyuVal: number, usdVal: number) =>
-    isConsolidated ? roundUsd(consolidateToUsd(uyuVal, usdVal, exchangeRate!)) : usdVal;
+    isConsolidated ? roundUsd(consolidateToUsdEquivalent(usdVal, uyuVal, exchangeRate)) : usdVal;
   const consBarData = (bars: BarData[]): BarData[] =>
     isConsolidated
       ? bars.map((b) => ({
           label: b.label,
           uyu: 0,
-          usd: roundUsd(consolidateToUsd(b.uyu ?? 0, b.usd ?? 0, exchangeRate!)),
+          usd: roundUsd(consolidateToUsdEquivalent(b.usd ?? 0, b.uyu ?? 0, exchangeRate)),
         }))
       : bars;
   const isDashboardQuiet = useMemo(() => {
@@ -1178,8 +1159,8 @@ export default function DashboardPageClient() {
   }, [loading, portfolioRows.length, currencyData]);
 
   const consolidatedCurrencyData = useMemo((): DashboardCurrencyData => {
-    const tc = exchangeRate ?? 1;
-    const c = (uyuVal: number, usdVal: number) => roundUsd(consolidateToUsd(uyuVal, usdVal, tc));
+    const tc = exchangeRate;
+    const c = (uyuVal: number, usdVal: number) => roundUsd(consolidateToUsdEquivalent(usdVal, uyuVal, tc));
     const cf = c(uyu?.facturado ?? 0, usd?.facturado ?? 0);
     const cc = c(uyu?.cobrado ?? 0, usd?.cobrado ?? 0);
     return {
@@ -1216,7 +1197,7 @@ export default function DashboardPageClient() {
 
   // Ventas vs Cobros (current period)
   const vsGroups = isConsolidated
-    ? [{ label: "USD (cons.)", a: roundUsd(consolidateToUsd(uyu?.facturado ?? 0, usd?.facturado ?? 0, exchangeRate!)), b: roundUsd(consolidateToUsd(uyu?.cobrado ?? 0, usd?.cobrado ?? 0, exchangeRate!)), aLabel: "Facturado", bLabel: "Cobrado" }]
+    ? [{ label: "USD (equiv.)", a: roundUsd(consolidateToUsdEquivalent(usd?.facturado ?? 0, uyu?.facturado ?? 0, exchangeRate)), b: roundUsd(consolidateToUsdEquivalent(usd?.cobrado ?? 0, uyu?.cobrado ?? 0, exchangeRate)), aLabel: "Facturado", bLabel: "Cobrado" }]
     : [
         ...(effectiveCurrency !== "USD" && (uyu?.facturado ?? 0) + (uyu?.cobrado ?? 0) > 0
           ? [{ label: "UYU", a: uyu?.facturado ?? 0, b: uyu?.cobrado ?? 0, aLabel: "Facturado", bLabel: "Cobrado" }]
@@ -1226,7 +1207,7 @@ export default function DashboardPageClient() {
           : []),
       ];
 
-  // Aging (all outstanding) — display labels use readable names
+  // Aging (all outstanding) ? display labels use readable names
   const agingUYU = uyu?.aging ?? [];
   const agingUSD = usd?.aging ?? [];
   const AGING_KEYS = ["0-30", "31-60", "61-90", "90+"] as const;
@@ -1239,7 +1220,7 @@ export default function DashboardPageClient() {
     usd: agingUSD.find((b) => b.label === key)?.amount ?? 0,
   })));
 
-  // noPagos — detect when caja después de pagos = caja disponible (no scheduled payments)
+  // noPagos ? detect when caja después de pagos = caja disponible (no scheduled payments)
   const noPagosUYU = Math.abs((uyu?.cajaDespPagos ?? 0) - (uyu?.cajaDisponible ?? 0)) < 0.01;
   const noPagosUSD = Math.abs((usd?.cajaDespPagos ?? 0) - (usd?.cajaDisponible ?? 0)) < 0.01;
   const noPagos = isConsolidated
@@ -1294,7 +1275,7 @@ export default function DashboardPageClient() {
 
   const consolidatedActiveDebtRows = useMemo((): DashboardActiveDebtRow[] => {
     if (!isConsolidated) return [];
-    const tc = exchangeRate!;
+    const tc = exchangeRate;
     const byCompany = new Map<string, { name: string; active: number; overdue: number; overdueDays: number | null; status: string; risk: string }>();
     for (const row of activeDebtRows) {
       const toUsd = (v: number) => roundUsd(row.currency === "UYU" ? v / tc : v);
@@ -1343,7 +1324,7 @@ export default function DashboardPageClient() {
             .filter((r) => r.debt_uyu > 0 || r.debt_usd > 0)
             .map((r) => ({
               label: r.name,
-              value: roundUsd(consolidateToUsd(r.debt_uyu, r.debt_usd, exchangeRate!)),
+              value: roundUsd(consolidateToUsdEquivalent(r.debt_usd, r.debt_uyu, exchangeRate)),
               id: r.company_id,
             }))
             .sort((a, b) => b.value - a.value)
@@ -1358,7 +1339,7 @@ export default function DashboardPageClient() {
             .filter((r) => (r.billing_uyu ?? 0) > 0 || (r.billing_usd ?? 0) > 0)
             .map((r) => ({
               label: r.name,
-              value: roundUsd(consolidateToUsd(r.billing_uyu ?? 0, r.billing_usd ?? 0, exchangeRate!)),
+              value: roundUsd(consolidateToUsdEquivalent(r.billing_usd ?? 0, r.billing_uyu ?? 0, exchangeRate)),
               id: r.company_id,
             }))
             .sort((a, b) => b.value - a.value)
@@ -1379,20 +1360,20 @@ export default function DashboardPageClient() {
     ? Math.round((usdTop10Sum / usd!.deudaActiva) * 100)
     : null;
 
-  // Cash projection (area chart) — mode-aware
+  // Cash projection (area chart) ? mode-aware
   const cashProjectionPoints = useMemo(() => {
     if (isConsolidated) {
       const disp = consolidatedCurrencyData.cajaDisponible;
       const desp = consolidatedCurrencyData.cajaDespPagos;
       if (disp === 0 && desp === 0) return [];
-      return [{ label: "Hoy", value: disp }, { label: "−pagos", value: desp }];
+      return [{ label: "Hoy", value: disp }, { label: "-pagos", value: desp }];
     }
     if (effectiveCurrency === "USD") {
       if (usd?.cajaDisponible === undefined) return [];
-      return [{ label: "Hoy", value: usd.cajaDisponible }, { label: "−pagos", value: usd.cajaDespPagos }];
+      return [{ label: "Hoy", value: usd.cajaDisponible }, { label: "-pagos", value: usd.cajaDespPagos }];
     }
     if (uyu?.cajaDisponible === undefined) return [];
-    return [{ label: "Hoy", value: uyu.cajaDisponible }, { label: "−pagos", value: uyu.cajaDespPagos }];
+    return [{ label: "Hoy", value: uyu.cajaDisponible }, { label: "-pagos", value: uyu.cajaDespPagos }];
   }, [isConsolidated, effectiveCurrency, consolidatedCurrencyData, uyu, usd]);
 
   const hasPendingChanges =
@@ -1400,7 +1381,7 @@ export default function DashboardPageClient() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-auto">
-      {/* ── Header ────────────────────────────────────────────────────── */}
+      {/* -- Header ------------------------------------------------------ */}
       <div className="sticky top-0 z-10 border-b border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/95 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -1429,16 +1410,27 @@ export default function DashboardPageClient() {
                 className="hidden sm:block"
               />
             )}
-            <a
-              href={`/api/copilot/dashboard/summary.pdf?from=${confirmedFrom}&to=${confirmedTo}&currency=${selectedCurrency}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={C.btnGhost}
-              title="Descargar PDF del período actual"
-            >
-              <FileDown className="h-3 w-3" />
-              Descargar PDF
-            </a>
+            {isConsolidated ? (
+              <span
+                className={`${C.btnGhost} cursor-not-allowed opacity-50`}
+                title="El PDF usa monedas reales de Zeta. La conversión a USD es solo visual en pantalla."
+                aria-disabled="true"
+              >
+                <FileDown className="h-3 w-3" />
+                Descargar PDF
+              </span>
+            ) : (
+              <a
+                href={`/api/copilot/dashboard/summary.pdf?from=${confirmedFrom}&to=${confirmedTo}&currency=${selectedCurrency}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={C.btnGhost}
+                title="Descargar PDF del período actual"
+              >
+                <FileDown className="h-3 w-3" />
+                Descargar PDF
+              </a>
+            )}
             <button
               type="button"
               onClick={() => setReloadTick((t) => t + 1)}
@@ -1481,68 +1473,47 @@ export default function DashboardPageClient() {
             className={C.input}
             aria-label="Filtrar por moneda"
           >
-            <option value="all">UYU + USD (separado)</option>
-            <option value="UYU">Solo UYU</option>
-            <option value="USD">Solo USD</option>
-            <option value="USD_consolidated">
-              {exchangeRate === null ? "USD consolidado (configurar TC)" : "USD consolidado"}
-            </option>
+            <option value="UYU">UYU</option>
+            <option value="USD">USD</option>
+            <option value="all">UYU + USD</option>
+            <option value="USD_consolidated">Todo en USD</option>
           </select>
-          {showTcControls && (
-            editingTc ? (
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className={`text-[10px] font-medium ${C.muted}`}>TC UYU/USD</span>
+          {showTcControls ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <label className={`flex items-center gap-1.5 text-[11px] font-medium ${C.muted}`}>
+                <span>1 USD =</span>
                 <input
                   type="number"
                   min="0.01"
                   max="999.99"
                   step="0.01"
-                  placeholder="Ej: 43.50"
-                  value={tcInputDraft}
-                  onChange={(e) => setTcInputDraft(e.target.value)}
-                  className={`${C.input} w-28`}
-                  aria-label="Tipo de cambio pesos por dólar"
+                  value={fxInputDraft}
+                  onChange={(e) => setFxInputDraft(e.target.value)}
+                  onBlur={() => {
+                    persistFxRate(fxInputDraft);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      persistFxRate(fxInputDraft);
+                    }
+                  }}
+                  className={`${C.input} w-20`}
+                  aria-label="Tipo de cambio: pesos uruguayos por dólar"
                 />
-                <button type="button" onClick={handleSaveTc} disabled={tcSaving} className={C.btn}>
-                  {tcSaving ? "Guardando…" : "Guardar TC"}
-                </button>
-                <button type="button" onClick={() => setEditingTc(false)} className={C.btnGhost}>
-                  Cancelar
-                </button>
-              </div>
-            ) : exchangeRate !== null ? (
-              <div className="flex items-center gap-1.5">
-                <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700 ring-1 ring-blue-200">
-                  {formatExchangeRateLabel(exchangeRate)}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => { setTcInputDraft(String(exchangeRate)); setEditingTc(true); }}
-                  className={C.btnGhost}
-                >
-                  Editar TC
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-wrap items-center gap-1.5">
-                <input
-                  type="number"
-                  min="0.01"
-                  max="999.99"
-                  step="0.01"
-                  placeholder="TC UYU/USD  (ej: 43.50)"
-                  value={tcInputDraft}
-                  onChange={(e) => setTcInputDraft(e.target.value)}
-                  className={`${C.input} w-36`}
-                  aria-label="Tipo de cambio pesos por dólar"
-                />
-                <button type="button" onClick={handleSaveTc} disabled={tcSaving} className={C.btn}>
-                  {tcSaving ? "Guardando…" : "Guardar TC"}
-                </button>
-                <span className={`text-[10px] ${C.muted}`}>Necesario para usar USD consolidado.</span>
-              </div>
-            )
-          )}
+                <span>UYU</span>
+              </label>
+              <span
+                title={DASHBOARD_USD_CONSOLIDATED_DISCLAIMER}
+                className="inline-flex items-center rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-tone-neutral-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--copilot-accent)]"
+              >
+                Convertido a USD
+              </span>
+              <span className={`hidden text-[10px] ${C.muted} sm:inline`}>
+                {formatDashboardFxRateCompact(exchangeRate)}
+              </span>
+            </div>
+          ) : null}
           {hasPendingChanges && (
             <button
               type="button"
@@ -1559,17 +1530,17 @@ export default function DashboardPageClient() {
       </div>
 
       {(selectedCurrency === "all" || isConsolidated) && (
-        <div className="mx-4 mb-0 flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50/80 px-3 py-2 text-xs text-blue-800 sm:mx-6 lg:mx-8">
+        <div className="mx-4 mb-0 flex items-start gap-2 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-tone-neutral-bg)]/80 px-3 py-2 text-xs text-[var(--copilot-accent)] sm:mx-6 lg:mx-8">
           <Info className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />
           <span>
             {isConsolidated
-              ? METRIC_USD_CONSOLIDATED_DISCLAIMER
+              ? DASHBOARD_USD_CONSOLIDATED_DISCLAIMER
               : METRIC_SEPARATED_CURRENCY_DISCLAIMER}
           </span>
         </div>
       )}
 
-      {/* ── Content ───────────────────────────────────────────────────── */}
+      {/* -- Content ----------------------------------------------------- */}
       <div className="space-y-6 px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
 
         {/* Executive summary */}
@@ -1592,14 +1563,14 @@ export default function DashboardPageClient() {
           <CopilotPremiumEmptyState
             title="Todavía no hay datos para analizar en este período"
             why="No encontramos ventas, cobros, deuda ni caja en el rango seleccionado."
-            whatToDo="Verificá que Zeta esté sincronizado y ampliá el período si recién empezás a operar."
+            whatToDo="Verificá que Zeta está sincronizado y ampliá el período si recién empezás a operar."
             whatHappens="Cuando haya facturas, recibos o saldos cargados, vas a ver KPIs, gráficos y tablas acá."
             cta={{ label: "Ir a Datos", href: "/copilot/datos" }}
             className="mb-4"
           />
         ) : null}
 
-        {/* KPI grid — bloque 1: período */}
+        {/* KPI grid ? bloque 1: período */}
         <section aria-label="Resultado del período" className="space-y-3">
           <div>
             <h2 className={`text-xs font-semibold uppercase tracking-wide ${C.ink}`}>
@@ -1645,7 +1616,7 @@ export default function DashboardPageClient() {
           )}
         </section>
 
-        {/* KPI grid — bloque 2: situación actual */}
+        {/* KPI grid ? bloque 2: situación actual */}
         <section aria-label="Situación actual" className="space-y-3">
           <div>
             <h2 className={`text-xs font-semibold uppercase tracking-wide ${C.ink}`}>
@@ -1673,7 +1644,7 @@ export default function DashboardPageClient() {
               />
               <KpiCard
                 title={METRIC_LABEL.deuda_vencida}
-                tooltip="Parte de la cartera pendiente actual cuya fecha de vencimiento ya pasó. No depende del rango seleccionado."
+                tooltip="Parte de la cartera pendiente actual cuya fecha de vencimiento ya pasí. No depende del rango seleccionado."
                 uyuValue={consUyu(uyu?.deudaVencida ?? 0)}
                 usdValue={consUsd(uyu?.deudaVencida ?? 0, usd?.deudaVencida ?? 0)}
                 selectedCurrency={effectiveCurrency}
@@ -1682,7 +1653,7 @@ export default function DashboardPageClient() {
               />
               <KpiCard
                 title={METRIC_LABEL.caja_disponible}
-                tooltip="Dinero disponible actual en Tesorería."
+                tooltip="Caja disponible en Tesorería al corte."
                 uyuValue={consUyu(uyu?.cajaDisponible ?? 0)}
                 usdValue={consUsd(uyu?.cajaDisponible ?? 0, usd?.cajaDisponible ?? 0)}
                 selectedCurrency={effectiveCurrency}
@@ -1706,14 +1677,14 @@ export default function DashboardPageClient() {
           )}
         </section>
 
-        {/* Charts row 1: monthly trends — split by currency when "all" */}
+        {/* Charts row 1: monthly trends ? split by currency when "all" */}
         <section aria-label="Tendencia mensual">
           <div className="mb-3 flex flex-wrap items-baseline gap-2">
             <h2 className={`text-xs font-semibold uppercase tracking-wide ${C.muted}`}>
               Tendencia mensual del período
             </h2>
             <span className={`text-[10px] ${C.muted}`}>
-              Rango: {fmtDate(confirmedFrom)} → {fmtDate(confirmedTo)}
+              Rango: {fmtDate(confirmedFrom)} – {fmtDate(confirmedTo)}
             </span>
           </div>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-2">
@@ -1739,7 +1710,7 @@ export default function DashboardPageClient() {
                     <VerticalBarChart data={monthlyCollected} selectedCurrency="USD" height={140} />
                   )}
                 </ChartCard>
-                {/* [3] Ventas vs Cobros — per currency with % chips */}
+                {/* [3] Ventas vs Cobros ? per currency with % chips */}
                 <ChartCard title="Ventas vs Cobros UYU" subtitle="Período seleccionado · Verde = cobrado">
                   {loading ? <Skeleton className="h-28" /> : (uyu?.facturado ?? 0) + (uyu?.cobrado ?? 0) > 0 ? (
                     <GroupedBarChart groups={[{ label: "UYU", a: uyu?.facturado ?? 0, b: uyu?.cobrado ?? 0, aLabel: "Facturado", bLabel: "Cobrado" }]} height={140} />
@@ -1748,9 +1719,9 @@ export default function DashboardPageClient() {
                   )}
                   <div className="mt-2 flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-accent)]" /><p className={`text-[10px] ${C.muted}`}>Facturado</p></div>
-                    <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-emerald-400" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
+                    <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-status-ok-dot)]" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
                     {uyu?.efectividad != null && (
-                      <span className={`ml-auto text-[10px] font-semibold ${uyu.efectividad >= 0.8 ? "text-emerald-700" : "text-amber-700"}`}>
+                      <span className={`ml-auto text-[10px] font-semibold ${uyu.efectividad >= 0.8 ? "text-[var(--copilot-success-text)]" : "text-[var(--copilot-warning-text)]"}`}>
                         Cobranza: {Math.round(uyu.efectividad * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - uyu.efectividad) * 100)}%
                       </span>
                     )}
@@ -1764,9 +1735,9 @@ export default function DashboardPageClient() {
                   )}
                   <div className="mt-2 flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-accent)]" /><p className={`text-[10px] ${C.muted}`}>Facturado</p></div>
-                    <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-emerald-400" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
+                    <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-status-ok-dot)]" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
                     {usd?.efectividad != null && (
-                      <span className={`ml-auto text-[10px] font-semibold ${usd.efectividad >= 0.8 ? "text-emerald-700" : "text-amber-700"}`}>
+                      <span className={`ml-auto text-[10px] font-semibold ${usd.efectividad >= 0.8 ? "text-[var(--copilot-success-text)]" : "text-[var(--copilot-warning-text)]"}`}>
                         Cobranza: {Math.round(usd.efectividad * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - usd.efectividad) * 100)}%
                       </span>
                     )}
@@ -1823,9 +1794,9 @@ export default function DashboardPageClient() {
                     return (
                       <div className="mt-2 flex flex-wrap items-center gap-3">
                         <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-accent)]" /><p className={`text-[10px] ${C.muted}`}>Facturado</p></div>
-                        <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-emerald-400" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
+                        <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-status-ok-dot)]" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
                         {eff != null && (
-                          <span className={`ml-auto text-[10px] font-semibold ${eff >= 0.8 ? "text-emerald-700" : "text-amber-700"}`}>
+                          <span className={`ml-auto text-[10px] font-semibold ${eff >= 0.8 ? "text-[var(--copilot-success-text)]" : "text-[var(--copilot-warning-text)]"}`}>
                             Cobranza: {Math.round(eff * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - eff) * 100)}%
                           </span>
                         )}
@@ -1950,7 +1921,7 @@ export default function DashboardPageClient() {
                 title="Top facturación neta histórica UYU"
                 subtitle="Facturas activas menos notas de crédito · desde enero 2026"
                 badge={
-                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[9px] text-amber-700">
+                  <span className="rounded-full bg-[var(--copilot-tone-warning-bg)] px-2 py-0.5 text-[10px] text-[var(--copilot-warning-text)]">
                     Histórico neto
                   </span>
                 }
@@ -1974,7 +1945,7 @@ export default function DashboardPageClient() {
                 title="Top facturación neta histórica USD"
                 subtitle="Facturas activas menos notas de crédito · desde enero 2026"
                 badge={
-                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[9px] text-amber-700">
+                  <span className="rounded-full bg-[var(--copilot-tone-warning-bg)] px-2 py-0.5 text-[10px] text-[var(--copilot-warning-text)]">
                     Histórico neto
                   </span>
                 }
@@ -2029,7 +2000,7 @@ export default function DashboardPageClient() {
                 badge={
                   <span
                     title="Facturación neta histórica por cliente (no filtrable por período desde esta vista)."
-                    className={`cursor-help rounded-full bg-amber-50 px-2 py-0.5 text-[9px] text-amber-700`}
+                    className={`cursor-help rounded-full bg-[var(--copilot-tone-warning-bg)] px-2 py-0.5 text-[10px] text-[var(--copilot-warning-text)]`}
                   >
                     Histórico neto
                   </span>
@@ -2074,15 +2045,15 @@ export default function DashboardPageClient() {
                       <p className={`text-[10px] leading-tight ${C.muted}`}>Con deuda activa</p>
                       <p className={`mt-1 text-2xl font-bold tabular-nums ${C.ink}`}>{clientStates.total - clientStates.sinDeuda}</p>
                     </div>
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                      <p className={`text-[10px] leading-tight text-amber-700`}>Con deuda vencida</p>
-                      <p className={`mt-1 text-2xl font-bold tabular-nums text-amber-800`}>
+                    <div className="rounded-lg border border-[var(--copilot-warning-border)] bg-[var(--copilot-card-bg)] p-3">
+                      <p className={`text-[10px] leading-tight text-[var(--copilot-warning-text)]`}>Con atrasos</p>
+                      <p className={`mt-1 text-2xl font-bold tabular-nums text-[var(--copilot-warning-text-strong)]`}>
                         {clientStates.conDeudaVencida + clientStates.riesgoAlto}
                       </p>
                     </div>
-                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-                      <p className={`text-[10px] leading-tight text-emerald-700`}>Al día</p>
-                      <p className={`mt-1 text-2xl font-bold tabular-nums text-emerald-800`}>{clientStates.conDeudaAlDia}</p>
+                    <div className="rounded-lg border border-[var(--copilot-success-border)] bg-[var(--copilot-card-bg)] p-3">
+                      <p className={`text-[10px] leading-tight text-[var(--copilot-success-text)]`}>Al día</p>
+                      <p className={`mt-1 text-2xl font-bold tabular-nums text-[var(--copilot-success-text-strong)]`}>{clientStates.conDeudaAlDia}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2 border-t border-[var(--copilot-border)] pt-2">
@@ -2094,7 +2065,7 @@ export default function DashboardPageClient() {
                         </div>
                         <div>
                           <p className={`text-[10px] ${C.muted}`}>Deuda vencida (USD cons.)</p>
-                          <p className={`text-sm font-semibold tabular-nums text-amber-700`}>{fmtAmount(consolidatedCurrencyData.deudaVencida, "USD")}</p>
+                          <p className={`text-sm font-semibold tabular-nums text-[var(--copilot-warning-text)]`}>{fmtAmount(consolidatedCurrencyData.deudaVencida, "USD")}</p>
                         </div>
                       </>
                     ) : effectiveCurrency === "USD" ? (
@@ -2105,7 +2076,7 @@ export default function DashboardPageClient() {
                         </div>
                         <div>
                           <p className={`text-[10px] ${C.muted}`}>Deuda vencida USD</p>
-                          <p className={`text-sm font-semibold tabular-nums text-amber-700`}>{fmtAmount(usd?.deudaVencida ?? 0, "USD")}</p>
+                          <p className={`text-sm font-semibold tabular-nums text-[var(--copilot-warning-text)]`}>{fmtAmount(usd?.deudaVencida ?? 0, "USD")}</p>
                         </div>
                       </>
                     ) : effectiveCurrency === "UYU" ? (
@@ -2116,7 +2087,7 @@ export default function DashboardPageClient() {
                         </div>
                         <div>
                           <p className={`text-[10px] ${C.muted}`}>Deuda vencida UYU</p>
-                          <p className={`text-sm font-semibold tabular-nums text-amber-700`}>{fmtAmount(uyu?.deudaVencida ?? 0, "UYU")}</p>
+                          <p className={`text-sm font-semibold tabular-nums text-[var(--copilot-warning-text)]`}>{fmtAmount(uyu?.deudaVencida ?? 0, "UYU")}</p>
                         </div>
                       </>
                     ) : (

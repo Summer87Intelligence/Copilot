@@ -17,7 +17,7 @@ const CURRENCY_SYMBOL: Record<CurrentDebtCurrencyCode, string> = {
 };
 
 /**
- * Bloque "Deuda actual del cliente" — siempre visible arriba del Estado de cuenta.
+ * Bloque "Total pendiente del cliente" — siempre visible arriba del Estado de cuenta.
  *
  * Se calcula en el caller con `buildClientCurrentDebtSummary` usando el dataset
  * ledger COMPLETO (sin filtros de período), de modo que este bloque NUNCA se
@@ -36,16 +36,16 @@ export function ClientCurrentDebtSummary({
 
   return (
     <section
-      aria-label="Deuda actual del cliente"
+      aria-label="Total pendiente del cliente"
       className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3"
     >
       <header className="space-y-0.5">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink)]">
-          Deuda actual del cliente
+          Total pendiente del cliente
         </h4>
         <p className="text-[11px] text-[var(--copilot-ink-muted)]">
-          Calculado con el saldo pendiente informado por Zeta en cada factura.
-          Independiente del período seleccionado.
+          Calculado con el saldo pendiente informado por Zeta en cada factura
+          al corte. El atrasado ya está incluido. Independiente del período seleccionado.
         </p>
       </header>
 
@@ -83,8 +83,8 @@ export function ClientCurrentDebtSummary({
  */
 function DebtBanner({ hasPendingDebt }: { hasPendingDebt: boolean }) {
   const cls = hasPendingDebt
-    ? "border-amber-200 bg-amber-50 text-amber-900"
-    : "border-emerald-200 bg-emerald-50 text-emerald-900";
+    ? "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]"
+    : "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]";
   const text = hasPendingDebt
     ? "El cliente registra saldo pendiente según Zeta."
     : "El cliente no registra saldo pendiente según Zeta.";
@@ -114,7 +114,7 @@ function CurrencyDebtCard({ block }: { block: CurrentDebtCurrencySummary }) {
       : "text-[var(--copilot-ink-muted)]";
   return (
     <article
-      aria-label={`Deuda actual en ${label}`}
+      aria-label={`Total pendiente en ${label}`}
       className="space-y-2 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2"
     >
       <div>
@@ -159,10 +159,10 @@ function CountPill({
 }) {
   const cls =
     tone === "paid"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+      ? "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]"
       : tone === "partial"
-        ? "border-amber-200 bg-amber-50 text-amber-900"
-        : "border-slate-200 bg-slate-50 text-slate-700";
+        ? "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]"
+        : "border-[var(--copilot-border)] bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink-muted)]";
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${cls}`}

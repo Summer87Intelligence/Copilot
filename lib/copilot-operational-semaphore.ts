@@ -171,7 +171,7 @@ export function deriveOperationalSemaphore(input: {
     ctaHref = "/copilot/hoy";
     ctaLabel = "Ver Hoy";
   } else if (criticalAlerts.length > 0 || highAlerts.length > 0 || mediumAlerts.length > 0) {
-    ctaHref = "/copilot/alertas?source=operational";
+    ctaHref = "/copilot/alertasísource=operational";
     ctaLabel = "Ver alertas";
   } else if (attentionClients > 0) {
     ctaHref = "/copilot/clientes";

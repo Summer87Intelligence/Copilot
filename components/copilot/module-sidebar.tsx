@@ -54,7 +54,7 @@ export function CopilotModuleSidebar({
       }`}
     >
       <div
-        className={`flex h-[56px] shrink-0 items-center border-b border-[var(--copilot-border)] bg-[rgba(255,255,255,0.35)] ${
+        className={`flex h-[56px] shrink-0 items-center border-b border-[var(--copilot-border)] bg-[var(--copilot-sidebar-header-bg)] ${
           collapsed ? "justify-center px-2" : "gap-2 px-3"
         }`}
       >

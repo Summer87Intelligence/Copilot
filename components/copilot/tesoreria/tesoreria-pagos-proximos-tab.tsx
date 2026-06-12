@@ -49,7 +49,7 @@ export function TesoreriaPagosProximosTab({ workspace, asOfDate }: Props) {
         {summaries.map((s) => (
           <div
             key={s.currency}
-            className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm"
+            className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-4 shadow-sm"
           >
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
               Próximos 30 días · {s.currency}
@@ -61,14 +61,14 @@ export function TesoreriaPagosProximosTab({ workspace, asOfDate }: Props) {
               </div>
               <div className="flex justify-between gap-2">
                 <dt className="text-[var(--copilot-ink-muted)]">Vencidos</dt>
-                <dd className="font-semibold tabular-nums text-rose-700">{formatTreasuryMoney(s.overdue, s.currency)}</dd>
+                <dd className="font-semibold tabular-nums text-[var(--copilot-danger-text)]">{formatTreasuryMoney(s.overdue, s.currency)}</dd>
               </div>
             </dl>
           </div>
         ))}
       </div>
 
-      <section className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+      <section className="space-y-3 rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-4 shadow-sm">
         <p className="text-sm font-semibold text-[var(--copilot-ink)]">Filtros</p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <label className="block text-sm">

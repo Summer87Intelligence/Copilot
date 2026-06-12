@@ -125,7 +125,7 @@ function ProvenanceRow({
       <dt className="font-medium text-[var(--copilot-ink-muted)]">{label}</dt>
       <dd className="mt-0.5 flex items-start gap-1.5">
         <span
-          className={`mt-0.5 shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold leading-tight ${badgeClass}`}
+          className={`mt-0.5 shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold leading-tight ${badgeClass}`}
         >
           {value}
         </span>

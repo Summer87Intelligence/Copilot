@@ -116,7 +116,7 @@ function CashCompositionBlock({
         </p>
       </div>
 
-      <div className="mt-4 space-y-0.5 border-t border-neutral-100 pt-3">
+      <div className="mt-4 space-y-0.5 border-t border-[var(--copilot-border)] pt-3">
         <CompositionRow
           label={`Saldo cargado al ${baselineDate ?? "—"}`}
           value={pos && pos.openingConfigured ? formatTreasuryMoney(pos.openingBalance, currency) : "—"}
@@ -128,7 +128,7 @@ function CashCompositionBlock({
               ? `+ ${formatTreasuryMoney(pos.collectedFromClients, currency)}`
               : "—"
           }
-          valueClass="text-emerald-700"
+          valueClass="text-[var(--copilot-success-text)]"
           muted
         />
         <CompositionRow
@@ -138,7 +138,7 @@ function CashCompositionBlock({
               ? `+ ${formatTreasuryMoney(pos.manualIncome, currency)}`
               : "—"
           }
-          valueClass="text-emerald-700"
+          valueClass="text-[var(--copilot-success-text)]"
           muted
         />
         <CompositionRow
@@ -148,7 +148,7 @@ function CashCompositionBlock({
               ? `− ${formatTreasuryMoney(pos.manualExpense, currency)}`
               : "—"
           }
-          valueClass="text-rose-700"
+          valueClass="text-[var(--copilot-danger-text)]"
           muted
         />
         <CompositionRow
@@ -164,7 +164,7 @@ function CashCompositionBlock({
       </div>
 
       {pos && !pos.openingConfigured ? (
-        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+        <div className="mt-3 rounded-lg border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-3 py-2 text-[11px] text-[var(--copilot-warning-text-strong)]">
           Saldo no configurado. Ingresá el saldo actual para que la caja sea correcta.
         </div>
       ) : null}
@@ -316,7 +316,7 @@ function RecentMovements({ workspace }: { workspace: TreasuryWorkspace }) {
             {pageItems.map((m) => (
               <div
                 key={m.id}
-                className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white px-3 py-2.5 shadow-sm"
+                className="flex items-center justify-between rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2.5 shadow-sm"
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-[var(--copilot-ink)]">{m.concept}</p>
@@ -327,7 +327,7 @@ function RecentMovements({ workspace }: { workspace: TreasuryWorkspace }) {
                 </div>
                 <span
                   className={`ml-3 shrink-0 text-sm font-semibold tabular-nums ${
-                    m.movementType === "income" ? "text-emerald-700" : "text-rose-700"
+                    m.movementType === "income" ? "text-[var(--copilot-success-text)]" : "text-[var(--copilot-danger-text)]"
                   }`}
                 >
                   {m.movementType === "income" ? "+" : "−"}

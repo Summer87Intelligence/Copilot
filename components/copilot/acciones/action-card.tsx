@@ -90,37 +90,37 @@ const CHANNEL_LABEL: Record<string, string> = {
 };
 
 const CONTEXT_BADGE_CLASS: Record<string, string> = {
-  "En seguimiento": "bg-emerald-50 text-emerald-700 border-emerald-200",
-  "Promesa de pago": "bg-blue-50 text-blue-700 border-blue-200",
-  "Reintentar contacto": "bg-slate-100 text-slate-600 border-slate-200",
+  "En seguimiento": "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border-[var(--copilot-success-border)]",
+  "Promesa de pago": "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)] border-[var(--copilot-border)]",
+  "Reintentar contacto": "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink-muted)] border-[var(--copilot-border)]",
   "Actualizar contacto": "bg-orange-50 text-orange-700 border-orange-200",
   "En disputa": "bg-red-50 text-red-700 border-red-200",
-  "Seguimiento pendiente": "bg-amber-50 text-amber-700 border-amber-200",
+  "Seguimiento pendiente": "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]",
   Escalado: "bg-red-50 text-red-700 border-red-200",
-  Gestionado: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  Gestionado: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border-[var(--copilot-success-border)]",
 };
 
 function CollectionContextBlock({ ctx }: { ctx: CopilotActionCollectionContext }) {
   const badgeCls =
-    CONTEXT_BADGE_CLASS[ctx.statusLabel] ?? "bg-slate-100 text-slate-500 border-slate-200";
+    CONTEXT_BADGE_CLASS[ctx.statusLabel] ?? "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink-muted)] border-[var(--copilot-border)]";
   const channelLabel = CHANNEL_LABEL[ctx.latestChannel] ?? ctx.latestChannel;
 
   const today = new Date().toISOString().slice(0, 10);
   const followupTag = (() => {
     if (ctx.nextFollowUpAt) {
       if (ctx.nextFollowUpAt < today) {
-        return { label: "Seguimiento vencido", cls: "bg-rose-50 text-rose-700 border-rose-200" };
+        return { label: "Seguimiento vencido", cls: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]" };
       }
       if (ctx.nextFollowUpAt === today) {
-        return { label: "Seguimiento hoy", cls: "bg-amber-50 text-amber-700 border-amber-200" };
+        return { label: "Seguimiento hoy", cls: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]" };
       }
       return { label: "Seguimiento programado", cls: "bg-sky-50 text-sky-700 border-sky-200" };
     }
     if (ctx.latestOutcome === "promised_payment" && ctx.promiseDate) {
       if (ctx.promiseDate < today) {
-        return { label: "Promesa vencida", cls: "bg-rose-50 text-rose-700 border-rose-200" };
+        return { label: "Promesa vencida", cls: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]" };
       }
-      return { label: "Promesa vigente", cls: "bg-blue-50 text-blue-700 border-blue-200" };
+      return { label: "Promesa vigente", cls: "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)] border-[var(--copilot-border)]" };
     }
     return null;
   })();
@@ -145,7 +145,7 @@ function CollectionContextBlock({ ctx }: { ctx: CopilotActionCollectionContext }
         </span>
       </div>
       {ctx.promiseDate ? (
-        <p className="text-[11px] text-blue-600">
+        <p className="text-[11px] text-[var(--copilot-accent)]">
           Prometió pagar: {formatDateShort(ctx.promiseDate)}
           {ctx.promiseAmount != null && ctx.promiseCurrency
             ? ` · ${ctx.promiseCurrency === "USD" ? "U$S" : "$"} ${ctx.promiseAmount.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
@@ -236,15 +236,15 @@ export function ActionCard({ action }: { action: CopilotAction }) {
       </p>
       <div className="mt-1.5 space-y-1.5">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Qué pasó</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Qué pasó</p>
           <p className="text-xs leading-relaxed text-[var(--copilot-ink-muted)]">{action.reason}</p>
         </div>
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Qué riesgo tiene</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Qué riesgo tiene</p>
           <p className="text-xs leading-relaxed text-[var(--copilot-ink-muted)]">{riskLabel(action.priority)}</p>
         </div>
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Qué hacer ahora</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Qué hacer ahora</p>
           <p className="text-xs font-medium text-[var(--copilot-ink)]">{deriveNextStep(action)}</p>
         </div>
       </div>
@@ -267,9 +267,9 @@ export function ActionCard({ action }: { action: CopilotAction }) {
             rel="noopener noreferrer"
             title={`WhatsApp ${action.contactPhone}`}
             aria-label={`WhatsApp ${action.contactPhone}`}
-            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
           >
-            <MessageCircle className="h-3.5 w-3.5 shrink-0 text-emerald-600" aria-hidden />
+            <MessageCircle className="h-3.5 w-3.5 shrink-0 text-[var(--copilot-success-text)]" aria-hidden />
             WA
           </a>
         ) : null}
@@ -278,7 +278,7 @@ export function ActionCard({ action }: { action: CopilotAction }) {
             href={mailtoHref}
             title={action.contactEmail ?? "Email"}
             aria-label={`Email ${action.contactEmail}`}
-            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
           >
             <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
             Email

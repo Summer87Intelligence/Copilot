@@ -227,7 +227,7 @@ export function AccountStatementSendCard({
       </div>
 
       {/* Warning */}
-      <div className="mt-3 space-y-1.5 rounded-lg bg-amber-50/90 px-2.5 py-2 text-[11px] leading-relaxed text-amber-900">
+      <div className="mt-3 space-y-1.5 rounded-lg bg-[var(--copilot-tone-warning-bg)]/90 px-2.5 py-2 text-[11px] leading-relaxed text-[var(--copilot-warning-text-strong)]">
         <div className="flex items-start gap-2">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
           <span>{COLLECTION_UX.noAutoSend}</span>

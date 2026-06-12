@@ -34,7 +34,7 @@ const SECTIONS: Section[] = [
     id: "critical",
     label: "SLA crítico / vencidos",
     icon: <ShieldAlert className="h-4 w-4" />,
-    color: "text-rose-600",
+    color: "text-[var(--copilot-danger-text)]",
     filter: (i) => i.follow_up_result.sla_status === "critical" || i.follow_up_result.sla_status === "overdue",
   },
   {
@@ -48,21 +48,21 @@ const SECTIONS: Section[] = [
     id: "escalated",
     label: "Escalaciones activas",
     icon: <ArrowUpRight className="h-4 w-4" />,
-    color: "text-rose-700",
+    color: "text-[var(--copilot-danger-text-strong)]",
     filter: (i) => i.follow_up_result.operational_state === "escalated_active",
   },
   {
     id: "no_contact",
     label: "Sin contacto",
     icon: <UserX className="h-4 w-4" />,
-    color: "text-slate-600",
+    color: "text-[var(--copilot-ink-muted)]",
     filter: (i) => i.follow_up_result.sla_status === "no_contact",
   },
   {
     id: "due_today",
     label: "Vencen hoy",
     icon: <Clock className="h-4 w-4" />,
-    color: "text-amber-600",
+    color: "text-[var(--copilot-warning-text)]",
     filter: (i) => i.follow_up_result.sla_status === "due_today",
   },
 ];
@@ -72,10 +72,10 @@ const SECTIONS: Section[] = [
 // ---------------------------------------------------------------------------
 
 const RISK_DOT: Record<string, string> = {
-  critical: "bg-rose-500",
+  critical: "bg-[var(--copilot-danger-text)]",
   high:     "bg-orange-400",
-  medium:   "bg-amber-400",
-  low:      "bg-emerald-400",
+  medium:   "bg-[var(--copilot-warning-text)]",
+  low:      "bg-[var(--copilot-success-text)]",
 };
 
 function formatCurrency(amount: number, currency: string): string {
@@ -98,7 +98,7 @@ type ItemRowProps = {
 
 function QueueItemRow({ item, onActionClick }: ItemRowProps) {
   const slaColor = SLA_STATUS_COLORS[item.follow_up_result.sla_status] ?? "";
-  const riskDot = RISK_DOT[item.risk_level] ?? "bg-slate-400";
+  const riskDot = RISK_DOT[item.risk_level] ?? "bg-[var(--copilot-border)]";
 
   return (
     <div className="flex items-start gap-3 px-4 py-3 hover:bg-[var(--copilot-surface-alt)] transition-colors group">

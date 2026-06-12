@@ -110,11 +110,11 @@ export function ReconciliationCenter({
         <div className="flex items-center gap-3">
           <p className="text-[11px] uppercase tracking-[0.08em]">
             {criticalCount > 0 ? (
-              <span className="font-semibold text-rose-700">
+              <span className="font-semibold text-[var(--copilot-danger-text-strong)]">
                 {criticalCount} crítico{criticalCount === 1 ? "" : "s"}
               </span>
             ) : warnCount > 0 ? (
-              <span className="text-amber-700">{warnCount} warn</span>
+              <span className="text-[var(--copilot-warning-text-strong)]">{warnCount} warn</span>
             ) : (
               <span className="text-[var(--copilot-ink-muted)]">
                 generado {formatGeneratedAt(generatedAt ?? report.generatedAt)}
@@ -225,9 +225,9 @@ function MetricsTiles({ report }: { report: FinancialConsistencyReport }) {
 type Tone = "positive" | "info" | "warning" | "neutral";
 
 const TILE_TONE: Record<Tone, string> = {
-  positive: "border-emerald-200/70 bg-emerald-50/40 text-emerald-900",
+  positive: "border-[var(--copilot-success-border)]/70 bg-[var(--copilot-tone-positive-bg)]/40 text-[var(--copilot-success-text-strong)]",
   info: "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/65 text-[var(--copilot-ink)]",
-  warning: "border-amber-200/70 bg-amber-50/55 text-amber-900",
+  warning: "border-[var(--copilot-warning-border)]/70 bg-[var(--copilot-tone-warning-bg)]/55 text-[var(--copilot-warning-text-strong)]",
   neutral: "border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/40 text-[var(--copilot-ink-muted)]",
 };
 
@@ -301,11 +301,11 @@ function SyncRow({ state }: { state: SyncStateSummary }) {
 function SyncStatusDot({ status }: { status: StalenessStatus }) {
   const cls =
     status === "ok"
-      ? "bg-emerald-500"
+      ? "bg-[var(--copilot-success-text)]"
       : status === "warning"
-        ? "bg-amber-500"
+        ? "bg-[var(--copilot-warning-text)]"
         : status === "critical"
-          ? "bg-rose-500"
+          ? "bg-[var(--copilot-danger-text)]"
           : "bg-[var(--copilot-ink-muted)]";
   return <span className={`block h-2 w-2 rounded-full ${cls}`} aria-hidden />;
 }
@@ -318,9 +318,9 @@ const STATUS_LABEL: Record<StalenessStatus, string> = {
 };
 
 const STATUS_BADGE_CLASS: Record<StalenessStatus, string> = {
-  ok: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  warning: "border-amber-200 bg-amber-50 text-amber-800",
-  critical: "border-rose-200 bg-rose-50 text-rose-800",
+  ok: "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]",
+  warning: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",
+  critical: "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]",
   never_synced:
     "border-[var(--copilot-border)] bg-[rgba(44,40,37,0.04)] text-[var(--copilot-ink-muted)]",
 };
@@ -429,16 +429,16 @@ function describeStale(report: FinancialConsistencyReport): string {
 }
 
 const CHECK_ICON_CLASS: Record<CheckStatus, string> = {
-  ok: "text-emerald-600",
-  warn: "text-amber-700",
-  critical: "text-rose-700",
+  ok: "text-[var(--copilot-success-text)]",
+  warn: "text-[var(--copilot-warning-text-strong)]",
+  critical: "text-[var(--copilot-danger-text-strong)]",
   pending: "text-[var(--copilot-ink-muted)]",
 };
 
 const CHECK_BADGE_CLASS: Record<CheckStatus, string> = {
-  ok: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  warn: "border-amber-200 bg-amber-50 text-amber-800",
-  critical: "border-rose-200 bg-rose-50 text-rose-800",
+  ok: "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]",
+  warn: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",
+  critical: "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]",
   pending:
     "border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 text-[var(--copilot-ink-muted)]",
 };

@@ -102,7 +102,7 @@ function FollowupActionButton({
           {action.label}
         </button>
       )}
-      {error ? <p className="text-[11px] text-rose-700">{error}</p> : null}
+      {error ? <p className="text-[11px] text-[var(--copilot-danger-text-strong)]">{error}</p> : null}
     </div>
   );
 }

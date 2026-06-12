@@ -95,30 +95,30 @@ function getIconConfig(type: string, severity: string): IconConfig {
   const sz = "h-[15px] w-[15px] shrink-0";
 
   if (type === "collection_received")
-    return { bg: "bg-emerald-50", icon: <TrendingUp className={`${sz} text-emerald-600`} aria-hidden /> };
+    return { bg: "bg-[var(--copilot-tone-positive-bg)]", icon: <TrendingUp className={`${sz} text-[var(--copilot-success-text)]`} aria-hidden /> };
   if (type === "client_debt_settled")
-    return { bg: "bg-emerald-50", icon: <CheckCheck className={`${sz} text-emerald-600`} aria-hidden /> };
+    return { bg: "bg-[var(--copilot-tone-positive-bg)]", icon: <CheckCheck className={`${sz} text-[var(--copilot-success-text)]`} aria-hidden /> };
   if (type === "new_debtor")
-    return { bg: "bg-amber-50", icon: <Users className={`${sz} text-amber-600`} aria-hidden /> };
+    return { bg: "bg-[var(--copilot-tone-warning-bg)]", icon: <Users className={`${sz} text-[var(--copilot-warning-text)]`} aria-hidden /> };
   if (type === "client_overdue")
-    return { bg: "bg-rose-50", icon: <TrendingDown className={`${sz} text-rose-600`} aria-hidden /> };
+    return { bg: "bg-[var(--copilot-tone-danger-bg)]", icon: <TrendingDown className={`${sz} text-[var(--copilot-danger-text)]`} aria-hidden /> };
   if (type === "treasury_payment_due")
     return {
-      bg: severity === "critical" ? "bg-rose-50" : "bg-amber-50",
-      icon: <Wallet className={`${sz} ${severity === "critical" ? "text-rose-600" : "text-amber-600"}`} aria-hidden />,
+      bg: severity === "critical" ? "bg-[var(--copilot-tone-danger-bg)]" : "bg-[var(--copilot-tone-warning-bg)]",
+      icon: <Wallet className={`${sz} ${severity === "critical" ? "text-[var(--copilot-danger-text)]" : "text-[var(--copilot-warning-text)]"}`} aria-hidden />,
     };
   if (type === "treasury_payment_overdue")
-    return { bg: "bg-rose-50", icon: <AlertTriangle className={`${sz} text-rose-600`} aria-hidden /> };
+    return { bg: "bg-[var(--copilot-tone-danger-bg)]", icon: <AlertTriangle className={`${sz} text-[var(--copilot-danger-text)]`} aria-hidden /> };
   if (type === "sync_changes_detected")
-    return { bg: "bg-blue-50", icon: <Zap className={`${sz} text-blue-500`} aria-hidden /> };
+    return { bg: "bg-[var(--copilot-tone-neutral-bg)]", icon: <Zap className={`${sz} text-[var(--copilot-accent)]`} aria-hidden /> };
   if (type === "sync_failed")
-    return { bg: "bg-rose-50", icon: <XCircle className={`${sz} text-rose-500`} aria-hidden /> };
+    return { bg: "bg-[var(--copilot-tone-danger-bg)]", icon: <XCircle className={`${sz} text-[var(--copilot-danger-text)]`} aria-hidden /> };
   if (type === "cash_risk_detected")
-    return { bg: "bg-amber-50", icon: <AlertTriangle className={`${sz} text-amber-600`} aria-hidden /> };
+    return { bg: "bg-[var(--copilot-tone-warning-bg)]", icon: <AlertTriangle className={`${sz} text-[var(--copilot-warning-text)]`} aria-hidden /> };
   if (type === "debt_followup_summary")
-    return { bg: "bg-rose-50", icon: <Users className={`${sz} text-rose-500`} aria-hidden /> };
+    return { bg: "bg-[var(--copilot-tone-danger-bg)]", icon: <Users className={`${sz} text-[var(--copilot-danger-text)]`} aria-hidden /> };
   if (type === "notification_digest")
-    return { bg: "bg-blue-50", icon: <Bell className={`${sz} text-blue-500`} aria-hidden /> };
+    return { bg: "bg-[var(--copilot-tone-neutral-bg)]", icon: <Bell className={`${sz} text-[var(--copilot-accent)]`} aria-hidden /> };
 
   return { bg: "bg-[var(--copilot-surface-muted)]", icon: <Bell className={`${sz} text-[var(--copilot-ink-muted)]`} aria-hidden /> };
 }
@@ -143,7 +143,7 @@ function NotifItem({
     <div
       role="article"
       className={`cursor-default px-4 py-3.5 transition-colors hover:bg-[var(--copilot-soft-bg)] ${
-        unread ? "bg-[rgba(31,107,74,0.035)]" : ""
+        unread ? "bg-[var(--copilot-accent-soft)]" : ""
       }`}
       onClick={() => { if (unread) onRead(n.id); }}
     >
@@ -283,7 +283,7 @@ export function CopilotNotificationBell() {
         <Bell className="h-[17px] w-[17px]" aria-hidden />
         {badge > 0 ? (
           <span
-            className="absolute -right-0.5 -top-0.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white"
+            className="absolute -right-0.5 -top-0.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[var(--copilot-notification-badge-bg)] px-1 text-[10px] font-bold leading-none text-[var(--copilot-on-accent)]"
             aria-hidden
           >
             {badge > 9 ? "9+" : badge}
@@ -305,7 +305,7 @@ export function CopilotNotificationBell() {
                 Notificaciones
               </h2>
               {unreadCount > 0 ? (
-                <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--copilot-accent)] px-1.5 text-[10px] font-bold leading-none text-white">
+                <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--copilot-accent)] px-1.5 text-[10px] font-bold leading-none text-[var(--copilot-on-accent)]">
                   {unreadCount}
                 </span>
               ) : null}
@@ -329,7 +329,7 @@ export function CopilotNotificationBell() {
             ) : groups.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--copilot-surface-muted)]">
-                  <Bell className="h-5 w-5 text-slate-300" aria-hidden />
+                  <Bell className="h-5 w-5 text-[var(--copilot-ink-muted)]/50" aria-hidden />
                 </div>
                 <p className="text-[13px] font-semibold text-[var(--copilot-ink)]">
                   Sin novedades por ahora.

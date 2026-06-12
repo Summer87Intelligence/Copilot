@@ -160,7 +160,7 @@ export async function notifyNewDebtor(opts: NewDebtorOpts) {
   return createNotificationIfNotExists(opts.tenantCompanyId, {
     type: "new_debtor",
     severity: "warning",
-    title: "Nueva deuda detectada",
+    title: "Nuevo saldo pendiente",
     body: buildNewDebtorBody(opts.clientName, opts.amount, opts.currency),
     entity_type: "company",
     entity_id: opts.clientId,
@@ -245,7 +245,7 @@ export async function notifyInvoiceOverdue(opts: InvoiceOverdueOpts) {
   return createNotificationIfNotExists(opts.tenantCompanyId, {
     type: "client_overdue",
     severity: opts.daysOverdue >= 60 ? "critical" : "warning",
-    title: "Factura vencida",
+    title: "Factura atrasada",
     body: buildInvoiceOverdueBody(opts.clientName, opts.amount, opts.currency),
     entity_type: "invoice",
     entity_id: opts.invoiceId,

@@ -32,9 +32,9 @@ import type {
 // ---------------------------------------------------------------------------
 
 const CONFIDENCE_CLASS: Record<StrategyRecommendationConfidence, string> = {
-  high:   "bg-emerald-100 text-emerald-800 border border-emerald-300",
-  medium: "bg-amber-100 text-amber-800 border border-amber-200",
-  low:    "bg-slate-100 text-slate-700 border border-slate-200",
+  high:   "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border border-[var(--copilot-success-border)]",
+  medium: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border border-[var(--copilot-warning-border)]",
+  low:    "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink)] border border-[var(--copilot-border)]",
 };
 
 const CONFIDENCE_LABELS: Record<StrategyRecommendationConfidence, string> = {
@@ -52,10 +52,10 @@ const CATEGORY_ICONS: Record<StrategyRecommendationCategory, React.ReactNode> = 
 };
 
 const NOISE_CLASS: Record<AutomationNoiseLevel, string> = {
-  low:      "bg-emerald-50 text-emerald-800 border-emerald-200",
-  medium:   "bg-amber-50 text-amber-800 border-amber-200",
+  low:      "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border-[var(--copilot-success-border)]",
+  medium:   "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]",
   high:     "bg-orange-50 text-orange-800 border-orange-200",
-  critical: "bg-rose-50 text-rose-800 border-rose-200",
+  critical: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]",
 };
 
 const NOISE_LABELS: Record<AutomationNoiseLevel, string> = {
@@ -66,9 +66,9 @@ const NOISE_LABELS: Record<AutomationNoiseLevel, string> = {
 };
 
 function calibrationColor(score: number): string {
-  if (score >= 80) return "text-emerald-600";
-  if (score >= 60) return "text-amber-600";
-  return "text-rose-600";
+  if (score >= 80) return "text-[var(--copilot-success-text)]";
+  if (score >= 60) return "text-[var(--copilot-warning-text)]";
+  return "text-[var(--copilot-danger-text)]";
 }
 
 // ---------------------------------------------------------------------------
@@ -115,10 +115,10 @@ function ActionEffectivenessTable({ rows }: { rows: ActionEffectivenessRow[] }) 
                 <span
                   className={
                     row.effectiveness_pct >= 50
-                      ? "text-emerald-600 font-semibold"
+                      ? "text-[var(--copilot-success-text)] font-semibold"
                       : row.effectiveness_pct >= 25
-                      ? "text-amber-600 font-semibold"
-                      : "text-rose-600 font-semibold"
+                      ? "text-[var(--copilot-warning-text)] font-semibold"
+                      : "text-[var(--copilot-danger-text)] font-semibold"
                   }
                 >
                   {row.effectiveness_pct}%
@@ -161,12 +161,12 @@ function OperatorEffectivenessTable({ rows }: { rows: OperatorEffectivenessRow[]
               <td className="py-1 pr-3 font-medium text-[var(--copilot-text)]">{row.display_name}</td>
               <td className="py-1 pr-3 text-right text-[var(--copilot-text-muted)]">{row.total_cases_handled}</td>
               <td className="py-1 pr-3 text-right">
-                <span className={row.recovery_rate_pct >= 50 ? "text-emerald-600 font-semibold" : "text-[var(--copilot-text-muted)]"}>
+                <span className={row.recovery_rate_pct >= 50 ? "text-[var(--copilot-success-text)] font-semibold" : "text-[var(--copilot-text-muted)]"}>
                   {row.recovery_rate_pct}%
                 </span>
               </td>
               <td className="py-1 text-right">
-                <span className={row.sla_compliance_pct < 80 ? "text-rose-600 font-semibold" : "text-[var(--copilot-text-muted)]"}>
+                <span className={row.sla_compliance_pct < 80 ? "text-[var(--copilot-danger-text)] font-semibold" : "text-[var(--copilot-text-muted)]"}>
                   {Math.round(row.sla_compliance_pct)}%
                 </span>
               </td>
@@ -190,7 +190,7 @@ function AutomationRuleRow({ rule }: { rule: AutomationRuleEffectivenessRow }) {
           {rule.rule_label}
         </span>
         <span
-          className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold ${NOISE_CLASS[rule.noise_level]}`}
+          className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold ${NOISE_CLASS[rule.noise_level]}`}
         >
           {NOISE_LABELS[rule.noise_level]}
         </span>
@@ -212,10 +212,10 @@ function CalibrationSegmentRow({ seg }: { seg: ForecastCalibrationSegment }) {
   const deltaLabel = seg.delta_pct > 0 ? `+${seg.delta_pct}pp` : `${seg.delta_pct}pp`;
   const deltaClass =
     seg.direction === "accurate"
-      ? "text-emerald-600"
+      ? "text-[var(--copilot-success-text)]"
       : seg.direction === "overestimated"
-      ? "text-rose-600"
-      : "text-amber-600";
+      ? "text-[var(--copilot-danger-text)]"
+      : "text-[var(--copilot-warning-text)]";
   return (
     <div className="flex items-center gap-2 py-1 border-b border-[var(--copilot-border)]/40 last:border-0 text-[11px]">
       <span className="flex-1 text-[var(--copilot-text)] truncate">{seg.segment}</span>
@@ -242,12 +242,12 @@ function RecommendationCard({ rec }: { rec: StrategyRecommendation }) {
           </p>
           <div className="flex items-center gap-1.5 mt-0.5">
             <span
-              className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${CONFIDENCE_CLASS[rec.confidence]}`}
+              className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${CONFIDENCE_CLASS[rec.confidence]}`}
             >
               Confianza {CONFIDENCE_LABELS[rec.confidence]}
             </span>
             {rec.actionable && (
-              <span className="text-[9px] text-emerald-600 font-medium">Accionable</span>
+              <span className="text-[10px] text-[var(--copilot-success-text)] font-medium">Accionable</span>
             )}
           </div>
         </div>
@@ -351,7 +351,7 @@ export function StrategicLearningPanel(props: Props) {
 
   if (state.status === "error") {
     return (
-      <div className="flex items-center gap-2 text-rose-600 text-xs py-4">
+      <div className="flex items-center gap-2 text-[var(--copilot-danger-text)] text-xs py-4">
         <AlertTriangle className="h-4 w-4" />
         <span>{state.message}</span>
       </div>
@@ -374,28 +374,28 @@ export function StrategicLearningPanel(props: Props) {
       {/* Header KPIs */}
       <div className="grid grid-cols-4 gap-2">
         <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-surface)] px-2.5 py-2">
-          <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">Outcomes</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">Outcomes</p>
           <p className="text-lg font-bold text-[var(--copilot-text)] tabular-nums">{outcomes_total}</p>
-          <p className="text-[9px] text-[var(--copilot-text-muted)]">{metrics.positive_outcomes} positivos</p>
+          <p className="text-[10px] text-[var(--copilot-text-muted)]">{metrics.positive_outcomes} positivos</p>
         </div>
         <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-surface)] px-2.5 py-2">
-          <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">Calibración</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">Calibración</p>
           <p className={`text-lg font-bold tabular-nums ${calibrationColor(metrics.calibration_score)}`}>
             {metrics.calibration_score}
           </p>
-          <p className="text-[9px] text-[var(--copilot-text-muted)]">/ 100</p>
+          <p className="text-[10px] text-[var(--copilot-text-muted)]">/ 100</p>
         </div>
         <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-surface)] px-2.5 py-2">
-          <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">Reglas ruidosas</p>
-          <p className={`text-lg font-bold tabular-nums ${metrics.noisy_rules > 0 ? "text-amber-600" : "text-emerald-600"}`}>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">Reglas ruidosas</p>
+          <p className={`text-lg font-bold tabular-nums ${metrics.noisy_rules > 0 ? "text-[var(--copilot-warning-text)]" : "text-[var(--copilot-success-text)]"}`}>
             {metrics.noisy_rules}
           </p>
-          <p className="text-[9px] text-[var(--copilot-text-muted)]">de {automation_effectiveness.total_rules_evaluated}</p>
+          <p className="text-[10px] text-[var(--copilot-text-muted)]">de {automation_effectiveness.total_rules_evaluated}</p>
         </div>
         <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-surface)] px-2.5 py-2">
-          <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">Recomend.</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">Recomend.</p>
           <p className="text-lg font-bold text-[var(--copilot-text)] tabular-nums">{strategy_recommendations.length}</p>
-          <p className="text-[9px] text-[var(--copilot-text-muted)]">estratégicas</p>
+          <p className="text-[10px] text-[var(--copilot-text-muted)]">estratégicas</p>
         </div>
       </div>
 
@@ -411,7 +411,7 @@ export function StrategicLearningPanel(props: Props) {
         </div>
         <div className="flex items-center gap-1.5">
           {detectResult && (
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+            <CheckCircle2 className="h-3.5 w-3.5 text-[var(--copilot-success-text)]" />
           )}
           <button
             onClick={handleDetectOutcomes}
@@ -471,7 +471,7 @@ export function StrategicLearningPanel(props: Props) {
               {action_effectiveness.insight}
             </p>
             <ActionEffectivenessTable rows={action_effectiveness.by_action_type} />
-            <p className="text-[9px] text-[var(--copilot-text-muted)] mt-1">
+            <p className="text-[10px] text-[var(--copilot-text-muted)] mt-1">
               Fuente: {action_effectiveness.data_source === "outcomes" ? "outcomes formales" : action_effectiveness.data_source === "proxy" ? "métricas proxy" : "datos insuficientes"}
             </p>
           </div>
@@ -539,7 +539,7 @@ export function StrategicLearningPanel(props: Props) {
 
       {/* Footer */}
       {state.cached && (
-        <p className="text-[9px] text-[var(--copilot-text-muted)] text-right">
+        <p className="text-[10px] text-[var(--copilot-text-muted)] text-right">
           Datos en caché · {data.expires_at ? `expira ${new Date(data.expires_at).toLocaleTimeString("es-UY", { hour: "2-digit", minute: "2-digit" })}` : ""}
         </p>
       )}

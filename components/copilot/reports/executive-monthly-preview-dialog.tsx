@@ -21,18 +21,18 @@ type TopClient = ExecutiveMonthlyReportModel["top5Clients"][number];
 type TopDebtor = ExecutiveMonthlyReportModel["top5Debtors"][number];
 
 const RISK_COLORS: Record<string, string> = {
-  Alto: "text-rose-700 font-semibold",
-  Medio: "text-amber-700",
-  Bajo: "text-emerald-700",
+  Alto: "text-[var(--copilot-danger-text)] font-semibold",
+  Medio: "text-[var(--copilot-warning-text)]",
+  Bajo: "text-[var(--copilot-success-text)]",
 };
 
 const RISK_BANNER: Record<
   ExecutiveMonthlyReportModel["riskLevel"],
   { bg: string; text: string; icon: typeof AlertCircle }
 > = {
-  Crítico: { bg: "bg-rose-50 border-rose-200 text-rose-900", text: "Riesgo crítico", icon: AlertCircle },
-  Atención: { bg: "bg-amber-50 border-amber-200 text-amber-900", text: "Requiere atención", icon: AlertTriangle },
-  Bajo: { bg: "bg-emerald-50 border-emerald-200 text-emerald-900", text: "Riesgo bajo", icon: CheckCircle2 },
+  Crítico: { bg: "bg-[var(--copilot-tone-danger-bg)] border-[var(--copilot-danger-border)] text-[var(--copilot-danger-text-strong)]", text: "Riesgo crítico", icon: AlertCircle },
+  Atención: { bg: "bg-[var(--copilot-tone-warning-bg)] border-[var(--copilot-warning-border)] text-[var(--copilot-warning-text-strong)]", text: "Requiere atención", icon: AlertTriangle },
+  Bajo: { bg: "bg-[var(--copilot-tone-positive-bg)] border-[var(--copilot-success-border)] text-[var(--copilot-success-text-strong)]", text: "Riesgo bajo", icon: CheckCircle2 },
 };
 
 function getClientColumns(currency: string): ReportTableColumn<TopClient>[] {
@@ -84,7 +84,7 @@ function getDebtorColumns(currency: string): ReportTableColumn<TopDebtor>[] {
       cellClassName: "text-right tabular-nums text-xs",
       render: (r) =>
         r.overdueAmount > 0 ? (
-          <span className="text-rose-700">{formatMoneyCurrency(r.overdueAmount, currency)}</span>
+          <span className="text-[var(--copilot-danger-text)]">{formatMoneyCurrency(r.overdueAmount, currency)}</span>
         ) : (
           "—"
         ),
@@ -189,7 +189,7 @@ export function ExecutiveMonthlyPreviewDialog({ open, onClose }: Props) {
               {model.alerts.map((alert, i) => (
                 <li
                   key={i}
-                  className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-1.5 text-amber-900"
+                  className="rounded-lg border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-3 py-1.5 text-[var(--copilot-warning-text-strong)]"
                 >
                   • {alert}
                 </li>
@@ -308,7 +308,7 @@ function PreviewLoadingState() {
 
 function PreviewErrorState({ message }: { message: string }) {
   return (
-    <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+    <div className="rounded-xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] px-4 py-3 text-sm text-[var(--copilot-danger-text-strong)]">
       No pudimos cargar este reporte. {message}
     </div>
   );

@@ -156,14 +156,14 @@ const MODULE_ICON_MAP: Record<string, React.ReactNode> = {
 };
 
 const DAILY_FLOW_COLORS = [
-  "bg-emerald-100 text-emerald-800",
-  "bg-amber-100 text-amber-800",
-  "bg-blue-100 text-blue-800",
+  "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-success-text-strong)]",
+  "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-warning-text-strong)]",
+  "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)]",
   "bg-violet-100 text-violet-800",
   "bg-orange-100 text-orange-800",
   "bg-teal-100 text-teal-800",
   "bg-indigo-100 text-indigo-800",
-  "bg-rose-100 text-rose-800",
+  "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-danger-text-strong)]",
 ];
 
 type Section = {
@@ -408,7 +408,7 @@ export default function ManualPage() {
                   className={`flex items-center gap-4 rounded-xl border ${C.border} bg-[var(--copilot-card-bg)]/60 px-4 py-3 transition hover:bg-[var(--copilot-panel-bg)] hover:shadow-sm`}
                 >
                   <span
-                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${DAILY_FLOW_COLORS[i] ?? "bg-slate-100 text-slate-800"}`}
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${DAILY_FLOW_COLORS[i] ?? "bg-[var(--copilot-soft-bg)] text-[var(--copilot-text)]"}`}
                   >
                     {row.step}
                   </span>

@@ -26,32 +26,32 @@ import {
 const STATUS_CFG = {
   stable: {
     icon: CheckCircle2,
-    iconCls: "text-emerald-600",
+    iconCls: "text-[var(--copilot-success-text)]",
     label: "Al día",
-    badgeCls: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    bannerCls: "bg-emerald-50 border-emerald-200",
+    badgeCls: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border-[var(--copilot-success-border)]",
+    bannerCls: "bg-[var(--copilot-tone-positive-bg)] border-[var(--copilot-success-border)]",
   },
   attention: {
     icon: CircleDot,
-    iconCls: "text-amber-600",
+    iconCls: "text-[var(--copilot-warning-text)]",
     label: "Atención",
-    badgeCls: "bg-amber-50 text-amber-700 border-amber-200",
-    bannerCls: "bg-amber-50 border-amber-200",
+    badgeCls: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]",
+    bannerCls: "bg-[var(--copilot-tone-warning-bg)] border-[var(--copilot-warning-border)]",
   },
   critical: {
     icon: TriangleAlert,
-    iconCls: "text-rose-600",
+    iconCls: "text-[var(--copilot-danger-text)]",
     label: "Crítico",
-    badgeCls: "bg-rose-50 text-rose-700 border-rose-200",
-    bannerCls: "bg-rose-50 border-rose-200",
+    badgeCls: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]",
+    bannerCls: "bg-[var(--copilot-tone-danger-bg)] border-[var(--copilot-danger-border)]",
   },
 } as const;
 
 const SEVERITY_DOT: Record<ClientAgentInsight["severity"], string> = {
-  critical: "bg-rose-500",
-  high: "bg-amber-500",
+  critical: "bg-[var(--copilot-danger-text)]",
+  high: "bg-[var(--copilot-warning-text)]",
   medium: "bg-sky-400",
-  low: "bg-slate-300",
+  low: "bg-[var(--copilot-subtle)]",
 };
 
 const HIDDEN_AGENT_INSIGHT_IDS = new Set([
@@ -134,7 +134,7 @@ function AgentResults({
       {/* Three diagnosis blocks */}
       <div className="grid gap-2 sm:grid-cols-3">
         <div className="rounded-xl border border-[var(--copilot-border)] bg-[rgba(44,40,37,0.03)] px-3.5 py-3">
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
+          <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
             Qué pasa
           </p>
           <p className="text-[13px] leading-snug text-[var(--copilot-ink)]">
@@ -142,7 +142,7 @@ function AgentResults({
           </p>
         </div>
         <div className="rounded-xl border border-[var(--copilot-border)] bg-[rgba(44,40,37,0.03)] px-3.5 py-3">
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
+          <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
             Por qué importa
           </p>
           <p className="text-[13px] leading-snug text-[var(--copilot-ink-muted)]">
@@ -150,7 +150,7 @@ function AgentResults({
           </p>
         </div>
         <div className="rounded-xl border border-[var(--copilot-border)] bg-[rgba(44,40,37,0.03)] px-3.5 py-3">
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
+          <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
             Qué hacer ahora
           </p>
           <button

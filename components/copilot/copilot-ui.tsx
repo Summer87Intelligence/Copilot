@@ -10,7 +10,7 @@ import {
 } from "@/components/copilot/ui/copilot-button";
 
 export const copilotPageMainClass =
-  "flex-1 space-y-6 overflow-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8";
+  "flex-1 space-y-4 overflow-auto px-4 py-4 sm:px-6 sm:py-5 lg:px-8";
 
 const ink = "text-[var(--copilot-text)]";
 const muted = "text-[var(--copilot-muted)]";
@@ -24,7 +24,7 @@ export function CopilotCard({
 }) {
   return (
     <div
-      className={`rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-4 shadow-[var(--copilot-shadow)] ${className}`}
+      className={`rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-4 shadow-[var(--copilot-shadow)] transition-shadow hover:shadow-md ${className}`}
     >
       {children}
     </div>
@@ -74,7 +74,7 @@ export function CopilotBadge({
   };
   return (
     <span
-      className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold ${tones[tone]}`}
+      className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${tones[tone]}`}
     >
       {children}
     </span>
@@ -156,7 +156,7 @@ export function CopilotKpiCard({
 }) {
   return (
     <CopilotCard className="flex flex-col gap-1.5">
-      <p className={`text-[10px] font-semibold uppercase tracking-wide ${muted}`}>
+      <p className={`text-xs font-semibold uppercase tracking-wide ${muted}`}>
         {label}
       </p>
       <p className={`text-xl font-semibold tracking-tight ${ink}`}>{value}</p>

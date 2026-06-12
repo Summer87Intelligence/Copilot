@@ -13,7 +13,7 @@ export function FinancialStatusBadge({ flags }: { flags: FinancialStatusBadgeFla
   if (flags.financial_state_label === "not_closed") {
     main = (
       <span
-        className="inline-flex items-center rounded-full bg-amber-100/90 px-2.5 py-1 text-xs font-semibold text-amber-900"
+        className="inline-flex items-center rounded-full bg-[var(--copilot-tone-warning-bg)]/90 px-2.5 py-1 text-xs font-semibold text-[var(--copilot-warning-text-strong)]"
         title="Hay saldo operativo abierto en esta vista; el período no se considera cerrado."
       >
         {FINANCIAL_UX_COPY.notClosed}
@@ -22,7 +22,7 @@ export function FinancialStatusBadge({ flags }: { flags: FinancialStatusBadgeFla
   } else if (flags.financial_state_label === "closed_validated") {
     main = (
       <span
-        className="inline-flex items-center rounded-full bg-emerald-100/80 px-2.5 py-1 text-xs font-semibold text-emerald-900"
+        className="inline-flex items-center rounded-full bg-[var(--copilot-tone-positive-bg)]/80 px-2.5 py-1 text-xs font-semibold text-[var(--copilot-success-text-strong)]"
         title="Sin saldo operativo abierto en esta vista y validación externa registrada."
       >
         {FINANCIAL_UX_COPY.closedValidated}

@@ -3,9 +3,9 @@
 import type { FinancialPriorityAlert } from "@/lib/copilot-financial-priority-engine";
 
 const SEVERITY_STYLE: Record<FinancialPriorityAlert["severity"], string> = {
-  high: "border-rose-200 bg-rose-50/80 text-rose-950",
-  medium: "border-amber-200 bg-amber-50/80 text-amber-950",
-  low: "border-emerald-200 bg-emerald-50/80 text-emerald-950",
+  high: "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)]/80 text-[var(--copilot-danger-text-strong)]",
+  medium: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)]/80 text-[var(--copilot-warning-text-strong)]",
+  low: "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)]/80 text-[var(--copilot-success-text-strong)]",
 };
 
 const SEVERITY_LABEL: Record<FinancialPriorityAlert["severity"], string> = {

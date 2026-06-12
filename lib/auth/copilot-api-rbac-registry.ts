@@ -29,6 +29,10 @@ export const COPILOT_API_TENANT_ONLY_ALLOWLIST: ReadonlyArray<readonly [string, 
     "/api/copilot/dev-financial-trace",
     "Dev tooling — traza financiera interna",
   ],
+  [
+    "/api/copilot/notifications/generate",
+    "Side-effect del sistema — idempotente vía dedup_key, no es write del usuario; lo invoca el cron all-tenants y best-effort el cliente al iniciar sesión (incluye read-only).",
+  ],
 ];
 
 /**

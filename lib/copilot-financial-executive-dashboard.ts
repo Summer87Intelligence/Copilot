@@ -507,6 +507,7 @@ export function buildFinancialExecutiveDashboard(input: {
   fiscal: import("@/lib/copilot-financial-panorama-model").PanoramaFiscalSummary;
   invoices: readonly MonthlyTrendInvoiceInput[];
   receipts: readonly MonthlyTrendReceiptInput[];
+  treasurySummaries?: readonly import("@/lib/treasury/treasury-scheduled-payments").TreasuryOutflowSummary[];
 }): FinancialExecutiveDashboard {
   const periodContext = buildFinancialPeriodContext(input.asOfYmd);
 
@@ -520,6 +521,7 @@ export function buildFinancialExecutiveDashboard(input: {
     cashPositions: input.cashPositions,
     portfolioRows: input.portfolioRows,
     fiscal: input.fiscal,
+    treasurySummaries: input.treasurySummaries,
   });
 
   const currencies: ExecutiveCurrencyPanel[] = [];

@@ -9,8 +9,8 @@ export function AccessDeniedCard() {
   return (
     <main className={`${copilotPageMainClass} flex flex-1 items-center justify-center`}>
       <div className="flex max-w-sm flex-col items-center gap-4 rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-8 py-12 text-center shadow-sm">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-50">
-          <Lock className="h-6 w-6 text-rose-500" aria-hidden />
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--copilot-tone-danger-bg)]">
+          <Lock className="h-6 w-6 text-[var(--copilot-danger-text)]" aria-hidden />
         </div>
         <div className="space-y-1">
           <p className="text-sm font-semibold text-[var(--copilot-ink)]">

@@ -267,13 +267,13 @@ export function DailyOperationsQueuePanel({
                   {" "}
                   · {clientCount} clientes · {queue.stats.urgent_count} urgentes
                   {queueSignals && queueSignals.sla_breached_count > 0 && (
-                    <span className="text-rose-600">
+                    <span className="text-[var(--copilot-danger-text)]">
                       {" "}
                       · {queueSignals.sla_breached_count} SLA vencidos
                     </span>
                   )}
                   {queueSignals && queueSignals.overloaded_operators_count > 0 && (
-                    <span className="text-amber-700">
+                    <span className="text-[var(--copilot-warning-text-strong)]">
                       {" "}
                       · {queueSignals.overloaded_operators_count} operadores sobrecargados
                     </span>
@@ -289,13 +289,13 @@ export function DailyOperationsQueuePanel({
                       {" "}
                       · {ownershipStats.total_assigned} asignados
                       {ownershipStats.unassigned_critical > 0 && (
-                        <span className="text-rose-600">
+                        <span className="text-[var(--copilot-danger-text)]">
                           {" "}
                           · {ownershipStats.unassigned_critical} críticos sin dueño
                         </span>
                       )}
                       {ownershipStats.high_workload && (
-                        <span className="text-amber-700"> · Carga alta</span>
+                        <span className="text-[var(--copilot-warning-text-strong)]"> · Carga alta</span>
                       )}
                     </span>
                   )}
@@ -322,14 +322,14 @@ export function DailyOperationsQueuePanel({
 
       <div className="p-3 space-y-2">
         {error && (
-          <div className="flex gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800">
+          <div className="flex gap-2 rounded-md border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-2.5 py-1.5 text-[11px] text-[var(--copilot-warning-text-strong)]">
             <AlertCircle className="h-3.5 w-3.5 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {showStaleBanner && !error && (
-          <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1">
+          <p className="text-[10px] text-[var(--copilot-warning-text-strong)] bg-[var(--copilot-tone-warning-bg)] border border-amber-100 rounded-md px-2 py-1">
             Cola posiblemente desactualizada — actualiza para ver cambios.
           </p>
         )}

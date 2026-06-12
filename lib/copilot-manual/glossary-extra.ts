@@ -4,34 +4,39 @@ export const COPILOT_MANUAL_EXTRA_GLOSSARY: Array<{
   definition: string;
 }> = [
   {
-    term: "Deuda actual",
+    term: "Total pendiente",
     definition:
-      "Todo lo que el cliente debe hasta hoy, sin importar si ya venció o no. Es la suma de deuda vencida + deuda al día.",
+      "Todo lo que el cliente debe actualmente, sin importar si ya venció o no. El atrasado ya está incluido dentro de este total — no se suma aparte.",
   },
   {
-    term: "Deuda vencida",
+    term: "Atrasado",
     definition:
-      "La parte de la deuda cuya fecha de vencimiento ya pasó. Cuanto más alta, más urgente la gestión.",
+      "La parte del total pendiente cuya fecha de vencimiento ya pasó. Está incluido dentro del total pendiente. Cuanto más alto, más urgente la gestión.",
+  },
+  {
+    term: "Atrasado +30 días",
+    definition:
+      "La parte del atrasado con más de 30 días. Está incluido dentro del atrasado y del total pendiente — no se suma aparte.",
   },
   {
     term: "Días de atraso",
     definition:
-      "Clasificación del tiempo desde el vencimiento: Al día, 1–30 d, 31–60 d, 61–90 d o +90 d.",
+      "Clasificación del tiempo desde el vencimiento: Al día, 1–30 días, 31–60 días, 61–90 días o +90 días.",
   },
   {
-    term: "Sin deuda vencida",
+    term: "Sin atrasos",
     definition:
-      "El cliente tiene facturas abiertas pero ninguna venció todavía. Hay deuda, pero no es urgente.",
+      "El cliente tiene facturas abiertas pero ninguna venció todavía. Hay total pendiente, pero no es urgente.",
   },
   {
-    term: "Tiene deuda vencida",
+    term: "Con atrasos",
     definition:
-      "Al menos una factura ya superó su fecha de vencimiento. Requiere seguimiento.",
+      "Al menos una factura del cliente ya superó su fecha de vencimiento. Requiere seguimiento.",
   },
   {
-    term: "Deuda al día",
+    term: "Al día",
     definition:
-      "Tiene deuda abierta, pero todas sus facturas están dentro del plazo. No hay mora todavía.",
+      "El cliente tiene total pendiente abierto, pero todas sus facturas están dentro del plazo. No hay atrasos todavía.",
   },
   {
     term: "Cobro lento",
@@ -39,9 +44,9 @@ export const COPILOT_MANUAL_EXTRA_GLOSSARY: Array<{
       "El cliente tiene historial de pagos lentos o riesgo alto, aunque no tenga vencimientos.",
   },
   {
-    term: "Contactar por deuda vencida",
+    term: "Contactar por atraso",
     definition:
-      "Acción recomendada cuando el cliente tiene al menos una factura vencida. Es el caso de mayor urgencia.",
+      "Acción recomendada cuando el cliente tiene al menos una factura atrasada. Es el caso de mayor urgencia.",
   },
   {
     term: "Hacer seguimiento",

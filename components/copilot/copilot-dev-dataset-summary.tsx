@@ -70,8 +70,8 @@ export function CopilotDevDatasetSummary() {
 
   if (state.status === "loading" || state.status === "idle") {
     return (
-      <div className="border-b border-dashed border-slate-500/35 bg-slate-100/90 px-4 py-1 font-mono text-[10px] text-slate-700 dark:bg-slate-900/40 dark:text-slate-200 sm:px-6">
-        <span className="mr-2 rounded bg-slate-300/90 px-1 py-0.5 text-[9px] font-semibold uppercase text-slate-900 dark:bg-slate-600 dark:text-slate-50">
+      <div className="border-b border-dashed border-[var(--copilot-border)]/35 bg-[var(--copilot-soft-bg)]/90 px-4 py-1 font-mono text-[10px] text-[var(--copilot-ink)] dark:bg-[var(--copilot-ink-muted)]/40 dark:text-slate-200 sm:px-6">
+        <span className="mr-2 rounded bg-[var(--copilot-border)]/90 px-1 py-0.5 text-[9px] font-semibold uppercase text-[var(--copilot-ink)] dark:bg-[var(--copilot-ink-muted)] dark:text-slate-50">
           Dev dataset
         </span>
         {state.status === "loading" ? "Cargando conteos…" : "—"}
@@ -81,7 +81,7 @@ export function CopilotDevDatasetSummary() {
 
   if (state.status === "err") {
     return (
-      <div className="border-b border-dashed border-rose-600/40 bg-rose-50/90 px-4 py-1 font-mono text-[10px] text-rose-900 dark:bg-rose-950/35 dark:text-rose-100 sm:px-6">
+      <div className="border-b border-dashed border-[var(--copilot-danger-text)]/40 bg-[var(--copilot-tone-danger-bg)]/90 px-4 py-1 font-mono text-[10px] text-[var(--copilot-danger-text-strong)] dark:bg-rose-950/35 dark:text-rose-100 sm:px-6">
         <span className="mr-2 rounded bg-rose-200/90 px-1 py-0.5 text-[9px] font-semibold uppercase dark:bg-rose-800/70">
           Dev dataset
         </span>
@@ -99,12 +99,12 @@ export function CopilotDevDatasetSummary() {
     data.active_company_name?.trim() || "—";
 
   return (
-    <div className="border-b border-dashed border-slate-500/35 bg-slate-100/90 px-4 py-1.5 font-mono text-[10px] leading-relaxed text-slate-800 dark:bg-slate-900/40 dark:text-slate-100 sm:px-6">
+    <div className="border-b border-dashed border-[var(--copilot-border)]/35 bg-[var(--copilot-soft-bg)]/90 px-4 py-1.5 font-mono text-[10px] leading-relaxed text-[var(--copilot-ink)] dark:bg-[var(--copilot-ink-muted)]/40 dark:text-slate-100 sm:px-6">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="shrink-0 rounded bg-slate-300/90 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-900 dark:bg-slate-600 dark:text-slate-50">
+        <span className="shrink-0 rounded bg-[var(--copilot-border)]/90 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-ink)] dark:bg-[var(--copilot-ink-muted)] dark:text-slate-50">
           Dev dataset (temporal)
         </span>
-        <span className="text-slate-700 dark:text-slate-200">
+        <span className="text-[var(--copilot-ink)] dark:text-slate-200">
           Empresa: <strong>{company}</strong>
         </span>
         <code className="rounded bg-[var(--copilot-card-bg)]/70 px-1 text-[9px] dark:bg-black/30">
@@ -117,11 +117,11 @@ export function CopilotDevDatasetSummary() {
           return (
             <span
               key={key}
-              className="inline-flex items-center gap-0.5 rounded border border-slate-400/40 bg-[var(--copilot-card-bg)]/80 px-1.5 py-0.5 text-[9px] dark:border-slate-500/40 dark:bg-slate-800/60"
+              className="inline-flex items-center gap-0.5 rounded border border-[var(--copilot-border)]/40 bg-[var(--copilot-card-bg)]/80 px-1.5 py-0.5 text-[9px] dark:border-[var(--copilot-border)]/40 dark:bg-[var(--copilot-ink-muted)]/60"
               title={key}
             >
-              <span className="text-slate-500 dark:text-slate-400">{short}</span>
-              <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-50">
+              <span className="text-[var(--copilot-ink-muted)] dark:text-[var(--copilot-ink-muted)]">{short}</span>
+              <span className="font-semibold tabular-nums text-[var(--copilot-ink)] dark:text-slate-50">
                 {n}
               </span>
             </span>

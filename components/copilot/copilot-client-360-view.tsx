@@ -37,6 +37,7 @@ import { CollectionFollowupForm } from "@/components/copilot/clientes/collection
 import { ClientAgentBlock } from "@/components/copilot/clientes/client-agent-block";
 import { ClientNextStepBanner } from "@/components/copilot/clientes/client-next-step-banner";
 import { CopilotDataProvenanceStrip } from "@/components/copilot/copilot-data-provenance-strip";
+import { ClientPaymentBehaviorCard } from "@/components/copilot/payment-behavior/client-payment-behavior-card";
 import { AccountStatementSendCard } from "@/components/copilot/clientes/account-statement-send-card";
 import type { Client360Payload, TransferAlias } from "@/lib/copilot-client-360";
 import { normalizeUruguayPhoneForWhatsApp } from "@/lib/phone/normalize-phone-for-whatsapp";
@@ -190,20 +191,20 @@ function translateReceiptStatus(estado: string): string {
 
 function riskTone(r: string) {
   if (r.includes("Alto"))
-    return { bg: "bg-rose-100/80", text: "text-rose-800", border: "border-rose-200" };
+    return { bg: "bg-[var(--copilot-badge-danger-bg)]/80", text: "text-[var(--copilot-danger-text-strong)]", border: "border-[var(--copilot-danger-border)]" };
   if (r.includes("Medio"))
-    return { bg: "bg-amber-100/80", text: "text-amber-900", border: "border-amber-200" };
-  return { bg: "bg-emerald-100/70", text: "text-emerald-900", border: "border-emerald-200" };
+    return { bg: "bg-[var(--copilot-badge-warning-bg)]/80", text: "text-[var(--copilot-warning-text-strong)]", border: "border-[var(--copilot-warning-border)]" };
+  return { bg: "bg-[var(--copilot-badge-success-bg)]/70", text: "text-[var(--copilot-success-text-strong)]", border: "border-[var(--copilot-success-border)]" };
 }
 
 function timelineIcon(kind: TimelineEvent["kind"], severity: OperationalHintSeverity) {
-  if (kind === "receipt") return <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden />;
-  if (kind === "invoice_overdue") return <XCircle className="h-4 w-4 text-rose-600" aria-hidden />;
+  if (kind === "receipt") return <CheckCircle2 className="h-4 w-4 text-[var(--copilot-success-text)]" aria-hidden />;
+  if (kind === "invoice_overdue") return <XCircle className="h-4 w-4 text-[var(--copilot-danger-text)]" aria-hidden />;
   if (kind === "invoice_issued") return <FileText className="h-4 w-4 text-sky-600" aria-hidden />;
   if (kind === "sync") return severity === "warning"
-    ? <AlertTriangle className="h-4 w-4 text-amber-500" aria-hidden />
-    : <BadgeCheck className="h-4 w-4 text-slate-400" aria-hidden />;
-  return <CircleDashed className="h-4 w-4 text-slate-400" aria-hidden />;
+    ? <AlertTriangle className="h-4 w-4 text-[var(--copilot-warning-text)]" aria-hidden />
+    : <BadgeCheck className="h-4 w-4 text-[var(--copilot-subtle)]" aria-hidden />;
+  return <CircleDashed className="h-4 w-4 text-[var(--copilot-subtle)]" aria-hidden />;
 }
 
 function timelineTypeLabel(kind: TimelineEvent["kind"]): string {
@@ -221,19 +222,19 @@ function debtStatusLabel(data: Client360Payload): { label: string; cls: string }
   const hasDebt = data.debt_uyu > 0 || data.debt_usd > 0;
   if (hasOverdue) {
     return {
-      label: "Con deuda vencida",
-      cls: "border-rose-200/80 bg-rose-50/80 text-rose-800",
+      label: "Con atrasos",
+      cls: "border-[var(--copilot-danger-border)]/80 bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]",
     };
   }
   if (hasDebt) {
     return {
       label: "Con deuda al día",
-      cls: "border-amber-200/80 bg-amber-50/80 text-amber-800",
+      cls: "border-[var(--copilot-warning-border)]/80 bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",
     };
   }
   return {
     label: "Sin deuda",
-    cls: "border-emerald-200/80 bg-emerald-50/80 text-emerald-800",
+    cls: "border-[var(--copilot-success-border)]/80 bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]",
   };
 }
 
@@ -252,9 +253,9 @@ function KpiChip({
 }) {
   const tones = {
     neutral: "text-[var(--copilot-ink)]",
-    warning: "text-amber-700",
-    danger: "text-rose-700",
-    ok: "text-emerald-700",
+    warning: "text-[var(--copilot-warning-text)]",
+    danger: "text-[var(--copilot-danger-text)]",
+    ok: "text-[var(--copilot-success-text)]",
   };
   return (
     <div className="flex flex-col gap-1 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
@@ -328,7 +329,7 @@ function TimelineBlock({
   if (filtered.length === 0) {
     return (
       <p className="text-sm text-[var(--copilot-ink-muted)]">
-        No hay actividad reciente registrada.
+        Sin facturas ni cobros recientes para este cliente.
       </p>
     );
   }
@@ -338,7 +339,7 @@ function TimelineBlock({
       {limitedCommercial.length > 0 ? (
         <div>
           {!commercialOnly ? (
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
               Actividad comercial
             </p>
           ) : null}
@@ -347,7 +348,7 @@ function TimelineBlock({
       ) : null}
       {syncEvents.length > 0 ? (
         <div>
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
             Actualización de datos
           </p>
           <TimelineEventList evts={syncEvents} />
@@ -584,7 +585,7 @@ function AccountStatementPreviewModal({
                     <tbody>
                       {/* Saldo anterior */}
                       {data.from ? (
-                        <tr className="border-b border-[var(--copilot-border)]/40 bg-slate-50/60 text-[var(--copilot-ink-muted)]">
+                        <tr className="border-b border-[var(--copilot-border)]/40 bg-[var(--copilot-table-header-bg)] text-[var(--copilot-ink-muted)]">
                           <td className="py-1.5 pr-3">{formatPreviewDate(data.from)}</td>
                           <td className="py-1.5 pr-3 font-medium" colSpan={2}>
                             Saldo anterior
@@ -602,7 +603,7 @@ function AccountStatementPreviewModal({
                         <tr
                           key={mv.id}
                           className={`border-b border-[var(--copilot-border)]/30 ${
-                            i % 2 === 1 ? "bg-slate-50/40" : ""
+                            i % 2 === 1 ? "bg-[var(--copilot-table-row-alt-bg)]" : ""
                           }`}
                         >
                           <td className="py-1.5 pr-3 text-[var(--copilot-ink-muted)]">
@@ -623,7 +624,7 @@ function AccountStatementPreviewModal({
                           <td
                             className={`py-1.5 text-right font-semibold ${
                               mv.runningBalance < 0
-                                ? "text-rose-600"
+                                ? "text-[var(--copilot-danger-text)]"
                                 : "text-[var(--copilot-ink)]"
                             }`}
                           >
@@ -633,7 +634,7 @@ function AccountStatementPreviewModal({
                       ))}
 
                       {/* Saldo final */}
-                      <tr className="border-t-2 border-[var(--copilot-border)] bg-slate-50 font-semibold">
+                      <tr className="border-t-2 border-[var(--copilot-border)] bg-[var(--copilot-table-header-bg)] font-semibold">
                         <td className="py-2 pr-3 text-[var(--copilot-ink-muted)]">
                           {data.to ? formatPreviewDate(data.to) : "—"}
                         </td>
@@ -648,7 +649,7 @@ function AccountStatementPreviewModal({
                         </td>
                         <td
                           className={`py-2 text-right ${
-                            block.summary.finalBalance < 0 ? "text-rose-600" : "text-[var(--copilot-ink)]"
+                            block.summary.finalBalance < 0 ? "text-[var(--copilot-danger-text)]" : "text-[var(--copilot-ink)]"
                           }`}
                         >
                           {formatPreviewSignedBalance(
@@ -681,7 +682,7 @@ function AccountStatementPreviewModal({
                   <span
                     className={`font-semibold ${
                       block.summary.finalBalance < 0
-                        ? "text-rose-600"
+                        ? "text-[var(--copilot-danger-text)]"
                         : "text-[var(--copilot-ink)]"
                     }`}
                   >
@@ -809,7 +810,7 @@ function AccountStatementPdfCard({ companyId, hasUyu }: { companyId: string; has
                   onClick={() => setCurrency(c)}
                   className={`px-3.5 py-1.5 text-[12px] font-semibold transition-colors ${
                     currency === c
-                      ? "bg-[var(--copilot-accent)] text-white"
+                      ? "bg-[var(--copilot-accent)] text-[var(--copilot-on-accent)]"
                       : "bg-[var(--copilot-card-bg)] text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-soft-bg)]"
                   }`}
                 >
@@ -865,7 +866,7 @@ function AccountStatementPdfCard({ companyId, hasUyu }: { companyId: string; has
             type="button"
             onClick={() => void handleDownload()}
             disabled={loading}
-            className="flex items-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
+            className="flex items-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-4 py-2 text-[13px] font-semibold text-[var(--copilot-on-accent)] transition-opacity hover:opacity-90 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             {loading ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
@@ -877,7 +878,7 @@ function AccountStatementPdfCard({ companyId, hasUyu }: { companyId: string; has
         </div>
 
         {errorMsg ? (
-          <p className="mt-2 text-[12px] text-rose-600">{errorMsg}</p>
+          <p className="mt-2 text-[12px] text-[var(--copilot-danger-text)]">{errorMsg}</p>
         ) : null}
       </CopilotCard>
 
@@ -1156,7 +1157,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
 
         {error ? (
           <div className="space-y-3 px-6 py-6">
-            <div className="rounded-xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-950">
+            <div className="rounded-xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-card-bg)] px-4 py-3 text-sm text-[var(--copilot-danger-text-strong)]">
               {error}
             </div>
             <button
@@ -1174,7 +1175,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
           <>
             {/* ── Banner: cliente inactivo ─────────────────────────────── */}
             {data.summary.is_active === false ? (
-              <div className="border-b border-amber-200 bg-amber-50 px-6 py-3 text-sm font-medium text-amber-900">
+              <div className="border-b border-[var(--copilot-warning-border)] bg-[var(--copilot-card-bg)] px-6 py-3 text-sm font-medium text-[var(--copilot-warning-text-strong)]">
                 Este cliente está inactivo (archivado). La ficha es de solo lectura.
               </div>
             ) : null}
@@ -1234,14 +1235,14 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   i.active && i.id === "sin_recibos_recientes" ? (
                     <span
                       key={i.id}
-                      className="inline-flex items-center gap-1 rounded-full border border-amber-200/80 bg-amber-50/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-900"
+                      className="inline-flex items-center gap-1 rounded-full border border-[var(--copilot-warning-border)]/80 bg-[var(--copilot-tone-warning-bg)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-warning-text-strong)]"
                     >
                       Sin cobros recientes
                     </span>
                   ) : i.active && i.id === "actividad_reciente" ? (
                     <span
                       key={i.id}
-                      className="inline-flex items-center gap-1 rounded-full border border-emerald-200/80 bg-emerald-50/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-800"
+                      className="inline-flex items-center gap-1 rounded-full border border-[var(--copilot-success-border)]/80 bg-[var(--copilot-tone-positive-bg)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-success-text-strong)]"
                     >
                       Con actividad reciente
                     </span>
@@ -1314,8 +1315,9 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   onNavigateTab={(tab) => handleTabChange(tab as SectionNavId)}
                   onScrollToAssistant={() => handleTabChange("cobranza")}
                 />
+                <ClientPaymentBehaviorCard companyId={data.summary.company_id} />
                 <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4 shadow-sm">
-                  <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
+                  <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]">
                     Actividad reciente
                   </p>
                   <TimelineBlock
@@ -1341,7 +1343,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
             {activeTab === "cobranza" ? (
               <div className="space-y-4 px-5 py-4">
                 {data.summary.is_active === false ? (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  <div className="rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-card-bg)] px-4 py-3 text-sm text-[var(--copilot-warning-text-strong)]">
                     Cliente inactivo: acciones operativas deshabilitadas.
                   </div>
                 ) : (
@@ -1388,10 +1390,10 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
 
                 <div>
                   <p className="text-sm font-semibold text-[var(--copilot-ink)]">
-                    Deuda actual del cliente
+                    Total pendiente del cliente
                   </p>
                   <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-                    Calculada con el saldo pendiente informado en las facturas. UYU y USD no se suman entre si.
+                    Saldo pendiente al corte informado por Zeta. El atrasado ya está incluido. UYU y USD no se suman entre sí.
                   </p>
                 </div>
 
@@ -1399,24 +1401,24 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   <CopilotCard className={warningFinancialCardClass}>
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        Deuda actual en pesos (UYU)
+                        Total pendiente en pesos (UYU)
                       </p>
                       {data.overdue_uyu > 0 ? (
-                        <TrendingDown className="h-4 w-4 text-rose-500 shrink-0" aria-hidden />
+                        <TrendingDown className="h-4 w-4 text-[var(--copilot-danger-text)] shrink-0" aria-hidden />
                       ) : null}
                     </div>
-                    <p className={`mt-1.5 text-2xl font-bold tabular-nums ${data.debt_uyu > 0 ? "text-amber-700" : "text-[var(--copilot-ink)]"}`}>
+                    <p className={`mt-1.5 text-2xl font-bold tabular-nums ${data.debt_uyu > 0 ? "text-[var(--copilot-warning-text)]" : "text-[var(--copilot-ink)]"}`}>
                       {`$ ${data.debt_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
                     </p>
                     {data.overdue_uyu > 0 ? (
-                      <p className="mt-1 text-xs font-medium text-rose-600">
-                        {`$ ${data.overdue_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`} de deuda vencida
+                      <p className="mt-1 text-xs font-medium text-[var(--copilot-danger-text)]">
+                        {`$ ${data.overdue_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`} atrasados
                         {data.debt_uyu > 0
                           ? ` (${Math.round((data.overdue_uyu / data.debt_uyu) * 100)}%)`
                           : ""}
                       </p>
                     ) : (
-                      <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">Sin deuda vencida</p>
+                      <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">Sin atrasos</p>
                     )}
                     {data.last_receipt_date ? (
                       <p className="mt-2 text-xs text-[var(--copilot-ink-muted)]">
@@ -1428,24 +1430,24 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   <CopilotCard className={warningFinancialCardClass}>
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        Deuda actual en dólares (USD)
+                        Total pendiente en dólares (USD)
                       </p>
                       {data.overdue_usd > 0 ? (
-                        <TrendingDown className="h-4 w-4 text-rose-500 shrink-0" aria-hidden />
+                        <TrendingDown className="h-4 w-4 text-[var(--copilot-danger-text)] shrink-0" aria-hidden />
                       ) : null}
                     </div>
-                    <p className={`mt-1.5 text-2xl font-bold tabular-nums ${data.debt_usd > 0 ? "text-amber-700" : "text-[var(--copilot-ink)]"}`}>
+                    <p className={`mt-1.5 text-2xl font-bold tabular-nums ${data.debt_usd > 0 ? "text-[var(--copilot-warning-text)]" : "text-[var(--copilot-ink)]"}`}>
                       {`U$S ${data.debt_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
                     </p>
                     {data.overdue_usd > 0 ? (
-                      <p className="mt-1 text-xs font-medium text-rose-600">
-                        {`U$S ${data.overdue_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`} de deuda vencida
+                      <p className="mt-1 text-xs font-medium text-[var(--copilot-danger-text)]">
+                        {`U$S ${data.overdue_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`} atrasados
                         {data.debt_usd > 0
                           ? ` (${Math.round((data.overdue_usd / data.debt_usd) * 100)}%)`
                           : ""}
                       </p>
                     ) : (
-                      <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">Sin deuda vencida</p>
+                      <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">Sin atrasos</p>
                     )}
                     {data.last_invoice_date ? (
                       <p className="mt-2 text-xs text-[var(--copilot-ink-muted)]">
@@ -1456,13 +1458,13 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                 </div>
 
                 <p className="text-[11px] text-[var(--copilot-ink-muted)]">
-                  La deuda total incluye todas las facturas abiertas. La deuda vencida es la parte que ya superó su fecha de vencimiento.
+                  El total pendiente incluye todas las facturas abiertas. El atrasado es la parte que ya superó su fecha de vencimiento y está incluido dentro del total pendiente.
                 </p>
 
                 <CopilotCard className={neutralFinancialCardClass}>
                   <CopilotSectionTitle
                     title="Estado de cuenta histórico"
-                    subtitle="Facturas y cobros sincronizados desde Zeta. La deuda actual refleja saldos pendientes al corte."
+                    subtitle="Facturas y cobros al último sync."
                   />
                   {data.cuenta.ultimos_movimientos.length === 0 ? (
                     <p className="text-sm text-[var(--copilot-ink-muted)]">
@@ -1479,7 +1481,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                             {m.kind === "factura" ? (
                               <FileText className="h-3.5 w-3.5 shrink-0 text-sky-500" aria-hidden />
                             ) : (
-                              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500" aria-hidden />
+                              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[var(--copilot-success-text)]" aria-hidden />
                             )}
                             <div>
                               <span className="font-medium text-[var(--copilot-ink)]">
@@ -1532,7 +1534,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                         {data.invoices.length === 0 ? (
                           <tr>
                             <td colSpan={6} className="px-4 py-8 text-[var(--copilot-ink-muted)]">
-                              No hay facturas para este cliente.
+                              Sin facturas abiertas. Si debería haber saldo, revisá el sync en Datos.
                             </td>
                           </tr>
                         ) : (
@@ -1594,7 +1596,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                         {data.receipts.length === 0 ? (
                           <tr>
                             <td colSpan={5} className="px-4 py-8 text-[var(--copilot-ink-muted)]">
-                              No hay cobros registrados para este cliente.
+                              Sin cobros en el historial. Los pagos aparecen acá al sincronizar desde Zeta.
                             </td>
                           </tr>
                         ) : (
@@ -1720,7 +1722,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                     <p className="mb-3 text-xs text-red-500">{aliasError}</p>
                   ) : null}
                   {aliasSuccess ? (
-                    <p className="mb-3 text-xs font-medium text-emerald-600">{aliasSuccess}</p>
+                    <p className="mb-3 text-xs font-medium text-[var(--copilot-success-text)]">{aliasSuccess}</p>
                   ) : null}
 
                   {aliasesReady ? (
@@ -1753,7 +1755,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                               type="button"
                               onClick={() => void handleAddAlias()}
                               disabled={savingAlias || aliasNewLabel.trim().length < 3}
-                              className="inline-flex items-center gap-1 rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
+                              className="inline-flex items-center gap-1 rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-medium text-[var(--copilot-on-accent)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
                             >
                               {savingAlias ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                               Guardar
@@ -1800,7 +1802,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                                       type="button"
                                       onClick={() => void handleSaveEditAlias(alias.id)}
                                       disabled={savingEditAlias || editingAliasLabel.trim().length < 3}
-                                      className="inline-flex items-center gap-1 rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
+                                      className="inline-flex items-center gap-1 rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-medium text-[var(--copilot-on-accent)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
                                     >
                                       {savingEditAlias ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                                       Guardar
@@ -1823,7 +1825,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                                       type="button"
                                       onClick={() => void handleDeleteAlias(alias.id)}
                                       disabled={!!deletingAliasId}
-                                      className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
+                                      className="inline-flex items-center gap-1 rounded-lg bg-[var(--copilot-danger-button-bg)] px-3 py-1.5 text-xs font-medium text-[var(--copilot-on-accent)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
                                     >
                                       {deletingAliasId === alias.id ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
                                       Eliminar

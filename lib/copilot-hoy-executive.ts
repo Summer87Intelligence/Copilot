@@ -354,7 +354,7 @@ export function debtorRowsToPriorityCollections(
 function attentionMotivos(row: ClientPortfolioRow): string[] {
   const motivos: string[] = [];
   if (row.overdue_debt > 0 || (row.overdue_uyu ?? 0) + (row.overdue_usd ?? 0) > 0)
-    motivos.push("Deuda vencida");
+    motivos.push("Atrasado");
   if (row.risk === "Alto" || row.payment_behavior === "lento") motivos.push("Cobro lento");
   if (!row.has_contact_data && row.total_debt > 0) motivos.push("Sin contacto");
   if (motivos.length === 0) motivos.push("Seguimiento recomendado");
@@ -555,10 +555,10 @@ export function clientQualifiesForAttention(
 }
 
 function debtorRowMotivo(hasOverdue: boolean, slow: boolean): string {
-  if (hasOverdue && slow) return "Deuda vencida · Cobro lento";
-  if (hasOverdue) return "Deuda vencida";
+  if (hasOverdue && slow) return "Atrasado · Cobro lento";
+  if (hasOverdue) return "Atrasado";
   if (slow) return "Cobro lento";
-  return "Deuda actual";
+  return "Total pendiente";
 }
 
 export function extractAgingTotals(

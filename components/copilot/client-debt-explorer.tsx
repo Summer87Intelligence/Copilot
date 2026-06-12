@@ -88,30 +88,30 @@ const AGING_LABELS: Record<AgingRange, string> = {
 };
 
 const AGING_BADGE: Record<AgingRange, string> = {
-  "0_30":    "border-emerald-200 bg-emerald-50 text-emerald-800",
-  "31_60":   "border-amber-200   bg-amber-50   text-amber-800",
+  "0_30":    "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]",
+  "31_60":   "border-[var(--copilot-warning-border)]   bg-[var(--copilot-tone-warning-bg)]   text-[var(--copilot-warning-text-strong)]",
   "61_90":   "border-orange-200  bg-orange-50  text-orange-800",
-  "90_plus": "border-rose-200    bg-rose-50    text-rose-800",
+  "90_plus": "border-[var(--copilot-danger-border)]    bg-[var(--copilot-tone-danger-bg)]    text-[var(--copilot-danger-text-strong)]",
 };
 
 const RISK_BADGE: Record<RiskLevel, { cls: string; label: string }> = {
-  high:   { cls: "border-rose-200 bg-rose-50 text-rose-800",       label: "Alto" },
-  medium: { cls: "border-orange-200 bg-orange-50 text-orange-800", label: "Medio" },
-  low:    { cls: "border-amber-200 bg-amber-50 text-amber-800",     label: "Bajo" },
-  ok:     { cls: "border-emerald-200 bg-emerald-50 text-emerald-800", label: "Mínimo" },
+  high:   { cls: "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]",       label: "Crítico" },
+  medium: { cls: "border-orange-200 bg-orange-50 text-orange-800 dark:border-orange-800/40 dark:bg-orange-950/30 dark:text-orange-300", label: "Atención" },
+  low:    { cls: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",     label: "Al día" },
+  ok:     { cls: "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]", label: "Al día" },
   none:   { cls: "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 text-[var(--copilot-ink-muted)]", label: "—" },
 };
 
 const STALE_BADGE: Record<StalenessStatus, { cls: string; label: string }> = {
-  ok:           { cls: "border-emerald-200 bg-emerald-50 text-emerald-800",   label: "Al día" },
-  warning:      { cls: "border-amber-200 bg-amber-50 text-amber-800",         label: "Alerta" },
-  critical:     { cls: "border-rose-200 bg-rose-50 text-rose-800",             label: "Crítico" },
+  ok:           { cls: "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]",   label: "Al día" },
+  warning:      { cls: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",         label: "Alerta" },
+  critical:     { cls: "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]",             label: "Crítico" },
   never_synced: { cls: "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 text-[var(--copilot-ink-muted)]", label: "—" },
 };
 
 const FILTER_CHIPS: Array<{ id: FilterChip; label: string }> = [
   { id: "all",      label: "Todos" },
-  { id: "overdue",  label: "Vencidos" },
+  { id: "overdue",  label: "Atrasados" },
   { id: "stale",    label: "Desactualizado" },
   { id: "90_plus",  label: "+90 d" },
   { id: "61_90",    label: "61–90 d" },
@@ -564,7 +564,7 @@ export function ClientDebtExplorer({
             className={[
               "inline-flex h-7 items-center rounded-lg border px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] transition",
               filterChip === chip.id
-                ? "border-[var(--copilot-ink)] bg-[var(--copilot-ink)] text-white"
+                ? "border-[var(--copilot-accent)] bg-[var(--copilot-accent)] text-[var(--copilot-on-accent)]"
                 : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]",
             ].join(" ")}
           >
@@ -580,7 +580,7 @@ export function ClientDebtExplorer({
               className={[
                 "inline-flex h-7 items-center rounded-lg border px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] transition",
                 showWithoutDebt
-                  ? "border-[var(--copilot-ink)] bg-[var(--copilot-ink)] text-white"
+                  ? "border-[var(--copilot-accent)] bg-[var(--copilot-accent)] text-[var(--copilot-on-accent)]"
                   : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]",
               ].join(" ")}
             >
@@ -700,7 +700,7 @@ export function ClientDebtExplorer({
               className={[
                 "inline-flex h-6 w-8 items-center justify-center rounded-md border text-[11px] font-semibold transition",
                 pageSize === ps
-                  ? "border-[var(--copilot-ink)] bg-[var(--copilot-ink)] text-white"
+                  ? "border-[var(--copilot-accent)] bg-[var(--copilot-accent)] text-[var(--copilot-on-accent)]"
                   : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 hover:text-[var(--copilot-ink)]",
               ].join(" ")}
             >
@@ -893,11 +893,11 @@ function ClientRow({
             <span
               className={`h-1.5 w-1.5 rounded-full ${
                 client.status === "ok"
-                  ? "bg-emerald-500"
+                  ? "bg-[var(--copilot-status-ok-dot)]"
                   : client.status === "warning"
-                    ? "bg-amber-500"
+                    ? "bg-[var(--copilot-status-warn-dot)]"
                     : client.status === "critical"
-                      ? "bg-rose-500"
+                      ? "bg-[var(--copilot-status-critical-dot)]"
                       : "bg-[var(--copilot-ink-muted)]"
               }`}
               aria-hidden
@@ -1015,7 +1015,7 @@ function ExpandedRow({
             <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--copilot-ink-muted)]/90">
               Deuda actual
             </p>
-            <p className="mt-0.5 text-sm text-emerald-800">Sin deuda activa</p>
+            <p className="mt-0.5 text-sm text-[var(--copilot-success-text-strong)]">Sin deuda activa</p>
           </div>
         )}
 
@@ -1083,7 +1083,7 @@ function ExpandedRow({
                 className="flex items-start gap-3 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50 px-3 py-2"
               >
                 <span
-                  className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold ${priorityDotCls[action.priority]}`}
+                  className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${priorityDotCls[action.priority]}`}
                   aria-label={action.priority}
                 >
                   {action.priority[0].toUpperCase()}
@@ -1097,7 +1097,7 @@ function ExpandedRow({
                       {COLLECTION_STATUS_LABELS[action.status]}
                     </span>
                     {action.nextActionDate && (
-                      <span className={`text-[10px] tabular-nums ${isOverdue(action.nextActionDate) ? "text-rose-600 font-semibold" : "text-[var(--copilot-ink-muted)]"}`}>
+                      <span className={`text-[10px] tabular-nums ${isOverdue(action.nextActionDate) ? "text-[var(--copilot-danger-text)] font-semibold" : "text-[var(--copilot-ink-muted)]"}`}>
                         próx. {fmtDate(action.nextActionDate)}
                       </span>
                     )}
@@ -1137,19 +1137,19 @@ function CollectionStatusBadge({ action }: { action: CollectionAction }) {
 
 const collectionStatusCls: Record<string, string> = {
   pending_review:   "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 text-[var(--copilot-ink-muted)]",
-  contacted:        "border-blue-200 bg-blue-50 text-blue-800",
-  promised_payment: "border-amber-200 bg-amber-50 text-amber-800",
-  paid:             "border-emerald-200 bg-emerald-50 text-emerald-800",
+  contacted:        "border-[var(--copilot-border)] bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)]",
+  promised_payment: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",
+  paid:             "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]",
   disputed:         "border-orange-200 bg-orange-50 text-orange-800",
-  escalated:        "border-rose-200 bg-rose-50 text-rose-800",
+  escalated:        "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]",
   paused:           "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 text-[var(--copilot-ink-muted)]",
 };
 
 const priorityDotCls: Record<string, string> = {
-  low:    "bg-emerald-100 text-emerald-800",
-  medium: "bg-amber-100 text-amber-800",
+  low:    "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-success-text-strong)]",
+  medium: "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-warning-text-strong)]",
   high:   "bg-orange-100 text-orange-800",
-  urgent: "bg-rose-100 text-rose-800",
+  urgent: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-danger-text-strong)]",
 };
 
 function isOverdue(isoDate: string): boolean {

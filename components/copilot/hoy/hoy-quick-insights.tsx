@@ -9,23 +9,24 @@ const PREFIX = {
 } as const;
 
 function insightStyle(item: CockpitQuickInsight): string {
-  const base = "border bg-[var(--copilot-card-bg)]/60 text-slate-700";
+  const base =
+    "border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 text-[var(--copilot-ink)]";
   if (item.id === "attention") {
-    return `${base} border-amber-200/50 text-amber-800`;
+    return `${base} bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-badge-warning-text)]`;
   }
   if (item.id === "risk" || item.tone === "danger") {
-    return `${base} border-rose-200/50 text-rose-800`;
+    return `${base} bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-badge-danger-text)]`;
   }
   if (item.id === "afterPayments") {
-    return `${base} border-teal-200/50 text-teal-800`;
+    return `${base} bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-badge-success-text)]`;
   }
   if (item.id === "cover30" || item.id === "liquidity" || item.id === "period") {
-    return `${base} border-emerald-200/50 text-emerald-800`;
+    return `${base} bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-badge-success-text)]`;
   }
   if (item.tone === "warn") {
-    return `${base} border-amber-200/50 text-amber-800`;
+    return `${base} bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-badge-warning-text)]`;
   }
-  return `${base} border-slate-200/60 text-slate-600`;
+  return `${base} text-[var(--copilot-ink-muted)]`;
 }
 
 export function HoyQuickInsights({ insights }: { insights: CockpitQuickInsight[] }) {

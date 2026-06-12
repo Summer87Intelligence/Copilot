@@ -21,6 +21,8 @@ import { FinancialWarningBanner } from "@/components/copilot/financial-warning-b
 import { FinancialStatusBadge } from "@/components/copilot/financial-status-badge";
 import { DataFreshnessBanner } from "@/components/copilot/data-freshness-banner";
 import { FinancialPanoramaView } from "@/components/copilot/finanzas/financial-panorama-view";
+import { PaymentBehaviorCompactLine } from "@/components/copilot/payment-behavior/payment-behavior-summary-card";
+import { usePaymentBehaviorProjection } from "@/hooks/use-payment-behavior-projection";
 import { shouldShowExpandedFiscalBlock, buildPanoramaFiscalSummary } from "@/lib/copilot-financial-panorama-model";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import {
@@ -78,7 +80,7 @@ import {
 } from "@/lib/copilot-tax-data";
 
 const FINANZAS_COBERTURA_QUERY =
-  "/copilot/finanzas?mode=cobertura&from=atencion-prioritaria";
+  "/copilot/finanzasímode=cobertura&from=atencion-prioritaria";
 
 function rowNum(v: unknown): number {
   if (v === null || v === undefined) return 0;
@@ -141,7 +143,7 @@ function FlowBar({
   const pct = Math.min(100, Math.round((value / max) * 100));
   const valueClass = flow === "in" ? "text-green-600" : "text-red-500";
   const barClass =
-    flow === "in" ? "bg-emerald-500/85" : "bg-red-400/80";
+    flow === "in" ? "bg-[var(--copilot-tone-positive-bg)]0/85" : "bg-red-400/80";
 
   return (
     <div>
@@ -187,7 +189,7 @@ function buildDeficitGuidedCopy(
   snapshotLoading: boolean
 ): string {
   if (snapshotLoading || !snapshot) {
-    return "Estamos cargando el panorama de caja para aterrizar el déficit con cifras del motor.";
+    return "Estamos cargando el panorama de caja para aterrizar el déficit con cifras actuales.";
   }
   const balance = snapshotLiquidityBalance(snapshot);
   const ratio = snapshotCoverageRatio(snapshot);
@@ -318,6 +320,8 @@ function CopilotFinanzasPageContent() {
         : COPILOT_READING_KEY_FINANZAS_DEFAULT,
     });
   }, [coberturaGuided, setReadingKeyOverride]);
+
+  const paymentBehavior = usePaymentBehaviorProjection();
 
   const [taxObligations, setTaxObligations] = useState<ProtoTaxObligation[]>([]);
   const [taxLoading, setTaxLoading] = useState(true);
@@ -576,7 +580,7 @@ function CopilotFinanzasPageContent() {
     if (nextOpen) {
       return `Conviene cubrir el hueco antes del vencimiento más próximo (${dueLabel(nextOpen.due_date)} · ${mapTaxTypeLabel(nextOpen.tax_type)}).`;
     }
-    return "Conveniencia: alinear cobros y pagos dentro del horizonte de egresos del motor (aprox. 30 días) antes de sumar compromisos nuevos.";
+    return "Conviene alinear cobros y pagos en los próximos 30 días antes de sumar compromisos nuevos.";
   }, [nextOpen]);
 
   const deficitGuidedBody = useMemo(
@@ -792,7 +796,7 @@ function CopilotFinanzasPageContent() {
         Math.round((coberturaInvoiceStats.weighted / deficitGap) * 100)
       );
       if (coberturaInvoiceStats.weighted >= deficitGap) {
-        return "Si ingresara la cobranza esperada ponderada por el motor, alcanzaría para cubrir el déficit proyectado (según los datos actuales).";
+        return "Si ingresara la cobranza esperada ponderada, alcanzaría para cubrir el déficit proyectado.";
       }
       return `Si ingresara la cobranza esperada (${formatMoneyCompact(coberturaInvoiceStats.weighted)}), cubriría aproximadamente el ${pct}% del déficit proyectado (${formatMoneyCompact(deficitGap)}).`;
     }
@@ -881,11 +885,10 @@ function CopilotFinanzasPageContent() {
               {deficitGuidedBody} {deadlinePhrase}
             </p>
             <p className="mt-3 text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
-              No hay simulador automático acá: los pasos usan los mismos datos que el motor de
-              Finanzas. Lo accionable está abajo cuando lo abrís.
+              Los pasos usan los mismos datos que Finanzas. Lo accionable está abajo cuando lo abrís.
             </p>
             {coberturaSinPalancasInternas ? (
-              <p className="mt-3 rounded-xl border border-amber-200/80 bg-amber-50/60 px-3 py-2 text-xs leading-relaxed text-amber-950">
+              <p className="mt-3 rounded-xl border border-[var(--copilot-warning-border)]/80 bg-[var(--copilot-tone-warning-bg)] px-3 py-2 text-xs leading-relaxed text-[var(--copilot-warning-text-strong)]">
                 Con los datos actuales no hay cobranza esperada ni pagos futuros registrados para
                 mover: al abrir pasos el foco pasa a{" "}
                 <span className="font-semibold">generar ingresos</span> u otras palancas fuera de
@@ -931,7 +934,7 @@ function CopilotFinanzasPageContent() {
                   <>
                     <CopilotSectionTitle
                       title="No hay cobertura con la información actual"
-                      subtitle="El motor no ve palancas de cartera para cerrar el hueco con lo cargado hoy."
+                      subtitle="No hay palancas de cartera visibles con los datos cargados hoy."
                     />
                     <p className="mt-3 text-sm leading-relaxed text-[var(--copilot-ink)]">
                       No hay facturas a cobrar ni pagos a reprogramar que permitan cubrir el déficit.
@@ -1035,7 +1038,7 @@ function CopilotFinanzasPageContent() {
                             Cargando facturas…
                           </p>
                         ) : coberturaDetailError ? (
-                          <p className="mt-2 text-sm text-amber-900">{coberturaDetailError}</p>
+                          <p className="mt-2 text-sm text-[var(--copilot-warning-text-strong)]">{coberturaDetailError}</p>
                         ) : coberturaInvoiceStats.count === 0 ? (
                           <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
                             No hay facturas con saldo pendiente en la base (o todas figuran pagadas
@@ -1076,12 +1079,11 @@ function CopilotFinanzasPageContent() {
                             Cargando pagos…
                           </p>
                         ) : coberturaDetailError ? (
-                          <p className="mt-2 text-sm text-amber-900">{coberturaDetailError}</p>
+                          <p className="mt-2 text-sm text-[var(--copilot-warning-text-strong)]">{coberturaDetailError}</p>
                         ) : futurePayments.count === 0 ? (
                           <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
                             No registramos pagos operativos con fecha estrictamente futura a hoy. Si
-                            hay compromisos que aún no cargaste, sumalos en Datos para que el motor
-                            pueda mostrar margen de reprogramación.
+                            hay compromisos que aún no cargaste, sumalos en Datos para ver margen de reprogramación.
                           </p>
                         ) : (
                           <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-[var(--copilot-ink)]">
@@ -1092,8 +1094,7 @@ function CopilotFinanzasPageContent() {
                             </li>
                             <li className="text-[var(--copilot-ink-muted)]">
                               Reprogramar o negociar plazos sobre esos egresos reduce la presión
-                              sobre caja sin tocar obligaciones fiscales ya vencidas. El motor ya
-                              suma egresos modelados en{" "}
+                              sobre caja sin tocar obligaciones fiscales ya vencidas. Los egresos modelados suman{" "}
                               {snapshot
                                 ? formatMoneyCompact(snapshotExpectedOutflowsTotal(snapshot))
                                 : "el panorama"}
@@ -1113,7 +1114,7 @@ function CopilotFinanzasPageContent() {
                             Cargando obligaciones…
                           </p>
                         ) : taxError ? (
-                          <p className="mt-2 text-sm text-amber-900">{taxError}</p>
+                          <p className="mt-2 text-sm text-[var(--copilot-warning-text-strong)]">{taxError}</p>
                         ) : openOblCount === 0 ? (
                           <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
                             No hay obligaciones fiscales abiertas. Si en la realidad
@@ -1265,13 +1266,13 @@ function CopilotFinanzasPageContent() {
                 </div>
               ) : null}
               {snapshotError ? (
-                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
+                <div className="mt-4 rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-4 py-3 text-sm text-[var(--copilot-warning-text-strong)]">
                   {snapshotError}
                 </div>
               ) : null}
               {!snapshotLoading && !snapshotError && snapshot ? (
                 <div className="mt-6 space-y-6">
-                  <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50/80 px-3 py-2 text-xs text-blue-800">
+                  <div className="flex items-start gap-2 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-tone-neutral-bg)]/80 px-3 py-2 text-xs text-[var(--copilot-accent)]">
                     <span className="mt-px shrink-0">ℹ️</span>
                     <span>{METRIC_MIXED_CURRENCY_DISCLAIMER}</span>
                   </div>
@@ -1283,7 +1284,7 @@ function CopilotFinanzasPageContent() {
                     </div>
                     <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 p-4 shadow-sm">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Cobranza esperada</p>
-                      <p className="mt-2 text-xl font-semibold tabular-nums text-emerald-700">{formatMoneyCompact(snapshotReceivablesRiskWeighted(snapshot))}</p>
+                      <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-success-text)]">{formatMoneyCompact(snapshotReceivablesRiskWeighted(snapshot))}</p>
                       <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">Facturas abiertas ponderadas por probabilidad de cobro.</p>
                     </div>
                     <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 p-4 shadow-sm">
@@ -1330,10 +1331,10 @@ function CopilotFinanzasPageContent() {
                                   <div className="flex justify-between gap-2"><dt title="Incluye todas las facturas activas históricas. Puede diferir de Ventas del período porque no aplica el rango Desde/Hasta." className="cursor-help underline decoration-dotted">Facturado histórico</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{totals.invoiced.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>
                                 ) : null}
                                 {totals.pending !== undefined ? (
-                                  <div className="flex justify-between gap-2"><dt>Deuda actual</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{totals.pending.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>
+                                  <div className="flex justify-between gap-2"><dt title="Todo lo que los clientes deben actualmente al corte. El atrasado ya está incluido." className="cursor-help underline decoration-dotted">Total pendiente</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{totals.pending.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>
                                 ) : null}
                                 {totals.overdue !== undefined && totals.overdue > 0 ? (
-                                  <div className="flex justify-between gap-2"><dt>Deuda vencida</dt><dd className="tabular-nums font-semibold text-amber-900">{totals.overdue.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>
+                                  <div className="flex justify-between gap-2"><dt title="Parte del total pendiente cuya fecha de vencimiento ya pasó. Ya está incluido dentro del total pendiente." className="cursor-help underline decoration-dotted">Atrasado</dt><dd className="tabular-nums font-semibold text-[var(--copilot-warning-text-strong)]">{totals.overdue.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>
                                 ) : null}
                               </dl>
                             </div>
@@ -1349,6 +1350,20 @@ function CopilotFinanzasPageContent() {
                     <p className="text-[10px] text-[var(--copilot-ink-muted)]">Proyección con datos Zeta y pagos próximos cargados. UYU y USD por separado.</p>
                     <FlowBar label="Cobranza esperada (facturas × prob. de cobro)" value={snapshotReceivablesRiskWeighted(snapshot)} max={flowMax} flow="in" />
                     <FlowBar label="Egresos proyectados (operativos + fiscal 30 d)" value={snapshotExpectedOutflowsTotal(snapshot)} max={flowMax} flow="out" />
+                    {(paymentBehavior.summaries.length > 0 || paymentBehavior.loading) && (
+                      <div className="border-t border-[var(--copilot-border)] pt-2">
+                        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                          Cobros probables (historial cliente)
+                        </p>
+                        <PaymentBehaviorCompactLine
+                          summaries={paymentBehavior.summaries}
+                          loading={paymentBehavior.loading}
+                        />
+                        <p className="mt-1 text-[10px] text-[var(--copilot-ink-muted)]">
+                          Alta (90%): consistente · Media (65%): irregular · Baja (35%): sin historial
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : null}
@@ -1483,11 +1498,11 @@ function CopilotFinanzasPageContent() {
                 </CopilotCard>
               </div>
             ) : (
-              <CopilotCard className="border-amber-200/80 bg-amber-50/50">
-                <p className="text-sm font-semibold text-amber-950">
+              <CopilotCard className="border-[var(--copilot-warning-border)]/80 bg-[var(--copilot-tone-warning-bg)]">
+                <p className="text-sm font-semibold text-[var(--copilot-warning-text-strong)]">
                   No hay obligación prioritaria en la base
                 </p>
-                <p className="mt-2 text-sm text-amber-900/90">
+                <p className="mt-2 text-sm text-[var(--copilot-warning-text-strong)]/90">
                   Pediste priorizar cobertura fiscal pero no quedan obligaciones abiertas cargadas.
                   Revisá Datos o sincronizá obligaciones; podés{" "}
                   <button
@@ -1516,7 +1531,7 @@ function CopilotFinanzasPageContent() {
                 </div>
               ) : null}
               {taxError ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
+                <div className="rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-4 py-3 text-sm text-[var(--copilot-warning-text-strong)]">
                   {taxError} · Contactá al administrador si el calendario fiscal aún no está configurado.
                 </div>
               ) : null}
@@ -1531,11 +1546,11 @@ function CopilotFinanzasPageContent() {
                         {upcomingWindowCount}
                       </p>
                     </div>
-                    <div className="rounded-xl border border-rose-200/80 bg-rose-50/40 p-4 shadow-sm">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-rose-900/80">
+                    <div className="rounded-xl border border-[var(--copilot-danger-border)]/80 bg-[var(--copilot-tone-danger-bg)]/40 p-4 shadow-sm">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-danger-text-strong)]/80">
                         Vencidas / a regularizar
                       </p>
-                      <p className="mt-2 text-2xl font-semibold tabular-nums text-rose-950">
+                      <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--copilot-danger-text-strong)]">
                         {overdueCount}
                       </p>
                     </div>

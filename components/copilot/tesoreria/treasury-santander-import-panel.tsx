@@ -42,19 +42,19 @@ function movementTypeLabel(type: string): string {
 function statusBadgeClass(status: SantanderReconciliationStatus): string {
   switch (status) {
     case "matched":
-      return "bg-emerald-100 text-emerald-900";
+      return "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-success-text-strong)]";
     case "possible":
       return "bg-sky-100 text-sky-900";
     case "missing_copilot":
     case "missing_zeta":
-      return "bg-amber-100 text-amber-900";
+      return "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-warning-text-strong)]";
     case "amount_diff":
-      return "bg-rose-100 text-rose-900";
+      return "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-danger-text-strong)]";
     case "duplicate":
     case "ignored":
     case "unknown":
     default:
-      return "bg-slate-100 text-slate-700";
+      return "bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink)]";
   }
 }
 
@@ -260,7 +260,7 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
           ))}
         </select>
         {santanderAccounts.length === 0 ? (
-          <p className="mt-1 text-xs text-amber-800">
+          <p className="mt-1 text-xs text-[var(--copilot-warning-text-strong)]">
             No hay cuentas bancarias cargadas. Podés generar el preview igual; para guardar
             movimientos importados necesitás elegir una cuenta.
           </p>
@@ -287,13 +287,13 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
       </label>
 
       {fileError ? (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="alert">
+        <p className="rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-3 py-2 text-sm text-[var(--copilot-warning-text-strong)]" role="alert">
           {fileError}
         </p>
       ) : null}
 
       {currencyMismatch ? (
-        <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900" role="alert">
+        <p className="rounded-xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] px-3 py-2 text-sm text-[var(--copilot-danger-text-strong)]" role="alert">
           La cuenta seleccionada es{" "}
           <strong className="font-semibold">{currencyMismatch.accountCurrency}</strong>, pero el
           extracto detectado es{" "}
@@ -540,9 +540,9 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
             {detailRow.matches.filter((m) => m.matchReason === "Forma de transferencia").map((m) => (
               <div
                 key={`tm-${m.id}`}
-                className="mt-4 rounded-xl border border-blue-500/30 bg-blue-500/5 p-3"
+                className="mt-4 rounded-xl border border-[var(--copilot-accent)]/30 bg-[var(--copilot-accent)]/5 p-3"
               >
-                <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-accent)]">
                   Cliente sugerido por forma de transferencia
                 </p>
                 <p className="mt-1 text-sm font-medium text-[var(--copilot-ink)]">{m.label}</p>

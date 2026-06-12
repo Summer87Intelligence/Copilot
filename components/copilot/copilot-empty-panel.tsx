@@ -25,7 +25,7 @@ export function CopilotEmptyPanel({ title, paragraphs, example, importance }: Pr
       {importance ? (
         <div
           role="note"
-          className="mt-3 rounded-xl border border-amber-200/90 bg-amber-50/80 px-3 py-2 text-xs text-amber-950"
+          className="mt-3 rounded-xl border border-[var(--copilot-warning-border)]/90 bg-[var(--copilot-tone-warning-bg)]/80 px-3 py-2 text-xs text-[var(--copilot-warning-text-strong)]"
         >
           {importance}
         </div>

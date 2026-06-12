@@ -48,10 +48,10 @@ const URGENCY_LEFT_BORDER: Record<ExecutiveDecisionUrgency, string> = {
 };
 
 const URGENCY_BADGE: Record<ExecutiveDecisionUrgency, string> = {
-  critical: "bg-rose-100 text-rose-700 border border-rose-200",
-  high:     "bg-amber-100 text-amber-700 border border-amber-200",
-  medium:   "bg-blue-50 text-blue-700 border border-blue-200",
-  low:      "bg-slate-100 text-slate-600 border border-slate-200",
+  critical: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border border-[var(--copilot-danger-border)]",
+  high:     "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border border-[var(--copilot-warning-border)]",
+  medium:   "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)] border border-[var(--copilot-border)]",
+  low:      "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink-muted)] border border-[var(--copilot-border)]",
 };
 
 const URGENCY_LABELS: Record<ExecutiveDecisionUrgency, string> = {
@@ -85,11 +85,11 @@ function DecisionCard({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 mb-0.5">
               <span
-                className={`inline-flex rounded px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide ${URGENCY_BADGE[decision.urgency]}`}
+                className={`inline-flex rounded px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide ${URGENCY_BADGE[decision.urgency]}`}
               >
                 {URGENCY_LABELS[decision.urgency]}
               </span>
-              <span className="text-[9px] text-[var(--copilot-text-muted)] font-medium uppercase tracking-wide">
+              <span className="text-[10px] text-[var(--copilot-text-muted)] font-medium uppercase tracking-wide">
                 #{decision.rank}
               </span>
             </div>
@@ -118,7 +118,7 @@ function DecisionCard({
           <div className="mt-1.5 flex flex-wrap gap-2 text-[10px] text-[var(--copilot-text-muted)]">
             {decision.expected_impact.cash_recovery != null && (
               <span className="flex items-center gap-1">
-                <span className="font-medium text-emerald-700">
+                <span className="font-medium text-[var(--copilot-success-text-strong)]">
                   +{decision.expected_impact.cash_recovery.toLocaleString("es-UY")}
                 </span>
                 <span>recuperación estimada</span>
@@ -256,14 +256,14 @@ export function ExecutiveCommandCenter({ timelineEvents = [], onGoToQueue }: Pro
 
   if (error && !brief) {
     return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex gap-3">
-        <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+      <div className="rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] p-4 flex gap-3">
+        <AlertTriangle className="h-4 w-4 text-[var(--copilot-warning-text)] shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-medium text-amber-800">No se pudo cargar el brief ejecutivo</p>
+          <p className="text-sm font-medium text-[var(--copilot-warning-text-strong)]">No se pudo cargar el brief ejecutivo</p>
           <button
             type="button"
             onClick={() => void fetchBrief(false)}
-            className="mt-1 text-xs font-medium text-amber-700 hover:underline"
+            className="mt-1 text-xs font-medium text-[var(--copilot-warning-text-strong)] hover:underline"
           >
             Reintentar
           </button>
@@ -295,7 +295,7 @@ export function ExecutiveCommandCenter({ timelineEvents = [], onGoToQueue }: Pro
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {brief.confidence_pct < 80 && (
-              <span className="text-[9px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-px font-medium">
+              <span className="text-[10px] text-[var(--copilot-warning-text)] bg-[var(--copilot-tone-warning-bg)] border border-[var(--copilot-warning-border)] rounded px-1.5 py-px font-medium">
                 Confianza {brief.confidence_pct}%
               </span>
             )}
@@ -357,7 +357,7 @@ export function ExecutiveCommandCenter({ timelineEvents = [], onGoToQueue }: Pro
             {brief.expected_business_impact}
           </p>
           {cached && (
-            <p className="text-[9px] text-[var(--copilot-text-muted)] opacity-60">
+            <p className="text-[10px] text-[var(--copilot-text-muted)] opacity-60">
               Desde caché · TTL 15 min
             </p>
           )}

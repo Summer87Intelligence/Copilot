@@ -225,7 +225,7 @@ export function TreasuryBankReconciliationPanel({
                         return (
                           <tr
                             key={row.id}
-                            className={`${hasDiff ? "bg-amber-50/80" : ""} ${isFocused ? "ring-1 ring-inset ring-[var(--copilot-accent)]" : ""}`}
+                            className={`${hasDiff ? "bg-[var(--copilot-tone-warning-bg)]" : ""} ${isFocused ? "ring-1 ring-inset ring-[var(--copilot-accent)]" : ""}`}
                             onClick={() => setFocusedId(row.id)}
                           >
                             <td className={TESORERIA_TD_CLASS}>{row.movementDate}</td>
@@ -324,7 +324,7 @@ export function TreasuryBankReconciliationPanel({
               suggestions.map((suggestion) => (
                 <li
                   key={`${suggestion.bankId}-${suggestion.manualId}`}
-                  className={`rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 p-3 text-sm ${suggestion.amountDelta > 0.01 || suggestion.dayDelta > 0 ? "border-amber-300 bg-amber-50/70" : ""}`}
+                  className={`rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 p-3 text-sm ${suggestion.amountDelta > 0.01 || suggestion.dayDelta > 0 ? "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)]" : ""}`}
                 >
                   <p className="font-medium">Confianza {suggestion.confidence}%</p>
                   <p className="text-xs text-[var(--copilot-ink-muted)]">

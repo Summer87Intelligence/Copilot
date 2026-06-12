@@ -35,16 +35,16 @@ const ACTION_ICONS: Record<string, React.ReactNode> = {
 // ---------------------------------------------------------------------------
 
 const STATUS_CONFIG: Record<string, { dot: string; pill: string }> = {
-  paid:             { dot: "bg-emerald-500", pill: "bg-emerald-50 text-emerald-700 border border-emerald-200" },
-  promised_payment: { dot: "bg-blue-500",    pill: "bg-blue-50 text-blue-700 border border-blue-200" },
-  escalated:        { dot: "bg-rose-600",    pill: "bg-rose-100 text-rose-800 border border-rose-300" },
+  paid:             { dot: "bg-[var(--copilot-success-text)]", pill: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border border-[var(--copilot-success-border)]" },
+  promised_payment: { dot: "bg-[var(--copilot-accent)]",    pill: "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)] border border-[var(--copilot-border)]" },
+  escalated:        { dot: "bg-[var(--copilot-danger-text)]",    pill: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border border-[var(--copilot-danger-border)]" },
   disputed:         { dot: "bg-orange-500",  pill: "bg-orange-50 text-orange-700 border border-orange-200" },
-  contacted:        { dot: "bg-blue-400",    pill: "bg-blue-50 text-blue-600 border border-blue-100" },
-  pending_review:   { dot: "bg-slate-400",   pill: "bg-slate-50 text-slate-600 border border-slate-200" },
-  paused:           { dot: "bg-slate-300",   pill: "bg-slate-50 text-slate-500 border border-slate-100" },
+  contacted:        { dot: "bg-[var(--copilot-accent)]",    pill: "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)] border border-[var(--copilot-border)]" },
+  pending_review:   { dot: "bg-[var(--copilot-border)]",   pill: "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink-muted)] border border-[var(--copilot-border)]" },
+  paused:           { dot: "bg-[var(--copilot-border)]",   pill: "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink-muted)] border border-[var(--copilot-border)]" },
 };
 
-const DEFAULT_CONFIG = { dot: "bg-slate-400", pill: "bg-slate-50 text-slate-600 border border-slate-200" };
+const DEFAULT_CONFIG = { dot: "bg-[var(--copilot-border)]", pill: "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink-muted)] border border-[var(--copilot-border)]" };
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -87,7 +87,7 @@ function PromiseChip({ date, amount, currency, status }: {
 
   if (fulfilled) {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5">
+      <span className="inline-flex items-center gap-1 text-[10px] text-[var(--copilot-success-text-strong)] bg-[var(--copilot-tone-positive-bg)] border border-[var(--copilot-success-border)] rounded px-1.5 py-0.5">
         <CheckCircle className="h-3 w-3" />
         Pagado
       </span>
@@ -95,7 +95,7 @@ function PromiseChip({ date, amount, currency, status }: {
   }
   if (broken) {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] text-rose-700 bg-rose-50 border border-rose-200 rounded px-1.5 py-0.5">
+      <span className="inline-flex items-center gap-1 text-[10px] text-[var(--copilot-danger-text-strong)] bg-[var(--copilot-tone-danger-bg)] border border-[var(--copilot-danger-border)] rounded px-1.5 py-0.5">
         <XCircle className="h-3 w-3" />
         Promesa vencida · {formatDate(date)}
         {amount != null && <> · {currency ?? ""} {amount.toLocaleString("es-UY", { maximumFractionDigits: 0 })}</>}
@@ -103,7 +103,7 @@ function PromiseChip({ date, amount, currency, status }: {
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] text-blue-700 bg-blue-50 border border-blue-200 rounded px-1.5 py-0.5">
+    <span className="inline-flex items-center gap-1 text-[10px] text-[var(--copilot-accent)] bg-[var(--copilot-tone-neutral-bg)] border border-[var(--copilot-border)] rounded px-1.5 py-0.5">
       <Clock className="h-3 w-3" />
       Promesa para {formatDate(date)}
       {amount != null && <> · {currency ?? ""} {amount.toLocaleString("es-UY", { maximumFractionDigits: 0 })}</>}
@@ -128,7 +128,7 @@ function TimelineEntry({ action }: { action: DECollectionAction }) {
       <div className="flex flex-col items-center shrink-0 mt-0.5">
         <span className={`flex h-5 w-5 items-center justify-center rounded-full border ${
           isEscalation
-            ? "bg-rose-100 border-rose-300 text-rose-700"
+            ? "bg-[var(--copilot-tone-danger-bg)] border-[var(--copilot-danger-border)] text-[var(--copilot-danger-text-strong)]"
             : "bg-[var(--copilot-surface)] border-[var(--copilot-border)] text-[var(--copilot-text-secondary)]"
         }`}>
           {icon}
@@ -167,7 +167,7 @@ function TimelineEntry({ action }: { action: DECollectionAction }) {
         )}
 
         {isEscalation && (
-          <div className="mt-1 flex items-center gap-1 text-[10px] text-rose-600">
+          <div className="mt-1 flex items-center gap-1 text-[10px] text-[var(--copilot-danger-text)]">
             <AlertTriangle className="h-3 w-3" />
             <span>Caso escalado — requiere gestión prioritaria</span>
           </div>

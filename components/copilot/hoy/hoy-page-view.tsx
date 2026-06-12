@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
 import { RefreshCw, XCircle } from "lucide-react";
 
 import { CopilotCard } from "@/components/copilot/copilot-ui";
@@ -14,7 +13,7 @@ import {
   topDebtorRowsPerCurrency,
 } from "@/lib/copilot-hoy-cockpit-view";
 import type { HoyPeriodRange } from "@/lib/copilot-hoy-period";
-import { HOY_COPY, HOY_UI } from "@/lib/copilot-hoy-ui-contract";
+import { HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
 import {
   buildTodayBusinessPulse,
   type AttentionClientsSummary,
@@ -26,28 +25,20 @@ import type {
   TreasuryOutflowSummary,
   TreasuryScheduledPayment,
 } from "@/lib/treasury/treasury-scheduled-payments";
-import { HoyCashCurrentSection } from "./hoy-cash-current-section";
 import { HoyMonthEndProjectionSection } from "./hoy-month-end-projection-section";
 
 import { AttentionClientsDrawer } from "./hoy-attention-clients-drawer";
 import { CollectionAgendaHoyCard } from "./collection-agenda-hoy-card";
-import { HoyAdvancedDetail } from "./hoy-advanced-detail";
 import { ClientsWithDebtSection } from "./hoy-clients-with-debt-section";
 import {
   HoyCockpitCardDrawer,
   type HoyCockpitCardId,
 } from "./hoy-cockpit-card-drawer";
 import { HoyExecutiveSummaryCard } from "./hoy-executive-summary-card";
-import { HoyCurrentStateSection } from "./hoy-current-state-section";
 import { HoyMoneyCards } from "./hoy-money-cards";
-import { HoyPeriodActivitySection } from "./hoy-period-activity-section";
-import { HoyPeriodBar } from "./hoy-period-bar";
-import { HoyProjection30dSection } from "./hoy-projection-30d-section";
 import { HOY_PAGE_SHELL } from "./hoy-layout";
-import { HoyQuickInsights } from "./hoy-quick-insights";
 import { DebtorsReportTrigger } from "@/components/copilot/reports/debtors-report-dialog";
 import { CopilotDataProvenanceStrip } from "@/components/copilot/copilot-data-provenance-strip";
-import { HoyRecommendedActionsSection } from "./hoy-recommended-actions-section";
 
 export type HoySectionErrors = {
   hub?: string;
@@ -93,7 +84,7 @@ type DrawerState =
   | { kind: "attention"; data: AttentionClientsSummary };
 
 function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded-xl bg-[rgba(44,40,37,0.07)] ${className}`} />;
+  return <div className={`animate-pulse rounded-xl bg-[var(--copilot-soft-bg)] ${className}`} />;
 }
 
 function LoadingSkeleton() {
@@ -101,10 +92,10 @@ function LoadingSkeleton() {
     <div className={HOY_PAGE_SHELL}>
       <Skeleton className="h-14 w-full" />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Skeleton className="min-h-[200px]" />
-        <Skeleton className="min-h-[200px]" />
-        <Skeleton className="min-h-[200px]" />
-        <Skeleton className="min-h-[200px]" />
+        <Skeleton className="h-28" />
+        <Skeleton className="h-28" />
+        <Skeleton className="h-28" />
+        <Skeleton className="h-28" />
       </div>
       <Skeleton className="h-9 w-full" />
       <Skeleton className="h-64 w-full" />
@@ -130,7 +121,7 @@ function SectionErrorStrip({
   if (failed.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-2.5 text-xs text-amber-900">
+    <div className="flex items-center gap-3 rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-card-bg)] px-4 py-2.5 text-xs text-[var(--copilot-warning-text-strong)]">
       <span className="flex-1">
         {failed.length === 1
           ? failed[0]
@@ -139,7 +130,7 @@ function SectionErrorStrip({
       <button
         type="button"
         onClick={onRefresh}
-        className="flex shrink-0 items-center gap-1 rounded-lg border border-amber-200 bg-[var(--copilot-card-bg)]/70 px-2.5 py-1 font-medium text-amber-700 hover:bg-[var(--copilot-panel-bg)]"
+        className="flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-warning-border)] bg-[var(--copilot-card-bg)]/70 px-2.5 py-1 font-medium text-[var(--copilot-warning-text)] hover:bg-[var(--copilot-panel-bg)]"
       >
         <RefreshCw className="h-3 w-3" aria-hidden />
         Reintentar
@@ -180,14 +171,6 @@ export function HoyPageView({
   const [drawer, setDrawer] = useState<DrawerState>({ kind: "closed" });
   const [monthEndDrawerOpen, setMonthEndDrawerOpen] = useState(false);
   const [cockpitCard, setCockpitCard] = useState<HoyCockpitCardId | null>(null);
-  const [advancedExpanded, setAdvancedExpanded] = useState(false);
-  const pathname = usePathname();
-  const [advancedPathname, setAdvancedPathname] = useState(pathname);
-
-  if (pathname !== advancedPathname) {
-    setAdvancedPathname(pathname);
-    setAdvancedExpanded(false);
-  }
 
   const debtorsSectionRef = useRef<HTMLElement>(null);
 
@@ -275,13 +258,13 @@ export function HoyPageView({
   if (error) {
     return (
       <div className={HOY_PAGE_SHELL}>
-        <div className="flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-950">
-          <XCircle className="h-4 w-4 shrink-0 text-rose-500" aria-hidden />
+        <div className="flex items-center gap-3 rounded-xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-card-bg)] px-4 py-3 text-sm text-[var(--copilot-danger-text-strong)]">
+          <XCircle className="h-4 w-4 shrink-0 text-[var(--copilot-danger-text)]" aria-hidden />
           {error}
           <button
             type="button"
             onClick={onRefresh}
-            className="ml-auto flex items-center gap-1 rounded-lg border border-rose-200 bg-[var(--copilot-card-bg)]/70 px-3 py-1.5 text-xs font-medium text-rose-700"
+            className="ml-auto flex items-center gap-1 rounded-lg border border-[var(--copilot-danger-border)] bg-[var(--copilot-card-bg)]/70 px-3 py-1.5 text-xs font-medium text-[var(--copilot-danger-text)]"
           >
             <RefreshCw className="h-3.5 w-3.5" aria-hidden />
             Reintentar
@@ -319,30 +302,11 @@ export function HoyPageView({
           payments={cockpit.payments}
           afterPayments={cockpit.afterPayments}
           receivables={cockpit.receivables}
+          cashPositionBlocks={pulse.cashPositionBlocks}
+          manualCashMovements={manualCashMovements}
           onCardClick={setCockpitCard}
           activeCard={cockpitCard}
         />
-
-        <HoyCashCurrentSection blocks={pulse.cashPositionBlocks} />
-
-        <HoyMonthEndProjectionSection
-          scenarioProjections={pulse.monthEndScenarioProjections}
-          drawerOpen={monthEndDrawerOpen}
-          onOpenDrawer={() => setMonthEndDrawerOpen(true)}
-          onCloseDrawer={() => setMonthEndDrawerOpen(false)}
-        />
-
-        {sectionErrors && (
-          <SectionErrorStrip sectionErrors={sectionErrors} onRefresh={onRefresh} />
-        )}
-
-        <HoyQuickInsights insights={cockpit.insights} />
-
-        {HOY_UI.showRecommendedActions && pulse.recommendedActions.length > 0 ? (
-          <HoyRecommendedActionsSection actions={pulse.recommendedActions} />
-        ) : null}
-
-        <CollectionAgendaHoyCard />
 
         <CopilotCard className="w-full !p-3">
           <div className="flex flex-wrap items-center justify-between gap-1.5">
@@ -350,7 +314,7 @@ export function HoyPageView({
               <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">
                 {HOY_COPY.debtorsSectionTitle}
               </h2>
-              <p className="text-xs text-[var(--copilot-ink-muted)]">
+              <p className="text-[11px] text-[var(--copilot-ink-muted)]">
                 {HOY_COPY.debtorsSectionRiskSubtitle}
               </p>
             </div>
@@ -360,7 +324,7 @@ export function HoyPageView({
                   portfolioRows={portfolioRows}
                   defaultFilters={{ status: "overdue", currency: "all", overdueDays: "all" }}
                   hint="Descargá un reporte filtrado de clientes con deuda."
-                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-2.5 py-1 text-xs font-semibold text-[var(--copilot-ink)] hover:bg-[var(--copilot-panel-bg)]"
+                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-button-secondary-border)] bg-[var(--copilot-button-secondary-bg)] px-2.5 py-1 text-xs font-semibold text-[var(--copilot-accent)] shadow-sm hover:bg-[var(--copilot-accent-soft)]"
                 />
               ) : null}
               {pulse.attentionClients.total > 0 ? (
@@ -392,32 +356,19 @@ export function HoyPageView({
           </div>
         </CopilotCard>
 
-        <HoyAdvancedDetail expanded={advancedExpanded} onExpandedChange={setAdvancedExpanded}>
-          <HoyPeriodBar
-            draftFrom={draftFrom}
-            draftTo={draftTo}
-            confirmed={confirmedPeriod}
-            onDraftFromChange={onDraftFromChange}
-            onDraftToChange={onDraftToChange}
-            hasPendingChanges={hasPendingPeriodChanges}
-            onConfirm={onConfirmPeriod}
-            onMonthToDate={onMonthToDate}
-            onLast30Days={onLast30Days}
-            onRefresh={onRefresh}
-            loading={loading}
-          />
-          <HoyCurrentStateSection blocks={pulse.currentStateBlocks} />
-          <HoyPeriodActivitySection
-            blocks={pulse.periodActivityBlocks}
-            periodRange={pulse.periodRange}
-          />
-          <HoyProjection30dSection
-            blocks={pulse.projection30dBlocks}
-            alerts={pulse.treasuryAlerts}
-            configured={pulse.treasuryOutflowsConfigured}
-            overdueCritical30={carteraAgingOverdue}
-          />
-        </HoyAdvancedDetail>
+        {sectionErrors && (
+          <SectionErrorStrip sectionErrors={sectionErrors} onRefresh={onRefresh} />
+        )}
+
+        <CollectionAgendaHoyCard />
+
+        <HoyMonthEndProjectionSection
+          scenarioProjections={pulse.monthEndScenarioProjections}
+          drawerOpen={monthEndDrawerOpen}
+          onOpenDrawer={() => setMonthEndDrawerOpen(true)}
+          onCloseDrawer={() => setMonthEndDrawerOpen(false)}
+        />
+
       </div>
 
       {cockpitCard ? (

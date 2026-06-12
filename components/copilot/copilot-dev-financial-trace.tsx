@@ -123,7 +123,7 @@ export function CopilotDevFinancialTrace() {
 
   if (state.status === "err") {
     return (
-      <div className="border-b border-dashed border-rose-700/40 bg-rose-50/90 px-4 py-1 text-[10px] text-rose-900 dark:bg-rose-950/30 dark:text-rose-100 sm:px-6">
+      <div className="border-b border-dashed border-[var(--copilot-danger-text)]/40 bg-[var(--copilot-tone-danger-bg)]/90 px-4 py-1 text-[10px] text-[var(--copilot-danger-text-strong)] dark:bg-rose-950/30 dark:text-rose-100 sm:px-6">
         <span className="mr-2 rounded bg-rose-200/90 px-1 py-0.5 text-[9px] font-semibold uppercase dark:bg-rose-800/70">
           Dev trace
         </span>

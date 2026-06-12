@@ -8,10 +8,10 @@ import {
 
 const toneClass: Record<CopilotSurfaceKind, string> = {
   real:
-    "border-emerald-200/90 bg-emerald-50/85 text-emerald-950 ring-emerald-900/10",
+    "border-[var(--copilot-success-border)]/90 bg-[var(--copilot-tone-positive-bg)]/85 text-[var(--copilot-success-text-strong)] ring-emerald-900/10",
   partial:
-    "border-amber-200/90 bg-amber-50/85 text-amber-950 ring-amber-900/10",
-  demo: "border-slate-200/95 bg-slate-50/90 text-slate-900 ring-slate-900/8",
+    "border-[var(--copilot-warning-border)]/90 bg-[var(--copilot-tone-warning-bg)]/85 text-[var(--copilot-warning-text-strong)] ring-amber-900/10",
+  demo: "border-[var(--copilot-border)]/95 bg-[var(--copilot-soft-bg)]/90 text-[var(--copilot-ink)] ring-slate-900/8",
 };
 
 /**

@@ -81,7 +81,7 @@ function CashConversionSection({ currencies }: { currencies: CurrencyMetrics[] }
     <section className="space-y-3" aria-label="Cash conversion ejecutivo">
       <SectionHeader
         title="Conversión de caja"
-        subtitle="Lectura ejecutiva por moneda: emitido, cobrado y pendiente de cobro."
+        subtitle="Por moneda: ventas, cobrado y pendiente."
       />
       <div className="grid gap-3 lg:grid-cols-2">
         {currencies.map((currency) => (
@@ -117,11 +117,11 @@ function CashConversionCard({ metrics, symbol }: { metrics: CurrencyMetrics; sym
           {money(symbol, metrics.totalInvoiced)}
         </span>
         , cobraste{" "}
-        <span className="font-semibold tabular-nums text-emerald-800">
+        <span className="font-semibold tabular-nums text-[var(--copilot-success-text-strong)]">
           {money(symbol, metrics.totalCollected)}
         </span>{" "}
         y queda pendiente{" "}
-        <span className="font-semibold tabular-nums text-amber-900">
+        <span className="font-semibold tabular-nums text-[var(--copilot-warning-text-strong)]">
           {money(symbol, metrics.totalPending)}
         </span>
         .
@@ -135,7 +135,7 @@ function KpiSection({ currencies }: { currencies: CurrencyMetrics[] }) {
     <section className="space-y-3" aria-label="KPIs financieros">
       <SectionHeader
         title="KPIs financieros"
-        subtitle="Soporte cuantitativo: actividad emitida, cobranza y deuda abierta."
+        subtitle="Ventas, cobranza y deuda por moneda."
       />
       <div className="space-y-3">
         {currencies.map((currency) => (
@@ -236,9 +236,9 @@ function KpiStrip({ metrics, symbol }: { metrics: CurrencyMetrics; symbol: strin
           <p
             className={`mt-1 text-base font-semibold tabular-nums ${
               item.tone === "paid"
-                ? "text-emerald-800"
+                ? "text-[var(--copilot-success-text-strong)]"
                 : item.tone === "pending"
-                  ? "text-amber-900"
+                  ? "text-[var(--copilot-warning-text-strong)]"
                   : "text-[var(--copilot-ink)]"
             }`}
           >

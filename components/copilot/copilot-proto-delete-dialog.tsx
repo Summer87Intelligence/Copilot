@@ -45,7 +45,7 @@ export function CopilotProtoDeleteDialog({
           paragraphs={DATA_TRAINING.delete.paragraphs}
         />
         {error ? (
-          <p className="mt-3 text-sm text-rose-700">{error}</p>
+          <p className="mt-3 text-sm text-[var(--copilot-danger-text-strong)]">{error}</p>
         ) : null}
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <CopilotGhostButton type="button" onClick={onCancel} disabled={loading}>

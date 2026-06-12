@@ -74,7 +74,7 @@ export function CarteraPendingDrawer({
             <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-ink-muted)]">
               Deuda actual {currency}
             </p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-rose-600">
+            <p className="mt-1 text-2xl font-bold tabular-nums text-[var(--copilot-danger-text)]">
               {formatCarteraMoney(currency, totalPending)}
             </p>
             <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
@@ -113,7 +113,7 @@ function PendingDrawerBody({
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <p className="shrink-0 border-b border-[var(--copilot-border)] bg-amber-50/50 px-5 py-2 text-[11px] leading-snug text-amber-900/90">
+      <p className="shrink-0 border-b border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] px-5 py-2 text-[11px] leading-snug text-[var(--copilot-ink-muted)]">
         {/* TODO: cablear detalle por factura cuando el reporte exponga líneas pendientes por cliente. */}
         Detalle por comprobante no disponible en este reporte. Se muestra cliente, saldo
         y cantidad de facturas (misma fuente que Explorador de deuda).

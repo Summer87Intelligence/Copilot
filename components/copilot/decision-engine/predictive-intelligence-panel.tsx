@@ -12,24 +12,24 @@ import type {
 } from "@/lib/decision-engine/predictive/predictive-types";
 
 const DETERIORATION_CLASS: Record<DeteriorationBand, string> = {
-  stable: "bg-emerald-50 text-emerald-800 border-emerald-200",
-  watch: "bg-amber-50 text-amber-800 border-amber-200",
+  stable: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border-[var(--copilot-success-border)]",
+  watch: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]",
   deteriorating: "bg-orange-50 text-orange-800 border-orange-200",
-  severe: "bg-rose-50 text-rose-800 border-rose-200",
+  severe: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]",
 };
 
 const SLA_CLASS: Record<SLAStressBand, string> = {
-  normal: "bg-emerald-50 text-emerald-800 border-emerald-200",
-  elevated: "bg-amber-50 text-amber-800 border-amber-200",
+  normal: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border-[var(--copilot-success-border)]",
+  elevated: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]",
   high: "bg-orange-50 text-orange-800 border-orange-200",
-  critical: "bg-rose-50 text-rose-800 border-rose-200",
+  critical: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]",
 };
 
 const LIKELIHOOD_CLASS: Record<RecoveryLikelihoodBand, string> = {
-  high: "text-emerald-700",
-  medium: "text-amber-700",
+  high: "text-[var(--copilot-success-text-strong)]",
+  medium: "text-[var(--copilot-warning-text-strong)]",
   low: "text-orange-700",
-  very_low: "text-rose-700",
+  very_low: "text-[var(--copilot-danger-text-strong)]",
 };
 
 type PredictiveResponse =
@@ -97,8 +97,8 @@ export function PredictiveIntelligencePanel() {
 
   if (error && !predictive) {
     return (
-      <div className="rounded-xl border border-rose-200 bg-rose-50/50 px-4 py-3">
-        <p className="text-xs text-rose-800">{error}</p>
+      <div className="rounded-xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)]/50 px-4 py-3">
+        <p className="text-xs text-[var(--copilot-danger-text-strong)]">{error}</p>
       </div>
     );
   }
@@ -147,7 +147,7 @@ export function PredictiveIntelligencePanel() {
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-surface)] px-2 py-1.5">
-            <p className="text-[8px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
               Recup. media
             </p>
             <p className="text-base font-bold tabular-nums text-teal-700">
@@ -155,23 +155,23 @@ export function PredictiveIntelligencePanel() {
             </p>
           </div>
           <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-surface)] px-2 py-1.5">
-            <p className="text-[8px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
               Críticos proj.
             </p>
-            <p className="text-base font-bold tabular-nums text-rose-700">
+            <p className="text-base font-bold tabular-nums text-[var(--copilot-danger-text-strong)]">
               {predictive.metrics.predicted_critical_cases}
             </p>
           </div>
           <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-surface)] px-2 py-1.5">
-            <p className="text-[8px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
               SLA proj. 7d
             </p>
-            <p className="text-base font-bold tabular-nums text-amber-700">
+            <p className="text-base font-bold tabular-nums text-[var(--copilot-warning-text-strong)]">
               {predictive.metrics.projected_sla_breaches_7d}
             </p>
           </div>
           <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-surface)] px-2 py-1.5">
-            <p className="text-[8px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
               Oportunidades
             </p>
             <p className="text-base font-bold tabular-nums text-[var(--copilot-text)]">
@@ -182,7 +182,7 @@ export function PredictiveIntelligencePanel() {
 
         {pf30 && (
           <div>
-            <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)] mb-1.5 flex items-center gap-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)] mb-1.5 flex items-center gap-1">
               <TrendingDown className="h-3 w-3" />
               Riesgo futuro cartera (30d)
             </p>
@@ -205,7 +205,7 @@ export function PredictiveIntelligencePanel() {
 
         {sla7 && (
           <div>
-            <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)] mb-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)] mb-1.5">
               SLA stress (7d)
             </p>
             <div className="flex flex-wrap items-center gap-2">
@@ -228,7 +228,7 @@ export function PredictiveIntelligencePanel() {
 
         {topOpps.length > 0 && (
           <div>
-            <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)] mb-1.5 flex items-center gap-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)] mb-1.5 flex items-center gap-1">
               <Target className="h-3 w-3" />
               Recuperación rápida
             </p>
@@ -249,7 +249,7 @@ export function PredictiveIntelligencePanel() {
 
         {atRiskOps.length > 0 && (
           <div>
-            <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)] mb-1.5 flex items-center gap-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)] mb-1.5 flex items-center gap-1">
               <Users className="h-3 w-3" />
               Operadores en riesgo de sobrecarga
             </p>
@@ -257,7 +257,7 @@ export function PredictiveIntelligencePanel() {
               {atRiskOps.map((o) => (
                 <li
                   key={o.user_id}
-                  className="rounded border border-amber-100 bg-amber-50/50 px-2 py-1 text-[11px]"
+                  className="rounded border border-amber-100 bg-[var(--copilot-tone-warning-bg)]/50 px-2 py-1 text-[11px]"
                 >
                   <span className="font-semibold">{o.display_name}</span>
                   <span className="text-[var(--copilot-text-muted)]">

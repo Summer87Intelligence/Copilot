@@ -528,7 +528,7 @@ function CopilotAccionesPageContent() {
         {error ? (
           <div
             role="alert"
-            className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900"
+            className="rounded-2xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] px-4 py-3 text-sm text-[var(--copilot-danger-text-strong)]"
           >
             {error}
           </div>
@@ -960,7 +960,7 @@ function CopilotAccionesPageContent() {
                                   Guardar seguimiento
                                 </CopilotGhostButton>
                                 {loopSaveSuccessId === a.id ? (
-                                  <span className="text-xs font-medium text-emerald-600">
+                                  <span className="text-xs font-medium text-[var(--copilot-success-text)]">
                                     Seguimiento guardado
                                   </span>
                                 ) : null}
@@ -1053,7 +1053,7 @@ function CopilotAccionesPageContent() {
                                 onClick={() => onQuickClick(a, "sale")}
                                 className={`${quickBtnClass} ${
                                   saleExpandId === a.id
-                                    ? "border-[var(--copilot-accent)] bg-emerald-50/50"
+                                    ? "border-[var(--copilot-accent)] bg-[var(--copilot-tone-positive-bg)]/50"
                                     : ""
                                 }`}
                               >
@@ -1174,7 +1174,7 @@ function CopilotAccionesPageContent() {
                                 </p>
                               </div>
                             ) : (
-                              <p className="text-sm text-amber-900/90">
+                              <p className="text-sm text-[var(--copilot-warning-text-strong)]/90">
                                 Estado {mapExecutionStatus(a.execution_status)} sin fila de
                                 resultado en esta carga. Volvé a listar o revisá permisos.
                               </p>
@@ -1215,7 +1215,7 @@ function SummaryPill({
     <div
       className={`rounded-xl border px-3 py-2 ${
         highlight && value > 0
-          ? "border-rose-200 bg-rose-50/80"
+          ? "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)]/80"
           : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70"
       }`}
     >
@@ -1224,7 +1224,7 @@ function SummaryPill({
       </p>
       <p
         className={`mt-1 text-lg font-bold tabular-nums ${
-          highlight && value > 0 ? "text-rose-700" : "text-[var(--copilot-ink)]"
+          highlight && value > 0 ? "text-[var(--copilot-danger-text-strong)]" : "text-[var(--copilot-ink)]"
         }`}
       >
         {value}

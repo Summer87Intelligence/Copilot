@@ -128,9 +128,9 @@ export function isValidRole(v: unknown): v is SupportedRole {
 
 /** Label visible de cada rol. */
 export const ROLE_LABELS: Record<SupportedRole, string> = {
-  superadmin: "Superadmin",
+  superadmin: "Administrador general",
   usuario: "Usuario",
-  demo_readonly: "Demo (solo lectura)",
+  demo_readonly: "Demo solo lectura",
   cobranza: "Cobranza",
   tesoreria: "Tesorería",
   contador: "Contador",

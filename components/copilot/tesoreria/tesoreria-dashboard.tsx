@@ -1,6 +1,8 @@
 "use client";
 
 import { CopilotBadge, CopilotGhostButton, CopilotSectionTitle } from "@/components/copilot/copilot-ui";
+import { PaymentBehaviorSummaryCard } from "@/components/copilot/payment-behavior/payment-behavior-summary-card";
+import { usePaymentBehaviorProjection } from "@/hooks/use-payment-behavior-projection";
 import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
 import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
 import { formatDueWithTime, getDueTime } from "@/lib/treasury/treasury-obligation-actions";
@@ -33,6 +35,8 @@ function fmt(amount: number, currency: TreasuryCurrencyCode): string {
 }
 
 export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) {
+  const paymentBehavior = usePaymentBehaviorProjection();
+
   if (workspace.loading && workspace.lastFetchedAt == null) {
     return <TesoreriaDashboardSkeleton />;
   }
@@ -123,7 +127,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
           subtitle="Saldo inicial + cobros de clientes + registros manuales."
         />
         {cashPositionFailed ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-800">
+          <div className="rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] p-4 text-sm text-[var(--copilot-warning-text-strong)]">
             No se pudo cargar la posición de caja. Intentá recargar la página.
           </div>
         ) : (
@@ -156,19 +160,19 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
                       {pos.collectedFromClients > 0 ? (
                         <div className="flex justify-between gap-2">
                           <dt className="text-[var(--copilot-ink-muted)]">Cobros de clientes</dt>
-                          <dd className="tabular-nums text-emerald-700">+{fmt(pos.collectedFromClients, cur)}</dd>
+                          <dd className="tabular-nums text-[var(--copilot-success-text)]">+{fmt(pos.collectedFromClients, cur)}</dd>
                         </div>
                       ) : null}
                       {pos.manualIncome > 0 ? (
                         <div className="flex justify-between gap-2">
                           <dt className="text-[var(--copilot-ink-muted)]">Ingresos manuales</dt>
-                          <dd className="tabular-nums text-emerald-700">+{fmt(pos.manualIncome, cur)}</dd>
+                          <dd className="tabular-nums text-[var(--copilot-success-text)]">+{fmt(pos.manualIncome, cur)}</dd>
                         </div>
                       ) : null}
                       {pos.manualExpense > 0 ? (
                         <div className="flex justify-between gap-2">
                           <dt className="text-[var(--copilot-ink-muted)]">Egresos manuales</dt>
-                          <dd className="tabular-nums text-rose-700">−{fmt(pos.manualExpense, cur)}</dd>
+                          <dd className="tabular-nums text-[var(--copilot-danger-text)]">−{fmt(pos.manualExpense, cur)}</dd>
                         </div>
                       ) : null}
                     </dl>
@@ -189,8 +193,8 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
         <div className="grid gap-3 sm:grid-cols-3">
           {(
             [
-              { label: "Vencidos", totals: overdueTotals, textColor: "text-rose-700" },
-              { label: "Próximos 7 días", totals: upcoming7Totals, textColor: "text-amber-700" },
+              { label: "Vencidos", totals: overdueTotals, textColor: "text-[var(--copilot-danger-text)]" },
+              { label: "Próximos 7 días", totals: upcoming7Totals, textColor: "text-[var(--copilot-warning-text)]" },
               { label: "Próximos 30 días", totals: upcoming30Totals, textColor: "text-[var(--copilot-ink)]" },
             ] as const
           ).map(({ label, totals, textColor }) => (
@@ -221,7 +225,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
           subtitle="Disponible − vencidos − egresos 30 días programados."
         />
         {cashPositionFailed ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-800">
+          <div className="rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] p-4 text-sm text-[var(--copilot-warning-text-strong)]">
             Configurá el saldo en Caja para ver la proyección.
           </div>
         ) : (
@@ -236,20 +240,20 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
                   key={cur}
                   className={`rounded-xl border p-4 ${
                     negative
-                      ? "border-rose-200 bg-rose-50/70"
+                      ? "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)]"
                       : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70"
                   }`}
                 >
                   <p
                     className={`text-xs font-semibold uppercase tracking-wide ${
-                      negative ? "text-rose-700" : "text-[var(--copilot-ink-muted)]"
+                      negative ? "text-[var(--copilot-danger-text)]" : "text-[var(--copilot-ink-muted)]"
                     }`}
                   >
                     {cur}
                   </p>
                   <p
                     className={`mt-1 text-2xl font-bold tabular-nums ${
-                      negative ? "text-rose-700" : "text-[var(--copilot-ink)]"
+                      negative ? "text-[var(--copilot-danger-text)]" : "text-[var(--copilot-ink)]"
                     }`}
                   >
                     {fmt(after, cur)}
@@ -264,7 +268,24 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
         )}
       </section>
 
-      {/* ── Bloque 4: Próximos pagos relevantes ── */}
+      {/* ── Bloque 4: Cobros probables 30 días ── */}
+      <section>
+        <CopilotSectionTitle
+          title="Cobros probables 30 días"
+          subtitle="Estimación según historial de pago de cada cliente."
+        />
+        <PaymentBehaviorSummaryCard
+          summaries={paymentBehavior.summaries}
+          loading={paymentBehavior.loading}
+        />
+        {!paymentBehavior.loading && paymentBehavior.summaries.length > 0 && (
+          <p className="mt-1.5 text-[11px] text-[var(--copilot-ink-muted)]">
+            Alta (90%): historial consistente · Media (65%): historial irregular · Baja (35%): datos insuficientes.
+          </p>
+        )}
+      </section>
+
+      {/* ── Bloque 5: Próximos pagos relevantes ── */}
       {topObligations.length > 0 ? (
         <section>
           <CopilotSectionTitle
@@ -323,7 +344,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
         </section>
       ) : null}
 
-      {/* ── Bloque 5: Acciones sugeridas (máx 3) ── */}
+      {/* ── Bloque 6: Acciones sugeridas (máx 3) ── */}
       {alerts.length > 0 ? (
         <section>
           <CopilotSectionTitle
@@ -336,8 +357,8 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
                 key={alert.id}
                 className={`rounded-xl border px-4 py-3 text-sm ${
                   alert.severity === "critical"
-                    ? "border-rose-200 bg-rose-50/80 text-rose-950"
-                    : "border-amber-200 bg-amber-50/80 text-amber-950"
+                    ? "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]"
+                    : "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]"
                 }`}
               >
                 <p className="font-medium">{alert.title}</p>

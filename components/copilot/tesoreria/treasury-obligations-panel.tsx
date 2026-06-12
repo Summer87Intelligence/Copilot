@@ -239,7 +239,7 @@ function PayModal({
         </label>
 
         {validAmount && registerCashMovement ? (
-          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+          <div className="rounded-lg border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] px-3 py-2 text-sm text-[var(--copilot-danger-text-strong)]">
             Impacto estimado en caja:{" "}
             <span className="font-semibold tabular-nums">
               −{formatTreasuryMoney(parsedAmount, row.currencyCode)}
@@ -391,7 +391,7 @@ function EditModal({
         </label>
 
         {error ? (
-          <p className="text-xs text-rose-700" role="alert">
+          <p className="text-xs text-[var(--copilot-danger-text)]" role="alert">
             {error}
           </p>
         ) : null}
@@ -444,7 +444,7 @@ function RescheduleModal({
     <BaseModal title="Reprogramar pago" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {isRecurring ? (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <div className="rounded-lg border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-3 py-2 text-xs text-[var(--copilot-warning-text-strong)]">
             Este pago fue generado por una regla recurrente. Reprogramarlo solo afecta esta instancia.
           </div>
         ) : null}
@@ -462,7 +462,7 @@ function RescheduleModal({
           </div>
           <div className="flex justify-between gap-2">
             <dt className="text-[var(--copilot-ink-muted)]">Vencimiento actual</dt>
-            <dd className="tabular-nums text-rose-700">{row.dueDate}</dd>
+            <dd className="tabular-nums text-[var(--copilot-danger-text)]">{row.dueDate}</dd>
           </div>
         </dl>
 
@@ -489,7 +489,7 @@ function RescheduleModal({
         </div>
 
         {error ? (
-          <p className="text-xs text-rose-700" role="alert">
+          <p className="text-xs text-[var(--copilot-danger-text)]" role="alert">
             {error}
           </p>
         ) : null}
@@ -541,7 +541,7 @@ function CancelModal({
           </CopilotGhostButton>
           <CopilotPrimaryButton
             type="button"
-            className="!bg-rose-700 hover:!bg-rose-800"
+            className="!bg-[var(--copilot-danger-button-bg)] hover:!bg-[var(--copilot-danger-button-hover)]"
             onClick={handleConfirm}
             disabled={saving}
           >
@@ -577,7 +577,7 @@ function DeleteModal({
     <BaseModal title="Eliminar registro" onClose={onClose}>
       <div className="space-y-4">
         <p className="text-sm font-medium text-[var(--copilot-ink)]">{row.title}</p>
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <div className="rounded-lg border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-3 py-2 text-xs text-[var(--copilot-warning-text-strong)]">
           Eliminar este registro no debe usarse para pagos reales ya ejecutados. Si el pago
           ocurrió, preferí <strong>Cancelar</strong> en vez de Eliminar.
         </div>
@@ -587,7 +587,7 @@ function DeleteModal({
           </CopilotGhostButton>
           <CopilotPrimaryButton
             type="button"
-            className="!bg-rose-700 hover:!bg-rose-800"
+            className="!bg-[var(--copilot-danger-button-bg)] hover:!bg-[var(--copilot-danger-button-hover)]"
             onClick={handleConfirm}
             disabled={saving}
           >
@@ -727,7 +727,7 @@ function RowActionsCell({
                 item.onClick();
               }}
               className={`block w-full px-4 py-2.5 text-left text-sm transition hover:bg-[rgba(44,40,37,0.04)] ${
-                item.danger ? "text-rose-700" : "text-[var(--copilot-ink)]"
+                item.danger ? "text-[var(--copilot-danger-text)]" : "text-[var(--copilot-ink)]"
               }`}
             >
               {item.label}
@@ -851,13 +851,13 @@ export function TreasuryObligationsPanel({
                   </div>
                   <div className="flex justify-between gap-2">
                     <dt className="text-[var(--copilot-ink-muted)]">Vencidos</dt>
-                    <dd className="font-semibold tabular-nums text-rose-700">
+                    <dd className="font-semibold tabular-nums text-[var(--copilot-danger-text)]">
                       {formatTreasuryMoney(s.overdue, s.currency)}
                     </dd>
                   </div>
                   <div className="flex justify-between gap-2">
                     <dt className="text-[var(--copilot-ink-muted)]">Pagados del período</dt>
-                    <dd className="font-semibold tabular-nums text-emerald-700">
+                    <dd className="font-semibold tabular-nums text-[var(--copilot-success-text)]">
                       {formatTreasuryMoney(s.paidInPeriod, s.currency)}
                     </dd>
                   </div>

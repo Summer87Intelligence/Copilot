@@ -116,8 +116,8 @@ export function formatOverdueDaysLabel(
 
 export function agingBadgeFromDays(overdueDays: number | null): string | null {
   if (overdueDays == null || overdueDays <= 0) return null;
-  if (overdueDays >= 90) return "+90D";
-  if (overdueDays >= 60) return "+60D";
-  if (overdueDays >= 30) return "+30D";
+  if (overdueDays >= 90) return "+90 días";
+  if (overdueDays >= 60) return "+60 días";
+  if (overdueDays >= 30) return "+30 días";
   return null;
 }

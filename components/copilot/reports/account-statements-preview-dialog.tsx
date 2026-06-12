@@ -30,9 +30,9 @@ const pillIdle =
   "bg-[var(--copilot-card-bg)]/80 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]";
 
 const RISK_COLORS: Record<string, string> = {
-  Alto: "text-rose-700 font-semibold",
-  Medio: "text-amber-700",
-  Bajo: "text-emerald-700",
+  Alto: "text-[var(--copilot-danger-text)] font-semibold",
+  Medio: "text-[var(--copilot-warning-text)]",
+  Bajo: "text-[var(--copilot-success-text)]",
 };
 
 const CURRENCY_OPTIONS: Array<{ value: CurrencyFilter; label: string }> = [
@@ -63,7 +63,7 @@ const COLUMNS: ReportTableColumn<StatementRow>[] = [
     cellClassName: "text-right tabular-nums text-xs",
     render: (r) =>
       r.overdue > 0 ? (
-        <span className="text-rose-700">{formatMoneyCurrency(r.overdue, r.currency)}</span>
+        <span className="text-[var(--copilot-danger-text)]">{formatMoneyCurrency(r.overdue, r.currency)}</span>
       ) : (
         "—"
       ),

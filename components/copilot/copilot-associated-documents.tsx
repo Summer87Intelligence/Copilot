@@ -59,7 +59,7 @@ export function CopilotAssociatedDocumentsSection({
       ) : null}
 
       {!loading && error ? (
-        <p className={`text-sm text-amber-900 ${showHeader ? "mt-3" : ""}`}>{error}</p>
+        <p className={`text-sm text-[var(--copilot-warning-text-strong)] ${showHeader ? "mt-3" : ""}`}>{error}</p>
       ) : null}
 
       {!loading && !error && documents.length === 0 ? (

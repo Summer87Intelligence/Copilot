@@ -67,33 +67,33 @@ function getIconConfig(type: string, severity: string): IconConfig {
   const sz = "h-4 w-4 shrink-0";
   if (type === "collection_received")
     return {
-      bg: "bg-emerald-100",
-      icon: <TrendingUp className={`${sz} text-emerald-600`} aria-hidden />,
+      bg: "bg-[var(--copilot-badge-success-bg)]",
+      icon: <TrendingUp className={`${sz} text-[var(--copilot-success-text)]`} aria-hidden />,
     };
   if (type === "new_debtor")
     return {
-      bg: "bg-amber-100",
-      icon: <Users className={`${sz} text-amber-600`} aria-hidden />,
+      bg: "bg-[var(--copilot-badge-warning-bg)]",
+      icon: <Users className={`${sz} text-[var(--copilot-warning-text)]`} aria-hidden />,
     };
   if (type === "client_overdue")
     return {
-      bg: "bg-rose-100",
-      icon: <TrendingDown className={`${sz} text-rose-600`} aria-hidden />,
+      bg: "bg-[var(--copilot-badge-danger-bg)]",
+      icon: <TrendingDown className={`${sz} text-[var(--copilot-danger-text)]`} aria-hidden />,
     };
   if (type === "treasury_payment_due")
     return {
-      bg: severity === "critical" ? "bg-rose-100" : "bg-amber-100",
+      bg: severity === "critical" ? "bg-[var(--copilot-badge-danger-bg)]" : "bg-[var(--copilot-badge-warning-bg)]",
       icon: (
         <Wallet
-          className={`${sz} ${severity === "critical" ? "text-rose-600" : "text-amber-600"}`}
+          className={`${sz} ${severity === "critical" ? "text-[var(--copilot-danger-text)]" : "text-[var(--copilot-warning-text)]"}`}
           aria-hidden
         />
       ),
     };
   if (type === "treasury_payment_overdue")
     return {
-      bg: "bg-rose-100",
-      icon: <AlertTriangle className={`${sz} text-rose-600`} aria-hidden />,
+      bg: "bg-[var(--copilot-badge-danger-bg)]",
+      icon: <AlertTriangle className={`${sz} text-[var(--copilot-danger-text)]`} aria-hidden />,
     };
   if (type === "sync_changes_detected")
     return {
@@ -102,25 +102,25 @@ function getIconConfig(type: string, severity: string): IconConfig {
     };
   if (type === "sync_failed")
     return {
-      bg: "bg-rose-100",
-      icon: <XCircle className={`${sz} text-rose-500`} aria-hidden />,
+      bg: "bg-[var(--copilot-badge-danger-bg)]",
+      icon: <XCircle className={`${sz} text-[var(--copilot-danger-text)]`} aria-hidden />,
     };
   if (type === "cash_risk_detected")
     return {
-      bg: "bg-amber-100",
-      icon: <AlertTriangle className={`${sz} text-amber-600`} aria-hidden />,
+      bg: "bg-[var(--copilot-badge-warning-bg)]",
+      icon: <AlertTriangle className={`${sz} text-[var(--copilot-warning-text)]`} aria-hidden />,
     };
   return {
-    bg: "bg-slate-100",
-    icon: <Bell className={`${sz} text-slate-400`} aria-hidden />,
+    bg: "bg-[var(--copilot-soft-bg)]",
+    icon: <Bell className={`${sz} text-[var(--copilot-subtle)]`} aria-hidden />,
   };
 }
 
 // ─── Severity pill ────────────────────────────────────────────────────────────
 
 const SEVERITY_CFG = {
-  critical: { label: "Crítica", cls: "bg-rose-100 text-rose-700" },
-  warning: { label: "Alerta", cls: "bg-amber-100 text-amber-700" },
+  critical: { label: "Crítica", cls: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-danger-text)]" },
+  warning: { label: "Alerta", cls: "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-warning-text)]" },
   info: { label: "Info", cls: "bg-sky-100 text-sky-700" },
 } as const;
 
@@ -128,7 +128,7 @@ function SeverityPill({ severity }: { severity: string }) {
   const cfg =
     SEVERITY_CFG[severity as keyof typeof SEVERITY_CFG] ?? {
       label: severity,
-      cls: "bg-slate-100 text-slate-600",
+      cls: "bg-[var(--copilot-soft-bg)] text-[var(--copilot-muted)]",
     };
   return (
     <span
@@ -204,22 +204,22 @@ function MetricCard({
 }) {
   const cfg = {
     critical: {
-      border: "border-rose-200/70",
-      bg: "bg-rose-50/50",
-      label: "text-rose-900/70",
-      value: "text-rose-950",
+      border: "border-[var(--copilot-danger-border)]",
+      bg: "bg-[var(--copilot-tone-danger-bg)]/50",
+      label: "text-[var(--copilot-danger-text-strong)]/70",
+      value: "text-[var(--copilot-danger-text-strong)]",
     },
     warning: {
-      border: "border-amber-200/70",
-      bg: "bg-amber-50/50",
-      label: "text-amber-900/70",
-      value: "text-amber-950",
+      border: "border-[var(--copilot-warning-border)]",
+      bg: "bg-[var(--copilot-tone-warning-bg)]",
+      label: "text-[var(--copilot-warning-text-strong)]/70",
+      value: "text-[var(--copilot-warning-text-strong)]",
     },
     positive: {
-      border: "border-emerald-200/70",
-      bg: "bg-emerald-50/50",
-      label: "text-emerald-900/70",
-      value: "text-emerald-950",
+      border: "border-[var(--copilot-success-border)]",
+      bg: "bg-[var(--copilot-tone-positive-bg)]/50",
+      label: "text-[var(--copilot-success-text-strong)]/70",
+      value: "text-[var(--copilot-success-text-strong)]",
     },
     neutral: {
       border: "border-[var(--copilot-border)]",
@@ -488,21 +488,21 @@ export default function CopilotAlertasPage() {
 
         {/* ── Overdue clients CTA — shown when there are client_overdue alerts ── */}
         {tabCounts.clientes > 0 ? (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-2.5">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-4 py-2.5">
             <div>
-              <p className="text-[13px] text-amber-900">
+              <p className="text-[13px] text-[var(--copilot-warning-text-strong)]">
                 <span className="font-semibold">{tabCounts.clientes}</span>{" "}
                 {tabCounts.clientes === 1
                   ? "evento generado por cliente vencido"
                   : "eventos generados por clientes vencidos"}
               </p>
-              <p className="text-[11px] text-amber-700/70">
+              <p className="text-[11px] text-[var(--copilot-warning-text)]/70">
                 Eventos históricos del motor de alertas · Ver Cartera para el estado actual
               </p>
             </div>
             <Link
               href="/copilot/cartera?filter=overdue"
-              className="shrink-0 text-[12px] font-semibold text-amber-800 hover:underline"
+              className="shrink-0 text-[12px] font-semibold text-[var(--copilot-warning-text-strong)] hover:underline"
             >
               Ver clientes vencidos →
             </Link>
@@ -560,9 +560,9 @@ export default function CopilotAlertasPage() {
 
         {/* ── List ────────────────────────────────────────────────────────── */}
         {error && notifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-rose-200 bg-rose-50/50 px-6 py-14 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100">
-              <XCircle className="h-6 w-6 text-rose-400" aria-hidden />
+          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--copilot-danger-border)] bg-[var(--copilot-card-bg)] px-6 py-10 text-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--copilot-tone-danger-bg)]">
+              <XCircle className="h-5 w-5 text-[var(--copilot-danger-text)]" aria-hidden />
             </div>
             <div className="space-y-1">
               <p className="text-[15px] font-semibold text-[var(--copilot-ink)]">
@@ -584,9 +584,9 @@ export default function CopilotAlertasPage() {
         ) : loading && notifications.length === 0 ? (
           <NotifSkeleton />
         ) : totalFiltered === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50 px-6 py-16 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
-              <Bell className="h-6 w-6 text-slate-300" aria-hidden />
+          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-6 py-12 text-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--copilot-soft-bg)]">
+              <Bell className="h-5 w-5 text-[var(--copilot-subtle)]" aria-hidden />
             </div>
             <div className="space-y-1">
               <p className="text-[15px] font-semibold text-[var(--copilot-ink)]">

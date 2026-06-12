@@ -31,7 +31,7 @@ export function MetricLine({
         {suffix ? (
           <span
             className={`text-sm font-semibold tabular-nums ${
-              tone === "positive" ? "text-emerald-600" : "text-[var(--copilot-ink-muted)]"
+              tone === "positive" ? "text-[var(--copilot-success-text)]" : "text-[var(--copilot-ink-muted)]"
             }`}
           >
             {suffix}

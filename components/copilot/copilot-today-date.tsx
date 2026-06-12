@@ -3,24 +3,14 @@
 import { Calendar } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { formatCopilotDate } from "@/lib/copilot-format";
+
 function formatFull(d: Date): string {
-  const s = d.toLocaleDateString("es-UY", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "America/Montevideo",
-  });
-  return s.charAt(0).toUpperCase() + s.slice(1);
+  return formatCopilotDate(d, "header");
 }
 
 function formatShort(d: Date): string {
-  return d.toLocaleDateString("es-UY", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "America/Montevideo",
-  });
+  return formatCopilotDate(d, "text");
 }
 
 export function TodayDateDisplay() {

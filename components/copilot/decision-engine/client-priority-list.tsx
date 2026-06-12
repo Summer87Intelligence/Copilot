@@ -22,12 +22,12 @@ type Props = {
 };
 
 const INSTRUCTION_CONFIG: Record<ClientInstruction, { label: string; pill: string; icon: React.ReactNode }> = {
-  llamar_hoy:      { label: "Llamar hoy",             pill: "bg-rose-50 text-rose-700 border border-rose-200",     icon: <Phone className="h-3 w-3" /> },
-  escalar:         { label: "Escalar",                 pill: "bg-rose-100 text-rose-800 border border-rose-300",    icon: <ArrowUpRight className="h-3 w-3" /> },
-  recordatorio:    { label: "Enviar recordatorio",     pill: "bg-amber-50 text-amber-700 border border-amber-200",  icon: <Bell className="h-3 w-3" /> },
-  seguimiento:     { label: "Seguimiento esta semana", pill: "bg-blue-50 text-blue-700 border border-blue-200",     icon: <Clock className="h-3 w-3" /> },
-  monitorear:      { label: "Monitorear",              pill: "bg-slate-50 text-slate-600 border border-slate-200",  icon: <Eye className="h-3 w-3" /> },
-  esperar_promesa: { label: "Esperar fecha prometida", pill: "bg-emerald-50 text-emerald-700 border border-emerald-200", icon: <Hourglass className="h-3 w-3" /> },
+  llamar_hoy:      { label: "Llamar hoy",             pill: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border border-[var(--copilot-danger-border)]",     icon: <Phone className="h-3 w-3" /> },
+  escalar:         { label: "Escalar",                 pill: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border border-[var(--copilot-danger-border)]",    icon: <ArrowUpRight className="h-3 w-3" /> },
+  recordatorio:    { label: "Enviar recordatorio",     pill: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border border-[var(--copilot-warning-border)]",  icon: <Bell className="h-3 w-3" /> },
+  seguimiento:     { label: "Seguimiento esta semana", pill: "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)] border border-[var(--copilot-border)]",     icon: <Clock className="h-3 w-3" /> },
+  monitorear:      { label: "Monitorear",              pill: "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink-muted)] border border-[var(--copilot-border)]",  icon: <Eye className="h-3 w-3" /> },
+  esperar_promesa: { label: "Esperar fecha prometida", pill: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border border-[var(--copilot-success-border)]", icon: <Hourglass className="h-3 w-3" /> },
 };
 
 const BUCKET_LABEL: Record<string, string> = {
@@ -170,7 +170,7 @@ export function ClientPriorityList({
                     <ul className="space-y-1">
                       {client.evidence.map((ev, i) => (
                         <li key={i} className="flex gap-2 text-xs">
-                          <span className={`shrink-0 ${ev.is_decisive ? "text-rose-500 font-semibold" : "text-[var(--copilot-text-muted)]"}`}>
+                          <span className={`shrink-0 ${ev.is_decisive ? "text-[var(--copilot-danger-text)] font-semibold" : "text-[var(--copilot-text-muted)]"}`}>
                             {ev.label}:
                           </span>
                           <span className="text-[var(--copilot-text-secondary)]">{ev.value}</span>
@@ -181,7 +181,7 @@ export function ClientPriorityList({
 
                   {/* Active promise */}
                   {client.has_active_promise && client.promise_date && (
-                    <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-1">
+                    <p className="text-xs text-[var(--copilot-success-text-strong)] bg-[var(--copilot-tone-positive-bg)] border border-[var(--copilot-success-border)] rounded px-2 py-1">
                       Promesa de pago activa para{" "}
                       {new Date(client.promise_date).toLocaleDateString("es-UY", { day: "numeric", month: "short" })}
                       {client.promise_amount && (

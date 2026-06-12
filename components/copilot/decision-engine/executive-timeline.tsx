@@ -21,12 +21,12 @@ const KIND_ICON: Record<ExecutiveTimelineEventKind, React.ReactNode> = {
 };
 
 const KIND_COLOR: Record<ExecutiveTimelineEventKind, string> = {
-  action_registered:   "bg-blue-100 text-blue-700",
+  action_registered:   "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)]",
   followup_created:    "bg-violet-100 text-violet-700",
-  automation_executed: "bg-slate-100 text-slate-600",
-  state_changed:       "bg-amber-100 text-amber-700",
-  sla_breach:          "bg-rose-100 text-rose-700",
-  recovery_detected:   "bg-emerald-100 text-emerald-700",
+  automation_executed: "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink-muted)]",
+  state_changed:       "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",
+  sla_breach:          "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]",
+  recovery_detected:   "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]",
 };
 
 function formatRelative(isoString: string): string {
@@ -48,7 +48,7 @@ export function ExecutiveTimeline({ events }: Props) {
 
   return (
     <div className="mt-3 border-t border-[var(--copilot-border)]/60 pt-2">
-      <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)] mb-1.5">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)] mb-1.5">
         Actividad reciente
       </p>
       <ol className="space-y-1">

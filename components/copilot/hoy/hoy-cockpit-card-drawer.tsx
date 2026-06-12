@@ -51,7 +51,7 @@ function AmountRows({
             : a.formatted.replace(/^UYU \$ /, "$ ");
         return (
           <li key={a.currency} className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
               {a.currency}
             </span>
             <span
@@ -69,10 +69,10 @@ function AmountRows({
 function FootnoteLine({ footnote }: { footnote: CockpitMoneyBlock["footnote"] }) {
   const toneClass =
     footnote.tone === "danger"
-      ? "text-rose-800 bg-rose-50/80"
+      ? "text-[var(--copilot-danger-text-strong)] bg-[var(--copilot-tone-danger-bg)]"
       : footnote.tone === "warn"
-        ? "text-amber-900 bg-amber-50/80"
-        : "text-emerald-800 bg-emerald-50/80";
+        ? "text-[var(--copilot-warning-text-strong)] bg-[var(--copilot-tone-warning-bg)]"
+        : "text-[var(--copilot-success-text-strong)] bg-[var(--copilot-tone-positive-bg)]";
   return (
     <p className={`rounded-lg px-2.5 py-1.5 text-xs font-medium leading-snug ${toneClass}`}>
       {footnote.text}
@@ -109,7 +109,7 @@ function CashPanel({
           {HOY_COCKPIT.drawerCashSummary}
         </p>
         <div className="mt-3">
-          <AmountRows amounts={block.amounts} primaryClass="text-emerald-900" />
+          <AmountRows amounts={block.amounts} primaryClass="text-[var(--copilot-success-text-strong)]" />
         </div>
         <div className="mt-3">
           <FootnoteLine footnote={block.footnote} />
@@ -139,13 +139,13 @@ function CashPanel({
                   </div>
                   <div className="flex justify-between gap-2">
                     <dt className="text-[var(--copilot-ink-muted)]">Ingresos manuales</dt>
-                    <dd className="tabular-nums font-medium text-emerald-800">
+                    <dd className="tabular-nums font-medium text-[var(--copilot-success-text-strong)]">
                       {fmtCurrencyAmount(b.manualIncome, b.currency)}
                     </dd>
                   </div>
                   <div className="flex justify-between gap-2">
                     <dt className="text-[var(--copilot-ink-muted)]">Egresos manuales</dt>
-                    <dd className="tabular-nums font-medium text-rose-800">
+                    <dd className="tabular-nums font-medium text-[var(--copilot-danger-text-strong)]">
                       {fmtCurrencyAmount(b.manualExpense, b.currency)}
                     </dd>
                   </div>
@@ -198,7 +198,7 @@ function PaymentsPanel({
   return (
     <div className="space-y-5">
       <div>
-        <AmountRows amounts={block.amounts} primaryClass="text-rose-900" />
+        <AmountRows amounts={block.amounts} primaryClass="text-[var(--copilot-danger-text-strong)]" />
         <div className="mt-3">
           <FootnoteLine footnote={block.footnote} />
         </div>
@@ -335,42 +335,42 @@ function ReceivablesPanel({
   return (
     <div className="space-y-5">
       <div>
-        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-amber-800">
+        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--copilot-warning-text-strong)]">
           {HOY_COCKPIT.receivablesTotalPending}
         </p>
         <div className="mt-1.5">
-          <AmountRows amounts={card.totalPending} primaryClass="text-amber-900" />
+          <AmountRows amounts={card.totalPending} primaryClass="text-[var(--copilot-warning-text-strong)]" />
         </div>
       </div>
 
-      <div className="border-t border-amber-200/45 pt-3">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-rose-700/75">
+      <div className="border-t border-[var(--copilot-warning-border)]/45 pt-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--copilot-danger-text)]/75">
           {HOY_COCKPIT.receivablesIncludedInTotal}
         </p>
-        <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-rose-700/90">
+        <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--copilot-danger-text)]/90">
           {HOY_COCKPIT.receivablesOverdueTotal}
         </p>
         <div className="mt-1.5">
           <AmountRows
             amounts={card.overdueTotal}
-            primaryClass="text-rose-800"
-            secondaryClass="text-rose-700/80"
+            primaryClass="text-[var(--copilot-danger-text-strong)]"
+            secondaryClass="text-[var(--copilot-danger-text)]/80"
           />
         </div>
-        <p className="mt-2 text-[11px] leading-snug text-rose-700/70">
+        <p className="mt-2 text-[11px] leading-snug text-[var(--copilot-danger-text)]/70">
           {HOY_COCKPIT.receivablesOverdueTotalHint}
         </p>
-        <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.12em] text-rose-700/80">
+        <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--copilot-danger-text)]/80">
           {HOY_COCKPIT.receivablesOverdue30}
         </p>
         <div className="mt-1.5">
           <AmountRows
             amounts={card.overdue30}
-            primaryClass="text-rose-800/90"
-            secondaryClass="text-rose-700/70"
+            primaryClass="text-[var(--copilot-danger-text-strong)]/90"
+            secondaryClass="text-[var(--copilot-danger-text)]/70"
           />
         </div>
-        <p className="mt-2 text-[11px] leading-snug text-rose-700/70">
+        <p className="mt-2 text-[11px] leading-snug text-[var(--copilot-danger-text)]/70">
           {HOY_COCKPIT.receivablesOverdue30Hint}
         </p>
       </div>
@@ -387,10 +387,10 @@ function ReceivablesPanel({
                   ? HOY_COCKPIT.drawerClientsUyu
                   : HOY_COCKPIT.drawerClientsUsd;
               const amountClass =
-                group.currency === "UYU" ? "text-amber-900" : "text-amber-800/90";
+                group.currency === "UYU" ? "text-[var(--copilot-warning-text-strong)]" : "text-[var(--copilot-warning-text-strong)]/90";
               return (
                 <div key={group.currency}>
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-amber-900/80">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--copilot-warning-text-strong)]/80">
                     {sectionTitle}
                   </p>
                   <ul className="mt-1.5 space-y-1.5">
@@ -457,7 +457,7 @@ export function HoyCockpitCardDrawer({
       <button
         type="button"
         onClick={onScrollToCriticalClients}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-950 hover:bg-amber-100/80"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-4 py-2.5 text-sm font-semibold text-[var(--copilot-warning-text-strong)] hover:bg-[var(--copilot-badge-warning-bg)]/80"
       >
         {HOY_COCKPIT.drawerGoToCriticalClients}
         <ArrowRight className="h-4 w-4" aria-hidden />

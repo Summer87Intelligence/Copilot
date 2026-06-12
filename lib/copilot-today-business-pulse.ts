@@ -247,7 +247,7 @@ export type BusinessPulseInput = {
   gate: BusinessPulseGate;
   /**
    * Totales de Aging de Cartera (mismo motor que `/copilot/cartera`).
-   * Si se provee, el indicador "Deuda vencida" usa esta fuente (Opción B).
+   * Si se provee, el indicador "Atrasado" usa esta fuente (Opción B).
    */
   carteraAgingOverdue?: CarteraCurrencyTotals;
   /**
@@ -470,21 +470,21 @@ function overdueCopy(mode: OverdueDisplayMode): {
   }
   if (mode === "cartera_aging") {
     return {
-      label: "Deuda crítica +30 días",
-      helperText: "Saldos vencidos con más de 30 días de atraso.",
-      detailTitle: "Deuda crítica con más de 30 días",
+      label: "Atrasado +30 días",
+      helperText: "Saldos atrasados con más de 30 días.",
+      detailTitle: "Atrasado +30 días",
       detailBodyHasAmounts: (n) =>
         `${n} ${n === 1 ? "cliente tiene" : "clientes tienen"} saldo con más de 30 días de atraso según Aging de Cartera. UYU y USD se muestran por separado.`,
       detailBodyEmpty: "No hay saldos con más de 30 días de atraso.",
     };
   }
   return {
-    label: "Deuda vencida",
+    label: "Atrasado",
     helperText: "Facturas con vencimiento anterior a hoy",
-    detailTitle: "Deuda vencida por cobrar",
+    detailTitle: "Atrasado por cobrar",
     detailBodyHasAmounts: (n, debtLabel) =>
       `${n} ${n === 1 ? "cliente tiene" : "clientes tienen"} facturas con ${debtLabel}. UYU y USD se muestran por separado.`,
-    detailBodyEmpty: "No hay deuda vencida. Todos los clientes están al día.",
+    detailBodyEmpty: "No hay clientes atrasados. Todos están al día.",
   };
 }
 
@@ -528,28 +528,28 @@ function fmtSnapAmount(amount: number, snapCurrency: SnapCurrency): string {
 
 // ─── Status determination ─────────────────────────────────────────────────────
 
+import {
+  deriveRiskStatus,
+  type RiskEngineInput,
+} from "@/lib/copilot-risk-engine";
+
+/**
+ * Determina el estado del cockpit delegando en el motor único `copilot-risk-engine`.
+ * Hoy / Dashboard / Finanzas / Clientes / Alertas comparten estos thresholds.
+ */
 function determineStatus(p: {
   riskBand: string;
   coverageRatio: number;
   highRiskCount: number;
   overdueCount: number;
 }): PulseStatus {
-  const isCritical =
-    p.riskBand === "critical" ||
-    (p.coverageRatio > 0 && p.coverageRatio < 0.5) ||
-    p.highRiskCount >= 3;
-
-  if (isCritical) return "critical";
-
-  const isAttention =
-    p.riskBand === "high" ||
-    p.overdueCount > 0 ||
-    (p.coverageRatio > 0 && p.coverageRatio < 1.0) ||
-    p.highRiskCount >= 1;
-
-  if (isAttention) return "attention";
-
-  return "healthy";
+  const input: RiskEngineInput = {
+    riskBand: (p.riskBand as RiskEngineInput["riskBand"]) ?? "low",
+    coverageRatio: p.coverageRatio,
+    highRiskClientCount: p.highRiskCount,
+    overdueClientCount: p.overdueCount,
+  };
+  return deriveRiskStatus(input).status as PulseStatus;
 }
 
 // Evita contradicciones: si el estado es healthy, ninguna card puede ser critical

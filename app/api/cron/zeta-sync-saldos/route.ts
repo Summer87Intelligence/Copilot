@@ -39,6 +39,7 @@ import { ZETA_PIPELINE_NAMES } from "@/lib/data/zeta-pipeline-run-types";
 import { alertIfStale } from "@/lib/cron/cron-stale-check";
 import { repairStaleOrphanInvoiceMetadata } from "@/lib/integrations/zeta/zeta-orphan-auto-repair";
 import { runNotificationGenerationBestEffort } from "@/lib/copilot-notifications/run-notification-generation-best-effort";
+import { loadZetaServerConfigForWorkspace } from "@/lib/integrations/zeta/zeta-config";
 
 const PIPELINE = ZETA_PIPELINE_NAMES.SALDOS;
 
@@ -109,9 +110,13 @@ async function discoverAndAutocreateNewZetaClients(
   knownCodigos: Set<string>
 ): Promise<Array<{ id: string; Codigo: string }>> {
   try {
+    // ZETA-17: credenciales por workspace cuando hay row activa en workspace_integrations;
+    // fallback transparente a env si no hay (Summer87 sigue funcionando sin cambios).
+    const zetaConfig = await loadZetaServerConfigForWorkspace(workspaceId);
     const result = await queryFacturaClienteSaldosPendientes(
       { requestId, tenantId: workspaceId },
-      { clienteCodigo: "", page: "1" }
+      { clienteCodigo: "", page: "1" },
+      zetaConfig
     );
     if (!result.succeed || result.rows.length === 0) return [];
 

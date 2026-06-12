@@ -10,7 +10,7 @@
   --copilot-canvas: #f4f1ea;
   --copilot-ink: #2c2825;
   --copilot-ink-muted: rgba(44, 40, 37, 0.62);
-  --copilot-border: rgba(44, 40, 37, 0.1);
+  --copilot-border: rgba(44, 40, 37, 0.15);
   --copilot-sidebar: #f0ebe3;
   --copilot-accent: #1f6b4a;
   --copilot-accent-soft: rgba(31, 107, 74, 0.12);
@@ -52,6 +52,31 @@
   --copilot-sticky-bg: rgba(255, 255, 255, 0.95);
   --copilot-hover-bg: rgba(44, 40, 37, 0.08);
   --copilot-surface-muted: #f1f5f9;
+  --copilot-accent-hover: #185a3d;
+  --copilot-on-accent: #ffffff;
+  --copilot-sidebar-header-bg: rgba(255, 255, 255, 0.35);
+  --copilot-success-text: #047857;
+  --copilot-success-text-strong: #065f46;
+  --copilot-warning-text: #b45309;
+  --copilot-warning-text-strong: #92400e;
+  --copilot-danger-text: #be123c;
+  --copilot-danger-text-strong: #9f1239;
+  --copilot-success-border: rgba(16, 185, 129, 0.35);
+  --copilot-warning-border: rgba(251, 191, 36, 0.45);
+  --copilot-danger-border: rgba(244, 63, 94, 0.35);
+  --copilot-chip-active-bg: var(--copilot-accent-soft);
+  --copilot-notification-badge-bg: #e11d48;
+  --copilot-status-ok-dot: #10b981;
+  --copilot-status-warn-dot: #f59e0b;
+  --copilot-status-critical-dot: #f43f5e;
+  --copilot-danger-button-bg: #be123c;
+  --copilot-danger-button-hover: #9f1239;
+  --copilot-success-button-bg: #047857;
+  --copilot-success-button-hover: #065f46;
+  --copilot-currency-uyu: #0d6b52;
+  --copilot-currency-usd: #475569;
+  --copilot-button-secondary-bg: #ffffff;
+  --copilot-button-secondary-border: rgba(44, 40, 37, 0.22);
 }
 
 [data-theme="dark"] {
@@ -60,7 +85,7 @@
   --copilot-canvas: #1a1714;
   --copilot-ink: #e8e3db;
   --copilot-ink-muted: rgba(232, 227, 219, 0.62);
-  --copilot-border: rgba(232, 227, 219, 0.12);
+  --copilot-border: rgba(232, 227, 219, 0.16);
   --copilot-sidebar: #1e1b18;
   --copilot-accent: #2d9b6b;
   --copilot-accent-soft: rgba(45, 155, 107, 0.18);
@@ -101,6 +126,31 @@
   --copilot-sticky-bg: rgba(26, 23, 20, 0.95);
   --copilot-hover-bg: rgba(232, 227, 219, 0.1);
   --copilot-surface-muted: #2a2520;
+  --copilot-accent-hover: #3db87d;
+  --copilot-on-accent: #ffffff;
+  --copilot-sidebar-header-bg: rgba(232, 227, 219, 0.04);
+  --copilot-success-text: #6ee7b7;
+  --copilot-success-text-strong: #a7f3d0;
+  --copilot-warning-text: #fcd34d;
+  --copilot-warning-text-strong: #fde68a;
+  --copilot-danger-text: #fda4af;
+  --copilot-danger-text-strong: #fecdd3;
+  --copilot-success-border: rgba(45, 155, 107, 0.35);
+  --copilot-warning-border: rgba(251, 191, 36, 0.35);
+  --copilot-danger-border: rgba(244, 63, 94, 0.35);
+  --copilot-chip-active-bg: var(--copilot-accent-soft);
+  --copilot-notification-badge-bg: #fb7185;
+  --copilot-status-ok-dot: #34d399;
+  --copilot-status-warn-dot: #fbbf24;
+  --copilot-status-critical-dot: #fb7185;
+  --copilot-danger-button-bg: #e11d48;
+  --copilot-danger-button-hover: #be123c;
+  --copilot-success-button-bg: #059669;
+  --copilot-success-button-hover: #047857;
+  --copilot-currency-uyu: #6ee7b7;
+  --copilot-currency-usd: #94a3b8;
+  --copilot-button-secondary-bg: #2a2623;
+  --copilot-button-secondary-border: rgba(232, 227, 219, 0.24);
 }
 
 @theme inline {

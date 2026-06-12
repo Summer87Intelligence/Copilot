@@ -60,7 +60,7 @@ function CashCurrencyBlock({ block }: { block: HoyCashPositionBlock }) {
   const title = block.currency === "USD" ? "Dólares (USD)" : "Pesos (UYU)";
 
   return (
-    <div className={`flex min-h-[200px] flex-col ${premiumCardClass} p-4`}>
+    <div className={`flex flex-col ${premiumCardClass}`}>
       <p className="text-sm font-semibold text-[var(--copilot-ink)]">{title}</p>
 
       <div className="mt-4 flex flex-1 flex-col items-center justify-center text-center">
@@ -72,7 +72,7 @@ function CashCurrencyBlock({ block }: { block: HoyCashPositionBlock }) {
         </p>
       </div>
 
-      <div className="mt-4 space-y-0.5 border-t border-neutral-100 pt-3">
+      <div className="mt-4 space-y-0.5 border-t border-[var(--copilot-border)] pt-3">
         <DetailRow
           label={HOY_COPY.cashCollectedLabel}
           value={
@@ -84,16 +84,16 @@ function CashCurrencyBlock({ block }: { block: HoyCashPositionBlock }) {
         <DetailRow
           label="Ingresos manuales"
           value={fmtCurrencyAmount(block.manualIncome, block.currency)}
-          valueClass="text-emerald-800"
+          valueClass="text-[var(--copilot-success-text-strong)]"
         />
         <DetailRow
           label="Egresos manuales"
           value={fmtCurrencyAmount(block.manualExpense, block.currency)}
-          valueClass="text-rose-800"
+          valueClass="text-[var(--copilot-danger-text-strong)]"
         />
       </div>
 
-      <div className="mt-3 border-t border-neutral-100 pt-1">
+      <div className="mt-3 border-t border-[var(--copilot-border)] pt-1">
         <CashEventRow
           label={HOY_COPY.lastIncomeLabel}
           event={block.lastIncome}
@@ -140,9 +140,7 @@ export function HoyCashCurrentSection({
             {HOY_COPY.cashCurrentTitle}
           </span>
           <span className="mt-0.5 block text-xs text-[var(--copilot-ink-muted)]" title={HOY_COPY.cashCurrentTip}>
-            {open
-              ? "Sin deuda pendiente en caja disponible."
-              : summary || "Sin deuda pendiente en caja disponible."}
+            {open ? HOY_COPY.cashCurrentTip : summary}
           </span>
         </span>
         <ChevronDown

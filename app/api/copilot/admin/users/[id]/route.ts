@@ -55,7 +55,10 @@ export async function PATCH(
 
     const currentRole = (targetUser as { role: string }).role?.toLowerCase();
 
-    // No degradar el último superadmin
+    // No degradar el último superadmin activo del workspace.
+    // Como `requireAdminContext` garantiza que el actor ya es superadmin, si
+    // sólo queda 1 superadmin activo y se está intentando bajar a alguien
+    // del rol superadmin, ese alguien es necesariamente el propio actor.
     if (currentRole === "superadmin" && newRole !== "superadmin") {
       const safetyCheck = await admin
         .from("app_users")
@@ -65,15 +68,15 @@ export async function PATCH(
         .eq("is_active", true);
 
       const superadminCount = safetyCheck.count ?? 0;
-      if (superadminCount <= 1 && targetId !== actorId) {
-        // El actor se estaría quitando el rol, pero no es el target; ok
-      } else if (superadminCount <= 1) {
+      if (superadminCount <= 1) {
         return NextResponse.json(
           { ok: false, message: "No podés cambiar el rol del único superadmin activo." },
           { status: 409 }
         );
       }
     }
+    // Silenciar warning de unused: actorId queda disponible para futuras safeguards.
+    void actorId;
 
     updates.role = newRole;
   }
@@ -171,7 +174,7 @@ export async function DELETE(
 
   const { error: deleteErr } = await admin
     .from("app_users")
-    .update({ is_active: false, deleted_at: new Date().toISOString() })
+    .update({ is_active: false })
     .eq("id", targetId)
     .eq("company_id", tenantCompanyId);
 

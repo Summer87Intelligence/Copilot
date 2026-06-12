@@ -15,7 +15,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ChevronDown, Loader2, Plus, Search } from "lucide-react";
+import { Loader2, Plus, Search } from "lucide-react";
 
 import { useCopilotReadingKeyOverride } from "@/components/copilot/copilot-reading-key-context";
 import { CopilotDataSidebar } from "@/components/copilot/copilot-data-sidebar";
@@ -1021,9 +1021,9 @@ function CopilotDatosPageContent() {
       <div className="flex-1 space-y-6 overflow-auto px-6 py-8">
         {isQuickAddForm && quickAddSaved ? (
           <CopilotCard className={`${actionCardClass} space-y-4 p-6`}>
-            <p className="text-sm font-medium text-emerald-950">{quickAddSaveMessage}</p>
+            <p className="text-sm font-medium text-[var(--copilot-success-text-strong)]">{quickAddSaveMessage}</p>
             {quickAddSaveWarning ? (
-              <p className="text-sm text-emerald-900/90">{quickAddSaveWarning}</p>
+              <p className="text-sm text-[var(--copilot-success-text-strong)]/90">{quickAddSaveWarning}</p>
             ) : null}
             <CopilotPrimaryLink
               href="/copilot/finanzas"
@@ -1035,7 +1035,7 @@ function CopilotDatosPageContent() {
         ) : isQuickAddForm ? (
           <>
             {error ? (
-              <div className={`${dangerFinancialCardClass} rounded-2xl border px-4 py-3 text-sm text-rose-900`}>
+              <div className={`${dangerFinancialCardClass} rounded-2xl border px-4 py-3 text-sm text-[var(--copilot-danger-text-strong)]`}>
                 {error}
               </div>
             ) : null}
@@ -1073,21 +1073,21 @@ function CopilotDatosPageContent() {
         ) : (
           <>
             {banner?.kind === "ok" ? (
-              <div className={`${warningFinancialCardClass} rounded-2xl border px-4 py-3 text-sm text-emerald-950`}>
+              <div className={`${warningFinancialCardClass} rounded-2xl border px-4 py-3 text-sm text-[var(--copilot-success-text-strong)]`}>
                 <p className="font-medium">{banner.message}</p>
                 {banner.warning ? (
-                  <p className="mt-1 text-emerald-900/90">{banner.warning}</p>
+                  <p className="mt-1 text-[var(--copilot-success-text-strong)]/90">{banner.warning}</p>
                 ) : null}
               </div>
             ) : null}
             {banner?.kind === "err" ? (
-              <div className={`${dangerFinancialCardClass} rounded-2xl border px-4 py-3 text-sm text-rose-900`}>
+              <div className={`${dangerFinancialCardClass} rounded-2xl border px-4 py-3 text-sm text-[var(--copilot-danger-text-strong)]`}>
                 {banner.message}
               </div>
             ) : null}
 
             {expandedEntity != null && error ? (
-              <div className={`${dangerFinancialCardClass} rounded-2xl border px-4 py-3 text-sm text-rose-900`}>
+              <div className={`${dangerFinancialCardClass} rounded-2xl border px-4 py-3 text-sm text-[var(--copilot-danger-text-strong)]`}>
                 {error}
               </div>
             ) : null}
@@ -1121,40 +1121,23 @@ function CopilotDatosPageContent() {
                   const isOpen = expandedEntity === tab.id;
                   return (
                     <div key={tab.id} className={`${neutralFinancialCardClass} overflow-hidden rounded-2xl border`}>
-                      <button
-                        type="button"
-                        onClick={() => toggleExpanded(tab.id)}
-                        aria-expanded={isOpen}
-                        aria-label={`${isOpen ? "Colapsar" : "Expandir"} ${tab.label}`}
-                        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-[rgba(44,40,37,0.03)]"
-                      >
+                      <div className="flex w-full items-center justify-between gap-3 px-4 py-3">
                         <span className="text-sm font-semibold text-[var(--copilot-ink)]">
                           {tab.label}
                         </span>
-                        <ChevronDown
-                          className={`h-5 w-5 shrink-0 text-[var(--copilot-ink-muted)] transition-transform ${
-                            isOpen ? "rotate-180" : ""
-                          }`}
-                          aria-hidden
-                        />
-                      </button>
+                        {isOpen ? (
+                          <CopilotGhostButton
+                            type="button"
+                            onClick={() => toggleExpanded(tab.id)}
+                            aria-expanded={isOpen}
+                            className="shrink-0 whitespace-nowrap"
+                          >
+                            Ocultar
+                          </CopilotGhostButton>
+                        ) : null}
+                      </div>
 
-                      {tab.id === "invoices" && !isOpen ? (
-                        <div className={`border-t border-[var(--copilot-border)] px-4 py-3 ${softCalloutClass}`}>
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <p className="max-w-xl text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
-                              {DATOS_EXPAND_HINT.invoices}
-                            </p>
-                            <CopilotGhostButton
-                              type="button"
-                              onClick={() => expandEntityBlock("invoices")}
-                              className="shrink-0 whitespace-nowrap border-[var(--copilot-accent)] font-semibold text-[var(--copilot-accent)] shadow-none hover:bg-[var(--copilot-accent-soft)]"
-                            >
-                              {DATOS_EXPAND_CTA.invoices}
-                            </CopilotGhostButton>
-                          </div>
-                        </div>
-                      ) : !isOpen ? (
+                      {!isOpen ? (
                         <div className={`border-t border-[var(--copilot-border)] px-4 py-3 ${softCalloutClass}`}>
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <p className="max-w-xl text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
@@ -1163,6 +1146,7 @@ function CopilotDatosPageContent() {
                             <CopilotGhostButton
                               type="button"
                               onClick={() => expandEntityBlock(tab.id)}
+                              aria-expanded={isOpen}
                               className="shrink-0 whitespace-nowrap border-[var(--copilot-accent)] font-semibold text-[var(--copilot-accent)] shadow-none hover:bg-[var(--copilot-accent-soft)]"
                             >
                               {DATOS_EXPAND_CTA[tab.id]}

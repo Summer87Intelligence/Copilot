@@ -7,10 +7,10 @@ import { copilotApiFetch } from "@/lib/copilot-fetch";
 import type { AIInsightSeverity, AIIntelligenceBundle } from "@/lib/decision-engine/ai/ai-types";
 
 const SEVERITY_CLASS: Record<AIInsightSeverity, string> = {
-  low: "border-slate-200 bg-slate-50/80 text-slate-700",
-  medium: "border-amber-200 bg-amber-50/80 text-amber-900",
+  low: "border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)]/80 text-[var(--copilot-ink)]",
+  medium: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)]/80 text-[var(--copilot-warning-text-strong)]",
   high: "border-orange-200 bg-orange-50/80 text-orange-900",
-  critical: "border-rose-200 bg-rose-50/90 text-rose-900",
+  critical: "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)]/90 text-[var(--copilot-danger-text-strong)]",
 };
 
 type BriefingResponse =
@@ -81,8 +81,8 @@ export function OperationalIntelligencePanel() {
 
   if (error && !intelligence) {
     return (
-      <div className="rounded-xl border border-rose-200 bg-rose-50/50 px-4 py-3">
-        <p className="text-xs text-rose-800">{error}</p>
+      <div className="rounded-xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)]/50 px-4 py-3">
+        <p className="text-xs text-[var(--copilot-danger-text-strong)]">{error}</p>
       </div>
     );
   }
@@ -144,7 +144,7 @@ export function OperationalIntelligencePanel() {
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-surface)] px-2 py-1.5">
-            <p className="text-[8px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
               Anomalías
             </p>
             <p className="text-base font-bold tabular-nums text-[var(--copilot-text)]">
@@ -152,23 +152,23 @@ export function OperationalIntelligencePanel() {
             </p>
           </div>
           <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-surface)] px-2 py-1.5">
-            <p className="text-[8px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
               Insights críticos
             </p>
-            <p className="text-base font-bold tabular-nums text-rose-700">
+            <p className="text-base font-bold tabular-nums text-[var(--copilot-danger-text-strong)]">
               {metrics.critical_insights}
             </p>
           </div>
           <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-surface)] px-2 py-1.5">
-            <p className="text-[8px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
               Alertas carga
             </p>
-            <p className="text-base font-bold tabular-nums text-amber-700">
+            <p className="text-base font-bold tabular-nums text-[var(--copilot-warning-text-strong)]">
               {metrics.workload_alerts}
             </p>
           </div>
           <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-surface)] px-2 py-1.5">
-            <p className="text-[8px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
               Gen. (ms)
             </p>
             <p className="text-base font-bold tabular-nums text-[var(--copilot-text-muted)]">
@@ -179,7 +179,7 @@ export function OperationalIntelligencePanel() {
 
         {briefing.emerging_risks.length > 0 && (
           <div>
-            <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)] mb-1.5 flex items-center gap-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)] mb-1.5 flex items-center gap-1">
               <AlertTriangle className="h-3 w-3" />
               Riesgos emergentes
             </p>
@@ -187,7 +187,7 @@ export function OperationalIntelligencePanel() {
               {briefing.emerging_risks.slice(0, 3).map((r, i) => (
                 <li
                   key={i}
-                  className="text-[11px] text-[var(--copilot-text-secondary)] rounded border border-rose-100 bg-rose-50/50 px-2 py-1"
+                  className="text-[11px] text-[var(--copilot-text-secondary)] rounded border border-rose-100 bg-[var(--copilot-tone-danger-bg)]/50 px-2 py-1"
                 >
                   {r}
                 </li>
@@ -198,7 +198,7 @@ export function OperationalIntelligencePanel() {
 
         {topAnomalies.length > 0 && (
           <div>
-            <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)] mb-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)] mb-1.5">
               Anomalías detectadas
             </p>
             <ul className="space-y-1">
@@ -217,7 +217,7 @@ export function OperationalIntelligencePanel() {
 
         {topPriorities.length > 0 && (
           <div>
-            <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)] mb-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)] mb-1.5">
               Prioridades recomendadas
             </p>
             <ol className="space-y-1">
@@ -239,7 +239,7 @@ export function OperationalIntelligencePanel() {
 
         {topInsights.length > 0 && (
           <div>
-            <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)] mb-1.5 flex items-center gap-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)] mb-1.5 flex items-center gap-1">
               <Users className="h-3 w-3" />
               Insights operadores
             </p>
@@ -257,7 +257,7 @@ export function OperationalIntelligencePanel() {
         )}
 
         {briefing.workload_warnings.length > 0 && (
-          <p className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+          <p className="text-[10px] text-[var(--copilot-warning-text-strong)] bg-[var(--copilot-tone-warning-bg)] border border-[var(--copilot-warning-border)] rounded px-2 py-1">
             {briefing.workload_warnings[0]}
           </p>
         )}

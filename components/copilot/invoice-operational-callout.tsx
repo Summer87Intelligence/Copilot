@@ -19,7 +19,7 @@ export function InvoiceOperationalCallout({ row }: { row: DataRow }) {
     <div
       className={
         open
-          ? "rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2 text-xs text-amber-950"
+          ? "rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)]/90 px-3 py-2 text-xs text-[var(--copilot-warning-text-strong)]"
           : "rounded-xl border border-[var(--copilot-border)] bg-[rgba(44,40,37,0.04)] px-3 py-2 text-xs text-[var(--copilot-ink)]"
       }
     >

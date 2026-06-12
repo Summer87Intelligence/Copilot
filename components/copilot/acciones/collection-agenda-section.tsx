@@ -43,17 +43,17 @@ function typeBadgeCls(type: CollectionAgendaItem["type"]): {
 } {
   switch (type) {
     case "promise_overdue":
-      return { bg: "bg-rose-50 text-rose-700 border-rose-200", label: "Promesa vencida" };
+      return { bg: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]", label: "Promesa vencida" };
     case "promise_upcoming":
-      return { bg: "bg-blue-50 text-blue-700 border-blue-200", label: "Promesa futura" };
+      return { bg: "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)] border-[var(--copilot-border)]", label: "Promesa futura" };
     case "followup_overdue":
-      return { bg: "bg-rose-50 text-rose-700 border-rose-200", label: "Seguimiento vencido" };
+      return { bg: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]", label: "Seguimiento vencido" };
     case "followup_today":
-      return { bg: "bg-amber-50 text-amber-700 border-amber-200", label: "Seguimiento hoy" };
+      return { bg: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]", label: "Seguimiento hoy" };
     case "followup_upcoming":
       return { bg: "bg-sky-50 text-sky-700 border-sky-200", label: "Próx. seguimiento" };
     case "recent_contact":
-      return { bg: "bg-emerald-50 text-emerald-700 border-emerald-200", label: "Contactado" };
+      return { bg: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border-[var(--copilot-success-border)]", label: "Contactado" };
   }
 }
 
@@ -106,9 +106,9 @@ function AgendaSummaryCard({
       : neutralFinancialCardClass;
   const valCls =
     tone === "danger" && value > 0
-      ? "text-rose-700"
+      ? "text-[var(--copilot-danger-text-strong)]"
       : tone === "warning" && value > 0
-      ? "text-amber-700"
+      ? "text-[var(--copilot-warning-text-strong)]"
       : tone === "info" && value > 0
       ? "text-sky-700"
       : "text-[var(--copilot-ink)]";
@@ -200,12 +200,12 @@ function AgendaItemCard({
       ) : null}
 
       {archiveError ? (
-        <p className="mt-2 text-xs text-rose-600">{archiveError}</p>
+        <p className="mt-2 text-xs text-[var(--copilot-danger-text)]">{archiveError}</p>
       ) : null}
 
       {confirming ? (
-        <div className="mt-3 rounded-xl border border-amber-200/80 bg-amber-50/70 px-3 py-2.5">
-          <p className="text-xs font-medium text-amber-900">
+        <div className="mt-3 rounded-xl border border-[var(--copilot-warning-border)]/80 bg-[var(--copilot-tone-warning-bg)]/70 px-3 py-2.5">
+          <p className="text-xs font-medium text-[var(--copilot-warning-text-strong)]">
             Esto quitará este seguimiento de la agenda. No borra la deuda ni modifica facturas.
           </p>
           <div className="mt-2 flex gap-2">
@@ -214,7 +214,7 @@ function AgendaItemCard({
                 type="button"
                 onClick={() => void handleArchive()}
                 disabled={archiving}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)] hover:bg-amber-800"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--copilot-warning-text)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)] hover:bg-[var(--copilot-warning-text-strong)]"
               >
                 {archiving ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : null}
                 {archiving ? "Cancelando…" : "Sí, cancelar"}
@@ -249,7 +249,7 @@ function AgendaItemCard({
               onClick={() => setConfirming(true)}
               title="Cancelar seguimiento"
               aria-label="Cancelar seguimiento"
-              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:border-rose-200 hover:bg-rose-50/60 hover:text-rose-700"
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:border-[var(--copilot-danger-border)] hover:bg-[var(--copilot-tone-danger-bg)]/60 hover:text-[var(--copilot-danger-text-strong)]"
             >
               <X className="h-3 w-3" aria-hidden />
               Cancelar
@@ -335,7 +335,7 @@ export function CollectionAgendaSection({
           <span className="ml-2 text-sm">Cargando agenda…</span>
         </div>
       ) : agenda === null ? (
-        <div className={`${dangerFinancialCardClass} rounded-xl border px-4 py-3 text-sm text-rose-900`}>
+        <div className={`${dangerFinancialCardClass} rounded-xl border px-4 py-3 text-sm text-[var(--copilot-danger-text-strong)]`}>
           No se pudo cargar la agenda. Intentá actualizar la página.
         </div>
       ) : (

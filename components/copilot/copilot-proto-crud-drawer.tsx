@@ -1527,7 +1527,7 @@ function PaymentFields({
       </label>
       {amountMismatchHint ? (
         <div
-          className="sm:col-span-2 rounded-xl border border-amber-200/90 bg-amber-50/85 px-3 py-2 text-xs leading-relaxed text-amber-950"
+          className="sm:col-span-2 rounded-xl border border-[var(--copilot-warning-border)]/90 bg-[var(--copilot-tone-warning-bg)]/85 px-3 py-2 text-xs leading-relaxed text-[var(--copilot-warning-text-strong)]"
           role="status"
         >
           <span className="font-semibold">Revisión sugerida · </span>

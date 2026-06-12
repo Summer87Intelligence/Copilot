@@ -39,7 +39,7 @@ describe("notifyNewDebtor", () => {
       tenantId,
       expect.objectContaining({
         type: "new_debtor",
-        title: "Nueva deuda detectada",
+        title: "Nuevo saldo pendiente",
         body: "ACME registra deuda pendiente por UYU 12.000.",
         dedup_key: "new_debtor:c1:UYU:2026-06-10",
         metadata: expect.objectContaining({
@@ -133,7 +133,7 @@ describe("notifyInvoiceOverdue", () => {
       tenantId,
       expect.objectContaining({
         type: "client_overdue",
-        title: "Factura vencida",
+        title: "Factura atrasada",
         body: "ACME tiene USD 3.000 vencido.",
         dedup_key: "invoice_overdue:inv-22",
         metadata: expect.objectContaining({

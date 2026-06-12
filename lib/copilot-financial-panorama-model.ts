@@ -9,8 +9,14 @@
  */
 
 import type { NormalizedCurrencyMetrics } from "@/lib/copilot-cartera-cards-source";
-import { sumCarteraAgingOverdue } from "@/lib/copilot-cartera-aging-totals";
+import { sumCarteraAgingOverdue, type CarteraCurrencyTotals } from "@/lib/copilot-cartera-aging-totals";
 import type { FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
+import {
+  buildHoyCashPositionBlocks,
+  buildHoyProjection30dBlocks,
+  type HoyProjection30dBlock,
+} from "@/lib/copilot-hoy-treasury";
+import { sumPortfolioRowActiveDebt } from "@/lib/financial/canonical-debt-metrics";
 import type {
   AgingBucket,
   ReconciliationCurrencyCode,
@@ -22,6 +28,7 @@ import {
   snapshotRiskBand,
 } from "@/lib/copilot-financial-snapshot-selectors";
 import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
+import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
 
 export type PanoramaCurrencyCode = ReconciliationCurrencyCode;
 
@@ -46,14 +53,29 @@ export type PanoramaConcentration = {
   sharePct: number;
 };
 
-export type PanoramaProjection = {
-  cashTodayUyu: number;
-  cashTodayUsd: number;
+export type PanoramaProjectionCurrency = {
+  currency: PanoramaCurrencyCode;
+  cashToday: number;
   expectedCollections: number;
   upcomingOutflows: number;
   estimatedCash30d: number;
+  safeCash30d: number;
+  hasOutflows: boolean;
+};
+
+export type PanoramaProjection = {
+  cashTodayUyu: number;
+  cashTodayUsd: number;
+  /** @deprecated Consolidado legacy del snapshot — no usar en UI multimoneda. */
+  expectedCollections: number;
+  /** @deprecated Consolidado legacy del snapshot — no usar en UI multimoneda. */
+  upcomingOutflows: number;
+  /** @deprecated Consolidado legacy (mezcla monedas) — no usar en UI. */
+  estimatedCash30d: number;
   hasOutflows: boolean;
   coverageRatio: number | null;
+  /** Proyección por moneda (fuente visual canónica). */
+  byCurrency: PanoramaProjectionCurrency[];
 };
 
 export type PanoramaFiscalSummary = {
@@ -177,17 +199,55 @@ function mapSnapshotRisk(
 export function buildPanoramaProjection(input: {
   snapshot: FinancialSnapshotApiV1 | null;
   cashPositions: readonly CashPositionByCurrency[];
+  treasurySummaries?: readonly TreasuryOutflowSummary[];
+  pendingByCurrency?: CarteraCurrencyTotals;
+  portfolioRows?: readonly { debt_uyu?: number; debt_usd?: number }[];
 }): PanoramaProjection {
   const cashTodayUyu =
     input.cashPositions.find((p) => p.currency === "UYU")?.availableCash ?? 0;
   const cashTodayUsd =
     input.cashPositions.find((p) => p.currency === "USD")?.availableCash ?? 0;
+
+  const pendingByCurrency =
+    input.pendingByCurrency ??
+    sumPortfolioRowActiveDebt(input.portfolioRows ?? []);
+
+  const treasurySummaries = input.treasurySummaries ?? [];
+  const cashBlocks = buildHoyCashPositionBlocks({
+    cashPositions: input.cashPositions,
+    pendingByCurrency,
+    treasurySummaries,
+  });
+  const projectionBlocks = buildHoyProjection30dBlocks({
+    cashPositionBlocks: cashBlocks,
+    pendingByCurrency,
+    treasurySummaries,
+  });
+
+  const byCurrency: PanoramaProjectionCurrency[] = projectionBlocks.map(
+    (block: HoyProjection30dBlock) => ({
+      currency: block.currency,
+      cashToday: block.currentCash,
+      expectedCollections: block.pendingReceivables,
+      upcomingOutflows: block.hasConfiguredPayments ? block.scheduledPayments : 0,
+      estimatedCash30d: block.expectedCash30d,
+      safeCash30d: block.safeCash30d,
+      hasOutflows: block.hasConfiguredPayments && block.scheduledPayments > 0,
+    })
+  );
+
   const expectedCollections = input.snapshot
     ? snapshotReceivablesRiskWeighted(input.snapshot)
-    : 0;
-  const upcomingOutflows = input.snapshot ? snapshotExpectedOutflowsTotal(input.snapshot) : 0;
-  const estimatedCash30d = input.snapshot ? snapshotLiquidityBalance(input.snapshot) : 0;
-  const hasOutflows = upcomingOutflows > 0;
+    : byCurrency.reduce((s, c) => s + c.expectedCollections, 0);
+  const upcomingOutflows = input.snapshot
+    ? snapshotExpectedOutflowsTotal(input.snapshot)
+    : byCurrency.reduce((s, c) => s + c.upcomingOutflows, 0);
+  const estimatedCash30d = input.snapshot
+    ? snapshotLiquidityBalance(input.snapshot)
+    : byCurrency.reduce((s, c) => s + c.estimatedCash30d, 0);
+  const hasOutflows =
+    byCurrency.some((c) => c.hasOutflows) ||
+    (input.snapshot ? snapshotExpectedOutflowsTotal(input.snapshot) > 0 : false);
 
   let coverageRatio: number | null = null;
   if (hasOutflows && input.snapshot) {
@@ -203,6 +263,7 @@ export function buildPanoramaProjection(input: {
     estimatedCash30d,
     hasOutflows,
     coverageRatio,
+    byCurrency,
   };
 }
 
@@ -350,6 +411,7 @@ export function buildFinancialPanoramaModel(input: {
     debtUSD?: number;
   }[];
   fiscal: PanoramaFiscalSummary;
+  treasurySummaries?: readonly TreasuryOutflowSummary[];
 }): FinancialPanoramaModel {
   const currencies = buildPanoramaCurrencySlices({
     metricsByCode: input.metricsByCode,
@@ -363,6 +425,8 @@ export function buildFinancialPanoramaModel(input: {
   const projection = buildPanoramaProjection({
     snapshot: input.snapshot,
     cashPositions: input.cashPositions,
+    treasurySummaries: input.treasurySummaries,
+    portfolioRows: input.portfolioRows,
   });
 
   const risk = mapSnapshotRisk(

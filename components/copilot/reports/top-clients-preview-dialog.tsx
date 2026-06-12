@@ -32,9 +32,9 @@ const pillIdle =
   "bg-[var(--copilot-card-bg)]/80 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]";
 
 const RISK_COLORS: Record<string, string> = {
-  Alto: "text-rose-700 font-semibold",
-  Medio: "text-amber-700",
-  Bajo: "text-emerald-700",
+  Alto: "text-[var(--copilot-danger-text)] font-semibold",
+  Medio: "text-[var(--copilot-warning-text)]",
+  Bajo: "text-[var(--copilot-success-text)]",
 };
 
 type TopClientRow = TopClientsReportModel["rows"][number];
@@ -70,7 +70,7 @@ function getColumns(currency: string): ReportTableColumn<TopClientRow>[] {
       cellClassName: "text-right tabular-nums text-xs",
       render: (r) =>
         r.overdueDebt > 0 ? (
-          <span className="text-rose-700">{formatMoneyCurrency(r.overdueDebt, currency)}</span>
+          <span className="text-[var(--copilot-danger-text)]">{formatMoneyCurrency(r.overdueDebt, currency)}</span>
         ) : (
           "—"
         ),
@@ -235,7 +235,7 @@ function PreviewLoadingState() {
 
 function PreviewErrorState({ message }: { message: string }) {
   return (
-    <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+    <div className="rounded-xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] px-4 py-3 text-sm text-[var(--copilot-danger-text-strong)]">
       No pudimos cargar este reporte. {message}
     </div>
   );

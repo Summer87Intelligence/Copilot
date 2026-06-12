@@ -24,7 +24,8 @@ import {
   type InvoiceStatusLabel,
 } from "@/lib/hoy-debt-breakdown";
 
-import { moneyToneClass } from "./hoy-money-value";
+import { moneyCurrencyClass } from "./hoy-money-value";
+import { copilotCurrencyClass } from "@/components/copilot/ui/copilot-visual-system";
 
 export { buildDebtorExpandData } from "@/lib/hoy-debtor-expand-helpers";
 
@@ -70,104 +71,88 @@ function normalizeWhatsAppDigits(phone: string): string | null {
 
 function DebtorAmount({
   amount,
-  tone,
+  overdue = false,
   empty = "—",
 }: {
   amount: MoneyAmount | null;
-  tone: "warning" | "danger";
+  overdue?: boolean;
   empty?: string;
 }) {
   if (!amount) {
     return <span className="text-sm text-[var(--copilot-ink-muted)]">{empty}</span>;
   }
   return (
-    <span className={`text-sm ${moneyToneClass(tone)}`}>{formatMoneySymbolOnly(amount)}</span>
+    <span className={`text-sm ${moneyCurrencyClass(amount.currency, { overdue })}`}>
+      {formatMoneySymbolOnly(amount)}
+    </span>
   );
 }
 
 function riskChips(row: DebtorCollectionRow): { label: string; className: string }[] {
   const chips: { label: string; className: string }[] = [];
   if ((row.vencido?.amount ?? 0) > 0) {
-    chips.push({ label: "Vencido", className: "bg-rose-100/90 text-rose-900" });
-  }
-  if (row.flags.critical30Share) {
-    chips.push({ label: ">30d", className: "bg-rose-50 text-rose-800 ring-1 ring-rose-200/60" });
-  }
-  if (row.riesgo === "Alto") {
-    chips.push({ label: "Alto", className: "bg-amber-100/90 text-amber-950" });
-  }
-  if (chips.length === 0 && row.deuda.amount > 0) {
-    chips.push({ label: "Deuda al día", className: "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/60" });
+    chips.push({
+      label: "Atrasado",
+      className: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)]",
+    });
+  } else if (row.flags.critical30Share) {
+    chips.push({
+      label: "+30d",
+      className: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)]",
+    });
   }
   return chips;
 }
 
-function rowSeverityClass(row: DebtorCollectionRow, highlightRisk: boolean): string {
-  if (!highlightRisk) return "";
-  if ((row.vencido?.amount ?? 0) > 0) return "bg-rose-50/50";
-  if (row.flags.critical30Share || row.riesgo === "Alto") return "bg-amber-50/40";
+function rowSeverityClass(_row: DebtorCollectionRow, _highlightRisk: boolean): string {
+  // Severidad se transmite en badges (Vencida/Atrasado/+30 días) y en el color del monto,
+  // no tintando la fila entera. Mantenemos fondo neutro y separadores finos.
   return "";
 }
 
-const ACTION_BTN = `${copilotButtonClassName({ variant: "secondary", size: "sm" })} !h-7 !w-[88px] !px-2 !text-[11px]`;
+const ACTION_BTN_PRIMARY = `${copilotButtonClassName({ variant: "primary", size: "sm" })} !h-7 !min-w-[88px] !px-2 !text-[11px]`;
+const ACTION_BTN_SECONDARY = `${copilotButtonClassName({ variant: "secondary", size: "sm" })} !h-7 !min-w-[52px] !px-2 !text-[11px]`;
 
 function DebtorRowActions({ row }: { row: DebtorCollectionRow }) {
   const { phone, email } = debtorContactFields(row);
   const waDigits = phone ? normalizeWhatsAppDigits(phone) : null;
 
   return (
-    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+      <Link href={row.deepLink} className={ACTION_BTN_PRIMARY}>
+        <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
+        {HOY_COPY.debtorViewProfile}
+      </Link>
       {waDigits ? (
         <a
           href={`https://wa.me/${waDigits}`}
           target="_blank"
           rel="noopener noreferrer"
-          className={`${ACTION_BTN} border-emerald-200/80 bg-emerald-50/80 text-emerald-800 hover:bg-emerald-50`}
+          title={HOY_COPY.debtorWhatsApp}
+          className={ACTION_BTN_SECONDARY}
         >
           <MessageCircle className="h-3 w-3 shrink-0" aria-hidden />
-          {HOY_COPY.debtorWhatsApp}
+          WA
         </a>
-      ) : (
-        <span
-          title="Sin WhatsApp cargado"
-          className={`${ACTION_BTN} cursor-not-allowed border-[var(--copilot-border)]/40 bg-[var(--copilot-hover-bg)] text-[var(--copilot-ink-muted)]/50`}
-        >
-          <MessageCircle className="h-3 w-3 shrink-0" aria-hidden />
-          WhatsApp
-        </span>
-      )}
+      ) : null}
       {email ? (
         <a
           href={`mailto:${encodeURIComponent(email)}`}
-          className={`${ACTION_BTN} border-[var(--copilot-border)] bg-[var(--copilot-dropdown-bg)] text-[var(--copilot-accent)] hover:bg-[var(--copilot-hover-bg)]`}
+          title={HOY_COPY.debtorSendEmail}
+          className={ACTION_BTN_SECONDARY}
         >
           <Mail className="h-3 w-3 shrink-0" aria-hidden />
-          {HOY_COPY.debtorSendEmail}
+          Mail
         </a>
-      ) : (
-        <span
-          title="Sin email cargado"
-          className={`${ACTION_BTN} cursor-not-allowed border-[var(--copilot-border)]/40 bg-[var(--copilot-hover-bg)] text-[var(--copilot-ink-muted)]/50`}
-        >
-          <Mail className="h-3 w-3 shrink-0" aria-hidden />
-          Email
-        </span>
-      )}
-      <Link
-        href={row.deepLink}
-        className={`${ACTION_BTN} border-[var(--copilot-border)] bg-[var(--copilot-dropdown-bg)] text-[var(--copilot-ink)] hover:bg-[var(--copilot-hover-bg)]`}
-      >
-        <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
-        {HOY_COPY.debtorViewProfile}
-      </Link>
+      ) : null}
     </div>
   );
 }
 
 const STATUS_BADGE_CONFIG: Record<InvoiceStatusLabel, { label: string; className: string }> = {
-  Vencida: { label: "Vencida", className: "bg-rose-100/90 text-rose-900" },
-  "Al día": { label: "Al día", className: "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/60" },
-  Parcial: { label: "Parcial", className: "bg-amber-100/90 text-amber-900" },
+  Vencida: { label: "Atrasado", className: "bg-[var(--copilot-badge-danger-bg)]/90 text-[var(--copilot-danger-text-strong)]" },
+  "Al día": { label: "Al día", className: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] ring-1 ring-[var(--copilot-success-border)]" },
+  Parcial: { label: "Parcial", className: "bg-[var(--copilot-badge-warning-bg)]/90 text-[var(--copilot-warning-text-strong)]" },
   "Sin vencimiento": {
     label: "Sin vto.",
     className: "bg-[var(--copilot-surface-muted)] text-[var(--copilot-ink-muted)]",
@@ -177,7 +162,7 @@ const STATUS_BADGE_CONFIG: Record<InvoiceStatusLabel, { label: string; className
 function InvoiceStatusBadge({ status }: { status: InvoiceStatusLabel }) {
   const { label, className } = STATUS_BADGE_CONFIG[status];
   return (
-    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold uppercase ${className}`}>
+    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${className}`}>
       {label}
     </span>
   );
@@ -220,14 +205,14 @@ function DebtBreakdownSection({
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
             <span>
               Total pendiente{" "}
-              <span className="font-semibold text-amber-700">
+              <span className="font-semibold text-[var(--copilot-warning-text)]">
                 {fmtDebtSymbol(breakdown.summary.totalPending, row.currency)}
               </span>
             </span>
             {breakdown.summary.totalOverdue > 0 && (
               <span>
-                Vencido{" "}
-                <span className="font-semibold text-rose-700">
+                Atrasado{" "}
+                <span className="font-semibold text-[var(--copilot-danger-text)]">
                   {fmtDebtSymbol(breakdown.summary.totalOverdue, row.currency)}
                 </span>
               </span>
@@ -244,7 +229,7 @@ function DebtBreakdownSection({
               {breakdown.summary.invoiceCount}{" "}
               {breakdown.summary.invoiceCount === 1 ? "factura" : "facturas"}
               {breakdown.summary.overdueCount > 0
-                ? ` · ${breakdown.summary.overdueCount} vencida${breakdown.summary.overdueCount !== 1 ? "s" : ""}`
+                ? ` · ${breakdown.summary.overdueCount} atrasada${breakdown.summary.overdueCount !== 1 ? "s" : ""}`
                 : ""}
             </span>
           </div>
@@ -273,7 +258,7 @@ function DebtBreakdownSection({
                     <td
                       className={`px-2.5 py-1.5 tabular-nums ${
                         item.status === "Vencida"
-                          ? "font-medium text-rose-700"
+                          ? "font-medium text-[var(--copilot-danger-text)]"
                           : "text-[var(--copilot-ink-muted)]"
                       }`}
                     >
@@ -294,7 +279,7 @@ function DebtBreakdownSection({
                     <td className="px-2.5 py-1.5">
                       <InvoiceStatusBadge status={item.status} />
                     </td>
-                    <td className="px-2.5 py-1.5 text-right tabular-nums text-rose-700">
+                    <td className="px-2.5 py-1.5 text-right tabular-nums text-[var(--copilot-danger-text)]">
                       {item.daysOverdue != null ? `${item.daysOverdue}d` : "—"}
                     </td>
                   </tr>
@@ -305,7 +290,7 @@ function DebtBreakdownSection({
 
           {/* Reconciliation warning */}
           {breakdown.hasReconciliationGap && (
-            <div className="flex items-start gap-1.5 rounded-lg bg-amber-50/90 px-2.5 py-1.5 text-[11px] text-amber-800">
+            <div className="flex items-start gap-1.5 rounded-lg bg-[var(--copilot-tone-warning-bg)] px-2.5 py-1.5 text-[11px] text-[var(--copilot-warning-text-strong)]">
               <AlertTriangle className="mt-px h-3 w-3 shrink-0" aria-hidden />
               <span>
                 Diferencia de conciliación de{" "}
@@ -342,33 +327,33 @@ function DebtorRowExpandPanel({
         </p>
         <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2.5 sm:grid-cols-4">
 
-          {/* Deuda actual */}
+          {/* Total pendiente */}
           <div>
             <p
               className="text-[10px] text-[var(--copilot-ink-muted)]"
               title={HOY_COPY.debtTotalTip}
             >
-              Deuda actual
+              Total pendiente
             </p>
-            <p className="mt-0.5 text-sm font-semibold text-amber-700">
+            <p className="mt-0.5 text-sm font-semibold text-[var(--copilot-warning-text)]">
               {fmtDebtSymbol(expand.deudaTotalAmt, expand.currency)}
             </p>
             <p className="mt-0.5 text-[10px] leading-tight text-[var(--copilot-ink-muted)]">
-              Deuda actual del cliente.
+              Todo lo que el cliente debe actualmente. El atrasado ya está incluido.
             </p>
           </div>
 
-          {/* Deuda vencida */}
+          {/* Atrasado */}
           <div>
             <p
               className="text-[10px] text-[var(--copilot-ink-muted)]"
               title={HOY_COPY.debtOverdueTip}
             >
-              Deuda vencida
+              Atrasado
             </p>
             {expand.deudaVencidaAmt != null ? (
               <>
-                <p className="mt-0.5 text-sm font-semibold text-rose-700">
+                <p className="mt-0.5 text-sm font-semibold text-[var(--copilot-danger-text)]">
                   {fmtDebtSymbol(expand.deudaVencidaAmt, expand.currency)}
                 </p>
                 <p className="mt-0.5 text-[10px] leading-tight text-[var(--copilot-ink-muted)]">
@@ -377,8 +362,8 @@ function DebtorRowExpandPanel({
               </>
             ) : (
               <>
-                <p className="mt-0.5 text-sm font-semibold text-emerald-700">—</p>
-                <p className="mt-0.5 text-[10px] leading-tight text-emerald-700">
+                <p className="mt-0.5 text-sm font-semibold text-[var(--copilot-success-text)]">—</p>
+                <p className="mt-0.5 text-[10px] leading-tight text-[var(--copilot-success-text)]">
                   Sin vencimiento activo.
                 </p>
               </>
@@ -406,7 +391,7 @@ function DebtorRowExpandPanel({
               <>
                 <p className="mt-0.5 text-sm font-semibold text-[var(--copilot-ink-muted)]">—</p>
                 <p className="mt-0.5 text-[10px] leading-tight text-[var(--copilot-ink-muted)]">
-                  Toda la deuda está vencida.
+                  Toda la deuda está atrasada.
                 </p>
               </>
             )}
@@ -422,11 +407,11 @@ function DebtorRowExpandPanel({
             </p>
             {expand.overdueDays != null ? (
               <>
-                <p className="mt-0.5 text-sm font-semibold text-rose-700">
+                <p className="mt-0.5 text-sm font-semibold text-[var(--copilot-danger-text)]">
                   {expand.overdueDays} días
                 </p>
                 <p className="mt-0.5 text-[10px] leading-tight text-[var(--copilot-ink-muted)]">
-                  Desde la factura vencida más antigua.
+                  Desde la factura atrasada más antigua.
                 </p>
               </>
             ) : (
@@ -462,8 +447,8 @@ function DebtorRowExpandPanel({
       <div
         className={`rounded-lg px-3 py-2 text-xs ${
           expand.hasOverdue
-            ? "bg-rose-50/80 text-rose-800"
-            : "bg-emerald-50/80 text-emerald-800"
+            ? "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]"
+            : "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]"
         }`}
       >
         <span className="font-semibold">
@@ -534,23 +519,23 @@ function DebtorTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl ring-1 ring-[var(--copilot-border)]">
-      <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+    <div className="overflow-x-auto rounded-xl border border-[var(--copilot-border)]">
+      <table className="w-full min-w-[600px] border-collapse text-left text-sm">
         <thead>
-          <tr className="bg-[rgba(44,40,37,0.04)] text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+          <tr className="bg-[var(--copilot-table-header-bg)] text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
             <th className="px-3 py-1.5">Cliente</th>
             <th className="px-3 py-1.5">Moneda</th>
             <th
               className="cursor-help px-3 py-1.5"
               title={HOY_COPY.debtTotalTip}
             >
-              Deuda actual
+              Total pendiente
             </th>
             <th
               className="cursor-help px-3 py-1.5"
               title={HOY_COPY.debtOverdueTip}
             >
-              Deuda vencida
+              Atrasado
             </th>
             <th
               className="cursor-help px-3 py-1.5"
@@ -582,22 +567,22 @@ function DebtorTable({
                       {chips.map((c) => (
                         <span
                           key={c.label}
-                          className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase ${c.className}`}
+                          className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${c.className}`}
                         >
                           {c.label}
                         </span>
                       ))}
                     </div>
                   </td>
-                  <td className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <td className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wide ${copilotCurrencyClass(row.currency)}`}>
                     {row.currency}
                   </td>
                   <td className="px-3 py-1.5">
-                    <DebtorAmount amount={row.deuda} tone="warning" />
+                    <DebtorAmount amount={row.deuda} />
                   </td>
                   <td className="px-3 py-1.5">
                     {(row.vencido?.amount ?? 0) > 0 ? (
-                      <DebtorAmount amount={row.vencido} tone="danger" />
+                      <DebtorAmount amount={row.vencido} overdue />
                     ) : (
                       <span className="text-xs text-[var(--copilot-ink-muted)]">—</span>
                     )}
@@ -720,26 +705,26 @@ export function ClientsWithDebtSection({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-xs text-[var(--copilot-ink-muted)]">
         {uyuDebt > 0 && (
           <span>
-            Deuda actual UYU{" "}
-            <span className="font-semibold text-amber-700">{fmtCurrencyAmount(uyuDebt, "UYU")}</span>
+            Total pendiente UYU{" "}
+            <span className={`font-semibold ${copilotCurrencyClass("UYU")}`}>{fmtCurrencyAmount(uyuDebt, "UYU")}</span>
           </span>
         )}
         {usdDebt > 0 && (
           <span>
-            Deuda actual USD{" "}
-            <span className="font-semibold text-amber-700">{fmtCurrencyAmount(usdDebt, "USD")}</span>
+            Total pendiente USD{" "}
+            <span className={`font-semibold ${copilotCurrencyClass("USD")}`}>{fmtCurrencyAmount(usdDebt, "USD")}</span>
           </span>
         )}
         {uyuOverdue > 0 && (
           <span>
-            Deuda vencida UYU{" "}
-            <span className="font-semibold text-rose-700">{fmtCurrencyAmount(uyuOverdue, "UYU")}</span>
+            Atrasado UYU{" "}
+            <span className="font-semibold text-[var(--copilot-danger-text)]">{fmtCurrencyAmount(uyuOverdue, "UYU")}</span>
           </span>
         )}
         {usdOverdue > 0 && (
           <span>
-            Deuda vencida USD{" "}
-            <span className="font-semibold text-rose-700">{fmtCurrencyAmount(usdOverdue, "USD")}</span>
+            Atrasado USD{" "}
+            <span className="font-semibold text-[var(--copilot-danger-text)]">{fmtCurrencyAmount(usdOverdue, "USD")}</span>
           </span>
         )}
       </div>

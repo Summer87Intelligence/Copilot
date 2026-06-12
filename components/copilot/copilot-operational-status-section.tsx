@@ -11,16 +11,16 @@ const LEVEL_THEME: Record<
   { labelClass: string; cardBorder: string }
 > = {
   ok: {
-    labelClass: "text-emerald-900",
-    cardBorder: "border-emerald-200/70 bg-emerald-50/35",
+    labelClass: "text-[var(--copilot-success-text-strong)]",
+    cardBorder: "border-[var(--copilot-success-border)]/70 bg-[var(--copilot-tone-positive-bg)]/35",
   },
   attention: {
-    labelClass: "text-amber-950",
-    cardBorder: "border-amber-200/70 bg-amber-50/35",
+    labelClass: "text-[var(--copilot-warning-text-strong)]",
+    cardBorder: "border-[var(--copilot-warning-border)]/70 bg-[var(--copilot-tone-warning-bg)]/35",
   },
   critical: {
-    labelClass: "text-rose-950",
-    cardBorder: "border-rose-200/70 bg-rose-50/35",
+    labelClass: "text-[var(--copilot-danger-text-strong)]",
+    cardBorder: "border-[var(--copilot-danger-border)]/70 bg-[var(--copilot-tone-danger-bg)]/35",
   },
 };
 

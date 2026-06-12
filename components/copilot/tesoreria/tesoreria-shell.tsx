@@ -108,13 +108,13 @@ export function TesoreriaShell() {
       ) : null}
 
       {workspace.error ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-900">
+        <div className="rounded-xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] px-3 py-2 text-xs text-[var(--copilot-danger-text-strong)]">
           {workspace.error}
         </div>
       ) : null}
 
       <nav
-        className="flex flex-wrap gap-2 rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-sm"
+        className="flex flex-wrap gap-2 rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-1.5 shadow-sm"
         aria-label="Secciones de tesorería"
       >
         {TESORERIA_SECTIONS_MAIN.map((item) => {

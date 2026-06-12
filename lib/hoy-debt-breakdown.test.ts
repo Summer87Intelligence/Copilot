@@ -168,7 +168,7 @@ describe("buildDebtBreakdown", () => {
 
 describe("fmtDateShort", () => {
   it("formatea YYYY-MM-DD como DD/MM/YY", () => {
-    expect(fmtDateShort("2026-04-15")).toBe("15/04/26");
+    expect(fmtDateShort("2026-04-15")).toMatch(/^15\/04\/2026$/);
   });
 
   it("devuelve — para valores vacíos", () => {

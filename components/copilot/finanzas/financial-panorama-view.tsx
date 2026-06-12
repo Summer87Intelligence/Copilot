@@ -5,15 +5,13 @@ import { Loader2 } from "lucide-react";
 
 import { CopilotCard, CopilotSectionTitle } from "@/components/copilot/copilot-ui";
 import { FinancialMetricDetailDialog } from "@/components/copilot/finanzas/financial-metric-detail-dialog";
-import { FinancialMonthlyTrends } from "@/components/copilot/finanzas/financial-monthly-trends";
-import { FinancialCurrencyBreakdown } from "@/components/copilot/finanzas/financial-executive-sections";
 import {
-  FinancialAdvancedDetail,
-  FinancialCollapsibleSection,
+  FinancialCeoCollectionRiskSummary,
+  FinancialCeoSections,
+} from "@/components/copilot/finanzas/financial-ceo-sections";
+import {
   FinancialCollectionRisk,
   FinancialExecutiveSummary,
-  FinancialLayeredHeader,
-  FinancialMainComparison,
   FinancialProjectionCompact,
 } from "@/components/copilot/finanzas/financial-layered-sections";
 import { FINANCIAL_UX_COPY, FINANZAS_COPY } from "@/lib/copilot-financial-ux-copy";
@@ -36,6 +34,8 @@ import {
 import { defaultHoyPeriodRange, formatHoyPeriodLabel } from "@/lib/copilot-hoy-period";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
+import { parseTreasuryScheduledSummaryJson } from "@/lib/treasury/treasury-api-parse";
+import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
 import type { DataRow } from "@/lib/data/proto-operational-read-repository";
 
 type MetricSelection =
@@ -58,6 +58,7 @@ export function FinancialPanoramaView() {
   const [snapshotLoading, setSnapshotLoading] = useState(true);
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
   const [cashPositions, setCashPositions] = useState<CashPositionByCurrency[]>([]);
+  const [treasurySummaries, setTreasurySummaries] = useState<TreasuryOutflowSummary[]>([]);
   const [portfolioRows, setPortfolioRows] = useState<ClientPortfolioRow[]>([]);
   const [invoices, setInvoices] = useState<DataRow[]>([]);
   const [receipts, setReceipts] = useState<DataRow[]>([]);
@@ -98,6 +99,23 @@ export function FinancialPanoramaView() {
       })
       .catch(() => {
         if (!cancelled) setCashPositions([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void copilotApiFetch("/api/copilot/treasury/scheduled-payments?include_summary=1")
+      .then(async (res) => {
+        const json = await res.json().catch(() => null);
+        if (!cancelled) {
+          setTreasurySummaries(parseTreasuryScheduledSummaryJson(json));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setTreasurySummaries([]);
       });
     return () => {
       cancelled = true;
@@ -168,6 +186,7 @@ export function FinancialPanoramaView() {
       },
       invoices,
       receipts,
+      treasurySummaries,
     });
   }, [
     reconciliation.report,
@@ -179,6 +198,7 @@ export function FinancialPanoramaView() {
     portfolioRows,
     invoices,
     receipts,
+    treasurySummaries,
   ]);
 
   const metricDetail = useMemo(() => {
@@ -223,7 +243,7 @@ export function FinancialPanoramaView() {
 
   if (error && !dashboard) {
     return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
+      <div className="rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-4 py-3 text-sm text-[var(--copilot-warning-text-strong)]">
         {error}
       </div>
     );
@@ -242,8 +262,6 @@ export function FinancialPanoramaView() {
   return (
     <>
       <div className="space-y-4">
-        <FinancialLayeredHeader dashboard={dashboard} />
-
         <FinancialExecutiveSummary
           dashboard={dashboard}
           onSelectMetric={(metricId, slice) =>
@@ -251,47 +269,32 @@ export function FinancialPanoramaView() {
           }
         />
 
+        <FinancialCeoSections
+          invoices={invoices as unknown as Parameters<typeof FinancialCeoSections>[0]["invoices"]}
+          portfolioRows={portfolioRows as unknown as Parameters<typeof FinancialCeoSections>[0]["portfolioRows"]}
+          year={new Date().getUTCFullYear()}
+        />
+
         <CopilotCard>
           <CopilotSectionTitle
-            title="Actividad comercial"
-            subtitle="Comparación de períodos y evolución mensual."
+            title="Caja proyectada próximos 30 días"
+            subtitle={FINANCIAL_UX_COPY.projection30Subtitle}
           />
-          <div className="mt-4 space-y-5">
-            <FinancialMainComparison dashboard={dashboard} embedded />
-            <div className="border-t border-[var(--copilot-border)] pt-5">
-              <FinancialMonthlyTrends
-                invoices={invoices}
-                receipts={receipts}
-                asOfYmd={today}
-                executiveView
-                embedded
-              />
-            </div>
-          </div>
+          <FinancialProjectionCompact model={dashboard.panorama} embedded />
         </CopilotCard>
 
-        <FinancialCollapsibleSection
-          title={FINANZAS_COPY.collectionRiskTitle}
-          subtitle={FINANZAS_COPY.collectionRiskSubtitle}
-        >
-          <FinancialCollectionRisk panels={dashboard.currencies} embedded />
-        </FinancialCollapsibleSection>
-
-        <FinancialCollapsibleSection
-          title="Próximos 30 días"
-          subtitle={FINANCIAL_UX_COPY.projection30Subtitle}
-        >
-          <FinancialProjectionCompact model={dashboard.panorama} embedded />
-        </FinancialCollapsibleSection>
-
-        <FinancialCollapsibleSection
-          title="Desglose por moneda"
-          subtitle="Bruto solo como detalle. Las métricas principales usan neto."
-        >
-          <FinancialCurrencyBreakdown model={dashboard.panorama} flat />
-        </FinancialCollapsibleSection>
-
-        <FinancialAdvancedDetail dashboard={dashboard} />
+        <CopilotCard>
+          <CopilotSectionTitle
+            title={FINANZAS_COPY.collectionRiskTitle}
+            subtitle={FINANZAS_COPY.collectionRiskSubtitle}
+          />
+          <FinancialCeoCollectionRiskSummary
+            portfolioRows={portfolioRows as unknown as Parameters<typeof FinancialCeoCollectionRiskSummary>[0]["portfolioRows"]}
+          />
+          <div className="mt-4 border-t border-[var(--copilot-border)] pt-4">
+            <FinancialCollectionRisk panels={dashboard.currencies} embedded />
+          </div>
+        </CopilotCard>
       </div>
 
       <FinancialMetricDetailDialog

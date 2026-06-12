@@ -8,9 +8,9 @@ export type SummaryMetric = {
 };
 
 const TONE_CLASSES: Record<NonNullable<SummaryMetric["tone"]>, string> = {
-  positive: "border-emerald-100 bg-emerald-50/60",
-  warning: "border-amber-100 bg-amber-50/60",
-  danger: "border-rose-100 bg-rose-50/60",
+  positive: "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)]",
+  warning: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)]",
+  danger: "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)]/60",
   neutral: "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60",
 };
 

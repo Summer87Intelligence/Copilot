@@ -58,21 +58,21 @@ import { AgentPriorityCard } from "./agent-priority-card";
 const STATUS_CONFIG = {
   stable: {
     icon: CheckCircle2,
-    iconCls: "text-emerald-600",
+    iconCls: "text-[var(--copilot-success-text)]",
     label: "Bajo",
     badgeCls: `${statusBadgeVariants.stable} border`,
     surfaceCls: positiveFinancialCardClass,
   },
   attention: {
     icon: CircleDot,
-    iconCls: "text-amber-600",
+    iconCls: "text-[var(--copilot-warning-text)]",
     label: "Atención",
     badgeCls: `${statusBadgeVariants.attention} border`,
     surfaceCls: warningFinancialCardClass,
   },
   critical: {
     icon: TriangleAlert,
-    iconCls: "text-rose-600",
+    iconCls: "text-[var(--copilot-danger-text)]",
     label: "Crítico",
     badgeCls: `${statusBadgeVariants.critical} border`,
     surfaceCls: dangerFinancialCardClass,
@@ -254,14 +254,14 @@ function PartialWarning({ warnings }: { warnings: string[] }) {
     <div className={`rounded-2xl border px-4 py-3 ${warningFinancialCardClass}`}>
       <div className="flex items-start gap-2.5">
         <AlertTriangle
-          className="mt-0.5 h-4 w-4 shrink-0 text-amber-600"
+          className="mt-0.5 h-4 w-4 shrink-0 text-[var(--copilot-warning-text)]"
           aria-hidden
         />
         <div className="min-w-0">
-          <p className="text-[13px] font-semibold text-amber-900">
+          <p className="text-[13px] font-semibold text-[var(--copilot-warning-text-strong)]">
             Se cargó una versión parcial del análisis.
           </p>
-          <ul className="mt-1 space-y-1 text-[12px] leading-relaxed text-amber-800">
+          <ul className="mt-1 space-y-1 text-[12px] leading-relaxed text-[var(--copilot-warning-text-strong)]">
             {warnings.map((warning) => (
               <li key={warning}>{warning}</li>
             ))}
@@ -529,7 +529,7 @@ function SupplementalCardsSection() {
                 <p className="text-[14px] font-semibold text-[var(--copilot-ink)]">
                   Agente de Cliente
                 </p>
-                <span className="rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[10.5px] font-semibold leading-none text-blue-700">
+                <span className="rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-tone-neutral-bg)] px-2 py-0.5 text-[10.5px] font-semibold leading-none text-[var(--copilot-accent)]">
                   En fichas de cliente
                 </span>
               </div>
@@ -564,15 +564,15 @@ function SupplementalCardsSection() {
               className={`${neutralFinancialCardClass} rounded-2xl border p-5 opacity-80`}
             >
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100">
-                  <Icon className="h-5 w-5 text-slate-400" aria-hidden />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--copilot-soft-bg)]">
+                  <Icon className="h-5 w-5 text-[var(--copilot-ink-muted)]" aria-hidden />
                 </div>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-[14px] font-semibold text-[var(--copilot-ink)]">
                       {agent.label}
                     </p>
-                    <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10.5px] font-semibold leading-none text-slate-500">
+                    <span className="rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] px-2 py-0.5 text-[10.5px] font-semibold leading-none text-[var(--copilot-ink-muted)]">
                       Próximamente
                     </span>
                   </div>
@@ -602,12 +602,12 @@ function SecuritySection() {
       <div className="grid gap-4 lg:grid-cols-2">
         <div className={`${positiveFinancialCardClass} rounded-2xl border p-5`}>
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden />
-            <p className="text-[13px] font-semibold text-emerald-900">
+            <CheckCircle2 className="h-4 w-4 text-[var(--copilot-success-text)]" aria-hidden />
+            <p className="text-[13px] font-semibold text-[var(--copilot-success-text-strong)]">
               Pueden
             </p>
           </div>
-          <ul className="mt-3 space-y-2 text-[13px] text-emerald-900/90">
+          <ul className="mt-3 space-y-2 text-[13px] text-[var(--copilot-success-text-strong)]/90">
             {[
               "Leer información del Copilot.",
               "Resumir la situación actual.",
@@ -615,7 +615,7 @@ function SecuritySection() {
               "Sugerir el siguiente paso.",
             ].map((item) => (
               <li key={item} className="flex items-start gap-2">
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600" />
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--copilot-success-text)]" />
                 <span>{item}</span>
               </li>
             ))}
@@ -624,12 +624,12 @@ function SecuritySection() {
 
         <div className={`${dangerFinancialCardClass} rounded-2xl border p-5`}>
           <div className="flex items-center gap-2">
-            <XCircle className="h-4 w-4 text-rose-600" aria-hidden />
-            <p className="text-[13px] font-semibold text-rose-900">
+            <XCircle className="h-4 w-4 text-[var(--copilot-danger-text)]" aria-hidden />
+            <p className="text-[13px] font-semibold text-[var(--copilot-danger-text-strong)]">
               No pueden
             </p>
           </div>
-          <ul className="mt-3 space-y-2 text-[13px] text-rose-900/90">
+          <ul className="mt-3 space-y-2 text-[13px] text-[var(--copilot-danger-text-strong)]/90">
             {[
               "Pagar o borrar información.",
               "Modificar importes.",
@@ -638,7 +638,7 @@ function SecuritySection() {
               "Ejecutar acciones solos.",
             ].map((item) => (
               <li key={item} className="flex items-start gap-2">
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-600" />
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--copilot-danger-text)]" />
                 <span>{item}</span>
               </li>
             ))}
@@ -741,12 +741,12 @@ export function AgentesOrchestrationView() {
       ) : null}
 
       {phase.kind === "error" ? (
-        <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-center">
-          <p className="text-[13px] text-rose-700">{phase.message}</p>
+        <div className="rounded-3xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-card-bg)] p-5 text-center">
+          <p className="text-[13px] text-[var(--copilot-danger-text-strong)]">{phase.message}</p>
           <button
             type="button"
             onClick={generate}
-            className="mt-3 text-[12px] font-medium text-rose-600 underline underline-offset-2"
+            className="mt-3 text-[12px] font-medium text-[var(--copilot-danger-text)] underline underline-offset-2"
           >
             Reintentar
           </button>

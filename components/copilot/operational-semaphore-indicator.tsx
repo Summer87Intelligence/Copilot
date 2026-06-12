@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
 
@@ -12,19 +12,19 @@ const LEVEL_THEME: Record<
   { dot: string; labelClass: string; panelBorder: string }
 > = {
   ok: {
-    dot: "bg-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.25)]",
-    labelClass: "text-emerald-900",
-    panelBorder: "border-emerald-200/80",
+    dot: "bg-[var(--copilot-status-ok-dot)] shadow-[0_0_0_2px_rgba(16,185,129,0.25)]",
+    labelClass: "text-[var(--copilot-success-text-strong)]",
+    panelBorder: "border-[var(--copilot-success-border)]/80",
   },
   attention: {
-    dot: "bg-amber-400 shadow-[0_0_0_2px_rgba(251,191,36,0.35)]",
-    labelClass: "text-amber-950",
-    panelBorder: "border-amber-200/80",
+    dot: "bg-[var(--copilot-status-warn-dot)] shadow-[0_0_0_2px_rgba(251,191,36,0.35)]",
+    labelClass: "text-[var(--copilot-warning-text-strong)]",
+    panelBorder: "border-[var(--copilot-warning-border)]/80",
   },
   critical: {
-    dot: "bg-rose-500 shadow-[0_0_0_2px_rgba(244,63,94,0.25)]",
-    labelClass: "text-rose-950",
-    panelBorder: "border-rose-200/80",
+    dot: "bg-[var(--copilot-status-critical-dot)] shadow-[0_0_0_2px_rgba(244,63,94,0.25)]",
+    labelClass: "text-[var(--copilot-danger-text-strong)]",
+    panelBorder: "border-[var(--copilot-danger-border)]/80",
   },
 };
 
@@ -60,12 +60,41 @@ function SeverityList({
   );
 }
 
+function compactSemaphoreLabel(
+  level: OperationalSemaphoreLevel,
+  signalCount: number
+): string {
+  if (level === "ok") return "OK";
+  if (signalCount > 0) return String(signalCount);
+  return level === "critical" ? "Crítico" : "Atención";
+}
+
 export function OperationalSemaphoreIndicator() {
   const { semaphore, loading } = useCopilotOperationalPulse();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
   const theme = LEVEL_THEME[semaphore.level];
+
+  const signalCount =
+    semaphore.criticalCount +
+    semaphore.highCount +
+    semaphore.mediumCount +
+    semaphore.operativeItems.length;
+
+  const compactLabel = useMemo(
+    () => compactSemaphoreLabel(semaphore.level, signalCount),
+    [semaphore.level, signalCount]
+  );
+
+  const tooltip = useMemo(() => {
+    const lines = [
+      `Estado: ${semaphore.statusLabel}`,
+      semaphore.counterLine,
+      semaphore.primaryReason,
+    ];
+    return lines.filter(Boolean).join("\n");
+  }, [semaphore]);
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -92,27 +121,28 @@ export function OperationalSemaphoreIndicator() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex max-w-full items-center gap-2.5 rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/90 px-3 py-1.5 text-left shadow-sm ring-1 ring-[rgba(44,40,37,0.06)] transition-colors duration-200 hover:bg-[var(--copilot-panel-bg)] hover:ring-[rgba(31,107,74,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]"
+        className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/90 px-2.5 py-1 text-left shadow-sm transition-colors duration-200 hover:bg-[var(--copilot-panel-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]"
         aria-expanded={open}
         aria-controls={panelId}
-        aria-label={`Estado operacional: ${semaphore.statusLabel}. ${semaphore.counterLine}`}
+        title={loading ? "Estado operacional" : tooltip}
+        aria-label={
+          loading
+            ? "Estado operacional"
+            : `Estado operacional: ${semaphore.statusLabel}. ${semaphore.counterLine}`
+        }
       >
         <span
-          className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-            loading ? "animate-pulse bg-slate-300 shadow-none" : theme.dot
+          className={`h-2 w-2 shrink-0 rounded-full ${
+            loading ? "animate-pulse bg-[var(--copilot-subtle)] shadow-none" : theme.dot
           }`}
           aria-hidden
         />
-        <span className="min-w-0">
-          <span className="block truncate text-sm font-semibold text-[var(--copilot-ink)]">
-            Estado:{" "}
-            <span className={loading ? "text-[var(--copilot-ink-muted)]" : theme.labelClass}>
-              {loading ? "…" : semaphore.statusLabel}
-            </span>
-          </span>
-          <span className="mt-0.5 block truncate text-[11px] font-medium text-[var(--copilot-ink-muted)]">
-            {loading ? "Actualizando…" : semaphore.counterLine}
-          </span>
+        <span
+          className={`truncate text-[11px] font-semibold leading-none ${
+            loading ? "text-[var(--copilot-ink-muted)]" : theme.labelClass
+          }`}
+        >
+          {loading ? "…" : compactLabel}
         </span>
       </button>
 
@@ -130,6 +160,9 @@ export function OperationalSemaphoreIndicator() {
               </p>
               <p className={`mt-0.5 text-sm font-semibold ${theme.labelClass}`}>
                 {semaphore.statusLabel}
+              </p>
+              <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">
+                {semaphore.counterLine}
               </p>
             </div>
             <button
@@ -171,7 +204,7 @@ export function OperationalSemaphoreIndicator() {
             <Link
               href={semaphore.ctaHref}
               onClick={close}
-              className="inline-flex w-full items-center justify-center rounded-lg bg-[var(--copilot-accent)] px-3 py-2 text-xs font-semibold text-white hover:opacity-95"
+              className="inline-flex w-full items-center justify-center rounded-lg bg-[var(--copilot-accent)] px-3 py-2 text-xs font-semibold text-[var(--copilot-on-accent)] hover:opacity-95"
             >
               {semaphore.ctaLabel}
             </Link>

@@ -24,51 +24,51 @@ import {
 const ACTION_CONFIG: Record<string, { icon: React.ReactNode; pill: string }> = {
   send_reminder: {
     icon: <Bell className="h-3 w-3" />,
-    pill: "bg-blue-50 text-blue-700 border border-blue-200",
+    pill: "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)] border border-[var(--copilot-border)]",
   },
   manual_call: {
     icon: <Phone className="h-3 w-3" />,
-    pill: "bg-rose-50 text-rose-700 border border-rose-200",
+    pill: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border border-[var(--copilot-danger-border)]",
   },
   escalate: {
     icon: <ArrowUpRight className="h-3 w-3" />,
-    pill: "bg-rose-100 text-rose-800 border border-rose-300",
+    pill: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border border-[var(--copilot-danger-border)]",
   },
   payment_plan: {
     icon: <CreditCard className="h-3 w-3" />,
-    pill: "bg-amber-50 text-amber-700 border border-amber-200",
+    pill: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border border-[var(--copilot-warning-border)]",
   },
   hold_credit: {
     icon: <ShieldOff className="h-3 w-3" />,
-    pill: "bg-rose-100 text-rose-900 border border-rose-400",
+    pill: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border border-[var(--copilot-danger-border)]",
   },
   monitor: {
     icon: <Eye className="h-3 w-3" />,
-    pill: "bg-slate-50 text-slate-600 border border-slate-200",
+    pill: "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink-muted)] border border-[var(--copilot-border)]",
   },
   no_action: {
     icon: <MessageCircle className="h-3 w-3" />,
-    pill: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+    pill: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border border-[var(--copilot-success-border)]",
   },
 };
 
 const FALLBACK_CONFIG = {
   icon: <Eye className="h-3 w-3" />,
-  pill: "bg-slate-50 text-slate-500 border border-slate-200",
+  pill: "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink-muted)] border border-[var(--copilot-border)]",
 };
 
 const URGENCY_DOT: Record<string, string> = {
-  critical: "bg-rose-500",
+  critical: "bg-[var(--copilot-danger-text)]",
   high:     "bg-orange-400",
-  medium:   "bg-amber-400",
-  low:      "bg-emerald-400",
+  medium:   "bg-[var(--copilot-warning-text)]",
+  low:      "bg-[var(--copilot-success-text)]",
 };
 
 const RISK_PILL: Record<string, string> = {
-  critical: "bg-rose-100 text-rose-800 border border-rose-300",
+  critical: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border border-[var(--copilot-danger-border)]",
   high:     "bg-orange-50 text-orange-700 border border-orange-200",
-  medium:   "bg-amber-50 text-amber-700 border border-amber-200",
-  low:      "bg-emerald-50 text-emerald-700 border border-emerald-200",
+  medium:   "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border border-[var(--copilot-warning-border)]",
+  low:      "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border border-[var(--copilot-success-border)]",
 };
 
 // ---------------------------------------------------------------------------
@@ -110,8 +110,8 @@ export function ActionRecommendationBadge({ recommendation, risk, compact = fals
   }
 
   const cfg = ACTION_CONFIG[recommendation.action] ?? FALLBACK_CONFIG;
-  const urgencyDot = URGENCY_DOT[recommendation.urgency] ?? "bg-slate-400";
-  const riskPill = risk ? (RISK_PILL[risk.level] ?? "bg-slate-50 text-slate-600 border border-slate-200") : null;
+  const urgencyDot = URGENCY_DOT[recommendation.urgency] ?? "bg-[var(--copilot-border)]";
+  const riskPill = risk ? (RISK_PILL[risk.level] ?? "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink-muted)] border border-[var(--copilot-border)]") : null;
 
   if (compact) {
     return (

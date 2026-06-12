@@ -93,7 +93,7 @@ function FormShell({
         </CopilotButton>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{children}</div>
-      {error ? <p className="mt-3 text-xs text-rose-600">{error}</p> : null}
+      {error ? <p className="mt-3 text-xs text-[var(--copilot-danger-text)]">{error}</p> : null}
       <div className="mt-5 flex flex-wrap gap-2">
         <CopilotButton type="button" onClick={() => void onSubmit()} disabled={saving}>
           {saving ? "Guardando…" : meta.submit}
@@ -435,11 +435,11 @@ export function TesoreriaUnifiedActionForm({
       <FormShell action={action} onClose={onClose} onSubmit={handleSubmit} saving={saving} error={error}>
         <Field label="Fecha de pago">
           <input type="date" className={TESORERIA_FIELD_CLASS} value={scheduled.dueDate} onChange={(e) => setScheduled((p) => ({ ...p, dueDate: e.target.value }))} />
-          {fieldErrors.dueDate ? <span className="mt-1 block text-xs text-rose-700">{fieldErrors.dueDate}</span> : null}
+          {fieldErrors.dueDate ? <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]">{fieldErrors.dueDate}</span> : null}
         </Field>
         <Field label="Monto">
           <input type="number" min="0.01" step="0.01" className={TESORERIA_FIELD_CLASS} value={scheduled.amount} onChange={(e) => setScheduled((p) => ({ ...p, amount: e.target.value }))} />
-          {fieldErrors.amountEstimated ? <span className="mt-1 block text-xs text-rose-700">{fieldErrors.amountEstimated}</span> : null}
+          {fieldErrors.amountEstimated ? <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]">{fieldErrors.amountEstimated}</span> : null}
         </Field>
         <Field label="Moneda">
           <select className={TESORERIA_SELECT_CLASS} value={scheduled.currency} onChange={(e) => setScheduled((p) => ({ ...p, currency: e.target.value as TreasuryCurrencyCode }))}>
@@ -463,7 +463,7 @@ export function TesoreriaUnifiedActionForm({
         </Field>
         <Field label="Proveedor / concepto" className="sm:col-span-2">
           <input type="text" className={TESORERIA_FIELD_CLASS} value={scheduled.concept} onChange={(e) => setScheduled((p) => ({ ...p, concept: e.target.value }))} />
-          {fieldErrors.title ? <span className="mt-1 block text-xs text-rose-700">{fieldErrors.title}</span> : null}
+          {fieldErrors.title ? <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]">{fieldErrors.title}</span> : null}
         </Field>
         <Field label="Notas (opcional)" className="sm:col-span-2">
           <textarea rows={2} className={TESORERIA_FIELD_CLASS} value={scheduled.notes} onChange={(e) => setScheduled((p) => ({ ...p, notes: e.target.value }))} />

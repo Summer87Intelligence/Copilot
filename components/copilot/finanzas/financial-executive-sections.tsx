@@ -26,6 +26,7 @@ import { FINANZAS_COPY } from "@/lib/copilot-financial-ux-copy";
 import { formatPanoramaRate } from "@/lib/copilot-financial-panorama-model";
 import type { FinancialPanoramaModel, PanoramaCurrencySlice } from "@/lib/copilot-financial-panorama-model";
 import type { PanoramaMetricId } from "@/lib/copilot-financial-panorama-details";
+import { FinancialProjectionCompact } from "@/components/copilot/finanzas/financial-layered-sections";
 
 export function FinancialExecutiveHeader({
   dashboard,
@@ -226,16 +227,16 @@ export function FinancialCurrencySummary({
           {s ? (
             <>
               <ExecutiveMetricCard
-                label="Deuda actual"
+                label="Total pendiente"
                 value={fmtMoney(s.pending, c)}
-                subcopy="Fuente: Cartera (saldo pendiente al corte)."
+                subcopy="Fuente: Cartera al corte. El atrasado ya está incluido."
                 tone="neutral"
                 onClick={() => onSelectMetric("pending", s)}
               />
               <ExecutiveMetricCard
-                label="Deuda vencida"
+                label="Atrasado"
                 value={fmtMoney(s.overdue, c)}
-                subcopy="Fuente: Cartera (antigüedad vencida)."
+                subcopy="Fuente: Cartera (vencimiento ya pasó). Incluido en Total pendiente."
                 tone={s.overdue > 0 ? "danger" : "neutral"}
                 onClick={() => onSelectMetric("overdue", s)}
               />
@@ -317,21 +318,21 @@ export function FinancialCollectionDebtSection({
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <ExecutiveMetricCard
-          label="Deuda actual"
+          label="Total pendiente"
           value={fmtMoney(cd.totalDebt, c)}
-          subcopy="Fuente: Cartera."
+          subcopy="Fuente: Cartera. El atrasado ya está incluido."
           tone="neutral"
         />
         <ExecutiveMetricCard
-          label="Deuda vencida"
+          label="Atrasado"
           value={fmtMoney(cd.overdueDebt, c)}
-          subcopy="Fuente: Cartera (vencido)."
+          subcopy="Fuente: Cartera. Incluido en Total pendiente."
           tone={cd.overdueDebt > 0 ? "danger" : "neutral"}
         />
         <ExecutiveMetricCard
-          label="% vencido"
+          label="% atrasado"
           value={cd.overduePct != null ? formatPanoramaRate(cd.overduePct) : "—"}
-          subcopy="Sobre deuda total."
+          subcopy="Sobre total pendiente."
           tone={cd.overduePct != null && cd.overduePct > 0.3 ? "warning" : "neutral"}
         />
         <ExecutiveMetricCard
@@ -355,7 +356,7 @@ export function FinancialCollectionDebtSection({
         <div className="mt-4 overflow-x-auto rounded-xl border border-[var(--copilot-border)]">
           <table className="w-full min-w-[480px] text-left text-xs">
             <thead>
-              <tr className="bg-slate-50/80 text-[10px] uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+              <tr className="bg-[var(--copilot-table-header-bg)] text-[10px] uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 <th className="px-3 py-2">Cliente</th>
                 <th className="px-3 py-2 text-right">Deuda</th>
                 <th className="px-3 py-2 text-right">Vencida</th>
@@ -368,7 +369,7 @@ export function FinancialCollectionDebtSection({
                 <tr key={row.companyId} className="border-t border-[var(--copilot-border)]">
                   <td className="px-3 py-2 font-medium">{row.clientName}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(row.totalDebt, c)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-rose-700">
+                  <td className="px-3 py-2 text-right tabular-nums text-[var(--copilot-danger-text)]">
                     {fmtMoney(row.overdueDebt, c)}
                   </td>
                   <td className="px-3 py-2">{row.risk}</td>
@@ -386,7 +387,7 @@ export function FinancialCollectionDebtSection({
           </table>
         </div>
       ) : (
-        <p className="mt-3 text-sm text-[var(--copilot-ink-muted)]">Sin deuda vencida en {c}.</p>
+        <p className="mt-3 text-sm text-[var(--copilot-ink-muted)]">Sin atrasos en {c}.</p>
       )}
       <div className="mt-4 flex flex-wrap gap-3">
         <CopilotGhostLink href="/copilot/cartera">Ver clientes vencidos</CopilotGhostLink>
@@ -416,7 +417,7 @@ function ClientTable({
       <div className="mt-2 overflow-x-auto rounded-xl border border-[var(--copilot-border)]">
         <table className="w-full min-w-[400px] text-left text-xs">
           <thead>
-            <tr className="bg-slate-50/80 text-[10px] uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+            <tr className="bg-[var(--copilot-table-header-bg)] text-[10px] uppercase tracking-wide text-[var(--copilot-ink-muted)]">
               <th className="px-3 py-2">Cliente</th>
               <th className="px-3 py-2 text-right">
                 {mode === "sales" ? "Ventas" : "Deuda"}
@@ -515,58 +516,7 @@ export function FinancialProjection30d({
 }: {
   model: FinancialPanoramaModel;
 }) {
-  const p = model.projection;
-  return (
-    <CopilotCard>
-      <CopilotSectionTitle
-        title="Próximos 30 días"
-        subtitle="Proyección: caja actual + cobros esperados − pagos registrados."
-      />
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <ExecutiveMetricCard
-          label="Caja disponible hoy"
-          value={
-            p.cashTodayUyu > 0 || p.cashTodayUsd > 0
-              ? [p.cashTodayUyu > 0 ? fmtMoney(p.cashTodayUyu, "UYU") : null, p.cashTodayUsd > 0 ? fmtMoney(p.cashTodayUsd, "USD") : null]
-                  .filter(Boolean)
-                  .join(" · ")
-              : "Consultar Tesorería"
-          }
-          subcopy="Fuente: Tesorería."
-          tone="positive"
-        />
-        <ExecutiveMetricCard
-          label="Cobros esperados"
-          value={fmtMoney(p.expectedCollections, null)}
-          subcopy="Fuente: cartera ponderada por probabilidad."
-          tone="neutral"
-        />
-        <ExecutiveMetricCard
-          label="Pagos próximos"
-          value={p.hasOutflows ? fmtMoney(p.upcomingOutflows, null) : "—"}
-          subcopy="Fuente: Tesorería (operativos + fiscal 30 d)."
-          tone={p.hasOutflows ? "warning" : "neutral"}
-        />
-        <ExecutiveMetricCard
-          label="Caja proyectada"
-          value={fmtMoney(p.estimatedCash30d, null)}
-          subcopy="Caja disponible + cobros esperados − pagos próximos."
-          tone={p.estimatedCash30d < 0 ? "danger" : "positive"}
-        />
-      </div>
-      {!p.hasOutflows ? (
-        <div className={`mt-3 ${softCalloutClass} px-3 py-2 text-sm text-[var(--copilot-ink-muted)]`}>
-          Cargá pagos próximos para completar la proyección.{" "}
-          <Link
-            href="/copilot/tesoreria?section=programados"
-            className="font-semibold text-[var(--copilot-accent)] hover:underline"
-          >
-            Cargar pago programado
-          </Link>
-        </div>
-      ) : null}
-    </CopilotCard>
-  );
+  return <FinancialProjectionCompact model={model} />;
 }
 
 function BreakdownCard({ slice }: { slice: PanoramaCurrencySlice }) {
@@ -583,12 +533,12 @@ function BreakdownCard({ slice }: { slice: PanoramaCurrencySlice }) {
           <dd className="tabular-nums">{fmtMoney(slice.collectedApplied, slice.code)}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-[var(--copilot-ink-muted)]">Deuda actual</dt>
+          <dt className="text-[var(--copilot-ink-muted)]">Total pendiente</dt>
           <dd className="tabular-nums">{fmtMoney(slice.pending, slice.code)}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-[var(--copilot-ink-muted)]">Deuda vencida</dt>
-          <dd className="tabular-nums text-rose-700">{fmtMoney(slice.overdue, slice.code)}</dd>
+          <dt className="text-[var(--copilot-ink-muted)]">Atrasado</dt>
+          <dd className="tabular-nums text-[var(--copilot-danger-text)]">{fmtMoney(slice.overdue, slice.code)}</dd>
         </div>
       </dl>
     </div>
@@ -655,7 +605,7 @@ export function FinancialExecutiveReading({
 }) {
   return (
     <CopilotCard className="border-[rgba(31,107,74,0.18)] bg-[rgba(31,107,74,0.03)]">
-      <CopilotSectionTitle title="Lectura ejecutiva" subtitle="Máximo 5 puntos accionables." />
+      <CopilotSectionTitle title="Lectura ejecutiva" />
       <ul className="mt-3 space-y-2">
         {dashboard.executiveBullets.map((line) => (
           <li key={line} className="flex gap-2 text-sm leading-relaxed text-[var(--copilot-ink)]">

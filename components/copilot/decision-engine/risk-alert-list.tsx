@@ -27,9 +27,9 @@ export function RiskAlertList({ alerts }: Props) {
 function AlertItem({ alert }: { alert: BriefingAlert }) {
   const isHigh = alert.severity === "high";
   const containerClass = isHigh
-    ? "bg-rose-50 border border-rose-200 text-rose-800"
-    : "bg-amber-50 border border-amber-200 text-amber-800";
-  const iconClass = isHigh ? "text-rose-500" : "text-amber-500";
+    ? "bg-[var(--copilot-tone-danger-bg)] border border-[var(--copilot-danger-border)] text-[var(--copilot-danger-text-strong)]"
+    : "bg-[var(--copilot-tone-warning-bg)] border border-[var(--copilot-warning-border)] text-[var(--copilot-warning-text-strong)]";
+  const iconClass = isHigh ? "text-[var(--copilot-danger-text)]" : "text-[var(--copilot-warning-text)]";
   const Icon = isHigh ? AlertCircle : AlertTriangle;
 
   return (

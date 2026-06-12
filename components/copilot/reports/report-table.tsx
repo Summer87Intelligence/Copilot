@@ -34,7 +34,7 @@ export function ReportTable<T>({
     <div className="overflow-x-auto rounded-xl border border-[var(--copilot-border)]">
       <table className="w-full min-w-max text-sm">
         <thead>
-          <tr className="border-b border-[var(--copilot-border)] bg-slate-50/80">
+          <tr className="border-b border-[var(--copilot-border)] bg-[var(--copilot-table-header-bg)]">
             {columns.map((col, i) => (
               <th
                 key={i}

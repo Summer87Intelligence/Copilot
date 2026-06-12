@@ -48,11 +48,11 @@ export const FINANCIAL_UX_COPY = {
     "Suma de facturas emitidas en el período. Base de facturación del período.",
   kpiCreditNotesAppliedTooltip:
     "Ajustes de facturación del período. Reducen lo facturado pero no representan ingreso de caja.",
-  kpiCollectedAppliedLabel: "Cobros aplicados a facturas",
+  kpiCollectedAppliedLabel: "Cobrado aplicado",
   kpiCollectedAppliedTooltip:
     "Cobros imputados contra facturas emitidas en el período: facturado neto menos saldo pendiente al cierre del rango. Misma fuente que Cartera.",
   carteraResumenFinancieroHelp:
-    "Las métricas de Cartera y Dashboard Resumen usan la misma reconciliación de ventas, cobros aplicados y deuda para el rango seleccionado.",
+    "Misma base que Dashboard: ventas, cobrado aplicado y deuda del rango.",
   kpiNetEffectivenessTooltip:
     "Recibos cobrados / Facturado neto. Mide qué fracción de lo facturado fue cobrada en el período según recibos sincronizados de Zeta.",
   kpiNetEffectivenessTooltipPreSync:
@@ -62,41 +62,41 @@ export const FINANCIAL_UX_COPY = {
 /** Copy específico de /copilot/finanzas — panorama ejecutivo. */
 export const FINANZAS_COPY = {
   heroSubtitle:
-    "Esta vista combina foto actual de caja/deuda con evolución mensual por fecha de comprobante y recibo.",
+    "Combina foto actual de caja y deuda con evolución mensual por fecha de comprobante y recibo.",
   heroRiskNote:
     "Estado operativo (Hoy) = señales de trabajo pendiente. Riesgo financiero (Finanzas) = lectura de caja y deuda.",
-  summaryVentasTooltip: "Facturas emitidas en el mes cerrado seleccionado.",
+  summaryVentasTooltip: "Facturas emitidas en el mes cerrado seleccionado, neto de notas de crédito.",
   summaryCobrosTooltip:
-    "Recibos con fecha dentro del mes. Los cobros registrados pueden corresponder a facturas de meses anteriores.",
+    "Recibos con fecha dentro del mes. Cobros registrados son los recibos por fecha — pueden corresponder a facturas de meses anteriores.",
   summaryDeudaTooltip:
-    "Saldo pendiente actual de clientes, incluyendo todos los períodos.",
+    "Total pendiente actual de clientes al corte. Incluye todos los períodos. El atrasado ya está dentro.",
   summaryDeudaVencidaTooltip:
-    "Parte de la deuda actual que ya superó su vencimiento.",
+    "Parte del total pendiente cuya fecha de vencimiento ya pasó.",
   summaryEstadoTooltip:
-    "Lectura de caja, deuda y cobranza. Distinto del estado operativo del día en Hoy.",
+    "Lectura financiera de caja, deuda y cobranza. Distinto del estado operativo del día en Hoy.",
   summaryCajaTooltip: "Caja disponible registrada en Tesorería al corte.",
   comparisonTitle: "Ventas vs cobros registrados",
   comparisonSubtitle:
-    "Meses cerrados por fecha de comprobante y fecha de recibo. No representa deuda pendiente.",
+    "Meses cerrados por fecha de comprobante y fecha de recibo. La diferencia no equivale a deuda.",
   comparisonGapTooltip:
-    "No equivale a deuda. Los cobros pueden corresponder a facturas de otros meses.",
+    "Diferencia operativa: ventas menos cobros registrados del mes. No equivale a deuda — los cobros pueden corresponder a facturas de otros meses.",
   evolutionTitle: "Evolución mensual de ventas y cobros registrados",
-  evolutionSubtitle: "Ventas por fecha de factura y cobros por fecha de recibo.",
+  evolutionSubtitle: "Ventas por fecha de factura y cobros registrados por fecha de recibo.",
   evolutionCollectionsExceed:
-    "Los cobros registrados superan las ventas del período; pueden incluir facturas de meses anteriores.",
+    "Los cobros registrados superan las ventas del mes; pueden incluir facturas de meses anteriores.",
   evolutionPartialMonth:
     "El mes en curso está parcial; no compararlo contra meses cerrados.",
-  collectionRiskTitle: "Riesgo de cobranza actual",
-  collectionRiskSubtitle: "Fuente: cartera actual. Incluye saldos pendientes vigentes.",
+  collectionRiskTitle: "Riesgo de cobro",
+  collectionRiskSubtitle: "Clientes y montos atrasados al corte.",
   projectionExpectedCollectionsTooltip:
-    "Cobros esperados según deuda vigente y plazos de cobro registrados.",
-  projectionScenarioTooltip: "Caja disponible + cobros esperados − pagos próximos.",
+    "Cobros probables según historial de pago y plazos de cobro registrados.",
+  projectionScenarioTooltip: "Caja disponible + cobros probables − pagos programados.",
   advancedDetailSubtitle:
     "Clientes, moneda y evolución para revisión ejecutiva.",
   labelCobrosRegistrados: "Cobros registrados",
   labelCobradoAplicado: "Cobrado aplicado",
   labelDiferenciaOperativa: "Diferencia operativa del mes",
-  labelDeudaHoy: "Deuda actual · hoy",
-  labelDeudaVencidaHoy: "Deuda vencida · hoy",
-  labelCajaHoy: "Caja disponible · hoy",
+  labelDeudaHoy: "Total pendiente",
+  labelDeudaVencidaHoy: "Atrasado",
+  labelCajaHoy: "Caja disponible",
 } as const;

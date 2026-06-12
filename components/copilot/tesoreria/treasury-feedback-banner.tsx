@@ -13,8 +13,8 @@ export function TreasuryFeedbackBanner({
 }) {
   const palette =
     tone === "success"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-950"
-      : "border-rose-200 bg-rose-50 text-rose-950";
+      ? "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]"
+      : "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]";
 
   return (
     <div

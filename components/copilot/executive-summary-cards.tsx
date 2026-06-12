@@ -597,7 +597,10 @@ export function ExecutiveSummaryCards({
           c.id.startsWith("opening-")
       );
     } else if (block === "ventas") {
-      list = list.filter((c) => c.id.startsWith("facturado-"));
+      // Ventas (facturado neto) + Notas de crédito en una sola fila densa.
+      list = list.filter(
+        (c) => c.id.startsWith("facturado-") || c.id.startsWith("credit-notes-")
+      );
     } else if (block === "auditoria") {
       // Alertas técnicas: orphan warnings
       list = list.filter((c) => c.id === "orphans");
@@ -702,18 +705,18 @@ function KpiInfoButton({ tooltip, id }: { tooltip: string; id: string }) {
 
 const TONE_VALUE_CLASS: Record<CardTone, string> = {
   neutral:  "text-[var(--copilot-ink)]",
-  info:     "text-sky-700",      // azul petróleo suave (era sky-900, demasiado oscuro)
-  positive: "text-emerald-600",  // jade suave (era emerald-800, verde oscuro)
-  warning:  "text-amber-600",    // naranja suave (era amber-900, casi marrón)
-  danger:   "text-rose-600",     // coral premium (era rose-800, vino oscuro)
+  info:     "text-[var(--copilot-accent)]",
+  positive: "text-[var(--copilot-badge-success-text)]",
+  warning:  "text-[var(--copilot-badge-warning-text)]",
+  danger:   "text-[var(--copilot-badge-danger-text)]",
 };
 
 const TONE_ICON_CLASS: Record<CardTone, string> = {
-  neutral:  "bg-slate-50 text-slate-400",
-  info:     "bg-sky-50 text-sky-500",
-  positive: "bg-emerald-50 text-emerald-500",
-  warning:  "bg-amber-50 text-amber-500",
-  danger:   "bg-rose-50 text-rose-500",
+  neutral:  "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-subtle)]",
+  info:     "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)]",
+  positive: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-badge-success-text)]",
+  warning:  "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-badge-warning-text)]",
+  danger:   "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-badge-danger-text)]",
 };
 
 function SummaryCardView({ card, showBadge = false }: { card: SummaryCard; showBadge?: boolean }) {
@@ -801,7 +804,7 @@ function SummaryCardView({ card, showBadge = false }: { card: SummaryCard; showB
       ) : null}
 
       {card.isHistoricalPartial ? (
-        <div className="mt-3 inline-flex items-center gap-1 rounded-full border border-amber-200/70 bg-amber-50/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-800">
+        <div className="mt-3 inline-flex items-center gap-1 rounded-full border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--copilot-warning-text-strong)]">
           <Clock className="h-2.5 w-2.5" aria-hidden />
           {FINANCIAL_UX_COPY.historicalPartialBadge}
         </div>
@@ -824,11 +827,11 @@ const SOURCE_LABEL: Record<SourceBadge, string> = {
 
 const SOURCE_CLASS: Record<SourceBadge, string> = {
   zeta:
-    "border border-emerald-200/70 bg-emerald-50/70 text-emerald-800",
+    "border border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]",
   analytics:
     "border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)]",
   recon:
-    "border border-amber-200/70 bg-amber-50/60 text-amber-800",
+    "border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",
 };
 
 function SourceBadgeView({ source }: { source: SourceBadge }) {
@@ -892,57 +895,57 @@ export function CreditNotesSection({
     .join(" · ");
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-rose-200/70 bg-rose-50/30 shadow-[var(--copilot-shadow)]">
+    <div className="overflow-hidden rounded-2xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] shadow-[var(--copilot-shadow)]">
       <button
         type="button"
         aria-expanded={expanded}
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center justify-between px-5 py-4 text-left transition-colors hover:bg-rose-50/60"
+        className="flex w-full items-center justify-between px-5 py-4 text-left transition-colors hover:bg-[var(--copilot-tone-danger-bg)]"
       >
         <div className="flex items-center gap-3">
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-700">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-danger-text)]">
             <FileMinus className="h-4 w-4" aria-hidden />
           </span>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-rose-800">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--copilot-danger-text-strong)]">
               Ajustes del período
             </p>
             {periodRangeLabel ? (
-              <p className="mt-0.5 text-[11px] font-medium text-rose-800/90">{periodRangeLabel}</p>
+              <p className="mt-0.5 text-[11px] font-medium text-[var(--copilot-danger-text-strong)]/90">{periodRangeLabel}</p>
             ) : null}
-            <p className="mt-0.5 text-xs text-rose-700/80">{summaryText}</p>
+            <p className="mt-0.5 text-xs text-[var(--copilot-danger-text)]/80">{summaryText}</p>
           </div>
         </div>
         <ChevronDown
-          className={`h-4 w-4 shrink-0 text-rose-600 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+          className={`h-4 w-4 shrink-0 text-[var(--copilot-danger-text)] transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
           aria-hidden
         />
       </button>
 
       {expanded && (
-        <div className="border-t border-rose-200/50 px-5 pb-5 pt-4">
+        <div className="border-t border-[var(--copilot-danger-border)]/50 px-5 pb-5 pt-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {ncLines.map((l) => (
               <div
                 key={l.code}
-                className="rounded-xl border border-rose-200/60 bg-[var(--copilot-card-bg)]/70 p-4"
+                className="rounded-xl border border-[var(--copilot-danger-border)]/60 bg-[var(--copilot-card-bg)]/70 p-4"
               >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-rose-700">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-danger-text)]">
                   Ajustes {l.code}
                 </p>
-                <p className="mt-1.5 text-xl font-semibold tabular-nums text-rose-800">
+                <p className="mt-1.5 text-xl font-semibold tabular-nums text-[var(--copilot-danger-text-strong)]">
                   −{formatCarteraMoney(l.code, l.amount)}
                 </p>
-                <p className="mt-1 text-sm text-rose-700/80">
+                <p className="mt-1 text-sm text-[var(--copilot-danger-text)]/80">
                   {l.count} ajuste{l.count === 1 ? "" : "s"}
                 </p>
-                <p className="mt-0.5 text-[11px] text-rose-600/70">
+                <p className="mt-0.5 text-[11px] text-[var(--copilot-danger-text)]/70">
                   Facturado: {formatCarteraMoney(l.code, l.issuedBruto)}
                 </p>
               </div>
             ))}
           </div>
-          <p className="mt-3 text-[11px] text-rose-600/60">
+          <p className="mt-3 text-[11px] text-[var(--copilot-danger-text)]/60">
             Los ajustes reducen lo facturado, no el saldo pendiente · Detalle por comprobante disponible en Zeta
           </p>
         </div>

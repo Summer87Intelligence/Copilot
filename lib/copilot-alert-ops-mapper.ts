@@ -50,11 +50,11 @@ export function buildOperationalActionHref(actionId: string): string {
 export function buildAlertasDeepLink(alert: FiscalAlertItem): string {
   const params = new URLSearchParams();
   params.set("priority", alert.priority);
-  return `/copilot/alertas?${params.toString()}`;
+  return `/copilot/alertasí${params.toString()}`;
 }
 
 function finanzasLiquidityHref(): string {
-  return "/copilot/finanzas?focus=liquidity#copilot-finanzas-cobertura";
+  return "/copilot/finanzasífocus=liquidity#copilot-finanzas-cobertura";
 }
 
 function finanzasFiscalHref(obligationId: string | null): string {

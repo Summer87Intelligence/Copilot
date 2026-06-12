@@ -19,7 +19,7 @@ export function mapInvoiceStatus(status: string): string {
     case "issued":
       return "Emitida";
     case "overdue":
-      return "Vencida";
+      return "Atrasada";
     case "paid":
       return "Pagada";
     case "partial":
@@ -34,7 +34,7 @@ export function mapInvoiceStatus(status: string): string {
 export function getInvoiceStatusOptions(): CopilotLabeledOption[] {
   return [
     { value: "issued", label: "Emitida" },
-    { value: "overdue", label: "Vencida" },
+    { value: "overdue", label: "Atrasada" },
     { value: "paid", label: "Pagada" },
     { value: "partial", label: "Parcial" },
     { value: "cancelled", label: "Cancelada" },
@@ -52,7 +52,7 @@ export function formatStatus(status: string): string {
     case "paid":
       return "Pagado";
     case "overdue":
-      return "Vencido";
+      return "Atrasado";
     default:
       return status;
   }
@@ -496,4 +496,69 @@ export function formatLooseDocumentStatus(status: string): string {
   const ex = mapExecutionStatus(lower);
   if (ex !== lower) return ex;
   return s;
+}
+
+// ——— Fechas visibles Copilot (es-UY, America/Montevideo) ———
+
+const COPILOT_DATE_LOCALE = "es-UY";
+const COPILOT_DATE_TZ = "America/Montevideo";
+
+export type CopilotDateStyle = "compact" | "text" | "header";
+
+export function parseCopilotDateInput(value: string | Date | null | undefined): Date | null {
+  if (value == null || value === "") return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  const s = String(value).trim();
+  if (!s) return null;
+  const d =
+    s.length <= 10 && /^\d{4}-\d{2}-\d{2}/.test(s)
+      ? new Date(`${s.slice(0, 10)}T12:00:00`)
+      : new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** Fecha visible estándar: compacto `12/06/2026`, textual `12 jun 2026`, header largo. */
+export function formatCopilotDate(
+  value: string | Date | null | undefined,
+  style: CopilotDateStyle = "compact"
+): string {
+  const d = parseCopilotDateInput(value);
+  if (!d) return "—";
+  if (style === "header") {
+    const raw = d.toLocaleDateString(COPILOT_DATE_LOCALE, {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: COPILOT_DATE_TZ,
+    });
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
+  }
+  if (style === "text") {
+    const raw = d.toLocaleDateString(COPILOT_DATE_LOCALE, {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: COPILOT_DATE_TZ,
+    });
+    return raw.replace(/\./g, "").trim();
+  }
+  return d.toLocaleDateString(COPILOT_DATE_LOCALE, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: COPILOT_DATE_TZ,
+  });
+}
+
+export function formatCopilotDateTime(value: string | Date | null | undefined): string {
+  const d = parseCopilotDateInput(value);
+  if (!d) return "—";
+  const date = formatCopilotDate(d, "compact");
+  const time = d.toLocaleTimeString(COPILOT_DATE_LOCALE, {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: COPILOT_DATE_TZ,
+  });
+  return `${date} · ${time}`;
 }

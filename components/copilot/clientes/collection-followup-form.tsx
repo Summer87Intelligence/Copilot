@@ -95,18 +95,18 @@ function getBadgeClass(action: CollectionAction): string {
       ? String((action.metadata as Record<string, unknown>).ui_outcome)
       : action.status;
   const CLASSES: Record<string, string> = {
-    contacted: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    promised_payment: "bg-blue-50 text-blue-700 border-blue-200",
-    no_response: "bg-slate-100 text-slate-500 border-slate-200",
-    wrong_contact: "bg-orange-50 text-orange-600 border-orange-200",
-    disputed: "bg-red-50 text-red-700 border-red-200",
-    needs_followup: "bg-amber-50 text-amber-700 border-amber-200",
-    paused: "bg-slate-100 text-slate-500 border-slate-200",
-    pending_review: "bg-amber-50 text-amber-700 border-amber-200",
-    escalated: "bg-red-50 text-red-700 border-red-200",
-    paid: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    contacted: "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-badge-success-text)] border-[var(--copilot-border)]",
+    promised_payment: "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] border-[var(--copilot-border)]",
+    no_response: "bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink-muted)] border-[var(--copilot-border)]",
+    wrong_contact: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-badge-warning-text)] border-[var(--copilot-border)]",
+    disputed: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)] border-[var(--copilot-border)]",
+    needs_followup: "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-badge-warning-text)] border-[var(--copilot-border)]",
+    paused: "bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink-muted)] border-[var(--copilot-border)]",
+    pending_review: "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-badge-warning-text)] border-[var(--copilot-border)]",
+    escalated: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)] border-[var(--copilot-border)]",
+    paid: "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-badge-success-text)] border-[var(--copilot-border)]",
   };
-  return CLASSES[key] ?? "bg-slate-100 text-slate-500 border-slate-200";
+  return CLASSES[key] ?? "bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink-muted)] border-[var(--copilot-border)]";
 }
 
 // ─── Pill ─────────────────────────────────────────────────────────────────────
@@ -200,7 +200,7 @@ function HistoryItem({
             type="button"
             onClick={() => void handleDelete()}
             disabled={deleting}
-            className="rounded-lg bg-rose-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:opacity-90 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
+            className="rounded-lg bg-[var(--copilot-danger-text)] px-3 py-1.5 text-[11px] font-semibold text-white hover:opacity-90 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             {deleting ? "Eliminando…" : "Eliminar"}
           </button>
@@ -321,7 +321,7 @@ function HistoryItem({
           const label = dateFmt
             ? `Promesa de pago: ${dateFmt}${amountFmt}`
             : `Promesa de pago registrada sin fecha${amountFmt}`;
-          return <p className="text-[11px] text-blue-600">{label}</p>;
+          return <p className="text-[11px] text-[var(--copilot-accent)]">{label}</p>;
         })() : null}
         {action.nextActionDate ? (() => {
           const dateFmt = formatYmd(action.nextActionDate);
@@ -330,9 +330,9 @@ function HistoryItem({
           const isOverdue = action.nextActionDate < todayStr;
           const isToday = action.nextActionDate === todayStr;
           const badgeCls = isOverdue
-            ? "bg-rose-50 text-rose-700 border-rose-200"
+            ? "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]"
             : isToday
-            ? "bg-amber-50 text-amber-700 border-amber-200"
+            ? "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]"
             : "bg-sky-50 text-sky-700 border-sky-200";
           const badgeLabel = isOverdue
             ? "Seguimiento vencido"
@@ -353,7 +353,7 @@ function HistoryItem({
         <button
           type="button"
           onClick={handleEdit}
-          className="rounded-lg p-1 text-[var(--copilot-ink-muted)] hover:bg-slate-100"
+          className="rounded-lg p-1 text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-hover-bg)]"
           aria-label="Editar gestión"
         >
           <PenLine className="h-3.5 w-3.5" aria-hidden />
@@ -361,7 +361,7 @@ function HistoryItem({
         <button
           type="button"
           onClick={() => setMode("delete")}
-          className="rounded-lg p-1 text-[var(--copilot-ink-muted)] hover:bg-rose-50 hover:text-rose-600"
+          className="rounded-lg p-1 text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-tone-danger-bg)] hover:text-[var(--copilot-danger-text)]"
           aria-label="Eliminar gestión"
         >
           <Trash2 className="h-3.5 w-3.5" aria-hidden />
@@ -482,7 +482,7 @@ export function CollectionFollowupForm({
       {/* Última gestión — compact summary */}
       {!loading && actions.length > 0 ? (
         <div className="mb-4 rounded-xl border border-[var(--copilot-border)]/60 bg-[rgba(44,40,37,0.02)] px-3.5 py-3">
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
+          <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
             Última gestión
           </p>
           <div className="flex flex-wrap items-center gap-2">
@@ -540,7 +540,7 @@ export function CollectionFollowupForm({
 
         {/* Canal */}
         <div>
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
+          <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
             Canal
           </p>
           <div className="flex flex-wrap gap-2">
@@ -557,7 +557,7 @@ export function CollectionFollowupForm({
 
         {/* Resultado */}
         <div>
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
+          <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
             Resultado
           </p>
           <div className="flex flex-wrap gap-2">
@@ -574,8 +574,8 @@ export function CollectionFollowupForm({
 
         {/* Promise fields */}
         {outcome === "promised_payment" ? (
-          <div className="space-y-2 rounded-xl border border-blue-100 bg-blue-50/50 p-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600/70">
+          <div className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-tone-neutral-bg)]/50 p-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-[var(--copilot-accent)]/70">
               Promesa de pago
             </p>
             <div className="flex flex-wrap gap-2 overflow-x-auto">
@@ -622,7 +622,7 @@ export function CollectionFollowupForm({
 
         {/* Nota */}
         <div>
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
+          <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
             Nota (opcional)
           </p>
           <textarea
@@ -641,7 +641,7 @@ export function CollectionFollowupForm({
 
         {/* Próximo seguimiento */}
         <div>
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
+          <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
             Próximo seguimiento (opcional)
           </p>
           <input
@@ -665,7 +665,7 @@ export function CollectionFollowupForm({
           {saving ? "Registrando..." : "Registrar gestión"}
         </button>
         {saved ? (
-          <span className="flex items-center gap-1.5 text-[12px] text-emerald-600">
+          <span className="flex items-center gap-1.5 text-[12px] text-[var(--copilot-success-text)]">
             <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
             Gestión registrada
           </span>
@@ -677,7 +677,7 @@ export function CollectionFollowupForm({
 
       {/* History */}
       <div className="mt-5 border-t border-[var(--copilot-border)]/60 pt-4">
-        <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
+        <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--copilot-ink-muted)]/70">
           Historial de gestiones
         </p>
 

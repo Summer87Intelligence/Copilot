@@ -476,7 +476,7 @@ export function TreasuryRecurringPaymentsPanel({
                             >
                               <button
                                 type="button"
-                                className="w-full px-3 py-1.5 text-left text-xs text-rose-600 transition hover:bg-rose-50"
+                                className="w-full px-3 py-1.5 text-left text-xs text-[var(--copilot-danger-text)] transition hover:bg-[var(--copilot-tone-danger-bg)]"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setOpenMenuId(null);
@@ -610,7 +610,7 @@ export function TreasuryRecurringPaymentsPanel({
           onMouseDown={(e) => { if (e.target === e.currentTarget && !submitting) setModal({ type: "none" }); }}
         >
           <div className="w-full max-w-sm rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-6 shadow-xl">
-            <h3 className="text-sm font-semibold text-rose-700">
+            <h3 className="text-sm font-semibold text-[var(--copilot-danger-text)]">
               Eliminar &ldquo;{modal.row.title}&rdquo;
             </h3>
             <p className="mt-2 text-sm text-[var(--copilot-ink-muted)]">
@@ -620,7 +620,7 @@ export function TreasuryRecurringPaymentsPanel({
             <label className="mt-4 flex cursor-pointer items-start gap-2 text-sm">
               <input
                 type="checkbox"
-                className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                className="mt-0.5 h-4 w-4 rounded border-[var(--copilot-border-strong)]"
                 checked={modal.cancelPending}
                 onChange={(e) =>
                   setModal((m) =>
@@ -639,7 +639,7 @@ export function TreasuryRecurringPaymentsPanel({
               <button
                 type="button"
                 disabled={submitting}
-                className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
+                className="rounded-lg bg-[var(--copilot-danger-button-bg)] px-4 py-2 text-sm font-semibold text-[var(--copilot-on-accent)] transition hover:bg-[var(--copilot-danger-button-hover)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
                 onClick={() => void confirmDelete(modal.row, modal.cancelPending)}
               >
                 {submitting ? "Eliminando…" : "Eliminar recurrente"}
@@ -852,7 +852,7 @@ export function TreasuryRecurringPaymentsPanel({
                   {editingItem.active ? (
                     <button
                       type="button"
-                      className="text-left text-xs text-[var(--copilot-ink-muted)] transition hover:text-amber-700"
+                      className="text-left text-xs text-[var(--copilot-ink-muted)] transition hover:text-[var(--copilot-warning-text)]"
                       onClick={() => {
                         setDrawerOpen(false);
                         setEditingId(null);
@@ -864,7 +864,7 @@ export function TreasuryRecurringPaymentsPanel({
                   ) : (
                     <button
                       type="button"
-                      className="text-left text-xs text-[var(--copilot-ink-muted)] transition hover:text-rose-700"
+                      className="text-left text-xs text-[var(--copilot-ink-muted)] transition hover:text-[var(--copilot-danger-text)]"
                       onClick={() => {
                         setDrawerOpen(false);
                         setEditingId(null);
@@ -916,7 +916,7 @@ function GeneratedPaymentsList({
         {onGoToPagos ? (
           <button
             type="button"
-            className="mt-2 text-xs text-blue-600 underline hover:text-blue-800"
+            className="mt-2 text-xs text-[var(--copilot-accent)] underline hover:text-[var(--copilot-accent)]"
             onClick={onGoToPagos}
           >
             Ver pestaña Pagos
@@ -945,7 +945,7 @@ function GeneratedPaymentsList({
           </thead>
           <tbody className="divide-y divide-[var(--copilot-border)]">
             {payments.map((obl) => (
-              <tr key={obl.id} className="hover:bg-gray-50/50">
+              <tr key={obl.id} className="hover:bg-[var(--copilot-table-row-hover-bg)]">
                 <td className="px-4 py-2 tabular-nums text-[var(--copilot-ink)]">
                   {obl.dueDate}
                 </td>
@@ -969,7 +969,7 @@ function GeneratedPaymentsList({
         <div className="border-t border-[var(--copilot-border)] p-4">
           <button
             type="button"
-            className="text-xs text-blue-600 underline hover:text-blue-800"
+            className="text-xs text-[var(--copilot-accent)] underline hover:text-[var(--copilot-accent)]"
             onClick={onGoToPagos}
           >
             Ver todos en la pestaña Pagos

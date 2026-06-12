@@ -8,10 +8,10 @@ import type {
 import { WORKLOAD_BAND_LABELS } from "@/lib/decision-engine/de-types";
 
 const WORKLOAD_BADGE_CLASS: Record<WorkloadBand, string> = {
-  normal:     "bg-emerald-50 text-emerald-800 border-emerald-200",
-  elevated:   "bg-amber-50 text-amber-800 border-amber-200",
+  normal:     "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border-[var(--copilot-success-border)]",
+  elevated:   "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]",
   overloaded: "bg-orange-50 text-orange-800 border-orange-200",
-  critical:   "bg-rose-50 text-rose-800 border-rose-200",
+  critical:   "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]",
 };
 
 function formatHours(h: number | null): string {
@@ -30,21 +30,21 @@ type KpiCardProps = {
 function KpiCard({ label, value, hint, tone = "default" }: KpiCardProps) {
   const toneClass =
     tone === "warning"
-      ? "border-amber-200 bg-amber-50/50"
+      ? "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)]/50"
       : tone === "success"
-        ? "border-emerald-200 bg-emerald-50/40"
+        ? "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)]/40"
         : "border-[var(--copilot-border)] bg-[var(--copilot-surface)]";
 
   return (
     <div className={`rounded-lg border px-2.5 py-2 min-w-0 ${toneClass}`}>
-      <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)] truncate">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)] truncate">
         {label}
       </p>
       <p className="text-lg font-bold text-[var(--copilot-text)] tabular-nums leading-tight mt-0.5">
         {value}
       </p>
       {hint && (
-        <p className="text-[9px] text-[var(--copilot-text-muted)] mt-0.5 truncate">{hint}</p>
+        <p className="text-[10px] text-[var(--copilot-text-muted)] mt-0.5 truncate">{hint}</p>
       )}
     </div>
   );
@@ -62,7 +62,7 @@ function OperatorRow({ op }: { op: OperatorAnalyticsRow }) {
         {op.display_name}
       </td>
       <td className="py-1.5 px-1 text-[11px] tabular-nums text-center">{op.assigned_total}</td>
-      <td className="py-1.5 px-1 text-[11px] tabular-nums text-center text-rose-700">
+      <td className="py-1.5 px-1 text-[11px] tabular-nums text-center text-[var(--copilot-danger-text-strong)]">
         {op.active_critical}
       </td>
       <td className="py-1.5 px-1 text-[11px] tabular-nums text-center">{slaPct}%</td>
@@ -71,7 +71,7 @@ function OperatorRow({ op }: { op: OperatorAnalyticsRow }) {
       </td>
       <td className="py-1.5 pl-1 text-right">
         <span
-          className={`inline-flex rounded border px-1.5 py-px text-[8px] font-bold uppercase tracking-wide ${WORKLOAD_BADGE_CLASS[op.workload_band]}`}
+          className={`inline-flex rounded border px-1.5 py-px text-[10px] font-bold uppercase tracking-wide ${WORKLOAD_BADGE_CLASS[op.workload_band]}`}
         >
           {WORKLOAD_BAND_LABELS[op.workload_band]}
         </span>
@@ -101,7 +101,7 @@ export function OperationalAnalyticsDashboard({
 
   if (error) {
     return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+      <div className="rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-3 py-2 text-[11px] text-[var(--copilot-warning-text-strong)]">
         {error}
       </div>
     );
@@ -154,7 +154,7 @@ export function OperationalAnalyticsDashboard({
           <div className="overflow-x-auto -mx-1">
             <table className="w-full min-w-[420px] border-collapse">
               <thead>
-                <tr className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
+                <tr className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
                   <th className="text-left pb-1 pr-2">Operador</th>
                   <th className="pb-1 px-1 text-center">Activos</th>
                   <th className="pb-1 px-1 text-center">Críticos</th>

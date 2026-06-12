@@ -23,7 +23,7 @@ export function pickPrimaryAttentionCta(
   ) {
     return {
       label: "Ver plan de cobertura",
-      href: "/copilot/finanzas?mode=cobertura&from=atencion-prioritaria#copilot-finanzas-cobertura",
+      href: "/copilot/finanzasímode=cobertura&from=atencion-prioritaria#copilot-finanzas-cobertura",
     };
   }
   return {

@@ -227,8 +227,8 @@ export function CollectionActionDrawer({
 
             {/* Promesa de pago (condicional) */}
             {showPromiseFields && (
-              <fieldset className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-4">
-                <legend className="px-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-amber-700">
+              <fieldset className="rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)]/40 p-4 space-y-4">
+                <legend className="px-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-warning-text-strong)]">
                   Promesa de pago
                 </legend>
 
@@ -286,7 +286,7 @@ export function CollectionActionDrawer({
             </Field>
 
             {error && (
-              <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+              <p className="rounded-lg border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] px-3 py-2 text-xs text-[var(--copilot-danger-text-strong)]">
                 {error}
               </p>
             )}
@@ -306,7 +306,7 @@ export function CollectionActionDrawer({
               <button
                 type="submit"
                 disabled={saving}
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--copilot-ink)] py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--copilot-accent)] py-2 text-sm font-semibold text-[var(--copilot-on-accent)] transition hover:opacity-90 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
               >
                 {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
                 {saving ? "Guardando…" : "Registrar acción"}
@@ -336,7 +336,7 @@ function Field({
     <div className="space-y-1.5">
       <label className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-ink-muted)]">
         {label}
-        {required && <span className="ml-0.5 text-rose-500">*</span>}
+        {required && <span className="ml-0.5 text-[var(--copilot-danger-text)]">*</span>}
       </label>
       {children}
     </div>
@@ -350,8 +350,8 @@ const selectCls =
   "w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 py-2 text-sm text-[var(--copilot-ink)] shadow-sm transition focus:border-[var(--copilot-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/20";
 
 const priorityActiveCls: Record<string, string> = {
-  low: "border-emerald-300 bg-emerald-50 text-emerald-800",
-  medium: "border-amber-300 bg-amber-50 text-amber-800",
+  low: "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]",
+  medium: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",
   high: "border-orange-300 bg-orange-50 text-orange-800",
-  urgent: "border-rose-300 bg-rose-50 text-rose-800",
+  urgent: "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]",
 };

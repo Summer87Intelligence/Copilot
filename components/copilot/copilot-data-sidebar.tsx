@@ -965,7 +965,7 @@ export function CopilotDataSidebar({
 
         <div className="flex-1 space-y-4 overflow-auto px-5 py-4">
           {error ? (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
+            <div className="rounded-xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] px-3 py-2 text-sm text-[var(--copilot-danger-text-strong)]">
               {error}
             </div>
           ) : null}

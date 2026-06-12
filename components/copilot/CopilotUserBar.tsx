@@ -164,7 +164,7 @@ export function CopilotUserBar({
         onClick={() => setMenuOpen((o) => !o)}
         aria-label="Menú de usuario"
         aria-expanded={menuOpen}
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--copilot-accent)] text-sm font-semibold text-white shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/40"
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--copilot-accent)] text-sm font-semibold text-[var(--copilot-on-accent)] shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/40"
       >
         {initials}
       </button>
@@ -189,7 +189,7 @@ export function CopilotUserBar({
             <button
               type="button"
               onClick={() => void handleSignOut()}
-              className="w-full px-4 py-2 text-left text-sm text-rose-600 transition hover:bg-[var(--copilot-hover-bg)]"
+              className="w-full px-4 py-2 text-left text-sm text-[var(--copilot-danger-text)] transition hover:bg-[var(--copilot-hover-bg)]"
             >
               Cerrar sesión
             </button>

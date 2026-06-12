@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import { formatCopilotDate } from "@/lib/copilot-format";
 import type { NormalizedCurrencyMetrics } from "@/lib/copilot-cartera-cards-source";
 import {
   buildFinancialPanoramaModel,
   buildPanoramaCurrencySlice,
+  buildPanoramaProjection,
   safeRatio,
   shouldShowExpandedFiscalBlock,
 } from "@/lib/copilot-financial-panorama-model";
@@ -101,6 +103,80 @@ describe("copilot-financial-panorama-model", () => {
         isEmpty: true,
       })
     ).toBe(false);
+  });
+
+  it("proyección byCurrency separa UYU/USD sin consolidar en UI", () => {
+    const projection = buildPanoramaProjection({
+      snapshot: null,
+      cashPositions: [
+        {
+          currency: "UYU",
+          availableCash: 100_000,
+          currentCash: 100_000,
+          openingConfigured: true,
+          openingBalance: 0,
+          collectedFromClients: 0,
+          manualIncome: 0,
+          manualExpense: 0,
+          adjustments: 0,
+          transfersNet: 0,
+          movementsCount: 0,
+          lastMovement: null,
+          lastIncome: null,
+          lastExpense: null,
+        },
+        {
+          currency: "USD",
+          availableCash: 5_000,
+          currentCash: 5_000,
+          openingConfigured: true,
+          openingBalance: 0,
+          collectedFromClients: 0,
+          manualIncome: 0,
+          manualExpense: 0,
+          adjustments: 0,
+          transfersNet: 0,
+          movementsCount: 0,
+          lastMovement: null,
+          lastIncome: null,
+          lastExpense: null,
+        },
+      ],
+      pendingByCurrency: { UYU: 50_000, USD: 1_000 },
+      treasurySummaries: [
+        {
+          currency: "UYU",
+          totalScheduled: 20_000,
+          overdue: 0,
+          next7Days: 5_000,
+          next30Days: 20_000,
+          paidInPeriod: 0,
+          itemsCount: 2,
+          byCategory: [],
+        },
+        {
+          currency: "USD",
+          totalScheduled: 500,
+          overdue: 0,
+          next7Days: 200,
+          next30Days: 500,
+          paidInPeriod: 0,
+          itemsCount: 1,
+          byCategory: [],
+        },
+      ],
+    });
+    expect(projection.byCurrency).toHaveLength(2);
+    const uyu = projection.byCurrency.find((b) => b.currency === "UYU");
+    const usd = projection.byCurrency.find((b) => b.currency === "USD");
+    expect(uyu?.estimatedCash30d).toBe(130_000);
+    expect(usd?.estimatedCash30d).toBe(5_500);
+    expect(uyu?.cashToday).toBe(100_000);
+    expect(usd?.cashToday).toBe(5_000);
+  });
+
+  it("formatCopilotDate compact usa día/mes/año", () => {
+    expect(formatCopilotDate("2026-06-12", "compact")).toMatch(/^12\/06\/2026$/);
   });
 
   it("caja viene de tesorería, cartera de métricas", () => {

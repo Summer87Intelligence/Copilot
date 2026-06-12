@@ -137,8 +137,8 @@ export function CopilotDevTenantDiagnostics({
 
   if (!sessionPreview && !meLoaded) {
     return (
-      <div className="border-b border-dashed border-amber-700/40 bg-amber-50/90 px-4 py-1.5 font-mono text-[11px] text-amber-950 dark:bg-amber-950/30 dark:text-amber-100 sm:px-6">
-        <span className="rounded bg-amber-200/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900 dark:bg-amber-800/60 dark:text-amber-50">
+      <div className="border-b border-dashed border-[var(--copilot-warning-text)]/40 bg-[var(--copilot-tone-warning-bg)]/90 px-4 py-1.5 font-mono text-[11px] text-[var(--copilot-warning-text-strong)] dark:bg-amber-950/30 dark:text-amber-100 sm:px-6">
+        <span className="rounded bg-amber-200/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-warning-text-strong)] dark:bg-[var(--copilot-warning-text-strong)]/60 dark:text-amber-50">
           Dev tenant
         </span>{" "}
         Cargando contexto…
@@ -147,11 +147,11 @@ export function CopilotDevTenantDiagnostics({
   }
 
   return (
-    <div className="border-b border-dashed border-amber-700/40 bg-amber-50/90 px-4 py-1.5 font-mono text-[11px] leading-relaxed text-amber-950 dark:bg-amber-950/30 dark:text-amber-100 sm:px-6">
-      <span className="mr-2 inline-flex items-center rounded bg-amber-200/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900 dark:bg-amber-800/60 dark:text-amber-50">
+    <div className="border-b border-dashed border-[var(--copilot-warning-text)]/40 bg-[var(--copilot-tone-warning-bg)]/90 px-4 py-1.5 font-mono text-[11px] leading-relaxed text-[var(--copilot-warning-text-strong)] dark:bg-amber-950/30 dark:text-amber-100 sm:px-6">
+      <span className="mr-2 inline-flex items-center rounded bg-amber-200/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-warning-text-strong)] dark:bg-[var(--copilot-warning-text-strong)]/60 dark:text-amber-50">
         Dev tenant
       </span>
-      <span className="text-amber-900/90 dark:text-amber-100/90">
+      <span className="text-[var(--copilot-warning-text-strong)]/90 dark:text-amber-100/90">
         Empresa: <strong>{companyName}</strong>
         {" · "}
         <code className="rounded bg-[var(--copilot-card-bg)]/60 px-1 dark:bg-black/25">
@@ -163,7 +163,7 @@ export function CopilotDevTenantDiagnostics({
         rol: <strong>{role}</strong>
       </span>
       {!sessionPreview ? (
-        <span className="ml-2 text-amber-800/80 dark:text-amber-200/80">
+        <span className="ml-2 text-[var(--copilot-warning-text-strong)]/80 dark:text-amber-200/80">
           (sin cookie de layout; datos vía /api/copilot/me + companies)
         </span>
       ) : null}

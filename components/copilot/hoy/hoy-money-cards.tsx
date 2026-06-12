@@ -1,7 +1,7 @@
 "use client";
 
-import type { KeyboardEvent } from "react";
-import { ArrowRight } from "lucide-react";
+import { useState, type KeyboardEvent } from "react";
+import { ArrowRight, ChevronDown } from "lucide-react";
 
 import { CopilotButtonLink } from "@/components/copilot/ui/copilot-button";
 
@@ -13,12 +13,12 @@ import type {
   CockpitReceivablesCard,
 } from "@/lib/copilot-hoy-cockpit-view";
 import { HOY_COCKPIT } from "@/lib/copilot-hoy-ui-contract";
+import type { HoyCashPositionBlock } from "@/lib/copilot-hoy-treasury";
+import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
+import { HoyCashDetailCompact } from "@/components/copilot/hoy/hoy-cash-detail-compact";
 import {
-  dangerFinancialCardClass,
   metricValueClass,
   neutralFinancialCardClass,
-  positiveFinancialCardClass,
-  warningFinancialCardClass,
 } from "@/components/copilot/ui/copilot-visual-system";
 
 type CardVariant = "cash" | "receivables" | "payments" | "afterPayments";
@@ -34,91 +34,91 @@ type CardTheme = {
 
 const CARD_THEME: Record<Exclude<CardVariant, "afterPayments">, CardTheme> = {
   cash: {
-    shell: positiveFinancialCardClass,
-    badge: "bg-emerald-100/70 text-emerald-800",
-    dot: "bg-emerald-500",
-    amountPrimary: "text-emerald-900",
-    amountSecondary: "text-emerald-800/70",
+    shell: neutralFinancialCardClass,
+    badge: "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-badge-success-text)]",
+    dot: "bg-[var(--copilot-status-ok-dot)]",
+    amountPrimary: "text-[var(--copilot-ink)]",
+    amountSecondary: "text-[var(--copilot-ink-muted)]",
     footer: {
-      ok: "text-emerald-800",
-      warn: "text-emerald-800",
-      danger: "text-emerald-800",
+      ok: "text-[var(--copilot-ink-muted)]",
+      warn: "text-[var(--copilot-ink-muted)]",
+      danger: "text-[var(--copilot-danger-text-strong)]",
     },
   },
   receivables: {
-    shell: warningFinancialCardClass,
-    badge: "bg-amber-100/70 text-amber-900",
-    dot: "bg-amber-500",
-    amountPrimary: "text-amber-900",
-    amountSecondary: "text-amber-800/70",
+    shell: neutralFinancialCardClass,
+    badge: "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-badge-warning-text)]",
+    dot: "bg-[var(--copilot-status-warn-dot)]",
+    amountPrimary: "text-[var(--copilot-ink)]",
+    amountSecondary: "text-[var(--copilot-ink-muted)]",
     footer: {
-      ok: "text-amber-800",
-      warn: "text-amber-900",
-      danger: "text-amber-900",
+      ok: "text-[var(--copilot-ink-muted)]",
+      warn: "text-[var(--copilot-warning-text-strong)]",
+      danger: "text-[var(--copilot-danger-text-strong)]",
     },
   },
   payments: {
-    shell: dangerFinancialCardClass,
-    badge: "bg-rose-100/70 text-rose-800",
-    dot: "bg-rose-500",
-    amountPrimary: "text-rose-900",
-    amountSecondary: "text-rose-800/70",
+    shell: neutralFinancialCardClass,
+    badge: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)]",
+    dot: "bg-[var(--copilot-status-critical-dot)]",
+    amountPrimary: "text-[var(--copilot-ink)]",
+    amountSecondary: "text-[var(--copilot-ink-muted)]",
     footer: {
-      ok: "text-emerald-800",
-      warn: "text-rose-800",
-      danger: "text-rose-800",
+      ok: "text-[var(--copilot-ink-muted)]",
+      warn: "text-[var(--copilot-warning-text-strong)]",
+      danger: "text-[var(--copilot-danger-text-strong)]",
     },
   },
 };
 
 const EMPTY_PAYMENTS_THEME: CardTheme = {
   shell: neutralFinancialCardClass,
-  badge: "bg-slate-100/70 text-slate-600",
-  dot: "bg-slate-400",
-  amountPrimary: "text-slate-700",
-  amountSecondary: "text-slate-600/70",
+  badge: "bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink-muted)]",
+  dot: "bg-[var(--copilot-subtle)]",
+  amountPrimary: "text-[var(--copilot-ink)]",
+  amountSecondary: "text-[var(--copilot-ink-muted)]",
   footer: {
-    ok: "text-slate-700",
-    warn: "text-slate-600",
-    danger: "text-slate-700",
+    ok: "text-[var(--copilot-ink-muted)]",
+    warn: "text-[var(--copilot-ink-muted)]",
+    danger: "text-[var(--copilot-ink-muted)]",
   },
 };
 
 const AFTER_PAYMENTS_THEME: Record<CockpitAfterPaymentsAccent, CardTheme> = {
   comfortable: {
-    shell: positiveFinancialCardClass,
-    badge: "bg-teal-100 text-teal-800",
-    dot: "bg-teal-500",
-    amountPrimary: "text-teal-900",
-    amountSecondary: "text-teal-700/80",
+    shell: neutralFinancialCardClass,
+    badge: "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-badge-success-text)]",
+    dot: "bg-[var(--copilot-status-ok-dot)]",
+    amountPrimary: "text-[var(--copilot-ink)]",
+    amountSecondary: "text-[var(--copilot-ink-muted)]",
     footer: {
-      ok: "text-teal-800",
-      warn: "text-teal-800",
-      danger: "text-teal-800",
+      ok: "text-[var(--copilot-ink-muted)]",
+      warn: "text-[var(--copilot-ink-muted)]",
+      danger: "text-[var(--copilot-danger-text-strong)]",
     },
   },
   adjusted: {
-    shell: warningFinancialCardClass,
-    badge: "bg-amber-100/70 text-amber-900",
-    dot: "bg-amber-500",
-    amountPrimary: "text-amber-900",
-    amountSecondary: "text-amber-800/70",
+    shell: neutralFinancialCardClass,
+    badge: "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-badge-warning-text)]",
+    dot: "bg-[var(--copilot-status-warn-dot)]",
+    amountPrimary: "text-[var(--copilot-ink)]",
+    amountSecondary: "text-[var(--copilot-ink-muted)]",
     footer: {
-      ok: "text-amber-800",
-      warn: "text-amber-900",
-      danger: "text-amber-900",
+      ok: "text-[var(--copilot-ink-muted)]",
+      warn: "text-[var(--copilot-warning-text-strong)]",
+      danger: "text-[var(--copilot-danger-text-strong)]",
     },
   },
   critical: {
-    shell: dangerFinancialCardClass,
-    badge: "bg-rose-100/70 text-rose-800",
-    dot: "bg-rose-500",
-    amountPrimary: "text-rose-900",
-    amountSecondary: "text-rose-800/70",
+    shell: neutralFinancialCardClass,
+    badge: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)]",
+    dot: "bg-[var(--copilot-status-critical-dot)]",
+    amountPrimary: "text-[var(--copilot-ink)]",
+    amountSecondary: "text-[var(--copilot-ink-muted)]",
     footer: {
-      ok: "text-rose-800",
-      warn: "text-rose-800",
-      danger: "text-rose-900",
+      ok: "text-[var(--copilot-ink-muted)]",
+      warn: "text-[var(--copilot-danger-text-strong)]",
+      danger: "text-[var(--copilot-danger-text-strong)]",
     },
   },
 };
@@ -151,8 +151,8 @@ const AMOUNT_SIZE: Record<
   { uyu: string; usd: string; rowPrimary: string; rowSecondary: string; labelPrimary: string; labelSecondary: string }
 > = {
   primary: {
-    uyu: "text-[2rem] xl:text-[2.2rem]",
-    usd: "text-[1.55rem] xl:text-[1.75rem]",
+    uyu: "text-[1.65rem] xl:text-[1.85rem]",
+    usd: "text-[1.25rem] xl:text-[1.4rem]",
     rowPrimary: "py-2",
     rowSecondary: "py-1.5",
     labelPrimary: "text-[11px]",
@@ -164,23 +164,23 @@ const AMOUNT_SIZE: Record<
     rowPrimary: "py-1",
     rowSecondary: "py-0.5",
     labelPrimary: "text-[10px]",
-    labelSecondary: "text-[9px] opacity-75",
+    labelSecondary: "text-[10px] opacity-75",
   },
   alert: {
     uyu: "text-[1.2rem] xl:text-[1.35rem]",
     usd: "text-[1rem] xl:text-[1.1rem]",
     rowPrimary: "py-0.5",
     rowSecondary: "py-0.5",
-    labelPrimary: "text-[9px]",
-    labelSecondary: "text-[9px] opacity-70",
+    labelPrimary: "text-[10px]",
+    labelSecondary: "text-[10px] opacity-70",
   },
   nested: {
     uyu: "text-[1.05rem] xl:text-[1.15rem]",
     usd: "text-[0.92rem] xl:text-[1rem]",
     rowPrimary: "py-0.5",
     rowSecondary: "py-0.5",
-    labelPrimary: "text-[9px]",
-    labelSecondary: "text-[8px] opacity-70",
+    labelPrimary: "text-[10px]",
+    labelSecondary: "text-[10px] opacity-70",
   },
 };
 
@@ -316,6 +316,8 @@ function MoneyCard({
   title,
   subtitle,
   block,
+  cashPositionBlocks,
+  manualCashMovements,
   onCardClick,
   isActive,
 }: {
@@ -324,12 +326,16 @@ function MoneyCard({
   title: string;
   subtitle?: string;
   block: CockpitMoneyBlock;
+  cashPositionBlocks?: HoyCashPositionBlock[];
+  manualCashMovements?: readonly ManualCashMovement[];
   onCardClick?: (id: HoyCockpitCardId) => void;
   isActive?: boolean;
 }) {
   const theme = resolveTheme(variant, block);
   const interactive = Boolean(onCardClick);
   const isEmptyPayments = variant === "payments" && block.amounts.length === 0;
+  const [cashDetailOpen, setCashDetailOpen] = useState(false);
+  const showCashDetail = variant === "cash" && (cashPositionBlocks?.length ?? 0) > 0;
 
   return (
     <article
@@ -337,7 +343,7 @@ function MoneyCard({
       tabIndex={interactive ? 0 : undefined}
       onClick={interactive ? () => onCardClick?.(cardId) : undefined}
       onKeyDown={interactive ? (e) => cardActivateKey(e, () => onCardClick?.(cardId)) : undefined}
-      className={`flex min-h-[200px] flex-col rounded-2xl border p-4 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${theme.shell}`}
+      className={`flex min-h-0 flex-col rounded-xl border p-3 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${theme.shell}`}
     >
       <header className="shrink-0">
         <CardHeader theme={theme} title={title} subtitle={subtitle} />
@@ -358,7 +364,7 @@ function MoneyCard({
           </CopilotButtonLink>
         </div>
       ) : (
-        <div className="flex flex-1 flex-col items-center justify-center py-2">
+        <div className="flex flex-col items-center justify-center py-1">
           <CurrencyStack
             amounts={block.amounts}
             amountPrimaryClass={theme.amountPrimary}
@@ -369,7 +375,36 @@ function MoneyCard({
       )}
 
       {!isEmptyPayments && (
-        <footer className="mt-auto shrink-0">
+        <footer className="mt-auto shrink-0 space-y-1.5">
+          {showCashDetail ? (
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCashDetailOpen((v) => !v);
+                }}
+                className="flex w-full items-center justify-center gap-1 rounded-lg border border-[var(--copilot-button-secondary-border)] bg-[var(--copilot-button-secondary-bg)] px-2 py-1 text-[10px] font-semibold text-[var(--copilot-accent)] transition hover:bg-[var(--copilot-accent-soft)]"
+              >
+                {cashDetailOpen ? "Ocultar detalle" : "Ver detalle"}
+                <ChevronDown
+                  className={`h-3 w-3 transition ${cashDetailOpen ? "rotate-180" : ""}`}
+                  aria-hidden
+                />
+              </button>
+              {cashDetailOpen ? (
+                <div
+                  className="rounded-lg border border-[var(--copilot-border)]/80 bg-[var(--copilot-soft-bg)]/50 p-1.5"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <HoyCashDetailCompact
+                    blocks={cashPositionBlocks!}
+                    manualMovements={manualCashMovements}
+                  />
+                </div>
+              ) : null}
+            </>
+          ) : null}
           <CardFooter theme={theme} tone={block.footnote.tone} text={block.footnote.text} />
         </footer>
       )}
@@ -398,7 +433,7 @@ function ReceivablesSection({
         <p className={`text-[10px] font-bold uppercase tracking-[0.12em] ${labelClass}`}>{label}</p>
       ) : null}
       {amounts.length === 0 ? (
-        <p className="text-xs text-slate-500">—</p>
+        <p className="text-xs text-[var(--copilot-ink-muted)]">—</p>
       ) : (
         <CurrencyStack
           amounts={amounts}
@@ -424,6 +459,9 @@ function ReceivablesCard({
 }) {
   const shell = CARD_THEME.receivables;
   const interactive = Boolean(onCardClick);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const hasOverdueDetail =
+    card.overdueTotal.some((a) => a.amount > 0) || card.overdue30.some((a) => a.amount > 0);
 
   return (
     <article
@@ -433,61 +471,90 @@ function ReceivablesCard({
       onKeyDown={
         interactive ? (e) => cardActivateKey(e, () => onCardClick?.("receivables")) : undefined
       }
-      className={`flex min-h-[200px] flex-col rounded-2xl border p-4 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${shell.shell}`}
+      className={`flex min-h-0 flex-col rounded-xl border p-2.5 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${shell.shell}`}
     >
       <header className="shrink-0">
         <CardHeader theme={shell} title={HOY_COCKPIT.receivables} subtitle={subtitle} />
       </header>
 
-      <div className="flex flex-1 flex-col items-center justify-center py-2 text-center">
-        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-amber-800">
-          {HOY_COCKPIT.receivablesTotalPending}
-        </p>
+      <div className="flex flex-1 flex-col items-center justify-center py-1 text-center">
         {card.totalPending.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-500">—</p>
+          <p className="text-sm text-[var(--copilot-ink-muted)]">—</p>
         ) : (
-          <div className="mt-2 w-full">
-            <CurrencyStack
-              amounts={card.totalPending}
-              amountPrimaryClass="text-amber-900"
-              amountSecondaryClass="text-amber-800/80"
-              layout="kpi"
-            />
-          </div>
+          <CurrencyStack
+            amounts={card.totalPending}
+            amountPrimaryClass="text-[var(--copilot-ink)]"
+            amountSecondaryClass="text-[var(--copilot-ink-muted)]"
+            layout="kpi"
+          />
         )}
       </div>
 
-      <footer
-        className="mt-auto shrink-0 space-y-2 border-t border-amber-200/40 pt-3"
-        role="group"
-        aria-label={`${HOY_COCKPIT.receivablesIncludedInTotal}: ${HOY_COCKPIT.receivablesOverdueTotal}`}
-      >
-        <div className="rounded-xl bg-rose-50/60 px-2.5 py-2">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-rose-700/80">
-            {HOY_COCKPIT.receivablesOverdueTotal}
-          </p>
-          <ReceivablesSection
-            label=""
-            amounts={card.overdueTotal}
-            labelClass="sr-only"
-            amountPrimaryClass="text-rose-800"
-            amountSecondaryClass="text-rose-700/70"
-            size="compact"
-          />
-        </div>
-        <div className="rounded-xl bg-rose-50/40 px-2.5 py-2">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-rose-700/75">
-            {HOY_COCKPIT.receivablesOverdue30}
-          </p>
-          <ReceivablesSection
-            label=""
-            amounts={card.overdue30}
-            labelClass="sr-only"
-            amountPrimaryClass="text-rose-800/90"
-            amountSecondaryClass="text-rose-700/60"
-            size="nested"
-          />
-        </div>
+      <footer className="mt-auto shrink-0 space-y-1.5">
+        <p className="border-t border-[var(--copilot-border)] pt-1.5 text-[10px] text-[var(--copilot-ink-muted)]">
+          {HOY_COCKPIT.receivablesIncludedNote}
+        </p>
+        {hasOverdueDetail ? (
+          <>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setDetailOpen((v) => !v);
+              }}
+              className="flex w-full items-center justify-center gap-1 rounded-lg border border-[var(--copilot-button-secondary-border)] bg-[var(--copilot-button-secondary-bg)] px-2 py-1 text-[10px] font-semibold text-[var(--copilot-accent)] transition hover:bg-[var(--copilot-accent-soft)]"
+            >
+              {detailOpen ? "Ocultar detalle" : "Ver detalle"}
+              <ChevronDown
+                className={`h-3 w-3 transition ${detailOpen ? "rotate-180" : ""}`}
+                aria-hidden
+              />
+            </button>
+            {detailOpen ? (
+              <div
+                className="space-y-2 rounded-lg border border-[var(--copilot-border)]/80 bg-[var(--copilot-soft-bg)]/50 p-2"
+                role="group"
+                aria-label="Detalle de atrasos"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ReceivablesSection
+                  label={HOY_COCKPIT.receivablesOverdueTotal}
+                  amounts={card.overdueTotal}
+                  labelClass="text-[var(--copilot-ink-muted)]"
+                  amountPrimaryClass="text-[var(--copilot-danger-text-strong)]"
+                  amountSecondaryClass="text-[var(--copilot-danger-text-strong)]"
+                  size="compact"
+                />
+                {card.overdueClientCount != null ? (
+                  <p className="text-[10px] text-[var(--copilot-ink-muted)]">
+                    {card.overdueClientCount}{" "}
+                    {card.overdueClientCount === 1 ? "cliente atrasado" : "clientes atrasados"}
+                  </p>
+                ) : null}
+                {card.overdue30.some((a) => a.amount > 0) ? (
+                  <>
+                    <ReceivablesSection
+                      label={HOY_COCKPIT.receivablesOverdue30}
+                      amounts={card.overdue30}
+                      labelClass="text-[var(--copilot-ink-muted)]"
+                      amountPrimaryClass="text-[var(--copilot-danger-text-strong)]"
+                      amountSecondaryClass="text-[var(--copilot-ink-muted)]"
+                      size="nested"
+                    />
+                    {card.overdue30ClientCount != null ? (
+                      <p className="text-[10px] text-[var(--copilot-ink-muted)]">
+                        {card.overdue30ClientCount}{" "}
+                        {card.overdue30ClientCount === 1
+                          ? "cliente con atraso +30 días"
+                          : "clientes con atraso +30 días"}
+                      </p>
+                    ) : null}
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+          </>
+        ) : null}
       </footer>
     </article>
   );
@@ -498,6 +565,8 @@ export function HoyMoneyCards({
   payments,
   afterPayments,
   receivables,
+  cashPositionBlocks,
+  manualCashMovements,
   onCardClick,
   activeCard,
 }: {
@@ -505,23 +574,25 @@ export function HoyMoneyCards({
   payments: CockpitMoneyBlock;
   afterPayments: CockpitMoneyBlock;
   receivables: CockpitReceivablesCard;
+  cashPositionBlocks?: HoyCashPositionBlock[];
+  manualCashMovements?: readonly ManualCashMovement[];
   onCardClick?: (id: HoyCockpitCardId) => void;
   activeCard?: HoyCockpitCardId | null;
 }) {
   return (
-    <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <MoneyCard
         cardId="cash"
         variant="cash"
         title={HOY_COCKPIT.moneyAvailable}
-        subtitle="Dinero disponible en Tesorería."
         block={moneyAvailable}
+        cashPositionBlocks={cashPositionBlocks}
+        manualCashMovements={manualCashMovements}
         onCardClick={onCardClick}
         isActive={activeCard === "cash"}
       />
       <ReceivablesCard
         card={receivables}
-        subtitle="Facturas abiertas de clientes."
         onCardClick={onCardClick}
         isActive={activeCard === "receivables"}
       />
@@ -538,7 +609,6 @@ export function HoyMoneyCards({
         cardId="afterPayments"
         variant="afterPayments"
         title={HOY_COCKPIT.afterPayments}
-        subtitle="Caja actual menos pagos próximos."
         block={afterPayments}
         onCardClick={onCardClick}
         isActive={activeCard === "afterPayments"}

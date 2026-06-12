@@ -120,16 +120,16 @@ function renderCollectionProbabilityCell(v: unknown) {
   const tone = collectionProbabilityTone(score);
   const palette =
     tone === "red"
-      ? "bg-rose-100 text-rose-800 ring-rose-200"
+      ? "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] ring-rose-200"
       : tone === "yellow"
-        ? "bg-amber-100 text-amber-800 ring-amber-200"
-        : "bg-emerald-100 text-emerald-800 ring-emerald-200";
+        ? "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] ring-amber-200"
+        : "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] ring-emerald-200";
   const dot =
     tone === "red"
-      ? "bg-rose-500"
+      ? "bg-[var(--copilot-danger-text)]"
       : tone === "yellow"
-        ? "bg-amber-500"
-        : "bg-emerald-500";
+        ? "bg-[var(--copilot-warning-text)]"
+        : "bg-[var(--copilot-success-text)]";
   return (
     <span
       className={`inline-flex items-center justify-end gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums ring-1 ${palette}`}
@@ -258,7 +258,7 @@ export function CopilotDataTable({
           <thead className="sticky top-0 z-10 bg-[var(--copilot-card)]">
             <tr>
               {inactiveBadge && entity !== "invoices" ? (
-                <th className="w-24 border-b border-[var(--copilot-border)] px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                <th className="w-24 border-b border-[var(--copilot-border)] px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                   Activo
                 </th>
               ) : null}
@@ -272,7 +272,7 @@ export function CopilotDataTable({
                         ? invoiceHeaderClass(col.key)
                         : entity === "receipts"
                           ? receiptHeaderClass(col.key)
-                          : "border-b border-[var(--copilot-border)] px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]"
+                          : "border-b border-[var(--copilot-border)] px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]"
                     }
                   >
                     <button
@@ -322,7 +322,7 @@ export function CopilotDataTable({
                   {inactiveBadge && entity !== "invoices" ? (
                     <td className="px-3 py-2 align-middle">
                       {isInactive ? (
-                        <span className="inline-flex rounded-full bg-[rgba(44,40,37,0.12)] px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                        <span className="inline-flex rounded-full bg-[var(--copilot-badge-neutral-bg)] px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                           Inactivo
                         </span>
                       ) : (

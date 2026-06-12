@@ -10,9 +10,9 @@ import type { FinancialMetricDetail } from "@/lib/copilot-financial-panorama-det
 const COPILOT_TOPBAR_HEIGHT_PX = 56;
 
 function rowToneClass(tone?: FinancialMetricDetail["rows"][number]["tone"]): string {
-  if (tone === "positive") return "text-emerald-800";
-  if (tone === "warning") return "text-amber-900";
-  if (tone === "danger") return "text-rose-800";
+  if (tone === "positive") return "text-[var(--copilot-success-text-strong)]";
+  if (tone === "warning") return "text-[var(--copilot-warning-text-strong)]";
+  if (tone === "danger") return "text-[var(--copilot-danger-text-strong)]";
   return "text-[var(--copilot-ink)]";
 }
 
@@ -75,7 +75,7 @@ export function FinancialMetricDetailDialog({
               type="button"
               onClick={onClose}
               aria-label="Cerrar"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--copilot-border)] text-[var(--copilot-ink-muted)] hover:bg-slate-100"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--copilot-border)] text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-hover-bg)]"
             >
               <X className="h-4 w-4" aria-hidden />
             </button>
@@ -84,7 +84,7 @@ export function FinancialMetricDetailDialog({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
           {detail.formula ? (
-            <div className="mb-4 rounded-xl border border-[var(--copilot-border)] bg-slate-50/80 px-4 py-3">
+            <div className="mb-4 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] px-4 py-3">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Fórmula
               </p>

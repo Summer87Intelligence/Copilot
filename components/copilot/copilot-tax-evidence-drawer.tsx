@@ -309,7 +309,7 @@ export function CopilotTaxEvidenceDrawer({
             <p className="text-sm text-[var(--copilot-ink-muted)]">Cargando respaldo…</p>
           ) : null}
           {error ? (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+            <div className="rounded-xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] px-4 py-3 text-sm text-[var(--copilot-danger-text-strong)]">
               {error}
             </div>
           ) : null}

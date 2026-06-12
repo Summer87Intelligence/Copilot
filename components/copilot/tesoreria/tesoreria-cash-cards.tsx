@@ -92,14 +92,14 @@ function TesoreriaCashCard({
   return (
     <div
       className={`flex min-h-[220px] flex-col ${premiumCardClass} p-5 ${
-        isNegative ? "border-rose-200/80 bg-gradient-to-br from-white to-rose-50/40" : ""
+        isNegative ? "border-[var(--copilot-danger-border)]/80 bg-gradient-to-br from-white to-rose-50/40" : ""
       }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div>
           <span
             className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-              isNegative ? "bg-rose-100 text-rose-800" : "bg-emerald-100 text-emerald-800"
+              isNegative ? "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-danger-text-strong)]" : "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-success-text-strong)]"
             }`}
           >
             Caja disponible
@@ -111,7 +111,7 @@ function TesoreriaCashCard({
       <div className="flex flex-1 flex-col items-center justify-center py-3 text-center">
         <p
           className={`text-[2rem] leading-none tracking-tight xl:text-[2.15rem] ${metricValueClass} ${
-            isNegative ? "text-rose-800" : "text-emerald-950"
+            isNegative ? "text-[var(--copilot-danger-text-strong)]" : "text-[var(--copilot-success-text-strong)]"
           }`}
         >
           {pos ? formatTreasuryMoney(pureAvailable, currency) : "—"}
@@ -125,7 +125,7 @@ function TesoreriaCashCard({
         </p>
       </div>
 
-      <div className="mt-auto border-t border-neutral-100 pt-3">
+      <div className="mt-auto border-t border-[var(--copilot-border)] pt-3">
         <CashEventLine label="Último ingreso" event={lastIncome} emptyLabel="Sin ingresos registrados" />
         <CashEventLine label="Último egreso" event={lastExpense} emptyLabel="Sin egresos registrados" />
       </div>

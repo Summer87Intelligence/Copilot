@@ -11,13 +11,13 @@ const buttonBaseClass =
 
 export const copilotButtonVariantClass: Record<CopilotButtonVariant, string> = {
   primary:
-    "border border-[var(--copilot-accent)] bg-[var(--copilot-accent)] text-white shadow-sm hover:border-[#185a3d] hover:bg-[#185a3d]",
+    "border border-[var(--copilot-accent)] bg-[var(--copilot-accent)] text-[var(--copilot-on-accent)] shadow-sm hover:border-[var(--copilot-accent-hover)] hover:bg-[var(--copilot-accent-hover)]",
   secondary:
-    "border border-neutral-200 bg-white text-[var(--copilot-accent)] shadow-sm hover:bg-[var(--copilot-accent-soft)]",
+    "border border-[var(--copilot-button-secondary-border)] bg-[var(--copilot-button-secondary-bg)] text-[var(--copilot-accent)] shadow-sm hover:bg-[var(--copilot-accent-soft)]",
   danger:
-    "border border-rose-200 bg-rose-50/90 text-rose-700 shadow-sm hover:bg-rose-100/90",
+    "border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] shadow-sm hover:opacity-90",
   ghost:
-    "border border-transparent bg-transparent text-[var(--copilot-accent)] hover:bg-[var(--copilot-accent-soft)]",
+    "border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)]/40 text-[var(--copilot-accent)] hover:border-[var(--copilot-button-secondary-border)] hover:bg-[var(--copilot-accent-soft)]",
 };
 
 export const copilotButtonSizeClass: Record<CopilotButtonSize, string> = {

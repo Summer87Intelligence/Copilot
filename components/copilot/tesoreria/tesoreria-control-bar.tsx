@@ -76,7 +76,7 @@ export function TesoreriaControlBar({
           type="button"
           onClick={onConfirmDraft}
           disabled={!hasPendingChanges || draftInvalid}
-          className="inline-flex h-9 items-center gap-2 rounded-lg bg-[var(--copilot-accent)] px-4 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
+          className="inline-flex h-9 items-center gap-2 rounded-lg bg-[var(--copilot-accent)] px-4 text-sm font-semibold text-[var(--copilot-on-accent)] shadow-sm transition hover:opacity-95 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
         >
           <Check className="h-4 w-4" />
           Confirmar

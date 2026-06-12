@@ -4,6 +4,7 @@
  */
 
 import type { ClientPortfolioInvoice } from "@/lib/copilot-clients-portfolio";
+import { formatCopilotDate } from "@/lib/copilot-format";
 import { ZETA_SALDOS_PENDIENTES_CATEGORY } from "@/lib/zeta/zeta-operational-debt-dedup";
 
 export type InvoiceStatusLabel = "Vencida" | "Al día" | "Parcial" | "Sin vencimiento";
@@ -135,13 +136,10 @@ export function buildDebtBreakdown(
   };
 }
 
-/** Formats YYYY-MM-DD as DD/MM/YY for compact table display. */
+/** Formats YYYY-MM-DD as DD/MM/YYYY for compact table display (es-UY). */
 export function fmtDateShort(dateStr: string): string {
   if (!dateStr || dateStr === "—") return "—";
-  const parts = dateStr.split("-");
-  if (parts.length !== 3) return dateStr;
-  const [y, m, d] = parts as [string, string, string];
-  return `${d}/${m}/${y.slice(2)}`;
+  return formatCopilotDate(dateStr, "compact");
 }
 
 /** Returns a local YYYY-MM-DD string (consistent with portfolio debt calculations). */

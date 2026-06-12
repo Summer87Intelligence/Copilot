@@ -375,7 +375,8 @@ function renderFinalBalanceRow(
   finalBalance: number,
   currency: "UYU" | "USD",
   to: string | undefined,
-  startY: number
+  startY: number,
+  invoiceBasedBalance?: number
 ): number {
   const mx = PAGE.margin;
   let y = startY + 6;
@@ -396,7 +397,21 @@ function renderFinalBalanceRow(
 
   y += 14;
   doc.moveTo(mx, y).lineTo(mx + TABLE_W, y).strokeColor(COLORS.border).lineWidth(0.5).stroke();
-  return y + 10;
+  y += 10;
+
+  // When ledger opening balance is active, the SALDO above includes pre-system history.
+  // Add a reconciliation note so users can match this PDF against the portfolio/ficha 360.
+  if (invoiceBasedBalance != null && Math.abs(invoiceBasedBalance - finalBalance) > 0.01) {
+    doc.fillColor(COLORS.muted).font("Helvetica").fontSize(7)
+      .text(
+        `Deuda vigente en facturas (sin saldo anterior): ${formatSignedBalanceAmount(invoiceBasedBalance)} ${sym}`,
+        mx, y,
+        { width: TABLE_W }
+      );
+    y += 12;
+  }
+
+  return y;
 }
 
 // ── Shared render state ───────────────────────────────────────────────────────
@@ -483,8 +498,13 @@ function renderClientCurrencies(
       block.movements.length > 0
         ? block.movements[block.movements.length - 1].runningBalance
         : previousBalance;
-    ensureDocSpace(state, 35);
-    state.y = renderFinalBalanceRow(state.doc, finalBalance, currency, to, state.y);
+    const opening = rawBlock.ledgerOpeningBalance;
+    const invoiceBasedBalance =
+      opening != null && opening !== 0
+        ? Math.round((finalBalance - opening) * 100) / 100
+        : undefined;
+    ensureDocSpace(state, invoiceBasedBalance != null ? 50 : 35);
+    state.y = renderFinalBalanceRow(state.doc, finalBalance, currency, to, state.y, invoiceBasedBalance);
   }
 
   if (statement.unknownCurrencyCount > 0) {

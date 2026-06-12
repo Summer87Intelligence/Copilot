@@ -428,18 +428,23 @@ async function runAudit(): Promise<AuditRow[]> {
   {
     const fs2 = await import("node:fs");
     const path2 = await import("node:path");
-    const pageFile = path2.join(process.cwd(), "app/copilot/dashboard/page.tsx");
-    if (!fs2.existsSync(pageFile)) {
-      results.push(row("usd-12", "Dashboard usa effectiveCurrencyData (no currencyData raw)", null, "SKIP", "page.tsx no encontrado."));
+    // Real code lives in dashboard-page-client.tsx (page.tsx is a server wrapper).
+    const candidates = [
+      path2.join(process.cwd(), "app/copilot/dashboard/dashboard-page-client.tsx"),
+      path2.join(process.cwd(), "app/copilot/dashboard/page.tsx"),
+    ];
+    const pageFile = candidates.find((p) => fs2.existsSync(p));
+    if (!pageFile) {
+      results.push(row("usd-12", "Dashboard usa effectiveCurrencyData (no currencyData raw)", null, "SKIP", "dashboard client file no encontrado."));
     } else {
       const content = fs2.readFileSync(pageFile, "utf-8");
       // Must have effectiveCurrencyData defined
       const hasEffectiveArr = /effectiveCurrencyData/.test(content);
-      // ExecutiveSummaryCard must receive effectiveCurrencyData
-      const execSummaryOk = /ExecutiveSummaryCard[\s\S]{0,200}currencyData=\{effectiveCurrencyData\}/.test(content);
-      // GaugeRow section must iterate effectiveCurrencyData
-      const gaugeOk = /effectiveCurrencyData\.map/.test(content);
-      const allOk = hasEffectiveArr && execSummaryOk && gaugeOk;
+      // ExecutiveSummaryCard must receive effectiveCurrencyData (allow up to 800 chars between).
+      const execSummaryOk = /ExecutiveSummaryCard[\s\S]{0,800}currencyData=\{effectiveCurrencyData\}/.test(content);
+      // GaugeRow section must iterate effectiveCurrencyData.
+      const gaugeRowsOk = /effectiveCurrencyData\.map\(\([^)]*\)[\s\S]{0,500}<GaugeRow/.test(content);
+      const allOk = hasEffectiveArr && execSummaryOk && gaugeRowsOk;
       results.push(row(
         "usd-12",
         "Dashboard usa effectiveCurrencyData en widgets clave",
@@ -450,7 +455,7 @@ async function runAudit(): Promise<AuditRow[]> {
           : [
               !hasEffectiveArr && "falta effectiveCurrencyData",
               !execSummaryOk && "ExecutiveSummaryCard recibe currencyData crudo",
-              !gaugeOk && "GaugeRow no itera effectiveCurrencyData",
+              !gaugeRowsOk && "GaugeRow no itera effectiveCurrencyData",
             ].filter(Boolean).join("; ")
       ));
     }

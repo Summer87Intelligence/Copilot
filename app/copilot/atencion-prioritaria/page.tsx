@@ -95,7 +95,7 @@ function buildPlanRecomendado(
       "Abrir respaldo documental y dejar evidencia alineada con lo informado a organismos.";
   } else if (primary.type === "liquidez" || primary.type === "cobertura") {
     if (snapshot) {
-      primero = `Cerrar el hueco de caja: priorizar cobros con mayor probabilidad de ingreso (cobranza esperada del motor: ${formatMoney(snapshotReceivablesRiskWeighted(snapshot))}) frente a egresos modelados (${formatMoney(snapshotExpectedOutflowsTotal(snapshot))}).`;
+      primero = `Cerrar el hueco de caja: priorizar cobros con mayor probabilidad de ingreso (cobranza esperada: ${formatMoney(snapshotReceivablesRiskWeighted(snapshot))}) frente a egresos modelados (${formatMoney(snapshotExpectedOutflowsTotal(snapshot))}).`;
       despues =
         steps[1] ??
         "En Finanzas, validar qué pagos fiscales u operativos pueden moverse sin romper compromisos ya comunicados.";
@@ -194,7 +194,7 @@ function pickPrimaryCta(
   ) {
     return {
       label: "Ver plan de cobertura",
-      href: "/copilot/finanzas?mode=cobertura&from=atencion-prioritaria#copilot-finanzas-cobertura",
+      href: "/copilot/finanzasímode=cobertura&from=atencion-prioritaria#copilot-finanzas-cobertura",
     };
   }
   return {
@@ -284,9 +284,9 @@ function CopilotAtencionPrioritariaPageContent() {
 
   const alertasHref =
     primary?.priority === "critical"
-      ? "/copilot/alertas?priority=critical"
+      ? "/copilot/alertasípriority=critical"
       : primary?.priority === "high"
-        ? "/copilot/alertas?priority=high"
+        ? "/copilot/alertasípriority=high"
         : "/copilot/alertas";
 
   const planRecomendado = useMemo(() => {
@@ -318,12 +318,12 @@ function CopilotAtencionPrioritariaPageContent() {
       );
     } else if (primary.type === "fiscalidad") {
       lines.push(
-        "Enlazar la operación real (pago, DDJJ o plan de facilidades) con la obligación correcta en Datos: sin ese vínculo, el motor sigue leyendo riesgo."
+        "Enlazar la operación real (pago, DDJJ o plan de facilidades) con la obligación correcta en Datos: sin ese vínculo, la alerta fiscal sigue activa."
       );
     }
     if (snapshot && snapshotReceivablesRiskWeighted(snapshot) > 0) {
       lines.push(
-        `Cobros que alivian la situación: acelerar ingresos ya ponderados en el motor (${formatMoney(snapshotReceivablesRiskWeighted(snapshot))} de cobranza esperada) reduce presión sobre caja sin depender de ventas nuevas.`
+        `Cobros que alivian la situación: acelerar ingresos ya ponderados (${formatMoney(snapshotReceivablesRiskWeighted(snapshot))} de cobranza esperada) reduce presión sobre caja sin depender de ventas nuevas.`
       );
     } else if (snapshot) {
       lines.push(
@@ -398,7 +398,7 @@ function CopilotAtencionPrioritariaPageContent() {
       })
     : primary?.type === "fiscalidad"
       ? "Ver detalle en la obligación (Finanzas o respaldo)."
-      : "Según calendario de egresos del motor financiero (30 días fiscales + pagos operativos futuros).";
+      : "Según calendario de egresos (30 días fiscales + pagos operativos futuros).";
 
   const montoComprometido =
     effectiveObligation != null
@@ -434,7 +434,7 @@ function CopilotAtencionPrioritariaPageContent() {
             Cargando caso prioritario…
           </div>
         ) : !primary || !content || !planRecomendado ? (
-          <CopilotCard className="border-emerald-200/70 bg-emerald-50/35">
+          <CopilotCard className="border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)]/35">
             <CopilotSectionTitle
               title="Sin situaciones críticas ni altas pendientes"
               subtitle="El semáforo te lleva acá solo cuando hay alertas de prioridad crítica o alta."
@@ -460,8 +460,8 @@ function CopilotAtencionPrioritariaPageContent() {
             <CopilotCard
               className={
                 primary.priority === "critical"
-                  ? "border-rose-300/90 bg-gradient-to-br from-rose-50/90 via-white to-white shadow-md ring-1 ring-rose-200/60"
-                  : "border-amber-200/90 bg-gradient-to-br from-amber-50/80 via-white to-white shadow-md ring-1 ring-amber-200/50"
+                  ? "border-[var(--copilot-danger-border)]/90 bg-gradient-to-br from-rose-50/90 via-white to-white shadow-md ring-1 ring-rose-200/60"
+                  : "border-[var(--copilot-warning-border)]/90 bg-gradient-to-br from-amber-50/80 via-white to-white shadow-md ring-1 ring-amber-200/50"
               }
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -582,7 +582,7 @@ function CopilotAtencionPrioritariaPageContent() {
                   </div>
                 </li>
                 <li className="flex gap-3">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-amber-200/90 bg-amber-50/80 text-xs font-bold text-amber-950">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[var(--copilot-warning-border)]/90 bg-[var(--copilot-tone-warning-bg)] text-xs font-bold text-[var(--copilot-warning-text-strong)]">
                     3
                   </span>
                   <div>
@@ -605,11 +605,11 @@ function CopilotAtencionPrioritariaPageContent() {
                     {content.queEstaPasando}
                   </p>
                 </div>
-                <div className="rounded-xl border border-rose-200/80 bg-rose-50/30 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-rose-900/80">
+                <div className="rounded-xl border border-[var(--copilot-danger-border)]/80 bg-[var(--copilot-tone-danger-bg)] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-danger-text-strong)]/80">
                     Si no se actúa
                   </p>
-                  <p className="mt-2 text-sm leading-relaxed text-rose-950/90">
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-danger-text-strong)]/90">
                     {consecuenciasOperativas}
                   </p>
                 </div>
@@ -628,7 +628,7 @@ function CopilotAtencionPrioritariaPageContent() {
                   Cargando cifras…
                 </p>
               ) : snapshotError ? (
-                <p className="mt-3 text-sm text-amber-800">{snapshotError}</p>
+                <p className="mt-3 text-sm text-[var(--copilot-warning-text-strong)]">{snapshotError}</p>
               ) : snapshot ? (
                 <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-4 py-3">
@@ -641,7 +641,7 @@ function CopilotAtencionPrioritariaPageContent() {
                   </div>
                   <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-4 py-3">
                     <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                      Egresos esperados (motor)
+                      Egresos esperados
                     </dt>
                     <dd className="mt-1 text-lg font-semibold tabular-nums text-[var(--copilot-ink)]">
                       {formatMoney(snapshotExpectedOutflowsTotal(snapshot))}
@@ -724,7 +724,7 @@ function CopilotAtencionPrioritariaPageContent() {
             </CopilotCollapsiblePanel>
 
             <CopilotCollapsiblePanel title="Cómo se resuelve (detalle)" defaultOpen={false}>
-            <CopilotCard className="border-slate-200/80 bg-slate-50/40">
+            <CopilotCard className="border-[var(--copilot-border)]/80 bg-[var(--copilot-soft-bg)]/40">
               <CopilotSectionTitle
                 title="Cómo se resuelve"
                 subtitle="Lectura de asesor: qué tiene que ocurrir para que el semáforo baje de verdad."
@@ -767,8 +767,7 @@ function CopilotAtencionPrioritariaPageContent() {
               ) : (
                 <p className="mt-3 text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
                   Todavía no hay suficiente detalle en facturas, pagos y obligaciones para listar
-                  oportunidades automáticas. Actualizá Datos o abrí Finanzas: en cuanto el motor
-                  tenga saldos y fechas consistentes, aparecerán sugerencias medibles acá.
+                  oportunidades automáticas. Actualizá Datos o abrí Finanzas: con saldos y fechas consistentes, aparecerán sugerencias medibles acá.
                 </p>
               )}
               <p className="mt-4 text-xs text-[var(--copilot-ink-muted)]">

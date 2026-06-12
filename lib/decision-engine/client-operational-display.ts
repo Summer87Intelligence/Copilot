@@ -16,10 +16,10 @@ export type OperationalBadge = {
 };
 
 const SEVERITY_LABELS: Record<TaskPriority, string> = {
-  critical: "CRÍTICO",
-  high: "ALTO",
-  medium: "MEDIO",
-  low: "BAJO",
+  critical: "Prioridad crítica",
+  high: "Prioridad alta",
+  medium: "Prioridad media",
+  low: "Prioridad baja",
 };
 
 const MACHINE_BADGE_LABELS: Record<OperationalMachineState, string> = {
@@ -61,16 +61,16 @@ export function machineStateBadge(state: OperationalMachineState | null): Operat
 }
 
 export function slaBadge(breached: boolean, dueToday: boolean): OperationalBadge {
-  if (breached) return { id: "sla", label: "SLA VENCIDO", tone: "critical" };
-  if (dueToday) return { id: "sla", label: "FOLLOW-UP HOY", tone: "warning" };
-  return { id: "sla", label: "SLA OK", tone: "success" };
+  if (breached) return { id: "sla", label: "SLA atrasado", tone: "critical" };
+  if (dueToday) return { id: "sla", label: "Seguimiento hoy", tone: "warning" };
+  return { id: "sla", label: "SLA al día", tone: "success" };
 }
 
 export function agingBadge(oldestDays: number): OperationalBadge | null {
-  if (oldestDays >= 90) return { id: "aging", label: "+90D", tone: "critical" };
-  if (oldestDays >= 61) return { id: "aging", label: "61-90D", tone: "high" };
-  if (oldestDays >= 31) return { id: "aging", label: "31-60D", tone: "medium" };
-  if (oldestDays > 0) return { id: "aging", label: `${oldestDays}D`, tone: "low" };
+  if (oldestDays >= 90) return { id: "aging", label: "+90 días", tone: "critical" };
+  if (oldestDays >= 61) return { id: "aging", label: "61–90 días", tone: "high" };
+  if (oldestDays >= 31) return { id: "aging", label: "31–60 días", tone: "medium" };
+  if (oldestDays > 0) return { id: "aging", label: `${oldestDays} días`, tone: "low" };
   return null;
 }
 
@@ -114,15 +114,15 @@ export type ReasonChip = { id: string; label: string };
 export function compactReasonChips(summary: ClientOperationalSummary): ReasonChip[] {
   const chips: ReasonChip[] = [];
   const days = maxOldestDays(summary);
-  if (days >= 90) chips.push({ id: "90d", label: "90D" });
-  else if (days >= 61) chips.push({ id: "aging", label: `${days}D` });
+  if (days >= 90) chips.push({ id: "90d", label: "+90 días" });
+  else if (days >= 61) chips.push({ id: "aging", label: `${days} días` });
 
   if (summary.reasons.some((r) => /sin contacto/i.test(r))) {
     chips.push({ id: "contact", label: "Sin contacto" });
   }
   const conc = summary.concentration_percent;
   if (conc != null) chips.push({ id: "conc", label: `Conc ${Math.round(conc)}%` });
-  if (summary.sla_breached) chips.push({ id: "sla", label: "SLA vencido" });
+  if (summary.sla_breached) chips.push({ id: "sla", label: "SLA atrasado" });
   if (summary.reasons.some((r) => /promesa/i.test(r))) {
     chips.push({ id: "promise", label: "Promesa" });
   }

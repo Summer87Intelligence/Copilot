@@ -627,8 +627,8 @@ describe("buildTodayBusinessPulse", () => {
       expect(pulse.allDebtorRows.length).toBe(12);
       expect(pulse.clientCounts.debtorClients).toBe(12);
       expect(pulse.clientCounts.debtorRows).toBe(12);
-      expect(HOY_UI.defaultDebtorPageSize).toBe(25);
-      expect(HOY_UI.debtorPageSizeOptions).toEqual([25, 50, 100]);
+      expect(HOY_UI.defaultDebtorPageSize).toBe(10);
+      expect(HOY_UI.debtorPageSizeOptions).toEqual([10, 25, 50, 100]);
     });
 
     it("debtorClients y attentionClients son conceptos distintos", () => {
@@ -669,7 +669,7 @@ describe("buildTodayBusinessPulse", () => {
         gate: GATE_HIGH,
       });
       expect(pulse.attentionClients.total).toBe(1);
-      expect(pulse.attentionClients.clients[0]!.motivos).toContain("Deuda vencida");
+      expect(pulse.attentionClients.clients[0]!.motivos).toContain("Atrasado");
       expect(pulse.attentionClients.clients[0]!.motivos).toContain("Cobro lento");
       expect(pulse.attentionClients.clients[0]!.deuda_uyu?.amount).toBe(58_560);
     });
@@ -960,11 +960,11 @@ describe("buildTodayBusinessPulse", () => {
       expect(CURRENCY_METRIC_LABELS.billed.toLowerCase()).not.toContain("bruto");
     });
 
-    it("labels: período, Deuda actual, Deuda vencida >30d (no Crítico ni prioritario)", () => {
+    it("labels: período, Total pendiente, Atrasado +30 días (no Crítico ni prioritario)", () => {
       expect(CURRENCY_METRIC_LABELS.billed).toBe("Ventas del período");
       expect(CURRENCY_METRIC_LABELS.collected).toBe("Cobrado aplicado");
-      expect(CURRENCY_METRIC_LABELS.pending).toBe("Deuda actual");
-      expect(CURRENCY_METRIC_LABELS.overdue30).toBe("Deuda vencida >30 días");
+      expect(CURRENCY_METRIC_LABELS.pending).toBe("Total pendiente");
+      expect(CURRENCY_METRIC_LABELS.overdue30).toBe("Atrasado +30 días");
       expect(CURRENCY_METRIC_LABELS.billed).not.toMatch(/bruto/i);
       expect(HOY_COPY.debtorsSectionTitle).toBe("Clientes con deuda");
       expect(HOY_COPY.debtorsSectionTitle.toLowerCase()).not.toContain("prioritario");
@@ -984,8 +984,8 @@ describe("buildTodayBusinessPulse", () => {
       expect(HOY_PAGE.title).not.toMatch(/pulso/i);
       expect(HOY_UI.showRecommendedActions).toBe(true);
       expect(HOY_UI.showPendingSection).toBe(false);
-      expect(HOY_UI.defaultDebtorPageSize).toBe(25);
-      expect(HOY_UI.debtorPageSizeOptions).toEqual([25, 50, 100]);
+      expect(HOY_UI.defaultDebtorPageSize).toBe(10);
+      expect(HOY_UI.debtorPageSizeOptions).toEqual([10, 25, 50, 100]);
     });
 
     it("cobrado mayor que facturado: nota explicativa, no error", () => {

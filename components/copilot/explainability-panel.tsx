@@ -392,8 +392,8 @@ export function ExplainabilityPanel({
           <span
             className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${
               hasWarnings
-                ? "bg-amber-50 text-amber-700"
-                : "bg-emerald-50 text-emerald-700"
+                ? "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]"
+                : "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]"
             }`}
           >
             {hasWarnings ? (
@@ -414,11 +414,11 @@ export function ExplainabilityPanel({
         <div className="flex items-center gap-3">
           <span className="text-[11px] uppercase tracking-[0.1em]">
             {nonOkCount > 0 ? (
-              <span className={hasWarnings ? "font-semibold text-amber-700" : "text-[var(--copilot-ink-muted)]"}>
+              <span className={hasWarnings ? "font-semibold text-[var(--copilot-warning-text-strong)]" : "text-[var(--copilot-ink-muted)]"}>
                 {nonOkCount} aviso{nonOkCount === 1 ? "" : "s"}
               </span>
             ) : (
-              <span className="text-emerald-700">✓ sin avisos</span>
+              <span className="text-[var(--copilot-success-text-strong)]">✓ sin avisos</span>
             )}
           </span>
           <ChevronDown
@@ -452,17 +452,17 @@ export function ExplainabilityPanel({
 // ---------------------------------------------------------------------------
 
 const STATUS_ICON_CLASS: Record<ExplainStatus, string> = {
-  ok:       "text-emerald-600",
+  ok:       "text-[var(--copilot-success-text)]",
   info:     "text-sky-600",
-  warn:     "text-amber-700",
-  critical: "text-rose-700",
+  warn:     "text-[var(--copilot-warning-text-strong)]",
+  critical: "text-[var(--copilot-danger-text-strong)]",
 };
 
 const STATUS_BADGE_CLASS: Record<ExplainStatus, string> = {
-  ok:       "border-emerald-200 bg-emerald-50 text-emerald-800",
+  ok:       "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]",
   info:     "border-sky-200    bg-sky-50    text-sky-800",
-  warn:     "border-amber-200  bg-amber-50  text-amber-800",
-  critical: "border-rose-200   bg-rose-50   text-rose-800",
+  warn:     "border-[var(--copilot-warning-border)]  bg-[var(--copilot-tone-warning-bg)]  text-[var(--copilot-warning-text-strong)]",
+  critical: "border-[var(--copilot-danger-border)]   bg-[var(--copilot-tone-danger-bg)]   text-[var(--copilot-danger-text-strong)]",
 };
 
 const STATUS_BADGE_LABEL: Record<ExplainStatus, string> = {

@@ -219,9 +219,9 @@ export function CopilotClientEvidenceDrawer({
                         </span>
                       ) : null}
                       {(detail.debt_usd ?? 0) > 0 ? (
-                        <span className="text-sm tabular-nums text-amber-900">
+                        <span className="text-sm tabular-nums text-[var(--copilot-warning-text-strong)]">
                           {formatMoneyPortfolio(detail.debt_usd!, "USD")}
-                          <span className="ml-1 text-xs text-amber-700">USD</span>
+                          <span className="ml-1 text-xs text-[var(--copilot-warning-text-strong)]">USD</span>
                         </span>
                       ) : null}
                     </div>
@@ -279,17 +279,17 @@ export function CopilotClientEvidenceDrawer({
                         Total{" "}
                         {inv.currency_code
                           ? formatMoneyPortfolio(inv.total_amount, inv.currency_code)
-                          : <span>{inv.total_amount.toLocaleString("es-UY")} <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-semibold text-amber-700">sin moneda</span></span>
+                          : <span>{inv.total_amount.toLocaleString("es-UY")} <span className="ml-1 rounded bg-[var(--copilot-tone-warning-bg)] px-1 py-0.5 text-[10px] font-semibold text-[var(--copilot-warning-text-strong)]">sin moneda</span></span>
                         }{" "}
                         · Saldo{" "}
                         <span
                           className={
-                            inv.balance_amount > 0 ? "font-semibold text-amber-900" : ""
+                            inv.balance_amount > 0 ? "font-semibold text-[var(--copilot-warning-text-strong)]" : ""
                           }
                         >
                           {inv.currency_code
                             ? formatMoneyPortfolio(inv.balance_amount, inv.currency_code)
-                            : <span>{inv.balance_amount.toLocaleString("es-UY")} <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-semibold text-amber-700">sin moneda</span></span>
+                            : <span>{inv.balance_amount.toLocaleString("es-UY")} <span className="ml-1 rounded bg-[var(--copilot-tone-warning-bg)] px-1 py-0.5 text-[10px] font-semibold text-[var(--copilot-warning-text-strong)]">sin moneda</span></span>
                           }
                         </span>
                       </p>
@@ -313,10 +313,10 @@ export function CopilotClientEvidenceDrawer({
                       key={r.id}
                       className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4 text-sm"
                     >
-                      <p className="font-semibold tabular-nums text-emerald-800">
+                      <p className="font-semibold tabular-nums text-[var(--copilot-success-text-strong)]">
                         {r.currency_code
                           ? formatMoneyPortfolio(r.amount, r.currency_code)
-                          : <span>{r.amount.toLocaleString("es-UY")} <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-semibold text-amber-700">sin moneda</span></span>
+                          : <span>{r.amount.toLocaleString("es-UY")} <span className="ml-1 rounded bg-[var(--copilot-tone-warning-bg)] px-1 py-0.5 text-[10px] font-semibold text-[var(--copilot-warning-text-strong)]">sin moneda</span></span>
                         }
                       </p>
                       <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
@@ -413,7 +413,7 @@ function KpiPillMoney({
         </p>
       )}
       {usdAmt > 0 && (
-        <p className={`${mixed ? "mt-0.5" : "mt-2"} text-sm font-semibold text-amber-900`}>
+        <p className={`${mixed ? "mt-0.5" : "mt-2"} text-sm font-semibold text-[var(--copilot-warning-text-strong)]`}>
           {formatMoneyPortfolio(usdAmt, "USD")}
         </p>
       )}

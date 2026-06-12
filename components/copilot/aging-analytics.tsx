@@ -34,35 +34,35 @@ import type { CurrencyFilter } from "@/components/copilot/financial-control-bar"
 
 const BUCKET_CONFIG: Record<
   AgingRange,
-  { label: string; bar: string; bg: string; text: string; badge: string }
+  { label: string; bar: string; dot: string; text: string; badge: string }
 > = {
   "0_30": {
     label: "0–30 días",
-    bar: "bg-emerald-400",
-    bg: "bg-emerald-50/50",
-    text: "text-emerald-700",
-    badge: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    bar: "bg-[var(--copilot-success-text)]",
+    dot: "bg-[var(--copilot-success-text)]",
+    text: "text-[var(--copilot-success-text-strong)]",
+    badge: "border-[var(--copilot-success-border)]/60 text-[var(--copilot-success-text-strong)]",
   },
   "31_60": {
     label: "31–60 días",
-    bar: "bg-amber-400",
-    bg: "bg-amber-50/50",
-    text: "text-amber-700",
-    badge: "border-amber-200 bg-amber-50 text-amber-700",
+    bar: "bg-[var(--copilot-warning-text)]",
+    dot: "bg-[var(--copilot-warning-text)]",
+    text: "text-[var(--copilot-warning-text-strong)]",
+    badge: "border-[var(--copilot-warning-border)]/60 text-[var(--copilot-warning-text-strong)]",
   },
   "61_90": {
     label: "61–90 días",
     bar: "bg-orange-400",
-    bg: "bg-orange-50/50",
-    text: "text-orange-700",
-    badge: "border-orange-200 bg-orange-50 text-orange-700",
+    dot: "bg-orange-400",
+    text: "text-orange-600 dark:text-orange-400",
+    badge: "border-orange-300/50 text-orange-700 dark:text-orange-400",
   },
   "90_plus": {
     label: "+90 días",
-    bar: "bg-rose-400",
-    bg: "bg-rose-50/50",
-    text: "text-rose-700",
-    badge: "border-rose-200 bg-rose-50 text-rose-700",
+    bar: "bg-[var(--copilot-danger-text)]",
+    dot: "bg-[var(--copilot-danger-text)]",
+    text: "text-[var(--copilot-danger-text-strong)]",
+    badge: "border-[var(--copilot-danger-border)]/60 text-[var(--copilot-danger-text-strong)]",
   },
 };
 
@@ -75,9 +75,12 @@ const CURRENCY_ORDER: ReconciliationCurrencyCode[] = ["UYU", "USD"];
 export function AgingAnalytics({
   report,
   selectedCurrency = "all",
+  compact = false,
 }: {
   report: FinancialConsistencyReport;
   selectedCurrency?: CurrencyFilter;
+  /** Oculta header grande cuando el padre ya muestra título de sección. */
+  compact?: boolean;
 }) {
   const availableCurrencies = CURRENCY_ORDER.filter(
     (c) => report.agingByCurrency[c] !== undefined
@@ -104,8 +107,9 @@ export function AgingAnalytics({
   return (
     <section
       aria-label="Antigüedad de cartera"
-      className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] shadow-[var(--copilot-shadow)]"
+      className={`rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] shadow-sm ${compact ? "" : "rounded-2xl shadow-[var(--copilot-shadow)]"}`}
     >
+      {!compact ? (
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--copilot-border)] px-5 py-4">
         <div className="flex items-center gap-2.5">
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(44,40,37,0.06)]">
@@ -139,7 +143,7 @@ export function AgingAnalytics({
                   className={[
                     "h-8 rounded-lg px-3 text-xs font-semibold transition",
                     active
-                      ? "bg-[var(--copilot-ink)] text-white shadow"
+                      ? "bg-[var(--copilot-accent)] text-[var(--copilot-on-accent)] shadow"
                       : "text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]",
                   ].join(" ")}
                 >
@@ -157,8 +161,40 @@ export function AgingAnalytics({
           </span>
         ) : null}
       </header>
+      ) : (
+        showTabs ? (
+          <div className="flex justify-end border-b border-[var(--copilot-border)] px-3 py-2">
+            <div
+              role="tablist"
+              aria-label="Moneda"
+              className="inline-flex items-center rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-0.5"
+            >
+              {availableCurrencies.map((c) => {
+                const active = c === activeCurrency;
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setInternalCurrency(c)}
+                    className={[
+                      "h-7 rounded-md px-2.5 text-[10px] font-semibold transition",
+                      active
+                        ? "bg-[var(--copilot-accent)] text-[var(--copilot-on-accent)]"
+                        : "text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]",
+                    ].join(" ")}
+                  >
+                    {c}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null
+      )}
 
-      <div className="p-5">
+      <div className={compact ? "p-3" : "p-5"}>
         {!hasData ? (
           <p className="py-4 text-center text-sm text-[var(--copilot-ink-muted)]">
             Sin facturas pendientes para {activeCurrency}.
@@ -232,15 +268,16 @@ function BucketRow({
         hidden: { opacity: 0, y: 6 },
         visible: { opacity: 1, y: 0, transition: { duration: 0.2, ease: "easeOut" } },
       }}
-      className={`rounded-xl border border-[var(--copilot-border)] p-3.5 ${cfg.bg}`}
+      className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 p-3.5"
     >
       {/* Label row */}
       <div className="mb-2.5 flex items-center justify-between gap-2">
-        <span className={`text-[11px] font-semibold uppercase tracking-[0.1em] ${cfg.text}`}>
+        <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-ink)]">
+          <span className={`h-2 w-2 shrink-0 rounded-full ${cfg.dot}`} aria-hidden />
           {cfg.label}
         </span>
         <span
-          className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${cfg.badge}`}
+          className={`inline-flex items-center rounded-md border bg-transparent px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${cfg.badge}`}
         >
           {pctLabel}
         </span>

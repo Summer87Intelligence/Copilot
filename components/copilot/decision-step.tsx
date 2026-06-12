@@ -10,19 +10,19 @@ type SemanticVariant = "critical" | "warning" | "success" | "neutral";
 
 const variantBox: Record<SemanticVariant, string> = {
   critical:
-    "border-rose-300/90 bg-rose-50/95 text-rose-950 ring-1 ring-rose-200/80",
+    "border-[var(--copilot-danger-border)]/90 bg-[var(--copilot-tone-danger-bg)]/95 text-[var(--copilot-danger-text-strong)] ring-1 ring-rose-200/80",
   warning:
-    "border-amber-300/90 bg-amber-50/95 text-amber-950 ring-1 ring-amber-200/70",
+    "border-[var(--copilot-warning-border)]/90 bg-[var(--copilot-tone-warning-bg)]/95 text-[var(--copilot-warning-text-strong)] ring-1 ring-amber-200/70",
   success:
-    "border-emerald-300/90 bg-emerald-50/95 text-emerald-950 ring-1 ring-emerald-200/70",
+    "border-[var(--copilot-success-border)]/90 bg-[var(--copilot-tone-positive-bg)]/95 text-[var(--copilot-success-text-strong)] ring-1 ring-emerald-200/70",
   neutral:
     "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 text-[var(--copilot-ink)] ring-1 ring-[rgba(44,40,37,0.06)]",
 };
 
 const riskBar: Record<SemanticVariant, string> = {
-  critical: "border-l-rose-500 bg-rose-50/90 text-rose-950",
-  warning: "border-l-amber-500 bg-amber-50/85 text-amber-950",
-  success: "border-l-emerald-500 bg-emerald-50/85 text-emerald-900",
+  critical: "border-l-rose-500 bg-[var(--copilot-tone-danger-bg)]/90 text-[var(--copilot-danger-text-strong)]",
+  warning: "border-l-amber-500 bg-[var(--copilot-tone-warning-bg)]/85 text-[var(--copilot-warning-text-strong)]",
+  success: "border-l-emerald-500 bg-[var(--copilot-tone-positive-bg)]/85 text-[var(--copilot-success-text-strong)]",
   neutral: "border-l-[var(--copilot-border)] bg-[rgba(44,40,37,0.04)] text-[var(--copilot-ink)]",
 };
 

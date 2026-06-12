@@ -31,23 +31,24 @@ function deriveStatus(agenda: CollectionAgenda): AgendaStatus {
   return "empty";
 }
 
+// Patrón premium: card neutra + borde acentuado por estado, sin teñir todo el fondo.
 const STATUS_STYLES: Record<AgendaStatus, { border: string; bg: string; badge: string; badgeText: string }> = {
   critical: {
-    border: "border-rose-200",
-    bg: "bg-rose-50/70",
-    badge: "bg-rose-100 text-rose-800 ring-1 ring-rose-200",
+    border: "border-[var(--copilot-danger-border)]",
+    bg: "bg-[var(--copilot-card-bg)]",
+    badge: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-danger-text-strong)] ring-1 ring-[var(--copilot-danger-border)]",
     badgeText: "Requiere atención",
   },
   attention: {
-    border: "border-amber-200",
-    bg: "bg-amber-50/60",
-    badge: "bg-amber-100 text-amber-800 ring-1 ring-amber-200",
+    border: "border-[var(--copilot-warning-border)]",
+    bg: "bg-[var(--copilot-card-bg)]",
+    badge: "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-warning-text-strong)] ring-1 ring-[var(--copilot-warning-border)]",
     badgeText: "Seguimiento hoy",
   },
   normal: {
     border: "border-[var(--copilot-border)]",
-    bg: "bg-[var(--copilot-card-bg)]/85",
-    badge: "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]",
+    bg: "bg-[var(--copilot-card-bg)]",
+    badge: "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[var(--copilot-accent-soft)]",
     badgeText: "Al día",
   },
   empty: {
@@ -72,9 +73,9 @@ function StatPill({
   if (value === 0) return null;
   const cls =
     tone === "danger"
-      ? "text-rose-700 font-semibold"
+      ? "text-[var(--copilot-danger-text)] font-semibold"
       : tone === "warning"
-      ? "text-amber-700 font-semibold"
+      ? "text-[var(--copilot-warning-text)] font-semibold"
       : tone === "info"
       ? "text-sky-700 font-medium"
       : "text-[var(--copilot-ink-muted)] font-medium";
@@ -154,7 +155,7 @@ export function CollectionAgendaHoyCard() {
 
       {status === "empty" ? (
         <p className="mt-3 text-xs text-[var(--copilot-ink-muted)]">
-          No hay seguimientos pendientes.
+          Sin seguimientos de cobranza. Creá uno en Acciones o desde la ficha del cliente.
         </p>
       ) : (
         <div className="mt-3 flex flex-wrap items-baseline gap-4">

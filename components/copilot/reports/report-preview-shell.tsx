@@ -82,7 +82,7 @@ export function ReportPreviewShell({
 
         {/* Filters */}
         {filterSlot ? (
-          <div className="shrink-0 border-b border-[var(--copilot-border)] bg-slate-50/60 px-5 py-3">
+          <div className="shrink-0 border-b border-[var(--copilot-border)] bg-[var(--copilot-table-header-bg)] px-5 py-3">
             {filterSlot}
           </div>
         ) : null}
@@ -91,7 +91,7 @@ export function ReportPreviewShell({
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {children}
           {downloadError ? (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
+            <div className="rounded-xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] px-3 py-2 text-sm text-[var(--copilot-danger-text-strong)]">
               {downloadError}
             </div>
           ) : null}

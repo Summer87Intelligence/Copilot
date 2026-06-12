@@ -5,7 +5,7 @@ export function CopilotSkeletonLine({
 }) {
   return (
     <div
-      className={`h-3 animate-pulse rounded-md bg-[rgba(44,40,37,0.08)] ${className}`}
+      className={`h-3 animate-pulse rounded-md bg-[var(--copilot-soft-bg)] ${className}`}
       aria-hidden
     />
   );

@@ -72,6 +72,10 @@ export type CockpitReceivablesCard = {
   totalPending: CockpitCurrencyAmount[];
   overdueTotal: CockpitCurrencyAmount[];
   overdue30: CockpitCurrencyAmount[];
+  /** Clientes únicos con atraso (opcional, para detalle expandible). */
+  overdueClientCount?: number;
+  /** Clientes únicos con atraso +30 días (opcional). */
+  overdue30ClientCount?: number;
 };
 
 export type CockpitView = {
@@ -184,11 +188,29 @@ function buildAfterPaymentsBlock(pulse: TodayBusinessPulse): CockpitMoneyBlock {
   return { amounts, footnote: footnoteForAccent(accent), afterPaymentsAccent: accent };
 }
 
+function countUniqueDebtorClients(
+  rows: DebtorCollectionRow[],
+  predicate: (row: DebtorCollectionRow) => boolean
+): number {
+  const ids = new Set<string>();
+  for (const row of rows) {
+    if (predicate(row)) ids.add(row.company_id);
+  }
+  return ids.size;
+}
+
 function buildReceivablesCard(
   pulse: TodayBusinessPulse,
   overdueTotal: CarteraCurrencyTotals,
   overdue30: CarteraCurrencyTotals
 ): CockpitReceivablesCard {
+  const debtorRows = pulse.allDebtorRows;
+  const overdueClientCount = countUniqueDebtorClients(debtorRows, (r) => r.flags.hasOverdue);
+  const overdue30ClientCount = countUniqueDebtorClients(
+    debtorRows,
+    (r) => r.flags.hasOverdue && r.flags.critical30Share
+  );
+
   return {
     totalPending: amountsFromBlocks((c) => {
       const block = pulse.currentStateBlocks.find((b) => b.currency === c);
@@ -196,6 +218,8 @@ function buildReceivablesCard(
     }),
     overdueTotal: amountsFromBlocks((c) => overdueTotal[c] ?? 0),
     overdue30: amountsFromBlocks((c) => overdue30[c] ?? 0),
+    overdueClientCount: overdueClientCount > 0 ? overdueClientCount : undefined,
+    overdue30ClientCount: overdue30ClientCount > 0 ? overdue30ClientCount : undefined,
   };
 }
 

@@ -403,7 +403,7 @@ export function DailyBriefingCard({
       </div>
 
       {actionSuccess && (
-        <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 transition-opacity">
+        <div className="text-xs text-[var(--copilot-success-text-strong)] bg-[var(--copilot-tone-positive-bg)] border border-[var(--copilot-success-border)] rounded-lg px-3 py-2 transition-opacity">
           Acción registrada correctamente.
         </div>
       )}

@@ -17,7 +17,7 @@ export function TreasuryFormField({ label, htmlFor, error, children }: Props) {
       <span className="mb-1 block text-sm font-medium text-[var(--copilot-ink)]">{label}</span>
       {children}
       {error ? (
-        <span className="mt-1 block text-xs text-rose-700" role="alert">
+        <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]" role="alert">
           {error}
         </span>
       ) : null}
@@ -26,5 +26,5 @@ export function TreasuryFormField({ label, htmlFor, error, children }: Props) {
 }
 
 export function treasuryInputClassName(error?: string) {
-  return `${TESORERIA_FIELD_CLASS}${error ? " border-rose-300 ring-rose-100" : ""}`;
+  return `${TESORERIA_FIELD_CLASS}${error ? " border-[var(--copilot-danger-border)] ring-rose-100" : ""}`;
 }

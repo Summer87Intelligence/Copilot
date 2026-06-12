@@ -43,27 +43,27 @@ function statusConfig(status: PipelineHealthStatus): {
   switch (status) {
     case "healthy":
       return {
-        icon: <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden />,
+        icon: <CheckCircle2 className="h-4 w-4 text-[var(--copilot-success-text)]" aria-hidden />,
         label: "Saludable",
-        pill: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+        pill: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border border-[var(--copilot-success-border)]",
       };
     case "degraded":
       return {
-        icon: <AlertTriangle className="h-4 w-4 text-amber-500" aria-hidden />,
+        icon: <AlertTriangle className="h-4 w-4 text-[var(--copilot-warning-text)]" aria-hidden />,
         label: "Degradado",
-        pill: "bg-amber-50 text-amber-700 border border-amber-200",
+        pill: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border border-[var(--copilot-warning-border)]",
       };
     case "stalled":
       return {
-        icon: <XCircle className="h-4 w-4 text-rose-500" aria-hidden />,
+        icon: <XCircle className="h-4 w-4 text-[var(--copilot-danger-text)]" aria-hidden />,
         label: "Detenido",
-        pill: "bg-rose-50 text-rose-700 border border-rose-200",
+        pill: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border border-[var(--copilot-danger-border)]",
       };
     default:
       return {
-        icon: <HelpCircle className="h-4 w-4 text-slate-400" aria-hidden />,
+        icon: <HelpCircle className="h-4 w-4 text-[var(--copilot-ink-muted)]" aria-hidden />,
         label: "Sin datos",
-        pill: "bg-slate-50 text-slate-500 border border-slate-200",
+        pill: "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink-muted)] border border-[var(--copilot-border)]",
       };
   }
 }
@@ -96,31 +96,31 @@ function realtimeStatusConfig(status: RealtimeConnectionStatus): {
   switch (status) {
     case "connected":
       return {
-        icon: <Radio className="h-3 w-3 text-emerald-600" aria-hidden />,
+        icon: <Radio className="h-3 w-3 text-[var(--copilot-success-text)]" aria-hidden />,
         label: "Realtime activo",
         hint: "Actualizaciones automáticas activadas · polling cada 60 s",
-        bar: "bg-emerald-50 border-emerald-200 text-emerald-800",
+        bar: "bg-[var(--copilot-tone-positive-bg)] border-[var(--copilot-success-border)] text-[var(--copilot-success-text-strong)]",
       };
     case "degraded":
       return {
-        icon: <Wifi className="h-3 w-3 text-amber-500" aria-hidden />,
+        icon: <Wifi className="h-3 w-3 text-[var(--copilot-warning-text)]" aria-hidden />,
         label: "Fallback activo",
         hint: "Realtime degradado · polling cada 15 s",
-        bar: "bg-amber-50 border-amber-200 text-amber-800",
+        bar: "bg-[var(--copilot-tone-warning-bg)] border-[var(--copilot-warning-border)] text-[var(--copilot-warning-text-strong)]",
       };
     case "disconnected":
       return {
-        icon: <WifiOff className="h-3 w-3 text-rose-500" aria-hidden />,
+        icon: <WifiOff className="h-3 w-3 text-[var(--copilot-danger-text)]" aria-hidden />,
         label: "Sin conexión realtime",
         hint: "Polling cada 15 s como fallback",
-        bar: "bg-rose-50 border-rose-200 text-rose-800",
+        bar: "bg-[var(--copilot-tone-danger-bg)] border-[var(--copilot-danger-border)] text-[var(--copilot-danger-text-strong)]",
       };
     default:
       return {
-        icon: <Radio className="h-3 w-3 text-slate-400 animate-pulse" aria-hidden />,
+        icon: <Radio className="h-3 w-3 text-[var(--copilot-ink-muted)] animate-pulse" aria-hidden />,
         label: "Conectando…",
         hint: "Estableciendo conexión realtime",
-        bar: "bg-slate-50 border-slate-200 text-slate-600",
+        bar: "bg-[var(--copilot-soft-bg)] border-[var(--copilot-border)] text-[var(--copilot-ink-muted)]",
       };
   }
 }
@@ -156,7 +156,7 @@ function ConnectionStatusBar({
           <Loader2 className="h-3 w-3 animate-spin opacity-60" aria-hidden />
         )}
         {refreshError && (
-          <span className="text-rose-700">Error al refrescar</span>
+          <span className="text-[var(--copilot-danger-text-strong)]">Error al refrescar</span>
         )}
         {!refreshError && lastUpdatedAt && (
           <span className="opacity-70">Actualizado {lastUpdatedStr}</span>
@@ -174,17 +174,17 @@ function AlertsBar({ summaries }: { summaries: PipelineHealthSummary[] }) {
 
   return (
     <div
-      className="space-y-1.5 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3"
+      className="space-y-1.5 rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)]/80 px-4 py-3"
       aria-label="Alertas operativas de pipelines"
     >
-      <p className="text-xs font-semibold uppercase tracking-wide text-amber-900">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-warning-text-strong)]">
         Alertas operativas
       </p>
       <ul className="space-y-1">
         {alerts.map((a, i) => (
-          <li key={i} className="flex items-start gap-1.5 text-xs text-amber-800">
+          <li key={i} className="flex items-start gap-1.5 text-xs text-[var(--copilot-warning-text-strong)]">
             <AlertTriangle
-              className="mt-0.5 h-3 w-3 shrink-0 text-amber-500"
+              className="mt-0.5 h-3 w-3 shrink-0 text-[var(--copilot-warning-text)]"
               aria-hidden
             />
             <span>
@@ -246,15 +246,15 @@ function PipelineCard({ summary }: { summary: PipelineHealthSummary }) {
           </span>
         </div>
         {summary.consecutive_failures > 0 && (
-          <p className="text-amber-700">
+          <p className="text-[var(--copilot-warning-text-strong)]">
             {summary.consecutive_failures} fallo{summary.consecutive_failures !== 1 ? "s" : ""} consecutivo{summary.consecutive_failures !== 1 ? "s" : ""}
           </p>
         )}
         {summary.is_overdue && summary.last_run_at && (
-          <p className="text-amber-700">Fuera de ventana esperada</p>
+          <p className="text-[var(--copilot-warning-text-strong)]">Fuera de ventana esperada</p>
         )}
         {summary.last_error_summary && (
-          <p className="truncate text-rose-600" title={summary.last_error_summary}>
+          <p className="truncate text-[var(--copilot-danger-text)]" title={summary.last_error_summary}>
             {summary.last_error_summary}
           </p>
         )}
@@ -265,11 +265,11 @@ function PipelineCard({ summary }: { summary: PipelineHealthSummary }) {
 
 function Metric({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
   return (
-    <div className="rounded-lg bg-slate-50/80 px-3 py-2 text-center">
+    <div className="rounded-lg bg-[var(--copilot-soft-bg)]/80 px-3 py-2 text-center">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
         {label}
       </p>
-      <p className={`mt-0.5 text-sm font-semibold tabular-nums ${danger ? "text-rose-600" : "text-[var(--copilot-ink)]"}`}>
+      <p className={`mt-0.5 text-sm font-semibold tabular-nums ${danger ? "text-[var(--copilot-danger-text)]" : "text-[var(--copilot-ink)]"}`}>
         {value}
       </p>
     </div>
@@ -304,13 +304,13 @@ export function PipelineHealthPanel({
     return (
       <div className="space-y-3">
         {realtimeStatus !== undefined && (
-          <div className="h-8 animate-pulse rounded-lg bg-slate-100/70" />
+          <div className="h-8 animate-pulse rounded-lg bg-[var(--copilot-soft-bg)]/70" />
         )}
         <div className="grid gap-3 sm:grid-cols-3">
           {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="h-36 animate-pulse rounded-xl border border-[var(--copilot-border)] bg-slate-100/70"
+              className="h-36 animate-pulse rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)]/70"
             />
           ))}
         </div>
@@ -329,7 +329,7 @@ export function PipelineHealthPanel({
             refreshError
           />
         )}
-        <div className="rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
+        <div className="rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)]/90 px-4 py-3 text-sm text-[var(--copilot-warning-text-strong)]">
           {error}
         </div>
       </div>
@@ -360,8 +360,8 @@ export function PipelineHealthPanel({
       <AlertsBar summaries={summaries} />
 
       {allHealthy && (
-        <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-2.5 text-sm text-emerald-800">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden />
+        <div className="flex items-center gap-2 rounded-xl border border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)]/80 px-4 py-2.5 text-sm text-[var(--copilot-success-text-strong)]">
+          <CheckCircle2 className="h-4 w-4 text-[var(--copilot-success-text)]" aria-hidden />
           Todos los pipelines operativos
         </div>
       )}

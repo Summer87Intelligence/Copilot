@@ -68,15 +68,15 @@ export function DecisionesShell() {
 
   if (error && !briefing) {
     return (
-      <div className="rounded-xl border border-rose-200 bg-rose-50 p-5 flex gap-3">
-        <AlertCircle className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
+      <div className="rounded-xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] p-5 flex gap-3">
+        <AlertCircle className="h-5 w-5 text-[var(--copilot-danger-text)] shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-medium text-rose-800">Error al cargar el motor de decisiones</p>
-          <p className="text-xs text-rose-700 mt-0.5">{error}</p>
+          <p className="text-sm font-medium text-[var(--copilot-danger-text-strong)]">Error al cargar el motor de decisiones</p>
+          <p className="text-xs text-[var(--copilot-danger-text-strong)] mt-0.5">{error}</p>
           <button
             type="button"
             onClick={() => void fetchBriefing(false)}
-            className="mt-2 text-xs font-medium text-rose-700 hover:underline"
+            className="mt-2 text-xs font-medium text-[var(--copilot-danger-text-strong)] hover:underline"
           >
             Reintentar
           </button>

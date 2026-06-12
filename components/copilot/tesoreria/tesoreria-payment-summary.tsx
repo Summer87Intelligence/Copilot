@@ -45,13 +45,13 @@ export function TesoreriaPaymentSummary({ workspace, asOfDate }: Props) {
               </div>
               <div className="flex items-baseline justify-between gap-3">
                 <dt className="text-[var(--copilot-ink-muted)]">Vencidos</dt>
-                <dd className="font-semibold tabular-nums text-rose-700">
+                <dd className="font-semibold tabular-nums text-[var(--copilot-danger-text)]">
                   {formatTreasuryMoney(s.overdue, s.currency)}
                 </dd>
               </div>
               <div className="flex items-baseline justify-between gap-3">
                 <dt className="text-[var(--copilot-ink-muted)]">Pagados del período</dt>
-                <dd className="font-semibold tabular-nums text-emerald-700">
+                <dd className="font-semibold tabular-nums text-[var(--copilot-success-text)]">
                   {formatTreasuryMoney(s.paidInPeriod, s.currency)}
                 </dd>
               </div>

@@ -220,9 +220,9 @@ export function ClientOperationalSummaryCard({
       onKeyDown={onKeyDown}
       className={`group rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-surface)] p-3 shadow-sm outline-none transition-all duration-200 hover:border-[var(--copilot-border)]/80 focus-visible:ring-2 focus-visible:ring-[var(--copilot-accent)]/50 border-l-[3px] ${priorityBorderClass} ${
         seen ? "opacity-55" : ""
-      } ${completed ? "border-emerald-200 bg-emerald-50/20" : ""} ${
+      } ${completed ? "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)]/20" : ""} ${
         focused ? "ring-2 ring-[var(--copilot-accent)]/60" : ""
-      } ${ownership.ownership_overdue ? "bg-rose-50/10" : ""}`}
+      } ${ownership.ownership_overdue ? "bg-[var(--copilot-tone-danger-bg)]/10" : ""}`}
     >
       {/* Header + badges */}
       <div className="flex items-start justify-between gap-2">
@@ -234,7 +234,7 @@ export function ClientOperationalSummaryCard({
             {badges.map((b) => (
               <span
                 key={b.id}
-                className={`inline-flex rounded border px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide ${BADGE_TONE_CLASS[b.tone]}`}
+                className={`inline-flex rounded border px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide ${BADGE_TONE_CLASS[b.tone]}`}
               >
                 {b.label}
               </span>
@@ -242,7 +242,7 @@ export function ClientOperationalSummaryCard({
           </div>
         </div>
         {summary.tasks_count > 1 && (
-          <span className="shrink-0 text-[9px] text-[var(--copilot-text-muted)] tabular-nums">
+          <span className="shrink-0 text-[10px] text-[var(--copilot-text-muted)] tabular-nums">
             {summary.tasks_count} señales
           </span>
         )}
@@ -256,7 +256,7 @@ export function ClientOperationalSummaryCard({
 
       {/* Recovery likelihood — inline, no colored block */}
       <p className="mt-1.5 text-[11px] text-[var(--copilot-text-secondary)] leading-snug">
-        <span className="font-medium text-[var(--copilot-text-muted)] text-[9px] uppercase tracking-wide mr-1">
+        <span className="font-medium text-[var(--copilot-text-muted)] text-[10px] uppercase tracking-wide mr-1">
           Recuperación:
         </span>
         {recoveryLikelihoodLine}
@@ -276,12 +276,12 @@ export function ClientOperationalSummaryCard({
       {/* Ownership */}
       <div className="mt-2 flex items-center gap-2 border-t border-[var(--copilot-border)]/60 pt-1.5">
         <div
-          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold ${
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
             ownership.is_unassigned
-              ? "bg-slate-100 text-slate-500"
+              ? "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink-muted)]"
               : ownership.is_mine
                 ? "bg-[var(--copilot-accent)]/15 text-[var(--copilot-accent)]"
-                : "bg-slate-200 text-slate-700"
+                : "bg-[var(--copilot-border)] text-[var(--copilot-ink)]"
           }`}
         >
           {ownership.is_unassigned ? "—" : assigneeInitials(ownership.assignee_display_name)}
@@ -289,7 +289,7 @@ export function ClientOperationalSummaryCard({
         <p className="text-[11px] text-[var(--copilot-text-secondary)] truncate">
           {ownership.assignee_display_name}
           {ownership.ownership_overdue && (
-            <span className="ml-1 text-[9px] font-semibold text-rose-600">· SLA</span>
+            <span className="ml-1 text-[10px] font-semibold text-[var(--copilot-danger-text)]">· SLA</span>
           )}
         </p>
       </div>
@@ -313,7 +313,7 @@ export function ClientOperationalSummaryCard({
           <div className="mt-2 space-y-2">
             {/* Priority explanation */}
             <div>
-              <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
                 Por qué está priorizado
               </p>
               <p className="text-[11px] text-[var(--copilot-text-secondary)] leading-snug mt-0.5">
@@ -342,7 +342,7 @@ export function ClientOperationalSummaryCard({
 
             {/* Live state grid */}
             <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] text-[var(--copilot-text-muted)]">
-              <span className="col-span-2 text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
+              <span className="col-span-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-text-muted)]">
                 Estado operacional
               </span>
               <span>
@@ -360,7 +360,7 @@ export function ClientOperationalSummaryCard({
                 <span className="text-[var(--copilot-text-secondary)]">SLA:</span> {live.sla_label}
               </span>
               {live.transitioned_at && (
-                <span className="col-span-2 text-[9px] text-[var(--copilot-text-muted)] truncate">
+                <span className="col-span-2 text-[10px] text-[var(--copilot-text-muted)] truncate">
                   Transición {new Date(live.transitioned_at).toLocaleDateString("es-UY")}
                   {live.transition_reason ? ` · ${live.transition_reason}` : ""}
                 </span>
@@ -447,7 +447,7 @@ export function ClientOperationalSummaryCard({
           className="inline-flex items-center gap-1 rounded-md border border-[var(--copilot-border)] px-2 py-1 text-[11px] text-[var(--copilot-text-muted)] hover:bg-[var(--copilot-surface-alt)]"
           title="Atajo: C"
         >
-          {copied ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
+          {copied ? <Check className="h-3 w-3 text-[var(--copilot-success-text)]" /> : <Copy className="h-3 w-3" />}
           {copied ? "Copiado" : "Copiar"}
         </button>
         {onMarkSeen && !seen && !completed && (

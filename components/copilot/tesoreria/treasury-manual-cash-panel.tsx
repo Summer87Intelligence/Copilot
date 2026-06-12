@@ -83,13 +83,13 @@ const MATCH_STATUS_LABELS: Record<TreasuryMovementAccountingMatchStatus, string>
 };
 
 const MATCH_STATUS_BADGE_CLASS: Record<TreasuryMovementAccountingMatchStatus, string> = {
-  pending: "bg-gray-100 text-gray-600",
-  matched: "bg-emerald-100 text-emerald-800",
-  amount_mismatch: "bg-amber-100 text-amber-800",
-  currency_mismatch: "bg-amber-100 text-amber-800",
-  date_mismatch: "bg-amber-100 text-amber-800",
-  missing_zeta_entry: "bg-rose-100 text-rose-700",
-  manually_confirmed: "bg-blue-100 text-blue-700",
+  pending: "bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-muted)]",
+  matched: "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-success-text-strong)]",
+  amount_mismatch: "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-warning-text-strong)]",
+  currency_mismatch: "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-warning-text-strong)]",
+  date_mismatch: "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-warning-text-strong)]",
+  missing_zeta_entry: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-danger-text)]",
+  manually_confirmed: "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)]",
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -453,11 +453,11 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                       {savingAccountingId === row.id ? (
                         <Loader2 className="h-4 w-4 animate-spin text-[var(--copilot-ink-muted)]" />
                       ) : accountingMap.get(row.id)?.accountingPosted ? (
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                        <CheckCircle2 className="h-4 w-4 text-[var(--copilot-success-text)]" />
                       ) : (
                         <XCircle className="h-4 w-4 text-[var(--copilot-ink-muted)]" />
                       )}
-                      <span className={accountingMap.get(row.id)?.accountingPosted ? "text-emerald-700 font-medium" : "text-[var(--copilot-ink-muted)]"}>
+                      <span className={accountingMap.get(row.id)?.accountingPosted ? "text-[var(--copilot-success-text)] font-medium" : "text-[var(--copilot-ink-muted)]"}>
                         {accountingMap.get(row.id)?.accountingPosted ? "Sí" : "No"}
                       </span>
                     </button>
@@ -622,7 +622,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                   required
                 />
                 {errors.concept ? (
-                  <span className="mt-1 block text-xs text-rose-700" role="alert">
+                  <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]" role="alert">
                     {errors.concept}
                   </span>
                 ) : null}

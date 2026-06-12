@@ -21,10 +21,10 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_CLS: Record<string, string> = {
-  overdue: "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
-  planned: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
+  overdue: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text)] ring-1 ring-rose-200",
+  planned: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text)] ring-1 ring-amber-200",
   confirmed: "bg-sky-50 text-sky-700 ring-1 ring-sky-200",
-  paid: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
+  paid: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text)] ring-1 ring-emerald-200",
   cancelled: "bg-[var(--copilot-accent-soft)] text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)]",
 };
 
@@ -84,9 +84,9 @@ function EditPaymentRow({
           <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={TESORERIA_FIELD_CLASS} />
         </label>
       </div>
-      {error ? <p className="mt-1 text-xs text-rose-600">{error}</p> : null}
+      {error ? <p className="mt-1 text-xs text-[var(--copilot-danger-text)]">{error}</p> : null}
       <div className="mt-2 flex gap-2">
-        <button type="button" onClick={() => void save()} disabled={saving} className="rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]">
+        <button type="button" onClick={() => void save()} disabled={saving} className="rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-[var(--copilot-on-accent)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]">
           {saving ? "Guardando…" : "Guardar"}
         </button>
         <button type="button" onClick={onClose} className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]">
@@ -125,8 +125,8 @@ function MarkPaidConfirm({
   };
 
   return (
-    <div className="border-t border-emerald-100 bg-emerald-50/60 px-3 py-3">
-      <p className="mb-2 text-xs font-semibold text-emerald-900">Marcar como pagado</p>
+    <div className="border-t border-emerald-100 bg-[var(--copilot-tone-positive-bg)] px-3 py-3">
+      <p className="mb-2 text-xs font-semibold text-[var(--copilot-success-text-strong)]">Marcar como pagado</p>
       <label className="mb-2 block">
         <span className={TESORERIA_FORM_LABEL_CLASS}>
           {TESORERIA_PAYMENT_FIELD.monto} final ({obl.currencyCode})
@@ -138,7 +138,7 @@ function MarkPaidConfirm({
         <span className="text-[var(--copilot-ink)]">Registrar egreso en caja automáticamente</span>
       </label>
       <div className="flex gap-2">
-        <button type="button" onClick={() => void confirm()} disabled={saving} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]">
+        <button type="button" onClick={() => void confirm()} disabled={saving} className="rounded-lg bg-[var(--copilot-success-button-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--copilot-on-accent)] hover:bg-[var(--copilot-success-button-hover)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]">
           {saving ? "Marcando…" : "Confirmar pago"}
         </button>
         <button type="button" onClick={onClose} className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]">
@@ -171,15 +171,15 @@ function CancelConfirm({
   };
 
   return (
-    <div className="border-t border-amber-100 bg-amber-50/60 px-3 py-3">
+    <div className="border-t border-amber-100 bg-[var(--copilot-tone-warning-bg)] px-3 py-3">
       <div className="flex items-start gap-2">
-        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" aria-hidden />
-        <p className="text-xs text-amber-900">
+        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--copilot-warning-text)]" aria-hidden />
+        <p className="text-xs text-[var(--copilot-warning-text-strong)]">
           Se cancelará este pago. No afectará caja y el registro quedará como cancelado.
         </p>
       </div>
       <div className="mt-2 flex gap-2">
-        <button type="button" onClick={() => void confirm()} disabled={saving} className="rounded-lg border border-amber-200 bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-900 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]">
+        <button type="button" onClick={() => void confirm()} disabled={saving} className="rounded-lg border border-[var(--copilot-warning-border)] bg-[var(--copilot-badge-warning-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--copilot-warning-text-strong)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]">
           {saving ? "Cancelando…" : "Confirmar cancelación"}
         </button>
         <button type="button" onClick={onClose} className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]">
@@ -222,12 +222,12 @@ function ProgramadoRow({
           <p className="mt-0.5 truncate text-xs font-medium text-[var(--copilot-ink)]">{obl.title}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <span className="text-sm font-bold tabular-nums text-rose-700">
+          <span className="text-sm font-bold tabular-nums text-[var(--copilot-danger-text)]">
             {formatTreasuryMoney(amount, obl.currencyCode)}
           </span>
           {isPending && canWrite ? (
             <div className="flex gap-1">
-              <button type="button" onClick={() => setMode(mode === "markPaid" ? "view" : "markPaid")} className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700 hover:bg-emerald-100">
+              <button type="button" onClick={() => setMode(mode === "markPaid" ? "view" : "markPaid")} className="rounded-lg border border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] px-2 py-1 text-[10px] font-semibold text-[var(--copilot-success-text)] hover:bg-[var(--copilot-badge-success-bg)]">
                 Pagar
               </button>
               <button type="button" onClick={() => setMode(mode === "edit" ? "view" : "edit")} className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2 py-1 text-[10px] text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]">
@@ -298,7 +298,7 @@ export function TreasuryProgramadosPanel({
       {loading ? (
         <div className="space-y-2">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-14 animate-pulse rounded-2xl bg-[rgba(44,40,37,0.07)]" />
+            <div key={i} className="h-14 animate-pulse rounded-2xl bg-[var(--copilot-soft-bg)]" />
           ))}
         </div>
       ) : paid.length === 0 ? (

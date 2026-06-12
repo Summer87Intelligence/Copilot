@@ -22,6 +22,7 @@ export const COPILOT_API_MODULE_PREFIXES: ReadonlyArray<readonly [string, Module
   ["/api/copilot/manual.pdf", "manual"],
   ["/api/copilot/portfolio", "cartera"],
   ["/api/copilot/collection-actions", "cartera"],
+  ["/api/copilot/payment-behavior", "cartera"],
   ["/api/copilot/client-360", "clientes"],
   ["/api/copilot/clients", "clientes"],
   ["/api/copilot/clientes", "clientes"],

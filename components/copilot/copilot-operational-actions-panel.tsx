@@ -440,7 +440,7 @@ export function CopilotOperationalActionsPanel({
         </p>
       ) : null}
       {bootstrapError ? (
-        <p className="mb-3 text-sm text-rose-800" role="alert">
+        <p className="mb-3 text-sm text-[var(--copilot-danger-text-strong)]" role="alert">
           {bootstrapError}
         </p>
       ) : null}
@@ -756,7 +756,7 @@ export function CopilotOperationalActionsPanel({
                 {resolvedToday.map((action) => (
                   <li
                     key={action.id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200/70 bg-emerald-50/50 px-3 py-2 text-sm"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--copilot-success-border)]/70 bg-[var(--copilot-tone-positive-bg)]/50 px-3 py-2 text-sm"
                   >
                     <span className="font-medium text-[var(--copilot-ink)]">{action.title}</span>
                     <span className="text-xs text-[var(--copilot-ink-muted)]">

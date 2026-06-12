@@ -224,12 +224,12 @@ export function CollectionActionModal({ client, onClose, onSuccess, defaultValue
           </div>
 
           {error && (
-            <p className="text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded px-3 py-2">
+            <p className="text-xs text-[var(--copilot-danger-text)] bg-[var(--copilot-tone-danger-bg)] border border-[var(--copilot-danger-border)] rounded px-3 py-2">
               {error}
             </p>
           )}
           {saved ? (
-            <p className="text-xs font-medium text-emerald-600">Gestión registrada</p>
+            <p className="text-xs font-medium text-[var(--copilot-success-text)]">Gestión registrada</p>
           ) : null}
 
           <div className="flex justify-end gap-2 pt-1">

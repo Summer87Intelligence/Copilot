@@ -21,23 +21,23 @@ const SEVERITY_STYLES: Record<
   { badge: string; bar: string; label: string }
 > = {
   critical: {
-    badge: "bg-rose-50 text-rose-700 border border-rose-200",
-    bar: "bg-rose-500",
+    badge: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border border-[var(--copilot-danger-border)]",
+    bar: "bg-[var(--copilot-danger-text)]",
     label: "Crítica",
   },
   high: {
-    badge: "bg-amber-50 text-amber-700 border border-amber-200",
-    bar: "bg-amber-400",
+    badge: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border border-[var(--copilot-warning-border)]",
+    bar: "bg-[var(--copilot-warning-text)]",
     label: "Alta",
   },
   medium: {
-    badge: "bg-blue-50 text-blue-700 border border-blue-100",
-    bar: "bg-blue-400",
+    badge: "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)] border border-[var(--copilot-border)]",
+    bar: "bg-[var(--copilot-accent)]",
     label: "Media",
   },
   low: {
-    badge: "bg-slate-100 text-slate-500 border border-slate-200",
-    bar: "bg-slate-300",
+    badge: "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink-muted)] border border-[var(--copilot-border)]",
+    bar: "bg-[var(--copilot-border)]",
     label: "Baja",
   },
 };

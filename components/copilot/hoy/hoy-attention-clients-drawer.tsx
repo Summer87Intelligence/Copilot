@@ -51,7 +51,7 @@ export function AttentionClientsDrawer({
           <p className="text-xl font-bold text-[var(--copilot-ink)]">{data.total}</p>
         </div>
         <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-2.5">
-          <p className="text-[var(--copilot-ink-muted)]">Vencido UYU</p>
+          <p className="text-[var(--copilot-ink-muted)]">Atrasado UYU</p>
           <MoneyValue
             amount={
               data.vencidoTotalUyu > 0
@@ -66,7 +66,7 @@ export function AttentionClientsDrawer({
           />
         </div>
         <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-2.5">
-          <p className="text-[var(--copilot-ink-muted)]">Vencido USD</p>
+          <p className="text-[var(--copilot-ink-muted)]">Atrasado USD</p>
           <MoneyValue
             amount={
               data.vencidoTotalUsd > 0
@@ -81,7 +81,7 @@ export function AttentionClientsDrawer({
           />
         </div>
         <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-2.5">
-          <p className="text-[var(--copilot-ink-muted)]">Deuda actual UYU</p>
+          <p className="text-[var(--copilot-ink-muted)]">Total pendiente UYU</p>
           <MoneyValue
             amount={
               data.deudaTotalUyu > 0
@@ -96,7 +96,7 @@ export function AttentionClientsDrawer({
           />
         </div>
         <div className="col-span-2 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-2.5">
-          <p className="text-[var(--copilot-ink-muted)]">Deuda actual USD</p>
+          <p className="text-[var(--copilot-ink-muted)]">Total pendiente USD</p>
           <MoneyValue
             amount={
               data.deudaTotalUsd > 0
@@ -135,7 +135,7 @@ export function AttentionClientsDrawer({
               {c.motivos.map((m) => (
                 <span
                   key={m}
-                  className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-700"
+                  className="rounded-md bg-[var(--copilot-badge-neutral-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--copilot-ink)]"
                 >
                   {m}
                 </span>
