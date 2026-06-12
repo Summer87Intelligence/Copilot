@@ -29,6 +29,10 @@
       "schedule": "55 */6 * * *"
     },
     {
+      "path": "/api/cron/zeta-integrity-audit",
+      "schedule": "25 */6 * * *"
+    },
+    {
       "path": "/api/cron/zeta-resync-worker",
       "schedule": "20 1,7,13,19 * * *"
     },
@@ -47,6 +51,10 @@
     {
       "path": "/api/cron/zeta-financial-health",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/notifications-generate-all-tenants",
+      "schedule": "45 */2 * * *"
     }
   ]
 }

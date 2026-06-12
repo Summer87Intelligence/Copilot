@@ -74,6 +74,10 @@ import {
 } from "@/lib/integrations/zeta/zeta-invoice-registro-metadata-merge";
 import { findFallbackProtoInvoiceForSaldoRow } from "@/lib/integrations/zeta/zeta-saldos-fallback-match";
 import {
+  ZETA_SHADOW_CATEGORY,
+  detectActiveCcv1TwinForShadow,
+} from "@/lib/integrations/zeta/zeta-shadow-uniqueness-detector";
+import {
   COPILOT_OPERATIONAL_START_DATE,
   isPreOperationalPeriod,
 } from "@/lib/copilot-operational-period";
@@ -1199,6 +1203,44 @@ async function persistZetaInvoice(
   }
 
   const input = zetaInvoiceToProtoInput(inv, syncRunId);
+
+  // ── Guardrail final (defense-in-depth): si el invoice_number a punto de
+  // persistirse es una sombra `ZETA:{RegistroId}` (legacy shadow) y existe
+  // una CCV1 activa gemela del mismo cliente/moneda/fecha/total ±0.20, no
+  // se crea la sombra. El detector central reproduce las reglas de la
+  // migración `20260612000000_fix_zeta_invoice_shadow_duplicates_june_2026`
+  // y del cleanup histórico abr/may 2026.
+  if (
+    isZetaLegacyShadowInvoiceNumber(input.invoice_number) &&
+    input.category === ZETA_SHADOW_CATEGORY &&
+    Number.isFinite(input.total_amount ?? 0) &&
+    (input.total_amount ?? 0) > 0
+  ) {
+    const twinOutcome = await detectActiveCcv1TwinForShadow(supabase, {
+      workspaceCompanyId: wid,
+      companyId: inv.companyId,
+      currencyCode: currencyCode,
+      issueYmd: inv.issueDate,
+      totalAmount: input.total_amount ?? 0,
+    });
+    if (twinOutcome.kind === "twin_present") {
+      pipelineEmit("warn", "zeta_saldos_shadow_suppressed_due_to_ccv1_twin", {
+        request_id: requestId,
+        sync_run_id: syncRunId,
+        tenant_id: wid,
+        zeta_registro_id: inv.zetaId,
+        legacy_invoice_number: input.invoice_number,
+        balance_payload: bal,
+        total_amount: input.total_amount,
+        issue_date: inv.issueDate,
+        currency_code: currencyCode,
+        ccv1_candidate_count: twinOutcome.candidates.length,
+        ccv1_candidates: twinOutcome.candidates.slice(0, 5),
+      });
+      return "skip";
+    }
+  }
+
   if (
     isZetaSaldosMatchWatchInvoice(input.invoice_number) &&
     isZetaLegacyShadowInvoiceNumber(input.invoice_number)

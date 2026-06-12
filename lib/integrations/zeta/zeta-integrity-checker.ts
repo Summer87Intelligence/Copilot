@@ -29,6 +29,7 @@ import {
   resolveStaleIntegrityViolations,
   upsertIntegrityViolation,
 } from "@/lib/data/zeta-enterprise-sync-repository";
+import { findActiveShadowDuplicatesInPeriod } from "@/lib/integrations/zeta/zeta-shadow-uniqueness-detector";
 
 type CheckResult = {
   violations: IntegrityViolation[];
@@ -200,6 +201,75 @@ async function checkInvoiceDuplicateNumber(
       metadata: { count: row.count },
     })),
   };
+}
+
+/**
+ * Ventana de scan para sombras Zeta vs CCV1: últimos 12 meses + futuro
+ * cercano (cobertura de facturas con issue_date futura). El detector hace
+ * un único pase de paginación por workspace; costo controlado para
+ * 5000 filas/página × 100 páginas máx en `findActiveShadowDuplicatesInPeriod`.
+ */
+const SHADOW_SCAN_LOOKBACK_DAYS = 365;
+const SHADOW_SCAN_LOOKAHEAD_DAYS = 30;
+
+function ymd(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Detecta sombras `ZETA:{RegistroId}` activas que tienen una CCV1 activa
+ * gemela (mismo company / moneda / fecha / total ±0.20). Origen: pipeline
+ * de saldos que no logró matchear contra una CCV1 ya persistida — caso
+ * ZETA-08 cuando Zeta omite `RegistroId` del payload CCV1.
+ *
+ * Filas marcadas `review_required = true` en `zeta_metadata.cleanup_audit`
+ * se reportan con severity `info` (visible pero no escalable). El resto
+ * son `critical`: inflan `salesPeriod*` del motor financiero hasta que se
+ * desactiven.
+ */
+async function checkInvoiceShadowDuplicateCcv1(
+  supabase: SupabaseClient,
+  workspaceId: string
+): Promise<CheckResult> {
+  const now = new Date();
+  const from = new Date(now);
+  from.setUTCDate(from.getUTCDate() - SHADOW_SCAN_LOOKBACK_DAYS);
+  const to = new Date(now);
+  to.setUTCDate(to.getUTCDate() + SHADOW_SCAN_LOOKAHEAD_DAYS);
+
+  const duplicates = await findActiveShadowDuplicatesInPeriod(supabase, workspaceId, {
+    from: ymd(from),
+    to: ymd(to),
+  });
+
+  if (duplicates.length === 0) return { violations: [] };
+
+  const violations: IntegrityViolation[] = [];
+  for (const d of duplicates.slice(0, 200)) {
+    const matched = d.candidates[0];
+    violations.push({
+      check_name: "invoice_shadow_duplicate_ccv1",
+      entity: "invoices",
+      record_id: d.shadow_id,
+      record_key: d.shadow_invoice_number,
+      description: d.review_required
+        ? `Sombra ZETA:{RegistroId} con CCV1 gemela activa — flag REVIEW_REQUIRED previo (cliente=${d.company_id} ${d.currency_code} ${d.total_amount} ${d.issue_date})`
+        : `Sombra ZETA:{RegistroId} duplica CCV1 activa ${matched?.invoice_number ?? "?"} — ${d.currency_code} ${d.total_amount} ${d.issue_date}`,
+      severity: d.review_required ? "info" : "critical",
+      metadata: {
+        currency_code: d.currency_code,
+        total_amount: d.total_amount,
+        issue_date: d.issue_date,
+        company_id: d.company_id,
+        candidate_count: d.candidates.length,
+        matched_ccv1_invoice_number: matched?.invoice_number ?? null,
+        matched_ccv1_invoice_id: matched?.invoice_id ?? null,
+        review_required: d.review_required,
+      },
+    });
+  }
+
+  return { violations };
 }
 
 // ── Receipt Checks ────────────────────────────────────────────────────────────
@@ -419,6 +489,7 @@ const ALL_CHECKS: CheckDefinition[] = [
   { name: "invoice_null_currency", entity: "invoices", fn: checkInvoiceNullCurrency },
   { name: "invoice_null_balance_pending", entity: "invoices", fn: checkInvoiceNullBalancePending },
   { name: "invoice_duplicate_number", entity: "invoices", fn: checkInvoiceDuplicateNumber },
+  { name: "invoice_shadow_duplicate_ccv1", entity: "invoices", fn: checkInvoiceShadowDuplicateCcv1 },
   { name: "invoice_invalid_issue_date", entity: "invoices", fn: checkInvoiceInvalidIssueDate },
   { name: "receipt_null_currency", entity: "receipts", fn: checkReceiptNullCurrency },
   { name: "receipt_negative_amount", entity: "receipts", fn: checkReceiptNegativeAmount },
