@@ -70,7 +70,9 @@ import {
 import {
   isZetaLegacyShadowInvoiceNumber,
   isZetaSaldosMatchWatchInvoice,
+  mergeRegistroIdIntoInvoiceZetaMetadata,
 } from "@/lib/integrations/zeta/zeta-invoice-registro-metadata-merge";
+import { findFallbackProtoInvoiceForSaldoRow } from "@/lib/integrations/zeta/zeta-saldos-fallback-match";
 import {
   COPILOT_OPERATIONAL_START_DATE,
   isPreOperationalPeriod,
@@ -363,6 +365,52 @@ async function buildSaldosDueDatePatch(
     return {};
   }
   return { due_date: syntheticDueDate, due_date_source: "synthetic_30d" };
+}
+
+/**
+ * Persiste el `RegistroId` de Zeta en `zeta_metadata` de la factura CCV1 que
+ * acaba de ser matcheada desde el endpoint de saldos. Esto cierra el loop
+ * ZETA-08: el siguiente sync usará la ruta rápida (1: RegistroId match)
+ * en lugar del heurístico o el fallback total/fecha.
+ *
+ * Lectura+merge+escritura: idempotente; si ya existe el RegistroId, no escribe.
+ */
+async function enrichProtoInvoiceWithZetaRegistroId(
+  supabase: SupabaseClient,
+  workspaceCompanyId: string,
+  invoiceId: string,
+  zetaRegistroId: string,
+  options: { source: string }
+): Promise<void> {
+  const wid = workspaceCompanyId.trim();
+  const { data, error } = await supabase
+    .from("proto_invoices")
+    .select("zeta_metadata")
+    .eq("id", invoiceId)
+    .eq("workspace_company_id", wid)
+    .maybeSingle();
+  if (error) return;
+  const row = data as { zeta_metadata?: unknown } | null;
+  const current = row?.zeta_metadata ?? null;
+  // Si ya tiene el mismo RegistroId persistido (en identity_v1 o voucher_v1),
+  // no hace falta reescribir.
+  if (invoiceZetaMetadataRegistroConsistentWithExpected(current, zetaRegistroId)) {
+    const meta = current as Record<string, unknown> | null;
+    const v1 = meta?.zeta_customer_voucher_v1 as Record<string, unknown> | undefined;
+    const existingV1Rid =
+      v1 != null && typeof v1.zeta_registro_id === "string"
+        ? v1.zeta_registro_id.trim()
+        : "";
+    if (existingV1Rid === zetaRegistroId) return;
+  }
+  const merged = mergeRegistroIdIntoInvoiceZetaMetadata(current, zetaRegistroId, {
+    backfill_source: options.source,
+  });
+  await supabase
+    .from("proto_invoices")
+    .update({ zeta_metadata: merged })
+    .eq("id", invoiceId)
+    .eq("workspace_company_id", wid);
 }
 
 async function readProtoInvoiceSaldoSnapshot(
@@ -888,6 +936,17 @@ async function persistZetaInvoice(
           new_status: status,
         });
       }
+      // Enriquecer metadata CCV1 con RegistroId — la ruta `ccv1InvoiceNumber`
+      // significa que el CCV1 existía pero su metadata no tenía `RegistroId`
+      // (Zeta no lo expone en `RESTComprobantesClienteV1Query`). Persistirlo
+      // ahora acelera los próximos syncs (registro_id direct match).
+      await enrichProtoInvoiceWithZetaRegistroId(
+        supabase,
+        wid,
+        ccv1Target,
+        inv.zetaId,
+        { source: "saldos_ccv1_invoice_number_match" }
+      ).catch(() => undefined);
       touchedInvoiceIds.add(ccv1Target);
       if (bal <= SHADOW_RECONCILE_EPSILON) {
         void maybeCloseShadowSupersededByCcv1(
@@ -1013,6 +1072,15 @@ async function persistZetaInvoice(
           new_status: status,
         });
       }
+      // Enriquecer metadata CCV1 con RegistroId para que el próximo sync use la
+      // ruta rápida (registro_id direct match) en lugar de re-correr heurístico.
+      await enrichProtoInvoiceWithZetaRegistroId(
+        supabase,
+        wid,
+        heuristicOutcome.invoice_id,
+        inv.zetaId,
+        { source: "saldos_heuristic_match" }
+      ).catch(() => undefined);
       touchedInvoiceIds.add(heuristicOutcome.invoice_id);
       return "update";
     }
@@ -1042,6 +1110,89 @@ async function persistZetaInvoice(
       saldo_serie: logSaldoSerie,
       saldo_numero: logSaldoNumero,
       ccv1_computed: ccv1,
+      total_amount_saldo: inv.totalAmount,
+      issue_date_saldo: inv.issueDate,
+    });
+  }
+
+  // Último intento antes de crear sombra: match conservador por
+  // (company_id + currency + issue_date + total ± tolerancia). Solo aplica si
+  // hay UNA única factura CCV1 activa compatible — si hay ambigüedad, se
+  // crea la sombra y queda auditoría para revisión manual.
+  // Cubre el caso ZETA-08 cuando el payload de comprobantes Zeta no expone
+  // `RegistroId` y el saldo response viene sin Serie/Numero (heurístico = none).
+  const fallbackOutcome = await findFallbackProtoInvoiceForSaldoRow(supabase, wid, {
+    companyId: inv.companyId,
+    currencyCode: currencyCode,
+    issueYmd: inv.issueDate,
+    totalAmount: inv.totalAmount,
+    zetaRegistroId: inv.zetaId,
+  });
+  if (fallbackOutcome.kind === "applied") {
+    pipelineEmit("info", "zeta_saldos_fallback_match_applied", {
+      request_id: requestId,
+      sync_run_id: syncRunId,
+      tenant_id: wid,
+      zeta_registro_id: inv.zetaId,
+      invoice_id: fallbackOutcome.invoice_id,
+      invoice_number: fallbackOutcome.invoice_number,
+      strategy: fallbackOutcome.strategy,
+      total_amount_saldo: inv.totalAmount,
+      issue_date_saldo: inv.issueDate,
+    });
+    const needSnapFb = diagOn || shouldLogZetaBalanceWrite(fallbackOutcome.invoice_number);
+    const prevFb = needSnapFb
+      ? await readProtoInvoiceSaldoSnapshot(supabase, wid, fallbackOutcome.invoice_id)
+      : null;
+    const upFb = await protoUpdateInvoice(
+      supabase,
+      fallbackOutcome.invoice_id,
+      {
+        balance_amount: bal,
+        status,
+        ...(currencyCode ? { currency_code: currencyCode } : {}),
+      },
+      wid,
+      { allowBalanceGtTotal: true }
+    );
+    if (!upFb.ok) throw new Error(upFb.message);
+    await maybeLogZetaBalanceWriteAfterUpdate(
+      supabase,
+      wid,
+      fallbackOutcome.invoice_id,
+      fallbackOutcome.invoice_number,
+      {
+        source: "saldos",
+        writer_process: "zeta_saldos_persist_fallback_company_total_date",
+        balance_payload: bal,
+        beforeSnap: prevFb
+          ? {
+              balance_amount: prevFb.balance_amount,
+              status: prevFb.status,
+              invoice_number: fallbackOutcome.invoice_number,
+            }
+          : null,
+        up: upFb,
+        zeta_registro_id: inv.zetaId,
+      }
+    );
+    await enrichProtoInvoiceWithZetaRegistroId(
+      supabase,
+      wid,
+      fallbackOutcome.invoice_id,
+      inv.zetaId,
+      { source: "saldos_fallback_match" }
+    ).catch(() => undefined);
+    touchedInvoiceIds.add(fallbackOutcome.invoice_id);
+    return "update";
+  }
+  if (fallbackOutcome.kind === "ambiguous") {
+    pipelineEmit("warn", "zeta_saldos_fallback_match_ambiguous", {
+      request_id: requestId,
+      sync_run_id: syncRunId,
+      tenant_id: wid,
+      zeta_registro_id: inv.zetaId,
+      candidates: fallbackOutcome.candidates,
       total_amount_saldo: inv.totalAmount,
       issue_date_saldo: inv.issueDate,
     });

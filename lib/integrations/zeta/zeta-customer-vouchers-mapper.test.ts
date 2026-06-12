@@ -293,6 +293,70 @@ describe("mapZetaCustomerVoucherToCopilot (RegistroId para cruce saldos)", () =>
     });
     expect(m.zeta_registro_id).toBe("5469");
   });
+
+  // ZETA-08 regression guard: si RegistroId llega como number (RESTFactura…
+  // saldos pendientes) debe persistirse como string trimado.
+  it("normaliza RegistroId numérico de la fila Zeta a string", () => {
+    const m = mapZetaCustomerVoucherToCopilot({
+      RegistroId: 5469,
+      Serie: "A",
+      Numero: 2654,
+      ClienteCodigo: "114",
+      EmpresaCodigo: "0",
+      Total: 318.18,
+    });
+    expect(m.zeta_registro_id).toBe("5469");
+  });
+
+  it("acepta camelCase registroId como alias de RegistroId", () => {
+    const m = mapZetaCustomerVoucherToCopilot({
+      registroId: " 2701 ",
+      Serie: "A",
+      Numero: 2937,
+      ClienteCodigo: "172",
+      EmpresaCodigo: "0",
+      Total: 36.60,
+    });
+    expect(m.zeta_registro_id).toBe("2701");
+  });
+
+  // Caso CCV1 real junio 2026: el endpoint `RESTComprobantesClienteV1Query`
+  // NO expone `RegistroId`. El mapper debe degradar a null sin romper otros
+  // campos. La sombra resultante se resuelve aguas abajo via fallback match
+  // del saldos pipeline o guardrail del motor.
+  it("zeta_registro_id = null cuando el payload de Zeta no expone RegistroId", () => {
+    const m = mapZetaCustomerVoucherToCopilot({
+      Serie: "A",
+      Numero: 2944,
+      ClienteCodigo: "33",
+      EmpresaCodigo: "0",
+      CFETipo: 111,
+      Total: 530.70,
+      Fecha: "20260604",
+    });
+    expect(m.zeta_registro_id).toBeNull();
+    // pero el resto del mapeo no debe romperse
+    expect(m.serie).toBe("A");
+    expect(m.numero).toBe("2944");
+    expect(m.total_recibo).toBe(530.70);
+  });
+
+  it("RegistroId string vacío o whitespace → null", () => {
+    const m1 = mapZetaCustomerVoucherToCopilot({
+      RegistroId: "",
+      Serie: "A",
+      Numero: 1,
+      Total: 100,
+    });
+    expect(m1.zeta_registro_id).toBeNull();
+    const m2 = mapZetaCustomerVoucherToCopilot({
+      RegistroId: "   ",
+      Serie: "A",
+      Numero: 1,
+      Total: 100,
+    });
+    expect(m2.zeta_registro_id).toBeNull();
+  });
 });
 
 describe("resolveCcV1InvoiceNumberFromZetaSaldoOrVoucherRow (cruce saldos ↔ vouchers)", () => {
