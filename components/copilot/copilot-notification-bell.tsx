@@ -17,6 +17,11 @@ import {
 
 import { useCopilotNotifications } from "@/hooks/use-copilot-notifications";
 import type { CopilotNotification } from "@/lib/copilot-notifications/notification-types";
+import {
+  dedupeNotificationsForDisplay,
+  normalizeNotificationBody,
+  normalizeNotificationTitle,
+} from "@/lib/copilot-notifications/notification-display";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -134,6 +139,8 @@ function NotifItem({
 }) {
   const unread = !n.read_at;
   const { bg, icon } = getIconConfig(n.type, n.severity);
+  const displayTitle = normalizeNotificationTitle(n.title, n.type);
+  const displayBody = normalizeNotificationBody(n.body, n.type);
   const cashImpactLine =
     n.type === "collection_received"
       ? collectionCashImpactLine(n.metadata)
@@ -158,8 +165,8 @@ function NotifItem({
         <div className="min-w-0 flex-1">
           {/* Title + unread dot */}
           <div className="flex items-start justify-between gap-2">
-            <p className="text-[13px] font-semibold leading-snug text-[var(--copilot-ink)]">
-              {n.title}
+            <p className="min-w-0 text-[13px] font-semibold leading-snug text-[var(--copilot-ink)]">
+              {displayTitle}
             </p>
             {unread ? (
               <span
@@ -170,9 +177,9 @@ function NotifItem({
           </div>
 
           {/* Body */}
-          {n.body ? (
-            <p className="mt-[3px] line-clamp-2 text-[12.5px] leading-relaxed text-[var(--copilot-ink-muted)]">
-              {n.body}
+          {displayBody ? (
+            <p className="mt-[3px] line-clamp-3 text-[12.5px] leading-relaxed text-[var(--copilot-ink-muted)]">
+              {displayBody}
             </p>
           ) : null}
 
@@ -260,7 +267,9 @@ export function CopilotNotificationBell() {
     .map((bucket) => ({
       key: bucket,
       label: BUCKET_LABELS[bucket],
-      items: notifications.filter((n) => dateBucket(n.created_at) === bucket),
+      items: dedupeNotificationsForDisplay(
+        notifications.filter((n) => dateBucket(n.created_at) === bucket)
+      ),
     }))
     .filter((g) => g.items.length > 0);
 
@@ -295,8 +304,7 @@ export function CopilotNotificationBell() {
       {open ? (
         <div
           ref={panelRef}
-          className="absolute right-0 top-full z-[80] mt-2 flex w-[420px] max-w-[calc(100vw-20px)] flex-col overflow-hidden rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-dropdown-bg)] shadow-2xl"
-          style={{ maxHeight: "min(560px, calc(100vh - 80px))" }}
+          className="fixed z-[80] flex max-h-[min(560px,calc(100dvh-4.5rem))] flex-col overflow-hidden rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-dropdown-bg)] shadow-2xl max-sm:left-[calc(3.5rem+0.5rem)] max-sm:right-2 max-sm:top-[calc(52px+0.5rem)] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[min(420px,calc(100vw-5rem))]"
         >
           {/* Header */}
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-b border-[var(--copilot-border)] px-4 py-3">

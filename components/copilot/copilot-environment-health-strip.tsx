@@ -26,12 +26,12 @@ export function CopilotEnvironmentHealthStrip({
   const { loading: pulseLoading } = useCopilotOperationalPulse();
 
   return (
-    <div className="relative z-[50] flex h-[52px] min-w-0 items-center justify-between gap-x-2 border-b border-[var(--copilot-border)] bg-[var(--copilot-header-bg)] px-4 sm:gap-x-3 sm:px-6 backdrop-blur-sm">
-      <div className="flex min-w-0 items-center gap-2">
+    <div className="relative z-[50] flex h-[52px] min-w-0 items-center justify-between gap-x-1.5 border-b border-[var(--copilot-border)] bg-[var(--copilot-header-bg)] px-3 sm:gap-x-3 sm:px-6 backdrop-blur-sm">
+      <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden sm:gap-2">
         <TodayDateDisplay />
-        {!pulseLoading ? <CopilotZetaSyncCompactPill className="hidden lg:inline-block" /> : null}
+        {!pulseLoading ? <CopilotZetaSyncCompactPill className="hidden xl:inline-block" /> : null}
       </div>
-      <div className="flex min-w-0 shrink-0 items-center justify-end gap-x-2 sm:gap-x-4">
+      <div className="flex shrink-0 items-center justify-end gap-x-1.5 sm:gap-x-4">
         {readOnlyLabel && readOnlyShort ? (
           <span
             className="inline-flex max-w-[5.5rem] shrink-0 items-center rounded-full border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-2 py-0.5 text-[10px] font-semibold leading-tight text-[var(--copilot-warning-text-strong)] sm:max-w-none sm:px-2.5 sm:text-xs"

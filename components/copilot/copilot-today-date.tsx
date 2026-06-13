@@ -27,15 +27,15 @@ export function TodayDateDisplay() {
   }
 
   return (
-    <div className="flex items-center gap-1.5 text-xs text-[var(--copilot-ink-muted)]">
+    <div className="flex min-w-0 items-center gap-1.5 text-xs text-[var(--copilot-ink-muted)]">
       <Calendar
         className="h-3.5 w-3.5 shrink-0 text-[var(--copilot-accent)]"
         aria-hidden
       />
-      <span className="hidden sm:inline font-medium text-[var(--copilot-ink)]">
+      <span className="hidden whitespace-nowrap font-medium text-[var(--copilot-ink)] sm:inline">
         {formatFull(date)}
       </span>
-      <span className="sm:hidden font-medium text-[var(--copilot-ink)]">
+      <span className="whitespace-nowrap font-medium text-[var(--copilot-ink)] sm:hidden">
         {formatShort(date)}
       </span>
     </div>

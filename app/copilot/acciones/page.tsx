@@ -710,7 +710,7 @@ function CopilotAccionesPageContent() {
                 onChange={(e) => setBandejaSearch(e.target.value)}
                 placeholder="Buscar cliente, empresa o concepto…"
                 aria-label="Buscar en acciones, agenda y novedades"
-                className="ml-auto h-7 min-w-[12rem] flex-1 rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 text-xs text-[var(--copilot-ink)] placeholder:text-[var(--copilot-ink-muted)] focus:border-[var(--copilot-accent)] focus:outline-none sm:max-w-xs sm:flex-none"
+                className="h-8 w-full min-w-0 rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 text-xs text-[var(--copilot-ink)] placeholder:text-[var(--copilot-ink-muted)] focus:border-[var(--copilot-accent)] focus:outline-none sm:ml-auto sm:h-7 sm:max-w-xs sm:flex-none"
               />
             </div>
           ) : null}

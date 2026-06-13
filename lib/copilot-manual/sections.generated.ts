@@ -34,7 +34,7 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
     includeInToc: true,
     blocks: [
       { type: "paragraph", text: "Hoy es la pantalla de operación diaria. Mirala cada mañana para saber qué resolver primero: caja, cobros urgentes y clientes atrasados." },
-      { type: "callout", variant: "tip", text: "Layout ejecutivo compacto — resumen en pocas cards, clientes con deuda arriba (tabla accionable) y detalle financiero al final. Menos scroll antes de actuar." },
+      { type: "callout", variant: "tip", text: "Layout ejecutivo compacto — resumen en pocas cards, clientes con deuda arriba (tabla accionable) y detalle financiero al final. En mobile (390px) las cards usan ancho completo, Ver detalle expande inline y la proyección al cierre del mes muestra fórmula legible por moneda." },
       { type: "callout", variant: "tip", text: "Acciones recomendadas — hasta 3 pasos con acción concreta, impacto esperado y CTA. Usa el mismo motor de prioridades de Hoy; no inventa tareas nuevas." },
       { type: "callout", variant: "info", text: "Fuente y trazabilidad — tira compacta bajo el encabezado: Fuente Zeta · Actualizado hace X horas · Período mes actual (u otro rango activo)." },
       { type: "callout", variant: "tip", text: "Tu día en una frase — al entrar, un bloque te dice qué hacer primero: gestionar clientes con deuda, revisar agenda de cobranza, ir a Tesorería o revisar acciones. Un CTA claro para no perderse." },

@@ -50,7 +50,7 @@ export function CopilotModuleSidebar({
   return (
     <aside
       className={`flex h-full min-h-0 shrink-0 flex-col overflow-x-hidden overflow-y-hidden border-r border-[var(--copilot-border)] bg-[var(--copilot-sidebar)] transition-[width] duration-200 ease-out ${
-        collapsed ? "w-16" : "w-[260px]"
+        collapsed ? "w-14 sm:w-16" : "w-[260px]"
       }`}
     >
       <div

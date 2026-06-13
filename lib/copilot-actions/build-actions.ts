@@ -49,6 +49,22 @@ function severityToPriority(
   return "medium";
 }
 
+function normalizeActionReason(text: string | null | undefined): string {
+  if (!text) return "";
+  return text
+    .replace(/\bcancel[oó]\s+su\s+saldo\s+pendiente\b/gi, "pagó su deuda")
+    .replace(/\best[aá]\s+vencid[oa]\b/gi, (m) =>
+      m.toLowerCase().includes("vencida") ? "está atrasada" : "está atrasado"
+    )
+    .replace(/\bvencid[oa]s?\b/gi, (m) => {
+      const lower = m.toLowerCase();
+      if (lower.endsWith("os")) return "atrasados";
+      if (lower.endsWith("as")) return "atrasadas";
+      if (lower.endsWith("a")) return "atrasada";
+      return "atrasado";
+    });
+}
+
 function extractEntityName(body: string | null, pattern: string): string | null {
   if (!body) return null;
   const idx = body.indexOf(pattern);
@@ -160,7 +176,7 @@ export function buildActionsFromNotifications(
       type,
       priority,
       title,
-      reason,
+      reason: normalizeActionReason(reason),
       amount: n.amount,
       currency: n.currency,
       entityId: n.entity_id,
@@ -206,9 +222,11 @@ export function buildActionsFromPortfolioRows(
         : row.overdue_debt;
     const currency = hasOverdueUyu ? "UYU" : hasOverdueUsd ? "USD" : undefined;
 
-    const reason = hasOverdue
-      ? `Deuda atrasada de ${row.name}. Riesgo ${row.risk}.`
-      : `Deuda actual de ${row.name}.`;
+    const reason = normalizeActionReason(
+      hasOverdue
+        ? `Deuda atrasada de ${row.name}. Riesgo ${row.risk}.`
+        : `Deuda actual de ${row.name}.`
+    );
 
     actions.push({
       id: `portfolio-${row.company_id}`,

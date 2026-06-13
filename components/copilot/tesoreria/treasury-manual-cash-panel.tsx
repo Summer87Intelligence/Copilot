@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, Loader2, SlidersHorizontal, XCircle } from "lucide-react";
 
 import type { TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
 
@@ -124,6 +124,61 @@ function formatMovementAmount(row: ManualCashMovement): { text: string; classNam
   return { text: formatted, className: "text-[var(--copilot-ink-muted)]" };
 }
 
+function MovementMobileCard({
+  row,
+  canWrite,
+  onEdit,
+  onDelete,
+  onArchive,
+}: {
+  row: ManualCashMovement;
+  canWrite: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  onArchive: () => void;
+}) {
+  const amt = formatMovementAmount(row);
+  const typeLabel = TYPE_LABELS[row.movementType] ?? row.movementType;
+  const typeClass = TYPE_CELL_CLASS[row.movementType] ?? "text-[var(--copilot-ink-muted)]";
+
+  return (
+    <article className="w-full min-w-0 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-3">
+      <p className="text-sm font-semibold leading-snug text-[var(--copilot-ink)]">{row.concept}</p>
+      <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
+        {formatCopilotDate(row.movementDate, "compact")} ·{" "}
+        <span className={typeClass}>{typeLabel}</span> · {row.currencyCode}
+      </p>
+      <p className={`mt-1.5 text-base tabular-nums ${amt.className}`}>{amt.text}</p>
+      <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
+        Estado: {row.status === "active" ? "Activo" : "Archivado"}
+      </p>
+      {canWrite ? (
+        <div className="mt-2.5 flex flex-wrap gap-2">
+          <CopilotButton
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={onEdit}
+            disabled={!isManualCashMovementDeletable(row)}
+          >
+            Editar
+          </CopilotButton>
+          {isManualCashMovementDeletable(row) ? (
+            <CopilotButton type="button" variant="danger" size="sm" onClick={onDelete}>
+              Eliminar
+            </CopilotButton>
+          ) : null}
+          {row.status === "active" && isManualCashMovementDeletable(row) && row.reconciled ? (
+            <CopilotButton type="button" variant="danger" size="sm" onClick={onArchive}>
+              Revertir
+            </CopilotButton>
+          ) : null}
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
 const initialForm: FormState = {
   movementType: "expense",
   ledgerType: "cash",
@@ -152,6 +207,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [accountingFilter, setAccountingFilter] = useState<AccountingFilter>("all");
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [accountingMap, setAccountingMap] = useState<Map<string, TreasuryMovementAccounting>>(new Map());
   const [accountingLoading, setAccountingLoading] = useState(false);
   const [savingAccountingId, setSavingAccountingId] = useState<string | null>(null);
@@ -340,7 +396,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
             {c === "all" ? "Todos" : c}
           </button>
         ))}
-        <span className="mx-1 text-[var(--copilot-border)]">·</span>
+        <span className="mx-1 hidden text-[var(--copilot-border)] sm:inline">·</span>
         {(["all", "income", "expense", "adjustment"] as TypeFilter[]).map((t) => (
           <button
             key={t}
@@ -356,10 +412,20 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
             {t === "all" ? "Todos" : TYPE_LABELS[t]}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => setFiltersExpanded((v) => !v)}
+          className={`${copilotButtonClassName({ variant: "ghost", size: "sm" })} ml-auto !rounded-full sm:hidden`}
+        >
+          <SlidersHorizontal className="mr-1 h-3.5 w-3.5" aria-hidden />
+          Filtros
+          <ChevronDown className={`ml-1 h-3.5 w-3.5 transition ${filtersExpanded ? "rotate-180" : ""}`} />
+        </button>
       </div>
 
-      {/* Accounting filter */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className={`space-y-3 ${filtersExpanded ? "block" : "hidden sm:block"}`}>
+      {/* Accounting filter — desktop always; mobile inside Filtros */}
+      <div className="hidden flex-wrap items-center gap-1.5 sm:flex">
         <span className="text-[11px] font-medium text-[var(--copilot-ink-muted)]">Contabilidad:</span>
         {(Object.keys(ACCOUNTING_FILTER_LABELS) as AccountingFilter[]).map((f) => (
           <button
@@ -415,6 +481,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
           />
         </label>
       </div>
+      </div>
 
       {workspace.loading && workspace.manualMovements.length === 0 ? (
         <div className="flex items-center gap-2 text-sm text-[var(--copilot-ink-muted)]">
@@ -429,7 +496,26 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
           ]}
         />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50">
+        <>
+        <ul className="space-y-2 sm:hidden">
+          {pageItems.map((row) => (
+            <li key={row.id}>
+              <MovementMobileCard
+                row={row}
+                canWrite={canWrite}
+                onEdit={() => openEdit(row)}
+                onDelete={() => {
+                  const msg = row.reconciled
+                    ? "Este movimiento está conciliado. Eliminarlo puede afectar la conciliación.\n\n¿Eliminar este movimiento de caja? Esta acción no se puede deshacer."
+                    : "¿Eliminar este movimiento de caja? Esta acción no se puede deshacer.";
+                  if (window.confirm(msg)) void workspace.deleteManual(row.id);
+                }}
+                onArchive={() => void workspace.archiveManual(row.id)}
+              />
+            </li>
+          ))}
+        </ul>
+        <div className="hidden overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50 sm:block">
           <table className={TESORERIA_TABLE_CLASS}>
             <thead>
               <tr>
@@ -574,6 +660,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {filtered.length > TESORERIA_PAGE_SIZE ? (

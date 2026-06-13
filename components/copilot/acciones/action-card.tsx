@@ -21,13 +21,13 @@ import {
 function priorityBadgeClass(priority: CopilotActionPriority): string {
   switch (priority) {
     case "critical":
-      return "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)] ring-1 ring-rose-300/40";
+      return "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)]";
     case "high":
-      return "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-badge-warning-text)] ring-1 ring-amber-300/40";
+      return "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-badge-warning-text)]";
     case "medium":
-      return "bg-[var(--copilot-soft-bg)] text-[var(--copilot-text)] ring-1 ring-sky-300/30";
+      return "bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink-muted)]";
     default:
-      return "bg-[var(--copilot-accent-soft)] text-[var(--copilot-muted)] ring-1 ring-[var(--copilot-border)]";
+      return "bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink-muted)]";
   }
 }
 
@@ -47,13 +47,13 @@ function priorityLabel(priority: CopilotActionPriority): string {
 function typeBadgeClass(type: CopilotActionType): string {
   switch (type) {
     case "collection":
-      return "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-badge-success-text)] ring-1 ring-emerald-300/40";
+      return "bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink-muted)]";
     case "treasury":
-      return "bg-[var(--copilot-soft-bg)] text-[var(--copilot-text)] ring-1 ring-violet-300/30";
+      return "bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink-muted)]";
     case "system":
-      return "bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-muted)] ring-1 ring-[var(--copilot-border)]";
+      return "bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink-muted)]";
     default:
-      return "bg-[var(--copilot-soft-bg)] text-[var(--copilot-text)] ring-1 ring-indigo-300/30";
+      return "bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink-muted)]";
   }
 }
 
@@ -163,23 +163,20 @@ function CollectionContextBlock({ ctx }: { ctx: CopilotActionCollectionContext }
 
 function formatAmount(amount: number, currency?: string | null): string {
   const symbol = currency === "USD" ? "U$S" : "$";
-  return `${symbol} ${amount.toLocaleString("es-AR", {
+  return `${symbol} ${amount.toLocaleString("es-AR", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   })}`;
 }
 
-function riskLabel(priority: CopilotActionPriority): string {
-  switch (priority) {
-    case "critical":
-      return "Riesgo alto: puede afectar caja o cobranza esta semana.";
-    case "high":
-      return "Riesgo medio-alto: conviene resolver antes del cierre del día.";
-    case "medium":
-      return "Riesgo moderado: monitorear para que no escale.";
-    default:
-      return "Riesgo bajo: seguimiento preventivo.";
-  }
+function normalizeActionCopy(text: string): string {
+  return text
+    .replace(/\bvencid[oa]s?\b/gi, (m) =>
+      m.toLowerCase().endsWith("s") ? "atrasados" : m.toLowerCase().endsWith("a") ? "atrasada" : "atrasado"
+    )
+    .replace(/\best[aá]\s+vencid[oa]\b/gi, (m) =>
+      m.toLowerCase().includes("vencida") ? "está atrasada" : "está atrasado"
+    );
 }
 
 function deriveNextStep(action: CopilotAction): string {
@@ -209,51 +206,46 @@ export function ActionCard({ action }: { action: CopilotAction }) {
     ? `mailto:${action.contactEmail}`
     : null;
 
+  const reason = normalizeActionCopy(action.reason);
+  const nextStep = normalizeActionCopy(deriveNextStep(action));
+
   return (
-    <div className={`${actionCardClass} px-4 py-3.5`}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span
-            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${priorityBadgeClass(action.priority)}`}
-          >
-            {priorityLabel(action.priority)}
-          </span>
-          <span
-            className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${typeBadgeClass(action.type)}`}
-          >
-            {typeLabel(action.type)}
-          </span>
-        </div>
+    <div className={`${actionCardClass} w-full min-w-0 px-3 py-3 sm:px-4 sm:py-3.5`}>
+      <div className="flex items-start justify-between gap-2">
+        <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-[var(--copilot-ink)]">
+          {action.title}
+        </p>
         {action.amount != null && action.amount > 0 ? (
-          <span className={`text-sm ${metricValueClass}`}>
+          <span className={`shrink-0 text-sm ${metricValueClass}`}>
             {formatAmount(action.amount, action.currency)}
           </span>
         ) : null}
       </div>
 
-      <p className="mt-2 text-sm font-semibold text-[var(--copilot-ink)]">
-        {action.title}
-      </p>
-      <div className="mt-1.5 space-y-1.5">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Qué pasó</p>
-          <p className="text-xs leading-relaxed text-[var(--copilot-ink-muted)]">{action.reason}</p>
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Qué riesgo tiene</p>
-          <p className="text-xs leading-relaxed text-[var(--copilot-ink-muted)]">{riskLabel(action.priority)}</p>
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Qué hacer ahora</p>
-          <p className="text-xs font-medium text-[var(--copilot-ink)]">{deriveNextStep(action)}</p>
-        </div>
+      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        <span
+          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${priorityBadgeClass(action.priority)}`}
+        >
+          {priorityLabel(action.priority)}
+        </span>
+        <span className="text-[10px] text-[var(--copilot-ink-muted)]">·</span>
+        <span
+          className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${typeBadgeClass(action.type)}`}
+        >
+          {typeLabel(action.type)}
+        </span>
       </div>
+
+      <p className="mt-2 text-xs leading-relaxed text-[var(--copilot-ink-muted)]">{reason}</p>
+      <p className="mt-1 text-xs font-medium text-[var(--copilot-ink)]">
+        Acción: {nextStep}
+      </p>
 
       {action.collectionContext ? (
         <CollectionContextBlock ctx={action.collectionContext} />
       ) : null}
 
-      <div className="mt-3 flex flex-nowrap items-center gap-1.5 overflow-x-auto">
+      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
         <Link
           href={action.href}
           className="inline-flex shrink-0 items-center rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
@@ -267,7 +259,7 @@ export function ActionCard({ action }: { action: CopilotAction }) {
             rel="noopener noreferrer"
             title={`WhatsApp ${action.contactPhone}`}
             aria-label={`WhatsApp ${action.contactPhone}`}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
           >
             <MessageCircle className="h-3.5 w-3.5 shrink-0 text-[var(--copilot-success-text)]" aria-hidden />
             WA
@@ -278,7 +270,7 @@ export function ActionCard({ action }: { action: CopilotAction }) {
             href={mailtoHref}
             title={action.contactEmail ?? "Email"}
             aria-label={`Email ${action.contactEmail}`}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
           >
             <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
             Email

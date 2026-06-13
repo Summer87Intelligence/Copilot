@@ -316,7 +316,7 @@ function cardActivateKey(e: KeyboardEvent, onActivate: () => void) {
 }
 
 const DETAIL_TOGGLE_CLASS =
-  "flex h-8 w-full items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-[var(--copilot-button-secondary-border)] bg-[var(--copilot-button-secondary-bg)] px-2 text-[10px] font-semibold text-[var(--copilot-accent)] transition hover:bg-[var(--copilot-accent-soft)]";
+  "flex h-9 w-full min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-[var(--copilot-button-secondary-border)] bg-[var(--copilot-button-secondary-bg)] px-2 text-[11px] font-semibold text-[var(--copilot-accent)] transition hover:bg-[var(--copilot-accent-soft)] sm:h-8 sm:text-[10px]";
 
 function DetailToggleButton({
   open,
@@ -532,7 +532,7 @@ function MoneyCard({
       tabIndex={interactive ? 0 : undefined}
       onClick={interactive ? () => onCardClick?.(cardId) : undefined}
       onKeyDown={interactive ? (e) => cardActivateKey(e, () => onCardClick?.(cardId)) : undefined}
-      className={`flex h-full min-h-0 flex-col rounded-xl border p-3 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${theme.shell}`}
+      className={`flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl border p-2.5 shadow-sm transition-shadow sm:p-3 ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${theme.shell}`}
     >
       <header className="shrink-0">
         <CardHeader theme={theme} title={title} subtitle={subtitle} />
@@ -651,7 +651,7 @@ function ReceivablesCard({
       onKeyDown={
         interactive ? (e) => cardActivateKey(e, () => onCardClick?.("receivables")) : undefined
       }
-      className={`flex h-full min-h-0 flex-col rounded-xl border p-3 shadow-sm transition-shadow ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${shell.shell}`}
+      className={`flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl border p-2.5 shadow-sm transition-shadow sm:p-3 ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${shell.shell}`}
     >
       <header className="shrink-0">
         <CardHeader theme={shell} title={HOY_COCKPIT.receivables} subtitle={subtitle} />
@@ -765,7 +765,7 @@ export function HoyMoneyCards({
   activeCard?: HoyCockpitCardId | null;
 }) {
   return (
-    <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:items-stretch">
+    <div className="grid w-full min-w-0 grid-cols-1 gap-2.5 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:items-stretch">
       <MoneyCard
         cardId="cash"
         variant="cash"
