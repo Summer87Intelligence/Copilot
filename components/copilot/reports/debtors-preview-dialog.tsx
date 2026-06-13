@@ -26,7 +26,7 @@ const CURRENCY_OPTIONS: Array<{ id: DebtorsReportFilters["currency"]; label: str
 
 const STATUS_OPTIONS: Array<{ id: DebtorsReportFilters["status"]; label: string }> = [
   { id: "all", label: "Todos" },
-  { id: "overdue", label: "Vencidos" },
+  { id: "overdue", label: "Atrasados" },
   { id: "critical", label: "Críticos" },
   { id: "without_contact", label: "Sin contacto" },
 ];
@@ -71,6 +71,7 @@ function FilterPills<T extends string>({
 
 const STATUS_COLORS: Record<string, string> = {
   Crítico: "text-[var(--copilot-danger-text)] font-semibold",
+  Atrasado: "text-[var(--copilot-warning-text)]",
   Vencido: "text-[var(--copilot-warning-text)]",
   Pendiente: "text-[var(--copilot-ink-muted)]",
 };
@@ -92,7 +93,7 @@ const COLUMNS: ReportTableColumn<DebtorsReportRow>[] = [
     render: (r) => formatMoneyCurrency(r.debtAmount, r.currency),
   },
   {
-    header: "Vencida",
+    header: "Atrasada",
     headerClassName: "text-right",
     cellClassName: "text-right tabular-nums text-xs",
     render: (r) =>
@@ -241,7 +242,7 @@ export function DebtorsPreviewDialog({
               ...(totals && totals.totalOverdueUyu > 0
                 ? [
                     {
-                      label: "Vencida UYU",
+                      label: "Atrasada UYU",
                       value: formatMoneyCurrency(totals.totalOverdueUyu, "UYU"),
                       tone: "danger" as const,
                     },
@@ -250,7 +251,7 @@ export function DebtorsPreviewDialog({
               ...(totals && totals.totalOverdueUsd > 0
                 ? [
                     {
-                      label: "Vencida USD",
+                      label: "Atrasada USD",
                       value: formatMoneyCurrency(totals.totalOverdueUsd, "USD"),
                       tone: "danger" as const,
                     },

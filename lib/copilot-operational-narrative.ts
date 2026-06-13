@@ -294,9 +294,9 @@ function buildCollectionsNarrative(
     "collections",
     collectionItems.some((item) => item.severity === "critical") ? "critical" : "high",
     "Cobranza prioritaria pendiente",
-    "Hay clientes con deuda vencida o concentrada en cartera.",
+    "Hay clientes con deuda atrasada o concentrada en cartera.",
     "La recuperación de caja se retrasa y aumenta el riesgo de liquidez.",
-    "Contactar cuentas vencidas y definir plan de cobro inmediato.",
+    "Contactar cuentas atrasadas y definir plan de cobro inmediato.",
     2_500 + maxFeedScore(collectionItems),
     {
       timeframe: "this_week",

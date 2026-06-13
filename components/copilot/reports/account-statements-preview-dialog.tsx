@@ -58,7 +58,7 @@ const COLUMNS: ReportTableColumn<StatementRow>[] = [
     render: (r) => formatMoneyCurrency(r.balance, r.currency),
   },
   {
-    header: "Deuda vencida",
+    header: "Deuda atrasada",
     headerClassName: "text-right",
     cellClassName: "text-right tabular-nums text-xs",
     render: (r) =>

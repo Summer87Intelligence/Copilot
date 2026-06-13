@@ -484,7 +484,7 @@ export function CopilotOperationalActionsPanel({
 
           <div className="flex flex-wrap gap-2 text-xs">
             {[
-              { label: "Vencidas", value: slaSummary.overdue },
+              { label: "Atrasadas", value: slaSummary.overdue },
               { label: "Para hoy", value: slaSummary.dueToday },
               { label: "Esta semana", value: slaSummary.dueSoon },
               { label: "Críticas bloqueadas", value: slaSummary.blockedCritical },
@@ -556,7 +556,7 @@ export function CopilotOperationalActionsPanel({
                 onChange={(event) => setSlaFilter(event.target.value as typeof slaFilter)}
               >
                 <option value="all">Todos</option>
-                <option value="overdue">Vencidas</option>
+                <option value="overdue">Atrasadas</option>
                 <option value="due_today">Vencen hoy</option>
                 <option value="due_soon">Esta semana</option>
                 <option value="no_due_date">Sin fecha</option>

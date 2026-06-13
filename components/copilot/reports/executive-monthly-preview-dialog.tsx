@@ -79,7 +79,7 @@ function getDebtorColumns(currency: string): ReportTableColumn<TopDebtor>[] {
       render: (r) => formatMoneyCurrency(r.debtAmount, currency),
     },
     {
-      header: "Vencida",
+      header: "Atrasada",
       headerClassName: "text-right",
       cellClassName: "text-right tabular-nums text-xs",
       render: (r) =>
@@ -219,7 +219,7 @@ export function ExecutiveMonthlyPreviewDialog({ open, onClose }: Props) {
                     tone: model.keyMetrics.totalDebt > 0 ? "warning" : "neutral",
                   },
                   {
-                    label: "Deuda vencida",
+                    label: "Deuda atrasada",
                     value: formatMoneyCurrency(model.keyMetrics.overdueDebt, model.currency),
                     tone: model.keyMetrics.overdueDebt > 0 ? "danger" : "neutral",
                   },

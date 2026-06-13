@@ -1,23 +1,37 @@
 #!/usr/bin/env node
 /**
- * UI Browser QA — recorre todas las rutas críticas en 3 viewports × 2 themes,
- * captura screenshots, console errors y warnings visuales automatizables.
+ * UI Browser QA — smoke visual manual.
+ *
+ * Recorre las rutas Copilot principales en 3 viewports × 2 themes, captura
+ * screenshots y detecta hydration / console errors / mojibake / copy prohibido
+ * (vencido, Aging, Workspace, etc.) / overflow horizontal / bajo contraste /
+ * elementos interactivos invisibles.
+ *
+ * Pensado para correr manualmente antes de una release. **No se ejecuta en CI**
+ * ni en `npm test` ni en `npm run build`. La salida vive en `qa-out/` que está
+ * gitignored — los screenshots no se commitean.
  *
  * USO:
  *   node scripts/ui-browser-qa.mjs
  *
  * Variables opcionales:
- *   QA_BASE_URL=http://localhost:3001  (default: detección automática 3000→3001→...)
- *   QA_OUT=tmp/ui-qa                    (default: tmp/ui-qa)
+ *   QA_BASE_URL=http://localhost:3001  (default: detección 3000→3005 vía /login)
+ *   QA_OUT=qa-out                       (default: qa-out)
+ *   QA_VIEWPORTS=390,1440               (default: 390,768,1440)
  *
  * Requisitos:
  *   - Dev server corriendo en algún puerto local.
- *   - .env.local con NEXT_PUBLIC_SUPABASE_URL para validar cookie firmada.
+ *   - `@playwright/test` instalado (ya está en devDependencies).
  *
- * Genera:
- *   tmp/ui-qa/{route}-{theme}-{viewport}.png  (screenshots)
- *   tmp/ui-qa/report.md                       (resumen ejecutivo)
- *   tmp/ui-qa/findings.json                   (datos crudos para inspección)
+ * Salida:
+ *   qa-out/{route}-{theme}-{viewport}.png  (screenshots full page)
+ *   qa-out/report.md                        (resumen ejecutivo + veredicto)
+ *   qa-out/findings.json                    (datos crudos para inspección)
+ *
+ * Códigos de salida:
+ *   0  → todo OK (HTTP 200, sin mojibake, sin copy prohibido, sin page errors)
+ *   1  → error fatal (excepción no manejada)
+ *   2  → blocker detectado (revisar report.md)
  */
 
 import { chromium } from "@playwright/test";
@@ -27,7 +41,7 @@ import path from "node:path";
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
-const OUT_DIR = process.env.QA_OUT ?? "out/ui-qa";
+const OUT_DIR = process.env.QA_OUT ?? "qa-out";
 const COOKIE_NAME = "copilot_session";
 const SUPERADMIN_USER_ID = "22535d5c-3c6d-4bc4-a9a1-550132a1819b";
 const SUPERADMIN_ROLE = "superadmin";
@@ -78,7 +92,49 @@ const MOJIBAKE_PATTERNS = [
   /\bHist\?rico\b/i,
   /\?lt(ima|imo|imas|imos)\b/i,
   /�/, // replacement char
+  /\?{4,}/, // 4+ secuencia de signos de interrogación
 ];
+
+/**
+ * Copy prohibido en HTML renderizado. Cada regla incluye la regex sobre el
+ * cuerpo y, opcionalmente, contextos permitidos. La detección por borde de
+ * palabra evita falsos positivos con CSS classnames y nombres de funciones JS.
+ */
+const TEXT_FORBIDDEN_PATTERNS = [
+  {
+    label: "Texto «vencido/vencida» visible (usar «atrasado/atrasada»)",
+    re: /\bvencid[oa]s?\b/i,
+    allowedContexts: [
+      /fecha de vencimiento/i,
+      /vence el\b/i,
+      /pr[oó]ximo vencimiento/i,
+      /pr[oó]ximas vencimientos/i,
+      /vencimiento de/i,
+    ],
+  },
+  { label: "Label «Aging» visible (usar «Antigüedad»)", re: />\s*Aging\s*</ },
+  { label: "Label «Workspace» visible", re: />\s*Workspace\s*</ },
+  { label: "Label «Tenant» visible", re: />\s*Tenant\s*</ },
+  { label: "Label «Readonly» visible", re: />\s*Readonly\s*</ },
+  { label: "Label «Superadmin» visible (no ES)", re: />\s*Superadmin\s*</ },
+  { label: "Label «Score» visible (usar «Puntaje»)", re: />\s*Score\s*</ },
+  { label: "Label «Smoke» visible", re: />\s*Smoke\s*</ },
+  { label: "Abreviatura «Fact.» visible (usar «Facturas»)", re: />\s*Fact\.\s*</ },
+];
+
+function scanForbiddenText(html) {
+  const hits = [];
+  for (const rule of TEXT_FORBIDDEN_PATTERNS) {
+    const m = rule.re.exec(html);
+    if (!m) continue;
+    if (rule.allowedContexts && rule.allowedContexts.length > 0) {
+      const ctx = html.slice(Math.max(0, m.index - 40), m.index + m[0].length + 40);
+      if (rule.allowedContexts.some((p) => p.test(ctx))) continue;
+    }
+    hits.push({ label: rule.label, snippet: m[0] });
+  }
+  return hits;
+}
 
 // Critical console message substrings.
 const CRITICAL_CONSOLE = [
@@ -327,6 +383,7 @@ async function main() {
         let httpStatus = 0;
         let visualWarnings = [];
         let mojibakeHits = [];
+        let forbiddenTextHits = [];
         let started = Date.now();
         try {
           const response = await page.goto(`${baseUrl}${route}`, {
@@ -342,12 +399,13 @@ async function main() {
           }, theme);
           await page.waitForTimeout(250);
 
-          // Mojibake scan in raw HTML.
+          // Mojibake + copy prohibido scan in raw HTML.
           const html = await page.content();
           for (const pat of MOJIBAKE_PATTERNS) {
             const m = html.match(pat);
             if (m) mojibakeHits.push(m[0]);
           }
+          forbiddenTextHits = scanForbiddenText(html);
 
           visualWarnings = await visualWarningsInPage(page);
 
@@ -376,6 +434,7 @@ async function main() {
           pageErrors,
           responseProblems,
           mojibakeHits,
+          forbiddenTextHits,
           visualWarnings,
         };
         findings.push(finding);
@@ -385,7 +444,7 @@ async function main() {
             pageErrors.length ? `PAGE_ERR(${firstErr})` : ""
           }${visualWarnings.length ? ` warn=${visualWarnings.length}` : ""}${
             mojibakeHits.length ? ` mojibake=${mojibakeHits.length}` : ""
-          }`
+          }${forbiddenTextHits.length ? ` copy=${forbiddenTextHits.length}` : ""}`
         );
         await page.close();
       }
@@ -409,13 +468,17 @@ async function main() {
     (f) =>
       f.httpStatus === 200 &&
       f.pageErrors.length === 0 &&
-      f.mojibakeHits.length === 0
+      f.mojibakeHits.length === 0 &&
+      (f.forbiddenTextHits?.length ?? 0) === 0
   ).length;
   const errorRuns = findings.filter(
     (f) => f.httpStatus !== 200 || f.pageErrors.length > 0
   );
   const consoleWarnRuns = findings.filter((f) => f.consoleErrors.length > 0);
   const mojibakeRuns = findings.filter((f) => f.mojibakeHits.length > 0);
+  const forbiddenTextRuns = findings.filter(
+    (f) => (f.forbiddenTextHits?.length ?? 0) > 0
+  );
   const visualWarnRuns = findings.filter((f) => f.visualWarnings.length > 0);
   const overflowRuns = findings.filter((f) =>
     f.visualWarnings.some((w) => w.kind === "body_overflow_x")
@@ -446,6 +509,7 @@ async function main() {
   lines.push(`| ❌ HTTP error o page error | ${errorRuns.length} |`);
   lines.push(`| 🟡 Console errors filtrados | ${consoleWarnRuns.length} |`);
   lines.push(`| 🔤 Mojibake detectado | ${mojibakeRuns.length} |`);
+  lines.push(`| 🚫 Copy prohibido (vencido / Aging / etc.) | ${forbiddenTextRuns.length} |`);
   lines.push(`| 👁️  Visual warnings | ${visualWarnRuns.length} |`);
   lines.push(`| ↔️  Body overflow horizontal | ${overflowRuns.length} |`);
   lines.push(`| 🌫️  Bajo contraste detectado | ${lowContrastRuns.length} |`);
@@ -473,6 +537,18 @@ async function main() {
     lines.push("");
     for (const f of mojibakeRuns) {
       lines.push(`- \`${f.route}\` (${f.theme}/${f.viewport}): \`${f.mojibakeHits.join("`, `")}\``);
+    }
+    lines.push("");
+  }
+
+  if (forbiddenTextRuns.length > 0) {
+    lines.push("## Copy prohibido detectado");
+    lines.push("");
+    for (const f of forbiddenTextRuns) {
+      const labels = (f.forbiddenTextHits ?? [])
+        .map((h) => `${h.label} (${JSON.stringify(h.snippet)})`)
+        .join("; ");
+      lines.push(`- \`${f.route}\` (${f.theme}/${f.viewport}): ${labels}`);
     }
     lines.push("");
   }
@@ -543,8 +619,13 @@ async function main() {
   lines.push("");
   lines.push("## Veredicto provisional");
   lines.push("");
-  const blocker = errorRuns.length > 0 || mojibakeRuns.length > 0;
-  lines.push(blocker ? "❌ NO SEGURO PARA PUSH — hay errores HTTP / mojibake real" : "✅ SEGURO (a confirmar tras revisión manual de screenshots).");
+  const blocker =
+    errorRuns.length > 0 || mojibakeRuns.length > 0 || forbiddenTextRuns.length > 0;
+  lines.push(
+    blocker
+      ? "❌ NO SEGURO PARA PUSH — hay errores HTTP / mojibake / copy prohibido"
+      : "✅ SEGURO (a confirmar tras revisión manual de screenshots)."
+  );
 
   const reportPath = path.join(OUT_DIR, "report.md");
   await writeFile(reportPath, lines.join("\n"), "utf-8");

@@ -192,8 +192,62 @@ describe("readAssociatedInvoiceFromZetaMetadata", () => {
     ).toBe("A-2984");
   });
 
+  it("lee ComprobanteReferencia desde v1 directo (sin raw_payload)", () => {
+    expect(
+      readAssociatedInvoiceFromZetaMetadata({
+        zeta_customer_voucher_v1: { ComprobanteReferencia: "B-101" },
+      })
+    ).toBe("B-101");
+  });
+
+  it("acepta variante camelCase comprobanteReferencia", () => {
+    expect(
+      readAssociatedInvoiceFromZetaMetadata({
+        zeta_customer_voucher_v1: {
+          raw_payload: { comprobanteReferencia: "C-9" },
+        },
+      })
+    ).toBe("C-9");
+  });
+
+  it("acepta alias FacturaAsociada / DocumentoOrigen", () => {
+    expect(
+      readAssociatedInvoiceFromZetaMetadata({
+        zeta_customer_voucher_v1: { FacturaAsociada: "F-1" },
+      })
+    ).toBe("F-1");
+    expect(
+      readAssociatedInvoiceFromZetaMetadata({
+        zeta_customer_voucher_v1: {
+          raw_payload: { DocumentoOrigen: "D-77" },
+        },
+      })
+    ).toBe("D-77");
+  });
+
+  it("compone Serie+Numero cuando ambos están presentes", () => {
+    expect(
+      readAssociatedInvoiceFromZetaMetadata({
+        zeta_customer_voucher_v1: {
+          raw_payload: { SerieReferencia: "A", NumeroReferencia: 2984 },
+        },
+      })
+    ).toBe("A-2984");
+  });
+
+  it("ignora strings con solo espacios", () => {
+    expect(
+      readAssociatedInvoiceFromZetaMetadata({
+        zeta_customer_voucher_v1: {
+          raw_payload: { ComprobanteReferencia: "   " },
+        },
+      })
+    ).toBeNull();
+  });
+
   it("retorna null si no hay dato", () => {
     expect(readAssociatedInvoiceFromZetaMetadata(null)).toBeNull();
     expect(readAssociatedInvoiceFromZetaMetadata({ zeta_customer_voucher_v1: {} })).toBeNull();
+    expect(readAssociatedInvoiceFromZetaMetadata({})).toBeNull();
   });
 });

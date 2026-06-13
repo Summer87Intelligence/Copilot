@@ -8,7 +8,7 @@ import type { CopilotSessionPreview } from "@/components/copilot/copilot-session
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 
 function getInitials(email: string | null): string {
-  if (!email) return "?";
+  if (!email) return "—";
   return email.charAt(0).toUpperCase();
 }
 

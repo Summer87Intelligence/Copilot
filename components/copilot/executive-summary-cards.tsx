@@ -895,35 +895,35 @@ export function CreditNotesSection({
     .join(" · ");
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] shadow-[var(--copilot-shadow)]">
+    <div className="overflow-hidden rounded-2xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-card)] shadow-[var(--copilot-shadow)]">
       <button
         type="button"
         aria-expanded={expanded}
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center justify-between px-5 py-4 text-left transition-colors hover:bg-[var(--copilot-tone-danger-bg)]"
+        className="flex w-full items-center justify-between px-5 py-4 text-left transition-colors hover:bg-[var(--copilot-panel-bg)]"
       >
         <div className="flex items-center gap-3">
           <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-danger-text)]">
             <FileMinus className="h-4 w-4" aria-hidden />
           </span>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--copilot-danger-text-strong)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--copilot-ink-muted)]">
               Ajustes del período
             </p>
             {periodRangeLabel ? (
-              <p className="mt-0.5 text-[11px] font-medium text-[var(--copilot-danger-text-strong)]/90">{periodRangeLabel}</p>
+              <p className="mt-0.5 text-[11px] font-medium text-[var(--copilot-ink-muted)]">{periodRangeLabel}</p>
             ) : null}
-            <p className="mt-0.5 text-xs text-[var(--copilot-danger-text)]/80">{summaryText}</p>
+            <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">{summaryText}</p>
           </div>
         </div>
         <ChevronDown
-          className={`h-4 w-4 shrink-0 text-[var(--copilot-danger-text)] transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+          className={`h-4 w-4 shrink-0 text-[var(--copilot-ink-muted)] transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
           aria-hidden
         />
       </button>
 
       {expanded && (
-        <div className="border-t border-[var(--copilot-danger-border)]/50 px-5 pb-5 pt-4">
+        <div className="border-t border-[var(--copilot-border)] px-5 pb-5 pt-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {ncLines.map((l) => (
               <div

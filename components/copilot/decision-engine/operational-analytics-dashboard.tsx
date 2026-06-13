@@ -125,7 +125,7 @@ export function OperationalAnalyticsDashboard({
           <KpiCard
             label="SLA compliance"
             value={`${sla.compliance_pct}%`}
-            hint={`${sla.breached_total} vencidos`}
+            hint={`${sla.breached_total} atrasados`}
             tone={sla.compliance_pct < 80 ? "warning" : "default"}
           />
           <KpiCard

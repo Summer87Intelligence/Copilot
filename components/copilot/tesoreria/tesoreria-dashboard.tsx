@@ -84,7 +84,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
     alerts.push({
       id: "overdue",
       severity: "critical",
-      title: `${n} pago${n > 1 ? "s" : ""} vencido${n > 1 ? "s" : ""}`,
+      title: `${n} pago${n > 1 ? "s" : ""} atrasado${n > 1 ? "s" : ""}`,
       description: `Total: ${parts.join(" · ")}. Pagá o reprogramá los urgentes.`,
     });
   }
@@ -222,7 +222,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
       <section>
         <CopilotSectionTitle
           title="Caja proyectada"
-          subtitle="Disponible − vencidos − egresos 30 días programados."
+          subtitle="Disponible − atrasados − egresos 30 días programados."
         />
         {cashPositionFailed ? (
           <div className="rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] p-4 text-sm text-[var(--copilot-warning-text-strong)]">

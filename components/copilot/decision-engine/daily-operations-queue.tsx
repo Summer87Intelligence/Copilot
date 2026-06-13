@@ -32,7 +32,7 @@ type Section = {
 const SECTIONS: Section[] = [
   {
     id: "critical",
-    label: "SLA crítico / vencidos",
+    label: "SLA crítico / atrasados",
     icon: <ShieldAlert className="h-4 w-4" />,
     color: "text-[var(--copilot-danger-text)]",
     filter: (i) => i.follow_up_result.sla_status === "critical" || i.follow_up_result.sla_status === "overdue",
@@ -123,7 +123,7 @@ function QueueItemRow({ item, onActionClick }: ItemRowProps) {
           <span>{item.follow_up_result.pending_action}</span>
           <span className="text-[var(--copilot-text-muted)]">·</span>
           <span className="text-[var(--copilot-text-muted)]">
-            {RISK_LEVEL_LABELS[item.risk_level]} · {item.oldest_days > 0 ? `${item.oldest_days}d vencido` : "no vencido"}
+            {RISK_LEVEL_LABELS[item.risk_level]} · {item.oldest_days > 0 ? `${item.oldest_days}d atrasado` : "no atrasado"}
           </span>
           {item.follow_up_result.next_follow_up_at && (
             <>

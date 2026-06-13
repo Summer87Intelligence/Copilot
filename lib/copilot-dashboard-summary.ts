@@ -178,7 +178,7 @@ export function buildExecutiveSummaryMainRiskChip(
     if (overdueLabel) return overdueLabel;
     if (clientStates.conDeudaVencida > 0) {
       const n = clientStates.conDeudaVencida;
-      return `${n} cliente${n > 1 ? "s" : ""} con deuda vencida`;
+      return `${n} cliente${n > 1 ? "s" : ""} con atraso`;
     }
   }
 

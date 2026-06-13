@@ -86,7 +86,7 @@ function buildItems(
       label: "Excluidas por período",
       description: `${formatCarteraInteger(gaps.invoicesExcludedByPeriodFilter)} factura${
         gaps.invoicesExcludedByPeriodFilter === 1 ? "" : "s"
-      } fuera del rango ${report.periodStart ?? "?"} → ${report.periodEnd ?? "?"}. No suman a los totales de esta vista.`,
+      } fuera del rango ${report.periodStart ?? "—"} → ${report.periodEnd ?? "—"}. No suman a los totales de esta vista.`,
       status: gaps.invoicesExcludedByPeriodFilter > 10 ? "warn" : "info",
       count: gaps.invoicesExcludedByPeriodFilter,
       icon: CalendarX,

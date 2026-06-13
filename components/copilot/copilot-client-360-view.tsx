@@ -168,7 +168,7 @@ function translateInvoiceStatus(estado: string): string {
     paid: "Pagada",
     issued: "Emitida",
     pending: "Pendiente",
-    overdue: "Vencida",
+    overdue: "Atrasada",
     cancelled: "Cancelada",
   };
   return map[estado.toLowerCase()] ?? estado;

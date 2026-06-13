@@ -39,6 +39,9 @@
 !/temp-audits/README.md
 /tmp/
 
+# salida del smoke visual manual (scripts/ui-browser-qa.mjs) — local-only
+/qa-out/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

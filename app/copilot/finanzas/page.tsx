@@ -141,9 +141,14 @@ function FlowBar({
   flow: "in" | "out";
 }) {
   const pct = Math.min(100, Math.round((value / max) * 100));
-  const valueClass = flow === "in" ? "text-green-600" : "text-red-500";
+  const valueClass =
+    flow === "in"
+      ? "text-[var(--copilot-success-text)]"
+      : "text-[var(--copilot-danger-text)]";
   const barClass =
-    flow === "in" ? "bg-[var(--copilot-tone-positive-bg)]0/85" : "bg-red-400/80";
+    flow === "in"
+      ? "bg-[var(--copilot-success-text)]/85"
+      : "bg-[var(--copilot-danger-text)]/80";
 
   return (
     <div>
@@ -740,7 +745,7 @@ function CopilotFinanzasPageContent() {
     const base =
       "Es la obligación abierta con vencimiento más cercano; si varias comparten fecha, priorizamos la de mayor monto comprometido.";
     if (st === "overdue") {
-      return `${base} Figura vencida: conviene regularizar antes de sumar otros egresos discrecionales.`;
+      return `${base} Figura atrasada: conviene regularizar antes de sumar otros egresos discrecionales.`;
     }
     return base;
   }, [prioritaryObligation]);
@@ -1091,7 +1096,7 @@ function CopilotFinanzasPageContent() {
                             </li>
                             <li className="text-[var(--copilot-ink-muted)]">
                               Reprogramar o negociar plazos sobre esos egresos reduce la presión
-                              sobre caja sin tocar obligaciones fiscales ya vencidas. Los egresos modelados suman{" "}
+                              sobre caja sin tocar obligaciones fiscales ya atrasadas. Los egresos modelados suman{" "}
                               {snapshot
                                 ? formatMoneyCompact(snapshotExpectedOutflowsTotal(snapshot))
                                 : "el panorama"}
@@ -1228,7 +1233,7 @@ function CopilotFinanzasPageContent() {
                 : ""}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-sky-900/80">
-              Incluye liquidez proyectada, colchón de cobertura, vencidas sin acreditación
+              Incluye liquidez proyectada, colchón de cobertura, atrasadas sin acreditación
               fiscal y pagos de impuestos sin obligación vinculada.
             </p>
             <CopilotGhostLink
@@ -1501,11 +1506,11 @@ function CopilotFinanzasPageContent() {
                 </CopilotCard>
               </div>
             ) : (
-              <CopilotCard className="border-[var(--copilot-warning-border)]/80 bg-[var(--copilot-tone-warning-bg)]">
+              <CopilotCard className="border-[var(--copilot-warning-border)]/80">
                 <p className="text-sm font-semibold text-[var(--copilot-warning-text-strong)]">
                   No hay obligación prioritaria en la base
                 </p>
-                <p className="mt-2 text-sm text-[var(--copilot-warning-text-strong)]/90">
+                <p className="mt-2 text-sm text-[var(--copilot-ink)]">
                   Pediste priorizar cobertura fiscal pero no quedan obligaciones abiertas cargadas.
                   Revisá Datos o sincronizá obligaciones; podés{" "}
                   <button
@@ -1549,9 +1554,9 @@ function CopilotFinanzasPageContent() {
                         {upcomingWindowCount}
                       </p>
                     </div>
-                    <div className="rounded-xl border border-[var(--copilot-danger-border)]/80 bg-[var(--copilot-tone-danger-bg)]/40 p-4 shadow-sm">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-danger-text-strong)]/80">
-                        Vencidas / a regularizar
+                    <div className="rounded-xl border border-[var(--copilot-danger-border)]/80 bg-[var(--copilot-card-bg)]/80 p-4 shadow-sm">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                        Atrasadas / a regularizar
                       </p>
                       <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--copilot-danger-text-strong)]">
                         {overdueCount}

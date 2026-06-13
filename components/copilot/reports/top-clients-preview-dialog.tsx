@@ -22,7 +22,7 @@ function nowMonth() { return new Date().getMonth() + 1; }
 const SORT_OPTIONS: Array<{ value: TopClientsReportSortBy; label: string }> = [
   { value: "net_sales", label: "Facturación" },
   { value: "debt", label: "Deuda actual" },
-  { value: "overdue", label: "Deuda vencida" },
+  { value: "overdue", label: "Deuda atrasada" },
 ];
 
 const pillBase = "rounded-full px-3 py-1 text-xs font-medium transition";
@@ -65,7 +65,7 @@ function getColumns(currency: string): ReportTableColumn<TopClientRow>[] {
         r.totalDebt > 0 ? formatMoneyCurrency(r.totalDebt, currency) : "—",
     },
     {
-      header: "Vencida",
+      header: "Atrasada",
       headerClassName: "text-right",
       cellClassName: "text-right tabular-nums text-xs",
       render: (r) =>

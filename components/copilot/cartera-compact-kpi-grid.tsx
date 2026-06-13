@@ -117,14 +117,14 @@ type ExplainKind =
 
 function topClientRowsForCurrency(
   report: FinancialConsistencyReport,
-  currency: ReconciliationCurrencyCode,
-  limit = 8
+  currency: ReconciliationCurrencyCode
 ): { rows: CarteraKpiBreakdownRow[]; clientCount: number } {
   const filtered = report.staleClients
     .map((c) => ({ c, amount: c.pendingByCurrency[currency] ?? 0 }))
     .filter(({ amount }) => amount > 0)
     .sort((a, b) => b.amount - a.amount);
-  const rows: CarteraKpiBreakdownRow[] = filtered.slice(0, limit).map(({ c, amount }) => ({
+  // Devolvemos el set completo: el drawer trunca a top N y expone "Ver todos los clientes".
+  const rows: CarteraKpiBreakdownRow[] = filtered.map(({ c, amount }) => ({
     kind: "client",
     label: c.companyName ?? c.companyId,
     secondary: `${c.invoiceCount} factura${c.invoiceCount === 1 ? "" : "s"}`,
@@ -137,8 +137,7 @@ function topClientRowsForCurrency(
 
 function topInvoiceRowsForCurrency(
   report: FinancialConsistencyReport,
-  currency: ReconciliationCurrencyCode,
-  limit = 10
+  currency: ReconciliationCurrencyCode
 ): { rows: CarteraKpiBreakdownRow[]; invoiceCount: number; clientCount: number } {
   type Entry = {
     invoiceId: string;
@@ -170,7 +169,8 @@ function topInvoiceRowsForCurrency(
   }
   entries.sort((a, b) => b.balance - a.balance);
   const clientIds = new Set(entries.map((e) => e.companyId));
-  const rows: CarteraKpiBreakdownRow[] = entries.slice(0, limit).map((e) => ({
+  // Devolvemos el set completo: el drawer trunca a top N y expone "Ver todos".
+  const rows: CarteraKpiBreakdownRow[] = entries.map((e) => ({
     kind: "invoice",
     label: e.companyName ?? e.companyId,
     secondary: e.invoiceNumber ?? "Sin número",
@@ -210,7 +210,7 @@ function buildExplain(
         clientCount,
         rows,
         moreHref: "/copilot/clientes",
-        moreLabel: "Ver todos los clientes",
+        moreLabel: "Abrir en Clientes",
       };
     }
     case "credit_note": {
@@ -218,7 +218,8 @@ function buildExplain(
       const ncLines = (report.periodCreditNotes ?? [])
         .filter((line) => line.currencyCode === currency)
         .sort((a, b) => b.amount - a.amount);
-      const rows: CarteraKpiBreakdownRow[] = ncLines.slice(0, 12).map((line) => ({
+      // Pasamos el set completo: el drawer maneja top inicial + toggle inline.
+      const rows: CarteraKpiBreakdownRow[] = ncLines.map((line) => ({
         kind: "credit_note",
         label: line.companyName ?? line.companyId ?? "—",
         secondary: line.voucherLabel,
@@ -271,7 +272,7 @@ function buildExplain(
         clientCount,
         rows,
         moreHref: "/copilot/clientes",
-        moreLabel: "Ver clientes",
+        moreLabel: "Abrir en Clientes",
       };
     }
     case "pendiente_periodo": {
@@ -291,7 +292,7 @@ function buildExplain(
         clientCount,
         rows,
         moreHref: "/copilot/clientes",
-        moreLabel: "Ver clientes con saldo",
+        moreLabel: "Abrir en Clientes",
       };
     }
     case "cobranza_efectiva": {
@@ -318,7 +319,8 @@ function buildExplain(
           c.status === "critical" ||
           c.status === "never_synced"
       );
-      const rows: CarteraKpiBreakdownRow[] = stale.slice(0, 12).map((c) => ({
+      // Set completo: el drawer trunca a top inicial y muestra "Ver todos".
+      const rows: CarteraKpiBreakdownRow[] = stale.map((c) => ({
         kind: "client",
         label: c.companyName ?? c.companyId,
         secondary: `${c.invoiceCount} factura${c.invoiceCount === 1 ? "" : "s"}`,
@@ -340,7 +342,7 @@ function buildExplain(
         clientCount: stale.length,
         rows,
         moreHref: "/copilot/clientes",
-        moreLabel: "Ver lista completa",
+        moreLabel: "Abrir en Clientes",
       };
     }
   }
@@ -400,7 +402,7 @@ export function CarteraCompactKpiGrid({
         clientCount: detail.clientCount,
         rows: detail.rows,
         moreHref: "/copilot/clientes",
-        moreLabel: "Ver todos en Clientes",
+        moreLabel: "Abrir en Clientes",
       });
     },
     [index, report, periodRangeLabel]

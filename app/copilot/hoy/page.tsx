@@ -171,7 +171,7 @@ export default function CopilotHoyPage() {
       }
     } else {
       devWarn("cartera-current-recon", reconCurrentResult.reason);
-      newErrors.carteraCurrentRecon = "No se pudo cargar el estado de cartera vencida.";
+      newErrors.carteraCurrentRecon = "No se pudo cargar el estado de cartera atrasada.";
       setCarteraAgingOverdue(undefined);
       setCarteraAgingCurrent(undefined);
       setCarteraCollectedToDate(undefined);

@@ -335,7 +335,7 @@ function HistoryItem({
             ? "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]"
             : "bg-sky-50 text-sky-700 border-sky-200";
           const badgeLabel = isOverdue
-            ? "Seguimiento vencido"
+            ? "Seguimiento atrasado"
             : isToday
             ? "Seguimiento hoy"
             : "Próx. seguimiento";

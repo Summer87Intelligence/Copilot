@@ -28,16 +28,16 @@ const CURRENCY_OPTIONS: Array<{ id: DebtorsReportFilters["currency"]; label: str
 
 const STATUS_OPTIONS: Array<{ id: DebtorsReportFilters["status"]; label: string }> = [
   { id: "all", label: "Todos con deuda" },
-  { id: "overdue", label: "Solo vencidos" },
+  { id: "overdue", label: "Solo atrasados" },
   { id: "critical", label: "Solo críticos" },
   { id: "without_contact", label: "Solo sin contacto" },
 ];
 
 const OVERDUE_OPTIONS: Array<{ id: DebtorsReportFilters["overdueDays"]; label: string }> = [
   { id: "all", label: "Todos" },
-  { id: "30", label: "Vencidos más de 30 días" },
-  { id: "60", label: "Vencidos más de 60 días" },
-  { id: "90", label: "Vencidos más de 90 días" },
+  { id: "30", label: "Atrasados más de 30 días" },
+  { id: "60", label: "Atrasados más de 60 días" },
+  { id: "90", label: "Atrasados más de 90 días" },
 ];
 
 const CONTACT_OPTIONS: Array<{ id: DebtorsReportFilters["contact"]; label: string }> = [

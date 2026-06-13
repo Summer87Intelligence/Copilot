@@ -205,25 +205,25 @@ function MetricCard({
   const cfg = {
     critical: {
       border: "border-[var(--copilot-danger-border)]",
-      bg: "bg-[var(--copilot-tone-danger-bg)]/50",
-      label: "text-[var(--copilot-danger-text-strong)]/70",
+      bg: "bg-[var(--copilot-card-bg)]/70",
+      label: "text-[var(--copilot-ink-muted)]",
       value: "text-[var(--copilot-danger-text-strong)]",
     },
     warning: {
       border: "border-[var(--copilot-warning-border)]",
-      bg: "bg-[var(--copilot-tone-warning-bg)]",
-      label: "text-[var(--copilot-warning-text-strong)]/70",
+      bg: "bg-[var(--copilot-card-bg)]/70",
+      label: "text-[var(--copilot-ink-muted)]",
       value: "text-[var(--copilot-warning-text-strong)]",
     },
     positive: {
       border: "border-[var(--copilot-success-border)]",
-      bg: "bg-[var(--copilot-tone-positive-bg)]/50",
-      label: "text-[var(--copilot-success-text-strong)]/70",
+      bg: "bg-[var(--copilot-card-bg)]/70",
+      label: "text-[var(--copilot-ink-muted)]",
       value: "text-[var(--copilot-success-text-strong)]",
     },
     neutral: {
       border: "border-[var(--copilot-border)]",
-      bg: "bg-[var(--copilot-card-bg)]/60",
+      bg: "bg-[var(--copilot-card-bg)]/70",
       label: "text-[var(--copilot-ink-muted)]",
       value: "text-[var(--copilot-ink)]",
     },
@@ -510,21 +510,21 @@ export default function CopilotAlertasPage() {
 
         {/* ── Overdue clients CTA — shown when there are client_overdue alerts ── */}
         {tabCounts.clientes > 0 ? (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-4 py-2.5">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-card-bg)]/70 px-4 py-2.5">
             <div>
-              <p className="text-[13px] text-[var(--copilot-warning-text-strong)]">
-                <span className="font-semibold">{tabCounts.clientes}</span>{" "}
+              <p className="text-[13px] text-[var(--copilot-ink)]">
+                <span className="font-semibold text-[var(--copilot-warning-text-strong)]">{tabCounts.clientes}</span>{" "}
                 {tabCounts.clientes === 1
                   ? "evento generado por cliente atrasado"
                   : "eventos generados por clientes atrasados"}
               </p>
-              <p className="text-[11px] text-[var(--copilot-warning-text)]/70">
+              <p className="text-[11px] text-[var(--copilot-ink-muted)]">
                 Eventos históricos del motor de alertas · Ver Cartera para el estado actual
               </p>
             </div>
             <Link
               href="/copilot/cartera?filter=overdue"
-              className="shrink-0 text-[12px] font-semibold text-[var(--copilot-warning-text-strong)] hover:underline"
+              className="shrink-0 text-[12px] font-semibold text-[var(--copilot-accent)] hover:underline"
             >
               Ver clientes atrasados →
             </Link>

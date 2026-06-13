@@ -631,7 +631,7 @@ function ActiveDebtClientsTable({
                 "Cliente",
                 "Moneda",
                 METRIC_LABEL.deuda_activa,
-                "Deuda vencida",
+                "Deuda atrasada",
                 "Días atraso",
                 "Estado",
                 "Acciones",
@@ -789,15 +789,15 @@ function RecentMovementsTable({
           <tbody>
             {visible.map((m, i) => {
               const debe =
-                m.type === "factura" ? fmtAmount(m.amount, m.currency) : "?";
+                m.type === "factura" ? fmtAmount(m.amount, m.currency) : "—";
               const haber =
                 m.type === "recibo" || m.type === "nota_credito"
                   ? fmtAmount(m.amount, m.currency)
-                  : "?";
+                  : "—";
               const saldo =
                 m.type === "factura" && m.balance > 0
                   ? fmtAmount(m.balance, m.currency)
-                  : "?";
+                  : "—";
               const equivUsd = showEquiv && exchangeRate
                 ? fmtAmount(
                     m.currency === "USD" ? m.amount : roundUsd(m.amount / exchangeRate),
@@ -827,17 +827,17 @@ function RecentMovementsTable({
                   </td>
                   <td className={`px-3 py-2 ${C.muted}`}>{m.reference}</td>
                   <td className={`px-3 py-2 uppercase ${C.muted}`}>{m.currency}</td>
-                  <td className={`px-3 py-2 tabular-nums ${debe === "?" ? C.muted : C.ink}`}>{debe}</td>
-                  <td className={`px-3 py-2 tabular-nums ${haber === "?" ? C.muted : "text-[var(--copilot-success-text)]"}`}>
+                  <td className={`px-3 py-2 tabular-nums ${debe === "—" ? C.muted : C.ink}`}>{debe}</td>
+                  <td className={`px-3 py-2 tabular-nums ${haber === "—" ? C.muted : "text-[var(--copilot-success-text)]"}`}>
                     {haber}
                   </td>
                   {showEquiv && (
                     <td className={`px-3 py-2 tabular-nums text-[10px] ${C.muted}`}>
-                      {equivUsd ?? "?"}
+                      {equivUsd ?? "—"}
                     </td>
                   )}
                   <td
-                    className={`px-3 py-2 tabular-nums ${saldo === "?" ? C.muted : "font-medium text-[var(--copilot-warning-text)]"}`}
+                    className={`px-3 py-2 tabular-nums ${saldo === "—" ? C.muted : "font-medium text-[var(--copilot-warning-text)]"}`}
                   >
                     {saldo}
                   </td>
@@ -1736,12 +1736,12 @@ export default function DashboardPageClient() {
               <>
                 <ChartCard title="Deuda por antigüedad UYU" subtitle="Basado en fecha de vencimiento · Estado actual">
                   {loading ? <Skeleton className="h-28" /> : (
-                    <VerticalBarChart data={agingBars} selectedCurrency="UYU" height={140} emptyText="Sin deuda vencida UYU" />
+                    <VerticalBarChart data={agingBars} selectedCurrency="UYU" height={140} emptyText="Sin deuda atrasada UYU" />
                   )}
                 </ChartCard>
                 <ChartCard title="Deuda por antigüedad USD" subtitle="Basado en fecha de vencimiento · Estado actual">
                   {loading ? <Skeleton className="h-28" /> : (
-                    <VerticalBarChart data={agingBars} selectedCurrency="USD" height={140} emptyText="Sin deuda vencida USD" />
+                    <VerticalBarChart data={agingBars} selectedCurrency="USD" height={140} emptyText="Sin deuda atrasada USD" />
                   )}
                 </ChartCard>
               </>
@@ -1758,7 +1758,7 @@ export default function DashboardPageClient() {
                     data={agingBars}
                     selectedCurrency={effectiveCurrency}
                     height={140}
-                    emptyText="Sin deuda vencida"
+                    emptyText="Sin deuda atrasada"
                   />
                 )}
               </ChartCard>
@@ -1984,7 +1984,7 @@ export default function DashboardPageClient() {
                           <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(consolidatedCurrencyData.deudaActiva, "USD")}</p>
                         </div>
                         <div>
-                          <p className={`text-[10px] ${C.muted}`}>Deuda vencida (USD cons.)</p>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda atrasada (USD cons.)</p>
                           <p className={`text-sm font-semibold tabular-nums text-[var(--copilot-warning-text)]`}>{fmtAmount(consolidatedCurrencyData.deudaVencida, "USD")}</p>
                         </div>
                       </>
@@ -1995,7 +1995,7 @@ export default function DashboardPageClient() {
                           <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(usd?.deudaActiva ?? 0, "USD")}</p>
                         </div>
                         <div>
-                          <p className={`text-[10px] ${C.muted}`}>Deuda vencida USD</p>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda atrasada USD</p>
                           <p className={`text-sm font-semibold tabular-nums text-[var(--copilot-warning-text)]`}>{fmtAmount(usd?.deudaVencida ?? 0, "USD")}</p>
                         </div>
                       </>
@@ -2006,7 +2006,7 @@ export default function DashboardPageClient() {
                           <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(uyu?.deudaActiva ?? 0, "UYU")}</p>
                         </div>
                         <div>
-                          <p className={`text-[10px] ${C.muted}`}>Deuda vencida UYU</p>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda atrasada UYU</p>
                           <p className={`text-sm font-semibold tabular-nums text-[var(--copilot-warning-text)]`}>{fmtAmount(uyu?.deudaVencida ?? 0, "UYU")}</p>
                         </div>
                       </>
@@ -2029,7 +2029,7 @@ export default function DashboardPageClient() {
                       Ver clientes
                     </Link>
                     <Link href="/copilot/cartera?filter=overdue" className={`text-[10px] ${C.muted} hover:underline`}>
-                      Ver vencidos →
+                      Ver atrasados →
                     </Link>
                   </div>
                 </div>

@@ -80,7 +80,7 @@ function buildCashImpact(o: ProtoTaxObligation): string {
 
 function buildUrgency(o: ProtoTaxObligation): string {
   if (o.status === "overdue") {
-    return "Crítica: vencida. Hay riesgo de recargos, intereses y ajustes de fiscalización si no se regulariza.";
+    return "Crítica: atrasada. Hay riesgo de recargos, intereses y ajustes de fiscalización si no se regulariza.";
   }
   if (o.priority === "critical") {
     return "Alta: prioridad crítica en el semáforo interno — coordinar pago y documentación con tiempo.";

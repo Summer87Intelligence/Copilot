@@ -269,7 +269,7 @@ export function DailyOperationsQueuePanel({
                   {queueSignals && queueSignals.sla_breached_count > 0 && (
                     <span className="text-[var(--copilot-danger-text)]">
                       {" "}
-                      · {queueSignals.sla_breached_count} SLA vencidos
+                      · {queueSignals.sla_breached_count} SLA atrasados
                     </span>
                   )}
                   {queueSignals && queueSignals.overloaded_operators_count > 0 && (

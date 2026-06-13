@@ -1411,7 +1411,7 @@ function CopilotDatosPageContent() {
                               {([
                                 { key: "all", label: "Todas" },
                                 { key: "with_balance", label: "Con saldo" },
-                                { key: "overdue", label: "Vencidas" },
+                                { key: "overdue", label: "Atrasadas" },
                                 { key: "paid", label: "Pagadas" },
                                 { key: "credit_notes", label: "Ajustes" },
                               ] as const).map((f) => (

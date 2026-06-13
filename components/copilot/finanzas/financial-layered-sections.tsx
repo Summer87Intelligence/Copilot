@@ -501,7 +501,7 @@ export function FinancialCollectionRisk({
               <tr className="bg-[var(--copilot-soft-bg)] text-[10px] uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 <th className="px-3 py-2">Cliente</th>
                 <th className="px-3 py-2 text-right">Deuda</th>
-                <th className="px-3 py-2 text-right">Vencida</th>
+                <th className="px-3 py-2 text-right">Atrasada</th>
                 <th className="px-3 py-2 text-right">Acción</th>
               </tr>
             </thead>
@@ -531,7 +531,7 @@ export function FinancialCollectionRisk({
       )}
 
       <div className="mt-3 flex flex-wrap gap-3">
-        <CopilotGhostLink href="/copilot/cartera">Ver clientes vencidos</CopilotGhostLink>
+        <CopilotGhostLink href="/copilot/cartera">Ver clientes atrasados</CopilotGhostLink>
         <CopilotGhostLink href="/copilot/reportes">Generar reporte de deudores</CopilotGhostLink>
       </div>
     </>

@@ -95,10 +95,10 @@ const AGENT_DESCRIPTION: Record<
   string
 > = {
   daily_executive: "Lee el Copilot completo y ordena lo más importante del día.",
-  collection: "Revisa deuda vencida, promesas y seguimientos para cobrar a tiempo.",
+  collection: "Revisa deuda atrasada, promesas y seguimientos para cobrar a tiempo.",
   treasury: "Revisa pagos, compromisos y señales de caja para evitar sorpresas.",
   data_integrity: "Te dice si los datos están listos para decidir o conviene revisarlos.",
-  cfo: "Resume liquidez, cartera vencida y señales financieras relevantes.",
+  cfo: "Resume liquidez, cartera atrasada y señales financieras relevantes.",
   risk: "Junta caja, cobranza, datos y finanzas para mostrar el riesgo operativo.",
 };
 

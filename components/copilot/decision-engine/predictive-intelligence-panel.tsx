@@ -194,7 +194,7 @@ export function PredictiveIntelligencePanel() {
               </span>
               <span className="text-[11px] text-[var(--copilot-text-secondary)]">
                 +{pf30.projected_risk_delta_pct}% riesgo · ~$
-                {pf30.projected_overdue_amount.toLocaleString("es-UY")} vencido proj.
+                {pf30.projected_overdue_amount.toLocaleString("es-UY")} atrasado proj.
               </span>
             </div>
             {pf30.drivers[0] && (

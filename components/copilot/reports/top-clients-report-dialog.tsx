@@ -23,7 +23,7 @@ type SortBy = "net_sales" | "debt" | "overdue";
 const SORT_OPTIONS: Array<{ value: SortBy; label: string }> = [
   { value: "net_sales", label: "Facturación" },
   { value: "debt", label: "Deuda actual" },
-  { value: "overdue", label: "Deuda vencida" },
+  { value: "overdue", label: "Deuda atrasada" },
 ];
 
 type Props = {

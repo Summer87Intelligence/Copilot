@@ -7,7 +7,7 @@
  * las cards.
  */
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
 
@@ -48,8 +48,17 @@ export type CarteraKpiExplain = {
   invoiceCount?: number | null;
   /** Cantidad de clientes que contribuyen. */
   clientCount?: number | null;
+  /**
+   * Filas a desplegar. Pueden ser el set completo: el drawer muestra primero
+   * `initialRowsLimit` (default 8) y expone "Ver todos los clientes" /
+   * "Ver menos" cuando hay más.
+   */
   rows: CarteraKpiBreakdownRow[];
-  /** Cuando hay más filas que las visibles → CTA. */
+  /** Tope inicial de filas visibles antes del toggle inline (default 8). */
+  initialRowsLimit?: number;
+  /** Etiqueta del toggle inline cuando hay más filas (default "Ver todos los clientes"). */
+  expandLabel?: string | null;
+  /** Cuando se navega fuera del drawer (sin expandir inline) → CTA secundaria. */
   moreHref?: string | null;
   moreLabel?: string | null;
   /** Mensaje cuando `rows` está vacío (p. ej. NC sin detalle en fuente). */
@@ -67,6 +76,8 @@ export function CarteraKpiExplainDrawer({
   open,
   onClose,
 }: CarteraKpiExplainDrawerProps) {
+  const [expanded, setExpanded] = useState(false);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -75,6 +86,20 @@ export function CarteraKpiExplainDrawer({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  // Resetea el toggle cada vez que cambia el KPI mostrado o se reabre.
+  useEffect(() => {
+    setExpanded(false);
+  }, [explain?.title, explain?.currency, open]);
+
+  const initialLimit = explain?.initialRowsLimit ?? 8;
+  const allRows = explain?.rows ?? [];
+  const visibleRows = useMemo(
+    () => (expanded ? allRows : allRows.slice(0, initialLimit)),
+    [allRows, expanded, initialLimit]
+  );
+  const hasMoreInline = allRows.length > initialLimit;
+  const expandLabel = explain?.expandLabel ?? "Ver todos los clientes";
 
   if (!open || !explain) return null;
 
@@ -171,7 +196,7 @@ export function CarteraKpiExplainDrawer({
               </p>
             ) : (
               <ul className="mt-2 divide-y divide-[var(--copilot-border)]/60">
-                {explain.rows.map((row, idx) => (
+                {visibleRows.map((row, idx) => (
                   <li
                     key={`${row.kind}-${idx}-${row.label}`}
                     className="py-2 text-xs"
@@ -240,13 +265,35 @@ export function CarteraKpiExplainDrawer({
                 ))}
               </ul>
             )}
-            {explain.moreHref ? (
+            {hasMoreInline ? (
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setExpanded((v) => !v)}
+                  aria-expanded={expanded}
+                  className="inline-flex text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
+                >
+                  {expanded
+                    ? "Ver menos"
+                    : `${expandLabel} (${allRows.length})`}
+                </button>
+                {explain.moreHref ? (
+                  <Link
+                    href={explain.moreHref}
+                    className="inline-flex text-xs font-medium text-[var(--copilot-ink-muted)] hover:underline"
+                    onClick={onClose}
+                  >
+                    {explain.moreLabel ?? "Abrir en Clientes"} →
+                  </Link>
+                ) : null}
+              </div>
+            ) : explain.moreHref ? (
               <Link
                 href={explain.moreHref}
                 className="mt-3 inline-flex text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
                 onClick={onClose}
               >
-                {explain.moreLabel ?? "Ver todos"} →
+                {explain.moreLabel ?? "Abrir en Clientes"} →
               </Link>
             ) : null}
           </section>

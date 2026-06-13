@@ -359,7 +359,7 @@ export function FinancialCollectionDebtSection({
               <tr className="bg-[var(--copilot-table-header-bg)] text-[10px] uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 <th className="px-3 py-2">Cliente</th>
                 <th className="px-3 py-2 text-right">Deuda</th>
-                <th className="px-3 py-2 text-right">Vencida</th>
+                <th className="px-3 py-2 text-right">Atrasada</th>
                 <th className="px-3 py-2">Riesgo</th>
                 <th className="px-3 py-2 text-right">Acción</th>
               </tr>
@@ -390,7 +390,7 @@ export function FinancialCollectionDebtSection({
         <p className="mt-3 text-sm text-[var(--copilot-ink-muted)]">Sin atrasos en {c}.</p>
       )}
       <div className="mt-4 flex flex-wrap gap-3">
-        <CopilotGhostLink href="/copilot/cartera">Ver clientes vencidos</CopilotGhostLink>
+        <CopilotGhostLink href="/copilot/cartera">Ver clientes atrasados</CopilotGhostLink>
         <CopilotGhostLink href="/copilot/reportes">Generar reporte de deudores</CopilotGhostLink>
       </div>
     </CopilotCard>
@@ -426,7 +426,7 @@ function ClientTable({
               {mode === "sales" ? (
                 <th className="px-3 py-2 text-right">Deuda</th>
               ) : (
-                <th className="px-3 py-2 text-right">Vencida</th>
+                <th className="px-3 py-2 text-right">Atrasada</th>
               )}
             </tr>
           </thead>

@@ -332,7 +332,7 @@ function CopilotAtencionPrioritariaPageContent() {
     }
     if (snapshot && snapshotExpectedOutflowsTotal(snapshot) > 0) {
       lines.push(
-        `Pagos que suelen postergarse sin romper compliance: operativos discrecionales y proveedores con contrato flexible — no impuestos ya vencidos ni salarios, salvo acuerdo formal. Egresos modelados: ${formatMoney(snapshotExpectedOutflowsTotal(snapshot))}.`
+        `Pagos que suelen postergarse sin romper compliance: operativos discrecionales y proveedores con contrato flexible — no impuestos ya atrasados ni salarios, salvo acuerdo formal. Egresos modelados: ${formatMoney(snapshotExpectedOutflowsTotal(snapshot))}.`
       );
     }
     lines.push(
@@ -605,11 +605,11 @@ function CopilotAtencionPrioritariaPageContent() {
                     {content.queEstaPasando}
                   </p>
                 </div>
-                <div className="rounded-xl border border-[var(--copilot-danger-border)]/80 bg-[var(--copilot-tone-danger-bg)] p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-danger-text-strong)]/80">
+                <div className="rounded-xl border border-[var(--copilot-danger-border)]/80 bg-[var(--copilot-card-bg)]/80 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                     Si no se actúa
                   </p>
-                  <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-danger-text-strong)]/90">
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--copilot-danger-text-strong)]">
                     {consecuenciasOperativas}
                   </p>
                 </div>
@@ -701,7 +701,7 @@ function CopilotAtencionPrioritariaPageContent() {
                           <span className="font-semibold text-[var(--copilot-ink)]">{cur}</span>{" "}
                           pendiente {t.pending?.toLocaleString("es-AR", { maximumFractionDigits: 0 }) ?? "—"}
                           {t.overdue && t.overdue > 0
-                            ? ` · vencido ${t.overdue.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
+                            ? ` · atrasado ${t.overdue.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
                             : ""}
                         </span>
                       );

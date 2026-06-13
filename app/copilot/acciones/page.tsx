@@ -1257,12 +1257,11 @@ function SummaryPill({
   value: number;
   highlight?: boolean;
 }) {
+  const isCritical = highlight && value > 0;
   return (
     <div
-      className={`rounded-xl border px-3 py-2 ${
-        highlight && value > 0
-          ? "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)]/80"
-          : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70"
+      className={`rounded-xl border px-3 py-2 bg-[var(--copilot-card-bg)]/70 ${
+        isCritical ? "border-[var(--copilot-danger-border)]" : "border-[var(--copilot-border)]"
       }`}
     >
       <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
@@ -1270,7 +1269,7 @@ function SummaryPill({
       </p>
       <p
         className={`mt-1 text-lg font-bold tabular-nums ${
-          highlight && value > 0 ? "text-[var(--copilot-danger-text-strong)]" : "text-[var(--copilot-ink)]"
+          isCritical ? "text-[var(--copilot-danger-text-strong)]" : "text-[var(--copilot-ink)]"
         }`}
       >
         {value}

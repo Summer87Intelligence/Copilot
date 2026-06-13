@@ -31,7 +31,7 @@ const INSTRUCTION_CONFIG: Record<ClientInstruction, { label: string; pill: strin
 };
 
 const BUCKET_LABEL: Record<string, string> = {
-  not_due: "No vencida",
+  not_due: "Sin atraso",
   "0-30":  "0-30 días",
   "31-60": "31-60 días",
   "61-90": "61-90 días",
@@ -159,7 +159,7 @@ export function ClientPriorityList({
                     </div>
                     {client.oldest_days > 0 && (
                       <div>
-                        <span className="text-[var(--copilot-text-muted)]">Días máx. vencido </span>
+                        <span className="text-[var(--copilot-text-muted)]">Días máx. atraso </span>
                         <span className="font-semibold text-[var(--copilot-text)]">{client.oldest_days}</span>
                       </div>
                     )}

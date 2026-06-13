@@ -298,7 +298,7 @@ export default function ManualPage() {
           { step: 2, label: "Estado", description: "Verificá si hay algo urgente en el semáforo.", href: "/copilot/hoy" },
           { step: 3, label: "Acciones", description: "Ejecutá las acciones críticas primero.", href: "/copilot/acciones" },
           { step: 4, label: "Alertas", description: "Revisá novedades del negocio.", href: "/copilot/alertas" },
-          { step: 5, label: "Clientes / Cartera", description: "Gestioná cobros vencidos.", href: "/copilot/cartera" },
+          { step: 5, label: "Clientes / Cartera", description: "Gestioná cobros atrasados.", href: "/copilot/cartera" },
           { step: 6, label: "Tesorería", description: "Confirmá pagos próximos.", href: "/copilot/tesoreria" },
           { step: 7, label: "Finanzas", description: "Revisá la mirada general si cambiaron cosas.", href: "/copilot/finanzas" },
           { step: 8, label: "Alertas / Datos", description: "Solo si algo parece desactualizado.", href: "/copilot/alertas" },
