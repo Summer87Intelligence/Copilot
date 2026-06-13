@@ -167,6 +167,7 @@ function CopilotAccionesPageContent() {
   const [bandejaActions, setBandejaActions] = useState<CopilotAction[]>([]);
   const [bandejaLoading, setBandejaLoading] = useState(true);
   const [bandejaFilter, setBandejaFilter] = useState<BandejaFilter>("all");
+  const [bandejaSearch, setBandejaSearch] = useState("");
   const [agenda, setAgenda] = useState<CollectionAgenda | null>(null);
   const [inboxNotifications, setInboxNotifications] = useState<CopilotNotification[]>([]);
 
@@ -239,10 +240,47 @@ function CopilotAccionesPageContent() {
     void loadBandeja();
   }, [loadBandeja]);
 
-  const filteredBandeja = useMemo(
-    () => bandejaActions.filter((a) => matchesFilter(a, bandejaFilter)),
-    [bandejaActions, bandejaFilter]
-  );
+  const filteredBandeja = useMemo(() => {
+    const q = bandejaSearch.trim().toLocaleLowerCase("es");
+    return bandejaActions
+      .filter((a) => matchesFilter(a, bandejaFilter))
+      .filter((a) => {
+        if (!q) return true;
+        const haystack = [a.title, a.reason, a.entityId].filter(Boolean).join(" ").toLocaleLowerCase("es");
+        return haystack.includes(q);
+      });
+  }, [bandejaActions, bandejaFilter, bandejaSearch]);
+
+  const filteredAgenda: CollectionAgenda | null = useMemo(() => {
+    if (!agenda) return null;
+    const q = bandejaSearch.trim().toLocaleLowerCase("es");
+    if (!q) return agenda;
+    const matches = (it: { clientName: string; note?: string }) => {
+      const fields = [it.clientName, it.note]
+        .filter(Boolean)
+        .join(" ")
+        .toLocaleLowerCase("es");
+      return fields.includes(q);
+    };
+    return {
+      ...agenda,
+      overdueFollowups: agenda.overdueFollowups.filter(matches),
+      dueTodayFollowups: agenda.dueTodayFollowups.filter(matches),
+      upcomingFollowups: agenda.upcomingFollowups.filter(matches),
+      overduePromises: agenda.overduePromises.filter(matches),
+      upcomingPromises: agenda.upcomingPromises.filter(matches),
+      recentContacts: agenda.recentContacts.filter(matches),
+    };
+  }, [agenda, bandejaSearch]);
+
+  const filteredInboxNotifications = useMemo(() => {
+    const q = bandejaSearch.trim().toLocaleLowerCase("es");
+    if (!q) return inboxNotifications;
+    return inboxNotifications.filter((n) => {
+      const hay = [n.title, n.body, n.entity_id].filter(Boolean).join(" ").toLocaleLowerCase("es");
+      return hay.includes(q);
+    });
+  }, [inboxNotifications, bandejaSearch]);
 
   const bandejaMetrics = useMemo(() => {
     const critical = bandejaActions.filter((a) => a.priority === "critical").length;
@@ -566,7 +604,7 @@ function CopilotAccionesPageContent() {
         </div>
 
         {activeTab === "agenda" ? (
-          <CollectionAgendaSection agenda={agenda} loading={bandejaLoading} />
+          <CollectionAgendaSection agenda={filteredAgenda} loading={bandejaLoading} />
         ) : null}
 
         {activeTab === "alertas" ? (
@@ -581,13 +619,13 @@ function CopilotAccionesPageContent() {
             </div>
             {bandejaLoading ? (
               <p className="text-sm text-[var(--copilot-ink-muted)]">Cargando alertas…</p>
-            ) : inboxNotifications.length === 0 ? (
+            ) : filteredInboxNotifications.length === 0 ? (
               <p className="text-sm text-[var(--copilot-ink-muted)]">
-                No hay alertas recientes en esta carga.
+                {bandejaSearch ? "Sin alertas que coincidan con la búsqueda." : "No hay alertas recientes en esta carga."}
               </p>
             ) : (
               <ul className="space-y-2">
-                {inboxNotifications.slice(0, 8).map((n) => (
+                {filteredInboxNotifications.slice(0, 8).map((n) => (
                   <li
                     key={n.id}
                     className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 py-2.5"
@@ -646,9 +684,9 @@ function CopilotAccionesPageContent() {
             </div>
           ) : null}
 
-          {/* Filter pills */}
+          {/* Filter pills + búsqueda compacta (filtra Prioridades, Agenda y Novedades) */}
           {!bandejaLoading && bandejaMetrics.total > 0 ? (
-            <div className="mb-3 flex flex-wrap gap-2">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
               {FILTER_LABELS.map((f) => {
                 const active = bandejaFilter === f.id;
                 return (
@@ -666,6 +704,14 @@ function CopilotAccionesPageContent() {
                   </button>
                 );
               })}
+              <input
+                type="search"
+                value={bandejaSearch}
+                onChange={(e) => setBandejaSearch(e.target.value)}
+                placeholder="Buscar cliente, empresa o concepto…"
+                aria-label="Buscar en acciones, agenda y novedades"
+                className="ml-auto h-7 min-w-[12rem] flex-1 rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 text-xs text-[var(--copilot-ink)] placeholder:text-[var(--copilot-ink-muted)] focus:border-[var(--copilot-accent)] focus:outline-none sm:max-w-xs sm:flex-none"
+              />
             </div>
           ) : null}
 
@@ -676,7 +722,7 @@ function CopilotAccionesPageContent() {
               title="Sin prioridades pendientes"
               why="No hay clientes, pagos ni alertas que requieran acción inmediata en este momento."
               whatToDo="Revisá Hoy para la lectura del día o ampliá filtros si esperás ver tareas."
-              whatHappens="Cuando haya deuda vencida, pagos próximos o alertas activas, aparecerán acá ordenadas por urgencia."
+              whatHappens="Cuando haya deuda atrasada, pagos próximos o alertas activas, aparecerán acá ordenadas por urgencia."
               cta={{ label: "Ir a Hoy", href: "/copilot/hoy" }}
             />
           ) : filteredBandeja.length === 0 ? (

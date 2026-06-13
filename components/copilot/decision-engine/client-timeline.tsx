@@ -38,7 +38,7 @@ const STATUS_CONFIG: Record<string, { dot: string; pill: string }> = {
   paid:             { dot: "bg-[var(--copilot-success-text)]", pill: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border border-[var(--copilot-success-border)]" },
   promised_payment: { dot: "bg-[var(--copilot-accent)]",    pill: "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)] border border-[var(--copilot-border)]" },
   escalated:        { dot: "bg-[var(--copilot-danger-text)]",    pill: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border border-[var(--copilot-danger-border)]" },
-  disputed:         { dot: "bg-orange-500",  pill: "bg-orange-50 text-orange-700 border border-orange-200" },
+  disputed:         { dot: "bg-[var(--copilot-warning-text)]",  pill: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border border-[var(--copilot-warning-border)]" },
   contacted:        { dot: "bg-[var(--copilot-accent)]",    pill: "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)] border border-[var(--copilot-border)]" },
   pending_review:   { dot: "bg-[var(--copilot-border)]",   pill: "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink-muted)] border border-[var(--copilot-border)]" },
   paused:           { dot: "bg-[var(--copilot-border)]",   pill: "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink-muted)] border border-[var(--copilot-border)]" },
@@ -97,7 +97,7 @@ function PromiseChip({ date, amount, currency, status }: {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] text-[var(--copilot-danger-text-strong)] bg-[var(--copilot-tone-danger-bg)] border border-[var(--copilot-danger-border)] rounded px-1.5 py-0.5">
         <XCircle className="h-3 w-3" />
-        Promesa vencida · {formatDate(date)}
+        Promesa atrasada · {formatDate(date)}
         {amount != null && <> · {currency ?? ""} {amount.toLocaleString("es-UY", { maximumFractionDigits: 0 })}</>}
       </span>
     );

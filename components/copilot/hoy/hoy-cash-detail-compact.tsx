@@ -50,6 +50,14 @@ function lookupMovementAmount(
   return match && Number.isFinite(match.amount) ? match.amount : null;
 }
 
+function resolveMovementAmount(
+  event: HoyCashPositionBlock["lastIncome"],
+  fallback: number | null
+): number | null {
+  if (event?.amount != null && Number.isFinite(event.amount)) return event.amount;
+  return fallback;
+}
+
 function LastMovementRow({
   label,
   event,
@@ -83,14 +91,14 @@ function LastMovementRow({
         >
           {label}
         </p>
-        <p className="text-[10px] tabular-nums text-[var(--copilot-ink)]">
-          {formatCashEventDate(event.date)}
-        </p>
         {origin ? (
-          <p className="truncate text-[10px] leading-snug text-[var(--copilot-ink-muted)]" title={origin}>
+          <p className="truncate text-[10px] leading-snug text-[var(--copilot-ink)]" title={origin}>
             {origin}
           </p>
         ) : null}
+        <p className="text-[10px] tabular-nums text-[var(--copilot-ink-muted)]">
+          {formatCashEventDate(event.date)}
+        </p>
       </div>
       {amount != null ? (
         <span className="shrink-0 pt-3 text-[10px] font-semibold tabular-nums text-[var(--copilot-ink)]">
@@ -109,7 +117,7 @@ function CurrencyLastMovements({
   manualMovements?: readonly ManualCashMovement[];
 }) {
   const currencyClass = copilotCurrencyClass(block.currency);
-  const incomeAmount = block.lastIncome
+  const incomeFallback = block.lastIncome
     ? lookupMovementAmount(
         manualMovements,
         block.currency,
@@ -118,7 +126,7 @@ function CurrencyLastMovements({
         "income"
       )
     : null;
-  const expenseAmount = block.lastExpense
+  const expenseFallback = block.lastExpense
     ? lookupMovementAmount(
         manualMovements,
         block.currency,
@@ -127,6 +135,8 @@ function CurrencyLastMovements({
         "expense"
       )
     : null;
+  const incomeAmount = resolveMovementAmount(block.lastIncome, incomeFallback);
+  const expenseAmount = resolveMovementAmount(block.lastExpense, expenseFallback);
 
   return (
     <div className="border-t border-[var(--copilot-border)]/70 pt-2 first:border-t-0 first:pt-0">

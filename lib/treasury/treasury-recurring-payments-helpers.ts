@@ -105,7 +105,7 @@ export function getObligationStatusLabel(
     case "confirmed": return "Confirmado";
     case "paid": return "Pagado";
     case "cancelled": return "Cancelado";
-    case "overdue": return "Vencido";
+    case "overdue": return "Atrasado";
     default: return status;
   }
 }

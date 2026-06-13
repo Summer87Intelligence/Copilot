@@ -43,7 +43,7 @@ export type MetricId = (typeof METRIC_ID)[keyof typeof METRIC_ID];
 
 export const METRIC_LABEL: Record<MetricId, string> = {
   deuda_activa: "Deuda actual",
-  deuda_vencida: "Deuda vencida",
+  deuda_vencida: "Deuda atrasada",
   deuda_periodo: "Pendiente al corte del período",
   pendiente_periodo: "Pendiente del período",
   facturado_periodo: "Ventas del período",
@@ -54,14 +54,14 @@ export const METRIC_LABEL: Record<MetricId, string> = {
   estado_global: "Estado del sistema",
 };
 
-/** Submétrica de deuda_vencida — mora superior a 30 días (no confundir con deuda vencida total). */
-export const METRIC_LABEL_OVERDUE_30D = "Deuda vencida >30 días";
+/** Submétrica de deuda_vencida — mora superior a 30 días (no confundir con deuda atrasada total). */
+export const METRIC_LABEL_OVERDUE_30D = "Deuda atrasada >30 días";
 
 /** Labels visibles permitidos — cada módulo puede usar alias siempre que no
  *  sean confusos con otra métrica canónica. */
 export const METRIC_ALIASES: Record<MetricId, readonly string[]> = {
   deuda_activa: ["Deuda actual"],
-  deuda_vencida: ["Deuda vencida"],
+  deuda_vencida: ["Deuda atrasada", "Deuda vencida"],
   deuda_periodo: ["Pendiente al corte del período"],
   pendiente_periodo: ["Pendiente del período"],
   facturado_periodo: ["Ventas del período"],

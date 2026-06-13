@@ -54,7 +54,7 @@ const CATEGORY_ICONS: Record<StrategyRecommendationCategory, React.ReactNode> = 
 const NOISE_CLASS: Record<AutomationNoiseLevel, string> = {
   low:      "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border-[var(--copilot-success-border)]",
   medium:   "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]",
-  high:     "bg-orange-50 text-orange-800 border-orange-200",
+  high:     "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]",
   critical: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]",
 };
 

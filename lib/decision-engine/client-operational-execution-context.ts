@@ -145,7 +145,7 @@ export function buildClientOperationalLiveState(
 
   const sla_label = summary.sla_breached
     ? summary.primary_action.breached_sla
-      ? "Vencido"
+      ? "Atrasado"
       : "Fuera de SLA"
     : isFollowUpDueToday(due, now)
       ? "Seguimiento hoy"

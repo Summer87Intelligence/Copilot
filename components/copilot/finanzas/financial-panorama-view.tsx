@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
 
 import { CopilotCard, CopilotSectionTitle } from "@/components/copilot/copilot-ui";
 import { FinancialMetricDetailDialog } from "@/components/copilot/finanzas/financial-metric-detail-dialog";
@@ -41,6 +40,59 @@ import type { DataRow } from "@/lib/data/proto-operational-read-repository";
 type MetricSelection =
   | { kind: "slice"; metricId: PanoramaMetricId; slice: PanoramaCurrencySlice }
   | { kind: "cash"; currency: "UYU" | "USD" };
+
+function FinanzasPanoramaSkeleton() {
+  const blockClass =
+    "rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/40 p-4 animate-pulse";
+  const lineClass = "h-3 rounded bg-[var(--copilot-border)]/40";
+  return (
+    <div
+      role="status"
+      aria-label="Cargando panorama financiero"
+      className="space-y-4"
+    >
+      <div className={blockClass}>
+        <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+          Foto actual
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="space-y-2 rounded-lg border border-[var(--copilot-border)]/50 p-3">
+              <div className={`${lineClass} w-2/3`} />
+              <div className={`${lineClass} w-3/4 h-5`} />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className={blockClass}>
+        <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+          Facturación anual
+        </p>
+        <div className={`mt-3 ${lineClass} w-full h-16`} />
+      </div>
+      <div className={blockClass}>
+        <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+          Clientes que explican la deuda
+        </p>
+        <div className="mt-3 space-y-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className={`${lineClass} w-full`} />
+          ))}
+        </div>
+      </div>
+      <div className={blockClass}>
+        <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+          Caja proyectada
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className={`${lineClass} h-20`} />
+          <div className={`${lineClass} h-20`} />
+        </div>
+      </div>
+      <span className="sr-only">Cargando panorama financiero…</span>
+    </div>
+  );
+}
 
 export function FinancialPanoramaView() {
   const today = financialEngineLocalTodayYmd();
@@ -233,12 +285,7 @@ export function FinancialPanoramaView() {
   const error = reconciliation.error ?? snapshotError;
 
   if (loading && !dashboard) {
-    return (
-      <div className="flex items-center gap-2 py-8 text-sm text-[var(--copilot-ink-muted)]">
-        <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-        Cargando panorama financiero…
-      </div>
-    );
+    return <FinanzasPanoramaSkeleton />;
   }
 
   if (error && !dashboard) {

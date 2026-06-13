@@ -59,14 +59,14 @@ const FALLBACK_CONFIG = {
 
 const URGENCY_DOT: Record<string, string> = {
   critical: "bg-[var(--copilot-danger-text)]",
-  high:     "bg-orange-400",
+  high:     "bg-[var(--copilot-warning-text)]",
   medium:   "bg-[var(--copilot-warning-text)]",
   low:      "bg-[var(--copilot-success-text)]",
 };
 
 const RISK_PILL: Record<string, string> = {
   critical: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border border-[var(--copilot-danger-border)]",
-  high:     "bg-orange-50 text-orange-700 border border-orange-200",
+  high:     "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border border-[var(--copilot-warning-border)]",
   medium:   "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border border-[var(--copilot-warning-border)]",
   low:      "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border border-[var(--copilot-success-border)]",
 };

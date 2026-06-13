@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ChevronDown, Filter } from "lucide-react";
 
 import { TreasuryObligationsPanel } from "@/components/copilot/tesoreria/treasury-obligations-panel";
 import { TreasuryProgramadosPanel } from "@/components/copilot/tesoreria/treasury-programados-panel";
@@ -10,7 +11,6 @@ import { effectivePlannedObligationStatus } from "@/lib/treasury/treasury-obliga
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
 import { summarizeScheduledOutflows, addDaysYmd } from "@/lib/treasury/treasury-scheduled-payments";
 import type { TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
-import { TESORERIA_FIELD_CLASS, TESORERIA_SELECT_CLASS } from "./tesoreria-ui";
 
 type TypeFilter = "all" | "scheduled" | "recurring";
 type StatusFilter = "all" | "pending" | "paid" | "cancelled" | "overdue";
@@ -28,6 +28,7 @@ export function TesoreriaPagosProximosTab({ workspace, asOfDate }: Props) {
   const [currency, setCurrency] = useState<CurrencyFilter>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const horizonEnd = addDaysYmd(asOfDate, 30);
   const summaries = useMemo(() => {
@@ -60,7 +61,7 @@ export function TesoreriaPagosProximosTab({ workspace, asOfDate }: Props) {
                 <dd className="font-semibold tabular-nums">{formatTreasuryMoney(s.next30Days, s.currency)}</dd>
               </div>
               <div className="flex justify-between gap-2">
-                <dt className="text-[var(--copilot-ink-muted)]">Vencidos</dt>
+                <dt className="text-[var(--copilot-ink-muted)]">Atrasados</dt>
                 <dd className="font-semibold tabular-nums text-[var(--copilot-danger-text)]">{formatTreasuryMoney(s.overdue, s.currency)}</dd>
               </div>
             </dl>
@@ -68,55 +69,97 @@ export function TesoreriaPagosProximosTab({ workspace, asOfDate }: Props) {
         ))}
       </div>
 
-      <section className="space-y-3 rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-4 shadow-sm">
-        <p className="text-sm font-semibold text-[var(--copilot-ink)]">Filtros</p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <label className="block text-sm">
-            <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Desde</span>
-            <input type="date" className={TESORERIA_FIELD_CLASS} value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Hasta</span>
-            <input type="date" className={TESORERIA_FIELD_CLASS} value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-          </label>
-          <label className="block text-sm sm:col-span-2 lg:col-span-1">
-            <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Buscar</span>
-            <input
-              type="search"
-              className={TESORERIA_FIELD_CLASS}
-              placeholder="Concepto, proveedor o notas"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Moneda</span>
-            <select className={TESORERIA_SELECT_CLASS} value={currency} onChange={(e) => setCurrency(e.target.value as CurrencyFilter)}>
-              <option value="all">Todas</option>
-              <option value="UYU">UYU</option>
-              <option value="USD">USD</option>
-            </select>
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Tipo</span>
-            <select className={TESORERIA_SELECT_CLASS} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}>
-              <option value="all">Todos</option>
-              <option value="scheduled">Programado</option>
-              <option value="recurring">Recurrente</option>
-            </select>
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Estado</span>
-            <select className={TESORERIA_SELECT_CLASS} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}>
-              <option value="all">Todos</option>
-              <option value="pending">Pendiente</option>
-              <option value="overdue">Vencido</option>
-              <option value="paid">Pagado</option>
-              <option value="cancelled">Cancelado</option>
-            </select>
-          </label>
-        </div>
-      </section>
+      {(() => {
+        const activeFiltersCount =
+          (dateFrom ? 1 : 0) +
+          (dateTo ? 1 : 0) +
+          (search.trim() ? 1 : 0) +
+          (currency !== "all" ? 1 : 0) +
+          (typeFilter !== "all" ? 1 : 0) +
+          (statusFilter !== "all" ? 1 : 0);
+        const inputCls =
+          "h-8 w-full rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 text-xs text-[var(--copilot-ink)] placeholder:text-[var(--copilot-ink-muted)] focus:border-[var(--copilot-accent)] focus:outline-none";
+        return (
+          <section className="space-y-2">
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((v) => !v)}
+              aria-expanded={filtersOpen}
+              className="inline-flex items-center gap-2 rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] transition hover:bg-[var(--copilot-panel-bg)]"
+            >
+              <Filter className="h-3 w-3" aria-hidden />
+              Filtros
+              {activeFiltersCount > 0 ? (
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--copilot-accent)] px-1 text-[10px] font-semibold text-[var(--copilot-on-accent)]">
+                  {activeFiltersCount}
+                </span>
+              ) : null}
+              <ChevronDown
+                className={`h-3 w-3 shrink-0 transition ${filtersOpen ? "rotate-180" : ""}`}
+                aria-hidden
+              />
+            </button>
+            {filtersOpen ? (
+              <div className="grid grid-cols-2 gap-2 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)]/40 p-2 sm:grid-cols-6">
+                <input
+                  type="date"
+                  aria-label="Desde"
+                  className={inputCls}
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                />
+                <input
+                  type="date"
+                  aria-label="Hasta"
+                  className={inputCls}
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                />
+                <input
+                  type="search"
+                  aria-label="Buscar"
+                  placeholder="Buscar concepto/proveedor"
+                  className={`${inputCls} col-span-2`}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                <select
+                  aria-label="Moneda"
+                  className={inputCls}
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value as CurrencyFilter)}
+                >
+                  <option value="all">Moneda · Todas</option>
+                  <option value="UYU">UYU</option>
+                  <option value="USD">USD</option>
+                </select>
+                <select
+                  aria-label="Tipo"
+                  className={inputCls}
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
+                >
+                  <option value="all">Tipo · Todos</option>
+                  <option value="scheduled">Programado</option>
+                  <option value="recurring">Recurrente</option>
+                </select>
+                <select
+                  aria-label="Estado"
+                  className={`${inputCls} col-span-2 sm:col-span-1`}
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                >
+                  <option value="all">Estado · Todos</option>
+                  <option value="pending">Pendiente</option>
+                  <option value="overdue">Atrasado</option>
+                  <option value="paid">Pagado</option>
+                  <option value="cancelled">Cancelado</option>
+                </select>
+              </div>
+            ) : null}
+          </section>
+        );
+      })()}
 
       {showScheduled ? (
         <TreasuryObligationsPanel

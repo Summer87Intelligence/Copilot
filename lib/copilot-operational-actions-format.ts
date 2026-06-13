@@ -74,7 +74,7 @@ export function operationalPriorityTone(
 }
 
 const SLA_LABELS: Record<OperationalActionSlaStatus, string> = {
-  overdue: "Vencida",
+  overdue: "Atrasada",
   due_today: "Vence hoy",
   due_soon: "Vence esta semana",
   no_due_date: "Sin fecha",

@@ -38,8 +38,8 @@ describe("buildDebtBreakdown", () => {
     expect(result.hasReconciliationGap).toBe(false);
 
     // Vencidas deben aparecer primero
-    expect(result.items[0]!.status).toBe("Vencida");
-    expect(result.items[1]!.status).toBe("Vencida");
+    expect(result.items[0]!.status).toBe("Atrasada");
+    expect(result.items[1]!.status).toBe("Atrasada");
     expect(result.items[2]!.status).toBe("Al día");
 
     // La más antigua (más días) va primero entre las vencidas
@@ -78,7 +78,7 @@ describe("buildDebtBreakdown", () => {
     ];
     const result = buildDebtBreakdown(invoices, "UYU", TODAY, 300, 300);
 
-    expect(result.items[0]!.status).toBe("Vencida");
+    expect(result.items[0]!.status).toBe("Atrasada");
     expect(result.items[0]!.overdueAmount).toBe(300);
   });
 

@@ -159,7 +159,7 @@ export function CollectionAgendaHoyCard() {
         </p>
       ) : (
         <div className="mt-3 flex flex-wrap items-baseline gap-4">
-          <StatPill label="vencidos" value={overdueCount} tone="danger" />
+          <StatPill label="atrasados" value={overdueCount} tone="danger" />
           <StatPill label="hoy" value={agenda.summary.dueTodayCount} tone="warning" />
           <StatPill label="próximos" value={agenda.summary.upcomingCount} tone="info" />
           <StatPill label="promesas" value={agenda.upcomingPromises.length} tone="neutral" />

@@ -38,7 +38,7 @@ describe("resolveCollectionPaymentOutcome", () => {
 describe("buildPartialCollectionBody", () => {
   it("genera copy de cobro parcial", () => {
     expect(buildPartialCollectionBody("ACME", 5000, "UYU", 12000)).toBe(
-      "ACME pagó UYU 5.000. Saldo pendiente: 12.000."
+      "ACME hizo un pago parcial."
     );
   });
 });

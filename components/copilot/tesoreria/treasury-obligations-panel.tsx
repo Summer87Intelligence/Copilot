@@ -850,7 +850,7 @@ export function TreasuryObligationsPanel({
                     </dd>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <dt className="text-[var(--copilot-ink-muted)]">Vencidos</dt>
+                    <dt className="text-[var(--copilot-ink-muted)]">Atrasados</dt>
                     <dd className="font-semibold tabular-nums text-[var(--copilot-danger-text)]">
                       {formatTreasuryMoney(s.overdue, s.currency)}
                     </dd>
@@ -879,7 +879,7 @@ export function TreasuryObligationsPanel({
             [
               ["next7", "Próximos 7 días"],
               ["next30", "Próximos 30 días"],
-              ["overdue", "Vencidos"],
+              ["overdue", "Atrasados"],
               ["all", "Todos"],
             ] as const
           ).map(([id, label]) => (

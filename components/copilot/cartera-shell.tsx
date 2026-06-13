@@ -215,8 +215,8 @@ export function CarteraShell() {
               <AgingAnalytics report={report} selectedCurrency="all" compact />
             </section>
 
-            <section aria-label="Cobranza">
-              <SectionHeading title="Cobranza" />
+            <section aria-label="Clientes en riesgo">
+              <SectionHeading title="Clientes en riesgo y explorador" />
               <CarteraCompactKpiGrid report={report} variant="cobranza" />
               {structuralGaps.length > 0 && <HistoricalGapNote gaps={structuralGaps} />}
             </section>

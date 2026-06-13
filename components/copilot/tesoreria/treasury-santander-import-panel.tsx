@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Loader2, Upload, X } from "lucide-react";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 
@@ -44,7 +44,7 @@ function statusBadgeClass(status: SantanderReconciliationStatus): string {
     case "matched":
       return "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-success-text-strong)]";
     case "possible":
-      return "bg-sky-100 text-sky-900";
+      return "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)]";
     case "missing_copilot":
     case "missing_zeta":
       return "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-warning-text-strong)]";
@@ -111,6 +111,14 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
       ),
     [workspace.accounts]
   );
+
+  // Selección automática: si solo hay una cuenta Santander disponible, la
+  // pre-seleccionamos para evitar un click innecesario.
+  useEffect(() => {
+    if (!accountId && santanderAccounts.length === 1) {
+      setAccountId(santanderAccounts[0]!.id);
+    }
+  }, [accountId, santanderAccounts]);
 
   const displayRows = useMemo(() => {
     if (!previewResult?.preview.length) return [];
@@ -245,7 +253,7 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
         </strong>
       </p>
 
-      <TreasuryFormField label="Cuenta destino (opcional en preview)" htmlFor="import-account">
+      <TreasuryFormField label="Cuenta destino (opcional en vista previa)" htmlFor="import-account">
         <select
           id="import-account"
           className={treasuryInputClassName()}
@@ -261,8 +269,8 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
         </select>
         {santanderAccounts.length === 0 ? (
           <p className="mt-1 text-xs text-[var(--copilot-warning-text-strong)]">
-            No hay cuentas bancarias cargadas. Podés generar el preview igual; para guardar
-            movimientos importados necesitás elegir una cuenta.
+            No hay cuentas bancarias cargadas. Podés generar la vista previa igual; para guardar
+            movimientos necesitás elegir una cuenta.
           </p>
         ) : null}
       </TreasuryFormField>
@@ -353,7 +361,7 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
           disabled={!selectedFile || parsedRows.length === 0 || previewing || parsing}
           onClick={() => void handlePreview()}
         >
-          {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Generar preview"}
+          {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Generar vista previa"}
         </CopilotGhostButton>
         {canWrite ? (
           <CopilotPrimaryButton
@@ -363,9 +371,9 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
               currencyMismatch
                 ? `Moneda del extracto (${currencyMismatch.statementCurrency}) no coincide con la cuenta (${currencyMismatch.accountCurrency})`
                 : !accountId
-                  ? "Seleccioná una cuenta para guardar movimientos importados"
+                  ? "Seleccioná una cuenta para guardar movimientos"
                   : !hasValidPreview
-                    ? "Generá un preview válido antes de guardar"
+                    ? "Generá una vista previa válida antes de guardar"
                     : undefined
             }
             onClick={() => void handleImport()}
@@ -373,14 +381,14 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
             {importing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              "Guardar movimientos importados"
+              "Guardar movimientos"
             )}
           </CopilotPrimaryButton>
         ) : (
           <PermissionButton
             lockedLabel="Vista previa permitida. Guardar requiere superadmin."
           >
-            Guardar movimientos importados
+            Guardar movimientos
           </PermissionButton>
         )}
       </div>
@@ -388,7 +396,7 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
       <p className="text-xs text-[var(--copilot-ink-muted)]">
         {canWrite
           ? "Guardar solo registra el extracto bancario para conciliación. La caja cambia únicamente si confirmás un movimiento de Tesorería por separado."
-          : "Vista previa permitida. Guardar requiere superadmin. El preview no modifica caja ni deuda."}
+          : "Vista previa permitida. Guardar requiere superadmin. La vista previa no modifica caja ni deuda."}
       </p>
 
       {summary ? (

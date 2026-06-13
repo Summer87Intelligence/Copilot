@@ -339,7 +339,7 @@ function activeDebtSortRank(row: DashboardActiveDebtRow): number {
 
 function activeDebtStatus(overdueDebt: number, risk: string): string {
   if (risk === "Alto") return "Riesgo alto";
-  if (overdueDebt > 0) return "Vencido";
+  if (overdueDebt > 0) return "Atrasado";
   return "Al día";
 }
 

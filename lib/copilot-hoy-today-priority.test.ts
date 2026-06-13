@@ -41,7 +41,7 @@ describe("resolveHoyTodayPriority", () => {
     });
     expect(p.kind).toBe("critical_clients");
     expect(p.description).toContain("19 clientes con deuda actual");
-    expect(p.description).toContain("12 tienen deuda vencida");
+    expect(p.description).toContain("12 tienen deuda atrasada");
     expect(p.description).toContain("7 están al día");
   });
 
@@ -53,7 +53,7 @@ describe("resolveHoyTodayPriority", () => {
     });
     expect(p.kind).toBe("critical_clients");
     expect(p.description).toContain("5 clientes con deuda actual");
-    expect(p.description).toContain("5 tienen deuda vencida");
+    expect(p.description).toContain("5 tienen deuda atrasada");
     expect(p.description).not.toContain("al día");
   });
 

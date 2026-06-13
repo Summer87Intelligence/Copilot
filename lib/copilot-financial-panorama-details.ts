@@ -136,7 +136,7 @@ export function buildPendingDetail(
   const onTime = Math.max(0, slice.pending - slice.overdue);
   const rows: FinancialMetricDetailRow[] = [
     { label: "Pendiente total", value: fmt(slice.pending, slice.code), tone: "warning" },
-    { label: "Vencido", value: fmt(slice.overdue, slice.code), tone: slice.overdue > 0 ? "danger" : "neutral" },
+    { label: "Atrasado", value: fmt(slice.overdue, slice.code), tone: slice.overdue > 0 ? "danger" : "neutral" },
     { label: "Al día", value: fmt(onTime, slice.code) },
   ];
   const open = countRow("Facturas abiertas", ctx?.metrics?.pendingInvoiceCount);

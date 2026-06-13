@@ -193,7 +193,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
         <div className="grid gap-3 sm:grid-cols-3">
           {(
             [
-              { label: "Vencidos", totals: overdueTotals, textColor: "text-[var(--copilot-danger-text)]" },
+              { label: "Atrasados", totals: overdueTotals, textColor: "text-[var(--copilot-danger-text)]" },
               { label: "Próximos 7 días", totals: upcoming7Totals, textColor: "text-[var(--copilot-warning-text)]" },
               { label: "Próximos 30 días", totals: upcoming30Totals, textColor: "text-[var(--copilot-ink)]" },
             ] as const
@@ -290,7 +290,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
         <section>
           <CopilotSectionTitle
             title="Próximos pagos"
-            subtitle="Vencidos y obligaciones más urgentes de la semana."
+            subtitle="Atrasados y obligaciones más urgentes de la semana."
             action={
               <CopilotGhostButton type="button" className="!py-1 !text-xs" onClick={onGoToPagos}>
                 Ver todos →
@@ -332,7 +332,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
                       </td>
                       <td className="px-3 py-2">
                         <CopilotBadge tone={isOverdue ? "danger" : "warning"}>
-                          {isOverdue ? "Vencido" : "Pendiente"}
+                          {isOverdue ? "Atrasado" : "Pendiente"}
                         </CopilotBadge>
                       </td>
                     </tr>

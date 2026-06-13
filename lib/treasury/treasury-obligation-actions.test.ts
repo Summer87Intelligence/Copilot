@@ -58,7 +58,7 @@ describe("getTreasuryPaymentActionsByStatus", () => {
 describe("formatPaymentStatusLabel", () => {
   it("planned → Pendiente", () => expect(formatPaymentStatusLabel("planned")).toBe("Pendiente"));
   it("confirmed → Confirmado", () => expect(formatPaymentStatusLabel("confirmed")).toBe("Confirmado"));
-  it("overdue → Vencido", () => expect(formatPaymentStatusLabel("overdue")).toBe("Vencido"));
+  it("overdue → Atrasado", () => expect(formatPaymentStatusLabel("overdue")).toBe("Atrasado"));
   it("paid → Pagado", () => expect(formatPaymentStatusLabel("paid")).toBe("Pagado"));
   it("cancelled → Cancelado", () => expect(formatPaymentStatusLabel("cancelled")).toBe("Cancelado"));
 });
@@ -176,18 +176,18 @@ describe("buildDueStatusLabelWithTime", () => {
     expect(buildDueStatusLabelWithTime("planned", TODAY, TODAY, "23:59", "10:00")).toBe("Vence hoy · 23:59");
   });
 
-  it("vence hoy con hora ya pasada → Vencido hoy · HH:MM", () => {
-    expect(buildDueStatusLabelWithTime("planned", TODAY, TODAY, "14:00", "14:30")).toBe("Vencido hoy · 14:00");
-    expect(buildDueStatusLabelWithTime("planned", TODAY, TODAY, "14:30", "14:30")).toBe("Vencido hoy · 14:30");
+  it("vence hoy con hora ya pasada → Atrasado hoy · HH:MM", () => {
+    expect(buildDueStatusLabelWithTime("planned", TODAY, TODAY, "14:00", "14:30")).toBe("Atrasado hoy · 14:00");
+    expect(buildDueStatusLabelWithTime("planned", TODAY, TODAY, "14:30", "14:30")).toBe("Atrasado hoy · 14:30");
   });
 
   it("vence hoy pero sin hora → usa label normal del estado", () => {
     expect(buildDueStatusLabelWithTime("planned", TODAY, TODAY, null, "14:30")).toBe("Pendiente");
-    expect(buildDueStatusLabelWithTime("overdue", TODAY, TODAY, null, "14:30")).toBe("Vencido");
+    expect(buildDueStatusLabelWithTime("overdue", TODAY, TODAY, null, "14:30")).toBe("Atrasado");
   });
 
   it("fecha distinta de hoy → usa label normal del estado", () => {
     expect(buildDueStatusLabelWithTime("planned", "2026-06-01", TODAY, "15:00", "14:30")).toBe("Pendiente");
-    expect(buildDueStatusLabelWithTime("overdue", "2026-05-10", TODAY, "08:00", "14:30")).toBe("Vencido");
+    expect(buildDueStatusLabelWithTime("overdue", "2026-05-10", TODAY, "08:00", "14:30")).toBe("Atrasado");
   });
 });

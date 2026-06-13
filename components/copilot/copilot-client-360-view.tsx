@@ -40,6 +40,10 @@ import { CopilotDataProvenanceStrip } from "@/components/copilot/copilot-data-pr
 import { ClientPaymentBehaviorCard } from "@/components/copilot/payment-behavior/client-payment-behavior-card";
 import { AccountStatementSendCard } from "@/components/copilot/clientes/account-statement-send-card";
 import type { Client360Payload, TransferAlias } from "@/lib/copilot-client-360";
+import {
+  deriveDebtSaludFromTotals,
+  CLIENT_SALUD_LABEL,
+} from "@/lib/copilot-client-salud";
 import { normalizeUruguayPhoneForWhatsApp } from "@/lib/phone/normalize-phone-for-whatsapp";
 import {
   buildClientOperationalSummary,
@@ -210,7 +214,7 @@ function timelineIcon(kind: TimelineEvent["kind"], severity: OperationalHintSeve
 function timelineTypeLabel(kind: TimelineEvent["kind"]): string {
   switch (kind) {
     case "invoice_issued": return "Factura emitida";
-    case "invoice_overdue": return "Factura vencida";
+    case "invoice_overdue": return "Factura atrasada";
     case "receipt": return "Cobro recibido";
     case "sync": return "Datos actualizados";
     default: return "Evento";
@@ -218,22 +222,27 @@ function timelineTypeLabel(kind: TimelineEvent["kind"]): string {
 }
 
 function debtStatusLabel(data: Client360Payload): { label: string; cls: string } {
-  const hasOverdue = data.overdue_uyu > 0 || data.overdue_usd > 0;
-  const hasDebt = data.debt_uyu > 0 || data.debt_usd > 0;
-  if (hasOverdue) {
+  const salud = deriveDebtSaludFromTotals({
+    debtUyu: data.debt_uyu,
+    debtUsd: data.debt_usd,
+    overdueUyu: data.overdue_uyu,
+    overdueUsd: data.overdue_usd,
+  });
+  const label = CLIENT_SALUD_LABEL[salud];
+  if (salud === "critico" || salud === "atrasado") {
     return {
-      label: "Con atrasos",
+      label,
       cls: "border-[var(--copilot-danger-border)]/80 bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]",
     };
   }
-  if (hasDebt) {
+  if (salud === "pendiente") {
     return {
-      label: "Con deuda al día",
-      cls: "border-[var(--copilot-warning-border)]/80 bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",
+      label,
+      cls: "border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink)]",
     };
   }
   return {
-    label: "Sin deuda",
+    label,
     cls: "border-[var(--copilot-success-border)]/80 bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]",
   };
 }

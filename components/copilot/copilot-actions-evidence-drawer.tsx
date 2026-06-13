@@ -195,11 +195,11 @@ export function CopilotActionsEvidenceDrawer({
           {tab === "origen" ? (
             <div className="space-y-4">
               <SectionBlock title="Iniciativa / decisión" content={data.origin.initiative} />
-              <SectionBlock title="Disparador (trigger)" content={data.origin.trigger} />
+              <SectionBlock title="Disparador" content={data.origin.trigger} />
               {data.origin.score ? (
                 <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h4 className="text-sm font-semibold text-[var(--copilot-ink)]">Score</h4>
+                    <h4 className="text-sm font-semibold text-[var(--copilot-ink)]">Puntaje</h4>
                     <CopilotSeverityBadge severity={data.origin.scoreSeverity} compact />
                   </div>
                   <p className="mt-2 text-sm text-[var(--copilot-ink-muted)]">{data.origin.score}</p>

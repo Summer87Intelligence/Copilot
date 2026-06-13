@@ -370,6 +370,95 @@ export function mapActionTypeLabel(actionType: string): string {
   return ACTION_TYPE_LABELS[k] ?? actionType;
 }
 
+// ——— Limpieza de texto display (mojibake / encoding roto) ———
+
+/**
+ * Limpia texto que puede contener mojibake o caracteres rotos del encoding.
+ * Quita `?` repetidos (3+), reemplazo Unicode `�`, secuencias mojibake
+ * frecuentes (`Â`, `Ã©`/`Ã³`/`Ã±`/etc.) y colapsa espacios. Si el resultado
+ * queda vacío devuelve `null` para que el caller pueda ocultarlo.
+ */
+export function cleanCopilotDisplayText(
+  value: string | null | undefined
+): string | null {
+  if (value == null) return null;
+  let s = String(value);
+  if (!s) return null;
+  // Reemplazo Unicode + secuencias frecuentes de doble-encoding latin1→utf8.
+  s = s
+    .replace(/�/g, "")
+    .replace(/Ã©/g, "é")
+    .replace(/Ã³/g, "ó")
+    .replace(/Ã±/g, "ñ")
+    .replace(/Ã¡/g, "á")
+    .replace(/Ãº/g, "ú")
+    .replace(/Ã­/g, "í")
+    .replace(/Ã"/g, "Ó")
+    .replace(/Ã/g, "")
+    .replace(/Â¿/g, "¿")
+    .replace(/Â¡/g, "¡")
+    .replace(/Â°/g, "°")
+    .replace(/Â·/g, "·")
+    .replace(/Â/g, "");
+  // Secuencias de `?` (3 o más) suelen ser caracteres no representables.
+  s = s.replace(/\?{3,}/g, "");
+  // Colapsa espacios sobrantes y bordes vacíos en " · " joins.
+  s = s.replace(/\s+/g, " ").trim();
+  // Une separadores adyacentes a un solo " · ".
+  s = s.replace(/(?:·\s*){2,}/g, "· ");
+  // Quita "· " al inicio y " ·" al final, iterando para limpiar varios.
+  while (/^·\s+/.test(s) || /\s+·$/.test(s) || s === "·") {
+    s = s.replace(/^·\s+/, "").replace(/\s+·$/, "");
+    if (s === "·") s = "";
+  }
+  return s.length > 0 ? s : null;
+}
+
+/** Valor seguro para celdas/tablas cuando falta dato. Nunca muestra ?, undefined, null, NaN. */
+export function formatMissingValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return "—";
+    return value.toLocaleString("es-AR");
+  }
+  if (typeof value === "string") {
+    const t = value.trim();
+    if (!t || t === "?" || t === "undefined" || t === "null" || t === "NaN" || /^\?+$/.test(t)) {
+      return "—";
+    }
+    return t;
+  }
+  if (typeof value === "boolean") return value ? "Sí" : "No";
+  return String(value);
+}
+
+/** Días de atraso reales para filas operativas (no buckets). */
+export function formatOverdueDaysLabel(days: number | null | undefined): string {
+  if (days == null || !Number.isFinite(days) || days <= 0) return "—";
+  const rounded = Math.floor(days);
+  return rounded === 1 ? "hace 1 día" : `hace ${rounded} días`;
+}
+
+/** Calcula días vencidos desde YYYY-MM-DD (solo si ya venció). */
+export function daysOverdueFromDate(
+  dueDate: string | null | undefined,
+  today = new Date()
+): number | null {
+  if (!dueDate) return null;
+  const due = new Date(`${dueDate.slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(due.getTime())) return null;
+  const todayMid = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+    12,
+    0,
+    0
+  );
+  const diff = Math.floor((todayMid.getTime() - due.getTime()) / 86_400_000);
+  return diff > 0 ? diff : null;
+}
+
 // ——— Celda / campo unificado (tabla + sidebar) ———
 
 function stringifyScalar(value: unknown): string {

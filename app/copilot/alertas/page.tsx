@@ -49,7 +49,7 @@ function dateBucket(isoString: string): "hoy" | "ayer" | "anterior" {
 function actionLabel(href: string): string {
   if (href.includes("clientes-criticos")) return "Ver clientes críticos";
   if (href.includes("/clientes/")) return "Ver cliente";
-  if (href.includes("filter=overdue")) return "Ver clientes vencidos";
+  if (href.includes("filter=overdue")) return "Ver clientes atrasados";
   if (href.includes("/cartera")) return "Ver cartera";
   if (href.includes("section=pagos")) return "Ver pagos";
   if (href.includes("/tesoreria")) return "Ver Tesorería";
@@ -440,10 +440,32 @@ export default function CopilotAlertasPage() {
     const filtered = notifications.filter((n) =>
       matchesFilter(n, activeFilter)
     );
+    // Dedupe alertas con misma señal visible: mismo tipo + entidad + moneda +
+    // monto + cuerpo normalizado → una sola card.
+    const seen = new Set<string>();
+    const deduped = filtered.filter((n) => {
+      const normalizedBody = (n.body ?? "")
+        .toLocaleLowerCase("es")
+        .replace(/\s+/g, " ")
+        .trim();
+      const amount = n.amount != null && Number.isFinite(n.amount)
+        ? Math.round(n.amount * 100)
+        : "";
+      const key = [
+        n.type,
+        n.entity_id ?? "",
+        n.currency ?? "",
+        amount,
+        normalizedBody,
+      ].join("|");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
     return BUCKET_ORDER.map((bucket) => ({
       key: bucket,
       label: BUCKET_LABELS[bucket],
-      items: filtered.filter((n) => dateBucket(n.created_at) === bucket),
+      items: deduped.filter((n) => dateBucket(n.created_at) === bucket),
     })).filter((g) => g.items.length > 0);
   }, [notifications, activeFilter]);
 
@@ -475,7 +497,7 @@ export default function CopilotAlertasPage() {
           <MetricCard
             label="Vencimientos"
             value={metrics.vencimientos}
-            sub="próximos y vencidos"
+            sub="próximos y atrasados"
             tone={metrics.vencimientos > 0 ? "warning" : "neutral"}
           />
           <MetricCard
@@ -493,8 +515,8 @@ export default function CopilotAlertasPage() {
               <p className="text-[13px] text-[var(--copilot-warning-text-strong)]">
                 <span className="font-semibold">{tabCounts.clientes}</span>{" "}
                 {tabCounts.clientes === 1
-                  ? "evento generado por cliente vencido"
-                  : "eventos generados por clientes vencidos"}
+                  ? "evento generado por cliente atrasado"
+                  : "eventos generados por clientes atrasados"}
               </p>
               <p className="text-[11px] text-[var(--copilot-warning-text)]/70">
                 Eventos históricos del motor de alertas · Ver Cartera para el estado actual
@@ -504,7 +526,7 @@ export default function CopilotAlertasPage() {
               href="/copilot/cartera?filter=overdue"
               className="shrink-0 text-[12px] font-semibold text-[var(--copilot-warning-text-strong)] hover:underline"
             >
-              Ver clientes vencidos →
+              Ver clientes atrasados →
             </Link>
           </div>
         ) : null}

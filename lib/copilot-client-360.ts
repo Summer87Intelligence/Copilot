@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { DataRow } from "@/lib/copilot-data";
 import { companyPrimaryLabel } from "@/lib/copilot-datos-company-display";
+import { cleanCopilotDisplayText } from "@/lib/copilot-format";
 import { COPILOT_COMMERCIAL_CLIENT_METADATA_KEY } from "@/lib/integrations/zeta/zeta-commercial-data-client-mapper";
 import { fetchInvoiceFinancialBalanceMap } from "@/lib/data/proto-analytics-read-repository";
 import { readInvoiceFinancial } from "@/lib/copilot-invoice-financial-read";
@@ -235,6 +236,24 @@ function receiptMedioExtra(notes: string | null): string | null {
   }
 }
 
+/** Une medio/caja eliminando tokens duplicados (case-insensitive) tras split por " · ". */
+function joinReceiptMedio(parts: Array<string | null | undefined>): string | null {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of parts) {
+    if (!part) continue;
+    const cleaned = cleanCopilotDisplayText(part);
+    if (!cleaned) continue;
+    for (const token of cleaned.split("·").map((s) => s.trim()).filter(Boolean)) {
+      const key = token.toLocaleLowerCase("es");
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(token);
+    }
+  }
+  return out.length > 0 ? out.join(" · ") : null;
+}
+
 function computeInsights(input: {
   saldoPendiente: number;
   receipts: Client360ReceiptRow[];
@@ -395,13 +414,13 @@ export async function loadClientCompany360(
       const pm = str(r.payment_method) || null;
       const notes = str(r.notes) || null;
       const extra = receiptMedioExtra(notes);
-      const medio = [pm, extra].filter(Boolean).join(" · ") || null;
+      const medio = joinReceiptMedio([pm, extra]);
       return {
         id: str(r.id),
         receipt_date: ymd(r.receipt_date) || "—",
         importe: num(r.amount),
         medio,
-        referencia: str(r.reference) || null,
+        referencia: cleanCopilotDisplayText(str(r.reference)),
         estado: str(r.status) || "—",
       };
     })

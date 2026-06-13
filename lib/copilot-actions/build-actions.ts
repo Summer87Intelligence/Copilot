@@ -105,6 +105,8 @@ export function buildActionsFromNotifications(
         type = "treasury";
         priority = "critical";
         const entityName =
+          extractEntityName(n.body, " está atrasado") ??
+          extractEntityName(n.body, " está atrasada") ??
           extractEntityName(n.body, " está vencido") ??
           extractEntityName(n.body, " está vencida") ??
           n.title;
@@ -205,7 +207,7 @@ export function buildActionsFromPortfolioRows(
     const currency = hasOverdueUyu ? "UYU" : hasOverdueUsd ? "USD" : undefined;
 
     const reason = hasOverdue
-      ? `Deuda vencida de ${row.name}. Riesgo ${row.risk}.`
+      ? `Deuda atrasada de ${row.name}. Riesgo ${row.risk}.`
       : `Deuda actual de ${row.name}.`;
 
     actions.push({
@@ -228,6 +230,34 @@ export function buildActionsFromPortfolioRows(
   return actions;
 }
 
+/**
+ * Clave de similitud para deduplicar alertas/acciones que aparecen como
+ * "señales" repetidas del mismo cliente: mismo tipo + cliente + moneda +
+ * monto + razón principal → una sola card visible. No borra datos: solo
+ * colapsa la UI para no mostrar 3 cards iguales del mismo evento.
+ */
+function similarityKey(action: CopilotAction): string {
+  const normalizedReason = (action.reason ?? "")
+    .toLocaleLowerCase("es")
+    .replace(/\s+/g, " ")
+    .trim();
+  const normalizedTitle = (action.title ?? "")
+    .toLocaleLowerCase("es")
+    .replace(/\s+/g, " ")
+    .trim();
+  const amount =
+    action.amount != null && Number.isFinite(action.amount)
+      ? Math.round(action.amount * 100)
+      : "";
+  return [
+    action.type,
+    action.currency ?? "",
+    amount,
+    normalizedTitle,
+    normalizedReason,
+  ].join("|");
+}
+
 export function mergePrioritizedActions(
   fromNotifications: CopilotAction[],
   fromPortfolio: CopilotAction[]
@@ -235,14 +265,17 @@ export function mergePrioritizedActions(
   const sorted = [...fromNotifications, ...fromPortfolio].sort(
     (a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
   );
-  // Deduplicate by entityId: keep highest-priority (first in sorted order)
   const seenEntities = new Set<string>();
+  const seenSimilarity = new Set<string>();
   const result: CopilotAction[] = [];
   for (const action of sorted) {
     if (action.entityId) {
       if (seenEntities.has(action.entityId)) continue;
       seenEntities.add(action.entityId);
     }
+    const simKey = similarityKey(action);
+    if (seenSimilarity.has(simKey)) continue;
+    seenSimilarity.add(simKey);
     result.push(action);
   }
   return result;

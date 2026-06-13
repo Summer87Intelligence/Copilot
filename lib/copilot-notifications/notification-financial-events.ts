@@ -41,10 +41,17 @@ export function buildPartialCollectionBody(
   currency: string,
   remainingBalance: number
 ): string {
-  const remainingFormatted = remainingBalance.toLocaleString("es-AR", {
-    maximumFractionDigits: 0,
-  });
-  return `${clientName} pagó ${formatNotificationMoney(amount, currency)}. Saldo pendiente: ${remainingFormatted}.`;
+  return `${clientName} hizo un pago parcial.`;
+}
+
+export function buildClientDebtSettledBody(
+  clientName: string,
+  opts?: { hadOverdue?: boolean }
+): string {
+  if (opts?.hadOverdue) {
+    return `${clientName} pagó su deuda atrasada.`;
+  }
+  return `${clientName} pagó su deuda.`;
 }
 
 export function buildNewDebtorBody(clientName: string, amount: number, currency: string): string {
@@ -56,7 +63,7 @@ export function buildInvoiceOverdueBody(
   amount: number,
   currency: string
 ): string {
-  return `${clientName} tiene ${formatNotificationMoney(amount, currency)} vencido.`;
+  return `${clientName} tiene ${formatNotificationMoney(amount, currency)} atrasado.`;
 }
 
 export function resolveCollectionPaymentOutcome(remainingBalance: number): CollectionPaymentOutcome {

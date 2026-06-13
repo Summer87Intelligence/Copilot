@@ -312,7 +312,7 @@ describe("findLatestZetaReceipts", () => {
       ],
       { UYU: BASELINE, USD: "2026-05-01" }
     );
-    expect(latest.UYU).toEqual({ date: "2026-05-31", concept: "Recibo RC-2" });
-    expect(latest.USD).toEqual({ date: "2026-06-01", concept: "Recibo RC-USD" });
+    expect(latest.UYU).toEqual({ date: "2026-05-31", concept: "Recibo RC-2", amount: 500 });
+    expect(latest.USD).toEqual({ date: "2026-06-01", concept: "Recibo RC-USD", amount: 100 });
   });
 });

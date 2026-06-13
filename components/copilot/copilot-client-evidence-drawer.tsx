@@ -113,11 +113,11 @@ export function CopilotClientEvidenceDrawer({
   const narrative = [
     `Facturación acumulada ${fmtCurrencyPair(billingUyu, billingUsd)} con participación ${(detail.share_pct * 100).toLocaleString("es-AR", { maximumFractionDigits: 1 })}% del total cargado.`,
     hasAnyOverdue
-      ? `Deuda vencida: ${fmtCurrencyPair(overdueUyu, overdueUsd)} sobre saldo total ${fmtCurrencyPair(debtUyu, debtUsd)}.`
+      ? `Deuda atrasada: ${fmtCurrencyPair(overdueUyu, overdueUsd)} sobre saldo total ${fmtCurrencyPair(debtUyu, debtUsd)}.`
       : hasAnyDebt
         ? `Deuda actual sin vencer (o al día según vencimientos): ${fmtCurrencyPair(debtUyu, debtUsd)}.`
         : "Sin deuda actual en facturas con balance.",
-    `Comportamiento de pago estimado: ${paymentBehaviorLabelEs(detail.payment_behavior).toLowerCase()}, según mix de facturas pagadas, parciales y vencidas.`,
+    `Comportamiento de pago estimado: ${paymentBehaviorLabelEs(detail.payment_behavior).toLowerCase()}, según mix de facturas pagadas, parciales y atrasadas.`,
   ].join(" ");
 
   return (
@@ -201,7 +201,7 @@ export function CopilotClientEvidenceDrawer({
               <div className="grid gap-3 sm:grid-cols-2">
                 <KpiPillMoney label="Facturación total" uyu={detail.billing_uyu} usd={detail.billing_usd} />
                 <KpiPillMoney label="Deuda actual" uyu={detail.debt_uyu} usd={detail.debt_usd} />
-                <KpiPillMoney label="Deuda vencida" uyu={detail.overdue_uyu} usd={detail.overdue_usd} />
+                <KpiPillMoney label="Deuda atrasada" uyu={detail.overdue_uyu} usd={detail.overdue_usd} />
                 <KpiPill
                   label="Concentración"
                   value={`${(detail.share_pct * 100).toLocaleString("es-AR", { maximumFractionDigits: 1 })}%`}

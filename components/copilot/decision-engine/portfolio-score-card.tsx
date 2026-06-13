@@ -9,7 +9,7 @@ type Props = {
 const BAND_CONFIG = {
   saludable:       { label: "Saludable",        pill: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border border-[var(--copilot-success-border)]", ring: "text-[var(--copilot-success-text)]" },
   atencion:        { label: "Requiere atención", pill: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border border-[var(--copilot-warning-border)]",     ring: "text-[var(--copilot-warning-text)]"   },
-  riesgo_moderado: { label: "Riesgo moderado",   pill: "bg-orange-50 text-orange-700 border border-orange-200",  ring: "text-orange-500"  },
+  riesgo_moderado: { label: "Riesgo moderado",   pill: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border border-[var(--copilot-warning-border)]",  ring: "text-[var(--copilot-warning-text)]"  },
   critico:         { label: "Crítico",            pill: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border border-[var(--copilot-danger-border)]",        ring: "text-[var(--copilot-danger-text)]"    },
 } as const;
 
@@ -17,7 +17,7 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
   const color =
     value >= 80 ? "bg-[var(--copilot-success-text)]" :
     value >= 60 ? "bg-[var(--copilot-warning-text)]"   :
-    value >= 40 ? "bg-orange-400"  :
+    value >= 40 ? "bg-[var(--copilot-warning-text)]"  :
                   "bg-[var(--copilot-danger-text)]";
   return (
     <div className="flex items-center gap-2 text-sm">

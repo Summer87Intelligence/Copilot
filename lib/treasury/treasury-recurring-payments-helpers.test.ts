@@ -226,7 +226,7 @@ describe("getObligationStatusLabel", () => {
     ["confirmed", "Confirmado"],
     ["paid", "Pagado"],
     ["cancelled", "Cancelado"],
-    ["overdue", "Vencido"],
+    ["overdue", "Atrasado"],
   ] as const)("%s → %s", (status, label) => {
     expect(getObligationStatusLabel(status)).toBe(label);
   });

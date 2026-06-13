@@ -91,7 +91,8 @@ const entityTabs: Array<{ id: DataEntity; label: string }> = [
   { id: "invoices", label: "Facturas" },
   { id: "receipts", label: "Recibos" },
   { id: "payments", label: "Pagos" },
-  { id: "tax_obligations", label: "Obligaciones fiscales" },
+  // Obligaciones fiscales se oculta del listado visible mientras no hay
+  // datos operativos. Los handlers/tipo se mantienen para no romper rutas.
 ];
 
 const DATOS_EXPAND_HINT: Record<DataEntity, string> = {
@@ -1139,7 +1140,7 @@ function CopilotDatosPageContent() {
 
                       {!isOpen ? (
                         <div className={`border-t border-[var(--copilot-border)] px-4 py-3 ${softCalloutClass}`}>
-                          <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <p className="max-w-xl text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
                               {DATOS_EXPAND_HINT[tab.id]}
                             </p>
@@ -1147,7 +1148,7 @@ function CopilotDatosPageContent() {
                               type="button"
                               onClick={() => expandEntityBlock(tab.id)}
                               aria-expanded={isOpen}
-                              className="shrink-0 whitespace-nowrap border-[var(--copilot-accent)] font-semibold text-[var(--copilot-accent)] shadow-none hover:bg-[var(--copilot-accent-soft)]"
+                              className="w-full justify-center whitespace-nowrap border-[var(--copilot-accent)] font-semibold text-[var(--copilot-accent)] shadow-none hover:bg-[var(--copilot-accent-soft)] sm:w-auto sm:shrink-0"
                             >
                               {DATOS_EXPAND_CTA[tab.id]}
                             </CopilotGhostButton>

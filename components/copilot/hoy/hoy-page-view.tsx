@@ -304,6 +304,9 @@ export function HoyPageView({
           receivables={cockpit.receivables}
           cashPositionBlocks={pulse.cashPositionBlocks}
           manualCashMovements={manualCashMovements}
+          projection30dBlocks={pulse.projection30dBlocks}
+          treasuryScheduledPayments={treasuryScheduledPayments}
+          today={today}
           onCardClick={setCockpitCard}
           activeCard={cockpitCard}
         />

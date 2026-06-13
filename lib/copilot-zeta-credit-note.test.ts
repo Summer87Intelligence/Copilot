@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   CFE_NC_TIPOS_DGI,
+  formatCreditNoteVoucherLabel,
   isCreditNoteFromMetadata,
+  readAssociatedInvoiceFromZetaMetadata,
   readCfeTipoFromZetaMetadata,
 } from "./copilot-zeta-credit-note";
 
@@ -160,5 +162,38 @@ describe("isCreditNoteFromMetadata", () => {
     expect(() => isCreditNoteFromMetadata(undefined)).not.toThrow();
     expect(() => isCreditNoteFromMetadata({ zeta_customer_voucher_v1: { cfe_tipo: { nested: true } } })).not.toThrow();
     expect(isCreditNoteFromMetadata({ zeta_customer_voucher_v1: { cfe_tipo: [102] } })).toBe(false);
+  });
+});
+
+describe("formatCreditNoteVoucherLabel", () => {
+  it("prioriza Serie-Numero desde metadata", () => {
+    const label = formatCreditNoteVoucherLabel(
+      {
+        zeta_customer_voucher_v1: { serie: "A", numero: 123 },
+      },
+      "ZETA:CCV1:0:NCLI:A:123"
+    );
+    expect(label).toBe("A-123");
+  });
+
+  it("usa invoice_number como fallback", () => {
+    expect(formatCreditNoteVoucherLabel(null, "NC-FALLBACK")).toBe("NC-FALLBACK");
+  });
+});
+
+describe("readAssociatedInvoiceFromZetaMetadata", () => {
+  it("lee ComprobanteReferencia del raw_payload", () => {
+    expect(
+      readAssociatedInvoiceFromZetaMetadata({
+        zeta_customer_voucher_v1: {
+          raw_payload: { ComprobanteReferencia: "A-2984" },
+        },
+      })
+    ).toBe("A-2984");
+  });
+
+  it("retorna null si no hay dato", () => {
+    expect(readAssociatedInvoiceFromZetaMetadata(null)).toBeNull();
+    expect(readAssociatedInvoiceFromZetaMetadata({ zeta_customer_voucher_v1: {} })).toBeNull();
   });
 });

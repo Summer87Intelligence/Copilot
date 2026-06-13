@@ -41,7 +41,7 @@ export function resolveHoyTodayPriority(
     const overdue = attentionClientsCount;
     const current = Math.max(0, total - overdue);
     const totalLabel = `${total} ${total === 1 ? "cliente" : "clientes"} con deuda actual`;
-    const overdueLabel = `${overdue} ${overdue === 1 ? "tiene" : "tienen"} deuda vencida`;
+    const overdueLabel = `${overdue} ${overdue === 1 ? "tiene" : "tienen"} deuda atrasada`;
     const currentLabel = `${current} ${current === 1 ? "está" : "están"} al día`;
     const description =
       current > 0

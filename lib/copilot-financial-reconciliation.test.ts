@@ -1876,6 +1876,13 @@ describe("notas de crédito: opt-in is_credit_note", () => {
     expect(uyu.creditNoteCount).toBe(1);
     expect(uyu.creditNoteAmount).toBe(1500);
     expect(uyu.totalPending).toBe(5000);
+    expect(report.periodCreditNotes).toHaveLength(1);
+    expect(report.periodCreditNotes[0]).toMatchObject({
+      invoiceId: "nc",
+      currencyCode: "UYU",
+      amount: 1500,
+      voucherLabel: expect.any(String),
+    });
   });
 
   it("NC con total > pendiente no oculta facturas abiertas", () => {

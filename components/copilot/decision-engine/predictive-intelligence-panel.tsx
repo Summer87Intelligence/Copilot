@@ -14,21 +14,21 @@ import type {
 const DETERIORATION_CLASS: Record<DeteriorationBand, string> = {
   stable: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border-[var(--copilot-success-border)]",
   watch: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]",
-  deteriorating: "bg-orange-50 text-orange-800 border-orange-200",
+  deteriorating: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]",
   severe: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]",
 };
 
 const SLA_CLASS: Record<SLAStressBand, string> = {
   normal: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border-[var(--copilot-success-border)]",
   elevated: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]",
-  high: "bg-orange-50 text-orange-800 border-orange-200",
+  high: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]",
   critical: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]",
 };
 
 const LIKELIHOOD_CLASS: Record<RecoveryLikelihoodBand, string> = {
   high: "text-[var(--copilot-success-text-strong)]",
   medium: "text-[var(--copilot-warning-text-strong)]",
-  low: "text-orange-700",
+  low: "text-[var(--copilot-warning-text-strong)]",
   very_low: "text-[var(--copilot-danger-text-strong)]",
 };
 

@@ -48,10 +48,16 @@ import type {
   AgingRange,
   ClientStaleness,
   FinancialConsistencyReport,
+  PendingInvoiceLine,
   ReconciliationCurrencyCode,
   StalenessStatus,
 } from "@/lib/copilot-financial-reconciliation";
 import { clientMatchesDebtExplorerSearch } from "@/lib/copilot-debt-explorer-search";
+import {
+  daysOverdueFromDate,
+  formatCopilotDate,
+  formatOverdueDaysLabel,
+} from "@/lib/copilot-format";
 import type { CurrencyFilter } from "@/components/copilot/financial-control-bar";
 
 // ---------------------------------------------------------------------------
@@ -67,7 +73,7 @@ type SortField =
   | "invoices"
   | "lastSync";
 type SortDir = "asc" | "desc";
-type FilterChip = "all" | "overdue" | "stale" | "0_30" | "31_60" | "61_90" | "90_plus" | "no_aging";
+type FilterChip = "all" | "pending" | "overdue" | "critical" | "no_debt";
 type PageSize = 25 | 50 | 100;
 type RiskLevel = "high" | "medium" | "low" | "ok" | "none";
 type CollectionActionsByCompany = Map<string, CollectionAction[]>;
@@ -81,22 +87,22 @@ type CollectionActionsCacheEntry = {
 // ---------------------------------------------------------------------------
 
 const AGING_LABELS: Record<AgingRange, string> = {
-  "0_30":    "0–30 d",
-  "31_60":   "31–60 d",
-  "61_90":   "61–90 d",
-  "90_plus": "+90 d",
+  "0_30":    "0–30 días",
+  "31_60":   "31–60 días",
+  "61_90":   "61–90 días",
+  "90_plus": "+90 días",
 };
 
 const AGING_BADGE: Record<AgingRange, string> = {
   "0_30":    "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]",
   "31_60":   "border-[var(--copilot-warning-border)]   bg-[var(--copilot-tone-warning-bg)]   text-[var(--copilot-warning-text-strong)]",
-  "61_90":   "border-orange-200  bg-orange-50  text-orange-800",
+  "61_90":   "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",
   "90_plus": "border-[var(--copilot-danger-border)]    bg-[var(--copilot-tone-danger-bg)]    text-[var(--copilot-danger-text-strong)]",
 };
 
 const RISK_BADGE: Record<RiskLevel, { cls: string; label: string }> = {
   high:   { cls: "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]",       label: "Crítico" },
-  medium: { cls: "border-orange-200 bg-orange-50 text-orange-800 dark:border-orange-800/40 dark:bg-orange-950/30 dark:text-orange-300", label: "Atención" },
+  medium: { cls: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]", label: "Atención" },
   low:    { cls: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",     label: "Al día" },
   ok:     { cls: "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]", label: "Al día" },
   none:   { cls: "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 text-[var(--copilot-ink-muted)]", label: "—" },
@@ -109,15 +115,56 @@ const STALE_BADGE: Record<StalenessStatus, { cls: string; label: string }> = {
   never_synced: { cls: "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 text-[var(--copilot-ink-muted)]", label: "—" },
 };
 
+// ---------------------------------------------------------------------------
+// Estado visible del cliente — semántica unificada (Al día / Pendiente /
+// Atrasado / Crítico / Datos por revisar / Sin datos). No mezcla riesgo de
+// deuda con riesgo de sync.
+// ---------------------------------------------------------------------------
+
+type ClientDisplayStatus =
+  | "al_dia"
+  | "pendiente"
+  | "atrasado"
+  | "critico"
+  | "datos"
+  | "sin_datos";
+
+const CLIENT_DISPLAY_STATUS_BADGE: Record<
+  ClientDisplayStatus,
+  { cls: string; label: string }
+> = {
+  al_dia:    { cls: "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]", label: "Al día" },
+  pendiente: { cls: "border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink)]", label: "Pendiente" },
+  atrasado:  { cls: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]", label: "Atrasado" },
+  critico:   { cls: "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]", label: "Crítico" },
+  datos:     { cls: "border-[var(--copilot-border)] bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)]", label: "Datos por revisar" },
+  sin_datos: { cls: "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 text-[var(--copilot-ink-muted)]", label: "Sin datos" },
+};
+
+export function deriveClientDisplayStatus(client: ClientStaleness): ClientDisplayStatus {
+  const debtAmounts = Object.values(client.pendingByCurrency);
+  const hasDebt = debtAmounts.some((v) => (v ?? 0) > 0);
+  const aging = client.dominantAgingRange;
+  const syncStale =
+    client.status === "critical" || client.status === "never_synced";
+
+  if (!hasDebt) {
+    if (client.invoiceCount === 0) return "sin_datos";
+    if (syncStale) return "datos";
+    return "al_dia";
+  }
+
+  if (aging === "90_plus") return "critico";
+  if (aging === "61_90" || aging === "31_60" || aging === "0_30") return "atrasado";
+  return "pendiente";
+}
+
 const FILTER_CHIPS: Array<{ id: FilterChip; label: string }> = [
   { id: "all",      label: "Todos" },
+  { id: "pending",  label: "Pendientes" },
   { id: "overdue",  label: "Atrasados" },
-  { id: "stale",    label: "Desactualizado" },
-  { id: "90_plus",  label: "+90 d" },
-  { id: "61_90",    label: "61–90 d" },
-  { id: "31_60",    label: "31–60 d" },
-  { id: "0_30",     label: "0–30 d" },
-  { id: "no_aging", label: "Sin días de atraso" },
+  { id: "critical", label: "Críticos" },
+  { id: "no_debt",  label: "Sin deuda" },
 ];
 
 const COLLECTION_ACTIONS_CACHE_TTL_MS = 60_000;
@@ -145,11 +192,29 @@ const AGING_SORT_ORDER: Record<AgingRange, number> = {
 };
 
 function matchesFilter(client: ClientStaleness, chip: FilterChip): boolean {
+  const hasDebt = Object.values(client.pendingByCurrency).some((v) => (v ?? 0) > 0);
   if (chip === "all") return true;
-  if (chip === "overdue") return client.dominantAgingRange !== null;
-  if (chip === "stale") return client.status !== "ok";
-  if (chip === "no_aging") return client.dominantAgingRange === null;
-  return client.dominantAgingRange === chip;
+  if (chip === "no_debt") return !hasDebt;
+  if (chip === "pending") return hasDebt && client.dominantAgingRange === null;
+  if (chip === "overdue") return hasDebt && client.dominantAgingRange !== null;
+  if (chip === "critical") {
+    return (
+      hasDebt &&
+      (client.dominantAgingRange === "90_plus" ||
+        client.status === "critical" ||
+        client.status === "never_synced")
+    );
+  }
+  return true;
+}
+
+function maxClientOverdueDays(client: ClientStaleness): number | null {
+  let max: number | null = null;
+  for (const line of client.pendingInvoices ?? []) {
+    const days = daysOverdueFromDate(line.dueDate);
+    if (days != null) max = max === null ? days : Math.max(max, days);
+  }
+  return max;
 }
 
 function sortClients(
@@ -595,8 +660,38 @@ export function ClientDebtExplorer({
         )}
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
+      {/* Mobile cards (<640px) */}
+      <div className="space-y-2 sm:hidden">
+        {pageRows.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-[var(--copilot-border)] px-4 py-8 text-center text-sm text-[var(--copilot-ink-muted)]">
+            {currencyFilter
+              ? `Sin clientes con saldo ${currencyFilter} para los filtros aplicados.`
+              : "Sin clientes para los filtros aplicados."}
+          </p>
+        ) : (
+          pageRows.map((client) => (
+            <ClientMobileCard
+              key={`m-${client.companyId}`}
+              client={client}
+              currencyFilter={currencyFilter}
+              expanded={expandedIds.has(client.companyId)}
+              actions={actionsByCompany.get(client.companyId) ?? []}
+              onToggle={() => toggleExpand(client.companyId)}
+              onOpenDrawer={() => {
+                void loadCollectionActions([client.companyId], "drawer");
+                setDrawerCompany({
+                  id: client.companyId,
+                  name: client.companyName ?? client.companyId,
+                });
+              }}
+              reduce={!!reduce}
+            />
+          ))
+        )}
+      </div>
+
+      {/* Table (≥640px) */}
+      <div className="hidden overflow-x-auto sm:block">
         <table className="w-full min-w-[860px] border-collapse text-sm">
           <thead>
             <tr className="sticky top-0 z-10 border-b border-[var(--copilot-border)] bg-[var(--copilot-card)]/95 backdrop-blur">
@@ -614,16 +709,13 @@ export function ClientDebtExplorer({
                 </Th>
               )}
               <Th field="aging" sort={effectiveSort} onSort={handleSort}>
-                Aging
+                Atraso
               </Th>
               <Th field="risk" sort={effectiveSort} onSort={handleSort}>
-                Riesgo
+                Estado
               </Th>
               <Th field="invoices" sort={effectiveSort} onSort={handleSort} align="right">
-                Fact.
-              </Th>
-              <Th field="lastSync" sort={effectiveSort} onSort={handleSort}>
-                Última act.
+                Facturas
               </Th>
               {/* Cobranza (sin sort — columna operativa) */}
               <th className="px-3 py-2.5 text-left">
@@ -639,7 +731,7 @@ export function ClientDebtExplorer({
             {pageRows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={currencyFilter ? 8 : 9}
+                  colSpan={currencyFilter ? 7 : 8}
                   className="py-8 text-center text-sm text-[var(--copilot-ink-muted)]"
                 >
                   {currencyFilter
@@ -814,7 +906,8 @@ function ClientRow({
 }) {
   const risk = deriveRiskLevel(client);
   const riskCfg = RISK_BADGE[risk];
-  const staleCfg = STALE_BADGE[client.status];
+  const displayStatus = deriveClientDisplayStatus(client);
+  const displayStatusCfg = CLIENT_DISPLAY_STATUS_BADGE[displayStatus];
   const latestAction = actions[0] ?? null;
 
   return (
@@ -838,7 +931,7 @@ function ClientRow({
         {(currencyFilter === null || currencyFilter === "UYU") && (
           <td className="px-3 py-2.5 text-right tabular-nums">
             {(client.pendingByCurrency.UYU ?? 0) > 0 ? (
-              <span className="text-sm font-medium text-[var(--copilot-ink)]">
+              <span className="text-sm font-semibold text-[var(--copilot-danger-text-strong)]">
                 {formatCarteraMoney("UYU", client.pendingByCurrency.UYU ?? 0, { fractionDigits: 0 })}
               </span>
             ) : (
@@ -851,7 +944,7 @@ function ClientRow({
         {(currencyFilter === null || currencyFilter === "USD") && (
           <td className="px-3 py-2.5 text-right tabular-nums">
             {(client.pendingByCurrency.USD ?? 0) > 0 ? (
-              <span className="text-sm font-medium text-[var(--copilot-ink)]">
+              <span className="text-sm font-semibold text-[var(--copilot-danger-text-strong)]">
                 {formatCarteraMoney("USD", client.pendingByCurrency.USD ?? 0)}
               </span>
             ) : (
@@ -860,57 +953,33 @@ function ClientRow({
           </td>
         )}
 
-        {/* Aging dominante */}
+        {/* Atraso real */}
         <td className="px-3 py-2.5">
-          {client.dominantAgingRange ? (
-            <span
-              className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] tabular-nums ${AGING_BADGE[client.dominantAgingRange]}`}
-            >
-              {AGING_LABELS[client.dominantAgingRange]}
-            </span>
-          ) : (
-            <span className="text-[12px] text-[var(--copilot-ink-muted)]">—</span>
-          )}
+          {(() => {
+            const days = maxClientOverdueDays(client);
+            return days != null ? (
+              <span className="text-[12px] tabular-nums text-[var(--copilot-danger-text-strong)]">
+                {formatOverdueDaysLabel(days)}
+              </span>
+            ) : (
+              <span className="text-[12px] text-[var(--copilot-ink-muted)]">—</span>
+            );
+          })()}
         </td>
 
-        {/* Riesgo */}
+        {/* Estado del cliente — Pendiente / Atrasado / Crítico / Al día / Datos */}
         <td className="px-3 py-2.5">
           <span
-            className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${riskCfg.cls}`}
+            className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${displayStatusCfg.cls}`}
+            title={`Riesgo derivado: ${riskCfg.label}`}
           >
-            {riskCfg.label}
+            {displayStatusCfg.label}
           </span>
         </td>
 
         {/* Facturas */}
         <td className="px-3 py-2.5 text-right tabular-nums text-sm text-[var(--copilot-ink-muted)]">
           {formatCarteraInteger(client.invoiceCount)}
-        </td>
-
-        {/* Último sync */}
-        <td className="px-3 py-2.5">
-          <div className="flex items-center gap-1.5">
-            <span
-              className={`h-1.5 w-1.5 rounded-full ${
-                client.status === "ok"
-                  ? "bg-[var(--copilot-status-ok-dot)]"
-                  : client.status === "warning"
-                    ? "bg-[var(--copilot-status-warn-dot)]"
-                    : client.status === "critical"
-                      ? "bg-[var(--copilot-status-critical-dot)]"
-                      : "bg-[var(--copilot-ink-muted)]"
-              }`}
-              aria-hidden
-            />
-            <span
-              className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${staleCfg.cls}`}
-            >
-              {staleCfg.label}
-            </span>
-            <span className="text-[11px] text-[var(--copilot-ink-muted)]">
-              {formatRelativeAgeHours(client.ageHours)}
-            </span>
-          </div>
         </td>
 
         {/* Cobranza — estado + botón acción */}
@@ -956,7 +1025,7 @@ function ClientRow({
 
       {expanded && (
         <tr>
-          <td colSpan={currencyFilter ? 8 : 9} className="px-3 pb-3 pt-0">
+          <td colSpan={currencyFilter ? 7 : 8} className="px-3 pb-3 pt-0">
             <ExpandedRow
               client={client}
               currencyFilter={currencyFilter}
@@ -1019,10 +1088,10 @@ function ExpandedRow({
           </div>
         )}
 
-        {/* Aging dominante */}
+        {/* Antigüedad dominante */}
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--copilot-ink-muted)]/90">
-            Aging dominante
+            Antigüedad dominante
           </p>
           <p className="mt-1">
             {client.dominantAgingRange ? (
@@ -1040,7 +1109,7 @@ function ExpandedRow({
         {/* Facturas / staleness */}
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--copilot-ink-muted)]/90">
-            Facturas / estado sync
+            Facturas / actualización
           </p>
           <p className="mt-0.5 text-sm text-[var(--copilot-ink)]">
             {formatCarteraInteger(client.invoiceCount)} factura
@@ -1069,6 +1138,12 @@ function ExpandedRow({
           </p>
         </div>
       </div>
+
+      {/* Detalle: facturas pendientes (qué factura, fecha, monto, aging) */}
+      <PendingInvoicesDetail
+        client={client}
+        currencyFilter={currencyFilter}
+      />
 
       {/* Timeline de cobranza */}
       {actions.length > 0 && (
@@ -1121,6 +1196,214 @@ function ExpandedRow({
 }
 
 // ---------------------------------------------------------------------------
+// ClientMobileCard — vista compacta para mobile (<640px)
+// ---------------------------------------------------------------------------
+
+function ClientMobileCard({
+  client,
+  currencyFilter,
+  expanded,
+  actions,
+  onToggle,
+  onOpenDrawer,
+  reduce,
+}: {
+  client: ClientStaleness;
+  currencyFilter: ReconciliationCurrencyCode | null;
+  expanded: boolean;
+  actions: CollectionAction[];
+  onToggle: () => void;
+  onOpenDrawer: () => void;
+  reduce: boolean;
+}) {
+  const displayStatus = deriveClientDisplayStatus(client);
+  const displayStatusCfg = CLIENT_DISPLAY_STATUS_BADGE[displayStatus];
+  const showUyu =
+    (currencyFilter === null || currencyFilter === "UYU") &&
+    (client.pendingByCurrency.UYU ?? 0) > 0;
+  const showUsd =
+    (currencyFilter === null || currencyFilter === "USD") &&
+    (client.pendingByCurrency.USD ?? 0) > 0;
+  const name = client.companyName ?? client.companyId;
+
+  return (
+    <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-[var(--copilot-ink)]">
+            {name}
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <span
+              className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${displayStatusCfg.cls}`}
+            >
+              {displayStatusCfg.label}
+            </span>
+            {client.dominantAgingRange ? (
+              <span
+                className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${AGING_BADGE[client.dominantAgingRange]}`}
+              >
+                {AGING_LABELS[client.dominantAgingRange]}
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={expanded}
+          aria-label={`${expanded ? "Colapsar" : "Expandir"} ${name}`}
+          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80"
+        >
+          {expanded ? (
+            <ChevronDown className="h-3.5 w-3.5 text-[var(--copilot-ink-muted)]" aria-hidden />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5 text-[var(--copilot-ink-muted)]" aria-hidden />
+          )}
+        </button>
+      </div>
+
+      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+        {showUyu ? (
+          <div>
+            <dt className="text-[var(--copilot-ink-muted)]">Saldo UYU</dt>
+            <dd className="font-semibold tabular-nums text-[var(--copilot-ink)]">
+              {formatCarteraMoney("UYU", client.pendingByCurrency.UYU ?? 0, { fractionDigits: 0 })}
+            </dd>
+          </div>
+        ) : null}
+        {showUsd ? (
+          <div>
+            <dt className="text-[var(--copilot-ink-muted)]">Saldo USD</dt>
+            <dd className="font-semibold tabular-nums text-[var(--copilot-ink)]">
+              {formatCarteraMoney("USD", client.pendingByCurrency.USD ?? 0)}
+            </dd>
+          </div>
+        ) : null}
+        <div>
+          <dt className="text-[var(--copilot-ink-muted)]">Facturas</dt>
+          <dd className="tabular-nums text-[var(--copilot-ink)]">
+            {formatCarteraInteger(client.invoiceCount)}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-[var(--copilot-ink-muted)]">Última actualización</dt>
+          <dd className="text-[var(--copilot-ink)]">
+            {formatRelativeAgeHours(client.ageHours)}
+          </dd>
+        </div>
+      </dl>
+
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenDrawer();
+        }}
+        className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--copilot-accent)] hover:underline"
+      >
+        <Plus className="h-3 w-3" aria-hidden /> Registrar acción
+      </button>
+
+      {expanded ? (
+        <div className="mt-3 border-t border-[var(--copilot-border)] pt-3">
+          <ExpandedRow
+            client={client}
+            currencyFilter={currencyFilter}
+            actions={actions}
+            reduce={reduce}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PendingInvoicesDetail — detalle de qué facturas componen el saldo
+// ---------------------------------------------------------------------------
+
+function PendingInvoicesDetail({
+  client,
+  currencyFilter,
+}: {
+  client: ClientStaleness;
+  currencyFilter: ReconciliationCurrencyCode | null;
+}) {
+  const allLines = client.pendingInvoices ?? [];
+  const filtered: PendingInvoiceLine[] = (
+    currencyFilter
+      ? allLines.filter((l) => l.currencyCode === currencyFilter)
+      : allLines
+  ).filter((l) => l.balance > 0);
+
+  if (filtered.length === 0) return null;
+
+  const grouped = new Map<ReconciliationCurrencyCode, PendingInvoiceLine[]>();
+  for (const line of filtered) {
+    const arr = grouped.get(line.currencyCode) ?? [];
+    arr.push(line);
+    grouped.set(line.currencyCode, arr);
+  }
+
+  return (
+    <div className="mt-4 border-t border-[var(--copilot-border)] pt-4">
+      <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--copilot-ink-muted)]/90">
+        Facturas que componen el saldo
+      </p>
+      <div className="space-y-3">
+        {Array.from(grouped.entries()).map(([currency, lines]) => {
+          const fractionDigits = currency === "UYU" ? 0 : 2;
+          const visible = lines.slice(0, 8);
+          const hidden = lines.length - visible.length;
+          return (
+            <div
+              key={currency}
+              className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50 px-3 py-2"
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--copilot-ink-muted)]">
+                {currency}
+              </p>
+              <ul className="mt-1 space-y-1">
+                {visible.map((line) => (
+                  <li
+                    key={line.invoiceId}
+                    className="flex flex-wrap items-start justify-between gap-x-3 gap-y-0.5 text-[11px]"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-[var(--copilot-ink)]">
+                      {line.invoiceNumber ?? "Factura sin número"}
+                      {line.issueDate ? (
+                        <span className="ml-1 text-[var(--copilot-ink-muted)]">
+                          · {line.issueDate}
+                        </span>
+                      ) : null}
+                      {line.agingRange ? (
+                        <span className="ml-1 text-[var(--copilot-ink-muted)]">
+                          · {AGING_LABELS[line.agingRange]}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="shrink-0 tabular-nums font-medium text-[var(--copilot-ink)]">
+                      {formatCarteraMoney(currency, line.balance, { fractionDigits })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {hidden > 0 ? (
+                <p className="mt-1 text-[10px] italic text-[var(--copilot-ink-muted)]">
+                  + {formatCarteraInteger(hidden)} factura
+                  {hidden === 1 ? "" : "s"} más
+                </p>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // CollectionStatusBadge — badge de estado para la columna cobranza
 // ---------------------------------------------------------------------------
 
@@ -1140,7 +1423,7 @@ const collectionStatusCls: Record<string, string> = {
   contacted:        "border-[var(--copilot-border)] bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)]",
   promised_payment: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",
   paid:             "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]",
-  disputed:         "border-orange-200 bg-orange-50 text-orange-800",
+  disputed:         "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",
   escalated:        "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]",
   paused:           "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 text-[var(--copilot-ink-muted)]",
 };
@@ -1148,7 +1431,7 @@ const collectionStatusCls: Record<string, string> = {
 const priorityDotCls: Record<string, string> = {
   low:    "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-success-text-strong)]",
   medium: "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-warning-text-strong)]",
-  high:   "bg-orange-100 text-orange-800",
+  high:   "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",
   urgent: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-danger-text-strong)]",
 };
 

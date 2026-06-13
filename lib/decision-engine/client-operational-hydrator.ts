@@ -59,9 +59,9 @@ function slaLabelFromRecord(
       const days = Math.floor(
         (now.getTime() - new Date(record.transitioned_at).getTime()) / (24 * 60 * 60 * 1000)
       );
-      if (days > 0) return `Vencido hace ${days} d`;
+      if (days > 0) return `Atrasado hace ${days} d`;
     }
-    return "Vencido";
+    return "Atrasado";
   }
   if (nextFollowUpAt && isFollowUpDueToday(nextFollowUpAt, now)) {
     return "Seguimiento hoy";

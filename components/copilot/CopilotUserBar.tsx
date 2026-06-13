@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -186,6 +187,13 @@ export function CopilotUserBar({
             </div>
           ) : null}
           <div className="py-1">
+            <Link
+              href="/copilot/configuracion"
+              onClick={() => setMenuOpen(false)}
+              className="block w-full px-4 py-2 text-left text-sm text-[var(--copilot-ink)] transition hover:bg-[var(--copilot-hover-bg)]"
+            >
+              Configuración
+            </Link>
             <button
               type="button"
               onClick={() => void handleSignOut()}

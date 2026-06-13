@@ -571,11 +571,21 @@ function dualCurrencyValueNode(
   return <div className="space-y-1">{lines}</div>;
 }
 
-function ProjectionCurrencyMiniBlock({ block }: { block: PanoramaProjectionCurrency }) {
+function ProjectionCurrencyMiniBlock({
+  block,
+  slice,
+}: {
+  block: PanoramaProjectionCurrency;
+  slice?: PanoramaCurrencySlice;
+}) {
   const afterPayments = block.hasOutflows ? block.safeCash30d : block.cashToday;
   const maxVal = Math.max(block.cashToday, Math.abs(afterPayments), 1);
   const todayPct = Math.max(0, Math.min(100, (block.cashToday / maxVal) * 100));
   const afterPct = Math.max(0, Math.min(100, (Math.max(afterPayments, 0) / maxVal) * 100));
+
+  const collectedInPeriod = slice?.collectedApplied ?? 0;
+  const projected30d = block.estimatedCash30d;
+  const variation = projected30d - block.cashToday;
 
   return (
     <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 p-3">
@@ -613,6 +623,51 @@ function ProjectionCurrencyMiniBlock({ block }: { block: PanoramaProjectionCurre
             style={{ width: `${afterPct}%` }}
           />
         </div>
+      </div>
+
+      <div className="mt-3 border-t border-[var(--copilot-border)]/70 pt-2 space-y-1 text-[11px]">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+          Evolución estimada
+        </p>
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-[var(--copilot-ink-muted)]">Cobros aplicados (período)</span>
+          <span className="font-semibold tabular-nums text-[var(--copilot-success-text-strong)]">
+            +{fmtMoney(collectedInPeriod, block.currency)}
+          </span>
+        </div>
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-[var(--copilot-ink-muted)]">Cobros esperados 30d</span>
+          <span className="font-semibold tabular-nums text-[var(--copilot-success-text-strong)]">
+            +{fmtMoney(block.expectedCollections, block.currency)}
+          </span>
+        </div>
+        {block.hasOutflows ? (
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-[var(--copilot-ink-muted)]">Pagos programados 30d</span>
+            <span className="font-semibold tabular-nums text-[var(--copilot-danger-text-strong)]">
+              −{fmtMoney(block.upcomingOutflows, block.currency)}
+            </span>
+          </div>
+        ) : null}
+        <div className="flex items-baseline justify-between gap-2 border-t border-[var(--copilot-border)]/40 pt-1">
+          <span className="text-[var(--copilot-ink-muted)]">Variación neta 30d</span>
+          <span
+            className={`font-semibold tabular-nums ${
+              variation < 0
+                ? "text-[var(--copilot-danger-text-strong)]"
+                : variation > 0
+                  ? "text-[var(--copilot-success-text-strong)]"
+                  : "text-[var(--copilot-ink)]"
+            }`}
+          >
+            {variation > 0 ? "+" : ""}
+            {fmtMoney(variation, block.currency)}
+          </span>
+        </div>
+        <p className="pt-1 text-[10px] leading-snug text-[var(--copilot-ink-muted)]">
+          Evolución basada en movimientos registrados en Tesorería dentro del
+          período. Para detalle diario, ver Tesorería.
+        </p>
       </div>
     </div>
   );
@@ -703,9 +758,16 @@ export function FinancialProjectionCompact({
       </div>
       {blocks.length > 0 ? (
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          {blocks.map((block) => (
-            <ProjectionCurrencyMiniBlock key={block.currency} block={block} />
-          ))}
+          {blocks.map((block) => {
+            const slice = model.currencies.find((s) => s.code === block.currency);
+            return (
+              <ProjectionCurrencyMiniBlock
+                key={block.currency}
+                block={block}
+                slice={slice}
+              />
+            );
+          })}
         </div>
       ) : null}
       {!p.hasOutflows ? (
@@ -827,15 +889,17 @@ export function FinancialAdvancedDetail({
             ))}
           </div>
 
-          <div className={`${softCalloutClass} px-3 py-2 text-sm`}>
-            <p className="font-semibold text-[var(--copilot-ink)]">Obligaciones fiscales</p>
-            <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
-              Calendario fiscal y vencimientos en la sección inferior de esta página.
-            </p>
-            <CopilotGhostLink href="#copilot-finanzas-fiscal" className="mt-2 inline-flex text-xs">
-              Ir a obligaciones fiscales
-            </CopilotGhostLink>
-          </div>
+          {!dashboard.panorama.fiscal.isEmpty ? (
+            <div className={`${softCalloutClass} px-3 py-2 text-sm`}>
+              <p className="font-semibold text-[var(--copilot-ink)]">Obligaciones fiscales</p>
+              <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
+                Calendario fiscal y vencimientos en la sección inferior de esta página.
+              </p>
+              <CopilotGhostLink href="#copilot-finanzas-fiscal" className="mt-2 inline-flex text-xs">
+                Ir a obligaciones fiscales
+              </CopilotGhostLink>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

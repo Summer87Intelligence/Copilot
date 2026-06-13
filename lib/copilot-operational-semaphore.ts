@@ -92,7 +92,7 @@ export function deriveOperationalSemaphore(input: {
     );
   }
   if (overdue30 && attentionClients === 0) {
-    operativeItems.push("Deuda vencida mayor a 30 días");
+    operativeItems.push("Deuda atrasada mayor a 30 días");
   }
   if (upcomingPayments) {
     operativeItems.push("Pagos programados en los próximos 30 días");
@@ -140,28 +140,12 @@ export function deriveOperationalSemaphore(input: {
 
   let primaryReason: string;
   if (level === "critical") {
-    if (cashDeficit && criticalAlerts.length === 0) {
-      primaryReason = "La caja proyectada queda en negativo después de los pagos programados.";
-    } else if (criticalAlerts.length > 0) {
-      primaryReason = criticalAlerts[0]!.title;
-    } else {
-      primaryReason = "Hay señales críticas que requieren acción inmediata.";
-    }
+    primaryReason = "Hay riesgo operativo que requiere acción hoy.";
   } else if (level === "attention") {
-    if (attentionClients > 0 && !cashDeficit) {
-      primaryReason =
-        "No hay riesgo de caja inmediato, pero hay clientes con atraso.";
-    } else if (upcomingPayments) {
-      primaryReason = "Hay pagos próximos que conviene revisar en Tesorería.";
-    } else if (dataPending) {
-      primaryReason = "Los saldos principales están disponibles; algunos datos secundarios siguen actualizándose.";
-    } else if (highAlerts.length > 0) {
-      primaryReason = highAlerts[0]!.title;
-    } else {
-      primaryReason = "Hay señales operativas que conviene revisar hoy.";
-    }
+    primaryReason =
+      "No hay riesgo de caja inmediato, pero hay clientes con atraso o datos por revisar.";
   } else {
-    primaryReason = "No hay alertas críticas ni altas. Podés arrancar tranquilo.";
+    primaryReason = "No hay señales críticas para resolver ahora.";
   }
 
   // CTA points to the most relevant destination given the primary cause.

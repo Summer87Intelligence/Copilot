@@ -83,7 +83,7 @@ export const COPILOT_EMPTY_COPY = {
       "Cuando haya movimiento en facturación, cobranzas o finanzas, vas a ver acá prioridades claras con un próximo paso para cada cuenta.",
     ],
     example:
-      "Ejemplo: con facturas vencidas y deuda actual, suele aparecer primero un cliente en riesgo de cobro con un contacto sugerido para hoy.",
+      "Ejemplo: con facturas atrasadas y deuda actual, suele aparecer primero un cliente en riesgo de cobro con un contacto sugerido para hoy.",
   },
   insights: {
     title: "Aún no hay insights que mostrar",
@@ -92,7 +92,7 @@ export const COPILOT_EMPTY_COPY = {
       "Cargá datos mínimos de operación y volvé a esta pantalla: las tarjetas aparecerán solo cuando haya evidencia suficiente.",
     ],
     example:
-      "Ejemplo: con facturas vencidas con saldo, suele generarse un insight de cobranza con prioridad alta.",
+      "Ejemplo: con facturas atrasadas con saldo, suele generarse un insight de cobranza con prioridad alta.",
   },
   escenarios: {
     title: "Comparación de escenarios no disponible sin simulación conectada",

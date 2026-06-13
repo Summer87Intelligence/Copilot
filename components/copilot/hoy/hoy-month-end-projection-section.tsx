@@ -468,9 +468,9 @@ export function HoyMonthEndProjectionSection({
 
         {open ? (
           <div className="border-t border-[var(--copilot-border)] px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
-            <p className="mt-1">
+            <div className="mt-1">
               <ScenarioSelector value={scenario} onChange={setScenario} />
-            </p>
+            </div>
             <p className="mt-2 text-xs font-medium leading-relaxed text-[var(--copilot-ink)]">
               {subtitle}
             </p>
@@ -497,15 +497,17 @@ export function HoyMonthEndProjectionSection({
 
             <FridaysTimeline projection={projection} onOpenDrawer={onOpenDrawer} />
 
-            <p
-              className={`mt-3 rounded-lg px-2.5 py-1.5 text-xs font-medium ${
-                overallRisk === "critical"
-                  ? "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-badge-danger-text)]"
-                  : overallRisk === "attention"
-                    ? "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-badge-warning-text)]"
-                    : "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-badge-success-text)]"
-              }`}
-            >
+            <p className="mt-3 flex items-center gap-2 text-xs font-medium text-[var(--copilot-ink-muted)]">
+              <span
+                className={`h-2 w-2 shrink-0 rounded-full ${
+                  overallRisk === "critical"
+                    ? "bg-[var(--copilot-status-critical-dot)]"
+                    : overallRisk === "attention"
+                      ? "bg-[var(--copilot-status-warn-dot)]"
+                      : "bg-[var(--copilot-status-ok-dot)]"
+                }`}
+                aria-hidden
+              />
               {overallRisk === "critical"
                 ? HOY_COPY.monthEndOverallCritical
                 : overallRisk === "attention"

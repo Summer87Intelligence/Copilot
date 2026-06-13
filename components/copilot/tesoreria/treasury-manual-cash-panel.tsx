@@ -22,7 +22,8 @@ import {
   TESORERIA_TH_CLASS,
 } from "@/components/copilot/tesoreria/tesoreria-ui";
 import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
-import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
+import { formatCopilotDate } from "@/lib/copilot-format";
+import { signedManualCashAmount } from "@/lib/treasury/treasury-sign";
 import {
   manualCashFormSchema,
   parseMoneyInput,
@@ -98,6 +99,30 @@ const TYPE_LABELS: Record<string, string> = {
   adjustment: "Ajuste",
   transfer: "Transferencia",
 };
+
+const TYPE_CELL_CLASS: Record<string, string> = {
+  income: "text-[var(--copilot-success-text-strong)] font-medium",
+  expense: "text-[var(--copilot-danger-text-strong)] font-medium",
+  adjustment: "text-[var(--copilot-ink-muted)]",
+  transfer: "text-[var(--copilot-ink-muted)]",
+};
+
+function formatMovementAmount(row: ManualCashMovement): { text: string; className: string } {
+  const signed = signedManualCashAmount({
+    movementType: row.movementType,
+    amount: row.amount,
+    metadata: row.metadata,
+  });
+  const abs = Math.abs(signed);
+  const formatted = `${row.currencyCode} ${abs.toLocaleString("es-UY", { maximumFractionDigits: 2 })}`;
+  if (signed > 0) {
+    return { text: `+ ${formatted}`, className: "font-semibold text-[var(--copilot-success-text-strong)]" };
+  }
+  if (signed < 0) {
+    return { text: `− ${formatted}`, className: "font-semibold text-[var(--copilot-danger-text-strong)]" };
+  }
+  return { text: formatted, className: "text-[var(--copilot-ink-muted)]" };
+}
 
 const initialForm: FormState = {
   movementType: "expense",
@@ -424,14 +449,19 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
             <tbody>
               {pageItems.map((row) => (
                 <tr key={row.id}>
-                  <td className={TESORERIA_TD_CLASS}>{row.movementDate}</td>
+                  <td className={TESORERIA_TD_CLASS}>{formatCopilotDate(row.movementDate, "compact")}</td>
                   <td className={TESORERIA_TD_CLASS}>{row.concept}</td>
                   <td className={TESORERIA_TD_CLASS}>
-                    {TYPE_LABELS[row.movementType] ?? row.movementType}
+                    <span className={TYPE_CELL_CLASS[row.movementType] ?? ""}>
+                      {TYPE_LABELS[row.movementType] ?? row.movementType}
+                    </span>
                   </td>
                   <td className={TESORERIA_TD_CLASS}>{row.currencyCode}</td>
                   <td className={TESORERIA_TD_CLASS}>
-                    {formatTreasuryMoney(row.amount, row.currencyCode)}
+                    {(() => {
+                      const amt = formatMovementAmount(row);
+                      return <span className={amt.className}>{amt.text}</span>;
+                    })()}
                   </td>
                   <td className={TESORERIA_TD_CLASS}>
                     {row.accountId ? workspace.accountById.get(row.accountId)?.name ?? row.accountId : "—"}
@@ -524,14 +554,14 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                             Eliminar
                           </CopilotButton>
                         ) : null}
-                        {row.status === "active" && isManualCashMovementDeletable(row) ? (
+                        {row.status === "active" && isManualCashMovementDeletable(row) && row.reconciled ? (
                           <CopilotButton
                             type="button"
                             variant="danger"
                             size="sm"
                             onClick={() => void workspace.archiveManual(row.id)}
                           >
-                            Anular
+                            Revertir movimiento
                           </CopilotButton>
                         ) : null}
                       </div>

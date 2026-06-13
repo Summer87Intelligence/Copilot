@@ -166,16 +166,16 @@ describe("dedup_key por bucket no colisiona entre clientes distintos", () => {
 
 describe("buildDebtFollowupSummaryTitle", () => {
   it("1 cliente → singular", () =>
-    expect(buildDebtFollowupSummaryTitle(1)).toBe("1 cliente con deuda vencida"));
+    expect(buildDebtFollowupSummaryTitle(1)).toBe("1 cliente con deuda atrasada"));
 
   it("2 clientes → plural", () =>
-    expect(buildDebtFollowupSummaryTitle(2)).toBe("2 clientes con deuda vencida"));
+    expect(buildDebtFollowupSummaryTitle(2)).toBe("2 clientes con deuda atrasada"));
 
   it("17 clientes → plural con número real", () =>
-    expect(buildDebtFollowupSummaryTitle(17)).toBe("17 clientes con deuda vencida"));
+    expect(buildDebtFollowupSummaryTitle(17)).toBe("17 clientes con deuda atrasada"));
 
   it("47 clientes → plural con número real", () =>
-    expect(buildDebtFollowupSummaryTitle(47)).toBe("47 clientes con deuda vencida"));
+    expect(buildDebtFollowupSummaryTitle(47)).toBe("47 clientes con deuda atrasada"));
 });
 
 // ── buildDebtFollowupSummaryBody ──────────────────────────────────────────────
@@ -183,17 +183,17 @@ describe("buildDebtFollowupSummaryTitle", () => {
 describe("buildDebtFollowupSummaryBody", () => {
   it("solo UYU → muestra monto UYU", () =>
     expect(buildDebtFollowupSummaryBody(32120, 0)).toBe(
-      "UYU 32.120 vencidos. Revisá clientes críticos."
+      "UYU 32.120 atrasados. Revisá clientes críticos."
     ));
 
   it("solo USD → muestra monto USD", () =>
     expect(buildDebtFollowupSummaryBody(0, 3049)).toBe(
-      "USD 3.049 vencidos. Revisá clientes críticos."
+      "USD 3.049 atrasados. Revisá clientes críticos."
     ));
 
   it("UYU y USD → muestra ambos separados por 'y'", () =>
     expect(buildDebtFollowupSummaryBody(32120, 3049)).toBe(
-      "UYU 32.120 y USD 3.049 vencidos. Revisá clientes críticos."
+      "UYU 32.120 y USD 3.049 atrasados. Revisá clientes críticos."
     ));
 
   it("sin montos → solo CTA", () =>

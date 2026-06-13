@@ -50,7 +50,7 @@ export function getPrimaryObligationState(
 }
 
 export const PRIMARY_OBLIGATION_LABEL: Record<PrimaryObligationState, string> = {
-  overdue: "Vencido",
+  overdue: "Atrasado",
   critical: "Crítico",
   due_soon: "Vence pronto",
   scheduled: "Programado",

@@ -93,10 +93,10 @@ const CONTEXT_BADGE_CLASS: Record<string, string> = {
   "En seguimiento": "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border-[var(--copilot-success-border)]",
   "Promesa de pago": "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)] border-[var(--copilot-border)]",
   "Reintentar contacto": "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink-muted)] border-[var(--copilot-border)]",
-  "Actualizar contacto": "bg-orange-50 text-orange-700 border-orange-200",
-  "En disputa": "bg-red-50 text-red-700 border-red-200",
+  "Actualizar contacto": "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]",
+  "En disputa": "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]",
   "Seguimiento pendiente": "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]",
-  Escalado: "bg-red-50 text-red-700 border-red-200",
+  Escalado: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]",
   Gestionado: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border-[var(--copilot-success-border)]",
 };
 
@@ -109,16 +109,16 @@ function CollectionContextBlock({ ctx }: { ctx: CopilotActionCollectionContext }
   const followupTag = (() => {
     if (ctx.nextFollowUpAt) {
       if (ctx.nextFollowUpAt < today) {
-        return { label: "Seguimiento vencido", cls: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]" };
+        return { label: "Seguimiento atrasado", cls: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]" };
       }
       if (ctx.nextFollowUpAt === today) {
         return { label: "Seguimiento hoy", cls: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]" };
       }
-      return { label: "Seguimiento programado", cls: "bg-sky-50 text-sky-700 border-sky-200" };
+      return { label: "Seguimiento programado", cls: "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)] border-[var(--copilot-border)]" };
     }
     if (ctx.latestOutcome === "promised_payment" && ctx.promiseDate) {
       if (ctx.promiseDate < today) {
-        return { label: "Promesa vencida", cls: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]" };
+        return { label: "Promesa atrasada", cls: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]" };
       }
       return { label: "Promesa vigente", cls: "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)] border-[var(--copilot-border)]" };
     }

@@ -13,9 +13,9 @@ import type {
 const ACTION_BADGE: Record<AutomationActionType, { label: string; className: string }> = {
   create_follow_up: { label: "AUTOMÁTICO", className: "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)] border-[var(--copilot-border)]" },
   escalate_case: { label: "ESCALADO", className: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]" },
-  auto_assign: { label: "AUTO-ASIGNADO", className: "bg-violet-50 text-violet-800 border-violet-200" },
+  auto_assign: { label: "AUTO-ASIGNADO", className: "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)] border-[var(--copilot-border)]" },
   increase_priority: { label: "SLA", className: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]" },
-  create_operational_alert: { label: "ALERTA", className: "bg-orange-50 text-orange-800 border-orange-200" },
+  create_operational_alert: { label: "ALERTA", className: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]" },
   mark_overdue: { label: "SLA", className: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]" },
   suggest_payment_plan: { label: "AUTOMÁTICO", className: "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink)] border-[var(--copilot-border)]" },
   trigger_manual_review: { label: "ESCALADO", className: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]" },

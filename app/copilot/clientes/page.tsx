@@ -14,7 +14,6 @@ import {
 } from "@/components/copilot/copilot-ui";
 import { CopilotSkeletonTable } from "@/components/copilot/copilot-loading-skeleton";
 import { DebtorsReportTrigger } from "@/components/copilot/reports/debtors-report-dialog";
-import { copilotCurrencyClass } from "@/components/copilot/ui/copilot-visual-system";
 import type { ClientPortfolioRow } from "@/lib/copilot-clients-portfolio";
 import { fetchClientPortfolioLoad } from "@/lib/copilot-client-portfolio-fetch";
 import {
@@ -23,32 +22,27 @@ import {
 } from "@/lib/copilot-clients-portfolio";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 import { AccessDeniedCard } from "@/components/copilot/access-denied-card";
+import {
+  CLIENT_SALUD_LABEL,
+  derivePortfolioSalud,
+  type ClientSaludKey,
+} from "@/lib/copilot-client-salud";
 
 // ── Status derivation ────────────────────────────────────────────────────────
 
-type ClientStatus = "al_dia" | "pendiente" | "vencido" | "critico";
+type ClientStatus = ClientSaludKey;
 
 function deriveClientStatus(row: ClientPortfolioRow): ClientStatus {
-  const hasOverdue = (row.overdue_uyu ?? 0) > 0 || (row.overdue_usd ?? 0) > 0;
-  const hasDebt = row.debt_uyu > 0 || row.debt_usd > 0;
-  if (hasOverdue && row.risk === "Alto") return "critico";
-  if (hasOverdue) return "vencido";
-  if (hasDebt) return "pendiente";
-  return "al_dia";
+  return derivePortfolioSalud(row);
 }
 
-const SALUD_LABEL: Record<ClientStatus, string> = {
-  al_dia: "Sin deuda",
-  pendiente: "Al día",
-  vencido: "Atrasado",
-  critico: "Crítico",
-};
+const SALUD_LABEL = CLIENT_SALUD_LABEL;
 
 function saludTone(s: ClientStatus): string {
   if (s === "critico") {
     return "text-[var(--copilot-danger-text-strong)] bg-[var(--copilot-badge-danger-bg)] border-[var(--copilot-danger-border)]";
   }
-  if (s === "vencido") {
+  if (s === "atrasado") {
     return "text-[var(--copilot-warning-text-strong)] bg-[var(--copilot-badge-warning-bg)] border-[var(--copilot-warning-border)]";
   }
   if (s === "pendiente") {
@@ -60,6 +54,7 @@ function saludTone(s: ClientStatus): string {
 // ── Filters ──────────────────────────────────────────────────────────────────
 
 type ClientListFilter = "all" | "with_debt" | "vencido" | "critico" | "no_contact";
+type ClientCurrencyFilter = "all" | "UYU" | "USD";
 
 const FILTER_OPTIONS: Array<{ id: ClientListFilter; label: string }> = [
   { id: "all", label: "Todos" },
@@ -68,6 +63,18 @@ const FILTER_OPTIONS: Array<{ id: ClientListFilter; label: string }> = [
   { id: "critico", label: "Críticos" },
   { id: "no_contact", label: "Sin contacto" },
 ];
+
+const CURRENCY_FILTER_OPTIONS: Array<{ id: ClientCurrencyFilter; label: string }> = [
+  { id: "all", label: "Todas" },
+  { id: "UYU", label: "UYU" },
+  { id: "USD", label: "USD" },
+];
+
+function matchesCurrencyFilter(row: ClientPortfolioRow, filter: ClientCurrencyFilter): boolean {
+  if (filter === "UYU") return row.debt_uyu > 0;
+  if (filter === "USD") return row.debt_usd > 0;
+  return true;
+}
 
 function matchesClientFilter(
   row: ClientPortfolioRow,
@@ -83,7 +90,7 @@ function matchesClientFilter(
   }
   const status = deriveClientStatus(row);
   if (filter === "with_debt") return row.debt_uyu > 0 || row.debt_usd > 0;
-  if (filter === "vencido") return status === "vencido" || status === "critico";
+  if (filter === "vencido") return status === "atrasado" || status === "critico";
   if (filter === "critico") return status === "critico";
   if (filter === "no_contact") return !row.has_contact_data;
   return true;
@@ -105,10 +112,10 @@ function DebtCell({ row }: { row: ClientPortfolioRow }) {
     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 sm:flex-nowrap">
       {hasUyu ? (
         <span
-          className={`inline-flex shrink-0 items-center tabular-nums text-sm whitespace-nowrap ${copilotCurrencyClass("UYU")} ${overdueUyu ? "font-semibold" : ""}`}
+          className={`inline-flex shrink-0 items-center tabular-nums text-sm font-semibold whitespace-nowrap text-[var(--copilot-danger-text-strong)] ${overdueUyu ? "" : ""}`}
         >
           $ {row.debt_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
-          <span className="ml-1 text-[10px] opacity-70">UYU</span>
+          <span className="ml-1 text-[10px] font-normal opacity-70">UYU</span>
           {overdueUyu ? (
             <span className="ml-1 text-[10px] font-medium text-[var(--copilot-danger-text)]">
               atrasado
@@ -123,10 +130,10 @@ function DebtCell({ row }: { row: ClientPortfolioRow }) {
       ) : null}
       {hasUsd ? (
         <span
-          className={`inline-flex shrink-0 items-center tabular-nums text-sm whitespace-nowrap ${copilotCurrencyClass("USD")} ${overdueUsd ? "font-semibold" : ""}`}
+          className={`inline-flex shrink-0 items-center tabular-nums text-sm font-semibold whitespace-nowrap text-[var(--copilot-danger-text-strong)]`}
         >
           U$S {row.debt_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
-          <span className="ml-1 text-[10px] opacity-70">USD</span>
+          <span className="ml-1 text-[10px] font-normal opacity-70">USD</span>
           {overdueUsd ? (
             <span className="ml-1 text-[10px] font-medium text-[var(--copilot-danger-text)]">
               atrasado
@@ -192,6 +199,7 @@ export default function CopilotClientesPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isEvidenceOpen, setIsEvidenceOpen] = useState(false);
   const [clientFilter, setClientFilter] = useState<ClientListFilter>("all");
+  const [currencyFilter, setCurrencyFilter] = useState<ClientCurrencyFilter>("all");
   const [search, setSearch] = useState("");
 
   const refresh = useCallback(async () => {
@@ -237,8 +245,12 @@ export default function CopilotClientesPage() {
 
   const visibleRows = useMemo(() => {
     if (!load) return [];
-    return load.rows.filter((row) => matchesClientFilter(row, clientFilter, search));
-  }, [load, clientFilter, search]);
+    return load.rows.filter(
+      (row) =>
+        matchesClientFilter(row, clientFilter, search) &&
+        matchesCurrencyFilter(row, currencyFilter)
+    );
+  }, [load, clientFilter, currencyFilter, search]);
 
   const statsLine = useMemo(() => {
     if (!load) return null;
@@ -327,6 +339,25 @@ export default function CopilotClientesPage() {
                         key={opt.id}
                         type="button"
                         onClick={() => setClientFilter(opt.id)}
+                        className={[
+                          "rounded-full px-3 py-1 text-xs font-medium transition",
+                          active
+                            ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[rgba(31,107,74,0.25)]"
+                            : "bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]",
+                        ].join(" ")}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                  <span className="hidden h-4 w-px bg-[var(--copilot-border)] sm:inline" aria-hidden />
+                  {CURRENCY_FILTER_OPTIONS.map((opt) => {
+                    const active = currencyFilter === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setCurrencyFilter(opt.id)}
                         className={[
                           "rounded-full px-3 py-1 text-xs font-medium transition",
                           active

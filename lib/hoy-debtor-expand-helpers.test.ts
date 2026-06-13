@@ -63,12 +63,12 @@ describe("buildDebtorExpandData — deuda total con vencida parcial", () => {
     expect(data.overdueDays).toBe(21);
   });
 
-  it("expandMessage indica seguimiento por deuda vencida", () => {
+  it("expandMessage indica seguimiento por deuda atrasada", () => {
     expect(data.expandMessage).toMatch(/seguimiento/i);
-    expect(data.expandMessage).toMatch(/vencida/i);
+    expect(data.expandMessage).toMatch(/atrasada/i);
   });
 
-  it("accionSugerida pide contactar por deuda vencida", () => {
+  it("accionSugerida pide contactar por deuda atrasada", () => {
     expect(data.accionSugerida).toMatch(/contactar/i);
   });
 });

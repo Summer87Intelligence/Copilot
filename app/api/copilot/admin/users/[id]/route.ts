@@ -70,7 +70,7 @@ export async function PATCH(
       const superadminCount = safetyCheck.count ?? 0;
       if (superadminCount <= 1) {
         return NextResponse.json(
-          { ok: false, message: "No podés cambiar el rol del único superadmin activo." },
+          { ok: false, message: "No podés eliminar el último administrador activo." },
           { status: 409 }
         );
       }
@@ -99,7 +99,7 @@ export async function PATCH(
         const superadminCount = safetyCheck.count ?? 0;
         if (superadminCount <= 1) {
           return NextResponse.json(
-            { ok: false, message: "No podés desactivar el único superadmin activo." },
+            { ok: false, message: "No podés desactivar el último administrador activo." },
             { status: 409 }
           );
         }
@@ -166,7 +166,7 @@ export async function DELETE(
       .eq("is_active", true);
     if ((safetyCheck.count ?? 0) <= 1) {
       return NextResponse.json(
-        { ok: false, message: "No podés eliminar el único superadmin activo." },
+        { ok: false, message: "No podés eliminar el último administrador activo." },
         { status: 409 }
       );
     }
@@ -182,5 +182,5 @@ export async function DELETE(
     return NextResponse.json({ ok: false, message: deleteErr.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, message: "Usuario eliminado." });
+  return NextResponse.json({ ok: true, message: "Usuario desactivado. Ya no tiene acceso." });
 }

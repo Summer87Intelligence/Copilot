@@ -423,7 +423,7 @@ export function resolveOverdueDisplaySemantics(
         input.carteraAgingOverdue.USD
       ),
       clientCount,
-      debtLabel: "deuda vencida",
+      debtLabel: "deuda atrasada",
     };
   }
 
@@ -604,7 +604,7 @@ export function buildHeroSubline(
     ).length;
     if (overdue > 0 || slow > 0) {
       const bits: string[] = [];
-      if (overdue > 0) bits.push(`${overdue} con deuda vencida`);
+      if (overdue > 0) bits.push(`${overdue} con deuda atrasada`);
       if (slow > 0) bits.push(`${slow} con cobro lento`);
       parts.push(bits.join(" · "));
     } else {
@@ -696,7 +696,7 @@ function buildOperationalIndicators(p: {
       mode: "portfolio_due",
       breakdown: [],
       clientCount: 0,
-      debtLabel: "deuda vencida",
+      debtLabel: "deuda atrasada",
     },
     totalClients: p.totalClients,
     clientsNeedingAttention: p.clientsNeedingAttention,
@@ -759,7 +759,7 @@ function rawKeyIndicators(p: {
       ? "Sin deuda arrastrada"
       : p.overdueSemantics.mode === "cartera_aging"
         ? "Sin deuda crítica +30 días"
-        : "Sin deuda vencida";
+        : "Sin deuda atrasada";
 
   // ─ Capacidad de pago ──────────────────────────────────────────────────────────
   const noData = !p.coverageRatio || p.coverageRatio <= 0;
@@ -822,12 +822,12 @@ function rawKeyIndicators(p: {
           ? `de ${p.totalClients} clientes activos`
           : `${p.totalClients} clientes activos`,
       tone: clientsTone,
-      helperText: "Clientes con deuda vencida o cobro lento",
+      helperText: "Clientes con deuda atrasada o cobro lento",
       deepLink: "/copilot/clientes",
       detailTitle: "Clientes que requieren atención",
       detailBody:
         p.clientsNeedingAttention > 0
-          ? `${p.clientsNeedingAttention} de ${p.totalClients} clientes tienen deuda vencida o historial de cobro lento.`
+          ? `${p.clientsNeedingAttention} de ${p.totalClients} clientes tienen deuda atrasada o historial de cobro lento.`
           : `Los ${p.totalClients} clientes activos no muestran señales de alerta relevantes.`,
     },
     {
@@ -898,11 +898,11 @@ function buildPriorityCollections(
         r.overdue_debt > 0 && r.risk === "Alto"
           ? isCarry
             ? `Contactar urgente — ${debtLabel} con cobro lento`
-            : "Contactar urgente — deuda vencida con cobro lento"
+            : "Contactar urgente — deuda atrasada con cobro lento"
           : r.overdue_debt > 0
             ? isCarry
               ? `Gestionar cobro de ${debtLabel}`
-              : "Gestionar cobro de deuda vencida"
+              : "Gestionar cobro de deuda atrasada"
             : r.risk === "Alto"
               ? "Revisar situación de crédito"
               : "Hacer seguimiento de cobro";
@@ -930,7 +930,7 @@ function buildPendingItems(p: {
 }): PendingItem[] {
   const items: PendingItem[] = [];
   const isCarry = p.overdueSemantics.mode === "opening_carry";
-  const overdueTitleSuffix = isCarry ? "deuda arrastrada" : "deuda vencida";
+  const overdueTitleSuffix = isCarry ? "deuda arrastrada" : "deuda atrasada";
   const overdueTitleNormal = isCarry ? "saldo arrastrado" : "saldo vencido";
 
   // Clientes con vencido + cobro lento → urgente

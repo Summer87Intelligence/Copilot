@@ -104,8 +104,8 @@ describe("calculateCashPosition — caja disponible estimada", () => {
       ],
     });
     const uyu = positions.find((p) => p.currency === "UYU");
-    expect(uyu?.lastIncome).toEqual({ date: "2026-05-10", concept: "Ingreso nuevo" });
-    expect(uyu?.lastExpense).toEqual({ date: "2026-05-08", concept: "Egreso único" });
+    expect(uyu?.lastIncome).toEqual({ date: "2026-05-10", concept: "Ingreso nuevo", amount: 200 });
+    expect(uyu?.lastExpense).toEqual({ date: "2026-05-08", concept: "Egreso único", amount: 50 });
   });
 
   it("archived no afecta caja", () => {

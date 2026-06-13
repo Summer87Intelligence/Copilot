@@ -4,7 +4,7 @@ import type {
 } from "@/lib/copilot-operational-workflows-types";
 
 const CRITICAL_CASH_STEPS = [
-  { id: "review-overdue-collections", title: "Revisar cobranza vencida", href: "/copilot/acciones" },
+  { id: "review-overdue-collections", title: "Revisar cobranza atrasada", href: "/copilot/acciones" },
   { id: "contact-priority-clients", title: "Contactar clientes prioritarios", href: "/copilot/acciones" },
   { id: "review-non-critical-payments", title: "Revisar pagos no críticos", href: "/copilot/tesoreria" },
   { id: "adjust-outflows", title: "Ajustar egresos", href: "/copilot/tesoreria" },

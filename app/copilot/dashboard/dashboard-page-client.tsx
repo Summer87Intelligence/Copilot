@@ -577,93 +577,15 @@ function ExecutiveSummaryCard({
   deudaVencidaUsd: number;
   exchangeRate?: number | null;
 }) {
-  const uyu = currencyData.find((d) => d.currency === "UYU");
-  const usd = currencyData.find((d) => d.currency === "USD");
-
-  // Banner ejecutivo premium: card neutra + borde acentuado + badge tonal.
-  const stateConfig = {
-    ok: {
-      label: "Estable",
-      icon: <CheckCircle className="h-4 w-4" />,
-      bg: "bg-[var(--copilot-card-bg)] border-[var(--copilot-success-border)]",
-      text: "text-[var(--copilot-success-text-strong)]",
-      badge: "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-success-text-strong)]",
-    },
-    attention: {
-      label: "Atención",
-      icon: <AlertTriangle className="h-4 w-4" />,
-      bg: "bg-[var(--copilot-card-bg)] border-[var(--copilot-warning-border)]",
-      text: "text-[var(--copilot-warning-text-strong)]",
-      badge: "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-warning-text-strong)]",
-    },
-    critical: {
-      label: "Crítico",
-      icon: <TrendingDown className="h-4 w-4" />,
-      bg: "bg-[var(--copilot-card-bg)] border-[var(--copilot-danger-border)]",
-      text: "text-[var(--copilot-danger-text-strong)]",
-      badge: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-danger-text-strong)]",
-    },
-  }[state];
-
-  const mainRisk = buildExecutiveSummaryMainRiskChip({
-    state,
-    currencyMode,
-    deudaVencidaUyu,
-    deudaVencidaUsd,
-    exchangeRate,
-    clientStates,
-  });
-
-  const bestSignal =
-    (uyu?.efectividad ?? 0) >= 0.8 || (usd?.efectividad ?? 0) >= 0.8
-      ? "Efectividad de cobros >80%"
-      : clientStates.sinDeuda > clientStates.conDeudaVencida
-      ? "Mayoría de clientes sin deuda activa"
-      : null;
-
-  const suggestedAction =
-    state === "critical"
-      ? "Revisar clientes críticos y caja en Tesorería"
-      : state === "attention"
-      ? "Gestionar deuda vencida en Cartera"
-      : "Mantener seguimiento de cobranza";
-
-  return (
-    <div className={`rounded-2xl border p-4 ${stateConfig.bg}`}>
-      {/* Header: estado + período */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className={`flex items-center gap-1.5 ${stateConfig.text}`}>
-          {stateConfig.icon}
-          <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${stateConfig.badge}`}>
-            Estado financiero: {stateConfig.label}
-          </span>
-        </div>
-        <p className={`text-[11px] font-medium opacity-75 ${stateConfig.text}`}>
-          Resumen ejecutivo – {periodLabel}
-        </p>
-      </div>
-
-      {/* Chips ? max 3 */}
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {mainRisk && (
-          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${stateConfig.badge}`}>
-            <AlertTriangle className="h-3 w-3" />
-            {mainRisk}
-          </span>
-        )}
-        {bestSignal && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--copilot-badge-success-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--copilot-success-text-strong)]">
-            <TrendingUp className="h-3 w-3" />
-            {bestSignal}
-          </span>
-        )}
-        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--copilot-tone-neutral-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--copilot-accent)]">
-          <ArrowRight className="h-3 w-3" />
-          {suggestedAction}
-        </span>
-      </div>
-    </div>
-  );
+  void state;
+  void currencyData;
+  void clientStates;
+  void periodLabel;
+  void currencyMode;
+  void deudaVencidaUyu;
+  void deudaVencidaUsd;
+  void exchangeRate;
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -731,21 +653,23 @@ function ActiveDebtClientsTable({
               >
                 <td className={`px-3 py-2 font-medium ${C.ink}`}>{r.name}</td>
                 <td className={`px-3 py-2 font-semibold uppercase ${C.muted}`}>{r.currency}</td>
-                <td className="px-3 py-2 tabular-nums font-medium text-[var(--copilot-warning-text)]">
+                <td className="px-3 py-2 tabular-nums font-medium text-[var(--copilot-danger-text-strong)]">
                   {fmtAmount(r.activeDebt, r.currency)}
                 </td>
-                <td className={`px-3 py-2 tabular-nums ${r.overdueDebt > 0 ? "font-semibold text-[var(--copilot-danger-text)]" : C.muted}`}>
-                  {r.overdueDebt > 0 ? fmtAmount(r.overdueDebt, r.currency) : "?"}
+                <td className={`px-3 py-2 tabular-nums ${r.overdueDebt > 0 ? "font-semibold text-[var(--copilot-danger-text-strong)]" : C.muted}`}>
+                  {r.overdueDebt > 0 ? fmtAmount(r.overdueDebt, r.currency) : "—"}
                 </td>
                 <td className={`px-3 py-2 tabular-nums ${C.muted}`}>
-                  {r.overdueDebt > 0 && (r.overdueDays ?? 0) > 0 ? `${r.overdueDays}d` : "?"}
+                  {r.overdueDebt > 0 && (r.overdueDays ?? 0) > 0
+                    ? `hace ${r.overdueDays} días`
+                    : "—"}
                 </td>
                 <td className="px-3 py-2">
                   <span
                     className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
                       r.status === "Riesgo alto"
                         ? "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-danger-text-strong)]"
-                        : r.status === "Vencido"
+                        : r.status === "Atrasado"
                           ? "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-warning-text-strong)]"
                           : "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]"
                     }`}
@@ -1212,7 +1136,7 @@ export default function DashboardPageClient() {
   const agingUSD = usd?.aging ?? [];
   const AGING_KEYS = ["0-30", "31-60", "61-90", "90+"] as const;
   const AGING_DISPLAY: Record<string, string> = {
-    "0-30": "0–30d", "31-60": "31–60d", "61-90": "61–90d", "90+": "+90d",
+    "0-30": "0–30 días", "31-60": "31–60 días", "61-90": "61–90 días", "90+": "+90 días",
   };
   const agingBars: BarData[] = consBarData(AGING_KEYS.map((key) => ({
     label: AGING_DISPLAY[key]!,
@@ -1529,14 +1453,10 @@ export default function DashboardPageClient() {
         </div>
       </div>
 
-      {(selectedCurrency === "all" || isConsolidated) && (
+      {isConsolidated && (
         <div className="mx-4 mb-0 flex items-start gap-2 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-tone-neutral-bg)]/80 px-3 py-2 text-xs text-[var(--copilot-accent)] sm:mx-6 lg:mx-8">
           <Info className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />
-          <span>
-            {isConsolidated
-              ? DASHBOARD_USD_CONSOLIDATED_DISCLAIMER
-              : METRIC_SEPARATED_CURRENCY_DISCLAIMER}
-          </span>
+          <span>{DASHBOARD_USD_CONSOLIDATED_DISCLAIMER}</span>
         </div>
       )}
 

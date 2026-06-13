@@ -10,7 +10,7 @@ import { WORKLOAD_BAND_LABELS } from "@/lib/decision-engine/de-types";
 const WORKLOAD_BADGE_CLASS: Record<WorkloadBand, string> = {
   normal:     "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border-[var(--copilot-success-border)]",
   elevated:   "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]",
-  overloaded: "bg-orange-50 text-orange-800 border-orange-200",
+  overloaded: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]",
   critical:   "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]",
 };
 

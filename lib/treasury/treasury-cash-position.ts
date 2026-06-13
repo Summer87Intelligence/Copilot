@@ -47,11 +47,11 @@ export type CashPositionByCurrency = {
   currentCash: number;
   movementsCount: number;
   /** @deprecated Usar `lastIncome` / `lastExpense`. */
-  lastMovement: { date: string; concept: string } | null;
+  lastMovement: { date: string; concept: string; amount?: number | null } | null;
   /** Último ingreso manual registrado (movementType=income). */
-  lastIncome: { date: string; concept: string } | null;
+  lastIncome: { date: string; concept: string; amount?: number | null } | null;
   /** Último egreso manual registrado (movementType=expense). */
-  lastExpense: { date: string; concept: string } | null;
+  lastExpense: { date: string; concept: string; amount?: number | null } | null;
   manualExpenseInRange?: number;
 };
 
@@ -123,21 +123,22 @@ export function calculateCashPosition(
     let adjustments = 0;
     let transfersNet = 0;
     let movementsCount = 0;
-    let lastMovement: { date: string; concept: string } | null = null;
-    let lastIncome: { date: string; concept: string } | null = null;
-    let lastExpense: { date: string; concept: string } | null = null;
+    let lastMovement: { date: string; concept: string; amount?: number | null } | null = null;
+    let lastIncome: { date: string; concept: string; amount?: number | null } | null = null;
+    let lastExpense: { date: string; concept: string; amount?: number | null } | null = null;
 
     const considerEvent = (
-      current: { date: string; concept: string } | null,
+      current: { date: string; concept: string; amount?: number | null } | null,
       date: string,
-      concept: string
-    ): { date: string; concept: string } => {
+      concept: string,
+      amount?: number | null
+    ): { date: string; concept: string; amount?: number | null } => {
       if (
         !current ||
         date > current.date ||
         (date === current.date && concept > current.concept)
       ) {
-        return { date, concept };
+        return { date, concept, amount: amount ?? null };
       }
       return current;
     };
@@ -157,16 +158,16 @@ export function calculateCashPosition(
       });
       movementsCount += 1;
 
-      lastMovement = considerEvent(lastMovement, m.movementDate, m.concept);
+      lastMovement = considerEvent(lastMovement, m.movementDate, m.concept, Math.abs(m.amount));
 
       switch (m.movementType) {
         case "income":
           manualIncome += signed;
-          lastIncome = considerEvent(lastIncome, m.movementDate, m.concept);
+          lastIncome = considerEvent(lastIncome, m.movementDate, m.concept, Math.abs(m.amount));
           break;
         case "expense":
           manualExpense += Math.abs(signed);
-          lastExpense = considerEvent(lastExpense, m.movementDate, m.concept);
+          lastExpense = considerEvent(lastExpense, m.movementDate, m.concept, Math.abs(m.amount));
           break;
         case "adjustment":
           adjustments += signed;
@@ -214,9 +215,9 @@ export function calculateCashPosition(
 }
 
 export function mergeCashIncomeEvents(
-  manual: { date: string; concept: string } | null | undefined,
-  zeta: { date: string; concept: string } | null | undefined
-): { date: string; concept: string } | null {
+  manual: { date: string; concept: string; amount?: number | null } | null | undefined,
+  zeta: { date: string; concept: string; amount?: number | null } | null | undefined
+): { date: string; concept: string; amount?: number | null } | null {
   if (!manual && !zeta) return null;
   if (!manual) return zeta ?? null;
   if (!zeta) return manual;

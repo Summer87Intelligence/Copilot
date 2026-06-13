@@ -28,7 +28,7 @@ type AgendaFilter =
 
 const FILTER_LABELS: { id: AgendaFilter; label: string }[] = [
   { id: "all", label: "Todo" },
-  { id: "overdue", label: "Vencidos" },
+  { id: "overdue", label: "Atrasados" },
   { id: "today", label: "Hoy" },
   { id: "upcoming", label: "Próximos" },
   { id: "promises", label: "Promesas" },
@@ -43,15 +43,15 @@ function typeBadgeCls(type: CollectionAgendaItem["type"]): {
 } {
   switch (type) {
     case "promise_overdue":
-      return { bg: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]", label: "Promesa vencida" };
+      return { bg: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]", label: "Promesa atrasada" };
     case "promise_upcoming":
       return { bg: "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)] border-[var(--copilot-border)]", label: "Promesa futura" };
     case "followup_overdue":
-      return { bg: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]", label: "Seguimiento vencido" };
+      return { bg: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]", label: "Seguimiento atrasado" };
     case "followup_today":
       return { bg: "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]", label: "Seguimiento hoy" };
     case "followup_upcoming":
-      return { bg: "bg-sky-50 text-sky-700 border-sky-200", label: "Próx. seguimiento" };
+      return { bg: "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)] border-[var(--copilot-border)]", label: "Próx. seguimiento" };
     case "recent_contact":
       return { bg: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] border-[var(--copilot-success-border)]", label: "Contactado" };
   }
@@ -204,9 +204,9 @@ function AgendaItemCard({
       ) : null}
 
       {confirming ? (
-        <div className="mt-3 rounded-xl border border-[var(--copilot-warning-border)]/80 bg-[var(--copilot-tone-warning-bg)]/70 px-3 py-2.5">
-          <p className="text-xs font-medium text-[var(--copilot-warning-text-strong)]">
-            Esto quitará este seguimiento de la agenda. No borra la deuda ni modifica facturas.
+        <div className="mt-3 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-tone-neutral-bg)]/70 px-3 py-2.5">
+          <p className="text-xs font-medium text-[var(--copilot-ink-muted)]">
+            Esto quitará esta acción de la agenda. No borra la deuda ni modifica facturas.
           </p>
           <div className="mt-2 flex gap-2">
             {canWrite ? (
@@ -247,12 +247,12 @@ function AgendaItemCard({
             <button
               type="button"
               onClick={() => setConfirming(true)}
-              title="Cancelar seguimiento"
-              aria-label="Cancelar seguimiento"
+              title="Eliminar acción"
+              aria-label="Eliminar acción"
               className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:border-[var(--copilot-danger-border)] hover:bg-[var(--copilot-tone-danger-bg)]/60 hover:text-[var(--copilot-danger-text-strong)]"
             >
               <X className="h-3 w-3" aria-hidden />
-              Cancelar
+              Eliminar
             </button>
           ) : null}
         </div>
@@ -264,7 +264,7 @@ function AgendaItemCard({
 function EmptyState({ filter }: { filter: AgendaFilter }) {
   const messages: Record<AgendaFilter, string> = {
     all: "No hay seguimientos registrados.",
-    overdue: "No hay seguimientos vencidos.",
+    overdue: "No hay seguimientos atrasados.",
     today: "No hay seguimientos para hoy.",
     upcoming: "No hay seguimientos próximos.",
     promises: "No hay promesas de pago registradas.",
@@ -344,7 +344,7 @@ export function CollectionAgendaSection({
           {totalItems > 0 ? (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
               <AgendaSummaryCard
-                label="Vencidos"
+                label="Atrasados"
                 value={filterItemsActive([...agenda.overdueFollowups, ...agenda.overduePromises]).length}
                 tone="danger"
               />

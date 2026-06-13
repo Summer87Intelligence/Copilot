@@ -9,6 +9,7 @@ import type {
   AgingRange,
   ClientStaleness,
   FinancialConsistencyReport,
+  PendingInvoiceLine,
   ReconciliationCurrencyCode,
   StalenessStatus,
 } from "@/lib/copilot-financial-reconciliation";
@@ -20,6 +21,8 @@ export type PendingDebtClientRow = {
   invoiceCount: number;
   dominantAgingRange: AgingRange | null;
   status: StalenessStatus;
+  /** Facturas pendientes del cliente en la moneda del snapshot (top por saldo). */
+  pendingInvoices: PendingInvoiceLine[];
 };
 
 export type CurrentDebtSnapshot = {
@@ -27,8 +30,8 @@ export type CurrentDebtSnapshot = {
   totalPending: number;
   clientCount: number;
   clients: PendingDebtClientRow[];
-  /** El reporte de reconciliación no incluye líneas por factura. */
-  hasInvoiceDetail: false;
+  /** `true` cuando el reporte expone líneas por factura por cliente. */
+  hasInvoiceDetail: boolean;
 };
 
 const PENDING_EPSILON = 0.005;
@@ -54,12 +57,14 @@ export function buildCurrentDebtSnapshot(
     clients.reduce((sum, c) => sum + c.pendingAmount, 0)
   );
 
+  const hasInvoiceDetail = clients.some((c) => c.pendingInvoices.length > 0);
+
   return {
     currency,
     totalPending,
     clientCount: clients.length,
     clients,
-    hasInvoiceDetail: false,
+    hasInvoiceDetail,
   };
 }
 
@@ -67,6 +72,9 @@ function rowFromStaleness(
   client: ClientStaleness,
   currency: ReconciliationCurrencyCode
 ): PendingDebtClientRow {
+  const pendingInvoices = (client.pendingInvoices ?? []).filter(
+    (line) => line.currencyCode === currency
+  );
   return {
     companyId: client.companyId,
     companyName: client.companyName,
@@ -74,5 +82,6 @@ function rowFromStaleness(
     invoiceCount: client.invoiceCount,
     dominantAgingRange: client.dominantAgingRange,
     status: client.status,
+    pendingInvoices,
   };
 }

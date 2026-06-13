@@ -72,7 +72,7 @@ describe("notifyCollectionReceived", () => {
       expect.objectContaining({
         type: "collection_received",
         title: "Cobro parcial recibido",
-        body: "ACME pagó UYU 5.000. Saldo pendiente: 7.000.",
+        body: "ACME hizo un pago parcial.",
         metadata: expect.objectContaining({
           client_id: "c1",
           currency: "UYU",
@@ -102,7 +102,7 @@ describe("notifyClientDebtSettled", () => {
       expect.objectContaining({
         type: "client_debt_settled",
         title: "Cliente saldó su deuda",
-        body: "ACME canceló su saldo pendiente.",
+        body: "ACME pagó su deuda.",
         dedup_key: "client_debt_settled:c1:2026-06-10",
         metadata: expect.objectContaining({
           client_id: "c1",
@@ -134,7 +134,7 @@ describe("notifyInvoiceOverdue", () => {
       expect.objectContaining({
         type: "client_overdue",
         title: "Factura atrasada",
-        body: "ACME tiene USD 3.000 vencido.",
+        body: "ACME tiene USD 3.000 atrasado.",
         dedup_key: "invoice_overdue:inv-22",
         metadata: expect.objectContaining({
           client_id: "c1",

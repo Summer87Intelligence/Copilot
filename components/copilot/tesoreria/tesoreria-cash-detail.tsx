@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Pencil, X } from "lucide-react";
+import { Check, ChevronDown, Filter, Pencil, X } from "lucide-react";
 
 import { CopilotButton } from "@/components/copilot/ui/copilot-button";
 import { CopilotPagination } from "@/components/copilot/ui/copilot-pagination";
 import { premiumCardClass } from "@/components/copilot/ui/copilot-visual-system";
+import { formatCopilotDate } from "@/lib/copilot-format";
 import {
   TESORERIA_FIELD_CLASS,
   TESORERIA_PAGE_SIZE,
@@ -212,6 +213,12 @@ function CashCompositionBlock({
   );
 }
 
+function movementTypeLabel(t: ManualCashMovement["movementType"]): string {
+  if (t === "income") return "Ingreso";
+  if (t === "expense") return "Egreso";
+  return t;
+}
+
 function RecentMovements({ workspace }: { workspace: TreasuryWorkspace }) {
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -219,6 +226,7 @@ function RecentMovements({ workspace }: { workspace: TreasuryWorkspace }) {
   const [currency, setCurrency] = useState<CurrencyFilter>("all");
   const [typeFilter, setTypeFilter] = useState<MovementTypeFilter>("all");
   const [page, setPage] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -249,62 +257,84 @@ function RecentMovements({ workspace }: { workspace: TreasuryWorkspace }) {
     setPage(0);
   }, [search, dateFrom, dateTo, currency, typeFilter]);
 
+  const activeFiltersCount =
+    (dateFrom ? 1 : 0) +
+    (dateTo ? 1 : 0) +
+    (search.trim() ? 1 : 0) +
+    (currency !== "all" ? 1 : 0) +
+    (typeFilter !== "all" ? 1 : 0);
+
+  const filtersInputBase =
+    "h-8 w-full rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 text-xs text-[var(--copilot-ink)] placeholder:text-[var(--copilot-ink-muted)] focus:border-[var(--copilot-accent)] focus:outline-none";
+
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <label className="block text-sm">
-          <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Desde</span>
+      {/* Botón colapsable + contador (mobile-first, también compacto en desktop) */}
+      <button
+        type="button"
+        onClick={() => setFiltersOpen((v) => !v)}
+        aria-expanded={filtersOpen}
+        className="inline-flex items-center gap-2 rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] transition hover:bg-[var(--copilot-panel-bg)]"
+      >
+        <Filter className="h-3 w-3" aria-hidden />
+        Filtros
+        {activeFiltersCount > 0 ? (
+          <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--copilot-accent)] px-1 text-[10px] font-semibold text-[var(--copilot-on-accent)]">
+            {activeFiltersCount}
+          </span>
+        ) : null}
+        <ChevronDown
+          className={`h-3 w-3 shrink-0 transition ${filtersOpen ? "rotate-180" : ""}`}
+          aria-hidden
+        />
+      </button>
+
+      {filtersOpen ? (
+        <div className="grid grid-cols-2 gap-2 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)]/40 p-2 sm:grid-cols-5">
           <input
             type="date"
-            className={TESORERIA_FIELD_CLASS}
+            aria-label="Desde"
+            className={filtersInputBase}
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
           />
-        </label>
-        <label className="block text-sm">
-          <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Hasta</span>
           <input
             type="date"
-            className={TESORERIA_FIELD_CLASS}
+            aria-label="Hasta"
+            className={filtersInputBase}
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
           />
-        </label>
-        <label className="block text-sm sm:col-span-2 lg:col-span-1">
-          <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Buscar</span>
           <input
             type="search"
-            className={TESORERIA_FIELD_CLASS}
-            placeholder="Concepto o notas"
+            aria-label="Buscar"
+            placeholder="Buscar"
+            className={`${filtersInputBase} col-span-2 sm:col-span-1`}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-        </label>
-        <label className="block text-sm">
-          <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Moneda</span>
           <select
-            className={TESORERIA_SELECT_CLASS}
+            aria-label="Moneda"
+            className={filtersInputBase}
             value={currency}
             onChange={(e) => setCurrency(e.target.value as CurrencyFilter)}
           >
-            <option value="all">Todas</option>
+            <option value="all">Moneda · Todas</option>
             <option value="UYU">UYU</option>
             <option value="USD">USD</option>
           </select>
-        </label>
-        <label className="block text-sm">
-          <span className="mb-1 block text-xs font-medium text-[var(--copilot-ink-muted)]">Tipo</span>
           <select
-            className={TESORERIA_SELECT_CLASS}
+            aria-label="Tipo"
+            className={filtersInputBase}
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value as MovementTypeFilter)}
           >
-            <option value="all">Todos</option>
+            <option value="all">Tipo · Todos</option>
             <option value="income">Ingreso</option>
             <option value="expense">Egreso</option>
           </select>
-        </label>
-      </div>
+        </div>
+      ) : null}
 
       {filtered.length === 0 ? (
         <p className="text-sm text-[var(--copilot-ink-muted)]">
@@ -313,28 +343,34 @@ function RecentMovements({ workspace }: { workspace: TreasuryWorkspace }) {
       ) : (
         <>
           <div className="space-y-2">
-            {pageItems.map((m) => (
-              <div
-                key={m.id}
-                className="flex items-center justify-between rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2.5 shadow-sm"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-[var(--copilot-ink)]">{m.concept}</p>
-                  <p className="text-xs text-[var(--copilot-ink-muted)]">
-                    {m.movementDate} · {m.currencyCode} ·{" "}
-                    {m.movementType === "income" ? "Ingreso" : m.movementType === "expense" ? "Egreso" : m.movementType}
-                  </p>
-                </div>
-                <span
-                  className={`ml-3 shrink-0 text-sm font-semibold tabular-nums ${
-                    m.movementType === "income" ? "text-[var(--copilot-success-text)]" : "text-[var(--copilot-danger-text)]"
-                  }`}
+            {pageItems.map((m) => {
+              const isIncome = m.movementType === "income";
+              const isExpense = m.movementType === "expense";
+              const amountClass = isIncome
+                ? "text-[var(--copilot-success-text-strong)]"
+                : isExpense
+                  ? "text-[var(--copilot-danger-text-strong)]"
+                  : "text-[var(--copilot-ink)]";
+              const sign = isIncome ? "+" : isExpense ? "−" : "";
+              return (
+                <div
+                  key={m.id}
+                  className="flex items-center justify-between rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2.5 shadow-sm"
                 >
-                  {m.movementType === "income" ? "+" : "−"}
-                  {formatTreasuryMoney(m.amount, m.currencyCode)}
-                </span>
-              </div>
-            ))}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-[var(--copilot-ink)]">{m.concept}</p>
+                    <p className="text-xs text-[var(--copilot-ink-muted)]">
+                      {formatCopilotDate(m.movementDate)} · {m.currencyCode} ·{" "}
+                      {movementTypeLabel(m.movementType)}
+                    </p>
+                  </div>
+                  <span className={`ml-3 shrink-0 text-sm font-semibold tabular-nums ${amountClass}`}>
+                    {sign}
+                    {formatTreasuryMoney(m.amount, m.currencyCode)}
+                  </span>
+                </div>
+              );
+            })}
           </div>
           <div className="flex flex-col items-center gap-2 pt-1">
             <span className="text-xs text-[var(--copilot-ink-muted)]">

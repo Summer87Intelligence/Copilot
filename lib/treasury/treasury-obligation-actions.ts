@@ -26,7 +26,7 @@ export function formatPaymentStatusLabel(effective: PlannedObligationStatus): st
   const labels: Record<PlannedObligationStatus, string> = {
     planned: "Pendiente",
     confirmed: "Confirmado",
-    overdue: "Vencido",
+    overdue: "Atrasado",
     paid: "Pagado",
     cancelled: "Cancelado",
   };
@@ -114,7 +114,7 @@ export function buildDueStatusLabelWithTime(
   const isToday = dueDate === asOfDate;
   if (isToday && dueTime) {
     const isPast = nowHHMM >= dueTime;
-    return isPast ? `Vencido hoy · ${dueTime}` : `Vence hoy · ${dueTime}`;
+    return isPast ? `Atrasado hoy · ${dueTime}` : `Vence hoy · ${dueTime}`;
   }
   return formatPaymentStatusLabel(effective);
 }

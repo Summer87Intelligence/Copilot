@@ -35,6 +35,8 @@ export type ZetaReceiptRow = {
 export type ZetaCashEvent = {
   date: string;
   concept: string;
+  /** Monto del cobro (cuando aplica) para mostrar en UI sin lookup adicional. */
+  amount?: number | null;
 };
 
 function isValidPostBaselineReceipt(
@@ -125,6 +127,7 @@ export function findLatestZetaReceipts(
     const candidate: ZetaCashEvent = {
       date: valid.date,
       concept: receiptConcept(row),
+      amount: typeof row.amount === "number" ? row.amount : null,
     };
     result[valid.currency] = pickLaterCashEvent(result[valid.currency], candidate) ?? candidate;
   }

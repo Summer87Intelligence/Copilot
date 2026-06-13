@@ -27,7 +27,11 @@ import {
   isStaleOrphanMetadata,
 } from "@/lib/integrations/zeta/zeta-orphan-auto-repair";
 import { stalenessFromHoursForResourceFlow } from "@/lib/integrations/zeta/zeta-sync-staleness";
-import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
+import {
+  formatCreditNoteVoucherLabel,
+  isCreditNoteFromMetadata,
+  readAssociatedInvoiceFromZetaMetadata,
+} from "@/lib/copilot-zeta-credit-note";
 import { toSafeNumber } from "@/lib/copilot-numeric-parse";
 import { selectOperationalDebtInvoicesForSummation } from "@/lib/zeta/zeta-operational-debt-dedup";
 import type { AgingComparativeDiagnostics } from "@/lib/copilot-installment-aging-delta";
@@ -245,6 +249,34 @@ export type CurrencyReconciliation = {
   agingSource: AgingSource;
 };
 
+/**
+ * Línea de factura pendiente del cliente. Mínimo necesario para que la UI de
+ * Cartera muestre "qué facturas" componen el saldo (número, fecha, monto,
+ * aging). Capada por cliente (top N por saldo) para no inflar el reporte.
+ */
+export type PendingInvoiceLine = {
+  invoiceId: string;
+  invoiceNumber: string | null;
+  issueDate: string | null;
+  dueDate: string | null;
+  currencyCode: ReconciliationCurrencyCode;
+  balance: number;
+  agingRange: AgingRange | null;
+};
+
+/** Línea individual de Nota de Crédito emitida en el período activo. */
+export type PeriodCreditNoteLine = {
+  invoiceId: string;
+  companyId: string | null;
+  companyName: string | null;
+  voucherLabel: string;
+  issueDate: string | null;
+  currencyCode: ReconciliationCurrencyCode;
+  amount: number;
+  associatedInvoiceLabel: string | null;
+  status: string | null;
+};
+
 export type ClientStaleness = {
   companyId: string;
   companyName: string | null;
@@ -261,6 +293,12 @@ export type ClientStaleness = {
    */
   pendingByCurrency: Partial<Record<ReconciliationCurrencyCode, number>>;
   dominantAgingRange: AgingRange | null;
+  /**
+   * Facturas pendientes que componen `pendingByCurrency` (top por saldo, capado).
+   * Permite a la UI mostrar el detalle "qué facturas" al expandir una fila sin
+   * pedir datos adicionales. Vacío para clientes sin saldo activo.
+   */
+  pendingInvoices?: PendingInvoiceLine[];
 };
 
 export type SyncStateSummary = {
@@ -380,6 +418,11 @@ export type FinancialConsistencyReport = {
    * `totalInvoiced` / `pendingAtCutoff`. 0 en datasets sanos.
    */
   shadowDuplicatesSkipped: number;
+  /**
+   * Notas de crédito del período (detalle fila a fila). Solo se puebla en
+   * `period_only`; vacío en `all_outstanding` o sin NCs en rango.
+   */
+  periodCreditNotes: PeriodCreditNoteLine[];
   /** Caps de carga paginada (A-02). severity solo si hubo truncamiento por maxRows. */
   diagnostics?: FinancialReconciliationDiagnostics;
 };
@@ -589,6 +632,18 @@ function safeNum(v: number | null | undefined): number {
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+function ymdOrNull(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const sl = String(value).slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(sl) ? sl : null;
+}
+
+function invoiceNumberOrNull(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const t = String(value).trim();
+  return t.length > 0 ? t : null;
 }
 
 function hoursElapsed(isoStr: string | null, nowMs: number): number | null {
@@ -909,7 +964,11 @@ export function generateFinancialConsistencyReport(
   // Per-client aging amounts: companyId → range → pending sum
   const clientAgingAmounts = new Map<string, Record<AgingRange, number>>();
 
+  // Per-client pending invoice lines (detalle para UI Cartera "qué facturas")
+  const clientPendingInvoiceLines = new Map<string, PendingInvoiceLine[]>();
+
   let pre2026Count = 0;
+  const periodCreditNotes: PeriodCreditNoteLine[] = [];
 
   // Period pass: only accumulates bucket metrics (issuedInPeriod, pendingInPeriod,
   // invoiceCount, creditNotes). Per-client tracking and aging are handled separately
@@ -966,6 +1025,21 @@ export function generateFinancialConsistencyReport(
     if (inv.is_credit_note === true) {
       b.creditNoteAmount = round2(b.creditNoteAmount + totalAmount);
       b.creditNoteCount++;
+      const companyId = inv.company_id ?? null;
+      periodCreditNotes.push({
+        invoiceId: inv.id,
+        companyId,
+        companyName:
+          (companyId ? companyNameById.get(companyId) : null) ??
+          inv.zeta_client_name ??
+          null,
+        voucherLabel: formatCreditNoteVoucherLabel(inv.zeta_metadata, inv.invoice_number),
+        issueDate: inv.issue_date ?? null,
+        currencyCode: code as ReconciliationCurrencyCode,
+        amount: totalAmount,
+        associatedInvoiceLabel: readAssociatedInvoiceFromZetaMetadata(inv.zeta_metadata),
+        status: inv.status ?? null,
+      });
     } else {
       b.totalInvoiced = round2(b.totalInvoiced + totalAmount);
       b.invoiceCount++;
@@ -1123,9 +1197,11 @@ export function generateFinancialConsistencyReport(
       }
     }
 
+    let resolvedAgingRange: AgingRange | null = null;
     if (portPending > 0) {
       const ag = resolveAging(inv, nowMs);
       if (ag !== null) {
+        resolvedAgingRange = ag.range;
         const cc = portCode as ReconciliationCurrencyCode;
         const accum = getOrCreateAgingAccum(cc);
         const bk = accum[ag.range];
@@ -1145,6 +1221,20 @@ export function generateFinancialConsistencyReport(
           cliAg[ag.range] = round2(cliAg[ag.range] + portPending);
         }
       }
+    }
+
+    if (companyId && portPending > 0) {
+      const lines = clientPendingInvoiceLines.get(companyId) ?? [];
+      lines.push({
+        invoiceId: inv.id,
+        invoiceNumber: invoiceNumberOrNull(inv.invoice_number),
+        issueDate: ymdOrNull(inv.issue_date),
+        dueDate: ymdOrNull(inv.due_date),
+        currencyCode: portCode as ReconciliationCurrencyCode,
+        balance: portPending,
+        agingRange: resolvedAgingRange,
+      });
+      clientPendingInvoiceLines.set(companyId, lines);
     }
   }
 
@@ -1321,6 +1411,11 @@ export function generateFinancialConsistencyReport(
       if (maxAmt <= 0) dominantAgingRange = null;
     }
 
+    const linesForClient = clientPendingInvoiceLines.get(companyId) ?? [];
+    const cappedLines = linesForClient
+      .slice()
+      .sort((a, b) => b.balance - a.balance)
+      .slice(0, 25);
     staleClients.push({
       companyId,
       companyName: companyNameById.get(companyId) ?? null,
@@ -1331,6 +1426,7 @@ export function generateFinancialConsistencyReport(
       invoiceCount,
       pendingByCurrency: { ...(clientPendingByCurrency.get(companyId) ?? {}) },
       dominantAgingRange,
+      pendingInvoices: cappedLines.length > 0 ? cappedLines : [],
     });
   }
 
@@ -1447,6 +1543,7 @@ export function generateFinancialConsistencyReport(
     excludedByMinFinancialDateCount,
     excludedByMinFinancialDateReceiptCount,
     shadowDuplicatesSkipped,
+    periodCreditNotes,
     diagnostics: input.diagnostics,
   };
 }

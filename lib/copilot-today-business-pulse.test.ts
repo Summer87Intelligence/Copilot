@@ -269,7 +269,7 @@ describe("buildTodayBusinessPulse", () => {
 
     it("accion del cliente con vencido indica contacto por deuda vencida", () => {
       const { priorityCollections } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: rows, gate: GATE_HIGH });
-      expect(priorityCollections[0]!.accion.toLowerCase()).toContain("contactar por deuda vencida");
+      expect(priorityCollections[0]!.accion.toLowerCase()).toContain("contactar por deuda atrasada");
     });
 
     it("deepLink apunta a ficha del cliente", () => {
@@ -1070,7 +1070,7 @@ describe("buildTodayBusinessPulse", () => {
         carteraAgingOverdue: { UYU: 12_000, USD: 0 },
       });
       expect(sem.mode).toBe("cartera_aging");
-      expect(sem.debtLabel).toBe("deuda vencida");
+      expect(sem.debtLabel).toBe("deuda atrasada");
       expect(sem.breakdown.find((m) => m.currency === "UYU")?.amount).toBe(12_000);
     });
 

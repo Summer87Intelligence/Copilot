@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import {
   CopilotCard,
@@ -52,11 +52,11 @@ export function FinancialCeoSections({
   );
   const ytd = useMemo(() => buildAnnualSalesYtd(invoices, year), [invoices, year]);
   const topUyu = useMemo(
-    () => topDebtorsByCurrency(portfolioRows, "UYU", 5),
+    () => topDebtorsByCurrency(portfolioRows, "UYU", Number.POSITIVE_INFINITY),
     [portfolioRows]
   );
   const topUsd = useMemo(
-    () => topDebtorsByCurrency(portfolioRows, "USD", 5),
+    () => topDebtorsByCurrency(portfolioRows, "USD", Number.POSITIVE_INFINITY),
     [portfolioRows]
   );
 
@@ -66,8 +66,12 @@ export function FinancialCeoSections({
       <CopilotCard>
         <CopilotSectionTitle
           title={`Facturación ${year}`}
-          subtitle={`Acumulado · ${fmt(ytd.UYU, "UYU")} · ${fmt(ytd.USD, "USD")}`}
+          subtitle={`Acumulado neto · ${fmt(ytd.UYU, "UYU")} · ${fmt(ytd.USD, "USD")}`}
         />
+        <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
+          Ventas netas: facturas emitidas menos notas de crédito del año (sin
+          mezclar monedas).
+        </p>
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
           {monthly.map((m) => (
             <div
@@ -190,6 +194,8 @@ export function FinancialCeoCollectionRiskSummary({
 // Subcomponents
 // ---------------------------------------------------------------------------
 
+const DEBTOR_TABLE_DEFAULT_LIMIT = 5;
+
 function DebtorTable({
   title,
   currency,
@@ -199,39 +205,59 @@ function DebtorTable({
   currency: "UYU" | "USD";
   rows: CeoDebtorRow[];
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const visibleRows = expanded ? rows : rows.slice(0, DEBTOR_TABLE_DEFAULT_LIMIT);
+  const hasMore = rows.length > DEBTOR_TABLE_DEFAULT_LIMIT;
+
   return (
     <div>
       <p className={`text-xs font-semibold ${copilotCurrencyClass(currency)}`}>{title}</p>
       {rows.length === 0 ? (
         <p className="mt-2 text-xs text-[var(--copilot-ink-muted)]">Sin pendiente en {currency}.</p>
       ) : (
-        <div className="mt-2 overflow-x-auto rounded-lg border border-[var(--copilot-border)]">
-          <table className="w-full min-w-[240px] text-left text-xs">
-            <thead>
-              <tr className="border-b border-[var(--copilot-border)] text-[10px] uppercase tracking-wider text-[var(--copilot-ink-muted)]">
-                <th className="px-2 py-1.5">Cliente</th>
-                <th className="px-2 py-1.5 text-right">Pendiente</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--copilot-border)]/60">
-              {rows.map((r, idx) => (
-                <tr key={r.companyId}>
-                  <td className="px-2 py-1.5">
-                    <Link
-                      href={`/copilot/clientes/${r.companyId}`}
-                      className="font-medium text-[var(--copilot-accent)] hover:underline"
-                    >
-                      {idx + 1}. {r.name}
-                    </Link>
-                  </td>
-                  <td className={`px-2 py-1.5 text-right tabular-nums font-medium ${copilotCurrencyClass(currency)}`}>
-                    {fmt(r.amount, currency)}
-                  </td>
+        <>
+          <div className="mt-2 overflow-x-auto rounded-lg border border-[var(--copilot-border)]">
+            <table className="w-full min-w-[240px] text-left text-xs">
+              <thead>
+                <tr className="border-b border-[var(--copilot-border)] text-[10px] uppercase tracking-wider text-[var(--copilot-ink-muted)]">
+                  <th className="px-2 py-1.5">Cliente</th>
+                  <th className="px-2 py-1.5 text-right">Pendiente</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-[var(--copilot-border)]/60">
+                {visibleRows.map((r, idx) => (
+                  <tr key={r.companyId}>
+                    <td className="px-2 py-1.5">
+                      <Link
+                        href={`/copilot/clientes/${r.companyId}`}
+                        className="font-medium text-[var(--copilot-accent)] hover:underline"
+                      >
+                        {idx + 1}. {r.name}
+                      </Link>
+                    </td>
+                    <td className={`px-2 py-1.5 text-right tabular-nums font-medium ${copilotCurrencyClass(currency)}`}>
+                      {fmt(r.amount, currency)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {hasMore ? (
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                className="text-[11px] font-semibold text-[var(--copilot-accent)] hover:underline"
+                aria-expanded={expanded}
+              >
+                {expanded
+                  ? "Ver menos"
+                  : `Ver más (${rows.length - DEBTOR_TABLE_DEFAULT_LIMIT})`}
+              </button>
+            </div>
+          ) : null}
+        </>
       )}
     </div>
   );
@@ -268,60 +294,41 @@ function CeoIndicator({
 }
 
 function AnnualTrend({ rows }: { rows: ReturnType<typeof buildMonthlySalesYear> }) {
-  const maxUyu = Math.max(1, ...rows.map((r) => r.sales.UYU));
-  const maxUsd = Math.max(1, ...rows.map((r) => r.sales.USD));
-
   return (
-    <div className="mt-3 space-y-4">
-      <TrendRow label="UYU" currency="UYU" rows={rows} max={maxUyu} field="UYU" />
-      <TrendRow label="USD" currency="USD" rows={rows} max={maxUsd} field="USD" />
+    <div className="mt-3 overflow-x-auto">
+      <table className="w-full min-w-[420px] border-collapse text-xs">
+        <thead>
+          <tr className="border-b border-[var(--copilot-border)] text-[10px] uppercase tracking-wider text-[var(--copilot-ink-muted)]">
+            <th className="px-2 py-1.5 text-left">Mes</th>
+            <th className={`px-2 py-1.5 text-right ${copilotCurrencyClass("UYU")}`}>Ventas UYU</th>
+            <th className={`px-2 py-1.5 text-right ${copilotCurrencyClass("USD")}`}>Ventas USD</th>
+            <th className="px-2 py-1.5 text-right">Estado</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[var(--copilot-border)]/60">
+          {rows.map((r) => (
+            <tr key={r.ym}>
+              <td className="px-2 py-1.5 font-medium text-[var(--copilot-ink)]">
+                {r.monthShortEs}
+              </td>
+              <td
+                className={`px-2 py-1.5 text-right tabular-nums font-medium ${copilotCurrencyClass("UYU")}`}
+              >
+                {fmt(r.sales.UYU, "UYU")}
+              </td>
+              <td
+                className={`px-2 py-1.5 text-right tabular-nums font-medium ${copilotCurrencyClass("USD")}`}
+              >
+                {fmt(r.sales.USD, "USD")}
+              </td>
+              <td className="px-2 py-1.5 text-right text-[10px] text-[var(--copilot-ink-muted)]">
+                {r.closed ? "cerrado" : "en curso"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-function TrendRow({
-  label,
-  currency,
-  rows,
-  max,
-  field,
-}: {
-  label: string;
-  currency: "UYU" | "USD";
-  rows: ReturnType<typeof buildMonthlySalesYear>;
-  max: number;
-  field: "UYU" | "USD";
-}) {
-  const barColor =
-    currency === "UYU" ? "bg-[var(--copilot-currency-uyu)]" : "bg-[var(--copilot-currency-usd)]";
-  const barColorSoft =
-    currency === "UYU"
-      ? "bg-[var(--copilot-currency-uyu)]/40"
-      : "bg-[var(--copilot-currency-usd)]/40";
-
-  return (
-    <div>
-      <p className={`mb-1.5 text-[10px] font-semibold uppercase tracking-wider ${copilotCurrencyClass(currency)}`}>
-        Ventas {label}
-      </p>
-      <div className="flex items-end gap-1">
-        {rows.map((r) => {
-          const v = r.sales[field];
-          const h = Math.max(3, Math.round((v / max) * 72));
-          return (
-            <div key={r.ym} className="flex min-w-0 flex-1 flex-col items-center gap-0.5">
-              <div
-                className={`w-full rounded-sm ${r.closed ? barColor : barColorSoft}`}
-                style={{ height: `${h}px` }}
-                title={`${r.monthShortEs}: ${fmt(v, currency)}`}
-              />
-              <span className="truncate text-[8px] font-medium uppercase text-[var(--copilot-ink-muted)]">
-                {r.monthShortEs.slice(0, 3)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}

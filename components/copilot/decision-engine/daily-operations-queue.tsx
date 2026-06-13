@@ -73,7 +73,7 @@ const SECTIONS: Section[] = [
 
 const RISK_DOT: Record<string, string> = {
   critical: "bg-[var(--copilot-danger-text)]",
-  high:     "bg-orange-400",
+  high:     "bg-[var(--copilot-warning-text)]",
   medium:   "bg-[var(--copilot-warning-text)]",
   low:      "bg-[var(--copilot-success-text)]",
 };

@@ -804,7 +804,7 @@ function SummaryCardView({ card, showBadge = false }: { card: SummaryCard; showB
       ) : null}
 
       {card.isHistoricalPartial ? (
-        <div className="mt-3 inline-flex items-center gap-1 rounded-full border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--copilot-warning-text-strong)]">
+        <div className="mt-3 inline-flex items-center gap-1 rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-badge-neutral-bg)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--copilot-ink-muted)]">
           <Clock className="h-2.5 w-2.5" aria-hidden />
           {FINANCIAL_UX_COPY.historicalPartialBadge}
         </div>
@@ -827,11 +827,11 @@ const SOURCE_LABEL: Record<SourceBadge, string> = {
 
 const SOURCE_CLASS: Record<SourceBadge, string> = {
   zeta:
-    "border border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]",
+    "border border-[var(--copilot-border)] bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink-muted)]",
   analytics:
     "border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)]",
   recon:
-    "border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",
+    "border border-[var(--copilot-border)] bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink-muted)]",
 };
 
 function SourceBadgeView({ source }: { source: SourceBadge }) {

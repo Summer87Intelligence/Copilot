@@ -107,3 +107,113 @@ export function isCreditNoteFromMetadata(metadata: unknown): boolean {
   if (tipo === null) return false;
   return CFE_NC_TIPOS_DGI.has(tipo);
 }
+
+function readZetaVoucherV1(metadata: unknown): Record<string, unknown> | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const v1raw = (metadata as Record<string, unknown>).zeta_customer_voucher_v1;
+  if (!v1raw || typeof v1raw !== "object" || Array.isArray(v1raw)) return null;
+  return v1raw as Record<string, unknown>;
+}
+
+/** Serie+Numero desde metadata Zeta (misma regla que Datos / vouchers). */
+export function readCreditNoteSerieNumeroFromMetadata(
+  metadata: unknown
+): { serie: string; numero: string } | null {
+  const v1 = readZetaVoucherV1(metadata);
+  if (!v1) return null;
+  const serieRaw = v1.serie ?? v1.Serie;
+  const numRaw = v1.numero ?? v1.Numero;
+  const serie =
+    typeof serieRaw === "string" ? serieRaw.trim() : serieRaw != null ? String(serieRaw).trim() : "";
+  const numero =
+    typeof numRaw === "string"
+      ? numRaw.trim()
+      : numRaw != null && String(numRaw).trim() !== ""
+        ? String(numRaw).trim()
+        : "";
+  if (serie && numero) return { serie, numero };
+  return null;
+}
+
+/**
+ * Etiqueta visible de la NC: prioriza Serie-Numero; fallback a `invoice_number`.
+ */
+export function formatCreditNoteVoucherLabel(
+  metadata: unknown,
+  invoiceNumber?: string | null
+): string {
+  const pair = readCreditNoteSerieNumeroFromMetadata(metadata);
+  if (pair) return `${pair.serie}-${pair.numero}`;
+  const v1 = readZetaVoucherV1(metadata);
+  if (v1) {
+    const serieRaw = v1.serie ?? v1.Serie;
+    const numRaw = v1.numero ?? v1.Numero;
+    const serie =
+      typeof serieRaw === "string" ? serieRaw.trim() : serieRaw != null ? String(serieRaw).trim() : "";
+    const numero =
+      typeof numRaw === "string"
+        ? numRaw.trim()
+        : numRaw != null && String(numRaw).trim() !== ""
+          ? String(numRaw).trim()
+          : "";
+    if (numero) return serie ? `${serie}-${numero}` : numero;
+    if (serie) return serie;
+  }
+  const inv = String(invoiceNumber ?? "").trim();
+  return inv || "—";
+}
+
+const ASSOCIATED_INVOICE_KEYS = [
+  "ComprobanteReferencia",
+  "comprobanteReferencia",
+  "FacturaAsociada",
+  "facturaAsociada",
+  "DocumentoOrigen",
+  "documentoOrigen",
+  "ComprobanteOrigen",
+  "comprobanteOrigen",
+  "ReferenciaComprobante",
+  "referenciaComprobante",
+  "ComprobanteRelacionado",
+  "comprobanteRelacionado",
+] as const;
+
+/**
+ * Factura asociada a la NC si Zeta la expone en metadata. Defensivo: retorna
+ * `null` cuando no hay dato documentado en el payload sincronizado.
+ */
+export function readAssociatedInvoiceFromZetaMetadata(metadata: unknown): string | null {
+  const v1 = readZetaVoucherV1(metadata);
+  if (!v1) return null;
+
+  const payload = v1.raw_payload;
+  const sources: Record<string, unknown>[] = [v1];
+  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    sources.push(payload as Record<string, unknown>);
+  }
+
+  for (const src of sources) {
+    for (const key of ASSOCIATED_INVOICE_KEYS) {
+      const val = src[key];
+      if (typeof val === "string" && val.trim()) return val.trim();
+      if (typeof val === "number" && Number.isFinite(val)) return String(Math.trunc(val));
+    }
+    const serie =
+      src.SerieReferencia ??
+      src.serieReferencia ??
+      src.ReferenciaSerie ??
+      src.referenciaSerie;
+    const numero =
+      src.NumeroReferencia ??
+      src.numeroReferencia ??
+      src.ReferenciaNumero ??
+      src.referenciaNumero;
+    if (serie != null && numero != null) {
+      const s = String(serie).trim();
+      const n = String(numero).trim();
+      if (s && n) return `${s}-${n}`;
+    }
+  }
+
+  return null;
+}

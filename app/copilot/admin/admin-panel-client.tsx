@@ -280,7 +280,7 @@ function DeleteUserModal({
 }: {
   user: AdminUser;
   onClose: () => void;
-  onDeleted: () => void;
+  onDeleted: (message: string) => void;
 }) {
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -293,12 +293,12 @@ function DeleteUserModal({
     setError(null);
     try {
       const res = await fetch(`/api/copilot/admin/users/${user.id}`, { method: "DELETE" });
-      const data = await res.json();
+      const data = (await res.json()) as { ok?: boolean; message?: string };
       if (!res.ok || !data.ok) {
         setError(data.message ?? "Error al eliminar.");
         return;
       }
-      onDeleted();
+      onDeleted(data.message ?? "Usuario desactivado. Ya no tiene acceso.");
     } catch {
       setError("Error de conexión.");
     } finally {
@@ -314,7 +314,9 @@ function DeleteUserModal({
           <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">Eliminar usuario</h2>
         </div>
         <p className="mb-1 text-xs text-[var(--copilot-ink-muted)]">
-          Se eliminará el acceso de <span className="font-semibold text-[var(--copilot-ink)]">{user.full_name}</span> ({user.email}). Esta acción no se puede deshacer.
+          Se desactivará el acceso de{" "}
+          <span className="font-semibold text-[var(--copilot-ink)]">{user.full_name}</span> ({user.email}).
+          El usuario pasará a estado Inactivo.
         </p>
         <p className="mb-4 text-xs text-[var(--copilot-ink-muted)]">
           Escribí <span className="font-mono font-bold text-[var(--copilot-danger-text-strong)]">{REQUIRED}</span> para confirmar.
@@ -484,6 +486,8 @@ export default function AdminPanelClient() {
   const [error, setError] = useState<string | null>(null);
   /** Toast inline para errores de acciones por usuario (no usa alert nativo). */
   const [actionError, setActionError] = useState<string | null>(null);
+  /** Toast inline para acciones exitosas. */
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   /** Usuario al que se le va a resetear PIN — abre modal de confirmación. */
   const [resettingPinUser, setResettingPinUser] = useState<AdminUser | null>(null);
 
@@ -515,10 +519,33 @@ export default function AdminPanelClient() {
 
   useEffect(() => { void loadUsers(); }, []);
 
+  useEffect(() => {
+    if (!actionSuccess) return;
+    const timer = setTimeout(() => setActionSuccess(null), 5000);
+    return () => clearTimeout(timer);
+  }, [actionSuccess]);
+
+  useEffect(() => {
+    if (!actionError) return;
+    const timer = setTimeout(() => setActionError(null), 8000);
+    return () => clearTimeout(timer);
+  }, [actionError]);
+
+  function showActionSuccess(message: string) {
+    setActionError(null);
+    setActionSuccess(message);
+  }
+
+  function showActionError(message: string) {
+    setActionSuccess(null);
+    setActionError(message);
+  }
+
   async function handleToggleActive(user: AdminUser) {
     const key = `active-${user.id}`;
     setActionState((s) => ({ ...s, [key]: "loading" }));
     setActionError(null);
+    setActionSuccess(null);
     try {
       const res = await fetch(`/api/copilot/admin/users/${user.id}`, {
         method: "PATCH",
@@ -527,9 +554,14 @@ export default function AdminPanelClient() {
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setActionError(data.message ?? "Error al actualizar el usuario.");
+        showActionError(data.message ?? "Error al actualizar el usuario.");
         return;
       }
+      showActionSuccess(
+        user.is_active
+          ? "Usuario desactivado. Ya no tiene acceso."
+          : "Usuario activado. Ya puede ingresar."
+      );
       await loadUsers();
     } finally {
       setActionState((s) => ({ ...s, [key]: "done" }));
@@ -547,9 +579,10 @@ export default function AdminPanelClient() {
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setActionError(data.message ?? "Error al cambiar el rol del usuario.");
+        showActionError(data.message ?? "Error al cambiar el rol del usuario.");
         return;
       }
+      showActionSuccess("Rol actualizado.");
       await loadUsers();
     } finally {
       setRoleChanging(null);
@@ -567,10 +600,11 @@ export default function AdminPanelClient() {
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setActionError(data.message ?? "Error al resetear el PIN.");
+        showActionError(data.message ?? "Error al resetear el PIN.");
         return;
       }
       setPendingPin(data.temporary_pin ?? "—");
+      showActionSuccess("PIN reseteado. Compartilo de forma segura con el usuario.");
     } finally {
       setActionState((s) => ({ ...s, [key]: "done" }));
       setResettingPinUser(null);
@@ -811,11 +845,30 @@ export default function AdminPanelClient() {
         <DeleteUserModal
           user={deletingUser}
           onClose={() => setDeletingUser(null)}
-          onDeleted={() => {
+          onDeleted={(message) => {
             setDeletingUser(null);
+            showActionSuccess(message);
             void loadUsers();
           }}
         />
+      )}
+      {actionSuccess && (
+        <div
+          className="fixed bottom-4 right-4 z-50 flex max-w-sm items-start gap-2 rounded-xl border border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] px-4 py-3 text-xs text-[var(--copilot-success-text-strong)] shadow-lg"
+          role="status"
+          aria-live="polite"
+        >
+          <Check className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <p className="flex-1">{actionSuccess}</p>
+          <button
+            type="button"
+            onClick={() => setActionSuccess(null)}
+            className="rounded p-0.5 hover:bg-[var(--copilot-success-border)]/30"
+            aria-label="Cerrar"
+          >
+            ×
+          </button>
+        </div>
       )}
       {resettingPinUser && (
         <ResetPinConfirmModal

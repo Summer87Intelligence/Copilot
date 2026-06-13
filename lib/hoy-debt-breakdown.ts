@@ -7,7 +7,7 @@ import type { ClientPortfolioInvoice } from "@/lib/copilot-clients-portfolio";
 import { formatCopilotDate } from "@/lib/copilot-format";
 import { ZETA_SALDOS_PENDIENTES_CATEGORY } from "@/lib/zeta/zeta-operational-debt-dedup";
 
-export type InvoiceStatusLabel = "Vencida" | "Al día" | "Parcial" | "Sin vencimiento";
+export type InvoiceStatusLabel = "Atrasada" | "Al día" | "Parcial" | "Sin vencimiento";
 
 export type DebtBreakdownItem = {
   invoiceId: string;
@@ -52,7 +52,7 @@ function classifyStatus(
   today: string
 ): InvoiceStatusLabel {
   if (!isValidDate(dueDate)) return "Sin vencimiento";
-  if (dueDate < today) return "Vencida";
+  if (dueDate < today) return "Atrasada";
   if (total > 0 && balance < total * 0.99) return "Parcial";
   return "Al día";
 }
@@ -74,8 +74,8 @@ function isShadowRow(inv: ClientPortfolioInvoice): boolean {
 
 function sortItems(items: DebtBreakdownItem[]): DebtBreakdownItem[] {
   return [...items].sort((a, b) => {
-    const aOv = a.status === "Vencida" ? 1 : 0;
-    const bOv = b.status === "Vencida" ? 1 : 0;
+    const aOv = a.status === "Atrasada" ? 1 : 0;
+    const bOv = b.status === "Atrasada" ? 1 : 0;
     if (bOv !== aOv) return bOv - aOv;
     const aDays = a.daysOverdue ?? 0;
     const bDays = b.daysOverdue ?? 0;
@@ -110,7 +110,7 @@ export function buildDebtBreakdown(
       currency,
       originalAmount: inv.total_amount,
       pendingAmount: inv.balance_amount,
-      overdueAmount: status === "Vencida" ? inv.balance_amount : 0,
+      overdueAmount: status === "Atrasada" ? inv.balance_amount : 0,
       daysOverdue,
       status,
     });
@@ -128,7 +128,7 @@ export function buildDebtBreakdown(
       totalOverdue,
       totalCurrent: totalPending - totalOverdue,
       invoiceCount: sorted.length,
-      overdueCount: sorted.filter((i) => i.status === "Vencida").length,
+      overdueCount: sorted.filter((i) => i.status === "Atrasada").length,
       currency,
     },
     hasReconciliationGap: gap > TOLERANCE,

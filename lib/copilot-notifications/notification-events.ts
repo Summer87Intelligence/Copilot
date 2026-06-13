@@ -11,6 +11,7 @@ import {
   buildNewDebtorBody,
   buildNewDebtorDedupKey,
   buildPartialCollectionBody,
+  buildClientDebtSettledBody,
   formatNotificationMoney,
 } from "./notification-financial-events";
 
@@ -118,6 +119,8 @@ type ClientDebtSettledOpts = {
   receiptId?: string | null;
   /** YYYY-MM-DD — bucket diario de dedupe. */
   dateBucket: string;
+  /** Si el cliente tenía deuda atrasada antes del pago. */
+  hadOverdue?: boolean;
 };
 
 export async function notifyClientDebtSettled(opts: ClientDebtSettledOpts) {
@@ -126,7 +129,7 @@ export async function notifyClientDebtSettled(opts: ClientDebtSettledOpts) {
     type: "client_debt_settled",
     severity: "info",
     title: "Cliente saldó su deuda",
-    body: `${opts.clientName} canceló su saldo pendiente.`,
+    body: buildClientDebtSettledBody(opts.clientName, { hadOverdue: opts.hadOverdue }),
     entity_type: "company",
     entity_id: opts.clientId,
     currency: opts.currency,
@@ -206,7 +209,7 @@ export async function notifyClientOverdue(opts: ClientOverdueOpts) {
   return createNotificationIfNotExists(opts.tenantCompanyId, {
     type: "client_overdue",
     severity: opts.daysOverdue >= 60 ? "critical" : "warning",
-    title: "Cliente vencido",
+    title: "Cliente atrasado",
     body: buildInvoiceOverdueBody(opts.clientName, opts.amount, opts.currency),
     entity_type: "company",
     entity_id: opts.clientId,
@@ -310,8 +313,8 @@ export async function notifyTreasuryPaymentOverdue(opts: TreasuryPaymentOverdueO
   return createNotificationIfNotExists(opts.tenantCompanyId, {
     type: "treasury_payment_overdue",
     severity: "critical",
-    title: "Pago vencido",
-    body: `${opts.title} está vencido desde el ${formattedDate}.`,
+    title: "Pago atrasado",
+    body: `${opts.title} está atrasado desde el ${formattedDate}.`,
     entity_type: "planned_cash_obligation",
     entity_id: opts.obligationId,
     amount: opts.amount,
@@ -328,8 +331,8 @@ export async function notifyTreasuryPaymentOverdue(opts: TreasuryPaymentOverdueO
  * Aparece una vez por día en la campana en lugar de N notificaciones individuales.
  */
 export function buildDebtFollowupSummaryTitle(overdueClientCount: number): string {
-  if (overdueClientCount === 1) return "1 cliente con deuda vencida";
-  return `${overdueClientCount} clientes con deuda vencida`;
+  if (overdueClientCount === 1) return "1 cliente con deuda atrasada";
+  return `${overdueClientCount} clientes con deuda atrasada`;
 }
 
 /**
@@ -346,7 +349,7 @@ export function buildDebtFollowupSummaryBody(
   if (usdOverdue > 0)
     parts.push(`USD ${usdOverdue.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`);
   if (parts.length === 0) return "Revisá clientes críticos.";
-  return `${parts.join(" y ")} vencidos. Revisá clientes críticos.`;
+  return `${parts.join(" y ")} atrasados. Revisá clientes críticos.`;
 }
 
 type DebtFollowupSummaryOpts = {

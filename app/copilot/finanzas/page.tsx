@@ -32,7 +32,7 @@ import {
   CopilotPrimaryButton,
   CopilotPrimaryLink,
   CopilotSectionTitle,
-  copilotPageMainClass,
+  copilotPageMainClassNoScroll,
 } from "@/components/copilot/copilot-ui";
 import { CopilotSeverityBadge } from "@/components/copilot/copilot-severity-badge";
 import {
@@ -277,22 +277,19 @@ function FinanzasPanoramaSection({
 function FinanzasFiscalCalendarCollapsible({
   coberturaGuided,
   fiscalEmpty,
+  loading,
   children,
 }: {
   coberturaGuided: boolean;
   fiscalEmpty: boolean;
+  loading: boolean;
   children: ReactNode;
 }) {
   if (coberturaGuided) return <>{children}</>;
-  if (fiscalEmpty) {
-    return (
-      <CopilotCollapsiblePanel title="Obligaciones fiscales" defaultOpen={false}>
-        <p className="text-sm text-[var(--copilot-ink-muted)]">
-          Sin obligaciones fiscales cargadas para el período.
-        </p>
-      </CopilotCollapsiblePanel>
-    );
-  }
+  // Sin obligaciones fiscales registradas → no mostrar la card vacía ni durante
+  // loading, para evitar que aparezca como único bloque visible mientras el
+  // resto del panorama todavía carga.
+  if (loading || fiscalEmpty) return null;
   return (
     <CopilotCollapsiblePanel title="Obligaciones fiscales" defaultOpen={false}>
       {children}
@@ -856,7 +853,7 @@ function CopilotFinanzasPageContent() {
         }
       />
 
-      <div className={copilotPageMainClass}>
+      <div className={copilotPageMainClassNoScroll}>
         {coberturaGuided ? (
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -1372,6 +1369,12 @@ function CopilotFinanzasPageContent() {
         ) : null}
 
         {/* ── Sección fiscal ─────────────────────────────────────────────────── */}
+        {/*
+         * Solo renderizamos el bloque fiscal cuando el modo cobertura está
+         * activo o cuando hay obligaciones reales. En modo normal sin
+         * obligaciones, evitamos el wrapper para no dejar espacio vacío.
+         */}
+        {coberturaGuided || (!taxLoading && fiscalExpanded) ? (
         <div id="copilot-finanzas-fiscal" className="scroll-mt-28 space-y-4">
           {coberturaGuided && fiscalPriorityGuideOpen ? (
             prioritaryObligation ? (
@@ -1518,7 +1521,7 @@ function CopilotFinanzasPageContent() {
             )
           ) : null}
 
-            <FinanzasFiscalCalendarCollapsible coberturaGuided={coberturaGuided} fiscalEmpty={!fiscalExpanded}>
+            <FinanzasFiscalCalendarCollapsible coberturaGuided={coberturaGuided} fiscalEmpty={!fiscalExpanded} loading={taxLoading}>
             <CopilotCard className="border-[rgba(31,107,74,0.18)] bg-[rgba(31,107,74,0.04)]">
               <CopilotSectionTitle
                 title="Obligaciones fiscales"
@@ -1635,6 +1638,7 @@ function CopilotFinanzasPageContent() {
             </CopilotCard>
             </FinanzasFiscalCalendarCollapsible>
         </div>
+        ) : null}
       </div>
       <CopilotTaxEvidenceDrawer
         obligationId={taxObligationId}

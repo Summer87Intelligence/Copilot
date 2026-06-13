@@ -41,9 +41,9 @@ export type HoyCashPositionBlock = {
   manualExpense: number;
   availableCash: number;
   /** @deprecated Usar `lastIncome` / `lastExpense`. */
-  lastMovement: { date: string; concept: string } | null;
-  lastIncome: { date: string; concept: string } | null;
-  lastExpense: { date: string; concept: string } | null;
+  lastMovement: { date: string; concept: string; amount?: number | null } | null;
+  lastIncome: { date: string; concept: string; amount?: number | null } | null;
+  lastExpense: { date: string; concept: string; amount?: number | null } | null;
 };
 
 export type HoyProjection30dBlock = {

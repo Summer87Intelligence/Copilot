@@ -190,15 +190,15 @@ function detectDeudaVencida(
     let message: string;
     let basedOnLineSuffix = "";
     if (row.has_mixed_currency && overdueUyu > 0 && overdueUsd > 0) {
-      message = `Cliente con deuda vencida en UYU y USD (${formatMoney(overdueUyu)} UYU · ${formatMoney(overdueUsd)} USD)`;
+      message = `Cliente con deuda atrasada en UYU y USD (${formatMoney(overdueUyu)} UYU · ${formatMoney(overdueUsd)} USD)`;
       basedOnLineSuffix = ` — UYU ${formatMoney(overdueUyu)} · USD ${formatMoney(overdueUsd)}`;
     } else if (overdueUsd > 0 && overdueUyu <= EPS) {
-      message = `Cliente con deuda vencida en USD por ${formatMoney(overdueUsd)} USD`;
+      message = `Cliente con deuda atrasada en USD por ${formatMoney(overdueUsd)} USD`;
       basedOnLineSuffix = ` — en USD`;
     } else if (overdueUyu > 0 && overdueUsd <= EPS) {
-      message = `Cliente con deuda vencida por ${formatMoney(overdueUyu)} UYU`;
+      message = `Cliente con deuda atrasada por ${formatMoney(overdueUyu)} UYU`;
     } else {
-      message = `Cliente con deuda vencida por ${formatMoney(amount)}`;
+      message = `Cliente con deuda atrasada por ${formatMoney(amount)}`;
     }
 
     out.push({
@@ -257,10 +257,10 @@ function detectConcentracionDeuda(load: ClientPortfolioLoad): CopilotRealInsight
       client_names: [withOverdue[0].name, withOverdue[1].name],
       has_mixed_currency: hasMixedCurrency,
     },
-    message: `El ${formatPct(share)} de la deuda vencida está en ${withOverdue[0].name} y ${withOverdue[1].name}`,
+    message: `El ${formatPct(share)} de la deuda atrasada está en ${withOverdue[0].name} y ${withOverdue[1].name}`,
     action: "Ver clientes",
     href: "/copilot/clientes",
-    basedOnLine: `Basado en: suma de saldos vencidos en proto_invoices (${formatMoney(total)} total${mixedNote})`,
+    basedOnLine: `Basado en: suma de saldos atrasados en proto_invoices (${formatMoney(total)} total${mixedNote})`,
   };
 }
 
@@ -300,7 +300,7 @@ async function detectOblFiscalVencidas(
         tax_type: o.tax_type,
         period_label: o.period_label,
       },
-      message: `Obligación fiscal vencida (${o.tax_type} · ${o.period_label}): ${formatMoney(rem)}`,
+      message: `Obligación fiscal atrasada (${o.tax_type} · ${o.period_label}): ${formatMoney(rem)}`,
       action: "Ver finanzas",
       href: "/copilot/finanzas#copilot-finanzas-fiscal",
       basedOnLine: `Basado en: obligación en proto_tax_obligations con vencimiento ${due} y saldo pendiente`,
@@ -370,7 +370,7 @@ function detectAtrasoHistorico(load: ClientPortfolioLoad, today: string): Copilo
       message: `Patrón de atraso en pagos en ${row.name} (${row.invoices_count} facturas registradas)`,
       action: "Ver cliente",
       href: hrefCliente(row.company_id),
-      basedOnLine: `Basado en: ${overdueInv} factura${overdueInv === 1 ? "" : "s"} vencida${overdueInv === 1 ? "" : "s"} con saldo y ratio de mora en histórico de facturas`,
+      basedOnLine: `Basado en: ${overdueInv} factura${overdueInv === 1 ? "" : "s"} atrasada${overdueInv === 1 ? "" : "s"} con saldo y ratio de mora en histórico de facturas`,
     });
   }
   return out;

@@ -35,10 +35,10 @@ export function buildDebtorExpandData(row: DebtorCollectionRow): DebtorExpandDat
     hasOverdue,
     overdueDays,
     expandMessage: hasOverdue
-      ? "Requiere seguimiento por deuda vencida."
+      ? "Requiere seguimiento por deuda atrasada."
       : "Este cliente tiene saldo pendiente, pero todavía no venció.",
     accionSugerida: hasOverdue
-      ? "Contactar por deuda vencida. Revisar ficha si se necesita detalle por factura."
+      ? "Contactar por deuda atrasada. Revisar ficha si se necesita detalle por factura."
       : "Mantener seguimiento preventivo.",
   };
 }

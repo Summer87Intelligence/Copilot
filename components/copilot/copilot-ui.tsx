@@ -12,6 +12,10 @@ import {
 export const copilotPageMainClass =
   "flex-1 space-y-4 overflow-auto px-4 py-4 sm:px-6 sm:py-5 lg:px-8";
 
+/** Variante sin scroll interno — el shell del módulo ya scrollea. */
+export const copilotPageMainClassNoScroll =
+  "flex-1 space-y-4 px-4 py-4 sm:px-6 sm:py-5 lg:px-8";
+
 const ink = "text-[var(--copilot-text)]";
 const muted = "text-[var(--copilot-muted)]";
 

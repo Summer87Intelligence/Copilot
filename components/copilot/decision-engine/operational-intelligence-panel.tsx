@@ -9,7 +9,7 @@ import type { AIInsightSeverity, AIIntelligenceBundle } from "@/lib/decision-eng
 const SEVERITY_CLASS: Record<AIInsightSeverity, string> = {
   low: "border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)]/80 text-[var(--copilot-ink)]",
   medium: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)]/80 text-[var(--copilot-warning-text-strong)]",
-  high: "border-orange-200 bg-orange-50/80 text-orange-900",
+  high: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)]/80 text-[var(--copilot-warning-text-strong)]",
   critical: "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)]/90 text-[var(--copilot-danger-text-strong)]",
 };
 

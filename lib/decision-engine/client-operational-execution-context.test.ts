@@ -117,7 +117,7 @@ describe("client-operational-execution-context", () => {
     const live = buildClientOperationalLiveState(baseSummary(), [], NOW);
     expect(live.last_action_label).toBeNull();
     expect(live.state_label).toBe("Escalado");
-    expect(live.sla_label).toMatch(/Vencido|Fuera/);
+    expect(live.sla_label).toMatch(/Atrasado|Fuera/);
     expect(live.assignee_label).toBe("Sin asignar");
   });
 });

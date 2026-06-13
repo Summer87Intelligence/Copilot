@@ -49,7 +49,7 @@ const STATUS_CONFIG: Record<PulseStatus, StatusConfig> = {
     badgeClass:
       "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-badge-warning-text)] ring-1 ring-[var(--copilot-border)]",
     cardBg: "from-[var(--copilot-card-bg)] to-[var(--copilot-card-bg)]",
-    cardBorder: "border-[var(--copilot-warning-border)]",
+    cardBorder: "border-[var(--copilot-border)]",
   },
   critical: {
     dot: "bg-[var(--copilot-status-critical-dot)]",
@@ -57,7 +57,7 @@ const STATUS_CONFIG: Record<PulseStatus, StatusConfig> = {
     badgeClass:
       "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)] ring-1 ring-[var(--copilot-border)]",
     cardBg: "from-[var(--copilot-card-bg)] to-[var(--copilot-card-bg)]",
-    cardBorder: "border-[var(--copilot-danger-border)]",
+    cardBorder: "border-[var(--copilot-border)]",
   },
 };
 

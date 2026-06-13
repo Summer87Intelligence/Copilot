@@ -23,10 +23,10 @@ import type {
 } from "@/lib/copilot-financial-reconciliation";
 
 const AGING_LABELS: Record<AgingRange, string> = {
-  "0_30": "0–30 d",
-  "31_60": "31–60 d",
-  "61_90": "61–90 d",
-  "90_plus": "+90 d",
+  "0_30": "0–30 días",
+  "31_60": "31–60 días",
+  "61_90": "61–90 días",
+  "90_plus": "+90 días",
 };
 
 export type CarteraPendingDrawerProps = {
@@ -113,12 +113,6 @@ function PendingDrawerBody({
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <p className="shrink-0 border-b border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] px-5 py-2 text-[11px] leading-snug text-[var(--copilot-ink-muted)]">
-        {/* TODO: cablear detalle por factura cuando el reporte exponga líneas pendientes por cliente. */}
-        Detalle por comprobante no disponible en este reporte. Se muestra cliente, saldo
-        y cantidad de facturas (misma fuente que Explorador de deuda).
-      </p>
-
       <ul className="flex-1 overflow-y-auto px-3 py-3">
         {clients.length === 0 ? (
           <li className="rounded-xl border border-dashed border-[var(--copilot-border)] px-4 py-8 text-center text-sm text-[var(--copilot-ink-muted)]">
@@ -140,6 +134,11 @@ function PendingDrawerBody({
   );
 }
 
+function formatPendingInvoiceDate(value: string | null): string {
+  if (!value) return "—";
+  return value;
+}
+
 function ClientPendingRow({
   client,
   currency,
@@ -150,6 +149,11 @@ function ClientPendingRow({
   fractionDigits: number;
 }) {
   const name = client.companyName?.trim() || client.companyId;
+  const pendingInvoices = client.pendingInvoices.filter(
+    (line) => line.currencyCode === currency && line.balance > 0
+  );
+  const visibleInvoices = pendingInvoices.slice(0, 5);
+  const hiddenInvoiceCount = Math.max(0, pendingInvoices.length - visibleInvoices.length);
 
   return (
     <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-4 py-3 transition hover:border-[var(--copilot-accent)]/30 hover:bg-[var(--copilot-panel-bg)]">
@@ -176,6 +180,37 @@ function ClientPendingRow({
           {formatCarteraMoney(currency, client.pendingAmount, { fractionDigits })}
         </p>
       </div>
+      {visibleInvoices.length > 0 ? (
+        <ul className="mt-3 space-y-1 rounded-lg border border-[var(--copilot-border)]/70 bg-[var(--copilot-soft-bg)]/60 px-3 py-2">
+          {visibleInvoices.map((line) => (
+            <li
+              key={line.invoiceId}
+              className="flex items-start justify-between gap-3 text-[11px] text-[var(--copilot-ink-muted)]"
+            >
+              <span className="min-w-0 flex-1 truncate text-[var(--copilot-ink)]">
+                {line.invoiceNumber ?? "Factura sin número"}
+                <span className="ml-1 text-[var(--copilot-ink-muted)]">
+                  · {formatPendingInvoiceDate(line.issueDate)}
+                </span>
+                {line.agingRange ? (
+                  <span className="ml-1 text-[var(--copilot-ink-muted)]">
+                    · {AGING_LABELS[line.agingRange]}
+                  </span>
+                ) : null}
+              </span>
+              <span className="shrink-0 tabular-nums text-[var(--copilot-ink)]">
+                {formatCarteraMoney(currency, line.balance, { fractionDigits })}
+              </span>
+            </li>
+          ))}
+          {hiddenInvoiceCount > 0 ? (
+            <li className="text-[11px] italic text-[var(--copilot-ink-muted)]">
+              + {formatCarteraInteger(hiddenInvoiceCount)} factura
+              {hiddenInvoiceCount === 1 ? "" : "s"} más
+            </li>
+          ) : null}
+        </ul>
+      ) : null}
     </div>
   );
 }

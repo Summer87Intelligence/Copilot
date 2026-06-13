@@ -150,7 +150,7 @@ function DebtorRowActions({ row }: { row: DebtorCollectionRow }) {
 }
 
 const STATUS_BADGE_CONFIG: Record<InvoiceStatusLabel, { label: string; className: string }> = {
-  Vencida: { label: "Atrasado", className: "bg-[var(--copilot-badge-danger-bg)]/90 text-[var(--copilot-danger-text-strong)]" },
+  Atrasada: { label: "Atrasado", className: "bg-[var(--copilot-badge-danger-bg)]/90 text-[var(--copilot-danger-text-strong)]" },
   "Al día": { label: "Al día", className: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] ring-1 ring-[var(--copilot-success-border)]" },
   Parcial: { label: "Parcial", className: "bg-[var(--copilot-badge-warning-bg)]/90 text-[var(--copilot-warning-text-strong)]" },
   "Sin vencimiento": {
@@ -257,7 +257,7 @@ function DebtBreakdownSection({
                     </td>
                     <td
                       className={`px-2.5 py-1.5 tabular-nums ${
-                        item.status === "Vencida"
+                        item.status === "Atrasada"
                           ? "font-medium text-[var(--copilot-danger-text)]"
                           : "text-[var(--copilot-ink-muted)]"
                       }`}
@@ -280,7 +280,7 @@ function DebtBreakdownSection({
                       <InvoiceStatusBadge status={item.status} />
                     </td>
                     <td className="px-2.5 py-1.5 text-right tabular-nums text-[var(--copilot-danger-text)]">
-                      {item.daysOverdue != null ? `${item.daysOverdue}d` : "—"}
+                      {item.daysOverdue != null ? `hace ${item.daysOverdue} días` : "—"}
                     </td>
                   </tr>
                 ))}

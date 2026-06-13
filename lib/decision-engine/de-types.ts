@@ -292,7 +292,7 @@ export type SlaStatus =
 
 export const SLA_STATUS_LABELS: Record<SlaStatus, string> = {
   critical:   "SLA crítico",
-  overdue:    "Vencido",
+  overdue:    "Atrasado",
   due_today:  "Vence hoy",
   due_soon:   "Próximo",
   ok:         "Al día",

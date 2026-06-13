@@ -17,7 +17,7 @@ const STATUS_LABEL: Record<string, string> = {
   confirmed: "Confirmado",
   paid: "Pagado",
   cancelled: "Cancelado",
-  overdue: "Vencido",
+  overdue: "Atrasado",
 };
 
 const STATUS_CLS: Record<string, string> = {
