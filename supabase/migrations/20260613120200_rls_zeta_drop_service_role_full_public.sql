@@ -4,13 +4,27 @@
 --
 -- Origen: post-auditoría FASE 2 (Grupo C).
 --
--- Problema:
---   5 tablas `zeta_*` tienen únicamente:
+-- ALCANCE REDUCIDO POST-PRE-FLIGHT (2026-06-13):
+--   Pre-flight PF-6 y PF-8 sobre producción confirmaron que estas 3 tablas
+--   originalmente listadas en el grupo C NO EXISTEN en producción
+--   (ni en `public` ni en ningún otro schema):
+--     - zeta_acknowledged_drifts
+--     - zeta_daily_snapshots
+--     - zeta_contract_snapshots
+--   La migración no las puede tocar porque `DROP POLICY` y `CREATE POLICY`
+--   fallarían con "relation does not exist" (la cláusula IF EXISTS aplica a la
+--   policy, no a la tabla). Se removieron del archivo.
+--
+--   El drift código ↔ esquema (repositorios en `lib/data/zeta-*-repository.ts`
+--   y crons `zeta-daily-snapshot` / `zeta-financial-health` referencian estas
+--   tablas inexistentes) queda registrado como HALLAZGO SEPARADO, fuera del
+--   scope de este paquete RLS.
+--
+-- Problema original:
+--   Tablas `zeta_*` con únicamente:
 --     "service_role_full"  FOR ALL USING (true)             -- sin TO → PUBLIC
 --   y NINGUNA otra policy. Sin TO clause aplica a PUBLIC (todos los roles):
 --   authenticated y anon ven (y pueden mutar) filas de TODOS los workspaces.
---   Peor que Grupo B porque no existe siquiera un "tenant_access" residual
---   que filtre.
 --
 -- Decisión aprobada:
 --   - DROP de la policy permisiva (idéntica razón a Grupo B —
@@ -19,24 +33,21 @@
 --     scoped al workspace. Las mutaciones siguen siendo exclusivas de
 --     service_role (bypass RLS) — los crons son los únicos escritores.
 --
--- Tablas afectadas (5):
+-- Tablas afectadas (2, post-reducción):
 --   - public.zeta_sync_metrics            (workspace_company_id NULLABLE)
---   - public.zeta_acknowledged_drifts     (workspace_company_id NOT NULL)
---   - public.zeta_daily_snapshots         (workspace_company_id NOT NULL)
---   - public.zeta_contract_snapshots      (workspace_company_id NULLABLE)
 --   - public.zeta_sync_metrics_history    (workspace_company_id NOT NULL)
 --
 -- Diseño de policy por tabla:
 --   - NOT NULL → USING (workspace_company_id = current_workspace())
 --   - NULLABLE → USING (workspace_company_id IS NULL
 --                       OR workspace_company_id = current_workspace())
---   La rama NULL es para métricas/snapshots globales no atribuibles a un
---   workspace (mismo patrón que zeta_pipeline_runs fleet).
+--   La rama NULL es para métricas globales no atribuibles a un workspace
+--   (mismo patrón que zeta_pipeline_runs fleet).
 --
 -- Impacto en service_role:
 --   Ninguno. Bypassa RLS por atributo de rol.
---   Crons (`/api/cron/zeta-daily-snapshot`, `lib/observability/zeta-sync-metrics.ts`)
---   siguen insertando/leyendo idénticos.
+--   `lib/observability/zeta-sync-metrics.ts` e
+--   `lib/integrations/zeta/zeta-circuit-breaker.ts` siguen leyendo/escribiendo.
 --
 -- Impacto en authenticated:
 --   Hoy no hay consumo browser de estas tablas (verificado pre-flight E).
@@ -70,52 +81,7 @@ CREATE POLICY "tenant_read"
   );
 
 -- ---------------------------------------------------------------------------
--- C.2 — zeta_acknowledged_drifts (workspace_company_id NOT NULL)
--- ---------------------------------------------------------------------------
-
-DROP POLICY IF EXISTS "service_role_full" ON public.zeta_acknowledged_drifts;
-
-DROP POLICY IF EXISTS "tenant_read" ON public.zeta_acknowledged_drifts;
-
-CREATE POLICY "tenant_read"
-  ON public.zeta_acknowledged_drifts
-  FOR SELECT
-  TO authenticated
-  USING (workspace_company_id = public.copilot_current_workspace_company_id());
-
--- ---------------------------------------------------------------------------
--- C.3 — zeta_daily_snapshots (workspace_company_id NOT NULL)
--- ---------------------------------------------------------------------------
-
-DROP POLICY IF EXISTS "service_role_full" ON public.zeta_daily_snapshots;
-
-DROP POLICY IF EXISTS "tenant_read" ON public.zeta_daily_snapshots;
-
-CREATE POLICY "tenant_read"
-  ON public.zeta_daily_snapshots
-  FOR SELECT
-  TO authenticated
-  USING (workspace_company_id = public.copilot_current_workspace_company_id());
-
--- ---------------------------------------------------------------------------
--- C.4 — zeta_contract_snapshots (workspace_company_id NULLABLE)
--- ---------------------------------------------------------------------------
-
-DROP POLICY IF EXISTS "service_role_full" ON public.zeta_contract_snapshots;
-
-DROP POLICY IF EXISTS "tenant_read" ON public.zeta_contract_snapshots;
-
-CREATE POLICY "tenant_read"
-  ON public.zeta_contract_snapshots
-  FOR SELECT
-  TO authenticated
-  USING (
-    workspace_company_id IS NULL
-    OR workspace_company_id = public.copilot_current_workspace_company_id()
-  );
-
--- ---------------------------------------------------------------------------
--- C.5 — zeta_sync_metrics_history (workspace_company_id NOT NULL)
+-- C.2 — zeta_sync_metrics_history (workspace_company_id NOT NULL)
 -- ---------------------------------------------------------------------------
 
 DROP POLICY IF EXISTS "service_role_full" ON public.zeta_sync_metrics_history;
