@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "lint:rls": "node scripts/lint-rls.mjs",
     "zeta:batch:saldos:enero2026": "node --env-file=.env.local --import tsx scripts/batch-zeta-saldos-enero-2026.ts",
     "zeta:import-2026": "node scripts/zeta-import-vouchers-2026.mjs",
     "zeta:crawl": "node scripts/zeta-crawl.js",

@@ -30,7 +30,7 @@ import {
   findActivePipelineRun,
   updatePipelineRun,
 } from "@/lib/data/zeta-pipeline-run-repository";
-import { upsertDailySnapshot } from "@/lib/data/zeta-daily-snapshot-repository";
+import { getPreviousSnapshot, upsertDailySnapshot } from "@/lib/data/zeta-daily-snapshot-repository";
 
 const PIPELINE = "zeta-daily-snapshot";
 const ANTI_OVERLAP_WINDOW_MS = 20 * 60 * 60 * 1_000; // 20h
@@ -228,6 +228,24 @@ export async function GET(request: NextRequest) {
 
       try {
         const snapshotInput = await buildSnapshot(supabase, workspaceId);
+
+        // Observabilidad: detectar gap si el snapshot del día anterior no existe.
+        // Excluye el primer día (sin baseline) para no alertar en bootstrap.
+        const previous = await getPreviousSnapshot(supabase, workspaceId, snapshotInput.snapshot_date);
+        if (previous) {
+          const prevDate = new Date(previous.snapshot_date + "T00:00:00Z").getTime();
+          const todayMs = new Date(snapshotInput.snapshot_date + "T00:00:00Z").getTime();
+          const gapDays = Math.round((todayMs - prevDate) / (24 * 60 * 60 * 1_000));
+          if (gapDays > 1) {
+            log("snapshot_gap_detected", {
+              workspace_id: workspaceId,
+              previous_date: previous.snapshot_date,
+              current_date: snapshotInput.snapshot_date,
+              gap_days: gapDays,
+            });
+          }
+        }
+
         const row = await upsertDailySnapshot(supabase, snapshotInput);
         snapshotsTotal++;
 
