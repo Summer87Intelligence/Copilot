@@ -82,18 +82,14 @@ function numFromUnknown(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-/** Clave hacia `proto_invoices.id` en filas de `public.invoice_financials`. */
+/** Clave hacia `proto_invoices.id` en filas de `public.invoice_financials` (la vista expone la PK como `id`). */
 function invoiceFinancialLinkId(row: InvoiceFinancialRow): string {
-  const id =
-    row.invoice_id ?? row.invoice_uuid ?? (typeof row.id === "string" ? row.id : null);
-  return String(id ?? "").trim();
+  return String(row.id ?? "").trim();
 }
 
-/** Saldo derivado en la vista (prioriza `balance` si existe). */
+/** Saldo derivado en la vista. */
 function invoiceFinancialBalance(row: InvoiceFinancialRow): number {
-  return numFromUnknown(
-    row.balance ?? row.computed_balance ?? row.net_balance ?? row.balance_amount
-  );
+  return numFromUnknown(row.balance);
 }
 
 /**
@@ -103,22 +99,23 @@ function invoiceFinancialBalance(row: InvoiceFinancialRow): number {
 /** Expuesto para validación financiera (ETAPA 1) sin duplicar lógica de lectura de `invoice_financials`. */
 export async function fetchInvoiceFinancialBalanceMap(
   client: OperationalSupabase,
-  workspaceCompanyId: string | undefined,
+  // Mantenido por estabilidad de firma: el tenant ya viene acotado en `invoiceIds`
+  // (caller filtra por proto_invoices.workspace_company_id antes de pasar los ids).
+  // La vista no expone workspace_company_id; no se puede ni se necesita filtrar acá.
+  _workspaceCompanyId: string | undefined,
   invoiceIds: readonly string[]
 ): Promise<Map<string, number>> {
   const map = new Map<string, number>();
-  const wid = workspaceCompanyId?.trim();
   const uniq = [...new Set(invoiceIds.map((id) => id.trim()).filter(Boolean))];
   if (uniq.length === 0) return map;
 
-  // Vista `public.invoice_financials` (no siempre en tipos generados de Supabase).
+  // Vista `public.invoice_financials` expone (id, total_amount, payments, balance).
+  // `id` es la PK pasada through desde `proto_invoices.id` (no existe `invoice_id`).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let q = (client as any).from("invoice_financials").select("*").limit(ROW_CAP);
-  if (wid) {
-    q = q.eq("workspace_company_id", wid);
-  } else {
-    q = q.in("invoice_id", uniq.slice(0, 800));
-  }
+  const q = (client as any).from("invoice_financials")
+    .select("id, balance")
+    .limit(ROW_CAP)
+    .in("id", uniq.slice(0, 800));
 
   const { data, error } = await q;
   if (error) {

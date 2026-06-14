@@ -80,10 +80,15 @@ export const getServerEffectivePermissions = cache(
 /**
  * True si el usuario NO tiene acceso de lectura al módulo indicado.
  * Usar en server component pages: if (await isModuleAccessDenied("tesoreria")) return <AccessDeniedCard />;
- * Devuelve false cuando no hay sesión válida (el middleware ya habrá redirigido).
+ *
+ * Fail-closed: si no hay sesión válida, devuelve true. El gate principal sigue
+ * siendo `middleware.ts` (redirige a /login antes de llegar acá); este check
+ * actúa como defensa en profundidad — si por algún motivo la página se
+ * renderiza sin sesión (p.ej. matcher mal configurado), muestra AccessDeniedCard
+ * en lugar de exponer el módulo.
  */
 export async function isModuleAccessDenied(moduleKey: ModuleKey): Promise<boolean> {
   const perms = await getServerEffectivePermissions();
-  if (!perms) return false;
+  if (!perms) return true;
   return (perms[moduleKey] ?? "none") === "none";
 }

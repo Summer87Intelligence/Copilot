@@ -578,28 +578,24 @@ async function loadBalanceOverwriteStats(
     }
 
     // ── Paso 3: fallback a invoice_financials view (opcional) ─────────────────
+    // La vista expone (id, total_amount, payments, balance); la PK es `id` (= proto_invoices.id).
     if (crossReferenceSource === "none") {
       try {
         const { data: finRows, error: finErr } = await (client as SupabaseClient & {
           from(t: "invoice_financials"): ReturnType<SupabaseClient["from"]>;
         })
           .from("invoice_financials")
-          .select("invoice_id, balance, computed_balance, net_balance, balance_amount")
-          .in("invoice_id", suspiciousIds.slice(0, 250))
+          .select("id, balance")
+          .in("id", suspiciousIds.slice(0, 250))
           .limit(300);
 
         if (!finErr && finRows !== null) {
           crossReferenceSource = "invoice_financials";
           const confirmedIds = new Set<string>();
           for (const row of finRows as Array<Record<string, unknown>>) {
-            const bal =
-              (row["balance"] as number | null) ??
-              (row["computed_balance"] as number | null) ??
-              (row["net_balance"] as number | null) ??
-              (row["balance_amount"] as number | null) ??
-              0;
-            if (bal > 0 && row["invoice_id"]) {
-              confirmedIds.add(row["invoice_id"] as string);
+            const bal = (row["balance"] as number | null) ?? 0;
+            if (bal > 0 && row["id"]) {
+              confirmedIds.add(row["id"] as string);
             }
           }
           confirmedOverwrites = confirmedIds.size;

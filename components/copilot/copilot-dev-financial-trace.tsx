@@ -46,11 +46,10 @@ type FinancialTraceOk = {
       payment_date: string | null;
     }>;
     invoice_financials: Array<{
-      invoice_id: string | null;
+      id: string | null;
       total_amount: number | null;
       payments: number | null;
       balance: number | null;
-      workspace_company_id: string | null;
     }>;
   };
   computedAt: string;
@@ -207,10 +206,10 @@ export function CopilotDevFinancialTrace() {
           {data.tables.invoice_financials.map(
             (r: FinancialTraceOk["tables"]["invoice_financials"][number], idx: number) => (
             <div
-              key={`${r.invoice_id ?? "no-invoice"}-${idx}`}
+              key={`${r.id ?? "no-invoice"}-${idx}`}
               className="rounded border border-cyan-500/25 bg-[var(--copilot-card-bg)]/70 px-2 py-1 dark:bg-cyan-950/25"
             >
-              invoice {r.invoice_id ?? "—"} · total {money(r.total_amount)} · payments {money(r.payments)} · balance {money(r.balance)} · ws {r.workspace_company_id ?? "—"}
+              invoice {r.id ?? "—"} · total {money(r.total_amount)} · payments {money(r.payments)} · balance {money(r.balance)}
             </div>
             )
           )}

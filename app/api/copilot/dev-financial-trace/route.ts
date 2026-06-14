@@ -39,11 +39,10 @@ type TracePayment = {
 };
 
 type TraceInvoiceFinancial = {
-  invoice_id: string | null;
+  id: string | null;
   total_amount: number | null;
   payments: number | null;
   balance: number | null;
-  workspace_company_id: string | null;
 };
 
 function asStr(v: unknown): string | null {
@@ -65,27 +64,18 @@ async function selectInvoiceFinancialRowsByInvoiceIds(
   if (invoiceIds.length === 0) return [];
   const ids = [...new Set(invoiceIds.filter(Boolean))].slice(0, LIMIT);
 
-  const byInvoiceId = await supabaseForData
+  // La vista expone (id, total_amount, payments, balance). Filtramos por `id`
+  // (PK proveniente de proto_invoices.id). No existe columna `invoice_id`.
+  const res = await supabaseForData
     .from("invoice_financials")
-    .select("*")
-    .in("invoice_id", ids)
-    .limit(LIMIT);
-  if (!byInvoiceId.error) {
-    return (byInvoiceId.data ?? []) as Record<string, unknown>[];
-  }
-
-  const byId = await supabaseForData
-    .from("invoice_financials")
-    .select("*")
+    .select("id, total_amount, payments, balance")
     .in("id", ids)
     .limit(LIMIT);
-  if (!byId.error) {
-    return (byId.data ?? []) as Record<string, unknown>[];
-  }
 
-  throw new Error(
-    `invoice_financials: ${byInvoiceId.error?.message ?? byId.error?.message ?? "error desconocido"}`
-  );
+  if (res.error) {
+    throw new Error(`invoice_financials: ${res.error.message}`);
+  }
+  return (res.data ?? []) as Record<string, unknown>[];
 }
 
 /**
@@ -211,11 +201,10 @@ export async function GET(request: NextRequest) {
     );
 
     const invoiceFinancials: TraceInvoiceFinancial[] = finRows.map((r) => ({
-      invoice_id: asStr(r.invoice_id ?? r.id),
+      id: asStr(r.id),
       total_amount: asNum(r.total_amount),
-      payments: asNum(r.payments ?? r.payments_total ?? r.total_payments),
-      balance: asNum(r.balance ?? r.net_balance ?? r.computed_balance),
-      workspace_company_id: asStr(r.workspace_company_id),
+      payments: asNum(r.payments),
+      balance: asNum(r.balance),
     }));
 
     return NextResponse.json({

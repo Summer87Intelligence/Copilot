@@ -1,12 +1,21 @@
 import { expect, test } from "@playwright/test";
 
+import { applyCopilotSessionCookie } from "./copilot-session-helper";
 import { createSevereCollector } from "./severity-console";
 
 /**
  * Smoke QA-02: rutas críticas de Copilot sin depender de datos poblados.
  * Requiere app en PLAYWRIGHT_BASE_URL (por defecto levanta `next dev` vía playwright.config).
+ *
+ * Desde FASE 1 existe `middleware.ts` que cierra el acceso anónimo a
+ * `/copilot/*`. Inyectamos la cookie firmada antes de cada navegación para
+ * mantener el contrato: estos smoke validan shell + navegación, no auth.
  */
 test.describe("Copilot smoke", () => {
+  test.beforeEach(async ({ context, baseURL }) => {
+    await applyCopilotSessionCookie(context, baseURL ?? "http://127.0.0.1:3000");
+  });
+
   test("carga /copilot, región principal y títulos estables (tolerante a empty state)", async ({
     page,
   }) => {
