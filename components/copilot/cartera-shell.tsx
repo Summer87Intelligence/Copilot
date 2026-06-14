@@ -242,7 +242,7 @@ export function CarteraShell() {
               <ClientDebtExplorer
                 report={report}
                 selectedCurrency="all"
-                initialFilterChip={overdueFilter ? "overdue" : "all"}
+                initialFilterChip={overdueFilter ? "delayed" : "all"}
               />
             </CollapsibleSection>
           </>

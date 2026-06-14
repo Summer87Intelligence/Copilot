@@ -457,11 +457,14 @@ export function renderDashboardSummaryPdf(model: DashboardSummaryPdfModel): Prom
     y += 11;
 
     const cs = model.clientStates;
+    // CLIENT-DEBT-SEMANTICS-001 Etapa C: nueva taxonomía oficial.
+    // "Al día" = sin deuda (único caso). El resto se distribuye en buckets
+    // por días desde emisión.
     const stateGrid = [
       { label: "Clientes activos", value: cs.total, color: COLORS.ink },
-      { label: "Con deuda activa", value: cs.total - cs.sinDeuda, color: COLORS.ink },
-      { label: "Con deuda vencida", value: cs.conDeudaVencida + cs.riesgoAlto, color: COLORS.amberText },
-      { label: "Al día", value: cs.conDeudaAlDia, color: COLORS.greenText },
+      { label: "Al día", value: cs.sinDeuda, color: COLORS.greenText },
+      { label: "Con deuda (0–30 días)", value: cs.conDeuda, color: COLORS.ink },
+      { label: "Atrasado / Crítico", value: cs.atrasado + cs.critico, color: COLORS.amberText },
     ];
 
     const gridColW = Math.floor(CONTENT_W / 2) - 3;
@@ -563,10 +566,12 @@ export function renderDashboardSummaryPdf(model: DashboardSummaryPdfModel): Prom
             rx + 3, y + 6, { width: colW.days - 6, align: "right" });
         rx += colW.days;
 
+        // CLIENT-DEBT-SEMANTICS-001 Etapa C: matcher de la nueva taxonomía.
         const statusColor =
-          r.status === "Riesgo alto" ? COLORS.redText
-          : r.status === "Vencido" ? COLORS.amberText
-          : COLORS.greenText;
+          r.status === "Crítico" || r.status === "Riesgo alto" ? COLORS.redText
+          : r.status === "Atrasado" ? COLORS.amberText
+          : r.status === "Con deuda" ? COLORS.ink
+          : COLORS.greenText; // "Al día" — único caso verde
         doc.fillColor(statusColor).font("Helvetica").fontSize(7)
           .text(r.status, rx + 3, y + 6, { width: colW.status - 6 });
 

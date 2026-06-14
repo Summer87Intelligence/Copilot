@@ -4,6 +4,8 @@
  * Sin llamadas a Zeta, sin Supabase, sin side effects.
  */
 
+import { todayYmdMontevideo } from "@/lib/date/summer87-today";
+
 export type OperationalHintSeverity = "ok" | "info" | "warning" | "critical";
 
 export type OperationalHint = {
@@ -78,11 +80,11 @@ export type ClientOperationalSummary = {
   missingDataHints: OperationalHint[];
 };
 
+/**
+ * @deprecated CLIENT-DEBT-SEMANTICS-001 Etapa D: alias a `todayYmdMontevideo`.
+ */
 function localTodayYmd(): string {
-  const d = new Date();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${m}-${day}`;
+  return todayYmdMontevideo();
 }
 
 function daysBetween(fromYmd: string, toYmd: string): number {

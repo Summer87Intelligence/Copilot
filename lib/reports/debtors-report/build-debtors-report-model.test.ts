@@ -161,14 +161,20 @@ describe("buildDebtorsReportModel", () => {
     expect(model.filtersLabel).toEqual([]);
   });
 
-  it("sin vencimiento usa — en antigüedad", () => {
+  it("sin atraso por vencimiento usa — en columna antigüedad", () => {
     const model = buildDebtorsReportModel({
       portfolioRows: [baseRow({ debt_uyu: 100, overdue_uyu: 0 })],
       filters: DEFAULT_DEBTORS_REPORT_FILTERS,
       emittedAt: EMITTED,
     });
     expect(model.rows[0]?.overdueDaysLabel).toBe("—");
-    expect(model.rows[0]?.statusLabel).toBe("Pendiente");
+    // CLIENT-DEBT-SEMANTICS-001 Etapa C: status comercial usa días desde
+    // emisión, no overdueAmount. Sin fecha derivada → "Con deuda".
+    expect(model.rows[0]?.statusLabel).not.toBe("Pendiente");
+    expect(model.rows[0]?.statusLabel).not.toBe("Vencido");
+    expect(["Al día", "Con deuda", "Atrasado", "Crítico", "Riesgo alto"]).toContain(
+      model.rows[0]?.statusLabel
+    );
   });
 
   it("orden all: UYU desc primero, USD desc después", () => {

@@ -73,7 +73,9 @@ type SortField =
   | "invoices"
   | "lastSync";
 type SortDir = "asc" | "desc";
-type FilterChip = "all" | "pending" | "overdue" | "critical" | "no_debt";
+// CLIENT-DEBT-SEMANTICS-001 Etapa D: keys alineadas a la taxonomía.
+// "no_issue_date" = cliente con deuda sin fecha de emisión derivable.
+type FilterChip = "all" | "no_issue_date" | "delayed" | "critical" | "no_debt";
 type PageSize = 25 | 50 | 100;
 type RiskLevel = "high" | "medium" | "low" | "ok" | "none";
 type CollectionActionsByCompany = Map<string, CollectionAction[]>;
@@ -116,14 +118,15 @@ const STALE_BADGE: Record<StalenessStatus, { cls: string; label: string }> = {
 };
 
 // ---------------------------------------------------------------------------
-// Estado visible del cliente — semántica unificada (Al día / Pendiente /
-// Atrasado / Crítico / Datos por revisar / Sin datos). No mezcla riesgo de
-// deuda con riesgo de sync.
+// Estado visible del cliente — semántica unificada CLIENT-DEBT-SEMANTICS-001:
+//   Al día (sin deuda) / Con deuda (0–30) / Atrasado (31–90) / Crítico (91+).
+// Las claves internas mantienen los nombres legacy para no romper consumers
+// dentro del archivo; los labels se actualizan a la nueva taxonomía.
 // ---------------------------------------------------------------------------
 
 type ClientDisplayStatus =
   | "al_dia"
-  | "pendiente"
+  | "con_deuda"
   | "atrasado"
   | "critico"
   | "datos"
@@ -134,7 +137,7 @@ const CLIENT_DISPLAY_STATUS_BADGE: Record<
   { cls: string; label: string }
 > = {
   al_dia:    { cls: "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]", label: "Al día" },
-  pendiente: { cls: "border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink)]", label: "Pendiente" },
+  con_deuda: { cls: "border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink)]", label: "Con deuda" },
   atrasado:  { cls: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]", label: "Atrasado" },
   critico:   { cls: "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]", label: "Crítico" },
   datos:     { cls: "border-[var(--copilot-border)] bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)]", label: "Datos por revisar" },
@@ -154,17 +157,22 @@ export function deriveClientDisplayStatus(client: ClientStaleness): ClientDispla
     return "al_dia";
   }
 
+  // dominantAgingRange ya usa días desde emisión (computeAgingRange en
+  // copilot-financial-reconciliation.ts), así que mapeamos directo a la
+  // nueva taxonomía.
   if (aging === "90_plus") return "critico";
-  if (aging === "61_90" || aging === "31_60" || aging === "0_30") return "atrasado";
-  return "pendiente";
+  if (aging === "61_90" || aging === "31_60") return "atrasado";
+  if (aging === "0_30") return "con_deuda";
+  // hasDebt pero sin aging parseable → con deuda sin fecha de emisión.
+  return "con_deuda";
 }
 
 const FILTER_CHIPS: Array<{ id: FilterChip; label: string }> = [
-  { id: "all",      label: "Todos" },
-  { id: "pending",  label: "Pendientes" },
-  { id: "overdue",  label: "Atrasados" },
-  { id: "critical", label: "Críticos" },
-  { id: "no_debt",  label: "Sin deuda" },
+  { id: "all",            label: "Todos" },
+  { id: "no_issue_date",  label: "Sin fecha" },
+  { id: "delayed",        label: "Atrasados" },
+  { id: "critical",       label: "Críticos" },
+  { id: "no_debt",        label: "Sin deuda" },
 ];
 
 const COLLECTION_ACTIONS_CACHE_TTL_MS = 60_000;
@@ -195,8 +203,13 @@ function matchesFilter(client: ClientStaleness, chip: FilterChip): boolean {
   const hasDebt = Object.values(client.pendingByCurrency).some((v) => (v ?? 0) > 0);
   if (chip === "all") return true;
   if (chip === "no_debt") return !hasDebt;
-  if (chip === "pending") return hasDebt && client.dominantAgingRange === null;
-  if (chip === "overdue") return hasDebt && client.dominantAgingRange !== null;
+  if (chip === "no_issue_date") return hasDebt && client.dominantAgingRange === null;
+  if (chip === "delayed") {
+    return (
+      hasDebt &&
+      (client.dominantAgingRange === "31_60" || client.dominantAgingRange === "61_90")
+    );
+  }
   if (chip === "critical") {
     return (
       hasDebt &&

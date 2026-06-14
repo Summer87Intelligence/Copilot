@@ -23,6 +23,7 @@ import type {
 } from "./copilot-financial-reconciliation";
 import { buildCurrencyIndex } from "./copilot-cartera-cards-source";
 import type { ClientPortfolioRow } from "./copilot-clients-portfolio";
+import { derivePortfolioDebtStatus } from "./copilot-client-debt-status";
 import { sumPortfolioOverdueDebt } from "./copilot-cartera-aging-totals";
 import type { CashPositionByCurrency } from "./treasury/treasury-cash-position";
 import type { TreasuryOutflowSummary } from "./treasury/treasury-scheduled-payments";
@@ -78,9 +79,15 @@ export type DashboardTopBilling = {
 };
 
 export type DashboardClientStates = {
+  /** CLIENT-DEBT-SEMANTICS-001: cliente sin deuda alguna. Único caso "Al día". */
   sinDeuda: number;
-  conDeudaAlDia: number;
-  conDeudaVencida: number;
+  /** CLIENT-DEBT-SEMANTICS-001: deuda 0–30 días desde emisión. */
+  conDeuda: number;
+  /** CLIENT-DEBT-SEMANTICS-001: deuda 31–90 días desde emisión. */
+  atrasado: number;
+  /** CLIENT-DEBT-SEMANTICS-001: deuda > 90 días desde emisión. */
+  critico: number;
+  /** Clientes con `risk === "Alto"` (dimensión ortogonal al status). */
   riesgoAlto: number;
   total: number;
 };
@@ -105,7 +112,7 @@ export type BuildExecutiveSummaryMainRiskChipInput = {
   deudaVencidaUyu: number;
   deudaVencidaUsd: number;
   exchangeRate?: number | null;
-  clientStates: Pick<DashboardClientStates, "riesgoAlto" | "conDeudaVencida">;
+  clientStates: Pick<DashboardClientStates, "riesgoAlto" | "atrasado" | "critico">;
 };
 
 function formatExecutiveOverdueChipAmount(
@@ -129,22 +136,22 @@ function buildExecutiveOverdueRiskLabel(input: {
     const hasUsd = deudaVencidaUsd > 0;
     if (!hasUyu && !hasUsd) return null;
     if (hasUyu && hasUsd) {
-      return `Vencido: ${formatExecutiveOverdueChipAmount(deudaVencidaUyu, "UYU")} · ${formatExecutiveOverdueChipAmount(deudaVencidaUsd, "USD")}`;
+      return `Atrasado: ${formatExecutiveOverdueChipAmount(deudaVencidaUyu, "UYU")} · ${formatExecutiveOverdueChipAmount(deudaVencidaUsd, "USD")}`;
     }
     if (hasUyu) {
-      return `Vencido: ${formatExecutiveOverdueChipAmount(deudaVencidaUyu, "UYU")}`;
+      return `Atrasado: ${formatExecutiveOverdueChipAmount(deudaVencidaUyu, "UYU")}`;
     }
-    return `Vencido: ${formatExecutiveOverdueChipAmount(deudaVencidaUsd, "USD")}`;
+    return `Atrasado: ${formatExecutiveOverdueChipAmount(deudaVencidaUsd, "USD")}`;
   }
 
   if (currencyMode === "UYU") {
     if (deudaVencidaUyu <= 0) return null;
-    return `Vencido: ${formatExecutiveOverdueChipAmount(deudaVencidaUyu, "UYU")}`;
+    return `Atrasado: ${formatExecutiveOverdueChipAmount(deudaVencidaUyu, "UYU")}`;
   }
 
   if (currencyMode === "USD") {
     if (deudaVencidaUsd <= 0) return null;
-    return `Vencido: ${formatExecutiveOverdueChipAmount(deudaVencidaUsd, "USD")}`;
+    return `Atrasado: ${formatExecutiveOverdueChipAmount(deudaVencidaUsd, "USD")}`;
   }
 
   const tc = exchangeRate;
@@ -153,7 +160,7 @@ function buildExecutiveOverdueRiskLabel(input: {
     consolidateToUsd(deudaVencidaUyu, deudaVencidaUsd, tc)
   );
   if (consolidated <= 0) return null;
-  return `Vencido: ${formatExecutiveOverdueChipAmount(consolidated, "USD")} (cons.)`;
+  return `Atrasado: ${formatExecutiveOverdueChipAmount(consolidated, "USD")} (cons.)`;
 }
 
 /**
@@ -176,9 +183,10 @@ export function buildExecutiveSummaryMainRiskChip(
   if (state === "attention") {
     const overdueLabel = buildExecutiveOverdueRiskLabel(input);
     if (overdueLabel) return overdueLabel;
-    if (clientStates.conDeudaVencida > 0) {
-      const n = clientStates.conDeudaVencida;
-      return `${n} cliente${n > 1 ? "s" : ""} con atraso`;
+    // CLIENT-DEBT-SEMANTICS-001 Etapa E: buckets directos, sin alias legacy.
+    const conAtraso = clientStates.atrasado + clientStates.critico;
+    if (conAtraso > 0) {
+      return `${conAtraso} cliente${conAtraso > 1 ? "s" : ""} con atraso`;
     }
   }
 
@@ -337,17 +345,33 @@ function activeDebtSortRank(row: DashboardActiveDebtRow): number {
   return 4;
 }
 
-function activeDebtStatus(overdueDebt: number, risk: string): string {
-  if (risk === "Alto") return "Riesgo alto";
-  if (overdueDebt > 0) return "Atrasado";
+/**
+ * CLIENT-DEBT-SEMANTICS-001 Etapa C: status para la tabla "Clientes con deuda
+ * activa" del PDF. Combina la nueva taxonomía (días desde emisión) con la
+ * etiqueta legacy "Riesgo alto" para CEOs que ya lo conocen — el bucket de
+ * riesgo es ortogonal al de status comercial.
+ */
+function activeDebtStatusLabel(
+  debtStatus: "current" | "with_debt" | "delayed" | "critical",
+  risk: string
+): string {
+  if (debtStatus === "critical") return "Crítico";
+  if (debtStatus === "delayed") return "Atrasado";
+  if (debtStatus === "with_debt") {
+    return risk === "Alto" ? "Riesgo alto" : "Con deuda";
+  }
   return "Al día";
 }
 
 export function extractActiveDebtClientRows(
-  rows: ClientPortfolioRow[]
+  rows: ClientPortfolioRow[],
+  options: { today?: string } = {}
 ): DashboardActiveDebtRow[] {
+  const today = options.today;
   const result: DashboardActiveDebtRow[] = [];
   for (const r of rows) {
+    const debtStatus = derivePortfolioDebtStatus(r, { today }).status;
+    const statusLabel = activeDebtStatusLabel(debtStatus, r.risk);
     if (r.debt_uyu > 0) {
       const overdueDebt = r.overdue_uyu ?? 0;
       result.push({
@@ -358,7 +382,7 @@ export function extractActiveDebtClientRows(
         activeDebt: r.debt_uyu,
         overdueDebt,
         overdueDays: r.overdue_days_uyu ?? null,
-        status: activeDebtStatus(overdueDebt, r.risk),
+        status: statusLabel,
         risk: r.risk,
       });
     }
@@ -372,7 +396,7 @@ export function extractActiveDebtClientRows(
         activeDebt: r.debt_usd,
         overdueDebt,
         overdueDays: r.overdue_days_usd ?? null,
-        status: activeDebtStatus(overdueDebt, r.risk),
+        status: statusLabel,
         risk: r.risk,
       });
     }
@@ -467,27 +491,32 @@ export function extractTopBilling(
 }
 
 export function extractClientStates(
-  rows: ClientPortfolioRow[]
+  rows: ClientPortfolioRow[],
+  options: { today?: string } = {}
 ): DashboardClientStates {
-  let sinDeuda = 0,
-    conDeudaAlDia = 0,
-    conDeudaVencida = 0,
-    riesgoAlto = 0;
+  const today = options.today;
+  let sinDeuda = 0;
+  let conDeuda = 0;
+  let atrasado = 0;
+  let critico = 0;
+  let riesgoAlto = 0;
   for (const r of rows) {
-    if (r.debt_uyu === 0 && r.debt_usd === 0) {
+    const status = derivePortfolioDebtStatus(r, { today }).status;
+    if (status === "current") {
       sinDeuda++;
-    } else if (r.risk === "Alto") {
-      riesgoAlto++;
-    } else if ((r.overdue_uyu ?? 0) > 0 || (r.overdue_usd ?? 0) > 0) {
-      conDeudaVencida++;
-    } else {
-      conDeudaAlDia++;
+      continue;
     }
+    // Cliente con deuda: riesgoAlto es una dimensión paralela (KPI ejecutivo).
+    if (r.risk === "Alto") riesgoAlto++;
+    if (status === "critical") critico++;
+    else if (status === "delayed") atrasado++;
+    else if (status === "with_debt") conDeuda++;
   }
   return {
     sinDeuda,
-    conDeudaAlDia,
-    conDeudaVencida,
+    conDeuda,
+    atrasado,
+    critico,
     riesgoAlto,
     total: rows.length,
   };
@@ -526,9 +555,11 @@ export function determineDashboardState(
   ).length;
 
   if (clientStates.riesgoAlto >= 3 || cajaNegativos > 0) return "critical";
+  // CLIENT-DEBT-SEMANTICS-001 Etapa E: lectura directa de buckets nuevos.
+  const conAtraso = clientStates.atrasado + clientStates.critico;
   if (
     clientStates.riesgoAlto > 0 ||
-    clientStates.conDeudaVencida > 0 ||
+    conAtraso > 0 ||
     totalDeudaVencida > 0
   )
     return "attention";

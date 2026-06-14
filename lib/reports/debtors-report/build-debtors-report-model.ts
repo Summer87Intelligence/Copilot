@@ -1,5 +1,10 @@
 import type { ClientPortfolioRow } from "@/lib/copilot-clients-portfolio";
 import type { ClientCompanyDetail } from "@/lib/copilot-clients-portfolio";
+import {
+  deriveClientDebtStatus,
+  type OpenInvoiceForStatus,
+} from "@/lib/copilot-client-debt-status";
+import { formatYmdMontevideo } from "@/lib/date/summer87-today";
 
 import {
   computeCurrencyOverdueAging,
@@ -34,13 +39,60 @@ function formatAgingLabel(overdueDays: number | null): string {
   return `${overdueDays} día${overdueDays === 1 ? "" : "s"}`;
 }
 
+/**
+ * CLIENT-DEBT-SEMANTICS-001 Etapa C: status comercial unificado.
+ * Mide días desde emisión usando las facturas reales del detail (si están)
+ * o cayendo a los campos derivados del portfolio row. "Riesgo alto" se
+ * reserva para clientes en bucket 0–30 días con riesgo financiero Alto.
+ */
 function rowStatusLabel(
-  overdueAmount: number,
-  risk: ClientPortfolioRow["risk"]
+  row: ClientPortfolioRow,
+  detail: ClientCompanyDetail | undefined,
+  today: string
 ): string {
-  if (overdueAmount <= 0) return "Pendiente";
-  if (risk === "Alto") return "Crítico";
-  return "Vencido";
+  const openInvoices: OpenInvoiceForStatus[] = [];
+  if (detail?.invoices?.length) {
+    for (const inv of detail.invoices) {
+      const balance = inv.balance_amount ?? 0;
+      if (balance <= 0) continue;
+      const currency =
+        String(inv.currency_code ?? "").trim().toUpperCase() === "USD"
+          ? "USD"
+          : "UYU";
+      openInvoices.push({
+        id: inv.id,
+        issueDate: inv.issue_date,
+        balanceAmount: balance,
+        currencyCode: currency as "UYU" | "USD",
+      });
+    }
+  } else {
+    // Fallback: usar los campos derivados precomputados en el portfolio row.
+    const oldest = row.oldest_open_invoice_issue_date ?? "";
+    const count = row.open_invoices_count ?? 0;
+    if (count > 0) {
+      openInvoices.push({
+        id: "row-derived",
+        issueDate: oldest,
+        balanceAmount: Math.max((row.debt_uyu ?? 0) + (row.debt_usd ?? 0), 1),
+        currencyCode: (row.debt_usd ?? 0) > (row.debt_uyu ?? 0) ? "USD" : "UYU",
+      });
+    }
+  }
+
+  const status = deriveClientDebtStatus({
+    debtUyu: row.debt_uyu ?? 0,
+    debtUsd: row.debt_usd ?? 0,
+    openInvoices,
+    today,
+  }).status;
+
+  if (status === "critical") return "Crítico";
+  if (status === "delayed") return "Atrasado";
+  if (status === "with_debt") {
+    return row.risk === "Alto" ? "Riesgo alto" : "Con deuda";
+  }
+  return "Al día";
 }
 
 function matchesStatusFilter(
@@ -109,6 +161,7 @@ function buildCurrencyRow(
     : { oldestDueDate: null, overdueDays: null, usedIssueDateFallback: false };
 
   const overdueDays = overdueAmount > 0 ? aging.overdueDays : null;
+  const todayYmd = formatYmdMontevideo(emittedAt);
 
   return {
     clientId: row.company_id,
@@ -119,7 +172,7 @@ function buildCurrencyRow(
     oldestDueDate: overdueAmount > 0 ? aging.oldestDueDate : null,
     overdueDays,
     overdueDaysLabel: overdueAmount > 0 ? formatAgingLabel(overdueDays) : "—",
-    statusLabel: rowStatusLabel(overdueAmount, row.risk),
+    statusLabel: rowStatusLabel(row, detail, todayYmd),
     agingBadge: null,
     contactLabel: buildReportContactLabel({
       phone: row.contact_phone,

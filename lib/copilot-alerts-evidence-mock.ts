@@ -132,7 +132,7 @@ export const COPILOT_ALERTS_EVIDENCE_MOCK: Record<string, CopilotEvidenceCase> =
         id: "a1-d1",
         name: "FAC-000381 Delta",
         type: "Factura",
-        status: "Vencida",
+        status: "Atrasada",
         severity: "critical",
       },
       {

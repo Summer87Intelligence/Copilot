@@ -7,7 +7,15 @@ import type { ClientPortfolioInvoice } from "@/lib/copilot-clients-portfolio";
 import { formatCopilotDate } from "@/lib/copilot-format";
 import { ZETA_SALDOS_PENDIENTES_CATEGORY } from "@/lib/zeta/zeta-operational-debt-dedup";
 
-export type InvoiceStatusLabel = "Atrasada" | "Al día" | "Parcial" | "Sin vencimiento";
+/**
+ * CLIENT-DEBT-SEMANTICS-001: estado a nivel factura individual.
+ *  - "Con deuda" → impaga, 0–30 días desde emisión.
+ *  - "Atrasada"  → impaga, 31–90 días desde emisión.
+ *  - "Crítica"   → impaga, > 90 días desde emisión.
+ *  - "Parcial"   → impaga con pago parcial dentro de 0–30 días.
+ * Una factura con `balance_amount > 0` nunca puede ser "Al día".
+ */
+export type InvoiceStatusLabel = "Con deuda" | "Atrasada" | "Crítica" | "Parcial";
 
 export type DebtBreakdownItem = {
   invoiceId: string;
@@ -45,21 +53,36 @@ function isValidDate(d: string): boolean {
   return d !== "—" && d !== "" && d.length >= 10;
 }
 
+/**
+ * CLIENT-DEBT-SEMANTICS-001: estado por días desde emisión.
+ * `balance > 0` se asume (caller filtra). Una factura impaga nunca es "Al día".
+ */
 function classifyStatus(
   balance: number,
   total: number,
-  dueDate: string,
+  issueDate: string,
   today: string
 ): InvoiceStatusLabel {
-  if (!isValidDate(dueDate)) return "Sin vencimiento";
-  if (dueDate < today) return "Atrasada";
+  const daysSinceIssue = isValidDate(issueDate)
+    ? Math.max(0, Math.floor((Date.parse(today) - Date.parse(issueDate)) / 86_400_000))
+    : null;
+
+  if (daysSinceIssue !== null && daysSinceIssue > 90) return "Crítica";
+  if (daysSinceIssue !== null && daysSinceIssue >= 31) return "Atrasada";
+
+  // 0–30 días o sin issueDate parseable: bucket "Con deuda" salvo pago parcial.
   if (total > 0 && balance < total * 0.99) return "Parcial";
-  return "Al día";
+  return "Con deuda";
 }
 
-function calcDaysOverdue(dueDate: string, today: string): number | null {
-  if (!isValidDate(dueDate) || dueDate >= today) return null;
-  return Math.floor((Date.parse(today) - Date.parse(dueDate)) / 86_400_000);
+/**
+ * Días de atraso desde emisión (no desde due_date). Devuelve null si no hay
+ * issue_date parseable.
+ */
+function calcDaysOverdue(issueDate: string, today: string): number | null {
+  if (!isValidDate(issueDate)) return null;
+  const days = Math.floor((Date.parse(today) - Date.parse(issueDate)) / 86_400_000);
+  return days < 0 ? 0 : days;
 }
 
 function inferCurrency(inv: ClientPortfolioInvoice): "UYU" | "USD" | null {
@@ -72,11 +95,19 @@ function isShadowRow(inv: ClientPortfolioInvoice): boolean {
   return String(inv.category ?? "").trim() === ZETA_SALDOS_PENDIENTES_CATEGORY;
 }
 
+/** CLIENT-DEBT-SEMANTICS-001: peso por severidad bajo nueva taxonomía. */
+const STATUS_SORT_WEIGHT: Record<InvoiceStatusLabel, number> = {
+  "Crítica": 3,
+  "Atrasada": 2,
+  "Parcial": 1,
+  "Con deuda": 0,
+};
+
 function sortItems(items: DebtBreakdownItem[]): DebtBreakdownItem[] {
   return [...items].sort((a, b) => {
-    const aOv = a.status === "Atrasada" ? 1 : 0;
-    const bOv = b.status === "Atrasada" ? 1 : 0;
-    if (bOv !== aOv) return bOv - aOv;
+    const aW = STATUS_SORT_WEIGHT[a.status] ?? 0;
+    const bW = STATUS_SORT_WEIGHT[b.status] ?? 0;
+    if (bW !== aW) return bW - aW;
     const aDays = a.daysOverdue ?? 0;
     const bDays = b.daysOverdue ?? 0;
     if (bDays !== aDays) return bDays - aDays;
@@ -99,8 +130,9 @@ export function buildDebtBreakdown(
     if (inferCurrency(inv) !== currency) continue;
     if (inv.balance_amount <= 0) continue;
 
-    const status = classifyStatus(inv.balance_amount, inv.total_amount, inv.due_date, today);
-    const daysOverdue = calcDaysOverdue(inv.due_date, today);
+    const status = classifyStatus(inv.balance_amount, inv.total_amount, inv.issue_date, today);
+    const daysOverdue = calcDaysOverdue(inv.issue_date, today);
+    const isOverdueBucket = status === "Atrasada" || status === "Crítica";
 
     items.push({
       invoiceId: inv.id,
@@ -110,7 +142,7 @@ export function buildDebtBreakdown(
       currency,
       originalAmount: inv.total_amount,
       pendingAmount: inv.balance_amount,
-      overdueAmount: status === "Atrasada" ? inv.balance_amount : 0,
+      overdueAmount: isOverdueBucket ? inv.balance_amount : 0,
       daysOverdue,
       status,
     });
@@ -128,7 +160,9 @@ export function buildDebtBreakdown(
       totalOverdue,
       totalCurrent: totalPending - totalOverdue,
       invoiceCount: sorted.length,
-      overdueCount: sorted.filter((i) => i.status === "Atrasada").length,
+      overdueCount: sorted.filter(
+        (i) => i.status === "Atrasada" || i.status === "Crítica"
+      ).length,
       currency,
     },
     hasReconciliationGap: gap > TOLERANCE,

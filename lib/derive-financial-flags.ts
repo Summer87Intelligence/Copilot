@@ -1,4 +1,5 @@
 import type { DataRow } from "@/lib/copilot-data";
+import { todayYmdMontevideo } from "@/lib/date/summer87-today";
 
 export type FinancialFlagLevel = "fresh" | "warning" | "stale";
 
@@ -35,12 +36,11 @@ function daysFromYmd(ymd: string, nowYmd: string): number | null {
   return Math.max(0, Math.round((tb - ta) / 86400000));
 }
 
+/**
+ * @deprecated CLIENT-DEBT-SEMANTICS-001 Etapa D: alias a `todayYmdMontevideo`.
+ */
 function localTodayYmd(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return todayYmdMontevideo();
 }
 
 function isOpenInvoiceRow(row: DataRow): boolean {
