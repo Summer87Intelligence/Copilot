@@ -73,6 +73,21 @@ function isAuthPublicPath(pathname: string): boolean {
 }
 
 /**
+ * Páginas privadas adicionales fuera de `/copilot/*` que también requieren
+ * sesión válida. Agregado en FASE 1 de remediación: las pages SSR `/admin/*`
+ * y `/account` se renderizaban para anónimos (las APIs sí cerraban, pero el
+ * shell quedaba expuesto). Sin cambios de lógica de auth.
+ */
+function isExtraProtectedPagePath(pathname: string): boolean {
+  return (
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/") ||
+    pathname === "/account" ||
+    pathname.startsWith("/account/")
+  );
+}
+
+/**
  * Protege `/copilot` y `/api/copilot/*` con cookie HttpOnly `copilot_session`
  * firmada (HMAC-SHA256); sin Supabase Auth en Edge).
  */
@@ -140,6 +155,30 @@ export async function proxy(request: NextRequest) {
           redirectUrl.searchParams.set("blocked", "module-access");
           return NextResponse.redirect(redirectUrl);
         }
+      }
+    }
+  }
+
+  // FASE 1 — Cerrar acceso anónimo SSR en /admin/* y /account.
+  // Sin permisos por módulo acá: las APIs admin (que ya validan superadmin)
+  // siguen siendo el gate real para datos; este bloque solo evita que la
+  // page se renderice sin sesión válida.
+  if (isExtraProtectedPagePath(pathname)) {
+    const sessionCookieValue = request.cookies.get(COPILOT_SESSION_COOKIE)?.value;
+    if (!(await isValidCopilotSessionCookieAsync(sessionCookieValue))) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
+      return NextResponse.redirect(loginUrl);
+    }
+    // /admin/* — solo superadmin (mismo criterio que /copilot/admin).
+    if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+      const parsed = await parseCopilotSessionValueAsync(sessionCookieValue);
+      if (!parsed || !isSuperAdmin(parsed.role ?? "")) {
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = "/copilot/hoy";
+        redirectUrl.searchParams.set("blocked", "admin-access");
+        return NextResponse.redirect(redirectUrl);
       }
     }
   }
