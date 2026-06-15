@@ -181,11 +181,11 @@ function ClientPendingRow({
         </p>
       </div>
       {visibleInvoices.length > 0 ? (
-        <ul className="mt-3 space-y-1 rounded-lg border border-[var(--copilot-border)]/70 bg-[var(--copilot-soft-bg)]/60 px-3 py-2">
+        <ul className="mt-3 divide-y divide-[var(--copilot-border)]/70 border-t border-[var(--copilot-border)]/70">
           {visibleInvoices.map((line) => (
             <li
               key={line.invoiceId}
-              className="flex items-start justify-between gap-3 text-[11px] text-[var(--copilot-ink-muted)]"
+              className="flex items-start justify-between gap-3 py-1.5 text-[11px] text-[var(--copilot-ink-muted)]"
             >
               <span className="min-w-0 flex-1 truncate text-[var(--copilot-ink)]">
                 {line.invoiceNumber ?? "Factura sin número"}
@@ -204,7 +204,7 @@ function ClientPendingRow({
             </li>
           ))}
           {hiddenInvoiceCount > 0 ? (
-            <li className="text-[11px] italic text-[var(--copilot-ink-muted)]">
+            <li className="py-1.5 text-[11px] italic text-[var(--copilot-ink-muted)]">
               + {formatCarteraInteger(hiddenInvoiceCount)} factura
               {hiddenInvoiceCount === 1 ? "" : "s"} más
             </li>
