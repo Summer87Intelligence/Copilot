@@ -492,6 +492,95 @@ function DebtorRowExpandPanel({
   );
 }
 
+function mobileStatusFor(row: DebtorCollectionRow): { label: string; className: string } {
+  if ((row.vencido?.amount ?? 0) > 0) {
+    return {
+      label: "Atrasado",
+      className: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)]",
+    };
+  }
+  if (row.flags.critical30Share) {
+    return {
+      label: "Crítico",
+      className: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)]",
+    };
+  }
+  return {
+    label: "Con deuda",
+    className: "bg-[var(--copilot-surface-muted)] text-[var(--copilot-ink)]",
+  };
+}
+
+function DebtorMobileCard({
+  row,
+  portfolioDetails,
+}: {
+  row: DebtorCollectionRow;
+  portfolioDetails?: Record<string, ClientCompanyDetail>;
+}) {
+  const status = mobileStatusFor(row);
+  const expand = buildDebtorExpandData(row);
+  const openInvoicesCount =
+    portfolioDetails?.[row.company_id]?.invoices?.filter(
+      (i) => (i.balance_amount ?? 0) > 0 && i.currency_code === row.currency
+    ).length ?? null;
+
+  return (
+    <li className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-3 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-[var(--copilot-ink)]">{row.name}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <span
+              className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${status.className}`}
+            >
+              {status.label}
+            </span>
+            <span
+              className={`text-[10px] font-bold uppercase tracking-wide ${copilotCurrencyClass(row.currency)}`}
+            >
+              {row.currency}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <dl className="mt-3 space-y-1.5 text-xs">
+        <div className="flex items-baseline justify-between gap-2">
+          <dt className="text-[var(--copilot-ink-muted)]">Total pendiente</dt>
+          <dd className={`tabular-nums font-semibold ${moneyCurrencyClass(row.currency)}`}>
+            {formatMoneySymbolOnly(row.deuda)}
+          </dd>
+        </div>
+        {(row.vencido?.amount ?? 0) > 0 && row.vencido ? (
+          <div className="flex items-baseline justify-between gap-2">
+            <dt className="text-[var(--copilot-ink-muted)]">Atrasado</dt>
+            <dd className={`tabular-nums font-semibold ${moneyCurrencyClass(row.currency, { overdue: true })}`}>
+              {formatMoneySymbolOnly(row.vencido)}
+            </dd>
+          </div>
+        ) : null}
+        {expand.overdueDays != null ? (
+          <div className="flex items-baseline justify-between gap-2">
+            <dt className="text-[var(--copilot-ink-muted)]">Días de atraso</dt>
+            <dd className="tabular-nums text-[var(--copilot-danger-text)]">{expand.overdueDays} días</dd>
+          </div>
+        ) : null}
+        {openInvoicesCount != null && openInvoicesCount > 0 ? (
+          <div className="flex items-baseline justify-between gap-2">
+            <dt className="text-[var(--copilot-ink-muted)]">Facturas abiertas</dt>
+            <dd className="tabular-nums text-[var(--copilot-ink)]">{openInvoicesCount}</dd>
+          </div>
+        ) : null}
+      </dl>
+
+      <div className="mt-3 border-t border-[var(--copilot-border)] pt-3">
+        <DebtorRowActions row={row} />
+      </div>
+    </li>
+  );
+}
+
 function DebtorTable({
   rows,
   highlightRisk = false,
@@ -517,7 +606,22 @@ function DebtorTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-[var(--copilot-border)]">
+    <>
+      {/* Mobile: card list */}
+      <ul className="space-y-2 sm:hidden" aria-label="Clientes con deuda">
+        {rows.length === 0 ? (
+          <li className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-6 text-center text-sm text-[var(--copilot-ink-muted)]">
+            Sin clientes con deuda.
+          </li>
+        ) : (
+          rows.map((row) => (
+            <DebtorMobileCard key={row.row_id} row={row} portfolioDetails={portfolioDetails} />
+          ))
+        )}
+      </ul>
+
+      {/* Tablet/desktop: tabla con expand-on-row preservado */}
+      <div className="hidden overflow-x-auto rounded-xl border border-[var(--copilot-border)] sm:block">
       <table className="w-full min-w-[600px] border-collapse text-left text-sm">
         <thead>
           <tr className="bg-[var(--copilot-table-header-bg)] text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
@@ -613,6 +717,7 @@ function DebtorTable({
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 

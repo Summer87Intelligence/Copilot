@@ -21,10 +21,11 @@ import {
   TESORERIA_FORM_LABEL_CLASS,
   TESORERIA_PAGE_SIZE,
   TESORERIA_PAYMENT_FIELD,
-  TESORERIA_TABLE_CLASS,
-  TESORERIA_TD_CLASS,
-  TESORERIA_TH_CLASS,
 } from "@/components/copilot/tesoreria/tesoreria-ui";
+import {
+  CopilotResponsiveTable,
+  type CopilotResponsiveTableColumn,
+} from "@/components/copilot/ui/copilot-responsive-table";
 import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
 import { effectivePlannedObligationStatus } from "@/lib/treasury/treasury-obligation-status";
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
@@ -924,61 +925,112 @@ export function TreasuryObligationsPanel({
           paragraphs={["Planificá BPS, impuestos, sueldos y otros compromisos de caja."]}
         />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50">
-          <table className={TESORERIA_TABLE_CLASS}>
-            <thead>
-              <tr>
-                <th className={TESORERIA_TH_CLASS}>{TESORERIA_PAYMENT_FIELD.concepto}</th>
-                <th className={TESORERIA_TH_CLASS}>{TESORERIA_PAYMENT_FIELD.categoria}</th>
-                <th className={TESORERIA_TH_CLASS}>{TESORERIA_PAYMENT_FIELD.moneda}</th>
-                <th className={TESORERIA_TH_CLASS}>{TESORERIA_PAYMENT_FIELD.monto}</th>
-                <th className={TESORERIA_TH_CLASS}>{TESORERIA_PAYMENT_FIELD.vencimiento}</th>
-                <th className={TESORERIA_TH_CLASS}>Estado</th>
-                <th className={TESORERIA_TH_CLASS}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageItems.map((row) => (
-                <tr key={row.id}>
-                  <td className={TESORERIA_TD_CLASS}>
-                    <span>{row.title}</span>
-                    {isRecurringGeneratedObligation(row) ? (
-                      <span className="ml-2 inline-block">
-                        <CopilotBadge tone="neutral">Recurrente</CopilotBadge>
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className={TESORERIA_TD_CLASS}>{obligationCategoryLabel(row)}</td>
-                  <td className={TESORERIA_TD_CLASS}>{row.currencyCode}</td>
-                  <td className={`${TESORERIA_TD_CLASS} tabular-nums`}>
-                    {formatTreasuryMoney(row.amountEstimated, row.currencyCode)}
-                  </td>
-                  <td className={`${TESORERIA_TD_CLASS} tabular-nums`}>
+        <CopilotResponsiveTable<PlannedCashObligation>
+          rows={pageItems}
+          getRowKey={(row) => row.id}
+          minWidth="720px"
+          ariaLabel="Pagos programados"
+          stickyHeader
+          columns={[
+            {
+              key: "concepto",
+              header: TESORERIA_PAYMENT_FIELD.concepto,
+              render: (row) => (
+                <>
+                  <span>{row.title}</span>
+                  {isRecurringGeneratedObligation(row) ? (
+                    <span className="ml-2 inline-block">
+                      <CopilotBadge tone="neutral">Recurrente</CopilotBadge>
+                    </span>
+                  ) : null}
+                </>
+              ),
+            },
+            {
+              key: "categoria",
+              header: TESORERIA_PAYMENT_FIELD.categoria,
+              render: (row) => obligationCategoryLabel(row),
+            },
+            {
+              key: "moneda",
+              header: TESORERIA_PAYMENT_FIELD.moneda,
+              render: (row) => row.currencyCode,
+            },
+            {
+              key: "monto",
+              header: TESORERIA_PAYMENT_FIELD.monto,
+              cellClassName: "tabular-nums",
+              render: (row) => formatTreasuryMoney(row.amountEstimated, row.currencyCode),
+            },
+            {
+              key: "vencimiento",
+              header: TESORERIA_PAYMENT_FIELD.vencimiento,
+              cellClassName: "tabular-nums",
+              render: (row) => formatDueWithTime(row.dueDate, getDueTime(row)),
+            },
+            {
+              key: "estado",
+              header: "Estado",
+              render: (row) => (
+                <CopilotBadge tone={statusBadgeTone(row)}>
+                  {buildDueStatusLabelWithTime(
+                    effectivePlannedObligationStatus(row.status, row.dueDate, asOfDate),
+                    row.dueDate,
+                    asOfDate,
+                    getDueTime(row),
+                    currentHHMM()
+                  )}
+                </CopilotBadge>
+              ),
+            },
+            {
+              key: "acciones",
+              header: "Acciones",
+              render: (row) => (
+                <RowActionsCell row={row} asOfDate={asOfDate} onAction={setActiveModal} />
+              ),
+            },
+          ] satisfies CopilotResponsiveTableColumn<PlannedCashObligation>[]}
+          mobileCard={(row) => (
+            <>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-[var(--copilot-ink)]">{row.title}</p>
+                  <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">
+                    {obligationCategoryLabel(row)}
+                    {isRecurringGeneratedObligation(row) ? " · Recurrente" : ""}
+                  </p>
+                </div>
+                <CopilotBadge tone={statusBadgeTone(row)}>
+                  {buildDueStatusLabelWithTime(
+                    effectivePlannedObligationStatus(row.status, row.dueDate, asOfDate),
+                    row.dueDate,
+                    asOfDate,
+                    getDueTime(row),
+                    currentHHMM()
+                  )}
+                </CopilotBadge>
+              </div>
+              <dl className="mt-3 space-y-1 text-xs">
+                <div className="flex items-baseline justify-between gap-2">
+                  <dt className="text-[var(--copilot-ink-muted)]">Vencimiento</dt>
+                  <dd className="tabular-nums text-[var(--copilot-ink)]">
                     {formatDueWithTime(row.dueDate, getDueTime(row))}
-                  </td>
-                  <td className={TESORERIA_TD_CLASS}>
-                    <CopilotBadge tone={statusBadgeTone(row)}>
-                      {buildDueStatusLabelWithTime(
-                        effectivePlannedObligationStatus(row.status, row.dueDate, asOfDate),
-                        row.dueDate,
-                        asOfDate,
-                        getDueTime(row),
-                        currentHHMM()
-                      )}
-                    </CopilotBadge>
-                  </td>
-                  <td className={TESORERIA_TD_CLASS}>
-                    <RowActionsCell
-                      row={row}
-                      asOfDate={asOfDate}
-                      onAction={setActiveModal}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-2">
+                  <dt className="text-[var(--copilot-ink-muted)]">Monto</dt>
+                  <dd className="tabular-nums font-semibold text-[var(--copilot-ink)]">
+                    {formatTreasuryMoney(row.amountEstimated, row.currencyCode)} {row.currencyCode}
+                  </dd>
+                </div>
+              </dl>
+              <div className="mt-3 flex justify-end border-t border-[var(--copilot-border)] pt-3">
+                <RowActionsCell row={row} asOfDate={asOfDate} onAction={setActiveModal} />
+              </div>
+            </>
+          )}
+        />
       )}
 
       {filtered.length > 0 ? (
