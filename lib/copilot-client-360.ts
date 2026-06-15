@@ -18,6 +18,7 @@ import {
   type SnapshotCurrencyCode,
 } from "@/lib/copilot-financial-thresholds";
 import { aggregateOperationalDebtForCompany } from "@/lib/zeta/zeta-operational-debt-dedup";
+import { todayYmdMontevideo } from "@/lib/date/summer87-today";
 
 function str(v: unknown): string {
   if (v === null || v === undefined) return "";
@@ -41,12 +42,11 @@ function ymd(iso: unknown): string {
   return `${y}-${m}-${day}`;
 }
 
+/**
+ * @deprecated CLIENT-DEBT-SEMANTICS-001 Etapa D: alias a `todayYmdMontevideo`.
+ */
 function localTodayYmd(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return todayYmdMontevideo();
 }
 
 function daysBetweenYmd(a: string, b: string): number {

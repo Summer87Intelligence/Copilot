@@ -41,9 +41,10 @@ import { ClientPaymentBehaviorCard } from "@/components/copilot/payment-behavior
 import { AccountStatementSendCard } from "@/components/copilot/clientes/account-statement-send-card";
 import type { Client360Payload, TransferAlias } from "@/lib/copilot-client-360";
 import {
-  deriveDebtSaludFromTotals,
-  CLIENT_SALUD_LABEL,
-} from "@/lib/copilot-client-salud";
+  deriveClientDebtStatus,
+  CLIENT_DEBT_STATUS_LABEL,
+} from "@/lib/copilot-client-debt-status";
+import { todayYmdMontevideo } from "@/lib/date/summer87-today";
 import { normalizeUruguayPhoneForWhatsApp } from "@/lib/phone/normalize-phone-for-whatsapp";
 import {
   buildClientOperationalSummary,
@@ -222,20 +223,29 @@ function timelineTypeLabel(kind: TimelineEvent["kind"]): string {
 }
 
 function debtStatusLabel(data: Client360Payload): { label: string; cls: string } {
-  const salud = deriveDebtSaludFromTotals({
+  // CLIENT-DEBT-SEMANTICS-001 Etapa C: días desde emisión a partir de las
+  // facturas visibles en la ficha, medidos contra hoy en Montevideo (UTC−3).
+  const today = todayYmdMontevideo();
+  const openInvoices = data.invoices.map((inv) => ({
+    id: inv.id,
+    issueDate: inv.issue_date,
+    balanceAmount: Number(String(inv.saldo).replace(",", ".")) || 0,
+    currencyCode: "UYU" as const,
+  }));
+  const result = deriveClientDebtStatus({
     debtUyu: data.debt_uyu,
     debtUsd: data.debt_usd,
-    overdueUyu: data.overdue_uyu,
-    overdueUsd: data.overdue_usd,
+    openInvoices,
+    today,
   });
-  const label = CLIENT_SALUD_LABEL[salud];
-  if (salud === "critico" || salud === "atrasado") {
+  const label = CLIENT_DEBT_STATUS_LABEL[result.status];
+  if (result.status === "critical" || result.status === "delayed") {
     return {
       label,
       cls: "border-[var(--copilot-danger-border)]/80 bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]",
     };
   }
-  if (salud === "pendiente") {
+  if (result.status === "with_debt") {
     return {
       label,
       cls: "border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink)]",

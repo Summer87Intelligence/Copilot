@@ -251,7 +251,7 @@ function renderTableHeader(doc: PDFKit.PDFDocument, y: number): number {
     ["client", "Cliente", "left"],
     ["sales", "Facturación", "right"],
     ["debt", "Deuda actual", "right"],
-    ["overdue", "Vencida", "right"],
+    ["overdue", "Atrasada", "right"],
     ["share", "Part.%", "right"],
     ["risk", "Riesgo", "center"],
   ];

@@ -23,29 +23,30 @@ import {
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 import { AccessDeniedCard } from "@/components/copilot/access-denied-card";
 import {
-  CLIENT_SALUD_LABEL,
-  derivePortfolioSalud,
-  type ClientSaludKey,
-} from "@/lib/copilot-client-salud";
+  CLIENT_DEBT_STATUS_LABEL,
+  derivePortfolioDebtStatus,
+  type ClientDebtStatus,
+} from "@/lib/copilot-client-debt-status";
 
 // ── Status derivation ────────────────────────────────────────────────────────
+// CLIENT-DEBT-SEMANTICS-001: clasificación por días desde emisión.
 
-type ClientStatus = ClientSaludKey;
+type ClientStatus = ClientDebtStatus;
 
 function deriveClientStatus(row: ClientPortfolioRow): ClientStatus {
-  return derivePortfolioSalud(row);
+  return derivePortfolioDebtStatus(row).status;
 }
 
-const SALUD_LABEL = CLIENT_SALUD_LABEL;
+const SALUD_LABEL = CLIENT_DEBT_STATUS_LABEL;
 
 function saludTone(s: ClientStatus): string {
-  if (s === "critico") {
+  if (s === "critical") {
     return "text-[var(--copilot-danger-text-strong)] bg-[var(--copilot-badge-danger-bg)] border-[var(--copilot-danger-border)]";
   }
-  if (s === "atrasado") {
+  if (s === "delayed") {
     return "text-[var(--copilot-warning-text-strong)] bg-[var(--copilot-badge-warning-bg)] border-[var(--copilot-warning-border)]";
   }
-  if (s === "pendiente") {
+  if (s === "with_debt") {
     return "text-[var(--copilot-ink)] bg-[var(--copilot-badge-neutral-bg)] border-[var(--copilot-border)]";
   }
   return "text-[var(--copilot-success-text-strong)] bg-[var(--copilot-badge-success-bg)] border-[var(--copilot-success-border)]";
@@ -53,14 +54,15 @@ function saludTone(s: ClientStatus): string {
 
 // ── Filters ──────────────────────────────────────────────────────────────────
 
-type ClientListFilter = "all" | "with_debt" | "vencido" | "critico" | "no_contact";
+// CLIENT-DEBT-SEMANTICS-001 Etapa D: keys alineadas a la taxonomía oficial.
+type ClientListFilter = "all" | "with_debt" | "delayed" | "critical" | "no_contact";
 type ClientCurrencyFilter = "all" | "UYU" | "USD";
 
 const FILTER_OPTIONS: Array<{ id: ClientListFilter; label: string }> = [
   { id: "all", label: "Todos" },
   { id: "with_debt", label: "Con deuda" },
-  { id: "vencido", label: "Atrasados" },
-  { id: "critico", label: "Críticos" },
+  { id: "delayed", label: "Atrasados" },
+  { id: "critical", label: "Críticos" },
   { id: "no_contact", label: "Sin contacto" },
 ];
 
@@ -90,8 +92,8 @@ function matchesClientFilter(
   }
   const status = deriveClientStatus(row);
   if (filter === "with_debt") return row.debt_uyu > 0 || row.debt_usd > 0;
-  if (filter === "vencido") return status === "atrasado" || status === "critico";
-  if (filter === "critico") return status === "critico";
+  if (filter === "delayed") return status === "delayed" || status === "critical";
+  if (filter === "critical") return status === "critical";
   if (filter === "no_contact") return !row.has_contact_data;
   return true;
 }

@@ -18,14 +18,27 @@
 // ---------------------------------------------------------------------------
 
 export const BUSINESS_LANGUAGE = {
-  /** Stock total adeudado por clientes al corte. Incluye atrasado y al día. */
+  /** Stock total adeudado por clientes al corte. Suma de todos los buckets de
+   *  status comercial salvo `current`. */
   totalPending: "Total pendiente",
-  /** Subconjunto del total pendiente con vencimiento superado. */
+  /**
+   * Subconjunto del total pendiente con más de 30 días desde emisión.
+   * Equivalente a la suma de buckets `delayed` (31–90) + `critical` (>90).
+   */
   overdue: "Atrasado",
-  /** Subconjunto del atrasado con más de 30 días. */
+  /** Subconjunto del atrasado con más de 90 días desde emisión (= `critical`). */
   overdue30: "Atrasado +30 días",
-  /** Subconjunto del total pendiente todavía dentro del plazo. */
+  /**
+   * CLIENT-DEBT-SEMANTICS-001: estado comercial "Al día" — el cliente NO
+   * tiene deuda (UYU = 0, USD = 0, sin facturas abiertas). Único caso verde.
+   */
   current: "Al día",
+  /** Estado comercial 0–30 días desde emisión de la factura más antigua impaga. */
+  withDebt: "Con deuda",
+  /** Estado comercial 31–90 días desde emisión. */
+  delayed: "Atrasado",
+  /** Estado comercial > 90 días desde emisión. */
+  critical: "Crítico",
 
   /** Caja líquida en Tesorería al corte. */
   cashAvailable: "Caja disponible",

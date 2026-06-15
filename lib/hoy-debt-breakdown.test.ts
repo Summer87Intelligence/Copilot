@@ -11,7 +11,7 @@ function inv(
   return {
     id: opts.id,
     invoice_number: opts.invoice_number ?? `FAC-${opts.id}`,
-    issue_date: opts.issue_date ?? "2026-01-15",
+    issue_date: opts.issue_date ?? "2026-06-01",
     due_date: opts.due_date ?? "2026-07-01",
     total_amount: opts.total_amount ?? 1000,
     balance_amount: opts.balance_amount ?? opts.total_amount ?? 1000,
@@ -21,49 +21,58 @@ function inv(
   };
 }
 
-describe("buildDebtBreakdown", () => {
-  it("2 facturas vencidas + 1 al día suma correctamente", () => {
+// CLIENT-DEBT-SEMANTICS-001: status a nivel factura mide días desde EMISIÓN.
+//  0–30 → "Con deuda" · 31–90 → "Atrasada" · >90 → "Crítica"
+describe("buildDebtBreakdown — semántica por días desde emisión", () => {
+  it("2 facturas atrasadas + 1 con deuda reciente: suma y orden correctos", () => {
     const invoices = [
-      inv({ id: "1", due_date: "2026-04-01", balance_amount: 5000, total_amount: 5000 }),
-      inv({ id: "2", due_date: "2026-05-15", balance_amount: 3000, total_amount: 3000 }),
-      inv({ id: "3", due_date: "2026-09-01", balance_amount: 2000, total_amount: 2000 }),
+      // 168 días desde emisión → Crítica
+      inv({ id: "1", issue_date: "2025-12-22", balance_amount: 5000, total_amount: 5000 }),
+      // 38 días → Atrasada
+      inv({ id: "2", issue_date: "2026-05-01", balance_amount: 3000, total_amount: 3000 }),
+      // 7 días → Con deuda
+      inv({ id: "3", issue_date: "2026-06-01", balance_amount: 2000, total_amount: 2000 }),
     ];
     const result = buildDebtBreakdown(invoices, "UYU", TODAY, 10000, 8000);
 
     expect(result.summary.invoiceCount).toBe(3);
+    // overdueCount = Atrasada + Crítica
     expect(result.summary.overdueCount).toBe(2);
     expect(result.summary.totalPending).toBe(10000);
     expect(result.summary.totalOverdue).toBe(8000);
     expect(result.summary.totalCurrent).toBe(2000);
-    expect(result.hasReconciliationGap).toBe(false);
 
-    // Vencidas deben aparecer primero
-    expect(result.items[0]!.status).toBe("Atrasada");
+    // Crítica primero, después Atrasada, después Con deuda.
+    expect(result.items[0]!.status).toBe("Crítica");
     expect(result.items[1]!.status).toBe("Atrasada");
-    expect(result.items[2]!.status).toBe("Al día");
-
-    // La más antigua (más días) va primero entre las vencidas
-    expect(result.items[0]!.dueDate).toBe("2026-04-01");
-    expect(result.items[1]!.dueDate).toBe("2026-05-15");
+    expect(result.items[2]!.status).toBe("Con deuda");
   });
 
-  it("cliente sin vencidas muestra deuda al día con 0 vencido", () => {
+  it("cliente con deuda 0–30d: status 'Con deuda', overdueCount=0", () => {
     const invoices = [
-      inv({ id: "1", due_date: "2026-12-01", balance_amount: 4000, total_amount: 4000 }),
-      inv({ id: "2", due_date: "2026-11-15", balance_amount: 1000, total_amount: 1000 }),
+      inv({ id: "1", issue_date: "2026-06-01", balance_amount: 4000, total_amount: 4000 }),
+      inv({ id: "2", issue_date: "2026-05-20", balance_amount: 1000, total_amount: 1000 }),
     ];
     const result = buildDebtBreakdown(invoices, "UYU", TODAY, 5000, null);
 
     expect(result.summary.overdueCount).toBe(0);
     expect(result.summary.totalOverdue).toBe(0);
     expect(result.summary.totalCurrent).toBe(5000);
-    expect(result.hasReconciliationGap).toBe(false);
-    expect(result.items.every((i) => i.status === "Al día")).toBe(true);
+    expect(result.items.every((i) => i.status === "Con deuda")).toBe(true);
   });
 
-  it("factura parcial muestra saldo pendiente correcto y status Parcial", () => {
+  it("factura impaga nunca aparece como 'Al día'", () => {
     const invoices = [
-      inv({ id: "1", due_date: "2026-12-01", balance_amount: 300, total_amount: 1000 }),
+      inv({ id: "1", issue_date: "2026-06-08", balance_amount: 1000, total_amount: 1000 }),
+    ];
+    const result = buildDebtBreakdown(invoices, "UYU", TODAY, 1000, null);
+    expect(result.items[0]!.status).not.toBe("Al día" as never);
+    expect(result.items[0]!.status).toBe("Con deuda");
+  });
+
+  it("factura parcial en bucket 0–30 muestra status Parcial", () => {
+    const invoices = [
+      inv({ id: "1", issue_date: "2026-06-01", balance_amount: 300, total_amount: 1000 }),
     ];
     const result = buildDebtBreakdown(invoices, "UYU", TODAY, 300, null);
 
@@ -72,9 +81,9 @@ describe("buildDebtBreakdown", () => {
     expect(result.items[0]!.originalAmount).toBe(1000);
   });
 
-  it("factura parcial vencida tiene status Vencida (overdue tiene prioridad)", () => {
+  it("factura parcial con 60 días → Atrasada (severidad gana sobre Parcial)", () => {
     const invoices = [
-      inv({ id: "1", due_date: "2026-03-01", balance_amount: 300, total_amount: 1000 }),
+      inv({ id: "1", issue_date: "2026-04-09", balance_amount: 300, total_amount: 1000 }),
     ];
     const result = buildDebtBreakdown(invoices, "UYU", TODAY, 300, 300);
 
@@ -117,13 +126,13 @@ describe("buildDebtBreakdown", () => {
     expect(result.hasReconciliationGap).toBe(false);
   });
 
-  it("factura sin vencimiento válido tiene status Sin vencimiento", () => {
+  it("factura sin issue_date parseable → bucket 'Con deuda' (no 'Al día')", () => {
     const invoices = [
-      inv({ id: "1", due_date: "—", balance_amount: 3000, total_amount: 3000 }),
+      inv({ id: "1", issue_date: "—", balance_amount: 3000, total_amount: 3000 }),
     ];
     const result = buildDebtBreakdown(invoices, "UYU", TODAY, 3000, null);
 
-    expect(result.items[0]!.status).toBe("Sin vencimiento");
+    expect(result.items[0]!.status).toBe("Con deuda");
     expect(result.items[0]!.daysOverdue).toBeNull();
   });
 
@@ -142,27 +151,26 @@ describe("buildDebtBreakdown", () => {
     const invoices = [
       inv({ id: "1", balance_amount: 3000, total_amount: 3000 }),
     ];
-    // rowDeuda dice 5000 pero invoices suman 3000
     const result = buildDebtBreakdown(invoices, "UYU", TODAY, 5000, null);
 
     expect(result.hasReconciliationGap).toBe(true);
     expect(result.reconciliationGap).toBeCloseTo(2000);
   });
 
-  it("ordena: vencida > más días > mayor saldo > emisión más antigua", () => {
+  it("ordena: severidad > más días > mayor saldo > emisión más antigua", () => {
     const invoices = [
-      // Al día — debería ir último
-      inv({ id: "curr", due_date: "2026-09-01", balance_amount: 9000, total_amount: 9000 }),
-      // Vencida con menos días
-      inv({ id: "late2", due_date: "2026-05-01", balance_amount: 1000, total_amount: 1000 }),
-      // Vencida con más días
-      inv({ id: "late1", due_date: "2026-03-01", balance_amount: 2000, total_amount: 2000 }),
+      // 7 días → Con deuda
+      inv({ id: "curr", issue_date: "2026-06-01", balance_amount: 9000, total_amount: 9000 }),
+      // 38 días → Atrasada
+      inv({ id: "late2", issue_date: "2026-05-01", balance_amount: 1000, total_amount: 1000 }),
+      // 99 días → Crítica
+      inv({ id: "crit", issue_date: "2026-03-01", balance_amount: 2000, total_amount: 2000 }),
     ];
     const result = buildDebtBreakdown(invoices, "UYU", TODAY, 12000, 3000);
 
-    expect(result.items[0]!.invoiceId).toBe("late1"); // más días
-    expect(result.items[1]!.invoiceId).toBe("late2"); // menos días
-    expect(result.items[2]!.invoiceId).toBe("curr");  // al día
+    expect(result.items[0]!.invoiceId).toBe("crit"); // Crítica primero
+    expect(result.items[1]!.invoiceId).toBe("late2"); // Atrasada
+    expect(result.items[2]!.invoiceId).toBe("curr");  // Con deuda último
   });
 });
 

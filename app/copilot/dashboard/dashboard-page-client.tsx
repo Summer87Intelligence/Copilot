@@ -901,7 +901,12 @@ export default function DashboardPageClient() {
   const [currencyData, setCurrencyData] = useState<DashboardCurrencyData[]>([]);
   const [portfolioRows, setPortfolioRows] = useState<ClientPortfolioLoad["rows"]>([]);
   const [clientStates, setClientStates] = useState<DashboardClientStates>({
-    sinDeuda: 0, conDeudaAlDia: 0, conDeudaVencida: 0, riesgoAlto: 0, total: 0,
+    sinDeuda: 0,
+    conDeuda: 0,
+    atrasado: 0,
+    critico: 0,
+    riesgoAlto: 0,
+    total: 0,
   });
   const [monthlyData, setMonthlyData] = useState<DashboardMonthlyPoint[]>([]);
   const [recentMovements, setRecentMovements] = useState<DashboardRecentMovement[]>([]);
@@ -1965,15 +1970,16 @@ export default function DashboardPageClient() {
                       <p className={`text-[10px] leading-tight ${C.muted}`}>Con deuda activa</p>
                       <p className={`mt-1 text-2xl font-bold tabular-nums ${C.ink}`}>{clientStates.total - clientStates.sinDeuda}</p>
                     </div>
+                    {/* CLIENT-DEBT-SEMANTICS-001 Etapa C: nueva taxonomía. */}
                     <div className="rounded-lg border border-[var(--copilot-warning-border)] bg-[var(--copilot-card-bg)] p-3">
-                      <p className={`text-[10px] leading-tight text-[var(--copilot-warning-text)]`}>Con atrasos</p>
+                      <p className={`text-[10px] leading-tight text-[var(--copilot-warning-text)]`}>Atrasado / Crítico</p>
                       <p className={`mt-1 text-2xl font-bold tabular-nums text-[var(--copilot-warning-text-strong)]`}>
-                        {clientStates.conDeudaVencida + clientStates.riesgoAlto}
+                        {clientStates.atrasado + clientStates.critico}
                       </p>
                     </div>
                     <div className="rounded-lg border border-[var(--copilot-success-border)] bg-[var(--copilot-card-bg)] p-3">
                       <p className={`text-[10px] leading-tight text-[var(--copilot-success-text)]`}>Al día</p>
-                      <p className={`mt-1 text-2xl font-bold tabular-nums text-[var(--copilot-success-text-strong)]`}>{clientStates.conDeudaAlDia}</p>
+                      <p className={`mt-1 text-2xl font-bold tabular-nums text-[var(--copilot-success-text-strong)]`}>{clientStates.sinDeuda}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2 border-t border-[var(--copilot-border)] pt-2">

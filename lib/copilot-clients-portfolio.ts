@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { isVoidedFinancialInvoice } from "@/lib/copilot-client-current-debt-summary";
+import { todayYmdMontevideo } from "@/lib/date/summer87-today";
 import { formatMoneyCurrency } from "@/lib/copilot-format-money";
 import {
   buildClientsDirectory,
@@ -58,6 +59,18 @@ export type ClientPortfolioRow = {
   overdue_days_uyu?: number | null;
   /** Días desde el vencimiento de la factura más antigua en mora (USD). */
   overdue_days_usd?: number | null;
+  /**
+   * CLIENT-DEBT-SEMANTICS-001: fecha de emisión (YYYY-MM-DD) de la factura
+   * impaga más antigua del cliente (cualquier moneda). Insumo para
+   * `deriveClientDebtStatus` / `derivePortfolioDebtStatus`. `null` si no hay
+   * facturas abiertas o si ninguna tiene fecha de emisión parseable.
+   */
+  oldest_open_invoice_issue_date?: string | null;
+  /**
+   * CLIENT-DEBT-SEMANTICS-001: conteo de facturas con `balance_amount > 0`
+   * (excluye NCs, shadows y deactivated).
+   */
+  open_invoices_count?: number;
   /** Forma de transferencia registrada en Copilot (no proviene de Zeta). */
   transfer_method?: string | null;
   /** Aliases de transferencia activos (de client_transfer_aliases). */
@@ -223,12 +236,12 @@ function ymd(iso: unknown): string {
   return `${y}-${m}-${day}`;
 }
 
+/**
+ * @deprecated CLIENT-DEBT-SEMANTICS-001 Etapa D: usar `todayYmdMontevideo`
+ * directamente. Alias preservado para call sites internos hasta limpieza E.
+ */
 function localTodayYmd(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return todayYmdMontevideo();
 }
 
 /** Days since the oldest overdue invoice due_date for a given currency. null if no overdue invoices. */
@@ -257,6 +270,32 @@ function currencyOf(inv: InvoiceRow): "UYU" | "USD" | null {
   const raw = String(inv.currency_code ?? "").trim().toUpperCase();
   if (raw === "UYU" || raw === "USD") return raw as "UYU" | "USD";
   return null;
+}
+
+/**
+ * CLIENT-DEBT-SEMANTICS-001: agrega para un cliente la fecha de emisión más
+ * antigua entre facturas impagas y el conteo de facturas abiertas. No usa
+ * `due_date` ni `due_date_source`: la regla Summer87 mide días desde emisión.
+ *
+ * Excluye notas de crédito (CFE 112/181/182) y filas voided. No excluye
+ * sombras Zeta saldos porque sí cuentan como deuda real para el cliente.
+ */
+function summarizeOpenInvoicesByIssueDate(
+  invs: readonly InvoiceRow[]
+): { oldest: string | null; count: number } {
+  let oldest: string | null = null;
+  let count = 0;
+  for (const inv of invs) {
+    if (isVoidedFinancialInvoice(inv as Record<string, unknown>)) continue;
+    if (isCreditNoteFromMetadata(inv.zeta_metadata)) continue;
+    const pending = num(inv.balance_amount);
+    if (pending <= 0) continue;
+    count++;
+    const d = ymd(inv.issue_date);
+    if (!d) continue;
+    if (oldest === null || d < oldest) oldest = d;
+  }
+  return { oldest, count };
 }
 
 export type InvoiceCurrencyBreakdownInput = {
@@ -623,6 +662,9 @@ export async function getClientPortfolio(
         ? String(companyRaw.transfer_method).trim()
         : null;
 
+    // CLIENT-DEBT-SEMANTICS-001 — campos derivados sobre issue_date.
+    const openInvoicesSummary = summarizeOpenInvoicesByIssueDate(invs);
+
     const row: ClientPortfolioRow = {
       company_id,
       name: entry.name,
@@ -649,6 +691,8 @@ export async function getClientPortfolio(
       has_mixed_currency: hasMixedCurrency,
       overdue_days_uyu: overdueUYU > 0 ? oldestOverdueDays(invs, "UYU", todayYmd) : null,
       overdue_days_usd: overdueUSD > 0 ? oldestOverdueDays(invs, "USD", todayYmd) : null,
+      oldest_open_invoice_issue_date: openInvoicesSummary.oldest,
+      open_invoices_count: openInvoicesSummary.count,
       transfer_method: transferMethod,
     };
     rows.push(row);

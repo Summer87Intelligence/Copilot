@@ -17,10 +17,10 @@ import {
   fmtDebtSymbol,
 } from "@/lib/hoy-debtor-expand-helpers";
 import { sortDebtorRowsByAging } from "@/lib/hoy-debtor-sort";
+import { todayYmdMontevideo } from "@/lib/date/summer87-today";
 import {
   buildDebtBreakdown,
   fmtDateShort,
-  localTodayYmd,
   type InvoiceStatusLabel,
 } from "@/lib/hoy-debt-breakdown";
 
@@ -149,14 +149,12 @@ function DebtorRowActions({ row }: { row: DebtorCollectionRow }) {
   );
 }
 
+// CLIENT-DEBT-SEMANTICS-001: badges a nivel factura por días desde emisión.
 const STATUS_BADGE_CONFIG: Record<InvoiceStatusLabel, { label: string; className: string }> = {
-  Atrasada: { label: "Atrasado", className: "bg-[var(--copilot-badge-danger-bg)]/90 text-[var(--copilot-danger-text-strong)]" },
-  "Al día": { label: "Al día", className: "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)] ring-1 ring-[var(--copilot-success-border)]" },
+  "Con deuda": { label: "Con deuda", className: "bg-[var(--copilot-surface-muted)] text-[var(--copilot-ink)]" },
+  Atrasada: { label: "Atrasado", className: "bg-[var(--copilot-badge-warning-bg)]/90 text-[var(--copilot-warning-text-strong)]" },
+  "Crítica": { label: "Crítico", className: "bg-[var(--copilot-badge-danger-bg)]/90 text-[var(--copilot-danger-text-strong)]" },
   Parcial: { label: "Parcial", className: "bg-[var(--copilot-badge-warning-bg)]/90 text-[var(--copilot-warning-text-strong)]" },
-  "Sin vencimiento": {
-    label: "Sin vto.",
-    className: "bg-[var(--copilot-surface-muted)] text-[var(--copilot-ink-muted)]",
-  },
 };
 
 function InvoiceStatusBadge({ status }: { status: InvoiceStatusLabel }) {
@@ -257,7 +255,7 @@ function DebtBreakdownSection({
                     </td>
                     <td
                       className={`px-2.5 py-1.5 tabular-nums ${
-                        item.status === "Atrasada"
+                        item.status === "Atrasada" || item.status === "Crítica"
                           ? "font-medium text-[var(--copilot-danger-text)]"
                           : "text-[var(--copilot-ink-muted)]"
                       }`}
@@ -504,7 +502,7 @@ function DebtorTable({
   portfolioDetails?: Record<string, ClientCompanyDetail>;
 }) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const today = useMemo(() => localTodayYmd(), []);
+  const today = useMemo(() => todayYmdMontevideo(), []);
 
   function toggleRow(rowId: string) {
     setExpandedRows((current) => {

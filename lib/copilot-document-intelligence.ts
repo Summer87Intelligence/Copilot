@@ -1,4 +1,5 @@
 import type { ProtoDocument } from "@/lib/copilot-documents-data";
+import { todayYmdMontevideo } from "@/lib/date/summer87-today";
 
 /** Tipos documentales usados en seeds / convención Copilot (fiscal). */
 export const FISCAL_DOCUMENT_TYPES = {
@@ -26,12 +27,11 @@ export type ObligationDocumentRisk = "low" | "medium" | "high";
 
 export type FiscalAlertPriorityLevel = "critical" | "high" | "medium";
 
+/**
+ * @deprecated CLIENT-DEBT-SEMANTICS-001 Etapa D: alias a `todayYmdMontevideo`.
+ */
 function localTodayYmd(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return todayYmdMontevideo();
 }
 
 function normType(t: string): string {
