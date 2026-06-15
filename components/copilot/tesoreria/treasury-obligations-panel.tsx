@@ -31,6 +31,7 @@ import { effectivePlannedObligationStatus } from "@/lib/treasury/treasury-obliga
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
 import {
   addDaysYmd,
+  resolveRecurringTemplateId,
   summarizeScheduledOutflows,
 } from "@/lib/treasury/treasury-scheduled-payments";
 import { isRecurringGeneratedObligation } from "@/lib/treasury/treasury-recurring-payments";
@@ -96,6 +97,9 @@ type Props = {
   filterDateTo?: string;
   filterCurrency?: "all" | "UYU" | "USD";
   filterStatus?: "all" | "pending" | "paid" | "cancelled" | "overdue";
+  filterCategory?: PlannedObligationType;
+  filterType?: "non_recurring" | "recurring";
+  onViewTemplate?: (templateId: string) => void;
 };
 
 // ─── BaseModal ───────────────────────────────────────────────────────────────
@@ -272,6 +276,7 @@ function EditModal({
   workspace: TreasuryWorkspace;
   onClose: () => void;
 }) {
+  const isRecurring = isRecurringGeneratedObligation(row);
   const [title, setTitle] = useState(row.title);
   const [obligationType, setObligationType] = useState<PlannedObligationType>(row.obligationType);
   const [amountEstimated, setAmountEstimated] = useState(String(row.amountEstimated));
@@ -279,6 +284,7 @@ function EditModal({
   const [dueDate, setDueDate] = useState(row.dueDate);
   const [dueTime, setDueTime] = useState(getDueTime(row) ?? "");
   const [notes, setNotes] = useState(row.notes ?? "");
+  const [overrideReason, setOverrideReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -292,6 +298,14 @@ function EditModal({
     if (!dueDate) { setError("La fecha de vencimiento es requerida."); return; }
     setError("");
     setSaving(true);
+    const baseMeta = buildMetaWithDueTime(row.metadata as Record<string, unknown> | null, dueTime || null);
+    const overrideMeta = isRecurring
+      ? {
+          is_manual_override: true,
+          overridden_at: new Date().toISOString(),
+          override_reason: overrideReason.trim() || null,
+        }
+      : {};
     const result = await workspace.updateObligation(row.id, {
       title: title.trim(),
       obligation_type: obligationType,
@@ -299,7 +313,7 @@ function EditModal({
       currency_code: currencyCode,
       due_date: dueDate,
       notes: notes.trim() || null,
-      metadata: buildMetaWithDueTime(row.metadata as Record<string, unknown> | null, dueTime || null),
+      metadata: { ...baseMeta, ...overrideMeta },
     });
     setSaving(false);
     if (result !== null) onClose();
@@ -308,6 +322,12 @@ function EditModal({
   return (
     <BaseModal title="Editar pago" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-3">
+        {isRecurring ? (
+          <div className="rounded-lg border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-3 py-2 text-xs text-[var(--copilot-warning-text-strong)]">
+            Este pago fue generado por una regla recurrente. Solo se modifica esta instancia.
+          </div>
+        ) : null}
+
         <label className="block text-sm">
           <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.concepto}</span>
           <input
@@ -390,6 +410,20 @@ function EditModal({
             onChange={(e) => setNotes(e.target.value)}
           />
         </label>
+
+        {isRecurring ? (
+          <label className="block text-sm">
+            <span className="mb-1 block font-medium text-[var(--copilot-ink)]">
+              Motivo del ajuste <span className="font-normal text-[var(--copilot-ink-muted)]">(opcional)</span>
+            </span>
+            <input
+              className={TESORERIA_FIELD_CLASS}
+              placeholder="Ej: Bono agosto, ajuste acordado…"
+              value={overrideReason}
+              onChange={(e) => setOverrideReason(e.target.value)}
+            />
+          </label>
+        ) : null}
 
         {error ? (
           <p className="text-xs text-[var(--copilot-danger-text)]" role="alert">
@@ -606,10 +640,12 @@ function RowActionsCell({
   row,
   asOfDate,
   onAction,
+  onViewTemplate,
 }: {
   row: PlannedCashObligation;
   asOfDate: string;
   onAction: (modal: ActiveModal) => void;
+  onViewTemplate?: (templateId: string) => void;
 }) {
   const { canWrite } = useCopilotPermissions();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -651,6 +687,15 @@ function RowActionsCell({
   }
 
   const menuItems: { label: string; onClick: () => void; danger?: boolean }[] = [];
+  if (isRecurringGeneratedObligation(row) && onViewTemplate) {
+    const templateId = resolveRecurringTemplateId(row);
+    if (templateId) {
+      menuItems.push({
+        label: "Ver regla recurrente",
+        onClick: () => onViewTemplate(templateId),
+      });
+    }
+  }
   if (actions.canCancel) {
     menuItems.push({
       label: "Cancelar pago",
@@ -752,6 +797,9 @@ export function TreasuryObligationsPanel({
   filterDateTo = "",
   filterCurrency = "all",
   filterStatus = "all",
+  filterCategory,
+  filterType,
+  onViewTemplate,
 }: Props) {
   const { canWrite } = useCopilotPermissions();
   const [search, setSearch] = useState(filterSearch ?? "");
@@ -788,6 +836,9 @@ export function TreasuryObligationsPanel({
       if (filterCurrency !== "all" && o.currencyCode !== filterCurrency) return false;
       if (filterDateFrom && o.dueDate < filterDateFrom) return false;
       if (filterDateTo && o.dueDate > filterDateTo) return false;
+      if (filterCategory && o.obligationType !== filterCategory) return false;
+      if (filterType === "non_recurring" && isRecurringGeneratedObligation(o)) return false;
+      if (filterType === "recurring" && !isRecurringGeneratedObligation(o)) return false;
       const st = effectivePlannedObligationStatus(o.status, o.dueDate, asOfDate);
       if (filterStatus === "pending" && !["planned", "confirmed"].includes(st)) return false;
       if (filterStatus === "overdue" && st !== "overdue") return false;
@@ -807,6 +858,8 @@ export function TreasuryObligationsPanel({
     filterDateFrom,
     filterDateTo,
     filterStatus,
+    filterCategory,
+    filterType,
     asOfDate,
   ]);
 
@@ -943,6 +996,14 @@ export function TreasuryObligationsPanel({
                       <CopilotBadge tone="neutral">Recurrente</CopilotBadge>
                     </span>
                   ) : null}
+                  {row.metadata?.is_manual_override ? (
+                    <span
+                      className="ml-1 inline-block"
+                      title={`Ajustado manualmente${row.metadata.overridden_at ? ` el ${String(row.metadata.overridden_at).slice(0, 10)}` : ""}${row.metadata.override_reason ? ` — ${String(row.metadata.override_reason)}` : ""}`}
+                    >
+                      <CopilotBadge tone="warning">AJUSTADO</CopilotBadge>
+                    </span>
+                  ) : null}
                 </>
               ),
             },
@@ -987,7 +1048,7 @@ export function TreasuryObligationsPanel({
               key: "acciones",
               header: "Acciones",
               render: (row) => (
-                <RowActionsCell row={row} asOfDate={asOfDate} onAction={setActiveModal} />
+                <RowActionsCell row={row} asOfDate={asOfDate} onAction={setActiveModal} onViewTemplate={onViewTemplate} />
               ),
             },
           ] satisfies CopilotResponsiveTableColumn<PlannedCashObligation>[]}
@@ -999,6 +1060,7 @@ export function TreasuryObligationsPanel({
                   <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">
                     {obligationCategoryLabel(row)}
                     {isRecurringGeneratedObligation(row) ? " · Recurrente" : ""}
+                    {row.metadata?.is_manual_override ? " · AJUSTADO" : ""}
                   </p>
                 </div>
                 <CopilotBadge tone={statusBadgeTone(row)}>
@@ -1026,7 +1088,7 @@ export function TreasuryObligationsPanel({
                 </div>
               </dl>
               <div className="mt-3 flex justify-end border-t border-[var(--copilot-border)] pt-3">
-                <RowActionsCell row={row} asOfDate={asOfDate} onAction={setActiveModal} />
+                <RowActionsCell row={row} asOfDate={asOfDate} onAction={setActiveModal} onViewTemplate={onViewTemplate} />
               </div>
             </>
           )}

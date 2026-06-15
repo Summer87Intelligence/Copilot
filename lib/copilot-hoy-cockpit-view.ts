@@ -147,24 +147,24 @@ function worseAfterPaymentsAccent(
 }
 
 function accentFromProjection(
-  proj: TodayBusinessPulse["projection30dBlocks"][number] | undefined,
-  amount: number
+  proj: TodayBusinessPulse["projection30dBlocks"][number] | undefined
 ): CockpitAfterPaymentsAccent {
-  if (proj?.hasConfiguredPayments) {
-    if (proj.safeCoverageStatus === "critical") return "critical";
-    if (proj.safeCoverageStatus === "attention") return "adjusted";
-    return "comfortable";
+  if (!proj?.hasConfiguredPayments) {
+    return (proj?.currentCash ?? 0) < 0 ? "critical" : "comfortable";
   }
-  return amount < 0 ? "critical" : "comfortable";
+  if (proj.expectedCash30d < 0) return "critical";
+  if (proj.safeCash30d < 0) return "adjusted";
+  if (proj.safeCoverageStatus === "attention") return "adjusted";
+  return "comfortable";
 }
 
 function footnoteForAccent(accent: CockpitAfterPaymentsAccent): CockpitFootnote {
-  if (accent === "critical") return { tone: "danger", text: "Riesgo de caja" };
-  if (accent === "adjusted") return { tone: "warn", text: "Cobertura ajustada" };
-  return { tone: "ok", text: "Caja cubierta" };
+  if (accent === "critical") return { tone: "danger", text: "Riesgo — no alcanza aun cobrando" };
+  if (accent === "adjusted") return { tone: "warn", text: "Cubierto si cobrás lo previsto" };
+  return { tone: "ok", text: "Cubierto con caja actual" };
 }
 
-/** Caja tras pagos 30d — usa safeCash30d (caja − programados; manuales ya en availableCash). */
+/** Cobertura 30d — muestra expectedCash30d (caja + por cobrar − pagos); fórmulas sin cambios. */
 function buildAfterPaymentsBlock(pulse: TodayBusinessPulse): CockpitMoneyBlock {
   const amounts: CockpitCurrencyAmount[] = [];
   let accent: CockpitAfterPaymentsAccent = "comfortable";
@@ -174,7 +174,11 @@ function buildAfterPaymentsBlock(pulse: TodayBusinessPulse): CockpitMoneyBlock {
     const cur = pulse.currentStateBlocks.find((b) => b.currency === c);
     if (!proj && !cur) continue;
 
-    const amount = proj ? proj.safeCash30d : (cur?.cashAvailable ?? 0);
+    const amount = proj
+      ? proj.hasConfiguredPayments
+        ? proj.expectedCash30d
+        : proj.currentCash
+      : (cur?.cashAvailable ?? 0);
     const show =
       amount !== 0 ||
       (cur?.cashAvailable ?? 0) !== 0 ||
@@ -182,7 +186,7 @@ function buildAfterPaymentsBlock(pulse: TodayBusinessPulse): CockpitMoneyBlock {
     if (!show) continue;
 
     amounts.push({ currency: c, amount, formatted: fmtCurrencyAmount(amount, c) });
-    accent = worseAfterPaymentsAccent(accent, accentFromProjection(proj, amount));
+    accent = worseAfterPaymentsAccent(accent, accentFromProjection(proj));
   }
 
   return { amounts, footnote: footnoteForAccent(accent), afterPaymentsAccent: accent };

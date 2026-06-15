@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, ChevronDown, Loader2, SlidersHorizontal, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, Loader2, SlidersHorizontal, X, XCircle } from "lucide-react";
 
 import type { TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
 
@@ -124,6 +124,64 @@ function formatMovementAmount(row: ManualCashMovement): { text: string; classNam
   return { text: formatted, className: "text-[var(--copilot-ink-muted)]" };
 }
 
+function DeleteConfirmModal({
+  row,
+  onConfirm,
+  onClose,
+}: {
+  row: ManualCashMovement;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[var(--copilot-z-modal)] flex items-center justify-center bg-[var(--copilot-overlay-backdrop)] p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="w-full max-w-sm rounded-2xl bg-[var(--copilot-card)] shadow-2xl">
+        <div className="flex items-center justify-between border-b border-[var(--copilot-border)] px-5 py-4">
+          <h3 className="text-base font-semibold text-[var(--copilot-ink)]">Eliminar movimiento</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1 text-[var(--copilot-ink-muted)] transition hover:bg-[rgba(44,40,37,0.06)]"
+            aria-label="Cerrar"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="space-y-4 px-5 py-4">
+          <p className="text-sm font-medium text-[var(--copilot-ink)]">{row.concept}</p>
+          {row.reconciled ? (
+            <div className="rounded-lg border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-3 py-2 text-xs text-[var(--copilot-warning-text-strong)]">
+              Este movimiento está conciliado. Eliminarlo puede afectar la conciliación bancaria.
+            </div>
+          ) : null}
+          <p className="text-sm text-[var(--copilot-ink-muted)]">Esta acción no se puede deshacer.</p>
+          <div className="flex justify-end gap-2">
+            <CopilotButton type="button" variant="secondary" onClick={onClose}>
+              Cancelar
+            </CopilotButton>
+            <CopilotButton type="button" variant="danger" onClick={onConfirm}>
+              Eliminar
+            </CopilotButton>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MovementMobileCard({
   row,
   canWrite,
@@ -153,25 +211,32 @@ function MovementMobileCard({
         Estado: {row.status === "active" ? "Activo" : "Archivado"}
       </p>
       {canWrite ? (
-        <div className="mt-2.5 flex flex-wrap gap-2">
-          <CopilotButton
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={onEdit}
-            disabled={!isManualCashMovementDeletable(row)}
-          >
-            Editar
-          </CopilotButton>
-          {isManualCashMovementDeletable(row) ? (
-            <CopilotButton type="button" variant="danger" size="sm" onClick={onDelete}>
-              Eliminar
+        <div className="mt-2.5 space-y-1.5">
+          <div className="flex flex-wrap gap-2">
+            <CopilotButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={onEdit}
+              disabled={!isManualCashMovementDeletable(row)}
+            >
+              Editar
             </CopilotButton>
-          ) : null}
-          {row.status === "active" && isManualCashMovementDeletable(row) && row.reconciled ? (
-            <CopilotButton type="button" variant="danger" size="sm" onClick={onArchive}>
-              Revertir
-            </CopilotButton>
+            {isManualCashMovementDeletable(row) ? (
+              <CopilotButton type="button" variant="danger" size="sm" onClick={onDelete}>
+                Eliminar
+              </CopilotButton>
+            ) : null}
+            {row.status === "active" && isManualCashMovementDeletable(row) && row.reconciled ? (
+              <CopilotButton type="button" variant="danger" size="sm" onClick={onArchive}>
+                Revertir
+              </CopilotButton>
+            ) : null}
+          </div>
+          {!isManualCashMovementDeletable(row) ? (
+            <p className="text-[10px] text-[var(--copilot-ink-muted)]">
+              Los movimientos de Zeta deben corregirse en Zeta.
+            </p>
           ) : null}
         </div>
       ) : null}
@@ -211,6 +276,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
   const [accountingMap, setAccountingMap] = useState<Map<string, TreasuryMovementAccounting>>(new Map());
   const [accountingLoading, setAccountingLoading] = useState(false);
   const [savingAccountingId, setSavingAccountingId] = useState<string | null>(null);
+  const [deletingRow, setDeletingRow] = useState<ManualCashMovement | null>(null);
 
   const loadAccounting = useCallback(async () => {
     if (workspace.manualMovements.length === 0) return;
@@ -504,12 +570,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                 row={row}
                 canWrite={canWrite}
                 onEdit={() => openEdit(row)}
-                onDelete={() => {
-                  const msg = row.reconciled
-                    ? "Este movimiento está conciliado. Eliminarlo puede afectar la conciliación.\n\n¿Eliminar este movimiento de caja? Esta acción no se puede deshacer."
-                    : "¿Eliminar este movimiento de caja? Esta acción no se puede deshacer.";
-                  if (window.confirm(msg)) void workspace.deleteManual(row.id);
-                }}
+                onDelete={() => setDeletingRow(row)}
                 onArchive={() => void workspace.archiveManual(row.id)}
               />
             </li>
@@ -630,15 +691,15 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                             type="button"
                             variant="danger"
                             size="sm"
-                            onClick={() => {
-                              const msg = row.reconciled
-                                ? "Este movimiento está conciliado. Eliminarlo puede afectar la conciliación.\n\n¿Eliminar este movimiento de caja? Esta acción no se puede deshacer."
-                                : "¿Eliminar este movimiento de caja? Esta acción no se puede deshacer.";
-                              if (window.confirm(msg)) void workspace.deleteManual(row.id);
-                            }}
+                            onClick={() => setDeletingRow(row)}
                           >
                             Eliminar
                           </CopilotButton>
+                        ) : null}
+                        {!isManualCashMovementDeletable(row) ? (
+                          <p className="text-[10px] text-[var(--copilot-ink-muted)]">
+                            Los movimientos de Zeta deben corregirse en Zeta.
+                          </p>
                         ) : null}
                         {row.status === "active" && isManualCashMovementDeletable(row) && row.reconciled ? (
                           <CopilotButton
@@ -671,6 +732,17 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
           </span>
           <CopilotPagination page={page} pageCount={pageCount} onPageChange={setPage} />
         </div>
+      ) : null}
+
+      {deletingRow ? (
+        <DeleteConfirmModal
+          row={deletingRow}
+          onConfirm={() => {
+            void workspace.deleteManual(deletingRow.id);
+            setDeletingRow(null);
+          }}
+          onClose={() => setDeletingRow(null)}
+        />
       ) : null}
 
       {drawerOpen ? (

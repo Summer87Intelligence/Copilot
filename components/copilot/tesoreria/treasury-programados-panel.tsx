@@ -4,13 +4,20 @@ import { useMemo, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 
 import { CopilotSectionTitle } from "@/components/copilot/copilot-ui";
+import { CopilotButton } from "@/components/copilot/ui/copilot-button";
+import { CopilotPagination } from "@/components/copilot/ui/copilot-pagination";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
 import { effectivePlannedObligationStatus } from "@/lib/treasury/treasury-obligation-status";
 import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
-import type { PlannedCashObligation } from "@/lib/treasury/treasury-types";
-import { TESORERIA_FIELD_CLASS, TESORERIA_FORM_LABEL_CLASS, TESORERIA_PAYMENT_FIELD } from "./tesoreria-ui";
+import type { PlannedCashObligation, TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
+import {
+  TESORERIA_FIELD_CLASS,
+  TESORERIA_FORM_LABEL_CLASS,
+  TESORERIA_PAGE_SIZE,
+  TESORERIA_PAYMENT_FIELD,
+} from "./tesoreria-ui";
 
 const STATUS_LABEL: Record<string, string> = {
   planned: "Pendiente",
@@ -264,23 +271,35 @@ export function TreasuryProgramadosPanel({
   historialOnly?: boolean;
 }) {
   const [showPaid, setShowPaid] = useState(true);
+  const [histSearch, setHistSearch] = useState("");
+  const [histCurrency, setHistCurrency] = useState<"all" | TreasuryCurrencyCode>("all");
+  const [histDateFrom, setHistDateFrom] = useState("");
+  const [histDateTo, setHistDateTo] = useState("");
+  const [histPage, setHistPage] = useState(0);
 
   const outflows = useMemo(
     () => workspace.obligations.filter((o) => o.direction === "outflow"),
     [workspace.obligations]
   );
 
-  const paid = useMemo(
-    () =>
-      outflows
-        .filter((o) => {
-          const s = effectivePlannedObligationStatus(o.status, o.dueDate, asOfDate);
-          return s === "paid" || s === "cancelled";
-        })
-        .sort((a, b) => b.dueDate.localeCompare(a.dueDate))
-        .slice(0, 20),
-    [outflows, asOfDate]
-  );
+  const paid = useMemo(() => {
+    const q = histSearch.trim().toLowerCase();
+    return outflows
+      .filter((o) => {
+        const s = effectivePlannedObligationStatus(o.status, o.dueDate, asOfDate);
+        if (s !== "paid" && s !== "cancelled") return false;
+        if (histCurrency !== "all" && o.currencyCode !== histCurrency) return false;
+        if (histDateFrom && o.dueDate < histDateFrom) return false;
+        if (histDateTo && o.dueDate > histDateTo) return false;
+        if (q && !o.title.toLowerCase().includes(q) && !(o.notes ?? "").toLowerCase().includes(q))
+          return false;
+        return true;
+      })
+      .sort((a, b) => b.dueDate.localeCompare(a.dueDate));
+  }, [outflows, asOfDate, histSearch, histCurrency, histDateFrom, histDateTo]);
+
+  const histPageCount = Math.max(1, Math.ceil(paid.length / TESORERIA_PAGE_SIZE));
+  const histPageItems = paid.slice(histPage * TESORERIA_PAGE_SIZE, (histPage + 1) * TESORERIA_PAGE_SIZE);
 
   const loading = workspace.loading && workspace.lastFetchedAt == null;
 
@@ -288,11 +307,14 @@ export function TreasuryProgramadosPanel({
     return null;
   }
 
+  const inputCls =
+    "h-8 w-full rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 text-xs text-[var(--copilot-ink)] placeholder:text-[var(--copilot-ink-muted)] focus:border-[var(--copilot-accent)] focus:outline-none";
+
   return (
     <section className="space-y-4">
       <CopilotSectionTitle
         title="Historial"
-        subtitle="Pagos pagados o cancelados recientes. No afectan la proyección de caja."
+        subtitle="Pagos pagados o cancelados. No afectan la proyección de caja."
       />
 
       {loading ? (
@@ -301,29 +323,109 @@ export function TreasuryProgramadosPanel({
             <div key={i} className="h-14 animate-pulse rounded-2xl bg-[var(--copilot-soft-bg)]" />
           ))}
         </div>
-      ) : paid.length === 0 ? (
-        <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-4 py-6 text-center">
-          <p className="text-sm font-medium text-[var(--copilot-ink)]">Sin historial reciente</p>
-          <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
-            Los pagos confirmados o cancelados aparecerán acá.
-          </p>
-        </div>
       ) : (
         <>
-          <button
-            type="button"
-            onClick={() => setShowPaid((v) => !v)}
-            className="text-xs font-medium text-[var(--copilot-ink-muted)] hover:underline"
-          >
-            {showPaid ? "Ocultar" : "Ver"} historial ({paid.length})
-          </button>
-          {showPaid ? (
-            <ul className="space-y-2">
-              {paid.map((o) => (
-                <ProgramadoRow key={o.id} obl={o} workspace={workspace} asOfDate={asOfDate} />
-              ))}
-            </ul>
-          ) : null}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <input
+              type="search"
+              aria-label="Buscar historial"
+              placeholder="Buscar…"
+              className={`${inputCls} col-span-2 sm:col-span-1`}
+              value={histSearch}
+              onChange={(e) => {
+                setHistSearch(e.target.value);
+                setHistPage(0);
+              }}
+            />
+            <select
+              aria-label="Moneda historial"
+              className={inputCls}
+              value={histCurrency}
+              onChange={(e) => {
+                setHistCurrency(e.target.value as "all" | TreasuryCurrencyCode);
+                setHistPage(0);
+              }}
+            >
+              <option value="all">Moneda · Todas</option>
+              <option value="UYU">UYU</option>
+              <option value="USD">USD</option>
+            </select>
+            <input
+              type="date"
+              aria-label="Desde historial"
+              className={inputCls}
+              value={histDateFrom}
+              onChange={(e) => {
+                setHistDateFrom(e.target.value);
+                setHistPage(0);
+              }}
+            />
+            <input
+              type="date"
+              aria-label="Hasta historial"
+              className={inputCls}
+              value={histDateTo}
+              onChange={(e) => {
+                setHistDateTo(e.target.value);
+                setHistPage(0);
+              }}
+            />
+          </div>
+
+          {paid.length === 0 ? (
+            <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-4 py-6 text-center">
+              <p className="text-sm font-medium text-[var(--copilot-ink)]">Sin historial</p>
+              <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">
+                Los pagos confirmados o cancelados aparecerán acá.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setShowPaid((v) => !v)}
+                  className="text-xs font-medium text-[var(--copilot-ink-muted)] hover:underline"
+                >
+                  {showPaid ? "Ocultar" : "Ver"} historial ({paid.length})
+                </button>
+                {(histSearch || histCurrency !== "all" || histDateFrom || histDateTo) ? (
+                  <CopilotButton
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setHistSearch("");
+                      setHistCurrency("all");
+                      setHistDateFrom("");
+                      setHistDateTo("");
+                      setHistPage(0);
+                    }}
+                  >
+                    Limpiar
+                  </CopilotButton>
+                ) : null}
+              </div>
+
+              {showPaid ? (
+                <>
+                  <ul className="space-y-2">
+                    {histPageItems.map((o) => (
+                      <ProgramadoRow key={o.id} obl={o} workspace={workspace} asOfDate={asOfDate} />
+                    ))}
+                  </ul>
+                  {paid.length > TESORERIA_PAGE_SIZE ? (
+                    <div className="flex flex-col items-center gap-2 pt-1">
+                      <span className="text-xs text-[var(--copilot-ink-muted)]">
+                        {paid.length} registro{paid.length !== 1 ? "s" : ""} · página {histPage + 1} de {histPageCount}
+                      </span>
+                      <CopilotPagination page={histPage} pageCount={histPageCount} onPageChange={setHistPage} />
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
+            </>
+          )}
         </>
       )}
     </section>

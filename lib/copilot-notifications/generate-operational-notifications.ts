@@ -8,6 +8,8 @@ import {
   notifyNewDebtor,
   notifyTreasuryPaymentDue,
   notifyTreasuryPaymentOverdue,
+  notifyCashRiskDetected,
+  type CashRiskCurrencyDetail,
 } from "./notification-events";
 import { businessDateYmd } from "./business-date";
 import {
@@ -617,12 +619,112 @@ async function generateDebtFollowupSummaryNotification(
   tally(acc, "debt_followup_summary", r);
 }
 
+// ─── Cash risk ───────────────────────────────────────────────────────────────
+
+/**
+ * Fires cash_risk_detected when projected cash (opening balance + net manual
+ * movements − upcoming 30d outflows) is negative for any currency.
+ * Deduped per day per affected currency set — fires at most once per day.
+ */
+async function generateCashRiskNotifications(
+  admin: AdminClient,
+  tenantCompanyId: string,
+  now: Date,
+  inactiveTemplateIds: ReadonlySet<string>,
+  acc: GenerateResult
+) {
+  const today = todayYmd(now);
+  const horizon = futureDateYmd(now, 30);
+
+  // Opening balances — one row per currency
+  const { data: balancesData } = await admin
+    .from("treasury_cash_opening_balances")
+    .select("currency_code, amount, effective_date")
+    .eq("workspace_id", tenantCompanyId);
+
+  const openingByCurrency: Record<string, { amount: number; effectiveDate: string }> = {};
+  for (const b of (balancesData ?? []) as Record<string, unknown>[]) {
+    const cur = String(b.currency_code ?? "").trim().toUpperCase();
+    const date = String(b.effective_date ?? "").slice(0, 10);
+    if (cur) {
+      openingByCurrency[cur] = { amount: Number(b.amount ?? 0), effectiveDate: date };
+    }
+  }
+
+  // Manual cash movements after each baseline date
+  const { data: movementsData } = await admin
+    .from("manual_cash_movements")
+    .select("currency_code, movement_type, amount, movement_date, status, metadata")
+    .eq("workspace_id", tenantCompanyId)
+    .eq("status", "active")
+    .limit(500);
+
+  const netManualByCurrency: Record<string, number> = {};
+  for (const m of (movementsData ?? []) as Record<string, unknown>[]) {
+    const cur = String(m.currency_code ?? "").trim().toUpperCase();
+    if (!cur) continue;
+    const meta = m.metadata as Record<string, unknown> | null | undefined;
+    if (meta?.kind === "opening_balance") continue; // skip proxy rows
+    const baseline = openingByCurrency[cur]?.effectiveDate ?? "";
+    const movDate = String(m.movement_date ?? "").slice(0, 10);
+    if (baseline && movDate < baseline) continue;
+    const amt = Number(m.amount ?? 0);
+    const type = String(m.movement_type ?? "");
+    if (type === "income") {
+      netManualByCurrency[cur] = (netManualByCurrency[cur] ?? 0) + amt;
+    } else if (type === "expense") {
+      netManualByCurrency[cur] = (netManualByCurrency[cur] ?? 0) - amt;
+    }
+  }
+
+  // Upcoming 30d outflows
+  const { data: obligationsData } = await admin
+    .from("planned_cash_obligations")
+    .select(
+      "currency_code, amount_estimated, amount_final, direction, affects_cashflow, " +
+      "due_date, status, recurring_template_id, recurring_instance_key, metadata"
+    )
+    .eq("workspace_id", tenantCompanyId)
+    .in("status", ["planned", "confirmed", "overdue"])
+    .lte("due_date", horizon)
+    .limit(200);
+
+  const committedByCurrency: Record<string, number> = {};
+  for (const ob of (obligationsData ?? []) as unknown as Record<string, unknown>[]) {
+    if (ob.direction !== "outflow" || ob.affects_cashflow === false) continue;
+    if (!isObligationEligible(ob, inactiveTemplateIds)) continue;
+    const cur = String(ob.currency_code ?? "").trim().toUpperCase();
+    if (!cur) continue;
+    const amt = Number(ob.amount_final ?? ob.amount_estimated ?? 0);
+    committedByCurrency[cur] = (committedByCurrency[cur] ?? 0) + amt;
+  }
+
+  // Evaluate deficit per currency
+  const affectedCurrencies: CashRiskCurrencyDetail[] = [];
+  for (const cur of ["UYU", "USD"]) {
+    const opening = openingByCurrency[cur]?.amount ?? 0;
+    const net = netManualByCurrency[cur] ?? 0;
+    const available = opening + net;
+    const committed = committedByCurrency[cur] ?? 0;
+    const deficit = available - committed;
+    if (deficit < 0) {
+      affectedCurrencies.push({ currency: cur, availableCash: available, committedOutflows: committed, deficit });
+    }
+  }
+
+  if (affectedCurrencies.length === 0) return;
+
+  const r = await notifyCashRiskDetected({
+    tenantCompanyId,
+    asOfYmd: today,
+    affectedCurrencies,
+  });
+  tally(acc, "cash_risk_detected", r);
+}
+
 // ─── Not yet implemented generators ──────────────────────────────────────────
 // TODO: notifySyncChangesDetected — requires the sync job to emit a structured
 //   summary (added/updated/removed counts) and pass it to this generator.
-//
-// TODO: cash_risk_detected — requiere modelo de umbral de caja y eventos de
-//   movimiento en tiempo real; fuera de alcance de este ticket.
 
 // ─── Public entry point ───────────────────────────────────────────────────────
 
@@ -648,6 +750,7 @@ export async function generateOperationalNotificationsForWorkspace({
   await Promise.allSettled([
     generateTreasuryDueNotifications(admin, workspaceCompanyId, now, inactiveTemplateIds, acc),
     generateTreasuryOverdueNotifications(admin, workspaceCompanyId, now, inactiveTemplateIds, acc),
+    generateCashRiskNotifications(admin, workspaceCompanyId, now, inactiveTemplateIds, acc),
     generateInvoiceOverdueNotifications(admin, workspaceCompanyId, now, acc),
     generateNewDebtorNotifications(admin, workspaceCompanyId, now, acc),
     generateRecentCollectionNotifications(admin, workspaceCompanyId, now, acc),

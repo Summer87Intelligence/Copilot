@@ -84,13 +84,14 @@ export function resolveHoyTodayPriority(
   if (input.cashAfterPaymentsCritical) {
     return {
       kind: "treasury_review",
-      title: "Revisar Tesorería",
+      title: "Revisar cobertura de pagos",
       description:
-        "La caja después de pagos programados queda ajustada. Revisá saldo actual y compromisos.",
+        "La cobertura con cobros esperados queda ajustada. Revisá saldo actual y compromisos.",
       primaryCta: {
-        label: "Ver Tesorería",
-        action: { type: "link", href: "/copilot/tesoreria" },
+        label: "Ver pagos próximos",
+        action: { type: "link", href: "/copilot/tesoreria?section=obligations" },
       },
+      secondaryCta: { label: "Ver Tesorería", href: "/copilot/tesoreria" },
     };
   }
 

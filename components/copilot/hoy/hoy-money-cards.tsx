@@ -409,15 +409,57 @@ function HoyPaymentsDetailInline({
   );
 }
 
+function fmtAmountShort(amount: number, currency: "UYU" | "USD"): string {
+  const full = fmtCurrencyAmount(amount, currency);
+  if (currency === "USD") return full.replace(/^USD /, "");
+  if (currency === "UYU") return full.replace(/^UYU /, "");
+  return full;
+}
+
+function CoverageFormulaCompact({ blocks }: { blocks: readonly HoyProjection30dBlock[] }) {
+  if (blocks.length === 0) return null;
+  return (
+    <div className="hidden sm:block mt-1 rounded-lg bg-[var(--copilot-soft-bg)] px-2.5 py-2 space-y-1.5">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--copilot-ink-muted)]">
+        Caja + cobros probables − pagos próximos
+      </p>
+      {blocks.map((block) => (
+        <div key={block.currency} className="flex items-baseline gap-1 text-[10px] tabular-nums flex-wrap">
+          <span className={`shrink-0 font-bold uppercase ${copilotCurrencyClass(block.currency)}`}>
+            {block.currency}
+          </span>
+          <span className="text-[var(--copilot-ink-muted)]">
+            {fmtAmountShort(block.currentCash, block.currency)}
+            {" + "}
+            {fmtAmountShort(block.pendingReceivables, block.currency)}
+            {" − "}
+            {fmtAmountShort(block.hasConfiguredPayments ? block.scheduledPayments : 0, block.currency)}
+            {" ="}
+          </span>
+          <span className={`font-semibold text-[var(--copilot-ink)] ${metricValueClass}`}>
+            {fmtAmountShort(block.expectedCash30d, block.currency)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ProjectionCurrencyBlock({ block }: { block: HoyProjection30dBlock }) {
   const rows = [
-    { label: "Caja actual", value: block.currentCash },
-    { label: "Cobros esperados", value: block.pendingReceivables },
+    { label: "Caja disponible", value: block.currentCash },
+    { label: "Cobros probables", value: block.pendingReceivables },
     {
       label: "Pagos próximos",
       value: block.hasConfiguredPayments ? block.scheduledPayments : 0,
     },
-    { label: "Caja proyectada", value: block.safeCash30d },
+    {
+      label: "= Cobertura estimada",
+      value: block.hasConfiguredPayments ? block.expectedCash30d : block.currentCash,
+    },
+    ...(block.hasConfiguredPayments
+      ? [{ label: "Solo con caja actual", value: block.safeCash30d }]
+      : []),
   ];
 
   return (
@@ -567,6 +609,9 @@ function MoneyCard({
           </CopilotButtonLink>
         ) : (
           <>
+            {showProjectionDetail && projection30dBlocks && projection30dBlocks.length > 0 ? (
+              <CoverageFormulaCompact blocks={projection30dBlocks} />
+            ) : null}
             <DetailToggleButton
               open={detailOpen}
               onToggle={(e) => {
@@ -796,6 +841,7 @@ export function HoyMoneyCards({
         cardId="afterPayments"
         variant="afterPayments"
         title={HOY_COCKPIT.afterPayments}
+        subtitle="¿Podés cubrir los pagos que vienen?"
         block={afterPayments}
         projection30dBlocks={projection30dBlocks}
         onCardClick={onCardClick}

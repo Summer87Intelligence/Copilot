@@ -25,7 +25,9 @@ import type {
   TreasuryOutflowSummary,
   TreasuryScheduledPayment,
 } from "@/lib/treasury/treasury-scheduled-payments";
+import { CopilotCollapsiblePanel } from "@/components/copilot/copilot-collapsible-panel";
 import { HoyMonthEndProjectionSection } from "./hoy-month-end-projection-section";
+import { HoyUpcomingCommitmentsSection } from "./hoy-upcoming-commitments-section";
 
 import { AttentionClientsDrawer } from "./hoy-attention-clients-drawer";
 import { CollectionAgendaHoyCard } from "./collection-agenda-hoy-card";
@@ -233,6 +235,13 @@ export function HoyPageView({
 
   const riskDebtorRows = pulse.allDebtorRows;
 
+  const scrollToUpcomingPayments = () => {
+    document.getElementById("pagos-proximos")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
   const scrollToCriticalClients = () => {
     document.getElementById("clientes-criticos")?.scrollIntoView({
       behavior: "smooth",
@@ -290,11 +299,10 @@ export function HoyPageView({
           debtorClientsCount={pulse.clientCounts.debtorClients}
           cashAfterPaymentsCritical={
             cockpit.afterPayments.afterPaymentsAccent === "critical" ||
-            pulse.projection30dBlocks.some(
-              (b) => b.hasConfiguredPayments && b.safeCash30d < 0
-            )
+            cockpit.afterPayments.afterPaymentsAccent === "adjusted"
           }
           onScrollToCriticalClients={scrollToCriticalClients}
+          onScrollToUpcomingPayments={scrollToUpcomingPayments}
         />
 
         <HoyMoneyCards
@@ -309,6 +317,11 @@ export function HoyPageView({
           today={today}
           onCardClick={setCockpitCard}
           activeCard={cockpitCard}
+        />
+
+        <HoyUpcomingCommitmentsSection
+          payments={treasuryScheduledPayments ?? []}
+          today={today}
         />
 
         <CopilotCard className="w-full !p-3">
@@ -365,12 +378,14 @@ export function HoyPageView({
 
         <CollectionAgendaHoyCard />
 
-        <HoyMonthEndProjectionSection
-          scenarioProjections={pulse.monthEndScenarioProjections}
-          drawerOpen={monthEndDrawerOpen}
-          onOpenDrawer={() => setMonthEndDrawerOpen(true)}
-          onCloseDrawer={() => setMonthEndDrawerOpen(false)}
-        />
+        <CopilotCollapsiblePanel title={HOY_COPY.monthEndCollapsedTitle} defaultOpen={false}>
+          <HoyMonthEndProjectionSection
+            scenarioProjections={pulse.monthEndScenarioProjections}
+            drawerOpen={monthEndDrawerOpen}
+            onOpenDrawer={() => setMonthEndDrawerOpen(true)}
+            onCloseDrawer={() => setMonthEndDrawerOpen(false)}
+          />
+        </CopilotCollapsiblePanel>
 
       </div>
 
