@@ -126,7 +126,8 @@ export const HOY_COPY = {
   noIncomeRegistered: "Sin entradas registradas",
   noExpenseRegistered: "Sin salidas registradas",
   projection30Title: "Próximos 30 días",
-  projection30Tip: "Caja actual, pagos cargados y escenario si cobrás lo pendiente.",
+  projection30Tip:
+    "Incluye ingresos, egresos, pagos programados y pagos generados por recurrentes. Escenario si cobrás lo pendiente.",
   /** @deprecated Usar `availableCashLabel`. */
   currentCashLabel: "Caja disponible",
   scheduledPaymentsLabel: "Pagos programados",

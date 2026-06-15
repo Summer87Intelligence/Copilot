@@ -22,6 +22,7 @@ import {
   safeCashBalance30d,
   type CashPositionByCurrency,
 } from "@/lib/treasury/treasury-cash-position";
+import { buildTreasuryProjectionHorizon } from "@/lib/treasury/treasury-projection-engine";
 import type { CoverageStatus, TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
 
 export type { CoverageStatus };
@@ -125,42 +126,30 @@ export function buildHoyProjection30dBlocks(p: {
   cashPositionBlocks: readonly HoyCashPositionBlock[];
   pendingByCurrency: CarteraCurrencyTotals;
   treasurySummaries: readonly TreasuryOutflowSummary[];
+  asOfDate?: string;
 }): HoyProjection30dBlock[] {
-  const blocks: HoyProjection30dBlock[] = [];
-
-  for (const currency of ["UYU", "USD"] as const) {
-    const cash = p.cashPositionBlocks.find((b) => b.currency === currency);
-    const pending = p.pendingByCurrency[currency] ?? 0;
-    const summary = p.treasurySummaries.find((s) => s.currency === currency) ?? null;
-    const scheduled = summary?.next30Days ?? 0;
-    const hasConfigured = (summary?.itemsCount ?? 0) > 0;
-    const currentCash = cash?.availableCash ?? 0;
-
-    const hasActivity = currentCash !== 0 || pending > 0 || hasConfigured;
-    if (!hasActivity) continue;
-
-    const safeCash30d = hasConfigured
-      ? safeCashBalance30d(currentCash, scheduled)
-      : currentCash;
-    const expectedCash30d = hasConfigured
-      ? expectedCashBalance30d(currentCash, pending, scheduled)
-      : currentCash + pending;
-
-    blocks.push({
-      currency,
-      currentCash,
-      scheduledPayments: hasConfigured ? scheduled : 0,
-      safeCash30d,
-      pendingReceivables: pending,
-      expectedCash30d,
-      hasConfiguredPayments: hasConfigured,
-      safeCoverageStatus: hasConfigured
-        ? safeCoverageStatus(safeCash30d, scheduled)
-        : "healthy",
-    });
+  const cashByCurrency: Partial<Record<"UYU" | "USD", number>> = {};
+  for (const block of p.cashPositionBlocks) {
+    cashByCurrency[block.currency] = block.availableCash;
   }
 
-  return blocks;
+  const horizon = buildTreasuryProjectionHorizon({
+    asOfDate: p.asOfDate ?? new Date().toISOString().slice(0, 10),
+    cashByCurrency,
+    summaries: p.treasurySummaries,
+    pendingReceivables: p.pendingByCurrency,
+  });
+
+  return horizon.byCurrency.map((row) => ({
+    currency: row.currency,
+    currentCash: row.currentCash,
+    scheduledPayments: row.hasConfiguredPayments ? row.scheduledOutflows : 0,
+    safeCash30d: row.projectedCash,
+    pendingReceivables: row.expectedCollections,
+    expectedCash30d: row.projectedCashWithCollections,
+    hasConfiguredPayments: row.hasConfiguredPayments,
+    safeCoverageStatus: row.coverageStatus,
+  }));
 }
 
 export function buildHoyTreasuryAlerts(p: {

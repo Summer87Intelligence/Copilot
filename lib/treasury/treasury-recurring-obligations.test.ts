@@ -70,4 +70,22 @@ describe("treasury-recurring-obligations", () => {
     expect(drafts.length).toBeGreaterThan(0);
     expect(drafts[0]?.dueDate).toBe("2026-05-20");
   });
+
+  it("respeta metadata.ends_on al generar", () => {
+    const drafts = generateUpcomingObligations({
+      templates: [
+        template({
+          nextOccurrenceDate: "2026-05-20",
+          metadata: { ends_on: "2026-05-20" },
+        }),
+      ],
+      asOfDate: "2026-05-01",
+      withinDays: 90,
+    });
+    expect(drafts.map((d) => d.dueDate)).toEqual(["2026-05-20"]);
+  });
+
+  it("Impuestos → obligation_type tax", () => {
+    expect(mapCategoryToObligationType("Impuestos")).toBe("tax");
+  });
 });

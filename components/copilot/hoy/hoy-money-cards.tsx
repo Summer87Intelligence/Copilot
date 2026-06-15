@@ -417,7 +417,7 @@ function ProjectionCurrencyBlock({ block }: { block: HoyProjection30dBlock }) {
       label: "Pagos próximos",
       value: block.hasConfiguredPayments ? block.scheduledPayments : 0,
     },
-    { label: "Caja proyectada", value: block.expectedCash30d },
+    { label: "Caja proyectada", value: block.safeCash30d },
   ];
 
   return (

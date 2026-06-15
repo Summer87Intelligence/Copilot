@@ -939,7 +939,7 @@ export function TreasuryObligationsPanel({
                 <>
                   <span>{row.title}</span>
                   {isRecurringGeneratedObligation(row) ? (
-                    <span className="ml-2 inline-block">
+                    <span className="ml-2 inline-block" title="Generado por una regla recurrente. Podés editar solo este pago.">
                       <CopilotBadge tone="neutral">Recurrente</CopilotBadge>
                     </span>
                   ) : null}

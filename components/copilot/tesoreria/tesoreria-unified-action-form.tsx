@@ -12,6 +12,10 @@ import {
   parseMoneyInput,
   zodFieldErrors,
 } from "@/lib/treasury/treasury-form-schemas";
+import {
+  buildRecurringObligationCreateBody,
+  validateRecurringPaymentForm,
+} from "@/lib/treasury/treasury-recurring-form";
 import { RECURRING_PAYMENT_CATEGORIES } from "@/lib/treasury/treasury-recurring-payments";
 import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
 import type { PlannedObligationType, TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
@@ -168,12 +172,13 @@ export function TesoreriaUnifiedActionForm({
   });
 
   const [recurring, setRecurring] = useState({
-    dayOfMonth: "10",
+    counterparty: "",
+    concept: "",
+    dayOfMonth: "3",
     frequency: "monthly" as "weekly" | "monthly" | "yearly",
     amount: "",
     currency: "USD" as TreasuryCurrencyCode,
-    concept: "",
-    category: "Suscripciones",
+    category: "Sueldos",
     startsOn: todayYmd(),
     endsOn: "",
     notes: "",
@@ -267,7 +272,10 @@ export function TesoreriaUnifiedActionForm({
       notes: scheduled.notes,
     });
     if (!parsed.success) {
-      setFieldErrors(zodFieldErrors(parsed.error));
+      const errors = zodFieldErrors(parsed.error);
+      setFieldErrors(errors);
+      const first = Object.values(errors)[0];
+      if (first) setError(first);
       return;
     }
     setSaving(true);
@@ -288,6 +296,8 @@ export function TesoreriaUnifiedActionForm({
       if (result) {
         onSuccess?.();
         onClose();
+      } else {
+        setError("No se pudo guardar el pago programado. Revisá los campos e intentá de nuevo.");
       }
     } finally {
       setSaving(false);
@@ -295,45 +305,51 @@ export function TesoreriaUnifiedActionForm({
   };
 
   const submitRecurring = async () => {
-    const amount = parseAmount(recurring.amount);
-    if (!amount) {
-      setError("El monto debe ser mayor a 0.");
-      return;
-    }
-    if (!recurring.concept.trim()) {
-      setError("El concepto es requerido.");
+    const validation = validateRecurringPaymentForm({
+      counterparty: recurring.counterparty,
+      concept: recurring.concept,
+      direction: "expense",
+      category: recurring.category,
+      currency: recurring.currency,
+      amount: recurring.amount,
+      frequency: recurring.frequency,
+      dayOfMonth: recurring.dayOfMonth,
+      startsOn: recurring.startsOn,
+      endsOn: recurring.endsOn,
+      notes: recurring.notes,
+    });
+    if (!validation.ok) {
+      setFieldErrors(validation.fieldErrors);
+      setError(validation.banner);
       return;
     }
     setSaving(true);
     try {
-      const res = await copilotApiFetch("/api/copilot/treasury/recurring-payments", {
+      const body = buildRecurringObligationCreateBody({
+        counterparty: recurring.counterparty,
+        concept: recurring.concept,
+        direction: "expense",
+        category: recurring.category,
+        currency: recurring.currency,
+        amount: recurring.amount,
+        frequency: recurring.frequency,
+        dayOfMonth: recurring.dayOfMonth,
+        startsOn: recurring.startsOn,
+        endsOn: recurring.endsOn,
+        notes: recurring.notes,
+      });
+      const res = await copilotApiFetch("/api/copilot/treasury/recurring-obligations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: recurring.concept.trim(),
-          category: recurring.category,
-          currency: recurring.currency,
-          amount,
-          recurrence_type:
-            recurring.frequency === "yearly"
-              ? "yearly"
-              : recurring.frequency === "weekly"
-                ? "custom"
-                : "monthly",
-          recurrence_interval: recurring.frequency === "weekly" ? 7 : 1,
-          next_occurrence_date: recurring.startsOn,
-          metadata: {
-            direction: "expense",
-            starts_on: recurring.startsOn,
-            ends_on: recurring.endsOn.trim() || null,
-            day_of_month: recurring.dayOfMonth ? Number(recurring.dayOfMonth) : null,
-            frequency: recurring.frequency,
-            notes: recurring.notes.trim() || null,
-          },
-        }),
+        body: JSON.stringify(body),
       });
       const json = (await res.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
       if (json?.ok) {
+        await copilotApiFetch("/api/copilot/treasury/recurring-obligations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ within_days: 30, persist: true }),
+        });
         workspace.notify("success", "Pago recurrente creado.");
         void workspace.refetch();
         onSuccess?.();
@@ -474,18 +490,38 @@ export function TesoreriaUnifiedActionForm({
 
   return (
     <FormShell action={action} onClose={onClose} onSubmit={handleSubmit} saving={saving} error={error}>
-      <Field label="Día de cobro/pago">
-        <input type="number" min="1" max="31" className={TESORERIA_FIELD_CLASS} value={recurring.dayOfMonth} onChange={(e) => setRecurring((p) => ({ ...p, dayOfMonth: e.target.value }))} />
-      </Field>
-      <Field label="Frecuencia">
+      <Field label="Frecuencia" className="sm:col-span-2">
         <select className={TESORERIA_SELECT_CLASS} value={recurring.frequency} onChange={(e) => setRecurring((p) => ({ ...p, frequency: e.target.value as "weekly" | "monthly" | "yearly" }))}>
           <option value="monthly">Mensual</option>
           <option value="weekly">Semanal</option>
           <option value="yearly">Anual</option>
         </select>
+        {fieldErrors.frequency ? <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]">{fieldErrors.frequency}</span> : null}
       </Field>
-      <Field label="Monto">
-        <input type="number" min="0.01" step="0.01" className={TESORERIA_FIELD_CLASS} value={recurring.amount} onChange={(e) => setRecurring((p) => ({ ...p, amount: e.target.value }))} />
+      {recurring.frequency === "monthly" ? (
+        <Field label="Día del mes">
+          <input
+            type="number"
+            min="1"
+            max="31"
+            className={TESORERIA_FIELD_CLASS}
+            value={recurring.dayOfMonth}
+            onChange={(e) => setRecurring((p) => ({ ...p, dayOfMonth: e.target.value }))}
+            placeholder="3"
+          />
+          <span className="mt-1 block text-[11px] text-[var(--copilot-ink-muted)]">Ejemplo: todos los 3 de cada mes</span>
+          {fieldErrors.dayOfMonth ? <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]">{fieldErrors.dayOfMonth}</span> : null}
+        </Field>
+      ) : (
+        <div className="hidden sm:block" />
+      )}
+      <Field label="Fecha de inicio">
+        <input type="date" className={TESORERIA_FIELD_CLASS} value={recurring.startsOn} onChange={(e) => setRecurring((p) => ({ ...p, startsOn: e.target.value }))} />
+        {fieldErrors.startsOn ? <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]">{fieldErrors.startsOn}</span> : null}
+      </Field>
+      <Field label="Fecha de finalización (opcional)">
+        <input type="date" className={TESORERIA_FIELD_CLASS} value={recurring.endsOn} onChange={(e) => setRecurring((p) => ({ ...p, endsOn: e.target.value }))} />
+        {fieldErrors.endsOn ? <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]">{fieldErrors.endsOn}</span> : null}
       </Field>
       <Field label="Moneda">
         <select className={TESORERIA_SELECT_CLASS} value={recurring.currency} onChange={(e) => setRecurring((p) => ({ ...p, currency: e.target.value as TreasuryCurrencyCode }))}>
@@ -493,25 +529,30 @@ export function TesoreriaUnifiedActionForm({
             <option key={c} value={c}>{c}</option>
           ))}
         </select>
+        {fieldErrors.currency ? <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]">{fieldErrors.currency}</span> : null}
       </Field>
-      <Field label="Categoría">
+      <Field label="Monto">
+        <input type="number" min="0.01" step="0.01" className={TESORERIA_FIELD_CLASS} value={recurring.amount} onChange={(e) => setRecurring((p) => ({ ...p, amount: e.target.value }))} placeholder="700" />
+        {fieldErrors.amount ? <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]">{fieldErrors.amount}</span> : null}
+      </Field>
+      <Field label="Categoría" className="sm:col-span-2">
         <select className={TESORERIA_SELECT_CLASS} value={recurring.category} onChange={(e) => setRecurring((p) => ({ ...p, category: e.target.value }))}>
           {RECURRING_PAYMENT_CATEGORIES.map((c) => (
             <option key={c} value={c}>{c}</option>
           ))}
         </select>
+        {fieldErrors.category ? <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]">{fieldErrors.category}</span> : null}
       </Field>
-      <Field label="Fecha inicio">
-        <input type="date" className={TESORERIA_FIELD_CLASS} value={recurring.startsOn} onChange={(e) => setRecurring((p) => ({ ...p, startsOn: e.target.value }))} />
+      <Field label="Proveedor / persona">
+        <input type="text" className={TESORERIA_FIELD_CLASS} value={recurring.counterparty} onChange={(e) => setRecurring((p) => ({ ...p, counterparty: e.target.value }))} placeholder="Anna" />
+        {fieldErrors.counterparty ? <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]">{fieldErrors.counterparty}</span> : null}
       </Field>
-      <Field label="Fecha fin (opcional)">
-        <input type="date" className={TESORERIA_FIELD_CLASS} value={recurring.endsOn} onChange={(e) => setRecurring((p) => ({ ...p, endsOn: e.target.value }))} />
+      <Field label="Concepto">
+        <input type="text" className={TESORERIA_FIELD_CLASS} value={recurring.concept} onChange={(e) => setRecurring((p) => ({ ...p, concept: e.target.value }))} placeholder="Sueldo mensual" />
+        {fieldErrors.concept ? <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]">{fieldErrors.concept}</span> : null}
       </Field>
-      <Field label="Proveedor / concepto" className="sm:col-span-2">
-        <input type="text" className={TESORERIA_FIELD_CLASS} value={recurring.concept} onChange={(e) => setRecurring((p) => ({ ...p, concept: e.target.value }))} />
-      </Field>
-      <Field label="Notas (opcional)" className="sm:col-span-2">
-        <textarea rows={2} className={TESORERIA_FIELD_CLASS} value={recurring.notes} onChange={(e) => setRecurring((p) => ({ ...p, notes: e.target.value }))} />
+      <Field label="Nota (opcional)" className="sm:col-span-2">
+        <textarea rows={3} className={TESORERIA_FIELD_CLASS} value={recurring.notes} onChange={(e) => setRecurring((p) => ({ ...p, notes: e.target.value }))} placeholder="Todos los 3 de cada mes se pagan 700 USD a Anna por sueldo." />
       </Field>
     </FormShell>
   );
