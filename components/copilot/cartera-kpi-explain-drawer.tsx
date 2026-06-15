@@ -114,14 +114,14 @@ export function CarteraKpiExplainDrawer({
         type="button"
         aria-label="Cerrar panel"
         onClick={onClose}
-        className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
+        className="fixed inset-0 z-[var(--copilot-z-overlay)] bg-[var(--copilot-overlay-backdrop)] backdrop-blur-sm"
       />
 
       <aside
         role="dialog"
         aria-modal="true"
         aria-label={`${explain.title} ${explain.currency}`}
-        className="fixed inset-y-0 right-0 z-50 flex h-full w-full max-w-none flex-col border-l border-[var(--copilot-border)] bg-[var(--copilot-card)] shadow-2xl md:w-[min(520px,100vw)] md:min-w-[420px]"
+        className="fixed inset-y-0 right-0 z-[var(--copilot-z-drawer)] flex h-full w-full max-w-none flex-col border-l border-[var(--copilot-border)] bg-[var(--copilot-card)] shadow-2xl md:w-[min(520px,100vw)] md:min-w-[420px]"
       >
         <header className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--copilot-border)] px-5 py-4">
           <div className="min-w-0">

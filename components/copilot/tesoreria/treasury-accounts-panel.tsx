@@ -277,7 +277,7 @@ export function TreasuryAccountsPanel({ workspace, embedded = false }: Props) {
 
       {drawerOpen ? (
         <div
-          className="fixed inset-0 z-40 flex justify-end bg-black/30"
+          className="fixed inset-0 z-[var(--copilot-z-drawer)] flex justify-end bg-[var(--copilot-overlay-backdrop)]"
           onMouseDown={(e) => { if (e.target === e.currentTarget && !saving) { setDrawerOpen(false); setEditing(null); } }}
         >
           <div className="h-full w-full max-w-lg overflow-y-auto bg-[var(--copilot-card)] p-6 shadow-2xl">

@@ -674,7 +674,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
       ) : null}
 
       {drawerOpen ? (
-        <div className="fixed inset-0 z-40 flex justify-end bg-black/30">
+        <div className="fixed inset-0 z-[var(--copilot-z-drawer)] flex justify-end bg-[var(--copilot-overlay-backdrop)]">
           <div className="h-full w-full max-w-lg overflow-y-auto bg-[var(--copilot-card)] p-6 shadow-2xl">
             <h3 className="text-lg font-semibold text-[var(--copilot-ink)]">
               {editing ? "Editar movimiento" : "Nuevo movimiento"}

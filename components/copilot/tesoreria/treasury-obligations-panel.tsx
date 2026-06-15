@@ -118,7 +118,7 @@ function BaseModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-[var(--copilot-z-modal)] flex items-center justify-center bg-[var(--copilot-overlay-backdrop)] p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -178,7 +178,7 @@ function PayModal({
   return (
     <BaseModal title="Confirmar pago" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <dl className="space-y-1.5 rounded-xl bg-[var(--copilot-bg,#f5f4f2)] px-4 py-3 text-sm">
+        <dl className="space-y-1.5 rounded-xl bg-[var(--copilot-soft-bg)] px-4 py-3 text-sm">
           <div className="flex justify-between gap-2">
             <dt className="text-[var(--copilot-ink-muted)]">Concepto</dt>
             <dd className="max-w-[55%] text-right font-medium text-[var(--copilot-ink)]">
@@ -449,7 +449,7 @@ function RescheduleModal({
           </div>
         ) : null}
 
-        <dl className="space-y-1.5 rounded-xl bg-[var(--copilot-bg,#f5f4f2)] px-4 py-3 text-sm">
+        <dl className="space-y-1.5 rounded-xl bg-[var(--copilot-soft-bg)] px-4 py-3 text-sm">
           <div className="flex justify-between gap-2">
             <dt className="text-[var(--copilot-ink-muted)]">Concepto</dt>
             <dd className="font-medium text-[var(--copilot-ink)]">{row.title}</dd>

@@ -485,7 +485,7 @@ export function TreasurySantanderImportPanel({ workspace, embedded = false }: Pr
       ) : null}
 
       {detailRow ? (
-        <div className="fixed inset-0 z-40 flex justify-end bg-black/30">
+        <div className="fixed inset-0 z-[var(--copilot-z-drawer)] flex justify-end bg-[var(--copilot-overlay-backdrop)]">
           <div className="h-full w-full max-w-lg overflow-y-auto bg-[var(--copilot-card)] p-6 shadow-2xl">
             <div className="flex items-start justify-between gap-2">
               <h3 className="text-lg font-semibold text-[var(--copilot-ink)]">Detalle del movimiento</h3>

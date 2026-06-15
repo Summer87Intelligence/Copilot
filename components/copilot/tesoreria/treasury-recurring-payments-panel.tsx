@@ -517,7 +517,7 @@ export function TreasuryRecurringPaymentsPanel({
       {/* ── Modal: Pausar ── */}
       {modal.type === "pause" ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          className="fixed inset-0 z-[var(--copilot-z-modal)] flex items-center justify-center bg-[var(--copilot-overlay-backdrop)] p-4"
           onMouseDown={(e) => { if (e.target === e.currentTarget && !submitting) setModal({ type: "none" }); }}
         >
           <div className="w-full max-w-sm rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-6 shadow-xl">
@@ -554,7 +554,7 @@ export function TreasuryRecurringPaymentsPanel({
       {/* ── Modal: Reactivar ── */}
       {modal.type === "reactivate" ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          className="fixed inset-0 z-[var(--copilot-z-modal)] flex items-center justify-center bg-[var(--copilot-overlay-backdrop)] p-4"
           onMouseDown={(e) => { if (e.target === e.currentTarget && !submitting) setModal({ type: "none" }); }}
         >
           <div className="w-full max-w-sm rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-6 shadow-xl">
@@ -606,7 +606,7 @@ export function TreasuryRecurringPaymentsPanel({
       {/* ── Modal: Eliminar ── */}
       {modal.type === "delete" ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          className="fixed inset-0 z-[var(--copilot-z-modal)] flex items-center justify-center bg-[var(--copilot-overlay-backdrop)] p-4"
           onMouseDown={(e) => { if (e.target === e.currentTarget && !submitting) setModal({ type: "none" }); }}
         >
           <div className="w-full max-w-sm rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-6 shadow-xl">
@@ -659,7 +659,7 @@ export function TreasuryRecurringPaymentsPanel({
       {/* ── Drawer: Ver pagos generados ── */}
       {modal.type === "payments" ? (
         <div
-          className="fixed inset-0 z-50 flex justify-end bg-black/30"
+          className="fixed inset-0 z-[var(--copilot-z-drawer)] flex justify-end bg-[var(--copilot-overlay-backdrop)]"
           onMouseDown={(e) => { if (e.target === e.currentTarget) setModal({ type: "none" }); }}
         >
           <div className="flex h-full w-full max-w-md flex-col bg-[var(--copilot-card-bg)] shadow-xl">
@@ -694,7 +694,7 @@ export function TreasuryRecurringPaymentsPanel({
       {/* ── Drawer: Crear / Editar ── */}
       {drawerOpen && editingId ? (
         <div
-          className="fixed inset-0 z-50 flex justify-end bg-black/30"
+          className="fixed inset-0 z-[var(--copilot-z-drawer)] flex justify-end bg-[var(--copilot-overlay-backdrop)]"
           onMouseDown={(e) => { if (e.target === e.currentTarget && !saving) { setDrawerOpen(false); setEditingId(null); } }}
         >
           <form
