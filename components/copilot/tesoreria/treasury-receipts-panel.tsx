@@ -12,10 +12,11 @@ import {
   TESORERIA_FILTER_CHIP_ACTIVE,
   TESORERIA_FILTER_CHIP_IDLE,
   TESORERIA_PAGE_SIZE,
-  TESORERIA_TABLE_CLASS,
-  TESORERIA_TD_CLASS,
-  TESORERIA_TH_CLASS,
 } from "@/components/copilot/tesoreria/tesoreria-ui";
+import {
+  CopilotResponsiveTable,
+  type CopilotResponsiveTableColumn,
+} from "@/components/copilot/ui/copilot-responsive-table";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 
 type Receipt = {
@@ -201,34 +202,81 @@ export function TreasuryReceiptsPanel() {
         />
       ) : (
         <>
-          <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50">
-            <table className={TESORERIA_TABLE_CLASS}>
-              <thead>
-                <tr>
-                  <th className={TESORERIA_TH_CLASS}>Fecha</th>
-                  <th className={TESORERIA_TH_CLASS}>Cliente</th>
-                  <th className={TESORERIA_TH_CLASS}>Recibo</th>
-                  <th className={TESORERIA_TH_CLASS}>Referencia</th>
-                  <th className={TESORERIA_TH_CLASS}>Moneda</th>
-                  <th className={TESORERIA_TH_CLASS}>Importe</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageItems.map((r) => (
-                  <tr key={r.id} className="hover:bg-[var(--copilot-table-row-hover-bg)]">
-                    <td className={TESORERIA_TD_CLASS}>{fmtDate(r.receiptDate)}</td>
-                    <td className={TESORERIA_TD_CLASS}>{r.clientName ?? <span className="text-[var(--copilot-ink-muted)]">Sin cliente</span>}</td>
-                    <td className={TESORERIA_TD_CLASS}>{r.receiptNumber ?? "—"}</td>
-                    <td className={TESORERIA_TD_CLASS}>{r.reference ?? "—"}</td>
-                    <td className={`${TESORERIA_TD_CLASS} font-semibold uppercase`}>{r.currencyCode ?? "—"}</td>
-                    <td className={`${TESORERIA_TD_CLASS} tabular-nums`}>
-                      {r.currencyCode ? fmtMoney(r.amount, r.currencyCode) : r.amount.toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <CopilotResponsiveTable<Receipt>
+            rows={pageItems}
+            getRowKey={(r) => r.id}
+            minWidth="720px"
+            ariaLabel="Recibos del período"
+            stickyHeader
+            columns={[
+              {
+                key: "fecha",
+                header: "Fecha",
+                render: (r) => fmtDate(r.receiptDate),
+              },
+              {
+                key: "cliente",
+                header: "Cliente",
+                render: (r) =>
+                  r.clientName ?? (
+                    <span className="text-[var(--copilot-ink-muted)]">Sin cliente</span>
+                  ),
+              },
+              {
+                key: "recibo",
+                header: "Recibo",
+                render: (r) => r.receiptNumber ?? "—",
+              },
+              {
+                key: "referencia",
+                header: "Referencia",
+                render: (r) => r.reference ?? "—",
+              },
+              {
+                key: "moneda",
+                header: "Moneda",
+                cellClassName: "font-semibold uppercase",
+                render: (r) => r.currencyCode ?? "—",
+              },
+              {
+                key: "importe",
+                header: "Importe",
+                cellClassName: "tabular-nums",
+                render: (r) =>
+                  r.currencyCode ? fmtMoney(r.amount, r.currencyCode) : r.amount.toFixed(2),
+              },
+            ] satisfies CopilotResponsiveTableColumn<Receipt>[]}
+            mobileCard={(r) => (
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-[var(--copilot-ink)]">
+                      {r.clientName ?? (
+                        <span className="text-[var(--copilot-ink-muted)]">Sin cliente</span>
+                      )}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">
+                      {fmtDate(r.receiptDate)}
+                      {r.receiptNumber ? ` · ${r.receiptNumber}` : ""}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-right tabular-nums text-sm font-semibold text-[var(--copilot-ink)]">
+                    {r.currencyCode ? fmtMoney(r.amount, r.currencyCode) : r.amount.toFixed(2)}
+                    {r.currencyCode ? (
+                      <span className="ml-1 text-[10px] font-normal text-[var(--copilot-ink-muted)]">
+                        {r.currencyCode}
+                      </span>
+                    ) : null}
+                  </p>
+                </div>
+                {r.reference ? (
+                  <p className="mt-2 text-[11px] text-[var(--copilot-ink-muted)]">
+                    Ref. {r.reference}
+                  </p>
+                ) : null}
+              </>
+            )}
+          />
           <div className="flex items-center justify-between">
             <span className="text-xs text-[var(--copilot-ink-muted)]">
               {filtered.length} recibo{filtered.length !== 1 ? "s" : ""}
