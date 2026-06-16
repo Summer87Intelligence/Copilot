@@ -186,6 +186,12 @@ export async function runZetaInstallmentsPipeline(
   const dueDateByInvoice = new Map<string, string>();
   /** Cuotas abiertas devueltas por Zeta en esta corrida (todas las páginas). */
   const openCuotaKeysFromZeta = new Set<string>();
+  /**
+   * Invoice_ids resueltos vía shadow-chain fallback. Se excluyen del update de
+   * due_date porque la cuota_vencimiento del saldo puede diferir del due_date
+   * autorizado que ya tiene el CCV1 canónico.
+   */
+  const shadowChainResolved = new Set<string>();
 
   let page = 1;
   for (; page <= maxPages; page++) {
@@ -267,6 +273,7 @@ export async function runZetaInstallmentsPipeline(
             path,
             message: msg,
           }),
+        shadowChainResolved,
       }
     );
 
@@ -281,6 +288,7 @@ export async function runZetaInstallmentsPipeline(
 
       if (
         r.invoice_id &&
+        !shadowChainResolved.has(r.invoice_id) &&
         r.cuota_saldo !== null &&
         r.cuota_saldo > 0 &&
         r.cuota_vencimiento
@@ -551,6 +559,7 @@ async function reconcileOrphanInstallmentsForClient(
   )];
   if (rids.length === 0) return { linked: 0, due_date_updated: 0 };
 
+  const reconcileShadowChainResolved = new Set<string>();
   const linkMap = await findActiveProtoInvoiceIdsByRegistroIds(
     supabase,
     workspaceCompanyId,
@@ -563,6 +572,7 @@ async function reconcileOrphanInstallmentsForClient(
           path,
           message: msg,
         }),
+      shadowChainResolved: reconcileShadowChainResolved,
     }
   );
 
@@ -595,6 +605,7 @@ async function reconcileOrphanInstallmentsForClient(
 
     if (
       shouldUpdateDueDate &&
+      !reconcileShadowChainResolved.has(invoiceId) &&
       row.cuota_saldo != null &&
       (row.cuota_saldo as number) > 0 &&
       row.cuota_vencimiento

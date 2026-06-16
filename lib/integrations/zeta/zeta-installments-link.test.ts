@@ -315,6 +315,309 @@ describe("findActiveProtoInvoiceIdsByRegistroIds", () => {
   });
 });
 
+// ── Shadow chain fallback tests ───────────────────────────────────────────────
+
+type ShadowStubRow = {
+  id: string;
+  invoice_number?: string;
+  zeta_metadata: Record<string, unknown>;
+  is_active?: boolean;
+};
+
+/**
+ * Stub que soporta tanto las queries de path CCV1 (via `.then`) como las
+ * lookups de shadow chain (via `.maybySingle`), distinguiendo por los filtros
+ * `.eq()` acumulados en cada builder.
+ */
+function createShadowChainStub(opts: {
+  rowsByPath?: Partial<Record<string, StubRow[]>>;
+  shadowByInvoiceNumber?: Record<string, ShadowStubRow | null>;
+  rowById?: Record<string, ShadowStubRow | null>;
+}) {
+  function buildFrom(_table: string) {
+    const eqs: Record<string, unknown> = {};
+    let path: string | null = null;
+    const rids: string[] = [];
+
+    const chainable: Record<string, unknown> = {
+      select() {
+        return chainable;
+      },
+      eq(col: string, val: unknown) {
+        eqs[col] = val;
+        return chainable;
+      },
+      like() {
+        return chainable;
+      },
+      filter(col: string, _op: string, val: string) {
+        path = col;
+        if (val.startsWith("(") && val.endsWith(")")) {
+          rids.push(
+            ...val
+              .slice(1, -1)
+              .split(",")
+              .map((s) => s.replace(/(^"|"$)/g, "").trim())
+              .filter(Boolean)
+          );
+        }
+        return chainable;
+      },
+      limit() {
+        return chainable;
+      },
+      // CCV1 path queries (direct await)
+      then(resolve: (v: { data: unknown; error: unknown }) => void) {
+        const pathKey = path ?? "";
+        const rows = opts.rowsByPath?.[pathKey] ?? [];
+        const matched = rows.filter((r) => {
+          const ridsInMeta = extractAllRids(r.zeta_metadata);
+          return ridsInMeta.some((rid) => rids.includes(rid));
+        });
+        resolve({ data: matched, error: null });
+      },
+      // Shadow and chain target lookups
+      maybeSingle() {
+        if (typeof eqs["invoice_number"] === "string") {
+          const row = opts.shadowByInvoiceNumber?.[eqs["invoice_number"] as string] ?? null;
+          return Promise.resolve({ data: row, error: null });
+        }
+        if (typeof eqs["id"] === "string") {
+          const row = opts.rowById?.[eqs["id"] as string] ?? null;
+          return Promise.resolve({ data: row, error: null });
+        }
+        return Promise.resolve({ data: null, error: null });
+      },
+    };
+    return chainable;
+  }
+  return { from: (_table: string) => buildFrom(_table) };
+}
+
+const SHADOW_ID = "shadow00-0000-4000-8000-000000000000";
+const NOSER_ID = "noser000-0000-4000-8000-000000000000";
+const CCV1_ID = "ccv10000-0000-4000-8000-000000000000";
+const NORMAL_CCV1_ID = "normal00-0000-4000-8000-000000000000";
+
+describe("findActiveProtoInvoiceIdsByRegistroIds — shadow chain fallback", () => {
+  const RID = "2746";
+
+  it("normal CCV1 link is unchanged; shadowChainResolved stays empty", async () => {
+    const stub = createShadowChainStub({
+      rowsByPath: {
+        "zeta_metadata->zeta_comprobante_identity_v1->>registro_id": [
+          {
+            id: CCV1_ID,
+            zeta_metadata: { zeta_comprobante_identity_v1: { registro_id: RID } },
+          },
+        ],
+      },
+    });
+    const shadowChainResolved = new Set<string>();
+    const linkMap = await findActiveProtoInvoiceIdsByRegistroIds(stub as never, TENANT, [RID], {
+      shadowChainResolved,
+    });
+    expect(linkMap.get(RID)).toBe(CCV1_ID);
+    expect(shadowChainResolved.size).toBe(0);
+  });
+
+  it("shadow inactive + cleanup_audit → resolves to canonical CCV1 (1 hop)", async () => {
+    const stub = createShadowChainStub({
+      shadowByInvoiceNumber: {
+        [`ZETA:${RID}`]: {
+          id: SHADOW_ID,
+          zeta_metadata: {
+            cleanup_audit: {
+              deactivated_reason: "duplicate_shadow_matched_to_ccv1",
+              matched_ccv1_invoice_id: CCV1_ID,
+            },
+          },
+        },
+      },
+      rowById: {
+        [CCV1_ID]: {
+          id: CCV1_ID,
+          invoice_number: "ZETA:CCV1:0:144:A:2983",
+          zeta_metadata: {},
+          is_active: true,
+        },
+      },
+    });
+    const shadowChainResolved = new Set<string>();
+    const linkMap = await findActiveProtoInvoiceIdsByRegistroIds(stub as never, TENANT, [RID], {
+      shadowChainResolved,
+    });
+    expect(linkMap.get(RID)).toBe(CCV1_ID);
+    expect(shadowChainResolved.has(CCV1_ID)).toBe(true);
+  });
+
+  it("chain shadow → inactive NOSER → canonical CCV1 (2 hops)", async () => {
+    const stub = createShadowChainStub({
+      shadowByInvoiceNumber: {
+        [`ZETA:${RID}`]: {
+          id: SHADOW_ID,
+          zeta_metadata: {
+            cleanup_audit: {
+              deactivated_reason: "duplicate_shadow_matched_to_ccv1",
+              matched_ccv1_invoice_id: NOSER_ID,
+            },
+          },
+        },
+      },
+      rowById: {
+        [NOSER_ID]: {
+          id: NOSER_ID,
+          invoice_number: "ZETA:CCV1:NOSER:0:144:A:2983",
+          zeta_metadata: {
+            cleanup_audit: { matched_ccv1_invoice_id: CCV1_ID },
+          },
+          is_active: false,
+        },
+        [CCV1_ID]: {
+          id: CCV1_ID,
+          invoice_number: "ZETA:CCV1:0:144:A:2983",
+          zeta_metadata: {},
+          is_active: true,
+        },
+      },
+    });
+    const shadowChainResolved = new Set<string>();
+    const linkMap = await findActiveProtoInvoiceIdsByRegistroIds(stub as never, TENANT, [RID], {
+      shadowChainResolved,
+    });
+    expect(linkMap.get(RID)).toBe(CCV1_ID);
+    expect(shadowChainResolved.has(CCV1_ID)).toBe(true);
+  });
+
+  it("broken chain (referenced id not found) → null", async () => {
+    const stub = createShadowChainStub({
+      shadowByInvoiceNumber: {
+        [`ZETA:${RID}`]: {
+          id: SHADOW_ID,
+          zeta_metadata: {
+            cleanup_audit: {
+              deactivated_reason: "duplicate_shadow_matched_to_ccv1",
+              matched_ccv1_invoice_id: "nonexistent-id",
+            },
+          },
+        },
+      },
+      rowById: {},
+    });
+    const shadowChainResolved = new Set<string>();
+    const linkMap = await findActiveProtoInvoiceIdsByRegistroIds(stub as never, TENANT, [RID], {
+      shadowChainResolved,
+    });
+    expect(linkMap.get(RID)).toBeNull();
+    expect(shadowChainResolved.size).toBe(0);
+  });
+
+  it("inactive intermediate with no further chain link → null", async () => {
+    const stub = createShadowChainStub({
+      shadowByInvoiceNumber: {
+        [`ZETA:${RID}`]: {
+          id: SHADOW_ID,
+          zeta_metadata: {
+            cleanup_audit: {
+              deactivated_reason: "duplicate_shadow_matched_to_ccv1",
+              matched_ccv1_invoice_id: NOSER_ID,
+            },
+          },
+        },
+      },
+      rowById: {
+        [NOSER_ID]: {
+          id: NOSER_ID,
+          invoice_number: "ZETA:CCV1:NOSER:0:144:A:2983",
+          zeta_metadata: { cleanup_audit: {} },
+          is_active: false,
+        },
+      },
+    });
+    const shadowChainResolved = new Set<string>();
+    const linkMap = await findActiveProtoInvoiceIdsByRegistroIds(stub as never, TENANT, [RID], {
+      shadowChainResolved,
+    });
+    expect(linkMap.get(RID)).toBeNull();
+    expect(shadowChainResolved.size).toBe(0);
+  });
+
+  it("active non-CCV1 target → null", async () => {
+    const stub = createShadowChainStub({
+      shadowByInvoiceNumber: {
+        [`ZETA:${RID}`]: {
+          id: SHADOW_ID,
+          zeta_metadata: {
+            cleanup_audit: {
+              deactivated_reason: "duplicate_shadow_matched_to_ccv1",
+              matched_ccv1_invoice_id: "other-invoice-id",
+            },
+          },
+        },
+      },
+      rowById: {
+        "other-invoice-id": {
+          id: "other-invoice-id",
+          invoice_number: "MANUAL:123",
+          zeta_metadata: {},
+          is_active: true,
+        },
+      },
+    });
+    const shadowChainResolved = new Set<string>();
+    const linkMap = await findActiveProtoInvoiceIdsByRegistroIds(stub as never, TENANT, [RID], {
+      shadowChainResolved,
+    });
+    expect(linkMap.get(RID)).toBeNull();
+    expect(shadowChainResolved.size).toBe(0);
+  });
+
+  it("normal-linked invoices excluded from shadowChainResolved; shadow-chain ones included", async () => {
+    const RID_NORMAL = "1111";
+    const RID_SHADOW = "2746";
+    const stub = createShadowChainStub({
+      rowsByPath: {
+        "zeta_metadata->zeta_comprobante_identity_v1->>registro_id": [
+          {
+            id: NORMAL_CCV1_ID,
+            zeta_metadata: { zeta_comprobante_identity_v1: { registro_id: RID_NORMAL } },
+          },
+        ],
+      },
+      shadowByInvoiceNumber: {
+        [`ZETA:${RID_SHADOW}`]: {
+          id: SHADOW_ID,
+          zeta_metadata: {
+            cleanup_audit: {
+              deactivated_reason: "duplicate_shadow_matched_to_ccv1",
+              matched_ccv1_invoice_id: CCV1_ID,
+            },
+          },
+        },
+      },
+      rowById: {
+        [CCV1_ID]: {
+          id: CCV1_ID,
+          invoice_number: "ZETA:CCV1:0:144:A:2983",
+          zeta_metadata: {},
+          is_active: true,
+        },
+      },
+    });
+    const shadowChainResolved = new Set<string>();
+    const linkMap = await findActiveProtoInvoiceIdsByRegistroIds(
+      stub as never,
+      TENANT,
+      [RID_NORMAL, RID_SHADOW],
+      { shadowChainResolved }
+    );
+    expect(linkMap.get(RID_NORMAL)).toBe(NORMAL_CCV1_ID);
+    expect(linkMap.get(RID_SHADOW)).toBe(CCV1_ID);
+    expect(shadowChainResolved.has(NORMAL_CCV1_ID)).toBe(false);
+    expect(shadowChainResolved.has(CCV1_ID)).toBe(true);
+  });
+});
+
 // ── Single lookup tests ───────────────────────────────────────────────────────
 
 describe("findActiveProtoInvoiceIdByRegistroId", () => {

@@ -31,6 +31,90 @@ export type InstallmentLinkResolution = {
 };
 
 /**
+ * Follows the `cleanup_audit` chain from a deactivated shadow invoice
+ * (`ZETA:{registroId}`, `is_active=false`) to its canonical active CCV1.
+ *
+ * Used as a last-resort fallback when the standard metadata-path lookup
+ * fails — typically because the migration `fix_zeta_invoice_shadow_duplicates`
+ * deactivated the shadow but the cuotas-sync pipeline still uses the original
+ * RegistroId to identify the comprobante.
+ *
+ * Security:
+ *   - Always filters by `workspace_company_id` (multi-tenant guard).
+ *   - maxHops=2: shadow → [inactive NOSER] → canonical CCV1.
+ *   - Returns null if the chain is broken, the terminal record is inactive,
+ *     or the terminal invoice_number does not start with `ZETA:CCV1:`.
+ */
+async function resolveDeactivatedShadowChainToCanonicalCcv1(
+  supabase: SupabaseClient,
+  workspaceCompanyId: string,
+  registroId: string,
+  maxHops = 2
+): Promise<string | null> {
+  const { data: shadow, error: shadowErr } = await supabase
+    .from("proto_invoices")
+    .select("id, zeta_metadata")
+    .eq("workspace_company_id", workspaceCompanyId)
+    .eq("invoice_number", `ZETA:${registroId}`)
+    .eq("is_active", false)
+    .limit(1)
+    .maybeSingle();
+
+  if (shadowErr || !shadow) return null;
+
+  const shadowRow = shadow as { id: string; zeta_metadata: unknown };
+  const meta = (shadowRow.zeta_metadata ?? {}) as Record<string, unknown>;
+  const cleanup = (meta.cleanup_audit ?? {}) as Record<string, unknown>;
+
+  if (cleanup.deactivated_reason !== "duplicate_shadow_matched_to_ccv1") return null;
+
+  let targetId =
+    typeof cleanup.matched_ccv1_invoice_id === "string"
+      ? cleanup.matched_ccv1_invoice_id
+      : null;
+  if (!targetId) return null;
+
+  for (let hop = 0; hop < maxHops; hop++) {
+    const { data: target, error: targetErr } = await supabase
+      .from("proto_invoices")
+      .select("id, invoice_number, zeta_metadata, is_active")
+      .eq("workspace_company_id", workspaceCompanyId)
+      .eq("id", targetId)
+      .limit(1)
+      .maybeSingle();
+
+    if (targetErr || !target) return null;
+
+    const t = target as {
+      id: string;
+      invoice_number: string;
+      zeta_metadata: unknown;
+      is_active: boolean | null;
+    };
+
+    // Active CCV1 → canonical target found.
+    if (t.is_active === true && t.invoice_number.startsWith("ZETA:CCV1:")) return t.id;
+
+    // Inactive intermediate → follow chain.
+    if (t.is_active !== true) {
+      const tMeta = (t.zeta_metadata ?? {}) as Record<string, unknown>;
+      const tCleanup = (tMeta.cleanup_audit ?? {}) as Record<string, unknown>;
+      const nextId =
+        typeof tCleanup.matched_ccv1_invoice_id === "string"
+          ? tCleanup.matched_ccv1_invoice_id
+          : null;
+      if (!nextId) return null;
+      targetId = nextId;
+      continue;
+    }
+
+    return null; // active but not a CCV1 — invalid target.
+  }
+
+  return null; // maxHops exhausted without reaching a canonical CCV1.
+}
+
+/**
  * Resuelve `invoice_id` desde `zeta_registro_id` SIN filtrar por cliente.
  *
  * El cliente no es necesario para el match porque `RegistroId` es global por
@@ -88,7 +172,16 @@ export async function findActiveProtoInvoiceIdsByRegistroIds(
   supabase: SupabaseClient,
   workspaceCompanyId: string,
   registroIds: ReadonlyArray<string | number>,
-  options?: { onFilterError?: (path: string, message: string) => void }
+  options?: {
+    onFilterError?: (path: string, message: string) => void;
+    /**
+     * When provided, the Set is populated with invoice_ids resolved via the
+     * shadow-chain fallback. The caller uses this to skip `due_date` updates
+     * for those invoices (the cuota vencimiento may differ from the CCV1's
+     * authoritative due_date).
+     */
+    shadowChainResolved?: Set<string>;
+  }
 ): Promise<Map<string, string | null>> {
   const out = new Map<string, string | null>();
   const wid = workspaceCompanyId.trim();
@@ -135,6 +228,23 @@ export async function findActiveProtoInvoiceIdsByRegistroIds(
           out.set(rid, invId);
           pending.delete(rid);
         }
+      }
+    }
+  }
+
+  // Fallback: for rids still unresolved, walk the cleanup_audit chain from any
+  // deactivated shadow invoice to its canonical CCV1.
+  if (pending.size > 0) {
+    for (const rid of Array.from(pending)) {
+      const canonicalId = await resolveDeactivatedShadowChainToCanonicalCcv1(
+        supabase,
+        wid,
+        rid
+      );
+      if (canonicalId) {
+        out.set(rid, canonicalId);
+        options?.shadowChainResolved?.add(canonicalId);
+        pending.delete(rid);
       }
     }
   }
