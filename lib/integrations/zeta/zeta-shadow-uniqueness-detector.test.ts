@@ -16,6 +16,8 @@ type Row = {
   total_amount: number;
   currency_code: string | null;
   issue_date: string;
+  due_date?: string | null;
+  created_at?: string | null;
   workspace_company_id?: string;
   company_id?: string;
   is_active?: boolean;
@@ -421,5 +423,182 @@ describe("findActiveShadowDuplicatesInPeriod", () => {
 describe("SHADOW_UNIQUENESS_TOTAL_TOLERANCE", () => {
   it("es exactamente 0.20 (alineado con migración SQL y guardrail in-memory)", () => {
     expect(SHADOW_UNIQUENESS_TOTAL_TOLERANCE).toBe(0.2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// INTEGRITY-CHECKER-002: tests del flag `ambiguous` y scoring multi-candidato
+// ---------------------------------------------------------------------------
+
+describe("findActiveShadowDuplicatesInPeriod — ambiguous flag (INTEGRITY-CHECKER-002)", () => {
+  const RANGE_MAY = { from: "2026-05-01", to: "2026-05-31" };
+
+  function baseShadow(overrides: Partial<Row> = {}): Row {
+    return {
+      id: "shadow-1",
+      invoice_number: "ZETA:2825",
+      workspace_company_id: WID,
+      company_id: COMPANY,
+      currency_code: "UYU",
+      issue_date: DATE,
+      due_date: null,
+      created_at: null,
+      total_amount: 1000,
+      is_active: true,
+      category: ZETA_SHADOW_CATEGORY,
+      zeta_metadata: {},
+      ...overrides,
+    };
+  }
+
+  function baseCcv1(overrides: Partial<Row> = {}): Row {
+    return {
+      id: "ccv1-a",
+      invoice_number: "ZETA:CCV1:0:196:A:2988",
+      workspace_company_id: WID,
+      company_id: COMPANY,
+      currency_code: "UYU",
+      issue_date: DATE,
+      due_date: null,
+      created_at: null,
+      total_amount: 1000,
+      is_active: true,
+      category: null,
+      zeta_metadata: {},
+      ...overrides,
+    };
+  }
+
+  it("1 shadow + 1 CCV1 → ambiguous: false (caso normal, sin scoring)", async () => {
+    const rows = [baseShadow(), baseCcv1()];
+    const out = await findActiveShadowDuplicatesInPeriod(buildMockSupabase(rows), WID, RANGE_MAY);
+
+    expect(out).toHaveLength(1);
+    expect(out[0]!.ambiguous).toBe(false);
+    expect(out[0]!.candidates).toHaveLength(1);
+    // Single-candidate path asigna match_score=0
+    expect(out[0]!.candidates[0]!.match_score).toBe(0);
+  });
+
+  it("1 shadow + 2 CCV1s sin campos distinción → ambiguous: true", async () => {
+    // Sin due_date ni created_at → ambos candidatos puntúan 0 → margen 0 < 20 → ambiguous
+    const rows = [
+      baseShadow({ due_date: null, created_at: null }),
+      baseCcv1({ id: "ccv1-a", invoice_number: "ZETA:CCV1:0:196:A:2988", due_date: null, created_at: null }),
+      baseCcv1({ id: "ccv1-b", invoice_number: "ZETA:CCV1:0:196:A:2989", due_date: null, created_at: null }),
+    ];
+    const out = await findActiveShadowDuplicatesInPeriod(buildMockSupabase(rows), WID, RANGE_MAY);
+
+    expect(out).toHaveLength(1);
+    expect(out[0]!.ambiguous).toBe(true);
+    expect(out[0]!.candidates).toHaveLength(2);
+  });
+
+  it("due_date coincide en uno → ambiguous: false, ese candidato queda primero", async () => {
+    // A:2988 coincide en due_date (+40 pts), A:2989 no (0 pts). Margen=40 ≥ 20 → no ambiguous.
+    const rows = [
+      baseShadow({ due_date: "2026-05-15" }),
+      baseCcv1({ id: "ccv1-a", invoice_number: "ZETA:CCV1:0:196:A:2988", due_date: "2026-05-15" }),
+      baseCcv1({ id: "ccv1-b", invoice_number: "ZETA:CCV1:0:196:A:2989", due_date: "2026-06-15" }),
+    ];
+    const out = await findActiveShadowDuplicatesInPeriod(buildMockSupabase(rows), WID, RANGE_MAY);
+
+    expect(out).toHaveLength(1);
+    const d = out[0]!;
+    expect(d.ambiguous).toBe(false);
+    expect(d.candidates[0]!.invoice_number).toBe("ZETA:CCV1:0:196:A:2988");
+    expect(d.candidates[0]!.match_score).toBeGreaterThan(d.candidates[1]!.match_score!);
+  });
+
+  it("ambos tienen due_date coincidente → ambiguous: true si no hay otro desempate", async () => {
+    // Ambos coinciden en due_date (+40 cada uno). Sin created_at → empate en 40. Margen=0 → ambiguous.
+    const rows = [
+      baseShadow({ due_date: "2026-05-15", created_at: null }),
+      baseCcv1({ id: "ccv1-a", invoice_number: "ZETA:CCV1:0:196:A:2988", due_date: "2026-05-15", created_at: null }),
+      baseCcv1({ id: "ccv1-b", invoice_number: "ZETA:CCV1:0:196:A:2989", due_date: "2026-05-15", created_at: null }),
+    ];
+    const out = await findActiveShadowDuplicatesInPeriod(buildMockSupabase(rows), WID, RANGE_MAY);
+
+    expect(out).toHaveLength(1);
+    expect(out[0]!.ambiguous).toBe(true);
+  });
+
+  it("temporal proximity (created_at) desambigua cuando due_date no ayuda — margen exacto 20 → NO ambiguous", async () => {
+    // Shadow: 2026-06-01. A:2988: 2026-05-31 (1 day = closest → +20). A:2989: 2026-04-01 → 0.
+    // Scores: 20 vs 0. Margin=20. NOT < 20 → ambiguous: false.
+    const rows = [
+      baseShadow({ due_date: null, created_at: "2026-06-01T00:00:00Z" }),
+      baseCcv1({
+        id: "ccv1-a",
+        invoice_number: "ZETA:CCV1:0:196:A:2988",
+        due_date: null,
+        created_at: "2026-05-31T00:00:00Z",
+      }),
+      baseCcv1({
+        id: "ccv1-b",
+        invoice_number: "ZETA:CCV1:0:196:A:2989",
+        due_date: null,
+        created_at: "2026-04-01T00:00:00Z",
+      }),
+    ];
+    const out = await findActiveShadowDuplicatesInPeriod(buildMockSupabase(rows), WID, RANGE_MAY);
+
+    expect(out).toHaveLength(1);
+    expect(out[0]!.ambiguous).toBe(false);
+    expect(out[0]!.candidates[0]!.invoice_number).toBe("ZETA:CCV1:0:196:A:2988");
+  });
+
+  it("ShadowTwinCandidate expone due_date y cfe_tipo extraídos del CCV1", async () => {
+    const rows = [
+      baseShadow({ due_date: "2026-05-15" }),
+      baseCcv1({
+        due_date: "2026-05-15",
+        zeta_metadata: { zeta_customer_voucher_v1: { cfe_tipo: "eFactura" } },
+      }),
+    ];
+    const out = await findActiveShadowDuplicatesInPeriod(buildMockSupabase(rows), WID, RANGE_MAY);
+
+    expect(out).toHaveLength(1);
+    const c = out[0]!.candidates[0]!;
+    expect(c.due_date).toBe("2026-05-15");
+    expect(c.cfe_tipo).toBe("eFactura");
+  });
+
+  it("caso real ZETA:2825 / ZETA:2826 simulado: 2 sombras + 2 CCV1s — ambas sombras ambiguas cuando no hay distinción", async () => {
+    // Reproduce el caso que motivó este fix: A:2988 "Mayo" y A:2989 "Junio"
+    // tenían el mismo monto e issue_date. Sin due_date ni created_at → ambiguedad.
+    const rows = [
+      baseShadow({ id: "shadow-2825", invoice_number: "ZETA:2825", due_date: null, created_at: null }),
+      baseShadow({ id: "shadow-2826", invoice_number: "ZETA:2826", due_date: null, created_at: null }),
+      baseCcv1({ id: "ccv1-a", invoice_number: "ZETA:CCV1:0:196:A:2988", due_date: null, created_at: null }),
+      baseCcv1({ id: "ccv1-b", invoice_number: "ZETA:CCV1:0:196:A:2989", due_date: null, created_at: null }),
+    ];
+    const out = await findActiveShadowDuplicatesInPeriod(buildMockSupabase(rows), WID, RANGE_MAY);
+
+    expect(out).toHaveLength(2);
+    expect(out[0]!.ambiguous).toBe(true);
+    expect(out[1]!.ambiguous).toBe(true);
+  });
+
+  it("caso real con due_dates distintos: cada sombra resuelve a su CCV1 correcta → ambiguous: false ambas", async () => {
+    // ZETA:2825 vence el 2026-05-15 (como A:2988). ZETA:2826 vence el 2026-06-15 (como A:2989).
+    const rows = [
+      baseShadow({ id: "shadow-2825", invoice_number: "ZETA:2825", due_date: "2026-05-15" }),
+      baseShadow({ id: "shadow-2826", invoice_number: "ZETA:2826", due_date: "2026-06-15" }),
+      baseCcv1({ id: "ccv1-a", invoice_number: "ZETA:CCV1:0:196:A:2988", due_date: "2026-05-15" }),
+      baseCcv1({ id: "ccv1-b", invoice_number: "ZETA:CCV1:0:196:A:2989", due_date: "2026-06-15" }),
+    ];
+    const out = await findActiveShadowDuplicatesInPeriod(buildMockSupabase(rows), WID, RANGE_MAY);
+
+    expect(out).toHaveLength(2);
+
+    const s2825 = out.find((d) => d.shadow_invoice_number === "ZETA:2825")!;
+    const s2826 = out.find((d) => d.shadow_invoice_number === "ZETA:2826")!;
+
+    expect(s2825.ambiguous).toBe(false);
+    expect(s2825.candidates[0]!.invoice_number).toBe("ZETA:CCV1:0:196:A:2988");
+
+    expect(s2826.ambiguous).toBe(false);
+    expect(s2826.candidates[0]!.invoice_number).toBe("ZETA:CCV1:0:196:A:2989");
   });
 });
