@@ -2,9 +2,9 @@ import { createClient } from "@supabase/supabase-js";
 
 import {
   notifyClientDebtSettled,
+  notifyClientOverdue,
   notifyCollectionReceived,
   notifyDebtFollowupSummary,
-  notifyInvoiceOverdue,
   notifyNewDebtor,
   notifyTreasuryPaymentDue,
   notifyTreasuryPaymentOverdue,
@@ -321,35 +321,58 @@ async function generateInvoiceOverdueNotifications(
     );
   }
 
-  const companyIds = [
-    ...new Set(
-      (invoices as Record<string, unknown>[])
-        .map((inv) => String(inv.company_id ?? "").trim())
-        .filter(Boolean)
-    ),
-  ];
-  const nameMap = await loadCompanyNameMap(admin, tenantCompanyId, companyIds);
+  // Aggregate by (clientId, currency) to emit one alert per client+moneda
+  // instead of one per invoice — avoids N-notification spam for clients with
+  // multiple overdue invoices. daysOverdue tracks the worst (oldest) invoice.
+  type ClientCurrencyAgg = {
+    totalBalance: number;
+    maxDaysOverdue: number;
+    invoiceCount: number;
+  };
+  const byClientCurrency = new Map<string, ClientCurrencyAgg>();
 
   for (const inv of invoices as Record<string, unknown>[]) {
-    const invoiceId = String(inv.id ?? "").trim();
     const companyId = String(inv.company_id ?? "").trim();
     const dueDate = String(inv.due_date ?? "").trim();
-    if (!invoiceId || !companyId || !dueDate || dueDate >= today) continue;
+    if (!companyId || !dueDate || dueDate >= today) continue;
 
     const balance = Number(inv.balance_amount ?? 0);
     if (balance <= 0) continue;
 
     const currency = String(inv.currency_code ?? "UYU").toUpperCase();
     const daysOverdue = Math.max(0, daysBetween(dueDate, today));
-    const r = await notifyInvoiceOverdue({
+    const key = `${companyId}:${currency}`;
+    const existing = byClientCurrency.get(key);
+    if (existing) {
+      existing.totalBalance += balance;
+      existing.maxDaysOverdue = Math.max(existing.maxDaysOverdue, daysOverdue);
+      existing.invoiceCount += 1;
+    } else {
+      byClientCurrency.set(key, { totalBalance: balance, maxDaysOverdue: daysOverdue, invoiceCount: 1 });
+    }
+  }
+
+  if (byClientCurrency.size === 0) return;
+
+  const companyIds = [
+    ...new Set([...byClientCurrency.keys()].map((k) => k.split(":")[0]!)),
+  ];
+  const nameMap = await loadCompanyNameMap(admin, tenantCompanyId, companyIds);
+
+  for (const [key, agg] of byClientCurrency) {
+    const colonIdx = key.indexOf(":");
+    const companyId = key.slice(0, colonIdx);
+    const currency = key.slice(colonIdx + 1);
+    if (!companyId || !currency) continue;
+
+    const r = await notifyClientOverdue({
       tenantCompanyId,
-      invoiceId,
       clientId: companyId,
       clientName: nameMap.get(companyId) ?? "Cliente",
-      amount: balance,
+      amount: agg.totalBalance,
       currency,
-      dueDate,
-      daysOverdue,
+      daysOverdue: agg.maxDaysOverdue,
+      invoiceCount: agg.invoiceCount,
     });
     tally(acc, "client_overdue", r);
   }
