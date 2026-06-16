@@ -174,11 +174,17 @@ export function generateUpcomingObligations(params: {
 
   for (const template of params.templates) {
     if (!template.active || !template.autoGenerate) continue;
+    const meta = template.metadata ?? {};
+    const endsOn =
+      typeof meta.ends_on === "string" && /^\d{4}-\d{2}-\d{2}$/.test(meta.ends_on)
+        ? meta.ends_on
+        : null;
     let cursor = template.nextOccurrenceDate;
     let guard = 0;
 
     while (cursor <= endDate && guard < 24) {
       guard += 1;
+      if (endsOn && cursor > endsOn) break;
       if (cursor >= params.asOfDate) {
         drafts.push(createGeneratedObligation(template, cursor));
       }

@@ -8,6 +8,7 @@ import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-positi
 import { formatDueWithTime, getDueTime } from "@/lib/treasury/treasury-obligation-actions";
 import { effectivePlannedObligationStatus } from "@/lib/treasury/treasury-obligation-status";
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
+import { buildTreasuryProjectedCashSnapshot } from "@/lib/treasury/treasury-projected-cash";
 import type { PlannedCashObligation, TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
 
 type Props = {
@@ -46,20 +47,24 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
     workspace.cashPositions.map((p) => [p.currency, p])
   ) as Partial<Record<TreasuryCurrencyCode, CashPositionByCurrency>>;
 
-  const overdueTotals = sumOutflowsByCurrency(workspace.overdue);
+  const cashAvailableByCurrency = Object.fromEntries(
+    CURRENCIES.map((cur) => [cur, cashByCode[cur]?.availableCash ?? 0])
+  ) as Partial<Record<TreasuryCurrencyCode, number>>;
+
+  const projectedCash = buildTreasuryProjectedCashSnapshot({
+    obligations: workspace.obligations,
+    overdue: workspace.overdue,
+    upcoming30: workspace.upcoming30,
+    cashByCurrency: cashAvailableByCurrency,
+    asOfDate,
+  });
+
+  const overdueTotals = projectedCash.overdueTotals;
+  const upcoming30Totals = projectedCash.upcoming30Totals;
+  const afterCommitments = projectedCash.afterCommitments;
+  const committedTotals = projectedCash.committedTotals;
+
   const upcoming7Totals = sumOutflowsByCurrency(workspace.upcoming7);
-  const upcoming30Totals = sumOutflowsByCurrency(workspace.upcoming30);
-
-  // After commitments: skip calculation if cash position failed (avoid false negatives)
-  const afterCommitments: Partial<Record<TreasuryCurrencyCode, number>> = {};
-  if (!cashPositionFailed) {
-    for (const cur of CURRENCIES) {
-      const cash = cashByCode[cur]?.availableCash ?? 0;
-      afterCommitments[cur] = cash - (overdueTotals[cur] ?? 0) - (upcoming30Totals[cur] ?? 0);
-    }
-  }
-
-  // Top 5 most urgent: overdue first, then upcoming7 (deduped by id)
   const seen = new Set<string>();
   const topObligations: PlannedCashObligation[] = [];
   for (const obl of [
@@ -222,8 +227,14 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
       <section>
         <CopilotSectionTitle
           title="Caja proyectada"
-          subtitle="Disponible − atrasados − egresos 30 días programados."
+          subtitle="Disponible menos compromisos de los próximos 30 días."
         />
+        <p className="mb-3 text-xs text-[var(--copilot-ink-muted)]">
+          Incluye ingresos y egresos ya cargados en caja, pagos programados y pagos generados por recurrentes.
+          {projectedCash.recurringItemsInHorizon > 0
+            ? ` ${projectedCash.recurringItemsInHorizon} pago${projectedCash.recurringItemsInHorizon === 1 ? "" : "s"} recurrente${projectedCash.recurringItemsInHorizon === 1 ? "" : "s"} en el horizonte.`
+            : null}
+        </p>
         {cashPositionFailed ? (
           <div className="rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] p-4 text-sm text-[var(--copilot-warning-text-strong)]">
             Configurá el saldo en Caja para ver la proyección.
@@ -233,7 +244,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
             {CURRENCIES.map((cur) => {
               const after = afterCommitments[cur] ?? 0;
               const cash = cashByCode[cur]?.availableCash ?? 0;
-              const committed = (overdueTotals[cur] ?? 0) + (upcoming30Totals[cur] ?? 0);
+              const committed = committedTotals[cur] ?? 0;
               const negative = after < 0;
               return (
                 <div

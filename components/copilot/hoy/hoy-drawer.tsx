@@ -25,12 +25,12 @@ export function HoyDrawer({
   return (
     <>
       <div
-        className="fixed inset-0 z-30 bg-black/20 backdrop-blur-[1px]"
+        className="fixed inset-0 z-[var(--copilot-z-overlay)] bg-[var(--copilot-overlay-backdrop)] backdrop-blur-[1px]"
         onClick={onClose}
         aria-hidden
       />
       <aside
-        className="fixed inset-y-0 right-0 z-40 flex w-full max-w-[420px] flex-col border-l border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] shadow-xl sm:w-[420px]"
+        className="fixed inset-y-0 right-0 z-[var(--copilot-z-drawer)] flex w-full max-w-[420px] flex-col border-l border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] shadow-xl sm:w-[420px]"
         aria-label={title}
       >
         <div className="flex items-center justify-between border-b border-[var(--copilot-border)] px-5 py-4">

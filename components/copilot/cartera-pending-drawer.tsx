@@ -60,14 +60,14 @@ export function CarteraPendingDrawer({
         type="button"
         aria-label="Cerrar panel"
         onClick={onClose}
-        className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
+        className="fixed inset-0 z-[var(--copilot-z-overlay)] bg-[var(--copilot-overlay-backdrop)] backdrop-blur-sm"
       />
 
       <aside
         role="dialog"
         aria-modal="true"
         aria-label={`Deuda actual ${currency}`}
-        className="fixed inset-y-0 right-0 z-50 flex h-full w-full max-w-none flex-col border-l border-[var(--copilot-border)] bg-[var(--copilot-card)] shadow-2xl md:w-[min(520px,100vw)] md:min-w-[420px]"
+        className="fixed inset-y-0 right-0 z-[var(--copilot-z-drawer)] flex h-full w-full max-w-none flex-col border-l border-[var(--copilot-border)] bg-[var(--copilot-card)] shadow-2xl md:w-[min(520px,100vw)] md:min-w-[420px]"
       >
         <header className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--copilot-border)] px-5 py-4">
           <div>
@@ -181,11 +181,11 @@ function ClientPendingRow({
         </p>
       </div>
       {visibleInvoices.length > 0 ? (
-        <ul className="mt-3 space-y-1 rounded-lg border border-[var(--copilot-border)]/70 bg-[var(--copilot-soft-bg)]/60 px-3 py-2">
+        <ul className="mt-3 divide-y divide-[var(--copilot-border)]/70 border-t border-[var(--copilot-border)]/70">
           {visibleInvoices.map((line) => (
             <li
               key={line.invoiceId}
-              className="flex items-start justify-between gap-3 text-[11px] text-[var(--copilot-ink-muted)]"
+              className="flex items-start justify-between gap-3 py-1.5 text-[11px] text-[var(--copilot-ink-muted)]"
             >
               <span className="min-w-0 flex-1 truncate text-[var(--copilot-ink)]">
                 {line.invoiceNumber ?? "Factura sin número"}
@@ -204,7 +204,7 @@ function ClientPendingRow({
             </li>
           ))}
           {hiddenInvoiceCount > 0 ? (
-            <li className="text-[11px] italic text-[var(--copilot-ink-muted)]">
+            <li className="py-1.5 text-[11px] italic text-[var(--copilot-ink-muted)]">
               + {formatCarteraInteger(hiddenInvoiceCount)} factura
               {hiddenInvoiceCount === 1 ? "" : "s"} más
             </li>

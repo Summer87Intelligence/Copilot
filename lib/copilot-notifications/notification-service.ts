@@ -19,7 +19,7 @@ export async function listNotifications(
     listQuery = listQuery.is("read_at", null);
   }
 
-  const [{ data, error: listError }, { count }] = await Promise.all([
+  const [{ data, error: listError }, { count, error: countError }] = await Promise.all([
     listQuery,
     supabase
       .from("copilot_notifications")
@@ -30,10 +30,14 @@ export async function listNotifications(
 
   if (listError) throw listError;
 
+  if (countError && process.env.NODE_ENV !== "production") {
+    console.warn("[notifications] unread count query failed:", countError.message);
+  }
+
   return {
     ok: true,
     notifications: (data as CopilotNotification[]) ?? [],
-    unreadCount: count ?? 0,
+    unreadCount: countError ? 0 : (count ?? 0),
   };
 }
 

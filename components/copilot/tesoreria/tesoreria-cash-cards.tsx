@@ -3,7 +3,8 @@
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
 import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
 import type { ManualCashMovement, TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
-import { metricValueClass, premiumCardClass } from "@/components/copilot/ui/copilot-visual-system";
+import { CopilotKpiCard } from "@/components/copilot/ui/copilot-kpi-card";
+
 const CURRENCIES: TreasuryCurrencyCode[] = ["UYU", "USD"];
 
 function isOpeningBalanceProxy(m: ManualCashMovement): boolean {
@@ -89,48 +90,48 @@ function TesoreriaCashCard({
   const lastIncome = lastCashEvent(workspace.manualMovements, currency, "income");
   const lastExpense = lastCashEvent(workspace.manualMovements, currency, "expense");
 
-  return (
-    <div
-      className={`flex min-h-[220px] flex-col ${premiumCardClass} p-5 ${
-        isNegative ? "border-[var(--copilot-danger-border)]/80 bg-gradient-to-br from-white to-rose-50/40" : ""
-      }`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <span
-            className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-              isNegative ? "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-danger-text-strong)]" : "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-success-text-strong)]"
-            }`}
-          >
-            Caja disponible
-          </span>
-          <p className="mt-1.5 text-sm font-semibold text-[var(--copilot-ink)]">{title}</p>
-        </div>
-      </div>
+  const subtitle =
+    pos && !pos.openingConfigured
+      ? "Saldo no configurado — cargá el saldo actual."
+      : isNegative
+        ? "Caja negativa — revisá movimientos."
+        : "Dinero disponible al corte + movimientos confirmados.";
 
-      <div className="flex flex-1 flex-col items-center justify-center py-3 text-center">
-        <p
-          className={`text-[2rem] leading-none tracking-tight xl:text-[2.15rem] ${metricValueClass} ${
-            isNegative ? "text-[var(--copilot-danger-text-strong)]" : "text-[var(--copilot-success-text-strong)]"
+  return (
+    <CopilotKpiCard
+      size="hero"
+      tone={isNegative ? "danger" : "neutral"}
+      ariaLabel={`Caja disponible ${title}`}
+      eyebrow={
+        <span className="text-sm font-semibold normal-case tracking-normal text-[var(--copilot-ink)]">
+          {title}
+        </span>
+      }
+      badge={
+        <span
+          className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+            isNegative
+              ? "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-danger-text-strong)]"
+              : "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-success-text-strong)]"
           }`}
         >
-          {pos ? formatTreasuryMoney(pureAvailable, currency) : "—"}
-        </p>
-        <p className="mt-2 text-xs text-[var(--copilot-ink-muted)]">
-          {pos && !pos.openingConfigured
-            ? "Saldo no configurado — cargá el saldo actual."
-            : isNegative
-              ? "Caja negativa — revisá movimientos."
-              : "Dinero disponible al corte + movimientos confirmados."}
-        </p>
-      </div>
-
-      <div className="mt-auto border-t border-[var(--copilot-border)] pt-3">
-        <CashEventLine label="Último ingreso" event={lastIncome} emptyLabel="Sin ingresos registrados" />
-        <CashEventLine label="Último egreso" event={lastExpense} emptyLabel="Sin egresos registrados" />
-      </div>
-
-    </div>
+          Caja disponible
+        </span>
+      }
+      value={pos ? formatTreasuryMoney(pureAvailable, currency) : "—"}
+      valueClassName={
+        isNegative
+          ? "text-[var(--copilot-danger-text-strong)]"
+          : "text-[var(--copilot-success-text-strong)]"
+      }
+      subtitle={subtitle}
+      footer={
+        <div className="border-t border-[var(--copilot-border)]">
+          <CashEventLine label="Último ingreso" event={lastIncome} emptyLabel="Sin ingresos registrados" />
+          <CashEventLine label="Último egreso" event={lastExpense} emptyLabel="Sin egresos registrados" />
+        </div>
+      }
+    />
   );
 }
 

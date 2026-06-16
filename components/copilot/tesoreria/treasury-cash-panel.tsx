@@ -2,6 +2,7 @@
 
 import { softCalloutClass } from "@/components/copilot/ui/copilot-visual-system";
 import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
+import { TreasuryExecutiveForecastPanel } from "./treasury-executive-forecast-panel";
 import { TesoreriaCashDetail } from "./tesoreria-cash-detail";
 
 type Props = {
@@ -9,10 +10,14 @@ type Props = {
   asOfDate: string;
 };
 
-export function TreasuryCashPanel({ workspace }: Props) {
+export function TreasuryCashPanel({ workspace, asOfDate }: Props) {
   return (
     <div className="space-y-6">
-      <TesoreriaCashDetail workspace={workspace} />
+      <TreasuryExecutiveForecastPanel workspace={workspace} asOfDate={asOfDate} />
+
+      <div className="border-t border-dashed border-[var(--copilot-border)] pt-6">
+        <TesoreriaCashDetail workspace={workspace} />
+      </div>
 
       <div className={softCalloutClass}>
         <p className="text-center text-[11px] text-[var(--copilot-ink-muted)]">

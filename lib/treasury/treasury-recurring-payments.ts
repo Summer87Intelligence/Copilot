@@ -29,13 +29,14 @@ import type {
 } from "@/lib/treasury/treasury-recurring-obligations";
 
 export const RECURRING_PAYMENT_CATEGORIES = [
+  "Sueldos",
+  "Servicios",
+  "Impuestos",
+  "Alquiler",
   "DGI",
   "BPS",
-  "Sueldos",
   "Proveedores",
-  "Alquiler",
   "Préstamos",
-  "Servicios",
   "Suscripciones",
   "Otros",
 ] as const;

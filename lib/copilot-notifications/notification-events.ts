@@ -388,3 +388,44 @@ export async function notifySyncChangesDetected(opts: SyncChangesDetectedOpts) {
     dedup_key: `sync_changes:${opts.dateBucket}`,
   });
 }
+
+// ─── Cash risk detected ───────────────────────────────────────────────────────
+
+export type CashRiskCurrencyDetail = {
+  currency: string;
+  availableCash: number;
+  committedOutflows: number;
+  deficit: number;
+};
+
+type CashRiskDetectedOpts = {
+  tenantCompanyId: string;
+  /** YYYY-MM-DD — daily dedup bucket. */
+  asOfYmd: string;
+  affectedCurrencies: CashRiskCurrencyDetail[];
+};
+
+function buildCashRiskBody(currencies: CashRiskCurrencyDetail[]): string {
+  const parts = currencies.map((c) => {
+    const deficit = Math.abs(c.deficit);
+    return `${c.currency} déficit ${deficit.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
+  });
+  return `Caja insuficiente para cubrir compromisos: ${parts.join(" · ")}. Revisá tesorería.`;
+}
+
+export async function notifyCashRiskDetected(opts: CashRiskDetectedOpts) {
+  const body = buildCashRiskBody(opts.affectedCurrencies);
+  const currencies = opts.affectedCurrencies.map((c) => c.currency).join(",");
+  return createNotificationIfNotExists(opts.tenantCompanyId, {
+    type: "cash_risk_detected",
+    severity: "critical",
+    title: "Riesgo de caja detectado",
+    body,
+    action_href: "/copilot/tesoreria",
+    dedup_key: `cash_risk_detected:${opts.asOfYmd}:${currencies}`,
+    metadata: {
+      affected_currencies: opts.affectedCurrencies,
+      as_of: opts.asOfYmd,
+    },
+  });
+}

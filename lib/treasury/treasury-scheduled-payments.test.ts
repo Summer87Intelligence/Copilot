@@ -220,6 +220,15 @@ describe("API body validation", () => {
         due_date: "2026-06-01",
       }).success
     ).toBe(false);
+    expect(
+      scheduledPaymentCreateBodySchema.safeParse({
+        name: "Netflix",
+        category: "Suscripciones",
+        currency: "USD",
+        amount: 60,
+        due_date: "2026-06-10",
+      }).success
+    ).toBe(true);
   });
 });
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CopilotPagination } from "@/components/copilot/ui/copilot-pagination";
-import { Loader2, MoreHorizontal, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 
 import {
@@ -13,15 +13,17 @@ import {
 } from "@/components/copilot/copilot-ui";
 import { CopilotButton } from "@/components/copilot/ui/copilot-button";
 import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
+import { RecurringRowMoreMenu } from "@/components/copilot/tesoreria/recurring-row-more-menu";
 import {
   TESORERIA_FIELD_CLASS,
   TESORERIA_FORM_LABEL_CLASS,
   TESORERIA_PAGE_SIZE,
   TESORERIA_PAYMENT_FIELD,
-  TESORERIA_TABLE_CLASS,
-  TESORERIA_TD_CLASS,
-  TESORERIA_TH_CLASS,
 } from "@/components/copilot/tesoreria/tesoreria-ui";
+import {
+  CopilotResponsiveTable,
+  type CopilotResponsiveTableColumn,
+} from "@/components/copilot/ui/copilot-responsive-table";
 import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
@@ -33,6 +35,11 @@ import {
   getObligationStatusLabel,
   getRecurringTemplateStatusLabel,
 } from "@/lib/treasury/treasury-recurring-payments-helpers";
+import {
+  buildRecurringObligationCreateBody,
+  validateRecurringPaymentForm,
+  type RecurringPaymentFieldErrors,
+} from "@/lib/treasury/treasury-recurring-form";
 import {
   RECURRING_PAYMENT_CATEGORIES,
   type TreasuryRecurringPayment,
@@ -48,7 +55,8 @@ type Props = {
 };
 
 type FormState = {
-  title: string;
+  counterparty: string;
+  concept: string;
   direction: "income" | "expense";
   category: string;
   currency: "UYU" | "USD";
@@ -60,6 +68,23 @@ type FormState = {
   notes: string;
 };
 
+function parseTitleParts(title: string, meta: Record<string, unknown>) {
+  const counterparty =
+    typeof meta.counterparty === "string" ? meta.counterparty : "";
+  const concept = typeof meta.concept === "string" ? meta.concept : "";
+  if (counterparty || concept) {
+    return { counterparty, concept: concept || title };
+  }
+  const sep = title.indexOf(" — ");
+  if (sep > 0) {
+    return {
+      counterparty: title.slice(0, sep).trim(),
+      concept: title.slice(sep + 3).trim(),
+    };
+  }
+  return { counterparty: "", concept: title };
+}
+
 type ModalKind =
   | { type: "none" }
   | { type: "pause"; row: TreasuryRecurringPayment }
@@ -68,41 +93,18 @@ type ModalKind =
   | { type: "payments"; row: TreasuryRecurringPayment };
 
 const initialForm: FormState = {
-  title: "",
+  counterparty: "",
+  concept: "",
   direction: "expense",
-  category: "Suscripciones",
+  category: "Sueldos",
   currency: "USD",
   amount: "",
   frequency: "monthly",
-  dayOfMonth: "10",
+  dayOfMonth: "3",
   startsOn: new Date().toISOString().slice(0, 10),
   endsOn: "",
   notes: "",
 };
-
-function recurrencePayload(form: FormState) {
-  return {
-    recurrence_type:
-      form.frequency === "yearly"
-        ? "yearly"
-        : form.frequency === "weekly"
-          ? "custom"
-          : "monthly",
-    recurrence_interval: form.frequency === "weekly" ? 7 : 1,
-    next_occurrence_date: form.startsOn,
-  };
-}
-
-function metadataPayload(form: FormState) {
-  return {
-    direction: form.direction,
-    starts_on: form.startsOn,
-    ends_on: form.endsOn.trim() || null,
-    day_of_month: form.dayOfMonth ? Number(form.dayOfMonth) : null,
-    frequency: form.frequency,
-    notes: form.notes.trim() || null,
-  };
-}
 
 function obligationStatusTone(
   obl: PlannedCashObligation
@@ -129,10 +131,11 @@ export function TreasuryRecurringPaymentsPanel({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(initialForm);
+  const [fieldErrors, setFieldErrors] = useState<RecurringPaymentFieldErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [modal, setModal] = useState<ModalKind>({ type: "none" });
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
 
   const editingItem = editingId ? items.find((i) => i.id === editingId) ?? null : null;
@@ -159,27 +162,15 @@ export function TreasuryRecurringPaymentsPanel({
   );
 
   useEffect(() => {
-    if (!openMenuId) return;
-    function close(e: MouseEvent) {
-      const target = e.target;
-      if (target instanceof Element && target.closest("[data-recurring-menu]")) return;
-      setOpenMenuId(null);
-    }
-    document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
-  }, [openMenuId]);
-
-  useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key !== "Escape") return;
       if (submitting || saving) return;
-      if (openMenuId) { setOpenMenuId(null); return; }
       if (modal.type !== "none") { setModal({ type: "none" }); return; }
       if (drawerOpen) { setDrawerOpen(false); setEditingId(null); }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [modal, drawerOpen, openMenuId, submitting, saving]);
+  }, [modal, drawerOpen, submitting, saving]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -217,16 +208,20 @@ export function TreasuryRecurringPaymentsPanel({
           : row.recurrenceInterval === 7
             ? "weekly"
             : "monthly";
+    const parts = parseTitleParts(row.title, meta);
     setEditingId(row.id);
+    setFieldErrors({});
+    setFormError(null);
     setForm({
-      title: row.title,
+      counterparty: parts.counterparty,
+      concept: parts.concept,
       direction: meta.direction === "income" ? "income" : "expense",
       category: row.category,
       currency: row.currency,
       amount: String(row.amount),
       frequency,
       dayOfMonth:
-        typeof meta.day_of_month === "number" ? String(meta.day_of_month) : "10",
+        typeof meta.day_of_month === "number" ? String(meta.day_of_month) : "3",
       startsOn: String(meta.starts_on ?? row.nextOccurrenceDate),
       endsOn: typeof meta.ends_on === "string" ? meta.ends_on : "",
       notes: typeof meta.notes === "string" ? meta.notes : "",
@@ -245,23 +240,41 @@ export function TreasuryRecurringPaymentsPanel({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const amount = Number(form.amount.replace(",", "."));
-    if (!form.title.trim() || !Number.isFinite(amount) || amount <= 0) {
-      workspace.notify("error", "Completá nombre y monto válido.");
+    setFormError(null);
+    setFieldErrors({});
+    const validation = validateRecurringPaymentForm({
+      counterparty: form.counterparty,
+      concept: form.concept,
+      direction: form.direction,
+      category: form.category,
+      currency: form.currency,
+      amount: form.amount,
+      frequency: form.frequency,
+      dayOfMonth: form.dayOfMonth,
+      startsOn: form.startsOn,
+      endsOn: form.endsOn,
+      notes: form.notes,
+    });
+    if (!validation.ok) {
+      setFieldErrors(validation.fieldErrors);
+      setFormError(validation.banner);
       return;
     }
     setSaving(true);
     try {
-      const body = {
-        title: form.title.trim(),
+      const body = buildRecurringObligationCreateBody({
+        counterparty: form.counterparty,
+        concept: form.concept,
+        direction: form.direction,
         category: form.category,
         currency: form.currency,
-        amount,
-        auto_generate: true,
-        active: true,
-        ...recurrencePayload(form),
-        metadata: metadataPayload(form),
-      };
+        amount: form.amount,
+        frequency: form.frequency,
+        dayOfMonth: form.dayOfMonth,
+        startsOn: form.startsOn,
+        endsOn: form.endsOn,
+        notes: form.notes,
+      });
 
       const res = editingId
         ? await copilotApiFetch(`/api/copilot/treasury/recurring-obligations/${editingId}`, {
@@ -277,7 +290,7 @@ export function TreasuryRecurringPaymentsPanel({
 
       const json = (await res.json()) as { ok?: boolean; message?: string };
       if (!res.ok || !json.ok) {
-        workspace.notify("error", json.message ?? "No se pudo guardar el recurrente.");
+        setFormError(json.message ?? "No se pudo guardar el recurrente.");
         return;
       }
       workspace.notify(
@@ -372,7 +385,7 @@ export function TreasuryRecurringPaymentsPanel({
     <section className="space-y-4">
       <CopilotSectionTitle
         title="Pagos recurrentes"
-        subtitle="Reglas que generan vencimientos automáticos en la lista de pagos programados."
+        subtitle="Estas reglas crean automáticamente pagos próximos. Podés ajustar un mes puntual sin cambiar la regla."
       />
 
       {loading ? (
@@ -388,121 +401,185 @@ export function TreasuryRecurringPaymentsPanel({
           ]}
         />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50">
-          <table className={TESORERIA_TABLE_CLASS}>
-            <thead>
-              <tr>
-                <th className={TESORERIA_TH_CLASS}>Concepto</th>
-                <th className={TESORERIA_TH_CLASS}>Categoría</th>
-                <th className={TESORERIA_TH_CLASS}>Monto</th>
-                <th className={TESORERIA_TH_CLASS}>Frecuencia</th>
-                <th className={TESORERIA_TH_CLASS}>Próximo</th>
-                <th className={TESORERIA_TH_CLASS}>Estado</th>
-                <th className={TESORERIA_TH_CLASS}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageItems.map((row) => (
-                <tr key={row.id}>
-                  <td className={TESORERIA_TD_CLASS}>
-                    <span className="font-medium">{row.title}</span>
-                  </td>
-                  <td className={TESORERIA_TD_CLASS}>
-                    <span className="block text-[var(--copilot-ink)]">{row.category}</span>
-                    <span className="text-[11px] text-[var(--copilot-ink-muted)]">
-                      {row.metadata?.direction === "income" ? "Ingreso" : "Egreso"}
-                    </span>
-                  </td>
-                  <td className={`${TESORERIA_TD_CLASS} tabular-nums`}>
-                    {formatTreasuryMoney(row.amount, row.currency)}
-                  </td>
-                  <td className={TESORERIA_TD_CLASS}>
-                    {formatRecurrenceFrequency(row)}
-                  </td>
-                  <td className={`${TESORERIA_TD_CLASS} tabular-nums`}>
-                    {formatNextOccurrenceDisplay(row)}
-                  </td>
-                  <td className={TESORERIA_TD_CLASS}>
-                    <CopilotBadge tone={row.active ? "success" : "neutral"}>
-                      {getRecurringTemplateStatusLabel(row)}
-                    </CopilotBadge>
-                  </td>
-                  <td className={TESORERIA_TD_CLASS}>
-                    {canWrite ? (
-                      <div className="flex flex-wrap items-center gap-1">
-                        <CopilotGhostButton
-                          type="button"
-                          onClick={() => openEdit(row)}
-                        >
-                          Editar
-                        </CopilotGhostButton>
-                        {row.active ? (
-                          <CopilotGhostButton
-                            type="button"
-                            onClick={() => setModal({ type: "pause", row })}
-                          >
-                            Pausar
-                          </CopilotGhostButton>
-                        ) : (
-                          <CopilotGhostButton
-                            type="button"
-                            onClick={() => setModal({ type: "reactivate", row })}
-                          >
-                            Reactivar
-                          </CopilotGhostButton>
-                        )}
-                        <CopilotGhostButton
-                          type="button"
-                          onClick={() => setModal({ type: "payments", row })}
-                        >
-                          Ver pagos
-                        </CopilotGhostButton>
-                        <div className="relative" data-recurring-menu>
-                          <button
-                            type="button"
-                            className="rounded p-1 text-[var(--copilot-ink-muted)] transition hover:bg-[rgba(44,40,37,0.06)] hover:text-[var(--copilot-ink)]"
-                            aria-label="Más opciones"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenMenuId(openMenuId === row.id ? null : row.id);
-                            }}
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </button>
-                          {openMenuId === row.id ? (
-                            <div
-                              className="absolute right-0 top-full z-10 mt-1 min-w-[120px] rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] py-1 shadow-lg"
-                              data-recurring-menu
-                            >
-                              <button
-                                type="button"
-                                className="w-full px-3 py-1.5 text-left text-xs text-[var(--copilot-danger-text)] transition hover:bg-[var(--copilot-tone-danger-bg)]"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenMenuId(null);
-                                  setModal({ type: "delete", row, cancelPending: true });
-                                }}
-                              >
-                                Eliminar
-                              </button>
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
+        <CopilotResponsiveTable<TreasuryRecurringPayment>
+          rows={pageItems}
+          getRowKey={(row) => row.id}
+          minWidth="720px"
+          ariaLabel="Pagos recurrentes"
+          stickyHeader
+          columns={[
+            {
+              key: "concepto",
+              header: "Concepto",
+              render: (row) => <span className="font-medium">{row.title}</span>,
+            },
+            {
+              key: "categoria",
+              header: "Categoría",
+              render: (row) => (
+                <>
+                  <span className="block text-[var(--copilot-ink)]">{row.category}</span>
+                  <span className="text-[11px] text-[var(--copilot-ink-muted)]">
+                    {row.metadata?.direction === "income" ? "Ingreso" : "Egreso"}
+                  </span>
+                </>
+              ),
+            },
+            {
+              key: "monto",
+              header: TESORERIA_PAYMENT_FIELD.monto,
+              cellClassName: "tabular-nums",
+              render: (row) => formatTreasuryMoney(row.amount, row.currency),
+            },
+            {
+              key: "frecuencia",
+              header: "Frecuencia",
+              render: (row) => formatRecurrenceFrequency(row),
+            },
+            {
+              key: "proximo",
+              header: "Próximo",
+              cellClassName: "tabular-nums",
+              render: (row) => formatNextOccurrenceDisplay(row),
+            },
+            {
+              key: "estado",
+              header: "Estado",
+              render: (row) => (
+                <CopilotBadge tone={row.active ? "success" : "neutral"}>
+                  {getRecurringTemplateStatusLabel(row)}
+                </CopilotBadge>
+              ),
+            },
+            {
+              key: "acciones",
+              header: "Acciones",
+              render: (row) =>
+                canWrite ? (
+                  <div className="flex flex-wrap items-center gap-1">
+                    <CopilotGhostButton type="button" onClick={() => openEdit(row)}>
+                      Editar
+                    </CopilotGhostButton>
+                    {row.active ? (
+                      <CopilotGhostButton
+                        type="button"
+                        onClick={() => setModal({ type: "pause", row })}
+                      >
+                        Pausar
+                      </CopilotGhostButton>
                     ) : (
                       <CopilotGhostButton
                         type="button"
-                        onClick={() => setModal({ type: "payments", row })}
+                        onClick={() => setModal({ type: "reactivate", row })}
                       >
-                        Ver pagos
+                        Reactivar
                       </CopilotGhostButton>
                     )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    <CopilotGhostButton
+                      type="button"
+                      onClick={() => setModal({ type: "payments", row })}
+                    >
+                      Ver pagos
+                    </CopilotGhostButton>
+                    <RecurringRowMoreMenu
+                      items={[
+                        {
+                          label: "Eliminar",
+                          danger: true,
+                          onClick: () =>
+                            setModal({ type: "delete", row, cancelPending: true }),
+                        },
+                      ]}
+                    />
+                  </div>
+                ) : (
+                  <CopilotGhostButton
+                    type="button"
+                    onClick={() => setModal({ type: "payments", row })}
+                  >
+                    Ver pagos
+                  </CopilotGhostButton>
+                ),
+            },
+          ] satisfies CopilotResponsiveTableColumn<TreasuryRecurringPayment>[]}
+          mobileCard={(row) => (
+            <>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-[var(--copilot-ink)]">{row.title}</p>
+                  <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">
+                    {row.category} · {row.metadata?.direction === "income" ? "Ingreso" : "Egreso"}
+                  </p>
+                </div>
+                <CopilotBadge tone={row.active ? "success" : "neutral"}>
+                  {getRecurringTemplateStatusLabel(row)}
+                </CopilotBadge>
+              </div>
+              <dl className="mt-3 space-y-1 text-xs">
+                <div className="flex items-baseline justify-between gap-2">
+                  <dt className="text-[var(--copilot-ink-muted)]">Frecuencia</dt>
+                  <dd className="text-[var(--copilot-ink)]">{formatRecurrenceFrequency(row)}</dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-2">
+                  <dt className="text-[var(--copilot-ink-muted)]">Próximo pago</dt>
+                  <dd className="tabular-nums text-[var(--copilot-ink)]">
+                    {formatNextOccurrenceDisplay(row)}
+                  </dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-2">
+                  <dt className="text-[var(--copilot-ink-muted)]">Monto</dt>
+                  <dd className="tabular-nums font-semibold text-[var(--copilot-ink)]">
+                    {formatTreasuryMoney(row.amount, row.currency)} {row.currency}
+                  </dd>
+                </div>
+              </dl>
+              <div className="mt-3 flex flex-wrap items-center gap-1 border-t border-[var(--copilot-border)] pt-3">
+                {canWrite ? (
+                  <>
+                    <CopilotGhostButton type="button" onClick={() => openEdit(row)}>
+                      Editar
+                    </CopilotGhostButton>
+                    {row.active ? (
+                      <CopilotGhostButton
+                        type="button"
+                        onClick={() => setModal({ type: "pause", row })}
+                      >
+                        Pausar
+                      </CopilotGhostButton>
+                    ) : (
+                      <CopilotGhostButton
+                        type="button"
+                        onClick={() => setModal({ type: "reactivate", row })}
+                      >
+                        Reactivar
+                      </CopilotGhostButton>
+                    )}
+                    <CopilotGhostButton
+                      type="button"
+                      onClick={() => setModal({ type: "payments", row })}
+                    >
+                      Ver pagos
+                    </CopilotGhostButton>
+                    <CopilotGhostButton
+                      type="button"
+                      onClick={() => setModal({ type: "delete", row, cancelPending: true })}
+                      className="!text-[var(--copilot-danger-text)]"
+                    >
+                      Eliminar
+                    </CopilotGhostButton>
+                  </>
+                ) : (
+                  <CopilotGhostButton
+                    type="button"
+                    onClick={() => setModal({ type: "payments", row })}
+                  >
+                    Ver pagos
+                  </CopilotGhostButton>
+                )}
+              </div>
+            </>
+          )}
+        />
       )}
 
       {visibleItems.length > TESORERIA_PAGE_SIZE ? (
@@ -517,7 +594,7 @@ export function TreasuryRecurringPaymentsPanel({
       {/* ── Modal: Pausar ── */}
       {modal.type === "pause" ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          className="fixed inset-0 z-[var(--copilot-z-modal)] flex items-center justify-center bg-[var(--copilot-overlay-backdrop)] p-4"
           onMouseDown={(e) => { if (e.target === e.currentTarget && !submitting) setModal({ type: "none" }); }}
         >
           <div className="w-full max-w-sm rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-6 shadow-xl">
@@ -554,7 +631,7 @@ export function TreasuryRecurringPaymentsPanel({
       {/* ── Modal: Reactivar ── */}
       {modal.type === "reactivate" ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          className="fixed inset-0 z-[var(--copilot-z-modal)] flex items-center justify-center bg-[var(--copilot-overlay-backdrop)] p-4"
           onMouseDown={(e) => { if (e.target === e.currentTarget && !submitting) setModal({ type: "none" }); }}
         >
           <div className="w-full max-w-sm rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-6 shadow-xl">
@@ -606,7 +683,7 @@ export function TreasuryRecurringPaymentsPanel({
       {/* ── Modal: Eliminar ── */}
       {modal.type === "delete" ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          className="fixed inset-0 z-[var(--copilot-z-modal)] flex items-center justify-center bg-[var(--copilot-overlay-backdrop)] p-4"
           onMouseDown={(e) => { if (e.target === e.currentTarget && !submitting) setModal({ type: "none" }); }}
         >
           <div className="w-full max-w-sm rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-6 shadow-xl">
@@ -659,7 +736,7 @@ export function TreasuryRecurringPaymentsPanel({
       {/* ── Drawer: Ver pagos generados ── */}
       {modal.type === "payments" ? (
         <div
-          className="fixed inset-0 z-50 flex justify-end bg-black/30"
+          className="fixed inset-0 z-[var(--copilot-z-drawer)] flex justify-end bg-[var(--copilot-overlay-backdrop)]"
           onMouseDown={(e) => { if (e.target === e.currentTarget) setModal({ type: "none" }); }}
         >
           <div className="flex h-full w-full max-w-md flex-col bg-[var(--copilot-card-bg)] shadow-xl">
@@ -694,7 +771,7 @@ export function TreasuryRecurringPaymentsPanel({
       {/* ── Drawer: Crear / Editar ── */}
       {drawerOpen && editingId ? (
         <div
-          className="fixed inset-0 z-50 flex justify-end bg-black/30"
+          className="fixed inset-0 z-[var(--copilot-z-drawer)] flex justify-end bg-[var(--copilot-overlay-backdrop)]"
           onMouseDown={(e) => { if (e.target === e.currentTarget && !saving) { setDrawerOpen(false); setEditingId(null); } }}
         >
           <form
@@ -712,14 +789,76 @@ export function TreasuryRecurringPaymentsPanel({
               </p>
             </div>
             <div className="flex-1 space-y-3 overflow-auto p-4">
+              {formError ? (
+                <p className="rounded-lg bg-[var(--copilot-tone-danger-bg)] px-3 py-2 text-xs text-[var(--copilot-danger-text)]">
+                  {formError}
+                </p>
+              ) : null}
               <label className="block text-sm">
-                <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.concepto}</span>
-                <input
+                <span className={TESORERIA_FORM_LABEL_CLASS}>Frecuencia</span>
+                <select
                   className={TESORERIA_FIELD_CLASS}
-                  value={form.title}
-                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  placeholder="Netflix"
+                  value={form.frequency}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      frequency: e.target.value as FormState["frequency"],
+                    }))
+                  }
+                >
+                  <option value="monthly">Mensual</option>
+                  <option value="weekly">Semanal</option>
+                  <option value="yearly">Anual</option>
+                </select>
+              </label>
+              {form.frequency === "monthly" ? (
+                <label className="block text-sm">
+                  <span className={TESORERIA_FORM_LABEL_CLASS}>Día del mes</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={31}
+                    className={TESORERIA_FIELD_CLASS}
+                    value={form.dayOfMonth}
+                    onChange={(e) => setForm((f) => ({ ...f, dayOfMonth: e.target.value }))}
+                  />
+                  <span className="mt-1 block text-[11px] text-[var(--copilot-ink-muted)]">
+                    Ejemplo: todos los 3 de cada mes
+                  </span>
+                  {fieldErrors.dayOfMonth ? (
+                    <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]">
+                      {fieldErrors.dayOfMonth}
+                    </span>
+                  ) : null}
+                </label>
+              ) : null}
+              <label className="block text-sm">
+                <span className={TESORERIA_FORM_LABEL_CLASS}>Fecha de inicio</span>
+                <input
+                  type="date"
+                  className={TESORERIA_FIELD_CLASS}
+                  value={form.startsOn}
+                  onChange={(e) => setForm((f) => ({ ...f, startsOn: e.target.value }))}
                 />
+                {fieldErrors.startsOn ? (
+                  <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]">
+                    {fieldErrors.startsOn}
+                  </span>
+                ) : null}
+              </label>
+              <label className="block text-sm">
+                <span className={TESORERIA_FORM_LABEL_CLASS}>Fecha de finalización (opcional)</span>
+                <input
+                  type="date"
+                  className={TESORERIA_FIELD_CLASS}
+                  value={form.endsOn}
+                  onChange={(e) => setForm((f) => ({ ...f, endsOn: e.target.value }))}
+                />
+                {fieldErrors.endsOn ? (
+                  <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]">
+                    {fieldErrors.endsOn}
+                  </span>
+                ) : null}
               </label>
               <label className="block text-sm">
                 <span className={TESORERIA_FORM_LABEL_CLASS}>Tipo</span>
@@ -750,6 +889,11 @@ export function TreasuryRecurringPaymentsPanel({
                     </option>
                   ))}
                 </select>
+                {fieldErrors.category ? (
+                  <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]">
+                    {fieldErrors.category}
+                  </span>
+                ) : null}
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <label className="block text-sm">
@@ -772,60 +916,46 @@ export function TreasuryRecurringPaymentsPanel({
                     value={form.amount}
                     onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
                   />
+                  {fieldErrors.amount ? (
+                    <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]">
+                      {fieldErrors.amount}
+                    </span>
+                  ) : null}
                 </label>
               </div>
-              <label className="block text-xs">
-                Frecuencia
-                <select
-                  className={`${TESORERIA_FIELD_CLASS} mt-1`}
-                  value={form.frequency}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      frequency: e.target.value as FormState["frequency"],
-                    }))
-                  }
-                >
-                  <option value="monthly">Mensual</option>
-                  <option value="weekly">Semanal</option>
-                  <option value="yearly">Anual</option>
-                </select>
-              </label>
-              {form.frequency === "monthly" ? (
-                <label className="block text-xs">
-                  Día del mes
-                  <input
-                    type="number"
-                    min={1}
-                    max={31}
-                    className={`${TESORERIA_FIELD_CLASS} mt-1`}
-                    value={form.dayOfMonth}
-                    onChange={(e) => setForm((f) => ({ ...f, dayOfMonth: e.target.value }))}
-                  />
-                </label>
-              ) : null}
-              <label className="block text-xs">
-                Fecha de inicio
+              <label className="block text-sm">
+                <span className={TESORERIA_FORM_LABEL_CLASS}>Proveedor / persona</span>
                 <input
-                  type="date"
-                  className={`${TESORERIA_FIELD_CLASS} mt-1`}
-                  value={form.startsOn}
-                  onChange={(e) => setForm((f) => ({ ...f, startsOn: e.target.value }))}
+                  className={TESORERIA_FIELD_CLASS}
+                  value={form.counterparty}
+                  onChange={(e) => setForm((f) => ({ ...f, counterparty: e.target.value }))}
+                  placeholder="Anna"
                 />
+                {fieldErrors.counterparty ? (
+                  <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]">
+                    {fieldErrors.counterparty}
+                  </span>
+                ) : null}
               </label>
-              <label className="block text-xs">
-                Fecha de fin (opcional)
+              <label className="block text-sm">
+                <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.concepto}</span>
                 <input
-                  type="date"
-                  className={`${TESORERIA_FIELD_CLASS} mt-1`}
-                  value={form.endsOn}
-                  onChange={(e) => setForm((f) => ({ ...f, endsOn: e.target.value }))}
+                  className={TESORERIA_FIELD_CLASS}
+                  value={form.concept}
+                  onChange={(e) => setForm((f) => ({ ...f, concept: e.target.value }))}
+                  placeholder="Sueldo mensual"
                 />
+                {fieldErrors.concept ? (
+                  <span className="mt-1 block text-xs text-[var(--copilot-danger-text)]">
+                    {fieldErrors.concept}
+                  </span>
+                ) : null}
               </label>
-              <label className="block text-xs">
-                Notas
-                <input
-                  className={`${TESORERIA_FIELD_CLASS} mt-1`}
+              <label className="block text-sm">
+                <span className={TESORERIA_FORM_LABEL_CLASS}>Nota (opcional)</span>
+                <textarea
+                  rows={3}
+                  className={TESORERIA_FIELD_CLASS}
                   value={form.notes}
                   onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                 />

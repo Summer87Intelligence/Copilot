@@ -69,6 +69,7 @@ export function HoyExecutiveSummaryCard({
   debtorClientsCount,
   cashAfterPaymentsCritical,
   onScrollToCriticalClients,
+  onScrollToUpcomingPayments,
 }: {
   hero: CockpitHero;
   attentionClientsCount: number;
@@ -76,6 +77,7 @@ export function HoyExecutiveSummaryCard({
   debtorClientsCount: number;
   cashAfterPaymentsCritical: boolean;
   onScrollToCriticalClients?: () => void;
+  onScrollToUpcomingPayments?: () => void;
 }) {
   const [agenda, setAgenda] = useState<CollectionAgenda | null>(null);
   const [agendaLoaded, setAgendaLoaded] = useState(false);
@@ -190,7 +192,7 @@ export function HoyExecutiveSummaryCard({
                   {cashAfterPaymentsCritical ? (
                     <li className="flex items-center justify-between gap-2">
                       <span className="text-[12px] text-[var(--copilot-ink)]">
-                        Caja proyectada ajustada
+                        Cobertura de pagos ajustada
                       </span>
                       <CopilotButtonLink
                         href="/copilot/tesoreria"
@@ -234,6 +236,29 @@ export function HoyExecutiveSummaryCard({
               {metricsLine}
             </p>
           ) : null}
+          <nav
+            className="mt-2 flex flex-wrap gap-x-4 gap-y-1"
+            aria-label="Atajos ejecutivos"
+          >
+            {onScrollToCriticalClients ? (
+              <button
+                type="button"
+                onClick={onScrollToCriticalClients}
+                className="text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
+              >
+                Ver clientes con deuda
+              </button>
+            ) : null}
+            {onScrollToUpcomingPayments ? (
+              <button
+                type="button"
+                onClick={onScrollToUpcomingPayments}
+                className="text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
+              >
+                Ver pagos próximos
+              </button>
+            ) : null}
+          </nav>
           {/* Qué resolver hoy — up to 3 executive priorities */}
         </div>
 

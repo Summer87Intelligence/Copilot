@@ -13,6 +13,7 @@ const category = z.enum([
   "Alquiler",
   "Préstamos",
   "Servicios",
+  "Suscripciones",
   "Otros",
 ]);
 

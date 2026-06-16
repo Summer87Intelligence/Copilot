@@ -187,7 +187,7 @@ export function useTreasuryWorkspace(filters: TreasuryWorkspaceFilters) {
             fetchTreasuryBankMovements(filters),
             fetchTreasuryObligations(filters),
             fetchTreasuryUpcomingObligations(7),
-            fetchTreasuryUpcomingObligations(30),
+            fetchTreasuryUpcomingObligations(90),
             fetchTreasuryOverdueObligations(),
             fetchTreasuryCashPosition(),
           ]);

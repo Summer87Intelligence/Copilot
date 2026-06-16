@@ -26,10 +26,8 @@ import type {
   FinancialConsistencyReport,
   ReconciliationCurrencyCode,
 } from "@/lib/copilot-financial-reconciliation";
-import {
-  copilotCurrencyClass,
-  neutralFinancialCardClass,
-} from "@/components/copilot/ui/copilot-visual-system";
+import { copilotCurrencyClass } from "@/components/copilot/ui/copilot-visual-system";
+import { CopilotKpiCard } from "@/components/copilot/ui/copilot-kpi-card";
 
 type CompactVariant = "ventas" | "resumen" | "cobranza";
 
@@ -46,34 +44,19 @@ function CompactCard({
   onClick?: () => void;
   actionLabel?: string;
 }) {
-  const interactive = Boolean(onClick);
   return (
-    <article
-      role={interactive ? "button" : undefined}
-      tabIndex={interactive ? 0 : undefined}
+    <CopilotKpiCard
+      size="compact"
+      eyebrow={title}
       onClick={onClick}
-      onKeyDown={
-        interactive
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onClick?.();
-              }
-            }
-          : undefined
+      ariaLabel={onClick ? title : undefined}
+      value={<div className="space-y-1">{children}</div>}
+      footer={
+        actionLabel ? (
+          <p className="text-[10px] font-semibold text-[var(--copilot-accent)]">{actionLabel}</p>
+        ) : undefined
       }
-      className={`rounded-xl border px-3 py-2.5 shadow-sm ${neutralFinancialCardClass} ${
-        interactive ? "cursor-pointer transition hover:border-[var(--copilot-accent)]/30 hover:shadow-md" : ""
-      }`}
-    >
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-        {title}
-      </p>
-      <div className="mt-1.5 space-y-1">{children}</div>
-      {actionLabel ? (
-        <p className="mt-2 text-[10px] font-semibold text-[var(--copilot-accent)]">{actionLabel}</p>
-      ) : null}
-    </article>
+    />
   );
 }
 

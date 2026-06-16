@@ -77,6 +77,12 @@
   --copilot-currency-usd: #475569;
   --copilot-button-secondary-bg: #ffffff;
   --copilot-button-secondary-border: rgba(44, 40, 37, 0.22);
+  /* Overlay backdrop + z-index scale (semantic layering: popover < overlay < drawer < modal) */
+  --copilot-overlay-backdrop: rgba(0, 0, 0, 0.30);
+  --copilot-z-popover: 30;
+  --copilot-z-overlay: 40;
+  --copilot-z-drawer: 50;
+  --copilot-z-modal: 60;
 }
 
 [data-theme="dark"] {
@@ -151,6 +157,7 @@
   --copilot-currency-usd: #94a3b8;
   --copilot-button-secondary-bg: #2a2623;
   --copilot-button-secondary-border: rgba(232, 227, 219, 0.24);
+  --copilot-overlay-backdrop: rgba(0, 0, 0, 0.55);
 }
 
 @theme inline {

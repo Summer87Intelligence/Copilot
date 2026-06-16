@@ -21,15 +21,17 @@ import {
   TESORERIA_FORM_LABEL_CLASS,
   TESORERIA_PAGE_SIZE,
   TESORERIA_PAYMENT_FIELD,
-  TESORERIA_TABLE_CLASS,
-  TESORERIA_TD_CLASS,
-  TESORERIA_TH_CLASS,
 } from "@/components/copilot/tesoreria/tesoreria-ui";
+import {
+  CopilotResponsiveTable,
+  type CopilotResponsiveTableColumn,
+} from "@/components/copilot/ui/copilot-responsive-table";
 import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
 import { effectivePlannedObligationStatus } from "@/lib/treasury/treasury-obligation-status";
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
 import {
   addDaysYmd,
+  resolveRecurringTemplateId,
   summarizeScheduledOutflows,
 } from "@/lib/treasury/treasury-scheduled-payments";
 import { isRecurringGeneratedObligation } from "@/lib/treasury/treasury-recurring-payments";
@@ -95,6 +97,9 @@ type Props = {
   filterDateTo?: string;
   filterCurrency?: "all" | "UYU" | "USD";
   filterStatus?: "all" | "pending" | "paid" | "cancelled" | "overdue";
+  filterCategory?: PlannedObligationType;
+  filterType?: "non_recurring" | "recurring";
+  onViewTemplate?: (templateId: string) => void;
 };
 
 // ─── BaseModal ───────────────────────────────────────────────────────────────
@@ -118,7 +123,7 @@ function BaseModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-[var(--copilot-z-modal)] flex items-center justify-center bg-[var(--copilot-overlay-backdrop)] p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -178,7 +183,7 @@ function PayModal({
   return (
     <BaseModal title="Confirmar pago" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <dl className="space-y-1.5 rounded-xl bg-[var(--copilot-bg,#f5f4f2)] px-4 py-3 text-sm">
+        <dl className="space-y-1.5 rounded-xl bg-[var(--copilot-soft-bg)] px-4 py-3 text-sm">
           <div className="flex justify-between gap-2">
             <dt className="text-[var(--copilot-ink-muted)]">Concepto</dt>
             <dd className="max-w-[55%] text-right font-medium text-[var(--copilot-ink)]">
@@ -271,6 +276,7 @@ function EditModal({
   workspace: TreasuryWorkspace;
   onClose: () => void;
 }) {
+  const isRecurring = isRecurringGeneratedObligation(row);
   const [title, setTitle] = useState(row.title);
   const [obligationType, setObligationType] = useState<PlannedObligationType>(row.obligationType);
   const [amountEstimated, setAmountEstimated] = useState(String(row.amountEstimated));
@@ -278,6 +284,7 @@ function EditModal({
   const [dueDate, setDueDate] = useState(row.dueDate);
   const [dueTime, setDueTime] = useState(getDueTime(row) ?? "");
   const [notes, setNotes] = useState(row.notes ?? "");
+  const [overrideReason, setOverrideReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -291,6 +298,14 @@ function EditModal({
     if (!dueDate) { setError("La fecha de vencimiento es requerida."); return; }
     setError("");
     setSaving(true);
+    const baseMeta = buildMetaWithDueTime(row.metadata as Record<string, unknown> | null, dueTime || null);
+    const overrideMeta = isRecurring
+      ? {
+          is_manual_override: true,
+          overridden_at: new Date().toISOString(),
+          override_reason: overrideReason.trim() || null,
+        }
+      : {};
     const result = await workspace.updateObligation(row.id, {
       title: title.trim(),
       obligation_type: obligationType,
@@ -298,7 +313,7 @@ function EditModal({
       currency_code: currencyCode,
       due_date: dueDate,
       notes: notes.trim() || null,
-      metadata: buildMetaWithDueTime(row.metadata as Record<string, unknown> | null, dueTime || null),
+      metadata: { ...baseMeta, ...overrideMeta },
     });
     setSaving(false);
     if (result !== null) onClose();
@@ -307,6 +322,12 @@ function EditModal({
   return (
     <BaseModal title="Editar pago" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-3">
+        {isRecurring ? (
+          <div className="rounded-lg border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-3 py-2 text-xs text-[var(--copilot-warning-text-strong)]">
+            Este pago fue generado por una regla recurrente. Solo se modifica esta instancia.
+          </div>
+        ) : null}
+
         <label className="block text-sm">
           <span className={TESORERIA_FORM_LABEL_CLASS}>{TESORERIA_PAYMENT_FIELD.concepto}</span>
           <input
@@ -390,6 +411,20 @@ function EditModal({
           />
         </label>
 
+        {isRecurring ? (
+          <label className="block text-sm">
+            <span className="mb-1 block font-medium text-[var(--copilot-ink)]">
+              Motivo del ajuste <span className="font-normal text-[var(--copilot-ink-muted)]">(opcional)</span>
+            </span>
+            <input
+              className={TESORERIA_FIELD_CLASS}
+              placeholder="Ej: Bono agosto, ajuste acordado…"
+              value={overrideReason}
+              onChange={(e) => setOverrideReason(e.target.value)}
+            />
+          </label>
+        ) : null}
+
         {error ? (
           <p className="text-xs text-[var(--copilot-danger-text)]" role="alert">
             {error}
@@ -449,7 +484,7 @@ function RescheduleModal({
           </div>
         ) : null}
 
-        <dl className="space-y-1.5 rounded-xl bg-[var(--copilot-bg,#f5f4f2)] px-4 py-3 text-sm">
+        <dl className="space-y-1.5 rounded-xl bg-[var(--copilot-soft-bg)] px-4 py-3 text-sm">
           <div className="flex justify-between gap-2">
             <dt className="text-[var(--copilot-ink-muted)]">Concepto</dt>
             <dd className="font-medium text-[var(--copilot-ink)]">{row.title}</dd>
@@ -605,10 +640,12 @@ function RowActionsCell({
   row,
   asOfDate,
   onAction,
+  onViewTemplate,
 }: {
   row: PlannedCashObligation;
   asOfDate: string;
   onAction: (modal: ActiveModal) => void;
+  onViewTemplate?: (templateId: string) => void;
 }) {
   const { canWrite } = useCopilotPermissions();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -650,6 +687,15 @@ function RowActionsCell({
   }
 
   const menuItems: { label: string; onClick: () => void; danger?: boolean }[] = [];
+  if (isRecurringGeneratedObligation(row) && onViewTemplate) {
+    const templateId = resolveRecurringTemplateId(row);
+    if (templateId) {
+      menuItems.push({
+        label: "Ver regla recurrente",
+        onClick: () => onViewTemplate(templateId),
+      });
+    }
+  }
   if (actions.canCancel) {
     menuItems.push({
       label: "Cancelar pago",
@@ -751,6 +797,9 @@ export function TreasuryObligationsPanel({
   filterDateTo = "",
   filterCurrency = "all",
   filterStatus = "all",
+  filterCategory,
+  filterType,
+  onViewTemplate,
 }: Props) {
   const { canWrite } = useCopilotPermissions();
   const [search, setSearch] = useState(filterSearch ?? "");
@@ -787,6 +836,9 @@ export function TreasuryObligationsPanel({
       if (filterCurrency !== "all" && o.currencyCode !== filterCurrency) return false;
       if (filterDateFrom && o.dueDate < filterDateFrom) return false;
       if (filterDateTo && o.dueDate > filterDateTo) return false;
+      if (filterCategory && o.obligationType !== filterCategory) return false;
+      if (filterType === "non_recurring" && isRecurringGeneratedObligation(o)) return false;
+      if (filterType === "recurring" && !isRecurringGeneratedObligation(o)) return false;
       const st = effectivePlannedObligationStatus(o.status, o.dueDate, asOfDate);
       if (filterStatus === "pending" && !["planned", "confirmed"].includes(st)) return false;
       if (filterStatus === "overdue" && st !== "overdue") return false;
@@ -806,6 +858,8 @@ export function TreasuryObligationsPanel({
     filterDateFrom,
     filterDateTo,
     filterStatus,
+    filterCategory,
+    filterType,
     asOfDate,
   ]);
 
@@ -924,61 +978,125 @@ export function TreasuryObligationsPanel({
           paragraphs={["Planificá BPS, impuestos, sueldos y otros compromisos de caja."]}
         />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50">
-          <table className={TESORERIA_TABLE_CLASS}>
-            <thead>
-              <tr>
-                <th className={TESORERIA_TH_CLASS}>{TESORERIA_PAYMENT_FIELD.concepto}</th>
-                <th className={TESORERIA_TH_CLASS}>{TESORERIA_PAYMENT_FIELD.categoria}</th>
-                <th className={TESORERIA_TH_CLASS}>{TESORERIA_PAYMENT_FIELD.moneda}</th>
-                <th className={TESORERIA_TH_CLASS}>{TESORERIA_PAYMENT_FIELD.monto}</th>
-                <th className={TESORERIA_TH_CLASS}>{TESORERIA_PAYMENT_FIELD.vencimiento}</th>
-                <th className={TESORERIA_TH_CLASS}>Estado</th>
-                <th className={TESORERIA_TH_CLASS}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageItems.map((row) => (
-                <tr key={row.id}>
-                  <td className={TESORERIA_TD_CLASS}>
-                    <span>{row.title}</span>
-                    {isRecurringGeneratedObligation(row) ? (
-                      <span className="ml-2 inline-block">
-                        <CopilotBadge tone="neutral">Recurrente</CopilotBadge>
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className={TESORERIA_TD_CLASS}>{obligationCategoryLabel(row)}</td>
-                  <td className={TESORERIA_TD_CLASS}>{row.currencyCode}</td>
-                  <td className={`${TESORERIA_TD_CLASS} tabular-nums`}>
-                    {formatTreasuryMoney(row.amountEstimated, row.currencyCode)}
-                  </td>
-                  <td className={`${TESORERIA_TD_CLASS} tabular-nums`}>
+        <CopilotResponsiveTable<PlannedCashObligation>
+          rows={pageItems}
+          getRowKey={(row) => row.id}
+          minWidth="720px"
+          ariaLabel="Pagos programados"
+          stickyHeader
+          columns={[
+            {
+              key: "concepto",
+              header: TESORERIA_PAYMENT_FIELD.concepto,
+              render: (row) => (
+                <>
+                  <span>{row.title}</span>
+                  {isRecurringGeneratedObligation(row) ? (
+                    <span className="ml-2 inline-block" title="Generado por una regla recurrente. Podés editar solo este pago.">
+                      <CopilotBadge tone="neutral">Recurrente</CopilotBadge>
+                    </span>
+                  ) : null}
+                  {row.metadata?.is_manual_override ? (
+                    <span
+                      className="ml-1 inline-block"
+                      title={[
+                        "Este pago fue ajustado manualmente y no modifica la regla recurrente.",
+                        row.metadata.overridden_at ? `Ajustado el ${String(row.metadata.overridden_at).slice(0, 10)}` : null,
+                        row.metadata.override_reason ? `Motivo: ${String(row.metadata.override_reason)}` : null,
+                      ].filter(Boolean).join(" · ")}
+                    >
+                      <CopilotBadge tone="warning">AJUSTADO</CopilotBadge>
+                    </span>
+                  ) : null}
+                </>
+              ),
+            },
+            {
+              key: "categoria",
+              header: TESORERIA_PAYMENT_FIELD.categoria,
+              render: (row) => obligationCategoryLabel(row),
+            },
+            {
+              key: "moneda",
+              header: TESORERIA_PAYMENT_FIELD.moneda,
+              render: (row) => row.currencyCode,
+            },
+            {
+              key: "monto",
+              header: TESORERIA_PAYMENT_FIELD.monto,
+              cellClassName: "tabular-nums",
+              render: (row) => formatTreasuryMoney(row.amountEstimated, row.currencyCode),
+            },
+            {
+              key: "vencimiento",
+              header: TESORERIA_PAYMENT_FIELD.vencimiento,
+              cellClassName: "tabular-nums",
+              render: (row) => formatDueWithTime(row.dueDate, getDueTime(row)),
+            },
+            {
+              key: "estado",
+              header: "Estado",
+              render: (row) => (
+                <CopilotBadge tone={statusBadgeTone(row)}>
+                  {buildDueStatusLabelWithTime(
+                    effectivePlannedObligationStatus(row.status, row.dueDate, asOfDate),
+                    row.dueDate,
+                    asOfDate,
+                    getDueTime(row),
+                    currentHHMM()
+                  )}
+                </CopilotBadge>
+              ),
+            },
+            {
+              key: "acciones",
+              header: "Acciones",
+              render: (row) => (
+                <RowActionsCell row={row} asOfDate={asOfDate} onAction={setActiveModal} onViewTemplate={onViewTemplate} />
+              ),
+            },
+          ] satisfies CopilotResponsiveTableColumn<PlannedCashObligation>[]}
+          mobileCard={(row) => (
+            <>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-[var(--copilot-ink)]">{row.title}</p>
+                  <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">
+                    {obligationCategoryLabel(row)}
+                    {isRecurringGeneratedObligation(row) ? " · Recurrente" : ""}
+                    {row.metadata?.is_manual_override ? " · AJUSTADO" : ""}
+                  </p>
+                </div>
+                <CopilotBadge tone={statusBadgeTone(row)}>
+                  {buildDueStatusLabelWithTime(
+                    effectivePlannedObligationStatus(row.status, row.dueDate, asOfDate),
+                    row.dueDate,
+                    asOfDate,
+                    getDueTime(row),
+                    currentHHMM()
+                  )}
+                </CopilotBadge>
+              </div>
+              <dl className="mt-3 space-y-1 text-xs">
+                <div className="flex items-baseline justify-between gap-2">
+                  <dt className="text-[var(--copilot-ink-muted)]">Vencimiento</dt>
+                  <dd className="tabular-nums text-[var(--copilot-ink)]">
                     {formatDueWithTime(row.dueDate, getDueTime(row))}
-                  </td>
-                  <td className={TESORERIA_TD_CLASS}>
-                    <CopilotBadge tone={statusBadgeTone(row)}>
-                      {buildDueStatusLabelWithTime(
-                        effectivePlannedObligationStatus(row.status, row.dueDate, asOfDate),
-                        row.dueDate,
-                        asOfDate,
-                        getDueTime(row),
-                        currentHHMM()
-                      )}
-                    </CopilotBadge>
-                  </td>
-                  <td className={TESORERIA_TD_CLASS}>
-                    <RowActionsCell
-                      row={row}
-                      asOfDate={asOfDate}
-                      onAction={setActiveModal}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-2">
+                  <dt className="text-[var(--copilot-ink-muted)]">Monto</dt>
+                  <dd className="tabular-nums font-semibold text-[var(--copilot-ink)]">
+                    {formatTreasuryMoney(row.amountEstimated, row.currencyCode)} {row.currencyCode}
+                  </dd>
+                </div>
+              </dl>
+              <div className="mt-3 flex justify-end border-t border-[var(--copilot-border)] pt-3">
+                <RowActionsCell row={row} asOfDate={asOfDate} onAction={setActiveModal} onViewTemplate={onViewTemplate} />
+              </div>
+            </>
+          )}
+        />
       )}
 
       {filtered.length > 0 ? (

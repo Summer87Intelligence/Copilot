@@ -366,7 +366,7 @@ export function TreasuryBankReconciliationPanel({
       </div>
 
       {selected ? (
-        <div className="fixed inset-0 z-40 flex justify-end bg-black/30">
+        <div className="fixed inset-0 z-[var(--copilot-z-drawer)] flex justify-end bg-[var(--copilot-overlay-backdrop)]">
           <div className="h-full w-full max-w-md overflow-y-auto bg-[var(--copilot-card)] p-6 shadow-2xl">
             <h3 className="text-lg font-semibold text-[var(--copilot-ink)]">Match manual</h3>
             <p className="mt-2 text-sm text-[var(--copilot-ink-muted)]">{selected.description}</p>

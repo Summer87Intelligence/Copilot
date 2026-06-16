@@ -12,12 +12,11 @@ import {
 } from "@/components/copilot/copilot-ui";
 import { CopilotEmptyPanel } from "@/components/copilot/copilot-empty-panel";
 import { TreasuryFormField, treasuryInputClassName } from "@/components/copilot/tesoreria/treasury-form-fields";
+import { TESORERIA_PAGE_SIZE } from "@/components/copilot/tesoreria/tesoreria-ui";
 import {
-  TESORERIA_PAGE_SIZE,
-  TESORERIA_TABLE_CLASS,
-  TESORERIA_TD_CLASS,
-  TESORERIA_TH_CLASS,
-} from "@/components/copilot/tesoreria/tesoreria-ui";
+  CopilotResponsiveTable,
+  type CopilotResponsiveTableColumn,
+} from "@/components/copilot/ui/copilot-responsive-table";
 import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
 import {
@@ -194,65 +193,144 @@ export function TreasuryAccountsPanel({ workspace, embedded = false }: Props) {
           paragraphs={["Creá cuentas de caja o banco para asociar movimientos y calcular la posición."]}
         />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/50">
-          <table className={TESORERIA_TABLE_CLASS}>
-            <thead>
-              <tr>
-                <th className={TESORERIA_TH_CLASS}>Nombre</th>
-                <th className={TESORERIA_TH_CLASS}>Alias</th>
-                <th className={TESORERIA_TH_CLASS}>Tipo</th>
-                <th className={TESORERIA_TH_CLASS}>Moneda</th>
-                <th className={TESORERIA_TH_CLASS}>Banco</th>
-                <th className={TESORERIA_TH_CLASS}>Saldo inicial</th>
-                <th className={TESORERIA_TH_CLASS}>Estado</th>
-                <th className={TESORERIA_TH_CLASS}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageItems.map((account) => {
+        <CopilotResponsiveTable<TreasuryAccount>
+          rows={pageItems}
+          getRowKey={(account) => account.id}
+          minWidth="720px"
+          ariaLabel="Cuentas de tesorería"
+          stickyHeader
+          columns={[
+            {
+              key: "nombre",
+              header: "Nombre",
+              render: (account) => account.name,
+            },
+            {
+              key: "alias",
+              header: "Alias",
+              render: (account) => readTreasuryAccountAlias(account.metadata) ?? "—",
+            },
+            {
+              key: "tipo",
+              header: "Tipo",
+              render: (account) => ACCOUNT_TYPE_LABEL[account.type] ?? account.type,
+            },
+            {
+              key: "moneda",
+              header: "Moneda",
+              render: (account) => account.currencyCode,
+            },
+            {
+              key: "banco",
+              header: "Banco",
+              render: (account) => account.bankName ?? "—",
+            },
+            {
+              key: "saldo",
+              header: "Saldo inicial",
+              cellClassName: "tabular-nums",
+              render: (account) => {
                 const initialBalance = readTreasuryAccountInitialBalance(account.metadata);
-                return (
-                  <tr key={account.id}>
-                    <td className={TESORERIA_TD_CLASS}>{account.name}</td>
-                    <td className={TESORERIA_TD_CLASS}>
-                      {readTreasuryAccountAlias(account.metadata) ?? "—"}
-                    </td>
-                    <td className={TESORERIA_TD_CLASS}>{ACCOUNT_TYPE_LABEL[account.type] ?? account.type}</td>
-                    <td className={TESORERIA_TD_CLASS}>{account.currencyCode}</td>
-                    <td className={TESORERIA_TD_CLASS}>{account.bankName ?? "—"}</td>
-                    <td className={TESORERIA_TD_CLASS}>
+                return initialBalance != null
+                  ? formatTreasuryMoney(initialBalance, account.currencyCode)
+                  : "—";
+              },
+            },
+            {
+              key: "estado",
+              header: "Estado",
+              render: (account) => (
+                <CopilotBadge tone={account.active ? "success" : "neutral"}>
+                  {account.active ? "Activa" : "Inactiva"}
+                </CopilotBadge>
+              ),
+            },
+            {
+              key: "acciones",
+              header: "Acciones",
+              render: (account) =>
+                canWrite ? (
+                  <div className="flex flex-wrap gap-2">
+                    <CopilotGhostButton type="button" onClick={() => openEdit(account)}>
+                      Editar
+                    </CopilotGhostButton>
+                    {account.active ? (
+                      <CopilotGhostButton
+                        type="button"
+                        onClick={() => void workspace.deactivateAccount(account.id)}
+                      >
+                        Desactivar
+                      </CopilotGhostButton>
+                    ) : null}
+                  </div>
+                ) : (
+                  <span className="text-xs text-[var(--copilot-ink-muted)]">—</span>
+                ),
+            },
+          ] satisfies CopilotResponsiveTableColumn<TreasuryAccount>[]}
+          mobileCard={(account) => {
+            const initialBalance = readTreasuryAccountInitialBalance(account.metadata);
+            const alias = readTreasuryAccountAlias(account.metadata);
+            return (
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-[var(--copilot-ink)]">
+                      {account.name}
+                    </p>
+                    {alias ? (
+                      <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">{alias}</p>
+                    ) : null}
+                  </div>
+                  <CopilotBadge tone={account.active ? "success" : "neutral"}>
+                    {account.active ? "Activa" : "Inactiva"}
+                  </CopilotBadge>
+                </div>
+                <dl className="mt-3 space-y-1 text-xs">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <dt className="text-[var(--copilot-ink-muted)]">Tipo</dt>
+                    <dd className="text-[var(--copilot-ink)]">
+                      {ACCOUNT_TYPE_LABEL[account.type] ?? account.type}
+                    </dd>
+                  </div>
+                  {account.bankName ? (
+                    <div className="flex items-baseline justify-between gap-2">
+                      <dt className="text-[var(--copilot-ink-muted)]">Banco</dt>
+                      <dd className="text-[var(--copilot-ink)]">{account.bankName}</dd>
+                    </div>
+                  ) : null}
+                  <div className="flex items-baseline justify-between gap-2">
+                    <dt className="text-[var(--copilot-ink-muted)]">Moneda</dt>
+                    <dd className="text-[var(--copilot-ink)]">{account.currencyCode}</dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <dt className="text-[var(--copilot-ink-muted)]">Saldo inicial</dt>
+                    <dd className="tabular-nums font-semibold text-[var(--copilot-ink)]">
                       {initialBalance != null
                         ? formatTreasuryMoney(initialBalance, account.currencyCode)
                         : "—"}
-                    </td>
-                    <td className={TESORERIA_TD_CLASS}>
-                      <CopilotBadge tone={account.active ? "success" : "neutral"}>
-                        {account.active ? "Activa" : "Inactiva"}
-                      </CopilotBadge>
-                    </td>
-                    <td className={TESORERIA_TD_CLASS}>
-                      {canWrite ? (
-                        <div className="flex flex-wrap gap-2">
-                          <CopilotGhostButton type="button" onClick={() => openEdit(account)}>
-                            Editar
-                          </CopilotGhostButton>
-                          {account.active ? (
-                            <CopilotGhostButton
-                              type="button"
-                              onClick={() => void workspace.deactivateAccount(account.id)}
-                            >
-                              Desactivar
-                            </CopilotGhostButton>
-                          ) : null}
-                        </div>
-                      ) : <span className="text-xs text-[var(--copilot-ink-muted)]">—</span>}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                    </dd>
+                  </div>
+                </dl>
+                {canWrite ? (
+                  <div className="mt-3 flex flex-wrap gap-2 border-t border-[var(--copilot-border)] pt-3">
+                    <CopilotGhostButton type="button" onClick={() => openEdit(account)}>
+                      Editar
+                    </CopilotGhostButton>
+                    {account.active ? (
+                      <CopilotGhostButton
+                        type="button"
+                        onClick={() => void workspace.deactivateAccount(account.id)}
+                      >
+                        Desactivar
+                      </CopilotGhostButton>
+                    ) : null}
+                  </div>
+                ) : null}
+              </>
+            );
+          }}
+        />
       )}
 
       {filtered.length > TESORERIA_PAGE_SIZE ? (
@@ -277,7 +355,7 @@ export function TreasuryAccountsPanel({ workspace, embedded = false }: Props) {
 
       {drawerOpen ? (
         <div
-          className="fixed inset-0 z-40 flex justify-end bg-black/30"
+          className="fixed inset-0 z-[var(--copilot-z-drawer)] flex justify-end bg-[var(--copilot-overlay-backdrop)]"
           onMouseDown={(e) => { if (e.target === e.currentTarget && !saving) { setDrawerOpen(false); setEditing(null); } }}
         >
           <div className="h-full w-full max-w-lg overflow-y-auto bg-[var(--copilot-card)] p-6 shadow-2xl">
