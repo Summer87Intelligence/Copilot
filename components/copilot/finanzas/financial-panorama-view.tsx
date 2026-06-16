@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { RefreshCw } from "lucide-react";
 
 import { CopilotCard, CopilotSectionTitle } from "@/components/copilot/copilot-ui";
 import { FinancialMetricDetailDialog } from "@/components/copilot/finanzas/financial-metric-detail-dialog";
@@ -208,6 +209,16 @@ export function FinancialPanoramaView() {
     };
   }, []);
 
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production" && reconciliation.error) {
+      console.warn(
+        "[FinancialPanoramaView] reconciliation error",
+        reconciliation.errorCode,
+        reconciliation.error
+      );
+    }
+  }, [reconciliation.error, reconciliation.errorCode]);
+
   const metricsByCode = useMemo(() => {
     if (!reconciliation.report) return {};
     const index = buildCurrencyIndex(reconciliation.report.currencies);
@@ -290,8 +301,16 @@ export function FinancialPanoramaView() {
 
   if (error && !dashboard) {
     return (
-      <div className="rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-4 py-3 text-sm text-[var(--copilot-warning-text-strong)]">
-        {error}
+      <div className="flex items-start justify-between gap-3 rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-4 py-3 text-sm text-[var(--copilot-warning-text-strong)]">
+        <span className="flex-1">{error}</span>
+        <button
+          type="button"
+          onClick={reconciliation.refetch}
+          className="flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-warning-border)] bg-[var(--copilot-card-bg)]/70 px-2.5 py-1 text-xs font-medium text-[var(--copilot-warning-text)] hover:bg-[var(--copilot-panel-bg)]"
+        >
+          <RefreshCw className="h-3 w-3" aria-hidden />
+          Reintentar
+        </button>
       </div>
     );
   }

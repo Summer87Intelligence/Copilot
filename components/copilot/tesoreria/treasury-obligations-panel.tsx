@@ -999,7 +999,11 @@ export function TreasuryObligationsPanel({
                   {row.metadata?.is_manual_override ? (
                     <span
                       className="ml-1 inline-block"
-                      title={`Ajustado manualmente${row.metadata.overridden_at ? ` el ${String(row.metadata.overridden_at).slice(0, 10)}` : ""}${row.metadata.override_reason ? ` — ${String(row.metadata.override_reason)}` : ""}`}
+                      title={[
+                        "Este pago fue ajustado manualmente y no modifica la regla recurrente.",
+                        row.metadata.overridden_at ? `Ajustado el ${String(row.metadata.overridden_at).slice(0, 10)}` : null,
+                        row.metadata.override_reason ? `Motivo: ${String(row.metadata.override_reason)}` : null,
+                      ].filter(Boolean).join(" · ")}
                     >
                       <CopilotBadge tone="warning">AJUSTADO</CopilotBadge>
                     </span>

@@ -35,6 +35,8 @@ export type UseFinancialReconciliationParams = {
   periodEnd?: string | null;
   /** Si false, el hook no dispara fetch (útil para deshabilitar temporalmente). */
   enabled?: boolean;
+  /** Milisegundos antes de abortar el fetch y emitir error TIMEOUT. 0 = sin límite. Default: 25000. */
+  timeoutMs?: number;
 };
 
 export type FinancialReconciliationApiResponse = {
@@ -149,6 +151,8 @@ function isPeriodReady(params: UseFinancialReconciliationParams): boolean {
   );
 }
 
+const DEFAULT_TIMEOUT_MS = 25_000;
+
 export function useFinancialReconciliation(
   params: UseFinancialReconciliationParams = {}
 ): UseFinancialReconciliationResult {
@@ -157,6 +161,7 @@ export function useFinancialReconciliation(
     periodStart = null,
     periodEnd = null,
     enabled = true,
+    timeoutMs = DEFAULT_TIMEOUT_MS,
   } = params;
 
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
@@ -195,6 +200,28 @@ export function useFinancialReconciliation(
 
     const url = buildUrl({ mode, periodStart, periodEnd });
 
+    // Timeout guard: si el endpoint no responde en timeoutMs, abortamos y
+    // emitimos error TIMEOUT para que la UI salga del skeleton infinito.
+    let timedOut = false;
+    const timeoutId =
+      timeoutMs > 0
+        ? setTimeout(() => {
+            timedOut = true;
+            ac.abort();
+            if (process.env.NODE_ENV !== "production") {
+              console.warn(
+                `[useFinancialReconciliation] TIMEOUT after ${timeoutMs}ms — url: ${url}`
+              );
+            }
+            dispatch({
+              type: "error",
+              message:
+                "El reporte financiero tardó demasiado en responder. Verificá la conexión y reintentá.",
+              code: "TIMEOUT",
+            });
+          }, timeoutMs)
+        : null;
+
     fetch(url, {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -203,6 +230,9 @@ export function useFinancialReconciliation(
       cache: "no-store",
     })
       .then(async (res) => {
+        if (timeoutId !== null) clearTimeout(timeoutId);
+        if (ac.signal.aborted) return;
+
         const json = (await res.json().catch(() => null)) as
           | FinancialReconciliationApiResponse
           | { ok: false; code?: string; message?: string }
@@ -232,17 +262,24 @@ export function useFinancialReconciliation(
         });
       })
       .catch((err: unknown) => {
+        if (timeoutId !== null) clearTimeout(timeoutId);
+        // Si el timeout ya manejó el error, no volvemos a dispatchar.
+        if (timedOut) return;
         if (ac.signal.aborted) return;
         if (err instanceof DOMException && err.name === "AbortError") return;
         const message =
           err instanceof Error ? err.message : "Error de red al cargar reconciliación.";
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("[useFinancialReconciliation] network error:", message);
+        }
         dispatch({ type: "error", message, code: "NETWORK_ERROR" });
       });
 
     return () => {
+      if (timeoutId !== null) clearTimeout(timeoutId);
       ac.abort();
     };
-  }, [mode, periodStart, periodEnd, enabled, state.refreshTick, paramsKey]);
+  }, [mode, periodStart, periodEnd, enabled, state.refreshTick, paramsKey, timeoutMs]);
 
   return {
     report: state.report,

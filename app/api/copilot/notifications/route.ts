@@ -6,12 +6,20 @@ import { listNotifications } from "@/lib/copilot-notifications/notification-serv
 
 export const dynamic = "force-dynamic";
 
-/** PostgREST / Postgres codes for "relation does not exist" */
-function isTableNotFoundError(err: unknown): boolean {
+/** PostgREST / Postgres codes for errors that should return empty results, not 500. */
+function isGracefulEmptyError(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
   const e = err as Record<string, unknown>;
+  // Table / relation not found
   if (e.code === "PGRST106" || e.code === "42P01") return true;
-  if (typeof e.message === "string" && e.message.includes("does not exist")) return true;
+  // Function not found (e.g. missing RLS helper)
+  if (e.code === "42883") return true;
+  // Permission denied / RLS violation
+  if (e.code === "42501" || e.code === "PGRST301" || e.code === "PGRST302") return true;
+  if (typeof e.message === "string") {
+    const msg = e.message.toLowerCase();
+    if (msg.includes("does not exist") || msg.includes("permission denied")) return true;
+  }
   return false;
 }
 
@@ -33,12 +41,14 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (err: unknown) {
-    if (isTableNotFoundError(err)) {
+    if (isGracefulEmptyError(err)) {
       if (process.env.NODE_ENV !== "production") {
-        console.warn("[notifications] copilot_notifications table not found — apply migration notif-01");
+        const e = err as Record<string, unknown>;
+        console.warn(`[notifications] DB error (${e.code ?? "unknown"}) — returning empty: ${e.message ?? err}`);
       }
       return NextResponse.json(EMPTY_RESULT);
     }
+    console.error("[notifications] unexpected GET error:", err);
     return NextResponse.json(
       { ok: false, code: "DATABASE", message: MSG_DB_USER },
       { status: 500 }

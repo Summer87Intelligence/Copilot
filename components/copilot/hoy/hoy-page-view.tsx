@@ -28,6 +28,7 @@ import type {
 import { CopilotCollapsiblePanel } from "@/components/copilot/copilot-collapsible-panel";
 import { HoyMonthEndProjectionSection } from "./hoy-month-end-projection-section";
 import { HoyUpcomingCommitmentsSection } from "./hoy-upcoming-commitments-section";
+import { HoyExecutiveCalendarSection } from "./hoy-executive-calendar-section";
 
 import { AttentionClientsDrawer } from "./hoy-attention-clients-drawer";
 import { CollectionAgendaHoyCard } from "./collection-agenda-hoy-card";
@@ -254,6 +255,13 @@ export function HoyPageView({
     [pulse.allDebtorRows]
   );
 
+  const calendarClientNames = useMemo(() => {
+    if (!portfolioDetails) return undefined;
+    return Object.fromEntries(
+      Object.entries(portfolioDetails).map(([id, d]) => [id, d.company_name])
+    );
+  }, [portfolioDetails]);
+
   const openAttentionDrawer = () => {
     if (pulse.attentionClients.total > 0) {
       setDrawer({ kind: "attention", data: pulse.attentionClients });
@@ -322,6 +330,12 @@ export function HoyPageView({
         <HoyUpcomingCommitmentsSection
           payments={treasuryScheduledPayments ?? []}
           today={today}
+        />
+
+        <HoyExecutiveCalendarSection
+          payments={treasuryScheduledPayments ?? []}
+          today={today}
+          clientNames={calendarClientNames}
         />
 
         <CopilotCard className="w-full !p-3">

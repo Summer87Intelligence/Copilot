@@ -126,26 +126,28 @@ function formatMovementAmount(row: ManualCashMovement): { text: string; classNam
 
 function DeleteConfirmModal({
   row,
+  deleting = false,
   onConfirm,
   onClose,
 }: {
   row: ManualCashMovement;
+  deleting?: boolean;
   onConfirm: () => void;
   onClose: () => void;
 }) {
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !deleting) onClose();
     }
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
-  }, [onClose]);
+  }, [onClose, deleting]);
 
   return (
     <div
       className="fixed inset-0 z-[var(--copilot-z-modal)] flex items-center justify-center bg-[var(--copilot-overlay-backdrop)] p-4"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget && !deleting) onClose();
       }}
     >
       <div className="w-full max-w-sm rounded-2xl bg-[var(--copilot-card)] shadow-2xl">
@@ -154,7 +156,8 @@ function DeleteConfirmModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1 text-[var(--copilot-ink-muted)] transition hover:bg-[rgba(44,40,37,0.06)]"
+            disabled={deleting}
+            className="rounded-lg p-1 text-[var(--copilot-ink-muted)] transition hover:bg-[rgba(44,40,37,0.06)] disabled:opacity-40"
             aria-label="Cerrar"
           >
             <X className="h-4 w-4" />
@@ -169,11 +172,11 @@ function DeleteConfirmModal({
           ) : null}
           <p className="text-sm text-[var(--copilot-ink-muted)]">Esta acción no se puede deshacer.</p>
           <div className="flex justify-end gap-2">
-            <CopilotButton type="button" variant="secondary" onClick={onClose}>
+            <CopilotButton type="button" variant="secondary" onClick={onClose} disabled={deleting}>
               Cancelar
             </CopilotButton>
-            <CopilotButton type="button" variant="danger" onClick={onConfirm}>
-              Eliminar
+            <CopilotButton type="button" variant="danger" onClick={onConfirm} disabled={deleting}>
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Eliminar"}
             </CopilotButton>
           </div>
         </div>
@@ -235,7 +238,7 @@ function MovementMobileCard({
           </div>
           {!isManualCashMovementDeletable(row) ? (
             <p className="text-[10px] text-[var(--copilot-ink-muted)]">
-              Los movimientos de Zeta deben corregirse en Zeta.
+              Los movimientos sincronizados desde Zeta se corrigen en Zeta.
             </p>
           ) : null}
         </div>
@@ -277,6 +280,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
   const [accountingLoading, setAccountingLoading] = useState(false);
   const [savingAccountingId, setSavingAccountingId] = useState<string | null>(null);
   const [deletingRow, setDeletingRow] = useState<ManualCashMovement | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadAccounting = useCallback(async () => {
     if (workspace.manualMovements.length === 0) return;
@@ -681,7 +685,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                           title={
                             isManualCashMovementDeletable(row)
                               ? "Editar movimiento"
-                              : "Solo movimientos creados manualmente"
+                              : "Los movimientos sincronizados desde Zeta se corrigen en Zeta."
                           }
                         >
                           Editar
@@ -698,7 +702,7 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
                         ) : null}
                         {!isManualCashMovementDeletable(row) ? (
                           <p className="text-[10px] text-[var(--copilot-ink-muted)]">
-                            Los movimientos de Zeta deben corregirse en Zeta.
+                            Los movimientos sincronizados desde Zeta se corrigen en Zeta.
                           </p>
                         ) : null}
                         {row.status === "active" && isManualCashMovementDeletable(row) && row.reconciled ? (
@@ -737,11 +741,18 @@ export function TreasuryManualCashPanel({ workspace }: Props) {
       {deletingRow ? (
         <DeleteConfirmModal
           row={deletingRow}
+          deleting={isDeleting}
           onConfirm={() => {
-            void workspace.deleteManual(deletingRow.id);
-            setDeletingRow(null);
+            void (async () => {
+              setIsDeleting(true);
+              const ok = await workspace.deleteManual(deletingRow.id);
+              setIsDeleting(false);
+              if (ok) setDeletingRow(null);
+            })();
           }}
-          onClose={() => setDeletingRow(null)}
+          onClose={() => {
+            if (!isDeleting) setDeletingRow(null);
+          }}
         />
       ) : null}
 
