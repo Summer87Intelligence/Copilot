@@ -66,6 +66,19 @@ export function buildInvoiceOverdueBody(
   return `${clientName} tiene ${formatNotificationMoney(amount, currency)} atrasado.`;
 }
 
+export function buildClientOverdueBody(
+  clientName: string,
+  amount: number,
+  currency: string,
+  invoiceCount?: number
+): string {
+  const money = formatNotificationMoney(amount, currency);
+  if (invoiceCount != null && invoiceCount > 1) {
+    return `${clientName} tiene ${invoiceCount} facturas con deuda atrasada por ${money}.`;
+  }
+  return `${clientName} tiene ${money} atrasado.`;
+}
+
 export function resolveCollectionPaymentOutcome(remainingBalance: number): CollectionPaymentOutcome {
   return remainingBalance > 0 ? "partial" : "settled";
 }

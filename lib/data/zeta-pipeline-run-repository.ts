@@ -18,8 +18,14 @@ import type {
 /** Ventana máxima para considerar un run como "activo" (guard anti-overlap). */
 const DEFAULT_ACTIVE_WINDOW_MS = 3 * 60 * 60 * 1000; // 3 horas
 
-/** Runs `running` sin pulso desde este umbral se marcan `failed` (cron fleet). */
-const DEFAULT_STALE_RUNNING_MS = 45 * 60 * 1000;
+/**
+ * Runs `running` sin pulso desde este umbral se marcan `failed` (cron fleet).
+ * 15 min: las corridas normales de saldos duran 3–5 min con heartbeats cada
+ * 10 clientes (~6 s). 15 min es 3× el máximo esperado + margen holgado.
+ * Reducido de 45 min para detectar corridas colgadas más rápido.
+ * Override: ZETA_PIPELINE_STALE_RUNNING_MS (mínimo 60000 ms).
+ */
+const DEFAULT_STALE_RUNNING_MS = 15 * 60 * 1000;
 
 function resolveStaleRunningMs(): number {
   const raw = process.env.ZETA_PIPELINE_STALE_RUNNING_MS;
@@ -86,14 +92,27 @@ export async function updatePipelineRun(
 /**
  * Pulso de vida para corridas largas: evita que `expireStaleFleetPipelineRuns`
  * cierre un run legítimo mientras el cron sigue vivo.
+ *
+ * `progress` opcional — cuando se provee, se persiste en `metadata` junto con
+ * el pulso. Incluye processed_clients, total_clients, current_client_id,
+ * progress_percent y heartbeat_count para trazabilidad mid-run.
+ * Nota: sobreescribe `metadata`; el caller debe incluir cron_run_id si lo necesita.
  */
 export async function touchPipelineRunHeartbeat(
   supabase: OperationalSupabase,
-  runId: string
+  runId: string,
+  progress?: Record<string, unknown>
 ): Promise<void> {
+  const patch: Record<string, unknown> = {
+    last_heartbeat_at: new Date().toISOString(),
+  };
+  if (progress !== undefined) {
+    patch.metadata = progress;
+  }
+
   const { error } = await supabase
     .from("zeta_pipeline_runs")
-    .update({ last_heartbeat_at: new Date().toISOString() })
+    .update(patch)
     .eq("id", runId)
     .eq("status", "running");
 

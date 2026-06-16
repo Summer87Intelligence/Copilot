@@ -6,6 +6,7 @@ import { createNotificationIfNotExists } from "./create-notification";
 import { businessMonthYm } from "./business-date";
 import {
   buildClientDebtSettledDedupKey,
+  buildClientOverdueBody,
   buildInvoiceOverdueBody,
   buildInvoiceOverdueDedupKey,
   buildNewDebtorBody,
@@ -189,6 +190,8 @@ type ClientOverdueOpts = {
   amount: number;
   currency: string;
   daysOverdue: number;
+  /** Número de facturas vencidas agrupadas. Afecta el copy del body. */
+  invoiceCount?: number;
 };
 
 export type ClientOverdueBucket = "7d" | "30d" | "60d" | "90d";
@@ -210,7 +213,7 @@ export async function notifyClientOverdue(opts: ClientOverdueOpts) {
     type: "client_overdue",
     severity: opts.daysOverdue >= 60 ? "critical" : "warning",
     title: "Cliente atrasado",
-    body: buildInvoiceOverdueBody(opts.clientName, opts.amount, opts.currency),
+    body: buildClientOverdueBody(opts.clientName, opts.amount, opts.currency, opts.invoiceCount),
     entity_type: "company",
     entity_id: opts.clientId,
     amount: opts.amount,
@@ -223,6 +226,7 @@ export async function notifyClientOverdue(opts: ClientOverdueOpts) {
       client_name: opts.clientName,
       currency: opts.currency,
       amount: opts.amount,
+      ...(opts.invoiceCount != null ? { invoice_count: opts.invoiceCount } : {}),
     },
   });
 }

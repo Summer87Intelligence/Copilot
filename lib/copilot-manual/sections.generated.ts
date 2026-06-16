@@ -37,8 +37,8 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
       { type: "callout", variant: "tip", text: "Layout ejecutivo compacto — resumen en pocas cards, clientes con deuda arriba (tabla accionable) y detalle financiero al final. En mobile (390px) las cards usan ancho completo, Ver detalle expande inline y la proyección al cierre del mes muestra fórmula legible por moneda." },
       { type: "callout", variant: "tip", text: "Acciones recomendadas — hasta 3 pasos con acción concreta, impacto esperado y CTA. Usa el mismo motor de prioridades de Hoy; no inventa tareas nuevas." },
       { type: "callout", variant: "info", text: "Fuente y trazabilidad — tira compacta bajo el encabezado: Fuente Zeta · Actualizado hace X horas · Período mes actual (u otro rango activo)." },
-      { type: "callout", variant: "tip", text: "Tu día en una frase — al entrar, un bloque te dice qué hacer primero: gestionar clientes con deuda, revisar agenda de cobranza, ir a Tesorería o revisar acciones. Un CTA claro para no perderse." },
-      { type: "bullets", items: ["Tu día en una frase — la acción concreta sugerida con un CTA (clientes con deuda, agenda, Tesorería o acciones).","Estado del día (semáforo) — el badge Al día / Requiere atención / Atención crítica es clicable. Al tocarlo aparece un popover con las señales detectadas: clientes que requieren atención, caja post-pagos y métricas de cartera. Incluye accesos rápidos a Clientes, Tesorería y Acciones.","Qué resolver hoy — hasta 3 prioridades ejecutivas con título, motivo y CTA directo: clientes con deuda para gestionar (atrasados y al día), agenda de cobranza pendiente y caja ajustada. Solo aparece cuando hay señales activas.","Caja disponible — dinero en Tesorería ahora. No es facturación ni deuda de clientes. Ver detalle expande dentro de la card: último ingreso y último egreso por moneda.","Total pendiente — deuda de clientes por moneda (UYU y USD). Ver detalle expande en la misma card: Atrasado, Atrasado +30 días y cantidad de clientes. Link secundario a Cartera dentro del detalle.","Pagos próximos — qué salidas están cargadas en Tesorería para los próximos 30 días. Ver detalle lista fecha, concepto y monto por moneda sin salir de Hoy.","Caja proyectada — cuánto queda si se pagan todos los compromisos cargados. Ver detalle desglosa caja actual, cobros esperados, pagos próximos y caja proyectada por moneda.","Clientes con deuda — tabla accionable arriba en la pantalla. Paginación compacta (10 filas por defecto). Los totales superiores reflejan toda la deuda activa sincronizada desde Zeta.","Detalle de caja — último ingreso y último egreso en líneas separadas (no un bloque largo). Si no hay movimientos recientes, lo indica claramente.","Detalle financiero del período — ventas del período, cobrado aplicado y pendiente con la misma reconciliación que Cartera y Dashboard.","Próximos 30 días — escenario operativo con caja, pagos y lo que podrías cobrar.","Generar PDF — en Clientes podés descargar el reporte de deudores."] },
+      { type: "callout", variant: "tip", text: "Tu día en una frase — al entrar, un bloque te dice qué hacer primero según la señal más urgente del día. Los estados posibles son: clientes con deuda crítica (critical_clients), deuda activa importante (active_debt), agenda de cobranza pendiente (collection_agenda), compromisos de Tesorería (treasury_review) o resumen general del día (daily_summary). Cada estado tiene un CTA claro para no perderse." },
+      { type: "bullets", items: ["Tu día en una frase — la acción concreta sugerida con un CTA (clientes con deuda, agenda, Tesorería o acciones).","Estado del día (semáforo) — el badge Al día / Requiere atención / Atención crítica es clicable. Al tocarlo aparece un popover con las señales detectadas: clientes que requieren atención, caja post-pagos y métricas de cartera. Incluye accesos rápidos a Clientes, Tesorería y Acciones.","Qué resolver hoy — hasta 3 prioridades ejecutivas con título, motivo y CTA directo: clientes con deuda para gestionar (atrasados y al día), agenda de cobranza pendiente y caja ajustada. Solo aparece cuando hay señales activas.","Caja disponible — dinero en Tesorería ahora. No es facturación ni deuda de clientes. Ver detalle expande dentro de la card: último ingreso y último egreso por moneda.","Total pendiente — deuda de clientes por moneda (UYU y USD). Ver detalle expande en la misma card: Atrasado, Atrasado +30 días y cantidad de clientes. Link secundario a Cartera dentro del detalle.","Pagos próximos — qué salidas están cargadas en Tesorería para los próximos 30 días, agrupados por fecha y moneda con el conteo de compromisos. Ver detalle desglosa caja actual, cobros esperados, pagos próximos y caja proyectada por moneda.","Próximos compromisos — sección que agrupa los compromisos de pago más próximos por fecha y moneda. Muestra el conteo de obligaciones por vencimiento sin necesidad de ir a Tesorería.","Calendario ejecutivo — vista de agenda con tres pestañas: Semana (compromisos de los próximos 7 días), Mes (vista mensual de vencimientos) y Próximos pagos (lista consolidada). Permite planificar la semana sin salir de Hoy.","Caja proyectada — cuánto queda si se pagan todos los compromisos cargados. Ver detalle desglosa caja actual, cobros esperados, pagos próximos y caja proyectada por moneda.","Clientes con deuda — tabla accionable arriba en la pantalla. Paginación compacta (10 filas por defecto). Los totales superiores reflejan toda la deuda activa sincronizada desde Zeta.","Detalle de caja — último ingreso y último egreso en líneas separadas (no un bloque largo). Si no hay movimientos recientes, lo indica claramente.","Detalle financiero del período — ventas del período, cobrado aplicado y pendiente con la misma reconciliación que Cartera y Dashboard.","Generar PDF — en Clientes podés descargar el reporte de deudores."] },
       { type: "callout", variant: "info", text: "Clientes con deuda — la tabla lista todos los deudores con paginación; los totales superiores (Total pendiente UYU/USD) son el rollup completo del negocio, igual que Cartera y Dashboard. El atrasado ya está incluido dentro del total pendiente. Hacé clic en cualquier fila para ver el desglose por factura." },
       { type: "bullets", items: ["Total pendiente — saldo abierto del cliente en esa moneda. Viene de las facturas abiertas sincronizadas desde Zeta. El atrasado ya está incluido.","Atrasado — facturas con vencimiento anterior a hoy (incluye mora de 1 a 30 días). Atrasado +30 días es un subconjunto con más de 30 días; ya está incluido dentro del atrasado, no se suma aparte. Si es 0, el cliente tiene total pendiente pero todavía está dentro del plazo.","Al día — diferencia entre total pendiente y atrasado. Saldo todavía dentro del plazo.","Días de atraso — días desde la factura atrasada más antigua. Aparece solo cuando hay atraso registrado.","Fila expandida — hacé clic en una fila para ver el resumen completo: montos, estado (al día / requiere seguimiento), fuente del dato, moneda y datos de contacto.","Badge 'Al día' — el cliente tiene total pendiente pero ninguna factura venció todavía.","Badge 'Con atrasos' — hay al menos una factura cuya fecha de vencimiento ya pasó."] },
       { type: "bullets", items: ["Saldo actual cargado — el punto de partida. Lo cargás vos en Tesorería con la plata real que tenés en caja o cuenta.","Cobros Zeta posteriores — si un cliente paga después de que cargaste el saldo, Copilot lo suma automáticamente cuando aparece en Zeta. No tenés que registrarlo a mano.","Registros manuales — plata que ingresa o egresa pero no viene de Zeta (transferencias, adelantos, pagos realizados). Se registra en Tesorería.","Último ingreso — el recibo/cobro más reciente (Zeta o ingreso manual). Si no hay ninguno: «No hay ingresos registrados».","Último egreso — el egreso manual más reciente. Si no hay ninguno: «No hay egresos registrados». Ingreso y egreso se muestran en líneas separadas.","Pagos programados sin confirmar — no restan hasta que los marcás como ejecutados."] },
@@ -143,9 +143,10 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
         "Facturación anual — grid compacto por mes con ventas UYU y ventas USD. Mes cerrado vs mes en curso.",
         "Tendencia anual — barras separadas por moneda (UYU arriba, USD abajo).",
         "Clientes que explican la deuda — Top deudores UYU y Top deudores USD, sin ranking mixto.",
-        "Caja proyectada próximos 30 días — siempre por moneda (UYU y USD separados): caja para pagos, cobros esperados, pagos registrados y caja proyectada. Incluye mini gráficos Disponible hoy → Después de pagos por moneda.",
+        "Caja proyectada próximos 30 días — siempre por moneda (UYU y USD separados): caja para pagos, cobros esperados, pagos registrados y caja proyectada. Incluye mini gráficos Disponible hoy → Después de pagos por moneda. Tres escenarios al cierre del mes: conservador (50% de lo pendiente cobrado), esperado (75%) y optimista (100%).",
         "Riesgo de cobro — clientes con atraso, monto atrasado, clientes +30 días y mayor deudor por moneda.",
       ] },
+      { type: "callout", variant: "warning", text: "Si Finanzas tarda más de 25 segundos en cargar, aparece automáticamente un mensaje de timeout con el botón Reintentar. Esto puede ocurrir si la conexión es lenta o el servidor está bajo carga. Hacé clic en Reintentar para volver a cargar el informe. Si el problema persiste, revisá la conexión a internet." },
       { type: "callout", variant: "info", text: "Para operar el día a día usá Hoy, Clientes y Cartera. Finanzas no reemplaza la gestión de cobranza. El contenido scrollea con la página principal — no hay barra de scroll interna duplicada." },
     ],
   },
@@ -223,7 +224,17 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
     includeInToc: true,
     blocks: [
       { type: "paragraph", text: "La campana aparece en la parte superior de la pantalla. Cuando tiene un número rojo, significa que hay novedades sin leer." },
-      { type: "bullets", items: ["Un cliente pagó su deuda (total o atrasada) o hizo un pago parcial.","Un cliente quedó con deuda vencida.","Un pago importante vence pronto.","Un pago ya pasó su fecha sin registrarse.","Hubo un problema en la actualización de datos."] },
+      { type: "bullets", items: [
+        "Cobro recibido (collection_received) — un cliente pagó su deuda total o realizó un pago parcial.",
+        "Cliente atrasado (client_overdue) — un cliente tiene deuda vencida. Si tiene varias facturas atrasadas en la misma moneda, aparece una sola alerta con el total agrupado.",
+        "Resumen diario de deuda vencida (debt_followup_summary) — una vez por día, un resumen con la cantidad de clientes con deuda atrasada y el monto total por moneda. Reemplaza las alertas individuales cuando hay varios deudores.",
+        "Nuevo saldo pendiente (new_debtor) — un cliente tiene deuda por primera vez o re-emerge después de haber saldado.",
+        "Cliente saldó su deuda (client_debt_settled) — el saldo abierto de un cliente quedó en cero.",
+        "Pago próximo (treasury_payment_due) — un pago programado en Tesorería vence en los próximos 7 días.",
+        "Pago atrasado (treasury_payment_overdue) — un pago programado pasó su fecha sin registrarse.",
+        "Riesgo de caja (cash_risk_detected) — la caja disponible no alcanza para cubrir los compromisos programados de los próximos 30 días.",
+      ] },
+      { type: "callout", variant: "info", text: "Si la campana no muestra notificaciones, puede ser normal: las notificaciones se generan automáticamente una vez por día. Si el sistema recién fue configurado o no hay movimiento reciente, la campana puede aparecer vacía hasta el próximo ciclo de actualización." },
       { type: "bullets", items: ["Tocar el botón de la campana abre el panel de notificaciones.","Cada notificación tiene un link para ir directo al detalle.","«Marcar todas como leídas» quita el número rojo — no borra las notificaciones.","«Ver todas» lleva al listado completo en Alertas."] },
     ],
   },
@@ -233,6 +244,14 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
     includeInToc: true,
     blocks: [
       { type: "paragraph", text: "Ver algo en rojo no significa que el negocio está en crisis. Puede ser una alerta importante o simplemente un dato para revisar." },
+      { type: "bullets", items: [
+        "Deuda vencida en rojo — hay clientes con facturas cuya fecha de vencimiento ya pasó. Abrí la ficha del cliente desde Clientes y contactalo.",
+        "Caja proyectada en rojo — los compromisos de los próximos 30 días superan la caja disponible. Revisá Tesorería para ajustar pagos o registrar ingresos.",
+        "Pago atrasado en rojo — hay un pago programado en Tesorería que ya pasó su fecha. Entrá a Tesorería — Pagos próximos y confirmalo o cancalalo.",
+        "Estado Crítico en Finanzas o Dashboard — tres o más clientes de riesgo alto, o la caja proyectada queda negativa. Priorizá las acciones recomendadas en Hoy.",
+        "Finanzas no carga (timeout) — si aparece un mensaje de error con el botón Reintentar, hacé clic en él. El informe tiene un límite de 25 segundos; si la conexión es lenta puede tardar más.",
+        "Campana sin notificaciones — puede ser normal. Las notificaciones se generan una vez por día. Si el sistema fue configurado recientemente, la campana puede estar vacía hasta el primer ciclo.",
+      ] },
     ],
   },
   {
@@ -426,6 +445,20 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
       },
       {
         type: "subsection",
+        title: "¿Qué pasa si Finanzas o Cartera no terminan de cargar?",
+        blocks: [
+          { type: "paragraph", text: "Si el informe tarda más de 25 segundos, aparece automáticamente un mensaje de error con el botón Reintentar. Hacé clic en él para volver a intentar la carga. Si el problema persiste, verificá tu conexión a internet. En entornos de desarrollo esto puede ocurrir más seguido; en producción es poco frecuente." },
+        ],
+      },
+      {
+        type: "subsection",
+        title: "¿Por qué la campana está vacía?",
+        blocks: [
+          { type: "paragraph", text: "Las notificaciones se generan automáticamente una vez por día. Si el sistema fue configurado recientemente o no hubo actividad nueva, la campana puede aparecer vacía. Esto es normal — no indica un error. Las alertas aparecerán en el próximo ciclo de generación automática." },
+        ],
+      },
+      {
+        type: "subsection",
         title: "¿Los agentes pueden modificar datos?",
         blocks: [
           { type: "paragraph", text: "No. En esta versión solo leen información y sugieren acciones. Vos decidís qué hacer." },
@@ -564,6 +597,14 @@ export const COPILOT_MANUAL_FAQ: Array<{ q: string; a: string }> = [
   {
     "q": "¿Dónde veo si los datos están actualizados?",
     "a": "En Alertas (/copilot/alertas) y Datos (/copilot/datos)."
+  },
+  {
+    "q": "¿Qué pasa si Finanzas o Cartera no terminan de cargar?",
+    "a": "Si el informe tarda más de 25 segundos, aparece automáticamente un mensaje de error con el botón Reintentar. Hacé clic en él para volver a intentar. Si el problema persiste, verificá tu conexión a internet."
+  },
+  {
+    "q": "¿Por qué la campana está vacía?",
+    "a": "Las notificaciones se generan automáticamente una vez por día. Si el sistema fue configurado recientemente o no hubo actividad nueva, la campana puede estar vacía. Es normal — las alertas aparecerán en el próximo ciclo de generación."
   },
   {
     "q": "¿Los agentes pueden modificar datos?",

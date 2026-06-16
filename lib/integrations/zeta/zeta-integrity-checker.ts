@@ -247,26 +247,50 @@ async function checkInvoiceShadowDuplicateCcv1(
   const violations: IntegrityViolation[] = [];
   for (const d of duplicates.slice(0, 200)) {
     const matched = d.candidates[0];
-    violations.push({
-      check_name: "invoice_shadow_duplicate_ccv1",
-      entity: "invoices",
-      record_id: d.shadow_id,
-      record_key: d.shadow_invoice_number,
-      description: d.review_required
-        ? `Sombra ZETA:{RegistroId} con CCV1 gemela activa — flag REVIEW_REQUIRED previo (cliente=${d.company_id} ${d.currency_code} ${d.total_amount} ${d.issue_date})`
-        : `Sombra ZETA:{RegistroId} duplica CCV1 activa ${matched?.invoice_number ?? "?"} — ${d.currency_code} ${d.total_amount} ${d.issue_date}`,
-      severity: d.review_required ? "info" : "critical",
-      metadata: {
-        currency_code: d.currency_code,
-        total_amount: d.total_amount,
-        issue_date: d.issue_date,
-        company_id: d.company_id,
-        candidate_count: d.candidates.length,
-        matched_ccv1_invoice_number: matched?.invoice_number ?? null,
-        matched_ccv1_invoice_id: matched?.invoice_id ?? null,
-        review_required: d.review_required,
-      },
-    });
+    const baseMetadata = {
+      currency_code: d.currency_code,
+      total_amount: d.total_amount,
+      issue_date: d.issue_date,
+      company_id: d.company_id,
+      candidate_count: d.candidates.length,
+      matched_ccv1_invoice_number: matched?.invoice_number ?? null,
+      matched_ccv1_invoice_id: matched?.invoice_id ?? null,
+      review_required: d.review_required,
+      ambiguous: d.ambiguous,
+    };
+
+    if (d.ambiguous) {
+      violations.push({
+        check_name: "shadow_duplicate_ambiguous_match",
+        entity: "invoices",
+        record_id: d.shadow_id,
+        record_key: d.shadow_invoice_number,
+        description: `Sombra ZETA:{RegistroId} tiene ${d.candidates.length} CCV1 candidatas sin match claro — revisión manual requerida (cliente=${d.company_id} ${d.currency_code} ${d.total_amount} ${d.issue_date})`,
+        severity: "warning",
+        metadata: {
+          ...baseMetadata,
+          candidate_invoice_numbers: d.candidates.map((c) => c.invoice_number),
+          candidate_scores: d.candidates.map((c) => ({
+            invoice_number: c.invoice_number,
+            match_score: c.match_score ?? null,
+            due_date: c.due_date ?? null,
+            cfe_tipo: c.cfe_tipo ?? null,
+          })),
+        },
+      });
+    } else {
+      violations.push({
+        check_name: "invoice_shadow_duplicate_ccv1",
+        entity: "invoices",
+        record_id: d.shadow_id,
+        record_key: d.shadow_invoice_number,
+        description: d.review_required
+          ? `Sombra ZETA:{RegistroId} con CCV1 gemela activa — flag REVIEW_REQUIRED previo (cliente=${d.company_id} ${d.currency_code} ${d.total_amount} ${d.issue_date})`
+          : `Sombra ZETA:{RegistroId} duplica CCV1 activa ${matched?.invoice_number ?? "?"} — ${d.currency_code} ${d.total_amount} ${d.issue_date}`,
+        severity: d.review_required ? "info" : "critical",
+        metadata: baseMetadata,
+      });
+    }
   }
 
   return { violations };
@@ -482,6 +506,8 @@ type CheckDefinition = {
   name: string;
   entity: "invoices" | "receipts" | "installments";
   fn: (supabase: SupabaseClient, workspaceId: string) => Promise<CheckResult>;
+  /** Extra check names to include when auto-resolving stale violations. */
+  staleResolutionNames?: string[];
 };
 
 const ALL_CHECKS: CheckDefinition[] = [
@@ -489,7 +515,12 @@ const ALL_CHECKS: CheckDefinition[] = [
   { name: "invoice_null_currency", entity: "invoices", fn: checkInvoiceNullCurrency },
   { name: "invoice_null_balance_pending", entity: "invoices", fn: checkInvoiceNullBalancePending },
   { name: "invoice_duplicate_number", entity: "invoices", fn: checkInvoiceDuplicateNumber },
-  { name: "invoice_shadow_duplicate_ccv1", entity: "invoices", fn: checkInvoiceShadowDuplicateCcv1 },
+  {
+    name: "invoice_shadow_duplicate_ccv1",
+    entity: "invoices",
+    fn: checkInvoiceShadowDuplicateCcv1,
+    staleResolutionNames: ["invoice_shadow_duplicate_ccv1", "shadow_duplicate_ambiguous_match"],
+  },
   { name: "invoice_invalid_issue_date", entity: "invoices", fn: checkInvoiceInvalidIssueDate },
   { name: "receipt_null_currency", entity: "receipts", fn: checkReceiptNullCurrency },
   { name: "receipt_negative_amount", entity: "receipts", fn: checkReceiptNegativeAmount },
@@ -529,9 +560,12 @@ export async function runAllIntegrityChecks(
         if (result?.isNew) violationsNew++;
       }
 
-      violationsResolved = await resolveStaleIntegrityViolations(
-        supabase, workspaceId, check.name, foundKeys
-      );
+      const namesToResolve = check.staleResolutionNames ?? [check.name];
+      for (const resolveName of namesToResolve) {
+        violationsResolved += await resolveStaleIntegrityViolations(
+          supabase, workspaceId, resolveName, foundKeys
+        );
+      }
     } catch (err) {
       checkError = String(err);
     }

@@ -59,6 +59,9 @@ export type ShadowTwinCandidate = {
   invoice_id: string;
   invoice_number: string;
   total_amount: number;
+  due_date?: string | null;
+  cfe_tipo?: string | null;
+  match_score?: number;
 };
 
 export type ShadowUniquenessOutcome =
@@ -147,6 +150,8 @@ export type HistoricalShadowDuplicate = {
   total_amount: number;
   candidates: ShadowTwinCandidate[];
   review_required: boolean;
+  /** True when scoring could not pick a single best CCV1 candidate (margin < threshold). */
+  ambiguous: boolean;
 };
 
 export type ShadowDuplicateScanRange = {
@@ -163,6 +168,8 @@ type RawInvoiceRow = {
   company_id: string;
   currency_code: string | null;
   issue_date: string;
+  due_date: string | null;
+  created_at: string | null;
   total_amount: unknown;
   is_active: boolean | null;
   category: string | null;
@@ -171,6 +178,71 @@ type RawInvoiceRow = {
 
 /** Página máxima por sweep. PostgREST default 1000; mantenemos margen. */
 const SCAN_PAGE_SIZE = 1000;
+
+// ── Multi-field candidate scoring ─────────────────────────────────────────────
+
+/** due_date match between shadow and CCV1 — strongest positional signal. */
+const SCORE_DUE_DATE_MATCH = 40;
+/** Temporal proximity: the CCV1 closest in creation time to the shadow. */
+const SCORE_TEMPORAL_PROXIMITY_BONUS = 20;
+/**
+ * Minimum score-gap between best and second-best candidate to consider the
+ * match non-ambiguous. If the gap is below this threshold the checker emits
+ * `shadow_duplicate_ambiguous_match` (warning) instead of
+ * `invoice_shadow_duplicate_ccv1` (critical).
+ */
+const SCORE_AMBIGUOUS_MIN_MARGIN = 20;
+
+type CcvBucketEntry = {
+  id: string;
+  invoice_number: string;
+  total: number;
+  due_date: string | null;
+  cfe_tipo: string | null;
+  created_at: string | null;
+};
+
+function scoreCandidates(
+  shadowDueDate: string | null,
+  shadowCreatedAt: string | null,
+  candidates: CcvBucketEntry[]
+): Array<CcvBucketEntry & { score: number }> {
+  // Pre-compute which candidate is temporally closest to the shadow.
+  let closestDiffMs = Infinity;
+  if (shadowCreatedAt) {
+    const shadowTs = new Date(shadowCreatedAt).getTime();
+    if (Number.isFinite(shadowTs)) {
+      for (const c of candidates) {
+        if (!c.created_at) continue;
+        const diff = Math.abs(new Date(c.created_at).getTime() - shadowTs);
+        if (diff < closestDiffMs) closestDiffMs = diff;
+      }
+    }
+  }
+
+  return candidates.map((c) => {
+    let score = 0;
+    if (shadowDueDate && c.due_date && c.due_date === shadowDueDate) {
+      score += SCORE_DUE_DATE_MATCH;
+    }
+    if (shadowCreatedAt && c.created_at && Number.isFinite(closestDiffMs)) {
+      const diff = Math.abs(new Date(c.created_at).getTime() - new Date(shadowCreatedAt).getTime());
+      if (diff === closestDiffMs) score += SCORE_TEMPORAL_PROXIMITY_BONUS;
+    }
+    return { ...c, score };
+  });
+}
+
+function pickBestCandidate(scored: Array<CcvBucketEntry & { score: number }>): {
+  best: CcvBucketEntry & { score: number };
+  ambiguous: boolean;
+} {
+  const sorted = [...scored].sort((a, b) => b.score - a.score);
+  const best = sorted[0];
+  const second = sorted[1];
+  const margin = second !== undefined ? best.score - second.score : Infinity;
+  return { best, ambiguous: margin < SCORE_AMBIGUOUS_MIN_MARGIN };
+}
 
 /**
  * Recorre el período `[from, to]` y devuelve toda fila sombra activa que
@@ -199,7 +271,7 @@ export async function findActiveShadowDuplicatesInPeriod(
   while (rows.length < SCAN_PAGE_SIZE * 100) {
     const { data, error } = await supabase
       .from("proto_invoices")
-      .select("id, invoice_number, workspace_company_id, company_id, currency_code, issue_date, total_amount, is_active, category, zeta_metadata")
+      .select("id, invoice_number, workspace_company_id, company_id, currency_code, issue_date, due_date, created_at, total_amount, is_active, category, zeta_metadata")
       .eq("workspace_company_id", wid)
       .gte("issue_date", from)
       .lte("issue_date", to)
@@ -216,19 +288,25 @@ export async function findActiveShadowDuplicatesInPeriod(
 
   // Index CCV1 activos por (company, currency, fecha) para join O(n).
   type BucketKey = string;
-  const ccv1Buckets = new Map<BucketKey, Array<{ id: string; invoice_number: string; total: number }>>();
+  const ccv1Buckets = new Map<BucketKey, CcvBucketEntry[]>();
   for (const r of rows) {
     if (!r.invoice_number.startsWith("ZETA:CCV1:")) continue;
     const currency = (r.currency_code ?? "").trim().toUpperCase();
     if (!VALID_CURRENCIES.has(currency)) continue;
     const issue = (r.issue_date ?? "").slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(issue)) continue;
+    const zetaMeta = (r.zeta_metadata ?? {}) as Record<string, unknown>;
+    const ccv1Meta = (zetaMeta.zeta_customer_voucher_v1 ?? {}) as Record<string, unknown>;
+    const cfe_tipo = typeof ccv1Meta.cfe_tipo === "string" ? ccv1Meta.cfe_tipo : null;
     const key = `${r.company_id}|${currency}|${issue}`;
     const list = ccv1Buckets.get(key) ?? [];
     list.push({
       id: r.id,
       invoice_number: r.invoice_number,
       total: round2(toNumberLoose(r.total_amount)),
+      due_date: r.due_date ?? null,
+      cfe_tipo,
+      created_at: r.created_at ?? null,
     });
     ccv1Buckets.set(key, list);
   }
@@ -254,6 +332,35 @@ export async function findActiveShadowDuplicatesInPeriod(
     const cleanup = (meta.cleanup_audit ?? {}) as Record<string, unknown>;
     const reviewRequired = cleanup.review_required === true;
 
+    let candidates: ShadowTwinCandidate[];
+    let ambiguous = false;
+
+    if (matches.length === 1) {
+      const m = matches[0];
+      candidates = [{
+        invoice_id: m.id,
+        invoice_number: m.invoice_number,
+        total_amount: m.total,
+        due_date: m.due_date,
+        cfe_tipo: m.cfe_tipo,
+        match_score: 0,
+      }];
+    } else {
+      const scored = scoreCandidates(r.due_date ?? null, r.created_at ?? null, matches);
+      const { ambiguous: isAmbiguous } = pickBestCandidate(scored);
+      ambiguous = isAmbiguous;
+      candidates = scored
+        .sort((a, b) => b.score - a.score)
+        .map((s) => ({
+          invoice_id: s.id,
+          invoice_number: s.invoice_number,
+          total_amount: s.total,
+          due_date: s.due_date,
+          cfe_tipo: s.cfe_tipo,
+          match_score: s.score,
+        }));
+    }
+
     out.push({
       shadow_id: r.id,
       shadow_invoice_number: r.invoice_number,
@@ -262,11 +369,8 @@ export async function findActiveShadowDuplicatesInPeriod(
       currency_code: currency,
       issue_date: issue,
       total_amount: shadowTotal,
-      candidates: matches.map((m) => ({
-        invoice_id: m.id,
-        invoice_number: m.invoice_number,
-        total_amount: m.total,
-      })),
+      candidates,
+      ambiguous,
       review_required: reviewRequired,
     });
   }
