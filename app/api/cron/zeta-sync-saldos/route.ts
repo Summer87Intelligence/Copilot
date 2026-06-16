@@ -71,6 +71,13 @@ const MAX_PAGES_PER_CLIENT = 5;
 // Anti-overlap: ventana de 2 horas (igual al intervalo del cron)
 const ANTI_OVERLAP_WINDOW_MS = 2 * 60 * 60 * 1_000;
 
+// Heartbeat granular: pulsa cada N clientes procesados o cada 30s.
+// Duración normal: 183 clientes × 600ms = ~110s ≈ 2 min.
+// Heartbeat cada 10 clientes × 600ms = ~6s → ~18 pulsos por corrida.
+// Si un cliente se cuelga, el último pulso queda registrado en DB.
+const HEARTBEAT_EVERY_N_CLIENTS = 10;
+const HEARTBEAT_INTERVAL_MS = 30_000;
+
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -246,6 +253,10 @@ export async function GET(request: NextRequest) {
   let workspacePageIndex = 0;
   let cursorAfterId: string | null = null;
 
+  // Heartbeat tracking: contadores para log final y progreso mid-run.
+  let heartbeatCount = 0;
+  let lastHeartbeatTime = Date.now();
+
   // ── Workspaces activos: paginación determinística por `id` ───────────────
   while (true) {
     let page: { ids: string[]; nextAfterId: string | null };
@@ -417,6 +428,41 @@ export async function GET(request: NextRequest) {
           error: String(err),
         });
       }
+
+      // Heartbeat granular: cada HEARTBEAT_EVERY_N_CLIENTS procesados
+      // o si han pasado más de HEARTBEAT_INTERVAL_MS desde el último pulso.
+      // Persiste last_heartbeat_at + progreso en DB para que expireStaleFleetPipelineRuns
+      // no cierre una corrida legítima y para diagnosticar dónde se colgó si falla.
+      if (
+        pipelineRunId &&
+        ((i + 1) % HEARTBEAT_EVERY_N_CLIENTS === 0 ||
+          Date.now() - lastHeartbeatTime >= HEARTBEAT_INTERVAL_MS)
+      ) {
+        heartbeatCount += 1;
+        const progressPercent = Math.round(((i + 1) / eligible.length) * 100);
+        try {
+          await touchPipelineRunHeartbeat(supabase, pipelineRunId, {
+            cron_run_id: cronRunId,
+            heartbeat_count: heartbeatCount,
+            processed_clients: totalProcessed,
+            workspace_clients_done: i + 1,
+            workspace_clients_total: eligible.length,
+            current_client_id: company.id,
+            progress_percent: progressPercent,
+          });
+          lastHeartbeatTime = Date.now();
+        } catch (e) {
+          log("pipeline_heartbeat_error", { error: String(e) });
+        }
+        log("pipeline_heartbeat", {
+          heartbeat_count: heartbeatCount,
+          processed_clients: totalProcessed,
+          workspace_clients_done: i + 1,
+          workspace_clients_total: eligible.length,
+          current_client_id: company.id,
+          progress_percent: progressPercent,
+        });
+      }
     }
 
     let wsOrphanMetadataRepaired = 0;
@@ -492,6 +538,7 @@ export async function GET(request: NextRequest) {
         workspace_pages: workspacePageIndex,
         reconciliation_closed: totalReconciliationClosed,
         orphan_metadata_repaired: totalOrphanMetadataRepaired,
+        heartbeat_count: heartbeatCount,
         summaries: workspaceSummaries,
       },
     }).catch((e) => log("pipeline_run_update_error", { error: String(e) }));
