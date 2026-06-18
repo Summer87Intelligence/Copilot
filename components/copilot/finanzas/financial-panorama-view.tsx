@@ -44,6 +44,12 @@ import {
   type FinanzasCanonicalCurrencyState,
 } from "@/lib/copilot-finanzas-canonical-state";
 import { fmtCurrencyAmount } from "@/lib/copilot-today-business-pulse";
+import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
+import {
+  convertToUsdEquivalent,
+  formatDisplayAmounts,
+  formatUsdEquivalent,
+} from "@/lib/currency-display-mode";
 
 const ESTADO_ACTUAL_METRICS: {
   label: string;
@@ -56,7 +62,12 @@ const ESTADO_ACTUAL_METRICS: {
 ];
 
 function EstadoActualSection({ state }: { state: FinanzasCanonicalCurrencyState[] }) {
+  const { mode, fxRate } = useDisplayCurrency();
   if (state.length === 0) return null;
+
+  const uyuState = state.find((s) => s.currency === "UYU");
+  const usdState = state.find((s) => s.currency === "USD");
+
   return (
     <CopilotCard>
       <CopilotSectionTitle
@@ -64,24 +75,44 @@ function EstadoActualSection({ state }: { state: FinanzasCanonicalCurrencyState[
         subtitle="Misma fuente que Hoy · Tesorería · Cartera. Sin mezcla de monedas."
       />
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {ESTADO_ACTUAL_METRICS.map((metric) => (
-          <div
-            key={metric.label}
-            className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] p-3"
-          >
-            <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-              {metric.label}
-            </p>
-            <div className="mt-1 space-y-0.5">
-              {state.map((s) => (
-                <p key={s.currency} className="text-sm font-semibold text-[var(--copilot-ink)]">
-                  {fmtCurrencyAmount(metric.getValue(s), s.currency)}
-                </p>
-              ))}
+        {ESTADO_ACTUAL_METRICS.map((metric) => {
+          const result = formatDisplayAmounts({
+            uyu: uyuState ? metric.getValue(uyuState) : 0,
+            usd: usdState ? metric.getValue(usdState) : 0,
+            mode,
+            fxRate,
+          });
+          return (
+            <div
+              key={metric.label}
+              className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] p-3"
+            >
+              <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                {metric.label}
+              </p>
+              <div className="mt-1 space-y-0.5">
+                {result.kind === "usd_equivalent" ? (
+                  <>
+                    <p className="text-sm font-semibold text-[var(--copilot-ink)]">{result.label}</p>
+                    <p className="text-[10px] text-[var(--copilot-ink-muted)]">TC {result.fxRate}</p>
+                  </>
+                ) : (
+                  state.map((s) => (
+                    <p key={s.currency} className="text-sm font-semibold text-[var(--copilot-ink)]">
+                      {fmtCurrencyAmount(metric.getValue(s), s.currency)}
+                    </p>
+                  ))
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
+      {mode === "usd_equivalent" ? (
+        <p className="mt-2 text-[10px] text-[var(--copilot-ink-muted)]">
+          Vista convertida. Datos originales separados por moneda.
+        </p>
+      ) : null}
     </CopilotCard>
   );
 }
@@ -167,7 +198,57 @@ function CurrencyProjectionBlock({ s }: { s: FinanzasCanonicalCurrencyState }) {
   );
 }
 
+function UsdProjectionBlock({
+  state,
+  fxRate,
+}: {
+  state: FinanzasCanonicalCurrencyState[];
+  fxRate: number;
+}) {
+  const uyu = state.find((s) => s.currency === "UYU");
+  const usd = state.find((s) => s.currency === "USD");
+  const conv = (uyuAmt: number, usdAmt: number) =>
+    convertToUsdEquivalent({ uyu: uyuAmt, usd: usdAmt }, fxRate);
+
+  const available = conv(uyu?.availableCash ?? 0, usd?.availableCash ?? 0);
+  const pending = conv(uyu?.pendingReceivables ?? 0, usd?.pendingReceivables ?? 0);
+  const payments = conv(uyu?.scheduledPayments30d ?? 0, usd?.scheduledPayments30d ?? 0);
+  const projected = conv(uyu?.expectedCash30d ?? 0, usd?.expectedCash30d ?? 0);
+
+  return (
+    <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] p-4 space-y-1.5 text-sm">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+        USD estimado · TC {fxRate}
+      </p>
+      <div className="flex justify-between gap-2">
+        <span className="text-[var(--copilot-ink-muted)]">Caja actual</span>
+        <span className="font-medium text-[var(--copilot-ink)]">{formatUsdEquivalent(available)}</span>
+      </div>
+      <div className="flex justify-between gap-2">
+        <span className="text-[var(--copilot-ink-muted)]">+ Cobros pendientes</span>
+        <span className="font-medium text-[var(--copilot-ink)]">{formatUsdEquivalent(pending)}</span>
+      </div>
+      <div className="flex justify-between gap-2">
+        <span className="text-[var(--copilot-ink-muted)]">− Pagos próximos</span>
+        <span className="font-medium text-[var(--copilot-ink)]">{formatUsdEquivalent(payments)}</span>
+      </div>
+      <div className="flex justify-between gap-2 border-t border-[var(--copilot-border)] pt-1.5">
+        <span className="font-semibold text-[var(--copilot-ink)]">= Caja proyectada</span>
+        <span
+          className={`font-bold ${projected < 0 ? "text-red-600 dark:text-red-400" : "text-[var(--copilot-ink)]"}`}
+        >
+          {formatUsdEquivalent(projected)}
+        </span>
+      </div>
+      <p className="text-[10px] text-[var(--copilot-ink-muted)]">
+        Vista convertida. Datos originales separados por moneda.
+      </p>
+    </div>
+  );
+}
+
 function CajaProyectadaSection({ state }: { state: FinanzasCanonicalCurrencyState[] }) {
+  const { mode, fxRate } = useDisplayCurrency();
   if (state.length === 0) return null;
   return (
     <CopilotCard>
@@ -175,11 +256,17 @@ function CajaProyectadaSection({ state }: { state: FinanzasCanonicalCurrencyStat
         title="Caja proyectada (30 días)"
         subtitle="Caja actual + cobros pendientes − pagos próximos."
       />
-      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {state.map((s) => (
-          <CurrencyProjectionBlock key={s.currency} s={s} />
-        ))}
-      </div>
+      {mode === "usd_equivalent" ? (
+        <div className="mt-3">
+          <UsdProjectionBlock state={state} fxRate={fxRate} />
+        </div>
+      ) : (
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {state.map((s) => (
+            <CurrencyProjectionBlock key={s.currency} s={s} />
+          ))}
+        </div>
+      )}
     </CopilotCard>
   );
 }

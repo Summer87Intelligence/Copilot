@@ -86,3 +86,31 @@ export function writeDisplayFxRateToStorage(rate: number): boolean {
     return false;
   }
 }
+
+export type DisplayAmountsResult =
+  | { kind: "native" }
+  | { kind: "usd_equivalent"; total: number; fxRate: number; label: string };
+
+/**
+ * Pure presentation helper: given raw UYU+USD amounts and display mode,
+ * returns either "native" (no-op — callers render per-currency as usual)
+ * or "usd_equivalent" with the pre-formatted consolidated label.
+ */
+export function formatDisplayAmounts({
+  uyu,
+  usd,
+  mode,
+  fxRate,
+}: {
+  uyu: number;
+  usd: number;
+  mode: CurrencyDisplayMode;
+  fxRate: number;
+}): DisplayAmountsResult {
+  if (mode === "usd_equivalent") {
+    const rate = normalizeFxRate(fxRate);
+    const total = convertToUsdEquivalent({ uyu, usd }, rate);
+    return { kind: "usd_equivalent", total, fxRate: rate, label: formatUsdEquivalent(total) };
+  }
+  return { kind: "native" };
+}

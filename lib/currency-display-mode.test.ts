@@ -4,6 +4,7 @@ import {
   DEFAULT_CURRENCY_DISPLAY_MODE,
   DEFAULT_DISPLAY_FX_RATE_UYU_PER_USD,
   convertToUsdEquivalent,
+  formatDisplayAmounts,
   formatUsdEquivalent,
   normalizeFxRate,
   readDisplayFxRateFromStorage,
@@ -73,6 +74,38 @@ describe("formatUsdEquivalent", () => {
   it("prefixes with ~USD", () => {
     expect(formatUsdEquivalent(200)).toContain("~USD");
     expect(formatUsdEquivalent(200)).toContain("200");
+  });
+});
+
+describe("formatDisplayAmounts", () => {
+  it("native mode returns kind=native — no conversion", () => {
+    const result = formatDisplayAmounts({ uyu: 4_000, usd: 100, mode: "native", fxRate: 40 });
+    expect(result.kind).toBe("native");
+  });
+
+  it("usd_equivalent mode — UYU 4000 + USD 100 at TC 40 = USD 200", () => {
+    const result = formatDisplayAmounts({ uyu: 4_000, usd: 100, mode: "usd_equivalent", fxRate: 40 });
+    expect(result.kind).toBe("usd_equivalent");
+    if (result.kind === "usd_equivalent") {
+      expect(result.total).toBe(200);
+      expect(result.fxRate).toBe(40);
+      expect(result.label).toContain("~USD");
+    }
+  });
+
+  it("usd_equivalent mode — USD only, UYU 0", () => {
+    const result = formatDisplayAmounts({ uyu: 0, usd: 500, mode: "usd_equivalent", fxRate: 40 });
+    expect(result.kind).toBe("usd_equivalent");
+    if (result.kind === "usd_equivalent") expect(result.total).toBe(500);
+  });
+
+  it("usd_equivalent mode — invalid fxRate falls back to 40", () => {
+    const withDefault = formatDisplayAmounts({ uyu: 4_000, usd: 100, mode: "usd_equivalent", fxRate: 40 });
+    const withInvalid = formatDisplayAmounts({ uyu: 4_000, usd: 100, mode: "usd_equivalent", fxRate: 0 });
+    expect(withInvalid.kind).toBe("usd_equivalent");
+    if (withDefault.kind === "usd_equivalent" && withInvalid.kind === "usd_equivalent") {
+      expect(withInvalid.total).toBe(withDefault.total);
+    }
   });
 });
 

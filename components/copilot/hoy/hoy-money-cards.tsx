@@ -25,6 +25,8 @@ import {
   metricValueClass,
   neutralFinancialCardClass,
 } from "@/components/copilot/ui/copilot-visual-system";
+import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
+import { formatUsdEquivalent } from "@/lib/currency-display-mode";
 
 type CardVariant = "cash" | "receivables" | "payments" | "afterPayments";
 
@@ -188,6 +190,33 @@ const AMOUNT_SIZE: Record<
     labelSecondary: "text-[10px] opacity-70",
   },
 };
+
+function amountsToUsdEquivalent(amounts: CockpitCurrencyAmount[], fxRate: number): number {
+  const uyu = amounts.find((a) => a.currency === "UYU")?.amount ?? 0;
+  const usd = amounts.find((a) => a.currency === "USD")?.amount ?? 0;
+  const rate = fxRate > 0 ? fxRate : 40;
+  return Math.round((usd + uyu / rate) * 100) / 100;
+}
+
+function UsdEquivalentAmountDisplay({
+  total,
+  fxRate,
+}: {
+  total: number;
+  fxRate: number;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-1 text-center">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--copilot-ink-muted)]">
+        USD estimado
+      </p>
+      <p className={`whitespace-nowrap tracking-tight ${metricValueClass} text-[1.4rem] xl:text-[1.6rem] text-[var(--copilot-ink)]`}>
+        {formatUsdEquivalent(total)}
+      </p>
+      <p className="text-[10px] text-[var(--copilot-ink-muted)]">TC {fxRate}</p>
+    </div>
+  );
+}
 
 function CurrencyStack({
   amounts,
@@ -672,6 +701,8 @@ function ExecutiveProjectionDrawer({
   today?: string;
   clientProjectionRows?: readonly ClientProjectionRow[];
 }) {
+  const { mode, fxRate } = useDisplayCurrency();
+
   if (blocks.length === 0) {
     return (
       <p className="text-center text-[10px] text-[var(--copilot-ink-muted)]">
@@ -684,6 +715,11 @@ function ExecutiveProjectionDrawer({
 
   return (
     <div className="space-y-2">
+      {mode === "usd_equivalent" ? (
+        <p className="rounded-lg bg-[var(--copilot-soft-bg)] px-2.5 py-1.5 text-[10px] text-[var(--copilot-ink-muted)]">
+          Vista convertida a USD estimado (TC {fxRate}). Los detalles mantienen moneda original.
+        </p>
+      ) : null}
       {/* 1. Caja actual */}
       <DrawerBlock title="Caja actual" description="Dinero disponible hoy.">
         {blocks.map((block) => (
@@ -773,6 +809,7 @@ function MoneyCard({
   onCardClick?: (id: HoyCockpitCardId) => void;
   isActive?: boolean;
 }) {
+  const { mode, fxRate } = useDisplayCurrency();
   const theme = resolveTheme(variant, block);
   const interactive = Boolean(onCardClick);
   const isEmptyPayments = variant === "payments" && block.amounts.length === 0;
@@ -824,12 +861,19 @@ function MoneyCard({
         </div>
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center py-1">
-          <CurrencyStack
-            amounts={block.amounts}
-            amountPrimaryClass={theme.amountPrimary}
-            amountSecondaryClass={theme.amountSecondary}
-            layout="kpi"
-          />
+          {mode === "usd_equivalent" && block.amounts.length > 0 ? (
+            <UsdEquivalentAmountDisplay
+              total={amountsToUsdEquivalent(block.amounts, fxRate)}
+              fxRate={fxRate}
+            />
+          ) : (
+            <CurrencyStack
+              amounts={block.amounts}
+              amountPrimaryClass={theme.amountPrimary}
+              amountSecondaryClass={theme.amountSecondary}
+              layout="kpi"
+            />
+          )}
         </div>
       )}
 
@@ -917,6 +961,7 @@ function ReceivablesCard({
   onCardClick?: (id: HoyCockpitCardId) => void;
   isActive?: boolean;
 }) {
+  const { mode, fxRate } = useDisplayCurrency();
   const shell = CARD_THEME.receivables;
   const interactive = Boolean(onCardClick);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -943,6 +988,11 @@ function ReceivablesCard({
       <div className="flex flex-1 flex-col items-center justify-center py-1 text-center">
         {card.totalPending.length === 0 ? (
           <p className="text-sm text-[var(--copilot-ink-muted)]">—</p>
+        ) : mode === "usd_equivalent" ? (
+          <UsdEquivalentAmountDisplay
+            total={amountsToUsdEquivalent(card.totalPending, fxRate)}
+            fxRate={fxRate}
+          />
         ) : (
           <CurrencyStack
             amounts={card.totalPending}
