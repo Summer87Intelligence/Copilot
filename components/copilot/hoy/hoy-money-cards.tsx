@@ -295,7 +295,7 @@ function CardFooter({
   tone: CockpitMoneyBlock["footnote"]["tone"];
   text: string;
 }) {
-  const prefix = tone === "ok" ? "✓ " : tone === "warn" ? "⚠ " : "· ";
+  const prefix = tone === "warn" ? "⚠ " : "";
   const toneClass = theme.footer[tone];
 
   return (
@@ -416,76 +416,261 @@ function fmtAmountShort(amount: number, currency: "UYU" | "USD"): string {
   return full;
 }
 
-function CoverageFormulaCompact({ blocks }: { blocks: readonly HoyProjection30dBlock[] }) {
-  if (blocks.length === 0) return null;
+// ─── Executive Projection Drawer ─────────────────────────────────────────────
+
+export type ClientProjectionRow = {
+  clientId: string;
+  clientName: string;
+  currency: "UYU" | "USD";
+  expectedAmount: number;
+  confidence: string;
+};
+
+function DrawerSectionLabel({ text }: { text: string }) {
   return (
-    <div className="hidden sm:block mt-1 rounded-lg bg-[var(--copilot-soft-bg)] px-2.5 py-2 space-y-1.5">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--copilot-ink-muted)]">
-        Caja + cobros probables − pagos próximos
-      </p>
-      {blocks.map((block) => (
-        <div key={block.currency} className="flex items-baseline gap-1 text-[10px] tabular-nums flex-wrap">
-          <span className={`shrink-0 font-bold uppercase ${copilotCurrencyClass(block.currency)}`}>
+    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--copilot-ink-muted)]">
+      {text}
+    </p>
+  );
+}
+
+function DrawerAmountRow({
+  block,
+  value,
+  sign,
+}: {
+  block: HoyProjection30dBlock;
+  value: number;
+  sign?: "positive" | "negative";
+}) {
+  const isNegative = value < 0;
+  const signPrefix = sign === "positive" ? "+" : sign === "negative" ? "−" : "";
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <span className={`text-[10px] font-bold uppercase ${copilotCurrencyClass(block.currency)}`}>
+        {block.currency}
+      </span>
+      <span
+        className={`text-[11px] tabular-nums font-semibold ${metricValueClass} ${
+          isNegative ? "text-[var(--copilot-danger-text-strong)]" : "text-[var(--copilot-ink)]"
+        }`}
+      >
+        {signPrefix}
+        {isNegative && !signPrefix ? "−" : ""}
+        {fmtAmountShort(Math.abs(value), block.currency)}
+      </span>
+    </div>
+  );
+}
+
+function DrawerBlock({
+  title,
+  description,
+  highlight = false,
+  children,
+}: {
+  title: string;
+  description?: string;
+  highlight?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={`space-y-1.5 rounded-lg px-2.5 py-2 ${
+        highlight ? "border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)]" : ""
+      }`}
+    >
+      <DrawerSectionLabel text={title} />
+      <div className="space-y-0.5">{children}</div>
+      {description ? (
+        <p className="text-[9px] leading-snug text-[var(--copilot-ink-muted)]">{description}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function ConservativeBlock({ blocks }: { blocks: readonly HoyProjection30dBlock[] }) {
+  const configured = blocks.filter((b) => b.hasConfiguredPayments);
+  if (configured.length === 0) return null;
+  return (
+    <DrawerBlock title="Solo con caja actual">
+      {configured.map((block) => (
+        <div key={block.currency} className="space-y-0.5">
+          <span className={`text-[9px] font-bold uppercase ${copilotCurrencyClass(block.currency)}`}>
             {block.currency}
           </span>
-          <span className="text-[var(--copilot-ink-muted)]">
-            {fmtAmountShort(block.currentCash, block.currency)}
-            {" + "}
-            {fmtAmountShort(block.pendingReceivables, block.currency)}
-            {" − "}
-            {fmtAmountShort(block.hasConfiguredPayments ? block.scheduledPayments : 0, block.currency)}
-            {" ="}
-          </span>
-          <span className={`font-semibold text-[var(--copilot-ink)] ${metricValueClass}`}>
-            {fmtAmountShort(block.expectedCash30d, block.currency)}
-          </span>
+          <div className="flex items-baseline gap-1 pl-2 text-[10px] tabular-nums flex-wrap">
+            <span className="text-[var(--copilot-ink)]">
+              {fmtAmountShort(block.currentCash, block.currency)}
+            </span>
+            <span className="text-[var(--copilot-ink-muted)]">−</span>
+            <span className="text-[var(--copilot-ink)]">
+              {fmtAmountShort(block.scheduledPayments, block.currency)}
+            </span>
+            <span className="text-[var(--copilot-ink-muted)]">=</span>
+            <span
+              className={`font-semibold ${metricValueClass} ${
+                block.safeCash30d < 0
+                  ? "text-[var(--copilot-danger-text-strong)]"
+                  : "text-[var(--copilot-ink)]"
+              }`}
+            >
+              {block.safeCash30d < 0 ? "−" : ""}
+              {fmtAmountShort(Math.abs(block.safeCash30d), block.currency)}
+            </span>
+          </div>
         </div>
       ))}
-    </div>
+    </DrawerBlock>
   );
 }
 
-function ProjectionCurrencyBlock({ block }: { block: HoyProjection30dBlock }) {
-  const rows = [
-    { label: "Caja disponible", value: block.currentCash },
-    { label: "Cobros probables", value: block.pendingReceivables },
-    {
-      label: "Pagos próximos",
-      value: block.hasConfiguredPayments ? block.scheduledPayments : 0,
-    },
-    {
-      label: "= Cobertura estimada",
-      value: block.hasConfiguredPayments ? block.expectedCash30d : block.currentCash,
-    },
-    ...(block.hasConfiguredPayments
-      ? [{ label: "Solo con caja actual", value: block.safeCash30d }]
-      : []),
-  ];
+function ExecutiveMessageBlock({ blocks }: { blocks: readonly HoyProjection30dBlock[] }) {
+  const configured = blocks.filter((b) => b.hasConfiguredPayments);
+  if (configured.length === 0) return null;
+
+  const allSafeCovered = configured.every((b) => b.safeCash30d >= 0);
+  const deficitBlocks = configured.filter((b) => b.safeCash30d < 0);
+
+  const resultLines = blocks.map((b) => {
+    const val = b.hasConfiguredPayments ? b.expectedCash30d : b.currentCash;
+    const isNeg = val < 0;
+    return (
+      <span
+        key={b.currency}
+        className={`block tabular-nums font-semibold ${metricValueClass} ${
+          isNeg ? "text-[var(--copilot-danger-text-strong)]" : "text-[var(--copilot-ink)]"
+        }`}
+      >
+        {isNeg ? "−" : ""}
+        {fmtAmountShort(Math.abs(val), b.currency)} {b.currency}
+      </span>
+    );
+  });
+
+  if (allSafeCovered) {
+    return (
+      <div className="space-y-1 rounded-lg border border-[var(--copilot-tone-positive-bg)] bg-[var(--copilot-tone-positive-bg)]/60 px-2.5 py-2 text-[10px] leading-relaxed">
+        <p className="text-[var(--copilot-success-text-strong)]">
+          Con la caja actual podés cubrir todos los pagos de los próximos 30 días.
+        </p>
+        <p className="text-[var(--copilot-ink-muted)]">
+          Si además cobrás lo previsto, terminarías el período con:
+        </p>
+        <div className="pl-1">{resultLines}</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-1">
-      <p className={`text-[10px] font-bold uppercase tracking-wide ${copilotCurrencyClass(block.currency)}`}>
-        {block.currency}
-      </p>
-      {rows.map((row) => (
-        <div
-          key={row.label}
-          className="flex items-baseline justify-between gap-2 text-[10px]"
-        >
-          <span className="text-[var(--copilot-ink-muted)]">{row.label}</span>
-          <span className={`tabular-nums font-semibold ${metricValueClass}`}>
-            {fmtCurrencyAmount(row.value, block.currency)}
-          </span>
+    <div className="space-y-1 rounded-lg border border-[var(--copilot-tone-warning-bg)] bg-[var(--copilot-tone-warning-bg)]/60 px-2.5 py-2 text-[10px] leading-relaxed">
+      <p className="text-[var(--copilot-ink)]">Con la caja actual no alcanzás a cubrir todos los pagos.</p>
+      {deficitBlocks.length > 0 ? (
+        <div className="space-y-0.5">
+          <p className="text-[var(--copilot-ink-muted)]">Faltarían:</p>
+          {deficitBlocks.map((b) => (
+            <span
+              key={b.currency}
+              className={`block tabular-nums font-semibold ${metricValueClass} text-[var(--copilot-danger-text-strong)]`}
+            >
+              {fmtAmountShort(Math.abs(b.safeCash30d), b.currency)} {b.currency}
+            </span>
+          ))}
         </div>
-      ))}
+      ) : null}
+      <p className="text-[var(--copilot-ink-muted)]">Si cobrás lo previsto, terminarías el período con:</p>
+      <div className="pl-1">{resultLines}</div>
     </div>
   );
 }
 
-function HoyProjectionDetailInline({
+function PaymentsTableBlock({
+  payments,
+  today,
+}: {
+  payments: readonly TreasuryScheduledPayment[];
+  today: string;
+}) {
+  const upcoming = filterUpcomingPayments(payments, today);
+  if (upcoming.length === 0) return null;
+
+  return (
+    <div className="space-y-1.5">
+      <DrawerSectionLabel text="Pagos considerados" />
+      <div className="max-h-36 overflow-y-auto">
+        <div className="grid grid-cols-[1fr_auto_auto] gap-x-2 border-b border-[var(--copilot-border)] pb-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--copilot-ink-muted)]">
+          <span>Concepto</span>
+          <span>Fecha</span>
+          <span className="text-right">Importe</span>
+        </div>
+        {upcoming.slice(0, 8).map((p) => (
+          <div
+            key={p.id}
+            className="grid grid-cols-[1fr_auto_auto] gap-x-2 border-b border-[var(--copilot-border)]/40 py-0.5 text-[10px] last:border-b-0"
+          >
+            <span className="truncate text-[var(--copilot-ink)]">{p.name}</span>
+            <span className="shrink-0 text-[var(--copilot-ink-muted)]">
+              {formatCopilotDate(p.dueDate, "compact")}
+            </span>
+            <span className={`shrink-0 text-right tabular-nums font-semibold ${copilotCurrencyClass(p.currency)}`}>
+              {fmtAmountShort(p.amount, p.currency)}
+            </span>
+          </div>
+        ))}
+      </div>
+      {upcoming.length > 8 ? (
+        <p className="text-[9px] text-[var(--copilot-ink-muted)]">+{upcoming.length - 8} pagos más</p>
+      ) : null}
+    </div>
+  );
+}
+
+function ClientsTableBlock({ rows }: { rows: readonly ClientProjectionRow[] }) {
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="space-y-1.5">
+      <DrawerSectionLabel text="Clientes incluidos en la proyección" />
+      <div className="max-h-36 overflow-y-auto">
+        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-2 border-b border-[var(--copilot-border)] pb-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--copilot-ink-muted)]">
+          <span>Cliente</span>
+          <span>Moneda</span>
+          <span>Importe</span>
+          <span>Confianza</span>
+        </div>
+        {rows.slice(0, 8).map((row) => (
+          <div
+            key={`${row.clientId}-${row.currency}`}
+            className="grid grid-cols-[1fr_auto_auto_auto] gap-x-2 border-b border-[var(--copilot-border)]/40 py-0.5 text-[10px] last:border-b-0"
+          >
+            <span className="truncate text-[var(--copilot-ink)]">{row.clientName}</span>
+            <span className={`shrink-0 text-[9px] font-bold uppercase ${copilotCurrencyClass(row.currency)}`}>
+              {row.currency}
+            </span>
+            <span className="shrink-0 tabular-nums font-semibold text-[var(--copilot-ink)]">
+              {fmtAmountShort(row.expectedAmount, row.currency)}
+            </span>
+            <span className="shrink-0 text-[var(--copilot-ink-muted)]">{row.confidence}</span>
+          </div>
+        ))}
+      </div>
+      {rows.length > 8 ? (
+        <p className="text-[9px] text-[var(--copilot-ink-muted)]">+{rows.length - 8} clientes más</p>
+      ) : null}
+    </div>
+  );
+}
+
+function ExecutiveProjectionDrawer({
   blocks,
+  treasuryScheduledPayments,
+  today,
+  clientProjectionRows,
 }: {
   blocks: readonly HoyProjection30dBlock[];
+  treasuryScheduledPayments?: readonly TreasuryScheduledPayment[];
+  today?: string;
+  clientProjectionRows?: readonly ClientProjectionRow[];
 }) {
   if (blocks.length === 0) {
     return (
@@ -495,16 +680,60 @@ function HoyProjectionDetailInline({
     );
   }
 
+  const configured = blocks.filter((b) => b.hasConfiguredPayments);
+
   return (
-    <div className="space-y-3">
-      {blocks.map((block, index) => (
-        <div key={block.currency}>
-          {index > 0 ? (
-            <div className="mb-3 border-t border-[var(--copilot-border)]/60" aria-hidden />
-          ) : null}
-          <ProjectionCurrencyBlock block={block} />
-        </div>
-      ))}
+    <div className="space-y-2">
+      {/* 1. Caja actual */}
+      <DrawerBlock title="Caja actual" description="Dinero disponible hoy.">
+        {blocks.map((block) => (
+          <DrawerAmountRow key={block.currency} block={block} value={block.currentCash} />
+        ))}
+      </DrawerBlock>
+
+      {/* 2. Cobros probables */}
+      <DrawerBlock
+        title="Cobros probables (30 días)"
+        description="Estimación basada en saldo pendiente de clientes."
+      >
+        {blocks.map((block) => (
+          <DrawerAmountRow key={block.currency} block={block} value={block.pendingReceivables} sign="positive" />
+        ))}
+      </DrawerBlock>
+
+      {/* 3. Pagos próximos */}
+      {configured.length > 0 ? (
+        <DrawerBlock title="Pagos próximos (30 días)" description="Pagos programados y vencidos pendientes.">
+          {configured.map((block) => (
+            <DrawerAmountRow key={block.currency} block={block} value={block.scheduledPayments} sign="negative" />
+          ))}
+        </DrawerBlock>
+      ) : null}
+
+      {/* 4. Resultado proyectado */}
+      <DrawerBlock title="Resultado proyectado" highlight>
+        {blocks.map((block) => {
+          const val = block.hasConfiguredPayments ? block.expectedCash30d : block.currentCash;
+          return <DrawerAmountRow key={block.currency} block={block} value={val} />;
+        })}
+      </DrawerBlock>
+
+      {/* 5. Solo con caja actual */}
+      {configured.length > 0 ? <ConservativeBlock blocks={blocks} /> : null}
+
+      {/* 6. Mensaje ejecutivo */}
+      <ExecutiveMessageBlock blocks={blocks} />
+
+      {/* 7. Clientes incluidos */}
+      {clientProjectionRows && clientProjectionRows.length > 0 ? (
+        <ClientsTableBlock rows={clientProjectionRows} />
+      ) : null}
+
+      {/* 8. Pagos considerados */}
+      {treasuryScheduledPayments && today ? (
+        <PaymentsTableBlock payments={treasuryScheduledPayments} today={today} />
+      ) : null}
+
       <Link
         href="/copilot/tesoreria"
         className="inline-flex text-[10px] font-semibold text-[var(--copilot-accent)] hover:underline"
@@ -526,6 +755,7 @@ function MoneyCard({
   projection30dBlocks,
   treasuryScheduledPayments,
   today,
+  clientProjectionRows,
   onCardClick,
   isActive,
 }: {
@@ -539,6 +769,7 @@ function MoneyCard({
   projection30dBlocks?: readonly HoyProjection30dBlock[];
   treasuryScheduledPayments?: readonly TreasuryScheduledPayment[];
   today?: string;
+  clientProjectionRows?: readonly ClientProjectionRow[];
   onCardClick?: (id: HoyCockpitCardId) => void;
   isActive?: boolean;
 }) {
@@ -564,7 +795,14 @@ function MoneyCard({
         <HoyPaymentsDetailInline payments={treasuryScheduledPayments} today={today} />
       );
     } else if (showProjectionDetail && projection30dBlocks) {
-      expandedDetail = <HoyProjectionDetailInline blocks={projection30dBlocks} />;
+      expandedDetail = (
+        <ExecutiveProjectionDrawer
+          blocks={projection30dBlocks}
+          treasuryScheduledPayments={treasuryScheduledPayments}
+          today={today}
+          clientProjectionRows={clientProjectionRows}
+        />
+      );
     }
   }
 
@@ -609,9 +847,6 @@ function MoneyCard({
           </CopilotButtonLink>
         ) : (
           <>
-            {showProjectionDetail && projection30dBlocks && projection30dBlocks.length > 0 ? (
-              <CoverageFormulaCompact blocks={projection30dBlocks} />
-            ) : null}
             <DetailToggleButton
               open={detailOpen}
               onToggle={(e) => {
@@ -794,6 +1029,7 @@ export function HoyMoneyCards({
   projection30dBlocks,
   treasuryScheduledPayments,
   today,
+  clientProjectionRows,
   onCardClick,
   activeCard,
 }: {
@@ -806,6 +1042,7 @@ export function HoyMoneyCards({
   projection30dBlocks?: readonly HoyProjection30dBlock[];
   treasuryScheduledPayments?: readonly TreasuryScheduledPayment[];
   today?: string;
+  clientProjectionRows?: readonly ClientProjectionRow[];
   onCardClick?: (id: HoyCockpitCardId) => void;
   activeCard?: HoyCockpitCardId | null;
 }) {
@@ -841,9 +1078,12 @@ export function HoyMoneyCards({
         cardId="afterPayments"
         variant="afterPayments"
         title={HOY_COCKPIT.afterPayments}
-        subtitle="¿Podés cubrir los pagos que vienen?"
+        subtitle="Caja actual + cobros probables − pagos próximos"
         block={afterPayments}
         projection30dBlocks={projection30dBlocks}
+        treasuryScheduledPayments={treasuryScheduledPayments}
+        today={today}
+        clientProjectionRows={clientProjectionRows}
         onCardClick={onCardClick}
         isActive={activeCard === "afterPayments"}
       />

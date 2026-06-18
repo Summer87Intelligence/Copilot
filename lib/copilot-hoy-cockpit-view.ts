@@ -159,9 +159,8 @@ function accentFromProjection(
 }
 
 function footnoteForAccent(accent: CockpitAfterPaymentsAccent): CockpitFootnote {
-  if (accent === "critical") return { tone: "danger", text: "Riesgo — no alcanza aun cobrando" };
-  if (accent === "adjusted") return { tone: "warn", text: "Cubierto si cobrás lo previsto" };
-  return { tone: "ok", text: "Cubierto con caja actual" };
+  if (accent === "critical") return { tone: "danger", text: "🔴 Riesgo de caja" };
+  return { tone: "ok", text: "🟢 Cubierto con cobros previstos" };
 }
 
 /** Cobertura 30d — muestra expectedCash30d (caja + por cobrar − pagos); fórmulas sin cambios. */
@@ -299,7 +298,7 @@ export function buildCockpitView(
   if (!anyConfigured) {
     paymentsFootnote = { tone: "warn", text: "Sin pagos configurados en Tesorería" };
   } else if (anyDeficit) {
-    paymentsFootnote = { tone: "warn", text: "Cobertura ajustada" };
+    paymentsFootnote = { tone: "warn", text: "Caja ajustada tras pagos" };
   } else {
     paymentsFootnote = { tone: "ok", text: "Cubiertos con caja actual" };
   }
