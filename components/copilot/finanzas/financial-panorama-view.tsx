@@ -15,6 +15,8 @@ import {
   FinancialProjectionCompact,
 } from "@/components/copilot/finanzas/financial-layered-sections";
 import { FINANCIAL_UX_COPY, FINANZAS_COPY } from "@/lib/copilot-financial-ux-copy";
+import { FINANZAS_ANALISIS_HISTORICO } from "@/lib/copilot-financial-metrics-contract";
+import { CollapsibleSection } from "@/components/copilot/collapsible-section";
 import { useFinancialReconciliation } from "@/hooks/use-financial-reconciliation";
 import { buildCurrencyIndex } from "@/lib/copilot-cartera-cards-source";
 import { fetchClientPortfolioLoad } from "@/lib/copilot-client-portfolio-fetch";
@@ -607,39 +609,47 @@ export function FinancialPanoramaView() {
 
         <RiesgoEjecutivoSection state={canonicalState} />
 
-        <FinancialExecutiveSummary
-          dashboard={dashboard}
-          onSelectMetric={(metricId, slice) =>
-            setMetricSelection({ kind: "slice", metricId, slice })
-          }
-        />
-
-        <FinancialCeoSections
-          invoices={invoices as unknown as Parameters<typeof FinancialCeoSections>[0]["invoices"]}
-          portfolioRows={portfolioRows as unknown as Parameters<typeof FinancialCeoSections>[0]["portfolioRows"]}
-          year={new Date().getUTCFullYear()}
-        />
-
-        <CopilotCard>
-          <CopilotSectionTitle
-            title="Caja proyectada próximos 30 días"
-            subtitle={FINANCIAL_UX_COPY.projection30Subtitle}
+        <CollapsibleSection
+          id="finanzas-historico"
+          title={FINANZAS_ANALISIS_HISTORICO.title}
+          subtitle={FINANZAS_ANALISIS_HISTORICO.subtitle}
+          defaultOpen={false}
+          variant="primary"
+        >
+          <FinancialExecutiveSummary
+            dashboard={dashboard}
+            onSelectMetric={(metricId, slice) =>
+              setMetricSelection({ kind: "slice", metricId, slice })
+            }
           />
-          <FinancialProjectionCompact model={dashboard.panorama} embedded />
-        </CopilotCard>
 
-        <CopilotCard>
-          <CopilotSectionTitle
-            title={FINANZAS_COPY.collectionRiskTitle}
-            subtitle={FINANZAS_COPY.collectionRiskSubtitle}
+          <FinancialCeoSections
+            invoices={invoices as unknown as Parameters<typeof FinancialCeoSections>[0]["invoices"]}
+            portfolioRows={portfolioRows as unknown as Parameters<typeof FinancialCeoSections>[0]["portfolioRows"]}
+            year={new Date().getUTCFullYear()}
           />
-          <FinancialCeoCollectionRiskSummary
-            portfolioRows={portfolioRows as unknown as Parameters<typeof FinancialCeoCollectionRiskSummary>[0]["portfolioRows"]}
-          />
-          <div className="mt-4 border-t border-[var(--copilot-border)] pt-4">
-            <FinancialCollectionRisk panels={dashboard.currencies} embedded />
-          </div>
-        </CopilotCard>
+
+          <CopilotCard>
+            <CopilotSectionTitle
+              title="Caja proyectada próximos 30 días"
+              subtitle={FINANCIAL_UX_COPY.projection30Subtitle}
+            />
+            <FinancialProjectionCompact model={dashboard.panorama} embedded />
+          </CopilotCard>
+
+          <CopilotCard>
+            <CopilotSectionTitle
+              title={FINANZAS_COPY.collectionRiskTitle}
+              subtitle={FINANZAS_COPY.collectionRiskSubtitle}
+            />
+            <FinancialCeoCollectionRiskSummary
+              portfolioRows={portfolioRows as unknown as Parameters<typeof FinancialCeoCollectionRiskSummary>[0]["portfolioRows"]}
+            />
+            <div className="mt-4 border-t border-[var(--copilot-border)] pt-4">
+              <FinancialCollectionRisk panels={dashboard.currencies} embedded />
+            </div>
+          </CopilotCard>
+        </CollapsibleSection>
       </div>
 
       <FinancialMetricDetailDialog
