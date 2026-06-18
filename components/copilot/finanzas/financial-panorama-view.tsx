@@ -37,6 +37,52 @@ import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-positi
 import { parseTreasuryScheduledSummaryJson } from "@/lib/treasury/treasury-api-parse";
 import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
 import type { DataRow } from "@/lib/data/proto-operational-read-repository";
+import {
+  buildFinanzasCanonicalState,
+  type FinanzasCanonicalCurrencyState,
+} from "@/lib/copilot-finanzas-canonical-state";
+import { fmtCurrencyAmount } from "@/lib/copilot-today-business-pulse";
+
+const ESTADO_ACTUAL_METRICS: {
+  label: string;
+  getValue: (s: FinanzasCanonicalCurrencyState) => number;
+}[] = [
+  { label: "Caja disponible", getValue: (s) => s.availableCash },
+  { label: "Total pendiente", getValue: (s) => s.pendingReceivables },
+  { label: "Deuda vencida", getValue: (s) => s.overdueReceivables },
+  { label: "Pagos próximos 30d", getValue: (s) => s.scheduledPayments30d },
+];
+
+function EstadoActualSection({ state }: { state: FinanzasCanonicalCurrencyState[] }) {
+  if (state.length === 0) return null;
+  return (
+    <CopilotCard>
+      <CopilotSectionTitle
+        title="Estado actual"
+        subtitle="Misma fuente que Hoy · Tesorería · Cartera. Sin mezcla de monedas."
+      />
+      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {ESTADO_ACTUAL_METRICS.map((metric) => (
+          <div
+            key={metric.label}
+            className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] p-3"
+          >
+            <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+              {metric.label}
+            </p>
+            <div className="mt-1 space-y-0.5">
+              {state.map((s) => (
+                <p key={s.currency} className="text-sm font-semibold text-[var(--copilot-ink)]">
+                  {fmtCurrencyAmount(metric.getValue(s), s.currency)}
+                </p>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </CopilotCard>
+  );
+}
 
 type MetricSelection =
   | { kind: "slice"; metricId: PanoramaMetricId; slice: PanoramaCurrencySlice }
@@ -292,6 +338,16 @@ export function FinancialPanoramaView() {
     });
   }, [metricSelection, dashboard, cashPositions, reconciliation.report, period, metricsByCode]);
 
+  const canonicalState = useMemo(
+    () =>
+      buildFinanzasCanonicalState({
+        cashPositions,
+        treasurySummaries,
+        portfolioRows,
+      }),
+    [cashPositions, treasurySummaries, portfolioRows]
+  );
+
   const loading = reconciliation.loading || snapshotLoading;
   const error = reconciliation.error ?? snapshotError;
 
@@ -328,6 +384,8 @@ export function FinancialPanoramaView() {
   return (
     <>
       <div className="space-y-4">
+        <EstadoActualSection state={canonicalState} />
+
         <FinancialExecutiveSummary
           dashboard={dashboard}
           onSelectMetric={(metricId, slice) =>
