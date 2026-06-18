@@ -16,8 +16,8 @@ import {
 } from "@/lib/currency-display-mode";
 
 describe("DEFAULT values", () => {
-  it("default mode is native", () => {
-    expect(DEFAULT_CURRENCY_DISPLAY_MODE).toBe("native");
+  it("default mode is usd_equivalent", () => {
+    expect(DEFAULT_CURRENCY_DISPLAY_MODE).toBe("usd_equivalent");
   });
 
   it("default fx rate is 40", () => {
@@ -112,17 +112,15 @@ describe("formatDisplayAmounts", () => {
 });
 
 describe("UsdEquivalentActiveNotice copy — buildUsdEquivalentNoticeCopy", () => {
-  it("native mode: notice not rendered — copy builder not called (guard is mode check in component)", () => {
-    // Structural: the component returns null when mode !== "usd_equivalent".
-    // This test verifies the copy builder produces well-formed output when it IS called.
+  it("copy builder produces well-formed output", () => {
     const copy = buildUsdEquivalentNoticeCopy(40);
     expect(copy.full.length).toBeGreaterThan(0);
     expect(copy.short.length).toBeGreaterThan(0);
   });
 
-  it("usd_equivalent mode: notice visible — copy contains 'USD estimado' and correct TC", () => {
+  it("copy contains 'Vista en USD' and correct TC", () => {
     const copy = buildUsdEquivalentNoticeCopy(40);
-    expect(copy.full).toContain("USD estimado");
+    expect(copy.full).toContain("Vista en USD");
     expect(copy.full).toContain("TC 40");
     expect(copy.short).toContain("TC 40");
   });
@@ -139,6 +137,11 @@ describe("UsdEquivalentActiveNotice copy — buildUsdEquivalentNoticeCopy", () =
     const copy = buildUsdEquivalentNoticeCopy(40);
     expect(copy.full).not.toContain("USD real");
     expect(copy.short).not.toContain("USD real");
+  });
+
+  it("copy says 'moneda' (datos originales se mantienen en su moneda)", () => {
+    const copy = buildUsdEquivalentNoticeCopy(40);
+    expect(copy.full).toContain("moneda");
   });
 });
 
@@ -193,8 +196,8 @@ describe("buildCurrencyRiskChipCopy", () => {
 });
 
 describe("storage helpers — SSR-safe (no window)", () => {
-  it("readDisplayModeFromStorage returns default when window is undefined", () => {
-    expect(readDisplayModeFromStorage()).toBe(DEFAULT_CURRENCY_DISPLAY_MODE);
+  it("readDisplayModeFromStorage returns usd_equivalent default when window is undefined", () => {
+    expect(readDisplayModeFromStorage()).toBe("usd_equivalent");
   });
 
   it("readDisplayFxRateFromStorage returns 40 when window is undefined", () => {

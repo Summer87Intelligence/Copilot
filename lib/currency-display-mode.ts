@@ -14,7 +14,7 @@ export type CurrencyAmount = {
   usd: number;
 };
 
-export const DEFAULT_CURRENCY_DISPLAY_MODE: CurrencyDisplayMode = "native";
+export const DEFAULT_CURRENCY_DISPLAY_MODE: CurrencyDisplayMode = "usd_equivalent";
 export const DEFAULT_DISPLAY_FX_RATE_UYU_PER_USD = 40;
 
 export const CURRENCY_DISPLAY_MODE_STORAGE_KEY = "copilot.currencyDisplayMode";
@@ -94,8 +94,8 @@ export function buildUsdEquivalentNoticeCopy(fxRate: number): {
 } {
   const rate = normalizeFxRate(fxRate);
   return {
-    full: `USD estimado activado · Los importes en pesos se convierten usando TC ${rate}. Los datos originales siguen separados por moneda.`,
-    short: `USD estimado · TC ${rate}`,
+    full: `Vista en USD activada · Pesos convertidos con TC ${rate}. Los datos originales se mantienen en su moneda.`,
+    short: `Vista en USD · TC ${rate}`,
   };
 }
 

@@ -57,7 +57,7 @@ export function CurrencyDisplayToggle() {
     <div className="flex items-center gap-1.5 text-xs text-[var(--copilot-ink-muted)]">
       <button
         onClick={handleToggle}
-        title={isUsdMode ? "Volver a monedas nativas (UYU / USD)" : "Ver totales en USD equivalente"}
+        title={isUsdMode ? "Ver en moneda original (UYU / USD)" : "Ver totales en USD estimado"}
         className={[
           "flex items-center gap-1 rounded px-2 py-0.5 transition-colors",
           isUsdMode
@@ -65,7 +65,7 @@ export function CurrencyDisplayToggle() {
             : "bg-[var(--copilot-surface-2)] hover:bg-[var(--copilot-surface-3)]",
         ].join(" ")}
       >
-        <span>USD est.</span>
+        <span>{isUsdMode ? "Vista en USD" : "Moneda original"}</span>
       </button>
 
       {isUsdMode && (
