@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 
 import { CarteraPendingDrawer } from "@/components/copilot/cartera-pending-drawer";
+import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
+import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 import {
   CarteraKpiExplainDrawer,
   type CarteraKpiBreakdownRow,
@@ -332,6 +334,17 @@ function buildExplain(
 }
 
 
+function UsdConsolidatedLine({ total, fxRate }: { total: number; fxRate: number }) {
+  return (
+    <div className="space-y-0.5">
+      <p className="text-xs font-bold tabular-nums text-[var(--copilot-ink)]">
+        {formatUsdEquivalent(total)}
+      </p>
+      <p className="text-[10px] text-[var(--copilot-ink-muted)]">TC {fxRate}</p>
+    </div>
+  );
+}
+
 export function CarteraCompactKpiGrid({
   report,
   variant,
@@ -344,6 +357,8 @@ export function CarteraCompactKpiGrid({
   isPreSync?: boolean;
 }) {
   const index = useMemo(() => buildCurrencyIndex(report.currencies), [report.currencies]);
+  const { mode, fxRate } = useDisplayCurrency();
+  const isUsd = mode === "usd_equivalent";
   const [pendingDrawerCurrency, setPendingDrawerCurrency] =
     useState<ReconciliationCurrencyCode | null>(null);
   const pendingSnapshot = useMemo(
@@ -397,6 +412,14 @@ export function CarteraCompactKpiGrid({
     for (const code of CURRENCIES) {
       const m = metricFor(index, code);
       const issued = m?.issuedInPeriodNet ?? 0;
+      const issuedDisplay = issued > 0
+        ? isUsd
+          ? formatUsdEquivalent(convertToUsdEquivalent(
+              { uyu: code === "UYU" ? issued : 0, usd: code === "USD" ? issued : 0 },
+              fxRate
+            ))
+          : formatCarteraMoney(code, issued, { fractionDigits: 0 })
+        : "—";
       cards.push(
         <CompactCard
           key={`ventas-${code}`}
@@ -406,7 +429,7 @@ export function CarteraCompactKpiGrid({
         >
           <CurrencyLine
             code={code}
-            value={issued > 0 ? formatCarteraMoney(code, issued, { fractionDigits: 0 }) : "—"}
+            value={issuedDisplay}
           />
           {periodRangeLabel ? (
             <p className="text-[10px] text-[var(--copilot-ink-muted)]">{periodRangeLabel}</p>
@@ -465,17 +488,27 @@ export function CarteraCompactKpiGrid({
             }}
             actionLabel="Ver detalle"
           >
-            {CURRENCIES.map((code) => {
-              const m = metricFor(index, code);
-              const v = m?.portfolioResolvedAmount ?? 0;
-              return (
-                <CurrencyLine
-                  key={code}
-                  code={code}
-                  value={v > 0 ? formatCarteraMoney(code, v, { fractionDigits: 0 }) : "—"}
-                />
-              );
-            })}
+            {isUsd ? (
+              <UsdConsolidatedLine
+                total={convertToUsdEquivalent({
+                  uyu: metricFor(index, "UYU")?.portfolioResolvedAmount ?? 0,
+                  usd: metricFor(index, "USD")?.portfolioResolvedAmount ?? 0,
+                }, fxRate)}
+                fxRate={fxRate}
+              />
+            ) : (
+              CURRENCIES.map((code) => {
+                const m = metricFor(index, code);
+                const v = m?.portfolioResolvedAmount ?? 0;
+                return (
+                  <CurrencyLine
+                    key={code}
+                    code={code}
+                    value={v > 0 ? formatCarteraMoney(code, v, { fractionDigits: 0 }) : "—"}
+                  />
+                );
+              })
+            )}
           </CompactCard>
           <CompactCard
             title="Total pendiente"
@@ -485,17 +518,27 @@ export function CarteraCompactKpiGrid({
             }}
             actionLabel="Ver facturas"
           >
-            {CURRENCIES.map((code) => {
-              const v = metricFor(index, code)?.pendingAtCutoff ?? 0;
-              return (
-                <CurrencyLine
-                  key={code}
-                  code={code}
-                  value={v > 0 ? formatCarteraMoney(code, v, { fractionDigits: 0 }) : "—"}
-                  tone={v > 0 ? "danger" : "muted"}
-                />
-              );
-            })}
+            {isUsd ? (
+              <UsdConsolidatedLine
+                total={convertToUsdEquivalent({
+                  uyu: metricFor(index, "UYU")?.pendingAtCutoff ?? 0,
+                  usd: metricFor(index, "USD")?.pendingAtCutoff ?? 0,
+                }, fxRate)}
+                fxRate={fxRate}
+              />
+            ) : (
+              CURRENCIES.map((code) => {
+                const v = metricFor(index, code)?.pendingAtCutoff ?? 0;
+                return (
+                  <CurrencyLine
+                    key={code}
+                    code={code}
+                    value={v > 0 ? formatCarteraMoney(code, v, { fractionDigits: 0 }) : "—"}
+                    tone={v > 0 ? "danger" : "muted"}
+                  />
+                );
+              })
+            )}
           </CompactCard>
           <CompactCard
             title="Pendiente del período"
@@ -505,16 +548,26 @@ export function CarteraCompactKpiGrid({
             }}
             actionLabel="Ver detalle"
           >
-            {CURRENCIES.map((code) => {
-              const v = metricFor(index, code)?.totalPending ?? 0;
-              return (
-                <CurrencyLine
-                  key={code}
-                  code={code}
-                  value={v > 0 ? formatCarteraMoney(code, v, { fractionDigits: 0 }) : "—"}
-                />
-              );
-            })}
+            {isUsd ? (
+              <UsdConsolidatedLine
+                total={convertToUsdEquivalent({
+                  uyu: metricFor(index, "UYU")?.totalPending ?? 0,
+                  usd: metricFor(index, "USD")?.totalPending ?? 0,
+                }, fxRate)}
+                fxRate={fxRate}
+              />
+            ) : (
+              CURRENCIES.map((code) => {
+                const v = metricFor(index, code)?.totalPending ?? 0;
+                return (
+                  <CurrencyLine
+                    key={code}
+                    code={code}
+                    value={v > 0 ? formatCarteraMoney(code, v, { fractionDigits: 0 }) : "—"}
+                  />
+                );
+              })
+            )}
           </CompactCard>
           <CompactCard
             title="Cobranza efectiva"

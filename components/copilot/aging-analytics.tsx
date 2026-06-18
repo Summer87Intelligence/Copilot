@@ -20,6 +20,8 @@ import {
   formatCarteraMoney,
   formatCarteraInteger,
 } from "@/lib/copilot-cartera-format";
+import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
+import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 import type {
   AgingBucket,
   AgingRange,
@@ -255,6 +257,8 @@ function BucketRow({
   currency: ReconciliationCurrencyCode;
   reduce: boolean;
 }) {
+  const { mode, fxRate } = useDisplayCurrency();
+  const isUsd = mode === "usd_equivalent";
   const cfg = BUCKET_CONFIG[bucket.range];
   const pct = Math.max(0, Math.min(1, bucket.percentage));
   const pctLabel = `${(pct * 100).toLocaleString("es-UY", {
@@ -307,7 +311,13 @@ function BucketRow({
       {/* Stats row */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] tabular-nums text-[var(--copilot-ink-muted)]">
         <span className={`font-semibold ${cfg.text}`}>
-          {formatCarteraMoney(currency, bucket.amount, { fractionDigits: 0 })}
+          {isUsd
+            ? formatUsdEquivalent(convertToUsdEquivalent(
+                { uyu: currency === "UYU" ? bucket.amount : 0, usd: currency === "USD" ? bucket.amount : 0 },
+                fxRate
+              ))
+            : formatCarteraMoney(currency, bucket.amount, { fractionDigits: 0 })
+          }
         </span>
         <span>{formatCarteraInteger(bucket.invoiceCount)} fact.</span>
         <span>{formatCarteraInteger(bucket.clientCount)} clientes</span>
