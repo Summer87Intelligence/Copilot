@@ -2,7 +2,28 @@
 
 import { useState } from "react";
 import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
-import { normalizeFxRate } from "@/lib/currency-display-mode";
+import { buildUsdEquivalentNoticeCopy, normalizeFxRate } from "@/lib/currency-display-mode";
+
+export function UsdEquivalentActiveNotice() {
+  const { mode, fxRate } = useDisplayCurrency();
+  if (mode !== "usd_equivalent") return null;
+
+  const copy = buildUsdEquivalentNoticeCopy(fxRate);
+
+  return (
+    <div
+      className="flex items-center justify-center border-b border-amber-200/60 bg-amber-50/70 px-4 py-1 dark:border-amber-800/40 dark:bg-amber-950/20"
+      title={copy.full}
+      role="status"
+      aria-live="polite"
+    >
+      <p className="truncate text-[11px] font-medium text-amber-700 dark:text-amber-400">
+        <span className="hidden sm:inline">{copy.full}</span>
+        <span className="sm:hidden">{copy.short}</span>
+      </p>
+    </div>
+  );
+}
 
 export function CurrencyDisplayToggle() {
   const { mode, fxRate, setMode, setFxRate } = useDisplayCurrency();

@@ -87,6 +87,18 @@ export function writeDisplayFxRateToStorage(rate: number): boolean {
   }
 }
 
+/** Returns the two copy strings for the active-mode notice (full + short). */
+export function buildUsdEquivalentNoticeCopy(fxRate: number): {
+  full: string;
+  short: string;
+} {
+  const rate = normalizeFxRate(fxRate);
+  return {
+    full: `USD estimado activado · Los importes en pesos se convierten usando TC ${rate}. Los datos originales siguen separados por moneda.`,
+    short: `USD estimado · TC ${rate}`,
+  };
+}
+
 export type DisplayAmountsResult =
   | { kind: "native" }
   | { kind: "usd_equivalent"; total: number; fxRate: number; label: string };

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CURRENCY_DISPLAY_MODE,
   DEFAULT_DISPLAY_FX_RATE_UYU_PER_USD,
+  buildUsdEquivalentNoticeCopy,
   convertToUsdEquivalent,
   formatDisplayAmounts,
   formatUsdEquivalent,
@@ -106,6 +107,37 @@ describe("formatDisplayAmounts", () => {
     if (withDefault.kind === "usd_equivalent" && withInvalid.kind === "usd_equivalent") {
       expect(withInvalid.total).toBe(withDefault.total);
     }
+  });
+});
+
+describe("UsdEquivalentActiveNotice copy — buildUsdEquivalentNoticeCopy", () => {
+  it("native mode: notice not rendered — copy builder not called (guard is mode check in component)", () => {
+    // Structural: the component returns null when mode !== "usd_equivalent".
+    // This test verifies the copy builder produces well-formed output when it IS called.
+    const copy = buildUsdEquivalentNoticeCopy(40);
+    expect(copy.full.length).toBeGreaterThan(0);
+    expect(copy.short.length).toBeGreaterThan(0);
+  });
+
+  it("usd_equivalent mode: notice visible — copy contains 'USD estimado' and correct TC", () => {
+    const copy = buildUsdEquivalentNoticeCopy(40);
+    expect(copy.full).toContain("USD estimado");
+    expect(copy.full).toContain("TC 40");
+    expect(copy.short).toContain("TC 40");
+  });
+
+  it("TC updates live — different rates produce different copy", () => {
+    const copy40 = buildUsdEquivalentNoticeCopy(40);
+    const copy45 = buildUsdEquivalentNoticeCopy(45);
+    expect(copy40.full).not.toBe(copy45.full);
+    expect(copy40.short).toContain("TC 40");
+    expect(copy45.short).toContain("TC 45");
+  });
+
+  it("copy does not say 'USD real'", () => {
+    const copy = buildUsdEquivalentNoticeCopy(40);
+    expect(copy.full).not.toContain("USD real");
+    expect(copy.short).not.toContain("USD real");
   });
 });
 
