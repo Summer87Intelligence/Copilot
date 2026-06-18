@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CURRENCY_DISPLAY_MODE,
   DEFAULT_DISPLAY_FX_RATE_UYU_PER_USD,
+  buildCurrencyRiskChipCopy,
   buildUsdEquivalentNoticeCopy,
   convertToUsdEquivalent,
   formatDisplayAmounts,
@@ -161,6 +162,33 @@ describe("Treasury USD equivalent consolidation", () => {
     const note = "Detalle en moneda original. Resumen convertido a USD estimado.";
     expect(note).toContain("USD estimado");
     expect(note).not.toContain("USD real");
+  });
+});
+
+describe("buildCurrencyRiskChipCopy", () => {
+  it("both currencies positive — cubierto labels, no warning", () => {
+    const chips = buildCurrencyRiskChipCopy(1000, 500);
+    expect(chips.uyuLabel).toBe("UYU cubierto");
+    expect(chips.usdLabel).toBe("USD cubierto");
+    expect(chips.uyuRisk).toBe(false);
+    expect(chips.usdRisk).toBe(false);
+    expect(chips.showWarning).toBe(false);
+  });
+
+  it("UYU negative — uyuRisk=true, showWarning=true", () => {
+    const chips = buildCurrencyRiskChipCopy(-200, 500);
+    expect(chips.uyuLabel).toBe("UYU en riesgo");
+    expect(chips.uyuRisk).toBe(true);
+    expect(chips.usdRisk).toBe(false);
+    expect(chips.showWarning).toBe(true);
+    expect(chips.warningText.length).toBeGreaterThan(0);
+  });
+
+  it("both currencies negative — both risk flags and warning", () => {
+    const chips = buildCurrencyRiskChipCopy(-100, -50);
+    expect(chips.uyuRisk).toBe(true);
+    expect(chips.usdRisk).toBe(true);
+    expect(chips.showWarning).toBe(true);
   });
 });
 

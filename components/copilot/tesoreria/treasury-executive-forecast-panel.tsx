@@ -8,7 +8,7 @@ import { useDisplayCurrency } from "@/components/copilot/display-currency-provid
 import { usePaymentBehaviorProjection } from "@/hooks/use-payment-behavior-projection";
 import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
 import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
-import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
+import { buildCurrencyRiskChipCopy, convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 import { formatDueWithTime, getDueTime } from "@/lib/treasury/treasury-obligation-actions";
 import { effectivePlannedObligationStatus } from "@/lib/treasury/treasury-obligation-status";
 import { buildTreasuryProjectedCashSnapshot } from "@/lib/treasury/treasury-projected-cash";
@@ -98,14 +98,19 @@ function UsdConsolidatedPositionBlock({
   cash,
   committed,
   after,
+  afterUYU,
+  afterUSD,
   fxRate,
 }: {
   cash: number;
   committed: number;
   after: number;
+  afterUYU: number;
+  afterUSD: number;
   fxRate: number;
 }) {
   const status = coverageStatus(after, cash);
+  const chips = buildCurrencyRiskChipCopy(afterUYU, afterUSD);
   return (
     <div className={`rounded-xl border p-4 ${STATUS_CARD[status]}`}>
       <div className="flex items-center justify-between gap-2">
@@ -137,9 +142,37 @@ function UsdConsolidatedPositionBlock({
           </dd>
         </div>
       </dl>
-      <p className="mt-2 text-[11px] text-[var(--copilot-ink-muted)]">
-        TC {fxRate} · Detalle en moneda original. Resumen convertido a USD estimado.
-      </p>
+      <div className="mt-2 space-y-1.5">
+        <p className="text-[10px] text-[var(--copilot-ink-muted)]">Detalle por moneda original:</p>
+        <div className="flex flex-wrap gap-1.5">
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+              chips.uyuRisk
+                ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+            }`}
+          >
+            {chips.uyuLabel}
+          </span>
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+              chips.usdRisk
+                ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+            }`}
+          >
+            {chips.usdLabel}
+          </span>
+        </div>
+        {chips.showWarning ? (
+          <p className="text-[10px] text-[var(--copilot-danger-text-strong)]">
+            {chips.warningText}
+          </p>
+        ) : null}
+        <p className="text-[10px] text-[var(--copilot-ink-muted)]">
+          TC {fxRate} · Resumen convertido a USD estimado.
+        </p>
+      </div>
     </div>
   );
 }
@@ -275,6 +308,8 @@ export function TreasuryExecutiveForecastPanel({
             cash={usdConv(cashUYU, cashUSD)}
             committed={usdConv(committedUYU, committedUSD)}
             after={usdConv(afterUYU, afterUSD)}
+            afterUYU={afterUYU}
+            afterUSD={afterUSD}
             fxRate={fxRate}
           />
         ) : (

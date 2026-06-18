@@ -99,6 +99,27 @@ export function buildUsdEquivalentNoticeCopy(fxRate: number): {
   };
 }
 
+/** Per-currency risk chips for the USD equivalent consolidated view. */
+export function buildCurrencyRiskChipCopy(afterUYU: number, afterUSD: number): {
+  uyuLabel: string;
+  usdLabel: string;
+  uyuRisk: boolean;
+  usdRisk: boolean;
+  showWarning: boolean;
+  warningText: string;
+} {
+  const uyuRisk = afterUYU < 0;
+  const usdRisk = afterUSD < 0;
+  return {
+    uyuLabel: uyuRisk ? "UYU en riesgo" : "UYU cubierto",
+    usdLabel: usdRisk ? "USD en riesgo" : "USD cubierto",
+    uyuRisk,
+    usdRisk,
+    showWarning: uyuRisk || usdRisk,
+    warningText: "El consolidado puede estar positivo, pero esta moneda requiere atención.",
+  };
+}
+
 export type DisplayAmountsResult =
   | { kind: "native" }
   | { kind: "usd_equivalent"; total: number; fxRate: number; label: string };
