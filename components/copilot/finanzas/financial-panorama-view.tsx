@@ -182,6 +182,125 @@ function CajaProyectadaSection({ state }: { state: FinanzasCanonicalCurrencyStat
   );
 }
 
+type CashRiskLevel = "ok" | "warning" | "danger" | "neutral";
+
+function classifyCashRisk(s: FinanzasCanonicalCurrencyState): CashRiskLevel {
+  if (s.scheduledPayments30d === 0) return "neutral";
+  if (s.safeCash30d >= 0) return "ok";
+  if (s.expectedCash30d >= 0) return "warning";
+  return "danger";
+}
+
+type RiskSummary = {
+  currency: "UYU" | "USD";
+  level: CashRiskLevel;
+  icon: string;
+  label: string;
+  detail: string;
+  cta: string;
+};
+
+function buildRiskSummary(s: FinanzasCanonicalCurrencyState): RiskSummary {
+  const level = classifyCashRisk(s);
+  const c = s.currency;
+  switch (level) {
+    case "neutral":
+      return {
+        currency: c,
+        level,
+        icon: "⚪",
+        label: `${c} sin pagos configurados`,
+        detail: "No hay pagos programados para los próximos 30 días.",
+        cta: "Sin acción urgente",
+      };
+    case "ok":
+      return {
+        currency: c,
+        level,
+        icon: "🟢",
+        label: `${c} cubierto`,
+        detail: "Con la caja actual alcanza para cubrir los pagos próximos.",
+        cta: "Sin acción urgente",
+      };
+    case "warning":
+      return {
+        currency: c,
+        level,
+        icon: "🟡",
+        label: `${c} depende de cobranza`,
+        detail: `Con la caja actual faltan ${fmtCurrencyAmount(Math.abs(s.safeCash30d), c)}. Si cobrás lo pendiente, quedás cubierto.`,
+        cta: "Priorizar cobranza",
+      };
+    case "danger":
+      return {
+        currency: c,
+        level,
+        icon: "🔴",
+        label: `${c} en riesgo`,
+        detail: `Aun cobrando lo pendiente, faltan ${fmtCurrencyAmount(Math.abs(s.expectedCash30d), c)}.`,
+        cta: "Revisar pagos en Tesorería",
+      };
+  }
+}
+
+const RISK_STYLES: Record<
+  CashRiskLevel,
+  { card: string; chip: string }
+> = {
+  danger: {
+    card: "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20",
+    chip: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+  },
+  warning: {
+    card: "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20",
+    chip: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+  },
+  ok: {
+    card: "border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)]",
+    chip: "border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] text-[var(--copilot-ink-muted)]",
+  },
+  neutral: {
+    card: "border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)]",
+    chip: "border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] text-[var(--copilot-ink-muted)]",
+  },
+};
+
+function RiesgoEjecutivoSection({ state }: { state: FinanzasCanonicalCurrencyState[] }) {
+  if (state.length === 0) return null;
+  const summaries = state.map(buildRiskSummary);
+  return (
+    <CopilotCard>
+      <CopilotSectionTitle
+        title="Riesgo ejecutivo"
+        subtitle="Lectura rápida para saber si la caja alcanza para los próximos 30 días."
+      />
+      <div className="mt-3 space-y-2">
+        {summaries.map((summary) => {
+          const styles = RISK_STYLES[summary.level];
+          return (
+            <div
+              key={summary.currency}
+              className={`flex items-start justify-between gap-3 rounded-lg border p-4 ${styles.card}`}
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[var(--copilot-ink)]">
+                  {summary.icon} {summary.label}
+                </p>
+                <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">{summary.detail}</p>
+              </div>
+              <span
+                className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium ${styles.chip}`}
+              >
+                {summary.cta}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </CopilotCard>
+  );
+}
+
 type MetricSelection =
   | { kind: "slice"; metricId: PanoramaMetricId; slice: PanoramaCurrencySlice }
   | { kind: "cash"; currency: "UYU" | "USD" };
@@ -485,6 +604,8 @@ export function FinancialPanoramaView() {
         <EstadoActualSection state={canonicalState} />
 
         <CajaProyectadaSection state={canonicalState} />
+
+        <RiesgoEjecutivoSection state={canonicalState} />
 
         <FinancialExecutiveSummary
           dashboard={dashboard}

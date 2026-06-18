@@ -222,3 +222,70 @@ describe("CajaProyectadaSection — projection fields from helper", () => {
     expect(uyu.expectedCash30d).not.toBe(usd.expectedCash30d);
   });
 });
+
+describe("RiesgoEjecutivoSection — risk classification from canonical state", () => {
+  it("safeCash30d >= 0 => ok (covered with current cash)", () => {
+    const result = buildFinanzasCanonicalState({
+      cashPositions: [makeCashPosition("UYU", 100_000)],
+      treasurySummaries: [makeOutflowSummary("UYU", 30_000)],
+      portfolioRows: [],
+    });
+    const uyu = result.find((r) => r.currency === "UYU")!;
+    // safeCash30d = 100_000 - 30_000 = 70_000 >= 0 => "ok"
+    expect(uyu.safeCash30d).toBeGreaterThanOrEqual(0);
+    expect(uyu.scheduledPayments30d).toBeGreaterThan(0);
+  });
+
+  it("safeCash30d < 0 && expectedCash30d >= 0 => warning (depends on collections)", () => {
+    const result = buildFinanzasCanonicalState({
+      cashPositions: [makeCashPosition("USD", 1_000)],
+      treasurySummaries: [makeOutflowSummary("USD", 5_000)],
+      portfolioRows: [{ debt_usd: 10_000 }],
+    });
+    const usd = result.find((r) => r.currency === "USD")!;
+    // safeCash30d = 1_000 - 5_000 = -4_000 < 0
+    expect(usd.safeCash30d).toBeLessThan(0);
+    // expectedCash30d = 1_000 + 10_000 - 5_000 = 6_000 >= 0 => "warning"
+    expect(usd.expectedCash30d).toBeGreaterThanOrEqual(0);
+  });
+
+  it("expectedCash30d < 0 => danger (not covered even with collections)", () => {
+    const result = buildFinanzasCanonicalState({
+      cashPositions: [makeCashPosition("USD", 500)],
+      treasurySummaries: [makeOutflowSummary("USD", 10_000)],
+      portfolioRows: [{ debt_usd: 2_000 }],
+    });
+    const usd = result.find((r) => r.currency === "USD")!;
+    // expectedCash30d = 500 + 2_000 - 10_000 = -7_500 < 0 => "danger"
+    expect(usd.expectedCash30d).toBeLessThan(0);
+    expect(usd.safeCash30d).toBeLessThan(0);
+  });
+
+  it("scheduledPayments30d = 0 => neutral (no payments configured)", () => {
+    const result = buildFinanzasCanonicalState({
+      cashPositions: [makeCashPosition("UYU", 50_000)],
+      treasurySummaries: [],
+      portfolioRows: [{ debt_uyu: 5_000 }],
+    });
+    const uyu = result.find((r) => r.currency === "UYU")!;
+    // no treasury summaries => scheduledPayments30d = 0 => "neutral"
+    expect(uyu.scheduledPayments30d).toBe(0);
+  });
+
+  it("UYU danger does not affect USD risk classification", () => {
+    const result = buildFinanzasCanonicalState({
+      cashPositions: [makeCashPosition("UYU", 100), makeCashPosition("USD", 50_000)],
+      treasurySummaries: [
+        makeOutflowSummary("UYU", 99_000),
+        makeOutflowSummary("USD", 1_000),
+      ],
+      portfolioRows: [{ debt_uyu: 0, debt_usd: 0 }],
+    });
+    const uyu = result.find((r) => r.currency === "UYU")!;
+    const usd = result.find((r) => r.currency === "USD")!;
+    // UYU: danger (expectedCash30d = 100 + 0 - 99_000 < 0)
+    expect(uyu.expectedCash30d).toBeLessThan(0);
+    // USD: ok (safeCash30d = 50_000 - 1_000 = 49_000 >= 0)
+    expect(usd.safeCash30d).toBeGreaterThanOrEqual(0);
+  });
+});
