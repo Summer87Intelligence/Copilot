@@ -141,7 +141,7 @@ export const HOY_COPY = {
   pendingReceivablesLabel: "Total pendiente",
   pendingReceivablesTip: "Todo lo que los clientes deben actualmente. El atrasado ya está incluido.",
   expectedCash30Label: "Cobros probables",
-  expectedCash30Tip: "Caja disponible + cobros probables − pagos programados. Los cobros probables son una proyección ponderada por historial.",
+  expectedCash30Tip: "Caja disponible + total pendiente por cobrar − pagos programados.",
   scheduledOutflowsLabel: "Pagos programados",
   treasuryCta: "Configurar pagos futuros",
   treasuryNoOutflows: "Sin egresos configurados",

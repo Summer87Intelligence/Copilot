@@ -390,6 +390,14 @@ export const METRIC_USD_CONSOLIDATED_DISCLAIMER =
 /** Alias legacy — Panorama financiero y vistas multimoneda separada. */
 export const METRIC_MIXED_CURRENCY_DISCLAIMER = METRIC_SEPARATED_CURRENCY_DISCLAIMER;
 
+/**
+ * Disclaimer para secciones que consolidan UYU y USD sin conversión de tipo de cambio
+ * (motor histórico de snapshot). Usarlo en lugar de METRIC_MIXED_CURRENCY_DISCLAIMER
+ * cuando los montos son efectivamente combinados, no separados.
+ */
+export const METRIC_COMBINED_CURRENCY_DISCLAIMER =
+  "Esta sección combina UYU y USD solo como lectura histórica. Para caja operativa, usá las métricas separadas por moneda.";
+
 // ---------------------------------------------------------------------------
 // Reglas de navegación entre módulos
 // ---------------------------------------------------------------------------

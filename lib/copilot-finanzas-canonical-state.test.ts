@@ -1,0 +1,169 @@
+import { describe, expect, it } from "vitest";
+
+import { buildFinanzasCanonicalState } from "@/lib/copilot-finanzas-canonical-state";
+import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
+import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
+
+function makeCashPosition(
+  currency: "UYU" | "USD",
+  availableCash: number
+): CashPositionByCurrency {
+  return {
+    currency,
+    openingConfigured: true,
+    openingBalance: availableCash,
+    collectedFromClients: 0,
+    manualIncome: 0,
+    manualExpense: 0,
+    adjustments: 0,
+    transfersNet: 0,
+    availableCash,
+    currentCash: availableCash,
+    movementsCount: 0,
+    lastMovement: null,
+    lastIncome: null,
+    lastExpense: null,
+  };
+}
+
+function makeOutflowSummary(
+  currency: "UYU" | "USD",
+  next30Days: number,
+  itemsCount = 1
+): TreasuryOutflowSummary {
+  return {
+    currency,
+    totalScheduled: next30Days,
+    overdue: 0,
+    next7Days: 0,
+    next30Days,
+    paidInPeriod: 0,
+    itemsCount,
+    byCategory: [],
+  };
+}
+
+describe("buildFinanzasCanonicalState", () => {
+  it("returns per-currency state — UYU and USD never summed", () => {
+    const result = buildFinanzasCanonicalState({
+      cashPositions: [
+        makeCashPosition("UYU", 100_000),
+        makeCashPosition("USD", 5_000),
+      ],
+      treasurySummaries: [
+        makeOutflowSummary("UYU", 30_000),
+        makeOutflowSummary("USD", 2_000),
+      ],
+      portfolioRows: [
+        { debt_uyu: 50_000, debt_usd: 3_000, overdue_uyu: 10_000, overdue_usd: 500 },
+      ],
+    });
+
+    const uyu = result.find((r) => r.currency === "UYU");
+    const usd = result.find((r) => r.currency === "USD");
+
+    expect(uyu).toBeDefined();
+    expect(usd).toBeDefined();
+    expect(uyu!.currency).toBe("UYU");
+    expect(usd!.currency).toBe("USD");
+    // Each slot only reflects its own currency
+    expect(uyu!.availableCash).toBe(100_000);
+    expect(usd!.availableCash).toBe(5_000);
+  });
+
+  it("expectedCash30d = availableCash + pendingReceivables - scheduledPayments30d", () => {
+    const result = buildFinanzasCanonicalState({
+      cashPositions: [makeCashPosition("UYU", 100_000)],
+      treasurySummaries: [makeOutflowSummary("UYU", 30_000)],
+      portfolioRows: [{ debt_uyu: 50_000, debt_usd: 0 }],
+    });
+
+    const uyu = result.find((r) => r.currency === "UYU")!;
+    expect(uyu.expectedCash30d).toBe(
+      uyu.availableCash + uyu.pendingReceivables - uyu.scheduledPayments30d
+    );
+  });
+
+  it("safeCash30d = availableCash - scheduledPayments30d", () => {
+    const result = buildFinanzasCanonicalState({
+      cashPositions: [makeCashPosition("UYU", 100_000)],
+      treasurySummaries: [makeOutflowSummary("UYU", 30_000)],
+      portfolioRows: [],
+    });
+
+    const uyu = result.find((r) => r.currency === "UYU")!;
+    expect(uyu.safeCash30d).toBe(uyu.availableCash - uyu.scheduledPayments30d);
+  });
+
+  it("safeCash30d is negative when payments exceed available cash", () => {
+    const result = buildFinanzasCanonicalState({
+      cashPositions: [makeCashPosition("USD", 1_000)],
+      treasurySummaries: [makeOutflowSummary("USD", 5_000)],
+      portfolioRows: [{ debt_usd: 0 }],
+    });
+
+    const usd = result.find((r) => r.currency === "USD")!;
+    expect(usd.safeCash30d).toBeLessThan(0);
+  });
+
+  it("scheduledPayments30d is 0 and hasConfiguredPayments false when no treasury outflows", () => {
+    const result = buildFinanzasCanonicalState({
+      cashPositions: [makeCashPosition("UYU", 80_000)],
+      treasurySummaries: [],
+      portfolioRows: [{ debt_uyu: 20_000 }],
+    });
+
+    const uyu = result.find((r) => r.currency === "UYU")!;
+    expect(uyu.scheduledPayments30d).toBe(0);
+    expect(uyu.hasConfiguredPayments).toBe(false);
+  });
+
+  it("overdueReceivables reflects portfolio rows (shadow-deduped by caller)", () => {
+    const result = buildFinanzasCanonicalState({
+      cashPositions: [makeCashPosition("USD", 0)],
+      treasurySummaries: [],
+      portfolioRows: [{ debt_usd: 1_000, overdue_usd: 976 }],
+    });
+
+    const usd = result.find((r) => r.currency === "USD")!;
+    expect(usd.overdueReceivables).toBe(976);
+  });
+
+  it("UYU overdueReceivables does not bleed into USD slot", () => {
+    const result = buildFinanzasCanonicalState({
+      cashPositions: [
+        makeCashPosition("UYU", 1_000),
+        makeCashPosition("USD", 1_000),
+      ],
+      treasurySummaries: [],
+      portfolioRows: [{ debt_uyu: 0, overdue_uyu: 50_000, debt_usd: 500, overdue_usd: 0 }],
+    });
+
+    const usd = result.find((r) => r.currency === "USD")!;
+    expect(usd.overdueReceivables).toBe(0);
+  });
+
+  it("returns empty array when no cash positions have activity", () => {
+    const result = buildFinanzasCanonicalState({
+      cashPositions: [],
+      treasurySummaries: [],
+      portfolioRows: [],
+    });
+
+    expect(result).toHaveLength(0);
+  });
+
+  it("UYU availableCash does not contaminate USD slot", () => {
+    const result = buildFinanzasCanonicalState({
+      cashPositions: [
+        makeCashPosition("UYU", 200_000),
+        makeCashPosition("USD", 1_000),
+      ],
+      treasurySummaries: [],
+      portfolioRows: [],
+    });
+
+    const usd = result.find((r) => r.currency === "USD")!;
+    expect(usd.availableCash).toBe(1_000);
+  });
+});
