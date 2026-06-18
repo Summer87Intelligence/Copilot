@@ -10,6 +10,7 @@ import { CopilotEnvironmentHealthStrip } from "@/components/copilot/copilot-envi
 import type { CopilotSessionPreview } from "@/components/copilot/copilot-session-preview";
 import { CopilotModuleShell } from "@/components/copilot/module-shell";
 import { CopilotPermissionsContext } from "@/lib/auth/copilot-permissions-context";
+import { DisplayCurrencyProvider } from "@/components/copilot/display-currency-provider";
 
 /** Preferencia de sidebar del módulo Copilot (1 = colapsado, 0 = expandido). */
 export const COPILOT_SIDEBAR_COLLAPSED_STORAGE_KEY = "copilot_sidebar_collapsed";
@@ -47,6 +48,7 @@ export function CopilotShell({
 
   return (
     <CopilotPermissionsContext.Provider value={permissions}>
+    <DisplayCurrencyProvider>
     <CopilotNotificationsProvider>
     <CopilotAlertsProvider>
       <CopilotOperationalPulseProvider>
@@ -66,6 +68,7 @@ export function CopilotShell({
       </CopilotOperationalPulseProvider>
     </CopilotAlertsProvider>
     </CopilotNotificationsProvider>
+    </DisplayCurrencyProvider>
     </CopilotPermissionsContext.Provider>
   );
 }
