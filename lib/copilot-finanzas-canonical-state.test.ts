@@ -167,3 +167,58 @@ describe("buildFinanzasCanonicalState", () => {
     expect(usd.availableCash).toBe(1_000);
   });
 });
+
+describe("CajaProyectadaSection — projection fields from helper", () => {
+  it("expectedCash30d = availableCash + pendingReceivables - scheduledPayments30d (UYU)", () => {
+    const result = buildFinanzasCanonicalState({
+      cashPositions: [makeCashPosition("UYU", 80_000)],
+      treasurySummaries: [makeOutflowSummary("UYU", 20_000)],
+      portfolioRows: [{ debt_uyu: 15_000 }],
+    });
+    const uyu = result.find((r) => r.currency === "UYU")!;
+    // 80_000 + 15_000 - 20_000 = 75_000
+    expect(uyu.expectedCash30d).toBe(75_000);
+    expect(uyu.expectedCash30d).toBe(
+      uyu.availableCash + uyu.pendingReceivables - uyu.scheduledPayments30d
+    );
+  });
+
+  it("safeCash30d = availableCash - scheduledPayments30d (no receivables counted)", () => {
+    const result = buildFinanzasCanonicalState({
+      cashPositions: [makeCashPosition("UYU", 80_000)],
+      treasurySummaries: [makeOutflowSummary("UYU", 20_000)],
+      portfolioRows: [{ debt_uyu: 15_000 }],
+    });
+    const uyu = result.find((r) => r.currency === "UYU")!;
+    // 80_000 - 20_000 = 60_000 (receivables not counted)
+    expect(uyu.safeCash30d).toBe(60_000);
+    expect(uyu.safeCash30d).toBe(uyu.availableCash - uyu.scheduledPayments30d);
+  });
+
+  it("safeCash30d < 0 signals 'Riesgo de caja' — deficit equals Math.abs(safeCash30d)", () => {
+    const result = buildFinanzasCanonicalState({
+      cashPositions: [makeCashPosition("USD", 1_000)],
+      treasurySummaries: [makeOutflowSummary("USD", 8_000)],
+      portfolioRows: [{ debt_usd: 3_000 }],
+    });
+    const usd = result.find((r) => r.currency === "USD")!;
+    // safeCash30d = 1_000 - 8_000 = -7_000
+    expect(usd.safeCash30d).toBeLessThan(0);
+    expect(Math.abs(usd.safeCash30d)).toBe(7_000);
+  });
+
+  it("UYU and USD projection blocks are independent — no cross-currency bleeding", () => {
+    const result = buildFinanzasCanonicalState({
+      cashPositions: [makeCashPosition("UYU", 100_000), makeCashPosition("USD", 5_000)],
+      treasurySummaries: [makeOutflowSummary("UYU", 40_000), makeOutflowSummary("USD", 2_000)],
+      portfolioRows: [{ debt_uyu: 20_000, debt_usd: 1_000 }],
+    });
+    const uyu = result.find((r) => r.currency === "UYU")!;
+    const usd = result.find((r) => r.currency === "USD")!;
+    // UYU: 100_000 + 20_000 - 40_000 = 80_000
+    expect(uyu.expectedCash30d).toBe(80_000);
+    // USD: 5_000 + 1_000 - 2_000 = 4_000
+    expect(usd.expectedCash30d).toBe(4_000);
+    expect(uyu.expectedCash30d).not.toBe(usd.expectedCash30d);
+  });
+});

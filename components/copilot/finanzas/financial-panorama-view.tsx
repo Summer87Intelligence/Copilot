@@ -84,6 +84,104 @@ function EstadoActualSection({ state }: { state: FinanzasCanonicalCurrencyState[
   );
 }
 
+function CurrencyProjectionBlock({ s }: { s: FinanzasCanonicalCurrencyState }) {
+  const safeCashNegative = s.safeCash30d < 0;
+  const expectedCashPositive = s.expectedCash30d >= 0;
+
+  const msgs: { tone: "ok" | "warn" | "danger"; text: string }[] = [];
+  if (safeCashNegative) {
+    msgs.push({
+      tone: "danger",
+      text: `Con la caja actual no alcanza para cubrir los pagos de los próximos 30 días en ${s.currency}. Faltan ${fmtCurrencyAmount(Math.abs(s.safeCash30d), s.currency)}.`,
+    });
+  }
+  msgs.push(
+    expectedCashPositive
+      ? { tone: "ok", text: "Si cobrás lo pendiente, la caja proyectada queda positiva." }
+      : { tone: "warn", text: "Aun cobrando lo pendiente, la caja proyectada queda negativa." }
+  );
+
+  return (
+    <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] p-4">
+      <p className="mb-3 text-[11px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+        {s.currency === "UYU" ? "Pesos uruguayos (UYU)" : "Dólares (USD)"}
+      </p>
+      <div className="space-y-1.5 text-sm">
+        <div className="flex justify-between gap-2">
+          <span className="text-[var(--copilot-ink-muted)]">Caja actual</span>
+          <span className="font-medium text-[var(--copilot-ink)]">
+            {fmtCurrencyAmount(s.availableCash, s.currency)}
+          </span>
+        </div>
+        <div className="flex justify-between gap-2">
+          <span className="text-[var(--copilot-ink-muted)]">+ Cobros pendientes</span>
+          <span className="font-medium text-[var(--copilot-ink)]">
+            {fmtCurrencyAmount(s.pendingReceivables, s.currency)}
+          </span>
+        </div>
+        <div className="flex justify-between gap-2">
+          <span className="text-[var(--copilot-ink-muted)]">− Pagos próximos</span>
+          <span className="font-medium text-[var(--copilot-ink)]">
+            {fmtCurrencyAmount(s.scheduledPayments30d, s.currency)}
+          </span>
+        </div>
+        <div className="flex justify-between gap-2 border-t border-[var(--copilot-border)] pt-1.5">
+          <span className="font-semibold text-[var(--copilot-ink)]">= Caja proyectada</span>
+          <span
+            className={`font-bold ${s.expectedCash30d < 0 ? "text-red-600 dark:text-red-400" : "text-[var(--copilot-ink)]"}`}
+          >
+            {fmtCurrencyAmount(s.expectedCash30d, s.currency)}
+          </span>
+        </div>
+        <div className="border-t border-[var(--copilot-border)]/50 pt-1.5">
+          <p className="mb-1 text-[11px] text-[var(--copilot-ink-muted)]">Solo con caja actual</p>
+          <div className="flex justify-between gap-2">
+            <span className="text-[var(--copilot-ink-muted)]">Caja restante sin cobrar</span>
+            <span
+              className={`font-medium ${s.safeCash30d < 0 ? "text-red-600 dark:text-red-400" : "text-[var(--copilot-ink)]"}`}
+            >
+              {fmtCurrencyAmount(s.safeCash30d, s.currency)}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 space-y-1.5">
+        {msgs.map((msg, i) => (
+          <p
+            key={i}
+            className={`rounded-md px-3 py-2 text-xs ${
+              msg.tone === "danger"
+                ? "bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-300"
+                : msg.tone === "warn"
+                  ? "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]"
+                  : "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300"
+            }`}
+          >
+            {msg.text}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CajaProyectadaSection({ state }: { state: FinanzasCanonicalCurrencyState[] }) {
+  if (state.length === 0) return null;
+  return (
+    <CopilotCard>
+      <CopilotSectionTitle
+        title="Caja proyectada (30 días)"
+        subtitle="Caja actual + cobros pendientes − pagos próximos."
+      />
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {state.map((s) => (
+          <CurrencyProjectionBlock key={s.currency} s={s} />
+        ))}
+      </div>
+    </CopilotCard>
+  );
+}
+
 type MetricSelection =
   | { kind: "slice"; metricId: PanoramaMetricId; slice: PanoramaCurrencySlice }
   | { kind: "cash"; currency: "UYU" | "USD" };
@@ -385,6 +483,8 @@ export function FinancialPanoramaView() {
     <>
       <div className="space-y-4">
         <EstadoActualSection state={canonicalState} />
+
+        <CajaProyectadaSection state={canonicalState} />
 
         <FinancialExecutiveSummary
           dashboard={dashboard}
