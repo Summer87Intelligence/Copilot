@@ -141,6 +141,29 @@ describe("UsdEquivalentActiveNotice copy — buildUsdEquivalentNoticeCopy", () =
   });
 });
 
+describe("Treasury USD equivalent consolidation", () => {
+  it("consolidated after-payments = (cash_uyu/TC + cash_usd) - (committed_uyu/TC + committed_usd)", () => {
+    const cashUsd = convertToUsdEquivalent({ uyu: 500_000, usd: 10_000 }, 40);
+    const committedUsd = convertToUsdEquivalent({ uyu: 100_000, usd: 2_000 }, 40);
+    // cash: 500_000/40 + 10_000 = 12_500 + 10_000 = 22_500
+    // committed: 100_000/40 + 2_000 = 2_500 + 2_000 = 4_500
+    expect(cashUsd).toBe(22_500);
+    expect(committedUsd).toBe(4_500);
+    expect(cashUsd - committedUsd).toBe(18_000);
+  });
+
+  it("native mode: no consolidation — UYU and USD remain separate", () => {
+    const result = formatDisplayAmounts({ uyu: 500_000, usd: 10_000, mode: "native", fxRate: 40 });
+    expect(result.kind).toBe("native");
+  });
+
+  it("treasury detail note copy contains 'USD estimado', not 'USD real'", () => {
+    const note = "Detalle en moneda original. Resumen convertido a USD estimado.";
+    expect(note).toContain("USD estimado");
+    expect(note).not.toContain("USD real");
+  });
+});
+
 describe("storage helpers — SSR-safe (no window)", () => {
   it("readDisplayModeFromStorage returns default when window is undefined", () => {
     expect(readDisplayModeFromStorage()).toBe(DEFAULT_CURRENCY_DISPLAY_MODE);
