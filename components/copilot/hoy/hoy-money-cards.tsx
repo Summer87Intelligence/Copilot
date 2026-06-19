@@ -785,6 +785,7 @@ function MoneyCard({
   variant,
   title,
   subtitle,
+  tooltip,
   block,
   cashPositionBlocks,
   manualCashMovements,
@@ -799,6 +800,7 @@ function MoneyCard({
   variant: CardVariant;
   title: string;
   subtitle?: string;
+  tooltip?: string;
   block: CockpitMoneyBlock;
   cashPositionBlocks?: HoyCashPositionBlock[];
   manualCashMovements?: readonly ManualCashMovement[];
@@ -847,6 +849,7 @@ function MoneyCard({
     <article
       role={interactive ? "button" : undefined}
       tabIndex={interactive ? 0 : undefined}
+      title={tooltip}
       onClick={interactive ? () => onCardClick?.(cardId) : undefined}
       onKeyDown={interactive ? (e) => cardActivateKey(e, () => onCardClick?.(cardId)) : undefined}
       className={`flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl border p-2.5 shadow-sm transition-shadow sm:p-3 ${interactive ? "cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]" : ""} ${isActive ? "ring-2 ring-[var(--copilot-accent)]/40" : ""} ${theme.shell}`}
@@ -953,11 +956,13 @@ function ReceivablesSection({
 function ReceivablesCard({
   card,
   subtitle,
+  tooltip,
   onCardClick,
   isActive,
 }: {
   card: CockpitReceivablesCard;
   subtitle?: string;
+  tooltip?: string;
   onCardClick?: (id: HoyCockpitCardId) => void;
   isActive?: boolean;
 }) {
@@ -972,6 +977,7 @@ function ReceivablesCard({
     <article
       role={interactive ? "button" : undefined}
       tabIndex={interactive ? 0 : undefined}
+      title={tooltip}
       onClick={interactive ? () => onCardClick?.("receivables") : undefined}
       onKeyDown={
         interactive ? (e) => cardActivateKey(e, () => onCardClick?.("receivables")) : undefined
@@ -1102,6 +1108,7 @@ export function HoyMoneyCards({
         cardId="cash"
         variant="cash"
         title={HOY_COCKPIT.moneyAvailable}
+        tooltip="Dinero disponible actualmente considerando saldos de tesorería."
         block={moneyAvailable}
         cashPositionBlocks={cashPositionBlocks}
         manualCashMovements={manualCashMovements}
@@ -1110,6 +1117,7 @@ export function HoyMoneyCards({
       />
       <ReceivablesCard
         card={receivables}
+        tooltip="Facturas pendientes de cobro informadas por Zeta."
         onCardClick={onCardClick}
         isActive={activeCard === "receivables"}
       />
@@ -1117,6 +1125,7 @@ export function HoyMoneyCards({
         cardId="payments"
         variant="payments"
         title={HOY_COCKPIT.payments}
+        tooltip="Pagos programados para los próximos 30 días."
         subtitle={payments.amounts.length > 0 ? "Pagos cargados para los próximos 30 días." : undefined}
         block={payments}
         treasuryScheduledPayments={treasuryScheduledPayments}
@@ -1128,6 +1137,7 @@ export function HoyMoneyCards({
         cardId="afterPayments"
         variant="afterPayments"
         title={HOY_COCKPIT.afterPayments}
+        tooltip="Caja actual + cobros esperados − pagos programados."
         subtitle="Caja actual + cobros probables − pagos próximos"
         block={afterPayments}
         projection30dBlocks={projection30dBlocks}

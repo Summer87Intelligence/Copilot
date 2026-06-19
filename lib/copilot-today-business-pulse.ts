@@ -354,7 +354,7 @@ export function carteraOpeningFromReport(
 
 export function fmtCurrencyAmount(amount: number, currency: "UYU" | "USD"): string {
   const n = amount.toLocaleString("es-AR", { maximumFractionDigits: 0 });
-  return currency === "USD" ? `USD U$S ${n}` : `UYU $ ${n}`;
+  return currency === "USD" ? `U$S ${n}` : `$ ${n}`;
 }
 
 export function makeMoneyAmount(amount: number, currency: "UYU" | "USD"): MoneyAmount {

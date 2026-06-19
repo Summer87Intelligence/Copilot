@@ -73,7 +73,7 @@ export function AttentionClientsDrawer({
                 ? {
                     currency: "USD",
                     amount: data.vencidoTotalUsd,
-                    formatted: `USD U$S ${data.vencidoTotalUsd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`,
+                    formatted: `U$S ${data.vencidoTotalUsd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`,
                   }
                 : null
             }
@@ -88,7 +88,7 @@ export function AttentionClientsDrawer({
                 ? {
                     currency: "UYU",
                     amount: data.deudaTotalUyu,
-                    formatted: `UYU $ ${data.deudaTotalUyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`,
+                    formatted: `$ ${data.deudaTotalUyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`,
                   }
                 : null
             }
@@ -103,7 +103,7 @@ export function AttentionClientsDrawer({
                 ? {
                     currency: "USD",
                     amount: data.deudaTotalUsd,
-                    formatted: `USD U$S ${data.deudaTotalUsd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`,
+                    formatted: `U$S ${data.deudaTotalUsd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`,
                   }
                 : null
             }

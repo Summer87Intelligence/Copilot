@@ -11,7 +11,7 @@ export const HOY_UI = {
 
 export const HOY_PAGE = {
   title: "Copilot · Hoy",
-  description: "Operación diaria: caja, cobros urgentes y prioridad del día.",
+  description: "Caja, cobros urgentes y prioridad del día.",
 } as const;
 
 /** Cockpit financiero — bloques principales. */

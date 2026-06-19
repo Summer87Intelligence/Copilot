@@ -1546,10 +1546,10 @@ export default function DashboardPageClient() {
         </section>
 
         {/* KPI grid ? bloque 2: situación actual */}
-        <section aria-label="Situación actual" className="space-y-3">
+        <section aria-label="Posición actual" className="space-y-3">
           <div>
             <h2 className={`text-xs font-semibold uppercase tracking-wide ${C.ink}`}>
-              Situación actual
+              Posición actual
             </h2>
             <p className={`mt-0.5 text-[11px] ${C.muted}`}>
               Foto actual del negocio. No depende del rango seleccionado.

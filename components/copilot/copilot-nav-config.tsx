@@ -48,7 +48,7 @@ const COPILOT_NAV_INICIO: CopilotNavGroup = {
     {
       href: "/copilot/hoy",
       label: "Hoy",
-      description: "Operación diaria: caja, cobros y prioridad",
+      description: "Caja, cobros y prioridad",
       icon: ListTodo,
       moduleKey: "hoy",
     },

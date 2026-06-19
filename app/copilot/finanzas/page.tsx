@@ -378,7 +378,7 @@ function CopilotFinanzasPageContent() {
     } catch (e) {
       setSnapshot(null);
       setSnapshotError(
-        e instanceof Error ? e.message : "No se pudo cargar el panorama financiero."
+        e instanceof Error ? e.message : "No se pudo cargar la información financiera."
       );
     } finally {
       setSnapshotLoading(false);
@@ -854,7 +854,7 @@ function CopilotFinanzasPageContent() {
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
         surfaceId="copilot.finanzas"
-        title="Panorama financiero"
+        title="Finanzas"
         description={
           coberturaGuided
             ? "Modo cobertura: foco en caja, ingresos esperados y egresos modelados."
@@ -1268,7 +1268,7 @@ function CopilotFinanzasPageContent() {
               {snapshotLoading ? (
                 <div className="mt-6 flex items-center gap-2 text-sm text-[var(--copilot-ink-muted)]">
                   <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-                  Calculando panorama financiero…
+                  Calculando…
                 </div>
               ) : null}
               {snapshotError ? (

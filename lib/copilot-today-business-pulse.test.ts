@@ -304,8 +304,8 @@ describe("buildTodayBusinessPulse", () => {
       const { importantPendingItems } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: rows, gate: GATE_HIGH });
       const item = importantPendingItems.find((i) => i.id.startsWith("overdue_high_"));
       expect(item).toBeDefined();
-      // Debe mostrar "UYU $" o "USD U$S", nunca solo "$"
-      expect(item!.impacto).toMatch(/UYU \$|USD U\$S/);
+      // Debe mostrar símbolo de moneda: "$ " para UYU, "U$S " para USD
+      expect(item!.impacto).toMatch(/\$ |U\$S /);
     });
   });
 
@@ -430,10 +430,10 @@ describe("buildTodayBusinessPulse", () => {
       expect(c.deuda_breakdown.some((m) => m.currency === "USD")).toBe(false);
     });
 
-    it("formato de monto UYU es 'UYU $ X'", () => {
+    it("formato de monto UYU empieza con símbolo '$'", () => {
       const { priorityCollections } = buildTodayBusinessPulse(input);
       const c = priorityCollections[0]!;
-      expect(c.deuda_breakdown[0]!.formatted).toMatch(/^UYU \$/);
+      expect(c.deuda_breakdown[0]!.formatted).toMatch(/^\$/);
     });
 
     it("bloque UYU: pendiente coincide con debt_uyu", () => {
@@ -465,10 +465,10 @@ describe("buildTodayBusinessPulse", () => {
       expect(c.vencido_breakdown[0]!.currency).toBe("USD");
     });
 
-    it("formato de monto USD es 'USD U$S X'", () => {
+    it("formato de monto USD empieza con símbolo 'U$S'", () => {
       const { priorityCollections } = buildTodayBusinessPulse(input);
       const c = priorityCollections[0]!;
-      expect(c.deuda_breakdown[0]!.formatted).toMatch(/^USD U\$S/);
+      expect(c.deuda_breakdown[0]!.formatted).toMatch(/^U\$S/);
     });
 
     it("bloque USD: pendiente coincide con debt_usd", () => {
@@ -1050,12 +1050,12 @@ describe("buildTodayBusinessPulse", () => {
 
   // ─ Helpers ────────────────────────────────────────────────────────────────
   describe("fmtCurrencyAmount", () => {
-    it("formatea UYU con prefijo 'UYU $'", () => {
-      expect(fmtCurrencyAmount(68_650, "UYU")).toMatch(/^UYU \$/);
+    it("formatea UYU con símbolo '$ X'", () => {
+      expect(fmtCurrencyAmount(68_650, "UYU")).toMatch(/^\$ /);
     });
 
-    it("formatea USD con prefijo 'USD U$S'", () => {
-      expect(fmtCurrencyAmount(6_735, "USD")).toMatch(/^USD U\$S/);
+    it("formatea USD con símbolo 'U$S X'", () => {
+      expect(fmtCurrencyAmount(6_735, "USD")).toMatch(/^U\$S /);
     });
   });
 
