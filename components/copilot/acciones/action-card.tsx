@@ -17,6 +17,8 @@ import {
   actionCardClass,
   metricValueClass,
 } from "@/components/copilot/ui/copilot-visual-system";
+import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
+import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 
 function priorityBadgeClass(priority: CopilotActionPriority): string {
   switch (priority) {
@@ -101,6 +103,7 @@ const CONTEXT_BADGE_CLASS: Record<string, string> = {
 };
 
 function CollectionContextBlock({ ctx }: { ctx: CopilotActionCollectionContext }) {
+  const { mode, fxRate } = useDisplayCurrency();
   const badgeCls =
     CONTEXT_BADGE_CLASS[ctx.statusLabel] ?? "bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink-muted)] border-[var(--copilot-border)]";
   const channelLabel = CHANNEL_LABEL[ctx.latestChannel] ?? ctx.latestChannel;
@@ -148,7 +151,11 @@ function CollectionContextBlock({ ctx }: { ctx: CopilotActionCollectionContext }
         <p className="text-[11px] text-[var(--copilot-accent)]">
           Prometió pagar: {formatDateShort(ctx.promiseDate)}
           {ctx.promiseAmount != null && ctx.promiseCurrency
-            ? ` · ${ctx.promiseCurrency === "USD" ? "U$S" : "$"} ${ctx.promiseAmount.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
+            ? ` · ${
+                mode === "usd_equivalent"
+                  ? formatUsdEquivalent(convertToUsdEquivalent({ uyu: ctx.promiseCurrency === "UYU" ? ctx.promiseAmount : 0, usd: ctx.promiseCurrency === "USD" ? ctx.promiseAmount : 0 }, fxRate))
+                  : `${ctx.promiseCurrency === "USD" ? "U$S" : "$"} ${ctx.promiseAmount.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
+              }`
             : ""}
         </p>
       ) : null}
@@ -199,6 +206,7 @@ function deriveNextStep(action: CopilotAction): string {
 }
 
 export function ActionCard({ action }: { action: CopilotAction }) {
+  const { mode, fxRate } = useDisplayCurrency();
   const whatsappHref = action.contactPhone
     ? `https://wa.me/${action.contactPhone.replace(/\D/g, "")}`
     : null;
@@ -217,7 +225,9 @@ export function ActionCard({ action }: { action: CopilotAction }) {
         </p>
         {action.amount != null && action.amount > 0 ? (
           <span className={`shrink-0 text-sm ${metricValueClass}`}>
-            {formatAmount(action.amount, action.currency)}
+            {mode === "usd_equivalent"
+              ? formatUsdEquivalent(convertToUsdEquivalent({ uyu: action.currency === "UYU" ? action.amount : 0, usd: action.currency === "USD" ? action.amount : 0 }, fxRate))
+              : formatAmount(action.amount, action.currency)}
           </span>
         ) : null}
       </div>
