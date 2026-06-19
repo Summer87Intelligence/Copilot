@@ -450,6 +450,7 @@ function FinanzasPanoramaSkeleton() {
 export function FinancialPanoramaView() {
   const today = financialEngineLocalTodayYmd();
   const period = useMemo(() => defaultHoyPeriodRange(today), [today]);
+  const { mode: displayMode, fxRate: displayFxRate } = useDisplayCurrency();
   const periodLabel = formatHoyPeriodLabel(period);
 
   const reconciliation = useFinancialReconciliation({
@@ -699,7 +700,11 @@ export function FinancialPanoramaView() {
         <CollapsibleSection
           id="finanzas-historico"
           title={FINANZAS_ANALISIS_HISTORICO.title}
-          subtitle={FINANZAS_ANALISIS_HISTORICO.subtitle}
+          subtitle={
+            displayMode === "usd_equivalent"
+              ? `Vista histórica convertida a USD estimado · TC ${displayFxRate}`
+              : FINANZAS_ANALISIS_HISTORICO.subtitle
+          }
           defaultOpen={false}
           variant="primary"
         >

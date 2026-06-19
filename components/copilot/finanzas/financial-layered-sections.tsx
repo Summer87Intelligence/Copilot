@@ -25,6 +25,8 @@ import type { PanoramaMetricId } from "@/lib/copilot-financial-panorama-details"
 import {
   FinancialTopClientsSection,
 } from "@/components/copilot/finanzas/financial-executive-sections";
+import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
+import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 
 // ─── Shared ───────────────────────────────────────────────────────────────────
 
@@ -242,43 +244,65 @@ export function FinancialExecutiveSummary({
   onSelectMetric?: (metricId: PanoramaMetricId, slice: PanoramaCurrencySlice) => void;
 }) {
   const { panorama, currencies: panels } = dashboard;
+  const { mode, fxRate } = useDisplayCurrency();
+  const isUsd = mode === "usd_equivalent";
   const tone = riskBadgeTone(panorama.risk.level);
 
   const cashUyu = panorama.projection.cashTodayUyu;
   const cashUsd = panorama.projection.cashTodayUsd;
 
-  const debtTotal = dualLineAll(panels, (p) => p.slice?.pending ?? 0);
-  const debtOverdue = dualLineAll(
-    panels,
-    (p) => p.collectionDebt.overdueDebt
-  );
+  const uyuPanel = panels.find((p) => p.currency === "UYU");
+  const usdPanel = panels.find((p) => p.currency === "USD");
 
-  const cashParts: string[] = [];
-  if (cashUyu !== 0) cashParts.push(fmtMoney(cashUyu, "UYU"));
-  if (cashUsd !== 0) cashParts.push(fmtMoney(cashUsd, "USD"));
+  const cashDisplay = isUsd
+    ? formatUsdEquivalent(convertToUsdEquivalent({ uyu: cashUyu, usd: cashUsd }, fxRate))
+    : (() => {
+        const parts: string[] = [];
+        if (cashUyu !== 0) parts.push(fmtMoney(cashUyu, "UYU"));
+        if (cashUsd !== 0) parts.push(fmtMoney(cashUsd, "USD"));
+        return parts.length > 0 ? parts.join(" · ") : "Consultar Tesorería";
+      })();
+
+  const debtDisplay = isUsd
+    ? formatUsdEquivalent(
+        convertToUsdEquivalent(
+          { uyu: uyuPanel?.slice?.pending ?? 0, usd: usdPanel?.slice?.pending ?? 0 },
+          fxRate
+        )
+      )
+    : dualLineAll(panels, (p) => p.slice?.pending ?? 0);
+
+  const debtOverdueDisplay = isUsd
+    ? formatUsdEquivalent(
+        convertToUsdEquivalent(
+          { uyu: uyuPanel?.collectionDebt.overdueDebt ?? 0, usd: usdPanel?.collectionDebt.overdueDebt ?? 0 },
+          fxRate
+        )
+      )
+    : dualLineAll(panels, (p) => p.collectionDebt.overdueDebt);
 
   return (
     <CopilotCard>
       <CopilotSectionTitle
         title="Foto actual"
-        subtitle="Caja, pendiente y riesgo al corte de hoy."
+        subtitle={isUsd ? `Caja, pendiente y riesgo · USD estimado · TC ${fxRate}` : "Caja, pendiente y riesgo al corte de hoy."}
       />
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryMetric
           label={FINANZAS_COPY.labelCajaHoy}
-          value={cashParts.length > 0 ? cashParts.join(" · ") : "Consultar Tesorería"}
+          value={cashDisplay}
           tooltip={FINANZAS_COPY.summaryCajaTooltip}
           hero
         />
         <SummaryMetric
           label={FINANZAS_COPY.labelDeudaHoy}
-          value={debtTotal}
+          value={debtDisplay}
           tooltip={FINANZAS_COPY.summaryDeudaTooltip}
           hero
         />
         <SummaryMetric
           label={FINANZAS_COPY.labelDeudaVencidaHoy}
-          value={debtOverdue}
+          value={debtOverdueDisplay}
           tone={panels.some((p) => p.collectionDebt.overdueDebt > 0) ? "danger" : "neutral"}
           tooltip={FINANZAS_COPY.summaryDeudaVencidaTooltip}
           hero
@@ -305,7 +329,7 @@ export function FinancialExecutiveSummary({
               onClick={() => onSelectMetric("pending", p.slice!)}
               className="text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
             >
-              Detalle {p.currency}
+              {isUsd ? `Ver detalle original ${p.currency}` : `Detalle ${p.currency}`}
             </button>
           ) : null
         )}
@@ -447,6 +471,9 @@ export function FinancialCollectionRisk({
   panels: ExecutiveCurrencyPanel[];
   embedded?: boolean;
 }) {
+  const { mode, fxRate } = useDisplayCurrency();
+  const isUsd = mode === "usd_equivalent";
+
   const available = panels.map((p) => p.currency);
   const availableKey = available.join(",");
   const [currency, setCurrency] = useState<"UYU" | "USD">(available[0] ?? "UYU");
@@ -464,6 +491,43 @@ export function FinancialCollectionRisk({
 
   const cd = panel.collectionDebt;
 
+  const uyuPanel = panels.find((p) => p.currency === "UYU");
+  const usdPanel = panels.find((p) => p.currency === "USD");
+
+  const consolidatedTotal = isUsd
+    ? convertToUsdEquivalent(
+        { uyu: uyuPanel?.collectionDebt.totalDebt ?? 0, usd: usdPanel?.collectionDebt.totalDebt ?? 0 },
+        fxRate
+      )
+    : null;
+  const consolidatedOverdue = isUsd
+    ? convertToUsdEquivalent(
+        { uyu: uyuPanel?.collectionDebt.overdueDebt ?? 0, usd: usdPanel?.collectionDebt.overdueDebt ?? 0 },
+        fxRate
+      )
+    : null;
+  const consolidatedOverduePct =
+    consolidatedTotal != null && consolidatedTotal > 0 && consolidatedOverdue != null
+      ? consolidatedOverdue / consolidatedTotal
+      : null;
+
+  const displayTotal = isUsd && consolidatedTotal != null
+    ? formatUsdEquivalent(consolidatedTotal)
+    : fmtMoney(cd.totalDebt, currency);
+  const displayOverdue = isUsd && consolidatedOverdue != null
+    ? formatUsdEquivalent(consolidatedOverdue)
+    : fmtMoney(cd.overdueDebt, currency);
+  const displayOverduePct = isUsd ? consolidatedOverduePct : cd.overduePct;
+  const isOverduePositive = isUsd
+    ? (consolidatedOverdue ?? 0) > 0
+    : cd.overdueDebt > 0;
+
+  const tcBadge = isUsd ? (
+    <span className="text-[10px] font-semibold text-[var(--copilot-ink-muted)]">
+      USD equiv. · TC {fxRate}
+    </span>
+  ) : null;
+
   const body = (
     <>
       {!embedded ? (
@@ -472,25 +536,25 @@ export function FinancialCollectionRisk({
             title={FINANZAS_COPY.collectionRiskTitle}
             subtitle={FINANZAS_COPY.collectionRiskSubtitle}
           />
-          <CurrencyToggle value={currency} onChange={setCurrency} available={available} />
+          {isUsd ? tcBadge : <CurrencyToggle value={currency} onChange={setCurrency} available={available} />}
         </div>
       ) : (
         <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
-          <CurrencyToggle value={currency} onChange={setCurrency} available={available} />
+          {isUsd ? tcBadge : <CurrencyToggle value={currency} onChange={setCurrency} available={available} />}
         </div>
       )}
 
       <div className={`${embedded ? "" : "mt-3"} grid gap-2 sm:grid-cols-3`}>
-        <SummaryMetric label="Total pendiente" value={fmtMoney(cd.totalDebt, currency)} />
+        <SummaryMetric label="Total pendiente" value={displayTotal} />
         <SummaryMetric
           label="Atrasado"
-          value={fmtMoney(cd.overdueDebt, currency)}
-          tone={cd.overdueDebt > 0 ? "danger" : "neutral"}
+          value={displayOverdue}
+          tone={isOverduePositive ? "danger" : "neutral"}
         />
         <SummaryMetric
           label="% atrasado"
-          value={cd.overduePct != null ? formatPanoramaRate(cd.overduePct) : "—"}
-          tone={cd.overduePct != null && cd.overduePct > 0.3 ? "warning" : "neutral"}
+          value={displayOverduePct != null ? formatPanoramaRate(displayOverduePct) : "—"}
+          tone={displayOverduePct != null && displayOverduePct > 0.3 ? "warning" : "neutral"}
         />
       </div>
 
@@ -544,11 +608,25 @@ export function FinancialCollectionRisk({
 function dualCurrencyValueNode(
   blocks: readonly PanoramaProjectionCurrency[],
   pick: (b: PanoramaProjectionCurrency) => number,
-  options?: { showZero?: boolean }
+  options?: { showZero?: boolean; displayMode?: "native" | "usd_equivalent"; fxRate?: number }
 ): ReactNode {
   if (blocks.length === 0) {
     return <span className="text-sm text-[var(--copilot-ink-muted)]">Sin movimientos registrados</span>;
   }
+
+  if (options?.displayMode === "usd_equivalent" && options.fxRate != null) {
+    const uyuBlock = blocks.find((b) => b.currency === "UYU");
+    const usdBlock = blocks.find((b) => b.currency === "USD");
+    const uyu = uyuBlock ? pick(uyuBlock) : 0;
+    const usd = usdBlock ? pick(usdBlock) : 0;
+    const total = convertToUsdEquivalent({ uyu, usd }, options.fxRate);
+    return (
+      <span className="text-sm font-semibold tabular-nums text-[var(--copilot-ink)]">
+        {formatUsdEquivalent(total)}
+      </span>
+    );
+  }
+
   const lines = (["UYU", "USD"] as const)
     .map((code) => {
       const block = blocks.find((b) => b.currency === code);
@@ -686,6 +764,7 @@ function SummaryMetricDual({
   tone?: "positive" | "danger" | "neutral" | "warning";
   tooltip?: string;
 }) {
+  const { mode, fxRate } = useDisplayCurrency();
   const valueClass =
     tone === "positive"
       ? "text-[var(--copilot-success-text-strong)]"
@@ -702,7 +781,9 @@ function SummaryMetricDual({
           <span className="sr-only"> — {tooltip}</span>
         ) : null}
       </p>
-      <div className={`mt-1.5 ${valueClass}`}>{dualCurrencyValueNode(blocks, pick)}</div>
+      <div className={`mt-1.5 ${valueClass}`}>
+        {dualCurrencyValueNode(blocks, pick, { displayMode: mode, fxRate })}
+      </div>
     </div>
   );
 }
