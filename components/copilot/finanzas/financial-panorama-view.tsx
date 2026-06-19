@@ -71,7 +71,7 @@ function EstadoActualSection({ state }: { state: FinanzasCanonicalCurrencyState[
   return (
     <CopilotCard>
       <CopilotSectionTitle
-        title="Resumen financiero"
+        title="Caja, cobros y pagos"
         subtitle="Misma fuente que Hoy · Tesorería · Cartera. Sin mezcla de monedas."
       />
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
