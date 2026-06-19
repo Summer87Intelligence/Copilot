@@ -537,7 +537,7 @@ function CopilotAccionesPageContent() {
       <CopilotPageHeader
         surfaceId="copilot.acciones"
         title="Acciones"
-        description="Tu bandeja operativa: qué resolver, a quién seguir y qué revisar."
+        description="Gestiones pendientes, seguimientos y revisiones del negocio."
       />
 
       <div className={copilotPageMainClass}>

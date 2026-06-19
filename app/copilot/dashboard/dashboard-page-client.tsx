@@ -1319,7 +1319,7 @@ export default function DashboardPageClient() {
           <div>
             <div className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-[var(--copilot-accent)]" aria-hidden />
-              <h1 className={`text-sm font-bold ${C.ink}`}>Dashboard Resumen</h1>
+              <h1 className={`text-sm font-bold ${C.ink}`}>Resumen del período</h1>
             </div>
             <p className={`mt-0.5 text-[11px] ${C.muted}`}>
               Análisis y reportes: ventas, cobros, deuda y evolución del negocio.

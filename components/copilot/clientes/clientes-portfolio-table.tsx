@@ -350,7 +350,7 @@ export function ClientesPortfolioTable({
     },
     {
       key: "salud",
-      header: "Salud",
+      header: "Riesgo",
       render: (row) => {
         const salud = deriveClientStatus(row);
         return (

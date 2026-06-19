@@ -464,7 +464,7 @@ export function TreasuryExecutiveForecastPanel({
       {/* ── FASE 3: Cobertura esperada (caja + cobros - compromisos) ── */}
       <section>
         <CopilotSectionTitle
-          title="Cobertura esperada"
+          title="Saldo proyectado"
           subtitle="Caja disponible + cobros previstos − compromisos 30 días."
         />
         {isUsd ? (

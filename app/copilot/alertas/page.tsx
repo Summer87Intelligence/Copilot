@@ -479,7 +479,7 @@ export default function CopilotAlertasPage() {
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
         surfaceId="copilot.alertas"
-        title="Centro de alertas"
+        title="Alertas"
         description="Cobros, vencimientos, pagos y eventos relevantes del negocio."
       />
 

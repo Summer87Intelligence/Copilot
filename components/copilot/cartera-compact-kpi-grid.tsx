@@ -628,7 +628,7 @@ export function CarteraCompactKpiGrid({
       </CompactCard>
       <CompactCard title="Explorador">
         <p className="text-[11px] leading-snug text-[var(--copilot-ink-muted)]">
-          La lista detallada vive en Clientes.
+          Ver gestión detallada en la vista Clientes.
         </p>
         <Link
           href="/copilot/clientes"

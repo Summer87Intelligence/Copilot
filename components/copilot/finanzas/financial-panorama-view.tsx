@@ -58,7 +58,7 @@ const ESTADO_ACTUAL_METRICS: {
   { label: "Caja disponible", getValue: (s) => s.availableCash },
   { label: "Total pendiente", getValue: (s) => s.pendingReceivables },
   { label: "Deuda vencida", getValue: (s) => s.overdueReceivables },
-  { label: "Pagos próximos 30d", getValue: (s) => s.scheduledPayments30d },
+  { label: "Compromisos 30 días", getValue: (s) => s.scheduledPayments30d },
 ];
 
 function EstadoActualSection({ state }: { state: FinanzasCanonicalCurrencyState[] }) {
@@ -71,7 +71,7 @@ function EstadoActualSection({ state }: { state: FinanzasCanonicalCurrencyState[
   return (
     <CopilotCard>
       <CopilotSectionTitle
-        title="Estado actual"
+        title="Resumen financiero"
         subtitle="Misma fuente que Hoy · Tesorería · Cartera. Sin mezcla de monedas."
       />
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
