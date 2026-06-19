@@ -60,6 +60,7 @@ import {
   roundUsd,
   writeDashboardFxRateToStorage,
 } from "@/lib/copilot-currency-conversion";
+import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
 
 const TABLE_INITIAL_ROWS = 10;
 
@@ -877,6 +878,7 @@ export default function DashboardPageClient() {
   const [selectedCurrency, setSelectedCurrency] = useState<"all" | "UYU" | "USD" | "USD_consolidated">("all");
   const [exchangeRate, setExchangeRate] = useState<number>(() => readDashboardFxRateFromStorage());
   const [fxInputDraft, setFxInputDraft] = useState<string>(() => String(readDashboardFxRateFromStorage()));
+  const { mode: displayMode, fxRate: globalFxRate } = useDisplayCurrency();
 
   useEffect(() => {
     const stored = readDashboardFxRateFromStorage();
@@ -1042,9 +1044,10 @@ export default function DashboardPageClient() {
   const usd = currencyData.find((d) => d.currency === "USD");
   const dashState = determineDashboardState(currencyData, clientStates);
 
-  // USD consolidado helpers (solo visual — TC en localStorage)
-  const isConsolidated = selectedCurrency === "USD_consolidated";
-  const showTcControls = isConsolidated;
+  // USD consolidado helpers (solo visual — TC en localStorage o global displayMode)
+  const isConsolidated = selectedCurrency === "USD_consolidated" || displayMode === "usd_equivalent";
+  const effectiveExchangeRate = displayMode === "usd_equivalent" ? globalFxRate : exchangeRate;
+  const showTcControls = isConsolidated && displayMode !== "usd_equivalent";
   const effectiveCurrency: "all" | "UYU" | "USD" = isConsolidated
     ? "USD"
     : selectedCurrency;
@@ -1063,13 +1066,13 @@ export default function DashboardPageClient() {
         : "UYU";
   const consUyu = (val: number) => (isConsolidated ? 0 : val);
   const consUsd = (uyuVal: number, usdVal: number) =>
-    isConsolidated ? roundUsd(consolidateToUsdEquivalent(usdVal, uyuVal, exchangeRate)) : usdVal;
+    isConsolidated ? roundUsd(consolidateToUsdEquivalent(usdVal, uyuVal, effectiveExchangeRate)) : usdVal;
   const consBarData = (bars: BarData[]): BarData[] =>
     isConsolidated
       ? bars.map((b) => ({
           label: b.label,
           uyu: 0,
-          usd: roundUsd(consolidateToUsdEquivalent(b.usd ?? 0, b.uyu ?? 0, exchangeRate)),
+          usd: roundUsd(consolidateToUsdEquivalent(b.usd ?? 0, b.uyu ?? 0, effectiveExchangeRate)),
         }))
       : bars;
   const isDashboardQuiet = useMemo(() => {
@@ -1088,7 +1091,7 @@ export default function DashboardPageClient() {
   }, [loading, portfolioRows.length, currencyData]);
 
   const consolidatedCurrencyData = useMemo((): DashboardCurrencyData => {
-    const tc = exchangeRate;
+    const tc = effectiveExchangeRate;
     const c = (uyuVal: number, usdVal: number) => roundUsd(consolidateToUsdEquivalent(usdVal, uyuVal, tc));
     const cf = c(uyu?.facturado ?? 0, usd?.facturado ?? 0);
     const cc = c(uyu?.cobrado ?? 0, usd?.cobrado ?? 0);
@@ -1104,7 +1107,7 @@ export default function DashboardPageClient() {
       cajaDisponible: c(uyu?.cajaDisponible ?? 0, usd?.cajaDisponible ?? 0),
       cajaDespPagos: c(uyu?.cajaDespPagos ?? 0, usd?.cajaDespPagos ?? 0),
     };
-  }, [uyu, usd, exchangeRate]);
+  }, [uyu, usd, effectiveExchangeRate]);
 
   const effectiveCurrencyData = useMemo((): DashboardCurrencyData[] => {
     if (isConsolidated) return [consolidatedCurrencyData];
@@ -1126,7 +1129,7 @@ export default function DashboardPageClient() {
 
   // Ventas vs Cobros (current period)
   const vsGroups = isConsolidated
-    ? [{ label: "USD (equiv.)", a: roundUsd(consolidateToUsdEquivalent(usd?.facturado ?? 0, uyu?.facturado ?? 0, exchangeRate)), b: roundUsd(consolidateToUsdEquivalent(usd?.cobrado ?? 0, uyu?.cobrado ?? 0, exchangeRate)), aLabel: "Facturado", bLabel: "Cobrado" }]
+    ? [{ label: "USD (equiv.)", a: roundUsd(consolidateToUsdEquivalent(usd?.facturado ?? 0, uyu?.facturado ?? 0, effectiveExchangeRate)), b: roundUsd(consolidateToUsdEquivalent(usd?.cobrado ?? 0, uyu?.cobrado ?? 0, effectiveExchangeRate)), aLabel: "Facturado", bLabel: "Cobrado" }]
     : [
         ...(effectiveCurrency !== "USD" && (uyu?.facturado ?? 0) + (uyu?.cobrado ?? 0) > 0
           ? [{ label: "UYU", a: uyu?.facturado ?? 0, b: uyu?.cobrado ?? 0, aLabel: "Facturado", bLabel: "Cobrado" }]
@@ -1204,7 +1207,7 @@ export default function DashboardPageClient() {
 
   const consolidatedActiveDebtRows = useMemo((): DashboardActiveDebtRow[] => {
     if (!isConsolidated) return [];
-    const tc = exchangeRate;
+    const tc = effectiveExchangeRate;
     const byCompany = new Map<string, { name: string; active: number; overdue: number; overdueDays: number | null; status: string; risk: string }>();
     for (const row of activeDebtRows) {
       const toUsd = (v: number) => roundUsd(row.currency === "UYU" ? v / tc : v);
@@ -1244,7 +1247,7 @@ export default function DashboardPageClient() {
         risk: d.risk,
       }))
       .sort((a, b) => b.activeDebt - a.activeDebt);
-  }, [isConsolidated, activeDebtRows, exchangeRate]);
+  }, [isConsolidated, activeDebtRows, effectiveExchangeRate]);
 
   const consolidatedDebtorItems = useMemo(
     () =>
@@ -1253,13 +1256,13 @@ export default function DashboardPageClient() {
             .filter((r) => r.debt_uyu > 0 || r.debt_usd > 0)
             .map((r) => ({
               label: r.name,
-              value: roundUsd(consolidateToUsdEquivalent(r.debt_usd, r.debt_uyu, exchangeRate)),
+              value: roundUsd(consolidateToUsdEquivalent(r.debt_usd, r.debt_uyu, effectiveExchangeRate)),
               id: r.company_id,
             }))
             .sort((a, b) => b.value - a.value)
             .slice(0, 10)
         : [],
-    [isConsolidated, portfolioRows, exchangeRate]
+    [isConsolidated, portfolioRows, effectiveExchangeRate]
   );
   const consolidatedBillingItems = useMemo(
     () =>
@@ -1268,13 +1271,13 @@ export default function DashboardPageClient() {
             .filter((r) => (r.billing_uyu ?? 0) > 0 || (r.billing_usd ?? 0) > 0)
             .map((r) => ({
               label: r.name,
-              value: roundUsd(consolidateToUsdEquivalent(r.billing_usd ?? 0, r.billing_uyu ?? 0, exchangeRate)),
+              value: roundUsd(consolidateToUsdEquivalent(r.billing_usd ?? 0, r.billing_uyu ?? 0, effectiveExchangeRate)),
               id: r.company_id,
             }))
             .sort((a, b) => b.value - a.value)
             .slice(0, 10)
         : [],
-    [isConsolidated, portfolioRows, exchangeRate]
+    [isConsolidated, portfolioRows, effectiveExchangeRate]
   );
   const debtorItems = isConsolidated ? consolidatedDebtorItems : effectiveCurrency === "USD" ? debtorItemsUSD : debtorItemsUYU;
   const billingItems = isConsolidated ? consolidatedBillingItems : effectiveCurrency === "USD" ? billingItemsUSD : billingItemsUYU;
@@ -1397,8 +1400,9 @@ export default function DashboardPageClient() {
             />
           </label>
           <select
-            value={selectedCurrency}
+            value={displayMode === "usd_equivalent" ? "USD_consolidated" : selectedCurrency}
             onChange={(e) => setSelectedCurrency(e.target.value as "all" | "UYU" | "USD" | "USD_consolidated")}
+            disabled={displayMode === "usd_equivalent"}
             className={C.input}
             aria-label="Filtrar por moneda"
           >
@@ -1439,7 +1443,7 @@ export default function DashboardPageClient() {
                 Convertido a USD
               </span>
               <span className={`hidden text-[10px] ${C.muted} sm:inline`}>
-                {formatDashboardFxRateCompact(exchangeRate)}
+                {formatDashboardFxRateCompact(effectiveExchangeRate)}
               </span>
             </div>
           ) : null}
@@ -1480,7 +1484,7 @@ export default function DashboardPageClient() {
             currencyMode={executiveCurrencyMode}
             deudaVencidaUyu={uyu?.deudaVencida ?? 0}
             deudaVencidaUsd={usd?.deudaVencida ?? 0}
-            exchangeRate={isConsolidated ? exchangeRate : null}
+            exchangeRate={isConsolidated ? effectiveExchangeRate : null}
           />
         )}
 
@@ -2124,7 +2128,7 @@ export default function DashboardPageClient() {
                 <RecentMovementsTable
                   movements={recentMovements}
                   selectedCurrency={effectiveCurrencyForTables}
-                  exchangeRate={isConsolidated ? exchangeRate : null}
+                  exchangeRate={isConsolidated ? effectiveExchangeRate : null}
                 />
               )}
             </div>

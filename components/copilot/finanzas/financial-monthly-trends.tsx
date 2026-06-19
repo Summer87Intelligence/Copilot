@@ -13,6 +13,8 @@ import {
 import { buildFinancialPeriodContext } from "@/lib/copilot-financial-period-context";
 import { FINANZAS_COPY } from "@/lib/copilot-financial-ux-copy";
 import { formatMoneyCurrency } from "@/lib/copilot-format-money";
+import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
+import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -202,9 +204,11 @@ const CH = VB_H - PAD_T - PAD_B;
 function GroupedBarChart({
   bars,
   currency,
+  fmtFn,
 }: {
   bars: BarPoint[];
   currency: "UYU" | "USD";
+  fmtFn: (n: number, c: "UYU" | "USD") => string;
 }) {
   const n = bars.length;
   if (n === 0) return null;
@@ -273,9 +277,9 @@ function GroupedBarChart({
       {bars.map((b, i) => {
         const tooltip = [
           b.label,
-          b.netSales > 0 ? `Ventas: ${fmt(b.netSales, currency)}` : null,
-          b.collections > 0 ? `Cobros: ${fmt(b.collections, currency)}` : null,
-          b.creditNotes > 0 ? `NC: ${fmt(b.creditNotes, currency)}` : null,
+          b.netSales > 0 ? `Ventas: ${fmtFn(b.netSales, currency)}` : null,
+          b.collections > 0 ? `Cobros: ${fmtFn(b.collections, currency)}` : null,
+          b.creditNotes > 0 ? `NC: ${fmtFn(b.creditNotes, currency)}` : null,
         ]
           .filter(Boolean)
           .join(" · ");
@@ -371,9 +375,11 @@ function GroupedBarChart({
 function DetailTable({
   bars,
   currency,
+  fmtFn,
 }: {
   bars: BarPoint[];
   currency: "UYU" | "USD";
+  fmtFn: (n: number, c: "UYU" | "USD") => string;
 }) {
   const rows = bars.filter((b) => !b.isEmpty || b.status === "En curso");
   if (rows.length === 0) return null;
@@ -404,10 +410,10 @@ function DetailTable({
                   {b.status ?? "—"}
                 </td>
                 <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 tabular-nums text-[var(--copilot-success-text)]">
-                  {b.netSales > 0 ? fmt(b.netSales, currency) : "—"}
+                  {b.netSales > 0 ? fmtFn(b.netSales, currency) : "—"}
                 </td>
                 <td className="border-b border-[var(--copilot-border)] px-2 py-1.5 tabular-nums text-sky-700">
-                  {b.collections > 0 ? fmt(b.collections, currency) : "—"}
+                  {b.collections > 0 ? fmtFn(b.collections, currency) : "—"}
                 </td>
                 <td
                   className={`border-b border-[var(--copilot-border)] px-2 py-1.5 tabular-nums ${
@@ -418,7 +424,7 @@ function DetailTable({
                         : "text-[var(--copilot-ink-muted)]"
                   }`}
                 >
-                  {diff !== 0 ? (diff > 0 ? `+${fmt(diff, currency)}` : fmt(diff, currency)) : "—"}
+                  {diff !== 0 ? (diff > 0 ? `+${fmtFn(diff, currency)}` : fmtFn(diff, currency)) : "—"}
                 </td>
               </tr>
             );
@@ -446,6 +452,15 @@ export function FinancialMonthlyTrends({
   /** Sin card exterior; para agrupar en nivel 2 de Finanzas. */
   embedded?: boolean;
 }) {
+  const { mode: displayMode, fxRate } = useDisplayCurrency();
+  const isUsdMode = displayMode === "usd_equivalent";
+
+  const fmtDisplay = (n: number, cur: "UYU" | "USD"): string => {
+    if (!isUsdMode) return fmt(n, cur);
+    const usd = cur === "UYU" ? convertToUsdEquivalent({ uyu: n, usd: 0 }, fxRate) : n;
+    return formatUsdEquivalent(usd);
+  };
+
   const [period, setPeriod] = useState<Period>("6m");
   const periodOptions = executiveView ? PERIOD_OPTIONS_EXECUTIVE : PERIOD_OPTIONS_FULL;
   const [currency, setCurrency] = useState<"UYU" | "USD">("UYU");
@@ -557,8 +572,8 @@ export function FinancialMonthlyTrends({
             ))}
           </div>
 
-          {/* Currency selector */}
-          {(hasUyu || hasUsd) ? (
+          {/* Currency selector — hidden in USD equivalent mode */}
+          {(hasUyu || hasUsd) && !isUsdMode ? (
             <div
               className="inline-flex rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] p-0.5"
               role="tablist"
@@ -588,6 +603,10 @@ export function FinancialMonthlyTrends({
                 );
               })}
             </div>
+          ) : isUsdMode ? (
+            <span className="inline-flex rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] px-2.5 py-1 text-[10px] font-semibold text-[var(--copilot-ink-muted)]">
+              Vista en USD · TC {fxRate}
+            </span>
           ) : null}
         </div>
       </div>
@@ -602,29 +621,29 @@ export function FinancialMonthlyTrends({
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
             <KpiCard
               label="Ventas"
-              value={fmt(totals.netSales, currency)}
+              value={fmtDisplay(totals.netSales, currency)}
               delta={<DeltaBadge pct={deltas.netSalesPct} />}
               sub={
                 previousTotals
-                  ? `Anterior: ${fmt(previousTotals.netSales, currency)}`
+                  ? `Anterior: ${fmtDisplay(previousTotals.netSales, currency)}`
                   : "Sin comparación previa"
               }
               tone="ok"
             />
             <KpiCard
               label={FINANZAS_COPY.labelCobrosRegistrados}
-              value={fmt(totals.collections, currency)}
+              value={fmtDisplay(totals.collections, currency)}
               delta={<DeltaBadge pct={deltas.collectionsPct} />}
               sub={
                 previousTotals
-                  ? `Anterior: ${fmt(previousTotals.collections, currency)}`
+                  ? `Anterior: ${fmtDisplay(previousTotals.collections, currency)}`
                   : "Sin comparación previa"
               }
               tone="ok"
             />
             <KpiCard
               label={cobrosSupVentas ? "Cobraste más de lo vendido" : "Quedó por cobrar"}
-              value={fmt(Math.abs(gap.salesMinusCollections), currency)}
+              value={fmtDisplay(Math.abs(gap.salesMinusCollections), currency)}
               sub={
                 cobrosSupVentas
                   ? "Puede incluir facturas de meses anteriores"
@@ -678,7 +697,7 @@ export function FinancialMonthlyTrends({
 
           <div className={`${executiveView ? "mt-3" : "mt-4"} overflow-x-auto rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-3 pb-2 pt-3`}>
             <div style={{ minWidth: Math.max(bars.length * 44, 280) }}>
-              <GroupedBarChart bars={bars} currency={currency} />
+              <GroupedBarChart bars={bars} currency={currency} fmtFn={fmtDisplay} />
             </div>
           </div>
 
@@ -735,7 +754,7 @@ export function FinancialMonthlyTrends({
             </button>
             {showDetail ? (
               <div className="mt-3">
-                <DetailTable bars={bars} currency={currency} />
+                <DetailTable bars={bars} currency={currency} fmtFn={fmtDisplay} />
               </div>
             ) : null}
           </div>
@@ -745,7 +764,11 @@ export function FinancialMonthlyTrends({
       {!executiveView ? (
         <p className="mt-4 text-[11px] leading-relaxed text-[var(--copilot-ink-muted)]">
           Ventas = facturación del período. {FINANZAS_COPY.labelCobrosRegistrados} = recibos por
-          fecha. UYU y USD se analizan por separado. Datos desde enero 2026.
+          fecha.{" "}
+          {isUsdMode
+            ? `Vista en USD · TC ${fxRate} · original separado por moneda.`
+            : "UYU y USD se analizan por separado."}
+          {" "}Datos desde enero 2026.
         </p>
       ) : (
         <p className="mt-4 text-[11px] leading-relaxed text-[var(--copilot-ink-muted)]">

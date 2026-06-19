@@ -72,6 +72,8 @@ import {
   type DataRow,
 } from "@/lib/copilot-data";
 import { formatMoneyCurrency } from "@/lib/copilot-format-money";
+import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
+import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 import { deriveFinancialFlags } from "@/lib/derive-financial-flags";
 import { FINANCIAL_UX_COPY } from "@/lib/copilot-financial-ux-copy";
 import {
@@ -323,6 +325,8 @@ function CopilotFinanzasPageContent() {
     });
   }, [coberturaGuided, setReadingKeyOverride]);
 
+  const { mode: displayMode, fxRate } = useDisplayCurrency();
+  const isUsdMode = displayMode === "usd_equivalent";
   const paymentBehavior = usePaymentBehaviorProjection();
 
   const [taxObligations, setTaxObligations] = useState<ProtoTaxObligation[]>([]);
@@ -1320,23 +1324,28 @@ function CopilotFinanzasPageContent() {
                   {snapshot.by_currency ? (
                     <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 p-4">
                       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Desglose por moneda</p>
-                      <p className="mt-0.5 text-[10px] text-[var(--copilot-ink-muted)]/70">Vista de posición total, sin filtro de período.</p>
+                      <p className="mt-0.5 text-[10px] text-[var(--copilot-ink-muted)]/70">Vista de posición total, sin filtro de período.{isUsdMode ? ` · TC ${fxRate}` : ""}</p>
                       <div className="mt-3 grid gap-3 sm:grid-cols-2">
                         {(["UYU", "USD"] as const).map((cur) => {
                           const totals = snapshot.by_currency![cur];
                           if (!totals) return null;
+                          const fmtAmt = (v: number) => isUsdMode
+                            ? formatUsdEquivalent(convertToUsdEquivalent({ uyu: cur === "UYU" ? v : 0, usd: cur === "USD" ? v : 0 }, fxRate))
+                            : v.toLocaleString("es-AR", { maximumFractionDigits: 0 });
                           return (
                             <div key={cur} className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3">
-                              <p className="text-xs font-semibold text-[var(--copilot-ink)]">{cur}</p>
+                              <p className="text-xs font-semibold text-[var(--copilot-ink)]">
+                                {isUsdMode && cur === "UYU" ? "UYU → USD equiv." : cur}
+                              </p>
                               <dl className="mt-2 space-y-1 text-xs text-[var(--copilot-ink-muted)]">
                                 {totals.invoiced !== undefined ? (
-                                  <div className="flex justify-between gap-2"><dt title="Incluye todas las facturas activas históricas. Puede diferir de Ventas del período porque no aplica el rango Desde/Hasta." className="cursor-help underline decoration-dotted">Facturado histórico</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{totals.invoiced.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>
+                                  <div className="flex justify-between gap-2"><dt title="Incluye todas las facturas activas históricas. Puede diferir de Ventas del período porque no aplica el rango Desde/Hasta." className="cursor-help underline decoration-dotted">Facturado histórico</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{fmtAmt(totals.invoiced)}</dd></div>
                                 ) : null}
                                 {totals.pending !== undefined ? (
-                                  <div className="flex justify-between gap-2"><dt title="Todo lo que los clientes deben actualmente al corte. El atrasado ya está incluido." className="cursor-help underline decoration-dotted">Total pendiente</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{totals.pending.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>
+                                  <div className="flex justify-between gap-2"><dt title="Todo lo que los clientes deben actualmente al corte. El atrasado ya está incluido." className="cursor-help underline decoration-dotted">Total pendiente</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{fmtAmt(totals.pending)}</dd></div>
                                 ) : null}
                                 {totals.overdue !== undefined && totals.overdue > 0 ? (
-                                  <div className="flex justify-between gap-2"><dt title="Parte del total pendiente cuya fecha de vencimiento ya pasó. Ya está incluido dentro del total pendiente." className="cursor-help underline decoration-dotted">Atrasado</dt><dd className="tabular-nums font-semibold text-[var(--copilot-warning-text-strong)]">{totals.overdue.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</dd></div>
+                                  <div className="flex justify-between gap-2"><dt title="Parte del total pendiente cuya fecha de vencimiento ya pasó. Ya está incluido dentro del total pendiente." className="cursor-help underline decoration-dotted">Atrasado</dt><dd className="tabular-nums font-semibold text-[var(--copilot-warning-text-strong)]">{fmtAmt(totals.overdue)}</dd></div>
                                 ) : null}
                               </dl>
                             </div>
@@ -1349,7 +1358,7 @@ function CopilotFinanzasPageContent() {
                   ) : null}
                   <div id="copilot-finanzas-cobranza" className="scroll-mt-28 space-y-3 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 p-4">
                     <p className="text-xs font-semibold text-[var(--copilot-ink)]">Flujo proyectado de caja</p>
-                    <p className="text-[10px] text-[var(--copilot-ink-muted)]">Proyección con datos Zeta y pagos próximos cargados. UYU y USD por separado.</p>
+                    <p className="text-[10px] text-[var(--copilot-ink-muted)]">Proyección con datos Zeta y pagos próximos cargados. Montos consolidados UYU+USD sin diferenciación por moneda.</p>
                     <FlowBar label="Cobranza esperada (facturas × prob. de cobro)" value={snapshotReceivablesRiskWeighted(snapshot)} max={flowMax} flow="in" />
                     <FlowBar label="Egresos proyectados (operativos + fiscal 30 d)" value={snapshotExpectedOutflowsTotal(snapshot)} max={flowMax} flow="out" />
                     {(paymentBehavior.summaries.length > 0 || paymentBehavior.loading) && (
