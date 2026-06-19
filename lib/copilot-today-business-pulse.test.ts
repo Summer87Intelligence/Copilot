@@ -932,7 +932,10 @@ describe("buildTodayBusinessPulse", () => {
           block.overdueCritical30,
           block.expectedIncome,
         ]) {
-          if (field) expect(field.formatted).toMatch(/^(UYU \$|USD U\$S)/);
+          if (field) {
+            if (block.currency === "UYU") expect(field.formatted).toMatch(/^\$/);
+            if (block.currency === "USD") expect(field.formatted).toMatch(/^U\$S/);
+          }
         }
       }
     });
