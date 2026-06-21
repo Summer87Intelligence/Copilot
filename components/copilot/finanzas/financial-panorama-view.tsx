@@ -356,15 +356,102 @@ const RISK_STYLES: Record<
   },
 };
 
-function RiesgoEjecutivoSection({ state }: { state: FinanzasCanonicalCurrencyState[] }) {
+const CONSOLIDATED_RISK_COPY: Record<
+  CashRiskLevel,
+  { icon: string; label: string; detail: string; cta: string }
+> = {
+  neutral: {
+    icon: "⚪",
+    label: "Sin compromisos próximos",
+    detail: "No hay pagos programados para los próximos 30 días.",
+    cta: "Sin acción urgente",
+  },
+  ok: {
+    icon: "🟢",
+    label: "Cobertura total · Cubierta",
+    detail: "La caja disponible cubre todos los compromisos de los próximos 30 días.",
+    cta: "Sin acción urgente",
+  },
+  warning: {
+    icon: "🟡",
+    label: "Cobertura total · Atención",
+    detail: "",
+    cta: "Priorizar cobranza",
+  },
+  danger: {
+    icon: "🔴",
+    label: "Cobertura total · Riesgo",
+    detail: "",
+    cta: "Revisar pagos en Tesorería",
+  },
+};
+
+function RiesgoEjecutivoSection({
+  state,
+  mode,
+  fxRate,
+}: {
+  state: FinanzasCanonicalCurrencyState[];
+  mode: string;
+  fxRate: number;
+}) {
   if (state.length === 0) return null;
+
+  const sectionTitle = (
+    <CopilotSectionTitle
+      title="Riesgo ejecutivo"
+      subtitle="Lectura rápida para saber si la caja alcanza para los próximos 30 días."
+    />
+  );
+
+  if (mode === "usd_equivalent") {
+    const toUsd = (amount: number, currency: string) =>
+      currency === "USD" ? amount : amount / fxRate;
+    const totalSafe = state.reduce((sum, s) => sum + toUsd(s.safeCash30d, s.currency), 0);
+    const totalExpected = state.reduce((sum, s) => sum + toUsd(s.expectedCash30d, s.currency), 0);
+    const totalScheduled = state.reduce((sum, s) => sum + toUsd(s.scheduledPayments30d, s.currency), 0);
+
+    const level: CashRiskLevel =
+      totalScheduled === 0
+        ? "neutral"
+        : totalSafe >= 0
+          ? "ok"
+          : totalExpected >= 0
+            ? "warning"
+            : "danger";
+
+    const copy = { ...CONSOLIDATED_RISK_COPY[level] };
+    if (level === "warning") {
+      copy.detail = `Caja insuficiente USD ${Math.round(Math.abs(totalSafe)).toLocaleString("es-AR")}. Si cobrás lo pendiente, quedás cubierto.`;
+    } else if (level === "danger") {
+      copy.detail = `Aun cobrando lo pendiente, faltan USD ${Math.round(Math.abs(totalExpected)).toLocaleString("es-AR")}.`;
+    }
+
+    const styles = RISK_STYLES[level];
+    return (
+      <CopilotCard>
+        {sectionTitle}
+        <div className="mt-3">
+          <div className={`flex items-start justify-between gap-3 rounded-lg border p-4 ${styles.card}`}>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-[var(--copilot-ink)]">
+                {copy.icon} {copy.label}
+              </p>
+              <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">{copy.detail}</p>
+            </div>
+            <span className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium ${styles.chip}`}>
+              {copy.cta}
+            </span>
+          </div>
+        </div>
+      </CopilotCard>
+    );
+  }
+
   const summaries = state.map(buildRiskSummary);
   return (
     <CopilotCard>
-      <CopilotSectionTitle
-        title="Riesgo ejecutivo"
-        subtitle="Lectura rápida para saber si la caja alcanza para los próximos 30 días."
-      />
+      {sectionTitle}
       <div className="mt-3 space-y-2">
         {summaries.map((summary) => {
           const styles = RISK_STYLES[summary.level];
@@ -379,9 +466,7 @@ function RiesgoEjecutivoSection({ state }: { state: FinanzasCanonicalCurrencySta
                 </p>
                 <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">{summary.detail}</p>
               </div>
-              <span
-                className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium ${styles.chip}`}
-              >
+              <span className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium ${styles.chip}`}>
                 {summary.cta}
               </span>
             </div>
@@ -697,7 +782,7 @@ export function FinancialPanoramaView() {
 
         <CajaProyectadaSection state={canonicalState} />
 
-        <RiesgoEjecutivoSection state={canonicalState} />
+        <RiesgoEjecutivoSection state={canonicalState} mode={displayMode} fxRate={displayFxRate} />
 
         <CollapsibleSection
           id="finanzas-historico"

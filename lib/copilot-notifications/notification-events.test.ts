@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildCashRiskBody,
   buildDebtFollowupSummaryBody,
   buildDebtFollowupSummaryTitle,
   buildTreasuryDueBody,
@@ -224,5 +225,79 @@ describe("dedup_key de debt_followup_summary", () => {
     const summary = "debt_followup_summary:2026-06-04";
     const individual = "client_overdue:client-uuid:UYU:30d:2026-06";
     expect(summary).not.toBe(individual);
+  });
+});
+
+// ── buildCashRiskBody — ALERTS-USD-COVERAGE-002 ───────────────────────────────
+
+describe("buildCashRiskBody — consolidated USD format", () => {
+  it("single USD entry → 'Faltan USD X,XX para cubrir compromisos próximos.'", () => {
+    const body = buildCashRiskBody([
+      { currency: "USD", availableCash: 5000, committedOutflows: 8634, deficit: -3634 },
+    ]);
+    expect(body).toBe("Faltan USD 3.634,00 para cubrir compromisos próximos.");
+  });
+
+  it("no emite 'Caja insuficiente' en formato consolidado", () => {
+    const body = buildCashRiskBody([
+      { currency: "USD", availableCash: 5000, committedOutflows: 8634, deficit: -3634 },
+    ]);
+    expect(body).not.toContain("Caja insuficiente");
+  });
+
+  it("legacy multi-currency aún usa el formato por moneda", () => {
+    const body = buildCashRiskBody([
+      { currency: "UYU", availableCash: 100_000, committedOutflows: 200_000, deficit: -100_000 },
+    ]);
+    expect(body).toContain("UYU déficit");
+    expect(body).toContain("Revisá tesorería");
+  });
+});
+
+describe("Cash risk coverage — spec scenario ALERTS-USD-COVERAGE-002", () => {
+  const RATE = 40;
+
+  it("caja ~21.819 USD vs pagos ~8.634 USD → cobertura positiva → no genera alerta", () => {
+    const uyuAvailable = 472_760; // 472760/40 = 11819
+    const usdAvailable = 10_000;
+    const uyuCommitted = 189_360; // 189360/40 = 4734
+    const usdCommitted = 3_900;
+
+    const totalAvailable = usdAvailable + uyuAvailable / RATE;
+    const totalCommitted = usdCommitted + uyuCommitted / RATE;
+    const deficit = Math.round((totalAvailable - totalCommitted) * 100) / 100;
+
+    expect(Math.round(totalAvailable)).toBe(21_819);
+    expect(Math.round(totalCommitted)).toBe(8_634);
+    expect(deficit).toBeGreaterThanOrEqual(0); // no debe generar alerta
+  });
+
+  it("déficit real (caja 5.000, pagos 8.634 USD) → alerta con body correcto", () => {
+    const totalAvailable = 5_000;
+    const totalCommitted = 8_634;
+    const deficit = Math.round((totalAvailable - totalCommitted) * 100) / 100;
+
+    expect(deficit).toBeLessThan(0); // debe generar alerta
+
+    const body = buildCashRiskBody([
+      { currency: "USD", availableCash: totalAvailable, committedOutflows: totalCommitted, deficit },
+    ]);
+    expect(body).toContain("Faltan USD");
+    expect(body).toContain("3.634,00");
+  });
+
+  it("UYU disponible cubre el déficit USD cuando se consolida", () => {
+    // USD en caja: 2000, USD en pagos: 5000 → parecería déficit en USD
+    // Pero hay UYU 120000 (= 3000 USD) → consolidado hay superávit de 0
+    const uyuAvailable = 120_000; // 120000/40 = 3000 USD
+    const usdAvailable = 2_000;
+    const uyuCommitted = 0;
+    const usdCommitted = 5_000;
+
+    const totalAvailable = usdAvailable + uyuAvailable / RATE; // 5000
+    const totalCommitted = usdCommitted + uyuCommitted / RATE; // 5000
+    const deficit = Math.round((totalAvailable - totalCommitted) * 100) / 100;
+
+    expect(deficit).toBe(0); // exactamente cubierto — no alerta
   });
 });

@@ -409,7 +409,12 @@ type CashRiskDetectedOpts = {
   affectedCurrencies: CashRiskCurrencyDetail[];
 };
 
-function buildCashRiskBody(currencies: CashRiskCurrencyDetail[]): string {
+export function buildCashRiskBody(currencies: CashRiskCurrencyDetail[]): string {
+  if (currencies.length === 1 && currencies[0].currency === "USD") {
+    const deficit = Math.abs(currencies[0].deficit);
+    const formatted = deficit.toLocaleString("es-UY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return `Faltan USD ${formatted} para cubrir compromisos próximos.`;
+  }
   const parts = currencies.map((c) => {
     const deficit = Math.abs(c.deficit);
     return `${c.currency} déficit ${deficit.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;

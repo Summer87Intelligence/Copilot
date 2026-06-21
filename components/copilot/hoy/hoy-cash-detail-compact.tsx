@@ -1,34 +1,29 @@
 "use client";
 
-import { HOY_COPY } from "@/lib/copilot-hoy-ui-contract";
+export {
+  formatLastExpenseOrigin,
+  formatLastIncomeOrigin,
+} from "@/components/copilot/hoy/hoy-cash-detail-compact.helpers";
+
+import Link from "next/link";
+
+import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
+import { formatUsdEquivalent } from "@/lib/currency-display-mode";
 import { fmtCurrencyAmount } from "@/lib/copilot-today-business-pulse";
 import type { HoyCashPositionBlock } from "@/lib/copilot-hoy-treasury";
-import { copilotCurrencyClass } from "@/components/copilot/ui/copilot-visual-system";
 import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
+import {
+  formatLastExpenseOrigin,
+  formatLastIncomeOrigin,
+} from "@/components/copilot/hoy/hoy-cash-detail-compact.helpers";
+
+const KPI_DETAIL_BODY_CLASS =
+  "flex flex-1 flex-col justify-between text-[10px] leading-snug";
 
 function formatCashEventDate(ymd: string): string {
-  const [y, m, d] = ymd.split("-");
-  if (!y || !m || !d) return ymd;
-  return `${d}/${m}/${y}`;
-}
-
-/** UI-only: el concepto ya viene fusionado (manual o Zeta) sin alterar cálculos. */
-export function formatLastIncomeOrigin(concept: string): string {
-  const trimmed = concept.trim();
-  if (/^Recibo\b/i.test(trimmed)) {
-    const ref = trimmed.replace(/^Recibo\s*/i, "").trim() || trimmed;
-    return `Recibo Zeta: ${ref}`;
-  }
-  return `Ingreso manual: ${trimmed}`;
-}
-
-export function formatLastExpenseOrigin(concept: string): string {
-  const trimmed = concept.trim();
-  if (/^Pago\b/i.test(trimmed)) {
-    const rest = trimmed.replace(/^Pago\s*:?\s*/i, "").trim();
-    return rest ? `Pago: ${rest}` : trimmed;
-  }
-  return `Egreso manual: ${trimmed}`;
+  const [, m, d] = ymd.split("-");
+  if (!m || !d) return ymd;
+  return `${d}/${m}`;
 }
 
 function lookupMovementAmount(
@@ -50,117 +45,53 @@ function lookupMovementAmount(
   return match && Number.isFinite(match.amount) ? match.amount : null;
 }
 
-function resolveMovementAmount(
-  event: HoyCashPositionBlock["lastIncome"],
-  fallback: number | null
-): number | null {
-  if (event?.amount != null && Number.isFinite(event.amount)) return event.amount;
-  return fallback;
-}
-
-function LastMovementRow({
-  label,
-  event,
-  emptyLabel,
-  origin,
-  amount,
-  currency,
-}: {
+type LatestEvent = {
+  kind: "income" | "expense";
+  date: string;
   label: string;
-  event: { date: string; concept: string } | null;
-  emptyLabel: string;
-  origin?: string;
-  amount: number | null;
   currency: HoyCashPositionBlock["currency"];
-}) {
-  if (!event) {
-    return (
-      <div className="py-0.5">
-        <p className="text-[10px] font-semibold leading-snug text-[var(--copilot-ink-muted)]">{label}</p>
-        <p className="text-[10px] leading-snug text-[var(--copilot-ink-muted)]">{emptyLabel}</p>
-      </div>
-    );
+};
+
+function latestCashEvent(
+  blocks: readonly HoyCashPositionBlock[],
+  manualMovements?: readonly ManualCashMovement[]
+): LatestEvent | null {
+  let latest: LatestEvent | null = null;
+
+  for (const block of blocks) {
+    const candidates: Array<{ kind: "income" | "expense"; event: NonNullable<HoyCashPositionBlock["lastIncome"]> }> = [];
+    if (block.lastIncome) candidates.push({ kind: "income", event: block.lastIncome });
+    if (block.lastExpense) candidates.push({ kind: "expense", event: block.lastExpense });
+
+    for (const { kind, event } of candidates) {
+      if (latest && event.date <= latest.date) continue;
+      const fallback =
+        kind === "income"
+          ? lookupMovementAmount(manualMovements, block.currency, event.date, event.concept, "income")
+          : lookupMovementAmount(manualMovements, block.currency, event.date, event.concept, "expense");
+      const hasAmount =
+        (event.amount != null && Number.isFinite(event.amount)) || (fallback != null && fallback > 0);
+      if (!hasAmount && !event.concept) continue;
+
+      const label =
+        kind === "income"
+          ? formatLastIncomeOrigin(event.concept).replace(/^Ingreso manual: /, "Ingreso · ").replace(/^Recibo Zeta: /, "Recibo · ")
+          : formatLastExpenseOrigin(event.concept).replace(/^Egreso manual: /, "Egreso · ");
+
+      latest = { kind, date: event.date, label, currency: block.currency };
+    }
   }
 
-  return (
-    <div className="flex items-start justify-between gap-2 py-0.5">
-      <div className="min-w-0 flex-1">
-        <p
-          className="text-[10px] font-semibold leading-snug text-[var(--copilot-ink-muted)]"
-          title={label}
-        >
-          {label}
-        </p>
-        {origin ? (
-          <p className="truncate text-[10px] leading-snug text-[var(--copilot-ink)]" title={origin}>
-            {origin}
-          </p>
-        ) : null}
-        <p className="text-[10px] tabular-nums text-[var(--copilot-ink-muted)]">
-          {formatCashEventDate(event.date)}
-        </p>
-      </div>
-      {amount != null ? (
-        <span className="shrink-0 pt-3 text-[10px] font-semibold tabular-nums text-[var(--copilot-ink)]">
-          {fmtCurrencyAmount(amount, currency)}
-        </span>
-      ) : null}
-    </div>
-  );
+  return latest;
 }
 
-function CurrencyLastMovements({
-  block,
-  manualMovements,
-}: {
-  block: HoyCashPositionBlock;
-  manualMovements?: readonly ManualCashMovement[];
-}) {
-  const currencyClass = copilotCurrencyClass(block.currency);
-  const incomeFallback = block.lastIncome
-    ? lookupMovementAmount(
-        manualMovements,
-        block.currency,
-        block.lastIncome.date,
-        block.lastIncome.concept,
-        "income"
-      )
-    : null;
-  const expenseFallback = block.lastExpense
-    ? lookupMovementAmount(
-        manualMovements,
-        block.currency,
-        block.lastExpense.date,
-        block.lastExpense.concept,
-        "expense"
-      )
-    : null;
-  const incomeAmount = resolveMovementAmount(block.lastIncome, incomeFallback);
-  const expenseAmount = resolveMovementAmount(block.lastExpense, expenseFallback);
-
+function DetailLine({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border-t border-[var(--copilot-border)]/70 pt-2 first:border-t-0 first:pt-0">
-      <p className={`text-[10px] font-bold uppercase tracking-wide ${currencyClass}`}>
-        {block.currency}
-      </p>
-      <div className="mt-1 space-y-1">
-        <LastMovementRow
-          label={HOY_COPY.lastIncomeLabel}
-          event={block.lastIncome}
-          emptyLabel={HOY_COPY.noIncomeRegistered}
-          origin={block.lastIncome ? formatLastIncomeOrigin(block.lastIncome.concept) : undefined}
-          amount={incomeAmount}
-          currency={block.currency}
-        />
-        <LastMovementRow
-          label={HOY_COPY.lastExpenseLabel}
-          event={block.lastExpense}
-          emptyLabel={HOY_COPY.noExpenseRegistered}
-          origin={block.lastExpense ? formatLastExpenseOrigin(block.lastExpense.concept) : undefined}
-          amount={expenseAmount}
-          currency={block.currency}
-        />
-      </div>
+    <div className="flex min-h-[1.125rem] items-baseline justify-between gap-2">
+      <span className="text-[var(--copilot-ink-muted)]">{label}</span>
+      <span className="max-w-[58%] shrink-0 truncate text-right font-semibold tabular-nums text-[var(--copilot-ink)]">
+        {value}
+      </span>
     </div>
   );
 }
@@ -172,30 +103,54 @@ export function HoyCashDetailCompact({
   blocks: HoyCashPositionBlock[];
   manualMovements?: readonly ManualCashMovement[];
 }) {
+  const { mode, fxRate } = useDisplayCurrency();
   if (blocks.length === 0) return null;
 
-  const ordered = [...blocks].sort((a, b) => (a.currency === "UYU" ? -1 : b.currency === "UYU" ? 1 : 0));
+  const uyu = blocks.find((b) => b.currency === "UYU")?.availableCash ?? 0;
+  const usd = blocks.find((b) => b.currency === "USD")?.availableCash ?? 0;
+  const rate = fxRate > 0 ? fxRate : 40;
+  const totalUsd = Math.round((usd + uyu / rate) * 100) / 100;
+  const uyuAsUsd = Math.round((uyu / rate) * 100) / 100;
+  const latest = latestCashEvent(blocks, manualMovements);
+  const lastMovement = latest
+    ? `${latest.label} · ${formatCashEventDate(latest.date)}`
+    : "Sin movimientos";
+
+  const nativeTotal =
+    uyu === 0 && usd === 0
+      ? "—"
+      : [uyu !== 0 ? fmtCurrencyAmount(uyu, "UYU") : null, usd !== 0 ? fmtCurrencyAmount(usd, "USD") : null]
+          .filter(Boolean)
+          .join(" · ");
+
+  const lines: [string, string][] =
+    mode === "usd_equivalent"
+      ? [
+          ["Total estimado", formatUsdEquivalent(totalUsd)],
+          ["UYU convertido", formatUsdEquivalent(uyuAsUsd)],
+          ["USD disponible", fmtCurrencyAmount(usd, "USD").replace(/^USD /, "")],
+          ["Último movimiento", lastMovement],
+        ]
+      : [
+          ["Total estimado", nativeTotal],
+          ["UYU disponible", uyu !== 0 ? fmtCurrencyAmount(uyu, "UYU").replace(/^UYU /, "") : "—"],
+          ["USD disponible", usd !== 0 ? fmtCurrencyAmount(usd, "USD").replace(/^USD /, "") : "—"],
+          ["Último movimiento", lastMovement],
+        ];
 
   return (
-    <div className="space-y-2">
-      <header className="min-w-0">
-        <p className="text-[11px] font-semibold leading-snug text-[var(--copilot-ink)]">
-          {HOY_COPY.cashLastMovementsTitle}
-        </p>
-        <p
-          className="mt-0.5 text-[10px] leading-snug text-[var(--copilot-ink-muted)]"
-          title={HOY_COPY.cashLastMovementsCaption}
-        >
-          {HOY_COPY.cashLastMovementsCaption}
-        </p>
-      </header>
-      {ordered.map((block) => (
-        <CurrencyLastMovements
-          key={block.currency}
-          block={block}
-          manualMovements={manualMovements}
-        />
-      ))}
+    <div className={KPI_DETAIL_BODY_CLASS}>
+      <div className="space-y-1">
+        {lines.map(([label, value]) => (
+          <DetailLine key={label} label={label} value={value} />
+        ))}
+      </div>
+      <Link
+        href="/copilot/tesoreria"
+        className="inline-flex min-h-[1.125rem] items-center pt-0.5 text-[10px] font-semibold text-[var(--copilot-accent)] hover:underline"
+      >
+        Ver Tesorería →
+      </Link>
     </div>
   );
 }

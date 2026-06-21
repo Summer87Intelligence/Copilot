@@ -25,9 +25,7 @@ import type {
   TreasuryOutflowSummary,
   TreasuryScheduledPayment,
 } from "@/lib/treasury/treasury-scheduled-payments";
-import { CopilotCollapsiblePanel } from "@/components/copilot/copilot-collapsible-panel";
-import { HoyMonthEndProjectionSection } from "./hoy-month-end-projection-section";
-import { HoyUpcomingCommitmentsSection } from "./hoy-upcoming-commitments-section";
+import { HoyWeeklyCashProjection } from "./hoy-weekly-cash-projection";
 import { HoyExecutiveCalendarSection } from "./hoy-executive-calendar-section";
 
 import { AttentionClientsDrawer } from "./hoy-attention-clients-drawer";
@@ -172,7 +170,6 @@ export function HoyPageView({
   onRefresh,
 }: HoyPageViewProps) {
   const [drawer, setDrawer] = useState<DrawerState>({ kind: "closed" });
-  const [monthEndDrawerOpen, setMonthEndDrawerOpen] = useState(false);
   const [cockpitCard, setCockpitCard] = useState<HoyCockpitCardId | null>(null);
 
   const debtorsSectionRef = useRef<HTMLElement>(null);
@@ -323,20 +320,25 @@ export function HoyPageView({
           projection30dBlocks={pulse.projection30dBlocks}
           treasuryScheduledPayments={treasuryScheduledPayments}
           today={today}
+          debtorClientsCount={pulse.clientCounts.debtorClients}
           onCardClick={setCockpitCard}
           activeCard={cockpitCard}
         />
 
-        <HoyUpcomingCommitmentsSection
-          payments={treasuryScheduledPayments ?? []}
+        <HoyWeeklyCashProjection
           today={today}
+          cashPositions={treasuryCashPositions}
+          scheduledPayments={treasuryScheduledPayments}
+          manualCashMovements={manualCashMovements}
         />
 
-        <HoyExecutiveCalendarSection
-          payments={treasuryScheduledPayments ?? []}
-          today={today}
-          clientNames={calendarClientNames}
-        />
+        <div id="pagos-proximos" className="scroll-mt-24">
+          <HoyExecutiveCalendarSection
+            payments={treasuryScheduledPayments ?? []}
+            today={today}
+            clientNames={calendarClientNames}
+          />
+        </div>
 
         <CopilotCard className="w-full !p-3">
           <div className="flex flex-wrap items-center justify-between gap-1.5">
@@ -391,15 +393,6 @@ export function HoyPageView({
         )}
 
         <CollectionAgendaHoyCard />
-
-        <CopilotCollapsiblePanel title={HOY_COPY.monthEndCollapsedTitle} defaultOpen={false}>
-          <HoyMonthEndProjectionSection
-            scenarioProjections={pulse.monthEndScenarioProjections}
-            drawerOpen={monthEndDrawerOpen}
-            onOpenDrawer={() => setMonthEndDrawerOpen(true)}
-            onCloseDrawer={() => setMonthEndDrawerOpen(false)}
-          />
-        </CopilotCollapsiblePanel>
 
       </div>
 

@@ -73,8 +73,9 @@ describe("convertToUsdEquivalent", () => {
 });
 
 describe("formatUsdEquivalent", () => {
-  it("prefixes with ~USD", () => {
-    expect(formatUsdEquivalent(200)).toContain("~USD");
+  it("prefixes with USD (no tilde)", () => {
+    expect(formatUsdEquivalent(200)).toContain("USD");
+    expect(formatUsdEquivalent(200)).not.toContain("~");
     expect(formatUsdEquivalent(200)).toContain("200");
   });
 });
@@ -91,7 +92,8 @@ describe("formatDisplayAmounts", () => {
     if (result.kind === "usd_equivalent") {
       expect(result.total).toBe(200);
       expect(result.fxRate).toBe(40);
-      expect(result.label).toContain("~USD");
+      expect(result.label).toContain("USD");
+      expect(result.label).not.toContain("~");
     }
   });
 

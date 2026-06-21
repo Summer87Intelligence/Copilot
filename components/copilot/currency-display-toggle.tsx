@@ -25,6 +25,19 @@ export function UsdEquivalentActiveNotice() {
   );
 }
 
+function SwitchTrack({ on }: { on: boolean }) {
+  return (
+    <span
+      className={`relative inline-flex h-[1.125rem] w-8 shrink-0 items-center rounded-full transition-colors duration-150 ${on ? "bg-[var(--copilot-accent)]" : "bg-[var(--copilot-subtle)]"}`}
+      aria-hidden
+    >
+      <span
+        className={`absolute h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-150 ${on ? "translate-x-[1.0625rem]" : "translate-x-px"}`}
+      />
+    </span>
+  );
+}
+
 export function CurrencyDisplayToggle() {
   const { mode, fxRate, setMode, setFxRate } = useDisplayCurrency();
   const isUsdMode = mode === "usd_equivalent";
@@ -54,41 +67,47 @@ export function CurrencyDisplayToggle() {
   }
 
   return (
-    <div className="flex items-center gap-1.5 text-xs text-[var(--copilot-ink-muted)]">
+    <div className="flex items-center gap-2 text-xs text-[var(--copilot-ink-muted)]">
       <button
+        type="button"
+        role="switch"
+        aria-checked={isUsdMode}
         onClick={handleToggle}
-        title={isUsdMode ? "Ver en moneda original (UYU / USD)" : "Ver totales en USD estimado"}
-        className={[
-          "flex items-center gap-1 rounded px-2 py-0.5 transition-colors",
-          isUsdMode
-            ? "bg-[var(--copilot-accent)] text-[var(--copilot-accent-fg)] font-medium"
-            : "bg-[var(--copilot-surface-2)] hover:bg-[var(--copilot-surface-3)]",
-        ].join(" ")}
+        title="Convierte UYU a USD solo para visualización. Los datos originales no cambian."
+        className="flex items-center gap-1.5 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]"
       >
-        <span>{isUsdMode ? "Vista en USD" : "Moneda original"}</span>
+        <SwitchTrack on={isUsdMode} />
+        <span className={`transition-colors ${isUsdMode ? "font-medium text-[var(--copilot-ink)]" : "text-[var(--copilot-ink-muted)]"}`}>
+          {isUsdMode ? "Vista USD" : "Moneda original"}
+        </span>
       </button>
 
       {isUsdMode && (
-        editingRate ? (
-          <input
-            autoFocus
-            className="w-16 rounded border border-[var(--copilot-border)] bg-[var(--copilot-surface-1)] px-1.5 py-0.5 text-xs text-[var(--copilot-ink)] focus:outline-none"
-            value={rateInput}
-            onChange={(e) => setRateInput(e.target.value)}
-            onBlur={handleRateCommit}
-            onKeyDown={handleRateKeyDown}
-            placeholder="TC"
-            aria-label="Tipo de cambio UYU por USD"
-          />
-        ) : (
-          <button
-            onClick={handleRateClick}
-            title="Editar tipo de cambio"
-            className="rounded px-1 py-0.5 hover:bg-[var(--copilot-surface-3)]"
-          >
-            TC {fxRate}
-          </button>
-        )
+        <>
+          <span className="select-none text-[var(--copilot-border)]" aria-hidden>·</span>
+          <span className="text-[var(--copilot-ink-muted)]">TC</span>
+          {editingRate ? (
+            <input
+              autoFocus
+              className="w-12 rounded border border-[var(--copilot-border)] bg-[var(--copilot-surface-1)] px-1.5 py-0.5 text-xs text-[var(--copilot-ink)] focus:outline-none focus:ring-1 focus:ring-[var(--copilot-accent)]"
+              value={rateInput}
+              onChange={(e) => setRateInput(e.target.value)}
+              onBlur={handleRateCommit}
+              onKeyDown={handleRateKeyDown}
+              placeholder="40"
+              aria-label="Tipo de cambio UYU por USD"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={handleRateClick}
+              title="Editar tipo de cambio"
+              className="rounded px-1 py-0.5 font-medium text-[var(--copilot-ink)] underline-offset-2 hover:bg-[var(--copilot-surface-3)] hover:underline"
+            >
+              {fxRate}
+            </button>
+          )}
+        </>
       )}
     </div>
   );

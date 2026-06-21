@@ -36,9 +36,9 @@ export function convertToUsdEquivalent(amount: CurrencyAmount, uyuPerUsd: number
   return roundUsd(consolidateToUsd(amount.uyu, amount.usd, rate));
 }
 
-/** "~USD 1,234.56" — visual label for consolidated amounts. */
+/** "USD 1,234.56" — visual label for consolidated amounts. */
 export function formatUsdEquivalent(totalUsd: number): string {
-  return `~USD ${totalUsd.toLocaleString("es-UY", {
+  return `USD ${totalUsd.toLocaleString("es-UY", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;

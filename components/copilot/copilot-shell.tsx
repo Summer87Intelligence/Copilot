@@ -58,7 +58,7 @@ export function CopilotShell({
         basePath="/copilot"
         storageKey={COPILOT_SIDEBAR_COLLAPSED_STORAGE_KEY}
         brandTitle="Summer87 Copilot"
-        brandSubtitle="Prototipo operativo"
+        brandSubtitle="Summer87 Intelligence"
         headerStrip={
           <>
             <CopilotEnvironmentHealthStrip sessionPreview={sessionPreview} readOnlyLabel={readOnlyLabel} />

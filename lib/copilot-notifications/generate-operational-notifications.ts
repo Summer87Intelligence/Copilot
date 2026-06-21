@@ -11,6 +11,7 @@ import {
   notifyCashRiskDetected,
   type CashRiskCurrencyDetail,
 } from "./notification-events";
+import { DEFAULT_DISPLAY_FX_RATE_UYU_PER_USD } from "@/lib/currency-display-mode";
 import { businessDateYmd } from "./business-date";
 import {
   buildDebtLifecycleStateMap,
@@ -645,9 +646,54 @@ async function generateDebtFollowupSummaryNotification(
 // ─── Cash risk ───────────────────────────────────────────────────────────────
 
 /**
- * Fires cash_risk_detected when projected cash (opening balance + net manual
- * movements − upcoming 30d outflows) is negative for any currency.
- * Deduped per day per affected currency set — fires at most once per day.
+ * Marks unread cash_risk_detected notifications as read when consolidated USD
+ * coverage is now positive (UYU converted at system rate). Adds an audit note
+ * to metadata so the resolution is traceable.
+ * Returns the count of notifications resolved.
+ */
+async function resolveStaleConsolidatedCashRiskNotifications(
+  admin: AdminClient,
+  tenantCompanyId: string,
+  consolidatedDeficit: number
+): Promise<number> {
+  if (consolidatedDeficit < 0) return 0; // still in deficit — keep alerts
+
+  const { data } = await admin
+    .from("copilot_notifications")
+    .select("id, metadata")
+    .eq("workspace_company_id", tenantCompanyId)
+    .eq("type", "cash_risk_detected")
+    .is("read_at", null);
+
+  if (!data?.length) return 0;
+
+  const now = new Date().toISOString();
+  let resolved = 0;
+  for (const row of data as Array<{ id: string; metadata: Record<string, unknown> | null }>) {
+    const existingMeta = row.metadata ?? {};
+    const { error } = await admin
+      .from("copilot_notifications")
+      .update({
+        read_at: now,
+        metadata: {
+          ...existingMeta,
+          auto_resolved_reason: "Resolved after consolidated USD coverage recalculation.",
+          resolved_at: now,
+        },
+      })
+      .eq("id", row.id)
+      .eq("workspace_company_id", tenantCompanyId)
+      .is("read_at", null);
+    if (!error) resolved++;
+  }
+  return resolved;
+}
+
+/**
+ * Fires cash_risk_detected when projected consolidated cash (all currencies
+ * converted to USD at the system rate) is negative for the 30d horizon.
+ * Also resolves any stale cash_risk_detected notifications when coverage turns positive.
+ * Deduped per day — fires at most once per day.
  */
 async function generateCashRiskNotifications(
   admin: AdminClient,
@@ -722,17 +768,31 @@ async function generateCashRiskNotifications(
     committedByCurrency[cur] = (committedByCurrency[cur] ?? 0) + amt;
   }
 
-  // Evaluate deficit per currency
+  // Evaluate consolidated USD deficit — UYU is converted at the system rate so
+  // pesos already in the vault count toward USD coverage. Avoids spurious alerts
+  // when the company has enough UYU to cover all outflows once consolidated.
+  const rate = DEFAULT_DISPLAY_FX_RATE_UYU_PER_USD;
+  const uyuAvailable = (openingByCurrency["UYU"]?.amount ?? 0) + (netManualByCurrency["UYU"] ?? 0);
+  const usdAvailable = (openingByCurrency["USD"]?.amount ?? 0) + (netManualByCurrency["USD"] ?? 0);
+  const uyuCommitted = committedByCurrency["UYU"] ?? 0;
+  const usdCommitted = committedByCurrency["USD"] ?? 0;
+
+  const totalAvailableUsd = usdAvailable + uyuAvailable / rate;
+  const totalCommittedUsd = usdCommitted + uyuCommitted / rate;
+  const consolidatedDeficit = Math.round((totalAvailableUsd - totalCommittedUsd) * 100) / 100;
+
+  // Resolve any stale alerts before deciding whether to create a new one.
+  // Runs even when coverage is positive so outdated notifications get cleaned up.
+  await resolveStaleConsolidatedCashRiskNotifications(admin, tenantCompanyId, consolidatedDeficit);
+
   const affectedCurrencies: CashRiskCurrencyDetail[] = [];
-  for (const cur of ["UYU", "USD"]) {
-    const opening = openingByCurrency[cur]?.amount ?? 0;
-    const net = netManualByCurrency[cur] ?? 0;
-    const available = opening + net;
-    const committed = committedByCurrency[cur] ?? 0;
-    const deficit = available - committed;
-    if (deficit < 0) {
-      affectedCurrencies.push({ currency: cur, availableCash: available, committedOutflows: committed, deficit });
-    }
+  if (consolidatedDeficit < 0) {
+    affectedCurrencies.push({
+      currency: "USD",
+      availableCash: Math.round(totalAvailableUsd * 100) / 100,
+      committedOutflows: Math.round(totalCommittedUsd * 100) / 100,
+      deficit: consolidatedDeficit,
+    });
   }
 
   if (affectedCurrencies.length === 0) return;

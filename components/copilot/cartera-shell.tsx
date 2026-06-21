@@ -216,7 +216,7 @@ export function CarteraShell() {
             </section>
 
             <section aria-label="Clientes en riesgo">
-              <SectionHeading title="Clientes en riesgo y explorador" />
+              <SectionHeading title="Clientes en riesgo" />
               <CarteraCompactKpiGrid report={report} variant="cobranza" />
               {structuralGaps.length > 0 && <HistoricalGapNote gaps={structuralGaps} />}
             </section>

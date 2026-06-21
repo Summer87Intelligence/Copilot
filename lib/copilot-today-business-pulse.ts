@@ -60,11 +60,6 @@ import {
   type DebtorCollectionRow,
   type FinancialSituationBlock,
 } from "@/lib/copilot-hoy-executive";
-import {
-  buildHoyMonthEndProjectionBundle,
-  type HoyMonthEndProjection,
-  type HoyMonthEndProjectionBundle,
-} from "@/lib/copilot-hoy-month-end-projection";
 import type {
   TreasuryOutflowSummary,
   TreasuryScheduledPayment,
@@ -184,10 +179,6 @@ export type TodayBusinessPulse = {
   currentStateBlocks: HoyCurrentStateBlock[];
   periodActivity: HoyPeriodActivity;
   periodActivityBlocks: HoyPeriodActivityBlock[];
-  /** Proyección al cierre del mes — escenario esperado (compat). */
-  monthEndProjection: HoyMonthEndProjection | null;
-  /** Proyecciones por escenario (FEATURE-001B). */
-  monthEndScenarioProjections: HoyMonthEndProjectionBundle;
 };
 
 export type {
@@ -1266,17 +1257,6 @@ export function buildTodayBusinessPulse(input: BusinessPulseInput): TodayBusines
   });
   const treasuryOutflowsConfigured = treasurySummaries.some((s) => s.itemsCount > 0);
 
-  const monthEndScenarioProjections = buildHoyMonthEndProjectionBundle({
-    asOfDate,
-    pendingByCurrency: portfolioPending,
-    cashPositionBlocks,
-    treasuryCashPositions: cashPositions,
-    treasurySummaries,
-    scheduledPayments: input.treasuryScheduledPayments,
-  });
-  const monthEndProjection =
-    monthEndScenarioProjections.scenarios[monthEndScenarioProjections.defaultScenario];
-
   const allDebtorRows = buildDebtorCollectionRows(rows);
   const operationalIndicators = buildOperationalIndicators({
     totalClients: rows.length,
@@ -1351,7 +1331,5 @@ export function buildTodayBusinessPulse(input: BusinessPulseInput): TodayBusines
     currentStateBlocks,
     periodActivity,
     periodActivityBlocks,
-    monthEndProjection,
-    monthEndScenarioProjections,
   };
 }
