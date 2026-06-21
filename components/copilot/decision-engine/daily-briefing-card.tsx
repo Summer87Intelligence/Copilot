@@ -386,7 +386,7 @@ export function DailyBriefingCard({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold text-[var(--copilot-text)]">Centro operacional</h2>
+          <h2 className="text-base font-semibold text-[var(--copilot-text)]">Resumen ejecutivo</h2>
           <p className="text-xs text-[var(--copilot-text-muted)] mt-0.5">
             Actualizado {formatRelativeTime(generatedAt)}
             {cached && <span className="ml-1 opacity-60">(caché)</span>}
@@ -419,14 +419,14 @@ export function DailyBriefingCard({
       />
 
       {/* 3. Inteligencia operacional (colapsable) */}
-      <CollapsibleSection title="Inteligencia operacional" defaultOpen={true}>
+      <CollapsibleSection title="Inteligencia" defaultOpen={false}>
         <div className="p-0">
           <OperationalIntelligencePanel />
         </div>
       </CollapsibleSection>
 
       {/* 4. Forecast predictivo (colapsable) */}
-      <CollapsibleSection title="Forecast predictivo" defaultOpen={true}>
+      <CollapsibleSection title="Forecast" defaultOpen={false}>
         <div className="p-0">
           <PredictiveIntelligencePanel />
         </div>

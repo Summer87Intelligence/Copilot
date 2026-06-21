@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildClientDebtSettledBody,
   buildClientDebtSettledDedupKey,
   buildDebtLifecycleStateMap,
   buildInvoiceOverdueDedupKey,
@@ -41,6 +42,38 @@ describe("buildPartialCollectionBody", () => {
       "ACME hizo un pago parcial."
     );
   });
+});
+
+// ── buildClientDebtSettledBody ────────────────────────────────────────────────
+
+describe("buildClientDebtSettledBody", () => {
+  it("sin monto → copy genérico (backward compat)", () =>
+    expect(buildClientDebtSettledBody("ACME")).toBe("ACME pagó su deuda."));
+
+  it("con monto UYU → muestra monto pagado", () =>
+    expect(buildClientDebtSettledBody("ACME", { amount: 15000, currency: "UYU" })).toBe(
+      "ACME pagó UYU 15.000."
+    ));
+
+  it("con monto USD → muestra monto pagado", () =>
+    expect(buildClientDebtSettledBody("Empresa XYZ", { amount: 601, currency: "USD" })).toBe(
+      "Empresa XYZ pagó USD 601."
+    ));
+
+  it("hadOverdue + monto → describe deuda atrasada con monto", () =>
+    expect(
+      buildClientDebtSettledBody("ACME", { hadOverdue: true, amount: 15000, currency: "UYU" })
+    ).toBe("ACME pagó su deuda atrasada de UYU 15.000."));
+
+  it("hadOverdue sin monto → copy sin monto", () =>
+    expect(buildClientDebtSettledBody("ACME", { hadOverdue: true })).toBe(
+      "ACME pagó su deuda atrasada."
+    ));
+
+  it("amount = 0 explícito → copy genérico (no genera 'USD 0')", () =>
+    expect(buildClientDebtSettledBody("ACME", { amount: 0, currency: "USD" })).toBe(
+      "ACME pagó su deuda."
+    ));
 });
 
 describe("shouldNotifyNewDebtor", () => {

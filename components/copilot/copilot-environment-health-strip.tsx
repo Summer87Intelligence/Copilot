@@ -8,6 +8,7 @@ import { TodayDateDisplay } from "@/components/copilot/copilot-today-date";
 import { OperationalSemaphoreIndicator } from "@/components/copilot/operational-semaphore-indicator";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { useCopilotOperationalPulse } from "@/components/copilot/copilot-operational-pulse-context";
+import { CurrencyDisplayToggle } from "@/components/copilot/currency-display-toggle";
 
 function readOnlyBadgeShortLabel(label: string): string {
   if (label.toLowerCase().includes("demo")) return "Demo";
@@ -41,6 +42,7 @@ export function CopilotEnvironmentHealthStrip({
             <span className="hidden sm:inline">{readOnlyLabel}</span>
           </span>
         ) : null}
+        <CurrencyDisplayToggle />
         <ThemeToggle />
         <CopilotNotificationBell />
         <CopilotUserBar sessionPreview={sessionPreview} />

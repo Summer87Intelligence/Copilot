@@ -407,7 +407,7 @@ export function HoyExecutiveCalendarSection({
           <div className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4 shrink-0 text-[var(--copilot-accent)]" aria-hidden />
             <div>
-              <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">Agenda ejecutiva</h2>
+              <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">Próximos cobros y pagos</h2>
               <p className="text-[11px] text-[var(--copilot-ink-muted)]">
                 Pagos, compromisos y seguimientos por período.
               </p>

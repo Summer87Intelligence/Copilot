@@ -52,6 +52,8 @@ export type CollectionAgendaItem = {
   channelLabel?: string;
   outcomeLabel?: string;
   amountLabel?: string;
+  amountRaw?: number;
+  amountCurrency?: "UYU" | "USD";
   note?: string;
   href: string;
 };
@@ -204,6 +206,8 @@ export function buildCollectionAgenda(
         severity: "critical",
         dateLabel: `Prometió pagar ${fmtDate(action.promiseDate)}`,
         amountLabel: amountLabel(action.promiseAmount, action.promiseCurrency),
+        amountRaw: action.promiseAmount ?? undefined,
+        amountCurrency: action.promiseCurrency === "USD" || action.promiseCurrency === "UYU" ? action.promiseCurrency : undefined,
       });
       continue;
     }
@@ -255,6 +259,8 @@ export function buildCollectionAgenda(
         severity: "medium",
         dateLabel: `Prometió pagar ${fmtDate(action.promiseDate)}`,
         amountLabel: amountLabel(action.promiseAmount, action.promiseCurrency),
+        amountRaw: action.promiseAmount ?? undefined,
+        amountCurrency: action.promiseCurrency === "USD" || action.promiseCurrency === "UYU" ? action.promiseCurrency : undefined,
       });
       continue;
     }

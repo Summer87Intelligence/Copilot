@@ -59,6 +59,8 @@ import {
   formatOverdueDaysLabel,
 } from "@/lib/copilot-format";
 import type { CurrencyFilter } from "@/components/copilot/financial-control-bar";
+import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
+import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 
 // ---------------------------------------------------------------------------
 // Tipos internos
@@ -917,6 +919,8 @@ function ClientRow({
   onOpenDrawer: () => void;
   reduce: boolean;
 }) {
+  const { mode, fxRate } = useDisplayCurrency();
+  const isUsd = mode === "usd_equivalent";
   const risk = deriveRiskLevel(client);
   const riskCfg = RISK_BADGE[risk];
   const displayStatus = deriveClientDisplayStatus(client);
@@ -940,28 +944,64 @@ function ClientRow({
           </p>
         </td>
 
-        {/* Saldo UYU */}
+        {/* Saldo UYU — en modo USD muestra el consolidado (ambas monedas) cuando no hay filtro */}
         {(currencyFilter === null || currencyFilter === "UYU") && (
           <td className="px-3 py-2.5 text-right tabular-nums">
-            {(client.pendingByCurrency.UYU ?? 0) > 0 ? (
-              <span className="text-sm font-semibold text-[var(--copilot-danger-text-strong)]">
-                {formatCarteraMoney("UYU", client.pendingByCurrency.UYU ?? 0, { fractionDigits: 0 })}
-              </span>
+            {isUsd ? (
+              (() => {
+                const total = currencyFilter === null
+                  ? convertToUsdEquivalent({ uyu: client.pendingByCurrency.UYU ?? 0, usd: client.pendingByCurrency.USD ?? 0 }, fxRate)
+                  : convertToUsdEquivalent({ uyu: client.pendingByCurrency.UYU ?? 0, usd: 0 }, fxRate);
+                return total > 0 ? (
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-semibold tabular-nums text-[var(--copilot-danger-text-strong)]">
+                      {formatUsdEquivalent(total)}
+                    </p>
+                    <p className="text-[10px] text-[var(--copilot-ink-muted)]">TC {fxRate}</p>
+                  </div>
+                ) : (
+                  <span className="text-[12px] text-[var(--copilot-ink-muted)]">—</span>
+                );
+              })()
             ) : (
-              <span className="text-[12px] text-[var(--copilot-ink-muted)]">—</span>
+              (client.pendingByCurrency.UYU ?? 0) > 0 ? (
+                <span className="text-sm font-semibold text-[var(--copilot-danger-text-strong)]">
+                  {formatCarteraMoney("UYU", client.pendingByCurrency.UYU ?? 0, { fractionDigits: 0 })}
+                </span>
+              ) : (
+                <span className="text-[12px] text-[var(--copilot-ink-muted)]">—</span>
+              )
             )}
           </td>
         )}
 
-        {/* Saldo USD */}
+        {/* Saldo USD — suprimido en modo USD cuando el consolidado ya aparece en la celda UYU */}
         {(currencyFilter === null || currencyFilter === "USD") && (
           <td className="px-3 py-2.5 text-right tabular-nums">
-            {(client.pendingByCurrency.USD ?? 0) > 0 ? (
-              <span className="text-sm font-semibold text-[var(--copilot-danger-text-strong)]">
-                {formatCarteraMoney("USD", client.pendingByCurrency.USD ?? 0)}
-              </span>
-            ) : (
+            {isUsd && currencyFilter === null ? (
               <span className="text-[12px] text-[var(--copilot-ink-muted)]">—</span>
+            ) : isUsd ? (
+              (() => {
+                const total = convertToUsdEquivalent({ uyu: 0, usd: client.pendingByCurrency.USD ?? 0 }, fxRate);
+                return total > 0 ? (
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-semibold tabular-nums text-[var(--copilot-danger-text-strong)]">
+                      {formatUsdEquivalent(total)}
+                    </p>
+                    <p className="text-[10px] text-[var(--copilot-ink-muted)]">TC {fxRate}</p>
+                  </div>
+                ) : (
+                  <span className="text-[12px] text-[var(--copilot-ink-muted)]">—</span>
+                );
+              })()
+            ) : (
+              (client.pendingByCurrency.USD ?? 0) > 0 ? (
+                <span className="text-sm font-semibold text-[var(--copilot-danger-text-strong)]">
+                  {formatCarteraMoney("USD", client.pendingByCurrency.USD ?? 0)}
+                </span>
+              ) : (
+                <span className="text-[12px] text-[var(--copilot-ink-muted)]">—</span>
+              )
             )}
           </td>
         )}
@@ -1229,6 +1269,8 @@ function ClientMobileCard({
   onOpenDrawer: () => void;
   reduce: boolean;
 }) {
+  const { mode, fxRate: mobileCardFxRate } = useDisplayCurrency();
+  const isMobileUsd = mode === "usd_equivalent";
   const displayStatus = deriveClientDisplayStatus(client);
   const displayStatusCfg = CLIENT_DISPLAY_STATUS_BADGE[displayStatus];
   const showUyu =
@@ -1277,22 +1319,41 @@ function ClientMobileCard({
       </div>
 
       <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
-        {showUyu ? (
-          <div>
-            <dt className="text-[var(--copilot-ink-muted)]">Saldo UYU</dt>
-            <dd className="font-semibold tabular-nums text-[var(--copilot-ink)]">
-              {formatCarteraMoney("UYU", client.pendingByCurrency.UYU ?? 0, { fractionDigits: 0 })}
-            </dd>
-          </div>
-        ) : null}
-        {showUsd ? (
-          <div>
-            <dt className="text-[var(--copilot-ink-muted)]">Saldo USD</dt>
-            <dd className="font-semibold tabular-nums text-[var(--copilot-ink)]">
-              {formatCarteraMoney("USD", client.pendingByCurrency.USD ?? 0)}
-            </dd>
-          </div>
-        ) : null}
+        {isMobileUsd ? (
+          (showUyu || showUsd) ? (
+            <div>
+              <dt className="text-[var(--copilot-ink-muted)]">Saldo (USD est.)</dt>
+              <dd className="font-semibold tabular-nums text-[var(--copilot-ink)]">
+                {formatUsdEquivalent(convertToUsdEquivalent({
+                  uyu: client.pendingByCurrency.UYU ?? 0,
+                  usd: client.pendingByCurrency.USD ?? 0,
+                }, mobileCardFxRate))}
+                <span className="ml-1 text-[9px] font-normal text-[var(--copilot-ink-muted)]">
+                  TC {mobileCardFxRate}
+                </span>
+              </dd>
+            </div>
+          ) : null
+        ) : (
+          <>
+            {showUyu ? (
+              <div>
+                <dt className="text-[var(--copilot-ink-muted)]">Saldo UYU</dt>
+                <dd className="font-semibold tabular-nums text-[var(--copilot-ink)]">
+                  {formatCarteraMoney("UYU", client.pendingByCurrency.UYU ?? 0, { fractionDigits: 0 })}
+                </dd>
+              </div>
+            ) : null}
+            {showUsd ? (
+              <div>
+                <dt className="text-[var(--copilot-ink-muted)]">Saldo USD</dt>
+                <dd className="font-semibold tabular-nums text-[var(--copilot-ink)]">
+                  {formatCarteraMoney("USD", client.pendingByCurrency.USD ?? 0)}
+                </dd>
+              </div>
+            ) : null}
+          </>
+        )}
         <div>
           <dt className="text-[var(--copilot-ink-muted)]">Facturas</dt>
           <dd className="tabular-nums text-[var(--copilot-ink)]">

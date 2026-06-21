@@ -10,6 +10,8 @@ import { CopilotEnvironmentHealthStrip } from "@/components/copilot/copilot-envi
 import type { CopilotSessionPreview } from "@/components/copilot/copilot-session-preview";
 import { CopilotModuleShell } from "@/components/copilot/module-shell";
 import { CopilotPermissionsContext } from "@/lib/auth/copilot-permissions-context";
+import { DisplayCurrencyProvider } from "@/components/copilot/display-currency-provider";
+import { UsdEquivalentActiveNotice } from "@/components/copilot/currency-display-toggle";
 
 /** Preferencia de sidebar del módulo Copilot (1 = colapsado, 0 = expandido). */
 export const COPILOT_SIDEBAR_COLLAPSED_STORAGE_KEY = "copilot_sidebar_collapsed";
@@ -47,6 +49,7 @@ export function CopilotShell({
 
   return (
     <CopilotPermissionsContext.Provider value={permissions}>
+    <DisplayCurrencyProvider>
     <CopilotNotificationsProvider>
     <CopilotAlertsProvider>
       <CopilotOperationalPulseProvider>
@@ -55,9 +58,12 @@ export function CopilotShell({
         basePath="/copilot"
         storageKey={COPILOT_SIDEBAR_COLLAPSED_STORAGE_KEY}
         brandTitle="Summer87 Copilot"
-        brandSubtitle="Prototipo operativo"
+        brandSubtitle="Summer87 Intelligence"
         headerStrip={
-          <CopilotEnvironmentHealthStrip sessionPreview={sessionPreview} readOnlyLabel={readOnlyLabel} />
+          <>
+            <CopilotEnvironmentHealthStrip sessionPreview={sessionPreview} readOnlyLabel={readOnlyLabel} />
+            <UsdEquivalentActiveNotice />
+          </>
         }
         autoCollapseWhenPathIncludes="/copilot/atencion-prioritaria"
       >
@@ -66,6 +72,7 @@ export function CopilotShell({
       </CopilotOperationalPulseProvider>
     </CopilotAlertsProvider>
     </CopilotNotificationsProvider>
+    </DisplayCurrencyProvider>
     </CopilotPermissionsContext.Provider>
   );
 }

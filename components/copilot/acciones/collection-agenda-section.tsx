@@ -15,6 +15,8 @@ import {
   softCalloutClass,
   warningFinancialCardClass,
 } from "@/components/copilot/ui/copilot-visual-system";
+import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
+import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 
 // ─── Filter types ─────────────────────────────────────────────────────────────
 
@@ -130,6 +132,7 @@ function AgendaItemCard({
   onArchived: (actionId: string) => void;
 }) {
   const { canWrite } = useCopilotPermissions();
+  const { mode, fxRate } = useDisplayCurrency();
   const { bg, label: typeLabel } = typeBadgeCls(item.type);
   const [confirming, setConfirming] = useState(false);
   const [archiving, setArchiving] = useState(false);
@@ -173,9 +176,11 @@ function AgendaItemCard({
             </span>
           ) : null}
         </div>
-        {item.amountLabel ? (
+        {item.amountLabel || item.amountRaw != null ? (
           <span className={`text-sm ${metricValueClass}`}>
-            {item.amountLabel}
+            {mode === "usd_equivalent" && item.amountRaw != null && item.amountCurrency
+              ? formatUsdEquivalent(convertToUsdEquivalent({ uyu: item.amountCurrency === "UYU" ? item.amountRaw : 0, usd: item.amountCurrency === "USD" ? item.amountRaw : 0 }, fxRate))
+              : item.amountLabel}
           </span>
         ) : null}
       </div>

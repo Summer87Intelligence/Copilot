@@ -20,6 +20,8 @@ import {
   type CeoInvoiceInput,
   type CeoPortfolioRow,
 } from "@/lib/copilot-finanzas-ceo-derivations";
+import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
+import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 
 // ---------------------------------------------------------------------------
 // Format helpers
@@ -46,6 +48,9 @@ export function FinancialCeoSections({
   year: number;
   asOf?: Date;
 }) {
+  const { mode, fxRate } = useDisplayCurrency();
+  const isUsd = mode === "usd_equivalent";
+
   const monthly = useMemo(
     () => buildMonthlySalesYear(invoices, year, asOf),
     [invoices, year, asOf]
@@ -60,13 +65,17 @@ export function FinancialCeoSections({
     [portfolioRows]
   );
 
+  const fmtYtd = isUsd
+    ? formatUsdEquivalent(convertToUsdEquivalent({ uyu: ytd.UYU, usd: ytd.USD }, fxRate))
+    : `${fmt(ytd.UYU, "UYU")} · ${fmt(ytd.USD, "USD")}`;
+
   return (
     <div className="space-y-4">
       {/* ── Facturación anual ── */}
       <CopilotCard>
         <CopilotSectionTitle
           title={`Facturación ${year}`}
-          subtitle={`Acumulado neto · ${fmt(ytd.UYU, "UYU")} · ${fmt(ytd.USD, "USD")}`}
+          subtitle={isUsd ? `Acumulado neto · ${fmtYtd} · TC ${fxRate}` : `Acumulado neto · ${fmtYtd}`}
         />
         <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
           Ventas netas: facturas emitidas menos notas de crédito del año (sin
@@ -89,14 +98,25 @@ export function FinancialCeoSections({
                   title={m.closed ? "Mes cerrado" : "Mes en curso"}
                 />
               </div>
-              <p className="mt-1 text-[9px] text-[var(--copilot-ink-muted)]">Ventas UYU</p>
-              <p className={`text-[11px] tabular-nums font-semibold leading-tight ${copilotCurrencyClass("UYU")}`}>
-                {fmt(m.sales.UYU, "UYU")}
-              </p>
-              <p className="mt-1 text-[9px] text-[var(--copilot-ink-muted)]">Ventas USD</p>
-              <p className={`text-[11px] tabular-nums font-semibold leading-tight ${copilotCurrencyClass("USD")}`}>
-                {fmt(m.sales.USD, "USD")}
-              </p>
+              {isUsd ? (
+                <>
+                  <p className="mt-1 text-[9px] text-[var(--copilot-ink-muted)]">Ventas</p>
+                  <p className="text-[11px] tabular-nums font-semibold leading-tight text-[var(--copilot-ink)]">
+                    {formatUsdEquivalent(convertToUsdEquivalent({ uyu: m.sales.UYU, usd: m.sales.USD }, fxRate))}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="mt-1 text-[9px] text-[var(--copilot-ink-muted)]">Ventas UYU</p>
+                  <p className={`text-[11px] tabular-nums font-semibold leading-tight ${copilotCurrencyClass("UYU")}`}>
+                    {fmt(m.sales.UYU, "UYU")}
+                  </p>
+                  <p className="mt-1 text-[9px] text-[var(--copilot-ink-muted)]">Ventas USD</p>
+                  <p className={`text-[11px] tabular-nums font-semibold leading-tight ${copilotCurrencyClass("USD")}`}>
+                    {fmt(m.sales.USD, "USD")}
+                  </p>
+                </>
+              )}
               <p className="mt-1 text-[9px] text-[var(--copilot-ink-muted)]">
                 {m.closed ? "Mes cerrado" : "Mes en curso"}
               </p>
@@ -109,9 +129,9 @@ export function FinancialCeoSections({
       <CopilotCard>
         <CopilotSectionTitle
           title="Tendencia anual"
-          subtitle="Ventas mensuales · UYU y USD por separado"
+          subtitle={isUsd ? `Ventas mensuales · USD equiv. · TC ${fxRate}` : "Ventas mensuales · UYU y USD por separado"}
         />
-        <AnnualTrend rows={monthly} />
+        <AnnualTrend rows={monthly} mode={mode} fxRate={fxRate} />
       </CopilotCard>
 
       {/* ── Clientes que explican la deuda ── */}
@@ -140,6 +160,9 @@ export function FinancialCeoCollectionRiskSummary({
   portfolioRows: ReadonlyArray<CeoPortfolioRow>;
   asOf?: Date;
 }) {
+  const { mode, fxRate } = useDisplayCurrency();
+  const isUsd = mode === "usd_equivalent";
+
   const indicators = useMemo(
     () => buildCeoIndicators(portfolioRows, asOf),
     [portfolioRows, asOf]
@@ -153,6 +176,10 @@ export function FinancialCeoCollectionRiskSummary({
     [portfolioRows]
   );
 
+  const overdueLabel = isUsd
+    ? formatUsdEquivalent(convertToUsdEquivalent({ uyu: indicators.overdueAmount.UYU, usd: indicators.overdueAmount.USD }, fxRate))
+    : `${fmt(indicators.overdueAmount.UYU, "UYU")} · ${fmt(indicators.overdueAmount.USD, "USD")}`;
+
   return (
     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
       <CeoIndicator
@@ -162,7 +189,8 @@ export function FinancialCeoCollectionRiskSummary({
       />
       <CeoIndicator
         label="Monto atrasado"
-        value={`${fmt(indicators.overdueAmount.UYU, "UYU")} · ${fmt(indicators.overdueAmount.USD, "USD")}`}
+        value={overdueLabel}
+        sub={isUsd ? `TC ${fxRate}` : undefined}
         tone={
           indicators.overdueAmount.UYU > 0 || indicators.overdueAmount.USD > 0
             ? "warning"
@@ -177,13 +205,13 @@ export function FinancialCeoCollectionRiskSummary({
       <CeoIndicator
         label="Mayor cliente deudor UYU"
         value={topUyu ? topUyu.name : "Sin deuda UYU"}
-        sub={topUyu ? fmt(topUyu.amount, "UYU") : undefined}
+        sub={topUyu ? (isUsd ? formatUsdEquivalent(convertToUsdEquivalent({ uyu: topUyu.amount, usd: 0 }, fxRate)) : fmt(topUyu.amount, "UYU")) : undefined}
         tone="neutral"
       />
       <CeoIndicator
         label="Mayor cliente deudor USD"
         value={topUsd ? topUsd.name : "Sin deuda USD"}
-        sub={topUsd ? fmt(topUsd.amount, "USD") : undefined}
+        sub={topUsd ? (isUsd ? formatUsdEquivalent(topUsd.amount) : fmt(topUsd.amount, "USD")) : undefined}
         tone="neutral"
       />
     </div>
@@ -293,15 +321,30 @@ function CeoIndicator({
   );
 }
 
-function AnnualTrend({ rows }: { rows: ReturnType<typeof buildMonthlySalesYear> }) {
+function AnnualTrend({
+  rows,
+  mode,
+  fxRate,
+}: {
+  rows: ReturnType<typeof buildMonthlySalesYear>;
+  mode: "native" | "usd_equivalent";
+  fxRate: number;
+}) {
+  const isUsd = mode === "usd_equivalent";
   return (
     <div className="mt-3 overflow-x-auto">
       <table className="w-full min-w-[420px] border-collapse text-xs">
         <thead>
           <tr className="border-b border-[var(--copilot-border)] text-[10px] uppercase tracking-wider text-[var(--copilot-ink-muted)]">
             <th className="px-2 py-1.5 text-left">Mes</th>
-            <th className={`px-2 py-1.5 text-right ${copilotCurrencyClass("UYU")}`}>Ventas UYU</th>
-            <th className={`px-2 py-1.5 text-right ${copilotCurrencyClass("USD")}`}>Ventas USD</th>
+            {isUsd ? (
+              <th className="px-2 py-1.5 text-right">Ventas (equiv. USD)</th>
+            ) : (
+              <>
+                <th className={`px-2 py-1.5 text-right ${copilotCurrencyClass("UYU")}`}>Ventas UYU</th>
+                <th className={`px-2 py-1.5 text-right ${copilotCurrencyClass("USD")}`}>Ventas USD</th>
+              </>
+            )}
             <th className="px-2 py-1.5 text-right">Estado</th>
           </tr>
         </thead>
@@ -311,16 +354,20 @@ function AnnualTrend({ rows }: { rows: ReturnType<typeof buildMonthlySalesYear> 
               <td className="px-2 py-1.5 font-medium text-[var(--copilot-ink)]">
                 {r.monthShortEs}
               </td>
-              <td
-                className={`px-2 py-1.5 text-right tabular-nums font-medium ${copilotCurrencyClass("UYU")}`}
-              >
-                {fmt(r.sales.UYU, "UYU")}
-              </td>
-              <td
-                className={`px-2 py-1.5 text-right tabular-nums font-medium ${copilotCurrencyClass("USD")}`}
-              >
-                {fmt(r.sales.USD, "USD")}
-              </td>
+              {isUsd ? (
+                <td className="px-2 py-1.5 text-right tabular-nums font-medium text-[var(--copilot-ink)]">
+                  {formatUsdEquivalent(convertToUsdEquivalent({ uyu: r.sales.UYU, usd: r.sales.USD }, fxRate))}
+                </td>
+              ) : (
+                <>
+                  <td className={`px-2 py-1.5 text-right tabular-nums font-medium ${copilotCurrencyClass("UYU")}`}>
+                    {fmt(r.sales.UYU, "UYU")}
+                  </td>
+                  <td className={`px-2 py-1.5 text-right tabular-nums font-medium ${copilotCurrencyClass("USD")}`}>
+                    {fmt(r.sales.USD, "USD")}
+                  </td>
+                </>
+              )}
               <td className="px-2 py-1.5 text-right text-[10px] text-[var(--copilot-ink-muted)]">
                 {r.closed ? "cerrado" : "en curso"}
               </td>

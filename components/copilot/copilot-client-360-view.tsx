@@ -58,6 +58,8 @@ import {
   warningFinancialCardClass,
 } from "@/components/copilot/ui/copilot-visual-system";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
+import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
+import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 
 const RESUMEN_ACTIVITY_LIMIT = 5;
 const SESSION_TAB_KEY = "copilot-client360-active-tab";
@@ -917,6 +919,8 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
   const { modulePermissions } = useCopilotPermissions();
   const canWrite =
     modulePermissions["clientes"] === "write" || modulePermissions["clientes"] === "admin";
+  const { mode: displayMode, fxRate: displayFxRate } = useDisplayCurrency();
+  const isUsd360 = displayMode === "usd_equivalent";
 
   const [data, setData] = useState<Client360Payload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1281,16 +1285,34 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
             {/* KPI grid */}
             <div className="border-t border-[var(--copilot-border)]/40 px-5 py-3">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <KpiChip
-                  label="Deuda UYU"
-                  value={`$ ${data.debt_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
-                  tone={data.debt_uyu > 0 ? "warning" : "neutral"}
-                />
-                <KpiChip
-                  label="Deuda USD"
-                  value={`U$S ${data.debt_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
-                  tone={data.debt_usd > 0 ? "warning" : "neutral"}
-                />
+                {isUsd360 ? (
+                  <>
+                    <KpiChip
+                      label="Deuda UYU (est.)"
+                      value={formatUsdEquivalent(convertToUsdEquivalent({ uyu: data.debt_uyu, usd: 0 }, displayFxRate))}
+                      sub={`TC ${displayFxRate}`}
+                      tone={data.debt_uyu > 0 ? "warning" : "neutral"}
+                    />
+                    <KpiChip
+                      label="Deuda USD"
+                      value={formatUsdEquivalent(convertToUsdEquivalent({ uyu: 0, usd: data.debt_usd }, displayFxRate))}
+                      tone={data.debt_usd > 0 ? "warning" : "neutral"}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <KpiChip
+                      label="Deuda UYU"
+                      value={`$ ${data.debt_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
+                      tone={data.debt_uyu > 0 ? "warning" : "neutral"}
+                    />
+                    <KpiChip
+                      label="Deuda USD"
+                      value={`U$S ${data.debt_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
+                      tone={data.debt_usd > 0 ? "warning" : "neutral"}
+                    />
+                  </>
+                )}
                 <KpiChip
                   label="Facturas pendientes"
                   value={String(data.cuenta.comprobantes_count)}
@@ -1412,9 +1434,21 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                     Total pendiente del cliente
                   </p>
                   <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-                    Saldo pendiente al corte informado por Zeta. El atrasado ya está incluido. UYU y USD no se suman entre sí.
+                    Saldo pendiente al corte informado por Zeta. El atrasado ya está incluido.{isUsd360 ? " Totales convertidos a USD estimado." : " UYU y USD no se suman entre sí."}
                   </p>
                 </div>
+
+                {isUsd360 && (data.debt_uyu > 0 || data.debt_usd > 0) ? (
+                  <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                      Total consolidado
+                    </p>
+                    <p className={`mt-1 text-2xl font-bold tabular-nums ${metricValueClass} text-[var(--copilot-warning-text)]`}>
+                      {formatUsdEquivalent(convertToUsdEquivalent({ uyu: data.debt_uyu, usd: data.debt_usd }, displayFxRate))}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">TC {displayFxRate} · Detalle por moneda abajo</p>
+                  </div>
+                ) : null}
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <CopilotCard className={warningFinancialCardClass}>

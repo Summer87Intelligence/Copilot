@@ -26,7 +26,7 @@ export const HOY_MONEY_FIELD_SOURCES = {
     origin: "Obligaciones de tesorería en horizonte 30 días",
   },
   afterPayments: {
-    card: "Caja proyectada",
+    card: "Caja proyectada 30d",
     field: "projection30dBlocks[].safeCash30d",
     formula: "caja disponible − pagos programados (sin sumar por cobrar)",
   },

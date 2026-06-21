@@ -124,11 +124,11 @@ export function OperationalSemaphoreIndicator() {
         className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/90 px-2.5 py-1 text-left shadow-sm transition-colors duration-200 hover:bg-[var(--copilot-panel-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]"
         aria-expanded={open}
         aria-controls={panelId}
-        title={loading ? "Estado operacional" : tooltip}
+        title={loading ? "Estado del negocio" : tooltip}
         aria-label={
           loading
-            ? "Estado operacional"
-            : `Estado operacional: ${semaphore.statusLabel}. ${semaphore.counterLine}`
+            ? "Estado del negocio"
+            : `Estado del negocio: ${semaphore.statusLabel}. ${semaphore.counterLine}`
         }
       >
         <span
@@ -150,13 +150,13 @@ export function OperationalSemaphoreIndicator() {
         <div
           id={panelId}
           role="dialog"
-          aria-label="Estado operacional"
+          aria-label="Estado del negocio"
           className={`absolute right-0 top-full z-[80] mt-2 w-[min(100vw-2rem,20rem)] rounded-xl border bg-[var(--copilot-card-bg)] p-3 shadow-xl ${theme.panelBorder}`}
         >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                Estado operacional
+                Estado del negocio
               </p>
               <p className={`mt-0.5 text-sm font-semibold ${theme.labelClass}`}>
                 {semaphore.statusLabel}

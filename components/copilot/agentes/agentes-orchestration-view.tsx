@@ -453,7 +453,7 @@ function RiskSection({ brief }: { brief: CopilotAgentBrief }) {
 
       <AgentCard
         icon={AGENT_ICON.risk}
-        name="Riesgo operativo"
+        name="Análisis de riesgo"
         description={AGENT_DESCRIPTION.risk}
         status="active"
         showStatusBadge={false}

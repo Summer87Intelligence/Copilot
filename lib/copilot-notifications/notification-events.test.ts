@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildCashRiskBody,
   buildDebtFollowupSummaryBody,
   buildDebtFollowupSummaryTitle,
   buildTreasuryDueBody,
   computeClientOverdueBucket,
   computeTreasuryDueMilestone,
+  type DebtFollowupTopClient,
   type DueMilestone,
 } from "@/lib/copilot-notifications/notification-events";
 
@@ -166,38 +168,88 @@ describe("dedup_key por bucket no colisiona entre clientes distintos", () => {
 
 describe("buildDebtFollowupSummaryTitle", () => {
   it("1 cliente → singular", () =>
-    expect(buildDebtFollowupSummaryTitle(1)).toBe("1 cliente con deuda atrasada"));
+    expect(buildDebtFollowupSummaryTitle(1)).toBe("1 cliente atrasado"));
 
   it("2 clientes → plural", () =>
-    expect(buildDebtFollowupSummaryTitle(2)).toBe("2 clientes con deuda atrasada"));
+    expect(buildDebtFollowupSummaryTitle(2)).toBe("2 clientes atrasados"));
 
   it("17 clientes → plural con número real", () =>
-    expect(buildDebtFollowupSummaryTitle(17)).toBe("17 clientes con deuda atrasada"));
+    expect(buildDebtFollowupSummaryTitle(17)).toBe("17 clientes atrasados"));
 
   it("47 clientes → plural con número real", () =>
-    expect(buildDebtFollowupSummaryTitle(47)).toBe("47 clientes con deuda atrasada"));
+    expect(buildDebtFollowupSummaryTitle(47)).toBe("47 clientes atrasados"));
+
+  it("con totalDisplay → incluye monto en título para escaneo ejecutivo", () =>
+    expect(buildDebtFollowupSummaryTitle(3, "USD 601")).toBe("3 clientes atrasados · USD 601"));
+
+  it("singular con totalDisplay", () =>
+    expect(buildDebtFollowupSummaryTitle(1, "UYU 10.000")).toBe("1 cliente atrasado · UYU 10.000"));
 });
 
 // ── buildDebtFollowupSummaryBody ──────────────────────────────────────────────
 
-describe("buildDebtFollowupSummaryBody", () => {
-  it("solo UYU → muestra monto UYU", () =>
+describe("buildDebtFollowupSummaryBody — formato total", () => {
+  it("solo UYU sin client count → formato total", () =>
     expect(buildDebtFollowupSummaryBody(32120, 0)).toBe(
-      "UYU 32.120 atrasados. Revisá clientes críticos."
+      "Total atrasado: UYU 32.120. Revisá clientes críticos."
     ));
 
-  it("solo USD → muestra monto USD", () =>
+  it("solo USD sin client count → formato total", () =>
     expect(buildDebtFollowupSummaryBody(0, 3049)).toBe(
-      "USD 3.049 atrasados. Revisá clientes críticos."
+      "Total atrasado: USD 3.049. Revisá clientes críticos."
     ));
 
-  it("UYU y USD → muestra ambos separados por 'y'", () =>
+  it("UYU y USD sin client count → ambas monedas", () =>
     expect(buildDebtFollowupSummaryBody(32120, 3049)).toBe(
-      "UYU 32.120 y USD 3.049 atrasados. Revisá clientes críticos."
+      "Total atrasado: UYU 32.120 y USD 3.049. Revisá clientes críticos."
     ));
 
   it("sin montos → solo CTA", () =>
     expect(buildDebtFollowupSummaryBody(0, 0)).toBe("Revisá clientes críticos."));
+
+  it("con overdueClientCount → aclara 'entre N clientes' (total, no por cliente)", () =>
+    expect(buildDebtFollowupSummaryBody(0, 601, 3)).toBe(
+      "Total atrasado: USD 601 entre 3 clientes. Revisá clientes críticos."
+    ));
+
+  it("singular: 1 cliente", () =>
+    expect(buildDebtFollowupSummaryBody(10000, 0, 1)).toBe(
+      "Total atrasado: UYU 10.000 entre 1 cliente. Revisá clientes críticos."
+    ));
+
+  it("con topClients → muestra clientes en líneas separadas con bullets", () => {
+    const top: DebtFollowupTopClient[] = [
+      { name: "Empresa A", amountUYU: 0, amountUSD: 3049 },
+      { name: "Empresa B", amountUYU: 22120, amountUSD: 0 },
+      { name: "Empresa C", amountUYU: 10000, amountUSD: 0 },
+    ];
+    expect(buildDebtFollowupSummaryBody(32120, 3049, 3, top)).toBe(
+      "Total atrasado: UYU 32.120 y USD 3.049 entre 3 clientes.\n• Empresa A · USD 3.049\n• Empresa B · UYU 22.120\n• Empresa C · UYU 10.000"
+    );
+  });
+
+  it("topClients con monto mixto → muestra UYU / USD en bullet", () => {
+    const top: DebtFollowupTopClient[] = [
+      { name: "ACME", amountUYU: 15000, amountUSD: 500 },
+    ];
+    expect(buildDebtFollowupSummaryBody(15000, 500, 1, top)).toBe(
+      "Total atrasado: UYU 15.000 y USD 500 entre 1 cliente.\n• ACME · UYU 15.000 / USD 500"
+    );
+  });
+
+  it("trunca a top 3 aunque se pasen más", () => {
+    const top: DebtFollowupTopClient[] = [
+      { name: "ClienteA", amountUYU: 0, amountUSD: 400 },
+      { name: "ClienteB", amountUYU: 0, amountUSD: 300 },
+      { name: "ClienteC", amountUYU: 0, amountUSD: 200 },
+      { name: "ClienteD", amountUYU: 0, amountUSD: 100 },
+    ];
+    const result = buildDebtFollowupSummaryBody(0, 1000, 4, top);
+    expect(result).toContain("• ClienteA · USD 400");
+    expect(result).toContain("• ClienteB · USD 300");
+    expect(result).toContain("• ClienteC · USD 200");
+    expect(result).not.toContain("ClienteD");
+  });
 });
 
 // ── debt_followup_summary dedup_key ──────────────────────────────────────────
@@ -224,5 +276,79 @@ describe("dedup_key de debt_followup_summary", () => {
     const summary = "debt_followup_summary:2026-06-04";
     const individual = "client_overdue:client-uuid:UYU:30d:2026-06";
     expect(summary).not.toBe(individual);
+  });
+});
+
+// ── buildCashRiskBody — ALERTS-USD-COVERAGE-002 ───────────────────────────────
+
+describe("buildCashRiskBody — consolidated USD format", () => {
+  it("single USD entry → 'Faltan USD X,XX para cubrir compromisos próximos.'", () => {
+    const body = buildCashRiskBody([
+      { currency: "USD", availableCash: 5000, committedOutflows: 8634, deficit: -3634 },
+    ]);
+    expect(body).toBe("Faltan USD 3.634,00 para cubrir compromisos próximos.");
+  });
+
+  it("no emite 'Caja insuficiente' en formato consolidado", () => {
+    const body = buildCashRiskBody([
+      { currency: "USD", availableCash: 5000, committedOutflows: 8634, deficit: -3634 },
+    ]);
+    expect(body).not.toContain("Caja insuficiente");
+  });
+
+  it("legacy multi-currency aún usa el formato por moneda", () => {
+    const body = buildCashRiskBody([
+      { currency: "UYU", availableCash: 100_000, committedOutflows: 200_000, deficit: -100_000 },
+    ]);
+    expect(body).toContain("UYU déficit");
+    expect(body).toContain("Revisá tesorería");
+  });
+});
+
+describe("Cash risk coverage — spec scenario ALERTS-USD-COVERAGE-002", () => {
+  const RATE = 40;
+
+  it("caja ~21.819 USD vs pagos ~8.634 USD → cobertura positiva → no genera alerta", () => {
+    const uyuAvailable = 472_760; // 472760/40 = 11819
+    const usdAvailable = 10_000;
+    const uyuCommitted = 189_360; // 189360/40 = 4734
+    const usdCommitted = 3_900;
+
+    const totalAvailable = usdAvailable + uyuAvailable / RATE;
+    const totalCommitted = usdCommitted + uyuCommitted / RATE;
+    const deficit = Math.round((totalAvailable - totalCommitted) * 100) / 100;
+
+    expect(Math.round(totalAvailable)).toBe(21_819);
+    expect(Math.round(totalCommitted)).toBe(8_634);
+    expect(deficit).toBeGreaterThanOrEqual(0); // no debe generar alerta
+  });
+
+  it("déficit real (caja 5.000, pagos 8.634 USD) → alerta con body correcto", () => {
+    const totalAvailable = 5_000;
+    const totalCommitted = 8_634;
+    const deficit = Math.round((totalAvailable - totalCommitted) * 100) / 100;
+
+    expect(deficit).toBeLessThan(0); // debe generar alerta
+
+    const body = buildCashRiskBody([
+      { currency: "USD", availableCash: totalAvailable, committedOutflows: totalCommitted, deficit },
+    ]);
+    expect(body).toContain("Faltan USD");
+    expect(body).toContain("3.634,00");
+  });
+
+  it("UYU disponible cubre el déficit USD cuando se consolida", () => {
+    // USD en caja: 2000, USD en pagos: 5000 → parecería déficit en USD
+    // Pero hay UYU 120000 (= 3000 USD) → consolidado hay superávit de 0
+    const uyuAvailable = 120_000; // 120000/40 = 3000 USD
+    const usdAvailable = 2_000;
+    const uyuCommitted = 0;
+    const usdCommitted = 5_000;
+
+    const totalAvailable = usdAvailable + uyuAvailable / RATE; // 5000
+    const totalCommitted = usdCommitted + uyuCommitted / RATE; // 5000
+    const deficit = Math.round((totalAvailable - totalCommitted) * 100) / 100;
+
+    expect(deficit).toBe(0); // exactamente cubierto — no alerta
   });
 });

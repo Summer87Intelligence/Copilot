@@ -39,7 +39,7 @@ describe("notifyNewDebtor", () => {
       tenantId,
       expect.objectContaining({
         type: "new_debtor",
-        title: "Nuevo saldo pendiente",
+        title: "Nuevo saldo pendiente · UYU 12.000",
         body: "ACME registra deuda pendiente por UYU 12.000.",
         dedup_key: "new_debtor:c1:UYU:2026-06-10",
         metadata: expect.objectContaining({
@@ -87,7 +87,7 @@ describe("notifyCollectionReceived", () => {
 });
 
 describe("notifyClientDebtSettled", () => {
-  it("genera client_debt_settled con dedup diario", async () => {
+  it("genera client_debt_settled con dedup diario (sin monto → título genérico)", async () => {
     await notifyClientDebtSettled({
       tenantCompanyId: tenantId,
       clientId: "c1",
@@ -111,6 +111,27 @@ describe("notifyClientDebtSettled", () => {
           status: "settled",
           remaining_balance: 0,
         }),
+      })
+    );
+  });
+
+  it("con amount → título incluye monto para escaneo ejecutivo", async () => {
+    await notifyClientDebtSettled({
+      tenantCompanyId: tenantId,
+      clientId: "c1",
+      clientName: "ACME",
+      currency: "UYU",
+      amount: 15000,
+      receiptId: "r10",
+      dateBucket: "2026-06-10",
+    });
+
+    expect(createModule.createNotificationIfNotExists).toHaveBeenCalledWith(
+      tenantId,
+      expect.objectContaining({
+        title: "Cliente saldó deuda · UYU 15.000",
+        body: "ACME pagó UYU 15.000.",
+        metadata: expect.objectContaining({ amount: 15000 }),
       })
     );
   });

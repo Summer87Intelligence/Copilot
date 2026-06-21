@@ -78,7 +78,7 @@ export function CopilotOperationalStatusSection({
     <div id="estado-operacional" className="scroll-mt-24">
     <CopilotCard className={theme.cardBorder}>
       <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-        Estado operacional
+        Estado del negocio
       </p>
       {loading ? (
         <p className="mt-2 text-sm text-[var(--copilot-ink-muted)]">Actualizando…</p>

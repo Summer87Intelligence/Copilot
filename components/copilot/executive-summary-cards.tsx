@@ -30,10 +30,12 @@ import {
 import type { LucideIcon } from "lucide-react";
 
 import { CarteraCountUp } from "@/components/copilot/cartera-count-up";
+import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
 import {
   formatCarteraInteger,
   formatCarteraMoney,
 } from "@/lib/copilot-cartera-format";
+import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 import type {
   FinancialConsistencyReport,
   ReconciliationCurrencyCode,
@@ -464,6 +466,28 @@ function orphanCardAll(report: FinancialConsistencyReport): SummaryCard {
 }
 
 // ---------------------------------------------------------------------------
+// USD mode helpers
+// ---------------------------------------------------------------------------
+
+const MONEY_CARD_PREFIXES = [
+  "facturado-",
+  "collected-applied-",
+  "cartera-",
+  "credit-notes-",
+  "opening-",
+] as const;
+
+function getMoneyCardCurrency(id: string): ReconciliationCurrencyCode | null {
+  for (const prefix of MONEY_CARD_PREFIXES) {
+    if (id.startsWith(prefix)) {
+      const code = id.slice(prefix.length);
+      if (code === "UYU" || code === "USD") return code as ReconciliationCurrencyCode;
+    }
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Componente principal
 // ---------------------------------------------------------------------------
 
@@ -487,6 +511,8 @@ export function ExecutiveSummaryCards({
   periodRangeLabel?: string;
 }) {
   const reduce = useReducedMotion();
+  const { mode, fxRate } = useDisplayCurrency();
+  const isUsd = mode === "usd_equivalent";
   const [pendingDrawerCurrency, setPendingDrawerCurrency] =
     useState<ReconciliationCurrencyCode | null>(null);
 
@@ -619,8 +645,22 @@ export function ExecutiveSummaryCards({
       });
     }
 
+    // USD display mode — applied last, after all filters.
+    // Transforms monetary cards only; percentages and counts are unchanged.
+    if (isUsd) {
+      list = list.map((card) => {
+        const code = getMoneyCardCurrency(card.id);
+        if (!code) return card;
+        const usdVal = convertToUsdEquivalent(
+          { uyu: code === "UYU" ? card.value : 0, usd: code === "USD" ? card.value : 0 },
+          fxRate
+        );
+        return { ...card, value: usdVal, format: (n: number) => formatUsdEquivalent(n) };
+      });
+    }
+
     return list;
-  }, [report, selectedCurrency, currencyIndex, isPreSync, block, periodRangeLabel]);
+  }, [report, selectedCurrency, currencyIndex, isPreSync, block, periodRangeLabel, mode, fxRate]);
 
   const showBadge = showBadges;
 

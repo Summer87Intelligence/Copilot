@@ -11,6 +11,8 @@ import {
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
 import { ExecutiveMetricCard, fmtMoney } from "@/components/copilot/finanzas/financial-executive-shared";
+import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
+import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 import {
   statusBadgeVariants,
   softCalloutClass,
@@ -27,6 +29,19 @@ import { formatPanoramaRate } from "@/lib/copilot-financial-panorama-model";
 import type { FinancialPanoramaModel, PanoramaCurrencySlice } from "@/lib/copilot-financial-panorama-model";
 import type { PanoramaMetricId } from "@/lib/copilot-financial-panorama-details";
 import { FinancialProjectionCompact } from "@/components/copilot/finanzas/financial-layered-sections";
+
+function fmtMoneyDisplay(
+  v: number,
+  currency: "UYU" | "USD",
+  mode: "native" | "usd_equivalent",
+  fxRate: number
+): string {
+  if (mode === "usd_equivalent") {
+    const usd = currency === "UYU" ? convertToUsdEquivalent({ uyu: v, usd: 0 }, fxRate) : v;
+    return formatUsdEquivalent(usd);
+  }
+  return fmtMoney(v, currency);
+}
 
 export function FinancialExecutiveHeader({
   dashboard,
@@ -93,7 +108,17 @@ export function FinancialExecutiveHeader({
   );
 }
 
-function ComparisonTable({ block, currency }: { block: PeriodComparisonBlock; currency: "UYU" | "USD" }) {
+function ComparisonTable({
+  block,
+  currency,
+  displayMode,
+  fxRate,
+}: {
+  block: PeriodComparisonBlock;
+  currency: "UYU" | "USD";
+  displayMode: "native" | "usd_equivalent";
+  fxRate: number;
+}) {
   const paired = block.layout === "paired";
   return (
     <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3">
@@ -116,7 +141,7 @@ function ComparisonTable({ block, currency }: { block: PeriodComparisonBlock; cu
           </thead>
           <tbody>
             {block.metrics.map((m) => (
-              <ComparisonRow key={m.id} metric={m} currency={currency} paired={paired} />
+              <ComparisonRow key={m.id} metric={m} currency={currency} paired={paired} displayMode={displayMode} fxRate={fxRate} />
             ))}
           </tbody>
         </table>
@@ -132,17 +157,21 @@ function ComparisonRow({
   metric,
   currency,
   paired,
+  displayMode,
+  fxRate,
 }: {
   metric: ComparisonMetric;
   currency: "UYU" | "USD";
   paired: boolean;
+  displayMode: "native" | "usd_equivalent";
+  fxRate: number;
 }) {
   const fmt = (v: number | null) => {
     if (v == null) return "—";
     if (metric.format === "percent") return formatPanoramaRate(v);
     if (metric.format === "days") return String(v);
     if (v === 0 && metric.format === "money") return "—";
-    return fmtMoney(v, currency);
+    return fmtMoneyDisplay(v, currency, displayMode, fxRate);
   };
   return (
     <tr className="border-t border-[var(--copilot-border)]/60">
@@ -166,6 +195,7 @@ export function FinancialPeriodComparisons({
 }: {
   panels: ExecutiveCurrencyPanel[];
 }) {
+  const { mode: displayMode, fxRate } = useDisplayCurrency();
   if (panels.length === 0) return null;
   return (
     <CopilotCard>
@@ -180,12 +210,14 @@ export function FinancialPeriodComparisons({
         {panels.map((panel) => (
           <div key={panel.currency} className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-              {panel.currency}
+              {displayMode === "usd_equivalent" && panel.currency === "UYU"
+                ? `${panel.currency} → USD equiv.`
+                : panel.currency}
             </p>
             <div className="grid gap-3 lg:grid-cols-3">
-              <ComparisonTable block={panel.currentMonthInProgress} currency={panel.currency} />
-              <ComparisonTable block={panel.lastClosedMonthComparison} currency={panel.currency} />
-              <ComparisonTable block={panel.weekVsPrevious} currency={panel.currency} />
+              <ComparisonTable block={panel.currentMonthInProgress} currency={panel.currency} displayMode={displayMode} fxRate={fxRate} />
+              <ComparisonTable block={panel.lastClosedMonthComparison} currency={panel.currency} displayMode={displayMode} fxRate={fxRate} />
+              <ComparisonTable block={panel.weekVsPrevious} currency={panel.currency} displayMode={displayMode} fxRate={fxRate} />
             </div>
           </div>
         ))}
@@ -201,6 +233,10 @@ export function FinancialCurrencySummary({
   panel: ExecutiveCurrencyPanel;
   onSelectMetric: (metricId: PanoramaMetricId, slice: PanoramaCurrencySlice) => void;
 }) {
+  const { mode: displayMode, fxRate } = useDisplayCurrency();
+  const isUsd = displayMode === "usd_equivalent";
+  const fmtDisplay = (v: number) => fmtMoneyDisplay(v, panel.currency, displayMode, fxRate);
+
   const s = panel.slice;
   const c = panel.currency;
   const hasPeriodActivity = s != null && (s.netIncome > 0 || s.collectedApplied > 0 || s.creditNotes > 0);
@@ -209,7 +245,9 @@ export function FinancialCurrencySummary({
   return (
     <section className="space-y-4">
       <h3 className="text-sm font-semibold text-[var(--copilot-ink)]">
-        {c === "UYU" ? "Pesos uruguayos (UYU)" : "Dólares (USD)"}
+        {c === "UYU"
+          ? isUsd ? "Pesos (en USD equiv.)" : "Pesos uruguayos (UYU)"
+          : "Dólares (USD)"}
       </h3>
 
       <div>
@@ -220,7 +258,7 @@ export function FinancialCurrencySummary({
         <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <ExecutiveMetricCard
             label="Caja disponible"
-            value={fmtMoney(panel.cashToday, c)}
+            value={fmtDisplay(panel.cashToday)}
             subcopy="Fuente: Tesorería al corte."
             tone={panel.cashToday > 0 ? "positive" : "neutral"}
           />
@@ -228,14 +266,14 @@ export function FinancialCurrencySummary({
             <>
               <ExecutiveMetricCard
                 label="Total pendiente"
-                value={fmtMoney(s.pending, c)}
+                value={fmtDisplay(s.pending)}
                 subcopy="Fuente: Cartera al corte. El atrasado ya está incluido."
                 tone="neutral"
                 onClick={() => onSelectMetric("pending", s)}
               />
               <ExecutiveMetricCard
                 label="Atrasado"
-                value={fmtMoney(s.overdue, c)}
+                value={fmtDisplay(s.overdue)}
                 subcopy="Fuente: Cartera (vencimiento ya pasó). Incluido en Total pendiente."
                 tone={s.overdue > 0 ? "danger" : "neutral"}
                 onClick={() => onSelectMetric("overdue", s)}
@@ -263,14 +301,14 @@ export function FinancialCurrencySummary({
             <>
               <ExecutiveMetricCard
                 label="Ventas"
-                value={fmtMoney(s.netIncome, c)}
+                value={fmtDisplay(s.netIncome)}
                 subcopy="Fuente: facturas del período."
                 tone="positive"
                 onClick={() => onSelectMetric("net-income", s)}
               />
               <ExecutiveMetricCard
                 label="Cobros"
-                value={fmtMoney(s.collectedApplied, c)}
+                value={fmtDisplay(s.collectedApplied)}
                 subcopy="Fuente: recibos registrados en el período."
                 tone="positive"
                 onClick={() => onSelectMetric("collected", s)}
@@ -283,8 +321,8 @@ export function FinancialCurrencySummary({
                 <>
                   {" "}
                   Último mes cerrado ({panel.lastClosedSnapshot.label}): ventas{" "}
-                  {fmtMoney(panel.lastClosedSnapshot.netSales, c)} · cobros{" "}
-                  {fmtMoney(panel.lastClosedSnapshot.collected, c)}.
+                  {fmtDisplay(panel.lastClosedSnapshot.netSales)} · cobros{" "}
+                  {fmtDisplay(panel.lastClosedSnapshot.collected)}.
                 </>
               ) : null}
             </div>
@@ -305,11 +343,14 @@ export function FinancialCollectionDebtSection({
 }: {
   panel: ExecutiveCurrencyPanel;
 }) {
+  const { mode: displayMode, fxRate } = useDisplayCurrency();
+  const fmtDisplay = (v: number) => fmtMoneyDisplay(v, panel.currency, displayMode, fxRate);
   const { collectionDebt: cd, currency: c } = panel;
+  const titleCurrency = displayMode === "usd_equivalent" && c === "UYU" ? "UYU → USD equiv." : c;
   return (
     <CopilotCard>
       <CopilotSectionTitle
-        title={`Cobranza y deuda · ${c}`}
+        title={`Cobranza y deuda · ${titleCurrency}`}
         subtitle="¿Dónde está trabada la plata?"
       />
       <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">
@@ -319,13 +360,13 @@ export function FinancialCollectionDebtSection({
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <ExecutiveMetricCard
           label="Total pendiente"
-          value={fmtMoney(cd.totalDebt, c)}
+          value={fmtDisplay(cd.totalDebt)}
           subcopy="Fuente: Cartera. El atrasado ya está incluido."
           tone="neutral"
         />
         <ExecutiveMetricCard
           label="Atrasado"
-          value={fmtMoney(cd.overdueDebt, c)}
+          value={fmtDisplay(cd.overdueDebt)}
           subcopy="Fuente: Cartera. Incluido en Total pendiente."
           tone={cd.overdueDebt > 0 ? "danger" : "neutral"}
         />
@@ -337,7 +378,7 @@ export function FinancialCollectionDebtSection({
         />
         <ExecutiveMetricCard
           label="Cobros del mes"
-          value={fmtMoney(cd.periodCollections, c)}
+          value={fmtDisplay(cd.periodCollections)}
           subcopy="Fuente: recibos registrados (mes calendario)."
           tone="positive"
         />
@@ -368,9 +409,9 @@ export function FinancialCollectionDebtSection({
               {panel.topOverdue.map((row) => (
                 <tr key={row.companyId} className="border-t border-[var(--copilot-border)]">
                   <td className="px-3 py-2 font-medium">{row.clientName}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(row.totalDebt, c)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{fmtDisplay(row.totalDebt)}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-[var(--copilot-danger-text)]">
-                    {fmtMoney(row.overdueDebt, c)}
+                    {fmtDisplay(row.overdueDebt)}
                   </td>
                   <td className="px-3 py-2">{row.risk}</td>
                   <td className="px-3 py-2 text-right">
@@ -408,6 +449,8 @@ function ClientTable({
   currency: "UYU" | "USD";
   mode: "sales" | "debt";
 }) {
+  const { mode: displayMode, fxRate } = useDisplayCurrency();
+  const fmtDisplay = (v: number) => fmtMoneyDisplay(v, currency, displayMode, fxRate);
   if (rows.length === 0) return null;
   return (
     <div>
@@ -442,11 +485,11 @@ function ClientTable({
                   </Link>
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">
-                  {fmtMoney(mode === "sales" ? row.netSales : row.currentDebt, currency)}
+                  {fmtDisplay(mode === "sales" ? row.netSales : row.currentDebt)}
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">{row.sharePct}%</td>
                 <td className="px-3 py-2 text-right tabular-nums">
-                  {fmtMoney(mode === "sales" ? row.currentDebt : row.overdueDebt, currency)}
+                  {fmtDisplay(mode === "sales" ? row.currentDebt : row.overdueDebt)}
                 </td>
               </tr>
             ))}

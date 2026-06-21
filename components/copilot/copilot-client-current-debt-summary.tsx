@@ -5,6 +5,8 @@ import {
   type CurrentDebtCurrencyCode,
   type CurrentDebtCurrencySummary,
 } from "@/lib/copilot-client-current-debt-summary";
+import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
+import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 
 const CURRENCY_LABEL: Record<CurrentDebtCurrencyCode, string> = {
   UYU: "Pesos",
@@ -32,7 +34,13 @@ export function ClientCurrentDebtSummary({
 }: {
   summary: ClientCurrentDebtSummary;
 }) {
+  const { mode, fxRate } = useDisplayCurrency();
+  const isUsd = mode === "usd_equivalent";
   const hasInvoices = summary.totalInvoiceCount > 0;
+
+  const pendingUyu = summary.currencies.find((c) => c.currencyCode === "UYU")?.totalPending ?? 0;
+  const pendingUsd = summary.currencies.find((c) => c.currencyCode === "USD")?.totalPending ?? 0;
+  const consolidatedUsd = convertToUsdEquivalent({ uyu: pendingUyu, usd: pendingUsd }, fxRate);
 
   return (
     <section
@@ -59,6 +67,19 @@ export function ClientCurrentDebtSummary({
       ) : (
         <>
           <DebtBanner hasPendingDebt={summary.hasPendingDebt} />
+          {isUsd && summary.hasPendingDebt ? (
+            <div className="rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                Total consolidado
+              </p>
+              <p className="mt-0.5 text-base font-bold tabular-nums text-[var(--copilot-ink)]">
+                {formatUsdEquivalent(consolidatedUsd)}
+              </p>
+              <p className="text-[10px] text-[var(--copilot-ink-muted)]">
+                TC {fxRate} · Detalle por moneda abajo
+              </p>
+            </div>
+          ) : null}
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {summary.currencies.map((c) => (
               <CurrencyDebtCard key={c.currencyCode} block={c} />

@@ -8,6 +8,8 @@ import {
   CopilotGhostButton,
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
+import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
+import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 import { DebtorsReportTrigger } from "@/components/copilot/reports/debtors-report-dialog";
 import {
   CopilotResponsiveTable,
@@ -97,6 +99,8 @@ function saludTone(s: ClientStatus): string {
 // ─── Debt cell ───────────────────────────────────────────────────────────────
 
 function DebtCell({ row }: { row: ClientPortfolioRow }) {
+  const { mode, fxRate } = useDisplayCurrency();
+  const isUsd = mode === "usd_equivalent";
   const hasUyu = row.debt_uyu > 0;
   const hasUsd = row.debt_usd > 0;
   const overdueUyu = (row.overdue_uyu ?? 0) > 0;
@@ -104,6 +108,21 @@ function DebtCell({ row }: { row: ClientPortfolioRow }) {
 
   if (!hasUyu && !hasUsd) {
     return <span className="text-xs text-[var(--copilot-ink-muted)]">—</span>;
+  }
+
+  if (isUsd) {
+    const total = convertToUsdEquivalent({ uyu: row.debt_uyu, usd: row.debt_usd }, fxRate);
+    return (
+      <div className="space-y-0.5">
+        <span className="inline-flex items-center whitespace-nowrap tabular-nums text-sm font-semibold text-[var(--copilot-danger-text-strong)]">
+          {formatUsdEquivalent(total)}
+          {(overdueUyu || overdueUsd) ? (
+            <span className="ml-1 text-[10px] font-medium text-[var(--copilot-danger-text)]">atrasado</span>
+          ) : null}
+        </span>
+        <p className="text-[10px] text-[var(--copilot-ink-muted)]">TC {fxRate}</p>
+      </div>
+    );
   }
 
   return (
@@ -188,6 +207,8 @@ function PortfolioMobileCard({
   row: ClientPortfolioRow;
   onOpenClient: (companyId: string) => void;
 }) {
+  const { mode, fxRate } = useDisplayCurrency();
+  const isUsd = mode === "usd_equivalent";
   const salud = deriveClientStatus(row);
   const openInvoices = row.open_invoices_count ?? null;
 
@@ -208,34 +229,45 @@ function PortfolioMobileCard({
       </div>
 
       <dl className="mt-3 space-y-1.5 text-xs">
-        {row.debt_uyu > 0 ? (
-          <div className="flex items-baseline justify-between gap-2">
-            <dt className="text-[var(--copilot-ink-muted)]">Deuda UYU</dt>
-            <dd className="tabular-nums font-semibold text-[var(--copilot-danger-text-strong)]">
-              $ {row.debt_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
-              {(row.overdue_uyu ?? 0) > 0 ? (
-                <span className="ml-1 text-[10px] font-medium text-[var(--copilot-danger-text)]">atrasado</span>
-              ) : null}
-            </dd>
-          </div>
-        ) : null}
-        {row.debt_usd > 0 ? (
-          <div className="flex items-baseline justify-between gap-2">
-            <dt className="text-[var(--copilot-ink-muted)]">Deuda USD</dt>
-            <dd className="tabular-nums font-semibold text-[var(--copilot-danger-text-strong)]">
-              U$S {row.debt_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
-              {(row.overdue_usd ?? 0) > 0 ? (
-                <span className="ml-1 text-[10px] font-medium text-[var(--copilot-danger-text)]">atrasado</span>
-              ) : null}
-            </dd>
-          </div>
-        ) : null}
         {row.debt_uyu === 0 && row.debt_usd === 0 ? (
           <div className="flex items-baseline justify-between gap-2">
             <dt className="text-[var(--copilot-ink-muted)]">Deuda</dt>
             <dd className="text-[var(--copilot-success-text-strong)]">Al día</dd>
           </div>
-        ) : null}
+        ) : isUsd ? (
+          <div className="flex items-baseline justify-between gap-2">
+            <dt className="text-[var(--copilot-ink-muted)]">Deuda (USD est.)</dt>
+            <dd className="tabular-nums font-semibold text-[var(--copilot-danger-text-strong)]">
+              {formatUsdEquivalent(convertToUsdEquivalent({ uyu: row.debt_uyu, usd: row.debt_usd }, fxRate))}
+              <span className="ml-1 text-[10px] font-normal opacity-70">TC {fxRate}</span>
+            </dd>
+          </div>
+        ) : (
+          <>
+            {row.debt_uyu > 0 ? (
+              <div className="flex items-baseline justify-between gap-2">
+                <dt className="text-[var(--copilot-ink-muted)]">Deuda UYU</dt>
+                <dd className="tabular-nums font-semibold text-[var(--copilot-danger-text-strong)]">
+                  $ {row.debt_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
+                  {(row.overdue_uyu ?? 0) > 0 ? (
+                    <span className="ml-1 text-[10px] font-medium text-[var(--copilot-danger-text)]">atrasado</span>
+                  ) : null}
+                </dd>
+              </div>
+            ) : null}
+            {row.debt_usd > 0 ? (
+              <div className="flex items-baseline justify-between gap-2">
+                <dt className="text-[var(--copilot-ink-muted)]">Deuda USD</dt>
+                <dd className="tabular-nums font-semibold text-[var(--copilot-danger-text-strong)]">
+                  U$S {row.debt_usd.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
+                  {(row.overdue_usd ?? 0) > 0 ? (
+                    <span className="ml-1 text-[10px] font-medium text-[var(--copilot-danger-text)]">atrasado</span>
+                  ) : null}
+                </dd>
+              </div>
+            ) : null}
+          </>
+        )}
         {openInvoices != null && openInvoices > 0 ? (
           <div className="flex items-baseline justify-between gap-2">
             <dt className="text-[var(--copilot-ink-muted)]">Facturas abiertas</dt>
@@ -318,7 +350,7 @@ export function ClientesPortfolioTable({
     },
     {
       key: "salud",
-      header: "Salud",
+      header: "Riesgo",
       render: (row) => {
         const salud = deriveClientStatus(row);
         return (

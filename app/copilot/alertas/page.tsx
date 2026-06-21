@@ -20,6 +20,8 @@ import { useCopilotNotifications } from "@/hooks/use-copilot-notifications";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { copilotPageMainClass } from "@/components/copilot/copilot-ui";
 import type { CopilotNotification } from "@/lib/copilot-notifications/notification-types";
+import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
+import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -255,6 +257,7 @@ function NotificationCard({
 }) {
   const unread = !n.read_at;
   const { bg, icon } = getIconConfig(n.type, n.severity);
+  const { mode, fxRate } = useDisplayCurrency();
 
   return (
     <article
@@ -303,8 +306,9 @@ function NotificationCard({
           {/* Amount */}
           {n.amount != null && n.currency ? (
             <p className="mt-1.5 text-[13px] font-semibold tabular-nums text-[var(--copilot-ink)]">
-              {n.currency}{" "}
-              {n.amount.toLocaleString("es-UY", { maximumFractionDigits: 0 })}
+              {mode === "usd_equivalent"
+                ? formatUsdEquivalent(convertToUsdEquivalent({ uyu: n.currency === "UYU" ? n.amount : 0, usd: n.currency === "USD" ? n.amount : 0 }, fxRate))
+                : `${n.currency} ${n.amount.toLocaleString("es-UY", { maximumFractionDigits: 0 })}`}
             </p>
           ) : null}
 
@@ -475,7 +479,7 @@ export default function CopilotAlertasPage() {
     <div className="flex min-h-0 flex-1 flex-col">
       <CopilotPageHeader
         surfaceId="copilot.alertas"
-        title="Centro de alertas"
+        title="Alertas"
         description="Cobros, vencimientos, pagos y eventos relevantes del negocio."
       />
 

@@ -11,7 +11,7 @@ export const HOY_UI = {
 
 export const HOY_PAGE = {
   title: "Copilot · Hoy",
-  description: "Operación diaria: caja, cobros urgentes y prioridad del día.",
+  description: "Caja, cobros urgentes y prioridad del día.",
 } as const;
 
 /** Cockpit financiero — bloques principales. */
@@ -19,7 +19,7 @@ export const HOY_COCKPIT = {
   moneyAvailable: "Caja disponible",
   receivables: "Total pendiente",
   payments: "Pagos próximos",
-  afterPayments: "Cobertura",
+  afterPayments: "Caja proyectada 30d",
   receivablesTotalPending: "Total pendiente",
   receivablesOverdueTotal: "Atrasado",
   receivablesIncludedInTotal: "Incluido en Total pendiente",
@@ -36,7 +36,8 @@ export const HOY_COCKPIT = {
   viewCriticalClients: "Ver clientes críticos",
   drawerCashSummary: "Caja actual registrada disponible para operar.",
   drawerPaymentsEmpty: "Detalle de pagos disponible en Tesorería.",
-  drawerAfterPaymentsSummary: "Caja + cobros esperados − pagos próximos 30 días.",
+  drawerAfterPaymentsSummary:
+    "Caja + cobros probables de cartera − pagos próximos 30 días (snapshot, no timeline semanal).",
   drawerViewTreasury: "Ver Tesorería",
   drawerViewProjection: "Ver proyección",
   drawerGoToCriticalClients: "Ir a clientes críticos",
@@ -126,11 +127,6 @@ export const HOY_COPY = {
   noIncomeRegistered: "Sin entradas registradas",
   noExpenseRegistered: "Sin salidas registradas",
   projection30Title: "Cobertura próximos pagos",
-  upcomingCommitmentsTitle: "Próximos compromisos",
-  upcomingCommitmentsTip: "Pagos programados en los próximos 30 días, agrupados por fecha.",
-  upcomingCommitmentsEmpty: "No hay pagos programados en los próximos 30 días.",
-  upcomingCommitmentsCta: "Ver todos en Tesorería",
-  monthEndCollapsedTitle: "Ver proyección de cierre del mes",
   projection30Tip:
     "Incluye ingresos, egresos, pagos programados y pagos generados por recurrentes. Escenario si cobrás lo pendiente.",
   /** @deprecated Usar `availableCashLabel`. */
@@ -141,45 +137,13 @@ export const HOY_COPY = {
   pendingReceivablesLabel: "Total pendiente",
   pendingReceivablesTip: "Todo lo que los clientes deben actualmente. El atrasado ya está incluido.",
   expectedCash30Label: "Cobros probables",
-  expectedCash30Tip: "Caja disponible + cobros probables − pagos programados. Los cobros probables son una proyección ponderada por historial.",
+  expectedCash30Tip: "Caja disponible + total pendiente por cobrar − pagos programados.",
   scheduledOutflowsLabel: "Pagos programados",
   treasuryCta: "Configurar pagos futuros",
   treasuryNoOutflows: "Sin egresos configurados",
-  monthEndProjectionTitle: "Caja proyectada al cierre del mes",
-  monthEndMvpBadge: "Proyección al cierre",
-  monthEndScenarioSubtitle: {
-    conservative:
-      "Escenario conservador: asume cobro parcial (50%) de la deuda pendiente y pagos programados cargados.",
-    expected:
-      "Escenario esperado: asume cobro parcial de la deuda pendiente y pagos programados cargados.",
-    optimistic:
-      "Escenario optimista: asume cobro total (100%) de la deuda pendiente y pagos programados cargados.",
-  },
-  monthEndProjectionTip:
-    "Caja disponible + cobros del escenario − pagos programados hasta fin de mes.",
-  monthEndFridaysTitle: "Próximos viernes",
-  monthEndFridaysTip:
-    "Los cobros del escenario se reparten de forma pareja hasta fin de mes.",
-  monthEndDrawerCta: "Ver cómo se calcula",
-  monthEndDrawerTitle: "Cómo se calcula la caja del mes",
-  monthEndDrawerScenariosNote:
-    "Escenarios conservador (50%), esperado (75%) y optimista (100%) sobre la deuda pendiente.",
-  monthEndDrawerLinearNote:
-    "Los cobros del escenario se reparten de forma lineal hasta fin de mes.",
-  monthEndRiskStable: "Estable",
-  monthEndRiskAttention: "Atención",
-  monthEndRiskCritical: "Crítico",
-  monthEndRiskNoteStable: "Sin alerta",
-  monthEndRiskNoteAttention: "Margen bajo",
-  monthEndRiskNoteCritical: "Caja negativa",
-  monthEndDrawerRisksTitle: "Riesgos detectados",
-  monthEndOverallStable:
-    "La proyección al cierre del mes se ve estable con los datos cargados.",
-  monthEndOverallAttention:
-    "La proyección muestra margen bajo en alguna moneda. Revisá cobros y pagos programados.",
-  monthEndOverallCritical:
-    "La proyección indica caja negativa en alguna moneda antes o al cierre del mes.",
-  monthEndTreasuryCta: "Ver Tesorería",
+  weeklyProjectionTitle: "Proyección de caja semanal",
+  weeklyProjectionTip:
+    "Caja estimada cada viernes según cobros esperados y pagos cargados.",
 } as const;
 
 /** Semántica de color ejecutiva por métrica. */

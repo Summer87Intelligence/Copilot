@@ -20,6 +20,7 @@ import {
   CURRENCY_METRIC_LABELS,
   CURRENCY_METRIC_TONES,
   COLLECTION_EXCEEDS_BILLING_NOTE,
+  HOY_COCKPIT,
   HOY_COPY,
   HOY_PAGE,
   HOY_UI,
@@ -304,8 +305,8 @@ describe("buildTodayBusinessPulse", () => {
       const { importantPendingItems } = buildTodayBusinessPulse({ snapshot: null, portfolioRows: rows, gate: GATE_HIGH });
       const item = importantPendingItems.find((i) => i.id.startsWith("overdue_high_"));
       expect(item).toBeDefined();
-      // Debe mostrar "UYU $" o "USD U$S", nunca solo "$"
-      expect(item!.impacto).toMatch(/UYU \$|USD U\$S/);
+      // Debe mostrar símbolo de moneda: "$ " para UYU, "U$S " para USD
+      expect(item!.impacto).toMatch(/\$ |U\$S /);
     });
   });
 
@@ -430,10 +431,10 @@ describe("buildTodayBusinessPulse", () => {
       expect(c.deuda_breakdown.some((m) => m.currency === "USD")).toBe(false);
     });
 
-    it("formato de monto UYU es 'UYU $ X'", () => {
+    it("formato de monto UYU empieza con símbolo '$'", () => {
       const { priorityCollections } = buildTodayBusinessPulse(input);
       const c = priorityCollections[0]!;
-      expect(c.deuda_breakdown[0]!.formatted).toMatch(/^UYU \$/);
+      expect(c.deuda_breakdown[0]!.formatted).toMatch(/^\$/);
     });
 
     it("bloque UYU: pendiente coincide con debt_uyu", () => {
@@ -465,10 +466,10 @@ describe("buildTodayBusinessPulse", () => {
       expect(c.vencido_breakdown[0]!.currency).toBe("USD");
     });
 
-    it("formato de monto USD es 'USD U$S X'", () => {
+    it("formato de monto USD empieza con símbolo 'U$S'", () => {
       const { priorityCollections } = buildTodayBusinessPulse(input);
       const c = priorityCollections[0]!;
-      expect(c.deuda_breakdown[0]!.formatted).toMatch(/^USD U\$S/);
+      expect(c.deuda_breakdown[0]!.formatted).toMatch(/^U\$S/);
     });
 
     it("bloque USD: pendiente coincide con debt_usd", () => {
@@ -932,7 +933,10 @@ describe("buildTodayBusinessPulse", () => {
           block.overdueCritical30,
           block.expectedIncome,
         ]) {
-          if (field) expect(field.formatted).toMatch(/^(UYU \$|USD U\$S)/);
+          if (field) {
+            if (block.currency === "UYU") expect(field.formatted).toMatch(/^\$/);
+            if (block.currency === "USD") expect(field.formatted).toMatch(/^U\$S/);
+          }
         }
       }
     });
@@ -968,18 +972,9 @@ describe("buildTodayBusinessPulse", () => {
       expect(CURRENCY_METRIC_LABELS.billed).not.toMatch(/bruto/i);
       expect(HOY_COPY.debtorsSectionTitle).toBe("Clientes con deuda");
       expect(HOY_COPY.debtorsSectionTitle.toLowerCase()).not.toContain("prioritario");
-      expect(HOY_COPY.monthEndProjectionTitle).toBe("Caja proyectada al cierre del mes");
-      expect(HOY_COPY.monthEndMvpBadge).toBe("Proyección al cierre");
-      expect(HOY_COPY.monthEndScenarioSubtitle.expected).toContain("Escenario esperado");
-      expect(HOY_COPY.monthEndDrawerScenariosNote).toContain("50%");
-      expect(HOY_COPY.monthEndDrawerScenariosNote).toContain("75%");
-      expect(HOY_COPY.monthEndDrawerScenariosNote).toContain("100%");
-      expect(HOY_COPY.monthEndDrawerRisksTitle).toBe("Riesgos detectados");
-      expect(HOY_COPY.monthEndRiskNoteCritical).toBe("Caja negativa");
-      expect(HOY_COPY.monthEndRiskNoteAttention).toBe("Margen bajo");
-      expect(HOY_COPY.monthEndOverallCritical.toLowerCase()).not.toContain("alarma");
-      expect(HOY_COPY.monthEndFridaysTip.toLowerCase()).not.toContain("inteligente");
-      expect(HOY_COPY.monthEndFridaysTip.toLowerCase()).not.toContain("predicción");
+      expect(HOY_COPY.weeklyProjectionTitle).toBe("Proyección de caja semanal");
+      expect(HOY_COPY.weeklyProjectionTip).toContain("cobros esperados");
+      expect(HOY_COCKPIT.afterPayments).toBe("Caja proyectada 30d");
       expect(HOY_PAGE.title).toBe("Copilot · Hoy");
       expect(HOY_PAGE.title).not.toMatch(/pulso/i);
       expect(HOY_UI.showRecommendedActions).toBe(true);
@@ -1050,12 +1045,12 @@ describe("buildTodayBusinessPulse", () => {
 
   // ─ Helpers ────────────────────────────────────────────────────────────────
   describe("fmtCurrencyAmount", () => {
-    it("formatea UYU con prefijo 'UYU $'", () => {
-      expect(fmtCurrencyAmount(68_650, "UYU")).toMatch(/^UYU \$/);
+    it("formatea UYU con símbolo '$ X'", () => {
+      expect(fmtCurrencyAmount(68_650, "UYU")).toMatch(/^\$ /);
     });
 
-    it("formatea USD con prefijo 'USD U$S'", () => {
-      expect(fmtCurrencyAmount(6_735, "USD")).toMatch(/^USD U\$S/);
+    it("formatea USD con símbolo 'U$S X'", () => {
+      expect(fmtCurrencyAmount(6_735, "USD")).toMatch(/^U\$S /);
     });
   });
 

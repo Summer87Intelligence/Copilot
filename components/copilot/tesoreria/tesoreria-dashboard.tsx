@@ -360,7 +360,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
         <section>
           <CopilotSectionTitle
             title="Acciones sugeridas"
-            subtitle="Riesgos operativos que requieren atención."
+            subtitle="Acciones que requieren atención."
           />
           <ul className="space-y-2">
             {alerts.map((alert) => (
