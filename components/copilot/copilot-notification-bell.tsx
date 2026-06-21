@@ -19,6 +19,7 @@ import { useCopilotNotifications } from "@/hooks/use-copilot-notifications";
 import type { CopilotNotification } from "@/lib/copilot-notifications/notification-types";
 import {
   dedupeNotificationsForDisplay,
+  isAutoResolvedCashRisk,
   normalizeNotificationBody,
   normalizeNotificationTitle,
 } from "@/lib/copilot-notifications/notification-display";
@@ -54,6 +55,15 @@ const BUCKET_LABELS: Record<"hoy" | "ayer" | "anterior", string> = {
   ayer: "Ayer",
   anterior: "Anteriores",
 };
+
+/**
+ * Auto-resolved cash_risk notifications are always shown in "Anteriores"
+ * regardless of created_at — they're not active alerts anymore.
+ */
+function effectiveBucket(n: CopilotNotification): "hoy" | "ayer" | "anterior" {
+  if (isAutoResolvedCashRisk(n)) return "anterior";
+  return dateBucket(n.created_at);
+}
 
 /**
  * Returns a one-line cash-impact note for collection_received notifications
@@ -139,8 +149,13 @@ function NotifItem({
 }) {
   const unread = !n.read_at;
   const { bg, icon } = getIconConfig(n.type, n.severity);
-  const displayTitle = normalizeNotificationTitle(n.title, n.type);
-  const displayBody = normalizeNotificationBody(n.body, n.type);
+  const autoResolved = isAutoResolvedCashRisk(n);
+  const displayTitle = autoResolved
+    ? "Cobertura de caja mejorada"
+    : normalizeNotificationTitle(n.title, n.type);
+  const displayBody = autoResolved
+    ? "La caja ahora cubre los compromisos próximos. Alerta resuelta automáticamente."
+    : normalizeNotificationBody(n.body, n.type);
   const cashImpactLine =
     n.type === "collection_received"
       ? collectionCashImpactLine(n.metadata)
@@ -178,7 +193,13 @@ function NotifItem({
 
           {/* Body */}
           {displayBody ? (
-            <p className="mt-[3px] line-clamp-3 text-[12.5px] leading-relaxed text-[var(--copilot-ink-muted)]">
+            <p
+              className={`mt-[3px] text-[12.5px] leading-relaxed text-[var(--copilot-ink-muted)] ${
+                n.type === "debt_followup_summary"
+                  ? "line-clamp-4 whitespace-pre-line"
+                  : "line-clamp-3"
+              }`}
+            >
               {displayBody}
             </p>
           ) : null}
@@ -268,7 +289,7 @@ export function CopilotNotificationBell() {
       key: bucket,
       label: BUCKET_LABELS[bucket],
       items: dedupeNotificationsForDisplay(
-        notifications.filter((n) => dateBucket(n.created_at) === bucket)
+        notifications.filter((n) => effectiveBucket(n) === bucket)
       ),
     }))
     .filter((g) => g.items.length > 0);

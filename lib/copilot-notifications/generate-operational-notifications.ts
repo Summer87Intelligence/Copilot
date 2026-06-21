@@ -10,6 +10,7 @@ import {
   notifyTreasuryPaymentOverdue,
   notifyCashRiskDetected,
   type CashRiskCurrencyDetail,
+  type DebtFollowupTopClient,
 } from "./notification-events";
 import { DEFAULT_DISPLAY_FX_RATE_UYU_PER_USD } from "@/lib/currency-display-mode";
 import { businessDateYmd } from "./business-date";
@@ -568,6 +569,7 @@ async function generateRecentCollectionNotifications(
         clientId: companyId,
         clientName,
         currency,
+        amount,
         receiptId,
         dateBucket: today,
       });
@@ -614,7 +616,8 @@ async function generateDebtFollowupSummaryNotification(
 
   if (error || !invoices) return;
 
-  const overdueClients = new Set<string>();
+  type ClientAgg = { uyuAmount: number; usdAmount: number };
+  const byClient = new Map<string, ClientAgg>();
   let uyuOverdue = 0;
   let usdOverdue = 0;
 
@@ -626,18 +629,56 @@ async function generateDebtFollowupSummaryNotification(
     const companyId = String(inv.company_id ?? "").trim();
     if (!companyId) continue;
     const currency = String(inv.currency_code ?? "UYU").toUpperCase();
-    overdueClients.add(companyId);
-    if (currency === "USD") usdOverdue += balance;
-    else uyuOverdue += balance;
+
+    if (!byClient.has(companyId)) byClient.set(companyId, { uyuAmount: 0, usdAmount: 0 });
+    const agg = byClient.get(companyId)!;
+    if (currency === "USD") {
+      agg.usdAmount += balance;
+      usdOverdue += balance;
+    } else {
+      agg.uyuAmount += balance;
+      uyuOverdue += balance;
+    }
   }
 
-  if (overdueClients.size === 0) return;
+  if (byClient.size === 0) return;
+
+  // Sort by USD-equivalent descending to get the top 3 highest debtors
+  const sorted = [...byClient.entries()]
+    .map(([id, agg]) => ({
+      id,
+      agg,
+      score: agg.usdAmount + agg.uyuAmount / DEFAULT_DISPLAY_FX_RATE_UYU_PER_USD,
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  const top3Ids = sorted.slice(0, 3).map((c) => c.id);
+  const nameMap = await loadCompanyNameMap(admin, tenantCompanyId, top3Ids);
+
+  const topClients: DebtFollowupTopClient[] = sorted.slice(0, 3).map(({ id, agg }) => ({
+    name: nameMap.get(id) ?? "Cliente",
+    amountUYU: Math.round(agg.uyuAmount),
+    amountUSD: Math.round(agg.usdAmount * 100) / 100,
+  }));
+
+  // Pre-compute title amount for executive scan:
+  // single currency → show that currency; mixed → show USD equivalent
+  const titleDisplay = (() => {
+    const fmt = (n: number, cur: string) =>
+      `${cur} ${Math.round(n).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
+    if (usdOverdue > 0 && uyuOverdue === 0) return fmt(usdOverdue, "USD");
+    if (uyuOverdue > 0 && usdOverdue === 0) return fmt(uyuOverdue, "UYU");
+    const totalUsd = usdOverdue + uyuOverdue / DEFAULT_DISPLAY_FX_RATE_UYU_PER_USD;
+    return `${fmt(totalUsd, "USD")} equiv.`;
+  })();
 
   const r = await notifyDebtFollowupSummary({
     tenantCompanyId,
-    overdueClientCount: overdueClients.size,
+    overdueClientCount: byClient.size,
     uyuOverdue,
     usdOverdue,
+    topClients,
+    titleDisplay,
     asOfYmd: today,
   });
   tally(acc, "debt_followup_summary", r);

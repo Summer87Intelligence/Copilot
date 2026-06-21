@@ -1,5 +1,18 @@
 import type { CopilotNotification } from "@/lib/copilot-notifications/notification-types";
 
+/**
+ * Returns true for cash_risk_detected notifications that were auto-resolved by
+ * the consolidated-coverage recalculation (not manually read by the user).
+ * Used to distinguish "stale alert" from "active risk" in the UI.
+ */
+export function isAutoResolvedCashRisk(n: CopilotNotification): boolean {
+  return (
+    n.type === "cash_risk_detected" &&
+    n.read_at !== null &&
+    typeof n.metadata?.auto_resolved_reason === "string"
+  );
+}
+
 /** Reescribe copy legacy al mostrar (DB puede tener textos viejos). */
 export function normalizeNotificationBody(
   body: string | null | undefined,

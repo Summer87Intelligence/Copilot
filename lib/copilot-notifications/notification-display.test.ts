@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   dedupeNotificationsForDisplay,
+  isAutoResolvedCashRisk,
   normalizeNotificationBody,
 } from "./notification-display";
 import type { CopilotNotification } from "./notification-types";
@@ -42,4 +43,64 @@ describe("dedupeNotificationsForDisplay", () => {
     const dup = { ...base, id: "2", dedup_key: "k2" };
     expect(dedupeNotificationsForDisplay([base, dup])).toHaveLength(1);
   });
+});
+
+// ── isAutoResolvedCashRisk ────────────────────────────────────────────────────
+
+const BASE_NOTIF: CopilotNotification = {
+  id: "n1",
+  workspace_company_id: "ws-1",
+  type: "cash_risk_detected",
+  severity: "critical",
+  title: "Riesgo de caja detectado",
+  body: "Faltan USD 1.000,00 para cubrir compromisos próximos.",
+  entity_type: null,
+  entity_id: null,
+  amount: null,
+  currency: null,
+  action_href: "/copilot/tesoreria",
+  dedup_key: "cash_risk_detected:2026-06-21:USD",
+  metadata: {},
+  read_at: null,
+  created_at: "2026-06-21T10:00:00Z",
+};
+
+describe("isAutoResolvedCashRisk", () => {
+  it("read_at nulo → no es auto-resuelta (alerta activa)", () =>
+    expect(
+      isAutoResolvedCashRisk({ ...BASE_NOTIF, read_at: null, metadata: { auto_resolved_reason: "x" } })
+    ).toBe(false));
+
+  it("tipo distinto → false aunque tenga auto_resolved_reason", () =>
+    expect(
+      isAutoResolvedCashRisk({
+        ...BASE_NOTIF,
+        type: "collection_received",
+        read_at: "2026-06-21T11:00:00Z",
+        metadata: { auto_resolved_reason: "x" },
+      })
+    ).toBe(false));
+
+  it("cash_risk_detected + read_at + auto_resolved_reason → true", () =>
+    expect(
+      isAutoResolvedCashRisk({
+        ...BASE_NOTIF,
+        read_at: "2026-06-21T11:00:00Z",
+        metadata: { auto_resolved_reason: "Resolved after consolidated USD coverage recalculation." },
+      })
+    ).toBe(true));
+
+  it("cash_risk_detected + read_at sin auto_resolved_reason → false (leída manualmente)", () =>
+    expect(
+      isAutoResolvedCashRisk({ ...BASE_NOTIF, read_at: "2026-06-21T11:00:00Z", metadata: {} })
+    ).toBe(false));
+
+  it("auto_resolved_reason no es string → false", () =>
+    expect(
+      isAutoResolvedCashRisk({
+        ...BASE_NOTIF,
+        read_at: "2026-06-21T11:00:00Z",
+        metadata: { auto_resolved_reason: true },
+      })
+    ).toBe(false));
 });

@@ -46,12 +46,19 @@ export function buildPartialCollectionBody(
 
 export function buildClientDebtSettledBody(
   clientName: string,
-  opts?: { hadOverdue?: boolean }
+  opts?: { hadOverdue?: boolean; amount?: number; currency?: string }
 ): string {
+  const amountStr =
+    opts?.amount !== undefined && opts.amount > 0 && opts.currency
+      ? formatNotificationMoney(opts.amount, opts.currency)
+      : null;
+
   if (opts?.hadOverdue) {
-    return `${clientName} pagó su deuda atrasada.`;
+    return amountStr
+      ? `${clientName} pagó su deuda atrasada de ${amountStr}.`
+      : `${clientName} pagó su deuda atrasada.`;
   }
-  return `${clientName} pagó su deuda.`;
+  return amountStr ? `${clientName} pagó ${amountStr}.` : `${clientName} pagó su deuda.`;
 }
 
 export function buildNewDebtorBody(clientName: string, amount: number, currency: string): string {

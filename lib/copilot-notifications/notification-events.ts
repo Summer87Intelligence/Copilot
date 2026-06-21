@@ -117,6 +117,8 @@ type ClientDebtSettledOpts = {
   clientId: string;
   clientName: string;
   currency: string;
+  /** Monto del recibo que cerró la deuda — se muestra en el body. */
+  amount?: number;
   receiptId?: string | null;
   /** YYYY-MM-DD — bucket diario de dedupe. */
   dateBucket: string;
@@ -126,13 +128,22 @@ type ClientDebtSettledOpts = {
 
 export async function notifyClientDebtSettled(opts: ClientDebtSettledOpts) {
   const dedupKey = buildClientDebtSettledDedupKey(opts.clientId, opts.dateBucket);
+  const settledTitle =
+    opts.amount && opts.amount > 0
+      ? `Cliente saldó deuda · ${formatNotificationMoney(opts.amount, opts.currency)}`
+      : "Cliente saldó su deuda";
   return createNotificationIfNotExists(opts.tenantCompanyId, {
     type: "client_debt_settled",
     severity: "info",
-    title: "Cliente saldó su deuda",
-    body: buildClientDebtSettledBody(opts.clientName, { hadOverdue: opts.hadOverdue }),
+    title: settledTitle,
+    body: buildClientDebtSettledBody(opts.clientName, {
+      hadOverdue: opts.hadOverdue,
+      amount: opts.amount,
+      currency: opts.currency,
+    }),
     entity_type: "company",
     entity_id: opts.clientId,
+    amount: opts.amount ?? null,
     currency: opts.currency,
     action_href: `/copilot/clientes/${opts.clientId}`,
     dedup_key: dedupKey,
@@ -141,7 +152,7 @@ export async function notifyClientDebtSettled(opts: ClientDebtSettledOpts) {
       client_id: opts.clientId,
       client_name: opts.clientName,
       currency: opts.currency,
-      amount: 0,
+      amount: opts.amount ?? 0,
       remaining_balance: 0,
       ...(opts.receiptId ? { receipt_id: opts.receiptId } : {}),
       status: "settled",
@@ -164,7 +175,7 @@ export async function notifyNewDebtor(opts: NewDebtorOpts) {
   return createNotificationIfNotExists(opts.tenantCompanyId, {
     type: "new_debtor",
     severity: "warning",
-    title: "Nuevo saldo pendiente",
+    title: `Nuevo saldo pendiente · ${formatNotificationMoney(opts.amount, opts.currency)}`,
     body: buildNewDebtorBody(opts.clientName, opts.amount, opts.currency),
     entity_type: "company",
     entity_id: opts.clientId,
@@ -333,27 +344,62 @@ export async function notifyTreasuryPaymentOverdue(opts: TreasuryPaymentOverdueO
 /**
  * Título de la notificación resumen de deuda vencida. Exportado para tests.
  * Aparece una vez por día en la campana en lugar de N notificaciones individuales.
+ * totalDisplay es el monto total pre-formateado (e.g. "USD 601") para escaneo ejecutivo.
  */
-export function buildDebtFollowupSummaryTitle(overdueClientCount: number): string {
-  if (overdueClientCount === 1) return "1 cliente con deuda atrasada";
-  return `${overdueClientCount} clientes con deuda atrasada`;
+export function buildDebtFollowupSummaryTitle(
+  overdueClientCount: number,
+  totalDisplay?: string
+): string {
+  const n = overdueClientCount;
+  const suffix = totalDisplay ? ` · ${totalDisplay}` : "";
+  if (n === 1) return `1 cliente atrasado${suffix}`;
+  return `${n} clientes atrasados${suffix}`;
 }
+
+export type DebtFollowupTopClient = {
+  name: string;
+  amountUYU: number;
+  amountUSD: number;
+};
 
 /**
  * Cuerpo de la notificación resumen. Exportado para tests.
- * Muestra montos vencidos UYU/USD y CTA textual.
+ * Muestra total atrasado clarificando que es entre N clientes (no por cliente),
+ * y opcionalmente los principales deudores.
  */
 export function buildDebtFollowupSummaryBody(
   uyuOverdue: number,
-  usdOverdue: number
+  usdOverdue: number,
+  overdueClientCount?: number,
+  topClients?: readonly DebtFollowupTopClient[]
 ): string {
   const parts: string[] = [];
   if (uyuOverdue > 0)
     parts.push(`UYU ${uyuOverdue.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`);
   if (usdOverdue > 0)
     parts.push(`USD ${usdOverdue.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`);
+
   if (parts.length === 0) return "Revisá clientes críticos.";
-  return `${parts.join(" y ")} atrasados. Revisá clientes críticos.`;
+
+  const n = overdueClientCount ?? 0;
+  const clientSuffix = n > 0 ? ` entre ${n} cliente${n !== 1 ? "s" : ""}` : "";
+  const totalLine = `Total atrasado: ${parts.join(" y ")}${clientSuffix}.`;
+
+  if (!topClients?.length) return `${totalLine} Revisá clientes críticos.`;
+
+  const clientLines = topClients
+    .slice(0, 3)
+    .map((c) => {
+      const amt: string[] = [];
+      if (c.amountUYU > 0)
+        amt.push(`UYU ${c.amountUYU.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`);
+      if (c.amountUSD > 0)
+        amt.push(`USD ${c.amountUSD.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`);
+      return `• ${c.name} · ${amt.join(" / ")}`;
+    })
+    .join("\n");
+
+  return `${totalLine}\n${clientLines}`;
 }
 
 type DebtFollowupSummaryOpts = {
@@ -363,16 +409,28 @@ type DebtFollowupSummaryOpts = {
   usdOverdue: number;
   /** YYYY-MM-DD — bucket diario para dedupe. 1 resumen por día. */
   asOfYmd: string;
+  topClients?: readonly DebtFollowupTopClient[];
+  /** Monto total pre-formateado para incluir en el título (escaneo ejecutivo). */
+  titleDisplay?: string;
 };
 
 export async function notifyDebtFollowupSummary(opts: DebtFollowupSummaryOpts) {
   return createNotificationIfNotExists(opts.tenantCompanyId, {
     type: "debt_followup_summary",
     severity: "warning",
-    title: buildDebtFollowupSummaryTitle(opts.overdueClientCount),
-    body: buildDebtFollowupSummaryBody(opts.uyuOverdue, opts.usdOverdue),
+    title: buildDebtFollowupSummaryTitle(opts.overdueClientCount, opts.titleDisplay),
+    body: buildDebtFollowupSummaryBody(
+      opts.uyuOverdue,
+      opts.usdOverdue,
+      opts.overdueClientCount,
+      opts.topClients
+    ),
     action_href: "/copilot/hoy#clientes-criticos",
     dedup_key: `debt_followup_summary:${opts.asOfYmd}`,
+    metadata: {
+      overdue_client_count: opts.overdueClientCount,
+      top_clients: opts.topClients ?? [],
+    },
   });
 }
 
