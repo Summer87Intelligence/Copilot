@@ -294,7 +294,7 @@ export default function ManualPage() {
     COPILOT_MANUAL_DAILY_FLOW.length > 0
       ? COPILOT_MANUAL_DAILY_FLOW
       : [
-          { step: 1, label: "Hoy", description: "Mirá caja, pagos y clientes críticos.", href: "/copilot/hoy" },
+          { step: 1, label: "Hoy", description: "Mirá caja, pagos y principales deudores.", href: "/copilot/hoy" },
           { step: 2, label: "Estado", description: "Verificá si hay algo urgente en el semáforo.", href: "/copilot/hoy" },
           { step: 3, label: "Acciones", description: "Ejecutá las acciones críticas primero.", href: "/copilot/acciones" },
           { step: 4, label: "Alertas", description: "Revisá novedades del negocio.", href: "/copilot/alertas" },

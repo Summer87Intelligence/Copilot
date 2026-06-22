@@ -379,13 +379,13 @@ export function buildDebtFollowupSummaryBody(
   if (usdOverdue > 0)
     parts.push(`USD ${usdOverdue.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`);
 
-  if (parts.length === 0) return "Revisá clientes críticos.";
+  if (parts.length === 0) return "Revisá principales deudores.";
 
   const n = overdueClientCount ?? 0;
   const clientSuffix = n > 0 ? ` entre ${n} cliente${n !== 1 ? "s" : ""}` : "";
   const totalLine = `Total atrasado: ${parts.join(" y ")}${clientSuffix}.`;
 
-  if (!topClients?.length) return `${totalLine} Revisá clientes críticos.`;
+  if (!topClients?.length) return `${totalLine} Revisá principales deudores.`;
 
   const clientLines = topClients
     .slice(0, 3)

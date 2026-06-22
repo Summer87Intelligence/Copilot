@@ -500,6 +500,6 @@ export const SYSTEM_STATE_SIGNALS: readonly SystemStateSignal[] = [
     label: "Clientes de alto riesgo",
     source: "portfolio",
     ctaHref: "/copilot/cartera",
-    ctaLabel: "Ver clientes críticos",
+    ctaLabel: "Ver principales deudores",
   },
 ] as const;

@@ -55,7 +55,7 @@ function effectiveBucketFor(n: CopilotNotification): "hoy" | "ayer" | "anterior"
 }
 
 function actionLabel(href: string): string {
-  if (href.includes("clientes-criticos")) return "Ver clientes críticos";
+  if (href.includes("clientes-criticos")) return "Ver principales deudores";
   if (href.includes("/clientes/")) return "Ver cliente";
   if (href.includes("filter=overdue")) return "Ver clientes atrasados";
   if (href.includes("/cartera")) return "Ver cartera";
