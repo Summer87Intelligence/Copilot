@@ -42,8 +42,8 @@ export type CopilotNavGroup = {
   items: CopilotNavItem[];
 };
 
-const COPILOT_NAV_INICIO: CopilotNavGroup = {
-  sectionTitle: "Inicio",
+const COPILOT_NAV_HOY: CopilotNavGroup = {
+  sectionTitle: "Hoy",
   items: [
     {
       href: "/copilot/hoy",
@@ -52,6 +52,12 @@ const COPILOT_NAV_INICIO: CopilotNavGroup = {
       icon: ListTodo,
       moduleKey: "hoy",
     },
+  ],
+};
+
+const COPILOT_NAV_VENTAS: CopilotNavGroup = {
+  sectionTitle: "Ventas",
+  items: [
     {
       href: "/copilot/dashboard",
       label: "Dashboard",
@@ -60,32 +66,40 @@ const COPILOT_NAV_INICIO: CopilotNavGroup = {
       icon: BarChart3,
       moduleKey: "dashboard",
     },
+    {
+      href: "/copilot/finanzas",
+      label: "Finanzas",
+      shortLabel: "Finanzas",
+      description: "Caja, cobros y resultados",
+      icon: Wallet,
+      moduleKey: "finanzas",
+    },
+    {
+      href: "/copilot/reportes",
+      label: "Reportes",
+      description: "PDFs y reportes",
+      icon: FileText,
+      moduleKey: "reportes",
+    },
   ],
 };
 
-const COPILOT_NAV_OPERACION: CopilotNavGroup = {
-  sectionTitle: "Operación",
+const COPILOT_NAV_COBRANZA: CopilotNavGroup = {
+  sectionTitle: "Cobranza",
   items: [
-    {
-      href: "/copilot/clientes",
-      label: "Clientes",
-      description: "Ficha y cobranza",
-      icon: Users,
-      moduleKey: "clientes",
-    },
     {
       href: "/copilot/cartera",
       label: "Cartera",
-      description: "Deuda y cobros",
+      description: "Saldos pendientes y seguimiento",
       icon: Landmark,
       moduleKey: "cartera",
     },
     {
-      href: "/copilot/tesoreria",
-      label: "Tesorería",
-      description: "Caja y pagos",
-      icon: Banknote,
-      moduleKey: "tesoreria",
+      href: "/copilot/clientes",
+      label: "Clientes",
+      description: "Ficha del cliente y contacto",
+      icon: Users,
+      moduleKey: "clientes",
     },
     {
       href: "/copilot/acciones",
@@ -97,31 +111,15 @@ const COPILOT_NAV_OPERACION: CopilotNavGroup = {
   ],
 };
 
-const COPILOT_NAV_ANALISIS: CopilotNavGroup = {
-  sectionTitle: "Análisis",
+const COPILOT_NAV_TESORERIA: CopilotNavGroup = {
+  sectionTitle: "Tesorería",
   items: [
     {
-      href: "/copilot/reportes",
-      label: "Reportes",
-      description: "PDFs operativos",
-      icon: FileText,
-      moduleKey: "reportes",
-    },
-    {
-      href: "/copilot/finanzas",
-      label: "Finanzas",
-      shortLabel: "Finanzas",
-      description: "Panorama financiero",
-      icon: Wallet,
-      moduleKey: "finanzas",
-    },
-    {
-      href: "/copilot/agentes",
-      label: "Agentes IA",
-      shortLabel: "Agentes",
-      description: "Análisis y briefings",
-      icon: Bot,
-      moduleKey: "agentes",
+      href: "/copilot/tesoreria",
+      label: "Tesorería",
+      description: "Caja y pagos",
+      icon: Banknote,
+      moduleKey: "tesoreria",
     },
   ],
 };
@@ -130,18 +128,32 @@ const COPILOT_NAV_SISTEMA: CopilotNavGroup = {
   sectionTitle: "Sistema",
   items: [
     {
+      href: "/copilot/alertas",
+      label: "Alertas",
+      description: "Avisos y novedades",
+      icon: TriangleAlert,
+    },
+    {
+      href: "/copilot/agentes",
+      label: "Agentes IA",
+      shortLabel: "Agentes",
+      description: "Asistentes y análisis",
+      icon: Bot,
+      moduleKey: "agentes",
+    },
+    {
       href: "/copilot/datos",
       label: "Datos",
       description: "Consulta de registros",
       icon: Database,
       moduleKey: "datos",
     },
-    {
-      href: "/copilot/alertas",
-      label: "Alertas",
-      description: "Avisos y novedades",
-      icon: TriangleAlert,
-    },
+  ],
+};
+
+const COPILOT_NAV_CONFIGURACION: CopilotNavGroup = {
+  sectionTitle: "Configuración",
+  items: [
     {
       href: "/copilot/admin",
       label: "Configuración",
@@ -209,10 +221,12 @@ export const COPILOT_NAV_ADMIN_GROUP: CopilotNavGroup = {
 
 /** Grupos base del menú lateral (solo rutas visibles para dirección). */
 export const COPILOT_NAV_BASE_GROUPS: CopilotNavGroup[] = [
-  COPILOT_NAV_INICIO,
-  COPILOT_NAV_OPERACION,
-  COPILOT_NAV_ANALISIS,
+  COPILOT_NAV_HOY,
+  COPILOT_NAV_VENTAS,
+  COPILOT_NAV_COBRANZA,
+  COPILOT_NAV_TESORERIA,
   COPILOT_NAV_SISTEMA,
+  COPILOT_NAV_CONFIGURACION,
 ];
 
 function filterSidebarItems(group: CopilotNavGroup): CopilotNavGroup {
