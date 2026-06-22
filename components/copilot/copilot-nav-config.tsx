@@ -17,6 +17,7 @@ import {
   Users,
   Wallet,
   Banknote,
+  LayoutDashboard,
 } from "lucide-react";
 
 export type CopilotNavItem = {
@@ -87,6 +88,13 @@ const COPILOT_NAV_VENTAS: CopilotNavGroup = {
 const COPILOT_NAV_COBRANZA: CopilotNavGroup = {
   sectionTitle: "Cobranza",
   items: [
+    {
+      href: "/copilot/cobranza",
+      label: "Cobranza",
+      description: "Clientes a gestionar y cobros pendientes",
+      icon: LayoutDashboard,
+      moduleKey: "cartera",
+    },
     {
       href: "/copilot/cartera",
       label: "Cartera",
