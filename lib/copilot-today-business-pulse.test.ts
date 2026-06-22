@@ -974,7 +974,7 @@ describe("buildTodayBusinessPulse", () => {
       expect(HOY_COPY.debtorsSectionTitle.toLowerCase()).not.toContain("prioritario");
       expect(HOY_COPY.weeklyProjectionTitle).toBe("Proyección de caja semanal");
       expect(HOY_COPY.weeklyProjectionTip).toContain("cobros esperados");
-      expect(HOY_COCKPIT.afterPayments).toBe("Caja proyectada 30d");
+      expect(HOY_COCKPIT.afterPayments).toBe("Caja proyectada a fin de mes");
       expect(HOY_PAGE.title).toBe("Copilot · Hoy");
       expect(HOY_PAGE.title).not.toMatch(/pulso/i);
       expect(HOY_UI.showRecommendedActions).toBe(true);

@@ -11,6 +11,7 @@ import { sumCarteraAgingCurrent } from "@/lib/copilot-cartera-aging-totals";
 import {
   defaultHoyPeriodRange,
   last30DaysPeriodRange,
+  lastDayOfMonthYmd,
   monthToDatePeriodRange,
   type HoyPeriodRange,
 } from "@/lib/copilot-hoy-period";
@@ -114,7 +115,7 @@ export default function CopilotHoyPage() {
         copilotApiFetch("/api/copilot/financial-reconciliation?mode=all_outstanding", { signal }),
         copilotApiFetch(`/api/copilot/financial-reconciliation?${periodQuery.toString()}`, { signal }),
         copilotApiFetch(
-          "/api/copilot/treasury/scheduled-payments?include_summary=1&horizon_days=30",
+          `/api/copilot/treasury/scheduled-payments?include_summary=1&horizon_end_date=${lastDayOfMonthYmd(today)}`,
           { signal }
         ),
         copilotApiFetch("/api/copilot/treasury/cash-position", { signal }),

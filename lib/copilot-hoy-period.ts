@@ -23,6 +23,14 @@ export function firstDayOfMonthYmd(asOf: string): string {
   return formatYmd(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)));
 }
 
+/** Último día del mes de `asOf` (YYYY-MM-DD). Maneja bisiestos. */
+export function lastDayOfMonthYmd(asOf: string): string {
+  const d = parseYmd(asOf);
+  if (!d) return asOf;
+  // Día 0 del mes siguiente = último día del mes actual
+  return formatYmd(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)));
+}
+
 /** Default: inicio del mes actual → hoy. */
 export function defaultHoyPeriodRange(asOf: string): HoyPeriodRange {
   const to = asOf.slice(0, 10);

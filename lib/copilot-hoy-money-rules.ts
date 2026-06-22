@@ -23,10 +23,10 @@ export const HOY_MONEY_FIELD_SOURCES = {
   payments: {
     card: "Pagos próximos",
     field: "projection30dBlocks[].scheduledPayments",
-    origin: "Obligaciones de tesorería en horizonte 30 días",
+    origin: "Obligaciones de tesorería hasta fin de mes",
   },
   afterPayments: {
-    card: "Caja proyectada 30d",
+    card: "Caja proyectada a fin de mes",
     field: "projection30dBlocks[].safeCash30d",
     formula: "caja disponible − pagos programados (sin sumar por cobrar)",
   },

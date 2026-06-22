@@ -308,7 +308,7 @@ export function buildCockpitView(
     ? { tone: pulse.overallStatus === "critical" ? "warn" : "ok", text: "Caja actual saludable" }
     : { tone: "warn", text: "Sin caja registrada hoy" };
   if (anyDeficit && hasCash) {
-    moneyFootnote = { tone: "warn", text: "Caja ajustada tras pagos 30d" };
+    moneyFootnote = { tone: "warn", text: "Caja ajustada tras pagos a fin de mes" };
   }
 
   return {

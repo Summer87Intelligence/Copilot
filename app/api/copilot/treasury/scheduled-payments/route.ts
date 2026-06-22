@@ -29,6 +29,8 @@ function parseScheduledListQuery(request: NextRequest) {
     toDate: parseYmdQuery(params.get("to_date")),
     asOfDate: parseYmdQuery(params.get("as_of")) ?? new Date().toISOString().slice(0, 10),
     horizonDays: Math.min(365, Math.max(1, Number(params.get("horizon_days") ?? "30") || 30)),
+    /** Fecha de corte explícita — prevalece sobre horizonDays cuando está presente. */
+    horizonEndOverride: parseYmdQuery(params.get("horizon_end_date")),
     includeSummary: params.get("include_summary") === "1" || params.get("include_summary") === "true",
   };
 }
@@ -48,7 +50,7 @@ export async function GET(request: NextRequest) {
         500
       );
       if (!listed.ok) return nextResponseFromTreasuryCrud(listed);
-      const horizonEnd = addDaysYmd(q.asOfDate, q.horizonDays);
+      const horizonEnd = q.horizonEndOverride ?? addDaysYmd(q.asOfDate, q.horizonDays);
       const inactiveRecurringTemplateIds = await loadInactiveRecurringTemplateIds(
         auth.ctx.supabase,
         auth.ctx.tenantCompanyId

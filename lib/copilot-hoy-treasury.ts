@@ -192,13 +192,13 @@ export function buildHoyTreasuryAlerts(p: {
         id: `treasury_safe_deficit_${code}`,
         tone: "critical",
         message:
-          "Sin cobrar deuda pendiente, la caja no cubre los pagos programados de los próximos 30 días.",
+          "Sin cobrar deuda pendiente, la caja no cubre los pagos programados hasta fin de mes.",
       });
     } else {
       alerts.push({
         id: `treasury_safe_covers_${code}`,
         tone: "healthy",
-        message: "La caja actual cubre los pagos programados de los próximos 30 días.",
+        message: "La caja actual cubre los pagos programados hasta fin de mes.",
       });
     }
 
