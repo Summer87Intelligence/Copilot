@@ -5,6 +5,7 @@
 import type { FiscalAlertItem } from "@/lib/copilot-tax-alerts";
 import type { CarteraCurrencyTotals } from "@/lib/copilot-cartera-aging-totals";
 import type { TodayBusinessPulse } from "@/lib/copilot-today-business-pulse";
+import { DEFAULT_DISPLAY_FX_RATE_UYU_PER_USD } from "@/lib/currency-display-mode";
 
 export type OperationalSemaphoreLevel = "ok" | "attention" | "critical";
 
@@ -45,6 +46,25 @@ function hasCashDeficitAfterPayments(pulse: TodayBusinessPulse): boolean {
   );
 }
 
+/**
+ * Retorna la caja proyectada neta en USD equivalente sumando todos los bloques
+ * que tienen pagos configurados. UYU se convierte a tasa 40.
+ * Retorna null si no hay bloques con pagos configurados.
+ */
+function consolidatedSafeCash30dUsd(pulse: TodayBusinessPulse): number | null {
+  const blocks = pulse.projection30dBlocks.filter((b) => b.hasConfiguredPayments);
+  if (blocks.length === 0) return null;
+  let totalUsd = 0;
+  for (const b of blocks) {
+    if (b.currency === "USD") {
+      totalUsd += b.safeCash30d;
+    } else {
+      totalUsd += b.safeCash30d / DEFAULT_DISPLAY_FX_RATE_UYU_PER_USD;
+    }
+  }
+  return totalUsd;
+}
+
 function hasRelevantUpcomingPayments(pulse: TodayBusinessPulse): boolean {
   return pulse.projection30dBlocks.some(
     (b) => b.hasConfiguredPayments && b.scheduledPayments > 0
@@ -70,13 +90,21 @@ export function deriveOperationalSemaphore(input: {
   const mediumAlerts = alerts.filter((a) => a.severity === "medium");
 
   const cashDeficit = pulse ? hasCashDeficitAfterPayments(pulse) : false;
+  const consolidatedCashUsd = pulse ? consolidatedSafeCash30dUsd(pulse) : null;
+  // Déficit real: alguna moneda en negativo Y el consolidado USD también es negativo
+  const consolidatedDeficit =
+    cashDeficit && (consolidatedCashUsd === null || consolidatedCashUsd < 0);
+  // Cubierto consolidado: alguna moneda en negativo pero el consolidado es positivo
+  const consolidatedCovered =
+    cashDeficit && consolidatedCashUsd !== null && consolidatedCashUsd >= 0;
+
   const attentionClients = pulse?.clientCounts.attentionClients ?? 0;
   const overdue30 = pulse ? hasOverdue30(pulse, input.carteraAgingOverdue) : false;
   const upcomingPayments = pulse ? hasRelevantUpcomingPayments(pulse) : false;
   const dataPending = Boolean(pulse?.dataWarning);
 
   const criticalItems: string[] = criticalAlerts.map((a) => a.title);
-  if (cashDeficit) {
+  if (consolidatedDeficit) {
     criticalItems.push("Caja proyectada en negativo");
   }
 
@@ -86,6 +114,9 @@ export function deriveOperationalSemaphore(input: {
 
   // Business/operative signals — separate from formal alerts.
   const operativeItems: string[] = [];
+  if (consolidatedCovered) {
+    operativeItems.push("Caja consolidada cubierta en USD equivalente");
+  }
   if (attentionClients > 0) {
     operativeItems.push(
       `${attentionClients} ${attentionClients === 1 ? "cliente" : "clientes"} con atraso o señales de demora`
@@ -102,9 +133,10 @@ export function deriveOperationalSemaphore(input: {
   }
 
   let level: OperationalSemaphoreLevel = "ok";
-  if (criticalAlerts.length > 0 || cashDeficit) {
+  if (criticalAlerts.length > 0 || consolidatedDeficit) {
     level = "critical";
   } else if (
+    consolidatedCovered ||
     attentionClients > 0 ||
     overdue30 ||
     upcomingPayments ||
@@ -140,10 +172,14 @@ export function deriveOperationalSemaphore(input: {
 
   let primaryReason: string;
   if (level === "critical") {
-    primaryReason = "Hay riesgo operativo que requiere acción hoy.";
+    primaryReason = "Déficit de caja proyectado. Revisá pagos programados y tesorería.";
   } else if (level === "attention") {
-    primaryReason =
-      "No hay riesgo de caja inmediato, pero hay clientes con atraso o datos por revisar.";
+    if (consolidatedCovered && attentionClients === 0 && !overdue30 && !dataPending && highAlerts.length === 0 && mediumAlerts.length === 0) {
+      primaryReason = "Caja consolidada cubierta en USD equivalente.";
+    } else {
+      primaryReason =
+        "No hay déficit de caja, pero hay señales que conviene revisar.";
+    }
   } else {
     primaryReason = "No hay señales críticas para resolver ahora.";
   }
@@ -155,7 +191,7 @@ export function deriveOperationalSemaphore(input: {
     ctaHref = "/copilot/hoy";
     ctaLabel = "Ver Hoy";
   } else if (criticalAlerts.length > 0 || highAlerts.length > 0 || mediumAlerts.length > 0) {
-    ctaHref = "/copilot/alertasísource=operational";
+    ctaHref = "/copilot/alertas?source=operational";
     ctaLabel = "Ver alertas";
   } else if (attentionClients > 0) {
     ctaHref = "/copilot/clientes";

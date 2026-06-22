@@ -61,6 +61,40 @@ function makePulse(overrides: {
   } as unknown as TodayBusinessPulse;
 }
 
+/** Pulso multi-moneda: bloque UYU + bloque USD con pagos configurados. */
+function makePulseMultiCurrency(p: {
+  uyuSafeCash30d: number;
+  usdSafeCash30d: number;
+}): TodayBusinessPulse {
+  return {
+    clientCounts: { activeClients: 5, debtorClients: 0, attentionClients: 0, debtorRows: 0 },
+    dataWarning: null,
+    currentStateBlocks: [],
+    projection30dBlocks: [
+      {
+        currency: "UYU",
+        currentCash: 472_760,
+        scheduledPayments: 189_360,
+        safeCash30d: p.uyuSafeCash30d,
+        pendingReceivables: 0,
+        expectedCash30d: p.uyuSafeCash30d,
+        hasConfiguredPayments: true,
+        safeCoverageStatus: p.uyuSafeCash30d >= 0 ? "healthy" : "deficit",
+      },
+      {
+        currency: "USD",
+        currentCash: 10_000,
+        scheduledPayments: 3_900,
+        safeCash30d: p.usdSafeCash30d,
+        pendingReceivables: 0,
+        expectedCash30d: p.usdSafeCash30d,
+        hasConfiguredPayments: true,
+        safeCoverageStatus: p.usdSafeCash30d >= 0 ? "healthy" : "deficit",
+      },
+    ],
+  } as unknown as TodayBusinessPulse;
+}
+
 const NO_ALERTS: OperationalSemaphoreAlert[] = [];
 
 // ─── hasPositiveAmount / overdue detection ────────────────────────────────────
@@ -180,7 +214,7 @@ describe("counterLine honesto — sin inflación artificial", () => {
 // ─── nivel crítico por cashDeficit ───────────────────────────────────────────
 
 describe("cashDeficit → nivel critical", () => {
-  it("safeCash30d < 0 + hasConfiguredPayments → critical", () => {
+  it("safeCash30d < 0 + hasConfiguredPayments → critical (solo UYU, consolidado negativo)", () => {
     const pulse = makePulse({ safeCash30d: -1_000, hasConfiguredPayments: true, scheduledPayments: 5_000 });
     const r = deriveOperationalSemaphore({ alerts: NO_ALERTS, pulse });
     expect(r.level).toBe("critical");
@@ -191,6 +225,32 @@ describe("cashDeficit → nivel critical", () => {
     const pulse = makePulse({ safeCash30d: -1_000, hasConfiguredPayments: false });
     const r = deriveOperationalSemaphore({ alerts: NO_ALERTS, pulse });
     expect(r.level).toBe("ok");
+  });
+
+  it("UYU negativo pero USD cubre → attention, no critical (consolidado positivo)", () => {
+    // UYU safeCash30d: -7.000 ≡ -175 USD @ tasa 40
+    // USD safeCash30d: +6.100
+    // Consolidado: 6.100 - 175 = +5.925 USD → positivo → no crítico
+    const pulse = makePulseMultiCurrency({ uyuSafeCash30d: -7_000, usdSafeCash30d: 6_100 });
+    const r = deriveOperationalSemaphore({ alerts: NO_ALERTS, pulse });
+    expect(r.level).toBe("attention");
+    expect(r.criticalItems).not.toContain("Caja proyectada en negativo");
+    expect(r.operativeItems).toContain("Caja consolidada cubierta en USD equivalente");
+    expect(r.primaryReason).toBe("Caja consolidada cubierta en USD equivalente.");
+  });
+
+  it("UYU negativo y USD negativo → critical (consolidado negativo)", () => {
+    const pulse = makePulseMultiCurrency({ uyuSafeCash30d: -200_000, usdSafeCash30d: -500 });
+    const r = deriveOperationalSemaphore({ alerts: NO_ALERTS, pulse });
+    expect(r.level).toBe("critical");
+    expect(r.criticalItems).toContain("Caja proyectada en negativo");
+  });
+
+  it("primaryReason crítico no contiene 'riesgo operativo'", () => {
+    const pulse = makePulse({ safeCash30d: -1_000, hasConfiguredPayments: true, scheduledPayments: 5_000 });
+    const r = deriveOperationalSemaphore({ alerts: NO_ALERTS, pulse });
+    expect(r.primaryReason).not.toContain("riesgo operativo");
+    expect(r.primaryReason).toContain("Déficit de caja");
   });
 });
 
