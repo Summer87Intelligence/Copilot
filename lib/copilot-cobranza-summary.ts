@@ -11,6 +11,12 @@ export type CobranzaKpis = {
   activePromisesCount: number;
 };
 
+export type OwnershipEntry = {
+  userId: string;
+  name: string;
+  email: string;
+};
+
 export type CobranzaClientRow = {
   companyId: string;
   name: string;
@@ -27,6 +33,9 @@ export type CobranzaClientRow = {
   latestActionType: string | null;
   nextActionDate: string | null;
   activePromise: { date: string; amount: number | null; currency: string | null } | null;
+  assignedUserId: string | null;
+  assignedUserName: string | null;
+  assignedUserEmail: string | null;
 };
 
 /** Agrupa collection actions por company_id → la más reciente primero. */
@@ -82,7 +91,8 @@ export function computeCobranzaKpis(
 
 export function buildCobranzaClientRows(
   portfolioRows: ClientPortfolioRow[],
-  actionsByCompany: Map<string, CollectionAction[]>
+  actionsByCompany: Map<string, CollectionAction[]>,
+  ownershipByCompanyId?: Map<string, OwnershipEntry>
 ): CobranzaClientRow[] {
   const today = new Date().toISOString().slice(0, 10);
   const rows: CobranzaClientRow[] = [];
@@ -106,6 +116,8 @@ export function buildCobranzaClientRows(
         a.promiseDate >= today
     );
 
+    const ownership = ownershipByCompanyId?.get(row.company_id) ?? null;
+
     rows.push({
       companyId: row.company_id,
       name: row.name,
@@ -128,6 +140,9 @@ export function buildCobranzaClientRows(
             currency: promise.promiseCurrency,
           }
         : null,
+      assignedUserId: ownership?.userId ?? null,
+      assignedUserName: ownership?.name ?? null,
+      assignedUserEmail: ownership?.email ?? null,
     });
   }
 
