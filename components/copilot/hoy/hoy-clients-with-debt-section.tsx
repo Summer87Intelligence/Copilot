@@ -202,7 +202,7 @@ function DebtBreakdownSection({
           {/* Summary chips */}
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
             <span>
-              Total pendiente{" "}
+              Deuda actual{" "}
               <span className="font-semibold text-[var(--copilot-warning-text)]">
                 {fmtDebtSymbol(breakdown.summary.totalPending, row.currency)}
               </span>
@@ -325,13 +325,13 @@ function DebtorRowExpandPanel({
         </p>
         <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2.5 sm:grid-cols-4">
 
-          {/* Total pendiente */}
+          {/* Deuda actual */}
           <div>
             <p
               className="text-[10px] text-[var(--copilot-ink-muted)]"
               title={HOY_COPY.debtTotalTip}
             >
-              Total pendiente
+              Deuda actual
             </p>
             <p className="mt-0.5 text-sm font-semibold text-[var(--copilot-warning-text)]">
               {fmtDebtSymbol(expand.deudaTotalAmt, expand.currency)}
@@ -547,7 +547,7 @@ function DebtorMobileCard({
 
       <dl className="mt-3 space-y-1.5 text-xs">
         <div className="flex items-baseline justify-between gap-2">
-          <dt className="text-[var(--copilot-ink-muted)]">Total pendiente</dt>
+          <dt className="text-[var(--copilot-ink-muted)]">Deuda actual</dt>
           <dd className={`tabular-nums font-semibold ${moneyCurrencyClass(row.currency)}`}>
             {formatMoneySymbolOnly(row.deuda)}
           </dd>
@@ -631,7 +631,7 @@ function DebtorTable({
               className="cursor-help px-3 py-1.5"
               title={HOY_COPY.debtTotalTip}
             >
-              Total pendiente
+              Deuda actual
             </th>
             <th
               className="cursor-help px-3 py-1.5"
@@ -808,13 +808,13 @@ export function ClientsWithDebtSection({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-xs text-[var(--copilot-ink-muted)]">
         {uyuDebt > 0 && (
           <span>
-            Total pendiente UYU{" "}
+            Deuda actual UYU{" "}
             <span className={`font-semibold ${copilotCurrencyClass("UYU")}`}>{fmtCurrencyAmount(uyuDebt, "UYU")}</span>
           </span>
         )}
         {usdDebt > 0 && (
           <span>
-            Total pendiente USD{" "}
+            Deuda actual USD{" "}
             <span className={`font-semibold ${copilotCurrencyClass("USD")}`}>{fmtCurrencyAmount(usdDebt, "USD")}</span>
           </span>
         )}

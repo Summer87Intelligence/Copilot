@@ -2088,26 +2088,22 @@ export default function DashboardPageClient() {
         {/* Tables section */}
         <section aria-label="Tablas operativas">
           <div className="space-y-6">
-            <div>
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className={`text-xs font-semibold uppercase tracking-wide ${C.muted}`}>
-                  Clientes con deuda activa
-                </h2>
-                <Link
-                  href="/copilot/cartera"
-                  className={`flex items-center gap-1 text-xs ${C.accent} hover:underline`}
-                >
-                  Ver toda la cartera <ArrowRight className="h-3 w-3" />
+            <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-4 py-5">
+              <h2 className={`mb-1 text-xs font-semibold uppercase tracking-wide ${C.muted}`}>
+                Gestión de deuda por cliente
+              </h2>
+              <p className={`mb-4 text-xs ${C.muted}`}>
+                Consultá deuda, atrasados y fichas en Clientes, o analizá la cartera completa por período en Cartera.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Link href="/copilot/clientes" className={C.btn}>
+                  <Users className="h-4 w-4" />
+                  Ver Clientes
+                </Link>
+                <Link href="/copilot/cartera" className={C.btnGhost}>
+                  Ver Cartera <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
-              {loading ? (
-                <Skeleton className="h-40" />
-              ) : (
-                <ActiveDebtClientsTable
-                  rows={isConsolidated ? consolidatedActiveDebtRows : activeDebtRows}
-                  selectedCurrency={isConsolidated ? "USD" : effectiveCurrencyForTables}
-                />
-              )}
             </div>
 
             <div>

@@ -164,7 +164,7 @@ function buildBlockedOverdueRecommendation(
     "today",
     4_000,
     {
-      cta: { label: "Abrir cola", href: "/copilot/acciones" },
+      cta: { label: "Abrir cola", href: "/copilot/cobranza" },
       relatedActionIds: relatedIds,
       dedupeKey: "operations:blocked-overdue",
     }
@@ -189,7 +189,7 @@ function buildRecurringRootCauseRecommendation(
     "this_week",
     3_400,
     {
-      cta: { label: "Ver seguimiento", href: "/copilot/acciones" },
+      cta: { label: "Ver seguimiento", href: "/copilot/cobranza" },
       relatedMemoryIds: recurringMemory ? [recurringMemory.id] : undefined,
       relatedNarrativeIds: undefined,
       dedupeKey: "risk:recurring",
@@ -216,7 +216,7 @@ function buildRecentClosureRecommendation(
     "this_week",
     2_200,
     {
-      cta: { label: "Abrir cola", href: "/copilot/acciones" },
+      cta: { label: "Abrir cola", href: "/copilot/cobranza" },
       relatedMemoryIds: [signal.id],
       relatedActionIds: signal.relatedActionIds,
       dedupeKey: "opportunity:improved",
@@ -249,7 +249,7 @@ function buildUnassignedRecommendation(
     "today",
     3_200,
     {
-      cta: { label: "Abrir cola", href: "/copilot/acciones" },
+      cta: { label: "Abrir cola", href: "/copilot/cobranza" },
       relatedActionIds: unassigned.map((action) => action.id),
       relatedMemoryIds: memorySignal ? [memorySignal.id] : undefined,
       dedupeKey: "operations:unassigned",

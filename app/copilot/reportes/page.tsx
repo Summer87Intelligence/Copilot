@@ -442,7 +442,7 @@ export default function CopilotReportesPage() {
           <ReportCard
             icon={<FileText className="h-5 w-5" aria-hidden />}
             title="Estado de cuenta por cliente"
-            description="Total pendiente y atrasado por cliente, separado por moneda. Ver todos los clientes en pantalla o descargar el PDF masivo."
+            description="Deuda actual y atrasado por cliente, separado por moneda. Ver todos los clientes en pantalla o descargar el PDF masivo."
           >
             <div className="flex flex-wrap gap-2">
               <button

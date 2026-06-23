@@ -545,7 +545,7 @@ export function FinancialCollectionRisk({
       )}
 
       <div className={`${embedded ? "" : "mt-3"} grid gap-2 sm:grid-cols-3`}>
-        <SummaryMetric label="Total pendiente" value={displayTotal} />
+        <SummaryMetric label="Deuda actual" value={displayTotal} />
         <SummaryMetric
           label="Atrasado"
           value={displayOverdue}

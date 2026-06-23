@@ -17,19 +17,19 @@ export const HOY_PAGE = {
 /** Cockpit financiero — bloques principales. */
 export const HOY_COCKPIT = {
   moneyAvailable: "Caja disponible",
-  receivables: "Total pendiente",
+  receivables: "Deuda actual",
   payments: "Pagos próximos",
   afterPayments: "Caja proyectada a fin de mes",
-  receivablesTotalPending: "Total pendiente",
+  receivablesTotalPending: "Deuda actual",
   receivablesOverdueTotal: "Atrasado",
-  receivablesIncludedInTotal: "Incluido en Total pendiente",
+  receivablesIncludedInTotal: "Incluido en Deuda actual",
   receivablesOverdue30: "Atrasado +30 días",
   receivablesOverdueTotalHint:
-    "Parte del total pendiente cuya fecha de vencimiento ya pasó. Está incluida dentro del total pendiente.",
+    "Parte de la deuda actual cuya fecha de vencimiento ya pasó. Está incluida dentro de la deuda actual.",
   receivablesOverdue30Hint:
-    "Subconjunto del atrasado con más de 30 días. Ya está incluido dentro del atrasado y del total pendiente.",
+    "Subconjunto del atrasado con más de 30 días. Ya está incluido dentro del atrasado y de la deuda actual.",
   receivablesIncludedNote:
-    "El atrasado está incluido dentro del total pendiente.",
+    "El atrasado está incluido dentro de la deuda actual.",
   drawerClientsUyu: "Clientes en UYU",
   drawerClientsUsd: "Clientes en USD",
   criticalClients: "Principales deudores",
@@ -50,7 +50,7 @@ export const HOY_COCKPIT = {
 export const CURRENCY_METRIC_LABELS = {
   billed: "Ventas del período",
   collected: "Cobrado aplicado",
-  pending: "Total pendiente",
+  pending: "Deuda actual",
   overdue30: "Atrasado +30 días",
 } as const;
 
@@ -72,7 +72,7 @@ export const HOY_COPY = {
   scopeBadgePeriod: "Actividad del período",
   scopeBadgeProjection: "Proyección · Fin de mes",
   currentStateTitle: "Estado actual · Hoy",
-  currentReceivablesLabel: "Total pendiente",
+  currentReceivablesLabel: "Deuda actual",
   currentReceivablesTip: "Todo lo que los clientes deben actualmente. El atrasado ya está incluido.",
   activeDebtorsLabel: "Clientes con deuda",
   overdue30Short: "Atrasado +30 días",
@@ -89,14 +89,14 @@ export const HOY_COPY = {
   periodOperatingResultTip: "Cobrado + ingresos manuales − egresos manuales en el período.",
   debtorsSectionTitle: "Clientes con deuda",
   debtorsSectionRiskSubtitle: "Ordenados por antigüedad de mora.",
-  /** Tooltip columna "Total pendiente" en la tabla de deudores. */
-  debtTotalTip: "Total pendiente del cliente en esta moneda. El atrasado ya está incluido.",
+  /** Tooltip columna "Deuda actual" en la tabla de deudores. */
+  debtTotalTip: "Deuda actual del cliente en esta moneda. El atrasado ya está incluido.",
   /** Tooltip columna "Atrasado". */
   debtOverdueTip: "Parte del total pendiente cuya fecha de vencimiento ya pasó.",
   /** Tooltip columna "Días de atraso". */
   debtOverdueDaysTip: "Días desde la factura vencida más antigua.",
   /** Tooltip columna "Al día" (total pendiente − atrasado). */
-  debtAtDayTip: "Total pendiente todavía dentro del plazo.",
+  debtAtDayTip: "Deuda actual todavía dentro del plazo.",
   debtorsViewAllCartera: "Ver toda la cartera",
   debtorContactSectionTitle: "Contacto",
   debtorNoPhone: "Sin teléfono registrado",
@@ -134,7 +134,7 @@ export const HOY_COPY = {
   scheduledPaymentsLabel: "Pagos programados",
   safeCash30Label: "Cobertura a fin de mes",
   safeCash30Tip: "Caja disponible menos pagos programados hasta fin de mes. Sin deuda pendiente.",
-  pendingReceivablesLabel: "Total pendiente",
+  pendingReceivablesLabel: "Deuda actual",
   pendingReceivablesTip: "Todo lo que los clientes deben actualmente. El atrasado ya está incluido.",
   expectedCash30Label: "Cobros probables",
   expectedCash30Tip: "Caja disponible + total pendiente por cobrar − pagos programados hasta fin de mes.",

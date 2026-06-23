@@ -64,7 +64,7 @@ describe("resolveHoyTodayPriority", () => {
       debtorClientsCount: 1,
     });
     expect(p.primaryCta.action.type).toBe("scroll_critical");
-    expect(p.secondaryCta?.href).toBe("/copilot/acciones");
+    expect(p.secondaryCta?.href).toBe("/copilot/cobranza");
   });
 
   it("prioriza agenda si no hay clientes con atención", () => {
@@ -75,7 +75,7 @@ describe("resolveHoyTodayPriority", () => {
     expect(p.kind).toBe("collection_agenda");
     expect(p.primaryCta.action).toEqual({
       type: "link",
-      href: "/copilot/acciones?tab=agenda",
+      href: "/copilot/cobranza#cobranza-agenda",
     });
   });
 
@@ -140,7 +140,7 @@ describe("resolveHoyTodayPriority", () => {
     expect(p.kind).toBe("daily_summary");
     expect(p.primaryCta.action).toEqual({
       type: "link",
-      href: "/copilot/acciones",
+      href: "/copilot/cobranza",
     });
   });
 });

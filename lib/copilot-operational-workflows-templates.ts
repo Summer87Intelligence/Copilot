@@ -4,26 +4,26 @@ import type {
 } from "@/lib/copilot-operational-workflows-types";
 
 const CRITICAL_CASH_STEPS = [
-  { id: "review-overdue-collections", title: "Revisar cobranza atrasada", href: "/copilot/acciones" },
-  { id: "contact-priority-clients", title: "Contactar clientes prioritarios", href: "/copilot/acciones" },
+  { id: "review-overdue-collections", title: "Revisar cobranza atrasada", href: "/copilot/cobranza" },
+  { id: "contact-priority-clients", title: "Contactar clientes prioritarios", href: "/copilot/cobranza" },
   { id: "review-non-critical-payments", title: "Revisar pagos no críticos", href: "/copilot/tesoreria" },
   { id: "adjust-outflows", title: "Ajustar egresos", href: "/copilot/tesoreria" },
   { id: "confirm-stabilization", title: "Confirmar estabilización", href: "/copilot/hoy" },
 ] as const;
 
 const PRIORITY_COLLECTIONS_STEPS = [
-  { id: "identify-main-debt", title: "Identificar deuda principal", href: "/copilot/acciones" },
-  { id: "contact-client", title: "Contactar cliente", href: "/copilot/acciones" },
-  { id: "record-response", title: "Registrar respuesta", href: "/copilot/acciones" },
-  { id: "reschedule-followup", title: "Reprogramar seguimiento", href: "/copilot/acciones" },
-  { id: "escalate-no-response", title: "Escalar si no responde", href: "/copilot/acciones" },
+  { id: "identify-main-debt", title: "Identificar deuda principal", href: "/copilot/cobranza" },
+  { id: "contact-client", title: "Contactar cliente", href: "/copilot/cobranza" },
+  { id: "record-response", title: "Registrar respuesta", href: "/copilot/cobranza" },
+  { id: "reschedule-followup", title: "Reprogramar seguimiento", href: "/copilot/cobranza" },
+  { id: "escalate-no-response", title: "Escalar si no responde", href: "/copilot/cobranza" },
 ] as const;
 
 const BLOCKED_FOLLOWUP_STEPS = [
-  { id: "identify-blocker", title: "Identificar bloqueo", href: "/copilot/acciones" },
-  { id: "validate-dependency", title: "Validar dependencia", href: "/copilot/acciones" },
-  { id: "assign-resolution", title: "Asignar resolución", href: "/copilot/acciones" },
-  { id: "confirm-unblock", title: "Confirmar desbloqueo", href: "/copilot/acciones" },
+  { id: "identify-blocker", title: "Identificar bloqueo", href: "/copilot/cobranza" },
+  { id: "validate-dependency", title: "Validar dependencia", href: "/copilot/cobranza" },
+  { id: "assign-resolution", title: "Asignar resolución", href: "/copilot/cobranza" },
+  { id: "confirm-unblock", title: "Confirmar desbloqueo", href: "/copilot/cobranza" },
   { id: "resume-execution", title: "Retomar ejecución", href: "/copilot/hoy" },
 ] as const;
 

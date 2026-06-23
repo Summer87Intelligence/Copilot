@@ -115,6 +115,7 @@ const COPILOT_NAV_COBRANZA: CopilotNavGroup = {
       description: "Prioridad del día y tareas concretas",
       icon: CheckSquare,
       moduleKey: "acciones",
+      sidebarHidden: true,
     },
   ],
 };

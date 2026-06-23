@@ -364,7 +364,7 @@ export function ClientesPortfolioTable({
     },
     {
       key: "debt",
-      header: "Total pendiente",
+      header: "Deuda actual",
       render: (row) => <DebtCell row={row} />,
     },
     {

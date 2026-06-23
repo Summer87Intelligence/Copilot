@@ -86,7 +86,7 @@ export function PaymentBehaviorSummaryCard({ summaries, loading }: Props) {
             {fmt(s.weightedExpected30d, s.currency)}
           </p>
           <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-            Total pendiente: {fmt(s.totalExpected30d, s.currency)}
+            Deuda actual: {fmt(s.totalExpected30d, s.currency)}
           </p>
           <ConfidenceBar
             high={s.highConfidence30d}

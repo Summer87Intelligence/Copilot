@@ -243,7 +243,7 @@ function buildBlockedFollowupsNarrative(
       timeframe: "today",
       relatedActionIds: relatedActionIds(blocked),
       relatedFeedIds: relatedFeedIds(blocked),
-      cta: { label: "Abrir cola", href: "/copilot/acciones" },
+      cta: { label: "Abrir cola", href: "/copilot/cobranza" },
     }
   );
 }
@@ -328,7 +328,7 @@ function buildOverdueFollowupsNarrative(
       timeframe: "today",
       relatedActionIds: relatedActionIds(overdue),
       relatedFeedIds: relatedFeedIds(overdue),
-      cta: { label: "Abrir cola", href: "/copilot/acciones" },
+      cta: { label: "Abrir cola", href: "/copilot/cobranza" },
     }
   );
 }
@@ -352,7 +352,7 @@ function buildUnassignedFollowupsNarrative(
       timeframe: "today",
       relatedActionIds: relatedActionIds(unassigned),
       relatedFeedIds: relatedFeedIds(unassigned),
-      cta: { label: "Abrir cola", href: "/copilot/acciones" },
+      cta: { label: "Abrir cola", href: "/copilot/cobranza" },
     }
   );
 }

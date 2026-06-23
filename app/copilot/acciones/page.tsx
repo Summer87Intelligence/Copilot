@@ -541,6 +541,27 @@ function CopilotAccionesPageContent() {
       />
 
       <div className={copilotPageMainClass}>
+        {/* ── Módulo integrado en Cobranza ──────────────────────────────── */}
+        <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-[var(--copilot-ink)]">
+                Agenda y acciones integradas en Cobranza
+              </p>
+              <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
+                La agenda de cobros, seguimiento de clientes y cobranza operativa se gestionan desde Cobranza.
+              </p>
+            </div>
+            <Link
+              href="/copilot/cobranza"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[var(--copilot-accent)] px-3 py-2 text-xs font-semibold text-white hover:opacity-90"
+            >
+              Ir a Cobranza
+              <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+            </Link>
+          </div>
+        </div>
+
         {provenanceLabel ? (
           <CopilotCard className="border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85">
             <div className="flex flex-wrap items-start gap-3">

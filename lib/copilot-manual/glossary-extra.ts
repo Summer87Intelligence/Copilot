@@ -4,19 +4,19 @@ export const COPILOT_MANUAL_EXTRA_GLOSSARY: Array<{
   definition: string;
 }> = [
   {
-    term: "Total pendiente",
+    term: "Deuda actual",
     definition:
-      "Todo lo que el cliente debe actualmente, sin importar si ya venció o no. El atrasado ya está incluido dentro de este total — no se suma aparte.",
+      "Todo lo que el cliente debe actualmente, sin importar si ya venció o no. El atrasado ya está incluido dentro de la deuda actual — no se suma aparte.",
   },
   {
     term: "Atrasado",
     definition:
-      "La parte del total pendiente cuya fecha de vencimiento ya pasó. Está incluido dentro del total pendiente. Cuanto más alto, más urgente la gestión.",
+      "La parte de la deuda actual cuya fecha de vencimiento ya pasó. Está incluido dentro de la deuda actual. Cuanto más alto, más urgente la gestión.",
   },
   {
     term: "Atrasado +30 días",
     definition:
-      "La parte del atrasado con más de 30 días. Está incluido dentro del atrasado y del total pendiente — no se suma aparte.",
+      "La parte del atrasado con más de 30 días. Está incluido dentro del atrasado y de la deuda actual — no se suma aparte.",
   },
   {
     term: "Días de atraso",
@@ -26,7 +26,7 @@ export const COPILOT_MANUAL_EXTRA_GLOSSARY: Array<{
   {
     term: "Sin atrasos",
     definition:
-      "El cliente tiene facturas abiertas pero ninguna venció todavía. Hay total pendiente, pero no es urgente.",
+      "El cliente tiene facturas abiertas pero ninguna venció todavía. Hay deuda actual, pero no es urgente.",
   },
   {
     term: "Con atrasos",
@@ -36,7 +36,7 @@ export const COPILOT_MANUAL_EXTRA_GLOSSARY: Array<{
   {
     term: "Al día",
     definition:
-      "El cliente tiene total pendiente abierto, pero todas sus facturas están dentro del plazo. No hay atrasos todavía.",
+      "El cliente tiene deuda actual abierta, pero todas sus facturas están dentro del plazo. No hay atrasos todavía.",
   },
   {
     term: "Cobro lento",

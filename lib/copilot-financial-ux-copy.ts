@@ -69,9 +69,9 @@ export const FINANZAS_COPY = {
   summaryCobrosTooltip:
     "Recibos con fecha dentro del mes. Cobros registrados son los recibos por fecha — pueden corresponder a facturas de meses anteriores.",
   summaryDeudaTooltip:
-    "Total pendiente actual de clientes al corte. Incluye todos los períodos. El atrasado ya está dentro.",
+    "Deuda actual de clientes al corte. Incluye todos los períodos. El atrasado ya está dentro.",
   summaryDeudaVencidaTooltip:
-    "Parte del total pendiente cuya fecha de vencimiento ya pasó.",
+    "Parte de la deuda actual cuya fecha de vencimiento ya pasó.",
   summaryEstadoTooltip:
     "Lectura financiera de caja, deuda y cobranza. Distinto del estado operativo del día en Hoy.",
   summaryCajaTooltip: "Caja disponible registrada en Tesorería al corte.",
@@ -96,7 +96,7 @@ export const FINANZAS_COPY = {
   labelCobrosRegistrados: "Cobros registrados",
   labelCobradoAplicado: "Cobrado aplicado",
   labelDiferenciaOperativa: "Diferencia operativa del mes",
-  labelDeudaHoy: "Total pendiente",
+  labelDeudaHoy: "Deuda actual",
   labelDeudaVencidaHoy: "Atrasado",
   labelCajaHoy: "Caja disponible",
 } as const;

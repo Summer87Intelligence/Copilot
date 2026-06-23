@@ -1015,8 +1015,8 @@ function CopilotFinanzasPageContent() {
                       <Link href="/copilot/datos" className={guidedLinkClass}>
                         Abrir Datos (contactos y facturas)
                       </Link>
-                      <Link href="/copilot/acciones" className={guidedLinkClass}>
-                        Ir a Acciones
+                      <Link href="/copilot/cobranza" className={guidedLinkClass}>
+                        Ir a Cobranza
                       </Link>
                       <Link
                         href={`${FINANZAS_COBERTURA_QUERY}#copilot-finanzas-fiscal`}
@@ -1342,7 +1342,7 @@ function CopilotFinanzasPageContent() {
                                   <div className="flex justify-between gap-2"><dt title="Incluye todas las facturas activas históricas. Puede diferir de Ventas del período porque no aplica el rango Desde/Hasta." className="cursor-help underline decoration-dotted">Facturado histórico</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{fmtAmt(totals.invoiced)}</dd></div>
                                 ) : null}
                                 {totals.pending !== undefined ? (
-                                  <div className="flex justify-between gap-2"><dt title="Todo lo que los clientes deben actualmente al corte. El atrasado ya está incluido." className="cursor-help underline decoration-dotted">Total pendiente</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{fmtAmt(totals.pending)}</dd></div>
+                                  <div className="flex justify-between gap-2"><dt title="Todo lo que los clientes deben actualmente al corte. El atrasado ya está incluido." className="cursor-help underline decoration-dotted">Deuda actual</dt><dd className="tabular-nums text-[var(--copilot-ink)]">{fmtAmt(totals.pending)}</dd></div>
                                 ) : null}
                                 {totals.overdue !== undefined && totals.overdue > 0 ? (
                                   <div className="flex justify-between gap-2"><dt title="Parte del total pendiente cuya fecha de vencimiento ya pasó. Ya está incluido dentro del total pendiente." className="cursor-help underline decoration-dotted">Atrasado</dt><dd className="tabular-nums font-semibold text-[var(--copilot-warning-text-strong)]">{fmtAmt(totals.overdue)}</dd></div>

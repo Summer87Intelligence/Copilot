@@ -964,10 +964,10 @@ describe("buildTodayBusinessPulse", () => {
       expect(CURRENCY_METRIC_LABELS.billed.toLowerCase()).not.toContain("bruto");
     });
 
-    it("labels: período, Total pendiente, Atrasado +30 días (no Crítico ni prioritario)", () => {
+    it("labels: período, Deuda actual, Atrasado +30 días (no Crítico ni prioritario)", () => {
       expect(CURRENCY_METRIC_LABELS.billed).toBe("Ventas del período");
       expect(CURRENCY_METRIC_LABELS.collected).toBe("Cobrado aplicado");
-      expect(CURRENCY_METRIC_LABELS.pending).toBe("Total pendiente");
+      expect(CURRENCY_METRIC_LABELS.pending).toBe("Deuda actual");
       expect(CURRENCY_METRIC_LABELS.overdue30).toBe("Atrasado +30 días");
       expect(CURRENCY_METRIC_LABELS.billed).not.toMatch(/bruto/i);
       expect(HOY_COPY.debtorsSectionTitle).toBe("Clientes con deuda");

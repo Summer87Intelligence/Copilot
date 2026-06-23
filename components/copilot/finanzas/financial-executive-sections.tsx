@@ -265,7 +265,7 @@ export function FinancialCurrencySummary({
           {s ? (
             <>
               <ExecutiveMetricCard
-                label="Total pendiente"
+                label="Deuda actual"
                 value={fmtDisplay(s.pending)}
                 subcopy="Fuente: Cartera al corte. El atrasado ya está incluido."
                 tone="neutral"
@@ -274,7 +274,7 @@ export function FinancialCurrencySummary({
               <ExecutiveMetricCard
                 label="Atrasado"
                 value={fmtDisplay(s.overdue)}
-                subcopy="Fuente: Cartera (vencimiento ya pasó). Incluido en Total pendiente."
+                subcopy="Fuente: Cartera (vencimiento ya pasó). Incluido en Deuda actual."
                 tone={s.overdue > 0 ? "danger" : "neutral"}
                 onClick={() => onSelectMetric("overdue", s)}
               />
@@ -359,7 +359,7 @@ export function FinancialCollectionDebtSection({
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <ExecutiveMetricCard
-          label="Total pendiente"
+          label="Deuda actual"
           value={fmtDisplay(cd.totalDebt)}
           subcopy="Fuente: Cartera. El atrasado ya está incluido."
           tone="neutral"
@@ -367,13 +367,13 @@ export function FinancialCollectionDebtSection({
         <ExecutiveMetricCard
           label="Atrasado"
           value={fmtDisplay(cd.overdueDebt)}
-          subcopy="Fuente: Cartera. Incluido en Total pendiente."
+          subcopy="Fuente: Cartera. Incluido en Deuda actual."
           tone={cd.overdueDebt > 0 ? "danger" : "neutral"}
         />
         <ExecutiveMetricCard
           label="% atrasado"
           value={cd.overduePct != null ? formatPanoramaRate(cd.overduePct) : "—"}
-          subcopy="Sobre total pendiente."
+          subcopy="Sobre deuda actual."
           tone={cd.overduePct != null && cd.overduePct > 0.3 ? "warning" : "neutral"}
         />
         <ExecutiveMetricCard
@@ -576,7 +576,7 @@ function BreakdownCard({ slice }: { slice: PanoramaCurrencySlice }) {
           <dd className="tabular-nums">{fmtMoney(slice.collectedApplied, slice.code)}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-[var(--copilot-ink-muted)]">Total pendiente</dt>
+          <dt className="text-[var(--copilot-ink-muted)]">Deuda actual</dt>
           <dd className="tabular-nums">{fmtMoney(slice.pending, slice.code)}</dd>
         </div>
         <div className="flex justify-between gap-2">

@@ -1655,7 +1655,7 @@ function CopilotDatosPageContent() {
                 {", "}
                 <Link href="/copilot/tesoreria" className="font-semibold text-[var(--copilot-ink)] hover:underline">Tesorería</Link>
                 {" o "}
-                <Link href="/copilot/acciones" className="font-semibold text-[var(--copilot-ink)] hover:underline">Acciones</Link>
+                <Link href="/copilot/cobranza" className="font-semibold text-[var(--copilot-ink)] hover:underline">Cobranza</Link>
                 {"."}
               </p>
             </CopilotCard>

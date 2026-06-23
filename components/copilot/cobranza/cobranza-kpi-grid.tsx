@@ -103,7 +103,7 @@ export function CobranzaKpiGrid({
       {/* Row 1: portfolio state */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <KpiCard
-          label="Total pendiente"
+          label="Deuda actual"
           value={totalLabel}
           sub={`${kpis.clientsWithDebtCount} clientes`}
         />

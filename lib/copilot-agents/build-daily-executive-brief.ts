@@ -177,8 +177,8 @@ export function buildDailyExecutiveBrief(
       reason:
         briefing.headline ?? "El estado operacional requiere seguimiento.",
       severity: "medium",
-      href: "/copilot/acciones",
-      ctaLabel: "Ver acciones",
+      href: "/copilot/cobranza",
+      ctaLabel: "Ver Cobranza",
     });
   }
 
@@ -289,5 +289,5 @@ function buildNextBestAction(
   }
   const first = priorities[0];
   if (first) return { label: first.ctaLabel, href: first.href };
-  return { label: "Empezar por Acciones", href: "/copilot/acciones" };
+  return { label: "Empezar por Cobranza", href: "/copilot/cobranza" };
 }

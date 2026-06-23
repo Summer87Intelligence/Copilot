@@ -20,7 +20,7 @@
 export const BUSINESS_LANGUAGE = {
   /** Stock total adeudado por clientes al corte. Suma de todos los buckets de
    *  status comercial salvo `current`. */
-  totalPending: "Total pendiente",
+  totalPending: "Deuda actual",
   /**
    * Subconjunto del total pendiente con más de 30 días desde emisión.
    * Equivalente a la suma de buckets `delayed` (31–90) + `critical` (>90).
