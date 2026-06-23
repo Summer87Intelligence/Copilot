@@ -27,6 +27,19 @@ export default function CopilotMesaDeAyudaPage() {
       />
 
       <div className="flex-1 space-y-8 overflow-auto px-6 py-8">
+        <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-[var(--copilot-ink-muted)]">
+              Módulo en preparación. El formulario todavía no está conectado a un backend.
+            </p>
+            <a
+              href="/copilot/hoy"
+              className="shrink-0 rounded-xl bg-[var(--copilot-card-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--copilot-ink)] ring-1 ring-[var(--copilot-border)] transition hover:bg-[var(--copilot-hover-bg)]"
+            >
+              Volver a Hoy
+            </a>
+          </div>
+        </div>
         <div className="grid gap-8 lg:grid-cols-2">
           <CopilotCard>
             <CopilotSectionTitle

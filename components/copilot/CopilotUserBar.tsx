@@ -230,7 +230,7 @@ export function CopilotUserBar({
           {/* Nav items */}
           <div className="py-1">
             <Link
-              href="/copilot/configuracion"
+              href="/copilot/admin"
               onClick={() => setMenuOpen(false)}
               className="flex min-h-[44px] w-full items-center px-4 py-2 text-[13px] text-[var(--copilot-ink)] transition hover:bg-[var(--copilot-hover-bg)]"
             >

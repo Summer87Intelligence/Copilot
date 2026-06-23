@@ -148,6 +148,58 @@ export default function CopilotReportPage() {
     >
       <style>{printStyles}</style>
       <div className="copilot-report-root" style={{ maxWidth: "840px", margin: "0 auto" }}>
+        <div
+          className="copilot-report-no-print"
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "12px",
+            marginBottom: "20px",
+            padding: "12px 16px",
+            borderRadius: "12px",
+            border: "1px solid rgba(200, 80, 60, 0.22)",
+            backgroundColor: "rgba(255, 245, 240, 0.9)",
+          }}
+        >
+          <p style={{ margin: 0, fontSize: "13px", color: "rgba(160, 60, 40, 0.9)" }}>
+            Vista legacy / simulación. No usar para operación diaria.
+          </p>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <Link
+              href="/copilot/reportes"
+              style={{
+                padding: "6px 14px",
+                borderRadius: "8px",
+                border: "1px solid rgba(90, 75, 120, 0.28)",
+                backgroundColor: "#e4ddf0",
+                color: textPrimary,
+                fontSize: "13px",
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              Ir a Reportes
+            </Link>
+            <Link
+              href="/copilot/dashboard"
+              style={{
+                padding: "6px 14px",
+                borderRadius: "8px",
+                border: "1px solid rgba(110, 95, 80, 0.18)",
+                backgroundColor: panelBg,
+                color: textPrimary,
+                fontSize: "13px",
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              Ir a Dashboard
+            </Link>
+          </div>
+        </div>
+
         <p
           className="copilot-report-no-print"
           style={{
