@@ -4,6 +4,7 @@ export type CobranzaHistoryMoneda = "UYU" | "USD";
 export type CobranzaHistoryRow = {
   id: string;
   fecha: string;
+  companyId: string | null;
   clienteNombre: string;
   monto: number;
   moneda: CobranzaHistoryMoneda;
@@ -69,6 +70,7 @@ export function mapZetaReceiptRow(
   return {
     id,
     fecha,
+    companyId: companyId || null,
     clienteNombre,
     monto,
     moneda,

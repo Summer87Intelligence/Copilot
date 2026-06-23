@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import {
@@ -186,7 +187,16 @@ export function HistorialCobrosList() {
                         {formatFecha(row.fecha)}
                       </td>
                       <td className="max-w-[180px] truncate px-4 py-3 text-sm font-medium text-[var(--copilot-ink)]">
-                        {row.clienteNombre}
+                        {row.companyId ? (
+                          <Link
+                            href={`/copilot/clientes/${row.companyId}`}
+                            className="hover:text-[var(--copilot-accent)] hover:underline"
+                          >
+                            {row.clienteNombre}
+                          </Link>
+                        ) : (
+                          row.clienteNombre
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-[var(--copilot-ink)]">
                         {formatMonto(row.monto)}
@@ -217,9 +227,18 @@ export function HistorialCobrosList() {
                   className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] px-4 py-3"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--copilot-ink)]">
-                      {row.clienteNombre}
-                    </span>
+                    {row.companyId ? (
+                      <Link
+                        href={`/copilot/clientes/${row.companyId}`}
+                        className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--copilot-ink)] hover:text-[var(--copilot-accent)] hover:underline"
+                      >
+                        {row.clienteNombre}
+                      </Link>
+                    ) : (
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--copilot-ink)]">
+                        {row.clienteNombre}
+                      </span>
+                    )}
                     <OrigenBadge origen={row.origen} />
                   </div>
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--copilot-ink-muted)]">

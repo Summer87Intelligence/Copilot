@@ -30,7 +30,7 @@ export function CobranzaAgenda({
   }, [portfolioRows, collectionActions, loading]);
 
   return (
-    <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-4 shadow-sm sm:px-5">
+    <div id="cobranza-agenda" className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-4 shadow-sm sm:px-5">
       <CollectionAgendaSection agenda={agenda} loading={loading} />
     </div>
   );

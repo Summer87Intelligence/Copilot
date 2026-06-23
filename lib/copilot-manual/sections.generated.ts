@@ -111,8 +111,8 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
     title: "Cobranza — Hub operativo de cobranza",
     includeInToc: true,
     blocks: [
-      { type: "paragraph", text: "Cobranza es el hub central de gestión: KPIs de deuda y efectividad, lista de clientes a gestionar, agenda de seguimientos, alertas e historial de cobros. Desde acá llegás a la ficha de cada cliente y a todas las herramientas operativas." },
-      { type: "callout", variant: "tip", text: "Hub de partida — Cobranza agrupa en una sola pantalla dos filas de KPIs (estado de deuda + efectividad), Clientes a gestionar, Agenda de cobranza, Alertas e Historial de cobros." },
+      { type: "paragraph", text: "Cobranza es el centro operativo de cobranza: KPIs de deuda y efectividad, clientes a gestionar, responsables, agenda de seguimientos, alertas e historial de cobros Zeta. Desde acá llegás a la ficha 360 de cada cliente en un clic." },
+      { type: "callout", variant: "tip", text: "Hub operativo — Cobranza agrupa en una sola pantalla dos filas de KPIs (estado de deuda + efectividad), Clientes a gestionar, Agenda de cobranza, Alertas e Historial de cobros. Para análisis por período y antigüedad de deuda usá Cartera." },
       { type: "bullets", items: [
         "Total pendiente — suma de deuda activa por moneda (UYU y USD) de todos los clientes.",
         "Vencido — monto de facturas con vencimiento anterior a hoy. Incluido dentro del total pendiente.",
@@ -128,14 +128,15 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
       { type: "bullets", items: [
         "Clientes a gestionar — lista con filtros: Todos, Con deuda, Atrasados y Sin gestión. En mobile: cards verticales. En desktop: tabla. Sin paginación (hasta 5000 filas).",
         "Filtro 'Sin gestión' — clientes con deuda pero sin ninguna acción de cobranza registrada. Ideal para detectar quién quedó fuera del radar.",
-        "Desde cada fila podés ir directamente a la ficha del cliente o abrir el asistente de cobranza.",
-        "Agenda de cobranza — seguimientos, promesas y contactos recientes. Mismo contenido que la pestaña Agenda en Acciones.",
-        "Alertas de cobranza — novedades relevantes de cobranza: cobros recibidos, clientes vencidos, promesas vencidas. Máx. 10 alertas.",
+        "Desde cada fila podés ir directamente a la ficha 360 del cliente (Ver cliente) o abrir el asistente de cobranza (Gestionar).",
+        "Contacto y próximo seguimiento — en la lista se muestra el email o teléfono principal del cliente (si existe) y la fecha del próximo seguimiento registrado.",
+        "Agenda de cobranza — seguimientos atrasados, promesas vencidas, seguimientos de hoy y próximos. Mismo componente que la pestaña Agenda en Acciones.",
+        "Alertas de cobranza — cobros recibidos, clientes atrasados, nuevos deudores y resumen de seguimiento. Cada alerta incluye un enlace directo al cliente o a la lista de atrasados. Máx. 10 alertas.",
         "Historial de cobros — recibos sincronizados desde Zeta, con filtros por período (30 días, este mes, todo), moneda y cliente. Tabla en desktop, cards en mobile. Paginación de 25 por página.",
       ] },
       { type: "bullets", items: [
         "Responsable por cliente — cada cliente en la lista puede tener un responsable asignado. Se muestra como columna en desktop y como línea en mobile.",
-        "Filtro 'Mis clientes' — muestra solo los clientes asignados al usuario actual. Útil cuando varios usuarios gestionan carteras distintas.",
+        "Filtro 'Mis clientes' — muestra solo los clientes asignados al usuario actual. Útil cuando varios usuarios gestionan grupos de clientes distintos.",
         "Filtro 'Sin asignar' — muestra los clientes que todavía no tienen un responsable definido.",
         "Asignar responsable — botón disponible para usuarios con rol superadmin o cobranza. Abre un modal para seleccionar el responsable de la lista de usuarios activos y opcionalmente agregar una nota. También permite quitar la asignación eligiendo 'Sin asignar'.",
         "Actualización optimista — al asignar o quitar un responsable, la lista se actualiza de inmediato sin recargar la página. Aparece un mensaje de confirmación durante unos segundos.",

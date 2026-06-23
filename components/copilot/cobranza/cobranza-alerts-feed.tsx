@@ -4,6 +4,10 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
 import type { CopilotNotification } from "@/lib/copilot-notifications/notification-types";
+import {
+  normalizeNotificationBody,
+  normalizeNotificationTitle,
+} from "@/lib/copilot-notifications/notification-display";
 
 const COBRANZA_NOTIFICATION_TYPES = new Set([
   "collection_received",
@@ -22,6 +26,27 @@ function isCobranzaNotification(n: CopilotNotification): boolean {
   );
 }
 
+function resolveAlertHref(n: CopilotNotification): string | null {
+  if (n.action_href) {
+    if (n.type === "debt_followup_summary") {
+      return "/copilot/cobranza#clientes-a-gestionar";
+    }
+    return n.action_href;
+  }
+  if (n.entity_type === "company" && n.entity_id) {
+    return `/copilot/clientes/${n.entity_id}`;
+  }
+  return null;
+}
+
+function resolveAlertCtaLabel(n: CopilotNotification): string {
+  if (n.type === "collection_received") return "Ver cliente";
+  if (n.type === "client_overdue" || n.type === "new_debtor") return "Gestionar cobranza";
+  if (n.type === "debt_followup_summary") return "Ver atrasados";
+  if (n.type === "client_debt_settled") return "Ver cliente";
+  return "Ver detalle";
+}
+
 export function CobranzaAlertsFeed({
   notifications,
   loading,
@@ -32,7 +57,10 @@ export function CobranzaAlertsFeed({
   const cobranzaAlerts = notifications.filter(isCobranzaNotification).slice(0, 10);
 
   return (
-    <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-4 shadow-sm sm:px-5">
+    <div
+      id="cobranza-alertas"
+      className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-4 shadow-sm sm:px-5"
+    >
       <div className="mb-3">
         <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">
           Alertas de cobranza
@@ -50,19 +78,33 @@ export function CobranzaAlertsFeed({
         </p>
       ) : (
         <ul className="space-y-2">
-          {cobranzaAlerts.map((n) => (
-            <li
-              key={n.id}
-              className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 py-2.5"
-            >
-              <p className="text-sm font-medium text-[var(--copilot-ink)]">{n.title}</p>
-              {n.body ? (
-                <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
-                  {n.body}
-                </p>
-              ) : null}
-            </li>
-          ))}
+          {cobranzaAlerts.map((n) => {
+            const href = resolveAlertHref(n);
+            const title = normalizeNotificationTitle(n.title, n.type);
+            const body = normalizeNotificationBody(n.body, n.type);
+            return (
+              <li
+                key={n.id}
+                className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 py-2.5"
+              >
+                <p className="text-sm font-medium text-[var(--copilot-ink)]">{title}</p>
+                {body ? (
+                  <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
+                    {body}
+                  </p>
+                ) : null}
+                {href ? (
+                  <Link
+                    href={href}
+                    className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
+                  >
+                    {resolveAlertCtaLabel(n)}
+                    <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                  </Link>
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
       )}
 

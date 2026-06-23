@@ -79,6 +79,19 @@ describe("buildCobranzaClientRows — ownership", () => {
     expect(c2.assignedUserEmail).toBeNull();
   });
 
+  it("rows include contact email/phone from portfolio", () => {
+    const portfolio = [
+      makePortfolioRow({
+        company_id: "c1",
+        contact_email: "cliente@empresa.com",
+        contact_phone: "+59899111222",
+      }),
+    ];
+    const rows = buildCobranzaClientRows(portfolio, NO_ACTIONS);
+    expect(rows[0].contactEmail).toBe("cliente@empresa.com");
+    expect(rows[0].contactPhone).toBe("+59899111222");
+  });
+
   it("groupActionsByCompany + buildCobranzaClientRows preserves all existing fields", () => {
     const portfolio = [makePortfolioRow({ company_id: "c1", debt_uyu: 800, debt_usd: 100 })];
     const rows = buildCobranzaClientRows(portfolio, groupActionsByCompany([]));

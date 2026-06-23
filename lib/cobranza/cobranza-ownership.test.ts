@@ -23,6 +23,8 @@ function makeClientRow(overrides: Partial<CobranzaClientRow> = {}): CobranzaClie
     assignedUserId: null,
     assignedUserName: null,
     assignedUserEmail: null,
+    contactEmail: null,
+    contactPhone: null,
     ...overrides,
   };
 }

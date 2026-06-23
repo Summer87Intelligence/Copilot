@@ -89,6 +89,10 @@ function responsableLabel(row: CobranzaClientRow): string {
   return row.assignedUserName ?? row.assignedUserEmail ?? "Sin asignar";
 }
 
+function contactLabel(row: CobranzaClientRow): string | null {
+  return row.contactEmail ?? row.contactPhone ?? null;
+}
+
 // ── Sub-components ───────────────────────────────────────────────────────────
 
 function OverdueDaysBadge({ days }: { days: number | null }) {
@@ -191,6 +195,20 @@ function ClientMobileCard({
         </span>
       </p>
 
+      {row.nextActionDate ? (
+        <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">
+          Próximo seguimiento:{" "}
+          <span className="font-medium text-[var(--copilot-ink)]">{row.nextActionDate}</span>
+        </p>
+      ) : null}
+
+      {contactLabel(row) ? (
+        <p className="mt-0.5 truncate text-[11px] text-[var(--copilot-ink-muted)]">
+          Contacto:{" "}
+          <span className="font-medium text-[var(--copilot-ink)]">{contactLabel(row)}</span>
+        </p>
+      ) : null}
+
       <div className="mt-3 flex flex-wrap gap-2">
         <Link
           href={`/copilot/clientes/${row.companyId}`}
@@ -278,7 +296,22 @@ function ClientDesktopRow({
           <span className="text-[var(--copilot-ink-muted)] text-xs">Sin deuda</span>
         )}
       </td>
-      <td className="px-3 py-2.5 text-xs text-[var(--copilot-ink-muted)]">{statusLabel}</td>
+      <td className="px-3 py-2.5 text-xs text-[var(--copilot-ink-muted)]">
+        <div className="space-y-0.5">
+          <p>{statusLabel}</p>
+          {row.nextActionDate ? (
+            <p className="text-[10px] text-[var(--copilot-ink-muted)]">
+              Próx. seg.:{" "}
+              <span className="font-medium text-[var(--copilot-ink)]">{row.nextActionDate}</span>
+            </p>
+          ) : null}
+          {contactLabel(row) ? (
+            <p className="truncate text-[10px] text-[var(--copilot-ink-muted)]" title={contactLabel(row) ?? undefined}>
+              {contactLabel(row)}
+            </p>
+          ) : null}
+        </div>
+      </td>
       <td className="px-3 py-2.5 text-xs">
         <span
           className={
@@ -376,7 +409,7 @@ export function ClientesAGestionarList({
 
   return (
     <>
-      <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-4 shadow-sm sm:px-5">
+      <div className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-4 shadow-sm sm:px-5" id="clientes-a-gestionar">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">

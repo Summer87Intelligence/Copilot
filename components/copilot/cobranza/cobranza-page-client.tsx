@@ -176,11 +176,17 @@ export function CobranzaPageClient() {
 
       {/* CTA principal */}
       <div className="flex flex-wrap items-center gap-3">
-        <Link
-          href="/copilot/acciones?tab=agenda"
+        <a
+          href="#cobranza-agenda"
           className="inline-flex items-center rounded-xl bg-[var(--copilot-accent)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-90"
         >
           Ver agenda de cobranza
+        </a>
+        <Link
+          href="/copilot/cartera"
+          className="inline-flex items-center rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-4 py-2.5 text-sm font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
+        >
+          Análisis por período
         </Link>
         <button
           type="button"

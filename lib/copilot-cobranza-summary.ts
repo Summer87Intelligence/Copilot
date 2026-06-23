@@ -36,6 +36,8 @@ export type CobranzaClientRow = {
   assignedUserId: string | null;
   assignedUserName: string | null;
   assignedUserEmail: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
 };
 
 /** Agrupa collection actions por company_id → la más reciente primero. */
@@ -143,6 +145,8 @@ export function buildCobranzaClientRows(
       assignedUserId: ownership?.userId ?? null,
       assignedUserName: ownership?.name ?? null,
       assignedUserEmail: ownership?.email ?? null,
+      contactEmail: row.contact_email?.trim() || null,
+      contactPhone: row.contact_phone?.trim() || null,
     });
   }
 

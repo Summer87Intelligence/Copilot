@@ -17,6 +17,7 @@ function makeRow(overrides: Partial<CobranzaHistoryRow> = {}): CobranzaHistoryRo
   return {
     id: "id-1",
     fecha: "2026-06-01",
+    companyId: "company-a",
     clienteNombre: "Cliente A",
     monto: 100,
     moneda: "UYU",
@@ -83,6 +84,7 @@ describe("mapZetaReceiptRow", () => {
     const result = mapZetaReceiptRow(raw, names);
     expect(result).not.toBeNull();
     expect(result!.origen).toBe("Zeta");
+    expect(result!.companyId).toBe("company-z");
     expect(result!.clienteNombre).toBe("Cliente Zeta");
     expect(result!.registradoPor).toBe("Zeta");
     expect(result!.moneda).toBe("USD");
