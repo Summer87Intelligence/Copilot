@@ -5,6 +5,23 @@ import type { CobranzaClientRow, OwnershipEntry } from "@/lib/copilot-cobranza-s
 export type { OwnershipEntry };
 export type OwnershipMap = Map<string, OwnershipEntry>;
 
+export type ResponsableFilter = "all" | "me" | "unassigned";
+
+export function applyResponsableFilter(
+  rows: CobranzaClientRow[],
+  filter: ResponsableFilter,
+  currentUserId: string | null
+): CobranzaClientRow[] {
+  if (filter === "me") {
+    if (!currentUserId) return rows;
+    return rows.filter((r) => r.assignedUserId === currentUserId);
+  }
+  if (filter === "unassigned") {
+    return rows.filter((r) => r.assignedUserId === null);
+  }
+  return rows;
+}
+
 /**
  * Batch-fetches ownership from decision_operational_state + app_users.
  * No N+1: one query per table regardless of how many companyIds.

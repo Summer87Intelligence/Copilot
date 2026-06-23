@@ -133,6 +133,13 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
         "Alertas de cobranza — novedades relevantes de cobranza: cobros recibidos, clientes vencidos, promesas vencidas. Máx. 10 alertas.",
         "Historial de cobros — recibos sincronizados desde Zeta, con filtros por período (30 días, este mes, todo), moneda y cliente. Tabla en desktop, cards en mobile. Paginación de 25 por página.",
       ] },
+      { type: "bullets", items: [
+        "Responsable por cliente — cada cliente en la lista puede tener un responsable asignado. Se muestra como columna en desktop y como línea en mobile.",
+        "Filtro 'Mis clientes' — muestra solo los clientes asignados al usuario actual. Útil cuando varios usuarios gestionan carteras distintas.",
+        "Filtro 'Sin asignar' — muestra los clientes que todavía no tienen un responsable definido.",
+        "Asignar responsable — botón disponible para usuarios con rol superadmin o cobranza. Abre un modal para seleccionar el responsable de la lista de usuarios activos y opcionalmente agregar una nota. También permite quitar la asignación eligiendo 'Sin asignar'.",
+        "Actualización optimista — al asignar o quitar un responsable, la lista se actualiza de inmediato sin recargar la página. Aparece un mensaje de confirmación durante unos segundos.",
+      ] },
       { type: "callout", variant: "info", text: "Los cobros de clientes se registran exclusivamente en Zeta. Copilot los muestra en Cobranza cuando la sincronización los trae. No es posible cargar cobros manuales de clientes desde Copilot para evitar duplicados de caja y deuda." },
       { type: "callout", variant: "tip", text: "Cobranza no reemplaza Cartera (análisis por período), Clientes (ficha 360) ni Acciones (prioridades del día). Es el punto de entrada operativo que une esas tres vistas." },
     ],

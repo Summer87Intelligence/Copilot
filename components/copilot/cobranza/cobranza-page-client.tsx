@@ -12,6 +12,7 @@ import {
   computeCobranzaKpis,
   buildCobranzaClientRows,
   groupActionsByCompany,
+  type OwnershipEntry,
 } from "@/lib/copilot-cobranza-summary";
 import { computeEffectivenessKpis } from "@/lib/copilot-cobranza-effectiveness";
 import type {
@@ -25,6 +26,8 @@ import { ClientesAGestionarList } from "./clientes-a-gestionar-list";
 import { CobranzaAlertsFeed } from "./cobranza-alerts-feed";
 import { HistorialCobrosList } from "./historial-cobros-list";
 
+type CurrentUser = { id: string; role: string };
+
 export function CobranzaPageClient() {
   const [portfolioRows, setPortfolioRows] = useState<ClientPortfolioRow[]>([]);
   const [collectionActions, setCollectionActions] = useState<CollectionAction[]>([]);
@@ -32,17 +35,22 @@ export function CobranzaPageClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [monthHistory, setMonthHistory] = useState<CobranzaHistoryRow[]>([]);
+  const [ownershipMap, setOwnershipMap] = useState<Map<string, OwnershipEntry>>(new Map());
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [portfolioResult, collectionResult, notifResult, monthHistoryResult] = await Promise.allSettled([
-        fetchClientPortfolioLoad(),
-        copilotApiFetch("/api/copilot/collection-actions"),
-        copilotApiFetch("/api/copilot/notifications?limit=100"),
-        copilotApiFetch("/api/copilot/cobranza/history?period=month"),
-      ]);
+      const [portfolioResult, collectionResult, notifResult, monthHistoryResult, ownershipResult, meResult] =
+        await Promise.allSettled([
+          fetchClientPortfolioLoad(),
+          copilotApiFetch("/api/copilot/collection-actions"),
+          copilotApiFetch("/api/copilot/notifications?limit=100"),
+          copilotApiFetch("/api/copilot/cobranza/history?period=month"),
+          copilotApiFetch("/api/copilot/cobranza/ownership"),
+          copilotApiFetch("/api/copilot/me"),
+        ]);
 
       if (portfolioResult.status === "fulfilled") {
         setPortfolioRows(portfolioResult.value.rows);
@@ -68,6 +76,26 @@ export function CobranzaPageClient() {
         const json = (await monthHistoryResult.value.json().catch(() => null)) as CobranzaHistoryApiResponse | null;
         setMonthHistory(json?.items ?? []);
       }
+
+      if (ownershipResult.status === "fulfilled") {
+        const json = (await ownershipResult.value.json().catch(() => null)) as {
+          ok?: boolean;
+          ownership?: Record<string, { userId: string; name: string; email: string }>;
+        } | null;
+        const raw = json?.ownership ?? {};
+        const map = new Map<string, OwnershipEntry>();
+        for (const [companyId, entry] of Object.entries(raw)) {
+          map.set(companyId, entry);
+        }
+        setOwnershipMap(map);
+      }
+
+      if (meResult.status === "fulfilled") {
+        const json = (await meResult.value.json().catch(() => null)) as {
+          appUser?: { id: string; role: string };
+        } | null;
+        if (json?.appUser) setCurrentUser({ id: json.appUser.id, role: json.appUser.role });
+      }
     } catch {
       setError("Error al cargar los datos. Intentá actualizar la página.");
     } finally {
@@ -78,6 +106,18 @@ export function CobranzaPageClient() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const handleOwnershipUpdate = useCallback((companyId: string, entry: OwnershipEntry | null) => {
+    setOwnershipMap((prev) => {
+      const next = new Map(prev);
+      if (entry) {
+        next.set(companyId, entry);
+      } else {
+        next.delete(companyId);
+      }
+      return next;
+    });
+  }, []);
 
   const kpis = useMemo(
     () => computeCobranzaKpis(portfolioRows, collectionActions),
@@ -90,8 +130,8 @@ export function CobranzaPageClient() {
   );
 
   const clientRows = useMemo(
-    () => buildCobranzaClientRows(portfolioRows, actionsByCompany),
-    [portfolioRows, actionsByCompany]
+    () => buildCobranzaClientRows(portfolioRows, actionsByCompany, ownershipMap),
+    [portfolioRows, actionsByCompany, ownershipMap]
   );
 
   const effectivenessKpis = useMemo(
@@ -156,6 +196,9 @@ export function CobranzaPageClient() {
       <ClientesAGestionarList
         rows={clientRows}
         loading={loading}
+        currentUserId={currentUser?.id ?? null}
+        currentUserRole={currentUser?.role ?? null}
+        onOwnershipUpdate={handleOwnershipUpdate}
       />
 
       {/* Agenda de cobranza */}
