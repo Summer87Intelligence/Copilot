@@ -14,10 +14,20 @@ import {
   groupActionsByCompany,
 } from "@/lib/copilot-cobranza-summary";
 import { copilotPageMainClass } from "@/components/copilot/copilot-ui";
+import { TreasuryFeedbackBanner } from "@/components/copilot/tesoreria/treasury-feedback-banner";
 import { CobranzaKpiGrid } from "./cobranza-kpi-grid";
 import { CobranzaAgenda } from "./cobranza-agenda";
 import { ClientesAGestionarList } from "./clientes-a-gestionar-list";
 import { CobranzaAlertsFeed } from "./cobranza-alerts-feed";
+import {
+  RegistrarCobroDrawer,
+  type RegistrarCobroDrawerPrefill,
+} from "./registrar-cobro-drawer";
+
+type PageToast = {
+  tone: "success" | "error" | "warning";
+  message: string;
+} | null;
 
 export function CobranzaPageClient() {
   const [portfolioRows, setPortfolioRows] = useState<ClientPortfolioRow[]>([]);
@@ -25,6 +35,14 @@ export function CobranzaPageClient() {
   const [notifications, setNotifications] = useState<CopilotNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerPrefill, setDrawerPrefill] = useState<RegistrarCobroDrawerPrefill | null>(null);
+  const [toast, setToast] = useState<PageToast>(null);
+
+  const openRegistrarCobro = useCallback((prefill?: RegistrarCobroDrawerPrefill | null) => {
+    setDrawerPrefill(prefill ?? null);
+    setDrawerOpen(true);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -83,6 +101,14 @@ export function CobranzaPageClient() {
 
   return (
     <div className={copilotPageMainClass}>
+      {toast ? (
+        <TreasuryFeedbackBanner
+          tone={toast.tone === "warning" ? "error" : toast.tone}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      ) : null}
+
       {error ? (
         <div
           role="alert"
@@ -116,14 +142,10 @@ export function CobranzaPageClient() {
         </Link>
         <button
           type="button"
-          disabled
-          title="Disponible en la próxima fase"
-          className="inline-flex items-center rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-2.5 text-sm font-semibold text-[var(--copilot-ink-muted)] shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+          onClick={() => openRegistrarCobro()}
+          className="inline-flex items-center rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-2.5 text-sm font-semibold text-[var(--copilot-ink)] shadow-sm transition hover:bg-[var(--copilot-panel-bg)]"
         >
           Registrar cobro
-          <span className="ml-2 rounded-full bg-[var(--copilot-panel-bg)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-            Próxima fase
-          </span>
         </button>
         <button
           type="button"
@@ -136,7 +158,18 @@ export function CobranzaPageClient() {
       </div>
 
       {/* Clientes a gestionar */}
-      <ClientesAGestionarList rows={clientRows} loading={loading} />
+      <ClientesAGestionarList
+        rows={clientRows}
+        loading={loading}
+        onRegistrarCobro={(row) =>
+          openRegistrarCobro({
+            companyId: row.companyId,
+            companyName: row.name,
+            debtUyu: row.debtUyu,
+            debtUsd: row.debtUsd,
+          })
+        }
+      />
 
       {/* Agenda de cobranza */}
       <CobranzaAgenda
@@ -147,6 +180,15 @@ export function CobranzaPageClient() {
 
       {/* Alertas */}
       <CobranzaAlertsFeed notifications={notifications} loading={loading} />
+
+      <RegistrarCobroDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        clients={clientRows}
+        prefill={drawerPrefill}
+        onSuccess={() => void load()}
+        onToast={(message, tone) => setToast({ message, tone })}
+      />
     </div>
   );
 }

@@ -75,10 +75,12 @@ function ClientMobileCard({
   row,
   mode,
   fxRate,
+  onRegistrarCobro,
 }: {
   row: CobranzaClientRow;
   mode: "native" | "usd_equivalent";
   fxRate: number;
+  onRegistrarCobro?: (row: CobranzaClientRow) => void;
 }) {
   const debtLabel = formatClientDebt(row.debtUyu, row.debtUsd, mode, fxRate);
   const overdueLabel = formatClientDebt(row.overdueUyu, row.overdueUsd, mode, fxRate);
@@ -136,7 +138,7 @@ function ClientMobileCard({
         <p className="mt-1.5 text-[11px] text-[var(--copilot-ink-muted)]">Sin gestión registrada</p>
       )}
 
-      <div className="mt-3 flex gap-2">
+      <div className="mt-3 flex flex-wrap gap-2">
         <Link
           href={`/copilot/clientes/${row.companyId}`}
           className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[var(--copilot-accent)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
@@ -144,6 +146,13 @@ function ClientMobileCard({
           Ver cliente
           <ChevronRight className="h-3.5 w-3.5" aria-hidden />
         </Link>
+        <button
+          type="button"
+          onClick={() => onRegistrarCobro?.(row)}
+          className="inline-flex shrink-0 items-center rounded-lg border border-[var(--copilot-accent)] bg-[var(--copilot-accent-soft)] px-2.5 py-1.5 text-xs font-semibold text-[var(--copilot-accent)] hover:opacity-90"
+        >
+          Registrar cobro
+        </button>
         <Link
           href={`/copilot/clientes/${row.companyId}#gestion-cobranza`}
           className="inline-flex shrink-0 items-center rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
@@ -159,10 +168,12 @@ function ClientDesktopRow({
   row,
   mode,
   fxRate,
+  onRegistrarCobro,
 }: {
   row: CobranzaClientRow;
   mode: "native" | "usd_equivalent";
   fxRate: number;
+  onRegistrarCobro?: (row: CobranzaClientRow) => void;
 }) {
   const debtLabel = formatClientDebt(row.debtUyu, row.debtUsd, mode, fxRate);
   const overdueLabel = row.isOverdue
@@ -203,13 +214,20 @@ function ClientDesktopRow({
       </td>
       <td className="px-3 py-2.5 text-xs text-[var(--copilot-ink-muted)]">{statusLabel}</td>
       <td className="py-2.5 pl-3 pr-4">
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           <Link
             href={`/copilot/clientes/${row.companyId}`}
             className="inline-flex items-center rounded-lg bg-[var(--copilot-accent)] px-2.5 py-1 text-xs font-semibold text-white hover:opacity-90"
           >
             Ver
           </Link>
+          <button
+            type="button"
+            onClick={() => onRegistrarCobro?.(row)}
+            className="inline-flex items-center rounded-lg border border-[var(--copilot-accent)] bg-[var(--copilot-accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--copilot-accent)] hover:opacity-90"
+          >
+            Registrar cobro
+          </button>
           <Link
             href={`/copilot/clientes/${row.companyId}#gestion-cobranza`}
             className="inline-flex items-center rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2.5 py-1 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
@@ -225,9 +243,11 @@ function ClientDesktopRow({
 export function ClientesAGestionarList({
   rows,
   loading,
+  onRegistrarCobro,
 }: {
   rows: CobranzaClientRow[];
   loading: boolean;
+  onRegistrarCobro?: (row: CobranzaClientRow) => void;
 }) {
   const { mode, fxRate } = useDisplayCurrency();
   const [filter, setFilter] = useState<ClientFilter>("withDebt");
@@ -309,7 +329,12 @@ export function ClientesAGestionarList({
           <ul className="space-y-2 sm:hidden">
             {filtered.map((row) => (
               <li key={row.companyId}>
-                <ClientMobileCard row={row} mode={mode} fxRate={fxRate} />
+                <ClientMobileCard
+                  row={row}
+                  mode={mode}
+                  fxRate={fxRate}
+                  onRegistrarCobro={onRegistrarCobro}
+                />
               </li>
             ))}
           </ul>
@@ -329,7 +354,13 @@ export function ClientesAGestionarList({
               </thead>
               <tbody>
                 {filtered.map((row) => (
-                  <ClientDesktopRow key={row.companyId} row={row} mode={mode} fxRate={fxRate} />
+                  <ClientDesktopRow
+                    key={row.companyId}
+                    row={row}
+                    mode={mode}
+                    fxRate={fxRate}
+                    onRegistrarCobro={onRegistrarCobro}
+                  />
                 ))}
               </tbody>
             </table>

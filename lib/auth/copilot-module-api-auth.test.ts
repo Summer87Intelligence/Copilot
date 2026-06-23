@@ -55,6 +55,7 @@ describe("resolveCopilotApiModuleKey", () => {
     expect(resolveCopilotApiModuleKey("/api/copilot/real-insights")).toBe("finanzas");
     expect(resolveCopilotApiModuleKey("/api/copilot/intelligence-bundle")).toBe("agentes");
     expect(resolveCopilotApiModuleKey("/api/copilot/operational-actions")).toBe("acciones");
+    expect(resolveCopilotApiModuleKey("/api/copilot/cobranza/registrar-cobro")).toBe("acciones");
     expect(resolveCopilotApiModuleKey("/api/copilot/operational-feed/timeline")).toBe("hoy");
     expect(resolveCopilotApiModuleKey("/api/copilot/integrations/zeta/sync-saldos-pendientes")).toBe(
       "datos"
