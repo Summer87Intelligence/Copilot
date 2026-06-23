@@ -111,13 +111,19 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
     title: "Cobranza — Hub operativo de cobranza",
     includeInToc: true,
     blocks: [
-      { type: "paragraph", text: "Cobranza es el hub central de gestión: KPIs del estado de deuda, lista de clientes a gestionar, agenda de seguimientos y alertas recientes de cobranza. Desde acá llegás a la ficha de cada cliente y a todas las herramientas operativas." },
-      { type: "callout", variant: "tip", text: "Hub de partida — Cobranza agrupa en una sola pantalla los cuatro bloques clave: KPIs (Total pendiente, Vencido, Clientes atrasados, Promesas activas), Clientes a gestionar, Agenda de cobranza y Alertas recientes." },
+      { type: "paragraph", text: "Cobranza es el hub central de gestión: KPIs de deuda y efectividad, lista de clientes a gestionar, agenda de seguimientos, alertas e historial de cobros. Desde acá llegás a la ficha de cada cliente y a todas las herramientas operativas." },
+      { type: "callout", variant: "tip", text: "Hub de partida — Cobranza agrupa en una sola pantalla dos filas de KPIs (estado de deuda + efectividad), Clientes a gestionar, Agenda de cobranza, Alertas e Historial de cobros." },
       { type: "bullets", items: [
         "Total pendiente — suma de deuda activa por moneda (UYU y USD) de todos los clientes.",
         "Vencido — monto de facturas con vencimiento anterior a hoy. Incluido dentro del total pendiente.",
         "Clientes atrasados — cantidad de clientes con al menos una factura vencida.",
-        "Promesas activas — compromisos de pago registrados con fecha futura pendiente de confirmación.",
+        "Promesas activas — compromisos de pago con fecha futura pendiente de confirmación.",
+      ] },
+      { type: "bullets", items: [
+        "Cumplimiento — tasa de promesas cumplidas sobre las promesas cerradas (pagadas + vencidas sin cobrar). Rojo si < 40%, amarillo si < 70%. '—' cuando no hay promesas cerradas aún.",
+        "Cobros este mes (UYU) — total cobrado en pesos en el mes actual, sumando cobros manuales y recibos Zeta.",
+        "Cobros este mes (USD) — total cobrado en dólares en el mes actual.",
+        "Contactados — clientes con deuda que tienen al menos una gestión activa con resultado real (contactado, prometió pagar, pagado, disputa o escalado) sobre el total con deuda.",
       ] },
       { type: "bullets", items: [
         "Clientes a gestionar — lista con filtros: Todos, Con deuda, Atrasados y Sin gestión. En mobile: cards verticales. En desktop: tabla. Sin paginación (hasta 5000 filas).",
@@ -125,8 +131,8 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
         "Desde cada fila podés ir directamente a la ficha del cliente o abrir el asistente de cobranza.",
         "Agenda de cobranza — seguimientos, promesas y contactos recientes. Mismo contenido que la pestaña Agenda en Acciones.",
         "Alertas de cobranza — novedades relevantes de cobranza: cobros recibidos, clientes vencidos, promesas vencidas. Máx. 10 alertas.",
+        "Historial de cobros — todos los cobros registrados (manuales y Zeta) con filtros por período (30 días, este mes, todo), moneda y cliente. Tabla en desktop, cards en mobile. Paginación de 25 por página.",
       ] },
-      { type: "callout", variant: "info", text: "Registrar cobro (próxima fase) — el botón está visible pero deshabilitado. En la siguiente versión permitirá registrar un cobro manual directamente desde Cobranza sin ir a la ficha del cliente." },
       { type: "callout", variant: "tip", text: "Cobranza no reemplaza Cartera (análisis por período), Clientes (ficha 360) ni Acciones (prioridades del día). Es el punto de entrada operativo que une esas tres vistas." },
     ],
   },

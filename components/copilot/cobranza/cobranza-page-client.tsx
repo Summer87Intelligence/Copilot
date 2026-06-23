@@ -13,6 +13,11 @@ import {
   buildCobranzaClientRows,
   groupActionsByCompany,
 } from "@/lib/copilot-cobranza-summary";
+import { computeEffectivenessKpis } from "@/lib/copilot-cobranza-effectiveness";
+import type {
+  CobranzaHistoryApiResponse,
+  CobranzaHistoryRow,
+} from "@/lib/copilot-cobranza-history";
 import { copilotPageMainClass } from "@/components/copilot/copilot-ui";
 import { TreasuryFeedbackBanner } from "@/components/copilot/tesoreria/treasury-feedback-banner";
 import { CobranzaKpiGrid } from "./cobranza-kpi-grid";
@@ -36,6 +41,7 @@ export function CobranzaPageClient() {
   const [notifications, setNotifications] = useState<CopilotNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [monthHistory, setMonthHistory] = useState<CobranzaHistoryRow[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerPrefill, setDrawerPrefill] = useState<RegistrarCobroDrawerPrefill | null>(null);
   const [toast, setToast] = useState<PageToast>(null);
@@ -49,10 +55,11 @@ export function CobranzaPageClient() {
     setLoading(true);
     setError(null);
     try {
-      const [portfolioResult, collectionResult, notifResult] = await Promise.allSettled([
+      const [portfolioResult, collectionResult, notifResult, monthHistoryResult] = await Promise.allSettled([
         fetchClientPortfolioLoad(),
         copilotApiFetch("/api/copilot/collection-actions"),
         copilotApiFetch("/api/copilot/notifications?limit=100"),
+        copilotApiFetch("/api/copilot/cobranza/history?period=month"),
       ]);
 
       if (portfolioResult.status === "fulfilled") {
@@ -73,6 +80,11 @@ export function CobranzaPageClient() {
           notifications?: CopilotNotification[];
         } | null;
         setNotifications(json?.notifications ?? []);
+      }
+
+      if (monthHistoryResult.status === "fulfilled") {
+        const json = (await monthHistoryResult.value.json().catch(() => null)) as CobranzaHistoryApiResponse | null;
+        setMonthHistory(json?.items ?? []);
       }
     } catch {
       setError("Error al cargar los datos. Intentá actualizar la página.");
@@ -100,6 +112,17 @@ export function CobranzaPageClient() {
     [portfolioRows, actionsByCompany]
   );
 
+  const effectivenessKpis = useMemo(
+    () =>
+      computeEffectivenessKpis(
+        collectionActions,
+        portfolioRows,
+        monthHistory,
+        new Date().toISOString().slice(0, 10)
+      ),
+    [collectionActions, portfolioRows, monthHistory]
+  );
+
   return (
     <div className={copilotPageMainClass}>
       {toast ? (
@@ -121,16 +144,20 @@ export function CobranzaPageClient() {
 
       {/* KPIs */}
       {loading ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-20 animate-pulse rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)]"
-            />
+        <div className="space-y-2">
+          {[0, 1].map((row) => (
+            <div key={row} className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-20 animate-pulse rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)]"
+                />
+              ))}
+            </div>
           ))}
         </div>
       ) : (
-        <CobranzaKpiGrid kpis={kpis} />
+        <CobranzaKpiGrid kpis={kpis} effectivenessKpis={effectivenessKpis} />
       )}
 
       {/* CTA principal */}
