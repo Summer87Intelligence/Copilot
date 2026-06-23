@@ -18,7 +18,6 @@ export const COPILOT_API_MODULE_PREFIXES: ReadonlyArray<readonly [string, Module
   ["/api/copilot/executive-briefing", "finanzas"],
   ["/api/copilot/rutas-hub", "finanzas"],
   ["/api/copilot/rutas-snapshot", "finanzas"],
-  ["/api/copilot/cash-status-amounts", "tesoreria"],
   ["/api/copilot/manual.pdf", "manual"],
   ["/api/copilot/portfolio", "cartera"],
   ["/api/copilot/collection-actions", "cartera"],
