@@ -19,6 +19,7 @@ import { CobranzaKpiGrid } from "./cobranza-kpi-grid";
 import { CobranzaAgenda } from "./cobranza-agenda";
 import { ClientesAGestionarList } from "./clientes-a-gestionar-list";
 import { CobranzaAlertsFeed } from "./cobranza-alerts-feed";
+import { HistorialCobrosList } from "./historial-cobros-list";
 import {
   RegistrarCobroDrawer,
   type RegistrarCobroDrawerPrefill,
@@ -180,6 +181,9 @@ export function CobranzaPageClient() {
 
       {/* Alertas */}
       <CobranzaAlertsFeed notifications={notifications} loading={loading} />
+
+      {/* Historial de cobros */}
+      <HistorialCobrosList />
 
       <RegistrarCobroDrawer
         open={drawerOpen}
