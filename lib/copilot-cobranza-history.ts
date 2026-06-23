@@ -1,4 +1,4 @@
-export type CobranzaHistoryOrigen = "Manual" | "Zeta";
+export type CobranzaHistoryOrigen = "Zeta";
 export type CobranzaHistoryMoneda = "UYU" | "USD";
 
 export type CobranzaHistoryRow = {
@@ -49,38 +49,6 @@ function sOrNull(v: unknown): string | null {
 function parseAmount(v: unknown): number | null {
   const n = typeof v === "number" ? v : parseFloat(s(v));
   return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null;
-}
-
-export function mapManualMovementRow(
-  row: Record<string, unknown>,
-  companyNames: Map<string, string>
-): CobranzaHistoryRow | null {
-  const id = s(row.id);
-  const fecha = s(row.movement_date);
-  const createdAt = s(row.created_at);
-  const monto = parseAmount(row.amount);
-  const moneda = s(row.currency_code);
-
-  if (!id || !fecha || monto == null || !validMoneda(moneda)) return null;
-
-  const counterparty = s(row.counterparty);
-  const companyId = s(row.company_id);
-  const clienteNombre =
-    counterparty ||
-    (companyId ? (companyNames.get(companyId) ?? "") : "") ||
-    "Cliente no especificado";
-
-  return {
-    id,
-    fecha,
-    clienteNombre,
-    monto,
-    moneda,
-    origen: "Manual",
-    referencia: sOrNull(row.reference),
-    registradoPor: "Manual",
-    createdAt,
-  };
 }
 
 export function mapZetaReceiptRow(

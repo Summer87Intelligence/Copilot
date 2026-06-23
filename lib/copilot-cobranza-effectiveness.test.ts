@@ -72,7 +72,7 @@ function makeHistoryRow(overrides: Partial<CobranzaHistoryRow> = {}): CobranzaHi
     clienteNombre: "Cliente A",
     monto: 100,
     moneda: "UYU",
-    origen: "Manual",
+    origen: "Zeta",
     referencia: null,
     registradoPor: "Manual",
     createdAt: "2026-06-10T10:00:00Z",

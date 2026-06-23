@@ -75,12 +75,10 @@ function ClientMobileCard({
   row,
   mode,
   fxRate,
-  onRegistrarCobro,
 }: {
   row: CobranzaClientRow;
   mode: "native" | "usd_equivalent";
   fxRate: number;
-  onRegistrarCobro?: (row: CobranzaClientRow) => void;
 }) {
   const debtLabel = formatClientDebt(row.debtUyu, row.debtUsd, mode, fxRate);
   const overdueLabel = formatClientDebt(row.overdueUyu, row.overdueUsd, mode, fxRate);
@@ -146,13 +144,6 @@ function ClientMobileCard({
           Ver cliente
           <ChevronRight className="h-3.5 w-3.5" aria-hidden />
         </Link>
-        <button
-          type="button"
-          onClick={() => onRegistrarCobro?.(row)}
-          className="inline-flex shrink-0 items-center rounded-lg border border-[var(--copilot-accent)] bg-[var(--copilot-accent-soft)] px-2.5 py-1.5 text-xs font-semibold text-[var(--copilot-accent)] hover:opacity-90"
-        >
-          Registrar cobro
-        </button>
         <Link
           href={`/copilot/clientes/${row.companyId}#gestion-cobranza`}
           className="inline-flex shrink-0 items-center rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2.5 py-1.5 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
@@ -168,12 +159,10 @@ function ClientDesktopRow({
   row,
   mode,
   fxRate,
-  onRegistrarCobro,
 }: {
   row: CobranzaClientRow;
   mode: "native" | "usd_equivalent";
   fxRate: number;
-  onRegistrarCobro?: (row: CobranzaClientRow) => void;
 }) {
   const debtLabel = formatClientDebt(row.debtUyu, row.debtUsd, mode, fxRate);
   const overdueLabel = row.isOverdue
@@ -221,13 +210,6 @@ function ClientDesktopRow({
           >
             Ver
           </Link>
-          <button
-            type="button"
-            onClick={() => onRegistrarCobro?.(row)}
-            className="inline-flex items-center rounded-lg border border-[var(--copilot-accent)] bg-[var(--copilot-accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--copilot-accent)] hover:opacity-90"
-          >
-            Registrar cobro
-          </button>
           <Link
             href={`/copilot/clientes/${row.companyId}#gestion-cobranza`}
             className="inline-flex items-center rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2.5 py-1 text-xs font-medium text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-panel-bg)]"
@@ -243,11 +225,9 @@ function ClientDesktopRow({
 export function ClientesAGestionarList({
   rows,
   loading,
-  onRegistrarCobro,
 }: {
   rows: CobranzaClientRow[];
   loading: boolean;
-  onRegistrarCobro?: (row: CobranzaClientRow) => void;
 }) {
   const { mode, fxRate } = useDisplayCurrency();
   const [filter, setFilter] = useState<ClientFilter>("withDebt");
@@ -333,7 +313,6 @@ export function ClientesAGestionarList({
                   row={row}
                   mode={mode}
                   fxRate={fxRate}
-                  onRegistrarCobro={onRegistrarCobro}
                 />
               </li>
             ))}
@@ -359,7 +338,6 @@ export function ClientesAGestionarList({
                     row={row}
                     mode={mode}
                     fxRate={fxRate}
-                    onRegistrarCobro={onRegistrarCobro}
                   />
                 ))}
               </tbody>

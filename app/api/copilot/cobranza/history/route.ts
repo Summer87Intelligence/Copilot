@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import {
   computePeriodFrom,
-  mapManualMovementRow,
   mapZetaReceiptRow,
   mergeAndSort,
   parsePeriodParam,
@@ -42,23 +41,6 @@ export async function GET(request: NextRequest) {
   const today = todayYmdUtc();
   const fromDate = computePeriodFrom(period, today);
 
-  let manualQb = supabase
-    .from("manual_cash_movements")
-    .select(
-      "id, movement_date, amount, currency_code, counterparty, company_id, reference, created_at"
-    )
-    .eq("workspace_id", tenantCompanyId)
-    .eq("movement_type", "income")
-    .eq("category", "cobranza")
-    .order("movement_date", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(500);
-
-  if (fromDate) manualQb = manualQb.gte("movement_date", fromDate);
-  if (currency === "UYU" || currency === "USD") {
-    manualQb = manualQb.eq("currency_code", currency);
-  }
-
   let zetaQb = supabase
     .from("proto_receipts")
     .select("id, receipt_date, amount, currency_code, company_id, reference, created_at")
@@ -73,9 +55,7 @@ export async function GET(request: NextRequest) {
     zetaQb = zetaQb.eq("currency_code", currency);
   }
 
-  const [manualResult, zetaResult] = await Promise.all([manualQb, zetaQb]);
-
-  const manualRows = (manualResult.data ?? []) as Record<string, unknown>[];
+  const zetaResult = await zetaQb;
   const zetaRows = (zetaResult.data ?? []) as Record<string, unknown>[];
 
   const companyIdSet = new Set<string>();
@@ -83,18 +63,10 @@ export async function GET(request: NextRequest) {
     const cid = String(r.company_id ?? "").trim();
     if (cid) companyIdSet.add(cid);
   }
-  for (const r of manualRows) {
-    const cid = String(r.company_id ?? "").trim();
-    if (cid) companyIdSet.add(cid);
-  }
 
   const companyNames = await fetchCompanyNames(supabase, tenantCompanyId, [...companyIdSet]);
 
   const mapped: CobranzaHistoryRow[] = [];
-  for (const r of manualRows) {
-    const row = mapManualMovementRow(r, companyNames);
-    if (row) mapped.push(row);
-  }
   for (const r of zetaRows) {
     const row = mapZetaReceiptRow(r, companyNames);
     if (row) mapped.push(row);

@@ -4,7 +4,6 @@ import {
   computePeriodFrom,
   filterHistoryByCliente,
   filterHistoryByCurrency,
-  mapManualMovementRow,
   mapZetaReceiptRow,
   mergeAndSort,
   parsePeriodParam,
@@ -21,9 +20,9 @@ function makeRow(overrides: Partial<CobranzaHistoryRow> = {}): CobranzaHistoryRo
     clienteNombre: "Cliente A",
     monto: 100,
     moneda: "UYU",
-    origen: "Manual",
+    origen: "Zeta",
     referencia: null,
-    registradoPor: "Manual",
+    registradoPor: "Zeta",
     createdAt: "2026-06-01T10:00:00Z",
     ...overrides,
   };
@@ -67,77 +66,6 @@ describe("parsePeriodParam", () => {
   });
 });
 
-// ── mapManualMovementRow ──────────────────────────────────────────────────────
-
-describe("mapManualMovementRow", () => {
-  it("maps a valid movement row", () => {
-    const raw = {
-      id: "mov-1",
-      movement_date: "2026-06-10",
-      amount: 1500,
-      currency_code: "UYU",
-      counterparty: "Empresa X",
-      company_id: null,
-      reference: "REF-001",
-      created_at: "2026-06-10T14:00:00Z",
-    };
-    const result = mapManualMovementRow(raw, EMPTY_NAMES);
-    expect(result).not.toBeNull();
-    expect(result!.id).toBe("mov-1");
-    expect(result!.fecha).toBe("2026-06-10");
-    expect(result!.monto).toBe(1500);
-    expect(result!.moneda).toBe("UYU");
-    expect(result!.clienteNombre).toBe("Empresa X");
-    expect(result!.origen).toBe("Manual");
-    expect(result!.referencia).toBe("REF-001");
-    expect(result!.registradoPor).toBe("Manual");
-  });
-
-  it("uses companyNames map when counterparty is empty", () => {
-    const names = new Map([["company-uuid", "Empresa Y"]]);
-    const raw = {
-      id: "mov-2",
-      movement_date: "2026-06-11",
-      amount: 200,
-      currency_code: "USD",
-      counterparty: "",
-      company_id: "company-uuid",
-      reference: null,
-      created_at: "2026-06-11T09:00:00Z",
-    };
-    const result = mapManualMovementRow(raw, names);
-    expect(result!.clienteNombre).toBe("Empresa Y");
-  });
-
-  it("falls back to 'Cliente no especificado' when no name available", () => {
-    const raw = {
-      id: "mov-3",
-      movement_date: "2026-06-12",
-      amount: 50,
-      currency_code: "UYU",
-      counterparty: null,
-      company_id: null,
-      reference: null,
-      created_at: "2026-06-12T08:00:00Z",
-    };
-    const result = mapManualMovementRow(raw, EMPTY_NAMES);
-    expect(result!.clienteNombre).toBe("Cliente no especificado");
-  });
-
-  it("returns null for missing required fields", () => {
-    expect(mapManualMovementRow({ id: "", movement_date: "2026-06-01", amount: 100, currency_code: "UYU", created_at: "x" }, EMPTY_NAMES)).toBeNull();
-    expect(mapManualMovementRow({ id: "x", movement_date: "", amount: 100, currency_code: "UYU", created_at: "x" }, EMPTY_NAMES)).toBeNull();
-    expect(mapManualMovementRow({ id: "x", movement_date: "2026-06-01", amount: -1, currency_code: "UYU", created_at: "x" }, EMPTY_NAMES)).toBeNull();
-    expect(mapManualMovementRow({ id: "x", movement_date: "2026-06-01", amount: 100, currency_code: "EUR", created_at: "x" }, EMPTY_NAMES)).toBeNull();
-  });
-
-  it("rounds monto to 2 decimals", () => {
-    const raw = { id: "x", movement_date: "2026-06-01", amount: 10.999, currency_code: "UYU", counterparty: "A", company_id: null, reference: null, created_at: "x" };
-    const result = mapManualMovementRow(raw, EMPTY_NAMES);
-    expect(result!.monto).toBe(11);
-  });
-});
-
 // ── mapZetaReceiptRow ─────────────────────────────────────────────────────────
 
 describe("mapZetaReceiptRow", () => {
@@ -164,6 +92,18 @@ describe("mapZetaReceiptRow", () => {
   it("returns null for invalid currency", () => {
     const raw = { id: "x", receipt_date: "2026-05-15", amount: 100, currency_code: "ARS", company_id: "c", created_at: "x" };
     expect(mapZetaReceiptRow(raw, EMPTY_NAMES)).toBeNull();
+  });
+
+  it("falls back to 'Cliente no especificado' when company not in map", () => {
+    const raw = { id: "x", receipt_date: "2026-05-15", amount: 100, currency_code: "UYU", company_id: "unknown", created_at: "x" };
+    const result = mapZetaReceiptRow(raw, EMPTY_NAMES);
+    expect(result!.clienteNombre).toBe("Cliente no especificado");
+  });
+
+  it("rounds monto to 2 decimals", () => {
+    const raw = { id: "x", receipt_date: "2026-06-01", amount: 10.999, currency_code: "UYU", company_id: "c", created_at: "x" };
+    const result = mapZetaReceiptRow(raw, EMPTY_NAMES);
+    expect(result!.monto).toBe(11);
   });
 });
 
@@ -199,12 +139,12 @@ describe("mergeAndSort", () => {
     expect(rows[0].id).toBe(original[0].id);
   });
 
-  it("merges manual and zeta rows correctly", () => {
-    const manual = [makeRow({ id: "m1", fecha: "2026-06-10", origen: "Manual" })];
-    const zeta = [makeRow({ id: "z1", fecha: "2026-06-11", origen: "Zeta" })];
-    const sorted = mergeAndSort([...manual, ...zeta]);
+  it("sorts multiple zeta rows by fecha DESC", () => {
+    const r1 = makeRow({ id: "z1", fecha: "2026-06-11" });
+    const r2 = makeRow({ id: "z2", fecha: "2026-06-10" });
+    const sorted = mergeAndSort([r2, r1]);
     expect(sorted[0].id).toBe("z1");
-    expect(sorted[1].id).toBe("m1");
+    expect(sorted[1].id).toBe("z2");
   });
 });
 
