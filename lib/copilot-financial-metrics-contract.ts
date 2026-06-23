@@ -353,7 +353,6 @@ export const CANONICAL_METRICS: Record<MetricId, CanonicalMetricDef> = {
     currency: "per_currency", // N/A pero requerido por tipo
     scope: "current",
     consumers: [
-      "hoy/hoy-compact-hero (dot badge + label + headline)",
       "hoy/hoy-executive-summary-card",
       "hoy/hoy-cockpit-card-drawer (acento de cards)",
       "copilot/hoy (cashAfterPaymentsCritical flag en ExecutiveSummaryCard)",
