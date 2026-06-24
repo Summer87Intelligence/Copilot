@@ -35,6 +35,7 @@ export function CobranzaPageClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [monthHistory, setMonthHistory] = useState<CobranzaHistoryRow[]>([]);
+  const [monthHistoryTruncated, setMonthHistoryTruncated] = useState(false);
   const [ownershipMap, setOwnershipMap] = useState<Map<string, OwnershipEntry>>(new Map());
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
@@ -75,6 +76,7 @@ export function CobranzaPageClient() {
       if (monthHistoryResult.status === "fulfilled") {
         const json = (await monthHistoryResult.value.json().catch(() => null)) as CobranzaHistoryApiResponse | null;
         setMonthHistory(json?.items ?? []);
+        setMonthHistoryTruncated(json?.truncated === true);
       }
 
       if (ownershipResult.status === "fulfilled") {
@@ -171,7 +173,11 @@ export function CobranzaPageClient() {
           ))}
         </div>
       ) : (
-        <CobranzaKpiGrid kpis={kpis} effectivenessKpis={effectivenessKpis} />
+        <CobranzaKpiGrid
+          kpis={kpis}
+          effectivenessKpis={effectivenessKpis}
+          cobrosDataTruncated={monthHistoryTruncated}
+        />
       )}
 
       {/* CTA principal */}

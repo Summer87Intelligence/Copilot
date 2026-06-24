@@ -61,9 +61,11 @@ function fulfillmentTone(rate: number | null): "neutral" | "warning" | "danger" 
 export function CobranzaKpiGrid({
   kpis,
   effectivenessKpis,
+  cobrosDataTruncated = false,
 }: {
   kpis: CobranzaKpis;
   effectivenessKpis: CobranzaEffectivenessKpis;
+  cobrosDataTruncated?: boolean;
 }) {
   const { mode, fxRate } = useDisplayCurrency();
 
@@ -80,6 +82,9 @@ export function CobranzaKpiGrid({
       ? `${effectivenessKpis.overduePromisesCount} vencida${effectivenessKpis.overduePromisesCount !== 1 ? "s" : ""} sin cobrar`
       : "sin promesas vencidas";
 
+  const cobrosTruncationNote = cobrosDataTruncated
+    ? "datos parciales — historial truncado"
+    : undefined;
   const cobrosUyuLabel =
     effectivenessKpis.cobrosUyu > 0
       ? formatMoneyCurrency(effectivenessKpis.cobrosUyu, "UYU")
@@ -138,12 +143,12 @@ export function CobranzaKpiGrid({
         <KpiCard
           label="Cobros este mes (UYU)"
           value={cobrosUyuLabel}
-          sub="pesos cobrados"
+          sub={cobrosTruncationNote ?? "pesos cobrados"}
         />
         <KpiCard
           label="Cobros este mes (USD)"
           value={cobrosUsdLabel}
-          sub="dólares cobrados"
+          sub={cobrosTruncationNote ?? "dólares cobrados"}
         />
         <KpiCard
           label="Contactados"

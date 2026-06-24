@@ -247,6 +247,20 @@ describe("aggregateMonthCobros", () => {
     ];
     expect(aggregateMonthCobros(rows).count).toBe(2);
   });
+
+  it("sums more than 500 history rows without assuming a cap", () => {
+    const rows = Array.from({ length: 600 }, (_, i) =>
+      makeHistoryRow({
+        id: `h-${i}`,
+        moneda: i % 2 === 0 ? "UYU" : "USD",
+        monto: 10,
+      })
+    );
+    const result = aggregateMonthCobros(rows);
+    expect(result.count).toBe(600);
+    expect(result.uyu).toBe(3000);
+    expect(result.usd).toBe(3000);
+  });
 });
 
 // ── computeClientsContacted ──────────────────────────────────────────────────

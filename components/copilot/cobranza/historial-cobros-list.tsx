@@ -22,6 +22,7 @@ const PERIOD_LABELS: Record<CobranzaHistoryPeriod, string> = {
 
 export function HistorialCobrosList() {
   const [items, setItems] = useState<CobranzaHistoryRow[]>([]);
+  const [truncated, setTruncated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<CobranzaHistoryPeriod>("30d");
@@ -52,6 +53,7 @@ export function HistorialCobrosList() {
       const json = (await res.json()) as CobranzaHistoryApiResponse;
       if (!ctrl.signal.aborted) {
         setItems(json.items ?? []);
+        setTruncated(json.truncated === true);
         setSelectedCliente("");
       }
     } catch (err) {
@@ -146,6 +148,15 @@ export function HistorialCobrosList() {
             </select>
           </div>
         </div>
+
+        {truncated ? (
+          <p
+            role="status"
+            className="rounded-lg border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-3 py-2 text-xs text-[var(--copilot-warning-text-strong)]"
+          >
+            El historial está truncado por volumen. Los totales pueden ser parciales.
+          </p>
+        ) : null}
 
         {loading ? (
           <HistorialSkeleton />

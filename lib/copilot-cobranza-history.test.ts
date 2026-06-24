@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   computePeriodFrom,
+  computePeriodTo,
   filterHistoryByCliente,
   filterHistoryByCurrency,
   mapZetaReceiptRow,
@@ -48,6 +49,21 @@ describe("computePeriodFrom", () => {
   it("handles month boundary correctly for '30d'", () => {
     const from = computePeriodFrom("30d", "2026-01-15");
     expect(from).toBe("2025-12-16");
+  });
+});
+
+describe("computePeriodTo", () => {
+  it("returns today for 30d", () => {
+    expect(computePeriodTo("30d", "2026-06-23")).toBe("2026-06-23");
+  });
+
+  it("returns last day of month for month", () => {
+    expect(computePeriodTo("month", "2026-06-23")).toBe("2026-06-30");
+    expect(computePeriodTo("month", "2026-02-10")).toBe("2026-02-28");
+  });
+
+  it("returns null for all", () => {
+    expect(computePeriodTo("all", "2026-06-23")).toBeNull();
   });
 });
 
@@ -112,7 +128,7 @@ describe("mapZetaReceiptRow", () => {
 // ── mergeAndSort ──────────────────────────────────────────────────────────────
 
 describe("mergeAndSort", () => {
-  it("sorts by fecha DESC then createdAt DESC", () => {
+  it("sorts by fecha DESC then createdAt DESC then id DESC", () => {
     const rows: CobranzaHistoryRow[] = [
       makeRow({ id: "a", fecha: "2026-06-01", createdAt: "2026-06-01T08:00:00Z" }),
       makeRow({ id: "b", fecha: "2026-06-03", createdAt: "2026-06-03T10:00:00Z" }),

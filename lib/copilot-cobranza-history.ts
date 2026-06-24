@@ -16,15 +16,37 @@ export type CobranzaHistoryRow = {
 
 export type CobranzaHistoryPeriod = "30d" | "month" | "all";
 
+export type CobranzaHistoryApiMeta = {
+  fetched: number;
+  limitApplied: number | null;
+};
+
 export type CobranzaHistoryApiResponse = {
   ok: true;
   items: CobranzaHistoryRow[];
   total: number;
+  truncated: boolean;
+  meta: CobranzaHistoryApiMeta;
 };
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import { isReceiptVoidLike } from "@/lib/copilot-receipts-utils";
+import { fetchAllRows } from "@/lib/supabase-pagination";
 
 export const HISTORY_PAGE_SIZE = 25;
 export const HISTORY_API_PATH = "/api/copilot/cobranza/history";
 export const VALID_HISTORY_PERIODS = ["30d", "month", "all"] as const satisfies readonly CobranzaHistoryPeriod[];
+
+/** Page size for server-side pagination of proto_receipts. */
+export const COBRANZA_HISTORY_FETCH_PAGE_SIZE = 1_000;
+/** Safety cap for period=month / 30d (no silent truncation under this volume). */
+export const COBRANZA_HISTORY_MAX_ROWS_BOUNDED = 50_000;
+/** Safety cap for period=all — exposes truncated when reached. */
+export const COBRANZA_HISTORY_MAX_ROWS_ALL = 50_000;
+
+const RECEIPT_SELECT =
+  "id, receipt_date, amount, currency_code, company_id, reference, created_at, status";
 
 export function computePeriodFrom(period: CobranzaHistoryPeriod, today: string): string | null {
   if (period === "all") return null;
@@ -32,6 +54,15 @@ export function computePeriodFrom(period: CobranzaHistoryPeriod, today: string):
   const d = new Date(today + "T12:00:00Z");
   d.setDate(d.getDate() - 30);
   return d.toISOString().slice(0, 10);
+}
+
+/** Inclusive upper bound for bounded periods (month / 30d). */
+export function computePeriodTo(period: CobranzaHistoryPeriod, today: string): string | null {
+  if (period === "all") return null;
+  if (period === "30d") return today;
+  const ym = today.slice(0, 7);
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(Date.UTC(y!, m!, 0)).toISOString().slice(0, 10);
 }
 
 function validMoneda(v: unknown): v is CobranzaHistoryMoneda {
@@ -85,8 +116,81 @@ export function mergeAndSort(rows: CobranzaHistoryRow[]): CobranzaHistoryRow[] {
   return [...rows].sort((a, b) => {
     const d = b.fecha.localeCompare(a.fecha);
     if (d !== 0) return d;
-    return b.createdAt.localeCompare(a.createdAt);
+    const c = b.createdAt.localeCompare(a.createdAt);
+    if (c !== 0) return c;
+    return b.id.localeCompare(a.id);
   });
+}
+
+export type CobranzaHistoryReceiptFetchResult = {
+  rows: Record<string, unknown>[];
+  truncated: boolean;
+  fetched: number;
+  limitApplied: number | null;
+};
+
+/**
+ * Loads all active receipts for cobranza history with server-side pagination.
+ * Excludes void-like statuses (same rule as financial reconciliation).
+ */
+export async function fetchCobranzaHistoryReceiptRows(
+  supabase: SupabaseClient,
+  input: {
+    workspaceId: string;
+    fromDate: string | null;
+    toDate: string | null;
+    currency: string;
+    period: CobranzaHistoryPeriod;
+  }
+): Promise<CobranzaHistoryReceiptFetchResult> {
+  const maxRows =
+    input.period === "all"
+      ? COBRANZA_HISTORY_MAX_ROWS_ALL
+      : COBRANZA_HISTORY_MAX_ROWS_BOUNDED;
+
+  const result = await fetchAllRows<Record<string, unknown>>({
+    pageSize: COBRANZA_HISTORY_FETCH_PAGE_SIZE,
+    maxRows,
+    queryPage: (from, to) => {
+      let q = supabase
+        .from("proto_receipts")
+        .select(RECEIPT_SELECT)
+        .eq("workspace_company_id", input.workspaceId)
+        .eq("is_active", true)
+        .order("receipt_date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, to);
+
+      if (input.fromDate) q = q.gte("receipt_date", input.fromDate);
+      if (input.toDate) q = q.lte("receipt_date", input.toDate);
+      if (input.currency === "UYU" || input.currency === "USD") {
+        q = q.eq("currency_code", input.currency);
+      }
+      return q;
+    },
+  });
+
+  const eligible = result.rows.filter((r) => !isReceiptVoidLike(r.status));
+
+  return {
+    rows: eligible,
+    truncated: result.reachedMaxRows,
+    fetched: result.totalFetched,
+    limitApplied: result.reachedMaxRows ? maxRows : null,
+  };
+}
+
+export function buildCobranzaHistoryItems(
+  rawRows: Record<string, unknown>[],
+  companyNames: Map<string, string>
+): CobranzaHistoryRow[] {
+  const mapped: CobranzaHistoryRow[] = [];
+  for (const r of rawRows) {
+    const row = mapZetaReceiptRow(r, companyNames);
+    if (row) mapped.push(row);
+  }
+  return mergeAndSort(mapped);
 }
 
 export function filterHistoryByCurrency(
