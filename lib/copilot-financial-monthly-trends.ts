@@ -4,6 +4,8 @@
  */
 
 import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
+import { dedupeZetaShadowInvoicesForReporting } from "@/lib/copilot-zeta-invoice-report-dedup";
+import type { DataRow } from "@/lib/data/proto-operational-read-repository";
 
 export type FinancialMonthlyTrend = {
   month: string;
@@ -117,7 +119,11 @@ export function buildFinancialMonthlyTrends(input: {
     }
   }
 
-  for (const inv of input.invoices) {
+  const dedupedInvoices = dedupeZetaShadowInvoicesForReporting(
+    input.invoices as unknown as DataRow[]
+  ) as unknown as readonly MonthlyTrendInvoiceInput[];
+
+  for (const inv of dedupedInvoices) {
     if (!isActiveInvoice(inv)) continue;
     const ym = ymd(inv.issue_date);
     if (!ym || !monthKeys.includes(ym)) continue;
@@ -460,7 +466,10 @@ export function buildFinancialTrendDashboard(input: {
   period: "7d" | "1m" | "3m" | "6m" | "12m";
   currency: "UYU" | "USD";
 }): FinancialTrendDashboard {
-  const { invoices, receipts, asOfYmd, period, currency } = input;
+  const { invoices: rawInvoices, receipts, asOfYmd, period, currency } = input;
+  const invoices = dedupeZetaShadowInvoicesForReporting(
+    rawInvoices as unknown as DataRow[]
+  ) as unknown as readonly MonthlyTrendInvoiceInput[];
 
   const useDaily = period === "7d" || period === "1m";
   const count =

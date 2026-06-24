@@ -367,3 +367,111 @@ describe("buildFinancialTrendDashboard — corte min date 2026-01", () => {
     expect(result.totals.netSales).toBe(1000);
   });
 });
+
+// ─── Shadow dedup: buildFinancialMonthlyTrends ────────────────────────────────
+
+describe("buildFinancialMonthlyTrends — shadow dedup", () => {
+  it("CCV1 + shadow mismo cliente/fecha/importe: solo cuenta CCV1", () => {
+    const result = buildFinancialMonthlyTrends({
+      asOfYmd: "2026-06-30",
+      invoices: [
+        {
+          id: "ccv1-1",
+          invoice_number: "ZETA:CCV1:100",
+          company_id: "c1",
+          issue_date: "2026-06-10",
+          total_amount: 5000,
+          currency_code: "UYU",
+          is_active: true,
+        },
+        {
+          id: "shadow-1",
+          invoice_number: "ZETA:2850",
+          company_id: "c1",
+          issue_date: "2026-06-10",
+          total_amount: 5000,
+          currency_code: "UYU",
+          is_active: true,
+        },
+      ],
+      receipts: [],
+    });
+    const jun = result.trends.find((t) => t.month === "2026-06" && t.currency === "UYU");
+    expect(jun?.grossIssued).toBe(5000);
+  });
+
+  it("shadow sin par CCV1 (orphan): sigue contando", () => {
+    const result = buildFinancialMonthlyTrends({
+      asOfYmd: "2026-06-30",
+      invoices: [
+        {
+          id: "orphan-1",
+          invoice_number: "ZETA:9999",
+          company_id: "c1",
+          issue_date: "2026-06-10",
+          total_amount: 3000,
+          currency_code: "UYU",
+          is_active: true,
+        },
+      ],
+      receipts: [],
+    });
+    const jun = result.trends.find((t) => t.month === "2026-06" && t.currency === "UYU");
+    expect(jun?.grossIssued).toBe(3000);
+  });
+});
+
+// ─── Shadow dedup: buildFinancialTrendDashboard ────────────────────────────────
+
+describe("buildFinancialTrendDashboard — shadow dedup", () => {
+  it("CCV1 + shadow mismo cliente/fecha/importe: solo cuenta CCV1", () => {
+    const result = buildFinancialTrendDashboard({
+      asOfYmd: "2026-06-30",
+      period: "3m",
+      currency: "UYU",
+      invoices: [
+        {
+          id: "ccv1-2",
+          invoice_number: "ZETA:CCV1:200",
+          company_id: "c1",
+          issue_date: "2026-06-10",
+          total_amount: 5000,
+          currency_code: "UYU",
+          is_active: true,
+        },
+        {
+          id: "shadow-2",
+          invoice_number: "ZETA:2850",
+          company_id: "c1",
+          issue_date: "2026-06-10",
+          total_amount: 5000,
+          currency_code: "UYU",
+          is_active: true,
+        },
+      ],
+      receipts: [],
+    });
+    expect(result.totals.netSales).toBe(5000);
+  });
+
+  it("shadow sin par CCV1 (orphan): sigue contando en dashboard", () => {
+    const result = buildFinancialTrendDashboard({
+      asOfYmd: "2026-06-30",
+      period: "3m",
+      currency: "UYU",
+      invoices: [
+        {
+          id: "orphan-2",
+          invoice_number: "ZETA:9999",
+          company_id: "c1",
+          issue_date: "2026-06-10",
+          total_amount: 3000,
+          currency_code: "UYU",
+          is_active: true,
+        },
+      ],
+      receipts: [],
+    });
+    expect(result.totals.netSales).toBe(3000);
+  });
+});

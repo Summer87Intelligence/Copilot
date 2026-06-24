@@ -169,6 +169,99 @@ describe("buildAnnualSalesYtd", () => {
   });
 });
 
+describe("buildMonthlySalesYear — shadow dedup", () => {
+  it("CCV1 + shadow mismo cliente/fecha/importe: solo cuenta CCV1", () => {
+    const ccv1 = inv({
+      id: "ccv1-1",
+      invoice_number: "ZETA:CCV1:100",
+      company_id: "c1",
+      issue_date: "2026-06-10",
+      currency_code: "UYU",
+      total_amount: 5000,
+    });
+    const shadow = inv({
+      id: "shadow-1",
+      invoice_number: "ZETA:2850",
+      company_id: "c1",
+      issue_date: "2026-06-10",
+      currency_code: "UYU",
+      total_amount: 5000,
+    });
+    const rows = buildMonthlySalesYear([ccv1, shadow], 2026, ASOF);
+    expect(rows[5]!.sales.UYU).toBe(5000); // June = index 5
+  });
+
+  it("shadow sin par CCV1 (orphan): sigue contando", () => {
+    const orphan = inv({
+      id: "orphan-1",
+      invoice_number: "ZETA:9999",
+      company_id: "c1",
+      issue_date: "2026-06-10",
+      currency_code: "UYU",
+      total_amount: 3000,
+    });
+    const rows = buildMonthlySalesYear([orphan], 2026, ASOF);
+    expect(rows[5]!.sales.UYU).toBe(3000);
+  });
+
+  it("NC sigue restando después del dedup", () => {
+    const ccv1 = inv({
+      id: "ccv1-2",
+      invoice_number: "ZETA:CCV1:200",
+      company_id: "c1",
+      issue_date: "2026-03-10",
+      currency_code: "UYU",
+      total_amount: 2000,
+    });
+    const nc = inv({
+      id: "nc-1",
+      issue_date: "2026-03-15",
+      currency_code: "UYU",
+      total_amount: 500,
+      zeta_metadata: { zeta_customer_voucher_v1: { cfe_tipo: "102" } },
+    });
+    const rows = buildMonthlySalesYear([ccv1, nc], 2026, ASOF);
+    expect(rows[2]!.sales.UYU).toBe(1500); // March = index 2
+  });
+
+  it("void excluido después del dedup", () => {
+    const ccv1 = inv({
+      id: "ccv1-3",
+      invoice_number: "ZETA:CCV1:300",
+      company_id: "c1",
+      issue_date: "2026-04-01",
+      currency_code: "UYU",
+      total_amount: 1000,
+      status: "void",
+    });
+    const rows = buildMonthlySalesYear([ccv1], 2026, ASOF);
+    expect(rows[3]!.sales.UYU).toBe(0); // April = index 3
+  });
+});
+
+describe("buildAnnualSalesYtd — shadow dedup", () => {
+  it("CCV1 + shadow: solo cuenta CCV1 en YTD", () => {
+    const ccv1 = inv({
+      id: "ytd-ccv1",
+      invoice_number: "ZETA:CCV1:400",
+      company_id: "c1",
+      issue_date: "2026-06-01",
+      currency_code: "USD",
+      total_amount: 1000,
+    });
+    const shadow = inv({
+      id: "ytd-shadow",
+      invoice_number: "ZETA:4000",
+      company_id: "c1",
+      issue_date: "2026-06-01",
+      currency_code: "USD",
+      total_amount: 1000,
+    });
+    const result = buildAnnualSalesYtd([ccv1, shadow], 2026);
+    expect(result.USD).toBe(1000);
+  });
+});
+
 describe("sin heurística USD × 40", () => {
   it("el módulo de derivaciones CEO no contiene consolidación ×40", async () => {
     const fs = await import("node:fs");
