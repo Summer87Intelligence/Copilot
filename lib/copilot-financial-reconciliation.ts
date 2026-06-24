@@ -188,8 +188,12 @@ export type CurrencyReconciliation = {
    */
   previousPending: number;
   /**
-   * @deprecated Usar `collectedInPeriod`. Alias mantenido por compatibilidad.
-   * El motor lo pre-calcula desde recibos reales (no desde `invoiced - pending`).
+   * @deprecated Usar `collectedInPeriod` para cobros del período o
+   * `portfolioResolvedAmount` para cobrado inferido del portfolio.
+   * SEMÁNTICA DUAL: cuando se pasan receipts al motor = `collectedInPeriod`
+   * (contable); cuando NO se pasan = `max(0, issuedInPeriod − pendingAtCutoff)`
+   * (inferido). Esta ambigüedad hace que el campo no sea seguro para comparar
+   * entre contextos distintos. No usar en código nuevo.
    */
   totalCollected: number;
   /**

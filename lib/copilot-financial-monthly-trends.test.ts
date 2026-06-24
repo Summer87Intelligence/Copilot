@@ -61,6 +61,35 @@ describe("copilot-financial-monthly-trends", () => {
     expect(may?.collected).toBe(500);
   });
 
+  it("excluye recibos void/cancelled/anulados del cobrado", () => {
+    const result = buildFinancialMonthlyTrends({
+      asOfYmd: "2026-05-28",
+      invoices: [],
+      receipts: [
+        { receipt_date: "2026-05-10", amount: 100, currency_code: "UYU", is_active: true, status: "paid" },
+        { receipt_date: "2026-05-11", amount: 999, currency_code: "UYU", is_active: true, status: "void" },
+        { receipt_date: "2026-05-12", amount: 999, currency_code: "UYU", is_active: true, status: "cancelled" },
+        { receipt_date: "2026-05-13", amount: 999, currency_code: "UYU", is_active: true, status: "anulada" },
+      ],
+    });
+    const may = result.trends.find((t) => t.month === "2026-05" && t.currency === "UYU");
+    expect(may?.collected).toBe(100);
+  });
+
+  it("incluye recibos activos con status no-void (applied, pending, processing)", () => {
+    const result = buildFinancialMonthlyTrends({
+      asOfYmd: "2026-05-28",
+      invoices: [],
+      receipts: [
+        { receipt_date: "2026-05-10", amount: 100, currency_code: "USD", is_active: true, status: "applied" },
+        { receipt_date: "2026-05-11", amount: 200, currency_code: "USD", is_active: true, status: "pending" },
+        { receipt_date: "2026-05-12", amount: 300, currency_code: "USD", is_active: true, status: "processing" },
+      ],
+    });
+    const may = result.trends.find((t) => t.month === "2026-05" && t.currency === "USD");
+    expect(may?.collected).toBe(600);
+  });
+
   it("separa UYU/USD", () => {
     const result = buildFinancialMonthlyTrends({
       asOfYmd: "2026-05-28",

@@ -97,16 +97,33 @@ describe("buildCollectionsReportModel", () => {
     expect(result.rows[0]?.amount).toBe(100);
   });
 
-  it("excluye recibos no pagados", () => {
+  it("excluye recibos void/anulados", () => {
     const result = buildCollectionsReportModel({
       ...BASE,
       receipts: [
-        rec({ status: "paid", amount: 300 }),
-        rec({ id: "r2", status: "pending", amount: 999 }),
+        rec({ status: "paid", amount: 100 }),
+        rec({ id: "r2", status: "void", amount: 999 }),
+        rec({ id: "r3", status: "cancelled", amount: 999 }),
+        rec({ id: "r4", status: "anulado", amount: 999 }),
       ],
     });
     expect(result.rows).toHaveLength(1);
-    expect(result.rows[0]?.amount).toBe(300);
+    expect(result.rows[0]?.amount).toBe(100);
+  });
+
+  it("incluye recibos activos con cualquier status no-void (applied, pending, processing)", () => {
+    const result = buildCollectionsReportModel({
+      ...BASE,
+      receipts: [
+        rec({ id: "r1", status: "paid", amount: 100 }),
+        rec({ id: "r2", status: "applied", amount: 200 }),
+        rec({ id: "r3", status: "pending", amount: 300 }),
+        rec({ id: "r4", status: "processing", amount: 400 }),
+        rec({ id: "r5", status: "void", amount: 999 }),
+      ],
+    });
+    expect(result.rows).toHaveLength(4);
+    expect(result.totals.amount).toBe(1000);
   });
 
   it("ordena por fecha DESC, luego cliente ASC, luego documento ASC", () => {

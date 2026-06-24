@@ -6,6 +6,7 @@
 import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
 import { dedupeZetaShadowInvoicesForReporting } from "@/lib/copilot-zeta-invoice-report-dedup";
 import type { DataRow } from "@/lib/data/proto-operational-read-repository";
+import { isReceiptVoidLike } from "@/lib/copilot-receipts-utils";
 
 export type FinancialMonthlyTrend = {
   month: string;
@@ -41,6 +42,7 @@ export type MonthlyTrendReceiptInput = Record<string, unknown> & {
   amount?: unknown;
   currency_code?: unknown;
   is_active?: unknown;
+  status?: unknown;
 };
 
 const VOIDED = new Set([
@@ -142,6 +144,7 @@ export function buildFinancialMonthlyTrends(input: {
 
   for (const rec of input.receipts) {
     if (rec.is_active === false) continue;
+    if (isReceiptVoidLike(rec.status)) continue;
     const ym = ymd(rec.receipt_date);
     if (!ym || !monthKeys.includes(ym)) continue;
     const cur = normalizeCurrency(rec.currency_code);
@@ -236,6 +239,7 @@ export function buildFinancialDailyTrends(input: {
 
   for (const rec of input.receipts) {
     if (rec.is_active === false) continue;
+    if (isReceiptVoidLike(rec.status)) continue;
     const day = String(rec.receipt_date ?? "").slice(0, 10);
     if (!days.includes(day)) continue;
     const cur = normalizeCurrency(rec.currency_code);
@@ -379,6 +383,7 @@ function accumulateForKeys(
 
   for (const rec of receipts) {
     if (rec.is_active === false) continue;
+    if (isReceiptVoidLike(rec.status)) continue;
     if (normalizeCurrency(rec.currency_code) !== currency) continue;
     const k = recKeyFn(rec);
     if (!keySet.has(k)) continue;

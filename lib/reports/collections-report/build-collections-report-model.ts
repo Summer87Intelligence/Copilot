@@ -1,4 +1,5 @@
 import type { DataRow } from "@/lib/data/proto-operational-read-repository";
+import { isReceiptVoidLike } from "@/lib/copilot-receipts-utils";
 
 export type CollectionsReportCurrency = "UYU" | "USD";
 
@@ -85,7 +86,7 @@ function isValidReceipt(
   currency: CollectionsReportCurrency
 ): boolean {
   if (!row.is_active) return false;
-  if (getString(row, "status") !== "paid") return false;
+  if (isReceiptVoidLike(getString(row, "status"))) return false;
   const date = getString(row, "receipt_date");
   if (!date || date < from || date > to) return false;
   if (getString(row, "currency_code") !== currency) return false;
