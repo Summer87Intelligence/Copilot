@@ -46,7 +46,7 @@ export type MonthlyTrendReceiptInput = Record<string, unknown> & {
 };
 
 const VOIDED = new Set([
-  "paid", "void", "voided", "canceled", "cancelled", "anulada", "anulado", "annulled", "annul",
+  "void", "voided", "canceled", "cancelled", "anulada", "anulado", "annulled", "annul",
 ]);
 
 function num(v: unknown): number {
