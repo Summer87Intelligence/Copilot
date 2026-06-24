@@ -108,6 +108,13 @@ export type InvoiceInput = {
    * `lib/copilot-zeta-credit-note.ts` (`isCreditNoteFromMetadata`).
    */
   is_credit_note?: boolean;
+  /**
+   * Fila lógicamente inactiva: `false` → excluida de todos los cálculos (idéntico a Trends).
+   * `null`/`undefined` se trata como activo para compatibilidad con rows legacy sin el campo.
+   * El route filtra `is_active = true` en Supabase; este campo añade defensa en profundidad
+   * para callers directos del engine (tests, scripts de auditoría).
+   */
+  is_active?: boolean | null;
   /** Desde zeta_metadata (solo lectura para búsqueda / display). */
   zeta_client_name?: string | null;
   /** Categoría proto_invoices — requerida para dedupe shadow vs CCV1. */
@@ -131,6 +138,11 @@ export type ReceiptInput = {
   receipt_date: string | null;
   /** "paid" | "void" | etc. Recibos anulados se excluyen. */
   status?: string | null;
+  /**
+   * Recibo lógicamente inactivo: `false` → excluido de `collectedInPeriod` (idéntico a Trends).
+   * `null`/`undefined` se trata como activo para compatibilidad con rows legacy sin el campo.
+   */
+  is_active?: boolean | null;
 };
 
 export type SyncStateInput = {
@@ -982,6 +994,7 @@ export function generateFinancialConsistencyReport(
       voidedInvoices++;
       continue;
     }
+    if (inv.is_active === false) continue;
 
     // Period filter
     if (usePeriodFilter) {
@@ -1077,6 +1090,7 @@ export function generateFinancialConsistencyReport(
 
   for (const rec of receipts) {
     if (isVoided(rec.status ?? null)) continue;
+    if (rec.is_active === false) continue;
     const code = (rec.currency_code ?? "").trim().toUpperCase();
     if (!VALID_CURRENCIES.has(code)) continue;
     const cc = code as ReconciliationCurrencyCode;
@@ -1121,6 +1135,7 @@ export function generateFinancialConsistencyReport(
   if (usePeriodFilter) {
     for (const inv of invoices) {
       if (isVoided(inv.status)) continue;
+      if (inv.is_active === false) continue;
       const issueSl = (inv.issue_date ?? "").slice(0, 10);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(issueSl)) continue;
       if (!(issueSl < periodStart!)) continue;
@@ -1156,6 +1171,7 @@ export function generateFinancialConsistencyReport(
   // NCs are skipped: they are not open debt.
   for (const inv of invoices) {
     if (isVoided(inv.status)) continue;
+    if (inv.is_active === false) continue;
 
     if (usePeriodFilter) {
       const issueSl = (inv.issue_date ?? "").slice(0, 10);
