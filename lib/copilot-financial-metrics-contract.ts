@@ -232,9 +232,16 @@ export const CANONICAL_METRICS: Record<MetricId, CanonicalMetricDef> = {
     currency: "per_currency",
     scope: "period",
     consumers: [
-      "hoy/hoy-period-activity-section (Facturado)",
+      "hoy/hoy-period-activity-section (Ventas del período)",
       "hoy/hoy-currency-executive-card (bloque UYU/USD)",
+      "dashboard/dashboard-page-client (KPI Ventas del período, charts Ventas vs Cobros)",
+      "dashboard-summary-pdf (KPI Ventas del período)",
+      "finanzas/copilot-finanzas-ceo-derivations (buildMonthlySalesYear, buildAnnualSalesYtd)",
+      "finanzas/copilot-financial-monthly-trends (buildFinancialTrendDashboard)",
     ],
+    // "Ventas acumuladas" is an accepted alias for YTD (year-to-date) context only —
+    // e.g. copilot-financial-executive-dashboard.ts. It covers the same metric accumulated
+    // across all months of the year to date, not a single period window.
   },
 
   cobrado_periodo: {

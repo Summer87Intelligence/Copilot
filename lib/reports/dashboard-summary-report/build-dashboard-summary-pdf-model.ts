@@ -63,7 +63,9 @@ function buildConsolidatedCurrencyData(
     currency: "USD",
     facturado,
     cobrado,
-    pendientePeriodo: roundUsd(facturado - cobrado),
+    // Use canonical pendientePeriodo from each currency (pendingAtCutoff from reconciliation),
+    // rather than recomputing facturado - cobrado which could drift if the engine changes.
+    pendientePeriodo: c(uyu?.pendientePeriodo ?? 0, usd?.pendientePeriodo ?? 0),
     efectividad: usd?.efectividad ?? uyu?.efectividad ?? null,
     deudaActiva: c(uyu?.deudaActiva ?? 0, usd?.deudaActiva ?? 0),
     deudaVencida: c(uyu?.deudaVencida ?? 0, usd?.deudaVencida ?? 0),
