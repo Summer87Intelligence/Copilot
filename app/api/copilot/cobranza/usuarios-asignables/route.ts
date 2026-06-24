@@ -11,7 +11,7 @@ type AppUserRow = {
 };
 
 export async function GET(req: NextRequest) {
-  const auth = await requireCopilotModuleAccess(req, "acciones");
+  const auth = await requireCopilotModuleAccess(req, "cobranza");
   if (!auth.ok) return auth.response;
 
   const { supabase, tenantCompanyId } = auth.ctx;

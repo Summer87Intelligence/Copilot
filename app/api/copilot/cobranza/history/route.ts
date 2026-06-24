@@ -30,7 +30,7 @@ async function fetchCompanyNames(
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireCopilotModuleAccess(request, "acciones");
+  const auth = await requireCopilotModuleAccess(request, "cobranza");
   if (!auth.ok) return auth.response;
 
   const { supabase, tenantCompanyId } = auth.ctx;

@@ -17,7 +17,7 @@ type AssignableUserRow = {
 };
 
 export async function PATCH(req: NextRequest) {
-  const auth = await requireCopilotModuleWriteAccess(req, "acciones");
+  const auth = await requireCopilotModuleWriteAccess(req, "cobranza");
   if (!auth.ok) return auth.response;
 
   const parsed = await parseJsonBody(req);

@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 
 export async function POST(req: NextRequest) {
-  const auth = await requireCopilotModuleWriteAccess(req, "acciones");
+  const auth = await requireCopilotModuleWriteAccess(req, "cobranza");
   if (!auth.ok) return auth.response;
 
   return NextResponse.json(

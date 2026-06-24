@@ -29,7 +29,7 @@ export const COPILOT_API_MODULE_PREFIXES: ReadonlyArray<readonly [string, Module
   ["/api/copilot/dataset", "datos"],
   ["/api/copilot/proto-documents", "datos"],
   ["/api/copilot/integrations/zeta", "datos"],
-  ["/api/copilot/cobranza", "acciones"],
+  ["/api/copilot/cobranza", "cobranza"],
   ["/api/copilot/actions", "acciones"],
   ["/api/copilot/operational-actions", "acciones"],
   ["/api/copilot/decision-engine", "acciones"],

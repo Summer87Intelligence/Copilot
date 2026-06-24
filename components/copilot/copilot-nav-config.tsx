@@ -93,7 +93,7 @@ const COPILOT_NAV_COBRANZA: CopilotNavGroup = {
       label: "Cobranza",
       description: "Clientes a gestionar y cobros pendientes",
       icon: LayoutDashboard,
-      moduleKey: "cartera",
+      moduleKey: "cobranza",
     },
     {
       href: "/copilot/cartera",

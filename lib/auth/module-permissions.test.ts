@@ -359,6 +359,7 @@ describe("buildCopilotNavItemGroups — filtrado por módulo", () => {
       acciones: "none",
       clientes: "none",
       cartera: "none",
+      cobranza: "none",
       tesoreria: "none",
       finanzas: "none",
       reportes: "none",
@@ -372,5 +373,54 @@ describe("buildCopilotNavItemGroups — filtrado por módulo", () => {
     const allItems = groups.flatMap((g) => g.items);
     const withModuleKey = allItems.filter((i) => i.moduleKey !== undefined);
     expect(withModuleKey.length).toBe(0);
+  });
+
+  it("rol cobranza ve Cobranza en sidebar", () => {
+    const cobranzaPerms = Object.fromEntries(
+      presetPerms("cobranza").map((p) => [p.moduleKey, p.accessLevel])
+    );
+    const groups = buildCopilotNavItemGroups(false, cobranzaPerms);
+    const allItems = groups.flatMap((g) => g.items);
+    expect(allItems.some((i) => i.href === "/copilot/cobranza")).toBe(true);
+  });
+
+  it("cobranza:none oculta /copilot/cobranza del sidebar", () => {
+    const perms = Object.fromEntries(
+      presetPerms("usuario").map((p) => [p.moduleKey, p.accessLevel])
+    );
+    perms.cobranza = "none";
+    const groups = buildCopilotNavItemGroups(false, perms);
+    const allItems = groups.flatMap((g) => g.items);
+    expect(allItems.some((i) => i.href === "/copilot/cobranza")).toBe(false);
+  });
+});
+
+// ─── cobranza moduleKey ───────────────────────────────────────────────────────
+
+describe("cobranza moduleKey", () => {
+  it("isValidModuleKey acepta cobranza", () => {
+    expect(isValidModuleKey("cobranza")).toBe(true);
+  });
+
+  it("rol cobranza puede escribir en cobranza", () => {
+    const perms = resolveEffectivePermissions("cobranza", presetPerms("cobranza"), noOverrides());
+    expect(canWriteModule("cobranza", perms, "cobranza")).toBe(true);
+  });
+
+  it("rol usuario puede leer cobranza pero no escribir", () => {
+    const perms = resolveEffectivePermissions("usuario", presetPerms("usuario"), noOverrides());
+    expect(canReadModule("usuario", perms, "cobranza")).toBe(true);
+    expect(canWriteModule("usuario", perms, "cobranza")).toBe(false);
+  });
+
+  it("override cobranza:none bloquea acceso", () => {
+    const overrides: ModulePermission[] = [{ moduleKey: "cobranza", accessLevel: "none" }];
+    const perms = resolveEffectivePermissions("usuario", presetPerms("usuario"), overrides);
+    expect(canAccessModule("usuario", perms, "cobranza")).toBe(false);
+  });
+
+  it("superadmin tiene admin en cobranza", () => {
+    const perms = resolveEffectivePermissions("superadmin", presetPerms("superadmin"), noOverrides());
+    expect(canAdminModule("superadmin", perms, "cobranza")).toBe(true);
   });
 });

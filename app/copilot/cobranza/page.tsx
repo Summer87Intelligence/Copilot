@@ -8,7 +8,7 @@ import { CobranzaPageClient } from "@/components/copilot/cobranza/cobranza-page-
 export const dynamic = "force-dynamic";
 
 export default async function CobranzaPage() {
-  if (await isModuleAccessDenied("cartera")) return <AccessDeniedCard />;
+  if (await isModuleAccessDenied("cobranza")) return <AccessDeniedCard />;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

@@ -64,6 +64,7 @@ const MODULE_LABELS: Record<ModuleKey, string> = {
   acciones: "Acciones",
   clientes: "Clientes",
   cartera: "Cartera",
+  cobranza: "Cobranza",
   tesoreria: "Tesorería",
   finanzas: "Finanzas",
   reportes: "Reportes",
