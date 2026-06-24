@@ -41,9 +41,9 @@ export const FINANCIAL_UX_COPY = {
   kpiPendingTooltip:
     "Saldo vivo actual informado por Zeta al momento del último sync. Refleja todos los pagos históricos conocidos por Zeta.",
   kpiEffectivenessTooltip:
-    "Relación entre facturación emitida y cobranzas registradas dentro del período.",
+    "Porcentaje de ventas del período resueltas al corte (cobranza efectiva aplicada).",
   kpiEffectivenessTooltipPreSync:
-    "Relación entre facturación emitida y cobranzas registradas dentro del período. El tramo previo a 2026-01-01 puede tener cobros históricos fuera del sync.",
+    "Porcentaje de ventas del período resueltas al corte. El tramo previo a 2026-01-01 puede tener cobros históricos fuera del sync.",
   kpiGrossIssuedTooltip:
     "Suma de facturas emitidas en el período. Base de facturación del período.",
   kpiCreditNotesAppliedTooltip:
@@ -54,9 +54,17 @@ export const FINANCIAL_UX_COPY = {
   carteraResumenFinancieroHelp:
     "Misma base que Dashboard: ventas, cobrado aplicado y deuda del rango.",
   kpiNetEffectivenessTooltip:
-    "Recibos cobrados / Facturado neto. Mide qué fracción de lo facturado fue cobrada en el período según recibos sincronizados de Zeta.",
+    "Recibos registrados en el período sobre ventas del período. Puede superar 100% si hay cobros de facturas anteriores.",
   kpiNetEffectivenessTooltipPreSync:
-    "Recibos cobrados / Facturado neto. El tramo previo a 2026-01-01 puede tener cobros históricos fuera del sync.",
+    "Recibos registrados en el período sobre ventas del período. El tramo previo a 2026-01-01 puede tener cobros históricos fuera del sync.",
+  kpiRegisteredCollectionRateLabel: "Cobros registrados / ventas",
+  kpiRegisteredCollectionRateSubtitle:
+    "Recibos registrados en el período sobre ventas del período.",
+  kpiAppliedCollectionRateLabel: "Cobranza efectiva aplicada",
+  kpiAppliedCollectionRateSubtitle:
+    "Porcentaje de ventas del período resueltas al corte.",
+  kpiPeriodResolutionLabel: "Resolución del período",
+  kpiPeriodResolutionSubtitle: "Ventas del período resueltas al corte.",
 } as const;
 
 /** Copy específico de /copilot/finanzas — panorama ejecutivo. */
@@ -95,6 +103,11 @@ export const FINANZAS_COPY = {
     "Clientes, moneda y evolución para revisión ejecutiva.",
   labelCobrosRegistrados: "Cobros registrados",
   labelCobradoAplicado: "Cobrado aplicado",
+  labelRegisteredCollectionRate: "Cobros registrados / ventas",
+  labelRegisteredCollectionRateSubtitle:
+    "Recibos registrados por fecha sobre ventas del período.",
+  labelPeriodResolution: "Resolución del período",
+  labelPeriodResolutionSubtitle: "Ventas del período resueltas al corte.",
   labelDiferenciaOperativa: "Diferencia operativa del mes",
   labelDeudaHoy: "Deuda actual",
   labelDeudaVencidaHoy: "Atrasado",

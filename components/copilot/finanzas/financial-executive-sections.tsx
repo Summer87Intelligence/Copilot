@@ -383,13 +383,13 @@ export function FinancialCollectionDebtSection({
           tone="positive"
         />
         <ExecutiveMetricCard
-          label="Cobros vs ventas"
+          label="Cobros registrados / ventas"
           value={
             cd.collectionsVsNetSalesPct != null
               ? formatPanoramaRate(cd.collectionsVsNetSalesPct)
               : "—"
           }
-          subcopy="Del período actual."
+          subcopy={FINANZAS_COPY.labelRegisteredCollectionRateSubtitle}
           tone="neutral"
         />
       </div>

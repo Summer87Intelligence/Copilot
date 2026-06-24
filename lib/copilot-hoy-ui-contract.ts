@@ -57,7 +57,7 @@ export const CURRENCY_METRIC_LABELS = {
 export const CURRENCY_METRIC_HELPERS = {
   billed: "Facturas emitidas en el período, neto de notas de crédito.",
   collected:
-    "Parte de las ventas del período ya saldada al cierre del rango. Misma fuente que Cartera y Dashboard (no es la suma de recibos por fecha).",
+    "Parte de las ventas del período ya saldada al cierre del rango. Misma fuente que Cartera y Dashboard (no es la suma de recibos por fecha). El % indica cobranza efectiva aplicada: ventas resueltas al corte.",
   pending: "Saldo pendiente del período al cierre (= ventas − cobrado aplicado). El atrasado ya está incluido.",
   overdue30: "Parte del atrasado con más de 30 días. Ya está incluido dentro del atrasado y del total pendiente.",
 } as const;

@@ -10,6 +10,7 @@ import type { HoyPeriodRange } from "@/lib/copilot-hoy-period";
 import { formatHoyPeriodLabel } from "@/lib/copilot-hoy-period";
 import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
 import { formatMoneyCurrency } from "@/lib/copilot-format-money";
+import { FINANZAS_COPY } from "@/lib/copilot-financial-ux-copy";
 
 export type FinancialMetricDetailRow = {
   label: string;
@@ -110,7 +111,7 @@ export function buildCollectedDetail(
   const rows: FinancialMetricDetailRow[] = [
     { label: "Cobrado", value: fmt(slice.collectedApplied, slice.code), tone: "positive" },
     { label: "Ventas", value: fmt(slice.netIncome, slice.code) },
-    { label: "Tasa de cobranza", value: formatPanoramaRate(slice.collectionRate) },
+    { label: FINANZAS_COPY.labelPeriodResolution, value: formatPanoramaRate(slice.collectionRate) },
   ];
   const rec = countRow("Recibos en período", ctx?.metrics?.collectedReceiptCount);
   if (rec) rows.push(rec);
@@ -121,8 +122,8 @@ export function buildCollectedDetail(
     subtitle: "Cobros registrados sobre ventas del período.",
     periodLabel: periodLabel(ctx),
     currency: slice.code,
-    formula: "Cobrado / Ventas = Tasa de cobranza",
-    explanation: "Mide cuánto de lo facturado ya fue cobrado o aplicado.",
+    formula: `Cobrado aplicado / Ventas = ${FINANZAS_COPY.labelPeriodResolution}`,
+    explanation: FINANZAS_COPY.labelPeriodResolutionSubtitle,
     rows,
     sourceLabel: "Fuente: Recibos / Cartera resuelta",
     cta: { label: "Ver Recibos", href: "/copilot/datos?entity=receipts" },

@@ -438,11 +438,11 @@ function buildDashboardInsights(
       );
     } else if (totals.collectionRate >= 0.8) {
       out.push(
-        `Tasa de cobro ${Math.round(totals.collectionRate * 100)}% — saludable para el período.`,
+        `Cobros registrados / ventas ${Math.round(totals.collectionRate * 100)}% — saludable para el período.`,
       );
     } else {
       out.push(
-        `Tasa de cobro ${Math.round(totals.collectionRate * 100)}% — hay margen para mejorar la recuperación.`,
+        `Cobros registrados / ventas ${Math.round(totals.collectionRate * 100)}% — hay margen para mejorar la recuperación.`,
       );
     }
   }

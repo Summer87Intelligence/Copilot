@@ -45,6 +45,7 @@ import {
   type DashboardState,
 } from "@/lib/copilot-dashboard-summary";
 import {
+  COLLECTION_RATE_METRICS,
   METRIC_LABEL,
   METRIC_SEPARATED_CURRENCY_DISCLAIMER,
 } from "@/lib/copilot-financial-metrics-contract";
@@ -1651,7 +1652,7 @@ export default function DashboardPageClient() {
                     <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-status-ok-dot)]" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
                     {uyu?.efectividad != null && (
                       <span className={`ml-auto text-[10px] font-semibold ${uyu.efectividad >= 0.8 ? "text-[var(--copilot-success-text)]" : "text-[var(--copilot-warning-text)]"}`}>
-                        Cobranza: {Math.round(uyu.efectividad * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - uyu.efectividad) * 100)}%
+                        Cobranza aplicada: {Math.round(uyu.efectividad * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - uyu.efectividad) * 100)}%
                       </span>
                     )}
                   </div>
@@ -1667,7 +1668,7 @@ export default function DashboardPageClient() {
                     <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-status-ok-dot)]" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
                     {usd?.efectividad != null && (
                       <span className={`ml-auto text-[10px] font-semibold ${usd.efectividad >= 0.8 ? "text-[var(--copilot-success-text)]" : "text-[var(--copilot-warning-text)]"}`}>
-                        Cobranza: {Math.round(usd.efectividad * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - usd.efectividad) * 100)}%
+                        Cobranza aplicada: {Math.round(usd.efectividad * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - usd.efectividad) * 100)}%
                       </span>
                     )}
                   </div>
@@ -1726,7 +1727,7 @@ export default function DashboardPageClient() {
                         <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-status-ok-dot)]" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
                         {eff != null && (
                           <span className={`ml-auto text-[10px] font-semibold ${eff >= 0.8 ? "text-[var(--copilot-success-text)]" : "text-[var(--copilot-warning-text)]"}`}>
-                            Cobranza: {Math.round(eff * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - eff) * 100)}%
+                            Cobranza aplicada: {Math.round(eff * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - eff) * 100)}%
                           </span>
                         )}
                       </div>
@@ -1774,8 +1775,8 @@ export default function DashboardPageClient() {
             )}
 
             <ChartCard
-              title="Efectividad de cobros"
-              subtitle="Cobrado del período / Facturado neto · Por moneda"
+              title={COLLECTION_RATE_METRICS.applied_collection_rate.label}
+              subtitle={COLLECTION_RATE_METRICS.applied_collection_rate.subtitle}
             >
               {loading ? (
                 <div className="space-y-3">
@@ -1789,14 +1790,14 @@ export default function DashboardPageClient() {
                   {effectiveCurrencyData.map((d) => (
                     <GaugeRow
                       key={d.currency}
-                      label={isConsolidated ? "Efectividad (USD cons.)" : "Efectividad"}
+                      label={isConsolidated ? `${COLLECTION_RATE_METRICS.applied_collection_rate.label} (USD cons.)` : COLLECTION_RATE_METRICS.applied_collection_rate.label}
                       value={d.efectividad}
                       currency={d.currency}
                     />
                   ))}
                   <p className={`text-[10px] ${C.muted}`}>
-                    Recibos cobrados / Facturado neto. Puede superar 100% si hay cobros
-                    de facturas de períodos anteriores.
+                    {COLLECTION_RATE_METRICS.applied_collection_rate.subtitle} Puede ser menor al 100% si
+                    quedan facturas del período pendientes al corte.
                   </p>
                 </div>
               )}

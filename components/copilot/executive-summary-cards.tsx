@@ -115,7 +115,7 @@ type SummaryCard = {
 //     siempre fue un fallback que mezclaba fuentes. Si el bucket no existe,
 //     todo queda en 0 y el banner dev de inconsistencia (más abajo) flagea
 //     el motor mal poblado.
-//   - Cobranza efectiva = collectedInPeriod / issuedInPeriod (no mezcla saldo
+//   - Cobros registrados / ventas = collectedInPeriod / issuedInPeriod (no mezcla saldo
 //     anterior con cobros del período).
 //   - Si el motor no recibió receipts, `collectedReceiptCount=0` y la card
 //     "Cobrado en período" muestra "—".
@@ -316,7 +316,7 @@ function effectivenessCard(
 
   return {
     id: `effectiveness-${code}`,
-    title: `Cobranza efectiva ${code}`,
+    title: `${FINANCIAL_UX_COPY.kpiRegisteredCollectionRateLabel} ${code}`,
     source: "analytics",
     tone: "info",
     icon: TrendingUp,

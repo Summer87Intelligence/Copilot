@@ -68,7 +68,8 @@ Resultado: 12/12 meses × 2 monedas con Δ = 0.
 | KPI de período | "Ventas del período" |
 | Cobros de período | "Cobrado del período" |
 | Pendiente de período | "Pendiente del período" |
-| Efectividad | "Cobrado del período / Facturado neto" (fórmula) |
+| Cobranza efectiva aplicada (A) | `portfolioResolvedAmount / issuedInPeriodNet` — ver `docs/domains/cobranza.md` |
+| Cobros registrados / ventas (B) | `collectedInPeriod / issuedInPeriodNet` — ver `docs/domains/cobranza.md` |
 | Históricos / trends / charts | "Ventas" |
 | Reportes Net Sales | "Ventas netas" |
 | YTD acumulado | "Ventas acumuladas" (alias aceptado) |
