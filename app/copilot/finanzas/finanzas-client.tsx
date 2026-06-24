@@ -1196,10 +1196,10 @@ function CopilotFinanzasPageContent() {
                         Ver cobranzas pendientes
                       </Link>
                       <Link
-                        href="/copilot/datos?entity=invoices&intent=quick-add"
+                        href="/copilot/cobranza"
                         className={guidedLinkClass}
                       >
-                        Registrar cobro
+                        Ver cobros en Cobranza
                       </Link>
                       <Link href="/copilot/datos" className={guidedLinkClass}>
                         Revisar pagos

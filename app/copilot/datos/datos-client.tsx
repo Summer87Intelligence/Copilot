@@ -545,7 +545,7 @@ function CopilotDatosPageContent() {
     } else {
       setCrudEntity("invoices");
       setCrudMode("create");
-      setCrudCreateTitle("Registrar cobro");
+      setCrudCreateTitle("Registrar factura");
       setPaymentPrefillRow(null);
     }
     setCrudOpen(true);
@@ -990,7 +990,7 @@ function CopilotDatosPageContent() {
       : isQuickAddForm && quickAddEntityParam === "payments"
         ? "Registrar pago"
         : isQuickAddForm && quickAddEntityParam === "invoices"
-          ? "Registrar cobro"
+          ? "Registrar factura"
           : "Datos del negocio";
 
   const pageDescription =
