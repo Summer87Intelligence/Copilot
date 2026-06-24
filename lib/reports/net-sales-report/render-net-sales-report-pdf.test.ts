@@ -44,6 +44,7 @@ describe("renderNetSalesReportPdf", () => {
           total_amount: 530.7,
           currency_code: "USD",
           invoice_number: "ZETA:2748",
+          category: "Zeta / saldos pendientes",
           is_active: true,
           status: "issued",
           zeta_metadata: { zeta_reconciliation: { source: "saldos" } },

@@ -182,6 +182,7 @@ describe("buildMonthlySalesYear — shadow dedup", () => {
     const shadow = inv({
       id: "shadow-1",
       invoice_number: "ZETA:2850",
+      category: "Zeta / saldos pendientes",
       company_id: "c1",
       issue_date: "2026-06-10",
       currency_code: "UYU",
@@ -252,6 +253,7 @@ describe("buildAnnualSalesYtd — shadow dedup", () => {
     const shadow = inv({
       id: "ytd-shadow",
       invoice_number: "ZETA:4000",
+      category: "Zeta / saldos pendientes",
       company_id: "c1",
       issue_date: "2026-06-01",
       currency_code: "USD",

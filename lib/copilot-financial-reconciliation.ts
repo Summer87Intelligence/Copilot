@@ -34,6 +34,8 @@ import {
 } from "@/lib/copilot-zeta-credit-note";
 import { toSafeNumber } from "@/lib/copilot-numeric-parse";
 import { selectOperationalDebtInvoicesForSummation } from "@/lib/zeta/zeta-operational-debt-dedup";
+import { dedupeZetaShadowInvoicesCanonical } from "@/lib/copilot-zeta-invoice-canonical-dedup";
+import type { DataRow } from "@/lib/data/proto-operational-read-repository";
 import type { AgingComparativeDiagnostics } from "@/lib/copilot-installment-aging-delta";
 import type { InstallmentAgingObservationDiagnostics } from "@/lib/copilot-installment-aging-observation";
 
@@ -537,108 +539,9 @@ const VOIDED_STATUSES = new Set([
 
 const VALID_CURRENCIES: ReadonlySet<string> = new Set(["USD", "UYU"]);
 
-/** Categoría que el pipeline de saldos asigna a sombras `ZETA:{RegistroId}`. */
-const ZETA_SALDOS_SHADOW_CATEGORY = "Zeta / saldos pendientes";
-/**
- * Tolerancia para considerar dos `total_amount` equivalentes al deduplicar
- * sombras vs CCV1 (Zeta a veces redondea el saldo, ej. 96624.00 vs 96623.88).
- */
-const SHADOW_DEDUP_TOTAL_TOLERANCE = 0.20;
-
 function isVoided(status: string | null): boolean {
   if (!status) return false;
   return VOIDED_STATUSES.has(status.trim().toLowerCase());
-}
-
-/**
- * Deduplica sombras `ZETA:{RegistroId}` (category = "Zeta / saldos pendientes")
- * cuando existe una factura `ZETA:CCV1:*` activa equivalente (mismo company_id,
- * moneda, fecha de emisión y total dentro de tolerancia).
- *
- * Causa raíz original: el pipeline de saldos (`zeta-saldos-pipeline`) inserta
- * una sombra cuando no logra linkear contra una CCV1 ya persistida; esto se
- * documentó como bug ZETA-08 (RegistroId ausente en metadata CCV1) y
- * efectivamente dobla `totalInvoiced` para ese período.
- *
- * Este guardrail NO reemplaza la limpieza de la migración
- * `20260612000000_fix_zeta_invoice_shadow_duplicates_june_2026`; actúa como
- * defensa en profundidad: si una sombra reaparece (cron de saldos que vuelve
- * a fallar el match), el motor la ignora del cálculo en lugar de inflar la
- * venta del período.
- *
- * Reglas:
- *   - Solo dedupea cuando ambas filas son no-voided y comparten
- *     `company_id`, `currency_code` y `issue_date`.
- *   - Tolerancia de `total_amount` ≤ {@link SHADOW_DEDUP_TOTAL_TOLERANCE}.
- *   - Se prefiere preservar la CCV1 (fuente canónica de identidad CFE);
- *     se descarta la sombra.
- *   - NO toca filas inactivas (ya filtradas por el caller).
- *   - Determinístico: no depende del orden de entrada.
- */
-function dedupZetaSaldosShadowsAgainstCcv1(
-  invoices: readonly InvoiceInput[]
-): { kept: InvoiceInput[]; skippedShadowCount: number } {
-  const ccv1Keys = new Set<string>();
-  type Bucket = { totals: number[] };
-  const ccv1Buckets = new Map<string, Bucket>();
-
-  for (const inv of invoices) {
-    if (isVoided(inv.status)) continue;
-    const num = String(inv.invoice_number ?? "");
-    if (!num.startsWith("ZETA:CCV1:")) continue;
-    const company = String(inv.company_id ?? "").trim();
-    const currency = String(inv.currency_code ?? "").trim().toUpperCase();
-    const issue = (inv.issue_date ?? "").slice(0, 10);
-    if (!company || !VALID_CURRENCIES.has(currency) || !/^\d{4}-\d{2}-\d{2}$/.test(issue)) {
-      continue;
-    }
-    const key = `${company}|${currency}|${issue}`;
-    ccv1Keys.add(key);
-    let bucket = ccv1Buckets.get(key);
-    if (!bucket) {
-      bucket = { totals: [] };
-      ccv1Buckets.set(key, bucket);
-    }
-    bucket.totals.push(round2(Math.max(0, safeNum(inv.total_amount))));
-  }
-
-  if (ccv1Keys.size === 0) {
-    return { kept: invoices.slice(), skippedShadowCount: 0 };
-  }
-
-  const kept: InvoiceInput[] = [];
-  let skipped = 0;
-  for (const inv of invoices) {
-    const num = String(inv.invoice_number ?? "");
-    const isShadow =
-      num.startsWith("ZETA:") &&
-      !num.startsWith("ZETA:CCV1:") &&
-      (inv.category ?? "") === ZETA_SALDOS_SHADOW_CATEGORY;
-    if (!isShadow) {
-      kept.push(inv);
-      continue;
-    }
-    const company = String(inv.company_id ?? "").trim();
-    const currency = String(inv.currency_code ?? "").trim().toUpperCase();
-    const issue = (inv.issue_date ?? "").slice(0, 10);
-    const key = `${company}|${currency}|${issue}`;
-    const bucket = ccv1Buckets.get(key);
-    if (!bucket) {
-      kept.push(inv);
-      continue;
-    }
-    const shadowTotal = round2(Math.max(0, safeNum(inv.total_amount)));
-    const hasPeer = bucket.totals.some(
-      (t) => Math.abs(t - shadowTotal) <= SHADOW_DEDUP_TOTAL_TOLERANCE
-    );
-    if (hasPeer) {
-      skipped++;
-      continue;
-    }
-    kept.push(inv);
-  }
-
-  return { kept, skippedShadowCount: skipped };
 }
 
 function safeNum(v: number | null | undefined): number {
@@ -859,12 +762,12 @@ export function generateFinancialConsistencyReport(
   }
 
   // Guardrail defensivo: descartar sombras `ZETA:{RegistroId}` (saldos pendientes)
-  // cuando exista una CCV1 activa equivalente. Limpieza real vive en DB
-  // (migración 20260612000000); este filtro evita inflar ventas si reaparece
-  // una sombra por bug del pipeline. Determinístico y conservador (toler. 0.20).
-  const dedupResult = dedupZetaSaldosShadowsAgainstCcv1(invoicesAfterMinDate);
-  const invoices = dedupResult.kept;
-  const shadowDuplicatesSkipped = dedupResult.skippedShadowCount;
+  // cuando exista una CCV1 activa equivalente. Usa el helper canónico compartido con
+  // Trends/Reports para garantizar un universo de facturas idéntico entre módulos.
+  const invoices = dedupeZetaShadowInvoicesCanonical(
+    invoicesAfterMinDate as unknown as DataRow[]
+  ) as unknown as InvoiceInput[];
+  const shadowDuplicatesSkipped = invoicesAfterMinDate.length - invoices.length;
 
   /** IDs que cuentan para deuda operativa (misma regla que Cartera / Ficha 360). */
   const operationalDebtInvoiceIds = new Set(

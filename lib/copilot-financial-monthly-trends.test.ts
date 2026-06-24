@@ -533,6 +533,7 @@ describe("buildFinancialMonthlyTrends — shadow dedup", () => {
         {
           id: "shadow-1",
           invoice_number: "ZETA:2850",
+          category: "Zeta / saldos pendientes",
           company_id: "c1",
           issue_date: "2026-06-10",
           total_amount: 5000,
@@ -588,6 +589,7 @@ describe("buildFinancialTrendDashboard — shadow dedup", () => {
         {
           id: "shadow-2",
           invoice_number: "ZETA:2850",
+          category: "Zeta / saldos pendientes",
           company_id: "c1",
           issue_date: "2026-06-10",
           total_amount: 5000,
