@@ -252,13 +252,13 @@ describe("buildCopilotNavItemGroups — filtrado por módulo", () => {
     expect(allItems.some((i) => i.href === "/copilot/tesoreria")).toBe(false);
   });
 
-  it("cobranza ve Acciones y Clientes (write)", () => {
+  it("cobranza ve Clientes (write) — Acciones oculto en sidebar (sidebarHidden)", () => {
     const cobranzaPerms = Object.fromEntries(
       presetPerms("cobranza").map((p) => [p.moduleKey, p.accessLevel])
     );
     const groups = buildCopilotNavItemGroups(false, cobranzaPerms);
     const allItems = groups.flatMap((g) => g.items);
-    expect(allItems.some((i) => i.href === "/copilot/acciones")).toBe(true);
+    expect(allItems.some((i) => i.href === "/copilot/acciones")).toBe(false);
     expect(allItems.some((i) => i.href === "/copilot/clientes")).toBe(true);
   });
 
@@ -290,21 +290,22 @@ describe("buildCopilotNavItemGroups — filtrado por módulo", () => {
     expect(allItems.some((i) => i.href === "/copilot/finanzas")).toBe(true);
   });
 
-  it("usuario ve todos los módulos base excepto admin", () => {
+  it("usuario ve todos los módulos base excepto admin y Acciones (sidebarHidden)", () => {
     const usuPerms = Object.fromEntries(
       presetPerms("usuario").map((p) => [p.moduleKey, p.accessLevel])
     );
     const groups = buildCopilotNavItemGroups(false, usuPerms);
     const allItems = groups.flatMap((g) => g.items);
-    const moduleHrefs = [
-      "/copilot/hoy", "/copilot/acciones", "/copilot/clientes",
+    const visibleHrefs = [
+      "/copilot/hoy", "/copilot/clientes",
       "/copilot/cartera", "/copilot/tesoreria", "/copilot/finanzas",
       "/copilot/reportes", "/copilot/datos", "/copilot/agentes", "/copilot/manual",
     ];
-    for (const href of moduleHrefs) {
+    for (const href of visibleHrefs) {
       expect(allItems.some((i) => i.href === href)).toBe(true);
     }
     expect(allItems.some((i) => i.href === "/copilot/admin")).toBe(false);
+    expect(allItems.some((i) => i.href === "/copilot/acciones")).toBe(false);
   });
 
   it("demo_readonly ve todos los módulos base excepto admin", () => {
@@ -344,11 +345,11 @@ describe("buildCopilotNavItemGroups — filtrado por módulo", () => {
     expect(allItems.some((i) => i.href === "/copilot/operacional")).toBe(false);
   });
 
-  it("sin permisos cargados (vacío) muestra todos los items base", () => {
+  it("sin permisos cargados (vacío) muestra todos los items base — Acciones oculto (sidebarHidden)", () => {
     const groups = buildCopilotNavItemGroups(false, {});
     const allItems = groups.flatMap((g) => g.items);
     expect(allItems.some((i) => i.href === "/copilot/tesoreria")).toBe(true);
-    expect(allItems.some((i) => i.href === "/copilot/acciones")).toBe(true);
+    expect(allItems.some((i) => i.href === "/copilot/acciones")).toBe(false);
   });
 
   it("grupo vacío tras filtro no aparece en lista", () => {
@@ -358,6 +359,7 @@ describe("buildCopilotNavItemGroups — filtrado por módulo", () => {
       acciones: "none",
       clientes: "none",
       cartera: "none",
+      cobranza: "none",
       tesoreria: "none",
       finanzas: "none",
       reportes: "none",
@@ -371,5 +373,54 @@ describe("buildCopilotNavItemGroups — filtrado por módulo", () => {
     const allItems = groups.flatMap((g) => g.items);
     const withModuleKey = allItems.filter((i) => i.moduleKey !== undefined);
     expect(withModuleKey.length).toBe(0);
+  });
+
+  it("rol cobranza ve Cobranza en sidebar", () => {
+    const cobranzaPerms = Object.fromEntries(
+      presetPerms("cobranza").map((p) => [p.moduleKey, p.accessLevel])
+    );
+    const groups = buildCopilotNavItemGroups(false, cobranzaPerms);
+    const allItems = groups.flatMap((g) => g.items);
+    expect(allItems.some((i) => i.href === "/copilot/cobranza")).toBe(true);
+  });
+
+  it("cobranza:none oculta /copilot/cobranza del sidebar", () => {
+    const perms = Object.fromEntries(
+      presetPerms("usuario").map((p) => [p.moduleKey, p.accessLevel])
+    );
+    perms.cobranza = "none";
+    const groups = buildCopilotNavItemGroups(false, perms);
+    const allItems = groups.flatMap((g) => g.items);
+    expect(allItems.some((i) => i.href === "/copilot/cobranza")).toBe(false);
+  });
+});
+
+// ─── cobranza moduleKey ───────────────────────────────────────────────────────
+
+describe("cobranza moduleKey", () => {
+  it("isValidModuleKey acepta cobranza", () => {
+    expect(isValidModuleKey("cobranza")).toBe(true);
+  });
+
+  it("rol cobranza puede escribir en cobranza", () => {
+    const perms = resolveEffectivePermissions("cobranza", presetPerms("cobranza"), noOverrides());
+    expect(canWriteModule("cobranza", perms, "cobranza")).toBe(true);
+  });
+
+  it("rol usuario puede leer cobranza pero no escribir", () => {
+    const perms = resolveEffectivePermissions("usuario", presetPerms("usuario"), noOverrides());
+    expect(canReadModule("usuario", perms, "cobranza")).toBe(true);
+    expect(canWriteModule("usuario", perms, "cobranza")).toBe(false);
+  });
+
+  it("override cobranza:none bloquea acceso", () => {
+    const overrides: ModulePermission[] = [{ moduleKey: "cobranza", accessLevel: "none" }];
+    const perms = resolveEffectivePermissions("usuario", presetPerms("usuario"), overrides);
+    expect(canAccessModule("usuario", perms, "cobranza")).toBe(false);
+  });
+
+  it("superadmin tiene admin en cobranza", () => {
+    const perms = resolveEffectivePermissions("superadmin", presetPerms("superadmin"), noOverrides());
+    expect(canAdminModule("superadmin", perms, "cobranza")).toBe(true);
   });
 });

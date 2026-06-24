@@ -34,7 +34,6 @@ const SINGLE_FILES = [
   ["app/api/copilot/financial-snapshot/route.ts", "finanzas"],
   ["app/api/copilot/predictive-financial-dataset/route.ts", "finanzas"],
   ["app/api/copilot/cashflow-dataset/route.ts", "finanzas"],
-  ["app/api/copilot/cash-status-amounts/route.ts", "tesoreria"],
   ["app/api/copilot/manual.pdf/route.ts", "manual"],
   ["app/api/copilot/portfolio/route.ts", "cartera"],
   ["app/api/copilot/client-360/route.ts", "clientes"],

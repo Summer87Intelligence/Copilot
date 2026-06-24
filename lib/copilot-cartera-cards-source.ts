@@ -68,7 +68,7 @@ export type NormalizedCurrencyMetrics = {
    */
   pendingAtCutoff: number;
   /**
-   * Cobranza efectiva del período (receipts in-period). 0 si el motor no
+   * Ratio registrado del período (familia B). 0 si el motor no
    * recibió recibos. Usar `collectedReceiptCount = 0` para detectar este
    * estado y mostrar "—" en la card.
    */

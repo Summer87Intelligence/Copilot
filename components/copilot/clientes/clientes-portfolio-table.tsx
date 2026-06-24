@@ -364,7 +364,7 @@ export function ClientesPortfolioTable({
     },
     {
       key: "debt",
-      header: "Total pendiente",
+      header: "Deuda actual",
       render: (row) => <DebtCell row={row} />,
     },
     {
@@ -408,7 +408,8 @@ export function ClientesPortfolioTable({
             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--copilot-accent)] shadow-sm hover:bg-[var(--copilot-accent-soft)]"
           />
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          {/* Search field */}
           <div className="flex items-center gap-1.5 rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 py-1">
             <Search className="h-3.5 w-3.5 shrink-0 text-[var(--copilot-ink-muted)]" aria-hidden />
             <input
@@ -416,46 +417,51 @@ export function ClientesPortfolioTable({
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Buscar cliente…"
-              className="w-36 bg-transparent text-xs text-[var(--copilot-ink)] outline-none placeholder:text-[var(--copilot-ink-muted)]"
+              className="w-full bg-transparent text-xs text-[var(--copilot-ink)] outline-none placeholder:text-[var(--copilot-ink-muted)] sm:w-36"
             />
           </div>
-          {FILTER_OPTIONS.map((opt) => {
-            const active = clientFilter === opt.id;
-            return (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => onClientFilterChange(opt.id)}
-                className={[
-                  "rounded-full px-3 py-1 text-xs font-medium transition",
-                  active
-                    ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[var(--copilot-accent)]/30"
-                    : "bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]",
-                ].join(" ")}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-          <span className="hidden h-4 w-px bg-[var(--copilot-border)] sm:inline" aria-hidden />
-          {CURRENCY_FILTER_OPTIONS.map((opt) => {
-            const active = currencyFilter === opt.id;
-            return (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => onCurrencyFilterChange(opt.id)}
-                className={[
-                  "rounded-full px-3 py-1 text-xs font-medium transition",
-                  active
-                    ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[var(--copilot-accent)]/30"
-                    : "bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]",
-                ].join(" ")}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
+          {/* Filter + currency tabs — single scrollable row on mobile */}
+          <div className="-mx-4 overflow-x-auto px-4 pb-0.5 sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0">
+            <div className="flex shrink-0 items-center gap-2">
+              {FILTER_OPTIONS.map((opt) => {
+                const active = clientFilter === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => onClientFilterChange(opt.id)}
+                    className={[
+                      "shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition",
+                      active
+                        ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[var(--copilot-accent)]/30"
+                        : "bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]",
+                    ].join(" ")}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+              <span className="h-4 w-px shrink-0 bg-[var(--copilot-border)]" aria-hidden />
+              {CURRENCY_FILTER_OPTIONS.map((opt) => {
+                const active = currencyFilter === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => onCurrencyFilterChange(opt.id)}
+                    className={[
+                      "shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition",
+                      active
+                        ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[var(--copilot-accent)]/30"
+                        : "bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]",
+                    ].join(" ")}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 

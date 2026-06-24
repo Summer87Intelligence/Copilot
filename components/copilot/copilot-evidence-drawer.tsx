@@ -213,7 +213,7 @@ export function CopilotEvidenceDrawer({
 
         <div className="flex flex-wrap gap-2 border-t border-[var(--copilot-border)] px-6 py-4">
           <CopilotGhostLink href="/copilot/clientes">Ir a cliente</CopilotGhostLink>
-          <CopilotGhostLink href="/copilot/acciones">Ver acción sugerida</CopilotGhostLink>
+          <CopilotGhostLink href="/copilot/cobranza">Ver en Cobranza</CopilotGhostLink>
           <CopilotGhostButton onClick={onClose}>Cerrar</CopilotGhostButton>
         </div>
       </aside>

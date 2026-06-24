@@ -216,8 +216,8 @@ export function HoyExecutiveSummaryCard({
                   <CopilotButtonLink href="/copilot/finanzas" variant="ghost" size="sm" onClick={() => setShowSignals(false)}>
                     Ver Finanzas
                   </CopilotButtonLink>
-                  <CopilotButtonLink href="/copilot/acciones" variant="ghost" size="sm" onClick={() => setShowSignals(false)}>
-                    Ver acciones
+                  <CopilotButtonLink href="/copilot/cobranza" variant="ghost" size="sm" onClick={() => setShowSignals(false)}>
+                    Ver Cobranza
                   </CopilotButtonLink>
                 </div>
               </div>

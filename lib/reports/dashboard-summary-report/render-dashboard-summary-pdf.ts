@@ -4,7 +4,7 @@ const PDFDocument = require("pdfkit/js/pdfkit.standalone.js") as new (
 ) => PDFKit.PDFDocument;
 
 import type { DashboardSummaryPdfModel } from "./build-dashboard-summary-pdf-model";
-import { METRIC_LABEL } from "@/lib/copilot-financial-metrics-contract";
+import { COLLECTION_RATE_METRICS, METRIC_LABEL } from "@/lib/copilot-financial-metrics-contract";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -222,9 +222,9 @@ export function renderDashboardSummaryPdf(model: DashboardSummaryPdfModel): Prom
     }
     y += 8;
 
-    // ── [3] Efectividad de cobros ─────────────────────────────────────────────
+    // ── [3] Cobranza efectiva aplicada ────────────────────────────────────────
     if (model.currencyData.some((d) => d.efectividad !== null)) {
-      sectionTitle("Efectividad de cobros del período");
+      sectionTitle(`${COLLECTION_RATE_METRICS.applied_collection_rate.label} del período`);
       for (const d of model.currencyData) {
         if (d.efectividad === null) continue;
         ensureSpace(14);

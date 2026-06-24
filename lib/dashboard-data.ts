@@ -1,3 +1,15 @@
+/**
+ * LEGACY / FIXTURE ONLY — NO importar en rutas de producción.
+ *
+ * Este archivo contiene datos hardcodeados de escenarios demo (risk, stable, growth).
+ * Uso permitido exclusivamente en:
+ *   - app/copilot-report/ (página legacy de reporte)
+ *   - Modo simulación Zeta
+ *
+ * Para caja disponible operativa en producción, usar:
+ *   GET /api/copilot/treasury/cash-position → calculateCashPosition()
+ *   Ver: docs/architecture/cash-position-canonical.md
+ */
 import type { Metric } from "@/types/dashboard";
 
 export type DashboardSnapshot = {

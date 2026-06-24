@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   CANONICAL_METRICS,
+  COLLECTION_RATE_METRICS,
+  COLLECTION_RATE_METRIC_ID,
   CURRENCY_INTEGRITY_RULES,
   METRIC_ALIASES,
   METRIC_ID,
@@ -242,5 +244,51 @@ describe("SYSTEM_STATE_SIGNALS", () => {
     const signal = SYSTEM_STATE_SIGNALS.find((s) => s.id === "cash_after_payments");
     expect(signal).toBeDefined();
     expect(signal?.ctaHref).toContain("/copilot/tesoreria");
+  });
+});
+
+describe("COLLECTION_RATE_METRICS", () => {
+  const ALL_RATE_IDS = Object.values(COLLECTION_RATE_METRIC_ID);
+
+  it("define las cuatro familias A/B/C/D", () => {
+    expect(ALL_RATE_IDS).toHaveLength(4);
+    const families = ALL_RATE_IDS.map((id) => COLLECTION_RATE_METRICS[id].family);
+    expect(families).toContain("A");
+    expect(families).toContain("B");
+    expect(families).toContain("C");
+    expect(families).toContain("D");
+  });
+
+  it("applied_collection_rate usa label canónico familia A", () => {
+    expect(COLLECTION_RATE_METRICS.applied_collection_rate.label).toBe(
+      "Cobranza efectiva aplicada"
+    );
+    expect(COLLECTION_RATE_METRICS.applied_collection_rate.family).toBe("A");
+  });
+
+  it("registered_collection_rate usa label canónico familia B", () => {
+    expect(COLLECTION_RATE_METRICS.registered_collection_rate.label).toBe(
+      "Cobros registrados / ventas"
+    );
+    expect(COLLECTION_RATE_METRICS.registered_collection_rate.family).toBe("B");
+  });
+
+  it("promise_fulfillment_rate usa label canónico familia D", () => {
+    expect(COLLECTION_RATE_METRICS.promise_fulfillment_rate.label).toBe(
+      "Cumplimiento de promesas"
+    );
+    expect(COLLECTION_RATE_METRICS.promise_fulfillment_rate.family).toBe("D");
+  });
+
+  it("debt_recovery_rate usa label canónico familia C", () => {
+    expect(COLLECTION_RATE_METRICS.debt_recovery_rate.label).toBe(
+      "Recuperación de deuda"
+    );
+    expect(COLLECTION_RATE_METRICS.debt_recovery_rate.family).toBe("C");
+  });
+
+  it("labels ambiguos están en METRIC_PROHIBITED_LABELS", () => {
+    expect(METRIC_PROHIBITED_LABELS).toContain("Cobranza efectiva");
+    expect(METRIC_PROHIBITED_LABELS).toContain("Efectividad de cobros");
   });
 });

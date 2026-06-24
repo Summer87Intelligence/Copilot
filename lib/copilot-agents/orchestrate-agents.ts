@@ -113,7 +113,7 @@ export function orchestrateAgents(
   const nextBestAction =
     topPriorities[0]
       ? { label: topPriorities[0].ctaLabel, href: topPriorities[0].href }
-      : { label: "Empezar por Acciones", href: "/copilot/acciones" };
+      : { label: "Empezar por Cobranza", href: "/copilot/cobranza" };
 
   return {
     status,

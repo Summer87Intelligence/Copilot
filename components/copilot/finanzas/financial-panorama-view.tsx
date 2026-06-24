@@ -57,7 +57,7 @@ const ESTADO_ACTUAL_METRICS: {
   getValue: (s: FinanzasCanonicalCurrencyState) => number;
 }[] = [
   { label: "Caja disponible", tooltip: "Dinero disponible actualmente considerando saldos de tesorería.", getValue: (s) => s.availableCash },
-  { label: "Total pendiente", tooltip: "Facturas pendientes de cobro informadas por Zeta.", getValue: (s) => s.pendingReceivables },
+  { label: "Deuda actual", tooltip: "Facturas pendientes de cobro informadas por Zeta.", getValue: (s) => s.pendingReceivables },
   { label: "Deuda vencida", tooltip: "Facturas vencidas pendientes de cobro al día de hoy.", getValue: (s) => s.overdueReceivables },
   { label: "Compromisos 30 días", tooltip: "Pagos programados para los próximos 30 días.", getValue: (s) => s.scheduledPayments30d },
 ];

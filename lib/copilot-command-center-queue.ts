@@ -123,7 +123,7 @@ export function buildCommandCenterQueue(input: CommandCenterQueueInput): Command
       ownerLabel: workflow.ownerLabel ?? undefined,
       dueLabel: formatDueLabel(workflow.slaDueAt),
       urgencyScore: workflow.urgencyScore ?? 0,
-      cta: { label: "Abrir ejecución", href: "/copilot/acciones" },
+      cta: { label: "Abrir ejecución", href: "/copilot/cobranza" },
       metadata: {
         workflowId: workflow.id,
         currentStepId: workflow.currentStepId,

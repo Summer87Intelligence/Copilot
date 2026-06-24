@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Loader2, RefreshCw } from "lucide-react";
 
 import { CopilotSectionTitle } from "@/components/copilot/copilot-ui";
 import { CopilotButton, copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
@@ -113,7 +114,7 @@ export function TreasuryReceiptsPanel() {
   return (
     <section className="space-y-4">
       <CopilotSectionTitle
-        title="Cobranza del mes"
+        title="Recibos Zeta (contable)"
         subtitle="Recibos registrados en Zeta por período. Solo lectura."
         action={
           <CopilotButton type="button" variant="secondary" size="sm" onClick={() => void load()} disabled={loading}>
@@ -122,6 +123,15 @@ export function TreasuryReceiptsPanel() {
           </CopilotButton>
         }
       />
+      <div className="flex items-center gap-1.5">
+        <Link
+          href="/copilot/cobranza"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
+        >
+          Gestionar cobranza
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+        </Link>
+      </div>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">

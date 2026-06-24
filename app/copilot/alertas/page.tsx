@@ -20,6 +20,7 @@ import { useCopilotNotifications } from "@/hooks/use-copilot-notifications";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { copilotPageMainClass } from "@/components/copilot/copilot-ui";
 import type { CopilotNotification } from "@/lib/copilot-notifications/notification-types";
+import { isAutoResolvedCashRisk } from "@/lib/copilot-notifications/notification-display";
 import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
 import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 
@@ -48,8 +49,13 @@ function dateBucket(isoString: string): "hoy" | "ayer" | "anterior" {
   return "anterior";
 }
 
+function effectiveBucketFor(n: CopilotNotification): "hoy" | "ayer" | "anterior" {
+  if (isAutoResolvedCashRisk(n)) return "anterior";
+  return dateBucket(n.created_at);
+}
+
 function actionLabel(href: string): string {
-  if (href.includes("clientes-criticos")) return "Ver clientes críticos";
+  if (href.includes("clientes-criticos")) return "Ver principales deudores";
   if (href.includes("/clientes/")) return "Ver cliente";
   if (href.includes("filter=overdue")) return "Ver clientes atrasados";
   if (href.includes("/cartera")) return "Ver cartera";
@@ -169,7 +175,7 @@ function matchesFilter(n: CopilotNotification, filter: AlertFilter): boolean {
     case "unread":
       return !n.read_at;
     case "critical":
-      return n.severity === "critical";
+      return n.severity === "critical" && !isAutoResolvedCashRisk(n);
     case "cobros":
       return n.type === "collection_received";
     case "clientes":
@@ -256,7 +262,10 @@ function NotificationCard({
   onRead: (id: string) => void;
 }) {
   const unread = !n.read_at;
-  const { bg, icon } = getIconConfig(n.type, n.severity);
+  const autoResolved = isAutoResolvedCashRisk(n);
+  const displayTitle = autoResolved ? "Cobertura de caja mejorada" : n.title;
+  const displaySeverity = autoResolved ? "info" : n.severity;
+  const { bg, icon } = getIconConfig(n.type, autoResolved ? "info" : n.severity);
   const { mode, fxRate } = useDisplayCurrency();
 
   return (
@@ -285,9 +294,9 @@ function NotificationCard({
                   : "text-[var(--copilot-ink)]/80"
               }`}
             >
-              {n.title}
+              {displayTitle}
             </p>
-            <SeverityPill severity={n.severity} />
+            <SeverityPill severity={displaySeverity} />
             {unread ? (
               <span
                 className="ml-auto h-[7px] w-[7px] shrink-0 rounded-full bg-[var(--copilot-accent)]"
@@ -395,7 +404,7 @@ export default function CopilotAlertasPage() {
       cobros = 0;
     for (const n of notifications) {
       if (!n.read_at) unread++;
-      if (n.severity === "critical") critical++;
+      if (n.severity === "critical" && !isAutoResolvedCashRisk(n)) critical++;
       if (
         n.type === "treasury_payment_due" ||
         n.type === "treasury_payment_overdue"
@@ -419,7 +428,7 @@ export default function CopilotAlertasPage() {
     for (const n of notifications) {
       counts.all++;
       if (!n.read_at) counts.unread++;
-      if (n.severity === "critical") counts.critical++;
+      if (n.severity === "critical" && !isAutoResolvedCashRisk(n)) counts.critical++;
       if (n.type === "collection_received") counts.cobros++;
       if (n.type === "client_overdue" || n.type === "new_debtor")
         counts.clientes++;
@@ -469,7 +478,7 @@ export default function CopilotAlertasPage() {
     return BUCKET_ORDER.map((bucket) => ({
       key: bucket,
       label: BUCKET_LABELS[bucket],
-      items: deduped.filter((n) => dateBucket(n.created_at) === bucket),
+      items: deduped.filter((n) => effectiveBucketFor(n) === bucket),
     })).filter((g) => g.items.length > 0);
   }, [notifications, activeFilter]);
 

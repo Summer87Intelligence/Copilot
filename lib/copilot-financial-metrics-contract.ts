@@ -74,6 +74,9 @@ export const METRIC_ALIASES: Record<MetricId, readonly string[]> = {
 
 /** Labels explícitamente PROHIBIDOS porque mezclan conceptos distintos. */
 export const METRIC_PROHIBITED_LABELS: readonly string[] = [
+  "Cobranza efectiva", // ambiguo: usar applied_collection_rate o registered_collection_rate
+  "Efectividad de cobros", // ambiguo sin calificador — usar Cobranza efectiva aplicada
+  "Tasa de cobranza", // ambiguo — usar Resolución del período (A) o Cobros registrados / ventas (B)
   "Deuda total activa y del período", // mezcla deuda_activa + deuda_periodo
   "Cobrado total", // ambiguo: no distingue cobrado_periodo vs cobrado_aplicado
   "Caja neta", // confundible con snapshot cashNet (diferente a caja_disponible)
@@ -232,9 +235,16 @@ export const CANONICAL_METRICS: Record<MetricId, CanonicalMetricDef> = {
     currency: "per_currency",
     scope: "period",
     consumers: [
-      "hoy/hoy-period-activity-section (Facturado)",
+      "hoy/hoy-period-activity-section (Ventas del período)",
       "hoy/hoy-currency-executive-card (bloque UYU/USD)",
+      "dashboard/dashboard-page-client (KPI Ventas del período, charts Ventas vs Cobros)",
+      "dashboard-summary-pdf (KPI Ventas del período)",
+      "finanzas/copilot-finanzas-ceo-derivations (buildMonthlySalesYear, buildAnnualSalesYtd)",
+      "finanzas/copilot-financial-monthly-trends (buildFinancialTrendDashboard)",
     ],
+    // "Ventas acumuladas" is an accepted alias for YTD (year-to-date) context only —
+    // e.g. copilot-financial-executive-dashboard.ts. It covers the same metric accumulated
+    // across all months of the year to date, not a single period window.
   },
 
   cobrado_periodo: {
@@ -353,7 +363,6 @@ export const CANONICAL_METRICS: Record<MetricId, CanonicalMetricDef> = {
     currency: "per_currency", // N/A pero requerido por tipo
     scope: "current",
     consumers: [
-      "hoy/hoy-compact-hero (dot badge + label + headline)",
       "hoy/hoy-executive-summary-card",
       "hoy/hoy-cockpit-card-drawer (acento de cards)",
       "copilot/hoy (cashAfterPaymentsCritical flag en ExecutiveSummaryCard)",
@@ -473,6 +482,86 @@ export type SystemStateSignal = {
   ctaLabel: string;
 };
 
+// ---------------------------------------------------------------------------
+// Tasas de cobranza — familias A/B/C/D (ratio, no monto)
+// ---------------------------------------------------------------------------
+
+export const COLLECTION_RATE_METRIC_ID = {
+  /** Familia A — ventas del período resueltas al corte. */
+  APPLIED_COLLECTION_RATE: "applied_collection_rate",
+  /** Familia B — recibos por fecha sobre ventas del período. */
+  REGISTERED_COLLECTION_RATE: "registered_collection_rate",
+  /** Familia D — promesas cumplidas sobre promesas cerradas. */
+  PROMISE_FULFILLMENT_RATE: "promise_fulfillment_rate",
+  /** Familia C — recuperación sobre deuda (histórico / casos). */
+  DEBT_RECOVERY_RATE: "debt_recovery_rate",
+} as const;
+
+export type CollectionRateMetricId =
+  (typeof COLLECTION_RATE_METRIC_ID)[keyof typeof COLLECTION_RATE_METRIC_ID];
+
+export type CollectionRateMetricDef = {
+  id: CollectionRateMetricId;
+  family: "A" | "B" | "C" | "D";
+  label: string;
+  subtitle: string;
+  formula: string;
+  question: string;
+  consumers: string[];
+};
+
+export const COLLECTION_RATE_METRICS: Record<CollectionRateMetricId, CollectionRateMetricDef> = {
+  applied_collection_rate: {
+    id: "applied_collection_rate",
+    family: "A",
+    label: "Cobranza efectiva aplicada",
+    subtitle: "Porcentaje de ventas del período resueltas al corte.",
+    formula: "portfolioResolvedAmount / issuedInPeriodNet",
+    question: "¿Qué porcentaje de lo emitido en el período quedó resuelto al corte?",
+    consumers: [
+      "dashboard/dashboard-page-client (gauge, chips Ventas vs Cobros)",
+      "dashboard-summary-pdf",
+      "hoy/hoy-currency-executive-card (% junto a Cobrado aplicado)",
+      "finanzas/panorama (Resolución del período)",
+    ],
+  },
+  registered_collection_rate: {
+    id: "registered_collection_rate",
+    family: "B",
+    label: "Cobros registrados / ventas",
+    subtitle: "Recibos registrados en el período sobre ventas del período.",
+    formula: "collectedInPeriod / issuedInPeriodNet",
+    question: "¿Cuánto entró por recibos en el período respecto a lo emitido?",
+    consumers: [
+      "cartera/executive-summary-cards (card ratio)",
+      "cartera/cartera-compact-kpi-grid",
+      "finanzas/financial-monthly-trends",
+      "finanzas/financial-executive-sections (Cobros vs ventas)",
+    ],
+  },
+  promise_fulfillment_rate: {
+    id: "promise_fulfillment_rate",
+    family: "D",
+    label: "Cumplimiento de promesas",
+    subtitle: "Promesas cumplidas sobre promesas cerradas (pagadas + vencidas sin cobrar).",
+    formula: "promisesKept / promisesClosed",
+    question: "¿Qué tan efectiva fue la gestión operativa de promesas?",
+    consumers: ["cobranza/cobranza-kpi-grid (Cumplimiento)"],
+  },
+  debt_recovery_rate: {
+    id: "debt_recovery_rate",
+    family: "C",
+    label: "Recuperación de deuda",
+    subtitle: "Pagos recuperados sobre deuda o casos gestionados.",
+    formula: "recovered / outstandingDebt",
+    question: "¿Cuánto de la deuda vencida se recuperó?",
+    consumers: [
+      "payment-behavior/client-payment-behavior-card",
+      "decision-engine/learning/operator-effectiveness-engine",
+    ],
+  },
+};
+
 export const SYSTEM_STATE_SIGNALS: readonly SystemStateSignal[] = [
   {
     id: "overdue_debt",
@@ -500,6 +589,6 @@ export const SYSTEM_STATE_SIGNALS: readonly SystemStateSignal[] = [
     label: "Clientes de alto riesgo",
     source: "portfolio",
     ctaHref: "/copilot/cartera",
-    ctaLabel: "Ver clientes críticos",
+    ctaLabel: "Ver principales deudores",
   },
 ] as const;

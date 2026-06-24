@@ -12,6 +12,7 @@
  *           expand row (resumen del cliente + acciones de cobranza), paginación 25/50/100.
  */
 
+import Link from "next/link";
 import {
   useCallback,
   useDeferredValue,
@@ -1197,6 +1198,16 @@ function ExpandedRow({
         client={client}
         currencyFilter={currencyFilter}
       />
+
+      {/* Deep-link a ficha 360 en Clientes */}
+      <div className="mt-4 border-t border-[var(--copilot-border)] pt-3">
+        <Link
+          href={`/copilot/clientes?c=${client.companyId}`}
+          className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[var(--copilot-accent)] transition-opacity hover:opacity-75"
+        >
+          Ver ficha completa en Clientes →
+        </Link>
+      </div>
 
       {/* Timeline de cobranza */}
       {actions.length > 0 && (

@@ -6,6 +6,10 @@
 - Multi-tenant con workspace_company_id + RLS. 1 workspace productivo (Summer87, ~183 clientes Zeta).
 - 836/836 tests Vitest. Deploy en Vercel. Auth magic link OTP.
 
+## Cobranza Fase B — 2026-06-22
+- **B1 API**: `POST /api/copilot/cobranza/registrar-cobro` (orquestación tesorería + evidencia cobranza, RBAC `acciones` write).
+- **B2 UI**: Drawer `RegistrarCobroDrawer` en `/copilot/cobranza` — botón global + por cliente, formulario completo, integración con endpoint B1. Tests en `lib/cobranza/registrar-cobro-client.test.ts` (10 casos).
+
 ## Architectural Council — 2026-05-17 (IMPLEMENTADO)
 
 **R-01 RESUELTO — Tenant resolver a auth.uid():**
@@ -43,6 +47,29 @@
 - El scheduled cron del 03:30 UTC aún ejecutó sobre el deployment anterior (promotion lag de Vercel). Validación manual post-deploy (01:48 UTC y 2026-05-18 ~01:13 UTC) confirmó `critical_detected=0, resync_jobs_created=0, status=succeeded`. No se requiere código ni redeploy adicional.
 
 **Deuda técnica residual:** (1) Supabase CLI migrations, (2) ROW_CAP paginación queries financieras, (3) LLM cache, (4) encriptación credentials, (5) wiring `loadZetaServerConfigForWorkspace` en todos los pipelines.
+
+## AUTH-PAGE-GUARDS-HARDENING-001 — 2026-06-24 (IMPLEMENTADO)
+
+**Guards server-side RSC en páginas con datos sensibles — sin cambios de API, DB ni UI:**
+- `/copilot/finanzas`: `page.tsx` → RSC con `isModuleAccessDenied("finanzas")`; lógica → `finanzas-client.tsx`.
+- `/copilot/reportes`: `page.tsx` → RSC con `isModuleAccessDenied("reportes")`; lógica → `reportes-client.tsx`.
+- `/copilot/clientes`: `page.tsx` → RSC con `isModuleAccessDenied("clientes")`; lógica → `clientes-page-client.tsx`.
+- `/copilot/clientes/[companyId]`: `page.tsx` → RSC con `isModuleAccessDenied("clientes")`; lógica → `cliente-360-page-client.tsx`.
+- Patrón: `export const dynamic = "force-dynamic"` + guard server-side antes de renderizar el client component.
+- Eliminado `useCopilotPermissions()` guard en cada uno de los 4 client components (redundante, ahora en server).
+- **tsc**: 0 errores. **Tests**: 3623/3623 pasando. Sin tocar APIs, DB, fórmulas ni navegación.
+
+## DOMAIN-CLEANUP-PHASE-1 — 2026-06-23 (IMPLEMENTADO)
+
+**Cambios de labels y estructura — sin nuevas funcionalidades, sin cambios de API ni DB:**
+- `copilot-nav-config.tsx`: Acciones oculto del sidebar (`sidebarHidden: true`). Rutas siguen activas.
+- `app/copilot/acciones/page.tsx`: Banner informativo "Agenda y acciones integradas en Cobranza" con CTA → `/copilot/cobranza`.
+- `hoy/collection-agenda-hoy-card.tsx`: CTA "Ver agenda" → `/copilot/cobranza#cobranza-agenda`.
+- `dashboard-page-client.tsx`: Tabla "Clientes con deuda activa" reemplazada por CTA a Clientes y Cartera.
+- `treasury-receipts-panel.tsx`: "Cobranza del mes" → "Recibos Zeta (contable)" + CTA → `/copilot/cobranza`.
+- **Labels unificados** (17+ archivos): "Total pendiente" → "Deuda actual" donde representa `deuda_activa`. Incluye Finanzas, Cartera, Cobranza, Hoy, Clientes, vistas 360 y drawers.
+- `manual/page.tsx`: Flujo diario paso 3: Acciones → Cobranza. Referencias de navegación actualizadas.
+- **Build**: OK. **tsc**: 0 errores. **Tests**: pre-existing Jest parse failure (293 suites, no relacionado con estos cambios).
 
 ## Estado actual
 - Proyecto inicializado con Claude Skills.

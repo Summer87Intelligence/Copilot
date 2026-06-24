@@ -55,7 +55,7 @@ export function resolveHoyTodayPriority(
         label: "Ver clientes con deuda",
         action: { type: "scroll_critical" },
       },
-      secondaryCta: { label: "Ver acciones", href: "/copilot/acciones" },
+      secondaryCta: { label: "Ver Cobranza", href: "/copilot/cobranza" },
     };
   }
 
@@ -76,7 +76,7 @@ export function resolveHoyTodayPriority(
       description: `Tenés seguimientos pendientes: ${parts.join(" y ")}.`,
       primaryCta: {
         label: "Ver agenda",
-        action: { type: "link", href: "/copilot/acciones?tab=agenda" },
+        action: { type: "link", href: "/copilot/cobranza#cobranza-agenda" },
       },
     };
   }
@@ -114,8 +114,8 @@ export function resolveHoyTodayPriority(
     description:
       "No hay urgencias críticas en cobranza. Revisá la bandeja por si hay algo pendiente.",
     primaryCta: {
-      label: "Ver acciones",
-      action: { type: "link", href: "/copilot/acciones" },
+      label: "Ver Cobranza",
+      action: { type: "link", href: "/copilot/cobranza" },
     },
   };
 }

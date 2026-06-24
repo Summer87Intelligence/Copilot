@@ -561,7 +561,7 @@ function ReceivablesDetailCompact({
   return (
     <KpiDetailShell
       lines={[
-        ["Total pendiente", fmt(card.totalPending)],
+        ["Deuda actual", fmt(card.totalPending)],
         ["Atrasado", fmt(card.overdueTotal)],
         ["+30 días", fmt(card.overdue30)],
         ["Clientes", String(debtorClientsCount ?? 0)],

@@ -169,7 +169,7 @@ export function CollectionAgendaHoyCard() {
 
       <div className="mt-3">
         <Link
-          href="/copilot/acciones?tab=agenda"
+          href="/copilot/cobranza#cobranza-agenda"
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
         >
           Ver agenda

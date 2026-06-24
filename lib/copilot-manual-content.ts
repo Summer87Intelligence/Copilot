@@ -130,7 +130,7 @@ export function getCopilotManualWebSections() {
 export const COPILOT_MANUAL_MODULE_CARDS = [
   { label: "Hoy", href: "/copilot/hoy", color: "text-emerald-600 bg-emerald-50" },
   { label: "Dashboard Resumen", href: "/copilot/dashboard", color: "text-sky-600 bg-sky-50" },
-  { label: "Acciones", href: "/copilot/acciones", color: "text-blue-600 bg-blue-50" },
+  { label: "Cobranza", href: "/copilot/cobranza", color: "text-blue-600 bg-blue-50" },
   { label: "Alertas", href: "/copilot/alertas", color: "text-amber-600 bg-amber-50" },
   { label: "Clientes", href: "/copilot/clientes", color: "text-violet-600 bg-violet-50" },
   { label: "Cartera", href: "/copilot/cartera", color: "text-orange-600 bg-orange-50" },

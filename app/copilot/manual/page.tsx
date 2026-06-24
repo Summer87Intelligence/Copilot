@@ -114,7 +114,7 @@ const SECTION_ICONS: Record<string, React.ReactNode> = {
 const SECTION_NAV: Record<string, Array<{ href: string; label: string; ghost?: boolean }>> = {
   navegacion: [{ href: "/copilot/hoy", label: "Ir a Hoy" }],
   hoy: [{ href: "/copilot/hoy", label: "Ir a Hoy" }],
-  acciones: [{ href: "/copilot/acciones", label: "Ir a Acciones" }],
+  acciones: [{ href: "/copilot/cobranza", label: "Ir a Cobranza" }],
   alertas: [{ href: "/copilot/alertas", label: "Ir a Alertas", ghost: true }],
   clientes: [{ href: "/copilot/clientes", label: "Ir a Clientes" }],
   cartera: [{ href: "/copilot/cartera", label: "Ir a Cartera" }],
@@ -132,12 +132,12 @@ const SECTION_NAV: Record<string, Array<{ href: string; label: string; ghost?: b
   ],
   estado: [
     { href: "/copilot/alertas", label: "Ver Alertas", ghost: true },
-    { href: "/copilot/acciones", label: "Ver Acciones", ghost: true },
+    { href: "/copilot/cobranza", label: "Ver Cobranza", ghost: true },
   ],
   campana: [{ href: "/copilot/alertas", label: "Ver todas las alertas", ghost: true }],
   problemas: [
     { href: "/copilot/alertas", label: "Ir a Alertas", ghost: true },
-    { href: "/copilot/acciones", label: "Ir a Acciones", ghost: true },
+    { href: "/copilot/cobranza", label: "Ir a Cobranza", ghost: true },
     { href: "/copilot/datos", label: "Ir a Datos", ghost: true },
   ],
 };
@@ -294,9 +294,9 @@ export default function ManualPage() {
     COPILOT_MANUAL_DAILY_FLOW.length > 0
       ? COPILOT_MANUAL_DAILY_FLOW
       : [
-          { step: 1, label: "Hoy", description: "Mirá caja, pagos y clientes críticos.", href: "/copilot/hoy" },
+          { step: 1, label: "Hoy", description: "Mirá caja, pagos y principales deudores.", href: "/copilot/hoy" },
           { step: 2, label: "Estado", description: "Verificá si hay algo urgente en el semáforo.", href: "/copilot/hoy" },
-          { step: 3, label: "Acciones", description: "Ejecutá las acciones críticas primero.", href: "/copilot/acciones" },
+          { step: 3, label: "Cobranza", description: "Revisá agenda, seguí clientes y gestioná cobros.", href: "/copilot/cobranza" },
           { step: 4, label: "Alertas", description: "Revisá novedades del negocio.", href: "/copilot/alertas" },
           { step: 5, label: "Clientes / Cartera", description: "Gestioná cobros atrasados.", href: "/copilot/cartera" },
           { step: 6, label: "Tesorería", description: "Confirmá pagos próximos.", href: "/copilot/tesoreria" },

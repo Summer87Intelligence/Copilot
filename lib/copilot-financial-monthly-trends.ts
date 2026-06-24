@@ -4,6 +4,9 @@
  */
 
 import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
+import { dedupeZetaShadowInvoicesForReporting } from "@/lib/copilot-zeta-invoice-report-dedup";
+import type { DataRow } from "@/lib/data/proto-operational-read-repository";
+import { isReceiptVoidLike } from "@/lib/copilot-receipts-utils";
 
 export type FinancialMonthlyTrend = {
   month: string;
@@ -39,10 +42,11 @@ export type MonthlyTrendReceiptInput = Record<string, unknown> & {
   amount?: unknown;
   currency_code?: unknown;
   is_active?: unknown;
+  status?: unknown;
 };
 
 const VOIDED = new Set([
-  "paid", "void", "voided", "canceled", "cancelled", "anulada", "anulado", "annulled", "annul",
+  "void", "voided", "canceled", "cancelled", "anulada", "anulado", "annulled", "annul",
 ]);
 
 function num(v: unknown): number {
@@ -117,7 +121,11 @@ export function buildFinancialMonthlyTrends(input: {
     }
   }
 
-  for (const inv of input.invoices) {
+  const dedupedInvoices = dedupeZetaShadowInvoicesForReporting(
+    input.invoices as unknown as DataRow[]
+  ) as unknown as readonly MonthlyTrendInvoiceInput[];
+
+  for (const inv of dedupedInvoices) {
     if (!isActiveInvoice(inv)) continue;
     const ym = ymd(inv.issue_date);
     if (!ym || !monthKeys.includes(ym)) continue;
@@ -136,6 +144,7 @@ export function buildFinancialMonthlyTrends(input: {
 
   for (const rec of input.receipts) {
     if (rec.is_active === false) continue;
+    if (isReceiptVoidLike(rec.status)) continue;
     const ym = ymd(rec.receipt_date);
     if (!ym || !monthKeys.includes(ym)) continue;
     const cur = normalizeCurrency(rec.currency_code);
@@ -230,6 +239,7 @@ export function buildFinancialDailyTrends(input: {
 
   for (const rec of input.receipts) {
     if (rec.is_active === false) continue;
+    if (isReceiptVoidLike(rec.status)) continue;
     const day = String(rec.receipt_date ?? "").slice(0, 10);
     if (!days.includes(day)) continue;
     const cur = normalizeCurrency(rec.currency_code);
@@ -373,6 +383,7 @@ function accumulateForKeys(
 
   for (const rec of receipts) {
     if (rec.is_active === false) continue;
+    if (isReceiptVoidLike(rec.status)) continue;
     if (normalizeCurrency(rec.currency_code) !== currency) continue;
     const k = recKeyFn(rec);
     if (!keySet.has(k)) continue;
@@ -427,11 +438,11 @@ function buildDashboardInsights(
       );
     } else if (totals.collectionRate >= 0.8) {
       out.push(
-        `Tasa de cobro ${Math.round(totals.collectionRate * 100)}% — saludable para el período.`,
+        `Cobros registrados / ventas ${Math.round(totals.collectionRate * 100)}% — saludable para el período.`,
       );
     } else {
       out.push(
-        `Tasa de cobro ${Math.round(totals.collectionRate * 100)}% — hay margen para mejorar la recuperación.`,
+        `Cobros registrados / ventas ${Math.round(totals.collectionRate * 100)}% — hay margen para mejorar la recuperación.`,
       );
     }
   }
@@ -460,7 +471,10 @@ export function buildFinancialTrendDashboard(input: {
   period: "7d" | "1m" | "3m" | "6m" | "12m";
   currency: "UYU" | "USD";
 }): FinancialTrendDashboard {
-  const { invoices, receipts, asOfYmd, period, currency } = input;
+  const { invoices: rawInvoices, receipts, asOfYmd, period, currency } = input;
+  const invoices = dedupeZetaShadowInvoicesForReporting(
+    rawInvoices as unknown as DataRow[]
+  ) as unknown as readonly MonthlyTrendInvoiceInput[];
 
   const useDaily = period === "7d" || period === "1m";
   const count =

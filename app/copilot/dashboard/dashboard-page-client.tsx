@@ -45,6 +45,7 @@ import {
   type DashboardState,
 } from "@/lib/copilot-dashboard-summary";
 import {
+  COLLECTION_RATE_METRICS,
   METRIC_LABEL,
   METRIC_SEPARATED_CURRENCY_DISCLAIMER,
 } from "@/lib/copilot-financial-metrics-contract";
@@ -1129,13 +1130,13 @@ export default function DashboardPageClient() {
 
   // Ventas vs Cobros (current period)
   const vsGroups = isConsolidated
-    ? [{ label: "USD (equiv.)", a: roundUsd(consolidateToUsdEquivalent(usd?.facturado ?? 0, uyu?.facturado ?? 0, effectiveExchangeRate)), b: roundUsd(consolidateToUsdEquivalent(usd?.cobrado ?? 0, uyu?.cobrado ?? 0, effectiveExchangeRate)), aLabel: "Facturado", bLabel: "Cobrado" }]
+    ? [{ label: "USD (equiv.)", a: roundUsd(consolidateToUsdEquivalent(usd?.facturado ?? 0, uyu?.facturado ?? 0, effectiveExchangeRate)), b: roundUsd(consolidateToUsdEquivalent(usd?.cobrado ?? 0, uyu?.cobrado ?? 0, effectiveExchangeRate)), aLabel: "Ventas del período", bLabel: "Cobrado" }]
     : [
         ...(effectiveCurrency !== "USD" && (uyu?.facturado ?? 0) + (uyu?.cobrado ?? 0) > 0
-          ? [{ label: "UYU", a: uyu?.facturado ?? 0, b: uyu?.cobrado ?? 0, aLabel: "Facturado", bLabel: "Cobrado" }]
+          ? [{ label: "UYU", a: uyu?.facturado ?? 0, b: uyu?.cobrado ?? 0, aLabel: "Ventas del período", bLabel: "Cobrado" }]
           : []),
         ...(effectiveCurrency !== "UYU" && (usd?.facturado ?? 0) + (usd?.cobrado ?? 0) > 0
-          ? [{ label: "USD", a: usd?.facturado ?? 0, b: usd?.cobrado ?? 0, aLabel: "Facturado", bLabel: "Cobrado" }]
+          ? [{ label: "USD", a: usd?.facturado ?? 0, b: usd?.cobrado ?? 0, aLabel: "Ventas del período", bLabel: "Cobrado" }]
           : []),
       ];
 
@@ -1624,7 +1625,7 @@ export default function DashboardPageClient() {
                     <VerticalBarChart data={monthlyIssued} selectedCurrency="UYU" height={140} />
                   )}
                 </ChartCard>
-                <ChartCard title="Ventas por mes USD" subtitle="Facturado USD · escala independiente">
+                <ChartCard title="Ventas por mes USD" subtitle="Ventas USD · escala independiente">
                   {loading ? <Skeleton className="h-28" /> : (
                     <VerticalBarChart data={monthlyIssued} selectedCurrency="USD" height={140} />
                   )}
@@ -1642,32 +1643,32 @@ export default function DashboardPageClient() {
                 {/* [3] Ventas vs Cobros ? per currency with % chips */}
                 <ChartCard title="Ventas vs Cobros UYU" subtitle="Período seleccionado · Verde = cobrado">
                   {loading ? <Skeleton className="h-28" /> : (uyu?.facturado ?? 0) + (uyu?.cobrado ?? 0) > 0 ? (
-                    <GroupedBarChart groups={[{ label: "UYU", a: uyu?.facturado ?? 0, b: uyu?.cobrado ?? 0, aLabel: "Facturado", bLabel: "Cobrado" }]} height={140} />
+                    <GroupedBarChart groups={[{ label: "UYU", a: uyu?.facturado ?? 0, b: uyu?.cobrado ?? 0, aLabel: "Ventas del período", bLabel: "Cobrado" }]} height={140} />
                   ) : (
                     <ChartPeriodEmpty />
                   )}
                   <div className="mt-2 flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-accent)]" /><p className={`text-[10px] ${C.muted}`}>Facturado</p></div>
+                    <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-accent)]" /><p className={`text-[10px] ${C.muted}`}>Ventas</p></div>
                     <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-status-ok-dot)]" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
                     {uyu?.efectividad != null && (
                       <span className={`ml-auto text-[10px] font-semibold ${uyu.efectividad >= 0.8 ? "text-[var(--copilot-success-text)]" : "text-[var(--copilot-warning-text)]"}`}>
-                        Cobranza: {Math.round(uyu.efectividad * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - uyu.efectividad) * 100)}%
+                        Cobranza aplicada: {Math.round(uyu.efectividad * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - uyu.efectividad) * 100)}%
                       </span>
                     )}
                   </div>
                 </ChartCard>
                 <ChartCard title="Ventas vs Cobros USD" subtitle="Período seleccionado · Verde = cobrado">
                   {loading ? <Skeleton className="h-28" /> : (usd?.facturado ?? 0) + (usd?.cobrado ?? 0) > 0 ? (
-                    <GroupedBarChart groups={[{ label: "USD", a: usd?.facturado ?? 0, b: usd?.cobrado ?? 0, aLabel: "Facturado", bLabel: "Cobrado" }]} height={140} />
+                    <GroupedBarChart groups={[{ label: "USD", a: usd?.facturado ?? 0, b: usd?.cobrado ?? 0, aLabel: "Ventas del período", bLabel: "Cobrado" }]} height={140} />
                   ) : (
                     <ChartPeriodEmpty />
                   )}
                   <div className="mt-2 flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-accent)]" /><p className={`text-[10px] ${C.muted}`}>Facturado</p></div>
+                    <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-accent)]" /><p className={`text-[10px] ${C.muted}`}>Ventas</p></div>
                     <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-status-ok-dot)]" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
                     {usd?.efectividad != null && (
                       <span className={`ml-auto text-[10px] font-semibold ${usd.efectividad >= 0.8 ? "text-[var(--copilot-success-text)]" : "text-[var(--copilot-warning-text)]"}`}>
-                        Cobranza: {Math.round(usd.efectividad * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - usd.efectividad) * 100)}%
+                        Cobranza aplicada: {Math.round(usd.efectividad * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - usd.efectividad) * 100)}%
                       </span>
                     )}
                   </div>
@@ -1722,11 +1723,11 @@ export default function DashboardPageClient() {
                     const eff = isConsolidated ? null : effectiveCurrency === "USD" ? usd?.efectividad : uyu?.efectividad;
                     return (
                       <div className="mt-2 flex flex-wrap items-center gap-3">
-                        <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-accent)]" /><p className={`text-[10px] ${C.muted}`}>Facturado</p></div>
+                        <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-accent)]" /><p className={`text-[10px] ${C.muted}`}>Ventas</p></div>
                         <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-status-ok-dot)]" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
                         {eff != null && (
                           <span className={`ml-auto text-[10px] font-semibold ${eff >= 0.8 ? "text-[var(--copilot-success-text)]" : "text-[var(--copilot-warning-text)]"}`}>
-                            Cobranza: {Math.round(eff * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - eff) * 100)}%
+                            Cobranza aplicada: {Math.round(eff * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - eff) * 100)}%
                           </span>
                         )}
                       </div>
@@ -1774,8 +1775,8 @@ export default function DashboardPageClient() {
             )}
 
             <ChartCard
-              title="Efectividad de cobros"
-              subtitle="Cobrado del período / Facturado neto · Por moneda"
+              title={COLLECTION_RATE_METRICS.applied_collection_rate.label}
+              subtitle={COLLECTION_RATE_METRICS.applied_collection_rate.subtitle}
             >
               {loading ? (
                 <div className="space-y-3">
@@ -1789,14 +1790,14 @@ export default function DashboardPageClient() {
                   {effectiveCurrencyData.map((d) => (
                     <GaugeRow
                       key={d.currency}
-                      label={isConsolidated ? "Efectividad (USD cons.)" : "Efectividad"}
+                      label={isConsolidated ? `${COLLECTION_RATE_METRICS.applied_collection_rate.label} (USD cons.)` : COLLECTION_RATE_METRICS.applied_collection_rate.label}
                       value={d.efectividad}
                       currency={d.currency}
                     />
                   ))}
                   <p className={`text-[10px] ${C.muted}`}>
-                    Recibos cobrados / Facturado neto. Puede superar 100% si hay cobros
-                    de facturas de períodos anteriores.
+                    {COLLECTION_RATE_METRICS.applied_collection_rate.subtitle} Puede ser menor al 100% si
+                    quedan facturas del período pendientes al corte.
                   </p>
                 </div>
               )}
@@ -2088,26 +2089,22 @@ export default function DashboardPageClient() {
         {/* Tables section */}
         <section aria-label="Tablas operativas">
           <div className="space-y-6">
-            <div>
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className={`text-xs font-semibold uppercase tracking-wide ${C.muted}`}>
-                  Clientes con deuda activa
-                </h2>
-                <Link
-                  href="/copilot/cartera"
-                  className={`flex items-center gap-1 text-xs ${C.accent} hover:underline`}
-                >
-                  Ver toda la cartera <ArrowRight className="h-3 w-3" />
+            <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-4 py-5">
+              <h2 className={`mb-1 text-xs font-semibold uppercase tracking-wide ${C.muted}`}>
+                Gestión de deuda por cliente
+              </h2>
+              <p className={`mb-4 text-xs ${C.muted}`}>
+                Consultá deuda, atrasados y fichas en Clientes, o analizá la cartera completa por período en Cartera.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Link href="/copilot/clientes" className={C.btn}>
+                  <Users className="h-4 w-4" />
+                  Ver Clientes
+                </Link>
+                <Link href="/copilot/cartera" className={C.btnGhost}>
+                  Ver Cartera <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
-              {loading ? (
-                <Skeleton className="h-40" />
-              ) : (
-                <ActiveDebtClientsTable
-                  rows={isConsolidated ? consolidatedActiveDebtRows : activeDebtRows}
-                  selectedCurrency={isConsolidated ? "USD" : effectiveCurrencyForTables}
-                />
-              )}
             </div>
 
             <div>

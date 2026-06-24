@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { Moon, Sun } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { CopilotSessionPreview } from "@/components/copilot/copilot-session-preview";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
+import { CurrencyDisplayToggle } from "@/components/copilot/currency-display-toggle";
+import { useTheme } from "@/components/theme/theme-provider";
 
 function getInitials(email: string | null): string {
   if (!email) return "—";
@@ -146,6 +149,8 @@ export function CopilotUserBar({
     window.location.href = "/login";
   }, [sessionPreview, supabase]);
 
+  const { theme, setTheme } = useTheme();
+
   if (authPending) {
     return (
       <div className="h-8 w-8 animate-pulse rounded-full bg-[var(--copilot-border)]" />
@@ -171,33 +176,70 @@ export function CopilotUserBar({
       </button>
 
       {menuOpen ? (
-        <div className="absolute right-0 top-full z-[80] mt-2 w-56 overflow-hidden rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-dropdown-bg)] shadow-xl">
+        <div className="absolute right-0 top-full z-[80] mt-2 w-72 overflow-hidden rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-dropdown-bg)] shadow-xl">
+          {/* User info */}
           {displayEmail || displayRole ? (
-            <div className="border-b border-[var(--copilot-border)] px-4 py-3">
-              {displayEmail ? (
-                <p className="truncate text-xs font-medium text-[var(--copilot-ink)]">
-                  {displayEmail}
-                </p>
-              ) : null}
-              {displayRole ? (
-                <p className="text-xs text-[var(--copilot-ink-muted)]">
-                  {capitalizeRole(displayRole)}
-                </p>
-              ) : null}
+            <div className="flex items-center gap-3 border-b border-[var(--copilot-border)] px-4 py-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--copilot-accent)] text-base font-bold text-[var(--copilot-on-accent)]">
+                {initials}
+              </div>
+              <div className="min-w-0">
+                {displayEmail ? (
+                  <p className="truncate text-[13px] font-medium text-[var(--copilot-ink)]">
+                    {displayEmail}
+                  </p>
+                ) : null}
+                {displayRole ? (
+                  <p className="text-[11px] text-[var(--copilot-ink-muted)]">
+                    {capitalizeRole(displayRole)}
+                  </p>
+                ) : null}
+              </div>
             </div>
           ) : null}
+
+          {/* Vista USD */}
+          <div className="border-b border-[var(--copilot-border)] px-4 py-3">
+            <CurrencyDisplayToggle />
+          </div>
+
+          {/* Tema oscuro */}
+          <div className="border-b border-[var(--copilot-border)]">
+            <button
+              type="button"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="flex min-h-[44px] w-full items-center justify-between px-4 py-2 text-[13px] text-[var(--copilot-ink)] transition hover:bg-[var(--copilot-hover-bg)]"
+            >
+              <span className="text-[var(--copilot-ink-muted)]">Tema</span>
+              <span className="flex items-center gap-1.5 font-medium">
+                {theme === "dark" ? (
+                  <>
+                    <Moon className="h-4 w-4" aria-hidden />
+                    Oscuro
+                  </>
+                ) : (
+                  <>
+                    <Sun className="h-4 w-4" aria-hidden />
+                    Claro
+                  </>
+                )}
+              </span>
+            </button>
+          </div>
+
+          {/* Nav items */}
           <div className="py-1">
             <Link
-              href="/copilot/configuracion"
+              href="/copilot/admin"
               onClick={() => setMenuOpen(false)}
-              className="block w-full px-4 py-2 text-left text-sm text-[var(--copilot-ink)] transition hover:bg-[var(--copilot-hover-bg)]"
+              className="flex min-h-[44px] w-full items-center px-4 py-2 text-[13px] text-[var(--copilot-ink)] transition hover:bg-[var(--copilot-hover-bg)]"
             >
               Configuración
             </Link>
             <button
               type="button"
               onClick={() => void handleSignOut()}
-              className="w-full px-4 py-2 text-left text-sm text-[var(--copilot-danger-text)] transition hover:bg-[var(--copilot-hover-bg)]"
+              className="flex min-h-[44px] w-full items-center px-4 py-2 text-left text-[13px] text-[var(--copilot-danger-text)] transition hover:bg-[var(--copilot-hover-bg)]"
             >
               Cerrar sesión
             </button>

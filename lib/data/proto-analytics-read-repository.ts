@@ -327,40 +327,6 @@ export async function loadFinancialSnapshotRows(
   };
 }
 
-/** Columnas `amount` para caja simplificada (`copilot-financial-intelligence`). */
-export async function loadCashStatusAmountRows(
-  client: OperationalSupabase,
-  workspaceCompanyId: string
-) {
-  const wid = workspaceCompanyId.trim();
-  if (!wid) throw new Error("[copilot-analytics] workspaceCompanyId requerido para queries de analytics");
-  copilotProtoQueryDebugLog("proto_receipts", wid, Boolean(wid));
-  copilotProtoQueryDebugLog("proto_payments", wid, Boolean(wid));
-  const [inRes, outRes] = await Promise.all([
-    (() => {
-      let q = client
-        .from("proto_receipts")
-        .select("amount")
-        .eq("is_active", true);
-      if (wid) q = q.eq("workspace_company_id", wid);
-      return q.limit(ROW_CAP);
-    })(),
-    (() => {
-      let q = client
-        .from("proto_payments")
-        .select("amount")
-        .eq("is_active", true);
-      if (wid) q = q.eq("workspace_company_id", wid);
-      return q.limit(ROW_CAP);
-    })(),
-  ]);
-
-  if (inRes.error) throw new Error(inRes.error.message);
-  if (outRes.error) throw new Error(outRes.error.message);
-
-  return { inflows: inRes.data ?? [], outflows: outRes.data ?? [] };
-}
-
 export async function selectProtoInvoicesInsightWindow(
   client: OperationalSupabase,
   workspaceCompanyId?: string

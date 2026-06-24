@@ -5,6 +5,8 @@
  */
 
 import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
+import { dedupeZetaShadowInvoicesForReporting } from "@/lib/copilot-zeta-invoice-report-dedup";
+import type { DataRow } from "@/lib/data/proto-operational-read-repository";
 
 // ---------------------------------------------------------------------------
 // Tipos públicos
@@ -42,6 +44,7 @@ export type CeoIndicators = {
 // ---------------------------------------------------------------------------
 
 export type CeoInvoiceInput = {
+  id?: string | number | null;
   company_id?: string | null;
   issue_date?: unknown;
   currency_code?: unknown;
@@ -49,6 +52,8 @@ export type CeoInvoiceInput = {
   is_active?: unknown;
   status?: unknown;
   zeta_metadata?: unknown;
+  invoice_number?: string | null;
+  category?: string | null;
 };
 
 export type CeoPortfolioRow = {
@@ -123,7 +128,11 @@ export function buildMonthlySalesYear(
     buckets.set(m, { UYU: 0, USD: 0 });
   }
 
-  for (const inv of invoices) {
+  const deduped = dedupeZetaShadowInvoicesForReporting(
+    invoices as unknown as DataRow[]
+  ) as unknown as ReadonlyArray<CeoInvoiceInput>;
+
+  for (const inv of deduped) {
     if (isVoided(inv)) continue;
     if (inv.is_active === false) continue;
     const y = ymdYear(inv.issue_date);
@@ -218,7 +227,10 @@ export function buildAnnualSalesYtd(
 ): { UYU: number; USD: number } {
   let uyu = 0;
   let usd = 0;
-  for (const inv of invoices) {
+  const deduped = dedupeZetaShadowInvoicesForReporting(
+    invoices as unknown as DataRow[]
+  ) as unknown as ReadonlyArray<CeoInvoiceInput>;
+  for (const inv of deduped) {
     if (isVoided(inv) || inv.is_active === false) continue;
     if (ymdYear(inv.issue_date) !== year) continue;
     const cur = currencyOf(inv.currency_code);

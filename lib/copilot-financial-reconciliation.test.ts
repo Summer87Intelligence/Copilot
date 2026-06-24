@@ -2321,3 +2321,236 @@ describe("orphan summary — active vs stale metadata", () => {
     expect(report.orphanSummary.warnedPendingByCurrency.UYU).toBe(200);
   });
 });
+
+// ---------------------------------------------------------------------------
+// is_active filter — RECONCILIATION-ACTIVE-FILTER-FIX-001
+// ---------------------------------------------------------------------------
+// The route already guards with `.eq("is_active", true)` at Supabase query time.
+// These tests validate the engine's in-memory defense for direct callers and
+// audit scripts that may inject rows without pre-filtering by is_active.
+//
+// Rule: is_active === false → skip (not voided, just inactive).
+//       is_active === null / undefined / true → treat as active (legacy compat).
+// ---------------------------------------------------------------------------
+
+describe("is_active filter — invoices", () => {
+  it("invoice with is_active=false and status 'issued' is excluded from issuedInPeriod", () => {
+    const report = generateFinancialConsistencyReport({
+      workspaceId: "ws-1",
+      invoices: [
+        inv({ id: "inactive", currency_code: "UYU", total_amount: 999, balance_amount: 999, is_active: false }),
+        inv({ id: "active",   currency_code: "UYU", total_amount: 500, balance_amount: 500, is_active: true }),
+      ],
+      companies: [],
+      syncStates: [],
+      now: NOW,
+    });
+    const uyu = report.currencies.find((c) => c.currencyCode === "UYU")!;
+    expect(uyu.issuedInPeriod).toBe(500);
+    expect(uyu.invoiceCount).toBe(1);
+  });
+
+  it("invoice with is_active=false and status 'paid' is excluded from issuedInPeriod", () => {
+    const report = generateFinancialConsistencyReport({
+      workspaceId: "ws-1",
+      invoices: [
+        inv({ id: "inactive-paid", currency_code: "USD", total_amount: 400, balance_amount: 0, status: "paid", is_active: false }),
+        inv({ id: "active",        currency_code: "USD", total_amount: 200, balance_amount: 200, is_active: true }),
+      ],
+      companies: [],
+      syncStates: [],
+      now: NOW,
+    });
+    const usd = report.currencies.find((c) => c.currencyCode === "USD")!;
+    expect(usd.issuedInPeriod).toBe(200);
+    expect(usd.invoiceCount).toBe(1);
+  });
+
+  it("invoice with is_active=null is treated as active (legacy compat)", () => {
+    const report = generateFinancialConsistencyReport({
+      workspaceId: "ws-1",
+      invoices: [
+        inv({ id: "null-active", currency_code: "UYU", total_amount: 700, balance_amount: 700, is_active: null }),
+      ],
+      companies: [],
+      syncStates: [],
+      now: NOW,
+    });
+    const uyu = report.currencies.find((c) => c.currencyCode === "UYU")!;
+    expect(uyu.issuedInPeriod).toBe(700);
+  });
+
+  it("invoice with is_active=undefined is treated as active (legacy compat)", () => {
+    const report = generateFinancialConsistencyReport({
+      workspaceId: "ws-1",
+      invoices: [
+        inv({ id: "undef-active", currency_code: "UYU", total_amount: 300, balance_amount: 300 /* no is_active */ }),
+      ],
+      companies: [],
+      syncStates: [],
+      now: NOW,
+    });
+    const uyu = report.currencies.find((c) => c.currencyCode === "UYU")!;
+    expect(uyu.issuedInPeriod).toBe(300);
+  });
+
+  it("inactive invoice is not counted as voided (voidedInvoices stays 0)", () => {
+    const report = generateFinancialConsistencyReport({
+      workspaceId: "ws-1",
+      invoices: [
+        inv({ id: "inactive", currency_code: "UYU", total_amount: 500, balance_amount: 500, is_active: false }),
+      ],
+      companies: [],
+      syncStates: [],
+      now: NOW,
+    });
+    // is_active=false silently skipped — not counted as voided
+    expect(report.voidedInvoices).toBe(0);
+    expect(report.totalInvoices).toBe(0);
+  });
+
+  it("inactive invoice is excluded from period_only issuedInPeriod", () => {
+    const report = generateFinancialConsistencyReport({
+      workspaceId: "ws-1",
+      invoices: [
+        inv({
+          id: "inactive",
+          currency_code: "UYU",
+          total_amount: 800,
+          balance_amount: 800,
+          is_active: false,
+          issue_date: "2026-05-10",
+        }),
+        inv({
+          id: "active",
+          currency_code: "UYU",
+          total_amount: 200,
+          balance_amount: 200,
+          is_active: true,
+          issue_date: "2026-05-10",
+        }),
+      ],
+      companies: [],
+      syncStates: [],
+      now: "2026-05-15T12:00:00Z",
+      mode: "period_only",
+      periodStart: "2026-05-01",
+      periodEnd: "2026-05-15",
+    });
+    const uyu = report.currencies.find((c) => c.currencyCode === "UYU")!;
+    expect(uyu.issuedInPeriod).toBe(200);
+  });
+
+  it("inactive invoice does not appear in staleClients aging", () => {
+    const report = generateFinancialConsistencyReport({
+      workspaceId: "ws-1",
+      invoices: [
+        inv({
+          id: "inactive",
+          company_id: "c1",
+          currency_code: "UYU",
+          total_amount: 999,
+          balance_amount: 999,
+          is_active: false,
+          updated_at: hoursAgoIso(1),
+        }),
+      ],
+      companies: [{ id: "c1", name: "Test" }],
+      syncStates: [],
+      now: NOW,
+    });
+    // inactive invoice doesn't register the client in the portfolio pass
+    expect(report.staleClients).toHaveLength(0);
+  });
+});
+
+describe("is_active filter — receipts", () => {
+  it("receipt with is_active=false and status 'paid' is excluded from collectedInPeriod", () => {
+    const report = generateFinancialConsistencyReport({
+      workspaceId: "ws-1",
+      invoices: [
+        inv({
+          id: "fact",
+          currency_code: "USD",
+          total_amount: 500,
+          balance_amount: 500,
+          issue_date: "2026-05-05",
+        }),
+      ],
+      receipts: [
+        makeReceipt({ id: "r-inactive", amount: 300, is_active: false, receipt_date: "2026-05-06" }),
+        makeReceipt({ id: "r-active",   amount: 100, is_active: true,  receipt_date: "2026-05-06" }),
+      ],
+      companies: [],
+      syncStates: [],
+      now: "2026-05-10T12:00:00Z",
+      mode: "period_only",
+      periodStart: "2026-05-01",
+      periodEnd: "2026-05-10",
+    });
+    const usd = report.currencies.find((c) => c.currencyCode === "USD")!;
+    expect(usd.collectedInPeriod).toBe(100);
+    expect(usd.collectedReceiptCount).toBe(1);
+  });
+
+  it("receipt with is_active=false and status 'applied' is excluded from collectedInPeriod", () => {
+    const report = generateFinancialConsistencyReport({
+      workspaceId: "ws-1",
+      invoices: [
+        inv({ id: "fact", currency_code: "USD", total_amount: 200, balance_amount: 200, issue_date: "2026-05-02" }),
+      ],
+      receipts: [
+        makeReceipt({ id: "r-applied-inactive", amount: 200, status: "applied", is_active: false, receipt_date: "2026-05-03" }),
+      ],
+      companies: [],
+      syncStates: [],
+      now: "2026-05-10T12:00:00Z",
+      mode: "period_only",
+      periodStart: "2026-05-01",
+      periodEnd: "2026-05-10",
+    });
+    const usd = report.currencies.find((c) => c.currencyCode === "USD")!;
+    expect(usd.collectedInPeriod).toBe(0);
+    expect(usd.collectedReceiptCount).toBe(0);
+  });
+
+  it("receipt with is_active=null is treated as active (legacy compat)", () => {
+    const report = generateFinancialConsistencyReport({
+      workspaceId: "ws-1",
+      invoices: [
+        inv({ id: "fact", currency_code: "USD", total_amount: 150, balance_amount: 150, issue_date: "2026-05-02" }),
+      ],
+      receipts: [
+        makeReceipt({ id: "r-null", amount: 150, is_active: null, receipt_date: "2026-05-03" }),
+      ],
+      companies: [],
+      syncStates: [],
+      now: "2026-05-10T12:00:00Z",
+      mode: "period_only",
+      periodStart: "2026-05-01",
+      periodEnd: "2026-05-10",
+    });
+    const usd = report.currencies.find((c) => c.currencyCode === "USD")!;
+    expect(usd.collectedInPeriod).toBe(150);
+  });
+
+  it("receipt with is_active=undefined is treated as active (legacy compat)", () => {
+    const report = generateFinancialConsistencyReport({
+      workspaceId: "ws-1",
+      invoices: [
+        inv({ id: "fact", currency_code: "USD", total_amount: 250, balance_amount: 250, issue_date: "2026-05-02" }),
+      ],
+      receipts: [
+        makeReceipt({ id: "r-undef", amount: 250 /* no is_active */, receipt_date: "2026-05-03" }),
+      ],
+      companies: [],
+      syncStates: [],
+      now: "2026-05-10T12:00:00Z",
+      mode: "period_only",
+      periodStart: "2026-05-01",
+      periodEnd: "2026-05-10",
+    });
+    const usd = report.currencies.find((c) => c.currencyCode === "USD")!;
+    expect(usd.collectedInPeriod).toBe(250);
+  });
+});

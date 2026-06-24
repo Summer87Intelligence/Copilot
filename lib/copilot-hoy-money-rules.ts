@@ -15,18 +15,18 @@ export const HOY_MONEY_FIELD_SOURCES = {
     mustNotInclude: ["pendingReceivables", "por cobrar de Cartera"],
   },
   receivables: {
-    card: "Total pendiente",
+    card: "Deuda actual",
     field: "currentStateBlocks[].pendingReceivables",
-    origin: "Total pendiente de clientes (Cartera / portfolio pending), por moneda. El atrasado ya está incluido.",
+    origin: "Deuda actual de clientes (Cartera / portfolio pending), por moneda. El atrasado ya está incluido.",
     mustNotInclude: ["cashAvailable", "availableCash"],
   },
   payments: {
     card: "Pagos próximos",
     field: "projection30dBlocks[].scheduledPayments",
-    origin: "Obligaciones de tesorería en horizonte 30 días",
+    origin: "Obligaciones de tesorería hasta fin de mes",
   },
   afterPayments: {
-    card: "Caja proyectada 30d",
+    card: "Caja proyectada a fin de mes",
     field: "projection30dBlocks[].safeCash30d",
     formula: "caja disponible − pagos programados (sin sumar por cobrar)",
   },
@@ -46,7 +46,7 @@ export const HOY_MONEY_FIELD_SOURCES = {
  * 4. Recibo registrado sin impacto en caja aún → no inflar «Dinero disponible» artificialmente.
  */
 export const HOY_COLLECTION_SYNC_BEHAVIOR = [
-  "Cartera pending ↓ ⇒ cockpit Total pendiente ↓",
+  "Cartera pending ↓ ⇒ cockpit Deuda actual ↓",
   "Tesorería/caja ↑ solo con cobro en posición disponible ⇒ Dinero disponible ↑",
   "safeCash30d = caja − pagos (sin mezclar por cobrar en Dinero disponible)",
   "expectedCash30d = caja + por cobrar − pagos (escenario, no caja hoy)",

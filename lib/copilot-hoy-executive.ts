@@ -558,7 +558,7 @@ function debtorRowMotivo(hasOverdue: boolean, slow: boolean): string {
   if (hasOverdue && slow) return "Atrasado · Cobro lento";
   if (hasOverdue) return "Atrasado";
   if (slow) return "Cobro lento";
-  return "Total pendiente";
+  return "Deuda actual";
 }
 
 export function extractAgingTotals(

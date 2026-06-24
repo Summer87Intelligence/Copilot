@@ -191,30 +191,30 @@ describe("buildDebtFollowupSummaryTitle", () => {
 describe("buildDebtFollowupSummaryBody — formato total", () => {
   it("solo UYU sin client count → formato total", () =>
     expect(buildDebtFollowupSummaryBody(32120, 0)).toBe(
-      "Total atrasado: UYU 32.120. Revisá clientes críticos."
+      "Total atrasado: UYU 32.120. Revisá principales deudores."
     ));
 
   it("solo USD sin client count → formato total", () =>
     expect(buildDebtFollowupSummaryBody(0, 3049)).toBe(
-      "Total atrasado: USD 3.049. Revisá clientes críticos."
+      "Total atrasado: USD 3.049. Revisá principales deudores."
     ));
 
   it("UYU y USD sin client count → ambas monedas", () =>
     expect(buildDebtFollowupSummaryBody(32120, 3049)).toBe(
-      "Total atrasado: UYU 32.120 y USD 3.049. Revisá clientes críticos."
+      "Total atrasado: UYU 32.120 y USD 3.049. Revisá principales deudores."
     ));
 
   it("sin montos → solo CTA", () =>
-    expect(buildDebtFollowupSummaryBody(0, 0)).toBe("Revisá clientes críticos."));
+    expect(buildDebtFollowupSummaryBody(0, 0)).toBe("Revisá principales deudores."));
 
   it("con overdueClientCount → aclara 'entre N clientes' (total, no por cliente)", () =>
     expect(buildDebtFollowupSummaryBody(0, 601, 3)).toBe(
-      "Total atrasado: USD 601 entre 3 clientes. Revisá clientes críticos."
+      "Total atrasado: USD 601 entre 3 clientes. Revisá principales deudores."
     ));
 
   it("singular: 1 cliente", () =>
     expect(buildDebtFollowupSummaryBody(10000, 0, 1)).toBe(
-      "Total atrasado: UYU 10.000 entre 1 cliente. Revisá clientes críticos."
+      "Total atrasado: UYU 10.000 entre 1 cliente. Revisá principales deudores."
     ));
 
   it("con topClients → muestra clientes en líneas separadas con bullets", () => {

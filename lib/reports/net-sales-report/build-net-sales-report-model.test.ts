@@ -197,6 +197,7 @@ describe("buildNetSalesReportModel", () => {
           total_amount: 530.7,
           currency_code: "USD",
           invoice_number: "ZETA:2748",
+          category: "Zeta / saldos pendientes",
           zeta_metadata: { zeta_reconciliation: { source: "saldos" } },
         }),
       ],

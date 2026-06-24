@@ -61,6 +61,35 @@ describe("copilot-financial-monthly-trends", () => {
     expect(may?.collected).toBe(500);
   });
 
+  it("excluye recibos void/cancelled/anulados del cobrado", () => {
+    const result = buildFinancialMonthlyTrends({
+      asOfYmd: "2026-05-28",
+      invoices: [],
+      receipts: [
+        { receipt_date: "2026-05-10", amount: 100, currency_code: "UYU", is_active: true, status: "paid" },
+        { receipt_date: "2026-05-11", amount: 999, currency_code: "UYU", is_active: true, status: "void" },
+        { receipt_date: "2026-05-12", amount: 999, currency_code: "UYU", is_active: true, status: "cancelled" },
+        { receipt_date: "2026-05-13", amount: 999, currency_code: "UYU", is_active: true, status: "anulada" },
+      ],
+    });
+    const may = result.trends.find((t) => t.month === "2026-05" && t.currency === "UYU");
+    expect(may?.collected).toBe(100);
+  });
+
+  it("incluye recibos activos con status no-void (applied, pending, processing)", () => {
+    const result = buildFinancialMonthlyTrends({
+      asOfYmd: "2026-05-28",
+      invoices: [],
+      receipts: [
+        { receipt_date: "2026-05-10", amount: 100, currency_code: "USD", is_active: true, status: "applied" },
+        { receipt_date: "2026-05-11", amount: 200, currency_code: "USD", is_active: true, status: "pending" },
+        { receipt_date: "2026-05-12", amount: 300, currency_code: "USD", is_active: true, status: "processing" },
+      ],
+    });
+    const may = result.trends.find((t) => t.month === "2026-05" && t.currency === "USD");
+    expect(may?.collected).toBe(600);
+  });
+
   it("separa UYU/USD", () => {
     const result = buildFinancialMonthlyTrends({
       asOfYmd: "2026-05-28",
@@ -112,6 +141,81 @@ describe("copilot-financial-monthly-trends", () => {
     });
     expect(result.pendingIsCurrentSnapshotOnly).toBe(true);
     expect(result.trends[0]?.pending).toBe(0);
+  });
+
+  it("incluye facturas status=paid en netSales", () => {
+    const result = buildFinancialMonthlyTrends({
+      asOfYmd: "2026-05-28",
+      invoices: [
+        {
+          issue_date: "2026-05-10",
+          total_amount: 5000,
+          currency_code: "UYU",
+          is_active: true,
+          status: "paid",
+        },
+      ],
+      receipts: [],
+    });
+    const may = result.trends.find((t) => t.month === "2026-05" && t.currency === "UYU");
+    expect(may?.grossIssued).toBe(5000);
+    expect(may?.netIssued).toBe(5000);
+  });
+
+  it("excluye facturas void/cancelled/anulada del netSales", () => {
+    const result = buildFinancialMonthlyTrends({
+      asOfYmd: "2026-05-28",
+      invoices: [
+        {
+          issue_date: "2026-05-10",
+          total_amount: 100,
+          currency_code: "UYU",
+          is_active: true,
+          status: "void",
+        },
+        {
+          issue_date: "2026-05-11",
+          total_amount: 200,
+          currency_code: "UYU",
+          is_active: true,
+          status: "cancelled",
+        },
+        {
+          issue_date: "2026-05-12",
+          total_amount: 300,
+          currency_code: "UYU",
+          is_active: true,
+          status: "anulada",
+        },
+      ],
+      receipts: [],
+    });
+    const may = result.trends.find((t) => t.month === "2026-05" && t.currency === "UYU");
+    expect(may).toBeUndefined();
+  });
+
+  it("paid invoice + receipt del mes: netSales > 0 y collectionRate razonable", () => {
+    const result = buildFinancialMonthlyTrends({
+      asOfYmd: "2026-05-28",
+      invoices: [
+        {
+          issue_date: "2026-05-10",
+          total_amount: 10000,
+          currency_code: "UYU",
+          is_active: true,
+          status: "paid",
+        },
+      ],
+      receipts: [
+        { receipt_date: "2026-05-20", amount: 8000, currency_code: "UYU", is_active: true },
+      ],
+    });
+    const may = result.trends.find((t) => t.month === "2026-05" && t.currency === "UYU");
+    expect(may?.netIssued).toBeGreaterThan(0);
+    expect(may?.collected).toBe(8000);
+    const rate = may!.collected / may!.netIssued;
+    expect(rate).toBeGreaterThan(0);
+    expect(rate).toBeLessThanOrEqual(1.5);
   });
 });
 
@@ -269,6 +373,48 @@ describe("buildFinancialTrendDashboard", () => {
     expect(result.previousTotals).toBeNull();
     expect(result.deltas.netSalesPct).toBeNull();
   });
+
+  it("incluye facturas status=paid en netSales", () => {
+    const result = buildFinancialTrendDashboard({
+      asOfYmd: "2026-05-30",
+      period: "3m",
+      currency: "UYU",
+      invoices: [
+        {
+          issue_date: "2026-05-01",
+          total_amount: 10000,
+          currency_code: "UYU",
+          is_active: true,
+          status: "paid",
+        },
+      ],
+      receipts: [],
+    });
+    expect(result.totals.netSales).toBe(10000);
+  });
+
+  it("paid invoice + cobros: collectionRate no es null y es razonable", () => {
+    const result = buildFinancialTrendDashboard({
+      asOfYmd: "2026-05-30",
+      period: "3m",
+      currency: "UYU",
+      invoices: [
+        {
+          issue_date: "2026-05-01",
+          total_amount: 10000,
+          currency_code: "UYU",
+          is_active: true,
+          status: "paid",
+        },
+      ],
+      receipts: [rec("2026-05-20", 7500)],
+    });
+    expect(result.totals.netSales).toBeGreaterThan(0);
+    expect(result.totals.collections).toBe(7500);
+    expect(result.totals.collectionRate).not.toBeNull();
+    expect(result.totals.collectionRate!).toBeGreaterThan(0);
+    expect(result.totals.collectionRate!).toBeLessThanOrEqual(1.5);
+  });
 });
 
 // ─── FINANCIAL_TRENDS_MIN_DATE cutoff ─────────────────────────────────────────
@@ -365,5 +511,115 @@ describe("buildFinancialTrendDashboard — corte min date 2026-01", () => {
       receipts: [],
     });
     expect(result.totals.netSales).toBe(1000);
+  });
+});
+
+// ─── Shadow dedup: buildFinancialMonthlyTrends ────────────────────────────────
+
+describe("buildFinancialMonthlyTrends — shadow dedup", () => {
+  it("CCV1 + shadow mismo cliente/fecha/importe: solo cuenta CCV1", () => {
+    const result = buildFinancialMonthlyTrends({
+      asOfYmd: "2026-06-30",
+      invoices: [
+        {
+          id: "ccv1-1",
+          invoice_number: "ZETA:CCV1:100",
+          company_id: "c1",
+          issue_date: "2026-06-10",
+          total_amount: 5000,
+          currency_code: "UYU",
+          is_active: true,
+        },
+        {
+          id: "shadow-1",
+          invoice_number: "ZETA:2850",
+          category: "Zeta / saldos pendientes",
+          company_id: "c1",
+          issue_date: "2026-06-10",
+          total_amount: 5000,
+          currency_code: "UYU",
+          is_active: true,
+        },
+      ],
+      receipts: [],
+    });
+    const jun = result.trends.find((t) => t.month === "2026-06" && t.currency === "UYU");
+    expect(jun?.grossIssued).toBe(5000);
+  });
+
+  it("shadow sin par CCV1 (orphan): sigue contando", () => {
+    const result = buildFinancialMonthlyTrends({
+      asOfYmd: "2026-06-30",
+      invoices: [
+        {
+          id: "orphan-1",
+          invoice_number: "ZETA:9999",
+          company_id: "c1",
+          issue_date: "2026-06-10",
+          total_amount: 3000,
+          currency_code: "UYU",
+          is_active: true,
+        },
+      ],
+      receipts: [],
+    });
+    const jun = result.trends.find((t) => t.month === "2026-06" && t.currency === "UYU");
+    expect(jun?.grossIssued).toBe(3000);
+  });
+});
+
+// ─── Shadow dedup: buildFinancialTrendDashboard ────────────────────────────────
+
+describe("buildFinancialTrendDashboard — shadow dedup", () => {
+  it("CCV1 + shadow mismo cliente/fecha/importe: solo cuenta CCV1", () => {
+    const result = buildFinancialTrendDashboard({
+      asOfYmd: "2026-06-30",
+      period: "3m",
+      currency: "UYU",
+      invoices: [
+        {
+          id: "ccv1-2",
+          invoice_number: "ZETA:CCV1:200",
+          company_id: "c1",
+          issue_date: "2026-06-10",
+          total_amount: 5000,
+          currency_code: "UYU",
+          is_active: true,
+        },
+        {
+          id: "shadow-2",
+          invoice_number: "ZETA:2850",
+          category: "Zeta / saldos pendientes",
+          company_id: "c1",
+          issue_date: "2026-06-10",
+          total_amount: 5000,
+          currency_code: "UYU",
+          is_active: true,
+        },
+      ],
+      receipts: [],
+    });
+    expect(result.totals.netSales).toBe(5000);
+  });
+
+  it("shadow sin par CCV1 (orphan): sigue contando en dashboard", () => {
+    const result = buildFinancialTrendDashboard({
+      asOfYmd: "2026-06-30",
+      period: "3m",
+      currency: "UYU",
+      invoices: [
+        {
+          id: "orphan-2",
+          invoice_number: "ZETA:9999",
+          company_id: "c1",
+          issue_date: "2026-06-10",
+          total_amount: 3000,
+          currency_code: "UYU",
+          is_active: true,
+        },
+      ],
+      receipts: [],
+    });
+    expect(result.totals.netSales).toBe(3000);
   });
 });

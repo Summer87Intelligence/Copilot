@@ -545,7 +545,7 @@ function CopilotDatosPageContent() {
     } else {
       setCrudEntity("invoices");
       setCrudMode("create");
-      setCrudCreateTitle("Registrar cobro");
+      setCrudCreateTitle("Registrar factura");
       setPaymentPrefillRow(null);
     }
     setCrudOpen(true);
@@ -990,7 +990,7 @@ function CopilotDatosPageContent() {
       : isQuickAddForm && quickAddEntityParam === "payments"
         ? "Registrar pago"
         : isQuickAddForm && quickAddEntityParam === "invoices"
-          ? "Registrar cobro"
+          ? "Registrar factura"
           : "Datos del negocio";
 
   const pageDescription =
@@ -1655,7 +1655,7 @@ function CopilotDatosPageContent() {
                 {", "}
                 <Link href="/copilot/tesoreria" className="font-semibold text-[var(--copilot-ink)] hover:underline">Tesorería</Link>
                 {" o "}
-                <Link href="/copilot/acciones" className="font-semibold text-[var(--copilot-ink)] hover:underline">Acciones</Link>
+                <Link href="/copilot/cobranza" className="font-semibold text-[var(--copilot-ink)] hover:underline">Cobranza</Link>
                 {"."}
               </p>
             </CopilotCard>

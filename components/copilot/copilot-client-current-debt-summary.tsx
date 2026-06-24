@@ -19,7 +19,7 @@ const CURRENCY_SYMBOL: Record<CurrentDebtCurrencyCode, string> = {
 };
 
 /**
- * Bloque "Total pendiente del cliente" — siempre visible arriba del Estado de cuenta.
+ * Bloque "Deuda actual del cliente" — siempre visible arriba del Estado de cuenta.
  *
  * Se calcula en el caller con `buildClientCurrentDebtSummary` usando el dataset
  * ledger COMPLETO (sin filtros de período), de modo que este bloque NUNCA se
@@ -44,12 +44,12 @@ export function ClientCurrentDebtSummary({
 
   return (
     <section
-      aria-label="Total pendiente del cliente"
+      aria-label="Deuda actual del cliente"
       className="space-y-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-3"
     >
       <header className="space-y-0.5">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink)]">
-          Total pendiente del cliente
+          Deuda actual del cliente
         </h4>
         <p className="text-[11px] text-[var(--copilot-ink-muted)]">
           Calculado con el saldo pendiente informado por Zeta en cada factura
@@ -135,7 +135,7 @@ function CurrencyDebtCard({ block }: { block: CurrentDebtCurrencySummary }) {
       : "text-[var(--copilot-ink-muted)]";
   return (
     <article
-      aria-label={`Total pendiente en ${label}`}
+      aria-label={`Deuda actual en ${label}`}
       className="space-y-2 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2"
     >
       <div>

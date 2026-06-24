@@ -21,7 +21,7 @@ const MAX_Y = PAGE.height - PAGE.margin - FOOTER_RESERVE;
 const ROW_MIN_H = 22;
 const ROW_PAD_V = 6;
 
-// Cliente | Moneda | Total pendiente | Atrasado | Días de atraso | Contacto | Estado
+// Cliente | Moneda | Deuda actual | Atrasado | Días de atraso | Contacto | Estado
 const COL = {
   client: { w: 120 },
   currency: { w: 34 },
@@ -69,11 +69,11 @@ function summaryLinesForModel(model: DebtorsReportModel): string[] {
   const showUsd = model.currencyFilter !== "UYU";
 
   if (showUyu) {
-    lines.push(`Total pendiente UYU: ${formatMoney(model.totals.totalDebtUyu, "UYU")}`);
+    lines.push(`Deuda actual UYU: ${formatMoney(model.totals.totalDebtUyu, "UYU")}`);
     lines.push(`Atrasado UYU: ${formatMoney(model.totals.totalOverdueUyu, "UYU")}`);
   }
   if (showUsd) {
-    lines.push(`Total pendiente USD: ${formatMoney(model.totals.totalDebtUsd, "USD")}`);
+    lines.push(`Deuda actual USD: ${formatMoney(model.totals.totalDebtUsd, "USD")}`);
     lines.push(`Atrasado USD: ${formatMoney(model.totals.totalOverdueUsd, "USD")}`);
   }
   return lines;
@@ -214,7 +214,7 @@ function renderTableHeader(doc: PDFKit.PDFDocument, y: number): number {
   const headers: Array<[ColKey, string, "left" | "right" | "center"]> = [
     ["client", "Cliente", "left"],
     ["currency", "Mon.", "center"],
-    ["debt", "Total pendiente", "right"],
+    ["debt", "Deuda actual", "right"],
     ["overdue", "Atrasado", "right"],
     ["aging", "Días de atraso", "center"],
     ["contact", "Contacto", "left"],

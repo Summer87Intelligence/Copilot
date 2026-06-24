@@ -14,6 +14,7 @@ export const MODULE_KEYS = [
   "acciones",
   "clientes",
   "cartera",
+  "cobranza",
   "tesoreria",
   "finanzas",
   "reportes",

@@ -9,12 +9,12 @@ import type { HoyProjection30dBlock, HoyTreasuryAlert } from "@/lib/copilot-hoy-
 export function projectionCurrencySummaryLine(block: HoyProjection30dBlock): string | null {
   if (!block.hasConfiguredPayments) return null;
   if (block.safeCash30d < 0 && block.expectedCash30d >= 0) {
-    return "Sin cobrar deuda pendiente, la caja no alcanza; si se cobra, sí cubre pagos 30d.";
+    return "Sin cobrar deuda pendiente, la caja no alcanza; si se cobra, sí cubre pagos hasta fin de mes.";
   }
   if (block.safeCash30d < 0) {
-    return "Sin cobrar deuda pendiente, la caja no cubre los pagos programados 30d.";
+    return "Sin cobrar deuda pendiente, la caja no cubre los pagos programados hasta fin de mes.";
   }
-  return "La caja disponible cubre los pagos programados de los próximos 30 días.";
+  return "La caja disponible cubre los pagos programados hasta fin de mes.";
 }
 
 /** Máximo: aviso sin egresos + 1 alerta general de mora + 1 resumen global de cobertura. */
@@ -55,13 +55,13 @@ export function selectHoyProjectionUiAlerts(
       id: "treasury_safe_deficit_general",
       tone: "critical",
       message:
-        "Sin cobrar deuda pendiente, la caja no cubre los pagos programados de los próximos 30 días.",
+        "Sin cobrar deuda pendiente, la caja no cubre los pagos programados hasta fin de mes.",
     });
   } else if (allCover) {
     out.push({
       id: "treasury_safe_covers_general",
       tone: "healthy",
-      message: "La caja disponible cubre los pagos programados de los próximos 30 días.",
+      message: "La caja disponible cubre los pagos programados hasta fin de mes.",
     });
   }
 

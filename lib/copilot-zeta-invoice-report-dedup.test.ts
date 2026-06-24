@@ -26,6 +26,7 @@ describe("dedupeZetaShadowInvoicesForReporting", () => {
     const legacy = inv({
       id: "legacy",
       invoice_number: "ZETA:2748",
+      category: "Zeta / saldos pendientes",
       zeta_metadata: { zeta_reconciliation: { source: "saldos" } },
     });
 
@@ -38,6 +39,7 @@ describe("dedupeZetaShadowInvoicesForReporting", () => {
     const a = inv({
       id: "a",
       invoice_number: "ZETA:2748",
+      category: "Zeta / saldos pendientes",
       zeta_metadata: { zeta_comprobante_identity_v1: { registro_id: "2748" } },
     });
     const b = inv({

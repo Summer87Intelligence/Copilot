@@ -77,7 +77,7 @@ describe("auditHoyMoneyFieldSources", () => {
     expect(audit.violations).toHaveLength(0);
 
     const cashRow = audit.rows.find((r) => r.metric === "Caja disponible");
-    const recvRow = audit.rows.find((r) => r.metric === "Total pendiente");
+    const recvRow = audit.rows.find((r) => r.metric === "Deuda actual");
     expect(cashRow?.uyu).toBe(120_000);
     expect(recvRow?.uyu).toBe(78_443);
     expect(cashRow?.includesReceivablesInCash).toBe(false);
@@ -91,7 +91,7 @@ describe("auditHoyMoneyFieldSources", () => {
 
     const report = formatHoyMoneySourcesAuditReport(audit);
     expect(report).toContain("Caja disponible");
-    expect(report).toContain("Total pendiente");
+    expect(report).toContain("Deuda actual");
     expect(HOY_COLLECTION_SYNC_BEHAVIOR.length).toBeGreaterThan(0);
   });
 });

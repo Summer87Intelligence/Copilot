@@ -670,7 +670,7 @@ export function FinancialMonthlyTrends({
               </span>
               {showRateHint ? (
                 <span className="ml-auto text-[10px] tabular-nums text-[var(--copilot-ink-muted)]">
-                  Cobros/ventas:{" "}
+                  Cobros registrados / ventas:{" "}
                   <span className={collRate! > 1 ? "text-[var(--copilot-warning-text)]" : ""}>
                     {fmtPct(collRate!)}
                     {collRate! > 1 ? " — incluye deuda anterior" : ""}

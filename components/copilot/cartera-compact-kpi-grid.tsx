@@ -284,12 +284,13 @@ function buildExplain(
       const net = Math.max(0, (m?.issuedInPeriod ?? 0) - (m?.creditNoteAmount ?? 0));
       const ratio = net > 0 ? (m?.collectedInPeriod ?? 0) / net : 0;
       return {
-        title: "Cobranza efectiva",
+        title: FINANCIAL_UX_COPY.kpiRegisteredCollectionRateLabel,
         currency,
         periodLabel,
-        formula: "Cobrado en período / Ventas netas del período × 100%.",
+        formula: "Cobros registrados en el período / Ventas netas del período × 100%.",
         notes: [
-          "Solo cobros con recibo registrado.",
+          FINANCIAL_UX_COPY.kpiRegisteredCollectionRateSubtitle,
+          "Solo cobros con recibo registrado por fecha.",
           "No cuenta cobros aplicados a saldo anterior.",
           `Ratio actual: ${(ratio * 100).toLocaleString("es-UY", { maximumFractionDigits: 1 })}%`,
         ],
@@ -386,7 +387,7 @@ export function CarteraCompactKpiGrid({
       if (!m || (m.pendingAtCutoff ?? 0) <= 0) return;
       const detail = topInvoiceRowsForCurrency(report, currency);
       setExplain({
-        title: "Total pendiente",
+        title: "Deuda actual",
         currency,
         periodLabel: periodRangeLabel ?? null,
         formula:
@@ -511,7 +512,7 @@ export function CarteraCompactKpiGrid({
             )}
           </CompactCard>
           <CompactCard
-            title="Total pendiente"
+            title="Deuda actual"
             onClick={() => {
               const c = preferDominantCurrency((m) => m?.pendingAtCutoff ?? 0);
               if (c) openTotalPendienteExplain(c);
@@ -570,7 +571,7 @@ export function CarteraCompactKpiGrid({
             )}
           </CompactCard>
           <CompactCard
-            title="Cobranza efectiva"
+            title={FINANCIAL_UX_COPY.kpiRegisteredCollectionRateLabel}
             onClick={() => {
               const c = preferDominantCurrency((m) => m?.collectedInPeriod ?? 0);
               if (c) openExplain("cobranza_efectiva", c);
@@ -605,7 +606,7 @@ export function CarteraCompactKpiGrid({
     );
   }
 
-  // cobranza — detalle: clientes en riesgo + explorador (Cobranza efectiva
+  // cobranza — detalle: clientes en riesgo + explorador (Cobros registrados / ventas
   // ya aparece arriba en "Resumen financiero" — no duplicar).
   const staleCount =
     (report.staleSummary?.warning ?? 0) +
