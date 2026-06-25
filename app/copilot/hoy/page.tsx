@@ -259,6 +259,9 @@ export default function CopilotHoyPage() {
     void (async () => {
       await load();
     })();
+    return () => {
+      loadAbortRef.current?.abort();
+    };
   }, [load]);
 
   function applyPeriod(range: HoyPeriodRange) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import { copilotApiFetch } from "@/lib/copilot-fetch";
@@ -39,6 +39,12 @@ export function CobranzaPageClient() {
   const [ownershipMap, setOwnershipMap] = useState<Map<string, OwnershipEntry>>(new Map());
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
+  const isMountedRef = useRef(false);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -52,6 +58,8 @@ export function CobranzaPageClient() {
           copilotApiFetch("/api/copilot/cobranza/ownership"),
           copilotApiFetch("/api/copilot/me"),
         ]);
+
+      if (!isMountedRef.current) return;
 
       if (portfolioResult.status === "fulfilled") {
         setPortfolioRows(portfolioResult.value.rows);
@@ -99,9 +107,10 @@ export function CobranzaPageClient() {
         if (json?.appUser) setCurrentUser({ id: json.appUser.id, role: json.appUser.role });
       }
     } catch {
+      if (!isMountedRef.current) return;
       setError("Error al cargar los datos. Intentá actualizar la página.");
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   }, []);
 

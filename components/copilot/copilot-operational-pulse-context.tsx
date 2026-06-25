@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -49,6 +50,12 @@ export function CopilotOperationalPulseProvider({ children }: { children: ReactN
   >(undefined);
   const [fetchLoading, setFetchLoading] = useState(true);
 
+  const isMountedRef = useRef(false);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
   const refresh = useCallback(async () => {
     setFetchLoading(true);
     const today = new Date().toISOString().slice(0, 10);
@@ -84,6 +91,7 @@ export function CopilotOperationalPulseProvider({ children }: { children: ReactN
       if (reconRes.ok && reconJson?.ok && reconJson.report) {
         overdue = carteraAgingOverdueFromReport(reconJson.report.agingByCurrency);
       }
+      if (!isMountedRef.current) return;
       setCarteraAgingOverdue(overdue);
 
       let treasurySummaries: TreasuryOutflowSummary[] | undefined;
@@ -116,10 +124,11 @@ export function CopilotOperationalPulseProvider({ children }: { children: ReactN
         })
       );
     } catch {
+      if (!isMountedRef.current) return;
       setPulse(null);
       setCarteraAgingOverdue(undefined);
     } finally {
-      setFetchLoading(false);
+      if (isMountedRef.current) setFetchLoading(false);
     }
   }, []);
 

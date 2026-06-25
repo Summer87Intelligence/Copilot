@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -44,12 +45,20 @@ export function CopilotAlertsProvider({ children }: { children: ReactNode }) {
   const [fiscalError, setFiscalError] = useState<string | null>(null);
   const [predictiveError, setPredictiveError] = useState<string | null>(null);
 
+  const isMountedRef = useRef(false);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
   const refresh = useCallback(async () => {
     setLoading(true);
     const results = await Promise.allSettled([
       getFiscalAlerts(),
       getFinancialPredictiveAlerts(),
     ]);
+
+    if (!isMountedRef.current) return;
 
     if (results[0].status === "fulfilled") {
       setFiscalAlerts(results[0].value);

@@ -350,7 +350,7 @@ export function ClientesPortfolioTable({
     },
     {
       key: "salud",
-      header: "Riesgo",
+      header: "Salud",
       render: (row) => {
         const salud = deriveClientStatus(row);
         return (
@@ -364,7 +364,7 @@ export function ClientesPortfolioTable({
     },
     {
       key: "debt",
-      header: "Deuda actual",
+      header: "Total pendiente",
       render: (row) => <DebtCell row={row} />,
     },
     {
