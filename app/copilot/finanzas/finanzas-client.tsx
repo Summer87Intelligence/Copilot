@@ -78,6 +78,7 @@ import {
   getProtoTaxObligations,
   type ProtoTaxObligation,
 } from "@/lib/copilot-tax-data";
+import { getEndOfCurrentMonth } from "@/lib/copilot-operational-period";
 
 const FINANZAS_COBERTURA_QUERY =
   "/copilot/finanzasímode=cobertura&from=atencion-prioritaria";
@@ -527,12 +528,8 @@ function CopilotFinanzasPageContent() {
   );
 
   const [overdueList, upcomingTotal] = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const horizon = new Date(today);
-    horizon.setDate(horizon.getDate() + 30);
-    const t0 = today.toISOString().slice(0, 10);
-    const t1 = horizon.toISOString().slice(0, 10);
+    const t0 = new Date().toISOString().slice(0, 10);
+    const t1 = getEndOfCurrentMonth();
 
     const overdue = taxObligations.filter((o) => {
       if (o.status === "paid") return false;
@@ -1579,7 +1576,7 @@ function CopilotFinanzasPageContent() {
                     </div>
                     <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 p-4 shadow-sm">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        Estimado próx. 30 días
+                        Estimado hasta fin de mes
                       </p>
                       <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-ink)]">
                         {formatMoneyCompact(upcomingTotal)}

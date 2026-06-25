@@ -28,15 +28,15 @@ function makeCashPosition(
 
 function makeOutflowSummary(
   currency: "UYU" | "USD",
-  next30Days: number,
+  scheduledTotal: number,
   itemsCount = 1
 ): TreasuryOutflowSummary {
   return {
     currency,
-    totalScheduled: next30Days,
+    totalScheduled: scheduledTotal,
     overdue: 0,
     next7Days: 0,
-    next30Days,
+    scheduledTotal,
     paidInPeriod: 0,
     itemsCount,
     byCategory: [],

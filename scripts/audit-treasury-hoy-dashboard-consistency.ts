@@ -3,7 +3,7 @@
  *
  * Verifica que ambos consumen la misma fuente:
  *   GET /api/copilot/treasury/cash-position        → data.positions[].availableCash
- *   GET /api/copilot/treasury/scheduled-payments → data.summary[].next30Days
+ *   GET /api/copilot/treasury/scheduled-payments → data.summary[].scheduledTotal
  *
  * Usage: npm run audit:treasury-hoy-dashboard
  * Output: tmp/treasury-hoy-dashboard-consistency.csv
@@ -20,11 +20,11 @@ import { buildHoyCashPositionBlocks } from "../lib/copilot-hoy-treasury";
 import { treasuryCashPositionGet } from "../lib/treasury/services/treasury-cash-opening-balance-service";
 import { plannedCashObligationList } from "../lib/treasury/services/planned-cash-obligation-service";
 import {
-  addDaysYmd,
   filterPlannedObligationsForHoyScheduledList,
   loadInactiveRecurringTemplateIds,
   summarizeScheduledOutflows,
 } from "../lib/treasury/treasury-scheduled-payments";
+import { getEndOfCurrentMonth } from "../lib/copilot-operational-period";
 import {
   canonicalTreasuryRollup,
   parseTreasuryCashPositionJson,
@@ -89,8 +89,7 @@ async function resolveWorkspaceId(supabase: SupabaseClient): Promise<string> {
 async function loadScheduledSummary(
   supabase: SupabaseClient,
   tenantCompanyId: string,
-  asOfDate: string,
-  horizonDays: number
+  asOfDate: string
 ) {
   const listed = await plannedCashObligationList(
     supabase,
@@ -100,7 +99,7 @@ async function loadScheduledSummary(
   );
   if (!listed.ok) return [];
 
-  const horizonEnd = addDaysYmd(asOfDate, horizonDays);
+  const horizonEnd = getEndOfCurrentMonth();
   const inactiveRecurringTemplateIds = await loadInactiveRecurringTemplateIds(
     supabase,
     tenantCompanyId
@@ -157,7 +156,7 @@ async function main() {
 
   const [cashResult, outflowSummaries] = await Promise.all([
     treasuryCashPositionGet(db, workspaceId),
-    loadScheduledSummary(db, workspaceId, asOfDate, 30),
+    loadScheduledSummary(db, workspaceId, asOfDate),
   ]);
 
   if (!cashResult.ok) {

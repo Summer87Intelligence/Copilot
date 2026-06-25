@@ -132,13 +132,13 @@ function makeCash(currency: "UYU" | "USD", available: number): CashPositionByCur
   };
 }
 
-function makeOutflow(currency: "UYU" | "USD", next30Days: number): TreasuryOutflowSummary {
+function makeOutflow(currency: "UYU" | "USD", scheduledTotal: number): TreasuryOutflowSummary {
   return {
     currency,
-    totalScheduled: next30Days,
+    totalScheduled: scheduledTotal,
     overdue: 0,
     next7Days: 0,
-    next30Days,
+    scheduledTotal,
     paidInPeriod: 0,
     itemsCount: 1,
     byCategory: [],
@@ -281,7 +281,7 @@ describe("extractDashboardCurrencyData", () => {
     expect(uyu?.deudaVencida).toBe(900);
   });
 
-  it("caja después de pagos = disponible − outflows.next30Days", () => {
+  it("caja después de pagos = disponible − outflows.scheduledTotal", () => {
     const out = extractDashboardCurrencyData({
       periodReport: makeReport({ issuedUYU: 100 }),
       outstandingReport: null,

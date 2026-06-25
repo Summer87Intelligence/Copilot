@@ -87,7 +87,9 @@ export function CobranzaKpiGrid({
     : undefined;
   const cobrosUyuLabel =
     effectivenessKpis.cobrosUyu > 0
-      ? formatMoneyCurrency(effectivenessKpis.cobrosUyu, "UYU")
+      ? mode === "usd_equivalent"
+        ? formatUsdEquivalent(convertToUsdEquivalent({ uyu: effectivenessKpis.cobrosUyu, usd: 0 }, fxRate))
+        : formatMoneyCurrency(effectivenessKpis.cobrosUyu, "UYU")
       : "—";
   const cobrosUsdLabel =
     effectivenessKpis.cobrosUsd > 0

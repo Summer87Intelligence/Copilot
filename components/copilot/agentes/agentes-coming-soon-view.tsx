@@ -60,9 +60,9 @@ export function AgentesComingSoonView() {
       </div>
 
       <CopilotPremiumEmptyState
-        title="Todavía no hay lecturas de agentes en esta pantalla"
-        why="La funcionalidad está en preparación. Hoy y Acciones ya muestran prioridades con los datos actuales."
-        whatToDo="Usá Hoy para la operación diaria y Acciones para tareas concretas mientras activamos los agentes."
+        title="Módulo en preparación"
+        why="Próxima etapa: agentes IA para alertas, resúmenes automáticos y recomendaciones coordinadas."
+        whatToDo="Usá Hoy para la operación diaria y Cobranza para gestionar clientes mientras activamos los agentes."
         whatHappens="Cuando estén disponibles, vas a ver resúmenes coordinados acá sin cambiar tus procesos actuales."
         cta={{ label: "Ir a Hoy", href: "/copilot/hoy" }}
       />

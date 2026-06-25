@@ -31,23 +31,23 @@ describe("treasury-api-parse", () => {
       ok: true,
       data: {
         summary: [
-          { currency: "UYU", next30Days: 50_000, itemsCount: 2 },
-          { currency: "USD", next30Days: 1_200, itemsCount: 1 },
+          { currency: "UYU", scheduledTotal: 50_000, itemsCount: 2 },
+          { currency: "USD", scheduledTotal: 1_200, itemsCount: 1 },
         ],
       },
     };
     expect(parseTreasuryScheduledSummaryJson(json)).toHaveLength(2);
   });
 
-  it("canonicalTreasuryRollup = availableCash − next30Days", () => {
+  it("canonicalTreasuryRollup = availableCash − scheduledTotal", () => {
     const rollup = canonicalTreasuryRollup(
       [
         { currency: "UYU", availableCash: 402_646 } as never,
         { currency: "USD", availableCash: 14_464 } as never,
       ],
       [
-        { currency: "UYU", next30Days: 100_000 } as never,
-        { currency: "USD", next30Days: 2_000 } as never,
+        { currency: "UYU", scheduledTotal: 100_000 } as never,
+        { currency: "USD", scheduledTotal: 2_000 } as never,
       ]
     );
     expect(rollup.availableCash.UYU).toBe(402_646);

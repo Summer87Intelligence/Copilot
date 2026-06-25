@@ -68,7 +68,7 @@ export const METRIC_ALIASES: Record<MetricId, readonly string[]> = {
   cobrado_periodo: ["Cobrado del período"],
   cobrado_aplicado: ["Cobrado aplicado"],
   caja_disponible: ["Caja disponible", "Dinero disponible"],
-  caja_despues_pagos: ["Caja proyectada", "Caja después de pagos", "Cobertura 30 días"],
+  caja_despues_pagos: ["Caja proyectada", "Caja después de pagos", "Cobertura fin de mes"],
   estado_global: ["Estado del sistema", "Estado", "Salud del negocio"],
 };
 
@@ -100,7 +100,7 @@ export type MetricCurrency = "UYU" | "USD" | "per_currency" | "combined_no_conve
 export type MetricTemporalScope =
   | "current" // valor al momento actual, sin rango
   | "period" // depende del rango Desde/Hasta configurado
-  | "rolling_30d"; // próximos 30 días desde hoy
+  | "current_month_end"; // desde hoy hasta el último día del mes actual
 
 export type MetricSourceModule =
   | "portfolio" // lib/copilot-clients-portfolio.ts + zeta dedup
@@ -324,12 +324,12 @@ export const CANONICAL_METRICS: Record<MetricId, CanonicalMetricDef> = {
     id: "caja_despues_pagos",
     label: METRIC_LABEL.caja_despues_pagos,
     definition:
-      "Caja disponible menos pagos programados en los próximos 30 días.",
+      "Caja disponible menos pagos programados hasta fin del mes actual.",
     formula:
-      "safeCash30d = CashPositionByCurrency.availableCash - TreasuryOutflowSummary.next30Days (por moneda)",
+      "safeCash = CashPositionByCurrency.availableCash - TreasuryOutflowSummary.scheduledTotal (por moneda)",
     source: "treasury",
     currency: "per_currency",
-    scope: "rolling_30d",
+    scope: "current_month_end",
     consumers: [
       "hoy/hoy-money-cards (Caja después de pagos — card inferior derecha)",
       "hoy/hoy-projection-30d-section (bloque proyección)",

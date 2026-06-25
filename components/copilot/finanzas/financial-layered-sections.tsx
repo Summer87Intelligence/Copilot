@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
@@ -668,7 +668,7 @@ function ProjectionCurrencyMiniBlock({
   return (
     <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 p-3">
       <p className="text-xs font-semibold text-[var(--copilot-ink)]">
-        Caja proyectada 30 días — {block.currency}
+        Caja proyectada al cierre del mes — {block.currency}
       </p>
       <div className="mt-2 space-y-1.5 text-xs">
         <div className="flex items-baseline justify-between gap-2">
@@ -721,14 +721,14 @@ function ProjectionCurrencyMiniBlock({
         </div>
         {block.hasOutflows ? (
           <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[var(--copilot-ink-muted)]">Pagos programados 30d</span>
+            <span className="text-[var(--copilot-ink-muted)]">Pagos programados (mes)</span>
             <span className="font-semibold tabular-nums text-[var(--copilot-danger-text-strong)]">
               −{fmtMoney(block.upcomingOutflows, block.currency)}
             </span>
           </div>
         ) : null}
         <div className="flex items-baseline justify-between gap-2 border-t border-[var(--copilot-border)]/40 pt-1">
-          <span className="text-[var(--copilot-ink-muted)]">Variación neta 30d</span>
+          <span className="text-[var(--copilot-ink-muted)]">Variación neta (mes)</span>
           <span
             className={`font-semibold tabular-nums ${
               variation < 0
@@ -806,7 +806,7 @@ export function FinancialProjectionCompact({
       {!embedded ? (
         <>
           <CopilotSectionTitle
-            title="Próximos 30 días"
+            title="Hasta fin de mes"
             subtitle={FINANCIAL_UX_COPY.projection30Subtitle}
           />
         </>

@@ -154,7 +154,7 @@ function breakdownFromObligations(
     }
   }
 
-  const scheduledOutflows = roundMoney(summary?.next30Days ?? recurringTotal + manualTotal);
+  const scheduledOutflows = roundMoney(summary?.scheduledTotal ?? recurringTotal + manualTotal);
   return {
     scheduledOutflows,
     recurringGeneratedOutflows: roundMoney(recurringTotal),
@@ -208,9 +208,9 @@ export function buildTreasuryProjectionHorizon(input: {
             horizonEndDate
           )
         : {
-            scheduledOutflows: roundMoney(summary?.next30Days ?? 0),
+            scheduledOutflows: roundMoney(summary?.scheduledTotal ?? 0),
             recurringGeneratedOutflows: 0,
-            manualScheduledOutflows: roundMoney(summary?.next30Days ?? 0),
+            manualScheduledOutflows: roundMoney(summary?.scheduledTotal ?? 0),
             hasConfigured: (summary?.itemsCount ?? 0) > 0,
             includedItems: {
               obligationIds: [] as string[],

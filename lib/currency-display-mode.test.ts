@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   DEFAULT_CURRENCY_DISPLAY_MODE,
@@ -167,6 +167,52 @@ describe("Treasury USD equivalent consolidation", () => {
     const note = "Detalle en moneda original. Resumen convertido a USD estimado.";
     expect(note).toContain("USD estimado");
     expect(note).not.toContain("USD real");
+  });
+});
+
+describe("readDisplayFxRateFromStorage — localStorage migration", () => {
+  const GLOBAL_KEY = "copilot.currencyDisplayFxRate";
+  const LEGACY_KEY = "copilot.dashboard.fxRateUyuPerUsd";
+
+  let store: Record<string, string>;
+
+  beforeEach(() => {
+    store = {};
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (k: string) => store[k] ?? null,
+        setItem: (k: string, v: string) => { store[k] = v; },
+        removeItem: (k: string) => { delete store[k]; },
+      },
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("reads from global key when present", () => {
+    store[GLOBAL_KEY] = "45";
+    expect(readDisplayFxRateFromStorage()).toBe(45);
+  });
+
+  it("migrates legacy key to global key when global is absent", () => {
+    store[LEGACY_KEY] = "43";
+    const result = readDisplayFxRateFromStorage();
+    expect(result).toBe(43);
+    expect(store[GLOBAL_KEY]).toBe("43");
+    expect(store[LEGACY_KEY]).toBeUndefined();
+  });
+
+  it("global key wins over legacy key when both present", () => {
+    store[GLOBAL_KEY] = "45";
+    store[LEGACY_KEY] = "43";
+    expect(readDisplayFxRateFromStorage()).toBe(45);
+    expect(store[LEGACY_KEY]).toBe("43"); // not deleted when global key already existed
+  });
+
+  it("returns default when neither key exists", () => {
+    expect(readDisplayFxRateFromStorage()).toBe(DEFAULT_DISPLAY_FX_RATE_UYU_PER_USD);
   });
 });
 

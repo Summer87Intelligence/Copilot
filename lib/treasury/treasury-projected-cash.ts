@@ -69,9 +69,9 @@ export function buildTreasuryProjectedCashSnapshot(p: {
 
   for (const summary of summaries) {
     overdueTotals[summary.currency] = summary.overdue;
-    const nonOverdueUpcoming = Math.max(0, summary.next30Days - summary.overdue);
+    const nonOverdueUpcoming = Math.max(0, summary.scheduledTotal - summary.overdue);
     upcoming30Totals[summary.currency] = nonOverdueUpcoming;
-    committedTotals[summary.currency] = summary.next30Days;
+    committedTotals[summary.currency] = summary.scheduledTotal;
   }
 
   for (const row of horizon.byCurrency) {

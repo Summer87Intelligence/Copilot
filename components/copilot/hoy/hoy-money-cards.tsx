@@ -910,8 +910,8 @@ export function HoyMoneyCards({
         cardId="payments"
         variant="payments"
         title={HOY_COCKPIT.payments}
-        tooltip="Pagos programados para los próximos 30 días."
-        subtitle={payments.amounts.length > 0 ? "Pagos cargados para los próximos 30 días." : undefined}
+        tooltip="Pagos programados hasta fin del mes actual."
+        subtitle={payments.amounts.length > 0 ? "Pagos cargados hasta fin del mes actual." : undefined}
         block={payments}
         treasuryScheduledPayments={treasuryScheduledPayments}
         today={today}

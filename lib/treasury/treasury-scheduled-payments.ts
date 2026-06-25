@@ -94,7 +94,8 @@ export type TreasuryOutflowSummary = {
   totalScheduled: number;
   overdue: number;
   next7Days: number;
-  next30Days: number;
+  /** Pagos pendientes hasta fin del mes actual (horizonte del sistema). */
+  scheduledTotal: number;
   paidInPeriod: number;
   itemsCount: number;
   byCategory: Array<{
@@ -280,7 +281,7 @@ export function summarizeScheduledOutflows(
     let totalScheduled = 0;
     let overdue = 0;
     let next7Days = 0;
-    let next30Days = 0;
+    let scheduledTotal = 0;
     let paidInPeriod = 0;
     let itemsCount = 0;
     const byCat = new Map<ScheduledPaymentCategory, { amount: number; count: number }>();
@@ -310,7 +311,7 @@ export function summarizeScheduledOutflows(
 
       itemsCount += 1;
       totalScheduled += amt;
-      next30Days += amt;
+      scheduledTotal += amt;
 
       const cat = obligationTypeToScheduledCategory(row.obligationType);
       const bucket = byCat.get(cat) ?? { amount: 0, count: 0 };
@@ -333,7 +334,7 @@ export function summarizeScheduledOutflows(
       totalScheduled: roundMoney(totalScheduled),
       overdue: roundMoney(overdue),
       next7Days: roundMoney(next7Days),
-      next30Days: roundMoney(next30Days),
+      scheduledTotal: roundMoney(scheduledTotal),
       paidInPeriod: roundMoney(paidInPeriod),
       itemsCount,
       byCategory: [...byCat.entries()]
@@ -357,8 +358,8 @@ export function scheduledOutflowsThroughDate(
 ): Record<TreasuryCurrencyCode, number> {
   const summaries = summarizeScheduledOutflows(payments, { asOfDate, horizonEndDate });
   return {
-    UYU: summaries.find((s) => s.currency === "UYU")?.next30Days ?? 0,
-    USD: summaries.find((s) => s.currency === "USD")?.next30Days ?? 0,
+    UYU: summaries.find((s) => s.currency === "UYU")?.scheduledTotal ?? 0,
+    USD: summaries.find((s) => s.currency === "USD")?.scheduledTotal ?? 0,
   };
 }
 

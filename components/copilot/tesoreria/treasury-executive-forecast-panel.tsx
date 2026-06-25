@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -125,7 +125,7 @@ function UsdConsolidatedPositionBlock({
           <dd className="tabular-nums font-medium text-[var(--copilot-ink)]">{formatUsdEquivalent(cash)}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-[var(--copilot-ink-muted)]">Compromisos 30 días</dt>
+          <dt className="text-[var(--copilot-ink-muted)]">Compromisos del mes</dt>
           <dd className="tabular-nums font-medium text-[var(--copilot-danger-text)]">
             {committed > 0 ? `− ${formatUsdEquivalent(committed)}` : formatUsdEquivalent(0)}
           </dd>
@@ -173,7 +173,7 @@ function UsdConsolidatedCoverageBlock({
           </div>
         ) : null}
         <div className="flex justify-between gap-2">
-          <dt className="text-[var(--copilot-ink-muted)]">Compromisos 30 días</dt>
+          <dt className="text-[var(--copilot-ink-muted)]">Compromisos del mes</dt>
           <dd className="tabular-nums text-[var(--copilot-danger-text)]">
             {committed > 0 ? `− ${formatUsdEquivalent(committed)}` : formatUsdEquivalent(0)}
           </dd>
@@ -267,7 +267,7 @@ export function TreasuryExecutiveForecastPanel({
       {/* ── FASE 1+4: Semáforo ejecutivo por moneda ── */}
       <section>
         <CopilotSectionTitle
-          title="Posición de caja — 30 días"
+          title="Posición de caja — fin de mes"
           subtitle="Caja disponible menos compromisos programados."
         />
         {isUsd ? (
@@ -323,7 +323,7 @@ export function TreasuryExecutiveForecastPanel({
                       </dd>
                     </div>
                     <div className="flex justify-between gap-2">
-                      <dt className="text-[var(--copilot-ink-muted)]">Compromisos 30 días</dt>
+                      <dt className="text-[var(--copilot-ink-muted)]">Compromisos del mes</dt>
                       <dd className="tabular-nums font-medium text-[var(--copilot-danger-text)]">
                         {committed > 0 ? `− ${fmt(committed, cur)}` : fmt(0, cur)}
                       </dd>
@@ -430,7 +430,7 @@ export function TreasuryExecutiveForecastPanel({
       <section>
         <CopilotSectionTitle
           title="Saldo proyectado"
-          subtitle="Caja disponible + cobros previstos − compromisos 30 días."
+          subtitle="Caja disponible + cobros previstos − compromisos del mes."
         />
         {isUsd ? (
           <UsdConsolidatedCoverageBlock
@@ -469,7 +469,7 @@ export function TreasuryExecutiveForecastPanel({
                       </div>
                     ) : null}
                     <div className="flex justify-between gap-2">
-                      <dt className="text-[var(--copilot-ink-muted)]">Compromisos 30 días</dt>
+                      <dt className="text-[var(--copilot-ink-muted)]">Compromisos del mes</dt>
                       <dd className="tabular-nums text-[var(--copilot-danger-text)]">
                         {committed > 0 ? `− ${fmt(committed, cur)}` : fmt(0, cur)}
                       </dd>

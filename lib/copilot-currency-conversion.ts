@@ -8,6 +8,10 @@ import {
   formatExchangeRateLabel,
   roundUsd,
 } from "@/lib/finance/currency-conversion";
+import {
+  readDisplayFxRateFromStorage,
+  writeDisplayFxRateToStorage,
+} from "@/lib/currency-display-mode";
 
 export const DASHBOARD_FX_RATE_STORAGE_KEY = "copilot.dashboard.fxRateUyuPerUsd";
 export const DEFAULT_DASHBOARD_FX_RATE_UYU_PER_USD = 40;
@@ -36,27 +40,16 @@ export function consolidateToUsdEquivalent(
   return roundUsd(consolidateToUsd(uyuAmount, usdAmount, uyuPerUsd));
 }
 
+/** @deprecated Use readDisplayFxRateFromStorage from currency-display-mode instead. */
 export function readDashboardFxRateFromStorage(): number {
-  if (typeof window === "undefined") return DEFAULT_DASHBOARD_FX_RATE_UYU_PER_USD;
-  try {
-    const raw = window.localStorage.getItem(DASHBOARD_FX_RATE_STORAGE_KEY);
-    if (raw == null) return DEFAULT_DASHBOARD_FX_RATE_UYU_PER_USD;
-    return parseDashboardFxRate(raw) ?? DEFAULT_DASHBOARD_FX_RATE_UYU_PER_USD;
-  } catch {
-    return DEFAULT_DASHBOARD_FX_RATE_UYU_PER_USD;
-  }
+  return readDisplayFxRateFromStorage();
 }
 
+/** @deprecated Use writeDisplayFxRateToStorage from currency-display-mode instead. */
 export function writeDashboardFxRateToStorage(rate: number): boolean {
-  if (typeof window === "undefined") return false;
   const parsed = parseDashboardFxRate(rate);
   if (parsed == null) return false;
-  try {
-    window.localStorage.setItem(DASHBOARD_FX_RATE_STORAGE_KEY, String(parsed));
-    return true;
-  } catch {
-    return false;
-  }
+  return writeDisplayFxRateToStorage(parsed);
 }
 
 export function formatDashboardFxRateCompact(rate: number): string {

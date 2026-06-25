@@ -885,7 +885,7 @@ export function TreasuryObligationsPanel({
       {!hideSummary ? (
         <>
           <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-            Resumen próximos 30 días
+            Resumen hasta fin de mes
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             {summaries.map((s) => (
@@ -898,9 +898,9 @@ export function TreasuryObligationsPanel({
                 </p>
                 <dl className="mt-2 space-y-1 text-sm">
                   <div className="flex justify-between gap-2">
-                    <dt className="text-[var(--copilot-ink-muted)]">Egresos próx. 30 días</dt>
+                    <dt className="text-[var(--copilot-ink-muted)]">Egresos hasta fin de mes</dt>
                     <dd className="font-semibold tabular-nums text-[var(--copilot-ink)]">
-                      {formatTreasuryMoney(s.next30Days, s.currency)}
+                      {formatTreasuryMoney(s.scheduledTotal, s.currency)}
                     </dd>
                   </div>
                   <div className="flex justify-between gap-2">

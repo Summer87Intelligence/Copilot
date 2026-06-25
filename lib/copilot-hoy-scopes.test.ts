@@ -135,7 +135,7 @@ describe("copilot-hoy-scopes — aislamiento período vs actual", () => {
         totalScheduled: 40_000,
         overdue: 0,
         next7Days: 10_000,
-        next30Days: 40_000,
+        scheduledTotal: 40_000,
         paidInPeriod: 0,
         itemsCount: 1,
         byCategory: [],

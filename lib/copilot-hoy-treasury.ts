@@ -255,7 +255,7 @@ export function buildTreasuryBlockExtensionAmounts(p: {
   coverageStatus: CoverageStatus;
   hasConfiguredOutflows: boolean;
 } {
-  const scheduled = p.summary?.next30Days ?? 0;
+  const scheduled = p.summary?.scheduledTotal ?? 0;
   const hasConfigured = (p.summary?.itemsCount ?? 0) > 0;
   const availableCash = p.availableCash ?? p.currentCash ?? 0;
 

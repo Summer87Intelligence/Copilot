@@ -126,7 +126,7 @@ export function deriveOperationalSemaphore(input: {
     operativeItems.push("Deuda atrasada mayor a 30 días");
   }
   if (upcomingPayments) {
-    operativeItems.push("Pagos programados en los próximos 30 días");
+    operativeItems.push("Pagos programados hasta fin de mes");
   }
   if (dataPending) {
     operativeItems.push("Datos secundarios pendientes de actualización");

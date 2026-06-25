@@ -103,7 +103,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
           id: `low-cash-${cur}`,
           severity: "critical",
           title: `Caja insuficiente en ${cur}`,
-          description: `La caja disponible no cubre los compromisos de 30 días. Diferencia: ${fmt(after, cur)}.`,
+          description: `La caja disponible no cubre los compromisos del mes actual. Diferencia: ${fmt(after, cur)}.`,
         });
       }
     }
@@ -200,7 +200,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
             [
               { label: "Atrasados", totals: overdueTotals, textColor: "text-[var(--copilot-danger-text)]" },
               { label: "Próximos 7 días", totals: upcoming7Totals, textColor: "text-[var(--copilot-warning-text)]" },
-              { label: "Próximos 30 días", totals: upcoming30Totals, textColor: "text-[var(--copilot-ink)]" },
+              { label: "Hasta fin de mes", totals: upcoming30Totals, textColor: "text-[var(--copilot-ink)]" },
             ] as const
           ).map(({ label, totals, textColor }) => (
             <div
@@ -227,7 +227,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
       <section>
         <CopilotSectionTitle
           title="Caja proyectada"
-          subtitle="Disponible menos compromisos de los próximos 30 días."
+          subtitle="Disponible menos compromisos del mes actual."
         />
         <p className="mb-3 text-xs text-[var(--copilot-ink-muted)]">
           Incluye ingresos y egresos ya cargados en caja, pagos programados y pagos generados por recurrentes.

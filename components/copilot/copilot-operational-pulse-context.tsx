@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -29,6 +30,7 @@ import { toRutasGateMeta } from "@/lib/copilot-rutas-gate";
 import type { CarteraCurrencyTotals } from "@/lib/copilot-cartera-aging-totals";
 import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
 import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
+import { getEndOfCurrentMonth } from "@/lib/copilot-operational-period";
 
 type CopilotOperationalPulseContextValue = {
   pulse: TodayBusinessPulse | null;
@@ -48,6 +50,12 @@ export function CopilotOperationalPulseProvider({ children }: { children: ReactN
   >(undefined);
   const [fetchLoading, setFetchLoading] = useState(true);
 
+  const isMountedRef = useRef(false);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
   const refresh = useCallback(async () => {
     setFetchLoading(true);
     const today = new Date().toISOString().slice(0, 10);
@@ -56,7 +64,7 @@ export function CopilotOperationalPulseProvider({ children }: { children: ReactN
         copilotApiFetch("/api/copilot/rutas-hub"),
         copilotApiFetch("/api/copilot/financial-reconciliation?mode=all_outstanding"),
         copilotApiFetch(
-          "/api/copilot/treasury/scheduled-payments?include_summary=1&horizon_days=30"
+          `/api/copilot/treasury/scheduled-payments?include_summary=1&horizon_end_date=${getEndOfCurrentMonth()}`
         ),
         copilotApiFetch("/api/copilot/treasury/cash-position"),
       ]);
@@ -83,6 +91,7 @@ export function CopilotOperationalPulseProvider({ children }: { children: ReactN
       if (reconRes.ok && reconJson?.ok && reconJson.report) {
         overdue = carteraAgingOverdueFromReport(reconJson.report.agingByCurrency);
       }
+      if (!isMountedRef.current) return;
       setCarteraAgingOverdue(overdue);
 
       let treasurySummaries: TreasuryOutflowSummary[] | undefined;
@@ -115,10 +124,11 @@ export function CopilotOperationalPulseProvider({ children }: { children: ReactN
         })
       );
     } catch {
+      if (!isMountedRef.current) return;
       setPulse(null);
       setCarteraAgingOverdue(undefined);
     } finally {
-      setFetchLoading(false);
+      if (isMountedRef.current) setFetchLoading(false);
     }
   }, []);
 

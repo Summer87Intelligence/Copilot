@@ -36,7 +36,7 @@ export function parseTreasuryScheduledItemsJson(json: unknown): TreasurySchedule
 
 export type CanonicalTreasuryRollup = {
   availableCash: { UYU: number; USD: number };
-  next30Days: { UYU: number; USD: number };
+  scheduledTotal: { UYU: number; USD: number };
   safeCash30d: { UYU: number; USD: number };
 };
 
@@ -50,23 +50,23 @@ export function canonicalTreasuryRollup(
   outflowSummaries: readonly TreasuryOutflowSummary[]
 ): CanonicalTreasuryRollup {
   const availableCash = { UYU: 0, USD: 0 };
-  const next30Days = { UYU: 0, USD: 0 };
+  const scheduledTotal = { UYU: 0, USD: 0 };
 
   for (const p of positions) {
     if (p.currency === "UYU") availableCash.UYU = round2(p.availableCash);
     if (p.currency === "USD") availableCash.USD = round2(p.availableCash);
   }
   for (const s of outflowSummaries) {
-    if (s.currency === "UYU") next30Days.UYU = round2(s.next30Days);
-    if (s.currency === "USD") next30Days.USD = round2(s.next30Days);
+    if (s.currency === "UYU") scheduledTotal.UYU = round2(s.scheduledTotal);
+    if (s.currency === "USD") scheduledTotal.USD = round2(s.scheduledTotal);
   }
 
   return {
     availableCash,
-    next30Days,
+    scheduledTotal,
     safeCash30d: {
-      UYU: round2(availableCash.UYU - next30Days.UYU),
-      USD: round2(availableCash.USD - next30Days.USD),
+      UYU: round2(availableCash.UYU - scheduledTotal.UYU),
+      USD: round2(availableCash.USD - scheduledTotal.USD),
     },
   };
 }
