@@ -885,7 +885,7 @@ export function TreasuryObligationsPanel({
       {!hideSummary ? (
         <>
           <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-            Resumen próximos 30 días
+            Resumen hasta fin de mes
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             {summaries.map((s) => (

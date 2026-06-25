@@ -1596,8 +1596,8 @@ export default function DashboardPageClient() {
               <KpiCard
                 title={METRIC_LABEL.caja_despues_pagos}
                 tooltip={noPagos
-                  ? "Sin pagos programados en los próximos 30 días. La proyección coincide con la caja disponible."
-                  : "Caja disponible menos pagos programados en los próximos 30 días."}
+                  ? "Sin pagos programados para el mes actual. La proyección coincide con la caja disponible."
+                  : "Caja disponible menos pagos programados hasta fin del mes actual."}
                 uyuValue={consUyu(uyu?.cajaDespPagos ?? 0)}
                 usdValue={consUsd(uyu?.cajaDespPagos ?? 0, usd?.cajaDespPagos ?? 0)}
                 selectedCurrency={effectiveCurrency}
@@ -2052,8 +2052,8 @@ export default function DashboardPageClient() {
             </ChartCard>
 
             <ChartCard
-              title="Caja proyectada 30 días"
-              subtitle={`${currencyModeLabel} · Caja disponible hoy y proyección a 30 días`}
+              title="Caja proyectada al cierre del mes"
+              subtitle={`${currencyModeLabel} · Caja disponible hoy y proyección al cierre del mes`}
             >
               {loading ? (
                 <Skeleton className="h-20" />

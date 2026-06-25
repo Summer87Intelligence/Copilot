@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   Activity,
@@ -144,7 +144,7 @@ const SECTION_NAV: Record<string, Array<{ href: string; label: string; ghost?: b
 
 const MODULE_ICON_MAP: Record<string, React.ReactNode> = {
   Hoy: <ListTodo className="h-5 w-5" />,
-  Acciones: <CheckSquare className="h-5 w-5" />,
+  Cobranza: <CheckSquare className="h-5 w-5" />,
   Alertas: <Bell className="h-5 w-5" />,
   Clientes: <Users className="h-5 w-5" />,
   Cartera: <Landmark className="h-5 w-5" />,
@@ -262,33 +262,31 @@ export default function ManualPage() {
   const { modulePermissions } = useCopilotPermissions();
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
 
-  const sections = useMemo<Section[]>(() => {
-    return getCopilotManualWebSections().map((s) => {
-      const nav = SECTION_NAV[s.id];
-      return {
-        id: s.id,
-        icon: SECTION_ICONS[s.id] ?? <Info className="h-4 w-4" aria-hidden />,
-        title: s.title,
-        content: (
-          <>
-            <ManualBlockRenderer blocks={s.blocks} />
-            {nav?.length ? (
-              <div className="flex flex-wrap gap-3">
-                {nav.map((link) => (
-                  <NavLink
-                    key={link.href + link.label}
-                    href={link.href}
-                    label={link.label}
-                    ghost={link.ghost}
-                  />
-                ))}
-              </div>
-            ) : null}
-          </>
-        ),
-      };
-    });
-  }, []);
+  const sections: Section[] = getCopilotManualWebSections().map((s) => {
+    const nav = SECTION_NAV[s.id];
+    return {
+      id: s.id,
+      icon: SECTION_ICONS[s.id] ?? <Info className="h-4 w-4" aria-hidden />,
+      title: s.title,
+      content: (
+        <>
+          <ManualBlockRenderer blocks={s.blocks} />
+          {nav?.length ? (
+            <div className="flex flex-wrap gap-3">
+              {nav.map((link) => (
+                <NavLink
+                  key={link.href + link.label}
+                  href={link.href}
+                  label={link.label}
+                  ghost={link.ghost}
+                />
+              ))}
+            </div>
+          ) : null}
+        </>
+      ),
+    };
+  });
 
   const dailyFlow =
     COPILOT_MANUAL_DAILY_FLOW.length > 0

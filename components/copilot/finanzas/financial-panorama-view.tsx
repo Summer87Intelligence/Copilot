@@ -59,7 +59,7 @@ const ESTADO_ACTUAL_METRICS: {
   { label: "Caja disponible", tooltip: "Dinero disponible actualmente considerando saldos de tesorería.", getValue: (s) => s.availableCash },
   { label: "Deuda actual", tooltip: "Facturas pendientes de cobro informadas por Zeta.", getValue: (s) => s.pendingReceivables },
   { label: "Deuda vencida", tooltip: "Facturas vencidas pendientes de cobro al día de hoy.", getValue: (s) => s.overdueReceivables },
-  { label: "Compromisos 30 días", tooltip: "Pagos programados para los próximos 30 días.", getValue: (s) => s.scheduledPayments30d },
+  { label: "Compromisos del mes", tooltip: "Pagos programados hasta fin del mes actual.", getValue: (s) => s.scheduledPayments30d },
 ];
 
 function EstadoActualSection({ state }: { state: FinanzasCanonicalCurrencyState[] }) {
@@ -127,7 +127,7 @@ function CurrencyProjectionBlock({ s }: { s: FinanzasCanonicalCurrencyState }) {
   if (safeCashNegative) {
     msgs.push({
       tone: "danger",
-      text: `Con la caja actual no alcanza para cubrir los pagos de los próximos 30 días en ${s.currency}. Faltan ${fmtCurrencyAmount(Math.abs(s.safeCash30d), s.currency)}.`,
+      text: `Con la caja actual no alcanza para cubrir los pagos hasta fin del mes en ${s.currency}. Faltan ${fmtCurrencyAmount(Math.abs(s.safeCash30d), s.currency)}.`,
     });
   }
   msgs.push(
@@ -255,7 +255,7 @@ function CajaProyectadaSection({ state }: { state: FinanzasCanonicalCurrencyStat
   return (
     <CopilotCard>
       <CopilotSectionTitle
-        title="Caja proyectada (30 días)"
+        title="Caja proyectada (fin de mes)"
         subtitle="Caja actual + cobros pendientes − pagos próximos."
       />
       {mode === "usd_equivalent" ? (
@@ -301,7 +301,7 @@ function buildRiskSummary(s: FinanzasCanonicalCurrencyState): RiskSummary {
         level,
         icon: "⚪",
         label: `${c} sin pagos configurados`,
-        detail: "No hay pagos programados para los próximos 30 días.",
+        detail: "No hay pagos programados para el mes actual.",
         cta: "Sin acción urgente",
       };
     case "ok":
@@ -363,13 +363,13 @@ const CONSOLIDATED_RISK_COPY: Record<
   neutral: {
     icon: "⚪",
     label: "Sin compromisos próximos",
-    detail: "No hay pagos programados para los próximos 30 días.",
+    detail: "No hay pagos programados para el mes actual.",
     cta: "Sin acción urgente",
   },
   ok: {
     icon: "🟢",
     label: "Cobertura total · Cubierta",
-    detail: "La caja disponible cubre todos los compromisos de los próximos 30 días.",
+    detail: "La caja disponible cubre todos los compromisos del mes actual.",
     cta: "Sin acción urgente",
   },
   warning: {
@@ -400,7 +400,7 @@ function RiesgoEjecutivoSection({
   const sectionTitle = (
     <CopilotSectionTitle
       title="Riesgo ejecutivo"
-      subtitle="Lectura rápida para saber si la caja alcanza para los próximos 30 días."
+      subtitle="Lectura rápida para saber si la caja alcanza hasta fin del mes."
     />
   );
 
@@ -813,7 +813,7 @@ export function FinancialPanoramaView() {
 
           <CopilotCard>
             <CopilotSectionTitle
-              title="Caja proyectada próximos 30 días"
+              title="Caja proyectada al cierre del mes"
               subtitle={FINANCIAL_UX_COPY.projection30Subtitle}
             />
             <FinancialProjectionCompact model={dashboard.panorama} embedded />

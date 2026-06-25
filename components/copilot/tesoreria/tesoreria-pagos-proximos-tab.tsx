@@ -203,7 +203,7 @@ export function TesoreriaPagosProximosTab({ workspace, asOfDate }: Props) {
             className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-4 shadow-sm"
           >
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-              Próximos 30 días · {s.currency}
+              Hasta fin de mes · {s.currency}
             </p>
             <dl className="mt-2 space-y-1 text-sm">
               <div className="flex justify-between gap-2">

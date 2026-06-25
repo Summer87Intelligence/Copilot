@@ -1576,7 +1576,7 @@ function CopilotFinanzasPageContent() {
                     </div>
                     <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 p-4 shadow-sm">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        Estimado próx. 30 días
+                        Estimado hasta fin de mes
                       </p>
                       <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-ink)]">
                         {formatMoneyCompact(upcomingTotal)}

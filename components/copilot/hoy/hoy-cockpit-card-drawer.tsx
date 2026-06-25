@@ -207,7 +207,7 @@ function PaymentsPanel({
       {withItems.length > 0 ? (
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-            Por categoría (próx. 30 días)
+            Por categoría (hasta fin de mes)
           </p>
           <div className="mt-2 space-y-3">
             {withItems.map((s) => (

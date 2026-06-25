@@ -58,7 +58,7 @@ export const COPILOT_MANUAL_TOC_ORDER: Array<{ id: string; title: string }> = [
   { id: "admin", title: "Panel administrativo" },
   { id: "hoy", title: "Hoy" },
   { id: "dashboard", title: "Dashboard Resumen" },
-  { id: "acciones", title: "Acciones" },
+  { id: "acciones", title: "Cobranza" },
   { id: "alertas", title: "Alertas" },
   { id: "clientes", title: "Clientes" },
   { id: "cartera", title: "Cartera" },
