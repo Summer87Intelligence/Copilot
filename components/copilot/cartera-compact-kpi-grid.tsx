@@ -446,7 +446,15 @@ export function CarteraCompactKpiGrid({
             onClick={() => openExplain("credit_note", code)}
             actionLabel="Ver detalle"
           >
-            <CurrencyLine code={code} value={formatCarteraMoney(code, nc, { fractionDigits: 0 })} tone="danger" />
+            <CurrencyLine
+              code={code}
+              value={
+                isUsd && code === "UYU"
+                  ? formatUsdEquivalent(convertToUsdEquivalent({ uyu: nc, usd: 0 }, fxRate))
+                  : formatCarteraMoney(code, nc, { fractionDigits: 0 })
+              }
+              tone="danger"
+            />
           </CompactCard>
         );
       }
