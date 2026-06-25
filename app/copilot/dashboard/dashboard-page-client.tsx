@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 import { copilotApiFetch } from "@/lib/copilot-fetch";
-import { defaultHoyPeriodRange } from "@/lib/copilot-hoy-period";
+import { ytdPeriodRange } from "@/lib/copilot-hoy-period";
 import type { FinancialConsistencyReport } from "@/lib/copilot-financial-reconciliation";
 import type { ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
@@ -874,7 +874,7 @@ function RecentMovementsTable({
 
 export default function DashboardPageClient() {
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const defaultPeriod = useMemo(() => defaultHoyPeriodRange(today), [today]);
+  const defaultPeriod = useMemo(() => ytdPeriodRange(today), [today]);
 
   const [draftFrom, setDraftFrom] = useState(defaultPeriod.from);
   const [draftTo, setDraftTo] = useState(defaultPeriod.to);

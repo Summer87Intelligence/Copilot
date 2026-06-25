@@ -37,6 +37,16 @@ export function defaultHoyPeriodRange(asOf: string): HoyPeriodRange {
   return { from: firstDayOfMonthYmd(to), to };
 }
 
+/** YTD: 01/01 del año actual → hoy. */
+export function ytdPeriodRange(asOf: string): HoyPeriodRange {
+  const to = asOf.slice(0, 10);
+  const d = parseYmd(to);
+  const from = d
+    ? formatYmd(new Date(Date.UTC(d.getUTCFullYear(), 0, 1)))
+    : `${to.slice(0, 4)}-01-01`;
+  return { from, to };
+}
+
 export function last30DaysPeriodRange(asOf: string): HoyPeriodRange {
   const end = parseYmd(asOf);
   if (!end) return defaultHoyPeriodRange(asOf);
