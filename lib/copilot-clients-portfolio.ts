@@ -28,11 +28,11 @@ export type ClientPortfolioRow = {
   company_id: string;
   name: string;
   industry: string;
-  /** TODO: legacy mixed-currency aggregate — use billing_uyu + billing_usd for per-currency breakdown */
+  /** @deprecated @MIXED-CURRENCY-UNSAFE UYU+USD added without TC conversion — use billing_uyu + billing_usd */
   total_billing: number;
-  /** TODO: legacy mixed-currency aggregate — use debt_uyu + debt_usd for per-currency breakdown */
+  /** @deprecated @MIXED-CURRENCY-UNSAFE UYU+USD added without TC conversion — use debt_uyu + debt_usd */
   total_debt: number;
-  /** TODO: legacy mixed-currency aggregate — use overdue_uyu + overdue_usd for per-currency breakdown */
+  /** @deprecated @MIXED-CURRENCY-UNSAFE UYU+USD added without TC conversion — use overdue_uyu + overdue_usd */
   overdue_debt: number;
   invoices_count: number;
   receipts_count: number;

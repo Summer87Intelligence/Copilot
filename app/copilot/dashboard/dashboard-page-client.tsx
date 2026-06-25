@@ -59,7 +59,6 @@ import {
   parseDashboardFxRate,
   readDashboardFxRateFromStorage,
   roundUsd,
-  writeDashboardFxRateToStorage,
 } from "@/lib/copilot-currency-conversion";
 import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
 
@@ -802,7 +801,11 @@ function RecentMovementsTable({
                   : "—";
               const equivUsd = showEquiv && exchangeRate
                 ? fmtAmount(
-                    m.currency === "USD" ? m.amount : roundUsd(m.amount / exchangeRate),
+                    consolidateToUsdEquivalent(
+                      m.currency === "USD" ? m.amount : 0,
+                      m.currency === "UYU" ? m.amount : 0,
+                      exchangeRate
+                    ),
                     "USD"
                   )
                 : null;
@@ -877,24 +880,20 @@ export default function DashboardPageClient() {
   const [confirmedFrom, setConfirmedFrom] = useState(defaultPeriod.from);
   const [confirmedTo, setConfirmedTo] = useState(defaultPeriod.to);
   const [selectedCurrency, setSelectedCurrency] = useState<"all" | "UYU" | "USD" | "USD_consolidated">("all");
-  const [exchangeRate, setExchangeRate] = useState<number>(() => readDashboardFxRateFromStorage());
   const [fxInputDraft, setFxInputDraft] = useState<string>(() => String(readDashboardFxRateFromStorage()));
-  const { mode: displayMode, fxRate: globalFxRate } = useDisplayCurrency();
+  const { mode: displayMode, fxRate: globalFxRate, setFxRate } = useDisplayCurrency();
 
   useEffect(() => {
-    const stored = readDashboardFxRateFromStorage();
-    setExchangeRate(stored);
-    setFxInputDraft(String(stored));
-  }, []);
+    setFxInputDraft(String(globalFxRate));
+  }, [globalFxRate]);
 
   const persistFxRate = useCallback((raw: string) => {
     const parsed = parseDashboardFxRate(raw);
     if (parsed == null) return false;
-    writeDashboardFxRateToStorage(parsed);
-    setExchangeRate(parsed);
+    setFxRate(parsed);
     setFxInputDraft(String(parsed));
     return true;
-  }, []);
+  }, [setFxRate]);
 
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -1047,7 +1046,7 @@ export default function DashboardPageClient() {
 
   // USD consolidado helpers (solo visual — TC en localStorage o global displayMode)
   const isConsolidated = selectedCurrency === "USD_consolidated" || displayMode === "usd_equivalent";
-  const effectiveExchangeRate = displayMode === "usd_equivalent" ? globalFxRate : exchangeRate;
+  const effectiveExchangeRate = globalFxRate;
   const showTcControls = isConsolidated && displayMode !== "usd_equivalent";
   const effectiveCurrency: "all" | "UYU" | "USD" = isConsolidated
     ? "USD"
@@ -1211,7 +1210,11 @@ export default function DashboardPageClient() {
     const tc = effectiveExchangeRate;
     const byCompany = new Map<string, { name: string; active: number; overdue: number; overdueDays: number | null; status: string; risk: string }>();
     for (const row of activeDebtRows) {
-      const toUsd = (v: number) => roundUsd(row.currency === "UYU" ? v / tc : v);
+      const toUsd = (v: number) => consolidateToUsdEquivalent(
+        row.currency === "USD" ? v : 0,
+        row.currency === "UYU" ? v : 0,
+        tc
+      );
       const prev = byCompany.get(row.companyId);
       if (!prev) {
         byCompany.set(row.companyId, {

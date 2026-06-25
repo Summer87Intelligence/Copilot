@@ -406,7 +406,10 @@ function RiesgoEjecutivoSection({
 
   if (mode === "usd_equivalent") {
     const toUsd = (amount: number, currency: string) =>
-      currency === "USD" ? amount : amount / fxRate;
+      convertToUsdEquivalent(
+        { uyu: currency === "UYU" ? amount : 0, usd: currency === "USD" ? amount : 0 },
+        fxRate
+      );
     const totalSafe = state.reduce((sum, s) => sum + toUsd(s.safeCash30d, s.currency), 0);
     const totalExpected = state.reduce((sum, s) => sum + toUsd(s.expectedCash30d, s.currency), 0);
     const totalScheduled = state.reduce((sum, s) => sum + toUsd(s.scheduledPayments30d, s.currency), 0);

@@ -20,6 +20,9 @@ export const DEFAULT_DISPLAY_FX_RATE_UYU_PER_USD = 40;
 export const CURRENCY_DISPLAY_MODE_STORAGE_KEY = "copilot.currencyDisplayMode";
 export const CURRENCY_DISPLAY_FX_RATE_STORAGE_KEY = "copilot.currencyDisplayFxRate";
 
+// Legacy key used by the dashboard before the storage unification (FASE A).
+const LEGACY_DASHBOARD_FX_RATE_KEY = "copilot.dashboard.fxRateUyuPerUsd";
+
 /** Clamps to [1, 999]. Falls back to default for invalid input. */
 export function normalizeFxRate(input: unknown): number {
   const n =
@@ -69,11 +72,19 @@ export function readDisplayFxRateFromStorage(): number {
   if (typeof window === "undefined") return DEFAULT_DISPLAY_FX_RATE_UYU_PER_USD;
   try {
     const raw = window.localStorage.getItem(CURRENCY_DISPLAY_FX_RATE_STORAGE_KEY);
-    if (raw == null) return DEFAULT_DISPLAY_FX_RATE_UYU_PER_USD;
-    return normalizeFxRate(raw);
+    if (raw != null) return normalizeFxRate(raw);
+    // One-time migration: promote legacy dashboard key to the global key, then delete it.
+    const legacy = window.localStorage.getItem(LEGACY_DASHBOARD_FX_RATE_KEY);
+    if (legacy != null) {
+      const migrated = normalizeFxRate(legacy);
+      window.localStorage.setItem(CURRENCY_DISPLAY_FX_RATE_STORAGE_KEY, String(migrated));
+      window.localStorage.removeItem(LEGACY_DASHBOARD_FX_RATE_KEY);
+      return migrated;
+    }
   } catch {
-    return DEFAULT_DISPLAY_FX_RATE_UYU_PER_USD;
+    /* ignore */
   }
+  return DEFAULT_DISPLAY_FX_RATE_UYU_PER_USD;
 }
 
 export function writeDisplayFxRateToStorage(rate: number): boolean {
