@@ -10,6 +10,7 @@ import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
 import { effectivePlannedObligationStatus } from "@/lib/treasury/treasury-obligation-status";
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
 import { addDaysYmd, summarizeScheduledOutflows } from "@/lib/treasury/treasury-scheduled-payments";
+import { getEndOfCurrentMonth } from "@/lib/copilot-operational-period";
 import { isRecurringGeneratedObligation } from "@/lib/treasury/treasury-recurring-payments";
 import type { PlannedObligationType, TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
 
@@ -97,8 +98,8 @@ export function TesoreriaPagosProximosTab({ workspace, asOfDate }: Props) {
     customDateTo
   );
 
-  // KPI summary cards (always 30 days)
-  const horizonEnd = addDaysYmd(asOfDate, 30);
+  // KPI summary cards (fin del mes actual)
+  const horizonEnd = getEndOfCurrentMonth();
   const summaries = useMemo(() => {
     const paidObligations = workspace.obligations.filter(
       (o) => effectivePlannedObligationStatus(o.status, o.dueDate, asOfDate) === "paid"
@@ -208,7 +209,7 @@ export function TesoreriaPagosProximosTab({ workspace, asOfDate }: Props) {
               <div className="flex justify-between gap-2">
                 <dt className="text-[var(--copilot-ink-muted)]">Egresos</dt>
                 <dd className="font-semibold tabular-nums">
-                  {formatTreasuryMoney(s.next30Days, s.currency)}
+                  {formatTreasuryMoney(s.scheduledTotal, s.currency)}
                 </dd>
               </div>
               <div className="flex justify-between gap-2">

@@ -38,9 +38,9 @@ export function TesoreriaPaymentSummary({ workspace, asOfDate }: Props) {
             </p>
             <dl className="mt-3 space-y-2 text-sm">
               <div className="flex items-baseline justify-between gap-3">
-                <dt className="text-[var(--copilot-ink-muted)]">Pagos próximos 30 días</dt>
+                <dt className="text-[var(--copilot-ink-muted)]">Pagos hasta fin de mes</dt>
                 <dd className="font-semibold tabular-nums text-[var(--copilot-ink)]">
-                  {formatTreasuryMoney(s.next30Days, s.currency)}
+                  {formatTreasuryMoney(s.scheduledTotal, s.currency)}
                 </dd>
               </div>
               <div className="flex items-baseline justify-between gap-3">

@@ -4,10 +4,10 @@ import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body
 import { scheduledPaymentCreateBodySchema } from "@/lib/api/schemas/treasury-scheduled-payment-bodies";
 import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
 import { MSG_DB_USER } from "@/lib/copilot-data-integrity";
+import { getEndOfCurrentMonth } from "@/lib/copilot-operational-period";
 import { parseYmdQuery } from "@/lib/treasury/treasury-db-helpers";
 import { nextResponseFromTreasuryCrud, treasuryCreatedResponse } from "@/lib/treasury/treasury-http";
 import {
-  addDaysYmd,
   createScheduledPayment,
   filterPlannedObligationsForHoyScheduledList,
   listScheduledPayments,
@@ -28,9 +28,8 @@ function parseScheduledListQuery(request: NextRequest) {
     fromDate: parseYmdQuery(params.get("from_date")),
     toDate: parseYmdQuery(params.get("to_date")),
     asOfDate: parseYmdQuery(params.get("as_of")) ?? new Date().toISOString().slice(0, 10),
-    horizonDays: Math.min(365, Math.max(1, Number(params.get("horizon_days") ?? "30") || 30)),
-    /** Fecha de corte explícita — prevalece sobre horizonDays cuando está presente. */
-    horizonEndOverride: parseYmdQuery(params.get("horizon_end_date")),
+    /** Fecha de corte explícita — si no viene, usa fin del mes actual (contrato único). */
+    horizonEndDate: parseYmdQuery(params.get("horizon_end_date")) ?? getEndOfCurrentMonth(),
     includeSummary: params.get("include_summary") === "1" || params.get("include_summary") === "true",
   };
 }
@@ -50,7 +49,7 @@ export async function GET(request: NextRequest) {
         500
       );
       if (!listed.ok) return nextResponseFromTreasuryCrud(listed);
-      const horizonEnd = q.horizonEndOverride ?? addDaysYmd(q.asOfDate, q.horizonDays);
+      const horizonEnd = q.horizonEndDate;
       const inactiveRecurringTemplateIds = await loadInactiveRecurringTemplateIds(
         auth.ctx.supabase,
         auth.ctx.tenantCompanyId

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Auditoría READ-ONLY: Consistencia del Dashboard Resumen vs contrato canónico.
  *
  * Valida que las métricas del Dashboard Resumen coincidan con las fuentes
@@ -10,7 +10,7 @@
  *   deuda_activa        = pendingAtCutoff (all-outstanding)  (no period filter)
  *   deuda_vencida       = portfolio overdue (due_date < today, any days past due)
  *   caja_disponible     = treasury availableCash
- *   caja_despues_pagos  = availableCash − next30Days
+ *   caja_despues_pagos  = availableCash − scheduledTotal
  *
  * También valida:
  *   - UYU y USD nunca se suman
@@ -257,10 +257,10 @@ async function fetchAgingByDueDate(
 async function fetchTreasuryMetrics(
   supabase: SupabaseClient,
   workspaceId: string
-): Promise<Record<"UYU" | "USD", { availableCash: number; next30Days: number }>> {
-  const result: Record<"UYU" | "USD", { availableCash: number; next30Days: number }> = {
-    UYU: { availableCash: 0, next30Days: 0 },
-    USD: { availableCash: 0, next30Days: 0 },
+): Promise<Record<"UYU" | "USD", { availableCash: number; scheduledTotal: number }>> {
+  const result: Record<"UYU" | "USD", { availableCash: number; scheduledTotal: number }> = {
+    UYU: { availableCash: 0, scheduledTotal: 0 },
+    USD: { availableCash: 0, scheduledTotal: 0 },
   };
 
   // Cash position: latest baseline + confirmed movements
@@ -288,7 +288,7 @@ async function fetchTreasuryMetrics(
 
   for (const pay of payments ?? []) {
     const cur = (pay.currency_code === "USD" ? "USD" : "UYU") as "UYU" | "USD";
-    result[cur].next30Days += num(pay.amount);
+    result[cur].scheduledTotal += num(pay.amount);
   }
 
   return result;
@@ -423,15 +423,15 @@ async function runChecks(workspaceId: string): Promise<AuditRow[]> {
       notes: "caja disponible = treasury availableCash",
     });
 
-    // ── CHECK D-07: caja_despues_pagos = cajaDisponible − next30Days ───────
-    const cajaDespPagos = round2(cajaDisponible - treasury.next30Days);
+    // ── CHECK D-07: caja_despues_pagos = cajaDisponible − scheduledTotal ───────
+    const cajaDespPagos = round2(cajaDisponible - treasury.scheduledTotal);
     rows.push({
       check_id: `D-07-${cur}`,
       metric: "caja_despues_pagos",
       currency: cur,
-      source_a: "availableCash − next30Days (treasury_payments)",
+      source_a: "availableCash − scheduledTotal (treasury_payments)",
       value_a: cajaDespPagos,
-      source_b: `${cajaDisponible} − ${round2(treasury.next30Days)}`,
+      source_b: `${cajaDisponible} − ${round2(treasury.scheduledTotal)}`,
       value_b: cajaDespPagos,
       delta: 0,
       status: cajaDespPagos < 0 ? "EXPLAINED_DIFF" : "OK",

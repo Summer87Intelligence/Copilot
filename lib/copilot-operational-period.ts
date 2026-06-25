@@ -44,6 +44,20 @@ export function getCopilotOperationalEndDate(): string {
 }
 
 /**
+ * Devuelve el último día del mes actual en formato YYYY-MM-DD (UTC).
+ *
+ * Contrato único de horizonte temporal del sistema: todos los KPIs de pagos
+ * próximos, compromisos y caja proyectada usan HOY → fin del mes actual.
+ * No usar rolling 30 días en ningún cálculo financiero.
+ */
+export function getEndOfCurrentMonth(): string {
+  const now = new Date();
+  // Día 0 del mes siguiente = último día del mes actual
+  const last = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
+  return last.toISOString().slice(0, 10);
+}
+
+/**
  * Retorna true si la fecha ISO (YYYY-MM-DD) cae dentro del período operativo,
  * es decir, es >= COPILOT_OPERATIONAL_START_DATE.
  * Retorna false para fechas nulas, vacías o con formato inválido.

@@ -11,7 +11,7 @@
  *  - deuda_activa        → outstanding CurrencyReconciliation.pendingAtCutoff
  *  - deuda_vencida       → portfolio overdue (due_date < today) o aging 31+ fallback
  *  - caja_disponible     → CashPositionByCurrency.availableCash
- *  - caja_despues_pagos  → availableCash − TreasuryOutflowSummary.next30Days
+ *  - caja_despues_pagos  → availableCash − TreasuryOutflowSummary.scheduledTotal
  */
 
 import type {
@@ -311,7 +311,7 @@ export function extractDashboardCurrencyData({
 
       const cajaDisponible = r2(cash?.availableCash ?? 0);
       const cajaDespPagos = outflow
-        ? r2(cajaDisponible - outflow.next30Days)
+        ? r2(cajaDisponible - outflow.scheduledTotal)
         : cajaDisponible;
 
       return {

@@ -139,8 +139,8 @@ describe("CANONICAL_METRICS", () => {
     expect(CANONICAL_METRICS.caja_disponible.scope).toBe("current");
   });
 
-  it("caja_despues_pagos scope es 'rolling_30d'", () => {
-    expect(CANONICAL_METRICS.caja_despues_pagos.scope).toBe("rolling_30d");
+  it("caja_despues_pagos scope es 'current_month_end'", () => {
+    expect(CANONICAL_METRICS.caja_despues_pagos.scope).toBe("current_month_end");
   });
 
   it("estado_global source es 'derived'", () => {

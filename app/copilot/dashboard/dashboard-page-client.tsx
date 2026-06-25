@@ -49,6 +49,7 @@ import {
   METRIC_LABEL,
   METRIC_SEPARATED_CURRENCY_DISCLAIMER,
 } from "@/lib/copilot-financial-metrics-contract";
+import { getEndOfCurrentMonth } from "@/lib/copilot-operational-period";
 import { FINANCIAL_UX_COPY } from "@/lib/copilot-financial-ux-copy";
 import { CopilotDataProvenanceStrip } from "@/components/copilot/copilot-data-provenance-strip";
 import { CopilotPremiumEmptyState } from "@/components/copilot/copilot-premium-empty-state";
@@ -951,7 +952,7 @@ export default function DashboardPageClient() {
         copilotApiFetch("/api/copilot/financial-reconciliation?mode=all_outstanding", { signal: sig }),
         copilotApiFetch(`/api/copilot/financial-reconciliation?${periodQ}`, { signal: sig }),
         copilotApiFetch("/api/copilot/treasury/cash-position", { signal: sig }),
-        copilotApiFetch("/api/copilot/treasury/scheduled-payments?include_summary=1&horizon_days=30", { signal: sig }),
+        copilotApiFetch(`/api/copilot/treasury/scheduled-payments?include_summary=1&horizon_end_date=${getEndOfCurrentMonth()}`, { signal: sig }),
         ...monthQueries.map((q) =>
           copilotApiFetch(`/api/copilot/financial-reconciliation?${q}`, { signal: sig })
         ),

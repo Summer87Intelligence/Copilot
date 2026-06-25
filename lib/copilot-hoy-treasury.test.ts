@@ -232,7 +232,7 @@ describe("Hoy × Tesorería — fórmulas de caja", () => {
         totalScheduled: b.scheduledPayments,
         overdue: 0,
         next7Days: 0,
-        next30Days: b.scheduledPayments,
+        scheduledTotal: b.scheduledPayments,
         paidInPeriod: 0,
         itemsCount: b.hasConfiguredPayments ? 1 : 0,
         byCategory: [],

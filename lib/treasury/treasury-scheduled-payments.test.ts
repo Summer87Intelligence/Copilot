@@ -67,8 +67,8 @@ describe("summarizeScheduledOutflows", () => {
     const summaries = summarizeScheduledOutflows(payments, { asOfDate: asOf, horizonEndDate: horizon });
     const uyu = summaries.find((s) => s.currency === "UYU")!;
     const usd = summaries.find((s) => s.currency === "USD")!;
-    expect(uyu.next30Days).toBe(10_000);
-    expect(usd.next30Days).toBe(500);
+    expect(uyu.scheduledTotal).toBe(10_000);
+    expect(usd.scheduledTotal).toBe(500);
     expect(uyu.itemsCount).toBe(1);
     expect(usd.itemsCount).toBe(1);
   });
@@ -83,7 +83,7 @@ describe("summarizeScheduledOutflows", () => {
     )!;
     expect(uyu.overdue).toBe(3_000);
     expect(uyu.next7Days).toBe(2_000);
-    expect(uyu.next30Days).toBe(5_000);
+    expect(uyu.scheduledTotal).toBe(5_000);
   });
 
   it("cuenta pagados del período", () => {
@@ -102,7 +102,7 @@ describe("summarizeScheduledOutflows", () => {
       periodEndDate: horizon,
     }).find((s) => s.currency === "UYU")!;
     expect(uyu.paidInPeriod).toBe(8_000);
-    expect(uyu.next30Days).toBe(0);
+    expect(uyu.scheduledTotal).toBe(0);
   });
 
   it("excluye egresos de template recurrente pausado", () => {
@@ -123,7 +123,7 @@ describe("summarizeScheduledOutflows", () => {
       horizonEndDate: horizon,
       inactiveRecurringTemplateIds: inactive,
     }).find((s) => s.currency === "USD")!;
-    expect(usd.next30Days).toBe(0);
+    expect(usd.scheduledTotal).toBe(0);
     expect(usd.itemsCount).toBe(0);
   });
 
@@ -145,7 +145,7 @@ describe("summarizeScheduledOutflows", () => {
       horizonEndDate: horizon,
       inactiveRecurringTemplateIds: inactive,
     }).find((s) => s.currency === "USD")!;
-    expect(usd.next30Days).toBe(60);
+    expect(usd.scheduledTotal).toBe(60);
     expect(usd.itemsCount).toBe(1);
   });
 
@@ -167,13 +167,13 @@ describe("summarizeScheduledOutflows", () => {
     const uyu = summarizeScheduledOutflows(payments, { asOfDate: asOf, horizonEndDate: horizon }).find(
       (s) => s.currency === "UYU"
     )!;
-    expect(uyu.next30Days).toBe(0);
+    expect(uyu.scheduledTotal).toBe(0);
     expect(uyu.itemsCount).toBe(0);
   });
 });
 
 describe("scheduledOutflowsThroughDate", () => {
-  it("coincide con next30Days del summary", () => {
+  it("coincide con scheduledTotal del summary", () => {
     const asOf = "2026-05-21";
     const horizon = addDaysYmd(asOf, 30);
     const payments = [

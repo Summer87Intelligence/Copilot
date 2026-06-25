@@ -29,6 +29,7 @@ import { toRutasGateMeta } from "@/lib/copilot-rutas-gate";
 import type { CarteraCurrencyTotals } from "@/lib/copilot-cartera-aging-totals";
 import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
 import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
+import { getEndOfCurrentMonth } from "@/lib/copilot-operational-period";
 
 type CopilotOperationalPulseContextValue = {
   pulse: TodayBusinessPulse | null;
@@ -56,7 +57,7 @@ export function CopilotOperationalPulseProvider({ children }: { children: ReactN
         copilotApiFetch("/api/copilot/rutas-hub"),
         copilotApiFetch("/api/copilot/financial-reconciliation?mode=all_outstanding"),
         copilotApiFetch(
-          "/api/copilot/treasury/scheduled-payments?include_summary=1&horizon_days=30"
+          `/api/copilot/treasury/scheduled-payments?include_summary=1&horizon_end_date=${getEndOfCurrentMonth()}`
         ),
         copilotApiFetch("/api/copilot/treasury/cash-position"),
       ]);
