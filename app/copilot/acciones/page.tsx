@@ -55,6 +55,7 @@ import {
 } from "@/lib/copilot-actions/enrich-actions";
 import type { CollectionAction } from "@/lib/copilot-collection-types";
 import { CollectionAgendaSection } from "@/components/copilot/acciones/collection-agenda-section";
+import { CopilotKpiCard } from "@/components/copilot/ui/copilot-kpi-card";
 import {
   buildCollectionAgenda,
   type CollectionAgenda,
@@ -86,7 +87,6 @@ function formatDate(iso: string) {
   }
 }
 
-const quickBtnClass = "rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm";
 
 // ── Bandeja filter types ──────────────────────────────────────────────────────
 
@@ -538,7 +538,7 @@ function CopilotAccionesPageContent() {
       <CopilotPageHeader
         surfaceId="copilot.acciones"
         title="Acciones"
-        description="Gestiones pendientes, seguimientos y revisiones del negocio."
+        description="Prioridad del día y tareas concretas."
       />
 
       <div className={copilotPageMainClass}>
@@ -699,10 +699,10 @@ function CopilotAccionesPageContent() {
           {/* Summary cards */}
           {!bandejaLoading && bandejaMetrics.total > 0 ? (
             <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <SummaryPill label="Total" value={bandejaMetrics.total} />
-              <SummaryPill label="Críticas" value={bandejaMetrics.critical} highlight={bandejaMetrics.critical > 0} />
-              <SummaryPill label="Cobranza" value={bandejaMetrics.collection} />
-              <SummaryPill label="Tesorería" value={bandejaMetrics.treasury} />
+              <CopilotKpiCard size="mini" eyebrow="Total" value={String(bandejaMetrics.total)} />
+              <CopilotKpiCard size="mini" eyebrow="Críticas" value={String(bandejaMetrics.critical)} tone={bandejaMetrics.critical > 0 ? "danger" : "neutral"} />
+              <CopilotKpiCard size="mini" eyebrow="Cobranza" value={String(bandejaMetrics.collection)} />
+              <CopilotKpiCard size="mini" eyebrow="Tesorería" value={String(bandejaMetrics.treasury)} />
             </div>
           ) : null}
 
@@ -1120,37 +1120,38 @@ function CopilotAccionesPageContent() {
                             <div className="flex flex-wrap gap-2">
                               <CopilotGhostButton
                                 type="button"
+                                size="sm"
                                 disabled={busy}
                                 onClick={() => onQuickClick(a, "no_response")}
-                                className={quickBtnClass}
                               >
                                 Sin respuesta
                               </CopilotGhostButton>
                               <CopilotGhostButton
                                 type="button"
+                                size="sm"
                                 disabled={busy}
                                 onClick={() => onQuickClick(a, "response")}
-                                className={quickBtnClass}
                               >
                                 Respondió
                               </CopilotGhostButton>
                               <CopilotGhostButton
                                 type="button"
+                                size="sm"
                                 disabled={busy}
                                 onClick={() => onQuickClick(a, "meeting")}
-                                className={quickBtnClass}
                               >
                                 Reunión
                               </CopilotGhostButton>
                               <CopilotGhostButton
                                 type="button"
+                                size="sm"
                                 disabled={busy}
                                 onClick={() => onQuickClick(a, "sale")}
-                                className={`${quickBtnClass} ${
+                                className={
                                   saleExpandId === a.id
                                     ? "border-[var(--copilot-accent)] bg-[var(--copilot-tone-positive-bg)]/50"
                                     : ""
-                                }`}
+                                }
                               >
                                 Venta
                               </CopilotGhostButton>
@@ -1297,32 +1298,3 @@ function CopilotAccionesPageContent() {
   );
 }
 
-function SummaryPill({
-  label,
-  value,
-  highlight = false,
-}: {
-  label: string;
-  value: number;
-  highlight?: boolean;
-}) {
-  const isCritical = highlight && value > 0;
-  return (
-    <div
-      className={`rounded-xl border px-3 py-2 bg-[var(--copilot-card-bg)]/70 ${
-        isCritical ? "border-[var(--copilot-danger-border)]" : "border-[var(--copilot-border)]"
-      }`}
-    >
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-        {label}
-      </p>
-      <p
-        className={`mt-1 text-lg font-bold tabular-nums ${
-          isCritical ? "text-[var(--copilot-danger-text-strong)]" : "text-[var(--copilot-ink)]"
-        }`}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}

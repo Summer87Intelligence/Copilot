@@ -35,7 +35,7 @@ export default async function CarteraPage() {
       <CopilotPageHeader
         eyebrow="Summer87 Copilot"
         title="Cartera"
-        description="Análisis financiero de deuda, cobros y antigüedad. Para contactar clientes, usá Clientes o Cobranza."
+        description="Análisis financiero de deuda, cobros y antigüedad."
       />
       <div className="px-4 pb-12 pt-5 sm:px-6 sm:pt-6 lg:px-8">
         <Suspense fallback={<CarteraInitialFallback />}>
