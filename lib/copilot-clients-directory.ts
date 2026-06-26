@@ -219,6 +219,7 @@ export function buildClientsDirectory(
 
     agg.debtUYU = debtTotals.debtUYU;
     agg.debtUSD = debtTotals.debtUSD;
+    // @MIXED-CURRENCY-UNSAFE: UYU + USD summed directly without TC — legacy field kept for backward compat; use debtUYU/debtUSD instead.
     agg.total_debt = Math.round((debtTotals.debtUYU + debtTotals.debtUSD) * 100) / 100;
     agg.overdue_debt = Math.round((debtTotals.overdueUYU + debtTotals.overdueUSD) * 100) / 100;
     agg.invoiceCount = dedupedSelections.length;

@@ -87,13 +87,23 @@ export function CobranzaKpiGrid({
     : undefined;
   const cobrosUyuLabel =
     effectivenessKpis.cobrosUyu > 0
-      ? mode === "usd_equivalent"
-        ? formatUsdEquivalent(convertToUsdEquivalent({ uyu: effectivenessKpis.cobrosUyu, usd: 0 }, fxRate))
-        : formatMoneyCurrency(effectivenessKpis.cobrosUyu, "UYU")
+      ? formatMoneyCurrency(effectivenessKpis.cobrosUyu, "UYU")
       : "—";
   const cobrosUsdLabel =
     effectivenessKpis.cobrosUsd > 0
       ? formatMoneyCurrency(effectivenessKpis.cobrosUsd, "USD")
+      : "—";
+  const cobrosTotalUsd =
+    mode === "usd_equivalent"
+      ? convertToUsdEquivalent(
+          { uyu: effectivenessKpis.cobrosUyu, usd: effectivenessKpis.cobrosUsd },
+          fxRate
+        )
+      : 0;
+  const cobrosTotalLabel =
+    mode === "usd_equivalent" &&
+    (effectivenessKpis.cobrosUyu > 0 || effectivenessKpis.cobrosUsd > 0)
+      ? formatUsdEquivalent(cobrosTotalUsd)
       : "—";
 
   const contactedLabel = `${effectivenessKpis.clientsContactedCount} / ${effectivenessKpis.clientsWithDebtCount}`;
@@ -135,23 +145,33 @@ export function CobranzaKpiGrid({
       </div>
 
       {/* Row 2: effectiveness */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className={`grid grid-cols-2 gap-2 ${mode === "usd_equivalent" ? "sm:grid-cols-3" : "sm:grid-cols-4"}`}>
         <KpiCard
           label="Cumplimiento"
           value={rateLabel}
           sub={rateSub}
           tone={fulfillmentTone(effectivenessKpis.promiseFulfillmentRate)}
         />
-        <KpiCard
-          label="Cobros este mes (UYU)"
-          value={cobrosUyuLabel}
-          sub={cobrosTruncationNote ?? "pesos cobrados"}
-        />
-        <KpiCard
-          label="Cobros este mes (USD)"
-          value={cobrosUsdLabel}
-          sub={cobrosTruncationNote ?? "dólares cobrados"}
-        />
+        {mode === "usd_equivalent" ? (
+          <KpiCard
+            label="Cobros este mes"
+            value={cobrosTotalLabel}
+            sub={cobrosTruncationNote ?? `TC ${fxRate}`}
+          />
+        ) : (
+          <>
+            <KpiCard
+              label="Cobros este mes (UYU)"
+              value={cobrosUyuLabel}
+              sub={cobrosTruncationNote ?? "pesos cobrados"}
+            />
+            <KpiCard
+              label="Cobros este mes (USD)"
+              value={cobrosUsdLabel}
+              sub={cobrosTruncationNote ?? "dólares cobrados"}
+            />
+          </>
+        )}
         <KpiCard
           label="Contactados"
           value={contactedLabel}

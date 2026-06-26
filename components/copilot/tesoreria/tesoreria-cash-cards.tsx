@@ -146,6 +146,7 @@ function TesoreriaUsdConsolidatedCard({
 }) {
   const posUyu = workspace.cashPositions.find((p) => p.currency === "UYU");
   const posUsd = workspace.cashPositions.find((p) => p.currency === "USD");
+  const hasData = posUyu !== undefined || posUsd !== undefined;
 
   const uyuAvailable =
     (posUyu?.openingBalance ?? 0) +
@@ -189,23 +190,25 @@ function TesoreriaUsdConsolidatedCard({
           USD estimado · TC {fxRate}
         </span>
       }
-      value={formatUsdEquivalent(totalUsd)}
+      value={hasData ? formatUsdEquivalent(totalUsd) : "—"}
       valueClassName={
         isNegative
           ? "text-[var(--copilot-danger-text-strong)]"
           : "text-[var(--copilot-success-text-strong)]"
       }
-      subtitle={subtitle}
+      subtitle={hasData ? subtitle : "Cargando posición de caja…"}
       footer={
-        <div className="border-t border-[var(--copilot-border)] pt-2">
-          <div className="flex flex-wrap gap-3 text-[11px] text-[var(--copilot-ink-muted)]">
-            <span>Pesos: {formatTreasuryMoney(uyuAvailable, "UYU")}</span>
-            <span>Dólares: {formatTreasuryMoney(usdAvailable, "USD")}</span>
+        hasData ? (
+          <div className="border-t border-[var(--copilot-border)] pt-2">
+            <div className="flex flex-wrap gap-3 text-[11px] text-[var(--copilot-ink-muted)]">
+              <span>Pesos: {formatTreasuryMoney(uyuAvailable, "UYU")}</span>
+              <span>Dólares: {formatTreasuryMoney(usdAvailable, "USD")}</span>
+            </div>
+            <p className="mt-1 text-[10px] text-[var(--copilot-ink-muted)]">
+              Vista convertida. Los datos originales se mantienen por moneda.
+            </p>
           </div>
-          <p className="mt-1 text-[10px] text-[var(--copilot-ink-muted)]">
-            Vista convertida. Los datos originales se mantienen por moneda.
-          </p>
-        </div>
+        ) : null
       }
     />
   );

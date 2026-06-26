@@ -4,7 +4,19 @@
 - SaaS financiero B2B (Summer87 Copilot) — Next.js 15 App Router + TypeScript + Supabase + Vercel.
 - Integración ERP ZetaSoftware (credenciales estáticas env vars, 5 pipelines sync activos).
 - Multi-tenant con workspace_company_id + RLS. 1 workspace productivo (Summer87, ~183 clientes Zeta).
-- 836/836 tests Vitest. Deploy en Vercel. Auth magic link OTP.
+- 3721/3721 tests Vitest. Deploy en Vercel. Auth magic link OTP.
+
+## HELPDESK-FEEDBACK-MODULE-001 — 2026-06-26 (IMPLEMENTADO)
+
+**Mesa de ayuda completa — ruta `/copilot/mesa-de-ayuda`, module key `helpdesk`:**
+- **DB**: `helpdesk_tickets`, `helpdesk_comments`, `helpdesk_attachments` con RLS workspace-scoped. Migración `20260626000000_helpdesk_tables.sql` aplicada en Supabase.
+- **Storage**: bucket `helpdesk-attachments` (privado, 10 MB/file, PNG/JPG/WebP/PDF). Políticas RLS aplicadas.
+- **APIs**: `GET/POST /api/copilot/helpdesk/tickets`, `GET/PATCH /api/copilot/helpdesk/tickets/[id]`, `GET/POST comments`, `GET/POST attachments`, `GET signed URL attachment`.
+- **RBAC**: `helpdesk` añadido a `MODULE_KEYS`. Presets: superadmin=admin, todos los demás roles=write (incluyendo readonly). Admin ve todos los tickets del workspace; usuarios solo los suyos.
+- **UI**: `HelpdeskPageClient` → lista + formulario + detalle + comentarios + adjuntos. Sidebar ítem en sección Sistema (icono HelpCircle).
+- **Manual**: sección "Mesa de ayuda" agregada a `sections.generated.ts`.
+- **Tests**: `lib/helpdesk-types.test.ts` (15 casos) + fix en `module-permissions.test.ts`. 3721/3721 verde.
+- **tsc**: 0 errores.
 
 ## Cobranza Fase B — 2026-06-22
 - **B1 API**: `POST /api/copilot/cobranza/registrar-cobro` (orquestación tesorería + evidencia cobranza, RBAC `acciones` write).

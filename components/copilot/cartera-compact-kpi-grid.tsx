@@ -346,6 +346,39 @@ function UsdConsolidatedLine({ total, fxRate }: { total: number; fxRate: number 
   );
 }
 
+function UsdConsolidatedBreakdownLine({
+  total,
+  uyuAmount,
+  usdAmount,
+  fxRate,
+  tone = "default",
+}: {
+  total: number;
+  uyuAmount: number;
+  usdAmount: number;
+  fxRate: number;
+  tone?: "default" | "danger";
+}) {
+  const valueClass =
+    tone === "danger"
+      ? "text-[var(--copilot-danger-text-strong)]"
+      : "text-[var(--copilot-ink)]";
+  return (
+    <div className="space-y-0.5">
+      <p className={`text-xs font-bold tabular-nums ${valueClass}`}>
+        {formatUsdEquivalent(total)}
+      </p>
+      <div className="space-y-px text-[10px] text-[var(--copilot-ink-muted)]">
+        {uyuAmount > 0 && (
+          <p>UYU → {formatUsdEquivalent(convertToUsdEquivalent({ uyu: uyuAmount, usd: 0 }, fxRate))}</p>
+        )}
+        {usdAmount > 0 && <p>{formatUsdEquivalent(usdAmount)}</p>}
+        <p>TC {fxRate}</p>
+      </div>
+    </div>
+  );
+}
+
 export function CarteraCompactKpiGrid({
   report,
   variant,
@@ -410,55 +443,98 @@ export function CarteraCompactKpiGrid({
 
   if (variant === "ventas") {
     const cards: React.ReactNode[] = [];
-    for (const code of CURRENCIES) {
-      const m = metricFor(index, code);
-      const issued = m?.issuedInPeriodNet ?? 0;
-      const issuedDisplay = issued > 0
-        ? isUsd
-          ? formatUsdEquivalent(convertToUsdEquivalent(
-              { uyu: code === "UYU" ? issued : 0, usd: code === "USD" ? issued : 0 },
-              fxRate
-            ))
-          : formatCarteraMoney(code, issued, { fractionDigits: 0 })
-        : "—";
-      cards.push(
-        <CompactCard
-          key={`ventas-${code}`}
-          title={`${METRIC_LABEL.facturado_periodo} ${code}`}
-          onClick={() => openExplain("facturado", code)}
-          actionLabel="Ver detalle"
-        >
-          <CurrencyLine
-            code={code}
-            value={issuedDisplay}
-          />
-          {periodRangeLabel ? (
-            <p className="text-[10px] text-[var(--copilot-ink-muted)]">{periodRangeLabel}</p>
-          ) : null}
-        </CompactCard>
-      );
-      const nc = m?.creditNoteAmount ?? 0;
-      if (nc > 0) {
+
+    if (isUsd) {
+      // Vista USD: una card consolidada por concepto (ventas + notas crédito)
+      const uyuM = metricFor(index, "UYU");
+      const usdM = metricFor(index, "USD");
+      const uyuIssued = uyuM?.issuedInPeriodNet ?? 0;
+      const usdIssued = usdM?.issuedInPeriodNet ?? 0;
+
+      if (uyuIssued > 0 || usdIssued > 0) {
+        const totalIssued = convertToUsdEquivalent({ uyu: uyuIssued, usd: usdIssued }, fxRate);
         cards.push(
           <CompactCard
-            key={`nc-${code}`}
-            title={`Notas crédito ${code}`}
-            onClick={() => openExplain("credit_note", code)}
+            key="ventas-usd"
+            title={METRIC_LABEL.facturado_periodo}
+            onClick={() => openExplain("facturado", uyuIssued > 0 ? "UYU" : "USD")}
             actionLabel="Ver detalle"
           >
-            <CurrencyLine
-              code={code}
-              value={
-                isUsd && code === "UYU"
-                  ? formatUsdEquivalent(convertToUsdEquivalent({ uyu: nc, usd: 0 }, fxRate))
-                  : formatCarteraMoney(code, nc, { fractionDigits: 0 })
-              }
+            <UsdConsolidatedBreakdownLine
+              total={totalIssued}
+              uyuAmount={uyuIssued}
+              usdAmount={usdIssued}
+              fxRate={fxRate}
+            />
+            {periodRangeLabel ? (
+              <p className="text-[10px] text-[var(--copilot-ink-muted)]">{periodRangeLabel}</p>
+            ) : null}
+          </CompactCard>
+        );
+      }
+
+      const uyuNc = uyuM?.creditNoteAmount ?? 0;
+      const usdNc = usdM?.creditNoteAmount ?? 0;
+      if (uyuNc > 0 || usdNc > 0) {
+        const totalNc = convertToUsdEquivalent({ uyu: uyuNc, usd: usdNc }, fxRate);
+        cards.push(
+          <CompactCard
+            key="nc-usd"
+            title="Notas crédito"
+            onClick={() => openExplain("credit_note", uyuNc > 0 ? "UYU" : "USD")}
+            actionLabel="Ver detalle"
+          >
+            <UsdConsolidatedBreakdownLine
+              total={totalNc}
+              uyuAmount={uyuNc}
+              usdAmount={usdNc}
+              fxRate={fxRate}
               tone="danger"
             />
           </CompactCard>
         );
       }
+    } else {
+      // Moneda original: una card por moneda por concepto
+      for (const code of CURRENCIES) {
+        const m = metricFor(index, code);
+        const issued = m?.issuedInPeriodNet ?? 0;
+        cards.push(
+          <CompactCard
+            key={`ventas-${code}`}
+            title={`${METRIC_LABEL.facturado_periodo} ${code}`}
+            onClick={() => openExplain("facturado", code)}
+            actionLabel="Ver detalle"
+          >
+            <CurrencyLine
+              code={code}
+              value={issued > 0 ? formatCarteraMoney(code, issued, { fractionDigits: 0 }) : "—"}
+            />
+            {periodRangeLabel ? (
+              <p className="text-[10px] text-[var(--copilot-ink-muted)]">{periodRangeLabel}</p>
+            ) : null}
+          </CompactCard>
+        );
+        const nc = m?.creditNoteAmount ?? 0;
+        if (nc > 0) {
+          cards.push(
+            <CompactCard
+              key={`nc-${code}`}
+              title={`Notas crédito ${code}`}
+              onClick={() => openExplain("credit_note", code)}
+              actionLabel="Ver detalle"
+            >
+              <CurrencyLine
+                code={code}
+                value={formatCarteraMoney(code, nc, { fractionDigits: 0 })}
+                tone="danger"
+              />
+            </CompactCard>
+          );
+        }
+      }
     }
+
     if (cards.length === 0) {
       return (
         <p className="text-xs text-[var(--copilot-ink-muted)]">Sin ventas en el período.</p>
