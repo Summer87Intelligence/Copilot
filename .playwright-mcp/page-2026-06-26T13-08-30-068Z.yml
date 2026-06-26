@@ -1,0 +1,1021 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - img [ref=e7]
+      - navigation "Navegación del módulo Copilot" [ref=e10]:
+        - button "Expandir menú lateral" [ref=e12]:
+          - img [ref=e13]
+        - link "Hoy" [ref=e15] [cursor=pointer]:
+          - /url: /copilot/hoy
+          - img [ref=e16]
+          - generic [ref=e19]: Hoy
+        - link "Dashboard" [ref=e22] [cursor=pointer]:
+          - /url: /copilot/dashboard
+          - img [ref=e23]
+          - generic [ref=e25]: Dashboard
+        - link "Finanzas" [ref=e26] [cursor=pointer]:
+          - /url: /copilot/finanzas
+          - img [ref=e27]
+          - generic [ref=e30]: Finanzas
+        - link "Reportes" [ref=e31] [cursor=pointer]:
+          - /url: /copilot/reportes
+          - img [ref=e32]
+          - generic [ref=e35]: Reportes
+        - link "Cobranza" [ref=e38] [cursor=pointer]:
+          - /url: /copilot/cobranza
+          - img [ref=e39]
+          - generic [ref=e44]: Cobranza
+        - link "Cartera" [ref=e45] [cursor=pointer]:
+          - /url: /copilot/cartera
+          - img [ref=e46]
+          - generic [ref=e48]: Cartera
+        - link "Clientes" [ref=e49] [cursor=pointer]:
+          - /url: /copilot/clientes
+          - img [ref=e50]
+          - generic [ref=e55]: Clientes
+        - link "Tesorería" [ref=e58] [cursor=pointer]:
+          - /url: /copilot/tesoreria
+          - img [ref=e59]
+          - generic [ref=e62]: Tesorería
+        - link "Alertas" [ref=e65] [cursor=pointer]:
+          - /url: /copilot/alertas
+          - img [ref=e66]
+          - generic [ref=e68]: Alertas
+        - link "Agentes IA" [ref=e69] [cursor=pointer]:
+          - /url: /copilot/agentes
+          - img [ref=e70]
+          - generic [ref=e73]: Agentes IA
+        - link "Datos" [ref=e74] [cursor=pointer]:
+          - /url: /copilot/datos
+          - img [ref=e75]
+          - generic [ref=e79]: Datos
+        - link "Mesa de ayuda" [ref=e80] [cursor=pointer]:
+          - /url: /copilot/mesa-de-ayuda
+          - img [ref=e81]
+          - generic [ref=e84]: Mesa de ayuda
+        - link "Configuración" [ref=e87] [cursor=pointer]:
+          - /url: /copilot/admin
+          - img [ref=e88]
+          - generic [ref=e91]: Configuración
+        - link "Manual de uso" [ref=e92] [cursor=pointer]:
+          - /url: /copilot/manual
+          - img [ref=e93]
+          - generic [ref=e96]: Manual de uso
+        - link "Empresas" [ref=e99] [cursor=pointer]:
+          - /url: /admin/companies
+          - img [ref=e100]
+          - generic [ref=e104]: Empresas
+        - link "Base Zeta" [ref=e105] [cursor=pointer]:
+          - /url: /copilot/knowledge/zeta
+          - img [ref=e106]
+          - generic [ref=e108]: Base Zeta
+    - generic [ref=e109]:
+      - generic [ref=e110]:
+        - generic [ref=e111]:
+          - generic [ref=e112]:
+            - generic [ref=e113]:
+              - img [ref=e205]
+              - generic [ref=e207]: Viernes, 26 de junio de 2026
+            - 'generic "Fuente: Zeta Actualizado: hace minutos Próxima actualización automática: 11:00 Intervalo: cada 2 h" [ref=e208]': Datos al 26 jun. · próx 11:00
+          - generic [ref=e114]:
+            - button "Notificaciones" [ref=e116]:
+              - img [ref=e117]
+            - generic [ref=e120]:
+              - button "Menú de usuario" [expanded] [active] [ref=e209]: A
+              - generic [ref=e985]:
+                - generic [ref=e986]:
+                  - generic [ref=e987]: A
+                  - generic [ref=e988]:
+                    - paragraph [ref=e989]: admin
+                    - paragraph [ref=e990]: Superadmin
+                - generic [ref=e992]:
+                  - switch "Vista USD" [checked] [ref=e993]:
+                    - generic [ref=e996]: Vista USD
+                  - generic [ref=e997]: ·
+                  - generic [ref=e998]: TC
+                  - button "40" [ref=e999]
+                - button "Tema Claro" [ref=e1001]:
+                  - generic [ref=e1002]: Tema
+                  - generic [ref=e1003]:
+                    - img [ref=e1004]
+                    - text: Claro
+                - generic [ref=e1010]:
+                  - link "Configuración" [ref=e1011] [cursor=pointer]:
+                    - /url: /copilot/admin
+                  - button "Cerrar sesión" [ref=e1012]
+            - 'button "Estado del negocio: Atención. 3 señales de atención" [ref=e210]':
+              - generic [ref=e124]: "3"
+        - status "Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda." [ref=e125]:
+          - paragraph [ref=e126]: Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda.
+      - generic [ref=e128]:
+        - banner [ref=e129]:
+          - generic [ref=e130]:
+            - heading "Cobranza" [level=1] [ref=e131]
+            - paragraph [ref=e132]: Clientes a gestionar, agenda de seguimientos y cobros pendientes.
+        - generic [ref=e133]:
+          - generic [ref=e211]:
+            - generic [ref=e212]:
+              - generic [ref=e213]:
+                - paragraph [ref=e214]: Deuda actual
+                - paragraph [ref=e215]: USD 8.018,39
+                - paragraph [ref=e216]: 20 clientes
+              - generic [ref=e217]:
+                - paragraph [ref=e218]: Vencido
+                - paragraph [ref=e219]: USD 2.962,51
+                - paragraph [ref=e220]: 7 clientes
+              - generic [ref=e221]:
+                - paragraph [ref=e222]: Clientes atrasados
+                - paragraph [ref=e223]: "7"
+                - paragraph [ref=e224]: con al menos una factura vencida
+              - generic [ref=e225]:
+                - paragraph [ref=e226]: Promesas activas
+                - paragraph [ref=e227]: "0"
+                - paragraph [ref=e228]: compromisos de pago pendientes
+            - generic [ref=e229]:
+              - generic [ref=e230]:
+                - paragraph [ref=e231]: Cumplimiento
+                - paragraph [ref=e232]: 0%
+                - paragraph [ref=e233]: 2 vencidas sin cobrar
+              - generic [ref=e234]:
+                - paragraph [ref=e235]: Cobros este mes
+                - paragraph [ref=e236]: USD 22.548,73
+                - paragraph [ref=e237]: TC 40
+              - generic [ref=e238]:
+                - paragraph [ref=e239]: Contactados
+                - paragraph [ref=e240]: 1 / 20
+                - paragraph [ref=e241]: clientes con deuda contactados
+          - generic [ref=e145]:
+            - link "Ver agenda de cobranza" [ref=e146] [cursor=pointer]:
+              - /url: "#cobranza-agenda"
+            - link "Análisis por período" [ref=e147] [cursor=pointer]:
+              - /url: /copilot/cartera
+            - button "Actualizar" [ref=e242]
+          - generic [ref=e149]:
+            - generic [ref=e151]:
+              - heading "Clientes a gestionar" [level=2] [ref=e152]
+              - paragraph [ref=e153]: Ordenados por vencimiento · sin paginación
+            - generic [ref=e154]:
+              - generic [ref=e155]:
+                - generic [ref=e156]: Estado
+                - button "Todos" [ref=e157]
+                - button "Con deuda" [ref=e158]
+                - button "Atrasados" [ref=e159]
+                - button "Sin gestión" [ref=e160]
+              - generic [ref=e161]:
+                - generic [ref=e162]: Responsable
+                - button "Todos" [ref=e163]
+                - button "Mis clientes" [ref=e164]
+                - button "Sin asignar" [ref=e165]
+                - searchbox "Buscar cliente" [ref=e166]
+            - paragraph [ref=e243]: 20 clientes
+            - table [ref=e245]:
+              - rowgroup [ref=e246]:
+                - row "Cliente Pendiente Vencido Estado Gestión Responsable Acciones" [ref=e247]:
+                  - columnheader "Cliente" [ref=e248]
+                  - columnheader "Pendiente" [ref=e249]
+                  - columnheader "Vencido" [ref=e250]
+                  - columnheader "Estado" [ref=e251]
+                  - columnheader "Gestión" [ref=e252]
+                  - columnheader "Responsable" [ref=e253]
+                  - columnheader "Acciones" [ref=e254]
+              - rowgroup [ref=e255]:
+                - row "Estudio Fletcher SAS USD 732,00 USD 366,00 23d atraso Sin gestión Sin asignar Ver Gestionar Asignar" [ref=e256]:
+                  - cell "Estudio Fletcher SAS" [ref=e257]:
+                    - link "Estudio Fletcher SAS" [ref=e258] [cursor=pointer]:
+                      - /url: /copilot/clientes/8fd1272a-3829-4d50-8aa8-66aced1828a0
+                  - cell "USD 732,00" [ref=e259]
+                  - cell "USD 366,00" [ref=e260]
+                  - cell "23d atraso" [ref=e261]:
+                    - generic [ref=e262]: 23d atraso
+                  - cell "Sin gestión" [ref=e263]:
+                    - paragraph [ref=e265]: Sin gestión
+                  - cell "Sin asignar" [ref=e266]
+                  - cell "Ver Gestionar Asignar" [ref=e267]:
+                    - generic [ref=e268]:
+                      - link "Ver" [ref=e269] [cursor=pointer]:
+                        - /url: /copilot/clientes/8fd1272a-3829-4d50-8aa8-66aced1828a0
+                      - link "Gestionar" [ref=e270] [cursor=pointer]:
+                        - /url: /copilot/clientes/8fd1272a-3829-4d50-8aa8-66aced1828a0#gestion-cobranza
+                      - button "Asignar" [ref=e271]:
+                        - img [ref=e272]
+                        - text: Asignar
+                - row "El Pais S.A. USD 216,55 USD 216,55 19d atraso En disputa adiaz@elpais.com.uy daniel superadmin Ver Gestionar Asignar" [ref=e276]:
+                  - cell "El Pais S.A." [ref=e277]:
+                    - link "El Pais S.A." [ref=e278] [cursor=pointer]:
+                      - /url: /copilot/clientes/facc4033-d2ff-4ea2-8f87-1c86990c5555
+                  - cell "USD 216,55" [ref=e279]
+                  - cell "USD 216,55" [ref=e280]
+                  - cell "19d atraso" [ref=e281]:
+                    - generic [ref=e282]: 19d atraso
+                  - cell "En disputa adiaz@elpais.com.uy" [ref=e283]:
+                    - generic [ref=e284]:
+                      - paragraph [ref=e285]: En disputa
+                      - paragraph [ref=e286]: adiaz@elpais.com.uy
+                  - cell "daniel superadmin" [ref=e287]
+                  - cell "Ver Gestionar Asignar" [ref=e288]:
+                    - generic [ref=e289]:
+                      - link "Ver" [ref=e290] [cursor=pointer]:
+                        - /url: /copilot/clientes/facc4033-d2ff-4ea2-8f87-1c86990c5555
+                      - link "Gestionar" [ref=e291] [cursor=pointer]:
+                        - /url: /copilot/clientes/facc4033-d2ff-4ea2-8f87-1c86990c5555#gestion-cobranza
+                      - button "Asignar" [ref=e292]:
+                        - img [ref=e293]
+                        - text: Asignar
+                - row "Trexys Consultores S.A.S. USD 1.049,20 USD 1.049,20 130d atraso Sin gestión daniel superadmin Ver Gestionar Asignar" [ref=e297]:
+                  - cell "Trexys Consultores S.A.S." [ref=e298]:
+                    - link "Trexys Consultores S.A.S." [ref=e299] [cursor=pointer]:
+                      - /url: /copilot/clientes/904cf1f1-89cb-4b5c-bd9c-dcd3f0f24c58
+                  - cell "USD 1.049,20" [ref=e300]
+                  - cell "USD 1.049,20" [ref=e301]
+                  - cell "130d atraso" [ref=e302]:
+                    - generic [ref=e303]: 130d atraso
+                  - cell "Sin gestión" [ref=e304]:
+                    - paragraph [ref=e306]: Sin gestión
+                  - cell "daniel superadmin" [ref=e307]
+                  - cell "Ver Gestionar Asignar" [ref=e308]:
+                    - generic [ref=e309]:
+                      - link "Ver" [ref=e310] [cursor=pointer]:
+                        - /url: /copilot/clientes/904cf1f1-89cb-4b5c-bd9c-dcd3f0f24c58
+                      - link "Gestionar" [ref=e311] [cursor=pointer]:
+                        - /url: /copilot/clientes/904cf1f1-89cb-4b5c-bd9c-dcd3f0f24c58#gestion-cobranza
+                      - button "Asignar" [ref=e312]:
+                        - img [ref=e313]
+                        - text: Asignar
+                - row "Petrovic Solutions USD 935,50 USD 935,50 154d atraso Sin gestión Sin asignar Ver Gestionar Asignar" [ref=e317]:
+                  - cell "Petrovic Solutions" [ref=e318]:
+                    - link "Petrovic Solutions" [ref=e319] [cursor=pointer]:
+                      - /url: /copilot/clientes/94ee84d9-d2a1-45a5-ac67-9e3d53f63179
+                  - cell "USD 935,50" [ref=e320]
+                  - cell "USD 935,50" [ref=e321]
+                  - cell "154d atraso" [ref=e322]:
+                    - generic [ref=e323]: 154d atraso
+                  - cell "Sin gestión" [ref=e324]:
+                    - paragraph [ref=e326]: Sin gestión
+                  - cell "Sin asignar" [ref=e327]
+                  - cell "Ver Gestionar Asignar" [ref=e328]:
+                    - generic [ref=e329]:
+                      - link "Ver" [ref=e330] [cursor=pointer]:
+                        - /url: /copilot/clientes/94ee84d9-d2a1-45a5-ac67-9e3d53f63179
+                      - link "Gestionar" [ref=e331] [cursor=pointer]:
+                        - /url: /copilot/clientes/94ee84d9-d2a1-45a5-ac67-9e3d53f63179#gestion-cobranza
+                      - button "Asignar" [ref=e332]:
+                        - img [ref=e333]
+                        - text: Asignar
+                - row "Errede Supermercado S.R.L. USD 225,70 USD 183,00 23d atraso Sin gestión Sin asignar Ver Gestionar Asignar" [ref=e337]:
+                  - cell "Errede Supermercado S.R.L." [ref=e338]:
+                    - link "Errede Supermercado S.R.L." [ref=e339] [cursor=pointer]:
+                      - /url: /copilot/clientes/a264a0b8-ea11-4419-92a8-370e9ce94c6c
+                  - cell "USD 225,70" [ref=e340]
+                  - cell "USD 183,00" [ref=e341]
+                  - cell "23d atraso" [ref=e342]:
+                    - generic [ref=e343]: 23d atraso
+                  - cell "Sin gestión" [ref=e344]:
+                    - paragraph [ref=e346]: Sin gestión
+                  - cell "Sin asignar" [ref=e347]
+                  - cell "Ver Gestionar Asignar" [ref=e348]:
+                    - generic [ref=e349]:
+                      - link "Ver" [ref=e350] [cursor=pointer]:
+                        - /url: /copilot/clientes/a264a0b8-ea11-4419-92a8-370e9ce94c6c
+                      - link "Gestionar" [ref=e351] [cursor=pointer]:
+                        - /url: /copilot/clientes/a264a0b8-ea11-4419-92a8-370e9ce94c6c#gestion-cobranza
+                      - button "Asignar" [ref=e352]:
+                        - img [ref=e353]
+                        - text: Asignar
+                - row "Recon Security SRL USD 183,00 USD 183,00 137d atraso Sin gestión daniel superadmin Ver Gestionar Asignar" [ref=e357]:
+                  - cell "Recon Security SRL" [ref=e358]:
+                    - link "Recon Security SRL" [ref=e359] [cursor=pointer]:
+                      - /url: /copilot/clientes/45699d66-bd83-4b5c-9b41-13ddadddf304
+                  - cell "USD 183,00" [ref=e360]
+                  - cell "USD 183,00" [ref=e361]
+                  - cell "137d atraso" [ref=e362]:
+                    - generic [ref=e363]: 137d atraso
+                  - cell "Sin gestión" [ref=e364]:
+                    - paragraph [ref=e366]: Sin gestión
+                  - cell "daniel superadmin" [ref=e367]
+                  - cell "Ver Gestionar Asignar" [ref=e368]:
+                    - generic [ref=e369]:
+                      - link "Ver" [ref=e370] [cursor=pointer]:
+                        - /url: /copilot/clientes/45699d66-bd83-4b5c-9b41-13ddadddf304
+                      - link "Gestionar" [ref=e371] [cursor=pointer]:
+                        - /url: /copilot/clientes/45699d66-bd83-4b5c-9b41-13ddadddf304#gestion-cobranza
+                      - button "Asignar" [ref=e372]:
+                        - img [ref=e373]
+                        - text: Asignar
+                - row "Acquagarden SAS USD 29,26 USD 29,26 23d atraso Sin gestión marianelamtv@gmail.com Sin asignar Ver Gestionar Asignar" [ref=e377]:
+                  - cell "Acquagarden SAS" [ref=e378]:
+                    - link "Acquagarden SAS" [ref=e379] [cursor=pointer]:
+                      - /url: /copilot/clientes/411b0506-b51e-4764-b3ce-fd0688d941c4
+                  - cell "USD 29,26" [ref=e380]
+                  - cell "USD 29,26" [ref=e381]
+                  - cell "23d atraso" [ref=e382]:
+                    - generic [ref=e383]: 23d atraso
+                  - cell "Sin gestión marianelamtv@gmail.com" [ref=e384]:
+                    - generic [ref=e385]:
+                      - paragraph [ref=e386]: Sin gestión
+                      - paragraph [ref=e387]: marianelamtv@gmail.com
+                  - cell "Sin asignar" [ref=e388]
+                  - cell "Ver Gestionar Asignar" [ref=e389]:
+                    - generic [ref=e390]:
+                      - link "Ver" [ref=e391] [cursor=pointer]:
+                        - /url: /copilot/clientes/411b0506-b51e-4764-b3ce-fd0688d941c4
+                      - link "Gestionar" [ref=e392] [cursor=pointer]:
+                        - /url: /copilot/clientes/411b0506-b51e-4764-b3ce-fd0688d941c4#gestion-cobranza
+                      - button "Asignar" [ref=e393]:
+                        - img [ref=e394]
+                        - text: Asignar
+                - row "Mauricio Nicolás Gayol Martínez USD 488,00 — Al día Sin gestión mgayol@trendingsoftware.com Sin asignar Ver Gestionar Asignar" [ref=e398]:
+                  - cell "Mauricio Nicolás Gayol Martínez" [ref=e399]:
+                    - link "Mauricio Nicolás Gayol Martínez" [ref=e400] [cursor=pointer]:
+                      - /url: /copilot/clientes/44aae4f6-9766-4ff6-b123-c6bc97ccac61
+                  - cell "USD 488,00" [ref=e401]
+                  - cell "—" [ref=e402]
+                  - cell "Al día" [ref=e403]
+                  - cell "Sin gestión mgayol@trendingsoftware.com" [ref=e404]:
+                    - generic [ref=e405]:
+                      - paragraph [ref=e406]: Sin gestión
+                      - paragraph [ref=e407]: mgayol@trendingsoftware.com
+                  - cell "Sin asignar" [ref=e408]
+                  - cell "Ver Gestionar Asignar" [ref=e409]:
+                    - generic [ref=e410]:
+                      - link "Ver" [ref=e411] [cursor=pointer]:
+                        - /url: /copilot/clientes/44aae4f6-9766-4ff6-b123-c6bc97ccac61
+                      - link "Gestionar" [ref=e412] [cursor=pointer]:
+                        - /url: /copilot/clientes/44aae4f6-9766-4ff6-b123-c6bc97ccac61#gestion-cobranza
+                      - button "Asignar" [ref=e413]:
+                        - img [ref=e414]
+                        - text: Asignar
+                - row "Nirmex S.A. USD 427,00 — Al día Sin gestión Sin asignar Ver Gestionar Asignar" [ref=e418]:
+                  - cell "Nirmex S.A." [ref=e419]:
+                    - link "Nirmex S.A." [ref=e420] [cursor=pointer]:
+                      - /url: /copilot/clientes/7671f4d1-8710-43ab-aff1-3fb53c80442b
+                  - cell "USD 427,00" [ref=e421]
+                  - cell "—" [ref=e422]
+                  - cell "Al día" [ref=e423]
+                  - cell "Sin gestión" [ref=e424]:
+                    - paragraph [ref=e426]: Sin gestión
+                  - cell "Sin asignar" [ref=e427]
+                  - cell "Ver Gestionar Asignar" [ref=e428]:
+                    - generic [ref=e429]:
+                      - link "Ver" [ref=e430] [cursor=pointer]:
+                        - /url: /copilot/clientes/7671f4d1-8710-43ab-aff1-3fb53c80442b
+                      - link "Gestionar" [ref=e431] [cursor=pointer]:
+                        - /url: /copilot/clientes/7671f4d1-8710-43ab-aff1-3fb53c80442b#gestion-cobranza
+                      - button "Asignar" [ref=e432]:
+                        - img [ref=e433]
+                        - text: Asignar
+                - row "Movex Uruguay S.A.S. USD 383,00 — Al día Sin gestión administracion@movex.com.uy Sin asignar Ver Gestionar Asignar" [ref=e437]:
+                  - cell "Movex Uruguay S.A.S." [ref=e438]:
+                    - link "Movex Uruguay S.A.S." [ref=e439] [cursor=pointer]:
+                      - /url: /copilot/clientes/c69b270b-535e-4c99-99e7-a44fce32a4df
+                  - cell "USD 383,00" [ref=e440]
+                  - cell "—" [ref=e441]
+                  - cell "Al día" [ref=e442]
+                  - cell "Sin gestión administracion@movex.com.uy" [ref=e443]:
+                    - generic [ref=e444]:
+                      - paragraph [ref=e445]: Sin gestión
+                      - paragraph [ref=e446]: administracion@movex.com.uy
+                  - cell "Sin asignar" [ref=e447]
+                  - cell "Ver Gestionar Asignar" [ref=e448]:
+                    - generic [ref=e449]:
+                      - link "Ver" [ref=e450] [cursor=pointer]:
+                        - /url: /copilot/clientes/c69b270b-535e-4c99-99e7-a44fce32a4df
+                      - link "Gestionar" [ref=e451] [cursor=pointer]:
+                        - /url: /copilot/clientes/c69b270b-535e-4c99-99e7-a44fce32a4df#gestion-cobranza
+                      - button "Asignar" [ref=e452]:
+                        - img [ref=e453]
+                        - text: Asignar
+                - row "Gjorgji Martin Gerardo USD 83,88 — Al día Sin gestión Sin asignar Ver Gestionar Asignar" [ref=e457]:
+                  - cell "Gjorgji Martin Gerardo" [ref=e458]:
+                    - link "Gjorgji Martin Gerardo" [ref=e459] [cursor=pointer]:
+                      - /url: /copilot/clientes/0e74cee5-7cb9-4c87-884c-adf05e6e5549
+                  - cell "USD 83,88" [ref=e460]
+                  - cell "—" [ref=e461]
+                  - cell "Al día" [ref=e462]
+                  - cell "Sin gestión" [ref=e463]:
+                    - paragraph [ref=e465]: Sin gestión
+                  - cell "Sin asignar" [ref=e466]
+                  - cell "Ver Gestionar Asignar" [ref=e467]:
+                    - generic [ref=e468]:
+                      - link "Ver" [ref=e469] [cursor=pointer]:
+                        - /url: /copilot/clientes/0e74cee5-7cb9-4c87-884c-adf05e6e5549
+                      - link "Gestionar" [ref=e470] [cursor=pointer]:
+                        - /url: /copilot/clientes/0e74cee5-7cb9-4c87-884c-adf05e6e5549#gestion-cobranza
+                      - button "Asignar" [ref=e471]:
+                        - img [ref=e472]
+                        - text: Asignar
+                - row "Cardona Romero Carlos Danilo USD 24,40 — Al día Sin gestión contacto@carven.com.uy Sin asignar Ver Gestionar Asignar" [ref=e476]:
+                  - cell "Cardona Romero Carlos Danilo" [ref=e477]:
+                    - link "Cardona Romero Carlos Danilo" [ref=e478] [cursor=pointer]:
+                      - /url: /copilot/clientes/ee711817-35b2-422c-b687-1821bb101def
+                  - cell "USD 24,40" [ref=e479]
+                  - cell "—" [ref=e480]
+                  - cell "Al día" [ref=e481]
+                  - cell "Sin gestión contacto@carven.com.uy" [ref=e482]:
+                    - generic [ref=e483]:
+                      - paragraph [ref=e484]: Sin gestión
+                      - paragraph [ref=e485]: contacto@carven.com.uy
+                  - cell "Sin asignar" [ref=e486]
+                  - cell "Ver Gestionar Asignar" [ref=e487]:
+                    - generic [ref=e488]:
+                      - link "Ver" [ref=e489] [cursor=pointer]:
+                        - /url: /copilot/clientes/ee711817-35b2-422c-b687-1821bb101def
+                      - link "Gestionar" [ref=e490] [cursor=pointer]:
+                        - /url: /copilot/clientes/ee711817-35b2-422c-b687-1821bb101def#gestion-cobranza
+                      - button "Asignar" [ref=e491]:
+                        - img [ref=e492]
+                        - text: Asignar
+                - row "Creditox sas USD 976,00 — Al día Sin gestión Sin asignar Ver Gestionar Asignar" [ref=e496]:
+                  - cell "Creditox sas" [ref=e497]:
+                    - link "Creditox sas" [ref=e498] [cursor=pointer]:
+                      - /url: /copilot/clientes/09381f35-df88-4f4e-aec2-31f78c6e1f84
+                  - cell "USD 976,00" [ref=e499]
+                  - cell "—" [ref=e500]
+                  - cell "Al día" [ref=e501]
+                  - cell "Sin gestión" [ref=e502]:
+                    - paragraph [ref=e504]: Sin gestión
+                  - cell "Sin asignar" [ref=e505]
+                  - cell "Ver Gestionar Asignar" [ref=e506]:
+                    - generic [ref=e507]:
+                      - link "Ver" [ref=e508] [cursor=pointer]:
+                        - /url: /copilot/clientes/09381f35-df88-4f4e-aec2-31f78c6e1f84
+                      - link "Gestionar" [ref=e509] [cursor=pointer]:
+                        - /url: /copilot/clientes/09381f35-df88-4f4e-aec2-31f78c6e1f84#gestion-cobranza
+                      - button "Asignar" [ref=e510]:
+                        - img [ref=e511]
+                        - text: Asignar
+                - row "Trek USD 823,50 — Al día Sin gestión Sin asignar Ver Gestionar Asignar" [ref=e515]:
+                  - cell "Trek" [ref=e516]:
+                    - link "Trek" [ref=e517] [cursor=pointer]:
+                      - /url: /copilot/clientes/881c3904-74c5-40b9-ba6a-b8aa3a1058e1
+                  - cell "USD 823,50" [ref=e518]
+                  - cell "—" [ref=e519]
+                  - cell "Al día" [ref=e520]
+                  - cell "Sin gestión" [ref=e521]:
+                    - paragraph [ref=e523]: Sin gestión
+                  - cell "Sin asignar" [ref=e524]
+                  - cell "Ver Gestionar Asignar" [ref=e525]:
+                    - generic [ref=e526]:
+                      - link "Ver" [ref=e527] [cursor=pointer]:
+                        - /url: /copilot/clientes/881c3904-74c5-40b9-ba6a-b8aa3a1058e1
+                      - link "Gestionar" [ref=e528] [cursor=pointer]:
+                        - /url: /copilot/clientes/881c3904-74c5-40b9-ba6a-b8aa3a1058e1#gestion-cobranza
+                      - button "Asignar" [ref=e529]:
+                        - img [ref=e530]
+                        - text: Asignar
+                - row "Consumidor Final USD 610,00 — Al día Sin gestión - Sin asignar Ver Gestionar Asignar" [ref=e534]:
+                  - cell "Consumidor Final" [ref=e535]:
+                    - link "Consumidor Final" [ref=e536] [cursor=pointer]:
+                      - /url: /copilot/clientes/2028181c-172e-4b34-90fd-01c1d400f91b
+                  - cell "USD 610,00" [ref=e537]
+                  - cell "—" [ref=e538]
+                  - cell "Al día" [ref=e539]
+                  - cell "Sin gestión -" [ref=e540]:
+                    - generic [ref=e541]:
+                      - paragraph [ref=e542]: Sin gestión
+                      - paragraph [ref=e543]: "-"
+                  - cell "Sin asignar" [ref=e544]
+                  - cell "Ver Gestionar Asignar" [ref=e545]:
+                    - generic [ref=e546]:
+                      - link "Ver" [ref=e547] [cursor=pointer]:
+                        - /url: /copilot/clientes/2028181c-172e-4b34-90fd-01c1d400f91b
+                      - link "Gestionar" [ref=e548] [cursor=pointer]:
+                        - /url: /copilot/clientes/2028181c-172e-4b34-90fd-01c1d400f91b#gestion-cobranza
+                      - button "Asignar" [ref=e549]:
+                        - img [ref=e550]
+                        - text: Asignar
+                - row "Mill Vonmetzen Karin USD 427,00 — Al día Sin gestión karin@resideinuruguay.com Sin asignar Ver Gestionar Asignar" [ref=e554]:
+                  - cell "Mill Vonmetzen Karin" [ref=e555]:
+                    - link "Mill Vonmetzen Karin" [ref=e556] [cursor=pointer]:
+                      - /url: /copilot/clientes/630ed5ee-e7f1-4b84-aa6e-217a01a57499
+                  - cell "USD 427,00" [ref=e557]
+                  - cell "—" [ref=e558]
+                  - cell "Al día" [ref=e559]
+                  - cell "Sin gestión karin@resideinuruguay.com" [ref=e560]:
+                    - generic [ref=e561]:
+                      - paragraph [ref=e562]: Sin gestión
+                      - paragraph [ref=e563]: karin@resideinuruguay.com
+                  - cell "Sin asignar" [ref=e564]
+                  - cell "Ver Gestionar Asignar" [ref=e565]:
+                    - generic [ref=e566]:
+                      - link "Ver" [ref=e567] [cursor=pointer]:
+                        - /url: /copilot/clientes/630ed5ee-e7f1-4b84-aa6e-217a01a57499
+                      - link "Gestionar" [ref=e568] [cursor=pointer]:
+                        - /url: /copilot/clientes/630ed5ee-e7f1-4b84-aa6e-217a01a57499#gestion-cobranza
+                      - button "Asignar" [ref=e569]:
+                        - img [ref=e570]
+                        - text: Asignar
+                - row "Siempre Conviene S.A.S. USD 10,00 — Al día Sin gestión siempreconvienee@gmail.com daniel superadmin Ver Gestionar Asignar" [ref=e574]:
+                  - cell "Siempre Conviene S.A.S." [ref=e575]:
+                    - link "Siempre Conviene S.A.S." [ref=e576] [cursor=pointer]:
+                      - /url: /copilot/clientes/23d180ca-3896-461b-825f-5bc0819a2c49
+                  - cell "USD 10,00" [ref=e577]
+                  - cell "—" [ref=e578]
+                  - cell "Al día" [ref=e579]
+                  - cell "Sin gestión siempreconvienee@gmail.com" [ref=e580]:
+                    - generic [ref=e581]:
+                      - paragraph [ref=e582]: Sin gestión
+                      - paragraph [ref=e583]: siempreconvienee@gmail.com
+                  - cell "daniel superadmin" [ref=e584]
+                  - cell "Ver Gestionar Asignar" [ref=e585]:
+                    - generic [ref=e586]:
+                      - link "Ver" [ref=e587] [cursor=pointer]:
+                        - /url: /copilot/clientes/23d180ca-3896-461b-825f-5bc0819a2c49
+                      - link "Gestionar" [ref=e588] [cursor=pointer]:
+                        - /url: /copilot/clientes/23d180ca-3896-461b-825f-5bc0819a2c49#gestion-cobranza
+                      - button "Asignar" [ref=e589]:
+                        - img [ref=e590]
+                        - text: Asignar
+                - row "Alvarez Rios Javier Enrique USD 183,00 — Al día Sin gestión jalvarez@dycomunicacion.com Sin asignar Ver Gestionar Asignar" [ref=e594]:
+                  - cell "Alvarez Rios Javier Enrique" [ref=e595]:
+                    - link "Alvarez Rios Javier Enrique" [ref=e596] [cursor=pointer]:
+                      - /url: /copilot/clientes/114999c3-70a4-4282-bbdc-02b1bb877e96
+                  - cell "USD 183,00" [ref=e597]
+                  - cell "—" [ref=e598]
+                  - cell "Al día" [ref=e599]
+                  - cell "Sin gestión jalvarez@dycomunicacion.com" [ref=e600]:
+                    - generic [ref=e601]:
+                      - paragraph [ref=e602]: Sin gestión
+                      - paragraph [ref=e603]: jalvarez@dycomunicacion.com
+                  - cell "Sin asignar" [ref=e604]
+                  - cell "Ver Gestionar Asignar" [ref=e605]:
+                    - generic [ref=e606]:
+                      - link "Ver" [ref=e607] [cursor=pointer]:
+                        - /url: /copilot/clientes/114999c3-70a4-4282-bbdc-02b1bb877e96
+                      - link "Gestionar" [ref=e608] [cursor=pointer]:
+                        - /url: /copilot/clientes/114999c3-70a4-4282-bbdc-02b1bb877e96#gestion-cobranza
+                      - button "Asignar" [ref=e609]:
+                        - img [ref=e610]
+                        - text: Asignar
+                - row "Maxivision S.A. USD 128,10 — Al día Sin gestión Sin asignar Ver Gestionar Asignar" [ref=e614]:
+                  - cell "Maxivision S.A." [ref=e615]:
+                    - link "Maxivision S.A." [ref=e616] [cursor=pointer]:
+                      - /url: /copilot/clientes/7948a965-ea75-4d58-84b6-01bae31d7515
+                  - cell "USD 128,10" [ref=e617]
+                  - cell "—" [ref=e618]
+                  - cell "Al día" [ref=e619]
+                  - cell "Sin gestión" [ref=e620]:
+                    - paragraph [ref=e622]: Sin gestión
+                  - cell "Sin asignar" [ref=e623]
+                  - cell "Ver Gestionar Asignar" [ref=e624]:
+                    - generic [ref=e625]:
+                      - link "Ver" [ref=e626] [cursor=pointer]:
+                        - /url: /copilot/clientes/7948a965-ea75-4d58-84b6-01bae31d7515
+                      - link "Gestionar" [ref=e627] [cursor=pointer]:
+                        - /url: /copilot/clientes/7948a965-ea75-4d58-84b6-01bae31d7515#gestion-cobranza
+                      - button "Asignar" [ref=e628]:
+                        - img [ref=e629]
+                        - text: Asignar
+                - row "Maria Eva Pose USD 83,30 — Al día Sin gestión Sin asignar Ver Gestionar Asignar" [ref=e633]:
+                  - cell "Maria Eva Pose" [ref=e634]:
+                    - link "Maria Eva Pose" [ref=e635] [cursor=pointer]:
+                      - /url: /copilot/clientes/4c87b591-c76b-4a63-ad78-0ea77885d44a
+                  - cell "USD 83,30" [ref=e636]
+                  - cell "—" [ref=e637]
+                  - cell "Al día" [ref=e638]
+                  - cell "Sin gestión" [ref=e639]:
+                    - paragraph [ref=e641]: Sin gestión
+                  - cell "Sin asignar" [ref=e642]
+                  - cell "Ver Gestionar Asignar" [ref=e643]:
+                    - generic [ref=e644]:
+                      - link "Ver" [ref=e645] [cursor=pointer]:
+                        - /url: /copilot/clientes/4c87b591-c76b-4a63-ad78-0ea77885d44a
+                      - link "Gestionar" [ref=e646] [cursor=pointer]:
+                        - /url: /copilot/clientes/4c87b591-c76b-4a63-ad78-0ea77885d44a#gestion-cobranza
+                      - button "Asignar" [ref=e647]:
+                        - img [ref=e648]
+                        - text: Asignar
+          - generic [ref=e169]:
+            - generic [ref=e170]:
+              - heading "Agenda de cobranza" [level=2] [ref=e171]
+              - paragraph [ref=e172]: Seguimientos, promesas y contactos recientes registrados en las fichas de clientes.
+            - generic [ref=e652]:
+              - img [ref=e653]
+              - paragraph [ref=e656]: No hay seguimientos registrados.
+              - paragraph [ref=e657]: Los seguimientos aparecen cuando registrás gestiones en las fichas de los clientes.
+          - generic [ref=e177]:
+            - generic [ref=e178]:
+              - heading "Alertas de cobranza" [level=2] [ref=e179]
+              - paragraph [ref=e180]: Novedades recientes · máx. 10
+            - list [ref=e658]:
+              - listitem [ref=e659]:
+                - paragraph [ref=e660]: Nuevo saldo pendiente · USD 83
+                - paragraph [ref=e661]: Maria Eva Pose registra deuda pendiente por USD 83.
+                - link "Gestionar cobranza" [ref=e662] [cursor=pointer]:
+                  - /url: /copilot/clientes/4c87b591-c76b-4a63-ad78-0ea77885d44a
+                  - text: Gestionar cobranza
+                  - img [ref=e663]
+              - listitem [ref=e665]:
+                - paragraph [ref=e666]: Cliente saldó deuda · USD 85
+                - paragraph [ref=e667]: Maria Eva Pose pagó USD 85.
+                - link "Ver cliente" [ref=e668] [cursor=pointer]:
+                  - /url: /copilot/clientes/4c87b591-c76b-4a63-ad78-0ea77885d44a
+                  - text: Ver cliente
+                  - img [ref=e669]
+              - listitem [ref=e671]:
+                - paragraph [ref=e672]: Cliente saldó deuda · USD 43
+                - paragraph [ref=e673]: Dolby S.A. pagó USD 43.
+                - link "Ver cliente" [ref=e674] [cursor=pointer]:
+                  - /url: /copilot/clientes/43ab2bda-d17d-43b9-9289-d45abf8e1e36
+                  - text: Ver cliente
+                  - img [ref=e675]
+              - listitem [ref=e677]:
+                - paragraph [ref=e678]: Cliente saldó deuda · UYU 96.624
+                - paragraph [ref=e679]: Remiplat SA pagó UYU 96.624.
+                - link "Ver cliente" [ref=e680] [cursor=pointer]:
+                  - /url: /copilot/clientes/bff7c7ea-d969-4bd3-adce-b2240833a863
+                  - text: Ver cliente
+                  - img [ref=e681]
+              - listitem [ref=e683]:
+                - paragraph [ref=e684]: Cliente saldó deuda · USD 610
+                - paragraph [ref=e685]: Suprasur S.A. pagó USD 610.
+                - link "Ver cliente" [ref=e686] [cursor=pointer]:
+                  - /url: /copilot/clientes/e87e0d33-c637-45ab-81d2-4dd295a17cbe
+                  - text: Ver cliente
+                  - img [ref=e687]
+              - listitem [ref=e689]:
+                - paragraph [ref=e690]: Cliente saldó deuda · UYU 16.104
+                - paragraph [ref=e691]: Botica del Señor SRL pagó UYU 16.104.
+                - link "Ver cliente" [ref=e692] [cursor=pointer]:
+                  - /url: /copilot/clientes/951aaad9-ea76-4163-9be2-c690106da3ca
+                  - text: Ver cliente
+                  - img [ref=e693]
+              - listitem [ref=e695]:
+                - paragraph [ref=e696]: Cliente saldó deuda · UYU 24.400
+                - paragraph [ref=e697]: Cafe de especialdiad srl pagó UYU 24.400.
+                - link "Ver cliente" [ref=e698] [cursor=pointer]:
+                  - /url: /copilot/clientes/079b19d2-23dd-48cd-b9fd-191575fce5fc
+                  - text: Ver cliente
+                  - img [ref=e699]
+              - listitem [ref=e701]:
+                - paragraph [ref=e702]: 2 clientes atrasados · USD 517
+                - paragraph [ref=e703]: "Total atrasado: USD 517 entre 2 clientes. • Trexys Consultores S.A.S. · USD 488 • Acquagarden SAS · USD 29"
+                - link "Ver atrasados" [ref=e704] [cursor=pointer]:
+                  - /url: /copilot/cobranza#clientes-a-gestionar
+                  - text: Ver atrasados
+                  - img [ref=e705]
+              - listitem [ref=e707]:
+                - paragraph [ref=e708]: Cliente saldó deuda · UYU 24.400
+                - paragraph [ref=e709]: Cafe de especialdiad srl pagó UYU 24.400.
+                - link "Ver cliente" [ref=e710] [cursor=pointer]:
+                  - /url: /copilot/clientes/079b19d2-23dd-48cd-b9fd-191575fce5fc
+                  - text: Ver cliente
+                  - img [ref=e711]
+              - listitem [ref=e713]:
+                - paragraph [ref=e714]: Nuevo saldo pendiente · USD 83
+                - paragraph [ref=e715]: Maria Eva Pose registra deuda pendiente por USD 83.
+                - link "Gestionar cobranza" [ref=e716] [cursor=pointer]:
+                  - /url: /copilot/clientes/4c87b591-c76b-4a63-ad78-0ea77885d44a
+                  - text: Gestionar cobranza
+                  - img [ref=e717]
+            - link "Ver todas las alertas" [ref=e183] [cursor=pointer]:
+              - /url: /copilot/alertas
+              - text: Ver todas las alertas
+              - img [ref=e184]
+          - region "Historial de cobros" [ref=e186]:
+            - generic [ref=e187]:
+              - generic [ref=e188]:
+                - generic [ref=e189]:
+                  - heading "Historial de cobros" [level=2] [ref=e190]
+                  - paragraph [ref=e719]: 45 registros
+                - generic [ref=e191]:
+                  - combobox "Período" [ref=e192]:
+                    - option "Últimos 30 días" [selected]
+                    - option "Este mes"
+                    - option "Todo"
+                  - combobox "Moneda" [ref=e193]:
+                    - option "Todas las monedas" [selected]
+                    - option "UYU"
+                    - option "USD"
+                  - combobox "Cliente" [ref=e194]:
+                    - option "Todos los clientes" [selected]
+                    - option "Aldiesan SRL"
+                    - option "ALKITODO S.R.L"
+                    - option "Arroyal S.A."
+                    - option "Bloommy´s SA"
+                    - option "Botica del Señor SRL"
+                    - option "Cafe de especialdiad srl"
+                    - option "Cardona Romero Carlos Danilo"
+                    - option "Consumidor Final"
+                    - option "Dalama S.A.S."
+                    - option "Dilmostar S.A"
+                    - option "DOBSURA CORPORATION SA"
+                    - option "Dolby S.A."
+                    - option "Domingo Pizzinat srl"
+                    - option "Doneghal S.A."
+                    - option "El Pais S.A."
+                    - option "Fiorella y Cia. S.A."
+                    - option "Gjorgji Martin Gerardo"
+                    - option "Grupo Pentalfa S.A.S."
+                    - option "HARRISON S.A"
+                    - option "Hector de Rebolledo"
+                    - option "Hogar de Ancianos de Colonia Valdense"
+                    - option "Instituto Universitario Sudamericano"
+                    - option "Irrazabal Legales S.A.S."
+                    - option "LANCER SA"
+                    - option "Lombardo Godoy Maria Belen y Silva Silva Virginia Lorena"
+                    - option "Margot Morales"
+                    - option "Maria Eva Pose"
+                    - option "Maria Magdalena Antognazza Scarone"
+                    - option "Mill Vonmetzen Karin"
+                    - option "Nirmex S.A."
+                    - option "PAPELERIA ALDO S.A. DE BENEFICIO E INTERES COLECTIVO"
+                    - option "Porras Segurola Pablo Eduardo"
+                    - option "Prestis S.A.S."
+                    - option "Remiplat SA"
+                    - option "ROCKLAND LTDA"
+                    - option "Samysol SA"
+                    - option "Siempre Conviene S.A.S."
+                    - option "Suprasur S.A."
+                    - option "Ubal Dalmu Maria Patricia"
+                    - option "Vilcabamba SRL"
+                    - option "Weik House SRL"
+              - table [ref=e721]:
+                - rowgroup [ref=e722]:
+                  - row "Fecha Cliente Monto Moneda Origen Referencia Registrado" [ref=e723]:
+                    - columnheader "Fecha" [ref=e724]
+                    - columnheader "Cliente" [ref=e725]
+                    - columnheader "Monto" [ref=e726]
+                    - columnheader "Moneda" [ref=e727]
+                    - columnheader "Origen" [ref=e728]
+                    - columnheader "Referencia" [ref=e729]
+                    - columnheader "Registrado" [ref=e730]
+                - rowgroup [ref=e731]:
+                  - row "23/06/2026 Cafe de especialdiad srl 24.400 UYU Zeta A-820 Zeta" [ref=e732]:
+                    - cell "23/06/2026" [ref=e733]
+                    - cell "Cafe de especialdiad srl" [ref=e734]:
+                      - link "Cafe de especialdiad srl" [ref=e735] [cursor=pointer]:
+                        - /url: /copilot/clientes/079b19d2-23dd-48cd-b9fd-191575fce5fc
+                    - cell "24.400" [ref=e736]
+                    - cell "UYU" [ref=e737]
+                    - cell "Zeta" [ref=e738]:
+                      - generic [ref=e739]: Zeta
+                    - cell "A-820" [ref=e740]
+                    - cell "Zeta" [ref=e741]
+                  - row "22/06/2026 Botica del Señor SRL 16.104 UYU Zeta A-817 Zeta" [ref=e742]:
+                    - cell "22/06/2026" [ref=e743]
+                    - cell "Botica del Señor SRL" [ref=e744]:
+                      - link "Botica del Señor SRL" [ref=e745] [cursor=pointer]:
+                        - /url: /copilot/clientes/951aaad9-ea76-4163-9be2-c690106da3ca
+                    - cell "16.104" [ref=e746]
+                    - cell "UYU" [ref=e747]
+                    - cell "Zeta" [ref=e748]:
+                      - generic [ref=e749]: Zeta
+                    - cell "A-817" [ref=e750]
+                    - cell "Zeta" [ref=e751]
+                  - row "18/06/2026 Maria Eva Pose 85,4 USD Zeta A-816 Zeta" [ref=e752]:
+                    - cell "18/06/2026" [ref=e753]
+                    - cell "Maria Eva Pose" [ref=e754]:
+                      - link "Maria Eva Pose" [ref=e755] [cursor=pointer]:
+                        - /url: /copilot/clientes/4c87b591-c76b-4a63-ad78-0ea77885d44a
+                    - cell "85,4" [ref=e756]
+                    - cell "USD" [ref=e757]
+                    - cell "Zeta" [ref=e758]:
+                      - generic [ref=e759]: Zeta
+                    - cell "A-816" [ref=e760]
+                    - cell "Zeta" [ref=e761]
+                  - row "17/06/2026 Suprasur S.A. 610 USD Zeta A-819 Zeta" [ref=e762]:
+                    - cell "17/06/2026" [ref=e763]
+                    - cell "Suprasur S.A." [ref=e764]:
+                      - link "Suprasur S.A." [ref=e765] [cursor=pointer]:
+                        - /url: /copilot/clientes/e87e0d33-c637-45ab-81d2-4dd295a17cbe
+                    - cell "610" [ref=e766]
+                    - cell "USD" [ref=e767]
+                    - cell "Zeta" [ref=e768]:
+                      - generic [ref=e769]: Zeta
+                    - cell "A-819" [ref=e770]
+                    - cell "Zeta" [ref=e771]
+                  - row "17/06/2026 Remiplat SA 96.624 UYU Zeta A-815 Zeta" [ref=e772]:
+                    - cell "17/06/2026" [ref=e773]
+                    - cell "Remiplat SA" [ref=e774]:
+                      - link "Remiplat SA" [ref=e775] [cursor=pointer]:
+                        - /url: /copilot/clientes/bff7c7ea-d969-4bd3-adce-b2240833a863
+                    - cell "96.624" [ref=e776]
+                    - cell "UYU" [ref=e777]
+                    - cell "Zeta" [ref=e778]:
+                      - generic [ref=e779]: Zeta
+                    - cell "A-815" [ref=e780]
+                    - cell "Zeta" [ref=e781]
+                  - row "16/06/2026 Dolby S.A. 42,7 USD Zeta A-818 Zeta" [ref=e782]:
+                    - cell "16/06/2026" [ref=e783]
+                    - cell "Dolby S.A." [ref=e784]:
+                      - link "Dolby S.A." [ref=e785] [cursor=pointer]:
+                        - /url: /copilot/clientes/43ab2bda-d17d-43b9-9289-d45abf8e1e36
+                    - cell "42,7" [ref=e786]
+                    - cell "USD" [ref=e787]
+                    - cell "Zeta" [ref=e788]:
+                      - generic [ref=e789]: Zeta
+                    - cell "A-818" [ref=e790]
+                    - cell "Zeta" [ref=e791]
+                  - row "16/06/2026 ROCKLAND LTDA 146 UYU Zeta A-812 Zeta" [ref=e792]:
+                    - cell "16/06/2026" [ref=e793]
+                    - cell "ROCKLAND LTDA" [ref=e794]:
+                      - link "ROCKLAND LTDA" [ref=e795] [cursor=pointer]:
+                        - /url: /copilot/clientes/d77f52ad-3172-4642-8854-23458a06b8f6
+                    - cell "146" [ref=e796]
+                    - cell "UYU" [ref=e797]
+                    - cell "Zeta" [ref=e798]:
+                      - generic [ref=e799]: Zeta
+                    - cell "A-812" [ref=e800]
+                    - cell "Zeta" [ref=e801]
+                  - row "15/06/2026 DOBSURA CORPORATION SA 530,7 USD Zeta A-811 Zeta" [ref=e802]:
+                    - cell "15/06/2026" [ref=e803]
+                    - cell "DOBSURA CORPORATION SA" [ref=e804]:
+                      - link "DOBSURA CORPORATION SA" [ref=e805] [cursor=pointer]:
+                        - /url: /copilot/clientes/6e50f5e7-161a-48c2-af38-be209ab6f330
+                    - cell "530,7" [ref=e806]
+                    - cell "USD" [ref=e807]
+                    - cell "Zeta" [ref=e808]:
+                      - generic [ref=e809]: Zeta
+                    - cell "A-811" [ref=e810]
+                    - cell "Zeta" [ref=e811]
+                  - row "15/06/2026 LANCER SA 21.472 UYU Zeta A-809 Zeta" [ref=e812]:
+                    - cell "15/06/2026" [ref=e813]
+                    - cell "LANCER SA" [ref=e814]:
+                      - link "LANCER SA" [ref=e815] [cursor=pointer]:
+                        - /url: /copilot/clientes/12751db6-8f3e-449f-956b-a388adebfa43
+                    - cell "21.472" [ref=e816]
+                    - cell "UYU" [ref=e817]
+                    - cell "Zeta" [ref=e818]:
+                      - generic [ref=e819]: Zeta
+                    - cell "A-809" [ref=e820]
+                    - cell "Zeta" [ref=e821]
+                  - row "15/06/2026 Arroyal S.A. 74.420 UYU Zeta A-808 Zeta" [ref=e822]:
+                    - cell "15/06/2026" [ref=e823]
+                    - cell "Arroyal S.A." [ref=e824]:
+                      - link "Arroyal S.A." [ref=e825] [cursor=pointer]:
+                        - /url: /copilot/clientes/4b719f85-be19-4c0e-b62c-985377d4e24e
+                    - cell "74.420" [ref=e826]
+                    - cell "UYU" [ref=e827]
+                    - cell "Zeta" [ref=e828]:
+                      - generic [ref=e829]: Zeta
+                    - cell "A-808" [ref=e830]
+                    - cell "Zeta" [ref=e831]
+                  - row "13/06/2026 Maria Magdalena Antognazza Scarone 1.830 UYU Zeta A-801 Zeta" [ref=e832]:
+                    - cell "13/06/2026" [ref=e833]
+                    - cell "Maria Magdalena Antognazza Scarone" [ref=e834]:
+                      - link "Maria Magdalena Antognazza Scarone" [ref=e835] [cursor=pointer]:
+                        - /url: /copilot/clientes/d0cd694d-30d2-46c8-b0e4-9367292d36fc
+                    - cell "1.830" [ref=e836]
+                    - cell "UYU" [ref=e837]
+                    - cell "Zeta" [ref=e838]:
+                      - generic [ref=e839]: Zeta
+                    - cell "A-801" [ref=e840]
+                    - cell "Zeta" [ref=e841]
+                  - row "12/06/2026 Domingo Pizzinat srl 122 USD Zeta A-810 Zeta" [ref=e842]:
+                    - cell "12/06/2026" [ref=e843]
+                    - cell "Domingo Pizzinat srl" [ref=e844]:
+                      - link "Domingo Pizzinat srl" [ref=e845] [cursor=pointer]:
+                        - /url: /copilot/clientes/6203e9cb-877a-4bde-84db-af8d4db0c152
+                    - cell "122" [ref=e846]
+                    - cell "USD" [ref=e847]
+                    - cell "Zeta" [ref=e848]:
+                      - generic [ref=e849]: Zeta
+                    - cell "A-810" [ref=e850]
+                    - cell "Zeta" [ref=e851]
+                  - row "12/06/2026 ALKITODO S.R.L 14.640 UYU Zeta A-807 Zeta" [ref=e852]:
+                    - cell "12/06/2026" [ref=e853]
+                    - cell "ALKITODO S.R.L" [ref=e854]:
+                      - link "ALKITODO S.R.L" [ref=e855] [cursor=pointer]:
+                        - /url: /copilot/clientes/b3e4ca18-621b-438f-a724-b91d5c8bb13a
+                    - cell "14.640" [ref=e856]
+                    - cell "UYU" [ref=e857]
+                    - cell "Zeta" [ref=e858]:
+                      - generic [ref=e859]: Zeta
+                    - cell "A-807" [ref=e860]
+                    - cell "Zeta" [ref=e861]
+                  - row "12/06/2026 Lombardo Godoy Maria Belen y Silva Silva Virginia Lorena 14.640 UYU Zeta A-806 Zeta" [ref=e862]:
+                    - cell "12/06/2026" [ref=e863]
+                    - cell "Lombardo Godoy Maria Belen y Silva Silva Virginia Lorena" [ref=e864]:
+                      - link "Lombardo Godoy Maria Belen y Silva Silva Virginia Lorena" [ref=e865] [cursor=pointer]:
+                        - /url: /copilot/clientes/26b4bd92-e92b-4ea4-bb0a-33c7761945b5
+                    - cell "14.640" [ref=e866]
+                    - cell "UYU" [ref=e867]
+                    - cell "Zeta" [ref=e868]:
+                      - generic [ref=e869]: Zeta
+                    - cell "A-806" [ref=e870]
+                    - cell "Zeta" [ref=e871]
+                  - row "12/06/2026 Nirmex S.A. 183 USD Zeta A-805 Zeta" [ref=e872]:
+                    - cell "12/06/2026" [ref=e873]
+                    - cell "Nirmex S.A." [ref=e874]:
+                      - link "Nirmex S.A." [ref=e875] [cursor=pointer]:
+                        - /url: /copilot/clientes/7671f4d1-8710-43ab-aff1-3fb53c80442b
+                    - cell "183" [ref=e876]
+                    - cell "USD" [ref=e877]
+                    - cell "Zeta" [ref=e878]:
+                      - generic [ref=e879]: Zeta
+                    - cell "A-805" [ref=e880]
+                    - cell "Zeta" [ref=e881]
+                  - row "11/06/2026 Margot Morales 394 USD Zeta A-803 Zeta" [ref=e882]:
+                    - cell "11/06/2026" [ref=e883]
+                    - cell "Margot Morales" [ref=e884]:
+                      - link "Margot Morales" [ref=e885] [cursor=pointer]:
+                        - /url: /copilot/clientes/7bc33697-88d3-4abb-afd6-1c094a5284b2
+                    - cell "394" [ref=e886]
+                    - cell "USD" [ref=e887]
+                    - cell "Zeta" [ref=e888]:
+                      - generic [ref=e889]: Zeta
+                    - cell "A-803" [ref=e890]
+                    - cell "Zeta" [ref=e891]
+                  - row "11/06/2026 HARRISON S.A 43.920 UYU Zeta A-802 Zeta" [ref=e892]:
+                    - cell "11/06/2026" [ref=e893]
+                    - cell "HARRISON S.A" [ref=e894]:
+                      - link "HARRISON S.A" [ref=e895] [cursor=pointer]:
+                        - /url: /copilot/clientes/a587c341-9ee0-408c-964c-a5ea11ec7ab5
+                    - cell "43.920" [ref=e896]
+                    - cell "UYU" [ref=e897]
+                    - cell "Zeta" [ref=e898]:
+                      - generic [ref=e899]: Zeta
+                    - cell "A-802" [ref=e900]
+                    - cell "Zeta" [ref=e901]
+                  - row "10/06/2026 Irrazabal Legales S.A.S. 36,6 USD Zeta A-804 Zeta" [ref=e902]:
+                    - cell "10/06/2026" [ref=e903]
+                    - cell "Irrazabal Legales S.A.S." [ref=e904]:
+                      - link "Irrazabal Legales S.A.S." [ref=e905] [cursor=pointer]:
+                        - /url: /copilot/clientes/32c1b2b6-16df-4b73-be8d-4a142f445ab9
+                    - cell "36,6" [ref=e906]
+                    - cell "USD" [ref=e907]
+                    - cell "Zeta" [ref=e908]:
+                      - generic [ref=e909]: Zeta
+                    - cell "A-804" [ref=e910]
+                    - cell "Zeta" [ref=e911]
+                  - row "10/06/2026 Vilcabamba SRL 1.293,2 USD Zeta A-800 Zeta" [ref=e912]:
+                    - cell "10/06/2026" [ref=e913]
+                    - cell "Vilcabamba SRL" [ref=e914]:
+                      - link "Vilcabamba SRL" [ref=e915] [cursor=pointer]:
+                        - /url: /copilot/clientes/b1b848ad-e3e0-4ac9-8ae4-8b6efbae404b
+                    - cell "1.293,2" [ref=e916]
+                    - cell "USD" [ref=e917]
+                    - cell "Zeta" [ref=e918]:
+                      - generic [ref=e919]: Zeta
+                    - cell "A-800" [ref=e920]
+                    - cell "Zeta" [ref=e921]
+                  - row "10/06/2026 Doneghal S.A. 61 USD Zeta A-799 Zeta" [ref=e922]:
+                    - cell "10/06/2026" [ref=e923]
+                    - cell "Doneghal S.A." [ref=e924]:
+                      - link "Doneghal S.A." [ref=e925] [cursor=pointer]:
+                        - /url: /copilot/clientes/85e57b07-6156-4d85-9589-65a21b4fee1b
+                    - cell "61" [ref=e926]
+                    - cell "USD" [ref=e927]
+                    - cell "Zeta" [ref=e928]:
+                      - generic [ref=e929]: Zeta
+                    - cell "A-799" [ref=e930]
+                    - cell "Zeta" [ref=e931]
+                  - row "10/06/2026 Ubal Dalmu Maria Patricia 40.194 UYU Zeta A-795 Zeta" [ref=e932]:
+                    - cell "10/06/2026" [ref=e933]
+                    - cell "Ubal Dalmu Maria Patricia" [ref=e934]:
+                      - link "Ubal Dalmu Maria Patricia" [ref=e935] [cursor=pointer]:
+                        - /url: /copilot/clientes/7dc98c7c-96af-4a1c-a1d9-5ca4d52597c0
+                    - cell "40.194" [ref=e936]
+                    - cell "UYU" [ref=e937]
+                    - cell "Zeta" [ref=e938]:
+                      - generic [ref=e939]: Zeta
+                    - cell "A-795" [ref=e940]
+                    - cell "Zeta" [ref=e941]
+                  - row "10/06/2026 Prestis S.A.S. 17.080 UYU Zeta A-794 Zeta" [ref=e942]:
+                    - cell "10/06/2026" [ref=e943]
+                    - cell "Prestis S.A.S." [ref=e944]:
+                      - link "Prestis S.A.S." [ref=e945] [cursor=pointer]:
+                        - /url: /copilot/clientes/09badd8b-ba99-4351-8dad-61662a54061f
+                    - cell "17.080" [ref=e946]
+                    - cell "UYU" [ref=e947]
+                    - cell "Zeta" [ref=e948]:
+                      - generic [ref=e949]: Zeta
+                    - cell "A-794" [ref=e950]
+                    - cell "Zeta" [ref=e951]
+                  - row "10/06/2026 Siempre Conviene S.A.S. 14.800 UYU Zeta A-793 Zeta" [ref=e952]:
+                    - cell "10/06/2026" [ref=e953]
+                    - cell "Siempre Conviene S.A.S." [ref=e954]:
+                      - link "Siempre Conviene S.A.S." [ref=e955] [cursor=pointer]:
+                        - /url: /copilot/clientes/23d180ca-3896-461b-825f-5bc0819a2c49
+                    - cell "14.800" [ref=e956]
+                    - cell "UYU" [ref=e957]
+                    - cell "Zeta" [ref=e958]:
+                      - generic [ref=e959]: Zeta
+                    - cell "A-793" [ref=e960]
+                    - cell "Zeta" [ref=e961]
+                  - row "10/06/2026 Grupo Pentalfa S.A.S. 17.080 UYU Zeta A-792 Zeta" [ref=e962]:
+                    - cell "10/06/2026" [ref=e963]
+                    - cell "Grupo Pentalfa S.A.S." [ref=e964]:
+                      - link "Grupo Pentalfa S.A.S." [ref=e965] [cursor=pointer]:
+                        - /url: /copilot/clientes/872245df-a67e-494a-9581-d0c3cf9a201f
+                    - cell "17.080" [ref=e966]
+                    - cell "UYU" [ref=e967]
+                    - cell "Zeta" [ref=e968]:
+                      - generic [ref=e969]: Zeta
+                    - cell "A-792" [ref=e970]
+                    - cell "Zeta" [ref=e971]
+                  - row "10/06/2026 Porras Segurola Pablo Eduardo 1.830 UYU Zeta A-791 Zeta" [ref=e972]:
+                    - cell "10/06/2026" [ref=e973]
+                    - cell "Porras Segurola Pablo Eduardo" [ref=e974]:
+                      - link "Porras Segurola Pablo Eduardo" [ref=e975] [cursor=pointer]:
+                        - /url: /copilot/clientes/529f82ff-82fe-40c9-a3b1-83efa0b91945
+                    - cell "1.830" [ref=e976]
+                    - cell "UYU" [ref=e977]
+                    - cell "Zeta" [ref=e978]:
+                      - generic [ref=e979]: Zeta
+                    - cell "A-791" [ref=e980]
+                    - cell "Zeta" [ref=e981]
+              - button "Cargar más (20 restantes)" [ref=e983]
+  - button "Open Next.js Dev Tools" [ref=e201] [cursor=pointer]:
+    - img [ref=e202]
+  - alert [ref=e984]

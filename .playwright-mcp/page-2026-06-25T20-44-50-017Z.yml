@@ -1,0 +1,21 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - heading "Iniciar sesión · Copilot" [level=1] [ref=e4]
+      - paragraph [ref=e5]: Accedé con tu usuario y PIN. Si no tenés credenciales, pedilas a quien administra tu espacio de trabajo.
+      - generic [ref=e8]:
+        - generic [ref=e9]:
+          - generic [ref=e10]: Usuario
+          - textbox "Usuario" [ref=e11]: daniel.odella@gmail.com
+        - generic [ref=e12]:
+          - generic [ref=e13]: PIN
+          - textbox "PIN" [ref=e14]: "1234"
+        - button "Entrar" [ref=e15]
+  - button "Open Next.js Dev Tools" [ref=e36] [cursor=pointer]:
+    - generic [ref=e39]:
+      - text: Compiling
+      - generic [ref=e40]:
+        - generic [ref=e41]: .
+        - generic [ref=e42]: .
+        - generic [ref=e43]: .
+  - alert [ref=e29]: Summer87 Copilot

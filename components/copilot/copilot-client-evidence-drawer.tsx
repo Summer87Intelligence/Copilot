@@ -200,7 +200,7 @@ export function CopilotClientEvidenceDrawer({
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <KpiPillMoney label="Facturación total" uyu={detail.billing_uyu} usd={detail.billing_usd} />
-                <KpiPillMoney label="Deuda actual" uyu={detail.debt_uyu} usd={detail.debt_usd} />
+                <KpiPillMoney label="Deuda actual a cobrar" uyu={detail.debt_uyu} usd={detail.debt_usd} />
                 <KpiPillMoney label="Deuda atrasada" uyu={detail.overdue_uyu} usd={detail.overdue_usd} />
                 <KpiPill
                   label="Concentración"

@@ -1,0 +1,142 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - img [ref=e7]
+      - navigation "Navegación del módulo Copilot" [ref=e10]:
+        - button "Expandir menú lateral" [ref=e12]:
+          - img [ref=e13]
+        - link "Hoy" [ref=e15] [cursor=pointer]:
+          - /url: /copilot/hoy
+          - img [ref=e16]
+          - generic [ref=e19]: Hoy
+        - link "Dashboard" [ref=e22] [cursor=pointer]:
+          - /url: /copilot/dashboard
+          - img [ref=e23]
+          - generic [ref=e25]: Dashboard
+        - link "Finanzas" [ref=e26] [cursor=pointer]:
+          - /url: /copilot/finanzas
+          - img [ref=e27]
+          - generic [ref=e30]: Finanzas
+        - link "Reportes" [ref=e31] [cursor=pointer]:
+          - /url: /copilot/reportes
+          - img [ref=e32]
+          - generic [ref=e35]: Reportes
+        - link "Cobranza" [ref=e38] [cursor=pointer]:
+          - /url: /copilot/cobranza
+          - img [ref=e39]
+          - generic [ref=e44]: Cobranza
+        - link "Cartera" [ref=e45] [cursor=pointer]:
+          - /url: /copilot/cartera
+          - img [ref=e46]
+          - generic [ref=e48]: Cartera
+        - link "Clientes" [ref=e49] [cursor=pointer]:
+          - /url: /copilot/clientes
+          - img [ref=e50]
+          - generic [ref=e55]: Clientes
+        - link "Tesorería" [ref=e58] [cursor=pointer]:
+          - /url: /copilot/tesoreria
+          - img [ref=e59]
+          - generic [ref=e62]: Tesorería
+        - link "Alertas" [ref=e65] [cursor=pointer]:
+          - /url: /copilot/alertas
+          - img [ref=e66]
+          - generic [ref=e68]: Alertas
+        - link "Agentes IA" [ref=e69] [cursor=pointer]:
+          - /url: /copilot/agentes
+          - img [ref=e70]
+          - generic [ref=e73]: Agentes IA
+        - link "Datos" [ref=e74] [cursor=pointer]:
+          - /url: /copilot/datos
+          - img [ref=e75]
+          - generic [ref=e79]: Datos
+        - link "Configuración" [ref=e82] [cursor=pointer]:
+          - /url: /copilot/admin
+          - img [ref=e83]
+          - generic [ref=e86]: Configuración
+        - link "Manual de uso" [ref=e87] [cursor=pointer]:
+          - /url: /copilot/manual
+          - img [ref=e88]
+          - generic [ref=e91]: Manual de uso
+        - link "Empresas" [ref=e94] [cursor=pointer]:
+          - /url: /admin/companies
+          - img [ref=e95]
+          - generic [ref=e99]: Empresas
+        - link "Base Zeta" [ref=e100] [cursor=pointer]:
+          - /url: /copilot/knowledge/zeta
+          - img [ref=e101]
+          - generic [ref=e103]: Base Zeta
+    - generic [ref=e104]:
+      - generic [ref=e105]:
+        - generic [ref=e106]:
+          - generic [ref=e108]:
+            - img [ref=e109]
+            - generic [ref=e111]: Jueves, 25 de junio de 2026
+          - generic [ref=e112]:
+            - button "Notificaciones" [ref=e114]:
+              - img [ref=e115]
+            - button "Menú de usuario" [ref=e119]: A
+            - button "Estado del negocio" [ref=e121]:
+              - generic [ref=e123]: …
+        - status "Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda." [ref=e124]:
+          - paragraph [ref=e125]: Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda.
+      - generic [ref=e127]:
+        - banner [ref=e128]:
+          - generic [ref=e129]:
+            - heading "Cobranza" [level=1] [ref=e130]
+            - paragraph [ref=e131]: Clientes a gestionar, agenda de seguimientos y cobros pendientes.
+        - generic [ref=e132]:
+          - generic [ref=e144]:
+            - link "Ver agenda de cobranza" [ref=e145] [cursor=pointer]:
+              - /url: "#cobranza-agenda"
+            - link "Análisis por período" [ref=e146] [cursor=pointer]:
+              - /url: /copilot/cartera
+            - button "Actualizando…" [disabled] [ref=e147]
+          - generic [ref=e148]:
+            - generic [ref=e150]:
+              - heading "Clientes a gestionar" [level=2] [ref=e151]
+              - paragraph [ref=e152]: Ordenados por vencimiento · sin paginación
+            - generic [ref=e153]:
+              - generic [ref=e154]:
+                - generic [ref=e155]: Estado
+                - button "Todos" [ref=e156]
+                - button "Con deuda" [ref=e157]
+                - button "Atrasados" [ref=e158]
+                - button "Sin gestión" [ref=e159]
+              - generic [ref=e160]:
+                - generic [ref=e161]: Responsable
+                - button "Todos" [ref=e162]
+                - button "Mis clientes" [ref=e163]
+                - button "Sin asignar" [ref=e164]
+                - searchbox "Buscar cliente" [ref=e165]
+            - generic [ref=e166]: Cargando clientes…
+          - generic [ref=e168]:
+            - generic [ref=e169]:
+              - heading "Agenda de cobranza" [level=2] [ref=e170]
+              - paragraph [ref=e171]: Seguimientos, promesas y contactos recientes registrados en las fichas de clientes.
+            - generic [ref=e172]:
+              - img [ref=e173]
+              - generic [ref=e175]: Cargando agenda…
+          - generic [ref=e176]:
+            - generic [ref=e177]:
+              - heading "Alertas de cobranza" [level=2] [ref=e178]
+              - paragraph [ref=e179]: Novedades recientes · máx. 10
+            - paragraph [ref=e180]: Cargando alertas…
+            - link "Ver todas las alertas" [ref=e182] [cursor=pointer]:
+              - /url: /copilot/alertas
+              - text: Ver todas las alertas
+              - img [ref=e183]
+          - region "Historial de cobros" [ref=e185]:
+            - generic [ref=e187]:
+              - heading "Historial de cobros" [level=2] [ref=e189]
+              - generic [ref=e190]:
+                - combobox "Período" [ref=e191]:
+                  - option "Últimos 30 días" [selected]
+                  - option "Este mes"
+                  - option "Todo"
+                - combobox "Moneda" [ref=e192]:
+                  - option "Todas las monedas" [selected]
+                  - option "UYU"
+                  - option "USD"
+                - combobox "Cliente" [disabled] [ref=e193]:
+                  - option "Todos los clientes" [selected]
+  - alert [ref=e200]

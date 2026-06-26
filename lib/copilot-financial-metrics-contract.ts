@@ -42,14 +42,14 @@ export type MetricId = (typeof METRIC_ID)[keyof typeof METRIC_ID];
 // ---------------------------------------------------------------------------
 
 export const METRIC_LABEL: Record<MetricId, string> = {
-  deuda_activa: "Deuda actual",
+  deuda_activa: "Deuda actual a cobrar",
   deuda_vencida: "Deuda atrasada",
   deuda_periodo: "Pendiente al corte del período",
   pendiente_periodo: "Pendiente del período",
   facturado_periodo: "Ventas del período",
   cobrado_periodo: "Cobrado del período",
   cobrado_aplicado: "Cobrado aplicado",
-  caja_disponible: "Caja disponible",
+  caja_disponible: "Caja disponible Santander",
   caja_despues_pagos: "Caja proyectada",
   estado_global: "Estado del sistema",
 };
@@ -60,14 +60,14 @@ export const METRIC_LABEL_OVERDUE_30D = "Deuda atrasada >30 días";
 /** Labels visibles permitidos — cada módulo puede usar alias siempre que no
  *  sean confusos con otra métrica canónica. */
 export const METRIC_ALIASES: Record<MetricId, readonly string[]> = {
-  deuda_activa: ["Deuda actual"],
+  deuda_activa: ["Deuda actual a cobrar", "Deuda actual"],
   deuda_vencida: ["Deuda atrasada", "Deuda vencida"],
   deuda_periodo: ["Pendiente al corte del período"],
   pendiente_periodo: ["Pendiente del período"],
   facturado_periodo: ["Ventas del período"],
   cobrado_periodo: ["Cobrado del período"],
   cobrado_aplicado: ["Cobrado aplicado"],
-  caja_disponible: ["Caja disponible", "Dinero disponible"],
+  caja_disponible: ["Caja disponible Santander", "Caja disponible", "Dinero disponible"],
   caja_despues_pagos: ["Caja proyectada", "Caja después de pagos", "Cobertura fin de mes"],
   estado_global: ["Estado del sistema", "Estado", "Salud del negocio"],
 };

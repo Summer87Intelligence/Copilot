@@ -385,7 +385,7 @@ export function TreasuryRecurringPaymentsPanel({
     <section className="space-y-4">
       <CopilotSectionTitle
         title="Pagos recurrentes"
-        subtitle="Estas reglas crean automáticamente pagos próximos. Podés ajustar un mes puntual sin cambiar la regla."
+        subtitle="Estas reglas crean automáticamente pagos próximos de la agencia. Podés ajustar un mes puntual sin cambiar la regla."
       />
 
       {loading ? (
@@ -397,7 +397,7 @@ export function TreasuryRecurringPaymentsPanel({
         <CopilotEmptyPanel
           title="Sin pagos recurrentes"
           paragraphs={[
-            "Creá reglas para suscripciones, servicios o sueldos. Cada vencimiento aparece en Pagos próximos sin duplicar.",
+            "Creá reglas para suscripciones, servicios o sueldos. Cada vencimiento aparece en Pagos próximos de la agencia sin duplicar.",
           ]}
         />
       ) : (

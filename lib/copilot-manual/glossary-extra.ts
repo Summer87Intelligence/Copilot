@@ -4,19 +4,19 @@ export const COPILOT_MANUAL_EXTRA_GLOSSARY: Array<{
   definition: string;
 }> = [
   {
-    term: "Deuda actual",
+    term: "Deuda actual a cobrar",
     definition:
-      "Todo lo que el cliente debe actualmente, sin importar si ya venció o no. El atrasado ya está incluido dentro de la deuda actual — no se suma aparte.",
+      "Todo lo que el cliente debe actualmente, sin importar si ya venció o no. El atrasado ya está incluido dentro de la deuda actual a cobrar — no se suma aparte.",
   },
   {
     term: "Atrasado",
     definition:
-      "La parte de la deuda actual cuya fecha de vencimiento ya pasó. Está incluido dentro de la deuda actual. Cuanto más alto, más urgente la gestión.",
+      "La parte de la deuda abierta con más de 7 días desde la fecha de emisión de la factura (modelo único de cobranza). Está incluida dentro de la deuda actual a cobrar. Cuanto más alto, más urgente la gestión.",
   },
   {
     term: "Atrasado +30 días",
     definition:
-      "La parte del atrasado con más de 30 días. Está incluido dentro del atrasado y de la deuda actual — no se suma aparte.",
+      "El peor tramo del atraso: facturas con más de 30 días desde su emisión. Está incluido dentro del atrasado y de la deuda actual a cobrar — no se suma aparte.",
   },
   {
     term: "Días de atraso",
@@ -59,7 +59,7 @@ export const COPILOT_MANUAL_EXTRA_GLOSSARY: Array<{
       "Acción recomendada para clientes con deuda corriente. Sin urgencia inmediata.",
   },
   {
-    term: "Caja disponible",
+    term: "Caja disponible Santander",
     definition:
       "Dinero operativo en Tesorería: saldo cargado al corte más cobros Zeta posteriores y movimientos manuales confirmados, menos egresos confirmados.",
   },

@@ -70,8 +70,8 @@ export function CobranzaKpiGrid({
   const { mode, fxRate } = useDisplayCurrency();
 
   const totalLabel = formatDebt(kpis.totalDebtUyu, kpis.totalDebtUsd, mode, fxRate);
-  const overdueLabel = formatDebt(kpis.totalOverdueUyu, kpis.totalOverdueUsd, mode, fxRate);
-  const hasOverdue = kpis.totalOverdueUyu > 0 || kpis.totalOverdueUsd > 0;
+  const overdueLabel = formatDebt(kpis.collectionOverdueUyu, kpis.collectionOverdueUsd, mode, fxRate);
+  const hasOverdue = kpis.collectionOverdueUyu > 0 || kpis.collectionOverdueUsd > 0;
 
   const rateLabel =
     effectivenessKpis.promiseFulfillmentRate != null
@@ -120,21 +120,25 @@ export function CobranzaKpiGrid({
       {/* Row 1: portfolio state */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <KpiCard
-          label="Deuda actual"
+          label="Pendiente"
           value={totalLabel}
           sub={`${kpis.clientsWithDebtCount} clientes`}
         />
         <KpiCard
-          label="Vencido"
+          label="Atrasado"
           value={overdueLabel}
-          sub={kpis.clientsOverdueCount > 0 ? `${kpis.clientsOverdueCount} clientes` : undefined}
+          sub={
+            kpis.clientsCollectionOverdueCount > 0
+              ? `${kpis.clientsCollectionOverdueCount} clientes · +7 días`
+              : "+7 días desde emisión"
+          }
           tone={hasOverdue ? "danger" : "neutral"}
         />
         <KpiCard
           label="Clientes atrasados"
-          value={String(kpis.clientsOverdueCount)}
-          sub="con al menos una factura vencida"
-          tone={kpis.clientsOverdueCount > 0 ? "warning" : "neutral"}
+          value={String(kpis.clientsCollectionOverdueCount)}
+          sub="con factura de más de 7 días"
+          tone={kpis.clientsCollectionOverdueCount > 0 ? "warning" : "neutral"}
         />
         <KpiCard
           label="Promesas activas"

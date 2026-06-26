@@ -86,7 +86,7 @@ function collectionCashImpactLine(metadata: Record<string, unknown>): string | n
   };
 
   if (receiptDate >= baseline) {
-    return "Sumado a Caja disponible.";
+    return "Sumado a Caja disponible Santander.";
   }
   return `Pago del ${fmt(receiptDate)}. Ya incluido en el saldo cargado el ${fmt(baseline)}.`;
 }

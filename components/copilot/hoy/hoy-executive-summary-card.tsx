@@ -255,7 +255,7 @@ export function HoyExecutiveSummaryCard({
                 onClick={onScrollToUpcomingPayments}
                 className="text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
               >
-                Ver pagos próximos
+                Ver pagos próximos de la agencia
               </button>
             ) : null}
           </nav>

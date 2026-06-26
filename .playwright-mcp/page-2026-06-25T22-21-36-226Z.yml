@@ -1,0 +1,560 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - img [ref=e7]
+      - navigation "Navegación del módulo Copilot" [ref=e10]:
+        - button "Expandir menú lateral" [ref=e12]:
+          - img [ref=e13]
+        - link "Hoy" [ref=e15] [cursor=pointer]:
+          - /url: /copilot/hoy
+          - img [ref=e16]
+          - generic [ref=e19]: Hoy
+        - link "Dashboard" [ref=e22] [cursor=pointer]:
+          - /url: /copilot/dashboard
+          - img [ref=e23]
+          - generic [ref=e25]: Dashboard
+        - link "Finanzas" [ref=e26] [cursor=pointer]:
+          - /url: /copilot/finanzas
+          - img [ref=e27]
+          - generic [ref=e30]: Finanzas
+        - link "Reportes" [ref=e31] [cursor=pointer]:
+          - /url: /copilot/reportes
+          - img [ref=e32]
+          - generic [ref=e35]: Reportes
+        - link "Cobranza" [ref=e38] [cursor=pointer]:
+          - /url: /copilot/cobranza
+          - img [ref=e39]
+          - generic [ref=e44]: Cobranza
+        - link "Cartera" [ref=e45] [cursor=pointer]:
+          - /url: /copilot/cartera
+          - img [ref=e46]
+          - generic [ref=e48]: Cartera
+        - link "Clientes" [ref=e49] [cursor=pointer]:
+          - /url: /copilot/clientes
+          - img [ref=e50]
+          - generic [ref=e55]: Clientes
+        - link "Tesorería" [ref=e58] [cursor=pointer]:
+          - /url: /copilot/tesoreria
+          - img [ref=e59]
+          - generic [ref=e62]: Tesorería
+        - link "Alertas" [ref=e65] [cursor=pointer]:
+          - /url: /copilot/alertas
+          - img [ref=e66]
+          - generic [ref=e68]: Alertas
+        - link "Agentes IA" [ref=e69] [cursor=pointer]:
+          - /url: /copilot/agentes
+          - img [ref=e70]
+          - generic [ref=e73]: Agentes IA
+        - link "Datos" [ref=e74] [cursor=pointer]:
+          - /url: /copilot/datos
+          - img [ref=e75]
+          - generic [ref=e79]: Datos
+        - link "Configuración" [ref=e82] [cursor=pointer]:
+          - /url: /copilot/admin
+          - img [ref=e83]
+          - generic [ref=e86]: Configuración
+        - link "Manual de uso" [ref=e87] [cursor=pointer]:
+          - /url: /copilot/manual
+          - img [ref=e88]
+          - generic [ref=e91]: Manual de uso
+        - link "Empresas" [ref=e94] [cursor=pointer]:
+          - /url: /admin/companies
+          - img [ref=e95]
+          - generic [ref=e99]: Empresas
+        - link "Base Zeta" [ref=e100] [cursor=pointer]:
+          - /url: /copilot/knowledge/zeta
+          - img [ref=e101]
+          - generic [ref=e103]: Base Zeta
+    - generic [ref=e104]:
+      - generic [ref=e106]:
+        - generic [ref=e108]:
+          - img [ref=e173]
+          - generic [ref=e175]: Jueves, 25 de junio de 2026
+        - generic [ref=e109]:
+          - button "Notificaciones" [ref=e111]:
+            - img [ref=e112]
+          - button "Menú de usuario" [ref=e176]: A
+          - button "Estado del negocio" [ref=e117]:
+            - generic [ref=e119]: …
+      - generic [ref=e123]:
+        - banner [ref=e124]:
+          - generic [ref=e125]:
+            - heading "Alertas" [level=1] [ref=e126]
+            - paragraph [ref=e127]: Cobros, vencimientos, pagos y eventos relevantes del negocio.
+        - generic [ref=e128]:
+          - generic [ref=e129]:
+            - generic [ref=e130]:
+              - paragraph [ref=e131]: No leídas
+              - paragraph [ref=e132]: "0"
+              - paragraph [ref=e133]: pendientes de revisar
+            - generic [ref=e134]:
+              - paragraph [ref=e135]: Críticas
+              - paragraph [ref=e136]: "7"
+              - paragraph [ref=e137]: requieren acción
+            - generic [ref=e138]:
+              - paragraph [ref=e139]: Vencimientos
+              - paragraph [ref=e140]: "4"
+              - paragraph [ref=e141]: próximos y atrasados
+            - generic [ref=e142]:
+              - paragraph [ref=e143]: Cobros recibidos
+              - paragraph [ref=e144]: "1"
+              - paragraph [ref=e145]: últimas 72 h
+          - generic [ref=e177]:
+            - generic [ref=e178]:
+              - paragraph [ref=e179]: 5 eventos generados por clientes atrasados
+              - paragraph [ref=e180]: Eventos históricos del motor de alertas · Ver Cartera para el estado actual
+            - link "Ver clientes atrasados →" [ref=e181] [cursor=pointer]:
+              - /url: /copilot/cartera?filter=overdue
+          - generic [ref=e148]:
+            - button "Todas 50" [ref=e182]:
+              - text: Todas
+              - generic [ref=e183]: "50"
+            - button "No leídas" [ref=e150]
+            - button "Críticas 7" [ref=e184]:
+              - text: Críticas
+              - generic [ref=e185]: "7"
+            - button "Cobros 1" [ref=e186]:
+              - text: Cobros
+              - generic [ref=e187]: "1"
+            - button "Clientes 5" [ref=e188]:
+              - text: Clientes
+              - generic [ref=e189]: "5"
+            - button "Tesorería 4" [ref=e190]:
+              - text: Tesorería
+              - generic [ref=e191]: "4"
+            - button "Sistema 7" [ref=e192]:
+              - text: Sistema
+              - generic [ref=e193]: "7"
+          - generic [ref=e194]:
+            - generic [ref=e195]:
+              - heading "Hoy" [level=2] [ref=e196]
+              - generic [ref=e197]:
+                - article [ref=e198]:
+                  - generic [ref=e199]:
+                    - img [ref=e201]
+                    - generic [ref=e206]:
+                      - generic [ref=e207]:
+                        - paragraph [ref=e208]: Nuevo saldo pendiente · USD 83
+                        - generic [ref=e209]: Alerta
+                      - paragraph [ref=e210]: Maria Eva Pose registra deuda pendiente por USD 83.
+                      - paragraph [ref=e211]: USD 83
+                      - generic [ref=e212]:
+                        - generic [ref=e213]: hace 16 h
+                        - link "Ver cliente" [ref=e214] [cursor=pointer]:
+                          - /url: /copilot/clientes/4c87b591-c76b-4a63-ad78-0ea77885d44a
+                          - text: Ver cliente
+                          - img [ref=e215]
+                - article [ref=e217]:
+                  - generic [ref=e218]:
+                    - img [ref=e220]
+                    - generic [ref=e223]:
+                      - generic [ref=e224]:
+                        - paragraph [ref=e225]: Cliente saldó deuda · USD 85
+                        - generic [ref=e226]: Info
+                      - paragraph [ref=e227]: Maria Eva Pose pagó USD 85.
+                      - paragraph [ref=e228]: USD 85
+                      - generic [ref=e229]:
+                        - generic [ref=e230]: hace 18 h
+                        - link "Ver cliente" [ref=e231] [cursor=pointer]:
+                          - /url: /copilot/clientes/4c87b591-c76b-4a63-ad78-0ea77885d44a
+                          - text: Ver cliente
+                          - img [ref=e232]
+                - article [ref=e234]:
+                  - generic [ref=e235]:
+                    - img [ref=e237]
+                    - generic [ref=e240]:
+                      - generic [ref=e241]:
+                        - paragraph [ref=e242]: Cliente saldó deuda · USD 43
+                        - generic [ref=e243]: Info
+                      - paragraph [ref=e244]: Dolby S.A. pagó USD 43.
+                      - paragraph [ref=e245]: USD 43
+                      - generic [ref=e246]:
+                        - generic [ref=e247]: hace 18 h
+                        - link "Ver cliente" [ref=e248] [cursor=pointer]:
+                          - /url: /copilot/clientes/43ab2bda-d17d-43b9-9289-d45abf8e1e36
+                          - text: Ver cliente
+                          - img [ref=e249]
+                - article [ref=e251]:
+                  - generic [ref=e252]:
+                    - img [ref=e254]
+                    - generic [ref=e257]:
+                      - generic [ref=e258]:
+                        - paragraph [ref=e259]: Cliente saldó deuda · UYU 96.624
+                        - generic [ref=e260]: Info
+                      - paragraph [ref=e261]: Remiplat SA pagó UYU 96.624.
+                      - paragraph [ref=e262]: UYU 96.624
+                      - generic [ref=e263]:
+                        - generic [ref=e264]: hace 18 h
+                        - link "Ver cliente" [ref=e265] [cursor=pointer]:
+                          - /url: /copilot/clientes/bff7c7ea-d969-4bd3-adce-b2240833a863
+                          - text: Ver cliente
+                          - img [ref=e266]
+                - article [ref=e268]:
+                  - generic [ref=e269]:
+                    - img [ref=e271]
+                    - generic [ref=e274]:
+                      - generic [ref=e275]:
+                        - paragraph [ref=e276]: Cliente saldó deuda · USD 610
+                        - generic [ref=e277]: Info
+                      - paragraph [ref=e278]: Suprasur S.A. pagó USD 610.
+                      - paragraph [ref=e279]: USD 610
+                      - generic [ref=e280]:
+                        - generic [ref=e281]: hace 18 h
+                        - link "Ver cliente" [ref=e282] [cursor=pointer]:
+                          - /url: /copilot/clientes/e87e0d33-c637-45ab-81d2-4dd295a17cbe
+                          - text: Ver cliente
+                          - img [ref=e283]
+                - article [ref=e285]:
+                  - generic [ref=e286]:
+                    - img [ref=e288]
+                    - generic [ref=e291]:
+                      - generic [ref=e292]:
+                        - paragraph [ref=e293]: Cliente saldó deuda · UYU 16.104
+                        - generic [ref=e294]: Info
+                      - paragraph [ref=e295]: Botica del Señor SRL pagó UYU 16.104.
+                      - paragraph [ref=e296]: UYU 16.104
+                      - generic [ref=e297]:
+                        - generic [ref=e298]: hace 18 h
+                        - link "Ver cliente" [ref=e299] [cursor=pointer]:
+                          - /url: /copilot/clientes/951aaad9-ea76-4163-9be2-c690106da3ca
+                          - text: Ver cliente
+                          - img [ref=e300]
+                - article [ref=e302]:
+                  - generic [ref=e303]:
+                    - img [ref=e305]
+                    - generic [ref=e308]:
+                      - generic [ref=e309]:
+                        - paragraph [ref=e310]: 2 clientes atrasados · USD 517
+                        - generic [ref=e311]: Alerta
+                      - paragraph [ref=e312]: "Total atrasado: USD 517 entre 2 clientes. • Trexys Consultores S.A.S. · USD 488 • Acquagarden SAS · USD 29"
+                      - generic [ref=e313]:
+                        - generic [ref=e314]: hace 18 h
+                        - link "Ver principales deudores" [ref=e315] [cursor=pointer]:
+                          - /url: /copilot/hoy#clientes-criticos
+                          - text: Ver principales deudores
+                          - img [ref=e316]
+                - article [ref=e318]:
+                  - generic [ref=e319]:
+                    - img [ref=e321]
+                    - generic [ref=e323]:
+                      - generic [ref=e324]:
+                        - paragraph [ref=e325]: Riesgo de caja detectado
+                        - generic [ref=e326]: Crítica
+                      - paragraph [ref=e327]: Faltan USD 4.870,18 para cubrir compromisos próximos.
+                      - generic [ref=e328]:
+                        - generic [ref=e329]: hace 18 h
+                        - link "Ver Tesorería" [ref=e330] [cursor=pointer]:
+                          - /url: /copilot/tesoreria
+                          - text: Ver Tesorería
+                          - img [ref=e331]
+            - generic [ref=e333]:
+              - heading "Anteriores" [level=2] [ref=e334]
+              - generic [ref=e335]:
+                - article [ref=e336]:
+                  - generic [ref=e337]:
+                    - img [ref=e339]
+                    - generic [ref=e342]:
+                      - generic [ref=e343]:
+                        - paragraph [ref=e344]: Cobro parcial recibido
+                        - generic [ref=e345]: Info
+                      - paragraph [ref=e346]: Maria Eva Pose hizo un pago parcial.
+                      - paragraph [ref=e347]: USD 85
+                      - generic [ref=e348]:
+                        - generic [ref=e349]: 23 jun.
+                        - link "Ver cliente" [ref=e350] [cursor=pointer]:
+                          - /url: /copilot/clientes/4c87b591-c76b-4a63-ad78-0ea77885d44a
+                          - text: Ver cliente
+                          - img [ref=e351]
+                - article [ref=e353]:
+                  - generic [ref=e354]:
+                    - img [ref=e356]
+                    - generic [ref=e358]:
+                      - generic [ref=e359]:
+                        - paragraph [ref=e360]: Pago atrasado
+                        - generic [ref=e361]: Crítica
+                      - paragraph [ref=e362]: Vacacional Ana está atrasado desde el 22/06/2026.
+                      - paragraph [ref=e363]: UYU 9.169
+                      - generic [ref=e364]:
+                        - generic [ref=e365]: 23 jun.
+                        - link "Ver pagos" [ref=e366] [cursor=pointer]:
+                          - /url: /copilot/tesoreria?section=pagos
+                          - text: Ver pagos
+                          - img [ref=e367]
+                - article [ref=e369]:
+                  - generic [ref=e370]:
+                    - img [ref=e372]
+                    - generic [ref=e374]:
+                      - generic [ref=e375]:
+                        - paragraph [ref=e376]: Riesgo de caja detectado
+                        - generic [ref=e377]: Crítica
+                      - paragraph [ref=e378]: Faltan USD 4.870,20 para cubrir compromisos próximos.
+                      - generic [ref=e379]:
+                        - generic [ref=e380]: 23 jun.
+                        - link "Ver Tesorería" [ref=e381] [cursor=pointer]:
+                          - /url: /copilot/tesoreria
+                          - text: Ver Tesorería
+                          - img [ref=e382]
+                - article [ref=e384]:
+                  - generic [ref=e385]:
+                    - img [ref=e387]
+                    - generic [ref=e390]:
+                      - generic [ref=e391]:
+                        - paragraph [ref=e392]: 3 clientes atrasados · USD 601
+                        - generic [ref=e393]: Alerta
+                      - paragraph [ref=e394]: "Total atrasado: USD 601 entre 3 clientes. • Trexys Consultores S.A.S. · USD 488 • Maria Eva Pose · USD 83 • Acquagarden SAS · USD 29"
+                      - generic [ref=e395]:
+                        - generic [ref=e396]: 23 jun.
+                        - link "Ver principales deudores" [ref=e397] [cursor=pointer]:
+                          - /url: /copilot/hoy#clientes-criticos
+                          - text: Ver principales deudores
+                          - img [ref=e398]
+                - article [ref=e400]:
+                  - generic [ref=e401]:
+                    - img [ref=e403]
+                    - generic [ref=e405]:
+                      - generic [ref=e406]:
+                        - paragraph [ref=e407]: Pago atrasado
+                        - generic [ref=e408]: Crítica
+                      - paragraph [ref=e409]: Pago Bps está atrasado desde el 22/06/2026.
+                      - paragraph [ref=e410]: UYU 226.632
+                      - generic [ref=e411]:
+                        - generic [ref=e412]: 23 jun.
+                        - link "Ver pagos" [ref=e413] [cursor=pointer]:
+                          - /url: /copilot/tesoreria?section=pagos
+                          - text: Ver pagos
+                          - img [ref=e414]
+                - article [ref=e416]:
+                  - generic [ref=e417]:
+                    - img [ref=e419]
+                    - generic [ref=e422]:
+                      - generic [ref=e423]:
+                        - paragraph [ref=e424]: Pago próximo
+                        - generic [ref=e425]: Alerta
+                      - paragraph [ref=e426]: Vacacional Ana vence hoy.
+                      - paragraph [ref=e427]: UYU 9.169
+                      - generic [ref=e428]:
+                        - generic [ref=e429]: 22 jun.
+                        - link "Ver pagos" [ref=e430] [cursor=pointer]:
+                          - /url: /copilot/tesoreria?section=pagos
+                          - text: Ver pagos
+                          - img [ref=e431]
+                - article [ref=e433]:
+                  - generic [ref=e434]:
+                    - img [ref=e436]
+                    - generic [ref=e438]:
+                      - generic [ref=e439]:
+                        - paragraph [ref=e440]: Riesgo de caja detectado
+                        - generic [ref=e441]: Crítica
+                      - paragraph [ref=e442]: Faltan USD 4.870,25 para cubrir compromisos próximos.
+                      - generic [ref=e443]:
+                        - generic [ref=e444]: 22 jun.
+                        - link "Ver Tesorería" [ref=e445] [cursor=pointer]:
+                          - /url: /copilot/tesoreria
+                          - text: Ver Tesorería
+                          - img [ref=e446]
+                - article [ref=e448]:
+                  - generic [ref=e449]:
+                    - img [ref=e451]
+                    - generic [ref=e454]:
+                      - generic [ref=e455]:
+                        - paragraph [ref=e456]: Pago próximo
+                        - generic [ref=e457]: Alerta
+                      - paragraph [ref=e458]: Pago Bps vence hoy.
+                      - paragraph [ref=e459]: UYU 226.632
+                      - generic [ref=e460]:
+                        - generic [ref=e461]: 22 jun.
+                        - link "Ver pagos" [ref=e462] [cursor=pointer]:
+                          - /url: /copilot/tesoreria?section=pagos
+                          - text: Ver pagos
+                          - img [ref=e463]
+                - article [ref=e465]:
+                  - generic [ref=e466]:
+                    - img [ref=e468]
+                    - generic [ref=e470]:
+                      - generic [ref=e471]:
+                        - paragraph [ref=e472]: Cobertura de caja mejorada
+                        - generic [ref=e473]: Info
+                      - paragraph [ref=e474]: "Caja insuficiente para cubrir compromisos: USD déficit 3.538. Revisá tesorería."
+                      - generic [ref=e475]:
+                        - generic [ref=e476]: 21 jun.
+                        - link "Ver Tesorería" [ref=e477] [cursor=pointer]:
+                          - /url: /copilot/tesoreria
+                          - text: Ver Tesorería
+                          - img [ref=e478]
+                - article [ref=e480]:
+                  - generic [ref=e481]:
+                    - img [ref=e483]
+                    - generic [ref=e486]:
+                      - generic [ref=e487]:
+                        - paragraph [ref=e488]: 3 clientes con deuda atrasada
+                        - generic [ref=e489]: Alerta
+                      - paragraph [ref=e490]: USD 601 atrasados. Revisá clientes críticos.
+                      - generic [ref=e491]:
+                        - generic [ref=e492]: 21 jun.
+                        - link "Ver principales deudores" [ref=e493] [cursor=pointer]:
+                          - /url: /copilot/hoy#clientes-criticos
+                          - text: Ver principales deudores
+                          - img [ref=e494]
+                - article [ref=e496]:
+                  - generic [ref=e497]:
+                    - img [ref=e499]
+                    - generic [ref=e504]:
+                      - generic [ref=e505]:
+                        - paragraph [ref=e506]: Nuevo saldo pendiente
+                        - generic [ref=e507]: Alerta
+                      - paragraph [ref=e508]: Consumidor Final registra deuda pendiente por USD 244.
+                      - paragraph [ref=e509]: USD 244
+                      - generic [ref=e510]:
+                        - generic [ref=e511]: 19 jun.
+                        - link "Ver cliente" [ref=e512] [cursor=pointer]:
+                          - /url: /copilot/clientes/2028181c-172e-4b34-90fd-01c1d400f91b
+                          - text: Ver cliente
+                          - img [ref=e513]
+                - article [ref=e515]:
+                  - generic [ref=e516]:
+                    - img [ref=e518]
+                    - generic [ref=e521]:
+                      - generic [ref=e522]:
+                        - paragraph [ref=e523]: Cliente saldó su deuda
+                        - generic [ref=e524]: Info
+                      - paragraph [ref=e525]: Consumidor Final pagó su deuda.
+                      - generic [ref=e526]:
+                        - generic [ref=e527]: 19 jun.
+                        - link "Ver cliente" [ref=e528] [cursor=pointer]:
+                          - /url: /copilot/clientes/2028181c-172e-4b34-90fd-01c1d400f91b
+                          - text: Ver cliente
+                          - img [ref=e529]
+                - article [ref=e531]:
+                  - generic [ref=e532]:
+                    - img [ref=e534]
+                    - generic [ref=e537]:
+                      - generic [ref=e538]:
+                        - paragraph [ref=e539]: Cliente saldó su deuda
+                        - generic [ref=e540]: Info
+                      - paragraph [ref=e541]: Nirmex S.A. pagó su deuda.
+                      - generic [ref=e542]:
+                        - generic [ref=e543]: 19 jun.
+                        - link "Ver cliente" [ref=e544] [cursor=pointer]:
+                          - /url: /copilot/clientes/7671f4d1-8710-43ab-aff1-3fb53c80442b
+                          - text: Ver cliente
+                          - img [ref=e545]
+                - article [ref=e547]:
+                  - generic [ref=e548]:
+                    - img [ref=e550]
+                    - generic [ref=e553]:
+                      - generic [ref=e554]:
+                        - paragraph [ref=e555]: Cliente saldó su deuda
+                        - generic [ref=e556]: Info
+                      - paragraph [ref=e557]: Lombardo Godoy Maria Belen y Silva Silva Virginia Lorena pagó su deuda.
+                      - generic [ref=e558]:
+                        - generic [ref=e559]: 19 jun.
+                        - link "Ver cliente" [ref=e560] [cursor=pointer]:
+                          - /url: /copilot/clientes/26b4bd92-e92b-4ea4-bb0a-33c7761945b5
+                          - text: Ver cliente
+                          - img [ref=e561]
+                - article [ref=e563]:
+                  - generic [ref=e564]:
+                    - img [ref=e566]
+                    - generic [ref=e569]:
+                      - generic [ref=e570]:
+                        - paragraph [ref=e571]: Cliente saldó su deuda
+                        - generic [ref=e572]: Info
+                      - paragraph [ref=e573]: ALKITODO S.R.L pagó su deuda.
+                      - generic [ref=e574]:
+                        - generic [ref=e575]: 19 jun.
+                        - link "Ver cliente" [ref=e576] [cursor=pointer]:
+                          - /url: /copilot/clientes/b3e4ca18-621b-438f-a724-b91d5c8bb13a
+                          - text: Ver cliente
+                          - img [ref=e577]
+                - article [ref=e579]:
+                  - generic [ref=e580]:
+                    - img [ref=e582]
+                    - generic [ref=e585]:
+                      - generic [ref=e586]:
+                        - paragraph [ref=e587]: Cliente saldó su deuda
+                        - generic [ref=e588]: Info
+                      - paragraph [ref=e589]: Arroyal S.A. pagó su deuda.
+                      - generic [ref=e590]:
+                        - generic [ref=e591]: 19 jun.
+                        - link "Ver cliente" [ref=e592] [cursor=pointer]:
+                          - /url: /copilot/clientes/4b719f85-be19-4c0e-b62c-985377d4e24e
+                          - text: Ver cliente
+                          - img [ref=e593]
+                - article [ref=e595]:
+                  - generic [ref=e596]:
+                    - img [ref=e598]
+                    - generic [ref=e601]:
+                      - generic [ref=e602]:
+                        - paragraph [ref=e603]: Cliente saldó su deuda
+                        - generic [ref=e604]: Info
+                      - paragraph [ref=e605]: LANCER SA pagó su deuda.
+                      - generic [ref=e606]:
+                        - generic [ref=e607]: 19 jun.
+                        - link "Ver cliente" [ref=e608] [cursor=pointer]:
+                          - /url: /copilot/clientes/12751db6-8f3e-449f-956b-a388adebfa43
+                          - text: Ver cliente
+                          - img [ref=e609]
+                - article [ref=e611]:
+                  - generic [ref=e612]:
+                    - img [ref=e614]
+                    - generic [ref=e617]:
+                      - generic [ref=e618]:
+                        - paragraph [ref=e619]: Cliente saldó su deuda
+                        - generic [ref=e620]: Info
+                      - paragraph [ref=e621]: Domingo Pizzinat srl pagó su deuda.
+                      - generic [ref=e622]:
+                        - generic [ref=e623]: 19 jun.
+                        - link "Ver cliente" [ref=e624] [cursor=pointer]:
+                          - /url: /copilot/clientes/6203e9cb-877a-4bde-84db-af8d4db0c152
+                          - text: Ver cliente
+                          - img [ref=e625]
+                - article [ref=e627]:
+                  - generic [ref=e628]:
+                    - img [ref=e630]
+                    - generic [ref=e633]:
+                      - generic [ref=e634]:
+                        - paragraph [ref=e635]: Cliente saldó su deuda
+                        - generic [ref=e636]: Info
+                      - paragraph [ref=e637]: DOBSURA CORPORATION SA pagó su deuda.
+                      - generic [ref=e638]:
+                        - generic [ref=e639]: 19 jun.
+                        - link "Ver cliente" [ref=e640] [cursor=pointer]:
+                          - /url: /copilot/clientes/6e50f5e7-161a-48c2-af38-be209ab6f330
+                          - text: Ver cliente
+                          - img [ref=e641]
+                - article [ref=e643]:
+                  - generic [ref=e644]:
+                    - img [ref=e646]
+                    - generic [ref=e649]:
+                      - generic [ref=e650]:
+                        - paragraph [ref=e651]: Cliente saldó su deuda
+                        - generic [ref=e652]: Info
+                      - paragraph [ref=e653]: ROCKLAND LTDA pagó su deuda.
+                      - generic [ref=e654]:
+                        - generic [ref=e655]: 19 jun.
+                        - link "Ver cliente" [ref=e656] [cursor=pointer]:
+                          - /url: /copilot/clientes/d77f52ad-3172-4642-8854-23458a06b8f6
+                          - text: Ver cliente
+                          - img [ref=e657]
+                - article [ref=e659]:
+                  - generic [ref=e660]:
+                    - img [ref=e662]
+                    - generic [ref=e665]:
+                      - generic [ref=e666]:
+                        - paragraph [ref=e667]: Cliente saldó su deuda
+                        - generic [ref=e668]: Info
+                      - paragraph [ref=e669]: Gjorgji Martin Gerardo pagó su deuda.
+                      - generic [ref=e670]:
+                        - generic [ref=e671]: 19 jun.
+                        - link "Ver cliente" [ref=e672] [cursor=pointer]:
+                          - /url: /copilot/clientes/0e74cee5-7cb9-4c87-884c-adf05e6e5549
+                          - text: Ver cliente
+                          - img [ref=e673]
+  - button "Open Next.js Dev Tools" [ref=e675] [cursor=pointer]:
+    - generic [ref=e678]:
+      - text: Compiling
+      - generic [ref=e679]:
+        - generic [ref=e680]: .
+        - generic [ref=e681]: .
+        - generic [ref=e682]: .
+  - alert [ref=e683]

@@ -420,7 +420,7 @@ export function CarteraCompactKpiGrid({
       if (!m || (m.pendingAtCutoff ?? 0) <= 0) return;
       const detail = topInvoiceRowsForCurrency(report, currency);
       setExplain({
-        title: "Deuda actual",
+        title: "Deuda actual a cobrar",
         currency,
         periodLabel: periodRangeLabel ?? null,
         formula:
@@ -596,7 +596,7 @@ export function CarteraCompactKpiGrid({
             )}
           </CompactCard>
           <CompactCard
-            title="Deuda actual"
+            title="Deuda actual a cobrar"
             onClick={() => {
               const c = preferDominantCurrency((m) => m?.pendingAtCutoff ?? 0);
               if (c) openTotalPendienteExplain(c);

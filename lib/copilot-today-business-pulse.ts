@@ -1079,7 +1079,7 @@ function buildLast30DaysSummary(
       label: "Balance proyectado",
       value: fmtSnapAmount(liquidity, snapCurrency),
       trend: liquidity > 0 ? "up" : liquidity < 0 ? "down" : "neutral",
-      description: "Caja disponible + cobros esperados − pagos programados" + mixedNote,
+      description: "Caja disponible Santander + cobros esperados − pagos programados" + mixedNote,
     },
   ];
 }

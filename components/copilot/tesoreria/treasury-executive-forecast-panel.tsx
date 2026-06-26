@@ -121,7 +121,7 @@ function UsdConsolidatedPositionBlock({
       </div>
       <dl className="mt-3 space-y-1.5 text-sm">
         <div className="flex justify-between gap-2">
-          <dt className="text-[var(--copilot-ink-muted)]">Caja disponible</dt>
+          <dt className="text-[var(--copilot-ink-muted)]">Caja disponible Santander</dt>
           <dd className="tabular-nums font-medium text-[var(--copilot-ink)]">{formatUsdEquivalent(cash)}</dd>
         </div>
         <div className="flex justify-between gap-2">
@@ -163,7 +163,7 @@ function UsdConsolidatedCoverageBlock({
       </p>
       <dl className="mt-3 space-y-1.5 text-sm">
         <div className="flex justify-between gap-2">
-          <dt className="text-[var(--copilot-ink-muted)]">Caja disponible</dt>
+          <dt className="text-[var(--copilot-ink-muted)]">Caja disponible Santander</dt>
           <dd className="tabular-nums text-[var(--copilot-ink)]">{formatUsdEquivalent(cash)}</dd>
         </div>
         {receivables > 0 ? (
@@ -268,7 +268,7 @@ export function TreasuryExecutiveForecastPanel({
       <section>
         <CopilotSectionTitle
           title="Posición de caja — fin de mes"
-          subtitle="Caja disponible menos compromisos programados."
+          subtitle="Caja disponible Santander menos compromisos programados."
         />
         {isUsd ? (
           <UsdConsolidatedPositionBlock
@@ -317,7 +317,7 @@ export function TreasuryExecutiveForecastPanel({
 
                   <dl className="mt-3 space-y-1.5 text-sm">
                     <div className="flex justify-between gap-2">
-                      <dt className="text-[var(--copilot-ink-muted)]">Caja disponible</dt>
+                      <dt className="text-[var(--copilot-ink-muted)]">Caja disponible Santander</dt>
                       <dd className="tabular-nums font-medium text-[var(--copilot-ink)]">
                         {fmt(cash, cur)}
                       </dd>
@@ -430,7 +430,7 @@ export function TreasuryExecutiveForecastPanel({
       <section>
         <CopilotSectionTitle
           title="Saldo proyectado"
-          subtitle="Caja disponible + cobros previstos − compromisos del mes."
+          subtitle="Caja disponible Santander + cobros previstos − compromisos del mes."
         />
         {isUsd ? (
           <UsdConsolidatedCoverageBlock
@@ -457,7 +457,7 @@ export function TreasuryExecutiveForecastPanel({
                   </p>
                   <dl className="mt-3 space-y-1.5 text-sm">
                     <div className="flex justify-between gap-2">
-                      <dt className="text-[var(--copilot-ink-muted)]">Caja disponible</dt>
+                      <dt className="text-[var(--copilot-ink-muted)]">Caja disponible Santander</dt>
                       <dd className="tabular-nums text-[var(--copilot-ink)]">{fmt(cash, cur)}</dd>
                     </div>
                     {receivables > 0 ? (

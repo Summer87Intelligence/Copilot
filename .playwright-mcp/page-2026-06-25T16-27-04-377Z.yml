@@ -1,0 +1,251 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - img [ref=e7]
+      - navigation "Navegación del módulo Copilot" [ref=e10]:
+        - button "Expandir menú lateral" [ref=e12]:
+          - img [ref=e13]
+        - link "Hoy" [ref=e15] [cursor=pointer]:
+          - /url: /copilot/hoy
+          - img [ref=e16]
+          - generic [ref=e19]: Hoy
+        - link "Dashboard" [ref=e22] [cursor=pointer]:
+          - /url: /copilot/dashboard
+          - img [ref=e23]
+          - generic [ref=e25]: Dashboard
+        - link "Finanzas" [ref=e26] [cursor=pointer]:
+          - /url: /copilot/finanzas
+          - img [ref=e27]
+          - generic [ref=e30]: Finanzas
+        - link "Reportes" [ref=e31] [cursor=pointer]:
+          - /url: /copilot/reportes
+          - img [ref=e32]
+          - generic [ref=e35]: Reportes
+        - link "Cobranza" [ref=e38] [cursor=pointer]:
+          - /url: /copilot/cobranza
+          - img [ref=e39]
+          - generic [ref=e44]: Cobranza
+        - link "Cartera" [ref=e45] [cursor=pointer]:
+          - /url: /copilot/cartera
+          - img [ref=e46]
+          - generic [ref=e48]: Cartera
+        - link "Clientes" [ref=e49] [cursor=pointer]:
+          - /url: /copilot/clientes
+          - img [ref=e50]
+          - generic [ref=e55]: Clientes
+        - link "Tesorería" [ref=e58] [cursor=pointer]:
+          - /url: /copilot/tesoreria
+          - img [ref=e59]
+          - generic [ref=e62]: Tesorería
+        - link "Alertas" [ref=e65] [cursor=pointer]:
+          - /url: /copilot/alertas
+          - img [ref=e66]
+          - generic [ref=e68]: Alertas
+        - link "Agentes IA" [ref=e69] [cursor=pointer]:
+          - /url: /copilot/agentes
+          - img [ref=e70]
+          - generic [ref=e73]: Agentes IA
+        - link "Datos" [ref=e74] [cursor=pointer]:
+          - /url: /copilot/datos
+          - img [ref=e75]
+          - generic [ref=e79]: Datos
+        - link "Configuración" [ref=e82] [cursor=pointer]:
+          - /url: /copilot/admin
+          - img [ref=e83]
+          - generic [ref=e86]: Configuración
+        - link "Manual de uso" [ref=e87] [cursor=pointer]:
+          - /url: /copilot/manual
+          - img [ref=e88]
+          - generic [ref=e91]: Manual de uso
+        - link "Empresas" [ref=e94] [cursor=pointer]:
+          - /url: /admin/companies
+          - img [ref=e95]
+          - generic [ref=e99]: Empresas
+        - link "Base Zeta" [ref=e100] [cursor=pointer]:
+          - /url: /copilot/knowledge/zeta
+          - img [ref=e101]
+          - generic [ref=e103]: Base Zeta
+    - generic [ref=e104]:
+      - generic [ref=e105]:
+        - generic [ref=e106]:
+          - generic [ref=e107]:
+            - generic [ref=e108]:
+              - img [ref=e109]
+              - generic [ref=e111]: Jueves, 25 de junio de 2026
+            - 'generic "Fuente: Zeta Actualizado: hace minutos Próxima actualización automática: 15:00 Intervalo: cada 2 h" [ref=e299]': Datos al 25 jun. · próx 15:00
+          - generic [ref=e112]:
+            - button "Notificaciones" [ref=e114]:
+              - img [ref=e115]
+            - button "Menú de usuario" [ref=e119]: A
+            - 'button "Estado del negocio: Atención. 3 señales de atención" [ref=e300]':
+              - generic [ref=e123]: "3"
+        - status "Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda." [ref=e124]:
+          - paragraph [ref=e125]: Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda.
+      - generic [ref=e127]:
+        - banner [ref=e128]:
+          - generic [ref=e129]:
+            - heading "Reportes" [level=1] [ref=e130]
+            - paragraph [ref=e131]: Consultá reportes en pantalla o descargalos como PDF.
+        - generic [ref=e132]:
+          - paragraph [ref=e133]: "Los reportes son de solo lectura: no modifican facturas, caja ni gestiones registradas."
+          - generic [ref=e134]:
+            - paragraph [ref=e135]: Cobranza
+            - generic [ref=e136]:
+              - generic [ref=e137]:
+                - img [ref=e139]
+                - generic [ref=e143]:
+                  - heading "Reporte de deudores" [level=2] [ref=e144]
+                  - paragraph [ref=e145]: Clientes con deuda, moneda, antigüedad y contacto validado. Ideal para priorizar cobranza.
+              - generic [ref=e147]:
+                - button "Ver reporte" [ref=e148]:
+                  - img [ref=e149]
+                  - text: Ver reporte
+                - button "PDF" [ref=e294]:
+                  - img [ref=e295]
+                  - text: PDF
+                - dialog "Generar reporte de deudores" [ref=e319]:
+                  - generic [ref=e320]:
+                    - generic [ref=e321]:
+                      - generic [ref=e322]:
+                        - heading "Generar reporte de deudores" [level=2] [ref=e323]
+                        - paragraph [ref=e324]: Seleccioná qué clientes incluir en el PDF.
+                      - button "Cerrar" [disabled] [ref=e325]:
+                        - img [ref=e326]
+                    - generic [ref=e329]:
+                      - generic [ref=e330]:
+                        - paragraph [ref=e331]: Moneda
+                        - generic [ref=e332]:
+                          - button "Todas" [ref=e333]
+                          - button "Solo pesos" [ref=e334]
+                          - button "Solo dólares" [ref=e335]
+                      - generic [ref=e336]:
+                        - paragraph [ref=e337]: Estado
+                        - generic [ref=e338]:
+                          - button "Todos con deuda" [ref=e339]
+                          - button "Solo atrasados" [ref=e340]
+                          - button "Solo críticos" [ref=e341]
+                          - button "Solo sin contacto" [ref=e342]
+                      - generic [ref=e343]:
+                        - paragraph [ref=e344]: Monto mínimo
+                        - generic [ref=e345]:
+                          - generic [ref=e346]:
+                            - text: Mínimo UYU
+                            - spinbutton "Mínimo UYU" [ref=e347]
+                          - generic [ref=e348]:
+                            - text: Mínimo USD
+                            - spinbutton "Mínimo USD" [ref=e349]
+                        - generic [ref=e350]:
+                          - button "UYU > 20.000" [ref=e351]
+                          - button "USD > 1.000" [ref=e352]
+                          - button "Limpiar mínimos" [ref=e353]
+                      - generic [ref=e354]:
+                        - paragraph [ref=e355]: Días de atraso
+                        - generic [ref=e356]:
+                          - button "Todos" [ref=e357]
+                          - button "Atrasados más de 30 días" [ref=e358]
+                          - button "Atrasados más de 60 días" [ref=e359]
+                          - button "Atrasados más de 90 días" [ref=e360]
+                      - generic [ref=e361]:
+                        - paragraph [ref=e362]: Contacto
+                        - generic [ref=e363]:
+                          - button "Todos" [ref=e364]
+                          - button "Con WhatsApp/email" [ref=e365]
+                          - button "Sin contacto" [ref=e366]
+                      - generic [ref=e367]: 21 clientes serán incluidos.
+                    - generic [ref=e368]:
+                      - button "Cancelar" [disabled] [ref=e369]
+                      - button "Generar PDF" [disabled] [ref=e370]:
+                        - img [ref=e375]
+                        - text: Generar PDF
+            - generic [ref=e155]:
+              - generic [ref=e156]:
+                - img [ref=e158]
+                - generic [ref=e161]:
+                  - heading "Reporte de cobranza mensual" [level=2] [ref=e162]
+                  - paragraph [ref=e163]: Cobros registrados del mes, separados por moneda. Ideal para conciliar con extracto bancario.
+              - generic [ref=e165]:
+                - button "Ver reporte" [ref=e166]:
+                  - img [ref=e167]
+                  - text: Ver reporte
+                - button "PDF" [ref=e170]:
+                  - img [ref=e171]
+                  - text: PDF
+          - generic [ref=e175]:
+            - paragraph [ref=e176]: Finanzas
+            - generic [ref=e177]:
+              - generic [ref=e178]:
+                - img [ref=e180]
+                - generic [ref=e182]:
+                  - heading "Reporte de caja mensual" [level=2] [ref=e183]
+                  - paragraph [ref=e184]: Movimientos confirmados del período con saldo inicial, ingresos, egresos y saldo final.
+              - generic [ref=e186]:
+                - button "Ver reporte" [ref=e187]:
+                  - img [ref=e188]
+                  - text: Ver reporte
+                - button "PDF" [ref=e191]:
+                  - img [ref=e192]
+                  - text: PDF
+            - generic [ref=e196]:
+              - generic [ref=e197]:
+                - img [ref=e199]
+                - generic [ref=e202]:
+                  - heading "Reporte de ventas" [level=2] [ref=e203]
+                  - paragraph [ref=e204]: Detalle de facturas del mes por moneda, con total al pie.
+              - generic [ref=e206]:
+                - button "Ver reporte" [ref=e207]:
+                  - img [ref=e208]
+                  - text: Ver reporte
+                - button "PDF" [ref=e211]:
+                  - img [ref=e212]
+                  - text: PDF
+            - generic [ref=e216]:
+              - generic [ref=e217]:
+                - img [ref=e219]
+                - generic [ref=e220]:
+                  - heading "Reporte ejecutivo mensual" [level=2] [ref=e221]
+                  - paragraph [ref=e222]: "Resumen CEO: indicadores clave, top 5 clientes, top 5 deudores y estado de caja en un solo PDF."
+              - generic [ref=e224]:
+                - button "Ver reporte" [ref=e225]:
+                  - img [ref=e226]
+                  - text: Ver reporte
+                - button "PDF" [ref=e229]:
+                  - img [ref=e230]
+                  - text: PDF
+            - generic [ref=e234]:
+              - generic [ref=e235]:
+                - img [ref=e237]
+                - generic [ref=e238]:
+                  - heading "Dashboard Resumen Ejecutivo" [level=2] [ref=e239]
+                  - paragraph [ref=e240]: "Resumen ejecutivo por período personalizado: estado financiero, KPIs, tendencia mensual, deuda por antigüedad, top deudores, top facturación, cartera y movimientos."
+              - button "PDF" [ref=e243]:
+                - img [ref=e244]
+                - text: PDF
+          - generic [ref=e248]:
+            - paragraph [ref=e249]: Clientes
+            - generic [ref=e250]:
+              - generic [ref=e251]:
+                - img [ref=e253]
+                - generic [ref=e259]:
+                  - heading "Clientes principales" [level=2] [ref=e260]
+                  - paragraph [ref=e261]: Ranking de clientes ordenado por facturación, deuda o vencimiento. Muestra participación y nivel de riesgo.
+              - generic [ref=e263]:
+                - button "Ver reporte" [ref=e264]:
+                  - img [ref=e265]
+                  - text: Ver reporte
+                - button "PDF" [ref=e268]:
+                  - img [ref=e269]
+                  - text: PDF
+            - generic [ref=e273]:
+              - generic [ref=e274]:
+                - img [ref=e276]
+                - generic [ref=e279]:
+                  - heading "Estado de cuenta por cliente" [level=2] [ref=e280]
+                  - paragraph [ref=e281]: Deuda actual y atrasado por cliente, separado por moneda. Ver todos los clientes en pantalla o descargar el PDF masivo.
+              - generic [ref=e283]:
+                - button "Ver reporte" [ref=e284]:
+                  - img [ref=e285]
+                  - text: Ver reporte
+                - button "PDF" [ref=e288]:
+                  - img [ref=e289]
+                  - text: PDF
+  - alert [ref=e293]

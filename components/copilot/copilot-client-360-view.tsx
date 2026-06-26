@@ -1431,7 +1431,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
 
                 <div>
                   <p className="text-sm font-semibold text-[var(--copilot-ink)]">
-                    Deuda actual del cliente
+                    Deuda actual a cobrar del cliente
                   </p>
                   <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
                     Saldo pendiente al corte informado por Zeta. El atrasado ya está incluido.{isUsd360 ? " Totales convertidos a USD estimado." : " UYU y USD no se suman entre sí."}
@@ -1454,7 +1454,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   <CopilotCard className={warningFinancialCardClass}>
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        Deuda actual en pesos (UYU)
+                        Deuda actual a cobrar en pesos (UYU)
                       </p>
                       {data.overdue_uyu > 0 ? (
                         <TrendingDown className="h-4 w-4 text-[var(--copilot-danger-text)] shrink-0" aria-hidden />
@@ -1483,7 +1483,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   <CopilotCard className={warningFinancialCardClass}>
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                        Deuda actual en dólares (USD)
+                        Deuda actual a cobrar en dólares (USD)
                       </p>
                       {data.overdue_usd > 0 ? (
                         <TrendingDown className="h-4 w-4 text-[var(--copilot-danger-text)] shrink-0" aria-hidden />

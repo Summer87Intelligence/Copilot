@@ -257,7 +257,7 @@ export function FinancialCurrencySummary({
         <p className="text-[10px] text-[var(--copilot-ink-muted)]">Fuente: Cartera + Tesorería</p>
         <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <ExecutiveMetricCard
-            label="Caja disponible"
+            label="Caja disponible Santander"
             value={fmtDisplay(panel.cashToday)}
             subcopy="Fuente: Tesorería al corte."
             tone={panel.cashToday > 0 ? "positive" : "neutral"}
@@ -265,7 +265,7 @@ export function FinancialCurrencySummary({
           {s ? (
             <>
               <ExecutiveMetricCard
-                label="Deuda actual"
+                label="Deuda actual a cobrar"
                 value={fmtDisplay(s.pending)}
                 subcopy="Fuente: Cartera al corte. El atrasado ya está incluido."
                 tone="neutral"
@@ -274,7 +274,7 @@ export function FinancialCurrencySummary({
               <ExecutiveMetricCard
                 label="Atrasado"
                 value={fmtDisplay(s.overdue)}
-                subcopy="Fuente: Cartera (vencimiento ya pasó). Incluido en Deuda actual."
+                subcopy="Fuente: Cartera (vencimiento ya pasó). Incluido en Deuda actual a cobrar."
                 tone={s.overdue > 0 ? "danger" : "neutral"}
                 onClick={() => onSelectMetric("overdue", s)}
               />
@@ -359,7 +359,7 @@ export function FinancialCollectionDebtSection({
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <ExecutiveMetricCard
-          label="Deuda actual"
+          label="Deuda actual a cobrar"
           value={fmtDisplay(cd.totalDebt)}
           subcopy="Fuente: Cartera. El atrasado ya está incluido."
           tone="neutral"
@@ -367,7 +367,7 @@ export function FinancialCollectionDebtSection({
         <ExecutiveMetricCard
           label="Atrasado"
           value={fmtDisplay(cd.overdueDebt)}
-          subcopy="Fuente: Cartera. Incluido en Deuda actual."
+          subcopy="Fuente: Cartera. Incluido en Deuda actual a cobrar."
           tone={cd.overdueDebt > 0 ? "danger" : "neutral"}
         />
         <ExecutiveMetricCard
@@ -576,7 +576,7 @@ function BreakdownCard({ slice }: { slice: PanoramaCurrencySlice }) {
           <dd className="tabular-nums">{fmtMoney(slice.collectedApplied, slice.code)}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-[var(--copilot-ink-muted)]">Deuda actual</dt>
+          <dt className="text-[var(--copilot-ink-muted)]">Deuda actual a cobrar</dt>
           <dd className="tabular-nums">{fmtMoney(slice.pending, slice.code)}</dd>
         </div>
         <div className="flex justify-between gap-2">

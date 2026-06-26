@@ -633,7 +633,7 @@ function CopilotAtencionPrioritariaPageContent() {
                 <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-4 py-3">
                     <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                      Caja disponible (referencia)
+                      Caja disponible Santander (referencia)
                     </dt>
                     <dd className="mt-1 text-lg font-semibold tabular-nums text-[var(--copilot-ink)]">
                       {formatMoney(snapshotCashNet(snapshot))}

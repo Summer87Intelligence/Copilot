@@ -451,9 +451,9 @@ export function buildFinancialSituationBlocks(
 
     if (pending > 0) {
       metrics.push({
-        label: "Deuda actual",
+        label: "Deuda actual a cobrar",
         value: fmtCurrencyAmount(pending, currency),
-        helper: "Deuda actual al día de hoy.",
+        helper: "Deuda actual a cobrar al día de hoy.",
         trend: "neutral",
       });
       metrics.push({
@@ -513,7 +513,7 @@ export function buildFinancialSituationBlocks(
         {
           label: "Balance proyectado",
           value: fmtCurrencyAmount(liquidity, c),
-          helper: "Caja disponible + cobros esperados − pagos programados.",
+          helper: "Caja disponible Santander + cobros esperados − pagos programados.",
           trend: liquidity >= 0 ? "up" : "down",
         },
       ],
@@ -558,7 +558,7 @@ function debtorRowMotivo(hasOverdue: boolean, slow: boolean): string {
   if (hasOverdue && slow) return "Atrasado · Cobro lento";
   if (hasOverdue) return "Atrasado";
   if (slow) return "Cobro lento";
-  return "Deuda actual";
+  return "Deuda actual a cobrar";
 }
 
 export function extractAgingTotals(

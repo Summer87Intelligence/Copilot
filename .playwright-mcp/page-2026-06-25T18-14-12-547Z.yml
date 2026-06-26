@@ -1,0 +1,14 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - heading "Iniciar sesión · Copilot" [level=1] [ref=e4]
+      - paragraph [ref=e5]: Accedé con tu usuario y PIN. Si no tenés credenciales, pedilas a quien administra tu espacio de trabajo.
+      - generic [ref=e7]:
+        - generic [ref=e8]:
+          - generic [ref=e9]: Usuario
+          - textbox "Usuario" [ref=e10]
+        - generic [ref=e11]:
+          - generic [ref=e12]: PIN
+          - textbox "PIN" [ref=e13]
+        - button "Entrar" [ref=e14]
+  - alert [ref=e15]

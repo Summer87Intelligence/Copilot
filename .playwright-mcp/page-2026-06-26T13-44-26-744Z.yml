@@ -1,0 +1,177 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - img [ref=e7]
+      - navigation "Navegación del módulo Copilot" [ref=e10]:
+        - button "Expandir menú lateral" [ref=e12]:
+          - img [ref=e13]
+        - link "Hoy" [ref=e15] [cursor=pointer]:
+          - /url: /copilot/hoy
+          - img [ref=e16]
+          - generic [ref=e19]: Hoy
+        - link "Dashboard" [ref=e22] [cursor=pointer]:
+          - /url: /copilot/dashboard
+          - img [ref=e23]
+          - generic [ref=e25]: Dashboard
+        - link "Finanzas" [ref=e26] [cursor=pointer]:
+          - /url: /copilot/finanzas
+          - img [ref=e27]
+          - generic [ref=e30]: Finanzas
+        - link "Reportes" [ref=e31] [cursor=pointer]:
+          - /url: /copilot/reportes
+          - img [ref=e32]
+          - generic [ref=e35]: Reportes
+        - link "Cobranza" [ref=e38] [cursor=pointer]:
+          - /url: /copilot/cobranza
+          - img [ref=e39]
+          - generic [ref=e44]: Cobranza
+        - link "Cartera" [ref=e45] [cursor=pointer]:
+          - /url: /copilot/cartera
+          - img [ref=e46]
+          - generic [ref=e48]: Cartera
+        - link "Clientes" [ref=e49] [cursor=pointer]:
+          - /url: /copilot/clientes
+          - img [ref=e50]
+          - generic [ref=e55]: Clientes
+        - link "Tesorería" [ref=e58] [cursor=pointer]:
+          - /url: /copilot/tesoreria
+          - img [ref=e59]
+          - generic [ref=e62]: Tesorería
+        - link "Alertas" [ref=e65] [cursor=pointer]:
+          - /url: /copilot/alertas
+          - img [ref=e66]
+          - generic [ref=e68]: Alertas
+        - link "Agentes IA" [ref=e69] [cursor=pointer]:
+          - /url: /copilot/agentes
+          - img [ref=e70]
+          - generic [ref=e73]: Agentes IA
+        - link "Datos" [ref=e74] [cursor=pointer]:
+          - /url: /copilot/datos
+          - img [ref=e75]
+          - generic [ref=e79]: Datos
+        - link "Mesa de ayuda" [ref=e80] [cursor=pointer]:
+          - /url: /copilot/mesa-de-ayuda
+          - img [ref=e81]
+          - generic [ref=e84]: Mesa de ayuda
+        - link "Configuración" [ref=e87] [cursor=pointer]:
+          - /url: /copilot/admin
+          - img [ref=e88]
+          - generic [ref=e91]: Configuración
+        - link "Manual de uso" [ref=e92] [cursor=pointer]:
+          - /url: /copilot/manual
+          - img [ref=e93]
+          - generic [ref=e96]: Manual de uso
+        - link "Empresas" [ref=e99] [cursor=pointer]:
+          - /url: /admin/companies
+          - img [ref=e100]
+          - generic [ref=e104]: Empresas
+        - link "Base Zeta" [ref=e105] [cursor=pointer]:
+          - /url: /copilot/knowledge/zeta
+          - img [ref=e106]
+          - generic [ref=e108]: Base Zeta
+    - generic [ref=e109]:
+      - generic [ref=e110]:
+        - generic [ref=e111]:
+          - generic [ref=e113]:
+            - img [ref=e114]
+            - generic [ref=e116]: Viernes, 26 de junio de 2026
+          - generic [ref=e117]:
+            - button "Notificaciones" [ref=e119]:
+              - img [ref=e120]
+            - button "Menú de usuario" [ref=e124]: A
+            - button "Estado del negocio" [ref=e126]:
+              - generic [ref=e128]: …
+        - status "Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda." [ref=e129]:
+          - paragraph [ref=e130]: Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda.
+      - generic [ref=e131]:
+        - banner [ref=e132]:
+          - generic [ref=e133]:
+            - paragraph [ref=e134]: Summer87 Copilot
+            - heading "Tesorería" [level=1] [ref=e135]
+            - paragraph [ref=e136]: Caja disponible, pagos programados y registros manuales.
+        - generic [ref=e139]:
+          - generic [ref=e140]:
+            - button "Refrescar" [disabled] [ref=e142]:
+              - img [ref=e143]
+              - text: Refrescar
+            - generic "Caja disponible total en USD estimado" [ref=e148]:
+              - generic [ref=e149]:
+                - paragraph [ref=e150]: Caja disponible
+                - generic [ref=e152]: USD estimado · TC 40
+              - generic [ref=e153]: —
+              - paragraph [ref=e154]: Cargando posición de caja…
+            - generic [ref=e155]:
+              - paragraph [ref=e156]: Acciones rápidas
+              - generic [ref=e157]:
+                - 'button "Cargar ingreso Plata que entra manualmente. Ejemplo: aporte, ajuste, ingreso no-Zeta." [ref=e158]':
+                  - img [ref=e159]
+                  - generic [ref=e162]: Cargar ingreso
+                  - generic [ref=e163]: Plata que entra manualmente.
+                  - generic [ref=e164]: "Ejemplo: aporte, ajuste, ingreso no-Zeta."
+                - 'button "Cargar egreso Plata que sale manualmente. Ejemplo: retiro, gasto puntual, pago no programado." [ref=e165]':
+                  - img [ref=e166]
+                  - generic [ref=e169]: Cargar egreso
+                  - generic [ref=e170]: Plata que sale manualmente.
+                  - generic [ref=e171]: "Ejemplo: retiro, gasto puntual, pago no programado."
+                - 'button "Nuevo pago programado Pago único con fecha futura. Ejemplo: BPS Mayo, proveedor puntual, DGI de este mes." [ref=e172]':
+                  - img [ref=e173]
+                  - generic [ref=e177]: Nuevo pago programado
+                  - generic [ref=e178]: Pago único con fecha futura.
+                  - generic [ref=e179]: "Ejemplo: BPS Mayo, proveedor puntual, DGI de este mes."
+                - 'button "Nuevo pago recurrente Pago que se repite automáticamente. Ejemplo: Netflix todos los 1 del mes — USD 5. Frecuencia: mensual, semanal o anual." [ref=e180]':
+                  - img [ref=e181]
+                  - generic [ref=e186]: Nuevo pago recurrente
+                  - generic [ref=e187]: Pago que se repite automáticamente.
+                  - generic [ref=e188]: "Ejemplo: Netflix todos los 1 del mes — USD 5. Frecuencia: mensual, semanal o anual."
+              - paragraph [ref=e189]:
+                - strong [ref=e190]: "Pago programado:"
+                - text: pago único con fecha futura.
+                - strong [ref=e191]: "Pago recurrente:"
+                - text: se repite automáticamente (mensual, semanal o anual).
+          - navigation "Secciones de tesorería" [ref=e192]:
+            - button "Caja" [ref=e193]
+            - button "Pagos próximos" [ref=e194]
+            - button "Movimientos" [ref=e195]
+            - button "Cobranza del mes" [ref=e196]
+          - generic [ref=e197]:
+            - generic [ref=e205]:
+              - generic [ref=e206]:
+                - paragraph [ref=e207]: Composición de caja
+                - paragraph [ref=e208]: Desglose del saldo disponible por moneda. El total coincide con las cards del encabezado.
+                - generic [ref=e209]:
+                  - generic [ref=e210]:
+                    - generic [ref=e211]:
+                      - generic [ref=e212]:
+                        - paragraph [ref=e213]: Pesos (UYU)
+                        - paragraph [ref=e214]: Composición de caja disponible
+                      - paragraph [ref=e215]: —
+                    - generic [ref=e217]:
+                      - generic [ref=e218]: Saldo cargado al —
+                      - generic [ref=e219]: —
+                    - button "Editar saldo actual" [ref=e220]:
+                      - img [ref=e221]
+                      - text: Editar saldo actual
+                  - generic [ref=e224]:
+                    - generic [ref=e225]:
+                      - generic [ref=e226]:
+                        - paragraph [ref=e227]: Dólares (USD)
+                        - paragraph [ref=e228]: Composición de caja disponible
+                      - paragraph [ref=e229]: —
+                    - generic [ref=e231]:
+                      - generic [ref=e232]: Saldo cargado al —
+                      - generic [ref=e233]: —
+                    - button "Editar saldo actual" [ref=e234]:
+                      - img [ref=e235]
+                      - text: Editar saldo actual
+              - generic [ref=e238]:
+                - paragraph [ref=e239]: Últimos movimientos
+                - generic [ref=e240]:
+                  - button "Filtros" [ref=e241]:
+                    - img [ref=e242]
+                    - text: Filtros
+                    - img [ref=e244]
+                  - paragraph [ref=e246]: Sin movimientos con esos filtros. Usá los botones superiores para cargar ingresos o egresos.
+            - paragraph [ref=e248]: Tesorería muestra caja disponible. Cartera muestra facturación y deuda de clientes.
+  - button "Open Next.js Dev Tools" [ref=e254] [cursor=pointer]:
+    - img [ref=e255]
+  - alert [ref=e258]

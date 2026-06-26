@@ -103,7 +103,7 @@ function TesoreriaCashCard({
     <CopilotKpiCard
       size="hero"
       tone={isNegative ? "danger" : "neutral"}
-      ariaLabel={`Caja disponible ${title}`}
+      ariaLabel={`Caja disponible Santander ${title}`}
       eyebrow={
         <span className="text-sm font-semibold normal-case tracking-normal text-[var(--copilot-ink)]">
           {title}
@@ -117,7 +117,7 @@ function TesoreriaCashCard({
               : "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-success-text-strong)]"
           }`}
         >
-          Caja disponible
+          Caja disponible Santander
         </span>
       }
       value={pos ? formatTreasuryMoney(pureAvailable, currency) : "—"}
@@ -179,10 +179,10 @@ function TesoreriaUsdConsolidatedCard({
     <CopilotKpiCard
       size="hero"
       tone={isNegative ? "danger" : "neutral"}
-      ariaLabel="Caja disponible total en USD estimado"
+      ariaLabel="Caja disponible Santander total en USD estimado"
       eyebrow={
         <span className="text-sm font-semibold normal-case tracking-normal text-[var(--copilot-ink)]">
-          Caja disponible
+          Caja disponible Santander
         </span>
       }
       badge={

@@ -1,0 +1,531 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - img [ref=e7]
+      - navigation "Navegación del módulo Copilot" [ref=e10]:
+        - button "Expandir menú lateral" [ref=e12]:
+          - img [ref=e13]
+        - link "Hoy" [ref=e15] [cursor=pointer]:
+          - /url: /copilot/hoy
+          - img [ref=e16]
+          - generic [ref=e19]: Hoy
+        - link "Dashboard" [ref=e22] [cursor=pointer]:
+          - /url: /copilot/dashboard
+          - img [ref=e23]
+          - generic [ref=e25]: Dashboard
+        - link "Finanzas" [ref=e26] [cursor=pointer]:
+          - /url: /copilot/finanzas
+          - img [ref=e27]
+          - generic [ref=e30]: Finanzas
+        - link "Reportes" [ref=e31] [cursor=pointer]:
+          - /url: /copilot/reportes
+          - img [ref=e32]
+          - generic [ref=e35]: Reportes
+        - link "Cobranza" [ref=e38] [cursor=pointer]:
+          - /url: /copilot/cobranza
+          - img [ref=e39]
+          - generic [ref=e44]: Cobranza
+        - link "Cartera" [ref=e45] [cursor=pointer]:
+          - /url: /copilot/cartera
+          - img [ref=e46]
+          - generic [ref=e48]: Cartera
+        - link "Clientes" [ref=e49] [cursor=pointer]:
+          - /url: /copilot/clientes
+          - img [ref=e50]
+          - generic [ref=e55]: Clientes
+        - link "Tesorería" [ref=e58] [cursor=pointer]:
+          - /url: /copilot/tesoreria
+          - img [ref=e59]
+          - generic [ref=e62]: Tesorería
+        - link "Alertas" [ref=e65] [cursor=pointer]:
+          - /url: /copilot/alertas
+          - img [ref=e66]
+          - generic [ref=e68]: Alertas
+        - link "Agentes IA" [ref=e69] [cursor=pointer]:
+          - /url: /copilot/agentes
+          - img [ref=e70]
+          - generic [ref=e73]: Agentes IA
+        - link "Datos" [ref=e74] [cursor=pointer]:
+          - /url: /copilot/datos
+          - img [ref=e75]
+          - generic [ref=e79]: Datos
+        - link "Configuración" [ref=e82] [cursor=pointer]:
+          - /url: /copilot/admin
+          - img [ref=e83]
+          - generic [ref=e86]: Configuración
+        - link "Manual de uso" [ref=e87] [cursor=pointer]:
+          - /url: /copilot/manual
+          - img [ref=e88]
+          - generic [ref=e91]: Manual de uso
+        - link "Empresas" [ref=e94] [cursor=pointer]:
+          - /url: /admin/companies
+          - img [ref=e95]
+          - generic [ref=e99]: Empresas
+        - link "Base Zeta" [ref=e100] [cursor=pointer]:
+          - /url: /copilot/knowledge/zeta
+          - img [ref=e101]
+          - generic [ref=e103]: Base Zeta
+    - generic [ref=e104]:
+      - generic [ref=e105]:
+        - generic [ref=e106]:
+          - generic [ref=e107]:
+            - generic [ref=e108]:
+              - img [ref=e109]
+              - generic [ref=e111]: Jueves, 25 de junio de 2026
+            - 'generic "Fuente: Zeta Actualizado: hace minutos Próxima actualización automática: 15:00 Intervalo: cada 2 h" [ref=e609]': Datos al 25 jun. · próx 15:00
+          - generic [ref=e112]:
+            - button "Notificaciones" [ref=e114]:
+              - img [ref=e115]
+            - button "Menú de usuario" [ref=e119]: A
+            - 'button "Estado del negocio: Atención. 3 señales de atención" [ref=e610]':
+              - generic [ref=e123]: "3"
+        - status "Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda." [ref=e124]:
+          - paragraph [ref=e125]: Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda.
+      - generic [ref=e127]:
+        - generic [ref=e129]:
+          - generic [ref=e130]:
+            - generic [ref=e132]:
+              - img [ref=e133]
+              - text: Guía para usuarios
+            - heading "Manual de uso" [level=1] [ref=e136]
+            - paragraph [ref=e137]: Guía simple para entender qué está pasando en tu negocio y qué hacer después.
+            - link "Empezar por Hoy" [ref=e139] [cursor=pointer]:
+              - /url: /copilot/hoy
+              - text: Empezar por Hoy
+              - img [ref=e140]
+          - link "Descargar PDF" [ref=e142] [cursor=pointer]:
+            - /url: /api/copilot/manual.pdf
+            - img [ref=e143]
+            - text: Descargar PDF
+        - generic [ref=e147]:
+          - generic [ref=e149]:
+            - generic [ref=e150]:
+              - generic [ref=e151]: ✦
+              - heading "Copilot en 5 minutos" [level=2] [ref=e152]
+            - list [ref=e153]:
+              - listitem [ref=e154]:
+                - generic [ref=e155]: "1"
+                - generic [ref=e156]: Abrí Hoy — operación diaria. Muestra caja disponible, deuda de clientes y prioridad del día.
+              - listitem [ref=e157]:
+                - generic [ref=e158]: "2"
+                - generic [ref=e159]: "Mirá Acciones — ahí están las cosas concretas que conviene hacer: clientes a llamar, cobros a registrar."
+              - listitem [ref=e160]:
+                - generic [ref=e161]: "3"
+                - generic [ref=e162]: Si hay clientes vencidos — abrí su ficha y contactá por WhatsApp o email directamente desde Copilot.
+              - listitem [ref=e163]:
+                - generic [ref=e164]: "4"
+                - generic [ref=e165]: Si hay pagos próximos — entrá a Tesorería para ver caja real y confirmar que estén cubiertos.
+              - listitem [ref=e166]:
+                - generic [ref=e167]: "5"
+                - generic [ref=e168]: Si querés análisis y reportes — Dashboard Resumen o Finanzas; Cartera para deuda detallada y antigüedad.
+          - generic [ref=e169]:
+            - heading "Módulos del sistema" [level=2] [ref=e170]
+            - generic [ref=e171]:
+              - link "Hoy" [ref=e172] [cursor=pointer]:
+                - /url: /copilot/hoy
+                - img [ref=e174]
+                - generic [ref=e177]: Hoy
+              - link "Dashboard Resumen" [ref=e178] [cursor=pointer]:
+                - /url: /copilot/dashboard
+                - img [ref=e180]
+                - generic [ref=e182]: Dashboard Resumen
+              - link "Cobranza" [ref=e183] [cursor=pointer]:
+                - /url: /copilot/cobranza
+                - img [ref=e185]
+                - generic [ref=e187]: Cobranza
+              - link "Alertas" [ref=e188] [cursor=pointer]:
+                - /url: /copilot/alertas
+                - img [ref=e190]
+                - generic [ref=e193]: Alertas
+              - link "Clientes" [ref=e194] [cursor=pointer]:
+                - /url: /copilot/clientes
+                - img [ref=e196]
+                - generic [ref=e201]: Clientes
+              - link "Cartera" [ref=e202] [cursor=pointer]:
+                - /url: /copilot/cartera
+                - img [ref=e204]
+                - generic [ref=e206]: Cartera
+              - link "Tesorería" [ref=e207] [cursor=pointer]:
+                - /url: /copilot/tesoreria
+                - img [ref=e209]
+                - generic [ref=e212]: Tesorería
+              - link "Panorama financiero" [ref=e213] [cursor=pointer]:
+                - /url: /copilot/finanzas
+                - img [ref=e215]
+                - generic [ref=e218]: Panorama financiero
+              - link "Datos" [ref=e219] [cursor=pointer]:
+                - /url: /copilot/datos
+                - img [ref=e221]
+                - generic [ref=e225]: Datos
+              - link "Agentes IA" [ref=e226] [cursor=pointer]:
+                - /url: /copilot/agentes
+                - img [ref=e228]
+                - generic [ref=e231]: Agentes IA
+              - link "Estado del sistema" [ref=e232] [cursor=pointer]:
+                - /url: /copilot/alertas
+                - img [ref=e234]
+                - generic [ref=e236]: Estado del sistema
+          - generic [ref=e237]:
+            - heading "Guía detallada por módulo" [level=2] [ref=e238]
+            - generic [ref=e239]:
+              - button "¿Qué es Summer87 Copilot?" [ref=e241]:
+                - generic [ref=e242]:
+                  - img [ref=e244]
+                  - generic [ref=e246]: ¿Qué es Summer87 Copilot?
+                - img [ref=e247]
+              - button "Cómo moverse por Copilot" [ref=e250]:
+                - generic [ref=e251]:
+                  - img [ref=e253]
+                  - generic [ref=e255]: Cómo moverse por Copilot
+                - img [ref=e256]
+              - button "Hoy — La pantalla principal" [ref=e259]:
+                - generic [ref=e260]:
+                  - img [ref=e262]
+                  - generic [ref=e265]: Hoy — La pantalla principal
+                - img [ref=e266]
+              - button "Dashboard Resumen — Análisis ejecutivo consolidado" [ref=e269]:
+                - generic [ref=e270]:
+                  - img [ref=e272]
+                  - generic [ref=e274]: Dashboard Resumen — Análisis ejecutivo consolidado
+                - img [ref=e275]
+              - button "Acciones — Qué hacer primero" [ref=e278]:
+                - generic [ref=e279]:
+                  - img [ref=e281]
+                  - generic [ref=e284]: Acciones — Qué hacer primero
+                - img [ref=e285]
+              - button "Alertas — Historial de avisos" [ref=e288]:
+                - generic [ref=e289]:
+                  - img [ref=e291]
+                  - generic [ref=e294]: Alertas — Historial de avisos
+                - img [ref=e295]
+              - button "Clientes — Directorio y ficha 360" [ref=e298]:
+                - generic [ref=e299]:
+                  - img [ref=e301]
+                  - generic [ref=e306]: Clientes — Directorio y ficha 360
+                - img [ref=e307]
+              - generic [ref=e309]:
+                - button "Cartera — Quién te debe y cuánto" [expanded] [active] [ref=e310]:
+                  - generic [ref=e311]:
+                    - img [ref=e313]
+                    - generic [ref=e315]: Cartera — Quién te debe y cuánto
+                  - img [ref=e316]
+                - generic [ref=e717]:
+                  - generic [ref=e718]:
+                    - paragraph [ref=e719]: "Cartera muestra el dinero que los clientes te deben. Es la vista de cobranza: cuánto hay pendiente, qué está vencido y quiénes tienen más urgencia."
+                    - generic [ref=e720]: "Al entrar carga el mes actual automáticamente. El selector de período es compacto, con presets: Mes actual, Mes anterior, Trimestre y Personalizado."
+                    - generic [ref=e721]: KPIs compactos — indicadores del período en cards neutras. Al tocar Notas crédito UYU/USD se abre un drawer con fórmula, total y filas reales (cliente, comprobante NC, fecha, monto, factura asociada si Zeta la expone). Si no hay detalle en la fuente, mensaje honesto.
+                    - generic [ref=e722]: "Explorador de clientes — filtros ejecutivos: Todos, Pendientes, Atrasados, Críticos, Sin deuda y moneda UYU/USD. Sin filtros técnicos de sync ni «Desactualizado» en la vista principal."
+                    - generic [ref=e723]: Cartera ≠ Caja. Lo que ves en Cartera es deuda que los clientes todavía no pagaron. No es plata disponible. Entra en caja solo cuando el cliente paga y el cobro aparece en Zeta. El Dinero disponible viene de Tesorería, no de Cartera.
+                    - generic [ref=e724]:
+                      - generic [ref=e725]:
+                        - generic [ref=e726]: Al día
+                        - generic [ref=e727]: Facturas que aún no vencieron.
+                      - generic [ref=e728]:
+                        - generic [ref=e729]: 1 a 30 días
+                        - generic [ref=e730]: Recién vencido. Conviene avisar.
+                      - generic [ref=e731]:
+                        - generic [ref=e732]: 31 a 60 días
+                        - generic [ref=e733]: Ya lleva un mes. Priorizar el contacto.
+                      - generic [ref=e734]:
+                        - generic [ref=e735]: 61 a 90 días
+                        - generic [ref=e736]: Problema real. Gestión urgente.
+                      - generic [ref=e737]:
+                        - generic [ref=e738]: Más de 90 días
+                        - generic [ref=e739]: Muy difícil de cobrar. Acción inmediata.
+                      - generic [ref=e740]:
+                        - generic [ref=e741]: Cobros registrados / ventas
+                        - generic [ref=e742]: Recibos del período por fecha sobre ventas del período. Distinto de Cobranza efectiva aplicada (Dashboard).
+                  - link "Ir a Cartera" [ref=e744] [cursor=pointer]:
+                    - /url: /copilot/cartera
+                    - text: Ir a Cartera
+                    - img [ref=e745]
+              - button "Tesorería — Caja, pagos y compromisos" [ref=e319]:
+                - generic [ref=e320]:
+                  - img [ref=e322]
+                  - generic [ref=e325]: Tesorería — Caja, pagos y compromisos
+                - img [ref=e326]
+              - button "Panorama financiero — Lectura ejecutiva" [ref=e329]:
+                - generic [ref=e330]:
+                  - img [ref=e332]
+                  - generic [ref=e335]: Panorama financiero — Lectura ejecutiva
+                - img [ref=e336]
+              - generic [ref=e338]:
+                - button "Datos — Consulta de registros base" [expanded] [ref=e339]:
+                  - generic [ref=e340]:
+                    - img [ref=e342]
+                    - generic [ref=e346]: Datos — Consulta de registros base
+                  - img [ref=e347]
+                - generic [ref=e675]:
+                  - generic [ref=e676]:
+                    - paragraph [ref=e677]: Datos es una vista de consulta y auditoría de registros sincronizados desde Zeta. Podés ver clientes, facturas, recibos, pagos y obligaciones fiscales.
+                    - generic [ref=e678]: Estados vacíos — cada tabla (clientes, facturas, recibos, etc.) explica por qué no hay registros, qué filtro probar y qué aparecerá cuando haya datos sincronizados.
+                    - generic [ref=e679]: "Datos es solo para consultar y verificar. Para gestión diaria usá Cartera, Tesorería o Acciones. Lenguaje ejecutivo: sin CTAs duplicados ni bloques técnicos en la vista principal."
+                    - list [ref=e680]:
+                      - listitem [ref=e681]:
+                        - generic [ref=e683]: Clientes — directorio completo con datos de contacto.
+                      - listitem [ref=e684]:
+                        - generic [ref=e686]: "Facturas — todas las facturas por período, con saldo y estado. Filtros: período, moneda, estado de pago (Vencidas / Pagadas / Con saldo / Todas) y cliente."
+                      - listitem [ref=e687]:
+                        - generic [ref=e689]: "Recibos — cobros registrados con número, cliente, monto, moneda y método. Filtros: período, moneda y cliente."
+                      - listitem [ref=e690]:
+                        - generic [ref=e692]: "Pagos — pagos fiscales y a proveedores. Filtro de fecha (rango desde/hasta). Solo lectura: los pagos no se pueden crear, editar ni borrar desde Datos."
+                      - listitem [ref=e693]:
+                        - generic [ref=e695]: Obligaciones fiscales — vencimientos tributarios. Filtro de fecha de vencimiento (rango desde/hasta).
+                    - generic [ref=e696]: Pagos es solo lectura en esta sección. Para crear, editar o borrar pagos, usá Tesorería — Pagos próximos.
+                    - paragraph [ref=e697]: "Si una factura o recibo no muestra moneda (aparece '· sin moneda'), significa que el registro no tiene currency_code registrado. No es un error del sistema: indica que ese dato no llegó desde Zeta. Podés revisarlo directamente en tu sistema contable."
+                    - paragraph [ref=e698]: "Algunos recibos muestran '· vinculación no disponible (Zeta)' en lugar del número de factura. Esto es normal: Zeta no expone el vínculo recibo — factura en su API de cobranzas. El recibo es válido; solo no tiene la referencia de factura disponible."
+                    - paragraph [ref=e699]: Si buscás un cliente inactivo (archivado) en Datos, podés abrir su ficha completa. La ficha se abre normalmente pero con un aviso amarillo que indica que el cliente está inactivo. Todos los datos históricos se muestran en modo lectura.
+                    - list [ref=e700]:
+                      - listitem [ref=e701]:
+                        - generic [ref=e703]: "Datos — consulta rápida: código, RUT, teléfono, deuda actual y facturas recientes."
+                      - listitem [ref=e704]:
+                        - generic [ref=e706]: Al tocar un cliente aparece un panel lateral con deuda, facturas, recibos y contactos.
+                      - listitem [ref=e707]:
+                        - generic [ref=e709]: Ver ficha completa — funciona también para clientes inactivos (muestra banner de estado).
+                      - listitem [ref=e710]:
+                        - generic [ref=e712]: Si solo querés confirmar un dato, usá el panel lateral. Si vas a gestionar al cliente, abrí la ficha completa.
+                  - link "Ir a Datos" [ref=e714] [cursor=pointer]:
+                    - /url: /copilot/datos
+                    - text: Ir a Datos
+                    - img [ref=e715]
+              - button "Agentes IA — Próximamente" [ref=e350]:
+                - generic [ref=e351]:
+                  - img [ref=e353]
+                  - generic [ref=e356]: Agentes IA — Próximamente
+                - img [ref=e357]
+              - button "Reportes — vista en pantalla y PDF" [ref=e360]:
+                - generic [ref=e361]:
+                  - img [ref=e363]
+                  - generic [ref=e366]: Reportes — vista en pantalla y PDF
+                - img [ref=e367]
+              - button "Estado del sistema — Sincronización y salud técnica" [ref=e370]:
+                - generic [ref=e371]:
+                  - img [ref=e373]
+                  - generic [ref=e375]: Estado del sistema — Sincronización y salud técnica
+                - img [ref=e376]
+              - 'button "Estado: Atención / Estable / Crítico" [ref=e379]':
+                - generic [ref=e380]:
+                  - img [ref=e382]
+                  - generic [ref=e384]: "Estado: Atención / Estable / Crítico"
+                - img [ref=e385]
+              - button "Campana de notificaciones" [ref=e388]:
+                - generic [ref=e389]:
+                  - img [ref=e391]
+                  - generic [ref=e394]: Campana de notificaciones
+                - img [ref=e395]
+              - button "¿Qué hacer si algo aparece en rojo?" [ref=e398]:
+                - generic [ref=e399]:
+                  - img [ref=e401]
+                  - generic [ref=e403]: ¿Qué hacer si algo aparece en rojo?
+                - img [ref=e404]
+              - button "Roles y permisos" [ref=e407]:
+                - generic [ref=e408]:
+                  - img [ref=e410]
+                  - generic [ref=e415]: Roles y permisos
+                - img [ref=e416]
+              - button "Panel administrativo" [ref=e419]:
+                - generic [ref=e420]:
+                  - img [ref=e422]
+                  - generic [ref=e424]: Panel administrativo
+                - img [ref=e425]
+              - generic [ref=e427]:
+                - button "Glosario — Términos de deuda y operación" [expanded] [ref=e428]:
+                  - generic [ref=e429]:
+                    - img [ref=e431]
+                    - generic [ref=e434]: Glosario — Términos de deuda y operación
+                  - img [ref=e435]
+                - generic [ref=e612]:
+                  - paragraph [ref=e613]: Referencia rápida de los términos que Copilot usa para describir la deuda de clientes. Cada término tiene un significado preciso para evitar confusión entre saldo, vencimiento y estado.
+                  - generic [ref=e614]:
+                    - generic [ref=e615]:
+                      - generic [ref=e616]: Deuda actual
+                      - generic [ref=e617]: Todo lo que el cliente debe actualmente, sin importar si ya venció o no. El atrasado ya está incluido dentro de la deuda actual — no se suma aparte.
+                    - generic [ref=e618]:
+                      - generic [ref=e619]: Atrasado
+                      - generic [ref=e620]: La parte de la deuda actual cuya fecha de vencimiento ya pasó. Está incluido dentro de la deuda actual. Cuanto más alto, más urgente la gestión.
+                    - generic [ref=e621]:
+                      - generic [ref=e622]: Atrasado +30 días
+                      - generic [ref=e623]: La parte del atrasado con más de 30 días. Está incluido dentro del atrasado y de la deuda actual — no se suma aparte.
+                    - generic [ref=e624]:
+                      - generic [ref=e625]: Días de atraso
+                      - generic [ref=e626]: "Clasificación del tiempo desde el vencimiento: Al día, 1–30 días, 31–60 días, 61–90 días o +90 días."
+                    - generic [ref=e627]:
+                      - generic [ref=e628]: Sin atrasos
+                      - generic [ref=e629]: El cliente tiene facturas abiertas pero ninguna venció todavía. Hay deuda actual, pero no es urgente.
+                    - generic [ref=e630]:
+                      - generic [ref=e631]: Con atrasos
+                      - generic [ref=e632]: Al menos una factura del cliente ya superó su fecha de vencimiento. Requiere seguimiento.
+                    - generic [ref=e633]:
+                      - generic [ref=e634]: Al día
+                      - generic [ref=e635]: El cliente tiene deuda actual abierta, pero todas sus facturas están dentro del plazo. No hay atrasos todavía.
+                    - generic [ref=e636]:
+                      - generic [ref=e637]: Cobro lento
+                      - generic [ref=e638]: El cliente tiene historial de pagos lentos o riesgo alto, aunque no tenga vencimientos.
+                    - generic [ref=e639]:
+                      - generic [ref=e640]: Contactar por atraso
+                      - generic [ref=e641]: Acción recomendada cuando el cliente tiene al menos una factura atrasada. Es el caso de mayor urgencia.
+                    - generic [ref=e642]:
+                      - generic [ref=e643]: Hacer seguimiento
+                      - generic [ref=e644]: Acción recomendada para clientes con historial de pagos lentos o riesgo alto, aunque no tengan vencimientos.
+                    - generic [ref=e645]:
+                      - generic [ref=e646]: Revisar ficha
+                      - generic [ref=e647]: Acción recomendada para clientes con deuda corriente. Sin urgencia inmediata.
+                    - generic [ref=e648]:
+                      - generic [ref=e649]: Caja disponible
+                      - generic [ref=e650]: "Dinero operativo en Tesorería: saldo cargado al corte más cobros Zeta posteriores y movimientos manuales confirmados, menos egresos confirmados."
+                    - generic [ref=e651]:
+                      - generic [ref=e652]: Cobro
+                      - generic [ref=e653]: Pago registrado de un cliente (recibo en Zeta). Suma a caja cuando es posterior al saldo cargado.
+                    - generic [ref=e654]:
+                      - generic [ref=e655]: Ventas
+                      - generic [ref=e656]: Facturación del período. No es igual a cobros ni a deuda.
+                    - generic [ref=e657]:
+                      - generic [ref=e658]: Ajuste de factura
+                      - generic [ref=e659]: Comprobante que reduce la facturación del período.
+                    - generic [ref=e660]:
+                      - generic [ref=e661]: Fecha de corte
+                      - generic [ref=e662]: Día hasta el cual están calculados los números en Finanzas o el saldo cargado en Tesorería.
+                    - generic [ref=e663]:
+                      - generic [ref=e664]: Último mes cerrado
+                      - generic [ref=e665]: Mes calendario completo anterior; Finanzas lo usa para comparar desempeño cuando el mes actual recién empieza.
+                    - generic [ref=e666]:
+                      - generic [ref=e667]: Vista previa (Preview)
+                      - generic [ref=e668]: "Lectura sin persistir cambios. En Santander: ver filas del extracto antes de guardar. No modifica caja."
+                    - generic [ref=e669]:
+                      - generic [ref=e670]: Superadmin
+                      - generic [ref=e671]: Rol con acceso total de lectura y escritura en el workspace.
+                    - generic [ref=e672]:
+                      - generic [ref=e673]: Solo lectura
+                      - generic [ref=e674]: "Roles usuario y demo_readonly: pueden navegar, consultar y descargar PDFs; escritura devuelve 403 READ_ONLY_USER."
+          - generic [ref=e438]:
+            - heading "Flujo recomendado del día" [level=2] [ref=e439]
+            - paragraph [ref=e440]: Si solo tenés 10 minutos, hacé esto en orden.
+            - generic [ref=e441]:
+              - link "1 Hoy Mirá caja, pagos y principales deudores." [ref=e442] [cursor=pointer]:
+                - /url: /copilot/hoy
+                - generic [ref=e443]: "1"
+                - generic [ref=e444]:
+                  - paragraph [ref=e445]: Hoy
+                  - paragraph [ref=e446]: Mirá caja, pagos y principales deudores.
+                - img [ref=e447]
+              - link "2 Estado Verificá si hay algo urgente en el semáforo." [ref=e449] [cursor=pointer]:
+                - /url: /copilot/hoy
+                - generic [ref=e450]: "2"
+                - generic [ref=e451]:
+                  - paragraph [ref=e452]: Estado
+                  - paragraph [ref=e453]: Verificá si hay algo urgente en el semáforo.
+                - img [ref=e454]
+              - link "3 Cobranza Revisá agenda, seguí clientes y gestioná cobros." [ref=e456] [cursor=pointer]:
+                - /url: /copilot/cobranza
+                - generic [ref=e457]: "3"
+                - generic [ref=e458]:
+                  - paragraph [ref=e459]: Cobranza
+                  - paragraph [ref=e460]: Revisá agenda, seguí clientes y gestioná cobros.
+                - img [ref=e461]
+              - link "4 Alertas Revisá novedades del negocio." [ref=e463] [cursor=pointer]:
+                - /url: /copilot/alertas
+                - generic [ref=e464]: "4"
+                - generic [ref=e465]:
+                  - paragraph [ref=e466]: Alertas
+                  - paragraph [ref=e467]: Revisá novedades del negocio.
+                - img [ref=e468]
+              - link "5 Clientes / Cartera Gestioná cobros atrasados." [ref=e470] [cursor=pointer]:
+                - /url: /copilot/cartera
+                - generic [ref=e471]: "5"
+                - generic [ref=e472]:
+                  - paragraph [ref=e473]: Clientes / Cartera
+                  - paragraph [ref=e474]: Gestioná cobros atrasados.
+                - img [ref=e475]
+              - link "6 Tesorería Confirmá pagos próximos." [ref=e477] [cursor=pointer]:
+                - /url: /copilot/tesoreria
+                - generic [ref=e478]: "6"
+                - generic [ref=e479]:
+                  - paragraph [ref=e480]: Tesorería
+                  - paragraph [ref=e481]: Confirmá pagos próximos.
+                - img [ref=e482]
+              - link "7 Finanzas Revisá la mirada general si cambiaron cosas." [ref=e484] [cursor=pointer]:
+                - /url: /copilot/finanzas
+                - generic [ref=e485]: "7"
+                - generic [ref=e486]:
+                  - paragraph [ref=e487]: Finanzas
+                  - paragraph [ref=e488]: Revisá la mirada general si cambiaron cosas.
+                - img [ref=e489]
+              - link "8 Alertas / Datos Solo si algo parece desactualizado." [ref=e491] [cursor=pointer]:
+                - /url: /copilot/alertas
+                - generic [ref=e492]: "8"
+                - generic [ref=e493]:
+                  - paragraph [ref=e494]: Alertas / Datos
+                  - paragraph [ref=e495]: Solo si algo parece desactualizado.
+                - img [ref=e496]
+          - generic [ref=e498]:
+            - heading "Preguntas frecuentes" [level=2] [ref=e499]
+            - generic [ref=e500]:
+              - button "¿Copilot reemplaza a mi contador?" [ref=e502]:
+                - generic [ref=e503]: ¿Copilot reemplaza a mi contador?
+                - img [ref=e504]
+              - button "¿Por qué Finanzas y Tesorería pueden mostrar números distintos?" [ref=e507]:
+                - generic [ref=e508]: ¿Por qué Finanzas y Tesorería pueden mostrar números distintos?
+                - img [ref=e509]
+              - 'button "¿Qué significa Estado: Atención?" [ref=e512]':
+                - generic [ref=e513]: "¿Qué significa Estado: Atención?"
+                - img [ref=e514]
+              - button "¿Qué pasa si el sistema contable falla?" [ref=e517]:
+                - generic [ref=e518]: ¿Qué pasa si el sistema contable falla?
+                - img [ref=e519]
+              - button "¿Cada cuánto se actualizan los datos?" [ref=e522]:
+                - generic [ref=e523]: ¿Cada cuánto se actualizan los datos?
+                - img [ref=e524]
+              - button "¿Qué significa marcar una alerta como leída?" [ref=e527]:
+                - generic [ref=e528]: ¿Qué significa marcar una alerta como leída?
+                - img [ref=e529]
+              - button "¿Dónde veo quién me debe?" [ref=e532]:
+                - generic [ref=e533]: ¿Dónde veo quién me debe?
+                - img [ref=e534]
+              - button "¿Dónde veo qué tengo que pagar?" [ref=e537]:
+                - generic [ref=e538]: ¿Dónde veo qué tengo que pagar?
+                - img [ref=e539]
+              - button "¿Dónde veo qué hacer primero?" [ref=e542]:
+                - generic [ref=e543]: ¿Dónde veo qué hacer primero?
+                - img [ref=e544]
+              - button "¿Dónde veo si los datos están actualizados?" [ref=e547]:
+                - generic [ref=e548]: ¿Dónde veo si los datos están actualizados?
+                - img [ref=e549]
+              - button "¿Qué pasa si Finanzas o Cartera no terminan de cargar?" [ref=e552]:
+                - generic [ref=e553]: ¿Qué pasa si Finanzas o Cartera no terminan de cargar?
+                - img [ref=e554]
+              - button "¿Por qué la campana está vacía?" [ref=e557]:
+                - generic [ref=e558]: ¿Por qué la campana está vacía?
+                - img [ref=e559]
+              - button "¿Los agentes pueden modificar datos?" [ref=e562]:
+                - generic [ref=e563]: ¿Los agentes pueden modificar datos?
+                - img [ref=e564]
+              - button "¿El agente envía WhatsApp o emails?" [ref=e567]:
+                - generic [ref=e568]: ¿El agente envía WhatsApp o emails?
+                - img [ref=e569]
+              - button "¿Qué pasa si Zeta falla y uso el agente?" [ref=e572]:
+                - generic [ref=e573]: ¿Qué pasa si Zeta falla y uso el agente?
+                - img [ref=e574]
+              - button "Copié o envié un mensaje al cliente. ¿Qué hago ahora?" [ref=e577]:
+                - generic [ref=e578]: Copié o envié un mensaje al cliente. ¿Qué hago ahora?
+                - img [ref=e579]
+              - button "¿Registrar una gestión modifica la deuda del cliente?" [ref=e582]:
+                - generic [ref=e583]: ¿Registrar una gestión modifica la deuda del cliente?
+                - img [ref=e584]
+              - button "¿Qué pasa si un cliente prometió pagar?" [ref=e587]:
+                - generic [ref=e588]: ¿Qué pasa si un cliente prometió pagar?
+                - img [ref=e589]
+              - button "¿Qué pasa si cargo una fecha de próximo seguimiento?" [ref=e592]:
+                - generic [ref=e593]: ¿Qué pasa si cargo una fecha de próximo seguimiento?
+                - img [ref=e594]
+              - button "¿Qué es la Agenda de cobranza y cómo la uso?" [ref=e597]:
+                - generic [ref=e598]: ¿Qué es la Agenda de cobranza y cómo la uso?
+                - img [ref=e599]
+          - generic [ref=e601]:
+            - generic [ref=e602]:
+              - paragraph [ref=e603]: ¿Listo para empezar?
+              - paragraph [ref=e604]: Empezá por Hoy — la pantalla principal del negocio.
+            - link "Ir a Hoy" [ref=e605] [cursor=pointer]:
+              - /url: /copilot/hoy
+              - text: Ir a Hoy
+              - img [ref=e606]
+  - alert [ref=e608]

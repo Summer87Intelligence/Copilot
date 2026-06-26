@@ -31,7 +31,7 @@ export const FINANCIAL_UX_COPY = {
   projection30Subtitle:
     "Proyección basada en caja actual, cobros esperados y pagos registrados.",
   projectionScenarioLabel: "Caja proyectada",
-  projectionMissingPaymentsCta: "Cargá pagos próximos para completar la proyección.",
+  projectionMissingPaymentsCta: "Cargá pagos próximos de la agencia para completar la proyección.",
   emptyPeriodMovements: "No hay movimientos para el período seleccionado.",
   historicalPartialBadge: "Histórico parcial",
   kpiIssuedTooltip:
@@ -77,12 +77,12 @@ export const FINANZAS_COPY = {
   summaryCobrosTooltip:
     "Recibos con fecha dentro del mes. Cobros registrados son los recibos por fecha — pueden corresponder a facturas de meses anteriores.",
   summaryDeudaTooltip:
-    "Deuda actual de clientes al corte. Incluye todos los períodos. El atrasado ya está dentro.",
+    "Deuda actual a cobrar de clientes al corte. Incluye todos los períodos. El atrasado ya está dentro.",
   summaryDeudaVencidaTooltip:
     "Parte de la deuda actual cuya fecha de vencimiento ya pasó.",
   summaryEstadoTooltip:
     "Lectura financiera de caja, deuda y cobranza. Distinto del estado operativo del día en Hoy.",
-  summaryCajaTooltip: "Caja disponible registrada en Tesorería al corte.",
+  summaryCajaTooltip: "Caja disponible Santander registrada en Tesorería al corte.",
   comparisonTitle: "Ventas vs cobros registrados",
   comparisonSubtitle:
     "Meses cerrados por fecha de comprobante y fecha de recibo. La diferencia no equivale a deuda.",
@@ -98,7 +98,7 @@ export const FINANZAS_COPY = {
   collectionRiskSubtitle: "Clientes y montos atrasados al corte.",
   projectionExpectedCollectionsTooltip:
     "Cobros probables según historial de pago y plazos de cobro registrados.",
-  projectionScenarioTooltip: "Caja disponible + cobros probables − pagos programados.",
+  projectionScenarioTooltip: "Caja disponible Santander + cobros probables − pagos programados.",
   advancedDetailSubtitle:
     "Clientes, moneda y evolución para revisión ejecutiva.",
   labelCobrosRegistrados: "Cobros registrados",
@@ -109,7 +109,7 @@ export const FINANZAS_COPY = {
   labelPeriodResolution: "Resolución del período",
   labelPeriodResolutionSubtitle: "Ventas del período resueltas al corte.",
   labelDiferenciaOperativa: "Diferencia operativa del mes",
-  labelDeudaHoy: "Deuda actual",
+  labelDeudaHoy: "Deuda actual a cobrar",
   labelDeudaVencidaHoy: "Atrasado",
-  labelCajaHoy: "Caja disponible",
+  labelCajaHoy: "Caja disponible Santander",
 } as const;

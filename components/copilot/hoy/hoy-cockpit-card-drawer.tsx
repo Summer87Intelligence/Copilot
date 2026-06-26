@@ -300,7 +300,7 @@ function AfterPaymentsPanel({
                   <p className="text-xs font-semibold text-[var(--copilot-ink)]">{p.currency}</p>
                   <div className="mt-1.5 space-y-1">
                     <ProjectionLine
-                      label="Caja disponible"
+                      label="Caja disponible Santander"
                       value={cur?.cashAvailable ?? p.currentCash}
                       currency={p.currency}
                     />

@@ -561,7 +561,7 @@ function ReceivablesDetailCompact({
   return (
     <KpiDetailShell
       lines={[
-        ["Deuda actual", fmt(card.totalPending)],
+        ["Deuda actual a cobrar", fmt(card.totalPending)],
         ["Atrasado", fmt(card.overdueTotal)],
         ["+30 días", fmt(card.overdue30)],
         ["Clientes", String(debtorClientsCount ?? 0)],
@@ -581,7 +581,7 @@ function ExecutiveProjectionCompact({ blocks }: { blocks: readonly HoyProjection
         lines={[
           ["Caja actual", "—"],
           ["Cobros probables", "—"],
-          ["Pagos próximos", "—"],
+          ["Pagos próximos de la agencia", "—"],
           ["Resultado", "—"],
         ]}
         ctaHref="/copilot/tesoreria"
@@ -607,7 +607,7 @@ function ExecutiveProjectionCompact({ blocks }: { blocks: readonly HoyProjection
       lines={[
         ["Caja actual", fmtValue((b) => b.currentCash)],
         ["Cobros probables", fmtValue((b) => b.pendingReceivables, "+")],
-        ["Pagos próximos", fmtValue((b) => (b.hasConfiguredPayments ? b.scheduledPayments : 0), "−")],
+        ["Pagos próximos de la agencia", fmtValue((b) => (b.hasConfiguredPayments ? b.scheduledPayments : 0), "−")],
         ["Resultado", fmtValue(resultGetter)],
       ]}
       ctaHref="/copilot/tesoreria"
@@ -702,7 +702,7 @@ function MoneyCard({
 
       {isEmptyPayments ? (
         <div className="flex flex-1 flex-col items-center justify-center text-center">
-          <p className="text-sm text-[var(--copilot-ink-muted)]">No hay pagos próximos cargados.</p>
+          <p className="text-sm text-[var(--copilot-ink-muted)]">No hay pagos próximos de la agencia cargados.</p>
         </div>
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center py-1">
@@ -926,7 +926,7 @@ export function HoyMoneyCards({
         variant="afterPayments"
         title={HOY_COCKPIT.afterPayments}
         tooltip="Caja actual + cobros esperados − pagos programados."
-        subtitle="Caja actual + cobros probables − pagos próximos"
+        subtitle="Caja actual + cobros probables − pagos próximos de la agencia"
         block={afterPayments}
         projection30dBlocks={projection30dBlocks}
         detailOpen={openDetails.has("afterPayments")}

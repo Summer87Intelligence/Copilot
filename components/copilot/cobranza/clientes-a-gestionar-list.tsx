@@ -6,6 +6,16 @@ import { ChevronRight, UserCheck } from "lucide-react";
 
 import type { CobranzaClientRow, OwnershipEntry } from "@/lib/copilot-cobranza-summary";
 import {
+  applyCobranzaAgingFilter,
+  sumCobranzaSubtotals,
+  type CobranzaAgingFilter,
+} from "@/lib/copilot-cobranza-summary";
+import {
+  COLLECTION_AGING_BUCKETS,
+  type CollectionAgingBucket,
+  type CollectionAgingTone,
+} from "@/lib/collection-aging/collection-aging-model";
+import {
   applyResponsableFilter,
   type ResponsableFilter,
 } from "@/lib/cobranza/cobranza-ownership";
@@ -25,8 +35,6 @@ import { AsignarResponsableModal } from "./asignar-responsable-modal";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type ClientFilter = "all" | "withDebt" | "overdue" | "noAction";
-
 type AssignModalState = {
   companyId: string;
   companyName: string;
@@ -37,10 +45,12 @@ type Toast = { message: string; ok: boolean };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const FILTER_LABELS: { id: ClientFilter; label: string }[] = [
+const FILTER_LABELS: { id: CobranzaAgingFilter; label: string }[] = [
   { id: "all", label: "Todos" },
-  { id: "withDebt", label: "Con deuda" },
-  { id: "overdue", label: "Atrasados" },
+  { id: "not_overdue", label: "No atrasados" },
+  { id: "overdue_8_14", label: "Atrasado 8–14" },
+  { id: "overdue_15_30", label: "Atrasado 15–30" },
+  { id: "overdue_30_plus", label: "Atrasado +30" },
   { id: "noAction", label: "Sin gestión" },
 ];
 
@@ -50,18 +60,17 @@ const RESP_FILTER_LABELS: { id: ResponsableFilter; label: string }[] = [
   { id: "unassigned", label: "Sin asignar" },
 ];
 
-function applyClientFilter(rows: CobranzaClientRow[], filter: ClientFilter): CobranzaClientRow[] {
-  switch (filter) {
-    case "withDebt":
-      return rows.filter((r) => r.hasDebt);
-    case "overdue":
-      return rows.filter((r) => r.isOverdue);
-    case "noAction":
-      return rows.filter((r) => r.hasDebt && !r.hasActiveAction);
-    default:
-      return rows;
-  }
-}
+/** Clases por tono del modelo de cobranza (badge de antigüedad). */
+const COLLECTION_TONE_CLASS: Record<CollectionAgingTone, string> = {
+  neutral:
+    "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-ink-muted)] border-[var(--copilot-border)]",
+  success:
+    "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-success-text-strong)] border-[var(--copilot-success-border)]",
+  warning:
+    "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]",
+  danger:
+    "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]",
+};
 
 function formatClientDebt(
   debtUyu: number,
@@ -95,17 +104,14 @@ function contactLabel(row: CobranzaClientRow): string | null {
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
-function OverdueDaysBadge({ days }: { days: number | null }) {
-  if (days == null || days <= 0) return null;
-  const cls =
-    days > 60
-      ? "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]"
-      : days > 30
-        ? "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]"
-        : "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-ink-muted)] border-[var(--copilot-border)]";
+/** Badge de antigüedad de cobranza según la peor factura abierta del cliente. */
+function CollectionAgingBadge({ bucket }: { bucket: CollectionAgingBucket }) {
+  const spec = COLLECTION_AGING_BUCKETS[bucket];
   return (
-    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${cls}`}>
-      {days}d atraso
+    <span
+      className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${COLLECTION_TONE_CLASS[spec.tone]}`}
+    >
+      {spec.shortLabel}
     </span>
   );
 }
@@ -124,8 +130,7 @@ function ClientMobileCard({
   onAssign: (state: AssignModalState) => void;
 }) {
   const debtLabel = formatClientDebt(row.debtUyu, row.debtUsd, mode, fxRate);
-  const overdueLabel = formatClientDebt(row.overdueUyu, row.overdueUsd, mode, fxRate);
-  const maxOverdueDays = Math.max(row.overdueDaysUyu ?? 0, row.overdueDaysUsd ?? 0) || null;
+  const overdueLabel = formatClientDebt(row.collectionOverdueUyu, row.collectionOverdueUsd, mode, fxRate);
 
   return (
     <div className={`${actionCardClass} px-4 py-3.5`}>
@@ -133,12 +138,8 @@ function ClientMobileCard({
         <p className="text-sm font-semibold text-[var(--copilot-ink)] leading-tight">
           {row.name}
         </p>
-        {row.isOverdue ? (
-          <OverdueDaysBadge days={maxOverdueDays} />
-        ) : row.hasDebt ? (
-          <span className="rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-tone-neutral-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--copilot-ink-muted)]">
-            Al día
-          </span>
+        {row.hasDebt ? (
+          <CollectionAgingBadge bucket={row.collectionBucket} />
         ) : null}
       </div>
 
@@ -147,9 +148,9 @@ function ClientMobileCard({
           <p className={`${copilotMetricLabelClass} text-[9px]`}>Pendiente</p>
           <p className={`${metricValueClass} text-sm`}>{debtLabel}</p>
         </div>
-        {row.isOverdue ? (
+        {row.isCollectionOverdue ? (
           <div>
-            <p className={`${copilotMetricLabelClass} text-[9px]`}>Vencido</p>
+            <p className={`${copilotMetricLabelClass} text-[9px]`}>Atrasado</p>
             <p className={`${metricValueClass} text-sm text-[var(--copilot-danger-text-strong)]`}>
               {overdueLabel}
             </p>
@@ -258,10 +259,9 @@ function ClientDesktopRow({
   onAssign: (state: AssignModalState) => void;
 }) {
   const debtLabel = formatClientDebt(row.debtUyu, row.debtUsd, mode, fxRate);
-  const overdueLabel = row.isOverdue
-    ? formatClientDebt(row.overdueUyu, row.overdueUsd, mode, fxRate)
+  const overdueLabel = row.isCollectionOverdue
+    ? formatClientDebt(row.collectionOverdueUyu, row.collectionOverdueUsd, mode, fxRate)
     : "—";
-  const maxOverdueDays = Math.max(row.overdueDaysUyu ?? 0, row.overdueDaysUsd ?? 0) || null;
 
   const statusLabel = row.latestActionStatus
     ? (COLLECTION_STATUS_LABELS[
@@ -281,17 +281,15 @@ function ClientDesktopRow({
       </td>
       <td className="px-3 py-2.5 tabular-nums">{debtLabel}</td>
       <td className="px-3 py-2.5 tabular-nums">
-        {row.isOverdue ? (
+        {row.isCollectionOverdue ? (
           <span className="text-[var(--copilot-danger-text-strong)]">{overdueLabel}</span>
         ) : (
           "—"
         )}
       </td>
       <td className="px-3 py-2.5">
-        {row.isOverdue ? (
-          <OverdueDaysBadge days={maxOverdueDays} />
-        ) : row.hasDebt ? (
-          <span className="text-[var(--copilot-ink-muted)] text-xs">Al día</span>
+        {row.hasDebt ? (
+          <CollectionAgingBadge bucket={row.collectionBucket} />
         ) : (
           <span className="text-[var(--copilot-ink-muted)] text-xs">Sin deuda</span>
         )}
@@ -375,7 +373,7 @@ export function ClientesAGestionarList({
   onOwnershipUpdate?: (companyId: string, entry: OwnershipEntry | null) => void;
 }) {
   const { mode, fxRate } = useDisplayCurrency();
-  const [filter, setFilter] = useState<ClientFilter>("withDebt");
+  const [filter, setFilter] = useState<CobranzaAgingFilter>("all");
   const [respFilter, setRespFilter] = useState<ResponsableFilter>("all");
   const [search, setSearch] = useState("");
   const [assignModalFor, setAssignModalFor] = useState<AssignModalState | null>(null);
@@ -400,12 +398,14 @@ export function ClientesAGestionarList({
   const canWrite = canAssign(currentUserRole);
 
   const filtered = useMemo(() => {
-    const byStatus = applyClientFilter(rows, filter);
+    const byStatus = applyCobranzaAgingFilter(rows, filter);
     const byResp = applyResponsableFilter(byStatus, respFilter, currentUserId);
     const q = search.trim().toLocaleLowerCase("es");
     if (!q) return byResp;
     return byResp.filter((r) => r.name.toLocaleLowerCase("es").includes(q));
   }, [rows, filter, respFilter, search, currentUserId]);
+
+  const subtotals = useMemo(() => sumCobranzaSubtotals(filtered), [filtered]);
 
   return (
     <>
@@ -440,7 +440,7 @@ export function ClientesAGestionarList({
         <div className="mb-3 space-y-2">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="w-[72px] shrink-0 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-              Estado
+              Antigüedad
             </span>
             {FILTER_LABELS.map((f) => {
               const active = filter === f.id;
@@ -493,6 +493,33 @@ export function ClientesAGestionarList({
           </div>
         </div>
 
+        {/* Subtotales del conjunto filtrado */}
+        {!loading && filtered.length > 0 ? (
+          <div className="mb-3 grid grid-cols-2 gap-2">
+            <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] px-3 py-2">
+              <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                Pendiente
+              </p>
+              <p className="mt-0.5 text-sm font-bold tabular-nums text-[var(--copilot-ink)]">
+                {formatClientDebt(subtotals.pendingUyu, subtotals.pendingUsd, mode, fxRate)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] px-3 py-2">
+              <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                Atrasado <span className="font-normal normal-case opacity-70">(+7 días)</span>
+              </p>
+              <p className="mt-0.5 text-sm font-bold tabular-nums text-[var(--copilot-danger-text-strong)]">
+                {subtotals.overdueUyu > 0 || subtotals.overdueUsd > 0
+                  ? formatClientDebt(subtotals.overdueUyu, subtotals.overdueUsd, mode, fxRate)
+                  : "—"}
+              </p>
+              {mode === "usd_equivalent" ? (
+                <p className="text-[10px] text-[var(--copilot-ink-muted)]">TC {fxRate}</p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
         {loading ? (
           <div className="py-8 text-center text-sm text-[var(--copilot-ink-muted)]">
             Cargando clientes…
@@ -544,8 +571,8 @@ export function ClientesAGestionarList({
                   <tr className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                     <th className="py-2.5 pl-4 pr-3 text-left">Cliente</th>
                     <th className="px-3 py-2.5 text-left">Pendiente</th>
-                    <th className="px-3 py-2.5 text-left">Vencido</th>
-                    <th className="px-3 py-2.5 text-left">Estado</th>
+                    <th className="px-3 py-2.5 text-left">Atrasado</th>
+                    <th className="px-3 py-2.5 text-left">Antigüedad</th>
                     <th className="px-3 py-2.5 text-left">Gestión</th>
                     <th className="px-3 py-2.5 text-left">Responsable</th>
                     <th className="py-2.5 pl-3 pr-4 text-left">Acciones</th>

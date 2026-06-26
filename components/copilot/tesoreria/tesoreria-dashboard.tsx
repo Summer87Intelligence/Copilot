@@ -128,7 +128,7 @@ export function TesoreriaDashboard({ workspace, onGoToPagos, asOfDate }: Props) 
       {/* ── Bloque 1: Caja disponible ── */}
       <section>
         <CopilotSectionTitle
-          title="Caja disponible"
+          title="Caja disponible Santander"
           subtitle="Saldo inicial + cobros de clientes + registros manuales."
         />
         {cashPositionFailed ? (

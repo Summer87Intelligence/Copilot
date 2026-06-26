@@ -1,0 +1,102 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - img [ref=e7]
+      - navigation "Navegación del módulo Copilot" [ref=e10]:
+        - button "Expandir menú lateral" [ref=e12]:
+          - img [ref=e13]
+        - link "Hoy" [ref=e15] [cursor=pointer]:
+          - /url: /copilot/hoy
+          - img [ref=e16]
+          - generic [ref=e19]: Hoy
+        - link "Dashboard" [ref=e22] [cursor=pointer]:
+          - /url: /copilot/dashboard
+          - img [ref=e23]
+          - generic [ref=e25]: Dashboard
+        - link "Finanzas" [ref=e26] [cursor=pointer]:
+          - /url: /copilot/finanzas
+          - img [ref=e27]
+          - generic [ref=e30]: Finanzas
+        - link "Reportes" [ref=e31] [cursor=pointer]:
+          - /url: /copilot/reportes
+          - img [ref=e32]
+          - generic [ref=e35]: Reportes
+        - link "Cobranza" [ref=e38] [cursor=pointer]:
+          - /url: /copilot/cobranza
+          - img [ref=e39]
+          - generic [ref=e44]: Cobranza
+        - link "Cartera" [ref=e45] [cursor=pointer]:
+          - /url: /copilot/cartera
+          - img [ref=e46]
+          - generic [ref=e48]: Cartera
+        - link "Clientes" [ref=e49] [cursor=pointer]:
+          - /url: /copilot/clientes
+          - img [ref=e50]
+          - generic [ref=e55]: Clientes
+        - link "Tesorería" [ref=e58] [cursor=pointer]:
+          - /url: /copilot/tesoreria
+          - img [ref=e59]
+          - generic [ref=e62]: Tesorería
+        - link "Alertas" [ref=e65] [cursor=pointer]:
+          - /url: /copilot/alertas
+          - img [ref=e66]
+          - generic [ref=e68]: Alertas
+        - link "Agentes IA" [ref=e69] [cursor=pointer]:
+          - /url: /copilot/agentes
+          - img [ref=e70]
+          - generic [ref=e73]: Agentes IA
+        - link "Datos" [ref=e74] [cursor=pointer]:
+          - /url: /copilot/datos
+          - img [ref=e75]
+          - generic [ref=e79]: Datos
+        - link "Mesa de ayuda" [ref=e80] [cursor=pointer]:
+          - /url: /copilot/mesa-de-ayuda
+          - img [ref=e81]
+          - generic [ref=e84]: Mesa de ayuda
+        - link "Configuración" [ref=e87] [cursor=pointer]:
+          - /url: /copilot/admin
+          - img [ref=e88]
+          - generic [ref=e91]: Configuración
+        - link "Manual de uso" [ref=e92] [cursor=pointer]:
+          - /url: /copilot/manual
+          - img [ref=e93]
+          - generic [ref=e96]: Manual de uso
+        - link "Empresas" [ref=e99] [cursor=pointer]:
+          - /url: /admin/companies
+          - img [ref=e100]
+          - generic [ref=e104]: Empresas
+        - link "Base Zeta" [ref=e105] [cursor=pointer]:
+          - /url: /copilot/knowledge/zeta
+          - img [ref=e106]
+          - generic [ref=e108]: Base Zeta
+    - generic [ref=e109]:
+      - generic [ref=e110]:
+        - generic [ref=e114]:
+          - button "Notificaciones" [ref=e116]:
+            - img [ref=e117]
+          - button "Estado del negocio" [ref=e122]:
+            - generic [ref=e124]: …
+        - status "Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda." [ref=e125]:
+          - paragraph [ref=e126]: Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda.
+      - generic [ref=e128]:
+        - banner [ref=e129]:
+          - generic [ref=e130]:
+            - heading "Mesa de ayuda" [level=1] [ref=e131]
+            - paragraph [ref=e132]: Dejá sugerencias, reportá problemas o pedí cambios para el sistema.
+          - button "Nuevo ticket" [ref=e134]:
+            - img [ref=e135]
+            - text: Nuevo ticket
+        - generic [ref=e136]:
+          - generic [ref=e137]:
+            - paragraph [ref=e138]: Cargando…
+            - combobox "Filtrar por estado" [ref=e140]:
+              - option "Todos los estados" [selected]
+              - option "Nuevo"
+              - option "En revisión"
+              - option "Aprobado"
+              - option "En desarrollo"
+              - option "Resuelto"
+              - option "Rechazado"
+          - paragraph [ref=e142]: Cargando tickets…
+  - button "Open Next.js Dev Tools" [ref=e148] [cursor=pointer]:
+    - img [ref=e149]

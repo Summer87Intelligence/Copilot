@@ -1,0 +1,44 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e6] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e7]:
+      - img [ref=e8]
+    - generic [ref=e11]:
+      - button "Open issues overlay" [ref=e12]:
+        - generic [ref=e13]:
+          - generic [ref=e14]: "1"
+          - generic [ref=e15]: "2"
+        - generic [ref=e16]:
+          - text: Issue
+          - generic [ref=e17]: s
+      - button "Collapse issues badge" [ref=e18]:
+        - img [ref=e19]
+  - main [ref=e21]:
+    - generic [ref=e22]:
+      - paragraph [ref=e23]:
+        - link "← Volver al inicio" [ref=e24] [cursor=pointer]:
+          - /url: /
+      - heading "Empresas (admin)" [level=1] [ref=e25]
+      - paragraph [ref=e26]: Listado de workspaces registrados en el sistema.
+      - generic [ref=e27]:
+        - heading "Nueva empresa" [level=2] [ref=e28]
+        - generic [ref=e29]:
+          - generic [ref=e30]:
+            - generic [ref=e31]: Nombre
+            - textbox "Nombre" [ref=e32]
+          - generic [ref=e33]:
+            - generic [ref=e34]: Slug (opcional)
+            - textbox "Slug (opcional)" [ref=e35]:
+              - /placeholder: Se genera desde el nombre si lo dejás vacío
+          - button "Crear empresa" [ref=e36]
+      - table [ref=e38]:
+        - rowgroup [ref=e39]:
+          - row "Nombre Slug Creada" [ref=e40]:
+            - columnheader "Nombre" [ref=e41]
+            - columnheader "Slug" [ref=e42]
+            - columnheader "Creada" [ref=e43]
+        - rowgroup [ref=e44]:
+          - row "EASY DIGITAL AGENCY easy-digital-agency 19/4/26, 1:58 p. m." [ref=e45]:
+            - cell "EASY DIGITAL AGENCY" [ref=e46]
+            - cell "easy-digital-agency" [ref=e47]
+            - cell "19/4/26, 1:58 p. m." [ref=e48]
+  - alert [ref=e49]

@@ -19,6 +19,14 @@ import {
   selectOperationalDebtInvoicesForSummation,
   type OperationalDebtInvoiceInput,
 } from "@/lib/zeta/zeta-operational-debt-dedup";
+import { getDaysSinceIssue } from "@/lib/collection-aging/collection-aging-model";
+
+/**
+ * COLLECTION-AGING-MODEL-IMPLEMENTATION-001: umbral del modelo único de cobranza.
+ * Una factura abierta se considera "atrasada" cuando pasaron más de 7 días desde
+ * su fecha de emisión (el atraso empieza el día 8). Medido contra `issue_date`.
+ */
+const COLLECTION_OVERDUE_MIN_DAYS = 7;
 
 export type PaymentBehaviorLabel = "bueno" | "medio" | "lento";
 
@@ -59,6 +67,14 @@ export type ClientPortfolioRow = {
   overdue_days_uyu?: number | null;
   /** Días desde el vencimiento de la factura más antigua en mora (USD). */
   overdue_days_usd?: number | null;
+  /**
+   * COLLECTION-AGING-MODEL-IMPLEMENTATION-001: saldo abierto en UYU de facturas
+   * con más de 7 días desde su emisión (modelo único de cobranza por `issue_date`).
+   * Subconjunto de `debt_uyu`. `undefined` si no hay datos de moneda.
+   */
+  collection_overdue_uyu?: number;
+  /** Ídem en USD. Subconjunto de `debt_usd`. */
+  collection_overdue_usd?: number;
   /**
    * CLIENT-DEBT-SEMANTICS-001: fecha de emisión (YYYY-MM-DD) de la factura
    * impaga más antigua del cliente (cualquier moneda). Insumo para
@@ -303,6 +319,8 @@ export type InvoiceCurrencyBreakdownInput = {
   total_amount?: unknown;
   balance_amount?: unknown;
   due_date?: unknown;
+  /** Fecha de emisión (YYYY-MM-DD o ISO). Insumo del modelo de cobranza por issue_date. */
+  issue_date?: unknown;
   /** Metadata Zeta para detectar Notas de Crédito (CFE tipo 112/181/182). */
   zeta_metadata?: unknown;
 };
@@ -312,6 +330,12 @@ export type InvoiceCurrencyBreakdown = {
   billingUSD: number;
   overdueUYU: number;
   overdueUSD: number;
+  /**
+   * COLLECTION-AGING: saldo abierto con > 7 días desde emisión, por moneda.
+   * Subconjunto de la deuda abierta. Modelo único de cobranza (issue_date).
+   */
+  collectionOverdueUYU: number;
+  collectionOverdueUSD: number;
   hasMixedCurrency: boolean;
 };
 
@@ -327,6 +351,7 @@ export function computeInvoiceCurrencyBreakdown(
   let billingUYU = 0, billingUSD = 0;
   let overdueUYU = 0, overdueUSD = 0;
   let debtUYU = 0, debtUSD = 0;
+  let collectionOverdueUYU = 0, collectionOverdueUSD = 0;
 
   for (const sel of selectOperationalDebtInvoicesForSummation(invs as OperationalDebtInvoiceInput[])) {
     const inv = sel.invoice;
@@ -336,14 +361,24 @@ export function computeInvoiceCurrencyBreakdown(
     const pending = num(inv.balance_amount);
     const d = ymd(inv.due_date);
     const isOverdue = pending > 0 && d !== "" && d < todayYmd;
+    // Modelo único de cobranza: atraso = saldo abierto con > 7 días desde emisión.
+    const issue = (inv as InvoiceCurrencyBreakdownInput).issue_date;
+    const daysSinceIssue =
+      issue != null && issue !== "" ? getDaysSinceIssue(String(issue), todayYmd) : Number.NaN;
+    const isCollectionOverdue =
+      pending > 0 &&
+      Number.isFinite(daysSinceIssue) &&
+      daysSinceIssue > COLLECTION_OVERDUE_MIN_DAYS;
     if (cur === "UYU") {
       billingUYU += total;
       if (pending > 0) debtUYU += pending;
       if (isOverdue) overdueUYU += pending;
+      if (isCollectionOverdue) collectionOverdueUYU += pending;
     } else {
       billingUSD += total;
       if (pending > 0) debtUSD += pending;
       if (isOverdue) overdueUSD += pending;
+      if (isCollectionOverdue) collectionOverdueUSD += pending;
     }
   }
 
@@ -365,6 +400,8 @@ export function computeInvoiceCurrencyBreakdown(
     billingUSD,
     overdueUYU,
     overdueUSD,
+    collectionOverdueUYU,
+    collectionOverdueUSD,
     hasMixedCurrency:
       (billingUYU > 0 && billingUSD > 0) || (debtUYU > 0 && debtUSD > 0),
   };
@@ -642,8 +679,15 @@ export async function getClientPortfolio(
       totalBillingAll > 0 ? entry.total_billing / totalBillingAll : 0;
     const payment_behavior = paymentBehaviorForInvoices(invs, todayYmd);
 
-    const { billingUYU, billingUSD, overdueUYU, overdueUSD, hasMixedCurrency } =
-      computeInvoiceCurrencyBreakdown(invs, todayYmd);
+    const {
+      billingUYU,
+      billingUSD,
+      overdueUYU,
+      overdueUSD,
+      collectionOverdueUYU,
+      collectionOverdueUSD,
+      hasMixedCurrency,
+    } = computeInvoiceCurrencyBreakdown(invs, todayYmd);
 
     // Fase 3: evaluate risk per-currency when data is available; take the highest severity
     const legacyRisk = riskForCompany(share_pct, entry.total_debt, entry.overdue_debt);
@@ -688,6 +732,8 @@ export async function getClientPortfolio(
       billing_usd: billingUSD,
       overdue_uyu: overdueUYU,
       overdue_usd: overdueUSD,
+      collection_overdue_uyu: collectionOverdueUYU,
+      collection_overdue_usd: collectionOverdueUSD,
       has_mixed_currency: hasMixedCurrency,
       overdue_days_uyu: overdueUYU > 0 ? oldestOverdueDays(invs, "UYU", todayYmd) : null,
       overdue_days_usd: overdueUSD > 0 ? oldestOverdueDays(invs, "USD", todayYmd) : null,

@@ -618,7 +618,7 @@ function ActiveDebtClientsTable({
     return (
       <div className="rounded-xl border border-dashed border-[var(--copilot-border)] p-6 text-center">
         <CheckCircle className="mx-auto h-5 w-5 text-[var(--copilot-success-text)] mb-2" />
-        <p className={`text-sm ${C.muted}`}>No hay clientes con deuda actual.</p>
+        <p className={`text-sm ${C.muted}`}>No hay clientes con deuda actual a cobrar.</p>
       </div>
     );
   }
@@ -1569,7 +1569,7 @@ export default function DashboardPageClient() {
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <KpiCard
-                title="Deuda actual total"
+                title="Deuda actual a cobrar total"
                 tooltip="Total adeudado actualmente por clientes, incluyendo saldos de períodos anteriores. No se calcula solo con el rango seleccionado."
                 uyuValue={consUyu(uyu?.deudaActiva ?? 0)}
                 usdValue={consUsd(uyu?.deudaActiva ?? 0, usd?.deudaActiva ?? 0)}
@@ -1587,7 +1587,7 @@ export default function DashboardPageClient() {
               />
               <KpiCard
                 title={METRIC_LABEL.caja_disponible}
-                tooltip="Caja disponible en Tesorería al corte."
+                tooltip="Caja disponible Santander en Tesorería al corte."
                 uyuValue={consUyu(uyu?.cajaDisponible ?? 0)}
                 usdValue={consUsd(uyu?.cajaDisponible ?? 0, usd?.cajaDisponible ?? 0)}
                 selectedCurrency={effectiveCurrency}
@@ -1596,8 +1596,8 @@ export default function DashboardPageClient() {
               <KpiCard
                 title={METRIC_LABEL.caja_despues_pagos}
                 tooltip={noPagos
-                  ? "Sin pagos programados para el mes actual. La proyección coincide con la caja disponible."
-                  : "Caja disponible menos pagos programados hasta fin del mes actual."}
+                  ? "Sin pagos programados para el mes actual. La proyección coincide con la caja disponible Santander."
+                  : "Caja disponible Santander menos pagos programados hasta fin del mes actual."}
                 uyuValue={consUyu(uyu?.cajaDespPagos ?? 0)}
                 usdValue={consUsd(uyu?.cajaDespPagos ?? 0, usd?.cajaDespPagos ?? 0)}
                 selectedCurrency={effectiveCurrency}
@@ -1815,7 +1815,7 @@ export default function DashboardPageClient() {
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <ChartCard
                 title="Top 10 deudores UYU"
-                subtitle={uyuTop10Pct != null ? `Concentran el ${uyuTop10Pct}% de la deuda UYU total · Clic para ver ficha` : "Deuda actual UYU · Clic para ver ficha"}
+                subtitle={uyuTop10Pct != null ? `Concentran el ${uyuTop10Pct}% de la deuda UYU total · Clic para ver ficha` : "Deuda actual a cobrar UYU · Clic para ver ficha"}
               >
                 {loading ? (
                   <div className="space-y-2">
@@ -1834,7 +1834,7 @@ export default function DashboardPageClient() {
               </ChartCard>
               <ChartCard
                 title="Top 10 deudores USD"
-                subtitle={usdTop10Pct != null ? `Concentran el ${usdTop10Pct}% de la deuda USD total · Clic para ver ficha` : "Deuda actual USD · Clic para ver ficha"}
+                subtitle={usdTop10Pct != null ? `Concentran el ${usdTop10Pct}% de la deuda USD total · Clic para ver ficha` : "Deuda actual a cobrar USD · Clic para ver ficha"}
               >
                 {loading ? (
                   <div className="space-y-2">
@@ -1906,10 +1906,10 @@ export default function DashboardPageClient() {
                 title="Top 10 clientes deudores"
                 subtitle={
                   isConsolidated
-                    ? "Deuda actual consolidada en USD · Clic para ver ficha"
+                    ? "Deuda actual a cobrar consolidada en USD · Clic para ver ficha"
                     : (effectiveCurrency === "USD" ? usdTop10Pct : uyuTop10Pct) != null
                     ? `Concentran el ${effectiveCurrency === "USD" ? usdTop10Pct : uyuTop10Pct}% de la deuda ${effectiveCurrency} total · Clic para ver ficha`
-                    : `Deuda actual ${effectiveCurrency} · Clic para ver ficha`
+                    : `Deuda actual a cobrar ${effectiveCurrency} · Clic para ver ficha`
                 }
               >
                 {loading ? (
@@ -1995,7 +1995,7 @@ export default function DashboardPageClient() {
                     {isConsolidated ? (
                       <>
                         <div>
-                          <p className={`text-[10px] ${C.muted}`}>Deuda actual (USD cons.)</p>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda actual a cobrar (USD cons.)</p>
                           <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(consolidatedCurrencyData.deudaActiva, "USD")}</p>
                         </div>
                         <div>
@@ -2006,7 +2006,7 @@ export default function DashboardPageClient() {
                     ) : effectiveCurrency === "USD" ? (
                       <>
                         <div>
-                          <p className={`text-[10px] ${C.muted}`}>Deuda actual USD</p>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda actual a cobrar USD</p>
                           <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(usd?.deudaActiva ?? 0, "USD")}</p>
                         </div>
                         <div>
@@ -2017,7 +2017,7 @@ export default function DashboardPageClient() {
                     ) : effectiveCurrency === "UYU" ? (
                       <>
                         <div>
-                          <p className={`text-[10px] ${C.muted}`}>Deuda actual UYU</p>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda actual a cobrar UYU</p>
                           <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(uyu?.deudaActiva ?? 0, "UYU")}</p>
                         </div>
                         <div>
@@ -2028,11 +2028,11 @@ export default function DashboardPageClient() {
                     ) : (
                       <>
                         <div>
-                          <p className={`text-[10px] ${C.muted}`}>Deuda actual UYU</p>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda actual a cobrar UYU</p>
                           <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(uyu?.deudaActiva ?? 0, "UYU")}</p>
                         </div>
                         <div>
-                          <p className={`text-[10px] ${C.muted}`}>Deuda actual USD</p>
+                          <p className={`text-[10px] ${C.muted}`}>Deuda actual a cobrar USD</p>
                           <p className={`text-sm font-semibold tabular-nums ${C.ink}`}>{fmtAmount(usd?.deudaActiva ?? 0, "USD")}</p>
                         </div>
                       </>
@@ -2053,7 +2053,7 @@ export default function DashboardPageClient() {
 
             <ChartCard
               title="Caja proyectada al cierre del mes"
-              subtitle={`${currencyModeLabel} · Caja disponible hoy y proyección al cierre del mes`}
+              subtitle={`${currencyModeLabel} · Caja disponible Santander hoy y proyección al cierre del mes`}
             >
               {loading ? (
                 <Skeleton className="h-20" />

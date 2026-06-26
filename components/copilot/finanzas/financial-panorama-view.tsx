@@ -56,8 +56,8 @@ const ESTADO_ACTUAL_METRICS: {
   tooltip: string;
   getValue: (s: FinanzasCanonicalCurrencyState) => number;
 }[] = [
-  { label: "Caja disponible", tooltip: "Dinero disponible actualmente considerando saldos de tesorería.", getValue: (s) => s.availableCash },
-  { label: "Deuda actual", tooltip: "Facturas pendientes de cobro informadas por Zeta.", getValue: (s) => s.pendingReceivables },
+  { label: "Caja disponible Santander", tooltip: "Dinero disponible actualmente considerando saldos de tesorería.", getValue: (s) => s.availableCash },
+  { label: "Deuda actual a cobrar", tooltip: "Facturas pendientes de cobro informadas por Zeta.", getValue: (s) => s.pendingReceivables },
   { label: "Deuda vencida", tooltip: "Facturas vencidas pendientes de cobro al día de hoy.", getValue: (s) => s.overdueReceivables },
   { label: "Compromisos del mes", tooltip: "Pagos programados hasta fin del mes actual.", getValue: (s) => s.scheduledPayments30d },
 ];
@@ -155,7 +155,7 @@ function CurrencyProjectionBlock({ s }: { s: FinanzasCanonicalCurrencyState }) {
           </span>
         </div>
         <div className="flex justify-between gap-2">
-          <span className="text-[var(--copilot-ink-muted)]">− Pagos próximos</span>
+          <span className="text-[var(--copilot-ink-muted)]">− Pagos próximos de la agencia</span>
           <span className="font-medium text-[var(--copilot-ink)]">
             {fmtCurrencyAmount(s.scheduledPayments30d, s.currency)}
           </span>
@@ -231,7 +231,7 @@ function UsdProjectionBlock({
         <span className="font-medium text-[var(--copilot-ink)]">{formatUsdEquivalent(pending)}</span>
       </div>
       <div className="flex justify-between gap-2">
-        <span className="text-[var(--copilot-ink-muted)]">− Pagos próximos</span>
+        <span className="text-[var(--copilot-ink-muted)]">− Pagos próximos de la agencia</span>
         <span className="font-medium text-[var(--copilot-ink)]">{formatUsdEquivalent(payments)}</span>
       </div>
       <div className="flex justify-between gap-2 border-t border-[var(--copilot-border)] pt-1.5">

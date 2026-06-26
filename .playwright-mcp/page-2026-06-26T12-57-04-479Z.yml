@@ -1,0 +1,89 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e21] [cursor=pointer]:
+    - img [ref=e22]
+  - alert [ref=e25]
+  - generic [ref=e35]:
+    - complementary [ref=e36]:
+      - img [ref=e39]
+      - navigation "Navegación del módulo Copilot" [ref=e42]:
+        - button "Expandir menú lateral" [ref=e44]:
+          - img [ref=e45]
+        - link "Hoy" [ref=e47] [cursor=pointer]:
+          - /url: /copilot/hoy
+          - img [ref=e48]
+          - generic [ref=e51]: Hoy
+        - link "Dashboard" [ref=e54] [cursor=pointer]:
+          - /url: /copilot/dashboard
+          - img [ref=e55]
+          - generic [ref=e57]: Dashboard
+        - link "Finanzas" [ref=e58] [cursor=pointer]:
+          - /url: /copilot/finanzas
+          - img [ref=e59]
+          - generic [ref=e62]: Finanzas
+        - link "Reportes" [ref=e63] [cursor=pointer]:
+          - /url: /copilot/reportes
+          - img [ref=e64]
+          - generic [ref=e67]: Reportes
+        - link "Cobranza" [ref=e70] [cursor=pointer]:
+          - /url: /copilot/cobranza
+          - img [ref=e71]
+          - generic [ref=e76]: Cobranza
+        - link "Cartera" [ref=e77] [cursor=pointer]:
+          - /url: /copilot/cartera
+          - img [ref=e78]
+          - generic [ref=e80]: Cartera
+        - link "Clientes" [ref=e81] [cursor=pointer]:
+          - /url: /copilot/clientes
+          - img [ref=e82]
+          - generic [ref=e87]: Clientes
+        - link "Tesorería" [ref=e90] [cursor=pointer]:
+          - /url: /copilot/tesoreria
+          - img [ref=e91]
+          - generic [ref=e94]: Tesorería
+        - link "Alertas" [ref=e97] [cursor=pointer]:
+          - /url: /copilot/alertas
+          - img [ref=e98]
+          - generic [ref=e100]: Alertas
+        - link "Agentes IA" [ref=e101] [cursor=pointer]:
+          - /url: /copilot/agentes
+          - img [ref=e102]
+          - generic [ref=e105]: Agentes IA
+        - link "Datos" [ref=e106] [cursor=pointer]:
+          - /url: /copilot/datos
+          - img [ref=e107]
+          - generic [ref=e111]: Datos
+        - link "Mesa de ayuda" [ref=e112] [cursor=pointer]:
+          - /url: /copilot/mesa-de-ayuda
+          - img [ref=e113]
+          - generic [ref=e116]: Mesa de ayuda
+        - link "Configuración" [ref=e119] [cursor=pointer]:
+          - /url: /copilot/admin
+          - img [ref=e120]
+          - generic [ref=e123]: Configuración
+        - link "Manual de uso" [ref=e124] [cursor=pointer]:
+          - /url: /copilot/manual
+          - img [ref=e125]
+          - generic [ref=e128]: Manual de uso
+        - link "Empresas" [ref=e131] [cursor=pointer]:
+          - /url: /admin/companies
+          - img [ref=e132]
+          - generic [ref=e136]: Empresas
+        - link "Base Zeta" [ref=e137] [cursor=pointer]:
+          - /url: /copilot/knowledge/zeta
+          - img [ref=e138]
+          - generic [ref=e140]: Base Zeta
+    - generic [ref=e141]:
+      - generic [ref=e143]:
+        - generic [ref=e145]:
+          - img [ref=e146]
+          - generic [ref=e148]: Viernes, 26 de junio de 2026
+        - generic [ref=e149]:
+          - button "Notificaciones" [ref=e151]:
+            - img [ref=e152]
+          - button "Menú de usuario" [ref=e156]: A
+          - button "Estado del negocio" [ref=e158]:
+            - generic [ref=e160]: …
+      - banner [ref=e163]:
+        - generic [ref=e164]:
+          - heading "Copilot · Hoy" [level=1] [ref=e165]
+          - paragraph [ref=e166]: Caja, cobros urgentes y prioridad del día.

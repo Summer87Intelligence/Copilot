@@ -12,7 +12,7 @@ function evidenceBlock(insight: CopilotRealInsight): string {
     case "obl_fiscal_vencida":
       return `Deuda actual: $ ${insight.evidence.amount.toLocaleString("es-AR", { maximumFractionDigits: 0 })} · Venció el ${insight.evidence.due_date} (${insight.evidence.days_overdue} días) · ${insight.evidence.tax_type} · ${insight.evidence.period_label}`;
     case "desbalance_caja":
-      return `Caja disponible: $ ${insight.evidence.available_cash.toLocaleString("es-AR", { maximumFractionDigits: 0 })} · Cobranzas esperadas: $ ${insight.evidence.expected_inflows.toLocaleString("es-AR", { maximumFractionDigits: 0 })} · Egresos esperados: $ ${insight.evidence.expected_outflows.toLocaleString("es-AR", { maximumFractionDigits: 0 })} · Balance proyectado: $ ${insight.evidence.projected_balance.toLocaleString("es-AR", { maximumFractionDigits: 0 })} · Riesgo: ${insight.evidence.risk_level}`;
+      return `Caja disponible Santander: $ ${insight.evidence.available_cash.toLocaleString("es-AR", { maximumFractionDigits: 0 })} · Cobranzas esperadas: $ ${insight.evidence.expected_inflows.toLocaleString("es-AR", { maximumFractionDigits: 0 })} · Egresos esperados: $ ${insight.evidence.expected_outflows.toLocaleString("es-AR", { maximumFractionDigits: 0 })} · Balance proyectado: $ ${insight.evidence.projected_balance.toLocaleString("es-AR", { maximumFractionDigits: 0 })} · Riesgo: ${insight.evidence.risk_level}`;
     case "atraso_historico":
       return `${insight.evidence.invoices_count} facturas en la cuenta · ${insight.evidence.overdue_invoices} con vencimiento superado y saldo · Comportamiento: ${insight.evidence.payment_behavior}`;
     default:

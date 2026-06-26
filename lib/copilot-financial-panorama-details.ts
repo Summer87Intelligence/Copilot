@@ -207,7 +207,7 @@ export function buildCashDetail(
   rows.push(
     { label: "Ingresos manuales", value: fmt(position?.manualIncome ?? 0, currency), tone: "positive" },
     { label: "Egresos manuales", value: fmt(position?.manualExpense ?? 0, currency), tone: "danger" },
-    { label: "Caja disponible", value: fmt(cash, currency), tone: cash >= 0 ? "positive" : "danger" }
+    { label: "Caja disponible Santander", value: fmt(cash, currency), tone: cash >= 0 ? "positive" : "danger" }
   );
 
   let updatedAtLabel: string | undefined;
@@ -225,11 +225,11 @@ export function buildCashDetail(
 
   return {
     id: "cash",
-    title: `Detalle — Caja disponible ${currency}`,
+    title: `Detalle — Caja disponible Santander ${currency}`,
     subtitle: "Dinero operativo actual. No es facturación.",
     periodLabel: periodLabel(ctx),
     currency,
-    formula: "Saldo cargado + cobros posteriores + ingresos − egresos = Caja disponible",
+    formula: "Saldo cargado + cobros posteriores + ingresos − egresos = Caja disponible Santander",
     explanation: "Es dinero disponible. No se calcula con facturación histórica.",
     rows,
     sourceLabel: "Fuente: Tesorería",

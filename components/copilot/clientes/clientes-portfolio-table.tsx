@@ -15,11 +15,12 @@ import {
   CopilotResponsiveTable,
   type CopilotResponsiveTableColumn,
 } from "@/components/copilot/ui/copilot-responsive-table";
+import { portfolioRowCollectionBucket } from "@/lib/copilot-cobranza-summary";
 import {
-  CLIENT_DEBT_STATUS_LABEL,
-  derivePortfolioDebtStatus,
-  type ClientDebtStatus,
-} from "@/lib/copilot-client-debt-status";
+  COLLECTION_AGING_BUCKETS,
+  type CollectionAgingBucket,
+  type CollectionAgingTone,
+} from "@/lib/collection-aging/collection-aging-model";
 import type {
   ClientPortfolioLoad,
   ClientPortfolioRow,
@@ -27,14 +28,21 @@ import type {
 
 // ─── Filter contract (re-exported so page.tsx can keep state) ────────────────
 
-export type ClientListFilter = "all" | "with_debt" | "delayed" | "critical" | "no_contact";
+export type ClientListFilter =
+  | "all"
+  | "not_overdue"
+  | "overdue_8_14"
+  | "overdue_15_30"
+  | "overdue_30_plus"
+  | "no_contact";
 export type ClientCurrencyFilter = "all" | "UYU" | "USD";
 
 const FILTER_OPTIONS: Array<{ id: ClientListFilter; label: string }> = [
   { id: "all", label: "Todos" },
-  { id: "with_debt", label: "Con deuda" },
-  { id: "delayed", label: "Atrasados" },
-  { id: "critical", label: "Críticos" },
+  { id: "not_overdue", label: "No atrasados" },
+  { id: "overdue_8_14", label: "Atrasado 8–14" },
+  { id: "overdue_15_30", label: "Atrasado 15–30" },
+  { id: "overdue_30_plus", label: "Atrasado +30" },
   { id: "no_contact", label: "Sin contacto" },
 ];
 
@@ -65,35 +73,53 @@ export function matchesClientFilter(
     const aliasMatch = (row.transferAliases ?? []).some((a) => a.toLowerCase().includes(q));
     if (!nameMatch && !transferMatch && !aliasMatch) return false;
   }
-  const status = deriveClientStatus(row);
-  if (filter === "with_debt") return row.debt_uyu > 0 || row.debt_usd > 0;
-  if (filter === "delayed") return status === "delayed" || status === "critical";
-  if (filter === "critical") return status === "critical";
   if (filter === "no_contact") return !row.has_contact_data;
-  return true;
+  if (filter === "all") return true;
+  // Resto de filtros = buckets del modelo único de cobranza por peor factura abierta.
+  return portfolioRowCollectionBucket(row) === filter;
 }
 
-// ─── Status derivation ───────────────────────────────────────────────────────
+// ─── Aging classification (modelo único de cobranza por issue_date) ──────────
 
-type ClientStatus = ClientDebtStatus;
+const hasOpenDebt = (row: ClientPortfolioRow): boolean =>
+  row.debt_uyu > 0 || row.debt_usd > 0;
 
-function deriveClientStatus(row: ClientPortfolioRow): ClientStatus {
-  return derivePortfolioDebtStatus(row).status;
-}
-
-const SALUD_LABEL = CLIENT_DEBT_STATUS_LABEL;
-
-function saludTone(s: ClientStatus): string {
-  if (s === "critical") {
+function agingTone(tone: CollectionAgingTone): string {
+  if (tone === "danger") {
     return "text-[var(--copilot-danger-text-strong)] bg-[var(--copilot-badge-danger-bg)] border-[var(--copilot-danger-border)]";
   }
-  if (s === "delayed") {
+  if (tone === "warning") {
     return "text-[var(--copilot-warning-text-strong)] bg-[var(--copilot-badge-warning-bg)] border-[var(--copilot-warning-border)]";
   }
-  if (s === "with_debt") {
-    return "text-[var(--copilot-ink)] bg-[var(--copilot-badge-neutral-bg)] border-[var(--copilot-border)]";
+  if (tone === "success") {
+    return "text-[var(--copilot-success-text-strong)] bg-[var(--copilot-badge-success-bg)] border-[var(--copilot-success-border)]";
   }
-  return "text-[var(--copilot-success-text-strong)] bg-[var(--copilot-badge-success-bg)] border-[var(--copilot-success-border)]";
+  return "text-[var(--copilot-ink)] bg-[var(--copilot-badge-neutral-bg)] border-[var(--copilot-border)]";
+}
+
+/**
+ * Badge de salud de cobranza: clientes sin deuda abierta muestran "Al día";
+ * el resto, el bucket de su peor factura abierta.
+ */
+function ClientAgingBadge({ row, className = "" }: { row: ClientPortfolioRow; className?: string }) {
+  if (!hasOpenDebt(row)) {
+    return (
+      <span
+        className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-success-text-strong)] bg-[var(--copilot-badge-success-bg)] border-[var(--copilot-success-border)] ${className}`}
+      >
+        Al día
+      </span>
+    );
+  }
+  const bucket: CollectionAgingBucket = portfolioRowCollectionBucket(row);
+  const spec = COLLECTION_AGING_BUCKETS[bucket];
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${agingTone(spec.tone)} ${className}`}
+    >
+      {spec.shortLabel}
+    </span>
+  );
 }
 
 // ─── Debt cell ───────────────────────────────────────────────────────────────
@@ -103,8 +129,8 @@ function DebtCell({ row }: { row: ClientPortfolioRow }) {
   const isUsd = mode === "usd_equivalent";
   const hasUyu = row.debt_uyu > 0;
   const hasUsd = row.debt_usd > 0;
-  const overdueUyu = (row.overdue_uyu ?? 0) > 0;
-  const overdueUsd = (row.overdue_usd ?? 0) > 0;
+  const overdueUyu = (row.collection_overdue_uyu ?? 0) > 0;
+  const overdueUsd = (row.collection_overdue_usd ?? 0) > 0;
 
   if (!hasUyu && !hasUsd) {
     return <span className="text-xs text-[var(--copilot-ink-muted)]">—</span>;
@@ -209,7 +235,6 @@ function PortfolioMobileCard({
 }) {
   const { mode, fxRate } = useDisplayCurrency();
   const isUsd = mode === "usd_equivalent";
-  const salud = deriveClientStatus(row);
   const openInvoices = row.open_invoices_count ?? null;
 
   return (
@@ -221,11 +246,7 @@ function PortfolioMobileCard({
             <p className="mt-0.5 line-clamp-1 text-[11px] text-[var(--copilot-ink-muted)]">{row.industry}</p>
           ) : null}
         </div>
-        <span
-          className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${saludTone(salud)}`}
-        >
-          {SALUD_LABEL[salud]}
-        </span>
+        <ClientAgingBadge row={row} className="shrink-0" />
       </div>
 
       <dl className="mt-3 space-y-1.5 text-xs">
@@ -351,16 +372,7 @@ export function ClientesPortfolioTable({
     {
       key: "salud",
       header: "Salud",
-      render: (row) => {
-        const salud = deriveClientStatus(row);
-        return (
-          <span
-            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${saludTone(salud)}`}
-          >
-            {SALUD_LABEL[salud]}
-          </span>
-        );
-      },
+      render: (row) => <ClientAgingBadge row={row} />,
     },
     {
       key: "debt",

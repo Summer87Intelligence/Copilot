@@ -16,13 +16,13 @@ export const HOY_PAGE = {
 
 /** Cockpit financiero — bloques principales. */
 export const HOY_COCKPIT = {
-  moneyAvailable: "Caja disponible",
-  receivables: "Deuda actual",
-  payments: "Pagos próximos",
+  moneyAvailable: "Caja disponible Santander",
+  receivables: "Deuda actual a cobrar",
+  payments: "Pagos próximos de la agencia",
   afterPayments: "Caja proyectada a fin de mes",
-  receivablesTotalPending: "Deuda actual",
+  receivablesTotalPending: "Deuda actual a cobrar",
   receivablesOverdueTotal: "Atrasado",
-  receivablesIncludedInTotal: "Incluido en Deuda actual",
+  receivablesIncludedInTotal: "Incluido en Deuda actual a cobrar",
   receivablesOverdue30: "Atrasado +30 días",
   receivablesOverdueTotalHint:
     "Parte de la deuda actual cuya fecha de vencimiento ya pasó. Está incluida dentro de la deuda actual.",
@@ -50,7 +50,7 @@ export const HOY_COCKPIT = {
 export const CURRENCY_METRIC_LABELS = {
   billed: "Ventas del período",
   collected: "Cobrado aplicado",
-  pending: "Deuda actual",
+  pending: "Deuda actual a cobrar",
   overdue30: "Atrasado +30 días",
 } as const;
 
@@ -72,7 +72,7 @@ export const HOY_COPY = {
   scopeBadgePeriod: "Actividad del período",
   scopeBadgeProjection: "Proyección · Fin de mes",
   currentStateTitle: "Estado actual · Hoy",
-  currentReceivablesLabel: "Deuda actual",
+  currentReceivablesLabel: "Deuda actual a cobrar",
   currentReceivablesTip: "Todo lo que los clientes deben actualmente. El atrasado ya está incluido.",
   activeDebtorsLabel: "Clientes con deuda",
   overdue30Short: "Atrasado +30 días",
@@ -90,13 +90,13 @@ export const HOY_COPY = {
   debtorsSectionTitle: "Clientes con deuda",
   debtorsSectionRiskSubtitle: "Ordenados por antigüedad de mora.",
   /** Tooltip columna "Deuda actual" en la tabla de deudores. */
-  debtTotalTip: "Deuda actual del cliente en esta moneda. El atrasado ya está incluido.",
+  debtTotalTip: "Deuda actual a cobrar del cliente en esta moneda. El atrasado ya está incluido.",
   /** Tooltip columna "Atrasado". */
   debtOverdueTip: "Parte del total pendiente cuya fecha de vencimiento ya pasó.",
   /** Tooltip columna "Días de atraso". */
   debtOverdueDaysTip: "Días desde la factura vencida más antigua.",
   /** Tooltip columna "Al día" (total pendiente − atrasado). */
-  debtAtDayTip: "Deuda actual todavía dentro del plazo.",
+  debtAtDayTip: "Deuda actual a cobrar todavía dentro del plazo.",
   debtorsViewAllCartera: "Ver toda la cartera",
   debtorContactSectionTitle: "Contacto",
   debtorNoPhone: "Sin teléfono registrado",
@@ -113,12 +113,12 @@ export const HOY_COPY = {
   agingDetailTitle: "Detalle del total pendiente por antigüedad",
   agingCurrentLabel: "Al día / hasta 30 días",
   agingOverdueLabel: "Atrasado +30 días",
-  cashCurrentTitle: "Caja disponible",
+  cashCurrentTitle: "Caja disponible Santander",
   cashCurrentTip: "Viene de Tesorería y cobros posteriores al saldo cargado. Sin deuda de clientes.",
   cashCollectedLabel: "Cobros Zeta posteriores",
   cashCollectedTip: "Cobros de clientes registrados en Zeta después del saldo cargado.",
-  availableCashLabel: "Caja disponible",
-  availableCashEstimatedLabel: "Caja disponible",
+  availableCashLabel: "Caja disponible Santander",
+  availableCashEstimatedLabel: "Caja disponible Santander",
   cashOpeningNote: "Configurá tu saldo actual en Tesorería para ver el dinero disponible.",
   cashLastMovementsTitle: "Últimos movimientos de caja",
   cashLastMovementsCaption: "Entrada y salida más reciente detectada por moneda.",
@@ -130,14 +130,14 @@ export const HOY_COPY = {
   projection30Tip:
     "Pagos programados e ingresos previstos hasta el último día del mes. Escenario si cobrás lo pendiente.",
   /** @deprecated Usar `availableCashLabel`. */
-  currentCashLabel: "Caja disponible",
+  currentCashLabel: "Caja disponible Santander",
   scheduledPaymentsLabel: "Pagos programados",
   safeCash30Label: "Cobertura a fin de mes",
-  safeCash30Tip: "Caja disponible menos pagos programados hasta fin de mes. Sin deuda pendiente.",
-  pendingReceivablesLabel: "Deuda actual",
+  safeCash30Tip: "Caja disponible Santander menos pagos programados hasta fin de mes. Sin deuda pendiente.",
+  pendingReceivablesLabel: "Deuda actual a cobrar",
   pendingReceivablesTip: "Todo lo que los clientes deben actualmente. El atrasado ya está incluido.",
   expectedCash30Label: "Cobros probables",
-  expectedCash30Tip: "Caja disponible + total pendiente por cobrar − pagos programados hasta fin de mes.",
+  expectedCash30Tip: "Caja disponible Santander + total pendiente por cobrar − pagos programados hasta fin de mes.",
   scheduledOutflowsLabel: "Pagos programados",
   treasuryCta: "Configurar pagos futuros",
   treasuryNoOutflows: "Sin egresos configurados",

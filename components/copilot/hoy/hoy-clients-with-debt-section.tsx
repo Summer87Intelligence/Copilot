@@ -202,7 +202,7 @@ function DebtBreakdownSection({
           {/* Summary chips */}
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
             <span>
-              Deuda actual{" "}
+              Deuda actual a cobrar{" "}
               <span className="font-semibold text-[var(--copilot-warning-text)]">
                 {fmtDebtSymbol(breakdown.summary.totalPending, row.currency)}
               </span>
@@ -325,13 +325,13 @@ function DebtorRowExpandPanel({
         </p>
         <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2.5 sm:grid-cols-4">
 
-          {/* Deuda actual */}
+          {/* Deuda actual a cobrar */}
           <div>
             <p
               className="text-[10px] text-[var(--copilot-ink-muted)]"
               title={HOY_COPY.debtTotalTip}
             >
-              Deuda actual
+              Deuda actual a cobrar
             </p>
             <p className="mt-0.5 text-sm font-semibold text-[var(--copilot-warning-text)]">
               {fmtDebtSymbol(expand.deudaTotalAmt, expand.currency)}
@@ -547,7 +547,7 @@ function DebtorMobileCard({
 
       <dl className="mt-3 space-y-1.5 text-xs">
         <div className="flex items-baseline justify-between gap-2">
-          <dt className="text-[var(--copilot-ink-muted)]">Deuda actual</dt>
+          <dt className="text-[var(--copilot-ink-muted)]">Deuda actual a cobrar</dt>
           <dd className={`tabular-nums font-semibold ${moneyCurrencyClass(row.currency)}`}>
             {formatMoneySymbolOnly(row.deuda)}
           </dd>
@@ -631,7 +631,7 @@ function DebtorTable({
               className="cursor-help px-3 py-1.5"
               title={HOY_COPY.debtTotalTip}
             >
-              Deuda actual
+              Deuda actual a cobrar
             </th>
             <th
               className="cursor-help px-3 py-1.5"
@@ -808,13 +808,13 @@ export function ClientsWithDebtSection({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-xs text-[var(--copilot-ink-muted)]">
         {uyuDebt > 0 && (
           <span>
-            Deuda actual UYU{" "}
+            Deuda actual a cobrar UYU{" "}
             <span className={`font-semibold ${copilotCurrencyClass("UYU")}`}>{fmtCurrencyAmount(uyuDebt, "UYU")}</span>
           </span>
         )}
         {usdDebt > 0 && (
           <span>
-            Deuda actual USD{" "}
+            Deuda actual a cobrar USD{" "}
             <span className={`font-semibold ${copilotCurrencyClass("USD")}`}>{fmtCurrencyAmount(usdDebt, "USD")}</span>
           </span>
         )}
@@ -838,7 +838,7 @@ export function ClientsWithDebtSection({
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <p className="text-[11px] text-[var(--copilot-ink-muted)]">
             {sortedRows.length === 0
-              ? "Sin clientes con deuda actual"
+              ? "Sin clientes con deuda actual a cobrar"
               : `Mostrando ${pageStart + 1}–${pageEnd} de ${sortedRows.length} clientes`}
           </p>
           <div className="flex flex-wrap items-center gap-2">

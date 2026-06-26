@@ -133,7 +133,7 @@ export function HoyProjection30dSection({
       {!configured ? (
         <div className="mt-4 rounded-lg border border-[var(--copilot-border)] bg-[rgba(44,40,37,0.03)] px-4 py-3 text-sm text-[var(--copilot-ink-muted)]">
           <p>
-            No hay pagos próximos cargados. Configuralos en Tesorería para proyectar mejor.
+            No hay pagos próximos de la agencia cargados. Configuralos en Tesorería para proyectar mejor.
           </p>
           <Link
             href="/copilot/tesoreria?section=obligations"

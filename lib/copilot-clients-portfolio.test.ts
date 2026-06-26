@@ -288,6 +288,66 @@ describe("computeInvoiceCurrencyBreakdown — cliente con UYU + USD (hasMixedCur
 });
 
 // ---------------------------------------------------------------------------
+// COLLECTION-AGING — subtotal "Atrasado" (> 7 días desde emisión) por moneda
+// ---------------------------------------------------------------------------
+
+const TODAY_CA = "2026-02-01";
+
+/** issue_date que cae a N días antes de TODAY_CA. */
+function issueBeforeDays(n: number): string {
+  const ms = Date.parse(`${TODAY_CA}T12:00:00.000Z`) - n * 86_400_000;
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+describe("computeInvoiceCurrencyBreakdown — collectionOverdue (modelo issue_date)", () => {
+  it("factura abierta con 8 días desde emisión cuenta como atrasada", () => {
+    const r = computeInvoiceCurrencyBreakdown(
+      [{ currency_code: "UYU", total_amount: 1000, balance_amount: 1000, issue_date: issueBeforeDays(8), due_date: "" }],
+      TODAY_CA
+    );
+    expect(r.collectionOverdueUYU).toBe(1000);
+    expect(r.collectionOverdueUSD).toBe(0);
+  });
+
+  it("factura abierta con 7 días NO cuenta como atrasada (borde inclusivo)", () => {
+    const r = computeInvoiceCurrencyBreakdown(
+      [{ currency_code: "UYU", total_amount: 1000, balance_amount: 1000, issue_date: issueBeforeDays(7), due_date: "" }],
+      TODAY_CA
+    );
+    expect(r.collectionOverdueUYU).toBe(0);
+  });
+
+  it("separa atrasado por moneda sin mezclar", () => {
+    const r = computeInvoiceCurrencyBreakdown(
+      [
+        { currency_code: "UYU", total_amount: 500, balance_amount: 500, issue_date: issueBeforeDays(40), due_date: "" },
+        { currency_code: "USD", total_amount: 200, balance_amount: 200, issue_date: issueBeforeDays(20), due_date: "" },
+        { currency_code: "UYU", total_amount: 300, balance_amount: 300, issue_date: issueBeforeDays(3), due_date: "" },
+      ],
+      TODAY_CA
+    );
+    expect(r.collectionOverdueUYU).toBe(500); // solo la de 40 días
+    expect(r.collectionOverdueUSD).toBe(200);
+  });
+
+  it("saldo 0 no cuenta como atrasado aunque la emisión sea antigua", () => {
+    const r = computeInvoiceCurrencyBreakdown(
+      [{ currency_code: "UYU", total_amount: 1000, balance_amount: 0, issue_date: issueBeforeDays(90), due_date: "" }],
+      TODAY_CA
+    );
+    expect(r.collectionOverdueUYU).toBe(0);
+  });
+
+  it("factura sin issue_date no se cuenta como atrasada (no se inventa antigüedad)", () => {
+    const r = computeInvoiceCurrencyBreakdown(
+      [{ currency_code: "UYU", total_amount: 1000, balance_amount: 1000, due_date: "2026-01-01" }],
+      TODAY_CA
+    );
+    expect(r.collectionOverdueUYU).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Regresión: campos legacy siguen presentes en los tipos
 // ---------------------------------------------------------------------------
 

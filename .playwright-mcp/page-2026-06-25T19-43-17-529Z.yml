@@ -1,0 +1,38 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - paragraph [ref=e4]:
+        - link "← Volver al inicio" [ref=e5] [cursor=pointer]:
+          - /url: /
+      - heading "Empresas (admin)" [level=1] [ref=e6]
+      - paragraph [ref=e7]: Listado de workspaces registrados en el sistema.
+      - generic [ref=e8]:
+        - heading "Nueva empresa" [level=2] [ref=e9]
+        - generic [ref=e10]:
+          - generic [ref=e11]:
+            - generic [ref=e12]: Nombre
+            - textbox "Nombre" [ref=e13]
+          - generic [ref=e14]:
+            - generic [ref=e15]: Slug (opcional)
+            - textbox "Slug (opcional)" [ref=e16]:
+              - /placeholder: Se genera desde el nombre si lo dejás vacío
+          - button "Crear empresa" [ref=e17]
+      - table [ref=e19]:
+        - rowgroup [ref=e20]:
+          - row "Nombre Slug Creada" [ref=e21]:
+            - columnheader "Nombre" [ref=e22]
+            - columnheader "Slug" [ref=e23]
+            - columnheader "Creada" [ref=e24]
+        - rowgroup [ref=e25]:
+          - row "EASY DIGITAL AGENCY easy-digital-agency 19/4/26, 1:58 p. m." [ref=e26]:
+            - cell "EASY DIGITAL AGENCY" [ref=e27]
+            - cell "easy-digital-agency" [ref=e28]
+            - cell "19/4/26, 1:58 p. m." [ref=e29]
+  - button "Open Next.js Dev Tools" [ref=e39] [cursor=pointer]:
+    - generic [ref=e42]:
+      - text: Compiling
+      - generic [ref=e43]:
+        - generic [ref=e44]: .
+        - generic [ref=e45]: .
+        - generic [ref=e46]: .
+  - alert [ref=e47]

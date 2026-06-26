@@ -1,0 +1,155 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - img [ref=e7]
+      - navigation "Navegación del módulo Copilot" [ref=e10]:
+        - button "Expandir menú lateral" [ref=e12]:
+          - img [ref=e13]
+        - link "Hoy" [ref=e15] [cursor=pointer]:
+          - /url: /copilot/hoy
+          - img [ref=e16]
+          - generic [ref=e19]: Hoy
+        - link "Dashboard" [ref=e22] [cursor=pointer]:
+          - /url: /copilot/dashboard
+          - img [ref=e23]
+          - generic [ref=e25]: Dashboard
+        - link "Finanzas" [ref=e26] [cursor=pointer]:
+          - /url: /copilot/finanzas
+          - img [ref=e27]
+          - generic [ref=e30]: Finanzas
+        - link "Reportes" [ref=e31] [cursor=pointer]:
+          - /url: /copilot/reportes
+          - img [ref=e32]
+          - generic [ref=e35]: Reportes
+        - link "Cobranza" [ref=e38] [cursor=pointer]:
+          - /url: /copilot/cobranza
+          - img [ref=e39]
+          - generic [ref=e44]: Cobranza
+        - link "Cartera" [ref=e45] [cursor=pointer]:
+          - /url: /copilot/cartera
+          - img [ref=e46]
+          - generic [ref=e48]: Cartera
+        - link "Clientes" [ref=e49] [cursor=pointer]:
+          - /url: /copilot/clientes
+          - img [ref=e50]
+          - generic [ref=e55]: Clientes
+        - link "Tesorería" [ref=e58] [cursor=pointer]:
+          - /url: /copilot/tesoreria
+          - img [ref=e59]
+          - generic [ref=e62]: Tesorería
+        - link "Alertas" [ref=e65] [cursor=pointer]:
+          - /url: /copilot/alertas
+          - img [ref=e66]
+          - generic [ref=e68]: Alertas
+        - link "Agentes IA" [ref=e69] [cursor=pointer]:
+          - /url: /copilot/agentes
+          - img [ref=e70]
+          - generic [ref=e73]: Agentes IA
+        - link "Datos" [ref=e74] [cursor=pointer]:
+          - /url: /copilot/datos
+          - img [ref=e75]
+          - generic [ref=e79]: Datos
+        - link "Mesa de ayuda" [ref=e80] [cursor=pointer]:
+          - /url: /copilot/mesa-de-ayuda
+          - img [ref=e81]
+          - generic [ref=e84]: Mesa de ayuda
+        - link "Configuración" [ref=e87] [cursor=pointer]:
+          - /url: /copilot/admin
+          - img [ref=e88]
+          - generic [ref=e91]: Configuración
+        - link "Manual de uso" [ref=e92] [cursor=pointer]:
+          - /url: /copilot/manual
+          - img [ref=e93]
+          - generic [ref=e96]: Manual de uso
+        - link "Empresas" [ref=e99] [cursor=pointer]:
+          - /url: /admin/companies
+          - img [ref=e100]
+          - generic [ref=e104]: Empresas
+        - link "Base Zeta" [ref=e105] [cursor=pointer]:
+          - /url: /copilot/knowledge/zeta
+          - img [ref=e106]
+          - generic [ref=e108]: Base Zeta
+    - generic [ref=e109]:
+      - generic [ref=e110]:
+        - generic [ref=e111]:
+          - generic [ref=e112]:
+            - generic [ref=e113]:
+              - img [ref=e175]
+              - generic [ref=e177]: Viernes, 26 de junio de 2026
+            - 'generic "Fuente: Zeta Actualizado: hace minutos Próxima actualización automática: 11:00 Intervalo: cada 2 h" [ref=e178]': Datos al 26 jun. · próx 11:00
+          - generic [ref=e114]:
+            - button "Notificaciones" [ref=e116]:
+              - img [ref=e117]
+            - button "Menú de usuario" [ref=e179]: A
+            - 'button "Estado del negocio: Atención. 3 señales de atención" [ref=e180]':
+              - generic [ref=e124]: "3"
+        - status "Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda." [ref=e125]:
+          - paragraph [ref=e126]: Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda.
+      - generic [ref=e128]:
+        - banner [ref=e129]:
+          - generic [ref=e130]:
+            - heading "Finanzas" [level=1] [ref=e131]
+            - paragraph [ref=e132]: "Lectura ejecutiva del período: ingresos netos, cobros, deuda pendiente y caja disponible."
+        - generic [ref=e181]:
+          - generic [ref=e182]:
+            - generic [ref=e184]:
+              - heading "Caja, cobros y pagos" [level=2] [ref=e185]
+              - paragraph [ref=e186]: Misma fuente que Hoy · Tesorería · Cartera. Sin mezcla de monedas.
+            - generic [ref=e187]:
+              - generic "Dinero disponible actualmente considerando saldos de tesorería." [ref=e188]:
+                - paragraph [ref=e189]: Caja disponible
+                - generic [ref=e190]:
+                  - paragraph [ref=e191]: USD 25.985,95
+                  - paragraph [ref=e192]: TC 40
+              - generic "Facturas pendientes de cobro informadas por Zeta." [ref=e193]:
+                - paragraph [ref=e194]: Deuda actual
+                - generic [ref=e195]:
+                  - paragraph [ref=e196]: USD 8.018,39
+                  - paragraph [ref=e197]: TC 40
+              - generic "Facturas vencidas pendientes de cobro al día de hoy." [ref=e198]:
+                - paragraph [ref=e199]: Deuda vencida
+                - generic [ref=e200]:
+                  - paragraph [ref=e201]: USD 2.962,51
+                  - paragraph [ref=e202]: TC 40
+              - generic "Pagos programados hasta fin del mes actual." [ref=e203]:
+                - paragraph [ref=e204]: Compromisos del mes
+                - generic [ref=e205]:
+                  - paragraph [ref=e206]: USD 6.045,03
+                  - paragraph [ref=e207]: TC 40
+            - paragraph [ref=e208]: Vista convertida. Datos originales separados por moneda.
+          - generic [ref=e209]:
+            - generic [ref=e211]:
+              - heading "Caja proyectada (fin de mes)" [level=2] [ref=e212]
+              - paragraph [ref=e213]: Caja actual + cobros pendientes − pagos próximos.
+            - generic [ref=e215]:
+              - paragraph [ref=e216]: USD estimado · TC 40
+              - generic [ref=e217]:
+                - generic [ref=e218]: Caja actual
+                - generic [ref=e219]: USD 25.985,95
+              - generic [ref=e220]:
+                - generic [ref=e221]: + Cobros pendientes
+                - generic [ref=e222]: USD 8.018,39
+              - generic [ref=e223]:
+                - generic [ref=e224]: − Pagos próximos
+                - generic [ref=e225]: USD 6.045,03
+              - generic [ref=e226]:
+                - generic [ref=e227]: = Caja proyectada
+                - generic [ref=e228]: USD 27.959,31
+              - paragraph [ref=e229]: Vista convertida. Datos originales separados por moneda.
+          - generic [ref=e230]:
+            - generic [ref=e232]:
+              - heading "Riesgo ejecutivo" [level=2] [ref=e233]
+              - paragraph [ref=e234]: Lectura rápida para saber si la caja alcanza hasta fin del mes.
+            - generic [ref=e236]:
+              - generic [ref=e237]:
+                - paragraph [ref=e238]: 🟢 Cobertura total · Cubierta
+                - paragraph [ref=e239]: La caja disponible cubre todos los compromisos del mes actual.
+              - generic [ref=e240]: Sin acción urgente
+          - button "Análisis histórico Vista histórica convertida a USD estimado · TC 40" [ref=e242]:
+            - generic [ref=e243]:
+              - paragraph [ref=e244]: Análisis histórico
+              - paragraph [ref=e245]: Vista histórica convertida a USD estimado · TC 40
+            - img [ref=e246]
+  - button "Open Next.js Dev Tools" [ref=e171] [cursor=pointer]:
+    - img [ref=e172]
+  - alert [ref=e248]

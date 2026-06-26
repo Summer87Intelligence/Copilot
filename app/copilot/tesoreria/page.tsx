@@ -15,7 +15,7 @@ export default async function TesoreriaPage() {
       <CopilotPageHeader
         eyebrow="Summer87 Copilot"
         title="Tesorería"
-        description="Caja disponible, pagos programados y registros manuales."
+        description="Caja disponible Santander, pagos programados y registros manuales."
       />
       <div className={`${copilotPageMainClass} !space-y-4`}>
         <div className="mx-auto w-full max-w-7xl">

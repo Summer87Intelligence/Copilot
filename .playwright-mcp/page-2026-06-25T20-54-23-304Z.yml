@@ -1,0 +1,740 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - img [ref=e7]
+      - navigation "Navegación del módulo Copilot" [ref=e10]:
+        - button "Expandir menú lateral" [ref=e12]:
+          - img [ref=e13]
+        - link "Hoy" [ref=e15] [cursor=pointer]:
+          - /url: /copilot/hoy
+          - img [ref=e16]
+          - generic [ref=e19]: Hoy
+        - link "Dashboard" [ref=e22] [cursor=pointer]:
+          - /url: /copilot/dashboard
+          - img [ref=e23]
+          - generic [ref=e25]: Dashboard
+        - link "Finanzas" [ref=e26] [cursor=pointer]:
+          - /url: /copilot/finanzas
+          - img [ref=e27]
+          - generic [ref=e30]: Finanzas
+        - link "Reportes" [ref=e31] [cursor=pointer]:
+          - /url: /copilot/reportes
+          - img [ref=e32]
+          - generic [ref=e35]: Reportes
+        - link "Cobranza" [ref=e38] [cursor=pointer]:
+          - /url: /copilot/cobranza
+          - img [ref=e39]
+          - generic [ref=e44]: Cobranza
+        - link "Cartera" [ref=e45] [cursor=pointer]:
+          - /url: /copilot/cartera
+          - img [ref=e46]
+          - generic [ref=e48]: Cartera
+        - link "Clientes" [ref=e49] [cursor=pointer]:
+          - /url: /copilot/clientes
+          - img [ref=e50]
+          - generic [ref=e55]: Clientes
+        - link "Tesorería" [ref=e58] [cursor=pointer]:
+          - /url: /copilot/tesoreria
+          - img [ref=e59]
+          - generic [ref=e62]: Tesorería
+        - link "Alertas" [ref=e65] [cursor=pointer]:
+          - /url: /copilot/alertas
+          - img [ref=e66]
+          - generic [ref=e68]: Alertas
+        - link "Agentes IA" [ref=e69] [cursor=pointer]:
+          - /url: /copilot/agentes
+          - img [ref=e70]
+          - generic [ref=e73]: Agentes IA
+        - link "Datos" [ref=e74] [cursor=pointer]:
+          - /url: /copilot/datos
+          - img [ref=e75]
+          - generic [ref=e79]: Datos
+        - link "Configuración" [ref=e82] [cursor=pointer]:
+          - /url: /copilot/admin
+          - img [ref=e83]
+          - generic [ref=e86]: Configuración
+        - link "Manual de uso" [ref=e87] [cursor=pointer]:
+          - /url: /copilot/manual
+          - img [ref=e88]
+          - generic [ref=e91]: Manual de uso
+        - link "Empresas" [ref=e94] [cursor=pointer]:
+          - /url: /admin/companies
+          - img [ref=e95]
+          - generic [ref=e99]: Empresas
+        - link "Base Zeta" [ref=e100] [cursor=pointer]:
+          - /url: /copilot/knowledge/zeta
+          - img [ref=e101]
+          - generic [ref=e103]: Base Zeta
+    - generic [ref=e104]:
+      - generic [ref=e106]:
+        - generic [ref=e107]:
+          - generic [ref=e108]:
+            - img [ref=e292]
+            - generic [ref=e294]: Jueves, 25 de junio de 2026
+          - 'generic "Fuente: Zeta Actualizado: hace minutos Próxima actualización automática: 19:00 Intervalo: cada 2 h" [ref=e295]': Datos al 25 jun. · próx 19:00
+        - generic [ref=e109]:
+          - button "Notificaciones" [ref=e111]:
+            - img [ref=e112]
+          - button "Menú de usuario" [ref=e296]: A
+          - 'button "Estado del negocio: Atención. 3 señales de atención" [ref=e297]':
+            - generic [ref=e119]: "3"
+      - generic [ref=e123]:
+        - generic [ref=e124]:
+          - generic [ref=e125]:
+            - generic [ref=e126]:
+              - generic [ref=e127]:
+                - img [ref=e128]
+                - heading "Dashboard" [level=1] [ref=e130]
+              - paragraph [ref=e131]: "Análisis y reportes: ventas, cobros, deuda y evolución del negocio."
+            - generic [ref=e132]:
+              - paragraph [ref=e298]: "Fuente: Zeta · Actualizado: hace minutos · Período: mes actual"
+              - link "Descargar PDF" [ref=e299] [cursor=pointer]:
+                - /url: /api/copilot/dashboard/summary.pdf?from=2026-06-01&to=2026-06-25&currency=all
+                - img [ref=e300]
+                - text: Descargar PDF
+              - button "Actualizar" [ref=e304]:
+                - img [ref=e139]
+                - text: Actualizar
+          - generic [ref=e144]:
+            - generic [ref=e145]:
+              - text: Desde
+              - textbox "Desde" [ref=e146]: 2026-06-01
+            - generic [ref=e147]:
+              - text: Hasta
+              - textbox "Hasta" [ref=e148]: 2026-06-25
+            - combobox "Filtrar por moneda" [ref=e149]:
+              - option "UYU"
+              - option "USD"
+              - option "UYU + USD" [selected]
+              - option "Todo en USD"
+        - generic [ref=e154]:
+          - region "Resultado del período" [ref=e156]:
+            - generic [ref=e157]:
+              - heading "Resultado del período" [level=2] [ref=e158]
+              - paragraph [ref=e159]: Corresponde al rango seleccionado.
+            - generic [ref=e160]:
+              - generic [ref=e305]:
+                - generic [ref=e306]:
+                  - paragraph [ref=e307]: Ventas del período
+                  - generic "Ventas/facturas emitidas dentro del rango seleccionado." [ref=e308]:
+                    - img [ref=e309]
+                - generic [ref=e311]:
+                  - paragraph [ref=e312]: $ 718.183UYU
+                  - paragraph [ref=e313]: U$S 7.928USD
+                - link "Ver detalle" [ref=e314] [cursor=pointer]:
+                  - /url: /copilot/cartera
+                  - text: Ver detalle
+                  - img [ref=e315]
+              - generic [ref=e317]:
+                - generic [ref=e318]:
+                  - paragraph [ref=e319]: Cobrado aplicado
+                  - 'generic "Cobros imputados contra facturas emitidas en el período: facturado neto menos saldo pendiente al cierre del rango. Misma fuente que Cartera." [ref=e320]':
+                    - img [ref=e321]
+                - generic [ref=e323]:
+                  - paragraph [ref=e324]: $ 599.190UYU
+                  - paragraph [ref=e325]: U$S 2.275USD
+                - link "Ver detalle" [ref=e326] [cursor=pointer]:
+                  - /url: /copilot/cartera
+                  - text: Ver detalle
+                  - img [ref=e327]
+              - generic [ref=e329]:
+                - generic [ref=e330]:
+                  - paragraph [ref=e331]: Pendiente del período
+                  - generic "Ventas del período menos cobros aplicados a facturas del período (= saldo pendiente al cierre del rango)." [ref=e332]:
+                    - img [ref=e333]
+                - generic [ref=e335]:
+                  - paragraph [ref=e336]: $ 118.993UYU
+                  - paragraph [ref=e337]: U$S 5.654USD
+                - link "Ver detalle" [ref=e338] [cursor=pointer]:
+                  - /url: /copilot/cartera
+                  - text: Ver detalle
+                  - img [ref=e339]
+          - region "Posición actual" [ref=e164]:
+            - generic [ref=e165]:
+              - heading "Posición actual" [level=2] [ref=e166]
+              - paragraph [ref=e167]: Foto actual del negocio. No depende del rango seleccionado.
+            - generic [ref=e168]:
+              - generic [ref=e341]:
+                - generic [ref=e342]:
+                  - paragraph [ref=e343]: Deuda actual total
+                  - generic "Total adeudado actualmente por clientes, incluyendo saldos de períodos anteriores. No se calcula solo con el rango seleccionado." [ref=e344]:
+                    - img [ref=e345]
+                - generic [ref=e347]:
+                  - paragraph [ref=e348]: $ 118.993UYU
+                  - paragraph [ref=e349]: U$S 5.654USD
+                - link "Ver detalle" [ref=e350] [cursor=pointer]:
+                  - /url: /copilot/cartera
+                  - text: Ver detalle
+                  - img [ref=e351]
+              - generic [ref=e353]:
+                - generic [ref=e354]:
+                  - paragraph [ref=e355]: Deuda atrasada
+                  - generic "Parte de la cartera pendiente actual cuya fecha de vencimiento ya pasí. No depende del rango seleccionado." [ref=e356]:
+                    - img [ref=e357]
+                - generic [ref=e359]:
+                  - paragraph [ref=e360]: $ 23.302UYU
+                  - paragraph [ref=e361]: U$S 2.380USD
+                - link "Ver detalle" [ref=e362] [cursor=pointer]:
+                  - /url: /copilot/cartera
+                  - text: Ver detalle
+                  - img [ref=e363]
+              - generic [ref=e365]:
+                - generic [ref=e366]:
+                  - paragraph [ref=e367]: Caja disponible
+                  - generic "Caja disponible en Tesorería al corte." [ref=e368]:
+                    - img [ref=e369]
+                - generic [ref=e371]:
+                  - paragraph [ref=e372]: $ 654.703UYU
+                  - paragraph [ref=e373]: U$S 9.008USD
+                - link "Ver detalle" [ref=e374] [cursor=pointer]:
+                  - /url: /copilot/tesoreria
+                  - text: Ver detalle
+                  - img [ref=e375]
+              - generic [ref=e377]:
+                - generic [ref=e378]:
+                  - paragraph [ref=e379]: Caja proyectada
+                  - generic "Caja disponible menos pagos programados hasta fin del mes actual." [ref=e380]:
+                    - img [ref=e381]
+                - generic [ref=e383]:
+                  - paragraph [ref=e384]: $ 412.902UYU
+                  - paragraph [ref=e385]: U$S 9.008USD
+                - paragraph [ref=e386]: Proyección con pagos cargados en Tesorería.
+                - link "Ver detalle" [ref=e387] [cursor=pointer]:
+                  - /url: /copilot/tesoreria
+                  - text: Ver detalle
+                  - img [ref=e388]
+          - region "Tendencia mensual" [ref=e173]:
+            - generic [ref=e174]:
+              - heading "Tendencia mensual del período" [level=2] [ref=e175]
+              - generic [ref=e176]: "Rango: 01/06/2026 – 25/06/2026"
+            - generic [ref=e177]:
+              - generic [ref=e178]:
+                - generic [ref=e180]:
+                  - paragraph [ref=e181]: Ventas por mes UYU
+                  - paragraph [ref=e182]: Ventas UYU · escala independiente
+                - generic [ref=e391]:
+                  - generic "$ 718.183" [ref=e394]
+                  - paragraph [ref=e396]: jun
+              - generic [ref=e188]:
+                - generic [ref=e190]:
+                  - paragraph [ref=e191]: Ventas por mes USD
+                  - paragraph [ref=e192]: Ventas USD · escala independiente
+                - generic [ref=e398]:
+                  - generic "U$S 7.928" [ref=e401]
+                  - paragraph [ref=e403]: jun
+              - generic [ref=e198]:
+                - generic [ref=e200]:
+                  - paragraph [ref=e201]: Cobros por mes UYU
+                  - paragraph [ref=e202]: Recibos UYU · escala independiente
+                - generic [ref=e405]:
+                  - generic "$ 599.190" [ref=e408]
+                  - paragraph [ref=e410]: jun
+              - generic [ref=e411]:
+                - generic [ref=e413]:
+                  - paragraph [ref=e414]: Cobros por mes USD
+                  - paragraph [ref=e415]: Recibos USD · escala independiente
+                - generic [ref=e417]:
+                  - generic "U$S 2.275" [ref=e420]
+                  - paragraph [ref=e422]: jun
+              - generic [ref=e423]:
+                - generic [ref=e425]:
+                  - paragraph [ref=e426]: Ventas vs Cobros UYU
+                  - paragraph [ref=e427]: Período seleccionado · Verde = cobrado
+                - generic [ref=e429]:
+                  - generic [ref=e430]:
+                    - generic "$ 718.183" [ref=e432]
+                    - generic "$ 599.190" [ref=e435]
+                  - paragraph [ref=e437]: UYU
+                - generic [ref=e438]:
+                  - paragraph [ref=e441]: Ventas
+                  - paragraph [ref=e444]: Cobrado
+                  - generic [ref=e445]: "Cobranza aplicada: 83% · Pendiente del período: 17%"
+              - generic [ref=e446]:
+                - generic [ref=e448]:
+                  - paragraph [ref=e449]: Ventas vs Cobros USD
+                  - paragraph [ref=e450]: Período seleccionado · Verde = cobrado
+                - generic [ref=e452]:
+                  - generic [ref=e453]:
+                    - generic "U$S 7.928" [ref=e455]
+                    - generic "U$S 2.275" [ref=e458]
+                  - paragraph [ref=e460]: USD
+                - generic [ref=e461]:
+                  - paragraph [ref=e464]: Ventas
+                  - paragraph [ref=e467]: Cobrado
+                  - generic [ref=e468]: "Cobranza aplicada: 29% · Pendiente del período: 71%"
+          - region "Antigüedad y efectividad" [ref=e211]:
+            - generic [ref=e212]:
+              - generic [ref=e469]:
+                - generic [ref=e471]:
+                  - paragraph [ref=e472]: Deuda por antigüedad UYU
+                  - paragraph [ref=e473]: Basado en fecha de vencimiento · Estado actual
+                - generic [ref=e474]:
+                  - generic [ref=e475]:
+                    - generic "$ 118.993" [ref=e478]
+                    - paragraph [ref=e480]: 0–30 días
+                  - generic [ref=e481]:
+                    - generic [ref=e484]: "0"
+                    - paragraph [ref=e486]: 31–60 días
+                  - generic [ref=e487]:
+                    - generic [ref=e490]: "0"
+                    - paragraph [ref=e492]: 61–90 días
+                  - generic [ref=e493]:
+                    - generic [ref=e496]: "0"
+                    - paragraph [ref=e498]: +90 días
+              - generic [ref=e499]:
+                - generic [ref=e501]:
+                  - paragraph [ref=e502]: Deuda por antigüedad USD
+                  - paragraph [ref=e503]: Basado en fecha de vencimiento · Estado actual
+                - generic [ref=e504]:
+                  - generic [ref=e505]:
+                    - generic "U$S 3.486" [ref=e508]
+                    - paragraph [ref=e510]: 0–30 días
+                  - generic [ref=e511]:
+                    - generic [ref=e514]: "0"
+                    - paragraph [ref=e516]: 31–60 días
+                  - generic [ref=e517]:
+                    - generic "U$S 281" [ref=e520]
+                    - paragraph [ref=e522]: 61–90 días
+                  - generic [ref=e523]:
+                    - generic "U$S 1.887" [ref=e526]
+                    - paragraph [ref=e528]: +90 días
+              - generic [ref=e223]:
+                - generic [ref=e225]:
+                  - paragraph [ref=e226]: Cobranza efectiva aplicada
+                  - paragraph [ref=e227]: Porcentaje de ventas del período resueltas al corte.
+                - generic [ref=e228]:
+                  - generic [ref=e530]:
+                    - paragraph [ref=e531]: Cobranza efectiva aplicada UYU
+                    - paragraph [ref=e532]: 83%
+                  - generic [ref=e536]:
+                    - paragraph [ref=e537]: Cobranza efectiva aplicada USD
+                    - paragraph [ref=e538]: 29%
+                  - paragraph [ref=e541]: Porcentaje de ventas del período resueltas al corte. Puede ser menor al 100% si quedan facturas del período pendientes al corte.
+          - region "Top clientes" [ref=e231]:
+            - generic [ref=e232]:
+              - generic [ref=e233]:
+                - generic [ref=e235]:
+                  - paragraph [ref=e236]: Top 10 deudores UYU
+                  - paragraph [ref=e237]: Concentran el 100% de la deuda UYU total · Clic para ver ficha
+                - generic [ref=e542]:
+                  - link "Estudio Fletcher SAS $ 29.280" [ref=e543] [cursor=pointer]:
+                    - /url: /copilot/clientes/8fd1272a-3829-4d50-8aa8-66aced1828a0
+                    - generic [ref=e544]:
+                      - paragraph [ref=e545]: Estudio Fletcher SAS
+                      - paragraph [ref=e548]: $ 29.280
+                  - link "Cafe de especialdiad srl $ 24.400" [ref=e549] [cursor=pointer]:
+                    - /url: /copilot/clientes/079b19d2-23dd-48cd-b9fd-191575fce5fc
+                    - generic [ref=e550]:
+                      - paragraph [ref=e551]: Cafe de especialdiad srl
+                      - paragraph [ref=e554]: $ 24.400
+                  - link "Mauricio Nicolás Gayol Martínez $ 19.520" [ref=e555] [cursor=pointer]:
+                    - /url: /copilot/clientes/44aae4f6-9766-4ff6-b123-c6bc97ccac61
+                    - generic [ref=e556]:
+                      - paragraph [ref=e557]: Mauricio Nicolás Gayol Martínez
+                      - paragraph [ref=e560]: $ 19.520
+                  - link "Nirmex S.A. $ 17.080" [ref=e561] [cursor=pointer]:
+                    - /url: /copilot/clientes/7671f4d1-8710-43ab-aff1-3fb53c80442b
+                    - generic [ref=e562]:
+                      - paragraph [ref=e563]: Nirmex S.A.
+                      - paragraph [ref=e566]: $ 17.080
+                  - link "Movex Uruguay S.A.S. $ 15.320" [ref=e567] [cursor=pointer]:
+                    - /url: /copilot/clientes/c69b270b-535e-4c99-99e7-a44fce32a4df
+                    - generic [ref=e568]:
+                      - paragraph [ref=e569]: Movex Uruguay S.A.S.
+                      - paragraph [ref=e572]: $ 15.320
+                  - link "El Pais S.A. $ 8.662" [ref=e573] [cursor=pointer]:
+                    - /url: /copilot/clientes/facc4033-d2ff-4ea2-8f87-1c86990c5555
+                    - generic [ref=e574]:
+                      - paragraph [ref=e575]: El Pais S.A.
+                      - paragraph [ref=e578]: $ 8.662
+                  - link "Gjorgji Martin Gerardo $ 3.355" [ref=e579] [cursor=pointer]:
+                    - /url: /copilot/clientes/0e74cee5-7cb9-4c87-884c-adf05e6e5549
+                    - generic [ref=e580]:
+                      - paragraph [ref=e581]: Gjorgji Martin Gerardo
+                      - paragraph [ref=e584]: $ 3.355
+                  - link "Cardona Romero Carlos Danilo $ 976" [ref=e585] [cursor=pointer]:
+                    - /url: /copilot/clientes/ee711817-35b2-422c-b687-1821bb101def
+                    - generic [ref=e586]:
+                      - paragraph [ref=e587]: Cardona Romero Carlos Danilo
+                      - paragraph [ref=e590]: $ 976
+                  - link "Siempre Conviene S.A.S. $ 400" [ref=e591] [cursor=pointer]:
+                    - /url: /copilot/clientes/23d180ca-3896-461b-825f-5bc0819a2c49
+                    - generic [ref=e592]:
+                      - paragraph [ref=e593]: Siempre Conviene S.A.S.
+                      - paragraph [ref=e596]: $ 400
+              - generic [ref=e244]:
+                - generic [ref=e246]:
+                  - paragraph [ref=e247]: Top 10 deudores USD
+                  - paragraph [ref=e248]: Concentran el 98% de la deuda USD total · Clic para ver ficha
+                - generic [ref=e597]:
+                  - link "Trexys Consultores S.A.S. U$S 1.049" [ref=e598] [cursor=pointer]:
+                    - /url: /copilot/clientes/904cf1f1-89cb-4b5c-bd9c-dcd3f0f24c58
+                    - generic [ref=e599]:
+                      - paragraph [ref=e600]: Trexys Consultores S.A.S.
+                      - paragraph [ref=e603]: U$S 1.049
+                  - link "Creditox sas U$S 976" [ref=e604] [cursor=pointer]:
+                    - /url: /copilot/clientes/09381f35-df88-4f4e-aec2-31f78c6e1f84
+                    - generic [ref=e605]:
+                      - paragraph [ref=e606]: Creditox sas
+                      - paragraph [ref=e609]: U$S 976
+                  - link "Petrovic Solutions U$S 936" [ref=e610] [cursor=pointer]:
+                    - /url: /copilot/clientes/94ee84d9-d2a1-45a5-ac67-9e3d53f63179
+                    - generic [ref=e611]:
+                      - paragraph [ref=e612]: Petrovic Solutions
+                      - paragraph [ref=e615]: U$S 936
+                  - link "Trek U$S 824" [ref=e616] [cursor=pointer]:
+                    - /url: /copilot/clientes/881c3904-74c5-40b9-ba6a-b8aa3a1058e1
+                    - generic [ref=e617]:
+                      - paragraph [ref=e618]: Trek
+                      - paragraph [ref=e621]: U$S 824
+                  - link "Consumidor Final U$S 610" [ref=e622] [cursor=pointer]:
+                    - /url: /copilot/clientes/2028181c-172e-4b34-90fd-01c1d400f91b
+                    - generic [ref=e623]:
+                      - paragraph [ref=e624]: Consumidor Final
+                      - paragraph [ref=e627]: U$S 610
+                  - link "Mill Vonmetzen Karin U$S 427" [ref=e628] [cursor=pointer]:
+                    - /url: /copilot/clientes/630ed5ee-e7f1-4b84-aa6e-217a01a57499
+                    - generic [ref=e629]:
+                      - paragraph [ref=e630]: Mill Vonmetzen Karin
+                      - paragraph [ref=e633]: U$S 427
+                  - link "Errede Supermercado S.R.L. U$S 226" [ref=e634] [cursor=pointer]:
+                    - /url: /copilot/clientes/a264a0b8-ea11-4419-92a8-370e9ce94c6c
+                    - generic [ref=e635]:
+                      - paragraph [ref=e636]: Errede Supermercado S.R.L.
+                      - paragraph [ref=e639]: U$S 226
+                  - link "Alvarez Rios Javier Enrique U$S 183" [ref=e640] [cursor=pointer]:
+                    - /url: /copilot/clientes/114999c3-70a4-4282-bbdc-02b1bb877e96
+                    - generic [ref=e641]:
+                      - paragraph [ref=e642]: Alvarez Rios Javier Enrique
+                      - paragraph [ref=e645]: U$S 183
+                  - link "Recon Security SRL U$S 183" [ref=e646] [cursor=pointer]:
+                    - /url: /copilot/clientes/45699d66-bd83-4b5c-9b41-13ddadddf304
+                    - generic [ref=e647]:
+                      - paragraph [ref=e648]: Recon Security SRL
+                      - paragraph [ref=e651]: U$S 183
+                  - link "Maxivision S.A. U$S 128" [ref=e652] [cursor=pointer]:
+                    - /url: /copilot/clientes/7948a965-ea75-4d58-84b6-01bae31d7515
+                    - generic [ref=e653]:
+                      - paragraph [ref=e654]: Maxivision S.A.
+                      - paragraph [ref=e657]: U$S 128
+              - generic [ref=e658]:
+                - generic [ref=e659]:
+                  - generic [ref=e660]:
+                    - paragraph [ref=e661]: Top facturación neta histórica UYU
+                    - paragraph [ref=e662]: Facturas activas menos notas de crédito · desde enero 2026
+                  - generic [ref=e663]: Histórico neto
+                - generic [ref=e664]:
+                  - link "Remiplat SA $ 579.743" [ref=e665] [cursor=pointer]:
+                    - /url: /copilot/clientes/bff7c7ea-d969-4bd3-adce-b2240833a863
+                    - generic [ref=e666]:
+                      - paragraph [ref=e667]: Remiplat SA
+                      - paragraph [ref=e670]: $ 579.743
+                  - link "PAPELERIA ALDO S.A. DE BENEFICIO E INTERES COLECTIVO $ 341.112" [ref=e671] [cursor=pointer]:
+                    - /url: /copilot/clientes/4e0d1a7b-b867-4e4f-b7ca-374812346794
+                    - generic [ref=e672]:
+                      - paragraph [ref=e673]: PAPELERIA ALDO S.A. DE BENEFICIO E INTERES COLECTIVO
+                      - paragraph [ref=e676]: $ 341.112
+                  - link "Bloommy´s SA $ 329.400" [ref=e677] [cursor=pointer]:
+                    - /url: /copilot/clientes/ace90087-26af-4aed-a459-1bcb1821eb12
+                    - generic [ref=e678]:
+                      - paragraph [ref=e679]: Bloommy´s SA
+                      - paragraph [ref=e682]: $ 329.400
+                  - link "HARRISON S.A $ 263.520" [ref=e683] [cursor=pointer]:
+                    - /url: /copilot/clientes/a587c341-9ee0-408c-964c-a5ea11ec7ab5
+                    - generic [ref=e684]:
+                      - paragraph [ref=e685]: HARRISON S.A
+                      - paragraph [ref=e688]: $ 263.520
+                  - link "Ubal Dalmu Maria Patricia $ 233.997" [ref=e689] [cursor=pointer]:
+                    - /url: /copilot/clientes/7dc98c7c-96af-4a1c-a1d9-5ca4d52597c0
+                    - generic [ref=e690]:
+                      - paragraph [ref=e691]: Ubal Dalmu Maria Patricia
+                      - paragraph [ref=e694]: $ 233.997
+                  - link "Aldiesan SRL $ 204.960" [ref=e695] [cursor=pointer]:
+                    - /url: /copilot/clientes/22e20fe6-4ba8-4688-aa1d-fb014b79ea76
+                    - generic [ref=e696]:
+                      - paragraph [ref=e697]: Aldiesan SRL
+                      - paragraph [ref=e700]: $ 204.960
+                  - link "Arroyal S.A. $ 196.420" [ref=e701] [cursor=pointer]:
+                    - /url: /copilot/clientes/4b719f85-be19-4c0e-b62c-985377d4e24e
+                    - generic [ref=e702]:
+                      - paragraph [ref=e703]: Arroyal S.A.
+                      - paragraph [ref=e706]: $ 196.420
+                  - link "Cafe de especialdiad srl $ 146.400" [ref=e707] [cursor=pointer]:
+                    - /url: /copilot/clientes/079b19d2-23dd-48cd-b9fd-191575fce5fc
+                    - generic [ref=e708]:
+                      - paragraph [ref=e709]: Cafe de especialdiad srl
+                      - paragraph [ref=e712]: $ 146.400
+                  - link "Fiorella y Cia. S.A. $ 128.832" [ref=e713] [cursor=pointer]:
+                    - /url: /copilot/clientes/cca7ca0e-41c5-4d7d-adde-8abb58f3a305
+                    - generic [ref=e714]:
+                      - paragraph [ref=e715]: Fiorella y Cia. S.A.
+                      - paragraph [ref=e718]: $ 128.832
+                  - link "LANCER SA $ 128.832" [ref=e719] [cursor=pointer]:
+                    - /url: /copilot/clientes/12751db6-8f3e-449f-956b-a388adebfa43
+                    - generic [ref=e720]:
+                      - paragraph [ref=e721]: LANCER SA
+                      - paragraph [ref=e724]: $ 128.832
+              - generic [ref=e725]:
+                - generic [ref=e726]:
+                  - generic [ref=e727]:
+                    - paragraph [ref=e728]: Top facturación neta histórica USD
+                    - paragraph [ref=e729]: Facturas activas menos notas de crédito · desde enero 2026
+                  - generic [ref=e730]: Histórico neto
+                - generic [ref=e731]:
+                  - link "Vilcabamba SRL U$S 8.125" [ref=e732] [cursor=pointer]:
+                    - /url: /copilot/clientes/b1b848ad-e3e0-4ac9-8ae4-8b6efbae404b
+                    - generic [ref=e733]:
+                      - paragraph [ref=e734]: Vilcabamba SRL
+                      - paragraph [ref=e737]: U$S 8.125
+                  - link "Consumidor Final U$S 4.624" [ref=e738] [cursor=pointer]:
+                    - /url: /copilot/clientes/2028181c-172e-4b34-90fd-01c1d400f91b
+                    - generic [ref=e739]:
+                      - paragraph [ref=e740]: Consumidor Final
+                      - paragraph [ref=e743]: U$S 4.624
+                  - link "ASOC DE HERMANAS HOSPITALARIAS DEL SAGRADO CORAZON U$S 4.214" [ref=e744] [cursor=pointer]:
+                    - /url: /copilot/clientes/8336ee76-7bb7-484a-b351-2855bc5f2ca2
+                    - generic [ref=e745]:
+                      - paragraph [ref=e746]: ASOC DE HERMANAS HOSPITALARIAS DEL SAGRADO CORAZON
+                      - paragraph [ref=e749]: U$S 4.214
+                  - link "INSIGHT INTERNATIONAL SAS U$S 4.181" [ref=e750] [cursor=pointer]:
+                    - /url: /copilot/clientes/b4c5020a-3eff-4a6e-8bb5-ab656f164d48
+                    - generic [ref=e751]:
+                      - paragraph [ref=e752]: INSIGHT INTERNATIONAL SAS
+                      - paragraph [ref=e755]: U$S 4.181
+                  - link "Suprasur S.A. U$S 3.660" [ref=e756] [cursor=pointer]:
+                    - /url: /copilot/clientes/e87e0d33-c637-45ab-81d2-4dd295a17cbe
+                    - generic [ref=e757]:
+                      - paragraph [ref=e758]: Suprasur S.A.
+                      - paragraph [ref=e761]: U$S 3.660
+                  - link "Disidal SA U$S 3.599" [ref=e762] [cursor=pointer]:
+                    - /url: /copilot/clientes/16008bd7-492f-45a0-83b8-4583495b055c
+                    - generic [ref=e763]:
+                      - paragraph [ref=e764]: Disidal SA
+                      - paragraph [ref=e767]: U$S 3.599
+                  - link "DOBSURA CORPORATION SA U$S 3.526" [ref=e768] [cursor=pointer]:
+                    - /url: /copilot/clientes/6e50f5e7-161a-48c2-af38-be209ab6f330
+                    - generic [ref=e769]:
+                      - paragraph [ref=e770]: DOBSURA CORPORATION SA
+                      - paragraph [ref=e773]: U$S 3.526
+                  - link "Dolby S.A. U$S 3.299" [ref=e774] [cursor=pointer]:
+                    - /url: /copilot/clientes/43ab2bda-d17d-43b9-9289-d45abf8e1e36
+                    - generic [ref=e775]:
+                      - paragraph [ref=e776]: Dolby S.A.
+                      - paragraph [ref=e779]: U$S 3.299
+                  - link "Margot Morales U$S 3.284" [ref=e780] [cursor=pointer]:
+                    - /url: /copilot/clientes/7bc33697-88d3-4abb-afd6-1c094a5284b2
+                    - generic [ref=e781]:
+                      - paragraph [ref=e782]: Margot Morales
+                      - paragraph [ref=e785]: U$S 3.284
+                  - link "Acquagarden SAS U$S 2.900" [ref=e786] [cursor=pointer]:
+                    - /url: /copilot/clientes/411b0506-b51e-4764-b3ce-fd0688d941c4
+                    - generic [ref=e787]:
+                      - paragraph [ref=e788]: Acquagarden SAS
+                      - paragraph [ref=e791]: U$S 2.900
+          - region "Estado de cartera y proyección" [ref=e256]:
+            - generic [ref=e257]:
+              - generic [ref=e258]:
+                - generic [ref=e260]:
+                  - paragraph [ref=e261]: Estado de cartera
+                  - paragraph [ref=e262]: Los clientes se cuentan una sola vez aunque tengan deuda en más de una moneda.
+                - generic [ref=e792]:
+                  - generic [ref=e793]:
+                    - generic [ref=e794]:
+                      - paragraph [ref=e795]: Clientes activos
+                      - paragraph [ref=e796]: "187"
+                    - generic [ref=e797]:
+                      - paragraph [ref=e798]: Con deuda activa
+                      - paragraph [ref=e799]: "21"
+                    - generic [ref=e800]:
+                      - paragraph [ref=e801]: Atrasado / Crítico
+                      - paragraph [ref=e802]: "7"
+                    - generic [ref=e803]:
+                      - paragraph [ref=e804]: Al día
+                      - paragraph [ref=e805]: "166"
+                  - generic [ref=e806]:
+                    - generic [ref=e807]:
+                      - paragraph [ref=e808]: Deuda actual UYU
+                      - paragraph [ref=e809]: $ 118.993
+                    - generic [ref=e810]:
+                      - paragraph [ref=e811]: Deuda actual USD
+                      - paragraph [ref=e812]: U$S 5.654
+                  - generic [ref=e813]:
+                    - link "Ver clientes" [ref=e814] [cursor=pointer]:
+                      - /url: /copilot/clientes
+                      - img [ref=e815]
+                      - text: Ver clientes
+                    - link "Ver atrasados →" [ref=e820] [cursor=pointer]:
+                      - /url: /copilot/cartera?filter=overdue
+              - generic [ref=e264]:
+                - generic [ref=e266]:
+                  - paragraph [ref=e267]: Caja proyectada al cierre del mes
+                  - paragraph [ref=e268]: UYU + USD · Caja disponible hoy y proyección al cierre del mes
+                - generic [ref=e821]:
+                  - img [ref=e822]
+                  - generic [ref=e827]:
+                    - paragraph [ref=e828]: Hoy
+                    - paragraph [ref=e829]: "-pagos"
+                - generic [ref=e830]:
+                  - generic [ref=e831]:
+                    - paragraph [ref=e832]: Disponible hoy
+                    - paragraph [ref=e833]: $ 654.703
+                  - generic [ref=e834]:
+                    - paragraph [ref=e835]: Después de pagos
+                    - paragraph [ref=e836]: $ 412.902
+                - link "Ver Tesorería" [ref=e837] [cursor=pointer]:
+                  - /url: /copilot/tesoreria
+                  - text: Ver Tesorería
+                  - img [ref=e838]
+          - region "Tablas operativas" [ref=e270]:
+            - generic [ref=e271]:
+              - generic [ref=e272]:
+                - heading "Gestión de deuda por cliente" [level=2] [ref=e273]
+                - paragraph [ref=e274]: Consultá deuda, atrasados y fichas en Clientes, o analizá la cartera completa por período en Cartera.
+                - generic [ref=e275]:
+                  - link "Ver Clientes" [ref=e276] [cursor=pointer]:
+                    - /url: /copilot/clientes
+                    - img [ref=e277]
+                    - text: Ver Clientes
+                  - link "Ver Cartera" [ref=e282] [cursor=pointer]:
+                    - /url: /copilot/cartera
+                    - text: Ver Cartera
+                    - img [ref=e283]
+              - generic [ref=e285]:
+                - generic [ref=e286]:
+                  - heading "Movimientos recientes del período" [level=2] [ref=e287]
+                  - link "Ver todos los datos" [ref=e288] [cursor=pointer]:
+                    - /url: /copilot/datos
+                    - text: Ver todos los datos
+                    - img [ref=e289]
+                - generic [ref=e840]:
+                  - table [ref=e842]:
+                    - rowgroup [ref=e843]:
+                      - row "Fecha Tipo Cliente Comprobante Moneda orig. Debe Haber Saldo" [ref=e844]:
+                        - columnheader "Fecha" [ref=e845]
+                        - columnheader "Tipo" [ref=e846]
+                        - columnheader "Cliente" [ref=e847]
+                        - columnheader "Comprobante" [ref=e848]
+                        - columnheader "Moneda orig." [ref=e849]
+                        - columnheader "Debe" [ref=e850]
+                        - columnheader "Haber" [ref=e851]
+                        - columnheader "Saldo" [ref=e852]
+                    - rowgroup [ref=e853]:
+                      - row "23/06/2026 Factura Mauricio Nicolás Gayol Martínez ZETA:2850 UYU $ 19.520 — $ 19.520" [ref=e854]:
+                        - cell "23/06/2026" [ref=e855]
+                        - cell "Factura" [ref=e856]
+                        - cell "Mauricio Nicolás Gayol Martínez" [ref=e857]:
+                          - link "Mauricio Nicolás Gayol Martínez" [ref=e858] [cursor=pointer]:
+                            - /url: /copilot/clientes/44aae4f6-9766-4ff6-b123-c6bc97ccac61
+                        - cell "ZETA:2850" [ref=e859]
+                        - cell "UYU" [ref=e860]
+                        - cell "$ 19.520" [ref=e861]
+                        - cell "—" [ref=e862]
+                        - cell "$ 19.520" [ref=e863]
+                      - row "23/06/2026 Factura Mauricio Nicolás Gayol Martínez ZETA:CCV1:NOSER:83:0:701:898f8c2b564562329b365e505c91 ? $ 16.104 — —" [ref=e864]:
+                        - cell "23/06/2026" [ref=e865]
+                        - cell "Factura" [ref=e866]
+                        - cell "Mauricio Nicolás Gayol Martínez" [ref=e867]:
+                          - link "Mauricio Nicolás Gayol Martínez" [ref=e868] [cursor=pointer]:
+                            - /url: /copilot/clientes/44aae4f6-9766-4ff6-b123-c6bc97ccac61
+                        - cell "ZETA:CCV1:NOSER:83:0:701:898f8c2b564562329b365e505c91" [ref=e869]
+                        - cell "?" [ref=e870]
+                        - cell "$ 16.104" [ref=e871]
+                        - cell "—" [ref=e872]
+                        - cell "—" [ref=e873]
+                      - row "23/06/2026 Factura Mauricio Nicolás Gayol Martínez ZETA:CCV1:0:83:A:2994 UYU $ 19.520 — $ 19.520" [ref=e874]:
+                        - cell "23/06/2026" [ref=e875]
+                        - cell "Factura" [ref=e876]
+                        - cell "Mauricio Nicolás Gayol Martínez" [ref=e877]:
+                          - link "Mauricio Nicolás Gayol Martínez" [ref=e878] [cursor=pointer]:
+                            - /url: /copilot/clientes/44aae4f6-9766-4ff6-b123-c6bc97ccac61
+                        - cell "ZETA:CCV1:0:83:A:2994" [ref=e879]
+                        - cell "UYU" [ref=e880]
+                        - cell "$ 19.520" [ref=e881]
+                        - cell "—" [ref=e882]
+                        - cell "$ 19.520" [ref=e883]
+                      - row "22/06/2026 Recibo Botica del Señor SRL REC-da92229b UYU — $ 16.104 —" [ref=e884]:
+                        - cell "22/06/2026" [ref=e885]
+                        - cell "Recibo" [ref=e886]
+                        - cell "Botica del Señor SRL" [ref=e887]:
+                          - link "Botica del Señor SRL" [ref=e888] [cursor=pointer]:
+                            - /url: /copilot/clientes/951aaad9-ea76-4163-9be2-c690106da3ca
+                        - cell "REC-da92229b" [ref=e889]
+                        - cell "UYU" [ref=e890]
+                        - cell "—" [ref=e891]
+                        - cell "$ 16.104" [ref=e892]
+                        - cell "—" [ref=e893]
+                      - row "18/06/2026 Recibo Maria Eva Pose REC-8c37f0bb USD — U$S 85 —" [ref=e894]:
+                        - cell "18/06/2026" [ref=e895]
+                        - cell "Recibo" [ref=e896]
+                        - cell "Maria Eva Pose" [ref=e897]:
+                          - link "Maria Eva Pose" [ref=e898] [cursor=pointer]:
+                            - /url: /copilot/clientes/4c87b591-c76b-4a63-ad78-0ea77885d44a
+                        - cell "REC-8c37f0bb" [ref=e899]
+                        - cell "USD" [ref=e900]
+                        - cell "—" [ref=e901]
+                        - cell "U$S 85" [ref=e902]
+                        - cell "—" [ref=e903]
+                      - row "17/06/2026 Factura Gjorgji Martin Gerardo ZETA:CCV1:0:52:A:2993 UYU $ 3.355 — $ 3.355" [ref=e904]:
+                        - cell "17/06/2026" [ref=e905]
+                        - cell "Factura" [ref=e906]
+                        - cell "Gjorgji Martin Gerardo" [ref=e907]:
+                          - link "Gjorgji Martin Gerardo" [ref=e908] [cursor=pointer]:
+                            - /url: /copilot/clientes/0e74cee5-7cb9-4c87-884c-adf05e6e5549
+                        - cell "ZETA:CCV1:0:52:A:2993" [ref=e909]
+                        - cell "UYU" [ref=e910]
+                        - cell "$ 3.355" [ref=e911]
+                        - cell "—" [ref=e912]
+                        - cell "$ 3.355" [ref=e913]
+                      - row "17/06/2026 Recibo Remiplat SA REC-c3c34f37 UYU — $ 96.624 —" [ref=e914]:
+                        - cell "17/06/2026" [ref=e915]
+                        - cell "Recibo" [ref=e916]
+                        - cell "Remiplat SA" [ref=e917]:
+                          - link "Remiplat SA" [ref=e918] [cursor=pointer]:
+                            - /url: /copilot/clientes/bff7c7ea-d969-4bd3-adce-b2240833a863
+                        - cell "REC-c3c34f37" [ref=e919]
+                        - cell "UYU" [ref=e920]
+                        - cell "—" [ref=e921]
+                        - cell "$ 96.624" [ref=e922]
+                        - cell "—" [ref=e923]
+                      - row "17/06/2026 Recibo Suprasur S.A. REC-1fe64b62 USD — U$S 610 —" [ref=e924]:
+                        - cell "17/06/2026" [ref=e925]
+                        - cell "Recibo" [ref=e926]
+                        - cell "Suprasur S.A." [ref=e927]:
+                          - link "Suprasur S.A." [ref=e928] [cursor=pointer]:
+                            - /url: /copilot/clientes/e87e0d33-c637-45ab-81d2-4dd295a17cbe
+                        - cell "REC-1fe64b62" [ref=e929]
+                        - cell "USD" [ref=e930]
+                        - cell "—" [ref=e931]
+                        - cell "U$S 610" [ref=e932]
+                        - cell "—" [ref=e933]
+                      - row "16/06/2026 Nota crédito Trek ZETA:CCV1:0:195:A:395 USD — U$S 824 —" [ref=e934]:
+                        - cell "16/06/2026" [ref=e935]
+                        - cell "Nota crédito" [ref=e936]
+                        - cell "Trek" [ref=e937]:
+                          - link "Trek" [ref=e938] [cursor=pointer]:
+                            - /url: /copilot/clientes/881c3904-74c5-40b9-ba6a-b8aa3a1058e1
+                        - cell "ZETA:CCV1:0:195:A:395" [ref=e939]
+                        - cell "USD" [ref=e940]
+                        - cell "—" [ref=e941]
+                        - cell "U$S 824" [ref=e942]
+                        - cell "—" [ref=e943]
+                      - row "16/06/2026 Factura Trek ZETA:CCV1:0:195:A:2991 USD U$S 824 — U$S 824" [ref=e944]:
+                        - cell "16/06/2026" [ref=e945]
+                        - cell "Factura" [ref=e946]
+                        - cell "Trek" [ref=e947]:
+                          - link "Trek" [ref=e948] [cursor=pointer]:
+                            - /url: /copilot/clientes/881c3904-74c5-40b9-ba6a-b8aa3a1058e1
+                        - cell "ZETA:CCV1:0:195:A:2991" [ref=e949]
+                        - cell "USD" [ref=e950]
+                        - cell "U$S 824" [ref=e951]
+                        - cell "—" [ref=e952]
+                        - cell "U$S 824" [ref=e953]
+                  - button "Ver todos" [ref=e955]
+  - button "Open Next.js Dev Tools" [ref=e961] [cursor=pointer]:
+    - generic [ref=e964]:
+      - text: Compiling
+      - generic [ref=e965]:
+        - generic [ref=e966]: .
+        - generic [ref=e967]: .
+        - generic [ref=e968]: .
+  - alert [ref=e969]

@@ -1,0 +1,497 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - img [ref=e7]
+      - navigation "Navegación del módulo Copilot" [ref=e10]:
+        - button "Expandir menú lateral" [ref=e12]:
+          - img [ref=e13]
+        - link "Hoy" [ref=e15] [cursor=pointer]:
+          - /url: /copilot/hoy
+          - img [ref=e16]
+          - generic [ref=e19]: Hoy
+        - link "Dashboard" [ref=e22] [cursor=pointer]:
+          - /url: /copilot/dashboard
+          - img [ref=e23]
+          - generic [ref=e25]: Dashboard
+        - link "Finanzas" [ref=e26] [cursor=pointer]:
+          - /url: /copilot/finanzas
+          - img [ref=e27]
+          - generic [ref=e30]: Finanzas
+        - link "Reportes" [ref=e31] [cursor=pointer]:
+          - /url: /copilot/reportes
+          - img [ref=e32]
+          - generic [ref=e35]: Reportes
+        - link "Cobranza" [ref=e38] [cursor=pointer]:
+          - /url: /copilot/cobranza
+          - img [ref=e39]
+          - generic [ref=e44]: Cobranza
+        - link "Cartera" [ref=e45] [cursor=pointer]:
+          - /url: /copilot/cartera
+          - img [ref=e46]
+          - generic [ref=e48]: Cartera
+        - link "Clientes" [ref=e49] [cursor=pointer]:
+          - /url: /copilot/clientes
+          - img [ref=e50]
+          - generic [ref=e55]: Clientes
+        - link "Tesorería" [ref=e58] [cursor=pointer]:
+          - /url: /copilot/tesoreria
+          - img [ref=e59]
+          - generic [ref=e62]: Tesorería
+        - link "Alertas" [ref=e65] [cursor=pointer]:
+          - /url: /copilot/alertas
+          - img [ref=e66]
+          - generic [ref=e68]: Alertas
+        - link "Agentes IA" [ref=e69] [cursor=pointer]:
+          - /url: /copilot/agentes
+          - img [ref=e70]
+          - generic [ref=e73]: Agentes IA
+        - link "Datos" [ref=e74] [cursor=pointer]:
+          - /url: /copilot/datos
+          - img [ref=e75]
+          - generic [ref=e79]: Datos
+        - link "Configuración" [ref=e82] [cursor=pointer]:
+          - /url: /copilot/admin
+          - img [ref=e83]
+          - generic [ref=e86]: Configuración
+        - link "Manual de uso" [ref=e87] [cursor=pointer]:
+          - /url: /copilot/manual
+          - img [ref=e88]
+          - generic [ref=e91]: Manual de uso
+        - link "Empresas" [ref=e94] [cursor=pointer]:
+          - /url: /admin/companies
+          - img [ref=e95]
+          - generic [ref=e99]: Empresas
+        - link "Base Zeta" [ref=e100] [cursor=pointer]:
+          - /url: /copilot/knowledge/zeta
+          - img [ref=e101]
+          - generic [ref=e103]: Base Zeta
+    - generic [ref=e104]:
+      - generic [ref=e106]:
+        - generic [ref=e107]:
+          - generic [ref=e108]:
+            - img [ref=e146]
+            - generic [ref=e148]: Jueves, 25 de junio de 2026
+          - 'generic "Fuente: Zeta Actualizado: hace minutos Próxima actualización automática: 21:00 Intervalo: cada 2 h" [ref=e167]': Datos al 25 jun. · próx 21:00
+        - generic [ref=e109]:
+          - button "Notificaciones" [ref=e111]:
+            - img [ref=e112]
+          - button "Menú de usuario" [ref=e149]: A
+          - 'button "Estado del negocio: Atención. 3 señales de atención" [ref=e168]':
+            - generic [ref=e119]: "3"
+      - generic [ref=e123]:
+        - banner [ref=e124]:
+          - generic [ref=e125]:
+            - heading "Copilot · Hoy" [level=1] [ref=e126]
+            - paragraph [ref=e127]: Caja, cobros urgentes y prioridad del día.
+        - generic [ref=e169]:
+          - paragraph [ref=e170]: "Fuente: Zeta · Actualizado: hace minutos · Período: mes actual"
+          - region "Resumen del día" [ref=e171]:
+            - paragraph [ref=e172]: Resumen del día
+            - generic [ref=e173]:
+              - generic [ref=e174]:
+                - button "Ver señales del estado del negocio" [ref=e176]:
+                  - generic [ref=e178]:
+                    - text: Requiere atención
+                    - img [ref=e179]
+                - paragraph [ref=e181]: Gestionar clientes con deuda
+                - paragraph [ref=e182]: 21 clientes con deuda actual. 10 tienen deuda atrasada y 11 están al día.
+                - paragraph [ref=e183]: 7 con deuda atrasada · 4 con cobro lento · 187 clientes activos
+                - navigation "Atajos ejecutivos" [ref=e184]:
+                  - button "Ver clientes con deuda" [ref=e185]
+                  - button "Ver pagos próximos" [ref=e186]
+              - generic [ref=e187]:
+                - button "Ver clientes con deuda" [ref=e188]
+                - link "Ver Cobranza" [ref=e189] [cursor=pointer]:
+                  - /url: /copilot/cobranza
+          - generic [ref=e190]:
+            - button "UYU $ 654.703 USD U$S 9.008 Ver detalle Caja actual saludable" [ref=e191] [cursor=pointer]:
+              - banner [ref=e192]:
+                - generic [ref=e193]: Caja disponible
+              - generic [ref=e196]:
+                - generic [ref=e197]:
+                  - paragraph [ref=e198]: UYU
+                  - paragraph [ref=e199]: $ 654.703
+                - generic [ref=e200]:
+                  - paragraph [ref=e202]: USD
+                  - paragraph [ref=e203]: U$S 9.008
+              - contentinfo [ref=e204]:
+                - button "Ver detalle" [ref=e205]:
+                  - text: Ver detalle
+                  - img [ref=e206]
+                - paragraph [ref=e208]: Caja actual saludable
+            - button "UYU $ 118.993 USD U$S 5.654 Ver detalle 21 clientes con saldo vencido" [ref=e209] [cursor=pointer]:
+              - banner [ref=e210]:
+                - generic [ref=e211]: Deuda actual
+              - generic [ref=e214]:
+                - generic [ref=e215]:
+                  - paragraph [ref=e216]: UYU
+                  - paragraph [ref=e217]: $ 118.993
+                - generic [ref=e218]:
+                  - paragraph [ref=e220]: USD
+                  - paragraph [ref=e221]: U$S 5.654
+              - contentinfo [ref=e222]:
+                - button "Ver detalle" [ref=e223]:
+                  - text: Ver detalle
+                  - img [ref=e224]
+                - paragraph [ref=e226]: 21 clientes con saldo vencido
+            - button "UYU $ 241.801 Ver detalle Cubiertos con caja actual" [ref=e227] [cursor=pointer]:
+              - banner [ref=e228]:
+                - generic [ref=e229]: Pagos próximos
+              - generic [ref=e233]:
+                - paragraph [ref=e234]: UYU
+                - paragraph [ref=e235]: $ 241.801
+              - contentinfo [ref=e236]:
+                - button "Ver detalle" [ref=e237]:
+                  - text: Ver detalle
+                  - img [ref=e238]
+                - paragraph [ref=e240]: Cubiertos con caja actual
+            - button "UYU $ 531.895 USD U$S 9.008 Ver detalle 🟢 Cubierto con cobros previstos" [ref=e241] [cursor=pointer]:
+              - banner [ref=e242]:
+                - generic [ref=e243]: Caja proyectada a fin de mes
+              - generic [ref=e246]:
+                - generic [ref=e247]:
+                  - paragraph [ref=e248]: UYU
+                  - paragraph [ref=e249]: $ 531.895
+                - generic [ref=e250]:
+                  - paragraph [ref=e252]: USD
+                  - paragraph [ref=e253]: U$S 9.008
+              - contentinfo [ref=e254]:
+                - button "Ver detalle" [ref=e255]:
+                  - text: Ver detalle
+                  - img [ref=e256]
+                - paragraph [ref=e258]: 🟢 Cubierto con cobros previstos
+          - generic [ref=e259]:
+            - generic [ref=e260]:
+              - heading "Proyección de caja semanal" [level=2] [ref=e261]
+              - paragraph [ref=e262]: Caja estimada cada viernes según cobros esperados y pagos cargados.
+            - generic [ref=e263]:
+              - generic [ref=e264]:
+                - paragraph [ref=e265]: Hoy
+                - generic [ref=e266]:
+                  - paragraph [ref=e267]: $ 654.703
+                  - paragraph [ref=e268]: U$S 9.008
+                - generic [ref=e269]: Base actual
+              - generic [ref=e270]:
+                - paragraph [ref=e271]: Próximo viernes
+                - generic [ref=e272]:
+                  - paragraph [ref=e273]: $ 654.703
+                  - paragraph [ref=e274]: U$S 9.008
+                - paragraph [ref=e275]: +$ 0 · +U$S 0 vs hoy
+                - generic [ref=e276]: Mejor que hoy
+              - generic [ref=e277]:
+                - paragraph [ref=e278]: Vie 03/07
+                - generic [ref=e279]:
+                  - paragraph [ref=e280]: $ 654.703
+                  - paragraph [ref=e281]: U$S 9.008
+                - paragraph [ref=e282]: +$ 0 · +U$S 0 vs hoy
+                - generic [ref=e283]: Mejor que hoy
+              - generic [ref=e284]:
+                - paragraph [ref=e285]: Vie 10/07
+                - generic [ref=e286]:
+                  - paragraph [ref=e287]: $ 654.703
+                  - paragraph [ref=e288]: U$S 9.008
+                - paragraph [ref=e289]: +$ 0 · +U$S 0 vs hoy
+                - generic [ref=e290]: Mejor que hoy
+              - generic [ref=e291]:
+                - paragraph [ref=e292]: Vie 17/07
+                - generic [ref=e293]:
+                  - paragraph [ref=e294]: $ 654.703
+                  - paragraph [ref=e295]: U$S 9.008
+                - paragraph [ref=e296]: +$ 0 · +U$S 0 vs hoy
+                - generic [ref=e297]: Mejor que hoy
+              - generic [ref=e298]:
+                - paragraph [ref=e299]: Vie 24/07
+                - generic [ref=e300]:
+                  - paragraph [ref=e301]: $ 654.703
+                  - paragraph [ref=e302]: U$S 9.008
+                - paragraph [ref=e303]: +$ 0 · +U$S 0 vs hoy
+                - generic [ref=e304]: Mejor que hoy
+          - generic [ref=e307]:
+            - generic [ref=e308]:
+              - generic [ref=e309]:
+                - img [ref=e310]
+                - generic [ref=e312]:
+                  - heading "Próximos cobros y pagos" [level=2] [ref=e313]
+                  - paragraph [ref=e314]: Pagos, compromisos y seguimientos por período.
+              - link "Ver Tesorería" [ref=e315] [cursor=pointer]:
+                - /url: /copilot/tesoreria?section=obligations
+                - text: Ver Tesorería
+                - img [ref=e316]
+            - tablist "Período del calendario" [ref=e319]:
+              - tab "Este mes 3" [selected] [ref=e320]:
+                - generic [ref=e321]: Este mes
+                - generic [ref=e322]: "3"
+              - tab "Próximo mes" [ref=e323]:
+                - generic [ref=e324]: Próximo mes
+              - tab "90 días" [ref=e325]:
+                - generic [ref=e326]: 90 días
+            - generic [ref=e327]:
+              - generic [ref=e328]:
+                - paragraph [ref=e330]: 15/06/2026 · Vencido
+                - generic [ref=e332]:
+                  - generic [ref=e333]: Pago
+                  - paragraph [ref=e334]: Servicios
+                  - generic [ref=e335]:
+                    - paragraph [ref=e336]: $ 6.000
+                    - paragraph [ref=e337]: Vencido
+                    - link "Ver" [ref=e338] [cursor=pointer]:
+                      - /url: /copilot/tesoreria?section=obligations
+                      - text: Ver
+                      - img [ref=e339]
+              - generic [ref=e341]:
+                - paragraph [ref=e343]: 22/06/2026 · Vencido
+                - generic [ref=e344]:
+                  - generic [ref=e345]:
+                    - generic [ref=e346]: Pago
+                    - paragraph [ref=e347]: Pago Bps
+                    - generic [ref=e348]:
+                      - paragraph [ref=e349]: $ 226.632
+                      - paragraph [ref=e350]: Vencido
+                      - link "Ver" [ref=e351] [cursor=pointer]:
+                        - /url: /copilot/tesoreria?section=obligations
+                        - text: Ver
+                        - img [ref=e352]
+                  - generic [ref=e354]:
+                    - generic [ref=e355]: Pago
+                    - paragraph [ref=e356]: Vacacional Ana
+                    - generic [ref=e357]:
+                      - paragraph [ref=e358]: $ 9.169
+                      - paragraph [ref=e359]: Vencido
+                      - link "Ver" [ref=e360] [cursor=pointer]:
+                        - /url: /copilot/tesoreria?section=obligations
+                        - text: Ver
+                        - img [ref=e361]
+          - generic [ref=e363]:
+            - generic [ref=e364]:
+              - generic [ref=e365]:
+                - heading "Clientes con deuda" [level=2] [ref=e366]
+                - paragraph [ref=e367]: Ordenados por antigüedad de mora.
+              - generic [ref=e368]:
+                - button "Generar PDF" [ref=e369]:
+                  - img [ref=e370]
+                  - text: Generar PDF
+                - button "Ver casos" [ref=e374]
+            - generic [ref=e376]:
+              - generic [ref=e377]:
+                - generic [ref=e378]: Deuda actual UYU $ 118.993
+                - generic [ref=e379]: Deuda actual USD U$S 5.654
+                - generic [ref=e380]: Atrasado UYU $ 23.302
+                - generic [ref=e381]: Atrasado USD U$S 2.380
+              - table [ref=e384]:
+                - rowgroup [ref=e385]:
+                  - row "Cliente Moneda Deuda actual Atrasado Días de atraso Acción" [ref=e386]:
+                    - columnheader "Cliente" [ref=e387]
+                    - columnheader "Moneda" [ref=e388]
+                    - columnheader "Deuda actual" [ref=e389]
+                    - columnheader "Atrasado" [ref=e390]
+                    - columnheader "Días de atraso" [ref=e391]
+                    - columnheader "Acción" [ref=e392]
+                - rowgroup [ref=e393]:
+                  - row "Trexys Consultores S.A.S. Atrasado USD U$S 1.049 U$S 1.049 129 días Ver ficha" [ref=e394] [cursor=pointer]:
+                    - cell "Trexys Consultores S.A.S. Atrasado" [ref=e395]:
+                      - generic [ref=e396]:
+                        - img [ref=e397]
+                        - generic [ref=e399]: Trexys Consultores S.A.S.
+                        - generic [ref=e400]: Atrasado
+                    - cell "USD" [ref=e401]
+                    - cell "U$S 1.049" [ref=e402]
+                    - cell "U$S 1.049" [ref=e403]
+                    - cell "129 días" [ref=e404]
+                    - cell "Ver ficha" [ref=e405]:
+                      - link "Ver ficha" [ref=e407]:
+                        - /url: /copilot/clientes/904cf1f1-89cb-4b5c-bd9c-dcd3f0f24c58
+                        - img [ref=e408]
+                        - text: Ver ficha
+                  - row "Petrovic Solutions Atrasado USD U$S 936 U$S 936 153 días Ver ficha" [ref=e412] [cursor=pointer]:
+                    - cell "Petrovic Solutions Atrasado" [ref=e413]:
+                      - generic [ref=e414]:
+                        - img [ref=e415]
+                        - generic [ref=e417]: Petrovic Solutions
+                        - generic [ref=e418]: Atrasado
+                    - cell "USD" [ref=e419]
+                    - cell "U$S 936" [ref=e420]
+                    - cell "U$S 936" [ref=e421]
+                    - cell "153 días" [ref=e422]
+                    - cell "Ver ficha" [ref=e423]:
+                      - link "Ver ficha" [ref=e425]:
+                        - /url: /copilot/clientes/94ee84d9-d2a1-45a5-ac67-9e3d53f63179
+                        - img [ref=e426]
+                        - text: Ver ficha
+                  - row "Recon Security SRL Atrasado USD U$S 183 U$S 183 136 días Ver ficha" [ref=e430] [cursor=pointer]:
+                    - cell "Recon Security SRL Atrasado" [ref=e431]:
+                      - generic [ref=e432]:
+                        - img [ref=e433]
+                        - generic [ref=e435]: Recon Security SRL
+                        - generic [ref=e436]: Atrasado
+                    - cell "USD" [ref=e437]
+                    - cell "U$S 183" [ref=e438]
+                    - cell "U$S 183" [ref=e439]
+                    - cell "136 días" [ref=e440]
+                    - cell "Ver ficha" [ref=e441]:
+                      - link "Ver ficha" [ref=e443]:
+                        - /url: /copilot/clientes/45699d66-bd83-4b5c-9b41-13ddadddf304
+                        - img [ref=e444]
+                        - text: Ver ficha
+                  - row "Estudio Fletcher SAS Atrasado UYU $ 29.280 $ 14.640 22 días Ver ficha" [ref=e448] [cursor=pointer]:
+                    - cell "Estudio Fletcher SAS Atrasado" [ref=e449]:
+                      - generic [ref=e450]:
+                        - img [ref=e451]
+                        - generic [ref=e453]: Estudio Fletcher SAS
+                        - generic [ref=e454]: Atrasado
+                    - cell "UYU" [ref=e455]
+                    - cell "$ 29.280" [ref=e456]
+                    - cell "$ 14.640" [ref=e457]
+                    - cell "22 días" [ref=e458]
+                    - cell "Ver ficha" [ref=e459]:
+                      - link "Ver ficha" [ref=e461]:
+                        - /url: /copilot/clientes/8fd1272a-3829-4d50-8aa8-66aced1828a0
+                        - img [ref=e462]
+                        - text: Ver ficha
+                  - row "El Pais S.A. Atrasado UYU $ 8.662 $ 8.662 18 días Ver ficha WA Mail" [ref=e466] [cursor=pointer]:
+                    - cell "El Pais S.A. Atrasado" [ref=e467]:
+                      - generic [ref=e468]:
+                        - img [ref=e469]
+                        - generic [ref=e471]: El Pais S.A.
+                        - generic [ref=e472]: Atrasado
+                    - cell "UYU" [ref=e473]
+                    - cell "$ 8.662" [ref=e474]
+                    - cell "$ 8.662" [ref=e475]
+                    - cell "18 días" [ref=e476]
+                    - cell "Ver ficha WA Mail" [ref=e477]:
+                      - generic [ref=e478]:
+                        - link "Ver ficha" [ref=e479]:
+                          - /url: /copilot/clientes/facc4033-d2ff-4ea2-8f87-1c86990c5555
+                          - img [ref=e480]
+                          - text: Ver ficha
+                        - link "WA" [ref=e484]:
+                          - /url: https://wa.me/2
+                          - img [ref=e485]
+                          - text: WA
+                        - link "Mail" [ref=e487]:
+                          - /url: mailto:adiaz%40elpais.com.uy
+                          - img [ref=e488]
+                          - text: Mail
+                  - row "Errede Supermercado S.R.L. Atrasado USD U$S 226 U$S 183 22 días Ver ficha" [ref=e491] [cursor=pointer]:
+                    - cell "Errede Supermercado S.R.L. Atrasado" [ref=e492]:
+                      - generic [ref=e493]:
+                        - img [ref=e494]
+                        - generic [ref=e496]: Errede Supermercado S.R.L.
+                        - generic [ref=e497]: Atrasado
+                    - cell "USD" [ref=e498]
+                    - cell "U$S 226" [ref=e499]
+                    - cell "U$S 183" [ref=e500]
+                    - cell "22 días" [ref=e501]
+                    - cell "Ver ficha" [ref=e502]:
+                      - link "Ver ficha" [ref=e504]:
+                        - /url: /copilot/clientes/a264a0b8-ea11-4419-92a8-370e9ce94c6c
+                        - img [ref=e505]
+                        - text: Ver ficha
+                  - row "Acquagarden SAS Atrasado USD U$S 29 U$S 29 22 días Ver ficha WA Mail" [ref=e509] [cursor=pointer]:
+                    - cell "Acquagarden SAS Atrasado" [ref=e510]:
+                      - generic [ref=e511]:
+                        - img [ref=e512]
+                        - generic [ref=e514]: Acquagarden SAS
+                        - generic [ref=e515]: Atrasado
+                    - cell "USD" [ref=e516]
+                    - cell "U$S 29" [ref=e517]
+                    - cell "U$S 29" [ref=e518]
+                    - cell "22 días" [ref=e519]
+                    - cell "Ver ficha WA Mail" [ref=e520]:
+                      - generic [ref=e521]:
+                        - link "Ver ficha" [ref=e522]:
+                          - /url: /copilot/clientes/411b0506-b51e-4764-b3ce-fd0688d941c4
+                          - img [ref=e523]
+                          - text: Ver ficha
+                        - link "WA" [ref=e527]:
+                          - /url: https://wa.me/092972264
+                          - img [ref=e528]
+                          - text: WA
+                        - link "Mail" [ref=e530]:
+                          - /url: mailto:marianelamtv%40gmail.com
+                          - img [ref=e531]
+                          - text: Mail
+                  - row "Cafe de especialdiad srl UYU $ 24.400 — — Ver ficha Mail" [ref=e534] [cursor=pointer]:
+                    - cell "Cafe de especialdiad srl" [ref=e535]:
+                      - generic [ref=e536]:
+                        - img [ref=e537]
+                        - generic [ref=e539]: Cafe de especialdiad srl
+                    - cell "UYU" [ref=e540]
+                    - cell "$ 24.400" [ref=e541]
+                    - cell "—" [ref=e542]
+                    - cell "—" [ref=e543]
+                    - cell "Ver ficha Mail" [ref=e544]:
+                      - generic [ref=e545]:
+                        - link "Ver ficha" [ref=e546]:
+                          - /url: /copilot/clientes/079b19d2-23dd-48cd-b9fd-191575fce5fc
+                          - img [ref=e547]
+                          - text: Ver ficha
+                        - link "Mail" [ref=e551]:
+                          - /url: mailto:info%40cafeamorperfecto.uy
+                          - img [ref=e552]
+                          - text: Mail
+                  - row "Mauricio Nicolás Gayol Martínez UYU $ 19.520 — — Ver ficha Mail" [ref=e555] [cursor=pointer]:
+                    - cell "Mauricio Nicolás Gayol Martínez" [ref=e556]:
+                      - generic [ref=e557]:
+                        - img [ref=e558]
+                        - generic [ref=e560]: Mauricio Nicolás Gayol Martínez
+                    - cell "UYU" [ref=e561]
+                    - cell "$ 19.520" [ref=e562]
+                    - cell "—" [ref=e563]
+                    - cell "—" [ref=e564]
+                    - cell "Ver ficha Mail" [ref=e565]:
+                      - generic [ref=e566]:
+                        - link "Ver ficha" [ref=e567]:
+                          - /url: /copilot/clientes/44aae4f6-9766-4ff6-b123-c6bc97ccac61
+                          - img [ref=e568]
+                          - text: Ver ficha
+                        - link "Mail" [ref=e572]:
+                          - /url: mailto:mgayol%40trendingsoftware.com
+                          - img [ref=e573]
+                          - text: Mail
+                  - row "Nirmex S.A. UYU $ 17.080 — — Ver ficha" [ref=e576] [cursor=pointer]:
+                    - cell "Nirmex S.A." [ref=e577]:
+                      - generic [ref=e578]:
+                        - img [ref=e579]
+                        - generic [ref=e581]: Nirmex S.A.
+                    - cell "UYU" [ref=e582]
+                    - cell "$ 17.080" [ref=e583]
+                    - cell "—" [ref=e584]
+                    - cell "—" [ref=e585]
+                    - cell "Ver ficha" [ref=e586]:
+                      - link "Ver ficha" [ref=e588]:
+                        - /url: /copilot/clientes/7671f4d1-8710-43ab-aff1-3fb53c80442b
+                        - img [ref=e589]
+                        - text: Ver ficha
+              - generic [ref=e593]:
+                - paragraph [ref=e594]: Mostrando 1–10 de 21 clientes
+                - generic [ref=e595]:
+                  - generic [ref=e596]:
+                    - generic [ref=e597]: Por página
+                    - combobox "Por página" [ref=e598]:
+                      - option "10" [selected]
+                      - option "25"
+                      - option "50"
+                      - option "100"
+                  - generic [ref=e599]:
+                    - button "Anterior" [disabled] [ref=e600]
+                    - generic [ref=e601]: 1 / 3
+                    - button "Siguiente" [ref=e602]
+          - generic [ref=e603]:
+            - generic [ref=e605]:
+              - img [ref=e606]
+              - generic [ref=e609]:
+                - paragraph [ref=e610]: Agenda de cobranza
+                - paragraph [ref=e611]: Seguimientos y promesas registradas
+            - paragraph [ref=e612]: Sin seguimientos de cobranza. Creá uno en Acciones o desde la ficha del cliente.
+            - link "Ver agenda" [ref=e614] [cursor=pointer]:
+              - /url: /copilot/cobranza#cobranza-agenda
+              - text: Ver agenda
+              - img [ref=e615]
+  - button "Open Next.js Dev Tools" [ref=e159] [cursor=pointer]:
+    - generic [ref=e618]:
+      - text: Compiling
+      - generic [ref=e619]:
+        - generic [ref=e620]: .
+        - generic [ref=e621]: .
+        - generic [ref=e622]: .
+  - alert [ref=e158]

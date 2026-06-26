@@ -1,0 +1,236 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - img [ref=e7]
+      - navigation "Navegación del módulo Copilot" [ref=e10]:
+        - button "Expandir menú lateral" [ref=e12]:
+          - img [ref=e13]
+        - link "Hoy" [ref=e15] [cursor=pointer]:
+          - /url: /copilot/hoy
+          - img [ref=e16]
+          - generic [ref=e19]: Hoy
+        - link "Dashboard" [ref=e22] [cursor=pointer]:
+          - /url: /copilot/dashboard
+          - img [ref=e23]
+          - generic [ref=e25]: Dashboard
+        - link "Finanzas" [ref=e26] [cursor=pointer]:
+          - /url: /copilot/finanzas
+          - img [ref=e27]
+          - generic [ref=e30]: Finanzas
+        - link "Reportes" [ref=e31] [cursor=pointer]:
+          - /url: /copilot/reportes
+          - img [ref=e32]
+          - generic [ref=e35]: Reportes
+        - link "Cobranza" [ref=e38] [cursor=pointer]:
+          - /url: /copilot/cobranza
+          - img [ref=e39]
+          - generic [ref=e44]: Cobranza
+        - link "Cartera" [ref=e45] [cursor=pointer]:
+          - /url: /copilot/cartera
+          - img [ref=e46]
+          - generic [ref=e48]: Cartera
+        - link "Clientes" [ref=e49] [cursor=pointer]:
+          - /url: /copilot/clientes
+          - img [ref=e50]
+          - generic [ref=e55]: Clientes
+        - link "Tesorería" [ref=e58] [cursor=pointer]:
+          - /url: /copilot/tesoreria
+          - img [ref=e59]
+          - generic [ref=e62]: Tesorería
+        - link "Alertas" [ref=e65] [cursor=pointer]:
+          - /url: /copilot/alertas
+          - img [ref=e66]
+          - generic [ref=e68]: Alertas
+        - link "Agentes IA" [ref=e69] [cursor=pointer]:
+          - /url: /copilot/agentes
+          - img [ref=e70]
+          - generic [ref=e73]: Agentes IA
+        - link "Datos" [ref=e74] [cursor=pointer]:
+          - /url: /copilot/datos
+          - img [ref=e75]
+          - generic [ref=e79]: Datos
+        - link "Configuración" [ref=e82] [cursor=pointer]:
+          - /url: /copilot/admin
+          - img [ref=e83]
+          - generic [ref=e86]: Configuración
+        - link "Manual de uso" [ref=e87] [cursor=pointer]:
+          - /url: /copilot/manual
+          - img [ref=e88]
+          - generic [ref=e91]: Manual de uso
+        - link "Empresas" [ref=e94] [cursor=pointer]:
+          - /url: /admin/companies
+          - img [ref=e95]
+          - generic [ref=e99]: Empresas
+        - link "Base Zeta" [ref=e100] [cursor=pointer]:
+          - /url: /copilot/knowledge/zeta
+          - img [ref=e101]
+          - generic [ref=e103]: Base Zeta
+    - generic [ref=e104]:
+      - generic [ref=e105]:
+        - generic [ref=e106]:
+          - generic [ref=e108]:
+            - img [ref=e184]
+            - generic [ref=e186]: Jueves, 25 de junio de 2026
+          - generic [ref=e109]:
+            - button "Notificaciones" [ref=e111]:
+              - img [ref=e112]
+            - button "Menú de usuario" [ref=e187]: A
+            - button "Estado del negocio" [ref=e117]:
+              - generic [ref=e119]: …
+        - status "Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda." [ref=e120]:
+          - paragraph [ref=e121]: Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda.
+      - main [ref=e123]:
+        - generic [ref=e124]:
+          - generic [ref=e125]:
+            - heading "Panel administrativo" [level=1] [ref=e126]
+            - paragraph [ref=e127]: Gestioná usuarios, roles y permisos de acceso a la empresa.
+          - generic [ref=e128]:
+            - button "Actualizar" [ref=e129]:
+              - img [ref=e130]
+              - text: Actualizar
+            - button "Nuevo usuario" [ref=e135]:
+              - img [ref=e136]
+              - text: Nuevo usuario
+        - generic [ref=e137]:
+          - generic [ref=e138]:
+            - paragraph [ref=e139]: Usuarios activos
+            - paragraph [ref=e140]: "3"
+            - paragraph [ref=e141]: Pueden ingresar a esta empresa
+          - generic [ref=e142]:
+            - paragraph [ref=e143]: Solo lectura
+            - paragraph [ref=e144]: "2"
+            - paragraph [ref=e145]: Acceso de consulta
+          - generic [ref=e146]:
+            - paragraph [ref=e147]: Administradores
+            - paragraph [ref=e148]: "1"
+            - paragraph [ref=e149]: Gestionan usuarios y permisos
+          - generic [ref=e150]:
+            - paragraph [ref=e151]: Inactivos
+            - paragraph [ref=e152]: "1"
+            - paragraph [ref=e153]: Sin acceso activo
+        - generic [ref=e154]:
+          - generic [ref=e157]:
+            - heading "Usuarios de la empresa" [level=2] [ref=e158]
+            - paragraph [ref=e159]: 4 usuarios encontrados
+          - table [ref=e189]:
+            - rowgroup [ref=e190]:
+              - row "Usuario Rol Estado Último acceso Acciones" [ref=e191]:
+                - columnheader "Usuario" [ref=e192]
+                - columnheader "Rol" [ref=e193]
+                - columnheader "Estado" [ref=e194]
+                - columnheader "Último acceso" [ref=e195]
+                - columnheader "Acciones" [ref=e196]
+            - rowgroup [ref=e197]:
+              - row "Ceci mcecilia.olmos@gmail.com Usuario Activo 07/06/2026" [ref=e198]:
+                - cell "Ceci mcecilia.olmos@gmail.com" [ref=e199]:
+                  - generic [ref=e200]: Ceci
+                  - generic [ref=e201]: mcecilia.olmos@gmail.com
+                - cell "Usuario" [ref=e202]:
+                  - generic [ref=e203]:
+                    - combobox [ref=e204]:
+                      - option "Administrador general"
+                      - option "Usuario" [selected]
+                    - img
+                - cell "Activo" [ref=e205]:
+                  - generic [ref=e206]: Activo
+                - cell "07/06/2026" [ref=e207]
+                - cell [ref=e208]:
+                  - generic [ref=e209]:
+                    - button "Editar permisos" [ref=e210]:
+                      - img [ref=e211]
+                    - button "Desactivar" [ref=e213]:
+                      - img [ref=e214]
+                    - button "Resetear PIN" [ref=e217]:
+                      - img [ref=e218]
+                    - button "Eliminar usuario" [ref=e221]:
+                      - img [ref=e222]
+              - row "Juanma juanma@easydigitalagency.com Usuario Activo 07/06/2026" [ref=e225]:
+                - cell "Juanma juanma@easydigitalagency.com" [ref=e226]:
+                  - generic [ref=e227]: Juanma
+                  - generic [ref=e228]: juanma@easydigitalagency.com
+                - cell "Usuario" [ref=e229]:
+                  - generic [ref=e230]:
+                    - combobox [ref=e231]:
+                      - option "Administrador general"
+                      - option "Usuario" [selected]
+                    - img
+                - cell "Activo" [ref=e232]:
+                  - generic [ref=e233]: Activo
+                - cell "07/06/2026" [ref=e234]
+                - cell [ref=e235]:
+                  - generic [ref=e236]:
+                    - button "Editar permisos" [ref=e237]:
+                      - img [ref=e238]
+                    - button "Desactivar" [ref=e240]:
+                      - img [ref=e241]
+                    - button "Resetear PIN" [ref=e244]:
+                      - img [ref=e245]
+                    - button "Eliminar usuario" [ref=e248]:
+                      - img [ref=e249]
+              - row "Usuario Demo usuariodemo@gmail.com Demo solo lectura Inactivo 03/06/2026" [ref=e252]:
+                - cell "Usuario Demo usuariodemo@gmail.com" [ref=e253]:
+                  - generic [ref=e254]: Usuario Demo
+                  - generic [ref=e255]: usuariodemo@gmail.com
+                - cell "Demo solo lectura" [ref=e256]:
+                  - generic [ref=e257]:
+                    - combobox [ref=e258]:
+                      - option "Administrador general"
+                      - option "Usuario"
+                      - option "Demo solo lectura" [selected]
+                    - img
+                - cell "Inactivo" [ref=e259]:
+                  - generic [ref=e260]: Inactivo
+                - cell "03/06/2026" [ref=e261]
+                - cell [ref=e262]:
+                  - generic [ref=e263]:
+                    - button "Editar permisos" [ref=e264]:
+                      - img [ref=e265]
+                    - button "Activar" [ref=e267]:
+                      - img [ref=e268]
+                    - button "Resetear PIN" [ref=e272]:
+                      - img [ref=e273]
+                    - button "Eliminar usuario" [ref=e276]:
+                      - img [ref=e277]
+              - row "daniel superadmin daniel.odella@gmail.com Administrador general Activo 25/06/2026" [ref=e280]:
+                - cell "daniel superadmin daniel.odella@gmail.com" [ref=e281]:
+                  - generic [ref=e282]: daniel superadmin
+                  - generic [ref=e283]: daniel.odella@gmail.com
+                - cell "Administrador general" [ref=e284]:
+                  - generic [ref=e285]:
+                    - combobox [ref=e286]:
+                      - option "Administrador general" [selected]
+                      - option "Usuario"
+                    - img
+                - cell "Activo" [ref=e287]:
+                  - generic [ref=e288]: Activo
+                - cell "25/06/2026" [ref=e289]
+                - cell [ref=e290]:
+                  - generic [ref=e291]:
+                    - button "Editar permisos" [ref=e292]:
+                      - img [ref=e293]
+                    - button "Desactivar" [ref=e295]:
+                      - img [ref=e296]
+                    - button "Resetear PIN" [ref=e299]:
+                      - img [ref=e300]
+                    - button "Eliminar usuario" [ref=e303]:
+                      - img [ref=e304]
+        - generic [ref=e163]:
+          - img [ref=e164]
+          - generic [ref=e167]:
+            - paragraph [ref=e168]: Recomendaciones de seguridad
+            - list [ref=e169]:
+              - listitem [ref=e170]: No compartir un usuario administrador entre personas.
+              - listitem [ref=e171]:
+                - text: Usá la cuenta
+                - emphasis [ref=e172]: Demo solo lectura
+                - text: para mostrar el sistema sin riesgo.
+              - listitem [ref=e173]: Resetear el PIN invalida la sesión activa de ese usuario.
+              - listitem [ref=e174]: Mantener siempre al menos un administrador activo.
+  - button "Open Next.js Dev Tools" [ref=e307] [cursor=pointer]:
+    - generic [ref=e310]:
+      - text: Compiling
+      - generic [ref=e311]:
+        - generic [ref=e312]: .
+        - generic [ref=e313]: .
+        - generic [ref=e314]: .
+  - alert [ref=e315]

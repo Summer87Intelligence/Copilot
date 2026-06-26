@@ -225,7 +225,7 @@ export function buildActionsFromPortfolioRows(
     const reason = normalizeActionReason(
       hasOverdue
         ? `Deuda atrasada de ${row.name}. Riesgo ${row.risk}.`
-        : `Deuda actual de ${row.name}.`
+        : `Deuda actual a cobrar de ${row.name}.`
     );
 
     actions.push({

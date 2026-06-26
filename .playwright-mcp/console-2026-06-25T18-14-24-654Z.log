@@ -1,0 +1,2 @@
+[    2245ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://erzdifkvvailxnwdukzf.supabase.co/rest/v1/companies?select=id%2Cname%2Cslug%2Ccreated_at&slug=eq.summer87-demo:0
+[    2649ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://erzdifkvvailxnwdukzf.supabase.co/rest/v1/companies?select=id%2Cname%2Cslug%2Ccreated_at&slug=eq.summer87-demo:0

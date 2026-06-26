@@ -1,0 +1,289 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - img [ref=e7]
+      - navigation "Navegación del módulo Copilot" [ref=e10]:
+        - button "Expandir menú lateral" [ref=e12]:
+          - img [ref=e13]
+        - link "Hoy" [ref=e15] [cursor=pointer]:
+          - /url: /copilot/hoy
+          - img [ref=e16]
+          - generic [ref=e19]: Hoy
+        - link "Dashboard" [ref=e22] [cursor=pointer]:
+          - /url: /copilot/dashboard
+          - img [ref=e23]
+          - generic [ref=e25]: Dashboard
+        - link "Finanzas" [ref=e26] [cursor=pointer]:
+          - /url: /copilot/finanzas
+          - img [ref=e27]
+          - generic [ref=e30]: Finanzas
+        - link "Reportes" [ref=e31] [cursor=pointer]:
+          - /url: /copilot/reportes
+          - img [ref=e32]
+          - generic [ref=e35]: Reportes
+        - link "Cobranza" [ref=e38] [cursor=pointer]:
+          - /url: /copilot/cobranza
+          - img [ref=e39]
+          - generic [ref=e44]: Cobranza
+        - link "Cartera" [ref=e45] [cursor=pointer]:
+          - /url: /copilot/cartera
+          - img [ref=e46]
+          - generic [ref=e48]: Cartera
+        - link "Clientes" [ref=e49] [cursor=pointer]:
+          - /url: /copilot/clientes
+          - img [ref=e50]
+          - generic [ref=e55]: Clientes
+        - link "Tesorería" [ref=e58] [cursor=pointer]:
+          - /url: /copilot/tesoreria
+          - img [ref=e59]
+          - generic [ref=e62]: Tesorería
+        - link "Alertas" [ref=e65] [cursor=pointer]:
+          - /url: /copilot/alertas
+          - img [ref=e66]
+          - generic [ref=e68]: Alertas
+        - link "Agentes IA" [ref=e69] [cursor=pointer]:
+          - /url: /copilot/agentes
+          - img [ref=e70]
+          - generic [ref=e73]: Agentes IA
+        - link "Datos" [ref=e74] [cursor=pointer]:
+          - /url: /copilot/datos
+          - img [ref=e75]
+          - generic [ref=e79]: Datos
+        - link "Configuración" [ref=e82] [cursor=pointer]:
+          - /url: /copilot/admin
+          - img [ref=e83]
+          - generic [ref=e86]: Configuración
+        - link "Manual de uso" [ref=e87] [cursor=pointer]:
+          - /url: /copilot/manual
+          - img [ref=e88]
+          - generic [ref=e91]: Manual de uso
+        - link "Empresas" [ref=e94] [cursor=pointer]:
+          - /url: /admin/companies
+          - img [ref=e95]
+          - generic [ref=e99]: Empresas
+        - link "Base Zeta" [ref=e100] [cursor=pointer]:
+          - /url: /copilot/knowledge/zeta
+          - img [ref=e101]
+          - generic [ref=e103]: Base Zeta
+    - generic [ref=e104]:
+      - generic [ref=e105]:
+        - generic [ref=e106]:
+          - generic [ref=e107]:
+            - generic [ref=e108]:
+              - img [ref=e109]
+              - generic [ref=e111]: Jueves, 25 de junio de 2026
+            - 'generic "Fuente: Zeta Actualizado: hace minutos Próxima actualización automática: 15:00 Intervalo: cada 2 h" [ref=e251]': Datos al 25 jun. · próx 15:00
+          - generic [ref=e112]:
+            - button "Notificaciones" [ref=e114]:
+              - img [ref=e115]
+            - button "Menú de usuario" [ref=e119]: A
+            - 'button "Estado del negocio: Atención. 3 señales de atención" [ref=e252]':
+              - generic [ref=e123]: "3"
+        - status "Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda." [ref=e124]:
+          - paragraph [ref=e125]: Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda.
+      - generic [ref=e126]:
+        - banner [ref=e127]:
+          - generic [ref=e128]:
+            - paragraph [ref=e129]: Summer87 Copilot
+            - heading "Tesorería" [level=1] [ref=e130]
+            - paragraph [ref=e131]: Caja disponible, pagos programados y registros manuales.
+        - generic [ref=e134]:
+          - generic [ref=e135]:
+            - button "Refrescar" [ref=e137]:
+              - img [ref=e138]
+              - text: Refrescar
+            - generic "Caja disponible total en USD estimado" [ref=e143]:
+              - generic [ref=e144]:
+                - paragraph [ref=e145]: Caja disponible
+                - generic [ref=e147]: USD estimado · TC 40
+              - generic [ref=e148]: USD 25.375,95
+              - paragraph [ref=e149]: Dinero disponible al corte + movimientos confirmados.
+              - generic [ref=e151]:
+                - generic [ref=e152]:
+                  - generic [ref=e153]: "Pesos: UYU 654.702,63"
+                  - generic [ref=e154]: "Dólares: USD 9.008,38"
+                - paragraph [ref=e155]: Vista convertida. Los datos originales se mantienen por moneda.
+            - generic [ref=e156]:
+              - paragraph [ref=e157]: Acciones rápidas
+              - generic [ref=e158]:
+                - 'button "Cargar ingreso Plata que entra manualmente. Ejemplo: aporte, ajuste, ingreso no-Zeta." [ref=e159]':
+                  - img [ref=e160]
+                  - generic [ref=e163]: Cargar ingreso
+                  - generic [ref=e164]: Plata que entra manualmente.
+                  - generic [ref=e165]: "Ejemplo: aporte, ajuste, ingreso no-Zeta."
+                - 'button "Cargar egreso Plata que sale manualmente. Ejemplo: retiro, gasto puntual, pago no programado." [ref=e166]':
+                  - img [ref=e167]
+                  - generic [ref=e170]: Cargar egreso
+                  - generic [ref=e171]: Plata que sale manualmente.
+                  - generic [ref=e172]: "Ejemplo: retiro, gasto puntual, pago no programado."
+                - 'button "Nuevo pago programado Pago único con fecha futura. Ejemplo: BPS Mayo, proveedor puntual, DGI de este mes." [ref=e173]':
+                  - img [ref=e174]
+                  - generic [ref=e178]: Nuevo pago programado
+                  - generic [ref=e179]: Pago único con fecha futura.
+                  - generic [ref=e180]: "Ejemplo: BPS Mayo, proveedor puntual, DGI de este mes."
+                - 'button "Nuevo pago recurrente Pago que se repite automáticamente. Ejemplo: Netflix todos los 1 del mes — USD 5. Frecuencia: mensual, semanal o anual." [ref=e181]':
+                  - img [ref=e182]
+                  - generic [ref=e187]: Nuevo pago recurrente
+                  - generic [ref=e188]: Pago que se repite automáticamente.
+                  - generic [ref=e189]: "Ejemplo: Netflix todos los 1 del mes — USD 5. Frecuencia: mensual, semanal o anual."
+              - paragraph [ref=e190]:
+                - strong [ref=e191]: "Pago programado:"
+                - text: pago único con fecha futura.
+                - strong [ref=e192]: "Pago recurrente:"
+                - text: se repite automáticamente (mensual, semanal o anual).
+          - navigation "Secciones de tesorería" [ref=e193]:
+            - button "Caja" [ref=e194]
+            - button "Pagos próximos" [ref=e195]
+            - button "Movimientos" [ref=e196]
+            - button "Cobranza del mes" [active] [ref=e197]
+          - generic [ref=e460]:
+            - generic [ref=e461]:
+              - generic [ref=e462]:
+                - heading "Recibos Zeta (contable)" [level=2] [ref=e463]
+                - paragraph [ref=e464]: Recibos registrados en Zeta por período. Solo lectura.
+              - button "Refrescar" [ref=e466]:
+                - img [ref=e467]
+                - text: Refrescar
+            - link "Gestionar cobranza" [ref=e473] [cursor=pointer]:
+              - /url: /copilot/cobranza
+              - text: Gestionar cobranza
+              - img [ref=e474]
+            - generic [ref=e476]:
+              - generic [ref=e477]:
+                - text: Desde
+                - textbox "Desde" [ref=e478]: 2026-06-01
+              - generic [ref=e479]:
+                - text: Hasta
+                - textbox "Hasta" [ref=e480]: 2026-06-25
+              - button "Todas" [ref=e481]
+              - button "UYU" [ref=e482]
+              - button "USD" [ref=e483]
+              - textbox "Buscar cliente, recibo o referencia" [ref=e484]
+            - generic [ref=e485]:
+              - generic [ref=e486]: "Total cobrado en período:"
+              - generic [ref=e487]: $ 640.118,00 UYU
+              - generic [ref=e488]: U$S 5.935,78 USD
+            - table "Recibos del período" [ref=e491]:
+              - rowgroup [ref=e492]:
+                - row "Fecha Cliente Recibo Referencia Moneda Importe" [ref=e493]:
+                  - columnheader "Fecha" [ref=e494]
+                  - columnheader "Cliente" [ref=e495]
+                  - columnheader "Recibo" [ref=e496]
+                  - columnheader "Referencia" [ref=e497]
+                  - columnheader "Moneda" [ref=e498]
+                  - columnheader "Importe" [ref=e499]
+              - rowgroup [ref=e500]:
+                - row "22/06/2026 Botica del Señor SRL ZETA:COB:2847 A-817 UYU $ 16.104,00" [ref=e501]:
+                  - cell "22/06/2026" [ref=e502]
+                  - cell "Botica del Señor SRL" [ref=e503]
+                  - cell "ZETA:COB:2847" [ref=e504]
+                  - cell "A-817" [ref=e505]
+                  - cell "UYU" [ref=e506]
+                  - cell "$ 16.104,00" [ref=e507]
+                - row "18/06/2026 Maria Eva Pose ZETA:COB:2846 A-816 USD U$S 85,40" [ref=e508]:
+                  - cell "18/06/2026" [ref=e509]
+                  - cell "Maria Eva Pose" [ref=e510]
+                  - cell "ZETA:COB:2846" [ref=e511]
+                  - cell "A-816" [ref=e512]
+                  - cell "USD" [ref=e513]
+                  - cell "U$S 85,40" [ref=e514]
+                - row "17/06/2026 Remiplat SA ZETA:COB:2844 A-815 UYU $ 96.624,00" [ref=e515]:
+                  - cell "17/06/2026" [ref=e516]
+                  - cell "Remiplat SA" [ref=e517]
+                  - cell "ZETA:COB:2844" [ref=e518]
+                  - cell "A-815" [ref=e519]
+                  - cell "UYU" [ref=e520]
+                  - cell "$ 96.624,00" [ref=e521]
+                - row "17/06/2026 Suprasur S.A. ZETA:COB:2849 A-819 USD U$S 610,00" [ref=e522]:
+                  - cell "17/06/2026" [ref=e523]
+                  - cell "Suprasur S.A." [ref=e524]
+                  - cell "ZETA:COB:2849" [ref=e525]
+                  - cell "A-819" [ref=e526]
+                  - cell "USD" [ref=e527]
+                  - cell "U$S 610,00" [ref=e528]
+                - row "16/06/2026 Dolby S.A. ZETA:COB:2848 A-818 USD U$S 42,70" [ref=e529]:
+                  - cell "16/06/2026" [ref=e530]
+                  - cell "Dolby S.A." [ref=e531]
+                  - cell "ZETA:COB:2848" [ref=e532]
+                  - cell "A-818" [ref=e533]
+                  - cell "USD" [ref=e534]
+                  - cell "U$S 42,70" [ref=e535]
+                - row "16/06/2026 ROCKLAND LTDA ZETA:COB:2837 A-812 UYU $ 146,00" [ref=e536]:
+                  - cell "16/06/2026" [ref=e537]
+                  - cell "ROCKLAND LTDA" [ref=e538]
+                  - cell "ZETA:COB:2837" [ref=e539]
+                  - cell "A-812" [ref=e540]
+                  - cell "UYU" [ref=e541]
+                  - cell "$ 146,00" [ref=e542]
+                - row "15/06/2026 LANCER SA ZETA:COB:2833 A-809 UYU $ 21.472,00" [ref=e543]:
+                  - cell "15/06/2026" [ref=e544]
+                  - cell "LANCER SA" [ref=e545]
+                  - cell "ZETA:COB:2833" [ref=e546]
+                  - cell "A-809" [ref=e547]
+                  - cell "UYU" [ref=e548]
+                  - cell "$ 21.472,00" [ref=e549]
+                - row "15/06/2026 DOBSURA CORPORATION SA ZETA:COB:2836 A-811 USD U$S 530,70" [ref=e550]:
+                  - cell "15/06/2026" [ref=e551]
+                  - cell "DOBSURA CORPORATION SA" [ref=e552]
+                  - cell "ZETA:COB:2836" [ref=e553]
+                  - cell "A-811" [ref=e554]
+                  - cell "USD" [ref=e555]
+                  - cell "U$S 530,70" [ref=e556]
+                - row "15/06/2026 Arroyal S.A. ZETA:COB:2832 A-808 UYU $ 74.420,00" [ref=e557]:
+                  - cell "15/06/2026" [ref=e558]
+                  - cell "Arroyal S.A." [ref=e559]
+                  - cell "ZETA:COB:2832" [ref=e560]
+                  - cell "A-808" [ref=e561]
+                  - cell "UYU" [ref=e562]
+                  - cell "$ 74.420,00" [ref=e563]
+                - row "13/06/2026 Maria Magdalena Antognazza Scarone ZETA:COB:2820 A-801 UYU $ 1.830,00" [ref=e564]:
+                  - cell "13/06/2026" [ref=e565]
+                  - cell "Maria Magdalena Antognazza Scarone" [ref=e566]
+                  - cell "ZETA:COB:2820" [ref=e567]
+                  - cell "A-801" [ref=e568]
+                  - cell "UYU" [ref=e569]
+                  - cell "$ 1.830,00" [ref=e570]
+                - row "12/06/2026 Nirmex S.A. ZETA:COB:2829 A-805 USD U$S 183,00" [ref=e571]:
+                  - cell "12/06/2026" [ref=e572]
+                  - cell "Nirmex S.A." [ref=e573]
+                  - cell "ZETA:COB:2829" [ref=e574]
+                  - cell "A-805" [ref=e575]
+                  - cell "USD" [ref=e576]
+                  - cell "U$S 183,00" [ref=e577]
+                - row "12/06/2026 Domingo Pizzinat srl ZETA:COB:2834 A-810 USD U$S 122,00" [ref=e578]:
+                  - cell "12/06/2026" [ref=e579]
+                  - cell "Domingo Pizzinat srl" [ref=e580]
+                  - cell "ZETA:COB:2834" [ref=e581]
+                  - cell "A-810" [ref=e582]
+                  - cell "USD" [ref=e583]
+                  - cell "U$S 122,00" [ref=e584]
+                - row "12/06/2026 ALKITODO S.R.L ZETA:COB:2831 A-807 UYU $ 14.640,00" [ref=e585]:
+                  - cell "12/06/2026" [ref=e586]
+                  - cell "ALKITODO S.R.L" [ref=e587]
+                  - cell "ZETA:COB:2831" [ref=e588]
+                  - cell "A-807" [ref=e589]
+                  - cell "UYU" [ref=e590]
+                  - cell "$ 14.640,00" [ref=e591]
+                - row "12/06/2026 Lombardo Godoy Maria Belen y Silva Silva Virginia Lorena ZETA:COB:2830 A-806 UYU $ 14.640,00" [ref=e592]:
+                  - cell "12/06/2026" [ref=e593]
+                  - cell "Lombardo Godoy Maria Belen y Silva Silva Virginia Lorena" [ref=e594]
+                  - cell "ZETA:COB:2830" [ref=e595]
+                  - cell "A-806" [ref=e596]
+                  - cell "UYU" [ref=e597]
+                  - cell "$ 14.640,00" [ref=e598]
+                - row "11/06/2026 Margot Morales ZETA:COB:2822 A-803 USD U$S 394,00" [ref=e599]:
+                  - cell "11/06/2026" [ref=e600]
+                  - cell "Margot Morales" [ref=e601]
+                  - cell "ZETA:COB:2822" [ref=e602]
+                  - cell "A-803" [ref=e603]
+                  - cell "USD" [ref=e604]
+                  - cell "U$S 394,00" [ref=e605]
+            - generic [ref=e606]:
+              - generic [ref=e607]: 40 recibos · Página 1 de 3
+              - navigation "Paginación" [ref=e608]:
+                - button "Página anterior" [disabled] [ref=e609]: ‹
+                - button "1" [ref=e610]
+                - button "2" [ref=e611]
+                - button "3" [ref=e612]
+                - button "Página siguiente" [ref=e613]: ›
+  - alert [ref=e250]

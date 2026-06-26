@@ -1,0 +1,257 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - img [ref=e7]
+      - navigation "Navegación del módulo Copilot" [ref=e10]:
+        - button "Expandir menú lateral" [ref=e12]:
+          - img [ref=e13]
+        - link "Hoy" [ref=e15] [cursor=pointer]:
+          - /url: /copilot/hoy
+          - img [ref=e16]
+          - generic [ref=e19]: Hoy
+        - link "Dashboard" [ref=e22] [cursor=pointer]:
+          - /url: /copilot/dashboard
+          - img [ref=e23]
+          - generic [ref=e25]: Dashboard
+        - link "Finanzas" [ref=e26] [cursor=pointer]:
+          - /url: /copilot/finanzas
+          - img [ref=e27]
+          - generic [ref=e30]: Finanzas
+        - link "Reportes" [ref=e31] [cursor=pointer]:
+          - /url: /copilot/reportes
+          - img [ref=e32]
+          - generic [ref=e35]: Reportes
+        - link "Cobranza" [ref=e38] [cursor=pointer]:
+          - /url: /copilot/cobranza
+          - img [ref=e39]
+          - generic [ref=e44]: Cobranza
+        - link "Cartera" [ref=e45] [cursor=pointer]:
+          - /url: /copilot/cartera
+          - img [ref=e46]
+          - generic [ref=e48]: Cartera
+        - link "Clientes" [ref=e49] [cursor=pointer]:
+          - /url: /copilot/clientes
+          - img [ref=e50]
+          - generic [ref=e55]: Clientes
+        - link "Tesorería" [ref=e58] [cursor=pointer]:
+          - /url: /copilot/tesoreria
+          - img [ref=e59]
+          - generic [ref=e62]: Tesorería
+        - link "Alertas" [ref=e65] [cursor=pointer]:
+          - /url: /copilot/alertas
+          - img [ref=e66]
+          - generic [ref=e68]: Alertas
+        - link "Agentes IA" [ref=e69] [cursor=pointer]:
+          - /url: /copilot/agentes
+          - img [ref=e70]
+          - generic [ref=e73]: Agentes IA
+        - link "Datos" [ref=e74] [cursor=pointer]:
+          - /url: /copilot/datos
+          - img [ref=e75]
+          - generic [ref=e79]: Datos
+        - link "Mesa de ayuda" [ref=e80] [cursor=pointer]:
+          - /url: /copilot/mesa-de-ayuda
+          - img [ref=e81]
+          - generic [ref=e84]: Mesa de ayuda
+        - link "Configuración" [ref=e87] [cursor=pointer]:
+          - /url: /copilot/admin
+          - img [ref=e88]
+          - generic [ref=e91]: Configuración
+        - link "Manual de uso" [ref=e92] [cursor=pointer]:
+          - /url: /copilot/manual
+          - img [ref=e93]
+          - generic [ref=e96]: Manual de uso
+        - link "Empresas" [ref=e99] [cursor=pointer]:
+          - /url: /admin/companies
+          - img [ref=e100]
+          - generic [ref=e104]: Empresas
+        - link "Base Zeta" [ref=e105] [cursor=pointer]:
+          - /url: /copilot/knowledge/zeta
+          - img [ref=e106]
+          - generic [ref=e108]: Base Zeta
+    - generic [ref=e109]:
+      - generic [ref=e110]:
+        - generic [ref=e111]:
+          - generic [ref=e112]:
+            - generic [ref=e113]:
+              - img [ref=e158]
+              - generic [ref=e160]: Viernes, 26 de junio de 2026
+            - 'generic "Fuente: Zeta Actualizado: hace minutos Próxima actualización automática: 11:00 Intervalo: cada 2 h" [ref=e161]': Datos al 26 jun. · próx 11:00
+          - generic [ref=e114]:
+            - button "Notificaciones" [ref=e116]:
+              - img [ref=e117]
+            - generic [ref=e120]:
+              - button "Menú de usuario" [expanded] [ref=e162]: A
+              - generic [ref=e330]:
+                - generic [ref=e331]:
+                  - generic [ref=e332]: A
+                  - generic [ref=e333]:
+                    - paragraph [ref=e334]: admin
+                    - paragraph [ref=e335]: Superadmin
+                - generic [ref=e337]:
+                  - switch "Vista USD" [checked] [active] [ref=e419]:
+                    - generic [ref=e341]: Vista USD
+                  - generic [ref=e420]: ·
+                  - generic [ref=e421]: TC
+                  - button "40" [ref=e422]
+                - button "Tema Claro" [ref=e346]:
+                  - generic [ref=e347]: Tema
+                  - generic [ref=e348]:
+                    - img [ref=e349]
+                    - text: Claro
+                - generic [ref=e355]:
+                  - link "Configuración" [ref=e356] [cursor=pointer]:
+                    - /url: /copilot/admin
+                  - button "Cerrar sesión" [ref=e357]
+            - 'button "Estado del negocio: Atención. 3 señales de atención" [ref=e163]':
+              - generic [ref=e124]: "3"
+        - status "Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda." [ref=e423]:
+          - paragraph [ref=e424]: Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda.
+      - generic [ref=e127]:
+        - banner [ref=e128]:
+          - generic [ref=e129]:
+            - paragraph [ref=e130]: Summer87 Copilot
+            - heading "Cartera" [level=1] [ref=e131]
+            - paragraph [ref=e132]: Análisis financiero de deuda, cobros y antigüedad. Para contactar clientes, usá Clientes o Cobranza.
+        - generic [ref=e133]:
+          - generic [ref=e135]:
+            - generic [ref=e136]:
+              - combobox "Período de cartera" [ref=e137]:
+                - option "Mes actual" [selected]
+                - option "Mes anterior"
+                - option "Trimestre"
+                - option "Personalizado"
+              - img
+            - generic "junio de 2026" [ref=e138]
+            - generic [ref=e139]:
+              - generic "Actualización automática" [ref=e140]: Sync hace 1h
+              - button "Refrescar" [ref=e141]:
+                - img [ref=e164]
+                - generic [ref=e147]: Refrescar
+          - paragraph [ref=e148]: "Fuente: Zeta · Actualizado: hace minutos · Período: mes actual"
+          - generic [ref=e169]:
+            - region "Ventas del período" [ref=e170]:
+              - generic [ref=e171]:
+                - heading "Ventas del período" [level=2] [ref=e172]
+                - paragraph [ref=e173]: "Período: 01/06/2026 — 26/06/2026"
+              - generic [ref=e174]:
+                - button "Ventas del período" [ref=e425] [cursor=pointer]:
+                  - paragraph [ref=e427]: Ventas del período
+                  - generic [ref=e429]:
+                    - generic [ref=e430]:
+                      - paragraph [ref=e431]: USD 25.883,04
+                      - generic [ref=e432]:
+                        - paragraph [ref=e433]: UYU USD 17.954,56
+                        - paragraph [ref=e434]: USD USD 7.928,48
+                        - paragraph [ref=e435]: TC 40
+                    - paragraph [ref=e436]: "Período: 01/06/2026 — 26/06/2026"
+                  - paragraph [ref=e438]: Ver detalle
+                - button "Notas crédito" [ref=e439] [cursor=pointer]:
+                  - paragraph [ref=e441]: Notas crédito
+                  - generic [ref=e444]:
+                    - paragraph [ref=e445]: USD 1.088,85
+                    - generic [ref=e446]:
+                      - paragraph [ref=e447]: UYU USD 45,75
+                      - paragraph [ref=e448]: USD USD 1.043,10
+                      - paragraph [ref=e449]: TC 40
+                  - paragraph [ref=e451]: Ver detalle
+            - region "Resumen financiero" [ref=e202]:
+              - heading "Resumen financiero" [level=2] [ref=e204]
+              - generic [ref=e205]:
+                - button "Cobrado aplicado" [ref=e206] [cursor=pointer]:
+                  - paragraph [ref=e208]: Cobrado aplicado
+                  - generic [ref=e452]:
+                    - paragraph [ref=e453]: USD 17.864,66
+                    - paragraph [ref=e454]: TC 40
+                  - paragraph [ref=e215]: Ver detalle
+                - button "Deuda actual" [ref=e216] [cursor=pointer]:
+                  - paragraph [ref=e218]: Deuda actual
+                  - generic [ref=e455]:
+                    - paragraph [ref=e456]: USD 8.018,39
+                    - paragraph [ref=e457]: TC 40
+                  - paragraph [ref=e225]: Ver facturas
+                - button "Pendiente del período" [ref=e226] [cursor=pointer]:
+                  - paragraph [ref=e228]: Pendiente del período
+                  - generic [ref=e458]:
+                    - paragraph [ref=e459]: USD 5.055,88
+                    - paragraph [ref=e460]: TC 40
+                  - paragraph [ref=e235]: Ver detalle
+                - button "Cobros registrados / ventas" [ref=e236] [cursor=pointer]:
+                  - paragraph [ref=e238]: Cobros registrados / ventas
+                  - generic [ref=e240]:
+                    - generic [ref=e241]:
+                      - generic [ref=e242]: UYU
+                      - generic [ref=e243]: 92,5%
+                    - generic [ref=e244]:
+                      - generic [ref=e245]: USD
+                      - generic [ref=e246]: 74,9%
+                  - paragraph [ref=e248]: Ver fórmula
+              - paragraph [ref=e249]: "Misma base que Dashboard: ventas, cobrado aplicado y deuda del rango."
+            - region "Antigüedad de cartera" [ref=e250]:
+              - generic [ref=e251]:
+                - heading "Antigüedad de cartera" [level=2] [ref=e252]
+                - paragraph [ref=e253]: Estado actual · 0-30 no es crítico · +90 es prioridad
+              - region "Antigüedad de cartera" [ref=e254]:
+                - tablist "Moneda" [ref=e256]:
+                  - tab "UYU" [selected] [ref=e257]
+                  - tab "USD" [ref=e258]
+                - generic [ref=e260]:
+                  - generic [ref=e261]:
+                    - generic [ref=e262]:
+                      - generic [ref=e263]: 0–30 días
+                      - generic [ref=e265]: 100,0%
+                    - meter "0–30 días 100,0%" [ref=e266]
+                    - generic [ref=e268]:
+                      - generic [ref=e269]: USD 2.364,82
+                      - generic [ref=e270]: 9 fact.
+                      - generic [ref=e271]: 8 clientes
+                  - generic [ref=e272]:
+                    - generic [ref=e273]:
+                      - generic [ref=e274]: 31–60 días
+                      - generic [ref=e276]: 0,0%
+                    - meter "31–60 días 0,0%" [ref=e277]
+                    - generic [ref=e278]:
+                      - generic [ref=e279]: USD 0,00
+                      - generic [ref=e280]: 0 fact.
+                      - generic [ref=e281]: 0 clientes
+                  - generic [ref=e282]:
+                    - generic [ref=e283]:
+                      - generic [ref=e284]: 61–90 días
+                      - generic [ref=e286]: 0,0%
+                    - meter "61–90 días 0,0%" [ref=e287]
+                    - generic [ref=e288]:
+                      - generic [ref=e289]: USD 0,00
+                      - generic [ref=e290]: 0 fact.
+                      - generic [ref=e291]: 0 clientes
+                  - generic [ref=e292]:
+                    - generic [ref=e293]:
+                      - generic [ref=e294]: +90 días
+                      - generic [ref=e296]: 0,0%
+                    - meter "+90 días 0,0%" [ref=e297]
+                    - generic [ref=e298]:
+                      - generic [ref=e299]: USD 0,00
+                      - generic [ref=e300]: 0 fact.
+                      - generic [ref=e301]: 0 clientes
+            - region "Clientes en riesgo" [ref=e302]:
+              - heading "Clientes en riesgo" [level=2] [ref=e304]
+              - generic [ref=e305]:
+                - button "Clientes en riesgo" [ref=e306] [cursor=pointer]:
+                  - paragraph [ref=e308]: Clientes en riesgo
+                  - generic [ref=e310]:
+                    - paragraph [ref=e311]: "9"
+                    - paragraph [ref=e312]: Con datos desactualizados o sin sync
+                  - paragraph [ref=e314]: Ver detalle
+                - generic [ref=e315]:
+                  - paragraph [ref=e317]: Explorador
+                  - generic [ref=e319]:
+                    - paragraph [ref=e320]: Ver gestión detallada en la vista Clientes.
+                    - link "Ver clientes con deuda →" [ref=e321] [cursor=pointer]:
+                      - /url: /copilot/clientes
+            - button "Explorador de deuda Lista detallada — duplica Clientes" [ref=e323]:
+              - generic [ref=e324]:
+                - paragraph [ref=e325]: Explorador de deuda
+                - paragraph [ref=e326]: Lista detallada — duplica Clientes
+              - img [ref=e327]
+  - button "Open Next.js Dev Tools" [ref=e154] [cursor=pointer]:
+    - img [ref=e155]
+  - alert [ref=e329]

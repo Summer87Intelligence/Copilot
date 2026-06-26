@@ -1,0 +1,622 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - img [ref=e7]
+      - navigation "Navegación del módulo Copilot" [ref=e10]:
+        - button "Expandir menú lateral" [ref=e12]:
+          - img [ref=e13]
+        - link "Hoy" [ref=e15] [cursor=pointer]:
+          - /url: /copilot/hoy
+          - img [ref=e16]
+          - generic [ref=e19]: Hoy
+        - link "Dashboard" [ref=e22] [cursor=pointer]:
+          - /url: /copilot/dashboard
+          - img [ref=e23]
+          - generic [ref=e25]: Dashboard
+        - link "Finanzas" [ref=e26] [cursor=pointer]:
+          - /url: /copilot/finanzas
+          - img [ref=e27]
+          - generic [ref=e30]: Finanzas
+        - link "Reportes" [ref=e31] [cursor=pointer]:
+          - /url: /copilot/reportes
+          - img [ref=e32]
+          - generic [ref=e35]: Reportes
+        - link "Cobranza" [ref=e38] [cursor=pointer]:
+          - /url: /copilot/cobranza
+          - img [ref=e39]
+          - generic [ref=e44]: Cobranza
+        - link "Cartera" [ref=e45] [cursor=pointer]:
+          - /url: /copilot/cartera
+          - img [ref=e46]
+          - generic [ref=e48]: Cartera
+        - link "Clientes" [ref=e49] [cursor=pointer]:
+          - /url: /copilot/clientes
+          - img [ref=e50]
+          - generic [ref=e55]: Clientes
+        - link "Tesorería" [ref=e58] [cursor=pointer]:
+          - /url: /copilot/tesoreria
+          - img [ref=e59]
+          - generic [ref=e62]: Tesorería
+        - link "Alertas" [ref=e65] [cursor=pointer]:
+          - /url: /copilot/alertas
+          - img [ref=e66]
+          - generic [ref=e68]: Alertas
+        - link "Agentes IA" [ref=e69] [cursor=pointer]:
+          - /url: /copilot/agentes
+          - img [ref=e70]
+          - generic [ref=e73]: Agentes IA
+        - link "Datos" [ref=e74] [cursor=pointer]:
+          - /url: /copilot/datos
+          - img [ref=e75]
+          - generic [ref=e79]: Datos
+        - link "Mesa de ayuda" [ref=e80] [cursor=pointer]:
+          - /url: /copilot/mesa-de-ayuda
+          - img [ref=e81]
+          - generic [ref=e84]: Mesa de ayuda
+        - link "Configuración" [ref=e87] [cursor=pointer]:
+          - /url: /copilot/admin
+          - img [ref=e88]
+          - generic [ref=e91]: Configuración
+        - link "Manual de uso" [ref=e92] [cursor=pointer]:
+          - /url: /copilot/manual
+          - img [ref=e93]
+          - generic [ref=e96]: Manual de uso
+        - link "Empresas" [ref=e99] [cursor=pointer]:
+          - /url: /admin/companies
+          - img [ref=e100]
+          - generic [ref=e104]: Empresas
+        - link "Base Zeta" [ref=e105] [cursor=pointer]:
+          - /url: /copilot/knowledge/zeta
+          - img [ref=e106]
+          - generic [ref=e108]: Base Zeta
+    - generic [ref=e109]:
+      - generic [ref=e110]:
+        - generic [ref=e111]:
+          - generic [ref=e113]:
+            - img [ref=e306]
+            - generic [ref=e308]: Viernes, 26 de junio de 2026
+          - generic [ref=e114]:
+            - button "Notificaciones" [ref=e116]:
+              - img [ref=e117]
+            - button "Menú de usuario" [ref=e309]: A
+            - button "Estado del negocio" [ref=e122]:
+              - generic [ref=e124]: …
+        - status "Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda." [ref=e125]:
+          - paragraph [ref=e126]: Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda.
+      - generic [ref=e128]:
+        - generic [ref=e129]:
+          - generic [ref=e130]:
+            - generic [ref=e131]:
+              - generic [ref=e132]:
+                - img [ref=e133]
+                - heading "Dashboard" [level=1] [ref=e135]
+              - paragraph [ref=e136]: "Análisis y reportes: ventas, cobros, deuda y evolución del negocio."
+            - generic [ref=e137]:
+              - paragraph [ref=e310]: "Fuente: Zeta · Actualizado: hace minutos · Período: 01/01 – 26/06"
+              - generic "El PDF usa monedas reales de Zeta. La conversión a USD es solo visual en pantalla." [ref=e138]:
+                - img [ref=e139]
+                - text: Descargar PDF
+              - button "Actualizar" [ref=e311]:
+                - img [ref=e144]
+                - text: Actualizar
+          - generic [ref=e149]:
+            - generic [ref=e150]:
+              - text: Desde
+              - textbox "Desde" [ref=e151]: 2026-01-01
+            - generic [ref=e152]:
+              - text: Hasta
+              - textbox "Hasta" [ref=e153]: 2026-06-26
+            - combobox "Filtrar por moneda" [disabled] [ref=e154]:
+              - option "UYU"
+              - option "USD"
+              - option "UYU + USD"
+              - option "Todo en USD" [selected]
+        - generic [ref=e155]:
+          - img [ref=e156]
+          - generic [ref=e158]: Conversión visual para análisis ejecutivo. No modifica saldos ni reportes.
+        - generic [ref=e159]:
+          - region "Resultado del período" [ref=e161]:
+            - generic [ref=e162]:
+              - heading "Resultado del período" [level=2] [ref=e163]
+              - paragraph [ref=e164]: Corresponde al rango seleccionado.
+            - generic [ref=e165]:
+              - generic [ref=e312]:
+                - generic [ref=e313]:
+                  - paragraph [ref=e314]: Ventas del período
+                  - generic "Ventas/facturas emitidas dentro del rango seleccionado." [ref=e315]:
+                    - img [ref=e316]
+                - paragraph [ref=e319]: U$S 168.974USD
+                - link "Ver detalle" [ref=e320] [cursor=pointer]:
+                  - /url: /copilot/cartera
+                  - text: Ver detalle
+                  - img [ref=e321]
+              - generic [ref=e323]:
+                - generic [ref=e324]:
+                  - paragraph [ref=e325]: Cobrado aplicado
+                  - 'generic "Cobros imputados contra facturas emitidas en el período: facturado neto menos saldo pendiente al cierre del rango. Misma fuente que Cartera." [ref=e326]':
+                    - img [ref=e327]
+                - paragraph [ref=e330]: U$S 160.955USD
+                - link "Ver detalle" [ref=e331] [cursor=pointer]:
+                  - /url: /copilot/cartera
+                  - text: Ver detalle
+                  - img [ref=e332]
+              - generic [ref=e334]:
+                - generic [ref=e335]:
+                  - paragraph [ref=e336]: Pendiente del período
+                  - generic "Ventas del período menos cobros aplicados a facturas del período (= saldo pendiente al cierre del rango)." [ref=e337]:
+                    - img [ref=e338]
+                - paragraph [ref=e341]: U$S 8.018USD
+                - link "Ver detalle" [ref=e342] [cursor=pointer]:
+                  - /url: /copilot/cartera
+                  - text: Ver detalle
+                  - img [ref=e343]
+          - region "Posición actual" [ref=e169]:
+            - generic [ref=e170]:
+              - heading "Posición actual" [level=2] [ref=e171]
+              - paragraph [ref=e172]: Foto actual del negocio. No depende del rango seleccionado.
+            - generic [ref=e173]:
+              - generic [ref=e345]:
+                - generic [ref=e346]:
+                  - paragraph [ref=e347]: Deuda actual total
+                  - generic "Total adeudado actualmente por clientes, incluyendo saldos de períodos anteriores. No se calcula solo con el rango seleccionado." [ref=e348]:
+                    - img [ref=e349]
+                - paragraph [ref=e352]: U$S 8.018USD
+                - link "Ver detalle" [ref=e353] [cursor=pointer]:
+                  - /url: /copilot/cartera
+                  - text: Ver detalle
+                  - img [ref=e354]
+              - generic [ref=e356]:
+                - generic [ref=e357]:
+                  - paragraph [ref=e358]: Deuda atrasada
+                  - generic "Parte de la cartera pendiente actual cuya fecha de vencimiento ya pasí. No depende del rango seleccionado." [ref=e359]:
+                    - img [ref=e360]
+                - paragraph [ref=e363]: U$S 2.963USD
+                - link "Ver detalle" [ref=e364] [cursor=pointer]:
+                  - /url: /copilot/cartera
+                  - text: Ver detalle
+                  - img [ref=e365]
+              - generic [ref=e367]:
+                - generic [ref=e368]:
+                  - paragraph [ref=e369]: Caja disponible
+                  - generic "Caja disponible en Tesorería al corte." [ref=e370]:
+                    - img [ref=e371]
+                - paragraph [ref=e374]: U$S 25.986USD
+                - link "Ver detalle" [ref=e375] [cursor=pointer]:
+                  - /url: /copilot/tesoreria
+                  - text: Ver detalle
+                  - img [ref=e376]
+              - generic [ref=e378]:
+                - generic [ref=e379]:
+                  - paragraph [ref=e380]: Caja proyectada
+                  - generic "Caja disponible menos pagos programados hasta fin del mes actual." [ref=e381]:
+                    - img [ref=e382]
+                - paragraph [ref=e385]: U$S 19.941USD
+                - paragraph [ref=e386]: Proyección con pagos cargados en Tesorería.
+                - link "Ver detalle" [ref=e387] [cursor=pointer]:
+                  - /url: /copilot/tesoreria
+                  - text: Ver detalle
+                  - img [ref=e388]
+          - region "Tendencia mensual" [ref=e178]:
+            - generic [ref=e179]:
+              - heading "Tendencia mensual del período" [level=2] [ref=e180]
+              - generic [ref=e181]: "Rango: 01/01/2026 – 26/06/2026"
+            - generic [ref=e182]:
+              - generic [ref=e183]:
+                - generic [ref=e184]:
+                  - generic [ref=e185]:
+                    - paragraph [ref=e186]: Ventas por mes
+                    - paragraph [ref=e187]: Ventas del período · Todo en USD
+                  - paragraph [ref=e191]: USD
+                - generic [ref=e390]:
+                  - generic [ref=e391]:
+                    - generic "U$S 29.658" [ref=e394]
+                    - paragraph [ref=e396]: ene
+                  - generic [ref=e397]:
+                    - generic "U$S 27.709" [ref=e400]
+                    - paragraph [ref=e402]: feb
+                  - generic [ref=e403]:
+                    - generic "U$S 27.967" [ref=e406]
+                    - paragraph [ref=e408]: mar
+                  - generic [ref=e409]:
+                    - generic "U$S 32.718" [ref=e412]
+                    - paragraph [ref=e414]: abr
+                  - generic [ref=e415]:
+                    - generic "U$S 25.040" [ref=e418]
+                    - paragraph [ref=e420]: may
+                  - generic [ref=e421]:
+                    - generic "U$S 25.883" [ref=e424]
+                    - paragraph [ref=e426]: jun
+              - generic [ref=e193]:
+                - generic [ref=e194]:
+                  - generic [ref=e195]:
+                    - paragraph [ref=e196]: Cobros por mes
+                    - paragraph [ref=e197]: Recibos registrados · Todo en USD
+                  - paragraph [ref=e201]: USD
+                - generic [ref=e427]:
+                  - generic [ref=e428]:
+                    - generic "U$S 28.722" [ref=e431]
+                    - paragraph [ref=e433]: ene
+                  - generic [ref=e434]:
+                    - generic "U$S 26.102" [ref=e437]
+                    - paragraph [ref=e439]: feb
+                  - generic [ref=e440]:
+                    - generic "U$S 26.080" [ref=e443]
+                    - paragraph [ref=e445]: mar
+                  - generic [ref=e446]:
+                    - generic "U$S 30.550" [ref=e449]
+                    - paragraph [ref=e451]: abr
+                  - generic [ref=e452]:
+                    - generic "U$S 22.077" [ref=e455]
+                    - paragraph [ref=e457]: may
+                  - generic [ref=e458]:
+                    - generic "U$S 17.865" [ref=e461]
+                    - paragraph [ref=e463]: jun
+              - generic [ref=e203]:
+                - generic [ref=e205]:
+                  - paragraph [ref=e206]: Ventas vs Cobros
+                  - paragraph [ref=e207]: Período seleccionado · Todo en USD · Verde = cobrado
+                - generic [ref=e465]:
+                  - generic [ref=e466]:
+                    - generic "U$S 168.974" [ref=e468]
+                    - generic "U$S 160.955" [ref=e471]
+                  - paragraph [ref=e473]: USD (equiv.)
+                - generic [ref=e209]:
+                  - paragraph [ref=e212]: Ventas
+                  - paragraph [ref=e215]: Cobrado
+          - region "Antigüedad y efectividad" [ref=e216]:
+            - generic [ref=e217]:
+              - generic [ref=e218]:
+                - generic [ref=e219]:
+                  - generic [ref=e220]:
+                    - paragraph [ref=e221]: Deuda por antigüedad
+                    - paragraph [ref=e222]: Basado en fecha de vencimiento · Estado actual · Todo en USD
+                  - paragraph [ref=e226]: USD
+                - generic [ref=e474]:
+                  - generic [ref=e475]:
+                    - generic "U$S 5.851" [ref=e478]
+                    - paragraph [ref=e480]: 0–30 días
+                  - generic [ref=e481]:
+                    - generic [ref=e484]: "0"
+                    - paragraph [ref=e486]: 31–60 días
+                  - generic [ref=e487]:
+                    - generic "U$S 281" [ref=e490]
+                    - paragraph [ref=e492]: 61–90 días
+                  - generic [ref=e493]:
+                    - generic "U$S 1.887" [ref=e496]
+                    - paragraph [ref=e498]: +90 días
+              - generic [ref=e228]:
+                - generic [ref=e230]:
+                  - paragraph [ref=e231]: Cobranza efectiva aplicada
+                  - paragraph [ref=e232]: Porcentaje de ventas del período resueltas al corte.
+                - generic [ref=e233]:
+                  - generic [ref=e500]:
+                    - paragraph [ref=e501]: Cobranza efectiva aplicada (USD cons.) USD
+                    - paragraph [ref=e502]: 95%
+                  - paragraph [ref=e505]: Porcentaje de ventas del período resueltas al corte. Puede ser menor al 100% si quedan facturas del período pendientes al corte.
+          - region "Top clientes" [ref=e236]:
+            - generic [ref=e237]:
+              - generic [ref=e238]:
+                - generic [ref=e240]:
+                  - paragraph [ref=e241]: Top 10 clientes deudores
+                  - paragraph [ref=e242]: Deuda actual consolidada en USD · Clic para ver ficha
+                - generic [ref=e506]:
+                  - link "Trexys Consultores S.A.S. U$S 1.049" [ref=e507] [cursor=pointer]:
+                    - /url: /copilot/clientes/904cf1f1-89cb-4b5c-bd9c-dcd3f0f24c58
+                    - generic [ref=e508]:
+                      - paragraph [ref=e509]: Trexys Consultores S.A.S.
+                      - paragraph [ref=e512]: U$S 1.049
+                  - link "Creditox sas U$S 976" [ref=e513] [cursor=pointer]:
+                    - /url: /copilot/clientes/09381f35-df88-4f4e-aec2-31f78c6e1f84
+                    - generic [ref=e514]:
+                      - paragraph [ref=e515]: Creditox sas
+                      - paragraph [ref=e518]: U$S 976
+                  - link "Petrovic Solutions U$S 936" [ref=e519] [cursor=pointer]:
+                    - /url: /copilot/clientes/94ee84d9-d2a1-45a5-ac67-9e3d53f63179
+                    - generic [ref=e520]:
+                      - paragraph [ref=e521]: Petrovic Solutions
+                      - paragraph [ref=e524]: U$S 936
+                  - link "Trek U$S 824" [ref=e525] [cursor=pointer]:
+                    - /url: /copilot/clientes/881c3904-74c5-40b9-ba6a-b8aa3a1058e1
+                    - generic [ref=e526]:
+                      - paragraph [ref=e527]: Trek
+                      - paragraph [ref=e530]: U$S 824
+                  - link "Estudio Fletcher SAS U$S 732" [ref=e531] [cursor=pointer]:
+                    - /url: /copilot/clientes/8fd1272a-3829-4d50-8aa8-66aced1828a0
+                    - generic [ref=e532]:
+                      - paragraph [ref=e533]: Estudio Fletcher SAS
+                      - paragraph [ref=e536]: U$S 732
+                  - link "Consumidor Final U$S 610" [ref=e537] [cursor=pointer]:
+                    - /url: /copilot/clientes/2028181c-172e-4b34-90fd-01c1d400f91b
+                    - generic [ref=e538]:
+                      - paragraph [ref=e539]: Consumidor Final
+                      - paragraph [ref=e542]: U$S 610
+                  - link "Mauricio Nicolás Gayol Martínez U$S 488" [ref=e543] [cursor=pointer]:
+                    - /url: /copilot/clientes/44aae4f6-9766-4ff6-b123-c6bc97ccac61
+                    - generic [ref=e544]:
+                      - paragraph [ref=e545]: Mauricio Nicolás Gayol Martínez
+                      - paragraph [ref=e548]: U$S 488
+                  - link "Nirmex S.A. U$S 427" [ref=e549] [cursor=pointer]:
+                    - /url: /copilot/clientes/7671f4d1-8710-43ab-aff1-3fb53c80442b
+                    - generic [ref=e550]:
+                      - paragraph [ref=e551]: Nirmex S.A.
+                      - paragraph [ref=e554]: U$S 427
+                  - link "Mill Vonmetzen Karin U$S 427" [ref=e555] [cursor=pointer]:
+                    - /url: /copilot/clientes/630ed5ee-e7f1-4b84-aa6e-217a01a57499
+                    - generic [ref=e556]:
+                      - paragraph [ref=e557]: Mill Vonmetzen Karin
+                      - paragraph [ref=e560]: U$S 427
+                  - link "Movex Uruguay S.A.S. U$S 383" [ref=e561] [cursor=pointer]:
+                    - /url: /copilot/clientes/c69b270b-535e-4c99-99e7-a44fce32a4df
+                    - generic [ref=e562]:
+                      - paragraph [ref=e563]: Movex Uruguay S.A.S.
+                      - paragraph [ref=e566]: U$S 383
+              - generic [ref=e249]:
+                - generic [ref=e250]:
+                  - generic [ref=e251]:
+                    - paragraph [ref=e252]: Top 10 por facturación neta histórica
+                    - paragraph [ref=e253]: Facturas activas menos notas de crédito · desde enero 2026
+                  - generic "Facturación neta histórica por cliente (no filtrable por período desde esta vista)." [ref=e254]: Histórico neto
+                - generic [ref=e567]:
+                  - link "Remiplat SA U$S 14.494" [ref=e568] [cursor=pointer]:
+                    - /url: /copilot/clientes/bff7c7ea-d969-4bd3-adce-b2240833a863
+                    - generic [ref=e569]:
+                      - paragraph [ref=e570]: Remiplat SA
+                      - paragraph [ref=e573]: U$S 14.494
+                  - link "PAPELERIA ALDO S.A. DE BENEFICIO E INTERES COLECTIVO U$S 8.528" [ref=e574] [cursor=pointer]:
+                    - /url: /copilot/clientes/4e0d1a7b-b867-4e4f-b7ca-374812346794
+                    - generic [ref=e575]:
+                      - paragraph [ref=e576]: PAPELERIA ALDO S.A. DE BENEFICIO E INTERES COLECTIVO
+                      - paragraph [ref=e579]: U$S 8.528
+                  - link "Bloommy´s SA U$S 8.235" [ref=e580] [cursor=pointer]:
+                    - /url: /copilot/clientes/ace90087-26af-4aed-a459-1bcb1821eb12
+                    - generic [ref=e581]:
+                      - paragraph [ref=e582]: Bloommy´s SA
+                      - paragraph [ref=e585]: U$S 8.235
+                  - link "Vilcabamba SRL U$S 8.125" [ref=e586] [cursor=pointer]:
+                    - /url: /copilot/clientes/b1b848ad-e3e0-4ac9-8ae4-8b6efbae404b
+                    - generic [ref=e587]:
+                      - paragraph [ref=e588]: Vilcabamba SRL
+                      - paragraph [ref=e591]: U$S 8.125
+                  - link "HARRISON S.A U$S 6.588" [ref=e592] [cursor=pointer]:
+                    - /url: /copilot/clientes/a587c341-9ee0-408c-964c-a5ea11ec7ab5
+                    - generic [ref=e593]:
+                      - paragraph [ref=e594]: HARRISON S.A
+                      - paragraph [ref=e597]: U$S 6.588
+                  - link "Dolby S.A. U$S 6.349" [ref=e598] [cursor=pointer]:
+                    - /url: /copilot/clientes/43ab2bda-d17d-43b9-9289-d45abf8e1e36
+                    - generic [ref=e599]:
+                      - paragraph [ref=e600]: Dolby S.A.
+                      - paragraph [ref=e603]: U$S 6.349
+                  - link "Ubal Dalmu Maria Patricia U$S 5.850" [ref=e604] [cursor=pointer]:
+                    - /url: /copilot/clientes/7dc98c7c-96af-4a1c-a1d9-5ca4d52597c0
+                    - generic [ref=e605]:
+                      - paragraph [ref=e606]: Ubal Dalmu Maria Patricia
+                      - paragraph [ref=e609]: U$S 5.850
+                  - link "Aldiesan SRL U$S 5.124" [ref=e610] [cursor=pointer]:
+                    - /url: /copilot/clientes/22e20fe6-4ba8-4688-aa1d-fb014b79ea76
+                    - generic [ref=e611]:
+                      - paragraph [ref=e612]: Aldiesan SRL
+                      - paragraph [ref=e615]: U$S 5.124
+                  - link "Arroyal S.A. U$S 4.911" [ref=e616] [cursor=pointer]:
+                    - /url: /copilot/clientes/4b719f85-be19-4c0e-b62c-985377d4e24e
+                    - generic [ref=e617]:
+                      - paragraph [ref=e618]: Arroyal S.A.
+                      - paragraph [ref=e621]: U$S 4.911
+                  - link "Consumidor Final U$S 4.624" [ref=e622] [cursor=pointer]:
+                    - /url: /copilot/clientes/2028181c-172e-4b34-90fd-01c1d400f91b
+                    - generic [ref=e623]:
+                      - paragraph [ref=e624]: Consumidor Final
+                      - paragraph [ref=e627]: U$S 4.624
+          - region "Estado de cartera y proyección" [ref=e261]:
+            - generic [ref=e262]:
+              - generic [ref=e263]:
+                - generic [ref=e265]:
+                  - paragraph [ref=e266]: Estado de cartera
+                  - paragraph [ref=e267]: Los clientes se cuentan una sola vez aunque tengan deuda en más de una moneda.
+                - generic [ref=e628]:
+                  - generic [ref=e629]:
+                    - generic [ref=e630]:
+                      - paragraph [ref=e631]: Clientes activos
+                      - paragraph [ref=e632]: "187"
+                    - generic [ref=e633]:
+                      - paragraph [ref=e634]: Con deuda activa
+                      - paragraph [ref=e635]: "20"
+                    - generic [ref=e636]:
+                      - paragraph [ref=e637]: Atrasado / Crítico
+                      - paragraph [ref=e638]: "7"
+                    - generic [ref=e639]:
+                      - paragraph [ref=e640]: Al día
+                      - paragraph [ref=e641]: "167"
+                  - generic [ref=e642]:
+                    - generic [ref=e643]:
+                      - paragraph [ref=e644]: Deuda actual (USD cons.)
+                      - paragraph [ref=e645]: U$S 8.018
+                    - generic [ref=e646]:
+                      - paragraph [ref=e647]: Deuda atrasada (USD cons.)
+                      - paragraph [ref=e648]: U$S 2.963
+                  - generic [ref=e649]:
+                    - link "Ver clientes" [ref=e650] [cursor=pointer]:
+                      - /url: /copilot/clientes
+                      - img [ref=e651]
+                      - text: Ver clientes
+                    - link "Ver atrasados →" [ref=e656] [cursor=pointer]:
+                      - /url: /copilot/cartera?filter=overdue
+              - generic [ref=e269]:
+                - generic [ref=e271]:
+                  - paragraph [ref=e272]: Caja proyectada al cierre del mes
+                  - paragraph [ref=e273]: Todo en USD · Caja disponible hoy y proyección al cierre del mes
+                - generic [ref=e657]:
+                  - img [ref=e658]
+                  - generic [ref=e663]:
+                    - paragraph [ref=e664]: Hoy
+                    - paragraph [ref=e665]: "-pagos"
+                - generic [ref=e666]:
+                  - generic [ref=e667]:
+                    - paragraph [ref=e668]: Disponible hoy
+                    - paragraph [ref=e669]: U$S 25.986
+                  - generic [ref=e670]:
+                    - paragraph [ref=e671]: Después de pagos
+                    - paragraph [ref=e672]: U$S 19.941
+                - link "Ver Tesorería" [ref=e673] [cursor=pointer]:
+                  - /url: /copilot/tesoreria
+                  - text: Ver Tesorería
+                  - img [ref=e674]
+          - region "Tablas operativas" [ref=e275]:
+            - generic [ref=e276]:
+              - generic [ref=e277]:
+                - heading "Gestión de deuda por cliente" [level=2] [ref=e278]
+                - paragraph [ref=e279]: Consultá deuda, atrasados y fichas en Clientes, o analizá la cartera completa por período en Cartera.
+                - generic [ref=e280]:
+                  - link "Ver Clientes" [ref=e281] [cursor=pointer]:
+                    - /url: /copilot/clientes
+                    - img [ref=e282]
+                    - text: Ver Clientes
+                  - link "Ver Cartera" [ref=e287] [cursor=pointer]:
+                    - /url: /copilot/cartera
+                    - text: Ver Cartera
+                    - img [ref=e288]
+              - generic [ref=e290]:
+                - generic [ref=e291]:
+                  - heading "Movimientos recientes del período" [level=2] [ref=e292]
+                  - link "Ver todos los datos" [ref=e293] [cursor=pointer]:
+                    - /url: /copilot/datos
+                    - text: Ver todos los datos
+                    - img [ref=e294]
+                - generic [ref=e676]:
+                  - table [ref=e678]:
+                    - rowgroup [ref=e679]:
+                      - row "Fecha Tipo Cliente Comprobante Moneda orig. Debe Haber Equiv. USD Saldo" [ref=e680]:
+                        - columnheader "Fecha" [ref=e681]
+                        - columnheader "Tipo" [ref=e682]
+                        - columnheader "Cliente" [ref=e683]
+                        - columnheader "Comprobante" [ref=e684]
+                        - columnheader "Moneda orig." [ref=e685]
+                        - columnheader "Debe" [ref=e686]
+                        - columnheader "Haber" [ref=e687]
+                        - columnheader "Equiv. USD" [ref=e688]
+                        - columnheader "Saldo" [ref=e689]
+                    - rowgroup [ref=e690]:
+                      - row "23/06/2026 Factura Mauricio Nicolás Gayol Martínez ZETA:2850 UYU $ 19.520 — U$S 488 $ 19.520" [ref=e691]:
+                        - cell "23/06/2026" [ref=e692]
+                        - cell "Factura" [ref=e693]
+                        - cell "Mauricio Nicolás Gayol Martínez" [ref=e694]:
+                          - link "Mauricio Nicolás Gayol Martínez" [ref=e695] [cursor=pointer]:
+                            - /url: /copilot/clientes/44aae4f6-9766-4ff6-b123-c6bc97ccac61
+                        - cell "ZETA:2850" [ref=e696]
+                        - cell "UYU" [ref=e697]
+                        - cell "$ 19.520" [ref=e698]
+                        - cell "—" [ref=e699]
+                        - cell "U$S 488" [ref=e700]
+                        - cell "$ 19.520" [ref=e701]
+                      - row "23/06/2026 Factura Mauricio Nicolás Gayol Martínez ZETA:CCV1:NOSER:83:0:701:898f8c2b564562329b365e505c91 ? $ 16.104 — U$S 0 —" [ref=e702]:
+                        - cell "23/06/2026" [ref=e703]
+                        - cell "Factura" [ref=e704]
+                        - cell "Mauricio Nicolás Gayol Martínez" [ref=e705]:
+                          - link "Mauricio Nicolás Gayol Martínez" [ref=e706] [cursor=pointer]:
+                            - /url: /copilot/clientes/44aae4f6-9766-4ff6-b123-c6bc97ccac61
+                        - cell "ZETA:CCV1:NOSER:83:0:701:898f8c2b564562329b365e505c91" [ref=e707]
+                        - cell "?" [ref=e708]
+                        - cell "$ 16.104" [ref=e709]
+                        - cell "—" [ref=e710]
+                        - cell "U$S 0" [ref=e711]
+                        - cell "—" [ref=e712]
+                      - row "23/06/2026 Factura Mauricio Nicolás Gayol Martínez ZETA:CCV1:0:83:A:2994 UYU $ 19.520 — U$S 488 $ 19.520" [ref=e713]:
+                        - cell "23/06/2026" [ref=e714]
+                        - cell "Factura" [ref=e715]
+                        - cell "Mauricio Nicolás Gayol Martínez" [ref=e716]:
+                          - link "Mauricio Nicolás Gayol Martínez" [ref=e717] [cursor=pointer]:
+                            - /url: /copilot/clientes/44aae4f6-9766-4ff6-b123-c6bc97ccac61
+                        - cell "ZETA:CCV1:0:83:A:2994" [ref=e718]
+                        - cell "UYU" [ref=e719]
+                        - cell "$ 19.520" [ref=e720]
+                        - cell "—" [ref=e721]
+                        - cell "U$S 488" [ref=e722]
+                        - cell "$ 19.520" [ref=e723]
+                      - row "23/06/2026 Recibo Cafe de especialdiad srl REC-c57cc875 UYU — $ 24.400 U$S 610 —" [ref=e724]:
+                        - cell "23/06/2026" [ref=e725]
+                        - cell "Recibo" [ref=e726]
+                        - cell "Cafe de especialdiad srl" [ref=e727]:
+                          - link "Cafe de especialdiad srl" [ref=e728] [cursor=pointer]:
+                            - /url: /copilot/clientes/079b19d2-23dd-48cd-b9fd-191575fce5fc
+                        - cell "REC-c57cc875" [ref=e729]
+                        - cell "UYU" [ref=e730]
+                        - cell "—" [ref=e731]
+                        - cell "$ 24.400" [ref=e732]
+                        - cell "U$S 610" [ref=e733]
+                        - cell "—" [ref=e734]
+                      - row "22/06/2026 Recibo Botica del Señor SRL REC-da92229b UYU — $ 16.104 U$S 403 —" [ref=e735]:
+                        - cell "22/06/2026" [ref=e736]
+                        - cell "Recibo" [ref=e737]
+                        - cell "Botica del Señor SRL" [ref=e738]:
+                          - link "Botica del Señor SRL" [ref=e739] [cursor=pointer]:
+                            - /url: /copilot/clientes/951aaad9-ea76-4163-9be2-c690106da3ca
+                        - cell "REC-da92229b" [ref=e740]
+                        - cell "UYU" [ref=e741]
+                        - cell "—" [ref=e742]
+                        - cell "$ 16.104" [ref=e743]
+                        - cell "U$S 403" [ref=e744]
+                        - cell "—" [ref=e745]
+                      - row "18/06/2026 Recibo Maria Eva Pose REC-8c37f0bb USD — U$S 85 U$S 85 —" [ref=e746]:
+                        - cell "18/06/2026" [ref=e747]
+                        - cell "Recibo" [ref=e748]
+                        - cell "Maria Eva Pose" [ref=e749]:
+                          - link "Maria Eva Pose" [ref=e750] [cursor=pointer]:
+                            - /url: /copilot/clientes/4c87b591-c76b-4a63-ad78-0ea77885d44a
+                        - cell "REC-8c37f0bb" [ref=e751]
+                        - cell "USD" [ref=e752]
+                        - cell "—" [ref=e753]
+                        - cell "U$S 85" [ref=e754]
+                        - cell "U$S 85" [ref=e755]
+                        - cell "—" [ref=e756]
+                      - row "17/06/2026 Factura Gjorgji Martin Gerardo ZETA:CCV1:0:52:A:2993 UYU $ 3.355 — U$S 84 $ 3.355" [ref=e757]:
+                        - cell "17/06/2026" [ref=e758]
+                        - cell "Factura" [ref=e759]
+                        - cell "Gjorgji Martin Gerardo" [ref=e760]:
+                          - link "Gjorgji Martin Gerardo" [ref=e761] [cursor=pointer]:
+                            - /url: /copilot/clientes/0e74cee5-7cb9-4c87-884c-adf05e6e5549
+                        - cell "ZETA:CCV1:0:52:A:2993" [ref=e762]
+                        - cell "UYU" [ref=e763]
+                        - cell "$ 3.355" [ref=e764]
+                        - cell "—" [ref=e765]
+                        - cell "U$S 84" [ref=e766]
+                        - cell "$ 3.355" [ref=e767]
+                      - row "17/06/2026 Recibo Remiplat SA REC-c3c34f37 UYU — $ 96.624 U$S 2.416 —" [ref=e768]:
+                        - cell "17/06/2026" [ref=e769]
+                        - cell "Recibo" [ref=e770]
+                        - cell "Remiplat SA" [ref=e771]:
+                          - link "Remiplat SA" [ref=e772] [cursor=pointer]:
+                            - /url: /copilot/clientes/bff7c7ea-d969-4bd3-adce-b2240833a863
+                        - cell "REC-c3c34f37" [ref=e773]
+                        - cell "UYU" [ref=e774]
+                        - cell "—" [ref=e775]
+                        - cell "$ 96.624" [ref=e776]
+                        - cell "U$S 2.416" [ref=e777]
+                        - cell "—" [ref=e778]
+                      - row "17/06/2026 Recibo Suprasur S.A. REC-1fe64b62 USD — U$S 610 U$S 610 —" [ref=e779]:
+                        - cell "17/06/2026" [ref=e780]
+                        - cell "Recibo" [ref=e781]
+                        - cell "Suprasur S.A." [ref=e782]:
+                          - link "Suprasur S.A." [ref=e783] [cursor=pointer]:
+                            - /url: /copilot/clientes/e87e0d33-c637-45ab-81d2-4dd295a17cbe
+                        - cell "REC-1fe64b62" [ref=e784]
+                        - cell "USD" [ref=e785]
+                        - cell "—" [ref=e786]
+                        - cell "U$S 610" [ref=e787]
+                        - cell "U$S 610" [ref=e788]
+                        - cell "—" [ref=e789]
+                      - row "16/06/2026 Nota crédito Trek ZETA:CCV1:0:195:A:395 USD — U$S 824 U$S 824 —" [ref=e790]:
+                        - cell "16/06/2026" [ref=e791]
+                        - cell "Nota crédito" [ref=e792]
+                        - cell "Trek" [ref=e793]:
+                          - link "Trek" [ref=e794] [cursor=pointer]:
+                            - /url: /copilot/clientes/881c3904-74c5-40b9-ba6a-b8aa3a1058e1
+                        - cell "ZETA:CCV1:0:195:A:395" [ref=e795]
+                        - cell "USD" [ref=e796]
+                        - cell "—" [ref=e797]
+                        - cell "U$S 824" [ref=e798]
+                        - cell "U$S 824" [ref=e799]
+                        - cell "—" [ref=e800]
+                  - button "Ver todos" [ref=e802]
+  - button "Open Next.js Dev Tools" [ref=e302] [cursor=pointer]:
+    - img [ref=e303]
+  - alert [ref=e803]

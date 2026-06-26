@@ -1,0 +1,530 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - img [ref=e7]
+      - navigation "Navegación del módulo Copilot" [ref=e10]:
+        - button "Expandir menú lateral" [ref=e12]:
+          - img [ref=e13]
+        - link "Hoy" [ref=e15] [cursor=pointer]:
+          - /url: /copilot/hoy
+          - img [ref=e16]
+          - generic [ref=e19]: Hoy
+        - link "Dashboard" [ref=e22] [cursor=pointer]:
+          - /url: /copilot/dashboard
+          - img [ref=e23]
+          - generic [ref=e25]: Dashboard
+        - link "Finanzas" [ref=e26] [cursor=pointer]:
+          - /url: /copilot/finanzas
+          - img [ref=e27]
+          - generic [ref=e30]: Finanzas
+        - link "Reportes" [ref=e31] [cursor=pointer]:
+          - /url: /copilot/reportes
+          - img [ref=e32]
+          - generic [ref=e35]: Reportes
+        - link "Cobranza" [ref=e38] [cursor=pointer]:
+          - /url: /copilot/cobranza
+          - img [ref=e39]
+          - generic [ref=e44]: Cobranza
+        - link "Cartera" [ref=e45] [cursor=pointer]:
+          - /url: /copilot/cartera
+          - img [ref=e46]
+          - generic [ref=e48]: Cartera
+        - link "Clientes" [ref=e49] [cursor=pointer]:
+          - /url: /copilot/clientes
+          - img [ref=e50]
+          - generic [ref=e55]: Clientes
+        - link "Tesorería" [ref=e58] [cursor=pointer]:
+          - /url: /copilot/tesoreria
+          - img [ref=e59]
+          - generic [ref=e62]: Tesorería
+        - link "Alertas" [ref=e65] [cursor=pointer]:
+          - /url: /copilot/alertas
+          - img [ref=e66]
+          - generic [ref=e68]: Alertas
+        - link "Agentes IA" [ref=e69] [cursor=pointer]:
+          - /url: /copilot/agentes
+          - img [ref=e70]
+          - generic [ref=e73]: Agentes IA
+        - link "Datos" [ref=e74] [cursor=pointer]:
+          - /url: /copilot/datos
+          - img [ref=e75]
+          - generic [ref=e79]: Datos
+        - link "Configuración" [ref=e82] [cursor=pointer]:
+          - /url: /copilot/admin
+          - img [ref=e83]
+          - generic [ref=e86]: Configuración
+        - link "Manual de uso" [ref=e87] [cursor=pointer]:
+          - /url: /copilot/manual
+          - img [ref=e88]
+          - generic [ref=e91]: Manual de uso
+        - link "Empresas" [ref=e94] [cursor=pointer]:
+          - /url: /admin/companies
+          - img [ref=e95]
+          - generic [ref=e99]: Empresas
+        - link "Base Zeta" [ref=e100] [cursor=pointer]:
+          - /url: /copilot/knowledge/zeta
+          - img [ref=e101]
+          - generic [ref=e103]: Base Zeta
+    - generic [ref=e104]:
+      - generic [ref=e105]:
+        - generic [ref=e106]:
+          - generic [ref=e107]:
+            - generic [ref=e108]:
+              - img [ref=e109]
+              - generic [ref=e111]: Jueves, 25 de junio de 2026
+            - 'generic "Fuente: Zeta Actualizado: hace minutos Próxima actualización automática: 15:00 Intervalo: cada 2 h" [ref=e166]': Datos al 25 jun. · próx 15:00
+          - generic [ref=e112]:
+            - button "Notificaciones" [ref=e114]:
+              - img [ref=e115]
+            - button "Menú de usuario" [ref=e119]: A
+            - 'button "Estado del negocio: Atención. 3 señales de atención" [ref=e167]':
+              - generic [ref=e123]: "3"
+        - status "Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda." [ref=e124]:
+          - paragraph [ref=e125]: Vista en USD activada · Pesos convertidos con TC 40. Los datos originales se mantienen en su moneda.
+      - generic [ref=e127]:
+        - banner [ref=e128]:
+          - generic [ref=e129]:
+            - heading "Finanzas" [level=1] [ref=e130]
+            - paragraph [ref=e131]: "Lectura ejecutiva del período: ingresos netos, cobros, deuda pendiente y caja disponible."
+        - generic [ref=e168]:
+          - generic [ref=e169]:
+            - generic [ref=e171]:
+              - heading "Caja, cobros y pagos" [level=2] [ref=e172]
+              - paragraph [ref=e173]: Misma fuente que Hoy · Tesorería · Cartera. Sin mezcla de monedas.
+            - generic [ref=e174]:
+              - generic "Dinero disponible actualmente considerando saldos de tesorería." [ref=e175]:
+                - paragraph [ref=e176]: Caja disponible
+                - generic [ref=e177]:
+                  - paragraph [ref=e178]: USD 25.375,95
+                  - paragraph [ref=e179]: TC 40
+              - generic "Facturas pendientes de cobro informadas por Zeta." [ref=e180]:
+                - paragraph [ref=e181]: Deuda actual
+                - generic [ref=e182]:
+                  - paragraph [ref=e183]: USD 8.628,39
+                  - paragraph [ref=e184]: TC 40
+              - generic "Facturas vencidas pendientes de cobro al día de hoy." [ref=e185]:
+                - paragraph [ref=e186]: Deuda vencida
+                - generic [ref=e187]:
+                  - paragraph [ref=e188]: USD 2.962,51
+                  - paragraph [ref=e189]: TC 40
+              - generic "Pagos programados para los próximos 30 días." [ref=e190]:
+                - paragraph [ref=e191]: Compromisos 30 días
+                - generic [ref=e192]:
+                  - paragraph [ref=e193]: USD 14.529,03
+                  - paragraph [ref=e194]: TC 40
+            - paragraph [ref=e195]: Vista convertida. Datos originales separados por moneda.
+          - generic [ref=e196]:
+            - generic [ref=e198]:
+              - heading "Caja proyectada (30 días)" [level=2] [ref=e199]
+              - paragraph [ref=e200]: Caja actual + cobros pendientes − pagos próximos.
+            - generic [ref=e202]:
+              - paragraph [ref=e203]: USD estimado · TC 40
+              - generic [ref=e204]:
+                - generic [ref=e205]: Caja actual
+                - generic [ref=e206]: USD 25.375,95
+              - generic [ref=e207]:
+                - generic [ref=e208]: + Cobros pendientes
+                - generic [ref=e209]: USD 8.628,39
+              - generic [ref=e210]:
+                - generic [ref=e211]: − Pagos próximos
+                - generic [ref=e212]: USD 14.529,03
+              - generic [ref=e213]:
+                - generic [ref=e214]: = Caja proyectada
+                - generic [ref=e215]: USD 19.475,31
+              - paragraph [ref=e216]: Vista convertida. Datos originales separados por moneda.
+          - generic [ref=e217]:
+            - generic [ref=e219]:
+              - heading "Riesgo ejecutivo" [level=2] [ref=e220]
+              - paragraph [ref=e221]: Lectura rápida para saber si la caja alcanza para los próximos 30 días.
+            - generic [ref=e223]:
+              - generic [ref=e224]:
+                - paragraph [ref=e225]: 🟢 Cobertura total · Cubierta
+                - paragraph [ref=e226]: La caja disponible cubre todos los compromisos de los próximos 30 días.
+              - generic [ref=e227]: Sin acción urgente
+          - generic [ref=e228]:
+            - button "Análisis histórico Vista histórica convertida a USD estimado · TC 40" [expanded] [active] [ref=e229]:
+              - generic [ref=e230]:
+                - paragraph [ref=e231]: Análisis histórico
+                - paragraph [ref=e232]: Vista histórica convertida a USD estimado · TC 40
+              - img [ref=e233]
+            - generic [ref=e236]:
+              - generic [ref=e237]:
+                - generic [ref=e239]:
+                  - heading "Foto actual" [level=2] [ref=e240]
+                  - paragraph [ref=e241]: Caja, pendiente y riesgo · USD estimado · TC 40
+                - generic [ref=e242]:
+                  - generic "Caja disponible registrada en Tesorería al corte." [ref=e243]:
+                    - paragraph [ref=e244]: Caja disponible
+                    - paragraph [ref=e245]: USD 25.375,95
+                  - generic "Deuda actual de clientes al corte. Incluye todos los períodos. El atrasado ya está dentro." [ref=e246]:
+                    - paragraph [ref=e247]: Deuda actual
+                    - paragraph [ref=e248]: USD 8.628,39
+                  - generic "Parte de la deuda actual cuya fecha de vencimiento ya pasó." [ref=e249]:
+                    - paragraph [ref=e250]: Atrasado
+                    - paragraph [ref=e251]: USD 2.962,51
+                  - generic "Lectura financiera de caja, deuda y cobranza. Distinto del estado operativo del día en Hoy." [ref=e252]:
+                    - paragraph [ref=e253]: Riesgo financiero
+                    - paragraph [ref=e254]: Bajo
+                - generic [ref=e255]:
+                  - link "Ver clientes vencidos" [ref=e256] [cursor=pointer]:
+                    - /url: /copilot/cartera
+                    - text: Ver clientes vencidos
+                    - img [ref=e257]
+                  - button "Ver detalle original UYU" [ref=e259]
+                  - button "Ver detalle original USD" [ref=e260]
+              - generic [ref=e261]:
+                - generic [ref=e262]:
+                  - generic [ref=e264]:
+                    - heading "Facturación 2026" [level=2] [ref=e265]
+                    - paragraph [ref=e266]: Acumulado neto · USD 168.973,56 · TC 40
+                  - paragraph [ref=e267]: "Ventas netas: facturas emitidas menos notas de crédito del año (sin mezclar monedas)."
+                  - generic [ref=e268]:
+                    - generic [ref=e269]:
+                      - generic [ref=e270]:
+                        - paragraph [ref=e271]: ENE
+                        - generic "Mes cerrado" [ref=e272]
+                      - paragraph [ref=e273]: Ventas
+                      - paragraph [ref=e274]: USD 29.657,57
+                      - paragraph [ref=e275]: Mes cerrado
+                    - generic [ref=e276]:
+                      - generic [ref=e277]:
+                        - paragraph [ref=e278]: FEB
+                        - generic "Mes cerrado" [ref=e279]
+                      - paragraph [ref=e280]: Ventas
+                      - paragraph [ref=e281]: USD 27.708,83
+                      - paragraph [ref=e282]: Mes cerrado
+                    - generic [ref=e283]:
+                      - generic [ref=e284]:
+                        - paragraph [ref=e285]: MAR
+                        - generic "Mes cerrado" [ref=e286]
+                      - paragraph [ref=e287]: Ventas
+                      - paragraph [ref=e288]: USD 27.966,93
+                      - paragraph [ref=e289]: Mes cerrado
+                    - generic [ref=e290]:
+                      - generic [ref=e291]:
+                        - paragraph [ref=e292]: ABR
+                        - generic "Mes cerrado" [ref=e293]
+                      - paragraph [ref=e294]: Ventas
+                      - paragraph [ref=e295]: USD 32.717,68
+                      - paragraph [ref=e296]: Mes cerrado
+                    - generic [ref=e297]:
+                      - generic [ref=e298]:
+                        - paragraph [ref=e299]: MAY
+                        - generic "Mes cerrado" [ref=e300]
+                      - paragraph [ref=e301]: Ventas
+                      - paragraph [ref=e302]: USD 25.039,51
+                      - paragraph [ref=e303]: Mes cerrado
+                    - generic [ref=e304]:
+                      - generic [ref=e305]:
+                        - paragraph [ref=e306]: JUN
+                        - generic "Mes en curso" [ref=e307]
+                      - paragraph [ref=e308]: Ventas
+                      - paragraph [ref=e309]: USD 25.883,04
+                      - paragraph [ref=e310]: Mes en curso
+                    - generic [ref=e311]:
+                      - generic [ref=e312]:
+                        - paragraph [ref=e313]: JUL
+                        - generic "Mes en curso" [ref=e314]
+                      - paragraph [ref=e315]: Ventas
+                      - paragraph [ref=e316]: USD 0,00
+                      - paragraph [ref=e317]: Mes en curso
+                    - generic [ref=e318]:
+                      - generic [ref=e319]:
+                        - paragraph [ref=e320]: AGO
+                        - generic "Mes en curso" [ref=e321]
+                      - paragraph [ref=e322]: Ventas
+                      - paragraph [ref=e323]: USD 0,00
+                      - paragraph [ref=e324]: Mes en curso
+                    - generic [ref=e325]:
+                      - generic [ref=e326]:
+                        - paragraph [ref=e327]: SEP
+                        - generic "Mes en curso" [ref=e328]
+                      - paragraph [ref=e329]: Ventas
+                      - paragraph [ref=e330]: USD 0,00
+                      - paragraph [ref=e331]: Mes en curso
+                    - generic [ref=e332]:
+                      - generic [ref=e333]:
+                        - paragraph [ref=e334]: OCT
+                        - generic "Mes en curso" [ref=e335]
+                      - paragraph [ref=e336]: Ventas
+                      - paragraph [ref=e337]: USD 0,00
+                      - paragraph [ref=e338]: Mes en curso
+                    - generic [ref=e339]:
+                      - generic [ref=e340]:
+                        - paragraph [ref=e341]: NOV
+                        - generic "Mes en curso" [ref=e342]
+                      - paragraph [ref=e343]: Ventas
+                      - paragraph [ref=e344]: USD 0,00
+                      - paragraph [ref=e345]: Mes en curso
+                    - generic [ref=e346]:
+                      - generic [ref=e347]:
+                        - paragraph [ref=e348]: DIC
+                        - generic "Mes en curso" [ref=e349]
+                      - paragraph [ref=e350]: Ventas
+                      - paragraph [ref=e351]: USD 0,00
+                      - paragraph [ref=e352]: Mes en curso
+                - generic [ref=e353]:
+                  - generic [ref=e355]:
+                    - heading "Tendencia anual" [level=2] [ref=e356]
+                    - paragraph [ref=e357]: Ventas mensuales · USD equiv. · TC 40
+                  - table [ref=e359]:
+                    - rowgroup [ref=e360]:
+                      - row "Mes Ventas (equiv. USD) Estado" [ref=e361]:
+                        - columnheader "Mes" [ref=e362]
+                        - columnheader "Ventas (equiv. USD)" [ref=e363]
+                        - columnheader "Estado" [ref=e364]
+                    - rowgroup [ref=e365]:
+                      - row "ENE USD 29.657,57 cerrado" [ref=e366]:
+                        - cell "ENE" [ref=e367]
+                        - cell "USD 29.657,57" [ref=e368]
+                        - cell "cerrado" [ref=e369]
+                      - row "FEB USD 27.708,83 cerrado" [ref=e370]:
+                        - cell "FEB" [ref=e371]
+                        - cell "USD 27.708,83" [ref=e372]
+                        - cell "cerrado" [ref=e373]
+                      - row "MAR USD 27.966,93 cerrado" [ref=e374]:
+                        - cell "MAR" [ref=e375]
+                        - cell "USD 27.966,93" [ref=e376]
+                        - cell "cerrado" [ref=e377]
+                      - row "ABR USD 32.717,68 cerrado" [ref=e378]:
+                        - cell "ABR" [ref=e379]
+                        - cell "USD 32.717,68" [ref=e380]
+                        - cell "cerrado" [ref=e381]
+                      - row "MAY USD 25.039,51 cerrado" [ref=e382]:
+                        - cell "MAY" [ref=e383]
+                        - cell "USD 25.039,51" [ref=e384]
+                        - cell "cerrado" [ref=e385]
+                      - row "JUN USD 25.883,04 en curso" [ref=e386]:
+                        - cell "JUN" [ref=e387]
+                        - cell "USD 25.883,04" [ref=e388]
+                        - cell "en curso" [ref=e389]
+                      - row "JUL USD 0,00 en curso" [ref=e390]:
+                        - cell "JUL" [ref=e391]
+                        - cell "USD 0,00" [ref=e392]
+                        - cell "en curso" [ref=e393]
+                      - row "AGO USD 0,00 en curso" [ref=e394]:
+                        - cell "AGO" [ref=e395]
+                        - cell "USD 0,00" [ref=e396]
+                        - cell "en curso" [ref=e397]
+                      - row "SEP USD 0,00 en curso" [ref=e398]:
+                        - cell "SEP" [ref=e399]
+                        - cell "USD 0,00" [ref=e400]
+                        - cell "en curso" [ref=e401]
+                      - row "OCT USD 0,00 en curso" [ref=e402]:
+                        - cell "OCT" [ref=e403]
+                        - cell "USD 0,00" [ref=e404]
+                        - cell "en curso" [ref=e405]
+                      - row "NOV USD 0,00 en curso" [ref=e406]:
+                        - cell "NOV" [ref=e407]
+                        - cell "USD 0,00" [ref=e408]
+                        - cell "en curso" [ref=e409]
+                      - row "DIC USD 0,00 en curso" [ref=e410]:
+                        - cell "DIC" [ref=e411]
+                        - cell "USD 0,00" [ref=e412]
+                        - cell "en curso" [ref=e413]
+                - generic [ref=e414]:
+                  - generic [ref=e416]:
+                    - heading "Clientes que explican la deuda" [level=2] [ref=e417]
+                    - paragraph [ref=e418]: Mayor pendiente por moneda al corte
+                  - generic [ref=e419]:
+                    - generic [ref=e420]:
+                      - paragraph [ref=e421]: Top UYU
+                      - table [ref=e423]:
+                        - rowgroup [ref=e424]:
+                          - row "Cliente Pendiente" [ref=e425]:
+                            - columnheader "Cliente" [ref=e426]
+                            - columnheader "Pendiente" [ref=e427]
+                        - rowgroup [ref=e428]:
+                          - row "1. Estudio Fletcher SAS $ 29.280" [ref=e429]:
+                            - cell "1. Estudio Fletcher SAS" [ref=e430]:
+                              - link "1. Estudio Fletcher SAS" [ref=e431] [cursor=pointer]:
+                                - /url: /copilot/clientes/8fd1272a-3829-4d50-8aa8-66aced1828a0
+                            - cell "$ 29.280" [ref=e432]
+                          - row "2. Cafe de especialdiad srl $ 24.400" [ref=e433]:
+                            - cell "2. Cafe de especialdiad srl" [ref=e434]:
+                              - link "2. Cafe de especialdiad srl" [ref=e435] [cursor=pointer]:
+                                - /url: /copilot/clientes/079b19d2-23dd-48cd-b9fd-191575fce5fc
+                            - cell "$ 24.400" [ref=e436]
+                          - row "3. Mauricio Nicolás Gayol Martínez $ 19.520" [ref=e437]:
+                            - cell "3. Mauricio Nicolás Gayol Martínez" [ref=e438]:
+                              - link "3. Mauricio Nicolás Gayol Martínez" [ref=e439] [cursor=pointer]:
+                                - /url: /copilot/clientes/44aae4f6-9766-4ff6-b123-c6bc97ccac61
+                            - cell "$ 19.520" [ref=e440]
+                          - row "4. Nirmex S.A. $ 17.080" [ref=e441]:
+                            - cell "4. Nirmex S.A." [ref=e442]:
+                              - link "4. Nirmex S.A." [ref=e443] [cursor=pointer]:
+                                - /url: /copilot/clientes/7671f4d1-8710-43ab-aff1-3fb53c80442b
+                            - cell "$ 17.080" [ref=e444]
+                          - row "5. Movex Uruguay S.A.S. $ 15.320" [ref=e445]:
+                            - cell "5. Movex Uruguay S.A.S." [ref=e446]:
+                              - link "5. Movex Uruguay S.A.S." [ref=e447] [cursor=pointer]:
+                                - /url: /copilot/clientes/c69b270b-535e-4c99-99e7-a44fce32a4df
+                            - cell "$ 15.320" [ref=e448]
+                      - button "Ver más (4)" [ref=e450]
+                    - generic [ref=e451]:
+                      - paragraph [ref=e452]: Top USD
+                      - table [ref=e454]:
+                        - rowgroup [ref=e455]:
+                          - row "Cliente Pendiente" [ref=e456]:
+                            - columnheader "Cliente" [ref=e457]
+                            - columnheader "Pendiente" [ref=e458]
+                        - rowgroup [ref=e459]:
+                          - row "1. Trexys Consultores S.A.S. U$S 1.049" [ref=e460]:
+                            - cell "1. Trexys Consultores S.A.S." [ref=e461]:
+                              - link "1. Trexys Consultores S.A.S." [ref=e462] [cursor=pointer]:
+                                - /url: /copilot/clientes/904cf1f1-89cb-4b5c-bd9c-dcd3f0f24c58
+                            - cell "U$S 1.049" [ref=e463]
+                          - row "2. Creditox sas U$S 976" [ref=e464]:
+                            - cell "2. Creditox sas" [ref=e465]:
+                              - link "2. Creditox sas" [ref=e466] [cursor=pointer]:
+                                - /url: /copilot/clientes/09381f35-df88-4f4e-aec2-31f78c6e1f84
+                            - cell "U$S 976" [ref=e467]
+                          - row "3. Petrovic Solutions U$S 936" [ref=e468]:
+                            - cell "3. Petrovic Solutions" [ref=e469]:
+                              - link "3. Petrovic Solutions" [ref=e470] [cursor=pointer]:
+                                - /url: /copilot/clientes/94ee84d9-d2a1-45a5-ac67-9e3d53f63179
+                            - cell "U$S 936" [ref=e471]
+                          - row "4. Trek U$S 824" [ref=e472]:
+                            - cell "4. Trek" [ref=e473]:
+                              - link "4. Trek" [ref=e474] [cursor=pointer]:
+                                - /url: /copilot/clientes/881c3904-74c5-40b9-ba6a-b8aa3a1058e1
+                            - cell "U$S 824" [ref=e475]
+                          - row "5. Consumidor Final U$S 610" [ref=e476]:
+                            - cell "5. Consumidor Final" [ref=e477]:
+                              - link "5. Consumidor Final" [ref=e478] [cursor=pointer]:
+                                - /url: /copilot/clientes/2028181c-172e-4b34-90fd-01c1d400f91b
+                            - cell "U$S 610" [ref=e479]
+                      - button "Ver más (7)" [ref=e481]
+              - generic [ref=e482]:
+                - generic [ref=e484]:
+                  - heading "Caja proyectada próximos 30 días" [level=2] [ref=e485]
+                  - paragraph [ref=e486]: Proyección basada en caja actual, cobros esperados y pagos registrados.
+                - generic [ref=e487]:
+                  - generic [ref=e488]:
+                    - paragraph [ref=e489]: Caja para próximos pagos
+                    - generic [ref=e490]: USD 25.375,95
+                  - generic [ref=e491]:
+                    - paragraph [ref=e492]:
+                      - text: Cobros esperados
+                      - generic [ref=e493]: — Cobros probables según historial de pago y plazos de cobro registrados.
+                    - generic [ref=e494]: USD 8.628,39
+                  - generic [ref=e495]:
+                    - paragraph [ref=e496]: Pagos registrados
+                    - generic [ref=e497]: USD 14.529,03
+                  - generic [ref=e498]:
+                    - paragraph [ref=e499]:
+                      - text: Caja proyectada
+                      - generic [ref=e500]: — Caja disponible + cobros probables − pagos programados.
+                    - generic [ref=e501]: USD 19.475,31
+                - generic [ref=e502]:
+                  - generic [ref=e503]:
+                    - paragraph [ref=e504]: Caja proyectada 30 días — UYU
+                    - generic [ref=e505]:
+                      - generic [ref=e506]:
+                        - generic [ref=e507]: Disponible hoy
+                        - generic [ref=e508]: $ 654.703
+                      - generic [ref=e509]:
+                        - generic [ref=e510]: Después de pagos
+                        - generic [ref=e511]: $ 406.902
+                    - generic [ref=e517]:
+                      - paragraph [ref=e518]: Evolución estimada
+                      - generic [ref=e519]:
+                        - generic [ref=e520]: Cobros aplicados (período)
+                        - generic [ref=e521]: +$ 599.190
+                      - generic [ref=e522]:
+                        - generic [ref=e523]: Cobros esperados 30d
+                        - generic [ref=e524]: +$ 118.993
+                      - generic [ref=e525]:
+                        - generic [ref=e526]: Pagos programados 30d
+                        - generic [ref=e527]: −$ 247.801
+                      - generic [ref=e528]:
+                        - generic [ref=e529]: Variación neta 30d
+                        - generic [ref=e530]: $ -128.808
+                      - paragraph [ref=e531]: Evolución basada en movimientos registrados en Tesorería dentro del período. Para detalle diario, ver Tesorería.
+                  - generic [ref=e532]:
+                    - paragraph [ref=e533]: Caja proyectada 30 días — USD
+                    - generic [ref=e534]:
+                      - generic [ref=e535]:
+                        - generic [ref=e536]: Disponible hoy
+                        - generic [ref=e537]: U$S 9.008,38
+                      - generic [ref=e538]:
+                        - generic [ref=e539]: Después de pagos
+                        - generic [ref=e540]: U$S 674,38
+                    - generic [ref=e546]:
+                      - paragraph [ref=e547]: Evolución estimada
+                      - generic [ref=e548]:
+                        - generic [ref=e549]: Cobros aplicados (período)
+                        - generic [ref=e550]: +U$S 2.274,92
+                      - generic [ref=e551]:
+                        - generic [ref=e552]: Cobros esperados 30d
+                        - generic [ref=e553]: +U$S 5.653,56
+                      - generic [ref=e554]:
+                        - generic [ref=e555]: Pagos programados 30d
+                        - generic [ref=e556]: −U$S 8.334
+                      - generic [ref=e557]:
+                        - generic [ref=e558]: Variación neta 30d
+                        - generic [ref=e559]: U$S -2.680,44
+                      - paragraph [ref=e560]: Evolución basada en movimientos registrados en Tesorería dentro del período. Para detalle diario, ver Tesorería.
+              - generic [ref=e561]:
+                - generic [ref=e563]:
+                  - heading "Riesgo de cobro" [level=2] [ref=e564]
+                  - paragraph [ref=e565]: Clientes y montos atrasados al corte.
+                - generic [ref=e566]:
+                  - generic [ref=e567]:
+                    - paragraph [ref=e568]: Clientes con atraso
+                    - paragraph [ref=e569]: 7 de 187
+                  - generic [ref=e570]:
+                    - paragraph [ref=e571]: Monto atrasado
+                    - paragraph [ref=e572]: USD 2.962,51
+                    - paragraph [ref=e573]: TC 40
+                  - generic [ref=e574]:
+                    - paragraph [ref=e575]: Clientes +30 días
+                    - paragraph [ref=e576]: "0"
+                  - generic [ref=e577]:
+                    - paragraph [ref=e578]: Mayor cliente deudor UYU
+                    - paragraph [ref=e579]: Estudio Fletcher SAS
+                    - paragraph [ref=e580]: USD 732,00
+                  - generic [ref=e581]:
+                    - paragraph [ref=e582]: Mayor cliente deudor USD
+                    - paragraph [ref=e583]: Trexys Consultores S.A.S.
+                    - paragraph [ref=e584]: USD 1.049,20
+                - generic [ref=e585]:
+                  - generic [ref=e587]: USD equiv. · TC 40
+                  - generic [ref=e588]:
+                    - generic [ref=e589]:
+                      - paragraph [ref=e590]: Deuda actual
+                      - paragraph [ref=e591]: USD 8.628,39
+                    - generic [ref=e592]:
+                      - paragraph [ref=e593]: Atrasado
+                      - paragraph [ref=e594]: USD 2.962,51
+                    - generic [ref=e595]:
+                      - paragraph [ref=e596]: "% atrasado"
+                      - paragraph [ref=e597]: 34%
+                  - table [ref=e599]:
+                    - rowgroup [ref=e600]:
+                      - row "Cliente Deuda Atrasada Acción" [ref=e601]:
+                        - columnheader "Cliente" [ref=e602]
+                        - columnheader "Deuda" [ref=e603]
+                        - columnheader "Atrasada" [ref=e604]
+                        - columnheader "Acción" [ref=e605]
+                    - rowgroup [ref=e606]:
+                      - row "Estudio Fletcher SAS $ 29.280 $ 14.640 Ver ficha" [ref=e607]:
+                        - cell "Estudio Fletcher SAS" [ref=e608]
+                        - cell "$ 29.280" [ref=e609]
+                        - cell "$ 14.640" [ref=e610]
+                        - cell "Ver ficha" [ref=e611]:
+                          - link "Ver ficha" [ref=e612] [cursor=pointer]:
+                            - /url: /copilot/clientes/8fd1272a-3829-4d50-8aa8-66aced1828a0
+                      - row "El Pais S.A. $ 8.662 $ 8.662 Ver ficha" [ref=e613]:
+                        - cell "El Pais S.A." [ref=e614]
+                        - cell "$ 8.662" [ref=e615]
+                        - cell "$ 8.662" [ref=e616]
+                        - cell "Ver ficha" [ref=e617]:
+                          - link "Ver ficha" [ref=e618] [cursor=pointer]:
+                            - /url: /copilot/clientes/facc4033-d2ff-4ea2-8f87-1c86990c5555
+                  - generic [ref=e619]:
+                    - link "Ver clientes atrasados" [ref=e620] [cursor=pointer]:
+                      - /url: /copilot/cartera
+                    - link "Generar reporte de deudores" [ref=e621] [cursor=pointer]:
+                      - /url: /copilot/reportes
+  - alert [ref=e165]

@@ -82,7 +82,7 @@ export function ClientesPageClient() {
   const statsLine = useMemo(() => {
     if (!load) return null;
     const overdueCount = load.rows.filter(
-      (r) => (r.overdue_uyu ?? 0) > 0 || (r.overdue_usd ?? 0) > 0
+      (r) => (r.collection_overdue_uyu ?? 0) > 0 || (r.collection_overdue_usd ?? 0) > 0
     ).length;
     const withDebtCount = load.rows.filter((r) => r.debt_uyu > 0 || r.debt_usd > 0).length;
     const noContactCount = load.rows.filter((r) => !r.has_contact_data).length;

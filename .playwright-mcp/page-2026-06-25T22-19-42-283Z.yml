@@ -1,0 +1,199 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - img [ref=e7]
+      - navigation "Navegación del módulo Copilot" [ref=e10]:
+        - button "Expandir menú lateral" [ref=e12]:
+          - img [ref=e13]
+        - link "Hoy" [ref=e15] [cursor=pointer]:
+          - /url: /copilot/hoy
+          - img [ref=e16]
+          - generic [ref=e19]: Hoy
+        - link "Dashboard" [ref=e22] [cursor=pointer]:
+          - /url: /copilot/dashboard
+          - img [ref=e23]
+          - generic [ref=e25]: Dashboard
+        - link "Finanzas" [ref=e26] [cursor=pointer]:
+          - /url: /copilot/finanzas
+          - img [ref=e27]
+          - generic [ref=e30]: Finanzas
+        - link "Reportes" [ref=e31] [cursor=pointer]:
+          - /url: /copilot/reportes
+          - img [ref=e32]
+          - generic [ref=e35]: Reportes
+        - link "Cobranza" [ref=e38] [cursor=pointer]:
+          - /url: /copilot/cobranza
+          - img [ref=e39]
+          - generic [ref=e44]: Cobranza
+        - link "Cartera" [ref=e45] [cursor=pointer]:
+          - /url: /copilot/cartera
+          - img [ref=e46]
+          - generic [ref=e48]: Cartera
+        - link "Clientes" [ref=e49] [cursor=pointer]:
+          - /url: /copilot/clientes
+          - img [ref=e50]
+          - generic [ref=e55]: Clientes
+        - link "Tesorería" [ref=e58] [cursor=pointer]:
+          - /url: /copilot/tesoreria
+          - img [ref=e59]
+          - generic [ref=e62]: Tesorería
+        - link "Alertas" [ref=e65] [cursor=pointer]:
+          - /url: /copilot/alertas
+          - img [ref=e66]
+          - generic [ref=e68]: Alertas
+        - link "Agentes IA" [ref=e69] [cursor=pointer]:
+          - /url: /copilot/agentes
+          - img [ref=e70]
+          - generic [ref=e73]: Agentes IA
+        - link "Datos" [ref=e74] [cursor=pointer]:
+          - /url: /copilot/datos
+          - img [ref=e75]
+          - generic [ref=e79]: Datos
+        - link "Configuración" [ref=e82] [cursor=pointer]:
+          - /url: /copilot/admin
+          - img [ref=e83]
+          - generic [ref=e86]: Configuración
+        - link "Manual de uso" [ref=e87] [cursor=pointer]:
+          - /url: /copilot/manual
+          - img [ref=e88]
+          - generic [ref=e91]: Manual de uso
+        - link "Empresas" [ref=e94] [cursor=pointer]:
+          - /url: /admin/companies
+          - img [ref=e95]
+          - generic [ref=e99]: Empresas
+        - link "Base Zeta" [ref=e100] [cursor=pointer]:
+          - /url: /copilot/knowledge/zeta
+          - img [ref=e101]
+          - generic [ref=e103]: Base Zeta
+    - generic [ref=e104]:
+      - generic [ref=e106]:
+        - generic [ref=e108]:
+          - img [ref=e298]
+          - generic [ref=e300]: Jueves, 25 de junio de 2026
+        - generic [ref=e109]:
+          - button "Notificaciones" [ref=e111]:
+            - img [ref=e112]
+          - button "Menú de usuario" [ref=e301]: A
+          - button "Estado del negocio" [ref=e117]:
+            - generic [ref=e119]: …
+      - generic [ref=e123]:
+        - banner [ref=e124]:
+          - generic [ref=e125]:
+            - heading "Reportes" [level=1] [ref=e126]
+            - paragraph [ref=e127]: Consultá reportes en pantalla o descargalos como PDF.
+        - generic [ref=e128]:
+          - paragraph [ref=e129]: "Los reportes son de solo lectura: no modifican facturas, caja ni gestiones registradas."
+          - generic [ref=e130]:
+            - paragraph [ref=e131]: Cobranza
+            - generic [ref=e132]:
+              - generic [ref=e133]:
+                - img [ref=e135]
+                - generic [ref=e139]:
+                  - heading "Reporte de deudores" [level=2] [ref=e140]
+                  - paragraph [ref=e141]: Clientes con deuda, moneda, antigüedad y contacto validado. Ideal para priorizar cobranza.
+              - generic [ref=e143]:
+                - button "Ver reporte" [ref=e144]:
+                  - img [ref=e145]
+                  - text: Ver reporte
+                - button "PDF" [ref=e302]:
+                  - img [ref=e303]
+                  - text: PDF
+            - generic [ref=e151]:
+              - generic [ref=e152]:
+                - img [ref=e154]
+                - generic [ref=e157]:
+                  - heading "Reporte de cobranza mensual" [level=2] [ref=e158]
+                  - paragraph [ref=e159]: Cobros registrados del mes, separados por moneda. Ideal para conciliar con extracto bancario.
+              - generic [ref=e161]:
+                - button "Ver reporte" [ref=e162]:
+                  - img [ref=e163]
+                  - text: Ver reporte
+                - button "PDF" [ref=e166]:
+                  - img [ref=e167]
+                  - text: PDF
+          - generic [ref=e171]:
+            - paragraph [ref=e172]: Finanzas
+            - generic [ref=e173]:
+              - generic [ref=e174]:
+                - img [ref=e176]
+                - generic [ref=e178]:
+                  - heading "Reporte de caja mensual" [level=2] [ref=e179]
+                  - paragraph [ref=e180]: Movimientos confirmados del período con saldo inicial, ingresos, egresos y saldo final.
+              - generic [ref=e182]:
+                - button "Ver reporte" [ref=e183]:
+                  - img [ref=e184]
+                  - text: Ver reporte
+                - button "PDF" [ref=e187]:
+                  - img [ref=e188]
+                  - text: PDF
+            - generic [ref=e192]:
+              - generic [ref=e193]:
+                - img [ref=e195]
+                - generic [ref=e198]:
+                  - heading "Reporte de ventas" [level=2] [ref=e199]
+                  - paragraph [ref=e200]: Detalle de facturas del mes por moneda, con total al pie.
+              - generic [ref=e202]:
+                - button "Ver reporte" [ref=e203]:
+                  - img [ref=e204]
+                  - text: Ver reporte
+                - button "PDF" [ref=e207]:
+                  - img [ref=e208]
+                  - text: PDF
+            - generic [ref=e212]:
+              - generic [ref=e213]:
+                - img [ref=e215]
+                - generic [ref=e216]:
+                  - heading "Reporte ejecutivo mensual" [level=2] [ref=e217]
+                  - paragraph [ref=e218]: "Resumen CEO: indicadores clave, top 5 clientes, top 5 deudores y estado de caja en un solo PDF."
+              - generic [ref=e220]:
+                - button "Ver reporte" [ref=e221]:
+                  - img [ref=e222]
+                  - text: Ver reporte
+                - button "PDF" [ref=e225]:
+                  - img [ref=e226]
+                  - text: PDF
+            - generic [ref=e230]:
+              - generic [ref=e231]:
+                - img [ref=e233]
+                - generic [ref=e234]:
+                  - heading "Dashboard Resumen Ejecutivo" [level=2] [ref=e235]
+                  - paragraph [ref=e236]: "Resumen ejecutivo por período personalizado: estado financiero, KPIs, tendencia mensual, deuda por antigüedad, top deudores, top facturación, cartera y movimientos."
+              - button "PDF" [ref=e239]:
+                - img [ref=e240]
+                - text: PDF
+          - generic [ref=e244]:
+            - paragraph [ref=e245]: Clientes
+            - generic [ref=e246]:
+              - generic [ref=e247]:
+                - img [ref=e249]
+                - generic [ref=e255]:
+                  - heading "Clientes principales" [level=2] [ref=e256]
+                  - paragraph [ref=e257]: Ranking de clientes ordenado por facturación, deuda o vencimiento. Muestra participación y nivel de riesgo.
+              - generic [ref=e259]:
+                - button "Ver reporte" [ref=e260]:
+                  - img [ref=e261]
+                  - text: Ver reporte
+                - button "PDF" [ref=e264]:
+                  - img [ref=e265]
+                  - text: PDF
+            - generic [ref=e269]:
+              - generic [ref=e270]:
+                - img [ref=e272]
+                - generic [ref=e275]:
+                  - heading "Estado de cuenta por cliente" [level=2] [ref=e276]
+                  - paragraph [ref=e277]: Deuda actual y atrasado por cliente, separado por moneda. Ver todos los clientes en pantalla o descargar el PDF masivo.
+              - generic [ref=e279]:
+                - button "Ver reporte" [ref=e280]:
+                  - img [ref=e281]
+                  - text: Ver reporte
+                - button "PDF" [ref=e284]:
+                  - img [ref=e285]
+                  - text: PDF
+  - button "Open Next.js Dev Tools" [ref=e307] [cursor=pointer]:
+    - generic [ref=e310]:
+      - text: Compiling
+      - generic [ref=e311]:
+        - generic [ref=e312]: .
+        - generic [ref=e313]: .
+        - generic [ref=e314]: .
+  - alert [ref=e315]
