@@ -72,7 +72,7 @@ export function describeActiveDebtorsReportFilters(filters: DebtorsReportFilters
 
   switch (filters.status) {
     case "overdue":
-      labels.push("Estado: solo vencidos");
+      labels.push("Estado: solo atrasados");
       break;
     case "critical":
       labels.push("Estado: solo críticos");
@@ -90,7 +90,7 @@ export function describeActiveDebtorsReportFilters(filters: DebtorsReportFilters
   }
 
   if (filters.overdueDays !== "all") {
-    labels.push(`Antigüedad: vencidos más de ${filters.overdueDays} días`);
+    labels.push(`Antigüedad: atrasados más de ${filters.overdueDays} días`);
   }
 
   switch (filters.contact) {

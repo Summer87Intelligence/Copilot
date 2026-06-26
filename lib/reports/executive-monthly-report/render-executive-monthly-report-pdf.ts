@@ -194,7 +194,7 @@ export function renderExecutiveMonthlyReportPdf(
         ),
       },
       { label: "Deuda actual", value: formatMoney(model.keyMetrics.totalDebt, model.currency) },
-      { label: "Deuda vencida", value: formatMoney(model.keyMetrics.overdueDebt, model.currency) },
+      { label: "Deuda atrasada", value: formatMoney(model.keyMetrics.overdueDebt, model.currency) },
       { label: "Clientes activos", value: String(model.keyMetrics.activeClients) },
     ];
 
@@ -306,7 +306,7 @@ export function renderExecutiveMonthlyReportPdf(
         ["#", "center", colW.rank],
         ["Cliente", "left", colW.client],
         ["Deuda actual", "right", colW.debt],
-        ["Deuda vencida", "right", colW.overdue],
+        ["Deuda atrasada", "right", colW.overdue],
         ["Riesgo", "center", colW.risk],
       ];
       for (const [label, align, w] of dH) {

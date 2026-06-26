@@ -91,7 +91,7 @@ function riskColor(risk: string): string {
 
 function sortLabel(sortBy: string): string {
   if (sortBy === "debt") return "ordenado por deuda total";
-  if (sortBy === "overdue") return "ordenado por deuda vencida";
+  if (sortBy === "overdue") return "ordenado por deuda atrasada";
   return "ordenado por facturación";
 }
 
@@ -172,7 +172,7 @@ export function renderTopClientsReportPdf(
       `Clientes activos: ${model.totals.clientCount}`,
       `Facturación total ${model.currency}: ${formatMoney(model.totals.netSales, model.currency)}`,
       `Deuda actual ${model.currency}: ${formatMoney(model.totals.totalDebt, model.currency)}`,
-      `Deuda vencida ${model.currency}: ${formatMoney(model.totals.overdueDebt, model.currency)}`,
+      `Deuda atrasada ${model.currency}: ${formatMoney(model.totals.overdueDebt, model.currency)}`,
     ];
     const summaryH = 14 + summaryLines.length * 13;
     doc.fillColor(COLORS.headerBg).rect(PAGE.margin, y, TABLE_W, summaryH).fill();

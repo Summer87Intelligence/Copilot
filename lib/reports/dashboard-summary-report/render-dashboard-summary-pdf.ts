@@ -527,7 +527,7 @@ export function renderDashboardSummaryPdf(model: DashboardSummaryPdfModel): Prom
           ["Cliente", "left", colW.client],
           ["Mon.", "center", colW.cur],
           [METRIC_LABEL.deuda_activa, "right", colW.debt],
-          ["Deuda vencida", "right", colW.overdue],
+          ["Deuda atrasada", "right", colW.overdue],
           ["Días atraso", "right", colW.days],
           ["Estado", "left", colW.status],
         ];

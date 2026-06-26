@@ -262,3 +262,90 @@ Sin cambios en tests (los reemplazos fueron copy puro; ningún test asertaba "Cr
 ### 11.9 GO / NO GO
 
 **GO** para los dos fixes de copy de Fase 5 (Cobranza/Clientes), con `tsc`/`vitest`/`build` en verde. Los ítems de 11.7 quedan documentados como **pendientes** por pertenecer a otros modelos/módulos o requerir cambios de lógica fuera del alcance declarado. **Sin commit.**
+
+---
+
+## 12. FASE 6 — Reportes y documentación (COLLECTION-AGING-MODEL-PHASE-6-REPORTS-AND-DOCUMENTATION-001)
+
+**Fecha:** 2026-06-26 · **Alcance:** solo lenguaje visible de PDFs/previews/exportaciones/reportes/manual/glosario. **No** lógica financiera, **no** cálculos, **no** Zeta, **no** Supabase, **no** el helper, **no** comportamiento de Cobranza/Clientes, **no** commit.
+
+### 12.1 Criterio de triage
+
+Búsqueda acotada a `lib/reports/**`, previews de reportes, diálogos de exportación, manual y glosario (`vencido/vencida`, `deuda vencida`, `crítico/críticos`, `riesgo`, `prioridad`). Regla:
+
+- **Reemplazar** el descriptor visible **"vencido/vencida" → "atrasado/atrasada"** cuando designa la deuda atrasada agregada (unificación de vocabulario con el resto de la app y con las previews, que **ya** usaban "Atrasada"/"Deuda atrasada").
+- **Mantener "Crítico" / "Riesgo alto" / "Riesgo"**: provienen del **modelo de riesgo financiero** (`row.risk` Alto/Medio/Bajo; `riskLevel` por caja negativa o ratio vencido/total ≥ 40%) y del **status comercial** (`deriveClientDebtStatus`), **no** del bucket de antigüedad. La consigna pide convertir "críticos → atraso +30" solo "si realmente representan ese bucket"; **no lo representan** → se mantienen.
+- **Mantener conceptos de `due_date`** reales: "fecha de vencimiento", "antigüedad de vencimiento", "vencimiento de cuota", `due_date`.
+- **No tocar** variables/tipos/funciones/APIs/SQL/comentarios.
+
+> Nota técnica: los totales de los reportes (`overdue_*`) se calculan por `due_date` (ver `compute-currency-overdue-aging.ts`), distinto del `collection_overdue_*` por `issue_date` de Cobranza. Esta fase **solo cambia la palabra visible**, no el número ni la base de cálculo. El contrato canónico `METRIC_LABEL.deuda_vencida` **ya** resolvía a "Deuda atrasada" (con alias legacy) desde Fase 1; no se tocó.
+
+### 12.2 PDFs / reportes revisados
+
+| Reporte | Estado | Detalle |
+|---------|--------|---------|
+| **Deudores** (`render-debtors-report-pdf.ts`) | ✅ ya migrado | Encabezados "Atrasado" / "Días de atraso" y resumen "Atrasado UYU/USD" ya correctos. Se ajustaron las **etiquetas de filtros** (ver 12.3). |
+| **Top clientes** (`render-top-clients-report-pdf.ts`) | ✏️ copy | Columna "Atrasada" ya estaba; se alinearon resumen y subtítulo de orden. |
+| **Reporte ejecutivo mensual** (`build-…-model.ts` + `render-…-pdf.ts`) | ✏️ copy | KPI, encabezado de tabla y alerta. Se mantienen `riskLevel`/"Riesgo". |
+| **Resumen de dashboard** (`render-dashboard-summary-pdf.ts`) | ✏️ copy | Encabezado de tabla hardcodeado alineado al `METRIC_LABEL` ("Deuda atrasada"). KPI ya usaba el contrato. |
+| **Estado de cuenta** (`render-account-statement-pdf.ts`) | ✅ sin cambios | No usa "vencido" en copy visible; preview ya dice "Deuda atrasada". |
+| **Ventas netas / Cobranza mensual / Caja mensual** | ✅ sin cambios | No usan terminología de antigüedad de cobranza. |
+
+### 12.3 Textos reemplazados (copy-only)
+
+| Archivo | Antes | Después |
+|---------|-------|---------|
+| `lib/reports/top-clients-report/render-top-clients-report-pdf.ts` | "ordenado por deuda vencida" | "ordenado por deuda atrasada" |
+| `lib/reports/top-clients-report/render-top-clients-report-pdf.ts` | "Deuda vencida {moneda}: …" (resumen) | "Deuda atrasada {moneda}: …" |
+| `lib/reports/executive-monthly-report/build-executive-monthly-report-model.ts` | alerta "… con deuda vencida en {moneda}: …" | "… con deuda atrasada en {moneda}: …" |
+| `lib/reports/executive-monthly-report/render-executive-monthly-report-pdf.ts` | KPI "Deuda vencida" | "Deuda atrasada" |
+| `lib/reports/executive-monthly-report/render-executive-monthly-report-pdf.ts` | encabezado tabla "Deuda vencida" | "Deuda atrasada" |
+| `lib/reports/dashboard-summary-report/render-dashboard-summary-pdf.ts` | encabezado tabla "Deuda vencida" | "Deuda atrasada" |
+| `lib/reports/debtors-report/debtors-report-filters.ts` | "Estado: solo vencidos" | "Estado: solo atrasados" |
+| `lib/reports/debtors-report/debtors-report-filters.ts` | "Antigüedad: vencidos más de N días" | "Antigüedad: atrasados más de N días" |
+| `lib/copilot-manual/sections.generated.ts` | Columnas del PDF de deudores: "… deuda, vencido, días de atraso …" | "… deuda, atrasado, días de atraso …" |
+
+### 12.4 Preview web ↔ PDF (parity)
+
+- Las previews (`debtors-preview-dialog`, `debtors-report-dialog`, `executive-monthly-preview-dialog`, `top-clients-preview-dialog`, `account-statements-preview-dialog`, `top-clients-report-dialog`) **ya** mostraban "Atrasada"/"Deuda atrasada"/"Solo atrasados"/"Atrasados más de N días".
+- Esta fase **cerró la brecha** en el lado PDF (encabezados, resúmenes, alertas y etiquetas de filtros) para que coincidan exactamente con la preview. Verificado por lectura directa de ambos lados.
+
+### 12.5 Snapshots / tests actualizados
+
+- **Sin snapshots golden** de PDF en el repo (no existe `__snapshots__`); los tests de PDF validan por extracción de texto (`toContain`), no por bytes.
+- Único test con aserción de copy afectado: `lib/reports/debtors-report/debtors-report-filters.test.ts` → expectativas "solo vencidos"/"vencidos más de 30 días" actualizadas a "solo atrasados"/"atrasados más de 30 días" (cambio exclusivamente de copy).
+- `render-copilot-manual-pdf.test.ts` (asserta "Deuda vencida"): **sigue verde** — el término "Deuda vencida" del manual proviene de secciones de **Finanzas/Cartera** (no migradas), que no se tocaron.
+
+### 12.6 Manual / glosario
+
+- **Cambiado:** descripción de columnas del PDF de deudores ("vencido" → "atrasado") para parity con el PDF real.
+- **No cambiado (fuera de alcance, parity con UIs no migradas):**
+  - Sección **Agente de cliente / ficha 360** ("deuda vencida", "vencido"): la UI (`build-client-agent-brief.ts`) sigue usando "vencido" por `due_date` (diferido en Fase 5).
+  - Sección **Finanzas** ("Deuda vencida"): módulo Finanzas no migrado.
+  - Glosario "Días de atraso" y referencias a `due_date`: conceptos reales distintos.
+- Validado: `node scripts/generate-copilot-manual-content.mjs --check` → OK (26 secciones, UTF-8, sin mojibake nuevo).
+
+### 12.7 Componentes / textos pendientes
+
+1. **Modelo de riesgo financiero** en reportes (debtors `statusLabel` "Crítico"/"Riesgo alto"; ejecutivo `riskLevel` "Crítico"; columna "Riesgo" en top-clientes y ejecutivo). Distinto del bucket de antigüedad → requiere decisión de producto para unificar (no es un alias del modelo).
+2. **`build-account-statement-message.ts`** (mensaje de cobranza WhatsApp/email) usa "vencido": es **funcionalidad de Cobranza**, no un reporte/PDF, y tiene tests de tono → fuera de alcance.
+3. **Manual Finanzas/ficha 360** y **glosario `due_date`**: pendientes hasta migrar esos módulos.
+4. **Taxonomía de estados de cliente** (`deriveClientDebtStatus`: Al día/Con deuda/Atrasado/Crítico/Riesgo alto) usada por el PDF de deudores: modelo propio por `issue_date` con umbrales distintos; unificarlo con los 4 buckets requiere cambio de lógica.
+
+### 12.8 Checks
+
+| Check | Resultado |
+|-------|-----------|
+| `npx tsc --noEmit` | ✅ OK (exit 0) |
+| `npx vitest run` | ✅ **296 archivos / 3771 tests** verdes (exit 0) |
+| `npm run build` | ✅ OK (exit 0) |
+| `generate-copilot-manual-content.mjs --check` | ✅ OK (26 secciones, UTF-8) |
+
+### 12.9 Riesgos
+
+- **Doble acepción de "Atrasado":** en reportes el número se mantiene por `due_date`; en Cobranza el "Atrasado" es por `issue_date` (>7 días). Mismo rótulo, base de cálculo distinta. Aceptable a nivel de vocabulario, pero si negocio requiere que los números coincidan, será una fase de **lógica** (recalcular reportes con el helper), explícitamente fuera de este alcance.
+- "Crítico/Riesgo" conservados a propósito: convertirlos sería factualmente incorrecto (no son el bucket +30).
+
+### 12.10 GO / NO GO
+
+**GO** para los cambios de copy de Fase 6 (reportes + manual), con `tsc`/`vitest`/`build`/manual-check en verde, previews y PDFs en parity, y sin cambios de cálculo. Pendientes de 12.7 documentados. **Sin commit.**

@@ -99,7 +99,7 @@ function buildAlerts(
   }
   if (overdueDebtorsCount > 0) {
     alerts.push(
-      `${overdueDebtorsCount} cliente${overdueDebtorsCount > 1 ? "s" : ""} con deuda vencida en ${currency}: ${overdueDebt.toLocaleString("es-UY", { maximumFractionDigits: 0 })}.`
+      `${overdueDebtorsCount} cliente${overdueDebtorsCount > 1 ? "s" : ""} con deuda atrasada en ${currency}: ${overdueDebt.toLocaleString("es-UY", { maximumFractionDigits: 0 })}.`
     );
   }
   if (highRiskCount > 0) {
