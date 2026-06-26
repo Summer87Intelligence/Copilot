@@ -23,6 +23,7 @@ import type { CopilotNotification } from "@/lib/copilot-notifications/notificati
 import { isAutoResolvedCashRisk } from "@/lib/copilot-notifications/notification-display";
 import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
 import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
+import { CopilotKpiCard } from "@/components/copilot/ui/copilot-kpi-card";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -197,61 +198,6 @@ function matchesFilter(n: CopilotNotification, filter: AlertFilter): boolean {
   }
 }
 
-// ─── Metric card ──────────────────────────────────────────────────────────────
-
-function MetricCard({
-  label,
-  value,
-  sub,
-  tone = "neutral",
-}: {
-  label: string;
-  value: number;
-  sub: string;
-  tone?: "critical" | "warning" | "positive" | "neutral";
-}) {
-  const cfg = {
-    critical: {
-      border: "border-[var(--copilot-danger-border)]",
-      bg: "bg-[var(--copilot-card-bg)]/70",
-      label: "text-[var(--copilot-ink-muted)]",
-      value: "text-[var(--copilot-danger-text-strong)]",
-    },
-    warning: {
-      border: "border-[var(--copilot-warning-border)]",
-      bg: "bg-[var(--copilot-card-bg)]/70",
-      label: "text-[var(--copilot-ink-muted)]",
-      value: "text-[var(--copilot-warning-text-strong)]",
-    },
-    positive: {
-      border: "border-[var(--copilot-success-border)]",
-      bg: "bg-[var(--copilot-card-bg)]/70",
-      label: "text-[var(--copilot-ink-muted)]",
-      value: "text-[var(--copilot-success-text-strong)]",
-    },
-    neutral: {
-      border: "border-[var(--copilot-border)]",
-      bg: "bg-[var(--copilot-card-bg)]/70",
-      label: "text-[var(--copilot-ink-muted)]",
-      value: "text-[var(--copilot-ink)]",
-    },
-  }[tone];
-
-  return (
-    <div className={`rounded-xl border ${cfg.border} ${cfg.bg} px-4 py-3`}>
-      <p
-        className={`text-[10px] font-semibold uppercase tracking-wide ${cfg.label}`}
-      >
-        {label}
-      </p>
-      <p className={`mt-1 text-2xl font-semibold tabular-nums ${cfg.value}`}>
-        {value}
-      </p>
-      <p className={`mt-0.5 text-[11px] ${cfg.label}`}>{sub}</p>
-    </div>
-  );
-}
-
 // ─── Notification card ────────────────────────────────────────────────────────
 
 function NotificationCard({
@@ -272,7 +218,7 @@ function NotificationCard({
     <article
       className={`rounded-xl border p-4 transition-colors ${
         unread
-          ? "border-[rgba(31,107,74,0.22)] bg-[rgba(31,107,74,0.028)] shadow-sm"
+          ? "border-[var(--copilot-accent-soft)] bg-[var(--copilot-accent-soft)] shadow-sm"
           : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70"
       }`}
     >
@@ -495,28 +441,28 @@ export default function CopilotAlertasPage() {
       <div className={copilotPageMainClass}>
         {/* ── Metrics ─────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <MetricCard
-            label="No leídas"
-            value={metrics.unread}
-            sub="pendientes de revisar"
+          <CopilotKpiCard
+            eyebrow="No leídas"
+            value={String(metrics.unread)}
+            subtitle="pendientes de revisar"
             tone={metrics.unread > 0 ? "warning" : "neutral"}
           />
-          <MetricCard
-            label="Críticas"
-            value={metrics.critical}
-            sub="requieren acción"
-            tone={metrics.critical > 0 ? "critical" : "neutral"}
+          <CopilotKpiCard
+            eyebrow="Críticas"
+            value={String(metrics.critical)}
+            subtitle="requieren acción"
+            tone={metrics.critical > 0 ? "danger" : "neutral"}
           />
-          <MetricCard
-            label="Vencimientos"
-            value={metrics.vencimientos}
-            sub="próximos y atrasados"
+          <CopilotKpiCard
+            eyebrow="Vencimientos"
+            value={String(metrics.vencimientos)}
+            subtitle="próximos y atrasados"
             tone={metrics.vencimientos > 0 ? "warning" : "neutral"}
           />
-          <MetricCard
-            label="Cobros recibidos"
-            value={metrics.cobros}
-            sub="últimas 72 h"
+          <CopilotKpiCard
+            eyebrow="Cobros recibidos"
+            value={String(metrics.cobros)}
+            subtitle="últimas 72 h"
             tone={metrics.cobros > 0 ? "positive" : "neutral"}
           />
         </div>
