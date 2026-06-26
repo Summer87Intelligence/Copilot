@@ -33,7 +33,6 @@ export default async function CarteraPage() {
   return (
     <>
       <CopilotPageHeader
-        eyebrow="Summer87 Copilot"
         title="Cartera"
         description="Análisis financiero de deuda, cobros y antigüedad."
       />

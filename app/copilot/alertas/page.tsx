@@ -505,7 +505,7 @@ export default function CopilotAlertasPage() {
                     onClick={() => setActiveFilter(id)}
                     className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition ${
                       active
-                        ? "bg-[var(--copilot-ink)] text-white shadow-sm"
+                        ? "bg-[var(--copilot-accent)] text-[var(--copilot-on-accent)] shadow-sm"
                         : "bg-[var(--copilot-card-bg)]/80 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]"
                     }`}
                   >
@@ -514,7 +514,7 @@ export default function CopilotAlertasPage() {
                       <span
                         className={`rounded-full px-1.5 py-px text-[10px] font-bold leading-none ${
                           active
-                            ? "bg-[var(--copilot-card-bg)]/20 text-white"
+                            ? "bg-[var(--copilot-on-accent)]/20 text-[var(--copilot-on-accent)]"
                             : "bg-[var(--copilot-border)] text-[var(--copilot-ink-muted)]"
                         }`}
                       >

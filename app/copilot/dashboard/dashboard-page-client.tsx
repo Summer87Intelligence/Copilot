@@ -88,7 +88,7 @@ const C = {
 // ---------------------------------------------------------------------------
 
 function fmtAmount(n: number, currency: string): string {
-  const prefix = currency === "USD" ? "U$S " : "$ ";
+  const prefix = currency === "USD" ? "USD " : "$ ";
   return `${prefix}${n.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 }
 

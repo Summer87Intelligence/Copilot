@@ -13,7 +13,6 @@ export default async function TesoreriaPage() {
   return (
     <>
       <CopilotPageHeader
-        eyebrow="Summer87 Copilot"
         title="Tesorería"
         description="Caja disponible, pagos programados y registros manuales."
       />
