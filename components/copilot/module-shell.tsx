@@ -53,7 +53,9 @@ export function CopilotModuleShell({
   useLayoutEffect(() => {
     void Promise.resolve().then(() => {
       const pref = readSidebarPreference(storageKey);
-      setCollapsed(pref !== null ? pref : true);
+      // First visit: open on desktop (>= 1024px), collapsed on mobile
+      const defaultCollapsed = window.innerWidth < 1024;
+      setCollapsed(pref !== null ? pref : defaultCollapsed);
       setHydrated(true);
     });
   }, [storageKey]);

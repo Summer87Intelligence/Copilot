@@ -309,6 +309,7 @@ function CopilotAccionesPageContent() {
   >({});
   const [savingLoopId, setSavingLoopId] = useState<string | null>(null);
   const [loopSaveSuccessId, setLoopSaveSuccessId] = useState<string | null>(null);
+  const [expandedTrackingId, setExpandedTrackingId] = useState<string | null>(null);
 
   const openEvidenceDrawer = useCallback((a: ActionListItem) => {
     setSaleExpandId(null);
@@ -956,82 +957,109 @@ function CopilotAccionesPageContent() {
                             expected: "",
                             before: "",
                           };
+                          const isExpanded =
+                            expandedTrackingId === a.id || loopSaveSuccessId === a.id;
+                          const hasDraft = Boolean(
+                            ld.assignee.trim() || ld.expected.trim() || ld.before.trim()
+                          );
                           return (
-                            <div className="mt-4 rounded-xl border border-[var(--copilot-border)]/90 bg-[rgba(255,255,255,0.7)] px-3 py-3">
-                              <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                            <div className="mt-4">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedTrackingId((prev) =>
+                                    prev === a.id ? null : a.id
+                                  )
+                                }
+                                className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)] transition-colors hover:text-[var(--copilot-ink)]"
+                              >
+                                <ChevronDown
+                                  className={`h-3 w-3 shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                                  aria-hidden
+                                />
                                 Seguimiento
-                              </p>
-                              <div className="mt-3 space-y-3">
-                                <label className="block">
-                                  <span className="text-xs font-medium text-[var(--copilot-ink-muted)]">
-                                    Responsable
-                                  </span>
-                                  <input
-                                    type="text"
-                                    className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
-                                    placeholder="Nombre o rol"
-                                    value={ld.assignee}
-                                    onChange={(e) =>
-                                      setLoopDrafts((p) => ({
-                                        ...p,
-                                        [a.id]: { ...ld, assignee: e.target.value },
-                                      }))
-                                    }
+                                {hasDraft ? (
+                                  <span
+                                    className="ml-0.5 h-1.5 w-1.5 rounded-full bg-[var(--copilot-accent)]"
+                                    aria-label="Con datos"
                                   />
-                                </label>
-                                <label className="block">
-                                  <span className="text-xs font-medium text-[var(--copilot-ink-muted)]">
-                                    Resultado esperado
-                                  </span>
-                                  <textarea
-                                    rows={2}
-                                    className="mt-1 w-full resize-y rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
-                                    placeholder="Qué debería pasar si la acción sale bien"
-                                    value={ld.expected}
-                                    onChange={(e) =>
-                                      setLoopDrafts((p) => ({
-                                        ...p,
-                                        [a.id]: { ...ld, expected: e.target.value },
-                                      }))
-                                    }
-                                  />
-                                </label>
-                                <label className="block">
-                                  <span className="text-xs font-medium text-[var(--copilot-ink-muted)]">
-                                    Antes (contexto o lectura)
-                                  </span>
-                                  <textarea
-                                    rows={2}
-                                    className="mt-1 w-full resize-y rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
-                                    placeholder="Situación o métrica antes de ejecutar"
-                                    value={ld.before}
-                                    onChange={(e) =>
-                                      setLoopDrafts((p) => ({
-                                        ...p,
-                                        [a.id]: { ...ld, before: e.target.value },
-                                      }))
-                                    }
-                                  />
-                                </label>
-                              </div>
-                              <div className="mt-3 flex justify-end">
-                                <CopilotGhostButton
-                                  type="button"
-                                  disabled={savingLoopId === a.id}
-                                  onClick={() => void saveActionLoop(a)}
-                                  className="inline-flex items-center gap-2 text-xs"
-                                >
-                                  {savingLoopId === a.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                                  ) : null}
-                                  Guardar seguimiento
-                                </CopilotGhostButton>
-                                {loopSaveSuccessId === a.id ? (
-                                  <span className="text-xs font-medium text-[var(--copilot-success-text)]">
-                                    Seguimiento guardado
-                                  </span>
                                 ) : null}
-                              </div>
+                              </button>
+                              {isExpanded ? (
+                                <div className="mt-2 rounded-xl border border-[var(--copilot-border)]/90 bg-[var(--copilot-panel-bg)] px-3 py-3">
+                                  <div className="space-y-3">
+                                    <label className="block">
+                                      <span className="text-xs font-medium text-[var(--copilot-ink-muted)]">
+                                        Responsable
+                                      </span>
+                                      <input
+                                        type="text"
+                                        className="mt-1 w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
+                                        placeholder="Nombre o rol"
+                                        value={ld.assignee}
+                                        onChange={(e) =>
+                                          setLoopDrafts((p) => ({
+                                            ...p,
+                                            [a.id]: { ...ld, assignee: e.target.value },
+                                          }))
+                                        }
+                                      />
+                                    </label>
+                                    <label className="block">
+                                      <span className="text-xs font-medium text-[var(--copilot-ink-muted)]">
+                                        Resultado esperado
+                                      </span>
+                                      <textarea
+                                        rows={2}
+                                        className="mt-1 w-full resize-y rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
+                                        placeholder="Qué debería pasar si la acción sale bien"
+                                        value={ld.expected}
+                                        onChange={(e) =>
+                                          setLoopDrafts((p) => ({
+                                            ...p,
+                                            [a.id]: { ...ld, expected: e.target.value },
+                                          }))
+                                        }
+                                      />
+                                    </label>
+                                    <label className="block">
+                                      <span className="text-xs font-medium text-[var(--copilot-ink-muted)]">
+                                        Antes (contexto o lectura)
+                                      </span>
+                                      <textarea
+                                        rows={2}
+                                        className="mt-1 w-full resize-y rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]"
+                                        placeholder="Situación o métrica antes de ejecutar"
+                                        value={ld.before}
+                                        onChange={(e) =>
+                                          setLoopDrafts((p) => ({
+                                            ...p,
+                                            [a.id]: { ...ld, before: e.target.value },
+                                          }))
+                                        }
+                                      />
+                                    </label>
+                                  </div>
+                                  <div className="mt-3 flex items-center justify-end gap-3">
+                                    <CopilotGhostButton
+                                      type="button"
+                                      disabled={savingLoopId === a.id}
+                                      onClick={() => void saveActionLoop(a)}
+                                      className="inline-flex items-center gap-2 text-xs"
+                                    >
+                                      {savingLoopId === a.id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                                      ) : null}
+                                      Guardar seguimiento
+                                    </CopilotGhostButton>
+                                    {loopSaveSuccessId === a.id ? (
+                                      <span className="text-xs font-medium text-[var(--copilot-success-text)]">
+                                        Seguimiento guardado
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              ) : null}
                             </div>
                           );
                         })()}

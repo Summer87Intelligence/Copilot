@@ -105,8 +105,8 @@ function getIconConfig(type: string, severity: string): IconConfig {
     };
   if (type === "sync_changes_detected")
     return {
-      bg: "bg-sky-100",
-      icon: <Zap className={`${sz} text-sky-500`} aria-hidden />,
+      bg: "bg-[var(--copilot-badge-neutral-bg)]",
+      icon: <Zap className={`${sz} text-[var(--copilot-accent)]`} aria-hidden />,
     };
   if (type === "sync_failed")
     return {
@@ -129,7 +129,7 @@ function getIconConfig(type: string, severity: string): IconConfig {
 const SEVERITY_CFG = {
   critical: { label: "Crítica", cls: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-danger-text)]" },
   warning: { label: "Alerta", cls: "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-warning-text)]" },
-  info: { label: "Info", cls: "bg-sky-100 text-sky-700" },
+  info: { label: "Info", cls: "bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink-muted)]" },
 } as const;
 
 function SeverityPill({ severity }: { severity: string }) {

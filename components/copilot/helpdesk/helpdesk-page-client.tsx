@@ -139,8 +139,8 @@ export function HelpdeskPageClient() {
           <div
             className={`fixed right-4 top-4 z-50 rounded-xl px-4 py-3 text-sm font-medium shadow-lg ${
               toast.ok
-                ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300"
-                : "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
+                ? "border border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]"
+                : "border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]"
             }`}
           >
             {toast.message}
@@ -186,7 +186,7 @@ export function HelpdeskPageClient() {
           !showForm ? (
             <button
               onClick={() => setShowForm(true)}
-              className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center gap-2 rounded-xl border border-[var(--copilot-accent)] bg-[var(--copilot-accent)] px-4 py-2 text-sm font-semibold text-[var(--copilot-on-accent)] shadow-sm transition hover:border-[var(--copilot-accent-hover)] hover:bg-[var(--copilot-accent-hover)]"
             >
               <Plus className="h-4 w-4" />
               Nuevo ticket

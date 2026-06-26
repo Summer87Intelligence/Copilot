@@ -81,7 +81,7 @@ import {
 import { getEndOfCurrentMonth } from "@/lib/copilot-operational-period";
 
 const FINANZAS_COBERTURA_QUERY =
-  "/copilot/finanzasímode=cobertura&from=atencion-prioritaria";
+  "/copilot/finanzas?mode=cobertura&from=atencion-prioritaria";
 
 function rowNum(v: unknown): number {
   if (v === null || v === undefined) return 0;
