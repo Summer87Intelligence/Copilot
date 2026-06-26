@@ -583,6 +583,40 @@ export const COPILOT_MANUAL_GENERATED_SECTIONS: CopilotManualSection[] = [
     ],
   },
   {
+    id: "mesa-de-ayuda",
+    title: "Mesa de ayuda — Sugerencias y soporte",
+    includeInToc: true,
+    blocks: [
+      { type: "paragraph", text: "La Mesa de ayuda es el canal para pedir mejoras, reportar problemas o hacer consultas sobre Copilot. Tus pedidos llegan directamente al equipo y podés hacer seguimiento del estado." },
+      { type: "callout", variant: "tip", text: "Cuanto más detalle incluyas (módulo afectado, qué esperabas, qué pasó, captura de pantalla), más rápido podemos entenderte y ayudarte." },
+      { type: "bullets", items: [
+        "Sugerencia — una idea para mejorar algo que ya existe o agregar algo nuevo.",
+        "Bug / Error — algo no funciona como debería.",
+        "Mejora — cambio específico en una funcionalidad existente.",
+        "Consulta — una pregunta sobre cómo usar el sistema.",
+        "Cambio de diseño — pedido de cambio visual o de flujo.",
+        "Otro — cualquier cosa que no encaje en las anteriores.",
+      ]},
+      { type: "subsection", title: "¿Cómo crear un ticket?", blocks: [
+        { type: "paragraph", text: "Entrá a Mesa de ayuda desde el menú lateral (sección Sistema). Hacé clic en 'Nuevo ticket', completá el título, la descripción y elegí el tipo, módulo y prioridad. Si tenés una captura, adjuntala usando el botón de adjuntos. Al enviar, vas a ver el detalle del ticket recién creado." },
+        { type: "callout", variant: "tip", text: "Para adjuntar una captura: hacé clic en 'Adjuntar imagen o PDF', seleccioná el archivo (PNG, JPG o WebP). El límite por archivo es 10 MB." },
+      ]},
+      { type: "subsection", title: "¿Qué significan los estados?", blocks: [
+        { type: "bullets", items: [
+          "Nuevo — el ticket fue recibido y está en la cola.",
+          "En revisión — alguien del equipo lo está evaluando.",
+          "Aprobado — se aprobó la implementación o cambio.",
+          "En desarrollo — está siendo trabajado activamente.",
+          "Resuelto — el pedido fue implementado o respondido.",
+          "Rechazado — el pedido no procede; va a haber una explicación en los comentarios.",
+        ]},
+      ]},
+      { type: "subsection", title: "¿Cómo hacer seguimiento?", blocks: [
+        { type: "paragraph", text: "Desde la lista de tickets podés ver el estado de cada uno. Al hacer clic en un ticket, ves el detalle completo, los comentarios del equipo y los adjuntos. Si tenés algo para agregar, podés comentar directamente en el ticket." },
+      ]},
+    ],
+  },
+  {
     id: "glosario",
     title: "Glosario — Términos de deuda de clientes",
     includeInToc: true,

@@ -72,6 +72,7 @@ const MODULE_LABELS: Record<ModuleKey, string> = {
   agentes: "Agentes IA",
   manual: "Manual",
   admin: "Admin",
+  helpdesk: "Mesa de ayuda",
 };
 
 const READ_ONLY_ROLES = new Set(["usuario", "demo_readonly"]);

@@ -49,6 +49,7 @@ export const COPILOT_API_MODULE_PREFIXES: ReadonlyArray<readonly [string, Module
   ["/api/copilot/intelligence-bundle", "agentes"],
   ["/api/copilot/llm-briefing", "agentes"],
   ["/api/copilot/strategic-recommendations", "agentes"],
+  ["/api/copilot/helpdesk", "helpdesk"],
 ];
 
 /** Resuelve module_key para una ruta API Copilot (null = solo auth tenant). */

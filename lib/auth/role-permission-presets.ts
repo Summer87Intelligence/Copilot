@@ -23,6 +23,7 @@ const SUPERADMIN_PRESET: RolePreset = {
   agentes: "admin",
   manual: "admin",
   admin: "admin",
+  helpdesk: "admin",
 };
 
 const USUARIO_PRESET: RolePreset = {
@@ -39,6 +40,7 @@ const USUARIO_PRESET: RolePreset = {
   agentes: "read",
   manual: "read",
   admin: "none",
+  helpdesk: "write",
 };
 
 const COBRANZA_PRESET: RolePreset = {
@@ -55,6 +57,7 @@ const COBRANZA_PRESET: RolePreset = {
   agentes: "read",
   manual: "read",
   admin: "none",
+  helpdesk: "write",
 };
 
 const TESORERIA_PRESET: RolePreset = {
@@ -71,6 +74,7 @@ const TESORERIA_PRESET: RolePreset = {
   agentes: "read",
   manual: "read",
   admin: "none",
+  helpdesk: "write",
 };
 
 const CONTADOR_PRESET: RolePreset = {
@@ -87,6 +91,7 @@ const CONTADOR_PRESET: RolePreset = {
   agentes: "read",
   manual: "read",
   admin: "none",
+  helpdesk: "write",
 };
 
 const PRESETS: Record<string, RolePreset> = {

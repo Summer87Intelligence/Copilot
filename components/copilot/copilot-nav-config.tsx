@@ -9,6 +9,7 @@ import {
   CheckSquare,
   Database,
   FileText,
+  HelpCircle,
   Landmark,
   ListTodo,
   Settings,
@@ -156,6 +157,14 @@ const COPILOT_NAV_SISTEMA: CopilotNavGroup = {
       description: "Consulta de registros",
       icon: Database,
       moduleKey: "datos",
+    },
+    {
+      href: "/copilot/mesa-de-ayuda",
+      label: "Mesa de ayuda",
+      shortLabel: "Ayuda",
+      description: "Sugerencias, mejoras y reportes",
+      icon: HelpCircle,
+      moduleKey: "helpdesk",
     },
   ],
 };

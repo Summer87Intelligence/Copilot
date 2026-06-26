@@ -367,6 +367,7 @@ describe("buildCopilotNavItemGroups — filtrado por módulo", () => {
       agentes: "none",
       manual: "none",
       admin: "none",
+      helpdesk: "none",
     };
     const groups = buildCopilotNavItemGroups(false, perms);
     // Solo deben quedar grupos con items sin moduleKey (Alertas)
