@@ -188,3 +188,77 @@ Se actualizó el contrato canónico `METRIC_LABEL` (con alias legacy preservados
 Implementación de Fase 3/Fase 4 **consistente con el modelo único de antigüedad**, sin textos legacy dentro del alcance, con `tsc`/`vitest`/`build` en verde y sin bugs detectados.
 
 ## **GO PARA COMMIT**
+
+---
+
+## 11. FASE 5 — UI Consistency (COLLECTION-AGING-MODEL-PHASE-5-UI-CONSISTENCY-001)
+
+**Fecha:** 2026-06-26 · **Alcance:** solo UI/copy/labels/badges/colores/tooltips de Cobranza/Clientes. **No** lógica financiera, **no** DB, **no** Zeta, **no** el helper `collection-aging-model.ts`, **no** cálculos, **no** commit.
+
+### 11.1 Criterio de triage aplicado
+
+Se buscó en todo el repo (`*.ts`, `*.tsx`, excluyendo tests/snapshots/SQL/migraciones/comentarios/naming interno): `crítico/critico/críticos`, `riesgo`, `prioridad`, `deuda vencida`, `vencido/vencida`, `overdue`, `critical`, `risk`, `priority`.
+
+Regla de decisión (según la consigna): **reemplazar solo cuando el término es un alias visible del bucket de antigüedad de cobranza.** Se **excluyeron** explícitamente:
+
+- **Variables/tipos/funciones/APIs internos** (`overdueUyu`, `not_overdue`, `collection_overdue_*`, `client_overdue`, `status: "critical"`…) → renombrarlos está fuera de alcance.
+- **Modelos distintos** que comparten vocabulario pero **no** son el modelo de antigüedad:
+  - **Risk scorer / severidad de cartera** (`riskSev`, `copilotSeverityLabel`, `riskTone`, badges "Riesgo cartera" / "Riesgo {label}").
+  - **Priority ranker / decision-engine** (`client-priority-ranker`, daily-operations-queue, etc.).
+  - **Overdue financiero por `due_date`** (campos `overdue_*`, distinto del `collection_overdue_*` por `issue_date`).
+  - **Aging de Cartera** (brackets 1–30 / 31–60 / 61–90 / +90, módulo de análisis por período).
+  - **Treasury / Finanzas** ("Riesgo financiero", "pago vencido").
+- **Concepto financiero donde "vencimiento" sigue siendo correcto** (fecha de vencimiento, vencimiento de cuotas, cron de vencimientos, `due_date`).
+
+### 11.2 Archivos modificados
+
+| Archivo | Cambio | Tipo |
+|---------|--------|------|
+| `components/copilot/clientes/client-agent-block.tsx` | Label de estado del cliente `"Crítico"` → **`"Gestión urgente"`** (status `critical` del agente de ficha 360). | copy / label |
+| `app/copilot/clientes/clientes-page-client.tsx` | Subtítulo del header: "pendiente por moneda, **riesgo** y contacto" → "pendiente por moneda, **antigüedad** y contacto". | copy / subtítulo |
+
+### 11.3 Textos reemplazados
+
+- `"Crítico"` → `"Gestión urgente"` (estado del agente de cliente).
+- `"riesgo"` → `"antigüedad"` (subtítulo de `/copilot/clientes`, alineado con la columna **Salud** que ya clasifica por bucket).
+
+> Nota sobre `client-agent-block.tsx`: el estado `critical` es un **compuesto de salud** (share de `overdue_*`, promesa vencida, falta de contacto), **no** el bucket "+30 días". Por eso **no** se mapeó a "Atrasado +30 días" (sería incorrecto); se usó un label de acción neutro respecto del modelo ("Gestión urgente"), eliminando el término legacy sin falsear el bucket. **No se tocó la lógica** del builder `build-client-agent-brief.ts`.
+
+### 11.4 Badges actualizados
+
+- Sin cambios estructurales: los badges de antigüedad de Cobranza y Clientes **ya** derivan del helper central (`COLLECTION_AGING_BUCKETS` / `portfolioRowCollectionBucket`) desde Fase 3/4.
+- En Clientes/Cobranza **no conviven** badges "crítico/prioridad/riesgo" con los del modelo (No atrasado / Atrasado 8–14 / 15–30 / +30): el único badge de antigüedad es el del helper.
+
+### 11.5 Colores actualizados
+
+- Sin cambios: la paleta ya está alineada al contrato de tonos del helper:
+  - `not_overdue` → **neutral**, `overdue_8_14` → **success**, `overdue_15_30` → **warning**, `overdue_30_plus` → **danger**.
+- `client-agent-block.tsx` (status compuesto) ya usaba `success/warning/danger` para `stable/attention/critical`; el cambio fue solo de label, no de color.
+
+### 11.6 Componentes afectados
+
+- `components/copilot/clientes/client-agent-block.tsx`
+- `app/copilot/clientes/clientes-page-client.tsx`
+
+### 11.7 Componentes / textos PENDIENTES (no migrados, requieren decisión de producto o cambio de lógica fuera de alcance)
+
+1. **`lib/copilot-agents/build-client-agent-brief.ts`** — copy "Saldo vencido / vencido / Promesa de pago vencida". Está atado al **overdue por `due_date`** (`overdue_*`), distinto del modelo por `issue_date`. Renombrar "vencido"→"atrasado" sin migrar la métrica crearía **dos "atrasado" con números distintos**. → Requiere migrar la métrica al helper (cambio de lógica, fuera de alcance).
+2. **Badges de riesgo de cartera** en `copilot-client-360-view.tsx` ("Riesgo {label}") y `copilot-client-evidence-drawer.tsx` ("Riesgo cartera") — provienen del **risk scorer**, no del bucket. No son alias del modelo. → Decisión de producto si se unifican.
+3. **Módulo Cartera** (`cartera-compact-kpi-grid.tsx`, `client-debt-explorer.tsx`, `aging-analytics.tsx`) — filtros "Críticos" y aging 1–30/31–60/61–90/+90: **otro modelo de antigüedad** (por período/`due_date`). Fuera del alcance de cobranza.
+4. **Semáforo operacional (Hoy)** y **Finanzas** — "Crítico" (semáforo Al día/Requiere atención/Crítico) y "Riesgo financiero": modelos operativo/financiero independientes.
+5. **Manual** (`lib/copilot-manual/sections.generated.ts`, `glossary-extra.ts`) — las secciones de **Cobranza y Clientes ya usan el modelo nuevo** (No atrasado / Atrasado 8–14/15–30/+30). Restan referencias legacy en secciones de **Cartera** ("Críticos", "1–30/31–60…"), **Hoy** (semáforo "Crítico", "deuda crítica") y la entrada "Días de atraso" del glosario, todas pertenecientes a otros módulos. → Pendiente de una pasada de manual por módulo (con cuidado: el archivo tiene guard de encoding UTF-8 y ya contiene mojibake heredado).
+6. **Reportes / PDFs** — no tocados por consigna. Siguen usando terminología "vencido/Crítico/Riesgo alto" (`build-debtors-report-model`, `executive-monthly-report`, `dashboard-summary`). Solo se reporta; corresponde a una fase posterior de reportes.
+
+### 11.8 Checks
+
+| Check | Resultado |
+|-------|-----------|
+| `npx tsc --noEmit` | ✅ OK (exit 0) |
+| `npx vitest run` | ✅ **296 archivos / 3771 tests** verdes (exit 0) |
+| `npm run build` | ✅ OK (exit 0) — compile 35.8s · TypeScript 59s · 141/141 páginas estáticas |
+
+Sin cambios en tests (los reemplazos fueron copy puro; ningún test asertaba "Crítico" del agente ni el subtítulo).
+
+### 11.9 GO / NO GO
+
+**GO** para los dos fixes de copy de Fase 5 (Cobranza/Clientes), con `tsc`/`vitest`/`build` en verde. Los ítems de 11.7 quedan documentados como **pendientes** por pertenecer a otros modelos/módulos o requerir cambios de lógica fuera del alcance declarado. **Sin commit.**

@@ -41,7 +41,7 @@ const STATUS_CFG = {
   critical: {
     icon: TriangleAlert,
     iconCls: "text-[var(--copilot-danger-text)]",
-    label: "Crítico",
+    label: "Gestión urgente",
     badgeCls: "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]",
     bannerCls: "bg-[var(--copilot-tone-danger-bg)] border-[var(--copilot-danger-border)]",
   },

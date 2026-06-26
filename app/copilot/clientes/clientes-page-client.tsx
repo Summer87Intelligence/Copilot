@@ -104,7 +104,7 @@ export function ClientesPageClient() {
       <CopilotPageHeader
         surfaceId="copilot.clientes"
         title="Clientes"
-        description="Lista accionable de cartera: pendiente por moneda, riesgo y contacto."
+        description="Lista accionable de cartera: pendiente por moneda, antigüedad y contacto."
       />
       {!loading && !error && statsLine ? (
         <p className="-mt-2 mb-1 text-sm text-[var(--copilot-ink-muted)]">{statsLine}</p>
