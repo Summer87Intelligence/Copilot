@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
       module_key: row["module_key"] ? (row["module_key"] as HelpdeskTicket["module_key"]) : null,
       priority: row["priority"] as HelpdeskTicket["priority"],
       status: row["status"] as HelpdeskTicket["status"],
+      resolution_note: row["resolution_note"] ? String(row["resolution_note"]) : null,
       created_at: String(row["created_at"]),
       updated_at: String(row["updated_at"]),
       resolved_at: row["resolved_at"] ? String(row["resolved_at"]) : null,

@@ -48,6 +48,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     module_key: row["module_key"] ? (row["module_key"] as HelpdeskTicket["module_key"]) : null,
     priority: row["priority"] as HelpdeskTicket["priority"],
     status: row["status"] as HelpdeskTicket["status"],
+    resolution_note: row["resolution_note"] ? String(row["resolution_note"]) : null,
     created_at: String(row["created_at"]),
     updated_at: String(row["updated_at"]),
     resolved_at: row["resolved_at"] ? String(row["resolved_at"]) : null,
@@ -102,7 +103,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ ok: false, message: "Estado inválido." }, { status: 400 });
     }
     patch["status"] = b["status"];
-    if (b["status"] === "resolved" || b["status"] === "rejected") {
+    if (b["status"] === "resolved" || b["status"] === "rejected" || b["status"] === "published") {
       patch["resolved_at"] = new Date().toISOString();
     }
   }
@@ -116,6 +117,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
   if ("assigned_to" in b) {
     patch["assigned_to"] = b["assigned_to"] ?? null;
+  }
+
+  if ("resolution_note" in b) {
+    const note = b["resolution_note"];
+    if (note === null || note === undefined) {
+      patch["resolution_note"] = null;
+    } else if (typeof note === "string") {
+      const trimmed = note.trim().slice(0, 2000);
+      patch["resolution_note"] = trimmed || null;
+    }
   }
 
   const { data, error } = await supabase

@@ -132,6 +132,20 @@ export function HelpdeskPageClient() {
     }
   };
 
+  const handleResolutionNoteChange = async (id: string, note: string) => {
+    const res = await fetch(`/api/copilot/helpdesk/tickets/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resolution_note: note.trim() || null }),
+    });
+    const json = await res.json() as { ok: boolean; message?: string };
+    if (!json.ok) {
+      showToast(json.message ?? "Error al guardar la nota.", false);
+    } else {
+      showToast("Nota guardada.", true);
+    }
+  };
+
   if (selectedTicket) {
     return (
       <div className="relative min-h-screen space-y-0 pb-8">
@@ -159,6 +173,7 @@ export function HelpdeskPageClient() {
               void load(filters);
             }}
             onStatusChange={handleStatusChange}
+            onResolutionNoteChange={handleResolutionNoteChange}
           />
         </div>
       </div>

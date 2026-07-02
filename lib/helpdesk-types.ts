@@ -6,6 +6,7 @@ export const HELPDESK_TICKET_TYPES = [
   "improvement",
   "question",
   "design_change",
+  "feature",
   "other",
 ] as const;
 
@@ -17,6 +18,7 @@ export const HELPDESK_TICKET_TYPE_LABELS: Record<HelpdeskTicketType, string> = {
   improvement: "Mejora",
   question: "Consulta",
   design_change: "Cambio de diseño",
+  feature: "Nueva funcionalidad",
   other: "Otro",
 };
 
@@ -50,6 +52,26 @@ export const HELPDESK_MODULE_KEY_LABELS: Record<HelpdeskModuleKey, string> = {
   other: "Otro",
 };
 
+/** Rutas de navegación por module_key. Solo los módulos con ruta activa. */
+export const HELPDESK_MODULE_ROUTES: Partial<Record<HelpdeskModuleKey, string>> = {
+  hoy: "/copilot/hoy",
+  dashboard: "/copilot/dashboard",
+  finanzas: "/copilot/finanzas",
+  cartera: "/copilot/cartera",
+  cobranza: "/copilot/cobranza",
+  tesoreria: "/copilot/tesoreria",
+  clientes: "/copilot/clientes",
+  reportes: "/copilot/reportes",
+  admin: "/copilot/admin",
+  manual: "/copilot/manual",
+};
+
+/** Devuelve la ruta del módulo o null si no tiene ruta conocida (ej: "other"). */
+export function getHelpdeskModuleRoute(moduleKey: HelpdeskModuleKey | null | undefined): string | null {
+  if (!moduleKey) return null;
+  return HELPDESK_MODULE_ROUTES[moduleKey] ?? null;
+}
+
 export const HELPDESK_PRIORITIES = ["low", "medium", "high"] as const;
 export type HelpdeskPriority = (typeof HELPDESK_PRIORITIES)[number];
 
@@ -63,8 +85,10 @@ export const HELPDESK_STATUSES = [
   "new",
   "reviewing",
   "approved",
+  "planned",
   "in_progress",
   "resolved",
+  "published",
   "rejected",
 ] as const;
 
@@ -74,8 +98,10 @@ export const HELPDESK_STATUS_LABELS: Record<HelpdeskStatus, string> = {
   new: "Nuevo",
   reviewing: "En revisión",
   approved: "Aprobado",
+  planned: "Planificado",
   in_progress: "En desarrollo",
   resolved: "Resuelto",
+  published: "Publicado",
   rejected: "Rechazado",
 };
 
@@ -90,6 +116,7 @@ export type HelpdeskTicket = {
   module_key: HelpdeskModuleKey | null;
   priority: HelpdeskPriority;
   status: HelpdeskStatus;
+  resolution_note: string | null;
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
@@ -138,6 +165,7 @@ export type HelpdeskUpdateTicketInput = {
   status?: HelpdeskStatus;
   assigned_to?: string | null;
   priority?: HelpdeskPriority;
+  resolution_note?: string | null;
 };
 
 export type HelpdeskCreateCommentInput = {
