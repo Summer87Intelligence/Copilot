@@ -16,8 +16,8 @@ import {
 } from "@/lib/currency-display-mode";
 
 describe("DEFAULT values", () => {
-  it("default mode is usd_equivalent", () => {
-    expect(DEFAULT_CURRENCY_DISPLAY_MODE).toBe("usd_equivalent");
+  it("default mode is native (moneda original)", () => {
+    expect(DEFAULT_CURRENCY_DISPLAY_MODE).toBe("native");
   });
 
   it("default fx rate is 40", () => {
@@ -120,9 +120,9 @@ describe("UsdEquivalentActiveNotice copy — buildUsdEquivalentNoticeCopy", () =
     expect(copy.short.length).toBeGreaterThan(0);
   });
 
-  it("copy contains 'Vista en USD' and correct TC", () => {
+  it("copy contains 'Todo en USD' and correct TC", () => {
     const copy = buildUsdEquivalentNoticeCopy(40);
-    expect(copy.full).toContain("Vista en USD");
+    expect(copy.full).toContain("Todo en USD");
     expect(copy.full).toContain("TC 40");
     expect(copy.short).toContain("TC 40");
   });
@@ -141,9 +141,10 @@ describe("UsdEquivalentActiveNotice copy — buildUsdEquivalentNoticeCopy", () =
     expect(copy.short).not.toContain("USD real");
   });
 
-  it("copy says 'moneda' (datos originales se mantienen en su moneda)", () => {
+  it("copy mentions UYU conversion (UYU convertidos con TC)", () => {
     const copy = buildUsdEquivalentNoticeCopy(40);
-    expect(copy.full).toContain("moneda");
+    expect(copy.full).toContain("UYU");
+    expect(copy.full).toContain("convertidos");
   });
 });
 
@@ -244,8 +245,8 @@ describe("buildCurrencyRiskChipCopy", () => {
 });
 
 describe("storage helpers — SSR-safe (no window)", () => {
-  it("readDisplayModeFromStorage returns usd_equivalent default when window is undefined", () => {
-    expect(readDisplayModeFromStorage()).toBe("usd_equivalent");
+  it("readDisplayModeFromStorage returns native default when window is undefined", () => {
+    expect(readDisplayModeFromStorage()).toBe("native");
   });
 
   it("readDisplayFxRateFromStorage returns 40 when window is undefined", () => {

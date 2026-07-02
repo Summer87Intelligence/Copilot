@@ -5,15 +5,14 @@ import { useDisplayCurrency } from "@/components/copilot/display-currency-provid
 import { buildUsdEquivalentNoticeCopy, normalizeFxRate } from "@/lib/currency-display-mode";
 
 export function UsdEquivalentActiveNotice() {
-  const { mode, fxRate } = useDisplayCurrency();
+  const { mode, fxRate, setMode } = useDisplayCurrency();
   if (mode !== "usd_equivalent") return null;
 
   const copy = buildUsdEquivalentNoticeCopy(fxRate);
 
   return (
     <div
-      className="flex items-center justify-center border-b border-amber-200/60 bg-amber-50/70 px-4 py-1 dark:border-amber-800/40 dark:bg-amber-950/20"
-      title={copy.full}
+      className="flex items-center justify-center gap-3 border-b border-amber-200/60 bg-amber-50/70 px-4 py-1 dark:border-amber-800/40 dark:bg-amber-950/20"
       role="status"
       aria-live="polite"
     >
@@ -21,6 +20,14 @@ export function UsdEquivalentActiveNotice() {
         <span className="hidden sm:inline">{copy.full}</span>
         <span className="sm:hidden">{copy.short}</span>
       </p>
+      <button
+        type="button"
+        onClick={() => setMode("native")}
+        className="shrink-0 rounded text-[11px] font-semibold text-amber-800 underline underline-offset-2 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-200"
+      >
+        <span className="hidden sm:inline">Volver a moneda original</span>
+        <span className="sm:hidden">Cambiar</span>
+      </button>
     </div>
   );
 }
@@ -78,7 +85,7 @@ export function CurrencyDisplayToggle() {
       >
         <SwitchTrack on={isUsdMode} />
         <span className={`transition-colors ${isUsdMode ? "font-medium text-[var(--copilot-ink)]" : "text-[var(--copilot-ink-muted)]"}`}>
-          {isUsdMode ? "Vista USD" : "Moneda original"}
+          {isUsdMode ? "Todo en USD" : "Moneda original"}
         </span>
       </button>
 

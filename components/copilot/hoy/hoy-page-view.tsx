@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { RefreshCw, XCircle } from "lucide-react";
+import { ArrowRight, RefreshCw, XCircle } from "lucide-react";
 
 import { CopilotCard } from "@/components/copilot/copilot-ui";
 import type { ClientCompanyDetail, ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
@@ -29,7 +29,6 @@ import { HoyWeeklyCashProjection } from "./hoy-weekly-cash-projection";
 import { HoyExecutiveCalendarSection } from "./hoy-executive-calendar-section";
 
 import { AttentionClientsDrawer } from "./hoy-attention-clients-drawer";
-import { CollectionAgendaHoyCard } from "./collection-agenda-hoy-card";
 import { ClientsWithDebtSection } from "./hoy-clients-with-debt-section";
 import {
   HoyCockpitCardDrawer,
@@ -38,6 +37,7 @@ import {
 import { HoyExecutiveSummaryCard } from "./hoy-executive-summary-card";
 import { HoyMoneyCards } from "./hoy-money-cards";
 import { HOY_PAGE_SHELL } from "./hoy-layout";
+import Link from "next/link";
 import { DebtorsReportTrigger } from "@/components/copilot/reports/debtors-report-dialog";
 import { CopilotDataProvenanceStrip } from "@/components/copilot/copilot-data-provenance-strip";
 
@@ -392,7 +392,15 @@ export function HoyPageView({
           <SectionErrorStrip sectionErrors={sectionErrors} onRefresh={onRefresh} />
         )}
 
-        <CollectionAgendaHoyCard />
+        <div className="flex justify-end pb-1">
+          <Link
+            href="/copilot/cobranza#cobranza-agenda"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
+          >
+            Ver agenda en Cobranza
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+          </Link>
+        </div>
 
       </div>
 
