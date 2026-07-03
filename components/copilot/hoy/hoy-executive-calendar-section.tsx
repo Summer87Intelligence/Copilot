@@ -11,10 +11,11 @@ import type { TreasuryScheduledPayment } from "@/lib/treasury/treasury-scheduled
 import { fmtCurrencyAmount } from "@/lib/copilot-today-business-pulse";
 import { formatCopilotDate } from "@/lib/copilot-format";
 import { copilotCurrencyClass } from "@/components/copilot/ui/copilot-visual-system";
+import { type CalendarTabId, getCalendarPeriodRange } from "@/lib/hoy-calendar-period";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-type TabId = "this_month" | "next_month" | "next_90";
+type TabId = CalendarTabId;
 
 type EntryType = "payment" | "promise" | "followup";
 
@@ -34,37 +35,6 @@ type DateGroup = {
   date: string;
   entries: CalendarEntry[];
 };
-
-// ─── Date helpers ───────────────────────────────────────────────────────────────
-
-function addDaysIso(ymd: string, days: number): string {
-  const [y, m, d] = ymd.split("-").map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  dt.setUTCDate(dt.getUTCDate() + days);
-  return dt.toISOString().slice(0, 10);
-}
-
-function isoYMD(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function getMonthBoundaries(today: string) {
-  const [y, m] = today.split("-").map(Number);
-  return {
-    thisMonthStart: `${y}-${String(m).padStart(2, "0")}-01`,
-    thisMonthEnd: isoYMD(new Date(Date.UTC(y, m, 0))),
-    nextMonthStart: isoYMD(new Date(Date.UTC(y, m, 1))),
-    nextMonthEnd: isoYMD(new Date(Date.UTC(y, m + 1, 0))),
-  };
-}
-
-function periodRange(tab: TabId, today: string): { start: string; end: string } {
-  const { thisMonthStart, thisMonthEnd, nextMonthStart, nextMonthEnd } =
-    getMonthBoundaries(today);
-  if (tab === "this_month") return { start: thisMonthStart, end: thisMonthEnd };
-  if (tab === "next_month") return { start: nextMonthStart, end: nextMonthEnd };
-  return { start: today, end: addDaysIso(today, 90) };
-}
 
 // ─── Data builders ──────────────────────────────────────────────────────────────
 
@@ -281,7 +251,7 @@ function DateGroupBlock({ group, today }: { group: DateGroup; today: string }) {
 const TABS: { id: TabId; label: string }[] = [
   { id: "this_month", label: "Este mes" },
   { id: "next_month", label: "Próximo mes" },
-  { id: "next_90", label: "90 días" },
+  { id: "later", label: "Más adelante" },
 ];
 
 function TabBar({
@@ -371,10 +341,10 @@ export function HoyExecutiveCalendarSection({
     const tabs: Record<TabId, CalendarEntry[]> = {
       this_month: [],
       next_month: [],
-      next_90: [],
+      later: [],
     };
     for (const tab of TABS) {
-      const { start, end } = periodRange(tab.id, today);
+      const { start, end } = getCalendarPeriodRange(tab.id, today);
       const paymentEntries = buildPaymentEntries(payments, start, end);
       const promiseEntries = collectionActions
         ? buildPromiseEntries(collectionActions, start, end, clientNames)
@@ -390,7 +360,7 @@ export function HoyExecutiveCalendarSection({
   const counts: Record<TabId, number> = {
     this_month: allEntries.this_month.length,
     next_month: allEntries.next_month.length,
-    next_90: allEntries.next_90.length,
+    later: allEntries.later.length,
   };
 
   const currentEntries = allEntries[activeTab];

@@ -3,6 +3,7 @@
 import type { CopilotSessionPreview } from "@/components/copilot/copilot-session-preview";
 import { CopilotUserBar } from "@/components/copilot/CopilotUserBar";
 import { CopilotNotificationBell } from "@/components/copilot/copilot-notification-bell";
+import { CurrencyHeaderPill } from "@/components/copilot/currency-display-toggle";
 import { CopilotZetaSyncCompactPill } from "@/components/copilot/copilot-zeta-sync-compact-pill";
 import { TodayDateDisplay } from "@/components/copilot/copilot-today-date";
 import { OperationalSemaphoreIndicator } from "@/components/copilot/operational-semaphore-indicator";
@@ -40,6 +41,7 @@ export function CopilotEnvironmentHealthStrip({
             <span className="hidden sm:inline">{readOnlyLabel}</span>
           </span>
         ) : null}
+        <CurrencyHeaderPill />
         <CopilotNotificationBell />
         <CopilotUserBar sessionPreview={sessionPreview} />
         <OperationalSemaphoreIndicator />

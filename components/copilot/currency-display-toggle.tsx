@@ -45,6 +45,36 @@ function SwitchTrack({ on }: { on: boolean }) {
   );
 }
 
+export function CurrencyHeaderPill() {
+  const { mode, fxRate, setMode } = useDisplayCurrency();
+  const isUsd = mode === "usd_equivalent";
+
+  return (
+    <button
+      type="button"
+      onClick={() => setMode(isUsd ? "native" : "usd_equivalent")}
+      title={isUsd ? "Volver a moneda original" : "Cambiar a Todo en USD"}
+      className={`flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
+        isUsd
+          ? "border-amber-300/70 bg-amber-50/80 text-amber-800 hover:bg-amber-100 dark:border-amber-700/40 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-900/30"
+          : "border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-surface-3)] hover:text-[var(--copilot-ink)]"
+      }`}
+    >
+      {isUsd ? (
+        <>
+          <span className="hidden sm:inline">Todo en USD · TC {fxRate}</span>
+          <span className="sm:hidden">USD · TC {fxRate}</span>
+        </>
+      ) : (
+        <>
+          <span className="hidden sm:inline">Moneda: Original</span>
+          <span className="sm:hidden">Original</span>
+        </>
+      )}
+    </button>
+  );
+}
+
 export function CurrencyDisplayToggle() {
   const { mode, fxRate, setMode, setFxRate } = useDisplayCurrency();
   const isUsdMode = mode === "usd_equivalent";
