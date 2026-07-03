@@ -4,7 +4,27 @@
 - SaaS financiero B2B (Summer87 Copilot) — Next.js 15 App Router + TypeScript + Supabase + Vercel.
 - Integración ERP ZetaSoftware (credenciales estáticas env vars, 5 pipelines sync activos).
 - Multi-tenant con workspace_company_id + RLS. 1 workspace productivo (Summer87, ~183 clientes Zeta).
-- 3721/3721 tests Vitest. Deploy en Vercel. Auth magic link OTP.
+- 3795/3795 tests Vitest. Deploy en Vercel. Auth magic link OTP.
+
+## TREASURY-OVERDUE-COMMITMENTS-IN-MONTH-PROJECTION-AUDIT-001 — 2026-07-03 (IMPLEMENTADO)
+
+**Auditoría y fix UX Tesorería — 1 archivo modificado, sin migración DB:**
+- **Causa raíz confirmada (DB)**: USD 5.895,03 = UYU 235.801 / TC 40. Viene de 2 pagos manuales atrasados: `Pago Bps` (UYU 226.632) + `Vacacional Ana` (UYU 9.169), ambos con `due_date: 2026-06-22`, `status: planned`, `source: manual`, `recurring_template_id: null`. Sin conexión con recurrentes eliminados.
+- **Tipo de bug**: Caso A — financieramente correcto, copy confuso. El monto es legítimo: pagos impagos de junio siguen abiertos y deben impactar la caja proyectada.
+- **Fix**: `treasury-executive-forecast-panel.tsx` — "Compromisos del mes" → "Compromisos abiertos" en 4 lugares + nota "Incl. X vencidos de meses anteriores." (visible solo cuando `overdueTotals > 0`) en todos los bloques USD y moneda original.
+- **Tests**: 3795/3795 pasando. tsc 0 errores.
+- **Sprint A2 en pausa**: cambios en `copilot-environment-health-strip.tsx`, `currency-display-toggle.tsx`, `hoy-executive-calendar-section.tsx` preservados, no commiteados.
+
+## COPILOT-UX-FEEDBACK-SPRINT-A-001 — 2026-07-02 (IMPLEMENTADO)
+
+**Quick wins UX — 5 archivos modificados, sin migración DB:**
+- **Default moneda**: `DEFAULT_CURRENCY_DISPLAY_MODE` → `"native"` (antes `"usd_equivalent"`). Usuarios nuevos ven Moneda original. Usuarios con `localStorage` previo mantienen su preferencia.
+- **Copy "Vista USD" → "Todo en USD"**: `currency-display-toggle.tsx` + `currency-display-mode.ts`. Banner: `"Todo en USD · UYU convertidos con TC {rate}"`. Toggle: `"Todo en USD"` / `"Moneda original"`.
+- **Banner accionable**: `UsdEquivalentActiveNotice` incluye botón `"Volver a moneda original"` (desktop) / `"Cambiar"` (mobile) que llama `setMode("native")` directamente.
+- **Agenda cobranza removida de Hoy**: `CollectionAgendaHoyCard` eliminada de `hoy-page-view.tsx`. Reemplazada por CTA estático `"Ver agenda en Cobranza →"` → `/copilot/cobranza#cobranza-agenda`. Fetch a `/api/copilot/collection-actions` ya no se dispara desde Hoy.
+- **Manual actualizado**: `sections.generated.ts` — "Vista USD" → "Todo en USD" en textos visibles al usuario.
+- **Helpdesk tipos/estados**: BLOQUEADO para Sprint B. La migración `20260626000000_helpdesk_tables.sql` tiene `CHECK (type IN (...))` y `CHECK (status IN (...))` — agregar `"feature"`, `"planned"`, `"published"` requiere `ALTER TABLE ... DROP/ADD CONSTRAINT`. Requiere aprobación explícita.
+- **Tests**: 3771/3771 pasando. 4 tests de `currency-display-mode.test.ts` actualizados para reflejar nuevo default y copy.
 
 ## HELPDESK-FEEDBACK-MODULE-001 — 2026-06-26 (IMPLEMENTADO)
 

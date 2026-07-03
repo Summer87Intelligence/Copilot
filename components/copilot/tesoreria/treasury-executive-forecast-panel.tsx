@@ -99,11 +99,13 @@ function UsdConsolidatedPositionBlock({
   committed,
   after,
   fxRate,
+  overdueCommitted,
 }: {
   cash: number;
   committed: number;
   after: number;
   fxRate: number;
+  overdueCommitted: number;
 }) {
   const status = coverageStatus(after, cash);
   return (
@@ -125,7 +127,7 @@ function UsdConsolidatedPositionBlock({
           <dd className="tabular-nums font-medium text-[var(--copilot-ink)]">{formatUsdEquivalent(cash)}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-[var(--copilot-ink-muted)]">Compromisos del mes</dt>
+          <dt className="text-[var(--copilot-ink-muted)]">Compromisos abiertos</dt>
           <dd className="tabular-nums font-medium text-[var(--copilot-danger-text)]">
             {committed > 0 ? `− ${formatUsdEquivalent(committed)}` : formatUsdEquivalent(0)}
           </dd>
@@ -140,6 +142,11 @@ function UsdConsolidatedPositionBlock({
       <p className="mt-2 text-[10px] text-[var(--copilot-ink-muted)]">
         TC {fxRate} · Resumen convertido a USD estimado.
       </p>
+      {overdueCommitted > 0 ? (
+        <p className="mt-0.5 text-[10px] text-[var(--copilot-ink-muted)]">
+          Incl. {formatUsdEquivalent(overdueCommitted)} vencidos de meses anteriores.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -149,11 +156,13 @@ function UsdConsolidatedCoverageBlock({
   receivables,
   committed,
   fxRate,
+  overdueCommitted,
 }: {
   cash: number;
   receivables: number;
   committed: number;
   fxRate: number;
+  overdueCommitted: number;
 }) {
   const expected = cash + receivables - committed;
   return (
@@ -173,7 +182,7 @@ function UsdConsolidatedCoverageBlock({
           </div>
         ) : null}
         <div className="flex justify-between gap-2">
-          <dt className="text-[var(--copilot-ink-muted)]">Compromisos del mes</dt>
+          <dt className="text-[var(--copilot-ink-muted)]">Compromisos abiertos</dt>
           <dd className="tabular-nums text-[var(--copilot-danger-text)]">
             {committed > 0 ? `− ${formatUsdEquivalent(committed)}` : formatUsdEquivalent(0)}
           </dd>
@@ -188,6 +197,11 @@ function UsdConsolidatedCoverageBlock({
       <p className="mt-2 text-[11px] text-[var(--copilot-ink-muted)]">
         Detalle en moneda original. Resumen convertido a USD estimado.
       </p>
+      {overdueCommitted > 0 ? (
+        <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">
+          Incl. {formatUsdEquivalent(overdueCommitted)} vencidos de meses anteriores.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -251,6 +265,8 @@ export function TreasuryExecutiveForecastPanel({
   const cashUSD = cashAvailableByCurrency["USD"] ?? 0;
   const committedUYU = projected.committedTotals["UYU"] ?? 0;
   const committedUSD = projected.committedTotals["USD"] ?? 0;
+  const overdueUYU = projected.overdueTotals["UYU"] ?? 0;
+  const overdueUSD = projected.overdueTotals["USD"] ?? 0;
   const afterUYU = projected.afterCommitments["UYU"] ?? 0;
   const afterUSD = projected.afterCommitments["USD"] ?? 0;
   const receivablesUYU = receivablesByCurrency["UYU"] ?? 0;
@@ -276,12 +292,14 @@ export function TreasuryExecutiveForecastPanel({
             committed={usdConv(committedUYU, committedUSD)}
             after={usdConv(afterUYU, afterUSD)}
             fxRate={fxRate}
+            overdueCommitted={usdConv(overdueUYU, overdueUSD)}
           />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {CURRENCIES.map((cur) => {
               const cash = cashAvailableByCurrency[cur] ?? 0;
               const committed = projected.committedTotals[cur] ?? 0;
+              const overdue = projected.overdueTotals[cur] ?? 0;
               const after = projected.afterCommitments[cur] ?? 0;
               const status = coverageStatus(after, cash);
               const nextDue = topObligations.find((o) => o.currencyCode === cur);
@@ -323,7 +341,7 @@ export function TreasuryExecutiveForecastPanel({
                       </dd>
                     </div>
                     <div className="flex justify-between gap-2">
-                      <dt className="text-[var(--copilot-ink-muted)]">Compromisos del mes</dt>
+                      <dt className="text-[var(--copilot-ink-muted)]">Compromisos abiertos</dt>
                       <dd className="tabular-nums font-medium text-[var(--copilot-danger-text)]">
                         {committed > 0 ? `− ${fmt(committed, cur)}` : fmt(0, cur)}
                       </dd>
@@ -342,8 +360,13 @@ export function TreasuryExecutiveForecastPanel({
                     </div>
                   </dl>
 
-                  {horizonCount > 0 || nextDue ? (
+                  {overdue > 0 ? (
                     <p className="mt-2 text-[11px] text-[var(--copilot-ink-muted)]">
+                      Incl. {fmt(overdue, cur)} vencidos de meses anteriores.
+                    </p>
+                  ) : null}
+                  {horizonCount > 0 || nextDue ? (
+                    <p className={`text-[11px] text-[var(--copilot-ink-muted)] ${overdue > 0 ? "mt-0.5" : "mt-2"}`}>
                       {horizonCount > 0
                         ? `${horizonCount} pago${horizonCount === 1 ? "" : "s"} en horizonte`
                         : ""}
@@ -430,7 +453,7 @@ export function TreasuryExecutiveForecastPanel({
       <section>
         <CopilotSectionTitle
           title="Saldo proyectado"
-          subtitle="Caja disponible Santander + cobros previstos − compromisos del mes."
+          subtitle="Caja disponible Santander + cobros previstos − compromisos pendientes."
         />
         {isUsd ? (
           <UsdConsolidatedCoverageBlock
@@ -438,12 +461,14 @@ export function TreasuryExecutiveForecastPanel({
             receivables={usdConv(receivablesUYU, receivablesUSD)}
             committed={usdConv(committedUYU, committedUSD)}
             fxRate={fxRate}
+            overdueCommitted={usdConv(overdueUYU, overdueUSD)}
           />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {CURRENCIES.map((cur) => {
               const cash = cashAvailableByCurrency[cur] ?? 0;
               const committed = projected.committedTotals[cur] ?? 0;
+              const overdueCur = projected.overdueTotals[cur] ?? 0;
               const receivables = receivablesByCurrency[cur] ?? 0;
               const expected = cash + receivables - committed;
 
@@ -469,7 +494,7 @@ export function TreasuryExecutiveForecastPanel({
                       </div>
                     ) : null}
                     <div className="flex justify-between gap-2">
-                      <dt className="text-[var(--copilot-ink-muted)]">Compromisos del mes</dt>
+                      <dt className="text-[var(--copilot-ink-muted)]">Compromisos abiertos</dt>
                       <dd className="tabular-nums text-[var(--copilot-danger-text)]">
                         {committed > 0 ? `− ${fmt(committed, cur)}` : fmt(0, cur)}
                       </dd>
@@ -487,6 +512,11 @@ export function TreasuryExecutiveForecastPanel({
                       </dd>
                     </div>
                   </dl>
+                  {overdueCur > 0 ? (
+                    <p className="mt-2 text-[11px] text-[var(--copilot-ink-muted)]">
+                      Incl. {fmt(overdueCur, cur)} vencidos de meses anteriores.
+                    </p>
+                  ) : null}
                 </div>
               );
             })}
