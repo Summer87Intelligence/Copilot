@@ -9,8 +9,7 @@ import { TreasuryRecurringPaymentsPanel } from "@/components/copilot/tesoreria/t
 import type { TreasuryWorkspace } from "@/hooks/use-treasury-workspace";
 import { effectivePlannedObligationStatus } from "@/lib/treasury/treasury-obligation-status";
 import { formatTreasuryMoney } from "@/lib/treasury/treasury-dashboard";
-import { addDaysYmd, summarizeScheduledOutflows } from "@/lib/treasury/treasury-scheduled-payments";
-import { getEndOfCurrentMonth } from "@/lib/copilot-operational-period";
+import { addDaysYmd } from "@/lib/treasury/treasury-scheduled-payments";
 import { isRecurringGeneratedObligation } from "@/lib/treasury/treasury-recurring-payments";
 import type { PlannedObligationType, TreasuryCurrencyCode } from "@/lib/treasury/treasury-types";
 
@@ -98,18 +97,6 @@ export function TesoreriaPagosProximosTab({ workspace, asOfDate }: Props) {
     customDateTo
   );
 
-  // KPI summary cards (fin del mes actual)
-  const horizonEnd = getEndOfCurrentMonth();
-  const summaries = useMemo(() => {
-    const paidObligations = workspace.obligations.filter(
-      (o) => effectivePlannedObligationStatus(o.status, o.dueDate, asOfDate) === "paid"
-    );
-    return summarizeScheduledOutflows(
-      [...workspace.overdue, ...workspace.upcoming30, ...paidObligations],
-      { asOfDate, horizonEndDate: horizonEnd }
-    );
-  }, [workspace.overdue, workspace.upcoming30, workspace.obligations, asOfDate, horizonEnd]);
-
   // Filter summary — count + totals for visible obligations after all filters
   const filteredSummary = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -195,34 +182,6 @@ export function TesoreriaPagosProximosTab({ workspace, asOfDate }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* KPI summary cards */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        {summaries.map((s) => (
-          <div
-            key={s.currency}
-            className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-4 shadow-sm"
-          >
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-              Hasta fin de mes · {s.currency}
-            </p>
-            <dl className="mt-2 space-y-1 text-sm">
-              <div className="flex justify-between gap-2">
-                <dt className="text-[var(--copilot-ink-muted)]">Egresos</dt>
-                <dd className="font-semibold tabular-nums">
-                  {formatTreasuryMoney(s.scheduledTotal, s.currency)}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-[var(--copilot-ink-muted)]">Atrasados</dt>
-                <dd className="font-semibold tabular-nums text-[var(--copilot-danger-text)]">
-                  {formatTreasuryMoney(s.overdue, s.currency)}
-                </dd>
-              </div>
-            </dl>
-          </div>
-        ))}
-      </div>
-
       {/* Filter section */}
       <section className="space-y-2">
         <div className="flex items-center gap-2">

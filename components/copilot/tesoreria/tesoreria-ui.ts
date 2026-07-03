@@ -69,7 +69,7 @@ export const TESORERIA_SECTION_ALIASES: Record<string, TesoreriaSection> = {
 /** Tabs operativas principales — vista simple. */
 export const TESORERIA_SECTIONS_MAIN: { id: TesoreriaSection; label: string }[] = [
   { id: "caja", label: "Caja" },
-  { id: "programados", label: "Pagos próximos de la agencia" },
+  { id: "programados", label: "Pagos" },
   { id: "movimientos", label: "Movimientos" },
   { id: "cobranza", label: "Cobranza del mes" },
 ];
