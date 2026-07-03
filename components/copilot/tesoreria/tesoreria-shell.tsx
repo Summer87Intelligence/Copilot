@@ -6,7 +6,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
 import { TreasuryAdvancedToolsPanel } from "@/components/copilot/tesoreria/treasury-advanced-tools-panel";
 import { TreasuryReceiptsPanel } from "@/components/copilot/tesoreria/treasury-receipts-panel";
-import { TreasuryCashPanel } from "@/components/copilot/tesoreria/treasury-cash-panel";
 import { TreasuryFeedbackBanner } from "@/components/copilot/tesoreria/treasury-feedback-banner";
 import { TreasuryManualCashPanel } from "@/components/copilot/tesoreria/treasury-manual-cash-panel";
 import { TesoreriaPagosProximosTab } from "@/components/copilot/tesoreria/tesoreria-pagos-proximos-tab";
@@ -37,14 +36,14 @@ export function TesoreriaShell() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const sectionFromUrl = searchParams.get("section");
-  const parsedSection = parseTesoreriaSection(sectionFromUrl) ?? "caja";
+  const parsedSection = parseTesoreriaSection(sectionFromUrl) ?? "programados";
   const [section, setSection] = useState<TesoreriaSection>(parsedSection);
   const [appliedSectionFromUrl, setAppliedSectionFromUrl] = useState(sectionFromUrl);
   const [activeForm, setActiveForm] = useState<TesoreriaQuickAction | null>(null);
 
   if (sectionFromUrl !== appliedSectionFromUrl) {
     setAppliedSectionFromUrl(sectionFromUrl);
-    const next = parseTesoreriaSection(sectionFromUrl) ?? "caja";
+    const next = parseTesoreriaSection(sectionFromUrl) ?? "programados";
     if (next !== section) setSection(next);
   }
 
@@ -67,7 +66,7 @@ export function TesoreriaShell() {
     if (action === "scheduled" || action === "recurring") {
       setSectionWithUrl("programados");
     } else {
-      setSectionWithUrl("caja");
+      setSectionWithUrl("movimientos");
     }
     setActiveForm(action);
     requestAnimationFrame(() => {
@@ -135,10 +134,6 @@ export function TesoreriaShell() {
           );
         })}
       </nav>
-
-      {section === "caja" ? (
-        <TreasuryCashPanel workspace={workspace} asOfDate={asOfDate} />
-      ) : null}
 
       {section === "programados" ? (
         <TesoreriaPagosProximosTab workspace={workspace} asOfDate={asOfDate} />

@@ -52,8 +52,9 @@ export type TesoreriaSection =
 
 /** Aliases para URL params viejos → nuevas secciones. */
 export const TESORERIA_SECTION_ALIASES: Record<string, TesoreriaSection> = {
-  dashboard: "caja",
-  resumen: "caja",
+  caja: "programados",
+  dashboard: "programados",
+  resumen: "programados",
   pagos: "programados",
   "pagos-proximos": "programados",
   manual: "movimientos",
@@ -62,13 +63,12 @@ export const TESORERIA_SECTION_ALIASES: Record<string, TesoreriaSection> = {
   bank: "movimientos",
   recurring: "programados",
   accounts: "movimientos",
-  opening: "caja",
+  opening: "programados",
   avanzado: "movimientos",
 };
 
 /** Tabs operativas principales — vista simple. */
 export const TESORERIA_SECTIONS_MAIN: { id: TesoreriaSection; label: string }[] = [
-  { id: "caja", label: "Caja" },
   { id: "programados", label: "Pagos" },
   { id: "movimientos", label: "Movimientos" },
   { id: "cobranza", label: "Cobranza del mes" },
