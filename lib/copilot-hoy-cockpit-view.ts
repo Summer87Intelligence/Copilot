@@ -287,7 +287,7 @@ export function buildCockpitView(
 
   const paymentsAmounts = amountsFromBlocks((c) => {
     const block = pulse.projection30dBlocks.find((b) => b.currency === c);
-    return block?.hasConfiguredPayments ? block.scheduledPayments : 0;
+    return block?.hasConfiguredPayments ? (block.futureScheduledPayments ?? block.scheduledPayments) : 0;
   });
 
   const anyConfigured = pulse.projection30dBlocks.some((b) => b.hasConfiguredPayments);
