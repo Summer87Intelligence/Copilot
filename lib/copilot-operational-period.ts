@@ -58,6 +58,19 @@ export function getEndOfCurrentMonth(): string {
 }
 
 /**
+ * Devuelve el primer día del mes actual en formato YYYY-MM-DD (UTC).
+ *
+ * Usar como piso de "este mes" en vistas de pagos/cobros: vencidos de meses
+ * anteriores quedan afuera, pero vencidos del mes actual (dueDate < hoy pero
+ * >= inicio de mes) siguen contando como abiertos del mes.
+ */
+export function getStartOfCurrentMonth(): string {
+  const now = new Date();
+  const first = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  return first.toISOString().slice(0, 10);
+}
+
+/**
  * Retorna true si la fecha ISO (YYYY-MM-DD) cae dentro del período operativo,
  * es decir, es >= COPILOT_OPERATIONAL_START_DATE.
  * Retorna false para fechas nulas, vacías o con formato inválido.

@@ -10,10 +10,22 @@ function inRange(date: string, tab: CalendarTabId, today: string): boolean {
 }
 
 describe("getCalendarPeriodRange", () => {
-  it("this_month: starts today, ends end of July", () => {
+  it("this_month: starts on the 1st (includes overdue earlier this month), ends end of July", () => {
     const r = getCalendarPeriodRange("this_month", TODAY);
-    expect(r.start).toBe("2026-07-02");
+    expect(r.start).toBe("2026-07-01");
     expect(r.end).toBe("2026-07-31");
+  });
+
+  it("2026-07-01 (overdue earlier this month) falls only in this_month", () => {
+    expect(inRange("2026-07-01", "this_month", TODAY)).toBe(true);
+    expect(inRange("2026-07-01", "next_month", TODAY)).toBe(false);
+    expect(inRange("2026-07-01", "later", TODAY)).toBe(false);
+  });
+
+  it("2026-06-30 (overdue from prior month) is excluded from all tabs", () => {
+    for (const tab of TABS) {
+      expect(inRange("2026-06-30", tab, TODAY)).toBe(false);
+    }
   });
 
   it("next_month: full August", () => {

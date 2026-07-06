@@ -82,7 +82,7 @@ export function TesoreriaPagosProximosTab({ workspace, asOfDate }: Props) {
   const [search, setSearch] = useState("");
   const [customDateFrom, setCustomDateFrom] = useState("");
   const [customDateTo, setCustomDateTo] = useState("");
-  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("mes_actual");
   const [currency, setCurrency] = useState<CurrencyFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
@@ -142,7 +142,7 @@ export function TesoreriaPagosProximosTab({ workspace, asOfDate }: Props) {
     categoryFilter !== "all" ||
     typeFilter !== "all" ||
     statusFilter !== "all" ||
-    periodPreset !== "30d";
+    periodPreset !== "mes_actual";
 
   const activeFiltersCount = [
     search.trim() ? 1 : 0,
@@ -150,14 +150,14 @@ export function TesoreriaPagosProximosTab({ workspace, asOfDate }: Props) {
     categoryFilter !== "all" ? 1 : 0,
     typeFilter !== "all" ? 1 : 0,
     statusFilter !== "all" ? 1 : 0,
-    periodPreset !== "30d" ? 1 : 0,
+    periodPreset !== "mes_actual" ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
 
   function clearFilters() {
     setSearch("");
     setCustomDateFrom("");
     setCustomDateTo("");
-    setPeriodPreset("30d");
+    setPeriodPreset("mes_actual");
     setCurrency("all");
     setCategoryFilter("all");
     setTypeFilter("all");

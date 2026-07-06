@@ -93,6 +93,12 @@ export type TreasuryOutflowSummary = {
   currency: TreasuryCurrencyCode;
   totalScheduled: number;
   overdue: number;
+  /**
+   * Subconjunto de `overdue` con vencimiento anterior al mes de `asOfDate` (meses previos,
+   * no el actual). Opcional — ausente en objetos construidos a mano fuera de
+   * summarizeScheduledOutflows; los consumidores deben tratar `undefined` como 0.
+   */
+  overduePriorMonths?: number;
   next7Days: number;
   /** Pagos pendientes hasta fin del mes actual (horizonte del sistema). */
   scheduledTotal: number;
@@ -260,6 +266,12 @@ function dueInPeriod(dueDate: string, startYmd: string, endYmd: string): boolean
   return dueMs >= startMs && dueMs <= endMs;
 }
 
+function startOfMonthYmd(ymd: string): string {
+  const trimmed = ymd.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  return `${trimmed.slice(0, 7)}-01`;
+}
+
 export function summarizeScheduledOutflows(
   payments: readonly PlannedCashObligation[],
   range: ScheduledPaymentsRange
@@ -269,6 +281,7 @@ export function summarizeScheduledOutflows(
   const periodStart = range.periodStartDate ?? asOf;
   const periodEnd = range.periodEndDate ?? horizonEnd;
   const end7 = addDaysYmd(asOf, 7);
+  const monthStart = startOfMonthYmd(asOf);
 
   const codes: TreasuryCurrencyCode[] = ["UYU", "USD"];
   const out: TreasuryOutflowSummary[] = [];
@@ -280,6 +293,7 @@ export function summarizeScheduledOutflows(
 
     let totalScheduled = 0;
     let overdue = 0;
+    let overduePriorMonths = 0;
     let next7Days = 0;
     let scheduledTotal = 0;
     let paidInPeriod = 0;
@@ -321,6 +335,7 @@ export function summarizeScheduledOutflows(
 
       if (isPlannedObligationOverdue(row, asOf)) {
         overdue += amt;
+        if (row.dueDate < monthStart) overduePriorMonths += amt;
       } else {
         const days = daysUntilDue(row.dueDate, asOf);
         if (days != null && days >= 0 && days <= 7 && dueOnOrBefore(row.dueDate, end7)) {
@@ -333,6 +348,7 @@ export function summarizeScheduledOutflows(
       currency,
       totalScheduled: roundMoney(totalScheduled),
       overdue: roundMoney(overdue),
+      overduePriorMonths: roundMoney(overduePriorMonths),
       next7Days: roundMoney(next7Days),
       scheduledTotal: roundMoney(scheduledTotal),
       paidInPeriod: roundMoney(paidInPeriod),

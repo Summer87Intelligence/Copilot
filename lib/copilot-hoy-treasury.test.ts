@@ -374,6 +374,63 @@ describe("Hoy × Tesorería — fórmulas de caja", () => {
   });
 });
 
+describe("futureScheduledPayments — vencidos del mes actual siguen abiertos (TREASURY-HOY-CURRENT-MONTH-OVERDUE-PAYMENTS-FIX-001)", () => {
+  const asOfJuly = "2026-07-06";
+
+  it("excluye vencidos de meses anteriores pero conserva vencidos + futuros del mes actual", () => {
+    const cashBlocks = buildHoyCashPositionBlocks({
+      cashPositions: [
+        {
+          currency: "UYU",
+          openingConfigured: false,
+          openingBalance: 0,
+          collectedFromClients: 0,
+          manualIncome: 500_000,
+          manualExpense: 0,
+          adjustments: 0,
+          transfersNet: 0,
+          availableCash: 500_000,
+          currentCash: 500_000,
+          movementsCount: 1,
+          lastMovement: null, lastIncome: null, lastExpense: null,
+        },
+      ],
+      pendingByCurrency: { UYU: 0, USD: 0 },
+      treasurySummaries: [],
+    });
+
+    const obligations = [
+      // Vencidos de junio (mes anterior) — no deben inflar "Pagos próximos".
+      makeObligation({ currencyCode: "UYU", amountEstimated: 226_632, dueDate: "2026-06-22" }),
+      makeObligation({ currencyCode: "UYU", amountEstimated: 9_169, dueDate: "2026-06-22" }),
+      // Sueldos vencidos del mes actual (5/07), todavía impagos — sí deben aparecer.
+      makeObligation({ currencyCode: "UYU", amountEstimated: 27_509, dueDate: "2026-07-05" }),
+      makeObligation({ currencyCode: "UYU", amountEstimated: 45_321, dueDate: "2026-07-05" }),
+      makeObligation({ currencyCode: "UYU", amountEstimated: 35_984, dueDate: "2026-07-05" }),
+      // Pago futuro del próximo mes — fuera del horizonte de fin de mes actual.
+      makeObligation({ currencyCode: "UYU", amountEstimated: 27_509, dueDate: "2026-08-05" }),
+    ];
+
+    const summary = summarizeScheduledOutflows(obligations, {
+      asOfDate: asOfJuly,
+      horizonEndDate: "2026-07-31",
+    }).find((s) => s.currency === "UYU")!;
+
+    const projection = buildHoyProjection30dBlocks({
+      cashPositionBlocks: cashBlocks,
+      pendingByCurrency: { UYU: 0, USD: 0 },
+      treasurySummaries: [summary],
+      asOfDate: asOfJuly,
+    });
+    const uyu = projection.find((b) => b.currency === "UYU")!;
+
+    // scheduledPayments (proyección de caja) sigue incluyendo TODO lo abierto en horizonte.
+    expect(uyu.scheduledPayments).toBe(226_632 + 9_169 + 27_509 + 45_321 + 35_984);
+    // futureScheduledPayments (card "Pagos próximos") excluye solo junio, no julio.
+    expect(uyu.futureScheduledPayments).toBe(27_509 + 45_321 + 35_984);
+  });
+});
+
 describe("Hoy × Tesorería — reglas de fuente correcta (dinero disponible = tesorería, no cartera)", () => {
   const GATE_HOY = { confidence: "high" as const, coverage: "full" as const, recommendations_enabled: true };
 

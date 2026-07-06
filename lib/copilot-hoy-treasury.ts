@@ -54,9 +54,11 @@ export type HoyProjection30dBlock = {
   /** Pagos programados próximos 30 días (incluye vencidos — usado para proyección de caja). */
   scheduledPayments: number;
   /**
-   * Pagos con vencimiento >= asOfDate (excluye vencidos). Usar para display en card "Pagos próximos"
-   * de modo que el total sea consistente con la tabla operativa de Tesorería/Pagos.
-   * Omitido en objetos creados directamente sin pasar por buildHoyProjection30dBlocks.
+   * scheduledPayments excluyendo solo vencidos de meses anteriores al actual (los vencidos
+   * del mes en curso siguen contando — son pagos abiertos del mes, no ruido histórico).
+   * Usar para display en card "Pagos próximos" de modo que el total sea consistente con
+   * la tabla operativa de Tesorería/Pagos. Omitido en objetos creados directamente sin
+   * pasar por buildHoyProjection30dBlocks.
    */
   futureScheduledPayments?: number;
   /** cajaSegura30d */
@@ -149,12 +151,12 @@ export function buildHoyProjection30dBlocks(p: {
   return horizon.byCurrency.map((row) => {
     const summary = p.treasurySummaries.find((s) => s.currency === row.currency);
     const scheduled = row.hasConfiguredPayments ? row.scheduledOutflows : 0;
-    const overdueAmt = row.hasConfiguredPayments ? (summary?.overdue ?? 0) : 0;
+    const overduePriorMonthsAmt = row.hasConfiguredPayments ? (summary?.overduePriorMonths ?? 0) : 0;
     return {
       currency: row.currency,
       currentCash: row.currentCash,
       scheduledPayments: scheduled,
-      futureScheduledPayments: Math.max(0, scheduled - overdueAmt),
+      futureScheduledPayments: Math.max(0, scheduled - overduePriorMonthsAmt),
       safeCash30d: row.projectedCash,
       pendingReceivables: row.expectedCollections,
       expectedCash30d: row.projectedCashWithCollections,

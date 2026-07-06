@@ -86,6 +86,23 @@ describe("summarizeScheduledOutflows", () => {
     expect(uyu.scheduledTotal).toBe(5_000);
   });
 
+  it("overduePriorMonths solo cuenta vencidos de meses anteriores al de asOfDate", () => {
+    const asOfJuly = "2026-07-06";
+    const horizonJuly = "2026-07-31";
+    const payments = [
+      // Vencido dentro del mes actual (5/07) — sigue abierto del mes, no es "prior month".
+      makeObligation({ currencyCode: "UYU", amountEstimated: 27_509, dueDate: "2026-07-05" }),
+      // Vencido de un mes anterior (junio) — sí debe contar como overduePriorMonths.
+      makeObligation({ currencyCode: "UYU", amountEstimated: 226_632, dueDate: "2026-06-22" }),
+    ];
+    const uyu = summarizeScheduledOutflows(payments, {
+      asOfDate: asOfJuly,
+      horizonEndDate: horizonJuly,
+    }).find((s) => s.currency === "UYU")!;
+    expect(uyu.overdue).toBe(27_509 + 226_632);
+    expect(uyu.overduePriorMonths).toBe(226_632);
+  });
+
   it("cuenta pagados del período", () => {
     const payments = [
       makeObligation({
