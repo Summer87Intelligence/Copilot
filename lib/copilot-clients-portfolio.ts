@@ -12,7 +12,10 @@ import {
   buildCurrencyRiskSummary,
   currencyRiskToClientRiskLabel,
 } from "@/lib/copilot-financial-thresholds";
-import { loadClientPortfolioSourceRows } from "@/lib/data/proto-analytics-read-repository";
+import {
+  loadClientPortfolioSourceRows,
+  type ClientPortfolioSourceLoadMeta,
+} from "@/lib/data/proto-analytics-read-repository";
 import { supabase } from "@/lib/supabase-client";
 import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
 import {
@@ -166,6 +169,8 @@ export type ClientPortfolioLoad = {
   details: Record<string, ClientCompanyDetail>;
   /** Diagnóstico de brecha contacts vs deudores en facturas (auditoría). */
   directory_diagnostics?: ClientsDirectoryDiagnostics;
+  /** Paginación de las queries fuente (companies/invoices/receipts/contacts) — diagnóstico, no afecta cálculos. */
+  source_load_meta?: ClientPortfolioSourceLoadMeta;
 };
 
 type CompanyRow = {
@@ -563,7 +568,7 @@ export async function getClientPortfolio(
   client: SupabaseClient = supabase,
   workspaceCompanyId: string
 ): Promise<ClientPortfolioLoad> {
-  const { cRes, iRes, rRes, ctRes } = await loadClientPortfolioSourceRows(
+  const { cRes, iRes, rRes, ctRes, sourceLoadMeta } = await loadClientPortfolioSourceRows(
     client,
     workspaceCompanyId
   );
@@ -816,6 +821,7 @@ export async function getClientPortfolio(
     summary: buildClientPortfolioSummary(rows),
     details,
     directory_diagnostics: diagnostics,
+    source_load_meta: sourceLoadMeta,
   };
 }
 

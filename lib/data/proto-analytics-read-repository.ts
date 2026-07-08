@@ -9,6 +9,80 @@ export const FINANCIAL_SNAPSHOT_ROW_CAP = 5000;
 const ROW_CAP = FINANCIAL_SNAPSHOT_ROW_CAP;
 const INSIGHT_ROW_LIMIT = 100;
 
+type PagedFetchError = { message: string };
+type PagedFetchResult<Row> = { data: Row[] | null; error: PagedFetchError | null };
+type PagedQueryFactory<Row> = (range: {
+  from: number;
+  to: number;
+}) => PromiseLike<PagedFetchResult<Row>>;
+
+export type PaginatedFetchMeta = {
+  pageSize: number;
+  maxRows: number;
+  pagesFetched: number;
+  rowsFetched: number;
+  /** true si se alcanzó `maxRows` sin agotar la tabla (salvaguarda; distinto del cap fijo de antes). */
+  truncatedAtMaxRows: boolean;
+};
+
+export type PaginatedFetchResult<Row> = {
+  data: Row[];
+  error: PagedFetchError | null;
+  meta: PaginatedFetchMeta;
+};
+
+/**
+ * Trae todas las filas de una query paginando por `range()` con orden estable, en vez de un
+ * `.limit()` fijo que trunca en silencio (y sin `order()`, en orden no determinístico) cuando la
+ * tabla supera el cap. `maxRows` es una salvaguarda para no paginar sin fin ante datos inesperados.
+ */
+export async function fetchAllRowsPaginated<Row>(
+  queryFactory: PagedQueryFactory<Row>,
+  options: { pageSize?: number; maxRows?: number } = {}
+): Promise<PaginatedFetchResult<Row>> {
+  const pageSize = options.pageSize ?? 1000;
+  const maxRows = options.maxRows ?? 50_000;
+  const rows: Row[] = [];
+  let pagesFetched = 0;
+
+  while (true) {
+    const from = rows.length;
+    const to = from + pageSize - 1;
+    const { data, error } = await queryFactory({ from, to });
+    pagesFetched += 1;
+    if (error) {
+      return {
+        data: rows,
+        error,
+        meta: { pageSize, maxRows, pagesFetched, rowsFetched: rows.length, truncatedAtMaxRows: false },
+      };
+    }
+    const page = data ?? [];
+    rows.push(...page);
+
+    if (page.length < pageSize) {
+      return {
+        data: rows,
+        error: null,
+        meta: { pageSize, maxRows, pagesFetched, rowsFetched: rows.length, truncatedAtMaxRows: false },
+      };
+    }
+    if (rows.length >= maxRows) {
+      return {
+        data: rows.slice(0, maxRows),
+        error: null,
+        meta: {
+          pageSize,
+          maxRows,
+          pagesFetched,
+          rowsFetched: Math.min(rows.length, maxRows),
+          truncatedAtMaxRows: true,
+        },
+      };
+    }
+  }
+}
+
 type ProtoFinanceTable = "proto_invoices" | "proto_receipts" | "proto_payments";
 
 /** Diagnóstico dev: no altera consultas. */
@@ -390,41 +464,65 @@ export async function loadInsightEngineProtoRows(
   };
 }
 
-/** Paralelo de lecturas para `copilot-clients-portfolio`. */
+/** Metadata de paginación por tabla, expuesta para diagnóstico (no altera el shape existente). */
+export type ClientPortfolioSourceLoadMeta = {
+  companies: PaginatedFetchMeta;
+  invoices: PaginatedFetchMeta;
+  receipts: PaginatedFetchMeta;
+  contacts: PaginatedFetchMeta;
+};
+
+/**
+ * Paralelo de lecturas para `copilot-clients-portfolio`.
+ * Pagina con `fetchAllRowsPaginated` (orden estable por `id`) en vez de un `.limit(ROW_CAP)` fijo:
+ * `proto_contacts` supera holgadamente el cap de 5.000 filas en el workspace real (~7.900), y sin
+ * `order()` el recorte anterior era no determinístico — podía dejar clientes sin contactos.
+ */
 export async function loadClientPortfolioSourceRows(
   client: OperationalSupabase,
   workspaceCompanyId: string
 ) {
   const wid = workspaceCompanyId.trim();
   if (!wid) throw new Error("[copilot-analytics] workspaceCompanyId requerido para queries de analytics");
-  const [cRes, iRes, rRes, ctRes] = await Promise.all([
-    (() => {
+
+  const [companies, invoices, receipts, contacts] = await Promise.all([
+    fetchAllRowsPaginated<Record<string, unknown>>(({ from, to }) => {
       let q = client.from("proto_companies").select("*").eq("is_active", true);
       if (wid) q = q.eq("workspace_company_id", wid);
-      return q.order("name", { ascending: true }).limit(ROW_CAP);
-    })(),
-    (() => {
+      return q.order("id", { ascending: true }).range(from, to);
+    }),
+    (async () => {
       copilotProtoQueryDebugLog("proto_invoices", wid, Boolean(wid));
-      let q = client
-        .from("proto_invoices")
-        .select("*")
-        .eq("is_active", true)
-        .gte("issue_date", MIN_FINANCIAL_DATE);
-      if (wid) q = q.eq("workspace_company_id", wid);
-      return q.order("id", { ascending: true }).limit(ROW_CAP);
+      return fetchAllRowsPaginated<Record<string, unknown>>(({ from, to }) => {
+        let q = client
+          .from("proto_invoices")
+          .select("*")
+          .eq("is_active", true)
+          .gte("issue_date", MIN_FINANCIAL_DATE);
+        if (wid) q = q.eq("workspace_company_id", wid);
+        return q.order("id", { ascending: true }).range(from, to);
+      });
     })(),
-    (() => {
+    (async () => {
       copilotProtoQueryDebugLog("proto_receipts", wid, Boolean(wid));
-      let q = client.from("proto_receipts").select("*").eq("is_active", true);
-      if (wid) q = q.eq("workspace_company_id", wid);
-      return q.limit(ROW_CAP);
+      return fetchAllRowsPaginated<Record<string, unknown>>(({ from, to }) => {
+        let q = client.from("proto_receipts").select("*").eq("is_active", true);
+        if (wid) q = q.eq("workspace_company_id", wid);
+        return q.order("id", { ascending: true }).range(from, to);
+      });
     })(),
-    (() => {
+    fetchAllRowsPaginated<Record<string, unknown>>(({ from, to }) => {
       let q = client.from("proto_contacts").select("*").eq("is_active", true);
       if (wid) q = q.eq("workspace_company_id", wid);
-      return q.limit(ROW_CAP);
-    })(),
+      return q.order("id", { ascending: true }).range(from, to);
+    }),
   ]);
+
+  // Compat: mismo shape { data, error } que exponía el `.limit()` de antes para cada caller.
+  const cRes = { data: companies.data, error: companies.error };
+  const iRes = { data: invoices.data, error: invoices.error };
+  const rRes = { data: receipts.data, error: receipts.error };
+  const ctRes = { data: contacts.data, error: contacts.error };
 
   if (!iRes.error && Array.isArray(iRes.data) && iRes.data.length > 0) {
     const invRows = iRes.data as Record<string, unknown>[];
@@ -443,7 +541,14 @@ export async function loadClientPortfolioSourceRows(
     }
   }
 
-  return { cRes, iRes, rRes, ctRes };
+  const sourceLoadMeta: ClientPortfolioSourceLoadMeta = {
+    companies: companies.meta,
+    invoices: invoices.meta,
+    receipts: receipts.meta,
+    contacts: contacts.meta,
+  };
+
+  return { cRes, iRes, rRes, ctRes, sourceLoadMeta };
 }
 
 export async function selectProtoTaxObligationsActiveOrdered(
