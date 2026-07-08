@@ -21,6 +21,7 @@ import {
   filterOverdueObligations,
   filterUpcomingObligations,
 } from "@/lib/treasury/treasury-obligation-status";
+import { recurringObligationEnsureNextForTemplate } from "@/lib/treasury/services/recurring-obligation-template-service";
 import { filterPlannedCashObligationsForScheduledOutflow } from "@/lib/treasury/treasury-scheduled-outflow-eligibility";
 import { resolveTreasuryWorkspaceId, normalizeErpCompanyId } from "@/lib/treasury/treasury-tenant";
 import type {
@@ -265,6 +266,14 @@ export async function plannedCashObligationMarkPaid(
   });
   if (error) return mapDbError(error);
   if (!row) return protoCrudResult.fail("NOT_FOUND", "Obligación no encontrada.");
+
+  // Best-effort: si esta obligación viene de un recurrente, asegurar que
+  // el siguiente ciclo quede materializado/apuntado. No debe hacer fallar
+  // el pago ya confirmado si esta housekeeping secundaria tiene un problema.
+  if (row.recurringTemplateId) {
+    await recurringObligationEnsureNextForTemplate(supabase, tenantCompanyId, row.recurringTemplateId);
+  }
+
   return protoCrudResult.ok(row, "Obligación marcada como pagada.");
 }
 
