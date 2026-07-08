@@ -139,44 +139,46 @@ export async function recurringObligationGenerate(
       draft.recurringInstanceKey
     );
     if (existing.error) return mapDbError(existing.error);
-    if (existing.row) continue;
 
-    const validation = validatePlannedCashObligationInput(draft.input);
-    if (!validation.ok) return validationFailure(validation.issues);
-    const { row, error: insertError } = await plannedCashObligationRepositoryInsert(
-      supabase,
-      workspaceId,
-      {
-        company_id: null,
-        title: draft.input.title,
-        description: draft.input.description ?? null,
-        obligation_type: draft.input.obligationType,
-        direction: draft.input.direction ?? "outflow",
-        amount_estimated: draft.input.amountEstimated,
-        amount_final: draft.input.amountFinal ?? null,
-        currency_code: draft.input.currencyCode,
-        due_date: draft.input.dueDate,
-        expected_payment_date: draft.input.expectedPaymentDate ?? null,
-        expected_source: draft.input.expectedSource ?? "unknown",
-        expected_account_id: draft.input.expectedAccountId ?? null,
-        recurrence: draft.input.recurrence ?? "none",
-        status: draft.input.status ?? "planned",
-        priority: draft.input.priority ?? "medium",
-        affects_cashflow: draft.input.affectsCashflow ?? true,
-        reminder_days_before: draft.input.reminderDaysBefore ?? [7, 3, 1],
-        source: draft.input.source ?? "recurring_rule",
-        recurring_template_id: draft.templateId,
-        recurring_instance_key: draft.recurringInstanceKey,
-        notes: draft.input.notes ?? null,
-        metadata: draft.input.metadata ?? null,
+    // El ciclo ya está resuelto (obligación creada antes, en cualquier
+    // estado). No se duplica, pero el puntero de la plantilla igual debe
+    // avanzar más abajo para no quedar mostrando un ciclo ya materializado.
+    if (!existing.row) {
+      const validation = validatePlannedCashObligationInput(draft.input);
+      if (!validation.ok) return validationFailure(validation.issues);
+      const { row, error: insertError } = await plannedCashObligationRepositoryInsert(
+        supabase,
+        workspaceId,
+        {
+          company_id: null,
+          title: draft.input.title,
+          description: draft.input.description ?? null,
+          obligation_type: draft.input.obligationType,
+          direction: draft.input.direction ?? "outflow",
+          amount_estimated: draft.input.amountEstimated,
+          amount_final: draft.input.amountFinal ?? null,
+          currency_code: draft.input.currencyCode,
+          due_date: draft.input.dueDate,
+          expected_payment_date: draft.input.expectedPaymentDate ?? null,
+          expected_source: draft.input.expectedSource ?? "unknown",
+          expected_account_id: draft.input.expectedAccountId ?? null,
+          recurrence: draft.input.recurrence ?? "none",
+          status: draft.input.status ?? "planned",
+          priority: draft.input.priority ?? "medium",
+          affects_cashflow: draft.input.affectsCashflow ?? true,
+          reminder_days_before: draft.input.reminderDaysBefore ?? [7, 3, 1],
+          source: draft.input.source ?? "recurring_rule",
+          recurring_template_id: draft.templateId,
+          recurring_instance_key: draft.recurringInstanceKey,
+          notes: draft.input.notes ?? null,
+          metadata: draft.input.metadata ?? null,
+        }
+      );
+      if (insertError && !String(insertError.message ?? "").includes("recurring_instance")) {
+        return mapDbError(insertError);
       }
-    );
-    if (insertError) {
-      if (String(insertError.message ?? "").includes("recurring_instance")) continue;
-      return mapDbError(insertError);
+      if (row) created.push(row);
     }
-    if (!row) continue;
-    created.push(row);
 
     const template = rows.find((item) => item.id === draft.templateId);
     if (!template) continue;

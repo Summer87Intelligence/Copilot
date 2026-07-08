@@ -88,4 +88,53 @@ describe("treasury-recurring-obligations", () => {
   it("Impuestos → obligation_type tax", () => {
     expect(mapCategoryToObligationType("Impuestos")).toBe("tax");
   });
+
+  describe("TREASURY-RECURRING-CURRENT-MONTH-LATE-INSTANCE-FIX-001", () => {
+    it("Caso A: día del mes aún no llegó → genera la instancia pendiente del mes actual", () => {
+      const drafts = generateUpcomingObligations({
+        templates: [template({ nextOccurrenceDate: "2026-07-06" })],
+        asOfDate: "2026-07-01",
+        withinDays: 30,
+      });
+      expect(drafts.map((d) => d.dueDate)).toEqual(["2026-07-06"]);
+    });
+
+    it("Caso B: día del mes ya pasó → genera solo la instancia atrasada, no salta al mes siguiente", () => {
+      const drafts = generateUpcomingObligations({
+        templates: [template({ nextOccurrenceDate: "2026-07-06" })],
+        asOfDate: "2026-07-08",
+        withinDays: 30,
+      });
+      expect(drafts.map((d) => d.dueDate)).toEqual(["2026-07-06"]);
+    });
+
+    it("Caso E: puntero ya avanzado más allá del mes actual → recupera el gap sin duplicar meses futuros", () => {
+      const drafts = generateUpcomingObligations({
+        templates: [template({ nextOccurrenceDate: "2026-09-06" })],
+        asOfDate: "2026-07-08",
+        withinDays: 30,
+      });
+      expect(drafts.map((d) => d.dueDate)).toEqual(["2026-07-06"]);
+    });
+
+    it("no genera el mismo ciclo dos veces cuando el puntero ya coincide con el mes actual", () => {
+      const drafts = generateUpcomingObligations({
+        templates: [template({ nextOccurrenceDate: "2026-07-06" })],
+        asOfDate: "2026-07-06",
+        withinDays: 30,
+      });
+      expect(drafts.map((d) => d.dueDate)).toEqual(["2026-07-06"]);
+    });
+
+    it("plantilla no mensual atrasada igual se recupera (sin el gap-fix específico de día del mes)", () => {
+      const drafts = generateUpcomingObligations({
+        templates: [
+          template({ recurrenceType: "yearly", nextOccurrenceDate: "2026-06-15" }),
+        ],
+        asOfDate: "2026-07-08",
+        withinDays: 30,
+      });
+      expect(drafts.map((d) => d.dueDate)).toEqual(["2026-06-15"]);
+    });
+  });
 });

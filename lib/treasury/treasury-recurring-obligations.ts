@@ -164,6 +164,25 @@ export function createGeneratedObligation(
   };
 }
 
+/**
+ * Fecha que tendría el ciclo mensual de `cursor` (mismo día del mes, con
+ * clamp a fin de mes) si cayera dentro del mes de `asOfDate`. Permite
+ * detectar el vencimiento del mes en curso cuando el puntero de la
+ * plantilla ya quedó adelantado (gap por meses sin generar).
+ */
+function sameMonthOccurrence(cursorYmd: string, asOfYmd: string): string | null {
+  const cursor = parseYmd(cursorYmd);
+  const asOf = parseYmd(asOfYmd);
+  if (!cursor || !asOf) return null;
+  const lastDay = new Date(
+    Date.UTC(asOf.getUTCFullYear(), asOf.getUTCMonth() + 1, 0)
+  ).getUTCDate();
+  const day = Math.min(cursor.getUTCDate(), lastDay);
+  return formatYmd(
+    new Date(Date.UTC(asOf.getUTCFullYear(), asOf.getUTCMonth(), day, 12))
+  );
+}
+
 export function generateUpcomingObligations(params: {
   templates: readonly PlannedCashObligationTemplate[];
   asOfDate: string;
@@ -179,22 +198,26 @@ export function generateUpcomingObligations(params: {
       typeof meta.ends_on === "string" && /^\d{4}-\d{2}-\d{2}$/.test(meta.ends_on)
         ? meta.ends_on
         : null;
-    let cursor = template.nextOccurrenceDate;
-    let guard = 0;
+    const cursor = template.nextOccurrenceDate;
+    const candidates: string[] = [];
 
-    while (cursor <= endDate && guard < 24) {
-      guard += 1;
-      if (endsOn && cursor > endsOn) break;
-      if (cursor >= params.asOfDate) {
-        drafts.push(createGeneratedObligation(template, cursor));
+    // Vencimiento atrasado del mes en curso: el puntero ya quedó por
+    // delante (p.ej. saltó a un mes futuro) pero el ciclo de este mes
+    // nunca se generó. Se recupera sin tocar meses anteriores.
+    if (template.recurrenceType === "monthly") {
+      const currentCycle = sameMonthOccurrence(cursor, params.asOfDate);
+      if (currentCycle && currentCycle <= params.asOfDate && currentCycle < cursor) {
+        candidates.push(currentCycle);
       }
-      const next = buildNextOccurrence(
-        cursor,
-        template.recurrenceType,
-        template.recurrenceInterval
-      );
-      if (!next || next <= cursor) break;
-      cursor = next;
+    }
+
+    if (cursor <= endDate) {
+      candidates.push(cursor);
+    }
+
+    for (const dueDate of candidates) {
+      if (endsOn && dueDate > endsOn) continue;
+      drafts.push(createGeneratedObligation(template, dueDate));
     }
   }
 
