@@ -73,6 +73,8 @@ const MODULE_LABELS: Record<ModuleKey, string> = {
   manual: "Manual",
   admin: "Admin",
   helpdesk: "Mesa de ayuda",
+  bank_movements: "Movimientos bancarios",
+  daily_tasks: "Tareas diarias",
 };
 
 const READ_ONLY_ROLES = new Set(["usuario", "demo_readonly"]);

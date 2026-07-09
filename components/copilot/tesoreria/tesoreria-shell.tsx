@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import Link from "next/link";
+
 import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
-import { TreasuryAdvancedToolsPanel } from "@/components/copilot/tesoreria/treasury-advanced-tools-panel";
 import { TreasuryReceiptsPanel } from "@/components/copilot/tesoreria/treasury-receipts-panel";
 import { TreasuryFeedbackBanner } from "@/components/copilot/tesoreria/treasury-feedback-banner";
 import { TreasuryManualCashPanel } from "@/components/copilot/tesoreria/treasury-manual-cash-panel";
@@ -142,7 +143,21 @@ export function TesoreriaShell() {
       {section === "movimientos" ? (
         <div className="space-y-6">
           <TreasuryManualCashPanel workspace={workspace} />
-          <TreasuryAdvancedToolsPanel workspace={workspace} />
+          <section className="rounded-2xl border border-dashed border-[var(--copilot-border)] bg-[rgba(248,246,242,0.5)] px-4 py-3.5">
+            <p className="text-sm font-semibold text-[var(--copilot-ink)]">
+              ¿Extractos del banco?
+            </p>
+            <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
+              Para importar extractos y conciliar banco, usá{" "}
+              <Link
+                href="/copilot/movimientos-bancarios"
+                className="font-semibold underline underline-offset-2"
+              >
+                Movimientos bancarios
+              </Link>
+              .
+            </p>
+          </section>
         </div>
       ) : null}
 

@@ -1,5 +1,17 @@
 # Project Context
 
+## COPILOT-BANK-MOVEMENTS-AND-DAILY-TASKS-SPRINT-A-001 — 2026-07-09 (SCAFFOLD ENTREGADO)
+
+**Base estructural de dos módulos nuevos — sin parser, sin matching automático, sin cron:**
+- **Migración PREVIEW (NO aplicada)**: `supabase/migrations/20260709000000_bank_movements_daily_tasks.sql` — tablas `bank_statement_imports`, `bank_movements`, `bank_movement_match_suggestions`, `daily_tasks`. RLS workspace-scoped (patrón Helpdesk/Tesorería, sin USING(true)). Espera aprobación de Andrés para aplicar en Supabase.
+- **RBAC**: module keys `bank_movements` y `daily_tasks` en `MODULE_KEYS`, presets por rol (superadmin admin/admin; usuario none/write; cobranza none/write; tesoreria write/write; contador read/write), mapa API y labels de admin panel.
+- **Rutas**: `/copilot/movimientos-bancarios` (cards + tabs Importar/Movimientos/Conciliación/Historial) y `/copilot/tareas-diarias` (cards + tabs Mis tareas/Por módulo/Completadas). Guard server-side `isModuleAccessDenied`.
+- **APIs GET base**: `/api/copilot/bank-movements`, `/bank-movements/imports`, `/bank-movements/[id]/suggestions`, `/daily-tasks` — `requireCopilotModuleAccess`, workspace-scoped, fallback controlado `{ok:true,data:[],meta:{migration_pending:true}}` si las tablas no existen aún. `daily-tasks` filtra por permisos de módulo del usuario.
+- **Importador viejo**: `TreasuryAdvancedToolsPanel` removido del render de Tesorería (tab Movimientos) y reemplazado por CTA a Movimientos bancarios. La lógica reusable NO se borró: `treasury-santander-import-panel.tsx`, parsers `lib/treasury/santander-*`, matching `santander-import-reconciliation.ts` + `client-transfer-alias-matching.ts`, tabla `bank_reconciliation_movements` y APIs `treasury/bank-reconciliation-movements/*` siguen intactos para migrar en Sprint B/C.
+- **Manual**: sección `importador-santander` reemplazada por `movimientos-bancarios` + nueva `tareas-diarias`; bullets de Tesorería y navegación actualizados.
+- **Checks**: tsc 0 errores, 3834 tests verdes (1 test de nav actualizado para derivar de MODULE_KEYS), build OK, lint-rls sin findings nuevos (31 preexistentes).
+- **Pendiente Sprint B/C/D**: aplicar migración tras aprobación, upload + parser (reusar parsers Santander existentes), motor de sugerencias, confirmación de conciliación, generación de tareas diarias, migrar/retirar tabla vieja `bank_reconciliation_movements`.
+
 ## Resumen del proyecto
 - SaaS financiero B2B (Summer87 Copilot) — Next.js 15 App Router + TypeScript + Supabase + Vercel.
 - Integración ERP ZetaSoftware (credenciales estáticas env vars, 5 pipelines sync activos).

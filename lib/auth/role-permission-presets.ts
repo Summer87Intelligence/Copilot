@@ -24,6 +24,8 @@ const SUPERADMIN_PRESET: RolePreset = {
   manual: "admin",
   admin: "admin",
   helpdesk: "admin",
+  bank_movements: "admin",
+  daily_tasks: "admin",
 };
 
 const USUARIO_PRESET: RolePreset = {
@@ -41,6 +43,8 @@ const USUARIO_PRESET: RolePreset = {
   manual: "read",
   admin: "none",
   helpdesk: "write",
+  bank_movements: "none",
+  daily_tasks: "write",
 };
 
 const COBRANZA_PRESET: RolePreset = {
@@ -58,6 +62,8 @@ const COBRANZA_PRESET: RolePreset = {
   manual: "read",
   admin: "none",
   helpdesk: "write",
+  bank_movements: "none",
+  daily_tasks: "write",
 };
 
 const TESORERIA_PRESET: RolePreset = {
@@ -75,6 +81,8 @@ const TESORERIA_PRESET: RolePreset = {
   manual: "read",
   admin: "none",
   helpdesk: "write",
+  bank_movements: "write",
+  daily_tasks: "write",
 };
 
 const CONTADOR_PRESET: RolePreset = {
@@ -92,6 +100,8 @@ const CONTADOR_PRESET: RolePreset = {
   manual: "read",
   admin: "none",
   helpdesk: "write",
+  bank_movements: "read",
+  daily_tasks: "write",
 };
 
 const PRESETS: Record<string, RolePreset> = {

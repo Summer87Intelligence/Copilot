@@ -7,6 +7,7 @@ import {
   canWriteModule,
   isValidAccessLevel,
   isValidModuleKey,
+  MODULE_KEYS,
   resolveEffectivePermissions,
   type ModulePermission,
 } from "@/lib/auth/module-permissions";
@@ -353,22 +354,9 @@ describe("buildCopilotNavItemGroups — filtrado por módulo", () => {
   });
 
   it("grupo vacío tras filtro no aparece en lista", () => {
-    const perms: Record<string, string> = {
-      hoy: "none",
-      dashboard: "none",
-      acciones: "none",
-      clientes: "none",
-      cartera: "none",
-      cobranza: "none",
-      tesoreria: "none",
-      finanzas: "none",
-      reportes: "none",
-      datos: "none",
-      agentes: "none",
-      manual: "none",
-      admin: "none",
-      helpdesk: "none",
-    };
+    const perms: Record<string, string> = Object.fromEntries(
+      MODULE_KEYS.map((k) => [k, "none"])
+    );
     const groups = buildCopilotNavItemGroups(false, perms);
     // Solo deben quedar grupos con items sin moduleKey (Alertas)
     const allItems = groups.flatMap((g) => g.items);

@@ -1,6 +1,7 @@
 /** Navegación del módulo Copilot. */
 import type { LucideIcon } from "lucide-react";
 import {
+  ArrowRightLeft,
   BarChart3,
   BookMarked,
   BookOpen,
@@ -53,6 +54,14 @@ const COPILOT_NAV_HOY: CopilotNavGroup = {
       description: "Caja, cobros y prioridad",
       icon: ListTodo,
       moduleKey: "hoy",
+    },
+    {
+      href: "/copilot/tareas-diarias",
+      label: "Tareas diarias",
+      shortLabel: "Tareas",
+      description: "Tu lista operativa del día",
+      icon: CheckSquare,
+      moduleKey: "daily_tasks",
     },
   ],
 };
@@ -130,6 +139,14 @@ const COPILOT_NAV_TESORERIA: CopilotNavGroup = {
       description: "Caja y pagos",
       icon: Banknote,
       moduleKey: "tesoreria",
+    },
+    {
+      href: "/copilot/movimientos-bancarios",
+      label: "Movimientos bancarios",
+      shortLabel: "Banco",
+      description: "Extractos Santander y conciliación",
+      icon: ArrowRightLeft,
+      moduleKey: "bank_movements",
     },
   ],
 };

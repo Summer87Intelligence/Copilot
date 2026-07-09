@@ -23,6 +23,8 @@ export const MODULE_KEYS = [
   "manual",
   "admin",
   "helpdesk",
+  "bank_movements",
+  "daily_tasks",
 ] as const;
 
 export type ModuleKey = (typeof MODULE_KEYS)[number];
