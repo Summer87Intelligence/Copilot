@@ -24,6 +24,9 @@ import {
   emptyCurrencyTotals,
 } from "@/lib/bank-movements/bank-movements-import-bulk";
 import { buildSantanderBankStatementPreview } from "@/lib/bank-movements/santander-pdf-parser";
+import {
+  mapBankStatementPreviewError,
+} from "@/lib/bank-movements/bank-movements-import-preview-errors";
 import { previewSantanderBankStatementFiles } from "@/lib/bank-movements/santander-pdf-preview-service.server";
 
 describe("previewSantanderBankStatementFiles", () => {
@@ -68,6 +71,38 @@ describe("previewSantanderBankStatementFiles", () => {
     expect(data.previews).toHaveLength(1);
     expect(data.errors).toHaveLength(1);
     expect(data.errors[0]?.file_name).toBe("bad.pdf");
+    expect(data.errors[0]?.error).toContain("No pudimos leer este archivo");
+  });
+
+  it("reporta error claro cuando falta hoja consolidada en xlsx", async () => {
+    const XLSX = await import("xlsx");
+    const workbook = XLSX.utils.book_new();
+    const sheet = XLSX.utils.aoa_to_sheet([
+      ["Fecha", "Monto"],
+      ["01/07/2026", "100"],
+    ]);
+    XLSX.utils.book_append_sheet(workbook, sheet, "Otra hoja");
+    const buffer = Buffer.from(XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }));
+
+    const data = await previewSantanderBankStatementFiles([
+      { fileName: "sin-hoja.xlsx", buffer },
+    ]);
+
+    expect(data.parsed_count).toBe(0);
+    expect(data.failed_count).toBe(1);
+    expect(data.errors[0]?.error).toBe(
+      mapBankStatementPreviewError(new Error("NOT_CONSOLIDATED"))
+    );
+    expect(data.errors[0]?.error).toContain("Movimientos consolidados");
+  });
+
+  it("reporta error claro para xlsx ilegible o sin hoja consolidada", async () => {
+    const data = await previewSantanderBankStatementFiles([
+      { fileName: "roto.xlsx", buffer: Buffer.from("not-an-xlsx") },
+    ]);
+
+    expect(data.parsed_count).toBe(0);
+    expect(data.errors[0]?.error).toContain("No pudimos leer este archivo:");
   });
 
   it("preview bulk mixto PDF + Excel consolidado", async () => {

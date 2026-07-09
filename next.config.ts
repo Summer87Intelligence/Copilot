@@ -48,7 +48,7 @@ const nextConfig: NextConfig = {
   },
   /** Alineado con turbopack.root — requerido en monorepos / Vercel adapter. */
   outputFileTracingRoot: projectRoot,
-  serverExternalPackages: ["pdf-parse", "pdfjs-dist"],
+  serverExternalPackages: ["pdf-parse", "pdfjs-dist", "xlsx"],
   outputFileTracingIncludes: {
     "/api/copilot/clientes/[companyId]/account-statement.pdf": [
       "./node_modules/pdfkit/js/**/*",
@@ -57,6 +57,7 @@ const nextConfig: NextConfig = {
       "./node_modules/pdf-parse/**/*",
       "./node_modules/pdfjs-dist/**/*",
     ],
+    "/api/copilot/bank-movements/imports/preview": ["./node_modules/xlsx/**/*"],
     "/api/knowledge/zeta/docs": ["./docs/zeta/markdown/**/*"],
     "/api/knowledge/zeta/doc": ["./docs/zeta/markdown/**/*"],
     "/api/knowledge/zeta/search": ["./docs/zeta/markdown/**/*"],

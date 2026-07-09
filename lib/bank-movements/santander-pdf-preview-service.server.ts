@@ -6,6 +6,10 @@ import {
   emptyCurrencyTotals,
   type BulkPreviewData,
 } from "@/lib/bank-movements/bank-movements-import-bulk";
+import {
+  BANK_STATEMENT_PREVIEW_FALLBACK_ERROR,
+  mapBankStatementPreviewError,
+} from "@/lib/bank-movements/bank-movements-import-preview-errors";
 import { buildSantanderConsolidatedExcelPreview } from "@/lib/bank-movements/santander-excel-consolidated-parser";
 import {
   buildSantanderBankStatementPreview,
@@ -14,8 +18,8 @@ import {
 import { extractTextFromPdfBuffer } from "@/lib/treasury/santander-pdf-text-extract.server";
 import { getBankImportFileType } from "@/lib/treasury/santander-bank-import-file-type";
 
-export const BANK_STATEMENT_PREVIEW_ERROR =
-  "No pudimos leer este extracto. Revisá que sea un PDF o Excel consolidado de Santander con tabla de movimientos.";
+/** @deprecated Use BANK_STATEMENT_PREVIEW_FALLBACK_ERROR */
+export const BANK_STATEMENT_PREVIEW_ERROR = BANK_STATEMENT_PREVIEW_FALLBACK_ERROR;
 
 export async function previewSantanderBankStatementPdfBuffer(
   buffer: Buffer
@@ -38,6 +42,20 @@ export async function previewSantanderBankStatementPdfBuffer(
   }
 }
 
+async function previewSantanderConsolidatedExcelBuffer(
+  buffer: Buffer
+): Promise<SantanderBankStatementPreview> {
+  try {
+    return await buildSantanderConsolidatedExcelPreview(buffer);
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "";
+    if (code === "NOT_CONSOLIDATED" || code === "NO_MOVEMENTS" || code === "EMPTY_FILE") {
+      throw error;
+    }
+    throw new Error("EXCEL_READ_FAILED");
+  }
+}
+
 async function previewSantanderBankStatementFile(input: {
   fileName: string;
   buffer: Buffer;
@@ -47,7 +65,7 @@ async function previewSantanderBankStatementFile(input: {
     return previewSantanderBankStatementPdfBuffer(input.buffer);
   }
   if (fileType === "xlsx") {
-    return buildSantanderConsolidatedExcelPreview(input.buffer);
+    return previewSantanderConsolidatedExcelBuffer(input.buffer);
   }
   throw new Error("UNSUPPORTED");
 }
@@ -73,11 +91,11 @@ export async function previewSantanderBankStatementFiles(
         preview
       );
       total_movements_count += preview.movements_count;
-    } catch {
+    } catch (error) {
       errors.push({
         file_name: file.fileName,
         status: "error",
-        error: BANK_STATEMENT_PREVIEW_ERROR,
+        error: mapBankStatementPreviewError(error),
       });
     }
   }

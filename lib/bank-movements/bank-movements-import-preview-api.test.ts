@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   requireCopilotModuleWriteAccess: vi.fn(),
   previewSantanderBankStatementFiles: vi.fn(),
+  copilotRequestLogger: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/copilot-module-api-auth", () => ({
@@ -14,11 +15,19 @@ vi.mock("@/lib/bank-movements/santander-pdf-preview-service.server", () => ({
   previewSantanderBankStatementFiles: mocks.previewSantanderBankStatementFiles,
   previewSantanderBankStatementPdfFiles: mocks.previewSantanderBankStatementFiles,
   BANK_STATEMENT_PREVIEW_ERROR:
-    "No pudimos leer este extracto. Revisá que sea un PDF o Excel consolidado de Santander con tabla de movimientos.",
+    "No pudimos leer este archivo. Revisá que sea un PDF o Excel consolidado de Santander con tabla de movimientos.",
+}));
+
+vi.mock("@/lib/copilot-structured-logger", () => ({
+  copilotRequestLogger: mocks.copilotRequestLogger,
 }));
 
 import { POST } from "@/app/api/copilot/bank-movements/imports/preview/route";
-import { MAX_BULK_PDF_FILES } from "@/lib/bank-movements/bank-movements-import-constants";
+import {
+  MAX_BANK_STATEMENT_PDF_BYTES,
+  MAX_BULK_PDF_FILES,
+  MAX_BULK_TOTAL_BYTES,
+} from "@/lib/bank-movements/bank-movements-import-constants";
 
 const tenantCtx = {
   supabase: {},
@@ -60,11 +69,27 @@ const bulkPayload = {
   errors: [],
 };
 
+function makeLogger() {
+  const logger = {
+    requestId: "req-test",
+    withTenant: vi.fn(),
+    withSyncRunId: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  };
+  logger.withTenant.mockReturnValue(logger);
+  logger.withSyncRunId.mockReturnValue(logger);
+  return logger;
+}
+
 describe("POST /api/copilot/bank-movements/imports/preview", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.requireCopilotModuleWriteAccess.mockResolvedValue({ ok: true, ctx: tenantCtx });
     mocks.previewSantanderBankStatementFiles.mockResolvedValue(bulkPayload);
+    mocks.copilotRequestLogger.mockReturnValue(makeLogger());
   });
 
   it("requiere write access", async () => {
@@ -142,6 +167,9 @@ describe("POST /api/copilot/bank-movements/imports/preview", () => {
       })
     );
     expect(res.status).toBe(400);
+    const json = (await res.json()) as { ok: false; error: string };
+    expect(json.ok).toBe(false);
+    expect(json.error).toContain("PDF o Excel");
     expect(mocks.previewSantanderBankStatementFiles).not.toHaveBeenCalled();
   });
 
@@ -158,5 +186,64 @@ describe("POST /api/copilot/bank-movements/imports/preview", () => {
     );
     expect(res.status).toBe(400);
     expect(mocks.previewSantanderBankStatementFiles).not.toHaveBeenCalled();
+  });
+
+  it("rechaza archivo individual demasiado grande", async () => {
+    const form = new FormData();
+    form.append(
+      "files",
+      new File([new Uint8Array(MAX_BANK_STATEMENT_PDF_BYTES + 1)], "grande.pdf", {
+        type: "application/pdf",
+      })
+    );
+    const res = await POST(
+      new NextRequest("https://example.test/api/copilot/bank-movements/imports/preview", {
+        method: "POST",
+        body: form,
+      })
+    );
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as { ok: false; error: string };
+    expect(json.error).toContain("grande.pdf");
+    expect(mocks.previewSantanderBankStatementFiles).not.toHaveBeenCalled();
+  });
+
+  it("rechaza lote con tamaño total excesivo", async () => {
+    const form = new FormData();
+    const perFile = Math.floor(MAX_BULK_TOTAL_BYTES / 2) + 1;
+    form.append(
+      "files",
+      new File([new Uint8Array(perFile)], "a.pdf", { type: "application/pdf" })
+    );
+    form.append(
+      "files",
+      new File([new Uint8Array(perFile)], "b.pdf", { type: "application/pdf" })
+    );
+    const res = await POST(
+      new NextRequest("https://example.test/api/copilot/bank-movements/imports/preview", {
+        method: "POST",
+        body: form,
+      })
+    );
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as { ok: false; error: string };
+    expect(json.error).toContain("lote supera el tamaño máximo");
+    expect(mocks.previewSantanderBankStatementFiles).not.toHaveBeenCalled();
+  });
+
+  it("devuelve JSON ok:false ante error inesperado del service", async () => {
+    mocks.previewSantanderBankStatementFiles.mockRejectedValue(new Error("XLSX_RUNTIME_FAIL"));
+    const form = new FormData();
+    form.append("files", new File(["%PDF"], "a.pdf", { type: "application/pdf" }));
+    const res = await POST(
+      new NextRequest("https://example.test/api/copilot/bank-movements/imports/preview", {
+        method: "POST",
+        body: form,
+      })
+    );
+    expect(res.status).toBe(500);
+    const json = (await res.json()) as { ok: false; error: string };
+    expect(json.ok).toBe(false);
+    expect(json.error).toContain("Intentá de nuevo");
   });
 });

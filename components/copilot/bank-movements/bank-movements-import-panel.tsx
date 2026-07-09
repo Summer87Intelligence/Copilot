@@ -15,6 +15,10 @@ import type {
   BulkPreviewReadyItem,
   CurrencyBulkTotals,
 } from "@/lib/bank-movements/bank-movements-import-bulk";
+import {
+  buildBulkPreviewFailureSummary,
+  resolveBankImportPreviewHttpError,
+} from "@/lib/bank-movements/bank-movements-import-preview-errors";
 import type { SantanderBankStatementPreview } from "@/lib/bank-movements/santander-pdf-parser";
 
 const dateFormatter = new Intl.DateTimeFormat("es-UY", { dateStyle: "medium" });
@@ -68,18 +72,50 @@ export function BankMovementsImportPanel({
         method: "POST",
         body: form,
       });
-      const json = (await res.json()) as PreviewResponse;
-      if (!res.ok || !json.ok || !json.data) {
+      const raw = await res.text();
+      let json: PreviewResponse;
+      try {
+        json = JSON.parse(raw) as PreviewResponse;
+      } catch {
+        const snippet = raw.trim().slice(0, 120);
         setError(
-          json.ok === false
-            ? (json.error ?? "No pudimos leer los extractos.")
-            : "No pudimos leer los extractos."
+          resolveBankImportPreviewHttpError({
+            status: res.status,
+            jsonOk: false,
+            bodyParseFailed: true,
+          }) +
+            (snippet && !snippet.startsWith("<") ? ` (${snippet})` : "")
+        );
+        return;
+      }
+      if (!res.ok || !json.ok || !("data" in json) || !json.data) {
+        setError(
+          resolveBankImportPreviewHttpError({
+            status: res.status,
+            jsonOk: json.ok === true,
+            jsonError: json.ok === false ? json.error : undefined,
+            bodyParseFailed: false,
+          })
         );
         return;
       }
       setBulkPreview(json.data);
-    } catch {
-      setError("No pudimos leer los extractos. Revisá tu conexión e intentá de nuevo.");
+      const summaryError = buildBulkPreviewFailureSummary(
+        json.data.parsed_count,
+        json.data.failed_count
+      );
+      if (summaryError) {
+        setError(summaryError);
+      }
+    } catch (err) {
+      const isNetworkError =
+        err instanceof TypeError &&
+        /fetch|network|failed to fetch/i.test(err.message);
+      setError(
+        isNetworkError
+          ? "No pudimos leer los extractos. Revisá tu conexión e intentá de nuevo."
+          : "No pudimos leer los extractos. Intentá de nuevo en unos segundos."
+      );
     } finally {
       setPreviewing(false);
     }
