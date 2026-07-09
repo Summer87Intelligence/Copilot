@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FileUp, Landmark, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Landmark, Pencil, Plus, Trash2, X } from "lucide-react";
+
+import { BankMovementsImportPanel } from "@/components/copilot/bank-movements/bank-movements-import-panel";
 
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
@@ -264,29 +266,7 @@ export function BankMovementsPageClient() {
         ))}
       </nav>
 
-      {tab === "importar" ? (
-        <section className={copilotCardStandardClass}>
-          <h2 className={copilotSectionTitleClass}>Importar extracto</h2>
-          <div className="mt-4 flex flex-col items-center gap-3 rounded-xl border border-dashed border-[var(--copilot-border)] px-6 py-10 text-center">
-            <FileUp className="h-8 w-8 text-[var(--copilot-muted)]" aria-hidden />
-            <p className="text-sm font-medium text-[var(--copilot-text)]">Banco: Santander</p>
-            <p className={copilotCaptionClass}>
-              La importación automática de extractos (PDF/CSV/Excel) queda para una próxima etapa.
-              Por ahora podés cargar movimientos manualmente desde la pestaña Movimientos.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setTab("movimientos");
-                setForm(emptyForm());
-              }}
-              className={copilotButtonClassName({ variant: "primary", size: "sm" })}
-            >
-              Cargar movimiento manual
-            </button>
-          </div>
-        </section>
-      ) : null}
+      {tab === "importar" ? <BankMovementsImportPanel /> : null}
 
       {tab === "movimientos" ? (
         <section className={copilotCardStandardClass}>
