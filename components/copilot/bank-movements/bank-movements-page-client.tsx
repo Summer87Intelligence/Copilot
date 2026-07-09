@@ -266,7 +266,12 @@ export function BankMovementsPageClient() {
         ))}
       </nav>
 
-      {tab === "importar" ? <BankMovementsImportPanel /> : null}
+      {tab === "importar" ? (
+        <BankMovementsImportPanel
+          onImportComplete={load}
+          onGoToMovements={() => setTab("movimientos")}
+        />
+      ) : null}
 
       {tab === "movimientos" ? (
         <section className={copilotCardStandardClass}>

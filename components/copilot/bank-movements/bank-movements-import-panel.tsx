@@ -28,11 +28,30 @@ type PreviewResponse =
   | { ok: true; data: SantanderBankStatementPreview }
   | { ok: false; error?: string };
 
-export function BankMovementsImportPanel() {
+type ConfirmResultData = {
+  import_id: string;
+  inserted_count: number;
+  skipped_duplicates_count: number;
+  total_preview_count: number;
+};
+
+type ConfirmResponse = { ok: true; data: ConfirmResultData } | { ok: false; error?: string };
+
+type BankMovementsImportPanelProps = {
+  onImportComplete?: () => void | Promise<void>;
+  onGoToMovements?: () => void;
+};
+
+export function BankMovementsImportPanel({
+  onImportComplete,
+  onGoToMovements,
+}: BankMovementsImportPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [preview, setPreview] = useState<SantanderBankStatementPreview | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmResult, setConfirmResult] = useState<ConfirmResultData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const runPreview = async () => {
@@ -43,6 +62,7 @@ export function BankMovementsImportPanel() {
     setPreviewing(true);
     setError(null);
     setPreview(null);
+    setConfirmResult(null);
     try {
       const form = new FormData();
       form.append("file", selectedFile);
@@ -64,6 +84,40 @@ export function BankMovementsImportPanel() {
       setError("No pudimos leer el extracto. Revisá tu conexión e intentá de nuevo.");
     } finally {
       setPreviewing(false);
+    }
+  };
+
+  const runConfirm = async () => {
+    if (!preview || !selectedFile) return;
+    setConfirming(true);
+    setError(null);
+    setConfirmResult(null);
+    try {
+      const { movements_count: _mc, totals: _t, ...previewBody } = preview;
+      const res = await fetch("/api/copilot/bank-movements/imports/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          file_name: selectedFile.name,
+          file_type: "application/pdf",
+          preview: previewBody,
+        }),
+      });
+      const json = (await res.json()) as ConfirmResponse;
+      if (!res.ok || !json.ok || !json.data) {
+        setError(
+          json.ok === false
+            ? (json.error ?? "No se pudo confirmar la importación.")
+            : "No se pudo confirmar la importación."
+        );
+        return;
+      }
+      setConfirmResult(json.data);
+      await onImportComplete?.();
+    } catch {
+      setError("No se pudo confirmar la importación. Revisá tu conexión e intentá de nuevo.");
+    } finally {
+      setConfirming(false);
     }
   };
 
@@ -94,6 +148,7 @@ export function BankMovementsImportPanel() {
                 const file = e.target.files?.[0] ?? null;
                 setSelectedFile(file);
                 setPreview(null);
+    setConfirmResult(null);
                 setError(null);
               }}
             />
@@ -138,7 +193,9 @@ export function BankMovementsImportPanel() {
       {preview ? (
         <div className="mt-4 space-y-4">
           <div className="rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-3 py-2 text-xs text-[var(--copilot-warning-text-strong)]">
-            Vista previa. Todavía no se guardó ningún movimiento.
+            {confirmResult
+              ? "Importación registrada. Los movimientos ya están disponibles en la pestaña Movimientos."
+              : "Vista previa. Todavía no se guardó ningún movimiento."}
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -204,19 +261,44 @@ export function BankMovementsImportPanel() {
             </table>
           </div>
 
-          <div className="flex justify-end">
-            <button
-              type="button"
-              disabled
-              title="Guardar movimientos estará disponible en el próximo paso."
-              className={copilotButtonClassName({ variant: "primary", size: "sm", className: "opacity-60" })}
-            >
-              Confirmar importación
-            </button>
+          <div className="flex flex-col items-end gap-2">
+            <p className={`${copilotCaptionClass} text-right`}>
+              Esto guardará los movimientos en Banco. No se duplicarán movimientos ya importados.
+            </p>
+            <div className="flex flex-wrap justify-end gap-2">
+              {confirmResult && onGoToMovements ? (
+                <button
+                  type="button"
+                  onClick={onGoToMovements}
+                  className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+                >
+                  Ver movimientos
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void runConfirm()}
+                disabled={confirming || Boolean(confirmResult)}
+                className={copilotButtonClassName({ variant: "primary", size: "sm" })}
+              >
+                {confirming ? (
+                  <>
+                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" aria-hidden />
+                    Guardando…
+                  </>
+                ) : (
+                  "Confirmar importación"
+                )}
+              </button>
+            </div>
+            {confirmResult ? (
+              <p className="text-xs text-[var(--copilot-success-text-strong)]">
+                {confirmResult.inserted_count === 0 && confirmResult.skipped_duplicates_count > 0
+                  ? "Este extracto ya parecía estar importado. No se agregaron movimientos nuevos."
+                  : `Importación completada: ${confirmResult.inserted_count} nuevos, ${confirmResult.skipped_duplicates_count} duplicados omitidos.`}
+              </p>
+            ) : null}
           </div>
-          <p className={`${copilotCaptionClass} text-right`}>
-            Guardar movimientos estará disponible en el próximo paso.
-          </p>
         </div>
       ) : null}
     </section>
