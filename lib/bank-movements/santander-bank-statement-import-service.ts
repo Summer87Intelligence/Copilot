@@ -94,7 +94,7 @@ export function buildMovementDedupeKey(input: {
     input.movementDate,
     ref,
     input.amount.toFixed(2),
-    ref ? "" : normDesc,
+    normDesc,
   ].join("|");
 
   return createHash("sha256").update(payload, "utf8").digest("hex");

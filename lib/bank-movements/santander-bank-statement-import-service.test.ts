@@ -160,7 +160,7 @@ describe("anti-duplicado", () => {
 });
 
 describe("buildMovementDedupeKey", () => {
-  it("usa referencia como criterio fuerte", () => {
+  it("diferencia movimientos con misma referencia y monto pero distinta descripción", () => {
     const withRef = buildMovementDedupeKey({
       workspaceId: WS,
       bankName: "Santander",
@@ -181,7 +181,7 @@ describe("buildMovementDedupeKey", () => {
       amount: 3721,
       description: "OTRA DESCRIPCION",
     });
-    expect(withRef).toBe(otherDesc);
+    expect(withRef).not.toBe(otherDesc);
   });
 });
 
