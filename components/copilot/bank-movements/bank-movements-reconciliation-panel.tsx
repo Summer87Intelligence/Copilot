@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Eye, Loader2, XCircle } from "lucide-react";
 
+import { BankMovementsFiltersBar } from "@/components/copilot/bank-movements/bank-movements-filters-bar";
 import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
 import {
   copilotCaptionClass,
@@ -11,45 +12,19 @@ import {
 } from "@/components/copilot/ui/copilot-visual-system";
 import type { ReconciliationConfidence } from "@/lib/bank-movements/bank-movement-reconciliation";
 import {
+  computeReconciliationFilteredMeta,
+  DEFAULT_RECONCILIATION_VIEW_FILTERS,
+  filterReconciliationItems,
+  reconciliationApiStatusFromSuggestion,
+  type ReconciliationListItem,
+  type ReconciliationViewFilters,
+} from "@/lib/bank-movements/bank-movements-filters";
+import {
   BANK_MOVEMENT_DIRECTION_LABELS,
   BANK_MOVEMENT_STATUS_LABELS,
-  type BankMovement,
 } from "@/lib/bank-movements/bank-movements-types";
 
-type ReconciliationSuggestion = {
-  target_type: "planned_cash_obligation";
-  target_id: string;
-  confidence: ReconciliationConfidence;
-  score: number;
-  reasons: string[];
-  target: {
-    id: string;
-    title: string;
-    description: string | null;
-    amount_estimated: number;
-    currency_code: string;
-    due_date: string;
-    status: string;
-    notes: string | null;
-  };
-};
-
-type ReconciliationItem = {
-  movement: BankMovement;
-  suggestions: ReconciliationSuggestion[];
-};
-
-type ReconciliationMeta = {
-  pending_count: number;
-  with_high_confidence: number;
-  with_medium_confidence: number;
-  without_suggestions: number;
-  matched_count: number;
-  ignored_count: number;
-};
-
-type FilterConfidence = "all" | "high" | "medium" | "none";
-type FilterStatus = "pending" | "matched" | "ignored";
+type ReconciliationSuggestion = ReconciliationListItem["suggestions"][number];
 
 const dateFormatter = new Intl.DateTimeFormat("es-UY", { dateStyle: "medium" });
 const numberFormatter = new Intl.NumberFormat("es-UY", { minimumFractionDigits: 2 });
@@ -84,26 +59,26 @@ export function BankMovementsReconciliationPanel({
   onMovementUpdated,
   onViewMovement,
 }: BankMovementsReconciliationPanelProps) {
-  const [items, setItems] = useState<ReconciliationItem[]>([]);
-  const [meta, setMeta] = useState<ReconciliationMeta | null>(null);
+  const [items, setItems] = useState<ReconciliationListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [confidenceFilter, setConfidenceFilter] = useState<FilterConfidence>("all");
-  const [statusFilter, setStatusFilter] = useState<FilterStatus>("pending");
+  const [filters, setFilters] = useState<ReconciliationViewFilters>(DEFAULT_RECONCILIATION_VIEW_FILTERS);
+
+  const apiStatus = reconciliationApiStatusFromSuggestion(filters.suggestion);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams({
-        status: statusFilter,
-        confidence: confidenceFilter,
+        status: apiStatus,
+        confidence: "all",
       });
       const res = await fetch(`/api/copilot/bank-movements/reconciliation?${params.toString()}`);
       const json = (await res.json()) as {
         ok: boolean;
-        data?: { items: ReconciliationItem[]; meta: ReconciliationMeta };
+        data?: { items: ReconciliationListItem[] };
         error?: string;
       };
       if (!res.ok || !json.ok || !json.data) {
@@ -111,31 +86,36 @@ export function BankMovementsReconciliationPanel({
         return;
       }
       setItems(json.data.items);
-      setMeta(json.data.meta);
     } catch {
       setError("No se pudo cargar la conciliación.");
     } finally {
       setLoading(false);
     }
-  }, [confidenceFilter, statusFilter]);
+  }, [apiStatus]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  const filteredItems = useMemo(() => filterReconciliationItems(items, filters), [items, filters]);
+  const meta = useMemo(() => computeReconciliationFilteredMeta(filteredItems), [filteredItems]);
+
+  const countLabel =
+    apiStatus === "matched" ? "conciliados" : apiStatus === "ignored" ? "ignorados" : "pendientes";
+
   const summaryCards = useMemo(
     () => [
-      { label: "Pendientes", value: meta?.pending_count ?? 0 },
-      { label: "Coincidencias altas", value: meta?.with_high_confidence ?? 0 },
-      { label: "Coincidencias medias", value: meta?.with_medium_confidence ?? 0 },
-      { label: "Sin sugerencia", value: meta?.without_suggestions ?? 0 },
-      { label: "Conciliados", value: meta?.matched_count ?? 0 },
-      { label: "Ignorados", value: meta?.ignored_count ?? 0 },
+      { label: "Pendientes", value: meta.pending_count },
+      { label: "Coincidencias altas", value: meta.with_high_confidence },
+      { label: "Coincidencias medias", value: meta.with_medium_confidence },
+      { label: "Sin sugerencia", value: meta.without_suggestions },
+      { label: "Conciliados", value: meta.matched_count },
+      { label: "Ignorados", value: meta.ignored_count },
     ],
     [meta]
   );
 
-  const reconcile = async (item: ReconciliationItem, suggestion: ReconciliationSuggestion) => {
+  const reconcile = async (item: ReconciliationListItem, suggestion: ReconciliationSuggestion) => {
     setActingId(item.movement.id);
     setError(null);
     try {
@@ -196,6 +176,17 @@ export function BankMovementsReconciliationPanel({
         </p>
       </section>
 
+      <BankMovementsFiltersBar
+        mode="reconciliation"
+        filters={filters}
+        onChange={(next) => setFilters(next as ReconciliationViewFilters)}
+        onClear={() => setFilters(DEFAULT_RECONCILIATION_VIEW_FILTERS)}
+        showingCount={filteredItems.length}
+        totalCount={items.length}
+        countLabel={countLabel}
+        showPeriodHint={filters.period === "current"}
+      />
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         {summaryCards.map((card) => (
           <div key={card.label} className={copilotCardStandardClass}>
@@ -209,49 +200,7 @@ export function BankMovementsReconciliationPanel({
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {(
-          [
-            ["pending", "Pendientes"],
-            ["matched", "Conciliados"],
-            ["ignored", "Ignorados"],
-          ] as const
-        ).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setStatusFilter(value)}
-            className={copilotButtonClassName({
-              variant: statusFilter === value ? "primary" : "ghost",
-              size: "sm",
-            })}
-          >
-            {label}
-          </button>
-        ))}
-        {statusFilter === "pending"
-          ? (
-              [
-                ["all", "Todos"],
-                ["high", "Alta confianza"],
-                ["medium", "Media"],
-                ["none", "Sin sugerencia"],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setConfidenceFilter(value)}
-                className={copilotButtonClassName({
-                  variant: confidenceFilter === value ? "primary" : "ghost",
-                  size: "sm",
-                })}
-              >
-                {label}
-              </button>
-            ))
-          : null}
-      </div>
+      <p className={copilotCaptionClass}>Totales del período y filtros seleccionados.</p>
 
       {error ? (
         <p className="rounded-lg border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] px-3 py-2 text-xs text-[var(--copilot-danger-text-strong)]">
@@ -264,13 +213,13 @@ export function BankMovementsReconciliationPanel({
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
           Cargando sugerencias…
         </div>
-      ) : items.length === 0 ? (
+      ) : filteredItems.length === 0 ? (
         <section className={copilotCardStandardClass}>
           <p className={copilotCaptionClass}>No hay movimientos para mostrar con estos filtros.</p>
         </section>
       ) : (
         <div className="space-y-3">
-          {items.map((item) => (
+          {filteredItems.map((item) => (
             <ReconciliationMovementCard
               key={item.movement.id}
               item={item}
@@ -293,7 +242,7 @@ function ReconciliationMovementCard({
   onIgnore,
   onViewMovement,
 }: {
-  item: ReconciliationItem;
+  item: ReconciliationListItem;
   acting: boolean;
   onReconcile: (suggestion: ReconciliationSuggestion) => void;
   onIgnore: () => void;

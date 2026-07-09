@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Landmark, Pencil, Plus, Trash2, X } from "lucide-react";
 
+import { BankMovementsFiltersBar } from "@/components/copilot/bank-movements/bank-movements-filters-bar";
 import { BankMovementsImportPanel } from "@/components/copilot/bank-movements/bank-movements-import-panel";
 import { BankMovementsReconciliationPanel } from "@/components/copilot/bank-movements/bank-movements-reconciliation-panel";
 
@@ -18,6 +19,11 @@ import {
   copilotMetricValueClass,
   copilotSectionTitleClass,
 } from "@/components/copilot/ui/copilot-visual-system";
+import {
+  DEFAULT_BANK_MOVEMENTS_LIST_FILTERS,
+  filterBankMovements,
+  type BankMovementsListFilters,
+} from "@/lib/bank-movements/bank-movements-filters";
 import {
   BANK_MOVEMENT_DIRECTION_LABELS,
   BANK_MOVEMENT_STATUS_LABELS,
@@ -97,6 +103,9 @@ export function BankMovementsPageClient() {
   const [form, setForm] = useState<FormState | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<{ tone: "ok" | "error"; message: string } | null>(null);
+  const [movementFilters, setMovementFilters] = useState<BankMovementsListFilters>(
+    DEFAULT_BANK_MOVEMENTS_LIST_FILTERS
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -146,6 +155,11 @@ export function BankMovementsPageClient() {
     { label: "Salidas del mes", value: counts.outflowMonth },
     { label: "Revisados", value: counts.reviewed },
   ];
+
+  const filteredMovements = useMemo(
+    () => filterBankMovements(movements, movementFilters),
+    [movements, movementFilters]
+  );
 
   const submitForm = useCallback(async () => {
     if (!form) return;
@@ -298,6 +312,18 @@ export function BankMovementsPageClient() {
             />
           ) : null}
 
+          <div className="mt-4">
+            <BankMovementsFiltersBar
+              mode="movements"
+              filters={movementFilters}
+              onChange={(next) => setMovementFilters(next as BankMovementsListFilters)}
+              onClear={() => setMovementFilters(DEFAULT_BANK_MOVEMENTS_LIST_FILTERS)}
+              showingCount={filteredMovements.length}
+              totalCount={movements.length}
+              countLabel="movimientos"
+            />
+          </div>
+
           {movements.length === 0 ? (
             <div className="mt-4">
               <p className={copilotCaptionClass}>
@@ -311,6 +337,10 @@ export function BankMovementsPageClient() {
                   queda para una próxima etapa.
                 </p>
               ) : null}
+            </div>
+          ) : filteredMovements.length === 0 ? (
+            <div className="mt-4">
+              <p className={copilotCaptionClass}>No hay movimientos con estos filtros.</p>
             </div>
           ) : (
             <div className="mt-4 overflow-x-auto">
@@ -327,7 +357,7 @@ export function BankMovementsPageClient() {
                   </tr>
                 </thead>
                 <tbody>
-                  {movements.map((m) => (
+                  {filteredMovements.map((m) => (
                     <tr key={m.id} className="border-t border-[var(--copilot-border)] align-top">
                       <td className="py-2 pr-3 whitespace-nowrap">{formatDate(m.movement_date)}</td>
                       <td className="py-2 pr-3">

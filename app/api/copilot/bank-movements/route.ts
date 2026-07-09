@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     .eq("workspace_id", tenantCompanyId)
     .order("movement_date", { ascending: false })
     .order("created_at", { ascending: false })
-    .limit(500);
+    .limit(2000);
 
   const status = params.get("status");
   if (status && status !== "all" && isValidBankMovementStatus(status)) {

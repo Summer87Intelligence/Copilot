@@ -85,7 +85,7 @@ export async function loadBankMovementReconciliationList(params: {
     .select("*")
     .eq("workspace_id", workspaceId)
     .order("movement_date", { ascending: false })
-    .limit(300);
+    .limit(2000);
 
   if (filters.currency) movementQuery = movementQuery.eq("currency", filters.currency);
 

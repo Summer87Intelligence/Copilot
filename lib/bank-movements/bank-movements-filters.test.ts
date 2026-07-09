@@ -1,0 +1,345 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  computeReconciliationFilteredMeta,
+  DEFAULT_BANK_MOVEMENTS_LIST_FILTERS,
+  DEFAULT_RECONCILIATION_VIEW_FILTERS,
+  filterBankMovements,
+  filterReconciliationItems,
+  isBankMovementsListFiltersActive,
+  isReconciliationViewFiltersActive,
+  matchesMovementPeriod,
+  movementMatchesAmountSearch,
+  movementMatchesTextSearch,
+  normalizeAmountSearch,
+  reconciliationApiStatusFromSuggestion,
+  reconciliationItemMatchesTextSearch,
+} from "@/lib/bank-movements/bank-movements-filters";
+import type { BankMovement } from "@/lib/bank-movements/bank-movements-types";
+
+function movement(partial: Partial<BankMovement> & Pick<BankMovement, "description" | "amount">): BankMovement {
+  return {
+    id: partial.id ?? "m1",
+    workspace_id: "ws",
+    import_id: null,
+    bank_name: "Santander",
+    account_label: partial.account_label ?? "Santander UYU",
+    movement_date: partial.movement_date ?? "2026-07-06",
+    description: partial.description,
+    raw_description: partial.raw_description ?? null,
+    amount: partial.amount,
+    currency: partial.currency ?? "UYU",
+    direction: partial.direction ?? "outflow",
+    bank_reference: partial.bank_reference ?? null,
+    status: partial.status ?? "pending",
+    matched_type: null,
+    matched_id: null,
+    matched_confidence: null,
+    matched_by: null,
+    matched_at: null,
+    metadata: partial.metadata ?? null,
+    created_at: "2026-07-01T00:00:00Z",
+    updated_at: "2026-07-01T00:00:00Z",
+  };
+}
+
+const julyNow = new Date("2026-07-09T12:00:00");
+
+describe("bank-movements-filters helpers", () => {
+  describe("normalizeAmountSearch", () => {
+    it("acepta enteros y decimales comunes", () => {
+      expect(normalizeAmountSearch("3548")).toBe(3548);
+      expect(normalizeAmountSearch("3.548")).toBe(3548);
+      expect(normalizeAmountSearch("3,548")).toBe(3548);
+      expect(normalizeAmountSearch("3548,00")).toBe(3548);
+      expect(normalizeAmountSearch("3548.00")).toBe(3548);
+      expect(normalizeAmountSearch("1.375")).toBe(1375);
+    });
+
+    it("devuelve null para vacío o inválido", () => {
+      expect(normalizeAmountSearch("")).toBeNull();
+      expect(normalizeAmountSearch("abc")).toBeNull();
+    });
+  });
+
+  describe("movementMatchesAmountSearch", () => {
+    it("encuentra Movistar 3.548 contra búsqueda 3548", () => {
+      const mov = movement({
+        description: "MOVISTAR",
+        amount: 3.548,
+        metadata: { debit: 3.548 },
+      });
+      expect(movementMatchesAmountSearch(mov, 3548)).toBe(true);
+      expect(movementMatchesAmountSearch(mov, 3.548)).toBe(true);
+    });
+  });
+
+  describe("filterBankMovements", () => {
+    const rows = [
+      movement({ id: "uyu", description: "MOVISTAR", amount: 3.548, currency: "UYU", movement_date: "2026-07-06" }),
+      movement({ id: "usd", description: "AMAZON", amount: 120, currency: "USD", movement_date: "2026-06-15" }),
+      movement({
+        id: "bse",
+        description: "BSE SEGURO",
+        amount: 1.375,
+        currency: "UYU",
+        movement_date: "2026-07-03",
+        bank_reference: "REF-123",
+      }),
+      movement({
+        id: "matched",
+        description: "PAGO",
+        amount: 100,
+        status: "matched",
+        movement_date: "2026-07-01",
+      }),
+    ];
+
+    it("filtra por UYU", () => {
+      const result = filterBankMovements(rows, { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, currency: "UYU" }, julyNow);
+      expect(result.map((row) => row.id)).toEqual(["uyu", "bse", "matched"]);
+    });
+
+    it("filtra por USD", () => {
+      const result = filterBankMovements(rows, { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, currency: "USD" }, julyNow);
+      expect(result.map((row) => row.id)).toEqual(["usd"]);
+    });
+
+    it("filtra por mes", () => {
+      const result = filterBankMovements(
+        rows,
+        { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, period: "2026-06" },
+        julyNow
+      );
+      expect(result.map((row) => row.id)).toEqual(["usd"]);
+    });
+
+    it("busca por descripción", () => {
+      const result = filterBankMovements(rows, { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, text: "movistar" }, julyNow);
+      expect(result.map((row) => row.id)).toEqual(["uyu"]);
+    });
+
+    it("busca por referencia", () => {
+      const result = filterBankMovements(rows, { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, text: "REF-123" }, julyNow);
+      expect(result.map((row) => row.id)).toEqual(["bse"]);
+    });
+
+    it("busca por monto 3548", () => {
+      const result = filterBankMovements(rows, { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, amount: "3548" }, julyNow);
+      expect(result.map((row) => row.id)).toEqual(["uyu"]);
+    });
+
+    it("filtra por estado pendiente", () => {
+      const result = filterBankMovements(rows, { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, status: "pending" }, julyNow);
+      expect(result.every((row) => row.status === "pending")).toBe(true);
+    });
+
+    it("detecta filtros activos y limpia al default", () => {
+      const active = { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, text: "BSE" };
+      expect(isBankMovementsListFiltersActive(active)).toBe(true);
+      expect(isBankMovementsListFiltersActive(DEFAULT_BANK_MOVEMENTS_LIST_FILTERS)).toBe(false);
+    });
+  });
+
+  describe("filterReconciliationItems", () => {
+    const items = [
+      {
+        movement: movement({ id: "movistar", description: "MOVISTAR", amount: 3.548, movement_date: "2026-07-06" }),
+        suggestions: [
+          {
+            target_type: "planned_cash_obligation" as const,
+            target_id: "o1",
+            confidence: "high" as const,
+            score: 80,
+            reasons: ["Monto similar"],
+            movement: movement({ description: "MOVISTAR", amount: 3.548 }),
+            target: {
+              id: "o1",
+              title: "Movistar — Celulares corporativos",
+              description: null,
+              amount_estimated: 3548,
+              currency_code: "UYU",
+              due_date: "2026-07-06",
+              direction: "outflow",
+              status: "paid",
+              notes: null,
+              obligation_type: "service",
+            },
+          },
+        ],
+      },
+      {
+        movement: movement({ id: "mcd", description: "MCDONALDS", amount: 184, movement_date: "2026-07-05" }),
+        suggestions: [],
+      },
+      {
+        movement: movement({
+          id: "matched",
+          description: "BSE",
+          amount: 1375,
+          status: "matched",
+          movement_date: "2026-07-03",
+        }),
+        suggestions: [],
+      },
+    ];
+
+    it("default mes actual filtra julio", () => {
+      const juneItem = {
+        movement: movement({ id: "june", description: "JUNIO", amount: 10, movement_date: "2026-06-30" }),
+        suggestions: [],
+      };
+      const result = filterReconciliationItems(
+        [...items, juneItem],
+        DEFAULT_RECONCILIATION_VIEW_FILTERS,
+        julyNow
+      );
+      expect(result.some((item) => item.movement.id === "june")).toBe(false);
+      expect(result.some((item) => item.movement.id === "movistar")).toBe(true);
+    });
+
+    it("filtra alta confianza", () => {
+      const result = filterReconciliationItems(
+        items,
+        { ...DEFAULT_RECONCILIATION_VIEW_FILTERS, suggestion: "high" },
+        julyNow
+      );
+      expect(result).toHaveLength(1);
+      expect(result[0]?.movement.id).toBe("movistar");
+    });
+
+    it("filtra sin sugerencia", () => {
+      const result = filterReconciliationItems(
+        items,
+        { ...DEFAULT_RECONCILIATION_VIEW_FILTERS, suggestion: "none" },
+        julyNow
+      );
+      expect(result.map((item) => item.movement.id)).toEqual(["mcd"]);
+    });
+
+    it("busca por texto de movimiento", () => {
+      const result = filterReconciliationItems(
+        items,
+        { ...DEFAULT_RECONCILIATION_VIEW_FILTERS, text: "mcdonald" },
+        julyNow
+      );
+      expect(result).toHaveLength(1);
+    });
+
+    it("busca por título sugerido", () => {
+      const result = filterReconciliationItems(
+        items,
+        { ...DEFAULT_RECONCILIATION_VIEW_FILTERS, text: "celulares" },
+        julyNow
+      );
+      expect(result).toHaveLength(1);
+      expect(result[0]?.movement.id).toBe("movistar");
+    });
+
+    it("busca por monto", () => {
+      const result = filterReconciliationItems(
+        items,
+        { ...DEFAULT_RECONCILIATION_VIEW_FILTERS, amount: "3548" },
+        julyNow
+      );
+      expect(result).toHaveLength(1);
+    });
+
+    it("filtra por moneda", () => {
+      const usdItem = {
+        movement: movement({
+          id: "usd",
+          description: "AMAZON",
+          amount: 20,
+          currency: "USD",
+          movement_date: "2026-07-04",
+        }),
+        suggestions: [],
+      };
+      const result = filterReconciliationItems(
+        [...items, usdItem],
+        { ...DEFAULT_RECONCILIATION_VIEW_FILTERS, currency: "USD" },
+        julyNow
+      );
+      expect(result).toHaveLength(1);
+      expect(result[0]?.movement.id).toBe("usd");
+    });
+
+    it("mapea estado API para conciliados", () => {
+      expect(reconciliationApiStatusFromSuggestion("matched")).toBe("matched");
+      expect(reconciliationApiStatusFromSuggestion("ignored")).toBe("ignored");
+      expect(reconciliationApiStatusFromSuggestion("high")).toBe("pending");
+    });
+
+    it("calcula meta del subconjunto filtrado", () => {
+      const meta = computeReconciliationFilteredMeta(items);
+      expect(meta.pending_count).toBe(2);
+      expect(meta.with_high_confidence).toBe(1);
+      expect(meta.without_suggestions).toBe(2);
+      expect(meta.matched_count).toBe(1);
+    });
+
+    it("detecta filtros activos", () => {
+      expect(
+        isReconciliationViewFiltersActive({
+          ...DEFAULT_RECONCILIATION_VIEW_FILTERS,
+          suggestion: "high",
+        })
+      ).toBe(true);
+      expect(isReconciliationViewFiltersActive(DEFAULT_RECONCILIATION_VIEW_FILTERS)).toBe(false);
+    });
+  });
+
+  describe("matchesMovementPeriod", () => {
+    it("mes actual usa fecha de referencia", () => {
+      expect(matchesMovementPeriod("2026-07-06", "current", julyNow)).toBe(true);
+      expect(matchesMovementPeriod("2026-06-15", "current", julyNow)).toBe(false);
+    });
+  });
+
+  describe("movementMatchesTextSearch", () => {
+    it("busca en account_label", () => {
+      expect(
+        movementMatchesTextSearch(
+          movement({ description: "X", amount: 1, account_label: "Cuenta Corriente UYU" }),
+          "corriente"
+        )
+      ).toBe(true);
+    });
+  });
+
+  describe("reconciliationItemMatchesTextSearch", () => {
+    it("busca en razones de sugerencia", () => {
+      expect(
+        reconciliationItemMatchesTextSearch(
+          {
+            movement: movement({ description: "X", amount: 1 }),
+            suggestions: [
+              {
+                target_type: "planned_cash_obligation",
+                target_id: "o1",
+                confidence: "high",
+                score: 80,
+                reasons: ["Monto similar"],
+                movement: movement({ description: "X", amount: 1 }),
+                target: {
+                  id: "o1",
+                  title: "Proveedor",
+                  description: null,
+                  amount_estimated: 100,
+                  currency_code: "UYU",
+                  due_date: "2026-07-06",
+                  direction: "outflow",
+                  status: "paid",
+                  notes: null,
+                  obligation_type: "service",
+                },
+              },
+            ],
+          },
+          "similar"
+        )
+      ).toBe(true);
+    });
+  });
+});
