@@ -12,6 +12,8 @@ import {
 } from "@/lib/bank-movements/bank-movements-import-bulk";
 import {
   buildStatementImportRecord,
+  inferBankStatementImportFileType,
+  inferBankStatementParserId,
   planSantanderBankStatementImport,
   type ExistingBankMovementForDedupe,
 } from "@/lib/bank-movements/santander-bank-statement-import-service";
@@ -34,6 +36,8 @@ export async function confirmSantanderBankStatementImport(params: {
 }): Promise<ConfirmSantanderImportResult> {
   const { supabase, workspaceId, importedBy, fileName, preview } = params;
   const accountLabel = `Santander ${preview.account_number} ${preview.currency_code}`;
+  const parserId = inferBankStatementParserId(fileName);
+  const fileType = inferBankStatementImportFileType(fileName);
 
   const { data: existingRows, error: loadError } = await supabase
     .from("bank_movements")
@@ -52,13 +56,16 @@ export async function confirmSantanderBankStatementImport(params: {
   const plan = planSantanderBankStatementImport(
     preview,
     (existingRows ?? []) as ExistingBankMovementForDedupe[],
-    workspaceId
+    workspaceId,
+    parserId
   );
 
   const importInsert = buildStatementImportRecord({
     workspaceId,
     importedBy,
     fileName,
+    fileType,
+    parserId,
     preview,
     accountLabel: plan.account_label,
     insertedCount: plan.to_insert.length,

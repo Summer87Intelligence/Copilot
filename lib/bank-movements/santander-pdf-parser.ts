@@ -3,6 +3,7 @@
  * Recibe texto ya extraído del PDF — no toca DB ni lee binarios.
  */
 
+import { computeSantanderMovementTotals } from "@/lib/bank-movements/santander-bank-statement-totals";
 import {
   isSantanderPdfStatementText,
   parseSantanderPdfMetadata,
@@ -25,6 +26,7 @@ export type SantanderParsedBankMovement = {
   direction: SantanderBankMovementDirection;
   balance: number | null;
   raw_text: string;
+  source_file?: string | null;
 };
 
 export type SantanderBankStatementParseResult = {
@@ -196,28 +198,6 @@ function mapTreasuryMovement(movement: SantanderParsedMovement): SantanderParsed
   };
 }
 
-function computeTotals(movements: SantanderParsedBankMovement[]): {
-  inflows: number;
-  outflows: number;
-  net: number;
-} {
-  let inflows = 0;
-  let outflows = 0;
-  for (const m of movements) {
-    if (m.direction === "inflow" && m.credit != null) inflows += m.credit;
-    if (m.direction === "outflow" && m.debit != null) outflows += m.debit;
-  }
-  return {
-    inflows: roundMoney(inflows),
-    outflows: roundMoney(outflows),
-    net: roundMoney(inflows - outflows),
-  };
-}
-
-function roundMoney(value: number): number {
-  return Math.round(value * 100) / 100;
-}
-
 export function parseSantanderBankStatementText(text: string): SantanderBankStatementParseResult {
   const normalized = normalizeSantanderPdfExtractedText(text);
 
@@ -261,7 +241,7 @@ export function buildSantanderBankStatementPreview(
   text: string
 ): SantanderBankStatementPreview {
   const parsed = parseSantanderBankStatementText(text);
-  const totals = computeTotals(parsed.movements);
+  const totals = computeSantanderMovementTotals(parsed.movements);
   return {
     ...parsed,
     movements_count: parsed.movements.length,

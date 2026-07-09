@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import { buildSantanderConsolidatedExcelPreview } from "@/lib/bank-movements/santander-excel-consolidated-parser";
 import { bankStatementImportConfirmBodySchema } from "@/lib/bank-movements/bank-movements-import-api";
+import { buildSantanderConsolidatedUyuFixtureBuffer } from "@/lib/bank-movements/fixtures/santander-excel-consolidated.fixture";
 import {
   SANTANDER_USD_JULY_AUSZUG_FIXTURE,
   SANTANDER_UYU_JULY_AUSZUG_FIXTURE,
@@ -9,6 +11,10 @@ import { buildSantanderBankStatementPreview } from "@/lib/bank-movements/santand
 import {
   buildMovementDedupeKey,
   buildMovementInsertFromPreview,
+  buildStatementImportRecord,
+  inferBankStatementImportFileType,
+  inferBankStatementParserId,
+  SANTANDER_EXCEL_CONSOLIDATED_PARSER_ID,
   planSantanderBankStatementImport,
   type ExistingBankMovementForDedupe,
 } from "@/lib/bank-movements/santander-bank-statement-import-service";
@@ -51,6 +57,17 @@ describe("bankStatementImportConfirmBodySchema", () => {
       preview: { ...preview, currency_code: "EUR" },
     });
     expect(r.success).toBe(false);
+  });
+
+  it("acepta preview Excel con source_file opcional en movimientos", async () => {
+    const excelPreview = await buildSantanderConsolidatedExcelPreview(buildSantanderConsolidatedUyuFixtureBuffer());
+    const { movements_count: _mc, totals: _t, ...preview } = excelPreview;
+    const r = bankStatementImportConfirmBodySchema.safeParse({
+      file_name: "consolidado.xlsx",
+      file_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      preview,
+    });
+    expect(r.success).toBe(true);
   });
 });
 
@@ -165,5 +182,28 @@ describe("buildMovementDedupeKey", () => {
       description: "OTRA DESCRIPCION",
     });
     expect(withRef).toBe(otherDesc);
+  });
+});
+
+describe("inferBankStatementImportFileType", () => {
+  it("detecta xlsx y pdf por extensión", () => {
+    expect(inferBankStatementImportFileType("consolidado.xlsx")).toBe("xlsx");
+    expect(inferBankStatementImportFileType("extracto.pdf")).toBe("pdf");
+  });
+
+  it("usa parser excel consolidado para xlsx", () => {
+    expect(inferBankStatementParserId("consolidado.xlsx")).toBe(SANTANDER_EXCEL_CONSOLIDATED_PARSER_ID);
+    const record = buildStatementImportRecord({
+      workspaceId: WS,
+      importedBy: "user-1",
+      fileName: "consolidado.xlsx",
+      preview: previewBodyFromFixture(SANTANDER_UYU_JULY_AUSZUG_FIXTURE),
+      accountLabel: "Santander 000001211749 UYU",
+      insertedCount: 1,
+      skippedDuplicatesCount: 0,
+      totalPreviewCount: 1,
+    });
+    expect(record.file_type).toBe("xlsx");
+    expect((record.metadata as { parser: string }).parser).toBe(SANTANDER_EXCEL_CONSOLIDATED_PARSER_ID);
   });
 });

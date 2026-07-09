@@ -98,7 +98,7 @@ export function buildBulkPreviewReadyItem(
   };
 }
 
-export function collectPdfFilesFromFormData(formData: FormData): File[] {
+export function collectBankStatementImportFilesFromFormData(formData: FormData): File[] {
   const seen = new Set<File>();
   const files: File[] = [];
 
@@ -112,6 +112,11 @@ export function collectPdfFilesFromFormData(formData: FormData): File[] {
   }
 
   return files;
+}
+
+/** @deprecated Use collectBankStatementImportFilesFromFormData */
+export function collectPdfFilesFromFormData(formData: FormData): File[] {
+  return collectBankStatementImportFilesFromFormData(formData);
 }
 
 export function resolveImportFileStatus(

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireCopilotModuleWriteAccess: vi.fn(),
-  previewSantanderBankStatementPdfFiles: vi.fn(),
+  previewSantanderBankStatementFiles: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/copilot-module-api-auth", () => ({
@@ -11,9 +11,10 @@ vi.mock("@/lib/auth/copilot-module-api-auth", () => ({
 }));
 
 vi.mock("@/lib/bank-movements/santander-pdf-preview-service.server", () => ({
-  previewSantanderBankStatementPdfFiles: mocks.previewSantanderBankStatementPdfFiles,
+  previewSantanderBankStatementFiles: mocks.previewSantanderBankStatementFiles,
+  previewSantanderBankStatementPdfFiles: mocks.previewSantanderBankStatementFiles,
   BANK_STATEMENT_PREVIEW_ERROR:
-    "No pudimos leer este extracto. Revisá que sea un PDF de Santander con tabla de movimientos.",
+    "No pudimos leer este extracto. Revisá que sea un PDF o Excel consolidado de Santander con tabla de movimientos.",
 }));
 
 import { POST } from "@/app/api/copilot/bank-movements/imports/preview/route";
@@ -63,7 +64,7 @@ describe("POST /api/copilot/bank-movements/imports/preview", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.requireCopilotModuleWriteAccess.mockResolvedValue({ ok: true, ctx: tenantCtx });
-    mocks.previewSantanderBankStatementPdfFiles.mockResolvedValue(bulkPayload);
+    mocks.previewSantanderBankStatementFiles.mockResolvedValue(bulkPayload);
   });
 
   it("requiere write access", async () => {
@@ -97,7 +98,7 @@ describe("POST /api/copilot/bank-movements/imports/preview", () => {
     expect(json.ok).toBe(true);
     expect(json.data.parsed_count).toBe(2);
     expect(json.data.total_movements_count).toBe(5);
-    expect(mocks.previewSantanderBankStatementPdfFiles).toHaveBeenCalledOnce();
+    expect(mocks.previewSantanderBankStatementFiles).toHaveBeenCalledOnce();
   });
 
   it("acepta campo file único para compatibilidad", async () => {
@@ -110,10 +111,28 @@ describe("POST /api/copilot/bank-movements/imports/preview", () => {
       })
     );
     expect(res.status).toBe(200);
-    expect(mocks.previewSantanderBankStatementPdfFiles).toHaveBeenCalledOnce();
+    expect(mocks.previewSantanderBankStatementFiles).toHaveBeenCalledOnce();
   });
 
-  it("rechaza archivos no PDF", async () => {
+  it("acepta archivos xlsx consolidados", async () => {
+    const form = new FormData();
+    form.append(
+      "files",
+      new File([new Uint8Array([1, 2, 3])], "consolidado.xlsx", {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      })
+    );
+    const res = await POST(
+      new NextRequest("https://example.test/api/copilot/bank-movements/imports/preview", {
+        method: "POST",
+        body: form,
+      })
+    );
+    expect(res.status).toBe(200);
+    expect(mocks.previewSantanderBankStatementFiles).toHaveBeenCalledOnce();
+  });
+
+  it("rechaza archivos no PDF ni xlsx", async () => {
     const form = new FormData();
     form.append("files", new File(["a,b"], "extracto.csv", { type: "text/csv" }));
     const res = await POST(
@@ -123,7 +142,7 @@ describe("POST /api/copilot/bank-movements/imports/preview", () => {
       })
     );
     expect(res.status).toBe(400);
-    expect(mocks.previewSantanderBankStatementPdfFiles).not.toHaveBeenCalled();
+    expect(mocks.previewSantanderBankStatementFiles).not.toHaveBeenCalled();
   });
 
   it("rechaza más de 20 archivos", async () => {
@@ -138,6 +157,6 @@ describe("POST /api/copilot/bank-movements/imports/preview", () => {
       })
     );
     expect(res.status).toBe(400);
-    expect(mocks.previewSantanderBankStatementPdfFiles).not.toHaveBeenCalled();
+    expect(mocks.previewSantanderBankStatementFiles).not.toHaveBeenCalled();
   });
 });

@@ -22,6 +22,7 @@ export const santanderPreviewMovementSchema = z
     direction: z.enum(BANK_MOVEMENT_DIRECTIONS),
     balance: z.union([z.number().finite(), z.null()]),
     raw_text: z.string(),
+    source_file: z.union([z.string(), z.null()]).optional(),
   })
   .strict();
 
@@ -38,7 +39,10 @@ export const santanderImportPreviewSchema = z
   })
   .strict();
 
-const confirmFileType = z.literal("application/pdf");
+const confirmFileType = z.union([
+  z.literal("application/pdf"),
+  z.literal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+]);
 
 export const bankStatementImportConfirmItemSchema = z
   .object({

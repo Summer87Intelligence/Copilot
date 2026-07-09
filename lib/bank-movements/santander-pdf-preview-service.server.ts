@@ -6,14 +6,16 @@ import {
   emptyCurrencyTotals,
   type BulkPreviewData,
 } from "@/lib/bank-movements/bank-movements-import-bulk";
+import { buildSantanderConsolidatedExcelPreview } from "@/lib/bank-movements/santander-excel-consolidated-parser";
 import {
   buildSantanderBankStatementPreview,
   type SantanderBankStatementPreview,
 } from "@/lib/bank-movements/santander-pdf-parser";
 import { extractTextFromPdfBuffer } from "@/lib/treasury/santander-pdf-text-extract.server";
+import { getBankImportFileType } from "@/lib/treasury/santander-bank-import-file-type";
 
 export const BANK_STATEMENT_PREVIEW_ERROR =
-  "No pudimos leer este extracto. Revisá que sea un PDF de Santander con tabla de movimientos.";
+  "No pudimos leer este extracto. Revisá que sea un PDF o Excel consolidado de Santander con tabla de movimientos.";
 
 export async function previewSantanderBankStatementPdfBuffer(
   buffer: Buffer
@@ -36,7 +38,21 @@ export async function previewSantanderBankStatementPdfBuffer(
   }
 }
 
-export async function previewSantanderBankStatementPdfFiles(
+async function previewSantanderBankStatementFile(input: {
+  fileName: string;
+  buffer: Buffer;
+}): Promise<SantanderBankStatementPreview> {
+  const fileType = getBankImportFileType({ name: input.fileName });
+  if (fileType === "pdf") {
+    return previewSantanderBankStatementPdfBuffer(input.buffer);
+  }
+  if (fileType === "xlsx") {
+    return buildSantanderConsolidatedExcelPreview(input.buffer);
+  }
+  throw new Error("UNSUPPORTED");
+}
+
+export async function previewSantanderBankStatementFiles(
   files: { fileName: string; buffer: Buffer }[]
 ): Promise<BulkPreviewData> {
   const previews: BulkPreviewData["previews"] = [];
@@ -49,7 +65,7 @@ export async function previewSantanderBankStatementPdfFiles(
 
   for (const file of files) {
     try {
-      const preview = await previewSantanderBankStatementPdfBuffer(file.buffer);
+      const preview = await previewSantanderBankStatementFile(file);
       const ready = buildBulkPreviewReadyItem(file.fileName, preview);
       previews.push(ready);
       totals_by_currency[preview.currency_code] = addPreviewToCurrencyTotals(
@@ -75,4 +91,11 @@ export async function previewSantanderBankStatementPdfFiles(
     previews,
     errors,
   };
+}
+
+/** @deprecated Use previewSantanderBankStatementFiles */
+export async function previewSantanderBankStatementPdfFiles(
+  files: { fileName: string; buffer: Buffer }[]
+): Promise<BulkPreviewData> {
+  return previewSantanderBankStatementFiles(files);
 }

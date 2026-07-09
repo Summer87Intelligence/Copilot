@@ -11,6 +11,10 @@ vi.mock("@/lib/treasury/santander-pdf-text-extract.server", () => ({
 }));
 
 import {
+  buildSantanderConsolidatedUyuFixtureBuffer,
+  buildSantanderConsolidatedUsdFixtureBuffer,
+} from "@/lib/bank-movements/fixtures/santander-excel-consolidated.fixture";
+import {
   SANTANDER_USD_JULY_AUSZUG_FIXTURE,
   SANTANDER_UYU_JULY_AUSZUG_FIXTURE,
   NON_SANTANDER_BANK_PDF_FIXTURE,
@@ -20,9 +24,9 @@ import {
   emptyCurrencyTotals,
 } from "@/lib/bank-movements/bank-movements-import-bulk";
 import { buildSantanderBankStatementPreview } from "@/lib/bank-movements/santander-pdf-parser";
-import { previewSantanderBankStatementPdfFiles } from "@/lib/bank-movements/santander-pdf-preview-service.server";
+import { previewSantanderBankStatementFiles } from "@/lib/bank-movements/santander-pdf-preview-service.server";
 
-describe("previewSantanderBankStatementPdfFiles", () => {
+describe("previewSantanderBankStatementFiles", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -35,7 +39,7 @@ describe("previewSantanderBankStatementPdfFiles", () => {
     const uyu = buildSantanderBankStatementPreview(SANTANDER_UYU_JULY_AUSZUG_FIXTURE);
     const usd = buildSantanderBankStatementPreview(SANTANDER_USD_JULY_AUSZUG_FIXTURE);
 
-    const data = await previewSantanderBankStatementPdfFiles([
+    const data = await previewSantanderBankStatementFiles([
       { fileName: "uyu.pdf", buffer: Buffer.from("%PDF-uyu") },
       { fileName: "usd.pdf", buffer: Buffer.from("%PDF-usd") },
     ]);
@@ -54,7 +58,7 @@ describe("previewSantanderBankStatementPdfFiles", () => {
       .mockResolvedValueOnce(SANTANDER_UYU_JULY_AUSZUG_FIXTURE)
       .mockResolvedValueOnce(NON_SANTANDER_BANK_PDF_FIXTURE);
 
-    const data = await previewSantanderBankStatementPdfFiles([
+    const data = await previewSantanderBankStatementFiles([
       { fileName: "ok.pdf", buffer: Buffer.from("%PDF-ok") },
       { fileName: "bad.pdf", buffer: Buffer.from("%PDF-bad") },
     ]);
@@ -64,6 +68,38 @@ describe("previewSantanderBankStatementPdfFiles", () => {
     expect(data.previews).toHaveLength(1);
     expect(data.errors).toHaveLength(1);
     expect(data.errors[0]?.file_name).toBe("bad.pdf");
+  });
+
+  it("preview bulk mixto PDF + Excel consolidado", async () => {
+    mocks.extractTextFromPdfBuffer.mockResolvedValueOnce(SANTANDER_UYU_JULY_AUSZUG_FIXTURE);
+
+    const pdfPreview = buildSantanderBankStatementPreview(SANTANDER_UYU_JULY_AUSZUG_FIXTURE);
+    const data = await previewSantanderBankStatementFiles([
+      { fileName: "uyu.pdf", buffer: Buffer.from("%PDF-uyu") },
+      {
+        fileName: "consolidado-usd.xlsx",
+        buffer: buildSantanderConsolidatedUsdFixtureBuffer(),
+      },
+    ]);
+
+    expect(data.parsed_count).toBe(2);
+    expect(data.failed_count).toBe(0);
+    expect(data.total_movements_count).toBe(pdfPreview.movements_count + 2);
+    expect(data.totals_by_currency.UYU.movements_count).toBe(pdfPreview.movements_count);
+    expect(data.totals_by_currency.USD.movements_count).toBe(2);
+  });
+
+  it("preview bulk Excel UYU consolidado", async () => {
+    const data = await previewSantanderBankStatementFiles([
+      {
+        fileName: "consolidado-uyu.xlsx",
+        buffer: buildSantanderConsolidatedUyuFixtureBuffer(),
+      },
+    ]);
+
+    expect(data.parsed_count).toBe(1);
+    expect(data.previews[0]?.account_number).toBe("000001211749");
+    expect(data.previews[0]?.movements_count).toBe(3);
   });
 });
 

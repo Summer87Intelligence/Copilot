@@ -8,6 +8,19 @@ import type { SantanderImportPreviewBody } from "@/lib/bank-movements/bank-movem
 import type { SantanderParsedBankMovement } from "@/lib/bank-movements/santander-pdf-parser";
 
 export const SANTANDER_PDF_PARSER_ID = "santander_pdf_v1";
+export const SANTANDER_EXCEL_CONSOLIDATED_PARSER_ID = "santander_excel_consolidated_v1";
+
+export type BankStatementImportFileType = "pdf" | "xlsx";
+
+export function inferBankStatementImportFileType(fileName: string): BankStatementImportFileType {
+  return fileName.trim().toLowerCase().endsWith(".xlsx") ? "xlsx" : "pdf";
+}
+
+export function inferBankStatementParserId(fileName: string): string {
+  return inferBankStatementImportFileType(fileName) === "xlsx"
+    ? SANTANDER_EXCEL_CONSOLIDATED_PARSER_ID
+    : SANTANDER_PDF_PARSER_ID;
+}
 
 export type ExistingBankMovementForDedupe = {
   movement_date: string;
@@ -113,9 +126,11 @@ export function buildMovementInsertFromPreview(
     workspaceId: string;
     accountNumber: string;
     currencyCode: "UYU" | "USD";
+    parserId?: string;
   }
 ): PlannedMovementInsert {
   const amount = movementAbsoluteAmount(movement);
+  const parserId = ctx.parserId ?? SANTANDER_PDF_PARSER_ID;
   const dedupe_key = buildMovementDedupeKey({
     workspaceId: ctx.workspaceId,
     bankName: "Santander",
@@ -127,6 +142,19 @@ export function buildMovementInsertFromPreview(
     description: movement.description,
   });
 
+  const metadata: Record<string, unknown> = {
+    balance: movement.balance,
+    debit: movement.debit,
+    credit: movement.credit,
+    type: movement.type,
+    parser: parserId,
+    dedupe_key,
+    account_number: ctx.accountNumber,
+  };
+  if (movement.source_file) {
+    metadata.source_file = movement.source_file;
+  }
+
   return {
     movement_date: movement.date,
     description: movement.description.trim(),
@@ -136,15 +164,7 @@ export function buildMovementInsertFromPreview(
     direction: movement.direction,
     bank_reference: movement.reference,
     status: "pending",
-    metadata: {
-      balance: movement.balance,
-      debit: movement.debit,
-      credit: movement.credit,
-      type: movement.type,
-      parser: SANTANDER_PDF_PARSER_ID,
-      dedupe_key,
-      account_number: ctx.accountNumber,
-    },
+    metadata,
     dedupe_key,
   };
 }
@@ -152,7 +172,8 @@ export function buildMovementInsertFromPreview(
 export function planSantanderBankStatementImport(
   preview: SantanderImportPreviewBody,
   existingRows: ExistingBankMovementForDedupe[],
-  workspaceId: string
+  workspaceId: string,
+  parserId: string = SANTANDER_PDF_PARSER_ID
 ): ImportPlanResult {
   const account_label = buildSantanderAccountLabel(preview.account_number, preview.currency_code);
   const existingKeys = new Set(
@@ -167,6 +188,7 @@ export function planSantanderBankStatementImport(
       workspaceId,
       accountNumber: preview.account_number,
       currencyCode: preview.currency_code,
+      parserId,
     });
 
     if (existingKeys.has(planned.dedupe_key) || batchKeys.has(planned.dedupe_key)) {
@@ -190,18 +212,23 @@ export function buildStatementImportRecord(input: {
   workspaceId: string;
   importedBy: string;
   fileName: string;
+  fileType?: BankStatementImportFileType;
+  parserId?: string;
   preview: SantanderImportPreviewBody;
   accountLabel: string;
   insertedCount: number;
   skippedDuplicatesCount: number;
   totalPreviewCount: number;
 }): Record<string, unknown> {
+  const fileType = input.fileType ?? inferBankStatementImportFileType(input.fileName);
+  const parserId = input.parserId ?? inferBankStatementParserId(input.fileName);
+
   return {
     workspace_id: input.workspaceId,
     bank_name: "Santander",
     account_label: input.accountLabel,
     file_name: input.fileName,
-    file_type: "pdf",
+    file_type: fileType,
     imported_by: input.importedBy,
     status: "parsed",
     row_count: input.insertedCount,
@@ -215,7 +242,7 @@ export function buildStatementImportRecord(input: {
       total_preview_count: input.totalPreviewCount,
       inserted_count: input.insertedCount,
       skipped_duplicates_count: input.skippedDuplicatesCount,
-      parser: SANTANDER_PDF_PARSER_ID,
+      parser: parserId,
     },
   };
 }

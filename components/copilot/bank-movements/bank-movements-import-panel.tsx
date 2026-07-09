@@ -52,7 +52,7 @@ export function BankMovementsImportPanel({
 
   const runPreview = async () => {
     if (selectedFiles.length === 0) {
-      setError("Elegí uno o más archivos PDF de Santander.");
+      setError("Elegí uno o más archivos PDF o Excel consolidado de Santander.");
       return;
     }
     setPreviewing(true);
@@ -134,8 +134,8 @@ export function BankMovementsImportPanel({
     <section className={copilotCardStandardClass}>
       <h2 className={copilotSectionTitleClass}>Importar extracto</h2>
       <p className={`${copilotCaptionClass} mt-1`}>
-        Podés seleccionar varios extractos PDF a la vez. La vista previa no guarda nada en la base
-        de datos.
+        Podés seleccionar varios extractos PDF o Excel consolidado (.xlsx) a la vez. La vista previa no
+        guarda nada en la base de datos.
       </p>
 
       <div className="mt-4 flex flex-col gap-3 rounded-xl border border-dashed border-[var(--copilot-border)] px-4 py-6 sm:px-6">
@@ -143,8 +143,12 @@ export function BankMovementsImportPanel({
           <div className="flex items-center gap-3">
             <FileUp className="h-6 w-6 shrink-0 text-[var(--copilot-muted)]" aria-hidden />
             <div>
-              <p className="text-sm font-medium text-[var(--copilot-text)]">Banco: Santander (PDF)</p>
-              <p className={copilotCaptionClass}>Cuentas UYU y USD con tabla de movimientos.</p>
+              <p className="text-sm font-medium text-[var(--copilot-text)]">
+                Banco: Santander (PDF o Excel consolidado)
+              </p>
+              <p className={copilotCaptionClass}>
+                Cuentas UYU y USD con tabla de movimientos o hoja Movimientos consolidados.
+              </p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -152,7 +156,7 @@ export function BankMovementsImportPanel({
               ref={fileInputRef}
               type="file"
               multiple
-              accept="application/pdf,.pdf"
+              accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsx"
               className="hidden"
               onChange={(e) => {
                 const files = Array.from(e.target.files ?? []);
@@ -167,7 +171,7 @@ export function BankMovementsImportPanel({
               onClick={() => fileInputRef.current?.click()}
               className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
             >
-              Elegir PDFs
+              Elegir archivos
             </button>
             <button
               type="button"
