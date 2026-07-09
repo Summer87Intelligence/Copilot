@@ -106,6 +106,47 @@ export function isAmountWithinTolerance(
   return { ok: pctOk || absOk, exact: false };
 }
 
+function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function readMovementMetadataAmount(
+  metadata: Record<string, unknown> | null | undefined,
+  direction: BankMovement["direction"]
+): number | null {
+  if (!metadata) return null;
+  const debit = typeof metadata.debit === "number" && Number.isFinite(metadata.debit) ? Math.abs(metadata.debit) : null;
+  const credit =
+    typeof metadata.credit === "number" && Number.isFinite(metadata.credit) ? Math.abs(metadata.credit) : null;
+  if (direction === "outflow") return debit ?? credit;
+  return credit ?? debit;
+}
+
+/**
+ * Algunos imports Excel consolidados guardan montos UYU/USD ~÷1000 cuando la celda
+ * llega como número (p. ej. 3.548 en lugar de 3548). Para conciliar probamos ambas escalas.
+ */
+export function reconciliationMovementAmountCandidates(
+  movement: Pick<BankMovement, "amount" | "direction" | "metadata">
+): number[] {
+  const fromMetadata = readMovementMetadataAmount(movement.metadata ?? null, movement.direction);
+  const base = roundMoney(fromMetadata ?? Math.abs(movement.amount));
+  const candidates = [base];
+
+  if (base > 0 && base < 10_000) {
+    const scaled = roundMoney(base * 1000);
+    if (scaled !== base && scaled >= 100) {
+      candidates.push(scaled);
+    }
+  }
+
+  return [...new Set(candidates)];
+}
+
+export function obligationAmountForReconciliation(obligation: PlannedCashObligation): number {
+  return obligation.amountFinal ?? obligation.amountEstimated;
+}
+
 export function scoreAmountMatch(
   movementAmount: number,
   obligationAmount: number,
@@ -115,6 +156,22 @@ export function scoreAmountMatch(
   if (!tolerance.ok) return { score: 0, reason: null };
   if (tolerance.exact) return { score: 50, reason: "Monto exacto" };
   return { score: 30, reason: "Monto similar" };
+}
+
+export function scoreBestAmountMatch(
+  movement: Pick<BankMovement, "amount" | "direction" | "metadata" | "currency">,
+  obligationAmount: number
+): { score: number; reason: string | null } {
+  let bestScore = 0;
+  let bestReason: string | null = null;
+  for (const candidate of reconciliationMovementAmountCandidates(movement)) {
+    const result = scoreAmountMatch(candidate, obligationAmount, movement.currency);
+    if (result.score > bestScore) {
+      bestScore = result.score;
+      bestReason = result.reason;
+    }
+  }
+  return { score: bestScore, reason: bestReason };
 }
 
 export function scoreDateMatch(movementDate: string, dueDate: string): { score: number; reason: string | null } {
@@ -211,12 +268,14 @@ export function scoreBankMovementAgainstObligation(
     | "bank_reference"
     | "account_label"
     | "status"
+    | "metadata"
   >,
   obligation: PlannedCashObligation
 ): ReconciliationSuggestion | null {
   if (!isObligationCandidateForMovement(movement, obligation)) return null;
 
-  const amount = scoreAmountMatch(movement.amount, obligation.amountEstimated, movement.currency);
+  const obligationAmount = obligationAmountForReconciliation(obligation);
+  const amount = scoreBestAmountMatch(movement, obligationAmount);
   if (amount.score === 0) return null;
 
   const date = scoreDateMatch(movement.movement_date, obligation.dueDate);
@@ -254,6 +313,7 @@ export function buildReconciliationSuggestionsForMovement(
     | "bank_reference"
     | "account_label"
     | "status"
+    | "metadata"
   >,
   obligations: PlannedCashObligation[]
 ): ReconciliationSuggestion[] {

@@ -92,6 +92,7 @@ export type BankMovement = {
   matched_confidence: number | null;
   matched_by: string | null;
   matched_at: string | null;
+  metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 };

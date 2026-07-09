@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildReconciliationSuggestionsForMovement,
+  reconciliationMovementAmountCandidates,
   scoreBankMovementAgainstObligation,
   tokenizeReconciliationText,
 } from "@/lib/bank-movements/bank-movement-reconciliation";
@@ -28,6 +29,7 @@ function movement(partial: Partial<BankMovement> & Pick<BankMovement, "descripti
     matched_confidence: null,
     matched_by: null,
     matched_at: null,
+    metadata: partial.metadata ?? null,
     created_at: "2026-07-01T00:00:00Z",
     updated_at: "2026-07-01T00:00:00Z",
   };
@@ -89,6 +91,25 @@ describe("bank-movement-reconciliation engine", () => {
     expect(result?.score).toBeGreaterThanOrEqual(80);
   });
 
+  it("Movistar importado Excel con monto ÷1000 → high", () => {
+    const result = scoreBankMovementAgainstObligation(
+      movement({
+        description: "DEBITO OPERACION EN BANCA DIGITAL MOVISTAR  CEL MOVISTAR",
+        amount: 3.548,
+        movement_date: "2026-07-06",
+        metadata: { debit: 3.548, parser: "santander_excel_consolidated_v1" },
+      }),
+      obligation({
+        title: "Movistar — Celulares corporativos",
+        amountEstimated: 3548,
+        amountFinal: 3548,
+        dueDate: "2026-07-06",
+        status: "paid",
+      })
+    );
+    expect(result?.confidence).toBe("high");
+  });
+
   it("BSE fecha cercana → medium/high", () => {
     const result = scoreBankMovementAgainstObligation(
       movement({
@@ -101,6 +122,65 @@ describe("bank-movement-reconciliation engine", () => {
         title: "BSE Seguro Accidentes",
         amountEstimated: 1375,
         dueDate: "2026-07-05",
+      })
+    );
+    expect(result?.confidence === "high" || result?.confidence === "medium").toBe(true);
+  });
+
+  it("BSE importado Excel con monto ÷1000 y obligación paid → match", () => {
+    const result = scoreBankMovementAgainstObligation(
+      movement({
+        description: "DEBITO OPERACION EN BANCA DIGITAL BSE       SEG BANCO DE S",
+        amount: 1.375,
+        movement_date: "2026-07-03",
+        metadata: { debit: 1.375 },
+      }),
+      obligation({
+        title: "BSE — Seguro de Accidentes de trabajo",
+        amountEstimated: 1375,
+        amountFinal: 1375,
+        dueDate: "2026-07-05",
+        status: "paid",
+      })
+    );
+    expect(result?.confidence === "high" || result?.confidence === "medium").toBe(true);
+  });
+
+  it("ZETA importado Excel con monto ÷1000 → match", () => {
+    const result = scoreBankMovementAgainstObligation(
+      movement({
+        description: "TRANSF INSTANTANEA ENVIADA ZETASOFTWARE S.A.",
+        amount: 3.721,
+        movement_date: "2026-07-03",
+        metadata: { debit: 3.721 },
+      }),
+      obligation({
+        title: "ZETA",
+        amountEstimated: 3721,
+        amountFinal: 3721,
+        dueDate: "2026-07-05",
+        status: "paid",
+        metadata: { counterparty: "ZETA" },
+      })
+    );
+    expect(result?.confidence === "high" || result?.confidence === "medium").toBe(true);
+  });
+
+  it("sueldo importado Excel con monto ÷1000 → match", () => {
+    const result = scoreBankMovementAgainstObligation(
+      movement({
+        description: "DB. PAGO SUELDOS TSUELDO ANA",
+        amount: 27.509,
+        movement_date: "2026-07-06",
+        metadata: { debit: 27.509 },
+      }),
+      obligation({
+        title: "Ana Piriz — Sueldo mensual",
+        amountEstimated: 27509,
+        amountFinal: 27509,
+        dueDate: "2026-07-05",
+        status: "paid",
+        metadata: { counterparty: "Ana Piriz" },
       })
     );
     expect(result?.confidence === "high" || result?.confidence === "medium").toBe(true);
@@ -164,5 +244,15 @@ describe("bank-movement-reconciliation engine", () => {
   it("ignora palabras genéricas", () => {
     const tokens = tokenizeReconciliationText("pago transferencia debito operacion banca digital");
     expect(tokens).toHaveLength(0);
+  });
+
+  it("amount positivo outflow con escala ÷1000 genera candidatos", () => {
+    expect(
+      reconciliationMovementAmountCandidates({
+        amount: 3.548,
+        direction: "outflow",
+        metadata: { debit: 3.548 },
+      })
+    ).toEqual([3.55, 3550]);
   });
 });
