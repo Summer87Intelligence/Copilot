@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS public.bank_statement_imports (
   account_label TEXT          NULL,
   file_name     TEXT          NULL,
   file_type     TEXT          NULL       CHECK (file_type IS NULL OR file_type IN ('pdf', 'csv', 'xlsx')),
-  imported_by   UUID          NULL       REFERENCES public.app_users(id),
+  imported_by   UUID          NULL       REFERENCES public.app_users(id) ON DELETE SET NULL,
   imported_at   TIMESTAMPTZ   NOT NULL   DEFAULT now(),
   status        TEXT          NOT NULL   DEFAULT 'uploaded'
     CHECK (status IN ('uploaded', 'parsed', 'failed', 'archived')),
@@ -39,6 +39,13 @@ CREATE TRIGGER trg_bank_statement_imports_updated_at
   BEFORE UPDATE ON public.bank_statement_imports
   FOR EACH ROW
   EXECUTE FUNCTION public.copilot_set_updated_at();
+
+-- Fuerza workspace_id desde la sesión JWT (defensa en profundidad). Bypass service_role.
+DROP TRIGGER IF EXISTS trg_bank_statement_imports_force_workspace ON public.bank_statement_imports;
+CREATE TRIGGER trg_bank_statement_imports_force_workspace
+  BEFORE INSERT OR UPDATE ON public.bank_statement_imports
+  FOR EACH ROW
+  EXECUTE FUNCTION public.copilot_treasury_row_force_workspace();
 
 ALTER TABLE public.bank_statement_imports ENABLE ROW LEVEL SECURITY;
 
@@ -85,7 +92,7 @@ CREATE TABLE IF NOT EXISTS public.bank_movements (
       ('zeta_receipt', 'manual_movement', 'planned_payment', 'client', 'internal', 'other')),
   matched_id         UUID          NULL,
   matched_confidence NUMERIC(5, 2) NULL,
-  matched_by         UUID          NULL REFERENCES public.app_users(id),
+  matched_by         UUID          NULL REFERENCES public.app_users(id) ON DELETE SET NULL,
   matched_at         TIMESTAMPTZ   NULL,
   metadata           JSONB         NOT NULL   DEFAULT '{}'::jsonb,
   created_at         TIMESTAMPTZ   NOT NULL   DEFAULT now(),
@@ -120,6 +127,13 @@ CREATE TRIGGER trg_bank_movements_updated_at
   BEFORE UPDATE ON public.bank_movements
   FOR EACH ROW
   EXECUTE FUNCTION public.copilot_set_updated_at();
+
+-- Fuerza workspace_id desde la sesión JWT (defensa en profundidad). Bypass service_role.
+DROP TRIGGER IF EXISTS trg_bank_movements_force_workspace ON public.bank_movements;
+CREATE TRIGGER trg_bank_movements_force_workspace
+  BEFORE INSERT OR UPDATE ON public.bank_movements
+  FOR EACH ROW
+  EXECUTE FUNCTION public.copilot_treasury_row_force_workspace();
 
 ALTER TABLE public.bank_movements ENABLE ROW LEVEL SECURITY;
 
@@ -183,6 +197,13 @@ CREATE TRIGGER trg_bank_movement_match_suggestions_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION public.copilot_set_updated_at();
 
+-- Fuerza workspace_id desde la sesión JWT (defensa en profundidad). Bypass service_role.
+DROP TRIGGER IF EXISTS trg_bank_movement_match_suggestions_force_workspace ON public.bank_movement_match_suggestions;
+CREATE TRIGGER trg_bank_movement_match_suggestions_force_workspace
+  BEFORE INSERT OR UPDATE ON public.bank_movement_match_suggestions
+  FOR EACH ROW
+  EXECUTE FUNCTION public.copilot_treasury_row_force_workspace();
+
 ALTER TABLE public.bank_movement_match_suggestions ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "bank_movement_match_suggestions_select" ON public.bank_movement_match_suggestions;
@@ -210,7 +231,7 @@ CREATE POLICY "bank_movement_match_suggestions_update"
 CREATE TABLE IF NOT EXISTS public.daily_tasks (
   id                  UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id        UUID          NOT NULL REFERENCES public.companies(id) ON DELETE RESTRICT,
-  assigned_to_user_id UUID          NULL REFERENCES public.app_users(id),
+  assigned_to_user_id UUID          NULL REFERENCES public.app_users(id) ON DELETE SET NULL,
   title               TEXT          NOT NULL   CHECK (trim(title) <> ''),
   description         TEXT          NULL,
   module_key          TEXT          NOT NULL   CHECK (trim(module_key) <> ''),
@@ -222,7 +243,7 @@ CREATE TABLE IF NOT EXISTS public.daily_tasks (
     CHECK (status IN ('pending', 'in_progress', 'done', 'postponed', 'cancelled')),
   due_date            DATE          NULL,
   completed_at        TIMESTAMPTZ   NULL,
-  completed_by        UUID          NULL REFERENCES public.app_users(id),
+  completed_by        UUID          NULL REFERENCES public.app_users(id) ON DELETE SET NULL,
   action_url          TEXT          NULL,
   metadata            JSONB         NOT NULL   DEFAULT '{}'::jsonb,
   created_at          TIMESTAMPTZ   NOT NULL   DEFAULT now(),
@@ -255,6 +276,14 @@ CREATE TRIGGER trg_daily_tasks_updated_at
   BEFORE UPDATE ON public.daily_tasks
   FOR EACH ROW
   EXECUTE FUNCTION public.copilot_set_updated_at();
+
+-- Fuerza workspace_id desde la sesión JWT (defensa en profundidad). Bypass service_role.
+-- La función es genérica pese al nombre "treasury": solo fija new.workspace_id.
+DROP TRIGGER IF EXISTS trg_daily_tasks_force_workspace ON public.daily_tasks;
+CREATE TRIGGER trg_daily_tasks_force_workspace
+  BEFORE INSERT OR UPDATE ON public.daily_tasks
+  FOR EACH ROW
+  EXECUTE FUNCTION public.copilot_treasury_row_force_workspace();
 
 ALTER TABLE public.daily_tasks ENABLE ROW LEVEL SECURITY;
 
