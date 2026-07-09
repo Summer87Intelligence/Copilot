@@ -2,7 +2,14 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import type { BankStatementImportConfirmItem } from "@/lib/bank-movements/bank-movements-import-api";
 import type { SantanderImportPreviewBody } from "@/lib/bank-movements/bank-movements-import-api";
+import {
+  type BulkConfirmData,
+  type BulkConfirmErrorItem,
+  type BulkConfirmResultItem,
+  resolveImportFileStatus,
+} from "@/lib/bank-movements/bank-movements-import-bulk";
 import {
   buildStatementImportRecord,
   planSantanderBankStatementImport,
@@ -15,6 +22,8 @@ export type ConfirmSantanderImportResult = {
   skipped_duplicates_count: number;
   total_preview_count: number;
 };
+
+const CONFIRM_ERROR_MESSAGE = "No se pudo confirmar la importación del extracto.";
 
 export async function confirmSantanderBankStatementImport(params: {
   supabase: SupabaseClient;
@@ -97,5 +106,64 @@ export async function confirmSantanderBankStatementImport(params: {
     inserted_count: plan.to_insert.length,
     skipped_duplicates_count: plan.skipped_duplicates_count,
     total_preview_count: plan.total_preview_count,
+  };
+}
+
+export async function confirmSantanderBankStatementImportsBulk(params: {
+  supabase: SupabaseClient;
+  workspaceId: string;
+  importedBy: string;
+  previews: BankStatementImportConfirmItem[];
+}): Promise<BulkConfirmData> {
+  const results: BulkConfirmResultItem[] = [];
+  const errors: BulkConfirmErrorItem[] = [];
+  let inserted_count = 0;
+  let skipped_duplicates_count = 0;
+  let total_preview_count = 0;
+  let imported_files_count = 0;
+  let failed_files_count = 0;
+
+  for (const item of params.previews) {
+    try {
+      const result = await confirmSantanderBankStatementImport({
+        supabase: params.supabase,
+        workspaceId: params.workspaceId,
+        importedBy: params.importedBy,
+        fileName: item.file_name,
+        preview: item.preview,
+      });
+
+      inserted_count += result.inserted_count;
+      skipped_duplicates_count += result.skipped_duplicates_count;
+      total_preview_count += result.total_preview_count;
+      imported_files_count += 1;
+
+      results.push({
+        file_name: item.file_name,
+        import_id: result.import_id,
+        inserted_count: result.inserted_count,
+        skipped_duplicates_count: result.skipped_duplicates_count,
+        total_preview_count: result.total_preview_count,
+        status: resolveImportFileStatus(result.inserted_count, result.skipped_duplicates_count),
+      });
+    } catch {
+      failed_files_count += 1;
+      errors.push({
+        file_name: item.file_name,
+        status: "error",
+        error: CONFIRM_ERROR_MESSAGE,
+      });
+    }
+  }
+
+  return {
+    files_count: params.previews.length,
+    imported_files_count,
+    failed_files_count,
+    total_preview_count,
+    inserted_count,
+    skipped_duplicates_count,
+    results,
+    errors,
   };
 }

@@ -1,0 +1,2 @@
+export const MAX_BULK_PDF_FILES = 20;
+export const MAX_BANK_STATEMENT_PDF_BYTES = 10 * 1024 * 1024;

@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
 import { requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
-import { bankStatementImportConfirmBodySchema } from "@/lib/bank-movements/bank-movements-import-api";
-import { confirmSantanderBankStatementImport } from "@/lib/bank-movements/santander-bank-statement-import-persist.server";
+import {
+  bankStatementImportConfirmBodySchema,
+  isBulkBankStatementImportConfirmBody,
+} from "@/lib/bank-movements/bank-movements-import-api";
+import {
+  confirmSantanderBankStatementImport,
+  confirmSantanderBankStatementImportsBulk,
+} from "@/lib/bank-movements/santander-bank-statement-import-persist.server";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +27,20 @@ export async function POST(request: NextRequest) {
   const { supabase, tenantCompanyId, appUser } = auth.ctx;
 
   try {
+    if (isBulkBankStatementImportConfirmBody(parsed.data)) {
+      const result = await confirmSantanderBankStatementImportsBulk({
+        supabase,
+        workspaceId: tenantCompanyId,
+        importedBy: appUser.id,
+        previews: parsed.data.previews,
+      });
+
+      return NextResponse.json({
+        ok: true as const,
+        data: result,
+      });
+    }
+
     const result = await confirmSantanderBankStatementImport({
       supabase,
       workspaceId: tenantCompanyId,

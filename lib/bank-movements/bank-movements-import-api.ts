@@ -1,8 +1,9 @@
 /**
- * Contratos de confirmación de importación Santander PDF (Sprint D).
+ * Contratos de confirmación de importación Santander PDF (Sprint D + E).
  */
 import { z } from "zod";
 
+import { MAX_BULK_PDF_FILES } from "@/lib/bank-movements/bank-movements-import-constants";
 import { BANK_MOVEMENT_DIRECTIONS } from "@/lib/bank-movements/bank-movements-types";
 
 const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida (YYYY-MM-DD).");
@@ -37,19 +38,45 @@ export const santanderImportPreviewSchema = z
   })
   .strict();
 
-export const bankStatementImportConfirmBodySchema = z
+const confirmFileType = z.literal("application/pdf");
+
+export const bankStatementImportConfirmItemSchema = z
   .object({
-    workspace_id: rejectWorkspaceId,
-    imported_by: rejectImportedBy,
     file_name: z.string().trim().min(1).max(255),
-    file_type: z.literal("application/pdf"),
     preview: santanderImportPreviewSchema,
   })
   .strict();
 
+export const bankStatementImportConfirmBodySchema = z.union([
+  z
+    .object({
+      workspace_id: rejectWorkspaceId,
+      imported_by: rejectImportedBy,
+      file_name: z.string().trim().min(1).max(255),
+      file_type: confirmFileType,
+      preview: santanderImportPreviewSchema,
+    })
+    .strict(),
+  z
+    .object({
+      workspace_id: rejectWorkspaceId,
+      imported_by: rejectImportedBy,
+      file_type: confirmFileType.optional(),
+      previews: z.array(bankStatementImportConfirmItemSchema).min(1).max(MAX_BULK_PDF_FILES),
+    })
+    .strict(),
+]);
+
 export type SantanderImportPreviewBody = z.infer<typeof santanderImportPreviewSchema>;
 export type BankStatementImportConfirmBody = z.infer<typeof bankStatementImportConfirmBodySchema>;
+export type BankStatementImportConfirmItem = z.infer<typeof bankStatementImportConfirmItemSchema>;
 
 export function buildSantanderAccountLabel(accountNumber: string, currencyCode: "UYU" | "USD"): string {
   return `Santander ${accountNumber} ${currencyCode}`;
+}
+
+export function isBulkBankStatementImportConfirmBody(
+  body: BankStatementImportConfirmBody
+): body is Extract<BankStatementImportConfirmBody, { previews: BankStatementImportConfirmItem[] }> {
+  return "previews" in body;
 }
