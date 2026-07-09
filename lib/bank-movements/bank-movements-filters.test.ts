@@ -76,7 +76,7 @@ describe("bank-movements-filters helpers", () => {
 
   describe("filterBankMovements", () => {
     const rows = [
-      movement({ id: "uyu", description: "MOVISTAR", amount: 3.548, currency: "UYU", movement_date: "2026-07-06" }),
+      movement({ id: "uyu", description: "MOVISTAR", amount: 3.55, currency: "UYU", movement_date: "2026-07-06", metadata: { parser: "santander_excel_consolidated_v1", debit: 3.548 } }),
       movement({ id: "usd", description: "AMAZON", amount: 120, currency: "USD", movement_date: "2026-06-15" }),
       movement({
         id: "bse",
@@ -144,7 +144,7 @@ describe("bank-movements-filters helpers", () => {
   describe("filterReconciliationItems", () => {
     const items = [
       {
-        movement: movement({ id: "movistar", description: "MOVISTAR", amount: 3.548, movement_date: "2026-07-06" }),
+        movement: movement({ id: "movistar", description: "MOVISTAR", amount: 3.55, movement_date: "2026-07-06", metadata: { parser: "santander_excel_consolidated_v1", debit: 3.548 } }),
         suggestions: [
           {
             target_type: "planned_cash_obligation" as const,
@@ -198,6 +198,105 @@ describe("bank-movements-filters helpers", () => {
       expect(result.some((item) => item.movement.id === "movistar")).toBe(true);
     });
 
+    it("filtra con sugerencia incluyendo high/medium/low", () => {
+      const lowItem = {
+        movement: movement({ id: "low", description: "OTRO", amount: 100, movement_date: "2026-07-05" }),
+        suggestions: [
+          {
+            target_type: "planned_cash_obligation" as const,
+            target_id: "o-low",
+            confidence: "low" as const,
+            score: 40,
+            reasons: [],
+            movement: movement({ description: "OTRO", amount: 100 }),
+            target: {
+              id: "o-low",
+              title: "Otro pago",
+              description: null,
+              amount_estimated: 100,
+              currency_code: "UYU",
+              due_date: "2026-07-05",
+              direction: "outflow",
+              status: "planned",
+              notes: null,
+              obligation_type: "service",
+            },
+          },
+        ],
+      };
+      const result = filterReconciliationItems(
+        [...items, lowItem],
+        { ...DEFAULT_RECONCILIATION_VIEW_FILTERS, suggestion: "with_suggestion" },
+        julyNow
+      );
+      expect(result.map((item) => item.movement.id)).toEqual(["movistar", "low"]);
+      expect(result.some((item) => item.movement.id === "mcd")).toBe(false);
+    });
+
+    it("con sugerencia excluye conciliados e ignorados", () => {
+      const ignored = {
+        movement: movement({
+          id: "ignored",
+          description: "IGN",
+          amount: 10,
+          status: "ignored",
+          movement_date: "2026-07-04",
+        }),
+        suggestions: [{ target_type: "planned_cash_obligation" as const, target_id: "x", confidence: "high" as const, score: 90, reasons: [], movement: movement({ description: "IGN", amount: 10 }), target: { id: "x", title: "X", description: null, amount_estimated: 10, currency_code: "UYU", due_date: "2026-07-04", direction: "outflow", status: "planned", notes: null, obligation_type: "service" } }],
+      };
+      const result = filterReconciliationItems(
+        [...items, ignored],
+        { ...DEFAULT_RECONCILIATION_VIEW_FILTERS, suggestion: "with_suggestion" },
+        julyNow
+      );
+      expect(result.some((item) => item.movement.id === "ignored")).toBe(false);
+      expect(result.some((item) => item.movement.id === "matched")).toBe(false);
+    });
+
+    it("ordena con sugerencia: high antes que low", () => {
+      const lowItem = {
+        movement: movement({ id: "low", description: "OTRO", amount: 100, movement_date: "2026-07-05" }),
+        suggestions: [
+          {
+            target_type: "planned_cash_obligation" as const,
+            target_id: "o-low",
+            confidence: "low" as const,
+            score: 40,
+            reasons: [],
+            movement: movement({ description: "OTRO", amount: 100 }),
+            target: {
+              id: "o-low",
+              title: "Otro pago",
+              description: null,
+              amount_estimated: 100,
+              currency_code: "UYU",
+              due_date: "2026-07-05",
+              direction: "outflow",
+              status: "planned",
+              notes: null,
+              obligation_type: "service",
+            },
+          },
+        ],
+      };
+      const result = filterReconciliationItems(
+        [...items, lowItem],
+        { ...DEFAULT_RECONCILIATION_VIEW_FILTERS, suggestion: "with_suggestion" },
+        julyNow
+      );
+      expect(result[0]?.movement.id).toBe("movistar");
+      expect(result[1]?.movement.id).toBe("low");
+    });
+
+    it("todos sigue mostrando sin sugerencia", () => {
+      const result = filterReconciliationItems(
+        items,
+        { ...DEFAULT_RECONCILIATION_VIEW_FILTERS, suggestion: "all" },
+        julyNow
+      );
+      expect(result.some((item) => item.movement.id === "mcd")).toBe(true);
+    });
+
     it("filtra alta confianza", () => {
       const result = filterReconciliationItems(
         items,
@@ -220,7 +319,7 @@ describe("bank-movements-filters helpers", () => {
     it("busca por texto de movimiento", () => {
       const result = filterReconciliationItems(
         items,
-        { ...DEFAULT_RECONCILIATION_VIEW_FILTERS, text: "mcdonald" },
+        { ...DEFAULT_RECONCILIATION_VIEW_FILTERS, suggestion: "all", text: "mcdonald" },
         julyNow
       );
       expect(result).toHaveLength(1);
@@ -258,7 +357,7 @@ describe("bank-movements-filters helpers", () => {
       };
       const result = filterReconciliationItems(
         [...items, usdItem],
-        { ...DEFAULT_RECONCILIATION_VIEW_FILTERS, currency: "USD" },
+        { ...DEFAULT_RECONCILIATION_VIEW_FILTERS, suggestion: "all", currency: "USD" },
         julyNow
       );
       expect(result).toHaveLength(1);

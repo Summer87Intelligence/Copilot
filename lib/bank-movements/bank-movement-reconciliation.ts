@@ -3,6 +3,7 @@
  * Sin DB ni IA.
  */
 import type { BankMovement } from "@/lib/bank-movements/bank-movements-types";
+import { resolveImportedBankMovementAmount } from "@/lib/bank-movements/santander-excel-amount";
 import type { PlannedCashObligation } from "@/lib/treasury/treasury-types";
 
 export const RECONCILIATION_DATE_WINDOW_DAYS = 7;
@@ -110,32 +111,22 @@ function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-function readMovementMetadataAmount(
-  metadata: Record<string, unknown> | null | undefined,
-  direction: BankMovement["direction"]
-): number | null {
-  if (!metadata) return null;
-  const debit = typeof metadata.debit === "number" && Number.isFinite(metadata.debit) ? Math.abs(metadata.debit) : null;
-  const credit =
-    typeof metadata.credit === "number" && Number.isFinite(metadata.credit) ? Math.abs(metadata.credit) : null;
-  if (direction === "outflow") return debit ?? credit;
-  return credit ?? debit;
-}
-
 /**
- * Algunos imports Excel consolidados guardan montos UYU/USD ~÷1000 cuando la celda
- * llega como número (p. ej. 3.548 en lugar de 3548). Para conciliar probamos ambas escalas.
+ * Candidatos de monto para conciliar, incluyendo corrección de imports Excel Santander.
  */
 export function reconciliationMovementAmountCandidates(
-  movement: Pick<BankMovement, "amount" | "direction" | "metadata">
+  movement: Pick<BankMovement, "amount" | "direction" | "metadata" | "currency">
 ): number[] {
-  const fromMetadata = readMovementMetadataAmount(movement.metadata ?? null, movement.direction);
-  const base = roundMoney(fromMetadata ?? Math.abs(movement.amount));
-  const candidates = [base];
+  const resolved = roundMoney(resolveImportedBankMovementAmount(movement));
+  const candidates = [resolved];
 
-  if (base > 0 && base < 10_000) {
-    const scaled = roundMoney(base * 1000);
-    if (scaled !== base && scaled >= 100) {
+  if (
+    resolved > 0 &&
+    resolved < 100 &&
+    movement.metadata?.parser !== "santander_excel_consolidated_v1"
+  ) {
+    const scaled = roundMoney(resolved * 1000);
+    if (scaled !== resolved && scaled >= 100) {
       candidates.push(scaled);
     }
   }

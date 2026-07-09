@@ -246,13 +246,14 @@ describe("bank-movement-reconciliation engine", () => {
     expect(tokens).toHaveLength(0);
   });
 
-  it("amount positivo outflow con escala ÷1000 genera candidatos", () => {
+  it("amount positivo outflow con metadata Excel genera candidato corregido", () => {
     expect(
       reconciliationMovementAmountCandidates({
         amount: 3.548,
         direction: "outflow",
-        metadata: { debit: 3.548 },
+        currency: "UYU",
+        metadata: { debit: 3.548, parser: "santander_excel_consolidated_v1" },
       })
-    ).toEqual([3.55, 3550]);
+    ).toEqual([3548]);
   });
 });

@@ -13,6 +13,7 @@ import type {
   BankMovementStatus,
 } from "@/lib/bank-movements/bank-movements-types";
 import { PERIOD_MONTH_OPTIONS } from "@/lib/copilot-datos-period-filter";
+import { resolveImportedBankMovementAmount } from "@/lib/bank-movements/santander-excel-amount";
 
 export type BankMovementsPeriodFilter = "all" | "current" | `${number}-${string}`;
 
@@ -27,6 +28,7 @@ export type BankMovementsListFilters = {
 
 export type ReconciliationSuggestionFilter =
   | "all"
+  | "with_suggestion"
   | ReconciliationConfidence
   | "none"
   | "matched"
@@ -67,10 +69,16 @@ export const DEFAULT_BANK_MOVEMENTS_LIST_FILTERS: BankMovementsListFilters = {
 export const DEFAULT_RECONCILIATION_VIEW_FILTERS: ReconciliationViewFilters = {
   period: "current",
   currency: "all",
-  suggestion: "all",
+  suggestion: "with_suggestion",
   direction: "all",
   text: "",
   amount: "",
+};
+
+const CONFIDENCE_SORT_ORDER: Record<ReconciliationConfidence, number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
 };
 
 const PENDING_STATUSES = new Set<BankMovementStatus>(["pending", "suggested", "needs_review"]);
@@ -211,6 +219,9 @@ export function movementMatchesAmountSearch(
   movement: Pick<BankMovement, "amount" | "direction" | "metadata" | "currency">,
   searchAmount: number
 ): boolean {
+  const resolved = resolveImportedBankMovementAmount(movement);
+  if (isAmountWithinTolerance(resolved, searchAmount, movement.currency).ok) return true;
+
   const candidates = reconciliationMovementAmountCandidates(movement);
 
   for (const candidate of candidates) {
@@ -282,6 +293,10 @@ function reconciliationItemMatchesSuggestion(
   suggestion: ReconciliationSuggestionFilter
 ): boolean {
   if (suggestion === "all") return true;
+  if (suggestion === "with_suggestion") {
+    if (item.movement.status === "matched" || item.movement.status === "ignored") return false;
+    return item.suggestions.length > 0;
+  }
   if (suggestion === "matched") return item.movement.status === "matched";
   if (suggestion === "ignored") return item.movement.status === "ignored";
 
@@ -310,6 +325,20 @@ export function reconciliationItemMatchesTextSearch(item: ReconciliationListItem
   return false;
 }
 
+export function sortReconciliationItems(items: ReconciliationListItem[]): ReconciliationListItem[] {
+  return [...items].sort((left, right) => {
+    const leftBest = left.suggestions[0];
+    const rightBest = right.suggestions[0];
+    const leftRank = leftBest ? CONFIDENCE_SORT_ORDER[leftBest.confidence] : 99;
+    const rightRank = rightBest ? CONFIDENCE_SORT_ORDER[rightBest.confidence] : 99;
+    if (leftRank !== rightRank) return leftRank - rightRank;
+    const leftScore = leftBest?.score ?? 0;
+    const rightScore = rightBest?.score ?? 0;
+    if (leftScore !== rightScore) return rightScore - leftScore;
+    return right.movement.movement_date.localeCompare(left.movement.movement_date);
+  });
+}
+
 export function filterReconciliationItems(
   items: ReconciliationListItem[],
   filters: ReconciliationViewFilters,
@@ -317,7 +346,7 @@ export function filterReconciliationItems(
 ): ReconciliationListItem[] {
   const amountQuery = normalizeAmountSearch(filters.amount);
 
-  return items.filter((item) => {
+  const filtered = items.filter((item) => {
     const { movement } = item;
     if (!matchesMovementPeriod(movement.movement_date, filters.period, now)) return false;
     if (filters.currency !== "all" && movement.currency !== filters.currency) return false;
@@ -327,6 +356,17 @@ export function filterReconciliationItems(
     if (amountQuery != null && !movementMatchesAmountSearch(movement, amountQuery)) return false;
     return true;
   });
+
+  if (
+    filters.suggestion === "with_suggestion" ||
+    filters.suggestion === "high" ||
+    filters.suggestion === "medium" ||
+    filters.suggestion === "low"
+  ) {
+    return sortReconciliationItems(filtered);
+  }
+
+  return filtered;
 }
 
 export function computeReconciliationFilteredMeta(items: ReconciliationListItem[]): ReconciliationFilteredMeta {

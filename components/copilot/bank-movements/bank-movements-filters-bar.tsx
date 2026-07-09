@@ -24,6 +24,7 @@ type BankMovementsFiltersBarProps = {
   totalCount: number;
   countLabel: string;
   showPeriodHint?: boolean;
+  showWithSuggestionHint?: boolean;
 };
 
 const MOVEMENT_STATUS_OPTIONS = [
@@ -35,6 +36,7 @@ const MOVEMENT_STATUS_OPTIONS = [
 
 const RECONCILIATION_SUGGESTION_OPTIONS = [
   { value: "all", label: "Todos" },
+  { value: "with_suggestion", label: "Con sugerencia" },
   { value: "high", label: "Alta confianza" },
   { value: "medium", label: "Media" },
   { value: "low", label: "Baja" },
@@ -81,6 +83,7 @@ export function BankMovementsFiltersBar({
   totalCount,
   countLabel,
   showPeriodHint = false,
+  showWithSuggestionHint = false,
 }: BankMovementsFiltersBarProps) {
   const update = (patch: Partial<BankMovementsListFilters & ReconciliationViewFilters>) => {
     onChange({ ...filters, ...patch });
@@ -217,6 +220,12 @@ export function BankMovementsFiltersBar({
       {showPeriodHint ? (
         <p className={copilotCaptionClass}>
           Mostrando movimientos del mes actual. Cambiá el filtro para ver meses anteriores.
+        </p>
+      ) : null}
+
+      {showWithSuggestionHint ? (
+        <p className={copilotCaptionClass}>
+          Con sugerencia muestra los movimientos que Copilot pudo relacionar con pagos de Tesorería.
         </p>
       ) : null}
     </div>

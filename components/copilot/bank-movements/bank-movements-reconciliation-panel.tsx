@@ -19,6 +19,7 @@ import {
   type ReconciliationListItem,
   type ReconciliationViewFilters,
 } from "@/lib/bank-movements/bank-movements-filters";
+import { resolveImportedBankMovementAmount } from "@/lib/bank-movements/santander-excel-amount";
 import {
   BANK_MOVEMENT_DIRECTION_LABELS,
   BANK_MOVEMENT_STATUS_LABELS,
@@ -185,6 +186,7 @@ export function BankMovementsReconciliationPanel({
         totalCount={items.length}
         countLabel={countLabel}
         showPeriodHint={filters.period === "current"}
+        showWithSuggestionHint={filters.suggestion === "with_suggestion"}
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
@@ -266,7 +268,7 @@ function ReconciliationMovementCard({
             <span>Estado: {BANK_MOVEMENT_STATUS_LABELS[movement.status]}</span>
             <span>
               {BANK_MOVEMENT_DIRECTION_LABELS[movement.direction]}:{" "}
-              {formatMoney(movement.currency, movement.amount)}
+              {formatMoney(movement.currency, resolveImportedBankMovementAmount(movement))}
             </span>
           </div>
         </div>

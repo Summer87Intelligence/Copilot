@@ -24,6 +24,7 @@ import {
   filterBankMovements,
   type BankMovementsListFilters,
 } from "@/lib/bank-movements/bank-movements-filters";
+import { resolveImportedBankMovementAmount } from "@/lib/bank-movements/santander-excel-amount";
 import {
   BANK_MOVEMENT_DIRECTION_LABELS,
   BANK_MOVEMENT_STATUS_LABELS,
@@ -368,10 +369,14 @@ export function BankMovementsPageClient() {
                       </td>
                       <td className="hidden py-2 pr-3 sm:table-cell">{m.account_label ?? m.bank_name}</td>
                       <td className="py-2 pr-3 text-right whitespace-nowrap">
-                        {m.direction === "inflow" ? `${m.currency} ${numberFormatter.format(m.amount)}` : "—"}
+                        {m.direction === "inflow"
+                          ? `${m.currency} ${numberFormatter.format(resolveImportedBankMovementAmount(m))}`
+                          : "—"}
                       </td>
                       <td className="py-2 pr-3 text-right whitespace-nowrap">
-                        {m.direction === "outflow" ? `${m.currency} ${numberFormatter.format(m.amount)}` : "—"}
+                        {m.direction === "outflow"
+                          ? `${m.currency} ${numberFormatter.format(resolveImportedBankMovementAmount(m))}`
+                          : "—"}
                       </td>
                       <td className="py-2 pr-3 whitespace-nowrap">{BANK_MOVEMENT_STATUS_LABELS[m.status]}</td>
                       <td className="py-2">

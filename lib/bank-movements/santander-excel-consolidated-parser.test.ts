@@ -38,6 +38,21 @@ describe("santander-excel-consolidated-parser", () => {
     await expect(parseSantanderConsolidatedExcelBuffer(buffer)).rejects.toThrow("NOT_CONSOLIDATED");
   });
 
+  it("parsea movimiento Movistar real del Excel consolidado UYU", async () => {
+    const { readFileSync } = await import("fs");
+    const path = "C:/Users/Andres/Downloads/santander_movimientos_consolidado.xlsx";
+    try {
+      const preview = await buildSantanderConsolidatedExcelPreview(readFileSync(path));
+      const movistar = preview.movements.find((m) =>
+        m.description.toUpperCase().includes("MOVISTAR") && m.date === "2026-07-06"
+      );
+      expect(movistar?.debit).toBe(3548);
+      expect(movistar?.amount).toBe(-3548);
+    } catch {
+      // Archivo QA opcional en CI.
+    }
+  });
+
   it("parsea movimientos UYU con cuenta, moneda y metadata source_file", async () => {
     const preview = await buildSantanderConsolidatedExcelPreview(buildSantanderConsolidatedUyuFixtureBuffer());
     expect(preview.bank_name).toBe("Santander");

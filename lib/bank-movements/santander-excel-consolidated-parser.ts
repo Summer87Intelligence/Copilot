@@ -9,7 +9,10 @@ import type {
   SantanderParsedBankMovement,
 } from "@/lib/bank-movements/santander-pdf-parser";
 import { computeSantanderMovementTotals } from "@/lib/bank-movements/santander-bank-statement-totals";
-import { parseUruguayMoney } from "@/lib/treasury/santander-pdf-statement-parser";
+import {
+  normalizeSantanderExcelAmount,
+  normalizeSantanderExcelSignedAmount,
+} from "@/lib/bank-movements/santander-excel-amount";
 
 export const SANTANDER_CONSOLIDATED_SHEET_NAME = "Movimientos consolidados";
 
@@ -62,17 +65,12 @@ function readCell(row: (string | number | null)[], columnIndex: number | undefin
   return row[columnIndex] ?? "";
 }
 
-function parseMoney(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) return Math.abs(value);
-  if (typeof value !== "string") return null;
-  const parsed = parseUruguayMoney(value);
-  return parsed == null ? null : Math.abs(parsed);
+function parseMoney(value: unknown, currency: "UYU" | "USD"): number | null {
+  return normalizeSantanderExcelAmount(value, currency);
 }
 
-function parseSignedMoney(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value !== "string") return null;
-  return parseUruguayMoney(value);
+function parseSignedMoney(value: unknown, currency: "UYU" | "USD"): number | null {
+  return normalizeSantanderExcelSignedAmount(value, currency);
 }
 
 function parseDate(value: unknown): string | null {
@@ -131,7 +129,8 @@ export function isSantanderConsolidatedRows(rows: (string | number | null)[][]):
 
 function buildMovementFromRow(
   row: (string | number | null)[],
-  headerIndex: Record<string, number>
+  headerIndex: Record<string, number>,
+  currency: "UYU" | "USD"
 ): SantanderParsedBankMovement | null {
   const movementDate = parseDate(readCell(row, headerIndex.fecha));
   const tipoConcepto = String(readCell(row, headerIndex.tipoConcepto)).trim();
@@ -139,10 +138,10 @@ function buildMovementFromRow(
   const description = tipoConcepto || descripcion;
   if (!movementDate || !description) return null;
 
-  const debit = parseMoney(readCell(row, headerIndex.debito));
-  const credit = parseMoney(readCell(row, headerIndex.credito));
-  const netAmount = parseSignedMoney(readCell(row, headerIndex.importeNeto));
-  const balance = parseSignedMoney(readCell(row, headerIndex.saldo));
+  const debit = parseMoney(readCell(row, headerIndex.debito), currency);
+  const credit = parseMoney(readCell(row, headerIndex.credito), currency);
+  const netAmount = parseSignedMoney(readCell(row, headerIndex.importeNeto), currency);
+  const balance = parseSignedMoney(readCell(row, headerIndex.saldo), currency);
 
   let direction: SantanderBankMovementDirection;
   let amount: number;
@@ -205,7 +204,7 @@ export function parseSantanderConsolidatedExcelRows(
     if (rowAccount) account_number = rowAccount;
     if (rowCurrency) currency_code = rowCurrency;
 
-    const movement = buildMovementFromRow(cells, headerIndex);
+    const movement = buildMovementFromRow(cells, headerIndex, rowCurrency ?? currency_code ?? "UYU");
     if (movement) movements.push(movement);
   }
 
