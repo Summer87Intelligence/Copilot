@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Landmark, Pencil, Plus, Trash2, X } from "lucide-react";
 
 import { BankMovementsImportPanel } from "@/components/copilot/bank-movements/bank-movements-import-panel";
+import { BankMovementsReconciliationPanel } from "@/components/copilot/bank-movements/bank-movements-reconciliation-panel";
 
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
@@ -399,22 +400,10 @@ export function BankMovementsPageClient() {
       ) : null}
 
       {tab === "conciliacion" ? (
-        <div className="grid gap-3 lg:grid-cols-2">
-          {[
-            "Ingresos banco sin identificar",
-            "Egresos banco sin identificar",
-            "Cobros Zeta no vistos en banco",
-            "Pagos Copilot no vistos en banco",
-          ].map((groupTitle) => (
-            <section key={groupTitle} className={copilotCardStandardClass}>
-              <h2 className={copilotSectionTitleClass}>{groupTitle}</h2>
-              <p className={`${copilotCaptionClass} mt-2`}>
-                La conciliación automática con sugerencias llega en una próxima etapa. Por ahora
-                marcá cada movimiento manualmente desde la pestaña Movimientos.
-              </p>
-            </section>
-          ))}
-        </div>
+        <BankMovementsReconciliationPanel
+          onMovementUpdated={load}
+          onViewMovement={() => setTab("movimientos")}
+        />
       ) : null}
 
       {tab === "historial" ? (

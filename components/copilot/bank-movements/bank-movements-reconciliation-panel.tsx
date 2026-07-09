@@ -1,0 +1,394 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Check, Eye, Loader2, XCircle } from "lucide-react";
+
+import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
+import {
+  copilotCaptionClass,
+  copilotCardStandardClass,
+  copilotSectionTitleClass,
+} from "@/components/copilot/ui/copilot-visual-system";
+import type { ReconciliationConfidence } from "@/lib/bank-movements/bank-movement-reconciliation";
+import {
+  BANK_MOVEMENT_DIRECTION_LABELS,
+  BANK_MOVEMENT_STATUS_LABELS,
+  type BankMovement,
+} from "@/lib/bank-movements/bank-movements-types";
+
+type ReconciliationSuggestion = {
+  target_type: "planned_cash_obligation";
+  target_id: string;
+  confidence: ReconciliationConfidence;
+  score: number;
+  reasons: string[];
+  target: {
+    id: string;
+    title: string;
+    description: string | null;
+    amount_estimated: number;
+    currency_code: string;
+    due_date: string;
+    status: string;
+    notes: string | null;
+  };
+};
+
+type ReconciliationItem = {
+  movement: BankMovement;
+  suggestions: ReconciliationSuggestion[];
+};
+
+type ReconciliationMeta = {
+  pending_count: number;
+  with_high_confidence: number;
+  with_medium_confidence: number;
+  without_suggestions: number;
+  matched_count: number;
+  ignored_count: number;
+};
+
+type FilterConfidence = "all" | "high" | "medium" | "none";
+type FilterStatus = "pending" | "matched" | "ignored";
+
+const dateFormatter = new Intl.DateTimeFormat("es-UY", { dateStyle: "medium" });
+const numberFormatter = new Intl.NumberFormat("es-UY", { minimumFractionDigits: 2 });
+
+const CONFIDENCE_LABELS: Record<ReconciliationConfidence, string> = {
+  high: "Coincidencia alta",
+  medium: "Coincidencia media",
+  low: "Coincidencia baja",
+};
+
+const CONFIDENCE_STYLES: Record<ReconciliationConfidence, string> = {
+  high: "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]",
+  medium: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",
+  low: "border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] text-[var(--copilot-text)]",
+};
+
+function formatDate(value: string): string {
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? value : dateFormatter.format(date);
+}
+
+function formatMoney(currency: string, amount: number): string {
+  return `${currency} ${numberFormatter.format(amount)}`;
+}
+
+type BankMovementsReconciliationPanelProps = {
+  onMovementUpdated?: () => void | Promise<void>;
+  onViewMovement?: (movementId: string) => void;
+};
+
+export function BankMovementsReconciliationPanel({
+  onMovementUpdated,
+  onViewMovement,
+}: BankMovementsReconciliationPanelProps) {
+  const [items, setItems] = useState<ReconciliationItem[]>([]);
+  const [meta, setMeta] = useState<ReconciliationMeta | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [actingId, setActingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [confidenceFilter, setConfidenceFilter] = useState<FilterConfidence>("all");
+  const [statusFilter, setStatusFilter] = useState<FilterStatus>("pending");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({
+        status: statusFilter,
+        confidence: confidenceFilter,
+      });
+      const res = await fetch(`/api/copilot/bank-movements/reconciliation?${params.toString()}`);
+      const json = (await res.json()) as {
+        ok: boolean;
+        data?: { items: ReconciliationItem[]; meta: ReconciliationMeta };
+        error?: string;
+      };
+      if (!res.ok || !json.ok || !json.data) {
+        setError(json.error ?? "No se pudo cargar la conciliación.");
+        return;
+      }
+      setItems(json.data.items);
+      setMeta(json.data.meta);
+    } catch {
+      setError("No se pudo cargar la conciliación.");
+    } finally {
+      setLoading(false);
+    }
+  }, [confidenceFilter, statusFilter]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const summaryCards = useMemo(
+    () => [
+      { label: "Pendientes", value: meta?.pending_count ?? 0 },
+      { label: "Coincidencias altas", value: meta?.with_high_confidence ?? 0 },
+      { label: "Coincidencias medias", value: meta?.with_medium_confidence ?? 0 },
+      { label: "Sin sugerencia", value: meta?.without_suggestions ?? 0 },
+      { label: "Conciliados", value: meta?.matched_count ?? 0 },
+      { label: "Ignorados", value: meta?.ignored_count ?? 0 },
+    ],
+    [meta]
+  );
+
+  const reconcile = async (item: ReconciliationItem, suggestion: ReconciliationSuggestion) => {
+    setActingId(item.movement.id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/copilot/bank-movements/${item.movement.id}/reconcile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          target_type: suggestion.target_type,
+          target_id: suggestion.target_id,
+          confidence: suggestion.confidence,
+          score: suggestion.score,
+        }),
+      });
+      const json = (await res.json()) as { ok: boolean; error?: string };
+      if (!res.ok || !json.ok) {
+        setError(json.error ?? "No se pudo conciliar el movimiento.");
+        return;
+      }
+      await onMovementUpdated?.();
+      await load();
+    } catch {
+      setError("No se pudo conciliar el movimiento.");
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const ignore = async (movementId: string) => {
+    setActingId(movementId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/copilot/bank-movements/${movementId}/ignore`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const json = (await res.json()) as { ok: boolean; error?: string };
+      if (!res.ok || !json.ok) {
+        setError(json.error ?? "No se pudo ignorar el movimiento.");
+        return;
+      }
+      await onMovementUpdated?.();
+      await load();
+    } catch {
+      setError("No se pudo ignorar el movimiento.");
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <section className={copilotCardStandardClass}>
+        <h2 className={copilotSectionTitleClass}>Conciliación bancaria</h2>
+        <p className={`${copilotCaptionClass} mt-1`}>
+          Revisá movimientos del banco y vinculalos con pagos de Tesorería. Conciliar vincula el
+          movimiento bancario con un pago de Tesorería. No modifica el pago automáticamente.
+        </p>
+      </section>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        {summaryCards.map((card) => (
+          <div key={card.label} className={copilotCardStandardClass}>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-muted)]">
+              {card.label}
+            </p>
+            <p className="mt-1 text-xl font-semibold text-[var(--copilot-text)]">
+              {loading ? "…" : card.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {(
+          [
+            ["pending", "Pendientes"],
+            ["matched", "Conciliados"],
+            ["ignored", "Ignorados"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setStatusFilter(value)}
+            className={copilotButtonClassName({
+              variant: statusFilter === value ? "primary" : "ghost",
+              size: "sm",
+            })}
+          >
+            {label}
+          </button>
+        ))}
+        {statusFilter === "pending"
+          ? (
+              [
+                ["all", "Todos"],
+                ["high", "Alta confianza"],
+                ["medium", "Media"],
+                ["none", "Sin sugerencia"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setConfidenceFilter(value)}
+                className={copilotButtonClassName({
+                  variant: confidenceFilter === value ? "primary" : "ghost",
+                  size: "sm",
+                })}
+              >
+                {label}
+              </button>
+            ))
+          : null}
+      </div>
+
+      {error ? (
+        <p className="rounded-lg border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] px-3 py-2 text-xs text-[var(--copilot-danger-text-strong)]">
+          {error}
+        </p>
+      ) : null}
+
+      {loading ? (
+        <div className="flex items-center gap-2 text-sm text-[var(--copilot-muted)]">
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          Cargando sugerencias…
+        </div>
+      ) : items.length === 0 ? (
+        <section className={copilotCardStandardClass}>
+          <p className={copilotCaptionClass}>No hay movimientos para mostrar con estos filtros.</p>
+        </section>
+      ) : (
+        <div className="space-y-3">
+          {items.map((item) => (
+            <ReconciliationMovementCard
+              key={item.movement.id}
+              item={item}
+              acting={actingId === item.movement.id}
+              onReconcile={(suggestion) => void reconcile(item, suggestion)}
+              onIgnore={() => void ignore(item.movement.id)}
+              onViewMovement={onViewMovement}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReconciliationMovementCard({
+  item,
+  acting,
+  onReconcile,
+  onIgnore,
+  onViewMovement,
+}: {
+  item: ReconciliationItem;
+  acting: boolean;
+  onReconcile: (suggestion: ReconciliationSuggestion) => void;
+  onIgnore: () => void;
+  onViewMovement?: (movementId: string) => void;
+}) {
+  const { movement } = item;
+  const best = item.suggestions[0] ?? null;
+
+  return (
+    <article className="overflow-hidden rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card)]">
+      <div className="grid gap-4 p-4 lg:grid-cols-2">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-muted)]">
+            Banco
+          </p>
+          <p className="mt-1 text-sm font-medium text-[var(--copilot-text)]">{movement.description}</p>
+          <div className="mt-2 grid gap-1 text-xs text-[var(--copilot-muted)] sm:grid-cols-2">
+            <span>Fecha: {formatDate(movement.movement_date)}</span>
+            <span>Cuenta: {movement.account_label ?? movement.bank_name}</span>
+            <span>Referencia: {movement.bank_reference ?? "—"}</span>
+            <span>Estado: {BANK_MOVEMENT_STATUS_LABELS[movement.status]}</span>
+            <span>
+              {BANK_MOVEMENT_DIRECTION_LABELS[movement.direction]}:{" "}
+              {formatMoney(movement.currency, movement.amount)}
+            </span>
+          </div>
+        </div>
+
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-muted)]">
+            Sugerencia Copilot
+          </p>
+          {best ? (
+            <div className="mt-1 space-y-2">
+              <span
+                className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${CONFIDENCE_STYLES[best.confidence]}`}
+              >
+                {CONFIDENCE_LABELS[best.confidence]}
+              </span>
+              <p className="text-sm font-medium text-[var(--copilot-text)]">{best.target.title}</p>
+              <div className="grid gap-1 text-xs text-[var(--copilot-muted)] sm:grid-cols-2">
+                <span>Vencimiento: {formatDate(best.target.due_date)}</span>
+                <span>Monto: {formatMoney(best.target.currency_code, best.target.amount_estimated)}</span>
+                <span>Estado: {best.target.status}</span>
+              </div>
+              {best.reasons.length > 0 ? (
+                <ul className="space-y-0.5 text-xs text-[var(--copilot-text)]">
+                  {best.reasons.map((reason) => (
+                    <li key={reason}>• {reason}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : (
+            <p className={`${copilotCaptionClass} mt-1`}>Sin coincidencia clara</p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--copilot-border)] px-4 py-3">
+        {onViewMovement ? (
+          <button
+            type="button"
+            onClick={() => onViewMovement(movement.id)}
+            className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+          >
+            <Eye className="mr-1 h-3.5 w-3.5" aria-hidden />
+            Ver movimiento
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={onIgnore}
+          disabled={acting || movement.status === "ignored"}
+          className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+        >
+          <XCircle className="mr-1 h-3.5 w-3.5" aria-hidden />
+          Ignorar
+        </button>
+        {best && movement.status !== "matched" ? (
+          <button
+            type="button"
+            onClick={() => onReconcile(best)}
+            disabled={acting}
+            className={copilotButtonClassName({ variant: "primary", size: "sm" })}
+          >
+            {acting ? (
+              <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              <Check className="mr-1 h-3.5 w-3.5" aria-hidden />
+            )}
+            Conciliar
+          </button>
+        ) : null}
+      </div>
+    </article>
+  );
+}

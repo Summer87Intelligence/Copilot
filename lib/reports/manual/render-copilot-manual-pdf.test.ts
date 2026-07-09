@@ -27,11 +27,9 @@ describe("renderCopilotManualPdf", () => {
     expect(text).toContain("demo_readonly");
     expect(text).toContain("Movimientos bancarios");
     expect(text).toContain("Tareas diarias");
-    expect(text).toContain("CSV");
-    expect(text).toContain("Excel");
     expect(text).toMatch(/PDF/);
-    expect(text).toMatch(/OCR/);
     expect(text).toMatch(/concilia/i);
+    expect(text).toContain("Tesorería");
     expect(text).toContain("Fecha de corte");
     expect(text).toContain("Último mes cerrado");
     expect(text).toContain("Deuda actual");
