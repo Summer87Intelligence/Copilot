@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
 import {
   loadEffectiveModulePermissionsForAppUser,
   requireCopilotModuleAccess,
+  requireCopilotModuleWriteAccess,
 } from "@/lib/auth/copilot-module-api-auth";
 import { canReadModule, isValidModuleKey } from "@/lib/auth/module-permissions";
+import {
+  buildDailyTaskInsert,
+  dailyTaskCreateBodySchema,
+} from "@/lib/daily-tasks/daily-tasks-api";
 import {
   isValidDailyTaskPriority,
   isValidDailyTaskStatus,
@@ -73,4 +79,34 @@ export async function GET(request: NextRequest) {
     data: rows,
     meta: { total: rows.length, migration_pending: false },
   });
+}
+
+export async function POST(request: NextRequest) {
+  const parsed = await parseAndValidateJsonBody(request, dailyTaskCreateBodySchema);
+  if (!parsed.ok) return parsed.response;
+
+  const auth = await requireCopilotModuleWriteAccess(
+    request,
+    "daily_tasks",
+    parsed.data as Record<string, unknown>
+  );
+  if (!auth.ok) return auth.response;
+
+  const { supabase, tenantCompanyId } = auth.ctx;
+  const insert = buildDailyTaskInsert(parsed.data, tenantCompanyId);
+
+  const { data, error } = await supabase
+    .from("daily_tasks")
+    .insert(insert)
+    .select("*")
+    .single();
+
+  if (error) {
+    return NextResponse.json(
+      { ok: false as const, error: "No se pudo crear la tarea." },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({ ok: true as const, data: data as DailyTask }, { status: 201 });
 }

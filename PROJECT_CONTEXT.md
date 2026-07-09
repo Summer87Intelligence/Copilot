@@ -1,5 +1,15 @@
 # Project Context
 
+## COPILOT-BANK-MOVEMENTS-AND-DAILY-TASKS-SPRINT-B-001 — 2026-07-09 (CRUD MANUAL USABLE)
+
+**Primera versión usable manual sobre las tablas ya migradas (sin push):**
+- **APIs de escritura**: `POST /api/copilot/bank-movements`, `PATCH/DELETE /api/copilot/bank-movements/[id]` (+ GET single); `POST /api/copilot/daily-tasks`, `PATCH/DELETE /api/copilot/daily-tasks/[id]`. Todas con `requireCopilotModuleWriteAccess`, validación Zod (`parseAndValidateJsonBody`), workspace-scoped (`.eq("workspace_id", tenantCompanyId)`), y `workspace_id` impuesto por servidor (schema con `rejectWorkspaceId`).
+- **Contratos**: `lib/bank-movements/bank-movements-api.ts` y `lib/daily-tasks/daily-tasks-api.ts` — schemas Zod + builders puros `buildBankMovementInsert/Patch`, `buildDailyTaskInsert/Patch`. Conciliar (status='matched') sella `matched_at/matched_by`; completar tarea (status='done') sella `completed_at/completed_by`; reabrir los limpia.
+- **UI Banco** (`bank-movements-page-client.tsx`): tab Movimientos operativo — cards (Pendientes/Entradas del mes/Salidas del mes/Revisados), tabla con Agregar/Editar/Conciliar/Ignorar/Reabrir/Eliminar, form inline, empty state. Importar y Conciliación siguen como placeholders (parser/matching fuera de scope).
+- **UI Tareas** (`daily-tasks-page-client.tsx`): filtros Pendientes/Vencidas/Completadas/Todas, checklist con completar/reabrir, Nueva tarea, editar, eliminar, empty state.
+- **Fuera de scope Sprint B**: upload de extracto, parser PDF/CSV/XLSX, matching automático, cron, generación automática de tareas. Suggestions GET queda read-only.
+- **Checks**: tsc 0, suite 3853 passed (2 "failed" = timeouts de render PDF por contención con build concurrente, verdes en aislamiento), build OK, manual encoding OK. QA smoke DB net-zero (insert+rollback validó constraints/trigger, 0 filas persistidas). RLS sin cambios.
+
 ## COPILOT-BANK-MOVEMENTS-AND-DAILY-TASKS-SPRINT-A-001 — 2026-07-09 (SCAFFOLD ENTREGADO)
 
 **Base estructural de dos módulos nuevos — sin parser, sin matching automático, sin cron:**

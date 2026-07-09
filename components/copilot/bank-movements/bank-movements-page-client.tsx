@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FileUp, Landmark } from "lucide-react";
+import { FileUp, Landmark, Pencil, Plus, Trash2, X } from "lucide-react";
 
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
@@ -10,6 +10,7 @@ import {
   COPILOT_PAGE_GAP,
   copilotCaptionClass,
   copilotCardStandardClass,
+  copilotInputClass,
   copilotMetricLabelClass,
   copilotMetricValueClass,
   copilotSectionTitleClass,
@@ -18,6 +19,8 @@ import {
   BANK_MOVEMENT_DIRECTION_LABELS,
   BANK_MOVEMENT_STATUS_LABELS,
   type BankMovement,
+  type BankMovementDirection,
+  type BankMovementStatus,
   type BankStatementImport,
 } from "@/lib/bank-movements/bank-movements-types";
 
@@ -30,14 +33,11 @@ const TABS: Array<{ id: BankTab; label: string }> = [
   { id: "historial", label: "Historial" },
 ];
 
-type ListResponse<T> = {
-  ok: boolean;
-  data?: T[];
-  meta?: { total?: number; migration_pending?: boolean };
-  message?: string;
-};
+type ListResponse<T> = { ok: boolean; data?: T[]; message?: string };
+type WriteResponse = { ok: boolean; data?: BankMovement; error?: string };
 
 const dateFormatter = new Intl.DateTimeFormat("es-UY", { dateStyle: "medium" });
+const numberFormatter = new Intl.NumberFormat("es-UY", { minimumFractionDigits: 2 });
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
@@ -45,15 +45,55 @@ function formatDate(value: string | null): string {
   return Number.isNaN(date.getTime()) ? "—" : dateFormatter.format(date);
 }
 
-function formatAmount(amount: number, currency: string): string {
-  return `${currency} ${new Intl.NumberFormat("es-UY", { minimumFractionDigits: 2 }).format(amount)}`;
+function todayYmd(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+type FormState = {
+  id: string | null;
+  movement_date: string;
+  description: string;
+  amount: string;
+  currency: "UYU" | "USD";
+  direction: BankMovementDirection;
+  account_label: string;
+  bank_reference: string;
+};
+
+function emptyForm(): FormState {
+  return {
+    id: null,
+    movement_date: todayYmd(),
+    description: "",
+    amount: "",
+    currency: "UYU",
+    direction: "inflow",
+    account_label: "",
+    bank_reference: "",
+  };
+}
+
+function formFromMovement(m: BankMovement): FormState {
+  return {
+    id: m.id,
+    movement_date: m.movement_date.slice(0, 10),
+    description: m.description,
+    amount: String(m.amount),
+    currency: m.currency === "USD" ? "USD" : "UYU",
+    direction: m.direction,
+    account_label: m.account_label ?? "",
+    bank_reference: m.bank_reference ?? "",
+  };
 }
 
 export function BankMovementsPageClient() {
-  const [tab, setTab] = useState<BankTab>("importar");
+  const [tab, setTab] = useState<BankTab>("movimientos");
   const [movements, setMovements] = useState<BankMovement[]>([]);
   const [imports, setImports] = useState<BankStatementImport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState<FormState | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState<{ tone: "ok" | "error"; message: string } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,29 +117,123 @@ export function BankMovementsPageClient() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (!feedback) return;
+    const timer = setTimeout(() => setFeedback(null), 4000);
+    return () => clearTimeout(timer);
+  }, [feedback]);
+
   const counts = useMemo(() => {
-    const pending = movements.filter(
-      (m) => m.status === "pending" || m.status === "needs_review"
-    ).length;
-    const suggested = movements.filter((m) => m.status === "suggested").length;
-    const matched = movements.filter((m) => m.status === "matched").length;
-    const differences = movements.filter((m) => m.status === "needs_review").length;
-    return { pending, suggested, matched, differences };
+    const monthPrefix = todayYmd().slice(0, 7);
+    return {
+      pending: movements.filter((m) => m.status === "pending" || m.status === "needs_review").length,
+      inflowMonth: movements.filter(
+        (m) => m.direction === "inflow" && m.movement_date.slice(0, 7) === monthPrefix
+      ).length,
+      outflowMonth: movements.filter(
+        (m) => m.direction === "outflow" && m.movement_date.slice(0, 7) === monthPrefix
+      ).length,
+      reviewed: movements.filter((m) => m.status === "matched" || m.status === "ignored").length,
+    };
   }, [movements]);
 
   const summaryCards = [
     { label: "Pendientes de identificar", value: counts.pending },
-    { label: "Coincidencias sugeridas", value: counts.suggested },
-    { label: "Conciliados", value: counts.matched },
-    { label: "Diferencias", value: counts.differences },
+    { label: "Entradas del mes", value: counts.inflowMonth },
+    { label: "Salidas del mes", value: counts.outflowMonth },
+    { label: "Revisados", value: counts.reviewed },
   ];
+
+  const submitForm = useCallback(async () => {
+    if (!form) return;
+    const amountNumber = Number(form.amount);
+    if (!form.description.trim() || !Number.isFinite(amountNumber) || amountNumber <= 0) {
+      setFeedback({ tone: "error", message: "Completá descripción y un monto mayor a 0." });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const payload = {
+        movement_date: form.movement_date,
+        description: form.description.trim(),
+        amount: amountNumber,
+        currency: form.currency,
+        direction: form.direction,
+        account_label: form.account_label.trim() || null,
+        bank_reference: form.bank_reference.trim() || null,
+      };
+      const res = await fetch(
+        form.id ? `/api/copilot/bank-movements/${form.id}` : "/api/copilot/bank-movements",
+        {
+          method: form.id ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+      const json = (await res.json()) as WriteResponse;
+      if (!res.ok || !json.ok) {
+        setFeedback({ tone: "error", message: json.error ?? "No se pudo guardar el movimiento." });
+        return;
+      }
+      setForm(null);
+      setFeedback({ tone: "ok", message: form.id ? "Movimiento actualizado." : "Movimiento creado." });
+      await load();
+    } finally {
+      setSubmitting(false);
+    }
+  }, [form, load]);
+
+  const changeStatus = useCallback(
+    async (movement: BankMovement, status: BankMovementStatus) => {
+      const res = await fetch(`/api/copilot/bank-movements/${movement.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const json = (await res.json()) as WriteResponse;
+      if (!res.ok || !json.ok) {
+        setFeedback({ tone: "error", message: json.error ?? "No se pudo cambiar el estado." });
+        return;
+      }
+      setFeedback({ tone: "ok", message: `Marcado como ${BANK_MOVEMENT_STATUS_LABELS[status]}.` });
+      await load();
+    },
+    [load]
+  );
+
+  const remove = useCallback(
+    async (movement: BankMovement) => {
+      if (!window.confirm("¿Eliminar este movimiento bancario?")) return;
+      const res = await fetch(`/api/copilot/bank-movements/${movement.id}`, { method: "DELETE" });
+      const json = (await res.json()) as WriteResponse;
+      if (!res.ok || !json.ok) {
+        setFeedback({ tone: "error", message: json.error ?? "No se pudo eliminar." });
+        return;
+      }
+      setFeedback({ tone: "ok", message: "Movimiento eliminado." });
+      await load();
+    },
+    [load]
+  );
 
   return (
     <div className={COPILOT_PAGE_GAP}>
       <CopilotPageHeader
         title="Movimientos bancarios"
-        description="Importá extractos Santander y conciliá ingresos, egresos y cobros Zeta."
+        description="Movimientos bancarios para revisar y conciliar manualmente."
       />
+
+      {feedback ? (
+        <div
+          className={`rounded-xl border px-3 py-2 text-xs ${
+            feedback.tone === "ok"
+              ? "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]"
+              : "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]"
+          }`}
+        >
+          {feedback.message}
+        </div>
+      ) : null}
 
       <div className={`grid grid-cols-2 lg:grid-cols-4 ${COPILOT_GRID_GAP}`}>
         {summaryCards.map((card) => (
@@ -133,53 +267,65 @@ export function BankMovementsPageClient() {
       {tab === "importar" ? (
         <section className={copilotCardStandardClass}>
           <h2 className={copilotSectionTitleClass}>Importar extracto</h2>
-          <p className={`${copilotCaptionClass} mt-1`}>
-            Subí un PDF, CSV o Excel de Santander. En V1 el PDF debe tener texto extraíble; no
-            usamos OCR.
-          </p>
           <div className="mt-4 flex flex-col items-center gap-3 rounded-xl border border-dashed border-[var(--copilot-border)] px-6 py-10 text-center">
             <FileUp className="h-8 w-8 text-[var(--copilot-muted)]" aria-hidden />
-            <p className="text-sm font-medium text-[var(--copilot-text)]">
-              Banco: Santander (por defecto)
-            </p>
+            <p className="text-sm font-medium text-[var(--copilot-text)]">Banco: Santander</p>
             <p className={copilotCaptionClass}>
-              Todavía no importaste movimientos. Subí un extracto para empezar a conciliar.
+              La importación automática de extractos (PDF/CSV/Excel) queda para una próxima etapa.
+              Por ahora podés cargar movimientos manualmente desde la pestaña Movimientos.
             </p>
             <button
               type="button"
-              disabled
+              onClick={() => {
+                setTab("movimientos");
+                setForm(emptyForm());
+              }}
               className={copilotButtonClassName({ variant: "primary", size: "sm" })}
-              title="Disponible en la siguiente fase"
             >
-              Subir archivo (próximamente)
+              Cargar movimiento manual
             </button>
-            <p className={copilotCaptionClass}>
-              Importar movimientos no modifica la caja: primero se sugieren coincidencias y vos
-              confirmás.
-            </p>
           </div>
         </section>
       ) : null}
 
       {tab === "movimientos" ? (
         <section className={copilotCardStandardClass}>
-          <h2 className={copilotSectionTitleClass}>Movimientos del banco</h2>
-          <div className="mt-3 flex flex-wrap gap-2" aria-label="Filtros">
-            {["Todos", "Ingresos", "Egresos", "UYU", "USD"].map((filterLabel) => (
-              <span
-                key={filterLabel}
-                className="rounded-full border border-[var(--copilot-border)] px-3 py-1 text-xs text-[var(--copilot-muted)]"
-              >
-                {filterLabel}
-              </span>
-            ))}
+          <div className="flex items-center justify-between gap-3">
+            <h2 className={copilotSectionTitleClass}>Movimientos del banco</h2>
+            <button
+              type="button"
+              onClick={() => setForm(form ? null : emptyForm())}
+              className={copilotButtonClassName({ variant: "primary", size: "sm" })}
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
+              Agregar movimiento
+            </button>
           </div>
+
+          {form ? (
+            <MovementForm
+              form={form}
+              submitting={submitting}
+              onChange={setForm}
+              onCancel={() => setForm(null)}
+              onSubmit={submitForm}
+            />
+          ) : null}
+
           {movements.length === 0 ? (
-            <p className={`${copilotCaptionClass} mt-4`}>
-              {loading
-                ? "Cargando movimientos…"
-                : "Todavía no importaste movimientos. Subí un extracto para empezar a conciliar."}
-            </p>
+            <div className="mt-4">
+              <p className={copilotCaptionClass}>
+                {loading
+                  ? "Cargando movimientos…"
+                  : "Todavía no hay movimientos bancarios cargados."}
+              </p>
+              {!loading ? (
+                <p className={`${copilotCaptionClass} mt-1`}>
+                  En esta primera versión podés cargarlos manualmente. La importación automática
+                  queda para una próxima etapa.
+                </p>
+              ) : null}
+            </div>
           ) : (
             <div className="mt-4 overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -187,25 +333,77 @@ export function BankMovementsPageClient() {
                   <tr className="text-xs uppercase tracking-wide text-[var(--copilot-muted)]">
                     <th className="py-2 pr-3">Fecha</th>
                     <th className="py-2 pr-3">Descripción</th>
-                    <th className="py-2 pr-3">Tipo</th>
-                    <th className="py-2 pr-3">Importe</th>
-                    <th className="py-2">Estado</th>
+                    <th className="hidden py-2 pr-3 sm:table-cell">Fuente</th>
+                    <th className="py-2 pr-3 text-right">Entrada</th>
+                    <th className="py-2 pr-3 text-right">Salida</th>
+                    <th className="py-2 pr-3">Estado</th>
+                    <th className="py-2 text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {movements.map((movement) => (
-                    <tr key={movement.id} className="border-t border-[var(--copilot-border)]">
-                      <td className="py-2 pr-3 whitespace-nowrap">
-                        {formatDate(movement.movement_date)}
-                      </td>
-                      <td className="py-2 pr-3">{movement.description}</td>
+                  {movements.map((m) => (
+                    <tr key={m.id} className="border-t border-[var(--copilot-border)] align-top">
+                      <td className="py-2 pr-3 whitespace-nowrap">{formatDate(m.movement_date)}</td>
                       <td className="py-2 pr-3">
-                        {BANK_MOVEMENT_DIRECTION_LABELS[movement.direction]}
+                        {m.description}
+                        {m.bank_reference ? (
+                          <span className={`block ${copilotCaptionClass}`}>Ref: {m.bank_reference}</span>
+                        ) : null}
                       </td>
-                      <td className="py-2 pr-3 whitespace-nowrap">
-                        {formatAmount(movement.amount, movement.currency)}
+                      <td className="hidden py-2 pr-3 sm:table-cell">{m.account_label ?? m.bank_name}</td>
+                      <td className="py-2 pr-3 text-right whitespace-nowrap">
+                        {m.direction === "inflow" ? `${m.currency} ${numberFormatter.format(m.amount)}` : "—"}
                       </td>
-                      <td className="py-2">{BANK_MOVEMENT_STATUS_LABELS[movement.status]}</td>
+                      <td className="py-2 pr-3 text-right whitespace-nowrap">
+                        {m.direction === "outflow" ? `${m.currency} ${numberFormatter.format(m.amount)}` : "—"}
+                      </td>
+                      <td className="py-2 pr-3 whitespace-nowrap">{BANK_MOVEMENT_STATUS_LABELS[m.status]}</td>
+                      <td className="py-2">
+                        <div className="flex flex-wrap justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setForm(formFromMovement(m))}
+                            className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+                            aria-label="Editar"
+                          >
+                            <Pencil className="h-3.5 w-3.5" aria-hidden />
+                          </button>
+                          {m.status !== "matched" ? (
+                            <button
+                              type="button"
+                              onClick={() => void changeStatus(m, "matched")}
+                              className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+                            >
+                              Conciliar
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => void changeStatus(m, "pending")}
+                              className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+                            >
+                              Reabrir
+                            </button>
+                          )}
+                          {m.status !== "ignored" ? (
+                            <button
+                              type="button"
+                              onClick={() => void changeStatus(m, "ignored")}
+                              className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+                            >
+                              Ignorar
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => void remove(m)}
+                            className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+                            aria-label="Eliminar"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -216,7 +414,7 @@ export function BankMovementsPageClient() {
       ) : null}
 
       {tab === "conciliacion" ? (
-        <div className={`grid gap-3 lg:grid-cols-2`}>
+        <div className="grid gap-3 lg:grid-cols-2">
           {[
             "Ingresos banco sin identificar",
             "Egresos banco sin identificar",
@@ -226,8 +424,8 @@ export function BankMovementsPageClient() {
             <section key={groupTitle} className={copilotCardStandardClass}>
               <h2 className={copilotSectionTitleClass}>{groupTitle}</h2>
               <p className={`${copilotCaptionClass} mt-2`}>
-                Sin elementos por ahora. Los grupos se completan al importar extractos y generar
-                sugerencias de conciliación.
+                La conciliación automática con sugerencias llega en una próxima etapa. Por ahora
+                marcá cada movimiento manualmente desde la pestaña Movimientos.
               </p>
             </section>
           ))}
@@ -236,12 +434,12 @@ export function BankMovementsPageClient() {
 
       {tab === "historial" ? (
         <section className={copilotCardStandardClass}>
-          <h2 className={copilotSectionTitleClass}>Conciliaciones realizadas</h2>
+          <h2 className={copilotSectionTitleClass}>Importaciones realizadas</h2>
           {imports.length === 0 ? (
             <p className={`${copilotCaptionClass} mt-2`}>
               {loading
                 ? "Cargando historial…"
-                : "Todavía no hay conciliaciones realizadas. Acá vas a ver cada extracto importado y qué se concilió."}
+                : "Todavía no hay importaciones. Acá vas a ver cada extracto importado cuando la importación automática esté disponible."}
             </p>
           ) : (
             <ul className="mt-3 space-y-2">
@@ -266,5 +464,129 @@ export function BankMovementsPageClient() {
         </section>
       ) : null}
     </div>
+  );
+}
+
+function MovementForm({
+  form,
+  submitting,
+  onChange,
+  onCancel,
+  onSubmit,
+}: {
+  form: FormState;
+  submitting: boolean;
+  onChange: (f: FormState) => void;
+  onCancel: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <form
+      className="mt-4 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit();
+      }}
+    >
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-[var(--copilot-text)]">
+          {form.id ? "Editar movimiento" : "Nuevo movimiento"}
+        </h3>
+        <button type="button" onClick={onCancel} aria-label="Cerrar" className="text-[var(--copilot-muted)]">
+          <X className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs">
+          <span className="text-[var(--copilot-muted)]">Fecha</span>
+          <input
+            type="date"
+            value={form.movement_date}
+            onChange={(e) => onChange({ ...form, movement_date: e.target.value })}
+            className={copilotInputClass}
+            required
+          />
+        </label>
+        <label className="block text-xs">
+          <span className="text-[var(--copilot-muted)]">Tipo</span>
+          <select
+            value={form.direction}
+            onChange={(e) => onChange({ ...form, direction: e.target.value as BankMovementDirection })}
+            className={copilotInputClass}
+          >
+            <option value="inflow">{BANK_MOVEMENT_DIRECTION_LABELS.inflow}</option>
+            <option value="outflow">{BANK_MOVEMENT_DIRECTION_LABELS.outflow}</option>
+          </select>
+        </label>
+        <label className="block text-xs sm:col-span-2">
+          <span className="text-[var(--copilot-muted)]">Descripción</span>
+          <input
+            type="text"
+            value={form.description}
+            onChange={(e) => onChange({ ...form, description: e.target.value })}
+            className={copilotInputClass}
+            maxLength={500}
+            required
+          />
+        </label>
+        <label className="block text-xs">
+          <span className="text-[var(--copilot-muted)]">Monto</span>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={form.amount}
+            onChange={(e) => onChange({ ...form, amount: e.target.value })}
+            className={copilotInputClass}
+            required
+          />
+        </label>
+        <label className="block text-xs">
+          <span className="text-[var(--copilot-muted)]">Moneda</span>
+          <select
+            value={form.currency}
+            onChange={(e) => onChange({ ...form, currency: e.target.value as "UYU" | "USD" })}
+            className={copilotInputClass}
+          >
+            <option value="UYU">UYU</option>
+            <option value="USD">USD</option>
+          </select>
+        </label>
+        <label className="block text-xs">
+          <span className="text-[var(--copilot-muted)]">Cuenta / fuente</span>
+          <input
+            type="text"
+            value={form.account_label}
+            onChange={(e) => onChange({ ...form, account_label: e.target.value })}
+            className={copilotInputClass}
+          />
+        </label>
+        <label className="block text-xs">
+          <span className="text-[var(--copilot-muted)]">Referencia banco</span>
+          <input
+            type="text"
+            value={form.bank_reference}
+            onChange={(e) => onChange({ ...form, bank_reference: e.target.value })}
+            className={copilotInputClass}
+          />
+        </label>
+      </div>
+      <div className="mt-4 flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          disabled={submitting}
+          className={copilotButtonClassName({ variant: "primary", size: "sm" })}
+        >
+          {submitting ? "Guardando…" : form.id ? "Guardar cambios" : "Crear movimiento"}
+        </button>
+      </div>
+    </form>
   );
 }

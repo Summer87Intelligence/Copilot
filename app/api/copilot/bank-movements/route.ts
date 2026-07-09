@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
+import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
+import {
+  requireCopilotModuleAccess,
+  requireCopilotModuleWriteAccess,
+} from "@/lib/auth/copilot-module-api-auth";
+import {
+  bankMovementCreateBodySchema,
+  buildBankMovementInsert,
+} from "@/lib/bank-movements/bank-movements-api";
 import {
   isValidBankMovementDirection,
   isValidBankMovementStatus,
@@ -61,4 +69,34 @@ export async function GET(request: NextRequest) {
     data: rows,
     meta: { total: rows.length, migration_pending: false },
   });
+}
+
+export async function POST(request: NextRequest) {
+  const parsed = await parseAndValidateJsonBody(request, bankMovementCreateBodySchema);
+  if (!parsed.ok) return parsed.response;
+
+  const auth = await requireCopilotModuleWriteAccess(
+    request,
+    "bank_movements",
+    parsed.data as Record<string, unknown>
+  );
+  if (!auth.ok) return auth.response;
+
+  const { supabase, tenantCompanyId } = auth.ctx;
+  const insert = buildBankMovementInsert(parsed.data, tenantCompanyId);
+
+  const { data, error } = await supabase
+    .from("bank_movements")
+    .insert(insert)
+    .select("*")
+    .single();
+
+  if (error) {
+    return NextResponse.json(
+      { ok: false as const, error: "No se pudo crear el movimiento bancario." },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({ ok: true as const, data: data as BankMovement }, { status: 201 });
 }
