@@ -58,7 +58,7 @@ const ESTADO_ACTUAL_METRICS: {
 }[] = [
   { label: "Caja disponible Santander", tooltip: "Dinero disponible actualmente considerando saldos de tesorería.", getValue: (s) => s.availableCash },
   { label: "Deuda actual a cobrar", tooltip: "Facturas pendientes de cobro informadas por Zeta.", getValue: (s) => s.pendingReceivables },
-  { label: "Deuda vencida", tooltip: "Facturas vencidas pendientes de cobro al día de hoy.", getValue: (s) => s.overdueReceivables },
+  { label: "Saldo atrasado", tooltip: "Facturas con atraso pendientes de cobro al día de hoy.", getValue: (s) => s.overdueReceivables },
   { label: "Compromisos del mes", tooltip: "Pagos programados hasta fin del mes actual.", getValue: (s) => s.scheduledPayments30d },
 ];
 

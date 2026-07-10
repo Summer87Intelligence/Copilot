@@ -48,7 +48,7 @@ export function buildAccountStatementMessage(
         `Estimado/a ${clientName},`,
         "",
         `Adjunto encontrará el estado de cuenta correspondiente al período ${period}.`,
-        `Deuda actual: ${debtStr}${hasOverdue ? ` (${overdueStr} vencido)` : ""}.`,
+        `Deuda actual: ${debtStr}${hasOverdue ? ` (${overdueStr} atrasado)` : ""}.`,
         "",
         "Quedo a disposición para cualquier consulta.",
         "Saludos.",
@@ -59,7 +59,7 @@ export function buildAccountStatementMessage(
         "",
         `Espero que todo marche bien. Te compartimos el estado de cuenta del período ${period}.`,
         "",
-        `Saldo total pendiente: ${debtStr}${hasOverdue ? `\nMonto vencido: ${overdueStr}` : ""}`,
+        `Saldo total pendiente: ${debtStr}${hasOverdue ? `\nSaldo atrasado: ${overdueStr}` : ""}`,
         "",
         "Si tenés alguna consulta sobre el detalle, con gusto te ayudamos.",
         "",
@@ -74,7 +74,7 @@ export function buildAccountStatementMessage(
         "",
         `Deuda actual: ${debtStr}`,
         ...(hasOverdue
-          ? [`Monto vencido: ${overdueStr}`, "", "Le solicitamos regularizar el saldo vencido a la brevedad."]
+          ? [`Saldo atrasado: ${overdueStr}`, "", "Le solicitamos regularizar el saldo atrasado a la brevedad."]
           : []),
         "",
         "Ante cualquier consulta, no dude en comunicarse.",
@@ -90,7 +90,7 @@ export function buildAccountStatementMessage(
   if (tone === "brief") {
     body = [
       `Hola ${clientName}, te enviamos el estado de cuenta del período ${period}.`,
-      `Saldo: ${debtStr}${hasOverdue ? ` (${overdueStr} vencido)` : ""}.`,
+      `Saldo: ${debtStr}${hasOverdue ? ` (${overdueStr} atrasado)` : ""}.`,
       "Ante cualquier consulta, avisanos.",
     ].join("\n");
   } else if (tone === "friendly") {
@@ -99,7 +99,7 @@ export function buildAccountStatementMessage(
       `Te compartimos el estado de cuenta del período ${period}.`,
       "",
       `💰 Saldo total: ${debtStr}`,
-      ...(hasOverdue ? [`⚠️ Vencido: ${overdueStr}`] : []),
+      ...(hasOverdue ? [`⚠️ Atrasado: ${overdueStr}`] : []),
       "",
       "Cualquier consulta, estamos disponibles. ¡Gracias!",
     ].join("\n");
@@ -108,7 +108,7 @@ export function buildAccountStatementMessage(
     body = [
       `Estimado/a ${clientName}:`,
       `Le informamos su estado de cuenta al período ${period}.`,
-      `Deuda actual: ${debtStr}${hasOverdue ? ` | Vencido: ${overdueStr}` : ""}.`,
+      `Deuda actual: ${debtStr}${hasOverdue ? ` | Atrasado: ${overdueStr}` : ""}.`,
       "Le solicitamos atender el saldo a la brevedad. Gracias.",
     ].join("\n");
   }

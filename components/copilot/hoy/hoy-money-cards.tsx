@@ -782,8 +782,8 @@ function ReceivablesCard({
   const hasOverdue = card.overdueTotal.some((a) => a.amount > 0);
   const footnoteTone: CockpitMoneyBlock["footnote"]["tone"] = hasOverdue ? "danger" : "ok";
   const footnoteText = hasOverdue
-    ? `${debtorClientsCount ?? 0} cliente${(debtorClientsCount ?? 0) !== 1 ? "s" : ""} con saldo vencido`
-    : "Sin saldos vencidos";
+    ? `${debtorClientsCount ?? 0} cliente${(debtorClientsCount ?? 0) !== 1 ? "s" : ""} con saldo atrasado`
+    : "Sin saldos atrasados";
 
   return (
     <article

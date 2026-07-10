@@ -40,7 +40,7 @@ type DateGroup = {
 
 const PAYMENT_STATUS_LABEL: Record<string, string> = {
   scheduled: "Pendiente",
-  overdue: "Vencido",
+  overdue: "Atrasado",
   paid: "Pagado",
   cancelled: "Cancelado",
 };
@@ -234,7 +234,7 @@ function DateGroupBlock({ group, today }: { group: DateGroup; today: string }) {
           }`}
         >
           {formatCopilotDate(group.date, "compact")}
-          {isToday ? " · Hoy" : isPast ? " · Vencido" : ""}
+          {isToday ? " · Hoy" : isPast ? " · Atrasado" : ""}
         </p>
       </div>
       <div className="divide-y divide-[var(--copilot-border)]/60 rounded-lg border border-[var(--copilot-border)]/70 bg-[var(--copilot-soft-bg)]/30 px-3">

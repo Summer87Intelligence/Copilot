@@ -144,7 +144,7 @@ function UsdConsolidatedPositionBlock({
       </p>
       {overdueCommitted > 0 ? (
         <p className="mt-0.5 text-[10px] text-[var(--copilot-ink-muted)]">
-          Incl. {formatUsdEquivalent(overdueCommitted)} vencidos de meses anteriores.
+          Incl. {formatUsdEquivalent(overdueCommitted)} atrasados de meses anteriores.
         </p>
       ) : null}
     </div>
@@ -199,7 +199,7 @@ function UsdConsolidatedCoverageBlock({
       </p>
       {overdueCommitted > 0 ? (
         <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">
-          Incl. {formatUsdEquivalent(overdueCommitted)} vencidos de meses anteriores.
+          Incl. {formatUsdEquivalent(overdueCommitted)} atrasados de meses anteriores.
         </p>
       ) : null}
     </div>
@@ -362,7 +362,7 @@ export function TreasuryExecutiveForecastPanel({
 
                   {overdue > 0 ? (
                     <p className="mt-2 text-[11px] text-[var(--copilot-ink-muted)]">
-                      Incl. {fmt(overdue, cur)} vencidos de meses anteriores.
+                      Incl. {fmt(overdue, cur)} atrasados de meses anteriores.
                     </p>
                   ) : null}
                   {horizonCount > 0 || nextDue ? (
@@ -514,7 +514,7 @@ export function TreasuryExecutiveForecastPanel({
                   </dl>
                   {overdueCur > 0 ? (
                     <p className="mt-2 text-[11px] text-[var(--copilot-ink-muted)]">
-                      Incl. {fmt(overdueCur, cur)} vencidos de meses anteriores.
+                      Incl. {fmt(overdueCur, cur)} atrasados de meses anteriores.
                     </p>
                   ) : null}
                 </div>

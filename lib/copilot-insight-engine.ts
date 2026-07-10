@@ -438,8 +438,8 @@ export async function generateInsightsFromBatch(
     const currencyLabel = usdOnly ? " en USD" : uyuOnly ? " en UYU" : mixed ? " (UYU + USD)" : "";
     const title =
       od > 0
-        ? `${row.company_name} concentra $${formatMoneyEs(row.debt)} en deuda pendiente${currencyLabel} y presenta ${od} factura${od === 1 ? "" : "s"} vencida${od === 1 ? "" : "s"}.`
-        : `${row.company_name} concentra $${formatMoneyEs(row.debt)} en deuda pendiente${currencyLabel} (facturas emitidas / parciales / vencidas).`;
+        ? `${row.company_name} concentra $${formatMoneyEs(row.debt)} en deuda pendiente${currencyLabel} y presenta ${od} factura${od === 1 ? "" : "s"} con atraso.`
+        : `${row.company_name} concentra $${formatMoneyEs(row.debt)} en deuda pendiente${currencyLabel} (facturas emitidas / parciales / con atraso).`;
 
     const id = `eng-debt-${row.company_id}`;
     const activeThreshold = usdOnly ? DEBT_CRITICAL_THRESHOLD_USD : DEBT_CRITICAL_THRESHOLD;
@@ -481,7 +481,7 @@ export async function generateInsightsFromBatch(
           },
           ...currencyIndicators,
           {
-            label: "Facturas vencidas (empresa)",
+            label: "Facturas con atraso (empresa)",
             value: String(od),
             severity: od > 0 ? "high" : "medium",
           },
@@ -495,7 +495,7 @@ export async function generateInsightsFromBatch(
           .filter((inv) => String(inv.company_id ?? "") === row.company_id)
           .slice(0, 4)
           .map((inv) => ({
-            label: "Factura vencida",
+            label: "Factura con atraso",
             detail: `Nº ${String(inv.invoice_number ?? inv.id ?? "—")} · saldo $ ${formatMoneyEs(toNumber(inv.balance_amount))}`,
             date: String(inv.due_date ?? date),
             severity: "high" as CopilotSeverity,
@@ -514,7 +514,7 @@ export async function generateInsightsFromBatch(
       ? names.get(topCompany[0]) ?? topCompany[0]
       : "Cartera";
     const topCount = topCompany ? topCompany[1] : overdueList.length;
-    const title = `Se detectaron ${overdueList.length} factura${overdueList.length === 1 ? "" : "s"} vencida${overdueList.length === 1 ? "" : "s"} con saldo pendiente; ${topName} concentra ${topCount}.`;
+    const title = `Se detectaron ${overdueList.length} factura${overdueList.length === 1 ? "" : "s"} con atraso y saldo pendiente; ${topName} concentra ${topCount}.`;
 
     const id = "eng-overdue";
     insights.push({
@@ -530,13 +530,13 @@ export async function generateInsightsFromBatch(
         subtitle: "Criterio: due_date anterior a hoy y balance_amount > 0.",
         priority: "Alta",
         executive: title,
-        relevance: "Las facturas vencidas son señal directa de riesgo de cobro y working capital.",
+        relevance: "Las facturas con atraso son señal directa de riesgo de cobro y working capital.",
         impact: "Afecta proyección de caja y puede requerir priorización comercial/cobranzas.",
         pattern: "Agrupación por vencimiento y saldo residual en facturas del dataset consultado.",
-        evolution: `Total vencidas en muestra: ${overdueList.length} (hasta ${ROW_LIMIT} facturas).`,
+        evolution: `Total con atraso en muestra: ${overdueList.length} (hasta ${ROW_LIMIT} facturas).`,
         indicators: [
           {
-            label: "Facturas vencidas",
+            label: "Facturas con atraso",
             value: String(overdueList.length),
             severity: "high",
           },
@@ -547,13 +547,13 @@ export async function generateInsightsFromBatch(
           },
         ],
         signals: overdueList.slice(0, 5).map((inv, i) => ({
-          label: `Vencida ${i + 1}`,
+          label: `Con atraso ${i + 1}`,
           detail: `Cliente ${names.get(String(inv.company_id ?? "")) ?? String(inv.company_id ?? "—")} · ${String(inv.invoice_number ?? inv.id ?? "—")}`,
           date: String(inv.due_date ?? date),
           amount: `$ ${formatMoneyEs(toNumber(inv.balance_amount))}`,
           severity: "high" as CopilotSeverity,
         })),
-        conclusion: "Hay obligaciones vencidas con saldo: requiere seguimiento operativo.",
+        conclusion: "Hay obligaciones con atraso y saldo: requiere seguimiento operativo.",
         classification: "Prioridad alta por combinación de mora y saldo abierto.",
         recommend: "Contactar cuentas afectadas y actualizar estados de cobro en el ERP/proto.",
       }),
@@ -679,11 +679,11 @@ export async function generateInsightsFromBatch(
             "Hay registros en proto_* pero ninguna regla del motor superó el umbral configurado.",
           priority: "Baja",
           executive:
-            "El motor evaluó deuda por empresa, facturas vencidas, dinámica de pagos y concentración de facturación sin disparar alertas.",
+            "El motor evaluó deuda por empresa, facturas con atraso, dinámica de pagos y concentración de facturación sin disparar alertas.",
           relevance:
             "Útil para confirmar que la cartera y cobranzas están dentro de parámetros operativos definidos.",
           impact: "Sin acción automática sugerida desde este lote.",
-          pattern: `Reglas: deuda > $${formatMoneyEs(DEBT_CRITICAL_THRESHOLD)}, vencidas con saldo, caída de pagos 30 vs 30 días, share facturación > ${formatPct(REVENUE_SHARE_DOMINANCE)}.`,
+          pattern: `Reglas: deuda > $${formatMoneyEs(DEBT_CRITICAL_THRESHOLD)}, facturas con atraso y saldo, caída de pagos 30 vs 30 días, share facturación > ${formatPct(REVENUE_SHARE_DOMINANCE)}.`,
           evolution: `Muestra: hasta ${ROW_LIMIT} filas por tabla (facturas, pagos, empresas).`,
           indicators: [
             {

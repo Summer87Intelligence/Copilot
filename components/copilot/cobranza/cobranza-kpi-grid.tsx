@@ -48,8 +48,8 @@ export function CobranzaKpiGrid({
       : "—";
   const rateSub =
     effectivenessKpis.overduePromisesCount > 0
-      ? `${effectivenessKpis.overduePromisesCount} vencida${effectivenessKpis.overduePromisesCount !== 1 ? "s" : ""} sin cobrar`
-      : "sin promesas vencidas";
+      ? `${effectivenessKpis.overduePromisesCount} atrasada${effectivenessKpis.overduePromisesCount !== 1 ? "s" : ""} sin cobrar`
+      : "sin promesas atrasadas";
 
   const cobrosTruncationNote = cobrosDataTruncated
     ? "datos parciales — historial truncado"
