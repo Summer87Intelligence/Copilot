@@ -35,6 +35,9 @@ describe("santander-excel-amount", () => {
     expect(normalizeSantanderExcelAmount("90.91", "USD")).toBe(90.91);
     expect(normalizeSantanderExcelAmount(1300, "USD")).toBe(1300);
     expect(normalizeSantanderExcelAmount("740", "USD")).toBe(740);
+    expect(normalizeSantanderExcelAmount("-$ 126.92", "USD")).toBe(126.92);
+    expect(normalizeSantanderExcelAmount("$ 2,515.83", "USD")).toBe(2515.83);
+    expect(normalizeSantanderExcelAmount("1,300.50", "USD")).toBe(1300.5);
   });
 
   it("resolveImportedBankMovementAmount corrige filas ya importadas", () => {

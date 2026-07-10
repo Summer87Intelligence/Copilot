@@ -39,18 +39,22 @@ describe("santander-excel-consolidated-parser", () => {
   });
 
   it("parsea movimiento Movistar real del Excel consolidado UYU", async () => {
-    const { readFileSync } = await import("fs");
+    const { existsSync, readFileSync } = await import("fs");
     const path = "C:/Users/Andres/Downloads/santander_movimientos_consolidado.xlsx";
-    try {
-      const preview = await buildSantanderConsolidatedExcelPreview(readFileSync(path));
-      const movistar = preview.movements.find((m) =>
-        m.description.toUpperCase().includes("MOVISTAR") && m.date === "2026-07-06"
-      );
-      expect(movistar?.debit).toBe(3548);
-      expect(movistar?.amount).toBe(-3548);
-    } catch {
-      // Archivo QA opcional en CI.
-    }
+    if (!existsSync(path)) return;
+
+    const preview = await buildSantanderConsolidatedExcelPreview(readFileSync(path));
+    const movistar = preview.movements.find((m) =>
+      m.description.toUpperCase().includes("MOVISTAR") && m.date === "2026-07-06"
+    );
+    const bse = preview.movements.find((m) => m.description.toUpperCase().includes("BSE") && m.date === "2026-07-03");
+    const zeta = preview.movements.find(
+      (m) => m.description.toUpperCase().includes("ZETASOFTWARE") && m.debit === 3721
+    );
+    expect(movistar?.debit).toBe(3548);
+    expect(movistar?.amount).toBe(-3548);
+    expect(bse?.debit).toBe(1375);
+    expect(zeta?.debit).toBe(3721);
   });
 
   it("parsea movimientos UYU con cuenta, moneda y metadata source_file", async () => {
@@ -80,9 +84,35 @@ describe("santander-excel-consolidated-parser", () => {
     const preview = await buildSantanderConsolidatedExcelPreview(buildSantanderConsolidatedUsdFixtureBuffer());
     expect(preview.account_number).toBe("005205831977");
     expect(preview.currency_code).toBe("USD");
-    expect(preview.movements_count).toBe(2);
-    expect(preview.movements[0]?.direction).toBe("inflow");
-    expect(preview.movements[1]?.direction).toBe("outflow");
+    expect(preview.movements_count).toBe(3);
+    expect(preview.movements[0]).toMatchObject({
+      direction: "outflow",
+      debit: 126.92,
+      amount: -126.92,
+    });
+    expect(preview.movements[1]?.direction).toBe("inflow");
+    expect(preview.movements[2]?.direction).toBe("outflow");
+  });
+
+  it("parsea Excel USD real consolidado cuando el fixture local está disponible", async () => {
+    const { existsSync, readFileSync } = await import("fs");
+    const path = "C:/Users/Andres/Downloads/santander_movimientos_dolares_consolidado.xlsx";
+    if (!existsSync(path)) return;
+
+    const preview = await buildSantanderConsolidatedExcelPreview(readFileSync(path));
+    expect(preview.currency_code).toBe("USD");
+    expect(preview.movements_count).toBe(471);
+    expect(preview.movements[0]?.debit).toBe(126.92);
+  });
+
+  it("parsea Excel UYU real consolidado cuando el fixture local está disponible", async () => {
+    const { existsSync, readFileSync } = await import("fs");
+    const path = "C:/Users/Andres/Downloads/santander_movimientos_consolidado.xlsx";
+    if (!existsSync(path)) return;
+
+    const preview = await buildSantanderConsolidatedExcelPreview(readFileSync(path));
+    expect(preview.currency_code).toBe("UYU");
+    expect(preview.movements_count).toBe(441);
   });
 
   it("isSantanderConsolidatedRows valida encabezados mínimos", () => {

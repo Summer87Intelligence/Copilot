@@ -32,8 +32,9 @@ const UYU_HEADERS = [
 
 const USD_HEADERS = [
   "Fecha",
+  "Mes",
   "Referencia",
-  "Tipo Movimiento / Concepto",
+  "Concepto",
   "Descripción",
   "Débito USD",
   "Crédito USD",
@@ -41,23 +42,43 @@ const USD_HEADERS = [
   "Saldo USD",
   "Moneda",
   "Cuenta",
+  "Sucursal",
+  "Período archivo",
   "Archivos origen",
+  "Duplicados exactos removidos",
 ];
 
 function rowToCells(row: SantanderConsolidatedFixtureRow, currency: "UYU" | "USD"): string[] {
-  const debitCol = currency === "USD" ? row.debito ?? "" : row.debito ?? "";
-  const creditCol = currency === "USD" ? row.credito ?? "" : row.credito ?? "";
-  const netCol = row.importeNeto ?? "";
-  const saldoCol = row.saldo ?? "";
+  if (currency === "USD") {
+    const month = row.fecha.split("/").reverse().join("-").slice(0, 7);
+    return [
+      row.fecha,
+      month,
+      row.referencia ?? "",
+      row.tipoConcepto,
+      row.descripcion ?? "",
+      row.debito ?? "",
+      row.credito ?? "",
+      row.importeNeto ?? "",
+      row.saldo ?? "",
+      row.moneda,
+      row.cuenta,
+      "17 - Ciudad De La Costa",
+      "01/01/2026 - 31/01/2026",
+      row.archivosOrigen ?? "",
+      "0",
+    ];
+  }
+
   return [
     row.fecha,
     row.referencia ?? "",
     row.tipoConcepto,
     row.descripcion ?? "",
-    debitCol,
-    creditCol,
-    netCol,
-    saldoCol,
+    row.debito ?? "",
+    row.credito ?? "",
+    row.importeNeto ?? "",
+    row.saldo ?? "",
     row.moneda,
     row.cuenta,
     row.archivosOrigen ?? "",
@@ -130,25 +151,37 @@ export const SANTANDER_CONSOLIDATED_UYU_ROWS: SantanderConsolidatedFixtureRow[] 
 
 export const SANTANDER_CONSOLIDATED_USD_ROWS: SantanderConsolidatedFixtureRow[] = [
   {
+    fecha: "02/01/2026",
+    referencia: "536421745067",
+    tipoConcepto: "COMPRA CON TARJETA DEBITO TIENDA INGLESA, LAGOMAR",
+    descripcion: "COMPRA CON TARJETA DEBITO TIENDA INGLESA, LAGOMAR TARJ: ############4467",
+    debito: "-$ 126.92",
+    importeNeto: "-$ 126.92",
+    saldo: "$ 2,515.83",
+    moneda: "USD",
+    cuenta: "Caja De Ahorro, 005205831977",
+    archivosOrigen: "umsatz (7).xls",
+  },
+  {
     fecha: "05/07/2026",
     referencia: "USD001",
     tipoConcepto: "Wire transfer",
-    credito: "2.000,00",
-    importeNeto: "2.000,00",
-    saldo: "12.000,00",
+    credito: "$ 2,000.00",
+    importeNeto: "$ 2,000.00",
+    saldo: "$ 12,000.00",
     moneda: "USD",
-    cuenta: "005205831977",
+    cuenta: "Caja De Ahorro, 005205831977",
     archivosOrigen: "julio-usd-1.pdf",
   },
   {
     fecha: "06/07/2026",
     referencia: "USD002",
     tipoConcepto: "SWIFT fee",
-    debito: "35,00",
-    importeNeto: "-35,00",
-    saldo: "11.965,00",
+    debito: "-$ 35.00",
+    importeNeto: "-$ 35.00",
+    saldo: "$ 11,965.00",
     moneda: "USD",
-    cuenta: "005205831977",
+    cuenta: "Caja De Ahorro, 005205831977",
     archivosOrigen: "julio-usd-1.pdf",
   },
 ];

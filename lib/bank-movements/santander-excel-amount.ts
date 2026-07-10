@@ -9,13 +9,21 @@ function stripMoneyString(value: string): string {
   return value.trim().replace(/\s/g, "");
 }
 
+function stripCurrencyPrefix(value: string): string {
+  return value
+    .replace(/^(?:u\$s|u\$|usd|\$u|\$)\s*/i, "")
+    .trim();
+}
+
 function parseUsdStyleMoneyString(value: string): number | null {
   const trimmed = stripMoneyString(value);
   if (!trimmed) return null;
 
-  const negative = trimmed.startsWith("-") || trimmed.startsWith("(");
-  const unsigned = trimmed.replace(/[()]/g, "").replace(/^-/, "");
-  const normalized = unsigned.replace(/,/g, "");
+  let working = trimmed.replace(/[()]/g, "");
+  const negative = working.startsWith("-");
+  if (negative) working = working.slice(1).trim();
+  working = stripCurrencyPrefix(working);
+  const normalized = working.replace(/,/g, "");
   const n = Number.parseFloat(normalized);
   if (!Number.isFinite(n)) return null;
   return negative ? -n : n;

@@ -119,9 +119,9 @@ describe("previewSantanderBankStatementFiles", () => {
 
     expect(data.parsed_count).toBe(2);
     expect(data.failed_count).toBe(0);
-    expect(data.total_movements_count).toBe(pdfPreview.movements_count + 2);
+    expect(data.total_movements_count).toBe(pdfPreview.movements_count + 3);
     expect(data.totals_by_currency.UYU.movements_count).toBe(pdfPreview.movements_count);
-    expect(data.totals_by_currency.USD.movements_count).toBe(2);
+    expect(data.totals_by_currency.USD.movements_count).toBe(3);
   });
 
   it("preview bulk Excel UYU consolidado", async () => {
@@ -135,6 +135,24 @@ describe("previewSantanderBankStatementFiles", () => {
     expect(data.parsed_count).toBe(1);
     expect(data.previews[0]?.account_number).toBe("000001211749");
     expect(data.previews[0]?.movements_count).toBe(3);
+  });
+
+  it("preview bulk Excel UYU + USD real suma 912 movimientos", async () => {
+    const { existsSync, readFileSync } = await import("fs");
+    const uyuPath = "C:/Users/Andres/Downloads/santander_movimientos_consolidado.xlsx";
+    const usdPath = "C:/Users/Andres/Downloads/santander_movimientos_dolares_consolidado.xlsx";
+    if (!existsSync(uyuPath) || !existsSync(usdPath)) return;
+
+    const data = await previewSantanderBankStatementFiles([
+      { fileName: "santander_movimientos_consolidado.xlsx", buffer: readFileSync(uyuPath) },
+      { fileName: "santander_movimientos_dolares_consolidado.xlsx", buffer: readFileSync(usdPath) },
+    ]);
+
+    expect(data.parsed_count).toBe(2);
+    expect(data.failed_count).toBe(0);
+    expect(data.total_movements_count).toBe(912);
+    expect(data.totals_by_currency.UYU.movements_count).toBe(441);
+    expect(data.totals_by_currency.USD.movements_count).toBe(471);
   });
 });
 
