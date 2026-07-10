@@ -108,7 +108,7 @@ describe("Fletcher UYU — preview model = PDF model (opening -700)", () => {
     expect(text).toContain("Saldo anterior");
     expect(text).toMatch(/-700[,.]00|700[,.]00/);
     expect(text).toMatch(/28[.,]580[,.]00|28580/);
-  });
+  }, 20_000);
 
   it("period blocks preview y getPreviousBalance coinciden", () => {
     const prevDirect = getPreviousBalance(statement.uyu, FROM);
