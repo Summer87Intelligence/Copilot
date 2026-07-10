@@ -7,6 +7,7 @@ import { Landmark, Pencil, Plus, Trash2, X } from "lucide-react";
 import { BankMovementsFiltersBar } from "@/components/copilot/bank-movements/bank-movements-filters-bar";
 import { BankMovementsImportPanel } from "@/components/copilot/bank-movements/bank-movements-import-panel";
 import { BankMovementsReconciliationPanel } from "@/components/copilot/bank-movements/bank-movements-reconciliation-panel";
+import { BankIncomePanel } from "@/components/copilot/bank-movements/bank-income-panel";
 
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
@@ -35,12 +36,13 @@ import {
   type BankStatementImport,
 } from "@/lib/bank-movements/bank-movements-types";
 
-type BankTab = "importar" | "movimientos" | "conciliacion" | "historial";
+type BankTab = "importar" | "movimientos" | "conciliacion" | "ingresos" | "historial";
 
 const TABS: Array<{ id: BankTab; label: string }> = [
   { id: "importar", label: "Importar" },
   { id: "movimientos", label: "Movimientos" },
   { id: "conciliacion", label: "Conciliación" },
+  { id: "ingresos", label: "Ingresos" },
   { id: "historial", label: "Historial" },
 ];
 
@@ -107,7 +109,11 @@ export function BankMovementsPageClient() {
   useEffect(() => {
     if (deepLinkApplied.current) return;
     const requestedTab = searchParams.get("tab");
-    if (requestedTab === "reconciliation" || requestedTab === "conciliacion") {
+    const direction = searchParams.get("direction");
+    if (direction === "inflow" || requestedTab === "ingresos") {
+      // Ingresos por asociar (deep link desde Tareas diarias).
+      setTab("ingresos");
+    } else if (requestedTab === "reconciliation" || requestedTab === "conciliacion") {
       setTab("conciliacion");
     }
     deepLinkApplied.current = true;
@@ -454,6 +460,8 @@ export function BankMovementsPageClient() {
           onViewMovement={() => setTab("movimientos")}
         />
       ) : null}
+
+      {tab === "ingresos" ? <BankIncomePanel onChanged={load} /> : null}
 
       {tab === "historial" ? (
         <section className={copilotCardStandardClass}>

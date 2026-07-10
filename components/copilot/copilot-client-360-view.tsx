@@ -58,13 +58,22 @@ import {
   warningFinancialCardClass,
 } from "@/components/copilot/ui/copilot-visual-system";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
+import { ClientBankIdentitySection } from "@/components/copilot/clients/client-bank-identity-section";
 import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
 import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 
 const RESUMEN_ACTIVITY_LIMIT = 5;
 const SESSION_TAB_KEY = "copilot-client360-active-tab";
 
-type SectionNavId = "resumen" | "cobranza" | "cuenta" | "facturas" | "cobros" | "datos" | "transferencias";
+type SectionNavId =
+  | "resumen"
+  | "cobranza"
+  | "cuenta"
+  | "facturas"
+  | "cobros"
+  | "datos"
+  | "transferencias"
+  | "identificacion";
 
 const SECTION_NAV_TABS: { id: SectionNavId; label: string }[] = [
   { id: "resumen", label: "Resumen" },
@@ -74,6 +83,7 @@ const SECTION_NAV_TABS: { id: SectionNavId; label: string }[] = [
   { id: "cobros", label: "Cobros" },
   { id: "datos", label: "Datos" },
   { id: "transferencias", label: "Formas de transferencia" },
+  { id: "identificacion", label: "Identificación bancaria" },
 ];
 
 function Client360TabNav({
@@ -1955,6 +1965,10 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   )}
                 </div>
               </div>
+            ) : null}
+
+            {activeTab === "identificacion" ? (
+              <ClientBankIdentitySection companyId={companyId} canWrite={canWrite} />
             ) : null}
           </>
         ) : null}
