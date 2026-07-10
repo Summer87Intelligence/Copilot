@@ -8,6 +8,7 @@ import {
   type BulkConfirmData,
   type BulkConfirmErrorItem,
   type BulkConfirmResultItem,
+  type BulkConfirmSkippedItem,
   resolveImportFileStatus,
 } from "@/lib/bank-movements/bank-movements-import-bulk";
 import {
@@ -15,14 +16,21 @@ import {
   inferBankStatementImportFileType,
   inferBankStatementParserId,
   planSantanderBankStatementImport,
+  type BlockedAccountInfo,
   type ExistingBankMovementForDedupe,
 } from "@/lib/bank-movements/santander-bank-statement-import-service";
+import {
+  bankAccountScopeReason,
+  classifyBankAccount,
+} from "@/lib/bank-movements/bank-account-scope";
 
 export type ConfirmSantanderImportResult = {
-  import_id: string;
+  import_id: string | null;
   inserted_count: number;
   skipped_duplicates_count: number;
   total_preview_count: number;
+  /** Presente si el extracto se rechazó por no ser cuenta de EASY. */
+  blocked?: BlockedAccountInfo;
 };
 
 const CONFIRM_ERROR_MESSAGE = "No se pudo confirmar la importación del extracto.";
@@ -38,6 +46,23 @@ export async function confirmSantanderBankStatementImport(params: {
   const accountLabel = `Santander ${preview.account_number} ${preview.currency_code}`;
   const parserId = inferBankStatementParserId(fileName);
   const fileType = inferBankStatementImportFileType(fileName);
+
+  // Guard duro de alcance (defensa en profundidad): si la cuenta no es de EASY,
+  // no se toca la DB — ni import ni movimientos. Aunque el cliente esquive el preview.
+  const scope = classifyBankAccount(preview.account_number);
+  if (scope !== "business") {
+    return {
+      import_id: null,
+      inserted_count: 0,
+      skipped_duplicates_count: 0,
+      total_preview_count: preview.movements.length,
+      blocked: {
+        account_number: preview.account_number,
+        scope,
+        reason: bankAccountScopeReason(scope, preview.account_number),
+      },
+    };
+  }
 
   const { data: existingRows, error: loadError } = await supabase
     .from("bank_movements")
@@ -124,11 +149,13 @@ export async function confirmSantanderBankStatementImportsBulk(params: {
 }): Promise<BulkConfirmData> {
   const results: BulkConfirmResultItem[] = [];
   const errors: BulkConfirmErrorItem[] = [];
+  const skipped: BulkConfirmSkippedItem[] = [];
   let inserted_count = 0;
   let skipped_duplicates_count = 0;
   let total_preview_count = 0;
   let imported_files_count = 0;
   let failed_files_count = 0;
+  let skipped_files_count = 0;
 
   for (const item of params.previews) {
     try {
@@ -140,6 +167,19 @@ export async function confirmSantanderBankStatementImportsBulk(params: {
         preview: item.preview,
       });
 
+      if (result.blocked) {
+        skipped_files_count += 1;
+        skipped.push({
+          file_name: item.file_name,
+          status: "skipped",
+          account_number: result.blocked.account_number,
+          account_scope: result.blocked.scope,
+          movements_count: result.total_preview_count,
+          reason: result.blocked.reason,
+        });
+        continue;
+      }
+
       inserted_count += result.inserted_count;
       skipped_duplicates_count += result.skipped_duplicates_count;
       total_preview_count += result.total_preview_count;
@@ -147,7 +187,7 @@ export async function confirmSantanderBankStatementImportsBulk(params: {
 
       results.push({
         file_name: item.file_name,
-        import_id: result.import_id,
+        import_id: result.import_id ?? "",
         inserted_count: result.inserted_count,
         skipped_duplicates_count: result.skipped_duplicates_count,
         total_preview_count: result.total_preview_count,
@@ -167,10 +207,12 @@ export async function confirmSantanderBankStatementImportsBulk(params: {
     files_count: params.previews.length,
     imported_files_count,
     failed_files_count,
+    skipped_files_count,
     total_preview_count,
     inserted_count,
     skipped_duplicates_count,
     results,
     errors,
+    skipped,
   };
 }

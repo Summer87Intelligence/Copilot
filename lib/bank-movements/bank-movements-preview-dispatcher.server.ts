@@ -6,6 +6,10 @@ import {
   emptyCurrencyTotals,
   type BulkPreviewData,
 } from "@/lib/bank-movements/bank-movements-import-bulk";
+import {
+  bankAccountScopeReason,
+  classifyBankAccount,
+} from "@/lib/bank-movements/bank-account-scope";
 import { mapBankStatementPreviewError } from "@/lib/bank-movements/bank-movements-import-preview-errors";
 import type { SantanderBankStatementPreview } from "@/lib/bank-movements/santander-pdf-parser";
 import { getBankImportFileType } from "@/lib/treasury/santander-bank-import-file-type";
@@ -35,6 +39,7 @@ export async function previewSantanderBankStatementFiles(
 ): Promise<BulkPreviewData> {
   const previews: BulkPreviewData["previews"] = [];
   const errors: BulkPreviewData["errors"] = [];
+  const skipped: BulkPreviewData["skipped"] = [];
   const totals_by_currency = {
     UYU: emptyCurrencyTotals(),
     USD: emptyCurrencyTotals(),
@@ -45,6 +50,24 @@ export async function previewSantanderBankStatementFiles(
     try {
       const preview = await previewSantanderBankStatementFile(file);
       const ready = buildBulkPreviewReadyItem(file.fileName, preview);
+
+      // Solo cuentas de empresa EASY se importan. Personal/desconocida se leen
+      // pero se omiten (no entran a previews ni a los totales importables).
+      const scope = classifyBankAccount(preview.account_number);
+      if (scope !== "business") {
+        skipped.push({
+          file_name: file.fileName,
+          status: "skipped",
+          account_number: preview.account_number,
+          account_label: ready.account_label,
+          account_scope: scope,
+          currency_code: preview.currency_code,
+          movements_count: preview.movements_count,
+          reason: bankAccountScopeReason(scope, preview.account_number),
+        });
+        continue;
+      }
+
       previews.push(ready);
       totals_by_currency[preview.currency_code] = addPreviewToCurrencyTotals(
         totals_by_currency[preview.currency_code],
@@ -64,10 +87,12 @@ export async function previewSantanderBankStatementFiles(
     files_count: files.length,
     parsed_count: previews.length,
     failed_count: errors.length,
+    skipped_count: skipped.length,
     total_movements_count,
     totals_by_currency,
     previews,
     errors,
+    skipped,
   };
 }
 

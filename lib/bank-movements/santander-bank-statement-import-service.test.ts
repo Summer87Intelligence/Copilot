@@ -109,6 +109,37 @@ describe("planSantanderBankStatementImport — USD", () => {
   });
 });
 
+describe("planSantanderBankStatementImport — alcance de cuenta EASY", () => {
+  const businessPreview = previewBodyFromFixture(SANTANDER_UYU_JULY_AUSZUG_FIXTURE);
+
+  it("bloquea cuenta personal (005205831977): 0 a insertar", () => {
+    const plan = planSantanderBankStatementImport(
+      { ...businessPreview, account_number: "005205831977" },
+      [],
+      WS
+    );
+    expect(plan.to_insert).toHaveLength(0);
+    expect(plan.blocked?.scope).toBe("blocked_personal");
+    expect(plan.total_preview_count).toBe(businessPreview.movements.length);
+  });
+
+  it("bloquea cuenta no reconocida (unknown): 0 a insertar", () => {
+    const plan = planSantanderBankStatementImport(
+      { ...businessPreview, account_number: "999888777" },
+      [],
+      WS
+    );
+    expect(plan.to_insert).toHaveLength(0);
+    expect(plan.blocked?.scope).toBe("unknown");
+  });
+
+  it("cuenta de empresa (1211749) sí importa", () => {
+    const plan = planSantanderBankStatementImport(businessPreview, [], WS);
+    expect(plan.blocked).toBeUndefined();
+    expect(plan.to_insert.length).toBeGreaterThan(0);
+  });
+});
+
 describe("anti-duplicado", () => {
   const preview = previewBodyFromFixture(SANTANDER_UYU_JULY_AUSZUG_FIXTURE);
 

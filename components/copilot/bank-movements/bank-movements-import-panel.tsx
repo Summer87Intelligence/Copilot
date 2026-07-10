@@ -270,6 +270,27 @@ export function BankMovementsImportPanel({
             </div>
           ) : null}
 
+          {bulkPreview.skipped.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-warning-text-strong)]">
+                Movimientos omitidos (cuentas no habilitadas para EASY)
+              </p>
+              {bulkPreview.skipped.map((item) => (
+                <div
+                  key={item.file_name}
+                  className="rounded-lg border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-3 py-2 text-xs text-[var(--copilot-warning-text-strong)]"
+                >
+                  <p className="font-medium">{item.file_name}</p>
+                  <p className="mt-0.5">
+                    Cuenta detectada: {item.account_number} · {item.currency_code} ·{" "}
+                    {item.movements_count} movimientos
+                  </p>
+                  <p className="mt-0.5">{item.reason}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
           <div className="space-y-3">
             {bulkPreview.previews.map((item) => (
               <PreviewFileCard key={item.client_preview_id} preview={item} />
@@ -320,7 +341,8 @@ function BulkSummaryGrid({ preview }: { preview: BulkPreviewData }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <SummaryItem label="Archivos seleccionados" value={String(preview.files_count)} />
-      <SummaryItem label="Archivos leídos" value={String(preview.parsed_count)} />
+      <SummaryItem label="Importables" value={String(preview.parsed_count)} />
+      <SummaryItem label="Omitidos (cuenta ajena)" value={String(preview.skipped_count)} />
       <SummaryItem label="Archivos con error" value={String(preview.failed_count)} />
       <SummaryItem label="Total movimientos" value={String(preview.total_movements_count)} />
       <CurrencySummary label="Entradas UYU" currency="UYU" field="inflows" totals={preview.totals_by_currency.UYU} />
@@ -470,6 +492,18 @@ function ConfirmSummary({ result }: { result: BulkConfirmData }) {
               className="text-xs text-[var(--copilot-danger-text-strong)]"
             >
               {item.file_name}: {item.error}
+            </p>
+          ))}
+        </div>
+      ) : null}
+      {result.skipped.length > 0 ? (
+        <div className="space-y-1 text-left">
+          {result.skipped.map((item) => (
+            <p
+              key={item.file_name}
+              className="text-xs text-[var(--copilot-warning-text-strong)]"
+            >
+              {item.file_name}: {item.reason}
             </p>
           ))}
         </div>

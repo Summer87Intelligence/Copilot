@@ -49,6 +49,13 @@ export async function POST(request: NextRequest) {
       preview: parsed.data.preview,
     });
 
+    if (result.blocked) {
+      return NextResponse.json(
+        { ok: false as const, error: result.blocked.reason },
+        { status: 422 }
+      );
+    }
+
     return NextResponse.json({
       ok: true as const,
       data: result,

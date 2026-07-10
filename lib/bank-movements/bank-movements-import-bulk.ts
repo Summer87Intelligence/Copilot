@@ -26,10 +26,23 @@ export type BulkPreviewErrorItem = {
   error: string;
 };
 
+/** Archivo leído pero NO importable por pertenecer a una cuenta fuera de EASY. */
+export type BulkPreviewSkippedItem = {
+  file_name: string;
+  status: "skipped";
+  account_number: string;
+  account_label: string;
+  account_scope: "blocked_personal" | "unknown";
+  currency_code: "UYU" | "USD";
+  movements_count: number;
+  reason: string;
+};
+
 export type BulkPreviewData = {
   files_count: number;
   parsed_count: number;
   failed_count: number;
+  skipped_count: number;
   total_movements_count: number;
   totals_by_currency: {
     UYU: CurrencyBulkTotals;
@@ -37,6 +50,7 @@ export type BulkPreviewData = {
   };
   previews: BulkPreviewReadyItem[];
   errors: BulkPreviewErrorItem[];
+  skipped: BulkPreviewSkippedItem[];
 };
 
 export type BulkConfirmResultItem = {
@@ -54,15 +68,27 @@ export type BulkConfirmErrorItem = {
   error: string;
 };
 
+/** Archivo omitido por pertenecer a una cuenta fuera de EASY. */
+export type BulkConfirmSkippedItem = {
+  file_name: string;
+  status: "skipped";
+  account_number: string;
+  account_scope: "blocked_personal" | "unknown";
+  movements_count: number;
+  reason: string;
+};
+
 export type BulkConfirmData = {
   files_count: number;
   imported_files_count: number;
   failed_files_count: number;
+  skipped_files_count: number;
   total_preview_count: number;
   inserted_count: number;
   skipped_duplicates_count: number;
   results: BulkConfirmResultItem[];
   errors: BulkConfirmErrorItem[];
+  skipped: BulkConfirmSkippedItem[];
 };
 
 export function emptyCurrencyTotals(): CurrencyBulkTotals {

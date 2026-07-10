@@ -105,7 +105,7 @@ describe("previewSantanderBankStatementFiles", () => {
     expect(data.errors[0]?.error).toContain("No pudimos leer este archivo:");
   });
 
-  it("preview bulk mixto PDF + Excel consolidado", async () => {
+  it("preview bulk mixto: importa UYU empresa y omite USD cuenta personal", async () => {
     mocks.extractTextFromPdfBuffer.mockResolvedValueOnce(SANTANDER_UYU_JULY_AUSZUG_FIXTURE);
 
     const pdfPreview = buildSantanderBankStatementPreview(SANTANDER_UYU_JULY_AUSZUG_FIXTURE);
@@ -117,11 +117,15 @@ describe("previewSantanderBankStatementFiles", () => {
       },
     ]);
 
-    expect(data.parsed_count).toBe(2);
+    // El USD consolidado es cuenta personal 005205831977 → se omite (no importable).
+    expect(data.parsed_count).toBe(1);
     expect(data.failed_count).toBe(0);
-    expect(data.total_movements_count).toBe(pdfPreview.movements_count + 3);
+    expect(data.skipped_count).toBe(1);
+    expect(data.total_movements_count).toBe(pdfPreview.movements_count);
     expect(data.totals_by_currency.UYU.movements_count).toBe(pdfPreview.movements_count);
-    expect(data.totals_by_currency.USD.movements_count).toBe(3);
+    expect(data.totals_by_currency.USD.movements_count).toBe(0);
+    expect(data.skipped[0]?.account_scope).toBe("blocked_personal");
+    expect(data.skipped[0]?.file_name).toBe("consolidado-usd.xlsx");
   });
 
   it("preview bulk Excel UYU consolidado", async () => {
@@ -137,7 +141,7 @@ describe("previewSantanderBankStatementFiles", () => {
     expect(data.previews[0]?.movements_count).toBe(3);
   });
 
-  it("preview bulk Excel UYU + USD real suma 912 movimientos", async () => {
+  it("preview bulk real: importa 441 UYU empresa y omite 471 USD personal", async () => {
     const { existsSync, readFileSync } = await import("fs");
     const uyuPath = "C:/Users/Andres/Downloads/santander_movimientos_consolidado.xlsx";
     const usdPath = "C:/Users/Andres/Downloads/santander_movimientos_dolares_consolidado.xlsx";
@@ -148,11 +152,15 @@ describe("previewSantanderBankStatementFiles", () => {
       { fileName: "santander_movimientos_dolares_consolidado.xlsx", buffer: readFileSync(usdPath) },
     ]);
 
-    expect(data.parsed_count).toBe(2);
+    // Solo EASY (1211749 UYU) es importable; la cuenta personal 005205831977 USD se omite.
+    expect(data.parsed_count).toBe(1);
     expect(data.failed_count).toBe(0);
-    expect(data.total_movements_count).toBe(912);
+    expect(data.skipped_count).toBe(1);
+    expect(data.total_movements_count).toBe(441);
     expect(data.totals_by_currency.UYU.movements_count).toBe(441);
-    expect(data.totals_by_currency.USD.movements_count).toBe(471);
+    expect(data.totals_by_currency.USD.movements_count).toBe(0);
+    expect(data.skipped[0]?.movements_count).toBe(471);
+    expect(data.skipped[0]?.account_scope).toBe("blocked_personal");
   });
 });
 

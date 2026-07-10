@@ -5,7 +5,18 @@ import { createHash } from "node:crypto";
 
 import { buildSantanderAccountLabel } from "@/lib/bank-movements/bank-movements-import-api";
 import type { SantanderImportPreviewBody } from "@/lib/bank-movements/bank-movements-import-api";
+import {
+  bankAccountScopeReason,
+  classifyBankAccount,
+} from "@/lib/bank-movements/bank-account-scope";
 import type { SantanderParsedBankMovement } from "@/lib/bank-movements/santander-pdf-parser";
+
+/** Motivo por el que un extracto no se importa (cuenta fuera de EASY). */
+export type BlockedAccountInfo = {
+  account_number: string;
+  scope: "blocked_personal" | "unknown";
+  reason: string;
+};
 
 export const SANTANDER_PDF_PARSER_ID = "santander_pdf_v1";
 export const SANTANDER_EXCEL_CONSOLIDATED_PARSER_ID = "santander_excel_consolidated_v1";
@@ -52,6 +63,8 @@ export type ImportPlanResult = {
   total_preview_count: number;
   to_insert: PlannedMovementInsert[];
   skipped_duplicates_count: number;
+  /** Presente si la cuenta no es de EASY: no se importa nada. */
+  blocked?: BlockedAccountInfo;
 };
 
 export function normalizeDescriptionForDedupe(description: string): string {
@@ -176,6 +189,24 @@ export function planSantanderBankStatementImport(
   parserId: string = SANTANDER_PDF_PARSER_ID
 ): ImportPlanResult {
   const account_label = buildSantanderAccountLabel(preview.account_number, preview.currency_code);
+
+  // Guard de alcance: solo cuentas de empresa EASY se importan. Cuenta personal
+  // bloqueada o no reconocida ⇒ 0 movimientos, sin insertar nada.
+  const scope = classifyBankAccount(preview.account_number);
+  if (scope !== "business") {
+    return {
+      account_label,
+      total_preview_count: preview.movements.length,
+      to_insert: [],
+      skipped_duplicates_count: 0,
+      blocked: {
+        account_number: preview.account_number,
+        scope,
+        reason: bankAccountScopeReason(scope, preview.account_number),
+      },
+    };
+  }
+
   const existingKeys = new Set(
     existingRows.map((row) => dedupeKeyFromExistingRow(row, workspaceId))
   );
