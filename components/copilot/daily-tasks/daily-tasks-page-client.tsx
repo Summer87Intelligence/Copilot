@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
+import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
+import { WorkbookTaskCard } from "@/components/copilot/daily-tasks/workbook-task-card";
 import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
 import {
   COPILOT_GRID_GAP,
@@ -15,48 +17,56 @@ import {
   copilotMetricValueClass,
   copilotSectionTitleClass,
 } from "@/components/copilot/ui/copilot-visual-system";
+import { copilotApiFetch } from "@/lib/copilot-fetch";
 import { MODULE_KEYS, type ModuleKey } from "@/lib/auth/module-permissions";
 import {
   DAILY_TASK_PRIORITY_LABELS,
-  DAILY_TASK_STATUS_LABELS,
   type DailyTask,
   type DailyTaskPriority,
 } from "@/lib/daily-tasks/daily-tasks-types";
-
-type TaskFilter = "pendientes" | "vencidas" | "completadas" | "todas";
-
-const FILTERS: Array<{ id: TaskFilter; label: string }> = [
-  { id: "pendientes", label: "Pendientes" },
-  { id: "vencidas", label: "Vencidas" },
-  { id: "completadas", label: "Completadas" },
-  { id: "todas", label: "Todas" },
-];
-
-type ListResponse = { ok: boolean; data?: DailyTask[]; message?: string };
-type WriteResponse = { ok: boolean; data?: DailyTask; error?: string };
-
-function todayYmd(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+import {
+  addDaysYmd,
+  alertsInput,
+  bankInputFromReconMeta,
+  portfolioInputs,
+  splitTreasuryPayments,
+} from "@/lib/daily-tasks/daily-tasks-sources";
+import {
+  applyInteractions,
+  buildWorkbook,
+  generateAutomaticTasks,
+  type AutoInteraction,
+  type AutomaticTaskInput,
+  type WorkbookCard,
+} from "@/lib/daily-tasks/daily-tasks-workbook";
 
 const MODULE_LABELS: Record<string, string> = {
   hoy: "Hoy",
-  dashboard: "Dashboard",
-  acciones: "Acciones",
   clientes: "Clientes",
   cartera: "Cartera",
   cobranza: "Cobranza",
   tesoreria: "Tesorería",
   finanzas: "Finanzas",
-  reportes: "Reportes",
-  datos: "Datos",
-  agentes: "Agentes IA",
-  manual: "Manual",
-  admin: "Admin",
-  helpdesk: "Mesa de ayuda",
-  bank_movements: "Movimientos bancarios",
-  daily_tasks: "Tareas diarias",
+  bank_movements: "Banco",
+  manual: "General",
 };
+
+const MANUAL_MODULE_CHOICES: ModuleKey[] = [
+  "cobranza",
+  "clientes",
+  "cartera",
+  "tesoreria",
+  "bank_movements",
+  "manual",
+];
+
+function todayYmd(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function readable(level: string | undefined): boolean {
+  return level === "read" || level === "write" || level === "admin";
+}
 
 type FormState = {
   id: string | null;
@@ -72,45 +82,134 @@ function emptyForm(): FormState {
     id: null,
     title: "",
     description: "",
-    module_key: "cobranza",
+    module_key: "manual",
     priority: "medium",
     due_date: todayYmd(),
   };
 }
 
-function formFromTask(t: DailyTask): FormState {
+function formFromCard(card: WorkbookCard): FormState {
+  const t = card.manual;
   return {
-    id: t.id,
-    title: t.title,
-    description: t.description ?? "",
-    module_key: (MODULE_KEYS as readonly string[]).includes(t.module_key)
-      ? (t.module_key as ModuleKey)
-      : "cobranza",
-    priority: t.priority,
-    due_date: t.due_date ? t.due_date.slice(0, 10) : "",
+    id: card.id,
+    title: t?.title ?? card.title,
+    description: t?.description ?? "",
+    module_key: (MODULE_KEYS as readonly string[]).includes(card.moduleKey)
+      ? (card.moduleKey as ModuleKey)
+      : "manual",
+    priority: card.priority,
+    due_date: t?.due_date ? t.due_date.slice(0, 10) : "",
   };
 }
 
+type Feedback = { tone: "ok" | "error"; message: string } | null;
+
 export function DailyTasksPageClient() {
-  const [tasks, setTasks] = useState<DailyTask[]>([]);
+  const { modulePermissions } = useCopilotPermissions();
+
+  const today = useMemo(() => todayYmd(), []);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<TaskFilter>("pendientes");
+  const [error, setError] = useState(false);
+  const [manualTasks, setManualTasks] = useState<DailyTask[]>([]);
+  const [interactions, setInteractions] = useState<AutoInteraction[]>([]);
+  const [autoInput, setAutoInput] = useState<AutomaticTaskInput>({ today });
   const [form, setForm] = useState<FormState | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState<{ tone: "ok" | "error"; message: string } | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<Feedback>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    try {
-      const res = await fetch("/api/copilot/daily-tasks");
-      const json = (await res.json()) as ListResponse;
-      if (json.ok) setTasks(json.data ?? []);
-    } catch {
-      // Estado vacío ya cubre el caso sin datos.
-    } finally {
-      setLoading(false);
+    setError(false);
+    const horizon = addDaysYmd(today, 3);
+
+    const [tasksRes, reconRes, treasuryRes, hubRes, notifRes] = await Promise.allSettled([
+      copilotApiFetch("/api/copilot/daily-tasks"),
+      copilotApiFetch("/api/copilot/bank-movements/reconciliation?status=pending"),
+      copilotApiFetch(
+        `/api/copilot/treasury/scheduled-payments?include_summary=1&horizon_end_date=${horizon}`
+      ),
+      copilotApiFetch("/api/copilot/rutas-hub"),
+      copilotApiFetch("/api/copilot/notifications?limit=50"),
+    ]);
+
+    // ── Tareas manuales + interacciones automáticas (misma tabla) ──────────────
+    let tasksOk = false;
+    if (tasksRes.status === "fulfilled") {
+      const json = (await tasksRes.value.json().catch(() => null)) as
+        | { ok?: boolean; data?: DailyTask[] }
+        | null;
+      if (json?.ok) {
+        tasksOk = true;
+        const rows = json.data ?? [];
+        setManualTasks(rows.filter((r) => r.source_type !== "auto"));
+        setInteractions(
+          rows
+            .filter((r) => r.source_type === "auto" && r.task_key)
+            .map((r) => ({
+              task_key: r.task_key as string,
+              status: r.status,
+              snoozed_until: r.snoozed_until,
+              completed_at: r.completed_at,
+              due_date: r.due_date,
+            }))
+        );
+      }
     }
-  }, []);
+    if (!tasksOk) {
+      setManualTasks([]);
+      setInteractions([]);
+    }
+
+    const next: AutomaticTaskInput = { today };
+
+    // ── Banco / conciliación ───────────────────────────────────────────────────
+    if (reconRes.status === "fulfilled") {
+      const json = (await reconRes.value.json().catch(() => null)) as
+        | { ok?: boolean; data?: { meta?: Parameters<typeof bankInputFromReconMeta>[0] } }
+        | null;
+      if (json?.ok && json.data?.meta) next.bank = bankInputFromReconMeta(json.data.meta);
+    }
+
+    // ── Tesorería ──────────────────────────────────────────────────────────────
+    if (treasuryRes.status === "fulfilled") {
+      const json = (await treasuryRes.value.json().catch(() => null)) as
+        | { ok?: boolean; data?: { items?: unknown } }
+        | { items?: unknown }
+        | null;
+      const items = extractTreasuryItems(json);
+      const { due, upcoming } = splitTreasuryPayments(items, today, 3);
+      if (due.length > 0) next.treasuryDueToday = due;
+      if (upcoming.length > 0) next.treasuryUpcoming = upcoming;
+    }
+
+    // ── Cartera / clientes (portfolio del hub) ─────────────────────────────────
+    if (hubRes.status === "fulfilled") {
+      const json = (await hubRes.value.json().catch(() => null)) as Record<string, unknown> | null;
+      const rows = extractPortfolioRows(json);
+      const { overdueClients, overdueByCurrency, criticalClients } = portfolioInputs(rows);
+      if (overdueClients.length > 0) {
+        next.overdueClients = overdueClients;
+        next.overdueByCurrency = overdueByCurrency;
+      }
+      if (criticalClients.length > 0) next.criticalClients = criticalClients;
+    }
+
+    // ── Alertas ────────────────────────────────────────────────────────────────
+    if (notifRes.status === "fulfilled") {
+      const json = (await notifRes.value.json().catch(() => null)) as
+        | { notifications?: Parameters<typeof alertsInput>[0] }
+        | null;
+      const alerts = alertsInput(json?.notifications);
+      if (alerts.active > 0) next.alerts = alerts;
+    }
+
+    setAutoInput(next);
+
+    // Solo error duro si ni siquiera la fuente primaria respondió.
+    if (!tasksOk && tasksRes.status === "rejected") setError(true);
+    setLoading(false);
+  }, [today]);
 
   useEffect(() => {
     void load();
@@ -122,67 +221,150 @@ export function DailyTasksPageClient() {
     return () => clearTimeout(timer);
   }, [feedback]);
 
-  const today = todayYmd();
-
-  const counts = useMemo(() => {
-    const pendingToday = tasks.filter(
-      (t) => t.status === "pending" && (!t.due_date || t.due_date.slice(0, 10) === today)
-    ).length;
-    const overdue = tasks.filter(
-      (t) =>
-        (t.status === "pending" || t.status === "in_progress") &&
-        t.due_date != null &&
-        t.due_date.slice(0, 10) < today
-    ).length;
-    const inProgress = tasks.filter((t) => t.status === "in_progress").length;
-    const doneToday = tasks.filter(
-      (t) => t.status === "done" && (t.completed_at ?? "").slice(0, 10) === today
-    ).length;
-    return { pendingToday, overdue, inProgress, doneToday };
-  }, [tasks, today]);
+  // ── Ensamblado del cuaderno (tiempo real) ────────────────────────────────────
+  const { sections, counters } = useMemo(() => {
+    const hasPerms = Object.keys(modulePermissions).length > 0;
+    const generated = generateAutomaticTasks(autoInput).filter(
+      (t) => !hasPerms || readable(modulePermissions[t.moduleKey])
+    );
+    const buckets = applyInteractions(generated, interactions, today);
+    return buildWorkbook({
+      today,
+      autoActive: buckets.active,
+      autoCompletedToday: buckets.completedToday,
+      autoPostponed: buckets.postponed,
+      manualTasks,
+    });
+  }, [autoInput, interactions, manualTasks, modulePermissions, today]);
 
   const summaryCards = [
-    { label: "Pendientes hoy", value: counts.pendingToday },
-    { label: "Vencidas", value: counts.overdue },
-    { label: "En progreso", value: counts.inProgress },
-    { label: "Completadas hoy", value: counts.doneToday },
+    { label: "Urgentes", value: counters.urgent },
+    { label: "Importantes", value: counters.important },
+    { label: "Para hoy", value: counters.today },
+    { label: "Completadas", value: counters.completed },
   ];
 
-  const visibleTasks = useMemo(() => {
-    switch (filter) {
-      case "pendientes":
-        return tasks.filter((t) => t.status === "pending" || t.status === "in_progress");
-      case "vencidas":
-        return tasks.filter(
-          (t) =>
-            (t.status === "pending" || t.status === "in_progress") &&
-            t.due_date != null &&
-            t.due_date.slice(0, 10) < today
-        );
-      case "completadas":
-        return tasks.filter((t) => t.status === "done");
-      default:
-        return tasks;
-    }
-  }, [tasks, filter, today]);
+  // ── Persistencia de interacciones ────────────────────────────────────────────
+  const postInteraction = useCallback(
+    async (card: WorkbookCard, action: "complete" | "reopen" | "ignore_today" | "snooze") => {
+      setBusyId(card.id);
+      try {
+        const body: Record<string, unknown> = {
+          task_key: card.taskKey,
+          action,
+          module_key: card.moduleKey,
+          title: card.title,
+          origin: card.origin,
+        };
+        if (action === "snooze") body.snoozed_until = addDaysYmd(today, 1);
+        const res = await copilotApiFetch("/api/copilot/daily-tasks/interactions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+        if (!res.ok || !json?.ok) {
+          setFeedback({ tone: "error", message: json?.error ?? "No se pudo guardar la acción." });
+          return;
+        }
+        await load();
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [load, today]
+  );
+
+  const patchManual = useCallback(
+    async (card: WorkbookCard, patch: Record<string, unknown>, okMsg: string) => {
+      setBusyId(card.id);
+      try {
+        const res = await copilotApiFetch(`/api/copilot/daily-tasks/${card.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        });
+        const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+        if (!res.ok || !json?.ok) {
+          setFeedback({ tone: "error", message: json?.error ?? "No se pudo actualizar." });
+          return;
+        }
+        setFeedback({ tone: "ok", message: okMsg });
+        await load();
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [load]
+  );
+
+  const onComplete = useCallback(
+    (card: WorkbookCard) => {
+      if (card.kind === "auto") void postInteraction(card, "complete");
+      else void patchManual(card, { status: "done" }, "Tarea completada.");
+    },
+    [postInteraction, patchManual]
+  );
+
+  const onReopen = useCallback(
+    (card: WorkbookCard) => {
+      if (card.kind === "auto") void postInteraction(card, "reopen");
+      else void patchManual(card, { status: "pending" }, "Tarea reabierta.");
+    },
+    [postInteraction, patchManual]
+  );
+
+  const onSecondary = useCallback(
+    (card: WorkbookCard) => {
+      if (card.kind === "auto") {
+        // "Ignorar por hoy" o "Posponer" según la tarea.
+        const action = card.secondaryLabel === "Posponer" ? "snooze" : "ignore_today";
+        void postInteraction(card, action);
+      } else {
+        void patchManual(card, { status: "postponed" }, "Tarea pospuesta.");
+      }
+    },
+    [postInteraction, patchManual]
+  );
+
+  const onDelete = useCallback(
+    async (card: WorkbookCard) => {
+      if (!window.confirm("¿Eliminar esta tarea?")) return;
+      setBusyId(card.id);
+      try {
+        const res = await copilotApiFetch(`/api/copilot/daily-tasks/${card.id}`, {
+          method: "DELETE",
+        });
+        const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+        if (!res.ok || !json?.ok) {
+          setFeedback({ tone: "error", message: json?.error ?? "No se pudo eliminar." });
+          return;
+        }
+        setFeedback({ tone: "ok", message: "Tarea eliminada." });
+        await load();
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [load]
+  );
 
   const submitForm = useCallback(async () => {
     if (!form) return;
     if (!form.title.trim()) {
-      setFeedback({ tone: "error", message: "El título es obligatorio." });
+      setFeedback({ tone: "error", message: "Escribí qué hay que hacer." });
       return;
     }
     setSubmitting(true);
     try {
-      const payload: Record<string, unknown> = {
+      const payload = {
         title: form.title.trim(),
         description: form.description.trim() || null,
         module_key: form.module_key,
         priority: form.priority,
         due_date: form.due_date || null,
       };
-
-      const res = await fetch(
+      const res = await copilotApiFetch(
         form.id ? `/api/copilot/daily-tasks/${form.id}` : "/api/copilot/daily-tasks",
         {
           method: form.id ? "PATCH" : "POST",
@@ -190,9 +372,9 @@ export function DailyTasksPageClient() {
           body: JSON.stringify(payload),
         }
       );
-      const json = (await res.json()) as WriteResponse;
-      if (!res.ok || !json.ok) {
-        setFeedback({ tone: "error", message: json.error ?? "No se pudo guardar la tarea." });
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (!res.ok || !json?.ok) {
+        setFeedback({ tone: "error", message: json?.error ?? "No se pudo guardar la tarea." });
         return;
       }
       setForm(null);
@@ -203,43 +385,27 @@ export function DailyTasksPageClient() {
     }
   }, [form, load]);
 
-  const setStatus = useCallback(
-    async (task: DailyTask, status: "done" | "pending") => {
-      const res = await fetch(`/api/copilot/daily-tasks/${task.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      const json = (await res.json()) as WriteResponse;
-      if (!res.ok || !json.ok) {
-        setFeedback({ tone: "error", message: json.error ?? "No se pudo actualizar la tarea." });
-        return;
-      }
-      await load();
-    },
-    [load]
-  );
+  const cardHandlers = {
+    onComplete,
+    onReopen,
+    onSecondary,
+    onEdit: (card: WorkbookCard) => setForm(formFromCard(card)),
+    onDelete,
+  };
 
-  const remove = useCallback(
-    async (task: DailyTask) => {
-      if (!window.confirm("¿Eliminar esta tarea?")) return;
-      const res = await fetch(`/api/copilot/daily-tasks/${task.id}`, { method: "DELETE" });
-      const json = (await res.json()) as WriteResponse;
-      if (!res.ok || !json.ok) {
-        setFeedback({ tone: "error", message: json.error ?? "No se pudo eliminar." });
-        return;
-      }
-      setFeedback({ tone: "ok", message: "Tarea eliminada." });
-      await load();
-    },
-    [load]
-  );
+  const hasAnything =
+    sections.urgent.length +
+      sections.today.length +
+      sections.manual.length +
+      sections.completedToday.length +
+      sections.postponed.length >
+    0;
 
   return (
     <div className={COPILOT_PAGE_GAP}>
       <CopilotPageHeader
-        title="Tareas diarias"
-        description="Checklist operativo para no dejar controles pendientes."
+        title="Mi cuaderno de trabajo"
+        description="Tus tareas, seguimientos y acciones sugeridas para hoy."
         right={
           <button
             type="button"
@@ -283,124 +449,163 @@ export function DailyTasksPageClient() {
         />
       ) : null}
 
-      <nav
-        className="flex flex-wrap gap-2 rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-1.5 shadow-sm"
-        aria-label="Filtros de tareas"
-      >
-        {FILTERS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => setFilter(item.id)}
-            className={copilotButtonClassName({
-              variant: filter === item.id ? "primary" : "ghost",
-              size: "sm",
-              className: filter === item.id ? "" : "!border-transparent",
-            })}
-          >
-            {item.label}
-          </button>
-        ))}
-      </nav>
-
-      <p className={copilotCaptionClass}>
-        Las tareas se muestran según tus permisos y los módulos que podés ver.
-      </p>
-
-      <section className={copilotCardStandardClass}>
-        <h2 className={copilotSectionTitleClass}>
-          {FILTERS.find((f) => f.id === filter)?.label ?? "Tareas"}
-        </h2>
-        {visibleTasks.length === 0 ? (
-          <p className={`${copilotCaptionClass} mt-2`}>
-            {loading ? "Cargando tareas…" : "No hay tareas pendientes para hoy."}
-          </p>
-        ) : (
-          <ul className="mt-3 space-y-2">
-            {visibleTasks.map((task) => {
-              const done = task.status === "done";
-              const overdue =
-                !done && task.due_date != null && task.due_date.slice(0, 10) < today;
-              return (
-                <li
-                  key={task.id}
-                  className="flex items-start gap-3 rounded-xl border border-[var(--copilot-border)] px-3 py-2"
-                >
-                  <button
-                    type="button"
-                    onClick={() => void setStatus(task, done ? "pending" : "done")}
-                    aria-label={done ? "Reabrir tarea" : "Completar tarea"}
-                    className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
-                      done
-                        ? "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]"
-                        : "border-[var(--copilot-border)]"
-                    }`}
-                  >
-                    {done ? <Check className="h-3.5 w-3.5" aria-hidden /> : null}
-                  </button>
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className={`text-sm font-medium ${
-                        done
-                          ? "text-[var(--copilot-muted)] line-through"
-                          : "text-[var(--copilot-text)]"
-                      }`}
-                    >
-                      {task.title}
-                    </p>
-                    {task.description ? (
-                      <p className={`${copilotCaptionClass} mt-0.5`}>{task.description}</p>
-                    ) : null}
-                    <p className={`${copilotCaptionClass} mt-0.5`}>
-                      {MODULE_LABELS[task.module_key] ?? task.module_key}
-                      {" · "}
-                      Prioridad {DAILY_TASK_PRIORITY_LABELS[task.priority].toLowerCase()}
-                      {task.due_date ? (
-                        <span className={overdue ? "text-[var(--copilot-danger-text-strong)]" : ""}>
-                          {" · "}
-                          {overdue ? "Venció " : "Vence "}
-                          {task.due_date.slice(0, 10)}
-                        </span>
-                      ) : null}
-                      {done ? ` · ${DAILY_TASK_STATUS_LABELS.done}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    {done ? (
-                      <button
-                        type="button"
-                        onClick={() => void setStatus(task, "pending")}
-                        className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-                        aria-label="Reabrir"
-                      >
-                        <RotateCcw className="h-3.5 w-3.5" aria-hidden />
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setForm(formFromTask(task))}
-                        className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-                        aria-label="Editar"
-                      >
-                        <Pencil className="h-3.5 w-3.5" aria-hidden />
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => void remove(task)}
-                      className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-                      aria-label="Eliminar"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+      {error ? (
+        <ErrorState onRetry={load} />
+      ) : loading ? (
+        <p className={copilotCaptionClass}>Cargando el cuaderno de trabajo…</p>
+      ) : !hasAnything ? (
+        <EmptyState />
+      ) : (
+        <div className="flex flex-col gap-5">
+          <Section
+            title="Para resolver primero"
+            hint="Lo más urgente de hoy."
+            cards={sections.urgent}
+            handlers={cardHandlers}
+            busyId={busyId}
+          />
+          <Section
+            title="También para hoy"
+            cards={sections.today}
+            handlers={cardHandlers}
+            busyId={busyId}
+          />
+          <Section
+            title="Pendientes"
+            hint="Tareas que creaste."
+            cards={sections.manual}
+            handlers={cardHandlers}
+            busyId={busyId}
+          />
+          <CollapsibleSection
+            title={`Completadas hoy (${sections.completedToday.length})`}
+            cards={sections.completedToday}
+            handlers={cardHandlers}
+            busyId={busyId}
+          />
+          <CollapsibleSection
+            title={`Pospuestas (${sections.postponed.length})`}
+            cards={sections.postponed}
+            handlers={cardHandlers}
+            busyId={busyId}
+          />
+        </div>
+      )}
     </div>
+  );
+}
+
+type CardHandlers = {
+  onComplete: (c: WorkbookCard) => void;
+  onReopen: (c: WorkbookCard) => void;
+  onSecondary: (c: WorkbookCard) => void;
+  onEdit: (c: WorkbookCard) => void;
+  onDelete: (c: WorkbookCard) => void;
+};
+
+function Section({
+  title,
+  hint,
+  cards,
+  handlers,
+  busyId,
+}: {
+  title: string;
+  hint?: string;
+  cards: WorkbookCard[];
+  handlers: CardHandlers;
+  busyId: string | null;
+}) {
+  if (cards.length === 0) return null;
+  return (
+    <section>
+      <div className="mb-2">
+        <h2 className={copilotSectionTitleClass}>{title}</h2>
+        {hint ? <p className={copilotCaptionClass}>{hint}</p> : null}
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        {cards.map((card) => (
+          <WorkbookTaskCard
+            key={`${card.kind}:${card.id}`}
+            card={card}
+            busy={busyId === card.id}
+            onComplete={handlers.onComplete}
+            onReopen={handlers.onReopen}
+            onSecondary={handlers.onSecondary}
+            onEdit={handlers.onEdit}
+            onDelete={handlers.onDelete}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CollapsibleSection(props: {
+  title: string;
+  cards: WorkbookCard[];
+  handlers: CardHandlers;
+  busyId: string | null;
+}) {
+  const { title, cards } = props;
+  if (cards.length === 0) return null;
+  return (
+    <details className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-3">
+      <summary className={`cursor-pointer ${copilotSectionTitleClass}`}>{title}</summary>
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        {cards.map((card) => (
+          <WorkbookTaskCard
+            key={`${card.kind}:${card.id}`}
+            card={card}
+            busy={props.busyId === card.id}
+            onComplete={props.handlers.onComplete}
+            onReopen={props.handlers.onReopen}
+            onSecondary={props.handlers.onSecondary}
+            onEdit={props.handlers.onEdit}
+            onDelete={props.handlers.onDelete}
+          />
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function EmptyState() {
+  return (
+    <section className={`${copilotCardStandardClass} text-center`}>
+      <p className="text-base font-semibold text-[var(--copilot-text)]">Todo al día</p>
+      <p className={`${copilotCaptionClass} mt-1`}>No hay acciones urgentes para hoy.</p>
+      <div className="mt-4 flex flex-wrap justify-center gap-2">
+        <QuickLink href="/copilot/movimientos-bancarios" label="Ver Banco" />
+        <QuickLink href="/copilot/tesoreria" label="Ver Tesorería" />
+        <QuickLink href="/copilot/cartera" label="Ver Cartera" />
+      </div>
+    </section>
+  );
+}
+
+function QuickLink({ href, label }: { href: string; label: string }) {
+  return (
+    <a href={href} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
+      {label}
+    </a>
+  );
+}
+
+function ErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <section className={`${copilotCardStandardClass} text-center`}>
+      <p className="text-sm font-semibold text-[var(--copilot-text)]">
+        No pudimos cargar el cuaderno de trabajo.
+      </p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className={`mt-3 ${copilotButtonClassName({ variant: "primary", size: "sm" })}`}
+      >
+        Reintentar
+      </button>
+    </section>
   );
 }
 
@@ -419,7 +624,7 @@ function TaskForm({
 }) {
   return (
     <form
-      className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] p-4"
+      className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] p-4"
       onSubmit={(e) => {
         e.preventDefault();
         onSubmit();
@@ -435,18 +640,19 @@ function TaskForm({
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <label className="block text-xs sm:col-span-2">
-          <span className="text-[var(--copilot-muted)]">Título</span>
+          <span className="text-[var(--copilot-muted)]">¿Qué hay que hacer?</span>
           <input
             type="text"
             value={form.title}
             onChange={(e) => onChange({ ...form, title: e.target.value })}
             className={copilotInputClass}
             maxLength={200}
+            placeholder="Ej.: Llamar al proveedor por la factura"
             required
           />
         </label>
         <label className="block text-xs sm:col-span-2">
-          <span className="text-[var(--copilot-muted)]">Descripción</span>
+          <span className="text-[var(--copilot-muted)]">Detalle (opcional)</span>
           <textarea
             value={form.description}
             onChange={(e) => onChange({ ...form, description: e.target.value })}
@@ -455,13 +661,13 @@ function TaskForm({
           />
         </label>
         <label className="block text-xs">
-          <span className="text-[var(--copilot-muted)]">Módulo</span>
+          <span className="text-[var(--copilot-muted)]">Área</span>
           <select
             value={form.module_key}
             onChange={(e) => onChange({ ...form, module_key: e.target.value as ModuleKey })}
             className={copilotInputClass}
           >
-            {MODULE_KEYS.map((k) => (
+            {MANUAL_MODULE_CHOICES.map((k) => (
               <option key={k} value={k}>
                 {MODULE_LABELS[k] ?? k}
               </option>
@@ -480,8 +686,8 @@ function TaskForm({
             <option value="low">{DAILY_TASK_PRIORITY_LABELS.low}</option>
           </select>
         </label>
-        <label className="block text-xs">
-          <span className="text-[var(--copilot-muted)]">Fecha límite</span>
+        <label className="block text-xs sm:col-span-2">
+          <span className="text-[var(--copilot-muted)]">¿Para cuándo?</span>
           <input
             type="date"
             value={form.due_date}
@@ -503,9 +709,27 @@ function TaskForm({
           disabled={submitting}
           className={copilotButtonClassName({ variant: "primary", size: "sm" })}
         >
-          {submitting ? "Guardando…" : form.id ? "Guardar cambios" : "Crear tarea"}
+          {submitting ? "Guardando…" : form.id ? "Guardar" : "Guardar"}
         </button>
       </div>
     </form>
   );
+}
+
+// ─── Extractores defensivos de payloads ───────────────────────────────────────
+
+function extractTreasuryItems(json: unknown): Parameters<typeof splitTreasuryPayments>[0] {
+  if (!json || typeof json !== "object") return [];
+  const root = json as Record<string, unknown>;
+  const data = (root.data as Record<string, unknown> | undefined) ?? root;
+  const items = data.items ?? data.payments ?? data.scheduled;
+  return Array.isArray(items) ? (items as Parameters<typeof splitTreasuryPayments>[0]) : [];
+}
+
+function extractPortfolioRows(json: unknown): Parameters<typeof portfolioInputs>[0] {
+  if (!json || typeof json !== "object") return [];
+  const root = json as Record<string, unknown>;
+  const portfolio = root.portfolio as Record<string, unknown> | undefined;
+  const rows = portfolio?.rows;
+  return Array.isArray(rows) ? (rows as Parameters<typeof portfolioInputs>[0]) : [];
 }

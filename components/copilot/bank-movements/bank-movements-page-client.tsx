@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Landmark, Pencil, Plus, Trash2, X } from "lucide-react";
 
 import { BankMovementsFiltersBar } from "@/components/copilot/bank-movements/bank-movements-filters-bar";
@@ -97,7 +98,20 @@ function formFromMovement(m: BankMovement): FormState {
 }
 
 export function BankMovementsPageClient() {
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState<BankTab>("movimientos");
+  const deepLinkApplied = useRef(false);
+
+  // Deep link desde el cuaderno de trabajo: ?tab=reconciliation abre Conciliación
+  // (el panel ya filtra "Con sugerencia" por defecto). No rompe la navegación normal.
+  useEffect(() => {
+    if (deepLinkApplied.current) return;
+    const requestedTab = searchParams.get("tab");
+    if (requestedTab === "reconciliation" || requestedTab === "conciliacion") {
+      setTab("conciliacion");
+    }
+    deepLinkApplied.current = true;
+  }, [searchParams]);
   const [movements, setMovements] = useState<BankMovement[]>([]);
   const [imports, setImports] = useState<BankStatementImport[]>([]);
   const [loading, setLoading] = useState(true);
