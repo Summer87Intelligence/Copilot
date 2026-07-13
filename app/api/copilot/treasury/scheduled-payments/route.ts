@@ -30,6 +30,13 @@ function parseScheduledListQuery(request: NextRequest) {
     asOfDate: parseYmdQuery(params.get("as_of")) ?? new Date().toISOString().slice(0, 10),
     /** Fecha de corte explícita — si no viene, usa fin del mes actual (contrato único). */
     horizonEndDate: parseYmdQuery(params.get("horizon_end_date")) ?? getEndOfCurrentMonth(),
+    /**
+     * Corte independiente solo para `items` (listas/calendario/proyección).
+     * Si no viene, cae a `horizonEndDate` (comportamiento sin cambios).
+     * `summary` (coberturas a fin de mes) SIEMPRE usa `horizonEndDate` —
+     * nunca se mezcla con este corte más amplio.
+     */
+    itemsHorizonEndDate: parseYmdQuery(params.get("items_horizon_end_date")),
     includeSummary: params.get("include_summary") === "1" || params.get("include_summary") === "true",
   };
 }
@@ -54,17 +61,24 @@ export async function GET(request: NextRequest) {
         auth.ctx.supabase,
         auth.ctx.tenantCompanyId
       );
-      const range = {
+      const summaryRange = {
         asOfDate: q.asOfDate,
         horizonEndDate: horizonEnd,
         periodStartDate: q.fromDate,
         periodEndDate: q.toDate ?? horizonEnd,
         inactiveRecurringTemplateIds,
       };
-      const summary = summarizeScheduledOutflows(listed.data.items, range);
-      const hoyRows = filterPlannedObligationsForHoyScheduledList(listed.data.items, range).filter(
-        (row) => !q.currencyCode || row.currencyCode === q.currencyCode
-      );
+      // `items` puede pedir un horizonte más amplio que `summary` (ej. Hoy
+      // necesita ver "próximo mes" / "más adelante" sin que eso infle la
+      // cobertura "a fin de mes"). Si no se pide, es idéntico a `summaryRange`.
+      const itemsRange = q.itemsHorizonEndDate
+        ? { ...summaryRange, horizonEndDate: q.itemsHorizonEndDate }
+        : summaryRange;
+      const summary = summarizeScheduledOutflows(listed.data.items, summaryRange);
+      const hoyRows = filterPlannedObligationsForHoyScheduledList(
+        listed.data.items,
+        itemsRange
+      ).filter((row) => !q.currencyCode || row.currencyCode === q.currencyCode);
       const items = hoyRows.map((row) =>
         mapPlannedObligationToScheduledPayment(row, q.asOfDate)
       );

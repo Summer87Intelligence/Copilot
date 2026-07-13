@@ -89,6 +89,63 @@ describe("treasury-recurring-obligations", () => {
     expect(mapCategoryToObligationType("Impuestos")).toBe("tax");
   });
 
+  describe("FIX-HOY-RECURRING-PAYMENTS-PROJECTION-001", () => {
+    it("recurrente pausado (active: false) no genera drafts", () => {
+      const drafts = generateUpcomingObligations({
+        templates: [template({ nextOccurrenceDate: "2026-08-05", active: false })],
+        asOfDate: "2026-07-13",
+        withinDays: 90,
+      });
+      expect(drafts).toHaveLength(0);
+    });
+
+    it("recurrente cancelado (active: false, autoGenerate: false) no genera drafts", () => {
+      const drafts = generateUpcomingObligations({
+        templates: [
+          template({ nextOccurrenceDate: "2026-08-05", active: false, autoGenerate: false }),
+        ],
+        asOfDate: "2026-07-13",
+        withinDays: 90,
+      });
+      expect(drafts).toHaveLength(0);
+    });
+
+    it("recurrente con autoGenerate desactivado (pero active: true) no genera drafts", () => {
+      const drafts = generateUpcomingObligations({
+        templates: [
+          template({ nextOccurrenceDate: "2026-08-05", active: true, autoGenerate: false }),
+        ],
+        asOfDate: "2026-07-13",
+        withinDays: 90,
+      });
+      expect(drafts).toHaveLength(0);
+    });
+
+    it("Tesorería y Hoy comparten el mismo motor: el draft respeta next_occurrence_date de la plantilla", () => {
+      // Mismos 8 recurrentes reales del caso: ejemplo ZETA con próximo 05/08/2026.
+      // asOfDate dentro del mismo mes del ciclo (ago) para no disparar la
+      // recuperación de gap mensual (comportamiento preexistente e
+      // intencional de generateUpcomingObligations, no forma parte de este fix).
+      const drafts = generateUpcomingObligations({
+        templates: [
+          template({
+            id: "tpl-zeta",
+            title: "ZETA",
+            category: "Servicios",
+            currency: "UYU",
+            amount: 3_721,
+            nextOccurrenceDate: "2026-08-05",
+          }),
+        ],
+        asOfDate: "2026-08-01",
+        withinDays: 90,
+      });
+      expect(drafts).toHaveLength(1);
+      expect(drafts[0]?.dueDate).toBe("2026-08-05");
+      expect(drafts[0]?.input.amountEstimated).toBe(3_721);
+    });
+  });
+
   describe("TREASURY-RECURRING-CURRENT-MONTH-LATE-INSTANCE-FIX-001", () => {
     it("Caso A: día del mes aún no llegó → genera la instancia pendiente del mes actual", () => {
       const drafts = generateUpcomingObligations({

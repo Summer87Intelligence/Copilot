@@ -8,6 +8,7 @@ import type {
   TreasuryOutflowSummary,
   TreasuryScheduledPayment,
 } from "@/lib/treasury/treasury-scheduled-payments";
+import type { GeneratedObligationDraft } from "@/lib/treasury/treasury-recurring-obligations";
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return v != null && typeof v === "object";
@@ -32,6 +33,13 @@ export function parseTreasuryScheduledItemsJson(json: unknown): TreasurySchedule
   if (!isRecord(json) || json.ok !== true || !isRecord(json.data)) return [];
   const items = json.data.items;
   return Array.isArray(items) ? (items as TreasuryScheduledPayment[]) : [];
+}
+
+/** GET /api/copilot/treasury/recurring-obligations?preview_within_days=N → data.drafts[] */
+export function parseRecurringObligationPreviewJson(json: unknown): GeneratedObligationDraft[] {
+  if (!isRecord(json) || json.ok !== true || !isRecord(json.data)) return [];
+  const drafts = json.data.drafts;
+  return Array.isArray(drafts) ? (drafts as GeneratedObligationDraft[]) : [];
 }
 
 export type CanonicalTreasuryRollup = {

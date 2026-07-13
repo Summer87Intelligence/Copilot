@@ -29,6 +29,8 @@ type CalendarEntry = {
   status?: string;
   href: string;
   count?: number;
+  /** Próxima ocurrencia de un recurrente activo, todavía sin materializar. */
+  isRecurringProjection?: boolean;
 };
 
 type DateGroup = {
@@ -45,6 +47,9 @@ const PAYMENT_STATUS_LABEL: Record<string, string> = {
   cancelled: "Cancelado",
 };
 
+/** Próxima ocurrencia recurrente proyectada, aún sin obligación materializada. */
+const RECURRING_PROJECTION_STATUS_LABEL = "Previsto";
+
 function buildPaymentEntries(
   payments: readonly TreasuryScheduledPayment[],
   start: string,
@@ -58,10 +63,14 @@ function buildPaymentEntries(
 
     const label = (p.recurringCategoryLabel?.trim() || p.name.trim() || p.category).slice(0, 80);
     const key = `${p.dueDate}|${label}|${p.currency}`;
+    const statusLabel = p.isProjected
+      ? RECURRING_PROJECTION_STATUS_LABEL
+      : (PAYMENT_STATUS_LABEL[p.status] ?? p.status);
     const existing = grouped.get(key);
     if (existing) {
       existing.amount = (existing.amount ?? 0) + p.amount;
       existing.count = (existing.count ?? 1) + 1;
+      existing.isRecurringProjection = existing.isRecurringProjection || p.isProjected;
     } else {
       grouped.set(key, {
         id: key,
@@ -70,9 +79,10 @@ function buildPaymentEntries(
         label,
         amount: p.amount,
         currency: p.currency,
-        status: PAYMENT_STATUS_LABEL[p.status] ?? p.status,
+        status: statusLabel,
         href: "/copilot/tesoreria?section=obligations",
         count: 1,
+        isRecurringProjection: p.isProjected,
       });
     }
   }
@@ -187,6 +197,11 @@ function CalendarRow({ entry }: { entry: CalendarEntry }) {
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 py-2 first:pt-0">
       <TypeBadge type={entry.type} />
+      {entry.isRecurringProjection ? (
+        <span className="inline-flex shrink-0 rounded-md bg-[var(--copilot-accent-soft)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-accent)]">
+          Recurrente
+        </span>
+      ) : null}
       <p className="min-w-0 flex-1 truncate text-sm text-[var(--copilot-ink)]">
         {entry.label}
         {entry.count && entry.count > 1 ? (

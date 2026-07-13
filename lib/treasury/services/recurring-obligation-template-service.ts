@@ -38,6 +38,10 @@ export type RecurringObligationGenerateResult = {
   created: PlannedCashObligation[];
 };
 
+export type RecurringObligationPreviewResult = {
+  drafts: GeneratedObligationDraft[];
+};
+
 async function insertObligationFromDraft(
   supabase: SupabaseClient,
   workspaceId: string,
@@ -251,6 +255,55 @@ export async function recurringObligationGenerate(
     { drafts, created: persisted.data },
     "Obligaciones recurrentes generadas."
   );
+}
+
+/**
+ * Vista previa de próximas ocurrencias recurrentes SIN persistir nada.
+ *
+ * Reutiliza el mismo motor puro (`generateUpcomingObligations`) que usa
+ * `recurringObligationGenerate`, pero nunca inserta filas en
+ * `planned_cash_obligations` — solo lectura de plantillas activas + lookup
+ * de duplicados. Excluye cualquier ocurrencia que ya tenga una obligación
+ * materializada con la misma `recurring_instance_key` (mismo
+ * `templateId:dueDate`), para que el llamador pueda mezclar el resultado
+ * con la lista de pagos programados sin riesgo de doble conteo.
+ *
+ * Solo considera egresos (direction "outflow"): el caso de uso actual
+ * (proyección de caja de Hoy) es sobre pagos recurrentes, no ingresos.
+ */
+export async function recurringObligationPreviewUpcoming(
+  supabase: SupabaseClient,
+  tenantCompanyId: string,
+  params: { asOfDate: string; withinDays: number }
+): Promise<ProtoCrudResult<RecurringObligationPreviewResult>> {
+  const workspaceId = resolveTreasuryWorkspaceId(tenantCompanyId);
+  const { rows, error } = await recurringObligationTemplateRepositoryList(
+    supabase,
+    workspaceId,
+    true
+  );
+  if (error) return mapDbError(error);
+
+  const allDrafts = generateUpcomingObligations({
+    templates: rows,
+    asOfDate: params.asOfDate,
+    withinDays: params.withinDays,
+  });
+  const outflowDrafts = allDrafts.filter((draft) => draft.input.direction !== "inflow");
+
+  const drafts: GeneratedObligationDraft[] = [];
+  for (const draft of outflowDrafts) {
+    const existing = await plannedCashObligationRepositoryFindByInstanceKey(
+      supabase,
+      workspaceId,
+      draft.recurringInstanceKey
+    );
+    if (existing.error) return mapDbError(existing.error);
+    if (existing.row) continue;
+    drafts.push(draft);
+  }
+
+  return protoCrudResult.ok({ drafts }, "Proyección de recurrentes calculada.");
 }
 
 /**

@@ -28,10 +28,16 @@ import { parseTreasuryCashPositionJson } from "@/lib/treasury/treasury-api-parse
 import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
 import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
 import {
+  parseRecurringObligationPreviewJson,
   parseTreasuryScheduledItemsJson,
   parseTreasuryScheduledSummaryJson,
 } from "@/lib/treasury/treasury-api-parse";
 import type { TreasuryScheduledPayment } from "@/lib/treasury/treasury-scheduled-payments";
+import {
+  hoyItemsHorizonEndDate,
+  mapRecurringDraftsToProjectedPayments,
+  mergeScheduledPaymentsWithProjections,
+} from "@/lib/hoy-recurring-projection";
 
 const DEFAULT_GATE: BusinessPulseGate = {
   confidence: "low",
@@ -108,19 +114,32 @@ export default function CopilotHoyPage() {
       period_end: period.to,
     });
 
+    const itemsHorizonEndDate = hoyItemsHorizonEndDate(today);
+
     // Each fetch is independent — a single failure must not block the others.
-    const [hubResult, reconCurrentResult, reconPeriodResult, treasuryResult, cashResult, manualResult] =
-      await Promise.allSettled([
-        copilotApiFetch("/api/copilot/rutas-hub", { signal }),
-        copilotApiFetch("/api/copilot/financial-reconciliation?mode=all_outstanding", { signal }),
-        copilotApiFetch(`/api/copilot/financial-reconciliation?${periodQuery.toString()}`, { signal }),
-        copilotApiFetch(
-          `/api/copilot/treasury/scheduled-payments?include_summary=1&horizon_end_date=${lastDayOfMonthYmd(today)}`,
-          { signal }
-        ),
-        copilotApiFetch("/api/copilot/treasury/cash-position", { signal }),
-        copilotApiFetch("/api/copilot/treasury/manual-cash-movements", { signal }),
-      ]);
+    const [
+      hubResult,
+      reconCurrentResult,
+      reconPeriodResult,
+      treasuryResult,
+      recurringPreviewResult,
+      cashResult,
+      manualResult,
+    ] = await Promise.allSettled([
+      copilotApiFetch("/api/copilot/rutas-hub", { signal }),
+      copilotApiFetch("/api/copilot/financial-reconciliation?mode=all_outstanding", { signal }),
+      copilotApiFetch(`/api/copilot/financial-reconciliation?${periodQuery.toString()}`, { signal }),
+      copilotApiFetch(
+        `/api/copilot/treasury/scheduled-payments?include_summary=1&horizon_end_date=${lastDayOfMonthYmd(today)}&items_horizon_end_date=${itemsHorizonEndDate}`,
+        { signal }
+      ),
+      copilotApiFetch(
+        `/api/copilot/treasury/recurring-obligations?preview_within_days=90&as_of_date=${today}`,
+        { signal }
+      ),
+      copilotApiFetch("/api/copilot/treasury/cash-position", { signal }),
+      copilotApiFetch("/api/copilot/treasury/manual-cash-movements", { signal }),
+    ]);
 
     if (signal.aborted) return;
 
@@ -197,20 +216,39 @@ export default function CopilotHoyPage() {
     }
 
     // ── Tesorería — pagos programados ───────────────────────────────────────
+    let materializedPayments: TreasuryScheduledPayment[] = [];
     if (treasuryResult.status === "fulfilled") {
       const treasuryJson = await treasuryResult.value.json().catch(() => null);
       if (treasuryResult.value.ok) {
         setTreasuryOutflowSummaries(parseTreasuryScheduledSummaryJson(treasuryJson));
-        setTreasuryScheduledPayments(parseTreasuryScheduledItemsJson(treasuryJson));
+        materializedPayments = parseTreasuryScheduledItemsJson(treasuryJson);
       } else {
         setTreasuryOutflowSummaries([]);
-        setTreasuryScheduledPayments([]);
       }
     } else {
       devWarn("treasury-scheduled-payments", treasuryResult.reason);
       newErrors.treasury = "No se pudo cargar los pagos programados.";
       setTreasuryOutflowSummaries([]);
-      setTreasuryScheduledPayments([]);
+    }
+
+    // ── Tesorería — próximas ocurrencias de recurrentes (sin materializar) ──
+    // Se mezclan con los pagos programados para que Hoy proyecte los
+    // recurrentes activos aunque todavía no exista una obligación
+    // materializada para su próximo ciclo (ver FIX-HOY-RECURRING-PAYMENTS-
+    // PROJECTION-001). El dedupe fuerte ya ocurre server-side.
+    if (recurringPreviewResult.status === "fulfilled" && recurringPreviewResult.value.ok) {
+      const previewJson = await recurringPreviewResult.value.json().catch(() => null);
+      const drafts = parseRecurringObligationPreviewJson(previewJson);
+      const projected = mapRecurringDraftsToProjectedPayments(drafts);
+      setTreasuryScheduledPayments(
+        mergeScheduledPaymentsWithProjections(materializedPayments, projected)
+      );
+    } else {
+      if (recurringPreviewResult.status === "rejected") {
+        devWarn("treasury-recurring-preview", recurringPreviewResult.reason);
+      }
+      // Falla no crítica: Hoy sigue mostrando los pagos materializados.
+      setTreasuryScheduledPayments(materializedPayments);
     }
 
     // ── Tesorería — posición de caja ────────────────────────────────────────

@@ -87,6 +87,13 @@ export type TreasuryScheduledPayment = {
   updatedAt: string;
   /** Etiqueta de categoría del recurrente (ej. Suscripciones), si aplica. */
   recurringCategoryLabel: string | null;
+  /**
+   * true = próxima ocurrencia proyectada de un recurrente activo, todavía
+   * sin materializar como `planned_cash_obligation`. Nunca viene de la API
+   * (siempre undefined en filas reales); lo setea Hoy client-side al
+   * mezclar la vista previa de recurrentes con los pagos programados.
+   */
+  isProjected?: boolean;
 };
 
 export type TreasuryOutflowSummary = {
