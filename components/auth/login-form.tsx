@@ -28,6 +28,7 @@ export function LoginForm() {
           ok?: boolean;
           error?: string;
           message?: string;
+          landing?: string;
         } | null;
         if (!res.ok) {
           setError(
@@ -40,7 +41,13 @@ export function LoginForm() {
           return;
         }
         if (json?.ok) {
-          router.replace("/copilot/hoy");
+          // Destino ya resuelto server-side (rol + permisos efectivos) —
+          // navega directo, sin pasar por Hoy primero.
+          router.replace(
+            typeof json.landing === "string" && json.landing.trim()
+              ? json.landing
+              : "/copilot"
+          );
           router.refresh();
           return;
         }

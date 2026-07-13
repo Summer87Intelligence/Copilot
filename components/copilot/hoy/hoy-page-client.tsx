@@ -1,0 +1,353 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
+import { HoyPageView, type HoySectionErrors } from "@/components/copilot/hoy/hoy-page-view";
+import type { ClientCompanyDetail, ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
+import { copilotApiFetch } from "@/lib/copilot-fetch";
+import type { FinancialSnapshotApiV1 } from "@/lib/copilot-financial-engine";
+import type { FinancialConsistencyReport } from "@/lib/copilot-financial-reconciliation";
+import { sumCarteraAgingCurrent } from "@/lib/copilot-cartera-aging-totals";
+import {
+  defaultHoyPeriodRange,
+  last30DaysPeriodRange,
+  lastDayOfMonthYmd,
+  monthToDatePeriodRange,
+  type HoyPeriodRange,
+} from "@/lib/copilot-hoy-period";
+import {
+  carteraAgingOverdueFromReport,
+  carteraCollectedToDateFromReport,
+  type BusinessPulseGate,
+} from "@/lib/copilot-today-business-pulse";
+import type { CarteraCurrencyTotals } from "@/lib/copilot-cartera-aging-totals";
+import { toRutasGateMeta } from "@/lib/copilot-rutas-gate";
+import { HOY_PAGE } from "@/lib/copilot-hoy-ui-contract";
+import type { CashPositionByCurrency } from "@/lib/treasury/treasury-cash-position";
+import { parseTreasuryCashPositionJson } from "@/lib/treasury/treasury-api-parse";
+import type { ManualCashMovement } from "@/lib/treasury/treasury-types";
+import type { TreasuryOutflowSummary } from "@/lib/treasury/treasury-scheduled-payments";
+import {
+  parseRecurringObligationPreviewJson,
+  parseTreasuryScheduledItemsJson,
+  parseTreasuryScheduledSummaryJson,
+} from "@/lib/treasury/treasury-api-parse";
+import type { TreasuryScheduledPayment } from "@/lib/treasury/treasury-scheduled-payments";
+import {
+  hoyItemsHorizonEndDate,
+  mapRecurringDraftsToProjectedPayments,
+  mergeScheduledPaymentsWithProjections,
+} from "@/lib/hoy-recurring-projection";
+
+const DEFAULT_GATE: BusinessPulseGate = {
+  confidence: "low",
+  coverage: "insufficient",
+  recommendations_enabled: false,
+};
+
+function normalizeDateInput(value: string): string {
+  return value.slice(0, 10);
+}
+
+function devWarn(section: string, reason: unknown) {
+  if (process.env.NODE_ENV !== "production") {
+    console.warn(`[Hoy] ${section} load failed`, reason);
+  }
+}
+
+export function HoyPageClient() {
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const defaultPeriod = useMemo(() => defaultHoyPeriodRange(today), [today]);
+
+  const [loading, setLoading] = useState(true);
+  const [snapshot, setSnapshot] = useState<FinancialSnapshotApiV1 | null>(null);
+  const [portfolioRows, setPortfolioRows] = useState<ClientPortfolioLoad["rows"] | null>(null);
+  const [portfolioDetails, setPortfolioDetails] = useState<Record<string, ClientCompanyDetail> | null>(null);
+  const [gate, setGate] = useState<BusinessPulseGate>(DEFAULT_GATE);
+  const [carteraAgingOverdue, setCarteraAgingOverdue] = useState<CarteraCurrencyTotals | undefined>(
+    undefined
+  );
+  const [carteraCollectedToDate, setCarteraCollectedToDate] = useState<
+    CarteraCurrencyTotals | undefined
+  >(undefined);
+  const [outstandingReportCurrencies, setOutstandingReportCurrencies] = useState<unknown>(undefined);
+  const [carteraAgingCurrent, setCarteraAgingCurrent] = useState<
+    CarteraCurrencyTotals | undefined
+  >(undefined);
+  const [periodReportCurrencies, setPeriodReportCurrencies] = useState<unknown>([]);
+  const [manualCashMovements, setManualCashMovements] = useState<ManualCashMovement[]>([]);
+  const [treasuryOutflowSummaries, setTreasuryOutflowSummaries] = useState<
+    TreasuryOutflowSummary[] | undefined
+  >(undefined);
+  const [treasuryScheduledPayments, setTreasuryScheduledPayments] = useState<
+    TreasuryScheduledPayment[]
+  >([]);
+  const [treasuryCashPositions, setTreasuryCashPositions] = useState<
+    CashPositionByCurrency[] | undefined
+  >(undefined);
+  const [error, setError] = useState<string | null>(null);
+  const [sectionErrors, setSectionErrors] = useState<HoySectionErrors>({});
+  const loadAbortRef = useRef<AbortController | null>(null);
+
+  const [draftFrom, setDraftFrom] = useState(defaultPeriod.from);
+  const [draftTo, setDraftTo] = useState(defaultPeriod.to);
+  const [confirmedPeriod, setConfirmedPeriod] = useState<HoyPeriodRange>(defaultPeriod);
+
+  const hasPendingPeriodChanges =
+    normalizeDateInput(draftFrom) !== normalizeDateInput(confirmedPeriod.from) ||
+    normalizeDateInput(draftTo) !== normalizeDateInput(confirmedPeriod.to);
+
+  const load = useCallback(async () => {
+    loadAbortRef.current?.abort();
+    const controller = new AbortController();
+    loadAbortRef.current = controller;
+    const { signal } = controller;
+
+    setLoading(true);
+    setError(null);
+    setSectionErrors({});
+    const period = confirmedPeriod;
+
+    const periodQuery = new URLSearchParams({
+      mode: "period_only",
+      period_start: period.from,
+      period_end: period.to,
+    });
+
+    const itemsHorizonEndDate = hoyItemsHorizonEndDate(today);
+
+    // Each fetch is independent — a single failure must not block the others.
+    const [
+      hubResult,
+      reconCurrentResult,
+      reconPeriodResult,
+      treasuryResult,
+      recurringPreviewResult,
+      cashResult,
+      manualResult,
+    ] = await Promise.allSettled([
+      copilotApiFetch("/api/copilot/rutas-hub", { signal }),
+      copilotApiFetch("/api/copilot/financial-reconciliation?mode=all_outstanding", { signal }),
+      copilotApiFetch(`/api/copilot/financial-reconciliation?${periodQuery.toString()}`, { signal }),
+      copilotApiFetch(
+        `/api/copilot/treasury/scheduled-payments?include_summary=1&horizon_end_date=${lastDayOfMonthYmd(today)}&items_horizon_end_date=${itemsHorizonEndDate}`,
+        { signal }
+      ),
+      copilotApiFetch(
+        `/api/copilot/treasury/recurring-obligations?preview_within_days=90&as_of_date=${today}`,
+        { signal }
+      ),
+      copilotApiFetch("/api/copilot/treasury/cash-position", { signal }),
+      copilotApiFetch("/api/copilot/treasury/manual-cash-movements", { signal }),
+    ]);
+
+    if (signal.aborted) return;
+
+    const newErrors: HoySectionErrors = {};
+
+    // ── Hub (panorama principal + portfolio) ────────────────────────────────
+    if (hubResult.status === "fulfilled") {
+      const json = (await hubResult.value.json().catch(() => null)) as Record<string, unknown> | null;
+      const hub = json ?? {};
+      const meta = toRutasGateMeta(hub);
+      setSnapshot((hub.snapshot as FinancialSnapshotApiV1 | null) ?? null);
+      const hubPortfolio = (hub.portfolio as ClientPortfolioLoad | null) ?? null;
+      setPortfolioRows(hubPortfolio?.rows ?? null);
+      setPortfolioDetails(hubPortfolio?.details ?? null);
+      setGate({
+        confidence: meta.confidence,
+        coverage: meta.coverage,
+        recommendations_enabled: meta.recommendations_enabled,
+      });
+    } else {
+      devWarn("hub", hubResult.reason);
+      newErrors.hub = "No se pudo cargar el panorama principal.";
+      setSnapshot(null);
+      setPortfolioRows(null);
+      setPortfolioDetails(null);
+      setGate(DEFAULT_GATE);
+    }
+
+    // ── Cartera — estado actual (vencido, cobrado) ──────────────────────────
+    if (reconCurrentResult.status === "fulfilled") {
+      const reconCurrentJson = (await reconCurrentResult.value.json().catch(() => null)) as {
+        ok?: boolean;
+        report?: FinancialConsistencyReport;
+      } | null;
+      if (reconCurrentResult.value.ok && reconCurrentJson?.ok && reconCurrentJson.report) {
+        setCarteraAgingOverdue(
+          carteraAgingOverdueFromReport(reconCurrentJson.report.agingByCurrency)
+        );
+        setCarteraAgingCurrent(sumCarteraAgingCurrent(reconCurrentJson.report.agingByCurrency));
+        setCarteraCollectedToDate(
+          carteraCollectedToDateFromReport(reconCurrentJson.report.currencies)
+        );
+        setOutstandingReportCurrencies(reconCurrentJson.report.currencies);
+      } else {
+        setCarteraAgingOverdue(undefined);
+        setCarteraAgingCurrent(undefined);
+        setCarteraCollectedToDate(undefined);
+        setOutstandingReportCurrencies(undefined);
+      }
+    } else {
+      devWarn("cartera-current-recon", reconCurrentResult.reason);
+      newErrors.carteraCurrentRecon = "No se pudo cargar el estado de cartera atrasada.";
+      setCarteraAgingOverdue(undefined);
+      setCarteraAgingCurrent(undefined);
+      setCarteraCollectedToDate(undefined);
+      setOutstandingReportCurrencies(undefined);
+    }
+
+    // ── Cartera — actividad del período ─────────────────────────────────────
+    if (reconPeriodResult.status === "fulfilled") {
+      const reconPeriodJson = (await reconPeriodResult.value.json().catch(() => null)) as {
+        ok?: boolean;
+        report?: FinancialConsistencyReport;
+      } | null;
+      if (reconPeriodResult.value.ok && reconPeriodJson?.ok && reconPeriodJson.report) {
+        setPeriodReportCurrencies(reconPeriodJson.report.currencies);
+      } else {
+        setPeriodReportCurrencies([]);
+      }
+    } else {
+      devWarn("cartera-period-recon", reconPeriodResult.reason);
+      newErrors.carteraPeriodRecon = "No se pudo cargar la actividad del período.";
+      setPeriodReportCurrencies([]);
+    }
+
+    // ── Tesorería — pagos programados ───────────────────────────────────────
+    let materializedPayments: TreasuryScheduledPayment[] = [];
+    if (treasuryResult.status === "fulfilled") {
+      const treasuryJson = await treasuryResult.value.json().catch(() => null);
+      if (treasuryResult.value.ok) {
+        setTreasuryOutflowSummaries(parseTreasuryScheduledSummaryJson(treasuryJson));
+        materializedPayments = parseTreasuryScheduledItemsJson(treasuryJson);
+      } else {
+        setTreasuryOutflowSummaries([]);
+      }
+    } else {
+      devWarn("treasury-scheduled-payments", treasuryResult.reason);
+      newErrors.treasury = "No se pudo cargar los pagos programados.";
+      setTreasuryOutflowSummaries([]);
+    }
+
+    // ── Tesorería — próximas ocurrencias de recurrentes (sin materializar) ──
+    // Se mezclan con los pagos programados para que Hoy proyecte los
+    // recurrentes activos aunque todavía no exista una obligación
+    // materializada para su próximo ciclo (ver FIX-HOY-RECURRING-PAYMENTS-
+    // PROJECTION-001). El dedupe fuerte ya ocurre server-side.
+    if (recurringPreviewResult.status === "fulfilled" && recurringPreviewResult.value.ok) {
+      const previewJson = await recurringPreviewResult.value.json().catch(() => null);
+      const drafts = parseRecurringObligationPreviewJson(previewJson);
+      const projected = mapRecurringDraftsToProjectedPayments(drafts);
+      setTreasuryScheduledPayments(
+        mergeScheduledPaymentsWithProjections(materializedPayments, projected)
+      );
+    } else {
+      if (recurringPreviewResult.status === "rejected") {
+        devWarn("treasury-recurring-preview", recurringPreviewResult.reason);
+      }
+      // Falla no crítica: Hoy sigue mostrando los pagos materializados.
+      setTreasuryScheduledPayments(materializedPayments);
+    }
+
+    // ── Tesorería — posición de caja ────────────────────────────────────────
+    if (cashResult.status === "fulfilled") {
+      const cashJson = await cashResult.value.json().catch(() => null);
+      if (cashResult.value.ok) {
+        setTreasuryCashPositions(parseTreasuryCashPositionJson(cashJson));
+      } else {
+        setTreasuryCashPositions([]);
+      }
+    } else {
+      devWarn("treasury-cash-position", cashResult.reason);
+      newErrors.cashPosition = "No se pudo cargar la posición de caja.";
+      setTreasuryCashPositions([]);
+    }
+
+    // ── Movimientos manuales ────────────────────────────────────────────────
+    if (manualResult.status === "fulfilled") {
+      const manualJson = (await manualResult.value.json().catch(() => null)) as {
+        ok?: boolean;
+        data?: { items?: ManualCashMovement[] };
+      } | null;
+      if (manualResult.value.ok && manualJson?.ok && manualJson.data?.items) {
+        setManualCashMovements(manualJson.data.items);
+      } else {
+        setManualCashMovements([]);
+      }
+    } else {
+      devWarn("treasury-manual-movements", manualResult.reason);
+      newErrors.manualMovements = "No se pudo cargar los movimientos manuales.";
+      setManualCashMovements([]);
+    }
+
+    setSectionErrors(newErrors);
+
+    // Only set global error if the primary data source (hub) failed —
+    // secondary section failures are communicated via sectionErrors.
+    if (newErrors.hub) {
+      setError("No se pudo cargar el resumen del negocio. Intentá de nuevo.");
+    }
+
+    setLoading(false);
+  }, [confirmedPeriod]);
+
+  useEffect(() => {
+    void (async () => {
+      await load();
+    })();
+    return () => {
+      loadAbortRef.current?.abort();
+    };
+  }, [load]);
+
+  function applyPeriod(range: HoyPeriodRange) {
+    setDraftFrom(range.from);
+    setDraftTo(range.to);
+    setConfirmedPeriod(range);
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <CopilotPageHeader
+        dense
+        title={HOY_PAGE.title}
+        description={HOY_PAGE.description}
+      />
+      <HoyPageView
+        loading={loading}
+        today={today}
+        snapshot={snapshot}
+        portfolioRows={portfolioRows}
+        portfolioDetails={portfolioDetails ?? undefined}
+        gate={gate}
+        carteraAgingOverdue={carteraAgingOverdue}
+        carteraAgingCurrent={carteraAgingCurrent}
+        carteraCollectedToDate={carteraCollectedToDate}
+        outstandingReportCurrencies={outstandingReportCurrencies}
+        periodReportCurrencies={periodReportCurrencies}
+        manualCashMovements={manualCashMovements}
+        confirmedPeriod={confirmedPeriod}
+        draftFrom={draftFrom}
+        draftTo={draftTo}
+        hasPendingPeriodChanges={hasPendingPeriodChanges}
+        onDraftFromChange={setDraftFrom}
+        onDraftToChange={setDraftTo}
+        onConfirmPeriod={() => {
+          if (draftFrom && draftTo && draftFrom <= draftTo) {
+            setConfirmedPeriod({ from: draftFrom, to: draftTo });
+          }
+        }}
+        onMonthToDate={() => applyPeriod(monthToDatePeriodRange(today))}
+        onLast30Days={() => applyPeriod(last30DaysPeriodRange(today))}
+        treasuryOutflowSummaries={treasuryOutflowSummaries}
+        treasuryScheduledPayments={treasuryScheduledPayments}
+        treasuryCashPositions={treasuryCashPositions}
+        error={error}
+        sectionErrors={sectionErrors}
+        onRefresh={load}
+      />
+    </div>
+  );
+}

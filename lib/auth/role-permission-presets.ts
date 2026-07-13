@@ -29,7 +29,10 @@ const SUPERADMIN_PRESET: RolePreset = {
 };
 
 const USUARIO_PRESET: RolePreset = {
-  hoy: "read",
+  // USER-ACCESS-LANDING-PERMISSIONS-001: Hoy es el dashboard ejecutivo,
+  // reservado a admin/acceso total. Landing operativa por defecto: Tareas
+  // diarias (ver lib/auth/default-landing.ts).
+  hoy: "none",
   dashboard: "read",
   acciones: "read",
   clientes: "read",

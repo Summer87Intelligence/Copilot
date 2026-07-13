@@ -23,6 +23,13 @@ import {
   verifyPinAgainstHash,
 } from "@/lib/security/pin-hash";
 import { getRequestClientMeta } from "@/lib/security/request-client-meta";
+import { getDefaultLandingForUser } from "@/lib/auth/default-landing";
+import { getDefaultPermissionsForRole } from "@/lib/auth/role-permission-presets";
+import {
+  resolveEffectivePermissions,
+  type AccessLevel,
+  type ModuleKey,
+} from "@/lib/auth/module-permissions";
 
 function createServiceRoleClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -334,7 +341,33 @@ export async function POST(request: Request) {
       pin_migrated_to_hash: Boolean(!pinHash && legacyPin != null && updates.pin_hash),
     });
 
-    const res = NextResponse.json({ ok: true as const });
+    // USER-ACCESS-LANDING-PERMISSIONS-001: resolver el destino post-login
+    // server-side (rol + permisos efectivos) para que el cliente navegue
+    // directo, sin flash de Hoy antes del redirect real.
+    const presetFallback = Object.fromEntries(
+      getDefaultPermissionsForRole(role).map((p) => [p.moduleKey, p.accessLevel])
+    );
+    let landing = getDefaultLandingForUser(role, presetFallback);
+    try {
+      const { data: overrideRows } = await admin
+        .from("app_user_permissions")
+        .select("module_key, access_level")
+        .eq("workspace_id", companyId)
+        .eq("user_id", u.id);
+      const presets = getDefaultPermissionsForRole(role);
+      const overrides = ((overrideRows ?? []) as Array<{ module_key: string; access_level: string }>)
+        .filter((row) => typeof row.module_key === "string" && typeof row.access_level === "string")
+        .map((row) => ({ moduleKey: row.module_key as ModuleKey, accessLevel: row.access_level as AccessLevel }));
+      const effective = resolveEffectivePermissions(role, presets, overrides);
+      const modulePermissions = Object.fromEntries(
+        effective.map((p) => [p.moduleKey, p.accessLevel])
+      );
+      landing = getDefaultLandingForUser(role, modulePermissions);
+    } catch (e) {
+      logAuthStructured("login_landing_resolution_error", { user_id: u.id, error: String(e) });
+    }
+
+    const res = NextResponse.json({ ok: true as const, landing });
     res.cookies.set(COPILOT_SESSION_COOKIE, cookieValue, getCopilotSessionCookieSetOptions());
     return res;
   } catch (e) {

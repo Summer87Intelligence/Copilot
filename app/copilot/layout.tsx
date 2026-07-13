@@ -91,12 +91,10 @@ export default async function CopilotModuleLayout({
           }
         } else {
           isSuperadmin = role.toLowerCase() === "superadmin";
-          if (role.toLowerCase() === "demo_readonly") {
+          if (role.toLowerCase() === "demo_readonly" || role.toLowerCase() === "usuario") {
             isReadOnly = true;
-            readOnlyLabel = "Modo demo · solo lectura";
-          } else if (role.toLowerCase() === "usuario") {
-            isReadOnly = true;
-            readOnlyLabel = "Solo lectura";
+            // USER-ACCESS-LANDING-PERMISSIONS-001: sin badge global de solo lectura.
+            readOnlyLabel = null;
           }
           const displayLogin =
             (r.username && r.username.trim()) ||

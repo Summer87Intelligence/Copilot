@@ -9,20 +9,18 @@ import { TodayDateDisplay } from "@/components/copilot/copilot-today-date";
 import { OperationalSemaphoreIndicator } from "@/components/copilot/operational-semaphore-indicator";
 import { useCopilotOperationalPulse } from "@/components/copilot/copilot-operational-pulse-context";
 
-function readOnlyBadgeShortLabel(label: string): string {
-  if (label.toLowerCase().includes("demo")) return "Demo";
-  return "Solo lectura";
-}
-
+/**
+ * USER-ACCESS-LANDING-PERMISSIONS-001: sin badge global de "Modo lectura" /
+ * "Solo lectura" — no debe parecer una demo o un sistema limitado. Las
+ * restricciones reales se siguen aplicando (permisos server-side intactos);
+ * la señal visual de "esto no lo podés hacer" vive en el botón puntual
+ * (ver PermissionButton), no en un rótulo permanente del header.
+ */
 export function CopilotEnvironmentHealthStrip({
   sessionPreview = null,
-  readOnlyLabel = null,
 }: {
   sessionPreview?: CopilotSessionPreview | null;
-  readOnlyLabel?: string | null;
 }) {
-  const readOnlyShort =
-    readOnlyLabel != null ? readOnlyBadgeShortLabel(readOnlyLabel) : null;
   const { loading: pulseLoading } = useCopilotOperationalPulse();
 
   return (
@@ -32,15 +30,6 @@ export function CopilotEnvironmentHealthStrip({
         {!pulseLoading ? <CopilotZetaSyncCompactPill className="hidden xl:inline-block" /> : null}
       </div>
       <div className="flex shrink-0 items-center justify-end gap-x-1.5 sm:gap-x-4">
-        {readOnlyLabel && readOnlyShort ? (
-          <span
-            className="inline-flex max-w-[5.5rem] shrink-0 items-center rounded-full border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-2 py-0.5 text-[10px] font-semibold leading-tight text-[var(--copilot-warning-text-strong)] sm:max-w-none sm:px-2.5 sm:text-xs"
-            title={readOnlyLabel}
-          >
-            <span className="truncate sm:hidden">{readOnlyShort}</span>
-            <span className="hidden sm:inline">{readOnlyLabel}</span>
-          </span>
-        ) : null}
         <CurrencyHeaderPill />
         <CopilotNotificationBell />
         <CopilotUserBar sessionPreview={sessionPreview} />

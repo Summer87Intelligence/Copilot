@@ -7,8 +7,9 @@ import {
 } from "@/lib/copilot-session-cookie-edge";
 import { isReadOnlyRole, isSuperAdmin } from "@/lib/auth/permissions";
 import { shouldBlockReadOnlyApiMutation } from "@/lib/auth/read-only-post-allowed";
-import { getDefaultAccessLevel } from "@/lib/auth/role-permission-presets";
+import { getDefaultAccessLevel, getDefaultPermissionsForRole } from "@/lib/auth/role-permission-presets";
 import type { ModuleKey } from "@/lib/auth/module-permissions";
+import { getDefaultLandingForUser } from "@/lib/auth/default-landing";
 import {
   isZetaApiPath,
   isZetaCronAuthorized,
@@ -20,20 +21,34 @@ import {
  * Usado para bloquear acceso a módulos con access_level = 'none' según preset del rol.
  * El guard usa solo el preset (sin DB) para ser Edge-compatible y sin round-trip.
  * Los DB overrides se manejan en la capa de servidor/cliente.
- * hoy NO está aquí porque es el destino de redirect — siempre accesible.
+ * hoy SÍ está gateada (USER-ACCESS-LANDING-PERMISSIONS-001): es el dashboard
+ * ejecutivo, reservado a admin/acceso total. El destino de fallback ya no es
+ * un path fijo — se resuelve con getDefaultLandingForUser() para evitar loops.
  */
 const COPILOT_MODULE_ROUTE_PREFIXES: Array<[string, string]> = [
+  ["/copilot/hoy", "hoy"],
+  ["/copilot/tareas-diarias", "daily_tasks"],
   ["/copilot/dashboard", "dashboard"],
   ["/copilot/tesoreria", "tesoreria"],
+  ["/copilot/movimientos-bancarios", "bank_movements"],
   ["/copilot/acciones", "acciones"],
   ["/copilot/clientes", "clientes"],
   ["/copilot/cartera", "cartera"],
+  ["/copilot/cobranza", "cobranza"],
   ["/copilot/finanzas", "finanzas"],
   ["/copilot/reportes", "reportes"],
   ["/copilot/datos", "datos"],
   ["/copilot/agentes", "agentes"],
+  ["/copilot/mesa-de-ayuda", "helpdesk"],
   ["/copilot/manual", "manual"],
 ];
+
+/** Preset del rol como Record module_key → access_level (Edge, sin DB). */
+function presetPermissionsRecord(role: string): Record<string, string> {
+  return Object.fromEntries(
+    getDefaultPermissionsForRole(role).map((p) => [p.moduleKey, p.accessLevel])
+  );
+}
 
 function getModuleKeyForPath(pathname: string): string | null {
   for (const [prefix, moduleKey] of COPILOT_MODULE_ROUTE_PREFIXES) {
@@ -134,8 +149,9 @@ export async function proxy(request: NextRequest) {
             { status: 403 }
           );
         }
+        const role = parsed?.role ?? "";
         const redirectUrl = request.nextUrl.clone();
-        redirectUrl.pathname = "/copilot/hoy";
+        redirectUrl.pathname = getDefaultLandingForUser(role, presetPermissionsRecord(role));
         redirectUrl.searchParams.set("blocked", "admin-access");
         return NextResponse.redirect(redirectUrl);
       }
@@ -151,7 +167,7 @@ export async function proxy(request: NextRequest) {
         const accessLevel = getDefaultAccessLevel(role, moduleKey as ModuleKey);
         if (accessLevel === "none") {
           const redirectUrl = request.nextUrl.clone();
-          redirectUrl.pathname = "/copilot/hoy";
+          redirectUrl.pathname = getDefaultLandingForUser(role, presetPermissionsRecord(role));
           redirectUrl.searchParams.set("blocked", "module-access");
           return NextResponse.redirect(redirectUrl);
         }
@@ -175,8 +191,9 @@ export async function proxy(request: NextRequest) {
     if (pathname === "/admin" || pathname.startsWith("/admin/")) {
       const parsed = await parseCopilotSessionValueAsync(sessionCookieValue);
       if (!parsed || !isSuperAdmin(parsed.role ?? "")) {
+        const role = parsed?.role ?? "";
         const redirectUrl = request.nextUrl.clone();
-        redirectUrl.pathname = "/copilot/hoy";
+        redirectUrl.pathname = getDefaultLandingForUser(role, presetPermissionsRecord(role));
         redirectUrl.searchParams.set("blocked", "admin-access");
         return NextResponse.redirect(redirectUrl);
       }

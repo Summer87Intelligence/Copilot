@@ -21,17 +21,17 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/copilot/rutas",
-        destination: "/copilot/hoy",
+        destination: "/copilot",
         permanent: true,
       },
       {
         source: "/copilot/rutas/:path*",
-        destination: "/copilot/hoy",
+        destination: "/copilot",
         permanent: true,
       },
       {
         source: "/copilot/personalizacion",
-        destination: "/copilot/hoy",
+        destination: "/copilot",
         permanent: true,
       },
       {

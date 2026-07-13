@@ -67,8 +67,12 @@ describe("canAccessModule", () => {
 
   it("usuario puede acceder a módulos con read", () => {
     const perms = resolveEffectivePermissions("usuario", presetPerms("usuario"), noOverrides());
-    expect(canAccessModule("usuario", perms, "hoy")).toBe(true);
     expect(canAccessModule("usuario", perms, "clientes")).toBe(true);
+  });
+
+  it("usuario NO puede acceder a hoy (dashboard ejecutivo, reservado a admin — USER-ACCESS-LANDING-PERMISSIONS-001)", () => {
+    const perms = resolveEffectivePermissions("usuario", presetPerms("usuario"), noOverrides());
+    expect(canAccessModule("usuario", perms, "hoy")).toBe(false);
   });
 
   it("usuario NO puede acceder a admin", () => {
@@ -241,7 +245,9 @@ describe("buildCopilotNavItemGroups — filtrado por módulo", () => {
     const groups = buildCopilotNavItemGroups(false, perms);
     const allItems = groups.flatMap((g) => g.items);
     expect(allItems.some((i) => i.href === "/copilot/dashboard")).toBe(false);
-    expect(allItems.some((i) => i.href === "/copilot/hoy")).toBe(true);
+    // Hoy es dashboard ejecutivo, reservado a admin — usuario no lo ve
+    // (USER-ACCESS-LANDING-PERMISSIONS-001).
+    expect(allItems.some((i) => i.href === "/copilot/hoy")).toBe(false);
   });
 
   it("cobranza con tesoreria=none no muestra Tesorería en sidebar", () => {
@@ -291,14 +297,14 @@ describe("buildCopilotNavItemGroups — filtrado por módulo", () => {
     expect(allItems.some((i) => i.href === "/copilot/finanzas")).toBe(true);
   });
 
-  it("usuario ve todos los módulos base excepto admin y Acciones (sidebarHidden)", () => {
+  it("usuario ve todos los módulos base excepto admin, Acciones (sidebarHidden) y Hoy", () => {
     const usuPerms = Object.fromEntries(
       presetPerms("usuario").map((p) => [p.moduleKey, p.accessLevel])
     );
     const groups = buildCopilotNavItemGroups(false, usuPerms);
     const allItems = groups.flatMap((g) => g.items);
     const visibleHrefs = [
-      "/copilot/hoy", "/copilot/clientes",
+      "/copilot/tareas-diarias", "/copilot/clientes",
       "/copilot/cartera", "/copilot/tesoreria", "/copilot/finanzas",
       "/copilot/reportes", "/copilot/datos", "/copilot/agentes", "/copilot/manual",
     ];
@@ -307,16 +313,18 @@ describe("buildCopilotNavItemGroups — filtrado por módulo", () => {
     }
     expect(allItems.some((i) => i.href === "/copilot/admin")).toBe(false);
     expect(allItems.some((i) => i.href === "/copilot/acciones")).toBe(false);
+    // Hoy es dashboard ejecutivo, reservado a admin (USER-ACCESS-LANDING-PERMISSIONS-001).
+    expect(allItems.some((i) => i.href === "/copilot/hoy")).toBe(false);
   });
 
-  it("demo_readonly ve todos los módulos base excepto admin", () => {
+  it("demo_readonly ve todos los módulos base excepto admin y Hoy", () => {
     const demoPerms = Object.fromEntries(
       presetPerms("demo_readonly").map((p) => [p.moduleKey, p.accessLevel])
     );
     const groups = buildCopilotNavItemGroups(false, demoPerms);
     const allItems = groups.flatMap((g) => g.items);
     expect(allItems.some((i) => i.href === "/copilot/admin")).toBe(false);
-    expect(allItems.some((i) => i.href === "/copilot/hoy")).toBe(true);
+    expect(allItems.some((i) => i.href === "/copilot/hoy")).toBe(false);
   });
 
   it("superadmin ve todos los módulos incluido admin", () => {

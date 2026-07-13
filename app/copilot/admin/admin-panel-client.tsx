@@ -28,7 +28,7 @@ import {
   CopilotSectionTitle,
   copilotPageMainClass,
 } from "@/components/copilot/copilot-ui";
-import { MODULE_KEYS, type AccessLevel, type ModuleKey } from "@/lib/auth/module-permissions";
+import { type AccessLevel, type ModuleKey } from "@/lib/auth/module-permissions";
 import { ROLE_LABELS, type SupportedRole } from "@/lib/auth/role-permission-presets";
 
 const SIMPLE_ROLES: Array<"superadmin" | "usuario"> = ["superadmin", "usuario"];
@@ -76,6 +76,35 @@ const MODULE_LABELS: Record<ModuleKey, string> = {
   bank_movements: "Movimientos bancarios",
   daily_tasks: "Tareas diarias",
 };
+
+/**
+ * Orden visual en Configuración → Permisos (USER-ACCESS-LANDING-PERMISSIONS-001):
+ * Inicio → Operación → Análisis → Sistema. No altera MODULE_KEYS (orden
+ * canónico usado en el resto del código), solo el orden de despliegue de
+ * checkboxes en este modal. Debe contener exactamente los MODULE_KEYS.
+ */
+const MODULE_DISPLAY_ORDER: ModuleKey[] = [
+  // Inicio
+  "hoy",
+  "daily_tasks",
+  // Operación
+  "clientes",
+  "cartera",
+  "bank_movements",
+  "tesoreria",
+  "cobranza",
+  "acciones",
+  // Análisis
+  "finanzas",
+  "reportes",
+  "dashboard",
+  "datos",
+  "agentes",
+  // Sistema
+  "admin",
+  "manual",
+  "helpdesk",
+];
 
 const READ_ONLY_ROLES = new Set(["usuario", "demo_readonly"]);
 
@@ -372,7 +401,9 @@ function EditPermissionsModal({
   const [error, setError] = useState<string | null>(null);
 
   const isSuperadmin = user.role === "superadmin";
-  const visibleModules = isSuperadmin ? MODULE_KEYS : MODULE_KEYS.filter((k) => k !== "admin");
+  const visibleModules = isSuperadmin
+    ? MODULE_DISPLAY_ORDER
+    : MODULE_DISPLAY_ORDER.filter((k) => k !== "admin");
 
   function accessLevelToChecks(level: AccessLevel): { canView: boolean; canEdit: boolean } {
     if (level === "write" || level === "admin") return { canView: true, canEdit: true };

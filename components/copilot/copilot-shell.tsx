@@ -61,7 +61,7 @@ export function CopilotShell({
         brandSubtitle="Summer87 Intelligence"
         headerStrip={
           <>
-            <CopilotEnvironmentHealthStrip sessionPreview={sessionPreview} readOnlyLabel={readOnlyLabel} />
+            <CopilotEnvironmentHealthStrip sessionPreview={sessionPreview} />
             <UsdEquivalentActiveNotice />
           </>
         }
