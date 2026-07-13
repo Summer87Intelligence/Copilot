@@ -17,7 +17,11 @@ import {
   currencyRiskToClientRiskLabel,
   type SnapshotCurrencyCode,
 } from "@/lib/copilot-financial-thresholds";
-import { aggregateOperationalDebtForCompany } from "@/lib/zeta/zeta-operational-debt-dedup";
+import {
+  aggregateOperationalDebtForCompany,
+  readOperationalDebtInvoiceCurrency,
+} from "@/lib/zeta/zeta-operational-debt-dedup";
+import { buildClient360Aging, type Client360Aging } from "@/lib/copilot/client-360-aging";
 import { todayYmdMontevideo } from "@/lib/date/summer87-today";
 
 function str(v: unknown): string {
@@ -85,10 +89,15 @@ export type Client360Summary = {
 export type Client360InvoiceRow = {
   id: string;
   issue_date: string;
+  /** Fecha de vencimiento formal del comprobante (YYYY-MM-DD) o null. */
+  due_date: string | null;
   serie_numero: string;
   tipo: string;
   importe: number;
   saldo: string;
+  /** Saldo pendiente autoritativo como número (para atraso/días). */
+  saldo_amount: number;
+  currency_code: "UYU" | "USD" | null;
   estado: string;
   referencia: string | null;
 };
@@ -164,6 +173,10 @@ export type Client360Payload = {
   last_sync_at: string | null;
   transfer_method: string | null;
   transferAliases: TransferAlias[];
+  /** Buckets de atraso operativos por moneda (operating-aging, por due_date). */
+  aging: Client360Aging;
+  /** Facturas abiertas con atraso (due_date < hoy), total ambas monedas. */
+  overdue_invoice_count: number;
 };
 
 function resourceLabel(flow: string): string {
@@ -386,18 +399,31 @@ export async function loadClientCompany360(
         balanceFromFinancialsMap: balMap,
       });
       const bal = fin.balance_authoritative;
+      const dueYmd = ymd(inv.due_date);
       return {
         id,
         issue_date: ymd(inv.issue_date) || "—",
+        due_date: dueYmd || null,
         serie_numero: invoiceSerieNumero(inv),
         tipo: invoiceTipo(inv),
         importe: num(inv.total_amount),
         saldo: bal.toLocaleString("es-AR", { maximumFractionDigits: 2 }),
+        saldo_amount: Math.max(0, bal),
+        currency_code: readOperationalDebtInvoiceCurrency(
+          inv as unknown as Parameters<typeof readOperationalDebtInvoiceCurrency>[0]
+        ),
         estado: str(inv.status) || "—",
         referencia: invoiceReferencia(inv),
       };
     })
     .sort((a, b) => b.issue_date.localeCompare(a.issue_date));
+
+  const aging = buildClient360Aging(invoicesRaw, {
+    todayYmd,
+    invoiceBalanceMap: balMap,
+  });
+  const overdueInvoiceCount =
+    aging.lateInvoiceCount.UYU + aging.lateInvoiceCount.USD;
 
   const { data: recRows, error: rErr } = await client
     .from("proto_receipts")
@@ -566,5 +592,7 @@ export async function loadClientCompany360(
     last_sync_at: lastSyncAt,
     transfer_method: str(crow.transfer_method) || null,
     transferAliases,
+    aging,
+    overdue_invoice_count: overdueInvoiceCount,
   };
 }
