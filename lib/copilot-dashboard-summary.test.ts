@@ -387,10 +387,9 @@ describe("extractClientStates", () => {
         risk: "Alto",
       }),
     ];
-    // Forzamos `today` pasándolo dentro del helper indirectamente — extractClientStates usa el today del runtime.
-    // Para el test, las fechas absolutas garantizan los buckets esperados respecto al today actual del CI.
-    void today;
-    const result = extractClientStates(rows);
+    // Fijamos la fecha de referencia del fixture (2026-06-14). El helper acepta
+    // `today` explícito, así los buckets no dependen del reloj del runtime.
+    const result = extractClientStates(rows, { today });
     expect(result.sinDeuda).toBe(1);
     expect(result.conDeuda).toBe(1);
     expect(result.atrasado).toBe(1);
