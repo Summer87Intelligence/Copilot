@@ -1202,7 +1202,7 @@ function ExpandedRow({
       {/* Deep-link a ficha 360 en Clientes */}
       <div className="mt-4 border-t border-[var(--copilot-border)] pt-3">
         <Link
-          href={`/copilot/clientes?c=${client.companyId}`}
+          href={`/copilot/clientes/${encodeURIComponent(client.companyId)}`}
           className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[var(--copilot-accent)] transition-opacity hover:opacity-75"
         >
           Ver ficha completa en Clientes →

@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
-import { CopilotClientEvidenceDrawer } from "@/components/copilot/copilot-client-evidence-drawer";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { copilotPageMainClass } from "@/components/copilot/copilot-ui";
 import { CopilotSkeletonTable } from "@/components/copilot/copilot-loading-skeleton";
@@ -14,17 +14,14 @@ import {
   type ClientListFilter,
 } from "@/components/copilot/clientes/clientes-portfolio-table";
 import { fetchClientPortfolioLoad } from "@/lib/copilot-client-portfolio-fetch";
-import {
-  type ClientCompanyDetail,
-  type ClientPortfolioLoad,
-} from "@/lib/copilot-clients-portfolio";
+import { type ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
+import { clientFichaHref } from "@/lib/copilot/client-360-href";
 
 export function ClientesPageClient() {
+  const router = useRouter();
   const [load, setLoad] = useState<ClientPortfolioLoad | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [isEvidenceOpen, setIsEvidenceOpen] = useState(false);
   const [clientFilter, setClientFilter] = useState<ClientListFilter>("all");
   const [currencyFilter, setCurrencyFilter] = useState<ClientCurrencyFilter>("all");
   const [search, setSearch] = useState("");
@@ -43,13 +40,8 @@ export function ClientesPageClient() {
       const rows = data.rows.map((r) => ({ ...r, transferAliases: byCompany[r.company_id] ?? [] }));
       const merged = { ...data, rows };
       setLoad(merged);
-      setSelectedId((prev) => {
-        if (prev && rows.some((r) => r.company_id === prev)) return prev;
-        return rows[0]?.company_id ?? null;
-      });
     } catch (e) {
       setLoad(null);
-      setSelectedId(null);
       setError(e instanceof Error ? e.message : "No se pudo cargar la cartera.");
     } finally {
       setLoading(false);
@@ -60,15 +52,16 @@ export function ClientesPageClient() {
     void refresh();
   }, [refresh]);
 
+  // Deep-links legacy (?c=companyId) abrían el panel lateral. Ahora Cliente 360
+  // es el único destino de detalle: redirigimos directo a la ficha.
   useEffect(() => {
     if (!load || typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const c = params.get("c");
     if (c && load.rows.some((r) => r.company_id === c)) {
-      setSelectedId(c);
-      setIsEvidenceOpen(true);
+      router.replace(clientFichaHref(c));
     }
-  }, [load]);
+  }, [load, router]);
 
   const visibleRows = useMemo(() => {
     if (!load) return [];
@@ -88,16 +81,6 @@ export function ClientesPageClient() {
     const noContactCount = load.rows.filter((r) => !r.has_contact_data).length;
     return `${load.rows.length} activos · ${withDebtCount} con deuda · ${overdueCount} atrasados · ${noContactCount} sin contacto`;
   }, [load]);
-
-  const activeDetail: ClientCompanyDetail | null = useMemo(() => {
-    if (!load || !selectedId) return null;
-    return load.details[selectedId] ?? null;
-  }, [load, selectedId]);
-
-  const openClient = (companyId: string) => {
-    setSelectedId(companyId);
-    setIsEvidenceOpen(true);
-  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -141,19 +124,10 @@ export function ClientesPageClient() {
               onClientFilterChange={setClientFilter}
               currencyFilter={currencyFilter}
               onCurrencyFilterChange={setCurrencyFilter}
-              selectedId={selectedId}
-              isEvidenceOpen={isEvidenceOpen}
-              onOpenClient={openClient}
             />
           </>
         ) : null}
       </div>
-
-      <CopilotClientEvidenceDrawer
-        detail={activeDetail}
-        isOpen={isEvidenceOpen && activeDetail != null}
-        onClose={() => setIsEvidenceOpen(false)}
-      />
     </div>
   );
 }

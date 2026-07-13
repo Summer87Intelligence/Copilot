@@ -161,7 +161,7 @@ function overdueInvoiceStats(
 }
 
 function hrefCliente(companyId: string): string {
-  return `/copilot/clientes?c=${encodeURIComponent(companyId)}`;
+  return `/copilot/clientes/${encodeURIComponent(companyId)}`;
 }
 
 function detectDeudaVencida(

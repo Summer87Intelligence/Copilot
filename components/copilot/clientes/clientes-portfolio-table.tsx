@@ -1,14 +1,16 @@
 "use client";
 
-import { Mail, MessageCircle, Search } from "lucide-react";
+import Link from "next/link";
+import { ChevronRight, Mail, MessageCircle, Search } from "lucide-react";
 
-import { CopilotInteractiveText } from "@/components/copilot/copilot-interactive-text";
 import {
   CopilotCard,
-  CopilotGhostButton,
+  CopilotGhostLink,
   CopilotSectionTitle,
 } from "@/components/copilot/copilot-ui";
+import { CopilotButtonLink } from "@/components/copilot/ui/copilot-button";
 import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
+import { clientFichaHref } from "@/lib/copilot/client-360-href";
 import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 import { DebtorsReportTrigger } from "@/components/copilot/reports/debtors-report-dialog";
 import {
@@ -226,13 +228,7 @@ function ContactCell({ row }: { row: ClientPortfolioRow }) {
 
 // ─── Mobile card ─────────────────────────────────────────────────────────────
 
-function PortfolioMobileCard({
-  row,
-  onOpenClient,
-}: {
-  row: ClientPortfolioRow;
-  onOpenClient: (companyId: string) => void;
-}) {
+function PortfolioMobileCard({ row }: { row: ClientPortfolioRow }) {
   const { mode, fxRate } = useDisplayCurrency();
   const isUsd = mode === "usd_equivalent";
   const openInvoices = row.open_invoices_count ?? null;
@@ -297,18 +293,18 @@ function PortfolioMobileCard({
         ) : null}
       </dl>
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--copilot-border)] pt-3">
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-[var(--copilot-border)] pt-3">
         <ContactCell row={row} />
-        <CopilotGhostButton
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenClient(row.company_id);
-          }}
-          className="px-3 py-1.5 text-xs font-semibold"
-        >
-          Ver ficha
-        </CopilotGhostButton>
       </div>
+      <CopilotButtonLink
+        href={clientFichaHref(row.company_id)}
+        variant="ghost"
+        size="sm"
+        fullWidth
+        className="mt-2 text-xs font-semibold"
+      >
+        Abrir ficha del cliente
+      </CopilotButtonLink>
     </div>
   );
 }
@@ -324,9 +320,6 @@ export type ClientesPortfolioTableProps = {
   onClientFilterChange: (v: ClientListFilter) => void;
   currencyFilter: ClientCurrencyFilter;
   onCurrencyFilterChange: (v: ClientCurrencyFilter) => void;
-  selectedId: string | null;
-  isEvidenceOpen: boolean;
-  onOpenClient: (companyId: string) => void;
 };
 
 export function ClientesPortfolioTable({
@@ -338,9 +331,6 @@ export function ClientesPortfolioTable({
   onClientFilterChange,
   currencyFilter,
   onCurrencyFilterChange,
-  selectedId,
-  isEvidenceOpen,
-  onOpenClient,
 }: ClientesPortfolioTableProps) {
   const columns: CopilotResponsiveTableColumn<ClientPortfolioRow>[] = [
     {
@@ -350,13 +340,13 @@ export function ClientesPortfolioTable({
       render: (row) => (
         <>
           <div className="flex flex-wrap items-center gap-1.5">
-            <CopilotInteractiveText
-              icon="chevron"
-              className="font-semibold"
-              onClick={() => onOpenClient(row.company_id)}
+            <Link
+              href={clientFichaHref(row.company_id)}
+              className="inline-flex max-w-full min-w-0 items-center gap-1.5 font-semibold text-[var(--copilot-accent)]/95 transition-colors duration-200 hover:text-[var(--copilot-accent)] hover:underline hover:decoration-dotted hover:underline-offset-[3px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]"
             >
-              {row.name}
-            </CopilotInteractiveText>
+              <span className="min-w-0 truncate">{row.name}</span>
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+            </Link>
             {row.derived_from_debt ? (
               <span className="inline-block rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-badge-neutral-bg)] px-2 py-0.5 text-[10px] font-medium text-[var(--copilot-ink-muted)]">
                 Vía facturación
@@ -390,20 +380,15 @@ export function ClientesPortfolioTable({
       className: "text-right",
       cellClassName: "text-right",
       render: (row) => (
-        <CopilotGhostButton
-          onClick={() => onOpenClient(row.company_id)}
+        <CopilotGhostLink
+          href={clientFichaHref(row.company_id)}
           className="whitespace-nowrap px-3 py-1.5 text-xs font-semibold"
         >
-          Abrir
-        </CopilotGhostButton>
+          Abrir ficha del cliente
+        </CopilotGhostLink>
       ),
     },
   ];
-
-  const rowClassName = (row: ClientPortfolioRow) =>
-    isEvidenceOpen && row.company_id === selectedId
-      ? "ring-1 ring-inset ring-[var(--copilot-accent)]/30"
-      : "";
 
   return (
     <CopilotCard className="overflow-hidden p-0">
@@ -487,11 +472,10 @@ export function ClientesPortfolioTable({
             rows={visibleRows}
             columns={columns}
             getRowKey={(row) => row.company_id}
-            minWidth="680px"
+            minWidth="760px"
             ariaLabel="Cartera de clientes"
-            rowClassName={rowClassName}
             emptyState="No hay clientes para este filtro."
-            mobileCard={(row) => <PortfolioMobileCard row={row} onOpenClient={onOpenClient} />}
+            mobileCard={(row) => <PortfolioMobileCard row={row} />}
           />
         </div>
       )}
