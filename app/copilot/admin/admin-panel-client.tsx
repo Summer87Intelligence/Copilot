@@ -9,13 +9,14 @@ import {
   EyeOff,
   KeyRound,
   Loader2,
+  MoreHorizontal,
+  PauseCircle,
   PenLine,
   Plus,
   RefreshCw,
   ShieldCheck,
   Trash2,
   UserCheck,
-  UserMinus,
   Users,
 } from "lucide-react";
 
@@ -44,6 +45,7 @@ type AdminUser = {
   username: string | null;
   role: string;
   is_active: boolean;
+  deleted_at: string | null;
   created_at: string;
   last_login_at: string | null;
   permissions: Permission[];
@@ -109,11 +111,12 @@ const MODULE_DISPLAY_ORDER: ModuleKey[] = [
 const READ_ONLY_ROLES = new Set(["usuario", "demo_readonly"]);
 
 function computeSummary(users: AdminUser[]): AdminSummary {
+  const activeUsers = users.filter((u) => !isUserDeleted(u));
   return {
-    active: users.filter((u) => u.is_active).length,
-    readOnly: users.filter((u) => u.is_active && READ_ONLY_ROLES.has(u.role)).length,
-    superadmins: users.filter((u) => u.is_active && u.role === "superadmin").length,
-    inactive: users.filter((u) => !u.is_active).length,
+    active: activeUsers.filter((u) => u.is_active).length,
+    readOnly: activeUsers.filter((u) => u.is_active && READ_ONLY_ROLES.has(u.role)).length,
+    superadmins: activeUsers.filter((u) => u.is_active && u.role === "superadmin").length,
+    inactive: activeUsers.filter((u) => !u.is_active).length,
   };
 }
 
@@ -304,6 +307,235 @@ function PinDisplayModal({ pin, onClose }: { pin: string; onClose: () => void })
   );
 }
 
+function isUserDeleted(user: AdminUser): boolean {
+  return Boolean(user.deleted_at);
+}
+
+function userStatusLabel(user: AdminUser): string {
+  if (isUserDeleted(user)) return "Eliminado";
+  return user.is_active ? "Activo" : "Inactivo";
+}
+
+function userStatusTone(user: AdminUser): "success" | "neutral" | "danger" {
+  if (isUserDeleted(user)) return "danger";
+  return user.is_active ? "success" : "neutral";
+}
+
+type UserActionsMenuProps = {
+  user: AdminUser;
+  isLoadingActive: boolean;
+  isLoadingPin: boolean;
+  onEditPermissions: () => void;
+  onDeactivate: () => void;
+  onReactivate: () => void;
+  onResetPin: () => void;
+  onDelete: () => void;
+};
+
+function UserActionsMenu({
+  user,
+  isLoadingActive,
+  isLoadingPin,
+  onEditPermissions,
+  onDeactivate,
+  onReactivate,
+  onResetPin,
+  onDelete,
+}: UserActionsMenuProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const deleted = isUserDeleted(user);
+
+  const desktopButtonClass =
+    "rounded-lg p-1.5 text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-border)] disabled:opacity-50";
+
+  return (
+    <>
+      {/* Desktop: iconos con tooltip */}
+      <div className="hidden items-center gap-1.5 md:flex">
+        {!deleted && (
+          <>
+            <button
+              type="button"
+              title="Editar permisos"
+              aria-label="Editar permisos"
+              onClick={onEditPermissions}
+              className={`${desktopButtonClass} hover:text-[var(--copilot-accent)]`}
+            >
+              <PenLine className="h-3.5 w-3.5" />
+            </button>
+            {user.is_active ? (
+              <button
+                type="button"
+                title="Desactivar cuenta"
+                aria-label="Desactivar cuenta"
+                onClick={onDeactivate}
+                disabled={isLoadingActive}
+                className={`${desktopButtonClass} hover:text-[var(--copilot-warning-text-strong)]`}
+              >
+                {isLoadingActive ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <PauseCircle className="h-3.5 w-3.5" />
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                title="Reactivar cuenta"
+                aria-label="Reactivar cuenta"
+                onClick={onReactivate}
+                disabled={isLoadingActive}
+                className={`${desktopButtonClass} hover:text-[var(--copilot-accent)]`}
+              >
+                {isLoadingActive ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <UserCheck className="h-3.5 w-3.5" />
+                )}
+              </button>
+            )}
+            <button
+              type="button"
+              title="Resetear PIN"
+              aria-label="Resetear PIN"
+              onClick={onResetPin}
+              disabled={isLoadingPin}
+              className={`${desktopButtonClass} hover:bg-[var(--copilot-tone-warning-bg)] hover:text-[var(--copilot-warning-text-strong)]`}
+            >
+              {isLoadingPin ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <KeyRound className="h-3.5 w-3.5" />
+              )}
+            </button>
+            <button
+              type="button"
+              title="Eliminar cuenta"
+              aria-label="Eliminar cuenta"
+              onClick={onDelete}
+              className={`${desktopButtonClass} hover:bg-[var(--copilot-tone-danger-bg)] hover:text-[var(--copilot-danger-text-strong)]`}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Mobile: menú con texto */}
+      <div className="relative md:hidden">
+        {!deleted && (
+          <>
+            <button
+              type="button"
+              aria-label="Abrir menú de acciones"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((v) => !v)}
+              className="inline-flex items-center gap-1 rounded-lg border border-[var(--copilot-border)] px-2 py-1 text-xs font-medium text-[var(--copilot-ink)]"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+              Acciones
+            </button>
+            {menuOpen ? (
+              <div className="absolute right-0 z-20 mt-1 min-w-[11rem] rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] py-1 shadow-lg">
+                <button type="button" className="block w-full px-3 py-2 text-left text-xs hover:bg-[var(--copilot-border)]/40" onClick={() => { setMenuOpen(false); onEditPermissions(); }}>
+                  Editar permisos
+                </button>
+                {user.is_active ? (
+                  <button type="button" className="block w-full px-3 py-2 text-left text-xs hover:bg-[var(--copilot-border)]/40" onClick={() => { setMenuOpen(false); onDeactivate(); }}>
+                    Desactivar cuenta
+                  </button>
+                ) : (
+                  <button type="button" className="block w-full px-3 py-2 text-left text-xs hover:bg-[var(--copilot-border)]/40" onClick={() => { setMenuOpen(false); onReactivate(); }}>
+                    Reactivar cuenta
+                  </button>
+                )}
+                <button type="button" className="block w-full px-3 py-2 text-left text-xs hover:bg-[var(--copilot-border)]/40" onClick={() => { setMenuOpen(false); onResetPin(); }}>
+                  Resetear PIN
+                </button>
+                <button type="button" className="block w-full px-3 py-2 text-left text-xs text-[var(--copilot-danger-text-strong)] hover:bg-[var(--copilot-tone-danger-bg)]" onClick={() => { setMenuOpen(false); onDelete(); }}>
+                  Eliminar cuenta
+                </button>
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ─── Deactivate User Modal ────────────────────────────────────────────────────
+
+function DeactivateUserModal({
+  user,
+  onClose,
+  onDeactivated,
+}: {
+  user: AdminUser;
+  onClose: () => void;
+  onDeactivated: (message: string) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleDeactivate() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/copilot/admin/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: false }),
+      });
+      const data = (await res.json()) as { ok?: boolean; message?: string };
+      if (!res.ok || !data.ok) {
+        setError(data.message ?? "Error al desactivar la cuenta.");
+        return;
+      }
+      onDeactivated(
+        data.message ??
+          "Cuenta desactivada. La persona no podrá iniciar sesión, pero su información e historial se conservan."
+      );
+    } catch {
+      setError("Error de conexión.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <ModalOverlay onClose={onClose}>
+      <div className="px-5 py-5">
+        <div className="mb-3 flex items-center gap-2">
+          <PauseCircle className="h-5 w-5 text-[var(--copilot-warning-text-strong)]" />
+          <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">Desactivar cuenta</h2>
+        </div>
+        <p className="mb-4 text-xs text-[var(--copilot-ink-muted)]">
+          Esta persona no podrá iniciar sesión, pero su información e historial se conservarán.
+        </p>
+        <p className="mb-4 text-xs text-[var(--copilot-ink)]">
+          <span className="font-semibold">{user.full_name}</span> ({user.email})
+        </p>
+        {error && (
+          <p className="mb-3 rounded-lg bg-[var(--copilot-tone-danger-bg)] px-3 py-2 text-xs text-[var(--copilot-danger-text-strong)]">{error}</p>
+        )}
+        <div className="flex justify-end gap-2">
+          <CopilotGhostButton onClick={onClose} disabled={loading}>Cancelar</CopilotGhostButton>
+          <button
+            type="button"
+            onClick={() => void handleDeactivate()}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--copilot-warning-text-strong)] px-4 py-2 text-xs font-semibold text-white hover:opacity-95 disabled:opacity-60"
+          >
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PauseCircle className="h-3.5 w-3.5" />}
+            Desactivar cuenta
+          </button>
+        </div>
+      </div>
+    </ModalOverlay>
+  );
+}
+
 // ─── Delete User Modal ────────────────────────────────────────────────────────
 
 function DeleteUserModal({
@@ -318,10 +550,10 @@ function DeleteUserModal({
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const REQUIRED = "ELIMINAR";
+  const confirmValue = user.email.trim().toLowerCase();
 
   async function handleDelete() {
-    if (confirm !== REQUIRED) return;
+    if (confirm.trim().toLowerCase() !== confirmValue) return;
     setLoading(true);
     setError(null);
     try {
@@ -331,7 +563,7 @@ function DeleteUserModal({
         setError(data.message ?? "Error al eliminar.");
         return;
       }
-      onDeleted(data.message ?? "Usuario desactivado. Ya no tiene acceso.");
+      onDeleted(data.message ?? "Cuenta eliminada. El acceso fue revocado y no se puede deshacer.");
     } catch {
       setError("Error de conexión.");
     } finally {
@@ -347,12 +579,11 @@ function DeleteUserModal({
           <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">Eliminar usuario</h2>
         </div>
         <p className="mb-1 text-xs text-[var(--copilot-ink-muted)]">
-          Se desactivará el acceso de{" "}
-          <span className="font-semibold text-[var(--copilot-ink)]">{user.full_name}</span> ({user.email}).
-          El usuario pasará a estado Inactivo.
+          Esta acción elimina el acceso y la cuenta. No se puede deshacer.
         </p>
         <p className="mb-4 text-xs text-[var(--copilot-ink-muted)]">
-          Escribí <span className="font-mono font-bold text-[var(--copilot-danger-text-strong)]">{REQUIRED}</span> para confirmar.
+          Escribí el email{" "}
+          <span className="font-mono font-bold text-[var(--copilot-ink)]">{user.email}</span> para confirmar.
         </p>
         {error && (
           <p className="mb-3 rounded-lg bg-[var(--copilot-tone-danger-bg)] px-3 py-2 text-xs text-[var(--copilot-danger-text-strong)]">{error}</p>
@@ -360,8 +591,8 @@ function DeleteUserModal({
         <input
           type="text"
           value={confirm}
-          onChange={(e) => setConfirm(e.target.value.toUpperCase())}
-          placeholder={REQUIRED}
+          onChange={(e) => setConfirm(e.target.value)}
+          placeholder={user.email}
           className="mb-4 w-full rounded-lg border border-[var(--copilot-danger-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm font-mono text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-rose-300"
         />
         <div className="flex justify-end gap-2">
@@ -369,11 +600,11 @@ function DeleteUserModal({
           <button
             type="button"
             onClick={() => void handleDelete()}
-            disabled={confirm !== REQUIRED || loading}
+            disabled={confirm.trim().toLowerCase() !== confirmValue || loading}
             className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--copilot-danger-text)] px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-            Eliminar usuario
+            Eliminar cuenta
           </button>
         </div>
       </div>
@@ -529,6 +760,7 @@ export default function AdminPanelClient() {
   const [showCreate, setShowCreate] = useState(false);
   const [pendingPin, setPendingPin] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [deactivatingUser, setDeactivatingUser] = useState<AdminUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null);
 
   const [actionState, setActionState] = useState<Record<string, "loading" | "done">>({});
@@ -576,27 +808,22 @@ export default function AdminPanelClient() {
     setActionError(message);
   }
 
-  async function handleToggleActive(user: AdminUser) {
+  async function handleReactivate(user: AdminUser) {
     const key = `active-${user.id}`;
     setActionState((s) => ({ ...s, [key]: "loading" }));
     setActionError(null);
-    setActionSuccess(null);
     try {
       const res = await fetch(`/api/copilot/admin/users/${user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_active: !user.is_active }),
+        body: JSON.stringify({ is_active: true }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        showActionError(data.message ?? "Error al actualizar el usuario.");
+        showActionError(data.message ?? "Error al reactivar la cuenta.");
         return;
       }
-      showActionSuccess(
-        user.is_active
-          ? "Usuario desactivado. Ya no tiene acceso."
-          : "Usuario activado. Ya puede ingresar."
-      );
+      showActionSuccess(data.message ?? "Cuenta reactivada. La persona ya puede iniciar sesión.");
       await loadUsers();
     } finally {
       setActionState((s) => ({ ...s, [key]: "done" }));
@@ -760,7 +987,8 @@ export default function AdminPanelClient() {
                             <select
                               value={SIMPLE_ROLES.includes(user.role as "superadmin" | "usuario") ? user.role : user.role}
                               onChange={(e) => void handleRoleChange(user, e.target.value)}
-                              className="appearance-none rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1 pr-6 text-xs text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30"
+                              disabled={isUserDeleted(user)}
+                              className="appearance-none rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1 pr-6 text-xs text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30 disabled:opacity-60"
                             >
                               {SIMPLE_ROLES.map((r) => (
                                 <option key={r} value={r}>{ROLE_LABELS[r]}</option>
@@ -774,60 +1002,24 @@ export default function AdminPanelClient() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <CopilotBadge tone={user.is_active ? "success" : "neutral"}>
-                          {user.is_active ? "Activo" : "Inactivo"}
+                        <CopilotBadge tone={userStatusTone(user)}>
+                          {userStatusLabel(user)}
                         </CopilotBadge>
                       </td>
                       <td className="px-4 py-3 text-[var(--copilot-ink-muted)]">
                         {formatDate(user.last_login_at)}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            title="Editar permisos"
-                            onClick={() => setEditingUser(user)}
-                            className="rounded-lg p-1.5 text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-border)] hover:text-[var(--copilot-accent)]"
-                          >
-                            <PenLine className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            title={user.is_active ? "Desactivar" : "Activar"}
-                            onClick={() => void handleToggleActive(user)}
-                            disabled={isLoadingActive}
-                            className="rounded-lg p-1.5 text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-border)] hover:text-[var(--copilot-ink)]"
-                          >
-                            {isLoadingActive ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : user.is_active ? (
-                              <UserMinus className="h-3.5 w-3.5" />
-                            ) : (
-                              <UserCheck className="h-3.5 w-3.5" />
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            title="Resetear PIN"
-                            onClick={() => setResettingPinUser(user)}
-                            disabled={isLoadingPin}
-                            className="rounded-lg p-1.5 text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-tone-warning-bg)] hover:text-[var(--copilot-warning-text-strong)]"
-                          >
-                            {isLoadingPin ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <KeyRound className="h-3.5 w-3.5" />
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            title="Eliminar usuario"
-                            onClick={() => setDeletingUser(user)}
-                            className="rounded-lg p-1.5 text-[var(--copilot-ink-muted)] hover:bg-[var(--copilot-tone-danger-bg)] hover:text-[var(--copilot-danger-text-strong)]"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
+                        <UserActionsMenu
+                          user={user}
+                          isLoadingActive={isLoadingActive}
+                          isLoadingPin={isLoadingPin}
+                          onEditPermissions={() => setEditingUser(user)}
+                          onDeactivate={() => setDeactivatingUser(user)}
+                          onReactivate={() => void handleReactivate(user)}
+                          onResetPin={() => setResettingPinUser(user)}
+                          onDelete={() => setDeletingUser(user)}
+                        />
                       </td>
                     </tr>
                   );
@@ -872,6 +1064,17 @@ export default function AdminPanelClient() {
           onClose={() => setEditingUser(null)}
           onSaved={() => {
             setEditingUser(null);
+            void loadUsers();
+          }}
+        />
+      )}
+      {deactivatingUser && (
+        <DeactivateUserModal
+          user={deactivatingUser}
+          onClose={() => setDeactivatingUser(null)}
+          onDeactivated={(message) => {
+            setDeactivatingUser(null);
+            showActionSuccess(message);
             void loadUsers();
           }}
         />

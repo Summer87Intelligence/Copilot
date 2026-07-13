@@ -51,7 +51,8 @@ function jsonError(
     | "UNAUTHENTICATED"
     | "FORBIDDEN_TENANT"
     | "FORBIDDEN_MEMBERSHIP"
-    | "SESSION_CREDENTIALS_STALE",
+    | "SESSION_CREDENTIALS_STALE"
+    | "ACCOUNT_INACTIVE",
   message: string,
   options?: { clearCopilotSession?: boolean }
 ): NextResponse {
@@ -296,7 +297,7 @@ export async function requireCopilotTenantContext(
 
   const { data: row, error: rowErr } = await admin
     .from("app_users")
-    .select("id, company_id, full_name, email, role, created_at, credential_version")
+    .select("id, company_id, full_name, email, role, created_at, credential_version, is_active, deleted_at")
     .eq("id", parsed.userId)
     .maybeSingle();
 
@@ -329,7 +330,20 @@ export async function requireCopilotTenantContext(
     role: string;
     created_at: string;
     credential_version?: unknown;
+    is_active?: boolean | null;
+    deleted_at?: string | null;
   };
+
+  if (r.is_active === false || r.deleted_at) {
+    return {
+      ok: false,
+      response: jsonError(
+        403,
+        "ACCOUNT_INACTIVE",
+        "Tu cuenta está inactiva. Contactá al administrador."
+      ),
+    };
+  }
 
   const dbCredentialVersion = Math.max(
     1,

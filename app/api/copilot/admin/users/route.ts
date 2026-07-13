@@ -15,6 +15,7 @@ type AppUserRow = {
   username: string | null;
   role: string;
   is_active: boolean | null;
+  deleted_at: string | null;
   created_at: string;
   last_login_at: string | null;
 };
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
 
   const { data: users, error: usersErr } = await admin
     .from("app_users")
-    .select("id, full_name, email, username, role, is_active, created_at, last_login_at")
+    .select("id, full_name, email, username, role, is_active, deleted_at, created_at, last_login_at")
     .eq("company_id", tenantCompanyId)
     .order("created_at", { ascending: false });
 
@@ -84,7 +85,8 @@ export async function GET(request: NextRequest) {
       email: user.email,
       username: user.username,
       role: user.role,
-      is_active: user.is_active !== false,
+      is_active: user.is_active !== false && !user.deleted_at,
+      deleted_at: user.deleted_at,
       created_at: user.created_at,
       last_login_at: user.last_login_at,
       permissions: effectivePermissions,
@@ -140,12 +142,12 @@ export async function POST(request: NextRequest) {
   // Chequear email no duplicado en el workspace
   const { data: existing } = await admin
     .from("app_users")
-    .select("id")
+    .select("id, deleted_at")
     .eq("company_id", tenantCompanyId)
     .eq("email", email)
     .maybeSingle();
 
-  if (existing) {
+  if (existing && !(existing as { deleted_at?: string | null }).deleted_at) {
     return NextResponse.json(
       { ok: false, message: "Ya existe un usuario con ese email en el workspace." },
       { status: 409 }

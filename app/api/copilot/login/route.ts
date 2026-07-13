@@ -23,6 +23,7 @@ import {
   verifyPinAgainstHash,
 } from "@/lib/security/pin-hash";
 import { getRequestClientMeta } from "@/lib/security/request-client-meta";
+import { loginBlockReason } from "@/lib/auth/app-user-lifecycle";
 import { getDefaultLandingForUser } from "@/lib/auth/default-landing";
 import { getDefaultPermissionsForRole } from "@/lib/auth/role-permission-presets";
 import {
@@ -55,6 +56,7 @@ type AppUserLoginRow = {
   failed_login_count: number | null;
   locked_until: string | null;
   is_active: boolean | null;
+  deleted_at: string | null;
 };
 
 /** Valor literal para `ilike` (sin %): igualdad insensible a mayúsculas; escapa comodines LIKE. */
@@ -178,10 +180,9 @@ export async function POST(request: Request) {
     const { data: row, error } = await admin
       .from("app_users")
       .select(
-        "id, company_id, username, pin, pin_hash, role, credential_version, failed_login_count, locked_until, is_active"
+        "id, company_id, username, pin, pin_hash, role, credential_version, failed_login_count, locked_until, is_active, deleted_at"
       )
       .or(`username.ilike.${p},email.ilike.${p}`)
-      .eq("is_active", true)
       .limit(1)
       .maybeSingle();
 
@@ -271,6 +272,25 @@ export async function POST(request: Request) {
         userAgent,
       });
       return generic401();
+    }
+
+    const accessBlock = loginBlockReason({
+      is_active: u.is_active,
+      deleted_at: u.deleted_at ?? null,
+    });
+    if (accessBlock) {
+      void insertAuthLoginEvent(admin, {
+        userId: u.id,
+        companyId: u.company_id,
+        success: false,
+        failureReason: u.deleted_at ? "account_deleted" : "account_inactive",
+        ip,
+        userAgent,
+      });
+      return NextResponse.json(
+        { ok: false as const, error: accessBlock },
+        { status: 403 }
+      );
     }
 
     const credentialVersion = Math.max(

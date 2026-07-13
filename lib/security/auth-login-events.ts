@@ -7,6 +7,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export type AuthLoginFailureReason =
   | "invalid_credentials"
   | "account_locked"
+  | "account_inactive"
+  | "account_deleted"
   | "rate_limited"
   | "session_credentials_stale"
   | "internal_error";
