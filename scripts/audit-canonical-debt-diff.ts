@@ -20,6 +20,8 @@ import { buildCanonicalDebtMetricsFromUnits } from "../lib/financial/canonical/m
 import { invoiceRowToCanonical } from "../lib/financial/canonical-debt-loader";
 import type { CanonicalInstallmentInput } from "../lib/financial/canonical/types";
 import { toSafeNumber } from "../lib/copilot-numeric-parse";
+import { buildCarteraOperatingAging } from "../lib/copilot/cartera-operating-aging";
+import { selectOperationalDebtInvoicesForSummation } from "../lib/zeta/zeta-operational-debt-dedup";
 
 function loadEnvLocal(): void {
   if (process.env.SUPABASE_SERVICE_ROLE_KEY) return;
@@ -40,7 +42,13 @@ loadEnvLocal();
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
-const CUTOFF = (process.env.AUDIT_CUTOFF ?? new Date().toISOString().slice(0, 10)).slice(0, 10);
+const CUTOFF = (process.env.AUDIT_CUTOFF ?? "2026-07-14").slice(0, 10);
+type DiffClassification =
+  | "NO_DIFFERENCE"
+  | "EXPECTED_SEMANTIC_CHANGE"
+  | "DATA_QUALITY"
+  | "IMPLEMENTATION_DEFECT"
+  | "SCOPE_DIFFERENCE";
 
 if (!SUPABASE_URL || !SERVICE_KEY) {
   console.error("❌ Faltan NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY");
@@ -61,6 +69,22 @@ function daysBetween(a: string, b: string): number {
 }
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+function delta(a: number, b: number): number {
+  return round2(b - a);
+}
+function classifyMoneyDelta(d: number, fallback: DiffClassification): DiffClassification {
+  return Math.abs(d) <= 0.01 ? "NO_DIFFERENCE" : fallback;
+}
+function printDiffRow(
+  label: string,
+  legacy: number,
+  canonical: number,
+  classification: DiffClassification
+): void {
+  console.log(
+    `${label.padEnd(24)} legacy=${String(round2(legacy)).padStart(12)} canonical=${String(round2(canonical)).padStart(12)} delta=${String(delta(legacy, canonical)).padStart(12)} classification=${classification}`
+  );
 }
 
 async function resolveWorkspaceId(): Promise<string> {
@@ -128,16 +152,27 @@ async function main() {
     cutoffDate: CUTOFF,
   });
 
-  // Canónico con y sin cuotas (para medir el efecto de cuotas).
-  const canonUnits = buildCanonicalDebtUnits({ invoices, installments, context, includeAllIssueDates: true });
-  const canonInvoiceOnly = buildCanonicalDebtUnits({ invoices, context, includeAllIssueDates: true });
+  const opInvoices = selectOperationalDebtInvoicesForSummation(
+    invoices as unknown as Parameters<typeof selectOperationalDebtInvoicesForSummation>[0]
+  ).map((s) => s.invoice) as unknown as typeof invoices;
 
-  // Legacy issue_date: overdue = pendiente con (cutoff - issue_date) >= 31 (regla Hoy previa).
-  const legacy: Record<string, { pending: number; overdue: number; clients: Set<string> }> = {
-    UYU: { pending: 0, overdue: 0, clients: new Set() },
-    USD: { pending: 0, overdue: 0, clients: new Set() },
+  // Canónico con y sin cuotas (para medir el efecto de cuotas), sobre el mismo universo de Cartera.
+  const canonUnits = buildCanonicalDebtUnits({ invoices: opInvoices, installments, context, includeAllIssueDates: true });
+  const canonInvoiceOnly = buildCanonicalDebtUnits({ invoices: opInvoices, context, includeAllIssueDates: true });
+
+  // Legacy issue_date: clasifica saldo abierto usando issue_date como proxy de antigüedad.
+  const legacy: Record<string, {
+    pending: number;
+    current: number;
+    overdue: number;
+    unclassified: number;
+    clients: Set<string>;
+    buckets: Record<"on_time" | "late_1_7" | "late_8_14" | "late_15_30" | "late_30_plus", number>;
+  }> = {
+    UYU: { pending: 0, current: 0, overdue: 0, unclassified: 0, clients: new Set(), buckets: { on_time: 0, late_1_7: 0, late_8_14: 0, late_15_30: 0, late_30_plus: 0 } },
+    USD: { pending: 0, current: 0, overdue: 0, unclassified: 0, clients: new Set(), buckets: { on_time: 0, late_1_7: 0, late_8_14: 0, late_15_30: 0, late_30_plus: 0 } },
   };
-  for (const r of invoiceRows) {
+  for (const r of opInvoices) {
     const cur = String(r.currency_code ?? "").toUpperCase();
     if (cur !== "UYU" && cur !== "USD") continue;
     const pending = num(r.balance_amount);
@@ -147,44 +182,77 @@ async function main() {
     const issue = ymd(r.issue_date);
     if (issue && issue < "2026-01-01") continue;
     legacy[cur].pending = round2(legacy[cur].pending + pending);
-    if (issue && daysBetween(CUTOFF, issue) >= 31) {
+    if (!issue) {
+      legacy[cur].unclassified = round2(legacy[cur].unclassified + pending);
+      continue;
+    }
+    const days = daysBetween(CUTOFF, issue);
+    const bucket =
+      days <= 0 ? "on_time" :
+      days <= 7 ? "late_1_7" :
+      days <= 14 ? "late_8_14" :
+      days <= 30 ? "late_15_30" :
+      "late_30_plus";
+    legacy[cur].buckets[bucket] = round2(legacy[cur].buckets[bucket] + pending);
+    if (bucket === "on_time") {
+      legacy[cur].current = round2(legacy[cur].current + pending);
+    } else {
       legacy[cur].overdue = round2(legacy[cur].overdue + pending);
       if (r.company_id) legacy[cur].clients.add(String(r.company_id));
     }
   }
 
   console.log(`CUT-OFF: ${CUTOFF}`);
-  console.log(`Facturas activas: ${invoiceRows.length} · Cuotas: ${installmentRows.length}\n`);
+  console.log(`Facturas procesadas: ${opInvoices.length} (cargadas=${invoiceRows.length})`);
+  console.log(`Cuotas procesadas: ${installmentRows.length}\n`);
 
+  // ── FASE 1C: aging OPERATIVO de Cartera (buckets por due_date) ────────────
+  // Mismo universo/semántica que el route: dedup operacional + cuotas + cutoff.
+  const operatingAging = buildCarteraOperatingAging({
+    invoices: opInvoices,
+    installments,
+    cutoffDate: CUTOFF,
+  });
+
+  console.log("=== Diff legacy(issue_date) vs canonical(due_date) por moneda ===");
   for (const cur of ["UYU", "USD"] as const) {
+    const block = operatingAging.byCurrency.find((b) => b.currency === cur);
+    if (!block) {
+      console.log(`=== ${cur} === (sin saldo)\n`);
+      continue;
+    }
+    const L = legacy[cur];
     const cMetrics = buildCanonicalDebtMetricsFromUnits(canonUnits.units, cur, CUTOFF);
     const cInvOnly = buildCanonicalDebtMetricsFromUnits(canonInvoiceOnly.units, cur, CUTOFF);
-    const L = legacy[cur];
+    const bucketsSum = round2(block.buckets.reduce((s, r) => s + r.amount, 0));
+    const invariant = round2(
+      block.currentBalance + block.overdueBalance + block.unclassifiedDueDateBalance
+    );
     console.log(`=== ${cur} ===`);
-    console.log(`Legacy pending (issue):     ${L.pending}`);
-    console.log(`Canonical pending (due):    ${cMetrics.pendingBalance}`);
-    console.log(`  Δ pending:                ${round2(cMetrics.pendingBalance - L.pending)}`);
-    console.log(`Legacy overdue (issue 31+): ${L.overdue}`);
-    console.log(`Canonical overdue (due):    ${cMetrics.overdueBalance}`);
-    console.log(`  Δ overdue:                ${round2(cMetrics.overdueBalance - L.overdue)}  [issue_date vs due_date]`);
-    console.log(`Canonical current (due):    ${cMetrics.currentBalance}`);
-    console.log(`Saldo sin due_date:         ${cMetrics.balanceWithoutDueDate}  [missing due_date]`);
-    console.log(`Legacy overdue clients:     ${L.clients.size}`);
-    console.log(`Canonical overdue clients:  ${cMetrics.overdueClients}`);
-    console.log(`Overdue con cuotas vs solo factura: ${cMetrics.overdueBalance} vs ${cInvOnly.overdueBalance}  [invoice vs installment]`);
+    printDiffRow("Pending", L.pending, cMetrics.pendingBalance, classifyMoneyDelta(delta(L.pending, cMetrics.pendingBalance), "SCOPE_DIFFERENCE"));
+    printDiffRow("Current", L.current, block.currentBalance, classifyMoneyDelta(delta(L.current, block.currentBalance), "EXPECTED_SEMANTIC_CHANGE"));
+    printDiffRow("Overdue", L.overdue, cMetrics.overdueBalance, classifyMoneyDelta(delta(L.overdue, cMetrics.overdueBalance), "EXPECTED_SEMANTIC_CHANGE"));
+    printDiffRow("Unclassified", L.unclassified, cMetrics.balanceWithoutDueDate, cMetrics.balanceWithoutDueDate > 0 ? "DATA_QUALITY" : classifyMoneyDelta(delta(L.unclassified, cMetrics.balanceWithoutDueDate), "EXPECTED_SEMANTIC_CHANGE"));
+    printDiffRow("Overdue clients", L.clients.size, cMetrics.overdueClients, L.clients.size === cMetrics.overdueClients ? "NO_DIFFERENCE" : "EXPECTED_SEMANTIC_CHANGE");
+    for (const row of block.buckets) {
+      const legacyAmount = L.buckets[row.bucket];
+      printDiffRow(
+        row.bucket,
+        legacyAmount,
+        row.amount,
+        classifyMoneyDelta(delta(legacyAmount, row.amount), "EXPECTED_SEMANTIC_CHANGE")
+      );
+    }
+    const invariantOk = invariant === round2(block.pendingBalance);
+    console.log(`Invariant pending=current+overdue+unclassified: ${invariantOk ? "OK" : "MISMATCH"} (${invariant} vs ${round2(block.pendingBalance)})`);
+    console.log(`Bucket sum (classifiable): ${bucketsSum} vs ${round2(block.currentBalance + block.overdueBalance)}`);
+    console.log(`Overdue con cuotas vs solo factura: ${cMetrics.overdueBalance} vs ${cInvOnly.overdueBalance} classification=${cMetrics.overdueBalance === cInvOnly.overdueBalance ? "NO_DIFFERENCE" : "EXPECTED_SEMANTIC_CHANGE"}`);
     console.log("");
   }
+  console.log(`Clientes con atraso (cualquier moneda): ${operatingAging.overdueClientsAnyCurrency}\n`);
 
   console.log("=== Diagnósticos canónicos (por causa) ===");
   console.log(JSON.stringify(canonUnits.diagnosticCounts, null, 2));
-
-  console.log("\n=== Clasificación de diferencias ===");
-  console.log("Δ overdue (issue→due)         → EXPECTED_CORRECTION");
-  console.log("Overdue por cuota ≠ factura    → EXPECTED_CORRECTION (cuotas reales)");
-  console.log("missing_due_date > 0           → DATA_QUALITY");
-  console.log("missing_currency > 0           → DATA_QUALITY");
-  console.log("installment_balance_mismatch>0 → DATA_QUALITY");
-  console.log("Δ pending ≈ 0                   → sin cambio (mismo universo abierto)");
 }
 
 main().catch((e) => {

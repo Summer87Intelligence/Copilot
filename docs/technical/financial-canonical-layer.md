@@ -284,32 +284,79 @@ es la **unión** de `companyId` entre monedas (para un total general).
 ### Comparación Summer87 legacy vs canónico (read-only)
 
 Script: `scripts/audit-canonical-debt-diff.ts` (read-only, sin datos sensibles).
-Ejecutado a **cutoff 2026-07-14** (518 facturas activas, 0 cuotas en el workspace):
+Ejecutado a **cutoff 2026-07-14** tras FASE 1C (438 facturas procesadas sobre
+518 cargadas; 0 cuotas reales en el workspace):
 
 | Métrica | Legacy (issue) | Canónico (due) | Δ | Clasificación |
 |---|---|---|---|---|
-| Pending UYU | 590.294 | 590.294 | 0 | sin cambio |
-| Overdue UYU | 30.360 | 30.360 | 0 | EXPECTED_CORRECTION (coinciden) |
-| Overdue clients UYU | 3 | 3 | 0 | sin cambio |
-| Pending USD | 18.463,56 | 18.463,56 | 0 | sin cambio |
-| Overdue USD | 3.610,06 | 3.610,06 | 0 | sin cambio |
-| Overdue clients USD | 8 | 8 | 0 | sin cambio |
+| Pending UYU | 343.427 | 343.427 | 0 | `NO_DIFFERENCE` |
+| Current UYU | 0 | 313.067 | +313.067 | `EXPECTED_SEMANTIC_CHANGE` |
+| Overdue UYU | 343.427 | 30.360 | -313.067 | `EXPECTED_SEMANTIC_CHANGE` |
+| Unclassified UYU | 0 | 0 | 0 | `NO_DIFFERENCE` |
+| Overdue clients UYU | 15 | 3 | -12 | `EXPECTED_SEMANTIC_CHANGE` |
+| Pending USD | 10.600,66 | 10.600,66 | 0 | `NO_DIFFERENCE` |
+| Current USD | 0 | 7.478,60 | +7.478,60 | `EXPECTED_SEMANTIC_CHANGE` |
+| Overdue USD | 10.600,66 | 3.122,06 | -7.478,60 | `EXPECTED_SEMANTIC_CHANGE` |
+| Unclassified USD | 0 | 0 | 0 | `NO_DIFFERENCE` |
+| Overdue clients USD | 21 | 8 | -13 | `EXPECTED_SEMANTIC_CHANGE` |
 
-Diagnósticos: `missing_currency: 4` (**DATA_QUALITY** — 4 facturas sin moneda,
-excluidas de totales por ambos modelos). Resto de códigos en 0. **Sin
-`IMPLEMENTATION_DEFECT`.** Legacy y canónico coinciden porque el `due_date` actual
-del tenant es sintético (`issue_date + 30`), pero el modelo canónico es robusto si
-en el futuro los vencimientos reales divergen y soporta cuotas.
+Diagnósticos: `missing_currency: 4` (**DATA_QUALITY** — facturas sin moneda,
+excluidas de totales monetarios). Resto de códigos en 0. **Sin
+`IMPLEMENTATION_DEFECT`.** Cuotas procesadas: 0; el soporte de cuotas está
+implementado y cubierto por tests, pero no validado con cuotas reales Summer87.
 
-### Pendiente de FASE 1B
+### FASE 1C — Cartera migrada a aging operativo
 
-- **Cartera**: sus montos (pending = `pendingAtCutoff`, overdue = `portfolio.overdue_*`)
-  ya son por `due_date`. Falta migrar el **explorador de buckets** (usa buckets
-  contables `0_30/31_60/61_90/90_plus` del motor de reconciliación) a los buckets
-  operativos del snapshot. Es un cambio con impacto de UI → siguiente iteración,
-  con el snapshot ya disponible como fuente.
+`buildCarteraOperatingAging` (`lib/copilot/cartera-operating-aging.ts`) proyecta
+un **snapshot único por request** desde `buildCanonicalDebtSnapshot` para Cartera.
+El endpoint `GET /api/copilot/financial-reconciliation` devuelve:
+
+```ts
+{
+  ok: true,
+  report,          // actividad del período + compat legacy
+  operatingAging,  // stock operativo por due_date
+  meta
+}
+```
+
+Fuente de datos:
+- facturas: mismo universo operacional deduplicado de Cartera
+  (`selectOperationalDebtInvoicesForSummation`);
+- cuotas: `proto_invoice_installments` en batch cuando existen;
+- cutoff de stock: `report.operationalPeriod.end`;
+- período de actividad: permanece en `report.periodStart/periodEnd`.
+
+Superficies migradas:
+
+| Superficie | Fuente anterior | Fuente FASE 1C |
+|---|---|---|
+| Cards de saldo pendiente | `report.currencies.pendingAtCutoff` | `operatingAging.byCurrency.pendingBalance` con fallback temporal |
+| Aging analytics | buckets contables del reporte | `operatingAging.byCurrency.buckets` |
+| Explorer / tabla | `dominantAgingRange` + `staleClients` | `operatingAging.byCompany` para estado/orden/filtros; saldos desde el mismo payload cuando aplica |
+| Top deudores / drawer | `staleClients.dominantAgingRange` | `operatingAging.byCompany` + join de nombres desde `staleClients` |
+
+Buckets visibles: **Al día**, **1–7 días de atraso**, **8–14 días de atraso**,
+**15–30 días de atraso**, **+30 días de atraso**.
+
+`saldo sin vencimiento` (`unclassifiedDueDateBalance`) queda fuera de “Al día”.
+Invariante testeada:
+
+```text
+saldo pendiente = al día clasificable + saldo atrasado + saldo sin vencimiento
+```
+
+`invoiceCount` visible en buckets cuenta **facturas únicas**, no cuotas. Si una
+factura tiene tres cuotas abiertas en el mismo bucket, el bucket muestra 1 factura
+y `debtUnitCount=3` queda disponible solo para auditoría.
+
+Legacy restante:
 - `collection_overdue_*` (issue_date) en `computeInvoiceCurrencyBreakdown` sigue
-  para el modelo de cobranza (fuera de alcance de deuda/atraso).
+  vivo para el modelo de cobranza, fuera de deuda/atraso operativo.
+- `report.agingByCurrency` permanece en el payload por compatibilidad y auditoría,
+  pero Cartera operativa ya no lo renderiza.
+- Retiro propuesto: FASE 1D/2, después de migrar consumidores de cobranza que aún
+  dependen del aging por emisión.
 
 ## 12. Riesgos y limitaciones Zeta
 

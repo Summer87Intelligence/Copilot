@@ -3,13 +3,12 @@
 /**
  * AgingAnalytics
  * --------------
- * Visualiza la distribución del riesgo financiero por antigüedad de cartera.
- * Render-only: consume `report.agingByCurrency` sin recalcular nada.
+ * Distribución OPERATIVA de la deuda viva por días de atraso (due_date).
+ * FASE 1C: consume `operatingAging` (buckets Al día / 1–7 / 8–14 / 15–30 / +30)
+ * derivado del snapshot canónico. Render-only, no recalcula nada.
  *
- * Layout: tabs UYU / USD → 4 filas de barras horizontales premium.
- * Animación: width stagger con framer-motion, respeta prefers-reduced-motion.
- * La animación corre al montar (primer load) y al cambiar de tab;
- * NO re-anima en cada refresh del reporte (key = activeCurrency, no report.generatedAt).
+ * Los buckets contables históricos del reporte de reconciliación NO se muestran
+ * acá: son para reconciliación/auditoría interna.
  */
 
 import { useState } from "react";
@@ -22,45 +21,52 @@ import {
 } from "@/lib/copilot-cartera-format";
 import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
 import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
+import type { ReconciliationCurrencyCode } from "@/lib/copilot-financial-reconciliation";
 import type {
-  AgingBucket,
-  AgingRange,
-  FinancialConsistencyReport,
-  ReconciliationCurrencyCode,
-} from "@/lib/copilot-financial-reconciliation";
+  CarteraOperatingAging,
+  CarteraOperatingAgingBucketRow,
+} from "@/lib/copilot/cartera-operating-aging";
+import type { OperatingDelayBucket } from "@/lib/copilot/operating-aging";
 import type { CurrencyFilter } from "@/components/copilot/financial-control-bar";
 
 // ---------------------------------------------------------------------------
-// Config de buckets
+// Config de buckets operativos
 // ---------------------------------------------------------------------------
 
 const BUCKET_CONFIG: Record<
-  AgingRange,
+  OperatingDelayBucket,
   { label: string; bar: string; dot: string; text: string; badge: string }
 > = {
-  "0_30": {
-    label: "0–30 días",
+  on_time: {
+    label: "Al día",
     bar: "bg-[var(--copilot-success-text)]",
     dot: "bg-[var(--copilot-success-text)]",
     text: "text-[var(--copilot-success-text-strong)]",
     badge: "border-[var(--copilot-success-border)]/60 text-[var(--copilot-success-text-strong)]",
   },
-  "31_60": {
-    label: "31–60 días",
+  late_1_7: {
+    label: "1–7 días de atraso",
     bar: "bg-[var(--copilot-warning-text)]",
     dot: "bg-[var(--copilot-warning-text)]",
     text: "text-[var(--copilot-warning-text-strong)]",
     badge: "border-[var(--copilot-warning-border)]/60 text-[var(--copilot-warning-text-strong)]",
   },
-  "61_90": {
-    label: "61–90 días",
+  late_8_14: {
+    label: "8–14 días de atraso",
     bar: "bg-orange-400",
     dot: "bg-orange-400",
     text: "text-orange-600 dark:text-orange-400",
     badge: "border-orange-300/50 text-orange-700 dark:text-orange-400",
   },
-  "90_plus": {
-    label: "+90 días",
+  late_15_30: {
+    label: "15–30 días de atraso",
+    bar: "bg-orange-500",
+    dot: "bg-orange-500",
+    text: "text-orange-700 dark:text-orange-400",
+    badge: "border-orange-400/50 text-orange-700 dark:text-orange-400",
+  },
+  late_30_plus: {
+    label: "+30 días de atraso",
     bar: "bg-[var(--copilot-danger-text)]",
     dot: "bg-[var(--copilot-danger-text)]",
     text: "text-[var(--copilot-danger-text-strong)]",
@@ -70,131 +76,100 @@ const BUCKET_CONFIG: Record<
 
 const CURRENCY_ORDER: ReconciliationCurrencyCode[] = ["UYU", "USD"];
 
+function formatCurrencyPending(agg: CarteraOperatingAging | null | undefined) {
+  const map = new Map<ReconciliationCurrencyCode, {
+    buckets: CarteraOperatingAgingBucketRow[];
+    unclassified: number;
+    pending: number;
+  }>();
+  for (const c of agg?.byCurrency ?? []) {
+    map.set(c.currency, {
+      buckets: c.buckets,
+      unclassified: c.unclassifiedDueDateBalance,
+      pending: c.pendingBalance,
+    });
+  }
+  return map;
+}
+
 // ---------------------------------------------------------------------------
 // Componente principal
 // ---------------------------------------------------------------------------
 
 export function AgingAnalytics({
-  report,
+  operatingAging,
   selectedCurrency = "all",
   compact = false,
 }: {
-  report: FinancialConsistencyReport;
+  operatingAging: CarteraOperatingAging | null;
   selectedCurrency?: CurrencyFilter;
   /** Oculta header grande cuando el padre ya muestra título de sección. */
   compact?: boolean;
 }) {
-  const availableCurrencies = CURRENCY_ORDER.filter(
-    (c) => report.agingByCurrency[c] !== undefined
-  );
+  const byCurrency = formatCurrencyPending(operatingAging);
+  const availableCurrencies = CURRENCY_ORDER.filter((c) => (byCurrency.get(c)?.pending ?? 0) > 0);
 
-  // Si hay filtro global de moneda, se fuerza esa moneda y se ocultan los tabs.
   const forcedCurrency: ReconciliationCurrencyCode | null =
-    selectedCurrency === "USD" || selectedCurrency === "UYU"
-      ? selectedCurrency
-      : null;
+    selectedCurrency === "USD" || selectedCurrency === "UYU" ? selectedCurrency : null;
 
   const [internalCurrency, setInternalCurrency] = useState<ReconciliationCurrencyCode>(
     forcedCurrency ?? availableCurrencies[0] ?? "UYU"
   );
 
-  // `forcedCurrency` siempre manda sobre el estado interno. El estado interno
-  // sólo se usa para recordar la tab seleccionada cuando el filtro global es
-  // "all" — no necesita sincronizarse en render.
   const activeCurrency = forcedCurrency ?? internalCurrency;
-  const buckets = report.agingByCurrency[activeCurrency] ?? [];
+  const active = byCurrency.get(activeCurrency);
+  const buckets = active?.buckets ?? [];
   const hasData = buckets.some((b) => b.amount > 0);
+  const unclassified = active?.unclassified ?? 0;
   const showTabs = !forcedCurrency && availableCurrencies.length > 1;
 
   return (
     <section
-      aria-label="Antigüedad de cartera"
+      aria-label="Antigüedad de cartera por días de atraso"
       className={`rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] shadow-sm ${compact ? "" : "rounded-2xl shadow-[var(--copilot-shadow)]"}`}
     >
       {!compact ? (
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--copilot-border)] px-5 py-4">
-        <div className="flex items-center gap-2.5">
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(44,40,37,0.06)]">
-            <TrendingDown className="h-4 w-4 text-[var(--copilot-ink)]" aria-hidden />
-          </span>
-          <div>
-            <h3 className="text-base font-semibold tracking-tight text-[var(--copilot-ink)]">
-              Antigüedad de cartera
-            </h3>
-            <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-              Deuda viva por antigüedad · estado actual, no limitado al rango seleccionado
-            </p>
-          </div>
-        </div>
-
-        {showTabs ? (
-          <div
-            role="tablist"
-            aria-label="Moneda"
-            className="inline-flex items-center rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-0.5 shadow-sm"
-          >
-            {availableCurrencies.map((c) => {
-              const active = c === activeCurrency;
-              return (
-                <button
-                  key={c}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setInternalCurrency(c)}
-                  className={[
-                    "h-8 rounded-lg px-3 text-xs font-semibold transition",
-                    active
-                      ? "bg-[var(--copilot-accent)] text-[var(--copilot-on-accent)] shadow"
-                      : "text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]",
-                  ].join(" ")}
-                >
-                  {c}
-                </button>
-              );
-            })}
-          </div>
-        ) : forcedCurrency ? (
-          <span
-            className="inline-flex h-8 items-center rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 text-xs font-semibold text-[var(--copilot-ink)] shadow-sm"
-            aria-label={`Moneda activa ${forcedCurrency}`}
-          >
-            {forcedCurrency}
-          </span>
-        ) : null}
-      </header>
-      ) : (
-        showTabs ? (
-          <div className="flex justify-end border-b border-[var(--copilot-border)] px-3 py-2">
-            <div
-              role="tablist"
-              aria-label="Moneda"
-              className="inline-flex items-center rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-0.5"
-            >
-              {availableCurrencies.map((c) => {
-                const active = c === activeCurrency;
-                return (
-                  <button
-                    key={c}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => setInternalCurrency(c)}
-                    className={[
-                      "h-7 rounded-md px-2.5 text-[10px] font-semibold transition",
-                      active
-                        ? "bg-[var(--copilot-accent)] text-[var(--copilot-on-accent)]"
-                        : "text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]",
-                    ].join(" ")}
-                  >
-                    {c}
-                  </button>
-                );
-              })}
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--copilot-border)] px-5 py-4">
+          <div className="flex items-center gap-2.5">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(44,40,37,0.06)]">
+              <TrendingDown className="h-4 w-4 text-[var(--copilot-ink)]" aria-hidden />
+            </span>
+            <div>
+              <h3 className="text-base font-semibold tracking-tight text-[var(--copilot-ink)]">
+                Cartera por días de atraso
+              </h3>
+              <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
+                Deuda viva por días de atraso · estado actual, no limitado al rango seleccionado
+              </p>
             </div>
           </div>
-        ) : null
-      )}
+
+          {showTabs ? (
+            <CurrencyTabs
+              currencies={availableCurrencies}
+              active={activeCurrency}
+              onChange={setInternalCurrency}
+              size="lg"
+            />
+          ) : forcedCurrency ? (
+            <span
+              className="inline-flex h-8 items-center rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-3 text-xs font-semibold text-[var(--copilot-ink)] shadow-sm"
+              aria-label={`Moneda activa ${forcedCurrency}`}
+            >
+              {forcedCurrency}
+            </span>
+          ) : null}
+        </header>
+      ) : showTabs ? (
+        <div className="flex justify-end border-b border-[var(--copilot-border)] px-3 py-2">
+          <CurrencyTabs
+            currencies={availableCurrencies}
+            active={activeCurrency}
+            onChange={setInternalCurrency}
+            size="sm"
+          />
+        </div>
+      ) : null}
 
       <div className={compact ? "p-3" : "p-5"}>
         {!hasData ? (
@@ -202,14 +177,63 @@ export function AgingAnalytics({
             Sin facturas pendientes para {activeCurrency}.
           </p>
         ) : (
-          <BucketsView
-            key={activeCurrency}
-            buckets={buckets}
-            currency={activeCurrency}
-          />
+          <BucketsView key={activeCurrency} buckets={buckets} currency={activeCurrency} />
         )}
+
+        {unclassified > 0 ? (
+          <p className="mt-3 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-3 py-2 text-[11px] leading-snug text-[var(--copilot-ink-muted)]">
+            Hay saldo pendiente sin una fecha de vencimiento válida y no puede clasificarse por
+            días de atraso ({formatCarteraMoney(activeCurrency, unclassified, { fractionDigits: 0 })}).
+          </p>
+        ) : null}
       </div>
     </section>
+  );
+}
+
+function CurrencyTabs({
+  currencies,
+  active,
+  onChange,
+  size,
+}: {
+  currencies: ReconciliationCurrencyCode[];
+  active: ReconciliationCurrencyCode;
+  onChange: (c: ReconciliationCurrencyCode) => void;
+  size: "sm" | "lg";
+}) {
+  const lg = size === "lg";
+  return (
+    <div
+      role="tablist"
+      aria-label="Moneda"
+      className={[
+        "inline-flex items-center border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-0.5",
+        lg ? "rounded-xl shadow-sm" : "rounded-lg",
+      ].join(" ")}
+    >
+      {currencies.map((c) => {
+        const isActive = c === active;
+        return (
+          <button
+            key={c}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => onChange(c)}
+            className={[
+              lg ? "h-8 rounded-lg px-3 text-xs" : "h-7 rounded-md px-2.5 text-[10px]",
+              "font-semibold transition",
+              isActive
+                ? "bg-[var(--copilot-accent)] text-[var(--copilot-on-accent)] shadow"
+                : "text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]",
+            ].join(" ")}
+          >
+            {c}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -221,7 +245,7 @@ function BucketsView({
   buckets,
   currency,
 }: {
-  buckets: AgingBucket[];
+  buckets: CarteraOperatingAgingBucketRow[];
   currency: ReconciliationCurrencyCode;
 }) {
   const reduce = useReducedMotion();
@@ -237,12 +261,7 @@ function BucketsView({
       }}
     >
       {buckets.map((bucket) => (
-        <BucketRow
-          key={bucket.range}
-          bucket={bucket}
-          currency={currency}
-          reduce={!!reduce}
-        />
+        <BucketRow key={bucket.bucket} bucket={bucket} currency={currency} reduce={!!reduce} />
       ))}
     </motion.div>
   );
@@ -253,13 +272,13 @@ function BucketRow({
   currency,
   reduce,
 }: {
-  bucket: AgingBucket;
+  bucket: CarteraOperatingAgingBucketRow;
   currency: ReconciliationCurrencyCode;
   reduce: boolean;
 }) {
   const { mode, fxRate } = useDisplayCurrency();
   const isUsd = mode === "usd_equivalent";
-  const cfg = BUCKET_CONFIG[bucket.range];
+  const cfg = BUCKET_CONFIG[bucket.bucket];
   const pct = Math.max(0, Math.min(1, bucket.percentage));
   const pctLabel = `${(pct * 100).toLocaleString("es-UY", {
     minimumFractionDigits: 1,
@@ -274,7 +293,6 @@ function BucketRow({
       }}
       className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 p-3.5"
     >
-      {/* Label row */}
       <div className="mb-2.5 flex items-center justify-between gap-2">
         <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-ink)]">
           <span className={`h-2 w-2 shrink-0 rounded-full ${cfg.dot}`} aria-hidden />
@@ -287,7 +305,6 @@ function BucketRow({
         </span>
       </div>
 
-      {/* Bar track */}
       <div
         className="mb-3 h-2.5 w-full overflow-hidden rounded-full bg-[rgba(44,40,37,0.08)]"
         role="meter"
@@ -300,24 +317,23 @@ function BucketRow({
           className={`h-full rounded-full ${cfg.bar}`}
           initial={reduce ? false : { width: 0 }}
           animate={{ width: `${pct * 100}%` }}
-          transition={
-            reduce
-              ? undefined
-              : { duration: 0.75, ease: [0.25, 0.1, 0.25, 1] }
-          }
+          transition={reduce ? undefined : { duration: 0.75, ease: [0.25, 0.1, 0.25, 1] }}
         />
       </div>
 
-      {/* Stats row */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] tabular-nums text-[var(--copilot-ink-muted)]">
         <span className={`font-semibold ${cfg.text}`}>
           {isUsd
-            ? formatUsdEquivalent(convertToUsdEquivalent(
-                { uyu: currency === "UYU" ? bucket.amount : 0, usd: currency === "USD" ? bucket.amount : 0 },
-                fxRate
-              ))
-            : formatCarteraMoney(currency, bucket.amount, { fractionDigits: 0 })
-          }
+            ? formatUsdEquivalent(
+                convertToUsdEquivalent(
+                  {
+                    uyu: currency === "UYU" ? bucket.amount : 0,
+                    usd: currency === "USD" ? bucket.amount : 0,
+                  },
+                  fxRate
+                )
+              )
+            : formatCarteraMoney(currency, bucket.amount, { fractionDigits: 0 })}
         </span>
         <span>{formatCarteraInteger(bucket.invoiceCount)} fact.</span>
         <span>{formatCarteraInteger(bucket.clientCount)} clientes</span>
@@ -349,7 +365,7 @@ export function AgingAnalyticsSkeleton() {
         <SkBar className="h-8 w-24 rounded-xl" reduce={!!reduce} />
       </header>
       <div className="space-y-3 p-5">
-        {[0, 1, 2, 3].map((i) => (
+        {[0, 1, 2, 3, 4].map((i) => (
           <div
             key={i}
             className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/55 p-3.5"

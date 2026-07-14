@@ -4,7 +4,8 @@
  * ClientDebtExplorer
  * ------------------
  * Tabla analítica de deuda real por cliente. Render-only:
- *  - Fuente: report.staleClients (pendingByCurrency, dominantAgingRange, status, etc.)
+ *  - Saldos: report.staleClients.pendingByCurrency.
+ *  - Atraso/estado operativo: operatingAging (due_date), cuando está disponible.
  *  - Sin recálculo de balances en frontend.
  *  - Memoización fuerte: filtro, sort y paginación solo se recomputan al cambiar inputs.
  *
@@ -46,7 +47,6 @@ import {
   formatRelativeAgeHours,
 } from "@/lib/copilot-cartera-format";
 import type {
-  AgingRange,
   ClientStaleness,
   FinancialConsistencyReport,
   PendingInvoiceLine,
@@ -56,12 +56,17 @@ import type {
 import { clientMatchesDebtExplorerSearch } from "@/lib/copilot-debt-explorer-search";
 import {
   daysOverdueFromDate,
-  formatCopilotDate,
   formatOverdueDaysLabel,
 } from "@/lib/copilot-format";
 import type { CurrencyFilter } from "@/components/copilot/financial-control-bar";
 import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
 import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
+import type { CarteraOperatingAging } from "@/lib/copilot/cartera-operating-aging";
+import {
+  classifyOperatingDelay,
+  OPERATING_DELAY_BUCKETS,
+  type OperatingDelayBucket,
+} from "@/lib/copilot/operating-aging";
 
 // ---------------------------------------------------------------------------
 // Tipos internos
@@ -76,9 +81,7 @@ type SortField =
   | "invoices"
   | "lastSync";
 type SortDir = "asc" | "desc";
-// CLIENT-DEBT-SEMANTICS-001 Etapa D: keys alineadas a la taxonomía.
-// "no_issue_date" = cliente con deuda sin fecha de emisión derivable.
-type FilterChip = "all" | "no_issue_date" | "delayed" | "critical" | "no_debt";
+type FilterChip = "all" | "no_due_date" | "delayed" | "critical" | "no_debt";
 type PageSize = 25 | 50 | 100;
 type RiskLevel = "high" | "medium" | "low" | "ok" | "none";
 type CollectionActionsByCompany = Map<string, CollectionAction[]>;
@@ -91,19 +94,58 @@ type CollectionActionsCacheEntry = {
 // Config visual
 // ---------------------------------------------------------------------------
 
-const AGING_LABELS: Record<AgingRange, string> = {
-  "0_30":    "0–30 días",
-  "31_60":   "31–60 días",
-  "61_90":   "61–90 días",
-  "90_plus": "+90 días",
+// FASE 1C: badges por bucket OPERATIVO (due_date), no contable. Labels desde
+// `OPERATING_DELAY_BUCKETS` (fuente única de la capa canónica).
+const AGING_LABELS: Record<OperatingDelayBucket, string> = {
+  on_time: OPERATING_DELAY_BUCKETS.on_time.shortLabel,
+  late_1_7: OPERATING_DELAY_BUCKETS.late_1_7.shortLabel,
+  late_8_14: OPERATING_DELAY_BUCKETS.late_8_14.shortLabel,
+  late_15_30: OPERATING_DELAY_BUCKETS.late_15_30.shortLabel,
+  late_30_plus: OPERATING_DELAY_BUCKETS.late_30_plus.shortLabel,
 };
 
-const AGING_BADGE: Record<AgingRange, string> = {
-  "0_30":    "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]",
-  "31_60":   "border-[var(--copilot-warning-border)]   bg-[var(--copilot-tone-warning-bg)]   text-[var(--copilot-warning-text-strong)]",
-  "61_90":   "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",
-  "90_plus": "border-[var(--copilot-danger-border)]    bg-[var(--copilot-tone-danger-bg)]    text-[var(--copilot-danger-text-strong)]",
+const AGING_BADGE: Record<OperatingDelayBucket, string> = {
+  on_time: "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]",
+  late_1_7: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",
+  late_8_14: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",
+  late_15_30: "border-orange-400/60 bg-[var(--copilot-tone-warning-bg)] text-orange-700 dark:text-orange-400",
+  late_30_plus: "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]",
 };
+
+/** Severidad de bucket operativo (peor = 0) para orden y dominante multi-moneda. */
+const OPERATING_SEVERITY: Record<OperatingDelayBucket, number> = {
+  late_30_plus: 0,
+  late_15_30: 1,
+  late_8_14: 2,
+  late_1_7: 3,
+  on_time: 4,
+};
+
+/**
+ * Mapa companyId → bucket operativo dominante, respetando el filtro de moneda.
+ * Con filtro: dominante de esa moneda. Sin filtro ("all"): bucket más severo
+ * entre las monedas del cliente. `null` = con saldo pero sin vencimiento clasificable.
+ */
+function buildOperatingBucketMap(
+  operatingAging: CarteraOperatingAging | null,
+  currencyFilter: ReconciliationCurrencyCode | null
+): Map<string, OperatingDelayBucket | null> {
+  const map = new Map<string, OperatingDelayBucket | null>();
+  for (const co of operatingAging?.byCompany ?? []) {
+    let best: OperatingDelayBucket | null = null;
+    let hasPending = false;
+    for (const c of co.byCurrency) {
+      if (currencyFilter && c.currency !== currencyFilter) continue;
+      if (c.pendingBalance > 0) hasPending = true;
+      const b = c.dominantBucket;
+      if (b && (best === null || OPERATING_SEVERITY[b] < OPERATING_SEVERITY[best])) {
+        best = b;
+      }
+    }
+    if (hasPending || best !== null) map.set(co.companyId, best);
+  }
+  return map;
+}
 
 const RISK_BADGE: Record<RiskLevel, { cls: string; label: string }> = {
   high:   { cls: "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]",       label: "Crítico" },
@@ -121,10 +163,10 @@ const STALE_BADGE: Record<StalenessStatus, { cls: string; label: string }> = {
 };
 
 // ---------------------------------------------------------------------------
-// Estado visible del cliente — semántica unificada CLIENT-DEBT-SEMANTICS-001:
-//   Al día (sin deuda) / Con deuda (0–30) / Atrasado (31–90) / Crítico (91+).
-// Las claves internas mantienen los nombres legacy para no romper consumers
-// dentro del archivo; los labels se actualizan a la nueva taxonomía.
+// Estado visible del cliente — semántica operativa por fecha de vencimiento:
+//   Al día / Con saldo pendiente / Cliente con atraso / Crítico / Datos.
+// Las claves internas mantienen nombres legacy locales; los labels visibles
+// siguen la taxonomía operativa.
 // ---------------------------------------------------------------------------
 
 type ClientDisplayStatus =
@@ -140,17 +182,26 @@ const CLIENT_DISPLAY_STATUS_BADGE: Record<
   { cls: string; label: string }
 > = {
   al_dia:    { cls: "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]", label: "Al día" },
-  con_deuda: { cls: "border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink)]", label: "Con deuda" },
-  atrasado:  { cls: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]", label: "Atrasado" },
+  con_deuda: { cls: "border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] text-[var(--copilot-ink)]", label: "Con saldo pendiente" },
+  atrasado:  { cls: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]", label: "Cliente con atraso" },
   critico:   { cls: "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]", label: "Crítico" },
   datos:     { cls: "border-[var(--copilot-border)] bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)]", label: "Datos por revisar" },
   sin_datos: { cls: "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 text-[var(--copilot-ink-muted)]", label: "Sin datos" },
 };
 
-export function deriveClientDisplayStatus(client: ClientStaleness): ClientDisplayStatus {
+/**
+ * FASE 1C: estado operativo derivado del bucket por `due_date` (no del aging
+ * contable por emisión). `opBucket` proviene del snapshot canónico. `null` =
+ * cliente con saldo pero sin vencimiento clasificable → "con saldo pendiente".
+ * `undefined` = payload operativo no cargado/no disponible: estado neutro, sin
+ * clasificar silenciosamente como "sin fecha".
+ */
+export function deriveClientDisplayStatus(
+  client: ClientStaleness,
+  opBucket: OperatingDelayBucket | null | undefined
+): ClientDisplayStatus {
   const debtAmounts = Object.values(client.pendingByCurrency);
   const hasDebt = debtAmounts.some((v) => (v ?? 0) > 0);
-  const aging = client.dominantAgingRange;
   const syncStale =
     client.status === "critical" || client.status === "never_synced";
 
@@ -160,22 +211,21 @@ export function deriveClientDisplayStatus(client: ClientStaleness): ClientDispla
     return "al_dia";
   }
 
-  // dominantAgingRange ya usa días desde emisión (computeAgingRange en
-  // copilot-financial-reconciliation.ts), así que mapeamos directo a la
-  // nueva taxonomía.
-  if (aging === "90_plus") return "critico";
-  if (aging === "61_90" || aging === "31_60") return "atrasado";
-  if (aging === "0_30") return "con_deuda";
-  // hasDebt pero sin aging parseable → con deuda sin fecha de emisión.
+  if (opBucket === undefined) return "datos";
+  if (opBucket === "late_30_plus") return "critico";
+  if (opBucket === "late_15_30" || opBucket === "late_8_14" || opBucket === "late_1_7") {
+    return "atrasado";
+  }
+  // on_time o sin vencimiento clasificable → con deuda al día.
   return "con_deuda";
 }
 
 const FILTER_CHIPS: Array<{ id: FilterChip; label: string }> = [
   { id: "all",            label: "Todos" },
-  { id: "no_issue_date",  label: "Sin fecha" },
-  { id: "delayed",        label: "Atrasados" },
+  { id: "no_due_date",    label: "Sin fecha de vencimiento" },
+  { id: "delayed",        label: "Con atraso" },
   { id: "critical",       label: "Críticos" },
-  { id: "no_debt",        label: "Sin deuda" },
+  { id: "no_debt",        label: "Sin saldo" },
 ];
 
 const COLLECTION_ACTIONS_CACHE_TTL_MS = 60_000;
@@ -184,13 +234,20 @@ const COLLECTION_ACTIONS_CACHE_TTL_MS = 60_000;
 // Helpers
 // ---------------------------------------------------------------------------
 
-function deriveRiskLevel(client: ClientStaleness): RiskLevel {
+// FASE 1C: riesgo derivado del bucket operativo (due_date). Este contrato legacy
+// preserva la mezcla histórica con salud de sincronización (`status`) para no
+// rediseñar riesgos en esta fase. `undefined` (payload no cargado) no inventa
+// riesgo financiero; solo aplica status de sync si corresponde.
+function deriveRiskLevel(
+  client: ClientStaleness,
+  opBucket: OperatingDelayBucket | null | undefined
+): RiskLevel {
   const hasDebt = Object.values(client.pendingByCurrency).some((v) => (v ?? 0) > 0);
   if (!hasDebt) return "none";
-  const { dominantAgingRange: aging, status } = client;
-  if (aging === "90_plus" || status === "critical" || status === "never_synced") return "high";
-  if (aging === "61_90" || status === "warning") return "medium";
-  if (aging === "31_60") return "low";
+  const { status } = client;
+  if (opBucket === "late_30_plus" || status === "critical" || status === "never_synced") return "high";
+  if (opBucket === "late_15_30" || opBucket === "late_8_14" || status === "warning") return "medium";
+  if (opBucket === "late_1_7") return "low";
   return "ok";
 }
 
@@ -198,25 +255,32 @@ const RISK_SORT_ORDER: Record<RiskLevel, number> = {
   high: 0, medium: 1, low: 2, ok: 3, none: 4,
 };
 
-const AGING_SORT_ORDER: Record<AgingRange, number> = {
-  "90_plus": 0, "61_90": 1, "31_60": 2, "0_30": 3,
-};
+/** Severidad de orden por bucket operativo; `null` (sin vencimiento) al final. */
+function operatingSortRank(opBucket: OperatingDelayBucket | null | undefined): number {
+  return opBucket ? OPERATING_SEVERITY[opBucket] : 99;
+}
 
-function matchesFilter(client: ClientStaleness, chip: FilterChip): boolean {
+function matchesFilter(
+  client: ClientStaleness,
+  chip: FilterChip,
+  opBucket: OperatingDelayBucket | null | undefined
+): boolean {
   const hasDebt = Object.values(client.pendingByCurrency).some((v) => (v ?? 0) > 0);
   if (chip === "all") return true;
   if (chip === "no_debt") return !hasDebt;
-  if (chip === "no_issue_date") return hasDebt && client.dominantAgingRange === null;
+  // "Sin fecha de vencimiento" = payload operativo cargado y bucket null.
+  // `undefined` significa "no cargado/no disponible"; no debe caer en este filtro.
+  if (chip === "no_due_date") return hasDebt && opBucket === null;
   if (chip === "delayed") {
     return (
       hasDebt &&
-      (client.dominantAgingRange === "31_60" || client.dominantAgingRange === "61_90")
+      (opBucket === "late_1_7" || opBucket === "late_8_14" || opBucket === "late_15_30")
     );
   }
   if (chip === "critical") {
     return (
       hasDebt &&
-      (client.dominantAgingRange === "90_plus" ||
+      (opBucket === "late_30_plus" ||
         client.status === "critical" ||
         client.status === "never_synced")
     );
@@ -236,7 +300,8 @@ function maxClientOverdueDays(client: ClientStaleness): number | null {
 function sortClients(
   clients: ClientStaleness[],
   field: SortField,
-  dir: SortDir
+  dir: SortDir,
+  opBucketOf: (client: ClientStaleness) => OperatingDelayBucket | null | undefined
 ): ClientStaleness[] {
   const sign = dir === "asc" ? 1 : -1;
   return [...clients].sort((a, b) => {
@@ -252,16 +317,12 @@ function sortClients(
         diff = (a.pendingByCurrency.USD ?? 0) - (b.pendingByCurrency.USD ?? 0);
         break;
       case "aging":
-        diff =
-          (a.dominantAgingRange !== null
-            ? AGING_SORT_ORDER[a.dominantAgingRange]
-            : 99) -
-          (b.dominantAgingRange !== null
-            ? AGING_SORT_ORDER[b.dominantAgingRange]
-            : 99);
+        diff = operatingSortRank(opBucketOf(a)) - operatingSortRank(opBucketOf(b));
         break;
       case "risk":
-        diff = RISK_SORT_ORDER[deriveRiskLevel(a)] - RISK_SORT_ORDER[deriveRiskLevel(b)];
+        diff =
+          RISK_SORT_ORDER[deriveRiskLevel(a, opBucketOf(a))] -
+          RISK_SORT_ORDER[deriveRiskLevel(b, opBucketOf(b))];
         break;
       case "invoices":
         diff = a.invoiceCount - b.invoiceCount;
@@ -293,10 +354,14 @@ function isLikelyMobile(): boolean {
 
 export function ClientDebtExplorer({
   report,
+  operatingAging = null,
   selectedCurrency = "all",
   initialFilterChip = "all",
 }: {
   report: FinancialConsistencyReport;
+  /** FASE 1C: aging operativo canónico (buckets por due_date). Fuente única de
+   *  estado/atraso/orden del explorer. `null` mientras carga. */
+  operatingAging?: CarteraOperatingAging | null;
   selectedCurrency?: CurrencyFilter;
   initialFilterChip?: FilterChip;
 }) {
@@ -328,6 +393,23 @@ export function ClientDebtExplorer({
     selectedCurrency === "USD" || selectedCurrency === "UYU"
       ? selectedCurrency
       : null;
+
+  // FASE 1C: mapa companyId → bucket operativo dominante (por due_date),
+  // respetando el filtro de moneda. Fuente única para estado/atraso/orden.
+  const opBucketByCompany = useMemo(
+    () => buildOperatingBucketMap(operatingAging, currencyFilter),
+    [operatingAging, currencyFilter]
+  );
+  const operatingAgingLoaded = operatingAging !== null;
+  const opBucketOf = useCallback(
+    (client: ClientStaleness): OperatingDelayBucket | null | undefined => {
+      if (!operatingAgingLoaded) return undefined;
+      if (!opBucketByCompany.has(client.companyId)) return undefined;
+      return opBucketByCompany.get(client.companyId) ?? null;
+    },
+    [operatingAgingLoaded, opBucketByCompany]
+  );
+  const operatingCutoff = operatingAging?.cutoffDate ?? report.operationalPeriod.end;
 
   // Sort efectivo: si la columna de saldo está oculta porque hay filtro de
   // moneda, derivamos un sort alternativo (no se persiste, sólo afecta la
@@ -405,14 +487,14 @@ export function ClientDebtExplorer({
   const filtered = useMemo(() => {
     return baseClients.filter((c) => {
       const nameMatch = clientMatchesDebtExplorerSearch(c, search);
-      const chipMatch = matchesFilter(c, filterChip);
+      const chipMatch = matchesFilter(c, filterChip, opBucketOf(c));
       return nameMatch && chipMatch;
     });
-  }, [baseClients, search, filterChip]);
+  }, [baseClients, search, filterChip, opBucketOf]);
 
   const sorted = useMemo(
-    () => sortClients(filtered, effectiveSort.field, effectiveSort.dir),
-    [filtered, effectiveSort]
+    () => sortClients(filtered, effectiveSort.field, effectiveSort.dir, opBucketOf),
+    [filtered, effectiveSort, opBucketOf]
   );
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
@@ -592,7 +674,7 @@ export function ClientDebtExplorer({
 
   return (
     <section
-      aria-label="Explorador de deuda por cliente"
+      aria-label="Explorador de saldo pendiente por cliente"
       className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card)] shadow-[var(--copilot-shadow)]"
     >
       {/* Header */}
@@ -603,7 +685,7 @@ export function ClientDebtExplorer({
           </span>
           <div>
             <h3 className="text-base font-semibold tracking-tight text-[var(--copilot-ink)]">
-              Explorador de deuda
+              Explorador de saldo pendiente
               {currencyFilter ? (
                 <span className="ml-2 inline-flex items-center rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-ink)] align-middle">
                   {currencyFilter}
@@ -611,8 +693,8 @@ export function ClientDebtExplorer({
               ) : null}
             </h3>
             <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
-              {formatCarteraInteger(baseClients.length)} cliente{baseClients.length === 1 ? "" : "s"} con deuda{" "}
-              {currencyFilter ? `${currencyFilter} ` : ""}activa
+              {formatCarteraInteger(baseClients.length)} cliente{baseClients.length === 1 ? "" : "s"} con saldo pendiente{" "}
+              {currencyFilter ? `${currencyFilter}` : ""}
             </p>
           </div>
         </div>
@@ -665,7 +747,7 @@ export function ClientDebtExplorer({
                   : "border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] hover:text-[var(--copilot-ink)]",
               ].join(" ")}
             >
-              {showWithoutDebt ? "Ocultar sin deuda" : `Sin deuda (${withoutDebtCount})`}
+              {showWithoutDebt ? "Ocultar sin saldo" : `Sin saldo (${withoutDebtCount})`}
             </button>
           </>
         )}
@@ -674,6 +756,11 @@ export function ClientDebtExplorer({
             {formatCarteraInteger(filtered.length)} resultado{filtered.length === 1 ? "" : "s"}
           </span>
         )}
+        {!operatingAgingLoaded ? (
+          <span className="ml-auto rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 px-2 py-1 text-[11px] text-[var(--copilot-ink-muted)]">
+            Clasificación de vencimiento no cargada
+          </span>
+        ) : null}
       </div>
 
       {/* Mobile cards (<640px) */}
@@ -681,7 +768,7 @@ export function ClientDebtExplorer({
         {pageRows.length === 0 ? (
           <p className="rounded-xl border border-dashed border-[var(--copilot-border)] px-4 py-8 text-center text-sm text-[var(--copilot-ink-muted)]">
             {currencyFilter
-              ? `Sin clientes con saldo ${currencyFilter} para los filtros aplicados.`
+              ? `Sin clientes con saldo pendiente ${currencyFilter} para los filtros aplicados.`
               : "Sin clientes para los filtros aplicados."}
           </p>
         ) : (
@@ -689,6 +776,8 @@ export function ClientDebtExplorer({
             <ClientMobileCard
               key={`m-${client.companyId}`}
               client={client}
+              opBucket={opBucketOf(client)}
+              operatingCutoff={operatingCutoff}
               currencyFilter={currencyFilter}
               expanded={expandedIds.has(client.companyId)}
               actions={actionsByCompany.get(client.companyId) ?? []}
@@ -751,7 +840,7 @@ export function ClientDebtExplorer({
                   className="py-8 text-center text-sm text-[var(--copilot-ink-muted)]"
                 >
                   {currencyFilter
-                    ? `Sin clientes con saldo ${currencyFilter} para los filtros aplicados.`
+                    ? `Sin clientes con saldo pendiente ${currencyFilter} para los filtros aplicados.`
                     : "Sin clientes para los filtros aplicados."}
                 </td>
               </tr>
@@ -760,6 +849,8 @@ export function ClientDebtExplorer({
                 <ClientRow
                   key={client.companyId}
                   client={client}
+                  opBucket={opBucketOf(client)}
+                  operatingCutoff={operatingCutoff}
                   currencyFilter={currencyFilter}
                   expanded={expandedIds.has(client.companyId)}
                   actions={actionsByCompany.get(client.companyId) ?? []}
@@ -899,6 +990,8 @@ function Th({
 
 function ClientRow({
   client,
+  opBucket,
+  operatingCutoff,
   currencyFilter,
   expanded,
   actions,
@@ -910,6 +1003,8 @@ function ClientRow({
   reduce,
 }: {
   client: ClientStaleness;
+  opBucket: OperatingDelayBucket | null | undefined;
+  operatingCutoff: string;
   currencyFilter: ReconciliationCurrencyCode | null;
   expanded: boolean;
   actions: CollectionAction[];
@@ -922,9 +1017,9 @@ function ClientRow({
 }) {
   const { mode, fxRate } = useDisplayCurrency();
   const isUsd = mode === "usd_equivalent";
-  const risk = deriveRiskLevel(client);
+  const risk = deriveRiskLevel(client, opBucket);
   const riskCfg = RISK_BADGE[risk];
-  const displayStatus = deriveClientDisplayStatus(client);
+  const displayStatus = deriveClientDisplayStatus(client, opBucket);
   const displayStatusCfg = CLIENT_DISPLAY_STATUS_BADGE[displayStatus];
   const latestAction = actions[0] ?? null;
 
@@ -1021,7 +1116,7 @@ function ClientRow({
           })()}
         </td>
 
-        {/* Estado del cliente — Pendiente / Atrasado / Crítico / Al día / Datos */}
+        {/* Estado del cliente — saldo pendiente / atraso / crítico / al día / datos */}
         <td className="px-3 py-2.5">
           <span
             className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${displayStatusCfg.cls}`}
@@ -1082,6 +1177,8 @@ function ClientRow({
           <td colSpan={currencyFilter ? 7 : 8} className="px-3 pb-3 pt-0">
             <ExpandedRow
               client={client}
+              opBucket={opBucket}
+              operatingCutoff={operatingCutoff}
               currencyFilter={currencyFilter}
               actions={actions}
               reduce={reduce}
@@ -1095,11 +1192,15 @@ function ClientRow({
 
 function ExpandedRow({
   client,
+  opBucket,
+  operatingCutoff,
   currencyFilter,
   actions,
   reduce,
 }: {
   client: ClientStaleness;
+  opBucket: OperatingDelayBucket | null | undefined;
+  operatingCutoff: string;
   currencyFilter: ReconciliationCurrencyCode | null;
   actions: CollectionAction[];
   reduce: boolean;
@@ -1124,7 +1225,7 @@ function ExpandedRow({
           pendingCurrencies.map((c) => (
             <div key={c}>
               <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--copilot-ink-muted)]/90">
-                Deuda actual a cobrar {c}
+                Saldo pendiente a cobrar {c}
               </p>
               <p className="mt-0.5 text-lg font-semibold tabular-nums text-[var(--copilot-ink)]">
                 {formatCarteraMoney(c, client.pendingByCurrency[c] ?? 0, {
@@ -1136,26 +1237,28 @@ function ExpandedRow({
         ) : (
           <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--copilot-ink-muted)]/90">
-              Deuda actual a cobrar
+              Saldo pendiente a cobrar
             </p>
-            <p className="mt-0.5 text-sm text-[var(--copilot-success-text-strong)]">Sin deuda activa</p>
+            <p className="mt-0.5 text-sm text-[var(--copilot-success-text-strong)]">Sin saldo pendiente</p>
           </div>
         )}
 
-        {/* Antigüedad dominante */}
+        {/* Tramo de atraso dominante (operativo, por vencimiento) */}
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--copilot-ink-muted)]/90">
-            Antigüedad dominante
+            Atraso dominante
           </p>
           <p className="mt-1">
-            {client.dominantAgingRange ? (
+            {opBucket ? (
               <span
-                className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.08em] ${AGING_BADGE[client.dominantAgingRange]}`}
+                className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.08em] ${AGING_BADGE[opBucket]}`}
               >
-                {AGING_LABELS[client.dominantAgingRange]}
+                {AGING_LABELS[opBucket]}
               </span>
+            ) : opBucket === null ? (
+              <span className="text-sm text-[var(--copilot-ink-muted)]">Sin fecha de vencimiento</span>
             ) : (
-              <span className="text-sm text-[var(--copilot-ink-muted)]">Sin clasificar</span>
+              <span className="text-sm text-[var(--copilot-ink-muted)]">Por clasificar</span>
             )}
           </p>
         </div>
@@ -1193,9 +1296,10 @@ function ExpandedRow({
         </div>
       </div>
 
-      {/* Detalle: facturas pendientes (qué factura, fecha, monto, aging) */}
+      {/* Detalle: facturas pendientes (qué factura, fecha, monto, atraso) */}
       <PendingInvoicesDetail
         client={client}
+        operatingCutoff={operatingCutoff}
         currencyFilter={currencyFilter}
       />
 
@@ -1265,6 +1369,8 @@ function ExpandedRow({
 
 function ClientMobileCard({
   client,
+  opBucket,
+  operatingCutoff,
   currencyFilter,
   expanded,
   actions,
@@ -1273,6 +1379,8 @@ function ClientMobileCard({
   reduce,
 }: {
   client: ClientStaleness;
+  opBucket: OperatingDelayBucket | null | undefined;
+  operatingCutoff: string;
   currencyFilter: ReconciliationCurrencyCode | null;
   expanded: boolean;
   actions: CollectionAction[];
@@ -1282,7 +1390,7 @@ function ClientMobileCard({
 }) {
   const { mode, fxRate: mobileCardFxRate } = useDisplayCurrency();
   const isMobileUsd = mode === "usd_equivalent";
-  const displayStatus = deriveClientDisplayStatus(client);
+  const displayStatus = deriveClientDisplayStatus(client, opBucket);
   const displayStatusCfg = CLIENT_DISPLAY_STATUS_BADGE[displayStatus];
   const showUyu =
     (currencyFilter === null || currencyFilter === "UYU") &&
@@ -1305,11 +1413,15 @@ function ClientMobileCard({
             >
               {displayStatusCfg.label}
             </span>
-            {client.dominantAgingRange ? (
+            {opBucket ? (
               <span
-                className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${AGING_BADGE[client.dominantAgingRange]}`}
+                className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${AGING_BADGE[opBucket]}`}
               >
-                {AGING_LABELS[client.dominantAgingRange]}
+                {AGING_LABELS[opBucket]}
+              </span>
+            ) : opBucket === null ? (
+              <span className="inline-flex items-center rounded-md border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--copilot-ink-muted)]">
+                Sin fecha de vencimiento
               </span>
             ) : null}
           </div>
@@ -1394,6 +1506,8 @@ function ClientMobileCard({
         <div className="mt-3 border-t border-[var(--copilot-border)] pt-3">
           <ExpandedRow
             client={client}
+            opBucket={opBucket}
+            operatingCutoff={operatingCutoff}
             currencyFilter={currencyFilter}
             actions={actions}
             reduce={reduce}
@@ -1410,9 +1524,11 @@ function ClientMobileCard({
 
 function PendingInvoicesDetail({
   client,
+  operatingCutoff,
   currencyFilter,
 }: {
   client: ClientStaleness;
+  operatingCutoff: string;
   currencyFilter: ReconciliationCurrencyCode | null;
 }) {
   const allLines = client.pendingInvoices ?? [];
@@ -1462,11 +1578,21 @@ function PendingInvoicesDetail({
                           · {line.issueDate}
                         </span>
                       ) : null}
-                      {line.agingRange ? (
-                        <span className="ml-1 text-[var(--copilot-ink-muted)]">
-                          · {AGING_LABELS[line.agingRange]}
-                        </span>
-                      ) : null}
+                      {(() => {
+                        // FASE 1C: tramo operativo por fecha de vencimiento de la línea.
+                        const lineBucket = line.dueDate
+                          ? classifyOperatingDelay(line.dueDate, operatingCutoff).bucket
+                          : null;
+                        return lineBucket ? (
+                          <span className="ml-1 text-[var(--copilot-ink-muted)]">
+                            · {AGING_LABELS[lineBucket]}
+                          </span>
+                        ) : (
+                          <span className="ml-1 text-[var(--copilot-ink-muted)]">
+                            · Sin fecha de vencimiento
+                          </span>
+                        );
+                      })()}
                     </span>
                     <span className="shrink-0 tabular-nums font-medium text-[var(--copilot-ink)]">
                       {formatCarteraMoney(currency, line.balance, { fractionDigits })}

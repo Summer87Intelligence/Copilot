@@ -6,20 +6,24 @@
  */
 
 import type {
-  AgingRange,
   ClientStaleness,
   FinancialConsistencyReport,
   PendingInvoiceLine,
   ReconciliationCurrencyCode,
   StalenessStatus,
 } from "@/lib/copilot-financial-reconciliation";
+import type {
+  CarteraOperatingAging,
+  CarteraOperatingAgingCompanyCurrency,
+} from "@/lib/copilot/cartera-operating-aging";
+import { type OperatingDelayBucket } from "@/lib/copilot/operating-aging";
 
 export type PendingDebtClientRow = {
   companyId: string;
   companyName: string | null;
   pendingAmount: number;
   invoiceCount: number;
-  dominantAgingRange: AgingRange | null;
+  dominantOperatingBucket: OperatingDelayBucket | null | undefined;
   status: StalenessStatus;
   /** Facturas pendientes del cliente en la moneda del snapshot (top por saldo). */
   pendingInvoices: PendingInvoiceLine[];
@@ -46,12 +50,33 @@ function roundMoney(n: number): number {
  */
 export function buildCurrentDebtSnapshot(
   report: FinancialConsistencyReport,
-  currency: ReconciliationCurrencyCode
+  currency: ReconciliationCurrencyCode,
+  operatingAging?: CarteraOperatingAging | null
 ): CurrentDebtSnapshot {
-  const clients: PendingDebtClientRow[] = report.staleClients
-    .filter((c) => (c.pendingByCurrency[currency] ?? 0) > PENDING_EPSILON)
-    .map((c) => rowFromStaleness(c, currency))
-    .sort((a, b) => b.pendingAmount - a.pendingAmount);
+  const staleByCompany = new Map(report.staleClients.map((c) => [c.companyId, c]));
+  const operatingRows = (operatingAging?.byCompany ?? [])
+    .map((co) => ({
+      companyId: co.companyId,
+      block: co.byCurrency.find((b) => b.currency === currency) ?? null,
+      stale: staleByCompany.get(co.companyId) ?? null,
+    }))
+    .filter((x): x is {
+      companyId: string;
+      block: CarteraOperatingAgingCompanyCurrency;
+      stale: ClientStaleness | null;
+    } => (x.block?.pendingBalance ?? 0) > PENDING_EPSILON);
+
+  const clients: PendingDebtClientRow[] =
+    operatingAging != null
+      ? operatingRows
+          .map(({ companyId, block, stale }) =>
+            rowFromOperating(companyId, block, stale, currency)
+          )
+          .sort((a, b) => b.pendingAmount - a.pendingAmount)
+      : report.staleClients
+          .filter((c) => (c.pendingByCurrency[currency] ?? 0) > PENDING_EPSILON)
+          .map((c) => rowFromStaleness(c, currency))
+          .sort((a, b) => b.pendingAmount - a.pendingAmount);
 
   const totalPending = roundMoney(
     clients.reduce((sum, c) => sum + c.pendingAmount, 0)
@@ -80,8 +105,28 @@ function rowFromStaleness(
     companyName: client.companyName,
     pendingAmount: roundMoney(client.pendingByCurrency[currency] ?? 0),
     invoiceCount: client.invoiceCount,
-    dominantAgingRange: client.dominantAgingRange,
+    dominantOperatingBucket: undefined,
     status: client.status,
+    pendingInvoices,
+  };
+}
+
+function rowFromOperating(
+  companyId: string,
+  block: CarteraOperatingAgingCompanyCurrency,
+  stale: ClientStaleness | null,
+  currency: ReconciliationCurrencyCode
+): PendingDebtClientRow {
+  const pendingInvoices = (stale?.pendingInvoices ?? []).filter(
+    (line) => line.currencyCode === currency
+  );
+  return {
+    companyId,
+    companyName: stale?.companyName ?? null,
+    pendingAmount: roundMoney(block.pendingBalance),
+    invoiceCount: stale?.invoiceCount ?? 0,
+    dominantOperatingBucket: block.dominantBucket,
+    status: stale?.status ?? "ok",
     pendingInvoices,
   };
 }

@@ -13,20 +13,22 @@ import {
   formatCarteraInteger,
   formatCarteraMoney,
 } from "@/lib/copilot-cartera-format";
+import { daysOverdueFromDate, formatOverdueDaysLabel } from "@/lib/copilot-format";
 import type {
   CurrentDebtSnapshot,
   PendingDebtClientRow,
 } from "@/lib/copilot-cartera-pending-debt-snapshot";
 import type {
-  AgingRange,
   ReconciliationCurrencyCode,
 } from "@/lib/copilot-financial-reconciliation";
+import { OPERATING_DELAY_BUCKETS, type OperatingDelayBucket } from "@/lib/copilot/operating-aging";
 
-const AGING_LABELS: Record<AgingRange, string> = {
-  "0_30": "0–30 días",
-  "31_60": "31–60 días",
-  "61_90": "61–90 días",
-  "90_plus": "+90 días",
+const OPERATING_AGING_LABELS: Record<OperatingDelayBucket, string> = {
+  on_time: OPERATING_DELAY_BUCKETS.on_time.label,
+  late_1_7: OPERATING_DELAY_BUCKETS.late_1_7.label,
+  late_8_14: OPERATING_DELAY_BUCKETS.late_8_14.label,
+  late_15_30: OPERATING_DELAY_BUCKETS.late_15_30.label,
+  late_30_plus: OPERATING_DELAY_BUCKETS.late_30_plus.label,
 };
 
 export type CarteraPendingDrawerProps = {
@@ -66,20 +68,20 @@ export function CarteraPendingDrawer({
       <aside
         role="dialog"
         aria-modal="true"
-        aria-label={`Deuda actual ${currency}`}
+        aria-label={`Saldo pendiente ${currency}`}
         className="fixed inset-y-0 right-0 z-[var(--copilot-z-drawer)] flex h-full w-full max-w-none flex-col border-l border-[var(--copilot-border)] bg-[var(--copilot-card)] shadow-2xl md:w-[min(520px,100vw)] md:min-w-[420px]"
       >
         <header className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--copilot-border)] px-5 py-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--copilot-ink-muted)]">
-              Deuda actual {currency}
+              Saldo pendiente {currency}
             </p>
             <p className="mt-1 text-2xl font-bold tabular-nums text-[var(--copilot-danger-text)]">
               {formatCarteraMoney(currency, totalPending)}
             </p>
             <p className="mt-0.5 text-xs text-[var(--copilot-ink-muted)]">
               {formatCarteraInteger(clientCount)} cliente
-              {clientCount === 1 ? "" : "s"} con deuda activa
+              {clientCount === 1 ? "" : "s"} con saldo pendiente
             </p>
           </div>
           <button
@@ -165,8 +167,10 @@ function ClientPendingRow({
           <p className="mt-0.5 text-[11px] text-[var(--copilot-ink-muted)]">
             {formatCarteraInteger(client.invoiceCount)} factura
             {client.invoiceCount === 1 ? "" : "s"}
-            {client.dominantAgingRange ? (
-              <> · {AGING_LABELS[client.dominantAgingRange]}</>
+            {client.dominantOperatingBucket ? (
+              <> · {OPERATING_AGING_LABELS[client.dominantOperatingBucket]}</>
+            ) : client.dominantOperatingBucket === null ? (
+              <> · Sin fecha de vencimiento</>
             ) : null}
           </p>
           <Link
@@ -192,11 +196,11 @@ function ClientPendingRow({
                 <span className="ml-1 text-[var(--copilot-ink-muted)]">
                   · {formatPendingInvoiceDate(line.issueDate)}
                 </span>
-                {line.agingRange ? (
-                  <span className="ml-1 text-[var(--copilot-ink-muted)]">
-                    · {AGING_LABELS[line.agingRange]}
-                  </span>
-                ) : null}
+                <span className="ml-1 text-[var(--copilot-ink-muted)]">
+                  · {line.dueDate
+                    ? formatOverdueDaysLabel(daysOverdueFromDate(line.dueDate))
+                    : "Sin fecha de vencimiento"}
+                </span>
               </span>
               <span className="shrink-0 tabular-nums text-[var(--copilot-ink)]">
                 {formatCarteraMoney(currency, line.balance, { fractionDigits })}

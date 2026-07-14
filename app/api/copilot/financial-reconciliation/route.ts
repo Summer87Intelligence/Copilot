@@ -35,6 +35,7 @@ import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import { readInvoiceZetaClientName } from "@/lib/copilot-clients-directory";
 import {
   generateFinancialConsistencyReport,
+  // NOTE: operating aging (FASE 1C) se calcula aparte con la capa canónica.
   invoiceInputFromProtoRow,
   type CompanyInput,
   type InvoiceInput,
@@ -65,6 +66,9 @@ import {
   fetchAllRowsSafe,
 } from "@/lib/supabase-pagination";
 import { COPILOT_INTERNAL_ERROR_MESSAGE } from "@/lib/api/copilot-request-errors";
+import { buildCarteraOperatingAging } from "@/lib/copilot/cartera-operating-aging";
+import { selectOperationalDebtInvoicesForSummation } from "@/lib/zeta/zeta-operational-debt-dedup";
+import type { CanonicalInstallmentInput } from "@/lib/financial/canonical/types";
 
 // CRÍTICO: el reporte debe recalcularse en cada request porque depende del
 // `period_start`/`period_end` recibidos por query string. Sin `force-dynamic`
@@ -331,7 +335,7 @@ export async function GET(request: NextRequest) {
             supabase
               .from("proto_invoice_installments")
               .select(
-                "invoice_id, currency_code, cuota_saldo, cuota_total, cuota_vencimiento"
+                "id, invoice_id, currency_code, cuota_saldo, cuota_total, cuota_vencimiento"
               )
               .eq("workspace_company_id", workspaceId)
               .order("cuota_vencimiento", { ascending: true })
@@ -603,6 +607,33 @@ export async function GET(request: NextRequest) {
     }
     mark("generate_report_ms");
 
+    // ---- Operating aging canónico (FASE 1C) ----
+    // Cartera consume ESTA vista operativa (Al día / 1–7 / 8–14 / 15–30 / +30 por
+    // due_date), NO los buckets contables del reporte. Un único snapshot por
+    // request, sobre el mismo universo operacional deduplicado del reporte.
+    // `operationalPeriod.end` es el corte de stock que ya usa Cartera para saldos
+    // pendientes dentro del reporte. No redefine el rango de actividad.
+    const operationalCutoff = report.operationalPeriod.end;
+    const opInvoices = selectOperationalDebtInvoicesForSummation(invoices).map(
+      (s) => s.invoice
+    );
+    const canonicalInstallments: CanonicalInstallmentInput[] = installmentFetch.fetchError
+      ? []
+      : ((installmentFetch.rows ?? []) as Record<string, unknown>[]).map((r) => ({
+          id: r.id != null ? String(r.id) : undefined,
+          invoice_id: r.invoice_id != null ? String(r.invoice_id) : null,
+          currency_code: r.currency_code != null ? String(r.currency_code) : null,
+          cuota_saldo: toSafeNumber(r.cuota_saldo),
+          cuota_vencimiento:
+            r.cuota_vencimiento != null ? String(r.cuota_vencimiento) : null,
+        }));
+    const operatingAging = buildCarteraOperatingAging({
+      invoices: opInvoices,
+      installments: canonicalInstallments,
+      cutoffDate: operationalCutoff,
+    });
+    mark("operating_aging_ms");
+
     // ---- Observability logs (existentes) ----
     console.info(
       JSON.stringify({
@@ -700,6 +731,7 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.json({
       ok: true,
       report,
+      operatingAging,
       meta: {
         /** @deprecated use max_rows — kept for cartera RowCapBanner compat */
         invoice_limit: FINANCIAL_RECON_MAX_ROWS,

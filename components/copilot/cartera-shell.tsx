@@ -19,7 +19,6 @@ import {
   dangerFinancialCardClass,
   neutralFinancialCardClass,
   softCalloutClass,
-  subtleLabelClass,
   warningFinancialCardClass,
 } from "@/components/copilot/ui/copilot-visual-system";
 
@@ -30,7 +29,6 @@ import { AgingAnalytics } from "@/components/copilot/aging-analytics";
 import { ClientDebtExplorer } from "@/components/copilot/client-debt-explorer";
 import { CollapsibleSection } from "@/components/copilot/collapsible-section";
 import { CopilotDataProvenanceStrip } from "@/components/copilot/copilot-data-provenance-strip";
-import { CopilotPremiumEmptyState } from "@/components/copilot/copilot-premium-empty-state";
 
 function normalizeDateInput(value: string | null | undefined): string {
   return (value ?? "").slice(0, 10);
@@ -64,7 +62,7 @@ export function CarteraShell() {
   const [dismissedPreSyncPeriod, setDismissedPreSyncPeriod] = useState<string | null>(null);
   const [dismissedRowCapPeriod, setDismissedRowCapPeriod] = useState<string | null>(null);
 
-  const { report, meta, loading, error, refetch } = useFinancialReconciliation({
+  const { report, operatingAging, meta, loading, error, refetch } = useFinancialReconciliation({
     mode: "period_only",
     periodStart,
     periodEnd,
@@ -189,6 +187,7 @@ export function CarteraShell() {
               <SectionHeading title="Ventas del período" subtitle={periodRangeLabel} />
               <CarteraCompactKpiGrid
                 report={report}
+                operatingAging={operatingAging}
                 variant="ventas"
                 periodRangeLabel={periodRangeLabel}
                 isPreSync={isPreSync}
@@ -199,6 +198,7 @@ export function CarteraShell() {
               <SectionHeading title="Resumen financiero" />
               <CarteraCompactKpiGrid
                 report={report}
+                operatingAging={operatingAging}
                 variant="resumen"
                 isPreSync={isPreSync}
               />
@@ -209,22 +209,22 @@ export function CarteraShell() {
 
             <section aria-label="Antigüedad de cartera">
               <SectionHeading
-                title="Antigüedad de cartera"
-                subtitle="Estado actual · 0-30 no es crítico · +90 es prioridad"
+                title="Cartera por días de atraso"
+                subtitle="Estado actual · Al día / 1–7 / 8–14 / 15–30 / +30 días de atraso"
               />
-              <AgingAnalytics report={report} selectedCurrency="all" compact />
+              <AgingAnalytics operatingAging={operatingAging} selectedCurrency="all" compact />
             </section>
 
             <section aria-label="Clientes en riesgo">
               <SectionHeading title="Clientes en riesgo" />
-              <CarteraCompactKpiGrid report={report} variant="cobranza" />
+              <CarteraCompactKpiGrid report={report} operatingAging={operatingAging} variant="cobranza" />
               {structuralGaps.length > 0 && <HistoricalGapNote gaps={structuralGaps} />}
             </section>
 
             <CollapsibleSection
               id="explorador"
-              title="Explorador de deuda"
-              subtitle="Lista detallada — duplica Clientes"
+              title="Explorador de saldo pendiente"
+              subtitle="Lista detallada de clientes con saldo"
               defaultOpen={overdueFilter}
               variant="primary"
             >
@@ -236,11 +236,12 @@ export function CarteraShell() {
                   href="/copilot/clientes"
                   className="text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
                 >
-                  Ver clientes con deuda →
+                  Ver clientes con saldo →
                 </Link>
               </div>
               <ClientDebtExplorer
                 report={report}
+                operatingAging={operatingAging}
                 selectedCurrency="all"
                 initialFilterChip={overdueFilter ? "delayed" : "all"}
               />
@@ -274,7 +275,7 @@ function EmptyAgingPlaceholder({ shimmer = false }: { shimmer?: boolean }) {
   return (
     <section className={`rounded-xl border ${neutralFinancialCardClass}`}>
       <div className="space-y-2 p-3">
-        {["0-30", "31-60", "61-90", "+90"].map((label) => (
+        {["Al día", "1–7", "8–14", "15–30", "+30"].map((label) => (
           <div key={label} className="h-8 rounded-lg bg-[var(--copilot-soft-bg)]/60">
             {shimmer ? <PlaceholderShimmer /> : null}
           </div>

@@ -36,9 +36,7 @@ const summary = buildCanonicalFinancialSummary({ context, invoices, receipts });
 | `aging.ts` | `buildCanonicalAgingMetrics` — aging por vencimiento (delega en debt units). |
 | `snapshot.ts` | `buildCanonicalDebtSnapshot` — vista agregada compartida (byCurrency/byCompany/diagnósticos/clientes con atraso). |
 | `summary.ts` | `buildCanonicalFinancialSummary` — API única por moneda + diagnósticos. |
-
-Loader de datos (I/O, fuera del dir puro): `lib/financial/canonical-debt-loader.ts`
-(`invoiceRowToCanonical`, `fetchCanonicalInstallments` — carga cuotas en batch).
+| `../canonical-debt-loader.ts` | Loader de datos I/O (`invoiceRowToCanonical`, `fetchCanonicalInstallments` — carga cuotas en batch). |
 | `metric-definitions.ts` | Puente al diccionario de labels (`copilot-financial-metrics-contract`). |
 | `index.ts` | Barrel público. Importar siempre desde aquí. |
 
@@ -51,3 +49,41 @@ Loader de datos (I/O, fuera del dir puro): `lib/financial/canonical-debt-loader.
 - Funciones puras, sin I/O. Toda entrada normalizada por `internal.ts`.
 
 Tests: `canonical-financial-layer.test.ts` (casos 1–12 + invariantes).
+
+## Consumidores migrados
+
+- Cliente 360: `lib/copilot/client-360-aging.ts`.
+- Hoy / Deudores: usan clasificación por `due_date` sin fallback a emisión.
+- Cartera FASE 1C: `lib/copilot/cartera-operating-aging.ts`.
+
+`buildCarteraOperatingAging` consume `buildCanonicalDebtSnapshot` y expone un
+payload serializable para cards, aging analytics, explorer, tabla y top deudores:
+
+- cinco buckets operativos: Al día, 1–7, 8–14, 15–30, +30 días de atraso;
+- `unclassifiedDueDateBalance` para saldo pendiente sin fecha de vencimiento;
+- `byCompany` para estado/filtros/top deudores sin `dominantAgingRange`;
+- `invoiceCount` visible = facturas únicas; `debtUnitCount` = cuotas/unidades para auditoría.
+
+Cuotas: soporte implementado y testeado por fixtures; Summer87 audit
+`2026-07-14` procesó 0 cuotas reales, por lo que aún no hay validación con datos
+reales del tenant.
+
+Tests de Cartera:
+
+- `lib/copilot/cartera-operating-aging.test.ts`
+- `lib/copilot/cartera-operating-aging.consistency.test.ts`
+
+Diff read-only:
+
+```powershell
+node --env-file=.env.local --import tsx scripts/audit-canonical-debt-diff.ts
+```
+
+El script no imprime nombres ni identificadores sensibles; reporta solo agregados
+por moneda y clasificaciones (`NO_DIFFERENCE`, `EXPECTED_SEMANTIC_CHANGE`,
+`DATA_QUALITY`, `IMPLEMENTATION_DEFECT`, `SCOPE_DIFFERENCE`).
+
+Resultado Summer87 `2026-07-14`: `Pending` sin diferencia por moneda; cambio
+semántico esperado en `Current`, `Overdue`, buckets operativos y clientes con
+atraso por migrar de `issue_date` a `due_date`; `Unclassified` en 0; diagnósticos
+sin `IMPLEMENTATION_DEFECT`.

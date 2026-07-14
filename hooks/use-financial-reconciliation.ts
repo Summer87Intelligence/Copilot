@@ -26,6 +26,7 @@ import type {
   FinancialConsistencyReport,
   ReconciliationMode,
 } from "@/lib/copilot-financial-reconciliation";
+import type { CarteraOperatingAging } from "@/lib/copilot/cartera-operating-aging";
 
 export type UseFinancialReconciliationParams = {
   mode?: ReconciliationMode;
@@ -42,6 +43,8 @@ export type UseFinancialReconciliationParams = {
 export type FinancialReconciliationApiResponse = {
   ok: true;
   report: FinancialConsistencyReport;
+  /** FASE 1C: aging operativo canónico (Al día / 1–7 / 8–14 / 15–30 / +30). */
+  operatingAging?: CarteraOperatingAging | null;
   meta: {
     invoice_limit: number;
     invoices_loaded: number;
@@ -51,6 +54,8 @@ export type FinancialReconciliationApiResponse = {
 
 export type UseFinancialReconciliationResult = {
   report: FinancialConsistencyReport | null;
+  /** Aging operativo canónico por moneda (fuente única de buckets de Cartera). */
+  operatingAging: CarteraOperatingAging | null;
   meta: FinancialReconciliationApiResponse["meta"] | null;
   loading: boolean;
   error: string | null;
@@ -65,6 +70,7 @@ const PERIOD_RX = /^\d{4}-\d{2}-\d{2}$/;
 
 type FetchState = {
   report: FinancialConsistencyReport | null;
+  operatingAging: CarteraOperatingAging | null;
   meta: FinancialReconciliationApiResponse["meta"] | null;
   loading: boolean;
   error: string | null;
@@ -78,6 +84,7 @@ type FetchAction =
   | {
       type: "success";
       report: FinancialConsistencyReport;
+      operatingAging: CarteraOperatingAging | null;
       meta: FinancialReconciliationApiResponse["meta"];
       fetchedAt: string;
     }
@@ -87,6 +94,7 @@ type FetchAction =
 
 const INITIAL_STATE: FetchState = {
   report: null,
+  operatingAging: null,
   meta: null,
   loading: false,
   error: null,
@@ -106,6 +114,7 @@ function reducer(state: FetchState, action: FetchAction): FetchState {
         error: null,
         errorCode: null,
         report: action.report,
+        operatingAging: action.operatingAging,
         meta: action.meta,
         lastFetchedAt: action.fetchedAt,
       };
@@ -114,6 +123,7 @@ function reducer(state: FetchState, action: FetchAction): FetchState {
         ...state,
         loading: false,
         report: null,
+        operatingAging: null,
         meta: null,
         error: action.message,
         errorCode: action.code,
@@ -257,6 +267,7 @@ export function useFinancialReconciliation(
         dispatch({
           type: "success",
           report: ok.report,
+          operatingAging: ok.operatingAging ?? null,
           meta: ok.meta,
           fetchedAt: new Date().toISOString(),
         });
@@ -283,6 +294,7 @@ export function useFinancialReconciliation(
 
   return {
     report: state.report,
+    operatingAging: state.operatingAging,
     meta: state.meta,
     loading: state.loading,
     error: state.error,

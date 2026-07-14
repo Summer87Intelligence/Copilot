@@ -28,6 +28,12 @@ import type {
   FinancialConsistencyReport,
   ReconciliationCurrencyCode,
 } from "@/lib/copilot-financial-reconciliation";
+import type {
+  CarteraOperatingAging,
+  CarteraOperatingAgingCompanyCurrency,
+  CarteraOperatingAgingCurrency,
+} from "@/lib/copilot/cartera-operating-aging";
+import { OPERATING_DELAY_BUCKETS, type OperatingDelayBucket } from "@/lib/copilot/operating-aging";
 import { copilotCurrencyClass } from "@/components/copilot/ui/copilot-visual-system";
 import { CopilotKpiCard } from "@/components/copilot/ui/copilot-kpi-card";
 
@@ -102,8 +108,37 @@ type ExplainKind =
 
 function topClientRowsForCurrency(
   report: FinancialConsistencyReport,
-  currency: ReconciliationCurrencyCode
+  currency: ReconciliationCurrencyCode,
+  operatingAging: CarteraOperatingAging | null | undefined
 ): { rows: CarteraKpiBreakdownRow[]; clientCount: number } {
+  const clientById = new Map(report.staleClients.map((c) => [c.companyId, c]));
+  if (operatingAging) {
+    const filtered = operatingAging.byCompany
+      .map((co) => ({
+        co,
+        block: co.byCurrency.find((b) => b.currency === currency) ?? null,
+      }))
+      .filter((x): x is { co: typeof x.co; block: CarteraOperatingAgingCompanyCurrency } =>
+        (x.block?.pendingBalance ?? 0) > 0
+      )
+      .sort((a, b) => b.block.pendingBalance - a.block.pendingBalance);
+    const rows: CarteraKpiBreakdownRow[] = filtered.map(({ co, block }) => {
+      const c = clientById.get(co.companyId);
+      return {
+        kind: "client",
+        label: c?.companyName ?? co.companyId,
+        secondary:
+          c != null
+            ? `${c.invoiceCount} factura${c.invoiceCount === 1 ? "" : "s"}`
+            : null,
+        amount: block.pendingBalance,
+        state: operatingBucketStateLabel(block.dominantBucket),
+        href: `/copilot/clientes/${encodeURIComponent(co.companyId)}`,
+      };
+    });
+    return { rows, clientCount: filtered.length };
+  }
+
   const filtered = report.staleClients
     .map((c) => ({ c, amount: c.pendingByCurrency[currency] ?? 0 }))
     .filter(({ amount }) => amount > 0)
@@ -114,7 +149,7 @@ function topClientRowsForCurrency(
     label: c.companyName ?? c.companyId,
     secondary: `${c.invoiceCount} factura${c.invoiceCount === 1 ? "" : "s"}`,
     amount,
-    state: c.dominantAgingRange,
+    state: null,
     href: `/copilot/clientes/${encodeURIComponent(c.companyId)}`,
   }));
   return { rows, clientCount: filtered.length };
@@ -130,7 +165,6 @@ function topInvoiceRowsForCurrency(
     issueDate: string | null;
     dueDate: string | null;
     balance: number;
-    agingRange: string | null;
     companyName: string | null;
     companyId: string;
   };
@@ -146,7 +180,6 @@ function topInvoiceRowsForCurrency(
         issueDate: line.issueDate,
         dueDate: line.dueDate,
         balance: line.balance,
-        agingRange: line.agingRange,
         companyName: c.companyName,
         companyId: c.companyId,
       });
@@ -161,16 +194,30 @@ function topInvoiceRowsForCurrency(
     secondary: e.invoiceNumber ?? "Sin número",
     amount: e.balance,
     date: e.issueDate ? formatCopilotDate(e.issueDate, "compact") : null,
-    state: formatOverdueDaysLabel(daysOverdueFromDate(e.dueDate ?? e.issueDate)),
+    state: e.dueDate
+      ? formatOverdueDaysLabel(daysOverdueFromDate(e.dueDate))
+      : "Sin fecha de vencimiento",
     href: `/copilot/clientes/${encodeURIComponent(e.companyId)}`,
   }));
   return { rows, invoiceCount: entries.length, clientCount: clientIds.size };
+}
+
+function operatingBucketStateLabel(bucket: OperatingDelayBucket | null): string {
+  return bucket ? OPERATING_DELAY_BUCKETS[bucket].label : "Sin fecha de vencimiento";
+}
+
+function currencyBlock(
+  operatingAging: CarteraOperatingAging | null | undefined,
+  currency: ReconciliationCurrencyCode
+): CarteraOperatingAgingCurrency | null {
+  return operatingAging?.byCurrency.find((b) => b.currency === currency) ?? null;
 }
 
 function buildExplain(
   kind: ExplainKind,
   currency: ReconciliationCurrencyCode,
   report: FinancialConsistencyReport,
+  operatingAging: CarteraOperatingAging | null | undefined,
   index: Map<ReconciliationCurrencyCode, NormalizedCurrencyMetrics>,
   periodLabel: string | null
 ): CarteraKpiExplain {
@@ -178,7 +225,7 @@ function buildExplain(
   switch (kind) {
     case "facturado": {
       const total = m?.issuedInPeriodNet ?? 0;
-      const { rows, clientCount } = topClientRowsForCurrency(report, currency);
+      const { rows, clientCount } = topClientRowsForCurrency(report, currency, operatingAging);
       return {
         title: METRIC_LABEL.facturado_periodo,
         currency,
@@ -242,7 +289,7 @@ function buildExplain(
     }
     case "cobrado_aplicado": {
       const total = m?.portfolioResolvedAmount ?? 0;
-      const { rows, clientCount } = topClientRowsForCurrency(report, currency);
+      const { rows, clientCount } = topClientRowsForCurrency(report, currency, operatingAging);
       return {
         title: METRIC_LABEL.cobrado_aplicado,
         currency,
@@ -381,11 +428,13 @@ function UsdConsolidatedBreakdownLine({
 
 export function CarteraCompactKpiGrid({
   report,
+  operatingAging = null,
   variant,
   periodRangeLabel,
   isPreSync = false,
 }: {
   report: FinancialConsistencyReport;
+  operatingAging?: CarteraOperatingAging | null;
   variant: CompactVariant;
   periodRangeLabel?: string;
   isPreSync?: boolean;
@@ -398,9 +447,9 @@ export function CarteraCompactKpiGrid({
   const pendingSnapshot = useMemo(
     () =>
       pendingDrawerCurrency
-        ? buildCurrentDebtSnapshot(report, pendingDrawerCurrency)
+        ? buildCurrentDebtSnapshot(report, pendingDrawerCurrency, operatingAging)
         : null,
-    [report, pendingDrawerCurrency]
+    [report, operatingAging, pendingDrawerCurrency]
   );
   const openPendingDrawer = useCallback((currency: ReconciliationCurrencyCode) => {
     setPendingDrawerCurrency(currency);
@@ -410,34 +459,9 @@ export function CarteraCompactKpiGrid({
   const [explain, setExplain] = useState<CarteraKpiExplain | null>(null);
   const openExplain = useCallback(
     (kind: ExplainKind, currency: ReconciliationCurrencyCode) => {
-      setExplain(buildExplain(kind, currency, report, index, periodRangeLabel ?? null));
+      setExplain(buildExplain(kind, currency, report, operatingAging, index, periodRangeLabel ?? null));
     },
-    [report, index, periodRangeLabel]
-  );
-  const openTotalPendienteExplain = useCallback(
-    (currency: ReconciliationCurrencyCode) => {
-      const m = index.get(currency);
-      if (!m || (m.pendingAtCutoff ?? 0) <= 0) return;
-      const detail = topInvoiceRowsForCurrency(report, currency);
-      setExplain({
-        title: "Deuda actual a cobrar",
-        currency,
-        periodLabel: periodRangeLabel ?? null,
-        formula:
-          "Σ facturas abiertas al corte por moneda (no anuladas, sin canceladas).",
-        notes: [
-          "Saldo vivo al corte, no del período únicamente.",
-          "No mezcla UYU con USD.",
-        ],
-        total: m.pendingAtCutoff ?? 0,
-        invoiceCount: detail.invoiceCount,
-        clientCount: detail.clientCount,
-        rows: detail.rows,
-        moreHref: "/copilot/clientes",
-        moreLabel: "Abrir en Clientes",
-      });
-    },
-    [index, report, periodRangeLabel]
+    [report, operatingAging, index, periodRangeLabel]
   );
   const closeExplain = useCallback(() => setExplain(null), []);
 
@@ -596,24 +620,29 @@ export function CarteraCompactKpiGrid({
             )}
           </CompactCard>
           <CompactCard
-            title="Deuda actual a cobrar"
+            title="Saldo pendiente a cobrar"
             onClick={() => {
-              const c = preferDominantCurrency((m) => m?.pendingAtCutoff ?? 0);
-              if (c) openTotalPendienteExplain(c);
+              const c = preferDominantCurrency((m) => {
+                const code = m?.currencyCode;
+                return code === "UYU" || code === "USD"
+                  ? currencyBlock(operatingAging, code)?.pendingBalance ?? m?.pendingAtCutoff ?? 0
+                  : m?.pendingAtCutoff ?? 0;
+              });
+              if (c) openPendingDrawer(c);
             }}
             actionLabel="Ver facturas"
           >
             {isUsd ? (
               <UsdConsolidatedLine
                 total={convertToUsdEquivalent({
-                  uyu: metricFor(index, "UYU")?.pendingAtCutoff ?? 0,
-                  usd: metricFor(index, "USD")?.pendingAtCutoff ?? 0,
+                  uyu: currencyBlock(operatingAging, "UYU")?.pendingBalance ?? metricFor(index, "UYU")?.pendingAtCutoff ?? 0,
+                  usd: currencyBlock(operatingAging, "USD")?.pendingBalance ?? metricFor(index, "USD")?.pendingAtCutoff ?? 0,
                 }, fxRate)}
                 fxRate={fxRate}
               />
             ) : (
               CURRENCIES.map((code) => {
-                const v = metricFor(index, code)?.pendingAtCutoff ?? 0;
+                const v = currencyBlock(operatingAging, code)?.pendingBalance ?? metricFor(index, code)?.pendingAtCutoff ?? 0;
                 return (
                   <CurrencyLine
                     key={code}
