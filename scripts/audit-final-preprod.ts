@@ -474,20 +474,20 @@ async function auditReports(portfolio: Awaited<ReturnType<typeof getClientPortfo
     `Deudores: total UYU ${fmt(debtors1.totals.totalDebtUyu)} USD ${fmt(debtors1.totals.totalDebtUsd)} filas ${debtors1.rows.length} idempotente=${debtorsMatch ? "OK" : "FAIL"}`
   );
 
-  const top1 = buildTopClientsReportModel({
+  // Nota: este batch valida idempotencia de la DEUDA (stock del portfolio).
+  // Las ventas netas del período (issue_date) requieren cargar facturas; quedan
+  // fuera del alcance de este check → invoices/companyNames vacíos.
+  const topArgs = {
+    invoices: [],
+    companyNames: {},
     portfolioRows: portfolio.rows,
     year,
     month,
-    currency: "UYU",
+    currency: "UYU" as const,
     generatedAt: now,
-  });
-  const top2 = buildTopClientsReportModel({
-    portfolioRows: portfolio.rows,
-    year,
-    month,
-    currency: "UYU",
-    generatedAt: now,
-  });
+  };
+  const top1 = buildTopClientsReportModel(topArgs);
+  const top2 = buildTopClientsReportModel(topArgs);
   console.log(
     `Clientes principales UYU: ${top1.rows.length} filas, deuda Σ ${fmt(top1.totals.totalDebt)} idempotente=${top1.totals.totalDebt === top2.totals.totalDebt ? "OK" : "FAIL"}`
   );

@@ -9,7 +9,11 @@ import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import { enforcePdfRateLimit } from "@/lib/security/pdf-rate-limit";
 import { getClientPortfolio } from "@/lib/copilot-clients-portfolio";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
-import { getProtoCompanyById } from "@/lib/data/proto-operational-read-repository";
+import {
+  getProtoCompanyById,
+  listProtoCompanies,
+  listProtoInvoices,
+} from "@/lib/data/proto-operational-read-repository";
 import {
   buildTopClientsReportModel,
 } from "@/lib/reports/top-clients-report/build-top-clients-report-model";
@@ -87,10 +91,19 @@ export async function GET(request: NextRequest) {
       sortBy,
     });
 
-    const [portfolio, issuerRow] = await Promise.all([
+    const [portfolio, invoices, companies, issuerRow] = await Promise.all([
       getClientPortfolio(supabase, tenantCompanyId),
+      listProtoInvoices(supabase, "active", tenantCompanyId),
+      listProtoCompanies(supabase, "active", tenantCompanyId),
       getProtoCompanyById(supabase, tenantCompanyId, tenantCompanyId).catch(() => null),
     ]);
+
+    const companyNames: Record<string, string> = {};
+    for (const c of companies) {
+      const id = typeof c.id === "string" ? c.id : "";
+      const name = typeof c.name === "string" ? c.name : "";
+      if (id && name) companyNames[id] = name;
+    }
 
     const issuerName =
       String(
@@ -98,6 +111,8 @@ export async function GET(request: NextRequest) {
       ).trim() || ISSUER_FALLBACK.name;
 
     const model = buildTopClientsReportModel({
+      invoices,
+      companyNames,
       portfolioRows: portfolio.rows,
       year: yearRaw,
       month: monthRaw,

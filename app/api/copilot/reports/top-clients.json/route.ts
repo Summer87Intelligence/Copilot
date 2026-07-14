@@ -6,6 +6,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import { getClientPortfolio } from "@/lib/copilot-clients-portfolio";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
+import {
+  listProtoCompanies,
+  listProtoInvoices,
+} from "@/lib/data/proto-operational-read-repository";
 import { buildTopClientsReportModel } from "@/lib/reports/top-clients-report/build-top-clients-report-model";
 import type {
   TopClientsReportCurrency,
@@ -59,9 +63,22 @@ export async function GET(request: NextRequest) {
     const { data: userData, error: userErr } = await supabaseFromCookies.auth.getUser();
     const supabase = !userErr && userData.user ? supabaseFromCookies : auth.ctx.supabase;
 
-    const portfolio = await getClientPortfolio(supabase, tenantCompanyId);
+    const [portfolio, invoices, companies] = await Promise.all([
+      getClientPortfolio(supabase, tenantCompanyId),
+      listProtoInvoices(supabase, "active", tenantCompanyId),
+      listProtoCompanies(supabase, "active", tenantCompanyId),
+    ]);
+
+    const companyNames: Record<string, string> = {};
+    for (const c of companies) {
+      const id = typeof c.id === "string" ? c.id : "";
+      const name = typeof c.name === "string" ? c.name : "";
+      if (id && name) companyNames[id] = name;
+    }
 
     const model = buildTopClientsReportModel({
+      invoices,
+      companyNames,
       portfolioRows: portfolio.rows,
       year: yearRaw,
       month: monthRaw,

@@ -160,7 +160,7 @@ export function renderTopClientsReportPdf(
       y += 12;
     }
     doc.text(
-      `Facturación acumulada visible en Copilot. Deuda y vencimiento al día de la emisión.`,
+      `Ventas netas emitidas en ${model.period.label}. Deuda y atraso al día de la emisión.`,
       PAGE.margin,
       y,
       { width: TABLE_W }
@@ -170,7 +170,7 @@ export function renderTopClientsReportPdf(
     // Summary box
     const summaryLines = [
       `Clientes activos: ${model.totals.clientCount}`,
-      `Facturación total ${model.currency}: ${formatMoney(model.totals.netSales, model.currency)}`,
+      `Ventas netas ${model.currency}: ${formatMoney(model.totals.netSales, model.currency)}`,
       `Deuda actual ${model.currency}: ${formatMoney(model.totals.totalDebt, model.currency)}`,
       `Deuda atrasada ${model.currency}: ${formatMoney(model.totals.overdueDebt, model.currency)}`,
     ];
@@ -249,7 +249,7 @@ function renderTableHeader(doc: PDFKit.PDFDocument, y: number): number {
   const headers: Array<[ColKey, string, "left" | "right" | "center"]> = [
     ["rank", "#", "center"],
     ["client", "Cliente", "left"],
-    ["sales", "Facturación", "right"],
+    ["sales", "Ventas del mes", "right"],
     ["debt", "Deuda actual", "right"],
     ["overdue", "Atrasada", "right"],
     ["share", "Part.%", "right"],
