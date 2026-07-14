@@ -101,14 +101,16 @@ describe("bank-movements-filters helpers", () => {
     });
 
     it("filtra por USD", () => {
-      const result = filterBankMovements(rows, { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, currency: "USD" }, julyNow);
+      // scope: "all" para incluir el movimiento histórico de junio en el test de moneda.
+      const result = filterBankMovements(rows, { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, scope: "all", currency: "USD" }, julyNow);
       expect(result.map((row) => row.id)).toEqual(["usd"]);
     });
 
     it("filtra por mes", () => {
+      // Junio es histórico: scope "all" para probar el filtro de período en aislamiento.
       const result = filterBankMovements(
         rows,
-        { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, period: "2026-06" },
+        { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, scope: "all", period: "2026-06" },
         julyNow
       );
       expect(result.map((row) => row.id)).toEqual(["usd"]);

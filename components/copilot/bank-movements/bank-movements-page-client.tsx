@@ -26,6 +26,7 @@ import {
   filterBankMovements,
   type BankMovementsListFilters,
 } from "@/lib/bank-movements/bank-movements-filters";
+import { isBankMovementHistorical } from "@/lib/bank/canonical/historical-policy";
 import { resolveImportedBankMovementAmount } from "@/lib/bank-movements/santander-excel-amount";
 import {
   BANK_MOVEMENT_DIRECTION_LABELS,
@@ -158,15 +159,19 @@ export function BankMovementsPageClient() {
 
   const counts = useMemo(() => {
     const monthPrefix = todayYmd().slice(0, 7);
+    // Los KPIs reflejan la operación (post inicio operativo): los históricos no
+    // deben contarse como "pendientes de identificar" ni ensuciar las métricas.
+    const operational = movements.filter((m) => !isBankMovementHistorical(m));
     return {
-      pending: movements.filter((m) => m.status === "pending" || m.status === "needs_review").length,
-      inflowMonth: movements.filter(
+      pending: operational.filter((m) => m.status === "pending" || m.status === "needs_review")
+        .length,
+      inflowMonth: operational.filter(
         (m) => m.direction === "inflow" && m.movement_date.slice(0, 7) === monthPrefix
       ).length,
-      outflowMonth: movements.filter(
+      outflowMonth: operational.filter(
         (m) => m.direction === "outflow" && m.movement_date.slice(0, 7) === monthPrefix
       ).length,
-      reviewed: movements.filter((m) => m.status === "matched" || m.status === "ignored").length,
+      reviewed: operational.filter((m) => m.status === "matched" || m.status === "ignored").length,
     };
   }, [movements]);
 
@@ -380,7 +385,17 @@ export function BankMovementsPageClient() {
                 <tbody>
                   {filteredMovements.map((m) => (
                     <tr key={m.id} className="border-t border-[var(--copilot-border)] align-top">
-                      <td className="py-2 pr-3 whitespace-nowrap">{formatDate(m.movement_date)}</td>
+                      <td className="py-2 pr-3 whitespace-nowrap">
+                        {formatDate(m.movement_date)}
+                        {isBankMovementHistorical(m) ? (
+                          <span
+                            className="ml-1.5 inline-block rounded-full border border-[var(--copilot-border)] px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-[var(--copilot-muted)] align-middle"
+                            title="Movimiento anterior al inicio operativo del banco"
+                          >
+                            Histórico
+                          </span>
+                        ) : null}
+                      </td>
                       <td className="py-2 pr-3">
                         {m.description}
                         {m.bank_reference ? (

@@ -14,11 +14,16 @@ import type {
 } from "@/lib/bank-movements/bank-movements-types";
 import { PERIOD_MONTH_OPTIONS } from "@/lib/copilot-datos-period-filter";
 import { resolveImportedBankMovementAmount } from "@/lib/bank-movements/santander-excel-amount";
+import { isBankMovementHistorical } from "@/lib/bank/canonical/historical-policy";
 
 export type BankMovementsPeriodFilter = "all" | "current" | `${number}-${string}`;
 
+/** Alcance temporal (FASE-3): operativo por defecto; histórico = anterior al corte. */
+export type BankMovementsScopeFilter = "operational" | "historical" | "all";
+
 export type BankMovementsListFilters = {
   period: BankMovementsPeriodFilter;
+  scope: BankMovementsScopeFilter;
   currency: "all" | "UYU" | "USD";
   status: "all" | "pending" | "matched" | "ignored";
   direction: "all" | BankMovementDirection;
@@ -59,12 +64,22 @@ export type ReconciliationFilteredMeta = {
 
 export const DEFAULT_BANK_MOVEMENTS_LIST_FILTERS: BankMovementsListFilters = {
   period: "all",
+  scope: "operational",
   currency: "all",
   status: "all",
   direction: "all",
   text: "",
   amount: "",
 };
+
+export const BANK_MOVEMENT_SCOPE_OPTIONS: ReadonlyArray<{
+  value: BankMovementsScopeFilter;
+  label: string;
+}> = [
+  { value: "operational", label: "Operativos" },
+  { value: "historical", label: "Históricos" },
+  { value: "all", label: "Todos" },
+];
 
 export const DEFAULT_RECONCILIATION_VIEW_FILTERS: ReconciliationViewFilters = {
   period: "current",
@@ -98,12 +113,23 @@ export function isBankMovementsListFiltersActive(
 ): boolean {
   return (
     filters.period !== defaults.period ||
+    filters.scope !== defaults.scope ||
     filters.currency !== defaults.currency ||
     filters.status !== defaults.status ||
     filters.direction !== defaults.direction ||
     filters.text.trim() !== "" ||
     filters.amount.trim() !== ""
   );
+}
+
+/** ¿El movimiento pasa el filtro de alcance temporal (operativo/histórico/todos)? */
+export function matchesMovementScope(
+  movementDate: string,
+  scope: BankMovementsScopeFilter
+): boolean {
+  if (scope === "all") return true;
+  const historical = isBankMovementHistorical({ movement_date: movementDate });
+  return scope === "historical" ? historical : !historical;
 }
 
 export function isReconciliationViewFiltersActive(
@@ -273,6 +299,7 @@ export function filterBankMovements(
   const amountQuery = normalizeAmountSearch(filters.amount);
 
   return movements.filter((movement) => {
+    if (!matchesMovementScope(movement.movement_date, filters.scope)) return false;
     if (!matchesMovementPeriod(movement.movement_date, filters.period, now)) return false;
     if (filters.currency !== "all" && movement.currency !== filters.currency) return false;
     if (filters.direction !== "all" && movement.direction !== filters.direction) return false;

@@ -30,12 +30,22 @@ export type ReconciliationListFilters = {
   confidence?: "high" | "medium" | "low" | "none" | "all";
   currency?: "UYU" | "USD";
   status?: "pending" | "matched" | "ignored" | "all";
+  /**
+   * Incluir movimientos históricos (< BANK_OPERATIONAL_START_DATE) en el set
+   * operativo. Por defecto false: los históricos NO alimentan tareas ni alertas.
+   */
+  includeHistorical?: boolean;
 };
 
 export function parseReconciliationListFilters(searchParams: URLSearchParams): ReconciliationListFilters {
   const confidence = searchParams.get("confidence");
   const currency = searchParams.get("currency");
   const status = searchParams.get("status");
+  const scope = searchParams.get("scope");
+  const includeHistorical =
+    scope === "all" ||
+    scope === "historical" ||
+    searchParams.get("include_historical") === "1";
 
   return {
     confidence:
@@ -51,5 +61,6 @@ export function parseReconciliationListFilters(searchParams: URLSearchParams): R
       status === "pending" || status === "matched" || status === "ignored" || status === "all"
         ? status
         : "pending",
+    includeHistorical,
   };
 }

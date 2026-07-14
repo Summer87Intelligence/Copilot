@@ -10,6 +10,7 @@ import {
   type ReconciliationSuggestion,
 } from "@/lib/bank-movements/bank-movement-reconciliation";
 import type { BankMovement } from "@/lib/bank-movements/bank-movements-types";
+import { BANK_OPERATIONAL_START_DATE } from "@/lib/bank/canonical/historical-policy";
 import { plannedCashObligationRepositoryGetById, plannedCashObligationRepositoryList } from "@/lib/treasury/repositories/planned-cash-obligation-repository";
 
 export type ReconciliationListItem = {
@@ -88,6 +89,12 @@ export async function loadBankMovementReconciliationList(params: {
     .limit(2000);
 
   if (filters.currency) movementQuery = movementQuery.eq("currency", filters.currency);
+
+  // Política temporal (FASE-3): por defecto solo movimientos operativos alimentan
+  // conciliación/tareas/alertas. Los históricos quedan fuera salvo opt-in explícito.
+  if (!filters.includeHistorical) {
+    movementQuery = movementQuery.gte("movement_date", BANK_OPERATIONAL_START_DATE);
+  }
 
   if (filters.status === "matched") {
     movementQuery = movementQuery.eq("status", "matched");

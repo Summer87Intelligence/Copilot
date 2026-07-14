@@ -6,6 +6,7 @@ import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
 import { copilotCaptionClass, copilotInputClass } from "@/components/copilot/ui/copilot-visual-system";
 import {
   BANK_MOVEMENT_PERIOD_OPTIONS,
+  BANK_MOVEMENT_SCOPE_OPTIONS,
   type BankMovementsListFilters,
   type ReconciliationViewFilters,
 } from "@/lib/bank-movements/bank-movements-filters";
@@ -107,6 +108,24 @@ export function BankMovementsFiltersBar({
             ))}
           </select>
         </FilterField>
+
+        {mode === "movements" ? (
+          <FilterField label="Alcance">
+            <select
+              value={(filters as BankMovementsListFilters).scope}
+              onChange={(event) =>
+                update({ scope: event.target.value as BankMovementsListFilters["scope"] })
+              }
+              className={copilotInputClass}
+            >
+              {BANK_MOVEMENT_SCOPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+        ) : null}
 
         <FilterField label="Moneda">
           <select
