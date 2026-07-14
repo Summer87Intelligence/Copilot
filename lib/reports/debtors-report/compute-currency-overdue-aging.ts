@@ -54,8 +54,11 @@ function isPaidOrVoid(status: unknown): boolean {
 }
 
 /**
- * Antigüedad de vencimiento por moneda a partir de facturas del cliente.
- * Usa due_date; si no hay vencimiento en facturas vencidas, issue_date como respaldo.
+ * FASE 1B — Antigüedad de atraso por moneda desde `due_date` EXCLUSIVAMENTE.
+ * Ya no existe respaldo por `issue_date`: `issue_date` es antigüedad de emisión,
+ * no días de atraso. El saldo abierto sin `due_date` no se clasifica como
+ * atrasado (queda como pendiente al día). `usedIssueDateFallback` se conserva en
+ * el contrato pero es siempre `false` (deprecado).
  */
 export function computeCurrencyOverdueAging(
   invoices: readonly OverdueAgingInvoiceInput[],
@@ -65,8 +68,6 @@ export function computeCurrencyOverdueAging(
   const emittedYmd = emittedAt.toISOString().slice(0, 10);
 
   let oldestDue: string | null = null;
-  let oldestIssueFallback: string | null = null;
-  let hasOverdueBalance = false;
 
   for (const inv of invoices) {
     if (isCreditNoteFromMetadata(inv.zeta_metadata)) continue;
@@ -75,33 +76,21 @@ export function computeCurrencyOverdueAging(
     if (pending <= 0 || isPaidOrVoid(inv.status)) continue;
 
     const due = ymd(inv.due_date);
-    const issue = ymd(inv.issue_date);
-    const isOverdue = due !== "" && due < emittedYmd;
-
-    if (isOverdue) {
-      hasOverdueBalance = true;
+    // Solo due_date < corte cuenta como atrasado. Sin due_date ⇒ no atrasado.
+    if (due !== "" && due < emittedYmd) {
       if (!oldestDue || due < oldestDue) oldestDue = due;
-    } else if (!due && pending > 0 && issue && issue < emittedYmd) {
-      hasOverdueBalance = true;
-      if (!oldestIssueFallback || issue < oldestIssueFallback) oldestIssueFallback = issue;
     }
   }
 
-  if (!hasOverdueBalance) {
+  if (!oldestDue) {
     return { oldestDueDate: null, overdueDays: null, usedIssueDateFallback: false };
   }
 
-  const usedIssueDateFallback = !oldestDue && Boolean(oldestIssueFallback);
-  const anchor = oldestDue ?? oldestIssueFallback;
-  if (!anchor) {
-    return { oldestDueDate: null, overdueDays: null, usedIssueDateFallback: false };
-  }
-
-  const overdueDays = differenceInCalendarDaysYmd(emittedYmd, anchor);
+  const overdueDays = differenceInCalendarDaysYmd(emittedYmd, oldestDue);
   return {
-    oldestDueDate: anchor,
+    oldestDueDate: oldestDue,
     overdueDays: overdueDays != null && overdueDays >= 0 ? overdueDays : null,
-    usedIssueDateFallback,
+    usedIssueDateFallback: false,
   };
 }
 

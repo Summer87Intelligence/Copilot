@@ -34,7 +34,11 @@ const summary = buildCanonicalFinancialSummary({ context, invoices, receipts });
 | `metrics-from-units.ts` | `buildCanonicalDebtMetricsFromUnits`, `buildCanonicalAgingMetricsFromUnits`. |
 | `debt.ts` | `buildCanonicalDebtMetrics` — deuda stock al corte (delega en debt units). |
 | `aging.ts` | `buildCanonicalAgingMetrics` — aging por vencimiento (delega en debt units). |
+| `snapshot.ts` | `buildCanonicalDebtSnapshot` — vista agregada compartida (byCurrency/byCompany/diagnósticos/clientes con atraso). |
 | `summary.ts` | `buildCanonicalFinancialSummary` — API única por moneda + diagnósticos. |
+
+Loader de datos (I/O, fuera del dir puro): `lib/financial/canonical-debt-loader.ts`
+(`invoiceRowToCanonical`, `fetchCanonicalInstallments` — carga cuotas en batch).
 | `metric-definitions.ts` | Puente al diccionario de labels (`copilot-financial-metrics-contract`). |
 | `index.ts` | Barrel público. Importar siempre desde aquí. |
 

@@ -22,7 +22,7 @@ import {
   readOperationalDebtInvoiceCurrency,
 } from "@/lib/zeta/zeta-operational-debt-dedup";
 import { buildClient360Aging, type Client360Aging } from "@/lib/copilot/client-360-aging";
-import type { CanonicalInstallmentInput } from "@/lib/financial/canonical/types";
+import { fetchCanonicalInstallments } from "@/lib/financial/canonical-debt-loader";
 import { todayYmdMontevideo } from "@/lib/date/summer87-today";
 
 function str(v: unknown): string {
@@ -58,37 +58,6 @@ function daysBetweenYmd(a: string, b: string): number {
   const da = new Date(`${a}T12:00:00.000Z`).getTime();
   const db = new Date(`${b}T12:00:00.000Z`).getTime();
   return Math.round((db - da) / 86400000);
-}
-
-/**
- * Carga cuotas abiertas (`proto_invoice_installments`) de las facturas del
- * cliente para el aging por cuota. Degrada a `[]` si la tabla no existe o la
- * consulta falla — en ese caso el aging cae a nivel factura (sin regresión).
- */
-async function fetchClient360Installments(
-  client: SupabaseClient,
-  wid: string,
-  invoiceIds: readonly string[]
-): Promise<CanonicalInstallmentInput[]> {
-  if (invoiceIds.length === 0) return [];
-  try {
-    const { data, error } = await client
-      .from("proto_invoice_installments")
-      .select("id, invoice_id, currency_code, cuota_saldo, cuota_vencimiento, is_active")
-      .eq("workspace_company_id", wid)
-      .in("invoice_id", invoiceIds as string[]);
-    if (error || !data) return [];
-    return (data as Record<string, unknown>[]).map((r) => ({
-      id: r.id != null ? String(r.id) : undefined,
-      invoice_id: r.invoice_id != null ? String(r.invoice_id) : null,
-      currency_code: r.currency_code != null ? String(r.currency_code) : null,
-      cuota_saldo: num(r.cuota_saldo),
-      cuota_vencimiento: r.cuota_vencimiento != null ? String(r.cuota_vencimiento) : null,
-      is_active: r.is_active as boolean | null | undefined,
-    }));
-  } catch {
-    return [];
-  }
 }
 
 export type Client360CommercialBlock = {
@@ -407,7 +376,7 @@ export async function loadClientCompany360(
 
   // FASE 1: cuotas abiertas reales para aging por cuota (degrada a [] si la
   // tabla no existe o no hay datos → aging por factura, idéntico al previo).
-  const installments = await fetchClient360Installments(client, wid, ids);
+  const installments = await fetchCanonicalInstallments(client, wid, ids);
 
   let saldoPendiente = 0;
   let overdueDebt = 0;

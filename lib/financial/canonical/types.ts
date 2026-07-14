@@ -321,3 +321,42 @@ export interface CanonicalDebtUnitsResult {
   /** Conteo por código para métricas rápidas. */
   diagnosticCounts: Record<CanonicalDebtDiagnosticCode, number>;
 }
+
+// ---------------------------------------------------------------------------
+// Debt snapshot — vista agregada compartida (Cliente 360 / Cartera / Hoy / Reportes)
+// ---------------------------------------------------------------------------
+
+/** Bloque de deuda de una moneda dentro del snapshot. */
+export interface CanonicalDebtCurrencyBlock {
+  currency: FinancialCurrency;
+  metrics: CanonicalDebtMetrics;
+  aging: CanonicalAgingMetrics;
+  /** Unidades vencibles de la moneda (para detalle / drill-down). */
+  units: CanonicalDebtUnit[];
+}
+
+/** Deuda de un cliente (por moneda) dentro del snapshot. */
+export interface CanonicalCompanyDebtSnapshot {
+  companyId: string;
+  byCurrency: CanonicalDebtCurrencyBlock[];
+}
+
+/**
+ * Snapshot canónico de deuda al corte. Fuente ÚNICA para que Cliente 360,
+ * Cartera, Hoy y Reportes no vuelvan a agregar unidades de forma distinta.
+ * Las unidades se construyen una sola vez.
+ */
+export interface CanonicalDebtSnapshot {
+  cutoffDate: IsoDate;
+  byCurrency: CanonicalDebtCurrencyBlock[];
+  byCompany: CanonicalCompanyDebtSnapshot[];
+  diagnostics: CanonicalDebtDiagnostic[];
+  diagnosticCounts: Record<CanonicalDebtDiagnosticCode, number>;
+  /**
+   * Clientes con atraso: `companyId` con `overdueBalance > 0` en la moneda.
+   * Regla única — no cuenta facturas ni cuotas. Índice por moneda + unión global.
+   */
+  overdueClientsByCurrency: Record<FinancialCurrency, string[]>;
+  /** Unión de `companyId` con atraso en cualquier moneda (para total general). */
+  overdueClientsAnyCurrency: string[];
+}

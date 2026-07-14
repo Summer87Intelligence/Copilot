@@ -236,6 +236,81 @@ Guardia arquitectónica: `collection-aging-deprecation.test.ts` impide nuevos
 imports desde módulos migrados (capa canónica + Cliente 360). Se retirará cuando
 quede sin consumidores.
 
+## 12d. FASE 1B — Snapshot, loader y migración de Hoy / Deudores
+
+### `buildCanonicalDebtSnapshot` (fuente agregada única)
+
+`snapshot.ts` construye las debt units UNA vez y expone por moneda
+(`metrics` + `aging` + `units`), por cliente (`byCompany`), diagnósticos y la
+regla de clientes con atraso. Ningún módulo reagrega unidades por su cuenta.
+
+```ts
+const snap = buildCanonicalDebtSnapshot({ invoices, installments, context, includeAllIssueDates });
+// snap.byCurrency / snap.byCompany / snap.diagnostics
+// snap.overdueClientsByCurrency / snap.overdueClientsAnyCurrency
+```
+
+### Loader compartido (batch, sin N+1)
+
+`lib/financial/canonical-debt-loader.ts`:
+- `invoiceRowToCanonical(row)` — mapea `proto_invoices` → entrada canónica.
+- `fetchCanonicalInstallments(client, wid, invoiceIds)` — carga cuotas **en batch**
+  (chunks de 300 ids), degrada a `[]` si la tabla no existe. **Nunca** una query
+  por factura ni por cliente. Cliente 360 lo usa (reemplazó su fetch inline).
+
+### Regla única de clientes con atraso (§10)
+
+Un cliente cuenta como “con atraso” **por moneda** si `overdueBalance > 0` en esa
+moneda (no cuenta facturas ni cuotas; no se duplica). `overdueClientsAnyCurrency`
+es la **unión** de `companyId` entre monedas (para un total general).
+
+### Consumidores migrados (FASE 1B)
+
+| Consumidor | Antes | Después |
+|---|---|---|
+| **Hoy** `hoy-debt-breakdown` | atraso/estado por **`issue_date`** (0-30/31-90/>90) | atraso/estado por **`due_date`** vía `classifyOperatingDelay` (Con deuda/Atrasada/Crítica). Vence hoy → al día. |
+| **Reportes de deudores** `compute-currency-overdue-aging` | due_date con **fallback `issue_date`** | solo `due_date`; sin fallback. Saldo sin vencimiento no cuenta como atrasado. |
+| **Cliente 360** | (FASE 1) | usa loader compartido de cuotas. |
+
+### Política de cuotas y mismatch
+
+- Factura con cuotas abiertas → aging por cuota; sin cuotas → por factura.
+- Cuota pagada excluida; cuota parcial → solo saldo abierto.
+- `installment_balance_mismatch` → diagnóstico; se usan las cuotas reales, **no**
+  se inventa una cuota residual. (Si datos reales lo exigieran, se implementaría
+  una unidad `invoice_residual` con `dueDate: null` que suma a pendiente pero no a
+  atraso; hoy no es necesaria.)
+
+### Comparación Summer87 legacy vs canónico (read-only)
+
+Script: `scripts/audit-canonical-debt-diff.ts` (read-only, sin datos sensibles).
+Ejecutado a **cutoff 2026-07-14** (518 facturas activas, 0 cuotas en el workspace):
+
+| Métrica | Legacy (issue) | Canónico (due) | Δ | Clasificación |
+|---|---|---|---|---|
+| Pending UYU | 590.294 | 590.294 | 0 | sin cambio |
+| Overdue UYU | 30.360 | 30.360 | 0 | EXPECTED_CORRECTION (coinciden) |
+| Overdue clients UYU | 3 | 3 | 0 | sin cambio |
+| Pending USD | 18.463,56 | 18.463,56 | 0 | sin cambio |
+| Overdue USD | 3.610,06 | 3.610,06 | 0 | sin cambio |
+| Overdue clients USD | 8 | 8 | 0 | sin cambio |
+
+Diagnósticos: `missing_currency: 4` (**DATA_QUALITY** — 4 facturas sin moneda,
+excluidas de totales por ambos modelos). Resto de códigos en 0. **Sin
+`IMPLEMENTATION_DEFECT`.** Legacy y canónico coinciden porque el `due_date` actual
+del tenant es sintético (`issue_date + 30`), pero el modelo canónico es robusto si
+en el futuro los vencimientos reales divergen y soporta cuotas.
+
+### Pendiente de FASE 1B
+
+- **Cartera**: sus montos (pending = `pendingAtCutoff`, overdue = `portfolio.overdue_*`)
+  ya son por `due_date`. Falta migrar el **explorador de buckets** (usa buckets
+  contables `0_30/31_60/61_90/90_plus` del motor de reconciliación) a los buckets
+  operativos del snapshot. Es un cambio con impacto de UI → siguiente iteración,
+  con el snapshot ya disponible como fuente.
+- `collection_overdue_*` (issue_date) en `computeInvoiceCurrencyBreakdown` sigue
+  para el modelo de cobranza (fuera de alcance de deuda/atraso).
+
 ## 12. Riesgos y limitaciones Zeta
 
 - `balance_amount` se sincroniza por cron cada ~3 h; refleja estado actual, no el

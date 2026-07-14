@@ -5,15 +5,18 @@
 
 import type { ClientPortfolioInvoice } from "@/lib/copilot-clients-portfolio";
 import { formatCopilotDate } from "@/lib/copilot-format";
+import { classifyOperatingDelay } from "@/lib/copilot/operating-aging";
 import { ZETA_SALDOS_PENDIENTES_CATEGORY } from "@/lib/zeta/zeta-operational-debt-dedup";
 
 /**
- * CLIENT-DEBT-SEMANTICS-001: estado a nivel factura individual.
- *  - "Con deuda" → impaga, 0–30 días desde emisión.
- *  - "Atrasada"  → impaga, 31–90 días desde emisión.
- *  - "Crítica"   → impaga, > 90 días desde emisión.
- *  - "Parcial"   → impaga con pago parcial dentro de 0–30 días.
+ * FASE 1B — estado a nivel factura por DÍAS DE ATRASO (due_date), no por
+ * antigüedad de emisión. Usa el clasificador canónico `classifyOperatingDelay`.
+ *  - "Con deuda" → impaga, al día (aún no vence o vence hoy).
+ *  - "Atrasada"  → impaga, 1–30 días de atraso (due_date < corte).
+ *  - "Crítica"   → impaga, +30 días de atraso.
+ *  - "Parcial"   → impaga con pago parcial y al día.
  * Una factura con `balance_amount > 0` nunca puede ser "Al día".
+ * Sin `due_date` válido ⇒ pendiente pero NO atrasada (bucket "Con deuda").
  */
 export type InvoiceStatusLabel = "Con deuda" | "Atrasada" | "Crítica" | "Parcial";
 
@@ -54,35 +57,33 @@ function isValidDate(d: string): boolean {
 }
 
 /**
- * CLIENT-DEBT-SEMANTICS-001: estado por días desde emisión.
+ * FASE 1B: estado por días de ATRASO (due_date) vía clasificador canónico.
  * `balance > 0` se asume (caller filtra). Una factura impaga nunca es "Al día".
  */
 function classifyStatus(
   balance: number,
   total: number,
-  issueDate: string,
+  dueDate: string,
   today: string
 ): InvoiceStatusLabel {
-  const daysSinceIssue = isValidDate(issueDate)
-    ? Math.max(0, Math.floor((Date.parse(today) - Date.parse(issueDate)) / 86_400_000))
-    : null;
-
-  if (daysSinceIssue !== null && daysSinceIssue > 90) return "Crítica";
-  if (daysSinceIssue !== null && daysSinceIssue >= 31) return "Atrasada";
-
-  // 0–30 días o sin issueDate parseable: bucket "Con deuda" salvo pago parcial.
+  if (isValidDate(dueDate)) {
+    const { bucket } = classifyOperatingDelay(dueDate, today);
+    if (bucket === "late_30_plus") return "Crítica";
+    if (bucket !== "on_time") return "Atrasada"; // 1–7 / 8–14 / 15–30
+  }
+  // Al día o sin due_date válido: "Con deuda", salvo pago parcial.
   if (total > 0 && balance < total * 0.99) return "Parcial";
   return "Con deuda";
 }
 
 /**
- * Días de atraso desde emisión (no desde due_date). Devuelve null si no hay
- * issue_date parseable.
+ * Días de ATRASO desde `due_date` (no desde emisión). Devuelve null si no hay
+ * due_date parseable o la factura aún no está atrasada.
  */
-function calcDaysOverdue(issueDate: string, today: string): number | null {
-  if (!isValidDate(issueDate)) return null;
-  const days = Math.floor((Date.parse(today) - Date.parse(issueDate)) / 86_400_000);
-  return days < 0 ? 0 : days;
+function calcDaysOverdue(dueDate: string, today: string): number | null {
+  if (!isValidDate(dueDate)) return null;
+  const { isLate, daysLate } = classifyOperatingDelay(dueDate, today);
+  return isLate ? daysLate : null;
 }
 
 function inferCurrency(inv: ClientPortfolioInvoice): "UYU" | "USD" | null {
@@ -130,8 +131,8 @@ export function buildDebtBreakdown(
     if (inferCurrency(inv) !== currency) continue;
     if (inv.balance_amount <= 0) continue;
 
-    const status = classifyStatus(inv.balance_amount, inv.total_amount, inv.issue_date, today);
-    const daysOverdue = calcDaysOverdue(inv.issue_date, today);
+    const status = classifyStatus(inv.balance_amount, inv.total_amount, inv.due_date, today);
+    const daysOverdue = calcDaysOverdue(inv.due_date, today);
     const isOverdueBucket = status === "Atrasada" || status === "Crítica";
 
     items.push({

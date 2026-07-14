@@ -29,6 +29,8 @@ export { buildCanonicalDebtMetrics, buildCanonicalDebtMetricsFromUnits } from ".
 export { buildCanonicalAgingMetrics, buildCanonicalAgingMetricsFromUnits } from "./aging";
 export { buildCanonicalDebtUnits, isDebtUnitOverdue } from "./debt-units";
 export type { BuildCanonicalDebtUnitsInput } from "./debt-units";
+export { buildCanonicalDebtSnapshot } from "./snapshot";
+export type { BuildCanonicalDebtSnapshotInput } from "./snapshot";
 export {
   buildCanonicalFinancialSummary,
 } from "./summary";
