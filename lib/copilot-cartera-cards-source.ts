@@ -39,6 +39,8 @@ import type { ReconciliationCurrencyCode } from "@/lib/copilot-financial-reconci
  *   - pendingAtCutoff   → Comprobantes Pendientes al `Hasta` (incluye pre-período)
  *   - collectedInPeriod → Receipts en período (Estado de Cuenta, columna Haber)
  *   - openingBalance    → Saldo anterior al `Desde` (Estado de Cuenta)
+ *   - appliedCollectionsAtCutoff → Cobrado aplicado (ventas resueltas al corte)
+ *   - registeredCollectionsInPeriod → Cobrado registrado (recibos por fecha)
  *
  * Aliases legacy:
  *   - totalInvoiced  = issuedInPeriod
@@ -54,6 +56,12 @@ export type NormalizedCurrencyMetrics = {
   totalInvoiced: number;
   totalPending: number;
   totalCollected: number;
+  /** Cobrado aplicado: ventas del período resueltas al corte. */
+  appliedCollectionsAtCutoff: number;
+  /** Cobrado registrado: recibos válidos con receipt_date dentro del período. */
+  registeredCollectionsInPeriod: number;
+  /** % de cobranza aplicado, no basado en recibos por fecha. */
+  appliedCollectionRate: number | null;
   invoiceCount: number;
   pendingInvoiceCount: number;
   /** [0..1] o `null` si `totalInvoiced ≤ 0`. */
@@ -75,6 +83,8 @@ export type NormalizedCurrencyMetrics = {
   collectedInPeriod: number;
   /** Cantidad de recibos que aportaron a `collectedInPeriod`. */
   collectedReceiptCount: number;
+  /** Alias explícito de `collectedReceiptCount` para contratos FASE 2. */
+  registeredReceiptCount: number;
   /**
    * Saldo anterior al `periodStart` reconstruido desde ledger pre-período.
    * 0 si no aplica (sin filtro de período o sin pre-período).
@@ -195,6 +205,16 @@ function normalizeBucket(
       ? totalCollectedRaw
       : Math.max(0, totalInvoiced - totalPending);
 
+  const appliedCollectionsAtCutoffRaw = readCurrencyMetric(
+    raw,
+    "appliedCollectionsAtCutoff",
+    "applied_collections_at_cutoff",
+    "appliedCollected",
+    "applied_collected",
+    "portfolioResolvedAmount",
+    "portfolio_resolved_amount"
+  );
+
   const invoiceCount =
     readCurrencyMetric(
       raw,
@@ -234,12 +254,28 @@ function normalizeBucket(
     totalPending;
   const collectedInPeriod =
     readCurrencyMetric(raw, "collectedInPeriod", "collected_in_period") ?? 0;
+  const registeredCollectionsInPeriod =
+    readCurrencyMetric(
+      raw,
+      "registeredCollectionsInPeriod",
+      "registered_collections_in_period",
+      "registeredCollections",
+      "registered_collections"
+    ) ?? collectedInPeriod;
   const collectedReceiptCount =
     readCurrencyMetric(
       raw,
       "collectedReceiptCount",
       "collected_receipt_count"
     ) ?? 0;
+  const registeredReceiptCount =
+    readCurrencyMetric(
+      raw,
+      "registeredReceiptCount",
+      "registered_receipt_count",
+      "receiptCount",
+      "receipt_count"
+    ) ?? collectedReceiptCount;
   const openingBalance =
     readCurrencyMetric(raw, "openingBalance", "opening_balance") ?? 0;
 
@@ -280,12 +316,30 @@ function normalizeBucket(
     0,
     issuedInPeriod - creditNoteAmount - pendingAtCutoff
   );
+  const appliedCollectionsAtCutoff =
+    appliedCollectionsAtCutoffRaw !== null && appliedCollectionsAtCutoffRaw >= 0
+      ? appliedCollectionsAtCutoffRaw
+      : portfolioResolvedAmount;
+  const appliedCollectionRateRaw = readCurrencyMetric(
+    raw,
+    "appliedCollectionRate",
+    "applied_collection_rate"
+  );
+  const appliedCollectionRate =
+    appliedCollectionRateRaw !== null
+      ? Math.max(0, Math.min(1, appliedCollectionRateRaw))
+      : issuedInPeriodNet > 0
+        ? Math.max(0, Math.min(1, appliedCollectionsAtCutoff / issuedInPeriodNet))
+        : null;
 
   return {
     currencyCode: code,
     totalInvoiced,
     totalPending,
     totalCollected,
+    appliedCollectionsAtCutoff,
+    registeredCollectionsInPeriod,
+    appliedCollectionRate,
     invoiceCount: Math.max(0, Math.trunc(invoiceCount)),
     pendingInvoiceCount: Math.max(0, Math.trunc(pendingInvoiceCount)),
     collectionEffectiveness,
@@ -294,6 +348,7 @@ function normalizeBucket(
     previousPending,
     collectedInPeriod,
     collectedReceiptCount: Math.max(0, Math.trunc(collectedReceiptCount)),
+    registeredReceiptCount: Math.max(0, Math.trunc(registeredReceiptCount)),
     openingBalance,
     creditNoteCount,
     creditNoteAmount,

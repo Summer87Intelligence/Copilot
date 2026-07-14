@@ -426,9 +426,9 @@ export function buildFinancialSituationBlocks(
       });
     } else if (snap?.collected !== undefined && snap.collected > 0) {
       metrics.push({
-        label: "Cobrado acumulado",
+        label: "Cobros registrados acumulados",
         value: fmtCurrencyAmount(snap.collected, currency),
-        helper: "Total cobrado desde el inicio registrado.",
+        helper: "Recibos registrados desde el inicio operativo; no equivale a cobrado aplicado del período.",
         trend: "up",
       });
     }
@@ -493,9 +493,9 @@ export function buildFinancialSituationBlocks(
       currency: c,
       metrics: [
         {
-          label: "Cobrado acumulado",
+          label: "Cobros registrados acumulados",
           value: fmtCurrencyAmount(snapshot.realized?.receipts_gross ?? 0, c),
-          helper: "Total cobrado desde el inicio registrado.",
+          helper: "Recibos registrados desde el inicio operativo; no equivale a cobrado aplicado del período.",
           trend: "up",
         },
         {

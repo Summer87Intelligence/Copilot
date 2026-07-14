@@ -23,10 +23,14 @@ El Copilot habla con lenguaje **claro, operativo y consistente** para usuarios n
 | Cliente | **Cliente con atraso** |
 | Factura | **Factura con atraso** |
 | Sin mora | **Al día** |
+| Ventas del período saldadas al corte | **Cobrado aplicado** |
+| Recibos registrados por fecha | **Cobrado registrado** / **Recibos registrados** |
 
 ### Evitar (visible principal)
 
 - Deuda vencida
+- Cobrado (solo, sin aplicado/registrado)
+- Cobrado total
 - Factura vencida / Facturas vencidas
 - Vencido / Vencida como **estado operativo**
 - Días vencida
@@ -34,6 +38,10 @@ El Copilot habla con lenguaje **claro, operativo y consistente** para usuarios n
 ### Permitido
 
 - **Fecha de vencimiento** — atributo formal del documento, no estado operativo.
+- **Cobrado aplicado** — parte de las ventas emitidas en el período que quedó
+  saldada al corte.
+- **Cobrado registrado** — recibos registrados durante el período, aunque
+  correspondan a ventas anteriores.
 
 ### Helpers de código
 

@@ -13,6 +13,8 @@ Finanzas, Cliente 360 y Reportes**. La capa provee:
 - **Contexto** (`report-context.ts`): interpretación única de período / corte / piso 2026.
 - **Builders puros** (`sales.ts`, `collections.ts`, `debt.ts`, `aging.ts`): funciones
   testeables sin I/O.
+- **Snapshot de cobranza** (`collections-snapshot.ts`): expone aplicado y
+  registrado juntos sin mezclarlos.
 - **API única** (`summary.ts` → `buildCanonicalFinancialSummary`): métricas por moneda + diagnósticos.
 
 FASE 0 es **fundación + contrato + un consumidor de bajo riesgo**. No migra Hoy /
@@ -88,10 +90,41 @@ Builders individuales también exportados: `buildCanonicalSalesMetrics`,
 `buildCanonicalRegisteredCollectionsMetrics`, `buildCanonicalDebtMetrics`,
 `buildCanonicalAgingMetrics`.
 
+### Snapshot canónico de cobranza (FASE 2)
+
+```ts
+import { buildCanonicalCollectionsSnapshot } from "@/lib/financial/canonical";
+
+const snapshot = buildCanonicalCollectionsSnapshot({ context, invoices, receipts });
+```
+
+Salida por moneda:
+
+```ts
+{
+  applied: {
+    issuedNetInPeriod,
+    pendingBalanceAtCutoffForPeriodSales,
+    appliedCollectionsAtCutoff,
+    appliedCollectionRate,
+  },
+  registered: {
+    registeredCollectionsInPeriod,
+    receiptCountInPeriod,
+  },
+}
+```
+
+`applied` responde “cuánto de lo vendido en el período quedó saldado al corte”.
+`registered` responde “cuántos recibos/monto fueron registrados por fecha de
+recibo”. No hay matching recibo↔factura ni FIFO implícito.
+
 ## 6. Invariantes garantizadas por tests
 
 - `aging.total === debt.pendingBalance` (mismo universo de facturas).
 - `sales.appliedCollected === max(0, issuedNet − pendingAtCutoff)`.
+- `collections-snapshot` mantiene `applied` y `registered` separados y emite
+  diagnóstico si el aplicado bruto queda negativo.
 - Casos 1–5: buckets de atraso por días desde `due_date`.
 - Caso 6: cuotas — aging solo sobre balance abierto.
 - Caso 7: recibo de julio de factura de junio → cobrado registrado julio, **no** ventas julio.
@@ -101,7 +134,9 @@ Builders individuales también exportados: `buildCanonicalSalesMetrics`,
 - Caso 11: pre-2026 excluidas + diagnóstico.
 - Caso 12: `currency_code` nulo excluido + diagnóstico.
 
-Test: `lib/financial/canonical/canonical-financial-layer.test.ts`.
+Tests:
+- `lib/financial/canonical/canonical-financial-layer.test.ts`.
+- `lib/financial/canonical/collections-snapshot.test.ts`.
 
 ## 7. Diferencia con motores existentes (inventario)
 
@@ -357,6 +392,61 @@ Legacy restante:
   pero Cartera operativa ya no lo renderiza.
 - Retiro propuesto: FASE 1D/2, después de migrar consumidores de cobranza que aún
   dependen del aging por emisión.
+
+### FASE 2 — Cobrado aplicado vs cobrado registrado
+
+FASE 2 separa el contrato visible y técnico de cobranza en dos familias:
+
+| Concepto | Campo explícito | Fuente | Fecha | Pregunta que responde |
+|---|---|---|---|---|
+| Cobrado aplicado | `appliedCollectionsAtCutoff` | ventas netas + saldo pendiente | `issue_date` + cutoff | ¿Cuánto de lo vendido en el período quedó saldado al corte? |
+| Cobrado registrado | `registeredCollectionsInPeriod` | `proto_receipts.amount` | `receipt_date` | ¿Cuánto se registró como recibo en el período? |
+
+El motor de reconciliación conserva aliases legacy (`totalCollected`,
+`collectedInPeriod`, `collectionEffectiveness`) por compatibilidad, pero expone
+campos explícitos para consumidores nuevos. `buildCanonicalCollectionsSnapshot`
+es el snapshot puro reutilizable y agrega diagnósticos:
+
+```ts
+missing_invoice_currency
+missing_receipt_currency
+invalid_receipt_date
+invalid_receipt_amount
+negative_applied_collections
+applied_collection_rate_over_100
+receipt_without_company
+unsupported_receipt_status
+```
+
+Limitación Zeta vigente: la relación exacta `recibo ↔ factura` no está expuesta
+por API certificada. Por eso `Cobrado aplicado` se lee desde el estado de las
+ventas emitidas y `Cobrado registrado` desde el libro de recibos. Pueden diferir
+legítimamente por timing, cobros de deuda anterior o ventas cobradas después del
+corte.
+
+Consumidores migrados en FASE 2:
+
+| Consumidor | Antes | Después |
+|---|---|---|
+| Collections report preview/PDF | `Total cobrado` sobre recibos | `Cobrado registrado` / `Recibos registrados` |
+| Finanzas detalle aplicado | `Cobrado` + copy de recibos | `Cobrado aplicado` + fuente ventas/saldo |
+| Hoy situación financiera | `Cobrado acumulado` sobre recibos | `Cobros registrados acumulados` |
+| Cliente 360 por factura | `Cobrado según Zeta` | `Cobrado aplicado según Zeta` |
+| Dashboard Ventas vs Cobros | `Cobrado` | `Cobrado aplicado` |
+
+Diff read-only FASE 2:
+
+Script: `scripts/audit-canonical-collections-diff.ts`.
+
+| Período | Moneda | Ventas emitidas | Pendiente | Aplicado | Registrado | Diferencia | Recibos | % aplicado | Clasificación |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---|
+| 2026-07-01→2026-07-14 | UYU | 1.307.357,50 | 555.734 | 751.623,50 | 378.888 | 372.735,50 | 11 | 57,49% | `DATA_QUALITY` |
+| 2026-07-01→2026-07-14 | USD | 20.182,96 | 14.853,50 | 5.329,46 | 2.844,68 | 2.484,78 | 9 | 26,41% | `DATA_QUALITY` |
+| 2026-06-01→2026-06-30 | UYU | 737.702,50 | 49.880 | 687.822,50 | 725.091 | -37.268,50 | 30 | 93,24% | `DATA_QUALITY` |
+| 2026-06-01→2026-06-30 | USD | 10.551,48 | 1.230,10 | 9.321,38 | 6.942,28 | 2.379,10 | 19 | 88,34% | `DATA_QUALITY` |
+
+Volumen auditado: 593 facturas cargadas y 356 recibos cargados. Diagnóstico:
+`missing_invoice_currency: 4`. Sin `IMPLEMENTATION_DEFECT`.
 
 ## 12. Riesgos y limitaciones Zeta
 

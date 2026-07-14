@@ -109,7 +109,7 @@ export function buildCollectedDetail(
   ctx?: PanoramaDetailContext
 ): FinancialMetricDetail {
   const rows: FinancialMetricDetailRow[] = [
-    { label: "Cobrado", value: fmt(slice.collectedApplied, slice.code), tone: "positive" },
+    { label: "Cobrado aplicado", value: fmt(slice.collectedApplied, slice.code), tone: "positive" },
     { label: "Ventas", value: fmt(slice.netIncome, slice.code) },
     { label: FINANZAS_COPY.labelPeriodResolution, value: formatPanoramaRate(slice.collectionRate) },
   ];
@@ -119,14 +119,14 @@ export function buildCollectedDetail(
   return {
     id: "collected",
     title: `Detalle — Cobrado aplicado ${slice.code}`,
-    subtitle: "Cobros registrados sobre ventas del período.",
+    subtitle: "Parte de las ventas emitidas en el período que quedó saldada al corte.",
     periodLabel: periodLabel(ctx),
     currency: slice.code,
     formula: `Cobrado aplicado / Ventas = ${FINANZAS_COPY.labelPeriodResolution}`,
     explanation: FINANZAS_COPY.labelPeriodResolutionSubtitle,
     rows,
-    sourceLabel: "Fuente: Recibos / Cartera resuelta",
-    cta: { label: "Ver Recibos", href: "/copilot/datos?entity=receipts" },
+    sourceLabel: "Fuente: ventas emitidas y saldo pendiente al corte",
+    cta: { label: "Ver Cartera", href: "/copilot/cartera" },
   };
 }
 

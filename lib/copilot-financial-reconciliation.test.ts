@@ -1469,6 +1469,10 @@ describe("contrato contable: collectedInPeriod + openingBalance", () => {
     expect(usd.pendingAtCutoff).toBe(678.32); // balance_amount no fue tocado por el recibo en este test (eso lo hace Zeta sync)
     expect(usd.collectedInPeriod).toBe(339);
     expect(usd.collectedReceiptCount).toBe(1);
+    expect(usd.registeredCollectionsInPeriod).toBe(339);
+    expect(usd.registeredReceiptCount).toBe(1);
+    expect(usd.appliedCollectionsAtCutoff).toBe(0);
+    expect(usd.appliedCollectionRate).toBe(0);
     // collectionEffectiveness = collectedInPeriod / issuedInPeriod = 339/678.32 ≈ 0.4998
     expect(usd.collectionEffectiveness).toBeCloseTo(339 / 678.32, 4);
   });

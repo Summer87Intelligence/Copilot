@@ -111,7 +111,7 @@ export function CollectionsPreviewDialog({ open, onClose }: Props) {
           <ReportSummaryCards
             metrics={[
               {
-                label: "Total cobrado",
+                label: "Cobrado registrado",
                 value: formatMoneyCurrency(model.totals.amount, model.currency),
                 tone: "positive",
               },

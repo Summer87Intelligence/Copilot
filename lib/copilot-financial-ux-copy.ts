@@ -37,7 +37,7 @@ export const FINANCIAL_UX_COPY = {
   kpiIssuedTooltip:
     "Suma de facturas emitidas dentro del rango seleccionado.",
   kpiCollectedTooltip:
-    "Pagos registrados en el sistema desde el inicio operativo de sincronización.",
+    "Recibos registrados por fecha. Puede incluir cobros de facturas emitidas en períodos anteriores.",
   kpiPendingTooltip:
     "Saldo vivo actual informado por Zeta al momento del último sync. Refleja todos los pagos históricos conocidos por Zeta.",
   kpiEffectivenessTooltip:
@@ -50,7 +50,7 @@ export const FINANCIAL_UX_COPY = {
     "Ajustes de facturación del período. Reducen lo facturado pero no representan ingreso de caja.",
   kpiCollectedAppliedLabel: "Cobrado aplicado",
   kpiCollectedAppliedTooltip:
-    "Cobros imputados contra facturas emitidas en el período: facturado neto menos saldo pendiente al cierre del rango. Misma fuente que Cartera.",
+    "Parte de las ventas emitidas en el período que quedó saldada al corte: ventas netas menos saldo pendiente al cierre del rango.",
   carteraResumenFinancieroHelp:
     "Misma base que Dashboard: ventas, cobrado aplicado y deuda del rango.",
   kpiNetEffectivenessTooltip:

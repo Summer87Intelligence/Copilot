@@ -1,5 +1,15 @@
 # Project Context
 
+## FASE 2 — CANONICAL COLLECTIONS SEMANTICS — 2026-07-14 (CIERRE LOCAL)
+
+**Objetivo cerrado:** separar definitivamente `Cobrado aplicado` de `Cobrado registrado`.
+- **API canónica**: `lib/financial/canonical/collections-snapshot.ts` agrega `buildCanonicalCollectionsSnapshot`, contratos explícitos `appliedCollectionsAtCutoff`, `registeredCollectionsInPeriod`, `appliedCollectionRate`, `receiptCountInPeriod` y diagnósticos (`missing_*`, `invalid_*`, `negative_applied_collections`, etc.).
+- **Compatibilidad**: `generateFinancialConsistencyReport` conserva aliases legacy (`totalCollected`, `collectedInPeriod`) pero expone campos explícitos nuevos. No se modificó deuda, aging, caja, Banco ni movimientos bancarios.
+- **Consumidores migrados**: Reportes de cobranza (`Cobrado registrado`), Finanzas detalle (`Cobrado aplicado`), Hoy (`Cobros registrados acumulados`), Cliente 360 (`Cobrado aplicado según Zeta`) y Dashboard (`Ventas vs Cobrado aplicado`).
+- **Limitación Zeta documentada**: sin mapping certificado `recibo ↔ factura`; no hay FIFO ni distribución inventada. Aplicado se lee desde ventas/saldo; registrado desde `proto_receipts.receipt_date`.
+- **Diff real read-only**: `scripts/audit-canonical-collections-diff.ts` procesó 593 facturas y 356 recibos. Julio parcial y junio completo muestran diferencias aplicado vs registrado clasificadas como `DATA_QUALITY` por `missing_invoice_currency: 4`; sin `IMPLEMENTATION_DEFECT`.
+- **Checks**: `tsc --noEmit` OK, ESLint dirigido OK, tests específicos OK, suite completa Vitest 4210/4210 OK, `npm run build` OK, `git diff --check` OK. Smoke visual sin screenshots: Reportes/Dashboard labels OK; Hoy/Finanzas shell OK; sin 500, sin consola severa, sin overflow. Cliente 360 shell OK; ficha no expuso link durante smoke.
+
 ## COPILOT-BANK-MOVEMENTS-AND-DAILY-TASKS-SPRINT-B-001 — 2026-07-09 (CRUD MANUAL USABLE)
 
 **Primera versión usable manual sobre las tablas ya migradas (sin push):**

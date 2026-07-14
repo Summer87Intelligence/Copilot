@@ -23,7 +23,7 @@ export const METRIC_ID = {
   PENDIENTE_PERIODO: "pendiente_periodo",
   /** Facturas emitidas en el rango (neto de notas de crédito). */
   FACTURADO_PERIODO: "facturado_periodo",
-  /** Recibos registrados en el rango. */
+  /** Recibos registrados en el rango (`receipt_date`). */
   COBRADO_PERIODO: "cobrado_periodo",
   /** Cobros imputados contra facturas del rango (residual de reconciliación). */
   COBRADO_APLICADO: "cobrado_aplicado",
@@ -47,7 +47,7 @@ export const METRIC_LABEL: Record<MetricId, string> = {
   deuda_periodo: "Pendiente al corte del período",
   pendiente_periodo: "Pendiente del período",
   facturado_periodo: "Ventas del período",
-  cobrado_periodo: "Cobrado del período",
+  cobrado_periodo: "Cobrado registrado",
   cobrado_aplicado: "Cobrado aplicado",
   caja_disponible: "Caja disponible Santander",
   caja_despues_pagos: "Caja proyectada",
@@ -65,7 +65,7 @@ export const METRIC_ALIASES: Record<MetricId, readonly string[]> = {
   deuda_periodo: ["Pendiente al corte del período"],
   pendiente_periodo: ["Pendiente del período"],
   facturado_periodo: ["Ventas del período"],
-  cobrado_periodo: ["Cobrado del período"],
+  cobrado_periodo: ["Cobrado registrado", "Recibos registrados"],
   cobrado_aplicado: ["Cobrado aplicado"],
   caja_disponible: ["Caja disponible Santander", "Caja disponible", "Dinero disponible"],
   caja_despues_pagos: ["Caja proyectada", "Caja después de pagos", "Cobertura fin de mes"],
@@ -88,7 +88,7 @@ export const METRIC_PROHIBITED_LABELS: readonly string[] = [
   "Clientes por cobrar", // reemplazado por Deuda actual
   "Pendiente", // solo — usar Pendiente del período o Deuda actual
   "Facturado del período", // reemplazado por Ventas del período
-  "Cobrado en el período", // reemplazado por Cobrado del período
+  "Cobrado en el período", // reemplazado por Cobrado registrado
 ];
 
 // ---------------------------------------------------------------------------
@@ -258,7 +258,7 @@ export const CANONICAL_METRICS: Record<MetricId, CanonicalMetricDef> = {
     currency: "per_currency",
     scope: "period",
     consumers: [
-      "hoy/hoy-period-activity-section (Cobrado)",
+      "hoy/hoy-period-activity-section (Cobrado registrado)",
       "hoy/hoy-currency-executive-card (bloque UYU/USD)",
     ],
     divergesFrom: [

@@ -1004,7 +1004,7 @@ function ByInvoiceSummary({ block }: { block: InvoiceFocusedByCurrency }) {
       value: formatStatementAmount(summary.totalInvoiced, currency),
     },
     {
-      label: "Cobrado según Zeta",
+      label: "Cobrado aplicado según Zeta",
       value: formatStatementAmount(summary.totalCollectedApplied, currency),
     },
     {
@@ -1086,7 +1086,7 @@ function InvoicesTable({ block }: { block: InvoiceFocusedByCurrency }) {
               </Th>
               <Th align="right">Total</Th>
               <Th align="right" hideOnMobile>
-                Cobrado
+                Cobrado aplicado
               </Th>
               <Th align="right">Pendiente</Th>
               <Th align="left">Estado</Th>

@@ -147,8 +147,8 @@ export function renderCollectionsReportPdf(
 
     // Summary box
     const summaryLines = [
-      `Cobros incluidos: ${model.totals.count}`,
-      `Total ${model.currency}: ${formatMoney(model.totals.amount, model.currency)}`,
+      `Recibos registrados: ${model.totals.count}`,
+      `Cobrado registrado ${model.currency}: ${formatMoney(model.totals.amount, model.currency)}`,
     ];
     const summaryH = 14 + summaryLines.length * 13;
     doc.fillColor(COLORS.headerBg).rect(PAGE.margin, y, TABLE_W, summaryH).fill();

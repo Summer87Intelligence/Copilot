@@ -130,7 +130,7 @@ function CashPanel({
                 <p className="font-semibold text-[var(--copilot-ink)]">{b.currency}</p>
                 <dl className="mt-1.5 space-y-1">
                   <div className="flex justify-between gap-2">
-                    <dt className="text-[var(--copilot-ink-muted)]">Cobrado acumulado</dt>
+                    <dt className="text-[var(--copilot-ink-muted)]">Cobros registrados acumulados</dt>
                     <dd className="tabular-nums font-medium">
                       {b.collectedFromClients > 0
                         ? fmtCurrencyAmount(b.collectedFromClients, b.currency)

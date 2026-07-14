@@ -66,7 +66,8 @@ Resultado: 12/12 meses × 2 monedas con Δ = 0.
 | Contexto | Label correcto |
 |----------|---------------|
 | KPI de período | "Ventas del período" |
-| Cobros de período | "Cobrado del período" |
+| Recibos del período | "Cobrado registrado" |
+| Ventas saldadas al corte | "Cobrado aplicado" |
 | Pendiente de período | "Pendiente del período" |
 | Cobranza efectiva aplicada (A) | `portfolioResolvedAmount / issuedInPeriodNet` — ver `docs/domains/cobranza.md` |
 | Cobros registrados / ventas (B) | `collectedInPeriod / issuedInPeriodNet` — ver `docs/domains/cobranza.md` |

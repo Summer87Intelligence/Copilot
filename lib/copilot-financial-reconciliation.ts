@@ -211,6 +211,23 @@ export type CurrencyReconciliation = {
    */
   totalCollected: number;
   /**
+   * Cobrado aplicado: parte de las ventas emitidas en el período que quedó
+   * saldada al corte (`issuedInPeriod - pendingAtCutoff`).
+   *
+   * No es suma de recibos por `receipt_date`.
+   */
+  appliedCollectionsAtCutoff: number;
+  /**
+   * Cobrado registrado: suma de recibos válidos con `receipt_date` dentro del
+   * período. Puede corresponder a facturas emitidas en otros períodos.
+   */
+  registeredCollectionsInPeriod: number;
+  /**
+   * % de cobranza aplicado = `appliedCollectionsAtCutoff / issuedInPeriod`.
+   * `null` si no hubo ventas emitidas en el período.
+   */
+  appliedCollectionRate: number | null;
+  /**
    * Cobranza DENTRO del período: suma de `proto_receipts.amount` con
    * `receipt_date` en `[periodStart, periodEnd]`, no anulados, por moneda.
    * Fuente única para "Cobrado del período". Nunca se deriva de
@@ -219,6 +236,8 @@ export type CurrencyReconciliation = {
   collectedInPeriod: number;
   /** Cantidad de recibos que aportaron a `collectedInPeriod`. */
   collectedReceiptCount: number;
+  /** Alias explícito de `collectedReceiptCount` para contratos FASE 2. */
+  registeredReceiptCount: number;
   /**
    * Saldo anterior al `periodStart` (ledger pre-período): suma de facturas
    * con `issue_date < periodStart` y `total_amount > 0` MENOS recibos con
@@ -1250,14 +1269,22 @@ export function generateFinancialConsistencyReport(
       const collectedInPeriod = collectedInPeriodByCurrency[code] ?? 0;
       const collectedReceiptCount = collectedReceiptCountByCurrency[code] ?? 0;
       const openingBalance = openingBalanceFor(code);
+      const issuedInPeriodNet = round2(
+        Math.max(0, issuedInPeriod - b.creditNoteAmount)
+      );
+      const appliedCollectionsAtCutoff = round2(
+        Math.max(0, issuedInPeriodNet - pendingAtCutoff)
+      );
+      const appliedCollectionRate =
+        issuedInPeriodNet > 0
+          ? Math.max(0, Math.min(1, appliedCollectionsAtCutoff / issuedInPeriodNet))
+          : null;
 
       // `totalCollected` (legacy alias): cuando hay receipts, refleja
       // `collectedInPeriod` (verdad contable). Cuando NO hay receipts,
       // usa fórmula histórica `max(0, issued − pending)` para compat con
       // tests y UIs antiguas que aún no consumen el nuevo campo.
-      const totalCollectedLegacy = round2(
-        Math.max(0, issuedInPeriod - pendingAtCutoff)
-      );
+      const totalCollectedLegacy = appliedCollectionsAtCutoff;
       const totalCollected = receiptsProvided
         ? collectedInPeriod
         : totalCollectedLegacy;
@@ -1285,12 +1312,16 @@ export function generateFinancialConsistencyReport(
         totalInvoiced: issuedInPeriod,
         totalPending: pendingInPeriod,
         totalCollected,
+        appliedCollectionsAtCutoff,
+        registeredCollectionsInPeriod: collectedInPeriod,
+        appliedCollectionRate,
         // Nuevos campos canónicos con semántica contable explícita.
         issuedInPeriod,
         pendingAtCutoff,
         previousPending: pendingPrePeriodByCurrency[code] ?? 0,
         collectedInPeriod,
         collectedReceiptCount,
+        registeredReceiptCount: collectedReceiptCount,
         openingBalance,
         invoiceCount: b.invoiceCount,
         pendingInvoiceCount: b.pendingInvoiceCount,

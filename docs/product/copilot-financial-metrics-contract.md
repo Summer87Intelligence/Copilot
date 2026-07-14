@@ -84,7 +84,7 @@ Cartera con rango seleccionado muestra deuda_periodo. Hoy sin filtro muestra deu
 
 ---
 
-### 5. Cobrado del período (`cobrado_periodo`)
+### 5. Cobrado registrado (`cobrado_periodo`)
 
 | Atributo | Valor |
 |----------|-------|
@@ -93,13 +93,13 @@ Cartera con rango seleccionado muestra deuda_periodo. Hoy sin filtro muestra deu
 | **Fuente** | `lib/copilot-hoy-scopes.ts` → `lib/copilot-financial-reconciliation.ts` |
 | **Moneda** | Separada UYU / USD |
 | **Scope temporal** | Período seleccionado |
-| **Label UI permitido** | "Cobrado en el período", "Cobrado" |
+| **Label UI permitido** | "Cobrado registrado", "Recibos registrados" |
 | **Módulos consumidores** | Hoy (actividad del período), Hoy (card ejecutiva UYU/USD) |
 
 **Aviso obligatorio en UI cuando `cobrado_periodo > facturado_periodo`:**  
 *"Cobraste más de lo facturado en el período porque hay cobros de facturas anteriores."*
 
-**Diferencia con `cobrado_aplicado`:** cobrado_periodo = recibos brutos en el rango. cobrado_aplicado = imputación contra facturas del rango (residual de reconciliación). Pueden diferir.
+**Diferencia con `cobrado_aplicado`:** cobrado_periodo = recibos registrados en el rango por `receipt_date`. cobrado_aplicado = ventas emitidas en el período saldadas al corte. Pueden diferir legítimamente.
 
 ---
 

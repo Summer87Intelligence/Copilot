@@ -263,7 +263,7 @@ export type BusinessPulseInput = {
   /** Movimientos manuales para ingresos/egresos del período. */
   manualCashMovements?: readonly ManualCashMovement[];
   /**
-   * Cobrado acumulado por clientes (suma de recibos) para caja actual en Hoy.
+   * Cobros registrados acumulados por clientes (suma de recibos) para caja actual en Hoy.
    * Con `mode=all_outstanding` en reconciliación = acumulado histórico, independiente del rango de reportes.
    */
   carteraCollectedToDate?: CarteraCurrencyTotals;
@@ -303,7 +303,7 @@ export function carteraPeriodMetricsFromReport(currencies: unknown): CarteraPeri
 }
 
 /**
- * Cobrado por clientes acumulado hasta hoy — suma de recibos (`collectedInPeriod` del motor).
+ * Cobros registrados acumulados hasta hoy — suma de recibos (`collectedInPeriod` del motor).
  * En `mode=all_outstanding` no hay filtro de período: todos los recibos sincronizados.
  * No usar `portfolioResolvedAmount` (residual del período / corte de deuda).
  */
@@ -1061,7 +1061,7 @@ function buildLast30DaysSummary(
       label: "Cobros acumulados",
       value: fmtSnapAmount(receiptsGross, snapCurrency),
       trend: receiptsGross > 0 ? "up" : "neutral",
-      description: "Total cobrado a clientes desde el inicio" + mixedNote,
+      description: "Recibos registrados desde el inicio" + mixedNote,
     },
     {
       label: "Neto acumulado",

@@ -245,6 +245,25 @@ describe("buildCurrencyIndex — derivaciones internas", () => {
     expect(idx.get("USD")?.collectionEffectiveness).toBeCloseTo(0.6, 4);
   });
 
+  it("normaliza campos explícitos FASE 2: aplicado y registrado", () => {
+    const idx = buildCurrencyIndex([
+      {
+        currencyCode: "UYU",
+        issuedInPeriod: 1000,
+        pendingAtCutoff: 250,
+        appliedCollectionsAtCutoff: 750,
+        appliedCollectionRate: 0.75,
+        registeredCollectionsInPeriod: 680,
+        registeredReceiptCount: 3,
+      },
+    ]);
+    const uyu = idx.get("UYU");
+    expect(uyu?.appliedCollectionsAtCutoff).toBe(750);
+    expect(uyu?.appliedCollectionRate).toBe(0.75);
+    expect(uyu?.registeredCollectionsInPeriod).toBe(680);
+    expect(uyu?.registeredReceiptCount).toBe(3);
+  });
+
   it("collectionEffectiveness es null cuando totalInvoiced=0", () => {
     const idx = buildCurrencyIndex([
       {

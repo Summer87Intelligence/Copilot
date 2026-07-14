@@ -16,6 +16,11 @@ function metrics(partial: Partial<NormalizedCurrencyMetrics> & { currencyCode: "
     totalInvoiced: partial.totalInvoiced ?? partial.issuedInPeriod ?? 0,
     totalPending: partial.totalPending ?? partial.pendingAtCutoff ?? 0,
     totalCollected: partial.totalCollected ?? partial.portfolioResolvedAmount ?? 0,
+    appliedCollectionsAtCutoff:
+      partial.appliedCollectionsAtCutoff ?? partial.portfolioResolvedAmount ?? 75_000,
+    registeredCollectionsInPeriod:
+      partial.registeredCollectionsInPeriod ?? partial.collectedInPeriod ?? 0,
+    appliedCollectionRate: partial.appliedCollectionRate ?? null,
     invoiceCount: partial.invoiceCount ?? 0,
     pendingInvoiceCount: partial.pendingInvoiceCount ?? 0,
     collectionEffectiveness: partial.collectionEffectiveness ?? null,
@@ -23,6 +28,7 @@ function metrics(partial: Partial<NormalizedCurrencyMetrics> & { currencyCode: "
     pendingAtCutoff: partial.pendingAtCutoff ?? 20_000,
     collectedInPeriod: partial.collectedInPeriod ?? 0,
     collectedReceiptCount: partial.collectedReceiptCount ?? 0,
+    registeredReceiptCount: partial.registeredReceiptCount ?? partial.collectedReceiptCount ?? 0,
     openingBalance: partial.openingBalance ?? 0,
     creditNoteCount: partial.creditNoteCount ?? 0,
     creditNoteAmount: partial.creditNoteAmount ?? 0,

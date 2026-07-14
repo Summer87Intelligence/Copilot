@@ -3,15 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  AlertTriangle,
   ArrowRight,
   BarChart3,
-  CheckCircle,
   FileDown,
   Info,
   RefreshCw,
-  TrendingDown,
-  TrendingUp,
   Users,
 } from "lucide-react";
 
@@ -27,7 +23,6 @@ import {
 } from "@/lib/treasury/treasury-api-parse";
 import {
   determineDashboardState,
-  extractActiveDebtClientRows,
   extractClientStates,
   extractDashboardCurrencyData,
   extractMonthlyPoint,
@@ -35,9 +30,7 @@ import {
   extractTopBillingForCurrency,
   extractTopDebtorsForCurrency,
   getMonthRangesForPeriod,
-  buildExecutiveSummaryMainRiskChip,
   type DashboardExecutiveCurrencyMode,
-  type DashboardActiveDebtRow,
   type DashboardCurrencyData,
   type DashboardClientStates,
   type DashboardMonthlyPoint,
@@ -47,7 +40,6 @@ import {
 import {
   COLLECTION_RATE_METRICS,
   METRIC_LABEL,
-  METRIC_SEPARATED_CURRENCY_DISCLAIMER,
 } from "@/lib/copilot-financial-metrics-contract";
 import { getEndOfCurrentMonth } from "@/lib/copilot-operational-period";
 import { FINANCIAL_UX_COPY } from "@/lib/copilot-financial-ux-copy";
@@ -591,131 +583,6 @@ function ExecutiveSummaryCard({
 }
 
 // ---------------------------------------------------------------------------
-// Active debt clients table
-// ---------------------------------------------------------------------------
-
-function ActiveDebtClientsTable({
-  rows,
-  selectedCurrency,
-}: {
-  rows: DashboardActiveDebtRow[];
-  selectedCurrency: "all" | "UYU" | "USD";
-}) {
-  const [showAll, setShowAll] = useState(false);
-
-  const filtered = useMemo(
-    () =>
-      rows.filter((r) =>
-        selectedCurrency === "all" ? true : r.currency === selectedCurrency
-      ),
-    [rows, selectedCurrency]
-  );
-
-  const visible = showAll ? filtered : filtered.slice(0, TABLE_INITIAL_ROWS);
-  const canToggle = filtered.length > TABLE_INITIAL_ROWS;
-
-  if (filtered.length === 0) {
-    return (
-      <div className="rounded-xl border border-dashed border-[var(--copilot-border)] p-6 text-center">
-        <CheckCircle className="mx-auto h-5 w-5 text-[var(--copilot-success-text)] mb-2" />
-        <p className={`text-sm ${C.muted}`}>No hay clientes con deuda actual a cobrar.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <div className="overflow-x-auto rounded-xl border border-[var(--copilot-border)]">
-        <table className="w-full min-w-[720px] text-xs">
-          <thead>
-            <tr className="border-b border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)]">
-              {[
-                "Cliente",
-                "Moneda",
-                METRIC_LABEL.deuda_activa,
-                "Deuda atrasada",
-                "Días atraso",
-                "Estado",
-                "Acciones",
-              ].map((h) => (
-                <th
-                  key={h}
-                  className={`px-3 py-2 text-left font-semibold tracking-wide ${C.muted}`}
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((r, i) => (
-              <tr
-                key={r.rowId}
-                className={`border-b border-[var(--copilot-border)] ${i % 2 === 0 ? "bg-[var(--copilot-card-bg)]" : "bg-[var(--copilot-table-row-alt-bg)]"} hover:bg-[var(--copilot-table-row-hover-bg)]`}
-              >
-                <td className={`px-3 py-2 font-medium ${C.ink}`}>{r.name}</td>
-                <td className={`px-3 py-2 font-semibold uppercase ${C.muted}`}>{r.currency}</td>
-                <td className="px-3 py-2 tabular-nums font-medium text-[var(--copilot-danger-text-strong)]">
-                  {fmtAmount(r.activeDebt, r.currency)}
-                </td>
-                <td className={`px-3 py-2 tabular-nums ${r.overdueDebt > 0 ? "font-semibold text-[var(--copilot-danger-text-strong)]" : C.muted}`}>
-                  {r.overdueDebt > 0 ? fmtAmount(r.overdueDebt, r.currency) : "—"}
-                </td>
-                <td className={`px-3 py-2 tabular-nums ${C.muted}`}>
-                  {r.overdueDebt > 0 && (r.overdueDays ?? 0) > 0
-                    ? `hace ${r.overdueDays} días`
-                    : "—"}
-                </td>
-                <td className="px-3 py-2">
-                  <span
-                    className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
-                      r.status === "Riesgo alto"
-                        ? "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-danger-text-strong)]"
-                        : r.status === "Atrasado"
-                          ? "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-warning-text-strong)]"
-                          : "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]"
-                    }`}
-                  >
-                    {r.status}
-                  </span>
-                </td>
-                <td className="px-3 py-2">
-                  <div className="flex gap-2">
-                    <Link
-                      href={`/copilot/clientes/${r.companyId}`}
-                      className={`hover:underline ${C.accent}`}
-                    >
-                      Ver ficha
-                    </Link>
-                    <Link
-                      href={`/copilot/clientes/${r.companyId}?tab=estado-cuenta`}
-                      className={`hover:underline ${C.muted}`}
-                    >
-                      Estado
-                    </Link>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {canToggle && (
-        <div className="mt-3 flex justify-end">
-          <button
-            type="button"
-            onClick={() => setShowAll((v) => !v)}
-            className={`rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-dropdown-bg)] px-3 py-1.5 text-xs font-semibold ${C.accent} hover:bg-[var(--copilot-hover-bg)]`}
-          >
-            {showAll ? "Mostrar menos" : "Ver todos"}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Recent movements table
 // ---------------------------------------------------------------------------
 
@@ -1130,13 +997,13 @@ export default function DashboardPageClient() {
 
   // Ventas vs Cobros (current period)
   const vsGroups = isConsolidated
-    ? [{ label: "USD (equiv.)", a: roundUsd(consolidateToUsdEquivalent(usd?.facturado ?? 0, uyu?.facturado ?? 0, effectiveExchangeRate)), b: roundUsd(consolidateToUsdEquivalent(usd?.cobrado ?? 0, uyu?.cobrado ?? 0, effectiveExchangeRate)), aLabel: "Ventas del período", bLabel: "Cobrado" }]
+    ? [{ label: "USD (equiv.)", a: roundUsd(consolidateToUsdEquivalent(usd?.facturado ?? 0, uyu?.facturado ?? 0, effectiveExchangeRate)), b: roundUsd(consolidateToUsdEquivalent(usd?.cobrado ?? 0, uyu?.cobrado ?? 0, effectiveExchangeRate)), aLabel: "Ventas del período", bLabel: "Cobrado aplicado" }]
     : [
         ...(effectiveCurrency !== "USD" && (uyu?.facturado ?? 0) + (uyu?.cobrado ?? 0) > 0
-          ? [{ label: "UYU", a: uyu?.facturado ?? 0, b: uyu?.cobrado ?? 0, aLabel: "Ventas del período", bLabel: "Cobrado" }]
+          ? [{ label: "UYU", a: uyu?.facturado ?? 0, b: uyu?.cobrado ?? 0, aLabel: "Ventas del período", bLabel: "Cobrado aplicado" }]
           : []),
         ...(effectiveCurrency !== "UYU" && (usd?.facturado ?? 0) + (usd?.cobrado ?? 0) > 0
-          ? [{ label: "USD", a: usd?.facturado ?? 0, b: usd?.cobrado ?? 0, aLabel: "Ventas del período", bLabel: "Cobrado" }]
+          ? [{ label: "USD", a: usd?.facturado ?? 0, b: usd?.cobrado ?? 0, aLabel: "Ventas del período", bLabel: "Cobrado aplicado" }]
           : []),
       ];
 
@@ -1201,59 +1068,6 @@ export default function DashboardPageClient() {
       })),
     [portfolioRows]
   );
-  const activeDebtRows = useMemo(
-    () => extractActiveDebtClientRows(portfolioRows),
-    [portfolioRows]
-  );
-
-  const consolidatedActiveDebtRows = useMemo((): DashboardActiveDebtRow[] => {
-    if (!isConsolidated) return [];
-    const tc = effectiveExchangeRate;
-    const byCompany = new Map<string, { name: string; active: number; overdue: number; overdueDays: number | null; status: string; risk: string }>();
-    for (const row of activeDebtRows) {
-      const toUsd = (v: number) => consolidateToUsdEquivalent(
-        row.currency === "USD" ? v : 0,
-        row.currency === "UYU" ? v : 0,
-        tc
-      );
-      const prev = byCompany.get(row.companyId);
-      if (!prev) {
-        byCompany.set(row.companyId, {
-          name: row.name,
-          active: toUsd(row.activeDebt),
-          overdue: toUsd(row.overdueDebt),
-          overdueDays: row.overdueDays,
-          status: row.status,
-          risk: row.risk,
-        });
-      } else {
-        byCompany.set(row.companyId, {
-          name: row.name,
-          active: prev.active + toUsd(row.activeDebt),
-          overdue: prev.overdue + toUsd(row.overdueDebt),
-          overdueDays: row.overdueDays != null && (prev.overdueDays == null || row.overdueDays > prev.overdueDays)
-            ? row.overdueDays
-            : prev.overdueDays,
-          status: prev.status,
-          risk: prev.risk === "alto" || row.risk === "alto" ? "alto" : prev.risk === "medio" || row.risk === "medio" ? "medio" : prev.risk,
-        });
-      }
-    }
-    return Array.from(byCompany.entries())
-      .map(([companyId, d]): DashboardActiveDebtRow => ({
-        rowId: `cons-${companyId}`,
-        companyId,
-        name: d.name,
-        currency: "USD",
-        activeDebt: d.active,
-        overdueDebt: d.overdue,
-        overdueDays: d.overdueDays,
-        status: d.status,
-        risk: d.risk,
-      }))
-      .sort((a, b) => b.activeDebt - a.activeDebt);
-  }, [isConsolidated, activeDebtRows, effectiveExchangeRate]);
-
   const consolidatedDebtorItems = useMemo(
     () =>
       isConsolidated
@@ -1645,15 +1459,15 @@ export default function DashboardPageClient() {
                   )}
                 </ChartCard>
                 {/* [3] Ventas vs Cobros ? per currency with % chips */}
-                <ChartCard title="Ventas vs Cobros UYU" subtitle="Período seleccionado · Verde = cobrado">
+                <ChartCard title="Ventas vs Cobrado aplicado UYU" subtitle="Período seleccionado · Verde = cobrado aplicado">
                   {loading ? <Skeleton className="h-28" /> : (uyu?.facturado ?? 0) + (uyu?.cobrado ?? 0) > 0 ? (
-                    <GroupedBarChart groups={[{ label: "UYU", a: uyu?.facturado ?? 0, b: uyu?.cobrado ?? 0, aLabel: "Ventas del período", bLabel: "Cobrado" }]} height={140} />
+                    <GroupedBarChart groups={[{ label: "UYU", a: uyu?.facturado ?? 0, b: uyu?.cobrado ?? 0, aLabel: "Ventas del período", bLabel: "Cobrado aplicado" }]} height={140} />
                   ) : (
                     <ChartPeriodEmpty />
                   )}
                   <div className="mt-2 flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-accent)]" /><p className={`text-[10px] ${C.muted}`}>Ventas</p></div>
-                    <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-status-ok-dot)]" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
+                    <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-status-ok-dot)]" /><p className={`text-[10px] ${C.muted}`}>Cobrado aplicado</p></div>
                     {uyu?.efectividad != null && (
                       <span className={`ml-auto text-[10px] font-semibold ${uyu.efectividad >= 0.8 ? "text-[var(--copilot-success-text)]" : "text-[var(--copilot-warning-text)]"}`}>
                         Cobranza aplicada: {Math.round(uyu.efectividad * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - uyu.efectividad) * 100)}%
@@ -1661,15 +1475,15 @@ export default function DashboardPageClient() {
                     )}
                   </div>
                 </ChartCard>
-                <ChartCard title="Ventas vs Cobros USD" subtitle="Período seleccionado · Verde = cobrado">
+                <ChartCard title="Ventas vs Cobrado aplicado USD" subtitle="Período seleccionado · Verde = cobrado aplicado">
                   {loading ? <Skeleton className="h-28" /> : (usd?.facturado ?? 0) + (usd?.cobrado ?? 0) > 0 ? (
-                    <GroupedBarChart groups={[{ label: "USD", a: usd?.facturado ?? 0, b: usd?.cobrado ?? 0, aLabel: "Ventas del período", bLabel: "Cobrado" }]} height={140} />
+                    <GroupedBarChart groups={[{ label: "USD", a: usd?.facturado ?? 0, b: usd?.cobrado ?? 0, aLabel: "Ventas del período", bLabel: "Cobrado aplicado" }]} height={140} />
                   ) : (
                     <ChartPeriodEmpty />
                   )}
                   <div className="mt-2 flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-accent)]" /><p className={`text-[10px] ${C.muted}`}>Ventas</p></div>
-                    <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-status-ok-dot)]" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
+                    <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-status-ok-dot)]" /><p className={`text-[10px] ${C.muted}`}>Cobrado aplicado</p></div>
                     {usd?.efectividad != null && (
                       <span className={`ml-auto text-[10px] font-semibold ${usd.efectividad >= 0.8 ? "text-[var(--copilot-success-text)]" : "text-[var(--copilot-warning-text)]"}`}>
                         Cobranza aplicada: {Math.round(usd.efectividad * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - usd.efectividad) * 100)}%
@@ -1713,8 +1527,8 @@ export default function DashboardPageClient() {
                 </ChartCard>
 
                 <ChartCard
-                  title="Ventas vs Cobros"
-                  subtitle={`Período seleccionado · ${currencyModeLabel} · Verde = cobrado`}
+                  title="Ventas vs Cobrado aplicado"
+                  subtitle={`Período seleccionado · ${currencyModeLabel} · Verde = cobrado aplicado`}
                 >
                   {loading ? (
                     <Skeleton className="h-28" />
@@ -1728,7 +1542,7 @@ export default function DashboardPageClient() {
                     return (
                       <div className="mt-2 flex flex-wrap items-center gap-3">
                         <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-accent)]" /><p className={`text-[10px] ${C.muted}`}>Ventas</p></div>
-                        <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-status-ok-dot)]" /><p className={`text-[10px] ${C.muted}`}>Cobrado</p></div>
+                        <div className="flex items-center gap-1"><div className="h-2 w-3 rounded-sm bg-[var(--copilot-status-ok-dot)]" /><p className={`text-[10px] ${C.muted}`}>Cobrado aplicado</p></div>
                         {eff != null && (
                           <span className={`ml-auto text-[10px] font-semibold ${eff >= 0.8 ? "text-[var(--copilot-success-text)]" : "text-[var(--copilot-warning-text)]"}`}>
                             Cobranza aplicada: {Math.round(eff * 100)}% · Pendiente del período: {Math.round(Math.max(0, 1 - eff) * 100)}%

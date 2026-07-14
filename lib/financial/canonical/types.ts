@@ -251,6 +251,8 @@ export interface CanonicalInvoiceInput {
  * `ReceiptInput` (`lib/copilot-financial-reconciliation.ts`).
  */
 export interface CanonicalReceiptInput {
+  id?: string | null;
+  company_id?: string | null;
   currency_code?: string | null;
   amount?: number | null;
   receipt_date?: string | null;
