@@ -25,8 +25,10 @@ export {
 } from "./currency";
 export { buildCanonicalSalesMetrics } from "./sales";
 export { buildCanonicalRegisteredCollectionsMetrics } from "./collections";
-export { buildCanonicalDebtMetrics } from "./debt";
-export { buildCanonicalAgingMetrics } from "./aging";
+export { buildCanonicalDebtMetrics, buildCanonicalDebtMetricsFromUnits } from "./debt";
+export { buildCanonicalAgingMetrics, buildCanonicalAgingMetricsFromUnits } from "./aging";
+export { buildCanonicalDebtUnits, isDebtUnitOverdue } from "./debt-units";
+export type { BuildCanonicalDebtUnitsInput } from "./debt-units";
 export {
   buildCanonicalFinancialSummary,
 } from "./summary";

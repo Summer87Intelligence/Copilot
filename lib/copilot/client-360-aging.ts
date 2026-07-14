@@ -1,14 +1,15 @@
 /**
  * CLIENT-360 AGING — buckets operativos de atraso por moneda para la ficha 360.
  *
- * Reutiliza la MISMA fuente de verdad que la deuda/atraso operativa:
- *   - `selectOperationalDebtInvoicesForSummation` (dedupe shadow ↔ CCV1)
- *   - `readInvoiceFinancial` (saldo autoritativo)
- *   - `due_date` como fecha de atraso (idéntico a `aggregateOperationalDebtForCompany`)
- *   - `operating-aging` para clasificar el bucket
+ * FASE 1: deriva de la capa canónica (`buildCanonicalDebtUnits` +
+ * `buildCanonicalAgingMetricsFromUnits`). El aging de Cliente 360, Cartera y Hoy
+ * comparte ahora exactamente la misma clasificación por `due_date`.
  *
- * Así los buckets NUNCA divergen del total pendiente ni del atrasado que ya
- * muestra la ficha. Sin due_date ⇒ `on_time` (consistente con "no atrasado").
+ * Universo: se mantiene el del cliente (dedupe shadow↔CCV1 + saldo autoritativo),
+ * sin aplicar la ventana `issue_date` (`includeAllIssueDates`), para preservar
+ * paridad con el comportamiento previo. Cuando existen cuotas abiertas
+ * (`proto_invoice_installments`), el aging se calcula por cuota; si no, por
+ * factura. Sin due_date ⇒ `on_time` (consistente con "no atrasado").
  *
  * Función pura: sin React, sin I/O. Ver docs/product/copilot-operating-language.md
  */
@@ -19,12 +20,17 @@ import {
   selectOperationalDebtInvoicesForSummation,
   type OperationalDebtInvoiceInput,
 } from "@/lib/zeta/zeta-operational-debt-dedup";
+import { OPERATING_DELAY_BUCKET_ORDER, type OperatingDelayBucket } from "@/lib/copilot/operating-aging";
+import { buildCanonicalFinancialContext } from "@/lib/financial/canonical/report-context";
 import {
-  getDaysLate,
-  getOperatingDelayBucket,
-  OPERATING_DELAY_BUCKET_ORDER,
-  type OperatingDelayBucket,
-} from "@/lib/copilot/operating-aging";
+  buildCanonicalDebtUnits,
+  isDebtUnitOverdue,
+} from "@/lib/financial/canonical/debt-units";
+import { buildCanonicalAgingMetricsFromUnits } from "@/lib/financial/canonical/metrics-from-units";
+import type {
+  CanonicalInstallmentInput,
+  CanonicalInvoiceInput,
+} from "@/lib/financial/canonical/types";
 
 const PENDING_EPSILON = 0.005;
 
@@ -33,7 +39,7 @@ export type Client360AgingBuckets = Record<OperatingDelayBucket, number>;
 export type Client360Aging = {
   UYU: Client360AgingBuckets;
   USD: Client360AgingBuckets;
-  /** Facturas abiertas con atraso (due_date < hoy), por moneda. */
+  /** Unidades vencibles abiertas con atraso (due_date < hoy), por moneda. */
   lateInvoiceCount: { UYU: number; USD: number };
 };
 
@@ -59,21 +65,23 @@ function ymd(iso: unknown): string {
 /**
  * Construye los buckets de atraso por moneda para la ficha 360.
  * `todayYmd` inyectable para tests/SSR; sin él, cada call site debe pasar hoy MVD.
+ * `installments`: cuotas abiertas del cliente (opcional). Cuando se pasan, el
+ * aging se calcula por cuota real.
  */
 export function buildClient360Aging<T extends OperationalDebtInvoiceInput>(
   invoices: readonly T[],
-  options: { todayYmd: string; invoiceBalanceMap?: Map<string, number> }
+  options: {
+    todayYmd: string;
+    invoiceBalanceMap?: Map<string, number>;
+    installments?: readonly CanonicalInstallmentInput[];
+  }
 ): Client360Aging {
-  const aging: Client360Aging = {
-    UYU: emptyBuckets(),
-    USD: emptyBuckets(),
-    lateInvoiceCount: { UYU: 0, USD: 0 },
-  };
-
   const selections = selectOperationalDebtInvoicesForSummation(invoices, {
     invoiceBalanceMap: options.invoiceBalanceMap,
   });
 
+  // Mapear cada factura deduplicada a la entrada canónica con saldo autoritativo.
+  const canonicalInvoices: CanonicalInvoiceInput[] = [];
   for (const sel of selections) {
     const inv = sel.invoice;
     const fin = readInvoiceFinancial({
@@ -84,17 +92,54 @@ export function buildClient360Aging<T extends OperationalDebtInvoiceInput>(
     });
     const pending = Math.max(0, fin.balance_authoritative);
     if (!(pending > PENDING_EPSILON)) continue;
-
     const currency = readOperationalDebtInvoiceCurrency(inv);
-    if (currency !== "UYU" && currency !== "USD") continue;
+    canonicalInvoices.push({
+      id: String(inv.id ?? "").trim() || "unknown",
+      company_id: (inv as { company_id?: unknown }).company_id != null
+        ? String((inv as { company_id?: unknown }).company_id)
+        : null,
+      currency_code: currency,
+      total_amount: Math.max(pending, Number(inv.total_amount) || pending),
+      balance_amount: pending,
+      status: "issued",
+      due_date: ymd(inv.due_date) || null,
+    });
+  }
 
-    const due = ymd(inv.due_date);
-    const bucket: OperatingDelayBucket = due
-      ? getOperatingDelayBucket(getDaysLate(due, options.todayYmd))
-      : "on_time";
+  const context = buildCanonicalFinancialContext({
+    workspaceId: "client-360",
+    periodEnd: options.todayYmd,
+    cutoffDate: options.todayYmd,
+  });
 
-    aging[currency][bucket] = round2(aging[currency][bucket] + pending);
-    if (bucket !== "on_time") aging.lateInvoiceCount[currency] += 1;
+  const { units } = buildCanonicalDebtUnits({
+    invoices: canonicalInvoices,
+    installments: options.installments,
+    context,
+    includeAllIssueDates: true,
+  });
+
+  const aging: Client360Aging = {
+    UYU: emptyBuckets(),
+    USD: emptyBuckets(),
+    lateInvoiceCount: { UYU: 0, USD: 0 },
+  };
+
+  for (const currency of ["UYU", "USD"] as const) {
+    const m = buildCanonicalAgingMetricsFromUnits(units, currency, options.todayYmd);
+    aging[currency] = {
+      on_time: m.current,
+      late_1_7: m.overdue1To7,
+      late_8_14: m.overdue8To14,
+      late_15_30: m.overdue15To30,
+      late_30_plus: m.overdue31Plus,
+    };
+  }
+
+  for (const u of units) {
+    if (u.currency !== "UYU" && u.currency !== "USD") continue;
+    if (!(u.openBalance > 0)) continue;
+    if (isDebtUnitOverdue(u, options.todayYmd)) aging.lateInvoiceCount[u.currency] += 1;
   }
 
   return aging;

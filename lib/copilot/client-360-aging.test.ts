@@ -82,4 +82,34 @@ describe("buildClient360Aging", () => {
     expect(sumAgingBuckets(aging.UYU)).toBe(300);
     expect(sumLateBuckets(aging.UYU)).toBe(200);
   });
+
+  it("FASE 1 — usa cuotas reales cuando existen (aging por cuota, sin doble conteo)", () => {
+    const aging = buildClient360Aging(
+      [inv({ id: "i1", due_date: "2026-06-01", balance_amount: 2000 })],
+      {
+        todayYmd: TODAY,
+        installments: [
+          { id: "q1", invoice_id: "i1", currency_code: "UYU", cuota_saldo: 0, cuota_vencimiento: "2026-06-16" }, // pagada
+          { id: "q2", invoice_id: "i1", currency_code: "UYU", cuota_saldo: 1000, cuota_vencimiento: "2026-07-20" }, // al día
+          { id: "q3", invoice_id: "i1", currency_code: "UYU", cuota_saldo: 1000, cuota_vencimiento: "2026-06-10" }, // >30 atraso
+        ],
+      }
+    );
+    expect(aging.UYU.on_time).toBe(1000);
+    expect(aging.UYU.late_30_plus).toBe(1000);
+    expect(sumAgingBuckets(aging.UYU)).toBe(2000); // no 4000
+    expect(aging.lateInvoiceCount.UYU).toBe(1); // solo la cuota atrasada
+  });
+
+  it("FASE 1 — sin cuotas pasadas, el aging es idéntico al nivel factura", () => {
+    const invoices = [
+      inv({ id: "1", due_date: "2026-07-20", balance_amount: 100 }),
+      inv({ id: "2", due_date: "2026-06-10", balance_amount: 200 }),
+    ];
+    const withEmpty = buildClient360Aging(invoices, { todayYmd: TODAY, installments: [] });
+    const without = buildClient360Aging(invoices, { todayYmd: TODAY });
+    expect(withEmpty).toEqual(without);
+    expect(without.UYU.on_time).toBe(100);
+    expect(without.UYU.late_30_plus).toBe(200);
+  });
 });

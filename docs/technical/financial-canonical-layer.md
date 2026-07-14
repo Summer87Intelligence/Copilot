@@ -147,6 +147,95 @@ Orden recomendado (menor a mayor riesgo):
   `totalInvoiced`, `totalPending`, `totalCollected` (semántica dual).
 - Cálculo billing-lifetime en Top Clientes (ya removido).
 
+## 12b. FASE 1 — Debt units, cuotas y migración de aging
+
+### Arquitectura de debt units
+
+`buildCanonicalDebtUnits` (`debt-units.ts`) es la **fuente única** que convierte
+facturas + cuotas en **unidades vencibles atómicas** (`CanonicalDebtUnit`). Toda
+métrica de deuda/aging deriva de estas unidades vía `metrics-from-units.ts`.
+Cliente 360, Cartera y Hoy **no expanden cuotas por su cuenta**.
+
+```ts
+const { units, diagnostics, diagnosticCounts } = buildCanonicalDebtUnits({
+  invoices, installments, context,
+  includeAllIssueDates, // true en consumidores cuyo universo ya viene acotado (Cliente 360)
+});
+const debt  = buildCanonicalDebtMetricsFromUnits(units, "UYU", cutoff);
+const aging = buildCanonicalAgingMetricsFromUnits(units, "UYU", cutoff);
+```
+
+### Prioridad de vencimiento
+
+1. **Cuota abierta** de `proto_invoice_installments` (`cuota_saldo > 0`, `cuota_vencimiento`).
+2. **Vencimiento de factura** (`due_date`) cuando no hay cuotas abiertas.
+3. **Sin vencimiento confiable** → unidad con `dueDate = null`: cuenta como
+   pendiente pero **no** como atrasada + diagnóstico.
+
+Reglas: si una factura tiene cuotas abiertas, se emite **una unidad por cuota** y
+**no** la unidad de factura (sin doble conteo). Una cuota pagada no participa.
+Nunca se inventa un vencimiento.
+
+### Tratamiento de fechas y datos faltantes
+
+- `dueDate` ausente/ inválido → pending, sin aging (bucket `current`),
+  `balanceWithoutDueDate` lo contabiliza.
+- Vence exactamente en `cutoff` → al día (`daysLate = 0`).
+
+### Diagnósticos (`CanonicalDebtDiagnosticCode`)
+
+| Código | Tratamiento |
+|---|---|
+| `missing_currency` | Excluida de totales monetarios + diagnóstico. |
+| `missing_due_date` | Incluida en pending; no clasificada como atrasada. |
+| `invalid_due_date` | Igual que missing; se registra el intento. |
+| `installment_balance_mismatch` | Se usan las cuotas reales; se emite diagnóstico (no se corrige el dato, no se oculta). |
+| `negative_open_balance` | No genera unidad; se diagnostica (no se normaliza sin regla validada). |
+| `invoice_without_company` | Se incluye en saldo; se diagnostica. |
+
+Los diagnósticos están disponibles y testeados; no todos se exponen en UI. Ninguna
+factura desaparece silenciosamente.
+
+### Invariantes (testeadas)
+
+- `saldo pendiente = saldo al día + saldo atrasado`.
+- `suma de buckets = saldo pendiente clasificable`.
+- `saldo atrasado = Σ buckets de atraso`.
+- `saldo pendiente = saldo clasificable + saldo sin vencimiento` (unidades sin due_date).
+- Sin cuotas, el aging por unidad es idéntico al aging por factura (paridad FASE 0).
+
+### Consumidores migrados / pendientes (FASE 1)
+
+| Consumidor | Estado | Nota |
+|---|---|---|
+| **Cliente 360** (`client-360-aging.ts`) | ✅ migrado | Deriva de debt units; carga cuotas reales (`proto_invoice_installments`), degrada a nivel factura sin regresión. |
+| `canonical/debt.ts` + `aging.ts` | ✅ migrado | Delegan en debt units. |
+| **Cartera** (`copilot-cartera-cards-source`, `computeInvoiceCurrencyBreakdown`) | ⏳ pendiente | `overdue_*` ya es por `due_date`; unificar a debt units. |
+| **Reportes de deudores** | ⏳ pendiente | Unificar aging a debt units. |
+| **Hoy** (`hoy-debt-breakdown`) | ⏳ pendiente | **Aún usa `issue_date`** para atraso — reemplazar por canonical. |
+| `collection-aging-model` | ⛔ deprecado | Ver §12c. |
+
+### Comparación legacy vs canónico en Summer87
+
+Estado: **pendiente de ejecución con dataset real** (no incluida en este commit
+para no mezclar lectura de producción con el cambio de código). La verificación
+read-only de la columna `deleted_at` sí se ejecutó (APLICADA Y VERIFICADA).
+Método recomendado para la continuación: correr el modelo legacy y el canónico
+sobre el mismo snapshot por moneda y clasificar diferencias
+(CORRECCIÓN ESPERADA / DIFERENCIA DE DATOS / REGRESIÓN / CAMBIO SEMÁNTICO).
+Diferencia esperada principal: **Hoy** (issue_date → due_date) y clientes con
+**cuotas reales** (aging por cuota vs factura).
+
+## 12c. Deprecación de `collection-aging-model`
+
+`lib/collection-aging/collection-aging-model.ts` mide antigüedad por `issue_date`
+— **no** días de atraso. Marcado `@deprecated`. No usar para deuda/atraso
+operativo. Consumidores fuera de alcance aún vivos: `copilot-cobranza-summary`,
+`clientes-a-gestionar`, `computeInvoiceCurrencyBreakdown` (`collection_overdue_*`).
+Guardia arquitectónica: `collection-aging-deprecation.test.ts` impide nuevos
+imports desde módulos migrados (capa canónica + Cliente 360). Se retirará cuando
+quede sin consumidores.
+
 ## 12. Riesgos y limitaciones Zeta
 
 - `balance_amount` se sincroniza por cron cada ~3 h; refleja estado actual, no el

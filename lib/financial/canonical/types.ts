@@ -257,3 +257,67 @@ export interface CanonicalReceiptInput {
   status?: string | null;
   is_active?: boolean | null;
 }
+
+/**
+ * Cuota mínima que consume el builder de debt units. Subconjunto estructural de
+ * las filas `proto_invoice_installments`.
+ */
+export interface CanonicalInstallmentInput {
+  id?: string | null;
+  invoice_id?: string | null;
+  currency_code?: string | null;
+  /** Saldo abierto de la cuota (`cuota_saldo`). */
+  cuota_saldo?: number | null;
+  /** Vencimiento de la cuota (`cuota_vencimiento`). */
+  cuota_vencimiento?: string | null;
+  is_active?: boolean | null;
+}
+
+// ---------------------------------------------------------------------------
+// Debt units — unidad vencible canónica (factura o cuota)
+// ---------------------------------------------------------------------------
+
+/**
+ * Unidad de deuda vencible. Es la unidad ATÓMICA sobre la que se calculan
+ * saldo pendiente, atrasado, al día y aging. Cuando una factura tiene cuotas
+ * válidas, cada cuota abierta es una unidad; si no, la factura completa es una
+ * unidad. Nunca se cuenta la factura Y sus cuotas a la vez.
+ */
+export interface CanonicalDebtUnit {
+  sourceType: "invoice" | "installment";
+  invoiceId: string;
+  installmentId?: string;
+  companyId: string | null;
+  currency: FinancialCurrency;
+  /** Vencimiento resoluble (`YYYY-MM-DD`) o `null` si falta / es inválido. */
+  dueDate: IsoDate | null;
+  /** Saldo abierto (> 0). */
+  openBalance: number;
+}
+
+/** Códigos de diagnóstico de calidad de datos de deuda. */
+export type CanonicalDebtDiagnosticCode =
+  | "missing_currency"
+  | "missing_due_date"
+  | "invalid_due_date"
+  | "installment_balance_mismatch"
+  | "negative_open_balance"
+  | "invoice_without_company";
+
+/** Diagnóstico individual, referenciando la factura/cuota afectada. */
+export interface CanonicalDebtDiagnostic {
+  code: CanonicalDebtDiagnosticCode;
+  invoiceId: string;
+  installmentId?: string;
+  currency?: FinancialCurrency;
+  /** Detalle numérico contextual (p. ej. delta de mismatch). */
+  detail?: number;
+}
+
+/** Resultado del builder central de debt units. */
+export interface CanonicalDebtUnitsResult {
+  units: CanonicalDebtUnit[];
+  diagnostics: CanonicalDebtDiagnostic[];
+  /** Conteo por código para métricas rápidas. */
+  diagnosticCounts: Record<CanonicalDebtDiagnosticCode, number>;
+}

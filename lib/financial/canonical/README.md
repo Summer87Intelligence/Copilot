@@ -30,8 +30,10 @@ const summary = buildCanonicalFinancialSummary({ context, invoices, receipts });
 | `internal.ts` | Helpers de filtrado compartidos (no exportar fuera de la capa). |
 | `sales.ts` | `buildCanonicalSalesMetrics` — ventas del período (`issue_date`). |
 | `collections.ts` | `buildCanonicalRegisteredCollectionsMetrics` — recibos (`receipt_date`). |
-| `debt.ts` | `buildCanonicalDebtMetrics` — deuda stock al corte (`due_date`). |
-| `aging.ts` | `buildCanonicalAgingMetrics` — aging por vencimiento (buckets operativos). |
+| `debt-units.ts` | `buildCanonicalDebtUnits` — **fuente única** de unidades vencibles (factura/cuota) + diagnósticos. |
+| `metrics-from-units.ts` | `buildCanonicalDebtMetricsFromUnits`, `buildCanonicalAgingMetricsFromUnits`. |
+| `debt.ts` | `buildCanonicalDebtMetrics` — deuda stock al corte (delega en debt units). |
+| `aging.ts` | `buildCanonicalAgingMetrics` — aging por vencimiento (delega en debt units). |
 | `summary.ts` | `buildCanonicalFinancialSummary` — API única por moneda + diagnósticos. |
 | `metric-definitions.ts` | Puente al diccionario de labels (`copilot-financial-metrics-contract`). |
 | `index.ts` | Barrel público. Importar siempre desde aquí. |

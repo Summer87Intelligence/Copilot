@@ -1,4 +1,15 @@
 /**
+ * @deprecated FASE 1 (CANONICAL-AGING-AND-DEBT-MIGRATION) — NO usar para deuda
+ * ni atraso operativo. `issue_date` representa la ANTIGÜEDAD DE EMISIÓN, no los
+ * días de atraso. Para saldo pendiente / atrasado / al día / aging usar la capa
+ * canónica: `@/lib/financial/canonical` (`buildCanonicalDebtUnits`,
+ * `buildCanonicalAgingMetricsFromUnits`), que clasifica por `due_date`.
+ *
+ * Este módulo permanece SOLO para consumidores de cobranza aún no migrados
+ * (`copilot-cobranza-summary`, `clientes-a-gestionar`). No agregar nuevos
+ * imports desde módulos migrados — hay un test arquitectónico que lo impide
+ * (`collection-aging-deprecation.test.ts`).
+ *
  * COLLECTION AGING MODEL — modelo único de clasificación de cobranza por
  * antigüedad desde la fecha de factura (`issue_date`).
  *
