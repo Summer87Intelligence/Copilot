@@ -14,6 +14,7 @@ import { priorityLabel, priorityTone, statusLabel, statusTone } from "@/lib/task
 type Comment = { id: string; author_user_id: string | null; body: string; created_at: string };
 type HistoryRow = {
   id: string;
+  actor_name?: string;
   action: string;
   field: string | null;
   old_value: string | null;
@@ -40,6 +41,7 @@ export function TaskDetailDrawer({
   creatorName,
   moduleLabel,
   busy = false,
+  refreshKey = 0,
   onClose,
   onEdit,
   onDelete,
@@ -52,6 +54,7 @@ export function TaskDetailDrawer({
   creatorName: string;
   moduleLabel: string;
   busy?: boolean;
+  refreshKey?: number;
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -88,7 +91,7 @@ export function TaskDetailDrawer({
 
   useEffect(() => {
     void loadThreads();
-  }, [loadThreads]);
+  }, [loadThreads, refreshKey]);
 
   const addNote = useCallback(async () => {
     if (!note.trim()) return;

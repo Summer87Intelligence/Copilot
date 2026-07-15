@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
+import { resolveAssigneeDisplayNames } from "@/lib/data/decision-operational-state-repository";
 import { hydrateTaskRow, isMissingTableError } from "@/lib/tasks/task-row";
 import { buildTaskViewer } from "@/lib/tasks/task-viewer.server";
 import { canViewTask } from "@/lib/tasks/task-visibility";
@@ -8,6 +9,8 @@ import { canViewTask } from "@/lib/tasks/task-visibility";
 export const dynamic = "force-dynamic";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DELETED_USER_LABEL = "Usuario eliminado";
+const UNASSIGNED_LABEL = "Sin asignar";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -15,12 +18,36 @@ export type TaskHistoryRow = {
   id: string;
   task_id: string;
   actor_user_id: string | null;
+  actor_name: string;
   action: string;
   field: string | null;
   old_value: string | null;
   new_value: string | null;
   created_at: string;
 };
+
+function collectHistoryUserIds(rows: TaskHistoryRow[]): string[] {
+  const ids = new Set<string>();
+  for (const row of rows) {
+    if (row.actor_user_id) ids.add(row.actor_user_id);
+    if (row.field === "assigned_to_user_id") {
+      if (row.old_value && UUID_RE.test(row.old_value)) ids.add(row.old_value);
+      if (row.new_value && UUID_RE.test(row.new_value)) ids.add(row.new_value);
+    }
+  }
+  return [...ids];
+}
+
+function userLabel(id: string | null, names: Map<string, string>, emptyLabel: string): string {
+  if (!id) return emptyLabel;
+  return names.get(id) ?? DELETED_USER_LABEL;
+}
+
+function assignedValueLabel(value: string | null, names: Map<string, string>): string | null {
+  if (!value) return UNASSIGNED_LABEL;
+  if (!UUID_RE.test(value)) return value;
+  return names.get(value) ?? DELETED_USER_LABEL;
+}
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
@@ -66,5 +93,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     );
   }
 
-  return NextResponse.json({ ok: true as const, data: (data ?? []) as TaskHistoryRow[] });
+  const rows = (data ?? []) as TaskHistoryRow[];
+  const userNames = await resolveAssigneeDisplayNames(
+    supabase,
+    tenantCompanyId,
+    collectHistoryUserIds(rows)
+  );
+  const hydrated = rows.map((row) => ({
+    ...row,
+    actor_name: userLabel(row.actor_user_id, userNames, DELETED_USER_LABEL),
+    old_value: row.field === "assigned_to_user_id" ? assignedValueLabel(row.old_value, userNames) : row.old_value,
+    new_value: row.field === "assigned_to_user_id" ? assignedValueLabel(row.new_value, userNames) : row.new_value,
+  }));
+
+  return NextResponse.json({ ok: true as const, data: hydrated });
 }

@@ -71,6 +71,7 @@ const MANUAL_MODULE_CHOICES: ModuleKey[] = [
 ];
 
 type Feedback = { tone: "ok" | "error"; message: string } | null;
+type LoadOptions = { silent?: boolean };
 
 type FormState = {
   id: string | null;
@@ -111,10 +112,20 @@ export function TasksManagerPanel() {
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const [detailRefreshKey, setDetailRefreshKey] = useState(0);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(false);
+  const syncTask = useCallback((task: DailyTask) => {
+    setTasks((current) => {
+      if (task.source_type === "auto") return current.filter((t) => t.id !== task.id);
+      const exists = current.some((t) => t.id === task.id);
+      return exists ? current.map((t) => (t.id === task.id ? task : t)) : [task, ...current];
+    });
+  }, []);
+
+  const load = useCallback(async (options: LoadOptions = {}) => {
+    const silent = options.silent === true;
+    if (!silent) setLoading(true);
+    if (!silent) setError(false);
     const [tasksRes, usersRes] = await Promise.allSettled([
       copilotApiFetch("/api/copilot/daily-tasks"),
       copilotApiFetch("/api/copilot/daily-tasks/users"),
@@ -139,8 +150,8 @@ export function TasksManagerPanel() {
         | null;
       if (json?.ok) setUsers(json.data ?? []);
     }
-    if (!ok) setError(true);
-    setLoading(false);
+    setError(!ok);
+    if (!silent) setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -192,19 +203,26 @@ export function TasksManagerPanel() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(patch),
         });
-        const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+        const json = (await res.json().catch(() => null)) as
+          | { ok?: boolean; error?: string; data?: DailyTask }
+          | null;
         if (!res.ok || !json?.ok) {
           setFeedback({ tone: "error", message: json?.error ?? "No se pudo actualizar." });
           return false;
         }
+        if (json.data) {
+          syncTask(json.data);
+        } else {
+          await load({ silent: true });
+        }
         setFeedback({ tone: "ok", message: okMsg });
-        await load();
+        if (selectedId === id) setDetailRefreshKey((key) => key + 1);
         return true;
       } finally {
         setBusyId(null);
       }
     },
-    [load]
+    [load, selectedId, syncTask]
   );
 
   const deleteTask = useCallback(
@@ -220,12 +238,12 @@ export function TasksManagerPanel() {
         }
         setFeedback({ tone: "ok", message: "Tarea eliminada." });
         setSelectedId(null);
-        await load();
+        setTasks((current) => current.filter((task) => task.id !== id));
       } finally {
         setBusyId(null);
       }
     },
-    [load]
+    []
   );
 
   const submitForm = useCallback(async () => {
@@ -255,18 +273,28 @@ export function TasksManagerPanel() {
           body: JSON.stringify(payload),
         }
       );
-      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      const json = (await res.json().catch(() => null)) as
+        | { ok?: boolean; error?: string; data?: DailyTask }
+        | null;
       if (!res.ok || !json?.ok) {
         setFeedback({ tone: "error", message: json?.error ?? "No se pudo guardar." });
         return;
       }
+      if (json.data) {
+        syncTask(json.data);
+      } else {
+        await load({ silent: true });
+      }
       setForm(null);
       setFeedback({ tone: "ok", message: form.id ? "Tarea actualizada." : "Tarea creada." });
-      await load();
+      if (form.id) {
+        setSelectedId(form.id);
+        setDetailRefreshKey((key) => key + 1);
+      }
     } finally {
       setSubmitting(false);
     }
-  }, [form, isAdmin, load]);
+  }, [form, isAdmin, load, syncTask]);
 
   const startEdit = useCallback(
     (task: DailyTask) => {
@@ -497,6 +525,7 @@ export function TasksManagerPanel() {
           creatorName={userName(selectedTask.created_by_user_id ?? null)}
           moduleLabel={MODULE_LABELS[selectedTask.module_key] ?? selectedTask.module_key}
           busy={busyId === selectedTask.id}
+          refreshKey={detailRefreshKey}
           onClose={() => setSelectedId(null)}
           onEdit={() => startEdit(selectedTask)}
           onDelete={() => void deleteTask(selectedTask.id)}
