@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ArrowRight, ListChecks } from "lucide-react";
 
 import { copilotApiFetch } from "@/lib/copilot-fetch";
-import type { TaskSummary } from "@/lib/tasks/task-summary";
+import type { UnifiedTaskSummary } from "@/lib/tasks/unified-task-feed";
 
 /**
  * FASE 7 — Widget compacto de tareas para Hoy (§17). Solo tareas (sin monedas):
@@ -12,13 +12,13 @@ import type { TaskSummary } from "@/lib/tasks/task-summary";
  * /summary, que ya aplica la visibilidad del usuario. Silencioso si no hay nada.
  */
 export function MyTasksHoyCard() {
-  const [summary, setSummary] = useState<TaskSummary | null>(null);
+  const [summary, setSummary] = useState<UnifiedTaskSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
-      const res = await copilotApiFetch("/api/copilot/daily-tasks/summary");
-      const json = (await res.json().catch(() => null)) as { ok?: boolean; summary?: TaskSummary } | null;
+      const res = await copilotApiFetch("/api/copilot/tasks/feed?tab=priority&pageSize=5");
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; summary?: UnifiedTaskSummary } | null;
       if (json?.ok && json.summary) setSummary(json.summary);
     } finally {
       setLoading(false);
@@ -60,7 +60,7 @@ export function MyTasksHoyCard() {
         href="/copilot/tareas-diarias"
         className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs font-semibold text-[var(--copilot-accent)] transition hover:bg-[var(--copilot-hover-bg)]"
       >
-        Ver mis tareas
+        Ver tareas
         <ArrowRight className="h-3.5 w-3.5" aria-hidden />
       </a>
     </div>

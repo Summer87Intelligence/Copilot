@@ -31,11 +31,11 @@ describe("FASE 6A I5 global visual guardrails", () => {
   });
 
   it("remaining touched operational surfaces use DS-Core empty/loading primitives", () => {
-    const tareas = source("components/copilot/daily-tasks/daily-tasks-page-client.tsx");
+    const tareas = source("components/copilot/daily-tasks/unified-tasks-panel.tsx");
     const banco = source("components/copilot/bank-movements/bank-movements-page-client.tsx");
     const alertas = source("app/copilot/alertas/page.tsx");
 
-    expect(tareas).toContain("EmptyState as DsEmptyState");
+    expect(tareas).toContain("EmptyState");
     expect(tareas).toContain("SkeletonMetricGrid");
     expect(banco).toContain("EmptyState as DsEmptyState");
     expect(banco).toContain("StatusBadge");

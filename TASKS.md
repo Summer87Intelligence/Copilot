@@ -1,6 +1,7 @@
 # Tasks
 
 ## Recently Done
+- 2026-07-15 — **FASE 8 · Bandeja única de tareas inteligentes cerrada localmente**. `/copilot/tareas-diarias` quedó como una sola bandeja `Tareas`, sin selector visible Cuaderno/Todas, combinando tareas persistidas y recomendaciones virtuales por `stableKey`. Nuevo feed `/api/copilot/tasks/feed`, acciones de recomendaciones, scoring determinístico, reglas Cobranza/Clientes/Alertas/Datos con permisos server-side y sin migraciones/DML/cambios financieros. Validaciones: `tsc`, ESLint dirigido FASE 8, Vitest completo 2 veces, build y diff-check OK; `npx eslint` global conserva fallas preexistentes en artefactos ajenos.
 - 2026-07-15 — **FASE 6A Increment 5 · Global visual consistency sweep cerrado localmente**. Pulido DS-Core/tokens/a11y en Finanzas, Reportes, Tareas, Alertas, Admin, Cliente 360, Dashboard, Banco, Tesorería, Manual y Mesa de ayuda. Sin nuevas funcionalidades, sin cambios de fórmulas financieras, scopes, RLS, RBAC ni permisos. Validaciones: `tsc`, ESLint dirigido, guardrail visual, suite Vitest completa, build, smoke Playwright y QA visual local. Banco tuvo retries aislados por latencia headless local; terminó 200 en combinaciones revisadas.
 
 ## Now

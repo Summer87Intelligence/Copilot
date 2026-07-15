@@ -9,8 +9,8 @@ import { copilotApiFetch } from "@/lib/copilot-fetch";
 import { todayYmdMontevideo } from "@/lib/date/summer87-today";
 import type { ModuleKey } from "@/lib/auth/module-permissions";
 import type { DailyTask, DailyTaskPriority } from "@/lib/daily-tasks/daily-tasks-types";
-import { tasksForEntity } from "@/lib/tasks/task-entity";
 import { priorityLabel, priorityTone, statusLabel, statusTone } from "@/lib/tasks/task-ui";
+import type { UnifiedTaskItem } from "@/lib/tasks/unified-task-feed";
 
 /**
  * FASE 7 — Tarjeta reutilizable de tareas vinculadas a una entidad.
@@ -38,20 +38,54 @@ export function RelatedTasksCard({
   /** URL estable para abrir la entidad desde la tarea (action_url). */
   actionUrl?: string;
 }) {
-  const [tasks, setTasks] = useState<DailyTask[]>([]);
+  const [items, setItems] = useState<UnifiedTaskItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [draftTitle, setDraftTitle] = useState(defaultTitle);
   const [draftPriority, setDraftPriority] = useState<DailyTaskPriority>(defaultPriority);
   const [draftDue, setDraftDue] = useState("");
   const [saving, setSaving] = useState(false);
+  const [busyRecommendationId, setBusyRecommendationId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await copilotApiFetch("/api/copilot/daily-tasks");
-      const json = (await res.json().catch(() => null)) as { ok?: boolean; data?: DailyTask[] } | null;
-      if (json?.ok) setTasks(tasksForEntity(json.data ?? [], sourceType, sourceId));
+      const legacy = (await res.json().catch(() => null)) as { ok?: boolean; data?: DailyTask[] } | null;
+      const feedRes = await copilotApiFetch("/api/copilot/tasks/feed?tab=priority&pageSize=100");
+      const feed = (await feedRes.json().catch(() => null)) as { ok?: boolean; items?: UnifiedTaskItem[] } | null;
+      if (feed?.ok) {
+        setItems((feed.items ?? []).filter((item) => item.sourceType === sourceType && item.sourceId === sourceId));
+      } else if (legacy?.ok) {
+        setItems(
+          (legacy.data ?? [])
+            .filter((task) => task.source_type === sourceType && task.source_id === sourceId)
+            .map((task) => ({
+              id: task.id,
+              kind: "task",
+              title: task.title,
+              description: task.description,
+              moduleKey: task.module_key,
+              moduleLabel: task.module_key,
+              priority: task.priority,
+              status: task.status === "done" ? "completed" : task.status,
+              dueDate: task.due_date,
+              assignedToUserId: task.assigned_to_user_id,
+              createdByUserId: task.created_by_user_id ?? null,
+              sourceType: task.source_type,
+              sourceId: task.source_id,
+              actionUrl: task.action_url,
+              sourceLabel: "Manual",
+              isAutomatic: false,
+              isRecommended: false,
+              isPersisted: true,
+              stableKey: task.task_key ?? task.id,
+              task,
+              score: 0,
+              urgencyLabel: "Próximamente",
+            }))
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -90,6 +124,24 @@ export function RelatedTasksCard({
       setSaving(false);
     }
   }, [draftTitle, draftPriority, draftDue, moduleKey, sourceType, sourceId, actionUrl, defaultPriority, load]);
+
+  const claimRecommendation = useCallback(
+    async (item: UnifiedTaskItem) => {
+      setBusyRecommendationId(item.id);
+      try {
+        const res = await copilotApiFetch("/api/copilot/tasks/recommendations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stableKey: item.stableKey, action: "claim" }),
+        });
+        const json = (await res.json().catch(() => null)) as { ok?: boolean } | null;
+        if (res.ok && json?.ok) await load();
+      } finally {
+        setBusyRecommendationId(null);
+      }
+    },
+    [load]
+  );
 
   const inputClass =
     "w-full rounded-lg border border-[var(--copilot-border-strong)] bg-[var(--copilot-panel-bg)] px-2.5 py-1.5 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]";
@@ -160,17 +212,27 @@ export function RelatedTasksCard({
 
       {loading ? (
         <p className="text-xs text-[var(--copilot-ink-muted)]">Cargando tareas…</p>
-      ) : tasks.length === 0 ? (
+      ) : items.length === 0 ? (
         <p className="text-xs text-[var(--copilot-ink-muted)]">Sin tareas vinculadas.</p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {tasks.map((task) => (
-            <li key={task.id} className="flex items-center justify-between gap-2 rounded-lg border border-[var(--copilot-border)] px-3 py-2">
-              <span className="min-w-0 flex-1 truncate text-sm text-[var(--copilot-ink)]">{task.title}</span>
-              <StatusBadge tone={priorityTone(task.priority)}>{priorityLabel(task.priority)}</StatusBadge>
-              <StatusBadge tone={statusTone(task.status)} dot>
-                {statusLabel(task.status)}
+          {items.map((item) => (
+            <li key={`${item.kind}:${item.id}`} className="flex items-center justify-between gap-2 rounded-lg border border-[var(--copilot-border)] px-3 py-2">
+              <span className="min-w-0 flex-1 truncate text-sm text-[var(--copilot-ink)]">{item.title}</span>
+              <StatusBadge tone={priorityTone(item.priority)}>{priorityLabel(item.priority)}</StatusBadge>
+              <StatusBadge tone={item.kind === "recommendation" ? "warning" : item.task ? statusTone(item.task.status) : "neutral"} dot>
+                {item.kind === "recommendation" ? "Recomendada" : item.task ? statusLabel(item.task.status) : item.status}
               </StatusBadge>
+              {item.kind === "recommendation" && canWrite ? (
+                <button
+                  type="button"
+                  disabled={busyRecommendationId === item.id}
+                  onClick={() => void claimRecommendation(item)}
+                  className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+                >
+                  Tomar
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>

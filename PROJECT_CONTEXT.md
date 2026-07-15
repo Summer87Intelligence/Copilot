@@ -1,5 +1,14 @@
 # Project Context
 
+## FASE 8 — Bandeja única de tareas inteligentes — 2026-07-15 (CIERRE LOCAL)
+
+**Objetivo implementado localmente:** `/copilot/tareas-diarias` pasa a una única pantalla `Tareas` que combina tareas persistidas y recomendaciones virtuales determinísticas.
+- **Arquitectura**: nuevo feed server-side `/api/copilot/tasks/feed` con `UnifiedTaskItem`, dedupe por `stableKey`/`task_key`, score determinístico, tabs/KPIs unificados y acciones de recomendación (`claim`, `start`, `dismiss`, `materialize`) sin migraciones.
+- **Recomendaciones**: reglas por módulos habilitados para Cobranza, Clientes, Alertas y Datos usando fuentes read-only existentes, permisos server-side y sin modificar fórmulas financieras/deuda/aging.
+- **UI**: se retiró la experiencia visible Cuaderno/Todas; la pantalla usa `UnifiedTasksPanel`, botón único `Nueva tarea`, tabs Prioridad/Para hoy/Atrasadas/Recomendadas/En progreso/Completadas y admin-only Todas/Sin asignar.
+- **Integraciones**: Hoy consume el feed unificado; `RelatedTasksCard` muestra tareas y recomendaciones relacionadas para Cliente 360/Cobranza/Alertas y permite tomar recomendaciones.
+- **Checks**: `tsc --noEmit` OK, ESLint dirigido a archivos FASE 8 OK, Vitest completo 2/2 OK (369 archivos, 4412 tests), `npm run build` OK, `git diff --check` OK (solo warnings LF→CRLF). `npx eslint` global falla por errores preexistentes fuera de scope en `.vercel`/backup de skills.
+
 ## FASE 6A — Increment 5 Global Visual Sweep — 2026-07-15 (CIERRE LOCAL)
 
 **Objetivo cerrado:** barrido visual final de superficies Copilot restantes sin iniciar FASE 6B ni tocar lógica financiera/RBAC/RLS.
