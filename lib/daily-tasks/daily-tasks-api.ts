@@ -9,6 +9,7 @@ import { MODULE_KEYS } from "@/lib/auth/module-permissions";
 import {
   DAILY_TASK_PRIORITIES,
   DAILY_TASK_STATUSES,
+  DAILY_TASK_VISIBILITIES,
 } from "@/lib/daily-tasks/daily-tasks-types";
 
 const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida (YYYY-MM-DD).");
@@ -29,6 +30,7 @@ export const dailyTaskCreateBodySchema = z
     source_id: optionalNullableUuid,
     priority: z.enum(DAILY_TASK_PRIORITIES).optional(),
     status: z.enum(DAILY_TASK_STATUSES).optional(),
+    visibility: z.enum(DAILY_TASK_VISIBILITIES).optional(),
     due_date: optionalNullableYmd,
     action_url: optionalNullableString,
     metadata: optionalMetadata,
@@ -44,6 +46,7 @@ export const dailyTaskUpdateBodySchema = z
     module_key: z.enum(MODULE_KEYS).optional(),
     priority: z.enum(DAILY_TASK_PRIORITIES).optional(),
     status: z.enum(DAILY_TASK_STATUSES).optional(),
+    visibility: z.enum(DAILY_TASK_VISIBILITIES).optional(),
     due_date: optionalNullableYmd,
     action_url: optionalNullableString,
     metadata: optionalMetadata,
@@ -93,6 +96,7 @@ export function buildDailyTaskPatch(
   if ("description" in body) patch.description = body.description?.trim() || null;
   if (body.module_key !== undefined) patch.module_key = body.module_key;
   if (body.priority !== undefined) patch.priority = body.priority;
+  if (body.visibility !== undefined) patch.visibility = body.visibility;
   if ("due_date" in body) patch.due_date = body.due_date ?? null;
   if ("action_url" in body) patch.action_url = body.action_url ?? null;
   if ("metadata" in body && body.metadata !== undefined) patch.metadata = body.metadata ?? {};
