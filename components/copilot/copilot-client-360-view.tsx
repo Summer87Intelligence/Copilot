@@ -70,6 +70,7 @@ function Client360TabNav({
   return (
     <div className="sticky top-0 z-20 border-b border-[var(--copilot-border)] bg-[var(--copilot-tab-bg)] backdrop-blur-sm">
       <nav
+        role="tablist"
         className="flex overflow-x-auto scrollbar-none px-2"
         aria-label="Secciones de la ficha"
       >
@@ -79,6 +80,10 @@ function Client360TabNav({
             type="button"
             onClick={() => onTabChange(tab.id)}
             aria-current={activeTab === tab.id ? "page" : undefined}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            aria-controls={`client360-panel-${tab.id}`}
+            id={`client360-tab-${tab.id}`}
             className={`shrink-0 border-b-2 px-4 py-2.5 text-[13px] transition-colors ${
               activeTab === tab.id
                 ? "border-[var(--copilot-accent)] font-semibold text-[var(--copilot-tab-active-text)]"
@@ -284,20 +289,55 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
             <Client360TabNav activeTab={activeTab} onTabChange={handleTabChange} />
 
             {activeTab === "resumen" ? (
+              <section
+                id="client360-panel-resumen"
+                role="tabpanel"
+                aria-labelledby="client360-tab-resumen"
+              >
               <ResumenTab
                 data={data}
                 timelineEvents={timelineEvents}
                 onNavigateTab={handleTabChange}
               />
+              </section>
             ) : null}
 
-            {activeTab === "finanzas" ? <FinanzasTab data={data} /> : null}
+            {activeTab === "finanzas" ? (
+              <section
+                id="client360-panel-finanzas"
+                role="tabpanel"
+                aria-labelledby="client360-tab-finanzas"
+              >
+                <FinanzasTab data={data} />
+              </section>
+            ) : null}
 
-            {activeTab === "facturas" ? <FacturasTab invoices={data.invoices} /> : null}
+            {activeTab === "facturas" ? (
+              <section
+                id="client360-panel-facturas"
+                role="tabpanel"
+                aria-labelledby="client360-tab-facturas"
+              >
+                <FacturasTab invoices={data.invoices} />
+              </section>
+            ) : null}
 
-            {activeTab === "cobros" ? <CobrosTab receipts={data.receipts} /> : null}
+            {activeTab === "cobros" ? (
+              <section
+                id="client360-panel-cobros"
+                role="tabpanel"
+                aria-labelledby="client360-tab-cobros"
+              >
+                <CobrosTab receipts={data.receipts} />
+              </section>
+            ) : null}
 
             {activeTab === "cuenta" ? (
+              <section
+                id="client360-panel-cuenta"
+                role="tabpanel"
+                aria-labelledby="client360-tab-cuenta"
+              >
               <EstadoCuentaTab
                 companyId={companyId}
                 data={data}
@@ -305,27 +345,62 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                 displayFxRate={displayFxRate}
                 onSuggestFollowup={handleSuggestFollowup}
               />
+              </section>
             ) : null}
 
-            {activeTab === "contactos" ? <ContactosTab data={data} /> : null}
+            {activeTab === "contactos" ? (
+              <section
+                id="client360-panel-contactos"
+                role="tabpanel"
+                aria-labelledby="client360-tab-contactos"
+              >
+                <ContactosTab data={data} />
+              </section>
+            ) : null}
 
             {activeTab === "cobranza" ? (
+              <section
+                id="client360-panel-cobranza"
+                role="tabpanel"
+                aria-labelledby="client360-tab-cobranza"
+              >
               <CobranzaTab
                 data={data}
                 collectionPrefill={collectionPrefill}
                 collectionPrefillKey={collectionPrefillKey}
               />
+              </section>
             ) : null}
 
             {activeTab === "identificacion" ? (
+              <section
+                id="client360-panel-identificacion"
+                role="tabpanel"
+                aria-labelledby="client360-tab-identificacion"
+              >
               <ClientBankIdentitySection companyId={companyId} canWrite={canWrite} />
+              </section>
             ) : null}
 
             {activeTab === "actividad" ? (
+              <section
+                id="client360-panel-actividad"
+                role="tabpanel"
+                aria-labelledby="client360-tab-actividad"
+              >
               <ActividadTab events={timelineEvents} lastSyncAt={data.last_sync_at} />
+              </section>
             ) : null}
 
-            {activeTab === "notas" ? <NotasTab /> : null}
+            {activeTab === "notas" ? (
+              <section
+                id="client360-panel-notas"
+                role="tabpanel"
+                aria-labelledby="client360-tab-notas"
+              >
+                <NotasTab />
+              </section>
+            ) : null}
           </>
         ) : null}
 

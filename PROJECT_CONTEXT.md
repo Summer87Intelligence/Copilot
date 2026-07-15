@@ -1,5 +1,13 @@
 # Project Context
 
+## FASE 6A — Increment 5 Global Visual Sweep — 2026-07-15 (CIERRE LOCAL)
+
+**Objetivo cerrado:** barrido visual final de superficies Copilot restantes sin iniciar FASE 6B ni tocar lógica financiera/RBAC/RLS.
+- **UI/DS-Core**: estados empty/loading/error normalizados en Tareas, Alertas y Banco; tokens semánticos aplicados en Finanzas, Dashboard, Manual, Helpdesk, Admin, Tesorería y Cliente 360; acciones destructivas de Admin diferenciadas visualmente.
+- **Accesibilidad**: tabs de Cliente 360 y Alertas con roles/aria; modales Reportes/Admin con `role="dialog"`/`aria-modal`; severidad de Alertas con nombre accesible no dependiente solo de color.
+- **QA**: build producción OK; smoke Playwright autenticado 4/4 OK; UI QA global con 16 rutas × 5 viewports × light/dark, sin screenshots en Git. Banco requirió retries aislados por latencia local headless, todos 200 con warnings visuales menores.
+- **Checks**: `tsc --noEmit` OK, ESLint dirigido OK, guardrail visual OK, `vitest run` 357/357 archivos y 4302/4302 tests OK, `npm run build` OK, `git diff --check` OK (solo warnings LF→CRLF).
+
 ## FASE 2 — CANONICAL COLLECTIONS SEMANTICS — 2026-07-14 (CIERRE LOCAL)
 
 **Objetivo cerrado:** separar definitivamente `Cobrado aplicado` de `Cobrado registrado`.

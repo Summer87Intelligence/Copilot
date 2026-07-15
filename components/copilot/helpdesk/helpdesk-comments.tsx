@@ -9,7 +9,7 @@ type Props = {
 };
 
 const inputClass =
-  "w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm text-[var(--copilot-text)] placeholder:text-[var(--copilot-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] resize-y";
+  "w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm text-[var(--copilot-text)] placeholder:text-[var(--copilot-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30 min-h-[80px] resize-y";
 
 export function HelpdeskComments({ ticketId }: Props) {
   const [comments, setComments] = useState<HelpdeskComment[]>([]);
@@ -98,12 +98,12 @@ export function HelpdeskComments({ ticketId }: Props) {
           onChange={(e) => setBody(e.target.value)}
           disabled={submitting}
         />
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        {error && <p className="text-xs text-[var(--copilot-danger-text-strong)]">{error}</p>}
         <div className="flex justify-end">
           <button
             type="submit"
             disabled={submitting || !body.trim()}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="rounded-lg bg-[var(--copilot-accent)] px-4 py-2 text-sm font-semibold text-[var(--copilot-on-accent)] hover:bg-[var(--copilot-accent-hover)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)] disabled:cursor-not-allowed transition-colors"
           >
             {submitting ? "Enviando…" : "Comentar"}
           </button>

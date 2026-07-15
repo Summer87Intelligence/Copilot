@@ -126,10 +126,13 @@ function DashboardSummaryReportTrigger({ className = "" }: { className?: string 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setOpen(false)}>
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dashboard-summary-pdf-title"
             className="w-full max-w-sm rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-5 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-sm font-bold text-[var(--copilot-ink)]">Dashboard Resumen Ejecutivo — PDF</h3>
+            <h3 id="dashboard-summary-pdf-title" className="text-sm font-bold text-[var(--copilot-ink)]">Dashboard Resumen Ejecutivo — PDF</h3>
             <p className="mt-1 text-xs text-[var(--copilot-ink-muted)]">Seleccioná el período y la moneda para generar el reporte.</p>
             <div className="mt-4 space-y-3">
               <label className="block text-xs font-medium text-[var(--copilot-ink-muted)]">

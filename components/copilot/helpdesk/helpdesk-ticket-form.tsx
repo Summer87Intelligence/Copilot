@@ -21,7 +21,7 @@ type Props = {
 };
 
 const inputClass =
-  "w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm text-[var(--copilot-text)] placeholder:text-[var(--copilot-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500";
+  "w-full rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm text-[var(--copilot-text)] placeholder:text-[var(--copilot-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/30";
 
 const labelClass = "block text-xs font-semibold uppercase tracking-wide text-[var(--copilot-muted)] mb-1";
 
@@ -74,7 +74,7 @@ export function HelpdeskTicketForm({ onSubmit, onCancel, loading }: Props) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label htmlFor="hd-title" className={labelClass}>
-          Título <span className="text-red-500">*</span>
+          Título <span className="text-[var(--copilot-danger-text-strong)]">*</span>
         </label>
         <input
           id="hd-title"
@@ -89,7 +89,7 @@ export function HelpdeskTicketForm({ onSubmit, onCancel, loading }: Props) {
 
       <div>
         <label htmlFor="hd-description" className={labelClass}>
-          Descripción <span className="text-red-500">*</span>
+          Descripción <span className="text-[var(--copilot-danger-text-strong)]">*</span>
         </label>
         <textarea
           id="hd-description"
@@ -105,7 +105,7 @@ export function HelpdeskTicketForm({ onSubmit, onCancel, loading }: Props) {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div>
           <label htmlFor="hd-type" className={labelClass}>
-            Tipo <span className="text-red-500">*</span>
+            Tipo <span className="text-[var(--copilot-danger-text-strong)]">*</span>
           </label>
           <select
             id="hd-type"
@@ -165,7 +165,7 @@ export function HelpdeskTicketForm({ onSubmit, onCancel, loading }: Props) {
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="flex items-center gap-2 rounded-lg border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] px-4 py-3 text-sm text-[var(--copilot-muted)] hover:border-blue-400 hover:text-blue-600 transition-colors"
+          className="flex items-center gap-2 rounded-lg border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] px-4 py-3 text-sm text-[var(--copilot-muted)] hover:border-[var(--copilot-accent)] hover:text-[var(--copilot-accent)] transition-colors"
         >
           <Paperclip className="h-4 w-4 shrink-0" />
           Adjuntar imagen o PDF (máx. 10 MB)
@@ -179,7 +179,7 @@ export function HelpdeskTicketForm({ onSubmit, onCancel, loading }: Props) {
           onChange={(e) => addFiles(e.target.files)}
         />
         {fileError && (
-          <p className="mt-1 text-xs text-red-600">{fileError}</p>
+          <p className="mt-1 text-xs text-[var(--copilot-danger-text-strong)]">{fileError}</p>
         )}
         {files.length > 0 && (
           <ul className="mt-2 space-y-1">
@@ -192,7 +192,7 @@ export function HelpdeskTicketForm({ onSubmit, onCancel, loading }: Props) {
                 <button
                   type="button"
                   onClick={() => removeFile(i)}
-                  className="ml-2 shrink-0 text-[var(--copilot-muted)] hover:text-red-500"
+                  className="ml-2 shrink-0 text-[var(--copilot-muted)] hover:text-[var(--copilot-danger-text-strong)]"
                   aria-label="Quitar archivo"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -215,7 +215,7 @@ export function HelpdeskTicketForm({ onSubmit, onCancel, loading }: Props) {
         <button
           type="submit"
           disabled={loading || !title.trim() || !description.trim()}
-          className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="rounded-lg bg-[var(--copilot-accent)] px-5 py-2 text-sm font-semibold text-[var(--copilot-on-accent)] hover:bg-[var(--copilot-accent-hover)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)] disabled:cursor-not-allowed transition-colors"
         >
           {loading ? "Enviando…" : "Crear ticket"}
         </button>

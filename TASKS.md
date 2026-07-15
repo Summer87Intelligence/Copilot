@@ -1,5 +1,8 @@
 # Tasks
 
+## Recently Done
+- 2026-07-15 — **FASE 6A Increment 5 · Global visual consistency sweep cerrado localmente**. Pulido DS-Core/tokens/a11y en Finanzas, Reportes, Tareas, Alertas, Admin, Cliente 360, Dashboard, Banco, Tesorería, Manual y Mesa de ayuda. Sin nuevas funcionalidades, sin cambios de fórmulas financieras, scopes, RLS, RBAC ni permisos. Validaciones: `tsc`, ESLint dirigido, guardrail visual, suite Vitest completa, build, smoke Playwright y QA visual local. Banco tuvo retries aislados por latencia headless local; terminó 200 en combinaciones revisadas.
+
 ## Now
 - **BANK-MOVEMENTS + DAILY-TASKS Sprint B — CRUD manual usable 2026-07-09, sin push**. Migración ya aplicada (version `20260709120938`). APIs POST/PATCH/DELETE para bank-movements y daily-tasks (Zod + write-access + workspace-scoped). UI operativa: Banco (crear/editar/conciliar/ignorar/eliminar movimientos) y Tareas (crear/completar/reabrir/editar/eliminar + filtros). Fuera de scope: parser de extractos, matching automático, cron, generación automática de tareas. Sprint C: upload+parser (reusar `lib/treasury/santander-*`) + motor de sugerencias + generación de tareas.
 - **BANK-MOVEMENTS + DAILY-TASKS Sprint A — scaffold entregado 2026-07-09, sin push**. Migración `20260709000000_bank_movements_daily_tasks.sql` en preview: **NO aplicada, esperando aprobación de Andrés**. Módulos `/copilot/movimientos-bancarios` y `/copilot/tareas-diarias` con RBAC, APIs GET base (fallback controlado sin tablas), sidebar, manual y tests. Importador bancario viejo removido visualmente de Tesorería (lógica intacta para reusar). Sprint B: aplicar migración + upload/parser (reusar `lib/treasury/santander-*`) + sugerencias de matching. Sprint C: confirmación de conciliación + generación de tareas.

@@ -163,7 +163,7 @@ function CurrencyProjectionBlock({ s }: { s: FinanzasCanonicalCurrencyState }) {
         <div className="flex justify-between gap-2 border-t border-[var(--copilot-border)] pt-1.5">
           <span className="font-semibold text-[var(--copilot-ink)]">= Caja proyectada</span>
           <span
-            className={`font-bold ${s.expectedCash30d < 0 ? "text-red-600 dark:text-red-400" : "text-[var(--copilot-ink)]"}`}
+            className={`font-bold ${s.expectedCash30d < 0 ? "text-[var(--copilot-danger-text-strong)]" : "text-[var(--copilot-ink)]"}`}
           >
             {fmtCurrencyAmount(s.expectedCash30d, s.currency)}
           </span>
@@ -173,7 +173,7 @@ function CurrencyProjectionBlock({ s }: { s: FinanzasCanonicalCurrencyState }) {
           <div className="flex justify-between gap-2">
             <span className="text-[var(--copilot-ink-muted)]">Caja restante sin cobrar</span>
             <span
-              className={`font-medium ${s.safeCash30d < 0 ? "text-red-600 dark:text-red-400" : "text-[var(--copilot-ink)]"}`}
+              className={`font-medium ${s.safeCash30d < 0 ? "text-[var(--copilot-danger-text-strong)]" : "text-[var(--copilot-ink)]"}`}
             >
               {fmtCurrencyAmount(s.safeCash30d, s.currency)}
             </span>
@@ -186,10 +186,10 @@ function CurrencyProjectionBlock({ s }: { s: FinanzasCanonicalCurrencyState }) {
             key={i}
             className={`rounded-md px-3 py-2 text-xs ${
               msg.tone === "danger"
-                ? "bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-300"
+                ? "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]"
                 : msg.tone === "warn"
                   ? "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]"
-                  : "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300"
+                  : "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]"
             }`}
           >
             {msg.text}
@@ -237,7 +237,7 @@ function UsdProjectionBlock({
       <div className="flex justify-between gap-2 border-t border-[var(--copilot-border)] pt-1.5">
         <span className="font-semibold text-[var(--copilot-ink)]">= Caja proyectada</span>
         <span
-          className={`font-bold ${projected < 0 ? "text-red-600 dark:text-red-400" : "text-[var(--copilot-ink)]"}`}
+          className={`font-bold ${projected < 0 ? "text-[var(--copilot-danger-text-strong)]" : "text-[var(--copilot-ink)]"}`}
         >
           {formatUsdEquivalent(projected)}
         </span>
@@ -339,12 +339,12 @@ const RISK_STYLES: Record<
   { card: string; chip: string }
 > = {
   danger: {
-    card: "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20",
-    chip: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+    card: "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)]",
+    chip: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)]",
   },
   warning: {
-    card: "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20",
-    chip: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+    card: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)]",
+    chip: "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-badge-warning-text)]",
   },
   ok: {
     card: "border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)]",

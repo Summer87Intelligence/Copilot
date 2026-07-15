@@ -2,7 +2,7 @@
 /**
  * UI Browser QA — smoke visual manual.
  *
- * Recorre las rutas Copilot principales en 3 viewports × 2 themes, captura
+ * Recorre las rutas Copilot principales en 5 viewports × 2 themes, captura
  * screenshots y detecta hydration / console errors / mojibake / copy prohibido
  * (vencido, Aging, Workspace, etc.) / overflow horizontal / bajo contraste /
  * elementos interactivos invisibles.
@@ -17,7 +17,13 @@
  * Variables opcionales:
  *   QA_BASE_URL=http://localhost:3001  (default: detección 3000→3005 vía /login)
  *   QA_OUT=qa-out                       (default: qa-out)
- *   QA_VIEWPORTS=390,1440               (default: 390,768,1440)
+ *   QA_VIEWPORTS=390,1440               (default: 390,768,1024,1280,1440)
+ *   QA_THEMES=light,dark                (default: light,dark)
+ *   QA_ROUTES=/copilot/hoy,/copilot/admin (default: todas)
+ *   QA_SCREENSHOTS=0                    (default: 1; desactiva capturas)
+ *   QA_NAVIGATION_TIMEOUT_MS=30000      (default: 30000)
+ *   QA_WAIT_UNTIL=domcontentloaded      (default: domcontentloaded; ej. commit)
+ *   QA_NETWORK_IDLE_MS=1500             (default: 1500; presupuesto post-load)
  *
  * Requisitos:
  *   - Dev server corriendo en algún puerto local.
@@ -42,6 +48,10 @@ import path from "node:path";
 // ─── Config ──────────────────────────────────────────────────────────────────
 
 const OUT_DIR = process.env.QA_OUT ?? "qa-out";
+const CAPTURE_SCREENSHOTS = process.env.QA_SCREENSHOTS !== "0";
+const NAVIGATION_TIMEOUT_MS = Number(process.env.QA_NAVIGATION_TIMEOUT_MS ?? "30000");
+const WAIT_UNTIL = process.env.QA_WAIT_UNTIL ?? "domcontentloaded";
+const NETWORK_IDLE_TIMEOUT_MS = Number(process.env.QA_NETWORK_IDLE_MS ?? "1500");
 const COOKIE_NAME = "copilot_session";
 const SUPERADMIN_USER_ID = "22535d5c-3c6d-4bc4-a9a1-550132a1819b";
 const SUPERADMIN_ROLE = "superadmin";
@@ -50,26 +60,39 @@ const SUPERADMIN_CRED_VERSION = 1;
 const COPILOT_SESSION_TEST_SIGNING_SECRET =
   "copilot-session-test-signing-secret-v1-not-for-production";
 
-const ROUTES = [
+const DEFAULT_ROUTES = [
   "/copilot/hoy",
   "/copilot/dashboard",
   "/copilot/cartera",
+  "/copilot/cobranza",
   "/copilot/finanzas",
   "/copilot/clientes",
+  `/copilot/clientes/${SUPERADMIN_COMPANY_ID}`,
+  "/copilot/movimientos-bancarios",
   "/copilot/tesoreria",
+  "/copilot/tareas-diarias",
   "/copilot/datos",
   "/copilot/admin",
   "/copilot/alertas",
   "/copilot/reportes",
   "/copilot/manual",
-  "/copilot/agentes",
+  "/copilot/mesa-de-ayuda",
 ];
+
+const ROUTES = (() => {
+  const filter = process.env.QA_ROUTES?.trim();
+  if (!filter) return DEFAULT_ROUTES;
+  const want = new Set(filter.split(",").map((route) => route.trim()).filter(Boolean));
+  return DEFAULT_ROUTES.filter((route) => want.has(route));
+})();
 
 const VIEWPORTS = (() => {
   const filter = process.env.QA_VIEWPORTS?.trim();
   const all = [
     { name: "390", width: 390, height: 844 },
     { name: "768", width: 768, height: 1024 },
+    { name: "1024", width: 1024, height: 768 },
+    { name: "1280", width: 1280, height: 800 },
     { name: "1440", width: 1440, height: 900 },
   ];
   if (!filter || filter === "all") return all;
@@ -77,7 +100,13 @@ const VIEWPORTS = (() => {
   return all.filter((v) => want.has(v.name));
 })();
 
-const THEMES = ["light", "dark"];
+const THEMES = (() => {
+  const filter = process.env.QA_THEMES?.trim();
+  const all = ["light", "dark"];
+  if (!filter) return all;
+  const want = new Set(filter.split(",").map((theme) => theme.trim()).filter(Boolean));
+  return all.filter((theme) => want.has(theme));
+})();
 
 // Mojibake / replacement-char patterns to detect in rendered HTML.
 const MOJIBAKE_PATTERNS = [
@@ -112,14 +141,14 @@ const TEXT_FORBIDDEN_PATTERNS = [
       /vencimiento de/i,
     ],
   },
-  { label: "Label «Aging» visible (usar «Antigüedad»)", re: />\s*Aging\s*</ },
-  { label: "Label «Workspace» visible", re: />\s*Workspace\s*</ },
-  { label: "Label «Tenant» visible", re: />\s*Tenant\s*</ },
-  { label: "Label «Readonly» visible", re: />\s*Readonly\s*</ },
-  { label: "Label «Superadmin» visible (no ES)", re: />\s*Superadmin\s*</ },
-  { label: "Label «Score» visible (usar «Puntaje»)", re: />\s*Score\s*</ },
-  { label: "Label «Smoke» visible", re: />\s*Smoke\s*</ },
-  { label: "Abreviatura «Fact.» visible (usar «Facturas»)", re: />\s*Fact\.\s*</ },
+  { label: "Label «Aging» visible (usar «Antigüedad»)", re: /\bAging\b/i },
+  { label: "Label «Workspace» visible", re: /\bWorkspace\b/i },
+  { label: "Label «Tenant» visible", re: /\bTenant\b/i },
+  { label: "Label «Readonly» visible", re: /\bReadonly\b/i },
+  { label: "Label «Superadmin» visible (no ES)", re: /\bSuperadmin\b/i },
+  { label: "Label «Score» visible (usar «Puntaje»)", re: /\bScore\b/i },
+  { label: "Label «Smoke» visible", re: /\bSmoke\b/i },
+  { label: "Abreviatura «Fact.» visible (usar «Facturas»)", re: /\bFact\./i },
 ];
 
 function scanForbiddenText(html) {
@@ -346,10 +375,9 @@ async function main() {
       for (const route of ROUTES) {
         runIdx += 1;
         const slug = slugForRoute(route);
-        const screenshotPath = path.join(
-          OUT_DIR,
-          `${slug}-${theme}-${viewport.name}.png`
-        );
+        const screenshotPath = CAPTURE_SCREENSHOTS
+          ? path.join(OUT_DIR, `${slug}-${theme}-${viewport.name}.png`)
+          : null;
         const consoleErrors = [];
         const pageErrors = [];
         const responseProblems = [];
@@ -387,32 +415,41 @@ async function main() {
         let started = Date.now();
         try {
           const response = await page.goto(`${baseUrl}${route}`, {
-            waitUntil: "domcontentloaded",
-            timeout: 30_000,
+            waitUntil: WAIT_UNTIL,
+            timeout: NAVIGATION_TIMEOUT_MS,
           });
           httpStatus = response?.status() ?? 0;
+          const finalPath = new URL(page.url()).pathname;
+          if (finalPath === "/login") {
+            pageErrors.push(`auth_redirect_to_login: ${route}`);
+          }
           // Hydration + fetch budget acotado para no atascarse en rutas con polling.
-          await page.waitForLoadState("networkidle", { timeout: 6_000 }).catch(() => {});
+          await page
+            .waitForLoadState("networkidle", { timeout: NETWORK_IDLE_TIMEOUT_MS })
+            .catch(() => {});
           // Re-apply theme post-hydration en caso de override en mount.
           await page.evaluate((t) => {
             document.documentElement.setAttribute("data-theme", t);
           }, theme);
           await page.waitForTimeout(250);
 
-          // Mojibake + copy prohibido scan in raw HTML.
-          const html = await page.content();
+          // Mojibake + copy prohibido scan sobre texto visible para evitar
+          // falsos positivos desde bundles/JSON embebido en HTML.
+          const visibleText = await page.evaluate(() => document.body.innerText ?? "");
           for (const pat of MOJIBAKE_PATTERNS) {
-            const m = html.match(pat);
+            const m = visibleText.match(pat);
             if (m) mojibakeHits.push(m[0]);
           }
-          forbiddenTextHits = scanForbiddenText(html);
+          forbiddenTextHits = scanForbiddenText(visibleText);
 
           visualWarnings = await visualWarningsInPage(page);
 
-          await page.screenshot({
-            path: screenshotPath,
-            fullPage: true,
-          });
+          if (screenshotPath) {
+            await page.screenshot({
+              path: screenshotPath,
+              fullPage: true,
+            });
+          }
         } catch (err) {
           pageErrors.push(`navigation_failure: ${err?.message ?? String(err)}`);
         }
@@ -459,10 +496,6 @@ async function main() {
     JSON.stringify(findings, null, 2),
     "utf-8"
   );
-
-  function fmt(n) {
-    return String(n).padStart(3, " ");
-  }
 
   const okCount = findings.filter(
     (f) =>
@@ -613,9 +646,13 @@ async function main() {
 
   lines.push("## Screenshots");
   lines.push("");
-  lines.push(`Total generados: ${findings.length}`);
+  lines.push(`Total generados: ${CAPTURE_SCREENSHOTS ? findings.length : 0}`);
   lines.push("");
-  lines.push(`Carpeta: \`${OUT_DIR}/\``);
+  lines.push(
+    CAPTURE_SCREENSHOTS
+      ? `Carpeta: \`${OUT_DIR}/\``
+      : "Capturas desactivadas para esta corrida (`QA_SCREENSHOTS=0`)."
+  );
   lines.push("");
   lines.push("## Veredicto provisional");
   lines.push("");

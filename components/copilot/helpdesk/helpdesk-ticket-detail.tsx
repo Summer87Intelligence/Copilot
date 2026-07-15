@@ -191,7 +191,7 @@ export function HelpdeskTicketDetail({
             Nota de resolución
           </p>
           <p className="mb-2 mt-0.5 text-[11px] text-[var(--copilot-muted)]">
-            Visible para el usuario como "Respuesta del equipo" cuando el ticket está resuelto, publicado o rechazado.
+            Visible para el usuario como &quot;Respuesta del equipo&quot; cuando el ticket está resuelto, publicado o rechazado.
           </p>
           <textarea
             className={textareaClass}
@@ -208,7 +208,7 @@ export function HelpdeskTicketDetail({
               type="button"
               onClick={() => void handleSaveNote()}
               disabled={noteSaving || noteInput.trim() === savedNote}
-              className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+              className="rounded-lg bg-[var(--copilot-accent)] px-4 py-1.5 text-sm font-semibold text-[var(--copilot-on-accent)] hover:bg-[var(--copilot-accent-hover)] disabled:cursor-not-allowed disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)] transition-colors"
             >
               {noteSaving ? "Guardando…" : "Guardar nota"}
             </button>

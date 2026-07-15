@@ -24,6 +24,8 @@ import { isAutoResolvedCashRisk } from "@/lib/copilot-notifications/notification
 import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
 import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 import { CopilotKpiCard } from "@/components/copilot/ui/copilot-kpi-card";
+import { EmptyState as DsEmptyState } from "@/components/copilot/ui/empty-state";
+import { Skeleton } from "@/components/copilot/ui/skeleton";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -141,6 +143,7 @@ function SeverityPill({ severity }: { severity: string }) {
     };
   return (
     <span
+      aria-label={`Severidad: ${cfg.label}`}
       className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${cfg.cls}`}
     >
       {cfg.label}
@@ -307,23 +310,24 @@ function NotificationCard({
 
 function NotifSkeleton() {
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2.5" role="status" aria-label="Cargando alertas">
       {[0, 1, 2, 3].map((i) => (
         <div
           key={i}
           className="flex gap-3 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/70 p-4"
         >
-          <div className="h-9 w-9 animate-pulse rounded-xl bg-[var(--copilot-border)]" />
+          <Skeleton className="h-9 w-9 rounded-xl" />
           <div className="flex-1 space-y-2.5 pt-1">
             <div className="flex gap-2">
-              <div className="h-3 w-2/5 animate-pulse rounded-full bg-[var(--copilot-border)]" />
-              <div className="h-3 w-12 animate-pulse rounded-full bg-[var(--copilot-border)]/70" />
+              <Skeleton className="h-3 w-2/5 rounded-full" />
+              <Skeleton className="h-3 w-12 rounded-full" />
             </div>
-            <div className="h-2.5 w-4/5 animate-pulse rounded-full bg-[var(--copilot-border)]/60" />
-            <div className="h-2.5 w-1/4 animate-pulse rounded-full bg-[var(--copilot-border)]/40" />
+            <Skeleton className="h-2.5 w-4/5 rounded-full" />
+            <Skeleton className="h-2.5 w-1/4 rounded-full" />
           </div>
         </div>
       ))}
+      <span className="sr-only">Cargando alertas…</span>
     </div>
   );
 }
@@ -494,7 +498,7 @@ export default function CopilotAlertasPage() {
         <div className="flex items-center gap-3">
           {/* Horizontal scroll on mobile */}
           <div className="-mx-6 min-w-0 flex-1 overflow-x-auto px-6 sm:mx-0 sm:overflow-x-visible sm:px-0">
-            <div className="flex shrink-0 gap-2 pb-0.5">
+            <div className="flex shrink-0 gap-2 pb-0.5" role="tablist" aria-label="Filtros de alertas">
               {FILTER_TABS.map(({ id, label }) => {
                 const count = tabCounts[id];
                 const active = activeFilter === id;
@@ -503,6 +507,8 @@ export default function CopilotAlertasPage() {
                     key={id}
                     type="button"
                     onClick={() => setActiveFilter(id)}
+                    role="tab"
+                    aria-selected={active}
                     className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition ${
                       active
                         ? "bg-[var(--copilot-accent)] text-[var(--copilot-on-accent)] shadow-sm"
@@ -541,47 +547,33 @@ export default function CopilotAlertasPage() {
 
         {/* ── List ────────────────────────────────────────────────────────── */}
         {error && notifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--copilot-danger-border)] bg-[var(--copilot-card-bg)] px-6 py-10 text-center">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--copilot-tone-danger-bg)]">
-              <XCircle className="h-5 w-5 text-[var(--copilot-danger-text)]" aria-hidden />
-            </div>
-            <div className="space-y-1">
-              <p className="text-[15px] font-semibold text-[var(--copilot-ink)]">
-                No se pudieron cargar las alertas.
-              </p>
-              <p className="max-w-sm text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
-                Verificá tu conexión e intentá de nuevo.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => void refetch()}
-              className="flex items-center gap-1.5 rounded-xl bg-[var(--copilot-card-bg)] px-4 py-2 text-[13px] font-semibold text-[var(--copilot-ink)] ring-1 ring-[var(--copilot-border)] transition-opacity hover:opacity-70"
-            >
-              <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-              Reintentar
-            </button>
-          </div>
+          <DsEmptyState
+            icon={<XCircle className="h-5 w-5 text-[var(--copilot-danger-text)]" />}
+            title="No se pudieron cargar las alertas"
+            description="Verificá tu conexión e intentá de nuevo."
+            action={
+              <button
+                type="button"
+                onClick={() => void refetch()}
+                className="flex items-center gap-1.5 rounded-xl bg-[var(--copilot-card-bg)] px-4 py-2 text-[13px] font-semibold text-[var(--copilot-ink)] ring-1 ring-[var(--copilot-border)] transition-opacity hover:opacity-70"
+              >
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+                Reintentar
+              </button>
+            }
+          />
         ) : loading && notifications.length === 0 ? (
           <NotifSkeleton />
         ) : totalFiltered === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-6 py-12 text-center">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--copilot-soft-bg)]">
-              <Bell className="h-5 w-5 text-[var(--copilot-subtle)]" aria-hidden />
-            </div>
-            <div className="space-y-1">
-              <p className="text-[15px] font-semibold text-[var(--copilot-ink)]">
-                {activeFilter === "all"
-                  ? "Sin alertas por ahora."
-                  : "Sin resultados para este filtro."}
-              </p>
-              <p className="max-w-sm text-sm leading-relaxed text-[var(--copilot-ink-muted)]">
-                {activeFilter === "all"
-                  ? "Copilot te avisará cuando haya cobros, vencimientos o cambios relevantes."
-                  : "Probá otro filtro para ver más notificaciones."}
-              </p>
-            </div>
-          </div>
+          <DsEmptyState
+            icon={<Bell className="h-5 w-5 text-[var(--copilot-subtle)]" />}
+            title={activeFilter === "all" ? "Sin alertas por ahora" : "Sin resultados para este filtro"}
+            description={
+              activeFilter === "all"
+                ? "Copilot te avisará cuando haya cobros, vencimientos o cambios relevantes."
+                : "Probá otro filtro para ver más notificaciones."
+            }
+          />
         ) : (
           <div className="space-y-6">
             {groups.map((group) => (

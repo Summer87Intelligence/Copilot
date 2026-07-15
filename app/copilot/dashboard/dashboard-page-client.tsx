@@ -335,7 +335,11 @@ function GaugeRow({
   }
   const pct = Math.round(value * 100);
   const barColor =
-    pct >= 80 ? "#10b981" : pct >= 50 ? "#f59e0b" : "#ef4444";
+    pct >= 80
+      ? "var(--copilot-status-ok-dot)"
+      : pct >= 50
+        ? "var(--copilot-status-warn-dot)"
+        : "var(--copilot-status-critical-dot)";
   return (
     <div className="space-y-1">
       <div className="flex justify-between">
@@ -580,7 +584,7 @@ function movementTypeLabel(type: DashboardRecentMovement["type"]): string {
 function movementTypeBadgeClass(type: DashboardRecentMovement["type"]): string {
   if (type === "factura") return "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)]";
   if (type === "recibo") return "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text)]";
-  return "bg-violet-50 text-violet-700";
+  return "bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink-muted)]";
 }
 
 function RecentMovementsTable({
@@ -1644,7 +1648,7 @@ export default function DashboardPageClient() {
                 ) : (
                   <HorizontalBarChart
                     items={debtorItemsUSD}
-                    color="#3b82f6"
+                    color="var(--copilot-accent)"
                     href={(id) => `/copilot/clientes/${id}`}
                     currency="USD"
                   />
@@ -1692,7 +1696,7 @@ export default function DashboardPageClient() {
                 ) : (
                   <HorizontalBarChart
                     items={billingItemsUSD}
-                    color="#3b82f6"
+                    color="var(--copilot-accent)"
                     href={(id) => `/copilot/clientes/${id}`}
                     currency="USD"
                   />
@@ -1748,7 +1752,7 @@ export default function DashboardPageClient() {
                 ) : (
                   <HorizontalBarChart
                     items={billingItems}
-                    color="#3b82f6"
+                    color="var(--copilot-accent)"
                     href={(id) => `/copilot/clientes/${id}`}
                     currency={effectiveCurrency as "UYU" | "USD"}
                   />
@@ -1868,7 +1872,7 @@ export default function DashboardPageClient() {
                     </div>
                     <div className="text-right">
                       <p className={`text-[10px] ${C.muted}`}>Después de pagos</p>
-                      <p className={`text-xs font-semibold ${cashProjectionPoints[1]!.value < 0 ? "text-red-600" : C.ink}`}>
+                      <p className={`text-xs font-semibold ${cashProjectionPoints[1]!.value < 0 ? "text-[var(--copilot-danger-text-strong)]" : C.ink}`}>
                         {fmtAmount(cashProjectionPoints[1]!.value, isConsolidated || effectiveCurrency === "USD" ? "USD" : "UYU")}
                       </p>
                     </div>

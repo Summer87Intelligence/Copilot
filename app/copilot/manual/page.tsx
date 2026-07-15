@@ -159,10 +159,10 @@ const DAILY_FLOW_COLORS = [
   "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-success-text-strong)]",
   "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-warning-text-strong)]",
   "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-accent)]",
-  "bg-violet-100 text-violet-800",
-  "bg-orange-100 text-orange-800",
-  "bg-teal-100 text-teal-800",
-  "bg-indigo-100 text-indigo-800",
+  "bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink)]",
+  "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",
+  "bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]",
+  "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)]",
   "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-danger-text-strong)]",
 ];
 
@@ -198,7 +198,7 @@ function Accordion({
               className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-[var(--copilot-soft-bg)]/60"
             >
               <div className="flex items-center gap-3">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[rgba(31,107,74,0.08)] text-[var(--copilot-accent)]">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)]">
                   {s.icon}
                 </span>
                 <span className="text-[15px] font-semibold text-[var(--copilot-ink)]">
@@ -336,7 +336,7 @@ export default function ManualPage() {
             href="/api/copilot/manual.pdf"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-2.5 text-sm font-semibold text-[var(--copilot-ink)] shadow-sm transition hover:bg-[rgba(31,107,74,0.04)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]"
+            className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-2.5 text-sm font-semibold text-[var(--copilot-ink)] shadow-sm transition hover:bg-[var(--copilot-accent-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]"
           >
             <FileDown className="h-4 w-4 text-[var(--copilot-accent)]" aria-hidden />
             Descargar PDF

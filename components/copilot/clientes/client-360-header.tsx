@@ -9,6 +9,7 @@ import { deriveClient360HeaderStatus } from "@/lib/copilot/client-360-header-sta
 import { normalizeUruguayPhoneForWhatsApp } from "@/lib/phone/normalize-phone-for-whatsapp";
 import {
   metricValueClass,
+  statusBadgeVariants,
   subtleLabelClass,
 } from "@/components/copilot/ui/copilot-visual-system";
 import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
@@ -54,7 +55,7 @@ function KpiChip({
     ok: "text-[var(--copilot-success-text)]",
   };
   return (
-    <div className="flex flex-col gap-1 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+    <div className="flex flex-col gap-1 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-3 shadow-sm">
       <span className={subtleLabelClass}>{label}</span>
       <span className={`text-[17px] leading-tight ${metricValueClass} ${tones[tone]}`}>{value}</span>
       {sub ? <span className="text-[11px] text-[var(--copilot-ink-muted)]">{sub}</span> : null}
@@ -231,7 +232,7 @@ export function Client360Header({
               ) : null
             )}
             {hasMixedCurrency ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-sky-200/80 bg-sky-50/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-700">
+              <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${statusBadgeVariants.neutral}`}>
                 Multi-moneda
               </span>
             ) : null}

@@ -13,6 +13,8 @@ import {
   CopilotResponsiveTable,
   type CopilotResponsiveTableColumn,
 } from "@/components/copilot/ui/copilot-responsive-table";
+import { EmptyState as DsEmptyState } from "@/components/copilot/ui/empty-state";
+import { StatusBadge } from "@/components/copilot/ui/status-badge";
 import { TablePagination } from "@/components/copilot/ui/table-pagination";
 import { paginate, pageAfterFilterChange } from "@/lib/ui/table-pagination-model";
 import { nextSortState, sortRows, type SortState } from "@/lib/ui/table-sort-model";
@@ -293,12 +295,9 @@ export function BankMovementsPageClient() {
 
   const historicalBadge = (m: BankMovement) =>
     isBankMovementHistorical(m) ? (
-      <span
-        className="ml-1.5 inline-block rounded-full border border-[var(--copilot-border)] px-1.5 py-0.5 align-middle text-[10px] uppercase tracking-wide text-[var(--copilot-ink-muted)]"
-        title="Movimiento anterior al inicio operativo del banco"
-      >
+      <StatusBadge className="ml-1.5 align-middle" tone="neutral">
         Histórico
-      </span>
+      </StatusBadge>
     ) : null;
 
   const movementAmountLabel = (m: BankMovement) =>
@@ -530,21 +529,23 @@ export function BankMovementsPageClient() {
 
           {movements.length === 0 ? (
             <div className="mt-4">
-              <p className={copilotCaptionClass}>
-                {loading
-                  ? "Cargando movimientos…"
-                  : "Todavía no hay movimientos bancarios cargados."}
-              </p>
-              {!loading ? (
-                <p className={`${copilotCaptionClass} mt-1`}>
-                  En esta primera versión podés cargarlos manualmente. La importación automática
-                  queda para una próxima etapa.
-                </p>
-              ) : null}
+              <DsEmptyState
+                variant="compact"
+                title={loading ? "Cargando movimientos" : "Todavía no hay movimientos bancarios"}
+                description={
+                  loading
+                    ? "Estamos preparando el listado del banco."
+                    : "En esta primera versión podés cargarlos manualmente. La importación automática queda para una próxima etapa."
+                }
+              />
             </div>
           ) : filteredMovements.length === 0 ? (
             <div className="mt-4">
-              <p className={copilotCaptionClass}>No hay movimientos con estos filtros.</p>
+              <DsEmptyState
+                variant="compact"
+                title="No hay movimientos con estos filtros"
+                description="Probá limpiar filtros o revisar otra moneda, estado o dirección."
+              />
             </div>
           ) : (
             <div className="mt-4 space-y-3">
@@ -587,11 +588,17 @@ export function BankMovementsPageClient() {
         <section className={copilotCardStandardClass}>
           <h2 className={copilotSectionTitleClass}>Importaciones realizadas</h2>
           {imports.length === 0 ? (
-            <p className={`${copilotCaptionClass} mt-2`}>
-              {loading
-                ? "Cargando historial…"
-                : "Todavía no hay importaciones. Acá vas a ver cada extracto importado cuando la importación automática esté disponible."}
-            </p>
+            <div className="mt-3">
+              <DsEmptyState
+                variant="compact"
+                title={loading ? "Cargando historial" : "Todavía no hay importaciones"}
+                description={
+                  loading
+                    ? "Estamos preparando el historial de extractos."
+                    : "Acá vas a ver cada extracto importado cuando la importación automática esté disponible."
+                }
+              />
+            </div>
           ) : (
             <ul className="mt-3 space-y-2">
               {imports.map((item) => (

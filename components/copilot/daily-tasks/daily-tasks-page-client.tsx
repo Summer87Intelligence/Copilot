@@ -7,6 +7,8 @@ import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 import { WorkbookTaskCard } from "@/components/copilot/daily-tasks/workbook-task-card";
 import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
+import { EmptyState as DsEmptyState } from "@/components/copilot/ui/empty-state";
+import { SkeletonMetricGrid, SkeletonText } from "@/components/copilot/ui/skeleton";
 import {
   COPILOT_GRID_GAP,
   COPILOT_PAGE_GAP,
@@ -452,9 +454,15 @@ export function DailyTasksPageClient() {
       {error ? (
         <ErrorState onRetry={load} />
       ) : loading ? (
-        <p className={copilotCaptionClass}>Cargando el cuaderno de trabajo…</p>
+        <div role="status" aria-label="Cargando el cuaderno de trabajo" className="space-y-4">
+          <SkeletonMetricGrid count={4} />
+          <section className={copilotCardStandardClass}>
+            <SkeletonText lines={4} />
+          </section>
+          <span className="sr-only">Cargando el cuaderno de trabajo…</span>
+        </div>
       ) : !hasAnything ? (
-        <EmptyState />
+        <DailyTasksEmptyState />
       ) : (
         <div className="flex flex-col gap-5">
           <Section
@@ -570,17 +578,19 @@ function CollapsibleSection(props: {
   );
 }
 
-function EmptyState() {
+function DailyTasksEmptyState() {
   return (
-    <section className={`${copilotCardStandardClass} text-center`}>
-      <p className="text-base font-semibold text-[var(--copilot-text)]">Todo al día</p>
-      <p className={`${copilotCaptionClass} mt-1`}>No hay acciones urgentes para hoy.</p>
-      <div className="mt-4 flex flex-wrap justify-center gap-2">
+    <DsEmptyState
+      title="Todo al día"
+      description="No hay acciones urgentes para hoy."
+      action={
+        <div className="flex flex-wrap justify-center gap-2">
         <QuickLink href="/copilot/movimientos-bancarios" label="Ver Banco" />
         <QuickLink href="/copilot/tesoreria" label="Ver Tesorería" />
         <QuickLink href="/copilot/cartera" label="Ver Cartera" />
       </div>
-    </section>
+      }
+    />
   );
 }
 
@@ -594,18 +604,19 @@ function QuickLink({ href, label }: { href: string; label: string }) {
 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
   return (
-    <section className={`${copilotCardStandardClass} text-center`}>
-      <p className="text-sm font-semibold text-[var(--copilot-text)]">
-        No pudimos cargar el cuaderno de trabajo.
-      </p>
-      <button
-        type="button"
-        onClick={onRetry}
-        className={`mt-3 ${copilotButtonClassName({ variant: "primary", size: "sm" })}`}
-      >
-        Reintentar
-      </button>
-    </section>
+    <DsEmptyState
+      title="No pudimos cargar el cuaderno de trabajo"
+      description="Reintentá la carga para recuperar tus tareas y acciones sugeridas."
+      action={
+        <button
+          type="button"
+          onClick={onRetry}
+          className={copilotButtonClassName({ variant: "primary", size: "sm" })}
+        >
+          Reintentar
+        </button>
+      }
+    />
   );
 }
 

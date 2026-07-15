@@ -143,7 +143,7 @@ export function TesoreriaShell() {
       {section === "movimientos" ? (
         <div className="space-y-6">
           <TreasuryManualCashPanel workspace={workspace} />
-          <section className="rounded-2xl border border-dashed border-[var(--copilot-border)] bg-[rgba(248,246,242,0.5)] px-4 py-3.5">
+          <section className="rounded-2xl border border-dashed border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)]/60 px-4 py-3.5">
             <p className="text-sm font-semibold text-[var(--copilot-ink)]">
               ¿Extractos del banco?
             </p>

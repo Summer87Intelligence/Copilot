@@ -159,7 +159,7 @@ function FlowBar({
           {formatMoneyCompact(value)}
         </span>
       </div>
-      <div className="mt-1 h-2 overflow-hidden rounded-full bg-[rgba(44,40,37,0.08)]">
+      <div className="mt-1 h-2 overflow-hidden rounded-full bg-[var(--copilot-soft-bg)]">
         <div
           className={`h-full rounded-full ${barClass}`}
           style={{ width: `${pct}%` }}
@@ -877,7 +877,7 @@ function CopilotFinanzasPageContent() {
             id="copilot-finanzas-cobertura"
             className="scroll-mt-36 sm:scroll-mt-40"
           >
-          <CopilotCard className="border-[rgba(31,107,74,0.28)] bg-[rgba(31,107,74,0.07)] ring-1 ring-[rgba(31,107,74,0.12)]">
+          <CopilotCard className="border-[var(--copilot-accent)]/25 bg-[var(--copilot-accent-soft)]/50 ring-1 ring-[var(--copilot-accent)]/10">
             <CopilotSectionTitle
               title="Resolver déficit de caja"
               subtitle="Venís de Atención prioritaria — este es el plan de lectura inmediata."
@@ -930,7 +930,7 @@ function CopilotFinanzasPageContent() {
               id="copilot-finanzas-cobertura-acciones"
               className="scroll-mt-36 sm:scroll-mt-40"
             >
-              <CopilotCard className="mt-4 border-[rgba(31,107,74,0.2)] bg-[var(--copilot-card-bg)]/90">
+              <CopilotCard className="mt-4 border-[var(--copilot-accent)]/20 bg-[var(--copilot-card-bg)]/90">
                 {coberturaSinPalancasInternas ? (
                   <>
                     <CopilotSectionTitle
@@ -943,7 +943,7 @@ function CopilotFinanzasPageContent() {
                       externo.
                     </p>
 
-                    <div className="mt-6 space-y-4 rounded-xl border border-[var(--copilot-border)] bg-[rgba(31,107,74,0.04)] p-4">
+                    <div className="mt-6 space-y-4 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-accent-soft)]/35 p-4">
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-accent)]">
                           A. Activar cobranza manual
@@ -1029,7 +1029,7 @@ function CopilotFinanzasPageContent() {
                     />
 
                     <div className="mt-5 space-y-5">
-                      <div className="rounded-xl border border-[var(--copilot-border)] bg-[rgba(31,107,74,0.04)] p-4">
+                      <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-accent-soft)]/35 p-4">
                         <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-accent)]">
                           A. Cobros posibles
                         </p>
@@ -1070,7 +1070,7 @@ function CopilotFinanzasPageContent() {
                         )}
                       </div>
 
-                      <div className="rounded-xl border border-[var(--copilot-border)] bg-[rgba(31,107,74,0.04)] p-4">
+                      <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-accent-soft)]/35 p-4">
                         <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-accent)]">
                           B. Pagos a revisar
                         </p>
@@ -1105,7 +1105,7 @@ function CopilotFinanzasPageContent() {
                         )}
                       </div>
 
-                      <div className="rounded-xl border border-[var(--copilot-border)] bg-[rgba(31,107,74,0.04)] p-4">
+                      <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-accent-soft)]/35 p-4">
                         <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-accent)]">
                           C. Obligaciones a priorizar
                         </p>
@@ -1231,13 +1231,13 @@ function CopilotFinanzasPageContent() {
                 ? ` · ${predictiveHint.critical} crítica${predictiveHint.critical === 1 ? "" : "s"}`
                 : ""}
             </p>
-            <p className="mt-1 text-xs leading-relaxed text-sky-900/80">
+            <p className="mt-1 text-xs leading-relaxed text-[var(--copilot-ink-muted)]">
               Incluye liquidez proyectada, colchón de cobertura, atrasadas sin acreditación
               fiscal y pagos de impuestos sin obligación vinculada.
             </p>
             <CopilotGhostLink
               href="/copilot/alertas"
-              className="mt-3 inline-flex text-sm font-semibold text-sky-950"
+              className="mt-3 inline-flex text-sm font-semibold text-[var(--copilot-accent)]"
             >
               Abrir en Alertas →
             </CopilotGhostLink>
@@ -1247,7 +1247,7 @@ function CopilotFinanzasPageContent() {
         {/* ── Panorama de liquidez — solo modo cobertura (normal: KPI grid arriba) ── */}
         {coberturaGuided ? (
           <FinanzasPanoramaSection coberturaGuided={coberturaGuided}>
-            <CopilotCard className="border-[rgba(31,107,74,0.16)] bg-[rgba(31,107,74,0.03)]">
+            <CopilotCard className="border-[var(--copilot-accent)]/20 bg-[var(--copilot-accent-soft)]/25">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <CopilotSectionTitle
                   title="Panorama de liquidez"
@@ -1290,7 +1290,7 @@ function CopilotFinanzasPageContent() {
                     </div>
                     <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 p-4 shadow-sm">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Egresos proyectados</p>
-                      <p className="mt-2 text-xl font-semibold tabular-nums text-red-600">{formatMoneyCompact(snapshotExpectedOutflowsTotal(snapshot))}</p>
+                      <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--copilot-danger-text-strong)]">{formatMoneyCompact(snapshotExpectedOutflowsTotal(snapshot))}</p>
                       <p className="mt-1 text-[11px] text-[var(--copilot-ink-muted)]">Pagos operativos y obligaciones fiscales próximas.</p>
                     </div>
                     <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/85 p-4 shadow-sm">
@@ -1391,7 +1391,7 @@ function CopilotFinanzasPageContent() {
                 id="copilot-finanzas-fiscal-priority-intervention"
                 className="scroll-mt-36 sm:scroll-mt-40"
               >
-                <CopilotCard className="border-[rgba(31,107,74,0.32)] bg-[rgba(31,107,74,0.09)] ring-1 ring-[rgba(31,107,74,0.18)]">
+                <CopilotCard className="border-[var(--copilot-accent)]/30 bg-[var(--copilot-accent-soft)]/55 ring-1 ring-[var(--copilot-accent)]/15">
                   <CopilotSectionTitle
                     title="Resolver obligación prioritaria"
                     subtitle="Intervención guiada sobre la fila más urgente del calendario fiscal."
@@ -1531,7 +1531,7 @@ function CopilotFinanzasPageContent() {
           ) : null}
 
             <FinanzasFiscalCalendarCollapsible coberturaGuided={coberturaGuided} fiscalEmpty={!fiscalExpanded} loading={taxLoading}>
-            <CopilotCard className="border-[rgba(31,107,74,0.18)] bg-[rgba(31,107,74,0.04)]">
+            <CopilotCard className="border-[var(--copilot-accent)]/20 bg-[var(--copilot-accent-soft)]/35">
               <CopilotSectionTitle
                 title="Obligaciones fiscales"
                 subtitle="Calendario tributario sincronizado o registrado."
@@ -1604,7 +1604,7 @@ function CopilotFinanzasPageContent() {
                               key={o.id}
                               className={`flex flex-wrap items-end justify-between gap-3 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/90 px-4 py-3 text-sm ${
                                 activeDrawer
-                                  ? "ring-2 ring-[rgba(31,107,74,0.22)]"
+                                  ? "ring-2 ring-[var(--copilot-accent)]/20"
                                   : ""
                               }`}
                             >

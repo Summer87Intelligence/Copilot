@@ -142,6 +142,9 @@ function ModalOverlay({ onClose, children }: { onClose: () => void; children: Re
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Diálogo administrativo"
         className="w-full max-w-lg rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -436,23 +439,23 @@ function UserActionsMenu({
               Acciones
             </button>
             {menuOpen ? (
-              <div className="absolute right-0 z-20 mt-1 min-w-[11rem] rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] py-1 shadow-lg">
-                <button type="button" className="block w-full px-3 py-2 text-left text-xs hover:bg-[var(--copilot-border)]/40" onClick={() => { setMenuOpen(false); onEditPermissions(); }}>
+              <div className="absolute right-0 z-20 mt-1 min-w-[11rem] rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] py-1 shadow-lg" role="menu" aria-label={`Acciones para ${user.full_name}`}>
+                <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-xs hover:bg-[var(--copilot-border)]/40" onClick={() => { setMenuOpen(false); onEditPermissions(); }}>
                   Editar permisos
                 </button>
                 {user.is_active ? (
-                  <button type="button" className="block w-full px-3 py-2 text-left text-xs hover:bg-[var(--copilot-border)]/40" onClick={() => { setMenuOpen(false); onDeactivate(); }}>
+                  <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-xs hover:bg-[var(--copilot-border)]/40" onClick={() => { setMenuOpen(false); onDeactivate(); }}>
                     Desactivar cuenta
                   </button>
                 ) : (
-                  <button type="button" className="block w-full px-3 py-2 text-left text-xs hover:bg-[var(--copilot-border)]/40" onClick={() => { setMenuOpen(false); onReactivate(); }}>
+                  <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-xs hover:bg-[var(--copilot-border)]/40" onClick={() => { setMenuOpen(false); onReactivate(); }}>
                     Reactivar cuenta
                   </button>
                 )}
-                <button type="button" className="block w-full px-3 py-2 text-left text-xs hover:bg-[var(--copilot-border)]/40" onClick={() => { setMenuOpen(false); onResetPin(); }}>
+                <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-xs hover:bg-[var(--copilot-border)]/40" onClick={() => { setMenuOpen(false); onResetPin(); }}>
                   Resetear PIN
                 </button>
-                <button type="button" className="block w-full px-3 py-2 text-left text-xs text-[var(--copilot-danger-text-strong)] hover:bg-[var(--copilot-tone-danger-bg)]" onClick={() => { setMenuOpen(false); onDelete(); }}>
+                <button type="button" role="menuitem" className="block w-full border-t border-[var(--copilot-border)] px-3 py-2 text-left text-xs text-[var(--copilot-danger-text-strong)] hover:bg-[var(--copilot-tone-danger-bg)]" onClick={() => { setMenuOpen(false); onDelete(); }}>
                   Eliminar cuenta
                 </button>
               </div>
@@ -525,7 +528,7 @@ function DeactivateUserModal({
             type="button"
             onClick={() => void handleDeactivate()}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--copilot-warning-text-strong)] px-4 py-2 text-xs font-semibold text-white hover:opacity-95 disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-4 py-2 text-xs font-semibold text-[var(--copilot-warning-text-strong)] hover:bg-[var(--copilot-badge-warning-bg)] disabled:opacity-60"
           >
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PauseCircle className="h-3.5 w-3.5" />}
             Desactivar cuenta
@@ -593,7 +596,8 @@ function DeleteUserModal({
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           placeholder={user.email}
-          className="mb-4 w-full rounded-lg border border-[var(--copilot-danger-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm font-mono text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-rose-300"
+          aria-label="Email de confirmación para eliminar cuenta"
+          className="mb-4 w-full rounded-lg border border-[var(--copilot-danger-border)] bg-[var(--copilot-card-bg)] px-3 py-2 text-sm font-mono text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-danger-border)]/40"
         />
         <div className="flex justify-end gap-2">
           <CopilotGhostButton onClick={onClose} disabled={loading}>Cancelar</CopilotGhostButton>
@@ -601,7 +605,7 @@ function DeleteUserModal({
             type="button"
             onClick={() => void handleDelete()}
             disabled={confirm.trim().toLowerCase() !== confirmValue || loading}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--copilot-danger-text)] px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] px-4 py-2 text-xs font-semibold text-[var(--copilot-danger-text-strong)] hover:bg-[var(--copilot-badge-danger-bg)] disabled:opacity-100 disabled:bg-[var(--copilot-disabled-bg)] disabled:text-[var(--copilot-disabled-text)]"
           >
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
             Eliminar cuenta
@@ -954,7 +958,7 @@ export default function AdminPanelClient() {
         {!loading && users.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
-              <thead className="border-b border-[var(--copilot-border)] bg-[var(--copilot-card-alt,rgba(0,0,0,0.02))]">
+              <thead className="border-b border-[var(--copilot-border)] bg-[var(--copilot-table-header-bg)]">
                 <tr>
                   <th className="px-4 py-2.5 text-left font-semibold text-[var(--copilot-ink-muted)]">Usuario</th>
                   <th className="px-4 py-2.5 text-left font-semibold text-[var(--copilot-ink-muted)]">Rol</th>
