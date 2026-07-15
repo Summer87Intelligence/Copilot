@@ -3,7 +3,18 @@
  *
  * Usado por Cartera y otras vistas que precargan "mes actual → hoy" sin
  * disparar fetch hasta que el usuario confirma.
+ *
+ * IMPORTANTE (hidratación SSR/cliente): el "hoy" DEBE derivarse de la fecha
+ * canónica de Montevideo (`todayYmdMontevideo`), no de `new Date()` en la zona
+ * del runtime. El SSR de Vercel corre en UTC y el navegador en la zona del
+ * usuario; usar `new Date().getDate()` produce un "hoy" distinto entre servidor
+ * y cliente en la franja nocturna de Uruguay (p.ej. 23:xx UY = 02:xx UTC del
+ * día siguiente), lo que genera texto divergente y el hydration mismatch
+ * React #418 en Cartera. `todayYmdMontevideo` es idempotente para el mismo
+ * instante absoluto en ambos entornos.
  */
+
+import { todayYmdMontevideo } from "@/lib/date/summer87-today";
 
 /** Formatea una fecha local como YYYY-MM-DD (compatible con input type="date"). */
 export function formatDateInput(date: Date): string {
@@ -13,36 +24,46 @@ export function formatDateInput(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-/** Primer día del mes actual → hoy (ambos en calendario local del runtime). */
-export function getCurrentMonthToTodayRange(): { from: string; to: string } {
-  const today = new Date();
-  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-
+/** Componentes calendario (año, índice de mes 0-11) de un YYYY-MM-DD. */
+function ymdParts(ymd: string): { year: number; monthIndex: number } {
   return {
-    from: formatDateInput(firstDayOfMonth),
-    to: formatDateInput(today),
+    year: Number(ymd.slice(0, 4)),
+    monthIndex: Number(ymd.slice(5, 7)) - 1,
   };
 }
 
-/** Mes calendario anterior completo (1 → último día). */
+/**
+ * Primer día del mes actual → hoy, ambos en la fecha canónica de Montevideo.
+ * Determinístico SSR vs cliente (misma salida para el mismo instante).
+ */
+export function getCurrentMonthToTodayRange(): { from: string; to: string } {
+  const to = todayYmdMontevideo();
+  return {
+    from: `${to.slice(0, 7)}-01`,
+    to,
+  };
+}
+
+/** Mes calendario anterior completo (1 → último día), relativo a Montevideo. */
 export function getPreviousMonthRange(): { from: string; to: string } {
-  const today = new Date();
-  const firstDay = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-  const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
+  const { year, monthIndex } = ymdParts(todayYmdMontevideo());
+  const firstDay = new Date(year, monthIndex - 1, 1);
+  const lastDay = new Date(year, monthIndex, 0);
   return {
     from: formatDateInput(firstDay),
     to: formatDateInput(lastDay),
   };
 }
 
-/** Primer día del trimestre calendario actual → hoy. */
+/** Primer día del trimestre calendario actual → hoy, relativo a Montevideo. */
 export function getCurrentQuarterToTodayRange(): { from: string; to: string } {
-  const today = new Date();
-  const quarterStartMonth = Math.floor(today.getMonth() / 3) * 3;
-  const firstDay = new Date(today.getFullYear(), quarterStartMonth, 1);
+  const to = todayYmdMontevideo();
+  const { year, monthIndex } = ymdParts(to);
+  const quarterStartMonth = Math.floor(monthIndex / 3) * 3;
+  const firstDay = new Date(year, quarterStartMonth, 1);
   return {
     from: formatDateInput(firstDay),
-    to: formatDateInput(today),
+    to,
   };
 }
 
