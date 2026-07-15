@@ -15,7 +15,7 @@ function makeClientRow(overrides: Partial<CobranzaClientRow> = {}): CobranzaClie
     overdueDaysUsd: null,
     collectionOverdueUyu: 0,
     collectionOverdueUsd: 0,
-    collectionBucket: "not_overdue",
+    collectionBucket: "on_time",
     oldestOpenInvoiceIssueDate: null,
     hasDebt: true,
     isOverdue: false,

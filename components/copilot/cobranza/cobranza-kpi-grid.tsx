@@ -81,8 +81,8 @@ export function CobranzaKpiGrid({
           footnote={{
             text:
               kpis.clientsCollectionOverdueCount > 0
-                ? `${kpis.clientsCollectionOverdueCount} clientes · +7 días`
-                : "+7 días desde emisión",
+                ? `${kpis.clientsCollectionOverdueCount} clientes · +7 días de atraso`
+                : "sin saldo atrasado",
             tone: hasOverdue ? "danger" : "neutral",
           }}
         />
@@ -90,7 +90,7 @@ export function CobranzaKpiGrid({
           label="Clientes atrasados"
           value={{ primary: String(kpis.clientsCollectionOverdueCount) }}
           tone={kpis.clientsCollectionOverdueCount > 0 ? "warning" : "neutral"}
-          footnote={{ text: "con factura de más de 7 días" }}
+          footnote={{ text: "con días de atraso" }}
         />
         <FinancialMetricCard
           label="Promesas activas"

@@ -7,7 +7,7 @@ import {
   buildCobranzaClientRows,
   computeCobranzaKpis,
   groupActionsByCompany,
-  portfolioRowCollectionBucket,
+  portfolioRowOperatingDelayBucket,
   sumCobranzaSubtotals,
   type CobranzaClientRow,
   type OwnershipEntry,
@@ -113,71 +113,75 @@ describe("buildCobranzaClientRows — ownership", () => {
   });
 });
 
-// ── COLLECTION-AGING: clasificación por peor factura abierta ────────────────
+// ── OPERATING AGING: clasificación por due_date ─────────────────────────────
 
-describe("portfolioRowCollectionBucket", () => {
-  const REF = "2026-02-01";
-
-  it("sin fecha de emisión más antigua ⇒ not_overdue", () => {
-    expect(portfolioRowCollectionBucket({ oldest_open_invoice_issue_date: null }, REF)).toBe(
-      "not_overdue"
+describe("portfolioRowOperatingDelayBucket", () => {
+  it("sin días de atraso ⇒ on_time", () => {
+    expect(portfolioRowOperatingDelayBucket({ overdue_days_uyu: null, overdue_days_usd: null })).toBe(
+      "on_time"
     );
   });
 
-  it("≤ 7 días ⇒ not_overdue; 8 días ⇒ overdue_8_14", () => {
-    expect(
-      portfolioRowCollectionBucket({ oldest_open_invoice_issue_date: "2026-01-25" }, REF)
-    ).toBe("not_overdue"); // 7 días
-    expect(
-      portfolioRowCollectionBucket({ oldest_open_invoice_issue_date: "2026-01-24" }, REF)
-    ).toBe("overdue_8_14"); // 8 días
+  it("vence exacto en cutoff = al día; un día antes = 1–7 días de atraso", () => {
+    expect(portfolioRowOperatingDelayBucket({ overdue_days_uyu: 0, overdue_days_usd: null })).toBe(
+      "on_time"
+    );
+    expect(portfolioRowOperatingDelayBucket({ overdue_days_uyu: 1, overdue_days_usd: null })).toBe(
+      "late_1_7"
+    );
   });
 
-  it("clasifica 15–30 y +30", () => {
-    expect(
-      portfolioRowCollectionBucket({ oldest_open_invoice_issue_date: "2026-01-12" }, REF)
-    ).toBe("overdue_15_30"); // 20 días
-    expect(
-      portfolioRowCollectionBucket({ oldest_open_invoice_issue_date: "2025-12-01" }, REF)
-    ).toBe("overdue_30_plus");
+  it("clasifica 8–14, 15–30 y +30 por el mayor atraso entre monedas", () => {
+    expect(portfolioRowOperatingDelayBucket({ overdue_days_uyu: 9, overdue_days_usd: 3 })).toBe(
+      "late_8_14"
+    );
+    expect(portfolioRowOperatingDelayBucket({ overdue_days_uyu: 20, overdue_days_usd: null })).toBe(
+      "late_15_30"
+    );
+    expect(portfolioRowOperatingDelayBucket({ overdue_days_uyu: 12, overdue_days_usd: 45 })).toBe(
+      "late_30_plus"
+    );
   });
 });
 
 describe("buildCobranzaClientRows — campos de cobranza", () => {
-  it("propaga bucket, atrasado y fecha de la peor factura", () => {
+  it("propaga bucket y atrasado desde due_date", () => {
     const portfolio = [
       makePortfolioRow({
         company_id: "c1",
         debt_uyu: 1000,
         debt_usd: 0,
-        collection_overdue_uyu: 1000,
-        collection_overdue_usd: 0,
+        overdue_uyu: 1000,
+        overdue_usd: 0,
+        overdue_days_uyu: 45,
+        overdue_days_usd: null,
         oldest_open_invoice_issue_date: daysAgo(45),
       }),
     ];
     const rows = buildCobranzaClientRows(portfolio, NO_ACTIONS);
-    expect(rows[0].collectionBucket).toBe("overdue_30_plus");
+    expect(rows[0].collectionBucket).toBe("late_30_plus");
     expect(rows[0].isCollectionOverdue).toBe(true);
     expect(rows[0].collectionOverdueUyu).toBe(1000);
     expect(rows[0].oldestOpenInvoiceIssueDate).toBe(daysAgo(45));
   });
 
-  it("cliente con deuda fresca (≤7 días) ⇒ not_overdue", () => {
+  it("cliente con deuda no vencida ⇒ on_time aunque tenga issue_date vieja", () => {
     const portfolio = [
       makePortfolioRow({
         company_id: "c2",
         debt_uyu: 500,
-        collection_overdue_uyu: 0,
-        oldest_open_invoice_issue_date: daysAgo(3),
+        overdue_uyu: 0,
+        overdue_days_uyu: null,
+        oldest_open_invoice_issue_date: daysAgo(90),
       }),
     ];
     const rows = buildCobranzaClientRows(portfolio, NO_ACTIONS);
-    expect(rows[0].collectionBucket).toBe("not_overdue");
+    expect(rows[0].collectionBucket).toBe("on_time");
     expect(rows[0].isCollectionOverdue).toBe(false);
   });
 });
 
-// ── COLLECTION-AGING: filtros y subtotales ──────────────────────────────────
+// ── OPERATING AGING: filtros y subtotales ───────────────────────────────────
 
 function makeClientRow(overrides: Partial<CobranzaClientRow> = {}): CobranzaClientRow {
   return {
@@ -191,7 +195,7 @@ function makeClientRow(overrides: Partial<CobranzaClientRow> = {}): CobranzaClie
     overdueDaysUsd: null,
     collectionOverdueUyu: 0,
     collectionOverdueUsd: 0,
-    collectionBucket: "not_overdue",
+    collectionBucket: "on_time",
     oldestOpenInvoiceIssueDate: null,
     hasDebt: false,
     isOverdue: false,
@@ -213,11 +217,11 @@ function makeClientRow(overrides: Partial<CobranzaClientRow> = {}): CobranzaClie
 describe("applyCobranzaAgingFilter", () => {
   const rows = [
     makeClientRow({ companyId: "a", hasDebt: false }), // sin deuda
-    makeClientRow({ companyId: "b", hasDebt: true, debtUyu: 100, collectionBucket: "not_overdue" }),
-    makeClientRow({ companyId: "c", hasDebt: true, debtUyu: 100, collectionBucket: "overdue_8_14", isCollectionOverdue: true }),
-    makeClientRow({ companyId: "d", hasDebt: true, debtUyu: 100, collectionBucket: "overdue_15_30", isCollectionOverdue: true }),
-    makeClientRow({ companyId: "e", hasDebt: true, debtUyu: 100, collectionBucket: "overdue_30_plus", isCollectionOverdue: true, hasActiveAction: false }),
-    makeClientRow({ companyId: "f", hasDebt: true, debtUyu: 100, collectionBucket: "overdue_8_14", isCollectionOverdue: true, hasActiveAction: true }),
+    makeClientRow({ companyId: "b", hasDebt: true, debtUyu: 100, collectionBucket: "on_time" }),
+    makeClientRow({ companyId: "c", hasDebt: true, debtUyu: 100, collectionBucket: "late_1_7", isCollectionOverdue: true }),
+    makeClientRow({ companyId: "d", hasDebt: true, debtUyu: 100, collectionBucket: "late_15_30", isCollectionOverdue: true }),
+    makeClientRow({ companyId: "e", hasDebt: true, debtUyu: 100, collectionBucket: "late_30_plus", isCollectionOverdue: true, hasActiveAction: false }),
+    makeClientRow({ companyId: "f", hasDebt: true, debtUyu: 100, collectionBucket: "late_8_14", isCollectionOverdue: true, hasActiveAction: true }),
   ];
 
   it("'all' excluye clientes sin deuda", () => {
@@ -226,13 +230,14 @@ describe("applyCobranzaAgingFilter", () => {
     expect(ids).toHaveLength(5);
   });
 
-  it("'not_overdue' = con deuda y dentro de plazo", () => {
-    expect(applyCobranzaAgingFilter(rows, "not_overdue").map((r) => r.companyId)).toEqual(["b"]);
+  it("'on_time' = con deuda y al día", () => {
+    expect(applyCobranzaAgingFilter(rows, "on_time").map((r) => r.companyId)).toEqual(["b"]);
   });
 
   it("filtra por bucket exacto", () => {
-    expect(applyCobranzaAgingFilter(rows, "overdue_15_30").map((r) => r.companyId)).toEqual(["d"]);
-    expect(applyCobranzaAgingFilter(rows, "overdue_30_plus").map((r) => r.companyId)).toEqual(["e"]);
+    expect(applyCobranzaAgingFilter(rows, "late_1_7").map((r) => r.companyId)).toEqual(["c"]);
+    expect(applyCobranzaAgingFilter(rows, "late_15_30").map((r) => r.companyId)).toEqual(["d"]);
+    expect(applyCobranzaAgingFilter(rows, "late_30_plus").map((r) => r.companyId)).toEqual(["e"]);
   });
 
   it("'noAction' = con deuda y sin gestión activa", () => {
@@ -266,23 +271,26 @@ describe("sumCobranzaSubtotals", () => {
 });
 
 describe("computeCobranzaKpis — subtotales del modelo de cobranza", () => {
-  it("agrega atrasado por moneda y cuenta clientes atrasados", () => {
+  it("agrega saldo atrasado por due_date y cuenta clientes atrasados", () => {
     const portfolio = [
       makePortfolioRow({
         company_id: "c1",
         debt_uyu: 1000,
         debt_usd: 0,
-        collection_overdue_uyu: 1000,
-        collection_overdue_usd: 0,
+        overdue_uyu: 1000,
+        overdue_usd: 0,
+        overdue_days_uyu: 45,
+        overdue_days_usd: null,
         oldest_open_invoice_issue_date: daysAgo(45),
       }),
       makePortfolioRow({
         company_id: "c2",
         debt_uyu: 500,
         debt_usd: 0,
-        collection_overdue_uyu: 0,
-        collection_overdue_usd: 0,
-        oldest_open_invoice_issue_date: daysAgo(2),
+        overdue_uyu: 0,
+        overdue_usd: 0,
+        overdue_days_uyu: null,
+        oldest_open_invoice_issue_date: daysAgo(90),
       }),
     ];
     const kpis = computeCobranzaKpis(portfolio, []);

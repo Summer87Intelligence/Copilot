@@ -11,10 +11,9 @@ import {
   type CobranzaAgingFilter,
 } from "@/lib/copilot-cobranza-summary";
 import {
-  COLLECTION_AGING_BUCKETS,
-  type CollectionAgingBucket,
-  type CollectionAgingTone,
-} from "@/lib/collection-aging/collection-aging-model";
+  OPERATING_DELAY_BUCKETS,
+  type OperatingDelayBucket,
+} from "@/lib/copilot/operating-aging";
 import {
   applyResponsableFilter,
   type ResponsableFilter,
@@ -46,10 +45,11 @@ type Toast = { message: string; ok: boolean };
 
 const FILTER_LABELS: { id: CobranzaAgingFilter; label: string }[] = [
   { id: "all", label: "Todos" },
-  { id: "not_overdue", label: "No atrasados" },
-  { id: "overdue_8_14", label: "Atrasado 8–14" },
-  { id: "overdue_15_30", label: "Atrasado 15–30" },
-  { id: "overdue_30_plus", label: "Atrasado +30" },
+  { id: "on_time", label: "Al día" },
+  { id: "late_1_7", label: "Atraso 1–7" },
+  { id: "late_8_14", label: "Atraso 8–14" },
+  { id: "late_15_30", label: "Atraso 15–30" },
+  { id: "late_30_plus", label: "Atraso +30" },
   { id: "noAction", label: "Sin gestión" },
 ];
 
@@ -59,15 +59,17 @@ const RESP_FILTER_LABELS: { id: ResponsableFilter; label: string }[] = [
   { id: "unassigned", label: "Sin asignar" },
 ];
 
-/** Clases por tono del modelo de cobranza (badge de antigüedad). */
-const COLLECTION_TONE_CLASS: Record<CollectionAgingTone, string> = {
-  neutral:
+/** Clases por bucket operativo (badge de días de atraso). */
+const COLLECTION_TONE_CLASS: Record<OperatingDelayBucket, string> = {
+  on_time:
     "bg-[var(--copilot-tone-neutral-bg)] text-[var(--copilot-ink-muted)] border-[var(--copilot-border)]",
-  success:
+  late_1_7:
     "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-success-text-strong)] border-[var(--copilot-success-border)]",
-  warning:
+  late_8_14:
     "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]",
-  danger:
+  late_15_30:
+    "bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)] border-[var(--copilot-warning-border)]",
+  late_30_plus:
     "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]",
 };
 
@@ -87,12 +89,12 @@ function contactLabel(row: CobranzaClientRow): string | null {
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
-/** Badge de antigüedad de cobranza según la peor factura abierta del cliente. */
-function CollectionAgingBadge({ bucket }: { bucket: CollectionAgingBucket }) {
-  const spec = COLLECTION_AGING_BUCKETS[bucket];
+/** Badge de días de atraso según vencimiento del saldo abierto. */
+function CollectionAgingBadge({ bucket }: { bucket: OperatingDelayBucket }) {
+  const spec = OPERATING_DELAY_BUCKETS[bucket];
   return (
     <span
-      className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${COLLECTION_TONE_CLASS[spec.tone]}`}
+      className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${COLLECTION_TONE_CLASS[bucket]}`}
     >
       {spec.shortLabel}
     </span>
@@ -414,7 +416,7 @@ export function ClientesAGestionarList({
               Clientes a gestionar
             </h2>
             <p className="text-xs text-[var(--copilot-ink-muted)]">
-              Ordenados por vencimiento · sin paginación
+              Ordenados por días de atraso · sin paginación
             </p>
           </div>
         </div>
@@ -438,7 +440,7 @@ export function ClientesAGestionarList({
         <div className="mb-3 space-y-2">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="w-[72px] shrink-0 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-              Antigüedad
+              Atraso
             </span>
             {FILTER_LABELS.map((f) => {
               const active = filter === f.id;
@@ -508,7 +510,7 @@ export function ClientesAGestionarList({
             </div>
             <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] px-3 py-2">
               <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                Atrasado <span className="font-normal normal-case opacity-70">(+7 días)</span>
+                Atrasado
               </p>
               <SeparatedCurrencyAmounts
                 uyu={subtotals.overdueUyu}

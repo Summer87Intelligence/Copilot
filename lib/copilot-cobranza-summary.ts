@@ -1,6 +1,10 @@
 import type { ClientPortfolioRow } from "@/lib/copilot-clients-portfolio";
 import type { CollectionAction } from "@/lib/copilot-collection-types";
 import {
+  getOperatingDelayBucket,
+  type OperatingDelayBucket,
+} from "@/lib/copilot/operating-aging";
+import {
   classifyInvoiceByIssueDate,
   type CollectionAgingBucket,
 } from "@/lib/collection-aging/collection-aging-model";
@@ -11,22 +15,22 @@ export type CobranzaKpis = {
   totalOverdueUyu: number;
   totalOverdueUsd: number;
   /**
-   * COLLECTION-AGING: subtotal "Atrasado" del modelo único (saldo abierto con
-   * > 7 días desde emisión), por moneda. Subconjunto de totalDebt*.
+   * Subtotal "Atrasado" operativo por vencimiento (`due_date`), por moneda.
+   * Subconjunto de totalDebt*.
    */
   collectionOverdueUyu: number;
   collectionOverdueUsd: number;
   clientsWithDebtCount: number;
   clientsOverdueCount: number;
-  /** Clientes cuya peor factura abierta supera los 7 días (modelo de cobranza). */
+  /** Clientes con saldo atrasado por fecha de vencimiento. */
   clientsCollectionOverdueCount: number;
   activePromisesCount: number;
 };
 
 /**
- * Bucket de cobranza de un cliente según su PEOR factura abierta (= la más
- * antigua). Usa `oldest_open_invoice_issue_date` ya precomputado en el portfolio.
- * Sin facturas abiertas o sin fecha parseable ⇒ `not_overdue`.
+ * Bucket legacy por fecha de emisión.
+ * Conservado para consumidores que aún no fueron migrados fuera del modelo
+ * deprecated de cartera/clientes.
  */
 export function portfolioRowCollectionBucket(
   row: Pick<ClientPortfolioRow, "oldest_open_invoice_issue_date">,
@@ -35,6 +39,19 @@ export function portfolioRowCollectionBucket(
   const oldest = row.oldest_open_invoice_issue_date;
   if (typeof oldest !== "string" || oldest.length < 10) return "not_overdue";
   return classifyInvoiceByIssueDate(oldest, referenceDate).bucket;
+}
+
+/**
+ * Bucket operativo por fecha de vencimiento.
+ * Usa los días de atraso ya calculados por cartera a partir de `due_date`.
+ */
+export function portfolioRowOperatingDelayBucket(
+  row: Pick<ClientPortfolioRow, "overdue_days_uyu" | "overdue_days_usd">
+): OperatingDelayBucket {
+  const days = [row.overdue_days_uyu, row.overdue_days_usd]
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  if (days.length === 0) return "on_time";
+  return getOperatingDelayBucket(Math.max(...days));
 }
 
 export type OwnershipEntry = {
@@ -52,16 +69,16 @@ export type CobranzaClientRow = {
   overdueUsd: number;
   overdueDaysUyu: number | null;
   overdueDaysUsd: number | null;
-  /** Atrasado por modelo de cobranza (saldo abierto > 7 días desde emisión). */
+  /** Atrasado operativo por `due_date`. */
   collectionOverdueUyu: number;
   collectionOverdueUsd: number;
-  /** Bucket de cobranza por peor factura abierta. */
-  collectionBucket: CollectionAgingBucket;
+  /** Bucket operativo por mayor día de atraso (`due_date`). */
+  collectionBucket: OperatingDelayBucket;
   /** Fecha de emisión de la factura abierta más antigua (YYYY-MM-DD). */
   oldestOpenInvoiceIssueDate: string | null;
   hasDebt: boolean;
   isOverdue: boolean;
-  /** true si el bucket de cobranza no es `not_overdue`. */
+  /** true si el bucket operativo no es `on_time`. */
   isCollectionOverdue: boolean;
   hasActiveAction: boolean;
   latestActionStatus: string | null;
@@ -109,11 +126,11 @@ export function computeCobranzaKpis(
     totalDebtUsd += row.debt_usd ?? 0;
     totalOverdueUyu += row.overdue_uyu ?? 0;
     totalOverdueUsd += row.overdue_usd ?? 0;
-    collectionOverdueUyu += row.collection_overdue_uyu ?? 0;
-    collectionOverdueUsd += row.collection_overdue_usd ?? 0;
+    collectionOverdueUyu += row.overdue_uyu ?? 0;
+    collectionOverdueUsd += row.overdue_usd ?? 0;
     if (hasDebt) clientsWithDebtCount++;
     if (isOverdue) clientsOverdueCount++;
-    if (hasDebt && portfolioRowCollectionBucket(row) !== "not_overdue") {
+    if (hasDebt && portfolioRowOperatingDelayBucket(row) !== "on_time") {
       clientsCollectionOverdueCount++;
     }
   }
@@ -150,12 +167,12 @@ export function buildCobranzaClientRows(
     const debtUsd = row.debt_usd ?? 0;
     const overdueUyu = row.overdue_uyu ?? 0;
     const overdueUsd = row.overdue_usd ?? 0;
-    const collectionOverdueUyu = row.collection_overdue_uyu ?? 0;
-    const collectionOverdueUsd = row.collection_overdue_usd ?? 0;
+    const collectionOverdueUyu = row.overdue_uyu ?? 0;
+    const collectionOverdueUsd = row.overdue_usd ?? 0;
     const hasDebt = debtUyu > 0 || debtUsd > 0;
     const isOverdue = overdueUyu > 0 || overdueUsd > 0;
-    const collectionBucket = hasDebt ? portfolioRowCollectionBucket(row) : "not_overdue";
-    const isCollectionOverdue = collectionBucket !== "not_overdue";
+    const collectionBucket = hasDebt ? portfolioRowOperatingDelayBucket(row) : "on_time";
+    const isCollectionOverdue = collectionBucket !== "on_time";
 
     const actions = actionsByCompany.get(row.company_id) ?? [];
     const activeActions = actions.filter((a) => a.isActive);
@@ -219,23 +236,20 @@ export function buildCobranzaClientRows(
 }
 
 // ---------------------------------------------------------------------------
-// COLLECTION-AGING — filtros y subtotales (modelo único por issue_date)
+// Filtros y subtotales operativos por due_date
 // ---------------------------------------------------------------------------
 
 /**
  * Filtro de la lista "Clientes a gestionar". El universo es clientes con deuda
  * abierta (cobranza no gestiona clientes sin deuda).
  *  - `all`          → todos los clientes con deuda.
- *  - `not_overdue`  → con deuda pero dentro de plazo (≤ 7 días).
- *  - `overdue_8_14` / `overdue_15_30` / `overdue_30_plus` → por bucket.
+ *  - `on_time`      → con deuda pero al día.
+ *  - `late_*`       → por bucket de días de atraso.
  *  - `noAction`     → con deuda y sin gestión activa.
  */
 export type CobranzaAgingFilter =
   | "all"
-  | "not_overdue"
-  | "overdue_8_14"
-  | "overdue_15_30"
-  | "overdue_30_plus"
+  | OperatingDelayBucket
   | "noAction";
 
 export function applyCobranzaAgingFilter(
@@ -245,14 +259,12 @@ export function applyCobranzaAgingFilter(
   switch (filter) {
     case "all":
       return rows.filter((r) => r.hasDebt);
-    case "not_overdue":
-      return rows.filter((r) => r.hasDebt && r.collectionBucket === "not_overdue");
-    case "overdue_8_14":
-      return rows.filter((r) => r.collectionBucket === "overdue_8_14");
-    case "overdue_15_30":
-      return rows.filter((r) => r.collectionBucket === "overdue_15_30");
-    case "overdue_30_plus":
-      return rows.filter((r) => r.collectionBucket === "overdue_30_plus");
+    case "on_time":
+    case "late_1_7":
+    case "late_8_14":
+    case "late_15_30":
+    case "late_30_plus":
+      return rows.filter((r) => r.hasDebt && r.collectionBucket === filter);
     case "noAction":
       return rows.filter((r) => r.hasDebt && !r.hasActiveAction);
     default:
@@ -270,7 +282,7 @@ export type CobranzaSubtotals = {
 /**
  * Subtotales por moneda sobre un conjunto de filas (p. ej. el filtrado actual).
  *  - Pendiente = toda deuda abierta.
- *  - Atrasado  = saldo abierto con > 7 días desde emisión (modelo de cobranza).
+ *  - Atrasado  = saldo abierto con `due_date` anterior al corte.
  * Nunca mezcla UYU y USD.
  */
 export function sumCobranzaSubtotals(rows: CobranzaClientRow[]): CobranzaSubtotals {
