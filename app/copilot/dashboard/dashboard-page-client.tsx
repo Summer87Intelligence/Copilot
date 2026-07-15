@@ -45,6 +45,9 @@ import { getEndOfCurrentMonth } from "@/lib/copilot-operational-period";
 import { FINANCIAL_UX_COPY } from "@/lib/copilot-financial-ux-copy";
 import { CopilotDataProvenanceStrip } from "@/components/copilot/copilot-data-provenance-strip";
 import { CopilotPremiumEmptyState } from "@/components/copilot/copilot-premium-empty-state";
+import { FinancialMetricCard } from "@/components/copilot/ui/financial-metric-card";
+import { SkeletonMetricCard } from "@/components/copilot/ui/skeleton";
+import type { MetricCurrencyValue } from "@/lib/ui/financial-metric-card-model";
 import {
   consolidateToUsdEquivalent,
   DASHBOARD_USD_CONSOLIDATED_DISCLAIMER,
@@ -442,39 +445,21 @@ function KpiCard({
 }) {
   const showUYU = selectedCurrency !== "USD";
   const showUSD = selectedCurrency !== "UYU";
-  const critClass = negative ? "text-red-600" : C.accent;
+  const values: MetricCurrencyValue[] = [
+    showUYU ? { currency: "UYU" as const, formatted: fmtAmount(uyuValue, "UYU") } : null,
+    showUSD ? { currency: "USD" as const, formatted: fmtAmount(usdValue, "USD") } : null,
+  ].filter((v): v is MetricCurrencyValue => v !== null);
+  // Preserva la semántica original: sólo colorea en rojo montos realmente negativos.
+  const tone = negative && (uyuValue < 0 || usdValue < 0) ? "danger" : "neutral";
   return (
-    <div className={`${C.card} flex flex-col gap-3 p-4`}>
-      <div className="flex items-start justify-between gap-2">
-        <p className={`text-xs font-semibold leading-tight ${C.ink}`}>{title}</p>
-        <span title={tooltip} className={`shrink-0 cursor-help ${C.muted}`}>
-          <Info className="h-3.5 w-3.5" />
-        </span>
-      </div>
-      <div className="space-y-1">
-        {showUYU && (
-          <p className={`text-lg font-bold leading-tight tabular-nums ${negative && uyuValue < 0 ? "text-red-600" : C.ink}`}>
-            {fmtAmount(uyuValue, "UYU")}
-            <span className={`ml-1 text-[10px] font-normal ${C.muted}`}>UYU</span>
-          </p>
-        )}
-        {showUSD && (
-          <p className={`text-base font-semibold leading-tight tabular-nums ${negative && usdValue < 0 ? "text-red-600" : C.muted}`}>
-            {fmtAmount(usdValue, "USD")}
-            <span className={`ml-1 text-[10px] font-normal ${C.muted}`}>USD</span>
-          </p>
-        )}
-      </div>
-      {secondary && (
-        <p className={`text-[10px] leading-tight ${C.muted}`}>{secondary}</p>
-      )}
-      <Link
-        href={href}
-        className={`mt-auto flex items-center gap-1 text-[10px] font-medium ${critClass} hover:underline`}
-      >
-        Ver detalle <ArrowRight className="h-3 w-3" />
-      </Link>
-    </div>
+    <FinancialMetricCard
+      label={title}
+      hint={tooltip}
+      values={values}
+      tone={tone}
+      footnote={secondary ? { text: secondary } : undefined}
+      cta={{ label: "Ver detalle", href }}
+    />
   );
 }
 
@@ -1331,7 +1316,7 @@ export default function DashboardPageClient() {
           {loading ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-36" />
+                <SkeletonMetricCard key={i} />
               ))}
             </div>
           ) : (
@@ -1377,7 +1362,7 @@ export default function DashboardPageClient() {
           {loading ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-36" />
+                <SkeletonMetricCard key={i} />
               ))}
             </div>
           ) : (

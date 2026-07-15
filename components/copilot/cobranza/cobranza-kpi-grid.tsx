@@ -5,27 +5,21 @@ import type { CobranzaEffectivenessKpis } from "@/lib/copilot-cobranza-effective
 import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
 import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
 import { formatMoneyCurrency } from "@/lib/copilot-format-money";
-import { CopilotKpiCard } from "@/components/copilot/ui/copilot-kpi-card";
+import { FinancialMetricCard } from "@/components/copilot/ui/financial-metric-card";
+import type { MetricTone } from "@/lib/ui/financial-metric-card-model";
+import {
+  buildCobranzaMoneyValues,
+  contactedTone as computeContactedTone,
+  fulfillmentTone,
+} from "@/lib/ui/cobranza-kpi-cards-model";
 
-
-function formatDebt(uyu: number, usd: number, mode: "native" | "usd_equivalent", fxRate: number): string {
-  if (mode === "usd_equivalent") {
-    const total = convertToUsdEquivalent({ uyu, usd }, fxRate);
-    return formatUsdEquivalent(total);
-  }
-  const parts: string[] = [];
-  if (uyu > 0) parts.push(formatMoneyCurrency(uyu, "UYU"));
-  if (usd > 0) parts.push(formatMoneyCurrency(usd, "USD"));
-  if (parts.length === 0) return "—";
-  return parts.join(" · ");
-}
-
-function fulfillmentTone(rate: number | null): "neutral" | "warning" | "danger" {
-  if (rate == null) return "neutral";
-  if (rate < 40) return "danger";
-  if (rate < 70) return "warning";
-  return "neutral";
-}
+/**
+ * KPIs de Cobranza sobre DS-Core (`FinancialMetricCard`).
+ *
+ * Regla S4: UYU y USD SIEMPRE separados (apilados con su label), nunca
+ * combinados inline (`$… · U$S…`). No se tocan las fórmulas ni las
+ * definiciones de cobrado aplicado / registrado.
+ */
 
 export function CobranzaKpiGrid({
   kpis,
@@ -37,9 +31,19 @@ export function CobranzaKpiGrid({
   cobrosDataTruncated?: boolean;
 }) {
   const { mode, fxRate } = useDisplayCurrency();
+  const isEquiv = mode === "usd_equivalent";
 
-  const totalLabel = formatDebt(kpis.totalDebtUyu, kpis.totalDebtUsd, mode, fxRate);
-  const overdueLabel = formatDebt(kpis.collectionOverdueUyu, kpis.collectionOverdueUsd, mode, fxRate);
+  /** Props de moneda separadas (native) o equivalente USD (modo equiv). */
+  function moneyProps(uyu: number, usd: number) {
+    if (isEquiv) {
+      const hasAny = uyu > 0 || usd > 0;
+      const total = convertToUsdEquivalent({ uyu, usd }, fxRate);
+      return { value: { primary: hasAny ? formatUsdEquivalent(total) : "—" } };
+    }
+    const values = buildCobranzaMoneyValues(uyu, usd, formatMoneyCurrency);
+    return values.length > 0 ? { values } : { emptyText: "—" };
+  }
+
   const hasOverdue = kpis.collectionOverdueUyu > 0 || kpis.collectionOverdueUsd > 0;
 
   const rateLabel =
@@ -51,104 +55,68 @@ export function CobranzaKpiGrid({
       ? `${effectivenessKpis.overduePromisesCount} atrasada${effectivenessKpis.overduePromisesCount !== 1 ? "s" : ""} sin cobrar`
       : "sin promesas atrasadas";
 
-  const cobrosTruncationNote = cobrosDataTruncated
+  const cobrosNote = cobrosDataTruncated
     ? "datos parciales — historial truncado"
-    : undefined;
-  const cobrosUyuLabel =
-    effectivenessKpis.cobrosUyu > 0
-      ? formatMoneyCurrency(effectivenessKpis.cobrosUyu, "UYU")
-      : "—";
-  const cobrosUsdLabel =
-    effectivenessKpis.cobrosUsd > 0
-      ? formatMoneyCurrency(effectivenessKpis.cobrosUsd, "USD")
-      : "—";
-  const cobrosTotalUsd =
-    mode === "usd_equivalent"
-      ? convertToUsdEquivalent(
-          { uyu: effectivenessKpis.cobrosUyu, usd: effectivenessKpis.cobrosUsd },
-          fxRate
-        )
-      : 0;
-  const cobrosTotalLabel =
-    mode === "usd_equivalent" &&
-    (effectivenessKpis.cobrosUyu > 0 || effectivenessKpis.cobrosUsd > 0)
-      ? formatUsdEquivalent(cobrosTotalUsd)
-      : "—";
+    : "cobros registrados del mes";
 
   const contactedLabel = `${effectivenessKpis.clientsContactedCount} / ${effectivenessKpis.clientsWithDebtCount}`;
-  const contactedSub = "clientes con deuda contactados";
-  const contactRatePct =
-    effectivenessKpis.clientsWithDebtCount > 0
-      ? (effectivenessKpis.clientsContactedCount / effectivenessKpis.clientsWithDebtCount) * 100
-      : null;
-  const contactedTone: "neutral" | "warning" =
-    contactRatePct != null && contactRatePct < 50 ? "warning" : "neutral";
+  const contactedToneValue: MetricTone = computeContactedTone(
+    effectivenessKpis.clientsContactedCount,
+    effectivenessKpis.clientsWithDebtCount
+  );
 
   return (
     <div className="space-y-2">
-      {/* Row 1: portfolio state */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <CopilotKpiCard
-          eyebrow="Pendiente"
-          value={totalLabel}
-          subtitle={`${kpis.clientsWithDebtCount} clientes`}
+      {/* Fila 1: estado de cartera */}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 lg:items-stretch">
+        <FinancialMetricCard
+          label="Pendiente"
+          {...moneyProps(kpis.totalDebtUyu, kpis.totalDebtUsd)}
+          footnote={{ text: `${kpis.clientsWithDebtCount} clientes` }}
         />
-        <CopilotKpiCard
-          eyebrow="Atrasado"
-          value={overdueLabel}
-          subtitle={
-            kpis.clientsCollectionOverdueCount > 0
-              ? `${kpis.clientsCollectionOverdueCount} clientes · +7 días`
-              : "+7 días desde emisión"
-          }
+        <FinancialMetricCard
+          label="Atrasado"
+          {...moneyProps(kpis.collectionOverdueUyu, kpis.collectionOverdueUsd)}
           tone={hasOverdue ? "danger" : "neutral"}
+          footnote={{
+            text:
+              kpis.clientsCollectionOverdueCount > 0
+                ? `${kpis.clientsCollectionOverdueCount} clientes · +7 días`
+                : "+7 días desde emisión",
+            tone: hasOverdue ? "danger" : "neutral",
+          }}
         />
-        <CopilotKpiCard
-          eyebrow="Clientes atrasados"
-          value={String(kpis.clientsCollectionOverdueCount)}
-          subtitle="con factura de más de 7 días"
+        <FinancialMetricCard
+          label="Clientes atrasados"
+          value={{ primary: String(kpis.clientsCollectionOverdueCount) }}
           tone={kpis.clientsCollectionOverdueCount > 0 ? "warning" : "neutral"}
+          footnote={{ text: "con factura de más de 7 días" }}
         />
-        <CopilotKpiCard
-          eyebrow="Promesas activas"
-          value={String(kpis.activePromisesCount)}
-          subtitle="compromisos de pago pendientes"
+        <FinancialMetricCard
+          label="Promesas activas"
+          value={{ primary: String(kpis.activePromisesCount) }}
+          footnote={{ text: "compromisos de pago pendientes" }}
         />
       </div>
 
-      {/* Row 2: effectiveness */}
-      <div className={`grid grid-cols-2 gap-2 ${mode === "usd_equivalent" ? "sm:grid-cols-3" : "sm:grid-cols-4"}`}>
-        <CopilotKpiCard
-          eyebrow="Cumplimiento"
-          value={rateLabel}
-          subtitle={rateSub}
+      {/* Fila 2: efectividad */}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:items-stretch">
+        <FinancialMetricCard
+          label="Cumplimiento"
+          value={{ primary: rateLabel }}
           tone={fulfillmentTone(effectivenessKpis.promiseFulfillmentRate)}
+          footnote={{ text: rateSub }}
         />
-        {mode === "usd_equivalent" ? (
-          <CopilotKpiCard
-            eyebrow="Cobros este mes"
-            value={cobrosTotalLabel}
-            subtitle={cobrosTruncationNote ?? `TC ${fxRate}`}
-          />
-        ) : (
-          <>
-            <CopilotKpiCard
-              eyebrow="Cobros este mes (UYU)"
-              value={cobrosUyuLabel}
-              subtitle={cobrosTruncationNote ?? "pesos cobrados"}
-            />
-            <CopilotKpiCard
-              eyebrow="Cobros este mes (USD)"
-              value={cobrosUsdLabel}
-              subtitle={cobrosTruncationNote ?? "dólares cobrados"}
-            />
-          </>
-        )}
-        <CopilotKpiCard
-          eyebrow="Contactados"
-          value={contactedLabel}
-          subtitle={contactedSub}
-          tone={contactedTone}
+        <FinancialMetricCard
+          label="Cobros del mes"
+          {...moneyProps(effectivenessKpis.cobrosUyu, effectivenessKpis.cobrosUsd)}
+          footnote={{ text: cobrosNote }}
+        />
+        <FinancialMetricCard
+          label="Contactados"
+          value={{ primary: contactedLabel }}
+          tone={contactedToneValue}
+          footnote={{ text: "clientes con deuda contactados" }}
         />
       </div>
     </div>

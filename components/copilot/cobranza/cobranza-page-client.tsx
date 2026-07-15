@@ -20,6 +20,10 @@ import type {
   CobranzaHistoryRow,
 } from "@/lib/copilot-cobranza-history";
 import { copilotPageMainClass } from "@/components/copilot/copilot-ui";
+import {
+  SkeletonMetricCard,
+  SkeletonMetricGrid,
+} from "@/components/copilot/ui/skeleton";
 import { CobranzaKpiGrid } from "./cobranza-kpi-grid";
 import { CobranzaAgenda } from "./cobranza-agenda";
 import { ClientesAGestionarList } from "./clientes-a-gestionar-list";
@@ -170,16 +174,12 @@ export function CobranzaPageClient() {
       {/* KPIs */}
       {loading ? (
         <div className="space-y-2">
-          {[0, 1].map((row) => (
-            <div key={row} className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-20 animate-pulse rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)]"
-                />
-              ))}
-            </div>
-          ))}
+          <SkeletonMetricGrid count={4} />
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <SkeletonMetricCard key={i} />
+            ))}
+          </div>
         </div>
       ) : (
         <CobranzaKpiGrid
