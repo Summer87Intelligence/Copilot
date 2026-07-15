@@ -31,6 +31,7 @@ import {
 } from "@/components/copilot/copilot-ui";
 import { type AccessLevel, type ModuleKey } from "@/lib/auth/module-permissions";
 import { ROLE_LABELS, type SupportedRole } from "@/lib/auth/role-permission-presets";
+import { AdminTasksWorkloadPanel } from "@/components/copilot/admin/tasks-workload-panel";
 
 const SIMPLE_ROLES: Array<"superadmin" | "usuario"> = ["superadmin", "usuario"];
 
@@ -924,6 +925,9 @@ export default function AdminPanelClient() {
           hint="Sin acceso activo"
         />
       </div>
+
+      {/* Carga de trabajo de tareas (FASE 7) */}
+      <AdminTasksWorkloadPanel />
 
       {/* Error */}
       {error && (

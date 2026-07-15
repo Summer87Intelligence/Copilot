@@ -13,6 +13,7 @@ import { useDisplayCurrency } from "@/components/copilot/display-currency-provid
 import type { CollectionFollowupInitialValues } from "@/lib/account-statement/build-account-statement-followup-prefill";
 
 import { Client360Header } from "@/components/copilot/clientes/client-360-header";
+import { RelatedTasksCard } from "@/components/copilot/tasks/related-tasks-card";
 import { ResumenTab } from "@/components/copilot/clientes/tabs/resumen-tab";
 import { FinanzasTab } from "@/components/copilot/clientes/tabs/finanzas-tab";
 import { FacturasTab } from "@/components/copilot/clientes/tabs/facturas-tab";
@@ -389,6 +390,15 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                 aria-labelledby="client360-tab-actividad"
               >
               <ActividadTab events={timelineEvents} lastSyncAt={data.last_sync_at} />
+              <div className="px-5 pb-4">
+                <RelatedTasksCard
+                  sourceType="client"
+                  sourceId={companyId}
+                  moduleKey="clientes"
+                  canWrite={canWrite}
+                  title="Tareas del cliente"
+                />
+              </div>
               </section>
             ) : null}
 

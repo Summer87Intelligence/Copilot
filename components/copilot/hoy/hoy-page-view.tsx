@@ -35,6 +35,7 @@ import {
   type HoyCockpitCardId,
 } from "./hoy-cockpit-card-drawer";
 import { HoyExecutiveSummaryCard } from "./hoy-executive-summary-card";
+import { MyTasksHoyCard } from "./my-tasks-hoy-card";
 import { HoyMoneyCards } from "./hoy-money-cards";
 import { HOY_PAGE_SHELL } from "./hoy-layout";
 import Link from "next/link";
@@ -309,6 +310,8 @@ export function HoyPageView({
           onScrollToCriticalClients={scrollToCriticalClients}
           onScrollToUpcomingPayments={scrollToUpcomingPayments}
         />
+
+        <MyTasksHoyCard />
 
         <HoyMoneyCards
           moneyAvailable={cockpit.moneyAvailable}
