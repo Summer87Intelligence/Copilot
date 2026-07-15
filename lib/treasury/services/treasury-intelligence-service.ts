@@ -8,7 +8,7 @@ import {
 } from "@/lib/treasury/treasury-cash-projection";
 import { buildTreasuryInsights } from "@/lib/treasury/treasury-insights";
 import { manualCashMovementRepositoryList } from "@/lib/treasury/repositories/manual-cash-movement-repository";
-import { bankReconciliationMovementRepositoryList } from "@/lib/treasury/repositories/bank-reconciliation-movement-repository";
+import { loadTreasuryCashflowBankMovements } from "@/lib/treasury/canonical/treasury-bank-source";
 import { plannedCashObligationRepositoryList } from "@/lib/treasury/repositories/planned-cash-obligation-repository";
 import { mapDbError, todayYmdUtc } from "@/lib/treasury/treasury-db-helpers";
 import { resolveTreasuryWorkspaceId } from "@/lib/treasury/treasury-tenant";
@@ -28,9 +28,11 @@ async function loadTreasuryIntelligenceInputs(
   supabase: SupabaseClient,
   workspaceId: string
 ) {
+  // FASE-4: el banco para cashflow entra por el único punto de transición legacy,
+  // no por el repositorio directo. Resultado idéntico; solo cambia el origen.
   const [manual, bank, obligations] = await Promise.all([
     manualCashMovementRepositoryList(supabase, workspaceId, {}, 1000),
-    bankReconciliationMovementRepositoryList(supabase, workspaceId, {}, 1000),
+    loadTreasuryCashflowBankMovements(supabase, workspaceId, 1000),
     plannedCashObligationRepositoryList(supabase, workspaceId, {}, 1000),
   ]);
 
