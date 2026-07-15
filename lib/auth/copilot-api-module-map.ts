@@ -51,6 +51,7 @@ export const COPILOT_API_MODULE_PREFIXES: ReadonlyArray<readonly [string, Module
   ["/api/copilot/strategic-recommendations", "agentes"],
   ["/api/copilot/helpdesk", "helpdesk"],
   ["/api/copilot/bank-movements", "bank_movements"],
+  ["/api/copilot/tasks", "daily_tasks"],
   ["/api/copilot/daily-tasks", "daily_tasks"],
 ];
 

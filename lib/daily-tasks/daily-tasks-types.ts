@@ -56,6 +56,7 @@ export type DailyTask = {
   completed_at: string | null;
   completed_by: string | null;
   action_url: string | null;
+  metadata?: Record<string, unknown> | null;
   /** Clave estable de tarea automática (cuaderno). NULL en manuales. */
   task_key: string | null;
   /** Tarea automática pospuesta hasta esta fecha (YYYY-MM-DD). */
