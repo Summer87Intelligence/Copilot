@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
+import { requireCopilotModuleAccessAny } from "@/lib/auth/copilot-module-api-auth";
 import { getClientPortfolio, type ClientPortfolioLoad } from "@/lib/copilot-clients-portfolio";
 import { copilotRequestLogger } from "@/lib/copilot-structured-logger";
 import { createRouteSupabaseClient } from "@/lib/supabase-route-client";
@@ -15,7 +15,15 @@ export async function GET(request: NextRequest) {
   let log = copilotRequestLogger(request);
 
   try {
-    const auth = await requireCopilotModuleAccess(request, "cartera");
+    const auth = await requireCopilotModuleAccessAny(request, [
+      "cartera",
+      "clientes",
+      "cobranza",
+      "finanzas",
+      "reportes",
+      "acciones",
+      "bank_movements",
+    ]);
     if (!auth.ok) {
       log.warn("copilot_auth_failed", { phase: "require_copilot_tenant_portfolio" });
       return auth.response;

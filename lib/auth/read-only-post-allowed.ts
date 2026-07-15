@@ -4,6 +4,7 @@
  */
 
 export const READ_ONLY_ALLOWED_POST_PATHS = [
+  "/api/copilot/collection-actions/batch",
   "/api/copilot/treasury/bank-reconciliation-movements/parse",
   "/api/copilot/treasury/bank-reconciliation-movements/import",
 ] as const;

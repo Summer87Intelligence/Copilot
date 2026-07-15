@@ -10,10 +10,10 @@ vi.mock("@/lib/copilot-api-auth", () => ({
 }));
 
 import {
+  requireCopilotModuleAccessAny,
   requireCopilotModuleAccess,
   requireCopilotModuleWriteAccess,
 } from "@/lib/auth/copilot-module-api-auth";
-import { getDefaultPermissionsForRole } from "@/lib/auth/role-permission-presets";
 import { resolveCopilotApiModuleKey } from "@/lib/auth/copilot-api-module-map";
 
 const { requireCopilotTenantContext } = mocks;
@@ -181,6 +181,55 @@ describe("requireCopilotModuleAccess", () => {
     const auth = await requireCopilotModuleAccess(req, "tesoreria");
     expect(auth.ok).toBe(true);
     expect(tenantCtx.supabase.from).not.toHaveBeenCalled();
+  });
+});
+
+describe("requireCopilotModuleAccessAny", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    tenantCtx.supabase = mockPermissionsSupabase([
+      { module_key: "cartera", access_level: "none" },
+      { module_key: "cobranza", access_level: "read" },
+      { module_key: "clientes", access_level: "read" },
+    ]);
+    requireCopilotTenantContext.mockResolvedValue({
+      ok: true,
+      ctx: {
+        ...tenantCtx,
+        appUser: { ...tenantCtx.appUser, role: "usuario" },
+      },
+    });
+  });
+
+  it("permite datasets compartidos si el usuario lee al menos un módulo consumidor", async () => {
+    const req = new NextRequest("http://localhost/api/copilot/portfolio");
+    const auth = await requireCopilotModuleAccessAny(req, ["cartera", "cobranza", "clientes"]);
+    expect(auth.ok).toBe(true);
+  });
+
+  it("403 cuando ningún módulo consumidor está habilitado", async () => {
+    const supabase = mockPermissionsSupabase([
+      { module_key: "cartera", access_level: "none" },
+      { module_key: "cobranza", access_level: "none" },
+      { module_key: "clientes", access_level: "none" },
+    ]);
+    requireCopilotTenantContext.mockResolvedValue({
+      ok: true,
+      ctx: {
+        ...tenantCtx,
+        supabase,
+        appUser: { ...tenantCtx.appUser, role: "usuario" },
+      },
+    });
+    const req = new NextRequest("http://localhost/api/copilot/portfolio");
+    const auth = await requireCopilotModuleAccessAny(req, ["cartera", "cobranza", "clientes"]);
+    expect(auth.ok).toBe(false);
+    if (!auth.ok) {
+      expect(auth.response.status).toBe(403);
+      const body = await auth.response.json();
+      expect(body.code).toBe("FORBIDDEN_MODULE");
+      expect(body.moduleKeys).toEqual(["cartera", "cobranza", "clientes"]);
+    }
   });
 });
 

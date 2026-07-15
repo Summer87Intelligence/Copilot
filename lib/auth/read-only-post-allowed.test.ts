@@ -7,14 +7,18 @@ import {
 } from "@/lib/auth/read-only-post-allowed";
 
 describe("read-only POST allowlist", () => {
-  it("solo incluye parse e import preview de Santander", () => {
+  it("solo incluye endpoints POST estrictamente read-only", () => {
     expect(READ_ONLY_ALLOWED_POST_PATHS).toEqual([
+      "/api/copilot/collection-actions/batch",
       "/api/copilot/treasury/bank-reconciliation-movements/parse",
       "/api/copilot/treasury/bank-reconciliation-movements/import",
     ]);
   });
 
-  it("permite parse e import en allowlist", () => {
+  it("permite endpoints read-only en allowlist", () => {
+    expect(
+      isReadOnlyPostAllowedPath("/api/copilot/collection-actions/batch")
+    ).toBe(true);
     expect(
       isReadOnlyPostAllowedPath("/api/copilot/treasury/bank-reconciliation-movements/parse")
     ).toBe(true);
@@ -43,6 +47,12 @@ describe("read-only POST allowlist", () => {
   });
 
   it("no bloquea POST allowlisted para read-only", () => {
+    expect(
+      shouldBlockReadOnlyApiMutation(
+        "/api/copilot/collection-actions/batch",
+        "POST"
+      )
+    ).toBe(false);
     expect(
       shouldBlockReadOnlyApiMutation(
         "/api/copilot/treasury/bank-reconciliation-movements/parse",

@@ -23,6 +23,26 @@ vi.mock("@/lib/integrations/zeta/zeta-connection", () => ({
   ZetaConfigurationError: class ZetaConfigurationError extends Error {},
 }));
 
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: vi.fn(() => ({
+    from: vi.fn(() => {
+      const query = {
+        select: vi.fn(() => query),
+        eq: vi.fn(() => query),
+        not: vi.fn(() => query),
+        order: vi.fn(() => query),
+        in: vi.fn(() => query),
+        limit: vi.fn(() => query),
+        then: (
+          resolve: (value: { data: unknown[]; error: null }) => unknown,
+          reject?: (reason: unknown) => unknown
+        ) => Promise.resolve({ data: [], error: null }).then(resolve, reject),
+      };
+      return query;
+    }),
+  })),
+}));
+
 import { requireCopilotTenantContext } from "@/lib/copilot-api-auth";
 import { GET as testClientsGet } from "@/app/api/zeta/test-clients/route";
 import { GET as testConnectionGet } from "@/app/api/zeta/test-connection/route";

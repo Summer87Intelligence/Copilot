@@ -10,7 +10,7 @@ import { performance } from "node:perf_hooks";
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotModuleAccess, requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
+import { requireCopilotModuleAccessAny } from "@/lib/auth/copilot-module-api-auth";
 import { parseJsonBody } from "@/lib/api/parse-json-body";
 import { collectionGetByCompanies } from "@/lib/copilot-collection-service";
 
@@ -32,11 +32,15 @@ function readCompanyIds(value: unknown): string[] {
 
 export async function POST(request: NextRequest) {
   const started = performance.now();
-  const auth = await requireCopilotModuleWriteAccess(request, "cartera");
-  if (!auth.ok) return auth.response;
-
   const parsed = await parseJsonBody(request);
   if (!parsed.ok) return parsed.response;
+
+  const auth = await requireCopilotModuleAccessAny(
+    request,
+    ["cobranza", "cartera", "clientes", "acciones"],
+    parsed.value
+  );
+  if (!auth.ok) return auth.response;
 
   const companyIds = readCompanyIds(parsed.value);
   if (companyIds.length === 0) {

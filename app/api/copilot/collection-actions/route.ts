@@ -9,7 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
+import { requireCopilotModuleAccessAny } from "@/lib/auth/copilot-module-api-auth";
 import {
   collectionGetByCompany,
   collectionGetByWorkspace,
@@ -21,7 +21,14 @@ import {
 } from "@/lib/copilot-collection-types";
 
 export async function GET(request: NextRequest) {
-  const auth = await requireCopilotModuleAccess(request, "cartera");
+  const auth = await requireCopilotModuleAccessAny(request, [
+    "cobranza",
+    "cartera",
+    "clientes",
+    "acciones",
+    "hoy",
+    "agentes",
+  ]);
   if (!auth.ok) return auth.response;
 
   const { supabase, tenantCompanyId } = auth.ctx;

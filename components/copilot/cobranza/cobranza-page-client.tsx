@@ -67,6 +67,9 @@ export function CobranzaPageClient() {
 
       if (portfolioResult.status === "fulfilled") {
         setPortfolioRows(portfolioResult.value.rows);
+      } else {
+        setPortfolioRows([]);
+        setError("No pudimos cargar los datos. Actualizá la página o intentá nuevamente.");
       }
 
       if (collectionResult.status === "fulfilled") {
@@ -74,7 +77,15 @@ export function CobranzaPageClient() {
           ok?: boolean;
           actions?: CollectionAction[];
         } | null;
-        setCollectionActions(json?.actions ?? []);
+        if (collectionResult.value.ok && json?.ok) {
+          setCollectionActions(json.actions ?? []);
+        } else {
+          setCollectionActions([]);
+          setError("No pudimos cargar los datos. Actualizá la página o intentá nuevamente.");
+        }
+      } else {
+        setCollectionActions([]);
+        setError("No pudimos cargar los datos. Actualizá la página o intentá nuevamente.");
       }
 
       if (notifResult.status === "fulfilled") {
@@ -159,6 +170,27 @@ export function CobranzaPageClient() {
       ),
     [collectionActions, portfolioRows, monthHistory]
   );
+
+  if (!loading && error) {
+    return (
+      <div className={copilotPageMainClass}>
+        <div
+          role="alert"
+          className="rounded-2xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] px-4 py-4 text-sm text-[var(--copilot-danger-text-strong)]"
+        >
+          <p className="font-semibold">No pudimos cargar los datos</p>
+          <p className="mt-1 text-xs text-[var(--copilot-danger-text)]">{error}</p>
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="mt-3 rounded-xl border border-[var(--copilot-danger-border)] bg-[var(--copilot-card-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--copilot-danger-text-strong)] hover:bg-[var(--copilot-panel-bg)]"
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={copilotPageMainClass}>

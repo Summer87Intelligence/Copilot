@@ -39,6 +39,22 @@ function moduleForbiddenResponse(moduleKey: ModuleKey, minAccess: "read" | "writ
   );
 }
 
+function anyModuleForbiddenResponse(moduleKeys: readonly ModuleKey[], minAccess: "read" | "write") {
+  return NextResponse.json(
+    {
+      ok: false as const,
+      code: "FORBIDDEN_MODULE" as const,
+      message:
+        minAccess === "write"
+          ? "No tenés permiso de modificación en este módulo."
+          : "No tenés acceso a este módulo.",
+      moduleKey: moduleKeys[0] ?? null,
+      moduleKeys,
+    },
+    { status: 403 }
+  );
+}
+
 /** Carga preset + overrides DB para el usuario (fuente server-side, no cookie). */
 export async function loadEffectiveModulePermissionsForAppUser(
   supabase: SupabaseClient,
@@ -119,6 +135,44 @@ export async function requireCopilotModuleAccess(
   const denied = assertModuleAccess(auth.ctx, effective, moduleKey, minAccess);
   if (denied) {
     return { ok: false, response: denied };
+  }
+
+  return auth;
+}
+
+/**
+ * Auth tenant + RBAC para endpoints de lectura compartidos por varias superficies.
+ * Ej.: `/api/copilot/portfolio` alimenta Clientes, Cobranza, Reportes y Cartera.
+ * El contrato es "si puede leer al menos un módulo consumidor, puede leer el
+ * dataset del workspace que ese módulo necesita"; nunca habilita escritura.
+ */
+export async function requireCopilotModuleAccessAny(
+  request: NextRequest,
+  moduleKeys: readonly ModuleKey[],
+  body?: unknown,
+  options?: CopilotModuleAccessOptions
+): Promise<CopilotAuthResult> {
+  const minAccess = options?.minAccess ?? "read";
+  const auth = await requireCopilotTenantContext(request, body);
+  if (!auth.ok) return auth;
+
+  const role = auth.ctx.appUser.role?.trim().toLowerCase() ?? "";
+  if (role === "superadmin") {
+    return auth;
+  }
+
+  const effective = await loadEffectiveModulePermissionsForAppUser(
+    auth.ctx.supabase,
+    auth.ctx.appUser
+  );
+  const allowed = moduleKeys.some((moduleKey) =>
+    minAccess === "write"
+      ? canWriteModule(role, effective, moduleKey)
+      : canReadModule(role, effective, moduleKey)
+  );
+
+  if (!allowed) {
+    return { ok: false, response: anyModuleForbiddenResponse(moduleKeys, minAccess) };
   }
 
   return auth;
