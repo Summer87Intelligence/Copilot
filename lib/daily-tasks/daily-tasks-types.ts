@@ -4,8 +4,18 @@
  * los permisos de módulo del usuario (module_key).
  */
 
-export const DAILY_TASK_PRIORITIES = ["high", "medium", "low"] as const;
+export const DAILY_TASK_PRIORITIES = ["critical", "high", "medium", "low"] as const;
 export type DailyTaskPriority = (typeof DAILY_TASK_PRIORITIES)[number];
+
+/** Visibilidad de una tarea (FASE 7). Ver lib/tasks/task-visibility.ts. */
+export const DAILY_TASK_VISIBILITIES = ["private", "team", "workspace"] as const;
+export type DailyTaskVisibility = (typeof DAILY_TASK_VISIBILITIES)[number];
+
+export const DAILY_TASK_VISIBILITY_LABELS: Record<DailyTaskVisibility, string> = {
+  private: "Privada",
+  team: "Equipo",
+  workspace: "Todos",
+};
 
 export const DAILY_TASK_STATUSES = [
   "pending",
@@ -25,6 +35,7 @@ export const DAILY_TASK_STATUS_LABELS: Record<DailyTaskStatus, string> = {
 };
 
 export const DAILY_TASK_PRIORITY_LABELS: Record<DailyTaskPriority, string> = {
+  critical: "Crítica",
   high: "Alta",
   medium: "Media",
   low: "Baja",
@@ -49,6 +60,12 @@ export type DailyTask = {
   task_key: string | null;
   /** Tarea automática pospuesta hasta esta fecha (YYYY-MM-DD). */
   snoozed_until: string | null;
+  /**
+   * FASE 7 — multiusuario. Estas columnas se agregan en la migración
+   * 20260715130000; hasta aplicarla, las lecturas las tratan como opcionales.
+   */
+  created_by_user_id?: string | null;
+  visibility?: DailyTaskVisibility | null;
   created_at: string;
   updated_at: string;
 };
@@ -59,4 +76,13 @@ export function isValidDailyTaskStatus(v: unknown): v is DailyTaskStatus {
 
 export function isValidDailyTaskPriority(v: unknown): v is DailyTaskPriority {
   return typeof v === "string" && (DAILY_TASK_PRIORITIES as readonly string[]).includes(v);
+}
+
+export function isValidDailyTaskVisibility(v: unknown): v is DailyTaskVisibility {
+  return typeof v === "string" && (DAILY_TASK_VISIBILITIES as readonly string[]).includes(v);
+}
+
+/** Visibilidad efectiva de una tarea (default seguro = workspace). */
+export function taskVisibility(task: Pick<DailyTask, "visibility">): DailyTaskVisibility {
+  return isValidDailyTaskVisibility(task.visibility) ? task.visibility : "workspace";
 }

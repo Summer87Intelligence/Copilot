@@ -13,6 +13,8 @@ import {
 } from "@/lib/daily-tasks/daily-tasks-workbook";
 
 const PRIORITY_BADGE: Record<DailyTaskPriority, string> = {
+  critical:
+    "border-[var(--copilot-danger-border)] bg-[var(--copilot-danger-text-strong)] text-[var(--copilot-panel-bg)]",
   high: "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]",
   medium:
     "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",

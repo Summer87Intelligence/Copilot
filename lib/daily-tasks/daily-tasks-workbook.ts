@@ -64,9 +64,10 @@ const ORIGIN_RANK: Record<WorkbookOrigin, number> = {
 };
 
 const PRIORITY_RANK: Record<DailyTaskPriority, number> = {
-  high: 0,
-  medium: 1,
-  low: 2,
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
 };
 
 // ─── Entradas normalizadas del generador ──────────────────────────────────────
@@ -574,9 +575,12 @@ export function buildWorkbook(params: BuildWorkbookParams): {
   );
   const manualCards = manualOpen.map(manualToCard);
 
-  // Alta y media mezclan auto + manual; el resto manual va a su sección.
+  // Crítica + alta van a "urgente"; media a "también para hoy"; el resto manual
+  // (baja) a su sección. sortWorkbookCards ya ordena crítica antes que alta.
   const highCards = sortWorkbookCards(
-    [...autoCards, ...manualCards].filter((c) => c.priority === "high")
+    [...autoCards, ...manualCards].filter(
+      (c) => c.priority === "critical" || c.priority === "high"
+    )
   );
   const mediumCards = sortWorkbookCards(
     [...autoCards, ...manualCards].filter((c) => c.priority === "medium")

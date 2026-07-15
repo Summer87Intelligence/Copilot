@@ -21,7 +21,7 @@ describe("daily tasks types", () => {
   });
 
   it("prioridades esperadas", () => {
-    expect([...DAILY_TASK_PRIORITIES]).toEqual(["high", "medium", "low"]);
+    expect([...DAILY_TASK_PRIORITIES]).toEqual(["critical", "high", "medium", "low"]);
   });
 
   it("labels cubren todos los estados y prioridades", () => {
