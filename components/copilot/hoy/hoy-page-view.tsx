@@ -315,11 +315,6 @@ export function HoyPageView({
           payments={cockpit.payments}
           afterPayments={cockpit.afterPayments}
           receivables={cockpit.receivables}
-          cashPositionBlocks={pulse.cashPositionBlocks}
-          manualCashMovements={manualCashMovements}
-          projection30dBlocks={pulse.projection30dBlocks}
-          treasuryScheduledPayments={treasuryScheduledPayments}
-          today={today}
           debtorClientsCount={pulse.clientCounts.debtorClients}
           onCardClick={setCockpitCard}
           activeCard={cockpitCard}
