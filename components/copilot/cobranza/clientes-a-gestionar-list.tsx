@@ -30,6 +30,7 @@ import {
 } from "@/components/copilot/ui/copilot-visual-system";
 import { SeparatedCurrencyAmounts } from "@/components/copilot/ui/separated-currency-amounts";
 import { AsignarResponsableModal } from "./asignar-responsable-modal";
+import { ClientTasksButton } from "./client-tasks-button";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -216,6 +217,7 @@ function ClientMobileCard({
         >
           Gestionar
         </Link>
+        <ClientTasksButton companyId={row.companyId} companyName={row.name} canWrite={canWrite} />
         {canWrite ? (
           <button
             type="button"
@@ -335,6 +337,7 @@ function ClientDesktopRow({
           >
             Gestionar
           </Link>
+          <ClientTasksButton companyId={row.companyId} companyName={row.name} canWrite={canWrite} />
           {canWrite ? (
             <button
               type="button"

@@ -397,6 +397,7 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                   moduleKey="clientes"
                   canWrite={canWrite}
                   title="Tareas del cliente"
+                  actionUrl={`/copilot/clientes/${companyId}`}
                 />
               </div>
               </section>

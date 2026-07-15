@@ -24,6 +24,8 @@ export function RelatedTasksCard({
   canWrite = false,
   title = "Tareas relacionadas",
   defaultTitle = "",
+  defaultPriority = "medium",
+  actionUrl,
 }: {
   sourceType: string;
   sourceId: string;
@@ -31,12 +33,16 @@ export function RelatedTasksCard({
   canWrite?: boolean;
   title?: string;
   defaultTitle?: string;
+  /** Prioridad sugerida inicial (editable dentro de permisos). */
+  defaultPriority?: DailyTaskPriority;
+  /** URL estable para abrir la entidad desde la tarea (action_url). */
+  actionUrl?: string;
 }) {
   const [tasks, setTasks] = useState<DailyTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [draftTitle, setDraftTitle] = useState(defaultTitle);
-  const [draftPriority, setDraftPriority] = useState<DailyTaskPriority>("medium");
+  const [draftPriority, setDraftPriority] = useState<DailyTaskPriority>(defaultPriority);
   const [draftDue, setDraftDue] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -69,6 +75,7 @@ export function RelatedTasksCard({
           source_id: sourceId,
           priority: draftPriority,
           due_date: draftDue || null,
+          action_url: actionUrl ?? null,
         }),
       });
       const json = (await res.json().catch(() => null)) as { ok?: boolean } | null;
@@ -76,13 +83,13 @@ export function RelatedTasksCard({
         setCreating(false);
         setDraftTitle("");
         setDraftDue("");
-        setDraftPriority("medium");
+        setDraftPriority(defaultPriority);
         await load();
       }
     } finally {
       setSaving(false);
     }
-  }, [draftTitle, draftPriority, draftDue, moduleKey, sourceType, sourceId, load]);
+  }, [draftTitle, draftPriority, draftDue, moduleKey, sourceType, sourceId, actionUrl, defaultPriority, load]);
 
   const inputClass =
     "w-full rounded-lg border border-[var(--copilot-border-strong)] bg-[var(--copilot-panel-bg)] px-2.5 py-1.5 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)]";

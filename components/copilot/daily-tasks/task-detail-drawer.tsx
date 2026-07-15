@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Check, Pencil, RotateCcw, Trash2, X } from "lucide-react";
 
 import { StatusBadge } from "@/components/copilot/ui/status-badge";
 import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
+import { useFocusTrap } from "@/lib/ui/use-focus-trap";
 import { copilotApiFetch } from "@/lib/copilot-fetch";
 import { taskVisibility, DAILY_TASK_VISIBILITY_LABELS, type DailyTask } from "@/lib/daily-tasks/daily-tasks-types";
 import { isTaskOverdue } from "@/lib/tasks/task-status";
@@ -61,9 +62,14 @@ export function TaskDetailDrawer({
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [note, setNote] = useState("");
   const [savingNote, setSavingNote] = useState(false);
-  const closeRef = useRef<HTMLButtonElement>(null);
   const overdue = isTaskOverdue(task, today);
   const isDone = task.status === "done";
+
+  // Focus trap: no cierra por Escape mientras se guarda una nota (§12).
+  const onEscape = useCallback(() => {
+    if (!savingNote) onClose();
+  }, [savingNote, onClose]);
+  const dialogRef = useFocusTrap<HTMLDivElement>(true, onEscape);
 
   const loadThreads = useCallback(async () => {
     const [c, h] = await Promise.allSettled([
@@ -81,17 +87,8 @@ export function TaskDetailDrawer({
   }, [task.id]);
 
   useEffect(() => {
-    closeRef.current?.focus();
     void loadThreads();
   }, [loadThreads]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
 
   const addNote = useCallback(async () => {
     if (!note.trim()) return;
@@ -119,6 +116,7 @@ export function TaskDetailDrawer({
       role="presentation"
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="task-detail-title"
@@ -129,7 +127,7 @@ export function TaskDetailDrawer({
           <h2 id="task-detail-title" className="text-base font-semibold text-[var(--copilot-ink)]">
             {task.title}
           </h2>
-          <button ref={closeRef} type="button" onClick={onClose} aria-label="Cerrar" className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
+          <button type="button" onClick={onClose} aria-label="Cerrar" className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
             <X className="h-4 w-4" aria-hidden />
           </button>
         </div>

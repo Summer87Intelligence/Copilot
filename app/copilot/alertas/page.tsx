@@ -26,6 +26,7 @@ import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-disp
 import { CopilotKpiCard } from "@/components/copilot/ui/copilot-kpi-card";
 import { EmptyState as DsEmptyState } from "@/components/copilot/ui/empty-state";
 import { Skeleton } from "@/components/copilot/ui/skeleton";
+import { AlertTaskButton } from "@/components/copilot/alertas/alert-task-button";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -288,6 +289,8 @@ function NotificationCard({
                 <ChevronRight className="h-3 w-3" aria-hidden />
               </Link>
             ) : null}
+
+            <AlertTaskButton alertId={n.id} alertTitle={displayTitle} severity={n.severity} />
 
             {unread ? (
               <button
