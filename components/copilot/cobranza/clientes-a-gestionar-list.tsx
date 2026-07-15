@@ -20,8 +20,6 @@ import {
   type ResponsableFilter,
 } from "@/lib/cobranza/cobranza-ownership";
 import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
-import { convertToUsdEquivalent, formatUsdEquivalent } from "@/lib/currency-display-mode";
-import { formatMoneyCurrency } from "@/lib/copilot-format-money";
 import {
   COLLECTION_STATUS_LABELS,
   COLLECTION_ACTION_TYPE_LABELS,
@@ -31,6 +29,7 @@ import {
   copilotMetricLabelClass,
   metricValueClass,
 } from "@/components/copilot/ui/copilot-visual-system";
+import { SeparatedCurrencyAmounts } from "@/components/copilot/ui/separated-currency-amounts";
 import { AsignarResponsableModal } from "./asignar-responsable-modal";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -71,22 +70,6 @@ const COLLECTION_TONE_CLASS: Record<CollectionAgingTone, string> = {
   danger:
     "bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)] border-[var(--copilot-danger-border)]",
 };
-
-function formatClientDebt(
-  debtUyu: number,
-  debtUsd: number,
-  mode: "native" | "usd_equivalent",
-  fxRate: number
-): string {
-  if (mode === "usd_equivalent") {
-    const total = convertToUsdEquivalent({ uyu: debtUyu, usd: debtUsd }, fxRate);
-    return formatUsdEquivalent(total);
-  }
-  const parts: string[] = [];
-  if (debtUyu > 0) parts.push(formatMoneyCurrency(debtUyu, "UYU"));
-  if (debtUsd > 0) parts.push(formatMoneyCurrency(debtUsd, "USD"));
-  return parts.join(" · ") || "—";
-}
 
 function canAssign(role: string | null | undefined): boolean {
   if (!role) return false;
@@ -129,9 +112,6 @@ function ClientMobileCard({
   canWrite: boolean;
   onAssign: (state: AssignModalState) => void;
 }) {
-  const debtLabel = formatClientDebt(row.debtUyu, row.debtUsd, mode, fxRate);
-  const overdueLabel = formatClientDebt(row.collectionOverdueUyu, row.collectionOverdueUsd, mode, fxRate);
-
   return (
     <div className={`${actionCardClass} px-4 py-3.5`}>
       <div className="flex items-start justify-between gap-2">
@@ -146,14 +126,24 @@ function ClientMobileCard({
       <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
         <div>
           <p className={`${copilotMetricLabelClass} text-[9px]`}>Pendiente</p>
-          <p className={`${metricValueClass} text-sm`}>{debtLabel}</p>
+          <SeparatedCurrencyAmounts
+            uyu={row.debtUyu}
+            usd={row.debtUsd}
+            mode={mode}
+            fxRate={fxRate}
+            className={`${metricValueClass} text-sm`}
+          />
         </div>
         {row.isCollectionOverdue ? (
           <div>
             <p className={`${copilotMetricLabelClass} text-[9px]`}>Atrasado</p>
-            <p className={`${metricValueClass} text-sm text-[var(--copilot-danger-text-strong)]`}>
-              {overdueLabel}
-            </p>
+            <SeparatedCurrencyAmounts
+              uyu={row.collectionOverdueUyu}
+              usd={row.collectionOverdueUsd}
+              mode={mode}
+              fxRate={fxRate}
+              className={`${metricValueClass} text-sm text-[var(--copilot-danger-text-strong)]`}
+            />
           </div>
         ) : null}
       </div>
@@ -258,11 +248,6 @@ function ClientDesktopRow({
   canWrite: boolean;
   onAssign: (state: AssignModalState) => void;
 }) {
-  const debtLabel = formatClientDebt(row.debtUyu, row.debtUsd, mode, fxRate);
-  const overdueLabel = row.isCollectionOverdue
-    ? formatClientDebt(row.collectionOverdueUyu, row.collectionOverdueUsd, mode, fxRate)
-    : "—";
-
   const statusLabel = row.latestActionStatus
     ? (COLLECTION_STATUS_LABELS[
         row.latestActionStatus as keyof typeof COLLECTION_STATUS_LABELS
@@ -279,10 +264,23 @@ function ClientDesktopRow({
           {row.name}
         </Link>
       </td>
-      <td className="px-3 py-2.5 tabular-nums">{debtLabel}</td>
+      <td className="px-3 py-2.5 tabular-nums">
+        <SeparatedCurrencyAmounts
+          uyu={row.debtUyu}
+          usd={row.debtUsd}
+          mode={mode}
+          fxRate={fxRate}
+        />
+      </td>
       <td className="px-3 py-2.5 tabular-nums">
         {row.isCollectionOverdue ? (
-          <span className="text-[var(--copilot-danger-text-strong)]">{overdueLabel}</span>
+          <SeparatedCurrencyAmounts
+            uyu={row.collectionOverdueUyu}
+            usd={row.collectionOverdueUsd}
+            mode={mode}
+            fxRate={fxRate}
+            className="text-[var(--copilot-danger-text-strong)]"
+          />
         ) : (
           "—"
         )}
@@ -500,19 +498,25 @@ export function ClientesAGestionarList({
               <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Pendiente
               </p>
-              <p className="mt-0.5 text-sm font-bold tabular-nums text-[var(--copilot-ink)]">
-                {formatClientDebt(subtotals.pendingUyu, subtotals.pendingUsd, mode, fxRate)}
-              </p>
+              <SeparatedCurrencyAmounts
+                uyu={subtotals.pendingUyu}
+                usd={subtotals.pendingUsd}
+                mode={mode}
+                fxRate={fxRate}
+                className="mt-0.5 text-sm font-bold text-[var(--copilot-ink)]"
+              />
             </div>
             <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] px-3 py-2">
               <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
                 Atrasado <span className="font-normal normal-case opacity-70">(+7 días)</span>
               </p>
-              <p className="mt-0.5 text-sm font-bold tabular-nums text-[var(--copilot-danger-text-strong)]">
-                {subtotals.overdueUyu > 0 || subtotals.overdueUsd > 0
-                  ? formatClientDebt(subtotals.overdueUyu, subtotals.overdueUsd, mode, fxRate)
-                  : "—"}
-              </p>
+              <SeparatedCurrencyAmounts
+                uyu={subtotals.overdueUyu}
+                usd={subtotals.overdueUsd}
+                mode={mode}
+                fxRate={fxRate}
+                className="mt-0.5 text-sm font-bold text-[var(--copilot-danger-text-strong)]"
+              />
               {mode === "usd_equivalent" ? (
                 <p className="text-[10px] text-[var(--copilot-ink-muted)]">TC {fxRate}</p>
               ) : null}

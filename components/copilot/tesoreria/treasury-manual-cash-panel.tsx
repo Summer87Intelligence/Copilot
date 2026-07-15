@@ -84,7 +84,7 @@ const MATCH_STATUS_LABELS: Record<TreasuryMovementAccountingMatchStatus, string>
 };
 
 const MATCH_STATUS_BADGE_CLASS: Record<TreasuryMovementAccountingMatchStatus, string> = {
-  pending: "bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-muted)]",
+  pending: "bg-[var(--copilot-badge-neutral-bg)] text-[var(--copilot-ink-muted)]",
   matched: "bg-[var(--copilot-badge-success-bg)] text-[var(--copilot-success-text-strong)]",
   amount_mismatch: "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-warning-text-strong)]",
   currency_mismatch: "bg-[var(--copilot-badge-warning-bg)] text-[var(--copilot-warning-text-strong)]",

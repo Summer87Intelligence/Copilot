@@ -1,6 +1,9 @@
 "use client";
 
 import { type ReactNode } from "react";
+import { ArrowDownUp, ChevronDown, ChevronUp } from "lucide-react";
+
+import type { SortDirection, SortState } from "@/lib/ui/table-sort-model";
 
 export type CopilotResponsiveTableColumn<T> = {
   key: string;
@@ -8,6 +11,13 @@ export type CopilotResponsiveTableColumn<T> = {
   className?: string;
   cellClassName?: string;
   render: (row: T) => ReactNode;
+  /** Si se define (y hay `sort` en la tabla), el header se vuelve ordenable. */
+  sortKey?: string;
+};
+
+export type CopilotResponsiveTableSort = {
+  state: SortState;
+  onSort: (key: string) => void;
 };
 
 export type CopilotResponsiveTableProps<T> = {
@@ -31,7 +41,24 @@ export type CopilotResponsiveTableProps<T> = {
   ariaLabel?: string;
   /** Si true, el <thead> queda sticky en el contenedor scrolleable. */
   stickyHeader?: boolean;
+  /** Ordenamiento opcional (controlado). Sólo afecta columnas con `sortKey`. */
+  sort?: CopilotResponsiveTableSort;
 };
+
+function ariaSortValue(
+  columnSortKey: string | undefined,
+  sort: CopilotResponsiveTableSort | undefined
+): "ascending" | "descending" | "none" | undefined {
+  if (!columnSortKey || !sort) return undefined;
+  if (sort.state.key !== columnSortKey) return "none";
+  return sort.state.direction === "asc" ? "ascending" : "descending";
+}
+
+function SortIndicator({ direction }: { direction: SortDirection | null }) {
+  if (direction === "asc") return <ChevronUp className="h-3.5 w-3.5" aria-hidden />;
+  if (direction === "desc") return <ChevronDown className="h-3.5 w-3.5" aria-hidden />;
+  return <ArrowDownUp className="h-3.5 w-3.5 opacity-50" aria-hidden />;
+}
 
 const TABLE_WRAPPER_CLASS =
   "overflow-hidden rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]";
@@ -80,6 +107,7 @@ export function CopilotResponsiveTable<T>({
   rowClassName,
   ariaLabel,
   stickyHeader = false,
+  sort,
 }: CopilotResponsiveTableProps<T>) {
   const isEmpty = rows.length === 0;
   const interactive = Boolean(onRowClick);
@@ -93,11 +121,30 @@ export function CopilotResponsiveTable<T>({
     >
       <thead>
         <tr>
-          {columns.map((col) => (
-            <th key={col.key} className={`${thClass} ${col.className ?? ""}`.trim()}>
-              {col.header}
-            </th>
-          ))}
+          {columns.map((col) => {
+            const sortable = Boolean(col.sortKey && sort);
+            const active = sortable && sort!.state.key === col.sortKey;
+            return (
+              <th
+                key={col.key}
+                className={`${thClass} ${col.className ?? ""}`.trim()}
+                aria-sort={ariaSortValue(col.sortKey, sort)}
+              >
+                {sortable ? (
+                  <button
+                    type="button"
+                    onClick={() => sort!.onSort(col.sortKey!)}
+                    className="inline-flex items-center gap-1.5 hover:text-[var(--copilot-ink)]"
+                  >
+                    {col.header}
+                    <SortIndicator direction={active ? sort!.state.direction : null} />
+                  </button>
+                ) : (
+                  col.header
+                )}
+              </th>
+            );
+          })}
         </tr>
       </thead>
       <tbody>

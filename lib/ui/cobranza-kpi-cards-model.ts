@@ -1,33 +1,26 @@
-import type {
-  MetricCurrencyValue,
-  MetricTone,
-} from "@/lib/ui/financial-metric-card-model";
+import type { MetricTone } from "@/lib/ui/financial-metric-card-model";
+import {
+  buildSeparatedCurrencyValues,
+  type CurrencyMoneyFormatter,
+} from "@/lib/ui/currency-amounts-model";
 
 /**
  * Lógica pura de las KPI cards de Cobranza sobre DS-Core.
  *
- * Regla S4: cada moneda es un `MetricCurrencyValue` independiente; NUNCA se
- * concatenan UYU y USD en un mismo string (`$… · U$S…`). El componente sólo
- * apila estos valores; la separación está garantizada aquí por construcción.
+ * Regla S4: cada moneda es un valor independiente; NUNCA se concatenan UYU y
+ * USD en un mismo string (`$… · U$S…`). El componente sólo apila estos valores;
+ * la separación está garantizada por `buildSeparatedCurrencyValues`.
  */
 
 /** Formatea un monto para una moneda (prefijo simple, sin decimales de más). */
-export type MoneyFormatter = (amount: number, currency: "UYU" | "USD") => string;
+export type MoneyFormatter = CurrencyMoneyFormatter;
 
 /**
  * Devuelve un valor por cada moneda con saldo (> 0), UYU primero.
  * Sin saldo en ninguna → arreglo vacío (el card muestra `emptyText`).
+ * Delega en el modelo genérico de importes separados del sistema.
  */
-export function buildCobranzaMoneyValues(
-  uyu: number,
-  usd: number,
-  format: MoneyFormatter
-): MetricCurrencyValue[] {
-  const out: MetricCurrencyValue[] = [];
-  if (uyu > 0) out.push({ currency: "UYU", formatted: format(uyu, "UYU") });
-  if (usd > 0) out.push({ currency: "USD", formatted: format(usd, "USD") });
-  return out;
-}
+export const buildCobranzaMoneyValues = buildSeparatedCurrencyValues;
 
 /** Tono del cumplimiento de promesas (0–100, null = sin promesas cerradas). */
 export function fulfillmentTone(rate: number | null): MetricTone {

@@ -1,7 +1,8 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Mail, MessageCircle, Search } from "lucide-react";
+import { ChevronRight, Mail, MessageCircle } from "lucide-react";
 
 import {
   CopilotCard,
@@ -17,6 +18,20 @@ import {
   CopilotResponsiveTable,
   type CopilotResponsiveTableColumn,
 } from "@/components/copilot/ui/copilot-responsive-table";
+import {
+  FilterBar,
+  FilterField,
+  FilterSelect,
+  FilterSearchInput,
+} from "@/components/copilot/ui/filter-bar";
+import { TablePagination } from "@/components/copilot/ui/table-pagination";
+import { paginate, pageAfterFilterChange } from "@/lib/ui/table-pagination-model";
+import {
+  nextSortState,
+  sortRows,
+  type SortAccessor,
+  type SortState,
+} from "@/lib/ui/table-sort-model";
 import { portfolioRowCollectionBucket } from "@/lib/copilot-cobranza-summary";
 import {
   COLLECTION_AGING_BUCKETS,
@@ -27,6 +42,26 @@ import type {
   ClientPortfolioLoad,
   ClientPortfolioRow,
 } from "@/lib/copilot-clients-portfolio";
+
+const CLIENTES_PAGE_SIZE = 25;
+
+/** Severidad de cobranza para ordenar "Salud" (al día → más atrasado). */
+const AGING_SEVERITY: Record<CollectionAgingBucket, number> = {
+  not_overdue: 0,
+  overdue_8_14: 1,
+  overdue_15_30: 2,
+  overdue_30_plus: 3,
+};
+
+function clientAgingSeverity(row: ClientPortfolioRow): number {
+  if (row.debt_uyu <= 0 && row.debt_usd <= 0) return -1; // al día
+  return AGING_SEVERITY[portfolioRowCollectionBucket(row)] ?? 0;
+}
+
+const CLIENTES_SORT_ACCESSORS: Record<string, SortAccessor<ClientPortfolioRow>> = {
+  name: (r) => r.name,
+  salud: (r) => clientAgingSeverity(r),
+};
 
 // ─── Filter contract (re-exported so page.tsx can keep state) ────────────────
 
@@ -154,7 +189,7 @@ function DebtCell({ row }: { row: ClientPortfolioRow }) {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 sm:flex-nowrap">
+    <div className="flex flex-col items-start gap-0.5">
       {hasUyu ? (
         <span className="inline-flex shrink-0 items-center whitespace-nowrap tabular-nums text-sm font-semibold text-[var(--copilot-danger-text-strong)]">
           $ {row.debt_uyu.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
@@ -162,11 +197,6 @@ function DebtCell({ row }: { row: ClientPortfolioRow }) {
           {overdueUyu ? (
             <span className="ml-1 text-[10px] font-medium text-[var(--copilot-danger-text)]">atrasado</span>
           ) : null}
-        </span>
-      ) : null}
-      {hasUyu && hasUsd ? (
-        <span className="hidden text-[10px] text-[var(--copilot-ink-muted)] sm:inline" aria-hidden>
-          ·
         </span>
       ) : null}
       {hasUsd ? (
@@ -332,10 +362,40 @@ export function ClientesPortfolioTable({
   currencyFilter,
   onCurrencyFilterChange,
 }: ClientesPortfolioTableProps) {
+  const [sort, setSort] = useState<SortState>({ key: null, direction: "asc" });
+  const [page, setPage] = useState(1);
+
+  // Reset de página cuando cambia el conjunto filtrado (evita quedar en una
+  // página fuera de rango con el nuevo resultado).
+  const filterSig = `${clientFilter}|${currencyFilter}|${search.trim().toLowerCase()}`;
+  const [appliedSig, setAppliedSig] = useState(filterSig);
+  if (appliedSig !== filterSig) {
+    setAppliedSig(filterSig);
+    setPage(pageAfterFilterChange());
+  }
+
+  const sortedRows = useMemo(() => {
+    const accessor = sort.key ? CLIENTES_SORT_ACCESSORS[sort.key] ?? null : null;
+    return sortRows(visibleRows, accessor, sort.direction);
+  }, [visibleRows, sort]);
+
+  const pageResult = useMemo(
+    () => paginate(sortedRows, page, CLIENTES_PAGE_SIZE),
+    [sortedRows, page]
+  );
+
+  const handleSort = (key: string) => setSort((prev) => nextSortState(prev, key));
+  const handleClearFilters = () => {
+    onSearchChange("");
+    onClientFilterChange("all");
+    onCurrencyFilterChange("all");
+  };
+
   const columns: CopilotResponsiveTableColumn<ClientPortfolioRow>[] = [
     {
       key: "client",
       header: "Cliente",
+      sortKey: "name",
       cellClassName: "max-w-[220px]",
       render: (row) => (
         <>
@@ -362,6 +422,7 @@ export function ClientesPortfolioTable({
     {
       key: "salud",
       header: "Salud",
+      sortKey: "salud",
       render: (row) => <ClientAgingBadge row={row} />,
     },
     {
@@ -405,61 +466,40 @@ export function ClientesPortfolioTable({
             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--copilot-accent)] shadow-sm hover:bg-[var(--copilot-accent-soft)]"
           />
         </div>
-        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-          {/* Search field */}
-          <div className="flex items-center gap-1.5 rounded-full border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)]/80 px-3 py-1">
-            <Search className="h-3.5 w-3.5 shrink-0 text-[var(--copilot-ink-muted)]" aria-hidden />
-            <input
-              type="text"
+        <FilterBar
+          className="mt-2"
+          values={{ status: clientFilter, currency: currencyFilter, search }}
+          defaults={{ status: "all", currency: "all", search: "" }}
+          onClear={handleClearFilters}
+        >
+          <FilterField label="Buscar" htmlFor="clientes-search" className="min-w-[180px] flex-1">
+            <FilterSearchInput
+              id="clientes-search"
               value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
+              onChange={onSearchChange}
               placeholder="Buscar cliente…"
-              className="w-full bg-transparent text-xs text-[var(--copilot-ink)] outline-none placeholder:text-[var(--copilot-ink-muted)] sm:w-36"
+              ariaLabel="Buscar cliente"
             />
-          </div>
-          {/* Filter + currency tabs — single scrollable row on mobile */}
-          <div className="-mx-4 overflow-x-auto px-4 pb-0.5 sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0">
-            <div className="flex shrink-0 items-center gap-2">
-              {FILTER_OPTIONS.map((opt) => {
-                const active = clientFilter === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => onClientFilterChange(opt.id)}
-                    className={[
-                      "shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition",
-                      active
-                        ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[var(--copilot-accent)]/30"
-                        : "bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]",
-                    ].join(" ")}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-              <span className="h-4 w-px shrink-0 bg-[var(--copilot-border)]" aria-hidden />
-              {CURRENCY_FILTER_OPTIONS.map((opt) => {
-                const active = currencyFilter === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => onCurrencyFilterChange(opt.id)}
-                    className={[
-                      "shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition",
-                      active
-                        ? "bg-[var(--copilot-accent-soft)] text-[var(--copilot-accent)] ring-1 ring-[var(--copilot-accent)]/30"
-                        : "bg-[var(--copilot-card-bg)]/70 text-[var(--copilot-ink-muted)] ring-1 ring-[var(--copilot-border)] hover:bg-[var(--copilot-panel-bg)]",
-                    ].join(" ")}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+          </FilterField>
+          <FilterField label="Estado" htmlFor="clientes-estado">
+            <FilterSelect
+              id="clientes-estado"
+              value={clientFilter}
+              onChange={(v) => onClientFilterChange(v as ClientListFilter)}
+              options={FILTER_OPTIONS.map((o) => ({ value: o.id, label: o.label }))}
+              ariaLabel="Filtrar por estado"
+            />
+          </FilterField>
+          <FilterField label="Moneda" htmlFor="clientes-moneda">
+            <FilterSelect
+              id="clientes-moneda"
+              value={currencyFilter}
+              onChange={(v) => onCurrencyFilterChange(v as ClientCurrencyFilter)}
+              options={CURRENCY_FILTER_OPTIONS.map((o) => ({ value: o.id, label: o.label }))}
+              ariaLabel="Filtrar por moneda"
+            />
+          </FilterField>
+        </FilterBar>
       </div>
 
       {load.rows.length === 0 ? (
@@ -467,15 +507,25 @@ export function ClientesPortfolioTable({
           No hay clientes en la cartera aún.
         </p>
       ) : (
-        <div className="px-3 py-3 sm:px-0 sm:py-0">
+        <div className="space-y-3 px-3 py-3 sm:px-4 sm:py-4">
           <CopilotResponsiveTable<ClientPortfolioRow>
-            rows={visibleRows}
+            rows={pageResult.pageRows}
             columns={columns}
             getRowKey={(row) => row.company_id}
             minWidth="760px"
             ariaLabel="Cartera de clientes"
             emptyState="No hay clientes para este filtro."
             mobileCard={(row) => <PortfolioMobileCard row={row} />}
+            sort={{ state: sort, onSort: handleSort }}
+          />
+          <TablePagination
+            page={pageResult.safePage}
+            totalPages={pageResult.totalPages}
+            from={pageResult.from}
+            to={pageResult.to}
+            total={pageResult.total}
+            itemLabel="clientes"
+            onPageChange={setPage}
           />
         </div>
       )}

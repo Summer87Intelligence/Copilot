@@ -9,6 +9,13 @@ import { BankMovementsImportPanel } from "@/components/copilot/bank-movements/ba
 import { BankMovementsReconciliationPanel } from "@/components/copilot/bank-movements/bank-movements-reconciliation-panel";
 import { BankIncomePanel } from "@/components/copilot/bank-movements/bank-income-panel";
 
+import {
+  CopilotResponsiveTable,
+  type CopilotResponsiveTableColumn,
+} from "@/components/copilot/ui/copilot-responsive-table";
+import { TablePagination } from "@/components/copilot/ui/table-pagination";
+import { paginate, pageAfterFilterChange } from "@/lib/ui/table-pagination-model";
+import { nextSortState, sortRows, type SortState } from "@/lib/ui/table-sort-model";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
 import {
@@ -187,6 +194,31 @@ export function BankMovementsPageClient() {
     [movements, movementFilters]
   );
 
+  const [movPage, setMovPage] = useState(1);
+  const [movSort, setMovSort] = useState<SortState>({ key: null, direction: "desc" });
+
+  // Reset de página cuando cambian los filtros (evita páginas fuera de rango).
+  const movFilterSig = JSON.stringify(movementFilters);
+  const [appliedMovSig, setAppliedMovSig] = useState(movFilterSig);
+  if (appliedMovSig !== movFilterSig) {
+    setAppliedMovSig(movFilterSig);
+    setMovPage(pageAfterFilterChange());
+  }
+
+  const sortedMovements = useMemo(
+    () =>
+      sortRows(
+        filteredMovements,
+        movSort.key === "date" ? (m) => m.movement_date : null,
+        movSort.direction
+      ),
+    [filteredMovements, movSort]
+  );
+  const movPageResult = useMemo(
+    () => paginate(sortedMovements, movPage, 25),
+    [sortedMovements, movPage]
+  );
+
   const submitForm = useCallback(async () => {
     if (!form) return;
     const amountNumber = Number(form.amount);
@@ -257,6 +289,152 @@ export function BankMovementsPageClient() {
       await load();
     },
     [load]
+  );
+
+  const historicalBadge = (m: BankMovement) =>
+    isBankMovementHistorical(m) ? (
+      <span
+        className="ml-1.5 inline-block rounded-full border border-[var(--copilot-border)] px-1.5 py-0.5 align-middle text-[10px] uppercase tracking-wide text-[var(--copilot-ink-muted)]"
+        title="Movimiento anterior al inicio operativo del banco"
+      >
+        Histórico
+      </span>
+    ) : null;
+
+  const movementAmountLabel = (m: BankMovement) =>
+    `${m.currency} ${numberFormatter.format(resolveImportedBankMovementAmount(m))}`;
+
+  const renderMovementActions = (m: BankMovement) => (
+    <div className="flex flex-wrap justify-end gap-1.5">
+      <button
+        type="button"
+        onClick={() => setForm(formFromMovement(m))}
+        className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+        aria-label="Editar movimiento"
+      >
+        <Pencil className="h-3.5 w-3.5" aria-hidden />
+      </button>
+      {m.status !== "matched" ? (
+        <button
+          type="button"
+          onClick={() => void changeStatus(m, "matched")}
+          className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+        >
+          Conciliar
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => void changeStatus(m, "pending")}
+          className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+        >
+          Reabrir
+        </button>
+      )}
+      {m.status !== "ignored" ? (
+        <button
+          type="button"
+          onClick={() => void changeStatus(m, "ignored")}
+          className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+        >
+          Ignorar
+        </button>
+      ) : null}
+      <button
+        type="button"
+        onClick={() => void remove(m)}
+        className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+        aria-label="Eliminar movimiento"
+      >
+        <Trash2 className="h-3.5 w-3.5" aria-hidden />
+      </button>
+    </div>
+  );
+
+  const movementColumns: CopilotResponsiveTableColumn<BankMovement>[] = [
+    {
+      key: "date",
+      header: "Fecha",
+      sortKey: "date",
+      cellClassName: "whitespace-nowrap align-top",
+      render: (m) => (
+        <span>
+          {formatDate(m.movement_date)}
+          {historicalBadge(m)}
+        </span>
+      ),
+    },
+    {
+      key: "desc",
+      header: "Descripción",
+      cellClassName: "align-top",
+      render: (m) => (
+        <div>
+          <span>{m.description}</span>
+          {m.bank_reference ? (
+            <span className={`block ${copilotCaptionClass}`}>Ref: {m.bank_reference}</span>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      key: "source",
+      header: "Fuente",
+      className: "hidden sm:table-cell",
+      cellClassName: "hidden align-top sm:table-cell",
+      render: (m) => m.account_label ?? m.bank_name,
+    },
+    {
+      key: "in",
+      header: "Entrada",
+      className: "text-right",
+      cellClassName: "whitespace-nowrap text-right align-top tabular-nums",
+      render: (m) => (m.direction === "inflow" ? movementAmountLabel(m) : "—"),
+    },
+    {
+      key: "out",
+      header: "Salida",
+      className: "text-right",
+      cellClassName: "whitespace-nowrap text-right align-top tabular-nums",
+      render: (m) => (m.direction === "outflow" ? movementAmountLabel(m) : "—"),
+    },
+    {
+      key: "status",
+      header: "Estado",
+      cellClassName: "whitespace-nowrap align-top",
+      render: (m) => BANK_MOVEMENT_STATUS_LABELS[m.status],
+    },
+    {
+      key: "actions",
+      header: "Acciones",
+      className: "text-right",
+      cellClassName: "text-right align-top",
+      render: (m) => renderMovementActions(m),
+    },
+  ];
+
+  const renderMovementMobileCard = (m: BankMovement) => (
+    <div className="space-y-1.5">
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-sm font-medium text-[var(--copilot-ink)]">
+          {formatDate(m.movement_date)}
+          {historicalBadge(m)}
+        </span>
+        <span
+          className={`whitespace-nowrap text-sm font-semibold tabular-nums ${
+            m.direction === "inflow"
+              ? "text-[var(--copilot-success-text-strong)]"
+              : "text-[var(--copilot-danger-text-strong)]"
+          }`}
+        >
+          {m.direction === "inflow" ? "+" : "−"} {movementAmountLabel(m)}
+        </span>
+      </div>
+      <p className="text-sm text-[var(--copilot-ink)]">{m.description}</p>
+      {m.bank_reference ? <p className={copilotCaptionClass}>Ref: {m.bank_reference}</p> : null}
+      <p className={copilotCaptionClass}>{BANK_MOVEMENT_STATUS_LABELS[m.status]}</p>
+      <div className="pt-1">{renderMovementActions(m)}</div>
+    </div>
   );
 
   return (
@@ -369,101 +547,28 @@ export function BankMovementsPageClient() {
               <p className={copilotCaptionClass}>No hay movimientos con estos filtros.</p>
             </div>
           ) : (
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="text-xs uppercase tracking-wide text-[var(--copilot-muted)]">
-                    <th className="py-2 pr-3">Fecha</th>
-                    <th className="py-2 pr-3">Descripción</th>
-                    <th className="hidden py-2 pr-3 sm:table-cell">Fuente</th>
-                    <th className="py-2 pr-3 text-right">Entrada</th>
-                    <th className="py-2 pr-3 text-right">Salida</th>
-                    <th className="py-2 pr-3">Estado</th>
-                    <th className="py-2 text-right">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredMovements.map((m) => (
-                    <tr key={m.id} className="border-t border-[var(--copilot-border)] align-top">
-                      <td className="py-2 pr-3 whitespace-nowrap">
-                        {formatDate(m.movement_date)}
-                        {isBankMovementHistorical(m) ? (
-                          <span
-                            className="ml-1.5 inline-block rounded-full border border-[var(--copilot-border)] px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-[var(--copilot-muted)] align-middle"
-                            title="Movimiento anterior al inicio operativo del banco"
-                          >
-                            Histórico
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="py-2 pr-3">
-                        {m.description}
-                        {m.bank_reference ? (
-                          <span className={`block ${copilotCaptionClass}`}>Ref: {m.bank_reference}</span>
-                        ) : null}
-                      </td>
-                      <td className="hidden py-2 pr-3 sm:table-cell">{m.account_label ?? m.bank_name}</td>
-                      <td className="py-2 pr-3 text-right whitespace-nowrap">
-                        {m.direction === "inflow"
-                          ? `${m.currency} ${numberFormatter.format(resolveImportedBankMovementAmount(m))}`
-                          : "—"}
-                      </td>
-                      <td className="py-2 pr-3 text-right whitespace-nowrap">
-                        {m.direction === "outflow"
-                          ? `${m.currency} ${numberFormatter.format(resolveImportedBankMovementAmount(m))}`
-                          : "—"}
-                      </td>
-                      <td className="py-2 pr-3 whitespace-nowrap">{BANK_MOVEMENT_STATUS_LABELS[m.status]}</td>
-                      <td className="py-2">
-                        <div className="flex flex-wrap justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setForm(formFromMovement(m))}
-                            className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-                            aria-label="Editar"
-                          >
-                            <Pencil className="h-3.5 w-3.5" aria-hidden />
-                          </button>
-                          {m.status !== "matched" ? (
-                            <button
-                              type="button"
-                              onClick={() => void changeStatus(m, "matched")}
-                              className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-                            >
-                              Conciliar
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => void changeStatus(m, "pending")}
-                              className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-                            >
-                              Reabrir
-                            </button>
-                          )}
-                          {m.status !== "ignored" ? (
-                            <button
-                              type="button"
-                              onClick={() => void changeStatus(m, "ignored")}
-                              className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-                            >
-                              Ignorar
-                            </button>
-                          ) : null}
-                          <button
-                            type="button"
-                            onClick={() => void remove(m)}
-                            className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-                            aria-label="Eliminar"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="mt-4 space-y-3">
+              <CopilotResponsiveTable<BankMovement>
+                rows={movPageResult.pageRows}
+                columns={movementColumns}
+                getRowKey={(m) => m.id}
+                minWidth="820px"
+                ariaLabel="Movimientos bancarios"
+                mobileCard={renderMovementMobileCard}
+                sort={{
+                  state: movSort,
+                  onSort: (key) => setMovSort((prev) => nextSortState(prev, key)),
+                }}
+              />
+              <TablePagination
+                page={movPageResult.safePage}
+                totalPages={movPageResult.totalPages}
+                from={movPageResult.from}
+                to={movPageResult.to}
+                total={movPageResult.total}
+                itemLabel="movimientos"
+                onPageChange={setMovPage}
+              />
             </div>
           )}
         </section>

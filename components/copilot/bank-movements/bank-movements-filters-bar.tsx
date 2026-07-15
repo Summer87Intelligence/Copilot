@@ -1,12 +1,18 @@
 "use client";
 
-import type { ReactNode } from "react";
-
-import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
-import { copilotCaptionClass, copilotInputClass } from "@/components/copilot/ui/copilot-visual-system";
+import { copilotCaptionClass } from "@/components/copilot/ui/copilot-visual-system";
+import {
+  FilterBar,
+  FilterField,
+  FilterSelect,
+  FilterSearchInput,
+} from "@/components/copilot/ui/filter-bar";
+import type { FilterValues } from "@/lib/ui/filter-bar-model";
 import {
   BANK_MOVEMENT_PERIOD_OPTIONS,
   BANK_MOVEMENT_SCOPE_OPTIONS,
+  DEFAULT_BANK_MOVEMENTS_LIST_FILTERS,
+  DEFAULT_RECONCILIATION_VIEW_FILTERS,
   type BankMovementsListFilters,
   type ReconciliationViewFilters,
 } from "@/lib/bank-movements/bank-movements-filters";
@@ -58,21 +64,55 @@ const DIRECTION_OPTIONS = [
   { value: "outflow", label: BANK_MOVEMENT_DIRECTION_LABELS.outflow },
 ] as const;
 
-function FilterField({
-  label,
-  children,
-  className = "",
-}: {
-  label: string;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <label className={`block text-xs ${className}`}>
-      <span className="text-[var(--copilot-muted)]">{label}</span>
-      {children}
-    </label>
-  );
+/** Valores/defaults para el conteo de filtros activos del FilterBar. */
+function filterState(
+  mode: "movements" | "reconciliation",
+  filters: BankMovementsListFilters | ReconciliationViewFilters
+): { values: FilterValues; defaults: FilterValues } {
+  if (mode === "movements") {
+    const f = filters as BankMovementsListFilters;
+    const d = DEFAULT_BANK_MOVEMENTS_LIST_FILTERS;
+    return {
+      values: {
+        period: f.period,
+        scope: f.scope,
+        currency: f.currency,
+        status: f.status,
+        direction: f.direction,
+        text: f.text,
+        amount: f.amount,
+      },
+      defaults: {
+        period: d.period,
+        scope: d.scope,
+        currency: d.currency,
+        status: d.status,
+        direction: d.direction,
+        text: d.text,
+        amount: d.amount,
+      },
+    };
+  }
+  const f = filters as ReconciliationViewFilters;
+  const d = DEFAULT_RECONCILIATION_VIEW_FILTERS;
+  return {
+    values: {
+      period: f.period,
+      currency: f.currency,
+      suggestion: f.suggestion,
+      direction: f.direction,
+      text: f.text,
+      amount: f.amount,
+    },
+    defaults: {
+      period: d.period,
+      currency: d.currency,
+      suggestion: d.suggestion,
+      direction: d.direction,
+      text: d.text,
+      amount: d.amount,
+    },
+  };
 }
 
 export function BankMovementsFiltersBar({
@@ -89,152 +129,103 @@ export function BankMovementsFiltersBar({
   const update = (patch: Partial<BankMovementsListFilters & ReconciliationViewFilters>) => {
     onChange({ ...filters, ...patch });
   };
+  const { values, defaults } = filterState(mode, filters);
 
   return (
-    <div className="space-y-3 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] p-3 sm:p-4">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <FilterField label="Mes">
-          <select
+    <div className="space-y-2">
+      <FilterBar values={values} defaults={defaults} onClear={onClear}>
+        <FilterField label="Mes" htmlFor="bank-filter-period">
+          <FilterSelect
+            id="bank-filter-period"
             value={filters.period}
-            onChange={(event) =>
-              update({ period: event.target.value as BankMovementsListFilters["period"] })
-            }
-            className={copilotInputClass}
-          >
-            {BANK_MOVEMENT_PERIOD_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => update({ period: v as BankMovementsListFilters["period"] })}
+            options={BANK_MOVEMENT_PERIOD_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+            ariaLabel="Filtrar por mes"
+          />
         </FilterField>
 
         {mode === "movements" ? (
-          <FilterField label="Alcance">
-            <select
+          <FilterField label="Alcance" htmlFor="bank-filter-scope">
+            <FilterSelect
+              id="bank-filter-scope"
               value={(filters as BankMovementsListFilters).scope}
-              onChange={(event) =>
-                update({ scope: event.target.value as BankMovementsListFilters["scope"] })
-              }
-              className={copilotInputClass}
-            >
-              {BANK_MOVEMENT_SCOPE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => update({ scope: v as BankMovementsListFilters["scope"] })}
+              options={BANK_MOVEMENT_SCOPE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+              ariaLabel="Filtrar por alcance"
+            />
           </FilterField>
         ) : null}
 
-        <FilterField label="Moneda">
-          <select
+        <FilterField label="Moneda" htmlFor="bank-filter-currency">
+          <FilterSelect
+            id="bank-filter-currency"
             value={filters.currency}
-            onChange={(event) =>
-              update({ currency: event.target.value as BankMovementsListFilters["currency"] })
-            }
-            className={copilotInputClass}
-          >
-            {CURRENCY_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => update({ currency: v as BankMovementsListFilters["currency"] })}
+            options={CURRENCY_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+            ariaLabel="Filtrar por moneda"
+          />
         </FilterField>
 
         {mode === "movements" ? (
-          <FilterField label="Estado">
-            <select
+          <FilterField label="Estado" htmlFor="bank-filter-status">
+            <FilterSelect
+              id="bank-filter-status"
               value={(filters as BankMovementsListFilters).status}
-              onChange={(event) =>
-                update({
-                  status: event.target.value as BankMovementsListFilters["status"],
-                })
-              }
-              className={copilotInputClass}
-            >
-              {MOVEMENT_STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => update({ status: v as BankMovementsListFilters["status"] })}
+              options={MOVEMENT_STATUS_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+              ariaLabel="Filtrar por estado"
+            />
           </FilterField>
         ) : (
-          <FilterField label="Confianza / estado">
-            <select
+          <FilterField label="Confianza / estado" htmlFor="bank-filter-suggestion">
+            <FilterSelect
+              id="bank-filter-suggestion"
               value={(filters as ReconciliationViewFilters).suggestion}
-              onChange={(event) =>
-                update({
-                  suggestion: event.target.value as ReconciliationViewFilters["suggestion"],
-                })
-              }
-              className={copilotInputClass}
-            >
-              {RECONCILIATION_SUGGESTION_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => update({ suggestion: v as ReconciliationViewFilters["suggestion"] })}
+              options={RECONCILIATION_SUGGESTION_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+              ariaLabel="Filtrar por confianza o estado"
+            />
           </FilterField>
         )}
 
-        <FilterField label="Dirección">
-          <select
+        <FilterField label="Dirección" htmlFor="bank-filter-direction">
+          <FilterSelect
+            id="bank-filter-direction"
             value={filters.direction}
-            onChange={(event) =>
-              update({ direction: event.target.value as BankMovementDirection | "all" })
-            }
-            className={copilotInputClass}
-          >
-            {DIRECTION_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => update({ direction: v as BankMovementDirection | "all" })}
+            options={DIRECTION_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+            ariaLabel="Filtrar por dirección"
+          />
         </FilterField>
 
-        <FilterField label="Búsqueda" className="sm:col-span-2 xl:col-span-1">
-          <input
-            type="search"
+        <FilterField label="Búsqueda" htmlFor="bank-filter-text" className="min-w-[180px] flex-1">
+          <FilterSearchInput
+            id="bank-filter-text"
             value={filters.text}
-            onChange={(event) => update({ text: event.target.value })}
+            onChange={(v) => update({ text: v })}
             placeholder={
               mode === "movements"
-                ? "Buscar por nombre, descripción o referencia..."
-                : "Buscar movimiento o sugerencia..."
+                ? "Nombre, descripción o referencia…"
+                : "Movimiento o sugerencia…"
             }
-            className={copilotInputClass}
+            ariaLabel="Buscar movimiento"
           />
         </FilterField>
 
-        <FilterField label="Monto">
-          <input
-            type="search"
-            inputMode="decimal"
+        <FilterField label="Monto" htmlFor="bank-filter-amount">
+          <FilterSearchInput
+            id="bank-filter-amount"
             value={filters.amount}
-            onChange={(event) => update({ amount: event.target.value })}
-            placeholder="Ej. 3548 o 3.548"
-            className={copilotInputClass}
+            onChange={(v) => update({ amount: v })}
+            placeholder="Ej. 3548"
+            ariaLabel="Buscar por monto"
           />
         </FilterField>
-      </div>
+      </FilterBar>
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className={copilotCaptionClass}>
-          Mostrando {showingCount} de {totalCount} {countLabel}
-        </p>
-        <button
-          type="button"
-          onClick={onClear}
-          className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-        >
-          Limpiar filtros
-        </button>
-      </div>
+      <p className={copilotCaptionClass}>
+        Mostrando {showingCount} de {totalCount} {countLabel}
+      </p>
 
       {showPeriodHint ? (
         <p className={copilotCaptionClass}>
