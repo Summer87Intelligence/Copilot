@@ -6,6 +6,7 @@ import { Plus, X } from "lucide-react";
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 import { WorkbookTaskCard } from "@/components/copilot/daily-tasks/workbook-task-card";
+import { TasksManagerPanel } from "@/components/copilot/daily-tasks/tasks-manager-panel";
 import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
 import { EmptyState as DsEmptyState } from "@/components/copilot/ui/empty-state";
 import { SkeletonMetricGrid, SkeletonText } from "@/components/copilot/ui/skeleton";
@@ -110,6 +111,7 @@ export function DailyTasksPageClient() {
   const { modulePermissions } = useCopilotPermissions();
 
   const today = useMemo(() => todayYmd(), []);
+  const [view, setView] = useState<"cuaderno" | "gestion">("cuaderno");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [manualTasks, setManualTasks] = useState<DailyTask[]>([]);
@@ -406,20 +408,29 @@ export function DailyTasksPageClient() {
   return (
     <div className={COPILOT_PAGE_GAP}>
       <CopilotPageHeader
-        title="Mi cuaderno de trabajo"
-        description="Tus tareas, seguimientos y acciones sugeridas para hoy."
+        title="Tareas"
+        description="Tu cuaderno de trabajo y todas las tareas del equipo."
         right={
-          <button
-            type="button"
-            onClick={() => setForm(form ? null : emptyForm())}
-            className={copilotButtonClassName({ variant: "primary", size: "sm" })}
-          >
-            <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
-            Nueva tarea
-          </button>
+          <div className="flex items-center gap-2">
+            <ViewToggle view={view} onChange={setView} />
+            {view === "cuaderno" ? (
+              <button
+                type="button"
+                onClick={() => setForm(form ? null : emptyForm())}
+                className={copilotButtonClassName({ variant: "primary", size: "sm" })}
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
+                Nueva tarea
+              </button>
+            ) : null}
+          </div>
         }
       />
 
+      {view === "gestion" ? (
+        <TasksManagerPanel />
+      ) : (
+        <>
       {feedback ? (
         <div
           className={`rounded-xl border px-3 py-2 text-xs ${
@@ -499,6 +510,37 @@ export function DailyTasksPageClient() {
           />
         </div>
       )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function ViewToggle({
+  view,
+  onChange,
+}: {
+  view: "cuaderno" | "gestion";
+  onChange: (v: "cuaderno" | "gestion") => void;
+}) {
+  const opt = (value: "cuaderno" | "gestion", label: string) => (
+    <button
+      type="button"
+      aria-pressed={view === value}
+      onClick={() => onChange(value)}
+      className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+        view === value
+          ? "bg-[var(--copilot-accent)] text-white"
+          : "text-[var(--copilot-muted)] hover:bg-[var(--copilot-hover-bg)]"
+      }`}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div className="inline-flex rounded-full border border-[var(--copilot-border)] p-0.5">
+      {opt("cuaderno", "Cuaderno")}
+      {opt("gestion", "Todas")}
     </div>
   );
 }

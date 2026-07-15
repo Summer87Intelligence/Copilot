@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         ok: true as const,
         data: [] as DailyTask[],
-        meta: { total: 0, migration_pending: true, is_admin: isTaskAdmin(viewer) },
+        meta: { total: 0, migration_pending: true, is_admin: isTaskAdmin(viewer), viewer_id: viewer.userId },
       });
     }
     return NextResponse.json(
@@ -141,6 +141,7 @@ export async function GET(request: NextRequest) {
       total: rows.length,
       migration_pending: false,
       is_admin: isTaskAdmin(viewer),
+      viewer_id: viewer.userId,
     },
   });
 }
