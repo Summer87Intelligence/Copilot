@@ -19,17 +19,24 @@ import {
   buildCanonicalSaleDocuments,
   type RawSaleInvoiceRow,
 } from "@/lib/sales/canonical/build-canonical-sales";
-import type { CanonicalSaleDocument } from "@/lib/sales/canonical/types";
+import { SALESPERSON_START_DATE, type CanonicalSaleDocument } from "@/lib/sales/canonical/types";
 import type { SalesCatalogView } from "@/lib/sales/canonical/catalog-types";
 import { loadSalesCatalogView } from "@/lib/sales/sales-catalog-repository";
+import {
+  loadSalespersons,
+  loadDocumentAssignments,
+  type SalespersonRow,
+} from "@/lib/sales/sales-salesperson-repository";
 
 export type SalesDataset = {
   documents: CanonicalSaleDocument[];
   catalog: SalesCatalogView;
+  salespersons: SalespersonRow[];
   meta: {
     invoiceRowsLoaded: number;
     documentsBuilt: number;
     catalogMigrationPending: boolean;
+    salespersonsMigrationPending: boolean;
     reachedMaxRows: boolean;
   };
 };
@@ -88,22 +95,25 @@ export async function loadSalesDataset(
 ): Promise<SalesDataset> {
   const minDate = options?.minDate ?? MIN_FINANCIAL_DATE;
 
-  const [{ rows: invoiceRows, reachedMaxRows }, names, catalogResult] = await Promise.all([
-    fetchAllRows<RawSaleInvoiceRow>({
-      queryPage: (from, to) =>
-        supabase
-          .from("proto_invoices")
-          .select("*")
-          .eq("workspace_company_id", workspaceId)
-          .gte("issue_date", minDate)
-          .order("id", { ascending: true })
-          .range(from, to),
-      pageSize: 1000,
-      maxRows: 100000,
-    }),
-    loadCustomerNames(supabase, workspaceId),
-    loadSalesCatalogView(supabase, workspaceId),
-  ]);
+  const [{ rows: invoiceRows, reachedMaxRows }, names, catalogResult, spResult, assignments] =
+    await Promise.all([
+      fetchAllRows<RawSaleInvoiceRow>({
+        queryPage: (from, to) =>
+          supabase
+            .from("proto_invoices")
+            .select("*")
+            .eq("workspace_company_id", workspaceId)
+            .gte("issue_date", minDate)
+            .order("id", { ascending: true })
+            .range(from, to),
+        pageSize: 1000,
+        maxRows: 100000,
+      }),
+      loadCustomerNames(supabase, workspaceId),
+      loadSalesCatalogView(supabase, workspaceId),
+      loadSalespersons(supabase, workspaceId).catch(() => ({ salespersons: [], migrationPending: true })),
+      loadDocumentAssignments(supabase, workspaceId).catch(() => new Map<string, string>()),
+    ]);
 
   // Dedup canónico compartido (mismos universos que Cartera/Finanzas/Reportes).
   const deduped = dedupeZetaShadowInvoicesCanonical(invoiceRows as unknown as DataRow[]);
@@ -116,13 +126,27 @@ export async function loadSalesDataset(
     minDate,
   });
 
+  // Adjuntar comercial por documento (solo aplica a ventas desde 2026-07-01;
+  // asignaciones a documentos anteriores se ignoran por regla de vigencia).
+  const spNameById = new Map(spResult.salespersons.map((s) => [s.id, s.displayName]));
+  for (const doc of documents) {
+    if (doc.issueDate < SALESPERSON_START_DATE) continue;
+    const spId = assignments.get(doc.documentId);
+    if (spId && spNameById.has(spId)) {
+      doc.salespersonId = spId;
+      doc.salespersonName = spNameById.get(spId) ?? null;
+    }
+  }
+
   return {
     documents,
     catalog: catalogResult.view,
+    salespersons: spResult.salespersons,
     meta: {
       invoiceRowsLoaded: invoiceRows.length,
       documentsBuilt: documents.length,
       catalogMigrationPending: catalogResult.migrationPending,
+      salespersonsMigrationPending: spResult.migrationPending,
       reachedMaxRows,
     },
   };

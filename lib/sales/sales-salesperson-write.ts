@@ -1,0 +1,52 @@
+/**
+ * FASE 9B — Esquemas Zod + builders para comerciales y asignaciones.
+ */
+
+import { z } from "zod";
+
+export const salespersonCreateSchema = z.object({
+  displayName: z.string().trim().min(1).max(120),
+  appUserId: z.string().uuid().nullable().optional(),
+  active: z.boolean().optional(),
+});
+export type SalespersonCreateInput = z.infer<typeof salespersonCreateSchema>;
+
+export const salespersonUpdateSchema = z.object({
+  displayName: z.string().trim().min(1).max(120).optional(),
+  active: z.boolean().optional(),
+});
+export type SalespersonUpdateInput = z.infer<typeof salespersonUpdateSchema>;
+
+export const assignmentSchema = z.object({
+  documentId: z.string().uuid(),
+  /** null = des-asignar (Sin asignar). */
+  salespersonId: z.string().uuid().nullable(),
+});
+export type AssignmentInput = z.infer<typeof assignmentSchema>;
+
+export function buildSalespersonInsert(input: SalespersonCreateInput, workspaceId: string, userId: string | null) {
+  return {
+    workspace_id: workspaceId,
+    display_name: input.displayName,
+    app_user_id: input.appUserId ?? null,
+    active: input.active ?? true,
+    created_by: userId,
+  };
+}
+
+export function buildSalespersonUpdate(input: SalespersonUpdateInput): Record<string, unknown> {
+  const patch: Record<string, unknown> = {};
+  if (input.displayName !== undefined) patch.display_name = input.displayName;
+  if (input.active !== undefined) patch.active = input.active;
+  return patch;
+}
+
+export function buildAssignmentUpsert(input: AssignmentInput, workspaceId: string, userId: string | null) {
+  return {
+    workspace_id: workspaceId,
+    document_id: input.documentId,
+    salesperson_id: input.salespersonId,
+    assigned_by: userId,
+    assigned_at: new Date().toISOString(),
+  };
+}
