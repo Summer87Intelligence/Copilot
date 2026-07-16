@@ -168,8 +168,9 @@ describe("period snapshot", () => {
 
   it("computes average ticket per currency without mixing", () => {
     const snap = buildSalesPeriodSnapshot(docs, "2026-02-01", "2026-02-28");
+    // Ticket = ventas netas / facturas válidas (NC restadas; NC no cuenta como factura).
     expect(snap.averageTicket.UYU).toBe(1220);
-    expect(snap.averageTicket.USD).toBe(600);
+    expect(snap.averageTicket.USD).toBe(500);
   });
 
   it("does not double-count NC into emitted", () => {
