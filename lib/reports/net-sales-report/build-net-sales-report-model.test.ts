@@ -246,4 +246,40 @@ describe("buildNetSalesReportModel", () => {
     expect(sum).toBeCloseTo(result.totals.invoiceRowsTotal, 2);
     expect(result.totals.invoiceRowsTotal).toBeCloseTo(result.totals.netSales, 2);
   });
+
+  // FASE 9E: reconciliación con Ventas/Finanzas. Comprobantes internos CCV1
+  // (currency_code nulo pero MonedaCodigo en el payload) deben contarse en la
+  // moneda resuelta, igual que Ventas.
+  it("incluye comprobantes sin currency_code resolviendo MonedaCodigo del payload", () => {
+    const uyuVoucher = (id: string, total: number) =>
+      inv({
+        id,
+        total_amount: total,
+        currency_code: null as unknown as string,
+        zeta_metadata: {
+          zeta_customer_voucher_v1: { cfe_tipo: "0", raw_payload: { MonedaCodigo: "1", CFETipo: "0" } },
+        },
+      });
+    const result = buildNetSalesReportModel({
+      ...BASE,
+      currency: "UYU",
+      invoices: [
+        inv({ id: "i1", currency_code: "UYU", total_amount: 666122.5 }),
+        uyuVoucher("i2", 68320),
+        uyuVoucher("i3", 21472),
+        uyuVoucher("i4", 7320),
+        // USD sin currency_code (MonedaCodigo=2) NO cuenta en el reporte UYU.
+        inv({
+          id: "i5",
+          currency_code: null as unknown as string,
+          total_amount: 305,
+          zeta_metadata: {
+            zeta_customer_voucher_v1: { cfe_tipo: "0", raw_payload: { MonedaCodigo: "2", CFETipo: "0" } },
+          },
+        }),
+      ],
+    });
+    expect(result.totals.netSales).toBeCloseTo(666122.5 + 68320 + 21472 + 7320, 2);
+    expect(result.totals.invoiceCount).toBe(4);
+  });
 });
