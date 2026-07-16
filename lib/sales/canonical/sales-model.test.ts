@@ -249,18 +249,36 @@ describe("classification + product summary", () => {
     expect(web.invoiceCount).toBe(2);
   });
 
-  it("keeps unclassified as an explicit row so totals reconcile", () => {
+  it("shows the raw Zeta concept as its own product (never 'Sin clasificar')", () => {
     const rows: RawSaleInvoiceRow[] = [
       invoice({ id: "1", date: "2026-02-01", moneda: "2", total: 600, lines: [{ concepto: "Página web", codigo: "PW", neto: "600", iva: "0", total: "600" }] }),
       invoice({ id: "2", date: "2026-02-02", moneda: "2", total: 200, lines: [{ concepto: "Cosa rara", codigo: "ZZ", neto: "200", iva: "0", total: "200" }] }),
     ];
     const docs = buildCanonicalSaleDocuments({ workspaceId: WS, rows, catalog });
     const summary = buildProductSalesSummary(docs, "2026-02-01", "2026-02-28");
-    const unclassified = summary.find((r) => r.productId === null)!;
-    expect(unclassified.productName).toBe("Sin clasificar");
-    expect(unclassified.totalByCurrency.USD).toBe(200);
+    // El concepto Zeta aparece con su nombre real, no como "Sin clasificar".
+    expect(summary.some((r) => r.productName === "Sin clasificar")).toBe(false);
+    const concept = summary.find((r) => r.productName === "Cosa rara")!;
+    expect(concept).toBeDefined();
+    expect(concept.productId).toBeNull();
+    expect(concept.normalizationStatus).toBe("original");
+    expect(concept.totalByCurrency.USD).toBe(200);
     const totalUSD = summary.reduce((s, r) => s + r.totalByCurrency.USD, 0);
     expect(totalUSD).toBe(800); // reconciles with emitted
+  });
+
+  it("only truly empty lines (no Zeta concept) group as 'Sin detalle'", () => {
+    const rows: RawSaleInvoiceRow[] = [
+      invoice({ id: "1", date: "2026-02-01", moneda: "2", total: 500 }), // no lines → synthetic
+      invoice({ id: "2", date: "2026-02-02", moneda: "2", total: 300, lines: [{ concepto: "Gestión de Pauta", neto: "300", iva: "0", total: "300" }] }),
+    ];
+    const docs = buildCanonicalSaleDocuments({ workspaceId: WS, rows });
+    const summary = buildProductSalesSummary(docs, "2026-02-01", "2026-02-28");
+    expect(summary.find((r) => r.productName === "Gestión de Pauta")!.normalizationStatus).toBe("original");
+    const sinDetalle = summary.find((r) => r.normalizationStatus === "missing_detail")!;
+    expect(sinDetalle.productName).toBe("Sin detalle");
+    // "Sin detalle" siempre al final del orden.
+    expect(summary[summary.length - 1]!.normalizationStatus).toBe("missing_detail");
   });
 });
 

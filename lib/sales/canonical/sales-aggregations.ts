@@ -20,6 +20,7 @@ import {
   type CurrencyPair,
   type CustomerSalesSummaryRow,
   type ProductSalesSummaryRow,
+  type SalespersonSummaryRow,
   type SalesCollectionSummary,
   type SalesComparison,
   type SalesCurrency,
@@ -90,13 +91,14 @@ export function buildSalesPeriodSnapshot(
   const applied = emptyCurrencyPair();
   const registered = emptyCurrencyPair();
   const pending = emptyCurrencyPair();
-  const unclassifiedAmount = emptyCurrencyPair();
+  const missingDetailAmount = emptyCurrencyPair();
   const invoiceCountByCurrency = emptyCurrencyPair();
 
   let invoiceCount = 0;
   let creditNoteCount = 0;
   let unitsSold = 0;
   let unclassifiedLineCount = 0;
+  let missingDetailLineCount = 0;
   let unknownCurrencyCount = 0;
 
   const periodCustomers = new Set<string>();
@@ -126,9 +128,14 @@ export function buildSalesPeriodSnapshot(
 
     for (const line of countableLines(doc)) {
       if (!line.synthetic) unitsSold += line.quantity;
-      if (line.classificationStatus === "unclassified") {
+      // "Sin detalle" = líneas realmente vacías (documento sin líneas Zeta).
+      if (line.normalizationStatus === "missing_detail") {
+        missingDetailLineCount += 1;
+        if (isKnownCurrency(line.currency)) addToPair(missingDetailAmount, line.currency, line.lineAmount);
+      }
+      // Métrica interna de administración: concepto válido aún sin alias.
+      if (line.classificationStatus === "unclassified" && line.normalizationStatus !== "missing_detail") {
         unclassifiedLineCount += 1;
-        if (isKnownCurrency(line.currency)) addToPair(unclassifiedAmount, line.currency, line.lineAmount);
       }
     }
   }
@@ -166,7 +173,8 @@ export function buildSalesPeriodSnapshot(
     newCustomers,
     recurringCustomers,
     unclassifiedLineCount,
-    unclassifiedAmount: round2Pair(unclassifiedAmount),
+    missingDetailLineCount,
+    missingDetailAmount: round2Pair(missingDetailAmount),
     unknownCurrencyCount,
   };
 }
@@ -174,8 +182,6 @@ export function buildSalesPeriodSnapshot(
 // ---------------------------------------------------------------------------
 // Product summary
 // ---------------------------------------------------------------------------
-
-const UNCLASSIFIED_KEY = "__unclassified__";
 
 export function buildProductSalesSummary(
   allDocs: readonly CanonicalSaleDocument[],
@@ -189,6 +195,7 @@ export function buildProductSalesSummary(
     categoryId: string | null;
     categoryName: string | null;
     status: ProductSalesSummaryRow["classificationStatus"];
+    normalizationStatus: ProductSalesSummaryRow["normalizationStatus"];
     quantity: number;
     docs: Set<string>;
     customers: Set<string>;
@@ -202,17 +209,20 @@ export function buildProductSalesSummary(
     if (!inWindow(doc.issueDate, periodFrom, periodTo)) continue;
 
     for (const line of countableLines(doc)) {
-      const classified = line.classificationStatus === "classified" && line.canonicalProductId;
-      const key = classified ? `p:${line.canonicalProductId}` : UNCLASSIFIED_KEY;
+      const classified = line.normalizationStatus === "canonical" && line.canonicalProductId;
+      // Agrupar por producto canónico o por concepto Zeta normalizado. Nunca
+      // colapsar conceptos válidos en "Sin clasificar".
+      const key = line.productGroupKey;
       let acc = map.get(key);
       if (!acc) {
         acc = {
           key,
           productId: classified ? line.canonicalProductId : null,
-          productName: classified ? line.canonicalProductName ?? "—" : "Sin clasificar",
+          productName: line.displayProductName,
           categoryId: classified ? line.canonicalCategoryId : null,
           categoryName: classified ? line.canonicalCategoryName : null,
           status: classified ? "classified" : "unclassified",
+          normalizationStatus: line.normalizationStatus,
           quantity: 0,
           docs: new Set(),
           customers: new Set(),
@@ -240,6 +250,7 @@ export function buildProductSalesSummary(
       categoryId: acc.categoryId,
       categoryName: acc.categoryName,
       classificationStatus: acc.status,
+      normalizationStatus: acc.normalizationStatus,
       quantity: Math.round(acc.quantity * 100) / 100,
       invoiceCount: acc.docs.size,
       customerCount: acc.customers.size,
@@ -251,10 +262,12 @@ export function buildProductSalesSummary(
     });
   }
 
-  // Orden: facturación total (USD*~40 + UYU como proxy de relevancia) desc, "Sin clasificar" al final.
+  // Orden: facturación total desc; "Sin detalle" (missing_detail) siempre al final.
   rows.sort((a, b) => {
-    if (a.productId === null && b.productId !== null) return 1;
-    if (b.productId === null && a.productId !== null) return -1;
+    const aMissing = a.normalizationStatus === "missing_detail";
+    const bMissing = b.normalizationStatus === "missing_detail";
+    if (aMissing && !bMissing) return 1;
+    if (bMissing && !aMissing) return -1;
     const av = a.totalByCurrency.UYU + a.totalByCurrency.USD;
     const bv = b.totalByCurrency.UYU + b.totalByCurrency.USD;
     return bv - av;
@@ -317,8 +330,7 @@ export function buildCustomerSalesSummary(
       addToPair(acc.invoiceCountByCurrency, doc.currency, 1);
     }
     for (const line of countableLines(doc)) {
-      if (line.canonicalProductId) acc.products.add(line.canonicalProductId);
-      else acc.products.add(`c:${conceptKey(line.originalDescription, line.originalCode)}`);
+      if (line.normalizationStatus !== "missing_detail") acc.products.add(line.productGroupKey);
     }
     if (!acc.firstInPeriod || doc.issueDate < acc.firstInPeriod) acc.firstInPeriod = doc.issueDate;
     if (!acc.lastInPeriod || doc.issueDate > acc.lastInPeriod) acc.lastInPeriod = doc.issueDate;
@@ -347,6 +359,108 @@ export function buildCustomerSalesSummary(
     });
   }
   rows.sort((a, b) => (b.salesByCurrency.UYU + b.salesByCurrency.USD) - (a.salesByCurrency.UYU + a.salesByCurrency.USD));
+  return rows;
+}
+
+// ---------------------------------------------------------------------------
+// Salesperson summary (comerciales)
+// ---------------------------------------------------------------------------
+
+const UNASSIGNED_ID = "__unassigned__";
+
+export function buildSalespersonSummary(
+  allDocs: readonly CanonicalSaleDocument[],
+  periodFrom: string,
+  periodTo: string
+): SalespersonSummaryRow[] {
+  const firstSale = firstSaleByCustomer(allDocs);
+
+  const totalEmitted = emptyCurrencyPair();
+  type Acc = {
+    id: string | null;
+    name: string;
+    docs: Set<string>;
+    customers: Set<string>;
+    newCustomers: Set<string>;
+    units: number;
+    sales: CurrencyPair;
+    invoiceCountByCurrency: CurrencyPair;
+    productTotals: Map<string, { name: string; total: number }>;
+  };
+  const map = new Map<string, Acc>();
+
+  for (const doc of allDocs) {
+    if (!isValidSale(doc)) continue;
+    if (!inWindow(doc.issueDate, periodFrom, periodTo)) continue;
+    if (isKnownCurrency(doc.currency)) addToPair(totalEmitted, doc.currency, doc.grossAmount);
+
+    const key = doc.salespersonId ?? UNASSIGNED_ID;
+    let acc = map.get(key);
+    if (!acc) {
+      acc = {
+        id: doc.salespersonId,
+        name: doc.salespersonName ?? "Sin asignar",
+        docs: new Set(),
+        customers: new Set(),
+        newCustomers: new Set(),
+        units: 0,
+        sales: emptyCurrencyPair(),
+        invoiceCountByCurrency: emptyCurrencyPair(),
+        productTotals: new Map(),
+      };
+      map.set(key, acc);
+    }
+    acc.docs.add(doc.documentId);
+    const ck = customerKey(doc);
+    acc.customers.add(ck);
+    if ((firstSale.get(ck) ?? "") >= periodFrom) acc.newCustomers.add(ck);
+    if (isKnownCurrency(doc.currency)) {
+      addToPair(acc.sales, doc.currency, doc.grossAmount);
+      addToPair(acc.invoiceCountByCurrency, doc.currency, 1);
+    }
+    for (const line of countableLines(doc)) {
+      if (!line.synthetic) acc.units += line.quantity;
+      const pt = acc.productTotals.get(line.productGroupKey) ?? { name: line.displayProductName, total: 0 };
+      if (isKnownCurrency(line.currency)) pt.total += line.lineAmount;
+      acc.productTotals.set(line.productGroupKey, pt);
+    }
+  }
+
+  const rows: SalespersonSummaryRow[] = [];
+  for (const acc of map.values()) {
+    let topProduct: string | null = null;
+    let topTotal = -1;
+    for (const pt of acc.productTotals.values()) {
+      if (pt.total > topTotal) {
+        topTotal = pt.total;
+        topProduct = pt.name;
+      }
+    }
+    rows.push({
+      salespersonId: acc.id,
+      salespersonName: acc.name,
+      invoiceCount: acc.docs.size,
+      unitsSold: Math.round(acc.units * 100) / 100,
+      customerCount: acc.customers.size,
+      newCustomerCount: acc.newCustomers.size,
+      salesByCurrency: round2Pair(acc.sales),
+      avgTicketByCurrency: {
+        UYU: acc.invoiceCountByCurrency.UYU > 0 ? Math.round((acc.sales.UYU / acc.invoiceCountByCurrency.UYU) * 100) / 100 : 0,
+        USD: acc.invoiceCountByCurrency.USD > 0 ? Math.round((acc.sales.USD / acc.invoiceCountByCurrency.USD) * 100) / 100 : 0,
+      },
+      topProductName: topProduct,
+      shareByCurrency: {
+        UYU: totalEmitted.UYU > 0 ? Math.round((acc.sales.UYU / totalEmitted.UYU) * 1000) / 10 : 0,
+        USD: totalEmitted.USD > 0 ? Math.round((acc.sales.USD / totalEmitted.USD) * 1000) / 10 : 0,
+      },
+    });
+  }
+  // Comerciales asignados primero (por facturación desc), "Sin asignar" al final.
+  rows.sort((a, b) => {
+    if (a.salespersonId === null && b.salespersonId !== null) return 1;
+    if (b.salespersonId === null && a.salespersonId !== null) return -1;
+    return b.salesByCurrency.UYU + b.salesByCurrency.USD - (a.salesByCurrency.UYU + a.salesByCurrency.USD);
+  });
   return rows;
 }
 

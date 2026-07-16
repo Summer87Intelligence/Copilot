@@ -14,7 +14,7 @@ import {
   readCfeTipoFromZetaMetadata,
 } from "@/lib/copilot-zeta-credit-note";
 import { emptyCatalogView, type SalesCatalogView } from "@/lib/sales/canonical/catalog-types";
-import { classifyLine } from "@/lib/sales/canonical/sales-normalization";
+import { classifyLine, conceptKey, type LineClassificationResult } from "@/lib/sales/canonical/sales-normalization";
 import type {
   CanonicalSaleDocument,
   CanonicalSaleLine,
@@ -71,6 +71,46 @@ const CFE_TIPO_LABEL: Record<number, string> = {
   181: "e-Remito / NC",
   182: "e-Resguardo / NC",
 };
+
+const MISSING_DETAIL_LABEL = "Sin detalle";
+const MISSING_DETAIL_GROUP = "__missing_detail__";
+
+/**
+ * Resuelve el nombre visible y la clave de agrupación de una línea aplicando la
+ * jerarquía canónica: producto del catálogo → concepto Zeta → descripción →
+ * "Sin detalle". NUNCA devuelve "Sin clasificar": un concepto Zeta válido es un
+ * producto comercial legítimo aunque no tenga alias todavía.
+ */
+function resolveLineDisplay(
+  cls: LineClassificationResult,
+  concept: string | null,
+  code: string | null
+): {
+  displayProductName: string;
+  productGroupKey: string;
+  normalizationStatus: "canonical" | "original" | "missing_detail";
+} {
+  if (cls.status === "classified" && cls.productId && cls.productName) {
+    return {
+      displayProductName: cls.productName,
+      productGroupKey: `p:${cls.productId}`,
+      normalizationStatus: "canonical",
+    };
+  }
+  const label = (concept ?? "").trim();
+  if (label && label !== "(Sin concepto)") {
+    return {
+      displayProductName: label,
+      productGroupKey: `c:${conceptKey(label, code)}`,
+      normalizationStatus: "original",
+    };
+  }
+  return {
+    displayProductName: MISSING_DETAIL_LABEL,
+    productGroupKey: MISSING_DETAIL_GROUP,
+    normalizationStatus: "missing_detail",
+  };
+}
 
 function toNum(v: unknown): number {
   if (typeof v === "number") return Number.isFinite(v) ? v : 0;
@@ -195,15 +235,20 @@ export function buildCanonicalSaleDocuments(
     if (rawLines.length === 0) {
       // Documento sin detalle (vino por pipeline de saldos): línea sintética.
       const cls = classifyLine("(Sin detalle de líneas)", null, catalog);
+      const display = resolveLineDisplay(cls, null, null);
       lines.push({
         lineId: `${documentId}:0`,
         documentId,
         originalCode: null,
         originalDescription: "(Sin detalle de líneas)",
+        originalConcept: null,
         canonicalProductId: cls.productId,
         canonicalProductName: cls.productName,
         canonicalCategoryId: cls.categoryId,
         canonicalCategoryName: cls.categoryName,
+        displayProductName: display.displayProductName,
+        productGroupKey: display.productGroupKey,
+        normalizationStatus: display.normalizationStatus,
         classificationStatus: cls.status,
         classificationSource: cls.source,
         quantity: 1,
@@ -226,15 +271,21 @@ export function buildCanonicalSaleDocuments(
         const iva = toNumOrNull(l.IVA);
         const lineAmount = total || (net ?? 0) + (iva ?? 0);
         const cls = classifyLine(description, code, catalog);
+        const hasConcept = description !== "(Sin concepto)";
+        const display = resolveLineDisplay(cls, hasConcept ? description : null, code);
         lines.push({
           lineId: `${documentId}:${idx}`,
           documentId,
           originalCode: code,
           originalDescription: description,
+          originalConcept: hasConcept ? description : null,
           canonicalProductId: cls.productId,
           canonicalProductName: cls.productName,
           canonicalCategoryId: cls.categoryId,
           canonicalCategoryName: cls.categoryName,
+          displayProductName: display.displayProductName,
+          productGroupKey: display.productGroupKey,
+          normalizationStatus: display.normalizationStatus,
           classificationStatus: cls.status,
           classificationSource: cls.source,
           quantity,

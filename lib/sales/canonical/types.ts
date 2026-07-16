@@ -42,6 +42,7 @@ export type SalesClassificationSource =
   | "manual_rule"
   | "exact_alias"
   | "normalized_alias"
+  | "zeta_concept"
   | "fallback";
 
 export type CanonicalSaleLine = {
@@ -52,12 +53,30 @@ export type CanonicalSaleLine = {
   originalCode: string | null;
   /** Concepto de Zeta — texto original, jamás se modifica. */
   originalDescription: string;
+  /** Concepto de Zeta (== originalDescription cuando existe línea real; null si sintética). */
+  originalConcept: string | null;
 
   canonicalProductId: string | null;
   canonicalProductName: string | null;
   canonicalCategoryId: string | null;
   canonicalCategoryName: string | null;
 
+  /**
+   * Nombre de producto/servicio a mostrar en la UI comercial. Jerarquía:
+   * canonicalProductName → concepto Zeta → descripción → "Sin detalle".
+   * NUNCA es "Sin clasificar": un concepto Zeta válido siempre se muestra.
+   */
+  displayProductName: string;
+  /** Clave estable de agrupación (producto canónico o concepto normalizado). */
+  productGroupKey: string;
+  /**
+   * canonical: mapeado a producto del catálogo.
+   * original: se muestra el concepto Zeta tal cual (sin alias todavía).
+   * missing_detail: no hay concepto ni descripción (documento sin líneas).
+   */
+  normalizationStatus: "canonical" | "original" | "missing_detail";
+
+  /** Estado interno de clasificación (administración; NO se muestra como producto). */
   classificationStatus: SalesClassificationStatus;
   classificationSource: SalesClassificationSource;
 
@@ -161,9 +180,11 @@ export type SalesPeriodSnapshot = {
   newCustomers: number;
   recurringCustomers: number;
 
-  /** Líneas sin clasificar (impacto). */
+  /** Conceptos Zeta válidos aún sin alias en el catálogo (métrica interna admin). */
   unclassifiedLineCount: number;
-  unclassifiedAmount: CurrencyPair;
+  /** Líneas realmente sin detalle (documento sin líneas Zeta). */
+  missingDetailLineCount: number;
+  missingDetailAmount: CurrencyPair;
 
   /** Documentos con moneda no resuelta (excluidos de UYU/USD). */
   unknownCurrencyCount: number;
@@ -176,6 +197,8 @@ export type ProductSalesSummaryRow = {
   categoryId: string | null;
   categoryName: string | null;
   classificationStatus: SalesClassificationStatus;
+  /** canonical: mapeado al catálogo; original: concepto Zeta; missing_detail: sin línea. */
+  normalizationStatus: "canonical" | "original" | "missing_detail";
 
   quantity: number;
   invoiceCount: number;
@@ -226,6 +249,26 @@ export type SalesComparison = {
   invoiceDelta: number;
   unitsDelta: number;
   customerDelta: number;
+};
+
+/** Fecha desde la cual se asigna comercial (no hay backfill anterior). */
+export const SALESPERSON_START_DATE = "2026-07-01" as const;
+
+export type SalespersonSummaryRow = {
+  salespersonId: string | null; // null = "Sin asignar"
+  salespersonName: string;
+
+  invoiceCount: number;
+  unitsSold: number;
+  customerCount: number;
+  newCustomerCount: number;
+
+  salesByCurrency: CurrencyPair;
+  avgTicketByCurrency: CurrencyPair;
+
+  topProductName: string | null;
+  /** Participación % del total emitido por moneda (0 si el total es 0). */
+  shareByCurrency: CurrencyPair;
 };
 
 export type UnclassifiedConceptRow = {
