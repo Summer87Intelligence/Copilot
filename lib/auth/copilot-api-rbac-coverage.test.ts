@@ -27,6 +27,7 @@ function hasModuleAuth(src: string): boolean {
   return (
     src.includes("requireCopilotModuleAccess") ||
     src.includes("requireCopilotModuleWriteAccess") ||
+    src.includes("requireCopilotModuleAdminAccess") ||
     src.includes("requireCopilotApiModuleAccess")
   );
 }

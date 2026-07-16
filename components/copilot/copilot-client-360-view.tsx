@@ -23,6 +23,7 @@ import { ContactosTab } from "@/components/copilot/clientes/tabs/contactos-tab";
 import { CobranzaTab } from "@/components/copilot/clientes/tabs/cobranza-tab";
 import { ActividadTab } from "@/components/copilot/clientes/tabs/actividad-tab";
 import { NotasTab } from "@/components/copilot/clientes/tabs/notas-tab";
+import { VentasTab } from "@/components/copilot/clientes/tabs/ventas-tab";
 
 const SESSION_TAB_KEY = "copilot-client360-active-tab";
 
@@ -30,6 +31,7 @@ type SectionNavId =
   | "resumen"
   | "finanzas"
   | "facturas"
+  | "ventas"
   | "cobros"
   | "cuenta"
   | "contactos"
@@ -42,6 +44,7 @@ const SECTION_NAV_TABS: { id: SectionNavId; label: string }[] = [
   { id: "resumen", label: "Resumen" },
   { id: "finanzas", label: "Finanzas" },
   { id: "facturas", label: "Facturas" },
+  { id: "ventas", label: "Ventas" },
   { id: "cobros", label: "Cobros" },
   { id: "cuenta", label: "Estado de cuenta" },
   { id: "contactos", label: "Contactos" },
@@ -320,6 +323,16 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                 aria-labelledby="client360-tab-facturas"
               >
                 <FacturasTab invoices={data.invoices} />
+              </section>
+            ) : null}
+
+            {activeTab === "ventas" ? (
+              <section
+                id="client360-panel-ventas"
+                role="tabpanel"
+                aria-labelledby="client360-tab-ventas"
+              >
+                <VentasTab companyId={companyId} />
               </section>
             ) : null}
 

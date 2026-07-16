@@ -92,3 +92,10 @@ export async function isModuleAccessDenied(moduleKey: ModuleKey): Promise<boolea
   if (!perms) return true;
   return (perms[moduleKey] ?? "none") === "none";
 }
+
+/** True si el usuario tiene nivel admin sobre el módulo (gestión de catálogo, etc.). */
+export async function hasModuleAdminAccess(moduleKey: ModuleKey): Promise<boolean> {
+  const perms = await getServerEffectivePermissions();
+  if (!perms) return false;
+  return (perms[moduleKey] ?? "none") === "admin";
+}

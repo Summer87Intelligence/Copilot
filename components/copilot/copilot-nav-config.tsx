@@ -20,6 +20,7 @@ import {
   Wallet,
   Banknote,
   LayoutDashboard,
+  ShoppingBag,
 } from "lucide-react";
 
 export type CopilotNavItem = {
@@ -69,6 +70,14 @@ const COPILOT_NAV_HOY: CopilotNavGroup = {
 const COPILOT_NAV_VENTAS: CopilotNavGroup = {
   sectionTitle: "Ventas",
   items: [
+    {
+      href: "/copilot/ventas",
+      label: "Ventas",
+      shortLabel: "Ventas",
+      description: "Qué vendimos, cuánto y a quién",
+      icon: ShoppingBag,
+      moduleKey: "ventas",
+    },
     {
       href: "/copilot/dashboard",
       label: "Dashboard",

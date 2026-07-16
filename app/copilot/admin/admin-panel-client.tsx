@@ -78,6 +78,7 @@ const MODULE_LABELS: Record<ModuleKey, string> = {
   helpdesk: "Mesa de ayuda",
   bank_movements: "Movimientos bancarios",
   daily_tasks: "Tareas diarias",
+  ventas: "Ventas",
 };
 
 /**
@@ -92,6 +93,7 @@ const MODULE_DISPLAY_ORDER: ModuleKey[] = [
   "daily_tasks",
   // Operación
   "clientes",
+  "ventas",
   "cartera",
   "bank_movements",
   "tesoreria",

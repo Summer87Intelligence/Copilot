@@ -8,6 +8,7 @@ import {
 } from "@/lib/copilot-api-auth";
 import { resolveCopilotApiModuleKey } from "@/lib/auth/copilot-api-module-map";
 import {
+  canAdminModule,
   canReadModule,
   canWriteModule,
   resolveEffectivePermissions,
@@ -203,6 +204,42 @@ export async function requireCopilotModuleWriteAccess(
     };
   }
 
+  return auth;
+}
+
+/**
+ * RBAC admin: exige access_level 'admin' en el módulo (superadmin bypass).
+ * Usar para gestión de catálogo/clasificaciones/aliases de Ventas.
+ */
+export async function requireCopilotModuleAdminAccess(
+  request: NextRequest,
+  moduleKey: ModuleKey,
+  body?: unknown
+): Promise<CopilotAuthResult> {
+  const auth = await requireCopilotTenantContext(request, body);
+  if (!auth.ok) return auth;
+
+  const role = auth.ctx.appUser.role?.trim().toLowerCase() ?? "";
+  if (role === "superadmin") return auth;
+
+  const effective = await loadEffectiveModulePermissionsForAppUser(
+    auth.ctx.supabase,
+    auth.ctx.appUser
+  );
+  if (!canAdminModule(auth.ctx.appUser.role ?? "", effective, moduleKey)) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          ok: false as const,
+          code: "FORBIDDEN_MODULE" as const,
+          message: "Necesitás permiso de administración en este módulo.",
+          moduleKey,
+        },
+        { status: 403 }
+      ),
+    };
+  }
   return auth;
 }
 
