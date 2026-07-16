@@ -17,8 +17,15 @@ import {
 } from "@/components/copilot/ui/copilot-visual-system";
 import { clientFichaHref } from "@/lib/copilot/client-360-href";
 import type { SalesOverview } from "@/lib/sales/sales-api";
-import type { SalesPeriodPreset, SalesComparisonMode } from "@/lib/sales/sales-period";
+import type { SalesComparisonMode } from "@/lib/sales/sales-period";
 import { isValidPeriodPreset } from "@/lib/sales/sales-period";
+import {
+  type PeriodState,
+  type PresetOnly,
+  periodToParams,
+  parsePeriodFromParams,
+  periodToSelectValue,
+} from "@/lib/sales/sales-period-url";
 import {
   formatPct,
   formatUyuOrDash,
@@ -40,14 +47,6 @@ import { VentasDetalleTab } from "@/components/copilot/ventas/ventas-detalle-tab
 import { VentasComercialesTab } from "@/components/copilot/ventas/ventas-comerciales-tab";
 
 type TabKey = "resumen" | "servicios" | "detalle" | "clientes" | "comparativo" | "comerciales";
-
-type PresetOnly = Exclude<SalesPeriodPreset, "custom">;
-
-/** Estado de período unificado (preset · mes con nombre · rango personalizado). */
-type PeriodState =
-  | { kind: "preset"; preset: PresetOnly }
-  | { kind: "month"; year: number; month: number }
-  | { kind: "custom"; from: string; to: string };
 
 const MONTH_NAMES = [
   "Enero",
@@ -88,46 +87,8 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "comerciales", label: "Comerciales" },
 ];
 
-const YMD = /^\d{4}-\d{2}-\d{2}$/;
-
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
-}
-
-function periodToParams(period: PeriodState): URLSearchParams {
-  const p = new URLSearchParams();
-  if (period.kind === "preset") {
-    p.set("preset", period.preset);
-  } else if (period.kind === "month") {
-    p.set("year", String(period.year));
-    p.set("month", String(period.month));
-  } else {
-    p.set("from", period.from);
-    p.set("to", period.to);
-  }
-  return p;
-}
-
-function parsePeriodFromParams(sp: URLSearchParams): PeriodState {
-  const year = parseInt(sp.get("year") ?? "", 10);
-  const month = parseInt(sp.get("month") ?? "", 10);
-  if (Number.isFinite(year) && year >= 2020 && Number.isFinite(month) && month >= 1 && month <= 12) {
-    return { kind: "month", year, month };
-  }
-  const from = sp.get("from");
-  const to = sp.get("to");
-  if (from && to && YMD.test(from) && YMD.test(to)) {
-    return { kind: "custom", from, to };
-  }
-  const preset = sp.get("preset");
-  if (isValidPeriodPreset(preset) && preset !== "custom") return { kind: "preset", preset };
-  return { kind: "preset", preset: "this_month" };
-}
-
-function periodToSelectValue(period: PeriodState): string {
-  if (period.kind === "preset") return period.preset;
-  if (period.kind === "month") return `month:${period.month}`;
-  return "custom";
 }
 
 export function VentasPageClient({ isAdmin }: { isAdmin: boolean }) {
@@ -159,10 +120,44 @@ export function VentasPageClient({ isAdmin }: { isAdmin: boolean }) {
     return p.toString();
   }, [period, comparison]);
 
-  // Mantiene la URL en sincronía con los filtros (deep-link / recarga estable).
+  /**
+   * Construye la query preservando parámetros no relacionados al período y
+   * eliminando los obsoletos (p. ej. from/to al pasar de custom a preset).
+   */
+  const buildPeriodQuery = useCallback(
+    (next: PeriodState) => {
+      const p = new URLSearchParams(searchParams?.toString() ?? "");
+      for (const key of ["preset", "year", "month", "from", "to"]) p.delete(key);
+      for (const [k, v] of periodToParams(next)) p.set(k, v);
+      p.set("comparison", comparison);
+      return p.toString();
+    },
+    [searchParams, comparison]
+  );
+
+  /**
+   * Aplica un período: actualiza estado + navega. `push` (default) crea entrada
+   * de historial para que Back/Forward restaure el período; `replace` evita
+   * spam de historial (p. ej. tipeo de fechas custom).
+   */
+  const applyPeriod = useCallback(
+    (next: PeriodState, mode: "push" | "replace" = "push") => {
+      setPeriod(next);
+      const url = `${pathname}?${buildPeriodQuery(next)}`;
+      if (mode === "replace") router.replace(url, { scroll: false });
+      else router.push(url, { scroll: false });
+    },
+    [buildPeriodQuery, pathname, router]
+  );
+
+  // Back/forward del navegador: rehidrata el período desde la URL. No genera
+  // loop porque compara la representación canónica antes de actualizar estado.
   useEffect(() => {
-    router.replace(`${pathname}?${queryString}`, { scroll: false });
-  }, [queryString, pathname, router]);
+    const parsed = parsePeriodFromParams(new URLSearchParams(searchParams?.toString() ?? ""));
+    setPeriod((prev) =>
+      periodToParams(prev).toString() === periodToParams(parsed).toString() ? prev : parsed
+    );
+  }, [searchParams]);
 
   const loadOverview = useCallback(async () => {
     setLoading(true);
@@ -228,17 +223,16 @@ export function VentasPageClient({ isAdmin }: { isAdmin: boolean }) {
   const handlePeriodSelect = useCallback(
     (value: string) => {
       if (value === "custom") {
-        setPeriod((prev) =>
-          prev.kind === "custom" ? prev : { kind: "custom", from: monthStartStr, to: todayStr }
-        );
+        if (period.kind === "custom") return;
+        applyPeriod({ kind: "custom", from: monthStartStr, to: todayStr });
       } else if (value.startsWith("month:")) {
         const m = parseInt(value.slice("month:".length), 10);
-        if (Number.isFinite(m)) setPeriod({ kind: "month", year: currentYear, month: m });
+        if (Number.isFinite(m)) applyPeriod({ kind: "month", year: currentYear, month: m });
       } else if (isValidPeriodPreset(value) && value !== "custom") {
-        setPeriod({ kind: "preset", preset: value });
+        applyPeriod({ kind: "preset", preset: value });
       }
     },
-    [currentYear, monthStartStr, todayStr]
+    [applyPeriod, period.kind, currentYear, monthStartStr, todayStr]
   );
 
   const clientAssignmentPending = meta?.clientAssignmentMigrationPending === true;
@@ -298,11 +292,11 @@ export function VentasPageClient({ isAdmin }: { isAdmin: boolean }) {
                     type="date"
                     value={period.from}
                     max={period.to}
-                    onChange={(e) =>
-                      setPeriod((prev) =>
-                        prev.kind === "custom" ? { ...prev, from: e.target.value || prev.from } : prev
-                      )
-                    }
+                    onChange={(e) => {
+                      const from = e.target.value;
+                      if (!from || period.kind !== "custom") return;
+                      applyPeriod({ kind: "custom", from, to: period.to }, "replace");
+                    }}
                     aria-label="Fecha desde"
                     className="h-9 rounded-lg border border-[var(--copilot-border-strong)] bg-[var(--copilot-panel-bg)] px-2.5 text-sm text-[var(--copilot-ink)] shadow-sm outline-none focus:border-[var(--copilot-accent)]"
                   />
@@ -315,11 +309,11 @@ export function VentasPageClient({ isAdmin }: { isAdmin: boolean }) {
                     type="date"
                     value={period.to}
                     min={period.from}
-                    onChange={(e) =>
-                      setPeriod((prev) =>
-                        prev.kind === "custom" ? { ...prev, to: e.target.value || prev.to } : prev
-                      )
-                    }
+                    onChange={(e) => {
+                      const to = e.target.value;
+                      if (!to || period.kind !== "custom") return;
+                      applyPeriod({ kind: "custom", from: period.from, to }, "replace");
+                    }}
                     aria-label="Fecha hasta"
                     className="h-9 rounded-lg border border-[var(--copilot-border-strong)] bg-[var(--copilot-panel-bg)] px-2.5 text-sm text-[var(--copilot-ink)] shadow-sm outline-none focus:border-[var(--copilot-accent)]"
                   />
