@@ -45,18 +45,30 @@ export function VentasTab({ companyId }: { companyId: string }) {
   }, [load]);
 
   const summary = useMemo(() => {
-    const totals = { UYU: 0, USD: 0 };
+    // Ventas netas = ventas emitidas − notas de crédito (las NC del cliente se restan).
+    const net = { UYU: 0, USD: 0 };
+    const creditNotes = { UYU: 0, USD: 0 };
     const appliedTotals = { UYU: 0, USD: 0 };
     const pendingTotals = { UYU: 0, USD: 0 };
     const products = new Map<string, { name: string; qty: number; uyu: number; usd: number }>();
     const docsSeen = new Set<string>();
     let firstDate: string | null = null;
     let lastDate: string | null = null;
+    let salespersonName: string | null = null;
 
     for (const r of rows) {
-      if (r.kind === "credit_note") continue;
       const cur = r.currency === "UYU" || r.currency === "USD" ? r.currency : null;
-      if (cur) totals[cur] += r.lineAmount;
+      if (salespersonName == null && r.salespersonName) salespersonName = r.salespersonName;
+
+      if (r.kind === "credit_note") {
+        if (cur) {
+          net[cur] -= r.lineAmount;
+          creditNotes[cur] += r.lineAmount;
+        }
+        continue;
+      }
+
+      if (cur) net[cur] += r.lineAmount;
       if (cur && r.isFirstLineOfDoc) {
         appliedTotals[cur] += r.docApplied;
         pendingTotals[cur] += r.docPending;
@@ -74,7 +86,17 @@ export function VentasTab({ companyId }: { companyId: string }) {
     }
 
     const productList = [...products.values()].sort((a, b) => b.uyu + b.usd - (a.uyu + a.usd));
-    return { totals, appliedTotals, pendingTotals, productList, docsCount: docsSeen.size, firstDate, lastDate };
+    return {
+      net,
+      creditNotes,
+      appliedTotals,
+      pendingTotals,
+      productList,
+      docsCount: docsSeen.size,
+      firstDate,
+      lastDate,
+      salespersonName,
+    };
   }, [rows]);
 
   if (state === "loading") return <SkeletonText lines={5} />;
@@ -95,8 +117,8 @@ export function VentasTab({ companyId }: { companyId: string }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Tile label="Ventas UYU" value={formatUyu(summary.totals.UYU)} />
-        <Tile label="Ventas USD" value={formatUsd(summary.totals.USD)} />
+        <Tile label="Ventas netas UYU" value={formatUyu(summary.net.UYU)} />
+        <Tile label="Ventas netas USD" value={formatUsd(summary.net.USD)} />
         <Tile label="Facturas" value={String(summary.docsCount)} />
         <Tile label="Servicios" value={String(summary.productList.length)} />
       </div>
@@ -105,6 +127,10 @@ export function VentasTab({ companyId }: { companyId: string }) {
         <h3 className={copilotSectionTitleClass}>Servicios contratados</h3>
         <p className={`${copilotCaptionClass} mt-1`}>
           Primera compra {formatDateShort(summary.firstDate)} · última {formatDateShort(summary.lastDate)}. Año actual.
+          Comercial: {summary.salespersonName ?? "Sin asignar"}.
+          {summary.creditNotes.UYU > 0.005 || summary.creditNotes.USD > 0.005
+            ? ` Notas de crédito descontadas: ${formatUyu(summary.creditNotes.UYU)} · ${formatUsd(summary.creditNotes.USD)}.`
+            : ""}
         </p>
         <ul className="mt-3 space-y-2">
           {summary.productList.map((p) => (

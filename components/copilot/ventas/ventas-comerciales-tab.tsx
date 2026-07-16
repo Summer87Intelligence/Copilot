@@ -128,6 +128,20 @@ export function VentasComercialesTab({
         ),
     },
     {
+      key: "assigned",
+      header: "Clientes asignados",
+      className: "text-right",
+      cellClassName: "text-right tabular-nums",
+      render: (r) => String(r.assignedCustomerCount),
+    },
+    {
+      key: "cust",
+      header: "Clientes con ventas",
+      className: "text-right",
+      cellClassName: "text-right tabular-nums",
+      render: (r) => String(r.customerCount),
+    },
+    {
       key: "inv",
       header: "Facturas",
       className: "text-right",
@@ -135,25 +149,18 @@ export function VentasComercialesTab({
       render: (r) => String(r.invoiceCount),
     },
     {
-      key: "cust",
-      header: "Clientes",
-      className: "text-right",
-      cellClassName: "text-right tabular-nums",
-      render: (r) => String(r.customerCount),
-    },
-    {
       key: "uyu",
-      header: "Ventas UYU",
+      header: "Ventas netas UYU",
       className: "text-right",
       cellClassName: "text-right tabular-nums",
-      render: (r) => formatUyuOrDash(r.salesByCurrency.UYU),
+      render: (r) => formatUyuOrDash(r.netSalesByCurrency.UYU),
     },
     {
       key: "usd",
-      header: "Ventas USD",
+      header: "Ventas netas USD",
       className: "text-right",
       cellClassName: "text-right tabular-nums",
-      render: (r) => formatUsdOrDash(r.salesByCurrency.USD),
+      render: (r) => formatUsdOrDash(r.netSalesByCurrency.USD),
     },
     {
       key: "tuyu",
@@ -195,7 +202,8 @@ export function VentasComercialesTab({
           </h2>
           <p className={copilotCaptionClass}>
             La asignación de comercial arranca el {SALESPERSON_START_DATE}. Las ventas anteriores permanecen como “Sin
-            asignar” y no se modifican. Asigná comerciales desde la pestaña Detalle.
+            asignar” y no se modifican. El comercial se asigna al cliente desde la pestaña Clientes. Los importes son
+            ventas netas (emitidas − notas de crédito).
           </p>
         </div>
 
@@ -205,7 +213,7 @@ export function VentasComercialesTab({
             columns={columns}
             getRowKey={rowKey}
             ariaLabel="Ventas por comercial"
-            minWidth="1040px"
+            minWidth="1160px"
             onRowClick={(r) => setSelectedId(r.salespersonId ?? "unassigned")}
             emptyState={<EmptyState icon={<Users className="h-6 w-6" />} title="No hay ventas en el período." variant="compact" />}
             mobileCard={(r) => (
@@ -217,10 +225,10 @@ export function VentasComercialesTab({
                   <StatusBadge tone="neutral">{r.invoiceCount} fact.</StatusBadge>
                 </div>
                 <p className="text-xs text-[var(--copilot-ink-muted)]">
-                  {r.customerCount} clientes · {share(r)}
+                  {r.assignedCustomerCount} asignados · {r.customerCount} con ventas · {share(r)}
                 </p>
                 <p className="text-sm font-semibold tabular-nums text-[var(--copilot-ink)]">
-                  {formatUyuOrDash(r.salesByCurrency.UYU)} · {formatUsdOrDash(r.salesByCurrency.USD)}
+                  {formatUyuOrDash(r.netSalesByCurrency.UYU)} · {formatUsdOrDash(r.netSalesByCurrency.USD)}
                 </p>
               </div>
             )}
@@ -229,8 +237,8 @@ export function VentasComercialesTab({
 
         {!hasAssigned ? (
           <p className={`${copilotCaptionClass} mt-3`}>
-            Todavía no asignaste comerciales a las ventas de este período. Andá a Detalle y elegí el comercial en cada
-            comprobante desde el {SALESPERSON_START_DATE}.
+            Todavía no asignaste comerciales a los clientes de este período. Andá a Clientes y elegí el comercial de
+            cada cliente desde el {SALESPERSON_START_DATE}.
           </p>
         ) : null}
       </section>
@@ -254,8 +262,8 @@ export function VentasComercialesTab({
                     { label: "Facturas", value: String(drill.summary.invoiceCount) },
                     { label: "Clientes", value: String(drill.summary.customerCount) },
                     { label: "Clientes nuevos", value: String(drill.summary.newCustomerCount) },
-                    { label: "Ventas UYU", value: formatUyuOrDash(drill.summary.salesByCurrency.UYU) },
-                    { label: "Ventas USD", value: formatUsdOrDash(drill.summary.salesByCurrency.USD) },
+                    { label: "Ventas netas UYU", value: formatUyuOrDash(drill.summary.salesByCurrency.UYU) },
+                    { label: "Ventas netas USD", value: formatUsdOrDash(drill.summary.salesByCurrency.USD) },
                     { label: "Ticket prom. UYU", value: formatUyuOrDash(drill.summary.avgTicketByCurrency.UYU) },
                     { label: "Ticket prom. USD", value: formatUsdOrDash(drill.summary.avgTicketByCurrency.USD) },
                     { label: "Servicio principal", value: drill.summary.topServiceName ?? "—" },

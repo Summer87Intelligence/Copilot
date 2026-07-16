@@ -10,7 +10,11 @@ import {
 import { EmptyState } from "@/components/copilot/ui/empty-state";
 import { StatusBadge } from "@/components/copilot/ui/status-badge";
 import { SkeletonText } from "@/components/copilot/ui/skeleton";
-import { copilotCardStandardClass, copilotSectionTitleClass } from "@/components/copilot/ui/copilot-visual-system";
+import {
+  copilotCardStandardClass,
+  copilotSectionTitleClass,
+  copilotCaptionClass,
+} from "@/components/copilot/ui/copilot-visual-system";
 import { clientFichaHref } from "@/lib/copilot/client-360-href";
 import type { SalesOverview } from "@/lib/sales/sales-api";
 import type { CustomerSalesSummaryRow } from "@/lib/sales/canonical/types";
@@ -68,14 +72,52 @@ type CustomerDrill = {
 export function VentasClientesTab({
   overview,
   queryString,
+  canAssign = false,
+  onAssignmentChange,
+  salespersons = [],
 }: {
   overview: SalesOverview;
   queryString: string;
+  /** Habilita el selector de comercial por cliente (solo admin). */
+  canAssign?: boolean;
+  /** Se invoca tras una asignación exitosa para refrescar overview. */
+  onAssignmentChange?: () => void;
+  /** Catálogo de comerciales activos para el selector. */
+  salespersons?: { id: string; displayName: string }[];
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drill, setDrill] = useState<CustomerDrill | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [assignMsg, setAssignMsg] = useState<{ tone: "positive" | "danger"; text: string } | null>(null);
+
+  const assignClient = useCallback(
+    async (customerId: string, salespersonId: string | null) => {
+      setAssigningId(customerId);
+      setAssignMsg(null);
+      try {
+        const res = await fetch("/api/copilot/sales/client-assignments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ customerId, salespersonId }),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.ok) {
+          setAssignMsg({ tone: "danger", text: json?.message ?? "No se pudo asignar el comercial." });
+          return;
+        }
+        setAssignMsg({ tone: "positive", text: "Comercial del cliente actualizado." });
+        onAssignmentChange?.();
+      } catch {
+        setAssignMsg({ tone: "danger", text: "No se pudo asignar el comercial." });
+      } finally {
+        setAssigningId(null);
+      }
+    },
+    [onAssignmentChange]
+  );
 
   const loadDrill = useCallback(
     async (customerId: string) => {
@@ -114,6 +156,31 @@ export function VentasClientesTab({
       render: (r) => <span className="font-medium text-[var(--copilot-ink)]">{r.customerName}</span>,
     },
     {
+      key: "sp",
+      header: "Comercial",
+      className: "text-left",
+      render: (r) =>
+        canAssign && r.customerId ? (
+          <select
+            value={r.salespersonId ?? ""}
+            disabled={assigningId === r.customerId}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => assignClient(r.customerId!, e.target.value || null)}
+            aria-label={`Comercial de ${r.customerName}`}
+            className="h-8 max-w-[160px] rounded-lg border border-[var(--copilot-border-strong)] bg-[var(--copilot-panel-bg)] px-2 text-xs text-[var(--copilot-ink)] disabled:opacity-40"
+          >
+            <option value="">Sin asignar</option>
+            {salespersons.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.displayName}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className="text-xs text-[var(--copilot-ink-muted)]">{r.salespersonName ?? "Sin asignar"}</span>
+        ),
+    },
+    {
       key: "inv",
       header: "Facturas",
       className: "text-right",
@@ -129,17 +196,17 @@ export function VentasClientesTab({
     },
     {
       key: "uyu",
-      header: "Ventas UYU",
+      header: "Ventas netas UYU",
       className: "text-right",
       cellClassName: "text-right tabular-nums",
-      render: (r) => formatUyuOrDash(r.salesByCurrency.UYU),
+      render: (r) => formatUyuOrDash(r.netSalesByCurrency.UYU),
     },
     {
       key: "usd",
-      header: "Ventas USD",
+      header: "Ventas netas USD",
       className: "text-right",
       cellClassName: "text-right tabular-nums",
-      render: (r) => formatUsdOrDash(r.salesByCurrency.USD),
+      render: (r) => formatUsdOrDash(r.netSalesByCurrency.USD),
     },
     {
       key: "tuyu",
@@ -210,13 +277,31 @@ export function VentasClientesTab({
     <>
       <section className={copilotCardStandardClass}>
         <h2 className={copilotSectionTitleClass}>Clientes del período</h2>
+        {canAssign ? (
+          <p className={`${copilotCaptionClass} mt-1`}>
+            El comercial se asigna al cliente y aplica a sus ventas desde la vigencia. No reescribe ventas anteriores.
+          </p>
+        ) : null}
+        {assignMsg ? (
+          <p
+            role="status"
+            aria-live="polite"
+            className={`mt-2 text-xs font-medium ${
+              assignMsg.tone === "positive"
+                ? "text-[var(--copilot-success-text-strong)]"
+                : "text-[var(--copilot-danger-text-strong)]"
+            }`}
+          >
+            {assignMsg.text}
+          </p>
+        ) : null}
         <div className="mt-3">
           <CopilotResponsiveTable
             rows={overview.customers}
             columns={columns}
             getRowKey={(r) => r.customerId ?? r.customerName}
             ariaLabel="Ventas por cliente"
-            minWidth="1100px"
+            minWidth="1240px"
             onRowClick={(r) => {
               if (r.customerId) setSelectedId(r.customerId);
             }}
@@ -232,8 +317,11 @@ export function VentasClientesTab({
                 <p className="text-xs text-[var(--copilot-ink-muted)]">
                   {r.invoiceCount} facturas · {r.productCount} servicios
                 </p>
+                <p className="text-xs text-[var(--copilot-ink-muted)]">
+                  Comercial: {r.salespersonName ?? "Sin asignar"}
+                </p>
                 <p className="text-sm font-semibold tabular-nums text-[var(--copilot-ink)]">
-                  {formatUyuOrDash(r.salesByCurrency.UYU)} · {formatUsdOrDash(r.salesByCurrency.USD)}
+                  {formatUyuOrDash(r.netSalesByCurrency.UYU)} · {formatUsdOrDash(r.netSalesByCurrency.USD)}
                 </p>
               </div>
             )}

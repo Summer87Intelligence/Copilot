@@ -26,7 +26,10 @@ import {
 type YearlyMonth = {
   month: string;
   label: string;
+  /** Alias histórico de ventas emitidas brutas (fallback si no viene el neto). */
   salesByCurrency: { UYU: number; USD: number };
+  netSalesByCurrency?: { UYU: number; USD: number };
+  creditNotesByCurrency?: { UYU: number; USD: number };
   invoiceCount: number;
   customerCount: number;
   avgTicketByCurrency: { UYU: number; USD: number };
@@ -39,6 +42,21 @@ type YearlyMonth = {
     salesPctByCurrency: { UYU: number | null; USD: number | null };
   } | null;
 };
+
+/** Ventas netas del mes con fallback a ventas emitidas si el neto no viene. */
+function monthNet(m: YearlyMonth): { UYU: number; USD: number } {
+  return {
+    UYU: m.netSalesByCurrency?.UYU ?? m.salesByCurrency.UYU,
+    USD: m.netSalesByCurrency?.USD ?? m.salesByCurrency.USD,
+  };
+}
+
+function monthCreditNotes(m: YearlyMonth): { UYU: number; USD: number } {
+  return {
+    UYU: m.creditNotesByCurrency?.UYU ?? 0,
+    USD: m.creditNotesByCurrency?.USD ?? 0,
+  };
+}
 
 const STATUS_LABEL: Record<ServiceComparisonStatus, string> = {
   grew: "Creció",
@@ -145,16 +163,16 @@ export function VentasComparativoTab({
 
   const filteredMonths = useMemo(() => {
     if (currency === "all") return months;
+    const keep = <T extends { UYU: number; USD: number }>(pair: T) => ({
+      UYU: currency === "UYU" ? pair.UYU : 0,
+      USD: currency === "USD" ? pair.USD : 0,
+    });
     return months.map((m) => ({
       ...m,
-      salesByCurrency: {
-        UYU: currency === "UYU" ? m.salesByCurrency.UYU : 0,
-        USD: currency === "USD" ? m.salesByCurrency.USD : 0,
-      },
-      avgTicketByCurrency: {
-        UYU: currency === "UYU" ? m.avgTicketByCurrency.UYU : 0,
-        USD: currency === "USD" ? m.avgTicketByCurrency.USD : 0,
-      },
+      salesByCurrency: keep(m.salesByCurrency),
+      netSalesByCurrency: keep(monthNet(m)),
+      creditNotesByCurrency: keep(monthCreditNotes(m)),
+      avgTicketByCurrency: keep(m.avgTicketByCurrency),
     }));
   }, [months, currency]);
 
@@ -162,17 +180,31 @@ export function VentasComparativoTab({
     { key: "mes", header: "Mes", className: "text-left", render: (r) => <span className="font-medium">{r.label}</span> },
     {
       key: "uyu",
-      header: "Ventas UYU",
+      header: "Ventas netas UYU",
       className: "text-right",
       cellClassName: "text-right tabular-nums",
-      render: (r) => formatUyuOrDash(r.salesByCurrency.UYU),
+      render: (r) => formatUyuOrDash(monthNet(r).UYU),
     },
     {
       key: "usd",
-      header: "Ventas USD",
+      header: "Ventas netas USD",
       className: "text-right",
       cellClassName: "text-right tabular-nums",
-      render: (r) => formatUsdOrDash(r.salesByCurrency.USD),
+      render: (r) => formatUsdOrDash(monthNet(r).USD),
+    },
+    {
+      key: "ncuyu",
+      header: "NC UYU",
+      className: "text-right",
+      cellClassName: "text-right tabular-nums text-xs",
+      render: (r) => formatUyuOrDash(monthCreditNotes(r).UYU),
+    },
+    {
+      key: "ncusd",
+      header: "NC USD",
+      className: "text-right",
+      cellClassName: "text-right tabular-nums text-xs",
+      render: (r) => formatUsdOrDash(monthCreditNotes(r).USD),
     },
     {
       key: "inv",
@@ -357,7 +389,9 @@ export function VentasComparativoTab({
 
       <section className={copilotCardStandardClass}>
         <h2 className={copilotSectionTitleClass}>Evolución mes a mes · {year}</h2>
-        <p className={`${copilotCaptionClass} mt-1`}>UYU y USD separados. Cada mes se compara con el anterior.</p>
+        <p className={`${copilotCaptionClass} mt-1`}>
+          Ventas netas (emitidas − notas de crédito), UYU y USD separados. Cada mes se compara con el anterior.
+        </p>
         <div className="mt-3">
           {loadingYear && months.length === 0 ? (
             <SkeletonText lines={6} />
@@ -368,16 +402,17 @@ export function VentasComparativoTab({
               rows={filteredMonths}
               columns={monthColumns}
               getRowKey={(r) => r.month}
-              ariaLabel="Ventas mensuales del año"
-              minWidth="1040px"
+              ariaLabel="Ventas netas mensuales del año"
+              minWidth="1200px"
               mobileCard={(r) => (
                 <div className="space-y-1">
                   <p className="font-medium text-[var(--copilot-ink)]">{r.label}</p>
                   <p className="text-sm font-semibold tabular-nums">
-                    {formatUyuOrDash(r.salesByCurrency.UYU)} · {formatUsdOrDash(r.salesByCurrency.USD)}
+                    {formatUyuOrDash(monthNet(r).UYU)} · {formatUsdOrDash(monthNet(r).USD)}
                   </p>
                   <p className="text-xs text-[var(--copilot-ink-muted)]">
-                    {r.invoiceCount} facturas · {r.customerCount} clientes
+                    {r.invoiceCount} facturas · {r.customerCount} clientes · NC{" "}
+                    {formatUyuOrDash(monthCreditNotes(r).UYU)} · {formatUsdOrDash(monthCreditNotes(r).USD)}
                   </p>
                 </div>
               )}
@@ -424,20 +459,20 @@ export function VentasComparativoTab({
             tone={deltaTone(cmp.customerDelta)}
           />
           <CompareTile
-            label="Var. ventas USD"
+            label="Var. ventas netas USD"
             current={formatPct(cmp.salesPctByCurrency.USD)}
-            previous={formatUsdOrDash(prev.salesEmitted.USD)}
+            previous={formatUsdOrDash(prev.netSalesByCurrency.USD)}
             delta={formatPct(cmp.salesPctByCurrency.UYU) + " UYU"}
             tone={cmp.salesPctByCurrency.USD === null ? "neutral" : deltaTone(cmp.salesDeltaByCurrency.USD)}
           />
         </div>
         <div className="mt-3 overflow-x-auto">
-          <table className="w-full min-w-[560px] text-sm" aria-label="Facturación por moneda">
+          <table className="w-full min-w-[560px] text-sm" aria-label="Ventas netas por moneda">
             <thead>
               <tr className="border-b border-[var(--copilot-border)] text-[var(--copilot-ink-muted)]">
                 <th className="py-2 text-left font-semibold">Moneda</th>
-                <th className="py-2 text-right font-semibold">Actual</th>
-                <th className="py-2 text-right font-semibold">Anterior</th>
+                <th className="py-2 text-right font-semibold">Ventas netas (actual)</th>
+                <th className="py-2 text-right font-semibold">Ventas netas (anterior)</th>
                 <th className="py-2 text-right font-semibold">Diferencia</th>
                 <th className="py-2 text-right font-semibold">Variación</th>
               </tr>
@@ -448,9 +483,9 @@ export function VentasComparativoTab({
                 return (
                   <tr key={c} className="border-b border-[var(--copilot-border)] last:border-0">
                     <td className="py-2 font-semibold text-[var(--copilot-ink)]">{c}</td>
-                    <td className="py-2 text-right tabular-nums">{fmt(cur.salesEmitted[c])}</td>
+                    <td className="py-2 text-right tabular-nums">{fmt(cur.netSalesByCurrency[c])}</td>
                     <td className="py-2 text-right tabular-nums text-[var(--copilot-ink-muted)]">
-                      {fmt(prev.salesEmitted[c])}
+                      {fmt(prev.netSalesByCurrency[c])}
                     </td>
                     <td className="py-2 text-right tabular-nums">{fmt(cmp.salesDeltaByCurrency[c])}</td>
                     <td className="py-2 text-right">

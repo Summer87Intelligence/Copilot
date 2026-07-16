@@ -11,7 +11,11 @@ import { EmptyState } from "@/components/copilot/ui/empty-state";
 import { StatusBadge } from "@/components/copilot/ui/status-badge";
 import { TablePagination } from "@/components/copilot/ui/table-pagination";
 import { SkeletonText } from "@/components/copilot/ui/skeleton";
-import { copilotCardStandardClass, copilotSectionTitleClass } from "@/components/copilot/ui/copilot-visual-system";
+import {
+  copilotCardStandardClass,
+  copilotSectionTitleClass,
+  copilotCaptionClass,
+} from "@/components/copilot/ui/copilot-visual-system";
 import type { SalesDetailRow } from "@/lib/sales/sales-api";
 import type { SalesPeriodPreset } from "@/lib/sales/sales-period";
 import type { SalespersonRow } from "@/lib/sales/sales-salesperson-repository";
@@ -39,10 +43,21 @@ function secondaryDescription(row: SalesDetailRow): string | null {
 
 export function VentasDetalleTab({
   preset,
+  from,
+  to,
+  year,
+  month,
   canAssign,
   onAssignmentChange,
 }: {
-  preset: SalesPeriodPreset;
+  /** Período por preset (this_month, year, …). */
+  preset?: SalesPeriodPreset;
+  /** Rango personalizado (YYYY-MM-DD). */
+  from?: string;
+  to?: string;
+  /** Mes con nombre del año en curso. */
+  year?: number;
+  month?: number;
   canAssign: boolean;
   /** Se invoca tras una asignación exitosa para refrescar overview / Comerciales. */
   onAssignmentChange?: () => void;
@@ -62,16 +77,30 @@ export function VentasDetalleTab({
   const [assignMsg, setAssignMsg] = useState<{ tone: "positive" | "danger"; text: string } | null>(null);
   const [detailRow, setDetailRow] = useState<SalesDetailRow | null>(null);
 
-  const qs = useMemo(() => {
+  /** Serializa el período recibido (preset · mes · rango) para la API. */
+  const periodKey = useMemo(() => {
     const p = new URLSearchParams();
-    p.set("preset", preset);
+    if (year != null && month != null) {
+      p.set("year", String(year));
+      p.set("month", String(month));
+    } else if (from && to) {
+      p.set("from", from);
+      p.set("to", to);
+    } else {
+      p.set("preset", preset ?? "this_month");
+    }
+    return p.toString();
+  }, [preset, from, to, year, month]);
+
+  const qs = useMemo(() => {
+    const p = new URLSearchParams(periodKey);
     p.set("page", String(page));
     p.set("pageSize", String(PAGE_SIZE));
     if (search.trim()) p.set("search", search.trim());
     if (currency !== "all") p.set("currencies", currency);
     if (salesperson !== "all") p.set("salespersonIds", salesperson);
     return p.toString();
-  }, [preset, page, search, currency, salesperson]);
+  }, [periodKey, page, search, currency, salesperson]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -118,7 +147,7 @@ export function VentasDetalleTab({
 
   useEffect(() => {
     setPage(1);
-  }, [search, currency, salesperson, preset]);
+  }, [search, currency, salesperson, periodKey]);
 
   const assign = useCallback(
     async (documentId: string, salespersonId: string | null) => {
@@ -154,8 +183,8 @@ export function VentasDetalleTab({
   );
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const from = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const to = Math.min(page * PAGE_SIZE, total);
+  const pageFrom = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const pageTo = Math.min(page * PAGE_SIZE, total);
 
   const columns: CopilotResponsiveTableColumn<SalesDetailRow>[] = [
     {
@@ -177,6 +206,12 @@ export function VentasDetalleTab({
       className: "text-left",
       cellClassName: "text-xs",
       render: (r) => `${r.documentType} ${r.documentNumber ?? ""}`.trim(),
+    },
+    {
+      key: "tipo",
+      header: "Tipo",
+      className: "text-left",
+      render: (r) => <DocKindBadge row={r} />,
     },
     {
       key: "svc",
@@ -204,20 +239,21 @@ export function VentasDetalleTab({
       header: "Total",
       className: "text-right",
       cellClassName: "text-right tabular-nums",
-      render: (r) => formatMoneyCurrency(r.lineAmount, r.currency === "UNKNOWN" ? "UYU" : r.currency),
+      render: (r) => {
+        const amount = formatMoneyCurrency(r.lineAmount, r.currency === "UNKNOWN" ? "UYU" : r.currency);
+        if (r.kind === "credit_note") {
+          return <span className="text-[var(--copilot-warning-text-strong)]">− {amount}</span>;
+        }
+        return amount;
+      },
     },
     {
       key: "sp",
       header: "Comercial",
       className: "text-left",
+      cellClassName: "text-xs",
       render: (r) => (
-        <SalespersonCell
-          row={r}
-          canAssign={canAssign}
-          people={people}
-          busy={assigningDoc === r.documentId}
-          onAssign={assign}
-        />
+        <span className="text-[var(--copilot-ink-muted)]">{r.salespersonName ?? "Sin asignar"}</span>
       ),
     },
     {
@@ -243,6 +279,10 @@ export function VentasDetalleTab({
   return (
     <section className={copilotCardStandardClass}>
       <h2 className={copilotSectionTitleClass}>Detalle de ventas</h2>
+      <p className={`${copilotCaptionClass} mt-1`}>
+        El comercial se asigna al cliente, no al comprobante. La asignación por comprobante es un override heredado y
+        se mantiene sólo por compatibilidad.
+      </p>
       <div className="mt-3 flex flex-wrap items-end gap-2">
         <input
           type="search"
@@ -341,8 +381,8 @@ export function VentasDetalleTab({
               <TablePagination
                 page={page}
                 totalPages={totalPages}
-                from={from}
-                to={to}
+                from={pageFrom}
+                to={pageTo}
                 total={total}
                 itemLabel="líneas"
                 onPageChange={setPage}
@@ -433,7 +473,10 @@ export function VentasDetalleTab({
             {canAssign && detailRow.date.slice(0, 10) >= SALESPERSON_START_DATE ? (
               <label className="flex flex-col gap-1">
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                  Asignar comercial
+                  Override legacy (comprobante)
+                </span>
+                <span className="text-[11px] text-[var(--copilot-ink-muted)]">
+                  Preferí asignar el comercial desde el cliente. Este override sólo afecta a este comprobante.
                 </span>
                 <select
                   value={detailRow.salespersonId ?? ""}
@@ -458,44 +501,13 @@ export function VentasDetalleTab({
   );
 }
 
-function SalespersonCell({
-  row,
-  canAssign,
-  people,
-  busy,
-  onAssign,
-}: {
-  row: SalesDetailRow;
-  canAssign: boolean;
-  people: SalespersonRow[];
-  busy: boolean;
-  onAssign: (documentId: string, salespersonId: string | null) => void;
-}) {
-  const eligible = row.date.slice(0, 10) >= SALESPERSON_START_DATE;
-
-  if (!canAssign || !eligible) {
-    return (
-      <span className="text-xs text-[var(--copilot-ink-muted)]">
-        {row.salespersonName ?? (eligible ? "Sin asignar" : "—")}
-      </span>
-    );
+/** Etiqueta de tipo de comprobante: Factura / Nota de crédito / Anulado. */
+function DocKindBadge({ row }: { row: SalesDetailRow }) {
+  if (/anul/i.test(row.documentType)) {
+    return <StatusBadge tone="danger">Anulado</StatusBadge>;
   }
-
-  return (
-    <select
-      value={row.salespersonId ?? ""}
-      disabled={busy}
-      onChange={(e) => onAssign(row.documentId, e.target.value || null)}
-      onClick={(e) => e.stopPropagation()}
-      aria-label={`Comercial de ${row.customerName}`}
-      className="h-8 max-w-[140px] rounded-lg border border-[var(--copilot-border-strong)] bg-[var(--copilot-panel-bg)] px-2 text-xs text-[var(--copilot-ink)] disabled:opacity-40"
-    >
-      <option value="">Sin asignar</option>
-      {people.map((p) => (
-        <option key={p.id} value={p.id}>
-          {p.displayName}
-        </option>
-      ))}
-    </select>
-  );
+  if (row.kind === "credit_note") {
+    return <StatusBadge tone="warning">Nota de crédito</StatusBadge>;
+  }
+  return <StatusBadge tone="neutral">Factura</StatusBadge>;
 }
