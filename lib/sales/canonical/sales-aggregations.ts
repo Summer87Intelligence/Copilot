@@ -1,0 +1,500 @@
+/**
+ * FASE 9 — Agregaciones puras del modelo canónico de ventas.
+ *
+ * Reglas:
+ *   - UYU y USD siempre separados (CurrencyPair). Nunca se suman ni convierten.
+ *   - `salesEmitted` se calcula a nivel documento (grossAmount) para reconciliar
+ *     exactamente con `proto_invoices.total_amount` (y por ende con Finanzas).
+ *   - La clasificación afecta SOLO el desglose por producto, nunca los totales.
+ *   - Notas de crédito: nunca se suman a emitidas. "Venta ajustada" = emitidas − NC.
+ *   - Documentos anulados (status cancelled) se excluyen de emitidas y NC.
+ *   - Cliente nuevo = primera venta válida dentro del período. Recurrente = venta
+ *     válida previa al período + venta en el período.
+ */
+
+import { conceptKey } from "@/lib/sales/canonical/sales-normalization";
+import {
+  emptyCurrencyPair,
+  type CanonicalSaleDocument,
+  type CanonicalSaleLine,
+  type CurrencyPair,
+  type CustomerSalesSummaryRow,
+  type ProductSalesSummaryRow,
+  type SalesCollectionSummary,
+  type SalesComparison,
+  type SalesCurrency,
+  type SalesPeriodSnapshot,
+  type UnclassifiedConceptRow,
+} from "@/lib/sales/canonical/types";
+
+// ---------------------------------------------------------------------------
+// Helpers de moneda
+// ---------------------------------------------------------------------------
+
+function addToPair(pair: CurrencyPair, currency: string, amount: number): void {
+  if (currency === "UYU") pair.UYU += amount;
+  else if (currency === "USD") pair.USD += amount;
+}
+
+function isKnownCurrency(c: string): c is SalesCurrency {
+  return c === "UYU" || c === "USD";
+}
+
+function round2Pair(pair: CurrencyPair): CurrencyPair {
+  return { UYU: Math.round(pair.UYU * 100) / 100, USD: Math.round(pair.USD * 100) / 100 };
+}
+
+function inWindow(dateYmd: string, from: string, to: string): boolean {
+  const d = dateYmd.slice(0, 10);
+  return d >= from && d <= to;
+}
+
+function isValidSale(doc: CanonicalSaleDocument): boolean {
+  return doc.kind === "sale" && doc.status === "valid";
+}
+
+/** Líneas contables de una venta (no ignoradas). */
+function countableLines(doc: CanonicalSaleDocument): CanonicalSaleLine[] {
+  return doc.lines.filter((l) => l.classificationStatus !== "ignored");
+}
+
+// ---------------------------------------------------------------------------
+// Period snapshot
+// ---------------------------------------------------------------------------
+
+/** Fecha de primera venta válida por cliente en TODO el histórico provisto. */
+function firstSaleByCustomer(allDocs: readonly CanonicalSaleDocument[]): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const doc of allDocs) {
+    if (!isValidSale(doc)) continue;
+    const key = customerKey(doc);
+    const prev = map.get(key);
+    if (!prev || doc.issueDate < prev) map.set(key, doc.issueDate);
+  }
+  return map;
+}
+
+function customerKey(doc: CanonicalSaleDocument): string {
+  return doc.customerId ?? `code:${doc.customerCode ?? ""}`;
+}
+
+export function buildSalesPeriodSnapshot(
+  allDocs: readonly CanonicalSaleDocument[],
+  periodFrom: string,
+  periodTo: string
+): SalesPeriodSnapshot {
+  const firstSale = firstSaleByCustomer(allDocs);
+
+  const salesEmitted = emptyCurrencyPair();
+  const creditNotes = emptyCurrencyPair();
+  const applied = emptyCurrencyPair();
+  const registered = emptyCurrencyPair();
+  const pending = emptyCurrencyPair();
+  const unclassifiedAmount = emptyCurrencyPair();
+  const invoiceCountByCurrency = emptyCurrencyPair();
+
+  let invoiceCount = 0;
+  let creditNoteCount = 0;
+  let unitsSold = 0;
+  let unclassifiedLineCount = 0;
+  let unknownCurrencyCount = 0;
+
+  const periodCustomers = new Set<string>();
+
+  for (const doc of allDocs) {
+    if (!inWindow(doc.issueDate, periodFrom, periodTo)) continue;
+    if (doc.status === "cancelled") continue;
+
+    if (doc.kind === "credit_note") {
+      if (isKnownCurrency(doc.currency)) addToPair(creditNotes, doc.currency, doc.grossAmount);
+      creditNoteCount += 1;
+      continue;
+    }
+
+    // Venta válida
+    if (doc.currency === "UNKNOWN") {
+      unknownCurrencyCount += 1;
+    } else {
+      addToPair(salesEmitted, doc.currency, doc.grossAmount);
+      addToPair(applied, doc.currency, doc.appliedAmount);
+      addToPair(registered, doc.currency, doc.registeredAmount);
+      addToPair(pending, doc.currency, doc.pendingAmount);
+      addToPair(invoiceCountByCurrency, doc.currency, 1);
+    }
+    invoiceCount += 1;
+    periodCustomers.add(customerKey(doc));
+
+    for (const line of countableLines(doc)) {
+      if (!line.synthetic) unitsSold += line.quantity;
+      if (line.classificationStatus === "unclassified") {
+        unclassifiedLineCount += 1;
+        if (isKnownCurrency(line.currency)) addToPair(unclassifiedAmount, line.currency, line.lineAmount);
+      }
+    }
+  }
+
+  let newCustomers = 0;
+  let recurringCustomers = 0;
+  for (const key of periodCustomers) {
+    const first = firstSale.get(key);
+    if (first && first >= periodFrom) newCustomers += 1;
+    else recurringCustomers += 1;
+  }
+
+  const salesAdjusted: CurrencyPair = {
+    UYU: salesEmitted.UYU - creditNotes.UYU,
+    USD: salesEmitted.USD - creditNotes.USD,
+  };
+  const averageTicket: CurrencyPair = {
+    UYU: invoiceCountByCurrency.UYU > 0 ? salesEmitted.UYU / invoiceCountByCurrency.UYU : 0,
+    USD: invoiceCountByCurrency.USD > 0 ? salesEmitted.USD / invoiceCountByCurrency.USD : 0,
+  };
+
+  return {
+    periodFrom,
+    periodTo,
+    salesEmitted: round2Pair(salesEmitted),
+    creditNotes: round2Pair(creditNotes),
+    salesAdjusted: round2Pair(salesAdjusted),
+    appliedCollected: round2Pair(applied),
+    registeredCollected: round2Pair(registered),
+    pending: round2Pair(pending),
+    invoiceCount,
+    creditNoteCount,
+    unitsSold: Math.round(unitsSold * 100) / 100,
+    averageTicket: round2Pair(averageTicket),
+    newCustomers,
+    recurringCustomers,
+    unclassifiedLineCount,
+    unclassifiedAmount: round2Pair(unclassifiedAmount),
+    unknownCurrencyCount,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Product summary
+// ---------------------------------------------------------------------------
+
+const UNCLASSIFIED_KEY = "__unclassified__";
+
+export function buildProductSalesSummary(
+  allDocs: readonly CanonicalSaleDocument[],
+  periodFrom: string,
+  periodTo: string
+): ProductSalesSummaryRow[] {
+  type Acc = {
+    key: string;
+    productId: string | null;
+    productName: string;
+    categoryId: string | null;
+    categoryName: string | null;
+    status: ProductSalesSummaryRow["classificationStatus"];
+    quantity: number;
+    docs: Set<string>;
+    customers: Set<string>;
+    total: CurrencyPair;
+    qtyByCurrency: CurrencyPair;
+  };
+  const map = new Map<string, Acc>();
+
+  for (const doc of allDocs) {
+    if (!isValidSale(doc)) continue;
+    if (!inWindow(doc.issueDate, periodFrom, periodTo)) continue;
+
+    for (const line of countableLines(doc)) {
+      const classified = line.classificationStatus === "classified" && line.canonicalProductId;
+      const key = classified ? `p:${line.canonicalProductId}` : UNCLASSIFIED_KEY;
+      let acc = map.get(key);
+      if (!acc) {
+        acc = {
+          key,
+          productId: classified ? line.canonicalProductId : null,
+          productName: classified ? line.canonicalProductName ?? "—" : "Sin clasificar",
+          categoryId: classified ? line.canonicalCategoryId : null,
+          categoryName: classified ? line.canonicalCategoryName : null,
+          status: classified ? "classified" : "unclassified",
+          quantity: 0,
+          docs: new Set(),
+          customers: new Set(),
+          total: emptyCurrencyPair(),
+          qtyByCurrency: emptyCurrencyPair(),
+        };
+        map.set(key, acc);
+      }
+      if (!line.synthetic) acc.quantity += line.quantity;
+      acc.docs.add(doc.documentId);
+      acc.customers.add(customerKey(doc));
+      if (isKnownCurrency(line.currency)) {
+        addToPair(acc.total, line.currency, line.lineAmount);
+        if (!line.synthetic) addToPair(acc.qtyByCurrency, line.currency, line.quantity);
+      }
+    }
+  }
+
+  const rows: ProductSalesSummaryRow[] = [];
+  for (const acc of map.values()) {
+    rows.push({
+      key: acc.key,
+      productId: acc.productId,
+      productName: acc.productName,
+      categoryId: acc.categoryId,
+      categoryName: acc.categoryName,
+      classificationStatus: acc.status,
+      quantity: Math.round(acc.quantity * 100) / 100,
+      invoiceCount: acc.docs.size,
+      customerCount: acc.customers.size,
+      totalByCurrency: round2Pair(acc.total),
+      avgPriceByCurrency: {
+        UYU: acc.qtyByCurrency.UYU > 0 ? Math.round((acc.total.UYU / acc.qtyByCurrency.UYU) * 100) / 100 : 0,
+        USD: acc.qtyByCurrency.USD > 0 ? Math.round((acc.total.USD / acc.qtyByCurrency.USD) * 100) / 100 : 0,
+      },
+    });
+  }
+
+  // Orden: facturación total (USD*~40 + UYU como proxy de relevancia) desc, "Sin clasificar" al final.
+  rows.sort((a, b) => {
+    if (a.productId === null && b.productId !== null) return 1;
+    if (b.productId === null && a.productId !== null) return -1;
+    const av = a.totalByCurrency.UYU + a.totalByCurrency.USD;
+    const bv = b.totalByCurrency.UYU + b.totalByCurrency.USD;
+    return bv - av;
+  });
+  return rows;
+}
+
+// ---------------------------------------------------------------------------
+// Customer summary
+// ---------------------------------------------------------------------------
+
+export function buildCustomerSalesSummary(
+  allDocs: readonly CanonicalSaleDocument[],
+  periodFrom: string,
+  periodTo: string
+): CustomerSalesSummaryRow[] {
+  const firstSale = firstSaleByCustomer(allDocs);
+
+  type Acc = {
+    customerId: string | null;
+    customerCode: string | null;
+    customerName: string;
+    docs: Set<string>;
+    products: Set<string>;
+    sales: CurrencyPair;
+    applied: CurrencyPair;
+    pending: CurrencyPair;
+    invoiceCountByCurrency: CurrencyPair;
+    firstInPeriod: string | null;
+    lastInPeriod: string | null;
+  };
+  const map = new Map<string, Acc>();
+
+  for (const doc of allDocs) {
+    if (!isValidSale(doc)) continue;
+    if (!inWindow(doc.issueDate, periodFrom, periodTo)) continue;
+    const key = customerKey(doc);
+    let acc = map.get(key);
+    if (!acc) {
+      acc = {
+        customerId: doc.customerId,
+        customerCode: doc.customerCode,
+        customerName: doc.customerName,
+        docs: new Set(),
+        products: new Set(),
+        sales: emptyCurrencyPair(),
+        applied: emptyCurrencyPair(),
+        pending: emptyCurrencyPair(),
+        invoiceCountByCurrency: emptyCurrencyPair(),
+        firstInPeriod: null,
+        lastInPeriod: null,
+      };
+      map.set(key, acc);
+    }
+    acc.docs.add(doc.documentId);
+    if (isKnownCurrency(doc.currency)) {
+      addToPair(acc.sales, doc.currency, doc.grossAmount);
+      addToPair(acc.applied, doc.currency, doc.appliedAmount);
+      addToPair(acc.pending, doc.currency, doc.pendingAmount);
+      addToPair(acc.invoiceCountByCurrency, doc.currency, 1);
+    }
+    for (const line of countableLines(doc)) {
+      if (line.canonicalProductId) acc.products.add(line.canonicalProductId);
+      else acc.products.add(`c:${conceptKey(line.originalDescription, line.originalCode)}`);
+    }
+    if (!acc.firstInPeriod || doc.issueDate < acc.firstInPeriod) acc.firstInPeriod = doc.issueDate;
+    if (!acc.lastInPeriod || doc.issueDate > acc.lastInPeriod) acc.lastInPeriod = doc.issueDate;
+  }
+
+  const rows: CustomerSalesSummaryRow[] = [];
+  for (const [key, acc] of map.entries()) {
+    const first = firstSale.get(key);
+    const type = first && first >= periodFrom ? "new" : "recurring";
+    rows.push({
+      customerId: acc.customerId,
+      customerCode: acc.customerCode,
+      customerName: acc.customerName,
+      invoiceCount: acc.docs.size,
+      productCount: acc.products.size,
+      salesByCurrency: round2Pair(acc.sales),
+      appliedByCurrency: round2Pair(acc.applied),
+      pendingByCurrency: round2Pair(acc.pending),
+      avgTicketByCurrency: {
+        UYU: acc.invoiceCountByCurrency.UYU > 0 ? Math.round((acc.sales.UYU / acc.invoiceCountByCurrency.UYU) * 100) / 100 : 0,
+        USD: acc.invoiceCountByCurrency.USD > 0 ? Math.round((acc.sales.USD / acc.invoiceCountByCurrency.USD) * 100) / 100 : 0,
+      },
+      firstPurchase: first ?? acc.firstInPeriod,
+      lastPurchase: acc.lastInPeriod,
+      type,
+    });
+  }
+  rows.sort((a, b) => (b.salesByCurrency.UYU + b.salesByCurrency.USD) - (a.salesByCurrency.UYU + a.salesByCurrency.USD));
+  return rows;
+}
+
+// ---------------------------------------------------------------------------
+// Collection summary
+// ---------------------------------------------------------------------------
+
+export function buildSalesCollectionSummary(
+  allDocs: readonly CanonicalSaleDocument[],
+  periodFrom: string,
+  periodTo: string
+): SalesCollectionSummary {
+  const sold = emptyCurrencyPair();
+  const applied = emptyCurrencyPair();
+  const registered = emptyCurrencyPair();
+  const pending = emptyCurrencyPair();
+
+  for (const doc of allDocs) {
+    if (!isValidSale(doc)) continue;
+    if (!inWindow(doc.issueDate, periodFrom, periodTo)) continue;
+    if (!isKnownCurrency(doc.currency)) continue;
+    addToPair(sold, doc.currency, doc.grossAmount);
+    addToPair(applied, doc.currency, doc.appliedAmount);
+    addToPair(registered, doc.currency, doc.registeredAmount);
+    addToPair(pending, doc.currency, doc.pendingAmount);
+  }
+
+  return {
+    sold: round2Pair(sold),
+    applied: round2Pair(applied),
+    registered: round2Pair(registered),
+    pending: round2Pair(pending),
+    appliedRateByCurrency: {
+      UYU: sold.UYU > 0 ? Math.round((applied.UYU / sold.UYU) * 1000) / 10 : 0,
+      USD: sold.USD > 0 ? Math.round((applied.USD / sold.USD) * 1000) / 10 : 0,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Comparison
+// ---------------------------------------------------------------------------
+
+export function buildSalesComparison(
+  allDocs: readonly CanonicalSaleDocument[],
+  currentFrom: string,
+  currentTo: string,
+  previousFrom: string,
+  previousTo: string
+): SalesComparison {
+  const current = buildSalesPeriodSnapshot(allDocs, currentFrom, currentTo);
+  const previous = buildSalesPeriodSnapshot(allDocs, previousFrom, previousTo);
+
+  const pct = (cur: number, prev: number): number | null => {
+    if (prev === 0) return null; // "Sin base comparable"
+    return Math.round(((cur - prev) / prev) * 1000) / 10;
+  };
+
+  return {
+    current,
+    previous,
+    salesDeltaByCurrency: {
+      UYU: Math.round((current.salesEmitted.UYU - previous.salesEmitted.UYU) * 100) / 100,
+      USD: Math.round((current.salesEmitted.USD - previous.salesEmitted.USD) * 100) / 100,
+    },
+    salesPctByCurrency: {
+      UYU: pct(current.salesEmitted.UYU, previous.salesEmitted.UYU),
+      USD: pct(current.salesEmitted.USD, previous.salesEmitted.USD),
+    },
+    invoiceDelta: current.invoiceCount - previous.invoiceCount,
+    unitsDelta: Math.round((current.unitsSold - previous.unitsSold) * 100) / 100,
+    customerDelta:
+      current.newCustomers + current.recurringCustomers - (previous.newCustomers + previous.recurringCustomers),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Unclassified concepts (bandeja)
+// ---------------------------------------------------------------------------
+
+export function buildUnclassifiedSalesSummary(
+  allDocs: readonly CanonicalSaleDocument[],
+  periodFrom: string,
+  periodTo: string,
+  suggest?: (description: string, code: string | null) => { productId: string; productName: string } | null
+): UnclassifiedConceptRow[] {
+  type Acc = {
+    key: string;
+    originalDescription: string;
+    originalCode: string | null;
+    occurrences: number;
+    total: CurrencyPair;
+    customers: Set<string>;
+    firstSeen: string | null;
+    lastSeen: string | null;
+  };
+  const map = new Map<string, Acc>();
+
+  for (const doc of allDocs) {
+    if (!isValidSale(doc)) continue;
+    if (!inWindow(doc.issueDate, periodFrom, periodTo)) continue;
+    for (const line of doc.lines) {
+      if (line.classificationStatus !== "unclassified") continue;
+      const key = conceptKey(line.originalDescription, line.originalCode);
+      let acc = map.get(key);
+      if (!acc) {
+        acc = {
+          key,
+          originalDescription: line.originalDescription,
+          originalCode: line.originalCode,
+          occurrences: 0,
+          total: emptyCurrencyPair(),
+          customers: new Set(),
+          firstSeen: null,
+          lastSeen: null,
+        };
+        map.set(key, acc);
+      }
+      acc.occurrences += 1;
+      if (isKnownCurrency(line.currency)) addToPair(acc.total, line.currency, line.lineAmount);
+      acc.customers.add(customerKey(doc));
+      if (!acc.firstSeen || doc.issueDate < acc.firstSeen) acc.firstSeen = doc.issueDate;
+      if (!acc.lastSeen || doc.issueDate > acc.lastSeen) acc.lastSeen = doc.issueDate;
+    }
+  }
+
+  const rows: UnclassifiedConceptRow[] = [];
+  for (const acc of map.values()) {
+    const suggestion = suggest ? suggest(acc.originalDescription, acc.originalCode) : null;
+    rows.push({
+      key: acc.key,
+      originalDescription: acc.originalDescription,
+      originalCode: acc.originalCode,
+      occurrences: acc.occurrences,
+      totalByCurrency: round2Pair(acc.total),
+      customerCount: acc.customers.size,
+      firstSeen: acc.firstSeen,
+      lastSeen: acc.lastSeen,
+      suggestedProductId: suggestion?.productId ?? null,
+      suggestedProductName: suggestion?.productName ?? null,
+    });
+  }
+  // Prioridad: impacto (facturación) desc, luego frecuencia.
+  rows.sort((a, b) => {
+    const av = a.totalByCurrency.UYU + a.totalByCurrency.USD;
+    const bv = b.totalByCurrency.UYU + b.totalByCurrency.USD;
+    if (bv !== av) return bv - av;
+    return b.occurrences - a.occurrences;
+  });
+  return rows;
+}
