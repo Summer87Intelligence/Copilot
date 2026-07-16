@@ -15,6 +15,15 @@ export function formatUsd(n: number): string {
   return formatMoneyCurrency(n, "USD");
 }
 
+/** Muestra — cuando el importe es ~0 (sin ventas en esa moneda). */
+export function formatUyuOrDash(n: number): string {
+  return Math.abs(n) < 0.005 ? "—" : formatUyu(n);
+}
+
+export function formatUsdOrDash(n: number): string {
+  return Math.abs(n) < 0.005 ? "—" : formatUsd(n);
+}
+
 /** Convierte un CurrencyPair en valores apilados (UYU primero) para FinancialMetricCard. */
 export function pairToMetricValues(pair: CurrencyPair): MetricCurrencyValue[] {
   return [

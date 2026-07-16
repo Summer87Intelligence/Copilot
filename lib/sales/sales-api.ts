@@ -9,10 +9,18 @@ import {
   buildSalesPeriodSnapshot,
   buildProductSalesSummary,
   buildCustomerSalesSummary,
+  buildSalespersonSummary,
   buildSalesCollectionSummary,
   buildSalesComparison,
   buildUnclassifiedSalesSummary,
 } from "@/lib/sales/canonical/sales-aggregations";
+import {
+  buildCommercialHighlights,
+  buildServicePeriodComparison,
+  buildYearlyMonthlyRows,
+  enrichProductsWithVariation,
+} from "@/lib/sales/canonical/sales-analytics";
+import { buildSalesExecutiveInsights } from "@/lib/sales/canonical/sales-insights";
 import { suggestForConcept } from "@/lib/sales/canonical/sales-normalization";
 import {
   resolvePeriodRange,
@@ -37,6 +45,8 @@ export type SalesFilters = {
   categoryIds: string[] | null;
   customerIds: string[] | null;
   classificationStatus: string[] | null;
+  /** Filtro por comercial. "unassigned" = documentos sin comercial asignado. */
+  salespersonIds: string[] | null;
   paymentStatus: "paid" | "pending" | null;
   search: string | null;
   amountMin: number | null;
@@ -99,6 +109,7 @@ export function parseSalesFilters(params: URLSearchParams, today: string): Sales
     categoryIds: csv(params.get("categoryIds")),
     customerIds: csv(params.get("customerIds")),
     classificationStatus: csv(params.get("classificationStatus")),
+    salespersonIds: csv(params.get("salespersonIds")),
     paymentStatus,
     search: (params.get("search") ?? "").trim() || null,
     amountMin: amountMin != null && amountMin !== "" && Number.isFinite(Number(amountMin)) ? Number(amountMin) : null,
@@ -122,10 +133,20 @@ export function buildSalesOverview(
   const { dateFrom, dateTo, comparisonDateFrom, comparisonDateTo } = filters;
 
   const snapshot = buildSalesPeriodSnapshot(documents, dateFrom, dateTo);
-  const products = buildProductSalesSummary(documents, dateFrom, dateTo);
+  const productsRaw = buildProductSalesSummary(documents, dateFrom, dateTo);
+  const productsPrev = buildProductSalesSummary(documents, comparisonDateFrom, comparisonDateTo);
+  const products = enrichProductsWithVariation(productsRaw, productsPrev);
   const customers = buildCustomerSalesSummary(documents, dateFrom, dateTo);
+  const salespersons = buildSalespersonSummary(documents, dateFrom, dateTo);
   const collection = buildSalesCollectionSummary(documents, dateFrom, dateTo);
   const comparison = buildSalesComparison(
+    documents,
+    dateFrom,
+    dateTo,
+    comparisonDateFrom,
+    comparisonDateTo
+  );
+  const serviceComparison = buildServicePeriodComparison(
     documents,
     dateFrom,
     dateTo,
@@ -135,6 +156,15 @@ export function buildSalesOverview(
   const unclassified = buildUnclassifiedSalesSummary(documents, dateFrom, dateTo, (d, c) =>
     suggestForConcept(d, c, catalog)
   );
+  const highlights = buildCommercialHighlights(documents, dateFrom, dateTo);
+  const insights = buildSalesExecutiveInsights({
+    snapshot,
+    comparison,
+    products: productsRaw,
+    customers,
+    salespersons,
+    comparisonLabel: COMPARISON_LABELS[filters.comparisonMode],
+  });
 
   return {
     period: { from: dateFrom, to: dateTo, preset: filters.preset },
@@ -146,11 +176,34 @@ export function buildSalesOverview(
     snapshot,
     products,
     customers,
+    salespersons,
     collection,
     comparison,
+    serviceComparison,
+    highlights,
     unclassified,
+    insights,
   };
 }
+
+/** Vista anual mes a mes (Comparativo). */
+export function buildSalesYearlyView(
+  documents: readonly CanonicalSaleDocument[],
+  year: number,
+  today: string
+) {
+  return {
+    year,
+    months: buildYearlyMonthlyRows(documents, year, today),
+  };
+}
+
+const COMPARISON_LABELS: Record<SalesComparisonMode, string> = {
+  previous_period: "el período anterior",
+  previous_month: "el mes anterior",
+  same_elapsed_days: "el mismo tramo del mes anterior",
+  custom: "el período de comparación",
+};
 
 export type SalesOverview = ReturnType<typeof buildSalesOverview>;
 
@@ -162,18 +215,31 @@ export type SalesDetailRow = {
   documentId: string;
   lineId: string;
   date: string;
+  dueDate: string | null;
   customerId: string | null;
   customerName: string;
   documentNumber: string | null;
   documentType: string;
   kind: "sale" | "credit_note";
   productId: string | null;
-  productName: string | null;
+  productGroupKey: string;
+  /** Nombre visible del servicio (concepto Zeta o catálogo). Nunca "Sin clasificar". */
+  productName: string;
+  /** Solo se muestra debajo si aporta info distinta al servicio. */
   originalDescription: string;
+  originalConcept: string | null;
+  originalCode: string | null;
+  normalizationStatus: "canonical" | "original" | "missing_detail";
   classificationStatus: string;
   quantity: number;
+  unitPrice: number | null;
+  netAmount: number | null;
+  taxAmount: number | null;
   currency: string;
   lineAmount: number;
+  /** Comercial asignado al documento (desde 2026-07-01). null = Sin asignar. */
+  salespersonId: string | null;
+  salespersonName: string | null;
   /** Valores de documento (no de línea): se muestran a nivel comprobante. */
   docTotal: number;
   docApplied: number;
@@ -203,33 +269,43 @@ export function buildSalesDetails(
 
     doc.lines.forEach((line, idx) => {
       if (filters.productIds) {
-        const pid = line.canonicalProductId ?? "unclassified";
-        if (!filters.productIds.includes(pid)) return;
+        if (!filters.productIds.includes(line.productGroupKey)) return;
       }
       if (filters.categoryIds && (!line.canonicalCategoryId || !filters.categoryIds.includes(line.canonicalCategoryId))) return;
       if (filters.classificationStatus && !filters.classificationStatus.includes(line.classificationStatus)) return;
       if (filters.amountMin != null && line.lineAmount < filters.amountMin) return;
       if (filters.amountMax != null && line.lineAmount > filters.amountMax) return;
+      if (filters.salespersonIds && !filters.salespersonIds.includes(doc.salespersonId ?? "unassigned")) return;
       if (search) {
-        const hay = `${doc.customerName} ${line.originalDescription} ${doc.documentNumber ?? ""}`.toLowerCase();
+        const hay = `${doc.customerName} ${line.displayProductName} ${line.originalDescription} ${doc.documentNumber ?? ""}`.toLowerCase();
         if (!hay.includes(search)) return;
       }
       all.push({
         documentId: doc.documentId,
         lineId: line.lineId,
         date: doc.issueDate,
+        dueDate: doc.dueDate,
         customerId: doc.customerId,
         customerName: doc.customerName,
         documentNumber: doc.documentNumber,
         documentType: doc.documentType,
         kind: doc.kind,
         productId: line.canonicalProductId,
-        productName: line.canonicalProductName,
+        productGroupKey: line.productGroupKey,
+        productName: line.displayProductName,
         originalDescription: line.originalDescription,
+        originalConcept: line.originalConcept,
+        originalCode: line.originalCode,
+        normalizationStatus: line.normalizationStatus,
         classificationStatus: line.classificationStatus,
         quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        netAmount: line.netAmount,
+        taxAmount: line.taxAmount,
         currency: line.currency,
         lineAmount: line.lineAmount,
+        salespersonId: doc.salespersonId,
+        salespersonName: doc.salespersonName,
         docTotal: doc.grossAmount,
         docApplied: doc.appliedAmount,
         docRegistered: doc.registeredAmount,

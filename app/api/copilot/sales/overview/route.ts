@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       data: overview,
       meta: {
         ...dataset.meta,
-        salespersonAvailable: false,
+        salespersonAvailable: !dataset.meta.salespersonsMigrationPending,
       },
     });
   } catch (err) {

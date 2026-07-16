@@ -205,8 +205,10 @@ export type ProductSalesSummaryRow = {
   customerCount: number;
 
   totalByCurrency: CurrencyPair;
-  /** Precio promedio por moneda = total / cantidad (misma moneda). */
+  /** Precio promedio por moneda = total / cantidad (misma moneda). Uso interno / detalle. */
   avgPriceByCurrency: CurrencyPair;
+  /** Ticket promedio comercial = total / facturas de esa moneda. */
+  avgTicketByCurrency: CurrencyPair;
 };
 
 export type CustomerSalesSummaryRow = {

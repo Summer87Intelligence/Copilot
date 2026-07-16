@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/copilot/ui/empty-state";
 import { SkeletonText } from "@/components/copilot/ui/skeleton";
 import { copilotCardStandardClass, copilotSectionTitleClass, copilotCaptionClass } from "@/components/copilot/ui/copilot-visual-system";
 import type { SalesDetailRow } from "@/lib/sales/sales-api";
-import { formatUyu, formatUsd, formatQuantity, formatDateShort } from "@/components/copilot/ventas/ventas-format";
+import { formatUyu, formatUsd, formatDateShort } from "@/components/copilot/ventas/ventas-format";
 
 /**
  * FASE 9 — Ventas del cliente dentro de Cliente 360.
@@ -95,14 +95,14 @@ export function VentasTab({ companyId }: { companyId: string }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Tile label="Comprado UYU" value={formatUyu(summary.totals.UYU)} />
-        <Tile label="Comprado USD" value={formatUsd(summary.totals.USD)} />
+        <Tile label="Ventas UYU" value={formatUyu(summary.totals.UYU)} />
+        <Tile label="Ventas USD" value={formatUsd(summary.totals.USD)} />
         <Tile label="Facturas" value={String(summary.docsCount)} />
-        <Tile label="Pendiente" value={`${formatUyu(summary.pendingTotals.UYU)} · ${formatUsd(summary.pendingTotals.USD)}`} small />
+        <Tile label="Servicios" value={String(summary.productList.length)} />
       </div>
 
       <section className={copilotCardStandardClass}>
-        <h3 className={copilotSectionTitleClass}>Productos y servicios comprados</h3>
+        <h3 className={copilotSectionTitleClass}>Servicios contratados</h3>
         <p className={`${copilotCaptionClass} mt-1`}>
           Primera compra {formatDateShort(summary.firstDate)} · última {formatDateShort(summary.lastDate)}. Año actual.
         </p>
@@ -111,13 +111,12 @@ export function VentasTab({ companyId }: { companyId: string }) {
             <li key={p.name} className="flex items-center justify-between gap-3 border-b border-[var(--copilot-border)] pb-2 last:border-0 last:pb-0">
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-[var(--copilot-ink)]">{p.name}</p>
-                <p className="text-xs text-[var(--copilot-ink-muted)]">{formatQuantity(p.qty)} unidades</p>
+                <p className="text-xs text-[var(--copilot-ink-muted)]">
+                  {formatUyu(p.uyu)}
+                  {p.uyu > 0 && p.usd > 0 ? " · " : ""}
+                  {p.usd > 0 ? formatUsd(p.usd) : p.uyu === 0 && p.usd === 0 ? "—" : ""}
+                </p>
               </div>
-              <span className="shrink-0 text-right text-xs font-semibold tabular-nums text-[var(--copilot-ink)]">
-                {p.uyu > 0 ? formatUyu(p.uyu) : ""}
-                {p.uyu > 0 && p.usd > 0 ? " · " : ""}
-                {p.usd > 0 ? formatUsd(p.usd) : ""}
-              </span>
             </li>
           ))}
         </ul>

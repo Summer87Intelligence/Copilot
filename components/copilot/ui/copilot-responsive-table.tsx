@@ -66,7 +66,7 @@ const TABLE_WRAPPER_CLASS =
 const TABLE_SCROLL_CLASS = "overflow-x-auto";
 
 const TH_BASE_CLASS =
-  "border-b border-[var(--copilot-border)] bg-[var(--copilot-table-header-bg)] px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]";
+  "border-b border-[var(--copilot-border)] bg-[var(--copilot-table-header-bg)] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]";
 
 const TH_STICKY_CLASS = "sticky top-0 z-10 backdrop-blur";
 

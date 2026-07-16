@@ -198,6 +198,7 @@ export function buildProductSalesSummary(
     normalizationStatus: ProductSalesSummaryRow["normalizationStatus"];
     quantity: number;
     docs: Set<string>;
+    docsByCurrency: { UYU: Set<string>; USD: Set<string> };
     customers: Set<string>;
     total: CurrencyPair;
     qtyByCurrency: CurrencyPair;
@@ -225,6 +226,7 @@ export function buildProductSalesSummary(
           normalizationStatus: line.normalizationStatus,
           quantity: 0,
           docs: new Set(),
+          docsByCurrency: { UYU: new Set(), USD: new Set() },
           customers: new Set(),
           total: emptyCurrencyPair(),
           qtyByCurrency: emptyCurrencyPair(),
@@ -236,6 +238,7 @@ export function buildProductSalesSummary(
       acc.customers.add(customerKey(doc));
       if (isKnownCurrency(line.currency)) {
         addToPair(acc.total, line.currency, line.lineAmount);
+        acc.docsByCurrency[line.currency].add(doc.documentId);
         if (!line.synthetic) addToPair(acc.qtyByCurrency, line.currency, line.quantity);
       }
     }
@@ -243,6 +246,8 @@ export function buildProductSalesSummary(
 
   const rows: ProductSalesSummaryRow[] = [];
   for (const acc of map.values()) {
+    const invUyu = acc.docsByCurrency.UYU.size;
+    const invUsd = acc.docsByCurrency.USD.size;
     rows.push({
       key: acc.key,
       productId: acc.productId,
@@ -258,6 +263,10 @@ export function buildProductSalesSummary(
       avgPriceByCurrency: {
         UYU: acc.qtyByCurrency.UYU > 0 ? Math.round((acc.total.UYU / acc.qtyByCurrency.UYU) * 100) / 100 : 0,
         USD: acc.qtyByCurrency.USD > 0 ? Math.round((acc.total.USD / acc.qtyByCurrency.USD) * 100) / 100 : 0,
+      },
+      avgTicketByCurrency: {
+        UYU: invUyu > 0 ? Math.round((acc.total.UYU / invUyu) * 100) / 100 : 0,
+        USD: invUsd > 0 ? Math.round((acc.total.USD / invUsd) * 100) / 100 : 0,
       },
     });
   }
