@@ -35,6 +35,7 @@ import {
 import { toSafeNumber } from "@/lib/copilot-numeric-parse";
 import { selectOperationalDebtInvoicesForSummation } from "@/lib/zeta/zeta-operational-debt-dedup";
 import { dedupeZetaShadowInvoicesCanonical } from "@/lib/copilot-zeta-invoice-canonical-dedup";
+import { resolveCanonicalSaleCurrency } from "@/lib/sales/canonical/issued-sale-universe";
 import type { DataRow } from "@/lib/data/proto-operational-read-repository";
 import type { AgingComparativeDiagnostics } from "@/lib/copilot-installment-aging-delta";
 import type { InstallmentAgingObservationDiagnostics } from "@/lib/copilot-installment-aging-observation";
@@ -563,6 +564,16 @@ function isVoided(status: string | null): boolean {
   return VOIDED_STATUSES.has(status.trim().toLowerCase());
 }
 
+/**
+ * Moneda canónica de una factura para el motor financiero. Fuente ÚNICA
+ * compartida con Ventas (`resolveCanonicalSaleCurrency`): `currency_code` →
+ * `MonedaCodigo` del payload Zeta. Antes el motor leía solo `currency_code` y
+ * descartaba comprobantes válidos con `currency_code` nulo (FASE 9E).
+ */
+function resolveInvoiceCurrency(inv: InvoiceInput): ReconciliationCurrencyCode | null {
+  return resolveCanonicalSaleCurrency(inv);
+}
+
 function safeNum(v: number | null | undefined): number {
   if (v == null || !Number.isFinite(v)) return 0;
   return v;
@@ -745,8 +756,8 @@ export function generateFinancialConsistencyReport(
     if (isVoided(inv.status)) continue;
     const issueSl = (inv.issue_date ?? "").slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(issueSl) || issueSl >= operationalStart) continue;
-    const code = (inv.currency_code ?? "").trim().toUpperCase() as ReconciliationCurrencyCode;
-    if (!VALID_CURRENCIES.has(code)) continue;
+    const code = resolveInvoiceCurrency(inv);
+    if (code === null) continue;
     const totalAmount = round2(Math.max(0, safeNum(inv.total_amount)));
     if (!(totalAmount > 0)) continue;
     const rawBalance = inv.balance_amount;
@@ -934,9 +945,10 @@ export function generateFinancialConsistencyReport(
       if (/^\d{4}-\d{2}-\d{2}$/.test(issueSl) && issueSl < "2026-01-01") pre2026Count++;
     }
 
-    // Currency accumulation (period metrics only)
-    const code = (inv.currency_code ?? "").trim().toUpperCase();
-    if (!code || !VALID_CURRENCIES.has(code)) {
+    // Currency accumulation (period metrics only) — fuente canónica compartida
+    // con Ventas: resuelve `MonedaCodigo` cuando `currency_code` es nulo.
+    const code = resolveInvoiceCurrency(inv);
+    if (code === null) {
       totalWithoutCurrency++;
       continue;
     }
@@ -1061,9 +1073,8 @@ export function generateFinancialConsistencyReport(
       const issueSl = (inv.issue_date ?? "").slice(0, 10);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(issueSl)) continue;
       if (!(issueSl < periodStart!)) continue;
-      const code = (inv.currency_code ?? "").trim().toUpperCase();
-      if (!VALID_CURRENCIES.has(code)) continue;
-      const cc = code as ReconciliationCurrencyCode;
+      const cc = resolveInvoiceCurrency(inv);
+      if (cc === null) continue;
       const total = round2(Math.max(0, safeNum(inv.total_amount)));
       if (!(total > 0)) continue;
       // NCs pre-período: van al crédito, no a facturado previo.
@@ -1114,8 +1125,8 @@ export function generateFinancialConsistencyReport(
 
     if (inv.is_credit_note === true) continue;
 
-    const portCode = (inv.currency_code ?? "").trim().toUpperCase();
-    if (!portCode || !VALID_CURRENCIES.has(portCode)) continue;
+    const portCode = resolveInvoiceCurrency(inv);
+    if (portCode === null) continue;
 
     const portTotal = round2(Math.max(0, safeNum(inv.total_amount)));
     if (!(portTotal > 0)) continue;
@@ -1455,8 +1466,8 @@ export function generateFinancialConsistencyReport(
     if ((inv.reconciliation_missing_count ?? 0) >= 3) {
       orphanSummary.pending_auto_close++;
     }
-    const code = (inv.currency_code ?? "").trim().toUpperCase() as ReconciliationCurrencyCode;
-    if (VALID_CURRENCIES.has(code)) {
+    const code = resolveInvoiceCurrency(inv);
+    if (code !== null) {
       const pending =
         inv.balance_amount != null
           ? Math.max(0, safeNum(inv.balance_amount))

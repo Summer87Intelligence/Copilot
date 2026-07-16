@@ -15,6 +15,7 @@ import {
 } from "@/lib/copilot-zeta-credit-note";
 import { emptyCatalogView, type SalesCatalogView } from "@/lib/sales/canonical/catalog-types";
 import { classifyLine, conceptKey, type LineClassificationResult } from "@/lib/sales/canonical/sales-normalization";
+import { resolveCanonicalSaleCurrency } from "@/lib/sales/canonical/issued-sale-universe";
 import type {
   CanonicalSaleDocument,
   CanonicalSaleLine,
@@ -131,15 +132,13 @@ function str(v: unknown): string {
   return typeof v === "string" ? v : v == null ? "" : String(v);
 }
 
-/** Resuelve moneda ISO: currency_code (normalizado) o MonedaCodigo del payload. */
+/**
+ * Resuelve moneda ISO usando la fuente canónica compartida con Finanzas
+ * (`resolveCanonicalSaleCurrency`): currency_code → MonedaCodigo del payload.
+ * `UNKNOWN` cuando no se puede resolver a UYU/USD.
+ */
 function resolveCurrency(row: RawSaleInvoiceRow): SalesCurrencyResolved {
-  const cc = str(row.currency_code ?? row.currency).toUpperCase().trim();
-  if (cc === "UYU" || cc === "USD") return cc;
-  const meta = readVoucherPayload(row.zeta_metadata);
-  const mc = str(meta?.MonedaCodigo).trim();
-  if (mc === "1") return "UYU";
-  if (mc === "2") return "USD";
-  return "UNKNOWN";
+  return resolveCanonicalSaleCurrency(row) ?? "UNKNOWN";
 }
 
 function readVoucherPayload(metadata: unknown): Record<string, unknown> | null {
