@@ -3,10 +3,12 @@
 -- ADITIVO Y NO DESTRUCTIVO. No toca proto_invoices ni tablas financieras.
 -- No DML / no backfill. La atribución comercial arranca 2026-07-01.
 --
--- Precedencia de lectura (código app):
---   1) override legacy en sales_document_salespersons (solo lectura histórica)
---   2) comercial vigente del cliente en issue_date (esta tabla)
---   3) Sin asignar
+-- Precedencia de lectura canónica (código app, desde 2026-07-01):
+--   comercial vigente del cliente en issue_date (esta tabla)
+--   → Sin asignar
+--
+-- sales_document_salespersons queda como legado histórico / auditoría y
+-- NO influye en analytics comerciales.
 --
 -- NO APLICAR sin autorización explícita del usuario.
 -- Idempotente.

@@ -170,7 +170,7 @@ export function buildFinancialMonthlyTrends(input: {
         currency: cur,
         grossIssued: round2(bucket.grossIssued),
         creditNotes: round2(bucket.creditNotes),
-        netIssued: round2(Math.max(0, bucket.grossIssued - bucket.creditNotes)),
+        netIssued: round2(bucket.grossIssued - bucket.creditNotes),
         collected: round2(bucket.collected),
         pending: 0,
         overdue: 0,
@@ -262,7 +262,7 @@ export function buildFinancialDailyTrends(input: {
         day,
         label,
         currency: cur,
-        netIssued: round2(Math.max(0, bucket.grossIssued - bucket.creditNotes)),
+        netIssued: round2(bucket.grossIssued - bucket.creditNotes),
         collected: round2(bucket.collected),
         creditNotes: round2(bucket.creditNotes),
       });
@@ -405,7 +405,7 @@ function sumAccMap(accMap: Map<string, Acc>): Acc {
 }
 
 function accToTotals(a: Acc): DashboardTotals {
-  const netSales = round2(Math.max(0, a.grossIssued - a.creditNotes));
+  const netSales = round2(a.grossIssued - a.creditNotes);
   return {
     netSales,
     collections: round2(a.collected),
@@ -529,7 +529,7 @@ export function buildFinancialTrendDashboard(input: {
   // Points — all current keys, including zeros
   const points: TrendPoint[] = currentKeys.map((k) => {
     const b = currentAcc.get(k) ?? emptyAcc();
-    const netSales = round2(Math.max(0, b.grossIssued - b.creditNotes));
+    const netSales = round2(b.grossIssued - b.creditNotes);
     const collections = round2(b.collected);
     const creditNotes = round2(b.creditNotes);
     return {

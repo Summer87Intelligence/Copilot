@@ -5,10 +5,13 @@
  * MIN_FINANCIAL_DATE, lo deduplica con la lógica canónica compartida, resuelve
  * nombres de cliente y construye los documentos canónicos + la vista de catálogo.
  *
- * Atribución comercial FASE 9D (precedencia):
- *   1) override legacy en sales_document_salespersons (solo lectura histórica)
- *   2) comercial vigente del cliente en issue_date (sales_client_salespersons)
- *   3) Sin asignar
+ * Atribución comercial FASE 9D — FUENTE CANÓNICA desde 2026-07-01:
+ *   comercial vigente del cliente en issue_date (sales_client_salespersons)
+ *   → Sin asignar
+ *
+ * `sales_document_salespersons` es legado histórico / auditoría técnica.
+ * NO influye en Resumen, Clientes, Detalle, Comparativo, Comerciales,
+ * insights, rankings, Cliente 360, Hoy ni Dashboard.
  *
  * Todas las agregaciones se calculan sobre ESTE resultado — sin N+1.
  */
@@ -28,7 +31,6 @@ import type { SalesCatalogView } from "@/lib/sales/canonical/catalog-types";
 import { loadSalesCatalogView } from "@/lib/sales/sales-catalog-repository";
 import {
   loadSalespersons,
-  loadDocumentAssignments,
   type SalespersonRow,
 } from "@/lib/sales/sales-salesperson-repository";
 import {
@@ -162,7 +164,6 @@ export async function loadSalesDataset(
     names,
     catalogResult,
     spResult,
-    documentAssignments,
     clientAssignResult,
     firstSaleByCustomerId,
   ] = await Promise.all([
@@ -184,7 +185,6 @@ export async function loadSalesDataset(
       salespersons: [] as SalespersonRow[],
       migrationPending: true,
     })),
-    loadDocumentAssignments(supabase, workspaceId).catch(() => new Map<string, string>()),
     loadClientSalespersonAssignments(supabase, workspaceId).catch(() => ({
       assignments: [] as ClientSalespersonAssignmentRow[],
       migrationPending: true,
@@ -205,18 +205,11 @@ export async function loadSalesDataset(
   const spNameById = new Map(spResult.salespersons.map((s) => [s.id, s.displayName]));
   const clientAssignments = clientAssignResult.assignments;
 
+  // Fuente canónica desde 2026-07-01: comercial vigente del cliente en issue_date.
+  // Incluye ventas y NC (Case B): la NC hereda el comercial del cliente en su fecha.
+  // sales_document_salespersons NO se consulta ni aplica aquí (legado / auditoría).
   for (const doc of documents) {
     if (doc.issueDate < SALESPERSON_START_DATE) continue;
-
-    // 1) Override legacy por documento (histórico / excepción).
-    const legacySpId = documentAssignments.get(doc.documentId);
-    if (legacySpId && spNameById.has(legacySpId)) {
-      doc.salespersonId = legacySpId;
-      doc.salespersonName = spNameById.get(legacySpId) ?? null;
-      continue;
-    }
-
-    // 2) Comercial vigente del cliente en la fecha de la factura.
     const clientSpId = resolveClientSalespersonOnDate(clientAssignments, doc.customerId, doc.issueDate);
     if (clientSpId && spNameById.has(clientSpId)) {
       doc.salespersonId = clientSpId;

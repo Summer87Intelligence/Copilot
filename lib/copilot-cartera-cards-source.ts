@@ -287,7 +287,7 @@ function normalizeBucket(
       readCurrencyMetric(raw, "creditNoteCount", "credit_note_count") ?? 0
     )
   );
-  const issuedInPeriodNet = Math.max(0, issuedInPeriod - creditNoteAmount);
+  const issuedInPeriodNet = issuedInPeriod - creditNoteAmount;
 
   // previousPending: saldo arrastrado anterior al período.
   // Primero intenta leerlo directo del motor; si no viene, lo deriva como

@@ -1269,9 +1269,7 @@ export function generateFinancialConsistencyReport(
       const collectedInPeriod = collectedInPeriodByCurrency[code] ?? 0;
       const collectedReceiptCount = collectedReceiptCountByCurrency[code] ?? 0;
       const openingBalance = openingBalanceFor(code);
-      const issuedInPeriodNet = round2(
-        Math.max(0, issuedInPeriod - b.creditNoteAmount)
-      );
+      const issuedInPeriodNet = round2(issuedInPeriod - b.creditNoteAmount);
       const appliedCollectionsAtCutoff = round2(
         Math.max(0, issuedInPeriodNet - pendingAtCutoff)
       );

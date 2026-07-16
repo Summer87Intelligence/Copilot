@@ -19,7 +19,6 @@ import {
 import type { SalesDetailRow } from "@/lib/sales/sales-api";
 import type { SalesPeriodPreset } from "@/lib/sales/sales-period";
 import type { SalespersonRow } from "@/lib/sales/sales-salesperson-repository";
-import { SALESPERSON_START_DATE } from "@/lib/sales/canonical/types";
 import { formatMoneyCurrency } from "@/lib/copilot-format-money";
 import { clientFichaHref } from "@/lib/copilot/client-360-href";
 import { formatDateShort, formatUyuOrDash, formatUsdOrDash } from "@/components/copilot/ventas/ventas-format";
@@ -47,8 +46,6 @@ export function VentasDetalleTab({
   to,
   year,
   month,
-  canAssign,
-  onAssignmentChange,
 }: {
   /** Período por preset (this_month, year, …). */
   preset?: SalesPeriodPreset;
@@ -58,9 +55,6 @@ export function VentasDetalleTab({
   /** Mes con nombre del año en curso. */
   year?: number;
   month?: number;
-  canAssign: boolean;
-  /** Se invoca tras una asignación exitosa para refrescar overview / Comerciales. */
-  onAssignmentChange?: () => void;
 }) {
   const [rows, setRows] = useState<SalesDetailRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -73,8 +67,6 @@ export function VentasDetalleTab({
   const [salesperson, setSalesperson] = useState<string>("all");
 
   const [people, setPeople] = useState<SalespersonRow[]>([]);
-  const [assigningDoc, setAssigningDoc] = useState<string | null>(null);
-  const [assignMsg, setAssignMsg] = useState<{ tone: "positive" | "danger"; text: string } | null>(null);
   const [detailRow, setDetailRow] = useState<SalesDetailRow | null>(null);
 
   /** Serializa el período recibido (preset · mes · rango) para la API. */
@@ -148,39 +140,6 @@ export function VentasDetalleTab({
   useEffect(() => {
     setPage(1);
   }, [search, currency, salesperson, periodKey]);
-
-  const assign = useCallback(
-    async (documentId: string, salespersonId: string | null) => {
-      setAssigningDoc(documentId);
-      setAssignMsg(null);
-      try {
-        const res = await fetch("/api/copilot/sales/assignments", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ documentId, salespersonId }),
-        });
-        const json = await res.json();
-        if (!res.ok || !json.ok) {
-          setAssignMsg({ tone: "danger", text: json?.message ?? "No se pudo asignar el comercial." });
-          return;
-        }
-        const name = salespersonId ? people.find((p) => p.id === salespersonId)?.displayName ?? null : null;
-        setRows((prev) =>
-          prev.map((r) => (r.documentId === documentId ? { ...r, salespersonId, salespersonName: name } : r))
-        );
-        setDetailRow((prev) =>
-          prev && prev.documentId === documentId ? { ...prev, salespersonId, salespersonName: name } : prev
-        );
-        setAssignMsg({ tone: "positive", text: "Comercial actualizado." });
-        onAssignmentChange?.();
-      } catch {
-        setAssignMsg({ tone: "danger", text: "No se pudo asignar el comercial." });
-      } finally {
-        setAssigningDoc(null);
-      }
-    },
-    [people, onAssignmentChange]
-  );
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const pageFrom = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
@@ -318,19 +277,10 @@ export function VentasDetalleTab({
         </select>
       </div>
 
-      {assignMsg ? (
-        <p
-          role="status"
-          aria-live="polite"
-          className={`mt-2 text-xs font-medium ${
-            assignMsg.tone === "positive"
-              ? "text-[var(--copilot-success-text-strong)]"
-              : "text-[var(--copilot-danger-text-strong)]"
-          }`}
-        >
-          {assignMsg.text}
-        </p>
-      ) : null}
+      <p className={`${copilotCaptionClass} mt-2`}>
+        El comercial se asigna al cliente. Aquí se muestra el comercial heredado; para cambiarlo usá la pestaña
+        Clientes.
+      </p>
 
       <div className="mt-3">
         {loading ? (
@@ -470,30 +420,10 @@ export function VentasDetalleTab({
                 Abrir Cliente 360 <ExternalLink className="h-3.5 w-3.5" aria-hidden />
               </a>
             ) : null}
-            {canAssign && detailRow.date.slice(0, 10) >= SALESPERSON_START_DATE ? (
-              <label className="flex flex-col gap-1">
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-                  Override legacy (comprobante)
-                </span>
-                <span className="text-[11px] text-[var(--copilot-ink-muted)]">
-                  Preferí asignar el comercial desde el cliente. Este override sólo afecta a este comprobante.
-                </span>
-                <select
-                  value={detailRow.salespersonId ?? ""}
-                  disabled={assigningDoc === detailRow.documentId}
-                  onChange={(e) => assign(detailRow.documentId, e.target.value || null)}
-                  aria-label="Asignar comercial"
-                  className="h-9 rounded-lg border border-[var(--copilot-border-strong)] bg-[var(--copilot-panel-bg)] px-2.5 text-sm"
-                >
-                  <option value="">Sin asignar</option>
-                  {people.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.displayName}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
+            <p className={copilotCaptionClass}>
+              El comercial se asigna al cliente (pestaña Clientes). Este comprobante hereda el comercial vigente en su
+              fecha.
+            </p>
           </div>
         </VentasAnalyticsDrawer>
       ) : null}

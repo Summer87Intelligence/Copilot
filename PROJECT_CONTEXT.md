@@ -1,16 +1,13 @@
 # Project Context
 
-## FASE 9D — Ventas netas + comercial por cliente — 2026-07-16 (CIERRE LOCAL / MIGRATION PENDING)
+## FASE 9D — Ventas netas + comercial por cliente — 2026-07-16 (CIERRE LOCAL / MIGRATION APPLY BLOCKED)
 
-**Objetivo:** una definición canónica de **Ventas netas** (emitidas − NC por moneda) en todo el módulo Ventas, filtros de período flexibles, y atribución comercial **por cliente** (no por factura).
+**Objetivo:** ventas netas canónicas + comercial por cliente (no por factura) + paridad Finanzas.
 
-- **KPI:** `netSalesByCurrency` / `salesAdjusted` = emitidas − NC. NC no cuentan como factura, cliente, servicio ni venta positiva.
-- **NC:** Case B (cliente) cuando hay customerId; Case C a nivel servicios (bloque “Ajustes no vinculados”); vínculo exacto factura↔NC no certificado en payloads reales → no se inventa Case A.
-- **Cliente nuevo:** primera venta válida en historia lookback desde 2020-01-01; NC/anulados no cuentan; KPI de montos sigue ≥ MIN_FINANCIAL_DATE.
-- **Comercial:** tabla `sales_client_salespersons` (historial `valid_from`/`valid_to`); precedencia: override legacy documento → asignación vigente del cliente en `issue_date` → Sin asignar. Migración **creada, no aplicada**.
-- **UI:** Resumen/Clientes/Comerciales/Comparativo/Detalle/Cliente 360 en neto; Servicios muestra emitidas + ajustes; drawer clientes nuevos; Ver detalle en servicios; filtros mes/año/custom en URL.
-- **Finanzas/Hoy/Dashboard:** ya usan `issuedInPeriodNet` (pueden clipear a ≥0); Ventas muestra neto real (puede ser negativo).
-- **Checks ejecutados:** `tsc --noEmit` OK, ESLint dirigido OK, `git diff --check` OK. Sin Vitest/build/Playwright/push. **MIGRATION_PENDING_AUTHORIZATION**.
+- **KPI:** `netSalesByCurrency` = emitidas − NC (puede ser negativo). Removido `Math.max(0, …)` del cálculo de `issuedInPeriodNet` / `issuedNet` / `netSales` en Finanzas, Cartera y trends. Clamps de cobranza/tasas se mantienen.
+- **Comercial canónico desde 2026-07-01:** `sales_client_salespersons` vigente en `issue_date` → Sin asignar. `sales_document_salespersons` legado, no entra a analytics; UI Detalle sin selector por factura.
+- **Migración:** `20260716160000_sales_client_salespersons_fase9d.sql` revisada (aditiva, RLS, historial). **Aplicación bloqueada** en esta sesión: sin `DATABASE_URL` / `SUPABASE_ACCESS_TOKEN` / MCP Supabase. Tabla ausente (`PGRST205`).
+- **Checks:** ver cierre de tarea (tsc / eslint / diff-check). Sin Vitest/build/Playwright/push.
 
 ## FASE 8 — Bandeja única de tareas inteligentes — 2026-07-15 (CIERRE LOCAL)
 

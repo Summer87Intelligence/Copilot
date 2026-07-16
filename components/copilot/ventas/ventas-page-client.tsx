@@ -419,7 +419,7 @@ export function VentasPageClient({ isAdmin }: { isAdmin: boolean }) {
           </TabFrame>
         ) : null}
         {tab === "detalle" ? (
-          <VentasDetalleTab {...detalleProps} canAssign={isAdmin} onAssignmentChange={refreshOverviewQuiet} />
+          <VentasDetalleTab {...detalleProps} />
         ) : null}
       </div>
     </div>

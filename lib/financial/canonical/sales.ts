@@ -55,7 +55,7 @@ export function buildCanonicalSalesMetrics(
     }
   }
 
-  const issuedNet = roundMoney(Math.max(0, issuedGross - creditNoteAmount));
+  const issuedNet = roundMoney(issuedGross - creditNoteAmount);
   const appliedCollected = roundMoney(Math.max(0, issuedNet - pendingAtCutoff));
   const collectionRate =
     issuedNet > 0

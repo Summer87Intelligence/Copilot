@@ -1,6 +1,9 @@
 /**
  * FASE 9D — Repositorio de asignación comercial por CLIENTE (historial temporal).
  * Schema-tolerant: si la tabla falta (42P01), degrada a vacío / migrationPending.
+ *
+ * Fuente canónica de atribución comercial desde 2026-07-01.
+ * sales_document_salespersons es legado y no debe usarse para analytics.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
