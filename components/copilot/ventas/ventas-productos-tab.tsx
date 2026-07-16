@@ -179,14 +179,14 @@ export function VentasProductosTab({
     },
     {
       key: "uyu",
-      header: "Ventas UYU",
+      header: "Ventas emitidas UYU",
       className: "text-right",
       cellClassName: "text-right tabular-nums",
       render: (r) => formatUyuOrDash(r.totalByCurrency.UYU),
     },
     {
       key: "usd",
-      header: "Ventas USD",
+      header: "Ventas emitidas USD",
       className: "text-right",
       cellClassName: "text-right tabular-nums",
       render: (r) => formatUsdOrDash(r.totalByCurrency.USD),
@@ -212,7 +212,27 @@ export function VentasProductosTab({
       cellClassName: "text-right text-xs",
       render: (r) => variationLabel(r),
     },
+    {
+      key: "act",
+      header: "Acciones",
+      className: "text-left",
+      render: (r) => (
+        <button
+          type="button"
+          className="text-xs font-semibold text-[var(--copilot-accent)] hover:underline"
+          aria-label={`Ver detalle de ${r.productName}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelectedKey(r.key);
+          }}
+        >
+          Ver detalle
+        </button>
+      ),
+    },
   ];
+
+  const unlinked = overview.unlinkedServiceAdjustments;
 
   return (
     <>
@@ -229,7 +249,8 @@ export function VentasProductosTab({
           />
         </div>
         <p className={`${copilotCaptionClass} mt-1`}>
-          Servicios facturados en el período, con cantidad de facturas, clientes e importe por moneda.
+          Ventas emitidas por servicio (sin notas de crédito): las NC no se distribuyen entre servicios porque no
+          tienen un vínculo confiable a factura o línea. El ajuste por notas de crédito se muestra aparte más abajo.
         </p>
         <div className="mt-3">
           <CopilotResponsiveTable
@@ -237,7 +258,7 @@ export function VentasProductosTab({
             columns={columns}
             getRowKey={(r) => r.key}
             ariaLabel="Ventas por servicio"
-            minWidth="980px"
+            minWidth="1120px"
             onRowClick={(r) => setSelectedKey(r.key)}
             emptyState={
               <EmptyState icon={<Briefcase className="h-6 w-6" />} title="No encontramos servicios con estos filtros." variant="compact" />
@@ -256,6 +277,47 @@ export function VentasProductosTab({
             )}
           />
         </div>
+
+        {unlinked && unlinked.creditNoteCount > 0 ? (
+          <div className="mt-4 rounded-xl border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-4 py-3">
+            <h3 className="text-sm font-semibold text-[var(--copilot-ink)]">Ajustes no vinculados a servicios</h3>
+            <p className={`${copilotCaptionClass} mt-1`}>
+              {unlinked.creditNoteCount} nota{unlinked.creditNoteCount === 1 ? "" : "s"} de crédito por{" "}
+              {formatUyuOrDash(unlinked.creditNotesByCurrency.UYU)} ·{" "}
+              {formatUsdOrDash(unlinked.creditNotesByCurrency.USD)} no se distribuyen entre servicios. Se restan del
+              total general para obtener las ventas netas.
+            </p>
+            <dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+              <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] px-3 py-2">
+                <dt className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                  Ventas emitidas por servicios (UYU · USD)
+                </dt>
+                <dd className="mt-0.5 font-medium tabular-nums text-[var(--copilot-ink)]">
+                  {formatUyuOrDash(unlinked.serviceEmittedByCurrency.UYU)} ·{" "}
+                  {formatUsdOrDash(unlinked.serviceEmittedByCurrency.USD)}
+                </dd>
+              </div>
+              <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] px-3 py-2">
+                <dt className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                  Notas de crédito (UYU · USD)
+                </dt>
+                <dd className="mt-0.5 font-medium tabular-nums text-[var(--copilot-ink)]">
+                  {formatUyuOrDash(unlinked.creditNotesByCurrency.UYU)} ·{" "}
+                  {formatUsdOrDash(unlinked.creditNotesByCurrency.USD)}
+                </dd>
+              </div>
+              <div className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-panel-bg)] px-3 py-2">
+                <dt className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+                  Ventas netas (UYU · USD)
+                </dt>
+                <dd className="mt-0.5 font-medium tabular-nums text-[var(--copilot-ink)]">
+                  {formatUyuOrDash(unlinked.netSalesByCurrency.UYU)} ·{" "}
+                  {formatUsdOrDash(unlinked.netSalesByCurrency.USD)}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        ) : null}
       </section>
 
       {selectedKey ? (
