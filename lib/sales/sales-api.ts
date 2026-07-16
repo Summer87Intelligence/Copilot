@@ -66,19 +66,60 @@ function csv(v: string | null): string[] | null {
 /**
  * Parsea filtros desde query params. `today` se inyecta (Montevideo) para
  * resolver presets de período de forma determinística.
+ *
+ * URL compatible:
+ *   ?preset=this_month
+ *   ?year=2026&month=7
+ *   ?from=2026-07-01&to=2026-07-31
  */
 export function parseSalesFilters(params: URLSearchParams, today: string): SalesFilters {
-  const presetRaw = params.get("preset");
-  const preset: SalesPeriodPreset = isValidPeriodPreset(presetRaw) ? presetRaw : "this_month";
-  const period = resolvePeriodRange(preset, today, {
-    from: params.get("from") ?? undefined,
-    to: params.get("to") ?? undefined,
-  });
+  const yearRaw = params.get("year");
+  const monthRaw = params.get("month");
+  const yearNum = yearRaw ? parseInt(yearRaw, 10) : NaN;
+  const monthNum = monthRaw ? parseInt(monthRaw, 10) : NaN;
+  const hasYearMonth =
+    Number.isFinite(yearNum) &&
+    yearNum >= 2020 &&
+    yearNum <= 2100 &&
+    Number.isFinite(monthNum) &&
+    monthNum >= 1 &&
+    monthNum <= 12;
+
+  let preset: SalesPeriodPreset;
+  let period: { from: string; to: string };
+
+  if (hasYearMonth) {
+    const mm = String(monthNum).padStart(2, "0");
+    const from = `${yearNum}-${mm}-01`;
+    const last = lastDayOfMonth(yearNum, monthNum);
+    const monthEnd = `${yearNum}-${mm}-${String(last).padStart(2, "0")}`;
+    const isCurrentMonth = partsYmd(today).y === yearNum && partsYmd(today).m === monthNum;
+    preset = "custom";
+    period = { from, to: isCurrentMonth && today < monthEnd ? today : monthEnd };
+  } else {
+    const presetRaw = params.get("preset");
+    preset = isValidPeriodPreset(presetRaw) ? presetRaw : "this_month";
+    // Si vienen from/to sin preset custom, forzar custom.
+    const fromParam = params.get("from");
+    const toParam = params.get("to");
+    if (fromParam && toParam && /^\d{4}-\d{2}-\d{2}$/.test(fromParam) && /^\d{4}-\d{2}-\d{2}$/.test(toParam)) {
+      preset = "custom";
+    }
+    period = resolvePeriodRange(preset, today, {
+      from: fromParam ?? undefined,
+      to: toParam ?? undefined,
+    });
+  }
 
   const cmpRaw = params.get("comparison");
-  const comparisonMode: SalesComparisonMode = isValidComparisonMode(cmpRaw)
-    ? cmpRaw
-    : "same_elapsed_days";
+  // Mes completo histórico → previous_month; mes en curso → same_elapsed_days.
+  const defaultCmp: SalesComparisonMode =
+    period.to === today && period.from === `${partsYmd(today).y}-${String(partsYmd(today).m).padStart(2, "0")}-01`
+      ? "same_elapsed_days"
+      : hasYearMonth
+        ? "previous_month"
+        : "same_elapsed_days";
+  const comparisonMode: SalesComparisonMode = isValidComparisonMode(cmpRaw) ? cmpRaw : defaultCmp;
   const cmp = resolveComparisonRange(comparisonMode, period, {
     from: params.get("cmpFrom") ?? undefined,
     to: params.get("cmpTo") ?? undefined,
@@ -121,6 +162,15 @@ export function parseSalesFilters(params: URLSearchParams, today: string): Sales
   };
 }
 
+function partsYmd(ymd: string): { y: number; m: number; d: number } {
+  const [y, m, d] = ymd.split("-").map((n) => parseInt(n, 10));
+  return { y: y!, m: m!, d: d! };
+}
+
+function lastDayOfMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
 // ---------------------------------------------------------------------------
 // Overview (Resumen / Productos / Clientes / Comparativo / Clasificación)
 // ---------------------------------------------------------------------------
@@ -128,23 +178,32 @@ export function parseSalesFilters(params: URLSearchParams, today: string): Sales
 export function buildSalesOverview(
   documents: readonly CanonicalSaleDocument[],
   catalog: SalesCatalogView,
-  filters: SalesFilters
+  filters: SalesFilters,
+  options?: {
+    firstSaleByCustomerId?: Map<string, string>;
+    assignedCustomerCountBySalesperson?: Map<string | null, number>;
+  }
 ) {
   const { dateFrom, dateTo, comparisonDateFrom, comparisonDateTo } = filters;
+  const aggOpts = {
+    firstSaleByCustomerId: options?.firstSaleByCustomerId,
+    assignedCustomerCountBySalesperson: options?.assignedCustomerCountBySalesperson,
+  };
 
-  const snapshot = buildSalesPeriodSnapshot(documents, dateFrom, dateTo);
+  const snapshot = buildSalesPeriodSnapshot(documents, dateFrom, dateTo, aggOpts);
   const productsRaw = buildProductSalesSummary(documents, dateFrom, dateTo);
   const productsPrev = buildProductSalesSummary(documents, comparisonDateFrom, comparisonDateTo);
   const products = enrichProductsWithVariation(productsRaw, productsPrev);
-  const customers = buildCustomerSalesSummary(documents, dateFrom, dateTo);
-  const salespersons = buildSalespersonSummary(documents, dateFrom, dateTo);
+  const customers = buildCustomerSalesSummary(documents, dateFrom, dateTo, aggOpts);
+  const salespersons = buildSalespersonSummary(documents, dateFrom, dateTo, aggOpts);
   const collection = buildSalesCollectionSummary(documents, dateFrom, dateTo);
   const comparison = buildSalesComparison(
     documents,
     dateFrom,
     dateTo,
     comparisonDateFrom,
-    comparisonDateTo
+    comparisonDateTo,
+    aggOpts
   );
   const serviceComparison = buildServicePeriodComparison(
     documents,
@@ -166,6 +225,20 @@ export function buildSalesOverview(
     comparisonLabel: COMPARISON_LABELS[filters.comparisonMode],
   });
 
+  /**
+   * Case C a nivel servicios: las NC no se imputan a un servicio sin vínculo
+   * confiable. La tabla de servicios muestra ventas emitidas; este bloque
+   * permite reconciliar: Σ servicios − ajustes no vinculados ≈ ventas netas.
+   */
+  const serviceEmitted = productsRaw.reduce(
+    (acc, p) => {
+      acc.UYU += p.totalByCurrency.UYU;
+      acc.USD += p.totalByCurrency.USD;
+      return acc;
+    },
+    { UYU: 0, USD: 0 }
+  );
+
   return {
     period: { from: dateFrom, to: dateTo, preset: filters.preset },
     comparisonWindow: {
@@ -183,6 +256,18 @@ export function buildSalesOverview(
     highlights,
     unclassified,
     insights,
+    /** Ajustes (NC) no vinculados a servicios — Case C. */
+    unlinkedServiceAdjustments: {
+      creditNoteCount: snapshot.creditNoteCount,
+      creditNotesByCurrency: snapshot.creditNotes,
+      serviceEmittedByCurrency: {
+        UYU: Math.round(serviceEmitted.UYU * 100) / 100,
+        USD: Math.round(serviceEmitted.USD * 100) / 100,
+      },
+      netSalesByCurrency: snapshot.netSalesByCurrency,
+      note:
+        "Las notas de crédito no se distribuyen entre servicios sin vínculo confiable a factura/línea. Se restan del total general (ventas netas).",
+    },
   };
 }
 

@@ -82,7 +82,12 @@ export function monthLabel(yyyyMm: string): string {
 export type MonthlyCommercialRow = {
   month: string; // YYYY-MM
   label: string;
+  /** @deprecated Prefer netSalesByCurrency — alias histórico de ventas emitidas brutas. */
   salesByCurrency: CurrencyPair;
+  grossSalesByCurrency: CurrencyPair;
+  creditNotesByCurrency: CurrencyPair;
+  netSalesByCurrency: CurrencyPair;
+  creditNoteCount: number;
   invoiceCount: number;
   customerCount: number;
   avgTicketByCurrency: CurrencyPair;
@@ -222,7 +227,7 @@ function buildMonthInsights(
   return out.slice(0, 4);
 }
 
-/** Filas mensuales del año (ene→dic o hasta el mes corriente). */
+/** Filas mensuales del año (ene→dic o hasta el mes corriente). Ventas netas = emitidas − NC. */
 export function buildYearlyMonthlyRows(
   documents: readonly CanonicalSaleDocument[],
   year: number,
@@ -242,18 +247,28 @@ export function buildYearlyMonthlyRows(
 
     const docs = new Set<string>();
     const customers = new Set<string>();
-    const sales = emptyCurrencyPair();
+    const gross = emptyCurrencyPair();
+    const creditNotes = emptyCurrencyPair();
+    let creditNoteCount = 0;
     const invByCur = emptyCurrencyPair();
     const serviceTotals = new Map<string, { name: string; total: number }>();
     const spTotals = new Map<string, { name: string; total: number }>();
 
     for (const doc of documents) {
-      if (!isValidSale(doc)) continue;
+      if (doc.status === "cancelled") continue;
       if (!inWindow(doc.issueDate, from, to)) continue;
+
+      if (doc.kind === "credit_note") {
+        creditNoteCount += 1;
+        if (isKnownCurrency(doc.currency)) addToPair(creditNotes, doc.currency, doc.grossAmount);
+        continue;
+      }
+      if (!isValidSale(doc)) continue;
+
       docs.add(doc.documentId);
       customers.add(customerKey(doc));
       if (isKnownCurrency(doc.currency)) {
-        addToPair(sales, doc.currency, doc.grossAmount);
+        addToPair(gross, doc.currency, doc.grossAmount);
         addToPair(invByCur, doc.currency, 1);
       }
       for (const line of doc.lines) {
@@ -270,6 +285,10 @@ export function buildYearlyMonthlyRows(
       }
     }
 
+    const net: CurrencyPair = {
+      UYU: gross.UYU - creditNotes.UYU,
+      USD: gross.USD - creditNotes.USD,
+    };
     const topService = topNameFromMap(serviceTotals);
     const topSp = topNameFromMap(spTotals);
     const label = monthLabel(`${year}-${mm}`);
@@ -278,13 +297,13 @@ export function buildYearlyMonthlyRows(
     let vsPrevious: MonthlyCommercialRow["vsPrevious"] = null;
     if (prev) {
       const curSnap = {
-        sales: round2Pair(sales),
+        sales: round2Pair(net),
         invoices: docs.size,
         customers: customers.size,
         topService,
       };
       const prevSnap = {
-        sales: prev.salesByCurrency,
+        sales: prev.netSalesByCurrency,
         invoices: prev.invoiceCount,
         customers: prev.customerCount,
         topService: prev.topServiceName,
@@ -307,10 +326,14 @@ export function buildYearlyMonthlyRows(
     rows.push({
       month: `${year}-${mm}`,
       label,
-      salesByCurrency: round2Pair(sales),
+      salesByCurrency: round2Pair(net),
+      grossSalesByCurrency: round2Pair(gross),
+      creditNotesByCurrency: round2Pair(creditNotes),
+      netSalesByCurrency: round2Pair(net),
+      creditNoteCount,
       invoiceCount: docs.size,
       customerCount: customers.size,
-      avgTicketByCurrency: ticketPair(sales, invByCur),
+      avgTicketByCurrency: ticketPair(net, invByCur),
       topServiceName: topService,
       topSalespersonName: topSp,
       vsPrevious,
@@ -726,7 +749,7 @@ export function buildCustomerDrillDown(
   }
 
   const topService = services[0] ?? null;
-  const salesUsd = summaryRow?.salesByCurrency.USD ?? 0;
+  const salesUsd = summaryRow?.netSalesByCurrency.USD ?? summaryRow?.salesByCurrency.USD ?? 0;
   const shareUsd =
     periodTotalUsd > 0 && salesUsd > 0 ? Math.round((salesUsd / periodTotalUsd) * 1000) / 10 : null;
 
@@ -772,14 +795,17 @@ export function buildCustomerDrillDown(
     summary: {
       customerId,
       customerName: summaryRow?.customerName ?? invoices[0]?.customerName ?? "Cliente",
-      salesByCurrency: summaryRow?.salesByCurrency ?? emptyCurrencyPair(),
+      salesByCurrency: summaryRow?.netSalesByCurrency ?? summaryRow?.salesByCurrency ?? emptyCurrencyPair(),
+      netSalesByCurrency: summaryRow?.netSalesByCurrency ?? emptyCurrencyPair(),
+      creditNotesByCurrency: summaryRow?.creditNotesByCurrency ?? emptyCurrencyPair(),
       invoiceCount: summaryRow?.invoiceCount ?? new Set(invoices.map((i) => i.documentId)).size,
       serviceCount: services.length,
       avgTicketByCurrency: summaryRow?.avgTicketByCurrency ?? emptyCurrencyPair(),
       firstPurchase: summaryRow?.firstPurchase ?? null,
       lastPurchase: summaryRow?.lastPurchase ?? null,
       type: summaryRow?.type ?? "recurring",
-      topSalespersonName: topSalesperson,
+      topSalespersonName: topSalesperson ?? summaryRow?.salespersonName ?? null,
+      salespersonId: summaryRow?.salespersonId ?? null,
       activeMonthCount: activeMonths.size,
     },
     invoices,
@@ -876,8 +902,11 @@ export function buildSalespersonDrillDown(
       salespersonName: summaryRow?.salespersonName ?? (salespersonId ? "Comercial" : "Sin asignar"),
       invoiceCount: summaryRow?.invoiceCount ?? new Set(invoices.map((i) => i.documentId)).size,
       customerCount: summaryRow?.customerCount ?? 0,
+      assignedCustomerCount: summaryRow?.assignedCustomerCount ?? 0,
       newCustomerCount: summaryRow?.newCustomerCount ?? 0,
-      salesByCurrency: summaryRow?.salesByCurrency ?? emptyCurrencyPair(),
+      salesByCurrency: summaryRow?.netSalesByCurrency ?? summaryRow?.salesByCurrency ?? emptyCurrencyPair(),
+      netSalesByCurrency: summaryRow?.netSalesByCurrency ?? emptyCurrencyPair(),
+      creditNotesByCurrency: summaryRow?.creditNotesByCurrency ?? emptyCurrencyPair(),
       avgTicketByCurrency: summaryRow?.avgTicketByCurrency ?? emptyCurrencyPair(),
       topServiceName: summaryRow?.topProductName ?? services[0]?.serviceName ?? null,
       period: { from, to },
@@ -902,11 +931,12 @@ export function buildCommercialHighlights(
   const topByCustomers = [...products].sort((a, b) => b.customerCount - a.customerCount)[0] ?? null;
   const topUyu = [...products].sort((a, b) => b.totalByCurrency.UYU - a.totalByCurrency.UYU)[0] ?? null;
   const topUsd = [...products].sort((a, b) => b.totalByCurrency.USD - a.totalByCurrency.USD)[0] ?? null;
-  const topCustUyu = [...customers].sort((a, b) => b.salesByCurrency.UYU - a.salesByCurrency.UYU)[0] ?? null;
-  const topCustUsd = [...customers].sort((a, b) => b.salesByCurrency.USD - a.salesByCurrency.USD)[0] ?? null;
+  const topCustUyu = [...customers].sort((a, b) => b.netSalesByCurrency.UYU - a.netSalesByCurrency.UYU)[0] ?? null;
+  const topCustUsd = [...customers].sort((a, b) => b.netSalesByCurrency.USD - a.netSalesByCurrency.USD)[0] ?? null;
   const assigned = salespersons.filter((s) => s.salespersonId !== null);
   const topSp = [...assigned].sort(
-    (a, b) => b.salesByCurrency.UYU + b.salesByCurrency.USD - (a.salesByCurrency.UYU + a.salesByCurrency.USD)
+    (a, b) =>
+      b.netSalesByCurrency.UYU + b.netSalesByCurrency.USD - (a.netSalesByCurrency.UYU + a.netSalesByCurrency.USD)
   )[0] ?? null;
 
   const unassigned = salespersons.find((s) => s.salespersonId === null);

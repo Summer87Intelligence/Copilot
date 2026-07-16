@@ -156,25 +156,32 @@ export type SalesPeriodSnapshot = {
   periodFrom: string;
   periodTo: string;
 
-  /** Ventas emitidas (solo kind=sale, status válido). */
+  /** Ventas emitidas brutas (solo kind=sale, status válido). Alias: grossSalesByCurrency. */
   salesEmitted: CurrencyPair;
   /** Notas de crédito emitidas (magnitud positiva). */
   creditNotes: CurrencyPair;
-  /** Venta ajustada = salesEmitted − creditNotes (fórmula explícita). */
+  /**
+   * Ventas netas = salesEmitted − creditNotes (por moneda).
+   * KPI comercial principal FASE 9D. Alias histórico: salesAdjusted.
+   */
   salesAdjusted: CurrencyPair;
+  /** Alias explícito de ventas netas (= salesAdjusted). */
+  netSalesByCurrency: CurrencyPair;
+  /** Alias explícito de ventas brutas (= salesEmitted). */
+  grossSalesByCurrency: CurrencyPair;
 
   /** Cobrado aplicado sobre documentos del período. */
   appliedCollected: CurrencyPair;
   registeredCollected: CurrencyPair;
   pending: CurrencyPair;
 
-  /** Facturas de venta válidas (documentos, no líneas). */
+  /** Facturas de venta válidas (documentos, no líneas). Excluye NC. */
   invoiceCount: number;
   creditNoteCount: number;
-  /** Unidades/servicios vendidos (Σ quantity de líneas clasificables de ventas). */
+  /** Unidades/servicios (métrica interna; no usar como KPI directivo). */
   unitsSold: number;
 
-  /** Ticket promedio por moneda = salesEmitted / facturas de esa moneda. */
+  /** Ticket promedio por moneda = ventas netas / facturas de esa moneda. */
   averageTicket: CurrencyPair;
 
   newCustomers: number;
@@ -219,15 +226,25 @@ export type CustomerSalesSummaryRow = {
   invoiceCount: number;
   productCount: number;
 
+  /** Ventas brutas emitidas (sin NC). */
   salesByCurrency: CurrencyPair;
+  /** NC del cliente en el período (Case B: vínculo por cliente). */
+  creditNotesByCurrency: CurrencyPair;
+  /** Ventas netas = sales − credit notes. */
+  netSalesByCurrency: CurrencyPair;
   appliedByCurrency: CurrencyPair;
   pendingByCurrency: CurrencyPair;
+  /** Ticket = netSales / facturas de esa moneda. */
   avgTicketByCurrency: CurrencyPair;
 
   firstPurchase: string | null;
   lastPurchase: string | null;
 
   type: "new" | "recurring";
+
+  /** Comercial vigente del cliente (asignación por cliente FASE 9D). */
+  salespersonId: string | null;
+  salespersonName: string | null;
 };
 
 export type SalesCollectionSummary = {
@@ -243,14 +260,15 @@ export type SalesComparison = {
   current: SalesPeriodSnapshot;
   previous: SalesPeriodSnapshot;
 
-  /** Diferencia absoluta emitidas por moneda. */
+  /** Diferencia absoluta de ventas netas por moneda. */
   salesDeltaByCurrency: CurrencyPair;
-  /** Variación % por moneda; null cuando base anterior es 0 ("Sin base comparable"). */
+  /** Variación % de ventas netas; null cuando base anterior es 0. */
   salesPctByCurrency: { UYU: number | null; USD: number | null };
 
   invoiceDelta: number;
   unitsDelta: number;
   customerDelta: number;
+  creditNoteDelta: number;
 };
 
 /** Fecha desde la cual se asigna comercial (no hay backfill anterior). */
@@ -263,13 +281,18 @@ export type SalespersonSummaryRow = {
   invoiceCount: number;
   unitsSold: number;
   customerCount: number;
+  /** Clientes con asignación vigente (aunque no hayan comprado en el período). */
+  assignedCustomerCount: number;
   newCustomerCount: number;
 
+  /** Ventas netas atribuidas (bruto − NC del cliente cuando el vínculo es por cliente). */
   salesByCurrency: CurrencyPair;
+  creditNotesByCurrency: CurrencyPair;
+  netSalesByCurrency: CurrencyPair;
   avgTicketByCurrency: CurrencyPair;
 
   topProductName: string | null;
-  /** Participación % del total emitido por moneda (0 si el total es 0). */
+  /** Participación % del total neto emitido por moneda (0 si el total es 0). */
   shareByCurrency: CurrencyPair;
 };
 

@@ -79,12 +79,37 @@ function customerKey(doc: CanonicalSaleDocument): string {
   return doc.customerId ?? `code:${doc.customerCode ?? ""}`;
 }
 
+/**
+ * Combina primera venta del dataset KPI con lookback extendido (por customerId).
+ * Preferimos la fecha más temprana confiable.
+ */
+function mergeFirstSaleMaps(
+  fromDocs: Map<string, string>,
+  byCustomerId?: Map<string, string>
+): Map<string, string> {
+  if (!byCustomerId || byCustomerId.size === 0) return fromDocs;
+  const out = new Map(fromDocs);
+  for (const [customerId, date] of byCustomerId) {
+    const key = customerId;
+    const prev = out.get(key);
+    if (!prev || date < prev) out.set(key, date);
+  }
+  return out;
+}
+
+export type SalesAggregationOptions = {
+  /** customerId → primera venta válida (historia extendida). */
+  firstSaleByCustomerId?: Map<string, string>;
+  assignedCustomerCountBySalesperson?: Map<string | null, number>;
+};
+
 export function buildSalesPeriodSnapshot(
   allDocs: readonly CanonicalSaleDocument[],
   periodFrom: string,
-  periodTo: string
+  periodTo: string,
+  options?: SalesAggregationOptions
 ): SalesPeriodSnapshot {
-  const firstSale = firstSaleByCustomer(allDocs);
+  const firstSale = mergeFirstSaleMaps(firstSaleByCustomer(allDocs), options?.firstSaleByCustomerId);
 
   const salesEmitted = emptyCurrencyPair();
   const creditNotes = emptyCurrencyPair();
@@ -152,17 +177,23 @@ export function buildSalesPeriodSnapshot(
     UYU: salesEmitted.UYU - creditNotes.UYU,
     USD: salesEmitted.USD - creditNotes.USD,
   };
+  // Ticket comercial = ventas netas / facturas válidas de esa moneda.
   const averageTicket: CurrencyPair = {
-    UYU: invoiceCountByCurrency.UYU > 0 ? salesEmitted.UYU / invoiceCountByCurrency.UYU : 0,
-    USD: invoiceCountByCurrency.USD > 0 ? salesEmitted.USD / invoiceCountByCurrency.USD : 0,
+    UYU: invoiceCountByCurrency.UYU > 0 ? salesAdjusted.UYU / invoiceCountByCurrency.UYU : 0,
+    USD: invoiceCountByCurrency.USD > 0 ? salesAdjusted.USD / invoiceCountByCurrency.USD : 0,
   };
+
+  const gross = round2Pair(salesEmitted);
+  const net = round2Pair(salesAdjusted);
 
   return {
     periodFrom,
     periodTo,
-    salesEmitted: round2Pair(salesEmitted),
+    salesEmitted: gross,
     creditNotes: round2Pair(creditNotes),
-    salesAdjusted: round2Pair(salesAdjusted),
+    salesAdjusted: net,
+    netSalesByCurrency: net,
+    grossSalesByCurrency: gross,
     appliedCollected: round2Pair(applied),
     registeredCollected: round2Pair(registered),
     pending: round2Pair(pending),
@@ -291,9 +322,10 @@ export function buildProductSalesSummary(
 export function buildCustomerSalesSummary(
   allDocs: readonly CanonicalSaleDocument[],
   periodFrom: string,
-  periodTo: string
+  periodTo: string,
+  options?: SalesAggregationOptions
 ): CustomerSalesSummaryRow[] {
-  const firstSale = firstSaleByCustomer(allDocs);
+  const firstSale = mergeFirstSaleMaps(firstSaleByCustomer(allDocs), options?.firstSaleByCustomerId);
 
   type Acc = {
     customerId: string | null;
@@ -302,18 +334,52 @@ export function buildCustomerSalesSummary(
     docs: Set<string>;
     products: Set<string>;
     sales: CurrencyPair;
+    creditNotes: CurrencyPair;
     applied: CurrencyPair;
     pending: CurrencyPair;
     invoiceCountByCurrency: CurrencyPair;
     firstInPeriod: string | null;
     lastInPeriod: string | null;
+    salespersonId: string | null;
+    salespersonName: string | null;
   };
   const map = new Map<string, Acc>();
 
   for (const doc of allDocs) {
-    if (!isValidSale(doc)) continue;
+    if (doc.status === "cancelled") continue;
     if (!inWindow(doc.issueDate, periodFrom, periodTo)) continue;
     const key = customerKey(doc);
+
+    if (doc.kind === "credit_note") {
+      // Case B: NC se atribuye al cliente. No crea "cliente comprador" solo por NC.
+      let acc = map.get(key);
+      if (!acc) {
+        // Solo registrar NC si el cliente también tiene ventas; si no, bucket aparte vía overview.
+        // Creamos acc solo para acumular NC — type/new se calcula después solo si hay ventas.
+        acc = {
+          customerId: doc.customerId,
+          customerCode: doc.customerCode,
+          customerName: doc.customerName,
+          docs: new Set(),
+          products: new Set(),
+          sales: emptyCurrencyPair(),
+          creditNotes: emptyCurrencyPair(),
+          applied: emptyCurrencyPair(),
+          pending: emptyCurrencyPair(),
+          invoiceCountByCurrency: emptyCurrencyPair(),
+          firstInPeriod: null,
+          lastInPeriod: null,
+          salespersonId: doc.salespersonId,
+          salespersonName: doc.salespersonName,
+        };
+        map.set(key, acc);
+      }
+      if (isKnownCurrency(doc.currency)) addToPair(acc.creditNotes, doc.currency, doc.grossAmount);
+      continue;
+    }
+
+    if (!isValidSale(doc)) continue;
+
     let acc = map.get(key);
     if (!acc) {
       acc = {
@@ -323,15 +389,25 @@ export function buildCustomerSalesSummary(
         docs: new Set(),
         products: new Set(),
         sales: emptyCurrencyPair(),
+        creditNotes: emptyCurrencyPair(),
         applied: emptyCurrencyPair(),
         pending: emptyCurrencyPair(),
         invoiceCountByCurrency: emptyCurrencyPair(),
         firstInPeriod: null,
         lastInPeriod: null,
+        salespersonId: doc.salespersonId,
+        salespersonName: doc.salespersonName,
       };
       map.set(key, acc);
     }
     acc.docs.add(doc.documentId);
+    if (doc.salespersonId && !acc.salespersonId) {
+      acc.salespersonId = doc.salespersonId;
+      acc.salespersonName = doc.salespersonName;
+    } else if (doc.salespersonId) {
+      acc.salespersonId = doc.salespersonId;
+      acc.salespersonName = doc.salespersonName;
+    }
     if (isKnownCurrency(doc.currency)) {
       addToPair(acc.sales, doc.currency, doc.grossAmount);
       addToPair(acc.applied, doc.currency, doc.appliedAmount);
@@ -347,8 +423,14 @@ export function buildCustomerSalesSummary(
 
   const rows: CustomerSalesSummaryRow[] = [];
   for (const [key, acc] of map.entries()) {
+    // Cliente comprador = al menos una factura válida. NC sola no cuenta.
+    if (acc.docs.size === 0) continue;
     const first = firstSale.get(key);
     const type = first && first >= periodFrom ? "new" : "recurring";
+    const net: CurrencyPair = {
+      UYU: acc.sales.UYU - acc.creditNotes.UYU,
+      USD: acc.sales.USD - acc.creditNotes.USD,
+    };
     rows.push({
       customerId: acc.customerId,
       customerCode: acc.customerCode,
@@ -356,18 +438,22 @@ export function buildCustomerSalesSummary(
       invoiceCount: acc.docs.size,
       productCount: acc.products.size,
       salesByCurrency: round2Pair(acc.sales),
+      creditNotesByCurrency: round2Pair(acc.creditNotes),
+      netSalesByCurrency: round2Pair(net),
       appliedByCurrency: round2Pair(acc.applied),
       pendingByCurrency: round2Pair(acc.pending),
       avgTicketByCurrency: {
-        UYU: acc.invoiceCountByCurrency.UYU > 0 ? Math.round((acc.sales.UYU / acc.invoiceCountByCurrency.UYU) * 100) / 100 : 0,
-        USD: acc.invoiceCountByCurrency.USD > 0 ? Math.round((acc.sales.USD / acc.invoiceCountByCurrency.USD) * 100) / 100 : 0,
+        UYU: acc.invoiceCountByCurrency.UYU > 0 ? Math.round((net.UYU / acc.invoiceCountByCurrency.UYU) * 100) / 100 : 0,
+        USD: acc.invoiceCountByCurrency.USD > 0 ? Math.round((net.USD / acc.invoiceCountByCurrency.USD) * 100) / 100 : 0,
       },
       firstPurchase: first ?? acc.firstInPeriod,
       lastPurchase: acc.lastInPeriod,
       type,
+      salespersonId: acc.salespersonId,
+      salespersonName: acc.salespersonName,
     });
   }
-  rows.sort((a, b) => (b.salesByCurrency.UYU + b.salesByCurrency.USD) - (a.salesByCurrency.UYU + a.salesByCurrency.USD));
+  rows.sort((a, b) => b.netSalesByCurrency.UYU + b.netSalesByCurrency.USD - (a.netSalesByCurrency.UYU + a.netSalesByCurrency.USD));
   return rows;
 }
 
@@ -380,11 +466,12 @@ const UNASSIGNED_ID = "__unassigned__";
 export function buildSalespersonSummary(
   allDocs: readonly CanonicalSaleDocument[],
   periodFrom: string,
-  periodTo: string
+  periodTo: string,
+  options?: SalesAggregationOptions
 ): SalespersonSummaryRow[] {
-  const firstSale = firstSaleByCustomer(allDocs);
+  const firstSale = mergeFirstSaleMaps(firstSaleByCustomer(allDocs), options?.firstSaleByCustomerId);
 
-  const totalEmitted = emptyCurrencyPair();
+  const totalNet = emptyCurrencyPair();
   type Acc = {
     id: string | null;
     name: string;
@@ -393,16 +480,13 @@ export function buildSalespersonSummary(
     newCustomers: Set<string>;
     units: number;
     sales: CurrencyPair;
+    creditNotes: CurrencyPair;
     invoiceCountByCurrency: CurrencyPair;
     productTotals: Map<string, { name: string; total: number }>;
   };
   const map = new Map<string, Acc>();
 
-  for (const doc of allDocs) {
-    if (!isValidSale(doc)) continue;
-    if (!inWindow(doc.issueDate, periodFrom, periodTo)) continue;
-    if (isKnownCurrency(doc.currency)) addToPair(totalEmitted, doc.currency, doc.grossAmount);
-
+  function ensure(doc: CanonicalSaleDocument): Acc {
     const key = doc.salespersonId ?? UNASSIGNED_ID;
     let acc = map.get(key);
     if (!acc) {
@@ -414,11 +498,28 @@ export function buildSalespersonSummary(
         newCustomers: new Set(),
         units: 0,
         sales: emptyCurrencyPair(),
+        creditNotes: emptyCurrencyPair(),
         invoiceCountByCurrency: emptyCurrencyPair(),
         productTotals: new Map(),
       };
       map.set(key, acc);
     }
+    return acc;
+  }
+
+  for (const doc of allDocs) {
+    if (doc.status === "cancelled") continue;
+    if (!inWindow(doc.issueDate, periodFrom, periodTo)) continue;
+
+    if (doc.kind === "credit_note") {
+      // Case B: NC del cliente se atribuye al comercial vigente del documento (heredado del cliente).
+      const acc = ensure(doc);
+      if (isKnownCurrency(doc.currency)) addToPair(acc.creditNotes, doc.currency, doc.grossAmount);
+      continue;
+    }
+
+    if (!isValidSale(doc)) continue;
+    const acc = ensure(doc);
     acc.docs.add(doc.documentId);
     const ck = customerKey(doc);
     acc.customers.add(ck);
@@ -435,6 +536,11 @@ export function buildSalespersonSummary(
     }
   }
 
+  for (const acc of map.values()) {
+    totalNet.UYU += acc.sales.UYU - acc.creditNotes.UYU;
+    totalNet.USD += acc.sales.USD - acc.creditNotes.USD;
+  }
+
   const rows: SalespersonSummaryRow[] = [];
   for (const acc of map.values()) {
     let topProduct: string | null = null;
@@ -445,30 +551,38 @@ export function buildSalespersonSummary(
         topProduct = pt.name;
       }
     }
+    const net: CurrencyPair = {
+      UYU: acc.sales.UYU - acc.creditNotes.UYU,
+      USD: acc.sales.USD - acc.creditNotes.USD,
+    };
+    const assignedCount =
+      options?.assignedCustomerCountBySalesperson?.get(acc.id) ?? acc.customers.size;
     rows.push({
       salespersonId: acc.id,
       salespersonName: acc.name,
       invoiceCount: acc.docs.size,
       unitsSold: Math.round(acc.units * 100) / 100,
       customerCount: acc.customers.size,
+      assignedCustomerCount: assignedCount,
       newCustomerCount: acc.newCustomers.size,
       salesByCurrency: round2Pair(acc.sales),
+      creditNotesByCurrency: round2Pair(acc.creditNotes),
+      netSalesByCurrency: round2Pair(net),
       avgTicketByCurrency: {
-        UYU: acc.invoiceCountByCurrency.UYU > 0 ? Math.round((acc.sales.UYU / acc.invoiceCountByCurrency.UYU) * 100) / 100 : 0,
-        USD: acc.invoiceCountByCurrency.USD > 0 ? Math.round((acc.sales.USD / acc.invoiceCountByCurrency.USD) * 100) / 100 : 0,
+        UYU: acc.invoiceCountByCurrency.UYU > 0 ? Math.round((net.UYU / acc.invoiceCountByCurrency.UYU) * 100) / 100 : 0,
+        USD: acc.invoiceCountByCurrency.USD > 0 ? Math.round((net.USD / acc.invoiceCountByCurrency.USD) * 100) / 100 : 0,
       },
       topProductName: topProduct,
       shareByCurrency: {
-        UYU: totalEmitted.UYU > 0 ? Math.round((acc.sales.UYU / totalEmitted.UYU) * 1000) / 10 : 0,
-        USD: totalEmitted.USD > 0 ? Math.round((acc.sales.USD / totalEmitted.USD) * 1000) / 10 : 0,
+        UYU: totalNet.UYU > 0 ? Math.round((net.UYU / totalNet.UYU) * 1000) / 10 : 0,
+        USD: totalNet.USD > 0 ? Math.round((net.USD / totalNet.USD) * 1000) / 10 : 0,
       },
     });
   }
-  // Comerciales asignados primero (por facturación desc), "Sin asignar" al final.
   rows.sort((a, b) => {
     if (a.salespersonId === null && b.salespersonId !== null) return 1;
     if (b.salespersonId === null && a.salespersonId !== null) return -1;
-    return b.salesByCurrency.UYU + b.salesByCurrency.USD - (a.salesByCurrency.UYU + a.salesByCurrency.USD);
+    return b.netSalesByCurrency.UYU + b.netSalesByCurrency.USD - (a.netSalesByCurrency.UYU + a.netSalesByCurrency.USD);
   });
   return rows;
 }
@@ -518,10 +632,11 @@ export function buildSalesComparison(
   currentFrom: string,
   currentTo: string,
   previousFrom: string,
-  previousTo: string
+  previousTo: string,
+  options?: SalesAggregationOptions
 ): SalesComparison {
-  const current = buildSalesPeriodSnapshot(allDocs, currentFrom, currentTo);
-  const previous = buildSalesPeriodSnapshot(allDocs, previousFrom, previousTo);
+  const current = buildSalesPeriodSnapshot(allDocs, currentFrom, currentTo, options);
+  const previous = buildSalesPeriodSnapshot(allDocs, previousFrom, previousTo, options);
 
   const pct = (cur: number, prev: number): number | null => {
     if (prev === 0) return null; // "Sin base comparable"
@@ -532,17 +647,18 @@ export function buildSalesComparison(
     current,
     previous,
     salesDeltaByCurrency: {
-      UYU: Math.round((current.salesEmitted.UYU - previous.salesEmitted.UYU) * 100) / 100,
-      USD: Math.round((current.salesEmitted.USD - previous.salesEmitted.USD) * 100) / 100,
+      UYU: Math.round((current.netSalesByCurrency.UYU - previous.netSalesByCurrency.UYU) * 100) / 100,
+      USD: Math.round((current.netSalesByCurrency.USD - previous.netSalesByCurrency.USD) * 100) / 100,
     },
     salesPctByCurrency: {
-      UYU: pct(current.salesEmitted.UYU, previous.salesEmitted.UYU),
-      USD: pct(current.salesEmitted.USD, previous.salesEmitted.USD),
+      UYU: pct(current.netSalesByCurrency.UYU, previous.netSalesByCurrency.UYU),
+      USD: pct(current.netSalesByCurrency.USD, previous.netSalesByCurrency.USD),
     },
     invoiceDelta: current.invoiceCount - previous.invoiceCount,
     unitsDelta: Math.round((current.unitsSold - previous.unitsSold) * 100) / 100,
     customerDelta:
       current.newCustomers + current.recurringCustomers - (previous.newCustomers + previous.recurringCustomers),
+    creditNoteDelta: current.creditNoteCount - previous.creditNoteCount,
   };
 }
 
