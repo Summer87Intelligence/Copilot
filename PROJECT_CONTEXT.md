@@ -1,6 +1,19 @@
 # Project Context
 
+## FASE 9D — Ventas netas + comercial por cliente — 2026-07-16 (CIERRE LOCAL / MIGRATION PENDING)
+
+**Objetivo:** una definición canónica de **Ventas netas** (emitidas − NC por moneda) en todo el módulo Ventas, filtros de período flexibles, y atribución comercial **por cliente** (no por factura).
+
+- **KPI:** `netSalesByCurrency` / `salesAdjusted` = emitidas − NC. NC no cuentan como factura, cliente, servicio ni venta positiva.
+- **NC:** Case B (cliente) cuando hay customerId; Case C a nivel servicios (bloque “Ajustes no vinculados”); vínculo exacto factura↔NC no certificado en payloads reales → no se inventa Case A.
+- **Cliente nuevo:** primera venta válida en historia lookback desde 2020-01-01; NC/anulados no cuentan; KPI de montos sigue ≥ MIN_FINANCIAL_DATE.
+- **Comercial:** tabla `sales_client_salespersons` (historial `valid_from`/`valid_to`); precedencia: override legacy documento → asignación vigente del cliente en `issue_date` → Sin asignar. Migración **creada, no aplicada**.
+- **UI:** Resumen/Clientes/Comerciales/Comparativo/Detalle/Cliente 360 en neto; Servicios muestra emitidas + ajustes; drawer clientes nuevos; Ver detalle en servicios; filtros mes/año/custom en URL.
+- **Finanzas/Hoy/Dashboard:** ya usan `issuedInPeriodNet` (pueden clipear a ≥0); Ventas muestra neto real (puede ser negativo).
+- **Checks ejecutados:** `tsc --noEmit` OK, ESLint dirigido OK, `git diff --check` OK. Sin Vitest/build/Playwright/push. **MIGRATION_PENDING_AUTHORIZATION**.
+
 ## FASE 8 — Bandeja única de tareas inteligentes — 2026-07-15 (CIERRE LOCAL)
+
 
 **Objetivo implementado localmente:** `/copilot/tareas-diarias` pasa a una única pantalla `Tareas` que combina tareas persistidas y recomendaciones virtuales determinísticas.
 - **Arquitectura**: nuevo feed server-side `/api/copilot/tasks/feed` con `UnifiedTaskItem`, dedupe por `stableKey`/`task_key`, score determinístico, tabs/KPIs unificados y acciones de recomendación (`claim`, `start`, `dismiss`, `materialize`) sin migraciones.
