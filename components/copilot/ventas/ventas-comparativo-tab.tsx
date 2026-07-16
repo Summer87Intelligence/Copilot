@@ -71,6 +71,10 @@ export function VentasComparativoTab({
   const defaultYear = parseInt(overview.period.to.slice(0, 4), 10);
 
   const [year, setYear] = useState(defaultYear);
+  const [currency, setCurrency] = useState<"all" | "UYU" | "USD">("all");
+  const [serviceKey, setServiceKey] = useState("all");
+  const [customerId, setCustomerId] = useState("all");
+  const [salespersonId, setSalespersonId] = useState("all");
   const [months, setMonths] = useState<YearlyMonth[]>([]);
   const [serviceRows, setServiceRows] = useState<ServiceComparisonRow[]>(
     (overview.serviceComparison as ServiceComparisonRow[] | undefined) ?? []
@@ -83,12 +87,39 @@ export function VentasComparativoTab({
     return [y, y - 1].filter((n) => n >= 2026);
   }, [defaultYear]);
 
+  const serviceOptions = useMemo(
+    () =>
+      overview.products
+        .filter((p) => p.normalizationStatus !== "missing_detail")
+        .map((p) => ({ key: p.key, name: p.productName })),
+    [overview.products]
+  );
+  const customerOptions = useMemo(
+    () =>
+      overview.customers
+        .filter((c) => c.customerId)
+        .map((c) => ({ id: c.customerId!, name: c.customerName })),
+    [overview.customers]
+  );
+  const salespersonOptions = useMemo(
+    () =>
+      overview.salespersons.map((s) => ({
+        id: s.salespersonId ?? "unassigned",
+        name: s.salespersonName,
+      })),
+    [overview.salespersons]
+  );
+
   const loadYearly = useCallback(async () => {
     setLoadingYear(true);
     setYearError(null);
     try {
       const p = new URLSearchParams(queryString);
       p.set("year", String(year));
+      if (currency !== "all") p.set("currencies", currency);
+      if (serviceKey !== "all") p.set("productIds", serviceKey);
+      if (customerId !== "all") p.set("customerIds", customerId);
+      if (salespersonId !== "all") p.set("salespersonIds", salespersonId);
       const res = await fetch(`/api/copilot/sales/yearly?${p.toString()}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok || !json.ok) {
@@ -96,17 +127,36 @@ export function VentasComparativoTab({
         return;
       }
       setMonths((json.data?.yearly?.months as YearlyMonth[]) ?? []);
-      setServiceRows((json.data?.serviceComparison as ServiceComparisonRow[]) ?? []);
+      let rows = (json.data?.serviceComparison as ServiceComparisonRow[]) ?? [];
+      if (serviceKey !== "all") rows = rows.filter((r) => r.key === serviceKey);
+      if (currency === "UYU") rows = rows.filter((r) => r.salesCurrent.UYU > 0 || r.salesPrevious.UYU > 0);
+      if (currency === "USD") rows = rows.filter((r) => r.salesCurrent.USD > 0 || r.salesPrevious.USD > 0);
+      setServiceRows(rows);
     } catch {
       setYearError("No pudimos cargar el comparativo anual.");
     } finally {
       setLoadingYear(false);
     }
-  }, [queryString, year]);
+  }, [queryString, year, currency, serviceKey, customerId, salespersonId]);
 
   useEffect(() => {
     void loadYearly();
   }, [loadYearly]);
+
+  const filteredMonths = useMemo(() => {
+    if (currency === "all") return months;
+    return months.map((m) => ({
+      ...m,
+      salesByCurrency: {
+        UYU: currency === "UYU" ? m.salesByCurrency.UYU : 0,
+        USD: currency === "USD" ? m.salesByCurrency.USD : 0,
+      },
+      avgTicketByCurrency: {
+        UYU: currency === "UYU" ? m.avgTicketByCurrency.UYU : 0,
+        USD: currency === "USD" ? m.avgTicketByCurrency.USD : 0,
+      },
+    }));
+  }, [months, currency]);
 
   const monthColumns: CopilotResponsiveTableColumn<YearlyMonth>[] = [
     { key: "mes", header: "Mes", className: "text-left", render: (r) => <span className="font-medium">{r.label}</span> },
@@ -222,7 +272,7 @@ export function VentasComparativoTab({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
           <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Año</span>
           <select
@@ -238,11 +288,72 @@ export function VentasComparativoTab({
             ))}
           </select>
         </label>
-        <p className={copilotCaptionClass}>
-          Período filtrado {overview.period.from} → {overview.period.to} vs {comparisonLabel} (
-          {overview.comparisonWindow.from} → {overview.comparisonWindow.to}).
-        </p>
+        <label className="flex flex-col gap-1">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Moneda</span>
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value as typeof currency)}
+            aria-label="Filtrar moneda"
+            className="h-9 rounded-lg border border-[var(--copilot-border-strong)] bg-[var(--copilot-panel-bg)] px-2.5 text-sm"
+          >
+            <option value="all">Todas</option>
+            <option value="UYU">UYU</option>
+            <option value="USD">USD</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Servicio</span>
+          <select
+            value={serviceKey}
+            onChange={(e) => setServiceKey(e.target.value)}
+            aria-label="Filtrar servicio"
+            className="h-9 max-w-[200px] rounded-lg border border-[var(--copilot-border-strong)] bg-[var(--copilot-panel-bg)] px-2.5 text-sm"
+          >
+            <option value="all">Todos</option>
+            {serviceOptions.map((s) => (
+              <option key={s.key} value={s.key}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Cliente</span>
+          <select
+            value={customerId}
+            onChange={(e) => setCustomerId(e.target.value)}
+            aria-label="Filtrar cliente"
+            className="h-9 max-w-[200px] rounded-lg border border-[var(--copilot-border-strong)] bg-[var(--copilot-panel-bg)] px-2.5 text-sm"
+          >
+            <option value="all">Todos</option>
+            {customerOptions.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Comercial</span>
+          <select
+            value={salespersonId}
+            onChange={(e) => setSalespersonId(e.target.value)}
+            aria-label="Filtrar comercial"
+            className="h-9 max-w-[180px] rounded-lg border border-[var(--copilot-border-strong)] bg-[var(--copilot-panel-bg)] px-2.5 text-sm"
+          >
+            <option value="all">Todos</option>
+            {salespersonOptions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
+      <p className={copilotCaptionClass}>
+        Período A (actual) {overview.period.from} → {overview.period.to} · Período B ({comparisonLabel}){" "}
+        {overview.comparisonWindow.from} → {overview.comparisonWindow.to}. El período se elige arriba en la página.
+      </p>
 
       <section className={copilotCardStandardClass}>
         <h2 className={copilotSectionTitleClass}>Evolución mes a mes · {year}</h2>
@@ -254,7 +365,7 @@ export function VentasComparativoTab({
             <p className="text-sm text-[var(--copilot-danger-text-strong)]">{yearError}</p>
           ) : (
             <CopilotResponsiveTable
-              rows={months}
+              rows={filteredMonths}
               columns={monthColumns}
               getRowKey={(r) => r.month}
               ariaLabel="Ventas mensuales del año"
