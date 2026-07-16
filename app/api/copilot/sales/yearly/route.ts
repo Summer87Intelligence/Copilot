@@ -17,12 +17,15 @@ export async function GET(request: NextRequest) {
     const today = todayYmdMontevideo();
     const params = request.nextUrl.searchParams;
     const yearRaw = parseInt(params.get("year") ?? today.slice(0, 4), 10);
-    const year = Number.isFinite(yearRaw) && yearRaw >= 2026 && yearRaw <= 2100 ? yearRaw : parseInt(today.slice(0, 4), 10);
+    const year = Number.isFinite(yearRaw) && yearRaw >= 2020 && yearRaw <= 2100 ? yearRaw : parseInt(today.slice(0, 4), 10);
 
     const dataset = await loadSalesDataset(auth.ctx.supabase, auth.ctx.tenantCompanyId);
     const filters = parseSalesFilters(params, today);
     const yearly = buildSalesYearlyView(dataset.documents, year, today);
-    const overview = buildSalesOverview(dataset.documents, dataset.catalog, filters);
+    const overview = buildSalesOverview(dataset.documents, dataset.catalog, filters, {
+      firstSaleByCustomerId: dataset.firstSaleByCustomerId,
+      assignedCustomerCountBySalesperson: dataset.assignedCustomerCountBySalesperson,
+    });
     const serviceComparison = buildServicePeriodComparison(
       dataset.documents,
       filters.dateFrom,

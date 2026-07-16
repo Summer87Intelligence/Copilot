@@ -27,8 +27,11 @@ export async function GET(request: NextRequest, ctx: Ctx) {
   try {
     const dataset = await loadSalesDataset(auth.ctx.supabase, auth.ctx.tenantCompanyId);
     const filters = parseSalesFilters(request.nextUrl.searchParams, todayYmdMontevideo());
-    const overview = buildSalesOverview(dataset.documents, dataset.catalog, filters);
-    const periodTotalUsd = overview.snapshot.salesEmitted.USD;
+    const overview = buildSalesOverview(dataset.documents, dataset.catalog, filters, {
+      firstSaleByCustomerId: dataset.firstSaleByCustomerId,
+      assignedCustomerCountBySalesperson: dataset.assignedCustomerCountBySalesperson,
+    });
+    const periodTotalUsd = overview.snapshot.netSalesByCurrency.USD;
     const data = buildCustomerDrillDown(
       dataset.documents,
       customerId,
@@ -37,14 +40,42 @@ export async function GET(request: NextRequest, ctx: Ctx) {
       periodTotalUsd
     );
 
-    if (data.summary.invoiceCount === 0 && data.invoices.length === 0) {
+    // Enriquecer con comercial vigente + historial de asignaciones.
+    const customerRow = overview.customers.find((c) => c.customerId === customerId);
+    const assignmentHistory = dataset.clientAssignments.filter((a) => a.customerId === customerId);
+    const enriched = {
+      ...data,
+      summary: {
+        ...data.summary,
+        salesByCurrency: customerRow?.netSalesByCurrency ?? data.summary.salesByCurrency,
+        netSalesByCurrency: customerRow?.netSalesByCurrency ?? data.summary.salesByCurrency,
+        creditNotesByCurrency: customerRow?.creditNotesByCurrency ?? { UYU: 0, USD: 0 },
+        salespersonId: customerRow?.salespersonId ?? null,
+        salespersonName: customerRow?.salespersonName ?? data.summary.topSalespersonName,
+        assignmentHistory: assignmentHistory.map((a) => ({
+          salespersonId: a.salespersonId,
+          validFrom: a.validFrom,
+          validTo: a.validTo,
+          assignedAt: a.assignedAt,
+        })),
+      },
+    };
+
+    if (enriched.summary.invoiceCount === 0 && enriched.invoices.length === 0) {
       return NextResponse.json(
         { ok: false as const, code: "NOT_FOUND", message: "No hay ventas de este cliente en el período." },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ ok: true as const, data, meta: { period: filters } });
+    return NextResponse.json({
+      ok: true as const,
+      data: enriched,
+      meta: {
+        period: filters,
+        clientAssignmentMigrationPending: dataset.meta.clientAssignmentMigrationPending,
+      },
+    });
   } catch (err) {
     return NextResponse.json(
       {

@@ -16,7 +16,10 @@ export async function GET(request: NextRequest) {
   try {
     const dataset = await loadSalesDataset(supabase, tenantCompanyId);
     const filters = parseSalesFilters(request.nextUrl.searchParams, todayYmdMontevideo());
-    const overview = buildSalesOverview(dataset.documents, dataset.catalog, filters);
+    const overview = buildSalesOverview(dataset.documents, dataset.catalog, filters, {
+      firstSaleByCustomerId: dataset.firstSaleByCustomerId,
+      assignedCustomerCountBySalesperson: dataset.assignedCustomerCountBySalesperson,
+    });
 
     return NextResponse.json({
       ok: true as const,
@@ -24,6 +27,7 @@ export async function GET(request: NextRequest) {
       meta: {
         ...dataset.meta,
         salespersonAvailable: !dataset.meta.salespersonsMigrationPending,
+        clientAssignmentAvailable: !dataset.meta.clientAssignmentMigrationPending,
       },
     });
   } catch (err) {

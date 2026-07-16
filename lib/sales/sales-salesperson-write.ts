@@ -50,3 +50,16 @@ export function buildAssignmentUpsert(input: AssignmentInput, workspaceId: strin
     assigned_at: new Date().toISOString(),
   };
 }
+
+/** FASE 9D — asignación comercial por cliente (historial temporal). */
+export const clientAssignmentSchema = z.object({
+  customerId: z.string().uuid(),
+  /** null = Sin asignar (cierra la vigencia abierta). */
+  salespersonId: z.string().uuid().nullable(),
+  /** Inicio de vigencia (YYYY-MM-DD). Default = hoy o SALESPERSON_START_DATE. */
+  validFrom: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+});
+export type ClientAssignmentInput = z.infer<typeof clientAssignmentSchema>;
