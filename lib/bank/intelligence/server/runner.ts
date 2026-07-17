@@ -9,11 +9,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { RECONCILIATION_ENGINE_VERSION } from "@/lib/bank/intelligence/reconciliation-matching";
+import { isShadowEligibleMovement } from "@/lib/bank/intelligence/server/eligibility";
 import {
   loadMovementsForShadowScope,
   loadShadowContextForMovement,
 } from "@/lib/bank/intelligence/server/loaders/shadow-context-loader";
-import { listActiveSuggestionsForMovements } from "@/lib/bank/intelligence/server/repositories";
+import {
+  listActiveSuggestionsForMovements,
+  listMovementIdsWithActiveCanonicalLink,
+} from "@/lib/bank/intelligence/server/repositories";
 import {
   applyShadowPersistDecision,
   createSupabaseShadowPersistPorts,
@@ -24,6 +28,7 @@ import {
   buildShadowProposalFromContext,
   filterContextToWorkspace,
   applyReceiptCollisionPolicy,
+  applyMatchedAuditPolicy,
 } from "@/lib/bank/intelligence/server/suggestion-service";
 import type {
   ShadowPersistStats,
@@ -144,6 +149,14 @@ export async function runBankShadowIntelligence(
       )
     : [];
 
+  // Política de elegibilidad única (matched/ignored/reversed/outflow/link/corte/workspace).
+  const activeLinkSet = await listMovementIdsWithActiveCanonicalLink(
+    deps.supabase,
+    options.workspaceId,
+    movementIds
+  );
+  const includeMatchedForAudit = options.includeMatchedForAudit === true;
+
   const ports =
     deps.persistPorts ??
     createSupabaseShadowPersistPorts(
@@ -153,8 +166,21 @@ export async function runBankShadowIntelligence(
     );
 
   for (const row of rows) {
-    if (row.workspace_id !== options.workspaceId) {
-      skippedMovements.push({ movementId: row.id, reason: "WORKSPACE_MISMATCH" });
+    const eligibility = isShadowEligibleMovement({
+      movement: {
+        id: row.id,
+        workspaceId: row.workspace_id,
+        status: row.status,
+        direction: row.direction,
+        movementDate: row.movement_date,
+      },
+      workspaceId: options.workspaceId,
+      hasActiveCanonicalLink: activeLinkSet.has(row.id),
+      includeMatchedForAudit,
+    });
+
+    if (!eligibility.eligible) {
+      skippedMovements.push({ movementId: row.id, reason: eligibility.skipReason });
       continue;
     }
 
@@ -169,7 +195,8 @@ export async function runBankShadowIntelligence(
     }
 
     const ctx = filterContextToWorkspace(loaded, options.workspaceId);
-    proposals.push(buildShadowProposalFromContext(ctx));
+    const proposal = buildShadowProposalFromContext(ctx);
+    proposals.push(eligibility.auditOnly ? applyMatchedAuditPolicy(proposal) : proposal);
   }
 
   // Colisión de recibos antes de exponer / persistir (puro, sin DB).
@@ -177,6 +204,11 @@ export async function runBankShadowIntelligence(
 
   if (writesEnabled) {
     for (const proposal of finalProposals) {
+      // Audit-only (matched) NUNCA persiste, aun con persist=true.
+      if (proposal.auditOnly === true) {
+        stats.skipped += 1;
+        continue;
+      }
       const existingActive =
         activeSuggestions.find((s) => s.bankMovementId === proposal.bankMovementId) ?? null;
       const decision = decideShadowPersistAction({ proposal, existingActive });

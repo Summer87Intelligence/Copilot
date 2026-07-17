@@ -34,10 +34,24 @@ Implementado en `lib/bank/intelligence/server/` (ver
   No recorre los ~951 movimientos automáticamente.
 - Guardas + tests: sin RPC financiera, sin links/allocations, sin mutar tablas financieras.
 
+### Política de elegibilidad (BANK-SHADOW-MATCHED-POLICY-001, 2026-07-17)
+
+Fuente única `isShadowEligibleMovement()` aplicada de forma idéntica en todos los caminos.
+Por defecto excluye: `matched`, `ignored`, `reversed`, egreso, link canónico activo,
+fuera de workspace y anterior al corte operativo (`2026-07-01`). Los `matched` solo pueden
+incluirse con `includeMatchedForAudit=true` (server-side, default false), y quedan
+**audit-only**: `auditOnly=true`, warning `MATCHED_MOVEMENT_AUDIT`, nunca AUTO, **no
+persisten** y no modifican nada (dry-run únicamente en esta fase).
+
+**Dos sugerencias `matched` históricas:** la primera persistencia
+(BANK-CONTROLLED-SHADOW-PERSIST-REVIEW-001) creó 2 sugerencias `generated` para
+movimientos ya `matched` (`49bd2ddc…`, `1c611fcd…`) **antes** de esta política. Son datos
+legítimos previos, no un error; se conservan para revisión manual y **no** se eliminan,
+rechazan ni supersedan en esta fase.
+
 ### Pendiente de autorización operativa
 
-- Revalidar dry-run controlado (mismos IDs del dry-run anterior) tras la corrección.
-- Shadow persist en lote pequeño.
+- Shadow persist en lote pequeño ampliado (solo movimientos elegibles, `matched` excluido).
 - Medir precisión por rango de confianza / % sin identificar / conflictos.
 
 ### Deuda conocida

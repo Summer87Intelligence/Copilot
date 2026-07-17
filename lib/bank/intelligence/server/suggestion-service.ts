@@ -49,6 +49,36 @@ export function buildShadowProposalFromContext(
   return proposal;
 }
 
+/**
+ * Marca una propuesta como audit-only (movimiento `matched` incluido para auditoría).
+ * Puro y determinístico:
+ *   - auditOnly = true
+ *   - warning MATCHED_MOVEMENT_AUDIT (en proposal y candidateEvidence)
+ *   - recommendedAction NUNCA AUTO (AUTO_RECONCILE_CANDIDATE → REVIEW)
+ * No persiste ni modifica nada; la no-persistencia se garantiza en el runner.
+ */
+export function applyMatchedAuditPolicy(proposal: ShadowProposal): ShadowProposal {
+  const warnings = proposal.warnings.includes("MATCHED_MOVEMENT_AUDIT")
+    ? [...proposal.warnings]
+    : [...proposal.warnings, "MATCHED_MOVEMENT_AUDIT" as const];
+
+  const recommendedAction =
+    proposal.recommendedAction === "AUTO_RECONCILE_CANDIDATE"
+      ? ("REVIEW" as const)
+      : proposal.recommendedAction;
+
+  return {
+    ...proposal,
+    auditOnly: true,
+    recommendedAction,
+    warnings,
+    candidateEvidence: {
+      ...proposal.candidateEvidence,
+      warnings,
+    },
+  };
+}
+
 /** Filtra candidatos de otros workspaces antes del motor (defensa en profundidad). */
 export function filterContextToWorkspace(
   ctx: ShadowMovementContext,

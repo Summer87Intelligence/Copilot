@@ -77,6 +77,11 @@ export type ShadowProposal = {
   tiedCandidates: TiedReceiptCandidate[];
   ambiguityReason: string | null;
   collisionDetected: boolean;
+  /**
+   * true ⇒ movimiento `matched` incluido solo para auditoría. NUNCA se persiste,
+   * nunca AUTO, siempre lleva warning MATCHED_MOVEMENT_AUDIT. Default (ausente) = false.
+   */
+  auditOnly?: boolean;
 };
 
 export type ShadowSuggestionRow = {
@@ -111,6 +116,12 @@ export type ShadowRunOptions = {
   persist?: boolean;
   /** Actor interno opcional (UUID app_users); no se aceptan actores arbitrarios sin validar. */
   actorUserId?: string | null;
+  /**
+   * Solo server-side. Default false. Incluye movimientos `matched` como audit-only:
+   * genera propuesta marcada `auditOnly` (nunca AUTO, warning MATCHED_MOVEMENT_AUDIT)
+   * que NUNCA se persiste ni modifica nada. Fuera de esta bandera, `matched` se excluye.
+   */
+  includeMatchedForAudit?: boolean;
 };
 
 export type ShadowPersistStats = {

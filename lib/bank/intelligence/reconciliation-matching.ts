@@ -93,7 +93,9 @@ export type ReconciliationWarning =
   | "WORKSPACE_MISMATCH"
   | "UNAPPLIED_BALANCE"
   /** Dos+ propuestas del mismo batch apuntan al mismo recibo. */
-  | "RECEIPT_CANDIDATE_COLLISION";
+  | "RECEIPT_CANDIDATE_COLLISION"
+  /** Movimiento ya `matched` incluido solo para auditoría (audit-only, nunca persiste). */
+  | "MATCHED_MOVEMENT_AUDIT";
 
 export type RecommendedAction =
   | "AUTO_RECONCILE_CANDIDATE"

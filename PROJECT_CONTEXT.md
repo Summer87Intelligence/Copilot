@@ -1,9 +1,22 @@
 # Project Context
 
+## BANK — Shadow matched-eligibility policy — 2026-07-17
+
+**FASE BANK-SHADOW-MATCHED-POLICY-001 (local, commit sin push):** política única `isShadowEligibleMovement()` (`lib/bank/intelligence/server/eligibility.ts`) aplicada idéntica en todos los caminos (ID único / lista / auto). Por defecto excluye `matched`, `ignored`, `reversed`, egreso, link canónico activo, fuera de workspace y anterior al corte `2026-07-01`. `matched` solo con `includeMatchedForAudit=true` (server-side, default false) → **audit-only**: `auditOnly=true`, warning `MATCHED_MOVEMENT_AUDIT`, nunca AUTO, **no persiste**, no modifica nada (dry-run en esta fase).
+- Runner integra el gate antes de construir propuestas; audit-only excluido de persistencia aun con `persist=true`.
+- Las 2 sugerencias `matched` históricas de la primera persistencia (`49bd2ddc…`, `1c611fcd…`) se **conservan** como `generated` (datos legítimos previos, no error); no se borran/rechazan/supersedan.
+- Tests: `eligibility.test.ts` (11) + runner matched-policy (3). Suite bank intelligence 109 verdes.
+- Docs: `bank-shadow-server.md`, `bank-reconciliation-rollout.md` actualizados.
+
+## BANK — Expanded shadow dry-run — 2026-07-17
+
+**FASE BANK-EXPANDED-SHADOW-DRY-RUN-001 (prod read-only, sin push):** muestra explícita de 20 movementIds. AUTO=0, REVIEW=65%, UNIDENTIFIED=35%, ties=4 (degradados), colisiones reales en batch=0 (no simuladas), payerIdentity=0, conf avg 27.5 / max 50. Conteos idénticos 950/365/602/0. writeAttempts=0. HEAD `3a851db` sin commit. Veredicto: **GO_FOR_CONTROLLED_SHADOW_PERSIST_REVIEW**.
+- Artefacto local: `.agents/qa-shadow-expanded-dry-run-001.json` (no commit).
+
 ## BANK — Shadow correction (ambigüedad/colisión) — 2026-07-17
 
 **FASE BANK-SHADOW-CORRECTION-001 (local, sin push):** motor deja de usar `.find()` arbitrario en recibos exactos. Empate → `proposedReceiptId=null` + `MULTIPLE_STRONG_CANDIDATES` + `tiedCandidates`; colisión inter-batch → `RECEIPT_CANDIDATE_COLLISION`. Dry-run default. Sin SQL remoto / persist / push.
-- Próximo: revalidar dry-run controlado (IDs previos) con autorización.
+- Revalidación 5 IDs OK → expanded dry-run ejecutado.
 
 ## BANK — Shadow server implementation — 2026-07-17
 

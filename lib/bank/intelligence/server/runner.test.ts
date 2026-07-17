@@ -245,3 +245,82 @@ describe("runner — integración mockeada", () => {
     }
   });
 });
+
+describe("runner — política de movimientos matched", () => {
+  function recordingPorts(portWrites: string[]): ShadowPersistPorts {
+    return {
+      async insertSuggestion(p) {
+        portWrites.push(`insertSuggestion:${p.bankMovementId}`);
+        throw new Error("audit-only/matched must not persist");
+      },
+      async updateSuggestion() {
+        portWrites.push("updateSuggestion");
+        throw new Error("must not update");
+      },
+      async supersedeSuggestion() {
+        portWrites.push("supersede");
+        throw new Error("must not supersede");
+      },
+      async insertEvent(e) {
+        portWrites.push(`insertEvent:${e.eventType}`);
+        throw new Error("audit-only/matched must not emit events");
+      },
+    };
+  }
+
+  it("matched con persist=true → skipped MOVEMENT_ALREADY_MATCHED, sin writes", async () => {
+    const portWrites: string[] = [];
+    const { supabase, rpcCalls } = createSupabaseMock({
+      movement: { ...movementRow("m1"), status: "matched" },
+    });
+
+    const result = await runBankShadowIntelligence(
+      { supabase: supabase as never, persistPorts: recordingPorts(portWrites) },
+      { workspaceId: WS, movementId: "m1", dryRun: false, persist: true }
+    );
+
+    expect(result.proposals).toHaveLength(0);
+    expect(result.skippedMovements).toEqual([
+      { movementId: "m1", reason: "MOVEMENT_ALREADY_MATCHED" },
+    ]);
+    expect(result.persisted.created).toBe(0);
+    expect(portWrites).toEqual([]);
+    expect(rpcCalls).toEqual([]);
+  });
+
+  it("includeMatchedForAudit=true + dry-run → audit-only, nunca AUTO, no persiste", async () => {
+    const { supabase } = createSupabaseMock({
+      movement: { ...movementRow("m1"), status: "matched" },
+    });
+
+    const result = await runBankShadowIntelligence(
+      { supabase: supabase as never },
+      { workspaceId: WS, movementId: "m1", includeMatchedForAudit: true }
+    );
+
+    expect(result.mode).toBe("dry-run");
+    expect(result.proposals).toHaveLength(1);
+    const p = result.proposals[0]!;
+    expect(p.auditOnly).toBe(true);
+    expect(p.warnings).toContain("MATCHED_MOVEMENT_AUDIT");
+    expect(p.recommendedAction).not.toBe("AUTO_RECONCILE_CANDIDATE");
+    expect(result.persisted.created).toBe(0);
+  });
+
+  it("audit-only con persist=true NO persiste (sin port writes)", async () => {
+    const portWrites: string[] = [];
+    const { supabase } = createSupabaseMock({
+      movement: { ...movementRow("m1"), status: "matched" },
+    });
+
+    const result = await runBankShadowIntelligence(
+      { supabase: supabase as never, persistPorts: recordingPorts(portWrites) },
+      { workspaceId: WS, movementId: "m1", dryRun: false, persist: true, includeMatchedForAudit: true }
+    );
+
+    expect(result.proposals[0]?.auditOnly).toBe(true);
+    expect(portWrites).toEqual([]);
+    expect(result.persisted.created).toBe(0);
+    expect(result.persisted.skipped).toBeGreaterThanOrEqual(1);
+  });
+});

@@ -272,6 +272,31 @@ export async function listReconciledReceiptIds(
   return out;
 }
 
+/** Movimientos con al menos un link canónico ACTIVO (solo lectura). */
+export async function listMovementIdsWithActiveCanonicalLink(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  movementIds: string[]
+): Promise<Set<string>> {
+  const ws = requireWorkspace(workspaceId);
+  const out = new Set<string>();
+  if (movementIds.length === 0) return out;
+  const { data, error } = await supabase
+    .from("bank_movement_reconciliation_links")
+    .select("bank_movement_id, archived_at")
+    .eq("workspace_id", ws)
+    .in("bank_movement_id", movementIds.slice(0, 500))
+    .is("archived_at", null);
+  if (error) {
+    // Degrada seguro: si no se puede leer, NO se asume link (se decide por status).
+    return out;
+  }
+  for (const row of (data ?? []) as Array<{ bank_movement_id: string | null }>) {
+    if (row.bank_movement_id) out.add(row.bank_movement_id);
+  }
+  return out;
+}
+
 // ── Suggestions (read + shadow write) ────────────────────────────────────────
 
 function mapSuggestionRow(raw: Record<string, unknown>): ShadowSuggestionRow {
