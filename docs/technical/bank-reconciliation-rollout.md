@@ -17,13 +17,16 @@ Las migraciones `20260719120000`, `20260719120100` y `20260719120200` están
 inmutables: no reaplicar, editar ni revertir. Cualquier corrección debe entregarse
 mediante una migración nueva.
 
-## Etapa 1 — Shadow server (COMPLETA en código; dry-run pendiente de autorización)
+## Etapa 1 — Shadow server (COMPLETA en código; corrección de ambigüedad aplicada)
 
 Implementado en `lib/bank/intelligence/server/` (ver
 `docs/architecture/bank-shadow-server.md`):
 
 - Lectura workspace-scoped de movimientos, recibos, clientes, facturas, pagadores y sugerencias.
 - Ejecución del motor determinístico existente → `ShadowProposal` explicable.
+- **BANK-SHADOW-CORRECTION-001:** empate de recibos exactos → `proposedReceiptId=null` +
+  `MULTIPLE_STRONG_CANDIDATES`; colisión inter-movimiento → `RECEIPT_CANDIDATE_COLLISION`.
+  Sin `.find()` arbitrario; desempate solo por señales materiales (pagador confirmado / fecha).
 - **dry-run por defecto** (sin persistencia).
 - **shadow persist** opcional (`dryRun=false` && `persist=true`) solo en
   `bank_reconciliation_suggestions` + `reconciliation_events`.
@@ -33,16 +36,15 @@ Implementado en `lib/bank/intelligence/server/` (ver
 
 ### Pendiente de autorización operativa
 
-- Ejecutar dry-run controlado contra un sample real de producción.
-- Habilitar shadow persist en un lote pequeño.
+- Revalidar dry-run controlado (mismos IDs del dry-run anterior) tras la corrección.
+- Shadow persist en lote pequeño.
 - Medir precisión por rango de confianza / % sin identificar / conflictos.
 
 ### Deuda conocida
 
-- Concurrencia real multi-conexión sobre el unique index activo: no cerrada en
-  la validación post-migración (solo baterías serializadas con rollback).
+- Concurrencia real multi-conexión sobre el unique index activo: no cerrada.
 - Shadow no materializa `bank_payer_identities` (solo lectura).
-
+- Colisión solo se detecta **dentro del mismo batch** del runner (no cross-run global).
 ## Etapa 2 — Revisión manual asistida
 
 - UI Banco "Para revisar": el usuario confirma/cambia/distribuye/ignora.

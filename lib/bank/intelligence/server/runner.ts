@@ -23,6 +23,7 @@ import { decideShadowPersistAction } from "@/lib/bank/intelligence/server/shadow
 import {
   buildShadowProposalFromContext,
   filterContextToWorkspace,
+  applyReceiptCollisionPolicy,
 } from "@/lib/bank/intelligence/server/suggestion-service";
 import type {
   ShadowPersistStats,
@@ -168,27 +169,29 @@ export async function runBankShadowIntelligence(
     }
 
     const ctx = filterContextToWorkspace(loaded, options.workspaceId);
-    const proposal = buildShadowProposalFromContext(ctx);
-    proposals.push(proposal);
+    proposals.push(buildShadowProposalFromContext(ctx));
+  }
 
-    if (!writesEnabled) continue;
+  // Colisión de recibos antes de exponer / persistir (puro, sin DB).
+  const finalProposals = applyReceiptCollisionPolicy(proposals);
 
-    const existingActive =
-      activeSuggestions.find((s) => s.bankMovementId === proposal.bankMovementId) ?? null;
-    const decision = decideShadowPersistAction({ proposal, existingActive });
-    await applyShadowPersistDecision({
-      proposal,
-      decision,
-      ports,
-      stats,
-    });
-
-    // Mantener mapa local de activas tras supersede/create.
-    if (decision.action === "supersede" || decision.action === "create") {
-      const idx = activeSuggestions.findIndex(
-        (s) => s.bankMovementId === proposal.bankMovementId
-      );
-      if (idx >= 0) activeSuggestions.splice(idx, 1);
+  if (writesEnabled) {
+    for (const proposal of finalProposals) {
+      const existingActive =
+        activeSuggestions.find((s) => s.bankMovementId === proposal.bankMovementId) ?? null;
+      const decision = decideShadowPersistAction({ proposal, existingActive });
+      await applyShadowPersistDecision({
+        proposal,
+        decision,
+        ports,
+        stats,
+      });
+      if (decision.action === "supersede" || decision.action === "create") {
+        const idx = activeSuggestions.findIndex(
+          (s) => s.bankMovementId === proposal.bankMovementId
+        );
+        if (idx >= 0) activeSuggestions.splice(idx, 1);
+      }
     }
   }
 
@@ -196,7 +199,7 @@ export async function runBankShadowIntelligence(
     mode,
     workspaceId: options.workspaceId,
     engineVersion: RECONCILIATION_ENGINE_VERSION,
-    proposals,
+    proposals: finalProposals,
     persisted: stats,
     skippedMovements,
     writesEnabled,

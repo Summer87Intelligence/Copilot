@@ -1,32 +1,26 @@
 # Bank Shadow Server — Inteligencia bancaria (proposal-only)
 
-Última actualización: 2026-07-17.  
-Fase: **BANK-SHADOW-SERVER-IMPLEMENTATION-001**.  
-Estado: capa server-side implementada; **dry-run por defecto**; persistencia shadow opcional.
+Última actualización: 2026-07-17.
+Fase: **BANK-SHADOW-CORRECTION-001** (sobre server shadow).
+Estado: capa server-side + selección conservadora de recibos (empate/colisión); **dry-run por defecto**.
 
 ## Arquitectura
 
 ```
 lib/bank/intelligence/          ← motor PURO (sin DB)
+  reconciliation-matching.ts    ← empate de recibos exactos (sin .find arbitrario)
 lib/bank/intelligence/server/   ← capa shadow (lectura + propuestas)
-  types.ts
-  guards.ts
-  money.ts
-  repositories/                 ← lecturas workspace-scoped + writes allowlist
-  loaders/shadow-context-loader.ts
-  mappers/
-  suggestion-service.ts         ← matchBankMovement → ShadowProposal
-  shadow-persistence.ts         ← decide create|update|supersede|skip
-  shadow-persist-apply.ts       ← aplica decisión vía ports
-  runner.ts                     ← alcance controlado
+  ...
+  suggestion-service.ts         ← matchBankMovement → ShadowProposal + colisión batch
+  runner.ts                     ← alcance controlado; aplica colisión antes de exponer/persistir
 ```
 
 Flujo:
 
 1. `runBankShadowIntelligence` exige `movementId` | `movementIds` | `limit` explícito (≤25).
 2. Carga movimientos + contexto (recibos, clientes, facturas, pagadores, links) **solo lectura**, filtrado por `workspaceId`.
-3. Ejecuta el motor determinístico `matchBankMovement`.
-4. Emite `ShadowProposal` explicable (confidence, reasons, warnings, recommendedAction).
+3. Ejecuta el motor determinístico `matchBankMovement` (selección conservadora de recibos).
+4. Emite `ShadowProposal` explicable; luego `applyReceiptCollisionPolicy` sobre el batch.
 5. Modo:
    - **dry-run** (default): no escribe.
    - **shadow-persist** (`dryRun=false` && `persist=true`): escribe solo
@@ -46,6 +40,45 @@ Flujo:
 - `candidateEvidence`, `generatedAt`
 
 `AUTO_RECONCILE_CANDIDATE` es **solo recomendación shadow**. Nunca ejecuta conciliación.
+Nunca aparece ante empate de recibos ni ante `RECEIPT_CANDIDATE_COLLISION`.
+
+## Política de empate de recibos (BANK-SHADOW-CORRECTION-001)
+
+Candidatos **fuertes exactos**: misma moneda, importe exacto (tol. 1 cent), no reconciliados,
+mismo workspace. Se puntúan de forma objetiva:
+
+1. Boost material si el cliente del recibo tiene **pagador confirmado** para la huella.
+2. Menor distancia absoluta de fecha al movimiento.
+
+| Caso | `proposedReceiptId` | Acción | Warnings / reasons |
+|---|---|---|---|
+| Único fuerte | definido | según confidence | `MATCHING_RECEIPT`, etc. |
+| Empate (mismo score máximo) | **null** | `REVIEW` | `MULTIPLE_STRONG_CANDIDATES`; evidence en `tiedCandidates` |
+| Superior solo por fecha | el más cercano | no AUTO sin otras señales | `RECEIPT_DATE_DOMINANCE` |
+
+**Desempates permitidos:** pagador confirmado; proximidad de fecha estrictamente mejor.
+**Desempates prohibidos:** orden de consulta, inserción, posición en array, `receiptId` como score.
+
+`MULTIPLE_STRONG_CANDIDATES`: hay ≥2 recibos (o clientes por nombre) con el mismo nivel de
+evidencia relevante; el motor **no** elige uno arbitrario. Confidence ≤ 50 en empate de recibos.
+
+## Política de colisión entre movimientos (mismo batch)
+
+Si dos+ propuestas del mismo `runBankShadowIntelligence` fijan el mismo `proposedReceiptId`:
+
+- warning obligatorio `RECEIPT_CANDIDATE_COLLISION`;
+- `proposedReceiptId = null` en ambas;
+- `recommendedAction = REVIEW`;
+- `collisionDetected = true`;
+- no se reserva ni escribe el recibo.
+
+Significado: el recibo no puede presentarse como candidato único seguro para más de un
+movimiento en la misma ejecución shadow.
+
+## Contratos (campos de ambigüedad)
+
+Además del mínimo anterior: `tiedCandidates`, `ambiguityReason`, `collisionDetected`,
+y en `candidateEvidence` la lista completa de empatados.
 
 ### Runner
 

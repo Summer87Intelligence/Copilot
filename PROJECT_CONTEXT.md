@@ -1,5 +1,10 @@
 # Project Context
 
+## BANK — Shadow correction (ambigüedad/colisión) — 2026-07-17
+
+**FASE BANK-SHADOW-CORRECTION-001 (local, sin push):** motor deja de usar `.find()` arbitrario en recibos exactos. Empate → `proposedReceiptId=null` + `MULTIPLE_STRONG_CANDIDATES` + `tiedCandidates`; colisión inter-batch → `RECEIPT_CANDIDATE_COLLISION`. Dry-run default. Sin SQL remoto / persist / push.
+- Próximo: revalidar dry-run controlado (IDs previos) con autorización.
+
 ## BANK — Shadow server implementation — 2026-07-17
 
 **FASE BANK-SHADOW-SERVER-IMPLEMENTATION-001 (local, sin push):** capa server-side en `lib/bank/intelligence/server/` — lectura workspace-scoped, motor puro → `ShadowProposal`, dry-run por defecto, shadow persist opcional solo en `bank_reconciliation_suggestions` + `reconciliation_events`. Runner con alcance obligatorio (`movementId`|`movementIds`|`limit`≤25). Sin RPC financiera, sin links/allocations, sin cron/UI, sin runner contra producción.

@@ -15,6 +15,7 @@ export {
 export {
   buildShadowProposalFromContext,
   filterContextToWorkspace,
+  applyReceiptCollisionPolicy,
 } from "@/lib/bank/intelligence/server/suggestion-service";
 export {
   decideShadowPersistAction,

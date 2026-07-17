@@ -179,15 +179,26 @@ export function mapMatchResultToProposal(input: {
   generatedAt?: string;
 }): ShadowProposal {
   const { result } = input;
+  const tied = [...(result.tiedReceiptCandidates ?? [])];
+  const matchedReceiptIds = result.receiptId
+    ? [result.receiptId]
+    : tied.map((t) => t.receiptId);
+  const matchedClientIds = result.clientId
+    ? [result.clientId]
+    : [...new Set(tied.map((t) => t.clientId))];
+
   const evidence: ShadowCandidateEvidence = {
     payerFingerprintStrength: input.payerFp.strength,
-    matchedClientIds: result.clientId ? [result.clientId] : [],
-    matchedReceiptIds: result.receiptId ? [result.receiptId] : [],
+    matchedClientIds,
+    matchedReceiptIds,
+    tiedCandidates: tied,
     invoiceAllocationIds: result.invoiceAllocations.map((a) => a.invoiceId),
     historicalLinkStatuses: [],
     dateWindowDays: input.dateWindowDays,
     reasons: [...result.reasons],
     warnings: [...result.warnings],
+    ambiguityReason: result.ambiguityReason ?? null,
+    collisionDetected: result.collisionDetected === true,
   };
 
   return {
@@ -209,5 +220,8 @@ export function mapMatchResultToProposal(input: {
       invoiceId: a.invoiceId,
       amountMinor: a.amountMinor,
     })),
+    tiedCandidates: tied,
+    ambiguityReason: result.ambiguityReason ?? null,
+    collisionDetected: result.collisionDetected === true,
   };
 }

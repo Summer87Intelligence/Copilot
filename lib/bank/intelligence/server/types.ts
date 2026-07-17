@@ -9,10 +9,12 @@ import type {
   RecommendedAction,
   ReconciliationReason,
   ReconciliationWarning,
+  TiedReceiptCandidate,
 } from "@/lib/bank/intelligence/reconciliation-matching";
 import { RECONCILIATION_ENGINE_VERSION } from "@/lib/bank/intelligence/reconciliation-matching";
 
 export { RECONCILIATION_ENGINE_VERSION };
+export type { TiedReceiptCandidate };
 
 export type ShadowRecommendedAction = RecommendedAction;
 
@@ -44,11 +46,15 @@ export type ShadowCandidateEvidence = {
   payerFingerprintStrength: string;
   matchedClientIds: string[];
   matchedReceiptIds: string[];
+  /** Recibos empatados en el tier máximo (evidencia completa). */
+  tiedCandidates: TiedReceiptCandidate[];
   invoiceAllocationIds: string[];
   historicalLinkStatuses: string[];
   dateWindowDays: number;
   reasons: ReconciliationReason[];
   warnings: ReconciliationWarning[];
+  ambiguityReason: string | null;
+  collisionDetected: boolean;
 };
 
 export type ShadowProposal = {
@@ -68,6 +74,9 @@ export type ShadowProposal = {
   generatedAt: string;
   /** Aplicaciones a factura propuestas (solo evidencia; no se escriben en payment_allocations). */
   proposedInvoiceAllocations: Array<{ invoiceId: string; amountMinor: number }>;
+  tiedCandidates: TiedReceiptCandidate[];
+  ambiguityReason: string | null;
+  collisionDetected: boolean;
 };
 
 export type ShadowSuggestionRow = {
