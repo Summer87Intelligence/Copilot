@@ -1,0 +1,66 @@
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+/**
+ * Contrato de esquema (estático sobre el SQL de las migraciones pendientes).
+ * El entorno vitest es `node` (sin Postgres): estos tests garantizan las
+ * INVARIANTES de diseño anti-drift sin ejecutar DDL. La ejecución transaccional
+ * real se valida al aplicar las migraciones (autorización).
+ */
+
+const MIG = join(process.cwd(), "supabase", "migrations");
+const suggestions = readFileSync(join(MIG, "20260719120100_bank_reconciliation_suggestions.sql"), "utf8");
+const rpc = readFileSync(join(MIG, "20260719120200_bank_reconciliation_confirm_rpc.sql"), "utf8");
+
+describe("esquema canónico de conciliación — contrato", () => {
+  it("NO existe una segunda tabla canónica de conciliación efectiva (matches)", () => {
+    expect(suggestions).not.toContain("bank_reconciliation_matches");
+    expect(suggestions).toContain("CREATE TABLE IF NOT EXISTS public.bank_reconciliation_suggestions");
+  });
+
+  it("una sugerencia confirmada REQUIERE link canónico (anti-drift)", () => {
+    expect(suggestions).toContain("brs_confirmed_requires_link");
+    expect(suggestions).toContain("brs_rejected_has_no_link");
+    expect(suggestions).toContain("confirmed_link_id");
+    expect(suggestions).toContain("REFERENCES public.bank_movement_reconciliation_links(id)");
+  });
+
+  it("payment_allocations referencia el LINK CANÓNICO, no la sugerencia", () => {
+    expect(suggestions).toContain("reconciliation_link_id");
+    expect(suggestions).toMatch(/reconciliation_link_id\s+UUID\s+NOT NULL REFERENCES public\.bank_movement_reconciliation_links/);
+    // No debe existir una FK financiera desde allocations hacia suggestions.
+    expect(suggestions).not.toMatch(/payment_allocations[\s\S]*suggestion_id\s+UUID\s+NOT NULL/);
+  });
+
+  it("eventos append-only y sin anon/public en RLS", () => {
+    expect(suggestions).toContain("reconciliation_events");
+    expect(suggestions).not.toContain("TO anon");
+    expect(suggestions).not.toContain("TO public");
+  });
+
+  it("existen las RPC transaccionales confirm/reverse con validación de sumas", () => {
+    expect(rpc).toContain("confirm_bank_reconciliation_v1");
+    expect(rpc).toContain("reverse_bank_reconciliation_v1");
+    expect(rpc).toContain("SECURITY INVOKER");
+    expect(rpc).toContain("FOR UPDATE");
+    expect(rpc).toContain("OVER_APPLIED_MOVEMENT");
+    expect(rpc).toContain("OVER_APPLIED_RECEIPT");
+    expect(rpc).toContain("OVER_APPLIED_INVOICE");
+  });
+
+  it("las RPC derivan workspace del servidor y no exponen a anon/public", () => {
+    expect(rpc).toContain("p_workspace_id");
+    expect(rpc).toContain("WORKSPACE_MISMATCH");
+    expect(rpc).toContain("REVOKE ALL ON FUNCTION public.confirm_bank_reconciliation_v1");
+    expect(rpc).toMatch(/FROM anon, PUBLIC/);
+    expect(rpc).toContain("TO authenticated, service_role");
+  });
+
+  it("la RPC es idempotente (sugerencia ya confirmada / link ya existente)", () => {
+    expect(rpc).toMatch(/idempotent/i);
+    expect(rpc).toContain("already_confirmed");
+    expect(rpc).toContain("already_linked");
+    expect(rpc).toContain("already_reversed");
+  });
+});
