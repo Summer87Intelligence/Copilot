@@ -2,7 +2,7 @@ import { dedupeZetaShadowInvoicesForReporting } from "@/lib/copilot-zeta-invoice
 import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
 import type { DataRow } from "@/lib/data/proto-operational-read-repository";
 import { parseZetaLegacyRegistroIdFromInvoiceNumber } from "@/lib/integrations/zeta/zeta-proto-invoice-registro-match";
-import { resolveCanonicalSaleCurrency } from "@/lib/sales/canonical/issued-sale-universe";
+import { resolveCanonicalSaleCurrency, isVoidedSaleStatus } from "@/lib/sales/canonical/issued-sale-universe";
 
 export type NetSalesReportCurrency = "UYU" | "USD";
 
@@ -102,7 +102,8 @@ function isValidInvoice(
   currency: NetSalesReportCurrency
 ): boolean {
   if (!row.is_active) return false;
-  if (getString(row, "status") === "cancelled") return false;
+  // FASE D: conjunto canónico de anulados (cancelled/void/anulado/…), no solo "cancelled".
+  if (isVoidedSaleStatus(getString(row, "status"))) return false;
   const date = getString(row, "issue_date");
   if (!date || date < from || date > to) return false;
   // FASE 9E: moneda canónica compartida con Ventas/Finanzas — resuelve
