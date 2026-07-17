@@ -1,14 +1,20 @@
 /**
- * FASE DOMAIN-IA-BANK-001 — Huella PURA y estable de pagador bancario.
+ * FASE DOMAIN-IA-BANK-001 — Huella PURA de pagador bancario y de movimiento.
  *
- * Reconoce "el mismo pagador" priorizando señales estables por sobre el nombre:
- *   1. identificador bancario estable (bank_reference / operación);
- *   2. cuenta origen (account_label / dígitos de cuenta);
- *   3. documento / RUT;
- *   4. combinación banco + cuenta enmascarada + referencia estable;
- *   5. nombre normalizado (ÚLTIMO recurso).
+ * ⚠ CORRECCIÓN DE AUDITORÍA (evidencia real, tenant Summer87): `bank_reference`
+ * es mayormente una REFERENCIA DE OPERACIÓN (674/942 distintas ≈ 71% únicas), NO
+ * una identidad estable del pagador. Y `account_label` tiene solo 2 valores = las
+ * cuentas EASY propias (destino), NO la cuenta ORIGEN del pagador. Por eso:
  *
- * NUNCA construye la huella solo con el nombre. Versionada para poder evolucionar.
+ *  - `deriveMovementFingerprint` usa `bank_reference` + importe + fecha → dedup de
+ *    MOVIMIENTOS (operación individual), no identidad de pagador.
+ *  - `derivePayerFingerprint` (identidad ESTABLE) prioriza señales del ordenante:
+ *      1. documento / RUT;
+ *      2. cuenta ORIGEN del pagador (solo si el caller la provee — NUNCA account_label propio);
+ *      3. nombre normalizado (ÚLTIMO recurso).
+ *    NUNCA usa bank_reference como identidad de pagador.
+ *
+ * NUNCA construye la huella solo con el nombre como identidad "estable". Versionada.
  * No toca DB; no expone la cuenta completa (solo enmascarada + hash determinístico).
  */
 
@@ -20,10 +26,11 @@ export const PAYER_FINGERPRINT_VERSION = 1;
 
 export type PayerSignals = {
   bankName?: string | null;
-  /** Etiqueta / número de cuenta origen si el banco lo expone. */
+  /**
+   * Cuenta ORIGEN del pagador (dígitos) si el banco la expone. NUNCA pasar aquí la
+   * cuenta propia/destino (`account_label`): colapsaría todos los pagadores.
+   */
   accountRaw?: string | null;
-  /** Referencia bancaria estable (nro de operación). */
-  bankReference?: string | null;
   /** Documento / RUT del pagador si viene. */
   documentId?: string | null;
   /** Nombre visible en el movimiento (payer). */
@@ -32,8 +39,8 @@ export type PayerSignals = {
 
 export type PayerFingerprint = {
   version: number;
-  /** Nivel de la señal usada (mayor = más estable). */
-  strength: "reference" | "account" | "document" | "bank_account_ref" | "name" | "none";
+  /** Nivel de la señal usada (mayor = más estable). `reference` ya NO aplica a pagador. */
+  strength: "account" | "document" | "bank_account_ref" | "name" | "none";
   /** Hash determinístico estable (no revela la cuenta completa). */
   hash: string;
   /** Cuenta enmascarada para mostrar (•••• 4821). Null si no hay cuenta. */
@@ -41,6 +48,9 @@ export type PayerFingerprint = {
   /** Nombre normalizado (ayuda, no identidad). */
   normalizedName: string;
 };
+
+/** Huella de MOVIMIENTO (operación individual) para deduplicar reimportaciones. */
+export type MovementFingerprint = { version: number; hash: string };
 
 function digitsOnly(v: string | null | undefined): string {
   return (v ?? "").replace(/\D/g, "");
@@ -66,26 +76,42 @@ export function derivePayerFingerprint(signals: PayerSignals): PayerFingerprint 
   const normalizedName = normalizePayerName(signals.payerName);
   const masked = maskAccount(signals.accountRaw);
   const accountDigits = digitsOnly(signals.accountRaw);
-  const ref = (signals.bankReference ?? "").trim();
   const doc = digitsOnly(signals.documentId);
 
-  if (ref) {
-    return { version: PAYER_FINGERPRINT_VERSION, strength: "reference", hash: sha([PAYER_FINGERPRINT_VERSION, "ref", bank, ref]), maskedAccount: masked, normalizedName };
+  // Prioridad de IDENTIDAD ESTABLE (bank_reference NO participa: es per-operación).
+  if (doc.length >= 6) {
+    return { version: PAYER_FINGERPRINT_VERSION, strength: "document", hash: sha([PAYER_FINGERPRINT_VERSION, "doc", doc]), maskedAccount: masked, normalizedName };
   }
   if (accountDigits.length >= 4) {
     return { version: PAYER_FINGERPRINT_VERSION, strength: "account", hash: sha([PAYER_FINGERPRINT_VERSION, "acct", bank, accountDigits]), maskedAccount: masked, normalizedName };
   }
-  if (doc.length >= 6) {
-    return { version: PAYER_FINGERPRINT_VERSION, strength: "document", hash: sha([PAYER_FINGERPRINT_VERSION, "doc", doc]), maskedAccount: masked, normalizedName };
-  }
-  // Combinación banco + cuenta enmascarada + referencia (aunque sean parciales).
   if (masked) {
-    return { version: PAYER_FINGERPRINT_VERSION, strength: "bank_account_ref", hash: sha([PAYER_FINGERPRINT_VERSION, "bar", bank, masked, ref]), maskedAccount: masked, normalizedName };
+    return { version: PAYER_FINGERPRINT_VERSION, strength: "bank_account_ref", hash: sha([PAYER_FINGERPRINT_VERSION, "bar", bank, masked]), maskedAccount: masked, normalizedName };
   }
   if (normalizedName) {
     return { version: PAYER_FINGERPRINT_VERSION, strength: "name", hash: sha([PAYER_FINGERPRINT_VERSION, "name", bank, normalizedName]), maskedAccount: null, normalizedName };
   }
   return { version: PAYER_FINGERPRINT_VERSION, strength: "none", hash: sha([PAYER_FINGERPRINT_VERSION, "none"]), maskedAccount: null, normalizedName: "" };
+}
+
+/**
+ * Huella de MOVIMIENTO (operación individual), para detectar reimportaciones del
+ * mismo movimiento. Usa la referencia de operación + importe + fecha. NO identifica
+ * al pagador (ver corrección de auditoría arriba).
+ */
+export function deriveMovementFingerprint(input: {
+  bankName?: string | null;
+  bankReference?: string | null;
+  amountMinor: number;
+  dateYmd: string;
+  currency?: string | null;
+}): MovementFingerprint {
+  const bank = normalizePayerName(input.bankName) || "bank";
+  const ref = (input.bankReference ?? "").trim();
+  return {
+    version: PAYER_FINGERPRINT_VERSION,
+    hash: sha([PAYER_FINGERPRINT_VERSION, "mov", bank, ref, input.amountMinor, input.dateYmd.slice(0, 10), (input.currency ?? "").toUpperCase()]),
+  };
 }
 
 /** True si la huella se apoya en una señal estable (no solo nombre). */

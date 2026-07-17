@@ -40,10 +40,18 @@ Señales disponibles en `bank_movements`: `import_id` (lote), `bank_name`,
 
 ## Modelo de identidad / huella
 
-Prioridad (mayor = más estable): referencia bancaria → cuenta → documento/RUT →
-banco+cuenta enmascarada+referencia → nombre normalizado (último recurso).
-`lib/bank/intelligence/payer-fingerprint.ts` (puro, versionado, sha256 truncado,
-enmascara cuenta). **Nunca** huella solo por nombre.
+⚠ **Corrección de auditoría (evidencia real Summer87):** `bank_reference` es
+mayormente per-operación (674/942 distintas), **no** identidad de pagador; y
+`account_label` = cuentas EASY propias (2 valores), **no** la cuenta origen. Por eso
+se separan dos huellas en `lib/bank/intelligence/payer-fingerprint.ts`:
+
+- **`deriveMovementFingerprint`** (dedup de operación): `bank_reference` + importe +
+  fecha. NO identifica al pagador.
+- **`derivePayerFingerprint`** (identidad estable): documento/RUT → cuenta ORIGEN del
+  pagador (nunca `account_label` propio) → nombre normalizado (último recurso).
+  **Nunca** usa `bank_reference` ni el nombre como identidad "estable" única.
+
+Puro, versionado, sha256 truncado, cuenta siempre enmascarada.
 
 Normalización de nombres: `lib/bank/intelligence/name-normalizer.ts` (conservador;
 "PEPITO S.A." = "Pepito SA" = "P E P I T O S.A." → `pepito`; no une nombres distintos).
