@@ -24,13 +24,17 @@ describe("esquema canónico de conciliación — contrato", () => {
     expect(suggestions).toContain("brs_rejected_has_no_link");
     expect(suggestions).toContain("confirmed_link_id");
     expect(suggestions).toContain("REFERENCES public.bank_movement_reconciliation_links(id)");
+    // Reversión preserva historia: estado 'reversed' sin link.
+    expect(suggestions).toMatch(/CHECK \(status IN \([^)]*'reversed'\)/);
+    expect(suggestions).toMatch(/status NOT IN \('rejected','superseded','reversed'\)/);
   });
 
-  it("payment_allocations referencia el LINK CANÓNICO, no la sugerencia", () => {
+  it("payment_allocations referencia el LINK CANÓNICO, no la sugerencia; único por link+factura", () => {
     expect(suggestions).toContain("reconciliation_link_id");
     expect(suggestions).toMatch(/reconciliation_link_id\s+UUID\s+NOT NULL REFERENCES public\.bank_movement_reconciliation_links/);
-    // No debe existir una FK financiera desde allocations hacia suggestions.
     expect(suggestions).not.toMatch(/payment_allocations[\s\S]*suggestion_id\s+UUID\s+NOT NULL/);
+    // Una factura una vez por link activo (varios links → una factura SÍ permitido).
+    expect(suggestions).toContain("pa_link_invoice_active_uidx");
   });
 
   it("eventos append-only y sin anon/public en RLS", () => {
@@ -39,7 +43,7 @@ describe("esquema canónico de conciliación — contrato", () => {
     expect(suggestions).not.toContain("TO public");
   });
 
-  it("existen las RPC transaccionales confirm/reverse con validación de sumas", () => {
+  it("existen las RPC transaccionales confirm/reverse con validación AGREGADA de sumas", () => {
     expect(rpc).toContain("confirm_bank_reconciliation_v1");
     expect(rpc).toContain("reverse_bank_reconciliation_v1");
     expect(rpc).toContain("SECURITY INVOKER");
@@ -47,20 +51,31 @@ describe("esquema canónico de conciliación — contrato", () => {
     expect(rpc).toContain("OVER_APPLIED_MOVEMENT");
     expect(rpc).toContain("OVER_APPLIED_RECEIPT");
     expect(rpc).toContain("OVER_APPLIED_INVOICE");
+    expect(rpc).toContain("ALLOCATIONS_EXCEED_LINK");
+    expect(rpc).toContain("INVOICE_FULLY_PAID");
+    expect(rpc).toContain("GROUP BY 1"); // agrega allocations por factura (dedup del JSON)
+    expect(rpc).toContain("SET search_path TO 'public, pg_temp'");
   });
 
-  it("las RPC derivan workspace del servidor y no exponen a anon/public", () => {
+  it("RPC SOLO service_role: sin anon/public/authenticated EXECUTE", () => {
     expect(rpc).toContain("p_workspace_id");
     expect(rpc).toContain("WORKSPACE_MISMATCH");
-    expect(rpc).toContain("REVOKE ALL ON FUNCTION public.confirm_bank_reconciliation_v1");
-    expect(rpc).toMatch(/FROM anon, PUBLIC/);
-    expect(rpc).toContain("TO authenticated, service_role");
+    expect(rpc).toMatch(/REVOKE ALL ON FUNCTION public\.confirm_bank_reconciliation_v1[\s\S]*FROM PUBLIC, anon, authenticated/);
+    expect(rpc).toContain("TO service_role");
+    expect(rpc).not.toContain("TO authenticated, service_role");
   });
 
-  it("la RPC es idempotente (sugerencia ya confirmada / link ya existente)", () => {
-    expect(rpc).toMatch(/idempotent/i);
+  it("actor no falsificable: valida p_created_by contra app_users del workspace", () => {
+    expect(rpc).toContain("INVALID_ACTOR");
+    expect(rpc).toMatch(/FROM public\.app_users[\s\S]*company_id = p_workspace_id/);
+    expect(rpc).toContain("is_active IS NOT FALSE");
+  });
+
+  it("idempotencia con detección de conflicto y saldo sin aplicar", () => {
     expect(rpc).toContain("already_confirmed");
     expect(rpc).toContain("already_linked");
     expect(rpc).toContain("already_reversed");
+    expect(rpc).toContain("IDEMPOTENCY_CONFLICT");
+    expect(rpc).toContain("unappliedAmount");
   });
 });
