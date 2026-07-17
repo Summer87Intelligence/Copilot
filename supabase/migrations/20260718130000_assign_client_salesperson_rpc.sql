@@ -109,7 +109,10 @@ COMMENT ON FUNCTION public.copilot_assign_client_salesperson(uuid, uuid, date, u
   'Asigna/cambia/desasigna el comercial vigente de un cliente en UNA transacción (cierra la vigente e inserta la nueva atómicamente). SECURITY INVOKER, workspace desde sesión, idempotente A->A. HOTFIX.';
 
 -- Permiso mínimo: solo usuarios autenticados (RLS sigue aplicando por ser INVOKER).
-REVOKE ALL ON FUNCTION public.copilot_assign_client_salesperson(uuid, uuid, date, uuid) FROM PUBLIC;
+-- Supabase concede EXECUTE por defecto a anon/authenticated en funciones nuevas del
+-- schema public; revocamos explícitamente de anon Y public para que anon no pueda
+-- invocarla (defensa en profundidad; INVOKER ya la haría fallar sin workspace).
+REVOKE ALL ON FUNCTION public.copilot_assign_client_salesperson(uuid, uuid, date, uuid) FROM anon, PUBLIC;
 GRANT EXECUTE ON FUNCTION public.copilot_assign_client_salesperson(uuid, uuid, date, uuid) TO authenticated;
 
 -- ROLLBACK CONCEPTUAL (no ejecutar aquí):
