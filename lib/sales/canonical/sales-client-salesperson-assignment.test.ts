@@ -3,7 +3,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { buildCustomerSalesSummary } from "@/lib/sales/canonical/sales-aggregations";
 import type { CanonicalSaleDocument } from "@/lib/sales/canonical/types";
-import { upsertClientSalespersonAssignment } from "@/lib/sales/sales-client-salesperson-repository";
+import {
+  assignClientSalesperson,
+  upsertClientSalespersonAssignment,
+} from "@/lib/sales/sales-client-salesperson-repository";
 
 // ── Doc factory mínima ──────────────────────────────────────────────────────
 function doc(
@@ -194,5 +197,108 @@ describe("upsertClientSalespersonAssignment (fix hotfix)", () => {
       validFrom: "2026-07-17",
     });
     expect(res).toMatchObject({ ok: false, code: "MIGRATION_PENDING" });
+  });
+});
+
+// ── Mock Supabase con rpc (para el wrapper atómico) + cola de from() para fallback ──
+function makeSupabaseWithRpc(opts: { rpc?: Resp; fromQueue?: Resp[] } = {}) {
+  const rpcCalls: { name: string; params: unknown }[] = [];
+  const fromQueue = [...(opts.fromQueue ?? [])];
+  const fromInserts: Record<string, unknown>[] = [];
+  const fromUpdates: Record<string, unknown>[] = [];
+  const nextFrom = (): Resp => (fromQueue.length ? fromQueue.shift()! : { data: null, error: null });
+  const builder: Record<string, unknown> = {
+    select: () => builder,
+    insert: (p: Record<string, unknown>) => {
+      fromInserts.push(p);
+      return builder;
+    },
+    update: (p: Record<string, unknown>) => {
+      fromUpdates.push(p);
+      return builder;
+    },
+    eq: () => builder,
+    is: () => builder,
+    then: (resolve: (v: Resp) => unknown, reject?: (e: unknown) => unknown) =>
+      Promise.resolve(nextFrom()).then(resolve, reject),
+  };
+  const client = {
+    from: () => builder,
+    rpc: (name: string, params: unknown) => {
+      rpcCalls.push({ name, params });
+      return Promise.resolve(opts.rpc ?? { data: null, error: null });
+    },
+  } as unknown as SupabaseClient;
+  return { client, rpcCalls, fromInserts, fromUpdates };
+}
+
+describe("assignClientSalesperson — wrapper ATÓMICO (RPC-first)", () => {
+  it("usa el RPC transaccional y reporta atomic=true", async () => {
+    const { client, rpcCalls, fromInserts, fromUpdates } = makeSupabaseWithRpc({ rpc: { data: {}, error: null } });
+    const res = await assignClientSalesperson(client, WS, "user-1", {
+      customerId: CUST,
+      salespersonId: "camila",
+      validFrom: "2026-07-17",
+    });
+    expect(res).toEqual({ ok: true, atomic: true });
+    expect(rpcCalls).toHaveLength(1);
+    expect(rpcCalls[0]).toMatchObject({
+      name: "copilot_assign_client_salesperson",
+      params: { p_customer_id: CUST, p_salesperson_id: "camila", p_valid_from: "2026-07-17", p_assigned_by: "user-1" },
+    });
+    // No hubo escrituras secuenciales (todo lo hizo el RPC en una transacción).
+    expect(fromInserts).toHaveLength(0);
+    expect(fromUpdates).toHaveLength(0);
+  });
+
+  it("rollback: si el RPC falla al crear B, NO deja estado parcial ni cae al camino secuencial", async () => {
+    // Un error de aplicación desde el RPC = la transacción entera hizo ROLLBACK en Postgres.
+    const { client, rpcCalls, fromInserts, fromUpdates } = makeSupabaseWithRpc({
+      rpc: { data: null, error: { code: "P0001", message: "SALESPERSON_NOT_FOUND" } },
+    });
+    const res = await assignClientSalesperson(client, WS, "user-1", {
+      customerId: CUST,
+      salespersonId: "ghost",
+      validFrom: "2026-07-17",
+    });
+    expect(res).toMatchObject({ ok: false, code: "NOT_FOUND" });
+    expect(rpcCalls).toHaveLength(1);
+    expect(fromInserts).toHaveLength(0); // sin fallback → sin INSERT parcial
+    expect(fromUpdates).toHaveLength(0); // sin UPDATE parcial (A intacta)
+  });
+
+  it("mapea CUSTOMER_NOT_FOUND del RPC → 404 NOT_FOUND", async () => {
+    const { client } = makeSupabaseWithRpc({ rpc: { data: null, error: { message: "CUSTOMER_NOT_FOUND" } } });
+    const res = await assignClientSalesperson(client, WS, "user-1", {
+      customerId: CUST,
+      salespersonId: "camila",
+      validFrom: "2026-07-17",
+    });
+    expect(res).toMatchObject({ ok: false, code: "NOT_FOUND" });
+  });
+
+  it("si el RPC no está aplicado (42883), degrada al camino secuencial (atomic=false)", async () => {
+    const { client, fromInserts } = makeSupabaseWithRpc({
+      rpc: { data: null, error: { code: "42883", message: "function does not exist" } },
+      fromQueue: [{ data: [], error: null }, { error: null }], // open vacío + insert
+    });
+    const res = await assignClientSalesperson(client, WS, "user-1", {
+      customerId: CUST,
+      salespersonId: "camila",
+      validFrom: "2026-07-17",
+    });
+    expect(res).toEqual({ ok: true, atomic: false });
+    expect(fromInserts).toHaveLength(1); // el fallback secuencial insertó
+  });
+
+  it("valida rango antes de tocar el RPC → OUT_OF_RANGE", async () => {
+    const { client, rpcCalls } = makeSupabaseWithRpc({});
+    const res = await assignClientSalesperson(client, WS, "user-1", {
+      customerId: CUST,
+      salespersonId: "camila",
+      validFrom: "2026-06-01",
+    });
+    expect(res).toMatchObject({ ok: false, code: "OUT_OF_RANGE" });
+    expect(rpcCalls).toHaveLength(0);
   });
 });
