@@ -1,11 +1,15 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { RefObject } from "react";
 import Link from "next/link";
 import { AlertTriangle, ChevronDown, ExternalLink, FileText, Mail, MessageCircle } from "lucide-react";
 
 import { CopilotButtonLink, copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
+import {
+  CopilotResponsiveTable,
+  type CopilotResponsiveTableColumn,
+} from "@/components/copilot/ui/copilot-responsive-table";
 import { fmtCurrencyAmount } from "@/lib/copilot-today-business-pulse";
 import type { DebtorCollectionRow, MoneyAmount } from "@/lib/copilot-today-business-pulse";
 import type { HoyClientCounts } from "@/lib/copilot-today-business-pulse";
@@ -17,6 +21,11 @@ import {
   fmtDebtSymbol,
 } from "@/lib/hoy-debtor-expand-helpers";
 import { sortDebtorRowsByAging } from "@/lib/hoy-debtor-sort";
+import {
+  debtorHasOverdueAmount,
+  debtorRiskBadge,
+  formatDebtorDaysCell,
+} from "@/lib/hoy-debtor-cell-format";
 import { todayYmdMontevideo } from "@/lib/date/summer87-today";
 import {
   buildDebtBreakdown,
@@ -89,25 +98,11 @@ function DebtorAmount({
 }
 
 function riskChips(row: DebtorCollectionRow): { label: string; className: string }[] {
-  const chips: { label: string; className: string }[] = [];
-  if ((row.vencido?.amount ?? 0) > 0) {
-    chips.push({
-      label: "Atrasado",
-      className: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)]",
-    });
-  } else if (row.flags.critical30Share) {
-    chips.push({
-      label: "+30d",
-      className: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)]",
-    });
-  }
-  return chips;
-}
-
-function rowSeverityClass(_row: DebtorCollectionRow, _highlightRisk: boolean): string {
-  // Severidad se transmite en badges (Vencida/Atrasado/+30 días) y en el color del monto,
-  // no tintando la fila entera. Mantenemos fondo neutro y separadores finos.
-  return "";
+  const danger = "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)]";
+  const badge = debtorRiskBadge(row);
+  if (badge === "atrasado") return [{ label: "Atrasado", className: danger }];
+  if (badge === "critico") return [{ label: "+30d", className: danger }];
+  return [];
 }
 
 const ACTION_BTN_PRIMARY = `${copilotButtonClassName({ variant: "primary", size: "sm" })} !h-7 !min-w-[88px] !px-2 !text-[11px]`;
@@ -493,22 +488,11 @@ function DebtorRowExpandPanel({
 }
 
 function mobileStatusFor(row: DebtorCollectionRow): { label: string; className: string } {
-  if ((row.vencido?.amount ?? 0) > 0) {
-    return {
-      label: "Atrasado",
-      className: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)]",
-    };
-  }
-  if (row.flags.critical30Share) {
-    return {
-      label: "Crítico",
-      className: "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)]",
-    };
-  }
-  return {
-    label: "Con deuda",
-    className: "bg-[var(--copilot-surface-muted)] text-[var(--copilot-ink)]",
-  };
+  const danger = "bg-[var(--copilot-badge-danger-bg)] text-[var(--copilot-badge-danger-text)]";
+  const badge = debtorRiskBadge(row);
+  if (badge === "atrasado") return { label: "Atrasado", className: danger };
+  if (badge === "critico") return { label: "Crítico", className: danger };
+  return { label: "Con deuda", className: "bg-[var(--copilot-surface-muted)] text-[var(--copilot-ink)]" };
 }
 
 function DebtorMobileCard({
@@ -581,6 +565,35 @@ function DebtorMobileCard({
   );
 }
 
+/** Columna Cliente: chevron de expansión + nombre + chips de riesgo. */
+function DebtorClientCell({
+  row,
+  expanded,
+  chips,
+}: {
+  row: DebtorCollectionRow;
+  expanded: boolean;
+  chips: { label: string; className: string }[];
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <ChevronDown
+        className={`h-3.5 w-3.5 shrink-0 text-[var(--copilot-ink-muted)] transition-transform ${expanded ? "rotate-180" : ""}`}
+        aria-hidden
+      />
+      <span className="font-medium text-[var(--copilot-ink)]">{row.name}</span>
+      {chips.map((c) => (
+        <span
+          key={c.label}
+          className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${c.className}`}
+        >
+          {c.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function DebtorTable({
   rows,
   highlightRisk = false,
@@ -605,9 +618,60 @@ function DebtorTable({
     });
   }
 
+  const columns: CopilotResponsiveTableColumn<DebtorCollectionRow>[] = [
+    {
+      key: "name",
+      header: "Cliente",
+      render: (row) => (
+        <DebtorClientCell
+          row={row}
+          expanded={expandedRows.has(row.row_id)}
+          chips={highlightRisk ? riskChips(row) : []}
+        />
+      ),
+    },
+    {
+      key: "currency",
+      header: "Moneda",
+      cellClassName: "text-xs font-bold uppercase tracking-wide",
+      render: (row) => <span className={copilotCurrencyClass(row.currency)}>{row.currency}</span>,
+    },
+    {
+      key: "deuda",
+      header: <span title={HOY_COPY.debtTotalTip}>Deuda actual a cobrar</span>,
+      className: "text-right",
+      cellClassName: "text-right tabular-nums",
+      render: (row) => <DebtorAmount amount={row.deuda} />,
+    },
+    {
+      key: "atrasado",
+      header: <span title={HOY_COPY.debtOverdueTip}>Atrasado</span>,
+      className: "text-right",
+      cellClassName: "text-right tabular-nums",
+      render: (row) =>
+        debtorHasOverdueAmount(row) ? (
+          <DebtorAmount amount={row.vencido} overdue />
+        ) : (
+          <span className="text-xs text-[var(--copilot-ink-muted)]">—</span>
+        ),
+    },
+    {
+      key: "dias",
+      header: <span title={HOY_COPY.debtOverdueDaysTip}>Días de atraso</span>,
+      className: "text-right",
+      cellClassName: "text-right tabular-nums text-xs text-[var(--copilot-ink-muted)]",
+      render: (row) => formatDebtorDaysCell(row),
+    },
+    {
+      key: "action",
+      header: "Acción",
+      render: (row) => <DebtorRowActions row={row} />,
+    },
+  ];
+
   return (
     <>
-      {/* Mobile: card list */}
+      {/* Mobile: card list (sin expansión — las cards ya muestran lo esencial) */}
       <ul className="space-y-2 sm:hidden" aria-label="Clientes con deuda">
         {rows.length === 0 ? (
           <li className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-4 py-6 text-center text-sm text-[var(--copilot-ink-muted)]">
@@ -620,103 +684,27 @@ function DebtorTable({
         )}
       </ul>
 
-      {/* Tablet/desktop: tabla con expand-on-row preservado */}
-      <div className="hidden overflow-x-auto rounded-xl border border-[var(--copilot-border)] sm:block">
-      <table className="w-full min-w-[600px] border-collapse text-left text-sm">
-        <thead>
-          <tr className="bg-[var(--copilot-table-header-bg)] text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
-            <th className="px-3 py-1.5">Cliente</th>
-            <th className="px-3 py-1.5">Moneda</th>
-            <th
-              className="cursor-help px-3 py-1.5"
-              title={HOY_COPY.debtTotalTip}
-            >
-              Deuda actual a cobrar
-            </th>
-            <th
-              className="cursor-help px-3 py-1.5"
-              title={HOY_COPY.debtOverdueTip}
-            >
-              Atrasado
-            </th>
-            <th
-              className="cursor-help px-3 py-1.5"
-              title={HOY_COPY.debtOverdueDaysTip}
-            >
-              Días de atraso
-            </th>
-            <th className="px-3 py-1.5">Acción</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-[var(--copilot-border)]/80">
-          {rows.map((row) => {
-            const chips = highlightRisk ? riskChips(row) : [];
-            const isExpanded = expandedRows.has(row.row_id);
-            return (
-              <Fragment key={row.row_id}>
-                <tr
-                  className={`cursor-pointer transition-colors duration-150 hover:bg-[var(--copilot-hover-bg)]${rowSeverityClass(row, highlightRisk)} ${isExpanded ? "bg-[var(--copilot-card)]" : ""}`}
-                  onClick={() => toggleRow(row.row_id)}
-                  aria-expanded={isExpanded}
-                >
-                  <td className="px-3 py-1.5">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <ChevronDown
-                        className={`h-3.5 w-3.5 shrink-0 text-[var(--copilot-ink-muted)] transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                        aria-hidden
-                      />
-                      <span className="font-medium text-[var(--copilot-ink)]">{row.name}</span>
-                      {chips.map((c) => (
-                        <span
-                          key={c.label}
-                          className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${c.className}`}
-                        >
-                          {c.label}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wide ${copilotCurrencyClass(row.currency)}`}>
-                    {row.currency}
-                  </td>
-                  <td className="px-3 py-1.5">
-                    <DebtorAmount amount={row.deuda} />
-                  </td>
-                  <td className="px-3 py-1.5">
-                    {(row.vencido?.amount ?? 0) > 0 ? (
-                      <DebtorAmount amount={row.vencido} overdue />
-                    ) : (
-                      <span className="text-xs text-[var(--copilot-ink-muted)]">—</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-1.5 text-xs text-[var(--copilot-ink-muted)]">
-                    {row.flags.hasOverdue && (row.overdueDays ?? 0) > 0
-                      ? `${row.overdueDays} días`
-                      : row.flags.hasOverdue
-                        ? row.antiguedad
-                        : "—"}
-                  </td>
-                  <td className="px-3 py-1.5">
-                    <DebtorRowActions row={row} />
-                  </td>
-                </tr>
-                {isExpanded ? (
-                  <tr key={`${row.row_id}-detail`} className="bg-[var(--copilot-card)]">
-                    <td colSpan={6} className="p-0">
-                      <DebtorRowExpandPanel
-                        row={row}
-                        invoices={portfolioDetails?.[row.company_id]?.invoices}
-                        today={today}
-                      />
-                    </td>
-                  </tr>
-                ) : null}
-              </Fragment>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+      {/* Tablet/desktop: tabla canónica con expand-on-row preservado */}
+      <div className="hidden sm:block">
+        <CopilotResponsiveTable
+          rows={rows}
+          columns={columns}
+          getRowKey={(row) => row.row_id}
+          minWidth="600px"
+          ariaLabel="Clientes con deuda"
+          emptyState="Sin clientes con deuda."
+          onRowClick={(row) => toggleRow(row.row_id)}
+          getRowExpanded={(row) => expandedRows.has(row.row_id)}
+          rowClassName={(row) => (expandedRows.has(row.row_id) ? "bg-[var(--copilot-card)]" : "")}
+          expandedRow={(row) => (
+            <DebtorRowExpandPanel
+              row={row}
+              invoices={portfolioDetails?.[row.company_id]?.invoices}
+              today={today}
+            />
+          )}
+        />
+      </div>
     </>
   );
 }
