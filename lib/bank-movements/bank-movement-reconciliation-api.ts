@@ -26,6 +26,38 @@ export const bankMovementIgnoreBodySchema = z
 export type BankMovementReconcileBody = z.infer<typeof bankMovementReconcileBodySchema>;
 export type BankMovementIgnoreBody = z.infer<typeof bankMovementIgnoreBodySchema>;
 
+/**
+ * FASE E — Alta de relación de conciliación N:M auditable.
+ * `applied_amount` es opcional: para `ignored` no aplica importe; para el resto
+ * la validación de dominio exige > 0 (devuelve INVALID_AMOUNT → 400).
+ * Nunca acepta `workspace_id` del cliente.
+ */
+export const bankReconciliationLinkCreateBodySchema = z
+  .object({
+    workspace_id: rejectWorkspaceId,
+    target_type: z.enum([
+      "receipt",
+      "planned_cash_obligation",
+      "treasury_income",
+      "treasury_expense",
+      "bank_movement",
+      "manual",
+      "ignored",
+    ]),
+    target_id: z.string().trim().min(1).max(160).nullable().optional(),
+    applied_amount: z.number().finite().optional(),
+    // Moneda/dirección de la operación destino (las conoce quien concilia): permiten
+    // que el servidor rechace cruces con 422 en lugar de asumir las del movimiento.
+    target_currency: z.enum(["UYU", "USD"]).optional(),
+    target_direction: z.enum(["inflow", "outflow"]).optional(),
+    method: z.enum(["manual", "suggested_confirmed"]).optional(),
+    confidence: z.enum(["high", "medium", "low"]).nullable().optional(),
+    note: z.string().trim().max(500).nullable().optional(),
+  })
+  .strict();
+
+export type BankReconciliationLinkCreateBody = z.infer<typeof bankReconciliationLinkCreateBodySchema>;
+
 export type ReconciliationListFilters = {
   confidence?: "high" | "medium" | "low" | "none" | "all";
   currency?: "UYU" | "USD";
