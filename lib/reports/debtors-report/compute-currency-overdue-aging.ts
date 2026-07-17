@@ -1,4 +1,5 @@
 import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
+import { isVoidedSaleStatus } from "@/lib/sales/canonical/issued-sale-universe";
 
 export type OverdueAgingInvoiceInput = {
   balance_amount?: unknown;
@@ -50,7 +51,8 @@ export function differenceInCalendarDaysYmd(laterYmd: string, earlierYmd: string
 
 function isPaidOrVoid(status: unknown): boolean {
   const st = String(status ?? "").toLowerCase().trim();
-  return st === "paid" || st === "cancelled" || st === "void";
+  // FASE D: conjunto canónico de anulados (cancelled/void/anulado/voided/…) + pagado.
+  return st === "paid" || isVoidedSaleStatus(st);
 }
 
 /**
