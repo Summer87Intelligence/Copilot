@@ -49,12 +49,19 @@ consistente en todas las llamadas → sin deadlock cruzado.
 | Contrato de sumas (puro) + esquema (estático) | invariantes | **EJECUTADO verde** (45 tests intelligence) |
 | Guard local-only | rechaza remoto | **EJECUTADO verde** |
 
-## Remote safety
+## Estado remoto posterior
 
-Cero DDL/DML remoto. Migraciones bancarias **no aplicadas**; `integrity_snapshots` **no
-aplicada**. Verificado read-only.
+Las migraciones bancarias `20260719120000`, `20260719120100` y `20260719120200`
+fueron aplicadas en producción (`erzdifkvvailxnwdukzf`) el 2026-07-17 por una
+operación externa a este harness. No deben reaplicarse, editarse ni revertirse:
+cualquier corrección debe ser una migración nueva.
+
+La limitación de este documento permanece: la batería funcional 8–24 y la
+concurrencia 25–28 no se ejecutaron en este equipo por falta de PostgreSQL local.
+La validación post-migración de producción fue read-only; no ejecutó RPCs ni creó
+conciliaciones sobre datos reales.
 
 ## Próximo paso
 
-Re-ejecutar esta batería en un entorno con Docker (`supabase start`) o `psql` + `npm i -D pg`.
-Recién con resultados empíricos verdes corresponde autorizar la aplicación en Supabase dev.
+Re-ejecutar esta batería en un entorno aislado con Docker (`supabase start`) o
+`psql` + `npm i -D pg`. No usar producción para completar los casos pendientes.

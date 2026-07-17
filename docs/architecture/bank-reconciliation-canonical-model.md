@@ -1,6 +1,8 @@
 # Modelo Canónico de Conciliación Bancaria (FASE BANK-SCHEMA-CORRECTION-001)
 
-Última actualización: 2026-07-17. Estado: **corrección de esquema** (migraciones NO aplicadas).
+Última actualización: 2026-07-17. Estado: **migraciones aplicadas en producción**
+(`erzdifkvvailxnwdukzf`). Los tres archivos aplicados son inmutables: cualquier
+corrección posterior debe implementarse mediante una migración nueva.
 
 ## Regla central: una sola fuente por hecho
 
@@ -107,13 +109,14 @@ RLS por workspace en todas las tablas (events solo SELECT/INSERT). La RPC valida
 movimiento/recibo/facturas pertenezcan al workspace (service_role omite RLS → la función
 valida en código). Sin `anon`/`public`.
 
-## Migraciones (NO aplicadas)
+## Migraciones (aplicadas en producción)
 
 | Migración | Contenido | Aplicada |
 |---|---|---|
-| `20260719120000` | `bank_payer_identities` + `client_payer_links` | NO |
-| `20260719120100` | `bank_reconciliation_suggestions` + `payment_allocations` + `reconciliation_events` | NO |
-| `20260719120200` | RPCs `confirm/reverse_bank_reconciliation_v1` | NO |
+| `20260719120000` | `bank_payer_identities` + `client_payer_links` | SÍ · producción |
+| `20260719120100` | `bank_reconciliation_suggestions` + `payment_allocations` + `reconciliation_events` | SÍ · producción |
+| `20260719120200` | RPCs `confirm/reverse_bank_reconciliation_v1` | SÍ · producción |
 
-Próximo: revisión manual de migraciones antes de aplicar (dev). Ver
+No reaplicar, editar ni revertir estas migraciones. Si la validación post-migración
+detecta un defecto, crear una migración correctiva nueva y auditable. Ver
 `bank-reconciliation-rollout.md`.

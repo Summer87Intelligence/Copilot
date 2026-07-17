@@ -1,5 +1,15 @@
 # Project Context
 
+## BANK — Validación post-migración inteligencia bancaria — 2026-07-17
+
+**Estado producción (`erzdifkvvailxnwdukzf`):** migraciones `20260719120000`, `20260719120100`, `20260719120200` **aplicadas**. Inmutables: no editar/reaplicar/revertir; correcciones solo con migración nueva.
+- Fixtures: 0 residuos `BANK_TEST` / UUIDs locales `aaaaaaaa`/`bbbbbbbb` en tablas protegidas.
+- Conteos vivos: `bank_movements=951`, `proto_receipts=365`, `proto_invoices=602`, `bank_movement_reconciliation_links=0`; tablas nuevas en 0 filas vivas (actividad temporal de batería C1–C9 / D1–D8 rollbackeada).
+- RPC: `confirm/reverse_bank_reconciliation_v1` sin EXECUTE para anon/authenticated/PUBLIC; EXECUTE para service_role+postgres.
+- RLS activa en las 5 tablas nuevas; `reconciliation_events` append-only a nivel policy (sin UPDATE/DELETE policies).
+- Concurrencia 25–28: **NO ejecutada** (sin dos conexiones simultáneas reales en este cierre).
+- Push: **NO**.
+
 ## FASE 9D — Ventas netas + comercial por cliente — 2026-07-16 (CIERRE LOCAL / MIGRATION APPLY BLOCKED)
 
 **Objetivo:** ventas netas canónicas + comercial por cliente (no por factura) + paridad Finanzas.

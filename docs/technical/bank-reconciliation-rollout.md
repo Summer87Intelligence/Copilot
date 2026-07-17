@@ -10,13 +10,20 @@ etapa requiere autorización explícita del usuario antes de avanzar.
 - Motor puro + huella + normalizador implementados y testeados (25 tests).
 - Migraciones aditivas creadas, **NO aplicadas**.
 
+## Estado de migraciones
+
+Las migraciones `20260719120000`, `20260719120100` y `20260719120200` están
+**aplicadas en producción** (`erzdifkvvailxnwdukzf`) desde 2026-07-17. Son
+inmutables: no reaplicar, editar ni revertir. Cualquier corrección debe entregarse
+mediante una migración nueva.
+
 ## Etapa 1 — Shadow (propuesta, sin escritura)
 
 - Correr el motor sobre movimientos operativos → generar candidatos + confianza + razones.
 - Comparar contra conciliaciones existentes (N:M FASE E) sin modificar nada.
-- **Requiere:** aplicar migraciones (`20260719120000`, `20260719120100`, `20260719120200`)
-  para persistir `bank_reconciliation_suggestions` (status `generated`/`pending_review`) y
-  habilitar la RPC de confirmación. Sin ellas: solo motor + fixtures. La conciliación
+- Las migraciones requeridas ya están aplicadas. La etapa shadow debe implementarse
+  sin conciliaciones reales ni automatización: primero solo lectura y medición; la
+  persistencia de sugerencias requiere una autorización separada. La conciliación
   efectiva vive SOLO en `bank_movement_reconciliation_links` (ver canonical-model).
 - Métrica objetivo: precisión por rango de confianza; % sin identificar; conflictos.
 
@@ -45,7 +52,7 @@ etapa requiere autorización explícita del usuario antes de avanzar.
 
 | Acción | Requiere |
 |---|---|
-| Aplicar migraciones de pagadores/conciliación | autorización + `apply_migration` (archivo por archivo) |
+| Corregir esquema aplicado | autorización + migración nueva; nunca editar/reaplicar las tres aplicadas |
 | Correr shadow contra datos reales | autorización (lectura; escritura solo tras migración) |
 | Habilitar confirmación asistida (UI) | autorización + migración aplicada |
 | Rollout de auto-conciliación | autorización + métricas |
