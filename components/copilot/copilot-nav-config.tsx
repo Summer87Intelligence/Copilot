@@ -199,6 +199,13 @@ const COPILOT_NAV_CONFIGURACION: CopilotNavGroup = {
   sectionTitle: "Configuración",
   items: [
     {
+      href: "/copilot/integridad",
+      label: "Integridad",
+      description: "Salud, consistencia y seguridad de la plataforma",
+      icon: ShieldCheck,
+      moduleKey: "admin",
+    },
+    {
       href: "/copilot/admin",
       label: "Configuración",
       description: "Usuarios, permisos y ajustes",
