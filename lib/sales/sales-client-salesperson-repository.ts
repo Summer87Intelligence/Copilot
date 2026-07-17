@@ -110,17 +110,24 @@ export type ClientAssignmentUpsertInput = {
   validFrom: string;
 };
 
-/** El RPC transaccional no está aplicado todavía (function missing). */
-function isFunctionMissing(error: { code?: string; message?: string } | null): boolean {
+/**
+ * El RPC atómico no está disponible/utilizable en este entorno → degradar al
+ * camino secuencial (service_role) probado. Cubre:
+ *  - función ausente o firma vieja (42883 / PGRST202 / "could not find the function"),
+ *  - `NO_WORKSPACE`: la app usa un cliente service_role sin Supabase-Auth, por lo que
+ *    una RPC v1 que derivaba el workspace de la sesión no puede resolverlo. La v2 recibe
+ *    p_workspace_id del servidor; mientras la v2 no esté aplicada, esto asegura fallback.
+ */
+function shouldFallbackToSequential(error: { code?: string; message?: string } | null): boolean {
   if (!error) return false;
   const code = error.code ?? "";
   const msg = (error.message ?? "").toLowerCase();
-  // 42883 = undefined_function (Postgres); PGRST202 = PostgREST no encontró la función.
   return (
     code === "42883" ||
     code === "PGRST202" ||
     msg.includes("could not find the function") ||
-    msg.includes("does not exist")
+    msg.includes("does not exist") ||
+    msg.includes("no_workspace")
   );
 }
 
@@ -166,7 +173,10 @@ export async function assignClientSalesperson(
     };
   }
 
+  // El workspace lo aporta el SERVIDOR (nunca el navegador): mismo patrón que el
+  // resto de escrituras del app, que usan un cliente service_role sin Supabase-Auth.
   const { error } = await supabase.rpc("copilot_assign_client_salesperson", {
+    p_workspace_id: workspaceId,
     p_customer_id: input.customerId,
     p_salesperson_id: input.salespersonId,
     p_valid_from: validFrom,
@@ -175,8 +185,8 @@ export async function assignClientSalesperson(
 
   if (!error) return { ok: true, atomic: true };
 
-  if (isFunctionMissing(error)) {
-    // Migración del RPC pendiente → camino secuencial (no atómico) para no romper.
+  if (shouldFallbackToSequential(error)) {
+    // RPC atómica no disponible (v2 sin aplicar / v1 sin workspace) → secuencial (no atómico).
     const seq = await upsertClientSalespersonAssignment(supabase, workspaceId, userId, input);
     return seq.ok ? { ok: true, atomic: false } : seq;
   }
