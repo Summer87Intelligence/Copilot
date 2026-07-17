@@ -5,7 +5,7 @@ import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body
 import { todayYmdMontevideo } from "@/lib/date/summer87-today";
 import { SALESPERSON_START_DATE } from "@/lib/sales/canonical/types";
 import { clientAssignmentSchema } from "@/lib/sales/sales-salesperson-write";
-import { upsertClientSalespersonAssignment } from "@/lib/sales/sales-client-salesperson-repository";
+import { assignClientSalesperson } from "@/lib/sales/sales-client-salesperson-repository";
 
 export const dynamic = "force-dynamic";
 
@@ -55,14 +55,21 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const result = await upsertClientSalespersonAssignment(supabase, tenantCompanyId, appUser.id ?? null, {
+  const result = await assignClientSalesperson(supabase, tenantCompanyId, appUser.id ?? null, {
     customerId: parsed.data.customerId,
     salespersonId: parsed.data.salespersonId,
     validFrom: effectiveFrom,
   });
 
   if (!result.ok) {
-    const status = result.code === "MIGRATION_PENDING" ? 503 : result.code === "OUT_OF_RANGE" ? 422 : 500;
+    const status =
+      result.code === "MIGRATION_PENDING"
+        ? 503
+        : result.code === "OUT_OF_RANGE"
+          ? 422
+          : result.code === "NOT_FOUND"
+            ? 404
+            : 500;
     return NextResponse.json(
       { ok: false as const, code: result.code, message: result.message },
       { status }

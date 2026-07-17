@@ -110,6 +110,80 @@ export type ClientAssignmentUpsertInput = {
   validFrom: string;
 };
 
+/** El RPC transaccional no está aplicado todavía (function missing). */
+function isFunctionMissing(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  const code = error.code ?? "";
+  const msg = (error.message ?? "").toLowerCase();
+  // 42883 = undefined_function (Postgres); PGRST202 = PostgREST no encontró la función.
+  return (
+    code === "42883" ||
+    code === "PGRST202" ||
+    msg.includes("could not find the function") ||
+    msg.includes("does not exist")
+  );
+}
+
+const RPC_ERROR_CODE_MAP: Record<string, { code: string; message: string }> = {
+  NO_WORKSPACE: { code: "NO_WORKSPACE", message: "Sesión sin workspace válido." },
+  OUT_OF_RANGE: {
+    code: "OUT_OF_RANGE",
+    message: `La asignación comercial por cliente arranca el ${SALESPERSON_START_DATE}.`,
+  },
+  CUSTOMER_NOT_FOUND: { code: "NOT_FOUND", message: "Cliente no encontrado en este workspace." },
+  SALESPERSON_NOT_FOUND: { code: "NOT_FOUND", message: "Comercial no encontrado o inactivo en este workspace." },
+};
+
+function mapRpcError(error: { message?: string }): { ok: false; code: string; message: string } {
+  const raw = (error.message ?? "").toUpperCase();
+  for (const key of Object.keys(RPC_ERROR_CODE_MAP)) {
+    if (raw.includes(key)) return { ok: false, ...RPC_ERROR_CODE_MAP[key]! };
+  }
+  return { ok: false, code: "DB_ERROR", message: "No se pudo actualizar el comercial." };
+}
+
+/**
+ * Asigna/cambia/desasigna el comercial vigente de un cliente de forma ATÓMICA.
+ *
+ * Prefiere el RPC transaccional `copilot_assign_client_salesperson` (cierra la
+ * vigente e inserta la nueva en UNA transacción; rollback total ante fallo). Si el
+ * RPC aún no está aplicado (migración pendiente), degrada al camino secuencial
+ * existente `upsertClientSalespersonAssignment` (NO atómico) para no romper la
+ * funcionalidad. Una vez aplicada la migración, el flujo es atómico sin más cambios.
+ */
+export async function assignClientSalesperson(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  userId: string | null,
+  input: ClientAssignmentUpsertInput
+): Promise<{ ok: true; atomic: boolean } | { ok: false; code: string; message: string }> {
+  const validFrom = input.validFrom.slice(0, 10);
+  if (validFrom < SALESPERSON_START_DATE) {
+    return {
+      ok: false,
+      code: "OUT_OF_RANGE",
+      message: `La asignación comercial por cliente arranca el ${SALESPERSON_START_DATE}.`,
+    };
+  }
+
+  const { error } = await supabase.rpc("copilot_assign_client_salesperson", {
+    p_customer_id: input.customerId,
+    p_salesperson_id: input.salespersonId,
+    p_valid_from: validFrom,
+    p_assigned_by: userId,
+  });
+
+  if (!error) return { ok: true, atomic: true };
+
+  if (isFunctionMissing(error)) {
+    // Migración del RPC pendiente → camino secuencial (no atómico) para no romper.
+    const seq = await upsertClientSalespersonAssignment(supabase, workspaceId, userId, input);
+    return seq.ok ? { ok: true, atomic: false } : seq;
+  }
+
+  return mapRpcError(error);
+}
+
 /**
  * Cierra la asignación abierta (si existe) el día anterior a validFrom
  * e inserta una nueva si salespersonId no es null.
