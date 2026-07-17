@@ -17,15 +17,31 @@ Las migraciones `20260719120000`, `20260719120100` y `20260719120200` están
 inmutables: no reaplicar, editar ni revertir. Cualquier corrección debe entregarse
 mediante una migración nueva.
 
-## Etapa 1 — Shadow (propuesta, sin escritura)
+## Etapa 1 — Shadow server (COMPLETA en código; dry-run pendiente de autorización)
 
-- Correr el motor sobre movimientos operativos → generar candidatos + confianza + razones.
-- Comparar contra conciliaciones existentes (N:M FASE E) sin modificar nada.
-- Las migraciones requeridas ya están aplicadas. La etapa shadow debe implementarse
-  sin conciliaciones reales ni automatización: primero solo lectura y medición; la
-  persistencia de sugerencias requiere una autorización separada. La conciliación
-  efectiva vive SOLO en `bank_movement_reconciliation_links` (ver canonical-model).
-- Métrica objetivo: precisión por rango de confianza; % sin identificar; conflictos.
+Implementado en `lib/bank/intelligence/server/` (ver
+`docs/architecture/bank-shadow-server.md`):
+
+- Lectura workspace-scoped de movimientos, recibos, clientes, facturas, pagadores y sugerencias.
+- Ejecución del motor determinístico existente → `ShadowProposal` explicable.
+- **dry-run por defecto** (sin persistencia).
+- **shadow persist** opcional (`dryRun=false` && `persist=true`) solo en
+  `bank_reconciliation_suggestions` + `reconciliation_events`.
+- Runner con alcance obligatorio (`movementId` | `movementIds` | `limit` ≤25).
+  No recorre los ~951 movimientos automáticamente.
+- Guardas + tests: sin RPC financiera, sin links/allocations, sin mutar tablas financieras.
+
+### Pendiente de autorización operativa
+
+- Ejecutar dry-run controlado contra un sample real de producción.
+- Habilitar shadow persist en un lote pequeño.
+- Medir precisión por rango de confianza / % sin identificar / conflictos.
+
+### Deuda conocida
+
+- Concurrencia real multi-conexión sobre el unique index activo: no cerrada en
+  la validación post-migración (solo baterías serializadas con rollback).
+- Shadow no materializa `bank_payer_identities` (solo lectura).
 
 ## Etapa 2 — Revisión manual asistida
 
@@ -37,6 +53,7 @@ mediante una migración nueva.
 
 - Candidatos ≥ 95 sin bloqueos: precargados para confirmación de 1 clic (no automáticos).
 - El usuario sigue siendo el que confirma; reversible siempre.
+- Usa `confirm_bank_reconciliation_v1` (fuera del shadow).
 
 ## Etapa 4 — Automatización limitada (bajo métricas)
 
@@ -53,8 +70,9 @@ mediante una migración nueva.
 | Acción | Requiere |
 |---|---|
 | Corregir esquema aplicado | autorización + migración nueva; nunca editar/reaplicar las tres aplicadas |
-| Correr shadow contra datos reales | autorización (lectura; escritura solo tras migración) |
-| Habilitar confirmación asistida (UI) | autorización + migración aplicada |
+| Dry-run controlado contra datos reales | autorización (solo lectura) |
+| Shadow persist en lote pequeño | autorización separada |
+| Habilitar confirmación asistida (UI + RPC) | autorización |
 | Rollout de auto-conciliación | autorización + métricas |
 | Push / deploy | autorización |
 

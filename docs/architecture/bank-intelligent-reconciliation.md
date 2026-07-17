@@ -1,6 +1,6 @@
 # Conciliación Bancaria Inteligente (FASE DOMAIN-IA-BANK-001)
 
-Última actualización: 2026-07-17. Estado: **motor puro + migraciones no aplicadas + modo shadow (diseño)**.
+Última actualización: 2026-07-17. Estado: **motor puro + migraciones aplicadas (inmutables) + capa shadow server implementada (dry-run default)**.
 
 ## Problema
 
@@ -25,7 +25,7 @@ Señales disponibles en `bank_movements`: `import_id` (lote), `bank_name`,
 `account_label`, `description`/`raw_description` (payer), `bank_reference`,
 `metadata` (jsonb), `amount`, `currency`, `direction`, `movement_date`.
 
-## Entidades nuevas (migraciones aditivas, **NO aplicadas**)
+## Entidades nuevas (migraciones aditivas, **aplicadas en producción / inmutables**)
 
 - `bank_payer_identities` — identidad estable del pagador (huella por
   referencia/cuenta/documento; nombre solo ayuda; `masked_account` + `account_hash`,
@@ -110,12 +110,14 @@ Todas las tablas: workspace-scoped (companies.id), RLS SELECT/INSERT/UPDATE/DELE
 service_role → bypass conservando el workspace del servidor). Sin `anon`/`public`.
 Aislamiento probado en el motor (cross-workspace → REJECT).
 
-## Modo shadow (primera versión)
+## Modo shadow (server implementado)
+
+Capa en `lib/bank/intelligence/server/` — ver `docs/architecture/bank-shadow-server.md`.
 
 El motor **solo propone**: analiza, calcula confianza, explica; no confirma, no aplica
-pagos, no cambia facturas/recibos/saldos. Persistir en `bank_reconciliation_suggestions`
-con status `generated`/`pending_review` requiere aplicar las migraciones (autorización). Mientras tanto:
-motor puro + fixtures + tests (no se simula persistencia falsa).
+pagos, no cambia facturas/recibos/saldos. Dry-run por defecto. Persistencia opcional
+solo en `bank_reconciliation_suggestions` + `reconciliation_events`. Runner con alcance
+explícito (no escanea todos los movimientos). Sin cron/UI/RPC financiera en esta fase.
 
 ## UI (diseño)
 

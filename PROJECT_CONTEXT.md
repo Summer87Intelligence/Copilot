@@ -1,5 +1,11 @@
 # Project Context
 
+## BANK — Shadow server implementation — 2026-07-17
+
+**FASE BANK-SHADOW-SERVER-IMPLEMENTATION-001 (local, sin push):** capa server-side en `lib/bank/intelligence/server/` — lectura workspace-scoped, motor puro → `ShadowProposal`, dry-run por defecto, shadow persist opcional solo en `bank_reconciliation_suggestions` + `reconciliation_events`. Runner con alcance obligatorio (`movementId`|`movementIds`|`limit`≤25). Sin RPC financiera, sin links/allocations, sin cron/UI, sin runner contra producción.
+- Docs: `docs/architecture/bank-shadow-server.md`, rollout actualizado.
+- Migraciones bancarias: aplicadas e inmutables (sin SQL remoto en esta fase).
+
 ## BANK — Validación post-migración inteligencia bancaria — 2026-07-17
 
 **Estado producción (`erzdifkvvailxnwdukzf`):** migraciones `20260719120000`, `20260719120100`, `20260719120200` **aplicadas**. Inmutables: no editar/reaplicar/revertir; correcciones solo con migración nueva.
