@@ -56,17 +56,41 @@ Relaciones soportadas: `receipt` (recibo Zeta), `planned_cash_obligation` (pago
 programado), `treasury_income`, `treasury_expense`, `bank_movement` (transferencia),
 `manual`, `ignored` (con motivo). Deshacer = archivar (`archived_at`), no borrar.
 
-## Sugerencias (existente)
+## Sugerencias (motor determinístico)
 
-`lib/bank-movements/bank-movement-reconciliation.ts` ya provee un motor determinístico
-(scoring importe/fecha/texto → confianza high/medium/low) para `planned_cash_obligation`.
-Una sugerencia **nunca** aplica cambios sin confirmación humana. Ampliar a `receipt`/
-`treasury_*` es trabajo siguiente (post-migración).
+Dos motores puros, sin DB ni IA, con el mismo scoring (importe/fecha/texto → confianza
+high/medium/low) y **siempre** con confirmación humana:
 
-## Estado y próximos pasos (post-autorización de migración)
+- `bank-movement-reconciliation.ts` (existente) — inline 1↔1 contra `planned_cash_obligation`.
+- `bank-reconciliation-suggestions.ts` (FASE E) — genérico sobre un candidato normalizado
+  (`ReconciliationCandidate`), reutiliza las primitivas del motor anterior y cubre
+  `planned_cash_obligation`, `receipt` y (etiquetas) `treasury_income`/`treasury_expense`.
+  Reglas duras: nunca cruza moneda ni dirección y el importe sugerido nunca excede el
+  remanente del movimiento (`suggestedApplyAmount = min(importe candidato, remanente)`).
 
-1. Aplicar `20260717120000` (RLS/índices verificados; sin DML/backfill).
-2. Repositorio + API para crear/archivar links (schema-tolerant; degrada si la tabla falta).
-3. Derivar `reconciliationStatus` del snapshot desde los links (además del inline).
-4. Extender el motor de sugerencias a recibos/ingresos/egresos.
-5. UI: acciones conciliación parcial/múltiple + deshacer auditable.
+El loader server `bank-reconciliation-suggestions-repository.server.ts` arma los candidatos
+de fuentes reales del tenant: obligaciones de la misma dirección (repo existente) y, solo
+para ingresos, recibos Zeta (`proto_receipts`). Excluye targets ya vinculados activos.
+
+## Capa server-side (FASE E — implementada)
+
+Migración `20260717120000` **APLICADA** (RLS 4 policies, 4 índices, 2 triggers; sin DML/backfill;
+`bank_movements`/legacy intactas). Sobre ella:
+
+- `bank-reconciliation-links-repository.ts` — listar por movimiento, vista con
+  aplicado/restante/estado, crear (valida con el dominio ANTES de escribir), archivar/deshacer.
+  Siempre por workspace (jamás acepta `workspace_id` del cliente). Schema-tolerant (42P01 → `migrationPending`).
+- API `/api/copilot/bank-movements/[id]/reconciliation-links`:
+  - `GET` → vista del movimiento (aplicado/restante/estado/links).
+  - `POST` → crea link; mapea INVALID_AMOUNT→400, MOVEMENT_NOT_FOUND→404,
+    OVER_APPLIED/DUPLICATE/MIGRATION_PENDING→409, CROSS_CURRENCY/CROSS_DIRECTION→422.
+  - `.../[linkId]` `DELETE` → archiva (auditable, no borra).
+  - `.../suggestions` `GET` → sugerencias multi-entidad.
+  Todos con `requireCopilotModule*` (read para GET, write para POST/DELETE): 401/403 cubiertos.
+
+## UI (FASE E — implementada)
+
+Sin sección paralela: la acción **"Conciliación detallada"** en cada tarjeta del panel
+existente abre un drawer (`bank-movement-reconciliation-drawer.tsx`) con estado, aplicado,
+restante, relaciones actuales (con **deshacer**), sugerencias (aplicar parcial/total) y
+**marcar ignorado**. La conciliación inline 1↔1 previa sigue disponible.
