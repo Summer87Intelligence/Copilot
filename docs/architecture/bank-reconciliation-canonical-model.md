@@ -49,11 +49,18 @@ canónico y recién ahí `suggestions.status='confirmed'` + `confirmed_link_id` 
 
 ## RPC transaccional — `confirm_bank_reconciliation_v1`
 
-`SECURITY INVOKER`, `search_path=public`, workspace **del servidor** (`p_workspace_id`,
-nunca del navegador; guard `WORKSPACE_MISMATCH` si hay sesión Auth real distinta),
-`GRANT` solo `authenticated`/`service_role`, sin `anon`/`public`.
+`SECURITY INVOKER`, `search_path='public, pg_temp'`. **Solo `service_role`** puede
+ejecutarla (decisión de revisión): `authenticated`/`anon`/`public` **no** tienen
+EXECUTE → sin superficie de spoofing de `p_workspace_id`/`p_created_by` desde el
+navegador. El servidor (cliente service_role, auth propia por cookie Copilot) deriva
+workspace y actor de la sesión; la RPC **valida `p_created_by`** contra `app_users`
+del workspace (`is_active`), y mantiene el guard `WORKSPACE_MISMATCH` para un eventual
+camino authenticated. Corre como service_role → RLS omitida → **la función valida
+todo** (workspace en cada FK).
 
-Inputs: `p_workspace_id, p_movement_id, p_receipt_id, p_suggestion_id, p_allocations, p_created_by`.
+Inputs: `p_workspace_id, p_movement_id, p_receipt_id, p_suggestion_id, p_allocations,
+p_applied_amount, p_created_by`. `p_applied_amount` = importe del link (permite saldo
+sin aplicar); las allocations se **agregan por factura** (dedup del JSON).
 
 Pasos (en UNA transacción): idempotencia (sugerencia ya confirmada / link ya existente)
 → lock movimiento (`FOR UPDATE`) + validar workspace/dirección/estado → lock recibo +
@@ -74,10 +81,14 @@ Contrato puro espejado y testeado en `lib/bank/intelligence/allocation-validatio
 
 ### Idempotencia / concurrencia
 
-`FOR UPDATE` serializa confirmaciones del mismo movimiento; doble clic / reintento /
-dos usuarios → la segunda ejecución devuelve el link existente sin duplicar link,
-allocations ni eventos. Reversión (`reverse_bank_reconciliation_v1`) es idempotente
-(doble reversión = no-op) y archiva sin borrar (preserva historial).
+`FOR UPDATE` serializa confirmaciones del mismo movimiento. **Repetición idéntica**
+(mismo movimiento↔recibo, mismo importe) → devuelve el link existente (`already_linked`)
+sin escribir. **Conflicto** (misma clave, importe distinto) → `IDEMPOTENCY_CONFLICT`
+(no devuelve un link incompatible en silencio). Reversión es idempotente (doble
+reversión = no-op), archiva sin borrar, y marca la sugerencia como **`reversed`**
+(preserva que SÍ fue confirmada; no vuelve a `pending_review`). El historial completo
+vive en `reconciliation_events` (append-only; FKs `ON DELETE SET NULL`/`RESTRICT` → un
+evento no desaparece por borrar/archivar otra entidad).
 
 ## Saldo sin aplicar
 
