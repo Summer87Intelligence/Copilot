@@ -244,7 +244,7 @@ describe("assignClientSalesperson — wrapper ATÓMICO (RPC-first)", () => {
     expect(rpcCalls).toHaveLength(1);
     expect(rpcCalls[0]).toMatchObject({
       name: "copilot_assign_client_salesperson",
-      params: { p_customer_id: CUST, p_salesperson_id: "camila", p_valid_from: "2026-07-17", p_assigned_by: "user-1" },
+      params: { p_workspace_id: WS, p_customer_id: CUST, p_salesperson_id: "camila", p_valid_from: "2026-07-17", p_assigned_by: "user-1" },
     });
     // No hubo escrituras secuenciales (todo lo hizo el RPC en una transacción).
     expect(fromInserts).toHaveLength(0);
@@ -289,6 +289,22 @@ describe("assignClientSalesperson — wrapper ATÓMICO (RPC-first)", () => {
     });
     expect(res).toEqual({ ok: true, atomic: false });
     expect(fromInserts).toHaveLength(1); // el fallback secuencial insertó
+  });
+
+  it("NO_WORKSPACE del RPC (service_role sin auth.uid / firma vieja) → degrada al secuencial", async () => {
+    // Reproduce el 500 de producción: la v1 derivaba workspace de la sesión y fallaba
+    // bajo service_role. El wrapper ahora degrada en vez de devolver DB_ERROR/500.
+    const { client, fromInserts } = makeSupabaseWithRpc({
+      rpc: { data: null, error: { code: "P0001", message: "NO_WORKSPACE" } },
+      fromQueue: [{ data: [], error: null }, { error: null }],
+    });
+    const res = await assignClientSalesperson(client, WS, "user-1", {
+      customerId: CUST,
+      salespersonId: "camila",
+      validFrom: "2026-07-17",
+    });
+    expect(res).toEqual({ ok: true, atomic: false });
+    expect(fromInserts).toHaveLength(1);
   });
 
   it("valida rango antes de tocar el RPC → OUT_OF_RANGE", async () => {
