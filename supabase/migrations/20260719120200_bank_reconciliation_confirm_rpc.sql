@@ -136,11 +136,14 @@ BEGIN
   -- Aplicaciones a facturas: AGREGADAS por factura (dedup del JSON) y validando
   -- allocations EXISTENTES + NUEVAS ≤ saldo de cada factura (bloqueada).
   IF p_allocations IS NOT NULL AND jsonb_typeof(p_allocations) = 'array' THEN
+    -- ORDER BY invoice_id ASC → orden de locks DETERMINÍSTICO (evita deadlocks entre
+    -- confirmaciones concurrentes que envían las facturas en distinto orden en el JSON).
     FOR v_inv IN
       SELECT (elem->>'invoice_id')::uuid AS invoice_id, sum((elem->>'amount')::numeric(14,2)) AS amt
         FROM jsonb_array_elements(p_allocations) elem
        WHERE (elem->>'invoice_id') IS NOT NULL
        GROUP BY 1
+       ORDER BY 1
     LOOP
       IF NOT (v_inv.amt > 0) THEN RAISE EXCEPTION 'INVALID_ALLOCATION'; END IF;
       SELECT id, balance_amount, coalesce(currency_code, currency) AS currency

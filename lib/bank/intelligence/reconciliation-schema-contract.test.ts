@@ -54,6 +54,7 @@ describe("esquema canónico de conciliación — contrato", () => {
     expect(rpc).toContain("ALLOCATIONS_EXCEED_LINK");
     expect(rpc).toContain("INVOICE_FULLY_PAID");
     expect(rpc).toContain("GROUP BY 1"); // agrega allocations por factura (dedup del JSON)
+    expect(rpc).toMatch(/GROUP BY 1\s*\n\s*ORDER BY 1/); // orden de locks determinístico (anti-deadlock)
     expect(rpc).toContain("SET search_path TO 'public, pg_temp'");
   });
 
