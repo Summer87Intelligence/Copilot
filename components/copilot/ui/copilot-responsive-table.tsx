@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { ArrowDownUp, ChevronDown, ChevronUp } from "lucide-react";
 
 import type { SortDirection, SortState } from "@/lib/ui/table-sort-model";
@@ -43,6 +43,15 @@ export type CopilotResponsiveTableProps<T> = {
   stickyHeader?: boolean;
   /** Ordenamiento opcional (controlado). Sólo afecta columnas con `sortKey`. */
   sort?: CopilotResponsiveTableSort;
+  /**
+   * Detalle expandible por fila (solo desktop/tablet). Si se provee junto con
+   * `getRowExpanded`, cada fila expandida renderiza una fila de detalle a ancho
+   * completo debajo. La expansión es CONTROLADA por el consumer (estado + toggle
+   * vía `onRowClick`). En mobile el detalle no se muestra (las cards no expanden).
+   */
+  expandedRow?: (row: T) => ReactNode;
+  /** Devuelve true si la fila está expandida (requerido para usar `expandedRow`). */
+  getRowExpanded?: (row: T) => boolean;
 };
 
 function ariaSortValue(
@@ -108,9 +117,12 @@ export function CopilotResponsiveTable<T>({
   ariaLabel,
   stickyHeader = false,
   sort,
+  expandedRow,
+  getRowExpanded,
 }: CopilotResponsiveTableProps<T>) {
   const isEmpty = rows.length === 0;
   const interactive = Boolean(onRowClick);
+  const expandable = Boolean(expandedRow);
   const thClass = stickyHeader ? `${TH_BASE_CLASS} ${TH_STICKY_CLASS}` : TH_BASE_CLASS;
 
   const table = (
@@ -161,21 +173,33 @@ export function CopilotResponsiveTable<T>({
           rows.map((row) => {
             const key = getRowKey(row);
             const extra = rowClassName?.(row) ?? "";
+            const isExpanded = expandable && Boolean(getRowExpanded?.(row));
+            const detailId = expandable ? `${key}-detail` : undefined;
             return (
-              <tr
-                key={key}
-                className={`${ROW_BASE_CLASS} ${interactive ? "cursor-pointer" : ""} ${extra}`.trim()}
-                onClick={interactive ? () => onRowClick?.(row) : undefined}
-              >
-                {columns.map((col) => (
-                  <td
-                    key={col.key}
-                    className={`${TD_BASE_CLASS} ${col.cellClassName ?? ""}`.trim()}
-                  >
-                    {col.render(row)}
-                  </td>
-                ))}
-              </tr>
+              <Fragment key={key}>
+                <tr
+                  className={`${ROW_BASE_CLASS} ${interactive ? "cursor-pointer" : ""} ${extra}`.trim()}
+                  onClick={interactive ? () => onRowClick?.(row) : undefined}
+                  aria-expanded={expandable ? isExpanded : undefined}
+                  aria-controls={isExpanded ? detailId : undefined}
+                >
+                  {columns.map((col) => (
+                    <td
+                      key={col.key}
+                      className={`${TD_BASE_CLASS} ${col.cellClassName ?? ""}`.trim()}
+                    >
+                      {col.render(row)}
+                    </td>
+                  ))}
+                </tr>
+                {isExpanded ? (
+                  <tr id={detailId}>
+                    <td colSpan={Math.max(1, columns.length)} className="p-0">
+                      {expandedRow!(row)}
+                    </td>
+                  </tr>
+                ) : null}
+              </Fragment>
             );
           })
         )}
