@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Eye, Loader2, XCircle } from "lucide-react";
+import { Check, Eye, Loader2, SlidersHorizontal, XCircle } from "lucide-react";
 
+import { BankMovementReconciliationDrawer } from "@/components/copilot/bank-movements/bank-movement-reconciliation-drawer";
 import { BankMovementsFiltersBar } from "@/components/copilot/bank-movements/bank-movements-filters-bar";
 import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
 import {
@@ -65,6 +66,7 @@ export function BankMovementsReconciliationPanel({
   const [actingId, setActingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<ReconciliationViewFilters>(DEFAULT_RECONCILIATION_VIEW_FILTERS);
+  const [detailMovement, setDetailMovement] = useState<{ id: string; label: string } | null>(null);
 
   const apiStatus = reconciliationApiStatusFromSuggestion(filters.suggestion);
 
@@ -229,10 +231,26 @@ export function BankMovementsReconciliationPanel({
               onReconcile={(suggestion) => void reconcile(item, suggestion)}
               onIgnore={() => void ignore(item.movement.id)}
               onViewMovement={onViewMovement}
+              onDetail={() =>
+                setDetailMovement({ id: item.movement.id, label: item.movement.description })
+              }
             />
           ))}
         </div>
       )}
+
+      {detailMovement ? (
+        <BankMovementReconciliationDrawer
+          movementId={detailMovement.id}
+          movementLabel={detailMovement.label}
+          open
+          onClose={() => setDetailMovement(null)}
+          onChanged={async () => {
+            await onMovementUpdated?.();
+            await load();
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -243,12 +261,14 @@ function ReconciliationMovementCard({
   onReconcile,
   onIgnore,
   onViewMovement,
+  onDetail,
 }: {
   item: ReconciliationListItem;
   acting: boolean;
   onReconcile: (suggestion: ReconciliationSuggestion) => void;
   onIgnore: () => void;
   onViewMovement?: (movementId: string) => void;
+  onDetail: () => void;
 }) {
   const { movement } = item;
   const best = item.suggestions[0] ?? null;
@@ -315,6 +335,14 @@ function ReconciliationMovementCard({
             Ver movimiento
           </button>
         ) : null}
+        <button
+          type="button"
+          onClick={onDetail}
+          className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+        >
+          <SlidersHorizontal className="mr-1 h-3.5 w-3.5" aria-hidden />
+          Conciliación detallada
+        </button>
         <button
           type="button"
           onClick={onIgnore}
