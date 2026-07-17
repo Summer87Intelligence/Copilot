@@ -182,12 +182,16 @@ export function buildSalesOverview(
   options?: {
     firstSaleByCustomerId?: Map<string, string>;
     assignedCustomerCountBySalesperson?: Map<string | null, number>;
+    currentSalespersonByCustomerId?: Map<string, string>;
+    salespersonNameById?: Map<string, string>;
   }
 ) {
   const { dateFrom, dateTo, comparisonDateFrom, comparisonDateTo } = filters;
   const aggOpts = {
     firstSaleByCustomerId: options?.firstSaleByCustomerId,
     assignedCustomerCountBySalesperson: options?.assignedCustomerCountBySalesperson,
+    currentSalespersonByCustomerId: options?.currentSalespersonByCustomerId,
+    salespersonNameById: options?.salespersonNameById,
   };
 
   const snapshot = buildSalesPeriodSnapshot(documents, dateFrom, dateTo, aggOpts);

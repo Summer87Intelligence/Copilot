@@ -101,6 +101,14 @@ export type SalesAggregationOptions = {
   /** customerId → primera venta válida (historia extendida). */
   firstSaleByCustomerId?: Map<string, string>;
   assignedCustomerCountBySalesperson?: Map<string | null, number>;
+  /**
+   * customerId → comercial VIGENTE del cliente (asignación abierta, valid_to IS NULL).
+   * Distinto de la atribución del período (`salespersonId`, resuelta por fecha de venta):
+   * este es el comercial "actual" que edita el selector de Ventas → Clientes.
+   */
+  currentSalespersonByCustomerId?: Map<string, string>;
+  /** salespersonId → displayName, para nombrar el comercial vigente. */
+  salespersonNameById?: Map<string, string>;
 };
 
 export function buildSalesPeriodSnapshot(
@@ -431,6 +439,9 @@ export function buildCustomerSalesSummary(
       UYU: acc.sales.UYU - acc.creditNotes.UYU,
       USD: acc.sales.USD - acc.creditNotes.USD,
     };
+    const currentSpId = acc.customerId
+      ? options?.currentSalespersonByCustomerId?.get(acc.customerId) ?? null
+      : null;
     rows.push({
       customerId: acc.customerId,
       customerCode: acc.customerCode,
@@ -451,6 +462,8 @@ export function buildCustomerSalesSummary(
       type,
       salespersonId: acc.salespersonId,
       salespersonName: acc.salespersonName,
+      currentSalespersonId: currentSpId,
+      currentSalespersonName: currentSpId ? options?.salespersonNameById?.get(currentSpId) ?? null : null,
     });
   }
   rows.sort((a, b) => b.netSalesByCurrency.UYU + b.netSalesByCurrency.USD - (a.netSalesByCurrency.UYU + a.netSalesByCurrency.USD));

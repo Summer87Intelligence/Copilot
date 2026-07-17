@@ -242,9 +242,15 @@ export type CustomerSalesSummaryRow = {
 
   type: "new" | "recurring";
 
-  /** Comercial vigente del cliente (asignación por cliente FASE 9D). */
+  /** Comercial ATRIBUIDO al período (resuelto por fecha de cada venta). */
   salespersonId: string | null;
   salespersonName: string | null;
+  /**
+   * Comercial VIGENTE del cliente (asignación abierta actual). Es el valor que
+   * edita el selector de Ventas → Clientes; independiente del período mostrado.
+   */
+  currentSalespersonId: string | null;
+  currentSalespersonName: string | null;
 };
 
 export type SalesCollectionSummary = {

@@ -37,6 +37,7 @@ import {
   loadClientSalespersonAssignments,
   resolveClientSalespersonOnDate,
   countAssignedCustomersBySalesperson,
+  currentClientSalespersonMap,
   type ClientSalespersonAssignmentRow,
 } from "@/lib/sales/sales-client-salesperson-repository";
 import { isCreditNoteFromMetadata } from "@/lib/copilot-zeta-credit-note";
@@ -54,6 +55,10 @@ export type SalesDataset = {
   firstSaleByCustomerId: Map<string, string>;
   /** Clientes con asignación abierta por comercial. */
   assignedCustomerCountBySalesperson: Map<string | null, number>;
+  /** customerId → comercial VIGENTE (asignación abierta) — para el selector editable. */
+  currentSalespersonByCustomerId: Map<string, string>;
+  /** salespersonId → displayName. */
+  salespersonNameById: Map<string, string>;
   meta: {
     invoiceRowsLoaded: number;
     documentsBuilt: number;
@@ -224,6 +229,8 @@ export async function loadSalesDataset(
     clientAssignments,
     firstSaleByCustomerId,
     assignedCustomerCountBySalesperson: countAssignedCustomersBySalesperson(clientAssignments),
+    currentSalespersonByCustomerId: currentClientSalespersonMap(clientAssignments),
+    salespersonNameById: spNameById,
     meta: {
       invoiceRowsLoaded: invoiceRows.length,
       documentsBuilt: documents.length,

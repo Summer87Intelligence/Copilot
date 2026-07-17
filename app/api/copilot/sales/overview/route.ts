@@ -19,6 +19,8 @@ export async function GET(request: NextRequest) {
     const overview = buildSalesOverview(dataset.documents, dataset.catalog, filters, {
       firstSaleByCustomerId: dataset.firstSaleByCustomerId,
       assignedCustomerCountBySalesperson: dataset.assignedCustomerCountBySalesperson,
+      currentSalespersonByCustomerId: dataset.currentSalespersonByCustomerId,
+      salespersonNameById: dataset.salespersonNameById,
     });
 
     return NextResponse.json({

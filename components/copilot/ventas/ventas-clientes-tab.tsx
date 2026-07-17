@@ -94,7 +94,12 @@ export function VentasClientesTab({
   const [assignMsg, setAssignMsg] = useState<{ tone: "positive" | "danger"; text: string } | null>(null);
 
   const assignClient = useCallback(
-    async (customerId: string, salespersonId: string | null) => {
+    async (customerId: string, salespersonId: string | null, previousId: string | null) => {
+      // Idempotente en cliente: si no cambió, no dispares una escritura.
+      if ((salespersonId ?? null) === (previousId ?? null)) {
+        setAssignMsg({ tone: "positive", text: "Este cliente ya tiene ese comercial asignado." });
+        return;
+      }
       setAssigningId(customerId);
       setAssignMsg(null);
       try {
@@ -105,13 +110,26 @@ export function VentasClientesTab({
         });
         const json = await res.json();
         if (!res.ok || !json.ok) {
-          setAssignMsg({ tone: "danger", text: json?.message ?? "No se pudo asignar el comercial." });
+          const text =
+            json?.code === "NOT_FOUND"
+              ? "El comercial seleccionado no está disponible."
+              : salespersonId
+                ? "No se pudo actualizar el comercial. Intentalo nuevamente."
+                : "No se pudo quitar el comercial. Intentalo nuevamente.";
+          setAssignMsg({ tone: "danger", text });
           return;
         }
-        setAssignMsg({ tone: "positive", text: "Comercial del cliente actualizado." });
+        setAssignMsg({
+          tone: "positive",
+          text: salespersonId
+            ? previousId
+              ? "Comercial actualizado correctamente."
+              : "Comercial asignado correctamente."
+            : "Comercial quitado correctamente.",
+        });
         onAssignmentChange?.();
       } catch {
-        setAssignMsg({ tone: "danger", text: "No se pudo asignar el comercial." });
+        setAssignMsg({ tone: "danger", text: "No se pudo actualizar el comercial. Intentalo nuevamente." });
       } finally {
         setAssigningId(null);
       }
@@ -162,10 +180,10 @@ export function VentasClientesTab({
       render: (r) =>
         canAssign && r.customerId ? (
           <select
-            value={r.salespersonId ?? ""}
+            value={r.currentSalespersonId ?? ""}
             disabled={assigningId === r.customerId}
             onClick={(e) => e.stopPropagation()}
-            onChange={(e) => assignClient(r.customerId!, e.target.value || null)}
+            onChange={(e) => assignClient(r.customerId!, e.target.value || null, r.currentSalespersonId)}
             aria-label={`Comercial de ${r.customerName}`}
             className="h-8 max-w-[160px] rounded-lg border border-[var(--copilot-border-strong)] bg-[var(--copilot-panel-bg)] px-2 text-xs text-[var(--copilot-ink)] disabled:opacity-40"
           >
