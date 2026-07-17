@@ -31,9 +31,9 @@ CREATE TABLE IF NOT EXISTS public.bank_reconciliation_suggestions (
     CHECK (recommended_action IN ('AUTO_RECONCILE_CANDIDATE','REVIEW','UNIDENTIFIED','REJECT')),
   engine_version      INTEGER       NOT NULL DEFAULT 1,
   status              TEXT          NOT NULL DEFAULT 'generated'
-    CHECK (status IN ('generated','pending_review','confirmed','rejected','superseded','expired')),
-  -- Anti-drift: 'confirmed' SOLO con link canónico creado por la RPC; 'rejected'/
-  -- 'superseded' nunca puede tener link.
+    CHECK (status IN ('generated','pending_review','confirmed','rejected','superseded','expired','reversed')),
+  -- Anti-drift: 'confirmed' SOLO con link canónico creado por la RPC; los estados
+  -- terminales sin vínculo activo ('rejected'/'superseded'/'reversed') no llevan link.
   confirmed_link_id   UUID          NULL REFERENCES public.bank_movement_reconciliation_links(id) ON DELETE SET NULL,
   reviewed_by         UUID          NULL REFERENCES public.app_users(id) ON DELETE SET NULL,
   reviewed_at         TIMESTAMPTZ   NULL,
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS public.bank_reconciliation_suggestions (
   created_at          TIMESTAMPTZ   NOT NULL DEFAULT now(),
   updated_at          TIMESTAMPTZ   NOT NULL DEFAULT now(),
   CONSTRAINT brs_confirmed_requires_link CHECK (status <> 'confirmed' OR confirmed_link_id IS NOT NULL),
-  CONSTRAINT brs_rejected_has_no_link    CHECK (status NOT IN ('rejected','superseded') OR confirmed_link_id IS NULL)
+  CONSTRAINT brs_rejected_has_no_link    CHECK (status NOT IN ('rejected','superseded','reversed') OR confirmed_link_id IS NULL)
 );
 
 COMMENT ON TABLE public.bank_reconciliation_suggestions IS
@@ -74,6 +74,11 @@ COMMENT ON TABLE public.payment_allocations IS
 
 CREATE INDEX IF NOT EXISTS pa_ws_link_idx    ON public.payment_allocations (workspace_id, reconciliation_link_id) WHERE status='active';
 CREATE INDEX IF NOT EXISTS pa_ws_invoice_idx ON public.payment_allocations (workspace_id, invoice_id) WHERE status='active';
+-- Una factura aparece a lo sumo UNA vez por link activo (la RPC agrega el JSON por
+-- factura). Varios links → una factura SÍ está permitido (multi-pago legítimo).
+CREATE UNIQUE INDEX IF NOT EXISTS pa_link_invoice_active_uidx
+  ON public.payment_allocations (workspace_id, reconciliation_link_id, invoice_id)
+  WHERE status='active' AND invoice_id IS NOT NULL;
 
 -- ── Eventos (append-only) ─────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.reconciliation_events (
