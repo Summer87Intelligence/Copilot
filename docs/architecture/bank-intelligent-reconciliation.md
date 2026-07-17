@@ -32,8 +32,10 @@ Señales disponibles en `bank_movements`: `import_id` (lote), `bank_name`,
   nunca cuenta completa).
 - `client_payer_links` — relación **N:M** pagador↔cliente con `confidence` y `status`
   (detected/suggested/confirmed/learned/conflicted/inactive/rejected). No booleano.
-- `bank_reconciliation_matches` — conciliación por movimiento (cliente/pagador/recibo,
-  confianza, `reasons`/`warnings`, estado, engine_version).
+- `bank_reconciliation_suggestions` — PROPUESTA por movimiento (cliente/pagador/recibo,
+  confianza, `reasons`/`warnings`, estado, engine_version). **No es la fuente financiera**:
+  la confirmación crea el link canónico (FASE E) vía RPC. Ver
+  `bank-reconciliation-canonical-model.md`.
 - `payment_allocations` — aplicación a factura(s), parcial/múltiple; Σ ≤ movimiento,
   ≤ saldo factura, ≤ importe recibo.
 - `reconciliation_events` — trazabilidad append-only (sin secretos).
@@ -111,8 +113,8 @@ Aislamiento probado en el motor (cross-workspace → REJECT).
 ## Modo shadow (primera versión)
 
 El motor **solo propone**: analiza, calcula confianza, explica; no confirma, no aplica
-pagos, no cambia facturas/recibos/saldos. Persistir en `bank_reconciliation_matches`
-con status `suggested` requiere aplicar las migraciones (autorización). Mientras tanto:
+pagos, no cambia facturas/recibos/saldos. Persistir en `bank_reconciliation_suggestions`
+con status `generated`/`pending_review` requiere aplicar las migraciones (autorización). Mientras tanto:
 motor puro + fixtures + tests (no se simula persistencia falsa).
 
 ## UI (diseño)

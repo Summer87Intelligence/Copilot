@@ -13,7 +13,7 @@ forma trazable. Ninguna segunda tabla paralela de facturas/clientes/movimientos.
 | Factura | `proto_invoices` (Zeta) | Ventas (emitida), Cobranza (pendiente/atraso), Cliente 360, Banco (destino), Finanzas, Reportes |
 | Recibo/cobro | `proto_receipts` (Zeta) | Cobranza, Cliente 360, Banco, Finanzas |
 | Movimiento bancario | `bank_movements` (canónico, FASE E) | Banco, Tesorería (lectura), Cliente 360 (conciliado) |
-| Conciliación N:M | `bank_movement_reconciliation_links` + (nuevo) `bank_reconciliation_matches` | Banco, Cobranza, Cliente 360 |
+| Conciliación (financiera) | `bank_movement_reconciliation_links` (canónica) + `bank_reconciliation_suggestions` (propuesta) | Banco, Cobranza, Cliente 360 |
 | Comercial / asignación | `sales_salespersons` / `sales_client_salespersons` | Ventas, Cliente 360 |
 | Pagador bancario | (nuevo) `bank_payer_identities` + `client_payer_links` | Banco, Cliente 360 |
 

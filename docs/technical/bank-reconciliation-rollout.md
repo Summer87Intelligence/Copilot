@@ -14,8 +14,10 @@ etapa requiere autorización explícita del usuario antes de avanzar.
 
 - Correr el motor sobre movimientos operativos → generar candidatos + confianza + razones.
 - Comparar contra conciliaciones existentes (N:M FASE E) sin modificar nada.
-- **Requiere:** aplicar migraciones (`20260719120000`, `20260719120100`) para persistir
-  `bank_reconciliation_matches` con status `suggested`. Sin ellas: solo motor + fixtures.
+- **Requiere:** aplicar migraciones (`20260719120000`, `20260719120100`, `20260719120200`)
+  para persistir `bank_reconciliation_suggestions` (status `generated`/`pending_review`) y
+  habilitar la RPC de confirmación. Sin ellas: solo motor + fixtures. La conciliación
+  efectiva vive SOLO en `bank_movement_reconciliation_links` (ver canonical-model).
 - Métrica objetivo: precisión por rango de confianza; % sin identificar; conflictos.
 
 ## Etapa 2 — Revisión manual asistida
