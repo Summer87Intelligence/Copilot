@@ -132,7 +132,7 @@ export async function upsertClientSalespersonAssignment(
   // Cerrar asignación abierta.
   const { data: openRows, error: openErr } = await supabase
     .from("sales_client_salespersons")
-    .select("id, valid_from")
+    .select("id, valid_from, salesperson_id")
     .eq("workspace_id", workspaceId)
     .eq("customer_id", input.customerId)
     .is("valid_to", null);
@@ -146,6 +146,14 @@ export async function upsertClientSalespersonAssignment(
       };
     }
     return { ok: false, code: "DB_ERROR", message: openErr.message };
+  }
+
+  // Idempotencia: si el comercial vigente ya es el pedido, no churnear historial.
+  if (
+    input.salespersonId &&
+    (openRows ?? []).some((row) => str((row as { salesperson_id?: unknown }).salesperson_id) === input.salespersonId)
+  ) {
+    return { ok: true };
   }
 
   for (const row of openRows ?? []) {
