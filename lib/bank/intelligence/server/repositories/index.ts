@@ -387,6 +387,56 @@ export async function listSuggestionsByScope(
   return ((data ?? []) as Record<string, unknown>[]).map(mapSuggestionRow);
 }
 
+/** Cuenta sugerencias por ÁMBITO (opcionalmente por estados). Filtro estructurado, sin JSON. */
+export async function countSuggestionsByScope(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  scope: SuggestionScope,
+  opts?: { statuses?: ShadowSuggestionStatus[] }
+): Promise<number> {
+  const ws = requireWorkspace(workspaceId);
+  let q = supabase
+    .from("bank_reconciliation_suggestions")
+    .select("id", { count: "exact", head: true })
+    .eq("workspace_id", ws)
+    .eq("suggestion_scope", scope);
+  if (opts?.statuses && opts.statuses.length > 0) q = q.in("status", opts.statuses);
+  const { count, error } = await q;
+  if (error) throw new Error(`SHADOW_SUGGESTIONS_COUNT_FAILED: ${error.message}`);
+  return count ?? 0;
+}
+
+export async function countOperationalSuggestions(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  opts?: { statuses?: ShadowSuggestionStatus[] }
+): Promise<number> {
+  return countSuggestionsByScope(supabase, workspaceId, "operational", opts);
+}
+
+export async function countHistoricalSuggestions(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  opts?: { statuses?: ShadowSuggestionStatus[] }
+): Promise<number> {
+  return countSuggestionsByScope(supabase, workspaceId, "historical_review", opts);
+}
+
+/** Sugerencias en estado activo (pendientes de revisión) en TODOS los ámbitos. */
+export async function countPendingSuggestions(
+  supabase: SupabaseClient,
+  workspaceId: string
+): Promise<number> {
+  const ws = requireWorkspace(workspaceId);
+  const { count, error } = await supabase
+    .from("bank_reconciliation_suggestions")
+    .select("id", { count: "exact", head: true })
+    .eq("workspace_id", ws)
+    .in("status", ["generated", "pending_review"]);
+  if (error) throw new Error(`SHADOW_SUGGESTIONS_PENDING_COUNT_FAILED: ${error.message}`);
+  return count ?? 0;
+}
+
 /** Consulta operativa explícita: SOLO `suggestion_scope='operational'`. */
 export async function listOperationalSuggestions(
   supabase: SupabaseClient,
