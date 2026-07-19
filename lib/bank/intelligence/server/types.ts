@@ -78,10 +78,15 @@ export type ShadowProposal = {
   ambiguityReason: string | null;
   collisionDetected: boolean;
   /**
-   * true ⇒ movimiento `matched` incluido solo para auditoría. NUNCA se persiste,
-   * nunca AUTO, siempre lleva warning MATCHED_MOVEMENT_AUDIT. Default (ausente) = false.
+   * true ⇒ propuesta audit-only (movimiento `matched` o histórico). NUNCA se persiste,
+   * nunca AUTO. Default (ausente) = false.
    */
   auditOnly?: boolean;
+  /**
+   * true ⇒ movimiento histórico (`< 2026-07-01`) analizado en modo audit. Implica
+   * `auditOnly=true`, warning HISTORICAL_SHADOW_AUDIT y nunca AUTO. Default (ausente) = false.
+   */
+  historicalAudit?: boolean;
 };
 
 export type ShadowSuggestionRow = {
@@ -122,6 +127,13 @@ export type ShadowRunOptions = {
    * que NUNCA se persiste ni modifica nada. Fuera de esta bandera, `matched` se excluye.
    */
   includeMatchedForAudit?: boolean;
+  /**
+   * Solo server-side. Default false. Habilita movimientos históricos (`< 2026-07-01`,
+   * `>= 2026-01-01`) como historical-audit (dry-run only). **Incompatible con `persist=true`**
+   * (falla con HISTORICAL_PERSIST_NOT_ALLOWED) y **exige IDs explícitos** (no escaneo/limit).
+   * Marca `historicalAudit=true` + `auditOnly=true`, warning HISTORICAL_SHADOW_AUDIT, nunca AUTO.
+   */
+  includeHistoricalForShadow?: boolean;
 };
 
 export type ShadowPersistStats = {

@@ -18,9 +18,18 @@
  *
  * `matched` solo puede incluirse con `includeMatchedForAudit=true` y queda como
  * audit-only: NO persiste, NUNCA AUTO, warning MATCHED_MOVEMENT_AUDIT, no modifica nada.
+ *
+ * Los movimientos **anteriores al corte bancario** (`< 2026-07-01`) se excluyen por
+ * defecto (`MOVEMENT_BEFORE_CUTOFF`). Solo con `includeHistoricalForShadow=true`
+ * (server-side, dry-run only) pueden analizarse como **historical audit**: audit-only,
+ * NUNCA AUTO, warning HISTORICAL_SHADOW_AUDIT, sin persistencia. El piso financiero
+ * global (`< 2026-01-01`) SIEMPRE excluye, incluso en modo histórico.
+ *
+ * Los tres flujos se mantienen separados: operativo, matched-audit e historical-audit.
  */
 
 import { isBankMovementDateHistorical } from "@/lib/bank/canonical/historical-policy";
+import { isPreOperationalPeriod } from "@/lib/copilot-operational-period";
 
 /** Estados conciliables/pendientes de revisión que el shadow puede procesar. */
 export const SHADOW_ELIGIBLE_STATUSES = ["pending", "suggested", "needs_review"] as const;
@@ -44,17 +53,24 @@ export type ShadowEligibilityInput = {
   hasActiveCanonicalLink: boolean;
   /** Solo server-side. Default false. Habilita `matched` como audit-only (nunca persiste). */
   includeMatchedForAudit?: boolean;
+  /**
+   * Solo server-side. Default false. Habilita movimientos `< 2026-07-01` (pero
+   * `>= 2026-01-01`) como historical-audit (audit-only, dry-run only, nunca persiste).
+   */
+  includeHistoricalForShadow?: boolean;
 };
 
 export type ShadowEligibilityResult =
   | { eligible: true; auditOnly: false }
   | { eligible: true; auditOnly: true; auditReason: "MATCHED_MOVEMENT_AUDIT" }
+  | { eligible: true; auditOnly: true; auditReason: "HISTORICAL_SHADOW_AUDIT"; historical: true }
   | { eligible: false; skipReason: ShadowSkipReason };
 
 export type ShadowSkipReason =
   | "WORKSPACE_MISMATCH"
   | "NON_COMMERCIAL_DIRECTION"
   | "MOVEMENT_HAS_ACTIVE_LINK"
+  | "MOVEMENT_BEFORE_GLOBAL_FLOOR"
   | "MOVEMENT_BEFORE_CUTOFF"
   | "MOVEMENT_IGNORED"
   | "MOVEMENT_REVERSED"
@@ -72,6 +88,7 @@ export function isShadowEligibleMovement(
 ): ShadowEligibilityResult {
   const { movement, workspaceId, hasActiveCanonicalLink } = input;
   const includeMatchedForAudit = input.includeMatchedForAudit === true;
+  const includeHistoricalForShadow = input.includeHistoricalForShadow === true;
 
   if (!movement.workspaceId || movement.workspaceId !== workspaceId) {
     return { eligible: false, skipReason: "WORKSPACE_MISMATCH" };
@@ -85,7 +102,14 @@ export function isShadowEligibleMovement(
     return { eligible: false, skipReason: "MOVEMENT_HAS_ACTIVE_LINK" };
   }
 
-  if (isBankMovementDateHistorical(movement.movementDate)) {
+  // Piso financiero global (`< 2026-01-01`): SIEMPRE excluye, aun en modo histórico.
+  if (isPreOperationalPeriod(movement.movementDate)) {
+    return { eligible: false, skipReason: "MOVEMENT_BEFORE_GLOBAL_FLOOR" };
+  }
+
+  // Corte bancario operativo (`< 2026-07-01`, pero `>= 2026-01-01`).
+  const historical = isBankMovementDateHistorical(movement.movementDate);
+  if (historical && !includeHistoricalForShadow) {
     return { eligible: false, skipReason: "MOVEMENT_BEFORE_CUTOFF" };
   }
 
@@ -98,6 +122,7 @@ export function isShadowEligibleMovement(
     return { eligible: false, skipReason: "MOVEMENT_REVERSED" };
   }
 
+  // `matched` se maneja solo por el flujo matched-audit; nunca por el histórico.
   if (status === "matched") {
     if (includeMatchedForAudit) {
       return { eligible: true, auditOnly: true, auditReason: "MATCHED_MOVEMENT_AUDIT" };
@@ -106,6 +131,14 @@ export function isShadowEligibleMovement(
   }
 
   if (isShadowEligibleStatus(status)) {
+    if (historical) {
+      return {
+        eligible: true,
+        auditOnly: true,
+        auditReason: "HISTORICAL_SHADOW_AUDIT",
+        historical: true,
+      };
+    }
     return { eligible: true, auditOnly: false };
   }
 

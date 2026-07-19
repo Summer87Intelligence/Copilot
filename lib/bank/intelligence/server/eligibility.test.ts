@@ -4,7 +4,10 @@ import {
   isShadowEligibleMovement,
   type ShadowEligibilityMovement,
 } from "@/lib/bank/intelligence/server/eligibility";
-import { applyMatchedAuditPolicy } from "@/lib/bank/intelligence/server/suggestion-service";
+import {
+  applyMatchedAuditPolicy,
+  applyHistoricalAuditPolicy,
+} from "@/lib/bank/intelligence/server/suggestion-service";
 import type { ShadowProposal } from "@/lib/bank/intelligence/server/types";
 
 const WS = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
@@ -147,6 +150,105 @@ describe("isShadowEligibleMovement — política conservadora", () => {
     const inList = isShadowEligibleMovement({ movement: { ...movement }, ...base });
     expect(single).toEqual(inList);
     expect(single).toEqual({ eligible: false, skipReason: "MOVEMENT_ALREADY_MATCHED" });
+  });
+});
+
+describe("isShadowEligibleMovement — modo histórico", () => {
+  const pre = { movementDate: "2026-06-15" }; // < 2026-07-01 pero >= 2026-01-01
+
+  it("pre-corte normal (sin flag) → skipped MOVEMENT_BEFORE_CUTOFF", () => {
+    expect(isShadowEligibleMovement({ movement: mv(pre), ...base })).toEqual({
+      eligible: false,
+      skipReason: "MOVEMENT_BEFORE_CUTOFF",
+    });
+  });
+
+  it("pre-corte + includeHistoricalForShadow=true → historical-audit", () => {
+    expect(
+      isShadowEligibleMovement({ movement: mv(pre), ...base, includeHistoricalForShadow: true })
+    ).toEqual({
+      eligible: true,
+      auditOnly: true,
+      auditReason: "HISTORICAL_SHADOW_AUDIT",
+      historical: true,
+    });
+  });
+
+  it("anterior a 2026-01-01 → SIEMPRE excluido (aun con flag histórico)", () => {
+    expect(
+      isShadowEligibleMovement({ movement: mv({ movementDate: "2025-12-31" }), ...base })
+    ).toMatchObject({ eligible: false, skipReason: "MOVEMENT_BEFORE_GLOBAL_FLOOR" });
+    expect(
+      isShadowEligibleMovement({
+        movement: mv({ movementDate: "2025-12-31" }),
+        ...base,
+        includeHistoricalForShadow: true,
+      })
+    ).toMatchObject({ eligible: false, skipReason: "MOVEMENT_BEFORE_GLOBAL_FLOOR" });
+  });
+
+  it("matched histórico sigue excluido con flag histórico", () => {
+    expect(
+      isShadowEligibleMovement({
+        movement: mv({ ...pre, status: "matched" }),
+        ...base,
+        includeHistoricalForShadow: true,
+      })
+    ).toMatchObject({ eligible: false, skipReason: "MOVEMENT_ALREADY_MATCHED" });
+  });
+
+  it("ignored/reversed/outflow históricos siguen excluidos", () => {
+    const opt = { ...base, includeHistoricalForShadow: true };
+    expect(
+      isShadowEligibleMovement({ movement: mv({ ...pre, status: "ignored" }), ...opt })
+    ).toMatchObject({ eligible: false, skipReason: "MOVEMENT_IGNORED" });
+    expect(
+      isShadowEligibleMovement({ movement: mv({ ...pre, status: "reversed" }), ...opt })
+    ).toMatchObject({ eligible: false, skipReason: "MOVEMENT_REVERSED" });
+    expect(
+      isShadowEligibleMovement({ movement: mv({ ...pre, direction: "outflow" }), ...opt })
+    ).toMatchObject({ eligible: false, skipReason: "NON_COMMERCIAL_DIRECTION" });
+  });
+
+  it("link activo / workspace mismatch históricos siguen excluyendo", () => {
+    expect(
+      isShadowEligibleMovement({
+        movement: mv(pre),
+        workspaceId: WS,
+        hasActiveCanonicalLink: true,
+        includeHistoricalForShadow: true,
+      })
+    ).toMatchObject({ eligible: false, skipReason: "MOVEMENT_HAS_ACTIVE_LINK" });
+    expect(
+      isShadowEligibleMovement({
+        movement: mv({ ...pre, workspaceId: "other" }),
+        ...base,
+        includeHistoricalForShadow: true,
+      })
+    ).toMatchObject({ eligible: false, skipReason: "WORKSPACE_MISMATCH" });
+  });
+
+  it("post-corte NO se marca histórico aunque el flag esté activo", () => {
+    expect(
+      isShadowEligibleMovement({
+        movement: mv({ movementDate: "2026-07-08" }),
+        ...base,
+        includeHistoricalForShadow: true,
+      })
+    ).toEqual({ eligible: true, auditOnly: false });
+  });
+});
+
+describe("applyHistoricalAuditPolicy — historical-audit", () => {
+  it("marca historicalAudit+auditOnly, agrega HISTORICAL_SHADOW_AUDIT y nunca AUTO", () => {
+    const audited = applyHistoricalAuditPolicy(
+      proposal({ recommendedAction: "AUTO_RECONCILE_CANDIDATE", confidence: 99 })
+    );
+    expect(audited.historicalAudit).toBe(true);
+    expect(audited.auditOnly).toBe(true);
+    expect(audited.recommendedAction).toBe("REVIEW");
+    expect(audited.warnings).toContain("HISTORICAL_SHADOW_AUDIT");
+    expect(audited.candidateEvidence.warnings).toContain("HISTORICAL_SHADOW_AUDIT");
   });
 });
 

@@ -79,6 +79,37 @@ export function applyMatchedAuditPolicy(proposal: ShadowProposal): ShadowProposa
   };
 }
 
+/**
+ * Marca una propuesta como historical-audit (movimiento `< 2026-07-01` analizado en
+ * modo histórico). Puro y determinístico:
+ *   - historicalAudit = true, auditOnly = true
+ *   - warning HISTORICAL_SHADOW_AUDIT (en proposal y candidateEvidence)
+ *   - recommendedAction NUNCA AUTO (máximo REVIEW)
+ * No persiste ni modifica nada; la no-persistencia se garantiza en el runner.
+ */
+export function applyHistoricalAuditPolicy(proposal: ShadowProposal): ShadowProposal {
+  const warnings = proposal.warnings.includes("HISTORICAL_SHADOW_AUDIT")
+    ? [...proposal.warnings]
+    : [...proposal.warnings, "HISTORICAL_SHADOW_AUDIT" as const];
+
+  const recommendedAction =
+    proposal.recommendedAction === "AUTO_RECONCILE_CANDIDATE"
+      ? ("REVIEW" as const)
+      : proposal.recommendedAction;
+
+  return {
+    ...proposal,
+    auditOnly: true,
+    historicalAudit: true,
+    recommendedAction,
+    warnings,
+    candidateEvidence: {
+      ...proposal.candidateEvidence,
+      warnings,
+    },
+  };
+}
+
 /** Filtra candidatos de otros workspaces antes del motor (defensa en profundidad). */
 export function filterContextToWorkspace(
   ctx: ShadowMovementContext,

@@ -95,7 +95,9 @@ export type ReconciliationWarning =
   /** Dos+ propuestas del mismo batch apuntan al mismo recibo. */
   | "RECEIPT_CANDIDATE_COLLISION"
   /** Movimiento ya `matched` incluido solo para auditoría (audit-only, nunca persiste). */
-  | "MATCHED_MOVEMENT_AUDIT";
+  | "MATCHED_MOVEMENT_AUDIT"
+  /** Movimiento histórico (`< 2026-07-01`) analizado en modo audit (dry-run only, nunca persiste). */
+  | "HISTORICAL_SHADOW_AUDIT";
 
 export type RecommendedAction =
   | "AUTO_RECONCILE_CANDIDATE"

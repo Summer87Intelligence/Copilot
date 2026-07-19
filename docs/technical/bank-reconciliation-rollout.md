@@ -49,9 +49,28 @@ movimientos ya `matched` (`49bd2ddc…`, `1c611fcd…`) **antes** de esta polít
 legítimos previos, no un error; se conservan para revisión manual y **no** se eliminan,
 rechazan ni supersedan en esta fase.
 
+### Modo historical shadow (BANK-SHADOW-HISTORICAL-SCOPE-001, 2026-07-19)
+
+Dos cortes distintos, ambos intactos: **global** `MIN_FINANCIAL_DATE = 2026-01-01` (piso
+financiero del sistema) y **bancario** `BANK_OPERATIONAL_START_DATE = 2026-07-01` (corte
+operativo del flujo bancario). El flujo operativo sigue excluyendo `< 2026-07-01`
+(`MOVEMENT_BEFORE_CUTOFF`).
+
+Nuevo `includeHistoricalForShadow=true` (server-side, default false): permite analizar
+movimientos `[2026-01-01, 2026-07-01)` como **historical-audit** — `historicalAudit=true`,
+`auditOnly=true`, warning `HISTORICAL_SHADOW_AUDIT`, nunca AUTO. Es **dry-run only**
+(`persist=true` → `HISTORICAL_PERSIST_NOT_ALLOWED`) y **exige IDs explícitos**
+(sin IDs → `HISTORICAL_SCOPE_REQUIRES_IDS`). `< 2026-01-01` siempre excluido
+(`MOVEMENT_BEFORE_GLOBAL_FLOOR`). Los 424 pending históricos **no** se procesan
+automáticamente: solo por IDs explícitos, uno a uno / lote pequeño, sin cron ni escaneo.
+
+Los tres flujos (operativo, matched-audit, historical-audit) se mantienen separados; no se
+reutilizan flags ambiguos.
+
 ### Pendiente de autorización operativa
 
-- Shadow persist en lote pequeño ampliado (solo movimientos elegibles, `matched` excluido).
+- Dry-run histórico controlado por IDs explícitos (medir calidad sobre el backlog pre-corte).
+- Shadow persist en lote pequeño (solo movimientos **operativos** elegibles; `matched`/histórico excluidos de persistencia).
 - Medir precisión por rango de confianza / % sin identificar / conflictos.
 
 ### Deuda conocida

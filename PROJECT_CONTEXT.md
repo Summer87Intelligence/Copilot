@@ -1,5 +1,11 @@
 # Project Context
 
+## BANK — Shadow historical scope (audit-only) — 2026-07-19
+
+**FASE BANK-SHADOW-HISTORICAL-SCOPE-001 (local, commit sin push):** modo `includeHistoricalForShadow=true` (server-side, default false) en `isShadowEligibleMovement()`. Permite analizar movimientos `[2026-01-01, 2026-07-01)` como **historical-audit** (`historicalAudit=true`, `auditOnly=true`, warning `HISTORICAL_SHADOW_AUDIT`, nunca AUTO). **Dry-run only** (`persist=true` → `HISTORICAL_PERSIST_NOT_ALLOWED`) y **exige IDs explícitos** (sin IDs → `HISTORICAL_SCOPE_REQUIRES_IDS`); `< 2026-01-01` siempre excluido (`MOVEMENT_BEFORE_GLOBAL_FLOOR`). Ambos cortes intactos: global `2026-01-01`, bancario `2026-07-01` (no modificado). Los 424 pending históricos no se procesan automáticamente.
+- Flujos separados: operativo / matched-audit / historical-audit. Guardas fallan antes de cargar/escribir.
+- Tests: eligibility 19 + runner 12 (guards + historical dry-run). Docs actualizados. **Cero escrituras** en esta fase (solo código + tests).
+
 ## BANK — Shadow matched-eligibility policy — 2026-07-17
 
 **FASE BANK-SHADOW-MATCHED-POLICY-001 (local, commit sin push):** política única `isShadowEligibleMovement()` (`lib/bank/intelligence/server/eligibility.ts`) aplicada idéntica en todos los caminos (ID único / lista / auto). Por defecto excluye `matched`, `ignored`, `reversed`, egreso, link canónico activo, fuera de workspace y anterior al corte `2026-07-01`. `matched` solo con `includeMatchedForAudit=true` (server-side, default false) → **audit-only**: `auditOnly=true`, warning `MATCHED_MOVEMENT_AUDIT`, nunca AUTO, **no persiste**, no modifica nada (dry-run en esta fase).

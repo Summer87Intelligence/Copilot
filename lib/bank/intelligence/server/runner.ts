@@ -29,6 +29,7 @@ import {
   filterContextToWorkspace,
   applyReceiptCollisionPolicy,
   applyMatchedAuditPolicy,
+  applyHistoricalAuditPolicy,
 } from "@/lib/bank/intelligence/server/suggestion-service";
 import type {
   ShadowPersistStats,
@@ -47,6 +48,43 @@ export class ShadowScopeError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "ShadowScopeError";
+  }
+}
+
+/** Guardas del modo histórico (audit-only, dry-run only, IDs explícitos). */
+export class ShadowHistoricalError extends Error {
+  readonly code: "HISTORICAL_PERSIST_NOT_ALLOWED" | "HISTORICAL_SCOPE_REQUIRES_IDS";
+  constructor(
+    code: "HISTORICAL_PERSIST_NOT_ALLOWED" | "HISTORICAL_SCOPE_REQUIRES_IDS",
+    message: string
+  ) {
+    super(message);
+    this.name = "ShadowHistoricalError";
+    this.code = code;
+  }
+}
+
+/**
+ * Valida las precondiciones del modo histórico ANTES de cargar o escribir nada:
+ * - incompatible con `persist=true` (HISTORICAL_PERSIST_NOT_ALLOWED);
+ * - exige `movementId` o `movementIds` explícitos (HISTORICAL_SCOPE_REQUIRES_IDS);
+ *   nunca escaneo automático / limit sin IDs.
+ */
+export function assertHistoricalShadowPreconditions(options: ShadowRunOptions): void {
+  if (options.includeHistoricalForShadow !== true) return;
+  if (options.persist === true) {
+    throw new ShadowHistoricalError(
+      "HISTORICAL_PERSIST_NOT_ALLOWED",
+      "HISTORICAL_PERSIST_NOT_ALLOWED: includeHistoricalForShadow is dry-run only; persist=true is forbidden."
+    );
+  }
+  const hasExplicitIds = Boolean(options.movementId || options.movementIds?.length);
+  if (!hasExplicitIds) {
+    throw new ShadowHistoricalError(
+      "HISTORICAL_SCOPE_REQUIRES_IDS",
+      "HISTORICAL_SCOPE_REQUIRES_IDS: historical shadow requires explicit movementId/movementIds; " +
+        "automatic scan / limit-without-ids is not allowed."
+    );
   }
 }
 
@@ -127,6 +165,9 @@ export async function runBankShadowIntelligence(
   deps: BankShadowRunnerDeps,
   options: ShadowRunOptions
 ): Promise<ShadowRunResult> {
+  // Guardas del modo histórico: fallar antes de cargar o escribir.
+  assertHistoricalShadowPreconditions(options);
+
   const scope = resolveShadowScope(options);
   const { mode, writesEnabled } = resolveShadowMode(options);
 
@@ -156,6 +197,7 @@ export async function runBankShadowIntelligence(
     movementIds
   );
   const includeMatchedForAudit = options.includeMatchedForAudit === true;
+  const includeHistoricalForShadow = options.includeHistoricalForShadow === true;
 
   const ports =
     deps.persistPorts ??
@@ -177,6 +219,7 @@ export async function runBankShadowIntelligence(
       workspaceId: options.workspaceId,
       hasActiveCanonicalLink: activeLinkSet.has(row.id),
       includeMatchedForAudit,
+      includeHistoricalForShadow,
     });
 
     if (!eligibility.eligible) {
@@ -196,7 +239,13 @@ export async function runBankShadowIntelligence(
 
     const ctx = filterContextToWorkspace(loaded, options.workspaceId);
     const proposal = buildShadowProposalFromContext(ctx);
-    proposals.push(eligibility.auditOnly ? applyMatchedAuditPolicy(proposal) : proposal);
+    if (eligibility.auditOnly && eligibility.auditReason === "HISTORICAL_SHADOW_AUDIT") {
+      proposals.push(applyHistoricalAuditPolicy(proposal));
+    } else if (eligibility.auditOnly) {
+      proposals.push(applyMatchedAuditPolicy(proposal));
+    } else {
+      proposals.push(proposal);
+    }
   }
 
   // Colisión de recibos antes de exponer / persistir (puro, sin DB).

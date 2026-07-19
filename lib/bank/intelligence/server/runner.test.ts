@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  assertHistoricalShadowPreconditions,
   resolveShadowMode,
   resolveShadowScope,
   runBankShadowIntelligence,
+  ShadowHistoricalError,
   ShadowScopeError,
 } from "@/lib/bank/intelligence/server/runner";
 import { SHADOW_MAX_LIMIT } from "@/lib/bank/intelligence/server/types";
@@ -322,5 +324,83 @@ describe("runner — política de movimientos matched", () => {
     expect(portWrites).toEqual([]);
     expect(result.persisted.created).toBe(0);
     expect(result.persisted.skipped).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("runner — modo histórico (audit-only, dry-run only)", () => {
+  it("historical + persist=true → HISTORICAL_PERSIST_NOT_ALLOWED antes de cargar", async () => {
+    const { supabase } = createSupabaseMock({
+      movement: { ...movementRow("m1"), movement_date: "2026-06-15" },
+    });
+    await expect(
+      runBankShadowIntelligence(
+        { supabase: supabase as never },
+        {
+          workspaceId: WS,
+          movementId: "m1",
+          dryRun: false,
+          persist: true,
+          includeHistoricalForShadow: true,
+        }
+      )
+    ).rejects.toMatchObject({ code: "HISTORICAL_PERSIST_NOT_ALLOWED" });
+    // Falla antes de tocar la DB.
+    expect((supabase.from as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0);
+  });
+
+  it("historical sin IDs explícitos (solo limit) → HISTORICAL_SCOPE_REQUIRES_IDS", () => {
+    expect(() =>
+      assertHistoricalShadowPreconditions({
+        workspaceId: WS,
+        limit: 10,
+        includeHistoricalForShadow: true,
+      })
+    ).toThrow(ShadowHistoricalError);
+    expect(() =>
+      assertHistoricalShadowPreconditions({
+        workspaceId: WS,
+        limit: 10,
+        includeHistoricalForShadow: true,
+      })
+    ).toThrow(/HISTORICAL_SCOPE_REQUIRES_IDS/);
+  });
+
+  it("historical dry-run con movementId (pre-corte) → historicalAudit, nunca AUTO, no escribe", async () => {
+    const portWrites: string[] = [];
+    const persistPorts: ShadowPersistPorts = {
+      async insertSuggestion() {
+        portWrites.push("insertSuggestion");
+        throw new Error("historical must not persist");
+      },
+      async updateSuggestion() {
+        portWrites.push("updateSuggestion");
+        throw new Error("no");
+      },
+      async supersedeSuggestion() {
+        portWrites.push("supersede");
+      },
+      async insertEvent() {
+        portWrites.push("insertEvent");
+        throw new Error("historical must not persist");
+      },
+    };
+    const { supabase } = createSupabaseMock({
+      movement: { ...movementRow("m1"), movement_date: "2026-06-15" },
+    });
+
+    const result = await runBankShadowIntelligence(
+      { supabase: supabase as never, persistPorts },
+      { workspaceId: WS, movementId: "m1", includeHistoricalForShadow: true }
+    );
+
+    expect(result.mode).toBe("dry-run");
+    expect(result.proposals).toHaveLength(1);
+    const p = result.proposals[0]!;
+    expect(p.historicalAudit).toBe(true);
+    expect(p.auditOnly).toBe(true);
+    expect(p.warnings).toContain("HISTORICAL_SHADOW_AUDIT");
+    expect(p.recommendedAction).not.toBe("AUTO_RECONCILE_CANDIDATE");
+    expect(portWrites).toEqual([]);
+    expect(result.persisted.created).toBe(0);
   });
 });

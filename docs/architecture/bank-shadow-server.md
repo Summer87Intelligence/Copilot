@@ -1,8 +1,8 @@
 # Bank Shadow Server — Inteligencia bancaria (proposal-only)
 
-Última actualización: 2026-07-17.
-Fase: **BANK-SHADOW-MATCHED-POLICY-001** (sobre server shadow).
-Estado: capa server-side + selección conservadora de recibos (empate/colisión) + **política única de elegibilidad**; **dry-run por defecto**.
+Última actualización: 2026-07-19.
+Fase: **BANK-SHADOW-HISTORICAL-SCOPE-001** (sobre server shadow).
+Estado: capa server-side + selección conservadora de recibos (empate/colisión) + **política única de elegibilidad** con modos audit (matched / histórico); **dry-run por defecto**.
 
 ## Arquitectura
 
@@ -97,7 +97,8 @@ Por defecto (conservador) se **excluye** (no genera suggestion ni event, no pers
 | Fuera del workspace | `WORKSPACE_MISMATCH` |
 | Egreso (no `inflow`) | `NON_COMMERCIAL_DIRECTION` |
 | Con link canónico activo | `MOVEMENT_HAS_ACTIVE_LINK` |
-| Anterior al corte operativo (`2026-07-01`) | `MOVEMENT_BEFORE_CUTOFF` |
+| Anterior al piso global (`2026-01-01`) — siempre | `MOVEMENT_BEFORE_GLOBAL_FLOOR` |
+| Anterior al corte operativo (`2026-07-01`) sin modo histórico | `MOVEMENT_BEFORE_CUTOFF` |
 | `status = ignored` | `MOVEMENT_IGNORED` |
 | `status = reversed` | `MOVEMENT_REVERSED` |
 | `status = matched` | `MOVEMENT_ALREADY_MATCHED` |
@@ -118,6 +119,28 @@ en el workspace y **sin** link canónico activo.
   Cualquier persistencia audit-only futura debe quedar claramente diferenciada y fuera de
   esta fase.
 
+### Modo historical shadow (`includeHistoricalForShadow=true`)
+
+Corte global vs corte bancario:
+- **Global** `MIN_FINANCIAL_DATE = 2026-01-01` (piso financiero del sistema, `lib/copilot-operational-period.ts`). **Nunca** se procesa nada anterior.
+- **Bancario** `BANK_OPERATIONAL_START_DATE = 2026-07-01` (corte operativo del flujo bancario, `lib/bank/canonical/historical-policy.ts`). No se modifica.
+
+Flujo normal: movimiento `< 2026-07-01` → `skipped` con `MOVEMENT_BEFORE_CUTOFF`.
+
+Con `includeHistoricalForShadow=true` (server-side, default false) un movimiento histórico
+puede analizarse **solo si**: `fecha >= 2026-01-01`, inflow, `status ∈ {pending, suggested,
+needs_review}`, no ignored/reversed/**matched**, sin link canónico activo, en el workspace.
+Todo resultado histórico lleva `historicalAudit=true`, `auditOnly=true`, warning
+`HISTORICAL_SHADOW_AUDIT`, `recommendedAction` máximo `REVIEW`, **nunca** AUTO.
+
+Guardas (fallan **antes** de cargar o escribir):
+- `includeHistoricalForShadow=true` + `persist=true` → `HISTORICAL_PERSIST_NOT_ALLOWED` (dry-run only).
+- `includeHistoricalForShadow=true` sin `movementId`/`movementIds` → `HISTORICAL_SCOPE_REQUIRES_IDS`
+  (no escaneo automático de los 424 pending, no `limit` sin IDs, no ejecución masiva).
+
+`< 2026-01-01` → **siempre** excluido (`MOVEMENT_BEFORE_GLOBAL_FLOOR`), aun en modo histórico.
+Los tres flujos —operativo, matched-audit e historical-audit— se mantienen **separados**.
+
 ### Runner
 
 | Opción | Default | Notas |
@@ -127,6 +150,7 @@ en el workspace y **sin** link canónico activo.
 | `limit` | — | Obligatorio si no hay IDs; máx 25 |
 | `movementId` / `movementIds` | — | Alcance explícito |
 | `includeMatchedForAudit` | `false` | Server-side; incluye `matched` como audit-only (nunca persiste) |
+| `includeHistoricalForShadow` | `false` | Server-side; incluye `< 2026-07-01` como historical-audit (dry-run only, IDs explícitos, nunca persiste) |
 
 **Prohibido:** recorrer automáticamente todos los movimientos del workspace (~950).
 
