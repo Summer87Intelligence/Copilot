@@ -1,5 +1,13 @@
 # Bank Historical Review — Contrato de persistencia shadow histórica
 
+> **RETIRADO DE LA UI (BANK-SIMPLE-RECONCILIATION-RESTORE-001, 2026-07-19):** la pantalla
+> independiente `/copilot/revision-bancaria` y sus APIs `/api/copilot/bank-review/*` se
+> eliminaron del código; el flujo vuelve a concentrarse en el módulo **Banco**
+> (`/copilot/movimientos-bancarios`). La infraestructura de DB (tablas, `suggestion_scope`,
+> RPC `review/reject/note`, migraciones aplicadas, eventos y las 11+2 suggestions/13 events)
+> y el motor `lib/bank/intelligence/**` **NO se borran** — quedan **inactivos**. No hubo
+> rollback destructivo. Este documento describe el contrato de esa infraestructura latente.
+
 Fase: **BANK-HISTORICAL-SHADOW-PERSIST-POLICY-001** (2026-07-19).
 Estado: contrato de datos + código detrás de flag (default off). **Migración creada, NO aplicada.**
 

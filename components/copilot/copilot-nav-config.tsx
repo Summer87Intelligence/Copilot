@@ -21,7 +21,6 @@ import {
   Banknote,
   LayoutDashboard,
   ShoppingBag,
-  ClipboardCheck,
 } from "lucide-react";
 
 export type CopilotNavItem = {
@@ -156,14 +155,6 @@ const COPILOT_NAV_TESORERIA: CopilotNavGroup = {
       shortLabel: "Banco",
       description: "Extractos Santander y conciliación",
       icon: ArrowRightLeft,
-      moduleKey: "bank_movements",
-    },
-    {
-      href: "/copilot/revision-bancaria",
-      label: "Revisión bancaria",
-      shortLabel: "Revisión",
-      description: "Sugerencias del motor: operativo e histórico",
-      icon: ClipboardCheck,
       moduleKey: "bank_movements",
     },
   ],

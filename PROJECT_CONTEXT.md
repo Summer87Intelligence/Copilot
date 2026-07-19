@@ -1,5 +1,12 @@
 # Project Context
 
+## BANK — Retiro de "Revisión bancaria" (flujo simple en Banco) — 2026-07-19
+
+**FASE BANK-SIMPLE-RECONCILIATION-RESTORE-001 (local, commit sin push):** se elimina de la experiencia la pantalla independiente `/copilot/revision-bancaria` y sus APIs `/api/copilot/bank-review/*`; el flujo vuelve al módulo **Banco** (`/copilot/movimientos-bancarios`), que ya provee importación (Excel/PDF preview+confirm, dedup), lista de movimientos, conciliación N:M (drawer/reconcile/links/ignore) y matching ingreso→cliente.
+- **Eliminado del código**: item nav "Revisión bancaria" (+ import ClipboardCheck), `app/copilot/revision-bancaria`, 5 rutas `app/api/copilot/bank-review/**`, `components/copilot/bank-review/**` (3), `lib/bank/review/**` (view/service/actions + 3 tests), entrada RBAC `/api/copilot/bank-review` del module-map.
+- **Conservado inactivo (sin rollback DB)**: tablas/`suggestion_scope`/RPC `review/reject/note`/migraciones aplicadas/eventos; las 11 suggestions + 13 events + reviewed_at/reviewed_by/rejected_reason del QA quedan almacenados pero **no visibles**; motor `lib/bank/intelligence/**` inactivo. Sin migración destructiva, sin borrar datos, sin reclasificar.
+- Test `bank-review-retired.test.ts` (7): nav/rutas/componentes/lib eliminados, Banco intacto, infra/migraciones no borradas. tsc/eslint/Banco+intelligence (387)/RBAC coverage verdes. **HEAD e741f99 pusheado; este cambio es local sin push.** Próximo: QA simple de Banco.
+
 ## BANK — Review actions (revisar/nota/rechazar) — 2026-07-19
 
 **FASE BANK-HISTORICAL-REVIEW-ACTIONS-001 (local, commit sin push):** acciones humanas NO financieras sobre sugerencias de revisión bancaria.
