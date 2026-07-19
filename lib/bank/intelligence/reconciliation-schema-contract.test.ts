@@ -12,6 +12,7 @@ import { join } from "node:path";
 const MIG = join(process.cwd(), "supabase", "migrations");
 const suggestions = readFileSync(join(MIG, "20260719120100_bank_reconciliation_suggestions.sql"), "utf8");
 const rpc = readFileSync(join(MIG, "20260719120200_bank_reconciliation_confirm_rpc.sql"), "utf8");
+const scope = readFileSync(join(MIG, "20260720120000_bank_suggestion_scope.sql"), "utf8");
 
 describe("esquema canónico de conciliación — contrato", () => {
   it("NO existe una segunda tabla canónica de conciliación efectiva (matches)", () => {
@@ -78,5 +79,33 @@ describe("esquema canónico de conciliación — contrato", () => {
     expect(rpc).toContain("already_reversed");
     expect(rpc).toContain("IDEMPOTENCY_CONFLICT");
     expect(rpc).toContain("unappliedAmount");
+  });
+});
+
+describe("scope de sugerencias (historical_review) — contrato de migración aditiva", () => {
+  it("agrega suggestion_scope con default operational y dominio de 3 valores", () => {
+    expect(scope).toContain("ADD COLUMN IF NOT EXISTS suggestion_scope TEXT NOT NULL DEFAULT 'operational'");
+    expect(scope).toMatch(
+      /CHECK \(suggestion_scope IN \('operational','historical_review','matched_audit'\)\)/
+    );
+  });
+
+  it("idempotencia por ÁMBITO: reemplaza brs_active_uidx por índice que incluye suggestion_scope", () => {
+    expect(scope).toContain("DROP INDEX IF EXISTS public.brs_active_uidx");
+    expect(scope).toMatch(
+      /CREATE UNIQUE INDEX IF NOT EXISTS brs_active_scope_uidx[\s\S]*bank_movement_id, engine_version, suggestion_scope[\s\S]*WHERE status IN \('generated','pending_review'\)/
+    );
+  });
+
+  it("índice de consulta por ámbito + aditiva (sin DROP TABLE/COLUMN de datos)", () => {
+    expect(scope).toContain("brs_ws_scope_status_idx");
+    expect(scope).not.toMatch(/DROP TABLE(?! IF)/);
+    // El único DROP COLUMN permitido vive en el rollback conceptual comentado.
+    expect(scope).not.toMatch(/^\s*ALTER TABLE[^\n]*DROP COLUMN/m);
+  });
+
+  it("las 5 filas existentes quedan operational (backfill explícito, sin reclasificar matched)", () => {
+    expect(scope).toMatch(/UPDATE public\.bank_reconciliation_suggestions[\s\S]*SET suggestion_scope = 'operational'/);
+    expect(scope).toContain("NO se reclasifican a matched_audit");
   });
 });

@@ -100,6 +100,11 @@ export async function applyShadowPersistDecision(input: {
       metadata: {
         confidence: proposal.confidence,
         engineVersion: proposal.engineVersion,
+        // Ámbito canónico en el evento: los consumidores NO deben tratar cualquier
+        // suggestion_created como trabajo operativo; deben leer suggestionScope.
+        suggestionScope: proposal.suggestionScope ?? "operational",
+        auditOnly: proposal.auditOnly === true,
+        historicalAudit: proposal.historicalAudit === true,
         movementFingerprint: proposal.movementFingerprint,
         payerFingerprint: proposal.payerFingerprint,
       },

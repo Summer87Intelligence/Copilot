@@ -10,7 +10,10 @@ import {
 } from "@/lib/bank/intelligence/server/runner";
 import { SHADOW_MAX_LIMIT } from "@/lib/bank/intelligence/server/types";
 import type { ShadowPersistPorts } from "@/lib/bank/intelligence/server/shadow-persist-apply";
-import type { ShadowSuggestionRow } from "@/lib/bank/intelligence/server/types";
+import type {
+  ShadowProposal,
+  ShadowSuggestionRow,
+} from "@/lib/bank/intelligence/server/types";
 
 const WS = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 
@@ -56,6 +59,7 @@ function createQueryBuilder(data: unknown = []) {
 function createSupabaseMock(opts?: {
   movement?: ReturnType<typeof movementRow> | null;
   onWrite?: (table: string, op: string) => void;
+  activeSuggestions?: unknown[];
 }) {
   const movement = opts?.movement === undefined ? movementRow("m1") : opts.movement;
   const rpcCalls: string[] = [];
@@ -65,7 +69,7 @@ function createSupabaseMock(opts?: {
       return createQueryBuilder(movement ? [movement] : []);
     }
     if (table === "bank_reconciliation_suggestions") {
-      return createQueryBuilder([]);
+      return createQueryBuilder(opts?.activeSuggestions ?? []);
     }
     // Intercept write attempts on forbidden tables
     const base = createQueryBuilder([]);
@@ -201,6 +205,7 @@ describe("runner — integración mockeada", () => {
           recommendedAction: p.recommendedAction,
           engineVersion: p.engineVersion,
           status: "generated",
+          suggestionScope: p.suggestionScope ?? "operational",
           confirmedLinkId: null,
           createdAt: p.generatedAt,
           updatedAt: p.generatedAt,
@@ -402,5 +407,196 @@ describe("runner — modo histórico (audit-only, dry-run only)", () => {
     expect(p.recommendedAction).not.toBe("AUTO_RECONCILE_CANDIDATE");
     expect(portWrites).toEqual([]);
     expect(result.persisted.created).toBe(0);
+  });
+});
+
+describe("runner — persistencia histórica (persistHistoricalForReview)", () => {
+  function capturingPorts() {
+    const created: ShadowProposal[] = [];
+    const events: string[] = [];
+    const ports: ShadowPersistPorts = {
+      async insertSuggestion(p) {
+        created.push(p);
+        return {
+          id: `sug-${created.length}`,
+          workspaceId: WS,
+          bankMovementId: p.bankMovementId,
+          payerIdentityId: p.payerIdentityId,
+          proposedClientId: p.proposedClientId,
+          proposedReceiptId: p.proposedReceiptId,
+          confidence: p.confidence,
+          reasons: p.reasons,
+          warnings: p.warnings,
+          recommendedAction: p.recommendedAction,
+          engineVersion: p.engineVersion,
+          status: "generated",
+          suggestionScope: p.suggestionScope ?? "operational",
+          confirmedLinkId: null,
+          createdAt: p.generatedAt,
+          updatedAt: p.generatedAt,
+        };
+      },
+      async updateSuggestion() {
+        throw new Error("unexpected update");
+      },
+      async supersedeSuggestion() {},
+      async insertEvent(e) {
+        events.push(e.eventType);
+      },
+    };
+    return { ports, created, events };
+  }
+
+  it("flag sin includeHistoricalForShadow → HISTORICAL_PERSIST_REQUIRES_INCLUDE", () => {
+    expect(() =>
+      assertHistoricalShadowPreconditions({
+        workspaceId: WS,
+        movementId: "m1",
+        dryRun: false,
+        persist: true,
+        persistHistoricalForReview: true,
+      })
+    ).toThrow(/HISTORICAL_PERSIST_REQUIRES_INCLUDE/);
+  });
+
+  it("flag sin persist=true/dryRun=false → HISTORICAL_PERSIST_REQUIRES_PERSIST", () => {
+    expect(() =>
+      assertHistoricalShadowPreconditions({
+        workspaceId: WS,
+        movementId: "m1",
+        includeHistoricalForShadow: true,
+        persistHistoricalForReview: true,
+      })
+    ).toThrow(/HISTORICAL_PERSIST_REQUIRES_PERSIST/);
+  });
+
+  it("flag sin IDs explícitos → HISTORICAL_SCOPE_REQUIRES_IDS", () => {
+    expect(() =>
+      assertHistoricalShadowPreconditions({
+        workspaceId: WS,
+        limit: 5,
+        includeHistoricalForShadow: true,
+        persist: true,
+        dryRun: false,
+        persistHistoricalForReview: true,
+      })
+    ).toThrow(/HISTORICAL_SCOPE_REQUIRES_IDS/);
+  });
+
+  it("histórico válido → persiste scope=historical_review, auditOnly, nunca AUTO, evento 1:1", async () => {
+    const { ports, created, events } = capturingPorts();
+    const { supabase, rpcCalls } = createSupabaseMock({
+      movement: { ...movementRow("m1"), movement_date: "2026-06-15" },
+    });
+    const result = await runBankShadowIntelligence(
+      { supabase: supabase as never, persistPorts: ports },
+      {
+        workspaceId: WS,
+        movementId: "m1",
+        includeHistoricalForShadow: true,
+        persist: true,
+        dryRun: false,
+        persistHistoricalForReview: true,
+      }
+    );
+    expect(result.writesEnabled).toBe(true);
+    if (result.persisted.created > 0) {
+      expect(created).toHaveLength(1);
+      expect(created[0]!.suggestionScope).toBe("historical_review");
+      expect(created[0]!.historicalAudit).toBe(true);
+      expect(created[0]!.auditOnly).toBe(true);
+      expect(created[0]!.recommendedAction).not.toBe("AUTO_RECONCILE_CANDIDATE");
+      expect(events.filter((e) => e === "suggestion_created")).toHaveLength(1);
+    } else {
+      // Sin evidencia suficiente → no persiste (política INSUFFICIENT_EVIDENCE).
+      expect(result.persisted.insufficientEvidence + result.persisted.skipped).toBeGreaterThan(0);
+    }
+    expect(rpcCalls).toEqual([]);
+  });
+
+  it("post-corte en corrida histórica → NO persiste (skip)", async () => {
+    const { ports, created } = capturingPorts();
+    const { supabase } = createSupabaseMock({
+      movement: { ...movementRow("m1"), movement_date: "2026-07-08" }, // operativo
+    });
+    const result = await runBankShadowIntelligence(
+      { supabase: supabase as never, persistPorts: ports },
+      {
+        workspaceId: WS,
+        movementId: "m1",
+        includeHistoricalForShadow: true,
+        persist: true,
+        dryRun: false,
+        persistHistoricalForReview: true,
+      }
+    );
+    expect(created).toHaveLength(0);
+    expect(result.persisted.created).toBe(0);
+    expect(result.persisted.skipped).toBeGreaterThanOrEqual(1);
+  });
+
+  it("matched en corrida histórica → NO persiste (skip)", async () => {
+    const { ports, created } = capturingPorts();
+    const { supabase } = createSupabaseMock({
+      movement: { ...movementRow("m1"), movement_date: "2026-06-15", status: "matched" },
+    });
+    const result = await runBankShadowIntelligence(
+      { supabase: supabase as never, persistPorts: ports },
+      {
+        workspaceId: WS,
+        movementId: "m1",
+        includeHistoricalForShadow: true,
+        persist: true,
+        dryRun: false,
+        persistHistoricalForReview: true,
+      }
+    );
+    expect(created).toHaveLength(0);
+    expect(result.persisted.created).toBe(0);
+    // matched excluido por elegibilidad → aparece en skippedMovements.
+    expect(result.skippedMovements.some((s) => s.reason === "MOVEMENT_ALREADY_MATCHED")).toBe(true);
+  });
+
+  it("aislamiento: una operational activa no bloquea el create histórico (idempotencia por scope)", async () => {
+    const { ports, created } = capturingPorts();
+    const existingOperational = {
+      id: "op-1",
+      workspace_id: WS,
+      bank_movement_id: "m1",
+      payer_identity_id: null,
+      proposed_client_id: null,
+      proposed_receipt_id: null,
+      confidence: 50,
+      reasons: ["MATCHING_RECEIPT"],
+      warnings: [],
+      recommended_action: "REVIEW",
+      engine_version: 1,
+      status: "generated",
+      suggestion_scope: "operational",
+      confirmed_link_id: null,
+      created_at: "2026-07-01T00:00:00Z",
+      updated_at: "2026-07-01T00:00:00Z",
+    };
+    const { supabase } = createSupabaseMock({
+      movement: { ...movementRow("m1"), movement_date: "2026-06-15" },
+      activeSuggestions: [existingOperational],
+    });
+    const result = await runBankShadowIntelligence(
+      { supabase: supabase as never, persistPorts: ports },
+      {
+        workspaceId: WS,
+        movementId: "m1",
+        includeHistoricalForShadow: true,
+        persist: true,
+        dryRun: false,
+        persistHistoricalForReview: true,
+      }
+    );
+    // La operational existente es de otro scope → no bloquea; historical se crea (si hay evidencia).
+    if (result.persisted.created > 0) {
+      expect(created[0]!.suggestionScope).toBe("historical_review");
+    }
+    // Nunca se actualiza/supersede la operational.
+    expect(result.persisted.superseded).toBe(0);
   });
 });

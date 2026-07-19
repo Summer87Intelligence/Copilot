@@ -51,13 +51,16 @@ export class ShadowScopeError extends Error {
   }
 }
 
-/** Guardas del modo histórico (audit-only, dry-run only, IDs explícitos). */
+type HistoricalErrorCode =
+  | "HISTORICAL_PERSIST_NOT_ALLOWED"
+  | "HISTORICAL_SCOPE_REQUIRES_IDS"
+  | "HISTORICAL_PERSIST_REQUIRES_INCLUDE"
+  | "HISTORICAL_PERSIST_REQUIRES_PERSIST";
+
+/** Guardas del modo histórico (audit-only por defecto; persistencia histórica tras flag). */
 export class ShadowHistoricalError extends Error {
-  readonly code: "HISTORICAL_PERSIST_NOT_ALLOWED" | "HISTORICAL_SCOPE_REQUIRES_IDS";
-  constructor(
-    code: "HISTORICAL_PERSIST_NOT_ALLOWED" | "HISTORICAL_SCOPE_REQUIRES_IDS",
-    message: string
-  ) {
+  readonly code: HistoricalErrorCode;
+  constructor(code: HistoricalErrorCode, message: string) {
     super(message);
     this.name = "ShadowHistoricalError";
     this.code = code;
@@ -65,20 +68,48 @@ export class ShadowHistoricalError extends Error {
 }
 
 /**
- * Valida las precondiciones del modo histórico ANTES de cargar o escribir nada:
- * - incompatible con `persist=true` (HISTORICAL_PERSIST_NOT_ALLOWED);
- * - exige `movementId` o `movementIds` explícitos (HISTORICAL_SCOPE_REQUIRES_IDS);
- *   nunca escaneo automático / limit sin IDs.
+ * Valida las precondiciones del modo histórico ANTES de cargar o escribir nada.
+ *
+ * - `persistHistoricalForReview=true` (persistencia histórica) exige
+ *   `includeHistoricalForShadow=true`, `persist=true` + `dryRun=false` e IDs explícitos.
+ * - `includeHistoricalForShadow=true` sin ese flag es **dry-run only**:
+ *   `persist=true` → HISTORICAL_PERSIST_NOT_ALLOWED.
+ * - Ambos exigen IDs explícitos (nunca escaneo automático / limit sin IDs).
  */
 export function assertHistoricalShadowPreconditions(options: ShadowRunOptions): void {
-  if (options.includeHistoricalForShadow !== true) return;
+  const hist = options.includeHistoricalForShadow === true;
+  const persistHist = options.persistHistoricalForReview === true;
+  const hasExplicitIds = Boolean(options.movementId || options.movementIds?.length);
+
+  if (persistHist) {
+    if (!hist) {
+      throw new ShadowHistoricalError(
+        "HISTORICAL_PERSIST_REQUIRES_INCLUDE",
+        "HISTORICAL_PERSIST_REQUIRES_INCLUDE: persistHistoricalForReview requires includeHistoricalForShadow=true."
+      );
+    }
+    if (options.persist !== true || options.dryRun !== false) {
+      throw new ShadowHistoricalError(
+        "HISTORICAL_PERSIST_REQUIRES_PERSIST",
+        "HISTORICAL_PERSIST_REQUIRES_PERSIST: persistHistoricalForReview requires persist=true and dryRun=false."
+      );
+    }
+    if (!hasExplicitIds) {
+      throw new ShadowHistoricalError(
+        "HISTORICAL_SCOPE_REQUIRES_IDS",
+        "HISTORICAL_SCOPE_REQUIRES_IDS: historical persist requires explicit movementId/movementIds."
+      );
+    }
+    return;
+  }
+
+  if (!hist) return;
   if (options.persist === true) {
     throw new ShadowHistoricalError(
       "HISTORICAL_PERSIST_NOT_ALLOWED",
-      "HISTORICAL_PERSIST_NOT_ALLOWED: includeHistoricalForShadow is dry-run only; persist=true is forbidden."
+      "HISTORICAL_PERSIST_NOT_ALLOWED: includeHistoricalForShadow is dry-run only unless persistHistoricalForReview=true."
     );
   }
-  const hasExplicitIds = Boolean(options.movementId || options.movementIds?.length);
   if (!hasExplicitIds) {
     throw new ShadowHistoricalError(
       "HISTORICAL_SCOPE_REQUIRES_IDS",
@@ -244,22 +275,37 @@ export async function runBankShadowIntelligence(
     } else if (eligibility.auditOnly) {
       proposals.push(applyMatchedAuditPolicy(proposal));
     } else {
-      proposals.push(proposal);
+      proposals.push({ ...proposal, suggestionScope: "operational" });
     }
   }
 
   // Colisión de recibos antes de exponer / persistir (puro, sin DB).
   const finalProposals = applyReceiptCollisionPolicy(proposals);
 
+  const persistHistoricalForReview = options.persistHistoricalForReview === true;
+
   if (writesEnabled) {
     for (const proposal of finalProposals) {
-      // Audit-only (matched) NUNCA persiste, aun con persist=true.
-      if (proposal.auditOnly === true) {
+      const scope = proposal.suggestionScope ?? "operational";
+
+      if (persistHistoricalForReview) {
+        // Persistencia histórica: SOLO historical_review. Operativo (post-corte) y
+        // matched se omiten (nunca post-corte, nunca matched).
+        if (!(proposal.historicalAudit === true && scope === "historical_review")) {
+          stats.skipped += 1;
+          continue;
+        }
+      } else if (proposal.auditOnly === true) {
+        // Modo normal: audit-only (matched o histórico) NUNCA persiste.
         stats.skipped += 1;
         continue;
       }
+
+      // Idempotencia POR ÁMBITO: operativo e histórico nunca se sobrescriben mutuamente.
       const existingActive =
-        activeSuggestions.find((s) => s.bankMovementId === proposal.bankMovementId) ?? null;
+        activeSuggestions.find(
+          (s) => s.bankMovementId === proposal.bankMovementId && s.suggestionScope === scope
+        ) ?? null;
       const decision = decideShadowPersistAction({ proposal, existingActive });
       await applyShadowPersistDecision({
         proposal,
@@ -269,7 +315,7 @@ export async function runBankShadowIntelligence(
       });
       if (decision.action === "supersede" || decision.action === "create") {
         const idx = activeSuggestions.findIndex(
-          (s) => s.bankMovementId === proposal.bankMovementId
+          (s) => s.bankMovementId === proposal.bankMovementId && s.suggestionScope === scope
         );
         if (idx >= 0) activeSuggestions.splice(idx, 1);
       }

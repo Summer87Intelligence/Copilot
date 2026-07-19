@@ -69,6 +69,7 @@ function row(o: Partial<ShadowSuggestionRow> = {}): ShadowSuggestionRow {
     recommendedAction: "REVIEW",
     engineVersion: 1,
     status: "generated",
+    suggestionScope: "operational",
     confirmedLinkId: null,
     createdAt: "2026-07-17T11:00:00.000Z",
     updatedAt: "2026-07-17T11:00:00.000Z",

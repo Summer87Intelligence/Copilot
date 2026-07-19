@@ -10,6 +10,7 @@ import type {
   ShadowSuggestionEventType,
   ShadowSuggestionRow,
   ShadowSuggestionStatus,
+  SuggestionScope,
 } from "@/lib/bank/intelligence/server/types";
 import type {
   ReconciliationReason,
@@ -313,6 +314,10 @@ function mapSuggestionRow(raw: Record<string, unknown>): ShadowSuggestionRow {
     recommendedAction: String(raw.recommended_action) as ShadowSuggestionRow["recommendedAction"],
     engineVersion: Number(raw.engine_version) || 1,
     status: String(raw.status) as ShadowSuggestionStatus,
+    // Compat: filas anteriores a la migración de scope se leen como 'operational'.
+    suggestionScope: (raw.suggestion_scope != null
+      ? String(raw.suggestion_scope)
+      : "operational") as ShadowSuggestionRow["suggestionScope"],
     confirmedLinkId: raw.confirmed_link_id != null ? String(raw.confirmed_link_id) : null,
     createdAt: String(raw.created_at ?? ""),
     updatedAt: String(raw.updated_at ?? ""),
@@ -356,6 +361,50 @@ export async function listSuggestionsForMovements(
   return ((data ?? []) as Record<string, unknown>[]).map(mapSuggestionRow);
 }
 
+/**
+ * Lista sugerencias por ÁMBITO explícito (aislamiento estructurado, sin JSON ni texto).
+ * Base de `listOperationalSuggestions` / `listHistoricalReviewSuggestions`.
+ */
+export async function listSuggestionsByScope(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  scope: SuggestionScope,
+  opts?: { statuses?: ShadowSuggestionStatus[]; movementIds?: string[]; engineVersion?: number }
+): Promise<ShadowSuggestionRow[]> {
+  const ws = requireWorkspace(workspaceId);
+  let q = supabase
+    .from("bank_reconciliation_suggestions")
+    .select("*")
+    .eq("workspace_id", ws)
+    .eq("suggestion_scope", scope);
+  if (opts?.engineVersion != null) q = q.eq("engine_version", opts.engineVersion);
+  if (opts?.statuses && opts.statuses.length > 0) q = q.in("status", opts.statuses);
+  if (opts?.movementIds && opts.movementIds.length > 0) {
+    q = q.in("bank_movement_id", opts.movementIds.slice(0, 100));
+  }
+  const { data, error } = await q;
+  if (error) throw new Error(`SHADOW_SUGGESTIONS_SCOPE_READ_FAILED: ${error.message}`);
+  return ((data ?? []) as Record<string, unknown>[]).map(mapSuggestionRow);
+}
+
+/** Consulta operativa explícita: SOLO `suggestion_scope='operational'`. */
+export async function listOperationalSuggestions(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  opts?: { statuses?: ShadowSuggestionStatus[]; movementIds?: string[]; engineVersion?: number }
+): Promise<ShadowSuggestionRow[]> {
+  return listSuggestionsByScope(supabase, workspaceId, "operational", opts);
+}
+
+/** Consulta histórica explícita: SOLO `suggestion_scope='historical_review'`. */
+export async function listHistoricalReviewSuggestions(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  opts?: { statuses?: ShadowSuggestionStatus[]; movementIds?: string[]; engineVersion?: number }
+): Promise<ShadowSuggestionRow[]> {
+  return listSuggestionsByScope(supabase, workspaceId, "historical_review", opts);
+}
+
 export async function insertShadowSuggestion(
   supabase: SupabaseClient,
   proposal: ShadowProposal,
@@ -375,6 +424,7 @@ export async function insertShadowSuggestion(
     recommended_action: proposal.recommendedAction,
     engine_version: proposal.engineVersion,
     status,
+    suggestion_scope: proposal.suggestionScope ?? "operational",
   };
   const { data, error } = await supabase
     .from("bank_reconciliation_suggestions")

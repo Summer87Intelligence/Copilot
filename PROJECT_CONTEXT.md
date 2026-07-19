@@ -1,5 +1,15 @@
 # Project Context
 
+## BANK — Historical shadow persist contract (`suggestion_scope`) — 2026-07-19
+
+**FASE BANK-HISTORICAL-SHADOW-PERSIST-POLICY-001 (local, commit sin push):** contrato estructurado para persistir sugerencias históricas separadas de las operativas.
+- **Columna `suggestion_scope`** (`operational` | `historical_review` | `matched_audit`), no boolean (para extender matched_audit). Antes la distinción vivía solo en `warnings` JSON.
+- **Migración `20260720120000_bank_suggestion_scope.sql` CREADA, NO APLICADA** (aditiva: columna default `operational`, CHECK, reemplaza `brs_active_uidx`→`brs_active_scope_uidx` con scope, índice `brs_ws_scope_status_idx`; RLS/grants sin cambio). Requiere autorización.
+- **Idempotencia por ámbito**: operativo e histórico nunca se sobrescriben mutuamente. Consultas explícitas `listOperationalSuggestions()`/`listHistoricalReviewSuggestions()`. Eventos con `metadata.suggestionScope`.
+- **Runner `persistHistoricalForReview`** (flag server-side, default false): requiere `includeHistoricalForShadow=true`+`persist=true`+`dryRun=false`+IDs; solo persiste `historical_review`; omite post-corte/matched; nunca AUTO/cron/UI. `includeHistoricalForShadow` sin flag sigue dry-run only.
+- Auditoría: sin consumidores de suggestions/events fuera de `lib/bank/intelligence/**` (no tasks/notif/dashboards/Hoy). Las 5 sugerencias existentes → `operational`; las 2 matched históricas no se reclasifican (tratamiento separado).
+- Tests: bank intelligence 134 (runner 19, eligibility 19, schema-contract 12, repositories-scope 3). Doc nuevo `docs/architecture/bank-historical-review-contract.md`. **Cero escrituras/DDL en prod esta fase.**
+
 ## BANK — Shadow historical scope (audit-only) — 2026-07-19
 
 **FASE BANK-SHADOW-HISTORICAL-SCOPE-001 (local, commit sin push):** modo `includeHistoricalForShadow=true` (server-side, default false) en `isShadowEligibleMovement()`. Permite analizar movimientos `[2026-01-01, 2026-07-01)` como **historical-audit** (`historicalAudit=true`, `auditOnly=true`, warning `HISTORICAL_SHADOW_AUDIT`, nunca AUTO). **Dry-run only** (`persist=true` → `HISTORICAL_PERSIST_NOT_ALLOWED`) y **exige IDs explícitos** (sin IDs → `HISTORICAL_SCOPE_REQUIRES_IDS`); `< 2026-01-01` siempre excluido (`MOVEMENT_BEFORE_GLOBAL_FLOOR`). Ambos cortes intactos: global `2026-01-01`, bancario `2026-07-01` (no modificado). Los 424 pending históricos no se procesan automáticamente.

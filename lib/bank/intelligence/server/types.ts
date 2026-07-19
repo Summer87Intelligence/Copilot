@@ -18,6 +18,20 @@ export type { TiedReceiptCandidate };
 
 export type ShadowRecommendedAction = RecommendedAction;
 
+/**
+ * Ámbito canónico de una sugerencia (columna `suggestion_scope`). Estructurado, no JSON.
+ * - operational: flujo post-corte normal.
+ * - historical_review: movimiento `[2026-01-01, 2026-07-01)`, audit-only, nunca AUTO,
+ *   sin trabajo operativo (tarea/alerta/notificación/conciliación).
+ * - matched_audit: movimiento `matched` analizado explícito (reservado; contrato futuro).
+ */
+export const SHADOW_SUGGESTION_SCOPES = [
+  "operational",
+  "historical_review",
+  "matched_audit",
+] as const;
+export type SuggestionScope = (typeof SHADOW_SUGGESTION_SCOPES)[number];
+
 export const SHADOW_ACTIVE_STATUSES = ["generated", "pending_review"] as const;
 export type ShadowActiveStatus = (typeof SHADOW_ACTIVE_STATUSES)[number];
 
@@ -87,6 +101,11 @@ export type ShadowProposal = {
    * `auditOnly=true`, warning HISTORICAL_SHADOW_AUDIT y nunca AUTO. Default (ausente) = false.
    */
   historicalAudit?: boolean;
+  /**
+   * Ámbito con el que se persiste (columna `suggestion_scope`). Default (ausente) = 'operational'.
+   * Lo fija el runner: historical-audit → 'historical_review'; matched-audit → 'matched_audit'.
+   */
+  suggestionScope?: SuggestionScope;
 };
 
 export type ShadowSuggestionRow = {
@@ -102,6 +121,7 @@ export type ShadowSuggestionRow = {
   recommendedAction: ShadowRecommendedAction;
   engineVersion: number;
   status: ShadowSuggestionStatus;
+  suggestionScope: SuggestionScope;
   confirmedLinkId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -134,6 +154,13 @@ export type ShadowRunOptions = {
    * Marca `historicalAudit=true` + `auditOnly=true`, warning HISTORICAL_SHADOW_AUDIT, nunca AUTO.
    */
   includeHistoricalForShadow?: boolean;
+  /**
+   * Solo server-side. Default false. Persiste sugerencias HISTÓRICAS con
+   * `suggestion_scope='historical_review'`. Requiere `includeHistoricalForShadow=true`,
+   * `persist=true` e IDs explícitos. Solo escribe suggestions+events; nunca AUTO,
+   * nunca matched, nunca post-corte, nunca selección automática ni cron.
+   */
+  persistHistoricalForReview?: boolean;
 };
 
 export type ShadowPersistStats = {

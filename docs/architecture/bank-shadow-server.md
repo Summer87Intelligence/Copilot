@@ -1,8 +1,12 @@
 # Bank Shadow Server — Inteligencia bancaria (proposal-only)
 
 Última actualización: 2026-07-19.
-Fase: **BANK-SHADOW-HISTORICAL-SCOPE-001** (sobre server shadow).
-Estado: capa server-side + selección conservadora de recibos (empate/colisión) + **política única de elegibilidad** con modos audit (matched / histórico); **dry-run por defecto**.
+Fase: **BANK-HISTORICAL-SHADOW-PERSIST-POLICY-001** (sobre server shadow).
+Estado: capa server-side + elegibilidad única + modos audit (matched / histórico) + **contrato `suggestion_scope`** (persistencia histórica detrás de flag, migración creada sin aplicar); **dry-run por defecto**.
+
+> Contrato de persistencia histórica: ver `docs/architecture/bank-historical-review-contract.md`.
+> Ámbito canónico `suggestion_scope` (`operational` | `historical_review` | `matched_audit`),
+> idempotencia por ámbito, `persistHistoricalForReview` (flag default false), aislamiento de consultas.
 
 ## Arquitectura
 

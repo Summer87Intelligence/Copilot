@@ -67,10 +67,24 @@ automáticamente: solo por IDs explícitos, uno a uno / lote pequeño, sin cron 
 Los tres flujos (operativo, matched-audit, historical-audit) se mantienen separados; no se
 reutilizan flags ambiguos.
 
+### Contrato de persistencia histórica (BANK-HISTORICAL-SHADOW-PERSIST-POLICY-001, 2026-07-19)
+
+Columna canónica `suggestion_scope` (`operational` | `historical_review` | `matched_audit`)
+separa estructuralmente los ámbitos (antes vivía solo en `warnings` JSON). Idempotencia por
+ámbito (`brs_active_scope_uidx`), consultas explícitas `listOperationalSuggestions()` /
+`listHistoricalReviewSuggestions()`, eventos con `metadata.suggestionScope`. Persistencia
+histórica detrás de `persistHistoricalForReview` (flag server-side, default false; requiere
+`includeHistoricalForShadow=true` + `persist=true` + IDs; solo persiste `historical_review`;
+nunca AUTO/post-corte/matched/cron). SIN_EVIDENCIA sigue sin persistir.
+**Migración `20260720120000_bank_suggestion_scope.sql` creada, NO aplicada** (requiere
+autorización). Las 5 sugerencias existentes quedan `operational`; las 2 matched históricas
+no se reclasifican en esta fase. Detalle: `docs/architecture/bank-historical-review-contract.md`.
+
 ### Pendiente de autorización operativa
 
-- Dry-run histórico controlado por IDs explícitos (medir calidad sobre el backlog pre-corte).
-- Shadow persist en lote pequeño (solo movimientos **operativos** elegibles; `matched`/histórico excluidos de persistencia).
+- Aplicar `20260720120000_bank_suggestion_scope.sql` en producción (preflight + autorización).
+- Persistencia histórica controlada por IDs (tras aplicar la migración) con `persistHistoricalForReview`.
+- Shadow persist en lote pequeño (movimientos **operativos** elegibles; `matched`/histórico separados).
 - Medir precisión por rango de confianza / % sin identificar / conflictos.
 
 ### Deuda conocida

@@ -70,6 +70,7 @@ export function applyMatchedAuditPolicy(proposal: ShadowProposal): ShadowProposa
   return {
     ...proposal,
     auditOnly: true,
+    suggestionScope: "matched_audit",
     recommendedAction,
     warnings,
     candidateEvidence: {
@@ -101,6 +102,7 @@ export function applyHistoricalAuditPolicy(proposal: ShadowProposal): ShadowProp
     ...proposal,
     auditOnly: true,
     historicalAudit: true,
+    suggestionScope: "historical_review",
     recommendedAction,
     warnings,
     candidateEvidence: {
