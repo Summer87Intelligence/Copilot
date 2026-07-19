@@ -123,6 +123,9 @@ export type ShadowSuggestionRow = {
   status: ShadowSuggestionStatus;
   suggestionScope: SuggestionScope;
   confirmedLinkId: string | null;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  rejectedReason: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -195,6 +198,9 @@ export type ShadowPersistDecision =
 export type ShadowSuggestionEventType =
   | "suggestion_created"
   | "suggestion_changed"
-  | "suggestion_superseded";
+  | "suggestion_superseded"
+  | "suggestion_reviewed"
+  | "suggestion_note_added"
+  | "suggestion_rejected";
 
 export type ShadowWriteTarget = "bank_reconciliation_suggestions" | "reconciliation_events";

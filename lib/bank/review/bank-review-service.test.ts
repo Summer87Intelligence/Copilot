@@ -18,6 +18,7 @@ function makeClient(tables: Record<string, Row[]>) {
       let wantCount = false;
       const eqs: Record<string, unknown> = {};
       const ins: Record<string, unknown[]> = {};
+      const isNulls: string[] = [];
       const builder: Record<string, unknown> = {
         select(_cols: string, opts?: { head?: boolean; count?: string }) {
           if (opts?.head) head = true;
@@ -32,10 +33,15 @@ function makeClient(tables: Record<string, Row[]>) {
           ins[c] = v;
           return builder;
         },
+        is(c: string, v: unknown) {
+          if (v === null) isNulls.push(c);
+          return builder;
+        },
         then(resolve: (v: { data: Row[] | null; error: null; count?: number }) => void) {
           let out = rows;
           for (const [k, v] of Object.entries(eqs)) out = out.filter((r) => r[k] === v);
           for (const [k, v] of Object.entries(ins)) out = out.filter((r) => v.includes(r[k]));
+          for (const k of isNulls) out = out.filter((r) => r[k] == null);
           const res: { data: Row[] | null; error: null; count?: number } = {
             data: head ? null : out,
             error: null,
@@ -106,6 +112,21 @@ describe("fetchBankReviewSummary — contadores por ámbito", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const summary = await fetchBankReviewSummary(makeClient(tables) as any, WS);
     expect(summary).toEqual({ operational: 2, historical_review: 2, matched_audit: 0, pending: 4 });
+  });
+
+  it("pending excluye revisadas (reviewed_at set) y rechazadas (status)", async () => {
+    const withReviewed: Record<string, Row[]> = {
+      ...tables,
+      bank_reconciliation_suggestions: [
+        sugg({ id: "op1", bank_movement_id: "m1", suggestion_scope: "operational" }),
+        sugg({ id: "h1", bank_movement_id: "m3", suggestion_scope: "historical_review", reviewed_at: "2026-07-20T00:00:00Z" }),
+        sugg({ id: "h2", bank_movement_id: "m4", suggestion_scope: "historical_review", status: "rejected" }),
+      ],
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const summary = await fetchBankReviewSummary(makeClient(withReviewed) as any, WS);
+    // op1 activo+sin revisar = 1 pendiente; h1 revisada y h2 rejected no cuentan.
+    expect(summary.pending).toBe(1);
   });
 });
 

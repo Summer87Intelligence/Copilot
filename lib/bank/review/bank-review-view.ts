@@ -36,7 +36,18 @@ export type BankReviewSuggestionInput = {
   reasons: string[];
   warnings: string[];
   engineVersion: number;
+  reviewedAt: string | null;
+  rejectedReason: string | null;
 };
+
+/** Estado de revisión derivado (Modelo A): rejected > reviewed > pending. */
+export type BankReviewState = "pending" | "reviewed" | "rejected";
+
+export function deriveReviewState(status: string, reviewedAt: string | null): BankReviewState {
+  if (status === "rejected") return "rejected";
+  if (reviewedAt) return "reviewed";
+  return "pending";
+}
 
 export type BankReviewMovementInput = {
   movementDate: string;
@@ -79,6 +90,9 @@ export type BankReviewRow = {
   reasons: string[];
   warnings: string[];
   engineVersion: number;
+  reviewState: BankReviewState;
+  reviewedAt: string | null;
+  rejectedReason: string | null;
   bankMovementId: string;
   movementIdShort: string;
   proposedReceiptId: string | null;
@@ -160,6 +174,9 @@ export function buildBankReviewRow(input: {
     reasons,
     warnings,
     engineVersion: s.engineVersion,
+    reviewState: deriveReviewState(s.status, s.reviewedAt),
+    reviewedAt: s.reviewedAt,
+    rejectedReason: s.rejectedReason,
     bankMovementId: s.bankMovementId,
     movementIdShort: shortId(s.bankMovementId)!,
     proposedReceiptId: s.proposedReceiptId,
@@ -199,6 +216,7 @@ export function buildBankReviewRow(input: {
 
 export type BankReviewFilters = {
   status?: string; // 'all' | status
+  review?: string; // 'all' | 'pending' | 'reviewed' | 'rejected' (derivado de status + reviewed_at)
   currency?: string; // 'all' | 'UYU' | 'USD'
   confidence?: string; // 'all' | 'high' | 'mid' | 'low'
   evidence?: string; // 'all' | 'has_receipt' | 'no_receipt' | 'tie' | 'sin_evidencia'
@@ -211,6 +229,7 @@ export const BANK_REVIEW_FILTER_DEFAULTS: Required<Omit<BankReviewFilters, "clie
   q: string;
 } = {
   status: "all",
+  review: "all",
   currency: "all",
   confidence: "all",
   evidence: "all",
@@ -249,6 +268,7 @@ export function applyBankReviewFilters(
   filters: BankReviewFilters
 ): BankReviewRow[] {
   const status = filters.status ?? "all";
+  const review = filters.review ?? "all";
   const currency = filters.currency ?? "all";
   const confidence = filters.confidence ?? "all";
   const evidence = filters.evidence ?? "all";
@@ -257,6 +277,7 @@ export function applyBankReviewFilters(
 
   return rows.filter((row) => {
     if (status !== "all" && row.status !== status) return false;
+    if (review !== "all" && row.reviewState !== review) return false;
     if (currency !== "all" && row.movement.currency !== currency) return false;
     if (confidence !== "all" && confidenceBucket(row.confidence) !== confidence) return false;
     if (evidence === "has_receipt" && !row.flags.hasReceipt) return false;

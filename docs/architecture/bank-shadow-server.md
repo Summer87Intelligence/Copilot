@@ -7,6 +7,8 @@ Estado: capa server-side + elegibilidad única + modos audit (matched / históri
 > Contrato de persistencia histórica: ver `docs/architecture/bank-historical-review-contract.md`.
 > Ámbito canónico `suggestion_scope` (`operational` | `historical_review` | `matched_audit`),
 > idempotencia por ámbito, `persistHistoricalForReview` (flag default false), aislamiento de consultas.
+> Acciones humanas de revisión (marcar revisada / nota / rechazar) — Modelo A (`reviewed_at`),
+> 3 RPC transaccionales service_role-only, migración `20260721120000` (no aplicada) — mismo doc.
 
 ## Arquitectura
 

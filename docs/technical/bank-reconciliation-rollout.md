@@ -80,9 +80,22 @@ nunca AUTO/post-corte/matched/cron). SIN_EVIDENCIA sigue sin persistir.
 autorización). Las 5 sugerencias existentes quedan `operational`; las 2 matched históricas
 no se reclasifican en esta fase. Detalle: `docs/architecture/bank-historical-review-contract.md`.
 
+### Acciones de revisión humana (BANK-HISTORICAL-REVIEW-ACTIONS-001, 2026-07-19)
+
+Acciones no financieras sobre sugerencias: marcar revisada (solo historical), agregar nota,
+rechazar (op/hist). Ciclo de vida **Modelo A**: revisada = `reviewed_at`/`reviewed_by` (sin
+status nuevo); rechazada = `status='rejected'`. Atomicidad vía 3 RPC transaccionales
+(SECURITY INVOKER, service_role only) que actualizan la suggestion y appendean el evento
+(`suggestion_reviewed`/`suggestion_note_added`/`suggestion_rejected`). Idempotencia
+(already_reviewed/rejected/recorded) + concurrencia (UPDATE condicionado). RBAC de escritura
+`bank_movements`. **Confirmar conciliación operativa fuera de alcance** (RPC financiera futura).
+**Migración `20260721120000_bank_review_actions.sql` creada, NO aplicada** (autorización pendiente).
+Contadores "Pendientes" = activo + `reviewed_at IS NULL`. Detalle: `docs/architecture/bank-historical-review-contract.md`.
+
 ### Pendiente de autorización operativa
 
-- Aplicar `20260720120000_bank_suggestion_scope.sql` en producción (preflight + autorización).
+- Aplicar `20260720120000_bank_suggestion_scope.sql` en producción (preflight + autorización). **[APLICADA 2026-07-19]**
+- Aplicar `20260721120000_bank_review_actions.sql` (event types + 3 RPC de revisión) — preflight + autorización.
 - Persistencia histórica controlada por IDs (tras aplicar la migración) con `persistHistoricalForReview`.
 - Shadow persist en lote pequeño (movimientos **operativos** elegibles; `matched`/histórico separados).
 - Medir precisión por rango de confianza / % sin identificar / conflictos.

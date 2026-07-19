@@ -319,6 +319,9 @@ function mapSuggestionRow(raw: Record<string, unknown>): ShadowSuggestionRow {
       ? String(raw.suggestion_scope)
       : "operational") as ShadowSuggestionRow["suggestionScope"],
     confirmedLinkId: raw.confirmed_link_id != null ? String(raw.confirmed_link_id) : null,
+    reviewedAt: raw.reviewed_at != null ? String(raw.reviewed_at) : null,
+    reviewedBy: raw.reviewed_by != null ? String(raw.reviewed_by) : null,
+    rejectedReason: raw.rejected_reason != null ? String(raw.rejected_reason) : null,
     createdAt: String(raw.created_at ?? ""),
     updatedAt: String(raw.updated_at ?? ""),
   };
@@ -422,17 +425,25 @@ export async function countHistoricalSuggestions(
   return countSuggestionsByScope(supabase, workspaceId, "historical_review", opts);
 }
 
-/** Sugerencias en estado activo (pendientes de revisión) en TODOS los ámbitos. */
+/**
+ * Sugerencias PENDIENTES: estado activo Y aún sin revisar (`reviewed_at IS NULL`),
+ * en TODOS los ámbitos. Una histórica marcada revisada conserva `status='generated'`
+ * pero deja de contar como pendiente (Modelo A). Opcionalmente filtra por ámbito.
+ */
 export async function countPendingSuggestions(
   supabase: SupabaseClient,
-  workspaceId: string
+  workspaceId: string,
+  opts?: { scope?: SuggestionScope }
 ): Promise<number> {
   const ws = requireWorkspace(workspaceId);
-  const { count, error } = await supabase
+  let q = supabase
     .from("bank_reconciliation_suggestions")
     .select("id", { count: "exact", head: true })
     .eq("workspace_id", ws)
-    .in("status", ["generated", "pending_review"]);
+    .in("status", ["generated", "pending_review"])
+    .is("reviewed_at", null);
+  if (opts?.scope) q = q.eq("suggestion_scope", opts.scope);
+  const { count, error } = await q;
   if (error) throw new Error(`SHADOW_SUGGESTIONS_PENDING_COUNT_FAILED: ${error.message}`);
   return count ?? 0;
 }

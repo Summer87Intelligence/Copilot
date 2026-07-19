@@ -207,6 +207,9 @@ describe("runner — integración mockeada", () => {
           status: "generated",
           suggestionScope: p.suggestionScope ?? "operational",
           confirmedLinkId: null,
+          reviewedAt: null,
+          reviewedBy: null,
+          rejectedReason: null,
           createdAt: p.generatedAt,
           updatedAt: p.generatedAt,
         };
@@ -432,6 +435,9 @@ describe("runner — persistencia histórica (persistHistoricalForReview)", () =
           status: "generated",
           suggestionScope: p.suggestionScope ?? "operational",
           confirmedLinkId: null,
+          reviewedAt: null,
+          reviewedBy: null,
+          rejectedReason: null,
           createdAt: p.generatedAt,
           updatedAt: p.generatedAt,
         };

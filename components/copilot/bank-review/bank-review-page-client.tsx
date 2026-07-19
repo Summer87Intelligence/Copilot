@@ -21,6 +21,7 @@ import {
   ConfidenceChip,
   HistoricalBadges,
   ReasonPills,
+  ReviewStateBadge,
 } from "@/components/copilot/bank-review/bank-review-badges";
 import {
   applyBankReviewFilters,
@@ -67,18 +68,18 @@ export function BankReviewPageClient() {
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    let alive = true;
-    fetch("/api/copilot/bank-review/summary")
-      .then((r) => r.json())
-      .then((j) => {
-        if (alive && j?.ok) setSummary(j.data as Summary);
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
+  const refreshSummary = useCallback(async () => {
+    try {
+      const j = await (await fetch("/api/copilot/bank-review/summary")).json();
+      if (j?.ok) setSummary(j.data as Summary);
+    } catch {
+      /* noop */
+    }
   }, []);
+
+  useEffect(() => {
+    void refreshSummary();
+  }, [refreshSummary]);
 
   const loadScope = useCallback(async (t: BankReviewTab) => {
     if (t === "matched") return; // reservado — no consulta
@@ -184,12 +185,13 @@ export function BankReviewPageClient() {
     base.push(
       { key: "reasons", header: "Reasons", render: (r) => <ReasonPills reasons={r.reasons} /> },
       { key: "warnings", header: "Warnings", render: (r) => <ReasonPills reasons={r.warnings} /> },
+      { key: "review_state", header: "Revisión", render: (r) => <ReviewStateBadge state={r.reviewState} /> },
     );
 
     if (isHistorical) {
       base.push({ key: "flags", header: "Ámbito", render: () => <HistoricalBadges /> });
     } else {
-      base.push({ key: "status", header: "Status", render: (r) => <ActionChip action={r.recommendedAction} /> });
+      base.push({ key: "status", header: "Acción", render: (r) => <ActionChip action={r.recommendedAction} /> });
     }
 
     base.push({
@@ -284,6 +286,19 @@ export function BankReviewPageClient() {
                 placeholder="Movimiento, recibo, cliente, importe, fingerprint…"
               />
             </FilterField>
+            <FilterField label="Revisión" htmlFor="br-review">
+              <FilterSelect
+                id="br-review"
+                value={filters.review ?? "all"}
+                onChange={(v) => updateFilter({ review: v })}
+                options={[
+                  { value: "all", label: "Todas" },
+                  { value: "pending", label: "Pendiente" },
+                  { value: "reviewed", label: "Revisada" },
+                  { value: "rejected", label: "Rechazada" },
+                ]}
+              />
+            </FilterField>
             <FilterField label="Estado" htmlFor="br-status">
               <FilterSelect
                 id="br-status"
@@ -376,7 +391,14 @@ export function BankReviewPageClient() {
         </>
       )}
 
-      <BankReviewDrawer row={selectedRow} onClose={() => setSelectedId(null)} />
+      <BankReviewDrawer
+        row={selectedRow}
+        onClose={() => setSelectedId(null)}
+        onActionComplete={async () => {
+          await loadScope(tab);
+          await refreshSummary();
+        }}
+      />
     </div>
   );
 }

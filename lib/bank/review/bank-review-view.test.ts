@@ -25,6 +25,8 @@ function suggestion(over: Partial<Parameters<typeof buildBankReviewRow>[0]["sugg
     reasons: ["MATCHING_RECEIPT", "EXACT_AMOUNT", "DATE_PROXIMITY"],
     warnings: ["HISTORICAL_SHADOW_AUDIT"],
     engineVersion: 1,
+    reviewedAt: null,
+    rejectedReason: null,
     ...over,
   };
 }
@@ -164,6 +166,25 @@ describe("applyBankReviewFilters", () => {
     expect(applyBankReviewFilters(rows, { q: "17080" }).map((r) => r.id)).toEqual(["b"]);
     expect(applyBankReviewFilters(rows, { q: "3e194c1d" }).length).toBe(3); // mismo movement id de fixture
     expect(applyBankReviewFilters(rows, { q: "fedcba98" }).length).toBe(3); // payer fingerprint
+  });
+});
+
+describe("estado de revisión (Modelo A) + filtro review", () => {
+  it("deriva pending/reviewed/rejected desde status + reviewed_at", () => {
+    expect(build({ suggestion: { status: "generated", reviewedAt: null } }).reviewState).toBe("pending");
+    expect(build({ suggestion: { status: "generated", reviewedAt: "2026-07-20T00:00:00Z" } }).reviewState).toBe("reviewed");
+    expect(build({ suggestion: { status: "rejected", reviewedAt: "2026-07-20T00:00:00Z", rejectedReason: "dup" } }).reviewState).toBe("rejected");
+  });
+
+  it("filtra por estado de revisión", () => {
+    const rows: BankReviewRow[] = [
+      build({ suggestion: { id: "p", status: "generated", reviewedAt: null } }),
+      build({ suggestion: { id: "r", status: "generated", reviewedAt: "2026-07-20T00:00:00Z" } }),
+      build({ suggestion: { id: "x", status: "rejected", reviewedAt: "2026-07-20T00:00:00Z", rejectedReason: "no" } }),
+    ];
+    expect(applyBankReviewFilters(rows, { review: "pending" }).map((r) => r.id)).toEqual(["p"]);
+    expect(applyBankReviewFilters(rows, { review: "reviewed" }).map((r) => r.id)).toEqual(["r"]);
+    expect(applyBankReviewFilters(rows, { review: "rejected" }).map((r) => r.id)).toEqual(["x"]);
   });
 });
 

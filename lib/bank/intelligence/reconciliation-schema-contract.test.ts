@@ -13,6 +13,7 @@ const MIG = join(process.cwd(), "supabase", "migrations");
 const suggestions = readFileSync(join(MIG, "20260719120100_bank_reconciliation_suggestions.sql"), "utf8");
 const rpc = readFileSync(join(MIG, "20260719120200_bank_reconciliation_confirm_rpc.sql"), "utf8");
 const scope = readFileSync(join(MIG, "20260720120000_bank_suggestion_scope.sql"), "utf8");
+const reviewActions = readFileSync(join(MIG, "20260721120000_bank_review_actions.sql"), "utf8");
 
 describe("esquema canónico de conciliación — contrato", () => {
   it("NO existe una segunda tabla canónica de conciliación efectiva (matches)", () => {
@@ -107,5 +108,65 @@ describe("scope de sugerencias (historical_review) — contrato de migración ad
   it("las 5 filas existentes quedan operational (backfill explícito, sin reclasificar matched)", () => {
     expect(scope).toMatch(/UPDATE public\.bank_reconciliation_suggestions[\s\S]*SET suggestion_scope = 'operational'/);
     expect(scope).toContain("NO se reclasifican a matched_audit");
+  });
+});
+
+describe("acciones de revisión (BANK-HISTORICAL-REVIEW-ACTIONS-001) — contrato de migración", () => {
+  it("amplía event_type con los 3 tipos de revisión (aditivo)", () => {
+    expect(reviewActions).toContain("suggestion_reviewed");
+    expect(reviewActions).toContain("suggestion_note_added");
+    expect(reviewActions).toContain("suggestion_rejected");
+    // Conserva los tipos previos.
+    expect(reviewActions).toContain("reconciliation_confirmed");
+    expect(reviewActions).toContain("suggestion_created");
+  });
+
+  it("crea las 3 RPC SECURITY INVOKER con search_path fijo", () => {
+    for (const fn of [
+      "review_bank_suggestion_v1",
+      "reject_bank_suggestion_v1",
+      "add_bank_suggestion_note_v1",
+    ]) {
+      expect(reviewActions).toContain(`FUNCTION public.${fn}`);
+    }
+    expect(reviewActions).toContain("SECURITY INVOKER");
+    expect(reviewActions).toContain("SET search_path TO 'public, pg_temp'");
+  });
+
+  it("revisada usa reviewed_at (Modelo A): NO agrega status='reviewed'", () => {
+    expect(reviewActions).toContain("SET reviewed_at = now(), reviewed_by = p_actor");
+    expect(reviewActions).not.toMatch(/status\s*=\s*'reviewed'/);
+    expect(reviewActions).not.toMatch(/'reviewed'::text/);
+  });
+
+  it("rechazo exige reason y setea status='rejected'", () => {
+    expect(reviewActions).toContain("REASON_INVALID");
+    expect(reviewActions).toMatch(/length\(v_reason\)\s*<\s*3/);
+    expect(reviewActions).toContain("SET status = 'rejected'");
+  });
+
+  it("atómico: UPDATE de suggestion + INSERT de event en la misma función", () => {
+    // review y reject actualizan la suggestion y luego insertan el evento.
+    expect(reviewActions).toMatch(/UPDATE public\.bank_reconciliation_suggestions[\s\S]*INSERT INTO public\.reconciliation_events[\s\S]*suggestion_reviewed/);
+    expect(reviewActions).toMatch(/SET status = 'rejected'[\s\S]*INSERT INTO public\.reconciliation_events[\s\S]*suggestion_rejected/);
+  });
+
+  it("NO reutiliza RPC financieras ni escribe links/allocations", () => {
+    expect(reviewActions).not.toContain("confirm_bank_reconciliation_v1");
+    expect(reviewActions).not.toContain("reverse_bank_reconciliation_v1");
+    expect(reviewActions).not.toMatch(/INSERT INTO public\.bank_movement_reconciliation_links/);
+    expect(reviewActions).not.toMatch(/INSERT INTO public\.payment_allocations/);
+  });
+
+  it("nota es append-only (solo INSERT event) y con idempotencia por token", () => {
+    expect(reviewActions).toMatch(/'suggestion_note_added'[\s\S]*clientToken/);
+    // La función de nota no hace UPDATE de la suggestion.
+    const noteFn = reviewActions.slice(reviewActions.indexOf("add_bank_suggestion_note_v1"));
+    expect(noteFn).not.toMatch(/UPDATE public\.bank_reconciliation_suggestions/);
+  });
+
+  it("permisos SOLO service_role (sin anon/public/authenticated)", () => {
+    expect(reviewActions).toMatch(/REVOKE ALL ON FUNCTION[\s\S]*FROM PUBLIC, anon, authenticated/);
+    expect(reviewActions).toContain("GRANT EXECUTE ON FUNCTION %s TO service_role");
   });
 });

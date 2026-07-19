@@ -147,6 +147,8 @@ export async function fetchBankReviewRows(
           reasons: s.reasons as unknown as string[],
           warnings: s.warnings as unknown as string[],
           engineVersion: s.engineVersion,
+          reviewedAt: s.reviewedAt,
+          rejectedReason: s.rejectedReason,
         },
         movement: {
           movementDate: movement.date,

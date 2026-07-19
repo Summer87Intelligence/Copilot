@@ -82,6 +82,39 @@ UNIDENTIFIED + confidence 0 + sin client/receipt + reasons vacías → `INSUFFIC
 - Reversión de datos: una sugerencia histórica se retira por `status='superseded'`/`rejected`
   (append-only en eventos); nunca se borra.
 
+## Acciones humanas de revisión (BANK-HISTORICAL-REVIEW-ACTIONS-001)
+
+Acciones **no financieras** sobre sugerencias. Contrato de ciclo de vida **Modelo A**:
+"revisada" NO agrega un `status` nuevo — usa las columnas existentes `reviewed_at`/
+`reviewed_by`. `status` permanece `generated`. "rechazada" usa `status='rejected'`.
+
+| Acción | Ámbitos | Efecto en la suggestion | Evento |
+|---|---|---|---|
+| Marcar revisada | **solo** `historical_review` | `reviewed_at=now()`, `reviewed_by=actor` (status intacto) | `suggestion_reviewed` |
+| Agregar nota | operational · historical_review | — (no muta la suggestion) | `suggestion_note_added` |
+| Rechazar | operational · historical_review | `status='rejected'`, `rejected_reason`, `reviewed_at/by` | `suggestion_rejected` |
+
+- **Estado derivado (UI/filtros)**: `rejected` (status) > `reviewed` (reviewed_at≠null) > `pending`.
+- **Pendientes** = `status ∈ {generated,pending_review}` **y** `reviewed_at IS NULL`. Una histórica
+  revisada conserva `status='generated'` pero deja de contar como pendiente.
+- **Atomicidad**: cada acción es una RPC transaccional (SECURITY INVOKER, `search_path` fijo,
+  service_role only): `review_bank_suggestion_v1`, `reject_bank_suggestion_v1`,
+  `add_bank_suggestion_note_v1` — actualizan suggestion **y** appendean el evento en la misma
+  transacción. `reconciliation_events` sigue append-only. **No** reutilizan confirm/reverse;
+  **no** crean links ni allocations; **no** tocan movimientos/recibos/facturas.
+- **Idempotencia**: revisar dos veces → `already_reviewed` (sin evento nuevo, sin cambiar
+  timestamp); rechazar dos veces → `already_rejected`; nota con `clientToken` repetido →
+  `already_recorded`. Concurrencia: `UPDATE` condicionado (`WHERE … reviewed_at IS NULL` /
+  status activo) + `count=1` o `CONCURRENT_UPDATE`.
+- **Scope/estado validados server-side** dentro de la RPC (nunca desde el cliente/tab).
+- **RBAC**: `requireCopilotModuleWriteAccess("bank_movements")` — usuario read-only → 403;
+  sin módulo → 403; workspace cruzado → 404 (sin filtrar existencia). Actor = `appUser.id` de sesión.
+- **Notas**: texto `1..1000`, trim, sin cuentas/documentos completos (`maskedOnly=true`).
+- **Migración** `20260721120000_bank_review_actions.sql` (aditiva): amplía `event_type` con los 3
+  tipos + crea las 3 RPC + helper `bank_review_assert_actor` + índice `brs_ws_scope_reviewed_idx`.
+  **NO aplicada** (requiere autorización). **Confirmar conciliación operativa queda fuera de alcance**
+  (será RPC financiera en fase posterior).
+
 ## Limitaciones
 - Migración **no aplicada** (requiere autorización posterior).
 - El flag de persistencia histórica **no** se ejecutó en producción (solo tests con mocks).

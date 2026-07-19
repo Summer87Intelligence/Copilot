@@ -35,6 +35,29 @@ export function HistoricalBadges() {
   );
 }
 
+/** Badge de estado de revisión: Pendiente (claro) · Revisada (neutro) · Rechazada (diferenciado). */
+export function ReviewStateBadge({ state }: { state: "pending" | "reviewed" | "rejected" }) {
+  if (state === "rejected") {
+    return (
+      <span className="inline-flex items-center rounded-md border border-amber-400/70 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-300">
+        Rechazada
+      </span>
+    );
+  }
+  if (state === "reviewed") {
+    return (
+      <span className="inline-flex items-center rounded-md border border-slate-400/70 bg-slate-200/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700 dark:border-slate-500/60 dark:bg-slate-600/40 dark:text-slate-200">
+        Revisada
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center rounded-md border border-slate-300/70 bg-white px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-600/60 dark:bg-slate-800/40 dark:text-slate-400">
+      Pendiente
+    </span>
+  );
+}
+
 /** Chip de confidence con escala neutra (sin semáforo). */
 export function ConfidenceChip({ value }: { value: number }) {
   const tone =

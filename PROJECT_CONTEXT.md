@@ -1,5 +1,14 @@
 # Project Context
 
+## BANK — Review actions (revisar/nota/rechazar) — 2026-07-19
+
+**FASE BANK-HISTORICAL-REVIEW-ACTIONS-001 (local, commit sin push):** acciones humanas NO financieras sobre sugerencias de revisión bancaria.
+- **Ciclo de vida Modelo A**: "revisada" usa `reviewed_at`/`reviewed_by` (NO agrega `status='reviewed'`; status queda `generated`); "rechazada" = `status='rejected'` + `rejected_reason`. Estado derivado: rejected > reviewed > pending.
+- **Migración `20260721120000_bank_review_actions.sql` CREADA, NO APLICADA** (aditiva): amplía `event_type` (+`suggestion_reviewed`/`suggestion_note_added`/`suggestion_rejected`), 3 RPC transaccionales SECURITY INVOKER service_role-only (`review_/reject_/add_bank_suggestion_note_v1`) + helper actor + índice pendientes. Requiere autorización.
+- **Atomicidad** suggestion+event en la RPC; **idempotencia** (already_reviewed/rejected/recorded); concurrencia por UPDATE condicionado; scope/estado validados server-side; append-only eventos; sin confirm/reverse, sin links/allocations, sin tocar movimientos/recibos/facturas.
+- **API** POST `/api/copilot/bank-review/[id]/{review,reject,notes}` con `requireCopilotModuleWriteAccess("bank_movements")` (read-only→403). **UI** drawer con acciones por scope + composers reason/nota + re-fetch + badges Pendiente/Revisada/Rechazada + filtro revisión. **Contador Pendientes** = activo + `reviewed_at IS NULL`.
+- Tests: schema-contract (7 nuevos) + view (reviewState/filter) + service (pending) + actions (10). Gates verdes. Confirmar conciliación operativa: fuera de alcance (RPC financiera futura).
+
 ## BANK — Historical shadow persist contract (`suggestion_scope`) — 2026-07-19
 
 **FASE BANK-HISTORICAL-SHADOW-PERSIST-POLICY-001 (local, commit sin push):** contrato estructurado para persistir sugerencias históricas separadas de las operativas.
