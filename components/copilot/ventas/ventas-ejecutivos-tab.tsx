@@ -207,10 +207,10 @@ export function VentasEjecutivosTab({
             Cartera por ejecutivo
           </h2>
           <p className={copilotCaptionClass}>
-            El ejecutivo se asigna al cliente desde la pestaña Clientes y arranca el {SALESPERSON_START_DATE}. Esto
-            muestra la cartera de clientes gestionada por cada ejecutivo — no necesariamente quién realizó cada venta.
-            Para ver el vendedor real de cada operación, mirá la pestaña Vendedores. Los importes son ventas netas
-            (emitidas − notas de crédito).
+            Estas métricas corresponden a clientes gestionados por cada ejecutivo. No representan necesariamente
+            ventas realizadas personalmente por ese ejecutivo. El ejecutivo se asigna al cliente desde la pestaña
+            Clientes y arranca el {SALESPERSON_START_DATE}. Para ver el vendedor real de cada operación, mirá la
+            pestaña Vendedores. Los importes son ventas netas (emitidas − notas de crédito).
           </p>
         </div>
 

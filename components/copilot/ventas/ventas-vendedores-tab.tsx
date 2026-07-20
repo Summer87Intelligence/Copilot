@@ -16,6 +16,7 @@ import {
 import type { SalesOverview } from "@/lib/sales/sales-api";
 import type { SellerSalesSummaryRow } from "@/lib/sales/canonical/types";
 import { formatUyuOrDash, formatUsdOrDash } from "@/components/copilot/ventas/ventas-format";
+import { hasAnySellerAssigned, findUnassignedSellerRow } from "@/lib/sales/seller-ux-helpers";
 
 /**
  * FASE SALES-DOCUMENT-SELLER-CORRECTION-001 — ventas atribuidas al VENDEDOR
@@ -31,6 +32,8 @@ function rowKey(r: SellerSalesSummaryRow): string {
 
 export function VentasVendedoresTab({ overview }: { overview: SalesOverview }) {
   const rows = overview.sellers;
+  const hasAnyAssigned = hasAnySellerAssigned(rows);
+  const unassigned = findUnassignedSellerRow(rows);
 
   const columns: CopilotResponsiveTableColumn<SellerSalesSummaryRow>[] = [
     {
@@ -111,28 +114,44 @@ export function VentasVendedoresTab({ overview }: { overview: SalesOverview }) {
       </div>
 
       <div className="mt-3">
-        <CopilotResponsiveTable
-          rows={rows}
-          columns={columns}
-          getRowKey={rowKey}
-          ariaLabel="Ventas por vendedor"
-          minWidth="1080px"
-          emptyState={<EmptyState icon={<Briefcase className="h-6 w-6" />} title="No hay ventas en el período." variant="compact" />}
-          mobileCard={(r) => (
-            <div className="space-y-1">
-              <div className="flex items-center justify-between gap-2">
-                <p className={`font-medium ${r.sellerId ? "text-[var(--copilot-ink)]" : "text-[var(--copilot-ink-muted)]"}`}>
-                  {r.sellerName}
+        {rows.length === 0 ? (
+          <EmptyState icon={<Briefcase className="h-6 w-6" />} title="No hay ventas en el período." variant="compact" />
+        ) : !hasAnyAssigned ? (
+          <EmptyState
+            icon={<Briefcase className="h-6 w-6" />}
+            title="Sin vendedores asignados"
+            description={
+              `Las ventas todavía no tienen un vendedor asignado. Podés indicarlo desde el detalle de cada factura. ` +
+              (unassigned
+                ? `Total sin asignar: ${unassigned.invoiceCount} operaciones · ${formatUyuOrDash(unassigned.netSalesByCurrency.UYU)} · ${formatUsdOrDash(unassigned.netSalesByCurrency.USD)}.`
+                : "")
+            }
+            variant="compact"
+          />
+        ) : (
+          <CopilotResponsiveTable
+            rows={rows}
+            columns={columns}
+            getRowKey={rowKey}
+            ariaLabel="Ventas por vendedor"
+            minWidth="1080px"
+            emptyState={<EmptyState icon={<Briefcase className="h-6 w-6" />} title="No hay ventas en el período." variant="compact" />}
+            mobileCard={(r) => (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className={`font-medium ${r.sellerId ? "text-[var(--copilot-ink)]" : "text-[var(--copilot-ink-muted)]"}`}>
+                    {r.sellerName}
+                  </p>
+                  <StatusBadge tone="neutral">{r.invoiceCount} op.</StatusBadge>
+                </div>
+                <p className="text-xs text-[var(--copilot-ink-muted)]">{r.customerCount} clientes</p>
+                <p className="text-sm font-semibold tabular-nums text-[var(--copilot-ink)]">
+                  {formatUyuOrDash(r.netSalesByCurrency.UYU)} · {formatUsdOrDash(r.netSalesByCurrency.USD)}
                 </p>
-                <StatusBadge tone="neutral">{r.invoiceCount} op.</StatusBadge>
               </div>
-              <p className="text-xs text-[var(--copilot-ink-muted)]">{r.customerCount} clientes</p>
-              <p className="text-sm font-semibold tabular-nums text-[var(--copilot-ink)]">
-                {formatUyuOrDash(r.netSalesByCurrency.UYU)} · {formatUsdOrDash(r.netSalesByCurrency.USD)}
-              </p>
-            </div>
-          )}
-        />
+            )}
+          />
+        )}
       </div>
     </section>
   );

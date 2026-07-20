@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
     if (!sp) {
       return NextResponse.json(
-        { ok: false as const, code: "NOT_FOUND", message: "Comercial no encontrado en este workspace." },
+        { ok: false as const, code: "NOT_FOUND", message: "Ejecutivo no encontrado en este workspace." },
         { status: 404 }
       );
     }

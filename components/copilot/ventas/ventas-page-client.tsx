@@ -249,7 +249,6 @@ export function VentasPageClient({ isAdmin }: { isAdmin: boolean }) {
   return (
     <div className={COPILOT_PAGE_GAP}>
       <CopilotPageHeader
-        eyebrow="Comercial"
         title="Ventas"
         description="Qué servicios vendimos, a cuántos clientes y cómo se compara cada mes."
         right={
@@ -329,7 +328,7 @@ export function VentasPageClient({ isAdmin }: { isAdmin: boolean }) {
                 className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[var(--copilot-border-strong)] px-3 text-sm font-semibold text-[var(--copilot-ink)] hover:bg-[var(--copilot-hover-bg)]"
               >
                 <Settings className="h-4 w-4" aria-hidden />
-                Configuración comercial
+                Configuración de ventas
               </Link>
             ) : null}
           </div>

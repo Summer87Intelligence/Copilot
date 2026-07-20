@@ -161,6 +161,18 @@ export function VentasTab({ companyId }: { companyId: string }) {
 
   return (
     <div className="space-y-4">
+      <div
+        className="flex items-center justify-between gap-2 rounded-lg border border-[var(--copilot-border)] px-3 py-2"
+        title="Persona responsable del seguimiento y la relación con este cliente."
+      >
+        <span className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">
+          Ejecutivo del cliente
+        </span>
+        <span className="text-sm font-semibold text-[var(--copilot-ink)]">
+          {summary.salespersonName ?? "Sin ejecutivo"}
+        </span>
+      </div>
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Tile label="Ventas netas UYU" value={formatUyu(summary.net.UYU)} />
         <Tile label="Ventas netas USD" value={formatUsd(summary.net.USD)} />
@@ -172,7 +184,6 @@ export function VentasTab({ companyId }: { companyId: string }) {
         <h3 className={copilotSectionTitleClass}>Servicios contratados</h3>
         <p className={`${copilotCaptionClass} mt-1`}>
           Primera compra {formatDateShort(summary.firstDate)} · última {formatDateShort(summary.lastDate)}. Año actual.
-          Ejecutivo: {summary.salespersonName ?? "Sin ejecutivo"}.
           {summary.creditNotes.UYU > 0.005 || summary.creditNotes.USD > 0.005
             ? ` Notas de crédito descontadas: ${formatUyu(summary.creditNotes.UYU)} · ${formatUsd(summary.creditNotes.USD)}.`
             : ""}
@@ -195,7 +206,7 @@ export function VentasTab({ companyId }: { companyId: string }) {
 
       <section className={copilotCardStandardClass}>
         <h3 className={copilotSectionTitleClass}>Facturas y vendedor asignado</h3>
-        <p className={`${copilotCaptionClass} mt-1`}>
+        <p className={`${copilotCaptionClass} mt-1`} title="Persona que realizó esta venta.">
           El vendedor es quien realizó cada operación puntual — distinto del ejecutivo del cliente. Las notas de
           crédito no admiten asignación.
         </p>
@@ -213,14 +224,17 @@ export function VentasTab({ companyId }: { companyId: string }) {
                   {inv.currency === "USD" ? formatUsd(inv.amount) : formatUyu(inv.amount)}
                 </p>
               </div>
-              <SellerSelect
-                documentId={inv.documentId}
-                sellerId={inv.sellerId}
-                sellerName={inv.sellerName}
-                kind={inv.kind}
-                people={people}
-                onAssigned={() => void load()}
-              />
+              <div className="flex shrink-0 items-center gap-1.5">
+                <span className="text-xs text-[var(--copilot-ink-muted)]">Vendedor:</span>
+                <SellerSelect
+                  documentId={inv.documentId}
+                  sellerId={inv.sellerId}
+                  sellerName={inv.sellerName}
+                  kind={inv.kind}
+                  people={people}
+                  onAssigned={() => void load()}
+                />
+              </div>
             </li>
           ))}
         </ul>

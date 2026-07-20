@@ -185,9 +185,12 @@ export function VentasClientesTab({
             onClick={(e) => e.stopPropagation()}
             onChange={(e) => assignClient(r.customerId!, e.target.value || null, r.currentSalespersonId)}
             aria-label={`Ejecutivo de ${r.customerName}`}
+            title="Persona responsable del seguimiento y la relación con este cliente."
             className="h-8 max-w-[160px] rounded-lg border border-[var(--copilot-border-strong)] bg-[var(--copilot-panel-bg)] px-2 text-xs text-[var(--copilot-ink)] disabled:opacity-40"
           >
-            <option value="">Sin ejecutivo</option>
+            <option value="" title="Todavía no se indicó un ejecutivo responsable.">
+              Sin ejecutivo
+            </option>
             {salespersons.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.displayName}
@@ -195,7 +198,12 @@ export function VentasClientesTab({
             ))}
           </select>
         ) : (
-          <span className="text-xs text-[var(--copilot-ink-muted)]">{r.salespersonName ?? "Sin ejecutivo"}</span>
+          <span
+            className="text-xs text-[var(--copilot-ink-muted)]"
+            title="Persona responsable del seguimiento y la relación con este cliente."
+          >
+            {r.salespersonName ?? "Sin ejecutivo"}
+          </span>
         ),
     },
     {
@@ -295,6 +303,9 @@ export function VentasClientesTab({
     <>
       <section className={copilotCardStandardClass}>
         <h2 className={copilotSectionTitleClass}>Clientes del período</h2>
+        <p className={`${copilotCaptionClass} mt-1`}>
+          Un cliente tiene un ejecutivo responsable, pero cada venta puede ser realizada por una persona diferente.
+        </p>
         {canAssign ? (
           <p className={`${copilotCaptionClass} mt-1`}>
             El ejecutivo es responsable del seguimiento y la relación con el cliente. Se asigna con vigencia y no

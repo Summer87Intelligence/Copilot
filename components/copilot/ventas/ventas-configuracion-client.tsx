@@ -47,9 +47,9 @@ export function VentasConfiguracionClient() {
   return (
     <div className={COPILOT_PAGE_GAP}>
       <CopilotPageHeader
-        eyebrow="Comercial · Configuración"
-        title="Configuración comercial"
-        description="Catálogo de productos, clasificación de conceptos y comerciales del equipo. Uso administrativo."
+        eyebrow="Ventas · Configuración"
+        title="Configuración de ventas"
+        description="Catálogo de productos, clasificación de conceptos y equipo de ventas (ejecutivos y vendedores). Uso administrativo."
         right={
           <Link
             href="/copilot/ventas"
@@ -92,10 +92,10 @@ function SalespersonsManager() {
         setPeople(json.data as SalespersonRow[]);
         setMigrationPending(Boolean(json.meta?.migrationPending));
       } else {
-        setMessage({ tone: "danger", text: json?.message ?? "No pudimos cargar los comerciales." });
+        setMessage({ tone: "danger", text: json?.message ?? "No pudimos cargar el equipo de ventas." });
       }
     } catch {
-      setMessage({ tone: "danger", text: "No pudimos cargar los comerciales." });
+      setMessage({ tone: "danger", text: "No pudimos cargar el equipo de ventas." });
     } finally {
       setLoading(false);
     }
@@ -119,14 +119,14 @@ function SalespersonsManager() {
         });
         const json = await res.json();
         if (!res.ok || !json.ok) {
-          setMessage({ tone: "danger", text: json?.message ?? "No se pudo crear el comercial." });
+          setMessage({ tone: "danger", text: json?.message ?? "No se pudo agregar la persona." });
           return;
         }
-        setMessage({ tone: "positive", text: `Comercial “${name}” agregado.` });
+        setMessage({ tone: "positive", text: `“${name}” agregado al equipo.` });
         setNewName("");
         await load();
       } catch {
-        setMessage({ tone: "danger", text: "No se pudo crear el comercial." });
+        setMessage({ tone: "danger", text: "No se pudo agregar la persona." });
       } finally {
         setBusy(false);
       }
@@ -141,16 +141,17 @@ function SalespersonsManager() {
     <section className={copilotCardStandardClass}>
       <h2 className={`${copilotSectionTitleClass} flex items-center gap-2`}>
         <UserPlus className="h-4 w-4" aria-hidden />
-        Comerciales del equipo
+        Equipo de ventas
       </h2>
       <p className={`${copilotCaptionClass} mt-1`}>
-        Se usan para asignar ventas desde el {SALESPERSON_START_DATE}. Las ventas anteriores permanecen “Sin asignar”: no hay
-        backfill ni adivinación.
+        Estas personas se pueden asignar como ejecutivo de un cliente o como vendedor de una operación puntual, desde el{" "}
+        {SALESPERSON_START_DATE}. Las ventas anteriores permanecen “Sin asignar”: no hay backfill ni adivinación.
       </p>
 
       {migrationPending ? (
         <p className="mt-2 text-xs font-medium text-[var(--copilot-warning-text-strong)]">
-          La tabla de comerciales todavía no está disponible en este entorno. Aplicá la migración pendiente para habilitarla.
+          La tabla del equipo de ventas todavía no está disponible en este entorno. Aplicá la migración pendiente para
+          habilitarla.
         </p>
       ) : null}
 
@@ -170,8 +171,8 @@ function SalespersonsManager() {
           type="text"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-          placeholder="Nombre del comercial…"
-          aria-label="Nombre del nuevo comercial"
+          placeholder="Nombre de la persona…"
+          aria-label="Nombre de la nueva persona"
           disabled={busy || migrationPending}
           className="h-9 min-w-[220px] flex-1 rounded-lg border border-[var(--copilot-border-strong)] bg-[var(--copilot-panel-bg)] px-2.5 text-sm text-[var(--copilot-ink)] outline-none focus:border-[var(--copilot-accent)] disabled:opacity-40"
         />
@@ -206,7 +207,7 @@ function SalespersonsManager() {
         {loading ? (
           <SkeletonText lines={2} />
         ) : people.length === 0 ? (
-          <EmptyState icon={<UserPlus className="h-6 w-6" />} title="Todavía no hay comerciales cargados." variant="compact" />
+          <EmptyState icon={<UserPlus className="h-6 w-6" />} title="Todavía no hay personas cargadas en el equipo de ventas." variant="compact" />
         ) : (
           <ul className="flex flex-wrap gap-2">
             {people.map((p) => (
