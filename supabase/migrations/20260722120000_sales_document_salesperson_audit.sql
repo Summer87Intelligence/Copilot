@@ -9,6 +9,11 @@
 -- vendedor (asignar, reasignar, desasignar) agrega una fila nueva; nunca se
 -- actualiza ni se borra una fila existente (sin políticas UPDATE/DELETE).
 --
+-- Una fila de auditoría SIEMPRE representa un cambio real de vendedor:
+-- `sales_document_salesperson_audit_change_chk` rechaza previous=new (incluida
+-- la igualdad null=null). Asignar el mismo vendedor es idempotente a nivel
+-- aplicación y no llega a insertar fila aquí.
+--
 -- NO APLICAR sin autorización explícita del usuario.
 -- Idempotente.
 
@@ -19,7 +24,9 @@ CREATE TABLE IF NOT EXISTS public.sales_document_salesperson_audit (
   previous_seller_id UUID      NULL REFERENCES public.sales_salespersons(id) ON DELETE SET NULL,
   new_seller_id    UUID        NULL REFERENCES public.sales_salespersons(id) ON DELETE SET NULL,
   changed_by       UUID        NULL REFERENCES public.app_users(id) ON DELETE SET NULL,
-  changed_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+  changed_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT sales_document_salesperson_audit_change_chk
+    CHECK (previous_seller_id IS DISTINCT FROM new_seller_id)
 );
 
 COMMENT ON TABLE public.sales_document_salesperson_audit IS
