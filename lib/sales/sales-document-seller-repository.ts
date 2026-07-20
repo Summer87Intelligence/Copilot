@@ -26,7 +26,15 @@ export type AssignDocumentSellerInput = {
 };
 
 export type AssignDocumentSellerResult =
-  | { ok: true; sellerId: string | null; changed: boolean }
+  | {
+      ok: true;
+      documentId: string;
+      sellerId: string | null;
+      sellerName: string | null;
+      changed: boolean;
+      /** ISO. null cuando sellerId es null (sin asignación vigente). */
+      assignedAt: string | null;
+    }
   | { ok: false; code: string; message: string };
 
 function str(v: unknown): string {
@@ -67,10 +75,11 @@ export async function assignDocumentSeller(
     };
   }
 
+  let sellerName: string | null = null;
   if (input.sellerId) {
     const { data: seller, error: sellerError } = await supabase
       .from("sales_salespersons")
-      .select("id, active")
+      .select("id, active, display_name")
       .eq("id", input.sellerId)
       .eq("workspace_id", workspaceId)
       .maybeSingle();
@@ -85,11 +94,12 @@ export async function assignDocumentSeller(
         message: "El vendedor está inactivo. Solo se puede asignar a vendedores activos.",
       };
     }
+    sellerName = str((seller as { display_name?: unknown }).display_name).trim() || null;
   }
 
   const { data: current, error: currentError } = await supabase
     .from("sales_document_salespersons")
-    .select("id, salesperson_id")
+    .select("id, salesperson_id, assigned_at")
     .eq("workspace_id", workspaceId)
     .eq("document_id", input.documentId)
     .maybeSingle();
@@ -105,9 +115,18 @@ export async function assignDocumentSeller(
 
   // Idempotencia: si ya es el vendedor pedido, no churnear ni auditar.
   if (previousSellerId === input.sellerId) {
-    return { ok: true, sellerId: input.sellerId, changed: false };
+    const currentAssignedAt = current ? str((current as { assigned_at?: unknown }).assigned_at).trim() || null : null;
+    return {
+      ok: true,
+      documentId: input.documentId,
+      sellerId: input.sellerId,
+      sellerName,
+      changed: false,
+      assignedAt: currentAssignedAt,
+    };
   }
 
+  let assignedAt: string | null = null;
   if (input.sellerId === null) {
     if (current) {
       const { error: delError } = await supabase
@@ -118,13 +137,14 @@ export async function assignDocumentSeller(
       if (delError) return { ok: false, code: "DB_ERROR", message: delError.message };
     }
   } else {
+    assignedAt = new Date().toISOString();
     const { error: upsertError } = await supabase.from("sales_document_salespersons").upsert(
       {
         workspace_id: workspaceId,
         document_id: input.documentId,
         salesperson_id: input.sellerId,
         assigned_by: userId,
-        assigned_at: new Date().toISOString(),
+        assigned_at: assignedAt,
       },
       { onConflict: "workspace_id,document_id" }
     );
@@ -149,5 +169,12 @@ export async function assignDocumentSeller(
     /* red u otro fallo inesperado: no bloquear la asignación real. */
   }
 
-  return { ok: true, sellerId: input.sellerId, changed: true };
+  return {
+    ok: true,
+    documentId: input.documentId,
+    sellerId: input.sellerId,
+    sellerName,
+    changed: true,
+    assignedAt,
+  };
 }

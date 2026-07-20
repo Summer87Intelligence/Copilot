@@ -39,13 +39,26 @@ describe("reactivated per-document seller assignment endpoint", () => {
       ok: true,
       ctx: { supabase: {}, tenantCompanyId: "ws-1", appUser: { id: "user-1" } },
     });
-    assignDocumentSeller.mockResolvedValue({ ok: true, sellerId: SELLER_ID, changed: true });
+    assignDocumentSeller.mockResolvedValue({
+      ok: true,
+      documentId: DOC_ID,
+      sellerId: SELLER_ID,
+      sellerName: "Daniel",
+      changed: true,
+      assignedAt: "2026-07-20T12:00:00.000Z",
+    });
 
     const res = await POST(fakeRequest({ documentId: DOC_ID, salespersonId: SELLER_ID }));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
-    expect(body.data).toMatchObject({ documentId: DOC_ID, salespersonId: SELLER_ID, changed: true });
+    expect(body.data).toMatchObject({
+      documentId: DOC_ID,
+      salespersonId: SELLER_ID,
+      sellerName: "Daniel",
+      changed: true,
+      assignedAt: "2026-07-20T12:00:00.000Z",
+    });
     expect(assignDocumentSeller).toHaveBeenCalledWith({}, "ws-1", "user-1", {
       documentId: DOC_ID,
       sellerId: SELLER_ID,

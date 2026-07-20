@@ -28,6 +28,7 @@ import {
   DrawerStatGrid,
 } from "@/components/copilot/ventas/ventas-analytics-drawer";
 import { SellerSelect } from "@/components/copilot/ventas/seller-select";
+import { patchRowsByDocumentId } from "@/lib/sales/seller-ux-helpers";
 
 const PAGE_SIZE = 50;
 const UNASSIGNED = "unassigned";
@@ -47,6 +48,7 @@ export function VentasDetalleTab({
   to,
   year,
   month,
+  onSellerAssigned,
 }: {
   /** Período por preset (this_month, year, …). */
   preset?: SalesPeriodPreset;
@@ -56,6 +58,13 @@ export function VentasDetalleTab({
   /** Mes con nombre del año en curso. */
   year?: number;
   month?: number;
+  /**
+   * Notifica (sin bloquear ni recargar Detalle) que se asignó/reasignó un
+   * vendedor, para que el padre dispare una revalidación en background
+   * (debounced) del resumen de Vendedores. Nunca gatilla un refetch de esta
+   * tabla.
+   */
+  onSellerAssigned?: () => void;
 }) {
   const [rows, setRows] = useState<SalesDetailRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -69,6 +78,26 @@ export function VentasDetalleTab({
 
   const [people, setPeople] = useState<SalespersonRow[]>([]);
   const [detailRow, setDetailRow] = useState<SalesDetailRow | null>(null);
+
+  /**
+   * Parcha SOLO las filas (líneas) que pertenecen al mismo `documentId` — un
+   * documento con varias líneas de servicio comparte legítimamente un único
+   * vendedor. Nunca dispara un refetch ni toca otras filas. Identidad
+   * exclusivamente por `documentId` (UUID), nunca por número visible, cliente,
+   * importe o índice.
+   */
+  const patchRowsForDocument = useCallback(
+    (targetDocumentId: string, nextSellerId: string | null, nextSellerName: string | null) => {
+      setRows((current) => patchRowsByDocumentId(current, targetDocumentId, nextSellerId, nextSellerName));
+      setDetailRow((prev) =>
+        prev && prev.documentId === targetDocumentId
+          ? { ...prev, sellerId: nextSellerId, sellerName: nextSellerName }
+          : prev
+      );
+      onSellerAssigned?.();
+    },
+    [onSellerAssigned]
+  );
 
   /** Serializa el período recibido (preset · mes · rango) para la API. */
   const periodKey = useMemo(() => {
@@ -212,16 +241,27 @@ export function VentasDetalleTab({
       header: "Vendedor",
       className: "text-left",
       cellClassName: "text-xs",
-      render: (r) => (
-        <SellerSelect
-          documentId={r.documentId}
-          sellerId={r.sellerId}
-          sellerName={r.sellerName}
-          kind={r.kind}
-          people={people}
-          onAssigned={() => void load()}
-        />
-      ),
+      render: (r) =>
+        r.isFirstLineOfDoc ? (
+          <SellerSelect
+            documentId={r.documentId}
+            sellerId={r.sellerId}
+            sellerName={r.sellerName}
+            kind={r.kind}
+            people={people}
+            onAssigned={(nextId, nextName) => patchRowsForDocument(r.documentId, nextId, nextName)}
+          />
+        ) : (
+          // Misma factura, otra línea de servicio: comparten un único vendedor
+          // (mismo document_id). No es un selector independiente — evita que
+          // parezca una operación distinta.
+          <span
+            className="text-[var(--copilot-ink-muted)]"
+            title="Otra línea de la misma factura: comparte el vendedor asignado arriba."
+          >
+            ↳ mismo comprobante
+          </span>
+        ),
     },
     {
       key: "act",
@@ -443,18 +483,7 @@ export function VentasDetalleTab({
                   sellerName={detailRow.sellerName}
                   kind={detailRow.kind}
                   people={people}
-                  onAssigned={(nextId) => {
-                    setDetailRow((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            sellerId: nextId,
-                            sellerName: people.find((p) => p.id === nextId)?.displayName ?? null,
-                          }
-                        : prev
-                    );
-                    void load();
-                  }}
+                  onAssigned={(nextId, nextName) => patchRowsForDocument(detailRow.documentId, nextId, nextName)}
                 />
               </div>
             ) : null}

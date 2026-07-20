@@ -10,6 +10,7 @@ import type { SalesDetailRow } from "@/lib/sales/sales-api";
 import type { SalespersonRow } from "@/lib/sales/sales-salesperson-repository";
 import { formatUyu, formatUsd, formatDateShort } from "@/components/copilot/ventas/ventas-format";
 import { SellerSelect } from "@/components/copilot/ventas/seller-select";
+import { patchRowsByDocumentId } from "@/lib/sales/seller-ux-helpers";
 
 /**
  * FASE 9 — Ventas del cliente dentro de Cliente 360.
@@ -62,6 +63,17 @@ export function VentasTab({ companyId }: { companyId: string }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
+
+  /**
+   * Parcha localmente TODAS las líneas de un mismo `documentId` (identidad
+   * exclusiva del documento). Nunca dispara un refetch de la lista completa.
+   */
+  const patchDocumentSeller = useCallback(
+    (documentId: string, sellerId: string | null, sellerName: string | null) => {
+      setRows((current) => patchRowsByDocumentId(current, documentId, sellerId, sellerName));
+    },
+    []
+  );
 
   const summary = useMemo(() => {
     // Ventas netas = ventas emitidas − notas de crédito (las NC del cliente se restan).
@@ -232,7 +244,7 @@ export function VentasTab({ companyId }: { companyId: string }) {
                   sellerName={inv.sellerName}
                   kind={inv.kind}
                   people={people}
-                  onAssigned={() => void load()}
+                  onAssigned={(nextId, nextName) => patchDocumentSeller(inv.documentId, nextId, nextName)}
                 />
               </div>
             </li>

@@ -48,3 +48,20 @@ export function findUnassignedSellerRow<T extends { sellerId: string | null }>(
 ): T | undefined {
   return rows.find((r) => r.sellerId === null);
 }
+
+/**
+ * FASE SALES-DOCUMENT-SELLER-INLINE-UX-AND-IDENTITY-FIX-001 — parcha
+ * localmente las filas que pertenecen a un `documentId` (identidad única e
+ * inmutable del documento; NUNCA número visible, cliente, importe ni índice).
+ *
+ * Si un documento tiene varias líneas de servicio, TODAS comparten el mismo
+ * vendedor por diseño (misma factura) y todas se actualizan juntas aquí — eso
+ * es intencional, no un bug de identidad. Filas de otros documentos, incluidas
+ * las que compartan el mismo número visible pero un `documentId` distinto,
+ * nunca se tocan.
+ */
+export function patchRowsByDocumentId<
+  T extends { documentId: string; sellerId: string | null; sellerName: string | null },
+>(rows: readonly T[], documentId: string, sellerId: string | null, sellerName: string | null): T[] {
+  return rows.map((row) => (row.documentId === documentId ? { ...row, sellerId, sellerName } : row));
+}

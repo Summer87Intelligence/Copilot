@@ -61,15 +61,22 @@ function makeSupabase(tableQueues: Record<string, Resp[]>) {
 }
 
 describe("assignDocumentSeller", () => {
-  it("asigna Daniel a una factura (Sin vendedor → Daniel)", async () => {
+  it("asigna Daniel a una factura (Sin vendedor → Daniel) y devuelve el contrato completo", async () => {
     const { client, calls } = makeSupabase({
       proto_invoices: [{ data: { id: DOC, zeta_metadata: {} } }],
-      sales_salespersons: [{ data: { id: DANIEL, active: true } }],
+      sales_salespersons: [{ data: { id: DANIEL, active: true, display_name: "Daniel" } }],
       sales_document_salespersons: [{ data: null }], // sin fila actual
       sales_document_salesperson_audit: [{ error: null }],
     });
     const res = await assignDocumentSeller(client, WS, USER, { documentId: DOC, sellerId: DANIEL });
-    expect(res).toMatchObject({ ok: true, sellerId: DANIEL, changed: true });
+    expect(res).toMatchObject({
+      ok: true,
+      documentId: DOC,
+      sellerId: DANIEL,
+      sellerName: "Daniel",
+      changed: true,
+    });
+    expect(res.ok && typeof res.assignedAt === "string" && res.assignedAt.length > 0).toBe(true);
     expect(calls.sales_document_salespersons?.[0]).toMatchObject({
       method: "upsert",
       payload: { workspace_id: WS, document_id: DOC, salesperson_id: DANIEL },
@@ -95,7 +102,7 @@ describe("assignDocumentSeller", () => {
       sales_document_salesperson_audit: [{ error: null }],
     });
     const res = await assignDocumentSeller(client, WS, USER, { documentId: DOC, sellerId: null });
-    expect(res).toMatchObject({ ok: true, sellerId: null, changed: true });
+    expect(res).toMatchObject({ ok: true, documentId: DOC, sellerId: null, sellerName: null, changed: true, assignedAt: null });
     expect(calls.sales_document_salespersons?.[0]?.method).toBe("delete");
   });
 

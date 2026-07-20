@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { ShoppingBag, Users, Briefcase, Settings, Lightbulb, ExternalLink } from "lucide-react";
@@ -199,6 +199,28 @@ export function VentasPageClient({ isAdmin }: { isAdmin: boolean }) {
   useEffect(() => {
     void loadOverview();
   }, [loadOverview]);
+
+  /**
+   * Revalidación en background del resumen (Vendedores/Ejecutivos/Resumen)
+   * cuando el usuario asigna vendedores en Detalle. Debounced (800ms): si
+   * asigna varias facturas seguidas, se consolida en un solo refresh en vez
+   * de uno por cada selección. Nunca bloquea ni recarga Detalle.
+   */
+  const quietRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleQuietOverviewRefresh = useCallback(() => {
+    if (quietRefreshTimer.current) clearTimeout(quietRefreshTimer.current);
+    quietRefreshTimer.current = setTimeout(() => {
+      quietRefreshTimer.current = null;
+      void refreshOverviewQuiet();
+    }, 800);
+  }, [refreshOverviewQuiet]);
+
+  useEffect(
+    () => () => {
+      if (quietRefreshTimer.current) clearTimeout(quietRefreshTimer.current);
+    },
+    []
+  );
 
   // Catálogo de comerciales (una sola vez) para asignación por cliente.
   useEffect(() => {
@@ -419,7 +441,7 @@ export function VentasPageClient({ isAdmin }: { isAdmin: boolean }) {
           </TabFrame>
         ) : null}
         {tab === "detalle" ? (
-          <VentasDetalleTab {...detalleProps} />
+          <VentasDetalleTab {...detalleProps} onSellerAssigned={scheduleQuietOverviewRefresh} />
         ) : null}
       </div>
     </div>

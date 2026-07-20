@@ -52,7 +52,13 @@ export async function POST(request: NextRequest) {
   return NextResponse.json(
     {
       ok: true as const,
-      data: { documentId: parsed.data.documentId, salespersonId: result.sellerId, changed: result.changed },
+      data: {
+        documentId: result.documentId,
+        salespersonId: result.sellerId,
+        sellerName: result.sellerName,
+        changed: result.changed,
+        assignedAt: result.assignedAt,
+      },
     },
     { status: 200 }
   );

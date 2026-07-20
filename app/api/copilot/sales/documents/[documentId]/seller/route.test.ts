@@ -59,12 +59,28 @@ describe("PUT /api/copilot/sales/documents/[documentId]/seller", () => {
       ok: true,
       ctx: { supabase: {}, tenantCompanyId: "ws-1", appUser: { id: "user-1" } },
     });
-    assignDocumentSeller.mockResolvedValue({ ok: true, sellerId: SELLER_ID, changed: true });
+    assignDocumentSeller.mockResolvedValue({
+      ok: true,
+      documentId: DOC_ID,
+      sellerId: SELLER_ID,
+      sellerName: "Daniel",
+      changed: true,
+      assignedAt: "2026-07-20T12:00:00.000Z",
+    });
 
     const res = await PUT(fakeRequest({ sellerId: SELLER_ID }), ctx(DOC_ID));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toMatchObject({ ok: true, data: { documentId: DOC_ID, sellerId: SELLER_ID, changed: true } });
+    expect(body).toMatchObject({
+      ok: true,
+      data: {
+        documentId: DOC_ID,
+        sellerId: SELLER_ID,
+        sellerName: "Daniel",
+        changed: true,
+        assignedAt: "2026-07-20T12:00:00.000Z",
+      },
+    });
     expect(assignDocumentSeller).toHaveBeenCalledWith({}, "ws-1", "user-1", { documentId: DOC_ID, sellerId: SELLER_ID });
   });
 
@@ -73,9 +89,18 @@ describe("PUT /api/copilot/sales/documents/[documentId]/seller", () => {
       ok: true,
       ctx: { supabase: {}, tenantCompanyId: "ws-1", appUser: { id: "user-1" } },
     });
-    assignDocumentSeller.mockResolvedValue({ ok: true, sellerId: null, changed: true });
+    assignDocumentSeller.mockResolvedValue({
+      ok: true,
+      documentId: DOC_ID,
+      sellerId: null,
+      sellerName: null,
+      changed: true,
+      assignedAt: null,
+    });
     const res = await PUT(fakeRequest({ sellerId: null }), ctx(DOC_ID));
     expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({ ok: true, data: { documentId: DOC_ID, sellerId: null, sellerName: null } });
   });
 
   it("documento de otro workspace (repo NOT_FOUND) → 404", async () => {

@@ -54,7 +54,16 @@ export async function PUT(
   }
 
   return NextResponse.json(
-    { ok: true as const, data: { documentId, sellerId: result.sellerId, changed: result.changed } },
+    {
+      ok: true as const,
+      data: {
+        documentId: result.documentId,
+        sellerId: result.sellerId,
+        sellerName: result.sellerName,
+        changed: result.changed,
+        assignedAt: result.assignedAt,
+      },
+    },
     { status: 200 }
   );
 }
