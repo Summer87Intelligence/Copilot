@@ -22,6 +22,8 @@ import {
   ReconciliationEvidenceDrawer,
   confirmCanonicalEvidence,
   rejectCanonicalEvidence,
+  suggestedConfirmInput,
+  type ConfirmDrawerInput,
   type EvidenceItem,
 } from "@/components/copilot/bank-movements/canonical-evidence-ui";
 
@@ -275,7 +277,7 @@ export function BankIncomeWorkspace({
   );
 
   const handleConfirm = useCallback(
-    async (item: EvidenceItem, allocations: Array<{ invoiceId: string; amount: number }>) => {
+    async (item: EvidenceItem, input: ConfirmDrawerInput) => {
       if (mutating[item.suggestionId]) return;
       setMutating((m) => ({ ...m, [item.suggestionId]: true }));
       setActionErrors((prev) => {
@@ -283,7 +285,7 @@ export function BankIncomeWorkspace({
         delete next[item.suggestionId];
         return next;
       });
-      const result = await confirmCanonicalEvidence(item, allocations);
+      const result = await confirmCanonicalEvidence(item, input);
       setMutating((m) => {
         const next = { ...m };
         delete next[item.suggestionId];
@@ -293,7 +295,8 @@ export function BankIncomeWorkspace({
         setActionErrors((prev) => ({ ...prev, [item.suggestionId]: result.error ?? "No se pudo confirmar." }));
         return;
       }
-      setFeedback(`Conciliación confirmada${result.idempotent ? " (ya estaba procesada)." : "."}`);
+      const verb = input.mode === "manual_reviewed" ? "Selección manual confirmada" : "Conciliación confirmada";
+      setFeedback(`${verb}${result.idempotent ? " (ya estaba procesada)." : "."}`);
       setDrawerMovementId(null);
       await refreshMovementRow(item.movement.id);
       onChanged?.();
@@ -505,7 +508,7 @@ export function BankIncomeWorkspace({
                   mutating={view.evidence ? Boolean(mutating[view.evidence.suggestionId]) : false}
                   actionError={view.evidence ? actionErrors[view.evidence.suggestionId] ?? null : null}
                   isRejecting={view.evidence ? rejectingId === view.evidence.suggestionId : false}
-                  onQuickConfirm={() => view.evidence && void handleConfirm(view.evidence, [])}
+                  onQuickConfirm={() => view.evidence && void handleConfirm(view.evidence, suggestedConfirmInput(view.evidence, []))}
                   onOpenDrawer={() => setDrawerMovementId(movement.id)}
                   onStartReject={() => view.evidence && setRejectingId(view.evidence.suggestionId)}
                   onCancelReject={() => setRejectingId(null)}
@@ -528,7 +531,7 @@ export function BankIncomeWorkspace({
           mutating={Boolean(mutating[drawerEvidence.suggestionId])}
           actionError={actionErrors[drawerEvidence.suggestionId] ?? null}
           onClose={() => setDrawerMovementId(null)}
-          onConfirm={(allocations) => void handleConfirm(drawerEvidence, allocations)}
+          onConfirm={(input) => void handleConfirm(drawerEvidence, input)}
           onReject={(reason) => void handleReject(drawerEvidence, reason)}
         />
       ) : null}

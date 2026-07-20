@@ -203,6 +203,106 @@ export async function listShadowClients(
   return (data ?? []) as ProtoClientRow[];
 }
 
+/**
+ * FASE BANK-MANUAL-CANONICAL-MATCH-SELECTION-001 — búsqueda server-side de
+ * clientes (selección manual de "otra coincidencia"). Nunca carga el
+ * portfolio completo: paginada, filtrada por texto, acotada al workspace.
+ */
+export async function searchShadowClients(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  opts: { query?: string; limit?: number; offset?: number }
+): Promise<ProtoClientRow[]> {
+  const ws = requireWorkspace(workspaceId);
+  let q = supabase
+    .from("proto_companies")
+    .select("id, workspace_company_id, name, is_active")
+    .eq("workspace_company_id", ws)
+    .eq("is_active", true)
+    .order("name", { ascending: true })
+    .range(opts.offset ?? 0, (opts.offset ?? 0) + Math.max(1, Math.min(opts.limit ?? 20, 50)) - 1);
+  const query = opts.query?.trim();
+  if (query) q = q.ilike("name", `%${query}%`);
+  const { data, error } = await q;
+  if (error) throw new Error(`SHADOW_CLIENTS_SEARCH_FAILED: ${error.message}`);
+  return (data ?? []) as ProtoClientRow[];
+}
+
+/** Cliente puntual por id — valida pertenencia al workspace antes de cualquier selección manual. */
+export async function getShadowClientById(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  clientId: string
+): Promise<ProtoClientRow | null> {
+  const ws = requireWorkspace(workspaceId);
+  const { data, error } = await supabase
+    .from("proto_companies")
+    .select("id, workspace_company_id, name, is_active")
+    .eq("workspace_company_id", ws)
+    .eq("id", clientId)
+    .maybeSingle();
+  if (error) throw new Error(`SHADOW_CLIENT_READ_FAILED: ${error.message}`);
+  return (data as ProtoClientRow | null) ?? null;
+}
+
+export type ShadowReceiptDetail = {
+  id: string;
+  companyId: string | null;
+  amount: number;
+  currencyCode: string;
+  receiptDate: string;
+  status: string | null;
+};
+
+/** Recibo puntual por id, con `companyId` — usado para validar que un recibo elegido manualmente pertenece al cliente seleccionado. */
+export async function getShadowReceiptById(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  receiptId: string
+): Promise<ShadowReceiptDetail | null> {
+  const ws = requireWorkspace(workspaceId);
+  const { data, error } = await supabase
+    .from("proto_receipts")
+    .select("id, workspace_company_id, company_id, amount, currency_code, receipt_date, status")
+    .eq("workspace_company_id", ws)
+    .eq("id", receiptId)
+    .maybeSingle();
+  if (error) throw new Error(`SHADOW_RECEIPT_READ_FAILED: ${error.message}`);
+  if (!data) return null;
+  return {
+    id: String(data.id),
+    companyId: data.company_id != null ? String(data.company_id) : null,
+    amount: typeof data.amount === "number" ? data.amount : parseFloat(String(data.amount)) || 0,
+    currencyCode: String(data.currency_code ?? ""),
+    receiptDate: String(data.receipt_date ?? ""),
+    status: data.status != null ? String(data.status) : null,
+  };
+}
+
+/**
+ * Recibos de UN cliente, en la moneda del movimiento — candidatos para
+ * selección manual de "otra coincidencia". No filtra por uso (el llamador
+ * cruza contra links activos para marcar usado/no usado).
+ */
+export async function listShadowReceiptsForClient(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  opts: { clientId: string; currency: string; limit?: number }
+): Promise<ProtoReceiptRow[]> {
+  const ws = requireWorkspace(workspaceId);
+  const { data, error } = await supabase
+    .from("proto_receipts")
+    .select("id, workspace_company_id, company_id, amount, currency_code, receipt_date, status, is_active")
+    .eq("workspace_company_id", ws)
+    .eq("company_id", opts.clientId)
+    .eq("is_active", true)
+    .eq("currency_code", opts.currency)
+    .order("receipt_date", { ascending: false })
+    .limit(opts.limit ?? 50);
+  if (error) throw new Error(`SHADOW_RECEIPTS_FOR_CLIENT_READ_FAILED: ${error.message}`);
+  return (data ?? []) as ProtoReceiptRow[];
+}
+
 export async function listShadowInvoices(
   supabase: SupabaseClient,
   workspaceId: string,

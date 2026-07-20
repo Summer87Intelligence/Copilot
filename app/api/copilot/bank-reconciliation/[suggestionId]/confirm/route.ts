@@ -32,6 +32,10 @@ const ERROR_STATUS: Record<string, number> = {
   INVOICE_FULLY_PAID: 422,
   NON_COMMERCIAL: 422,
   MOVEMENT_NOT_RECONCILABLE: 422,
+  CLIENT_MISMATCH: 409,
+  CLIENT_NOT_FOUND: 404,
+  RECEIPT_CLIENT_MISMATCH: 409,
+  MANUAL_REASON_REQUIRED: 422,
 };
 
 /**
@@ -63,8 +67,11 @@ export async function POST(
     actorUserId: auth.ctx.appUser.id,
     suggestionId,
     expectedMovementId: parsed.data.expectedMovementId,
-    expectedReceiptId: parsed.data.expectedReceiptId ?? null,
+    mode: parsed.data.mode ?? "suggested",
+    selectedClientId: parsed.data.selectedClientId ?? null,
+    selectedReceiptId: parsed.data.selectedReceiptId ?? null,
     invoiceAllocations: parsed.data.invoiceAllocations ?? [],
+    manualReason: parsed.data.manualReason ?? null,
   });
 
   if (!result.ok) {

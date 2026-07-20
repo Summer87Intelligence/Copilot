@@ -12,6 +12,8 @@
 
 **FASE BANK-UNIFIED-INCOME-RECONCILIATION-WORKSPACE-001 (2026-07-20, continuación)** — decisión funcional definitiva: **la pestaña Ingresos es la única bandeja operativa diaria.** La pestaña Conciliación independiente (de la fase anterior) queda retirada de la navegación visible; su funcionalidad se absorbe dentro de Ingresos. Ver sección "Cambios de esta fase (BANK-UNIFIED-INCOME-RECONCILIATION-WORKSPACE-001)" más abajo. Sin cambios de scoring/thresholds, sin aprendizaje de pagador, sin reversión, sin nuevas migraciones — solo unificación de experiencia sobre el mismo Motor D.
 
+**FASE BANK-MANUAL-CANONICAL-MATCH-SELECTION-001 (2026-07-20, continuación)** — habilita selección manual revisada de cliente/recibo/facturas cuando la sugerencia automática no alcanza (dataset productivo: 5 casos, 0 confianza Alta). **Hallazgo central de la auditoría: `confirm_bank_reconciliation_v1` NUNCA exigió que el recibo coincidiera con `proposed_receipt_id` ni conoció jamás el concepto de "cliente" — esa restricción vivía 100% en el adapter TypeScript.** No hizo falta una RPC nueva para permitir la selección manual; solo se agregó un parámetro `p_metadata` opcional (migración v3, **creada, NO aplicada**) para auditar la decisión. Ver sección "Selección manual revisada (BANK-MANUAL-CANONICAL-MATCH-SELECTION-001)" más abajo.
+
 ## Auditoría exacta del estado "reversed" (hallazgo bloqueante, resuelto)
 
 **Pregunta central:** ¿qué tabla/columna recibe o debería recibir `'reversed'`?
@@ -175,6 +177,51 @@ El esquema (`bank_payer_identities` + `client_payer_links`) está completo y mod
 8. **Confianza Media/Baja confirmable manualmente**: el botón de confirmación rápida (1 clic) sigue exigiendo Alta + sin conflicto + recibo propuesto; el drawer ("Revisar evidencia") permite confirmar Media/Baja tras revisión explícita — el mismo mecanismo de la fase anterior, ahora con guarda explícita: el drawer deshabilita Confirmar si no hay recibo propuesto (`item.receipt == null`) y muestra "Este caso requiere revisión manual y todavía no puede confirmarse desde Copilot." Auditoría de distinción auto-sugerida vs. manual-revisada: no existe columna dedicada, pero la confianza (`confidence`/`recommended_action`) de la sugerencia vinculada ya permite reconstruirlo post-hoc — no se amplía el esquema.
 9. **Historial** (`BankHistoryPanel`) ahora también muestra "Conciliaciones y decisiones recientes" (`?workspace=history`, mismas sugerencias operational en estado `confirmed`/`rejected`) — botón "Revertir" presente pero deshabilitado (fuera de alcance).
 10. **Sin motor nuevo, sin writer paralelo**: cero escrituras directas a `bank_movement_reconciliation_links`/`payment_allocations`; los únicos endpoints de escritura siguen siendo `confirm`/`reject` de la fase anterior.
+
+## Selección manual revisada (BANK-MANUAL-CANONICAL-MATCH-SELECTION-001)
+
+### Auditoría del contrato (con evidencia del SQL real)
+
+| # | Pregunta | Respuesta con evidencia |
+|---|---|---|
+| A | ¿La RPC recibe explícitamente suggestion_id, movement_id y receipt_id? | Sí, los tres son parámetros independientes. Ningún JOIN interno fuerza `p_receipt_id` a coincidir con lo que la sugerencia propuso. |
+| B | ¿El cliente se deriva del recibo o se envía como argumento? | **Ninguno.** La RPC nunca recibe `client_id`. No conoce ni valida "cliente" en absoluto — solo movimiento/recibo/facturas, todos acotados por `workspace_id`. |
+| C | ¿Qué validación obliga a usar proposed_receipt_id? | Ninguna a nivel de RPC. Era 100% del adapter TypeScript (`confirmCanonicalSuggestion()`, líneas de `RECEIPT_MISMATCH`). |
+| D | ¿La restricción está en endpoint/adapter/RPC/varios niveles? | **Únicamente en el adapter.** |
+| E | ¿La RPC puede validar un recibo alternativo del mismo workspace? | Sí, ya lo hacía (`proto_receipts` acotado por `workspace_company_id`, sin filtrar por cliente/sugerencia). |
+| F | ¿El recibo alternativo debe pertenecer al cliente seleccionado? | La RPC no lo exige — es una regla de negocio que se agrega en el **adapter** (`RECEIPT_CLIENT_MISMATCH`), no en el esquema. |
+| G | ¿Cómo se validan sus facturas? | La RPC valida workspace/saldo/moneda/suma por factura (con locks); nunca valida pertenencia a cliente — el adapter filtra `candidateInvoices` por el cliente **seleccionado** (antes hardcodeado a `suggestion.proposedClientId`). |
+| H | ¿La suggestion debe actualizarse para registrar la opción elegida? | La RPC solo toca `status/confirmed_link_id/reviewed_by/reviewed_at`. `proposed_client_id`/`proposed_receipt_id` **permanecen intactos** (Opción A del pedido: propuesta original inmutable). |
+| I | ¿Qué evento distingue confirmación automática de manual revisada? | Antes de esta fase, ninguno (`reconciliation_events.metadata` quedaba en `{}` por defecto). Ahora: `p_metadata` (nuevo, opcional) puebla ese JSONB con `{mode, selectedClientId, selectedReceiptId, proposedClientId, proposedReceiptId, reason}`. |
+| J | ¿Hay columnas existentes suficientes o requiere migración? | Para permitir un recibo/cliente distinto: **no requiere migración**, ya funcionaba con la v2. Para auditar la decisión: sí conviene una migración mínima aditiva (v3) — pero usa `reconciliation_events.metadata`, columna que **ya existía** desde 20260719120100. No se agregan columnas nuevas a ninguna tabla. |
+
+**Conclusión de diseño:** no se creó una RPC nueva ni una v4. La v3 agrega ÚNICAMENTE `p_metadata jsonb DEFAULT '{}'::jsonb` (aditivo, con default) — el modo "suggested" llama la RPC exactamente igual que antes (sin ese parámetro), así que sigue funcionando contra la v2 ya en producción sin requerir esta migración.
+
+### Modelo operativo: dos modos, un solo contrato financiero
+
+- **`mode: "suggested"`**: confirma exactamente cliente/recibo/facturas propuestos por el motor. Mismo comportamiento que antes de esta fase.
+- **`mode: "manual_reviewed"`**: la persona elige explícitamente cliente/recibo/facturas distintos. Motivo obligatorio (3-500 caracteres). Revalidación server-side completa: cliente real del workspace, recibo perteneciente a ESE cliente (`receipt.company_id === selectedClientId`), facturas dentro de las candidatas del cliente seleccionado (no del propuesto).
+
+Ambos modos terminan en la **misma** llamada a `confirm_bank_reconciliation_v1` — no existe una RPC para sugerencias y otra que escriba directo para manuales.
+
+### Endpoint extendido (no uno nuevo)
+
+`POST /api/copilot/bank-reconciliation/[suggestionId]/confirm` — mismo endpoint de la fase anterior, body extendido: `mode`, `selectedClientId`, `selectedReceiptId` (reemplaza `expectedReceiptId`), `manualReason`. Workspace/actor se derivan del contexto de sesión, nunca del body (sin cambios).
+
+### Búsqueda server-side (dos endpoints nuevos, ambos solo lectura)
+
+- `GET /api/copilot/bank-reconciliation/clients-search?q=&limit=&offset=` — búsqueda paginada (máx. 50), nunca carga el portfolio completo.
+- `GET /api/copilot/bank-reconciliation/receipts-search?clientId=&currency=` — recibos + facturas candidatas de un cliente puntual, con flag `used` cruzado contra `bank_movement_reconciliation_links` activos (nunca confiado del cliente).
+
+### UI (drawer de Ingresos)
+
+"Otra coincidencia" (colapsada por defecto, nunca mezclada visualmente con "Confirmar conciliación" de la sugerencia): buscador de cliente (debounced 300ms) → recibos del cliente (usados deshabilitados, con diferencia vs. el movimiento) → facturas candidatas → motivo (5 opciones + "Otro" con texto libre) → "Confirmar selección manual". Cambiar de cliente o de recibo limpia la selección de facturas.
+
+### Explícitamente NO implementado esta fase
+
+- **Casos sin ninguna suggestion** (sección 15 del pedido): la RPC ya soporta `p_suggestion_id = NULL` estructuralmente (confirmado en el SQL — las tres validaciones de sugerencia están dentro de `IF p_suggestion_id IS NOT NULL`), pero construir el flujo seguro completo (generar una suggestion `manual_draft` primero, o permitir movementId-only) requiere más auditoría de `engine_version`/idempotencia. Documentado como gap, no implementado — el confirm sigue exigiendo una sugerencia operational existente.
+- Agrupación visual "Coincidencia exacta / Cercanos / Otros recibos" (sección 5): implementada como lista única simple, ordenada por fecha, con diferencia mostrada — sin la agrupación en tres niveles.
+- Filtro "cliente"/"período" dedicados en Ingresos (ya documentado como limitación de la fase anterior).
 
 ## No se autoriza en esta fase
 

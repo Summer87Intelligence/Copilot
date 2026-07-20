@@ -37,6 +37,12 @@ export const CANONICAL_RPC_ERROR_MESSAGES: Record<string, string> = {
   MOVEMENT_MISMATCH: "El movimiento no coincide con la sugerencia. Actualizá la página e intentá de nuevo.",
   RECEIPT_MISMATCH: "El recibo no coincide con la evidencia de la sugerencia.",
   INVOICE_NOT_IN_EVIDENCE: "Una de las facturas seleccionadas no forma parte de la evidencia mostrada.",
+
+  // FASE BANK-MANUAL-CANONICAL-MATCH-SELECTION-001 — selección manual revisada
+  CLIENT_MISMATCH: "El cliente no coincide con la evidencia de la sugerencia.",
+  CLIENT_NOT_FOUND: "No encontramos ese cliente en este workspace.",
+  RECEIPT_CLIENT_MISMATCH: "Ese recibo pertenece a otro cliente, no al seleccionado.",
+  MANUAL_REASON_REQUIRED: "Necesitamos un motivo para confirmar una selección manual distinta de la sugerida.",
 };
 
 const IDEMPOTENT_SUCCESS_STATUSES = new Set(["already_confirmed", "already_linked", "already_rejected"]);

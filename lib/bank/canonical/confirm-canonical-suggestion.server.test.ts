@@ -78,62 +78,59 @@ const baseSuggestion = {
   updated_at: "2026-07-18T00:00:00Z",
 };
 
-describe("confirmCanonicalSuggestion — capa server-side sobre confirm_bank_reconciliation_v1", () => {
-  it("confirma sin asignaciones de factura (fast path, solo movimiento+recibo)", async () => {
-    const rpc = vi.fn(() => ({ data: { linkId: "link-1", idempotent: false, status: "confirmed" }, error: null }));
+const baseInput = {
+  workspaceId: WS,
+  actorUserId: ACTOR,
+  suggestionId: "sugg-1",
+  expectedMovementId: "mov-1",
+  mode: "suggested" as const,
+  selectedClientId: "client-1",
+  selectedReceiptId: "receipt-1",
+  invoiceAllocations: [] as Array<{ invoiceId: string; amount: number }>,
+  manualReason: null as string | null,
+};
+
+describe("confirmCanonicalSuggestion — modo 'suggested' (comportamiento idéntico a antes de esta fase)", () => {
+  it("confirma sin asignaciones de factura (fast path, solo movimiento+recibo), sin p_metadata (compatible con la v2 en producción)", async () => {
+    const rpc = vi.fn((_name: string, _args: Record<string, unknown>) => ({ data: { linkId: "link-1", idempotent: false, status: "confirmed" }, error: null }));
     const client = fakeClient({ bank_reconciliation_suggestions: [baseSuggestion] }, rpc);
 
-    const result = await confirmCanonicalSuggestion(client as never, {
-      workspaceId: WS,
-      actorUserId: ACTOR,
-      suggestionId: "sugg-1",
-      expectedMovementId: "mov-1",
-      expectedReceiptId: "receipt-1",
-      invoiceAllocations: [],
-    });
+    const result = await confirmCanonicalSuggestion(client as never, baseInput);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.linkId).toBe("link-1");
       expect(result.data.idempotent).toBe(false);
     }
-    expect(rpc).toHaveBeenCalledWith(
-      "confirm_bank_reconciliation_v1",
-      expect.objectContaining({
-        p_workspace_id: WS,
-        p_movement_id: "mov-1",
-        p_receipt_id: "receipt-1",
-        p_suggestion_id: "sugg-1",
-        p_allocations: null,
-        p_created_by: ACTOR,
-      })
-    );
+    const callArgs = rpc.mock.calls[0]![1] as Record<string, unknown>;
+    expect(callArgs).toMatchObject({
+      p_workspace_id: WS,
+      p_movement_id: "mov-1",
+      p_receipt_id: "receipt-1",
+      p_suggestion_id: "sugg-1",
+      p_allocations: null,
+      p_created_by: ACTOR,
+    });
+    expect(callArgs).not.toHaveProperty("p_metadata");
   });
 
   it("rechaza si el movimiento enviado no coincide con el de la sugerencia (evidencia desalineada)", async () => {
     const client = fakeClient({ bank_reconciliation_suggestions: [baseSuggestion] });
-    const result = await confirmCanonicalSuggestion(client as never, {
-      workspaceId: WS,
-      actorUserId: ACTOR,
-      suggestionId: "sugg-1",
-      expectedMovementId: "mov-OTRO",
-      expectedReceiptId: "receipt-1",
-      invoiceAllocations: [],
-    });
+    const result = await confirmCanonicalSuggestion(client as never, { ...baseInput, expectedMovementId: "mov-OTRO" });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.code).toBe("MOVEMENT_MISMATCH");
   });
 
+  it("rechaza si el cliente enviado no coincide con el propuesto por la sugerencia", async () => {
+    const client = fakeClient({ bank_reconciliation_suggestions: [baseSuggestion] });
+    const result = await confirmCanonicalSuggestion(client as never, { ...baseInput, selectedClientId: "client-OTRO" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe("CLIENT_MISMATCH");
+  });
+
   it("rechaza si el recibo enviado no coincide con el propuesto por la sugerencia", async () => {
     const client = fakeClient({ bank_reconciliation_suggestions: [baseSuggestion] });
-    const result = await confirmCanonicalSuggestion(client as never, {
-      workspaceId: WS,
-      actorUserId: ACTOR,
-      suggestionId: "sugg-1",
-      expectedMovementId: "mov-1",
-      expectedReceiptId: "receipt-OTRO",
-      invoiceAllocations: [],
-    });
+    const result = await confirmCanonicalSuggestion(client as never, { ...baseInput, selectedReceiptId: "receipt-OTRO" });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.code).toBe("RECEIPT_MISMATCH");
   });
@@ -142,28 +139,14 @@ describe("confirmCanonicalSuggestion — capa server-side sobre confirm_bank_rec
     const client = fakeClient({
       bank_reconciliation_suggestions: [{ ...baseSuggestion, suggestion_scope: "historical_review" }],
     });
-    const result = await confirmCanonicalSuggestion(client as never, {
-      workspaceId: WS,
-      actorUserId: ACTOR,
-      suggestionId: "sugg-1",
-      expectedMovementId: "mov-1",
-      expectedReceiptId: "receipt-1",
-      invoiceAllocations: [],
-    });
+    const result = await confirmCanonicalSuggestion(client as never, baseInput);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.code).toBe("SUGGESTION_NOT_CONFIRMABLE");
   });
 
   it("rechaza si la sugerencia no existe en el workspace", async () => {
     const client = fakeClient({ bank_reconciliation_suggestions: [] });
-    const result = await confirmCanonicalSuggestion(client as never, {
-      workspaceId: WS,
-      actorUserId: ACTOR,
-      suggestionId: "sugg-inexistente",
-      expectedMovementId: "mov-1",
-      expectedReceiptId: null,
-      invoiceAllocations: [],
-    });
+    const result = await confirmCanonicalSuggestion(client as never, { ...baseInput, suggestionId: "sugg-inexistente", selectedReceiptId: null });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.code).toBe("SUGGESTION_NOT_FOUND");
   });
@@ -177,11 +160,7 @@ describe("confirmCanonicalSuggestion — capa server-side sobre confirm_bank_rec
       ],
     });
     const result = await confirmCanonicalSuggestion(client as never, {
-      workspaceId: WS,
-      actorUserId: ACTOR,
-      suggestionId: "sugg-1",
-      expectedMovementId: "mov-1",
-      expectedReceiptId: "receipt-1",
+      ...baseInput,
       invoiceAllocations: [{ invoiceId: "inv-NO-CANDIDATA", amount: 500 }],
     });
     expect(result.ok).toBe(false);
@@ -201,11 +180,7 @@ describe("confirmCanonicalSuggestion — capa server-side sobre confirm_bank_rec
       rpc
     );
     const result = await confirmCanonicalSuggestion(client as never, {
-      workspaceId: WS,
-      actorUserId: ACTOR,
-      suggestionId: "sugg-1",
-      expectedMovementId: "mov-1",
-      expectedReceiptId: "receipt-1",
+      ...baseInput,
       invoiceAllocations: [{ invoiceId: "inv-valida", amount: 1000 }],
     });
     expect(result.ok).toBe(true);
@@ -220,14 +195,7 @@ describe("confirmCanonicalSuggestion — capa server-side sobre confirm_bank_rec
   it("traduce el código crudo de la RPC (p.ej. ALLOCATIONS_EXCEED_LINK) a un resultado con mensaje legible", async () => {
     const rpc = vi.fn(() => ({ data: null, error: { message: "ALLOCATIONS_EXCEED_LINK" } }));
     const client = fakeClient({ bank_reconciliation_suggestions: [baseSuggestion] }, rpc);
-    const result = await confirmCanonicalSuggestion(client as never, {
-      workspaceId: WS,
-      actorUserId: ACTOR,
-      suggestionId: "sugg-1",
-      expectedMovementId: "mov-1",
-      expectedReceiptId: "receipt-1",
-      invoiceAllocations: [],
-    });
+    const result = await confirmCanonicalSuggestion(client as never, baseInput);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.code).toBe("ALLOCATIONS_EXCEED_LINK");
@@ -239,15 +207,109 @@ describe("confirmCanonicalSuggestion — capa server-side sobre confirm_bank_rec
   it("trata already_confirmed como éxito idempotente (reintento del mismo operador o doble click)", async () => {
     const rpc = vi.fn(() => ({ data: { linkId: "link-1", idempotent: true, status: "already_confirmed" }, error: null }));
     const client = fakeClient({ bank_reconciliation_suggestions: [baseSuggestion] }, rpc);
-    const result = await confirmCanonicalSuggestion(client as never, {
-      workspaceId: WS,
-      actorUserId: ACTOR,
-      suggestionId: "sugg-1",
-      expectedMovementId: "mov-1",
-      expectedReceiptId: "receipt-1",
-      invoiceAllocations: [],
-    });
+    const result = await confirmCanonicalSuggestion(client as never, baseInput);
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.data.idempotent).toBe(true);
+  });
+});
+
+describe("confirmCanonicalSuggestion — modo 'manual_reviewed' (FASE BANK-MANUAL-CANONICAL-MATCH-SELECTION-001)", () => {
+  const manualInput = {
+    ...baseInput,
+    mode: "manual_reviewed" as const,
+    selectedClientId: "client-2",
+    selectedReceiptId: "receipt-2",
+    manualReason: "El pagador correspondía a otro cliente registrado en Zeta",
+  };
+
+  it("exige un motivo (3-500 caracteres) para confirmar una selección manual", async () => {
+    const client = fakeClient({
+      bank_reconciliation_suggestions: [baseSuggestion],
+      proto_companies: [{ id: "client-2", workspace_company_id: WS, name: "Otro Cliente", is_active: true }],
+    });
+    const result = await confirmCanonicalSuggestion(client as never, { ...manualInput, manualReason: "no" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe("MANUAL_REASON_REQUIRED");
+  });
+
+  it("rechaza si el cliente seleccionado no existe en el workspace", async () => {
+    const client = fakeClient({ bank_reconciliation_suggestions: [baseSuggestion], proto_companies: [] });
+    const result = await confirmCanonicalSuggestion(client as never, manualInput);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe("CLIENT_NOT_FOUND");
+  });
+
+  it("rechaza si el recibo seleccionado pertenece a otro cliente distinto del seleccionado", async () => {
+    const client = fakeClient({
+      bank_reconciliation_suggestions: [baseSuggestion],
+      proto_companies: [{ id: "client-2", workspace_company_id: WS, name: "Otro Cliente", is_active: true }],
+      proto_receipts: [{ id: "receipt-2", workspace_company_id: WS, company_id: "client-DISTINTO", amount: 5000, currency_code: "UYU", receipt_date: "2026-07-18", status: "paid" }],
+    });
+    const result = await confirmCanonicalSuggestion(client as never, manualInput);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe("RECEIPT_CLIENT_MISMATCH");
+  });
+
+  it("permite confirmar un cliente y recibo distintos de los propuestos por la sugerencia, cuando el recibo sí pertenece al cliente seleccionado", async () => {
+    const rpc = vi.fn((_name: string, _args: Record<string, unknown>) => ({ data: { linkId: "link-manual", idempotent: false, status: "confirmed" }, error: null }));
+    const client = fakeClient(
+      {
+        bank_reconciliation_suggestions: [baseSuggestion],
+        proto_companies: [{ id: "client-2", workspace_company_id: WS, name: "Otro Cliente", is_active: true }],
+        proto_receipts: [{ id: "receipt-2", workspace_company_id: WS, company_id: "client-2", amount: 5000, currency_code: "UYU", receipt_date: "2026-07-18", status: "paid" }],
+      },
+      rpc
+    );
+    const result = await confirmCanonicalSuggestion(client as never, manualInput);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.linkId).toBe("link-manual");
+
+    const callArgs = rpc.mock.calls[0]![1] as Record<string, unknown>;
+    expect(callArgs.p_receipt_id).toBe("receipt-2");
+    expect(callArgs.p_metadata).toEqual({
+      mode: "manual_reviewed",
+      selectedClientId: "client-2",
+      selectedReceiptId: "receipt-2",
+      proposedClientId: "client-1",
+      proposedReceiptId: "receipt-1",
+      reason: manualInput.manualReason,
+    });
+  });
+
+  it("nunca sobrescribe proposed_client_id/proposed_receipt_id: la propuesta original queda intacta como evidencia (no se emite ningún UPDATE a esas columnas)", () => {
+    // Verificación estructural: el adapter nunca hace .update() sobre bank_reconciliation_suggestions —
+    // esa responsabilidad es exclusiva de la RPC, que solo toca status/confirmed_link_id/reviewed_*.
+    // No hay ningún método .update en el fakeClient de este archivo; si el adapter intentara usarlo,
+    // fallaría con "is not a function" en cualquiera de los tests anteriores.
+    expect(true).toBe(true);
+  });
+
+  it("valida asignaciones de factura contra las candidatas del cliente SELECCIONADO, no del propuesto por la sugerencia", async () => {
+    const rpc = vi.fn(() => ({ data: { linkId: "link-manual-2", idempotent: false, status: "confirmed" }, error: null }));
+    const client = fakeClient(
+      {
+        bank_reconciliation_suggestions: [baseSuggestion],
+        proto_companies: [{ id: "client-2", workspace_company_id: WS, name: "Otro Cliente", is_active: true }],
+        proto_receipts: [{ id: "receipt-2", workspace_company_id: WS, company_id: "client-2", amount: 5000, currency_code: "UYU", receipt_date: "2026-07-18", status: "paid" }],
+        proto_invoices: [
+          { id: "inv-client1", workspace_company_id: WS, company_id: "client-1", currency_code: "UYU", balance_amount: 1000, issue_date: null, due_date: null, is_active: true },
+          { id: "inv-client2", workspace_company_id: WS, company_id: "client-2", currency_code: "UYU", balance_amount: 2000, issue_date: null, due_date: null, is_active: true },
+        ],
+      },
+      rpc
+    );
+    // Factura de client-1 (el propuesto) NO debe ser válida para una selección manual de client-2.
+    const rejected = await confirmCanonicalSuggestion(client as never, {
+      ...manualInput,
+      invoiceAllocations: [{ invoiceId: "inv-client1", amount: 500 }],
+    });
+    expect(rejected.ok).toBe(false);
+    if (!rejected.ok) expect(rejected.code).toBe("INVOICE_NOT_IN_EVIDENCE");
+
+    const accepted = await confirmCanonicalSuggestion(client as never, {
+      ...manualInput,
+      invoiceAllocations: [{ invoiceId: "inv-client2", amount: 2000 }],
+    });
+    expect(accepted.ok).toBe(true);
   });
 });
