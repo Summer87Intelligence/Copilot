@@ -1,5 +1,15 @@
 # Project Context
 
+## BANK — Motor canónico de conciliación (Motor D) — routing + guards — 2026-07-20
+
+**FASE BANK-RECONCILIATION-CANONICAL-ENGINE-001 (local, commit sin push):** decisión de arquitectura autorizada tras la auditoría previa (BANK-DAILY-RECONCILIATION-UX-AND-FLOW-001): **Motor D** (`bank_reconciliation_suggestions` + `bank_payer_identities`/`client_payer_links` + `confirm_/reverse_bank_reconciliation_v1`) es el **único** motor canónico de conciliación de ingresos. No se crea un segundo motor.
+- **Auditoría exhaustiva de writers**: matriz completa de quién escribe qué tabla, con destino de cada motor (A/B/C/D) — ver `docs/architecture/bank-reconciliation-canonical-engine.md`. Hallazgo crítico: Motor C ("Conciliación detallada") escribía `bank_movement_reconciliation_links` por un repositorio propio, **bypaseando** la RPC transaccional endurecida (sin `payment_allocations`, sin `reconciliation_events`, sin locks). Motor A matcheaba contra Tesorería (`planned_cash_obligations`), no contra clientes/recibos/facturas — se usaba ambiguamente como "Conciliar".
+- **Contrato de la RPC auditado línea por línea** (`confirm_/reverse_bank_reconciliation_v1`): responde las 10 preguntas de negocio sobre movimiento↔recibo↔factura, pagos parciales, idempotencia. Inconsistencia encontrada: la RPC rechaza `status='reversed'` pero esa columna no admite ese valor — a corregir antes de Fase 2.
+- **Cambios de código**: tabs reordenados (Importar·Movimientos·Ingresos·**Conciliación ★**·Historial); Conciliación ahora monta `BankCanonicalReconciliationPanel` (nuevo, 100% lectura de `/api/copilot/bank-movements/canonical-suggestions`, evidencia cliente/recibo/facturas candidatas/pagador/confianza Alta-Media-Baja-Sin sugerencia); Motor A renombrado ("Vincular con pago programado") y reubicado dentro de Movimientos como sección secundaria colapsada; Motor C retirado como escritor en toda capa (UI sin botones de escritura + rutas POST/DELETE devuelven `410 LEGACY_WRITE_RETIRED` server-side, no solo ocultas en UI).
+- **Sin escrituras nuevas ejecutadas**: no se generaron sugerencias contra producción, no se confirmó/revirtió nada real. Confirmar/Rechazar reales quedan para Fase 2 (BANK-CANONICAL-CONFIRM-UI), autorización separada.
+- **Docs**: `docs/architecture/bank-reconciliation-canonical-engine.md` (nuevo, matriz completa) + `docs/technical/bank-reconciliation-rollout.md` (Etapa 2 agregada).
+- **Gates**: ver cierre de la fase para resultados de tsc/eslint/tests/build. Sin push.
+
 ## VENTAS — Confirmación definitiva: vendedor a nivel documento, no por línea — 2026-07-20
 
 **FASE SALES-SELLER-DOCUMENT-LEVEL-CONFIRMATION-001 (local, commit sin push):** confirmación de negocio cierra la duda abierta por `DIV-CONT-011` (auditoría de si Zeta trae número de línea estructurado). Regla definitiva: **el vendedor se asigna al comprobante/ticket completo, nunca a una línea o servicio individual.** Ejecutivo = responsable del cliente; Vendedor = responsable del comprobante; Línea = detalle comercial sin vendedor independiente; Cobro = entidad separada.

@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Landmark, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Landmark, Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
 
 import { BankMovementsFiltersBar } from "@/components/copilot/bank-movements/bank-movements-filters-bar";
 import { BankMovementsImportPanel } from "@/components/copilot/bank-movements/bank-movements-import-panel";
 import { BankMovementsReconciliationPanel } from "@/components/copilot/bank-movements/bank-movements-reconciliation-panel";
+import { BankCanonicalReconciliationPanel } from "@/components/copilot/bank-movements/bank-canonical-reconciliation-panel";
 import { BankIncomePanel } from "@/components/copilot/bank-movements/bank-income-panel";
 
 import {
@@ -48,11 +49,16 @@ import {
 
 type BankTab = "importar" | "movimientos" | "conciliacion" | "ingresos" | "historial";
 
-const TABS: Array<{ id: BankTab; label: string }> = [
+/**
+ * Orden diario de operación (FASE BANK-RECONCILIATION-CANONICAL-ENGINE-001):
+ * Importar → Movimientos → Ingresos → Conciliación → Historial. Conciliación es
+ * la acción diaria principal (destacada visualmente, ver `primary` abajo).
+ */
+const TABS: Array<{ id: BankTab; label: string; primary?: boolean }> = [
   { id: "importar", label: "Importar" },
   { id: "movimientos", label: "Movimientos" },
-  { id: "conciliacion", label: "Conciliación" },
   { id: "ingresos", label: "Ingresos" },
+  { id: "conciliacion", label: "Conciliación", primary: true },
   { id: "historial", label: "Historial" },
 ];
 
@@ -476,9 +482,15 @@ export function BankMovementsPageClient() {
             className={copilotButtonClassName({
               variant: tab === item.id ? "primary" : "ghost",
               size: "sm",
-              className: tab === item.id ? "" : "!border-transparent",
+              className:
+                tab === item.id
+                  ? ""
+                  : item.primary
+                    ? "border-[var(--copilot-accent)] text-[var(--copilot-accent)] font-semibold"
+                    : "!border-transparent",
             })}
           >
+            {item.primary ? <Sparkles className="mr-1 inline h-3.5 w-3.5" aria-hidden /> : null}
             {item.label}
           </button>
         ))}
@@ -575,12 +587,18 @@ export function BankMovementsPageClient() {
         </section>
       ) : null}
 
-      {tab === "conciliacion" ? (
-        <BankMovementsReconciliationPanel
-          onMovementUpdated={load}
-          onViewMovement={() => setTab("movimientos")}
-        />
+      {tab === "movimientos" ? (
+        <details className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-1.5">
+          <summary className="cursor-pointer rounded-xl px-3 py-2 text-sm font-semibold text-[var(--copilot-muted)]">
+            Pagos programados de Tesorería (no es conciliación de clientes)
+          </summary>
+          <div className="px-1 pb-1 pt-2">
+            <BankMovementsReconciliationPanel onMovementUpdated={load} />
+          </div>
+        </details>
       ) : null}
+
+      {tab === "conciliacion" ? <BankCanonicalReconciliationPanel /> : null}
 
       {tab === "ingresos" ? <BankIncomePanel onChanged={load} /> : null}
 

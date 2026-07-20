@@ -1,44 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
-import {
-  archiveReconciliationLink,
-  getMovementReconciliationView,
-} from "@/lib/bank-movements/bank-reconciliation-links-repository";
 
 export const dynamic = "force-dynamic";
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** Deshacer conciliación = archivar (auditable, nunca borra). */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; linkId: string }> }
-) {
-  const { id, linkId } = await params;
-  if (!UUID_RE.test(id) || !UUID_RE.test(linkId)) {
-    return NextResponse.json(
-      { ok: false as const, error: "Identificador inválido." },
-      { status: 400 }
-    );
-  }
-
+/**
+ * FASE BANK-RECONCILIATION-CANONICAL-ENGINE-001 — Motor C RETIRADO como escritor.
+ * Este endpoint archivaba `bank_movement_reconciliation_links` directo (bypaseando
+ * `reverse_bank_reconciliation_v1`: sin revertir `payment_allocations`, sin
+ * `reconciliation_events`). Guardado server-side además de ocultar el botón en
+ * la UI, para que una llamada directa tampoco pueda escribir por este camino.
+ * Se conserva la validación de módulo/sesión antes del 410 (consistencia RBAC).
+ * Ver docs/architecture/bank-reconciliation-canonical-engine.md.
+ */
+export async function DELETE(request: NextRequest) {
   const auth = await requireCopilotModuleWriteAccess(request, "bank_movements");
   if (!auth.ok) return auth.response;
 
-  const archived = await archiveReconciliationLink(
-    auth.ctx.supabase,
-    auth.ctx.tenantCompanyId,
-    linkId
+  return NextResponse.json(
+    {
+      ok: false as const,
+      error:
+        "Esta acción quedó retirada. Las conciliaciones de clientes se revierten desde la pestaña Conciliación (motor canónico).",
+      code: "LEGACY_WRITE_RETIRED",
+    },
+    { status: 410 }
   );
-  if (!archived.ok) {
-    const status = archived.code === "NOT_FOUND" ? 404 : archived.code === "MIGRATION_PENDING" ? 409 : 500;
-    return NextResponse.json({ ok: false as const, error: archived.message, code: archived.code }, { status });
-  }
-
-  const view = await getMovementReconciliationView(auth.ctx.supabase, auth.ctx.tenantCompanyId, id);
-  return NextResponse.json({
-    ok: true as const,
-    data: view.ok ? view.view : null,
-  });
 }

@@ -97,6 +97,27 @@ Contadores "Pendientes" = activo + `reviewed_at IS NULL`. Detalle: `docs/archite
 - Aplicar `20260720120000_bank_suggestion_scope.sql` en producción (preflight + autorización). **[APLICADA 2026-07-19]**
 - Aplicar `20260721120000_bank_review_actions.sql` (event types + 3 RPC de revisión) — preflight + autorización.
 - Persistencia histórica controlada por IDs (tras aplicar la migración) con `persistHistoricalForReview`.
+
+## Etapa 2 — Decisión de arquitectura: Motor D es el único motor canónico (BANK-RECONCILIATION-CANONICAL-ENGINE-001, 2026-07-20)
+
+La auditoría previa (FASE BANK-DAILY-RECONCILIATION-UX-AND-FLOW-001) encontró que, además
+del shadow server descrito en la Etapa 1, la pestaña Conciliación en producción usaba un
+motor completamente distinto (Motor A, contra `planned_cash_obligations` de Tesorería) y un
+drawer secundario ("Conciliación detallada", Motor C) escribía `bank_movement_reconciliation_links`
+por un repositorio propio, sin pasar por `confirm_/reverse_bank_reconciliation_v1`. Detalle
+completo, matriz de writers y contrato de la RPC auditado línea por línea:
+`docs/architecture/bank-reconciliation-canonical-engine.md`.
+
+Decisión: Motor D (este mismo shadow server + las RPC) pasa a ser el único motor de
+conciliación de ingresos. Motor A se renombra/reubica como Tesorería (fuera del flujo de
+cobros). Motor C queda retirado como escritor (410 server-side en sus rutas POST/DELETE).
+Motor B (`client_bank_aliases`/`bank_income_matches`) se documenta como duplicado conceptual
+de `bank_payer_identities`/`client_payer_links`, a consolidar en Fase 3 — no se toca esta fase.
+
+Cambios de código: nuevo módulo de lectura `lib/bank/canonical/canonical-suggestion-evidence.ts`
++ endpoint `GET /api/copilot/bank-movements/canonical-suggestions` + panel
+`BankCanonicalReconciliationPanel`, ahora montado en la pestaña Conciliación. 100% lectura —
+Confirmar/Rechazar reales quedan para Fase 2 (BANK-CANONICAL-CONFIRM-UI).
 - Shadow persist en lote pequeño (movimientos **operativos** elegibles; `matched`/histórico separados).
 - Medir precisión por rango de confianza / % sin identificar / conflictos.
 

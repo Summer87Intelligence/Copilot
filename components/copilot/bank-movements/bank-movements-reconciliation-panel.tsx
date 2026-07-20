@@ -172,10 +172,11 @@ export function BankMovementsReconciliationPanel({
   return (
     <div className="space-y-4">
       <section className={copilotCardStandardClass}>
-        <h2 className={copilotSectionTitleClass}>Conciliación bancaria</h2>
+        <h2 className={copilotSectionTitleClass}>Pagos programados de Tesorería</h2>
         <p className={`${copilotCaptionClass} mt-1`}>
-          Revisá movimientos del banco y vinculalos con pagos de Tesorería. Conciliar vincula el
-          movimiento bancario con un pago de Tesorería. No modifica el pago automáticamente.
+          Vinculá movimientos del banco con pagos programados de Tesorería (no clientes). Esto no
+          es la conciliación de cobros de clientes — para eso usá la pestaña Conciliación. Vincular
+          no modifica el pago automáticamente.
         </p>
       </section>
 
@@ -364,7 +365,7 @@ function ReconciliationMovementCard({
             ) : (
               <Check className="mr-1 h-3.5 w-3.5" aria-hidden />
             )}
-            Conciliar
+            Vincular con pago programado
           </button>
         ) : null}
       </div>

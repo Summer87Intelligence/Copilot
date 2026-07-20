@@ -1,0 +1,261 @@
+import { describe, it, expect } from "vitest";
+
+import { listCanonicalOperationalEvidence } from "@/lib/bank/canonical/canonical-suggestion-evidence";
+
+const WS = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+
+type Row = Record<string, unknown>;
+type Tables = Record<string, Row[]>;
+
+/**
+ * Fake Supabase multi-tabla: filtra realmente por eq()/in()/gte()/lte()/gt(),
+ * soporta maybeSingle() (single-row) y el resto como lista vía then(). Igual
+ * patrón que `repositories-scope.test.ts`, extendido a varias tablas.
+ */
+function fakeClient(tables: Tables) {
+  return {
+    from(table: string) {
+      const rows = tables[table] ?? [];
+      const eqFilters: Record<string, unknown> = {};
+      const inFilters: Record<string, unknown[]> = {};
+      let gtCol: string | null = null;
+      let gtVal: number | null = null;
+
+      function apply(): Row[] {
+        let out = rows;
+        for (const [k, v] of Object.entries(eqFilters)) out = out.filter((r) => r[k] === v);
+        for (const [k, v] of Object.entries(inFilters)) out = out.filter((r) => v.includes(r[k]));
+        if (gtCol) out = out.filter((r) => Number(r[gtCol!]) > (gtVal as number));
+        return out;
+      }
+
+      const builder: Record<string, unknown> = {
+        select() {
+          return builder;
+        },
+        eq(col: string, val: unknown) {
+          eqFilters[col] = val;
+          return builder;
+        },
+        in(col: string, vals: unknown[]) {
+          inFilters[col] = vals;
+          return builder;
+        },
+        not() {
+          // Los tests no ejercitan el filtro de exclusión de status; se ignora.
+          return builder;
+        },
+        gt(col: string, val: number) {
+          gtCol = col;
+          gtVal = val;
+          return builder;
+        },
+        gte() {
+          return builder;
+        },
+        lte() {
+          return builder;
+        },
+        order() {
+          return builder;
+        },
+        limit() {
+          return builder;
+        },
+        maybeSingle() {
+          const out = apply();
+          return Promise.resolve({ data: out[0] ?? null, error: null });
+        },
+        then(resolve: (v: { data: Row[]; error: null }) => void) {
+          return resolve({ data: apply(), error: null });
+        },
+      };
+      return builder;
+    },
+  };
+}
+
+describe("listCanonicalOperationalEvidence — evidencia completa desde el motor D, 100% lectura", () => {
+  it("arma movimiento + cliente + recibo + facturas candidatas + confianza humana + razones en español", async () => {
+    const client = fakeClient({
+      bank_reconciliation_suggestions: [
+        {
+          id: "sugg-1",
+          workspace_id: WS,
+          bank_movement_id: "mov-1",
+          payer_identity_id: "payer-1",
+          proposed_client_id: "client-1",
+          proposed_receipt_id: "receipt-1",
+          confidence: 92,
+          reasons: ["EXACT_AMOUNT", "DATE_PROXIMITY"],
+          warnings: [],
+          recommended_action: "AUTO_RECONCILE_CANDIDATE",
+          engine_version: 1,
+          status: "generated",
+          suggestion_scope: "operational",
+          created_at: "2026-07-18T00:00:00Z",
+          updated_at: "2026-07-18T00:00:00Z",
+        },
+      ],
+      bank_movements: [
+        {
+          id: "mov-1",
+          workspace_id: WS,
+          bank_name: "Santander",
+          account_label: "Cta UYU",
+          movement_date: "2026-07-18",
+          description: "TRANSFERENCIA PEPITO SA",
+          raw_description: "TRANSFERENCIA PEPITO SA",
+          amount: 20000,
+          currency: "UYU",
+          direction: "inflow",
+          bank_reference: null,
+          status: "pending",
+          metadata: {},
+        },
+      ],
+      proto_companies: [{ id: "client-1", workspace_company_id: WS, name: "Pepito S.A.", is_active: true }],
+      proto_receipts: [
+        {
+          id: "receipt-1",
+          workspace_company_id: WS,
+          company_id: "client-1",
+          amount: 20000,
+          currency_code: "UYU",
+          receipt_date: "2026-07-18",
+          status: "issued",
+        },
+      ],
+      proto_invoices: [
+        {
+          id: "inv-1",
+          workspace_company_id: WS,
+          company_id: "client-1",
+          currency_code: "UYU",
+          balance_amount: 20000,
+          issue_date: "2026-07-01",
+          due_date: "2026-07-31",
+          is_active: true,
+        },
+      ],
+      bank_payer_identities: [
+        {
+          id: "payer-1",
+          workspace_id: WS,
+          account_hash: "hash-abc",
+          masked_account: "•••• 4821",
+          normalized_name: "pepito sa",
+          fingerprint_strength: "account",
+          status: "active",
+        },
+      ],
+      client_payer_links: [
+        {
+          id: "link-1",
+          workspace_id: WS,
+          payer_identity_id: "payer-1",
+          client_company_id: "client-1",
+          confidence: 90,
+          status: "confirmed",
+          reconciled_count: 4,
+        },
+      ],
+    });
+
+    const result = await listCanonicalOperationalEvidence(client as never, WS);
+
+    expect(result.total).toBe(1);
+    expect(result.items).toHaveLength(1);
+    const ev = result.items[0]!;
+
+    expect(ev.confidenceLevel).toBe("alta");
+    expect(ev.confidenceLabel).toBe("Alta");
+    expect(ev.movement.amount).toBe(20000);
+    expect(ev.movement.currency).toBe("UYU");
+    expect(ev.movement.descriptionMasked).not.toBe("TRANSFERENCIA PEPITO SA"); // enmascarado
+    expect(ev.client?.name).toBe("Pepito S.A.");
+    expect(ev.receipt?.amount).toBe(20000);
+    expect(ev.candidateInvoices).toHaveLength(1);
+    expect(ev.candidateInvoices[0]!.balanceAmount).toBe(20000);
+    expect(ev.reasons).toEqual(["mismo importe", "fecha cercana"]);
+    expect(ev.payer?.knownClientLinks).toEqual([{ clientId: "client-1", confirmations: 4, status: "confirmed" }]);
+    expect(ev.payer?.hasConflict).toBe(false);
+  });
+
+  it("marca conflicto cuando la misma identidad de pagador está vinculada a más de un cliente", async () => {
+    const client = fakeClient({
+      bank_reconciliation_suggestions: [
+        {
+          id: "sugg-2",
+          workspace_id: WS,
+          bank_movement_id: "mov-2",
+          payer_identity_id: "payer-2",
+          proposed_client_id: null,
+          proposed_receipt_id: null,
+          confidence: 60,
+          reasons: [],
+          warnings: ["SHARED_PAYER"],
+          recommended_action: "REVIEW",
+          engine_version: 1,
+          status: "generated",
+          suggestion_scope: "operational",
+          created_at: "2026-07-18T00:00:00Z",
+          updated_at: "2026-07-18T00:00:00Z",
+        },
+      ],
+      bank_movements: [
+        {
+          id: "mov-2",
+          workspace_id: WS,
+          bank_name: "Santander",
+          account_label: null,
+          movement_date: "2026-07-19",
+          description: "TRANSF",
+          raw_description: null,
+          amount: 5000,
+          currency: "UYU",
+          direction: "inflow",
+          bank_reference: null,
+          status: "pending",
+          metadata: {},
+        },
+      ],
+      bank_payer_identities: [
+        { id: "payer-2", workspace_id: WS, account_hash: "hash-x", masked_account: "•••• 1111", normalized_name: null, fingerprint_strength: "account", status: "conflicted" },
+      ],
+      client_payer_links: [
+        { id: "l1", workspace_id: WS, payer_identity_id: "payer-2", client_company_id: "client-A", confidence: 50, status: "confirmed", reconciled_count: 2 },
+        { id: "l2", workspace_id: WS, payer_identity_id: "payer-2", client_company_id: "client-B", confidence: 50, status: "confirmed", reconciled_count: 1 },
+      ],
+    });
+
+    const result = await listCanonicalOperationalEvidence(client as never, WS);
+    expect(result.items[0]!.payer?.hasConflict).toBe(true);
+    expect(result.items[0]!.confidenceLevel).toBe("media"); // REVIEW + score 60 >= 55
+    expect(result.items[0]!.warnings).toEqual(["esta cuenta pagó antes por más de un cliente"]);
+  });
+
+  it("nunca escribe: no llama insert/update/delete en ninguna tabla financiera", async () => {
+    let wroteAnything = false;
+    const client = fakeClient({});
+    const originalFrom = client.from.bind(client);
+    (client as { from: typeof client.from }).from = (table: string) => {
+      const builder = originalFrom(table) as Record<string, unknown>;
+      builder.insert = () => {
+        wroteAnything = true;
+        return { select: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) };
+      };
+      builder.update = () => {
+        wroteAnything = true;
+        return builder;
+      };
+      builder.delete = () => {
+        wroteAnything = true;
+        return builder;
+      };
+      return builder;
+    };
+    await listCanonicalOperationalEvidence(client as never, WS);
+    expect(wroteAnything).toBe(false);
+  });
+});
