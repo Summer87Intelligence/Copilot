@@ -2,6 +2,25 @@
 
 **FASE BANK-RECONCILIATION-CANONICAL-ENGINE-001 (2026-07-20)** — decisión de arquitectura autorizada: **Motor D es el único motor canónico de conciliación bancaria de ingresos.** No se crea un segundo motor. No se mantienen rutas paralelas de escritura financiera.
 
+**FASE BANK-CANONICAL-CONFIRM-CONTRACT-CORRECTION-001 (2026-07-20, continuación)** — auditoría exacta del hallazgo bloqueante `status='reversed'` y corrección del contrato de `confirm_bank_reconciliation_v1` (ver secciones "Auditoría exacta del estado reversed" y "Máquina de estados canónica" más abajo). Migración `20260722130000_bank_reconciliation_confirm_rpc_v2.sql` **creada, NO aplicada**.
+
+## Auditoría exacta del estado "reversed" (hallazgo bloqueante, resuelto)
+
+**Pregunta central:** ¿qué tabla/columna recibe o debería recibir `'reversed'`?
+
+| # | Pregunta | Respuesta con evidencia |
+|---|---|---|
+| A | ¿Qué entidad representa una sugerencia revertida? | `bank_reconciliation_suggestions` con `status='reversed'` + `confirmed_link_id=NULL`. Ya implementado correctamente en `reverse_bank_reconciliation_v1` (v1, sin cambios). `'reversed'` **sí** es un valor válido de su CHECK (`generated,pending_review,confirmed,rejected,superseded,expired,reversed`) — consistente con `ShadowSuggestionStatus`/`SHADOW_TERMINAL_STATUSES` en TypeScript y con `shadow-persistence.ts`. |
+| B | ¿Qué entidad representa un link revertido? | `bank_movement_reconciliation_links` con `archived_at IS NOT NULL`. Esta tabla **no tiene columna `status`** — usa el patrón archive-not-delete (auditable, nunca borra). Ya correcto, sin cambios. |
+| C | ¿Qué debe hacer la reversión? | Ya implementado correctamente en `reverse_bank_reconciliation_v1`: archiva el link (no borra), marca `payment_allocations.status='reversed'` (valor válido en su CHECK: `active,reversed`), marca la sugerencia confirmada como `reversed` + limpia `confirmed_link_id`, crea evento `reconciliation_reversed`. Nada de esto cambia en esta fase. |
+| D | ¿Qué columna intenta recibir `'reversed'` hoy, realmente? | **Ninguna, en la práctica.** `confirm_bank_reconciliation_v1` (v1) solo **compara** `v_mov.status IN ('ignored','reversed')` — nunca escribe ese valor. `reverse_bank_reconciliation_v1` no toca `bank_movements` en absoluto (nunca la referencia). Ningún writer en todo el codebase escribe `bank_movements.status='reversed'`. |
+| E | ¿`'reversed'` ya existe en otro CHECK? | Sí, y correctamente: `bank_reconciliation_suggestions.status` y `payment_allocations.status` — ambos ya lo admiten y lo usan activamente sin problema. |
+| F | ¿La RPC falla hoy en producción? | **No.** Comparar una columna `TEXT` contra una lista `IN (...)` con un literal que el CHECK no permite NO es un error de Postgres — simplemente esa rama del `IN` nunca puede ser verdadera (`bank_movements.status` físicamente no puede valer `'reversed'`). Es una comparación siempre-falsa, no un fallo de ejecución. |
+| G | ¿Hay datos existentes con `bank_movements.status='reversed'`? | Imposible que existan (el CHECK lo impide). No se auditó en vivo si existen sugerencias con `status='reversed'` en producción — fuera del alcance autorizado esta fase (no se ejecutó `execute_sql`). |
+| H | ¿Es de esquema o de lógica RPC? | **De lógica RPC.** El esquema es internamente coherente: el CHECK de `bank_movements.status` (`pending,suggested,matched,ignored,needs_review`) coincide exactamente con el tipo TypeScript `BankMovementStatus` (mismos 5 valores, en `lib/bank-movements/bank-movements-types.ts`). La única pista en sentido contrario es `lib/bank/intelligence/server/eligibility.ts`, que compara `movement.status === "reversed"` con `skipReason: "MOVEMENT_REVERSED"` — pero su tipo de entrada (`ShadowEligibilityMovement.status: string`) es deliberadamente laxo (no importa `BankMovementStatus`), un patrón defensivo estándar para tratar con seguridad cualquier valor futuro/inesperado, no evidencia de que el esquema deba ampliarse hoy. Tiene su propio test (`eligibility.test.ts`) que pasa igual sin tocar el esquema real. **No se amplía el CHECK de `bank_movements.status`** — sería la solución incorrecta (el enunciado de la fase lo advertía explícitamente).
+
+**Corrección aplicada** (migración `20260722130000_bank_reconciliation_confirm_rpc_v2.sql`, ver sección RPC más abajo): se retira la rama `'reversed'` de la comparación en `confirm_bank_reconciliation_v1` — cambio de **cero comportamiento real** (la rama nunca coincidía), solo elimina una referencia incoherente con el esquema real.
+
 ## Diagrama A/B/C/D
 
 ```
@@ -73,7 +92,27 @@ Respuestas verificadas contra `supabase/migrations/20260719120200_bank_reconcili
 - **I.** Pagos parciales: soportados explícitamente — el link puede ser menor al recibo ("saldo sin aplicar"); la respuesta incluye `unappliedAmount`.
 - **J.** Diferencia de monto: la RPC no define una tolerancia de negocio — solo valida topes (`+0.01` por redondeo). Cualquier regla de "diferencia menor aceptable" es una decisión de UI/negocio a construir en Fase 2, no algo que la RPC ya resuelva.
 
-**Inconsistencia encontrada:** la RPC rechaza `bank_movements.status IN ('ignored','reversed')`, pero la columna `status` solo admite `pending|suggested|matched|ignored|needs_review` — `'reversed'` no es un valor válido ahí. Rama muerta o desalineación a resolver (con migración, no aplicada esta fase) antes de construir la UI de confirmación.
+**Inconsistencia encontrada y CORREGIDA (v2):** la v1 de la RPC rechazaba `bank_movements.status IN ('ignored','reversed')`, pero la columna `status` solo admite `pending|suggested|matched|ignored|needs_review` — `'reversed'` nunca fue un valor alcanzable ahí. Ver "Auditoría exacta del estado reversed" arriba para la evidencia completa. **v2 retira esa rama** (cero cambio de comportamiento real) **y además agrega** `AND suggestion_scope = 'operational'` a la validación de sugerencia confirmable — gap real encontrado en esta fase: la v1 permitía confirmar una sugerencia `historical_review` o `matched_audit` igual que una `operational`, contradiciendo la separación operativa/histórica ya establecida en el resto del sistema.
+
+## Máquina de estados canónica
+
+| Entidad | Antes | Acción | Después | Evento |
+|---|---|---|---|---|
+| `bank_reconciliation_suggestions` | `generated` \| `pending_review` | Confirmar (`confirm_bank_reconciliation_v1`) | `confirmed` + `confirmed_link_id=<link>` | — (el evento lo genera el link, no la sugerencia) |
+| `bank_reconciliation_suggestions` | `confirmed` | Revertir (`reverse_bank_reconciliation_v1`) | `reversed` + `confirmed_link_id=NULL` | — |
+| `bank_movement_reconciliation_links` | (no existe) | Confirmar | creado, `archived_at=NULL` (= activo) | `reconciliation_confirmed` |
+| `bank_movement_reconciliation_links` | `archived_at=NULL` (activo) | Revertir | `archived_at=now()` (= revertido; sin columna `status`, solo el timestamp) | `reconciliation_reversed` |
+| `payment_allocations` | `active` | Revertir (vía link) | `reversed` | `allocation_created` se generó al confirmar; la reversión no emite un evento de allocation propio, viaja dentro de `reconciliation_reversed` |
+| `bank_movements.status` | cualquiera | Confirmar o revertir | **sin cambios** — ninguna de las dos RPC toca esta columna hoy (ver hallazgo abajo) | — |
+| `reconciliation_events` | (append-only) | Cualquier acción financiera | nueva fila, nunca UPDATE/DELETE | `reconciliation_confirmed` \| `reconciliation_reversed` \| `allocation_created` |
+
+**Observación relacionada (fuera de alcance de esta fase, no se corrige):** ninguna de las dos RPC actualiza `bank_movements.status` — ni al confirmar (no pasa a `matched`) ni al revertir. La única fuente de verdad de "¿está conciliado?" es la existencia de un link activo en `bank_movement_reconciliation_links`, no la columna `status` del movimiento. Esto es coherente con el diseño de capas ya documentado (el link es la fuente financiera única), pero significa que el filtro "Estado" de la pestaña Movimientos no reflejará una confirmación canónica hasta que se decida explícitamente si eso debe cambiar — decisión de negocio para una fase futura, no ampliada aquí sin aprobación.
+
+## Decisión de contrato (Modelo elegido)
+
+**Modelo A confirmado para `bank_reconciliation_suggestions`**: `'reversed'` es un estado terminal válido de la sugerencia — ya estaba correctamente definido en el CHECK, en `ShadowSuggestionStatus`/`SHADOW_TERMINAL_STATUSES` (TypeScript), en `shadow-persistence.ts`, y la RPC v1 ya lo usaba bien. Se confirma con evidencia (no se asumió): las 4 condiciones pedidas por el negocio se cumplen — el estado ya está definido en TypeScript, tests/repositorios lo tratan como terminal, la RPC fue diseñada explícitamente para eso, y no contradice ningún índice (`brs_active_scope_uidx` excluye explícitamente los estados terminales de su unicidad). **Ningún cambio necesario en este punto.**
+
+**Para `bank_movements`**: no aplica ninguno de los Modelos A/B/C planteados para "suggestion" — es una entidad distinta. La corrección fue simplemente **retirar la comparación incoherente**, no elegir un modelo de estados nuevo para el movimiento (eso sería ampliar el contrato sin aprobación, explícitamente fuera de alcance).
 
 ## Aprendizaje de pagador — gap real
 
@@ -86,6 +125,14 @@ El esquema (`bank_payer_identities` + `client_payer_links`) está completo y mod
 3. **Motor A** renombrado ("Vincular con pago programado" / "Pagos programados de Tesorería") y reubicado como sección secundaria colapsada dentro de Movimientos — ya no aparece como "Conciliar" en el flujo de cobros.
 4. **Motor C** retirado como escritor en toda capa: UI sin botones de escritura, y las rutas `POST .../reconciliation-links` y `DELETE .../reconciliation-links/[linkId]` devuelven `410 LEGACY_WRITE_RETIRED` server-side. GET se conserva (el drawer sigue mostrando links/sugerencias existentes, solo lectura).
 5. Nuevo módulo de lectura `lib/bank/canonical/canonical-suggestion-evidence.ts` + labels humanos (`reconciliation-confidence.ts`, `reconciliation-reason-labels.ts`) + endpoint `GET /api/copilot/bank-movements/canonical-suggestions`.
+
+## Cambios de FASE BANK-CANONICAL-CONFIRM-CONTRACT-CORRECTION-001
+
+1. Auditoría exacta del hallazgo bloqueante `status='reversed'` (ver sección arriba) — concluida como **lógica de RPC**, no de esquema.
+2. Migración de corrección `20260722130000_bank_reconciliation_confirm_rpc_v2.sql` (**creada, NO aplicada**): retira la rama inalcanzable `'reversed'` de `confirm_bank_reconciliation_v1` (cero cambio de comportamiento) + agrega `suggestion_scope='operational'` obligatorio al confirmar por sugerencia (gap real corregido: antes se podía confirmar una sugerencia `historical_review`/`matched_audit`). `reverse_bank_reconciliation_v1` auditada de nuevo, sin cambios necesarios.
+3. Máquina de estados documentada por entidad (sugerencia/link/allocation/movimiento/evento).
+4. **No se implementó ninguna UI de confirmación real** — sigue explícitamente fuera de alcance (Fase 2). La pestaña Conciliación sigue 100% read-only.
+5. **No se implementó aprendizaje de pagador** — sigue fuera de alcance (Fase 3, BANK-PAYER-LEARNING-001). Si en el futuro la UI muestra algo al respecto, no debe afirmar "Copilot aprendió esta cuenta" ni "se asociará automáticamente la próxima vez" — puede decir "Aprendizaje de pagador pendiente de activación."
 
 ## Límite conocido de la lectura de evidencia
 

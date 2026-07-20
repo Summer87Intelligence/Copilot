@@ -1,5 +1,15 @@
 # Project Context
 
+## BANK — Corrección del contrato canónico confirm/reverse (`status='reversed'`) — 2026-07-20
+
+**FASE BANK-CANONICAL-CONFIRM-CONTRACT-CORRECTION-001 (local, commit sin push):** auditoría exacta del hallazgo bloqueante de la fase anterior (`bank_movements.status IN ('ignored','reversed')` en `confirm_bank_reconciliation_v1`, referenciando un valor que el CHECK de esa columna nunca admitió).
+- **Conclusión con evidencia**: es un bug de **lógica de RPC**, no de esquema. El CHECK real de `bank_movements.status` (`pending|suggested|matched|ignored|needs_review`) coincide exactamente con el tipo TypeScript `BankMovementStatus` — ambos ya eran coherentes entre sí. Ningún writer, en ningún lugar del codebase, escribe jamás `'reversed'` en esa columna (ni la propia RPC, ni `reverse_bank_reconciliation_v1`, que nunca toca `bank_movements`). La comparación en el `IN (...)` era una rama siempre-falsa, no un fallo de ejecución — **no rompía nada en producción**. Se descartó explícitamente "ampliar el CHECK" como solución (el enunciado de la fase advertía contra esa suposición) porque la evidencia apuntaba a lo contrario.
+- **Gap real distinto encontrado**: la v1 de `confirm_bank_reconciliation_v1` no validaba `suggestion_scope` al confirmar por `p_suggestion_id` — podía confirmar una sugerencia `historical_review` o `matched_audit` igual que una `operational`, contradiciendo la separación operativa/histórica ya establecida.
+- **Corrección** (migración `20260722130000_bank_reconciliation_confirm_rpc_v2.sql`, **creada, NO aplicada**): (1) retira la rama `'reversed'` inalcanzable (cero cambio de comportamiento real); (2) agrega `AND suggestion_scope='operational'` obligatorio. Misma firma, mismos grants (`service_role`-only), sin tocar ningún `CHECK`/tabla/dato existente. `reverse_bank_reconciliation_v1` auditada de nuevo: sin cambios necesarios.
+- **Máquina de estados** documentada por entidad (sugerencia/link/allocation/movimiento/evento) en `docs/architecture/bank-reconciliation-canonical-engine.md`. Modelo A confirmado para `bank_reconciliation_suggestions.status='reversed'` (ya era correcto).
+- **Sin implementación de UI de confirmación real ni aprendizaje de pagador** — ambos siguen explícitamente fuera de alcance (Fases 2 y 3). Sin confirmaciones/reversiones ejecutadas contra producción, sin migraciones aplicadas.
+- **Gates**: ver cierre de la fase. Sin push.
+
 ## BANK — Motor canónico de conciliación (Motor D) — routing + guards — 2026-07-20
 
 **FASE BANK-RECONCILIATION-CANONICAL-ENGINE-001 (local, commit sin push):** decisión de arquitectura autorizada tras la auditoría previa (BANK-DAILY-RECONCILIATION-UX-AND-FLOW-001): **Motor D** (`bank_reconciliation_suggestions` + `bank_payer_identities`/`client_payer_links` + `confirm_/reverse_bank_reconciliation_v1`) es el **único** motor canónico de conciliación de ingresos. No se crea un segundo motor.
