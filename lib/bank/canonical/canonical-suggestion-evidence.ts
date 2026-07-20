@@ -206,6 +206,58 @@ export type ListCanonicalOperationalEvidenceResult = {
 };
 
 /**
+ * Arma evidencia completa para un lote de sugerencias ya elegidas, reusando los
+ * movimientos ya cargados por el llamador (evita re-consultarlos uno por uno).
+ * Bloque compartido entre `listCanonicalOperationalEvidence` (bandeja histórica
+ * paginada) y la bandeja unificada de Ingresos (FASE BANK-UNIFIED-INCOME-
+ * RECONCILIATION-WORKSPACE-001), que ya trae los movimientos de su propia lista.
+ * Nunca escribe nada — 100% lectura.
+ */
+export async function buildEvidenceForSuggestions(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  suggestions: ShadowSuggestionRow[],
+  movementsById: Map<string, BankMovementRow>
+): Promise<CanonicalSuggestionEvidence[]> {
+  if (suggestions.length === 0) return [];
+
+  const clientIds = [...new Set(suggestions.map((s) => s.proposedClientId).filter((v): v is string => v != null))];
+  const clients = clientIds.length > 0 ? await listShadowClients(supabase, workspaceId, { limit: 3000 }) : [];
+  const clientsById = new Map(clients.filter((c) => clientIds.includes(c.id)).map((c) => [c.id, c]));
+
+  const payerIdentityIds = [...new Set(suggestions.map((s) => s.payerIdentityId).filter((v): v is string => v != null))];
+  const clientPayerLinksByPayerId = new Map<string, ClientPayerLinkRow[]>();
+  if (payerIdentityIds.length > 0) {
+    const links = await listShadowClientPayerLinks(supabase, workspaceId, payerIdentityIds);
+    for (const l of links) {
+      const arr = clientPayerLinksByPayerId.get(l.payer_identity_id) ?? [];
+      arr.push(l);
+      clientPayerLinksByPayerId.set(l.payer_identity_id, arr);
+    }
+  }
+  const payerIdentities = await listPayerIdentitiesByIds(supabase, workspaceId, payerIdentityIds);
+  const payerIdentitiesById = new Map(payerIdentities.map((p) => [p.id, p]));
+
+  const items: CanonicalSuggestionEvidence[] = [];
+  for (const suggestion of suggestions) {
+    const movement = movementsById.get(suggestion.bankMovementId);
+    if (!movement) continue;
+    items.push(
+      await buildOneEvidence(
+        supabase,
+        workspaceId,
+        suggestion,
+        movement,
+        clientsById,
+        payerIdentitiesById,
+        clientPayerLinksByPayerId
+      )
+    );
+  }
+  return items;
+}
+
+/**
  * Lee sugerencias `operational` activas (paginado simple por `limit`/`offset` en
  * memoria sobre el resultado ya acotado por workspace) y arma su evidencia
  * completa. Nunca escribe nada — 100% lectura.
@@ -232,38 +284,6 @@ export async function listCanonicalOperationalEvidence(
     if (m) movementsById.set(id, m);
   }
 
-  const clientIds = [...new Set(page.map((s) => s.proposedClientId).filter((v): v is string => v != null))];
-  const clients = clientIds.length > 0 ? await listShadowClients(supabase, workspaceId, { limit: 3000 }) : [];
-  const clientsById = new Map(clients.filter((c) => clientIds.includes(c.id)).map((c) => [c.id, c]));
-
-  const payerIdentityIds = [...new Set(page.map((s) => s.payerIdentityId).filter((v): v is string => v != null))];
-  const clientPayerLinksByPayerId = new Map<string, ClientPayerLinkRow[]>();
-  if (payerIdentityIds.length > 0) {
-    const links = await listShadowClientPayerLinks(supabase, workspaceId, payerIdentityIds);
-    for (const l of links) {
-      const arr = clientPayerLinksByPayerId.get(l.payer_identity_id) ?? [];
-      arr.push(l);
-      clientPayerLinksByPayerId.set(l.payer_identity_id, arr);
-    }
-  }
-  const payerIdentities = await listPayerIdentitiesByIds(supabase, workspaceId, payerIdentityIds);
-  const payerIdentitiesById = new Map(payerIdentities.map((p) => [p.id, p]));
-
-  const items: CanonicalSuggestionEvidence[] = [];
-  for (const suggestion of page) {
-    const movement = movementsById.get(suggestion.bankMovementId);
-    if (!movement) continue;
-    items.push(
-      await buildOneEvidence(
-        supabase,
-        workspaceId,
-        suggestion,
-        movement,
-        clientsById,
-        payerIdentitiesById,
-        clientPayerLinksByPayerId
-      )
-    );
-  }
+  const items = await buildEvidenceForSuggestions(supabase, workspaceId, page, movementsById);
   return { items, total: all.length };
 }

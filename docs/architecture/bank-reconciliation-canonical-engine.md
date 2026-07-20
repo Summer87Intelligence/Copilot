@@ -8,6 +8,10 @@
 
 **FASE BANK-CANONICAL-CONFIRM-UI-001 (2026-07-22, continuación)** — primera UI de confirmación/rechazo real sobre el motor canónico (ver sección "Cambios de esta fase (BANK-CANONICAL-CONFIRM-UI-001)" más abajo). Confirmar y Rechazar ya son funcionales en código; Revertir sigue fuera de alcance (Fase futura BANK-CANONICAL-REVERSE-UI-001); aprendizaje de pagador sigue sin implementar.
 
+**FASE BANK-CANONICAL-CONFIRM-CONTROLLED-QA-001 (2026-07-20, despliegue)** — push a producción (commit `83fa402`), deployment Vercel `READY`, QA controlada end-to-end con sesión real. Ningún caso pendiente alcanzó confianza Alta (0 de 5), así que no se ejecutó ninguna confirmación real — veredicto `GO_FOR_BANK_CANONICAL_CONFIRM_QA_REPEAT_WITH_SAFE_CASE`. La QA sí confirmó en producción: tabs/orden correctos, bandeja Conciliación 100% funcional (drawer, contadores, confianza Baja sin auto-confirmar), enlace "Revisar conciliación" desde Ingresos funcionando.
+
+**FASE BANK-UNIFIED-INCOME-RECONCILIATION-WORKSPACE-001 (2026-07-20, continuación)** — decisión funcional definitiva: **la pestaña Ingresos es la única bandeja operativa diaria.** La pestaña Conciliación independiente (de la fase anterior) queda retirada de la navegación visible; su funcionalidad se absorbe dentro de Ingresos. Ver sección "Cambios de esta fase (BANK-UNIFIED-INCOME-RECONCILIATION-WORKSPACE-001)" más abajo. Sin cambios de scoring/thresholds, sin aprendizaje de pagador, sin reversión, sin nuevas migraciones — solo unificación de experiencia sobre el mismo Motor D.
+
 ## Auditoría exacta del estado "reversed" (hallazgo bloqueante, resuelto)
 
 **Pregunta central:** ¿qué tabla/columna recibe o debería recibir `'reversed'`?
@@ -157,9 +161,24 @@ El esquema (`bank_payer_identities` + `client_payer_links`) está completo y mod
 8. Errores de RPC traducidos a mensajes en español (`canonical-rpc-error-messages.ts`) — nunca se muestra el código crudo solo.
 9. Motor C sigue retirado como escritor (sin cambios); test de rutina actualizado para reflejar que el panel ahora sí escribe, pero exclusivamente hacia los dos endpoints canónicos nuevos.
 
+## Cambios de esta fase (BANK-UNIFIED-INCOME-RECONCILIATION-WORKSPACE-001)
+
+**Regla definitiva**: los ingresos bancarios se identifican y concilian en una única bandeja (Ingresos). Movimientos es el libro bancario; Historial contiene decisiones terminadas. La pestaña Conciliación independiente fue absorbida por Ingresos.
+
+1. **Navegación**: tabs finales `Importar · Movimientos · Ingresos (★ destacada) · Historial` — Conciliación retirada de la navegación visible. `BankTab` ya no incluye `"conciliacion"`.
+2. **Deep links**: `?tab=reconciliation` / `?tab=conciliacion` normalizan a `?tab=ingresos` preservando `movementId`. La bandeja unificada abre el movimiento y su drawer directamente, sin un segundo tab.
+3. **Unidad principal**: el `bank_movement` positivo. Cada ingreso aparece una única vez, en `BankIncomeWorkspace` (`components/copilot/bank-movements/bank-income-workspace.tsx`), reemplazando tanto `BankIncomePanel` como `BankCanonicalReconciliationPanel` (ambos **eliminados** — sin consumidores tras el refactor; su lógica se extrajo a piezas reutilizables, no se duplicó).
+4. **Piezas compartidas**: `components/copilot/bank-movements/canonical-evidence-ui.tsx` (evidencia, drawer, `confirmCanonicalEvidence`/`rejectCanonicalEvidence`) — mismos endpoints canónicos de siempre (`/api/copilot/bank-reconciliation/[suggestionId]/confirm|reject`), sin escritura nueva.
+5. **Estados derivados** (`lib/bank/canonical/income-workspace.ts`, puro y testeado): `sin_identificar` · `cliente_sugerido` · `con_coincidencia` · `requiere_revision` · `conciliado` · `sugerencia_rechazada` · `ignorado`. Deliberadamente **no** se deriva de la confianza humana (Alta/Media/Baja) — un caso Baja con cliente+recibo concretos y sin conflicto es "con coincidencia" (solo conservador en el score); un caso sin cliente o con advertencias siempre es "requiere revisión", sin importar el score. `pickCurrentSuggestionForMovement()` elige la sugerencia vigente por movimiento (confirmed > rejected > activa > ninguna) cuando hay historial de sugerencias superseded/expired.
+6. **Fetch batch (sin N+1)**: `?workspace=income&movementIds=...` en el endpoint canónico existente devuelve, en un solo request, estado+evidencia para el subconjunto operativo (post-corte) de movimientos ya cargados por el cliente. Los históricos nunca tienen sugerencias `operational` (política de corte ya establecida) — el cliente no necesita pedir evidencia para ellos.
+7. **Motor B** (`bank-income-matching`) se conserva como identificación **preliminar** (`PreliminaryIdentification`, solo se muestra cuando no hay sugerencia canónica) — nunca compite visualmente con la evidencia de Motor D, nunca completa una conciliación.
+8. **Confianza Media/Baja confirmable manualmente**: el botón de confirmación rápida (1 clic) sigue exigiendo Alta + sin conflicto + recibo propuesto; el drawer ("Revisar evidencia") permite confirmar Media/Baja tras revisión explícita — el mismo mecanismo de la fase anterior, ahora con guarda explícita: el drawer deshabilita Confirmar si no hay recibo propuesto (`item.receipt == null`) y muestra "Este caso requiere revisión manual y todavía no puede confirmarse desde Copilot." Auditoría de distinción auto-sugerida vs. manual-revisada: no existe columna dedicada, pero la confianza (`confidence`/`recommended_action`) de la sugerencia vinculada ya permite reconstruirlo post-hoc — no se amplía el esquema.
+9. **Historial** (`BankHistoryPanel`) ahora también muestra "Conciliaciones y decisiones recientes" (`?workspace=history`, mismas sugerencias operational en estado `confirmed`/`rejected`) — botón "Revertir" presente pero deshabilitado (fuera de alcance).
+10. **Sin motor nuevo, sin writer paralelo**: cero escrituras directas a `bank_movement_reconciliation_links`/`payment_allocations`; los únicos endpoints de escritura siguen siendo `confirm`/`reject` de la fase anterior.
+
 ## No se autoriza en esta fase
 
-Confirmaciones/reversiones reales ejecutadas contra producción durante el desarrollo (todo el trabajo de esta fase fue código + tests locales, sin tráfico de escritura contra datos reales), aprendizaje de pagador, UI de reversión, otras migraciones, push. Ver informe final de la fase para el detalle completo.
+Confirmaciones/reversiones reales ejecutadas contra producción durante el desarrollo (todo el trabajo de esta fase fue código + tests locales, sin tráfico de escritura contra datos reales), aprendizaje de pagador, UI de reversión, cambios de scoring/thresholds, otras migraciones, push. Ver informe final de la fase para el detalle completo.
 
 ## Compatibilidad de datos existentes
 

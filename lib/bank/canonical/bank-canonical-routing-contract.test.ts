@@ -3,14 +3,16 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * FASE BANK-RECONCILIATION-CANONICAL-ENGINE-001 — contrato estático sobre el
- * código fuente (el proyecto no usa @testing-library/react; mismo patrón que
- * `seller-assignment-ux-contract.test.ts`).
+ * FASE BANK-UNIFIED-INCOME-RECONCILIATION-WORKSPACE-001 — contrato estático
+ * sobre el código fuente (el proyecto no usa @testing-library/react; mismo
+ * patrón que `seller-assignment-ux-contract.test.ts`).
  *
- * Bloquea la regresión de fondo de esta fase: Motor D (canónico) debe ser la
- * única fuente de la pestaña Conciliación, Motor C (legacy) no debe poder
- * escribir por ningún camino (ni UI ni API directa), y Motor A (Tesorería) no
- * debe volver a aparecer como "Conciliar" dentro del flujo de cobros.
+ * Reemplaza el contrato de BANK-RECONCILIATION-CANONICAL-ENGINE-001: la
+ * pestaña Conciliación independiente fue absorbida por Ingresos (única
+ * bandeja operativa diaria). Sigue bloqueando la regresión de fondo: Motor D
+ * (canónico) es la única fuente de conciliación, Motor C (legacy) no puede
+ * escribir por ningún camino, y Motor A (Tesorería) no vuelve a aparecer como
+ * "Conciliar" dentro del flujo de cobros.
  */
 
 const COMPONENTS_ROOT = join(process.cwd(), "components", "copilot", "bank-movements");
@@ -19,54 +21,74 @@ const API_ROOT = join(process.cwd(), "app", "api", "copilot", "bank-movements");
 const pageClient = readFileSync(join(COMPONENTS_ROOT, "bank-movements-page-client.tsx"), "utf8");
 const treasuryPanel = readFileSync(join(COMPONENTS_ROOT, "bank-movements-reconciliation-panel.tsx"), "utf8");
 const legacyDrawer = readFileSync(join(COMPONENTS_ROOT, "bank-movement-reconciliation-drawer.tsx"), "utf8");
-const canonicalPanel = readFileSync(join(COMPONENTS_ROOT, "bank-canonical-reconciliation-panel.tsx"), "utf8");
+const incomeWorkspace = readFileSync(join(COMPONENTS_ROOT, "bank-income-workspace.tsx"), "utf8");
+const evidenceUi = readFileSync(join(COMPONENTS_ROOT, "canonical-evidence-ui.tsx"), "utf8");
 const legacyLinksRoute = readFileSync(join(API_ROOT, "[id]", "reconciliation-links", "route.ts"), "utf8");
 const legacyLinkByIdRoute = readFileSync(join(API_ROOT, "[id]", "reconciliation-links", "[linkId]", "route.ts"), "utf8");
 const canonicalRoute = readFileSync(join(API_ROOT, "canonical-suggestions", "route.ts"), "utf8");
 
-describe("Navegación: 5 tabs, orden diario, Conciliación destacada", () => {
-  it("TABS mantiene exactamente Importar/Movimientos/Ingresos/Conciliación/Historial en ese orden", () => {
+describe("Navegación: 4 tabs, sin pestaña Conciliación independiente", () => {
+  it("TABS mantiene exactamente Importar/Movimientos/Ingresos/Historial en ese orden", () => {
     const tabsBlock = pageClient.match(/const TABS[\s\S]*?\];/)![0];
     const ids = [...tabsBlock.matchAll(/id:\s*"([a-z]+)"/g)].map((m) => m[1]);
-    expect(ids).toEqual(["importar", "movimientos", "ingresos", "conciliacion", "historial"]);
+    expect(ids).toEqual(["importar", "movimientos", "ingresos", "historial"]);
   });
 
-  it("Conciliación está marcada como acción diaria principal (primary)", () => {
+  it("no existe ningún tab 'conciliacion'", () => {
     const tabsBlock = pageClient.match(/const TABS[\s\S]*?\];/)![0];
-    expect(tabsBlock).toMatch(/id:\s*"conciliacion",\s*label:\s*"Conciliación",\s*primary:\s*true/);
+    expect(tabsBlock).not.toContain('"conciliacion"');
+  });
+
+  it("Ingresos está marcada como la bandeja diaria principal (primary)", () => {
+    const tabsBlock = pageClient.match(/const TABS[\s\S]*?\];/)![0];
+    expect(tabsBlock).toMatch(/id:\s*"ingresos",\s*label:\s*"Ingresos",\s*primary:\s*true/);
+  });
+
+  it("BankTab ya no incluye 'conciliacion' como valor posible", () => {
+    const typeLine = pageClient.match(/type BankTab = [^;]+;/)![0];
+    expect(typeLine).not.toContain("conciliacion");
   });
 });
 
-describe("Conciliación (tab) consume ÚNICAMENTE el motor canónico (D)", () => {
-  it("el tab 'conciliacion' monta BankCanonicalReconciliationPanel, no el panel legacy de Tesorería", () => {
-    expect(pageClient).toMatch(/tab === "conciliacion" \? \(\s*<BankCanonicalReconciliationPanel/);
+describe("Ingresos (única bandeja diaria) consume ÚNICAMENTE el motor canónico (D)", () => {
+  it("el tab 'ingresos' monta BankIncomeWorkspace, no el panel legacy de asociación aislado ni el de Tesorería", () => {
+    expect(pageClient).toMatch(/tab === "ingresos" \? \(\s*<BankIncomeWorkspace/);
   });
 
-  it("BankMovementsReconciliationPanel (Motor A) ya no se monta bajo el tab de conciliación", () => {
-    const conciliacionBlock = pageClient.split('tab === "conciliacion"')[1] ?? "";
-    expect(conciliacionBlock.slice(0, 80)).not.toContain("BankMovementsReconciliationPanel");
+  it("BankMovementsReconciliationPanel (Motor A) no se monta bajo el tab de ingresos", () => {
+    const ingresosBlock = pageClient.split('tab === "ingresos"')[1] ?? "";
+    expect(ingresosBlock.slice(0, 200)).not.toContain("BankMovementsReconciliationPanel");
   });
 
-  it("el panel canónico lee /api/copilot/bank-movements/canonical-suggestions y solo escribe hacia /api/copilot/bank-reconciliation/ (confirm/reject canónicos, nunca Motor C)", () => {
-    expect(canonicalPanel).toContain("/api/copilot/bank-movements/canonical-suggestions");
-    // FASE BANK-CANONICAL-CONFIRM-UI-001: el panel ahora sí escribe, pero exclusivamente
-    // hacia los endpoints canónicos de confirmación/rechazo (vía postJson), nunca hacia
-    // Motor C (reconciliation-links) ni hacia ninguna otra ruta de escritura financiera.
-    const postJsonCalls = [...canonicalPanel.matchAll(/postJson\(`([^`]+)`/g)].map((m) => m[1]);
+  it("BankIncomeWorkspace lee /api/copilot/bank-movements/canonical-suggestions y solo escribe hacia /api/copilot/bank-reconciliation/ (confirm/reject canónicos), vía las funciones compartidas de canonical-evidence-ui", () => {
+    expect(incomeWorkspace).toContain("/api/copilot/bank-movements/canonical-suggestions");
+    expect(incomeWorkspace).toContain("confirmCanonicalEvidence");
+    expect(incomeWorkspace).toContain("rejectCanonicalEvidence");
+    expect(incomeWorkspace).not.toContain("reconciliation-links");
+    // La única escritura financiera nueva (Motor D) vive en canonical-evidence-ui.tsx, reusada acá.
+    const postJsonCalls = [...evidenceUi.matchAll(/postJson\(`([^`]+)`/g)].map((m) => m[1]);
     expect(postJsonCalls.length).toBeGreaterThan(0);
     for (const url of postJsonCalls) {
       expect(url).toMatch(/^\/api\/copilot\/bank-reconciliation\/\$\{[^}]+\}\/(confirm|reject)$/);
     }
-    // La única función que llama fetch con method "POST" es postJson — no hay otro escritor.
-    const rawPostFetches = [...canonicalPanel.matchAll(/method:\s*"POST"/g)];
+    const rawPostFetches = [...evidenceUi.matchAll(/method:\s*"POST"/g)];
     expect(rawPostFetches.length).toBe(1);
-    expect(canonicalPanel).not.toContain("reconciliation-links");
   });
 
-  it("el endpoint canónico usa listCanonicalOperationalEvidence (scope operational) y solo expone GET", () => {
+  it("Motor B (identificación preliminar) sigue presente pero no compite con la evidencia canónica: solo se muestra cuando no hay sugerencia del motor D", () => {
+    expect(incomeWorkspace).toContain("income-suggestions");
+    expect(incomeWorkspace).toContain("income-match");
+    expect(incomeWorkspace).toContain("PreliminaryIdentification");
+    // El bloque de Motor B solo se monta en el branch "sin evidencia canónica".
+    expect(incomeWorkspace).toMatch(/evidence \? \([\s\S]*?\) : view\.status === "ignorado" \? \([\s\S]*?\) : \(\s*<PreliminaryIdentification/);
+  });
+
+  it("el endpoint canónico sigue exponiendo solo GET (lectura), con el nuevo modo workspace=income/history", () => {
     expect(canonicalRoute).toContain("listCanonicalOperationalEvidence");
     expect(canonicalRoute).toContain("export async function GET");
     expect(canonicalRoute).not.toMatch(/export async function (POST|PATCH|DELETE)/);
+    expect(canonicalRoute).toContain('params.get("workspace") === "income"');
+    expect(canonicalRoute).toContain('params.get("workspace") === "history"');
   });
 });
 
@@ -80,13 +102,13 @@ describe("Motor A (Tesorería): renombrado y fuera del flujo de cobros de client
     expect(treasuryPanel).toContain("Pagos programados de Tesorería");
   });
 
-  it("se monta dentro de Movimientos como sección secundaria (details colapsado), no en Conciliación", () => {
+  it("se monta dentro de Movimientos como sección secundaria (details colapsado), no en Ingresos", () => {
     const detailsIdx = pageClient.indexOf("Pagos programados de Tesorería");
     const panelIdx = pageClient.indexOf("<BankMovementsReconciliationPanel");
-    const conciliacionIdx = pageClient.indexOf('{tab === "conciliacion"');
+    const ingresosIdx = pageClient.indexOf('{tab === "ingresos"');
     expect(detailsIdx).toBeGreaterThan(-1);
     expect(panelIdx).toBeGreaterThan(detailsIdx);
-    expect(panelIdx).toBeLessThan(conciliacionIdx);
+    expect(panelIdx).toBeLessThan(ingresosIdx);
   });
 });
 

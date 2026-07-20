@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Landmark, Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
+import { Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
 
 import { BankMovementsFiltersBar } from "@/components/copilot/bank-movements/bank-movements-filters-bar";
 import { BankMovementsImportPanel } from "@/components/copilot/bank-movements/bank-movements-import-panel";
 import { BankMovementsReconciliationPanel } from "@/components/copilot/bank-movements/bank-movements-reconciliation-panel";
-import { BankCanonicalReconciliationPanel } from "@/components/copilot/bank-movements/bank-canonical-reconciliation-panel";
-import { BankIncomePanel } from "@/components/copilot/bank-movements/bank-income-panel";
+import { BankIncomeWorkspace } from "@/components/copilot/bank-movements/bank-income-workspace";
+import { BankHistoryPanel } from "@/components/copilot/bank-movements/bank-history-panel";
 
 import {
   CopilotResponsiveTable,
@@ -47,18 +47,18 @@ import {
   type BankStatementImport,
 } from "@/lib/bank-movements/bank-movements-types";
 
-type BankTab = "importar" | "movimientos" | "conciliacion" | "ingresos" | "historial";
+type BankTab = "importar" | "movimientos" | "ingresos" | "historial";
 
 /**
- * Orden diario de operación (FASE BANK-RECONCILIATION-CANONICAL-ENGINE-001):
- * Importar → Movimientos → Ingresos → Conciliación → Historial. Conciliación es
- * la acción diaria principal (destacada visualmente, ver `primary` abajo).
+ * Orden diario de operación (FASE BANK-UNIFIED-INCOME-RECONCILIATION-WORKSPACE-001):
+ * Importar → Movimientos → Ingresos → Historial. La pestaña Conciliación
+ * independiente fue absorbida por Ingresos, que ahora es la única bandeja
+ * operativa diaria (identificar cliente + conciliar en una misma pantalla).
  */
 const TABS: Array<{ id: BankTab; label: string; primary?: boolean }> = [
   { id: "importar", label: "Importar" },
   { id: "movimientos", label: "Movimientos" },
-  { id: "ingresos", label: "Ingresos" },
-  { id: "conciliacion", label: "Conciliación", primary: true },
+  { id: "ingresos", label: "Ingresos", primary: true },
   { id: "historial", label: "Historial" },
 ];
 
@@ -120,23 +120,26 @@ export function BankMovementsPageClient() {
   const [tab, setTab] = useState<BankTab>("movimientos");
   const deepLinkApplied = useRef(false);
 
-  // Deep link desde el cuaderno de trabajo: ?tab=reconciliation abre Conciliación
-  // (el panel ya filtra "Con sugerencia" por defecto). No rompe la navegación normal.
+  // Deep link desde el cuaderno de trabajo / URLs antiguas de la extinta pestaña
+  // Conciliación independiente (FASE BANK-UNIFIED-INCOME-RECONCILIATION-WORKSPACE-001):
+  // ?tab=reconciliation | ?tab=conciliacion normalizan a Ingresos, preservando
+  // movementId/suggestionId para enfocar el caso puntual dentro de la bandeja unificada.
   useEffect(() => {
     if (deepLinkApplied.current) return;
     const requestedTab = searchParams.get("tab");
     const direction = searchParams.get("direction");
-    if (direction === "inflow" || requestedTab === "ingresos") {
-      // Ingresos por asociar (deep link desde Tareas diarias).
+    const movementIdParam = searchParams.get("movementId");
+    if (
+      direction === "inflow" ||
+      requestedTab === "ingresos" ||
+      requestedTab === "reconciliation" ||
+      requestedTab === "conciliacion"
+    ) {
       setTab("ingresos");
-    } else if (requestedTab === "reconciliation" || requestedTab === "conciliacion") {
-      setTab("conciliacion");
+      if (movementIdParam) setFocusMovementId(movementIdParam);
     }
     deepLinkApplied.current = true;
   }, [searchParams]);
-  // FASE BANK-CANONICAL-CONFIRM-UI-001: "Revisar conciliación" en Ingresos abre
-  // la sugerencia operational puntual de ese movimiento en la pestaña Conciliación,
-  // en vez de reactivar Motor B como flujo completo de conciliación.
   const [focusMovementId, setFocusMovementId] = useState<string | null>(null);
   const [movements, setMovements] = useState<BankMovement[]>([]);
   const [imports, setImports] = useState<BankStatementImport[]>([]);
@@ -602,60 +605,15 @@ export function BankMovementsPageClient() {
         </details>
       ) : null}
 
-      {tab === "conciliacion" ? (
-        <BankCanonicalReconciliationPanel
+      {tab === "ingresos" ? (
+        <BankIncomeWorkspace
+          onChanged={load}
           initialMovementId={focusMovementId}
           onInitialMovementConsumed={() => setFocusMovementId(null)}
         />
       ) : null}
 
-      {tab === "ingresos" ? (
-        <BankIncomePanel
-          onChanged={load}
-          onOpenReconciliation={(movementId) => {
-            setFocusMovementId(movementId);
-            setTab("conciliacion");
-          }}
-        />
-      ) : null}
-
-      {tab === "historial" ? (
-        <section className={copilotCardStandardClass}>
-          <h2 className={copilotSectionTitleClass}>Importaciones realizadas</h2>
-          {imports.length === 0 ? (
-            <div className="mt-3">
-              <DsEmptyState
-                variant="compact"
-                title={loading ? "Cargando historial" : "Todavía no hay importaciones"}
-                description={
-                  loading
-                    ? "Estamos preparando el historial de extractos."
-                    : "Acá vas a ver cada extracto importado cuando la importación automática esté disponible."
-                }
-              />
-            </div>
-          ) : (
-            <ul className="mt-3 space-y-2">
-              {imports.map((item) => (
-                <li
-                  key={item.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-[var(--copilot-border)] px-3 py-2 text-sm"
-                >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <Landmark className="h-4 w-4 shrink-0 text-[var(--copilot-muted)]" aria-hidden />
-                    <span className="truncate">
-                      {item.file_name ?? item.bank_name} · {item.row_count} movimientos
-                    </span>
-                  </span>
-                  <span className={`${copilotCaptionClass} whitespace-nowrap`}>
-                    {formatDate(item.imported_at)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      ) : null}
+      {tab === "historial" ? <BankHistoryPanel imports={imports} loading={loading} /> : null}
     </div>
   );
 }

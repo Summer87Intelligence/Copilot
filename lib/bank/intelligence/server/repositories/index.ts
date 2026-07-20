@@ -145,6 +145,25 @@ export async function getShadowMovementById(
   return (data as BankMovementRow | null) ?? null;
 }
 
+/** Lote de movimientos por id — usado por la bandeja unificada de Ingresos. */
+export async function listShadowMovementsByIds(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  movementIds: string[]
+): Promise<BankMovementRow[]> {
+  const ws = requireWorkspace(workspaceId);
+  if (movementIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("bank_movements")
+    .select(
+      "id, workspace_id, bank_name, account_label, movement_date, description, raw_description, amount, currency, direction, bank_reference, status, metadata"
+    )
+    .eq("workspace_id", ws)
+    .in("id", movementIds.slice(0, 500));
+  if (error) throw new Error(`SHADOW_MOVEMENTS_BY_IDS_READ_FAILED: ${error.message}`);
+  return (data ?? []) as BankMovementRow[];
+}
+
 // ── Receipts / clients / invoices (read-only) ────────────────────────────────
 
 export async function listShadowReceipts(
@@ -389,7 +408,13 @@ export async function listSuggestionsByScope(
   supabase: SupabaseClient,
   workspaceId: string,
   scope: SuggestionScope,
-  opts?: { statuses?: ShadowSuggestionStatus[]; movementIds?: string[]; engineVersion?: number }
+  opts?: {
+    statuses?: ShadowSuggestionStatus[];
+    movementIds?: string[];
+    engineVersion?: number;
+    /** Tope de `movementIds` aceptados (default 100, histórico). La bandeja unificada de Ingresos usa un tope mayor. */
+    movementIdsLimit?: number;
+  }
 ): Promise<ShadowSuggestionRow[]> {
   const ws = requireWorkspace(workspaceId);
   let q = supabase
@@ -400,7 +425,7 @@ export async function listSuggestionsByScope(
   if (opts?.engineVersion != null) q = q.eq("engine_version", opts.engineVersion);
   if (opts?.statuses && opts.statuses.length > 0) q = q.in("status", opts.statuses);
   if (opts?.movementIds && opts.movementIds.length > 0) {
-    q = q.in("bank_movement_id", opts.movementIds.slice(0, 100));
+    q = q.in("bank_movement_id", opts.movementIds.slice(0, opts.movementIdsLimit ?? 100));
   }
   const { data, error } = await q;
   if (error) throw new Error(`SHADOW_SUGGESTIONS_SCOPE_READ_FAILED: ${error.message}`);
@@ -462,6 +487,25 @@ export async function countHistoricalSuggestions(
   opts?: { statuses?: ShadowSuggestionStatus[] }
 ): Promise<number> {
   return countSuggestionsByScope(supabase, workspaceId, "historical_review", opts);
+}
+
+/**
+ * FASE BANK-UNIFIED-INCOME-RECONCILIATION-WORKSPACE-001 — todas las sugerencias
+ * `operational` (cualquier status: generated/pending_review/confirmed/rejected/
+ * superseded/expired) para un conjunto de movimientos. La bandeja unificada de
+ * Ingresos necesita el historial completo por movimiento para derivar su estado
+ * (Conciliado/Rechazado/Con coincidencia/etc.), no solo las activas. Tope 500
+ * (mayor al de `listSuggestionsByScope`, pensado para narrow batch lookups).
+ */
+export async function listOperationalSuggestionsForIncomeWorkspace(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  movementIds: string[]
+): Promise<ShadowSuggestionRow[]> {
+  return listSuggestionsByScope(supabase, workspaceId, "operational", {
+    movementIds,
+    movementIdsLimit: 500,
+  });
 }
 
 /**

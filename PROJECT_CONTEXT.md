@@ -1,5 +1,18 @@
 # Project Context
 
+## BANK — Ingresos como única bandeja operativa (Conciliación absorbida) — 2026-07-20
+
+**FASE BANK-UNIFIED-INCOME-RECONCILIATION-WORKSPACE-001 (local, commit sin push, tras QA controlada en producción del commit `83fa402`):** decisión funcional definitiva — la pestaña Ingresos pasa a ser la única bandeja diaria para identificar cliente y conciliar. La pestaña Conciliación independiente (agregada en BANK-CANONICAL-CONFIRM-UI-001, ya en producción) queda retirada de la navegación.
+- **Motivo**: la tarea diaria estaba dividida entre Movimientos/Ingresos/Conciliación, obligando a buscar el mismo ingreso en varios lugares.
+- **Tabs finales**: Importar · Movimientos · Ingresos (★) · Historial. Deep links antiguos (`?tab=reconciliation`/`?tab=conciliacion`) normalizan a Ingresos preservando `movementId`.
+- **Componentes retirados** (sin consumidores tras el refactor, lógica extraída a piezas reutilizables, no borrada): `bank-canonical-reconciliation-panel.tsx`, `bank-income-panel.tsx`. Nuevos: `bank-income-workspace.tsx` (bandeja unificada), `canonical-evidence-ui.tsx` (evidencia/drawer/confirm/reject compartidos), `bank-history-panel.tsx` (Historial + decisiones recientes).
+- **Estados derivados** (`lib/bank/canonical/income-workspace.ts`, puro, 16 tests): sin_identificar/cliente_sugerido/con_coincidencia/requiere_revision/conciliado/sugerencia_rechazada/ignorado — independiente de la confianza humana (un caso Baja con cliente+recibo concretos y sin conflicto es "con coincidencia").
+- **Sin N+1**: nuevo modo `?workspace=income&movementIds=...` en el endpoint canónico existente (mismo `/api/copilot/bank-movements/canonical-suggestions`, no un endpoint nuevo) devuelve estado+evidencia para todo el subconjunto operativo en un solo request.
+- **Motor B** conservado como identificación preliminar (nunca compite con la evidencia canónica, nunca completa una conciliación). **Sin motor nuevo, sin writer paralelo** — confirmar/rechazar siguen siendo exclusivamente los endpoints canónicos de la fase anterior.
+- **Historial** ahora también muestra conciliaciones confirmadas/rechazadas recientes; botón "Revertir" presente pero deshabilitado (fuera de alcance).
+- Sin cambios de scoring/thresholds, sin aprendizaje de pagador, sin reversión real, sin migraciones nuevas.
+- **Gates**: tsc 0 errores, ESLint limpio, `vitest run` completo 4883 passed / 1 skipped / 2 todo (incluye ~37 tests nuevos/reescritos de esta fase), build OK. Sin push.
+
 ## BANK — Confirmación/rechazo real de conciliaciones canónicas (bandeja diaria) — 2026-07-22
 
 **FASE BANK-CANONICAL-CONFIRM-UI-001 (local, commit sin push):** primera UI de escritura real sobre el motor canónico (Motor D). Hasta ahora la pestaña Conciliación era 100% lectura; esta fase habilita Confirmar y Rechazar.

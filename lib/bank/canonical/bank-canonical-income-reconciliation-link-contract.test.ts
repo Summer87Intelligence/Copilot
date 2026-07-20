@@ -3,37 +3,40 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * FASE BANK-CANONICAL-CONFIRM-UI-001, sección 19 — "Revisar conciliación" en
- * Ingresos debe abrir la sugerencia operational puntual de ese movimiento en
- * Conciliación, nunca reactivar Motor B como flujo completo de conciliación
- * ni escribir nada nuevo desde Ingresos.
+ * FASE BANK-UNIFIED-INCOME-RECONCILIATION-WORKSPACE-001, sección 1/18 —
+ * reemplaza el contrato de BANK-CANONICAL-CONFIRM-UI-001 sección 19 (enlace
+ * Ingresos → Conciliación entre dos pantallas separadas). Ahora no hay dos
+ * pantallas: cualquier URL antigua que apuntara a la extinta pestaña
+ * Conciliación (`?tab=reconciliation`, `?tab=conciliacion`) debe normalizar a
+ * Ingresos preservando `movementId`, sin dejar enlaces rotos ni un segundo tab.
  */
 
 const COMPONENTS_ROOT = join(process.cwd(), "components", "copilot", "bank-movements");
-const incomePanel = readFileSync(join(COMPONENTS_ROOT, "bank-income-panel.tsx"), "utf8");
 const pageClient = readFileSync(join(COMPONENTS_ROOT, "bank-movements-page-client.tsx"), "utf8");
-const canonicalPanel = readFileSync(join(COMPONENTS_ROOT, "bank-canonical-reconciliation-panel.tsx"), "utf8");
+const incomeWorkspace = readFileSync(join(COMPONENTS_ROOT, "bank-income-workspace.tsx"), "utf8");
 
-describe("Ingresos → Conciliación: enlace de solo navegación, sin escritura nueva", () => {
-  it("BankIncomePanel detecta la sugerencia canónica vía GET (nunca POST/PATCH/DELETE)", () => {
-    expect(incomePanel).toContain("/api/copilot/bank-movements/canonical-suggestions?movementId=");
-    const canonicalCallBlock = incomePanel.split("canonical-suggestions?movementId=")[1]?.slice(0, 300) ?? "";
-    expect(canonicalCallBlock).not.toMatch(/method:\s*["'](POST|PATCH|DELETE)["']/);
+describe("Deep link: URLs antiguas de Conciliación normalizan a Ingresos", () => {
+  it("el efecto de deep link reconoce tab=reconciliation y tab=conciliacion, ambos normalizando a Ingresos", () => {
+    const effectBlock = pageClient.match(/useEffect\(\(\) => \{\s*if \(deepLinkApplied[\s\S]*?\}, \[searchParams\]\);/)![0];
+    expect(effectBlock).toContain('requestedTab === "reconciliation"');
+    expect(effectBlock).toContain('requestedTab === "conciliacion"');
+    expect(effectBlock).toContain('setTab("ingresos")');
+    // Nunca debe existir un setTab("conciliacion") — ese tab ya no existe.
+    expect(effectBlock).not.toContain('setTab("conciliacion")');
   });
 
-  it("el botón 'Revisar conciliación' solo navega (onOpenReconciliation), no asocia ni concilia desde Ingresos", () => {
-    expect(incomePanel).toContain("Revisar conciliación");
-    expect(incomePanel).toContain("onOpenReconciliation(movement.id)");
+  it("preserva movementId de la URL antigua y lo pasa a la bandeja unificada", () => {
+    const effectBlock = pageClient.match(/useEffect\(\(\) => \{\s*if \(deepLinkApplied[\s\S]*?\}, \[searchParams\]\);/)![0];
+    expect(effectBlock).toContain('searchParams.get("movementId")');
+    expect(effectBlock).toContain("setFocusMovementId(movementIdParam)");
   });
 
-  it("el page client conecta Ingresos → foco de movimiento → tab Conciliación (no un motor nuevo)", () => {
-    expect(pageClient).toContain("onOpenReconciliation={(movementId) => {");
-    expect(pageClient).toContain("setFocusMovementId(movementId)");
-    expect(pageClient).toContain('setTab("conciliacion")');
+  it("BankIncomeWorkspace consume el foco vía prop (initialMovementId), sin endpoint de escritura nuevo", () => {
+    expect(incomeWorkspace).toContain("initialMovementId");
+    expect(incomeWorkspace).toContain("onInitialMovementConsumed");
   });
 
-  it("BankCanonicalReconciliationPanel consume el foco vía prop, no vía un endpoint de escritura nuevo", () => {
-    expect(canonicalPanel).toContain("initialMovementId");
-    expect(canonicalPanel).toContain("movementId=${encodeURIComponent(movementFocusId)}");
+  it("el page client ya no tiene ningún setTab(\"conciliacion\") en ningún lugar (tab retirado)", () => {
+    expect(pageClient).not.toContain('setTab("conciliacion")');
   });
 });
