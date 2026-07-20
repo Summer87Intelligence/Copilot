@@ -7,7 +7,9 @@ import { EmptyState } from "@/components/copilot/ui/empty-state";
 import { SkeletonText } from "@/components/copilot/ui/skeleton";
 import { copilotCardStandardClass, copilotSectionTitleClass, copilotCaptionClass } from "@/components/copilot/ui/copilot-visual-system";
 import type { SalesDetailRow } from "@/lib/sales/sales-api";
+import type { SalespersonRow } from "@/lib/sales/sales-salesperson-repository";
 import { formatUyu, formatUsd, formatDateShort } from "@/components/copilot/ventas/ventas-format";
+import { SellerSelect } from "@/components/copilot/ventas/seller-select";
 
 /**
  * FASE 9 — Ventas del cliente dentro de Cliente 360.
@@ -17,6 +19,23 @@ import { formatUyu, formatUsd, formatDateShort } from "@/components/copilot/vent
 export function VentasTab({ companyId }: { companyId: string }) {
   const [rows, setRows] = useState<SalesDetailRow[]>([]);
   const [state, setState] = useState<"loading" | "ok" | "forbidden" | "error">("loading");
+  const [people, setPeople] = useState<SalespersonRow[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/copilot/sales/salespersons", { cache: "no-store" });
+        const json = await res.json();
+        if (!cancelled && res.ok && json.ok) setPeople((json.data as SalespersonRow[]).filter((p) => p.active));
+      } catch {
+        /* silencioso */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -55,10 +74,34 @@ export function VentasTab({ companyId }: { companyId: string }) {
     let firstDate: string | null = null;
     let lastDate: string | null = null;
     let salespersonName: string | null = null;
+    const invoices: {
+      documentId: string;
+      date: string;
+      documentNumber: string | null;
+      documentType: string;
+      kind: "sale" | "credit_note";
+      currency: string;
+      amount: number;
+      sellerId: string | null;
+      sellerName: string | null;
+    }[] = [];
 
     for (const r of rows) {
       const cur = r.currency === "UYU" || r.currency === "USD" ? r.currency : null;
       if (salespersonName == null && r.salespersonName) salespersonName = r.salespersonName;
+      if (r.isFirstLineOfDoc) {
+        invoices.push({
+          documentId: r.documentId,
+          date: r.date,
+          documentNumber: r.documentNumber,
+          documentType: r.documentType,
+          kind: r.kind,
+          currency: r.currency,
+          amount: r.docTotal,
+          sellerId: r.sellerId,
+          sellerName: r.sellerName,
+        });
+      }
 
       if (r.kind === "credit_note") {
         if (cur) {
@@ -86,6 +129,7 @@ export function VentasTab({ companyId }: { companyId: string }) {
     }
 
     const productList = [...products.values()].sort((a, b) => b.uyu + b.usd - (a.uyu + a.usd));
+    invoices.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
     return {
       net,
       creditNotes,
@@ -96,6 +140,7 @@ export function VentasTab({ companyId }: { companyId: string }) {
       firstDate,
       lastDate,
       salespersonName,
+      invoices,
     };
   }, [rows]);
 
@@ -127,7 +172,7 @@ export function VentasTab({ companyId }: { companyId: string }) {
         <h3 className={copilotSectionTitleClass}>Servicios contratados</h3>
         <p className={`${copilotCaptionClass} mt-1`}>
           Primera compra {formatDateShort(summary.firstDate)} · última {formatDateShort(summary.lastDate)}. Año actual.
-          Comercial: {summary.salespersonName ?? "Sin asignar"}.
+          Ejecutivo: {summary.salespersonName ?? "Sin ejecutivo"}.
           {summary.creditNotes.UYU > 0.005 || summary.creditNotes.USD > 0.005
             ? ` Notas de crédito descontadas: ${formatUyu(summary.creditNotes.UYU)} · ${formatUsd(summary.creditNotes.USD)}.`
             : ""}
@@ -143,6 +188,39 @@ export function VentasTab({ companyId }: { companyId: string }) {
                   {p.usd > 0 ? formatUsd(p.usd) : p.uyu === 0 && p.usd === 0 ? "—" : ""}
                 </p>
               </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className={copilotCardStandardClass}>
+        <h3 className={copilotSectionTitleClass}>Facturas y vendedor asignado</h3>
+        <p className={`${copilotCaptionClass} mt-1`}>
+          El vendedor es quien realizó cada operación puntual — distinto del ejecutivo del cliente. Las notas de
+          crédito no admiten asignación.
+        </p>
+        <ul className="mt-3 space-y-2">
+          {summary.invoices.map((inv) => (
+            <li
+              key={inv.documentId}
+              className="flex items-center justify-between gap-3 border-b border-[var(--copilot-border)] pb-2 last:border-0 last:pb-0"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-[var(--copilot-ink)]">
+                  {formatDateShort(inv.date)} · {inv.documentType} {inv.documentNumber ?? ""}
+                </p>
+                <p className="text-xs text-[var(--copilot-ink-muted)]">
+                  {inv.currency === "USD" ? formatUsd(inv.amount) : formatUyu(inv.amount)}
+                </p>
+              </div>
+              <SellerSelect
+                documentId={inv.documentId}
+                sellerId={inv.sellerId}
+                sellerName={inv.sellerName}
+                kind={inv.kind}
+                people={people}
+                onAssigned={() => void load()}
+              />
             </li>
           ))}
         </ul>

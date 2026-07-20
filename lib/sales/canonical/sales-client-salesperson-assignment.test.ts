@@ -34,6 +34,8 @@ function doc(
     status: p.status ?? "valid",
     salespersonId: p.salespersonId ?? null,
     salespersonName: p.salespersonName ?? null,
+    sellerId: p.sellerId ?? null,
+    sellerName: p.sellerName ?? null,
     lines: p.lines ?? [
       {
         lineId: `${p.documentId}-l1`,

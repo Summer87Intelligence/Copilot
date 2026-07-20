@@ -5,13 +5,16 @@
  * MIN_FINANCIAL_DATE, lo deduplica con la lógica canónica compartida, resuelve
  * nombres de cliente y construye los documentos canónicos + la vista de catálogo.
  *
- * Atribución comercial FASE 9D — FUENTE CANÓNICA desde 2026-07-01:
+ * Ejecutivo (cartera) — FUENTE desde 2026-07-01:
  *   comercial vigente del cliente en issue_date (sales_client_salespersons)
- *   → Sin asignar
+ *   → Sin asignar. Responsable de la relación con el cliente; NO es quien
+ *   vendió cada operación. Alimenta `doc.salespersonId/salespersonName`.
  *
- * `sales_document_salespersons` es legado histórico / auditoría técnica.
- * NO influye en Resumen, Clientes, Detalle, Comparativo, Comerciales,
- * insights, rankings, Cliente 360, Hoy ni Dashboard.
+ * Vendedor (operación) — FASE SALES-DOCUMENT-SELLER-CORRECTION-001:
+ *   asignación MANUAL por documento (sales_document_salespersons) → Sin
+ *   vendedor identificado. NUNCA se infiere del ejecutivo del cliente. Las
+ *   notas de crédito no admiten asignación (siempre "Sin vendedor
+ *   identificado"). Alimenta `doc.sellerId/sellerName`.
  *
  * Todas las agregaciones se calculan sobre ESTE resultado — sin N+1.
  */
@@ -31,6 +34,7 @@ import type { SalesCatalogView } from "@/lib/sales/canonical/catalog-types";
 import { loadSalesCatalogView } from "@/lib/sales/sales-catalog-repository";
 import {
   loadSalespersons,
+  loadDocumentAssignments,
   type SalespersonRow,
 } from "@/lib/sales/sales-salesperson-repository";
 import {
@@ -171,6 +175,7 @@ export async function loadSalesDataset(
     spResult,
     clientAssignResult,
     firstSaleByCustomerId,
+    sellerAssignments,
   ] = await Promise.all([
     fetchAllRows<RawSaleInvoiceRow>({
       queryPage: (from, to) =>
@@ -195,6 +200,7 @@ export async function loadSalesDataset(
       migrationPending: true,
     })),
     loadFirstSaleByCustomerId(supabase, workspaceId),
+    loadDocumentAssignments(supabase, workspaceId).catch(() => new Map<string, string>()),
   ]);
 
   const deduped = dedupeZetaShadowInvoicesCanonical(invoiceRows as unknown as DataRow[]);
@@ -210,15 +216,27 @@ export async function loadSalesDataset(
   const spNameById = new Map(spResult.salespersons.map((s) => [s.id, s.displayName]));
   const clientAssignments = clientAssignResult.assignments;
 
-  // Fuente canónica desde 2026-07-01: comercial vigente del cliente en issue_date.
-  // Incluye ventas y NC (Case B): la NC hereda el comercial del cliente en su fecha.
-  // sales_document_salespersons NO se consulta ni aplica aquí (legado / auditoría).
+  // Ejecutivo (cartera) desde 2026-07-01: comercial vigente del cliente en
+  // issue_date. Incluye ventas y NC (Case B): la NC hereda el ejecutivo del
+  // cliente en su fecha — es cartera, no autoría de la venta.
   for (const doc of documents) {
     if (doc.issueDate < SALESPERSON_START_DATE) continue;
     const clientSpId = resolveClientSalespersonOnDate(clientAssignments, doc.customerId, doc.issueDate);
     if (clientSpId && spNameById.has(clientSpId)) {
       doc.salespersonId = clientSpId;
       doc.salespersonName = spNameById.get(clientSpId) ?? null;
+    }
+  }
+
+  // Vendedor (operación) — asignación MANUAL por documento. NUNCA se infiere
+  // del ejecutivo del cliente. Las notas de crédito no admiten asignación:
+  // quedan "Sin vendedor identificado" aunque exista una fila legado.
+  for (const doc of documents) {
+    if (doc.kind === "credit_note") continue;
+    const sellerId = sellerAssignments.get(doc.documentId) ?? null;
+    if (sellerId && spNameById.has(sellerId)) {
+      doc.sellerId = sellerId;
+      doc.sellerName = spNameById.get(sellerId) ?? null;
     }
   }
 

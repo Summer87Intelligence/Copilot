@@ -26,6 +26,12 @@ import {
   DrawerTable,
 } from "@/components/copilot/ventas/ventas-analytics-drawer";
 
+/**
+ * FASE SALES-DOCUMENT-SELLER-CORRECTION-001 — antes "Comerciales". Renombrada
+ * porque muestra CARTERA gestionada por EJECUTIVO (sales_client_salespersons),
+ * no quién realizó cada venta. Para eso ver la tab "Vendedores".
+ */
+
 function rowKey(r: SalespersonSummaryRow): string {
   return r.salespersonId ?? "__unassigned__";
 }
@@ -71,7 +77,7 @@ type SpDrill = {
   }>;
 };
 
-export function VentasComercialesTab({
+export function VentasEjecutivosTab({
   overview,
   queryString,
 }: {
@@ -97,12 +103,12 @@ export function VentasComercialesTab({
         });
         const json = await res.json();
         if (!res.ok || !json.ok) {
-          setError(json?.message ?? "No pudimos cargar el detalle del comercial.");
+          setError(json?.message ?? "No pudimos cargar el detalle del ejecutivo.");
           return;
         }
         setDrill(json.data as SpDrill);
       } catch {
-        setError("No pudimos cargar el detalle del comercial.");
+        setError("No pudimos cargar el detalle del ejecutivo.");
       } finally {
         setLoading(false);
       }
@@ -118,7 +124,7 @@ export function VentasComercialesTab({
   const columns: CopilotResponsiveTableColumn<SalespersonSummaryRow>[] = [
     {
       key: "name",
-      header: "Comercial",
+      header: "Ejecutivo",
       className: "text-left",
       render: (r) =>
         r.salespersonId ? (
@@ -198,12 +204,13 @@ export function VentasComercialesTab({
         <div className="flex flex-col gap-1">
           <h2 className={`${copilotSectionTitleClass} flex items-center gap-2`}>
             <Users className="h-4 w-4" aria-hidden />
-            Ventas por comercial
+            Cartera por ejecutivo
           </h2>
           <p className={copilotCaptionClass}>
-            La asignación de comercial arranca el {SALESPERSON_START_DATE}. Las ventas anteriores permanecen como “Sin
-            asignar” y no se modifican. El comercial se asigna al cliente desde la pestaña Clientes. Los importes son
-            ventas netas (emitidas − notas de crédito).
+            El ejecutivo se asigna al cliente desde la pestaña Clientes y arranca el {SALESPERSON_START_DATE}. Esto
+            muestra la cartera de clientes gestionada por cada ejecutivo — no necesariamente quién realizó cada venta.
+            Para ver el vendedor real de cada operación, mirá la pestaña Vendedores. Los importes son ventas netas
+            (emitidas − notas de crédito).
           </p>
         </div>
 
@@ -212,7 +219,7 @@ export function VentasComercialesTab({
             rows={rows}
             columns={columns}
             getRowKey={rowKey}
-            ariaLabel="Ventas por comercial"
+            ariaLabel="Cartera por ejecutivo"
             minWidth="1160px"
             onRowClick={(r) => setSelectedId(r.salespersonId ?? "unassigned")}
             emptyState={<EmptyState icon={<Users className="h-6 w-6" />} title="No hay ventas en el período." variant="compact" />}
@@ -237,7 +244,7 @@ export function VentasComercialesTab({
 
         {!hasAssigned ? (
           <p className={`${copilotCaptionClass} mt-3`}>
-            Todavía no asignaste comerciales a los clientes de este período. Andá a Clientes y elegí el comercial de
+            Todavía no asignaste ejecutivos a los clientes de este período. Andá a Clientes y elegí el ejecutivo de
             cada cliente desde el {SALESPERSON_START_DATE}.
           </p>
         ) : null}
@@ -245,7 +252,7 @@ export function VentasComercialesTab({
 
       {selectedId ? (
         <VentasAnalyticsDrawer
-          title={drill?.summary.salespersonName ?? "Comercial"}
+          title={drill?.summary.salespersonName ?? "Ejecutivo"}
           onClose={() => {
             setSelectedId(null);
             setDrill(null);
@@ -256,7 +263,7 @@ export function VentasComercialesTab({
           {error ? <p className="text-sm text-[var(--copilot-danger-text-strong)]">{error}</p> : null}
           {drill ? (
             <>
-              <DrawerSection title="Resumen del comercial">
+              <DrawerSection title="Resumen del ejecutivo">
                 <DrawerStatGrid
                   items={[
                     { label: "Facturas", value: String(drill.summary.invoiceCount) },
@@ -275,9 +282,9 @@ export function VentasComercialesTab({
                 />
               </DrawerSection>
 
-              <DrawerSection title="Facturas">
+              <DrawerSection title="Facturas de la cartera">
                 <DrawerTable
-                  ariaLabel="Facturas del comercial"
+                  ariaLabel="Facturas de la cartera del ejecutivo"
                   headers={[
                     { key: "date", label: "Fecha" },
                     { key: "cust", label: "Cliente" },
@@ -297,9 +304,9 @@ export function VentasComercialesTab({
                 />
               </DrawerSection>
 
-              <DrawerSection title="Servicios vendidos">
+              <DrawerSection title="Servicios vendidos en la cartera">
                 <DrawerTable
-                  ariaLabel="Servicios del comercial"
+                  ariaLabel="Servicios de la cartera del ejecutivo"
                   headers={[
                     { key: "svc", label: "Servicio" },
                     { key: "inv", label: "Facturas", align: "right" },
@@ -319,7 +326,7 @@ export function VentasComercialesTab({
 
               <DrawerSection title="Evolución mensual">
                 <DrawerTable
-                  ariaLabel="Evolución mensual del comercial"
+                  ariaLabel="Evolución mensual de la cartera del ejecutivo"
                   headers={[
                     { key: "mes", label: "Mes" },
                     { key: "inv", label: "Facturas", align: "right" },

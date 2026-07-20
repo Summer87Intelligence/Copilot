@@ -322,6 +322,8 @@ export function buildCanonicalSaleDocuments(
       status,
       salespersonId: null,
       salespersonName: null,
+      sellerId: null,
+      sellerName: null,
       lines,
     });
   }

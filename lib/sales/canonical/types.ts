@@ -131,9 +131,24 @@ export type CanonicalSaleDocument = {
 
   status: SalesDocumentStatus;
 
-  /** Vendedor: null en este tenant (Zeta no lo expone). Reservado para futuro. */
+  /**
+   * EJECUTIVO del cliente vigente en issueDate (cartera, `sales_client_salespersons`).
+   * Responsable de la relación con el cliente. NO es quien realizó esta venta —
+   * ver `sellerId` para eso. Se usa solo para métricas de "cartera gestionada".
+   */
   salespersonId: string | null;
   salespersonName: string | null;
+
+  /**
+   * VENDEDOR real de esta operación puntual: asignación MANUAL por documento
+   * (`sales_document_salespersons`). Zeta no expone vendedor por factura
+   * (VendedorCodigo siempre vacío en este tenant), así que este campo SOLO se
+   * completa cuando un usuario lo asigna explícitamente. null = "Sin vendedor
+   * identificado". NUNCA se infiere automáticamente del ejecutivo del cliente.
+   * Las notas de crédito no admiten asignación (siempre null).
+   */
+  sellerId: string | null;
+  sellerName: string | null;
 
   lines: CanonicalSaleLine[];
 };
@@ -300,6 +315,31 @@ export type SalespersonSummaryRow = {
   topProductName: string | null;
   /** Participación % del total neto emitido por moneda (0 si el total es 0). */
   shareByCurrency: CurrencyPair;
+};
+
+/**
+ * Vendedor de la operación (asignación manual por documento). Distinto de
+ * `SalespersonSummaryRow`, que es cartera gestionada por EJECUTIVO. Una NC sin
+ * factura original identificable reduce el bucket "Sin vendedor identificado"
+ * pero nunca cuenta como operación (invoiceCount no la incluye).
+ */
+export type SellerSalesSummaryRow = {
+  sellerId: string | null; // null = "Sin vendedor identificado"
+  sellerName: string;
+
+  invoiceCount: number;
+  unitsSold: number;
+  customerCount: number;
+
+  /** Ventas brutas emitidas atribuidas manualmente a este vendedor. */
+  salesByCurrency: CurrencyPair;
+  /** NC sin factura original identificable (siempre en el bucket "Sin vendedor identificado"). */
+  creditNotesByCurrency: CurrencyPair;
+  /** Ventas netas = sales − creditNotes. */
+  netSalesByCurrency: CurrencyPair;
+  avgTicketByCurrency: CurrencyPair;
+
+  topProductName: string | null;
 };
 
 export type UnclassifiedConceptRow = {

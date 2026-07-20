@@ -10,6 +10,7 @@ import {
   buildProductSalesSummary,
   buildCustomerSalesSummary,
   buildSalespersonSummary,
+  buildSellerSalesSummary,
   buildSalesCollectionSummary,
   buildSalesComparison,
   buildUnclassifiedSalesSummary,
@@ -45,8 +46,10 @@ export type SalesFilters = {
   categoryIds: string[] | null;
   customerIds: string[] | null;
   classificationStatus: string[] | null;
-  /** Filtro por comercial. "unassigned" = documentos sin comercial asignado. */
+  /** Filtro por EJECUTIVO del cliente (cartera). "unassigned" = sin ejecutivo. */
   salespersonIds: string[] | null;
+  /** Filtro por VENDEDOR de la operación (manual). "unassigned" = sin vendedor. */
+  sellerIds: string[] | null;
   paymentStatus: "paid" | "pending" | null;
   search: string | null;
   amountMin: number | null;
@@ -151,6 +154,7 @@ export function parseSalesFilters(params: URLSearchParams, today: string): Sales
     customerIds: csv(params.get("customerIds")),
     classificationStatus: csv(params.get("classificationStatus")),
     salespersonIds: csv(params.get("salespersonIds")),
+    sellerIds: csv(params.get("sellerIds")),
     paymentStatus,
     search: (params.get("search") ?? "").trim() || null,
     amountMin: amountMin != null && amountMin !== "" && Number.isFinite(Number(amountMin)) ? Number(amountMin) : null,
@@ -200,6 +204,7 @@ export function buildSalesOverview(
   const products = enrichProductsWithVariation(productsRaw, productsPrev);
   const customers = buildCustomerSalesSummary(documents, dateFrom, dateTo, aggOpts);
   const salespersons = buildSalespersonSummary(documents, dateFrom, dateTo, aggOpts);
+  const sellers = buildSellerSalesSummary(documents, dateFrom, dateTo);
   const collection = buildSalesCollectionSummary(documents, dateFrom, dateTo);
   const comparison = buildSalesComparison(
     documents,
@@ -254,6 +259,7 @@ export function buildSalesOverview(
     products,
     customers,
     salespersons,
+    sellers,
     collection,
     comparison,
     serviceComparison,
@@ -326,9 +332,12 @@ export type SalesDetailRow = {
   taxAmount: number | null;
   currency: string;
   lineAmount: number;
-  /** Comercial asignado al documento (desde 2026-07-01). null = Sin asignar. */
+  /** Ejecutivo del cliente vigente en la fecha (cartera). null = Sin asignar. */
   salespersonId: string | null;
   salespersonName: string | null;
+  /** Vendedor real de la operación (asignación manual). null = Sin vendedor identificado. Siempre null en notas de crédito. */
+  sellerId: string | null;
+  sellerName: string | null;
   /** Valores de documento (no de línea): se muestran a nivel comprobante. */
   docTotal: number;
   docApplied: number;
@@ -365,6 +374,7 @@ export function buildSalesDetails(
       if (filters.amountMin != null && line.lineAmount < filters.amountMin) return;
       if (filters.amountMax != null && line.lineAmount > filters.amountMax) return;
       if (filters.salespersonIds && !filters.salespersonIds.includes(doc.salespersonId ?? "unassigned")) return;
+      if (filters.sellerIds && !filters.sellerIds.includes(doc.sellerId ?? "unassigned")) return;
       if (search) {
         const hay = `${doc.customerName} ${line.displayProductName} ${line.originalDescription} ${doc.documentNumber ?? ""}`.toLowerCase();
         if (!hay.includes(search)) return;
@@ -395,6 +405,8 @@ export function buildSalesDetails(
         lineAmount: line.lineAmount,
         salespersonId: doc.salespersonId,
         salespersonName: doc.salespersonName,
+        sellerId: doc.sellerId,
+        sellerName: doc.sellerName,
         docTotal: doc.grossAmount,
         docApplied: doc.appliedAmount,
         docRegistered: doc.registeredAmount,

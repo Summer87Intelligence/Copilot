@@ -51,6 +51,16 @@ export function buildAssignmentUpsert(input: AssignmentInput, workspaceId: strin
   };
 }
 
+/**
+ * FASE SALES-DOCUMENT-SELLER-CORRECTION-001 — asignación de VENDEDOR por
+ * documento (manual, distinto del ejecutivo del cliente).
+ */
+export const documentSellerSchema = z.object({
+  /** null = "Sin asignar" → el documento queda "Sin vendedor identificado". */
+  sellerId: z.string().uuid().nullable(),
+});
+export type DocumentSellerInput = z.infer<typeof documentSellerSchema>;
+
 /** FASE 9D — asignación comercial por cliente (historial temporal). */
 export const clientAssignmentSchema = z.object({
   customerId: z.string().uuid(),

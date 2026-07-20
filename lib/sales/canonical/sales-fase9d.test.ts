@@ -100,6 +100,8 @@ function doc(partial: Partial<CanonicalSaleDocument> & Pick<CanonicalSaleDocumen
     status: partial.status ?? "valid",
     salespersonId: partial.salespersonId ?? null,
     salespersonName: partial.salespersonName ?? null,
+    sellerId: partial.sellerId ?? null,
+    sellerName: partial.sellerName ?? null,
     lines: partial.lines ?? [
       {
         lineId: `${partial.documentId}-l1`,

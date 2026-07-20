@@ -41,7 +41,7 @@ type CustomerDrill = {
     firstPurchase: string | null;
     lastPurchase: string | null;
     type: "new" | "recurring";
-    topSalespersonName: string | null;
+    topSalespersonName: string | null; // Ejecutivo principal de la cartera del cliente (no vendedor).
     activeMonthCount: number;
   };
   invoices: Array<{
@@ -97,7 +97,7 @@ export function VentasClientesTab({
     async (customerId: string, salespersonId: string | null, previousId: string | null) => {
       // Idempotente en cliente: si no cambió, no dispares una escritura.
       if ((salespersonId ?? null) === (previousId ?? null)) {
-        setAssignMsg({ tone: "positive", text: "Este cliente ya tiene ese comercial asignado." });
+        setAssignMsg({ tone: "positive", text: "Este cliente ya tiene ese ejecutivo asignado." });
         return;
       }
       setAssigningId(customerId);
@@ -112,10 +112,10 @@ export function VentasClientesTab({
         if (!res.ok || !json.ok) {
           const text =
             json?.code === "NOT_FOUND"
-              ? "El comercial seleccionado no está disponible."
+              ? "El ejecutivo seleccionado no está disponible."
               : salespersonId
-                ? "No se pudo actualizar el comercial. Intentalo nuevamente."
-                : "No se pudo quitar el comercial. Intentalo nuevamente.";
+                ? "No se pudo actualizar el ejecutivo. Intentalo nuevamente."
+                : "No se pudo quitar el ejecutivo. Intentalo nuevamente.";
           setAssignMsg({ tone: "danger", text });
           return;
         }
@@ -123,13 +123,13 @@ export function VentasClientesTab({
           tone: "positive",
           text: salespersonId
             ? previousId
-              ? "Comercial actualizado correctamente."
-              : "Comercial asignado correctamente."
-            : "Comercial quitado correctamente.",
+              ? "Ejecutivo actualizado correctamente."
+              : "Ejecutivo asignado correctamente."
+            : "Ejecutivo quitado correctamente.",
         });
         onAssignmentChange?.();
       } catch {
-        setAssignMsg({ tone: "danger", text: "No se pudo actualizar el comercial. Intentalo nuevamente." });
+        setAssignMsg({ tone: "danger", text: "No se pudo actualizar el ejecutivo. Intentalo nuevamente." });
       } finally {
         setAssigningId(null);
       }
@@ -175,7 +175,7 @@ export function VentasClientesTab({
     },
     {
       key: "sp",
-      header: "Comercial",
+      header: "Ejecutivo",
       className: "text-left",
       render: (r) =>
         canAssign && r.customerId ? (
@@ -184,10 +184,10 @@ export function VentasClientesTab({
             disabled={assigningId === r.customerId}
             onClick={(e) => e.stopPropagation()}
             onChange={(e) => assignClient(r.customerId!, e.target.value || null, r.currentSalespersonId)}
-            aria-label={`Comercial de ${r.customerName}`}
+            aria-label={`Ejecutivo de ${r.customerName}`}
             className="h-8 max-w-[160px] rounded-lg border border-[var(--copilot-border-strong)] bg-[var(--copilot-panel-bg)] px-2 text-xs text-[var(--copilot-ink)] disabled:opacity-40"
           >
-            <option value="">Sin asignar</option>
+            <option value="">Sin ejecutivo</option>
             {salespersons.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.displayName}
@@ -195,7 +195,7 @@ export function VentasClientesTab({
             ))}
           </select>
         ) : (
-          <span className="text-xs text-[var(--copilot-ink-muted)]">{r.salespersonName ?? "Sin asignar"}</span>
+          <span className="text-xs text-[var(--copilot-ink-muted)]">{r.salespersonName ?? "Sin ejecutivo"}</span>
         ),
     },
     {
@@ -297,7 +297,9 @@ export function VentasClientesTab({
         <h2 className={copilotSectionTitleClass}>Clientes del período</h2>
         {canAssign ? (
           <p className={`${copilotCaptionClass} mt-1`}>
-            El comercial se asigna al cliente y aplica a sus ventas desde la vigencia. No reescribe ventas anteriores.
+            El ejecutivo es responsable del seguimiento y la relación con el cliente. Se asigna con vigencia y no
+            reescribe asignaciones anteriores. No determina quién vendió cada operación — eso se asigna por
+            comprobante en Detalle.
           </p>
         ) : null}
         {assignMsg ? (
@@ -336,7 +338,7 @@ export function VentasClientesTab({
                   {r.invoiceCount} facturas · {r.productCount} servicios
                 </p>
                 <p className="text-xs text-[var(--copilot-ink-muted)]">
-                  Comercial: {r.salespersonName ?? "Sin asignar"}
+                  Ejecutivo: {r.salespersonName ?? "Sin ejecutivo"}
                 </p>
                 <p className="text-sm font-semibold tabular-nums text-[var(--copilot-ink)]">
                   {formatUyuOrDash(r.netSalesByCurrency.UYU)} · {formatUsdOrDash(r.netSalesByCurrency.USD)}
@@ -372,7 +374,7 @@ export function VentasClientesTab({
                     { label: "Primera compra", value: formatDateShort(drill.summary.firstPurchase) },
                     { label: "Última compra", value: formatDateShort(drill.summary.lastPurchase) },
                     { label: "Tipo", value: drill.summary.type === "new" ? "Nuevo" : "Recurrente" },
-                    { label: "Comercial principal", value: drill.summary.topSalespersonName ?? "Sin asignar" },
+                    { label: "Ejecutivo", value: drill.summary.topSalespersonName ?? "Sin ejecutivo" },
                     { label: "Meses con actividad", value: String(drill.summary.activeMonthCount) },
                   ]}
                 />
@@ -397,7 +399,7 @@ export function VentasClientesTab({
                     { key: "svc", label: "Servicio" },
                     { key: "cur", label: "Moneda", align: "center" },
                     { key: "amt", label: "Total", align: "right" },
-                    { key: "sp", label: "Comercial" },
+                    { key: "sp", label: "Ejecutivo" },
                   ]}
                   rows={drill.invoices.map((inv) => ({
                     date: formatDateShort(inv.date),
@@ -405,7 +407,7 @@ export function VentasClientesTab({
                     svc: inv.serviceName,
                     cur: inv.currency,
                     amt: inv.currency === "USD" ? formatUsdOrDash(inv.lineAmount) : formatUyuOrDash(inv.lineAmount),
-                    sp: inv.salespersonName ?? "Sin asignar",
+                    sp: inv.salespersonName ?? "Sin ejecutivo",
                   }))}
                 />
               </DrawerSection>

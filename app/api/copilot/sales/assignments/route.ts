@@ -1,40 +1,59 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
+import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
+import { assignmentSchema } from "@/lib/sales/sales-salesperson-write";
+import { assignDocumentSeller } from "@/lib/sales/sales-document-seller-repository";
 
 /**
- * LEGADO (FASE 9E) — Asignación comercial POR DOCUMENTO.
+ * REACTIVADO (FASE SALES-DOCUMENT-SELLER-CORRECTION-001) — Asignación de
+ * VENDEDOR por documento. Estuvo deshabilitado (410 Gone) desde FASE 9E porque
+ * en ese momento la atribución comercial canónica era 100% por cliente
+ * (`sales_client_salespersons`) y esta tabla quedaba huérfana.
  *
- * La atribución comercial canónica es POR CLIENTE con vigencia temporal
- * (`sales_client_salespersons`, endpoint `/api/copilot/sales/client-assignments`).
- * `sales_document_salespersons` quedó como legado técnico y NO participa de
- * analytics (Resumen, Clientes, Detalle, Comparativo, Comerciales, Cliente 360,
- * Hoy ni Dashboard).
- *
- * Este endpoint permitía crear filas por documento que serían IGNORADAS por
- * analytics — una fuente de datos huérfanos. Se deshabilitan las NUEVAS
- * escrituras con 410 Gone. La tabla legada no se elimina y su lectura histórica
- * puede mantenerse por otras vías. Se mantiene el guard RBAC del módulo para no
- * exponer el estado del endpoint a llamadas no autorizadas.
+ * El modelo actual separa Ejecutivo (cartera, por cliente, sin cambios) de
+ * Vendedor (operación puntual, manual, por documento) — `sales_document_salespersons`
+ * es ahora la fuente real de vendedor y SÍ participa de analytics (Detalle,
+ * tab Vendedores). Contrato equivalente al nuevo endpoint canónico
+ * `PUT /api/copilot/sales/documents/[documentId]/seller`; se mantiene este
+ * path por compatibilidad con integraciones existentes.
  */
 
 export const dynamic = "force-dynamic";
 
-const DEPRECATION_MESSAGE =
-  "La asignación comercial se administra por cliente. Usá /api/copilot/sales/client-assignments.";
-
 export async function POST(request: NextRequest) {
-  const auth = await requireCopilotModuleWriteAccess(request, "ventas");
+  const parsed = await parseAndValidateJsonBody(request, assignmentSchema);
+  if (!parsed.ok) return parsed.response;
+
+  const auth = await requireCopilotModuleWriteAccess(request, "ventas", parsed.data);
   if (!auth.ok) return auth.response;
+  const { supabase, tenantCompanyId, appUser } = auth.ctx;
+
+  const result = await assignDocumentSeller(supabase, tenantCompanyId, appUser.id ?? null, {
+    documentId: parsed.data.documentId,
+    sellerId: parsed.data.salespersonId,
+  });
+
+  if (!result.ok) {
+    const status =
+      result.code === "MIGRATION_PENDING"
+        ? 503
+        : result.code === "CREDIT_NOTE_NOT_ALLOWED" || result.code === "INACTIVE_SELLER"
+          ? 422
+          : result.code === "NOT_FOUND"
+            ? 404
+            : 500;
+    return NextResponse.json(
+      { ok: false as const, code: result.code, message: result.message },
+      { status }
+    );
+  }
 
   return NextResponse.json(
-    { ok: false as const, code: "GONE", message: DEPRECATION_MESSAGE },
     {
-      status: 410,
-      headers: {
-        Deprecation: "true",
-        Link: '</api/copilot/sales/client-assignments>; rel="successor-version"',
-      },
-    }
+      ok: true as const,
+      data: { documentId: parsed.data.documentId, salespersonId: result.sellerId, changed: result.changed },
+    },
+    { status: 200 }
   );
 }

@@ -243,7 +243,7 @@ export function VentasComparativoTab({
     },
     {
       key: "sp",
-      header: "Comercial principal",
+      header: "Ejecutivo principal",
       className: "text-left",
       cellClassName: "text-xs",
       render: (r) => r.topSalespersonName ?? "—",
@@ -366,11 +366,11 @@ export function VentasComparativoTab({
           </select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Comercial</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-ink-muted)]">Ejecutivo</span>
           <select
             value={salespersonId}
             onChange={(e) => setSalespersonId(e.target.value)}
-            aria-label="Filtrar comercial"
+            aria-label="Filtrar ejecutivo"
             className="h-9 max-w-[180px] rounded-lg border border-[var(--copilot-border-strong)] bg-[var(--copilot-panel-bg)] px-2.5 text-sm"
           >
             <option value="all">Todos</option>

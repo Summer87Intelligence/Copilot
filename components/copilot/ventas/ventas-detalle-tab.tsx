@@ -27,6 +27,7 @@ import {
   DrawerSection,
   DrawerStatGrid,
 } from "@/components/copilot/ventas/ventas-analytics-drawer";
+import { SellerSelect } from "@/components/copilot/ventas/seller-select";
 
 const PAGE_SIZE = 50;
 const UNASSIGNED = "unassigned";
@@ -64,7 +65,7 @@ export function VentasDetalleTab({
 
   const [search, setSearch] = useState("");
   const [currency, setCurrency] = useState<"all" | "UYU" | "USD">("all");
-  const [salesperson, setSalesperson] = useState<string>("all");
+  const [seller, setSeller] = useState<string>("all");
 
   const [people, setPeople] = useState<SalespersonRow[]>([]);
   const [detailRow, setDetailRow] = useState<SalesDetailRow | null>(null);
@@ -90,9 +91,9 @@ export function VentasDetalleTab({
     p.set("pageSize", String(PAGE_SIZE));
     if (search.trim()) p.set("search", search.trim());
     if (currency !== "all") p.set("currencies", currency);
-    if (salesperson !== "all") p.set("salespersonIds", salesperson);
+    if (seller !== "all") p.set("sellerIds", seller);
     return p.toString();
-  }, [periodKey, page, search, currency, salesperson]);
+  }, [periodKey, page, search, currency, seller]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -139,7 +140,7 @@ export function VentasDetalleTab({
 
   useEffect(() => {
     setPage(1);
-  }, [search, currency, salesperson, periodKey]);
+  }, [search, currency, seller, periodKey]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const pageFrom = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
@@ -207,12 +208,19 @@ export function VentasDetalleTab({
       },
     },
     {
-      key: "sp",
-      header: "Comercial",
+      key: "seller",
+      header: "Vendedor",
       className: "text-left",
       cellClassName: "text-xs",
       render: (r) => (
-        <span className="text-[var(--copilot-ink-muted)]">{r.salespersonName ?? "Sin asignar"}</span>
+        <SellerSelect
+          documentId={r.documentId}
+          sellerId={r.sellerId}
+          sellerName={r.sellerName}
+          kind={r.kind}
+          people={people}
+          onAssigned={() => void load()}
+        />
       ),
     },
     {
@@ -239,8 +247,8 @@ export function VentasDetalleTab({
     <section className={copilotCardStandardClass}>
       <h2 className={copilotSectionTitleClass}>Detalle de ventas</h2>
       <p className={`${copilotCaptionClass} mt-1`}>
-        El comercial se asigna al cliente, no al comprobante. La asignación por comprobante es un override heredado y
-        se mantiene sólo por compatibilidad.
+        Vendedor = quién realizó esta operación puntual (asignación manual). El ejecutivo del cliente (cartera) se
+        gestiona por separado en Clientes.
       </p>
       <div className="mt-3 flex flex-wrap items-end gap-2">
         <input
@@ -262,13 +270,13 @@ export function VentasDetalleTab({
           <option value="USD">USD</option>
         </select>
         <select
-          value={salesperson}
-          onChange={(e) => setSalesperson(e.target.value)}
-          aria-label="Comercial"
+          value={seller}
+          onChange={(e) => setSeller(e.target.value)}
+          aria-label="Vendedor"
           className="h-9 rounded-lg border border-[var(--copilot-border-strong)] bg-[var(--copilot-panel-bg)] px-2.5 text-sm text-[var(--copilot-ink)]"
         >
-          <option value="all">Todos los comerciales</option>
-          <option value={UNASSIGNED}>Sin asignar</option>
+          <option value="all">Todos los vendedores</option>
+          <option value={UNASSIGNED}>Sin vendedor identificado</option>
           {people.map((p) => (
             <option key={p.id} value={p.id}>
               {p.displayName}
@@ -278,8 +286,8 @@ export function VentasDetalleTab({
       </div>
 
       <p className={`${copilotCaptionClass} mt-2`}>
-        El comercial se asigna al cliente. Aquí se muestra el comercial heredado; para cambiarlo usá la pestaña
-        Clientes.
+        El vendedor se asigna manualmente por comprobante y es independiente del ejecutivo del cliente (pestaña
+        Clientes). Las notas de crédito no admiten asignación.
       </p>
 
       <div className="mt-3">
@@ -311,7 +319,7 @@ export function VentasDetalleTab({
                       {sub ? ` · ${sub}` : ""}
                     </p>
                     <p className="text-xs text-[var(--copilot-ink-muted)]">
-                      Comercial: {r.salespersonName ?? "Sin asignar"}
+                      Vendedor: {r.kind === "credit_note" ? "—" : (r.sellerName ?? "Sin vendedor identificado")}
                     </p>
                     <p className="text-sm font-semibold tabular-nums text-[var(--copilot-ink)]">
                       {formatMoneyCurrency(r.lineAmount, r.currency === "UNKNOWN" ? "UYU" : r.currency)}
@@ -393,7 +401,13 @@ export function VentasDetalleTab({
                   ),
                 },
                 { label: "Moneda", value: detailRow.currency },
-                { label: "Comercial", value: detailRow.salespersonName ?? "Sin asignar" },
+                {
+                  label: "Vendedor",
+                  value:
+                    detailRow.kind === "credit_note"
+                      ? "—"
+                      : detailRow.sellerName ?? "Sin vendedor identificado",
+                },
                 {
                   label: "Cobrado (doc.)",
                   value:
@@ -420,9 +434,33 @@ export function VentasDetalleTab({
                 Abrir Cliente 360 <ExternalLink className="h-3.5 w-3.5" aria-hidden />
               </a>
             ) : null}
+            {detailRow.kind === "sale" ? (
+              <div className="flex items-center gap-2">
+                <span className={copilotCaptionClass}>Cambiar vendedor:</span>
+                <SellerSelect
+                  documentId={detailRow.documentId}
+                  sellerId={detailRow.sellerId}
+                  sellerName={detailRow.sellerName}
+                  kind={detailRow.kind}
+                  people={people}
+                  onAssigned={(nextId) => {
+                    setDetailRow((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            sellerId: nextId,
+                            sellerName: people.find((p) => p.id === nextId)?.displayName ?? null,
+                          }
+                        : prev
+                    );
+                    void load();
+                  }}
+                />
+              </div>
+            ) : null}
             <p className={copilotCaptionClass}>
-              El comercial se asigna al cliente (pestaña Clientes). Este comprobante hereda el comercial vigente en su
-              fecha.
+              El ejecutivo del cliente se administra en la pestaña Clientes y no determina el vendedor de esta
+              operación.
             </p>
           </div>
         </VentasAnalyticsDrawer>

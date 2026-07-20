@@ -44,9 +44,10 @@ import { VentasProductosTab } from "@/components/copilot/ventas/ventas-productos
 import { VentasClientesTab } from "@/components/copilot/ventas/ventas-clientes-tab";
 import { VentasComparativoTab } from "@/components/copilot/ventas/ventas-comparativo-tab";
 import { VentasDetalleTab } from "@/components/copilot/ventas/ventas-detalle-tab";
-import { VentasComercialesTab } from "@/components/copilot/ventas/ventas-comerciales-tab";
+import { VentasEjecutivosTab } from "@/components/copilot/ventas/ventas-ejecutivos-tab";
+import { VentasVendedoresTab } from "@/components/copilot/ventas/ventas-vendedores-tab";
 
-type TabKey = "resumen" | "servicios" | "detalle" | "clientes" | "comparativo" | "comerciales";
+type TabKey = "resumen" | "servicios" | "detalle" | "clientes" | "comparativo" | "ejecutivos" | "vendedores";
 
 const MONTH_NAMES = [
   "Enero",
@@ -84,7 +85,8 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "detalle", label: "Detalle" },
   { key: "clientes", label: "Clientes" },
   { key: "comparativo", label: "Comparativo" },
-  { key: "comerciales", label: "Comerciales" },
+  { key: "ejecutivos", label: "Ejecutivos" },
+  { key: "vendedores", label: "Vendedores" },
 ];
 
 function pad2(n: number): string {
@@ -407,9 +409,14 @@ export function VentasPageClient({ isAdmin }: { isAdmin: boolean }) {
             )}
           </TabFrame>
         ) : null}
-        {tab === "comerciales" ? (
+        {tab === "ejecutivos" ? (
           <TabFrame overview={overview} loading={loading} error={error} onRetry={loadOverview}>
-            {(ov) => <VentasComercialesTab overview={ov} queryString={queryString} />}
+            {(ov) => <VentasEjecutivosTab overview={ov} queryString={queryString} />}
+          </TabFrame>
+        ) : null}
+        {tab === "vendedores" ? (
+          <TabFrame overview={overview} loading={loading} error={error} onRetry={loadOverview}>
+            {(ov) => <VentasVendedoresTab overview={ov} />}
           </TabFrame>
         ) : null}
         {tab === "detalle" ? (
@@ -618,7 +625,7 @@ function ResumenTab({
             }
           />
           <Highlight
-            label="Comercial con mayor venta neta"
+            label="Ejecutivo con mayor cartera neta"
             value={h?.topSalesperson?.salespersonName ?? "Sin asignaciones"}
           />
           <Highlight
@@ -627,7 +634,7 @@ function ResumenTab({
           />
           {h && h.unassignedInvoicesSinceJuly > 0 ? (
             <Highlight
-              label="Facturas sin comercial (desde jul-26)"
+              label="Facturas sin ejecutivo asignado (desde jul-26)"
               value={String(h.unassignedInvoicesSinceJuly)}
             />
           ) : null}
@@ -670,7 +677,7 @@ function ResumenTab({
                 { key: "inv", label: "Facturas", align: "right" },
                 { key: "svc", label: "Servicios", align: "right" },
                 { key: "net", label: "Ventas netas UYU/USD", align: "right" },
-                { key: "sp", label: "Comercial" },
+                { key: "sp", label: "Ejecutivo" },
                 { key: "link", label: "Ficha" },
               ]}
               rows={newCustomers.map((c) => ({

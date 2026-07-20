@@ -21,6 +21,7 @@ import {
   type CustomerSalesSummaryRow,
   type ProductSalesSummaryRow,
   type SalespersonSummaryRow,
+  type SellerSalesSummaryRow,
   type SalesCollectionSummary,
   type SalesComparison,
   type SalesCurrency,
@@ -595,6 +596,122 @@ export function buildSalespersonSummary(
   rows.sort((a, b) => {
     if (a.salespersonId === null && b.salespersonId !== null) return 1;
     if (b.salespersonId === null && a.salespersonId !== null) return -1;
+    return b.netSalesByCurrency.UYU + b.netSalesByCurrency.USD - (a.netSalesByCurrency.UYU + a.netSalesByCurrency.USD);
+  });
+  return rows;
+}
+
+// ---------------------------------------------------------------------------
+// Seller summary (vendedores — operación puntual, manual, distinto de cartera)
+// ---------------------------------------------------------------------------
+
+/**
+ * Ventas agrupadas por VENDEDOR real de cada operación (`doc.sellerId`,
+ * asignación manual por documento). Distinto de `buildSalespersonSummary`
+ * (cartera gestionada por ejecutivo).
+ *
+ * Notas de crédito: sin vínculo confiable a la factura original, no se puede
+ * saber quién vendió la operación que ajustan — SIEMPRE reducen el bucket
+ * "Sin vendedor identificado", nunca cuentan como operación (no incrementan
+ * invoiceCount) y nunca se asignan a un vendedor por herencia del ejecutivo.
+ */
+export function buildSellerSalesSummary(
+  allDocs: readonly CanonicalSaleDocument[],
+  periodFrom: string,
+  periodTo: string
+): SellerSalesSummaryRow[] {
+  type Acc = {
+    id: string | null;
+    name: string;
+    docs: Set<string>;
+    customers: Set<string>;
+    units: number;
+    sales: CurrencyPair;
+    creditNotes: CurrencyPair;
+    invoiceCountByCurrency: CurrencyPair;
+    productTotals: Map<string, { name: string; total: number }>;
+  };
+  const map = new Map<string, Acc>();
+
+  function ensure(id: string | null, name: string): Acc {
+    const key = id ?? UNASSIGNED_ID;
+    let acc = map.get(key);
+    if (!acc) {
+      acc = {
+        id,
+        name,
+        docs: new Set(),
+        customers: new Set(),
+        units: 0,
+        sales: emptyCurrencyPair(),
+        creditNotes: emptyCurrencyPair(),
+        invoiceCountByCurrency: emptyCurrencyPair(),
+        productTotals: new Map(),
+      };
+      map.set(key, acc);
+    }
+    return acc;
+  }
+
+  for (const doc of allDocs) {
+    if (doc.status === "cancelled") continue;
+    if (!inWindow(doc.issueDate, periodFrom, periodTo)) continue;
+
+    if (doc.kind === "credit_note") {
+      const acc = ensure(null, "Sin vendedor identificado");
+      if (isKnownCurrency(doc.currency)) addToPair(acc.creditNotes, doc.currency, doc.grossAmount);
+      continue;
+    }
+
+    if (!isValidSale(doc)) continue;
+    const acc = ensure(doc.sellerId, doc.sellerId ? (doc.sellerName ?? "Vendedor") : "Sin vendedor identificado");
+    acc.docs.add(doc.documentId);
+    acc.customers.add(customerKey(doc));
+    if (isKnownCurrency(doc.currency)) {
+      addToPair(acc.sales, doc.currency, doc.grossAmount);
+      addToPair(acc.invoiceCountByCurrency, doc.currency, 1);
+    }
+    for (const line of countableLines(doc)) {
+      if (!line.synthetic) acc.units += line.quantity;
+      const pt = acc.productTotals.get(line.productGroupKey) ?? { name: line.displayProductName, total: 0 };
+      if (isKnownCurrency(line.currency)) pt.total += line.lineAmount;
+      acc.productTotals.set(line.productGroupKey, pt);
+    }
+  }
+
+  const rows: SellerSalesSummaryRow[] = [];
+  for (const acc of map.values()) {
+    let topProduct: string | null = null;
+    let topTotal = -1;
+    for (const pt of acc.productTotals.values()) {
+      if (pt.total > topTotal) {
+        topTotal = pt.total;
+        topProduct = pt.name;
+      }
+    }
+    const net: CurrencyPair = {
+      UYU: acc.sales.UYU - acc.creditNotes.UYU,
+      USD: acc.sales.USD - acc.creditNotes.USD,
+    };
+    rows.push({
+      sellerId: acc.id,
+      sellerName: acc.name,
+      invoiceCount: acc.docs.size,
+      unitsSold: Math.round(acc.units * 100) / 100,
+      customerCount: acc.customers.size,
+      salesByCurrency: round2Pair(acc.sales),
+      creditNotesByCurrency: round2Pair(acc.creditNotes),
+      netSalesByCurrency: round2Pair(net),
+      avgTicketByCurrency: {
+        UYU: acc.invoiceCountByCurrency.UYU > 0 ? Math.round((net.UYU / acc.invoiceCountByCurrency.UYU) * 100) / 100 : 0,
+        USD: acc.invoiceCountByCurrency.USD > 0 ? Math.round((net.USD / acc.invoiceCountByCurrency.USD) * 100) / 100 : 0,
+      },
+      topProductName: topProduct,
+    });
+  }
+  rows.sort((a, b) => {
+    if (a.sellerId === null && b.sellerId !== null) return 1;
+    if (b.sellerId === null && a.sellerId !== null) return -1;
     return b.netSalesByCurrency.UYU + b.netSalesByCurrency.USD - (a.netSalesByCurrency.UYU + a.netSalesByCurrency.USD);
   });
   return rows;

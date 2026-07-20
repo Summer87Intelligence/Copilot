@@ -345,8 +345,8 @@ export function VentasProductosTab({
                     { label: "Primera venta", value: formatDateShort(drill.summary.firstSale) },
                     { label: "Última venta", value: formatDateShort(drill.summary.lastSale) },
                     {
-                      label: "Comerciales",
-                      value: drill.summary.salespersons.length ? drill.summary.salespersons.join(", ") : "Sin asignar",
+                      label: "Ejecutivos",
+                      value: drill.summary.salespersons.length ? drill.summary.salespersons.join(", ") : "Sin ejecutivo",
                     },
                     {
                       label: "Var. UYU",
@@ -369,7 +369,7 @@ export function VentasProductosTab({
                     { key: "doc", label: "Documento" },
                     { key: "cur", label: "Moneda", align: "center" },
                     { key: "amt", label: "Importe", align: "right" },
-                    { key: "sp", label: "Comercial" },
+                    { key: "sp", label: "Ejecutivo" },
                     { key: "act", label: "Acciones" },
                   ]}
                   rows={drill.invoices.map((inv) => ({
