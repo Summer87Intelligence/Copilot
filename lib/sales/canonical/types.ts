@@ -340,6 +340,8 @@ export type SellerSalesSummaryRow = {
   avgTicketByCurrency: CurrencyPair;
 
   topProductName: string | null;
+  /** Participación % del total neto emitido por moneda (0 si el total es 0). */
+  shareByCurrency: CurrencyPair;
 };
 
 export type UnclassifiedConceptRow = {

@@ -620,6 +620,7 @@ export function buildSellerSalesSummary(
   periodFrom: string,
   periodTo: string
 ): SellerSalesSummaryRow[] {
+  const totalNet = emptyCurrencyPair();
   type Acc = {
     id: string | null;
     name: string;
@@ -679,6 +680,11 @@ export function buildSellerSalesSummary(
     }
   }
 
+  for (const acc of map.values()) {
+    totalNet.UYU += acc.sales.UYU - acc.creditNotes.UYU;
+    totalNet.USD += acc.sales.USD - acc.creditNotes.USD;
+  }
+
   const rows: SellerSalesSummaryRow[] = [];
   for (const acc of map.values()) {
     let topProduct: string | null = null;
@@ -707,6 +713,10 @@ export function buildSellerSalesSummary(
         USD: acc.invoiceCountByCurrency.USD > 0 ? Math.round((net.USD / acc.invoiceCountByCurrency.USD) * 100) / 100 : 0,
       },
       topProductName: topProduct,
+      shareByCurrency: {
+        UYU: totalNet.UYU > 0 ? Math.round((net.UYU / totalNet.UYU) * 1000) / 10 : 0,
+        USD: totalNet.USD > 0 ? Math.round((net.USD / totalNet.USD) * 1000) / 10 : 0,
+      },
     });
   }
   rows.sort((a, b) => {

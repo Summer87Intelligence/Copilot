@@ -44,10 +44,9 @@ import { VentasProductosTab } from "@/components/copilot/ventas/ventas-productos
 import { VentasClientesTab } from "@/components/copilot/ventas/ventas-clientes-tab";
 import { VentasComparativoTab } from "@/components/copilot/ventas/ventas-comparativo-tab";
 import { VentasDetalleTab } from "@/components/copilot/ventas/ventas-detalle-tab";
-import { VentasEjecutivosTab } from "@/components/copilot/ventas/ventas-ejecutivos-tab";
 import { VentasVendedoresTab } from "@/components/copilot/ventas/ventas-vendedores-tab";
 
-type TabKey = "resumen" | "servicios" | "detalle" | "clientes" | "comparativo" | "ejecutivos" | "vendedores";
+type TabKey = "resumen" | "servicios" | "detalle" | "clientes" | "comparativo" | "vendedores";
 
 const MONTH_NAMES = [
   "Enero",
@@ -85,7 +84,6 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "detalle", label: "Detalle" },
   { key: "clientes", label: "Clientes" },
   { key: "comparativo", label: "Comparativo" },
-  { key: "ejecutivos", label: "Ejecutivos" },
   { key: "vendedores", label: "Vendedores" },
 ];
 
@@ -201,10 +199,10 @@ export function VentasPageClient({ isAdmin }: { isAdmin: boolean }) {
   }, [loadOverview]);
 
   /**
-   * Revalidación en background del resumen (Vendedores/Ejecutivos/Resumen)
-   * cuando el usuario asigna vendedores en Detalle. Debounced (800ms): si
-   * asigna varias facturas seguidas, se consolida en un solo refresh en vez
-   * de uno por cada selección. Nunca bloquea ni recarga Detalle.
+   * Revalidación en background del resumen (Vendedores/Resumen) cuando el
+   * usuario asigna vendedores en Detalle. Debounced (800ms): si asigna varias
+   * facturas seguidas, se consolida en un solo refresh en vez de uno por cada
+   * selección. Nunca bloquea ni recarga Detalle.
    */
   const quietRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scheduleQuietOverviewRefresh = useCallback(() => {
@@ -428,11 +426,6 @@ export function VentasPageClient({ isAdmin }: { isAdmin: boolean }) {
                 queryString={queryString}
               />
             )}
-          </TabFrame>
-        ) : null}
-        {tab === "ejecutivos" ? (
-          <TabFrame overview={overview} loading={loading} error={error} onRetry={loadOverview}>
-            {(ov) => <VentasEjecutivosTab overview={ov} queryString={queryString} />}
           </TabFrame>
         ) : null}
         {tab === "vendedores" ? (

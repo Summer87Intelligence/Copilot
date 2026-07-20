@@ -30,6 +30,12 @@ function rowKey(r: SellerSalesSummaryRow): string {
   return r.sellerId ?? "__unassigned__";
 }
 
+function share(r: SellerSalesSummaryRow): string {
+  const uyu = r.shareByCurrency.UYU;
+  const usd = r.shareByCurrency.USD;
+  return `${uyu.toLocaleString("es-UY", { maximumFractionDigits: 0 })}% UYU · ${usd.toLocaleString("es-UY", { maximumFractionDigits: 0 })}% USD`;
+}
+
 export function VentasVendedoresTab({ overview }: { overview: SalesOverview }) {
   const rows = overview.sellers;
   const hasAnyAssigned = hasAnySellerAssigned(rows);
@@ -96,6 +102,13 @@ export function VentasVendedoresTab({ overview }: { overview: SalesOverview }) {
       cellClassName: "text-xs",
       render: (r) => r.topProductName ?? "—",
     },
+    {
+      key: "share",
+      header: "Participación",
+      className: "text-right",
+      cellClassName: "text-right text-xs tabular-nums",
+      render: (r) => share(r),
+    },
   ];
 
   return (
@@ -106,8 +119,8 @@ export function VentasVendedoresTab({ overview }: { overview: SalesOverview }) {
           Ventas por vendedor
         </h2>
         <p className={copilotCaptionClass}>
-          El vendedor es quien realizó cada operación puntual (asignación manual por comprobante, distinta del
-          ejecutivo del cliente). Para asignar o cambiar el vendedor de una factura, usá la pestaña Detalle.
+          El vendedor es quien realizó cada comprobante. La asignación es manual por comprobante y es independiente
+          del ejecutivo del cliente. Para asignar o cambiar el vendedor de una factura, usá la pestaña Detalle.
           &ldquo;Sin vendedor identificado&rdquo; incluye operaciones sin asignar y notas de crédito sin factura
           original identificable.
         </p>
@@ -144,7 +157,7 @@ export function VentasVendedoresTab({ overview }: { overview: SalesOverview }) {
                   </p>
                   <StatusBadge tone="neutral">{r.invoiceCount} op.</StatusBadge>
                 </div>
-                <p className="text-xs text-[var(--copilot-ink-muted)]">{r.customerCount} clientes</p>
+                <p className="text-xs text-[var(--copilot-ink-muted)]">{r.customerCount} clientes · {share(r)}</p>
                 <p className="text-sm font-semibold tabular-nums text-[var(--copilot-ink)]">
                   {formatUyuOrDash(r.netSalesByCurrency.UYU)} · {formatUsdOrDash(r.netSalesByCurrency.USD)}
                 </p>
