@@ -259,7 +259,7 @@ export function VentasDetalleTab({
             className="text-[var(--copilot-ink-muted)]"
             title="Otra línea de la misma factura: comparte el vendedor asignado arriba."
           >
-            ↳ mismo comprobante
+            Incluido en este comprobante
           </span>
         ),
     },

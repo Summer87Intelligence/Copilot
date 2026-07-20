@@ -34,7 +34,7 @@ describe("Ventas → Detalle: sin recarga completa tras asignar vendedor", () =>
 
   it("solo se renderiza UN selector por documento (isFirstLineOfDoc); otras líneas muestran indicador de agrupación", () => {
     expect(detalleTab).toContain("r.isFirstLineOfDoc");
-    expect(detalleTab).toContain("mismo comprobante");
+    expect(detalleTab).toContain("Incluido en este comprobante");
   });
 
   it("hay una revalidación en background (debounced) de métricas, no un refetch de Detalle", () => {

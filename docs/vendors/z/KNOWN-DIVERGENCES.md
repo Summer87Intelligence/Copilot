@@ -753,6 +753,58 @@ El canónico devuelve `CondicionCodigo` y `CondicionNombre` por factura — info
 
 ---
 
+## DIV-CONT-011 · Sin número de línea estructurado en `Lineas[]` de comprobantes — NO requerido para el modelo de negocio vigente
+
+**Fecha observada:** 2026-07-20
+**Fecha cerrada:** 2026-07-20 (FASE SALES-SELLER-DOCUMENT-LEVEL-CONFIRMATION-001)
+**Endpoint:** `RESTComprobantesClienteV1Query` (y por extensión `RESTFacturaClienteV4VentasDetalladas`, `RESTFacturaClienteV4Agregar`)
+**Estado:** ✅ CERRADO — no bloquea nada. Confirmación de negocio: **el vendedor se asigna al comprobante completo, nunca por línea.** La ausencia de un identificador de línea estable en Zeta deja de ser relevante porque el modelo no necesita identidad de línea.
+
+### Contexto del pedido
+
+El usuario reportó, a partir de capturas de la UI/PDF de Zeta para el comprobante A-3032, que cada línea se muestra numerada visualmente (1 — REDES SOCIALES, 2 — GP, 3 — LIN, 4 — HTML, 5 — SIMULADOR IA) y pidió auditar si ese número de línea viaja como campo estructurado en el payload real, para usarlo como parte de una identidad canónica `workspace_id + document_id + line_number` en una futura tabla de vendedores por línea.
+
+### Hallazgo
+
+Triple evidencia (documentación oficial + payload real + código propio) confirma que **no existe** ningún campo de numeración de línea (`Linea`, `NroLinea`, `NumeroLinea`, `Item`, `Renglon`, `Orden`, `Secuencia`) en ninguno de los tres endpoints de facturación documentados en este repo:
+
+1. **Payload real persistido** — `proto_invoices.zeta_metadata->'zeta_customer_voucher_v1'->'raw_payload'->'Lineas'` para A-3032 (`document_id = 4fe9bdd3-a68f-483f-99d2-2e55e5fed37d`, proyecto Supabase `erzdifkvvailxnwdukzf`), consultado en vivo: cada uno de los 5 objetos de línea trae exactamente `IVA, Lote, Neto, Notas, Total, Cantidad, Concepto, Descuento1, Descuento2, Descuento3, Vencimiento, ArticuloCodigo, PrecioUnitario` — sin campo de numeración. `ArticuloCodigo` (`REDES SOCIALES, GP, LIN, HTML, SIMULADOR IA`) coincide con las capturas, en el mismo orden de array.
+2. **Documentación oficial** `docs/zeta/markdown/0156-ayuda-apis-indice-de-apis-gestion-y-contabilidad-comprobantes-por-cliente-ee99ca82.md`, sección "Líneas del comprobante": lista exhaustiva idéntica al payload real, sin campo de numeración.
+3. **Otros dos endpoints de facturación** (`docs/vendors/z/invoices.md`): `RESTFacturaClienteV4VentasDetalladas` (`LineaCantidad/LineaConcepto/LineaPrecio/LineaSubtotal/LineaIVA/LineaTotal`) y `RESTFacturaClienteV4Agregar.Movimiento.Lineas` (`CodigoArticulo/Concepto/Cantidad/PrecioUnitario/Descuento1-3/CodigoIVA/Notas`) — mismo patrón, sin numeración.
+4. **Código propio** `lib/integrations/zeta/zeta-customer-vouchers-mapper.ts:391-395` — `raw_payload` es passthrough verbatim (`for (const k of Object.keys(row)) raw_payload[k] = row[k]`), sin ningún punto de filtrado. Si Zeta enviara el campo, estaría persistido.
+
+**Conclusión:** el "1..5" de las capturas es numeración visual generada por la UI/impresión de Zeta, no un campo transmitido por la API REST.
+
+### Impacto
+
+- Bloquea la construcción de una identidad canónica `workspace_id + document_id + line_number` para asignación de vendedor por línea, tal como se había propuesto.
+- Las únicas alternativas de identidad de línea disponibles sin el campo real son: (a) índice ordinal del array `Lineas[]` — estabilidad entre syncs **no verificada**, sin endpoint que la garantice; (b) hash de contenido (`ArticuloCodigo`+`Concepto`+`Cantidad`+`PrecioUnitario`) — inválido porque pueden existir líneas con contenido idéntico duplicado dentro del mismo comprobante.
+- El modelo actual en producción (vendedor a nivel **documento**, `sales_document_salespersons`, ver fases `SALES-EXECUTIVE-AND-SELLER-MODEL-*`) no depende de este campo y no está afectado.
+
+### Acción decidida (2026-07-20)
+
+**No implementar tabla ni migración de vendedor por línea todavía.** Se documenta este bloqueo y se consultará a soporte Zeta si existe un identificador de línea no expuesto en la documentación pública/Postman antes de cualquier diseño. Mientras no se confirme un campo real, cualquier identidad por línea basada en posición de array o hash de contenido introduce riesgo de reasignación silenciosa incorrecta si Zeta reordena o repite contenido.
+
+### Pregunta preparada para soporte Zeta
+
+> "Para el método `RESTComprobantesClienteV1Query` (y equivalentes `RESTFacturaClienteV4VentasDetalladas` / `RESTFacturaClienteV4Agregar`), el array `Lineas` de cada comprobante no incluye ningún campo de número/orden de línea (solo `ArticuloCodigo, Concepto, Lote, Vencimiento, Cantidad, PrecioUnitario, Descuento1-3, Neto, IVA, Total, Notas`). ¿Existe un campo de identificador o número de línea (ej. `NroLinea`, `RenglonId`) no documentado en la colección Postman pública? ¿El orden del array `Lineas` se garantiza estable entre consultas sucesivas del mismo comprobante, o puede variar? ¿Es posible reordenar o editar líneas de un comprobante ya emitido vía API?"
+
+### Resolución (2026-07-20)
+
+Confirmación de negocio (`SALES-SELLER-DOCUMENT-LEVEL-CONFIRMATION-001`): el vendedor se asigna al **comprobante completo** (ticket/factura), nunca a una línea o servicio individual. Ejemplo validado: ticket A-3032 con 5 líneas (Gestión Redes Sociales, Gestión Publicitaria, Automatización LinkedIn, HTML, Simulador IA + Email) comparte un único vendedor (Daniel) para las 5.
+
+Con esa regla de negocio, la pregunta que motivó este bloqueo (¿hay un `line_number` estable?) **deja de ser relevante**: no se necesita ninguna identidad de línea porque no existe asignación de vendedor por línea. Se descarta explícitamente, y no se debe crear en el futuro sin una nueva decisión de negocio documentada:
+
+- tabla `sales_document_line_sellers` (o equivalente);
+- `document_line_key` / fingerprint de línea;
+- migración, endpoint o tabla de auditoría por línea.
+
+El modelo vigente y único es `sales_document_salespersons` con `UNIQUE(workspace_id, document_id)` — ver `docs/domains/ventas.md` § "Ejecutivo vs Vendedor" para el contrato completo.
+
+Si en el futuro el negocio cambiara de idea (vendedor por línea), la pregunta preparada arriba para soporte Zeta sigue siendo el primer paso obligatorio antes de cualquier diseño — no se debe reabrir una identidad de línea inestable sin esa confirmación.
+
+---
+
 ## Plantilla para nuevas divergencias
 
 Copiar y completar al detectar una nueva divergencia.

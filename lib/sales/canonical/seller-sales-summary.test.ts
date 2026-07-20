@@ -149,6 +149,54 @@ describe("buildSellerSalesSummary — escenario obligatorio Daniel/Camila/Daniel
     expect(unassigned.netSalesByCurrency.UYU).toBe(-300);
   });
 
+  it("comprobante multi-línea (5 líneas, tipo A-3032): 1 sola operación, total atribuido una única vez (nunca multiplicado por cantidad de líneas)", () => {
+    const rows: RawSaleInvoiceRow[] = [
+      {
+        id: "G",
+        invoice_number: "ZETA:CCV1:0:clienteG:A:G",
+        company_id: "clienteG",
+        issue_date: "2026-07-06",
+        currency_code: "UYU",
+        total_amount: 68320,
+        paid_amount: 0,
+        balance_amount: 68320,
+        status: "issued",
+        is_active: true,
+        zeta_metadata: {
+          zeta_customer_voucher_v1: {
+            cfe_tipo: "111",
+            raw_payload: {
+              Serie: "A",
+              Numero: "G",
+              CFETipo: 111,
+              MonedaCodigo: "1",
+              ClienteCodigo: "clienteG",
+              VendedorCodigo: "",
+              Lineas: [
+                { Concepto: "Gestión Redes Sociales", Cantidad: "1", Neto: "8000.00", IVA: "1760.00", Total: "9760.00", ArticuloCodigo: "REDES SOCIALES" },
+                { Concepto: "Gestón Publicitaria", Cantidad: "1", Neto: "6000.00", IVA: "1320.00", Total: "7320.00", ArticuloCodigo: "GP" },
+                { Concepto: "Automatización Linkedin", Cantidad: "1", Neto: "10000.00", IVA: "2200.00", Total: "12200.00", ArticuloCodigo: "LIN" },
+                { Concepto: "HTML para personalizar experiencia en sitio", Cantidad: "1", Neto: "12000.00", IVA: "2640.00", Total: "14640.00", ArticuloCodigo: "HTML" },
+                { Concepto: "Simulador IA + Email", Cantidad: "1", Neto: "20000.00", IVA: "4400.00", Total: "24400.00", ArticuloCodigo: "SIMULADOR IA" },
+              ],
+            },
+          },
+        },
+      },
+    ];
+    const docs = buildCanonicalSaleDocuments({ workspaceId: WS, rows });
+    setSeller(docs, "G", "daniel-id", "Daniel");
+
+    const sellers = buildSellerSalesSummary(docs, FROM, TO);
+    const daniel = sellers.find((s) => s.sellerId === "daniel-id")!;
+
+    // Exactamente 1 operación (por documento), nunca 5 (por línea).
+    expect(daniel.invoiceCount).toBe(1);
+    // El total se atribuye UNA sola vez: $68.320, nunca $341.600 (68320 * 5).
+    expect(daniel.netSalesByCurrency.UYU).toBe(68320);
+    expect(daniel.netSalesByCurrency.UYU).not.toBe(68320 * 5);
+  });
+
   it("reasignar el ejecutivo del cliente no cambia el vendedor de sus operaciones", () => {
     const docs = buildCanonicalSaleDocuments({
       workspaceId: WS,

@@ -1,5 +1,14 @@
 # Project Context
 
+## VENTAS — Confirmación definitiva: vendedor a nivel documento, no por línea — 2026-07-20
+
+**FASE SALES-SELLER-DOCUMENT-LEVEL-CONFIRMATION-001 (local, commit sin push):** confirmación de negocio cierra la duda abierta por `DIV-CONT-011` (auditoría de si Zeta trae número de línea estructurado). Regla definitiva: **el vendedor se asigna al comprobante/ticket completo, nunca a una línea o servicio individual.** Ejecutivo = responsable del cliente; Vendedor = responsable del comprobante; Línea = detalle comercial sin vendedor independiente; Cobro = entidad separada.
+- **Sin cambios de modelo**: se mantiene `sales_document_salespersons` (`UNIQUE(workspace_id, document_id)`, ya en producción); se descarta explícitamente crear `sales_document_line_sellers`, `document_line_key`, fingerprint de línea, migración/endpoint/auditoría por línea. No existía ningún código de línea a revertir (verificado por `git status`).
+- **DIV-CONT-011 cerrada** en `docs/vendors/z/KNOWN-DIVERGENCES.md` como "no requerida" (la falta de número de línea en Zeta ya no bloquea nada, porque no se modela por línea). Nueva sección "Ejecutivo vs Vendedor" agregada a `docs/domains/ventas.md`.
+- **UI ya cumplía el contrato** (implementado en fases previas `SALES-DOCUMENT-SELLER-INLINE-UX-AND-IDENTITY-FIX-001` / `DEPLOY-QA-001`): selector único por `document_id` en Detalle, líneas hermanas agrupadas. Único ajuste de texto: "↳ mismo comprobante" → **"Incluido en este comprobante"** (coincide con el ejemplo de negocio) en `ventas-detalle-tab.tsx` + test de contrato actualizado.
+- **Métricas ya correctas**: `buildSellerSalesSummary` opera sobre `CanonicalSaleDocument` (uno por documento, `grossAmount` = total de cabecera), nunca itera líneas para atribuir venta — un comprobante de 5 líneas cuenta 1 operación, nunca 5. Se agregó test explícito con el escenario A-3032 (5 líneas, $68.320 → 1 operación, nunca $341.600) en `seller-sales-summary.test.ts`.
+- **Gates**: `tsc --noEmit` 0 errores, `vitest run` completo 4780 passed / 1 skipped (pg local) / 2 todo, incluye 41 tests dirigidos a vendedor/ejecutivo. Sin push.
+
 ## BANK — Retiro de "Revisión bancaria" (flujo simple en Banco) — 2026-07-19
 
 **FASE BANK-SIMPLE-RECONCILIATION-RESTORE-001 (local, commit sin push):** se elimina de la experiencia la pantalla independiente `/copilot/revision-bancaria` y sus APIs `/api/copilot/bank-review/*`; el flujo vuelve al módulo **Banco** (`/copilot/movimientos-bancarios`), que ya provee importación (Excel/PDF preview+confirm, dedup), lista de movimientos, conciliación N:M (drawer/reconcile/links/ignore) y matching ingreso→cliente.
