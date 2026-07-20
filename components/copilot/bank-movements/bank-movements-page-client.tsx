@@ -134,6 +134,10 @@ export function BankMovementsPageClient() {
     }
     deepLinkApplied.current = true;
   }, [searchParams]);
+  // FASE BANK-CANONICAL-CONFIRM-UI-001: "Revisar conciliación" en Ingresos abre
+  // la sugerencia operational puntual de ese movimiento en la pestaña Conciliación,
+  // en vez de reactivar Motor B como flujo completo de conciliación.
+  const [focusMovementId, setFocusMovementId] = useState<string | null>(null);
   const [movements, setMovements] = useState<BankMovement[]>([]);
   const [imports, setImports] = useState<BankStatementImport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -598,9 +602,22 @@ export function BankMovementsPageClient() {
         </details>
       ) : null}
 
-      {tab === "conciliacion" ? <BankCanonicalReconciliationPanel /> : null}
+      {tab === "conciliacion" ? (
+        <BankCanonicalReconciliationPanel
+          initialMovementId={focusMovementId}
+          onInitialMovementConsumed={() => setFocusMovementId(null)}
+        />
+      ) : null}
 
-      {tab === "ingresos" ? <BankIncomePanel onChanged={load} /> : null}
+      {tab === "ingresos" ? (
+        <BankIncomePanel
+          onChanged={load}
+          onOpenReconciliation={(movementId) => {
+            setFocusMovementId(movementId);
+            setTab("conciliacion");
+          }}
+        />
+      ) : null}
 
       {tab === "historial" ? (
         <section className={copilotCardStandardClass}>

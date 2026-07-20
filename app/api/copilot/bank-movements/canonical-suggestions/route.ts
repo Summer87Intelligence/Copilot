@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
 import { listCanonicalOperationalEvidence } from "@/lib/bank/canonical/canonical-suggestion-evidence";
+import { countOperationalConfirmedSince } from "@/lib/bank/intelligence/server/repositories";
+import { todayYmdMontevideo } from "@/lib/date/summer87-today";
 
 export const dynamic = "force-dynamic";
 
@@ -23,13 +25,22 @@ export async function GET(request: NextRequest) {
   const offsetRaw = Number(params.get("offset") ?? "0");
   const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 100) : 20;
   const offset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? offsetRaw : 0;
+  const movementId = params.get("movementId")?.trim() || null;
 
   try {
     const result = await listCanonicalOperationalEvidence(auth.ctx.supabase, auth.ctx.tenantCompanyId, {
       limit,
       offset,
+      movementIds: movementId ? [movementId] : undefined,
     });
-    return NextResponse.json({ ok: true as const, data: result.items, meta: { total: result.total, limit, offset } });
+    // Montevideo es UTC-3 fijo (sin DST desde 2015): 00:00 local = 03:00 UTC.
+    const todayStartIso = `${todayYmdMontevideo()}T03:00:00.000Z`;
+    const confirmedToday = await countOperationalConfirmedSince(auth.ctx.supabase, auth.ctx.tenantCompanyId, todayStartIso);
+    return NextResponse.json({
+      ok: true as const,
+      data: result.items,
+      meta: { total: result.total, limit, offset, confirmedToday },
+    });
   } catch (err) {
     return NextResponse.json(
       {

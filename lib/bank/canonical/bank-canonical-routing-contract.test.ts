@@ -39,7 +39,7 @@ describe("Navegación: 5 tabs, orden diario, Conciliación destacada", () => {
 
 describe("Conciliación (tab) consume ÚNICAMENTE el motor canónico (D)", () => {
   it("el tab 'conciliacion' monta BankCanonicalReconciliationPanel, no el panel legacy de Tesorería", () => {
-    expect(pageClient).toMatch(/tab === "conciliacion" \? <BankCanonicalReconciliationPanel \/> : null/);
+    expect(pageClient).toMatch(/tab === "conciliacion" \? \(\s*<BankCanonicalReconciliationPanel/);
   });
 
   it("BankMovementsReconciliationPanel (Motor A) ya no se monta bajo el tab de conciliación", () => {
@@ -47,9 +47,20 @@ describe("Conciliación (tab) consume ÚNICAMENTE el motor canónico (D)", () =>
     expect(conciliacionBlock.slice(0, 80)).not.toContain("BankMovementsReconciliationPanel");
   });
 
-  it("el panel canónico solo lee /api/copilot/bank-movements/canonical-suggestions (sin escribir nada)", () => {
+  it("el panel canónico lee /api/copilot/bank-movements/canonical-suggestions y solo escribe hacia /api/copilot/bank-reconciliation/ (confirm/reject canónicos, nunca Motor C)", () => {
     expect(canonicalPanel).toContain("/api/copilot/bank-movements/canonical-suggestions");
-    expect(canonicalPanel).not.toMatch(/method:\s*["'](POST|PATCH|DELETE)["']/);
+    // FASE BANK-CANONICAL-CONFIRM-UI-001: el panel ahora sí escribe, pero exclusivamente
+    // hacia los endpoints canónicos de confirmación/rechazo (vía postJson), nunca hacia
+    // Motor C (reconciliation-links) ni hacia ninguna otra ruta de escritura financiera.
+    const postJsonCalls = [...canonicalPanel.matchAll(/postJson\(`([^`]+)`/g)].map((m) => m[1]);
+    expect(postJsonCalls.length).toBeGreaterThan(0);
+    for (const url of postJsonCalls) {
+      expect(url).toMatch(/^\/api\/copilot\/bank-reconciliation\/\$\{[^}]+\}\/(confirm|reject)$/);
+    }
+    // La única función que llama fetch con method "POST" es postJson — no hay otro escritor.
+    const rawPostFetches = [...canonicalPanel.matchAll(/method:\s*"POST"/g)];
+    expect(rawPostFetches.length).toBe(1);
+    expect(canonicalPanel).not.toContain("reconciliation-links");
   });
 
   it("el endpoint canónico usa listCanonicalOperationalEvidence (scope operational) y solo expone GET", () => {

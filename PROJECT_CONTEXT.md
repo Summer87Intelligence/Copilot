@@ -1,5 +1,16 @@
 # Project Context
 
+## BANK — Confirmación/rechazo real de conciliaciones canónicas (bandeja diaria) — 2026-07-22
+
+**FASE BANK-CANONICAL-CONFIRM-UI-001 (local, commit sin push):** primera UI de escritura real sobre el motor canónico (Motor D). Hasta ahora la pestaña Conciliación era 100% lectura; esta fase habilita Confirmar y Rechazar.
+- **Confirmar** (`POST /api/copilot/bank-reconciliation/[suggestionId]/confirm`): Zod-validado, RBAC `requireCopilotModuleWriteAccess("bank_movements")`, workspace/actor derivados server-side (nunca del body). Delega en `confirmCanonicalSuggestion()` (`lib/bank/canonical/confirm-canonical-suggestion.server.ts`), que revalida `expectedMovementId`/`expectedReceiptId` contra la sugerencia real y cada factura de la asignación contra las candidatas recalculadas (misma fuente que la evidencia mostrada en el drawer), antes de llamar `confirm_bank_reconciliation_v1` (v2, ya aplicada en producción) — nunca escribe directo, nunca usa Motor C.
+- **Rechazar** (`POST /api/copilot/bank-reconciliation/[suggestionId]/reject`): mismo patrón de RBAC. Usa `reject_bank_suggestion_v1` (confirmado reusable sin cambios: soporta `suggestion_scope='operational'`, nunca toca `bank_movements`, así que el movimiento sigue disponible para una futura sugerencia — semánticamente distinto de "ignorar movimiento"). Revalidación propia más estricta que la RPC: solo acepta `operational` desde este endpoint.
+- **UI**: confirmación rápida (≤2 clicks) solo si confianza Alta y sin conflicto de pagador; confianza Media/Baja o conflicto exige abrir el drawer de evidencia (selección explícita de facturas, nunca auto-asignadas). Estado optimista por `suggestionId`, `already_confirmed`/`already_rejected` tratados como éxito idempotente, avance automático al siguiente pendiente, sin recarga de página. Nuevo contador "Conciliados hoy" (huso Montevideo fijo UTC−3).
+- **Ingresos → Conciliación**: botón "Revisar conciliación" quando el motor ya tiene una sugerencia operativa para ese movimiento — solo navega (vía `?movementId=` en el endpoint de lectura), no reactiva Motor B como flujo de conciliación.
+- **Explícitamente NO implementado**: reversión (ni botón ni endpoint — fase futura BANK-CANONICAL-REVERSE-UI-001) y aprendizaje de pagador (sin escrituras a `bank_payer_identities`/`client_payer_links`; copy: "La identificación automática de pagadores se habilitará en una fase posterior").
+- **Docs**: `docs/architecture/bank-reconciliation-canonical-engine.md` actualizado (matriz de writers, plan de fases, límites conocidos).
+- **Gates**: tsc 0 errores, ESLint limpio en archivos tocados, `vitest run` completo 4860 passed / 1 skipped (pg local) / 2 todo (incluye 32 tests nuevos de esta fase: adapters confirm/reject, contrato de ruteo, enlace Ingresos→Conciliación, contador), build de producción OK, `git diff --check` sin errores reales. Sin push, sin confirmaciones/reversiones reales ejecutadas contra producción.
+
 ## BANK — Corrección del contrato canónico confirm/reverse (`status='reversed'`) — 2026-07-20
 
 **FASE BANK-CANONICAL-CONFIRM-CONTRACT-CORRECTION-001 (local, commit sin push):** auditoría exacta del hallazgo bloqueante de la fase anterior (`bank_movements.status IN ('ignored','reversed')` en `confirm_bank_reconciliation_v1`, referenciando un valor que el CHECK de esa columna nunca admitió).

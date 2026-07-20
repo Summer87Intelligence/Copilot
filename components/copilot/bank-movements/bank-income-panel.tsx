@@ -35,7 +35,14 @@ function money(currency: string, amount: number): string {
 
 type ConfirmedMatch = { client_id: string; billing_concept_id: string | null } | null;
 
-export function BankIncomePanel({ onChanged }: { onChanged?: () => void }) {
+export function BankIncomePanel({
+  onChanged,
+  onOpenReconciliation,
+}: {
+  onChanged?: () => void;
+  /** FASE BANK-CANONICAL-CONFIRM-UI-001: abre la sugerencia operational del motor canónico para este movimiento. */
+  onOpenReconciliation?: (movementId: string) => void;
+}) {
   const [movements, setMovements] = useState<BankMovement[]>([]);
   const [clients, setClients] = useState<PortfolioClient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,6 +117,7 @@ export function BankIncomePanel({ onChanged }: { onChanged?: () => void }) {
                 setFeedback(match ? `Asociado a ${clientName(match.client_id)}.` : "Marcado como no asociado.");
                 onChanged?.();
               }}
+              onOpenReconciliation={onOpenReconciliation}
             />
           ))}
         </ul>
@@ -125,6 +133,7 @@ function IncomeMovementRow({
   clients,
   match,
   onMatched,
+  onOpenReconciliation,
 }: {
   movement: BankMovement;
   open: boolean;
@@ -132,6 +141,7 @@ function IncomeMovementRow({
   clients: PortfolioClient[];
   match: ConfirmedMatch;
   onMatched: (match: ConfirmedMatch) => void;
+  onOpenReconciliation?: (movementId: string) => void;
 }) {
   const [candidates, setCandidates] = useState<IncomeCandidate[] | null>(null);
   const [loadingSug, setLoadingSug] = useState(false);
@@ -139,6 +149,7 @@ function IncomeMovementRow({
   const [rememberAlias, setRememberAlias] = useState(true);
   const [manualClientId, setManualClientId] = useState("");
   const [search, setSearch] = useState("");
+  const [hasCanonicalSuggestion, setHasCanonicalSuggestion] = useState(false);
 
   useEffect(() => {
     if (!open || candidates != null) return;
@@ -152,6 +163,25 @@ function IncomeMovementRow({
       .catch(() => setCandidates([]))
       .finally(() => setLoadingSug(false));
   }, [open, candidates, movement.id]);
+
+  // FASE BANK-CANONICAL-CONFIRM-UI-001: si el motor canónico (D) ya propuso una
+  // conciliación operativa para este movimiento, ofrecemos ir a revisarla ahí en
+  // vez de duplicar el flujo de asociación de Motor B.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetch(`/api/copilot/bank-movements/canonical-suggestions?movementId=${encodeURIComponent(movement.id)}&limit=1`)
+      .then((r) => r.json())
+      .then((j: { ok?: boolean; data?: unknown[] }) => {
+        if (!cancelled && j?.ok) setHasCanonicalSuggestion((j.data ?? []).length > 0);
+      })
+      .catch(() => {
+        if (!cancelled) setHasCanonicalSuggestion(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, movement.id]);
 
   const associate = useCallback(
     async (payload: {
@@ -207,6 +237,20 @@ function IncomeMovementRow({
 
       {open ? (
         <div className="border-t border-[var(--copilot-border)] px-3 py-3">
+          {hasCanonicalSuggestion && onOpenReconciliation ? (
+            <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] px-3 py-2">
+              <p className={copilotCaptionClass}>
+                El motor de conciliación ya propuso un cliente y recibo para este movimiento.
+              </p>
+              <button
+                type="button"
+                onClick={() => onOpenReconciliation(movement.id)}
+                className={copilotButtonClassName({ variant: "primary", size: "sm" })}
+              >
+                Revisar conciliación
+              </button>
+            </div>
+          ) : null}
           {match ? (
             <p className="text-xs text-[var(--copilot-success-text-strong)]">
               Asociado a {clients.find((c) => c.company_id === match.client_id)?.name ?? "cliente"}.

@@ -346,6 +346,23 @@ export async function listActiveSuggestionsForMovements(
   return ((data ?? []) as Record<string, unknown>[]).map(mapSuggestionRow);
 }
 
+/** Sugerencia puntual por id, acotada a workspace — usada por confirm/reject server-side. */
+export async function getShadowSuggestionById(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  suggestionId: string
+): Promise<ShadowSuggestionRow | null> {
+  const ws = requireWorkspace(workspaceId);
+  const { data, error } = await supabase
+    .from("bank_reconciliation_suggestions")
+    .select("*")
+    .eq("workspace_id", ws)
+    .eq("id", suggestionId)
+    .maybeSingle();
+  if (error) throw new Error(`SHADOW_SUGGESTION_READ_FAILED: ${error.message}`);
+  return data ? mapSuggestionRow(data as Record<string, unknown>) : null;
+}
+
 export async function listSuggestionsForMovements(
   supabase: SupabaseClient,
   workspaceId: string,
@@ -415,6 +432,28 @@ export async function countOperationalSuggestions(
   opts?: { statuses?: ShadowSuggestionStatus[] }
 ): Promise<number> {
   return countSuggestionsByScope(supabase, workspaceId, "operational", opts);
+}
+
+/**
+ * Cuenta sugerencias `operational` confirmadas desde `sinceIso` (contador "Conciliados
+ * hoy" de la bandeja diaria). Usa `reviewed_at`, que `confirm_bank_reconciliation_v1`
+ * completa al confirmar. Nunca mezcla `historical_review` / `matched_audit`.
+ */
+export async function countOperationalConfirmedSince(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  sinceIso: string
+): Promise<number> {
+  const ws = requireWorkspace(workspaceId);
+  const { count, error } = await supabase
+    .from("bank_reconciliation_suggestions")
+    .select("id", { count: "exact", head: true })
+    .eq("workspace_id", ws)
+    .eq("suggestion_scope", "operational")
+    .eq("status", "confirmed")
+    .gte("reviewed_at", sinceIso);
+  if (error) throw new Error(`SHADOW_SUGGESTIONS_CONFIRMED_TODAY_COUNT_FAILED: ${error.message}`);
+  return count ?? 0;
 }
 
 export async function countHistoricalSuggestions(

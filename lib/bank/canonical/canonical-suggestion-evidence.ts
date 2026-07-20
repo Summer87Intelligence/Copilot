@@ -213,10 +213,10 @@ export type ListCanonicalOperationalEvidenceResult = {
 export async function listCanonicalOperationalEvidence(
   supabase: SupabaseClient,
   workspaceId: string,
-  opts?: { limit?: number; offset?: number; statuses?: ShadowSuggestionStatus[] }
+  opts?: { limit?: number; offset?: number; statuses?: ShadowSuggestionStatus[]; movementIds?: string[] }
 ): Promise<ListCanonicalOperationalEvidenceResult> {
   const statuses = opts?.statuses ?? ["generated", "pending_review"];
-  const all = await listOperationalSuggestions(supabase, workspaceId, { statuses });
+  const all = await listOperationalSuggestions(supabase, workspaceId, { statuses, movementIds: opts?.movementIds });
   // Orden: mayor confianza primero (mejor evidencia primero, según pide el negocio).
   all.sort((a, b) => b.confidence - a.confidence);
 
