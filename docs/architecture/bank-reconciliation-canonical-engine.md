@@ -22,6 +22,10 @@
 
 Esta misma fase corrigió, además, el importador de extractos Santander PDF: ver `docs/architecture/santander-pdf-parser.md` para el detalle completo (bug de descarte silencioso del último movimiento, saldo negativo truncado a positivo, `operation_group_key`, identidad de pagador, validación de saldo, fingerprint de deduplicación).
 
+**FASE BANK-SIMPLE-RECONCILIATION-AND-PAYER-MEMORY-001 (2026-07-21, continuación)** — navegación final Importar/Movimientos/Conciliación/Historial, manual draft, Cliente 360 read-only. Migración v4 creada localmente (ver más abajo).
+
+**FASE BANK-PAYER-MEMORY-V4-APPLY-AND-CONTROLLED-QA-001 (2026-07-21, continuación)** — migración `20260725120000_bank_reconciliation_confirm_rpc_v4_payer_learning.sql` **APLICADA en producción** (registrada en `supabase_migrations.schema_migrations` como `20260721170547_bank_reconciliation_confirm_rpc_v4_payer_learning`; verificado vía `pg_get_functiondef` que el cuerpo vivo de `confirm_bank_reconciliation_v1` coincide exactamente con el aprendizaje de pagador de esta fase; único overload de 8 parámetros; grants correctos, solo `postgres`/`service_role`). `reverse_bank_reconciliation_v1` sin cambios (verificado). CHECK constraints reales de `bank_payer_identities`/`client_payer_links` (fingerprint_strength, status, source) coinciden exactamente con lo que la RPC asume. Snapshot post-apply (solo lectura): 1020 movimientos, 11 sugerencias, 2 links, 0 allocations, 15 eventos, **0 payer identities, 0 client_payer_links** — el escritor recién se conecta con el adapter de esta misma fase (`confirmCanonicalSuggestion`), que todavía no está desplegado a producción (commit local `b98566b`, sin push), así que no hay confirmaciones reales que hayan pasado `p_metadata.payer` todavía. Los 2 links existentes (Samysol SA USD 318,18 y Botica del Señor SRL UYU 10.004, confirmados 2026-07-21 ~00:52 UTC) son operaciones de negocio reales previas a esta fase, con `metadata` vacío — no son residuo de QA. **Nota de documentación**: el archivo de migración local y el comentario `COMMENT ON FUNCTION` que quedó commiteado en `b98566b` conservan la redacción original "PREPARADA LOCALMENTE, NO APLICAR SIN AUTORIZACIÓN EXPLÍCITA" — mismo patrón ya usado con v3 (su archivo local también sigue diciendo "NO APLICAR" pese a estar aplicada): el archivo de migración queda como documento histórico de intención al momento de crearlo, y el estado real vive en esta narrativa. El `COMMENT ON FUNCTION` realmente ejecutado en producción sí quedó actualizado a "...FASE BANK-PAYER-MEMORY-V4-APPLY-AND-CONTROLLED-QA-001 — APLICADA." Próximo paso: push + QA controlada end-to-end con un caso real (confirmar un movimiento con nombre de pagador parseable y verificar que `bank_payer_identities`/`client_payer_links` se pueblan atómicamente).
+
 **Pregunta central:** ¿qué tabla/columna recibe o debería recibir `'reversed'`?
 
 | # | Pregunta | Respuesta con evidencia |
@@ -133,19 +137,19 @@ Respuestas verificadas contra `supabase/migrations/20260719120200_bank_reconcili
 
 **Para `bank_movements`**: no aplica ninguno de los Modelos A/B/C planteados para "suggestion" — es una entidad distinta. La corrección fue simplemente **retirar la comparación incoherente**, no elegir un modelo de estados nuevo para el movimiento (eso sería ampliar el contrato sin aprobación, explícitamente fuera de alcance).
 
-## Aprendizaje de pagador — implementado (local, no aplicado)
+## Aprendizaje de pagador — implementado y APLICADO en producción
 
-**FASE BANK-SIMPLE-RECONCILIATION-AND-PAYER-MEMORY-001**: el bucle confirmar→aprender vive en la misma transacción que la confirmación financiera.
+**FASE BANK-SIMPLE-RECONCILIATION-AND-PAYER-MEMORY-001** + **FASE BANK-PAYER-MEMORY-V4-APPLY-AND-CONTROLLED-QA-001**: el bucle confirmar→aprender vive en la misma transacción que la confirmación financiera.
 
-1. Migración `20260725120000_bank_reconciliation_confirm_rpc_v4_payer_learning.sql` (**CREADA, NO APLICADA**): misma firma de 8 parámetros que v3; upsert de `bank_payer_identities` / `client_payer_links` cuando `p_metadata.payer.accountHash` está presente; cliente final desde `proto_receipts.company_id`; conflicto multi-cliente → `conflicted` sin autoselección; early-return idempotente no re-incrementa.
-2. Adapter `confirmCanonicalSuggestion` siempre envía `p_metadata` (v3 ya en producción) y deriva `payer` con helpers puros (`lib/bank/canonical/payer-identity.ts`) — nunca usa TT/LR/TR/LE como identidad permanente.
+1. Migración `20260725120000_bank_reconciliation_confirm_rpc_v4_payer_learning.sql`: **APLICADA en producción** (ver entrada de fase arriba); misma firma de 8 parámetros que v3; upsert de `bank_payer_identities` / `client_payer_links` cuando `p_metadata.payer.accountHash` está presente; cliente final desde `proto_receipts.company_id`; conflicto multi-cliente → `conflicted` sin autoselección; early-return idempotente no re-incrementa.
+2. Adapter `confirmCanonicalSuggestion` siempre envía `p_metadata` (v3 ya en producción) y deriva `payer` con helpers puros (`lib/bank/canonical/payer-identity.ts`) — nunca usa TT/LR/TR/LE como identidad permanente. **Commit local, sin push todavía** — hasta que se despliegue, ninguna confirmación real pasa `payer` a la RPC (tablas siguen en 0 filas).
 3. Manual draft: `POST /api/copilot/bank-reconciliation/manual-draft` crea/reutiliza suggestion operational sin link/allocation.
 4. Cliente 360 (Cobranza): sección read-only "Pagos y cuentas utilizadas"; correcciones deshabilitadas (fase posterior append-only).
 5. Navegación final: Importar · Movimientos · Conciliación · Historial.
 
-## Aprendizaje de pagador — gap histórico (pre-fase)
+## Aprendizaje de pagador — gap histórico (pre-fase, cerrado)
 
-El esquema (`bank_payer_identities` + `client_payer_links`) estaba completo sin escritor. Ese gap se cierra con la v4 local anterior — **requiere autorización para aplicar**.
+El esquema (`bank_payer_identities` + `client_payer_links`) estaba completo sin escritor. Ese gap quedó cerrado con la v4, aplicada en producción — pendiente únicamente de push + una confirmación real para ejercitar el escritor por primera vez.
 
 ## Cambios de esta fase (BANK-CANONICAL-ROUTING)
 
