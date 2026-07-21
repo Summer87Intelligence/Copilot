@@ -14,7 +14,9 @@
 
 **FASE BANK-MANUAL-CANONICAL-MATCH-SELECTION-001 (2026-07-20, continuación)** — habilita selección manual revisada de cliente/recibo/facturas cuando la sugerencia automática no alcanza (dataset productivo: 5 casos, 0 confianza Alta). **Hallazgo central de la auditoría: `confirm_bank_reconciliation_v1` NUNCA exigió que el recibo coincidiera con `proposed_receipt_id` ni conoció jamás el concepto de "cliente" — esa restricción vivía 100% en el adapter TypeScript.** No hizo falta una RPC nueva para permitir la selección manual; solo se agregó un parámetro `p_metadata` opcional (migración v3, **creada, NO aplicada**) para auditar la decisión. Ver sección "Selección manual revisada (BANK-MANUAL-CANONICAL-MATCH-SELECTION-001)" más abajo.
 
-## Auditoría exacta del estado "reversed" (hallazgo bloqueante, resuelto)
+**FASE BANK-CANONICAL-CONFIRM-RPC-V3-MIGRATION-APPLY-001 (2026-07-21)** — intento de aplicación de la v3 **detenido en preflight**: la revisión final del SQL encontró que el INSERT a `bank_movement_reconciliation_links` derivaba `method='manual_reviewed'` de `p_metadata->>'mode'`, valor que **no pertenece** al CHECK real de esa columna en producción (`bank_movement_reconciliation_links_method_check`, admite únicamente `'manual'|'suggested_confirmed'`, verificado en vivo vía `execute_sql`). Habría violado la constraint apenas se usara `mode='manual_reviewed'`. **La v3 nunca se aplicó.** Producción continuó con v2 sin cambios.
+
+**FASE BANK-CONFIRM-RPC-V3-MIGRATION-CORRECTION-001 (2026-07-21, continuación)** — corrección in-place del mismo archivo v3 (nunca llegó a aplicarse, así que no requirió una v4): `bank_movement_reconciliation_links.method` ahora es siempre el literal `'suggested_confirmed'` para confirmaciones vía esta RPC, en ambos modos. La distinción `suggested`/`manual_reviewed` vive **exclusivamente** en `reconciliation_events.metadata.mode` — nunca en `method`. Ver sección "Selección manual revisada" (actualizada) más abajo.
 
 **Pregunta central:** ¿qué tabla/columna recibe o debería recibir `'reversed'`?
 
@@ -222,6 +224,14 @@ Ambos modos terminan en la **misma** llamada a `confirm_bank_reconciliation_v1` 
 - **Casos sin ninguna suggestion** (sección 15 del pedido): la RPC ya soporta `p_suggestion_id = NULL` estructuralmente (confirmado en el SQL — las tres validaciones de sugerencia están dentro de `IF p_suggestion_id IS NOT NULL`), pero construir el flujo seguro completo (generar una suggestion `manual_draft` primero, o permitir movementId-only) requiere más auditoría de `engine_version`/idempotencia. Documentado como gap, no implementado — el confirm sigue exigiendo una sugerencia operational existente.
 - Agrupación visual "Coincidencia exacta / Cercanos / Otros recibos" (sección 5): implementada como lista única simple, ordenada por fecha, con diferencia mostrada — sin la agrupación en tres niveles.
 - Filtro "cliente"/"período" dedicados en Ingresos (ya documentado como limitación de la fase anterior).
+
+### Corrección: `method` vs. `metadata.mode` (BANK-CONFIRM-RPC-V3-MIGRATION-CORRECTION-001)
+
+**Semántica definitiva de `bank_movement_reconciliation_links.method`:** representa el **mecanismo financiero** del link (cómo se originó técnicamente), no el nivel de intervención humana en la UI. El CHECK real de producción (`bank_movement_reconciliation_links_method_check`) admite únicamente `'manual'|'suggested_confirmed'` — sin cambios, sin ampliar. Para toda confirmación vía `confirm_bank_reconciliation_v1` (ambos modos, `suggested` y `manual_reviewed`), `method` es siempre `'suggested_confirmed'`.
+
+**Semántica definitiva de `reconciliation_events.metadata.mode`:** representa la **modalidad humana** de la confirmación (`suggested`|`manual_reviewed`), junto con `selectedClientId`/`selectedReceiptId`/`proposedClientId`/`proposedReceiptId`/`reason`. Vive exclusivamente en el evento de auditoría — nunca en `method`, nunca afecta la semántica financiera del link.
+
+**Qué pasó:** el primer intento de aplicar la migración v3 (`BANK-CANONICAL-CONFIRM-RPC-V3-MIGRATION-APPLY-001`) se detuvo en preflight porque la revisión final del SQL encontró que el INSERT a `bank_movement_reconciliation_links` derivaba `method='manual_reviewed'` de `p_metadata->>'mode'` — un valor no permitido por el CHECK real, que habría causado una violación de constraint en cuanto se usara `manual_reviewed` en producción (justo el caso que la fase existe para habilitar). La migración v3 **nunca se aplicó** — se corrigió en el mismo archivo (no se creó una v4, porque el archivo nunca había llegado a producción) para que `method` sea siempre `'suggested_confirmed'`, y la cobertura de tests se amplió con un fixture tomado del CHECK real capturado en vivo (`lib/bank/canonical/bank-canonical-confirm-rpc-v3-schema-contract.test.ts`) para que una regresión futura de este tipo falle en CI en vez de en producción.
 
 ## No se autoriza en esta fase
 

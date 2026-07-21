@@ -29,6 +29,23 @@
 -- `proposed_receipt_id` permanecen INTOCADOS — la propuesta original del
 -- motor sigue siendo evidencia inmutable, tal como pide el negocio.
 --
+-- CORRECCIÓN (BANK-CONFIRM-RPC-V3-MIGRATION-CORRECTION-001, esta migración
+-- NUNCA llegó a aplicarse en producción — corregida in place, sin v4):
+-- la primera versión de este archivo derivaba
+-- `bank_movement_reconciliation_links.method` de `p_metadata->>'mode'`
+-- (`'manual_reviewed'` cuando correspondía). Auditado contra el CHECK real de
+-- producción (`bank_movement_reconciliation_links_method_check`, que admite
+-- ÚNICAMENTE `'manual'|'suggested_confirmed'`): ese valor hubiera violado la
+-- constraint apenas se usara `mode='manual_reviewed'` — exactamente el caso
+-- que esta fase existe para habilitar. `method` representa el MECANISMO
+-- financiero del link (siempre `'suggested_confirmed'` para confirmaciones
+-- vía esta RPC con sugerencia/recibo explícito), no el nivel de intervención
+-- humana en la UI. La distinción `suggested`/`manual_reviewed` vive
+-- EXCLUSIVAMENTE en `reconciliation_events.metadata.mode` — nunca en
+-- `method`, nunca afecta movement_id/receipt_id/workspace_id/actor/amount/
+-- currency/allocations/suggestion_scope/locks/idempotencia. Sin cambios al
+-- CHECK, sin RPC nueva, sin ampliar el esquema.
+--
 -- SEGURIDAD: mismo contrato que v2 — SECURITY INVOKER, search_path fijo, sin
 -- SQL dinámico, EXECUTE solo para `service_role`. ADITIVA (CREATE OR REPLACE,
 -- misma firma + 1 parámetro nuevo con DEFAULT al final). NO APLICAR sin
@@ -155,12 +172,22 @@ BEGIN
     IF v_rec_used + v_link_amt > v_receipt.amount + 0.01 THEN RAISE EXCEPTION 'OVER_APPLIED_RECEIPT'; END IF;
   END IF;
 
-  -- Crear el LINK CANÓNICO (fuente financiera única).
+  -- Crear el LINK CANÓNICO (fuente financiera única). `method` representa el
+  -- MECANISMO financiero del link (siempre 'suggested_confirmed' cuando pasa
+  -- por esta RPC vía sugerencia/recibo explícito), no el nivel de intervención
+  -- humana en la UI. CORRECCIÓN (BANK-CONFIRM-RPC-V3-MIGRATION-CORRECTION-001):
+  -- la v3 original derivaba `method='manual_reviewed'` de `p_metadata->>'mode'`,
+  -- pero ese valor NO pertenece al CHECK real de esta columna
+  -- (bank_movement_reconciliation_links_method_check admite únicamente
+  -- 'manual'|'suggested_confirmed') — hubiera violado la constraint en cuanto
+  -- se usara mode='manual_reviewed'. La distinción suggested/manual_reviewed
+  -- vive EXCLUSIVAMENTE en reconciliation_events.metadata.mode (más abajo);
+  -- nunca modifica la semántica financiera del link.
   INSERT INTO public.bank_movement_reconciliation_links
     (workspace_id, bank_movement_id, target_type, target_id, applied_amount, currency, direction, method, created_by)
   VALUES (
     p_workspace_id, p_movement_id, 'receipt', p_receipt_id::text, v_link_amt, v_mov.currency, 'inflow',
-    CASE WHEN v_metadata->>'mode' = 'manual_reviewed' THEN 'manual_reviewed' ELSE 'suggested_confirmed' END,
+    'suggested_confirmed',
     p_created_by
   )
   RETURNING id INTO v_link_id;
@@ -216,7 +243,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.confirm_bank_reconciliation_v1(uuid,uuid,uuid,uuid,jsonb,numeric,uuid,jsonb) IS
-  'Confirma conciliación en UNA transacción (link + allocations agregadas por factura, sumas validadas con locks, idempotente). Acepta cualquier receipt_id del workspace (el "cliente" no es un concepto de esta RPC); p_metadata (nuevo, opcional) registra modo suggested/manual_reviewed + selección final para auditoría, sin sobrescribir la sugerencia original. Solo confirma suggestion_scope=operational. Solo service_role. FASE BANK-MANUAL-CANONICAL-MATCH-SELECTION-001.';
+  'Confirma conciliación en UNA transacción (link + allocations agregadas por factura, sumas validadas con locks, idempotente). Acepta cualquier receipt_id del workspace (el "cliente" no es un concepto de esta RPC); p_metadata (nuevo, opcional) registra modo suggested/manual_reviewed + selección final para auditoría en reconciliation_events.metadata, sin sobrescribir la sugerencia original ni afectar bank_movement_reconciliation_links.method (siempre suggested_confirmed vía esta RPC). Solo confirma suggestion_scope=operational. Solo service_role. FASE BANK-MANUAL-CANONICAL-MATCH-SELECTION-001, corregida en BANK-CONFIRM-RPC-V3-MIGRATION-CORRECTION-001.';
 
 -- Permisos: sin cambios (ya eran service_role-only desde v1), se re-declaran por completitud.
 REVOKE ALL ON FUNCTION public.confirm_bank_reconciliation_v1(uuid,uuid,uuid,uuid,jsonb,numeric,uuid,jsonb) FROM PUBLIC, anon, authenticated;

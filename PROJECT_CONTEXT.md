@@ -1,5 +1,15 @@
 # Project Context
 
+## BANK — Migración v3 corregida antes de aplicar (defecto de CHECK evitado) — 2026-07-21
+
+**FASE BANK-CANONICAL-CONFIRM-RPC-V3-MIGRATION-APPLY-001 (detenida en preflight) + BANK-CONFIRM-RPC-V3-MIGRATION-CORRECTION-001 (corrección local, commit sin push):** el intento de aplicar en producción la migración v3 (`p_metadata` para `confirm_bank_reconciliation_v1`) se detuvo antes de ejecutar ningún DDL — la revisión final del SQL encontró que el INSERT a `bank_movement_reconciliation_links` derivaba `method='manual_reviewed'` de `p_metadata->>'mode'`, valor que **no pertenece** al CHECK real de esa columna en producción (`bank_movement_reconciliation_links_method_check`, verificado en vivo: admite únicamente `'manual'|'suggested_confirmed'`). Habría violado la constraint apenas se usara el modo `manual_reviewed` — exactamente el caso que la fase existe para habilitar.
+- **Producción NUNCA fue tocada**: toda la interacción con `erzdifkvvailxnwdukzf` durante el intento de aplicación fue de solo lectura (`execute_sql` sobre `pg_proc`/`information_schema`/`pg_constraint`/`list_migrations`); v2 sigue siendo la versión activa de la RPC.
+- **Corrección**: se editó el mismo archivo `supabase/migrations/20260723120000_bank_reconciliation_confirm_rpc_v3.sql` **in place** (nunca se creó una v4, porque el archivo jamás llegó a aplicarse) — `method` es ahora siempre el literal `'suggested_confirmed'`, en ambos modos. La distinción `suggested`/`manual_reviewed` sigue viviendo exclusivamente en `reconciliation_events.metadata.mode`, sin afectar la semántica financiera del link.
+- **Gap de test cerrado**: los tests anteriores de la v3 eran puramente textuales y nunca habrían detectado esta violación de constraint. Se agregó un fixture (`REAL_METHOD_CHECK_ALLOWED_VALUES`) tomado del CHECK real capturado en vivo, más tests que verifican que el INSERT solo puede producir valores de ese conjunto — verificado que fallan contra la versión original defectuosa y pasan contra la corregida.
+- **Nuevos tests de seguridad de metadata**: `canonical-confirm-reject-api.test.ts` confirma que el schema Zod descarta silenciosamente cualquier clave no declarada (`workspaceId`, `actorId`, `movementId`, `amount`, `currency`, `role`, `serviceRole`, `method`, `metadata`) — la defensa real contra metadata maliciosa vive en ese límite, no en la RPC.
+- **Adapter auditado, sin cambios**: `confirmCanonicalSuggestion.server.ts` ya cumplía el contrato requerido (workspace/actor derivados server-side, metadata construida con whitelist fija, nunca envía `method`) — no se encontró desalineamiento real.
+- **Gates**: tsc 0 errores, ESLint limpio, `vitest run` completo 4933 passed / 1 skipped / 2 todo (40+ tests nuevos/actualizados de esta corrección), build OK. Sin push, sin migración aplicada, sin confirmaciones reales.
+
 ## BANK — Selección manual revisada de cliente/recibo (drawer de Ingresos) — 2026-07-20
 
 **FASE BANK-MANUAL-CANONICAL-MATCH-SELECTION-001 (local, commit sin push):** habilita conciliar manualmente cuando la sugerencia automática no alcanza — bloqueante real hoy (5 casos pendientes en producción, 0 confianza Alta).

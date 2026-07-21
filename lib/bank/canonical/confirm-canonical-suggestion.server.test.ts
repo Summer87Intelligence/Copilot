@@ -284,6 +284,37 @@ describe("confirmCanonicalSuggestion — modo 'manual_reviewed' (FASE BANK-MANUA
     expect(true).toBe(true);
   });
 
+  it("trata already_confirmed como éxito idempotente también en modo manual_reviewed (doble click / reintento)", async () => {
+    const rpc = vi.fn(() => ({ data: { linkId: "link-manual", idempotent: true, status: "already_confirmed" }, error: null }));
+    const client = fakeClient(
+      {
+        bank_reconciliation_suggestions: [baseSuggestion],
+        proto_companies: [{ id: "client-2", workspace_company_id: WS, name: "Otro Cliente", is_active: true }],
+        proto_receipts: [{ id: "receipt-2", workspace_company_id: WS, company_id: "client-2", amount: 5000, currency_code: "UYU", receipt_date: "2026-07-18", status: "paid" }],
+      },
+      rpc
+    );
+    const result = await confirmCanonicalSuggestion(client as never, manualInput);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.idempotent).toBe(true);
+  });
+
+  it("nunca envía 'method' a la RPC en ningún modo — bank_movement_reconciliation_links.method es decisión exclusiva de la RPC (siempre suggested_confirmed), no del cliente/adapter (BANK-CONFIRM-RPC-V3-MIGRATION-CORRECTION-001)", async () => {
+    const rpc = vi.fn((_name: string, _args: Record<string, unknown>) => ({ data: { linkId: "link-manual", idempotent: false, status: "confirmed" }, error: null }));
+    const client = fakeClient(
+      {
+        bank_reconciliation_suggestions: [baseSuggestion],
+        proto_companies: [{ id: "client-2", workspace_company_id: WS, name: "Otro Cliente", is_active: true }],
+        proto_receipts: [{ id: "receipt-2", workspace_company_id: WS, company_id: "client-2", amount: 5000, currency_code: "UYU", receipt_date: "2026-07-18", status: "paid" }],
+      },
+      rpc
+    );
+    await confirmCanonicalSuggestion(client as never, manualInput);
+    const callArgs = rpc.mock.calls[0]![1] as Record<string, unknown>;
+    expect(callArgs).not.toHaveProperty("p_method");
+    expect(callArgs).not.toHaveProperty("method");
+  });
+
   it("valida asignaciones de factura contra las candidatas del cliente SELECCIONADO, no del propuesto por la sugerencia", async () => {
     const rpc = vi.fn(() => ({ data: { linkId: "link-manual-2", idempotent: false, status: "confirmed" }, error: null }));
     const client = fakeClient(
