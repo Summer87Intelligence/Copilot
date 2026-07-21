@@ -47,18 +47,19 @@ import {
   type BankStatementImport,
 } from "@/lib/bank-movements/bank-movements-types";
 
-type BankTab = "importar" | "movimientos" | "ingresos" | "historial";
+type BankTab = "importar" | "movimientos" | "conciliacion" | "historial";
 
 /**
- * Orden diario de operación (FASE BANK-UNIFIED-INCOME-RECONCILIATION-WORKSPACE-001):
- * Importar → Movimientos → Ingresos → Historial. La pestaña Conciliación
- * independiente fue absorbida por Ingresos, que ahora es la única bandeja
- * operativa diaria (identificar cliente + conciliar en una misma pantalla).
+ * FASE BANK-SIMPLE-RECONCILIATION-AND-PAYER-MEMORY-001 — navegación final:
+ * Importar → Movimientos → Conciliación → Historial. La pestaña se renombra de
+ * "Ingresos" a "Conciliación" (mismo componente, `BankIncomeWorkspace`, sin
+ * cambios de motor) para que cualquier usuario entienda dónde resolver un
+ * pago: no debe haber tres lugares distintos para lo mismo.
  */
 const TABS: Array<{ id: BankTab; label: string; primary?: boolean }> = [
   { id: "importar", label: "Importar" },
   { id: "movimientos", label: "Movimientos" },
-  { id: "ingresos", label: "Ingresos", primary: true },
+  { id: "conciliacion", label: "Conciliación", primary: true },
   { id: "historial", label: "Historial" },
 ];
 
@@ -120,10 +121,12 @@ export function BankMovementsPageClient() {
   const [tab, setTab] = useState<BankTab>("movimientos");
   const deepLinkApplied = useRef(false);
 
-  // Deep link desde el cuaderno de trabajo / URLs antiguas de la extinta pestaña
-  // Conciliación independiente (FASE BANK-UNIFIED-INCOME-RECONCILIATION-WORKSPACE-001):
-  // ?tab=reconciliation | ?tab=conciliacion normalizan a Ingresos, preservando
-  // movementId/suggestionId para enfocar el caso puntual dentro de la bandeja unificada.
+  // Deep link desde el cuaderno de trabajo / URLs antiguas de las pestañas
+  // extintas "Conciliación" independiente e "Ingresos" (FASE
+  // BANK-SIMPLE-RECONCILIATION-AND-PAYER-MEMORY-001): ?tab=reconciliation |
+  // ?tab=conciliacion | ?tab=ingresos normalizan todas a la pestaña
+  // Conciliación actual, preservando movementId/suggestionId para enfocar el
+  // caso puntual. Ninguna ruta queda huérfana.
   useEffect(() => {
     if (deepLinkApplied.current) return;
     const requestedTab = searchParams.get("tab");
@@ -132,15 +135,16 @@ export function BankMovementsPageClient() {
     if (
       direction === "inflow" ||
       requestedTab === "ingresos" ||
-      requestedTab === "reconciliation" ||
-      requestedTab === "conciliacion"
+      requestedTab === "conciliacion" ||
+      requestedTab === "reconciliation"
     ) {
-      setTab("ingresos");
+      setTab("conciliacion");
       if (movementIdParam) setFocusMovementId(movementIdParam);
     }
     deepLinkApplied.current = true;
   }, [searchParams]);
   const [focusMovementId, setFocusMovementId] = useState<string | null>(null);
+  const [tesoreriaOpen, setTesoreriaOpen] = useState(false);
   const [movements, setMovements] = useState<BankMovement[]>([]);
   const [imports, setImports] = useState<BankStatementImport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -316,6 +320,16 @@ export function BankMovementsPageClient() {
   const movementAmountLabel = (m: BankMovement) =>
     `${m.currency} ${numberFormatter.format(resolveImportedBankMovementAmount(m))}`;
 
+  // FASE BANK-SIMPLE-RECONCILIATION-AND-PAYER-MEMORY-001, sección 12 — Movimientos
+  // ya no usa el mismo botón "Conciliar" para entradas y salidas: una entrada se
+  // resuelve exclusivamente en la pestaña Conciliación (motor canónico, nunca por
+  // un toggle de estado directo acá); una salida se vincula con Tesorería
+  // (abre el panel de pagos programados ya existente, sin motor nuevo).
+  const goToReconciliationForMovement = useCallback((movementId: string) => {
+    setFocusMovementId(movementId);
+    setTab("conciliacion");
+  }, []);
+
   const renderMovementActions = (m: BankMovement) => (
     <div className="flex flex-wrap justify-end gap-1.5">
       <button
@@ -327,13 +341,23 @@ export function BankMovementsPageClient() {
         <Pencil className="h-3.5 w-3.5" aria-hidden />
       </button>
       {m.status !== "matched" ? (
-        <button
-          type="button"
-          onClick={() => void changeStatus(m, "matched")}
-          className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-        >
-          Conciliar
-        </button>
+        m.direction === "inflow" ? (
+          <button
+            type="button"
+            onClick={() => goToReconciliationForMovement(m.id)}
+            className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+          >
+            Revisar conciliación
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setTesoreriaOpen(true)}
+            className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+          >
+            Vincular con pago programado
+          </button>
+        )
       ) : (
         <button
           type="button"
@@ -468,14 +492,19 @@ export function BankMovementsPageClient() {
         </div>
       ) : null}
 
-      <div className={`grid grid-cols-2 lg:grid-cols-4 ${COPILOT_GRID_GAP}`}>
-        {summaryCards.map((card) => (
-          <div key={card.label} className={copilotCardStandardClass}>
-            <p className={copilotMetricLabelClass}>{card.label}</p>
-            <p className={copilotMetricValueClass}>{loading ? "…" : card.value}</p>
-          </div>
-        ))}
-      </div>
+      {tab !== "historial" ? (
+        // Sección 13 — Historial muestra solo hechos terminados; estos KPIs
+        // ("Pendientes de identificar", "Entradas/Salidas del mes") son estado
+        // operativo actual, no un hecho histórico, así que no se muestran ahí.
+        <div className={`grid grid-cols-2 lg:grid-cols-4 ${COPILOT_GRID_GAP}`}>
+          {summaryCards.map((card) => (
+            <div key={card.label} className={copilotCardStandardClass}>
+              <p className={copilotMetricLabelClass}>{card.label}</p>
+              <p className={copilotMetricValueClass}>{loading ? "…" : card.value}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       <nav
         className="flex flex-wrap gap-2 rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-1.5 shadow-sm"
@@ -595,7 +624,11 @@ export function BankMovementsPageClient() {
       ) : null}
 
       {tab === "movimientos" ? (
-        <details className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-1.5">
+        <details
+          open={tesoreriaOpen}
+          onToggle={(e) => setTesoreriaOpen(e.currentTarget.open)}
+          className="rounded-2xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-1.5"
+        >
           <summary className="cursor-pointer rounded-xl px-3 py-2 text-sm font-semibold text-[var(--copilot-muted)]">
             Pagos programados de Tesorería (no es conciliación de clientes)
           </summary>
@@ -605,7 +638,7 @@ export function BankMovementsPageClient() {
         </details>
       ) : null}
 
-      {tab === "ingresos" ? (
+      {tab === "conciliacion" ? (
         <BankIncomeWorkspace
           onChanged={load}
           initialMovementId={focusMovementId}

@@ -90,8 +90,8 @@ const baseInput = {
   manualReason: null as string | null,
 };
 
-describe("confirmCanonicalSuggestion — modo 'suggested' (comportamiento idéntico a antes de esta fase)", () => {
-  it("confirma sin asignaciones de factura (fast path, solo movimiento+recibo), sin p_metadata (compatible con la v2 en producción)", async () => {
+describe("confirmCanonicalSuggestion — modo 'suggested'", () => {
+  it("confirma sin asignaciones y siempre envía p_metadata (v3 en producción; payer opcional si hay señal)", async () => {
     const rpc = vi.fn((_name: string, _args: Record<string, unknown>) => ({ data: { linkId: "link-1", idempotent: false, status: "confirmed" }, error: null }));
     const client = fakeClient({ bank_reconciliation_suggestions: [baseSuggestion] }, rpc);
 
@@ -111,7 +111,46 @@ describe("confirmCanonicalSuggestion — modo 'suggested' (comportamiento idént
       p_allocations: null,
       p_created_by: ACTOR,
     });
-    expect(callArgs).not.toHaveProperty("p_metadata");
+    expect(callArgs.p_metadata).toEqual({
+      mode: "suggested",
+      selectedClientId: "client-1",
+      selectedReceiptId: "receipt-1",
+      proposedClientId: "client-1",
+      proposedReceiptId: "receipt-1",
+    });
+  });
+
+  it("incluye payer en p_metadata cuando el movimiento trae nombre estructurado (aprendizaje v4)", async () => {
+    const rpc = vi.fn((_name: string, _args: Record<string, unknown>) => ({
+      data: { linkId: "link-1", idempotent: false, status: "confirmed" },
+      error: null,
+    }));
+    const client = fakeClient(
+      {
+        bank_reconciliation_suggestions: [baseSuggestion],
+        bank_movements: [
+          {
+            id: "mov-1",
+            workspace_id: WS,
+            description: "TRANSFERENCIA RECIBIDA /ENERGETIA LIMITADA /CALLE",
+            bank_reference: "TR0078809027",
+            bank_name: "Santander",
+            metadata: { payer_name_normalized: "ENERGETIA LIMITADA", payer_token: "ENERGETIA_LIMITADA" },
+          },
+        ],
+      },
+      rpc
+    );
+    const result = await confirmCanonicalSuggestion(client as never, baseInput);
+    expect(result.ok).toBe(true);
+    const meta = (rpc.mock.calls[0]![1] as Record<string, unknown>).p_metadata as Record<string, unknown>;
+    expect(meta.payer).toMatchObject({
+      fingerprintStrength: "name",
+      normalizedName: "ENERGETIA LIMITADA",
+      clientCompanyId: "client-1",
+    });
+    expect(typeof (meta.payer as { accountHash: string }).accountHash).toBe("string");
+    expect((meta.payer as { accountHash: string }).accountHash).not.toContain("TR007");
   });
 
   it("rechaza si el movimiento enviado no coincide con el de la sugerencia (evidencia desalineada)", async () => {

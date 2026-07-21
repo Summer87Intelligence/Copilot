@@ -167,6 +167,16 @@ export function buildMovementInsertFromPreview(
   if (movement.source_file) {
     metadata.source_file = movement.source_file;
   }
+  // Señales estructuradas de pagador (aprendizaje en confirmación). Nunca se
+  // usa bank_reference / NRR / TT como identidad permanente.
+  if (movement.payer_name_raw) metadata.payer_name_raw = movement.payer_name_raw;
+  if (movement.payer_name_normalized) {
+    metadata.payer_name_normalized = movement.payer_name_normalized;
+  }
+  if (movement.payer_token) metadata.payer_token = movement.payer_token;
+  if (movement.operation_group_key) {
+    metadata.operation_group_key = movement.operation_group_key;
+  }
 
   return {
     movement_date: movement.date,

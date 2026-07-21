@@ -1,5 +1,16 @@
 # Project Context
 
+## BANK — Conciliación simple + memoria de pagadores (local, sin aplicar) — 2026-07-21
+
+**FASE BANK-SIMPLE-RECONCILIATION-AND-PAYER-MEMORY-001 (local, commit pendiente, sin push):** continúa tras corte de sesión. No reinicia; preserva cambios heredados.
+
+- **Navegación**: Importar · Movimientos · Conciliación · Historial. "Ingresos" renombrado a Conciliación; URLs `ingresos`/`reconciliation`/`conciliacion` normalizan preservando `movementId`.
+- **Movimientos**: entrada → "Revisar conciliación"; salida → "Vincular con pago programado"; sin toggle directo a `matched`. Historial sin KPIs operativos.
+- **Migración v4** `20260725120000_bank_reconciliation_confirm_rpc_v4_payer_learning.sql` **CREADA, NO APLICADA**: aprendizaje atómico en la misma RPC que confirma (firma v3); sin UNIQUE total en `client_payer_links` (respeta índice parcial); idempotencia no re-incrementa; conflicto → `conflicted`.
+- **Manual draft**: `POST /api/copilot/bank-reconciliation/manual-draft` + UI "Buscar cliente y recibo"; Motor B queda como ayuda visual colapsada.
+- **Cliente 360** (Cobranza): sección read-only "Pagos y cuentas utilizadas"; correcciones deshabilitadas (fase posterior).
+- **Helpers**: `lib/bank/canonical/payer-identity.ts` (+ repository read-only). Producción sin cambios DDL/DML.
+
 ## BANK — v3 aplicada en producción + import PDF Santander corregido (demo-ready) — 2026-07-21
 
 **FASE BANK-V3-APPLY-PDF-IMPORT-FIX-AND-DEMO-READY-001 (local, commit sin push):** urgencia de demo el mismo día. Dos entregables independientes en una sola fase.

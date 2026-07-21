@@ -65,13 +65,17 @@ type WorkspaceCounters = {
 
 const ZERO_COUNTERS: WorkspaceCounters = { pendientes: 0, conCoincidencia: 0, requiereRevision: 0, sinIdentificar: 0, conciliadosHoy: 0 };
 
+// FASE BANK-SIMPLE-RECONCILIATION-AND-PAYER-MEMORY-001, sección 4 — lenguaje
+// simple para el usuario final ("Rechazado", no "Sugerencia rechazada"; nunca
+// "Operativo" ni otro término técnico del motor). El estado interno de 7
+// valores (income-workspace.ts) no cambia — solo la etiqueta visible.
 const STATUS_BADGE: Record<IncomeRowStatus, string> = {
   sin_identificar: "Sin identificar",
-  cliente_sugerido: "Cliente sugerido",
-  con_coincidencia: "Con coincidencia",
+  cliente_sugerido: "Con sugerencia",
+  con_coincidencia: "Con sugerencia",
   requiere_revision: "Requiere revisión",
   conciliado: "Conciliado",
-  sugerencia_rechazada: "Sugerencia rechazada",
+  sugerencia_rechazada: "Rechazado",
   ignorado: "Ignorado",
 };
 
@@ -332,16 +336,55 @@ export function BankIncomeWorkspace({
     [mutating, refreshMovementRow, onChanged]
   );
 
+  /** Sin suggestion canónica: crea/reutiliza manual_draft y abre el mismo drawer. */
+  const handleManualDraft = useCallback(
+    async (movementId: string) => {
+      setMutating((m) => ({ ...m, [movementId]: true }));
+      try {
+        const res = await fetch("/api/copilot/bank-reconciliation/manual-draft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ movementId }),
+        });
+        const json = (await res.json()) as {
+          ok?: boolean;
+          data?: { suggestionId: string; reused: boolean };
+          message?: string;
+          error?: string;
+        };
+        if (!res.ok || !json.ok) {
+          setFeedback(json.message ?? json.error ?? "No se pudo abrir la conciliación manual.");
+          return;
+        }
+        await load();
+        setOpenMovementId(movementId);
+        setDrawerMovementId(movementId);
+        setFeedback(
+          json.data?.reused
+            ? "Se reabrió la conciliación pendiente de este movimiento."
+            : "Buscá el cliente y el recibo para completar la conciliación."
+        );
+      } finally {
+        setMutating((m) => {
+          const next = { ...m };
+          delete next[movementId];
+          return next;
+        });
+      }
+    },
+    [load]
+  );
+
   const drawerMovement = movements.find((m) => m.id === drawerMovementId) ?? null;
   const drawerEvidence = drawerMovementId ? rowView(drawerMovement ?? ({ id: drawerMovementId } as BankMovement)).evidence : null;
 
   return (
     <div className="space-y-4">
       <section className={copilotCardStandardClass}>
-        <h2 className={copilotSectionTitleClass}>Ingresos</h2>
+        <h2 className={copilotSectionTitleClass}>Conciliación</h2>
         <p className={`${copilotCaptionClass} mt-1`}>
-          Identificá y conciliá cada transferencia recibida en una sola pantalla: cliente, recibo, facturas y
-          confirmación. Esta bandeja usa únicamente el motor canónico de conciliación.
+          Conectá cada transferencia recibida con cliente, recibo y factura. Importar carga el banco;
+          Movimientos muestra todo; acá se resuelve la conciliación; Historial guarda las decisiones.
         </p>
       </section>
 
@@ -505,7 +548,11 @@ export function BankIncomeWorkspace({
                   onToggle={() => setOpenMovementId(openMovementId === movement.id ? null : movement.id)}
                   clients={clients}
                   clientName={clientName}
-                  mutating={view.evidence ? Boolean(mutating[view.evidence.suggestionId]) : false}
+                  mutating={
+                    view.evidence
+                      ? Boolean(mutating[view.evidence.suggestionId])
+                      : Boolean(mutating[movement.id])
+                  }
                   actionError={view.evidence ? actionErrors[view.evidence.suggestionId] ?? null : null}
                   isRejecting={view.evidence ? rejectingId === view.evidence.suggestionId : false}
                   onQuickConfirm={() => view.evidence && void handleConfirm(view.evidence, suggestedConfirmInput(view.evidence, []))}
@@ -513,6 +560,7 @@ export function BankIncomeWorkspace({
                   onStartReject={() => view.evidence && setRejectingId(view.evidence.suggestionId)}
                   onCancelReject={() => setRejectingId(null)}
                   onSubmitReject={(reason) => view.evidence && void handleReject(view.evidence, reason)}
+                  onStartManualDraft={() => void handleManualDraft(movement.id)}
                   onAssociated={() => {
                     onChanged?.();
                     void refreshMovementRow(movement.id);
@@ -554,6 +602,7 @@ function IncomeRow({
   onStartReject,
   onCancelReject,
   onSubmitReject,
+  onStartManualDraft,
   onAssociated,
 }: {
   movement: BankMovement;
@@ -570,6 +619,7 @@ function IncomeRow({
   onStartReject: () => void;
   onCancelReject: () => void;
   onSubmitReject: (reason: string) => void;
+  onStartManualDraft: () => void;
   onAssociated: () => void;
 }) {
   const [reason, setReason] = useState("");
@@ -623,7 +673,33 @@ function IncomeRow({
               Este movimiento está marcado como ignorado. Reactivalo desde Movimientos si corresponde revisarlo.
             </p>
           ) : (
-            <PreliminaryIdentification movement={movement} clients={clients} clientName={clientName} onAssociated={onAssociated} />
+            <div className="space-y-3">
+              <p className={copilotCaptionClass}>
+                Todavía no hay una sugerencia canónica. Buscá el cliente y el recibo para conciliar con el mismo
+                flujo de Conciliación.
+              </p>
+              <button
+                type="button"
+                disabled={mutating}
+                onClick={onStartManualDraft}
+                className={copilotButtonClassName({ variant: "primary", size: "sm" })}
+              >
+                {mutating ? "Preparando…" : "Buscar cliente y recibo"}
+              </button>
+              <details className="rounded-lg border border-dashed border-[var(--copilot-border)] p-2">
+                <summary className="cursor-pointer text-xs font-medium text-[var(--copilot-muted)]">
+                  Ayuda visual (identificación preliminar)
+                </summary>
+                <div className="mt-2">
+                  <PreliminaryIdentification
+                    movement={movement}
+                    clients={clients}
+                    clientName={clientName}
+                    onAssociated={onAssociated}
+                  />
+                </div>
+              </details>
+            </div>
           )}
         </div>
       ) : null}
@@ -866,7 +942,7 @@ function PreliminaryIdentification({
                   onClick={() => void associate({ client_id: c.clientId, billing_concept_id: c.conceptId, confidence: c.confidence, score: c.score, reasons: c.reasons })}
                   className={copilotButtonClassName({ variant: "primary", size: "sm" })}
                 >
-                  Identificar preliminarmente
+                  Revisar coincidencia
                 </button>
                 <a href={`/copilot/clientes/${c.clientId}`} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
                   Ver cliente <ExternalLink className="ml-1 h-3 w-3" aria-hidden />

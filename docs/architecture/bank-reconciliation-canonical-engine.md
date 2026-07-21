@@ -133,9 +133,19 @@ Respuestas verificadas contra `supabase/migrations/20260719120200_bank_reconcili
 
 **Para `bank_movements`**: no aplica ninguno de los Modelos A/B/C planteados para "suggestion" — es una entidad distinta. La corrección fue simplemente **retirar la comparación incoherente**, no elegir un modelo de estados nuevo para el movimiento (eso sería ampliar el contrato sin aprobación, explícitamente fuera de alcance).
 
-## Aprendizaje de pagador — gap real
+## Aprendizaje de pagador — implementado (local, no aplicado)
 
-El esquema (`bank_payer_identities` + `client_payer_links`) está completo y modela exactamente lo pedido (confirmaciones, primera/última observación, conflicto sin autoasociar). **No existe código que escriba a estas tablas al confirmar una conciliación** — ni en la RPC (que no las toca) ni en ningún handler. El bucle "confirmar → aprender" es trabajo nuevo, no solo recableo, y queda para Fase 3 (BANK-PAYER-LEARNING). No se asume atomicidad entre confirmación y aprendizaje hasta que se implemente explícitamente.
+**FASE BANK-SIMPLE-RECONCILIATION-AND-PAYER-MEMORY-001**: el bucle confirmar→aprender vive en la misma transacción que la confirmación financiera.
+
+1. Migración `20260725120000_bank_reconciliation_confirm_rpc_v4_payer_learning.sql` (**CREADA, NO APLICADA**): misma firma de 8 parámetros que v3; upsert de `bank_payer_identities` / `client_payer_links` cuando `p_metadata.payer.accountHash` está presente; cliente final desde `proto_receipts.company_id`; conflicto multi-cliente → `conflicted` sin autoselección; early-return idempotente no re-incrementa.
+2. Adapter `confirmCanonicalSuggestion` siempre envía `p_metadata` (v3 ya en producción) y deriva `payer` con helpers puros (`lib/bank/canonical/payer-identity.ts`) — nunca usa TT/LR/TR/LE como identidad permanente.
+3. Manual draft: `POST /api/copilot/bank-reconciliation/manual-draft` crea/reutiliza suggestion operational sin link/allocation.
+4. Cliente 360 (Cobranza): sección read-only "Pagos y cuentas utilizadas"; correcciones deshabilitadas (fase posterior append-only).
+5. Navegación final: Importar · Movimientos · Conciliación · Historial.
+
+## Aprendizaje de pagador — gap histórico (pre-fase)
+
+El esquema (`bank_payer_identities` + `client_payer_links`) estaba completo sin escritor. Ese gap se cierra con la v4 local anterior — **requiere autorización para aplicar**.
 
 ## Cambios de esta fase (BANK-CANONICAL-ROUTING)
 

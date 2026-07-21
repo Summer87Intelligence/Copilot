@@ -1,21 +1,11 @@
 /**
  * FASE BANK-CANONICAL-CONFIRM-UI-001 — capa server-side que confirma una
  * sugerencia operacional del motor canónico (D). ÚNICA escritura permitida:
- * `confirm_bank_reconciliation_v1` vía RPC. Nunca escribe
- * `bank_movement_reconciliation_links` / `payment_allocations` /
- * `bank_movements` directamente, nunca usa Motor C.
+ * `confirm_bank_reconciliation_v1` vía RPC.
  *
- * FASE BANK-MANUAL-CANONICAL-MATCH-SELECTION-001 — agrega `mode`:
- * - "suggested": confirma exactamente cliente/recibo propuestos por el motor
- *   (comportamiento idéntico a antes de esta fase; misma forma de llamada a
- *   la RPC, sin `p_metadata`, funciona contra la v2 ya en producción).
- * - "manual_reviewed": la persona seleccionó explícitamente un cliente y/o
- *   recibo distintos de los propuestos. La RPC en sí NUNCA exigió que el
- *   recibo coincidiera con `proposed_receipt_id` (auditado: esa restricción
- *   vivía únicamente acá, en el adapter) — lo nuevo es revalidar la
- *   selección manual de forma independiente (cliente real del workspace,
- *   recibo perteneciente a ESE cliente, motivo obligatorio) y registrarla
- *   vía `p_metadata` (requiere la migración v3, no aplicada todavía).
+ * FASE BANK-SIMPLE-RECONCILIATION-AND-PAYER-MEMORY-001 — siempre envía
+ * `p_metadata` (v3 ya en producción) con mode + selección y, cuando hay
+ * señal durable, `payer` para el aprendizaje atómico de la v4 (local, no aplicada).
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -31,6 +21,7 @@ import {
   extractCanonicalRpcErrorCode,
   isIdempotentSuccessStatus,
 } from "@/lib/bank/canonical/canonical-rpc-error-messages";
+import { buildPayerLearningPayload } from "@/lib/bank/canonical/payer-identity";
 
 export type ConfirmCanonicalSuggestionInvoiceAllocation = {
   invoiceId: string;
@@ -45,11 +36,9 @@ export type ConfirmCanonicalSuggestionInput = {
   suggestionId: string;
   expectedMovementId: string;
   mode: ConfirmCanonicalSuggestionMode;
-  /** Cliente elegido por la persona (o el propuesto, en modo "suggested"). Puede ser null si la sugerencia no proponía ninguno. */
   selectedClientId: string | null;
   selectedReceiptId: string | null;
   invoiceAllocations: ConfirmCanonicalSuggestionInvoiceAllocation[];
-  /** Obligatorio (3-500 chars) cuando mode='manual_reviewed'. */
   manualReason: string | null;
 };
 
@@ -69,6 +58,34 @@ export type ConfirmCanonicalSuggestionResult =
 
 function fail(code: string): ConfirmCanonicalSuggestionResult {
   return { ok: false, code, message: canonicalRpcErrorMessage(code) };
+}
+
+async function loadMovementForPayerLearning(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  movementId: string
+): Promise<{
+  description: string | null;
+  bankReference: string | null;
+  bankName: string | null;
+  metadata: Record<string, unknown> | null;
+} | null> {
+  const { data, error } = await supabase
+    .from("bank_movements")
+    .select("description, bank_reference, bank_name, metadata")
+    .eq("workspace_id", workspaceId)
+    .eq("id", movementId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    description: data.description != null ? String(data.description) : null,
+    bankReference: data.bank_reference != null ? String(data.bank_reference) : null,
+    bankName: data.bank_name != null ? String(data.bank_name) : null,
+    metadata:
+      data.metadata && typeof data.metadata === "object"
+        ? (data.metadata as Record<string, unknown>)
+        : null,
+  };
 }
 
 export async function confirmCanonicalSuggestion(
@@ -96,8 +113,6 @@ export async function confirmCanonicalSuggestion(
       return fail("RECEIPT_MISMATCH");
     }
     receiptId = input.selectedReceiptId ?? suggestion.proposedReceiptId ?? null;
-    // Recibo obligatorio (mismo motivo que en manual_reviewed, ver más abajo): evita
-    // ejercitar el bug latente de la RPC con p_receipt_id=NULL en conexiones frías.
     if (receiptId == null) {
       return fail("RECEIPT_NOT_FOUND");
     }
@@ -113,14 +128,6 @@ export async function confirmCanonicalSuggestion(
     const client = await getShadowClientById(supabase, input.workspaceId, input.selectedClientId);
     if (!client) return fail("CLIENT_NOT_FOUND");
 
-    // Recibo obligatorio en selección manual (defensa en profundidad — el mismo guard
-    // ya existe en la UI, pero nunca se confía solo en eso): sin un p_receipt_id
-    // explícito, confirm_bank_reconciliation_v1 tiene un bug latente heredado de v2
-    // (PL/pgSQL "record v_receipt is not assigned yet" en conexiones "frías" que
-    // nunca ejecutaron antes una llamada con recibo) — descubierto en QA de
-    // BANK-V3-APPLY-PDF-IMPORT-FIX-AND-DEMO-READY-001, documentado como gap de la
-    // RPC (no corregido esta fase: requiere tocar la función ya aplicada/verificada,
-    // fuera de alcance). Exigir recibo acá evita ejercitar ese camino desde la app.
     if (input.selectedReceiptId == null) {
       return fail("RECEIPT_NOT_FOUND");
     }
@@ -135,10 +142,6 @@ export async function confirmCanonicalSuggestion(
     if (!receiptId || !candidateClientId) {
       return fail("INVOICE_NOT_IN_EVIDENCE");
     }
-    // Misma fuente de verdad que la evidencia mostrada en el drawer (candidateInvoices):
-    // recalculamos las facturas candidatas del cliente/moneda seleccionados (no
-    // necesariamente el propuesto por la sugerencia, en modo manual_reviewed) y
-    // validamos que cada factura seleccionada por el usuario pertenezca a ese conjunto.
     const receiptRes = await supabase
       .from("proto_receipts")
       .select("currency_code")
@@ -161,28 +164,48 @@ export async function confirmCanonicalSuggestion(
     }
   }
 
+  const movement = await loadMovementForPayerLearning(
+    supabase,
+    input.workspaceId,
+    input.expectedMovementId
+  );
+  const payer = movement
+    ? buildPayerLearningPayload({
+        description: movement.description,
+        bankReference: movement.bankReference,
+        bankName: movement.bankName,
+        metadata: movement.metadata,
+        clientCompanyId: candidateClientId,
+      })
+    : null;
+
+  const metadata: Record<string, unknown> = {
+    mode: input.mode,
+    selectedClientId: candidateClientId,
+    selectedReceiptId: receiptId,
+    proposedClientId: suggestion.proposedClientId,
+    proposedReceiptId: suggestion.proposedReceiptId,
+  };
+  if (input.mode === "manual_reviewed") {
+    metadata.reason = input.manualReason;
+  }
+  if (payer) {
+    metadata.payer = payer;
+  }
+
   const rpcArgs: Record<string, unknown> = {
     p_workspace_id: input.workspaceId,
     p_movement_id: input.expectedMovementId,
     p_receipt_id: receiptId,
     p_suggestion_id: input.suggestionId,
-    p_allocations: input.invoiceAllocations.length > 0 ? input.invoiceAllocations.map((a) => ({ invoice_id: a.invoiceId, amount: a.amount })) : null,
+    p_allocations:
+      input.invoiceAllocations.length > 0
+        ? input.invoiceAllocations.map((a) => ({ invoice_id: a.invoiceId, amount: a.amount }))
+        : null,
     p_applied_amount: null,
     p_created_by: input.actorUserId,
+    p_metadata: metadata,
   };
-  // Solo se agrega p_metadata en modo manual_reviewed — el modo "suggested" mantiene
-  // la MISMA forma de llamada que antes de esta fase (funciona contra la v2 ya en
-  // producción). manual_reviewed requiere la migración v3 (no aplicada) aplicada.
-  if (input.mode === "manual_reviewed") {
-    rpcArgs.p_metadata = {
-      mode: "manual_reviewed",
-      selectedClientId: candidateClientId,
-      selectedReceiptId: receiptId,
-      proposedClientId: suggestion.proposedClientId,
-      proposedReceiptId: suggestion.proposedReceiptId,
-      reason: input.manualReason,
-    };
-  }
 
   const { data, error } = await supabase.rpc("confirm_bank_reconciliation_v1", rpcArgs);
 
