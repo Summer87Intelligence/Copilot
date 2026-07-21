@@ -58,6 +58,7 @@ type IdentificationRow = {
   status: string;
   reason: string | null;
   confirmedAt: string | null;
+  actorEmail: string | null;
 };
 
 const IDENTIFICATION_STATUS_LABEL: Record<string, string> = {
@@ -194,6 +195,7 @@ export function ClientPayerMemorySection({ companyId }: { companyId: string }) {
                   · {IDENTIFICATION_STATUS_LABEL[row.status] ?? row.status}
                 </span>
                 {row.reason ? <span className="text-[var(--copilot-muted)]"> · {row.reason}</span> : null}
+                {row.actorEmail ? <span className="text-[var(--copilot-muted)]"> · {row.actorEmail}</span> : null}
               </li>
             ))}
           </ul>

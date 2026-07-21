@@ -22,6 +22,7 @@ import type { BankStatementImport } from "@/lib/bank-movements/bank-movements-ty
 export function BankHistoryPanel({ imports, loading }: { imports: BankStatementImport[]; loading: boolean }) {
   return (
     <div className="space-y-4">
+      <RecentIdentifications />
       <RecentDecisions />
 
       <section className={copilotCardStandardClass}>
@@ -55,6 +56,92 @@ export function BankHistoryPanel({ imports, loading }: { imports: BankStatementI
         )}
       </section>
     </div>
+  );
+}
+
+type IdentificationEvent = {
+  id: string;
+  eventLabel: string;
+  status: string;
+  clientName: string;
+  date: string | null;
+  amountLabel: string | null;
+  referenceMasked: string | null;
+  actor: string | null;
+  reason: string | null;
+  eventAt: string | null;
+};
+
+const IDENTIFICATION_EVENT_STYLE: Record<string, string> = {
+  identified: "border-[var(--copilot-border)] text-[var(--copilot-text)]",
+  shared_account: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",
+  third_party: "border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] text-[var(--copilot-warning-text-strong)]",
+  revoked: "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]",
+};
+
+/**
+ * Eventos de identificación de cliente (sección 13 de la fase) — SEPARADOS
+ * visualmente de las conciliaciones financieras reales. Nunca dice
+ * "conciliado" para una mera identificación.
+ */
+function RecentIdentifications() {
+  const [events, setEvents] = useState<IdentificationEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/copilot/bank-reconciliation/client-identifications/recent?limit=20")
+      .then((r) => r.json())
+      .then((json: { ok?: boolean; data?: IdentificationEvent[] }) => {
+        if (!cancelled && json.ok) setEvents(json.data ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setEvents([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!loading && events.length === 0) return null;
+
+  return (
+    <section className={copilotCardStandardClass}>
+      <h2 className={copilotSectionTitleClass}>Identificaciones de cliente recientes</h2>
+      <p className={`${copilotCaptionClass} mt-1`}>
+        Cliente identificado para un movimiento — nunca implica que exista un recibo o que la factura esté pagada.
+      </p>
+
+      {loading ? (
+        <p className={`${copilotCaptionClass} mt-3`}>Cargando identificaciones recientes…</p>
+      ) : (
+        <ul className="mt-3 space-y-2">
+          {events.map((ev) => (
+            <li
+              key={ev.id}
+              className={`rounded-xl border px-3 py-2 ${IDENTIFICATION_EVENT_STYLE[ev.status] ?? "border-[var(--copilot-border)]"}`}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-medium text-[var(--copilot-text)]">
+                  {ev.clientName} {ev.amountLabel ? `· ${ev.amountLabel}` : ""}
+                </p>
+                <span className="inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                  {ev.eventLabel}
+                </span>
+              </div>
+              <p className={copilotCaptionClass}>
+                {formatDate(ev.date)}
+                {ev.referenceMasked ? ` · ${ev.referenceMasked}` : ""}
+                {ev.reason ? ` · ${ev.reason}` : ""}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

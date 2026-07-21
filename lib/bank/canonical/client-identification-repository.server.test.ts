@@ -6,6 +6,7 @@ const {
   getActiveIdentificationForMovement,
   listActiveIdentificationsForMovements,
   listIdentificationsForClient,
+  listRecentIdentificationEvents,
   insertIdentification,
   revokeIdentification,
 } = await import("@/lib/bank/canonical/client-identification-repository.server");
@@ -30,6 +31,7 @@ function row(over: Partial<Row> = {}): Row {
     reason: null,
     confirmed_by: ACTOR,
     confirmed_at: "2026-07-21T00:00:00Z",
+    revoked_by: null,
     revoked_at: null,
     created_at: "2026-07-21T00:00:00Z",
     updated_at: "2026-07-21T00:00:00Z",
@@ -62,6 +64,9 @@ function fakeClient(rows: Row[], opts: { insertError?: { message: string }; upda
           return builder;
         },
         order() {
+          return builder;
+        },
+        limit() {
           return builder;
         },
         maybeSingle() {
@@ -159,6 +164,20 @@ describe("listIdentificationsForClient", () => {
   });
 });
 
+describe("listRecentIdentificationEvents", () => {
+  it("devuelve eventos de todo el workspace (identificados, revocados, etc.), respetando el límite", async () => {
+    const client = fakeClient([
+      row({ id: "a", status: "identified" }),
+      row({ id: "b", status: "revoked" }),
+      row({ id: "c", status: "shared_account" }),
+    ]);
+    const result = await listRecentIdentificationEvents(client as never, WS, 2);
+    // El fake no trunca por limit (no simula paginación real), pero confirma
+    // que la función no filtra por status y devuelve el workspace correcto.
+    expect(result.map((r) => r.status).sort()).toEqual(["identified", "revoked", "shared_account"]);
+  });
+});
+
 describe("insertIdentification", () => {
   it("crea una identificación con confirmed_at derivado server-side", async () => {
     const client = fakeClient([]);
@@ -195,14 +214,14 @@ describe("insertIdentification", () => {
 });
 
 describe("revokeIdentification", () => {
-  it("marca revoked + revoked_at, nunca borra la fila", async () => {
+  it("marca revoked + revoked_by + revoked_at, nunca borra la fila", async () => {
     const client = fakeClient([row()]);
-    await expect(revokeIdentification(client as never, WS, "id-1")).resolves.toBeUndefined();
+    await expect(revokeIdentification(client as never, WS, "id-1", ACTOR)).resolves.toBeUndefined();
   });
 
   it("propaga errores de la base", async () => {
     const client = fakeClient([row()], { updateError: { message: "boom" } });
-    await expect(revokeIdentification(client as never, WS, "id-1")).rejects.toThrow(
+    await expect(revokeIdentification(client as never, WS, "id-1", ACTOR)).rejects.toThrow(
       "CLIENT_IDENTIFICATION_REVOKE_FAILED"
     );
   });

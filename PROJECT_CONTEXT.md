@@ -1,5 +1,15 @@
 # Project Context
 
+## BANK — Identificación de cliente: migración APLICADA + UI de revisión en lote — 2026-07-21
+
+**FASE BANK-CLIENT-IDENTIFICATION-SCHEMA-APPLY-AND-BATCH-UI-001 (commit local, sin push):** `bank_movement_client_identifications` pasó de "creada" a **aplicada en producción** (versión `20260721223939`), con corrección de esquema previa (`revoked_by` faltaba) y QA transaccional real rollback-tested (individual, lote+exclusión, idempotencia vía constraint, reasignación con motivo obligatorio, cuenta compartida, pago de tercero) — cero cambios netos confirmados en 7 tablas. Se encontraron y corrigieron 2 gaps reales del servicio antes del QA: no bloqueaba egresos ni evitaba identificaciones redundantes sobre movimientos ya conciliados.
+
+- **UI completa**: Banco → Conciliación ahora con dos sub-vistas (`Identificar clientes` por defecto, `Vincular recibos` = flujo existente) — sin tabs principales nuevos. Lista de clusters paginada/buscada/filtrada server-side; drawer de revisión en lote con detalle lazy, selección/exclusión, elección de cliente (búsqueda server-side), modalidad y resumen previo explícito.
+- **Historial**: identificaciones recientes separadas visualmente de conciliaciones financieras reales.
+- **Cliente 360**: agregado actor (email) a las identificaciones sin recibo.
+- **Gates**: tsc 0 errores, ESLint sin errores nuevos (313 preexistentes ajenos), vitest verde (5089 tests, incluye 1 fix a un test preexistente que asumía la estructura vieja de Conciliación), build OK.
+- Sin push. Producción: solo el DDL de la migración (0 filas, 0 cambios de datos).
+
 ## BANK — Identificación de cliente sin recibo (auditoría real + arquitectura + código local) — 2026-07-21
 
 **FASE BANK-HISTORICAL-PAYER-IDENTIFICATION-001 (commit local, sin push):** decisión funcional — identificar el cliente de un ingreso bancario y conciliarlo financieramente con Zeta son dos hechos distintos; la ausencia de recibo NUNCA bloquea identificar/aprender, pero el sistema nunca afirma "conciliado"/"factura pagada" sin un link financiero real.

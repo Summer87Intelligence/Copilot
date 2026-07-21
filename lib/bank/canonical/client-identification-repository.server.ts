@@ -25,6 +25,7 @@ export type ClientIdentificationRow = {
   reason: string | null;
   confirmedBy: string | null;
   confirmedAt: string | null;
+  revokedBy: string | null;
   revokedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -40,6 +41,7 @@ type RawRow = {
   reason: string | null;
   confirmed_by: string | null;
   confirmed_at: string | null;
+  revoked_by: string | null;
   revoked_at: string | null;
   created_at: string;
   updated_at: string;
@@ -56,6 +58,7 @@ function mapRow(row: RawRow): ClientIdentificationRow {
     reason: row.reason,
     confirmedBy: row.confirmed_by,
     confirmedAt: row.confirmed_at,
+    revokedBy: row.revoked_by,
     revokedAt: row.revoked_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -69,7 +72,7 @@ function requireWorkspace(workspaceId: string): string {
 }
 
 const SELECT_COLUMNS =
-  "id, movement_id, client_company_id, payer_identity_id, status, identification_mode, reason, confirmed_by, confirmed_at, revoked_at, created_at, updated_at";
+  "id, movement_id, client_company_id, payer_identity_id, status, identification_mode, reason, confirmed_by, confirmed_at, revoked_by, revoked_at, created_at, updated_at";
 
 /** Identificación ACTIVA de un movimiento puntual (status no excluded/revoked), si existe. */
 export async function getActiveIdentificationForMovement(
@@ -124,6 +127,23 @@ export async function listIdentificationsForClient(
   return (data ?? []).map((r) => mapRow(r as RawRow));
 }
 
+/** Eventos de identificación terminados más recientes de todo el workspace — para Historial. */
+export async function listRecentIdentificationEvents(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  limit: number
+): Promise<ClientIdentificationRow[]> {
+  const ws = requireWorkspace(workspaceId);
+  const { data, error } = await supabase
+    .from("bank_movement_client_identifications")
+    .select(SELECT_COLUMNS)
+    .eq("workspace_id", ws)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`CLIENT_IDENTIFICATION_READ_FAILED: ${error.message}`);
+  return (data ?? []).map((r) => mapRow(r as RawRow));
+}
+
 export type InsertIdentificationInput = {
   workspaceId: string;
   movementId: string;
@@ -172,12 +192,13 @@ export async function insertIdentification(
 export async function revokeIdentification(
   supabase: SupabaseClient,
   workspaceId: string,
-  identificationId: string
+  identificationId: string,
+  actorUserId: string
 ): Promise<void> {
   const ws = requireWorkspace(workspaceId);
   const { error } = await supabase
     .from("bank_movement_client_identifications")
-    .update({ status: "revoked", revoked_at: new Date().toISOString() })
+    .update({ status: "revoked", revoked_by: actorUserId, revoked_at: new Date().toISOString() })
     .eq("workspace_id", ws)
     .eq("id", identificationId);
   if (error) throw new Error(`CLIENT_IDENTIFICATION_REVOKE_FAILED: ${error.message}`);

@@ -76,13 +76,19 @@ describe("Movimientos: sin writer directo a matched", () => {
 });
 
 describe("Conciliación consume ÚNICAMENTE el motor canónico (D)", () => {
-  it("el tab 'conciliacion' monta BankIncomeWorkspace", () => {
-    expect(pageClient).toMatch(/tab === "conciliacion" \? \(\s*<BankIncomeWorkspace/);
+  it("el tab 'conciliacion' monta dos sub-vistas: Identificar clientes / Vincular recibos, sin tabs principales nuevos", () => {
+    expect(pageClient).toMatch(/tab === "conciliacion" \? \(/);
+    expect(pageClient).toContain("Identificar clientes");
+    expect(pageClient).toContain("Vincular recibos");
+    expect(pageClient).toContain("BankClientIdentificationWorkspace");
+    // BankIncomeWorkspace sigue montado bajo Conciliación, ahora dentro de la sub-vista "Vincular recibos"
+    // (rama "else" del condicional identificar/vincular).
+    expect(pageClient).toMatch(/conciliacionSubView === "identificar" \? \([\s\S]{0,400}?\) : \(\s*<BankIncomeWorkspace/);
   });
 
   it("BankMovementsReconciliationPanel (Motor A) no se monta bajo Conciliación", () => {
     const block = pageClient.split('tab === "conciliacion"')[1] ?? "";
-    expect(block.slice(0, 200)).not.toContain("BankMovementsReconciliationPanel");
+    expect(block.slice(0, 2000)).not.toContain("BankMovementsReconciliationPanel");
   });
 
   it("escrituras financieras solo vía confirm/reject canónicos", () => {

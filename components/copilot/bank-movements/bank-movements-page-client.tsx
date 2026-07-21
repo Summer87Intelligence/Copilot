@@ -8,6 +8,7 @@ import { BankMovementsFiltersBar } from "@/components/copilot/bank-movements/ban
 import { BankMovementsImportPanel } from "@/components/copilot/bank-movements/bank-movements-import-panel";
 import { BankMovementsReconciliationPanel } from "@/components/copilot/bank-movements/bank-movements-reconciliation-panel";
 import { BankIncomeWorkspace } from "@/components/copilot/bank-movements/bank-income-workspace";
+import { BankClientIdentificationWorkspace } from "@/components/copilot/bank-movements/bank-client-identification-workspace";
 import { BankHistoryPanel } from "@/components/copilot/bank-movements/bank-history-panel";
 
 import {
@@ -119,6 +120,7 @@ function formFromMovement(m: BankMovement): FormState {
 export function BankMovementsPageClient() {
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<BankTab>("movimientos");
+  const [conciliacionSubView, setConciliacionSubView] = useState<"identificar" | "vincular">("identificar");
   const deepLinkApplied = useRef(false);
 
   // Deep link desde el cuaderno de trabajo / URLs antiguas de las pestañas
@@ -639,11 +641,45 @@ export function BankMovementsPageClient() {
       ) : null}
 
       {tab === "conciliacion" ? (
-        <BankIncomeWorkspace
-          onChanged={load}
-          initialMovementId={focusMovementId}
-          onInitialMovementConsumed={() => setFocusMovementId(null)}
-        />
+        <div className="space-y-3">
+          <nav
+            className="flex gap-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-1"
+            aria-label="Sub-secciones de Conciliación"
+          >
+            <button
+              type="button"
+              onClick={() => setConciliacionSubView("identificar")}
+              aria-pressed={conciliacionSubView === "identificar"}
+              className={copilotButtonClassName({
+                variant: conciliacionSubView === "identificar" ? "primary" : "ghost",
+                size: "sm",
+              })}
+            >
+              Identificar clientes
+            </button>
+            <button
+              type="button"
+              onClick={() => setConciliacionSubView("vincular")}
+              aria-pressed={conciliacionSubView === "vincular"}
+              className={copilotButtonClassName({
+                variant: conciliacionSubView === "vincular" ? "primary" : "ghost",
+                size: "sm",
+              })}
+            >
+              Vincular recibos
+            </button>
+          </nav>
+
+          {conciliacionSubView === "identificar" ? (
+            <BankClientIdentificationWorkspace onChanged={load} />
+          ) : (
+            <BankIncomeWorkspace
+              onChanged={load}
+              initialMovementId={focusMovementId}
+              onInitialMovementConsumed={() => setFocusMovementId(null)}
+            />
+          )}
+        </div>
       ) : null}
 
       {tab === "historial" ? <BankHistoryPanel imports={imports} loading={loading} /> : null}

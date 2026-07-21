@@ -101,12 +101,15 @@ export async function GET(
       status: string;
       reason: string | null;
       confirmedAt: string | null;
+      actorEmail: string | null;
     }> = [];
     try {
       const idents = await listIdentificationsForClient(auth.ctx.supabase, auth.ctx.tenantCompanyId, companyId);
       const active = idents.filter((i) => i.status !== "revoked" && i.status !== "excluded");
       const movementIds = active.map((i) => i.movementId);
+      const actorIds = Array.from(new Set(active.map((i) => i.confirmedBy).filter((v): v is string => v != null)));
       const movementsById = new Map<string, { movement_date: string; amount: string | number; currency: string }>();
+      const actorsById = new Map<string, string>();
       if (movementIds.length > 0) {
         const { data: movRows } = await auth.ctx.supabase
           .from("bank_movements")
@@ -114,6 +117,12 @@ export async function GET(
           .in("id", movementIds);
         for (const m of movRows ?? []) {
           movementsById.set(m.id as string, m as { movement_date: string; amount: string | number; currency: string });
+        }
+      }
+      if (actorIds.length > 0) {
+        const { data: actorRows } = await auth.ctx.supabase.from("app_users").select("id, email").in("id", actorIds);
+        for (const a of actorRows ?? []) {
+          actorsById.set(a.id as string, (a.email as string | null) ?? "—");
         }
       }
       identificationsOnly = active.map((i) => {
@@ -126,6 +135,7 @@ export async function GET(
           status: i.status,
           reason: i.reason,
           confirmedAt: i.confirmedAt,
+          actorEmail: i.confirmedBy ? (actorsById.get(i.confirmedBy) ?? null) : null,
         };
       });
     } catch {

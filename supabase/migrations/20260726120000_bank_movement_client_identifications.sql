@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS public.bank_movement_client_identifications (
   reason                TEXT          NULL,
   confirmed_by          UUID          NULL REFERENCES public.app_users(id) ON DELETE SET NULL,
   confirmed_at          TIMESTAMPTZ   NULL,
+  revoked_by            UUID          NULL REFERENCES public.app_users(id) ON DELETE SET NULL,
   revoked_at            TIMESTAMPTZ   NULL,
   metadata              JSONB         NOT NULL DEFAULT '{}'::jsonb,
   created_at            TIMESTAMPTZ   NOT NULL DEFAULT now(),

@@ -60,4 +60,17 @@ describe("bank_movement_client_identifications — schema contract", () => {
     expect(sql).toMatch(/REFERENCES public\.proto_companies\(id\)/);
     expect(sql).toMatch(/payer_identity_id\s+UUID\s+NULL REFERENCES public\.bank_payer_identities\(id\)/);
   });
+
+  it("audita quién confirma Y quién revoca (confirmed_by y revoked_by)", () => {
+    expect(sql).toMatch(/confirmed_by\s+UUID\s+NULL REFERENCES public\.app_users\(id\)/);
+    expect(sql).toMatch(/revoked_by\s+UUID\s+NULL REFERENCES public\.app_users\(id\)/);
+    expect(sql).toMatch(/confirmed_at\s+TIMESTAMPTZ/);
+    expect(sql).toMatch(/revoked_at\s+TIMESTAMPTZ/);
+  });
+
+  it("no crea backfill, borrado masivo, ni SECURITY DEFINER", () => {
+    expect(sql).not.toMatch(/UPDATE public\.bank_movement_client_identifications\s+SET/i);
+    expect(sql).not.toMatch(/DELETE FROM public\.bank_movement_client_identifications/i);
+    expect(sql).not.toMatch(/SECURITY DEFINER/i);
+  });
 });

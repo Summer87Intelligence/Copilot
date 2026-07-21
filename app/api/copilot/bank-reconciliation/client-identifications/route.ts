@@ -51,6 +51,8 @@ export async function POST(request: NextRequest) {
         createdCount: result.created.length,
         alreadyIdentifiedSameClient: result.alreadyIdentifiedSameClient,
         conflicts: result.conflicts,
+        blockedNonInflow: result.blockedNonInflow,
+        alreadyReconciled: result.alreadyReconciled,
       },
     });
   } catch (err) {
