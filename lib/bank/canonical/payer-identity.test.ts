@@ -139,4 +139,28 @@ describe("isOperationReference / extractPayerNameFromDescription / buildPayerLea
       buildPayerLearningPayload({ description: "SUELDOS", bankReference: "TR999", metadata: {} })
     ).toBeNull();
   });
+
+  it("reconoce el patrón 'CREDITO OPERACION EN BANCA DIGITAL T<código>/<NOMBRE>' (Santander)", () => {
+    expect(
+      extractPayerNameFromDescription("CREDITO OPERACION EN BANCA DIGITAL TBOTICA/BOTICA DEL SEÑOR SRL")
+    ).toBe("BOTICA DEL SEÑOR SRL");
+    expect(
+      extractPayerNameFromDescription("CREDITO OPERACION EN BANCA DIGITAL /EL PAIS SOCIEDAD ANO NIMA")
+    ).toBe("EL PAIS SOCIEDAD ANO NIMA");
+    expect(
+      extractPayerNameFromDescription("CREDITO OPERACION EN BANCA DIGITAL TFACT 2968/DOLBY SOCIEDAD ANONIMA")
+    ).toBe("DOLBY SOCIEDAD ANONIMA");
+    expect(
+      extractPayerNameFromDescription("CREDITO OPERACION EN BANCA DIGITAL T--/CAITAN GALLO FLORENCIA")
+    ).toBe("CAITAN GALLO FLORENCIA");
+
+    const payload = buildPayerLearningPayload({
+      description: "CREDITO OPERACION EN BANCA DIGITAL TSAMYSOL/SAMYSOL SOCIEDAD ANONIMA",
+      bankReference: "121476",
+      bankName: "Santander",
+    });
+    expect(payload).not.toBeNull();
+    expect(payload!.normalizedName).toBe("SAMYSOL SOCIEDAD ANONIMA");
+    expect(payload!.fingerprintStrength).toBe("name");
+  });
 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireCopilotModuleAccessAny } from "@/lib/auth/copilot-module-api-auth";
+import { listIdentificationsForClient } from "@/lib/bank/canonical/client-identification-repository.server";
 import {
   countOtherClientsForPayerIdentity,
   listClientPayerHistory,
@@ -88,7 +89,50 @@ export async function GET(
         };
       });
 
-    return NextResponse.json({ ok: true as const, identities, history });
+    // Identificaciones sin recibo (sección 10 — "Falta recibo en Zeta"). Solo
+    // lectura, tolerante a que la migración local todavía no esté aplicada en
+    // producción: si la tabla no existe, esta sección queda vacía sin romper
+    // el resto de Cliente 360.
+    let identificationsOnly: Array<{
+      id: string;
+      movementId: string;
+      date: string | null;
+      amountLabel: string | null;
+      status: string;
+      reason: string | null;
+      confirmedAt: string | null;
+    }> = [];
+    try {
+      const idents = await listIdentificationsForClient(auth.ctx.supabase, auth.ctx.tenantCompanyId, companyId);
+      const active = idents.filter((i) => i.status !== "revoked" && i.status !== "excluded");
+      const movementIds = active.map((i) => i.movementId);
+      const movementsById = new Map<string, { movement_date: string; amount: string | number; currency: string }>();
+      if (movementIds.length > 0) {
+        const { data: movRows } = await auth.ctx.supabase
+          .from("bank_movements")
+          .select("id, movement_date, amount, currency")
+          .in("id", movementIds);
+        for (const m of movRows ?? []) {
+          movementsById.set(m.id as string, m as { movement_date: string; amount: string | number; currency: string });
+        }
+      }
+      identificationsOnly = active.map((i) => {
+        const mv = movementsById.get(i.movementId);
+        return {
+          id: i.id,
+          movementId: i.movementId,
+          date: mv?.movement_date ?? null,
+          amountLabel: mv ? `${mv.currency} ${Number(mv.amount).toLocaleString("es-UY")}` : null,
+          status: i.status,
+          reason: i.reason,
+          confirmedAt: i.confirmedAt,
+        };
+      });
+    } catch {
+      identificationsOnly = [];
+    }
+
+    return NextResponse.json({ ok: true as const, identities, history, identificationsOnly });
   } catch (err) {
     return NextResponse.json(
       {

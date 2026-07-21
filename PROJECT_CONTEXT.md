@@ -1,5 +1,16 @@
 # Project Context
 
+## BANK — Identificación de cliente sin recibo (auditoría real + arquitectura + código local) — 2026-07-21
+
+**FASE BANK-HISTORICAL-PAYER-IDENTIFICATION-001 (commit local, sin push):** decisión funcional — identificar el cliente de un ingreso bancario y conciliarlo financieramente con Zeta son dos hechos distintos; la ausencia de recibo NUNCA bloquea identificar/aprender, pero el sistema nunca afirma "conciliado"/"factura pagada" sin un link financiero real.
+
+- **Auditoría real read-only** (`scripts/audit-bank-payer-identification-2026.ts`, 2026-01-01..2026-07-20, 479 ingresos activos): 84 identidades de pagador agrupadas por nombre normalizado (nunca por referencia TT/LR/TR/LE/NRR ni importe/fecha) — 24 evidencia fuerte, 15 probable, 1 ambigua (artefacto de duplicado PDF, no negocio real), 44 sin candidato.
+- **Extracción de nombre extendida**: nuevo patrón "CREDITO OPERACION EN BANCA DIGITAL T.../<NOMBRE>" en `extractPayerNameFromDescription` — sin él, Botica del Señor SRL, Samysol SA, Dolby S.A., Dalama S.A.S. y Hogar de Ancianos nunca generaban identidad de pagador.
+- **Matching de nombre robustecido**: `matchClusterToClients` ahora resuelve puntuación distinta (S.A. vs S A), ruido de dirección pegado (sin segunda barra) y sufijos legales equivalentes (SOCIEDAD ANONIMA↔SA, etc.) — subió evidencia fuerte+probable de 21 a 39 sobre los mismos 84 clusters, con las mismas señales reales.
+- **Modelo de 5 niveles** (`deriveIdentificationLevel`): unidentified → client_identified → missing_receipt / reconciled_with_receipt → full_reconciliation. Nunca se saltea un nivel.
+- **Tabla nueva** `bank_movement_client_identifications` (migración `20260726120000`, **creada, NO aplicada**): deliberadamente separada de `bank_movement_reconciliation_links` (esa exige recibo real; no se le fuerza NULL/ficticio). Repositorio + servicio de confirmación en lote (idempotente, conflictos sin autoselección, reasignación explícita auditada) + endpoints (`GET .../payer-clusters` solo lectura, `POST .../client-identifications` confirmación en lote) + Cliente 360 muestra identificaciones sin recibo aparte de las conciliaciones reales.
+- **Gates**: tsc 0 errores, ESLint sin errores nuevos, vitest verde (73 tests nuevos: clustering/matching/estados + repositorio + servicio + contrato de esquema), build OK. Sin push, sin migración aplicada, sin confirmaciones reales, sin backfill.
+
 ## BANK — Migración v4 (payer learning) APLICADA en producción; QA controlada — 2026-07-21
 
 **FASE BANK-PAYER-MEMORY-V4-APPLY-AND-CONTROLLED-QA-001 (continuación de la fase de abajo, sesión interrumpida por límite de uso; retomada y auditada):** handoff audit completo del working tree (limpio de código sin commitear — todo lo de Cursor ya estaba en el commit `b98566b`; solo quedaba ruido QA no relacionado: `.playwright-mcp/*`, `review-*.png`, `qa-*.png`, `skills-lock.json`, 2 archivos borrados y 3 capturas `qa-out/*` modificadas, ninguno tocado).

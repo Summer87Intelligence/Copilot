@@ -50,6 +50,22 @@ type ApiRow = {
   linkedToOtherClients: boolean;
 };
 
+type IdentificationRow = {
+  id: string;
+  movementId: string;
+  date: string | null;
+  amountLabel: string | null;
+  status: string;
+  reason: string | null;
+  confirmedAt: string | null;
+};
+
+const IDENTIFICATION_STATUS_LABEL: Record<string, string> = {
+  identified: "Cliente identificado",
+  shared_account: "Cuenta compartida",
+  third_party: "Pago de tercero",
+};
+
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
   try {
@@ -71,6 +87,7 @@ function formatDate(iso: string | null): string {
 export function ClientPayerMemorySection({ companyId }: { companyId: string }) {
   const [cards, setCards] = useState<PayerCard[]>([]);
   const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [identificationsOnly, setIdentificationsOnly] = useState<IdentificationRow[]>([]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,12 +99,14 @@ export function ClientPayerMemorySection({ companyId }: { companyId: string }) {
         ok?: boolean;
         identities?: ApiRow[];
         history?: HistoryRow[];
+        identificationsOnly?: IdentificationRow[];
         error?: string;
       };
       if (!res.ok || !json.ok) {
         setError(json.error ?? "No se pudo cargar la memoria de pagos.");
         setCards([]);
         setHistory([]);
+        setIdentificationsOnly([]);
         return;
       }
       const identities = json.identities ?? [];
@@ -110,6 +129,7 @@ export function ClientPayerMemorySection({ companyId }: { companyId: string }) {
         }))
       );
       setHistory(json.history ?? []);
+      setIdentificationsOnly(json.identificationsOnly ?? []);
     } catch {
       setError("No se pudo cargar la memoria de pagos.");
     } finally {
@@ -131,7 +151,7 @@ export function ClientPayerMemorySection({ companyId }: { companyId: string }) {
     );
   }
 
-  if (cards.length === 0) {
+  if (cards.length === 0 && identificationsOnly.length === 0) {
     return (
       <div className="px-5 py-4">
         <h3 className="text-sm font-semibold text-[var(--copilot-text)]">Pagos y cuentas utilizadas</h3>
@@ -152,6 +172,35 @@ export function ClientPayerMemorySection({ companyId }: { companyId: string }) {
         </p>
       </div>
 
+      {identificationsOnly.length > 0 ? (
+        <div>
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-muted)]">
+            Movimientos identificados sin conciliación financiera
+          </h4>
+          <p className={`${copilotCaptionClass} mt-1`}>
+            El cliente fue identificado para estos movimientos, pero todavía no hay un recibo/factura
+            vinculado en Zeta — nunca se afirma &ldquo;conciliado&rdquo; ni &ldquo;factura pagada&rdquo; acá.
+          </p>
+          <ul className="mt-2 space-y-2">
+            {identificationsOnly.map((row) => (
+              <li
+                key={row.id}
+                className="rounded-lg border border-[var(--copilot-border)] px-3 py-2 text-xs text-[var(--copilot-text)]"
+              >
+                <span className="font-medium">{formatDate(row.date)}</span>
+                {row.amountLabel ? ` · ${row.amountLabel}` : ""}
+                <span className="text-[var(--copilot-muted)]">
+                  {" "}
+                  · {IDENTIFICATION_STATUS_LABEL[row.status] ?? row.status}
+                </span>
+                {row.reason ? <span className="text-[var(--copilot-muted)]"> · {row.reason}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {cards.length > 0 ? (
       <ul className="grid gap-3 sm:grid-cols-2">
         {cards.map((card) => (
           <li
@@ -202,6 +251,7 @@ export function ClientPayerMemorySection({ companyId }: { companyId: string }) {
           </li>
         ))}
       </ul>
+      ) : null}
 
       {history.length > 0 ? (
         <div>

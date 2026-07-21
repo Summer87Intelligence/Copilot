@@ -1,5 +1,27 @@
 # Banco — Motor canónico de conciliación (Motor D)
 
+## Identificación de cliente vs. conciliación financiera (FASE BANK-HISTORICAL-PAYER-IDENTIFICATION-001, 2026-07-21)
+
+**Decisión funcional**: identificar qué cliente corresponde a un ingreso bancario y conciliarlo financieramente con Zeta son **dos hechos distintos**. La ausencia de un recibo compatible en Zeta NUNCA debe bloquear identificar manualmente el cliente, guardar memoria del pagador o reconocer transferencias futuras — pero tampoco debe permitir que el sistema afirme "conciliado con recibo" o "factura pagada" cuando esas relaciones no existen.
+
+**Modelo de 5 niveles** (`lib/bank/canonical/bank-payer-identification.ts`, `deriveIdentificationLevel`):
+
+1. `unidentified` — sin cliente confirmado.
+2. `client_identified` — cliente confirmado (con o sin recibo compatible), sin link financiero real todavía.
+3. `missing_receipt` — cliente confirmado, pero no existe ningún recibo compatible en Zeta.
+4. `reconciled_with_receipt` — existe un link financiero real (`bank_movement_reconciliation_links`) sin allocations de factura.
+5. `full_reconciliation` — link financiero + allocations de factura reales.
+
+Ningún nivel se saltea: un cluster con evidencia "fuerte" es solo una **propuesta**, nunca una confirmación automática.
+
+**Auditoría histórica read-only** (`scripts/audit-bank-payer-identification-2026.ts`, ventana 2026-01-01..2026-07-20, 479 ingresos): agrupa movimientos por nombre de pagador normalizado (`clusterInflowMovements`, nunca por referencia puntual TT/LR/TR/LE/NRR ni por importe/fecha) y los cruza contra clientes reales (`matchClusterToClients`) y recibos existentes. Resultado real: 84 identidades de pagador detectadas, 24 con evidencia fuerte, 15 probable, 1 ambigua (artefacto de duplicado PDF "-- N of M --", no ambigüedad de negocio real), 44 sin candidato (mayormente personas físicas o empresas sin cliente registrado en el workspace).
+
+**Matching de nombre robustecido**: la comparación ingenua (`normalizePayerName` + `===`) fallaba en casos reales frecuentes — puntuación distinta ("HARRISON S A" vs "HARRISON S.A"), ruido de dirección pegado al nombre cuando el extracto no cierra con una segunda barra ("NIRMEX S A CIRCUNVALACION M" vs cliente "Nirmex S.A."), y razón social abreviada vs desarrollada ("SAMYSOL SOCIEDAD ANONIMA" vs cliente "Samysol SA"). `matchClusterToClients` ahora normaliza sufijos legales uruguayos equivalentes (SA/SOCIEDAD ANONIMA, SRL/SOCIEDAD DE RESPONSABILIDAD LIMITADA, LTDA/LIMITADA) y usa coincidencia por prefijo con límite de palabra para el caso de ruido de dirección. **Limitación conocida, no corregida esta fase**: variantes con conectores distintos ("HOGAR PARA ANCIANOS COLONIA VALDENSE" vs cliente "Hogar de Ancianos de Colonia Valdense") y typos reales del extracto original ("AN ONIMA", "SAMYS OL") no se capturan — quedan como "sin candidato", correctamente destinados a revisión humana en el flujo de lote, no a un matching más agresivo que arriesgue falsos positivos.
+
+**Extracción de nombre extendida**: se agregó el patrón "CREDITO OPERACION EN BANCA DIGITAL T<código opcional>/<NOMBRE>" (Santander) a `extractPayerNameFromDescription` — antes solo se reconocía "RECIBIDA /". Sin este patrón, casos reales como Botica del Señor SRL, Samysol SA, Dolby S.A., Dalama S.A.S. y Hogar de Ancianos nunca habrían generado una identidad de pagador ni un cluster.
+
+**Persistencia**: tabla nueva `bank_movement_client_identifications` (migración `20260726120000_bank_movement_client_identifications.sql`, **creada, NO aplicada**) — deliberadamente separada de `bank_movement_reconciliation_links` (esa tabla exige `target_type`/`target_id` == recibo real; forzar un valor ficticio o NULL ahí rompería su contrato financiero). Estados: `identified` / `shared_account` / `third_party` / `excluded` / `revoked`; una identificación activa por movimiento vía índice único parcial (mismo patrón que `client_payer_links_active_uidx`); nunca se borra, solo se revoca (append-only). Repositorio (`client-identification-repository.server.ts`) + servicio de confirmación en lote (`confirm-client-identification.server.ts`, con idempotencia, conflictos sin autoselección, y reasignación explícita auditada) + endpoints (`GET /api/copilot/bank-reconciliation/payer-clusters` solo lectura, `POST /api/copilot/bank-reconciliation/client-identifications` confirmación en lote) + Cliente 360 (`ClientPayerMemorySection`) muestra identificaciones sin recibo bajo "Movimientos identificados sin conciliación financiera", nunca mezclado con la sección de conciliaciones reales.
+
 **FASE BANK-RECONCILIATION-CANONICAL-ENGINE-001 (2026-07-20)** — decisión de arquitectura autorizada: **Motor D es el único motor canónico de conciliación bancaria de ingresos.** No se crea un segundo motor. No se mantienen rutas paralelas de escritura financiera.
 
 **FASE BANK-CANONICAL-CONFIRM-CONTRACT-CORRECTION-001 (2026-07-20, continuación)** — auditoría exacta del hallazgo bloqueante `status='reversed'` y corrección del contrato de `confirm_bank_reconciliation_v1` (ver secciones "Auditoría exacta del estado reversed" y "Máquina de estados canónica" más abajo). Migración `20260722130000_bank_reconciliation_confirm_rpc_v2.sql` creada.

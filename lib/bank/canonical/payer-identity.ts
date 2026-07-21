@@ -112,6 +112,10 @@ const PAYER_NAME_MARKER_PATTERNS: RegExp[] = [
   /RECIBIDA\s*\/\s*([^/]+)/i,
   /TRF\.\s*PLAZA-\s*\/\s*([^/]+)/i,
   /NRR:\d+\s+([^/]+)/i,
+  // "CREDITO OPERACION EN BANCA DIGITAL T<código opcional>/<NOMBRE>" (Santander) —
+  // el código previo a la barra (TBOTICA, TFACT 2968, T--, o nada) nunca es el
+  // pagador; el nombre vive después de la primera barra.
+  /CREDITO OPERACION EN BANCA DIGITAL\s*[^/]*\/\s*([^/]+)/i,
 ];
 
 /**
