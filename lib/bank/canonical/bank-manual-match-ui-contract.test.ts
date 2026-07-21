@@ -34,14 +34,21 @@ describe("ManualMatchSelector — cambiar cliente limpia recibo y facturas", () 
   });
 });
 
-describe("ManualMatchSelector — motivo obligatorio para confirmar", () => {
-  it("canConfirm exige selectedClient + reasonText de al menos 3 caracteres", () => {
-    expect(evidenceUi).toContain("const canConfirm = selectedClient != null && reasonText.length >= 3");
+describe("ManualMatchSelector — motivo Y recibo obligatorios para confirmar", () => {
+  it("canConfirm exige selectedClient + selectedReceiptId + reasonText de al menos 3 caracteres", () => {
+    expect(evidenceUi).toContain(
+      "const canConfirm = selectedClient != null && selectedReceiptId != null && reasonText.length >= 3"
+    );
   });
 
   it("el botón 'Confirmar selección manual' está deshabilitado cuando !canConfirm", () => {
     const buttonBlock = evidenceUi.match(/Confirmar selección manual[\s\S]{0,0}/);
     expect(evidenceUi).toMatch(/disabled=\{!canConfirm\}[\s\S]*?Confirmar selección manual/);
+  });
+
+  it("BANK-V3-APPLY-PDF-IMPORT-FIX-AND-DEMO-READY-001: recibo obligatorio evita ejercitar el bug latente de la RPC con p_receipt_id=NULL en conexiones frías", () => {
+    // El comentario explicativo debe estar presente junto al guard, documentando el motivo.
+    expect(evidenceUi).toMatch(/Recibo obligatorio[\s\S]{0,400}canConfirm = selectedClient != null && selectedReceiptId != null/);
   });
 });
 

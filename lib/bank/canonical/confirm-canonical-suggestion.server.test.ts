@@ -135,6 +135,15 @@ describe("confirmCanonicalSuggestion — modo 'suggested' (comportamiento idént
     if (!result.ok) expect(result.code).toBe("RECEIPT_MISMATCH");
   });
 
+  it("exige recibo obligatorio también en modo suggested cuando la sugerencia no propone ninguno (BANK-V3-APPLY-PDF-IMPORT-FIX-AND-DEMO-READY-001)", async () => {
+    const client = fakeClient({
+      bank_reconciliation_suggestions: [{ ...baseSuggestion, proposed_receipt_id: null }],
+    });
+    const result = await confirmCanonicalSuggestion(client as never, { ...baseInput, selectedReceiptId: null });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe("RECEIPT_NOT_FOUND");
+  });
+
   it("nunca confirma una sugerencia fuera de scope operational (histórica/auditoría)", async () => {
     const client = fakeClient({
       bank_reconciliation_suggestions: [{ ...baseSuggestion, suggestion_scope: "historical_review" }],
@@ -237,6 +246,16 @@ describe("confirmCanonicalSuggestion — modo 'manual_reviewed' (FASE BANK-MANUA
     const result = await confirmCanonicalSuggestion(client as never, manualInput);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.code).toBe("CLIENT_NOT_FOUND");
+  });
+
+  it("exige recibo obligatorio en selección manual (BANK-V3-APPLY-PDF-IMPORT-FIX-AND-DEMO-READY-001: evita el bug latente de la RPC con p_receipt_id=NULL en conexiones frías)", async () => {
+    const client = fakeClient({
+      bank_reconciliation_suggestions: [baseSuggestion],
+      proto_companies: [{ id: "client-2", workspace_company_id: WS, name: "Otro Cliente", is_active: true }],
+    });
+    const result = await confirmCanonicalSuggestion(client as never, { ...manualInput, selectedReceiptId: null });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe("RECEIPT_NOT_FOUND");
   });
 
   it("rechaza si el recibo seleccionado pertenece a otro cliente distinto del seleccionado", async () => {

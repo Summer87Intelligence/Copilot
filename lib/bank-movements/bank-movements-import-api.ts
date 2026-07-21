@@ -10,6 +10,11 @@ const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida (YYYY-MM-DD
 const rejectWorkspaceId = z.never().optional();
 const rejectImportedBy = z.never().optional();
 
+// BANK-V3-APPLY-PDF-IMPORT-FIX-AND-DEMO-READY-001 (secciones 9-13): campos adicionales del
+// parser PDF, opcionales — el cliente reenvía tal cual el preview recibido, así que el
+// contrato de /confirm debe aceptar (no exigir) lo que el parser ya puede completar.
+const balanceCheckSchema = z.enum(["ok", "mismatch", "unknown"]);
+
 export const santanderPreviewMovementSchema = z
   .object({
     date: ymd,
@@ -23,6 +28,26 @@ export const santanderPreviewMovementSchema = z
     balance: z.union([z.number().finite(), z.null()]),
     raw_text: z.string(),
     source_file: z.union([z.string(), z.null()]).optional(),
+    payer_name_raw: z.union([z.string(), z.null()]).optional(),
+    payer_name_normalized: z.union([z.string(), z.null()]).optional(),
+    payer_token: z.union([z.string(), z.null()]).optional(),
+    embedded_reference: z.union([z.string(), z.null()]).optional(),
+    nrr: z.union([z.string(), z.null()]).optional(),
+    balance_before: z.union([z.number().finite(), z.null()]).optional(),
+    balance_check: balanceCheckSchema.optional(),
+    operation_group_key: z.union([z.string(), z.null()]).optional(),
+    dedup_fingerprint: z.string().optional(),
+  })
+  .strict();
+
+const balanceValidationSchema = z
+  .object({
+    ok: z.boolean(),
+    opening_balance: z.union([z.number().finite(), z.null()]),
+    closing_balance_expected: z.union([z.number().finite(), z.null()]),
+    closing_balance_computed: z.union([z.number().finite(), z.null()]),
+    difference: z.union([z.number().finite(), z.null()]),
+    row_mismatches_count: z.number().int().nonnegative(),
   })
   .strict();
 
@@ -36,6 +61,7 @@ export const santanderImportPreviewSchema = z
     opening_balance: z.union([z.number().finite(), z.null()]),
     closing_balance: z.union([z.number().finite(), z.null()]),
     movements: z.array(santanderPreviewMovementSchema).min(1),
+    balance_validation: balanceValidationSchema.optional(),
   })
   .strict();
 

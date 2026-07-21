@@ -510,7 +510,9 @@ function ManualMatchSelector({
 
   const reasonText = reasonOption === "otro" ? reasonFreeText.trim() : MANUAL_REASON_OPTIONS.find((o) => o.value === reasonOption)?.label ?? "";
   const overAllocated = selectedReceipt != null && allocatedTotal > selectedReceipt.amount + 0.01;
-  const canConfirm = selectedClient != null && reasonText.length >= 3 && !overAllocated && !mutating;
+  // Recibo obligatorio (igual que el botón de confirmación de la sugerencia): sin un
+  // recibo explícito, confirm_bank_reconciliation_v1 no tiene qué vincular financieramente.
+  const canConfirm = selectedClient != null && selectedReceiptId != null && reasonText.length >= 3 && !overAllocated && !mutating;
 
   return (
     <div className="mt-2 space-y-3 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] p-3">

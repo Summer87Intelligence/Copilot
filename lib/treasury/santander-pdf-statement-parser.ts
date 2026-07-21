@@ -279,7 +279,10 @@ function movementFromColumns(
     movementType,
     externalId,
     documentNumber,
-    balanceAfter: balanceAfter != null ? Math.abs(balanceAfter) : null,
+    // No forzar Math.abs(): el extracto puede quedar en saldo negativo de forma legítima
+    // (confirmado con el extracto real USD 005101107711, 06/07/2026) y el token de saldo ya
+    // trae su propio signo "-" en el texto — forzarlo a positivo ocultaba ese saldo negativo real.
+    balanceAfter: balanceAfter,
     importedFrom: "csv",
     rawPayload: {
       source: "pdf",
@@ -341,13 +344,27 @@ function movementFromDateBlockStr(
   const firstLower = firstLine.toLowerCase();
   if (firstLower.includes("saldo informado") || firstLower.includes("movimientos en tr")) return null;
 
-  // Collapse relevant lines; stop at next date start or known footer lines
+  // Collapse relevant lines; stop at next date start or known footer lines.
+  // "saldo inicial"/"saldo final" deben cortar el bloque igual que una fecha:
+  // el ULTIMO movimiento del extracto no tiene una fecha siguiente que lo
+  // limite, así que sin este corte la línea de saldo final (y cualquier
+  // marcador de página que la siga) queda fusionada dentro del movimiento —
+  // y como isBalanceRow reconoce "saldo final" en la descripción, ese
+  // movimiento real termina descartado en silencio (bug real confirmado con
+  // los dos extractos de julio 2026).
   const relevantLines: string[] = [firstLine];
   for (let i = 1; i < lines.length; i++) {
     const l = lines[i]!;
     if (ROW_DATE_START.test(l)) break;
     const ll = l.toLowerCase();
-    if (ll.includes("saldo informado") || ll.includes("movimientos en tr")) break;
+    if (
+      ll.includes("saldo informado") ||
+      ll.includes("movimientos en tr") ||
+      ll.includes("saldo inicial") ||
+      ll.includes("saldo final")
+    ) {
+      break;
+    }
     relevantLines.push(l);
   }
 
@@ -404,7 +421,8 @@ function movementFromDateBlockStr(
     movementType,
     externalId,
     documentNumber,
-    balanceAfter: balanceAfterValue != null ? Math.abs(balanceAfterValue) : null,
+    // No forzar Math.abs(): ver comentario equivalente en movementFromColumns más arriba.
+    balanceAfter: balanceAfterValue,
     importedFrom: "csv",
     rawPayload: {
       source: "pdf",

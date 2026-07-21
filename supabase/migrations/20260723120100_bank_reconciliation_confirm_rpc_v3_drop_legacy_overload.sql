@@ -1,0 +1,30 @@
+-- BANK-V3-APPLY-PDF-IMPORT-FIX-AND-DEMO-READY-001
+--
+-- Follow-up correctivo, aplicado en el mismo despliegue que
+-- 20260723120000_bank_reconciliation_confirm_rpc_v3.sql.
+--
+-- HALLAZGO: `CREATE OR REPLACE FUNCTION` solo reemplaza una función cuando
+-- la lista de tipos de parámetros coincide EXACTAMENTE. La v3 agrega
+-- `p_metadata` al final de la firma — eso NO reemplaza la v2
+-- (`confirm_bank_reconciliation_v1(uuid,uuid,uuid,uuid,jsonb,numeric,uuid)`,
+-- 7 parámetros), crea una SEGUNDA sobrecarga
+-- (`...,jsonb,numeric,uuid,jsonb`, 8 parámetros) que coexiste con ella.
+--
+-- CONFIRMADO EN VIVO (post-aplicación de la v3, antes de este archivo):
+-- llamar la función con exactamente 7 argumentos nombrados (la forma que usa
+-- TODO caller existente en producción, modo "suggested", sin p_metadata)
+-- produce `ERROR 42725: function ... is not unique` — Postgres no puede
+-- elegir entre las dos sobrecargas. Esto rompía CUALQUIER confirmación en
+-- producción, no solo el modo manual_reviewed nuevo.
+--
+-- CORRECCIÓN: eliminar la sobrecarga vieja de 7 parámetros. La de 8
+-- parámetros (con `p_metadata jsonb DEFAULT '{}'::jsonb`) queda como única
+-- firma — cualquier caller que no envíe `p_metadata` sigue funcionando
+-- exactamente igual (Postgres completa el DEFAULT), sin ambigüedad posible
+-- porque ya no hay una segunda función candidata.
+--
+-- No toca lógica, no toca datos, no toca grants de la función que queda
+-- (ya declarados correctamente por la v3). Solo retira la sobrecarga
+-- superada.
+
+DROP FUNCTION IF EXISTS public.confirm_bank_reconciliation_v1(uuid, uuid, uuid, uuid, jsonb, numeric, uuid);

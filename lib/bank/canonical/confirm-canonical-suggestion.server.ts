@@ -96,6 +96,11 @@ export async function confirmCanonicalSuggestion(
       return fail("RECEIPT_MISMATCH");
     }
     receiptId = input.selectedReceiptId ?? suggestion.proposedReceiptId ?? null;
+    // Recibo obligatorio (mismo motivo que en manual_reviewed, ver más abajo): evita
+    // ejercitar el bug latente de la RPC con p_receipt_id=NULL en conexiones frías.
+    if (receiptId == null) {
+      return fail("RECEIPT_NOT_FOUND");
+    }
     candidateClientId = suggestion.proposedClientId;
   } else {
     const reason = (input.manualReason ?? "").trim();
@@ -108,12 +113,21 @@ export async function confirmCanonicalSuggestion(
     const client = await getShadowClientById(supabase, input.workspaceId, input.selectedClientId);
     if (!client) return fail("CLIENT_NOT_FOUND");
 
-    if (input.selectedReceiptId != null) {
-      const receipt = await getShadowReceiptById(supabase, input.workspaceId, input.selectedReceiptId);
-      if (!receipt) return fail("RECEIPT_NOT_FOUND");
-      if (receipt.companyId !== input.selectedClientId) return fail("RECEIPT_CLIENT_MISMATCH");
+    // Recibo obligatorio en selección manual (defensa en profundidad — el mismo guard
+    // ya existe en la UI, pero nunca se confía solo en eso): sin un p_receipt_id
+    // explícito, confirm_bank_reconciliation_v1 tiene un bug latente heredado de v2
+    // (PL/pgSQL "record v_receipt is not assigned yet" en conexiones "frías" que
+    // nunca ejecutaron antes una llamada con recibo) — descubierto en QA de
+    // BANK-V3-APPLY-PDF-IMPORT-FIX-AND-DEMO-READY-001, documentado como gap de la
+    // RPC (no corregido esta fase: requiere tocar la función ya aplicada/verificada,
+    // fuera de alcance). Exigir recibo acá evita ejercitar ese camino desde la app.
+    if (input.selectedReceiptId == null) {
+      return fail("RECEIPT_NOT_FOUND");
     }
-    receiptId = input.selectedReceiptId ?? null;
+    const receipt = await getShadowReceiptById(supabase, input.workspaceId, input.selectedReceiptId);
+    if (!receipt) return fail("RECEIPT_NOT_FOUND");
+    if (receipt.companyId !== input.selectedClientId) return fail("RECEIPT_CLIENT_MISMATCH");
+    receiptId = input.selectedReceiptId;
     candidateClientId = input.selectedClientId;
   }
 
