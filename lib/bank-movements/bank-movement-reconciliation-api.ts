@@ -26,6 +26,23 @@ export const bankMovementIgnoreBodySchema = z
 export type BankMovementReconcileBody = z.infer<typeof bankMovementReconcileBodySchema>;
 export type BankMovementIgnoreBody = z.infer<typeof bankMovementIgnoreBodySchema>;
 
+export const bankMovementHideBodySchema = z
+  .object({
+    workspace_id: rejectWorkspaceId,
+    reason: z.string().trim().max(500).optional(),
+  })
+  .strict();
+
+export type BankMovementHideBody = z.infer<typeof bankMovementHideBodySchema>;
+
+export const bankMovementRestoreBodySchema = z
+  .object({
+    workspace_id: rejectWorkspaceId,
+  })
+  .strict();
+
+export type BankMovementRestoreBody = z.infer<typeof bankMovementRestoreBodySchema>;
+
 /**
  * FASE E — Alta de relación de conciliación N:M auditable.
  * `applied_amount` es opcional: para `ignored` no aplica importe; para el resto

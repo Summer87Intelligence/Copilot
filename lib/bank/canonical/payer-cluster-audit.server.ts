@@ -15,6 +15,7 @@ import {
   type PayerCluster,
 } from "@/lib/bank/canonical/bank-payer-identification";
 import { maskAccountOrReference, normalizePayerName } from "@/lib/bank/canonical/payer-identity";
+import { isBankMovementUiHidden } from "@/lib/bank-movements/bank-movement-visibility";
 
 /**
  * FASE BANK-HISTORICAL-PAYER-IDENTIFICATION-001 — vista read-only de
@@ -70,7 +71,7 @@ async function computeContext(supabase: SupabaseClient, input: WorkspaceWindow):
   const [{ data: movementRows, error: movErr }, { data: companyRows, error: compErr }] = await Promise.all([
     supabase
       .from("bank_movements")
-      .select("id, movement_date, amount, currency, description, bank_reference, bank_name, status")
+      .select("id, movement_date, amount, currency, description, bank_reference, bank_name, status, metadata")
       .eq("workspace_id", workspaceId)
       .eq("direction", "inflow")
       .neq("status", "ignored")
@@ -90,8 +91,9 @@ async function computeContext(supabase: SupabaseClient, input: WorkspaceWindow):
     description: string | null;
     bank_reference: string | null;
     bank_name: string | null;
+    metadata: Record<string, unknown> | null;
   };
-  const rows = (movementRows ?? []) as MovementRow[];
+  const rows = ((movementRows ?? []) as MovementRow[]).filter((r) => !isBankMovementUiHidden(r.metadata));
   const movementIds = rows.map((r) => r.id);
 
   const [{ data: receiptRows, error: recErr }, { data: linkRows, error: linkErr }, { data: identRows, error: identErr }] =

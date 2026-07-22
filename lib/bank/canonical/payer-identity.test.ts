@@ -163,4 +163,16 @@ describe("isOperationReference / extractPayerNameFromDescription / buildPayerLea
     expect(payload!.normalizedName).toBe("SAMYSOL SOCIEDAD ANONIMA");
     expect(payload!.fingerprintStrength).toBe("name");
   });
+
+  it("nunca trata marcadores de página PDF como pagador (-- N of M -- / page N of M)", () => {
+    expect(extractPayerNameFromDescription("-- 4 of 6 --")).toBeNull();
+    expect(extractPayerNameFromDescription("-- 5 of 8 --")).toBeNull();
+    expect(extractPayerNameFromDescription("  --  3  of  10  --  ")).toBeNull();
+    expect(extractPayerNameFromDescription("page 2 of 4")).toBeNull();
+    expect(extractPayerNameFromDescription("PAGE 1 OF 2")).toBeNull();
+    // Descripción real con marcador contaminante: el nombre válido se conserva.
+    expect(
+      extractPayerNameFromDescription("CREDITO OPERACION EN BANCA DIGITAL /NIRMEX SA -- 4 of 6 --")
+    ).toBe("NIRMEX SA");
+  });
 });

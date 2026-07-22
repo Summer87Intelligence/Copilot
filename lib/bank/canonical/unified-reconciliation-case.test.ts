@@ -118,9 +118,18 @@ describe("deriveCaseStatus", () => {
     expect(deriveCaseStatus(["sin_cliente"], "none")).toBe("sin_cliente");
   });
 
-  it("is listo_para_confirmar (the Nirmex example: 12 ready + 1 pending) when at least one row is ready", () => {
-    const rows = [...Array(12).fill("listo_para_confirmar"), "falta_recibo"] as Parameters<typeof deriveCaseStatus>[0];
-    expect(deriveCaseStatus(rows, "strong")).toBe("listo_para_confirmar");
+  it("is revision_parcial (Nirmex: mix ready + missing receipt) — never listo_para_confirmar", () => {
+    const rows = [...Array(5).fill("listo_para_confirmar"), ...Array(8).fill("falta_recibo")] as Parameters<
+      typeof deriveCaseStatus
+    >[0];
+    expect(deriveCaseStatus(rows, "strong")).toBe("revision_parcial");
+    expect(deriveCaseStatus([...Array(12).fill("listo_para_confirmar"), "falta_recibo"] as Parameters<typeof deriveCaseStatus>[0], "strong")).toBe(
+      "revision_parcial"
+    );
+  });
+
+  it("is listo_para_confirmar only when every active row is ready (no missing receipts)", () => {
+    expect(deriveCaseStatus(["listo_para_confirmar", "listo_para_confirmar"], "strong")).toBe("listo_para_confirmar");
   });
 
   it("falls back to falta_recibo when nothing is ready and nothing is ambiguous/unclaimed", () => {
@@ -174,8 +183,8 @@ describe("listUnifiedReconciliationCases", () => {
     expect(result.cases[0]).toMatchObject({
       clusterKey: "NIRMEX",
       suggestedClientName: "Nirmex S.A.",
-      status: "listo_para_confirmar",
-      recommendedAction: "Revisar conciliación",
+      status: "revision_parcial",
+      recommendedAction: "Revisar movimientos",
     });
   });
 
@@ -326,6 +335,8 @@ describe("getUnifiedReconciliationCaseDetail", () => {
     const missingReceipt = result!.rows.find((r) => r.movementId === "m12")!;
     expect(missingReceipt.status).toBe("falta_recibo");
     expect(missingReceipt.hasCompatibleReceipt).toBe(false);
+    expect(result!.status).toBe("revision_parcial");
+    expect(result!.recommendedAction).toBe("Revisar movimientos");
   });
 
   it("labels invoice context from reconciliation level without inventing allocations", async () => {

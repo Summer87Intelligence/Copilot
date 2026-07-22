@@ -12,6 +12,13 @@ import {
   type PayerClusterSummary,
 } from "@/lib/bank/canonical/payer-cluster-audit.server";
 import { auditDuplicateBankMovements } from "@/lib/bank/canonical/duplicate-import-audit.server";
+import {
+  deriveCaseStatus,
+  UNIFIED_CASE_RECOMMENDED_ACTION,
+  unifiedCaseStatusLabel,
+  type UnifiedCaseStatus,
+  type UnifiedRowStatus,
+} from "@/lib/bank/canonical/unified-reconciliation-status";
 
 /**
  * FASE BANK-RECONCILIATION-SIMPLE-UNIFIED-WORKSPACE-001
@@ -30,14 +37,8 @@ import { auditDuplicateBankMovements } from "@/lib/bank/canonical/duplicate-impo
  * la sección 10 (nunca expone "suggestion"/"allocation"/"payer identity").
  */
 
-export type UnifiedCaseStatus =
-  | "sin_cliente"
-  | "listo_para_confirmar"
-  | "falta_recibo"
-  | "requiere_revision"
-  | "conciliado";
-
-export type UnifiedRowStatus = UnifiedCaseStatus | "duplicado";
+export type { UnifiedCaseStatus, UnifiedRowStatus };
+export { deriveCaseStatus, unifiedCaseStatusLabel };
 
 export type UnifiedRowAction =
   | "confirmar_con_recibo"
@@ -95,24 +96,6 @@ export function deriveRowAction(status: UnifiedRowStatus): UnifiedRowAction {
   }
 }
 
-/** Estado y acción a nivel de tarjeta/cliente (agrega las filas no-duplicadas). */
-export function deriveCaseStatus(rowStatuses: UnifiedRowStatus[], evidence: EvidenceLevel): UnifiedCaseStatus {
-  const active = rowStatuses.filter((s) => s !== "duplicado");
-  if (active.length === 0 || active.every((s) => s === "conciliado")) return "conciliado";
-  if (evidence === "ambiguous") return "requiere_revision";
-  if (evidence === "none") return "sin_cliente";
-  if (active.some((s) => s === "listo_para_confirmar")) return "listo_para_confirmar";
-  return "falta_recibo";
-}
-
-const CASE_RECOMMENDED_ACTION: Record<UnifiedCaseStatus, string> = {
-  sin_cliente: "Buscar cliente",
-  listo_para_confirmar: "Revisar conciliación",
-  falta_recibo: "Revisar conciliación",
-  requiere_revision: "Elegir cliente",
-  conciliado: "Ver conciliación",
-};
-
 export type UnifiedReconciliationCaseSummary = {
   clusterKey: string;
   payerDisplayName: string;
@@ -165,7 +148,7 @@ function summaryToCase(summary: PayerClusterSummary): UnifiedReconciliationCaseS
     missingReceiptCount: summary.missingReceiptCount,
     alreadyIdentifiedCount: summary.alreadyIdentifiedCount,
     status,
-    recommendedAction: CASE_RECOMMENDED_ACTION[status],
+    recommendedAction: UNIFIED_CASE_RECOMMENDED_ACTION[status],
   };
 }
 
@@ -298,7 +281,7 @@ export async function getUnifiedReconciliationCaseDetail(
     receiptsFoundCount: nonDuplicateRows.filter((r) => r.hasCompatibleReceipt).length,
     missingReceiptCount: nonDuplicateRows.filter((r) => !r.hasCompatibleReceipt).length,
     status,
-    recommendedAction: CASE_RECOMMENDED_ACTION[status],
+    recommendedAction: UNIFIED_CASE_RECOMMENDED_ACTION[status],
     rows,
     batchEligibleMovementIds: rows.filter((r) => r.status === "listo_para_confirmar").map((r) => r.movementId),
   };

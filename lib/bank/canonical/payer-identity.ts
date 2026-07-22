@@ -108,6 +108,19 @@ export function isOperationReference(value: string | null | undefined): boolean 
   return OPERATION_REFERENCE_RE.test(trimmed);
 }
 
+/**
+ * Marcadores de paginación que pdf-parse / extractores dejan en la descripción
+ * (p. ej. "-- 4 of 6 --"). Nunca son pagador, identidad ni cluster.
+ * Conserva la descripción raw en BD; solo se excluyen de la extracción.
+ */
+const PDF_PAGE_MARKER_RE =
+  /(?:^|[\s/])(?:--\s*)?(?:\d+\s+of\s+\d+|page\s+\d+\s+of\s+\d+)(?:\s*--)?(?=$|[\s/])/gi;
+
+/** Quita marcadores de página PDF sin alterar referencias bancarias válidas. */
+export function stripPdfPageMarkers(text: string): string {
+  return text.replace(PDF_PAGE_MARKER_RE, " ").replace(/\s+/g, " ").trim();
+}
+
 const PAYER_NAME_MARKER_PATTERNS: RegExp[] = [
   /RECIBIDA\s*\/\s*([^/]+)/i,
   /TRF\.\s*PLAZA-\s*\/\s*([^/]+)/i,
@@ -121,16 +134,21 @@ const PAYER_NAME_MARKER_PATTERNS: RegExp[] = [
 /**
  * Extrae el nombre del pagador desde la descripción bancaria (patrones Santander
  * observados). No usa bank_reference ni tokens TT/LR/TR/LE como identidad.
+ * Los marcadores "-- N of M --" se descartan antes de formar el nombre.
  */
 export function extractPayerNameFromDescription(description: string | null | undefined): string | null {
   if (!description) return null;
+  const withoutMarkers = stripPdfPageMarkers(description);
+  if (!withoutMarkers) return null;
   for (const re of PAYER_NAME_MARKER_PATTERNS) {
-    const m = re.exec(description);
+    const m = re.exec(withoutMarkers);
     if (!m?.[1]) continue;
-    const cleaned = m[1]
-      .replace(/\b(?:TT|LR|TR|LE)\d+\b/gi, "")
-      .replace(/\s+/g, " ")
-      .trim();
+    const cleaned = stripPdfPageMarkers(
+      m[1]
+        .replace(/\b(?:TT|LR|TR|LE)\d+\b/gi, "")
+        .replace(/\s+/g, " ")
+        .trim()
+    );
     if (cleaned.length >= 3) return cleaned;
   }
   return null;

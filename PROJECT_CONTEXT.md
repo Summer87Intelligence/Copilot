@@ -1,5 +1,24 @@
 # Project Context
 
+## BANK — Corrección unificada + visibilidad de movimientos (local) — 2026-07-22
+
+**FASE BANK-UNIFIED-RECONCILIATION-CORRECTION-AND-MOVEMENT-VISIBILITY-001 (commit local, sin push):** corrige clustering por marcadores PDF (`-- N of M --`), semántica de tarjeta mixta (`revision_parcial` / Nirmex 5+8), actor legible en Historial (batch `app_users`), deep-link Movimientos→Conciliación unificada, y Ocultar/Volver a mostrar vía `metadata.ui_hidden` (sin DDL).
+
+- **Sin migración**: hide/restore en metadata; default Visibles; write Banco ve Ocultos/Todos.
+- **7 BMCI (+57→64)**: 6× Graciela Lamas `manual_batch` → acción válida usuario; 1× Papelería+marcador PDF `manual_single` → indeterminado/QA-candidate. Sin revocación automática.
+- **Gates**: tsc OK, eslint archivos fase OK, vitest 5209 passed, build OK.
+- **Veredicto**: `READY_FOR_BANK_UNIFIED_CORRECTION_AND_VISIBILITY_DEPLOY` — falta autorización de push/deploy y re-QA Camila.
+
+## BANK — Conciliación unificada desplegada + QA visual prod — 2026-07-22
+
+**FASE BANK-UNIFIED-RECONCILIATION-UI-DEPLOY-AND-QA-001:** push `7a6b91a` → `origin/main` (0/0); Vercel production READY `dpl_3cXyyMH6zetQgf5SnrYMTuqYzBnQ` (~54s), alias `copilot-pro.vercel.app`, `aliasError=null`.
+
+- **Nav OK**: Importar · Movimientos · Conciliación · Historial; sin sub-vistas "Identificar clientes"/"Vincular recibos"; entrada directa a vista unificada de tarjetas.
+- **Nirmex (hallazgo)**: 13 transferencias en tarjeta principal + 2ª tarjeta contaminada por marcador PDF `-- 4 of 6 --`; detalle 5 listos / 8 falta recibo (esperado fase: 12+1). Badge agregado "Listo para confirmar" pese a mayoría sin recibo.
+- **Otros**: Botica/Samysol "Listo para confirmar" + cluster contaminado Botica; Energetia Sin cliente; Papelería "Falta recibo en Zeta". Cliente 360: Forma habitual vacía (0 payer identities); Samysol "Conciliado con recibo" sin afirmar conciliación completa. Historial: actor como UUID.
+- **Integridad**: movimientos 1004, links 2, allocations 0, events 17, payers 0 sin cambio; **BMCI 57→64** (+7 `manual_batch`/`manual_single` en ventana QA; POSTs Vercel concurrentes con misma cuenta — no se ejecutaron confirms financieros ni links). Logout OK.
+- **Veredicto**: `GO_FOR_BANK_UNIFIED_RECONCILIATION_DEPLOY_CORRECTION` — corregir clustering por ruido PDF, semántica del badge agregado vs filas sin recibo, actor email en Historial; re-QA limpio sin escrituras.
+
 ## BANK — Identificación de cliente: migración APLICADA + UI de revisión en lote — 2026-07-21
 
 **FASE BANK-CLIENT-IDENTIFICATION-SCHEMA-APPLY-AND-BATCH-UI-001 (commit local, sin push):** `bank_movement_client_identifications` pasó de "creada" a **aplicada en producción** (versión `20260721223939`), con corrección de esquema previa (`revoked_by` faltaba) y QA transaccional real rollback-tested (individual, lote+exclusión, idempotencia vía constraint, reasignación con motivo obligatorio, cuenta compartida, pago de tercero) — cero cambios netos confirmados en 7 tablas. Se encontraron y corrigieron 2 gaps reales del servicio antes del QA: no bloqueaba egresos ni evitaba identificaciones redundantes sobre movimientos ya conciliados.

@@ -13,6 +13,7 @@ import {
   BANK_MOVEMENT_PERIOD_OPTIONS,
   BANK_MOVEMENT_SCOPE_OPTIONS,
   BANK_MOVEMENT_SOURCE_OPTIONS,
+  BANK_MOVEMENT_VISIBILITY_OPTIONS,
   DEFAULT_BANK_MOVEMENTS_LIST_FILTERS,
   DEFAULT_RECONCILIATION_VIEW_FILTERS,
   type BankMovementsListFilters,
@@ -34,6 +35,8 @@ type BankMovementsFiltersBarProps = {
   countLabel: string;
   showPeriodHint?: boolean;
   showWithSuggestionHint?: boolean;
+  /** Write/admin Banco: ve Ocultos/Todos. Read-only solo Visibles. */
+  canManageVisibility?: boolean;
 };
 
 const MOVEMENT_STATUS_OPTIONS = [
@@ -87,6 +90,7 @@ function filterState(
         amountMax: f.amountMax,
         duplicates: f.duplicates,
         source: f.source,
+        visibility: f.visibility,
       },
       defaults: {
         period: d.period,
@@ -100,6 +104,7 @@ function filterState(
         amountMax: d.amountMax,
         duplicates: d.duplicates,
         source: d.source,
+        visibility: d.visibility,
       },
     };
   }
@@ -135,6 +140,7 @@ export function BankMovementsFiltersBar({
   countLabel,
   showPeriodHint = false,
   showWithSuggestionHint = false,
+  canManageVisibility = false,
 }: BankMovementsFiltersBarProps) {
   const update = (patch: Partial<BankMovementsListFilters & ReconciliationViewFilters>) => {
     onChange({ ...filters, ...patch });
@@ -270,6 +276,17 @@ export function BankMovementsFiltersBar({
                 ariaLabel="Filtrar por fuente PDF Excel o CSV"
               />
             </FilterField>
+            {canManageVisibility ? (
+              <FilterField label="Visibilidad" htmlFor="bank-filter-visibility">
+                <FilterSelect
+                  id="bank-filter-visibility"
+                  value={(filters as BankMovementsListFilters).visibility}
+                  onChange={(v) => update({ visibility: v as BankMovementsListFilters["visibility"] })}
+                  options={BANK_MOVEMENT_VISIBILITY_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                  ariaLabel="Filtrar por visibilidad Visibles Ocultos o Todos"
+                />
+              </FilterField>
+            ) : null}
           </>
         ) : null}
       </FilterBar>

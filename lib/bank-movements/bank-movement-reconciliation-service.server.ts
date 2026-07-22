@@ -10,6 +10,11 @@ import {
   type ReconciliationSuggestion,
 } from "@/lib/bank-movements/bank-movement-reconciliation";
 import type { BankMovement } from "@/lib/bank-movements/bank-movements-types";
+import {
+  buildHideMetadata,
+  buildRestoreMetadata,
+  isBankMovementUiHidden,
+} from "@/lib/bank-movements/bank-movement-visibility";
 import { BANK_OPERATIONAL_START_DATE } from "@/lib/bank/canonical/historical-policy";
 import { plannedCashObligationRepositoryGetById, plannedCashObligationRepositoryList } from "@/lib/treasury/repositories/planned-cash-obligation-repository";
 
@@ -282,5 +287,78 @@ export async function ignoreBankMovement(params: {
     .eq("bank_movement_id", movementId)
     .eq("status", "open");
 
+  return updated as BankMovement;
+}
+
+export async function hideBankMovement(params: {
+  supabase: SupabaseClient;
+  workspaceId: string;
+  movementId: string;
+  actorId: string;
+  reason?: string;
+}): Promise<BankMovement> {
+  const { supabase, workspaceId, movementId, actorId, reason } = params;
+  const { data: movement, error: loadError } = await supabase
+    .from("bank_movements")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .eq("id", movementId)
+    .maybeSingle();
+  if (loadError || !movement) throw new Error("MOVEMENT_NOT_FOUND");
+
+  const movementRow = movement as BankMovement & { metadata?: Record<string, unknown> };
+  const existingMetadata = movementRow.metadata ?? {};
+  if (isBankMovementUiHidden(existingMetadata)) {
+    return movementRow as BankMovement;
+  }
+
+  const now = new Date().toISOString();
+  const { data: updated, error: updateError } = await supabase
+    .from("bank_movements")
+    .update({
+      updated_at: now,
+      metadata: buildHideMetadata(existingMetadata, { actorId, reason, at: now }),
+    })
+    .eq("workspace_id", workspaceId)
+    .eq("id", movementId)
+    .select("*")
+    .maybeSingle();
+  if (updateError || !updated) throw new Error("MOVEMENT_HIDE_FAILED");
+  return updated as BankMovement;
+}
+
+export async function restoreBankMovement(params: {
+  supabase: SupabaseClient;
+  workspaceId: string;
+  movementId: string;
+  actorId: string;
+}): Promise<BankMovement> {
+  const { supabase, workspaceId, movementId, actorId } = params;
+  const { data: movement, error: loadError } = await supabase
+    .from("bank_movements")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .eq("id", movementId)
+    .maybeSingle();
+  if (loadError || !movement) throw new Error("MOVEMENT_NOT_FOUND");
+
+  const movementRow = movement as BankMovement & { metadata?: Record<string, unknown> };
+  const existingMetadata = movementRow.metadata ?? {};
+  if (!isBankMovementUiHidden(existingMetadata)) {
+    return movementRow as BankMovement;
+  }
+
+  const now = new Date().toISOString();
+  const { data: updated, error: updateError } = await supabase
+    .from("bank_movements")
+    .update({
+      updated_at: now,
+      metadata: buildRestoreMetadata(existingMetadata, { actorId, at: now }),
+    })
+    .eq("workspace_id", workspaceId)
+    .eq("id", movementId)
+    .select("*")
+    .maybeSingle();
+  if (updateError || !updated) throw new Error("MOVEMENT_RESTORE_FAILED");
   return updated as BankMovement;
 }

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCopilotModuleAccessAny } from "@/lib/auth/copilot-module-api-auth";
 import { listRecentIdentificationEvents } from "@/lib/bank/canonical/client-identification-repository.server";
 import { maskAccountOrReference } from "@/lib/bank/canonical/payer-identity";
+import { resolveAppUsersById } from "@/lib/bank/canonical/resolve-app-users.server";
 
 export const dynamic = "force-dynamic";
 
@@ -53,8 +54,19 @@ export async function GET(request: NextRequest) {
     );
     const clientsById = new Map((clientRows ?? []).map((c) => [(c as { id: string }).id, (c as { name: string }).name]));
 
+    const actorIds = Array.from(
+      new Set(
+        rows
+          .map((r) => (r.status === "revoked" ? r.revokedBy : r.confirmedBy))
+          .filter((v): v is string => typeof v === "string" && v.length > 0)
+      )
+    );
+    const actorsById = await resolveAppUsersById(auth.ctx.supabase, actorIds);
+
     const events = rows.map((r) => {
       const mv = movementsById.get(r.movementId);
+      const actorId = r.status === "revoked" ? r.revokedBy : r.confirmedBy;
+      const actor = actorId ? actorsById.get(actorId) : null;
       return {
         id: r.id,
         eventLabel: STATUS_EVENT_LABEL[r.status] ?? r.status,
@@ -63,7 +75,8 @@ export async function GET(request: NextRequest) {
         date: mv?.movement_date ?? null,
         amountLabel: mv ? `${mv.currency} ${Number(mv.amount).toLocaleString("es-UY")}` : null,
         referenceMasked: mv ? maskAccountOrReference(mv.bank_reference) : null,
-        actor: r.status === "revoked" ? r.revokedBy : r.confirmedBy,
+        actor: actor?.label ?? null,
+        actorId: actorId ?? null,
         reason: r.reason,
         eventAt: r.status === "revoked" ? r.revokedAt : r.confirmedAt,
       };

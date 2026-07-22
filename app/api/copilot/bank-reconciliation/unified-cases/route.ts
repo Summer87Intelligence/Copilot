@@ -6,7 +6,14 @@ import { listUnifiedReconciliationCases, type UnifiedCaseStatus } from "@/lib/ba
 export const dynamic = "force-dynamic";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const STATUS_VALUES: UnifiedCaseStatus[] = ["sin_cliente", "listo_para_confirmar", "falta_recibo", "requiere_revision", "conciliado"];
+const STATUS_VALUES: UnifiedCaseStatus[] = [
+  "sin_cliente",
+  "listo_para_confirmar",
+  "revision_parcial",
+  "falta_recibo",
+  "requiere_revision",
+  "conciliado",
+];
 
 /**
  * GET /api/copilot/bank-reconciliation/unified-cases

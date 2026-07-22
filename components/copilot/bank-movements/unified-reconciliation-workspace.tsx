@@ -9,6 +9,10 @@ import {
   copilotInputClass,
   copilotMetricLabelClass,
 } from "@/components/copilot/ui/copilot-visual-system";
+import {
+  unifiedCaseStatusLabel,
+  type UnifiedCaseStatus,
+} from "@/lib/bank/canonical/unified-reconciliation-status";
 
 /**
  * FASE BANK-RECONCILIATION-SIMPLE-UNIFIED-WORKSPACE-001 — reemplaza los dos
@@ -25,7 +29,7 @@ import {
  * ni en vínculos financieros canónicos.
  */
 
-export type UnifiedCaseStatus = "sin_cliente" | "listo_para_confirmar" | "falta_recibo" | "requiere_revision" | "conciliado";
+export type { UnifiedCaseStatus };
 
 type CaseSummary = {
   clusterKey: string;
@@ -52,7 +56,7 @@ type CaseRow = {
   referenceMasked: string | null;
   clientLabel: string;
   invoiceContextLabel: string;
-  status: UnifiedCaseStatus | "duplicado";
+  status: Exclude<UnifiedCaseStatus, "revision_parcial"> | "duplicado";
   statusLabel: string;
   action: "confirmar_con_recibo" | "dejar_pendiente" | "buscar_cliente" | "elegir_cliente" | "ninguna";
   hasCompatibleReceipt: boolean;
@@ -65,6 +69,7 @@ type CaseDetail = CaseSummary & { rows: CaseRow[]; batchEligibleMovementIds: str
 const STATUS_FILTERS: Array<{ value: UnifiedCaseStatus | ""; label: string }> = [
   { value: "", label: "Todos" },
   { value: "listo_para_confirmar", label: "Listos para confirmar" },
+  { value: "revision_parcial", label: "Revisión parcial" },
   { value: "falta_recibo", label: "Falta recibo" },
   { value: "requiere_revision", label: "Requieren revisión" },
   { value: "sin_cliente", label: "Sin cliente" },
@@ -74,17 +79,10 @@ const STATUS_FILTERS: Array<{ value: UnifiedCaseStatus | ""; label: string }> = 
 const STATUS_TONE: Record<UnifiedCaseStatus, string> = {
   sin_cliente: "text-[var(--copilot-muted)]",
   listo_para_confirmar: "text-[var(--copilot-success-text-strong)]",
+  revision_parcial: "text-[var(--copilot-warning-text-strong)]",
   falta_recibo: "text-[var(--copilot-warning-text-strong)]",
   requiere_revision: "text-[var(--copilot-danger-text-strong)]",
   conciliado: "text-[var(--copilot-success-text-strong)]",
-};
-
-const STATUS_LABEL: Record<UnifiedCaseStatus, string> = {
-  sin_cliente: "Sin cliente",
-  listo_para_confirmar: "Listo para confirmar",
-  falta_recibo: "Falta recibo en Zeta",
-  requiere_revision: "Requiere revisión",
-  conciliado: "Conciliado",
 };
 
 function formatAmount(totalByCurrency: Record<string, number>): string {
@@ -113,12 +111,19 @@ export function UnifiedReconciliationWorkspace({
   onChanged,
   onOpenIdentify,
   onOpenReceipt,
+  initialClusterKey = null,
+  initialMovementId = null,
+  onInitialFocusConsumed,
 }: {
   onChanged?: () => void;
   /** Abre el flujo existente de identificación en lote (ClusterReviewDrawer) para este cluster. */
   onOpenIdentify: (clusterKey: string) => void;
   /** Abre el flujo existente de búsqueda de recibo (BankIncomeWorkspace) para este movimiento. */
   onOpenReceipt: (movementId: string) => void;
+  /** Deep-link desde Movimientos: abre el caso exacto en la vista unificada. */
+  initialClusterKey?: string | null;
+  initialMovementId?: string | null;
+  onInitialFocusConsumed?: () => void;
 }) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -131,6 +136,17 @@ export function UnifiedReconciliationWorkspace({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openClusterKey, setOpenClusterKey] = useState<string | null>(null);
+  const [highlightMovementId, setHighlightMovementId] = useState<string | null>(null);
+  const [appliedFocusToken, setAppliedFocusToken] = useState<string | null>(null);
+
+  const incomingFocusToken =
+    initialClusterKey != null ? `c:${initialClusterKey}|m:${initialMovementId ?? ""}` : null;
+
+  if (incomingFocusToken && incomingFocusToken !== appliedFocusToken) {
+    setAppliedFocusToken(incomingFocusToken);
+    setOpenClusterKey(initialClusterKey);
+    setHighlightMovementId(initialMovementId);
+  }
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -168,6 +184,11 @@ export function UnifiedReconciliationWorkspace({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!appliedFocusToken) return;
+    onInitialFocusConsumed?.();
+  }, [appliedFocusToken, onInitialFocusConsumed]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -239,7 +260,11 @@ export function UnifiedReconciliationWorkspace({
       {openClusterKey ? (
         <UnifiedCaseDrawer
           clusterKey={openClusterKey}
-          onClose={() => setOpenClusterKey(null)}
+          highlightMovementId={highlightMovementId}
+          onClose={() => {
+            setOpenClusterKey(null);
+            setHighlightMovementId(null);
+          }}
           onChanged={() => {
             void load();
             onChanged?.();
@@ -253,6 +278,10 @@ export function UnifiedReconciliationWorkspace({
 }
 
 function CaseCard({ unifiedCase, onOpen }: { unifiedCase: CaseSummary; onOpen: () => void }) {
+  const statusLabel = unifiedCaseStatusLabel(unifiedCase.status, {
+    ready: unifiedCase.receiptsFoundCount,
+    missing: unifiedCase.missingReceiptCount,
+  });
   return (
     <li className={copilotCardStandardClass}>
       <div className="flex items-start gap-3">
@@ -280,7 +309,7 @@ function CaseCard({ unifiedCase, onOpen }: { unifiedCase: CaseSummary; onOpen: (
         {unifiedCase.receiptsFoundCount} con recibo · {unifiedCase.missingReceiptCount} sin recibo
       </p>
 
-      <p className={`mt-2 text-sm font-medium ${STATUS_TONE[unifiedCase.status]}`}>{STATUS_LABEL[unifiedCase.status]}</p>
+      <p className={`mt-2 text-sm font-medium ${STATUS_TONE[unifiedCase.status]}`}>{statusLabel}</p>
 
       <div className="mt-2">
         <button type="button" onClick={onOpen} className={copilotButtonClassName({ variant: "primary", size: "sm" })}>
@@ -301,12 +330,14 @@ const ROW_ACTION_LABEL: Record<CaseRow["action"], string> = {
 
 function UnifiedCaseDrawer({
   clusterKey,
+  highlightMovementId,
   onClose,
   onChanged,
   onOpenIdentify,
   onOpenReceipt,
 }: {
   clusterKey: string;
+  highlightMovementId?: string | null;
   onClose: () => void;
   onChanged: () => void;
   onOpenIdentify: (clusterKey: string) => void;
@@ -366,9 +397,19 @@ function UnifiedCaseDrawer({
     <div className="fixed inset-0 z-50 flex justify-end bg-black/30" role="dialog" aria-modal="true">
       <div className="h-full w-full max-w-3xl overflow-y-auto bg-[var(--copilot-card-bg)] p-5 shadow-xl">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold text-[var(--copilot-text)]">
-            {detail?.suggestedClientName ?? detail?.payerDisplayName ?? "Detalle de conciliación"}
-          </h3>
+          <div className="min-w-0">
+            <h3 className="truncate text-base font-semibold text-[var(--copilot-text)]">
+              {detail?.suggestedClientName ?? detail?.payerDisplayName ?? "Detalle de conciliación"}
+            </h3>
+            {detail ? (
+              <p className={copilotCaptionClass}>
+                {unifiedCaseStatusLabel(detail.status, {
+                  ready: detail.receiptsFoundCount,
+                  missing: detail.missingReceiptCount,
+                })}
+              </p>
+            ) : null}
+          </div>
           <button type="button" onClick={onClose} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
             Cerrar
           </button>
@@ -379,6 +420,9 @@ function UnifiedCaseDrawer({
 
         {detail ? (
           <>
+            <p className={`${copilotCaptionClass} mt-3`}>
+              Para corregir una conciliación financiera, usá el flujo de revisión. Ocultar no modifica la conciliación.
+            </p>
             {detail.evidence === "ambiguous" || detail.evidence === "none" ? (
               <div className="mt-3 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] p-3">
                 <p className="text-sm text-[var(--copilot-text)]">
@@ -399,11 +443,10 @@ function UnifiedCaseDrawer({
             {batchResult ? <p className="mt-3 text-sm text-[var(--copilot-success-text-strong)]">{batchResult}</p> : null}
             {batchError ? <p className="mt-3 text-sm text-[var(--copilot-danger-text-strong)]">{batchError}</p> : null}
 
-            {detail.batchEligibleMovementIds.length >= 2 && detail.suggestedClientId ? (
+            {detail.batchEligibleMovementIds.length >= 1 && detail.suggestedClientId ? (
               <div className="mt-3 flex items-center gap-3 rounded-lg border border-[var(--copilot-border)] p-3">
                 <p className="text-sm text-[var(--copilot-text)]">
-                  {detail.batchEligibleMovementIds.length} movimientos de {detail.suggestedClientName} tienen cliente y recibo
-                  compatibles.
+                  Lote elegible: {detail.batchEligibleMovementIds.length} con recibo (no incluye pendientes de recibo).
                 </p>
                 <button
                   type="button"
@@ -418,12 +461,16 @@ function UnifiedCaseDrawer({
 
             <div className="mt-4 space-y-3 md:hidden">
               {detail.rows.map((row) => (
-                <UnifiedRowCard
+                <div
                   key={row.movementId}
-                  row={row}
-                  onIdentify={() => onOpenIdentify(detail.clusterKey)}
-                  onReceipt={() => onOpenReceipt(row.movementId)}
-                />
+                  className={highlightMovementId === row.movementId ? "rounded-xl ring-2 ring-[var(--copilot-accent)]" : ""}
+                >
+                  <UnifiedRowCard
+                    row={row}
+                    onIdentify={() => onOpenIdentify(detail.clusterKey)}
+                    onReceipt={() => onOpenReceipt(row.movementId)}
+                  />
+                </div>
               ))}
             </div>
 
@@ -442,7 +489,12 @@ function UnifiedCaseDrawer({
                 </thead>
                 <tbody>
                   {detail.rows.map((row) => (
-                    <tr key={row.movementId} className="border-t border-[var(--copilot-border)]">
+                    <tr
+                      key={row.movementId}
+                      className={`border-t border-[var(--copilot-border)] ${
+                        highlightMovementId === row.movementId ? "bg-[var(--copilot-soft-bg)]" : ""
+                      }`}
+                    >
                       <td className="py-1.5 pr-2 whitespace-nowrap">{row.date}</td>
                       <td className="py-1.5 pr-2 whitespace-nowrap">
                         {row.currency} {row.amount.toLocaleString("es-UY")}

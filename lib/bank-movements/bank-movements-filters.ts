@@ -15,6 +15,7 @@ import type {
 import { PERIOD_MONTH_OPTIONS } from "@/lib/copilot-datos-period-filter";
 import { resolveImportedBankMovementAmount } from "@/lib/bank-movements/santander-excel-amount";
 import { isBankMovementHistorical } from "@/lib/bank/canonical/historical-policy";
+import { isBankMovementUiHidden } from "@/lib/bank-movements/bank-movement-visibility";
 
 export type BankMovementsPeriodFilter = "all" | "current" | `${number}-${string}`;
 
@@ -26,6 +27,9 @@ export type BankMovementSourceFilter = "all" | "pdf" | "excel" | "csv";
 
 /** Filtro de duplicados de importación (misma operación vista por otro archivo). */
 export type BankMovementDuplicatesFilter = "all" | "only" | "hide";
+
+/** Visibilidad operativa (ocultar ≠ ignorar). Default: solo visibles. */
+export type BankMovementVisibilityFilter = "visible" | "hidden" | "all";
 
 export type BankMovementsListFilters = {
   period: BankMovementsPeriodFilter;
@@ -42,6 +46,7 @@ export type BankMovementsListFilters = {
   amountMax: string;
   duplicates: BankMovementDuplicatesFilter;
   source: BankMovementSourceFilter;
+  visibility: BankMovementVisibilityFilter;
 };
 
 export type ReconciliationSuggestionFilter =
@@ -87,6 +92,7 @@ export const DEFAULT_BANK_MOVEMENTS_LIST_FILTERS: BankMovementsListFilters = {
   amountMax: "",
   duplicates: "all",
   source: "all",
+  visibility: "visible",
 };
 
 export const BANK_MOVEMENT_DUPLICATES_OPTIONS: ReadonlyArray<{
@@ -106,6 +112,15 @@ export const BANK_MOVEMENT_SOURCE_OPTIONS: ReadonlyArray<{
   { value: "pdf", label: "PDF" },
   { value: "excel", label: "Excel" },
   { value: "csv", label: "CSV" },
+];
+
+export const BANK_MOVEMENT_VISIBILITY_OPTIONS: ReadonlyArray<{
+  value: BankMovementVisibilityFilter;
+  label: string;
+}> = [
+  { value: "visible", label: "Visibles" },
+  { value: "hidden", label: "Ocultos" },
+  { value: "all", label: "Todos" },
 ];
 
 export const BANK_MOVEMENT_SCOPE_OPTIONS: ReadonlyArray<{
@@ -158,7 +173,8 @@ export function isBankMovementsListFiltersActive(
     filters.amountMin.trim() !== "" ||
     filters.amountMax.trim() !== "" ||
     filters.duplicates !== defaults.duplicates ||
-    filters.source !== defaults.source
+    filters.source !== defaults.source ||
+    filters.visibility !== defaults.visibility
   );
 }
 
@@ -405,6 +421,10 @@ export function filterBankMovements(
       if (filters.duplicates === "only" && !isDup) return false;
       if (filters.duplicates === "hide" && isDup) return false;
     }
+
+    const hidden = isBankMovementUiHidden(movement.metadata);
+    if (filters.visibility === "visible" && hidden) return false;
+    if (filters.visibility === "hidden" && !hidden) return false;
 
     return true;
   });
