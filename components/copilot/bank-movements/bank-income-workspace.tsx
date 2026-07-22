@@ -10,6 +10,7 @@ import {
   copilotSectionTitleClass,
 } from "@/components/copilot/ui/copilot-visual-system";
 import { FilterBar, FilterField, FilterSelect, FilterSearchInput } from "@/components/copilot/ui/filter-bar";
+import { InlineErrorBoundary } from "@/components/copilot/ui/inline-error-boundary";
 import { TablePagination } from "@/components/copilot/ui/table-pagination";
 import { paginate, pageAfterFilterChange } from "@/lib/ui/table-pagination-model";
 import { isBankMovementHistorical } from "@/lib/bank/canonical/historical-policy";
@@ -540,8 +541,15 @@ export function BankIncomeWorkspace({
             {pageRows.map((movement) => {
               const view = rowView(movement);
               return (
-                <IncomeRow
+                <InlineErrorBoundary
                   key={movement.id}
+                  fallbackMessage="No se pudo mostrar este movimiento. Cerrá y volvé a intentar."
+                  onError={() => {
+                    if (openMovementId === movement.id) setOpenMovementId(null);
+                    if (drawerMovementId === movement.id) setDrawerMovementId(null);
+                  }}
+                >
+                <IncomeRow
                   movement={movement}
                   view={view}
                   open={openMovementId === movement.id}
@@ -566,6 +574,7 @@ export function BankIncomeWorkspace({
                     void refreshMovementRow(movement.id);
                   }}
                 />
+                </InlineErrorBoundary>
               );
             })}
           </ul>
@@ -574,14 +583,19 @@ export function BankIncomeWorkspace({
       )}
 
       {drawerMovementId && drawerEvidence ? (
-        <ReconciliationEvidenceDrawer
-          item={drawerEvidence}
-          mutating={Boolean(mutating[drawerEvidence.suggestionId])}
-          actionError={actionErrors[drawerEvidence.suggestionId] ?? null}
-          onClose={() => setDrawerMovementId(null)}
-          onConfirm={(input) => void handleConfirm(drawerEvidence, input)}
-          onReject={(reason) => void handleReject(drawerEvidence, reason)}
-        />
+        <InlineErrorBoundary
+          fallbackMessage="No se pudo mostrar la evidencia de conciliación. Cerrá y volvé a intentar."
+          onError={() => setDrawerMovementId(null)}
+        >
+          <ReconciliationEvidenceDrawer
+            item={drawerEvidence}
+            mutating={Boolean(mutating[drawerEvidence.suggestionId])}
+            actionError={actionErrors[drawerEvidence.suggestionId] ?? null}
+            onClose={() => setDrawerMovementId(null)}
+            onConfirm={(input) => void handleConfirm(drawerEvidence, input)}
+            onReject={(reason) => void handleReject(drawerEvidence, reason)}
+          />
+        </InlineErrorBoundary>
       ) : null}
     </div>
   );

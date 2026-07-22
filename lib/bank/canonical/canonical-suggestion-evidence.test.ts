@@ -182,6 +182,107 @@ describe("listCanonicalOperationalEvidence — evidencia completa desde el motor
     expect(ev.payer?.hasConflict).toBe(false);
   });
 
+  it("BANK-RECEIPT-SEARCH-PAGE-CRASH-001: borrador manual (movimiento identificado sin sugerencia canónica) arma evidencia con reasons en español, nunca objetos", async () => {
+    const client = fakeClient({
+      bank_reconciliation_suggestions: [
+        {
+          id: "sugg-manual-1",
+          workspace_id: WS,
+          bank_movement_id: "mov-nirmex",
+          payer_identity_id: null,
+          proposed_client_id: null,
+          proposed_receipt_id: null,
+          confidence: 0,
+          reasons: ["MANUAL_DRAFT"],
+          warnings: [],
+          recommended_action: "REVIEW",
+          engine_version: 9001,
+          status: "generated",
+          suggestion_scope: "operational",
+          created_at: "2026-07-22T12:19:33Z",
+          updated_at: "2026-07-22T12:19:33Z",
+        },
+      ],
+      bank_movements: [
+        {
+          id: "mov-nirmex",
+          workspace_id: WS,
+          bank_name: "Santander",
+          account_label: "Cta UYU",
+          movement_date: "2026-07-10",
+          description: "TRANSFERENCIA RECIBIDA NIRMEX S A",
+          raw_description: "TRANSFERENCIA RECIBIDA NIRMEX S A",
+          amount: 7358,
+          currency: "UYU",
+          direction: "inflow",
+          bank_reference: null,
+          status: "pending",
+          metadata: {},
+        },
+      ],
+    });
+
+    const result = await listCanonicalOperationalEvidence(client as never, WS);
+    expect(result.items).toHaveLength(1);
+    const ev = result.items[0]!;
+    expect(ev.reasons).toEqual(["búsqueda manual de cliente y recibo"]);
+    expect(ev.reasons.every((r) => typeof r === "string")).toBe(true);
+    expect(ev.client).toBeNull();
+    expect(ev.receipt).toBeNull();
+    expect(ev.confidenceLevel).toBe("baja"); // REVIEW + confidence 0 < 55
+  });
+
+  it("BANK-RECEIPT-SEARCH-PAGE-CRASH-001: fila legacy con reasons en shape de objeto ({code,detail}) nunca llega como objeto a evidence.reasons", async () => {
+    const client = fakeClient({
+      bank_reconciliation_suggestions: [
+        {
+          id: "sugg-legacy-manual",
+          workspace_id: WS,
+          bank_movement_id: "mov-legacy",
+          payer_identity_id: null,
+          proposed_client_id: null,
+          proposed_receipt_id: null,
+          confidence: 0,
+          // Shape real encontrado en producción antes del fix: array de objetos,
+          // no de códigos string — nunca debe sobrevivir a la capa de lectura.
+          reasons: [{ code: "MANUAL_DRAFT", detail: "Búsqueda manual de cliente y recibo" }],
+          warnings: [],
+          recommended_action: "REVIEW",
+          engine_version: 9001,
+          status: "generated",
+          suggestion_scope: "operational",
+          created_at: "2026-07-22T12:19:33Z",
+          updated_at: "2026-07-22T12:19:33Z",
+        },
+      ],
+      bank_movements: [
+        {
+          id: "mov-legacy",
+          workspace_id: WS,
+          bank_name: "Santander",
+          account_label: null,
+          movement_date: "2026-07-10",
+          description: "TRANSFERENCIA LEGACY",
+          raw_description: null,
+          amount: 7358,
+          currency: "UYU",
+          direction: "inflow",
+          bank_reference: null,
+          status: "pending",
+          metadata: {},
+        },
+      ],
+    });
+
+    const result = await listCanonicalOperationalEvidence(client as never, WS);
+    expect(result.items).toHaveLength(1);
+    const ev = result.items[0]!;
+    // El objeto malformado se filtra en la capa de lectura: reasons queda vacío
+    // (nunca un objeto), y nada aguas abajo intenta renderizarlo como children.
+    expect(ev.reasons).toEqual([]);
+    expect(ev.reasons.every((r) => typeof r === "string")).toBe(true);
+  });
+
   it("marca conflicto cuando la misma identidad de pagador está vinculada a más de un cliente", async () => {
     const client = fakeClient({
       bank_reconciliation_suggestions: [

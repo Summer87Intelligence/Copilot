@@ -76,7 +76,10 @@ export async function createOrReuseManualDraftSuggestion(
       proposed_client_id: null,
       proposed_receipt_id: null,
       confidence: 0,
-      reasons: [{ code: "MANUAL_DRAFT", detail: "Búsqueda manual de cliente y recibo" }],
+      // `reasons` es `ReconciliationReason[]` — códigos string planos, nunca
+      // objetos. Un objeto acá rompe el render aguas abajo (React no puede
+      // pintar un objeto como children de un elemento de lista).
+      reasons: ["MANUAL_DRAFT"],
       warnings: [],
       recommended_action: "REVIEW",
       engine_version: MANUAL_DRAFT_ENGINE_VERSION,

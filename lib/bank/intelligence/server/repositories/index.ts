@@ -428,8 +428,18 @@ function mapSuggestionRow(raw: Record<string, unknown>): ShadowSuggestionRow {
     proposedClientId: raw.proposed_client_id != null ? String(raw.proposed_client_id) : null,
     proposedReceiptId: raw.proposed_receipt_id != null ? String(raw.proposed_receipt_id) : null,
     confidence: Number(raw.confidence) || 0,
-    reasons: Array.isArray(raw.reasons) ? (raw.reasons as ReconciliationReason[]) : [],
-    warnings: Array.isArray(raw.warnings) ? (raw.warnings as ReconciliationWarning[]) : [],
+    // Defensivo: `reasons`/`warnings` son JSONB y deben ser códigos string
+    // planos (`ReconciliationReason`/`ReconciliationWarning`); una fila mal
+    // formada (p. ej. objetos `{code, detail}`) nunca debe llegar como tal a la
+    // UI, donde renderizar un objeto directo como children de React rompe toda
+    // la página. Filtra cualquier entrada que no sea string en vez de confiar
+    // ciegamente en el shape.
+    reasons: Array.isArray(raw.reasons)
+      ? (raw.reasons.filter((r): r is string => typeof r === "string") as ReconciliationReason[])
+      : [],
+    warnings: Array.isArray(raw.warnings)
+      ? (raw.warnings.filter((w): w is string => typeof w === "string") as ReconciliationWarning[])
+      : [],
     recommendedAction: String(raw.recommended_action) as ShadowSuggestionRow["recommendedAction"],
     engineVersion: Number(raw.engine_version) || 1,
     status: String(raw.status) as ShadowSuggestionStatus,

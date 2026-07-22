@@ -112,6 +112,30 @@ describe("createOrReuseManualDraftSuggestion", () => {
     if (!result.ok) expect(result.code).toBe("MOVEMENT_ALREADY_RECONCILED");
   });
 
+  it("BANK-RECEIPT-SEARCH-PAGE-CRASH-001: movimiento inexistente -> MOVEMENT_NOT_FOUND (404 en la ruta)", async () => {
+    const client = fakeClient({ movement: null });
+    const result = await createOrReuseManualDraftSuggestion(client as never, {
+      workspaceId: WS,
+      actorUserId: ACTOR,
+      movementId: MOV,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe("MOVEMENT_NOT_FOUND");
+  });
+
+  it("BANK-RECEIPT-SEARCH-PAGE-CRASH-001: movimiento ignorado -> MOVEMENT_NOT_RECONCILABLE (409 en la ruta)", async () => {
+    const client = fakeClient({
+      movement: { id: MOV, workspace_id: WS, direction: "inflow", status: "ignored" },
+    });
+    const result = await createOrReuseManualDraftSuggestion(client as never, {
+      workspaceId: WS,
+      actorUserId: ACTOR,
+      movementId: MOV,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe("MOVEMENT_NOT_RECONCILABLE");
+  });
+
   it("bloquea outflow", async () => {
     const client = fakeClient({
       movement: { id: MOV, workspace_id: WS, direction: "outflow", status: "pending" },
@@ -157,6 +181,11 @@ describe("createOrReuseManualDraftSuggestion", () => {
             expect(payload.recommended_action).toBe("REVIEW");
             expect(payload.proposed_client_id).toBeNull();
             expect(payload.proposed_receipt_id).toBeNull();
+            // Regresión BANK-RECEIPT-SEARCH-PAGE-CRASH-001: `reasons` debe ser
+            // ReconciliationReason[] (strings planos), nunca objetos — un objeto
+            // acá rompe el render de la bandeja (React no pinta objetos como children).
+            expect(payload.reasons).toEqual(["MANUAL_DRAFT"]);
+            expect((payload.reasons as unknown[]).every((r) => typeof r === "string")).toBe(true);
             return {
               select() {
                 return this;

@@ -19,6 +19,7 @@ export const RECONCILIATION_REASON_LABELS: Record<ReconciliationReason, string> 
   MULTIPLE_CANDIDATES: "hay más de un candidato posible",
   CURRENCY_MISMATCH: "la moneda no coincide",
   RECEIPT_DATE_DOMINANCE: "este recibo es el más cercano en fecha",
+  MANUAL_DRAFT: "búsqueda manual de cliente y recibo",
 };
 
 export const RECONCILIATION_WARNING_LABELS: Record<ReconciliationWarning, string> = {

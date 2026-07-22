@@ -78,7 +78,9 @@ export type ReconciliationReason =
   | "MULTIPLE_CANDIDATES"
   | "CURRENCY_MISMATCH"
   /** Desempate objetivo: proximidad de fecha estrictamente mejor que el resto. */
-  | "RECEIPT_DATE_DOMINANCE";
+  | "RECEIPT_DATE_DOMINANCE"
+  /** Borrador manual (sin sugerencia canónica): ver create-manual-draft-suggestion.server.ts. */
+  | "MANUAL_DRAFT";
 
 export type ReconciliationWarning =
   | "MULTIPLE_STRONG_CANDIDATES"
