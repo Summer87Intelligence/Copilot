@@ -162,7 +162,7 @@ export function BankMovementsPageClient() {
   }, [searchParams]);
   const [focusMovementId, setFocusMovementId] = useState<string | null>(null);
   const [receiptFocusMovementId, setReceiptFocusMovementId] = useState<string | null>(null);
-  const [returnToMovimientos, setReturnToMovimientos] = useState(false);
+  const returnToMovimientosRef = useRef(false);
   const savedScrollY = useRef(0);
   const [tesoreriaOpen, setTesoreriaOpen] = useState(false);
   const [movements, setMovements] = useState<BankMovement[]>([]);
@@ -366,7 +366,7 @@ export function BankMovementsPageClient() {
       const m = movements.find((row) => row.id === movementId);
       if (!m) {
         savedScrollY.current = typeof window !== "undefined" ? window.scrollY : 0;
-        setReturnToMovimientos(true);
+        returnToMovimientosRef.current = true;
         setFocusMovementId(movementId);
         setFocusClusterKey(null);
         setTab("conciliacion");
@@ -386,7 +386,7 @@ export function BankMovementsPageClient() {
         bankName: null,
       });
       savedScrollY.current = typeof window !== "undefined" ? window.scrollY : 0;
-      setReturnToMovimientos(true);
+      returnToMovimientosRef.current = true;
       setFocusMovementId(movementId);
       setFocusClusterKey(clusterKey);
       setTab("conciliacion");
@@ -422,13 +422,13 @@ export function BankMovementsPageClient() {
   }, [focusMovementId, focusClusterKey, movements, tab]);
 
   const restoreMovimientosIfNeeded = useCallback(() => {
-    if (!returnToMovimientos) return;
-    setReturnToMovimientos(false);
+    if (!returnToMovimientosRef.current) return;
+    returnToMovimientosRef.current = false;
     setTab("movimientos");
     requestAnimationFrame(() => {
       if (typeof window !== "undefined") window.scrollTo(0, savedScrollY.current);
     });
-  }, [returnToMovimientos]);
+  }, []);
 
   const hideOrRestoreMovement = useCallback(
     async (m: BankMovement, action: "hide" | "restore") => {

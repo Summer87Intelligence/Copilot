@@ -38,7 +38,7 @@ describe("Banco tabs y chrome", () => {
 
 describe("Foco exacto de movimiento", () => {
   it("Identificar desde Movimientos preserva return + scroll y abre Conciliación", () => {
-    expect(pageClient).toContain("returnToMovimientos");
+    expect(pageClient).toContain("returnToMovimientosRef");
     expect(pageClient).toContain("restoreMovimientosIfNeeded");
     expect(pageClient).toContain("savedScrollY");
     expect(pageClient).toContain("onCaseClosed={restoreMovimientosIfNeeded}");
